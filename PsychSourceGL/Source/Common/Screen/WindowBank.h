@@ -146,12 +146,14 @@
 #define kPsychGUIWindowWMPositioned         (1 << 19) // 'specialflags' setting 2^19: GUI window is positioned onscreen by window manager, users position spec is ignored.
 #define kPsychNeedOpenMLTSWorkaround        (1 << 20) // 'specialflags' setting 2^20: KMS pageflip completion events are faulty on a FOSS driver: Use glXGetSyncValuesOML workaround.
 #define kPsychClockPrecisionOneTimeWarningDone (1 << 21) // 'specialflags' setting 2^21: Signals that the one-time warning wrt. imprecise visual onset timestamp was issued.
+#define kPsychIsDRI3Window                  (1 << 22) // 'specialflags' setting 2^22: This X11 window uses DRI3/Present for visual stimulus presentation.
+#define kPsychBufferAgeWarningDone          (1 << 23) // 'specialflags' setting 2^22: One time warning for non-double-buffering due to ext_buffer_age queries already done.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18. --> Flags of 2^19 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21. --> Flags of 2^22 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23. --> Flags of 2^24 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*   PtrPsychHookFunction;

@@ -110,7 +110,7 @@ static char synopsisString[] =
     "\noldfontName = Screen('Preference', 'DefaultFontName', [fontName]);"
     "\noldEnableFlag = Screen('Preference', 'DefaultTextYPositionIsBaseline', [enableFlag]);"
     "\noldEnableFlag = Screen('Preference', 'TextAntiAliasing', [enableFlag=-1 (System setting), 0 = Disable, 1 = Enable, 2 = EnableHighQuality]);"
-    "\noldEnableFlag = Screen('Preference', 'TextRenderer', [enableFlag=0 (Default OS-specific [fast]), 1 = HighQ OS-specific]);"
+    "\noldEnableFlag = Screen('Preference', 'TextRenderer', [enableFlag=0 (Legacy OS-specific), 1 = HighQ OS-specific (Default), 2 = Linux renderer plugin]);"
     "\noldLocaleNameString = Screen('Preference', 'TextEncodingLocale', [newLocalenNameString]);"
     "\noldEnableFlag = Screen('Preference', 'SkipSyncTests', [enableFlag]);"
     "\n[maxStddev, minSamples, maxDeviation, maxDuration] = Screen('Preference', 'SyncTestSettings' [, maxStddev=0.001 secs][, minSamples=50][, maxDeviation=0.1][, maxDuration=5 secs]);"

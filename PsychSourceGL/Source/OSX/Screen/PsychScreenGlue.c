@@ -1,38 +1,37 @@
 /*
-	PsychToolbox3/Source/OSX/Screen/PsychScreenGlue.c
-	
-	PLATFORMS:	
-	
-		This is the OS X Core Graphics version only.  
-				
-	AUTHORS:
-	
-		Allen Ingling		awi		Allen.Ingling@nyu.edu
+    PsychToolbox3/Source/OSX/Screen/PsychScreenGlue.c
+
+    PLATFORMS:
+
+        This is the OS X Core Graphics version only.
+
+    AUTHORS:
+
+        Allen Ingling       awi     Allen.Ingling@nyu.edu
         Mario Kleiner       mk      mario.kleiner.de@gmail.com
 
-	HISTORY:
-	
-		10/20/02		awi			Wrote it mostly by adding in SDL-specific refugeess (from an experimental SDL Psychtoolbox) from header and source files.
-		11/16/04		awi			added  PsychGetGlobalScreenRect.  Enhanced DESCRIPTION text.  
-		04/29/05        mk          Return id of primary display for displays in hardware mirroring sets.
-		12/29/06		mk			Implement query code for DAC output resolution on OS-X, finally...
-        							
-	DESCRIPTION:
-	
-		Functions in this file comprise an abstraction layer for probing and controlling screen state.  
-		
-		Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes() 
-		should be platform-neutral, despite that the calls in OS X and Windows to detect available pixel sizes are
-		different.  The platform specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, 
-		PsychWindowTextClue.
-	
-		In addition to glue functions for windows and screen there are functions which implement shared functionality between between Screen commands,
-		such as ScreenTypes.c and WindowBank.c. 
-			
-	NOTES:
+    HISTORY:
+
+        10/20/02        awi         Wrote it mostly by adding in SDL-specific refugeess (from an experimental SDL Psychtoolbox) from header and source files.
+        11/16/04        awi         added  PsychGetGlobalScreenRect.  Enhanced DESCRIPTION text.
+        04/29/05        mk          Return id of primary display for displays in hardware mirroring sets.
+        12/29/06        mk          Implement query code for DAC output resolution on OS-X, finally...
+
+    DESCRIPTION:
+
+        Functions in this file comprise an abstraction layer for probing and controlling screen state.
+
+        Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes()
+        should be platform-neutral, despite that the calls in OS X and Windows to detect available pixel sizes are
+        different.  The platform specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue,
+        PsychWindowTextClue.
+
+        In addition to glue functions for windows and screen there are functions which implement shared functionality between between Screen commands,
+        such as ScreenTypes.c and WindowBank.c.
+
+    NOTES:
 
 */
-
 
 #include "Screen.h"
 
@@ -52,7 +51,7 @@ unsigned int  fCardType[kPsychMaxPossibleDisplays];
 unsigned int  fPCIDeviceId[kPsychMaxPossibleDisplays];
 unsigned int  fNumDisplayHeads[kPsychMaxPossibleDisplays];
 
-// Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
+// Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.
 static psych_bool           displayLockSettingsFlags[kPsychMaxPossibleDisplays];
 static CGDisplayModeRef     displayOriginalCGSettings[kPsychMaxPossibleDisplays];       //these track the original video state before the Psychtoolbox changed it.
 static psych_bool           displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
@@ -63,8 +62,8 @@ static CGDirectDisplayID    displayCGIDs[kPsychMaxPossibleDisplays];
 static CGDirectDisplayID    displayOnlineCGIDs[kPsychMaxPossibleDisplays];
 
 // List of service connect handles for connecting to the kernel support driver (if any):
-static int					numKernelDrivers = 0;
-static io_connect_t			displayConnectHandles[kPsychMaxPossibleDisplays];
+static int                  numKernelDrivers = 0;
+static io_connect_t         displayConnectHandles[kPsychMaxPossibleDisplays];
 
 //file local functions
 void InitCGDisplayIDList(void);
@@ -84,13 +83,13 @@ kern_return_t CallKDSimpleMethod(io_connect_t connect, uint32_t index)
 {
     kern_return_t result;
     uint32_t outputCnt = 0;
-    
+
     // IOConnectCallScalarMethod replaces IOConnectMethodScalarIScalarO
     // in OS/X 10.5 and later, and it has an incompatible interface in general,
     // but luckily we only use this method in its most simple form with 0 inputs
     // and outputs. For this special case we have a very simple 1-to-1 mapping:
     result = IOConnectCallScalarMethod((mach_port_t) connect, index, NULL, 0, NULL, &outputCnt);
-    
+
     return(result);
 }
 
@@ -98,7 +97,7 @@ kern_return_t CallKDSimpleMethod(io_connect_t connect, uint32_t index)
 void InitializePsychDisplayGlue(void)
 {
     int i;
-    
+
     //init the display settings flags.
     for(i=0;i<kPsychMaxPossibleDisplays;i++){
         displayLockSettingsFlags[i]=FALSE;
@@ -106,20 +105,20 @@ void InitializePsychDisplayGlue(void)
         displayOverlayedCGSettingsValid[i]=FALSE;
         displayConnectHandles[i]=0;
     }
-    
+
     // Init the list of Core Graphics display IDs.
     InitCGDisplayIDList();
-    
+
     // Setup screenId -> display head mappings:
     PsychInitScreenToHeadMappings(PsychGetNumDisplays());
-    
+
     // Register a display reconfiguration callback:
-    CGDisplayRegisterReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
-    
+    // CGDisplayRegisterReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
+
     // Attach to kernel-level Psychtoolbox graphics card interface driver if possible
     // *and* allowed by settings, setup all relevant mappings:
     InitPsychtoolboxKernelDriverInterface();
-    
+
     // Prevent OSX 10.9+ "AppNap" power saving and timer coalescing etc.:
     PsychCocoaPreventAppNap(TRUE);
 }
@@ -127,12 +126,12 @@ void InitializePsychDisplayGlue(void)
 void PsychCleanupDisplayGlue(void)
 {
     int i;
-    
+
     // Shutdown connection to kernel level driver, if any exists:
     PsychOSShutdownPsychtoolboxKernelDriverInterface();
 
     // Unregister our display reconfiguration callback:
-    CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
+    // CGDisplayRemoveReconfigurationCallback(PsychDisplayReconfigurationCallBack, NULL);
 
     // Release retained display mode objects:
     for(i = 0; i < kPsychMaxPossibleDisplays; i++){
@@ -141,32 +140,37 @@ void PsychCleanupDisplayGlue(void)
         displayOriginalCGSettingsValid[i] = FALSE;
         displayOverlayedCGSettingsValid[i] = FALSE;
     }
-    
+
     // Release font database:
     PsychFreeFontList();
-    
+
     // Allow OSX 10.9+ "AppNap" power saving and timer coalescing etc.:
     PsychCocoaPreventAppNap(FALSE);
 }
 
+// PsychDisplayReconfigurationCallBack() respond to display reconfiguration events. This function is
+// currently unused and not hooked up - Just left here for reference. It might have been involved in
+// problems on OSX 10.9 and 10.10 in that releasing a display left the system hanging with a black
+// screen for long periods of time. This possibly due to some broken OSX event handling interacting
+// with this callback...
 void PsychDisplayReconfigurationCallBack(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
 {
-	(void) userInfo;
+    (void) userInfo;
 
-	// Provide feedback at verbosity level 4 or higher:
-	if (PsychPrefStateGet_Verbosity() > 3) {
-		if (flags & kCGDisplayBeginConfigurationFlag) printf("PTB-INFO: Display reconfiguration for display %p in progress...\n", display);
-		if (flags & ~kCGDisplayBeginConfigurationFlag) printf("PTB-INFO: Reconfiguration for display %p finished: Flags = %i. Reenumerating all displays.\n", display, flags);
-	}
+    // Provide feedback at verbosity level 4 or higher:
+    if (PsychPrefStateGet_Verbosity() > 3) {
+        if (flags & kCGDisplayBeginConfigurationFlag) printf("PTB-INFO: Display reconfiguration for display %p in progress...\n", display);
+        if (flags & ~kCGDisplayBeginConfigurationFlag) printf("PTB-INFO: Reconfiguration for display %p finished: Flags = %i. Reenumerating all displays.\n", display, flags);
+    }
 
-	// Display reconfiguration finished?
-	if (flags & ~kCGDisplayBeginConfigurationFlag) {
-		// Yes: Reenumerate all our displays.
-		InitCGDisplayIDList();
-		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Display reenumeration done.\n");
-	}
+    // Display reconfiguration finished?
+    if (flags & ~kCGDisplayBeginConfigurationFlag) {
+        // Yes: Reenumerate all our displays.
+        InitCGDisplayIDList();
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Display reenumeration done.\n");
+    }
 
-	return;
+    return;
 }
 
 void InitCGDisplayIDList(void)
@@ -183,7 +187,7 @@ void InitCGDisplayIDList(void)
         return;
     }
 
-	// Also enumerate physical displays:
+    // Also enumerate physical displays:
     error = CGGetOnlineDisplayList(kPsychMaxPossibleDisplays, displayOnlineCGIDs, &numPhysicalDisplays);
     if (error) {
         printf("PTB-CRITICAL: CGGetOnlineDisplayList failed to enumerate displays! Screen() will be mostly dysfunctional!\n");
@@ -195,22 +199,22 @@ void InitCGDisplayIDList(void)
 void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber)
 {
     if(screenNumber>= (int) numDisplays) PsychErrorExit(PsychError_invalidScumber);
-	
-	if (screenNumber < 0) {
-		// Special case: Physical displays handle: Put back into positive range and
-		// correct for 1-based external indexing:
-		screenNumber = (-1 * screenNumber) - 1;
-		if (screenNumber >= (int) numPhysicalDisplays) PsychErrorExitMsg(PsychError_user, "Invalid physical screenNumber provided! Higher than number of connected physical displays!");
-		
-		// Valid range: Map it:
-		*displayID=displayOnlineCGIDs[screenNumber];
 
-		return;
-	}
-	
+    if (screenNumber < 0) {
+        // Special case: Physical displays handle: Put back into positive range and
+        // correct for 1-based external indexing:
+        screenNumber = (-1 * screenNumber) - 1;
+        if (screenNumber >= (int) numPhysicalDisplays) PsychErrorExitMsg(PsychError_user, "Invalid physical screenNumber provided! Higher than number of connected physical displays!");
+
+        // Valid range: Map it:
+        *displayID=displayOnlineCGIDs[screenNumber];
+
+        return;
+    }
+
     // Standard case: Logical displays:
-	
-	// MK: We return the id of the primary display of the hardware-mirror set to which
+
+    // MK: We return the id of the primary display of the hardware-mirror set to which
     // the display for 'screenNumber' belongs to. This will be the same display on
     // single display setups. On dual-display setups, it will return the ID of the
     // display we are really syncing in Screen('Flip'). This is important for querying
@@ -224,27 +228,23 @@ void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int scree
     if (CGDisplayUnitNumber(*displayID)!=CGDisplayUnitNumber(displayCGIDs[screenNumber])) {
         mexPrintf("PTB-DEBUG : ACTIVE DISPLAY <-> PRIMARY DISPLAY MISMATCH FOR SCREEN %i!!!!\n", screenNumber);
     }
-	
-	return;
-}
 
+    return;
+}
 
 /*  About locking display settings:
 
-    SCREENOpenWindow and SCREENOpenOffscreenWindow  set the lock when opening  windows and 
+    SCREENOpenWindow and SCREENOpenOffscreenWindow  set the lock when opening  windows and
     SCREENCloseWindow unsets upon the close of the last of a screen's windows. PsychSetVideoSettings checks for a lock
     before changing the settings.  Anything (SCREENOpenWindow or SCREENResolutions) which attemps to change
     the display settings should report that attempts to change a dipslay's settings are not allowed when its windows are open.
-    
+
     PsychSetVideoSettings() may be called by either SCREENOpenWindow or by Resolutions().  If called by Resolutions it both sets the video settings
     and caches the video settings so that subsequent calls to OpenWindow can use the cached mode regardless of whether interceding calls to OpenWindow
     have changed the display settings or reverted to the virgin display settings by closing.  SCREENOpenWindow should thus invoke the cached mode
-    settings if they have been specified and not current actual display settings.  
-    
-*/    
-    
+    settings if they have been specified and not current actual display settings.
 
-
+*/
 void PsychLockScreenSettings(int screenNumber)
 {
     displayLockSettingsFlags[screenNumber]=TRUE;
@@ -260,47 +260,28 @@ psych_bool PsychCheckScreenSettingsLock(int screenNumber)
     return(displayLockSettingsFlags[screenNumber]);
 }
 
-
 /* Because capture and lock will always be used in conjuction, capture calls lock, and SCREENOpenWindow must only call Capture and Release */
 void PsychCaptureScreen(int screenNumber)
 {
     CGDisplayErr  error;
 
     if (screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
-    
+
     error = CGDisplayCapture(displayCGIDs[screenNumber]);
     if (error) PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
-    
+
     PsychLockScreenSettings(screenNumber);
 
-	// Reenumerate all displays: This is meant to help resolve issues with lots of
-	// warning messages printed by the OS to stderr on the 2010 MacBookPro's with hybrid
-	// graphics and automatic GPU switching between IntelHD IGP and NVidia Geforce GPU.
-	//
-	// Those systems presumably switch to the discrete GPU after a CGDisplayCapture() call
-	// and back to the IGP after a corresponding CGDisplayRelease() call. The change of
-	// GPU supposedly invalidates the currently cached CGDisplayID handles, so we need to
-	// reenumerate to avoid operating with invalid handles. That's the theory: Don't know if
-	// this is really the cause of the warning messages and if this will actually help resolve
-	// them. In any case this system behaviour breaks backwards compatibility to applications
-	// and can be considered yet another pretty embarassing operating system bug, brought to
-	// you by Apple.
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychCaptureScreen(): After display capture for screen %i (Old CGDisplayId %p). Reenumerating all displays...\n", screenNumber, displayCGIDs[screenNumber]);
-    
-	InitCGDisplayIDList();
-    
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychCaptureScreen(): After display capture for screen %i (New CGDisplayId %p). Reenumeration done.\n", screenNumber, displayCGIDs[screenNumber]);
-
-	return;
+    return;
 }
 
 /*
  *  PsychReleaseScreen()
  */
 void PsychReleaseScreen(int screenNumber)
-{	
+{
     CGDisplayErr  error;
-    
+
     if (screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
 
     error = CGDisplayRelease(displayCGIDs[screenNumber]);
@@ -308,26 +289,18 @@ void PsychReleaseScreen(int screenNumber)
 
     PsychUnlockScreenSettings(screenNumber);
 
-	// Reenumerate all displays: See comments in PsychCaptureScreen() for explanation.
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychReleaseScreen(): After display release for screen %i (Old CGDisplayId %p). Reenumerating all displays...\n", screenNumber, displayCGIDs[screenNumber]);
-    
-	InitCGDisplayIDList();
-    
-	if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychReleaseScreen(): After display release for screen %i (New CGDisplayId %p). Reenumeration done.\n", screenNumber, displayCGIDs[screenNumber]);
-
-	// Try to restore keyboard input focus to whatever window had focus before
-	// the CGDisplayCapture()/CGDisplayRelease(). Turns out to be a bit unreliable,
+    // Try to restore keyboard input focus to whatever window had focus before
+    // the CGDisplayCapture()/CGDisplayRelease(). Turns out to be a bit unreliable,
     // and of limited use when it works, but anyway...
-	PsychCocoaSetUserFocusWindow(NULL);
+    PsychCocoaSetUserFocusWindow(NULL);
 
-	return;
+    return;
 }
 
 psych_bool PsychIsScreenCaptured(screenNumber)
 {
     return(PsychCheckScreenSettingsLock(screenNumber));
-}    
-
+}
 
 //Read display parameters.
 /*
@@ -363,9 +336,9 @@ static int getDisplayBitsPerPixel(CGDisplayModeRef mode)
     else if (CFStringCompare(n, CFSTR(IO8BitIndexedPixels), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
         bpp = 8;
     }
-    
+
     CFRelease(n);
-    
+
     return(bpp);
 }
 
@@ -376,7 +349,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
     int i, numPossibleModes;
     long currentWidth, currentHeight, tempWidth, tempHeight, tempDepth;
     double currentFrequency, tempFrequency;
-    
+
     if (screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
 
     // Get the current display mode.  We will want to match against width and hz when looking for available depths.
@@ -410,9 +383,9 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
             PsychAddValueToDepthStruct((int) tempDepth, depths);
         }
 
-		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychGetScreenDepths(): mode %i : w x h = %i x %i, fps = %f, depth = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: PsychGetScreenDepths(): mode %i : w x h = %i x %i, fps = %f, depth = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
     }
-    
+
     CFRelease(modeList);
 
     // At least one match?
@@ -431,9 +404,9 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 
 /*   PsychGetAllSupportedScreenSettings()
  *
- *	 Queries the display system for a list of all supported display modes, ie. all valid combinations
- *	 of resolution, pixeldepth and refresh rate. Allocates temporary arrays for storage of this list
- *	 and returns it to the calling routine. This function is basically only used by Screen('Resolutions').
+ *     Queries the display system for a list of all supported display modes, ie. all valid combinations
+ *     of resolution, pixeldepth and refresh rate. Allocates temporary arrays for storage of this list
+ *     and returns it to the calling routine. This function is basically only used by Screen('Resolutions').
  */
 int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** widths, long** heights, long** hz, long** bpp)
 {
@@ -442,47 +415,47 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
     int i, numPossibleModes;
     long tempWidth, tempHeight, tempDepth;
     double tempFrequency;
-    
+
     if (screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
-    
+
     // Build options dictionary to make sure we also get HiDPI / Retina scaled modes:
     i = 1;
     CFNumberRef number = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &i);
     CFStringRef key = kCGDisplayShowDuplicateLowResolutionModes;
     CFDictionaryRef options = CFDictionaryCreate(kCFAllocatorDefault, (const void**) &key, (const void**) &number, 1, NULL, NULL);
     CFRelease(number);
-    
+
     // Get a list of available modes for the specified display, including HiDPI/Retina
     // modes, as requested by the options dictionary:
     modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[screenNumber], options);
     CFRelease(options);
     numPossibleModes = CFArrayGetCount(modeList);
 
-	// Allocate output arrays: These will get auto-released at exit from Screen():
-	*widths = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-	*heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-	*hz = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-	*bpp = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
-	
-	// Fetch modes and store into arrays:
+    // Allocate output arrays: These will get auto-released at exit from Screen():
+    *widths = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+    *heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+    *hz = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+    *bpp = (long*) PsychMallocTemp(numPossibleModes * sizeof(long));
+
+    // Fetch modes and store into arrays:
     for(i = 0; i < numPossibleModes; i++) {
         tempWidth = tempHeight = tempFrequency = tempDepth = 0;
-        
+
         tempMode = (CGDisplayModeRef) CFArrayGetValueAtIndex(modeList,i);
         tempWidth = (long) CGDisplayModeGetWidth(tempMode);
         tempHeight = (long) CGDisplayModeGetHeight(tempMode);
         tempFrequency = CGDisplayModeGetRefreshRate(tempMode);
         tempDepth = getDisplayBitsPerPixel(tempMode);
-        
-		(*widths)[i] = tempWidth;
-		(*heights)[i] = tempHeight;
-		(*hz)[i] = (long) (tempFrequency + 0.5);
-		(*bpp)[i] = tempDepth;
+
+        (*widths)[i] = tempWidth;
+        (*heights)[i] = tempHeight;
+        (*hz)[i] = (long) (tempFrequency + 0.5);
+        (*bpp)[i] = tempDepth;
     }
 
     CFRelease(modeList);
 
-	return(numPossibleModes);
+    return(numPossibleModes);
 }
 
 /* Only returned a cgMode which needs to be CGDisplayModeRelease()'ed on success, ie., if return true */
@@ -493,11 +466,11 @@ psych_bool PsychGetCGModeFromVideoSetting(CGDisplayModeRef *cgMode, PsychScreenS
     int i, numPossibleModes;
     long width, height, depth, tempWidth, tempHeight, tempDepth;
     double tempFrequency, frameRate;
-    
+
     if(setting->screenNumber>=numDisplays) {
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetCGModeFromVideoSetting() is out of range.");
     }
-    
+
     width = (long) PsychGetWidthFromRect(setting->rect);
     height = (long) PsychGetHeightFromRect(setting->rect);
     depth = (long) PsychGetValueFromDepthStruct(0,&(setting->depth));
@@ -509,19 +482,19 @@ psych_bool PsychGetCGModeFromVideoSetting(CGDisplayModeRef *cgMode, PsychScreenS
     CFStringRef key = kCGDisplayShowDuplicateLowResolutionModes;
     CFDictionaryRef options = CFDictionaryCreate(kCFAllocatorDefault, (const void**) &key, (const void**) &number, 1, NULL, NULL);
     CFRelease(number);
-    
+
     // Get a list of available modes for the specified display, including HiDPI/Retina
     // modes, as requested by the options dictionary:
     modeList = CGDisplayCopyAllDisplayModes(displayCGIDs[setting->screenNumber], options);
     CFRelease(options);
     numPossibleModes = CFArrayGetCount(modeList);
-    
-	// Fetch modes and store into arrays:
+
+    // Fetch modes and store into arrays:
     for(i = 0; i < numPossibleModes; i++) {
         *cgMode = (CGDisplayModeRef) CFArrayGetValueAtIndex(modeList,i);
-        
-        tempWidth = (long) CGDisplayModeGetWidth(*cgMode);
-        tempHeight = (long) CGDisplayModeGetHeight(*cgMode);
+
+        tempWidth = (long) CGDisplayModeGetPixelWidth(*cgMode);
+        tempHeight = (long) CGDisplayModeGetPixelHeight(*cgMode);
         tempFrequency = CGDisplayModeGetRefreshRate(*cgMode);
         tempDepth = getDisplayBitsPerPixel(*cgMode);
 
@@ -536,14 +509,14 @@ psych_bool PsychGetCGModeFromVideoSetting(CGDisplayModeRef *cgMode, PsychScreenS
     // Failed.
     CFRelease(modeList);
     *cgMode = NULL;
-    
+
     return(FALSE);
 }
 
 /*
     PsychCheckVideoSettings()
-    
-    Check all available video display modes for the specified screen number and return true if the 
+
+    Check all available video display modes for the specified screen number and return true if the
     settings are valid and false otherwise.
 */
 psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
@@ -553,7 +526,7 @@ psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
         CGDisplayModeRelease(cgMode);
         return(TRUE);
     }
-    
+
     return(FALSE);
 }
 
@@ -571,7 +544,7 @@ void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
 
 int PsychGetScreenDepthValue(int screenNumber)
 {
-    PsychDepthType	depthStruct;
+    PsychDepthType    depthStruct;
 
     PsychInitDepthStruct(&depthStruct);
     PsychGetScreenDepth(screenNumber, &depthStruct);
@@ -581,9 +554,9 @@ int PsychGetScreenDepthValue(int screenNumber)
 float PsychGetNominalFramerate(int screenNumber)
 {
     double currentFrequency;
-    
+
     if (PsychPrefStateGet_ConserveVRAM() & kPsychIgnoreNominalFramerate) return(0);
-    
+
     if (screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
 
     CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(displayCGIDs[screenNumber]);
@@ -597,7 +570,7 @@ float PsychGetNominalFramerate(int screenNumber)
 void PsychGetScreenPixelSize(int screenNumber, long *width, long *height)
 {
     if (screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
-    
+
     CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(displayCGIDs[screenNumber]);
     *width = (long) CGDisplayModeGetPixelWidth(currentMode);
     *height = (long) CGDisplayModeGetPixelHeight(currentMode);
@@ -607,7 +580,7 @@ void PsychGetScreenPixelSize(int screenNumber, long *width, long *height)
 void PsychGetScreenSize(int screenNumber, long *width, long *height)
 {
     if (screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
-    
+
     CGDisplayModeRef currentMode = CGDisplayCopyDisplayMode(displayCGIDs[screenNumber]);
     *width = (long) CGDisplayModeGetWidth(currentMode);
     *height = (long) CGDisplayModeGetHeight(currentMode);
@@ -626,83 +599,82 @@ void PsychGetDisplaySize(int screenNumber, int *width, int *height)
 
 void PsychGetGlobalScreenRect(int screenNumber, double *rect)
 {
-	CGDirectDisplayID	displayID;
-	CGRect				cgRect;
-	double				rLeft, rRight, rTop, rBottom;
+    CGDirectDisplayID    displayID;
+    CGRect                cgRect;
+    double                rLeft, rRight, rTop, rBottom;
 
     if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetGlobalScreenRect() is out of range");
-    
-	displayID=displayCGIDs[screenNumber];
-	cgRect=CGDisplayBounds(displayID);
-	rLeft=cgRect.origin.x;
-	rTop=cgRect.origin.y;
-	rRight=cgRect.origin.x + cgRect.size.width;
-	rBottom=cgRect.origin.y + cgRect.size.height;
-	PsychMakeRect(rect, rLeft, rTop, rRight, rBottom);
+
+    displayID=displayCGIDs[screenNumber];
+    cgRect=CGDisplayBounds(displayID);
+    rLeft=cgRect.origin.x;
+    rTop=cgRect.origin.y;
+    rRight=cgRect.origin.x + cgRect.size.width;
+    rBottom=cgRect.origin.y + cgRect.size.height;
+    PsychMakeRect(rect, rLeft, rTop, rRight, rBottom);
 }
 
 void PsychGetScreenRect(int screenNumber, double *rect)
 {
-    long width, height; 
+    long width, height;
 
     PsychGetScreenSize(screenNumber, &width, &height);
     rect[kPsychLeft]=0;
     rect[kPsychTop]=0;
     rect[kPsychRight]=(int)width;
-    rect[kPsychBottom]=(int)height; 
-} 
+    rect[kPsychBottom]=(int)height;
+}
 
 PsychColorModeType PsychGetScreenMode(int screenNumber)
 {
     PsychDepthType depth;
-        
+
     PsychInitDepthStruct(&depth);
     PsychGetScreenDepth(screenNumber, &depth);
     return(PsychGetColorModeFromDepthStruct(&depth));
 }
 
 /*
-	PsychGetDacBitsFromDisplay()
-	
-	Return output resolution of video DAC in bits per color component.
-	We return a safe default of 8 bpc if we can't query the real value.
+    PsychGetDacBitsFromDisplay()
+
+    Return output resolution of video DAC in bits per color component.
+    We return a safe default of 8 bpc if we can't query the real value.
 */
 int PsychGetDacBitsFromDisplay(int screenNumber)
 {
-    CGDirectDisplayID	displayID;
-	CFMutableDictionaryRef properties;
-	CFNumberRef cfGammaWidth;
-	SInt32 dacbits;
-	io_service_t displayService;
-	kern_return_t kr;
+    CGDirectDisplayID    displayID;
+    CFMutableDictionaryRef properties;
+    CFNumberRef cfGammaWidth;
+    SInt32 dacbits;
+    io_service_t displayService;
+    kern_return_t kr;
 
-	// Retrieve display handle for screen:
-	PsychGetCGDisplayIDFromScreenNumber(&displayID, screenNumber);
+    // Retrieve display handle for screen:
+    PsychGetCGDisplayIDFromScreenNumber(&displayID, screenNumber);
 
-	// Retrieve low-level IOKit service port for this display:
-	displayService = CGDisplayIOServicePort(displayID);
-	
-	// Obtain the properties from that service
-	kr = IORegistryEntryCreateCFProperties(displayService, &properties, NULL, 0);
-	if((kr == kIOReturnSuccess) && ((cfGammaWidth = (CFNumberRef) CFDictionaryGetValue(properties, CFSTR(kIOFBGammaWidthKey)))!=NULL))
-	{
-		CFNumberGetValue(cfGammaWidth, kCFNumberSInt32Type, &dacbits);
-		CFRelease(properties);
-		return((int) dacbits);
-	}
-	else {
-		// Failed! Return safe 8 bits...
-		CFRelease(properties);
-		if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query resolution of video DAC for screen %i! Will return safe default of 8 bits.\n", screenNumber);
-		return(8);
-	}
+    // Retrieve low-level IOKit service port for this display:
+    displayService = CGDisplayIOServicePort(displayID);
+
+    // Obtain the properties from that service
+    kr = IORegistryEntryCreateCFProperties(displayService, &properties, NULL, 0);
+    if((kr == kIOReturnSuccess) && ((cfGammaWidth = (CFNumberRef) CFDictionaryGetValue(properties, CFSTR(kIOFBGammaWidthKey)))!=NULL)) {
+        CFNumberGetValue(cfGammaWidth, kCFNumberSInt32Type, &dacbits);
+        CFRelease(properties);
+        return((int) dacbits);
+    }
+    else {
+        // Failed! Return safe 8 bits...
+        CFRelease(properties);
+        if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query resolution of video DAC for screen %i! Will return safe default of 8 bits.\n", screenNumber);
+        return(8);
+    }
 }
 
 /*
     PsychGetVideoSettings()
-    
+
     Fills a structure describing the screen settings such as x, y, depth, frequency, etc.
-    Consider inverting the calling sequence so that this function is at the bottom of call hierarchy.  
+    Consider inverting the calling sequence so that this function is at the bottom of call hierarchy.
 */
 void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
 {
@@ -712,27 +684,27 @@ void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
     PsychGetScreenDepth(screenNumber, &(settings->depth));
     settings->mode=PsychGetColorModeFromDepthStruct(&(settings->depth));
     settings->nominalFrameRate=PsychGetNominalFramerate(screenNumber);
-	// settings->dacbits=PsychGetDacBitsFromDisplay(screenNumber);
+    // settings->dacbits=PsychGetDacBitsFromDisplay(screenNumber);
 }
 
 //Set display parameters
 
 /*
     PsychSetScreenSettings()
-	
-	Accept a PsychScreenSettingsType structure holding a video mode and set the display mode accordingly.
-    
+
+    Accept a PsychScreenSettingsType structure holding a video mode and set the display mode accordingly.
+
     If we can not change the display settings because of a lock (set by open window or close window) then return false.
-    
+
     SCREENOpenWindow should capture the display before it sets the video mode.  If it doesn't, then PsychSetVideoSettings will
-    detect that and exit with an error.  SCREENClose should uncapture the display. 
-    
+    detect that and exit with an error.  SCREENClose should uncapture the display.
+
     The duties of SCREENOpenWindow are:
     -Lock the screen which serves the purpose of preventing changes in video setting with open Windows.
     -Capture the display which gives the application synchronous control of display parameters.
-    
-    TO DO: for 8-bit palletized mode there is probably more work to do.  
-      
+
+    TO DO: for 8-bit palletized mode there is probably more work to do.
+
 */
 psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings)
 {
@@ -745,20 +717,20 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     if(settings->screenNumber >= numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychSetScreenSettings() is out of range");
 
     //store the original display mode if this is the first time we have called this function.  The psychtoolbox will disregard changes in
-    //the screen state made through the control panel after the Psychtoolbox was launched. That is, OpenWindow will by default continue to 
+    //the screen state made through the control panel after the Psychtoolbox was launched. That is, OpenWindow will by default continue to
     //open windows with finder settings which were in place at the first call of OpenWindow.  That's not intuitive, but not much of a problem
-    //either. 
-    if(!displayOriginalCGSettingsValid[settings->screenNumber]){
+    //either.
+    if(!displayOriginalCGSettingsValid[settings->screenNumber]) {
         displayOriginalCGSettings[settings->screenNumber] = CGDisplayCopyDisplayMode(displayCGIDs[settings->screenNumber]);
         displayOriginalCGSettingsValid[settings->screenNumber] = TRUE;
     }
 
-    //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
+    //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.
     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
     if (!isValid) PsychErrorExitMsg(PsychError_internal, "Attempt to set invalid video settings");
-    
+
     //If the caller passed cache settings (then it is SCREENResolutions) and we should cache the current video mode settings for this display.  These
-    //are cached in the form of CoreGraphics settings and not Psychtoolbox video settings.  The only caller which should pass a set cache flag is 
+    //are cached in the form of CoreGraphics settings and not Psychtoolbox video settings.  The only caller which should pass a set cache flag is
     //SCREENResolutions
     if (cacheSettings) {
         displayOverlayedCGSettings[settings->screenNumber] = cgMode;
@@ -766,13 +738,13 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     }
     else CGDisplayModeRelease(cgMode);
 
-    //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
+    //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.
     isCaptured = PsychIsScreenCaptured(settings->screenNumber);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
 
     // Readback a backup copy of the current gamma table:
     PsychReadNormalizedGammaTable(settings->screenNumber, -1, &numlutslots, &redlut, &greenlut, &bluelut);
-    
+
     //Change the display mode.
     CGDisplayConfigRef configRef;
     error = CGBeginDisplayConfiguration(&configRef);
@@ -791,7 +763,7 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     // happen within a 2 seconds interval to a modeset operation. To protect against this, we will
     // pause execution for 3 seconds.
     PsychYieldIntervalSeconds(3.0);
-    
+
     // Restore pre-modeswitch gamma table to undo the brain-damage of the OSX modeswitch implementation:
     PsychLoadNormalizedGammaTable(settings->screenNumber, -1, numlutslots, redlut, greenlut, bluelut);
 
@@ -800,26 +772,26 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 
 /*
     PsychRestoreScreenSettings()
-    
-    Restores video settings to the state set by the finder.  Returns TRUE if the settings can be restored or false if they 
-    can not be restored because a lock is in effect, which would mean that there are still open windows.    
-    
+
+    Restores video settings to the state set by the finder.  Returns TRUE if the settings can be restored or false if they
+    can not be restored because a lock is in effect, which would mean that there are still open windows.
+
 */
 psych_bool PsychRestoreScreenSettings(int screenNumber)
 {
-    psych_bool 			isCaptured;
-    CGDisplayErr 		error;
+    psych_bool          isCaptured;
+    CGDisplayErr        error;
 
-    if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychRestoreScreenSettings() is out of range");
+    if (screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychRestoreScreenSettings() is out of range");
 
     //Check to make sure that the original graphics settings were cached. If not, it means that the settings were never changed, so we can just
     //return true.
-    if(!displayOriginalCGSettingsValid[screenNumber]) return(true);
-    
-    //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
+    if (!displayOriginalCGSettingsValid[screenNumber]) return(true);
+
+    //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.
     isCaptured = PsychIsScreenCaptured(screenNumber);
-    if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
-    
+    if (!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
+
     // Change the display mode.
     CGDisplayConfigRef configRef;
     error = CGBeginDisplayConfiguration(&configRef);
@@ -830,69 +802,79 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
     else {
         CGCancelDisplayConfiguration(configRef);
     }
-    
-    if(error) PsychErrorExitMsg(PsychError_internal, "Unable to set switch video modes");
+
+    if (error) PsychErrorExitMsg(PsychError_internal, "Unable to set switch video modes");
 
     return(true);
 }
 
 void PsychHideCursor(int screenNumber, int deviceIdx)
 {
+    CGDisplayErr        error;
+    CGDirectDisplayID   cgDisplayID;
 
-    CGDisplayErr 	error;
-    CGDirectDisplayID	cgDisplayID;
-    
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
     error=CGDisplayHideCursor(cgDisplayID);
-    if(error)
+    if (error)
         PsychErrorExit(PsychError_internal);
-
 }
 
 void PsychShowCursor(int screenNumber, int deviceIdx)
 {
+    CGDisplayErr        error;
+    CGDirectDisplayID   cgDisplayID;
 
-    CGDisplayErr 	error;
-    CGDirectDisplayID	cgDisplayID;
-    
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
     error=CGDisplayShowCursor(cgDisplayID);
     if(error)
         PsychErrorExit(PsychError_internal);
-
 }
 
 void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 {
-    CGDisplayErr 	error;
-    CGDirectDisplayID	cgDisplayID;
-    CGPoint 		point;
-    
+    CGDirectDisplayID   cgDisplayID;
+    CGPoint             point;
+
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
     point.x=(float)x;
     point.y=(float)y;
-    error=CGDisplayMoveCursorToPoint(cgDisplayID, point); 
-    if(error)
-        PsychErrorExit(PsychError_internal);
 
+    // Move cursor. These functions return non-zero error status on failure.
+    //
+    // Note: This "utterly senseless" call to CGAssociateMouseAndMouseCursorPosition(true) is here to
+    // avoid suppression of delivery of mouse input events from connected mice to the system
+    // for a suppression interval of 250 msecs after CGDisplayMoveCursorToPoint(), aka posting
+    // some mouse positioning Quartz event. Of course this is in direct contradiction to Apple docs
+    // which state that "CGDisplayMoveCursorToPoint() works "without generating or posting an event"",
+    // but hey, Apple logic!
+    //
+    // The solution implemented here was found in this StackExchange posting:
+    // http://stackoverflow.com/questions/10196603/using-cgeventsourcesetlocaleventssuppressioninterval-instead-of-the-deprecated
+    //
+    // A fine read to see the sad state of Apple docs - the stupid, it hurts!
+    //
+    // Without this hack, the mouse cursor would not respond to actual mouse movement by the user for
+    // a time interval of 250 msecs after executing SetMouse()! Fixes PTB forum bug from message #19365.
+    if (CGDisplayMoveCursorToPoint(cgDisplayID, point) || CGAssociateMouseAndMouseCursorPosition(true))
+        PsychErrorExit(PsychError_internal);
 }
 
 /*
     PsychReadNormalizedGammaTable()
-    
+
     TO DO: This should probably be changed so that the caller allocates the memory.
     TO DO: Adopt a naming convention which distinguishes between functions which allocate memory for return variables from those which do not.
             For example, PsychReadNormalizedGammaTable() vs. PsychGetNormalizedGammaTable().
-    
+
 */
 void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable)
 {
-    CGDirectDisplayID	cgDisplayID;
-    static float localRed[1024], localGreen[1024], localBlue[1024];
-    CGDisplayErr error; 
-    uint32_t sampleCount;
-        
-    *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue; 
+    CGDirectDisplayID   cgDisplayID;
+    static float        localRed[1024], localGreen[1024], localBlue[1024];
+    CGDisplayErr        error;
+    uint32_t            sampleCount;
+
+    *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue;
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
     if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: ReadNormalizedGammatable: screenid %i mapped to CGDisplayId %p.\n", screenNumber, cgDisplayID);
 
@@ -903,38 +885,38 @@ void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntri
 
 unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
-    CGDisplayErr 	error; 
-    CGDirectDisplayID	cgDisplayID;
+    CGDisplayErr error = 0;
+    CGDirectDisplayID cgDisplayID;
     uint8_t byteLUT[256];
-	int i;
-	
+    int i;
+
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-    if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: LoadNormalizedGammatable: screenid %i mapped to CGDisplayId %p.\n", screenNumber, cgDisplayID);
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: LoadNormalizedGammatable: screenid %i mapped to CGDisplayId %p.\n", screenNumber, cgDisplayID);
 
-	// More than one row in table?
-	if (numEntries > 1) {
-		// Yes: This is the regular case. We upload a 0.0 - 1.0 encoded table with numEntries slots. The OS will
-		// interpolate inbetween our slots if the number of required slots in the GPU doesn't match the numEntries
-		// we provided:
-		error=CGSetDisplayTransferByTable(cgDisplayID, numEntries, redTable, greenTable, blueTable);
-		if (error) PsychErrorExitMsg(PsychError_system, "Failed to update the gamma tables in call to CGSetDisplayTransferByTable() !");
-	}
-	else {
-		if (numEntries <= 0) {
-			// No: Special case 0-Slot table. We shall upload an identity CLUT:
-			for (i = 0; i < 256; i++) byteLUT[i] = (uint8_t) i;
-			error=CGSetDisplayTransferByByteTable(cgDisplayID, 256, &byteLUT[0], &byteLUT[0], &byteLUT[0]);
-			if (error) PsychErrorExitMsg(PsychError_system, "Failed to upload identity gamma tables in call to CGSetDisplayTransferByByteTable() !");
-		}
-		else {
-			// No: Special case 1-slot table: Interpret red, green and blue value of single slot as min, max and gamma value for CGSetDisplayTransferByFormula()
-			error=CGSetDisplayTransferByFormula(cgDisplayID, redTable[0], greenTable[0], blueTable[0], redTable[0], greenTable[0], blueTable[0], redTable[0], greenTable[0], blueTable[0]);
-			if (error) PsychErrorExitMsg(PsychError_system, "Failed to upload computed gamma tables in call to CGSetDisplayTransferByFormula() !");
-		}
-	}
+    // More than one row in table?
+    if (numEntries > 1) {
+        // Yes: This is the regular case. We upload a 0.0 - 1.0 encoded table with numEntries slots. The OS will
+        // interpolate inbetween our slots if the number of required slots in the GPU doesn't match the numEntries
+        // we provided:
+        error = CGSetDisplayTransferByTable(cgDisplayID, numEntries, redTable, greenTable, blueTable);
+        if (error && (PsychPrefStateGet_Verbosity() > 0)) printf("PTB-ERROR: Failed to update the gamma tables for screen %i in call to CGSetDisplayTransferByTable()!\n", screenNumber);
+    }
+    else {
+        if (numEntries <= 0) {
+            // No: Special case 0-Slot table. We shall upload an identity CLUT:
+            for (i = 0; i < 256; i++) byteLUT[i] = (uint8_t) i;
+            error = CGSetDisplayTransferByByteTable(cgDisplayID, 256, &byteLUT[0], &byteLUT[0], &byteLUT[0]);
+            if (error && (PsychPrefStateGet_Verbosity() > 0)) printf("PTB-ERROR: Failed to upload identity gamma tables for screen %i in call to CGSetDisplayTransferByByteTable()!\n", screenNumber);
+        }
+        else {
+            // No: Special case 1-slot table: Interpret red, green and blue value of single slot as min, max and gamma value for CGSetDisplayTransferByFormula()
+            error = CGSetDisplayTransferByFormula(cgDisplayID, redTable[0], greenTable[0], blueTable[0], redTable[0], greenTable[0], blueTable[0], redTable[0], greenTable[0], blueTable[0]);
+            if (error && (PsychPrefStateGet_Verbosity() > 0)) printf("PTB-ERROR: Failed to upload computed gamma tables for screen %i in call to CGSetDisplayTransferByFormula()!\n", screenNumber);
+        }
+    }
 
-    // Return "success":
-	return(1);
+    // Return success status:
+    return((error == 0) ? 1 : 0);
 }
 
 // Return true (non-zero) if a desktop compositor is likely active on screen 'screenNumber':
@@ -948,78 +930,78 @@ int PsychOSIsDWMEnabled(int screenNumber)
 
 // PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.
 int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
-{	
-	// As of PTB 3.0.12, always use and return beamposition as measured by our own
-	// PsychtoolboxKernelDriver implementation. Since at least OSX 10.7, our own
+{
+    // As of PTB 3.0.12, always use and return beamposition as measured by our own
+    // PsychtoolboxKernelDriver implementation. Since at least OSX 10.7, our own
     // implementation is much more reliable, robust, precise and low-overhead.
     // Beamposition queries weren't supported by OSX natively for Intel and AMD gpu's
     // on IntelMacs ever, they were severely buggy on OSX 10.8+ for the remaining
     // NVidia cards where they sort of "worked", and the functionality has been
     // effectively removed starting with OSX 10.9, turning into a no-op on all gpus.
-	return(PsychOSKDGetBeamposition(screenNumber));
+    return(PsychOSKDGetBeamposition(screenNumber));
 }
 
 // Try to attach to kernel level ptb support driver and setup everything, if it works:
 void InitPsychtoolboxKernelDriverInterface(void)
 {
-    kern_return_t	kernResult; 
-    io_service_t	service;
-    io_connect_t	connect;
-    io_iterator_t 	iterator;
-    CFDictionaryRef	classToMatch;
-    int				i, revision;
-	
-	// Reset to zero open drivers to start with:
-	numKernelDrivers = 0;
+    kern_return_t       kernResult;
+    io_service_t        service;
+    io_connect_t        connect;
+    io_iterator_t       iterator;
+    CFDictionaryRef     classToMatch;
+    int                 i, revision;
 
-	// Select first instance (index 0) as active GPU/KernelDriver by default:
-	activeGPU = 0;
-    
-	// Setup matching criterion to find our driver in the IORegistry device tree:
-	classToMatch = IOServiceMatching(kMyDriversIOKitClassName);
+    // Reset to zero open drivers to start with:
+    numKernelDrivers = 0;
+
+    // Select first instance (index 0) as active GPU/KernelDriver by default:
+    activeGPU = 0;
+
+    // Setup matching criterion to find our driver in the IORegistry device tree:
+    classToMatch = IOServiceMatching(kMyDriversIOKitClassName);
     if (classToMatch == NULL) {
         printf("PTB-DEBUG: IOServiceMatching() for Psychtoolbox kernel support driver returned a NULL dictionary. Kernel driver support disabled.\n");
         return;
     }
-    
+
     // This creates an io_iterator_t of all instances of our driver that exist in the I/O Registry. Each installed graphics card
-	// will get its own instance of a driver. The iterator allows to iterate over all instances:
+    // will get its own instance of a driver. The iterator allows to iterate over all instances:
     kernResult = IOServiceGetMatchingServices(kIOMasterPortDefault, classToMatch, &iterator);
     if (kernResult != KERN_SUCCESS) {
         printf("PTB-DEBUG: IOServiceGetMatchingServices for Psychtoolbox kernel support driver returned 0x%08x. Kernel driver support disabled.\n", kernResult);
         return;
     }
-        
+
     // In a polished final version we would want to handle the case where more than one gfx-card is attached.
-	// The iterator would return multiple instances of our driver and we need to decide which one to connect to.
-	// For now, we do not handle this case but instead just get the first item from the iterator.
+    // The iterator would return multiple instances of our driver and we need to decide which one to connect to.
+    // For now, we do not handle this case but instead just get the first item from the iterator.
     while ((service = IOIteratorNext(iterator)) != IO_OBJECT_NULL) {
-		// Instantiate a connection to the user client.
+        // Instantiate a connection to the user client.
 
-		// This call will cause the user client to be instantiated. It returns an io_connect_t handle
-		// that is used for all subsequent calls to the user client.
-		connect = IO_OBJECT_NULL;
-		kernResult = IOServiceOpen(service, mach_task_self(), 0, &connect);
-		if ((kernResult != KERN_SUCCESS) || (connect == IO_OBJECT_NULL)) {
-			printf("PTB-DEBUG: IOServiceOpen for driver instance %i returned 0x%08x. Not using this instance...\n", service, kernResult);
-		}
-		else {
-			// This is an example of calling our user client's openUserClient method.
-			kernResult = CallKDSimpleMethod(connect, kMyUserClientOpen);
-			if (kernResult != KERN_SUCCESS) {
-				// Release connection:
-				IOServiceClose(connect);
-				connect = IO_OBJECT_NULL;
-				printf("PTB-DEBUG: CallKDSimpleMethod for driver instance %i returned 0x%08x. Kernel driver support disabled.\n", service, kernResult);
-				if (kernResult == kIOReturnExclusiveAccess) printf("PTB-DEBUG: Please check if other applications (e.g., other open Matlab or Octave instances) use the driver already.\n");
-			}
-		}
+        // This call will cause the user client to be instantiated. It returns an io_connect_t handle
+        // that is used for all subsequent calls to the user client.
+        connect = IO_OBJECT_NULL;
+        kernResult = IOServiceOpen(service, mach_task_self(), 0, &connect);
+        if ((kernResult != KERN_SUCCESS) || (connect == IO_OBJECT_NULL)) {
+            printf("PTB-DEBUG: IOServiceOpen for driver instance %i returned 0x%08x. Not using this instance...\n", service, kernResult);
+        }
+        else {
+            // This is an example of calling our user client's openUserClient method.
+            kernResult = CallKDSimpleMethod(connect, kMyUserClientOpen);
+            if (kernResult != KERN_SUCCESS) {
+                // Release connection:
+                IOServiceClose(connect);
+                connect = IO_OBJECT_NULL;
+                printf("PTB-DEBUG: CallKDSimpleMethod for driver instance %i returned 0x%08x. Kernel driver support disabled.\n", service, kernResult);
+                if (kernResult == kIOReturnExclusiveAccess) printf("PTB-DEBUG: Please check if other applications (e.g., other open Matlab or Octave instances) use the driver already.\n");
+            }
+        }
 
-		// Release the io_service_t now that we're done with it.
-		IOObjectRelease(service);
+        // Release the io_service_t now that we're done with it.
+        IOObjectRelease(service);
 
-		if (connect != IO_OBJECT_NULL) {
-			// Final success!
+        if (connect != IO_OBJECT_NULL) {
+            // Final success!
 
             // Query driver revision: We disconnect and don't use the driver if it
             // doesn't provide the required minimum revision number for its API:
@@ -1039,7 +1021,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
                 else {
                     if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: CallKDSimpleMethod Closing failed with kernel return code 0x%08x.\n\n", kernResult);
                 }
-                
+
                 // Close IOService:
                 kernResult = IOServiceClose(connect);
                 if (kernResult == KERN_SUCCESS) {
@@ -1047,21 +1029,21 @@ void InitPsychtoolboxKernelDriverInterface(void)
                 }
                 else {
                     if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose returned 0x%08x\n\n", kernResult);
-                }		
+                }
 
                 goto error_abort;
             }
 
-			if (PsychPrefStateGet_Verbosity() > 2) {
+            if (PsychPrefStateGet_Verbosity() > 2) {
                 printf("PTB-INFO: Connection to Psychtoolbox kernel support driver instance #%i (Revision %i) established.\n", numKernelDrivers, revision);
             }
 
-			// Store the connect handle for this instance:
+            // Store the connect handle for this instance:
             displayConnectHandles[numKernelDrivers] = connect;
 
             // Query and assign GPU info:
             PsychOSKDGetGPUInfo(connect, numKernelDrivers);
-            
+
             // Skip Intel gpu's, unless the PSYCH_ALLOW_DANGEROUS env variable is set:
             // Intel IGP's have a design defect which can cause machine hard lockup if multiple
             // regs are accessed simultaneously! As we can't serialize our MMIO reads with the
@@ -1082,7 +1064,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
                 else {
                     if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: CallKDSimpleMethod Closing failed with kernel return code 0x%08x.\n\n", kernResult);
                 }
-                
+
                 // Close IOService:
                 kernResult = IOServiceClose(connect);
                 if (kernResult == KERN_SUCCESS) {
@@ -1090,15 +1072,15 @@ void InitPsychtoolboxKernelDriverInterface(void)
                 }
                 else {
                     if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose returned 0x%08x\n\n", kernResult);
-                }		
-                
+                }
+
                 connect = IO_OBJECT_NULL;
-                
+
                 // Closed connection to Intel-instance of the driver. Skip to beginning of
                 // enumeration loop to see if we get some alternative, e.g., discrete GPU:
                 continue;
             }
-            
+
             // A word of warning is due for users of outdated Rev. 0 kernel drivers on AMD/ATI GPU's with pre DCE-4 display engine: They shall upgrade or suffer.
             if ((fDeviceType[numKernelDrivers] == kPsychRadeon) && (fCardType[numKernelDrivers] < 40) && (revision < 1) && (PsychPrefStateGet_Verbosity() > 1)) {
                 printf("PTB-INFO: You use an outdated Psychtoolbox kernel driver of revision %i. Please upgrade to the latest driver of at least revision 1.\n", revision);
@@ -1109,12 +1091,12 @@ void InitPsychtoolboxKernelDriverInterface(void)
 
             // Perform auto-detection of screen to head mappings:
             // Disabled - Does not work as expected, coded to a no-op if called: PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
-            
-			// Increment instance count by one:
-			numKernelDrivers++;
-		}
+
+            // Increment instance count by one:
+            numKernelDrivers++;
+        }
         // Iterate to next GPU / Driver:
-	}
+    }
 
     // Is this a hybrid graphics system with two GPUs, ie. an integrated Intel IGP and
     // a discrete NVidia or AMD GPU? If so, is our currently selected default activeGPU
@@ -1131,7 +1113,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
         if (PsychPrefStateGet_Verbosity() > 2) {
             printf("PTB-INFO: Switching to kernel driver instance #%i in hybrid graphics system, assuming i am attached to discrete non-Intel GPU.", activeGPU);
         }
-        
+
         // PsychOSKDGetBeamposition() has a way of recovering from a wrong choice here.
         // If the Intel IGP should be actually used as the GPU of choice, e.g., because
         // the system is low on battery power, some other condition prevents use of the
@@ -1148,24 +1130,24 @@ void InitPsychtoolboxKernelDriverInterface(void)
         // any way, ie., MacPro's with multi-gpus are not automatically treated correctly,
         // but MacBookPro's with hybrid graphics have a decent chance of working.
     }
-    
+
     // A bit of a hack for now: Allow usercode to select which gpu in a multi-gpu
     // system should be used for low-level mmio based features. If the environment
     // variable PSYCH_USE_GPUIDX is set to a number, it will try to use that GPU:
     // TODO: Replace this by true multi-gpu support and - far in the future? -
     // automatic mapping of screens to gpu's:
     if (getenv("PSYCH_USE_GPUIDX")) {
-      activeGPU = atoi(getenv("PSYCH_USE_GPUIDX"));
-      if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Will try to use GPU number %i for low-level access during this session, as requested by usercode.\n", activeGPU);
+        activeGPU = atoi(getenv("PSYCH_USE_GPUIDX"));
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Will try to use GPU number %i for low-level access during this session, as requested by usercode.\n", activeGPU);
     }
 
 error_abort:
-    
+
     // Release the io_iterator_t now that we're done with it.
     IOObjectRelease(iterator);
-	
-	// Done.
-	return;
+
+    // Done.
+    return;
 }
 
 /*
@@ -1185,15 +1167,15 @@ error_abort:
  */
 psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads)
 {
-  if (!PsychOSIsKernelDriverAvailable(screenNumber)) return(FALSE);
+    if (!PsychOSIsKernelDriverAvailable(screenNumber)) return(FALSE);
 
-  if (gpuMaintype) *gpuMaintype = fDeviceType[activeGPU];
-  if (gpuMinortype) *gpuMinortype = fCardType[activeGPU];
-  if (pciDeviceId) *pciDeviceId = fPCIDeviceId[activeGPU];
+    if (gpuMaintype) *gpuMaintype = fDeviceType[activeGPU];
+    if (gpuMinortype) *gpuMinortype = fCardType[activeGPU];
+    if (pciDeviceId) *pciDeviceId = fPCIDeviceId[activeGPU];
 
-  if (numDisplayHeads) *numDisplayHeads = fNumDisplayHeads[activeGPU];
+    if (numDisplayHeads) *numDisplayHeads = fNumDisplayHeads[activeGPU];
 
-  return(TRUE);
+    return(TRUE);
 }
 
 // Try to detach to kernel level ptb support driver and tear down everything:
@@ -1224,28 +1206,28 @@ void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 
 psych_bool PsychOSIsKernelDriverAvailable(int screenId)
 {
-	return((numKernelDrivers > 0) ? TRUE : FALSE);
+    return((numKernelDrivers > 0) ? TRUE : FALSE);
 }
 
 io_connect_t PsychOSCheckKDAvailable(int screenId, unsigned int * status)
 {
-	io_connect_t connect = displayConnectHandles[activeGPU];
+    io_connect_t connect = displayConnectHandles[activeGPU];
 
-	if (numKernelDrivers <= 0) {
-		if (status) *status = kIOReturnNotFound;
-		return(0);
-	}
-	
-	if (!connect) {
-		if (status) *status = kIOReturnNoDevice;
-		if (PsychPrefStateGet_Verbosity() > 6) {
-			printf("PTB-DEBUGINFO: Could not access kernel driver connection %i for screenId %i - No such connection.\n", activeGPU, screenId);
-		}
-		return(0);
-	}
+    if (numKernelDrivers <= 0) {
+        if (status) *status = kIOReturnNotFound;
+        return(0);
+    }
 
-	if (status) *status = kIOReturnSuccess;
-	return(connect);
+    if (!connect) {
+        if (status) *status = kIOReturnNoDevice;
+        if (PsychPrefStateGet_Verbosity() > 6) {
+            printf("PTB-DEBUGINFO: Could not access kernel driver connection %i for screenId %i - No such connection.\n", activeGPU, screenId);
+        }
+        return(0);
+    }
+
+    if (status) *status = kIOReturnSuccess;
+    return(connect);
 }
 
 kern_return_t PsychOSKDDispatchCommand(io_connect_t connect, const PsychKDCommandStruct* inStruct, PsychKDCommandStruct* outStruct, unsigned int* status)
@@ -1254,180 +1236,180 @@ kern_return_t PsychOSKDDispatchCommand(io_connect_t connect, const PsychKDComman
 
     kern_return_t kernResult = IOConnectCallStructMethod((mach_port_t) connect, kPsychKDDispatchCommand, (const void*) inStruct, sizeof(PsychKDCommandStruct), outStruct, &outputStructCnt);
 
-	if (status) *status = kernResult;
-	if (kernResult != kIOReturnSuccess) {
-		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Kernel driver command dispatch failure for code %lx (Kernel error code: %lx).\n", inStruct->command, kernResult);
-	}
+    if (status) *status = kernResult;
+    if (kernResult != kIOReturnSuccess) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Kernel driver command dispatch failure for code %lx (Kernel error code: %lx).\n", inStruct->command, kernResult);
+    }
 
-    return kernResult;	
+    return kernResult;
 }
 
 unsigned int PsychOSKDReadRegister(int screenId, unsigned int offset, unsigned int* status)
 {
-	// Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
-	PsychKDCommandStruct syncCommand;
-	
-	// Check availability of connection:
-	io_connect_t connect;
-	if (!(connect = PsychOSCheckKDAvailable(screenId, status))) return(0xffffffff);
+    // Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
+    PsychKDCommandStruct syncCommand;
 
-	// Set command code for register read:
-	syncCommand.command = kPsychKDReadRegister;
+    // Check availability of connection:
+    io_connect_t connect;
+    if (!(connect = PsychOSCheckKDAvailable(screenId, status))) return(0xffffffff);
 
-	// Register offset is arg 0:
-	syncCommand.inOutArgs[0] = offset;
-	
-	// Issue request to driver:
-	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, status);    
-	if (kernResult != KERN_SUCCESS) {
-		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Kernel driver register read failed for register %lx (Kernel error code: %lx).\n", offset, kernResult);
-		// A value of 0xffffffff signals failure:
-		return(0xffffffff);
-	}
-	
-	// Return readback register value:
-	return((int) syncCommand.inOutArgs[0]);
+    // Set command code for register read:
+    syncCommand.command = kPsychKDReadRegister;
+
+    // Register offset is arg 0:
+    syncCommand.inOutArgs[0] = offset;
+
+    // Issue request to driver:
+    kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, status);
+    if (kernResult != KERN_SUCCESS) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Kernel driver register read failed for register %lx (Kernel error code: %lx).\n", offset, kernResult);
+        // A value of 0xffffffff signals failure:
+        return(0xffffffff);
+    }
+
+    // Return readback register value:
+    return((int) syncCommand.inOutArgs[0]);
 }
 
 unsigned int PsychOSKDWriteRegister(int screenId, unsigned int offset, unsigned int value, unsigned int* status)
 {
-	// Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
-	PsychKDCommandStruct syncCommand;
+    // Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
+    PsychKDCommandStruct syncCommand;
 
-	// Check availability of connection:
-	io_connect_t connect;
-	if (!(connect = PsychOSCheckKDAvailable(screenId, status))) return(0xffffffff);
+    // Check availability of connection:
+    io_connect_t connect;
+    if (!(connect = PsychOSCheckKDAvailable(screenId, status))) return(0xffffffff);
 
-	// Set command code for display sync:
-	syncCommand.command = KPsychKDWriteRegister;
-	syncCommand.inOutArgs[0] = offset;
-	syncCommand.inOutArgs[1] = value;
-	
-	// Issue request to driver:
-	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, status);    
-	if (kernResult != KERN_SUCCESS) {
-		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Kernel driver register write failed for register %lx, value %lx (Kernel error code: %lx).\n", offset, value, kernResult);
-		// A value of 0xffffffff signals failure:
-		return(0xffffffff);
-	}
-	
-	// Return success:
-	return(0);
+    // Set command code for display sync:
+    syncCommand.command = KPsychKDWriteRegister;
+    syncCommand.inOutArgs[0] = offset;
+    syncCommand.inOutArgs[1] = value;
+
+    // Issue request to driver:
+    kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, status);
+    if (kernResult != KERN_SUCCESS) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Kernel driver register write failed for register %lx, value %lx (Kernel error code: %lx).\n", offset, value, kernResult);
+        // A value of 0xffffffff signals failure:
+        return(0xffffffff);
+    }
+
+    // Return success:
+    return(0);
 }
 
 // Synchronize display screens video refresh cycle. See PsychSynchronizeDisplayScreens() for help and details...
 PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* residuals, unsigned int syncMethod, double syncTimeOut, int allowedResidual)
 {
-	// Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
-	PsychKDCommandStruct syncCommand;
+    // Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
+    PsychKDCommandStruct syncCommand;
 
-	int screenId = 0;
-	double	abortTimeOut, now;
-	int residual;
-	
-	// Check availability of connection:
-	io_connect_t connect;
-	unsigned int status;
-	kern_return_t kernResult;
-	
-	// No support for other methods than fast hard sync:
-	if (syncMethod > 1) {
-		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not execute display resync operation with requested non hard sync method. Not supported for this setup and settings.\n"); 
-		return(PsychError_unimplemented);
-	}
-	
-	// The current implementation only supports syncing all heads of a single card
-	if (*numScreens <= 0) {
-		// Resync all displays requested: Choose screenID zero for connect handle:
-		screenId = 0;
-	}
-	else {
-		// Resync of specific display requested: We only support resync of all heads of a single multi-head card,
-		// therefore just choose the screenId of the passed master-screen for resync handle:
-		screenId = screenIds[0];
-	}
-	
-	if (!(connect = PsychOSCheckKDAvailable(screenId, &status))) {
-		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not execute display resync operation for master screenId %i. Not supported for this setup and settings.\n", screenId); 
-		return(PsychError_unimplemented);
-	}
-	
-	// Setup deadline for abortion or repeated retries:
-	PsychGetAdjustedPrecisionTimerSeconds(&abortTimeOut);
-	abortTimeOut+=syncTimeOut;
-	residual = INT_MAX;
-	
-	// Repeat until timeout or good enough result:
-	do {
-		// If this isn't the first try, wait 0.5 secs before retry:
-		if (residual != INT_MAX) PsychWaitIntervalSeconds(0.5);
-		
-		residual = INT_MAX;
+    int screenId = 0;
+    double abortTimeOut, now;
+    int residual;
 
-		// Set command code for display sync:
-		syncCommand.command = kPsychKDFastSyncAllHeads;
-		
-		// Issue request to driver:
-		kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, &status);
-		if (kernResult == KERN_SUCCESS) {
-			residual = (int) syncCommand.inOutArgs[0];
-			if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Graphics display heads resynchronized. Residual vertical beamposition error is %ld scanlines.\n", residual);
-		}
-		else {
-			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Graphics display head synchronization failed (Kernel error code: %lx).\n", kernResult);
-			break;
-		}
-		
-		// Timestamp:
-		PsychGetAdjustedPrecisionTimerSeconds(&now);
-	} while ((now < abortTimeOut) && (abs(residual) > allowedResidual) && (kernResult == KERN_SUCCESS));
+    // Check availability of connection:
+    io_connect_t connect;
+    unsigned int status;
+    kern_return_t kernResult;
 
-	// Return residual value if wanted:
-	if (residuals) { 
-		residuals[0] = residual;
-	}
-	
-	if (abs(residual) > allowedResidual) {
-		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to synchronize heads down to the allowable residual of +/- %i scanlines. Final residual %i lines.\n", allowedResidual, residual);
-	}
-	
-	// TODO: Error handling not really worked out...
-	if (residual == INT_MAX || kernResult != KERN_SUCCESS) return(PsychError_system);
-	
-	// Done.
-	return(PsychError_none);
+    // No support for other methods than fast hard sync:
+    if (syncMethod > 1) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not execute display resync operation with requested non hard sync method. Not supported for this setup and settings.\n");
+        return(PsychError_unimplemented);
+    }
+
+    // The current implementation only supports syncing all heads of a single card
+    if (*numScreens <= 0) {
+        // Resync all displays requested: Choose screenID zero for connect handle:
+        screenId = 0;
+    }
+    else {
+        // Resync of specific display requested: We only support resync of all heads of a single multi-head card,
+        // therefore just choose the screenId of the passed master-screen for resync handle:
+        screenId = screenIds[0];
+    }
+
+    if (!(connect = PsychOSCheckKDAvailable(screenId, &status))) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not execute display resync operation for master screenId %i. Not supported for this setup and settings.\n", screenId);
+        return(PsychError_unimplemented);
+    }
+
+    // Setup deadline for abortion or repeated retries:
+    PsychGetAdjustedPrecisionTimerSeconds(&abortTimeOut);
+    abortTimeOut+=syncTimeOut;
+    residual = INT_MAX;
+
+    // Repeat until timeout or good enough result:
+    do {
+        // If this isn't the first try, wait 0.5 secs before retry:
+        if (residual != INT_MAX) PsychWaitIntervalSeconds(0.5);
+
+        residual = INT_MAX;
+
+        // Set command code for display sync:
+        syncCommand.command = kPsychKDFastSyncAllHeads;
+
+        // Issue request to driver:
+        kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, &status);
+        if (kernResult == KERN_SUCCESS) {
+            residual = (int) syncCommand.inOutArgs[0];
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Graphics display heads resynchronized. Residual vertical beamposition error is %ld scanlines.\n", residual);
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Graphics display head synchronization failed (Kernel error code: %lx).\n", kernResult);
+            break;
+        }
+
+        // Timestamp:
+        PsychGetAdjustedPrecisionTimerSeconds(&now);
+    } while ((now < abortTimeOut) && (abs(residual) > allowedResidual) && (kernResult == KERN_SUCCESS));
+
+    // Return residual value if wanted:
+    if (residuals) {
+        residuals[0] = residual;
+    }
+
+    if (abs(residual) > allowedResidual) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to synchronize heads down to the allowable residual of +/- %i scanlines. Final residual %i lines.\n", allowedResidual, residual);
+    }
+
+    // TODO: Error handling not really worked out...
+    if (residual == INT_MAX || kernResult != KERN_SUCCESS) return(PsychError_system);
+
+    // Done.
+    return(PsychError_none);
 }
 
 int PsychOSKDGetBeamposition(int screenId)
 {
-	int beampos, vblbias, vbltotal;
-	
-	// Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
-	PsychKDCommandStruct syncCommand;
+    int beampos, vblbias, vbltotal;
 
-	// Check availability of connection:
-	io_connect_t connect;
-	if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) {
-		// Beampos queries unavailable:
-		if (PsychPrefStateGet_Verbosity() > 21) printf("PTB-DEBUG: Kernel driver based beamposition queries unavailable for screenId %i.\n", screenId);
-		return(-1);
-	}
-	
-	// Set command code for beamposition query:
-	syncCommand.command = kPsychKDGetBeamposition;
-	
-	// Assign headid for this screen:
-	syncCommand.inOutArgs[0] = PsychScreenToCrtcId(screenId, 0);
-	
-	// Issue request:
-	kern_return_t kernResult = PsychOSKDDispatchCommand(connect,  &syncCommand, &syncCommand, NULL);    
-	if (kernResult != KERN_SUCCESS) {
-		if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-ERROR: Kernel driver beamposition query failed (Kernel error code: %lx).\n", kernResult);
-		// A value of -1 signals beamposition queries unsupported or invalid:
-		return(-1);
-	}
+    // Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
+    PsychKDCommandStruct syncCommand;
 
-	beampos = (int) syncCommand.inOutArgs[0];
+    // Check availability of connection:
+    io_connect_t connect;
+    if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) {
+        // Beampos queries unavailable:
+        if (PsychPrefStateGet_Verbosity() > 21) printf("PTB-DEBUG: Kernel driver based beamposition queries unavailable for screenId %i.\n", screenId);
+        return(-1);
+    }
+
+    // Set command code for beamposition query:
+    syncCommand.command = kPsychKDGetBeamposition;
+
+    // Assign headid for this screen:
+    syncCommand.inOutArgs[0] = PsychScreenToCrtcId(screenId, 0);
+
+    // Issue request:
+    kern_return_t kernResult = PsychOSKDDispatchCommand(connect,  &syncCommand, &syncCommand, NULL);
+    if (kernResult != KERN_SUCCESS) {
+        if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-ERROR: Kernel driver beamposition query failed (Kernel error code: %lx).\n", kernResult);
+        // A value of -1 signals beamposition queries unsupported or invalid:
+        return(-1);
+    }
+
+    beampos = (int) syncCommand.inOutArgs[0];
 
     // Reasonable result? If beampos is very large (ie., much larger than the display)
     // and this is a hybrid-graphics machine with more than one GPU (numKernelDrivers > 1)
@@ -1443,9 +1425,9 @@ int PsychOSKDGetBeamposition(int screenId)
 
         // Make sure our SMP sibling cores get notified:
         OSMemoryBarrier();
-        
+
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Switching kernel driver interface to alternative GPU %i in system until Screen() reset.\n", activeGPU);
-        
+
         // Call ourselves recursively in the hope we get a better result this time.
         // If this also fails, it is game over:
         return(PsychOSKDGetBeamposition(screenId));
@@ -1453,79 +1435,79 @@ int PsychOSKDGetBeamposition(int screenId)
 
     // Catch still invalid values and map to "unsupported":
     if (beampos > 16384) return(-1);
-    
-	// Apply corrective offsets if any (i.e., if non-zero):
-	PsychGetBeamposCorrection(screenId, &vblbias, &vbltotal);
-	beampos = beampos - vblbias;
-	if (beampos < 0) beampos = vbltotal + beampos;
 
-	// Return queried position:
-	return(beampos);
+    // Apply corrective offsets if any (i.e., if non-zero):
+    PsychGetBeamposCorrection(screenId, &vblbias, &vbltotal);
+    beampos = beampos - vblbias;
+    if (beampos < 0) beampos = vbltotal + beampos;
+
+    // Return queried position:
+    return(beampos);
 }
 
 // Try to change hardware dither mode on GPU:
 void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
 {
-	// Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
-	PsychKDCommandStruct syncCommand;
+    // Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
+    PsychKDCommandStruct syncCommand;
 
-	// Check availability of connection:
-	io_connect_t connect;
-	if (!(connect = PsychOSCheckKDAvailable(((screenId >= 0) ? screenId : 0), NULL))) {
-		// Dither control unavailable:
-		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Kernel driver based dither control unavailable for screenId %i.\n", screenId);
-		return;
-	}
+    // Check availability of connection:
+    io_connect_t connect;
+    if (!(connect = PsychOSCheckKDAvailable(((screenId >= 0) ? screenId : 0), NULL))) {
+        // Dither control unavailable:
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Kernel driver based dither control unavailable for screenId %i.\n", screenId);
+        return;
+    }
 
-	// Set command code for dither control:
-	syncCommand.command = kPsychKDSetDitherMode;
+    // Set command code for dither control:
+    syncCommand.command = kPsychKDSetDitherMode;
 
-	// Assign headid for this screen:
-	syncCommand.inOutArgs[0] = (unsigned int) ((screenId >= 0) ? PsychScreenToCrtcId(screenId, 0) : -1 * screenId);
+    // Assign headid for this screen:
+    syncCommand.inOutArgs[0] = (unsigned int) ((screenId >= 0) ? PsychScreenToCrtcId(screenId, 0) : -1 * screenId);
 
     // Assign dither setting:
-	syncCommand.inOutArgs[1] = ditherOn;
+    syncCommand.inOutArgs[1] = ditherOn;
 
-	// Issue request:
-	kern_return_t kernResult = PsychOSKDDispatchCommand(connect,  &syncCommand, &syncCommand, NULL);    
-	if (kernResult != KERN_SUCCESS) {
-		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Kernel driver dither control call failed (Kernel error code: %lx).\n", kernResult);
-		return;
-	}
+    // Issue request:
+    kern_return_t kernResult = PsychOSKDDispatchCommand(connect,  &syncCommand, &syncCommand, NULL);
+    if (kernResult != KERN_SUCCESS) {
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Kernel driver dither control call failed (Kernel error code: %lx).\n", kernResult);
+        return;
+    }
 
     return;
 }
 
 unsigned int PsychOSKDGetRevision(io_connect_t connect)
 {
-	PsychKDCommandStruct syncCommand;
-    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
-	
-	// Set command code for revision query:
-	syncCommand.command = kPsychKDGetRevision;
-	
-	// Issue request:
-	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);    
-	if (kernResult != KERN_SUCCESS) {
-		printf("PTB-ERROR: Kernel driver revision read failed (Kernel error code: %lx).\n", kernResult);
-		// A value of 0xffffffff signals failure:
-		return(0xffffffff);
-	}
-	
-	// Return revision:
-	return((unsigned int) syncCommand.inOutArgs[0]);
+    PsychKDCommandStruct syncCommand;
+    IOByteCount structSize1 = sizeof(PsychKDCommandStruct);
+
+    // Set command code for revision query:
+    syncCommand.command = kPsychKDGetRevision;
+
+    // Issue request:
+    kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);
+    if (kernResult != KERN_SUCCESS) {
+        printf("PTB-ERROR: Kernel driver revision read failed (Kernel error code: %lx).\n", kernResult);
+        // A value of 0xffffffff signals failure:
+        return(0xffffffff);
+    }
+
+    // Return revision:
+    return((unsigned int) syncCommand.inOutArgs[0]);
 }
 
 static void PsychOSKDGetGPUInfo(io_connect_t connect, int slot)
 {
     PsychKDCommandStruct syncCommand;
-    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
+    IOByteCount structSize1 = sizeof(PsychKDCommandStruct);
 
     // Set command code for gpu info query:
     syncCommand.command = kPsychKDGetGPUInfo;
 
     // Issue request:
-    kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);    
+    kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);
     if (kernResult != KERN_SUCCESS) {
         printf("PTB-ERROR: Kernel driver gpu info read failed (Kernel error code: %lx).\n", kernResult);
         // A value of 0xffffffff signals failure:
@@ -1544,51 +1526,51 @@ static void PsychOSKDGetGPUInfo(io_connect_t connect, int slot)
 
 unsigned int PsychOSKDGetLUTState(int screenId, unsigned int head, unsigned int debug)
 {
-	PsychKDCommandStruct syncCommand;
-    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
-	
-	// Check availability of connection:
-	io_connect_t connect;
-	if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) return(0xffffffff);
-	
-	// Set command code for LUT check:
-	syncCommand.command = kPsychKDGetLUTState;
-	syncCommand.inOutArgs[0] = head;
-	syncCommand.inOutArgs[1] = debug;
-	
-	// Issue request:
-	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);    
-	if (kernResult != KERN_SUCCESS) {
-		printf("PTB-ERROR: Kernel driver lut state read failed (Kernel error code: %lx).\n", kernResult);
-		// A value of 0xffffffff signals failure:
-		return(0xffffffff);
-	}
-	
-	// Return lut state:
-	return((unsigned int) syncCommand.inOutArgs[0]);
+    PsychKDCommandStruct syncCommand;
+    IOByteCount structSize1 = sizeof(PsychKDCommandStruct);
+
+    // Check availability of connection:
+    io_connect_t connect;
+    if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) return(0xffffffff);
+
+    // Set command code for LUT check:
+    syncCommand.command = kPsychKDGetLUTState;
+    syncCommand.inOutArgs[0] = head;
+    syncCommand.inOutArgs[1] = debug;
+
+    // Issue request:
+    kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);
+    if (kernResult != KERN_SUCCESS) {
+        printf("PTB-ERROR: Kernel driver lut state read failed (Kernel error code: %lx).\n", kernResult);
+        // A value of 0xffffffff signals failure:
+        return(0xffffffff);
+    }
+
+    // Return lut state:
+    return((unsigned int) syncCommand.inOutArgs[0]);
 }
 
 unsigned int PsychOSKDLoadIdentityLUT(int screenId, unsigned int head)
 {
-	PsychKDCommandStruct syncCommand;
-    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
+    PsychKDCommandStruct syncCommand;
+    IOByteCount structSize1 = sizeof(PsychKDCommandStruct);
 
-	// Check availability of connection:
-	io_connect_t connect;
-	if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) return(0);
-	
-	// Set command code for identity LUT load:
-	syncCommand.command = kPsychKDSetIdentityLUT;
-	syncCommand.inOutArgs[0] = head;
-	
-	// Issue request:
-	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);    
-	if (kernResult != KERN_SUCCESS) {
-		printf("PTB-ERROR: Kernel driver identity lut setup failed (Kernel error code: %lx).\n", kernResult);
-		// A value of 0 signals failure:
-		return(0);
-	}
-	
-	// Return lut setup rc:
-	return((unsigned int) syncCommand.inOutArgs[0]);
+    // Check availability of connection:
+    io_connect_t connect;
+    if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) return(0);
+
+    // Set command code for identity LUT load:
+    syncCommand.command = kPsychKDSetIdentityLUT;
+    syncCommand.inOutArgs[0] = head;
+
+    // Issue request:
+    kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, NULL);
+    if (kernResult != KERN_SUCCESS) {
+        printf("PTB-ERROR: Kernel driver identity lut setup failed (Kernel error code: %lx).\n", kernResult);
+        // A value of 0 signals failure:
+        return(0);
+    }
+
+    // Return lut setup rc:
+    return((unsigned int) syncCommand.inOutArgs[0]);
 }

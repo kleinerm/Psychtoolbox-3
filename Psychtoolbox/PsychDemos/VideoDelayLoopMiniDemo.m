@@ -1,5 +1,5 @@
-function VideoDelayLoopMiniDemo(delayframes, duration, firewireBasler)
-% VideoDelayLoopMiniDemo([delayframes = 0] [, duration = 30] [, firewireBasler = 0]);
+function VideoDelayLoopMiniDemo(delayframes, duration, roi, firewireBasler)
+% VideoDelayLoopMiniDemo([delayframes = 0][, duration = 30][, roi][, firewireBasler = 0]);
 %
 % Demonstrates most simplistic use of PsychVideoDelayLoop() function for
 % delayed visual feedback via a camera + display combo.
@@ -45,7 +45,11 @@ if nargin < 2 || isempty(duration)
     duration = 30;
 end
 
-if nargin < 3 || isempty(firewireBasler)
+if nargin < 3 || isempty(roi)
+    roi = [];
+end
+
+if nargin < 4 || isempty(firewireBasler)
     % Default to bog standard non IIDC-1394 camera:
     firewireBasler = 0;
 end
@@ -67,7 +71,7 @@ PsychVideoDelayLoop('Verbosity', 10);
 % for the Apple builtin iSight, may need tweaking for other cams:
 % The A602 Basler cam can only do grayscale, so set color flag to 0 if it
 % is the Basler cam:
-PsychVideoDelayLoop('Open', w , [], [0 0 640 480], 1 - firewireBasler);
+PsychVideoDelayLoop('Open', w , [], roi, 1 - firewireBasler);
 
 % Try to tune and calibrate display and camera for a target framerate of 30
 % Hz. This only works fully on Linux. On OS/X or Windows it'll just
@@ -81,7 +85,7 @@ if firewireBasler
     % least, due to some bug in the Firewire stack of some versions of
     % OS/X, at least Leopard known to have trouble:
     PsychVideoDelayLoop('Close');
-    PsychVideoDelayLoop('Open', w , [], [0 0 640 480], 1 - firewireBasler);
+    PsychVideoDelayLoop('Open', w , [], roi, 1 - firewireBasler);
 else
     % Bog standard cam: Assume no need to reopen the cam and only 30 fps
     % capture rate:

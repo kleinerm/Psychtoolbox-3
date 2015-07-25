@@ -144,6 +144,10 @@ static bool (*TrackerPlugin_processPluginDataBuffer)(void* handle, unsigned long
 void PsychDCDeleteAllCaptureDevices(void);
 void PsychDCLibInit(void);
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+extern dc1394_t* dc1394_new(void) __attribute__((weak_import));
+#endif
+
 void PsychDCLibInit(void)
 {
     if (firsttime) {
@@ -311,10 +315,6 @@ void PsychDCCloseVideoCaptureDevice(int capturehandle)
     // Done.
     return;
 }
-
-#if PSYCH_SYSTEM == PSYCH_OSX
-extern dc1394_t* dc1394_new(void) __attribute__((weak_import));
-#endif
 
 /*
  *      PsychOpenVideoCaptureDevice() -- Create a video capture object.

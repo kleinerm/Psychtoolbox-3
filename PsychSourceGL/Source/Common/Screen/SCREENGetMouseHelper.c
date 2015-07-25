@@ -287,7 +287,9 @@ static char synopsisString[] =
     "\"mouseIndex\" is the optional index of the (mouse)pointer device. Defaults to system pointer. Only honored on Linux.\n"
     "\"valuators\" If the input device has more than two axis (x and y position), e.g., in the case of a touch input device "
     "or digitizer tablet, this will be a vector of double values, returning the values of those axis. Return values could "
-    "be, e.g., distance to surface, pen pressure, touch area, or pen orientation on a pen input device or touchscreen.\n";
+    "be, e.g., distance to surface, pen pressure, touch area, or pen orientation on a pen input device or touchscreen.\n"
+    "On OSX the first two valuators currently return relative mouse delta movement deltaX and deltaY.\n";
+
 static char seeAlsoString[] = "";
 
 PsychError SCREENGetMouseHelper(void)
@@ -304,6 +306,8 @@ PsychError SCREENGetMouseHelper(void)
     int     numButtons, i;
     psych_bool  doButtonArray;
     PsychWindowRecordType   *windowRecord;
+    int32_t deltaX, deltaY;
+    double myvaluators[2];
 
     //all subfunctions should have these two lines.
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -361,10 +365,38 @@ PsychError SCREENGetMouseHelper(void)
         }
     }
 
-    // Return optional valuator values: Unimplemented on OS/X. Just return an empty matrix.
-    // The buttonArray is just a dummy assignment without any meaning.
-    PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) 0, (int) 1, buttonArray);
-    PsychCopyOutDoubleMatArg(6, kPsychArgOptional, (int) 1, (int) 0, (int) 1, buttonArray);
+    // Return optional valuator values: On OSX we use two valuators to return deltaX and deltaY,
+    // the mouse delta movement since last call to this function:
+    CGGetLastMouseDelta(&deltaX, &deltaY);
+    myvaluators[0] = (double) deltaX;
+    myvaluators[1] = (double) deltaY;
+    PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) 2, (int) 1, &myvaluators[0]);
+
+    // Return optional valuator info struct array as argument 6:
+    if (PsychIsArgPresent(PsychArgOut, 6)) {
+        // Usercode wants valuator info structs:
+        PsychAllocOutStructArray(6, TRUE, 2, numValuatorStructFieldNames, valuatorInfo, &valuatorStruct);
+
+        // Valuator 0: Encodes DeltaX - relative X motion, aka mouse deltaX:
+        PsychSetStructArrayStringElement("label", 0, "DeltaX", valuatorStruct);
+
+        // Other fields are meaningless or undefined on OSX, so set to 0 default:
+        PsychSetStructArrayDoubleElement("min", 0, (double) 0, valuatorStruct);
+        PsychSetStructArrayDoubleElement("max", 0, (double) 0, valuatorStruct);
+        PsychSetStructArrayDoubleElement("resolution", 0, (double) 0, valuatorStruct);
+        PsychSetStructArrayDoubleElement("mode", 0, (double) 0, valuatorStruct);
+        PsychSetStructArrayDoubleElement("sourceID", 0, (double) 0, valuatorStruct);
+
+        // Valuator 1: Encodes DeltaY - relative Y motion, aka mouse deltaY:
+        PsychSetStructArrayStringElement("label", 1, "DeltaY", valuatorStruct);
+
+        // Other fields are meaningless or undefined on OSX, so set to 0 default:
+        PsychSetStructArrayDoubleElement("min", 1, (double) 0, valuatorStruct);
+        PsychSetStructArrayDoubleElement("max", 1, (double) 0, valuatorStruct);
+        PsychSetStructArrayDoubleElement("resolution", 1, (double) 0, valuatorStruct);
+        PsychSetStructArrayDoubleElement("mode", 1, (double) 0, valuatorStruct);
+        PsychSetStructArrayDoubleElement("sourceID", 1, (double) 0, valuatorStruct);
+    }
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS

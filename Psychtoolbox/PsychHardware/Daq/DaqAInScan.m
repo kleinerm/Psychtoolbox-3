@@ -204,8 +204,6 @@ function [data,params]=DaqAInScan(daq,options)
 %     called "external sync", and that might be the same as retrigger.  However,
 %     even if that is correct, I have not implemented it.  (see note below on
 %     numerical definitions of options)
-% "options.sendChannelRange" has no meaning here.  I will use preference file
-%     instead.
 % "options.queue" again, not an option.  Don't try to use it.
 %
 % These options do not exist (as such) for the 1208FS.  They all default to 0.
@@ -266,6 +264,8 @@ function [data,params]=DaqAInScan(daq,options)
 %             off-by-one bug present...
 % 3/24/12 mk  Add handling for options.livedata -- retrieval of data while
 %             DAQ is running.
+% 6/21/15 mk  Implement options.sendChannelRange for the 1608-FS to allow skipping
+%             of DaqALoadQueue, which is likely pretty expensive.
 
 % These USB-1280FS parameters are computed from the user-supplied
 % arguments.
@@ -413,11 +413,12 @@ end
 % User options.
 if ~isfield(options,'sendChannelRange')
     if ~Is1608
-        options.sendChannelRange=channelRangeOk;
+        options.sendChannelRange = channelRangeOk;
+    else
+        options.sendChannelRange = ~isempty(options.range)
     end
-elseif Is1608
-    warning('Psych:Daq:UnusedOption', '"sendChannelRange" has no meaning for USB-1608FS, so will be ignored.');
 end
+
 if ~Is1608 && (options.sendChannelRange && ~channelRangeOk)
     error('You are not supplying channel and range, so you can''t send them. Omit options.sendChannelRange.');
 end
@@ -570,7 +571,9 @@ if Is1608
         if numel(options.range) == 1
             options.range = options.range*ones(1,c);
         end
-        err=DaqALoadQueue(daq,options.FirstChannel:options.LastChannel,options.range);
+        if options.sendChannelRange
+            err=DaqALoadQueue(daq,options.FirstChannel:options.LastChannel,options.range);
+        end
     end % if isempty(otptions.range); else
 else % if Is1608
     if options.sendChannelRange

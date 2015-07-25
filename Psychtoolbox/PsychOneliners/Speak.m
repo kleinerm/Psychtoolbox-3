@@ -51,6 +51,9 @@ function [ ret ] = Speak(saytext, voice, rate, volume, pitch, language)
 % 24.07.09 mk           Written for OS/X.
 % 03.10.12 Vishal Shah  Added basic support for MS-Windows.
 % 06.10.12 mk           Add extended support for OS/X and Linux.
+% 24.07.15 mk           Use double-quotes instead of pairs of single quotes
+%                       to protect strings containing apostrophes etc.
+%                       Suggested by elladawu. Successfully tested on Linux.
 
 if nargin < 1
     error('You must provide the text string to speak!');
@@ -65,7 +68,7 @@ if IsOSX
     cmd = 'say ';
 
     if nargin >= 2 && ~isempty(voice)
-        cmd = [cmd sprintf('-v ''%s'' ', voice)];
+        cmd = [cmd sprintf('-v "%s" ', voice)];
     end
 
     if nargin >= 3 && ~isempty(rate)
@@ -74,7 +77,7 @@ if IsOSX
 
     for k=1:length(saytext)
         % Build command string for speech output and do a system() call:
-        ret = system(sprintf('%s ''%s''', cmd, saytext{k}));
+        ret = system(sprintf('%s "%s"', cmd, saytext{k}));
     end
 end
 
@@ -82,7 +85,7 @@ if IsLinux
     cmd = 'spd-say --wait ';
 
     if nargin >= 2 && ~isempty(voice)
-        cmd = [cmd sprintf('--voice-type ''%s'' ', voice)];
+        cmd = [cmd sprintf('--voice-type "%s" ', voice)];
     end
 
     if nargin >= 3 && ~isempty(rate)
@@ -98,13 +101,13 @@ if IsLinux
     end
 
     if nargin >= 6 && ~isempty(language)
-        cmd = [cmd sprintf('--language ''%s'' ', language)];
+        cmd = [cmd sprintf('--language "%s" ', language)];
     end
 
     ret = 0;
     for k=1:length(saytext)
         % Build command string for speech output and do a system() call:
-        ret = system(sprintf('%s ''%s''', cmd, saytext{k}));
+        ret = system(sprintf('%s "%s"', cmd, saytext{k}));
         if ret
             break;
         end

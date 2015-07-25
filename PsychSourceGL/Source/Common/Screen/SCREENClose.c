@@ -93,16 +93,37 @@ PsychError SCREENClose(void)
 	}
 
 	// Window handle of a specific window or texture provided: Close it...
-	if(PsychIsLastOnscreenWindow(windowRecord)){
-		// Check for stale texture ressources and movies. Report to user if any:
-		PsychRessourceCheckAndReminder(TRUE);	
-
-		screenNumber=windowRecord->screenNumber;
-		PsychCloseWindow(windowRecord);
-		PsychReleaseScreen(screenNumber);
+	if (PsychIsLastOnscreenWindow(windowRecord)) {
+        // Do Screen('CloseAll') style cleanup to release and cleanup everything:
+        ScreenCloseAllWindows();
 	}
-	else {	
-		PsychCloseWindow(windowRecord);
+	else {
+        // Not the last onscreen window. Be more specific in cleanup:
+        if (PsychIsOnscreenWindow(windowRecord)) {
+            screenNumber = windowRecord->screenNumber;
+            PsychCloseWindow(windowRecord);
+            
+            // Are there more onscreen windows associated with the screen of our just
+            // closed onscreen window?
+            PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
+            for(i = 0; i < numWindows; i++) {
+                if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]->screenNumber == screenNumber))
+                    screenNumber = -1;
+            }
+            PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
+
+            // Was our window the last one on its screen screenNumber?
+            if (screenNumber != -1) {
+                // Yes. This screen is done. Finish it up:
+                if(PsychIsScreenCaptured(screenNumber)) {
+                    PsychRestoreScreenSettings(screenNumber);
+                    PsychReleaseScreen(screenNumber);
+                }
+            }
+        }
+        else {
+            PsychCloseWindow(windowRecord);
+        }
 	}
 
 	return(PsychError_none);

@@ -218,9 +218,9 @@ PsychError SCREENComputer(void)
     //fill in the process user, console user and machine name in the root struct.
     tempCFStringRef = SCDynamicStoreCopyComputerName(NULL, NULL);
     if (tempCFStringRef) {
-        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
+        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingASCII);
         tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
+        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingASCII);
 
         if(stringSuccess) {
             PsychSetStructArrayStringElement("machineName", 0, tempStrPtr, majorStruct);
@@ -248,9 +248,9 @@ PsychError SCREENComputer(void)
 
     tempCFStringRef= SCDynamicStoreCopyConsoleUser(NULL, NULL, NULL);
     if (tempCFStringRef) {
-        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
+        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingASCII);
         tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
+        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingASCII);
 
         if(stringSuccess) {
             PsychSetStructArrayStringElement("consoleUserName", 0, tempStrPtr, majorStruct);
@@ -268,9 +268,9 @@ PsychError SCREENComputer(void)
 
     tempCFStringRef= SCDynamicStoreCopyLocalHostName(NULL);
     if (tempCFStringRef) {
-        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
+        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingASCII);
         tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
+        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingASCII);
         if(stringSuccess) {
             PsychSetStructArrayStringElement("localHostName", 0, tempStrPtr, majorStruct);
         }
@@ -287,9 +287,9 @@ PsychError SCREENComputer(void)
 
     tempCFStringRef= SCDynamicStoreCopyLocation(NULL);
     if (tempCFStringRef) {
-        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
+        stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingASCII);
         tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
+        stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingASCII);
         if(stringSuccess) {
             PsychSetStructArrayStringElement("location", 0, tempStrPtr, majorStruct);
         }

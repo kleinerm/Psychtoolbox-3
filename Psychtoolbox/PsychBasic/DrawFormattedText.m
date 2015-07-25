@@ -99,6 +99,10 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 07/02/14  Add sx == 'wrapat' and sx == 'justifytomax' options for block adjustment of text.
 %           This is to be considered quite a prototype. (MK)
 % 09/21/14  Fix text clipping when used with optional winRect parameter. (MK)
+% 06/20/15  Improve text centering for single line text, and bounding box
+%           calculations. This is "whack a mole". Making it better for one OS
+%           can make it worse for another OS, there is no winning. (MK)
+% 07/21/15  Remove forced line breaks at 250 chars on OSX. No longer needed. (MK)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
@@ -219,6 +223,13 @@ end
 % Query textsize for implementation of linefeeds:
 theight = Screen('TextSize', win) * vSpacing;
 
+% Special case single line text string: Compute true bounding box
+% of text string and use its height as text height for linefeeds:
+numlines = length(strfind(char(tstring), char(10))) + 1;
+if numlines == 1
+    theight = RectHeight(Screen('TextBounds', win, char(tstring)));
+end
+
 % Default y start position is top of window:
 if nargin < 4 || isempty(sy)
     sy=0;
@@ -234,10 +245,8 @@ winHeight = RectHeight(winRect);
 
 if ischar(sy) && strcmpi(sy, 'center')
     % Compute vertical centering:
-    
-    % Compute height of text box:
-    numlines = length(strfind(char(tstring), char(10))) + 1;
     bbox = SetRect(0,0,1,numlines * theight);
+
     % Center box in window:
     [rect,dh,dv] = CenterRect(bbox, winRect); %#ok<ASGLU>
 
@@ -329,6 +338,9 @@ end
 
 % Parse string, break it into substrings at line-feeds:
 while ~isempty(tstring)
+    deltaboxX = 0;
+    deltaboxY = 0;
+
     % Find next substring to process:
     crpositions = strfind(char(tstring), char(10));
     if ~isempty(crpositions)
@@ -341,17 +353,6 @@ while ~isempty(tstring)
         dolinefeed = 0;
     end
 
-    if IsOSX
-        % On OS/X, we enforce a line-break if the unwrapped/unbroken text
-        % would exceed 250 characters. The ATSU text renderer of OS/X can't
-        % handle more than 250 characters.
-        if size(curstring, 2) > 250
-            tstring = [curstring(251:end) tstring]; %#ok<AGROW>
-            curstring = curstring(1:250);
-            dolinefeed = 1;
-        end
-    end
-    
     if IsWin
         % On Windows, a single ampersand & is translated into a control
         % character to enable underlined text. To avoid this and actually
@@ -390,7 +391,9 @@ while ~isempty(tstring)
         % Need bounding box?
         if xcenter || flipHorizontal || flipVertical || rjustify
             % Compute text bounding box for this substring:
-            bbox=Screen('TextBounds', win, curstring, [], [], [], righttoleft);
+            [bbox, refbbox] = Screen('TextBounds', win, curstring, 0, 0, [], righttoleft);
+            deltaboxX = refbbox(RectLeft) - bbox(RectLeft);
+            deltaboxY = refbbox(RectTop) - bbox(RectTop);
         end
         
         % Horizontally centered output required?
@@ -398,7 +401,7 @@ while ~isempty(tstring)
             % Yes. Compute dh, dv position offsets to center it in the center of window.
             [rect,dh] = CenterRect(bbox, winRect); %#ok<ASGLU>
             % Set drawing cursor to horizontal x offset:
-            xp = dh;
+            xp = dh - deltaboxX;
         end
         
         % Right justified (aligned) output required?
@@ -481,8 +484,8 @@ while ~isempty(tstring)
     end
 
     % Update bounding box:
-    minx = min([minx , xp, nx]);
-    maxx = max([maxx , xp, nx]);
+    minx = min([minx , xp + deltaboxX, nx]);
+    maxx = max([maxx , xp, nx + deltaboxX]);
     miny = min([miny , yp, ny]);
     maxy = max([maxy , yp, ny]);
 
