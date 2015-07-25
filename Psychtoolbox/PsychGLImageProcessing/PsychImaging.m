@@ -175,6 +175,44 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   introduce some compatibility issues into your code and causes a decrease
 %   in graphics performance due to the very high graphics rendering load.
 %
+%   If 'UseRetinaResolution' is used with a non-fullscreen window, ie.
+%   the 'rect' parameter in PsychImaging('OpenWindow', ...) is provided
+%   to specify the screen position and size of the window, note that
+%   the size of the window rect returned by Screen('GlobalRect') and
+%   Screen('Rect'), as well as of the returned rect of PsychImaging('OpenWindow')
+%   will differ from the size of the 'rect' passed to 'OpenWindow'. 'rect's
+%   passed into OpenWindow for positioning and sizing the window, as well
+%   as the global position rect returned by Screen('GlobalRect') for the
+%   current size and position of the onscreen window are expressed in global
+%   desktop coordinates, in somewhat arbitrary units of virtual "points".
+%   How such a point translates into display pixels depends on the operating
+%   system, possibly the desktop GUI in use (on other systems than OSX), the
+%   set of connected displays and their Retina or non-Retina resolutions.
+%   The aim is that the coordinate system is somewhat consistent and meaningful
+%   across all connected displays, for varying definitions of "consistent" and
+%   "meaningful" on different operating systems, but the mapping of points to
+%   physical screen pixels can be different on each connected display, at the
+%   discretion of the operating system. You may get especially "interesting"
+%   results if you try to move an onscreen window between screens, or let it
+%   span multiple displays of different type and resolution.
+%   The rect returned by PsychImaging('Openwindow') and Screen('Rect'), as
+%   well as sizes returned by Screen('WindowSize') define the net useable
+%   size of the window in display pixels. It is affected by all kind of
+%   PsychImaging operations, e.g., selection of stereo modes, high bit depth
+%   modes etc., but also by scaling on Retina displays in high res mode.
+%   If 'UseRetinaResolution' is used on a Retina/HiDPI display, one typical
+%   result will be that the size of the window in pixels reported by these
+%   functions will be higher than the size in points, as one virtual point will
+%   get represented by more than 1 pixel on a Retina display. Observing twice
+%   the window size in pixels than in points is quite typical, but other
+%   scaling factors are possible. The take home message for you is to specify
+%   location and size of your stimuli based on the sizes and rects returned
+%   by Screen('Rect'), PsychImaging('Openwindow') and Screen('Windowsize'), as
+%   these are in units of display pixels, and *not* based on the virtual points
+%   returned by Screen('GlobalRect'). The 2nd take home message is that you
+%   should mostly use fullscreen windows for visual stimulation to avoid such
+%   and other pitfalls.
+%
 %   Usage: PsychImaging('AddTask', 'General', 'UseRetinaResolution');
 %
 %
