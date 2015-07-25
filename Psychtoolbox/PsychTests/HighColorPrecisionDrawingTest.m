@@ -177,11 +177,14 @@ function HighColorPrecisionDrawingTest(testconfig, maxdepth, testblocks)
 %
 %      This testcase 5 is incomplete and under development!
 %
-%
+% 6  = Test of color precision of text drawing. This only tests to a fixed
+%      precision of 8 bits for 256 levels at the moment, as our the text
+%      renderer doesn't have a higher precision.
 
 % History:
 % 04/20/08  Written (MK).
 % 10/22/10  Refined to account for small differences between GPU's (MK).
+% 06/20/15  Add case 6 for testing 'DrawText' (MK).
 
 global win;
 
@@ -216,7 +219,7 @@ if maxdepth > 24
 end
 
 if nargin < 3 || isempty(testblocks)
-    testblocks = [1, 2, 3, 4, 5];
+    testblocks = [1, 2, 3, 4, 5, 6];
 end
 fprintf('Executing the following tests: %i.\n', testblocks);
 
@@ -847,7 +850,88 @@ if ismember(5, testblocks)
     Screen('CloseAll');
 end % Test 5.
 
+if ismember(6, testblocks)
+    % Test 6: Precision of DrawText.
+    PsychImaging('PrepareConfiguration')
+    PsychImaging('AddTask', 'General', fbdef);
 
+    % Open window with black background color:
+    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 128 128], [], [], [], []);
+
+    % Set color clamping (and precision) for standard 2D draw commands:
+    Screen('ColorRange', win, 1, ColorClamping);
+
+    Screen('Flip', win);
+
+    textmaxdepth = 8;
+    texttestcolors = 1 - linspace(0,1,2^textmaxdepth);
+    drawncolors = zeros(1, length(texttestcolors));
+    i=1;
+
+    Screen('TextSize', win, 128);
+    Screen('TextFont', win, 'Arial');
+
+    for tc = texttestcolors
+        [xm ym buttons] = GetMouse;
+        if buttons(1)
+            break;
+        end
+
+        Screen('DrawText', win, '+', 0, 0, tc);
+        [nbox, bbox] = Screen('TextBounds', win, '+', 0, 0);
+        [patchx, patchy] = RectCenter(bbox);
+
+        % Flip the buffers - We don't sync to retrace to speed things up a
+        % bit. We also don't clear the drawbuffer, as we're overwriting it in
+        % next loop iteration at the same location anyway -- saves some time.
+        % N.B.: Technically we don't need to flip at all, as we're reading from
+        % the 'drawBuffer' anyway which is unaffected by flips.
+        if 1 || mod (i, 1000) == 0
+            % Ok, only do it every 1000th trial to visualize...
+            Screen('Flip', win, 0, 2, 2);
+        end
+
+        % Readback drawbuffer with float precision, only
+        % the red/luminance channel:
+        patch = Screen('GetImage', win, [], 'drawBuffer', 1, 1);
+
+        % Store result: FillRect
+        drawncolors(1,i) = patch(patchy,patchx);
+
+        if mod(i, 1000)==0
+            fprintf('At %i th testvalue of %i...\n', i, 2^textmaxdepth);
+            beep; drawnow;
+        end
+
+        i=i+1;
+    end
+
+    Screen('CloseAll');
+
+    % Test done.
+    primname = {'DrawText'};
+
+    for j=1:size(drawncolors, 1)
+        deltacolors = single(texttestcolors(1:i-1)) - drawncolors(j, 1:i-1);
+        minv = min(abs(deltacolors));
+        maxv = max(abs(deltacolors));
+        goodbits = floor(-(log2(maxv))) - 1;
+        if goodbits < 0
+            goodbits = 0;
+        end
+
+        testname = char(primname{j});
+
+        if goodbits <= textmaxdepth
+            resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to %i bits out of max tested bitdepths %i.\n', testname, minv, maxv, goodbits, textmaxdepth)];
+        else
+            resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to full tested bitdepth range of %i bits.\n', testname, minv, maxv, textmaxdepth)];
+        end
+
+        plot(deltacolors);
+        drawnow;
+    end
+end % Test 6.
 
 fprintf('\n\nTest summary:\n');
 fprintf('-------------\n\n');

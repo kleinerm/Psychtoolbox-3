@@ -4,17 +4,18 @@
 % after Screen failed to load the external text renderer plugin.
 %
 % On both GNU/Linux and Apple MacOS/X, the functions Screen('DrawText') and
-% Screen('TextBounds') can use an external text rendering plugin for
+% Screen('TextBounds') use an external text rendering plugin for
 % drawing and handling of high quality text. This allows for advanced text
 % layout and formatting, high-quality anti-aliased rendering of text at
 % arbitrary text sizes, support for modern fonts like TrueType, and support
 % for drawing of the full international Unicode character set.
 %
-% The plugin-based textrenderer can be selected on OS/X and Linux by
-% using the command Screen('Preference', 'TextRenderer', 2). On Linux, the
-% plugin-based renderer is used by default without need for this command.
-% On OS/X, normally Apple's ATSU text renderer would be used, so this
-% plugin renderer needs to be manually selected if desired.
+% The plugin-based textrenderer is selected on OS/X and Linux by default.
+% On OSX one can still select Apple's CoreText text renderer via the command
+% Screen('Preference','TextRenderer', 0); although Apples text renderer is
+% inferior in essentially any respect. Apples CoreText renderer would also
+% get automatically selected if the plugin renderer would not work for some
+% reason.
 %
 % The text renderer plugin implements a high-speed renderer based on a
 % combination of multiple free software libraries for text rendering and

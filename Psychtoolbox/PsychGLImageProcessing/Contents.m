@@ -47,6 +47,7 @@
 % DisplayUndistortionBVL        - Interactive geometric display calibration. Recommended!
 % DisplayUndistortionCSV        - Import ASCII data file with geometric display calibration for NVidia "Warp API".
 % DisplayUndistortionHalfCylinder - Interactive geometric display calibration for half-cylinder or spherical projections.
+% DisplayUndistortionLabRiggerMouseStim - Create display undistortion based on method from LabRigger for mouse visual stims.
 % DisplayUndistortionSphere     - Interactive geometric display calibration for spherical projections.
 % ImagingStereoDemo             - Counterpart to StereoDemo, but using imaging pipeline
 %                                    for increased fidelity, flexibility, ease of use.

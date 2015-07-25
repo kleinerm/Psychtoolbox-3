@@ -9,10 +9,6 @@ function [gamepadIndices, productNames]= GetGamepadIndices;
 % second argument which is useful to identify the gamepad associated with
 % an index.  For complete information on a gampad use PsychHID('Devices').
 %
-% OS 9: ___________________________________________________________________
-%
-% GetGamepadIndices does not exist in OS 9. 
-%
 % WINDOWS: ________________________________________________________________
 % 
 % GetGamepadIndices does not exist in Windows.

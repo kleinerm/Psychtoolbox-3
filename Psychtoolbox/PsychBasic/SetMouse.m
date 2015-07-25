@@ -1,5 +1,5 @@
-function SetMouse(x,y,windowPtrOrScreenNumber, mouseid)
-% SetMouse(x, y [, windowPtrOrScreenNumber][, mouseid])
+function SetMouse(x,y,windowPtrOrScreenNumber, mouseid, detachFromMouse)
+% SetMouse(x, y [, windowPtrOrScreenNumber][, mouseid][, detachFromMouse=0])
 % 
 % Position the mouse cursor on the screen.
 %
@@ -12,6 +12,12 @@ function SetMouse(x,y,windowPtrOrScreenNumber, mouseid)
 % On Linux with X11, the optional 'mouseid' parameter allows to select
 % which of potentially multiple cursors should be repositioned. On OS/X and
 % Windows this parameter is silently ignored.
+%
+% On OSX, the optional 'detachFromMouse' parameter, if set to 1 instead of
+% its default value of zero, will detach mouse cursor movements from mouse
+% movements. The cursor will be frozen in place and can only be moved via
+% SetMouse(), but no longer via mouse movements. On Linux and Windows this
+% parameter is currently silently ignored.
 %
 % On Linux with the Wayland backend, this function does nothing.
 %
@@ -40,19 +46,24 @@ function SetMouse(x,y,windowPtrOrScreenNumber, mouseid)
 % 11/04/14  mk      round() x,y coords for integral coordinates to avoid error.
 % 04/18/15  mk      Update help text - local coordinates now should also
 %                   work on MS-Windows, not only Linux and OSX.
+% 07/20/15  mk      Add support for 'detachFromMouse', on OSX for now.
 
 % SetMouse.m wraps the Screen('PositionCursor',..) call to emulate the old SetMouse.mex
 
 if nargin < 2
-   error('SetMouse requires x and y positions');
+  error('SetMouse requires x and y positions');
 end
 
 if nargin < 3 || isempty(windowPtrOrScreenNumber)
-   windowPtrOrScreenNumber = 0;
+  windowPtrOrScreenNumber = 0;
 end
 
 if nargin < 4
-   mouseid = [];
+  mouseid = [];
 end
 
-Screen('SetMouseHelper', windowPtrOrScreenNumber, round(x), round(y), mouseid);
+if nargin < 5 || isempty(detachFromMouse)
+  detachFromMouse = 0;
+end
+
+Screen('SetMouseHelper', windowPtrOrScreenNumber, round(x), round(y), mouseid, detachFromMouse);

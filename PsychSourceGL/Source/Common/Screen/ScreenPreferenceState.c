@@ -31,9 +31,9 @@
 
 // Default textrenderer already defined? E.g., Compile time options?
 #ifndef PTB_DEFAULT_TEXTRENDERER
-// Nope: Default to the high-quality OS specific renderer.
-// This setting of 1 maps to GDI renderer on Windows, ATSU on OS/X and the FTGL plugin on Linux, if available.
-// A setting of zero would map to ATSU on OS/X and display list renderers on Windows and Linux, as they are faster.
+// Nope: Default to the high-quality OS specific renderer 1.
+// A setting of 0 would map to the legacy Apple CoreText renderer on OS/X and legacy display list renderers on Windows and Linux.
+// A setting of 1 maps to GDI renderer on Windows, and the FTGL plugin on Linux and OSX, if available.
 // A setting of 2 would map to the FTGL plugin on Linux, OS/X and Windows, if available.
 #define PTB_DEFAULT_TEXTRENDERER 1
 #endif

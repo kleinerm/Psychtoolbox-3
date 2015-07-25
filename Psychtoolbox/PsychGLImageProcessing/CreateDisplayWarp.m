@@ -79,7 +79,8 @@ function [warpstruct, filterMode] = CreateDisplayWarp(window, calibfilename, sho
 %           of Ingmar Schneider's shader code. (MK).
 % 27.7.2012 Add support for DisplayUndistortionCSV() aka "NVidia Warp-API" format (MK).
 % 14.3.2015 Add support for Propixx and similar devices via mesh replication to the BVL method (MK).
-%
+% 24.7.2015 Add support for scal.useUnitDisplayCoords in CSV method. (MK)
+% 24.7.2015 Fix brokenness in CSV method introduced at 14.3.2015 as regression with mesh replication. (MK)
 
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
@@ -743,15 +744,24 @@ vertexCoords  = zeros(numVerts, 2);
 
 % Parse the matrices passed in scal and rearrange them to the format of the
 % vertexCoords and textureCoords vectors: Scanning is row-major order.
-% We also scale all positions with window width and height, as the scal
-% matrices contain normalized coordinates in 0.0 - 1.0 range for display
-% width/height of a "unit display". vcoords can exceed that range or be
-% negative - they are assigned to positions outside the framebuffer.
+if ~isfield(scal, 'useUnitDisplayCoords') || scal.useUnitDisplayCoords
+    % We also scale all positions with window width and height, as the scal
+    % matrices contain normalized coordinates in 0.0 - 1.0 range for display
+    % width/height of a "unit display". vcoords can exceed that range or be
+    % negative - they are assigned to positions outside the framebuffer.
+    scaleWidth = windowWidth;
+    scaleHeight = windowHeight;
+else
+    % scal contains absolute pixel locations, not 0-1 normalized range:
+    scaleWidth = 1;
+    scaleHeight = 1;
+end
+
 for y=1:yLoomSize
     for x=1:xLoomSize
         index = ((y-1) * xLoomSize) + x;
-        vertexCoords(index, :)  = [scal.vcoords(y, x, 1) * windowWidth, scal.vcoords(y, x, 2) * windowHeight];
-        textureCoords(index, :) = [scal.tcoords(y, x, 1) * windowWidth, scal.tcoords(y, x, 2) * windowHeight];
+        vertexCoords(index, :)  = [scal.vcoords(y, x, 1) * scaleWidth, scal.vcoords(y, x, 2) * scaleHeight];
+        textureCoords(index, :) = [scal.tcoords(y, x, 1) * scaleWidth, scal.tcoords(y, x, 2) * scaleHeight];
     end
 end
 
@@ -772,7 +782,7 @@ end
 
 % textureCoords are regularly spaced texture 2D coordinates.
 % vertexCoords are irregularly placed vertex 2D coordinates.
-[xyzcalibpos, xytexcoords] = BVLGeneratetextcoord(yLoomSize, xLoomSize, textureCoords, vertexCoords, showCalibOutput);
+[xyzcalibpos, xytexcoords] = BVLGeneratetextcoord(yLoomSize, xLoomSize, textureCoords, vertexCoords, showCalibOutput, 0 , 0);
 
 % Done. Return results:
 return;

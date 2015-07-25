@@ -120,6 +120,7 @@ function rc = PsychVideoDelayLoop(cmd, varargin)
 % History:
 % 8.08.06  Written (MK)
 % 15.02.10 Small improvements and fixes (MK)
+% 20.07.15 Release unused textures in videofifo at end of RunLoop. (MK)
 
 % Window handle of target window:
 persistent win;
@@ -771,6 +772,11 @@ if strcmp(cmd, 'RunLoop')
     rc.keycode = keycode;
     rc.totaldisplayed = readcount;
     rc.startdelta = startdelta;
+
+    % Release all textures still pending in the fifo:
+    videofifo = videofifo(1, find(videofifo(1,:) ~= 0))
+    Screen('Close', videofifo);
+    clear videofifo;
 
     % Well done!
     return;

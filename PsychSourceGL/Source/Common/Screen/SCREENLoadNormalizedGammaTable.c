@@ -23,7 +23,8 @@
 #include "Screen.h"
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table [, loadOnNextFlip] [, physicalDisplay]);";
+static char useString[] = "[oldtable, success] = Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table [, loadOnNextFlip][, physicalDisplay][, ignoreErrors]);";
+//                          1         2                                             1                        2        3                 4                  5
 static char synopsisString[] =
     "Load the gamma table of the specified screen or window 'windowPtrOrScreenNumber'.\n"
     "You need to pass the new hardware gamma table 'table' as a 'nrows' rows by 3 columns matrix. Each row corresponds to "
@@ -59,21 +60,27 @@ static char synopsisString[] =
     "table should be applied in multi-display mode. On Linux/X11 a screen can output to multiple video displays, "
     "therefore this parameter allows to setup individual gamma tables for each display. The default setting "
     "is -1, which means to apply the (same) gamma table to all outputs of the given screen.\n"
-    "On MacOS-X and Linux/X11, this function takes arbitrary gamma-tables which makes it suitable for CLUT animation, "
+    "The optional 'ignoreErrors' parameter, if set to 1, will ask the function to continue in the case that the "
+    "operating system rejected a gamma table update, instead of aborting your script, if you requested an immediate "
+    "update via 'loadOnNextFlip' == 0. The optional 2nd return argument 'success' will be 1 on success, 0 on a "
+    "rejected immediate update. 'ignoreErrors' will be ignored in case of deferred updates via 'loadOnNextFlip' > 0.\n"
+    "On OSX and Linux/X11, this function takes arbitrary gamma-tables which makes it suitable for CLUT animation, "
     "although you should rather avoid CLUT animation, or use the PsychImaging(...'EnableCLUTMapping'...) method "
-    "instead. CLUT animation nowadays is almost always the wrong approach. If you really need it, the PsychImaging "
-    "based method provides cross-platform compatibility and reliable timing.\n"
+    "instead. CLUT animation nowadays is almost always the wrong approach. If you really need it, the PsychImaging() "
+    "based method provides cross-platform compatibility and reliable timing for CLUT animation.\n"
     "On Microsoft Windows, only tables with monotonically increasing values are considered valid. Other tables "
-    "get rejected by the operating system -- there's nothing we can do about this incredibly wise decision "
-    "of the Microsoft system designers :( , so this is not suitable for CLUT animation, but only for linearizing "
-    "or calibrating display devices. Similar limitations apply to Linux when used with the Wayland display server.\n"
-    "The function returns the old gamma table as optional return argument. ";
+    "get rejected by the operating system, so this is not suitable for CLUT animation, but only for linearizing "
+    "or calibrating display devices. Microsoft Windows does impose additional unknown constraints beyond monotonicity, "
+    "so generally anything not resembling a regular gamma calibration table may prove troublesome. Similar limitations "
+    "currently apply to Linux when used with the Wayland display server.\n"
+    "The function returns the old gamma table as optional 1st return argument and a success status code of 1 on success, "
+    "0 on failure as 2nd optional return argument in case of an immediate update (ie 'loadOnNextFlip' == 0).\n";
 
 static char seeAlsoString[] = "ReadNormalizedGammaTable";
 
 PsychError SCREENLoadNormalizedGammaTable(void)
 {
-    int i, screenNumber, numEntries, inM, inN, inP, loadOnNextFlip, physicalDisplay, outputId;
+    int i, screenNumber, numEntries, inM, inN, inP, loadOnNextFlip, physicalDisplay, outputId, ignoreErrors;
     float *outRedTable, *outGreenTable, *outBlueTable, *inRedTable, *inGreenTable, *inBlueTable;
     double *inTable, *outTable;
     PsychWindowRecordType *windowRecord;
@@ -82,8 +89,8 @@ PsychError SCREENLoadNormalizedGammaTable(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
-    PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(4));
+    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(5));
 
     // Get optional physicalDisplay argument - It defaults to zero on OS/X, -1 on Linux:
     physicalDisplay = -1;
@@ -227,8 +234,23 @@ PsychError SCREENLoadNormalizedGammaTable(void)
         }
     }
 
-    //Now set the new gamma table
-    if (loadOnNextFlip == 0) PsychLoadNormalizedGammaTable(screenNumber, outputId, inM, inRedTable, inGreenTable, inBlueTable);
+    // Now set the new gamma table in case of an immediate load request:
+    if (loadOnNextFlip == 0) {
+        if (0 == PsychLoadNormalizedGammaTable(screenNumber, outputId, inM, inRedTable, inGreenTable, inBlueTable)) {
+            // Failed. To bail or not to bail?
+            if (!PsychCopyInIntegerArg(5, FALSE, &ignoreErrors) || !ignoreErrors)
+                PsychErrorExitMsg(PsychError_user, "Failed to upload the gamma table.");
+            PsychCopyOutDoubleArg(2, FALSE, 0);
+        }
+        else {
+            // Success:
+            PsychCopyOutDoubleArg(2, FALSE, 1);
+        }
+    }
+    else {
+        // Deferred update. Assume success:
+        PsychCopyOutDoubleArg(2, FALSE, 1);
+    }
 
     return(PsychError_none);
 }

@@ -10,14 +10,6 @@ function [keypadIndices, productNames]= GetKeypadIndices
 % associated with an index.  For complete information on a keypad use
 % PsychHID('Devices').
 %
-% OS 9: ___________________________________________________________________
-%
-% GetKeypadIndices does not exist in OS 9. 
-%
-% WINDOWS: ________________________________________________________________
-% 
-% GetKeypadIndices does not exist in Windows.
-% 
 % _________________________________________________________________________
 %
 % see also: GetGamepadIndices, GetKeyBoardIndices

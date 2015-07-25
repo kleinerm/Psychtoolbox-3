@@ -260,6 +260,7 @@ PsychError SCREENOpenWindow(void)
 
         // Validate clientRect:
         if (IsPsychRectEmpty(clientRect)) PsychErrorExitMsg(PsychError_user, "OpenWindow called with invalid (empty) 'clientRect' argument.");
+        if (EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, panel fitter functions via 'clientRect' are not supported in OS-9 PTB emulation mode.");
 
         // Set special imagingmode flags to signal need for full imaging pipeline
         // and for the panel scaler. Used in PsychInitializeImagingPipeline() and
@@ -285,15 +286,18 @@ PsychError SCREENOpenWindow(void)
         if ((nativewidth > frontendwidth) || (nativeheight > frontendheight)) {
             // Yes: Native backend resolution in pixels is higher than exposed
             // frontend resolution in points. --> HiDPI / Retina display in use.
-            // Enable panel fitter by setting a clientRect the size and resolution
-            // of the 'rect' - user supplied or frontend resolution:
-            PsychNormalizeRect(rect, clientRect);
-
-            // Enable imaging pipeline and panelfitter:
-            imagingmode |= kPsychNeedFastBackingStore;
-            imagingmode |= kPsychNeedGPUPanelFitter;
-
             if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Retina display. Enabling panel fitter for scaled Retina compatibility mode.\n");
+
+            if (!EmulateOldPTB) {
+                // Enable panel fitter by setting a clientRect the size and resolution
+                // of the 'rect' - user supplied or frontend resolution:
+                PsychNormalizeRect(rect, clientRect);
+
+                // Enable imaging pipeline and panelfitter:
+                imagingmode |= kPsychNeedFastBackingStore;
+                imagingmode |= kPsychNeedGPUPanelFitter;
+            }
+            else printf("PTB-WARNING: Sorry, Retina displays are not supported in OS-9 PTB emulation mode. Results will likely be not what you wanted.\n");
         }
     }
 
@@ -356,6 +360,14 @@ PsychError SCREENOpenWindow(void)
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOpenOnscreenWindow\n");
     PsychCopyDepthStruct(&(screenSettings.depth), &useDepth);
 
+    // Make sure nothing slips through in PTB-2 emulation mode:
+    if (EmulateOldPTB) {
+        stereomode = 0;
+        imagingmode = 0;
+        multiSample = 0;
+        sharedContextWindow = NULL;
+    }
+
     // Create the onscreen window and perform initialization of everything except
     // imaging pipeline and a few other special quirks. If sharedContextWindow is non-NULL,
     // the new window will share its OpenGL context ressources with sharedContextWindow.
@@ -388,7 +400,6 @@ PsychError SCREENOpenWindow(void)
         printf("PTB-WARNING: that involve Alpha-Blending. It can also cause drastically reduced color resolution\n");
         printf("PTB-WARNING: for your stimuli! Please try to switch your display to 'True Color' (Windows)\n");
         printf("PTB-WARNING: our 'Millions of Colors' (MacOS-X) to get rid of this warning and the visual artifacts.\n");
-        fflush(NULL);
     }
 
     // Define clear color: This depends on the color range of our onscreen window...
@@ -403,7 +414,7 @@ PsychError SCREENOpenWindow(void)
     // actively opt-out of it, we auto-enable use of FBO backed fast offscreen windows. We don't auto-enable
     // the full pipeline for stereoscopic display modes, but we print some recommendations to the user to
     // consider enabling the full pipeline for stereo display:
-    if ((windowRecord->gfxcaps & kPsychGfxCapFBO) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontAutoEnableImagingPipeline)) {
+    if ((windowRecord->gfxcaps & kPsychGfxCapFBO) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontAutoEnableImagingPipeline) && !EmulateOldPTB) {
         // Support for basic use of the PTB imaging pipeline and/or for fast offscreen windows
         // is available - a GPU + driver combo with support for OpenGL framebuffer objects with
         // at least RGBA8 format and rectangle rendertargets.

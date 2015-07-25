@@ -43,7 +43,7 @@
     Copyrights and license:
 
             This drivers copyright:
-            Copyright © 2008-2014 Mario Kleiner.
+            Copyright © 2008-2015 Mario Kleiner.
 
             This driver contains code for radeon DCE-4 and AVIVO which are derived from the free software radeon kms
             driver for Linux (radeon_display.c, radeon_regs.h). The Radeon kms driver has the following copyright:
@@ -93,7 +93,7 @@
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for August 2014 (last update e-mail patch / commit 2014-08-22). Would need updates for anything after start of September 2014 */
+/* Mappings up to date for June 2015 (last update e-mail patch / commit 2015-05-12). Would need updates for anything after start of July 2015 */
 
 /* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE8(void)
