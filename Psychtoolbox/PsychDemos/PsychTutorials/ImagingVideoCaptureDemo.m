@@ -27,6 +27,7 @@ try
     %PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
     %PsychImaging('AddTask', 'General', 'EnableBits++Mono++Output');
     %PsychImaging('AddTask', 'AllViews', 'GeometryCorrection', '/Users/kleinerm/Library/Preferences/Psychtoolbox/GeometryCalibration/BVLCalibdata_0_1680_1050.mat');
+    %PsychImaging('AddTask', 'AllViews', 'GeometryCorrection', '/home/kleinerm/.Psychtoolbox/GeometryCalibration/CSVCalibdata_0.mat');
     %Testblock for Radeon native 10bpc framebuffer support:
     %PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
     %PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
