@@ -75,13 +75,9 @@ try
     success = LogVarTester(h,'h') && success;
     
     
-catch
+catch me
     success = false;
-    err = lasterror;
-    fprintf('error ocurred: "%s"\nstack:\n',err.message);
-    for p=1:length(err.stack)
-        fprintf('Error in ==> %s at %d\n',err.stack(p).name,err.stack(p).line);
-    end
+    fprintf('Unit test %s failed, error ocurred:\n%s\n',mfilename,me.getReport());
 end
 
 
@@ -91,7 +87,7 @@ end
 function [success,var2,str] = Var2StrTester(var,name) %#ok<STOUT>
 str = Var2Str(var,'var2');
 eval(str);
-if ~isequalwithequalnans(var,var2)
+if ~isequaln(var,var2)
     success = false;
     fprintf('Var2Str failed on variable %s\n',name);
 else
@@ -105,7 +101,7 @@ str = fread(fid,inf,'*char');
 fclose(fid);
 delete(fullfile(cd,fname));
 eval(str);
-if ~isequalwithequalnans(var,var2)
+if ~isequaln(var,var2)
     success = false;
     fprintf('LogVar failed on variable %s\n',name);
 else
