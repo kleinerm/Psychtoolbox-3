@@ -5,7 +5,8 @@ function isEmpty = IsEmptyRect(a)
 % "A rectangle is considered empty if the bottom coordinate is less than 
 % or equal to the top coordinate or if the right coordinate is less than 
 % or equal to the left." (Apple, Inside Mac)
-% Also see PsychRects.
+%
+% See also PsychRects/Contents.
 
 % 7/10/96 dgp  Wrote it.
 % 8/5/96 dgp check rect size.

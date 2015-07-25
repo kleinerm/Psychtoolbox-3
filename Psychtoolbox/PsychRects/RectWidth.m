@@ -2,7 +2,8 @@ function width = RectWidth(rect)
 % width = RectWidth(rect)
 %
 % Returns the rect's width.
-% Also see PsychRects.
+%
+% See also PsychRects/Contents.
 
 % 5/12/96 dgp wrote it.
 % 7/10/96 dgp PsychRects

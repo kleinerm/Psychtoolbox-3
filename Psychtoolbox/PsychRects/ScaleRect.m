@@ -6,7 +6,7 @@ function r = ScaleRect(r,horizontalFactor,verticalFactor)
 % by the vertical scale factor. Also see Expand and InsetRect. 
 % Input can be multiple rects, concatenated into a Mx4 matrix
 %
-% Also see PsychRects.
+% See also PsychRects/Contents.
 
 % 5/27/96 dgp Denis Pelli.
 % 7/10/96 dgp PsychRects.

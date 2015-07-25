@@ -3,7 +3,7 @@ function inside = IsInRect(x,y,rect)
 %
 % Is location x,y inside the rect?
 %
-% Also see PsychRects.
+% See also PsychRects/Contents.
 
 % 3/5/97  dhb  Wrote it.
 

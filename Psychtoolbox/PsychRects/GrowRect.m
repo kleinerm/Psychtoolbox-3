@@ -9,7 +9,7 @@ function r = GrowRect(r,horizontalPixels,verticalPixels)
 % shrink the rect, though be careful as no checks are performed to see if
 % the resulting rect is valid.
 %
-% Also see PsychRects.
+% See also PsychRects/Contents.
 
 % 1/13/10 dcn Wrote it, based on ScaleRect
 

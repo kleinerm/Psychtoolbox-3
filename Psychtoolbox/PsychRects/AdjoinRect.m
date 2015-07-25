@@ -4,7 +4,8 @@ function r=AdjoinRect(r,fixedRect,fixedSide)
 % Moves rect to be outside and alongside the specified edge of fixedRect.
 % The legal values for fixedSide are: RectLeft, RectRight, 
 % RectTop, and RectBottom.
-% Also see PsychRects.
+%
+% See also PsychRects/Contents.
 
 % Denis Pelli 5/26/96, 7/10/96, 8/6/96
 

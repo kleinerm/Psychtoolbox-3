@@ -2,7 +2,8 @@ function newRect = UnionRect(a,b)
 % newRect = UnionRect(a,b)
 % 
 % Returns the smallest rect that contains the two rects a and b.
-% Also see PsychRects.
+%
+% See also PsychRects/Contents.
 
 % 7/10/96 dgp  Wrote it.
 % 8/5/96 dgp check rect size.

@@ -10,7 +10,7 @@ function newRect = OffsetRect(oldRect,x,y)
 % to a whole matrix of rects 'oldRect' --> Apply a common offset to a large
 % number of rects simultaneously.
 %
-% Also see PsychRects.
+% See also PsychRects/Contents.
 
 % 5/16/96  dhb  Relented to Pelli's request to change calling order
 %               from v,h to x,y.

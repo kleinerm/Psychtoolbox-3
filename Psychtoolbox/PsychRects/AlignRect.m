@@ -9,7 +9,8 @@ function rect=AlignRect(rect,fixedRect,side1,side2)
 % For backward compatibility, also accepts 1,2,3,4,5. You may use the
 % pre-defined constants RectLeft,RectRight,RectTop,RectBottom, but there is
 % no named constant for centering.
-% Also see PsychRects.
+%
+% See also PsychRects/Contents.
 
 % Denis Pelli 5/27/96, 7/10/96, 8/5/96, 11/8/06
 

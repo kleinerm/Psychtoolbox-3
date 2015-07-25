@@ -1,11 +1,11 @@
 function [x, y] = RectCenterd(r)
-%   [x,y] = RectCenterd(rect);
+% [x,y] = RectCenterd(rect);
 %
-%	RectCenterd returns the x,y point at the center of a rect. It does the
-%	same as RectCenter, just without rounding the result to integer
-%	coordinates.
+% RectCenterd returns the x,y point at the center of a rect. It does the
+% same as RectCenter, just without rounding the result to integer
+% coordinates.
 %
-%	See also PsychRects, CenterRectOnPoint.
+% See also PsychRects/Contents, CenterRectOnPoint.
 
 %	9/13/99	Allen Ingling wrote it.
 %	10/6/99	dgp Fixed bug.

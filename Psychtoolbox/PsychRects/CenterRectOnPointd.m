@@ -5,8 +5,8 @@ function newRect = CenterRectOnPointd(rect,x,y)
 % The center of the rect is reported by RectCenterd. This is the same as
 % CenterRectOnPoint, just that it returns floating point results instead of
 % results that are rounded to integral pixel positions.
-% 
-% See also PsychRects, RectCenter, RectCenterd
+%
+% See also PsychRects/Contents, RectCenter, RectCenterd
 
 % 9/13/99      Allen Ingling wrote it
 % 10/6/99  dgp With permission from Allen, changed name from "PinRect", which 

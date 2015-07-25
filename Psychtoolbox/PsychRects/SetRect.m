@@ -4,7 +4,8 @@ function newRect = SetRect(left,top,right,bottom)
 % Create a rect with the specified coordinates.
 % This is equivalent to:
 %	newRect=[left,top,right,bottom];
-% Also see PsychRects.
+%
+% See also PsychRects/Contents.
 
 % dgp 5/12/96  Make sure the created rect is a column, not a row, vector
 % dgp 5/12/96  Use symbolic indices, added usage check.

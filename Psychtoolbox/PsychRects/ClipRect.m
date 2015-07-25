@@ -3,7 +3,8 @@ function newRect = ClipRect(a,b)
 % 
 % Returns the rect that is the intersection of the two rects a and b.
 % Returns an empty rect [0 0 0 0] if the two rects are apart.
-% Also see PsychRects.
+%
+% See also PsychRects/Contents.
 
 % 7/5/96  dgp  Wrote it.
 % 7/6/96  dgp  Return empty matrix [] only if apart.
