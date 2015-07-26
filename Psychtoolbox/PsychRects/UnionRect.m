@@ -20,7 +20,7 @@ if size(b,1) > size(a,1)
 else
     newRect = a;
 end
-newRect(:,RectTop)   =min(a(:,RectTop)   ,b(:,RectTop));
-newRect(:,RectBottom)=max(a(:,RectBottom),b(:,RectBottom));
-newRect(:,RectLeft)  =min(a(:,RectLeft)  ,b(:,RectLeft));
-newRect(:,RectRight) =max(a(:,RectRight) ,b(:,RectRight));
+newRect(:,2) = min(a(:,2) ,b(:,2));
+newRect(:,4) = max(a(:,4) ,b(:,4));
+newRect(:,1) = min(a(:,1) ,b(:,1));
+newRect(:,3) = max(a(:,3) ,b(:,3));

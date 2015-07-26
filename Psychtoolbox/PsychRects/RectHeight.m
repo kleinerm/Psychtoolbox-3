@@ -17,4 +17,4 @@ end
 if size(rect,2)~=4
 	error('Wrong size rect argument. Usage:  height = RectHeight(rect)');
 end
-height = rect(:,RectBottom)-rect(:,RectTop);
+height = rect(:,4)-rect(:,2);

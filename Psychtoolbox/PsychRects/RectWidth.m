@@ -16,4 +16,4 @@ end
 if size(rect,2)~=4
 	error('Wrong size rect argument. Usage:  width = RectWidth(rect)');
 end
-width = rect(:,RectRight) - rect(:,RectLeft);
+width = rect(:,3) - rect(:,1);

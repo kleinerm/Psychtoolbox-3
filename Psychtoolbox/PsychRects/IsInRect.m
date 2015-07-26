@@ -11,5 +11,5 @@ function inside = IsInRect(x,y,rect)
 % 3/5/97  dhb  Wrote it.
 % 7/26/15 dcn  Vectorized
 
-inside = x >= rect(:,RectLeft) & x <= rect(:,RectRight) & ...
-		 y >= rect(:,RectTop)  & y <= rect(:,RectBottom);
+inside = x >= rect(:,1) & x <= rect(:,3) & ...
+		 y >= rect(:,2) & y <= rect(:,4);

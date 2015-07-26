@@ -28,8 +28,8 @@ end
 if size(rect,2)~=4 || size(fixedRect,2)~=4
 	error('Wrong size rect argument. Usage:  [rect,dh,dv] = CenterRectd(rect,fixedRect)');
 end
-dv=(fixedRect(:,RectTop)+fixedRect(:,RectBottom)-rect(:,RectTop)-rect(:,RectBottom))/2;
-dh=(fixedRect(:,RectLeft)+fixedRect(:,RectRight)-rect(:,RectLeft)-rect(:,RectRight))/2;
+dv=(fixedRect(:,2)+fixedRect(:,4)-rect(:,2)-rect(:,4))/2;
+dh=(fixedRect(:,1)+fixedRect(:,3)-rect(:,1)-rect(:,3))/2;
 rect=OffsetRect(rect,dh,dv);
 
 

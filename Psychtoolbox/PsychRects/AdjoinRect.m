@@ -30,14 +30,14 @@ if ~isscalar(fixedSide)
 end
 
 switch fixedSide
-    case RectLeft
-        r=OffsetRect(r,fixedRect(:,fixedSide)-r(:,RectRight),0);
-    case RectRight
-        r=OffsetRect(r,fixedRect(:,fixedSide)-r(:,RectLeft),0);
-    case RectTop
-        r=OffsetRect(r,0,fixedRect(:,fixedSide)-r(:,RectBottom));
-    case RectBottom
-        r=OffsetRect(r,0,fixedRect(:,fixedSide)-r(:,RectTop));
+    case 1
+        r=OffsetRect(r,fixedRect(:,fixedSide)-r(:,3),0);
+    case 3
+        r=OffsetRect(r,fixedRect(:,fixedSide)-r(:,1),0);
+    case 2
+        r=OffsetRect(r,0,fixedRect(:,fixedSide)-r(:,4));
+    case 4
+        r=OffsetRect(r,0,fixedRect(:,fixedSide)-r(:,2));
     otherwise
         error('Illegal value %f of ''fixedSide''',fixedSide);
 end

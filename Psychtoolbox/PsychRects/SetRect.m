@@ -23,18 +23,18 @@ end
 szs = [length(left) length(top) length(right) length(bottom)];
 if all(szs==1)
     newRect=zeros(1,4);
-    newRect(RectTop)=top;
-    newRect(RectLeft)=left;
-    newRect(RectBottom)=bottom;
-    newRect(RectRight)=right;
+    newRect(2)=top;
+    newRect(1)=left;
+    newRect(4)=bottom;
+    newRect(3)=right;
 else
     maxsz = max(szs);
     if ~all(szs==1 | szs==maxsz)
         error('All inputs must either have one elemnt or the same number of elements as the longest input')
     end
     newRect=zeros(maxsz,4);
-    newRect(:,RectTop)=top;
-    newRect(:,RectLeft)=left;
-    newRect(:,RectBottom)=bottom;
-    newRect(:,RectRight)=right;
+    newRect(:,2)=top;
+    newRect(:,1)=left;
+    newRect(:,4)=bottom;
+    newRect(:,3)=right;
 end

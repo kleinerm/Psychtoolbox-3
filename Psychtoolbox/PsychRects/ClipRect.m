@@ -26,10 +26,10 @@ else
     newRect = a;
 end
 
-newRect(:,RectTop)   =max(a(:,RectTop)   ,b(:,RectTop));
-newRect(:,RectBottom)=min(a(:,RectBottom),b(:,RectBottom));
-newRect(:,RectLeft)  =max(a(:,RectLeft)  ,b(:,RectLeft));
-newRect(:,RectRight) =min(a(:,RectRight) ,b(:,RectRight));
+newRect(:,2) = max(a(:,2) ,b(:,2));
+newRect(:,4) = min(a(:,4) ,b(:,4));
+newRect(:,1) = max(a(:,1) ,b(:,1));
+newRect(:,3) = min(a(:,3) ,b(:,3));
 
 qZero = RectWidth(newRect)<0 | RectHeight(newRect)<0;
 newRect(qZero,:) = 0;

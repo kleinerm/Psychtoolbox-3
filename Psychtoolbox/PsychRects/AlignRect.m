@@ -53,9 +53,9 @@ for i=1:length(side)
             rect=CenterRectd(rect,fixedRect);
         case 5
             rect=CenterRect(rect,fixedRect);
-        case {RectLeft,RectRight},
+        case {1,3},
             rect=OffsetRect(rect,fixedRect(:,side{i})-rect(:,side{i}),0);
-        case {RectTop,RectBottom},
+        case {2,4},
             rect=OffsetRect(rect,0,fixedRect(:,side{i})-rect(:,side{i}));
     end
 end

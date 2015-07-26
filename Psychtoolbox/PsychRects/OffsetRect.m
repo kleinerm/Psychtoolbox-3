@@ -53,16 +53,16 @@ if size(oldRect, 1)==4
     % ensure row vectors
     x = x(:).';
     y = y(:).';
-    newRect(RectTop, :) = oldRect(RectTop, :) + y;
-    newRect(RectBottom, :) = oldRect(RectBottom, :) + y;
-    newRect(RectLeft, :) = oldRect(RectLeft, :) + x;
-    newRect(RectRight, :) = oldRect(RectRight, :) + x;
+    newRect(2, :) = oldRect(2, :) + y;
+    newRect(4, :) = oldRect(4, :) + y;
+    newRect(1, :) = oldRect(1, :) + x;
+    newRect(3, :) = oldRect(3, :) + x;
 else
     % ensure column vectors
     x = x(:);
     y = y(:);
-    newRect(:, RectTop) = oldRect(:, RectTop) + y;
-    newRect(:, RectBottom) = oldRect(:, RectBottom) + y;
-    newRect(:, RectLeft) = oldRect(:, RectLeft) + x;
-    newRect(:, RectRight) = oldRect(:, RectRight) + x;
+    newRect(:, 2) = oldRect(:, 2) + y;
+    newRect(:, 4) = oldRect(:, 4) + y;
+    newRect(:, 1) = oldRect(:, 1) + x;
+    newRect(:, 3) = oldRect(:, 3) + x;
 end
