@@ -30,8 +30,6 @@ if size(rect,2)~=4 || size(fixedRect,2)~=4
 end
 dv=(fixedRect(:,RectTop)+fixedRect(:,RectBottom)-rect(:,RectTop)-rect(:,RectBottom))/2;
 dh=(fixedRect(:,RectLeft)+fixedRect(:,RectRight)-rect(:,RectLeft)-rect(:,RectRight))/2;
-dv=dv;
-dh=dh;
 rect=OffsetRect(rect,dh,dv);
 
 
