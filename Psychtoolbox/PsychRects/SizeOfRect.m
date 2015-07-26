@@ -1,8 +1,8 @@
 function s=SizeOfRect(rect)
 % s=SizeOfRect(rect);
-% Accepts a Psychtoolbox rect [left, top, right, bottom] and returns the
-% size [rows columns] of a MATLAB array (i.e. image) just big enough to
-% hold all the pixels.
+% Accepts a Psychtoolbox rect [left, top, right, bottom] or Mx4 rect-array
+% and returns the size [rows columns] of a MATLAB array (i.e. image) just
+% big enough to hold all the pixels.
 %
 % See also PsychRects/Contents, RectOfMatrix, RectHeight, RectWidth.
 

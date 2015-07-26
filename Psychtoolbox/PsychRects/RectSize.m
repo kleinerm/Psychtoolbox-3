@@ -1,7 +1,8 @@
 function [width,height] = RectSize(rect)
 % [width,height] = RectSize(rect)
 %
-% Returns the rect's width and height.
+% Returns the rect's width and height, or the width and height of each rect
+% in the rect array.
 %
 % See also PsychRects/Contents, SizeOfRect.
 

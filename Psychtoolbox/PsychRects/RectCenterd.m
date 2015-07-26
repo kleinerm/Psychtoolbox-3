@@ -4,6 +4,8 @@ function [x, y] = RectCenterd(r)
 % RectCenterd returns the x,y point at the center of a rect. It does the
 % same as RectCenter, just without rounding the result to integer
 % coordinates.
+% rect can be a rect-array, in which case the center for each rect is
+% returned.
 %
 % See also PsychRects/Contents, CenterRectOnPoint.
 
