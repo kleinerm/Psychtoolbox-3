@@ -28,13 +28,13 @@ function reply=Ask(window,message,textColor,bgColor,replyFun,rectAlign1,rectAlig
 %
 % See also GetString.
 
-% 3/9/97  dgp	Wrote it, based on dhb's WaitForClick.m
+% 3/9/97   dgp	Wrote it, based on dhb's WaitForClick.m
 % 3/19/00  dgp	Suggest turning off font smoothing. Default colors.
 % 8/14/04  dgp	As suggested by Paul Thiem, added an example (and better argument checking) 
 %               to make it clear that replyFun must be supplied as a string and rectAlign1 as a value.
 % 8/14/04  dgp	Call Screen 'WindowToFront'.
 % 1/19/07  asg  Modified to work in OSX (for asg's purposes).
-% 6/6/07   mk   remove Screen('WindowToFron') unsupported on PTB-3, other
+% 6/6/07   mk   remove Screen('WindowToFront') unsupported on PTB-3, other
 %               small fixes...
 
 dontClear = 1;
