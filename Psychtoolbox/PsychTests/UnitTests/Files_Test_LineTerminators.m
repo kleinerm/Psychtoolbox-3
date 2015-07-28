@@ -30,9 +30,9 @@ try
     % two terminators in a row, so empty line->cell in between
     success = tester(BreakLines(d),{'1' char(zeros(1,0)) '2'},'BreakLines(d)') && success;
     
-catch
+catch me
     success = false;
-    fprintf('error ocurred: "%s"\n',lasterr);
+    fprintf('Unit test %s failed, error ocurred:\n%s\n',mfilename,me.getReport());
 end
 
 
