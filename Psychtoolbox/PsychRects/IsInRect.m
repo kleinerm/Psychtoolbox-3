@@ -2,14 +2,14 @@ function inside = IsInRect(x,y,rect)
 % inside = IsInRect(x,y,rect)
 %
 % Is location x,y inside the rect?
-% x and/or y can also be column vectors, and rect can be an Mx4 rect-array.
-% This means you can test one point against mutliple rects, multiple points
-% against one rect or multiple points each against their own rect
 %
-% See also PsychRects/Contents.
+% Also see PsychRects.
 
 % 3/5/97  dhb  Wrote it.
-% 7/26/15 dcn  Vectorized
 
-inside = x >= rect(:,1) & x <= rect(:,3) & ...
-		 y >= rect(:,2) & y <= rect(:,4);
+if (x >= rect(RectLeft) && x <= rect(RectRight) && ...
+		y >= rect(RectTop) && y <= rect(RectBottom) )
+	inside = 1;
+else
+	inside = 0;
+end

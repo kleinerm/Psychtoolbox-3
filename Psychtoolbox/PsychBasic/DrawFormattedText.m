@@ -103,6 +103,8 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 %           calculations. This is "whack a mole". Making it better for one OS
 %           can make it worse for another OS, there is no winning. (MK)
 % 07/21/15  Remove forced line breaks at 250 chars on OSX. No longer needed. (MK)
+% 07/25/15  Remove Windows & -> && special handling, now handled by Screen('DrawText')
+%           via DT_NOPREFIX flag. Suggested by Diederick. (MK)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
@@ -284,7 +286,7 @@ if bjustify
     % results:
     blankbounds = Screen('TextBounds', win, 'X', [], [], 1, righttoleft);
     blankwidth = RectWidth(blankbounds);
-    sx = winRect(1);
+    sx = winRect(RectLeft);
     
     % Also need some approximation of the height to baseline:
     baselineHeight = RectHeight(blankbounds);
@@ -353,25 +355,13 @@ while ~isempty(tstring)
         dolinefeed = 0;
     end
 
-    if IsWin
-        % On Windows, a single ampersand & is translated into a control
-        % character to enable underlined text. To avoid this and actually
-        % draw & symbols in text as & symbols in text, we need to store
-        % them as two && symbols. -> Replace all single & by &&.
-        if isa(curstring, 'char')
-            % Only works with char-acters, not doubles, so we can't do this
-            % when string is represented as double-encoded Unicode:
-            curstring = strrep(curstring, '&', '&&');
-        end
-    end
-    
     % tstring contains the remainder of the input string to process in next
     % iteration, curstring is the string we need to draw now.
 
     % Perform crude clipping against upper and lower window borders for this text snippet.
     % If it is clearly outside the window and would get clipped away by the renderer anyway,
     % we can safe ourselves the trouble of processing it:
-    if disableClip || ((yp + theight >= winRect(2)) && (yp - theight <= winRect(4)))
+    if disableClip || ((yp + theight >= winRect(RectTop)) && (yp - theight <= winRect(RectBottom)))
         % Inside crude clipping area. Need to draw.
         noclip = 1;
     else
@@ -392,8 +382,8 @@ while ~isempty(tstring)
         if xcenter || flipHorizontal || flipVertical || rjustify
             % Compute text bounding box for this substring:
             [bbox, refbbox] = Screen('TextBounds', win, curstring, 0, 0, [], righttoleft);
-            deltaboxX = refbbox(1) - bbox(1);
-            deltaboxY = refbbox(2) - bbox(2);
+            deltaboxX = refbbox(RectLeft) - bbox(RectLeft);
+            deltaboxY = refbbox(RectTop) - bbox(RectTop);
         end
         
         % Horizontally centered output required?
@@ -406,7 +396,7 @@ while ~isempty(tstring)
         
         % Right justified (aligned) output required?
         if rjustify
-            xp = winRect(3) - RectWidth(bbox);
+            xp = winRect(RectRight) - RectWidth(bbox);
         end
 
         if flipHorizontal || flipVertical

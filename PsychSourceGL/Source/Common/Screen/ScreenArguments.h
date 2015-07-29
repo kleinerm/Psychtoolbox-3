@@ -71,7 +71,7 @@ psych_bool			PsychIsUnaffiliatedScreenNumberArg(int position);
 
 // put and get color and rect and depth specifiers directly from arguments
 psych_bool 		PsychCopyInColorArg(int position, psych_bool required, PsychColorType *color);
-psych_bool 		PsychCopyOutColorArg(int position, psych_bool required, PsychColorType *color);
+psych_bool 		PsychCopyOutColorArg(int position, psych_bool required, PsychColorType *color, PsychWindowRecordType *windowRecord);
 psych_bool 		PsychCopyInRectArg(int position, psych_bool required, PsychRectType rect);
 psych_bool 		PsychCopyOutRectArg(int position, psych_bool required, PsychRectType rect);
 psych_bool 		PsychAllocOutRectArg(int position, psych_bool required, const double **rect);

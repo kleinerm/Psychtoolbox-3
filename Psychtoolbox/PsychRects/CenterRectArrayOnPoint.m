@@ -6,7 +6,8 @@ function rects = CenterRectArrayOnPoint(rects, x, y)
 % of all given 'rects' is placed onto position (x,y)
 % by shifting the whole set of 'rects' accordingly.
 %
-% See also PsychRects/Contents.
+% Also see PsychRects.
+%
 
 % History:
 % 19-Apr-2015   Written by Natalia Zaretskaya.
