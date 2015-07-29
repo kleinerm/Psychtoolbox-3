@@ -286,7 +286,7 @@ if bjustify
     % results:
     blankbounds = Screen('TextBounds', win, 'X', [], [], 1, righttoleft);
     blankwidth = RectWidth(blankbounds);
-    sx = winRect(1);
+    sx = winRect(RectLeft);
     
     % Also need some approximation of the height to baseline:
     baselineHeight = RectHeight(blankbounds);
@@ -361,7 +361,7 @@ while ~isempty(tstring)
     % Perform crude clipping against upper and lower window borders for this text snippet.
     % If it is clearly outside the window and would get clipped away by the renderer anyway,
     % we can safe ourselves the trouble of processing it:
-    if disableClip || ((yp + theight >= winRect(2)) && (yp - theight <= winRect(4)))
+    if disableClip || ((yp + theight >= winRect(RectTop)) && (yp - theight <= winRect(RectBottom)))
         % Inside crude clipping area. Need to draw.
         noclip = 1;
     else
@@ -382,8 +382,8 @@ while ~isempty(tstring)
         if xcenter || flipHorizontal || flipVertical || rjustify
             % Compute text bounding box for this substring:
             [bbox, refbbox] = Screen('TextBounds', win, curstring, 0, 0, [], righttoleft);
-            deltaboxX = refbbox(1) - bbox(1);
-            deltaboxY = refbbox(2) - bbox(2);
+            deltaboxX = refbbox(RectLeft) - bbox(RectLeft);
+            deltaboxY = refbbox(RectTop) - bbox(RectTop);
         end
         
         % Horizontally centered output required?
@@ -396,7 +396,7 @@ while ~isempty(tstring)
         
         % Right justified (aligned) output required?
         if rjustify
-            xp = winRect(3) - RectWidth(bbox);
+            xp = winRect(RectRight) - RectWidth(bbox);
         end
 
         if flipHorizontal || flipVertical
