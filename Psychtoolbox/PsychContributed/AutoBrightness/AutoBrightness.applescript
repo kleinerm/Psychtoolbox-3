@@ -7,10 +7,15 @@
 -- the Display/Colors panel by the internal name "displaysDisplayTab" 
 -- instead using the localized name "Display". 
 -- June 1, 2015. Polished the comments.
---July 25, 2015 Previously worked on Mavericks (Mac OS X 10.9). 
---Now enhanced to also support Yosemite (Mac OS X 10.10.4).
---Not yet tested on earlier version of Mac OS X (< 10.9) or
---on El Capitan (OS X 10.11).
+-- July 25, 2015 Previously worked on Mavericks (Mac OS X 10.9). 
+-- Now enhanced to also support Yosemite (Mac OS X 10.10.4).
+-- August 3, 2015 Now uses try-blocks to try first group 1 and then group 2
+-- to cope with variations in Apple's Mac OS. I find that under Mac OS X 10.9 
+-- the checkbox is always in group 1. Under Mac OS X 10.10 I have previously
+-- found it in group 2, but now I find it in group 1, so it seems best for the
+-- program to keep trying groups until it finds the checkbox: first 1, then 2, then give up.
+-- Not yet tested on earlier version of Mac OS X (< 10.9) or
+-- on El Capitan (OS X 10.11).
 --
 -- This applescript allows you to disable (or re-enable) a feature of Apple 
 -- Macintosh liquid crystal displays that is undesirable for vision experiments 
@@ -28,7 +33,7 @@
 -- presumably the product of the two factors: luminance of the source 
 -- and transmission of the liquid crystal, at each wavelength.
 --
--- CAUTION: This script uses the "System Preferences: Displays" panel,
+-- BEWARE DELAY: This script uses the "System Preferences: Displays" panel,
 -- which takes 30 s to open, if it isn't already open.  You should either
 -- open System Preferences in advance, or be prepared to wait 30 s when you
 -- call this script. If System Preferences was already open, then this script 
@@ -38,7 +43,6 @@
 -- you call AutoBrightness.
 --
 -- AutoBrightness screenNumber newStatus
---
 -- The parameter "newStatus" (integer 0 or 1) indicates whether you want to
 -- turn the autobrightness feature on (newStatus==1) or off (newStatus==0).
 -- If  the newStatus argument is omitted (or anything other than 0 or 1)
@@ -126,7 +130,6 @@ on run argv
 		set screenNumber to 0 -- Default is the main screen.
 	end try
 	set windowNumber to screenNumber + 1 -- Has been tested only for screenNumber==0
-	
 	set leaveSystemPrefsRunning to true -- this could be made a third argument
 	tell application "System Preferences"
 		set wasRunning to running
@@ -145,13 +148,29 @@ on run argv
 			return -99
 		end if
 		tell process "System Preferences"
-			set os_version to do shell script "sw_vers -productVersion"
-			if the os_version is less than "10.10.0" then
-				--Mac OS X 10.9 Mavericks, or earlier.
-				tell tab group 1 of window windowNumber
-					--click radio button "Display"-- commented out because it won't work in non-English installations
-					tell group 1
-						try
+			--set os_version to do shell script "sw_vers -productVersion"
+			set versionString to system version of (system info)
+			considering numeric strings
+				--set isYosemiteOrBetter to os_version ≥ "10.10.0"
+				set isYosemiteOrBetter to versionString ≥ "10.10.0"
+			end considering
+			--if not isYosemiteOrBetter then
+			--Mac OS X 10.9 Mavericks, or earlier.
+			tell tab group 1 of window windowNumber
+				--click radio button "Display"-- commented out because it won't work in non-English installations
+				try
+					tell group 1 -- works on Mac OS X 10.9 Mavericks and sometimes Yosemite
+						--set slider 1's value to 0.5 -- Set brightness
+						tell checkbox 1 -- Automatically adjust brightness  
+							set oldStatus to value
+							if newStatus is in {0, 1} and newStatus is not oldStatus then
+								click -- It's wrong, so change it.
+							end if
+						end tell
+					end tell
+				on error
+					try
+						tell group 2 -- works other times on Mac OS X 10.10 Yosemite
 							--set slider 1's value to 0.5 -- Set brightness
 							tell checkbox 1 -- Automatically adjust brightness  
 								set oldStatus to value
@@ -159,30 +178,12 @@ on run argv
 									click -- It's wrong, so change it.
 								end if
 							end tell
-						on error
-							set oldStatus to 0
-						end try
-					end tell
-				end tell
-			else
-				--Mac OS X 10.10 Yosemite, or later.
-				tell tab group 1 of window windowNumber
-					--click radio button "Display"-- commented out because it won't work in non-English installations
-					tell group 2
-						try
-							--set slider 1's value to 0.5 -- Set brightness
-							tell checkbox 1 -- Automatically adjust brightness  
-								set oldStatus to value
-								if newStatus is in {0, 1} and newStatus is not oldStatus then
-									click -- It's wrong, so change it.
-								end if
-							end tell
-						on error
-							set oldStatus to 0
-						end try
-					end tell
-				end tell
-			end if
+						end tell
+					on error
+						set oldStatus to 0
+					end try
+				end try
+			end tell
 		end tell
 	end tell
 	if wasRunning or leaveSystemPrefsRunning then
