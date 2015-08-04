@@ -1298,7 +1298,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                     // Tell user:
                     if (PsychPrefStateGet_Verbosity() > 2) {
                         printf("PTB-INFO: Implausible measured vblank endline %i indicates that the beamposition query workaround should be used for your GPU.\n", VBL_Endline);
-                        printf("PTB-INFO: Enabling the beamposition workaround, as explained in 'help ConserveVRAM', section 'kPsychUseBeampositionQueryWorkaround'.\n");
+                        printf("PTB-INFO: Enabling the beamposition workaround, as explained in 'help ConserveVRAMSettings', section 'kPsychUseBeampositionQueryWorkaround'.\n");
                     }
                 }
 
@@ -1328,7 +1328,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                         printf("PTB-INFO: for it. This will introduce a very small and constant offset (typically << 1 msec). Read 'help BeampositionQueries'\n");
                         printf("PTB-INFO: for how to correct this, should you really require that last few microseconds of precision.\n");
                         printf("PTB-INFO: Btw. this can also mean that your systems beamposition queries are slightly broken. It may help timing precision to\n");
-                        printf("PTB-INFO: enable the beamposition workaround, as explained in 'help ConserveVRAM', section 'kPsychUseBeampositionQueryWorkaround'.\n");
+                        printf("PTB-INFO: enable the beamposition workaround, as explained in 'help ConserveVRAMSettings', section 'kPsychUseBeampositionQueryWorkaround'.\n");
                     }
                 }
             }
