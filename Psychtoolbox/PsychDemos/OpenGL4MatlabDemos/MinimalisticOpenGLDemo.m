@@ -109,6 +109,7 @@ function MinimalisticOpenGLDemo(multiSample, imagingPipeline, checkerBoardTextur
 % 05-Mar-2006 -- Cleaned up for public consumption (MK)
 % 19-Apr-2006 -- Derived from SpinningCubeDemo (MK)
 % 05-May-2006 -- Added some demo code for basic texture mapping (MK)
+% 04-Aug-2015 -- Use modern way to setup imaging pipeline (MK)
 
 if nargin < 1
     multiSample = 0;
@@ -127,7 +128,7 @@ if isempty(imagingPipeline)
 end
 
 if imagingPipeline > 0
-    imagingPipeline = kPsychNeedFastBackingStore;
+    imagingPipeline = 1;
 else
     imagingPipeline = 0;
 end
@@ -163,7 +164,7 @@ else
 end
 
 % Is the script running in OpenGL Psychtoolbox? Abort, if not.
-AssertOpenGL;
+PsychDefaultSetup(0);
 
 % Find the screen to use for display:
 screenid=max(Screen('Screens'));
@@ -174,8 +175,14 @@ screenid=max(Screen('Screens'));
 % glAccum() function.
 InitializeMatlabOpenGL([],[],[], doAccum);
 
+if imagingPipeline > 0
+  % Use imaging pipeline in minimal configuration with a virtual framebuffer:
+  PsychImaging('PrepareConfiguration');
+  PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+end
+
 % Open a double-buffered full-screen window on the main displays screen.
-[win , winRect] = Screen('OpenWindow', screenid, 0,[],[],[],0,multiSample, imagingPipeline);
+[win , winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], 0, multiSample);
 
 % Setup the OpenGL rendering context of the onscreen window for use by
 % OpenGL wrapper. After this command, all following OpenGL commands will
