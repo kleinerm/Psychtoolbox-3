@@ -105,6 +105,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 07/21/15  Remove forced line breaks at 250 chars on OSX. No longer needed. (MK)
 % 07/25/15  Remove Windows & -> && special handling, now handled by Screen('DrawText')
 %           via DT_NOPREFIX flag. Suggested by Diederick. (MK)
+% 08/08/15  Fix bug for Unicode text introduced when improving single-line text centering. (MK)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
@@ -229,7 +230,7 @@ theight = Screen('TextSize', win) * vSpacing;
 % of text string and use its height as text height for linefeeds:
 numlines = length(strfind(char(tstring), char(10))) + 1;
 if numlines == 1
-    theight = RectHeight(Screen('TextBounds', win, char(tstring)));
+    theight = RectHeight(Screen('TextBounds', win, tstring));
 end
 
 % Default y start position is top of window:
