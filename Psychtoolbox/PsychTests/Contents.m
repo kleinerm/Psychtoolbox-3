@@ -15,6 +15,7 @@
 %   CIEConeFundamentalsTest         - Test/demonstrate routines for producing cone fundamentals according to CIE 170-1:2006
 %   Color3DLUTTest                  - Test PsychColorCorrection() method for 3D-CLUT color correction.
 %   ConvolutionKernelTest           - Test routine for correctness, accuracy and speed of PTB imaging convolution shaders.
+%   DatapixxGPUDitherpatternTest    - Low level diagnostic of GPU dithering bugs via Datapixx et al.
 %   DeinterlacerTest                - Simple correctness test for GLSL video image deinterlacer. INCOMPLETE.
 %   DrawingIntoTexturesTest         - Tests if using a texture as an offscreen window, i.e., for drawing, works.
 %   DrawTextFontSwitchSpeedTest - Test speed of text drawing when switching between different font type/style/size settings.
