@@ -141,8 +141,7 @@ try
     clear out
     
     
-catch
+catch me
     success = false;
-    fprintf('error ocurred: "%s"\n',lasterr);
-    
+    fprintf('Unit test %s failed, error ocurred:\n%s\n',mfilename,me.getReport());
 end

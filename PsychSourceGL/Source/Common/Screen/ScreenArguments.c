@@ -339,35 +339,38 @@ psych_bool PsychCopyInColorArg(int position, psych_bool required, PsychColorType
 	The return value indicates whether the return argument was present.   
 	
 */
-
-
-psych_bool PsychCopyOutColorArg(int position, psych_bool required, PsychColorType *color)
+psych_bool PsychCopyOutColorArg(int position, psych_bool required, PsychColorType *color, PsychWindowRecordType *windowRecord)
 {
-	double *colorArgMat;
-	
-	if(color->mode == kPsychRGBAColor){
-		if(!PsychAllocOutDoubleMatArg(position, required, 1, 4, 0, &colorArgMat))
-			return(FALSE);
-		colorArgMat[0] = (double)color->value.rgba.r;
-		colorArgMat[1] = (double)color->value.rgba.g;
-		colorArgMat[2] = (double)color->value.rgba.b;
-		colorArgMat[3] = (double)color->value.rgba.a;
-		return(TRUE);
-	}else if(color->mode == kPsychRGBColor){
-		if(!PsychAllocOutDoubleMatArg(position, required, 1, 3, 0, &colorArgMat))
-			return(FALSE);
-		colorArgMat[0] = (double)color->value.rgb.r;
-		colorArgMat[1] = (double)color->value.rgb.g;
-		colorArgMat[2] = (double)color->value.rgb.b;
-		return(TRUE);
-        }else if(color->mode == kPsychIndexColor){
-		if(!PsychAllocOutDoubleMatArg(position, required, 1, 1, 0, &colorArgMat))
-			return(FALSE);
-		colorArgMat[0] = (double)color->value.index.i;
-		return(TRUE);
-        }
-        PsychErrorExitMsg(PsychError_internal, "Unrecognized color mode");
-        return(FALSE);  //make the compiler happy
+    double *colorArgMat;
+    double deno;
+    
+    // Read denominator from windowRecord. Need to get rid of the sign, because it
+    // encodes if we have color clamping enabled or not:
+    deno = fabs(windowRecord->colorRange);
+
+    if(color->mode == kPsychRGBAColor){
+        if(!PsychAllocOutDoubleMatArg(position, required, 1, 4, 0, &colorArgMat))
+            return(FALSE);
+        colorArgMat[0] = (double)color->value.rgba.r;
+        colorArgMat[1] = (double)color->value.rgba.g;
+        colorArgMat[2] = (double)color->value.rgba.b;
+        colorArgMat[3] = (color->value.rgba.a == DBL_MAX) ? deno : (double) color->value.rgba.a;
+        return(TRUE);
+    }else if(color->mode == kPsychRGBColor){
+        if(!PsychAllocOutDoubleMatArg(position, required, 1, 3, 0, &colorArgMat))
+            return(FALSE);
+        colorArgMat[0] = (double)color->value.rgb.r;
+        colorArgMat[1] = (double)color->value.rgb.g;
+        colorArgMat[2] = (double)color->value.rgb.b;
+        return(TRUE);
+    }else if(color->mode == kPsychIndexColor){
+        if(!PsychAllocOutDoubleMatArg(position, required, 1, 1, 0, &colorArgMat))
+            return(FALSE);
+        colorArgMat[0] = (double)color->value.index.i;
+        return(TRUE);
+    }
+    PsychErrorExitMsg(PsychError_internal, "Unrecognized color mode");
+    return(FALSE);  //make the compiler happy
 }
 
 

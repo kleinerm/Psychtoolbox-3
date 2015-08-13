@@ -1152,7 +1152,7 @@ PsychError PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectTyp
     // printf("PRE: ltrb %d %d %d %d\n", brect.left, brect.top, brect.right, brect.bottom);
 
     // Pseudo-Draw the textString: Don't rasterize, just find bounding box.
-    DrawTextW(dc, textUniString, stringLengthChars, &brect, DT_CALCRECT);
+    DrawTextW(dc, textUniString, stringLengthChars, &brect, DT_CALCRECT | DT_NOPREFIX);
     MoveToEx(dc, (int) *xp, (int) *yp, NULL);
 
     // renderheight is the total height of the rendered textbox, not taking clipping into account.
@@ -1216,7 +1216,7 @@ PsychError PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectTyp
     memset((void*) scanptr, 0, oldWidth * renderheight * 4);
 
     // Really draw the textString: Rasterize!
-    DrawTextW(dc, textUniString, stringLengthChars, &trect, DT_NOCLIP);
+    DrawTextW(dc, textUniString, stringLengthChars, &trect, DT_NOCLIP | DT_NOPREFIX);
 
     // Sync the GDI so we have a final valid bitmap after this call:
     GdiFlush();

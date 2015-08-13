@@ -103,6 +103,9 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 %           calculations. This is "whack a mole". Making it better for one OS
 %           can make it worse for another OS, there is no winning. (MK)
 % 07/21/15  Remove forced line breaks at 250 chars on OSX. No longer needed. (MK)
+% 07/25/15  Remove Windows & -> && special handling, now handled by Screen('DrawText')
+%           via DT_NOPREFIX flag. Suggested by Diederick. (MK)
+% 08/08/15  Fix bug for Unicode text introduced when improving single-line text centering. (MK)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
@@ -227,7 +230,7 @@ theight = Screen('TextSize', win) * vSpacing;
 % of text string and use its height as text height for linefeeds:
 numlines = length(strfind(char(tstring), char(10))) + 1;
 if numlines == 1
-    theight = RectHeight(Screen('TextBounds', win, char(tstring)));
+    theight = RectHeight(Screen('TextBounds', win, tstring));
 end
 
 % Default y start position is top of window:
@@ -353,18 +356,6 @@ while ~isempty(tstring)
         dolinefeed = 0;
     end
 
-    if IsWin
-        % On Windows, a single ampersand & is translated into a control
-        % character to enable underlined text. To avoid this and actually
-        % draw & symbols in text as & symbols in text, we need to store
-        % them as two && symbols. -> Replace all single & by &&.
-        if isa(curstring, 'char')
-            % Only works with char-acters, not doubles, so we can't do this
-            % when string is represented as double-encoded Unicode:
-            curstring = strrep(curstring, '&', '&&');
-        end
-    end
-    
     % tstring contains the remainder of the input string to process in next
     % iteration, curstring is the string we need to draw now.
 

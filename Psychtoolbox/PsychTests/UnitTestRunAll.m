@@ -18,7 +18,7 @@ end
 
 % build function handles for each
 funs = {utests.fname};
-funs = cellfun(@str2func,funs,'UniformOutput',false);
+funs = cellfun(@str2func,funs,'uni',false);
 
 % run each
 nfailed = 0;

@@ -91,11 +91,11 @@ try
     % The standard 'Hello World' message drawn with the low-level
     % Screen('DrawText') command. We start at x=300 and y=100. We draw in
     % Red+Blue color:
-    Screen('DrawText', w, double('Hello'), 300, 100, [255, 0, 255]);
+    Screen('DrawText', w, double('Hello '), 300, 100, [255, 0, 255]);
 
     % Add to the text, starting at the last text cursor position. This
     % should append the text to the previously drawn text...
-    Screen('DrawText', w, double('World!'));
+    Screen('DrawText', w, double('World! Smooth & Funky'));
     
     % Now for some Unicode text rendering... 
     % The following array of double values encodes some japanese text in

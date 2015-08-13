@@ -36,7 +36,8 @@ function result = Gamepad(arg1, arg2, arg3)
 % GamePad is not recognized, you may need to install the joystick driver,
 % e.g., via "sudo apt-get install xserver-xorg-input-joystick" on a Debian/
 % Ubuntu system, "sudo apt-get install xserver-xorg-input-joystick-lts-utopic"
-% on some Ubuntu 14.04.2 LTS variants, or xf86-input-joystick on systems still
+% on some Ubuntu 14.04.2 LTS variants, or "sudo apt-get install xserver-xorg-input-joystick-lts-vivid"
+% on some Ubuntu 14.04.3 LTS variants, or xf86-input-joystick on systems still
 % using xf86. You may also wish to install a custom joystick configuration file
 % to customize the mapping  and behaviour of buttons and axis, and if the
 % Joystick also operates as a mouse or not.
