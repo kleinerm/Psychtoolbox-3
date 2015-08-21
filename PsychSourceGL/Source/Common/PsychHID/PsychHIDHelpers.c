@@ -438,21 +438,55 @@ int PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt)
 */
 void PsychHIDVerifyInit(void)
 {
+    // GenericDesktop for mice, keyboards, gamepads etc. vendor defined for things like MCC USB-DAQ boxes...
+    UInt32 inUsagePages[2] = {kHIDPage_GenericDesktop, kHIDPage_VendorDefinedStart};
+    UInt32 inUsages[2] = {0, 0};
+    int inNumDeviceTypes = 2;
     psych_bool success = TRUE;
-    
+
     // Build HID device list if it doesn't already exist:
     if (!HIDHaveDeviceList()) success = (psych_bool) HIDBuildDeviceList(0, 0);
-    
+
     // This check can only be made against the 64-Bit HID Utilities, as the older 32-Bit
     // version is even more crappy and can't report meaningful error status:
     if (!success) {
-        printf("PsychHID-ERROR: Could not enumerate HID devices (HIDBuildDeviceList() failed)! There can be various reasons,\n");
-        printf("PsychHID-ERROR: ranging from bugs in Apples HID software to a buggy HID device driver for some connected device,\n");
-        printf("PsychHID-ERROR: to general operating system malfunction. A reboot or device driver update for 3rd party HID devices\n");
-        printf("PsychHID-ERROR: maybe could help. Check the OSX system log for possible HID related error messages or hints. Aborting...\n");
-        PsychErrorExitMsg(PsychError_system, "HID device enumeration failed due to malfunction in the OSX 64 Bit Apple HID Utilities framework.");
+        printf("PsychHID-ERROR: Could not enumerate and attach to all HID devices (HIDBuildDeviceList(0,0) failed)!\n");
+        printf("PsychHID-ERROR: One reason could be that some HID devices are already exclusively claimed by some 3rd party device drivers\n");
+        printf("PsychHID-ERROR: or applications. I will now retry to only claim control of a hopefully safe subset of devices like standard\n");
+        printf("PsychHID-ERROR: keyboards, mice, gamepads and supported USB-DAQ devices and other vendor defined devices and hope this goes better...\n");
+
+        // User override for special devices provided?
+        if (getenv("PSYCHHID_HIDPAGEOVERRIDE")) {
+            // Override via environment variable provided: Use it in addition to the generic desktop input devices:
+            inUsagePages[1] = atoi(getenv("PSYCHHID_HIDPAGEOVERRIDE"));
+            inUsages[1] = atoi(getenv("PSYCHHID_HIDUSAGEOVERRIDE"));
+            printf("PsychHID-INFO: User override: Generic desktop page devices + usagePage 0x%x and usage value 0x%x ...\n", inUsagePages[1], inUsages[1]);
+        }
+
+        success = (psych_bool) HIDBuildMultiDeviceList(inUsagePages, inUsages, inNumDeviceTypes);
+        if (!success) {
+            printf("PsychHID-ERROR: Nope. Excluding everything but a few known USB-DAQ devices and standard mice, keyboards etc. Retrying ...\n");
+            inUsagePages[1] = kHIDPage_VendorDefinedStart;
+            inUsages[1] = 1; // Known combo is usagepage 0xff00 + usage 0x1 for MCC USB 1208-FS USB HID-DAQ device.
+            success = (psych_bool) HIDBuildMultiDeviceList(inUsagePages, inUsages, inNumDeviceTypes);
+        }
+
+        if (!success) {
+            printf("PsychHID-ERROR: Nope. Excluding everything but standard mice, keyboards etc. Retrying ...\n");
+            success = (psych_bool) HIDBuildMultiDeviceList(inUsagePages, inUsages, 1);
+            if (!success) {
+                printf("PsychHID-ERROR: Could not enumerate any HID devices (HIDBuildDeviceList() still failed even for standard generic desktop input devices)!\n");
+                printf("PsychHID-ERROR: Reasons can be ranging from bugs in Apples HID software to a buggy HID device driver for some connected device,\n");
+                printf("PsychHID-ERROR: to general operating system malfunction. A reboot or device driver update for 3rd party HID devices\n");
+                printf("PsychHID-ERROR: maybe could help. Check the OSX system log for possible HID related error messages or hints. Aborting...\n");
+                PsychErrorExitMsg(PsychError_system, "HID device enumeration failed due to malfunction in the OSX 64 Bit Apple HID Utilities framework.");
+            }
+        }
+        else {
+            printf("PsychHID-INFO: That worked. A subset of regular mouse, keyboard etc. input devices and maybe some vendor defined devices will be available at least.\n");
+        }
     }
-    
+
     // Double-Check to protect against pathetic Apple software:
     if (!HIDHaveDeviceList()) {
         printf("PsychHID-ERROR: Could not enumerate HID devices (HIDBuildDeviceList() success, but HIDHaveDeviceList() still failed)!\n");
