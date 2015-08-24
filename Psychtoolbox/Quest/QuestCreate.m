@@ -101,6 +101,7 @@ function q=QuestCreate(tGuess,tGuessSd,pThreshold,beta,delta,gamma,grain,range,p
 % 9/11/04   dgp  Explain why supplied "range" should err on the high side.
 % 10/13/04 	dgp  Explain why tGuesSd and range should be large, generous. 
 % 10/13/04 	dgp  Set q.normalizePdf to 1, to avoid underflow errors that otherwise accur after around 1000 trials.
+% 8/23/15  dgp Flag error if tGuess is not finite.
 % 
 % Copyright (c) 1996-2004 Denis Pelli
 if nargin < 6 || nargin > 9
@@ -123,6 +124,10 @@ end
 
 if nargin < 9 || isempty(plotIt)
     plotIt = 0;
+end
+
+if ~isfinite(tGuess) || ~isreal(tGuess)
+    error('"tGuess" must be real and finite.');
 end
 
 q.updatePdf=1; % boolean: 0 for no, 1 for yes
