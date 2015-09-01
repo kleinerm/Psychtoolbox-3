@@ -66,6 +66,7 @@ beta2=[q2.beta];
 % end
 [p,i]=max(p2); % take mode, i.e. the most probable (threshold,beta) combination
 t=t2(i); % threshold at that mode
+%t=QuestMean(q2(i)); % mean threshold estimate
 sd=QuestSd(q2(i)); % sd of threshold estimate at the beta of that mode
 p=sum(p2);
 betaMean=sum(p2.*beta2)/p;
