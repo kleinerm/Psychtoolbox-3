@@ -56,7 +56,7 @@
 % involved that the exact stimulus intensity is known only after it's been 
 % shown. Having run the trial, you then report the new datum,
 % the actual intensity tested and the observer's response, asking Quest to
-% add it the database in q.
+% add it to the database in q.
 % 
 % To use Quest you must provide an estimated value for beta. Beta
 % controls the steepness of the Weibull function. Many vision studies use
