@@ -1,0 +1,16 @@
+/* Fragment shader for performing corrections for the Oculus VR Rift
+ * (w) 2015 by Mario Kleiner. Licensed under MIT license.
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect Image;
+varying float vignette;
+
+void main()
+{
+  float r = texture2DRect(Image, gl_TexCoord[0].xy).r;
+  float g = texture2DRect(Image, gl_TexCoord[1].xy).g;
+  float b = texture2DRect(Image, gl_TexCoord[2].xy).b;
+  gl_FragColor = vignette * vec4(r, g, b, 1.0);
+}

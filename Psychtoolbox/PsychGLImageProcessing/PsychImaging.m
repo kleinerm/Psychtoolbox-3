@@ -1191,6 +1191,27 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   RemapMouse() to perform the neccessary coordinate transformation.
 %
 %
+% * 'UseOculusVRHMD' Display this onscreen window on a Oculus VR Head mounted
+%   display (HMD), e.g., the Rift DK1 or Rift DK2. This enables display of
+%   stereoscopic visual stimuli on Virtual reality headsets from Oculus VR.
+%   You need to have the Oculus VR runtime installed on your machine for this
+%   to work.
+%
+%   Usage:
+%
+%     1. Open a connection to a Oculus HMD and get a handle for the device:
+%        hmd = PsychOculusVR('Open' ...);
+%
+%     2. Perform basic configuration of the HMD via PsychOculusVR.
+%
+%     3. Add a PsychImaging task for the HMD and pass in its device handle 'hmd':
+%        PsychImaging('AddTask', 'General', 'UseOculusVRHMD', hmd);
+%
+%   This sequence will perform the necessary setup of panel fitter, stereo display
+%   mode and image post-processing for geometry correction, color aberration
+%   correction and vignette correction for a fullscreen window on the HMD.
+%
+%
 % * More actions will be supported in the future. If you can think of an
 %   action of common interest not yet supported by this framework, please
 %   file a feature request on our Wiki (Mainpage -> Feature Requests).
@@ -1326,6 +1347,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 17.09.2014  Add 'Native16BitFramebuffer' support for Linux + FOSS + AMD. (MK)
 % 03.11.2014  Make panelfitter compatible with Retina displays. (MK)
 % 04.11.2014  Add new task 'UseRetinaResolution' for Retina displays. (MK)
+% 06.09.2015  Add basic support for "Client distortion rendering" on the Oculus VR
+%             Rift DK1/DK2 virtual reality headsets. (MK)
 
 persistent configphase_active;
 persistent reqs;
@@ -1337,10 +1360,12 @@ global psych_gpgpuapi;
 % These flags are global - needed in subfunctions as well (ugly ugly coding):
 global ptb_outputformatter_icmAware;
 global isASideBySideConfig;
+global maxreqarg;
 
 if isempty(configphase_active)
     configphase_active = 0;
     ptb_outputformatter_icmAware = 0;
+    maxreqarg = 10;
 end
 
 if nargin < 1 || isempty(cmd)
@@ -1399,7 +1424,6 @@ if strcmpi(cmd, 'AddTask')
     % extend each requirement vector to some number of max elements, so all
     % rows in the cell array have the same length:
     x = varargin;
-    maxreqarg = 10;
     if length(x) < maxreqarg
         for i=length(x)+1:maxreqarg
             x{i}='';
@@ -2275,6 +2299,7 @@ function [imagingMode, stereoMode, reqs] = FinalizeConfiguration(reqs, userstere
 global ptb_outputformatter_icmAware;
 global psych_gpgpuapi;
 global isASideBySideConfig;
+global maxreqarg;
 
 % Reset flag to "no":
 isASideBySideConfig = 0;
@@ -2616,6 +2641,56 @@ if ~isempty(find(mystrcmp(reqs, 'StereoCrosstalkReduction')))
     % code above and below will already have activated the image processing
     % chains etc.
     imagingMode = mor(imagingMode, kPsychNeedOtherStreamInput);
+end
+
+% Want to use a Oculus VR Head mounted display (HMD), e.g., Rift DK1/DK2?
+floc = find(mystrcmp(reqs, 'UseOculusVRHMD'));
+if ~isempty(floc)
+    % Yes: We need a peculiar configuration, which involves the panelfitter
+    % to allow for a custom resolution of the virtual framebuffers for left
+    % eye and right eye - much higher than output resolution, so we have enough
+    % excess information to deal with geometric undistortion warps, color aberration,
+    % and dynamic display warping for head motion correction. We also need a
+    % special stereo processing shader that does geometric distortion correction,
+    % color aberration correction, vignetting correction, and dynamic display warping
+    % in one go, as processing speed is crucial for VR experience.
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+
+    % Extract first parameter - This should be the handle of the Oculus VR device:
+    oculusHandle = reqs{row, 3};
+
+    % Verify it is already open:
+    if ~PsychOculusVR('IsOpen', oculusHandle)
+        error('UseOculusVRHMD: Invalid Oculus HMD handle specified. No such device opened.');
+    end
+
+    % We must use stereomode 6, so we get separate draw buffers for left and
+    % right eye, and the stereo compositor (merger) to fuse both eyes into a
+    % single output framebuffer, but with all internal buffers at at least
+    % full output framebuffer resolution. This will generate anaglyph shaders
+    % which we will need to replace with a very special shader for the Oculus HMD:
+    stereoMode = 6;
+
+    % We need fast backing store support for virtual framebuffers:
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+
+    % Append our generated 'UsePanelFitter' task to setup the panelfitter for
+    % our needs at 'OpenWindow' time:
+    clientRes = PsychOculusVR('GetClientRenderbufferSize', oculusHandle);
+    x{1} = 'General';
+    x{2} = 'UsePanelFitter';
+    x{3} = clientRes;
+    x{4} = 'Full';
+
+    % Pad to maxreqarg arguments:
+    if length(x) < maxreqarg
+        for i=length(x)+1:maxreqarg
+            x{i}='';
+        end
+    end
+
+    reqs = [reqs ; x];
 end
 
 % Display replication needed?
@@ -4106,6 +4181,34 @@ if ~isempty(floc)
     end
 end
 % --- End of setup for stereo crosstalk reduction ---
+
+% --- Custom processing setup for the stereo compositor ---
+
+% --- Oculus VR Headset support (e.g., Rift DK1/DK2 etc.)
+floc = find(mystrcmp(reqs, 'UseOculusVRHMD'));
+if ~isempty(floc)
+    [row col] = ind2sub(size(reqs), floc);
+
+    % Extract first parameter - This should be the handle of the Oculus VR device:
+    oculusHandle = reqs{row, 3};
+
+    % Verify it is already open:
+    if ~PsychOculusVR('IsOpen', oculusHandle)
+        sca;
+        error('In UseOculusVRHMD: Invalid Oculus HMD handle specified. No such device opened.');
+    end
+
+    % Ok, perform setup after onscreen window is open, e.g., setting up the special
+    % shaders for the stereo compositor:
+    if ~PsychOculusVR('PerformPostWindowOpenSetup', oculusHandle, win)
+        sca;
+        error('In UseOculusVRHMD: Failed to setup image post-processing for the Oculus VR HMD.');
+    end
+
+    % Ready to rock the HMD!
+end
+% --- End of Oculus VR Headset support code.
+
 
 % --- FROM HERE ON ONLY OUTPUT FORMATTERS, NOTHING ELSE!!! --- %
 
