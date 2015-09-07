@@ -192,6 +192,13 @@ if mode == 11
     striplibsfrommexfile([PsychtoolboxRoot target 'pnet.mex']);
 end
 
+if mode==12
+    % Build PsychOculusVRCore.mex:
+    mex -v -g --output ../Projects/Linux/build/PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.c -lc -lrt /usr/local/lib/libOVR.a
+    unix(['mv ../Projects/Linux/build/PsychOculusVRCore.mex ' PsychtoolboxRoot target]);
+    striplibsfrommexfile([PsychtoolboxRoot target 'PsychOculusVRCore.mex']);
+end
+
 % Remove stale object files:
 delete('*.o');
 
