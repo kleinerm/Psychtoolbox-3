@@ -40,7 +40,8 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 typedef struct PsychOculusDevice {
     ovrHmd hmd;
     psych_bool isTracking;
-    ovrSizei texSize;
+    ovrSizei texSize[2];
+    ovrFovPort ofov[2];
     ovrEyeRenderDesc eyeRenderDesc[2];
     ovrDistortionMesh eyeDistortionMesh[2];
     ovrVector2f UVScaleOffset[2][2];
@@ -72,7 +73,9 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychOculusVRCore('Start', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore('Stop', oculusPtr);";
     synopsis[i++] = "state = PsychOculusVRCore('GetTrackingState', oculusPtr [, predictionTime=0]);";
-    synopsis[i++] = "[width, height] = PsychOculusVRCore('GetFovTextureSize', oculusPtr, eye [, fov=[45,45,45,45]][, pixelsPerDisplay=1]);";
+    synopsis[i++] = "[width, height, fovPort] = PsychOculusVR('GetFovTextureSize', oculusPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
+    synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz, meshVertices, meshIndices, uvScaleX, uvScaleY, uvOffsetX, uvOffsetY] = PsychOculusVR('GetUndistortionParameters', oculusPtr, eye, inputWidth, inputHeight [, tanfov]);";
+    synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVR('GetEyeTimewarpMatrices', oculusPtr, eye);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
 
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -551,40 +554,37 @@ PsychError PSYCHOCULUSVRGetTrackingState(void)
 
 PsychError PSYCHOCULUSVRGetFovTextureSize(void)
 {
-    static char useString[] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz, meshVertices, meshIndices, uvScaleX, uvScaleY, uvOffsetX, uvOffsetY, eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVR('GetFovTextureSize', oculusPtr, eye [, fov=[45,45,45,45]][, pixelsPerDisplay=1]);";
-    //                          1      2       3       4       5       6       7      8      9          10         11         12            13           14        15        16         17         18                 19                                                    1          2      3                    4
+    static char useString[] = "[width, height, fovPort] = PsychOculusVR('GetFovTextureSize', oculusPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
+    //                          1      2       3                                             1          2      3                       4
     static char synopsisString[] =
-    "Return recommended size of renderbuffers for Oculus device 'oculusPtr'.\n"
+    "Return recommended size of client renderbuffers for Oculus device 'oculusPtr'.\n"
     "'eye' which eye to provide the size for: 0 = Left, 1 = Right.\n"
     "'fov' Optional field of view in degrees, from line of sight: [leftdeg, rightdeg, updeg, downdeg]. "
-    "Defaults to +/- 45 degrees in all directions if omitted.\n"
+    "If 'fov' is omitted, the Oculus runtime will be asked for a good default field of view and that "
+    "will be used.\n"
     "'pixelsPerDisplay' Ratio of the number of render target pixels to display pixels at the center "
     "of distortion. Defaults to 1.0 if omitted. Lower values can improve performance, higher values "
     "give improved quality.\n"
     "\n"
     "Return values are 'width' for minimum recommended width of framebuffer in pixels and "
-    "'height' for minimum recommended height of framebuffer in pixels.\n";
-    static char seeAlsoString[] = "";
+    "'height' for minimum recommended height of framebuffer in pixels. 'fovPort' is the field of view "
+    "finally used for calculation of 'width' x 'height'. 'fovPort' is the tan()gens of the angles, not "
+    "the angles themselves.\n";
+    static char seeAlsoString[] = "GetUndistortionParameters";
 
     int handle, eyeIndex;
-    PsychOculusDevice *oculus;
     int n, m, p, i;
+    PsychOculusDevice *oculus;
     double *fov;
-    ovrFovPort ofov;
     double pixelsPerDisplay;
-    unsigned int distortionCaps;
-    ovrDistortionVertex* pVertexData;
-    unsigned short* pIndexData;
-    double *outVertexMesh, *outIndexMesh;
-    double *startMatrix, *endMatrix;
-    float *mv;
+    double *outFov;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(19));
+    PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(4));
     PsychErrorExit(PsychRequireNumInputArgs(2));
 
@@ -603,18 +603,14 @@ PsychError PSYCHOCULUSVRGetFovTextureSize(void)
     if (PsychAllocInDoubleMatArg(3, FALSE, &n, &m, &p, &fov)) {
         // Validate and assign:
         if (n * m * p != 4) PsychErrorExitMsg(PsychError_user, "Invalid 'fov' specified. Must be a 4-component vector of form [leftdeg, rightdeg, updeg, downdeg].");
-        ofov.LeftTan  = tan(deg2rad(fov[0]));
-        ofov.RightTan = tan(deg2rad(fov[1]));
-        ofov.UpTan = tan(deg2rad(fov[2]));
-        ofov.DownTan = tan(deg2rad(fov[3]));
+        oculus->ofov[eyeIndex].LeftTan  = tan(deg2rad(fov[0]));
+        oculus->ofov[eyeIndex].RightTan = tan(deg2rad(fov[1]));
+        oculus->ofov[eyeIndex].UpTan = tan(deg2rad(fov[2]));
+        oculus->ofov[eyeIndex].DownTan = tan(deg2rad(fov[3]));
     }
     else {
-        // None specified: Default to +/- 45 degrees in all directions:
-        //ofov.LeftTan  = tan(deg2rad(45.0));
-        //ofov.RightTan = tan(deg2rad(45.0));
-        //ofov.UpTan = tan(deg2rad(45.0));
-        //ofov.DownTan = tan(deg2rad(45.0));
-        ofov = oculus->hmd->DefaultEyeFov[eyeIndex];
+        // None specified: Ask the runtime for good defaults.
+        oculus->ofov[eyeIndex] = oculus->hmd->DefaultEyeFov[eyeIndex];
     }
 
     // Get optional pixelsPerDisplay parameter:
@@ -623,32 +619,106 @@ PsychError PSYCHOCULUSVRGetFovTextureSize(void)
     if (pixelsPerDisplay <= 0.0) PsychErrorExitMsg(PsychError_user, "Invalid 'pixelsPerDisplay' specified. Must be greater than zero.");
 
     // Ask the api for optimal texture size, aka the size of the client draw buffer:
-    oculus->texSize = ovrHmd_GetFovTextureSize(oculus->hmd, (ovrEyeType) eyeIndex, ofov, (float) pixelsPerDisplay);
-// oculus->texSize.w = 1680;
-// oculus->texSize.h = 1050;
-//
-// oculus->texSize.w = 1080;
-// oculus->texSize.h = 1920;
+    oculus->texSize[eyeIndex] = ovrHmd_GetFovTextureSize(oculus->hmd, (ovrEyeType) eyeIndex, oculus->ofov[eyeIndex], (float) pixelsPerDisplay);
 
     // Return recommended width and height of drawBuffer:
-    PsychCopyOutDoubleArg(1, FALSE, oculus->texSize.w);
-    PsychCopyOutDoubleArg(2, FALSE, oculus->texSize.h);
+    PsychCopyOutDoubleArg(1, FALSE, oculus->texSize[eyeIndex].w);
+    PsychCopyOutDoubleArg(2, FALSE, oculus->texSize[eyeIndex].h);
+
+    PsychAllocOutDoubleMatArg(3, FALSE, 4, 1, 1, &outFov);
+    outFov[0] = oculus->ofov[eyeIndex].LeftTan;
+    outFov[1] = oculus->ofov[eyeIndex].RightTan;
+    outFov[2] = oculus->ofov[eyeIndex].UpTan;
+    outFov[3] = oculus->ofov[eyeIndex].DownTan;
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVRGetUndistortionParameters(void)
+{
+    static char useString[] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz, meshVertices, meshIndices, uvScaleX, uvScaleY, uvOffsetX, uvOffsetY] = PsychOculusVR('GetUndistortionParameters', oculusPtr, eye, inputWidth, inputHeight [, tanfov]);";
+    //                          1      2       3       4       5       6       7      8      9          10         11         12            13           14        15        16         17                                                      1          2    3           4              5
+    static char synopsisString[] =
+    "Return parameters needed for rendering and undistortion for Oculus device 'oculusPtr'.\n"
+    "'eye' which eye to provide the data: 0 = Left, 1 = Right.\n"
+    "'inputWidth' = Width of the rendered input image buffer in pixels.\n"
+    "'inputHeight' = Height of the rendered input image buffer in pixels.\n"
+    "'tanfov' Optional field of view in tan()gens of degrees, from line of sight: [leftdeg, rightdeg, updeg, downdeg]. "
+    "You can pass in the 'fovPort' value returned from PsychOculusVR('GetFovTextureSize'); "
+    "Defaults to whatever has been set for the given eye in the last call to PsychOculusVR('GetFovTextureSize'); if omitted.\n"
+    "\n"
+    "Return values are lots [TBD].\n";
+    static char seeAlsoString[] = "GetFovTextureSize";
+
+    int handle, eyeIndex;
+    PsychOculusDevice *oculus;
+    int n, m, p, i;
+    double *fov;
+    unsigned int distortionCaps;
+    ovrDistortionVertex* pVertexData;
+    unsigned short* pIndexData;
+    double *outVertexMesh, *outIndexMesh;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    //check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(17));
+    PsychErrorExit(PsychCapNumInputArgs(5));
+    PsychErrorExit(PsychRequireNumInputArgs(4));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit();
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, TRUE, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Get eye index - left = 0, right = 1:
+    PsychCopyInIntegerArg(2, TRUE, &eyeIndex);
+    if (eyeIndex < 0 || eyeIndex > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0 or 1 for left- or right eye.");
+
+    // Get input texture width:
+    PsychCopyInIntegerArg(3, TRUE, &(oculus->texSize[eyeIndex].w));
+    if (oculus->texSize[eyeIndex].w < 1) PsychErrorExitMsg(PsychError_user, "Invalid 'inputWidth' specified. Must be greater than zero.");
+
+    // Get input texture height:
+    PsychCopyInIntegerArg(4, TRUE, &(oculus->texSize[eyeIndex].h));
+    if (oculus->texSize[eyeIndex].h < 1) PsychErrorExitMsg(PsychError_user, "Invalid 'inputHeight' specified. Must be greater than zero.");
+
+    // Get optional tanFov tangens of field of view in degrees in left,right,up,down direction from line of sight:
+    if (PsychAllocInDoubleMatArg(5, FALSE, &n, &m, &p, &fov)) {
+        // Validate and assign:
+        if (n * m * p != 4) PsychErrorExitMsg(PsychError_user, "Invalid 'tanfov' specified. Must be a 4-component vector of form [leftdeg, rightdeg, updeg, downdeg].");
+        oculus->ofov[eyeIndex].LeftTan  = fov[0];
+        oculus->ofov[eyeIndex].RightTan = fov[1];
+        oculus->ofov[eyeIndex].UpTan    = fov[2];
+        oculus->ofov[eyeIndex].DownTan  = fov[3];
+    }
+
+    // Return width and height of input texture - Just mirror out what we got:
+    PsychCopyOutDoubleArg(1, FALSE, oculus->texSize[eyeIndex].w);
+    PsychCopyOutDoubleArg(2, FALSE, oculus->texSize[eyeIndex].h);
 
     // Get eye render description for this eye:
-    oculus->eyeRenderDesc[eyeIndex] = ovrHmd_GetRenderDesc(oculus->hmd, (ovrEyeType) eyeIndex, ofov);
+    oculus->eyeRenderDesc[eyeIndex] = ovrHmd_GetRenderDesc(oculus->hmd, (ovrEyeType) eyeIndex, oculus->ofov[eyeIndex]);
+
+    // Override viewport size with the provided input texture size, as ovrHmd_GetRenderDesc() makes the
+    // assumption that we render to a half-width viewport of the input renderbuffer, when we actually
+    // use 2 separate input renderbuffers of appropriate size:
+    oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Pos.x = 0;
+    oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Pos.y = 0;
+    oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.w = oculus->texSize[eyeIndex].w;
+    oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.h = oculus->texSize[eyeIndex].h;
 
     if (verbosity > 3) {
         printf("PsychOculusVRCore-INFO: For HMD %i, eye %i - RenderDescription:\n", handle, eyeIndex);
-        printf("PsychOculusVRCore-INFO: FoV: %f %f %f %f - %f %f %f %f\n", ofov.LeftTan, ofov.RightTan, ofov.UpTan, ofov.DownTan, oculus->eyeRenderDesc[eyeIndex].Fov.LeftTan, oculus->eyeRenderDesc[eyeIndex].Fov.RightTan, oculus->eyeRenderDesc[eyeIndex].Fov.UpTan, oculus->eyeRenderDesc[eyeIndex].Fov.DownTan);
+        printf("PsychOculusVRCore-INFO: FoV: %f %f %f %f - %f %f %f %f\n", oculus->ofov[eyeIndex].LeftTan, oculus->ofov[eyeIndex].RightTan, oculus->ofov[eyeIndex].UpTan, oculus->ofov[eyeIndex].DownTan, oculus->eyeRenderDesc[eyeIndex].Fov.LeftTan, oculus->eyeRenderDesc[eyeIndex].Fov.RightTan, oculus->eyeRenderDesc[eyeIndex].Fov.UpTan, oculus->eyeRenderDesc[eyeIndex].Fov.DownTan);
         printf("PsychOculusVRCore-INFO: DistortedViewport: [x,y,w,h] = [%i, %i, %i, %i]\n", oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Pos.x, oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Pos.y, oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.w, oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.h);
         printf("PsychOculusVRCore-INFO: PixelsPerTanAngleAtCenter: %f x %f\n", oculus->eyeRenderDesc[eyeIndex].PixelsPerTanAngleAtCenter.x, oculus->eyeRenderDesc[eyeIndex].PixelsPerTanAngleAtCenter.y);
         printf("PsychOculusVRCore-INFO: HmdToEyeViewOffset: [x,y,z] = [%f, %f, %f]\n", oculus->eyeRenderDesc[eyeIndex].HmdToEyeViewOffset.x, oculus->eyeRenderDesc[eyeIndex].HmdToEyeViewOffset.y, oculus->eyeRenderDesc[eyeIndex].HmdToEyeViewOffset.z);
     }
-
-oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Pos.x = 0;
-oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Pos.y = 0;
-oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.w = oculus->texSize.w;
-oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.h = oculus->texSize.h;
 
     // DistortedViewport [x,y,w,h]:
     PsychCopyOutDoubleArg(3, FALSE, oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Pos.x);
@@ -661,13 +731,13 @@ oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.h = oculus->texSize.h;
     PsychCopyOutDoubleArg(8, FALSE, oculus->eyeRenderDesc[eyeIndex].PixelsPerTanAngleAtCenter.y);
 
     // HmdToEyeViewOffset: [x,y,z]:
-    PsychCopyOutDoubleArg(9, FALSE, oculus->eyeRenderDesc[eyeIndex].HmdToEyeViewOffset.x);
+    PsychCopyOutDoubleArg(9,  FALSE, oculus->eyeRenderDesc[eyeIndex].HmdToEyeViewOffset.x);
     PsychCopyOutDoubleArg(10, FALSE, oculus->eyeRenderDesc[eyeIndex].HmdToEyeViewOffset.y);
     PsychCopyOutDoubleArg(11, FALSE, oculus->eyeRenderDesc[eyeIndex].HmdToEyeViewOffset.z);
 
     // See enum ovrDistortionCaps: ovrDistortionCap_TimeWarp | ovrDistortionCap_Vignette | ovrDistortionCap_Overdrive
     // distortionCaps = ovrDistortionCap_LinuxDevFullscreen | ovrDistortionCap_HqDistortion | ovrDistortionCap_FlipInput;
-    // TODO FIXME: distortionCaps are not used by SDK version 0.5 for ovrHmd_CreateDistortionMesh(), but maybe by later
+    // TODO: distortionCaps are not used by SDK version 0.5 for ovrHmd_CreateDistortionMesh(), but maybe by later
     // versions? Need to recheck once we use higher SDK versions.
     distortionCaps = 0;
     if (!ovrHmd_CreateDistortionMesh(oculus->hmd, oculus->eyeRenderDesc[eyeIndex].Eye, oculus->eyeRenderDesc[eyeIndex].Fov, distortionCaps, &(oculus->eyeDistortionMesh[eyeIndex]))) {
@@ -732,7 +802,7 @@ oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.h = oculus->texSize.h;
 
     // Get UV texture sampling scale and offset:
     ovrHmd_GetRenderScaleAndOffset(oculus->eyeRenderDesc[eyeIndex].Fov,
-                                   oculus->texSize, oculus->eyeRenderDesc[eyeIndex].DistortedViewport,
+                                   oculus->texSize[eyeIndex], oculus->eyeRenderDesc[eyeIndex].DistortedViewport,
                                    (ovrVector2f*) &(oculus->UVScaleOffset[eyeIndex]));
 
     // EyeToSourceUVScale:
@@ -743,6 +813,45 @@ oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.h = oculus->texSize.h;
     PsychCopyOutDoubleArg(16, FALSE, oculus->UVScaleOffset[eyeIndex][1].x);
     PsychCopyOutDoubleArg(17, FALSE, oculus->UVScaleOffset[eyeIndex][1].y);
 
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void)
+{
+    static char useString[] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVR('GetEyeTimewarpMatrices', oculusPtr, eye);";
+    //                          1                  2                                                             1          2
+    static char synopsisString[] =
+    "Return eye warp rotation matrices for timewarped undistortion for Oculus device 'oculusPtr'.\n"
+    "'eye' which eye to provide the data: 0 = Left, 1 = Right.\n"
+    "Return values are 4x4 'eyeRotStartMatrix' and 'eyeRotEndMatrix' for given eye.\n";
+    static char seeAlsoString[] = "";
+
+    int handle, eyeIndex;
+    PsychOculusDevice *oculus;
+    int i;
+    double *startMatrix, *endMatrix;
+    float *mv;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    //check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit();
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, TRUE, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Get eye index - left = 0, right = 1:
+    PsychCopyInIntegerArg(2, TRUE, &eyeIndex);
+    if (eyeIndex < 0 || eyeIndex > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0 or 1 for left- or right eye.");
+
     ovrEyeType eye = oculus->hmd->EyeRenderOrder[eyeIndex];
     oculus->headPose[eye] = ovrHmd_GetHmdPosePerEye(oculus->hmd, eye);
 
@@ -750,12 +859,12 @@ oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.h = oculus->texSize.h;
                                   oculus->headPose[eyeIndex],
                                   oculus->timeWarpMatrices);
 
-    PsychAllocOutDoubleMatArg(18, FALSE, 4, 4, 1, &startMatrix);
+    PsychAllocOutDoubleMatArg(1, FALSE, 4, 4, 1, &startMatrix);
     mv = &(oculus->timeWarpMatrices[0].M[0][0]);
     for (i = 0; i < 4 * 4; i++)
         *(startMatrix++) = (double) *(mv++);
 
-    PsychAllocOutDoubleMatArg(19, FALSE, 4, 4, 1, &endMatrix);
+    PsychAllocOutDoubleMatArg(2, FALSE, 4, 4, 1, &endMatrix);
     mv = &(oculus->timeWarpMatrices[1].M[0][0]);
     for (i = 0; i < 4 * 4; i++)
         *(endMatrix++) = (double) *(mv++);

@@ -152,44 +152,11 @@ end
 if strcmpi(cmd, 'SetupRenderingParameters')
   handle = varargin{1};
 
-  % Query parameters for left eye view:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2), eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVR ('GetFovTextureSize', handle, 0, varargin{2:end});
-  %scatter(meshVL(1,:), meshVL(2,:));
-  hmd{handle}.viewportLeft = [vx, vy, vw, vh];
-  hmd{handle}.PixelsPerTanAngleAtCenterLeft = [ptx, pty];
-  hmd{handle}.HmdToEyeViewOffsetLeft = [hsx, hsy, hsz];
-  hmd{handle}.meshVerticesLeft = meshVL;
-  hmd{handle}.meshIndicesLeft = meshIL;
-  hmd{handle}.uvScaleLeft = uvScale;
-  hmd{handle}.uvOffsetLeft = uvOffset;
-  hmd{handle}.eyeRotStartMatrixLeft = eyeRotStartMatrix;
-  hmd{handle}.eyeRotEndMatrixLeft = eyeRotEndMatrix;
+  % Get optimal client renderbuffer size - the size of our virtual framebuffer for left eye:
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, hmd{handle}.fovTanPort] = PsychOculusVR ('GetFovTextureSize', handle, 0, varargin{2:end});
 
-scaleL=uvScale
-offsetL=uvOffset
-
-%rotStartL = eyeRotStartMatrix
-%rotEndL = eyeRotEndMatrix
-
-
-  % Query parameters for right eye view:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2), eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVR ('GetFovTextureSize', handle, 1, varargin{2:end});
-  %scatter(meshVR(1,:), meshVR(2,:));
-  hmd{handle}.viewportRight = [vx, vy, vw, vh];
-  hmd{handle}.PixelsPerTanAngleAtCenterRight = [ptx, pty];
-  hmd{handle}.HmdToEyeViewOffsetRight = [hsx, hsy, hsz];
-  hmd{handle}.meshVerticesRight = meshVR;
-  hmd{handle}.meshIndicesRight = meshIR;
-  hmd{handle}.uvScaleRight = uvScale;
-  hmd{handle}.uvOffsetRight = uvOffset;
-  hmd{handle}.eyeRotStartMatrixRight = eyeRotStartMatrix;
-  hmd{handle}.eyeRotEndMatrixRight = eyeRotEndMatrix;
-
-scaleR=uvScale
-offsetR=uvOffset
-
-%rotStartR = eyeRotStartMatrix
-%rotEndR = eyeRotEndMatrix
+  % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, hmd{handle}.fovTanPort] = PsychOculusVR ('GetFovTextureSize', handle, 1, varargin{2:end});
 
   return;
 end
@@ -214,6 +181,54 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   
   % Onscreen window handle:
   win = varargin{2};
+
+  % Compute effective size of per-eye input buffer for undistortion render.
+  % This is the size of the imaging pipelines processedDrawbufferFBO's, aka
+  % usually the inputBufferFBO's, aka whatever is the blit target for the
+  % panelfitter - or the size of the actual drawbufferFBO if neither the
+  % panelfitter nor multisample anti-aliasing resolve is needed.
+  %
+  % In our current implementation we allocate said buffer to twice the horizontal
+  % size of the real framebuffer, ie., twice the panel width size of the
+  % HMD, as that should be plenty for all typical use cases - and is also the
+  % maximum possible with the current Screen imaging pipeline:
+  [hmd{handle}.inputWidth, hmd{handle}.inputHeight] = Screen('WindowSize', win, 1);
+  hmd{handle}.inputWidth = hmd{handle}.inputWidth * 2;
+  hmd{handle}.inputHeight = hmd{handle}.inputHeight * 1;
+
+  % Query undistortion parameters for left eye view:
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVR ('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovTanPort);
+  hmd{handle}.viewportLeft = [vx, vy, vw, vh];
+  hmd{handle}.PixelsPerTanAngleAtCenterLeft = [ptx, pty];
+  hmd{handle}.HmdToEyeViewOffsetLeft = [hsx, hsy, hsz];
+  hmd{handle}.meshVerticesLeft = meshVL;
+  hmd{handle}.meshIndicesLeft = meshIL;
+  hmd{handle}.uvScaleLeft = uvScale;
+  hmd{handle}.uvOffsetLeft = uvOffset;
+
+  % Init warp matrices to identity, until we get something better from live tracking:
+  hmd{handle}.eyeRotStartMatrixLeft = diag([1 1 1 1]);
+  hmd{handle}.eyeRotEndMatrixLeft   = diag([1 1 1 1]);
+
+  %scaleL=uvScale
+  %offsetL=uvOffset
+
+  % Query parameters for right eye view:
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVR ('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovTanPort);
+  hmd{handle}.viewportRight = [vx, vy, vw, vh];
+  hmd{handle}.PixelsPerTanAngleAtCenterRight = [ptx, pty];
+  hmd{handle}.HmdToEyeViewOffsetRight = [hsx, hsy, hsz];
+  hmd{handle}.meshVerticesRight = meshVR;
+  hmd{handle}.meshIndicesRight = meshIR;
+  hmd{handle}.uvScaleRight = uvScale;
+  hmd{handle}.uvOffsetRight = uvOffset;
+
+  % Init warp matrices to identity, until we get something better from live tracking:
+  hmd{handle}.eyeRotStartMatrixRight = diag([1 1 1 1]);
+  hmd{handle}.eyeRotEndMatrixRight   = diag([1 1 1 1]);
+
+  %scaleR=uvScale
+  %offsetR=uvOffset
 
   [slot shaderid blittercfg voidptr glsl] = Screen('HookFunction', win, 'Query', 'StereoCompositingBlit', 'StereoCompositingShaderAnaglyph');
   if slot == -1
@@ -261,11 +276,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   texR = single(hmd{handle}.meshVerticesLeft(5:6, :));
   texG = single(hmd{handle}.meshVerticesLeft(7:8, :));
   texB = single(hmd{handle}.meshVerticesLeft(9:10, :));
-
-  mintexxL = min(texR(1,:))
-  maxtexxL = max(texR(1,:))
-  mintexyL = min(texR(2,:))
-  maxtexyL = max(texR(2,:))
 
   % vertex xy encodes 2D position from rows 1 and 2, z encodes timeWarp interpolation factors
   % from row 3 and w encodes vignette correction factors from row 4:
@@ -319,18 +329,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % drawing the warp-mesh once, so it gets recorded in the display list:
   gldRight = glGenLists(1);
   glNewList(gldRight, GL.COMPILE);
-global texR;
-global texG;
-global texB;
+
   vertexpos = single(hmd{handle}.meshVerticesRight(1:4, :));
   texR = single(hmd{handle}.meshVerticesRight(5:6, :));
   texG = single(hmd{handle}.meshVerticesRight(7:8, :));
   texB = single(hmd{handle}.meshVerticesRight(9:10, :));
-
-  mintexxR = min(texR(1,:))
-  maxtexxR = max(texR(1,:))
-  mintexyR = min(texR(2,:))
-  maxtexyR = max(texR(2,:))
 
   % vertex xy encodes 2D position from rows 1 and 2, z encodes timeWarp interpolation factors
   % from row 3 and w encodes vignette correction factors from row 4:
@@ -379,21 +382,14 @@ global texB;
 
   Screen('EndOpenGL', win);
 
-  texwidth = RectWidth(Screen('Rect', win, 1))
-  texheight = RectHeight(Screen('Rect', win, 1))
-  
   % Setup left eye shader:
   glsl = LoadGLSLProgramFromFiles('OculusRiftCorrectionShader');
   glUseProgram(glsl);
   glUniform1i(glGetUniformLocation(glsl, 'Image'), 0);
-  glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVOffset'), hmd{handle}.uvOffsetLeft(1) * texwidth, hmd{handle}.uvOffsetLeft(2) * texheight);
-  %glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVOffset'), texwidth/2, texheight/2);
-  glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), hmd{handle}.uvScaleLeft(1) * texwidth, hmd{handle}.uvScaleLeft(2) * texheight);
-  %glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), texwidth/2, texheight/2);
-  glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationStart'), 1, 1, diag([1 1 1 1]));
-  glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationEnd'), 1, 1, diag([1 1 1 1]));
-  %glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationStart'), 1, 1, hmd{handle}.eyeRotStartMatrixLeft);
-  %glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationEnd'), 1, 1, hmd{handle}.eyeRotEndMatrixLeft);
+  glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVOffset'), hmd{handle}.uvOffsetLeft(1) * hmd{handle}.inputWidth, hmd{handle}.uvOffsetLeft(2) * hmd{handle}.inputHeight);
+  glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), hmd{handle}.uvScaleLeft(1) * hmd{handle}.inputWidth, hmd{handle}.uvScaleLeft(2) * hmd{handle}.inputHeight);
+  glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationStart'), 1, 1, hmd{handle}.eyeRotStartMatrixLeft);
+  glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationEnd'), 1, 1, hmd{handle}.eyeRotEndMatrixLeft);
   glUseProgram(0);
 
   % Insert it at former position of the old shader:
@@ -408,10 +404,7 @@ global texB;
   % instead is takes normalized device coordinates NDC directly from the distortion mesh. Iow, not
   % only is xOffset/yOffset not needed, it would also be a no operation due to our specific shader.
   % We leave this here for documentation for now, in case we need to change our ways of doing this.
-  leftViewPort = hmd{handle}.viewportLeft
-  % xOffset = hmd{handle}.viewportLeft(1) % Viewport x start.
-  % yOffset = hmd{handle}.viewportLeft(2) % Viewport y start.
-  % blittercfg = sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear:Offset:%i:%i', gldLeft, xOffset, yOffset);
+  %leftViewPort = hmd{handle}.viewportLeft
   blittercfg = sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gldLeft);
   Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', 'OculusVRClientCompositingShaderLeftEye', glsl, blittercfg);
 
@@ -419,23 +412,14 @@ global texB;
   glsl = LoadGLSLProgramFromFiles('OculusRiftCorrectionShader');
   glUseProgram(glsl);
   glUniform1i(glGetUniformLocation(glsl, 'Image'), 1);
-  glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVOffset'), hmd{handle}.uvOffsetRight(1) * texwidth, hmd{handle}.uvOffsetRight(2) * texheight);
-  %glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVOffset'), texwidth/2, texheight/2);
-  glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), hmd{handle}.uvScaleRight(1) * texwidth, hmd{handle}.uvScaleRight(2) * texheight);
-  %glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), texwidth/2, texheight/2);
-
-  glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationStart'), 1, 1, diag([1 1 1 1]));
-  glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationEnd'), 1, 1, diag([1 1 1 1]));
-  %glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationStart'), 1, 1, hmd{handle}.eyeRotStartMatrixRight);
-  %glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationEnd'), 1, 1, hmd{handle}.eyeRotEndMatrixRight);
+  glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVOffset'), hmd{handle}.uvOffsetRight(1) * hmd{handle}.inputWidth, hmd{handle}.uvOffsetRight(2) * hmd{handle}.inputHeight);
+  glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), hmd{handle}.uvScaleRight(1) * hmd{handle}.inputWidth, hmd{handle}.uvScaleRight(2) * hmd{handle}.inputHeight);
+  glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationStart'), 1, 1, hmd{handle}.eyeRotStartMatrixRight);
+  glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationEnd'), 1, 1, hmd{handle}.eyeRotEndMatrixRight);
   glUseProgram(0);
 
   % Insert it at former position of the old shader:
   posstring = sprintf('InsertAt%iShader', slot);
-  % See above for why xOffset/yOffset is not used here.
-  % xOffset = hmd{handle}.viewportRight(1) % Viewport x start.
-  % yOffset = hmd{handle}.viewportRight(2) % Viewport y start.
-  % blittercfg = sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear:Offset:%i:%i', gldRight, xOffset, yOffset);
   blittercfg = sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gldRight);
   Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', 'OculusVRClientCompositingShaderRightEye', glsl, blittercfg);
 

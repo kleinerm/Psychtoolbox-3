@@ -2674,6 +2674,7 @@ if ~isempty(floc)
 
     % We need fast backing store support for virtual framebuffers:
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    imagingMode = mor(imagingMode, kPsychNeedTwiceWidthWindow);
 
     % Append our generated 'UsePanelFitter' task to setup the panelfitter for
     % our needs at 'OpenWindow' time:

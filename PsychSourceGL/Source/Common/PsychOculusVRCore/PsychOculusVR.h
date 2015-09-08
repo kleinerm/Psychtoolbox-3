@@ -45,6 +45,8 @@ PsychError PSYCHOCULUSVRStop(void);
 PsychError PSYCHOCULUSVRGetCount(void);
 PsychError PSYCHOCULUSVRGetTrackingState(void);
 PsychError PSYCHOCULUSVRGetFovTextureSize(void);
+PsychError PSYCHOCULUSVRGetUndistortionParameters(void);
+PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void);
 
 //end include once
 #endif
