@@ -2682,7 +2682,9 @@ if ~isempty(floc)
     x{1} = 'General';
     x{2} = 'UsePanelFitter';
     x{3} = clientRes;
-    x{4} = 'Full';
+    x{4} = 'Custom';
+    x{5} = [0, 0, clientRes(1), clientRes(2)];
+    x{6} = [0, 0, clientRes(1), clientRes(2)];
 
     % Pad to maxreqarg arguments:
     if length(x) < maxreqarg

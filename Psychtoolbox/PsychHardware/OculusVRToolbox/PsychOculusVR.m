@@ -183,18 +183,27 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   win = varargin{2};
 
   % Compute effective size of per-eye input buffer for undistortion render.
-  % This is the size of the imaging pipelines processedDrawbufferFBO's, aka
-  % usually the inputBufferFBO's, aka whatever is the blit target for the
-  % panelfitter - or the size of the actual drawbufferFBO if neither the
-  % panelfitter nor multisample anti-aliasing resolve is needed.
+  % The input buffers for undistortion are the processedDrawbufferFBO's aka
+  % inputBufferFBO's, or if the panelfitter is skipped the drawBufferFBO's.
   %
-  % In our current implementation we allocate said buffer to twice the horizontal
-  % size of the real framebuffer, ie., twice the panel width size of the
-  % HMD, as that should be plenty for all typical use cases - and is also the
-  % maximum possible with the current Screen imaging pipeline:
-  [hmd{handle}.inputWidth, hmd{handle}.inputHeight] = Screen('WindowSize', win, 1);
-  hmd{handle}.inputWidth = hmd{handle}.inputWidth * 2;
-  hmd{handle}.inputHeight = hmd{handle}.inputHeight * 1;
+  % In our current implementation we allocate said buffers to twice the horizontal
+  % size of the real framebuffer, ie., twice the panel width of the HMD, as
+  % that should be plenty for all typical use cases - and is also the maximum
+  % possible with the current Screen imaging pipeline.
+  %
+  % However, we don't use the full size of those buffers as input, but only
+  % sample a rectangular subregion which corresponds to the renderbuffer size
+  % recommended by the Oculus runtime. Either the panelfitter is used to blit
+  % 1-to-1 from the drawBufferFBO to a correspondingly sized subregion of the
+  % inputBuffers - if the panelfitter is needed for convenient 2D stimulus drawing
+  % or MSAA resolve - or usercode has to restrict its rendering to the subregion by
+  % proper use of glViewPorts or scissor rectangles.
+  %
+  % So for all practical means [inputWidth, inputHeight] == [rbwidth, rbheight] and
+  % we save processing bandwidth, although due to the overallocation not VRAM memory
+  % space.
+  hmd{handle}.inputWidth = hmd{handle}.rbwidth;
+  hmd{handle}.inputHeight = hmd{handle}.rbheight;
 
   % Query undistortion parameters for left eye view:
   [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVR ('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovTanPort);
