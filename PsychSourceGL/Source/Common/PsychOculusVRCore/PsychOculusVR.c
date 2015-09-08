@@ -624,11 +624,11 @@ PsychError PSYCHOCULUSVRGetFovTextureSize(void)
 
     // Ask the api for optimal texture size, aka the size of the client draw buffer:
     oculus->texSize = ovrHmd_GetFovTextureSize(oculus->hmd, (ovrEyeType) eyeIndex, ofov, (float) pixelsPerDisplay);
-oculus->texSize.w = 1680;
-oculus->texSize.h = 1050;
-
-oculus->texSize.w = 1080;
-oculus->texSize.h = 1920;
+// oculus->texSize.w = 1680;
+// oculus->texSize.h = 1050;
+//
+// oculus->texSize.w = 1080;
+// oculus->texSize.h = 1920;
 
     // Return recommended width and height of drawBuffer:
     PsychCopyOutDoubleArg(1, FALSE, oculus->texSize.w);
