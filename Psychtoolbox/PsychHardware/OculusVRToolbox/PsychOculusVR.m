@@ -1,4 +1,52 @@
 function varargout = PsychOculusVR(cmd, varargin)
+% PsychOculusVR - A high level driver for Oculus VR hardware.
+%
+% Usage:
+%
+% hmd = PsychOculusVR('AutoSetupDefaultHMD');
+% - Auto-Detect 1st connected Oculus VR HMD, open it, set it up
+% with sane default rendering and display parameters and generate
+% a PsychImaging('AddTask', ...) line to setup Psychtoolboxs
+% imaging pipeline for proper rendering on the HMD. This will also
+% cause the device connection and VR driver to be auto-closed /
+% auto-shutdown as soon as the onscreen window which displays on
+% the HMD is closed. Returns the 'hmd' handle of the HMD on success.
+% If no VR HMD is connected, it will open an emulated/simulated one
+% for basic testing and debugging.
+%
+%
+% hmd = PsychOculusVR('Open' [, deviceIndex], ...);
+% - Open HMD with index 'deviceIndex'. See PsychOculusVRCore Open?
+% for help on additional parameters.
+%
+%
+% PsychOculusVR('SetAutoClose', hmd, mode);
+% - Set autoclose mode for HMD with handle 'hmd'. 'mode' can be
+% 0 (this is the default) to not do anything special. 1 will close
+% the HMD 'hmd' when the onscreen window is closed which displays
+% on the HMD. 2 will do the same as 1, but close all open HMDs and
+% shutdown the complete driver and Oculus runtime - a full cleanup.
+%
+%
+% isOpen = PsychOculusVR('IsOpen', hmd);
+% - Returns 1 if 'hmd' corresponds to an open HMD, 0 otherwise.
+%
+%
+% PsychOculusVR('SetupRenderingParameters', hmd)
+% - Query the HMD 'hmd' for its properties and setup internal rendering
+% parameters in preparation for opening an onscreen window with PsychImaging
+% to display properly on the HMD.
+%
+%
+% [width, height] = PsychOculusVR('GetClientRenderbufferSize', hmd);
+% - Retrieve recommended size in pixels [width x height] of the client
+% renderbuffer for each eye for rendering to the HMD. Returns parameters
+% previously computed by PsychOculusVR('SetupRenderingParameters', hmd).
+%
+%
+
+% History:
+% 07-Sep-2015  mk   Written.
 
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
@@ -12,10 +60,64 @@ if nargin < 1 || isempty(cmd)
   return;
 end
 
+% Autodetect first connected HMD and open a connection to it. Open a
+% emulated one, if none can be detected. Perform basic setup with
+% default configuration, create a proper PsychImaging task.
+if strcmpi(cmd, 'AutoSetupDefaultHMD')
+  % Check if at least one Oculus HMD is connected and available:
+  if PsychOculusVR('GetCount') > 0
+    % Yes. Open and initialize connection to first detected HMD:
+    fprintf('PsychOculusVR: Opening the first connected Oculus VR headset.\n');
+    oculus = PsychOculusVR('Open', 0);
+  else
+    % No. Open an emulated/simulated HMD for basic testing and debugging:
+    fprintf('PsychOculusVR: No Oculus HMD detected. Opening a simulated HMD.\n');
+    oculus = PsychOculusVR('Open', -1);
+  end
+
+  % Trigger an automatic device close + full driver shutdown at
+  % onscreen window close for the HMD display window:
+  PsychOculusVR('SetAutoClose', oculus, 2);
+
+  % Setup default rendering parameters:
+  PsychOculusVR('SetupRenderingParameters', oculus);
+
+  % Add a PsychImaging task to use this HMD with the next opened onscreen window:
+  PsychImaging('AddTask', 'General', 'UseOculusVRHMD', oculus);
+
+  % Return the device handle:
+  varargout{1} = oculus;
+
+  % Ready.
+  return;
+end
+
+if strcmpi(cmd, 'SetAutoClose')
+  handle = varargin{1};
+
+  if ~PsychOculusVR('IsOpen', handle)
+    error('PsychOculusVR:SetAutoClose: Specified handle does not correspond to an open HMD!');
+  end
+
+  % Assign autoclose flag:
+  hmd{handle}.autoclose = varargin{2};
+
+  return;
+end
+
 % Open a HMD:
 if strcmpi(cmd, 'Open')
+  % Hack to make sure the VR runtime detects the HMD on a secondary X-Screen:
+  if IsLinux && ~IsWayland && length(Screen('Screens')) > 1
+    setenv('DISPLAY', sprintf(':0.%i', max(Screen('Screens'))));
+  end
+
   handle = PsychOculusVRCore('Open', varargin{:});
   hmd{handle}.open = 1;
+
+  % Default autoclose flag to "no autoclose":
+  hmd{handle}.autoclose = 0;
+
   varargout{1} = handle;
   return;
 end
@@ -26,6 +128,22 @@ if strcmpi(cmd, 'IsOpen')
     varargout{1} = 1;
   else
     varargout{1} = 0;
+  end
+  return;
+end
+
+if strcmpi(cmd, 'Close')
+  if length(varargin) > 0 && ~isempty(varargin{1})
+    % Close a specific hmd device:
+    handle = varargin{1};
+    if (length(hmd) >= handle) && (handle > 0) && hmd{handle}.open
+      PsychOculusVRCore('Close', handle);
+      hmd{handle}.open = 0;
+    end
+  else
+    % Shutdown whole driver:
+    PsychOculusVRCore('Close');
+    hmd = [];
   end
 
   return;
@@ -261,8 +379,8 @@ global texB;
 
   Screen('EndOpenGL', win);
 
-  texwidth = RectWidth(Screen('Rect', win, 1));
-  texheight = RectHeight(Screen('Rect', win, 1));
+  texwidth = RectWidth(Screen('Rect', win, 1))
+  texheight = RectHeight(Screen('Rect', win, 1))
   
   % Setup left eye shader:
   glsl = LoadGLSLProgramFromFiles('OculusRiftCorrectionShader');
@@ -320,6 +438,20 @@ global texB;
   % blittercfg = sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear:Offset:%i:%i', gldRight, xOffset, yOffset);
   blittercfg = sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gldRight);
   Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', 'OculusVRClientCompositingShaderRightEye', glsl, blittercfg);
+
+  % Does usercode request auto-closing the HMD or driver when the onscreen window is closed?
+  if hmd{handle}.autoclose > 0
+    % Attach a window close callback for Device teardown at window close time:
+    if hmd{handle}.autoclose == 2
+      % Shutdown driver completely:
+      Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychOculusVR driver.', 'PsychOculusVR(''Close'');');
+    else
+      % Only close this HMD:
+      Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychOculusVR driver.', sprintf('PsychOculusVR(''Close'', %i);', handle));
+    end
+
+    Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
+  end
 
   % Return success result code 1:
   varargout{1} = 1;
