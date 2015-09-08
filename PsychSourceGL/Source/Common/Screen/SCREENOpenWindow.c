@@ -268,7 +268,25 @@ PsychError SCREENOpenWindow(void)
         // of zero, so the system backbuffer isn't multisampled -- crucial for us!
         // This will also turn PsychSetupClientRect() into a no-op:
         imagingmode |= kPsychNeedFastBackingStore;
-        imagingmode |= kPsychNeedGPUPanelFitter;
+
+        if (!(imagingmode & kPsychNeedClientRectNoFitter)) {
+            // Regular case: Request use of panelFitter:
+            imagingmode |= kPsychNeedGPUPanelFitter;
+        }
+        else {
+            // Special case: Use clientRect, but avoid use of panelFitter. This is
+            // useful if one wants to use a client drawing region *smaller* than
+            // the actual framebuffer - or at least smaller than inputBufferFBO et al.,
+            // but doesn't need to scale/rotate/whatever from drawBufferFBO -> inputBufferFBO,
+            // because some later image processing stage, e.g., some processing shader,
+            // will do proper sampling from the drawBufferFBO's / inputBufferFBO's restricted
+            // clientRect. This allows to avoid one extra copy/blit for panel fitting if the
+            // equivalent task is implemented by some other processing plugin.
+            // Primary use case: VR head mounted display devices which need some special
+            // input sampling anyway, but at the same time need any bit of performance they
+            // can get - ie. need to save as many GPU cycles as possible for speed:
+            imagingmode |= kPsychNeedClientRectNoFitter;
+        }
     }
     else if (!(imagingmode & kPsychNeedRetinaResolution)) {
         // No explicit enable of panel fitter requested, but use of panel fitter
@@ -580,7 +598,7 @@ PsychError SCREENOpenWindow(void)
     // This is part II, after part I happened above, before opening the window. This
     // weirdness / redundancy is needed to resolve our chicken & egg problem with
     // multisampling...
-    if (imagingmode & kPsychNeedGPUPanelFitter) {
+    if (imagingmode & (kPsychNeedGPUPanelFitter | kPsychNeedClientRectNoFitter)) {
         // clientRect given. The panelscaler integrated into the imaging pipeline will
         // scale all content from the size of the drawBufferFBO (our virtual framebuffer),
         // which is the size of the clientRect, to the true size of the onscreen windows
@@ -592,7 +610,12 @@ PsychError SCREENOpenWindow(void)
         PsychNormalizeRect(clientRect, windowRecord->clientrect);
         PsychCopyRect(clientRect, windowRecord->clientrect);
 
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to enable my builtin panel-fitter on user request.\n");
+        if (PsychPrefStateGet_Verbosity() > 3) {
+            if (imagingmode & kPsychNeedGPUPanelFitter)
+                printf("PTB-INFO: Trying to enable my builtin panel-fitter on user request.\n");
+            if (imagingmode & kPsychNeedClientRectNoFitter)
+                printf("PTB-INFO: Restricting 2D drawing to given 'clientRect', but skipping the panel-fitter.\n");
+        }
     }
     else {
         // No specific clientRect given - the default case.
