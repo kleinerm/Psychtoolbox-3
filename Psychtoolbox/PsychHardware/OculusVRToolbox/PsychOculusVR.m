@@ -109,10 +109,17 @@ end
 if strcmpi(cmd, 'Open')
   % Hack to make sure the VR runtime detects the HMD on a secondary X-Screen:
   if IsLinux && ~IsWayland && length(Screen('Screens')) > 1
+    olddisp = getenv('DISPLAY');
     setenv('DISPLAY', sprintf(':0.%i', max(Screen('Screens'))));
   end
 
   handle = PsychOculusVRCore('Open', varargin{:});
+
+  % Restore DISPLAY for other clients, e.g., Octave's gnuplot et al.:
+  if exist('olddisp', 'var')
+    setenv('DISPLAY', olddisp);
+  end
+
   hmd{handle}.open = 1;
 
   % Default autoclose flag to "no autoclose":
