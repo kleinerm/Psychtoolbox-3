@@ -1516,7 +1516,33 @@ if strcmpi(cmd, 'OpenWindow')
     else
         winRect = varargin{3};
     end
-    
+
+    % Running on a Oculus VR headset?
+    if ~isempty(find(mystrcmp(reqs, 'UseOculusVRHMD')));
+        % Yes. Trying to display on a screen with more than one video output?
+        if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
+            % Yes. Not good, as this will impair graphics performance and timing a lot.
+            % Warn about this, then try to at least position the onscreen window on the
+            % right output.
+            fprintf('PsychImaging-WARNING: You are requesting display to a VR HMD on a screen with multiple active video outputs.\n');
+            fprintf('PsychImaging-WARNING: This will impair visual stimulation timing and cause decreased VR performance!\n');
+            fprintf('PsychImaging-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
+            fprintf('PsychImaging-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
+
+            % Try to find the output with the Rift HMD:
+            for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
+                scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
+                if (scanout.width == 1080) && (scanout.height == 1920)
+                    % This output i has proper resolution to be the Rift HMD.
+                    % Position our onscreen window accordingly:
+                    winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
+                    fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
+                            winRect(1), winRect(2), winRect(3), winRect(4), i);
+                end
+            end
+        end
+    end
+
     if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
         % Request a pixelsize of 30 bpp to enable native 2101010
         % framebuffer support:
