@@ -78,6 +78,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "state = PsychOculusVRCore('GetTrackingState', oculusPtr [, predictionTime=0]);";
     synopsis[i++] = "[width, height, fovPort] = PsychOculusVR('GetFovTextureSize', oculusPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz, meshVertices, meshIndices, uvScaleX, uvScaleY, uvOffsetX, uvOffsetY] = PsychOculusVR('GetUndistortionParameters', oculusPtr, eye, inputWidth, inputHeight [, tanfov]);";
+    synopsis[i++] = "[projL, projR] = PsychOculusVR('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVR('GetEyeTimewarpMatrices', oculusPtr, eye);";
     synopsis[i++] = "[projL, projR, modelviewL, modelviewR] = PsychOculusVR('StartRender', oculusPtr);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
@@ -749,7 +750,7 @@ PsychError PSYCHOCULUSVRGetUndistortionParameters(void)
         PsychErrorExitMsg(PsychError_system, "Failed to compute distortion mesh for eye.");
     }
 
-    if (verbosity > 2) {
+    if (verbosity > 3) {
         printf("PsychOculusVRCore-INFO: Distortion mesh has %i vertices, %i indices for triangles.\n", oculus->eyeDistortionMesh[eyeIndex].VertexCount, oculus->eyeDistortionMesh[eyeIndex].IndexCount);
     }
 
@@ -876,13 +877,77 @@ PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void)
     return(PsychError_none);
 }
 
+PsychError PSYCHOCULUSVRGetStaticRenderParameters(void)
+{
+    static char useString[] = "[projL, projR] = PsychOculusVR('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
+    //                          1      2                                                   1            2                3
+    static char synopsisString[] =
+    "Retrieve static rendering parameters for Oculus device 'oculusPtr' at current settings.\n"
+    "'clipNear' Optional near clipping plane for OpenGL. Defaults to 0.01.\n"
+    "'clipFar' Optional far clipping plane for OpenGL. Defaults to 10000.0.\n"
+    "Return arguments:\n"
+    "'projL' is the 4x4 OpenGL projection matrix for the left eye rendering.\n"
+    "'projR' is the 4x4 OpenGL projection matrix for the right eye rendering.\n"
+    "Please note that projL and projR are usually identical for typical rendering scenarios.\n";
+    static char seeAlsoString[] = "";
+
+    int handle;
+    PsychOculusDevice *oculus;
+    ovrMatrix4f M;
+    int i, j;
+    double clip_near, clip_far;
+    double *outM;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    //check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(3));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit();
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Get optional near clipping plane:
+    clip_near = 0.01;
+    PsychCopyInDoubleArg(2, kPsychArgOptional, &clip_near);
+
+    // Get optional far clipping plane:
+    clip_far = 10000.0;
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &clip_far);
+
+    // Return left projection matrix as return argument 1:
+    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[0].Fov, clip_near, clip_far, ovrProjection_RightHanded | ovrProjection_ClipRangeOpenGL);
+    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 4, 4, 1, &outM);
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
+            *(outM++) = (double) M.M[j][i];
+
+    // Return right projection matrix as return argument 2:
+    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[1].Fov, clip_near, clip_far, ovrProjection_RightHanded | ovrProjection_ClipRangeOpenGL);
+    PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 4, 4, 1, &outM);
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
+            *(outM++) = (double) M.M[j][i];
+
+    return(PsychError_none);
+}
+
+
 PsychError PSYCHOCULUSVRStartRender(void)
 {
-    static char useString[] = "[projL, projR, modelviewL, modelviewR] = PsychOculusVR('StartRender', oculusPtr);";
-    //                          1      2      3           4                                          1
+    static char useString[] = "[modelviewL, modelviewR] = PsychOculusVR('StartRender', oculusPtr);";
+    //                          1           2                                          1
     static char synopsisString[] =
     "Mark start of a new 3D head tracked render cycle for Oculus device 'oculusPtr'.\n"
-    "Return values are TBD.\n";
+    "Return values are the 4x4 OpenGL modelview matrices which define the two cameras "
+    "for the left eye and right eye 'modelviewL' and 'modelviewR'.\n";
     static char seeAlsoString[] = "";
 
     int handle;
@@ -890,7 +955,6 @@ PsychError PSYCHOCULUSVRStartRender(void)
     unsigned int frameIndex = 0; // Use 0 for now.
     ovrTrackingState *outHmdTrackingState = NULL; // Return value not used for now.
     ovrVector3f hmdToEyeViewOffset[2];
-    ovrMatrix4f M;
     int i, j;
     double *outM;
 
@@ -899,7 +963,7 @@ PsychError PSYCHOCULUSVRStartRender(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(4));
+    PsychErrorExit(PsychCapNumOutputArgs(2));
     PsychErrorExit(PsychCapNumInputArgs(1));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -922,20 +986,6 @@ PsychError PSYCHOCULUSVRStartRender(void)
     ovrHmd_GetEyePoses(oculus->hmd, frameIndex, hmdToEyeViewOffset,
                        oculus->outEyePoses, outHmdTrackingState);
 
-    // Return left projection matrix as return argument 1:
-    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[0].Fov, 0.01f, 10000.0f, ovrProjection_RightHanded | ovrProjection_ClipRangeOpenGL);
-    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 4, 4, 1, &outM);
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-            *(outM++) = (double) M.M[j][i];
-
-    // Return right projection matrix as return argument 2:
-    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[1].Fov, 0.01f, 10000.0f, ovrProjection_RightHanded | ovrProjection_ClipRangeOpenGL);
-    PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 4, 4, 1, &outM);
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-            *(outM++) = (double) M.M[j][i];
-
     // Invert camera translation vectors:
     oculus->outEyePoses[0].Position.x *= -1;
     oculus->outEyePoses[0].Position.y *= -1;
@@ -949,7 +999,7 @@ PsychError PSYCHOCULUSVRStartRender(void)
     OVR::Quatf orientationL = OVR::Quatf(oculus->outEyePoses[0].Orientation);
     OVR::Matrix4f viewL = OVR::Matrix4f(orientationL.Inverted()) * OVR::Matrix4f::Translation(oculus->outEyePoses[0].Position);
 
-    PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 4, 4, 1, &outM);
+    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 4, 4, 1, &outM);
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
             *(outM++) = (double) viewL.M[j][i];
@@ -958,7 +1008,7 @@ PsychError PSYCHOCULUSVRStartRender(void)
     OVR::Quatf orientationR = OVR::Quatf(oculus->outEyePoses[1].Orientation);
     OVR::Matrix4f viewR = OVR::Matrix4f(orientationR.Inverted()) * OVR::Matrix4f::Translation(oculus->outEyePoses[1].Position);
 
-    PsychAllocOutDoubleMatArg(4, kPsychArgOptional, 4, 4, 1, &outM);
+    PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 4, 4, 1, &outM);
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
             *(outM++) = (double) viewR.M[j][i];

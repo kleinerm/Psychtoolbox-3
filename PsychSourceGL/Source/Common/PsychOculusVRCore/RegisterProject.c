@@ -45,6 +45,11 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("GetUndistortionParameters", &PSYCHOCULUSVRGetUndistortionParameters));
     PsychErrorExit(PsychRegister("GetEyeTimewarpMatrices", &PSYCHOCULUSVRGetEyeTimewarpMatrices));
     PsychErrorExit(PsychRegister("StartRender", &PSYCHOCULUSVRStartRender));
+    PsychErrorExit(PsychRegister("GetStaticRenderParameters", &PSYCHOCULUSVRGetStaticRenderParameters));
+
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR));
     //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR));
 
     // Report the version

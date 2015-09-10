@@ -69,9 +69,6 @@ try
   glEnable(GL.BLEND);
   glBlendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
 
-  % Start the headtracker of the HMD:
-  PsychOculusVR('Start', hmd)
-
   % Set projection matrix: This defines a perspective projection,
   % corresponding to the model of a pin-hole camera - which is a good
   % approximation of the human eye and of standard real world cameras --
@@ -79,7 +76,7 @@ try
   glMatrixMode(GL.PROJECTION);
 
   % Retrieve projection matrix for optimal rendering on the HMD:
-  [projL, projR] = PsychOculusVR('StartRender', hmd);
+  [projL, projR] = PsychOculusVR('GetStaticRenderParameters', hmd);
 
   % Set left cameras matrix:
   glLoadMatrixd(projL);
@@ -204,12 +201,15 @@ try
 
   telapsed = 0;
   fcount = 0;
-  
+
   % Allocate for up to 1000 seconds at 75 fps:
   gpudur = zeros(1, 75 * 1000);
 
   % Make sure all keys are released:
   KbReleaseWait;
+
+  % Start the headtracker of the HMD:
+  PsychOculusVR('Start', hmd)
 
   % Get duration of a single frame:
   ifi = Screen('GetFlipInterval', win);
@@ -221,7 +221,7 @@ try
   % VR render loop: Runs until keypress:
   while ~KbCheck
     % Track head position and orientation, retrieve modelview camera matrices for each eye:
-    [~, ~, modelviewL, modelviewR] = PsychOculusVR('StartRender', hmd);
+    [modelviewL, modelviewR] = PsychOculusVR('StartRender', hmd);
 
     % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
     % this is supported by the current GPU + driver combo:
