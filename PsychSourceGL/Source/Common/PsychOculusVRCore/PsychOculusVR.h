@@ -30,6 +30,10 @@
 #include "Psych.h" 
 #include "PsychTimeGlue.h"
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 //function prototypes
 PsychError MODULEVersion(void);
 void InitializeSynopsis(void);
@@ -47,6 +51,11 @@ PsychError PSYCHOCULUSVRGetTrackingState(void);
 PsychError PSYCHOCULUSVRGetFovTextureSize(void);
 PsychError PSYCHOCULUSVRGetUndistortionParameters(void);
 PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void);
+PsychError PSYCHOCULUSVRStartRender(void);
+
+#ifdef  __cplusplus
+}
+#endif
 
 //end include once
 #endif

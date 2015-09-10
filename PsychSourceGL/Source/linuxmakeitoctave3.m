@@ -194,7 +194,20 @@ end
 
 if mode==12
     % Build PsychOculusVRCore.mex:
-    mex -v -g --output ../Projects/Linux/build/PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.c -lc -lrt /usr/local/lib/libOVR.a
+
+    % Hack for now: Need to compile files with suffix .cc instead of .c, so create a temporary copy
+    % with .cc suffix. This way the .cc file gets compiled as C++ code instead of C code, and we can
+    % use some C++ Math utility routines of the Oculus SDK. We will probably try to get rid of those
+    % C++ helpers - and the C++ compile - soonish, ideally before the first public PTB release with VR
+    % support, because C++ mex files are a potential source of compiler compatibility trouble. But for
+    % the moment this hack will give us a working baseline to work from.
+    copyfile('Common/PsychOculusVRCore/PsychOculusVR.c', 'Common/PsychOculusVRCore/PsychOculusVR.cc');
+    try
+        mex -v -g --output ../Projects/Linux/build/PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.cc Common/PsychOculusVRCore/RegisterProject.c -lc -lrt /usr/local/lib/libOVR.a
+    catch
+    end
+    delete('Common/PsychOculusVRCore/PsychOculusVR.cc');
+
     unix(['mv ../Projects/Linux/build/PsychOculusVRCore.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychOculusVRCore.mex']);
 end
