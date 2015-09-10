@@ -1,0 +1,578 @@
+function VRHMDDemo1(multiSample)
+% VRHMDDemo1 -- Show 3D stereo display via MOGL OpenGL on a VR headset.
+%
+% Usage: VRHMDDemo1([multiSample=0]);
+%
+% Pressing any key continues the demo and progresses to next
+% subdemo. Mouse clicks will pause some demos, until another mouse click
+% continues the demo.
+%
+% Optional parameter:
+%
+% 'multiSample' if set to a non-zero value will enable multi-sample
+% anti-aliasing. This however usually doesn't give good results with
+% smoothed 3D dots.
+%
+
+% History:
+% 10-Sep-2015  mk  Written. Derived from DrawDots3DDemo.m
+
+% GL data structure needed for all OpenGL demos:
+global GL;
+
+if nargin < 1 || isempty(multiSample)
+  multiSample = 0;
+end
+
+% Default setup:
+PsychDefaultSetup(2);
+%RestrictKeysForKbCheck(KbName('ESCAPE'));
+
+% Find the screen to use for display:
+screenid = max(Screen('Screens'));
+
+try
+  % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
+  % mogl OpenGL for Matlab/Octave wrapper:
+  InitializeMatlabOpenGL;
+
+  % Setup the HMD and open and setup the onscreen window for VR display:
+  PsychImaging('PrepareConfiguration');
+  hmd = PsychOculusVR('AutoSetupDefaultHMD');
+  [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], [], multiSample);
+
+  % Textsize for text:
+  Screen('TextSize', win, 18);
+
+  % Setup the OpenGL rendering context of the onscreen window for use by
+  % OpenGL wrapper. After this command, all following OpenGL commands will
+  % draw into the onscreen window 'win':
+  Screen('BeginOpenGL', win);
+
+  % Set viewport properly:
+  glViewport(0, 0, RectWidth(winRect), RectHeight(winRect));
+
+  % Setup default drawing color to yellow (R,G,B)=(1,1,0). This color only
+  % gets used when lighting is disabled - if you comment out the call to
+  % glEnable(GL.LIGHTING).
+  glColor3f(1,1,0);
+
+  % Setup OpenGL local lighting model: The lighting model supported by
+  % OpenGL is a local Phong model with Gouraud shading.
+
+  % Enable the first local light source GL.LIGHT_0. Each OpenGL
+  % implementation is guaranteed to support at least 8 light sources,
+  % GL.LIGHT0, ..., GL.LIGHT7
+  glEnable(GL.LIGHT0);
+
+  % Enable alpha-blending for smooth dot drawing:
+  glEnable(GL.BLEND);
+  glBlendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
+
+  % Start the headtracker of the HMD:
+  PsychOculusVR('Start', hmd)
+
+  % Set projection matrix: This defines a perspective projection,
+  % corresponding to the model of a pin-hole camera - which is a good
+  % approximation of the human eye and of standard real world cameras --
+  % well, the best aproximation one can do with 3 lines of code ;-)
+  glMatrixMode(GL.PROJECTION);
+
+  % Retrieve projection matrix for optimal rendering on the HMD:
+  [projL, projR] = PsychOculusVR('StartRender', hmd);
+
+  % Set left cameras matrix:
+  glLoadMatrixd(projL);
+
+  % Setup modelview matrix: This defines the position, orientation and
+  % looking direction of the virtual camera:
+  glMatrixMode(GL.MODELVIEW);
+  glLoadIdentity;
+
+  % Our point lightsource is at position (x,y,z) == (1,2,3)...
+%  glLightfv(GL.LIGHT0,GL.POSITION,[ 1 2 3 0 ]);
+
+  % Set background clear color to 'black' (R,G,B,A)=(0,0,0,0):
+  glClearColor(0,0,0,0);
+
+  % Clear out the backbuffer: This also cleans the depth-buffer for
+  % proper occlusion handling: You need to glClear the depth buffer whenever
+  % you redraw your scene, e.g., in an animation loop. Otherwise occlusion
+  % handling will screw up in funny ways...
+  glClear;
+
+  % Finish OpenGL rendering into PTB window. This will switch back to the
+  % standard 2D drawing functions of Screen and will check for OpenGL errors.
+  Screen('EndOpenGL', win);
+
+  % Second version: Does use occlusion testing via depth buffer, does use
+  % lighting. Uses manual switching between 2D and 3D for higher efficiency.
+  % Creates a real 3D point-cloud around a teapot, as well as a vertex-shaded
+  % fountain of particles that is emitted by the teapot:
+
+  % Number of random dots, whose positions are computed in Matlab on CPU:
+  ndots = 100;
+
+  % Number of fountain particles whose positions are computed on the GPU:
+  nparticles = 10000;
+
+  % Diameter of particles in pixels:
+  particleSize = 5;
+
+  % 'StartPosition' is the 3D position where all particles originate. It is
+  % faked to a position, so that the particles seem to originate from the
+  % teapots "nozzle":
+  StartPosition = [1.44, 0.40, 0.0];
+
+  % Lifetime for each simulated particle, is chosen so that there seems to be
+  % an infinite stream of particles, although the same particles are recycled
+  % over and over:
+  particlelifetime = 2;
+
+  % Amount of "flow": A value of 1 will create a continuous stream, whereas
+  % smaller value create bursts of particles:
+  flowfactor = 1;
+
+  % Load and setup the vertex shader for particle fountain animation:
+  shaderpath = [PsychtoolboxRoot 'PsychDemos/OpenGL4MatlabDemos/GLSLDemoShaders/ParticleSimple'];
+  glsl = LoadGLSLProgramFromFiles(shaderpath,1);
+
+  % Bind shader so it can be setup:
+  glUseProgram(glsl);
+
+  % Assign static 3D startposition for fountain:
+  glUniform3f(glGetUniformLocation(glsl, 'StartPosition'), StartPosition(1), StartPosition(2), StartPosition(3));
+
+  % Assign lifetime:
+  glUniform1f(glGetUniformLocation(glsl, 'LifeTime'), particlelifetime);
+
+  % Assign simulated gravity constant 'g' for proper trajectory:
+  glUniform1f(glGetUniformLocation(glsl, 'Acceleration'), 1.5);
+
+  % Done with setup:
+  glUseProgram(0);
+
+  % Assign random RGB colors to the particles: The shader will use these, but
+  % also assign an alpha value that makes the particles "fade out" at the end
+  % of there lifetime:
+  particlecolors = rand(3, nparticles);
+  
+  % Maximum speed for particles:
+  maxspeed = 1.25;
+
+  % Per-component speed: We select these to shape the fountain in our wanted
+  % direction:
+  vxmax = maxspeed;
+  vymax = maxspeed;
+  vzmax = 0.4 * maxspeed;
+
+  % Assign random velocities in (vx,vy,vz) direction: Intervals chosen to
+  % shape the beam into something visually pleasing for a teapot:
+  particlesxyzt(1,:) = RandLim([1, nparticles],    0.7, +vxmax);
+  particlesxyzt(2,:) = RandLim([1, nparticles],    0.7, +vymax);
+  particlesxyzt(3,:) = RandLim([1, nparticles], -vzmax, +vzmax);
+
+  % The w-component (4th dimension) encodes the birthtime of the particle. We
+  % assign random birthtimes within the possible particlelifetime to get a
+  % nice continuous stream of particles. Well, kind of: The flowfactor
+  % controls the "burstiness" of particle flow. A value of 1 will create a
+  % continous stream, whereas smaller values will create bursts of particles,
+  % as if the teapot is choking:
+  particlesxyzt(4,:) = RandLim([1, nparticles], 0.0, particlelifetime * flowfactor);
+
+  % Manually enable 3D mode:
+  Screen('BeginOpenGL', win);
+
+  % Predraw the particles. Here particlesxyzt does not encode position, but
+  % speed -- this because our shader interprets positions as velocities!
+  gld = glGenLists(1);
+  glNewList(gld, GL.COMPILE);
+  moglDrawDots3D(win, particlesxyzt, particleSize, particlecolors, -StartPosition, 1);
+  glEndList;
+
+  % Enable lighting:
+  glEnable(GL.LIGHTING);
+
+  % Enable proper occlusion handling via depth tests:
+  glEnable(GL.DEPTH_TEST);
+
+  % Set light position:
+%  glLightfv(GL.LIGHT0,GL.POSITION,[ 1 2 3 0 ]);
+
+  % Manually disable 3D mode.
+  Screen('EndOpenGL', win);
+
+  telapsed = 0;
+  fcount = 0;
+  
+  % Allocate for up to 1000 seconds at 75 fps:
+  gpudur = zeros(1, 75 * 1000);
+
+  % Make sure all keys are released:
+  KbReleaseWait;
+
+  % Get duration of a single frame:
+  ifi = Screen('GetFlipInterval', win);
+
+  % Initial flip to sync us to VBL and get start timestamp:
+  vbl = Screen('Flip', win);
+  tstart = vbl;
+
+  % VR render loop: Runs until keypress:
+  while ~KbCheck
+    % Track head position and orientation, retrieve modelview camera matrices for each eye:
+    [~, ~, modelviewL, modelviewR] = PsychOculusVR('StartRender', hmd);
+
+    % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
+    % this is supported by the current GPU + driver combo:
+    gpumeasure = Screen('GetWindowInfo', win, 5);
+
+    % We render the scene separately for each eye:
+    for view = 0:1
+      % Select 'view' to render (left- or right-eye):
+      Screen('SelectStereoDrawbuffer', win, view);
+
+      % Manually reenable 3D mode in preparation of eye draw cycle:
+      Screen('BeginOpenGL', win);
+
+      % Setup camera position and orientation for this eyes 'view':
+      glMatrixMode(GL.MODELVIEW);
+      if view == 0
+          modelView = modelviewL;
+      else
+          modelView = modelviewR;
+      end
+      glLoadMatrixd(modelView);
+
+      glLightfv(GL.LIGHT0,GL.POSITION,[ 1 2 3 0 ]);
+
+      % Clear color and depths buffers:
+      glClear;
+
+      % Position teapot at origin - 1.5 m in z direction:
+      glTranslatef(0, 0, -1.5);
+
+      % Bring a bit of extra spin into this :-)
+      glRotated(10 * telapsed, 0, 1, 0);
+      glRotated(5  * telapsed, 1, 0, 0);
+
+      % Draw a solid teapot of size 1.0:
+      glutSolidTeapot(1);
+
+      % Compute simulation time for this draw cycle:
+      telapsed = vbl - tstart;
+
+      if 1
+        % Draw the particle fountain. We use a vertex shader in the shader
+        % program glsl to compute the physics:
+        glUseProgram(glsl);
+
+        % Assign updated simulation time to shader:
+        glUniform1f(glGetUniformLocation(glsl, 'Time'), telapsed);
+
+        % Draw the particles. Here particlesxyzt does not encode position,
+        % but speed vectors -- this because our shader interprets positions
+        % as velocities!
+        moglDrawDots3D(win, particlesxyzt, particleSize, particlecolors, [], 1);
+        %glCallList(gld);
+
+        % Done with shaded drawing:
+        glUseProgram(0);
+      end
+
+      % Manually disable 3D mode before switching to other eye or to flip:
+      Screen('EndOpenGL', win);
+
+      % Repeat for view of other eye:
+    end
+
+    % Stimulus ready. Show it on the HMD. We don't clear the color buffer here,
+    % as this is done in the next iteration via glClear() call anyway:
+    vbl = Screen('Flip', win, vbl + 0.5 * ifi, 1);
+    fcount = fcount + 1;
+
+    % Result of GPU time measurement expected?
+    if gpumeasure
+        % Retrieve results from GPU load measurement:
+        % Need to poll, as this is asynchronous and non-blocking,
+        % so may return a zero time value at first invocation(s),
+        % depending on how deep the rendering pipeline is:
+        while 1
+            winfo = Screen('GetWindowInfo', win);
+            if winfo.GPULastFrameRenderTime > 0
+                break;
+            end
+        end
+
+        % Store it:
+        gpudur(fcount) = winfo.GPULastFrameRenderTime;
+    end
+
+    % Next frame ...
+  end
+
+  fps = fcount / (vbl - tstart);
+  gpudur = gpudur(1:fcount);
+  fprintf('Average framerate was %f fps. Average GPU rendertime per frame = %f msec.\n', fps, 1000 * mean(gpudur));
+
+  % Now a benchmark run to test different strategies for their speed...
+
+  KbReleaseWait;
+  Screen('Flip', win);
+
+  sca;
+
+  close all;
+  plot(1000 * gpudur);
+
+  return;
+
+  for rendermode=0:2
+      switch(rendermode)
+          case 0,
+              msgtxt = 'Testing now Matlab + CPU animation.';
+          case 1,
+              msgtxt = 'Testing now vertex shader GPU animation.';
+          case 2
+              msgtxt = 'Testing now optimized vertex shader GPU animation by use of display lists.';
+      end
+
+      DrawFormattedText(win, [msgtxt '\nMax test duration will be 20 seconds.\nPress ESCape key to continue and to finish a subdemo.'], 'center', 'center', [255 255 0]);
+      Screen('Flip', win);
+      KbStrokeWait;
+
+      % Initial flip to sync us to VBL and get start timestamp:
+      vbl = Screen('Flip', win);
+      tstart = vbl;
+      fc = 0;
+
+      Screen('BeginOpenGL', win);
+      glDisable(GL.LIGHTING);
+
+      if rendermode == 2
+      end
+
+      Screen('EndOpenGL', win);
+
+      % For the fun of it, a little shoot-out between a purely Matlab + CPU based
+      % solution, and two different GPU approaches:
+      % 3D Dots animation loop: Runs until keypress or 20 seconds elapsed.
+      while ~KbCheck && (vbl - tstart < 20)
+          % Manually reenable 3D mode in preparation of eye draw cycle:
+          Screen('BeginOpenGL', win);
+
+          % Clear color and depths buffers:
+          glClear;
+
+          % Compute simulation time for this draw cycle:
+          telapsed = vbl - tstart;
+
+          if rendermode > 0
+              % Draw the particle fountain. We use a vertex shader in the shader
+              % program glsl to compute the physics:
+              glUseProgram(glsl);
+
+              % Assign updated simulation time to shader:
+              glUniform1f(glGetUniformLocation(glsl, 'Time'), telapsed);
+
+              if rendermode == 1
+                  % Draw the particles. Here particlesxyzt does not encode position, but
+                  % speed -- this because our shader interprets positions as velocities!
+                  moglDrawDots3D(win, particlesxyzt, particleSize, particlecolors, -StartPosition, 1);
+              else
+                  % Draw particles, but use display list instead of direct call
+                  glCallList(gld);
+              end
+
+              % Done with shaded drawing:
+              glUseProgram(0);
+          else
+              % Do it yourself in Matlab:
+              t = max( (telapsed - particlesxyzt(4,:)) , repmat(0.0, 1, nparticles) );
+              t = mod(t, particlelifetime);
+
+              Acceleration = 1.5;
+              vpositions(1:3,:) = (particlesxyzt(1:3,:) .* repmat(t, 3, 1));
+              vpositions(2,:)   = vpositions(2,:) - (Acceleration * (t.^2));
+
+              particlecolors(4,:) = 1.0 - (t / particlelifetime);
+
+              moglDrawDots3D(win, vpositions, particleSize, particlecolors, [], 1);
+          end
+
+          % Manually disable 3D mode before calling Screen('Flip')!
+          Screen('EndOpenGL', win);
+
+          % Show'em: We don't clear the color buffer here, as this is done in
+          % next iteration via glClear() call anyway. We swap asap, without sync
+          % to VBL as this is a benchmark:
+          Screen('Flip', win, [], 2, 2);
+
+          % Need a fake vbl timestamp to keep simulation running:
+          vbl = GetSecs;
+
+          % Count of drawn frame:
+          fc = fc + 1;
+      end
+
+      tend = Screen('Flip', win);
+      avgfps = fc / (tend - tstart);
+
+      switch(rendermode)
+          case 0,
+              msgtxt = 'Matlab + CPU';
+          case 1,
+              msgtxt = 'Shader + GPU';
+          case 2
+              msgtxt = 'Shader + GPU + VRAM Display lists';
+      end
+
+      fprintf('Average framerate FPS for rendermode %i [%s] is: %f Hz.\n', rendermode, msgtxt, avgfps);
+      if rendermode == 2
+          glDeleteLists(gld,1);
+      end
+
+      % Repeat benchmark for other renderModes:
+  end
+
+  % A last demo: Warp Drive!
+  KbReleaseWait;
+
+  % Respecify StartPosition for particle flow to "behind origin":
+  StartPosition = [0, 0, -60];
+
+  % Setup the vertex shader for particle fountain animation:
+
+  % Bind shader so it can be setup:
+  glUseProgram(glsl);
+
+  % Assign static 3D startposition for fountain:
+  glUniform3f(glGetUniformLocation(glsl, 'StartPosition'), StartPosition(1), StartPosition(2), StartPosition(3));
+
+  % Assign lifetime: 10 x increased for starfield simulation...
+  glUniform1f(glGetUniformLocation(glsl, 'LifeTime'), 10 * particlelifetime);
+  particlesxyzt(4,:) = 10 * particlesxyzt(4,:);
+
+  % Assign no simulated gravity, i.e., set to zero, so we don't get
+  % gravity in space:
+  glUniform1f(glGetUniformLocation(glsl, 'Acceleration'), 0.0);
+
+  % Done with setup:
+  glUseProgram(0);
+
+  % Reassign random velocities in (vx,vy,vz) direction: Intervals chosen to
+  % shape the beam into something visually pleasing for a warp-flight:
+  maxspeed = 1;
+  particlesxyzt(1,:) = RandLim([1, nparticles],  -maxspeed, +maxspeed);
+  particlesxyzt(2,:) = RandLim([1, nparticles],  -maxspeed, +maxspeed);
+  particlesxyzt(3,:) = RandLim([1, nparticles],          0, 5 * maxspeed);
+  particlesxyzt(3,:) = 5 * maxspeed;
+  
+  % Initial flip to sync us to VBL and get start timestamp:
+  vbl = Screen('Flip', win);
+  tstart = vbl;
+  telapsed = 0;
+
+  % Manually enable 3D mode:
+  Screen('BeginOpenGL', win);
+
+  % Enable lighting:
+  glEnable(GL.LIGHTING);
+
+  % Enable proper occlusion handling via depth tests:
+  glEnable(GL.DEPTH_TEST);
+
+  % Set light position:
+  glLightfv(GL.LIGHT0,GL.POSITION,[ 1 2 3 0 ]);
+
+  % Manually disable 3D mode.
+  Screen('EndOpenGL', win);
+
+  % 3D Dots animation loop: Runs until keypress:
+  while ~KbCheck
+      % I a stereo display mode, we render the scene for both eyes:
+      for view = 0:1
+          % Select 'view' to render (left- or right-eye):
+          Screen('SelectStereoDrawbuffer', win, view);
+
+          % Manually reenable 3D mode in preparation of eye draw cycle:
+          Screen('BeginOpenGL', win);
+
+          % Setup camera for this eyes 'view':
+          glMatrixMode(GL.MODELVIEW);
+          glLoadIdentity;
+
+          % This is a bit faked. For a proper solution see help for
+          % moglStereoProjection:
+          gluLookAt(-0.4 + view * 0.2 , 0, 10, 0, 0, 0, 0, 1, 0);
+
+          % Clear color and depths buffers:
+          glClear;
+
+          % Bring a bit of extra spin into this :-)
+          glRotated(5 * telapsed, 0, 0, 1);
+
+          % For drawing of dots, we need to respecify the light source position,
+          % but this must not apply to other objects like the teapot. Therefore
+          % we first backup the current lighting settings...
+          glPushAttrib(GL.LIGHTING_BIT);
+
+          % ... then set the new light source position ...
+          glLightfv(GL.LIGHT0,GL.POSITION,[ 1 2 3 0 ]);
+
+          % Compute simulation time for this draw cycle:
+          telapsed = vbl - tstart;
+
+          % Draw the particle fountain. We use a vertex shader in the shader
+          % program glsl to compute the physics:
+          glUseProgram(glsl);
+
+          % Assign updated simulation time to shader:
+          glUniform1f(glGetUniformLocation(glsl, 'Time'), telapsed);
+
+          % Draw the particles. Here particlesxyzt does not encode position,
+          % but speed vectors -- this because our shader interprets positions
+          % as velocities!
+          moglDrawDots3D(win, particlesxyzt, particleSize, particlecolors, [], 1);
+
+          % Done with shaded drawing:
+          glUseProgram(0);
+
+          % ... restore old light settings from backup ...
+          glPopAttrib;
+
+          % Manually disable 3D mode before calling Screen('Flip')!
+          Screen('EndOpenGL', win);
+
+          % Repeat for other eyes view if in stereo presentation mode...
+      end
+
+      % Mark end of all graphics operation (until flip). This allows GPU to
+      % optimize its operations:
+      Screen('DrawingFinished', win, 2);
+
+      % Show'em: We don't clear the color buffer here, as this is done in
+      % next iteration via glClear() call anyway:
+      vbl = Screen('Flip', win, vbl + 0.5 * ifi, 2);
+
+      % A mouse button press will pause the animation:
+      [x,y,buttons] = GetMouse;
+      if any(buttons)
+          % Wait for a single mouse click to continue:
+          GetClicks;
+      end
+  end
+  % Done. Close screen and exit:
+  Screen('CloseAll');
+
+  % Reenable all keys for KbCheck:
+  RestrictKeysForKbCheck([]);
+catch
+  sca;
+
+  % Reenable all keys for KbCheck:
+  RestrictKeysForKbCheck([]);
+  psychrethrow(psychlasterror);
+end
+
+return;
