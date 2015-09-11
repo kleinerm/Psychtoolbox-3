@@ -61,11 +61,11 @@ if nargin < 1 || isempty(cmd)
 end
 
 % Fast-Path function 'TimeWarp'. Prepares 2D eye timewarp:
-if strcmpi(cmd, 'TimeWarp')
+if cmd == 1
   handle = varargin{1};
 
   % Wait for warp point, then query warp matrices:
-  [hmd{handle}.eyeRotStartMatrixLeft, hmd{handle}.eyeRotEndMatrixLeft] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 0, 1);
+  [hmd{handle}.eyeRotStartMatrixLeft, hmd{handle}.eyeRotEndMatrixLeft] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 0, 0);
   [hmd{handle}.eyeRotStartMatrixRight, hmd{handle}.eyeRotEndMatrixRight] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 1, 0);
 
   %hmd{handle}.eyeRotStartMatrixLeft
@@ -473,7 +473,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   if hmd{handle}.useTimeWarp
     posstring = sprintf('InsertAt%iMFunction', slot);
-    cmdString = sprintf('PsychOculusVR(''TimeWarp'', %i);', handle);
+    cmdString = sprintf('PsychOculusVR(1, %i);', handle);
     Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', 'OculusVRTimeWarpSetup', cmdString);
 
     cmdString = sprintf('PsychOculusVRCore(''EndFrameTiming'', %i);', handle);

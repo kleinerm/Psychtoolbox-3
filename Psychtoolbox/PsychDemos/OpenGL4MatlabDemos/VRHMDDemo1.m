@@ -208,8 +208,11 @@ try
   % Make sure all keys are released:
   KbReleaseWait;
 
+  Priority(MaxPriority(win));
+
   % Start the headtracker of the HMD:
-  PsychOculusVR('Start', hmd)
+  PsychOculusVR('Start', hmd);
+  PsychOculusVRCore ('Verbosity', 2);
 
   % Get duration of a single frame:
   ifi = Screen('GetFlipInterval', win);
@@ -221,11 +224,11 @@ try
   % VR render loop: Runs until keypress:
   while ~KbCheck
     % Track head position and orientation, retrieve modelview camera matrices for each eye:
-    PsychOculusVRCore('GetTrackingState', hmd);
     [modelviewL, modelviewR] = PsychOculusVR('StartRender', hmd);
 
     % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
     % this is supported by the current GPU + driver combo:
+    gpumeasure = 0;
     gpumeasure = Screen('GetWindowInfo', win, 5);
 
     % We render the scene separately for each eye:
@@ -263,7 +266,7 @@ try
       % Compute simulation time for this draw cycle:
       telapsed = vbl - tstart;
 
-      if 1
+      if 0
         % Draw the particle fountain. We use a vertex shader in the shader
         % program glsl to compute the physics:
         glUseProgram(glsl);
@@ -284,12 +287,14 @@ try
       % Manually disable 3D mode before switching to other eye or to flip:
       Screen('EndOpenGL', win);
 
+      % Screen('FillRect', win, [1,1,1], CenterRect([0 0 10 10], winRect));
+
       % Repeat for view of other eye:
     end
 
     % Stimulus ready. Show it on the HMD. We don't clear the color buffer here,
     % as this is done in the next iteration via glClear() call anyway:
-    vbl = Screen('Flip', win, vbl + 0.5 * ifi, 1);
+    vbl = Screen('Flip', win, [], 1);
     fcount = fcount + 1;
 
     % Result of GPU time measurement expected?
@@ -315,6 +320,8 @@ try
   fps = fcount / (vbl - tstart);
   gpudur = gpudur(1:fcount);
   fprintf('Average framerate was %f fps. Average GPU rendertime per frame = %f msec.\n', fps, 1000 * mean(gpudur));
+
+  Priority(0);
 
   % Now a benchmark run to test different strategies for their speed...
 
