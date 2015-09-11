@@ -60,6 +60,33 @@ if nargin < 1 || isempty(cmd)
   return;
 end
 
+% Fast-Path function 'TimeWarp'. Prepares 2D eye timewarp:
+if strcmpi(cmd, 'TimeWarp')
+  handle = varargin{1};
+
+  % Wait for warp point, then query warp matrices:
+  [hmd{handle}.eyeRotStartMatrixLeft, hmd{handle}.eyeRotEndMatrixLeft] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 0, 1);
+  [hmd{handle}.eyeRotStartMatrixRight, hmd{handle}.eyeRotEndMatrixRight] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 1, 0);
+
+  %hmd{handle}.eyeRotStartMatrixLeft
+  %hmd{handle}.eyeRotEndMatrixLeft
+
+  % Setup left shaders warp matrices:
+  glUseProgram(hmd{handle}.shaderLeft(1));
+  glUniformMatrix4fv(hmd{handle}.shaderLeft(2), 1, 1, hmd{handle}.eyeRotStartMatrixLeft);
+  glUniformMatrix4fv(hmd{handle}.shaderLeft(3), 1, 1, hmd{handle}.eyeRotEndMatrixLeft);
+
+  % Setup right shaders warp matrices:
+  glUseProgram(hmd{handle}.shaderRight(1));
+  glUniformMatrix4fv(hmd{handle}.shaderRight(2), 1, 1, hmd{handle}.eyeRotStartMatrixRight);
+  glUniformMatrix4fv(hmd{handle}.shaderRight(3), 1, 1, hmd{handle}.eyeRotEndMatrixRight);
+
+  % Ready for warp:
+  glUseProgram(0);
+
+  return;
+end
+
 % Autodetect first connected HMD and open a connection to it. Open a
 % emulated one, if none can be detected. Perform basic setup with
 % default configuration, create a proper PsychImaging task.
@@ -124,6 +151,9 @@ if strcmpi(cmd, 'Open')
 
   % Default autoclose flag to "no autoclose":
   hmd{handle}.autoclose = 0;
+
+  % Default to use of timewarp:
+  hmd{handle}.useTimeWarp = 1;
 
   varargout{1} = handle;
   return;
@@ -406,6 +436,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), hmd{handle}.uvScaleLeft(1) * hmd{handle}.inputWidth, hmd{handle}.uvScaleLeft(2) * hmd{handle}.inputHeight);
   glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationStart'), 1, 1, hmd{handle}.eyeRotStartMatrixLeft);
   glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationEnd'), 1, 1, hmd{handle}.eyeRotEndMatrixLeft);
+  hmd{handle}.shaderLeft = [glsl, glGetUniformLocation(glsl, 'EyeRotationStart'), glGetUniformLocation(glsl, 'EyeRotationEnd')];
   glUseProgram(0);
 
   % Insert it at former position of the old shader:
@@ -432,12 +463,23 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), hmd{handle}.uvScaleRight(1) * hmd{handle}.inputWidth, hmd{handle}.uvScaleRight(2) * hmd{handle}.inputHeight);
   glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationStart'), 1, 1, hmd{handle}.eyeRotStartMatrixRight);
   glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationEnd'), 1, 1, hmd{handle}.eyeRotEndMatrixRight);
+  hmd{handle}.shaderRight = [glsl, glGetUniformLocation(glsl, 'EyeRotationStart'), glGetUniformLocation(glsl, 'EyeRotationEnd')];
   glUseProgram(0);
 
   % Insert it at former position of the old shader:
   posstring = sprintf('InsertAt%iShader', slot);
   blittercfg = sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gldRight);
   Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', 'OculusVRClientCompositingShaderRightEye', glsl, blittercfg);
+
+  if hmd{handle}.useTimeWarp
+    posstring = sprintf('InsertAt%iMFunction', slot);
+    cmdString = sprintf('PsychOculusVR(''TimeWarp'', %i);', handle);
+    Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', 'OculusVRTimeWarpSetup', cmdString);
+
+    cmdString = sprintf('PsychOculusVRCore(''EndFrameTiming'', %i);', handle);
+    Screen('Hookfunction', win, 'PrependMFunction', 'ScreenFlipImpliedOperations', 'OculusVRPostPresentCallback', cmdString);
+    Screen('Hookfunction', win, 'Enable', 'ScreenFlipImpliedOperations');
+  end
 
   % Does usercode request auto-closing the HMD or driver when the onscreen window is closed?
   if hmd{handle}.autoclose > 0

@@ -28,6 +28,8 @@
 
 // Includes from Oculus SDK 0.5:
 #include "OVR_CAPI.h"
+
+// Only needed for C++ math support routines in OVR:: namespace.
 #include "Extras/OVR_Math.h"
 
 // Number of maximum simultaneously open kinect devices:
@@ -55,7 +57,7 @@ typedef struct PsychOculusDevice {
 PsychOculusDevice oculusdevices[MAX_PSYCH_OCULUS_DEVS];
 static int available_devices = 0;
 static unsigned int devicecount = 0;
-static unsigned int verbosity = 3;
+static int verbosity = 3;
 static psych_bool initialized = FALSE;
 
 void InitializeSynopsis(void)
@@ -70,17 +72,19 @@ void InitializeSynopsis(void)
     synopsis[i++] = "\n";
     synopsis[i++] = "Usage:";
     synopsis[i++] = "\n";
+    synopsis[i++] = "oldVerbosity = PsychOculusVRCore('Verbosity' [, verbosity]);";
     synopsis[i++] = "numHMDs = PsychOculusVRCore('GetCount');";
     synopsis[i++] = "oculusPtr = PsychOculusVRCore('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOculusVRCore('Close' [, oculusPtr]);";
     synopsis[i++] = "PsychOculusVRCore('Start', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore('Stop', oculusPtr);";
     synopsis[i++] = "state = PsychOculusVRCore('GetTrackingState', oculusPtr [, predictionTime=0]);";
-    synopsis[i++] = "[width, height, fovPort] = PsychOculusVR('GetFovTextureSize', oculusPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
-    synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz, meshVertices, meshIndices, uvScaleX, uvScaleY, uvOffsetX, uvOffsetY] = PsychOculusVR('GetUndistortionParameters', oculusPtr, eye, inputWidth, inputHeight [, tanfov]);";
-    synopsis[i++] = "[projL, projR] = PsychOculusVR('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
-    synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVR('GetEyeTimewarpMatrices', oculusPtr, eye);";
-    synopsis[i++] = "[projL, projR, modelviewL, modelviewR] = PsychOculusVR('StartRender', oculusPtr);";
+    synopsis[i++] = "[width, height, fovPort] = PsychOculusVRCore('GetFovTextureSize', oculusPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
+    synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz, meshVertices, meshIndices, uvScaleX, uvScaleY, uvOffsetX, uvOffsetY] = PsychOculusVRCore('GetUndistortionParameters', oculusPtr, eye, inputWidth, inputHeight [, tanfov]);";
+    synopsis[i++] = "[projL, projR] = PsychOculusVRCore('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
+    synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
+    synopsis[i++] = "[projL, projR, modelviewL, modelviewR] = PsychOculusVRCore('StartRender', oculusPtr);";
+    synopsis[i++] = "PsychOculusVRCore('EndFrameTiming', oculusPtr);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
 
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -215,9 +219,33 @@ PsychError PsychOculusVRShutDown(void) {
     return(PsychError_none);
 }
 
+PsychError PSYCHOCULUSVRVerbosity(void)
+{
+    static char useString[] = "oldVerbosity = PsychOculusVRCore('Verbosity' [, verbosity]);";
+    static char synopsisString[] = "Returns and optionally sets level of 'verbosity' for driver debug output.\n"
+                                   "'verbosity' = New level of verbosity: 0 = Silent, 1 = Errors only, 2 = Warnings, 3 = Info, 4 = Debug.\n";
+    static char seeAlsoString[] = "";
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if( PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+
+    // Return optional old verbosity setting:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, verbosity);
+
+    // Get optional new verbosity setting:
+    PsychCopyInIntegerArg(1, kPsychArgOptional, &verbosity);
+
+    return(PsychError_none);
+}
+
 PsychError PSYCHOCULUSVRGetCount(void)
 {
-    static char useString[] = "numHMDs = PsychOculusVR('GetCount');";
+    static char useString[] = "numHMDs = PsychOculusVRCore('GetCount');";
     static char synopsisString[] = "Returns count of currently connected HMDs.\n\n";
     static char seeAlsoString[] = "Open";
 
@@ -245,7 +273,7 @@ PsychError PSYCHOCULUSVRGetCount(void)
 
 PsychError PSYCHOCULUSVROpen(void)
 {
-    static char useString[] = "oculusPtr = PsychOculusVR('Open' [, deviceIndex=0]);";
+    static char useString[] = "oculusPtr = PsychOculusVRCore('Open' [, deviceIndex=0]);";
     //                                                          1
     static char synopsisString[] =
         "Open connection to Oculus VR HMD, return a 'oculusPtr' handle to it.\n\n"
@@ -456,7 +484,7 @@ PsychError PSYCHOCULUSVRStop(void)
 
 PsychError PSYCHOCULUSVRGetTrackingState(void)
 {
-    static char useString[] = "state = PsychOculusVR('GetTrackingState', oculusPtr [, predictionTime=0]);";
+    static char useString[] = "state = PsychOculusVRCore('GetTrackingState', oculusPtr [, predictionTime=0]);";
     static char synopsisString[] =
         "Return current state of head position and orientation tracking for Oculus device 'oculusPtr'.\n"
         "Head position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
@@ -559,7 +587,7 @@ PsychError PSYCHOCULUSVRGetTrackingState(void)
 
 PsychError PSYCHOCULUSVRGetFovTextureSize(void)
 {
-    static char useString[] = "[width, height, fovPort] = PsychOculusVR('GetFovTextureSize', oculusPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
+    static char useString[] = "[width, height, fovPort] = PsychOculusVRCore('GetFovTextureSize', oculusPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
     //                          1      2       3                                             1          2      3                       4
     static char synopsisString[] =
     "Return recommended size of client renderbuffers for Oculus device 'oculusPtr'.\n"
@@ -641,7 +669,7 @@ PsychError PSYCHOCULUSVRGetFovTextureSize(void)
 
 PsychError PSYCHOCULUSVRGetUndistortionParameters(void)
 {
-    static char useString[] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz, meshVertices, meshIndices, uvScaleX, uvScaleY, uvOffsetX, uvOffsetY] = PsychOculusVR('GetUndistortionParameters', oculusPtr, eye, inputWidth, inputHeight [, tanfov]);";
+    static char useString[] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz, meshVertices, meshIndices, uvScaleX, uvScaleY, uvOffsetX, uvOffsetY] = PsychOculusVRCore('GetUndistortionParameters', oculusPtr, eye, inputWidth, inputHeight [, tanfov]);";
     //                          1      2       3       4       5       6       7      8      9          10         11         12            13           14        15        16         17                                                      1          2    3           4              5
     static char synopsisString[] =
     "Return parameters needed for rendering and undistortion for Oculus device 'oculusPtr'.\n"
@@ -823,19 +851,20 @@ PsychError PSYCHOCULUSVRGetUndistortionParameters(void)
 
 PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void)
 {
-    static char useString[] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVR('GetEyeTimewarpMatrices', oculusPtr, eye);";
-    //                          1                  2                                                             1          2
+    static char useString[] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
+    //                          1                  2                                                          1          2      3
     static char synopsisString[] =
     "Return eye warp rotation matrices for timewarped undistortion for Oculus device 'oculusPtr'.\n"
     "'eye' which eye to provide the data: 0 = Left, 1 = Right.\n"
+    "'waitForTimewarpPoint' If set to 1, stall execution of calling thread until next time warp point is reached. Defaults to zero.\n"
     "Return values are 4x4 'eyeRotStartMatrix' and 'eyeRotEndMatrix' for given eye.\n";
     static char seeAlsoString[] = "";
 
-    int handle, eyeIndex;
+    int handle, eyeIndex, waitForTimewarpPoint;
     PsychOculusDevice *oculus;
-    int i;
+    double tNow;
+    int i, j;
     double *startMatrix, *endMatrix;
-    float *mv;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -843,7 +872,7 @@ PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void)
 
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(2));
-    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(2));
 
     // Make sure driver is initialized:
@@ -857,6 +886,20 @@ PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void)
     PsychCopyInIntegerArg(2, kPsychArgRequired, &eyeIndex);
     if (eyeIndex < 0 || eyeIndex > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0 or 1 for left- or right eye.");
 
+    // Get waitForTimewarpPoint:
+    waitForTimewarpPoint = 0;
+    PsychCopyInIntegerArg(3, kPsychArgOptional, &waitForTimewarpPoint);
+    if (waitForTimewarpPoint < 0 || waitForTimewarpPoint > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'waitForTimewarpPoint' specified. Must be 0 or 1.");
+
+    if (waitForTimewarpPoint) {
+        // Wait till time-warp point to reduce latency.
+        tNow = ovr_GetTimeInSeconds();
+        if (verbosity > 3)
+            printf("PsychOculusVRCore-INFO: Waiting for %f msecs until next TimewarpPointSeconds %f.\n", 1000.0 * (oculus->frameTiming.TimewarpPointSeconds - tNow), oculus->frameTiming.TimewarpPointSeconds);
+
+        ovr_WaitTillTime(oculus->frameTiming.TimewarpPointSeconds);
+    }
+
     ovrEyeType eye = oculus->hmd->EyeRenderOrder[eyeIndex];
     oculus->headPose[eye] = ovrHmd_GetHmdPosePerEye(oculus->hmd, eye);
 
@@ -865,21 +908,21 @@ PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void)
                                   oculus->timeWarpMatrices);
 
     PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 4, 4, 1, &startMatrix);
-    mv = &(oculus->timeWarpMatrices[0].M[0][0]);
-    for (i = 0; i < 4 * 4; i++)
-        *(startMatrix++) = (double) *(mv++);
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
+            *(startMatrix++) = (double) oculus->timeWarpMatrices[0].M[j][i];
 
     PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 4, 4, 1, &endMatrix);
-    mv = &(oculus->timeWarpMatrices[1].M[0][0]);
-    for (i = 0; i < 4 * 4; i++)
-        *(endMatrix++) = (double) *(mv++);
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
+            *(endMatrix++) = (double) oculus->timeWarpMatrices[1].M[j][i];
 
     return(PsychError_none);
 }
 
 PsychError PSYCHOCULUSVRGetStaticRenderParameters(void)
 {
-    static char useString[] = "[projL, projR] = PsychOculusVR('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
+    static char useString[] = "[projL, projR] = PsychOculusVRCore('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
     //                          1      2                                                   1            2                3
     static char synopsisString[] =
     "Retrieve static rendering parameters for Oculus device 'oculusPtr' at current settings.\n"
@@ -942,7 +985,7 @@ PsychError PSYCHOCULUSVRGetStaticRenderParameters(void)
 
 PsychError PSYCHOCULUSVRStartRender(void)
 {
-    static char useString[] = "[modelviewL, modelviewR] = PsychOculusVR('StartRender', oculusPtr);";
+    static char useString[] = "[modelviewL, modelviewR] = PsychOculusVRCore('StartRender', oculusPtr);";
     //                          1           2                                          1
     static char synopsisString[] =
     "Mark start of a new 3D head tracked render cycle for Oculus device 'oculusPtr'.\n"
@@ -1012,6 +1055,42 @@ PsychError PSYCHOCULUSVRStartRender(void)
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
             *(outM++) = (double) viewR.M[j][i];
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVREndFrameTiming(void)
+{
+    static char useString[] = "PsychOculusVR('EndFrameTiming', oculusPtr);";
+    //                                                         1
+    static char synopsisString[] =
+    "Mark start of a new 3D head tracked render cycle for Oculus device 'oculusPtr'.\n"
+    "Return values are the 4x4 OpenGL modelview matrices which define the two cameras "
+    "for the left eye and right eye 'modelviewL' and 'modelviewR'.\n";
+    static char seeAlsoString[] = "";
+
+    int handle;
+    PsychOculusDevice *oculus;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    //check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(0));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit();
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Tell runtime that the last rendered frame was just presented onscreen,
+    // aka OpenGL bufferswap completed:
+    ovrHmd_EndFrameTiming(oculus->hmd);
 
     return(PsychError_none);
 }

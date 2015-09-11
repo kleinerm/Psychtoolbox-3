@@ -221,6 +221,7 @@ try
   % VR render loop: Runs until keypress:
   while ~KbCheck
     % Track head position and orientation, retrieve modelview camera matrices for each eye:
+    PsychOculusVRCore('GetTrackingState', hmd);
     [modelviewL, modelviewR] = PsychOculusVR('StartRender', hmd);
 
     % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if

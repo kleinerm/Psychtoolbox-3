@@ -42,6 +42,7 @@ PsychError PsychOculusVRDisplaySynopsis(void);
 void PsychOculusVRInit(void);
 PsychError PsychOculusVRShutDown(void);
 
+PsychError PSYCHOCULUSVRVerbosity(void);
 PsychError PSYCHOCULUSVROpen(void);
 PsychError PSYCHOCULUSVRClose(void);
 PsychError PSYCHOCULUSVRStart(void);
@@ -53,6 +54,7 @@ PsychError PSYCHOCULUSVRGetUndistortionParameters(void);
 PsychError PSYCHOCULUSVRGetStaticRenderParameters(void);
 PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void);
 PsychError PSYCHOCULUSVRStartRender(void);
+PsychError PSYCHOCULUSVREndFrameTiming(void);
 
 #ifdef  __cplusplus
 }
