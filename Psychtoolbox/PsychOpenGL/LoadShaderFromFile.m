@@ -1,5 +1,5 @@
 function handle = LoadShaderFromFile(filename, shadertype, debug)
-% handle = LoadShaderFromFile(filename [, shadertype] [, debug])
+% handle = LoadShaderFromFile(filename [, shadertype] [, debug=0])
 %
 % Loads a GLSL OpenGL shader definition from textfile 'filename' and
 % creates an OpenGL GLSL shader of type 'shadertype'. Returns a handle to
@@ -9,25 +9,32 @@ function handle = LoadShaderFromFile(filename, shadertype, debug)
 % GL_TESS_CONTROL_SHADER, .tesseval = GL_TESS_EVALUATION_SHADER. The
 % optional 'debug' flag allows to enable debugging output.
 %
+% The optional 'debug' flag allows to enable debugging output:
+% Zero = no output, 1 = a bit of output, 2 = detailed output,
+% 3 = Don't compile and link anymore, but print out the shaders
+% source code as OpenGL would see it.
+%
 % On successfull load & creation, a 'handle' to the new shader is returned.
 %
 
 % 29-Mar-2006 written by MK
 % 29-Jul-2009 Bugfixes by MK: debug must default to 1, not 2!
 % 06-Sep-2013 Add geometry shader and tesselation shader support. (MK)
+% 12-Sep-2015 Add dumping of shader compile log at debug level 2 (DHN)
+% 12-Sep-2015 Only abort with full shader source dump at level 3. Cosmetic cleanups (MK)
 
 global GL;
 
 if isempty(GL)
     InitializeMatlabOpenGL([],[],1);
-end;
+end
 
 % Make sure we run on a GLSL capable system.
 AssertGLSL;
 
 if nargin < 3
-    debug = 1;
-end;
+    debug = 0;
+end
 
 if nargin < 1 
     filename = [];
@@ -36,15 +43,14 @@ end
 if isempty(filename)
     % Set default shader file name:
     error('LoadShaderFromFile() called without any shader filename!');
-end;
-
+end
 
 % Add path to our own shader directory if no path given:
 if isempty(fileparts(filename))
     % No path to the shader defined as part of the filename. Add our
     % default path to our standard shader directory:
     filename = [ PsychtoolboxRoot 'PsychOpenGL/PsychGLSLShaders/' filename ];
-end;
+end
 
 if nargin < 2
     shadertype = [];
@@ -63,24 +69,24 @@ if isempty(shadertype)
         if debug>0, fprintf('Building a geometry shader:'); end;
     elseif ~isempty(strfind(filename, '.tesscontrol'))
         shadertype = GL.TESS_CONTROL_SHADER;
-        if debug>0, fprintf('Building a tesselation control shader:'); end;        
+        if debug>0, fprintf('Building a tesselation control shader:'); end;
     elseif ~isempty(strfind(filename, '.tesseval'))
         shadertype = GL.TESS_EVALUATION_SHADER;
-        if debug>0, fprintf('Building a tesselation evaluation shader:'); end;        
+        if debug>0, fprintf('Building a tesselation evaluation shader:'); end;
     else
         error('No shadertype provided and could not derive type from filename extension!');
-    end;
-end;
+    end
+end
 
-if debug>0
+if debug > 0
     fprintf('Reading shader from file %s ...\n', filename);
-end;
+end
 
 % Read shader source code from file:
 [fid errmsg]=fopen(filename, 'rt');
-if fid<0
+if fid < 0
     error('Could not open shader definition file %s [%s]!', filename, errmsg);
-end;
+end
 shadersrc = fread(fid);
 fclose(fid);
 
@@ -91,13 +97,27 @@ if handle <= 0
     error('LoadShaderFromFile: glCreateShader failed to create a valid shader! Something is wrong with your graphics drivers!');
 end
 
-if debug > 1
+if debug > 2
     glShaderSource(handle, shadersrc, debug);
 else
     glShaderSource(handle, shadersrc);
-end;
+end
 
-glCompileShader(handle);
+if debug > 1
+    % We need to temporarily raise moglcores debuglevel to 2 to get extended
+    % error/validation information:
+    oldDebug = InitializeMatlabOpenGL(-1);
+    moglcore('DEBUGLEVEL', 2);
+
+    % Compile the shader:
+    glCompileShader(handle);
+
+    % Restore old debuglevel for moglcore:
+    moglcore('DEBUGLEVEL', oldDebug);
+else
+    % Compile the shader without raised debug level for moglcore:
+    glCompileShader(handle);
+end
 
 % Done.
 return;

@@ -1,10 +1,10 @@
 function handle = LoadGLSLProgramFromFiles(filenames, debug, extraShaders)
-% handle = LoadGLSLProgramFromFiles(filenames [, debug] [, extraShaders])
+% handle = LoadGLSLProgramFromFiles(filenames [, debug=0] [, extraShaders])
 % Loads a GLSL OpenGL shading language program. All shader definition files in
 % 'filenames' are read, shaders are built for each definition and all
 % shaders are linked together into a new GLSL program. Returns a handle to
 % the new program, if successfull. The optional 'debug' flag allows to enable
-% debugging output: Zero = no output, 1 = a bit of outpt, 2 = detailed
+% debugging output: Zero = no output, 1 = a bit of output, 2 = detailed
 % output, 3 = Don't compile and link anymore, but print out the shaders
 % source code as OpenGL would see it.
 %
@@ -43,11 +43,11 @@ if isempty(GL)
     % Load & Initalize constants and moglcore, but don't set the 3D gfx
     % flag for Screen():
     InitializeMatlabOpenGL([], [], 1);
-end;
+end
 
 if nargin < 2
     debug = [];
-end;
+end
 
 if isempty(debug)
     debug = 0;
@@ -59,7 +59,7 @@ end
 
 if isempty(filenames)
     error('No filenames for GLSL program provided! Aborted.');
-end;
+end
 
 if nargin < 3
     extraShaders = [];
@@ -78,16 +78,16 @@ end
 if ischar(filenames)
     % One single name given. Load and link all shaders starting with that
     % name:
-    if debug>1
-        fprintf('Compiling all shaders matching %s * into a GLSL program...\n', filenames);
-    end;
+    if debug > 0
+        fprintf('Compiling all shaders matching %s * into a GLSL program.\n', filenames);
+    end
 
     % Add default shader path if no path is specified as part of
     % 'filenames':
     if isempty(fileparts(filenames))
         filenames = fullfile(PsychtoolboxRoot,'PsychOpenGL','PsychGLSLShaders', filenames);
-    end;
-    
+    end
+
     % Fixup use of wrong fileseparators for platform:
     if IsWin
         prep = strfind(filenames, '/');
@@ -96,24 +96,24 @@ if ischar(filenames)
         prep = strfind(filenames, '\');
         filenames(prep) = filesep;
     end
-    
+
     shaderobjs=dir([filenames '*']);
     shaderobjpath = [fileparts([filenames '*']) filesep];
     numshaders=size(shaderobjs,1)*size(shaderobjs,2);
-    
+
     if numshaders == 0
         fprintf('\n\n\nIn LoadGLSLProgramFromFiles: When trying to load shaders matching %s ...\n', filenames);
         error('Could not find any shader definition files matching that name. Check spelling.');
     end
 
     filenames=[];
-    
+
     for i=1:numshaders
         [dummy1 curname curext] = fileparts(shaderobjs(i).name);
         shadername = [curname curext];
         filenames{i} = [shaderobjpath shadername]; %#ok<AGROW>
-    end;
-end;
+    end
+end
 
 % Any additional shader handles provided? If so, we attach them first,
 % before the shaders specified via files. Normally attachment order
@@ -140,15 +140,10 @@ for i=1:length(filenames)
     % because that would mean it is a Matlab- or emacs backup file...
     if (shadername(end)~='~') && (isempty(strfind(shadername, '.asv')))
        % Load, compile and link the shader:
-       if debug < 3
-           shdebug = 1;
-       else
-           shdebug = debug;
-       end
-       shader = LoadShaderFromFile(shadername, [], shdebug);
+       shader = LoadShaderFromFile(shadername, [], debug);
        glAttachShader(handle, shader);
-    end;
-end;
+    end
+end
 
 if debug > 1
     % We need to temporarily raise moglcores debuglevel to 2 to get extended
