@@ -1,7 +1,7 @@
-function VRHMDDemo1(multiSample)
+function VRHMDDemo1(multiSample, fountain)
 % VRHMDDemo1 -- Show 3D stereo display via MOGL OpenGL on a VR headset.
 %
-% Usage: VRHMDDemo1([multiSample=0]);
+% Usage: VRHMDDemo1([multiSample=0][, fountain=0]);
 %
 % Pressing any key continues the demo and progresses to next
 % subdemo. Mouse clicks will pause some demos, until another mouse click
@@ -13,6 +13,8 @@ function VRHMDDemo1(multiSample)
 % anti-aliasing. This however usually doesn't give good results with
 % smoothed 3D dots.
 %
+% 'fountain' if set to 1 will also emit a particle fountain from the nozzle
+% of the teapot. Nicer, but higher gpu load.
 
 % History:
 % 10-Sep-2015  mk  Written. Derived from DrawDots3DDemo.m
@@ -22,6 +24,10 @@ global GL;
 
 if nargin < 1 || isempty(multiSample)
   multiSample = 0;
+end
+
+if nargin < 2 || isempty(fountain)
+  fountain = 0;
 end
 
 % Default setup:
@@ -266,7 +272,7 @@ try
       % Compute simulation time for this draw cycle:
       telapsed = vbl - tstart;
 
-      if 0
+      if fountain
         % Draw the particle fountain. We use a vertex shader in the shader
         % program glsl to compute the physics:
         glUseProgram(glsl);

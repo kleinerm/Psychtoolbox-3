@@ -1,0 +1,30 @@
+# /etc/X11/xorg.conf
+
+Section "ServerLayout"
+	Identifier	"HD5770onMacProDualXScreen"
+	Screen	0	"Screen0" 0 0
+	Screen	1	"Screen1" RightOf "Screen0"
+EndSection
+Section "Device"
+	Identifier  "Card0"
+        Driver          "ati" # Change this to the driver you want
+	Screen 0
+	Option		"ZaphodHeads"		"DisplayPort-1"
+EndSection
+
+Section "Device"
+	Identifier  "Card1"
+        Driver          "ati" # Change this to the driver you want
+	Screen 1
+	Option		"ZaphodHeads"		"DVI-0"
+EndSection
+
+Section "Screen"
+	Identifier "Screen0"
+	Device "Card0"
+EndSection
+
+Section "Screen"
+	Identifier "Screen1"
+	Device "Card1"
+EndSection
