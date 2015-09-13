@@ -64,7 +64,16 @@ end
 if cmd == 1
   handle = varargin{1};
 
-  % Wait for warp point, then query warp matrices:
+  % Wait for warp point, then query warp matrices. We assume the warp point is
+  % 3 msecs before the target vblank and use our own high precision estimation of
+  % the warp point, as well as our own high precision wait. Oculus SDK v0.5 doesn't
+  % implement warp point calculation properly itself, therefore "do it yourself":
+  winfo = Screen('GetWindowInfo', hmd{handle}.win, 7);
+  warpPointSecs = winfo.LastVBLTime + hmd{handle}.videoRefreshDuration - 0.003;
+  % waiting = 1000 * (warpPointSecs - GetSecs)
+  WaitSecs('UntilTime', warpPointSecs);
+
+  % Get the matrices:
   [hmd{handle}.eyeRotStartMatrixLeft, hmd{handle}.eyeRotEndMatrixLeft] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 0, 0);
   [hmd{handle}.eyeRotStartMatrixRight, hmd{handle}.eyeRotEndMatrixRight] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 1, 0);
 
@@ -218,6 +227,18 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   
   % Onscreen window handle:
   win = varargin{2};
+
+  % Keep track of window handle of associated onscreen window:
+  hmd{handle}.win = win;
+
+  % Also keep track of video refresh duration of the HMD:
+  hmd{handle}.videoRefreshDuration = Screen('Framerate', win);
+  if hmd{handle}.videoRefreshDuration == 0
+    % Unlikely to ever hit this situation, but if we would, just
+    % default to the Rift DK-2's default video refresh rate of 75 Hz:
+    hmd{handle}.videoRefreshDuration = 75;
+  end
+  hmd{handle}.videoRefreshDuration = 1 / hmd{handle}.videoRefreshDuration;
 
   % Compute effective size of per-eye input buffer for undistortion render.
   % The input buffers for undistortion are the processedDrawbufferFBO's aka
