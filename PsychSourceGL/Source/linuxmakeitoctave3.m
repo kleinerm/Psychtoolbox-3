@@ -205,6 +205,7 @@ if mode==12
     try
         mex -v -g --output ../Projects/Linux/build/PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.cc Common/PsychOculusVRCore/RegisterProject.c -lc -lrt /usr/local/lib/libOVR.a
     catch
+        disp(psychlasterror);
     end
     delete('Common/PsychOculusVRCore/PsychOculusVR.cc');
 
