@@ -29,8 +29,10 @@
 // Includes from Oculus SDK 0.5:
 #include "OVR_CAPI.h"
 
+#ifdef  __cplusplus
 // Only needed for C++ math support routines in OVR:: namespace.
 #include "Extras/OVR_Math.h"
+#endif
 
 // Number of maximum simultaneously open kinect devices:
 #define MAX_PSYCH_OCULUS_DEVS 10
@@ -51,6 +53,7 @@ typedef struct PsychOculusDevice {
     ovrMatrix4f timeWarpMatrices[2];
     ovrPosef headPose[2];
     ovrFrameTiming frameTiming;
+    uint32_t frameIndex;
     ovrPosef outEyePoses[2];
 } PsychOculusDevice;
 
@@ -83,7 +86,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz, meshVertices, meshIndices, uvScaleX, uvScaleY, uvOffsetX, uvOffsetY] = PsychOculusVRCore('GetUndistortionParameters', oculusPtr, eye, inputWidth, inputHeight [, tanfov]);";
     synopsis[i++] = "[projL, projR] = PsychOculusVRCore('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
-    synopsis[i++] = "[projL, projR, modelviewL, modelviewR] = PsychOculusVRCore('StartRender', oculusPtr);";
+    synopsis[i++] = "[eyePoseL, eyePoseR, modelviewL, modelviewR] = PsychOculusVRCore('StartRender', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore('EndFrameTiming', oculusPtr);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
 
@@ -289,6 +292,7 @@ PsychError PSYCHOCULUSVROpen(void)
     int i, j;
     int deviceIndex = 0;
     int handle = 0;
+    unsigned int oldCaps, newCaps;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -348,6 +352,15 @@ PsychError PSYCHOCULUSVROpen(void)
         if (verbosity >= 3) printf("PsychOculusVRCore-INFO: Opened an emulated Oculus Rift DK2 as handle %i.\n", handle + 1);
     }
 
+    // Query current enabled caps:
+    oldCaps = ovrHmd_GetEnabledCaps(oculus->hmd);
+
+    // Set enabled HMD caps:
+    ovrHmd_SetEnabledCaps(oculus->hmd, oldCaps | ovrHmdCap_LowPersistence | ovrHmdCap_DynamicPrediction);
+
+    // Requery to double-check if we got what we wanted:
+    newCaps = ovrHmd_GetEnabledCaps(oculus->hmd);
+
     // Stats for nerds:
     if (verbosity >= 3) {
         printf("PsychOculusVRCore-INFO: Product: %s - Manufacturer: %s - SerialNo: %s [VID: 0x%x PID: 0x%x]\n",
@@ -357,6 +370,8 @@ PsychError PSYCHOCULUSVROpen(void)
         printf("PsychOculusVRCore-INFO: CameraFrustumNearZInMeters: %f - CameraFrustumFarZInMeters:  %f\n", oculus->hmd->CameraFrustumNearZInMeters, oculus->hmd->CameraFrustumFarZInMeters);
         printf("PsychOculusVRCore-INFO: Panel size in pixels w x h = %i x %i [WindowPos %i x %i]\n", oculus->hmd->Resolution.w, oculus->hmd->Resolution.h, oculus->hmd->WindowsPos.x, oculus->hmd->WindowsPos.y);
         printf("PsychOculusVRCore-INFO: DisplayDeviceName: %s\n", oculus->hmd->DisplayDeviceName);
+        printf("PsychOculusVRCore-INFO: OldCaps: LowPersistence=%i : DynamicPrediction=%i\n", (oldCaps & ovrHmdCap_LowPersistence) ? 1 : 0, (oldCaps & ovrHmdCap_DynamicPrediction) ? 1 : 0);
+        printf("PsychOculusVRCore-INFO: NewCaps: LowPersistence=%i : DynamicPrediction=%i\n", (newCaps & ovrHmdCap_LowPersistence) ? 1 : 0, (newCaps & ovrHmdCap_DynamicPrediction) ? 1 : 0);
         printf("PsychOculusVRCore-INFO: ----------------------------------------------------------------------------------\n");
     }
 
@@ -447,6 +462,9 @@ PsychError PSYCHOCULUSVRStart(void)
         PsychErrorExitMsg(PsychError_system, "Start of Oculus HMD tracking failed for reason given above.");
     }
     else if (verbosity >= 3) printf("PsychOculusVRCore-INFO: Tracking started on device with handle %i.\n", handle);
+
+    oculus->frameIndex = 0;
+    ovrHmd_ResetFrameTiming(oculus->hmd, oculus->frameIndex);
 
     oculus->isTracking = TRUE;
 
@@ -985,17 +1003,16 @@ PsychError PSYCHOCULUSVRGetStaticRenderParameters(void)
 
 PsychError PSYCHOCULUSVRStartRender(void)
 {
-    static char useString[] = "[modelviewL, modelviewR] = PsychOculusVRCore('StartRender', oculusPtr);";
-    //                          1           2                                          1
+    static char useString[] = "[eyePoseL, eyePoseR, modelviewL, modelviewR] = PsychOculusVRCore('StartRender', oculusPtr);";
+    //                          1         2         3           4                                              1
     static char synopsisString[] =
     "Mark start of a new 3D head tracked render cycle for Oculus device 'oculusPtr'.\n"
-    "Return values are the 4x4 OpenGL modelview matrices which define the two cameras "
-    "for the left eye and right eye 'modelviewL' and 'modelviewR'.\n";
+    "Return values are the vectors which define the two cameras positions and orientations "
+    "for the left eye and right eye 'eyePoseL' and 'eyePoseR'.\n";
     static char seeAlsoString[] = "";
 
     int handle;
     PsychOculusDevice *oculus;
-    unsigned int frameIndex = 0; // Use 0 for now.
     ovrTrackingState *outHmdTrackingState = NULL; // Return value not used for now.
     ovrVector3f hmdToEyeViewOffset[2];
     int i, j;
@@ -1006,7 +1023,7 @@ PsychError PSYCHOCULUSVRStartRender(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(4));
     PsychErrorExit(PsychCapNumInputArgs(1));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -1021,13 +1038,41 @@ PsychError PSYCHOCULUSVRStartRender(void)
     //oculus->headPose[eye] = ovrHmd_GetHmdPosePerEye(oculus->hmd, eye);
 
     // Mark beginning of frame rendering. This takes timstamps and stuff:
-    oculus->frameTiming = ovrHmd_BeginFrameTiming(oculus->hmd, 0);
+    oculus->frameTiming = ovrHmd_BeginFrameTiming(oculus->hmd, oculus->frameIndex);
 
     // Get current eye poses for both eyes:
     hmdToEyeViewOffset[0] = oculus->eyeRenderDesc[0].HmdToEyeViewOffset;
     hmdToEyeViewOffset[1] = oculus->eyeRenderDesc[1].HmdToEyeViewOffset;
-    ovrHmd_GetEyePoses(oculus->hmd, frameIndex, hmdToEyeViewOffset,
+    ovrHmd_GetEyePoses(oculus->hmd, oculus->frameIndex, hmdToEyeViewOffset,
                        oculus->outEyePoses, outHmdTrackingState);
+
+    // Left eye pose as raw data:
+    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 7, 1, &outM);
+
+    // Position (x,y,z):
+    outM[0] = oculus->outEyePoses[0].Position.x;
+    outM[1] = oculus->outEyePoses[0].Position.y;
+    outM[2] = oculus->outEyePoses[0].Position.z;
+
+    // Orientation as a quaternion (x,y,z,w):
+    outM[3] = oculus->outEyePoses[0].Orientation.x;
+    outM[4] = oculus->outEyePoses[0].Orientation.y;
+    outM[5] = oculus->outEyePoses[0].Orientation.z;
+    outM[6] = oculus->outEyePoses[0].Orientation.w;
+
+    // Right eye pose as raw data:
+    PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 1, 7, 1, &outM);
+
+    // Position (x,y,z):
+    outM[0] = oculus->outEyePoses[1].Position.x;
+    outM[1] = oculus->outEyePoses[1].Position.y;
+    outM[2] = oculus->outEyePoses[1].Position.z;
+
+    // Orientation as a quaternion (x,y,z,w):
+    outM[3] = oculus->outEyePoses[1].Orientation.x;
+    outM[4] = oculus->outEyePoses[1].Orientation.y;
+    outM[5] = oculus->outEyePoses[1].Orientation.z;
+    outM[6] = oculus->outEyePoses[1].Orientation.w;
 
     // Invert camera translation vectors:
     oculus->outEyePoses[0].Position.x *= -1;
@@ -1038,23 +1083,28 @@ PsychError PSYCHOCULUSVRStartRender(void)
     oculus->outEyePoses[1].Position.y *= -1;
     oculus->outEyePoses[1].Position.z *= -1;
 
-    // Return left modelview matrix as return argument 3:
-    OVR::Quatf orientationL = OVR::Quatf(oculus->outEyePoses[0].Orientation);
-    OVR::Matrix4f viewL = OVR::Matrix4f(orientationL.Inverted()) * OVR::Matrix4f::Translation(oculus->outEyePoses[0].Position);
+    // Only compile this if C++ compiled:
+    #ifdef  __cplusplus
+    {
+        // Return left modelview matrix as return argument 3:
+        OVR::Quatf orientationL = OVR::Quatf(oculus->outEyePoses[0].Orientation);
+        OVR::Matrix4f viewL = OVR::Matrix4f(orientationL.Inverted()) * OVR::Matrix4f::Translation(oculus->outEyePoses[0].Position);
 
-    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 4, 4, 1, &outM);
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-            *(outM++) = (double) viewL.M[j][i];
+        PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 4, 4, 1, &outM);
+        for (i = 0; i < 4; i++)
+            for (j = 0; j < 4; j++)
+                *(outM++) = (double) viewL.M[j][i];
 
-    // Return right modelview matrix as return argument 4:
-    OVR::Quatf orientationR = OVR::Quatf(oculus->outEyePoses[1].Orientation);
-    OVR::Matrix4f viewR = OVR::Matrix4f(orientationR.Inverted()) * OVR::Matrix4f::Translation(oculus->outEyePoses[1].Position);
+        // Return right modelview matrix as return argument 4:
+        OVR::Quatf orientationR = OVR::Quatf(oculus->outEyePoses[1].Orientation);
+        OVR::Matrix4f viewR = OVR::Matrix4f(orientationR.Inverted()) * OVR::Matrix4f::Translation(oculus->outEyePoses[1].Position);
 
-    PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 4, 4, 1, &outM);
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-            *(outM++) = (double) viewR.M[j][i];
+        PsychAllocOutDoubleMatArg(4, kPsychArgOptional, 4, 4, 1, &outM);
+        for (i = 0; i < 4; i++)
+            for (j = 0; j < 4; j++)
+                *(outM++) = (double) viewR.M[j][i];
+    }
+    #endif
 
     return(PsychError_none);
 }
@@ -1091,6 +1141,7 @@ PsychError PSYCHOCULUSVREndFrameTiming(void)
     // Tell runtime that the last rendered frame was just presented onscreen,
     // aka OpenGL bufferswap completed:
     ovrHmd_EndFrameTiming(oculus->hmd);
+    oculus->frameIndex++;
 
     return(PsychError_none);
 }

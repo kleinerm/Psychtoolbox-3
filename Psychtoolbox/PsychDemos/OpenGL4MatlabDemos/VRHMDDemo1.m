@@ -230,7 +230,7 @@ try
   % VR render loop: Runs until keypress:
   while ~KbCheck
     % Track head position and orientation, retrieve modelview camera matrices for each eye:
-    [modelviewL, modelviewR] = PsychOculusVR('StartRender', hmd);
+    [eyePoseL, eyePoseR] = PsychOculusVR('StartRender', hmd);
 
     % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
     % this is supported by the current GPU + driver combo:
@@ -248,9 +248,9 @@ try
       % Setup camera position and orientation for this eyes 'view':
       glMatrixMode(GL.MODELVIEW);
       if view == 0
-          modelView = modelviewL;
+          modelView = eyePoseToCameraGLModelviewMatrix(eyePoseL);
       else
-          modelView = modelviewR;
+          modelView = eyePoseToCameraGLModelviewMatrix(eyePoseR);
       end
       glLoadMatrixd(modelView);
 
