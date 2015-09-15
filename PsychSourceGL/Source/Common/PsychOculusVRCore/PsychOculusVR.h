@@ -55,6 +55,7 @@ PsychError PSYCHOCULUSVRGetStaticRenderParameters(void);
 PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void);
 PsychError PSYCHOCULUSVRStartRender(void);
 PsychError PSYCHOCULUSVREndFrameTiming(void);
+PsychError PSYCHOCULUSVRGetEyePose(void);
 
 #ifdef  __cplusplus
 }

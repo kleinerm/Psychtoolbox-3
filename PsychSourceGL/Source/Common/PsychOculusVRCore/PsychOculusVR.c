@@ -87,6 +87,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[projL, projR] = PsychOculusVRCore('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
     synopsis[i++] = "[eyePoseL, eyePoseR, modelviewL, modelviewR] = PsychOculusVRCore('StartRender', oculusPtr);";
+    synopsis[i++] = "[eyePose, eyeIndex] = PsychOculusVRCore('GetEyePose', oculusPtr, renderPass);";
     synopsis[i++] = "PsychOculusVRCore('EndFrameTiming', oculusPtr);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
 
@@ -1009,7 +1010,7 @@ PsychError PSYCHOCULUSVRStartRender(void)
     "Mark start of a new 3D head tracked render cycle for Oculus device 'oculusPtr'.\n"
     "Return values are the vectors which define the two cameras positions and orientations "
     "for the left eye and right eye 'eyePoseL' and 'eyePoseR'.\n";
-    static char seeAlsoString[] = "";
+    static char seeAlsoString[] = "GetEyePose EndFrameTiming";
 
     int handle;
     PsychOculusDevice *oculus;
@@ -1074,18 +1075,18 @@ PsychError PSYCHOCULUSVRStartRender(void)
     outM[5] = oculus->outEyePoses[1].Orientation.z;
     outM[6] = oculus->outEyePoses[1].Orientation.w;
 
-    // Invert camera translation vectors:
-    oculus->outEyePoses[0].Position.x *= -1;
-    oculus->outEyePoses[0].Position.y *= -1;
-    oculus->outEyePoses[0].Position.z *= -1;
-
-    oculus->outEyePoses[1].Position.x *= -1;
-    oculus->outEyePoses[1].Position.y *= -1;
-    oculus->outEyePoses[1].Position.z *= -1;
-
     // Only compile this if C++ compiled:
     #ifdef  __cplusplus
     {
+        // Invert camera translation vectors:
+        oculus->outEyePoses[0].Position.x *= -1;
+        oculus->outEyePoses[0].Position.y *= -1;
+        oculus->outEyePoses[0].Position.z *= -1;
+
+        oculus->outEyePoses[1].Position.x *= -1;
+        oculus->outEyePoses[1].Position.y *= -1;
+        oculus->outEyePoses[1].Position.z *= -1;
+
         // Return left modelview matrix as return argument 3:
         OVR::Quatf orientationL = OVR::Quatf(oculus->outEyePoses[0].Orientation);
         OVR::Matrix4f viewL = OVR::Matrix4f(orientationL.Inverted()) * OVR::Matrix4f::Translation(oculus->outEyePoses[0].Position);
@@ -1117,7 +1118,7 @@ PsychError PSYCHOCULUSVREndFrameTiming(void)
     "Mark start of a new 3D head tracked render cycle for Oculus device 'oculusPtr'.\n"
     "Return values are the 4x4 OpenGL modelview matrices which define the two cameras "
     "for the left eye and right eye 'modelviewL' and 'modelviewR'.\n";
-    static char seeAlsoString[] = "";
+    static char seeAlsoString[] = "StartRender";
 
     int handle;
     PsychOculusDevice *oculus;
@@ -1142,6 +1143,74 @@ PsychError PSYCHOCULUSVREndFrameTiming(void)
     // aka OpenGL bufferswap completed:
     ovrHmd_EndFrameTiming(oculus->hmd);
     oculus->frameIndex++;
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVRGetEyePose(void)
+{
+    static char useString[] = "[eyePose, eyeIndex] = PsychOculusVRCore('GetEyePose', oculusPtr, renderPass);";
+    //                          1        2                                           1          2
+    static char synopsisString[] =
+    "Return current predicted pose vector for an eye for Oculus device 'oculusPtr'.\n"
+    "'renderPass' is the view render pass for which to provide the data: 0 = First pass, 1 = Second pass.\n"
+    "Return value is the vector 'eyePose' which defines the position and orientation for the eye corresponding "
+    "to the requested renderPass ie. 'eyePose' = [posX, posY, posZ, rotX, rotY, rotZ, rotW].\n"
+    "The second return value is the 'eyeIndex', the index of the eye whose view should be rendered. This would "
+    "be 0 for left eye, and 1 for right eye, and could be used to select the target render view via, e.g., "
+    "Screen('SelectStereoDrawBuffer', window, eyeIndex);\n"
+    "Which 'eyeIndex' corresponds to the first or second 'renderPass', ie., if the left eye should be rendered "
+    "first, or if the right eye should be rendered first, depends on the visual scanning order of the HMDs "
+    "display panel - is it top to bottom, left to right, or right to left? This function provides that optimized "
+    "mapping.\n";
+
+    static char seeAlsoString[] = "StartRender";
+
+    int handle, renderPass;
+    PsychOculusDevice *oculus;
+    int i, j;
+    double *outM;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit();
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Get renderPass:
+    PsychCopyInIntegerArg(2, kPsychArgRequired, &renderPass);
+    if (renderPass < 0 || renderPass > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'renderPass' specified. Must be 0 or 1 for first or second pass.");
+
+    // Get eye pose:
+    ovrEyeType eye = oculus->hmd->EyeRenderOrder[renderPass];
+    oculus->headPose[eye] = ovrHmd_GetHmdPosePerEye(oculus->hmd, eye);
+
+    // Eye pose as raw data:
+    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 7, 1, &outM);
+
+    // Position (x,y,z):
+    outM[0] = oculus->headPose[eye].Position.x;
+    outM[1] = oculus->headPose[eye].Position.y;
+    outM[2] = oculus->headPose[eye].Position.z;
+
+    // Orientation as a quaternion (x,y,z,w):
+    outM[3] = oculus->headPose[eye].Orientation.x;
+    outM[4] = oculus->headPose[eye].Orientation.y;
+    outM[5] = oculus->headPose[eye].Orientation.z;
+    outM[6] = oculus->headPose[eye].Orientation.w;
+
+    // Copy out preferred eye render order for info:
+    PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) eye);
 
     return(PsychError_none);
 }
