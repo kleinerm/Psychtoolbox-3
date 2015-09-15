@@ -44,6 +44,14 @@ function varargout = PsychOculusVR(cmd, varargin)
 % previously computed by PsychOculusVR('SetupRenderingParameters', hmd).
 %
 %
+% headToEyeShiftv = PsychOculusVR('GetEyeShiftVector', hmd, eye);
+% - Retrieve 3D translation vector that defines the 3D position of the given
+% eye 'eye' for the given HMD 'hmd', relative to the origin of the local head/HMD
+% reference frame. This is needed to translate a global head pose into a eye
+% pose, e.g., to translate the output of PsychOculusVR('GetEyePose') into actual
+% tracked/predicted eye locations for stereo rendering.
+%
+%
 
 % History:
 % 07-Sep-2015  mk   Written.
@@ -113,7 +121,7 @@ if strcmpi(cmd, 'AutoSetupDefaultHMD')
 
   % Trigger an automatic device close + full driver shutdown at
   % onscreen window close for the HMD display window:
-  PsychOculusVR('SetAutoClose', oculus, 2);
+  PsychOculusVR('SetAutoClose', oculus, 1);
 
   % Setup default rendering parameters:
   PsychOculusVR('SetupRenderingParameters', oculus);
@@ -210,6 +218,18 @@ end
 if strcmpi(cmd, 'GetClientRenderbufferSize')
   handle = varargin{1};
   varargout{1} = [hmd{handle}.rbwidth, hmd{handle}.rbheight];
+  return;
+end
+
+if strcmpi(cmd, 'GetEyeShiftVector')
+  handle = varargin{1};
+
+  if varargin{2} == 0
+    varargout{1} = hmd{handle}.HmdToEyeViewOffsetLeft;
+  else
+    varargout{1} = hmd{handle}.HmdToEyeViewOffsetRight;
+  end
+
   return;
 end
 

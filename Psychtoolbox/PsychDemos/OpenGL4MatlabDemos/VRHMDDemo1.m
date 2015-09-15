@@ -1,13 +1,21 @@
-function VRHMDDemo1(multiSample, fountain)
+function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain)
 % VRHMDDemo1 -- Show 3D stereo display via MOGL OpenGL on a VR headset.
 %
-% Usage: VRHMDDemo1([multiSample=0][, fountain=0]);
+% Usage: VRHMDDemo1([doSeparateEyeRender=1][, multiSample=0][, fountain=0]);
 %
 % Pressing any key continues the demo and progresses to next
 % subdemo. Mouse clicks will pause some demos, until another mouse click
 % continues the demo.
 %
-% Optional parameter:
+% Optional parameters:
+%
+% 'doSeparateEyeRender' if set to 1, perform per eye render passes in an optimized
+% order, as recommended by the HMD driver, and query the per eye camera matrices
+% individually during each render pass to optimize for head tracking prediction
+% accuracy. If set to 0, query matrices for rendering simultaneously for both eyes,
+% and render in a potentially non-optimized order. The latter is a bit simpler, but
+% potentially less accurate, causing additional motion artifacts. Defaults to 1, ie.
+% use more complex but potentially more optimal method in terms of quality.
 %
 % 'multiSample' if set to a non-zero value will enable multi-sample
 % anti-aliasing. This however usually doesn't give good results with
@@ -15,6 +23,13 @@ function VRHMDDemo1(multiSample, fountain)
 %
 % 'fountain' if set to 1 will also emit a particle fountain from the nozzle
 % of the teapot. Nicer, but higher gpu load.
+%
+% Press any key to end the demo.
+%
+% Mouse left/right = Global camera movement left/right.
+% Mouse up/down = Global camera movement up/down.
+% Mouse up/down + Left mouse button pressed = Global camera movement forward/backward.
+%
 
 % History:
 % 10-Sep-2015  mk  Written. Derived from DrawDots3DDemo.m
@@ -22,11 +37,15 @@ function VRHMDDemo1(multiSample, fountain)
 % GL data structure needed for all OpenGL demos:
 global GL;
 
-if nargin < 1 || isempty(multiSample)
+if nargin < 1 || isempty(doSeparateEyeRender)
+  doSeparateEyeRender = 1;
+end
+
+if nargin < 2 || isempty(multiSample)
   multiSample = 0;
 end
 
-if nargin < 2 || isempty(fountain)
+if nargin < 3 || isempty(fountain)
   fountain = 0;
 end
 
@@ -220,15 +239,27 @@ try
   PsychOculusVR('Start', hmd);
   PsychOculusVRCore ('Verbosity', 2);
 
+  eyeShift(1, :) = -1 * PsychOculusVR('GetEyeShiftVector', hmd, 0)
+  eyeShift(2, :) = -1 * PsychOculusVR('GetEyeShiftVector', hmd, 1)
+
   % Get duration of a single frame:
   ifi = Screen('GetFlipInterval', win);
 
   % Initial flip to sync us to VBL and get start timestamp:
   vbl = Screen('Flip', win);
   tstart = vbl;
+  globalPos = [0, 0, 0];
+  [xo, yo] = GetMouse;
 
   % VR render loop: Runs until keypress:
   while ~KbCheck
+    % Update global position (x,y,z) by mouse movement:
+    [xm, ym, buttons] = GetMouse;
+    globalPos(1) = globalPos(1) + 0.005 * (xm - xo);
+    globalPos(2 + buttons(1)) = globalPos(2 + buttons(1)) + 0.005 * (ym - yo);
+    xo = xm;
+    yo = ym;
+
     % Track head position and orientation, retrieve modelview camera matrices for each eye:
     [eyePoseL, eyePoseR] = PsychOculusVR('StartRender', hmd);
 
@@ -239,19 +270,38 @@ try
 
     % We render the scene separately for each eye:
     for view = 0:1
-      % Select 'view' to render (left- or right-eye):
-      Screen('SelectStereoDrawbuffer', win, view);
+      if doSeparateEyeRender
+        % Query which eye to render in this 'view' renderpass, and query its
+        % eyePose vector for the predicted eye position to use for the virtual
+        % camera rendering that eyes view. The returned pose vector actually
+        % describes tracked head pose, ie. HMD position and orientation in space.
+        [headPose, eyeIndex] = PsychOculusVR('GetEyePose', hmd, view);
+
+        % Select 'eyeIndex' to render (left- or right-eye):
+        Screen('SelectStereoDrawbuffer', win, eyeIndex);
+
+        % Add additional global translation, mouse controlled in 2D x-z plane:
+        headPose(1:3) = headPose(1:3) + globalPos;
+
+        % Setup modelView matrix:
+        modelView = eyePoseToCameraGLModelviewMatrix(headPose, eyeShift(eyeIndex + 1, :));
+      else
+        % Select 'view' to render (left- or right-eye):
+        Screen('SelectStereoDrawbuffer', win, view);
+
+        % Setup modelView matrix:
+        if view == 0
+            modelView = eyePoseToCameraGLModelviewMatrix(eyePoseL);
+        else
+            modelView = eyePoseToCameraGLModelviewMatrix(eyePoseR);
+        end
+      end
 
       % Manually reenable 3D mode in preparation of eye draw cycle:
       Screen('BeginOpenGL', win);
 
       % Setup camera position and orientation for this eyes 'view':
       glMatrixMode(GL.MODELVIEW);
-      if view == 0
-          modelView = eyePoseToCameraGLModelviewMatrix(eyePoseL);
-      else
-          modelView = eyePoseToCameraGLModelviewMatrix(eyePoseR);
-      end
       glLoadMatrixd(modelView);
 
       glLightfv(GL.LIGHT0,GL.POSITION,[ 1 2 3 0 ]);
@@ -270,7 +320,7 @@ try
       glutSolidTeapot(1);
 
       % Compute simulation time for this draw cycle:
-      telapsed = vbl - tstart;
+      telapsed = (vbl - tstart) * 1;
 
       if fountain
         % Draw the particle fountain. We use a vertex shader in the shader
