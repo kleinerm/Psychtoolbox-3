@@ -38,8 +38,8 @@ void main()
 
     if (OverdriveScales[2] > 0.0) {
       /* Apply gamma corrected overdrive, clamp results to displayable output color range 0 - 1. */
-      previouscolor = pow(previouscolor, vec3(1/2.2));
-      newcorrectedcolor = pow(newcorrectedcolor, vec3(1/2.2));
+      previouscolor = pow(previouscolor, vec3(1.0/2.2));
+      newcorrectedcolor = pow(newcorrectedcolor, vec3(1.0/2.2));
       overdrivecolor = clamp(newcorrectedcolor + (newcorrectedcolor - previouscolor) * overdrive , 0.0, 1.0);
       overdrivecolor = pow(overdrivecolor, vec3(2.2));
     }
