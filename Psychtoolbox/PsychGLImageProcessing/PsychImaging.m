@@ -2705,7 +2705,7 @@ if ~isempty(floc)
 
     % Append our generated 'UsePanelFitter' task to setup the panelfitter for
     % our needs at 'OpenWindow' time:
-    clientRes = PsychOculusVR('GetClientRenderbufferSize', oculusHandle);
+    [clientRes, needOutputFormatting] = PsychOculusVR('GetClientRenderbufferSize', oculusHandle);
     x{1} = 'General';
     x{2} = 'UsePanelFitter';
     x{3} = clientRes;
@@ -2721,6 +2721,11 @@ if ~isempty(floc)
     end
 
     reqs = [reqs ; x];
+
+    % Does the HMD require the output formatting chain?
+    if needOutputFormatting
+      imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+    end
 end
 
 % Display replication needed?
