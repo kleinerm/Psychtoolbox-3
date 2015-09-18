@@ -38,10 +38,14 @@ function varargout = PsychOculusVR(cmd, varargin)
 % to display properly on the HMD.
 %
 %
-% [width, height] = PsychOculusVR('GetClientRenderbufferSize', hmd);
-% - Retrieve recommended size in pixels [width x height] of the client
+% [bufferSize, needFinaloutputformatting] = PsychOculusVR('GetClientRenderbufferSize', hmd);
+% - Retrieve recommended size in pixels 'bufferSize' = [width, height] of the client
 % renderbuffer for each eye for rendering to the HMD. Returns parameters
 % previously computed by PsychOculusVR('SetupRenderingParameters', hmd).
+%
+% Also returns 'needFinaloutputformatting' as 1 if the Screen imaging pipeline
+% needs to enable the output formatting chain and buffers, e.g., to implement
+% panel luminance overdrive.
 %
 %
 % headToEyeShiftv = PsychOculusVR('GetEyeShiftVector', hmd, eye);
@@ -72,34 +76,56 @@ end
 if cmd == 1
   handle = varargin{1};
 
-  % Wait for warp point, then query warp matrices. We assume the warp point is
-  % 3 msecs before the target vblank and use our own high precision estimation of
-  % the warp point, as well as our own high precision wait. Oculus SDK v0.5 doesn't
-  % implement warp point calculation properly itself, therefore "do it yourself":
-  winfo = Screen('GetWindowInfo', hmd{handle}.win, 7);
-  warpPointSecs = winfo.LastVBLTime + hmd{handle}.videoRefreshDuration - 0.003;
-  % waiting = 1000 * (warpPointSecs - GetSecs)
-  WaitSecs('UntilTime', warpPointSecs);
+  if hmd{handle}.useOverdrive
+    % Find next output texture and bind it as 2nd rendertarget to the output fbo.
+    % It will capture a copy of the rendered output frame, with geometry correction,
+    % color aberration correction and vignette correction applied, but without the
+    % overdrive processing. That copy will be used as reference for the next frame,
+    % to compute per-pixel overdrive values:
+    currentOverdriveTex = mod(hmd{handle}.lastOverdriveTex + 1, 2);
+    glFramebufferTexture2D(GL.FRAMEBUFFER_EXT, GL.COLOR_ATTACHMENT1, GL.TEXTURE_RECTANGLE_EXT, hmd{handle}.overdriveTex(currentOverdriveTex + 1), 0);
+    glDrawBuffers(2, [GL.COLOR_ATTACHMENT0, GL.COLOR_ATTACHMENT1]);
 
-  % Get the matrices:
-  [hmd{handle}.eyeRotStartMatrixLeft, hmd{handle}.eyeRotEndMatrixLeft] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 0, 0);
-  [hmd{handle}.eyeRotStartMatrixRight, hmd{handle}.eyeRotEndMatrixRight] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 1, 0);
+    % Bind lastOverdriveTex from previous presentation cycle as old image
+    % to texture unit. It will be used for overdrive computation for this
+    % frame rendercycle:
+    glActiveTextureARB(GL.TEXTURE2);
+    glBindTexture(GL.TEXTURE_RECTANGLE_EXT, hmd{handle}.overdriveTex(hmd{handle}.lastOverdriveTex + 1));
+    glActiveTextureARB(GL.TEXTURE0);
 
-  %hmd{handle}.eyeRotStartMatrixLeft
-  %hmd{handle}.eyeRotEndMatrixLeft
+    % Prepare next rendercycle already: Swap the textures.
+    hmd{handle}.lastOverdriveTex = currentOverdriveTex;
+  end
 
-  % Setup left shaders warp matrices:
-  glUseProgram(hmd{handle}.shaderLeft(1));
-  glUniformMatrix4fv(hmd{handle}.shaderLeft(2), 1, 1, hmd{handle}.eyeRotStartMatrixLeft);
-  glUniformMatrix4fv(hmd{handle}.shaderLeft(3), 1, 1, hmd{handle}.eyeRotEndMatrixLeft);
+  if hmd{handle}.useTimeWarp
+    % Wait for warp point, then query warp matrices. We assume the warp point is
+    % 3 msecs before the target vblank and use our own high precision estimation of
+    % the warp point, as well as our own high precision wait. Oculus SDK v0.5 doesn't
+    % implement warp point calculation properly itself, therefore "do it yourself":
+    winfo = Screen('GetWindowInfo', hmd{handle}.win, 7);
+    warpPointSecs = winfo.LastVBLTime + hmd{handle}.videoRefreshDuration - 0.003;
+    WaitSecs('UntilTime', warpPointSecs);
 
-  % Setup right shaders warp matrices:
-  glUseProgram(hmd{handle}.shaderRight(1));
-  glUniformMatrix4fv(hmd{handle}.shaderRight(2), 1, 1, hmd{handle}.eyeRotStartMatrixRight);
-  glUniformMatrix4fv(hmd{handle}.shaderRight(3), 1, 1, hmd{handle}.eyeRotEndMatrixRight);
+    % Get the matrices:
+    [hmd{handle}.eyeRotStartMatrixLeft, hmd{handle}.eyeRotEndMatrixLeft] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 0, 0);
+    [hmd{handle}.eyeRotStartMatrixRight, hmd{handle}.eyeRotEndMatrixRight] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 1, 0);
 
-  % Ready for warp:
-  glUseProgram(0);
+    %hmd{handle}.eyeRotStartMatrixLeft
+    %hmd{handle}.eyeRotEndMatrixLeft
+
+    % Setup left shaders warp matrices:
+    glUseProgram(hmd{handle}.shaderLeft(1));
+    glUniformMatrix4fv(hmd{handle}.shaderLeft(2), 1, 1, hmd{handle}.eyeRotStartMatrixLeft);
+    glUniformMatrix4fv(hmd{handle}.shaderLeft(3), 1, 1, hmd{handle}.eyeRotEndMatrixLeft);
+
+    % Setup right shaders warp matrices:
+    glUseProgram(hmd{handle}.shaderRight(1));
+    glUniformMatrix4fv(hmd{handle}.shaderRight(2), 1, 1, hmd{handle}.eyeRotStartMatrixRight);
+    glUniformMatrix4fv(hmd{handle}.shaderRight(3), 1, 1, hmd{handle}.eyeRotEndMatrixRight);
+
+    % Ready for warp:
+    glUseProgram(0);
+  end
 
   return;
 end
@@ -119,8 +145,7 @@ if strcmpi(cmd, 'AutoSetupDefaultHMD')
     oculus = PsychOculusVR('Open', -1);
   end
 
-  % Trigger an automatic device close + full driver shutdown at
-  % onscreen window close for the HMD display window:
+  % Trigger an automatic device close at onscreen window close for the HMD display window:
   PsychOculusVR('SetAutoClose', oculus, 1);
 
   % Setup default rendering parameters:
@@ -172,6 +197,9 @@ if strcmpi(cmd, 'Open')
   % Default to use of timewarp:
   hmd{handle}.useTimeWarp = 1;
 
+  % Default to use of pixel luminance overdrive:
+  hmd{handle}.useOverdrive = 1;
+
   varargout{1} = handle;
   return;
 end
@@ -218,6 +246,7 @@ end
 if strcmpi(cmd, 'GetClientRenderbufferSize')
   handle = varargin{1};
   varargout{1} = [hmd{handle}.rbwidth, hmd{handle}.rbheight];
+  varargout{2} = hmd{handle}.useOverdrive;
   return;
 end
 
@@ -469,10 +498,34 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   Screen('EndOpenGL', win);
 
+  if hmd{handle}.useOverdrive
+    % Overdrive enabled: Assign overdrive contrast scale factors for
+    % rising (UpScale) and falling (DownScale) pixel color component
+    % intensities wrt. previous rendered frame:
+    overdriveUpScale   = 0.10;
+    overdriveDownScale = 0.05;
+
+    % Perform a gamma / degamma pass on color values for a
+    % gamma correction of 2.2 (hard-coded in the shader).
+    % Overdrive is optimized to operate in gamma space. As
+    % we normally render and process in linear space, we
+    % need to convert linear -> gamma -> Overdrive -> linear.
+    % A setting of 0 for overdriveGammaCorrect would disable
+    % gamma->degamma and operate purely linear:
+    overdriveGammaCorrect = 1;
+  else
+    % Overdrive disabled:
+    overdriveUpScale   = 0;
+    overdriveDownScale = 0;
+    overdriveGammaCorrect = 0;
+  end
+
   % Setup left eye shader:
   glsl = LoadGLSLProgramFromFiles('OculusRiftCorrectionShader');
   glUseProgram(glsl);
   glUniform1i(glGetUniformLocation(glsl, 'Image'), 0);
+  glUniform1i(glGetUniformLocation(glsl, 'PrevImage'), 2);
+  glUniform3f(glGetUniformLocation(glsl, 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
   glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVOffset'), hmd{handle}.uvOffsetLeft(1) * hmd{handle}.inputWidth, hmd{handle}.uvOffsetLeft(2) * hmd{handle}.inputHeight);
   glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), hmd{handle}.uvScaleLeft(1) * hmd{handle}.inputWidth, hmd{handle}.uvScaleLeft(2) * hmd{handle}.inputHeight);
   glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationStart'), 1, 1, hmd{handle}.eyeRotStartMatrixLeft);
@@ -500,6 +553,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   glsl = LoadGLSLProgramFromFiles('OculusRiftCorrectionShader');
   glUseProgram(glsl);
   glUniform1i(glGetUniformLocation(glsl, 'Image'), 1);
+  glUniform1i(glGetUniformLocation(glsl, 'PrevImage'), 2);
+  glUniform3f(glGetUniformLocation(glsl, 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
   glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVOffset'), hmd{handle}.uvOffsetRight(1) * hmd{handle}.inputWidth, hmd{handle}.uvOffsetRight(2) * hmd{handle}.inputHeight);
   glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), hmd{handle}.uvScaleRight(1) * hmd{handle}.inputWidth, hmd{handle}.uvScaleRight(2) * hmd{handle}.inputHeight);
   glUniformMatrix4fv(glGetUniformLocation(glsl, 'EyeRotationStart'), 1, 1, hmd{handle}.eyeRotStartMatrixRight);
@@ -512,15 +567,30 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   blittercfg = sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gldRight);
   Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', 'OculusVRClientCompositingShaderRightEye', glsl, blittercfg);
 
-  if hmd{handle}.useTimeWarp
+  % TimeWarp or panel overdrive in use?
+  if hmd{handle}.useTimeWarp || hmd{handle}.useOverdrive
+    % Need to call the PsychOculusVR(1) callback to do needed setup work:
     posstring = sprintf('InsertAt%iMFunction', slot);
     cmdString = sprintf('PsychOculusVR(1, %i);', handle);
     Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', 'OculusVRTimeWarpSetup', cmdString);
-
-    cmdString = sprintf('PsychOculusVRCore(''EndFrameTiming'', %i);', handle);
-    Screen('Hookfunction', win, 'PrependMFunction', 'ScreenFlipImpliedOperations', 'OculusVRPostPresentCallback', cmdString);
-    Screen('Hookfunction', win, 'Enable', 'ScreenFlipImpliedOperations');
   end
+
+  if hmd{handle}.useOverdrive
+    [realw, realh] = Screen('Windowsize', win, 1);
+    Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:IdentityBlit:OvrSize:%i:%i', realw, realh));
+    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+
+    woverdrive1 = Screen('OpenOffscreenwindow', win, [255 0 0], [0, 0, realw * 2, realh], [], 32);
+    [hmd{handle}.overdriveTex(1), gltextarget] = Screen('GetOpenGLTexture', woverdrive1, woverdrive1);
+    woverdrive2 = Screen('OpenOffscreenwindow', win, [0 255 0], [0, 0, realw * 2, realh], [], 32);
+    [hmd{handle}.overdriveTex(2), gltextarget] = Screen('GetOpenGLTexture', woverdrive2, woverdrive2);
+    hmd{handle}.lastOverdriveTex = 0;
+  end
+
+  % Need to call the end frame marker function of the Oculus runtime:
+  cmdString = sprintf('PsychOculusVRCore(''EndFrameTiming'', %i);', handle);
+  Screen('Hookfunction', win, 'PrependMFunction', 'ScreenFlipImpliedOperations', 'OculusVRPostPresentCallback', cmdString);
+  Screen('Hookfunction', win, 'Enable', 'ScreenFlipImpliedOperations');
 
   % Does usercode request auto-closing the HMD or driver when the onscreen window is closed?
   if hmd{handle}.autoclose > 0
