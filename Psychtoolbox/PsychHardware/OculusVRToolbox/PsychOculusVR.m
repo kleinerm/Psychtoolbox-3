@@ -389,6 +389,21 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % behaviour. When we are at it, lets also cast the data to single() precision floating
   % point, to save some memory:
   vertexpos = single(hmd{handle}.meshVerticesLeft(1:4, :));
+
+  if IsOSX
+      % Apples delicate "special needs snowflake" needs special treatment
+      % as usual, because it is soooo special. Rotate vertex (x,y)
+      % positions by 90 degrees counter-clockwise, so the mesh aligns with
+      % the 90 degrees rotated full HD panel of the Rift DK-1 and DK-2.
+      % This allows to keep the video mode on OSX at, e.g. for the DK-2,
+      % native 1080 x 1920 without enabling output rotation. That in turn
+      % keeps page flipping enabled for bufferswaps, at least on the
+      % non-broken graphics drivers, and that in turn keeps PTB's timing
+      % happy and performance up:
+      R = single([0, -1 ; 1, 0]);
+      vertexpos(1:2, :) = R * vertexpos(1:2, :);
+  end
+
   texR = single(hmd{handle}.meshVerticesLeft(5:6, :));
   texG = single(hmd{handle}.meshVerticesLeft(7:8, :));
   texB = single(hmd{handle}.meshVerticesLeft(9:10, :));
@@ -447,6 +462,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   glNewList(gldRight, GL.COMPILE);
 
   vertexpos = single(hmd{handle}.meshVerticesRight(1:4, :));
+
+  if IsOSX
+      % Same special treatment on OSX as for the left eye. Rotate mesh by
+      % 90 degrees counter-clockwise:
+      vertexpos(1:2, :) = R * vertexpos(1:2, :);
+  end
+
   texR = single(hmd{handle}.meshVerticesRight(5:6, :));
   texG = single(hmd{handle}.meshVerticesRight(7:8, :));
   texB = single(hmd{handle}.meshVerticesRight(9:10, :));
