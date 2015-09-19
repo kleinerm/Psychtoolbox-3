@@ -195,10 +195,10 @@ if strcmpi(cmd, 'Open')
   hmd{handle}.autoclose = 0;
 
   % Default to use of timewarp:
-  hmd{handle}.useTimeWarp = 1;
+  hmd{handle}.useTimeWarp = 0;
 
   % Default to use of pixel luminance overdrive:
-  hmd{handle}.useOverdrive = 1;
+  hmd{handle}.useOverdrive = 0;
 
   varargout{1} = handle;
   return;
