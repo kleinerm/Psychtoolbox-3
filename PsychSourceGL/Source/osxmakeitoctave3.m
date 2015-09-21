@@ -284,7 +284,9 @@ if mode==14
     end
 
     osxsetoctaverpath('PsychOculusVRCore');
-    unix(['mv ../Projects/MacOSX/build/PsychOculusVRCore.mex ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
+    unix(['cp ../Projects/MacOSX/build/PsychOculusVRCore.mex ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
+    osxsetoctaverpath4('PsychOculusVRCore');
+    unix(['mv ../Projects/MacOSX/build/PsychOculusVRCore.mex ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
 end
 
 delete('./*.o');
