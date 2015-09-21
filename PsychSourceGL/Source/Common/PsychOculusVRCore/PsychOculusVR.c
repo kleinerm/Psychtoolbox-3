@@ -24,6 +24,8 @@
 
 #include "PsychOculusVR.h"
 
+// Need this _USE_MATH_DEFINES so MSVC 2010 knows M_PI
+#define _USE_MATH_DEFINES
 #include <math.h>
 
 // Includes from Oculus SDK 0.5:
@@ -106,7 +108,7 @@ PsychError PsychOculusVRDisplaySynopsis(void)
     return(PsychError_none);
 }
 
-static inline double deg2rad(double deg)
+static double deg2rad(double deg)
 {
     return deg / 360.0 * 2 * M_PI;
 }
@@ -169,7 +171,6 @@ void PsychOculusStop(int handle)
 
 void PsychOculusClose(int handle)
 {
-    int i;
     PsychOculusDevice* oculus;
     oculus = PsychGetOculus(handle, TRUE);
     if (NULL == oculus) return;
@@ -290,7 +291,6 @@ PsychError PSYCHOCULUSVROpen(void)
     static char seeAlsoString[] = "GetCount Close";
 
     PsychOculusDevice* oculus;
-    int i, j;
     int deviceIndex = 0;
     int handle = 0;
     unsigned int oldCaps, newCaps;
@@ -514,7 +514,7 @@ PsychError PSYCHOCULUSVRGetTrackingState(void)
         "[2,3,4] = Head position [x,y,z] in meters.\n"
         "[5,6,7,8] = Head orientation [x,y,z,w] as quaternion.\n"
         "[9,10,11] = Linear velocity [vx,vy,vz] in meters/sec.\n"
-        "[12,13,14] = Angular velocity [rx,ry,rz] in radians/sec\n";
+        "[12,13,14] = Angular velocity [rx,ry,rz] in radians/sec\n"
         "[15,16,17] = Linear acceleration [ax,ay,az] in meters/sec^2.\n"
         "[18,19,20] = Angular acceleration [rax,ray,raz] in radians/sec^2\n";
 
@@ -625,7 +625,7 @@ PsychError PSYCHOCULUSVRGetFovTextureSize(void)
     static char seeAlsoString[] = "GetUndistortionParameters";
 
     int handle, eyeIndex;
-    int n, m, p, i;
+    int n, m, p;
     PsychOculusDevice *oculus;
     double *fov;
     double pixelsPerDisplay;
@@ -655,10 +655,10 @@ PsychError PSYCHOCULUSVRGetFovTextureSize(void)
     if (PsychAllocInDoubleMatArg(3, kPsychArgOptional, &n, &m, &p, &fov)) {
         // Validate and assign:
         if (n * m * p != 4) PsychErrorExitMsg(PsychError_user, "Invalid 'fov' specified. Must be a 4-component vector of form [leftdeg, rightdeg, updeg, downdeg].");
-        oculus->ofov[eyeIndex].LeftTan  = tan(deg2rad(fov[0]));
-        oculus->ofov[eyeIndex].RightTan = tan(deg2rad(fov[1]));
-        oculus->ofov[eyeIndex].UpTan = tan(deg2rad(fov[2]));
-        oculus->ofov[eyeIndex].DownTan = tan(deg2rad(fov[3]));
+        oculus->ofov[eyeIndex].LeftTan  = (float) tan(deg2rad(fov[0]));
+        oculus->ofov[eyeIndex].RightTan = (float) tan(deg2rad(fov[1]));
+        oculus->ofov[eyeIndex].UpTan    = (float) tan(deg2rad(fov[2]));
+        oculus->ofov[eyeIndex].DownTan  = (float) tan(deg2rad(fov[3]));
     }
     else {
         // None specified: Ask the runtime for good defaults.
@@ -743,10 +743,10 @@ PsychError PSYCHOCULUSVRGetUndistortionParameters(void)
     if (PsychAllocInDoubleMatArg(5, kPsychArgOptional, &n, &m, &p, &fov)) {
         // Validate and assign:
         if (n * m * p != 4) PsychErrorExitMsg(PsychError_user, "Invalid 'tanfov' specified. Must be a 4-component vector of form [leftdeg, rightdeg, updeg, downdeg].");
-        oculus->ofov[eyeIndex].LeftTan  = fov[0];
-        oculus->ofov[eyeIndex].RightTan = fov[1];
-        oculus->ofov[eyeIndex].UpTan    = fov[2];
-        oculus->ofov[eyeIndex].DownTan  = fov[3];
+        oculus->ofov[eyeIndex].LeftTan  = (float) fov[0];
+        oculus->ofov[eyeIndex].RightTan = (float) fov[1];
+        oculus->ofov[eyeIndex].UpTan    = (float) fov[2];
+        oculus->ofov[eyeIndex].DownTan  = (float) fov[3];
     }
 
     // Return width and height of input texture - Just mirror out what we got:
@@ -881,6 +881,7 @@ PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void)
 
     int handle, eyeIndex, waitForTimewarpPoint;
     PsychOculusDevice *oculus;
+    ovrEyeType eye;
     double tNow;
     int i, j;
     double *startMatrix, *endMatrix;
@@ -919,7 +920,7 @@ PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void)
         ovr_WaitTillTime(oculus->frameTiming.TimewarpPointSeconds);
     }
 
-    ovrEyeType eye = oculus->hmd->EyeRenderOrder[eyeIndex];
+    eye = oculus->hmd->EyeRenderOrder[eyeIndex];
     oculus->headPose[eye] = ovrHmd_GetHmdPosePerEye(oculus->hmd, eye);
 
     ovrHmd_GetEyeTimewarpMatrices(oculus->hmd, (ovrEyeType) eyeIndex,
@@ -985,14 +986,14 @@ PsychError PSYCHOCULUSVRGetStaticRenderParameters(void)
     PsychCopyInDoubleArg(3, kPsychArgOptional, &clip_far);
 
     // Return left projection matrix as return argument 1:
-    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[0].Fov, clip_near, clip_far, ovrProjection_RightHanded | ovrProjection_ClipRangeOpenGL);
+    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[0].Fov, (float) clip_near, (float) clip_far, ovrProjection_RightHanded | ovrProjection_ClipRangeOpenGL);
     PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 4, 4, 1, &outM);
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
             *(outM++) = (double) M.M[j][i];
 
     // Return right projection matrix as return argument 2:
-    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[1].Fov, clip_near, clip_far, ovrProjection_RightHanded | ovrProjection_ClipRangeOpenGL);
+    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[1].Fov, (float) clip_near, (float) clip_far, ovrProjection_RightHanded | ovrProjection_ClipRangeOpenGL);
     PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 4, 4, 1, &outM);
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
@@ -1016,7 +1017,9 @@ PsychError PSYCHOCULUSVRStartRender(void)
     PsychOculusDevice *oculus;
     ovrTrackingState *outHmdTrackingState = NULL; // Return value not used for now.
     ovrVector3f hmdToEyeViewOffset[2];
+    #ifdef  __cplusplus
     int i, j;
+    #endif
     double *outM;
 
     // All sub functions should have these two lines
@@ -1168,7 +1171,7 @@ PsychError PSYCHOCULUSVRGetEyePose(void)
 
     int handle, renderPass;
     PsychOculusDevice *oculus;
-    int i, j;
+    ovrEyeType eye;
     double *outM;
 
     // All sub functions should have these two lines
@@ -1192,7 +1195,7 @@ PsychError PSYCHOCULUSVRGetEyePose(void)
     if (renderPass < 0 || renderPass > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'renderPass' specified. Must be 0 or 1 for first or second pass.");
 
     // Get eye pose:
-    ovrEyeType eye = oculus->hmd->EyeRenderOrder[renderPass];
+    eye = oculus->hmd->EyeRenderOrder[renderPass];
     oculus->headPose[eye] = ovrHmd_GetHmdPosePerEye(oculus->hmd, eye);
 
     // Eye pose as raw data:
