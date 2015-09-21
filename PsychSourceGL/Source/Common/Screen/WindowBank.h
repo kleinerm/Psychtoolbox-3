@@ -117,6 +117,7 @@
 #define kPsychNeedGPUPanelFitter      32768 // This flag is used for imagingMode to signal need/use of the GPU based imaging pipeline panel fitter.
 #define kPsychNeedOtherStreamInput (1 << 17) // This flag signals that the input image for the other view channel of a stereo pipeline should be bound to texture unit 1 as 2nd input.
 #define kPsychNeedRetinaResolution (1 << 18) // Do not auto-enable panelfitter on Retina display, ie., user-framebuffer shall be full native Retina resolution.
+#define kPsychNeedClientRectNoFitter (1 << 19) // Do not use the panelfitter, but still use provided clientRect to define window geometry as seen by client code.
 
 // 'specialflags' fields, partially shared with imagingmode flags:
 #define kPsychUseTextureMatrixForRotation   1       // Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
@@ -150,7 +151,7 @@
 #define kPsychBufferAgeWarningDone          (1 << 23) // 'specialflags' setting 2^22: One time warning for non-double-buffering due to ext_buffer_age queries already done.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18. --> Flags of 2^19 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19. --> Flags of 2^20 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23. --> Flags of 2^24 and higher are available...

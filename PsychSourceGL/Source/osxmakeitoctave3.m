@@ -28,7 +28,7 @@ if mode == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for mode = 0:13
+    for mode = 0:14
         osxmakeitoctave3(mode);
     end
     elapsedsecs = toc;
@@ -272,6 +272,19 @@ if mode==13
     catch
     end
     cd(curdir);
+end
+
+if mode==14
+    % Build PsychOculusVRCore.mex:
+    % Depends on Oculus VR SDK v0.5
+    try
+        mex -g -v --output ../Projects/MacOSX/build/PsychOculusVRCore -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework LibOVR,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk' -mmacosx-version-min='10.8'" -ICommon/Base -IOSX/Base -ICommon/PsychOculusVRCore -I/Library/Frameworks/LibOVR.framework/Versions/Current/Headers/ OSX/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.c
+    catch
+        disp(psychlasterror);
+    end
+
+    osxsetoctaverpath('PsychOculusVRCore');
+    unix(['mv ../Projects/MacOSX/build/PsychOculusVRCore.mex ' PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles64/']);
 end
 
 delete('./*.o');

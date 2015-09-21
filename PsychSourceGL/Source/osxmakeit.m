@@ -15,7 +15,7 @@ if mode == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for mode = 0:13
+    for mode = 0:14
         osxmakeit(mode);
     end
     elapsedsecs = toc;
@@ -159,6 +159,13 @@ if mode==12
     % Build Gestalt:
     mex -v -outdir ../Projects/MacOSX/build -output Gestalt -largeArrayDims -DPTBMODULE_Gestalt LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio" -I/usr/include -ICommon/Base -IOSX/Base -IOSX/Gestalt -IOSX/OS9ToolboxFragments  "OSX/Base/*.c" "Common/Base/*.c" "OSX/Gestalt/*.c"
     unix(['mv ../Projects/MacOSX/build/Gestalt.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end
+
+if mode==14
+    % Build PsychOculusVRCore:
+    % Depends on Oculus VR SDK v0.5
+    mex -v -outdir ../Projects/MacOSX/build -output PsychOculusVRCore -largeArrayDims -DPTBMODULE_PsychOculusVRCore LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework LibOVR" -ICommon/Base -IOSX/Base -ICommon/PsychOculusVRCore -I/Library/Frameworks/LibOVR.framework/Versions/Current/Headers/ "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychOculusVRCore/*.c"
+    unix(['mv ../Projects/MacOSX/build/PsychOculusVRCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 return;

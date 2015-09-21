@@ -67,6 +67,7 @@ function ImagingStereoDemo(stereoMode, usedatapixx, writeMovie, reduceCrossTalkG
 % 102 == PsychImaging('AddTask', 'General', 'SideBySideCompressedStereo');
 % Side-by-side compressed stereo, popular with HDMI stereo display devices.
 %
+% 103 == Setup for stereo display on a Oculus VR HMD.
 %
 % 'usedatapixx' If provided and set to a non-zero value, will setup a
 % connected VPixx DataPixx device for stereo display.
@@ -199,6 +200,13 @@ end
 % stereoMode 102 triggers side-by-side compressed HDMI frame-packing display:
 if stereoMode == 102
     PsychImaging('AddTask', 'General', 'SideBySideCompressedStereo');
+end
+
+% Trigger automatic setup of first detected Oculus VR HMD with
+% default rendering parameters:
+if stereoMode == 103
+    PsychOculusVR('AutoSetupDefaultHMD');
+    stereoMode = [];
 end
 
 if stereoMode == 10

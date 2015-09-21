@@ -5830,9 +5830,9 @@ void PsychSetupView(PsychWindowRecordType *windowRecord, psych_bool useRawFrameb
 /* PsychSetupClientRect() -- Compute windows clientrect from raw backbuffer size rect. */
 void PsychSetupClientRect(PsychWindowRecordType *windowRecord)
 {
-    // Do nothing if panel fitter is active and the clientrect has been set to a fixed
+    // Do nothing if panel fitter is active or the clientrect has been set to a fixed
     // size at openwindow time for the lifetime of this window:
-    if (windowRecord->imagingMode & kPsychNeedGPUPanelFitter) return;
+    if (windowRecord->imagingMode & (kPsychNeedGPUPanelFitter | kPsychNeedClientRectNoFitter)) return;
 
     // Define windows clientrect. It is a copy of windows rect, but stretched or compressed
     // to twice or half the width or height of the windows rect, depending on the special size

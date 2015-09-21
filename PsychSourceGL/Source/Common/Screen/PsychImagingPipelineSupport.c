@@ -786,7 +786,18 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             }
         }
         else {
-            // No panel-fitter, use calculated winwidth x winheight for 1st level drawBufferFBO's:
+            // No panel-fitter.
+
+            // Output real vs. net size if clientRect is requested despite no use of panel-fitter:
+            if ((imagingmode & kPsychNeedClientRectNoFitter) && (PsychPrefStateGet_Verbosity() > 2)) {
+                clientwidth  = (int) PsychGetWidthFromRect(windowRecord->clientrect);
+                clientheight = (int) PsychGetHeightFromRect(windowRecord->clientrect);
+
+                printf("PTB-INFO: Providing virtual framebuffer of %i x %i pixels with 2D drawing restricted to %i x %i pixels clientRect size.\n",
+                       winwidth, winheight, clientwidth, clientheight);
+            }
+
+            // In any case, use calculated winwidth x winheight for 1st level drawBufferFBO's:
             clientwidth  = winwidth;
             clientheight = winheight;
         }
@@ -1126,6 +1137,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     }
     if (imagingmode & kPsychNeedDualWindowOutput) newimagingmode |= kPsychNeedDualWindowOutput;
     if (imagingmode & kPsychNeedGPUPanelFitter) newimagingmode |= kPsychNeedGPUPanelFitter;
+    if (imagingmode & kPsychNeedClientRectNoFitter) newimagingmode |= kPsychNeedClientRectNoFitter;
     if ((imagingmode & kPsychNeedOtherStreamInput) && (windowRecord->stereomode > 0)) newimagingmode |= kPsychNeedOtherStreamInput;
 
     // Set new final imaging mode and fbocount:
