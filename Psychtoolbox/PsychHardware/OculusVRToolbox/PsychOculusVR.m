@@ -628,6 +628,46 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
   end
 
+  % Need HSW display?
+  KbReleaseWait(-1);
+  dismiss = 0;
+  if PsychOculusVRCore('GetHSWState', handle)
+    % Yes: Display HSW text:
+    hswtext = ['HEALTH & SAFETY WARNING\n\n' ...
+              'Read and follow all warnings and instructions\n' ...
+              'included with the Headset before use.\n' ...
+              'Headset should be calibrated for each user.\n' ...
+              'Not for use by children under 13.\n' ...
+              'Stop use if you experience any discomfort or\n' ...
+              'health reactions.\n\n' ...
+              'More: www.oculus.com/warnings\n\n' ...
+              'Press any key or tap headset to acknowledge'];
+
+    oldTextSize = Screen('TextSize', win, 18);
+    Screen('SelectStereoDrawBuffer', win, 1);
+    DrawFormattedText(win, hswtext, 'center', 'center', [0 255 0]);
+    Screen('SelectStereoDrawBuffer', win, 0);
+    DrawFormattedText(win, hswtext, 'center', 'center', [0 255 0]);
+    Screen('TextSize', win, oldTextSize);
+    Screen('Flip', win);
+
+    % Enable tracking so we can allow user to dismiss HSW via a
+    % slight tap to the HMD - accelerometers will do their thing:
+    PsychOculusVRCore('Start', handle);
+
+    % Wait for dismiss via keypress, mouse button click or HMD tap:
+    while PsychOculusVRCore('GetHSWState', handle, dismiss)
+      [dummy1, dummy2, buttons] = GetMouse;
+      if KbCheck(-1) || any(buttons)
+        dismiss = 1;
+      end
+    end
+
+    % Stop tracking and clear HSW text:
+    PsychOculusVRCore('Stop', handle);
+    Screen('Flip', win);
+  end
+
   % Return success result code 1:
   varargout{1} = 1;
   return;

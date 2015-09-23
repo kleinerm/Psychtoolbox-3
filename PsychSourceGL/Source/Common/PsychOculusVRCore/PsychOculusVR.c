@@ -81,6 +81,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "numHMDs = PsychOculusVRCore('GetCount');";
     synopsis[i++] = "oculusPtr = PsychOculusVRCore('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOculusVRCore('Close' [, oculusPtr]);";
+    synopsis[i++] = "showHSW = PsychOculusVRCore('GetHSWState', oculusPtr [, dismiss]);";
     synopsis[i++] = "PsychOculusVRCore('Start', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore('Stop', oculusPtr);";
     synopsis[i++] = "state = PsychOculusVRCore('GetTrackingState', oculusPtr [, predictionTime=0]);";
@@ -1214,6 +1215,51 @@ PsychError PSYCHOCULUSVRGetEyePose(void)
 
     // Copy out preferred eye render order for info:
     PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) eye);
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVRGetHSWState(void)
+{
+    static char useString[] = "showHSW = PsychOculusVRCore('GetHSWState', oculusPtr [, dismiss]);";
+    //                         1                                          1            2
+    static char synopsisString[] =
+    "Return if health and safety warnings popup should be displayed for Oculus device 'oculusPtr'.\n"
+    "'showHSW' is 1 if the popup should be displayed at the moment, 0 otherwise.\n"
+    "You can set the optional parameter 'dismiss' to 1 to tell the runtime that the user "
+    "dismissed the health and safety warning popup.\n"
+    "Display of these warnings is mandated by the Oculus VR terms of the license.\n";
+
+    static char seeAlsoString[] = "";
+
+    int handle, dismiss;
+    PsychOculusDevice *oculus;
+    ovrHSWDisplayState hasWarningState;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit();
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Get optional 'dismiss' flag:
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &dismiss) && dismiss) {
+        // Tell runtime the user accepted and dismissed the HSD display:
+        ovrHmd_DismissHSWDisplay(oculus->hmd);
+    }
+
+    ovrHmd_GetHSWDisplayState(oculus->hmd, &hasWarningState);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (hasWarningState.Displayed) ? 1 : 0);
 
     return(PsychError_none);
 }
