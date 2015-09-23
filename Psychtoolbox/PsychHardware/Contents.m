@@ -34,6 +34,7 @@
 % PsychHID            - All: Read/write any HID-compliant USB device. See web page:
 %                            web http://psychtoolbox.org/usb.html
 % PsychRTBox          - All: Driver for RTBox reaction time button box.
+% PsychVRToolbox      - All: Functions for access to and use of Virtual Reality devices.
 % SerialComm          - OSX  Send and receive through serial ports.      -> DEPRECATED: Use IOPort instead!
 %                            web http://www.mathworks.com/matlabcentral/fileexchange/loadFile.do?objectId=4952&objectType=file -browser;
 % Snd                 - All: Play a sound. Only for simple sounds! Use PsychPortAudio for serious sound playback and capture!
