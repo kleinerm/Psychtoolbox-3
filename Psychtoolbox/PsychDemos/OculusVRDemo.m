@@ -12,7 +12,7 @@ screenid = max(Screen('Screens'));
 
 % Open our fullscreen onscreen window with black background clear color:
 PsychImaging('PrepareConfiguration');
-PsychOculusVR('AutoSetupDefaultHMD');
+PsychVRHMD('AutoSetupHMD');
 [win, rect] = PsychImaging('OpenWindow', screenid, 0) %, [1680, 0, 1680+1080, 1920])
 
 for eye = 0:1

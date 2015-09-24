@@ -3,7 +3,7 @@ function varargout = PsychOculusVR(cmd, varargin)
 %
 % Usage:
 %
-% hmd = PsychOculusVR('AutoSetupDefaultHMD');
+% hmd = PsychOculusVR('AutoSetupHMD');
 % - Auto-Detect 1st connected Oculus VR HMD, open it, set it up
 % with sane default rendering and display parameters and generate
 % a PsychImaging('AddTask', ...) line to setup Psychtoolboxs
@@ -38,14 +38,13 @@ function varargout = PsychOculusVR(cmd, varargin)
 % to display properly on the HMD.
 %
 %
-% [bufferSize, needFinaloutputformatting] = PsychOculusVR('GetClientRenderbufferSize', hmd);
+% [bufferSize, imagingFlags] = PsychOculusVR('GetClientRenderingParameters', hmd);
 % - Retrieve recommended size in pixels 'bufferSize' = [width, height] of the client
 % renderbuffer for each eye for rendering to the HMD. Returns parameters
 % previously computed by PsychOculusVR('SetupRenderingParameters', hmd).
 %
-% Also returns 'needFinaloutputformatting' as 1 if the Screen imaging pipeline
-% needs to enable the output formatting chain and buffers, e.g., to implement
-% panel luminance overdrive.
+% Also returns 'imagingFlags', the required imaging mode flags for setup of
+% the Screen imaging pipeline.
 %
 %
 % headToEyeShiftv = PsychOculusVR('GetEyeShiftVector', hmd, eye);
@@ -130,6 +129,18 @@ if cmd == 1
   return;
 end
 
+if strcmpi(cmd, 'Supported')
+  % Check if the Oculus VR runtime is supported and active on this
+  % installation, so it can be used to open connections to real HMDs,
+  % or at least to emulate a HMD for simple debugging purposes:
+  if exist('PsychOculusVRCore', 'file') && PsychOculusVRCore('GetCount') >= 0
+    varargout{1} = 1;
+  else
+    varargout{1} = 0;
+  end
+  return;
+end
+
 % Autodetect first connected HMD and open a connection to it. Open a
 % emulated one, if none can be detected. Perform basic setup with
 % default configuration, create a proper PsychImaging task.
@@ -138,38 +149,38 @@ if strcmpi(cmd, 'AutoSetupDefaultHMD')
   if PsychOculusVR('GetCount') > 0
     % Yes. Open and initialize connection to first detected HMD:
     fprintf('PsychOculusVR: Opening the first connected Oculus VR headset.\n');
-    oculus = PsychOculusVR('Open', 0);
+    newhmd = PsychOculusVR('Open', 0);
   else
     % No. Open an emulated/simulated HMD for basic testing and debugging:
     fprintf('PsychOculusVR: No Oculus HMD detected. Opening a simulated HMD.\n');
-    oculus = PsychOculusVR('Open', -1);
+    newhmd = PsychOculusVR('Open', -1);
   end
 
   % Trigger an automatic device close at onscreen window close for the HMD display window:
-  PsychOculusVR('SetAutoClose', oculus, 1);
+  PsychOculusVR('SetAutoClose', newhmd, 1);
 
   % Setup default rendering parameters:
-  PsychOculusVR('SetupRenderingParameters', oculus);
+  PsychOculusVR('SetupRenderingParameters', newhmd);
 
   % Add a PsychImaging task to use this HMD with the next opened onscreen window:
-  PsychImaging('AddTask', 'General', 'UseOculusVRHMD', oculus);
+  PsychImaging('AddTask', 'General', 'UseVRHMD', newhmd);
 
   % Return the device handle:
-  varargout{1} = oculus;
+  varargout{1} = newhmd;
 
   % Ready.
   return;
 end
 
 if strcmpi(cmd, 'SetAutoClose')
-  handle = varargin{1};
+  myhmd = varargin{1};
 
-  if ~PsychOculusVR('IsOpen', handle)
+  if ~PsychOculusVR('IsOpen', myhmd)
     error('PsychOculusVR:SetAutoClose: Specified handle does not correspond to an open HMD!');
   end
 
   % Assign autoclose flag:
-  hmd{handle}.autoclose = varargin{2};
+  hmd{myhmd.handle}.autoclose = varargin{2};
 
   return;
 end
@@ -189,24 +200,32 @@ if strcmpi(cmd, 'Open')
     setenv('DISPLAY', olddisp);
   end
 
-  hmd{handle}.open = 1;
+  newhmd.handle = handle;
+  newhmd.driver = @PsychOculusVR;
+  newhmd.type   = 'Oculus';
+  newhmd.open = 1;
 
   % Default autoclose flag to "no autoclose":
-  hmd{handle}.autoclose = 0;
+  newhmd.autoclose = 0;
 
-  % Default to use of timewarp:
-  hmd{handle}.useTimeWarp = 0;
+  % Default to no use of timewarp:
+  newhmd.useTimeWarp = 0;
 
-  % Default to use of pixel luminance overdrive:
-  hmd{handle}.useOverdrive = 0;
+  % Default to no use of pixel luminance overdrive:
+  newhmd.useOverdrive = 0;
 
-  varargout{1} = handle;
+  % Store in internal array:
+  hmd{handle} = newhmd;
+
+  % Return device struct:
+  varargout{1} = newhmd;
+
   return;
 end
 
 if strcmpi(cmd, 'IsOpen')
-  handle = varargin{1};
-  if (length(hmd) >= handle) && (handle > 0) && hmd{handle}.open
+  myhmd = varargin{1};
+  if (length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open
     varargout{1} = 1;
   else
     varargout{1} = 0;
@@ -217,10 +236,22 @@ end
 if strcmpi(cmd, 'Close')
   if length(varargin) > 0 && ~isempty(varargin{1})
     % Close a specific hmd device:
-    handle = varargin{1};
-    if (length(hmd) >= handle) && (handle > 0) && hmd{handle}.open
-      PsychOculusVRCore('Close', handle);
-      hmd{handle}.open = 0;
+    myhmd = varargin{1};
+
+    % This function can be called with the raw index handle by
+    % the autoclose code path. In that case, map index back into
+    % full handle struct:
+    if ~isstruct(myhmd)
+      if length(hmd) >= myhmd
+        myhmd = hmd{myhmd};
+      else
+        return;
+      end
+    end
+
+    if (length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open
+      PsychOculusVRCore('Close', myhmd.handle);
+      hmd{myhmd.handle}.open = 0;
     end
   else
     % Shutdown whole driver:
@@ -231,32 +262,55 @@ if strcmpi(cmd, 'Close')
   return;
 end
 
+if strcmpi(cmd, 'IsHMDOutput')
+  myhmd = varargin{1};
+  scanout = varargin{2};
+
+  % Is this a Rift DK2 panel?
+  if (scanout.width == 1080) && (scanout.height == 1920)
+    varargout{1} = 1;
+  else
+    varargout{1} = 0;
+  end
+  return;
+end
+
 if strcmpi(cmd, 'SetupRenderingParameters')
-  handle = varargin{1};
+  myhmd = varargin{1};
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for left eye:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, hmd{handle}.fovTanPort] = PsychOculusVR ('GetFovTextureSize', handle, 0, varargin{2:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovTanPort] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, varargin{2:end});
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, hmd{handle}.fovTanPort] = PsychOculusVR ('GetFovTextureSize', handle, 1, varargin{2:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovTanPort] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, varargin{2:end});
 
   return;
 end
 
-if strcmpi(cmd, 'GetClientRenderbufferSize')
-  handle = varargin{1};
-  varargout{1} = [hmd{handle}.rbwidth, hmd{handle}.rbheight];
-  varargout{2} = hmd{handle}.useOverdrive;
+if strcmpi(cmd, 'GetClientRenderingParameters')
+  myhmd = varargin{1};
+  varargout{1} = [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight];
+
+  % We need fast backing store support for virtual framebuffers:
+  imagingMode = mor(kPsychNeedTwiceWidthWindow, kPsychNeedFastBackingStore);
+  imagingMode = mor(imagingMode, kPsychNeedClientRectNoFitter);
+
+  % Need an output FBO for our panel overdrive implementation:
+  if hmd{myhmd.handle}.useOverdrive
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+  end
+
+  varargout{2} = imagingMode;
   return;
 end
 
 if strcmpi(cmd, 'GetEyeShiftVector')
-  handle = varargin{1};
+  myhmd = varargin{1};
 
   if varargin{2} == 0
-    varargout{1} = hmd{handle}.HmdToEyeViewOffsetLeft;
+    varargout{1} = hmd{myhmd.handle}.HmdToEyeViewOffsetLeft;
   else
-    varargout{1} = hmd{handle}.HmdToEyeViewOffsetRight;
+    varargout{1} = hmd{myhmd.handle}.HmdToEyeViewOffsetRight;
   end
 
   return;
@@ -272,8 +326,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   % Oculus device handle:
-  handle = varargin{1};
-  
+  myhmd = varargin{1};
+  handle = myhmd.handle;
+
   % Onscreen window handle:
   win = varargin{2};
 
@@ -313,7 +368,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   hmd{handle}.inputHeight = hmd{handle}.rbheight;
 
   % Query undistortion parameters for left eye view:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVR ('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovTanPort);
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovTanPort);
   hmd{handle}.viewportLeft = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterLeft = [ptx, pty];
   hmd{handle}.HmdToEyeViewOffsetLeft = [hsx, hsy, hsz];
@@ -330,7 +385,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   %offsetL=uvOffset
 
   % Query parameters for right eye view:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVR ('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovTanPort);
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovTanPort);
   hmd{handle}.viewportRight = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterRight = [ptx, pty];
   hmd{handle}.HmdToEyeViewOffsetRight = [hsx, hsy, hsz];
@@ -675,7 +730,14 @@ end
 
 % 'cmd' so far not dispatched? Let's assume it is a command
 % meant for PsychOculusVRCore:
-[ varargout{1:nargout} ] = PsychOculusVRCore(cmd, varargin{:});
+if (length(varargin) >= 1) && isstruct(varargin{1})
+  myhmd = varargin{1};
+  handle = myhmd.handle;
+  [ varargout{1:nargout} ] = PsychOculusVRCore(cmd, handle, varargin{2:end});
+else
+  [ varargout{1:nargout} ] = PsychOculusVRCore(cmd, varargin{:});
+end
+
 return;
 
 end

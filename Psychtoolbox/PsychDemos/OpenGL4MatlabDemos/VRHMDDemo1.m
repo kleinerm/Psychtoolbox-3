@@ -63,7 +63,7 @@ try
 
   % Setup the HMD and open and setup the onscreen window for VR display:
   PsychImaging('PrepareConfiguration');
-  hmd = PsychOculusVR('AutoSetupDefaultHMD');
+  hmd = PsychVRHMD('AutoSetupHMD');
   [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], [], multiSample);
 
   % Textsize for text:
@@ -101,7 +101,7 @@ try
   glMatrixMode(GL.PROJECTION);
 
   % Retrieve projection matrix for optimal rendering on the HMD:
-  [projL, projR] = PsychOculusVR('GetStaticRenderParameters', hmd);
+  [projL, projR] = PsychVRHMD('GetStaticRenderParameters', hmd);
 
   % Set left cameras matrix:
   glLoadMatrixd(projL);
@@ -236,11 +236,11 @@ try
   Priority(MaxPriority(win));
 
   % Start the headtracker of the HMD:
-  PsychOculusVR('Start', hmd);
-  PsychOculusVRCore ('Verbosity', 2);
+  PsychVRHMD('Start', hmd);
+  PsychVRHMD('Verbosity', 2);
 
-  eyeShift(1, :) = -1 * PsychOculusVR('GetEyeShiftVector', hmd, 0);
-  eyeShift(2, :) = -1 * PsychOculusVR('GetEyeShiftVector', hmd, 1);
+  eyeShift(1, :) = -1 * PsychVRHMD('GetEyeShiftVector', hmd, 0);
+  eyeShift(2, :) = -1 * PsychVRHMD('GetEyeShiftVector', hmd, 1);
 
   % Get duration of a single frame:
   ifi = Screen('GetFlipInterval', win);
@@ -261,7 +261,7 @@ try
     yo = ym;
 
     % Track head position and orientation, retrieve modelview camera matrices for each eye:
-    [eyePoseL, eyePoseR] = PsychOculusVR('StartRender', hmd);
+    [eyePoseL, eyePoseR] = PsychVRHMD('StartRender', hmd);
 
     % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
     % this is supported by the current GPU + driver combo:
@@ -275,7 +275,7 @@ try
         % eyePose vector for the predicted eye position to use for the virtual
         % camera rendering that eyes view. The returned pose vector actually
         % describes tracked head pose, ie. HMD position and orientation in space.
-        [headPose, eyeIndex] = PsychOculusVR('GetEyePose', hmd, view);
+        [headPose, eyeIndex] = PsychVRHMD('GetEyePose', hmd, view);
 
         % Select 'eyeIndex' to render (left- or right-eye):
         Screen('SelectStereoDrawbuffer', win, eyeIndex);

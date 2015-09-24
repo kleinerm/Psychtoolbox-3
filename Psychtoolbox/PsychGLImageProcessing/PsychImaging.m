@@ -1191,21 +1191,33 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   RemapMouse() to perform the neccessary coordinate transformation.
 %
 %
-% * 'UseOculusVRHMD' Display this onscreen window on a Oculus VR Head mounted
-%   display (HMD), e.g., the Rift DK1 or Rift DK2. This enables display of
-%   stereoscopic visual stimuli on Virtual reality headsets from Oculus VR.
-%   You need to have the Oculus VR runtime installed on your machine for this
-%   to work.
+% * 'UseVRHMD' Display this onscreen window on a "Virtual Reality" head mounted
+%   display (HMD), e.g., the Oculus Rift DK1 or Rift DK2. This enables display of
+%   stereoscopic visual stimuli on supported virtual reality headsets.
+%   You need to have the neccessary vendor supplied VR runtimes installed for
+%   this to work.
 %
-%   Usage:
+%   Simple usage:
 %
-%     1. Open a connection to a Oculus HMD and get a handle for the device:
+%   The most simple way to setup a HMD for use is to add a call to
+%   hmd = PsychVRHMD('AutoSetupHMD') instead of a call to
+%   PsychImaging('AddTask', 'General', UseVRHMD', ...). The 'AutoSetupHMD'
+%   call would detect the first supported HMD device on your computer, connect to
+%   it, then set it up with reasonable default operating parameters. Then it would
+%   call this PsychImaging task to perform all required setup steps.
+%
+%   Advanced usage:
+%
+%     1. Open a connection to a HMD and get a handle for the device:
+%        For example, if you wanted to use a Oculus Rift DK1 or DK2, you could
+%        do:
+%
 %        hmd = PsychOculusVR('Open' ...);
 %
-%     2. Perform basic configuration of the HMD via PsychOculusVR.
+%     2. Perform basic configuration of the HMD via the HMD specific driver.
 %
 %     3. Add a PsychImaging task for the HMD and pass in its device handle 'hmd':
-%        PsychImaging('AddTask', 'General', 'UseOculusVRHMD', hmd);
+%        PsychImaging('AddTask', 'General', 'UseVRHMD', hmd);
 %
 %   This sequence will perform the necessary setup of panel fitter, stereo display
 %   mode and image post-processing for geometry correction, color aberration
@@ -1517,8 +1529,8 @@ if strcmpi(cmd, 'OpenWindow')
         winRect = varargin{3};
     end
 
-    % Running on a Oculus VR headset?
-    if ~isempty(find(mystrcmp(reqs, 'UseOculusVRHMD')));
+    % Running on a VR headset?
+    if ~isempty(find(mystrcmp(reqs, 'UseVRHMD')));
         % Yes. Trying to display on a screen with more than one video output?
         if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
             % Yes. Not good, as this will impair graphics performance and timing a lot.
@@ -1529,11 +1541,18 @@ if strcmpi(cmd, 'OpenWindow')
             fprintf('PsychImaging-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
             fprintf('PsychImaging-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
 
+            floc = find(mystrcmp(reqs, 'UseVRHMD'));
+            [rows cols] = ind2sub(size(reqs), floc(1));
+            row = rows(1);
+
+            % Extract first parameter - This should be the handle of the HMD device:
+            hmd = reqs{row, 3};
+
             % Try to find the output with the Rift HMD:
             for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
                 scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
-                if (scanout.width == 1080) && (scanout.height == 1920)
-                    % This output i has proper resolution to be the Rift HMD.
+                if hmd.driver('IsHMDOutput', hmd, scanout)
+                    % This output i has proper resolution to be the HMD panel.
                     % Position our onscreen window accordingly:
                     winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
                     fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
@@ -2669,8 +2688,8 @@ if ~isempty(find(mystrcmp(reqs, 'StereoCrosstalkReduction')))
     imagingMode = mor(imagingMode, kPsychNeedOtherStreamInput);
 end
 
-% Want to use a Oculus VR Head mounted display (HMD), e.g., Rift DK1/DK2?
-floc = find(mystrcmp(reqs, 'UseOculusVRHMD'));
+% Want to use a VR Head mounted display (HMD)?
+floc = find(mystrcmp(reqs, 'UseVRHMD'));
 if ~isempty(floc)
     % Yes: We need a peculiar configuration, which involves the panelfitter
     % to allow for a custom resolution of the virtual framebuffers for left
@@ -2683,29 +2702,24 @@ if ~isempty(floc)
     [rows cols] = ind2sub(size(reqs), floc(1));
     row = rows(1);
 
-    % Extract first parameter - This should be the handle of the Oculus VR device:
-    oculusHandle = reqs{row, 3};
+    % Extract first parameter - This should be the handle of the HMD device:
+    hmd = reqs{row, 3};
 
     % Verify it is already open:
-    if ~PsychOculusVR('IsOpen', oculusHandle)
-        error('UseOculusVRHMD: Invalid Oculus HMD handle specified. No such device opened.');
+    if ~hmd.driver('IsOpen', hmd)
+        error('UseVRHMD: Invalid HMD handle specified. No such device opened.');
     end
 
     % We must use stereomode 6, so we get separate draw buffers for left and
     % right eye, and the stereo compositor (merger) to fuse both eyes into a
     % single output framebuffer, but with all internal buffers at at least
     % full output framebuffer resolution. This will generate anaglyph shaders
-    % which we will need to replace with a very special shader for the Oculus HMD:
+    % which we will need to replace with a very special shader for the HMD:
     stereoMode = 6;
-
-    % We need fast backing store support for virtual framebuffers:
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    imagingMode = mor(imagingMode, kPsychNeedTwiceWidthWindow);
-    imagingMode = mor(imagingMode, kPsychNeedClientRectNoFitter);
 
     % Append our generated 'UsePanelFitter' task to setup the panelfitter for
     % our needs at 'OpenWindow' time:
-    [clientRes, needOutputFormatting] = PsychOculusVR('GetClientRenderbufferSize', oculusHandle);
+    [clientRes, imagingFlags] = hmd.driver('GetClientRenderingParameters', hmd);
     x{1} = 'General';
     x{2} = 'UsePanelFitter';
     x{3} = clientRes;
@@ -2719,13 +2733,10 @@ if ~isempty(floc)
             x{i}='';
         end
     end
-
     reqs = [reqs ; x];
 
-    % Does the HMD require the output formatting chain?
-    if needOutputFormatting
-      imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
-    end
+    % Add imaging mode flags requested by HMD driver:
+    imagingMode = mor(imagingMode, imagingFlags);
 end
 
 % Display replication needed?
@@ -4219,30 +4230,30 @@ end
 
 % --- Custom processing setup for the stereo compositor ---
 
-% --- Oculus VR Headset support (e.g., Rift DK1/DK2 etc.)
-floc = find(mystrcmp(reqs, 'UseOculusVRHMD'));
+% --- VR Headset support ---
+floc = find(mystrcmp(reqs, 'UseVRHMD'));
 if ~isempty(floc)
     [row col] = ind2sub(size(reqs), floc);
 
-    % Extract first parameter - This should be the handle of the Oculus VR device:
-    oculusHandle = reqs{row, 3};
+    % Extract first parameter - This should be the handle of the VR device:
+    hmd = reqs{row, 3};
 
     % Verify it is already open:
-    if ~PsychOculusVR('IsOpen', oculusHandle)
+    if ~hmd.driver('IsOpen', hmd)
         sca;
-        error('In UseOculusVRHMD: Invalid Oculus HMD handle specified. No such device opened.');
+        error('In UseVRHMD: Invalid HMD handle specified. No such device opened.');
     end
 
     % Ok, perform setup after onscreen window is open, e.g., setting up the special
     % shaders for the stereo compositor:
-    if ~PsychOculusVR('PerformPostWindowOpenSetup', oculusHandle, win)
+    if ~hmd.driver('PerformPostWindowOpenSetup', hmd, win)
         sca;
-        error('In UseOculusVRHMD: Failed to setup image post-processing for the Oculus VR HMD.');
+        error('In UseVRHMD: Failed to setup image post-processing for the VR HMD.');
     end
 
     % Ready to rock the HMD!
 end
-% --- End of Oculus VR Headset support code.
+% --- End of VR Headset support code. ---
 
 
 % --- FROM HERE ON ONLY OUTPUT FORMATTERS, NOTHING ELSE!!! --- %
