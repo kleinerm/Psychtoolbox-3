@@ -128,7 +128,7 @@ PsychOculusDevice* PsychGetOculus(int handle, psych_bool dontfail)
     return(&(oculusdevices[handle-1]));
 }
 
-void PsychOculusVRCheckInit(void)
+void PsychOculusVRCheckInit(psych_bool dontfail)
 {
     // Already initialized? No op then.
     if (initialized) return;
@@ -148,7 +148,8 @@ void PsychOculusVRCheckInit(void)
         initialized = TRUE;
     }
     else {
-        PsychErrorExitMsg(PsychError_system, "PsychOculusVRCore-ERROR: Initialization of VR runtime failed. Driver disabled!");
+        if (!dontfail)
+            PsychErrorExitMsg(PsychError_system, "PsychOculusVRCore-ERROR: Initialization of VR runtime failed. Driver disabled!");
     }
 }
 
@@ -252,7 +253,8 @@ PsychError PSYCHOCULUSVRVerbosity(void)
 PsychError PSYCHOCULUSVRGetCount(void)
 {
     static char useString[] = "numHMDs = PsychOculusVRCore('GetCount');";
-    static char synopsisString[] = "Returns count of currently connected HMDs.\n\n";
+    static char synopsisString[] =  "Returns count of currently connected HMDs.\n"
+                                    "Returns -1 if the runtime or server couldn't get initialized.\n";
     static char seeAlsoString[] = "Open";
 
     // All sub functions should have these two lines
@@ -264,12 +266,16 @@ PsychError PSYCHOCULUSVRGetCount(void)
     PsychErrorExit(PsychCapNumInputArgs(0));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
-
-    available_devices = ovrHmd_Detect();
-    if (available_devices < 0) {
-        available_devices = 0;
-        if (verbosity >= 2) printf("PsychOculusVRCore-WARNING: Could not connect to Oculus VR server process yet. Did you forget to start it?\n");
+    PsychOculusVRCheckInit(TRUE);
+    if (!initialized) {
+        available_devices = -1;
+    }
+    else {
+        available_devices = ovrHmd_Detect();
+        if (available_devices < 0) {
+            available_devices = -1;
+            if (verbosity >= 2) printf("PsychOculusVRCore-WARNING: Could not connect to Oculus VR server process yet. Did you forget to start it?\n");
+        }
     }
 
     PsychCopyOutDoubleArg(1, kPsychArgOptional, available_devices);
@@ -305,7 +311,7 @@ PsychError PSYCHOCULUSVROpen(void)
     PsychErrorExit(PsychCapNumInputArgs(1));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     // Find a free device slot:
     for (handle = 0; (handle < MAX_PSYCH_OCULUS_DEVS) && oculusdevices[handle].hmd; handle++);
@@ -407,7 +413,7 @@ PsychError PSYCHOCULUSVRClose(void)
     PsychErrorExit(PsychCapNumInputArgs(1));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     // Get optional device handle:
     PsychCopyInIntegerArg(1, kPsychArgOptional, &handle);
@@ -444,7 +450,7 @@ PsychError PSYCHOCULUSVRStart(void)
     PsychErrorExit(PsychCapNumInputArgs(1));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
@@ -492,7 +498,7 @@ PsychError PSYCHOCULUSVRStop(void)
     PsychErrorExit(PsychCapNumInputArgs(1));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
 
@@ -536,7 +542,7 @@ PsychError PSYCHOCULUSVRGetTrackingState(void)
     PsychErrorExit(PsychCapNumInputArgs(2));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
@@ -642,7 +648,7 @@ PsychError PSYCHOCULUSVRGetFovTextureSize(void)
     PsychErrorExit(PsychRequireNumInputArgs(2));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
@@ -722,7 +728,7 @@ PsychError PSYCHOCULUSVRGetUndistortionParameters(void)
     PsychErrorExit(PsychRequireNumInputArgs(4));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
@@ -897,7 +903,7 @@ PsychError PSYCHOCULUSVRGetEyeTimewarpMatrices(void)
     PsychErrorExit(PsychRequireNumInputArgs(2));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
@@ -972,7 +978,7 @@ PsychError PSYCHOCULUSVRGetStaticRenderParameters(void)
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
@@ -1033,7 +1039,7 @@ PsychError PSYCHOCULUSVRStartRender(void)
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
@@ -1137,7 +1143,7 @@ PsychError PSYCHOCULUSVREndFrameTiming(void)
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
@@ -1185,7 +1191,7 @@ PsychError PSYCHOCULUSVRGetEyePose(void)
     PsychErrorExit(PsychRequireNumInputArgs(2));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
@@ -1246,7 +1252,7 @@ PsychError PSYCHOCULUSVRGetHSWState(void)
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
-    PsychOculusVRCheckInit();
+    PsychOculusVRCheckInit(FALSE);
 
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
