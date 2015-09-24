@@ -620,12 +620,13 @@ PsychError PSYCHOCULUSVRGetTrackingState(void)
         "to zero, then no prediction is performed and the current state based on latest measurements is returned.\n\n"
         "'state' is a row vector with the following values reported at given index:\n"
         "1 = Time in seconds of predicted tracking state.\n"
-        "[2,3,4] = Head position [x,y,z] in meters.\n"
-        "[5,6,7,8] = Head orientation [x,y,z,w] as quaternion.\n"
-        "[9,10,11] = Linear velocity [vx,vy,vz] in meters/sec.\n"
-        "[12,13,14] = Angular velocity [rx,ry,rz] in radians/sec\n"
-        "[15,16,17] = Linear acceleration [ax,ay,az] in meters/sec^2.\n"
-        "[18,19,20] = Angular acceleration [rax,ray,raz] in radians/sec^2\n";
+        "2 = Tracking status flags.\n"
+        "[3,4,5] = Head position [x,y,z] in meters.\n"
+        "[6,7,8,9] = Head orientation [x,y,z,w] as quaternion.\n"
+        "[10,11,12] = Linear velocity [vx,vy,vz] in meters/sec.\n"
+        "[13,14,15] = Angular velocity [rx,ry,rz] in radians/sec\n"
+        "[16,17,18] = Linear acceleration [ax,ay,az] in meters/sec^2.\n"
+        "[19,20,21] = Angular acceleration [rax,ray,raz] in radians/sec^2\n";
 
     static char seeAlsoString[] = "Start Stop";
 
@@ -682,33 +683,34 @@ PsychError PSYCHOCULUSVRGetTrackingState(void)
 
     }
 
-    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 20, 1, &v);
+    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 21, 1, &v);
     v[0] = state.HeadPose.TimeInSeconds;
+    v[1] = state.StatusFlags;
 
-    v[1] = state.HeadPose.ThePose.Position.x;
-    v[2] = state.HeadPose.ThePose.Position.y;
-    v[3] = state.HeadPose.ThePose.Position.z;
+    v[2] = state.HeadPose.ThePose.Position.x;
+    v[3] = state.HeadPose.ThePose.Position.y;
+    v[4] = state.HeadPose.ThePose.Position.z;
 
-    v[4] = state.HeadPose.ThePose.Orientation.x;
-    v[5] = state.HeadPose.ThePose.Orientation.y;
-    v[6] = state.HeadPose.ThePose.Orientation.z;
-    v[7] = state.HeadPose.ThePose.Orientation.w;
+    v[5] = state.HeadPose.ThePose.Orientation.x;
+    v[6] = state.HeadPose.ThePose.Orientation.y;
+    v[7] = state.HeadPose.ThePose.Orientation.z;
+    v[8] = state.HeadPose.ThePose.Orientation.w;
 
-    v[8]  = state.HeadPose.LinearVelocity.x;
-    v[9]  = state.HeadPose.LinearVelocity.y;
-    v[10] = state.HeadPose.LinearVelocity.z;
+    v[9]  = state.HeadPose.LinearVelocity.x;
+    v[10]  = state.HeadPose.LinearVelocity.y;
+    v[11] = state.HeadPose.LinearVelocity.z;
 
-    v[11] = state.HeadPose.AngularVelocity.x;
-    v[12] = state.HeadPose.AngularVelocity.y;
-    v[13] = state.HeadPose.AngularVelocity.z;
+    v[12] = state.HeadPose.AngularVelocity.x;
+    v[13] = state.HeadPose.AngularVelocity.y;
+    v[14] = state.HeadPose.AngularVelocity.z;
 
-    v[14] = state.HeadPose.LinearAcceleration.x;
-    v[15] = state.HeadPose.LinearAcceleration.y;
-    v[16] = state.HeadPose.LinearAcceleration.z;
+    v[15] = state.HeadPose.LinearAcceleration.x;
+    v[16] = state.HeadPose.LinearAcceleration.y;
+    v[17] = state.HeadPose.LinearAcceleration.z;
 
-    v[17] = state.HeadPose.AngularAcceleration.x;
-    v[18] = state.HeadPose.AngularAcceleration.y;
-    v[19] = state.HeadPose.AngularAcceleration.z;
+    v[18] = state.HeadPose.AngularAcceleration.x;
+    v[19] = state.HeadPose.AngularAcceleration.y;
+    v[20] = state.HeadPose.AngularAcceleration.z;
 
     return(PsychError_none);
 }
