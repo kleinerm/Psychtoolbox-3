@@ -50,9 +50,8 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("Verbosity", &PSYCHOCULUSVRVerbosity));
     PsychErrorExit(PsychRegister("GetEyePose", &PSYCHOCULUSVRGetEyePose));
     PsychErrorExit(PsychRegister("GetHSWState", &PSYCHOCULUSVRGetHSWState));
-
-    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR));
-    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR));
+    PsychErrorExit(PsychRegister("SetLowPersistence", &PSYCHOCULUSVRSetLowPersistence));
+    PsychErrorExit(PsychRegister("SetDynamicPrediction", &PSYCHOCULUSVRSetDynamicPrediction));
     //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR));
 
     // Report the version

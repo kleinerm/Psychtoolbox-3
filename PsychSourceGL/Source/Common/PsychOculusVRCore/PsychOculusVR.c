@@ -82,6 +82,8 @@ void InitializeSynopsis(void)
     synopsis[i++] = "oculusPtr = PsychOculusVRCore('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOculusVRCore('Close' [, oculusPtr]);";
     synopsis[i++] = "showHSW = PsychOculusVRCore('GetHSWState', oculusPtr [, dismiss]);";
+    synopsis[i++] = "oldPersistence = PsychOculusVRCore('SetLowPersistence', oculusPtr, lowPersistence);";
+    synopsis[i++] = "oldDynamicPrediction = PsychOculusVRCore('SetDynamicPrediction', oculusPtr [, dynamicPrediction]);";
     synopsis[i++] = "PsychOculusVRCore('Start', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore('Stop', oculusPtr);";
     synopsis[i++] = "state = PsychOculusVRCore('GetTrackingState', oculusPtr [, predictionTime=0]);";
@@ -394,7 +396,7 @@ PsychError PSYCHOCULUSVROpen(void)
 
 PsychError PSYCHOCULUSVRClose(void)
 {
-    static char useString[] = "PsychOculusVR('Close' [, oculusPtr]);";
+    static char useString[] = "PsychOculusVRCore('Close' [, oculusPtr]);";
     //                                                  1
     static char synopsisString[] =
         "Close connection to Oculus Rift device 'oculusPtr'. Do nothing if no such device is open.\n"
@@ -430,9 +432,95 @@ PsychError PSYCHOCULUSVRClose(void)
     return(PsychError_none);
 }
 
+PsychError PSYCHOCULUSVRSetDynamicPrediction(void)
+{
+    static char useString[] = "oldDynamicPrediction = PsychOculusVRCore('SetDynamicPrediction', oculusPtr [, dynamicPrediction]);";
+    //                                                                                          1            2
+    static char synopsisString[] =
+        "Enable or disable dynamic prediction mode on Oculus device 'oculusPtr'.\n"
+        "'dynamicPrediction' 1 = Enable dynamic prediction, 0 = Disable dynamic prediction.\n"
+        "Returns previous 'dynamic prediction ' setting.\n";
+    static char seeAlsoString[] = "";
+
+    int handle, dynamicPrediction;
+    PsychOculusDevice *oculus;
+    unsigned int oldCaps;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Query current enabled caps:
+    oldCaps = ovrHmd_GetEnabledCaps(oculus->hmd);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (oldCaps & ovrHmdCap_DynamicPrediction) ? 1 : 0);
+
+    // Set new enabled HMD caps:
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &dynamicPrediction)) {
+        oldCaps &= ~ovrHmdCap_DynamicPrediction;
+        ovrHmd_SetEnabledCaps(oculus->hmd, oldCaps | (dynamicPrediction > 0) ? ovrHmdCap_DynamicPrediction : 0);
+    }
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVRSetLowPersistence(void)
+{
+    static char useString[] = "oldPersistence = PsychOculusVRCore('SetLowPersistence', oculusPtr [, lowPersistence]);";
+    //                                                                                 1            2
+    static char synopsisString[] =
+        "Enable or disable low persistence mode on display panel of Oculus device 'oculusPtr'.\n"
+        "'lowPersistence' 1 = Enable low persistence, 0 = Disable low persistence.\n"
+        "Returns previous 'oldPersistence' setting.\n";
+    static char seeAlsoString[] = "";
+
+    int handle, lowPersistence;
+    PsychOculusDevice *oculus;
+    unsigned int oldCaps;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Query current enabled caps:
+    oldCaps = ovrHmd_GetEnabledCaps(oculus->hmd);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (oldCaps & ovrHmdCap_LowPersistence) ? 1 : 0);
+
+    // Set new enabled HMD caps:
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &lowPersistence)) {
+        oldCaps &= ~ovrHmdCap_LowPersistence;
+        ovrHmd_SetEnabledCaps(oculus->hmd, oldCaps | (lowPersistence > 0) ? ovrHmdCap_LowPersistence : 0);
+    }
+
+    return(PsychError_none);
+}
+
 PsychError PSYCHOCULUSVRStart(void)
 {
-    static char useString[] = "PsychOculusVR('Start', oculusPtr);";
+    static char useString[] = "PsychOculusVRCore('Start', oculusPtr);";
     //                                                1
     static char synopsisString[] =
         "Start head orientation and position tracking operation on Oculus device 'oculusPtr'.\n\n";
@@ -482,7 +570,7 @@ PsychError PSYCHOCULUSVRStart(void)
 
 PsychError PSYCHOCULUSVRStop(void)
 {
-    static char useString[] = "PsychOculusVR('Stop', oculusPtr);";
+    static char useString[] = "PsychOculusVRCore('Stop', oculusPtr);";
     static char synopsisString[] =
         "Stop head tracking operation on Oculus device 'oculusPtr'.\n\n";
     static char seeAlsoString[] = "Start";
@@ -1122,7 +1210,7 @@ PsychError PSYCHOCULUSVRStartRender(void)
 
 PsychError PSYCHOCULUSVREndFrameTiming(void)
 {
-    static char useString[] = "PsychOculusVR('EndFrameTiming', oculusPtr);";
+    static char useString[] = "PsychOculusVRCore('EndFrameTiming', oculusPtr);";
     //                                                         1
     static char synopsisString[] =
     "Mark start of a new 3D head tracked render cycle for Oculus device 'oculusPtr'.\n"

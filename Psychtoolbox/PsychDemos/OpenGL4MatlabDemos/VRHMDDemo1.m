@@ -63,7 +63,7 @@ try
 
   % Setup the HMD and open and setup the onscreen window for VR display:
   PsychImaging('PrepareConfiguration');
-  hmd = PsychVRHMD('AutoSetupHMD');
+  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 0.4);
   [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], [], multiSample);
 
   % Textsize for text:

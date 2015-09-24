@@ -3,16 +3,33 @@ function varargout = PsychOculusVR(cmd, varargin)
 %
 % Usage:
 %
-% hmd = PsychOculusVR('AutoSetupHMD');
-% - Auto-Detect 1st connected Oculus VR HMD, open it, set it up
-% with sane default rendering and display parameters and generate
-% a PsychImaging('AddTask', ...) line to setup Psychtoolboxs
-% imaging pipeline for proper rendering on the HMD. This will also
-% cause the device connection and VR driver to be auto-closed /
-% auto-shutdown as soon as the onscreen window which displays on
+% hmd = PsychOculusVR('AutoSetupHMD' [, basicTask='Tracked3DVR'][, basicQuality=0][, deviceIndex]);
+% - Open a Oculus HMD, set it up with good default rendering and
+% display parameters and generate a PsychImaging('AddTask', ...)
+% line to setup the Psychtoolbox imaging pipeline for proper display
+% on the HMD. This will also cause the device connection to get
+% auto-closed as soon as the onscreen window which displays on
 % the HMD is closed. Returns the 'hmd' handle of the HMD on success.
-% If no VR HMD is connected, it will open an emulated/simulated one
-% for basic testing and debugging.
+%
+% By default, the first detected HMD will be used and if no VR HMD
+% is connected, it will open an emulated/simulated one for basic
+% testing and debugging. You can override this default choice of
+% HMD by specifying the optional 'deviceIndex' parameter to choose
+% a specific HMD.
+%
+% More optional parameters: 'basicTask' what kind of task should be implemented.
+% The default is 'Tracked3DVR', which means to setup for stereoscopic 3D
+% rendering, driven by head motion tracking, for a fully immersive experience
+% in some kind of 3D virtual world. This is the default if omitted. The task
+% 'Stereoscopic' sets up for display of stereoscopic stimuli, but without
+% head tracking. 'Monoscopic' sets up for display of monocular stimuli, ie.
+% the HMD is just used as a special kind of standard display monitor.
+%
+% 'basicQuality' defines the basic tradeoff between quality and required
+% computational power. A setting of 0 gives lowest quality, but with the
+% lowest performance requirements. A setting of 1 gives maximum quality at
+% maximum computational load. Values between 0 and 1 change the quality to
+% performance tradeoff.
 %
 %
 % hmd = PsychOculusVR('Open' [, deviceIndex], ...);
@@ -32,10 +49,24 @@ function varargout = PsychOculusVR(cmd, varargin)
 % - Returns 1 if 'hmd' corresponds to an open HMD, 0 otherwise.
 %
 %
-% PsychOculusVR('SetupRenderingParameters', hmd)
+% isSupported = PsychOculusVRCore('Supported');
+% - Returns 1 if the Oculus driver is functional, 0 otherwise. The
+% driver is functional if the VR runtime library was successfully
+% initialized and a connection to the VR server process has been
+% established. It would return 0 if the server process would not be
+% running, or if the required runtime library would not be correctly
+% installed.
+%
+%
+% PsychOculusVR('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicQuality=0])
 % - Query the HMD 'hmd' for its properties and setup internal rendering
 % parameters in preparation for opening an onscreen window with PsychImaging
-% to display properly on the HMD.
+% to display properly on the HMD. See section about 'AutoSetupHMD' above for
+% the meaning of the optional parameters 'basicTask' and 'basicQuality'.
+%
+%
+% PsychOculusVR('SetBasicQuality', hmd, basicQuality);
+% - Set basic level of quality vs. required GPU performance.
 %
 %
 % [bufferSize, imagingFlags] = PsychOculusVR('GetClientRenderingParameters', hmd);
@@ -48,7 +79,7 @@ function varargout = PsychOculusVR(cmd, varargin)
 %
 %
 % headToEyeShiftv = PsychOculusVR('GetEyeShiftVector', hmd, eye);
-% - Retrieve 3D translation vector that defines the 3D position of the given
+% - Retrieve 3D translation vector [tx, ty, tz] that defines the 3D position of the given
 % eye 'eye' for the given HMD 'hmd', relative to the origin of the local head/HMD
 % reference frame. This is needed to translate a global head pose into a eye
 % pose, e.g., to translate the output of PsychOculusVR('GetEyePose') into actual
@@ -97,20 +128,19 @@ if cmd == 1
   end
 
   if hmd{handle}.useTimeWarp
-    % Wait for warp point, then query warp matrices. We assume the warp point is
-    % 3 msecs before the target vblank and use our own high precision estimation of
-    % the warp point, as well as our own high precision wait. Oculus SDK v0.5 doesn't
-    % implement warp point calculation properly itself, therefore "do it yourself":
-    winfo = Screen('GetWindowInfo', hmd{handle}.win, 7);
-    warpPointSecs = winfo.LastVBLTime + hmd{handle}.videoRefreshDuration - 0.003;
-    WaitSecs('UntilTime', warpPointSecs);
+    if hmd{handle}.useTimeWarp > 1
+      % Wait for warp point, then query warp matrices. We assume the warp point is
+      % 3 msecs before the target vblank and use our own high precision estimation of
+      % the warp point, as well as our own high precision wait. Oculus SDK v0.5 doesn't
+      % implement warp point calculation properly itself, therefore "do it yourself":
+      winfo = Screen('GetWindowInfo', hmd{handle}.win, 7);
+      warpPointSecs = winfo.LastVBLTime + hmd{handle}.videoRefreshDuration - 0.003;
+      WaitSecs('UntilTime', warpPointSecs);
+    end
 
     % Get the matrices:
     [hmd{handle}.eyeRotStartMatrixLeft, hmd{handle}.eyeRotEndMatrixLeft] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 0, 0);
     [hmd{handle}.eyeRotStartMatrixRight, hmd{handle}.eyeRotEndMatrixRight] = PsychOculusVRCore('GetEyeTimewarpMatrices', handle, 1, 0);
-
-    %hmd{handle}.eyeRotStartMatrixLeft
-    %hmd{handle}.eyeRotEndMatrixLeft
 
     % Setup left shaders warp matrices:
     glUseProgram(hmd{handle}.shaderLeft(1));
@@ -144,23 +174,45 @@ end
 % Autodetect first connected HMD and open a connection to it. Open a
 % emulated one, if none can be detected. Perform basic setup with
 % default configuration, create a proper PsychImaging task.
-if strcmpi(cmd, 'AutoSetupDefaultHMD')
-  % Check if at least one Oculus HMD is connected and available:
-  if PsychOculusVR('GetCount') > 0
-    % Yes. Open and initialize connection to first detected HMD:
-    fprintf('PsychOculusVR: Opening the first connected Oculus VR headset.\n');
-    newhmd = PsychOculusVR('Open', 0);
+if strcmpi(cmd, 'AutoSetupHMD')
+  % Basic task this HMD should fulfill:
+  if length(varargin) >= 1 && ~isempty(varargin{1})
+    basicTask = varargin{1};
   else
-    % No. Open an emulated/simulated HMD for basic testing and debugging:
-    fprintf('PsychOculusVR: No Oculus HMD detected. Opening a simulated HMD.\n');
-    newhmd = PsychOculusVR('Open', -1);
+    basicTask = 'Tracked3DVR';
+  end
+
+  % Basic quality/performance tradeoff to choose:
+  if length(varargin) >= 2 && ~isempty(varargin{2})
+    basicQuality = varargin{2};
+  else
+    basicQuality = 0;
+  end
+
+  % HMD device selection:
+  if length(varargin) >= 3 && ~isempty(varargin{3})
+    deviceIndex = varargin{3};
+    newhmd = PsychOculusVR('Open', deviceIndex);
+  else
+    deviceIndex = [];
+
+    % Check if at least one Oculus HMD is connected and available:
+    if PsychOculusVR('GetCount') > 0
+      % Yes. Open and initialize connection to first detected HMD:
+      fprintf('PsychOculusVR: Opening the first connected Oculus VR headset.\n');
+      newhmd = PsychOculusVR('Open', 0);
+    else
+      % No. Open an emulated/simulated HMD for basic testing and debugging:
+      fprintf('PsychOculusVR: No Oculus HMD detected. Opening a simulated HMD.\n');
+      newhmd = PsychOculusVR('Open', -1);
+    end
   end
 
   % Trigger an automatic device close at onscreen window close for the HMD display window:
   PsychOculusVR('SetAutoClose', newhmd, 1);
 
   % Setup default rendering parameters:
-  PsychOculusVR('SetupRenderingParameters', newhmd);
+  PsychOculusVR('SetupRenderingParameters', newhmd, basicTask, basicQuality);
 
   % Add a PsychImaging task to use this HMD with the next opened onscreen window:
   PsychImaging('AddTask', 'General', 'UseVRHMD', newhmd);
@@ -275,14 +327,84 @@ if strcmpi(cmd, 'IsHMDOutput')
   return;
 end
 
+if strcmpi(cmd, 'SetBasicQuality')
+  myhmd = varargin{1};
+  handle = myhmd.handle;
+  basicQuality = varargin{2};
+
+  % Define 5 quality levels internally:
+  basicQuality = min(max(basicQuality, 0), 1);
+  basicQuality = floor(basicQuality * 5);
+  hmd{handle}.basicQuality = basicQuality;
+
+  if basicQuality == 0
+    % Max speed, minimum quality:
+    hmd{handle}.useTimeWarp = 0;
+    hmd{handle}.useOverdrive = 0;
+    PsychOculusVRCore('SetLowPersistence', handle, 0);
+    PsychOculusVRCore('SetDynamicPrediction', handle, 1);
+  end
+
+  if basicQuality == 1
+    % Max speed, low persistence for less blur:
+    hmd{handle}.useTimeWarp = 0;
+    hmd{handle}.useOverdrive = 0;
+    PsychOculusVRCore('SetLowPersistence', handle, 1);
+    PsychOculusVRCore('SetDynamicPrediction', handle, 0);
+  end
+
+  if basicQuality == 2
+    % Basic timewarp, low persistence for less blur:
+    hmd{handle}.useTimeWarp = 1;
+    hmd{handle}.useOverdrive = 0;
+    PsychOculusVRCore('SetLowPersistence', handle, 1);
+    PsychOculusVRCore('SetDynamicPrediction', handle, 1);
+  end
+
+  if basicQuality == 3
+    % Basic timewarp, low persistence for less blur and expensive overdrive:
+    hmd{handle}.useTimeWarp = 1;
+    hmd{handle}.useOverdrive = 1;
+    PsychOculusVRCore('SetLowPersistence', handle, 1);
+    PsychOculusVRCore('SetDynamicPrediction', handle, 1);
+  end
+
+  if basicQuality >= 4
+    % Full delayed timewarp, low persistence for less blur and expensive overdrive:
+    hmd{handle}.useTimeWarp = 2;
+    hmd{handle}.useOverdrive = 1;
+    PsychOculusVRCore('SetLowPersistence', handle, 1);
+    PsychOculusVRCore('SetDynamicPrediction', handle, 1);
+  end
+
+  return;
+end
+
 if strcmpi(cmd, 'SetupRenderingParameters')
   myhmd = varargin{1};
 
+  % Basic task this HMD should fulfill:
+  if length(varargin) >= 2 && ~isempty(varargin{2})
+    basicTask = varargin{2};
+  else
+    basicTask = 'Tracked3DVR';
+  end
+
+  % Basic quality/performance tradeoff to choose:
+  if length(varargin) >= 3 && ~isempty(varargin{3})
+    basicQuality = varargin{3};
+  else
+    basicQuality = 0;
+  end
+
+  hmd{myhmd.handle}.basicTask = basicTask;
+  PsychOculusVR('SetBasicQuality', myhmd, basicQuality);
+
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for left eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovTanPort] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, varargin{2:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovTanPort] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, varargin{4:end});
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovTanPort] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, varargin{2:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovTanPort] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, varargin{4:end});
 
   return;
 end
@@ -381,9 +503,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   hmd{handle}.eyeRotStartMatrixLeft = diag([1 1 1 1]);
   hmd{handle}.eyeRotEndMatrixLeft   = diag([1 1 1 1]);
 
-  %scaleL=uvScale
-  %offsetL=uvOffset
-
   % Query parameters for right eye view:
   [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovTanPort);
   hmd{handle}.viewportRight = [vx, vy, vw, vh];
@@ -397,9 +516,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Init warp matrices to identity, until we get something better from live tracking:
   hmd{handle}.eyeRotStartMatrixRight = diag([1 1 1 1]);
   hmd{handle}.eyeRotEndMatrixRight   = diag([1 1 1 1]);
-
-  %scaleR=uvScale
-  %offsetR=uvOffset
 
   [slot shaderid blittercfg voidptr glsl] = Screen('HookFunction', win, 'Query', 'StereoCompositingBlit', 'StereoCompositingShaderAnaglyph');
   if slot == -1
@@ -704,7 +820,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('SelectStereoDrawBuffer', win, 0);
     DrawFormattedText(win, hswtext, 'center', 'center', [0 255 0]);
     Screen('TextSize', win, oldTextSize);
-    Screen('Flip', win);
+    Screen('Flip', win, [], 1);
 
     % Enable tracking so we can allow user to dismiss HSW via a
     % slight tap to the HMD - accelerometers will do their thing:
@@ -716,6 +832,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       if KbCheck(-1) || any(buttons)
         dismiss = 1;
       end
+      Screen('Flip', win, [], 1);
     end
 
     % Stop tracking and clear HSW text:
