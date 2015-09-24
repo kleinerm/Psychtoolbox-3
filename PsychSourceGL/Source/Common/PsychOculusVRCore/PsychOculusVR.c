@@ -130,13 +130,27 @@ PsychOculusDevice* PsychGetOculus(int handle, psych_bool dontfail)
     return(&(oculusdevices[handle-1]));
 }
 
+static void PsychOculusLogCB(int level, const char* message)
+{
+    if ((level == ovrLogLevel_Error && verbosity > 0) ||
+        (level == ovrLogLevel_Info && verbosity > 2)  ||
+        (level == ovrLogLevel_Debug && verbosity > 4)) {
+            printf("PsychOculusVRCore-Runtime: %s\n", message);
+    }
+}
+
 void PsychOculusVRCheckInit(psych_bool dontfail)
 {
+    ovrInitParams iparms;
+    memset(&iparms, 0, sizeof(iparms));
+    iparms.Flags = ovrInit_ForceNoDebug;
+    iparms.LogCallback = PsychOculusLogCB;
+
     // Already initialized? No op then.
     if (initialized) return;
 
     // Initialize Oculus VR runtime with default parameters:
-    if (ovr_Initialize(NULL)) {
+    if (ovr_Initialize(&iparms)) {
         if (verbosity >= 3) printf("PsychOculusVRCore-INFO: Oculus VR runtime version '%s' initialized.\n", ovr_GetVersionString());
 
         // Get count of available devices:
@@ -166,7 +180,7 @@ void PsychOculusStop(int handle)
         if (verbosity >= 0) printf("PsychOculusVRCore-ERROR: Failed to stop tracking on device with handle %i [%s].\n", handle, ovrHmd_GetLastError(oculus->hmd));
         PsychErrorExitMsg(PsychError_system, "Stop of Oculus HMD tracking failed for reason given above.");
     }
-    else if (verbosity >= 3) printf("PsychOculusVRCore-INFO: Tracking stopped on device with handle %i.\n", handle);
+    else if (verbosity >= 4) printf("PsychOculusVRCore-INFO: Tracking stopped on device with handle %i.\n", handle);
 
     oculus->isTracking = FALSE;
 
@@ -557,7 +571,7 @@ PsychError PSYCHOCULUSVRStart(void)
         if (verbosity >= 0) printf("PsychOculusVRCore-ERROR: Failed to start tracking on device with handle %i [%s].\n", handle, ovrHmd_GetLastError(oculus->hmd));
         PsychErrorExitMsg(PsychError_system, "Start of Oculus HMD tracking failed for reason given above.");
     }
-    else if (verbosity >= 3) printf("PsychOculusVRCore-INFO: Tracking started on device with handle %i.\n", handle);
+    else if (verbosity >= 4) printf("PsychOculusVRCore-INFO: Tracking started on device with handle %i.\n", handle);
 
     oculus->frameIndex = 0;
     ovrHmd_ResetFrameTiming(oculus->hmd, oculus->frameIndex);
