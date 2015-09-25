@@ -92,7 +92,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychOculusVRCore('Stop', oculusPtr);";
     synopsis[i++] = "state = PsychOculusVRCore('GetTrackingState', oculusPtr [, predictionTime=0]);";
     synopsis[i++] = "[projL, projR] = PsychOculusVRCore('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
-    synopsis[i++] = "[eyePoseL, eyePoseR, tracked] = PsychOculusVRCore('StartRender', oculusPtr);";
+    synopsis[i++] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOculusVRCore('StartRender', oculusPtr);";
     synopsis[i++] = "[eyePose, eyeIndex] = PsychOculusVRCore('GetEyePose', oculusPtr, renderPass);";
     synopsis[i++] = "\n";
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:\n";
@@ -1237,8 +1237,8 @@ PsychError PSYCHOCULUSVRGetStaticRenderParameters(void)
 
 PsychError PSYCHOCULUSVRStartRender(void)
 {
-    static char useString[] = "[eyePoseL, eyePoseR, tracked] = PsychOculusVRCore('StartRender', oculusPtr);";
-    //                          1         2         3                                           1
+    static char useString[] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOculusVRCore('StartRender', oculusPtr);";
+    //                          1         2         3        4                                               1
     static char synopsisString[] =
     "Mark start of a new 3D head tracked render cycle for Oculus device 'oculusPtr'.\n"
     "Return values are the vectors which define the two eye cameras positions and orientations "
@@ -1247,7 +1247,17 @@ PsychError PSYCHOCULUSVRStartRender(void)
     "quaternion.\n"
     "'tracked' Tracking status flags: 0 = Head not tracked at the moment. 1 = Head orientation tracked. "
     "2 = Head position tracked (DK2 and later). 3 = Head position and orientation tracked (DK2 and later). "
-    "4 = Camera pose tracked, 7 = 1+2+4 = Camera pose and Head position and orientation tracked.\n";
+    "4 = Camera pose tracked, 7 = 1+2+4 = Camera pose and Head position and orientation tracked.\n"
+    "\n"
+    "'frameTiming' Vector with predicted timing information for this frame with following elements:\n"
+    "[1] = DeltaSeconds since last frame.\n"
+    "[2] = ThisFrameSeconds start of scanout of this frame.\n"
+    "[3] = TimewarpPointSeconds\n"
+    "[4] = NextFrameSeconds\n"
+    "[5] = ScanoutMidpointSeconds\n"
+    "[6] = EyeScanoutSeconds[0]\n"
+    "[7] = EyeScanoutSeconds[1]\n"
+    "\n";
     static char seeAlsoString[] = "GetEyePose EndFrameTiming";
 
     int handle;
@@ -1264,7 +1274,7 @@ PsychError PSYCHOCULUSVRStartRender(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(5));
+    PsychErrorExit(PsychCapNumOutputArgs(6));
     PsychErrorExit(PsychCapNumInputArgs(1));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -1316,6 +1326,16 @@ PsychError PSYCHOCULUSVRStartRender(void)
     PsychCopyOutDoubleArg(3, kPsychArgOptional, (double)
                           (os.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked | ovrStatus_CameraPoseTracked)));
 
+    // Report frame timing info:
+    PsychAllocOutDoubleMatArg(4, kPsychArgOptional, 1, 7, 1, &outM);
+    outM[0] = oculus->frameTiming.DeltaSeconds;
+    outM[1] = oculus->frameTiming.ThisFrameSeconds;
+    outM[2] = oculus->frameTiming.TimewarpPointSeconds;
+    outM[3] = oculus->frameTiming.NextFrameSeconds;
+    outM[4] = oculus->frameTiming.ScanoutMidpointSeconds;
+    outM[5] = oculus->frameTiming.EyeScanoutSeconds[0];
+    outM[6] = oculus->frameTiming.EyeScanoutSeconds[1];
+    
     // Only compile this if C++ compiled:
     #ifdef  __cplusplus
     {
@@ -1332,7 +1352,7 @@ PsychError PSYCHOCULUSVRStartRender(void)
         OVR::Quatf orientationL = OVR::Quatf(oculus->outEyePoses[0].Orientation);
         OVR::Matrix4f viewL = OVR::Matrix4f(orientationL.Inverted()) * OVR::Matrix4f::Translation(oculus->outEyePoses[0].Position);
 
-        PsychAllocOutDoubleMatArg(4, kPsychArgOptional, 4, 4, 1, &outM);
+        PsychAllocOutDoubleMatArg(5, kPsychArgOptional, 4, 4, 1, &outM);
         for (i = 0; i < 4; i++)
             for (j = 0; j < 4; j++)
                 *(outM++) = (double) viewL.M[j][i];
@@ -1341,7 +1361,7 @@ PsychError PSYCHOCULUSVRStartRender(void)
         OVR::Quatf orientationR = OVR::Quatf(oculus->outEyePoses[1].Orientation);
         OVR::Matrix4f viewR = OVR::Matrix4f(orientationR.Inverted()) * OVR::Matrix4f::Translation(oculus->outEyePoses[1].Position);
 
-        PsychAllocOutDoubleMatArg(5, kPsychArgOptional, 4, 4, 1, &outM);
+        PsychAllocOutDoubleMatArg(6, kPsychArgOptional, 4, 4, 1, &outM);
         for (i = 0; i < 4; i++)
             for (j = 0; j < 4; j++)
                 *(outM++) = (double) viewR.M[j][i];
