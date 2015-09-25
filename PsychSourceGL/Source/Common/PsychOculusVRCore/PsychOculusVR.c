@@ -628,23 +628,41 @@ PsychError PSYCHOCULUSVRGetTrackingState(void)
         "Head position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
         "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or set "
         "to zero, then no prediction is performed and the current state based on latest measurements is returned.\n\n"
-        "'state' is a row vector with the following values reported at given index:\n"
-        "1 = Time in seconds of predicted tracking state.\n"
-        "2 = Tracking status flags.\n"
-        "[3,4,5] = Head position [x,y,z] in meters.\n"
-        "[6,7,8,9] = Head orientation [x,y,z,w] as quaternion.\n"
-        "[10,11,12] = Linear velocity [vx,vy,vz] in meters/sec.\n"
-        "[13,14,15] = Angular velocity [rx,ry,rz] in radians/sec\n"
-        "[16,17,18] = Linear acceleration [ax,ay,az] in meters/sec^2.\n"
-        "[19,20,21] = Angular acceleration [rax,ray,raz] in radians/sec^2\n";
+        "'state' is a struct with fields reporting the following values:\n"
+        "'Time' = Time in seconds of predicted tracking state.\n"
+        "'Status' = Tracking status flags. +1 = Head orientation tracked, +2 = Head position tracked, +4 = Camera pose tracked "
+        "+32 = Position tracking hardware connected, +128 = HMD display is connected and available.\n"
+        "'HeadPose' = Head position [x, y, z] in meters and rotation as quaternion [rx, ry, rz, rw], all as a vector [x,y,z,rx,ry,rz,rw].\n"
+        "'HeadLinearSpeed' = Linear velocity [vx,vy,vz] in meters/sec.\n"
+        "'HeadAngularSpeed' = Angular velocity [rx,ry,rz] in radians/sec.\n"
+        "'HeadLinearAcceleration' = Linear acceleration [ax,ay,az] in meters/sec^2.\n"
+        "'HeadAngularAcceleration' = Angular acceleration [rax,ray,raz] in radians/sec^2.\n"
+        "'CameraPose' as vector with position and orientation quaternion, like 'HeadPose'.\n"
+        "'LeveledCameraPose' Like 'CameraPose' but aligned to the gravity vector of the world.\n"
+        "'CameraFrustumHVFov' Horizontal and vertical field of view of the tracking camera in radians.\n"
+        "'CameraFrustumNearFarZInMeters' Near and far limit of the camera view frustum in meters.\n"
+        "'LastCameraFrameCounter' Last camera framecounter value of tracking camera.\n"
+        "'RawSensorAcceleration' = Raw measured accelerometer reading in m/sec^2.\n"
+        "'RawSensorGyroRate' = Raw gyrometer reading in rad/s.\n"
+        "'RawMagnetometer' = Raw magnetic field in gauss.\n"
+        "'SensorTemperature' = Sensor temperature in degrees Celsius.\n"
+        "'IMUReadoutTime' = Readout time of the last IMU sample in seconds.\n"
+        "\n";
 
     static char seeAlsoString[] = "Start Stop";
+
+    PsychGenericScriptType *status;
+    const char *FieldNames[] = {"Time", "Status", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed", "HeadLinearAcceleration", "HeadAngularAcceleration",
+                                "CameraPose", "LeveledCameraPose", "LastCameraFrameCounter", "RawSensorAcceleration", "RawSensorGyroRate", "RawMagnetometer",
+                                "SensorTemperature", "IMUReadoutTime", "CameraFrustumHVFov", "CameraFrustumNearFarZInMeters"};
+    const int FieldCount = 17;
+    PsychGenericScriptType *outMat;
+    double *v;
 
     int handle;
     double predictionTime = 0.0;
     PsychOculusDevice *oculus;
     ovrTrackingState state;
-    double* v;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -672,56 +690,130 @@ PsychError PSYCHOCULUSVRGetTrackingState(void)
         printf("PsychOculusVRCore-INFO: LastCameraFrameCounter = %i : Time %f : Status %i\n", state.LastCameraFrameCounter, state.HeadPose.TimeInSeconds, state.StatusFlags);
         printf("PsychOculusVRCore-INFO: HeadPose: Position    [x,y,z]   = [%f, %f, %f]\n", state.HeadPose.ThePose.Position.x, state.HeadPose.ThePose.Position.y, state.HeadPose.ThePose.Position.z);
         printf("PsychOculusVRCore-INFO: HeadPose: Orientation [x,y,z,w] = [%f, %f, %f, %f]\n", state.HeadPose.ThePose.Orientation.x, state.HeadPose.ThePose.Orientation.y, state.HeadPose.ThePose.Orientation.z, state.HeadPose.ThePose.Orientation.w);
-
-        /// Current pose of the external camera (if present).
-        /// This pose includes camera tilt (roll and pitch). For a leveled coordinate
-        /// system use LeveledCameraPose.
-        //ovrPosef       CameraPose;
-
-        /// Camera frame aligned with gravity.
-        /// This value includes position and yaw of the camera, but not roll and pitch.
-        /// It can be used as a reference point to render real-world objects in the correct location.
-        //ovrPosef       LeveledCameraPose;
-
-        /// The most recent sensor data received from the HMD.
-        //ovrSensorData  RawSensorData;
-
-        /// Tracking status described by ovrStatusBits.
-        //unsigned int   StatusFlags;
-
-        /// Tag the vision processing results to a certain frame counter number.
-        //uint32_t LastCameraFrameCounter;
-
     }
 
-    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 21, 1, &v);
-    v[0] = state.HeadPose.TimeInSeconds;
-    v[1] = state.StatusFlags;
+    PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &status);
 
-    v[2] = state.HeadPose.ThePose.Position.x;
-    v[3] = state.HeadPose.ThePose.Position.y;
-    v[4] = state.HeadPose.ThePose.Position.z;
+    PsychSetStructArrayDoubleElement("Time", 0, state.HeadPose.TimeInSeconds, status);
+    PsychSetStructArrayDoubleElement("Status", 0, state.StatusFlags, status);
 
-    v[5] = state.HeadPose.ThePose.Orientation.x;
-    v[6] = state.HeadPose.ThePose.Orientation.y;
-    v[7] = state.HeadPose.ThePose.Orientation.z;
-    v[8] = state.HeadPose.ThePose.Orientation.w;
+    // Head pose:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+    v[0] = state.HeadPose.ThePose.Position.x;
+    v[1] = state.HeadPose.ThePose.Position.y;
+    v[2] = state.HeadPose.ThePose.Position.z;
+    
+    v[3] = state.HeadPose.ThePose.Orientation.x;
+    v[4] = state.HeadPose.ThePose.Orientation.y;
+    v[5] = state.HeadPose.ThePose.Orientation.z;
+    v[6] = state.HeadPose.ThePose.Orientation.w;
+    PsychSetStructArrayNativeElement("HeadPose", 0,	outMat, status);
 
-    v[9]  = state.HeadPose.LinearVelocity.x;
-    v[10]  = state.HeadPose.LinearVelocity.y;
-    v[11] = state.HeadPose.LinearVelocity.z;
+    // Linear velocity:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+    v[0] = state.HeadPose.LinearVelocity.x;
+    v[1] = state.HeadPose.LinearVelocity.y;
+    v[2] = state.HeadPose.LinearVelocity.z;
+    PsychSetStructArrayNativeElement("HeadLinearSpeed", 0, outMat, status);
 
-    v[12] = state.HeadPose.AngularVelocity.x;
-    v[13] = state.HeadPose.AngularVelocity.y;
-    v[14] = state.HeadPose.AngularVelocity.z;
+    // Angular velocity:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+    v[0] = state.HeadPose.AngularVelocity.x;
+    v[1] = state.HeadPose.AngularVelocity.y;
+    v[2] = state.HeadPose.AngularVelocity.z;
+    PsychSetStructArrayNativeElement("HeadAngularSpeed", 0,	outMat, status);
 
-    v[15] = state.HeadPose.LinearAcceleration.x;
-    v[16] = state.HeadPose.LinearAcceleration.y;
-    v[17] = state.HeadPose.LinearAcceleration.z;
+    // Linear acceleration:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+    v[0] = state.HeadPose.LinearAcceleration.x;
+    v[1] = state.HeadPose.LinearAcceleration.y;
+    v[2] = state.HeadPose.LinearAcceleration.z;
+    PsychSetStructArrayNativeElement("HeadLinearAcceleration", 0, outMat, status);
 
-    v[18] = state.HeadPose.AngularAcceleration.x;
-    v[19] = state.HeadPose.AngularAcceleration.y;
-    v[20] = state.HeadPose.AngularAcceleration.z;
+    // Angular acceleration:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+    v[0] = state.HeadPose.AngularAcceleration.x;
+    v[1] = state.HeadPose.AngularAcceleration.y;
+    v[2] = state.HeadPose.AngularAcceleration.z;
+    PsychSetStructArrayNativeElement("HeadAngularAcceleration", 0, outMat, status);
+
+    // Camera pose:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+    v[0] = state.CameraPose.Position.x;
+    v[1] = state.CameraPose.Position.y;
+    v[2] = state.CameraPose.Position.z;
+
+    v[3] = state.CameraPose.Orientation.x;
+    v[4] = state.CameraPose.Orientation.y;
+    v[5] = state.CameraPose.Orientation.z;
+    v[6] = state.CameraPose.Orientation.w;
+    PsychSetStructArrayNativeElement("CameraPose", 0, outMat, status);
+
+    // Camera leveled pose:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+    v[0] = state.LeveledCameraPose.Position.x;
+    v[1] = state.LeveledCameraPose.Position.y;
+    v[2] = state.LeveledCameraPose.Position.z;
+
+    v[3] = state.LeveledCameraPose.Orientation.x;
+    v[4] = state.LeveledCameraPose.Orientation.y;
+    v[5] = state.LeveledCameraPose.Orientation.z;
+    v[6] = state.LeveledCameraPose.Orientation.w;
+    PsychSetStructArrayNativeElement("LeveledCameraPose", 0, outMat, status);
+
+    // LastCameraFrameCounter:
+    PsychSetStructArrayDoubleElement("LastCameraFrameCounter", 0, (double) state.LastCameraFrameCounter, status);
+
+    // RawSensorAcceleration:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+    v[0] = state.RawSensorData.Accelerometer.x;
+    v[1] = state.RawSensorData.Accelerometer.y;
+    v[2] = state.RawSensorData.Accelerometer.z;
+    PsychSetStructArrayNativeElement("RawSensorAcceleration", 0, outMat, status);
+
+    // RawSensorGyroRate:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+    v[0] = state.RawSensorData.Gyro.x;
+    v[1] = state.RawSensorData.Gyro.y;
+    v[2] = state.RawSensorData.Gyro.z;
+    PsychSetStructArrayNativeElement("RawSensorGyroRate", 0, outMat, status);
+
+    // RawMagnetometer:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+    v[0] = state.RawSensorData.Magnetometer.x;
+    v[1] = state.RawSensorData.Magnetometer.y;
+    v[2] = state.RawSensorData.Magnetometer.z;
+    PsychSetStructArrayNativeElement("RawMagnetometer", 0, outMat, status);
+
+    // SensorTemperature:
+    PsychSetStructArrayDoubleElement("SensorTemperature", 0, (double) state.RawSensorData.Temperature, status);
+
+    // IMU readout time:
+    PsychSetStructArrayDoubleElement("IMUReadoutTime", 0, (double) state.RawSensorData.TimeInSeconds, status);
+
+    // Camera frustum HFov and VFov in radians:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = oculus->hmd->CameraFrustumHFovInRadians;
+    v[1] = oculus->hmd->CameraFrustumVFovInRadians;
+    PsychSetStructArrayNativeElement("CameraFrustumHVFov", 0, outMat, status);
+
+    // Camera frustum near and far clip plane in meters:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = oculus->hmd->CameraFrustumNearZInMeters;
+    v[1] = oculus->hmd->CameraFrustumFarZInMeters;
+    PsychSetStructArrayNativeElement("CameraFrustumNearFarZInMeters", 0, outMat, status);
 
     return(PsychError_none);
 }
