@@ -83,7 +83,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "\n";
     synopsis[i++] = "oldVerbosity = PsychOculusVRCore('Verbosity' [, verbosity]);";
     synopsis[i++] = "numHMDs = PsychOculusVRCore('GetCount');";
-    synopsis[i++] = "oculusPtr = PsychOculusVRCore('Open' [, deviceIndex=0]);";
+    synopsis[i++] = "[oculusPtr, modelName] = PsychOculusVRCore('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOculusVRCore('Close' [, oculusPtr]);";
     synopsis[i++] = "showHSW = PsychOculusVRCore('GetHSWState', oculusPtr [, dismiss]);";
     synopsis[i++] = "oldPersistence = PsychOculusVRCore('SetLowPersistence', oculusPtr [, lowPersistence]);";
@@ -313,15 +313,16 @@ PsychError PSYCHOCULUSVRGetCount(void)
 
 PsychError PSYCHOCULUSVROpen(void)
 {
-    static char useString[] = "oculusPtr = PsychOculusVRCore('Open' [, deviceIndex=0]);";
-    //                                                                 1
+    static char useString[] = "[oculusPtr, modelName] = PsychOculusVRCore('Open' [, deviceIndex=0]);";
+    //                          1          2                                        1
     static char synopsisString[] =
         "Open connection to Oculus VR HMD, return a 'oculusPtr' handle to it.\n\n"
         "The call tries to open the HMD with index 'deviceIndex', or the "
         "first detected HMD, if 'deviceIndex' is omitted. You can pass in a 'deviceIndex' "
         "of -1 to open an emulated HMD. It doesn't provide any sensor input, but allows "
         "some basic testing and debugging of VR software nonetheless.\n"
-        "The returned handle can be passed to the other subfunctions to operate the device.\n";
+        "The returned handle can be passed to the other subfunctions to operate the device.\n"
+        "A second return argument 'modelName' returns the model name string of the Oculus device.\n";
 
     static char seeAlsoString[] = "GetCount Close";
 
@@ -335,7 +336,7 @@ PsychError PSYCHOCULUSVROpen(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumOutputArgs(2));
     PsychErrorExit(PsychCapNumInputArgs(1));
 
     // Make sure driver is initialized:
@@ -409,6 +410,9 @@ PsychError PSYCHOCULUSVROpen(void)
 
     // Return device handle: We use 1-based handle indexing to make life easier for Octave/Matlab:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, handle + 1);
+
+    // Return product name:
+    PsychCopyOutCharArg(2, kPsychArgOptional, (const char*) oculus->hmd->ProductName);
 
     return(PsychError_none);
 }
