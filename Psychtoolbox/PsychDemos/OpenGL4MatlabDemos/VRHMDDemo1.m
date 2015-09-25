@@ -261,7 +261,7 @@ try
     yo = ym;
 
     % Track head position and orientation, retrieve modelview camera matrices for each eye:
-    [eyePoseL, eyePoseR] = PsychVRHMD('StartRender', hmd);
+    [eyePoseL, eyePoseR, tracked] = PsychVRHMD('StartRender', hmd);
 
     % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
     % this is supported by the current GPU + driver combo:
@@ -343,9 +343,13 @@ try
       % Manually disable 3D mode before switching to other eye or to flip:
       Screen('EndOpenGL', win);
 
-      % Screen('FillRect', win, [1,1,1], CenterRect([0 0 10 10], winRect));
-
       % Repeat for view of other eye:
+    end
+
+    % Head position tracked?
+    if ~bitand(tracked, 2)
+      % Nope, user out of cameras view frustum. Tell it like it is:
+      DrawFormattedText(win, 'Vision based tracking lost\nGet back into the cameras field of view!', 'center', 'center', [1 0 0]);
     end
 
     % Stimulus ready. Show it on the HMD. We don't clear the color buffer here,
