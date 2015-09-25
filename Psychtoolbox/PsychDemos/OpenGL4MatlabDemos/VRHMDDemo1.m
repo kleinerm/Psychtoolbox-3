@@ -261,8 +261,10 @@ try
     yo = ym;
 
     % Track head position and orientation, retrieve modelview camera matrices for each eye:
-    [eyePoseL, eyePoseR, tracked] = PsychVRHMD('StartRender', hmd);
+    [eyePoseL, eyePoseR, tracked, frameTiming] = PsychVRHMD('StartRender', hmd);
 
+    fprintf('LastFrame estimated - Last frame from Flip: %f msecs.\n', 1000 * (frameTiming(2) - vbl));
+    
     % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
     % this is supported by the current GPU + driver combo:
     gpumeasure = 0;
@@ -356,6 +358,13 @@ try
     % as this is done in the next iteration via glClear() call anyway:
     vbl = Screen('Flip', win, [], 1);
     fcount = fcount + 1;
+    fprintf('ThisFrame estimated - This frame from Flip: %f msecs.\n', 1000 * (frameTiming(4) - vbl));
+    fprintf('Until 1st Eye:  %f msecs.\n', 1000 * (frameTiming(6) - vbl));
+    fprintf('Until Midpoint: %f msecs.\n', 1000 * (frameTiming(5) - vbl));
+    fprintf('Until 2nd Eye:  %f msecs.\n', 1000 * (frameTiming(7) - vbl));
+
+    % Capture frame latency data from the Rift DK2 latency tester:
+    latencies(fcount, :) = PsychOculusVR('LatencyTester', hmd, 1);
 
     % Result of GPU time measurement expected?
     if gpumeasure
@@ -391,6 +400,8 @@ try
   sca;
   plot(1000 * gpudur);
 
+  KbStrokeWait;
+  disp(latencies * 1000);
 catch
   sca;
   psychrethrow(psychlasterror);

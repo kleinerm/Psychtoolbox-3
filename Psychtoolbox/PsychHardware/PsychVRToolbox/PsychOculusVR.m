@@ -159,6 +159,21 @@ if cmd == 1
   return;
 end
 
+if cmd == 2
+  handle = varargin{1};
+  latencyColor = PsychOculusVRCore('LatencyTester', handle, 0);
+  if ~isempty(latencyColor)
+    glColor3ubv(latencyColor);
+    glPointSize(4);
+    glBegin(GL.POINTS);
+    glVertex2i(1,1);
+    glEnd;
+    glPointSize(1);
+  end
+
+  return;
+end
+
 if strcmpi(cmd, 'Supported')
   % Check if the Oculus VR runtime is supported and active on this
   % installation, so it can be used to open connections to real HMDs,
@@ -245,7 +260,7 @@ if strcmpi(cmd, 'Open')
     setenv('DISPLAY', sprintf(':0.%i', max(Screen('Screens'))));
   end
 
-  handle = PsychOculusVRCore('Open', varargin{:});
+  [handle, modelName] = PsychOculusVRCore('Open', varargin{:});
 
   % Restore DISPLAY for other clients, e.g., Octave's gnuplot et al.:
   if exist('olddisp', 'var')
@@ -256,6 +271,7 @@ if strcmpi(cmd, 'Open')
   newhmd.driver = @PsychOculusVR;
   newhmd.type   = 'Oculus';
   newhmd.open = 1;
+  newhmd. modelName = modelName;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
@@ -271,6 +287,7 @@ if strcmpi(cmd, 'Open')
 
   % Return device struct:
   varargout{1} = newhmd;
+  varargout{2} = modelName;
 
   return;
 end
@@ -350,7 +367,7 @@ if strcmpi(cmd, 'SetBasicQuality')
     hmd{handle}.useTimeWarp = 0;
     hmd{handle}.useOverdrive = 0;
     PsychOculusVRCore('SetLowPersistence', handle, 1);
-    PsychOculusVRCore('SetDynamicPrediction', handle, 0);
+    PsychOculusVRCore('SetDynamicPrediction', handle, 1);
   end
 
   if basicQuality == 2
@@ -779,6 +796,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     [hmd{handle}.overdriveTex(2), gltextarget] = Screen('GetOpenGLTexture', woverdrive2, woverdrive2);
     hmd{handle}.lastOverdriveTex = 0;
   end
+
+  % Need to call the PsychOculusVR(2) callback to do needed finalizer work:
+  cmdString = sprintf('PsychOculusVR(2, %i);', handle);
+  Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'OculusVRLatencyTesterSetup', cmdString);
+  Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
 
   % Need to call the end frame marker function of the Oculus runtime:
   cmdString = sprintf('PsychOculusVRCore(''EndFrameTiming'', %i);', handle);

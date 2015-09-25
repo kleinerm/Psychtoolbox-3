@@ -52,6 +52,10 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("GetHSWState", &PSYCHOCULUSVRGetHSWState));
     PsychErrorExit(PsychRegister("SetLowPersistence", &PSYCHOCULUSVRSetLowPersistence));
     PsychErrorExit(PsychRegister("SetDynamicPrediction", &PSYCHOCULUSVRSetDynamicPrediction));
+    PsychErrorExit(PsychRegister("LatencyTester", &PSYCHOCULUSVRLatencyTester));
+
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR));
     //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR));
 
     // Report the version

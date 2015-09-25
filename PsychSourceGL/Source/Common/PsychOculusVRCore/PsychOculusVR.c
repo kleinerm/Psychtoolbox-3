@@ -57,6 +57,8 @@ typedef struct PsychOculusDevice {
     ovrFrameTiming frameTiming;
     uint32_t frameIndex;
     ovrPosef outEyePoses[2];
+    unsigned char rgbColorOut[3];
+    psych_bool latencyTestActive;
 } PsychOculusDevice;
 
 PsychOculusDevice oculusdevices[MAX_PSYCH_OCULUS_DEVS];
@@ -101,6 +103,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz, meshVertices, meshIndices, uvScaleX, uvScaleY, uvOffsetX, uvOffsetY] = PsychOculusVRCore('GetUndistortionParameters', oculusPtr, eye [, inputWidth][, inputHeight][, fov]);";
     synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
     synopsis[i++] = "PsychOculusVRCore('EndFrameTiming', oculusPtr);";
+    synopsis[i++] = "result = PsychOculusVRCore('LatencyTester', oculusPtr, cmd);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
 
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -1402,6 +1405,7 @@ PsychError PSYCHOCULUSVREndFrameTiming(void)
 
     // Tell runtime that the last rendered frame was just presented onscreen,
     // aka OpenGL bufferswap completed:
+    // Note: This also runs processing for the DK2 latency tester.
     ovrHmd_EndFrameTiming(oculus->hmd);
     oculus->frameIndex++;
 
@@ -1519,6 +1523,91 @@ PsychError PSYCHOCULUSVRGetHSWState(void)
 
     ovrHmd_GetHSWDisplayState(oculus->hmd, &hasWarningState);
     PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (hasWarningState.Displayed) ? 1 : 0);
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVRLatencyTester(void)
+{
+    static char useString[] = "result = PsychOculusVRCore('LatencyTester', oculusPtr, cmd);";
+    //                          1                                          1          2
+    static char synopsisString[] =
+    "Drive or query latency tester for Oculus Rift DK2 device 'oculusPtr'.\n"
+    "'cmd' is the command code:\n"
+    "0 = Get next test draw color from 0 - 255 as [r,g,b] vector.\n"
+    "1 = Get most recent latency test results in seconds as a 5 component vector 'latency':\n"
+    "latency[1] = LatencyRender:     (seconds) Last time between render IMU sample and scanout.\n"
+    "latency[2] = LatencyTimewarp:   (seconds) Last time between timewarp IMU sample and scanout.\n"
+    "latency[3] = LatencyPostPresent (seconds) Average time between Vsync and scanout.\n"
+    "latency[4] = ErrorRender        (seconds) Last error in render predicted scanout time.\n"
+    "latency[5] = ErrorTimewarp      (seconds) Last error in timewarp predicted scanout time.\n"
+    "\n"
+    "If 'cmd' can't get executed, then an empty result [] is returned.\n"
+    "\n";
+
+    static char seeAlsoString[] = "";
+
+    int handle, cmd;
+    float latencies[5];
+    PsychOculusDevice *oculus;
+    double *outM;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Get cmd code:
+    PsychCopyInIntegerArg(2, kPsychArgRequired, &cmd);
+
+    if (cmd == 0) {
+        // Get next latency test marker pixel color, update the runtimes internal
+        // target match color with it, return color to us for our client rendering:
+        // Return required clear color for latency test quad if latencytest is enabled, empty otherwise:
+        if (ovrHmd_GetLatencyTest2DrawColor(oculus->hmd, &(oculus->rgbColorOut[0]))) {
+            PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 3, 1, &outM);
+            outM[0] = (double) oculus->rgbColorOut[0];
+            outM[1] = (double) oculus->rgbColorOut[1];
+            outM[2] = (double) oculus->rgbColorOut[2];
+            oculus->latencyTestActive = TRUE;
+        }
+        else {
+            oculus->latencyTestActive = FALSE;
+        }
+    }
+
+    if (cmd == 1) {
+        // Shall we do processing for the latency tester and return results?
+        if (oculus->latencyTestActive) {
+            // Seems so:
+            if (ovrHmd_GetFloatArray(oculus->hmd, "DK2Latency", latencies, 5) == 5) {
+                if (verbosity > 3) {
+                    printf("PsychOculusVRCore-EndFrameTiming: Latency test result is: %f : %f : %f : %f : %f\n",
+                           latencies[0] * 1000.0, latencies[1] * 1000.0, latencies[2] * 1000.0, latencies[3] * 1000.0,
+                           latencies[4] * 1000.0);
+                }
+
+                // Return results:
+                PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 5, 1, &outM);
+                outM[0] = (double) latencies[0];
+                outM[1] = (double) latencies[1];
+                outM[2] = (double) latencies[2];
+                outM[3] = (double) latencies[3];
+                outM[4] = (double) latencies[4];
+            }
+        }
+    }
 
     return(PsychError_none);
 }

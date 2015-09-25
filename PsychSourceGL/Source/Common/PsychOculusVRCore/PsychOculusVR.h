@@ -59,7 +59,8 @@ PsychError PSYCHOCULUSVREndFrameTiming(void);
 PsychError PSYCHOCULUSVRGetEyePose(void);
 PsychError PSYCHOCULUSVRSetLowPersistence(void);
 PsychError PSYCHOCULUSVRSetDynamicPrediction(void);
-
+PsychError PSYCHOCULUSVRLatencyTester(void);
+    
 #ifdef  __cplusplus
 }
 #endif
