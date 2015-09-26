@@ -17,6 +17,7 @@ function isReserved = KbQueueReserve(action, actor, deviceIndex)
 % 05.10.2014  mk  Remove OSX and 32-Bit OSX special cases.
 %                 OSX now behaves like Linux and Windows.
 % 12.11.2014  mk  Fix bug that deviceIndex < 0 not treated as [].
+% 26.09.2015  mk  Check for invalid deviceIndex with more than one element.
 
 % Store for whom the default queue is reserved:
 persistent reservedFor;
@@ -29,6 +30,10 @@ if isempty(reservedFor)
     % Get deviceIndex of default keyboard device for KbQueues:
     LoadPsychHID;
     defaultKbDevice = PsychHID('Devices', -1);
+end
+
+if length(deviceIndex) > 1
+    error('The provided ''deviceIndex'' parameter must not contain more than one element. Yours contains multiple.');
 end
 
 if ~isempty(deviceIndex) && (deviceIndex >= 0) && (deviceIndex ~= defaultKbDevice)
