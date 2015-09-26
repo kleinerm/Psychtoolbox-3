@@ -69,6 +69,19 @@ function varargout = PsychOculusVR(cmd, varargin)
 % - Set basic level of quality vs. required GPU performance.
 %
 %
+% PsychOculusVR('SetHSWDisplayDismiss', hmd, dismissTypes);
+% - Set how the user can dismiss the "Health and safety warning display".
+% 'dismissTypes' can be -1 to disable the HSWD, or a value >= 0 to show
+% the HSWD until a timeout and or until the user dismisses the HSWD.
+% The following flags can be added to define type of dismissal:
+%
+% +0 = Display until timeout, if any.
+% +1 = Dismiss via keyboard keypress.
+% +2 = Dismiss via mouse click or mousepad tap.
+%
+% Additionally a tap to the HMD will dismiss the HSWD.
+%
+%
 % [bufferSize, imagingFlags] = PsychOculusVR('GetClientRenderingParameters', hmd);
 % - Retrieve recommended size in pixels 'bufferSize' = [width, height] of the client
 % renderbuffer for each eye for rendering to the HMD. Returns parameters
@@ -252,6 +265,24 @@ if strcmpi(cmd, 'SetAutoClose')
   return;
 end
 
+if strcmpi(cmd, 'SetHSWDisplayDismiss')
+  myhmd = varargin{1};
+
+  if ~PsychOculusVR('IsOpen', myhmd)
+    error('PsychOculusVR:SetHSWDisplay: Specified handle does not correspond to an open HMD!');
+  end
+
+  % Method of dismissing HSW display:
+  if length(varargin) < 2 || isempty(varargin{2})
+    % Default is keyboard, mouse click, or HMD tap:
+    hmd{myhmd.handle}.hswdismiss = 1 + 2 + 4;
+  else
+    hmd{myhmd.handle}.hswdismiss = varargin{2};
+  end
+
+  return;
+end
+
 % Open a HMD:
 if strcmpi(cmd, 'Open')
   % Hack to make sure the VR runtime detects the HMD on a secondary X-Screen:
@@ -281,6 +312,10 @@ if strcmpi(cmd, 'Open')
 
   % Default to no use of pixel luminance overdrive:
   newhmd.useOverdrive = 0;
+
+  % By default allow user to dismiss HSW display via key press,
+  % mouse click, or HMD tap:
+  newhmd.hswdismiss = 1 + 2 + 4;
 
   % Store in internal array:
   hmd{handle} = newhmd;
@@ -822,44 +857,60 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   % Need HSW display?
-  KbReleaseWait(-1);
-  dismiss = 0;
-  if PsychOculusVRCore('GetHSWState', handle)
-    % Yes: Display HSW text:
-    hswtext = ['HEALTH & SAFETY WARNING\n\n' ...
-              'Read and follow all warnings and instructions\n' ...
-              'included with the Headset before use.\n' ...
-              'Headset should be calibrated for each user.\n' ...
-              'Not for use by children under 13.\n' ...
-              'Stop use if you experience any discomfort or\n' ...
-              'health reactions.\n\n' ...
-              'More: www.oculus.com/warnings\n\n' ...
-              'Press any key or tap headset to acknowledge'];
-
-    oldTextSize = Screen('TextSize', win, 18);
-    Screen('SelectStereoDrawBuffer', win, 1);
-    DrawFormattedText(win, hswtext, 'center', 'center', [0 255 0]);
-    Screen('SelectStereoDrawBuffer', win, 0);
-    DrawFormattedText(win, hswtext, 'center', 'center', [0 255 0]);
-    Screen('TextSize', win, oldTextSize);
-    Screen('Flip', win, [], 1);
-
-    % Enable tracking so we can allow user to dismiss HSW via a
-    % slight tap to the HMD - accelerometers will do their thing:
-    PsychOculusVRCore('Start', handle);
-
-    % Wait for dismiss via keypress, mouse button click or HMD tap:
-    while PsychOculusVRCore('GetHSWState', handle, dismiss)
-      [dummy1, dummy2, buttons] = GetMouse;
-      if KbCheck(-1) || any(buttons)
-        dismiss = 1;
-      end
-      Screen('Flip', win, [], 1);
+  if (hmd{handle}.hswdismiss >= 0) && isempty(getenv('PSYCH_OCULUS_HSWSKIP'))
+    if bitand(hmd{myhmd.handle}.hswdismiss, 1)
+      KbReleaseWait(-1);
     end
 
-    % Stop tracking and clear HSW text:
-    PsychOculusVRCore('Stop', handle);
-    Screen('Flip', win);
+    dismiss = 0;
+    if PsychOculusVRCore('GetHSWState', handle)
+      % Yes: Display HSW text:
+      hswtext = ['HEALTH & SAFETY WARNING\n\n' ...
+                'Read and follow all warnings and instructions\n' ...
+                'included with the Headset before use.\n' ...
+                'Headset should be calibrated for each user.\n' ...
+                'Not for use by children under 13.\n' ...
+                'Stop use if you experience any discomfort or\n' ...
+                'health reactions.\n\n' ...
+                'More: www.oculus.com/warnings\n\n' ...
+                'Press any key or tap headset to acknowledge'];
+
+      oldTextSize = Screen('TextSize', win, 18);
+      Screen('SelectStereoDrawBuffer', win, 1);
+      DrawFormattedText(win, hswtext, 'center', 'center', [0 255 0]);
+      Screen('SelectStereoDrawBuffer', win, 0);
+      DrawFormattedText(win, hswtext, 'center', 'center', [0 255 0]);
+      Screen('TextSize', win, oldTextSize);
+      Screen('Flip', win, [], 1);
+
+      % Enable tracking so we can allow user to dismiss HSW via a
+      % slight tap to the HMD - accelerometers will do their thing:
+      PsychOculusVRCore('Start', handle);
+
+      % Wait for dismiss via keypress, mouse button click or HMD tap:
+      while PsychOculusVRCore('GetHSWState', handle, dismiss)
+        % Allow dismiss via keypress?
+        if bitand(hmd{myhmd.handle}.hswdismiss, 1) && KbCheck(-1)
+          dismiss = 1;
+        end
+
+        % Allow dismiss via mouse click?
+        if bitand(hmd{myhmd.handle}.hswdismiss, 2)
+          [dummy1, dummy2, buttons] = GetMouse;
+          if any(buttons)
+            dismiss = 1;
+          end
+        end
+
+        % Need to idle flip here to drive timewarp rendering in
+        % case some stuff is enabled:
+        Screen('Flip', win, [], 1);
+      end
+
+      % Stop tracking and clear HSW text:
+      PsychOculusVRCore('Stop', handle);
+      Screen('Flip', win);
+    end
   end
 
   % Return success result code 1:
