@@ -63,7 +63,7 @@ try
 
   % Setup the HMD and open and setup the onscreen window for VR display:
   PsychImaging('PrepareConfiguration');
-  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 0.4);
+  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 0.2);
   [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], [], multiSample);
 
   % Textsize for text:
@@ -239,6 +239,8 @@ try
   PsychVRHMD('Start', hmd);
   PsychVRHMD('Verbosity', 2);
 
+  lowpers = PsychVRHMD('SetLowPersistence', hmd)
+  
   eyeShift(1, :) = -1 * PsychVRHMD('GetEyeShiftVector', hmd, 0);
   eyeShift(2, :) = -1 * PsychVRHMD('GetEyeShiftVector', hmd, 1);
 
@@ -246,7 +248,7 @@ try
   ifi = Screen('GetFlipInterval', win);
 
   % Initial flip to sync us to VBL and get start timestamp:
-  vbl = Screen('Flip', win);
+  [vbl, onset] = Screen('Flip', win);
   tstart = vbl;
   globalPos = [0, 0, 0];
   [xo, yo] = GetMouse;
@@ -263,7 +265,7 @@ try
     % Track head position and orientation, retrieve modelview camera matrices for each eye:
     [eyePoseL, eyePoseR, tracked, frameTiming] = PsychVRHMD('StartRender', hmd);
 
-    fprintf('LastFrame estimated - Last frame from Flip: %f msecs.\n', 1000 * (frameTiming(2) - vbl));
+    fprintf('LastFrame estimated - Last frame from Flip: %f msecs.\n', 1000 * (frameTiming(2) - onset));
     
     % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
     % this is supported by the current GPU + driver combo:
@@ -356,16 +358,18 @@ try
 
     % Stimulus ready. Show it on the HMD. We don't clear the color buffer here,
     % as this is done in the next iteration via glClear() call anyway:
-    vbl = Screen('Flip', win, [], 1);
+    [vbl, onset, flipreturnt] = Screen('Flip', win, [], 1);
     fcount = fcount + 1;
-    fprintf('ThisFrame estimated - This frame from Flip: %f msecs.\n', 1000 * (frameTiming(4) - vbl));
-    fprintf('Until 1st Eye:  %f msecs.\n', 1000 * (frameTiming(6) - vbl));
-    fprintf('Until Midpoint: %f msecs.\n', 1000 * (frameTiming(5) - vbl));
-    fprintf('Until 2nd Eye:  %f msecs.\n', 1000 * (frameTiming(7) - vbl));
+    fprintf('ThisFrame estimated - This frame from Flip: %f msecs.\n', 1000 * (frameTiming(4) - onset));
+    fprintf('Until 1st Eye:  %f msecs.\n', 1000 * (frameTiming(6) - onset));
+    fprintf('Until Midpoint: %f msecs.\n', 1000 * (frameTiming(5) - onset));
+    fprintf('Until 2nd Eye:  %f msecs.\n', 1000 * (frameTiming(7) - onset));
 
     % Capture frame latency data from the Rift DK2 latency tester:
-    latencies(fcount, :) = PsychOculusVR('LatencyTester', hmd, 1);
-
+    blarg = PsychOculusVRCore('LatencyTester', hmd.handle, 1)
+    blorg = PsychOculusVR('LatencyTester', hmd, 1)
+    latencies(fcount, :) = blorg;
+    predonset(fcount) = (flipreturnt + latencies(fcount, 3)) - onset;
     % Result of GPU time measurement expected?
     if gpumeasure
         % Retrieve results from GPU load measurement:
@@ -398,10 +402,11 @@ try
   Screen('Flip', win);
 
   sca;
-  plot(1000 * gpudur);
+  %plot(1000 * gpudur);
 
   KbStrokeWait;
   disp(latencies * 1000);
+  plot(1000 * predonset);
 catch
   sca;
   psychrethrow(psychlasterror);
