@@ -108,13 +108,14 @@ function varargout = PsychVRHMD(cmd, varargin)
 % +4 = Dismiss via a tap to the HMD (detected via accelerometer).
 %
 %
-% [bufferSize, imagingFlags] = PsychVRHMD('GetClientRenderingParameters', hmd);
+% [bufferSize, imagingFlags, stereoMode] = PsychVRHMD('GetClientRenderingParameters', hmd);
 % - Retrieve recommended size in pixels 'bufferSize' = [width, height] of the client
 % renderbuffer for each eye for rendering to the HMD. Returns parameters
 % previously computed by PsychVRHMD('SetupRenderingParameters', hmd).
 %
 % Also returns 'imagingFlags', the required imaging mode flags for setup of
-% the Screen imaging pipeline.
+% the Screen imaging pipeline. Also returns the needed 'stereoMode' for the
+% pipeline.
 %
 % This function is usually called by PsychImaging(), you don't need to deal
 % with it.

@@ -2710,16 +2710,9 @@ if ~isempty(floc)
         error('UseVRHMD: Invalid HMD handle specified. No such device opened.');
     end
 
-    % We must use stereomode 6, so we get separate draw buffers for left and
-    % right eye, and the stereo compositor (merger) to fuse both eyes into a
-    % single output framebuffer, but with all internal buffers at at least
-    % full output framebuffer resolution. This will generate anaglyph shaders
-    % which we will need to replace with a very special shader for the HMD:
-    stereoMode = 6;
-
     % Append our generated 'UsePanelFitter' task to setup the panelfitter for
     % our needs at 'OpenWindow' time:
-    [clientRes, imagingFlags] = hmd.driver('GetClientRenderingParameters', hmd);
+    [clientRes, imagingFlags, stereoMode] = hmd.driver('GetClientRenderingParameters', hmd);
     x{1} = 'General';
     x{2} = 'UsePanelFitter';
     x{3} = clientRes;

@@ -111,13 +111,14 @@ function varargout = PsychOculusVR(cmd, varargin)
 % +4 = Dismiss via a tap to the HMD (detected via accelerometer).
 %
 %
-% [bufferSize, imagingFlags] = PsychOculusVR('GetClientRenderingParameters', hmd);
+% [bufferSize, imagingFlags, stereoMode] = PsychOculusVR('GetClientRenderingParameters', hmd);
 % - Retrieve recommended size in pixels 'bufferSize' = [width, height] of the client
 % renderbuffer for each eye for rendering to the HMD. Returns parameters
 % previously computed by PsychOculusVR('SetupRenderingParameters', hmd).
 %
 % Also returns 'imagingFlags', the required imaging mode flags for setup of
-% the Screen imaging pipeline.
+% the Screen imaging pipeline. Also returns the needed 'stereoMode' for the
+% pipeline.
 %
 %
 % isOutput = PsychOculusVR('IsHMDOutput', hmd, scanout);
@@ -517,11 +518,24 @@ if strcmpi(cmd, 'GetClientRenderingParameters')
   imagingMode = mor(imagingMode, kPsychNeedClientRectNoFitter);
 
   % Need an output FBO for our panel overdrive implementation:
-  if hmd{myhmd.handle}.useOverdrive
+  if hmd{myhmd.handle}.useOverdrive || strcmpi(hmd{myhmd.handle}.basicTask, 'Monoscopic')
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
   end
 
+  if ~strcmpi(hmd{myhmd.handle}.basicTask, 'Monoscopic')
+    % We must use stereomode 6, so we get separate draw buffers for left and
+    % right eye, and the stereo compositor (merger) to fuse both eyes into a
+    % single output framebuffer, but with all internal buffers at at least
+    % full output framebuffer resolution. This will generate anaglyph shaders
+    % which we will need to replace with a very special shader for the HMD:
+    stereoMode = 6;
+  else
+    % Monoscopic presentation will do:
+    stereoMode = 0;
+  end
+
   varargout{2} = imagingMode;
+  varargout{3} = stereoMode;
   return;
 end
 
@@ -616,21 +630,34 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   hmd{handle}.eyeRotStartMatrixRight = diag([1 1 1 1]);
   hmd{handle}.eyeRotEndMatrixRight   = diag([1 1 1 1]);
 
-  [slot, shaderid, blittercfg, voidptr, glsl] = Screen('HookFunction', win, 'Query', 'StereoCompositingBlit', 'StereoCompositingShaderAnaglyph'); %#ok<ASGLU>
-  if slot == -1
-    varargout{1} = 0;
-    warning('Either the imaging pipeline is not enabled for given onscreen window, or it is not switched to Anaglyph stereo mode.');
-    return;
-  end
+  % Assign proper target processing chain for imaging pipeline:
+  if ~strcmpi(hmd{handle}.basicTask, 'Monoscopic')
+    % Stereoscopic display: Stereo composer chain.
+    procchain = 'StereoCompositingBlit';
 
-  if glsl == 0
-    varargout{1} = 0;
-    warning('Anaglyph shader is not operational for unknown reason. Sorry...');
-    return;
-  end
+    % Find slot with preexisting stereo composition shader, so we can replace it by our thing:
+    [slot, shaderid, blittercfg, voidptr, glsl] = Screen('HookFunction', win, 'Query', procchain, 'StereoCompositingShaderAnaglyph'); %#ok<ASGLU>
+    if slot == -1
+      varargout{1} = 0;
+      warning('Either the imaging pipeline is not enabled for given onscreen window, or it is not switched to Anaglyph stereo mode.');
+      return;
+    end
 
-  % Remove old standard anaglyph shader:
-  Screen('HookFunction', win, 'Remove', 'StereoCompositingBlit', slot);
+    if glsl == 0
+      varargout{1} = 0;
+      warning('Anaglyph shader is not operational for unknown reason. Sorry...');
+      return;
+    end
+
+    % Remove old standard anaglyph shader:
+    Screen('HookFunction', win, 'Remove', procchain, slot);
+  else
+    % Monoscopic display: Final output formatter:
+    procchain = 'FinalOutputFormattingBlit';
+    Screen('HookFunction', win, 'Enable', procchain);
+    slot = 0;
+    glsl = 0;
+  end
 
   % Build the unwarp mesh display list within the OpenGL context of Screen():
   Screen('BeginOpenGL', win, 1);
@@ -839,12 +866,19 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % We leave this here for documentation for now, in case we need to change our ways of doing this.
   %leftViewPort = hmd{handle}.viewportLeft
   blittercfg = sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gldLeft);
-  Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', 'OculusVRClientCompositingShaderLeftEye', glsl, blittercfg);
+  Screen('Hookfunction', win, posstring, procchain, 'OculusVRClientCompositingShaderLeftEye', glsl, blittercfg);
 
   % Setup right eye shader:
   glsl = LoadGLSLProgramFromFiles('OculusRiftCorrectionShader');
   glUseProgram(glsl);
-  glUniform1i(glGetUniformLocation(glsl, 'Image'), 1);
+  if ~strcmpi(hmd{handle}.basicTask, 'Monoscopic')
+    % Stereoscopic display: Source from right eye buffer:
+    glUniform1i(glGetUniformLocation(glsl, 'Image'), 1);
+  else
+    % Monoscopic display: Source right eye image also from left-eye (aka mono) buffer:
+    glUniform1i(glGetUniformLocation(glsl, 'Image'), 0);
+  end
+
   glUniform1i(glGetUniformLocation(glsl, 'PrevImage'), 2);
   glUniform3f(glGetUniformLocation(glsl, 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
   glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVOffset'), hmd{handle}.uvOffsetRight(1) * hmd{handle}.inputWidth, hmd{handle}.uvOffsetRight(2) * hmd{handle}.inputHeight);
@@ -857,17 +891,22 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Insert it at former position of the old shader:
   posstring = sprintf('InsertAt%iShader', slot);
   blittercfg = sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gldRight);
-  Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', 'OculusVRClientCompositingShaderRightEye', glsl, blittercfg);
+  Screen('Hookfunction', win, posstring, procchain, 'OculusVRClientCompositingShaderRightEye', glsl, blittercfg);
 
   % TimeWarp or panel overdrive in use?
   if hmd{handle}.useTimeWarp || hmd{handle}.useOverdrive
     % Need to call the PsychOculusVR(1) callback to do needed setup work:
     posstring = sprintf('InsertAt%iMFunction', slot);
     cmdString = sprintf('PsychOculusVR(1, %i);', handle);
-    Screen('Hookfunction', win, posstring, 'StereoCompositingBlit', 'OculusVRTimeWarpSetup', cmdString);
+    Screen('Hookfunction', win, posstring, procchain, 'OculusVRTimeWarpSetup', cmdString);
   end
 
   if hmd{handle}.useOverdrive
+    if strcmpi(hmd{handle}.basicTask, 'Monoscopic')
+      % Need a bufferflip command:
+      Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+    end
+
     [realw, realh] = Screen('Windowsize', win, 1);
     Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:IdentityBlit:OvrSize:%i:%i', realw, realh));
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
