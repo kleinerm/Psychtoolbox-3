@@ -205,7 +205,7 @@ end
 % Trigger automatic setup of first detected Oculus VR HMD with
 % default rendering parameters:
 if stereoMode == 103
-    PsychOculusVR('AutoSetupDefaultHMD');
+    PsychVRHMD('AutoSetupHMD', 'Stereoscopic');
     stereoMode = [];
 end
 

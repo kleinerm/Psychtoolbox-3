@@ -79,7 +79,7 @@ if imaging
     PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
 
     if stereoMode == 103
-        PsychOculusVR('AutoSetupDefaultHMD');
+        PsychVRHMD('AutoSetupHMD', 'Stereoscopic');
         stereoMode = [];
     end
 
