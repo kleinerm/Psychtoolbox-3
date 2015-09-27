@@ -287,7 +287,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
   if length(varargin) >= 2 && ~isempty(varargin{2})
     basicRequirements = varargin{2};
   else
-    basicRequirements = 0;
+    basicRequirements = '';
   end
 
   % Basic quality/performance tradeoff to choose:
@@ -532,7 +532,7 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   if length(varargin) >= 3 && ~isempty(varargin{3})
     basicRequirements = varargin{3};
   else
-    basicRequirements = 0;
+    basicRequirements = '';
   end
 
   % Basic quality/performance tradeoff to choose:
