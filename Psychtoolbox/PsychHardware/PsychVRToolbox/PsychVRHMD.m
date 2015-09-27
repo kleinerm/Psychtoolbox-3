@@ -20,7 +20,9 @@ function varargout = PsychVRHMD(cmd, varargin)
 %
 % hmd = PsychVRHMD('AutoSetupHMD' [, basicTask][, basicRequirements][, basicQuality][, vendor][, deviceIndex]);
 % - Automatically detect the first connected HMD, set it up with reasonable
-% default parameters, and return a device handle 'hmd' to it.
+% default parameters, and return a device handle 'hmd' to it. If the system
+% does not support any HMDs, not even emulated ones, just does nothing and
+% returns an empty handle, ie., hmd = [], so caller can cope with that.
 %
 % Optional parameters: 'basicTask' what kind of task should be implemented.
 % The default is 'Tracked3DVR', which means to setup for stereoscopic 3D
@@ -255,7 +257,12 @@ if strcmpi(cmd, 'AutoSetupHMD')
   % Add probe for other emulated HMD drivers here ...
 
   % If we reach this point then it is game over:
-  error('Could not autosetup any HMDs, real or emulated, for any HMD vendor. Game over!');
+  fprintf('PsychVRHMD:AutoSetupHMD: Could not autosetup any HMDs, real or emulated, for any HMD vendor. Game over!\n');
+
+  % Return an empty handle to signal lack of VR HMD support to caller,
+  % so caller can cope with it somehow:
+  varargout{1} = [];
+  return;
 end
 
 % If the cmd could not get dispatched by us, funnel it to the

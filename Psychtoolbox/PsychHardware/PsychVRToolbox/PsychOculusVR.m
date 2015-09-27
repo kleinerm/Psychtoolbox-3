@@ -265,6 +265,17 @@ end
 % emulated one, if none can be detected. Perform basic setup with
 % default configuration, create a proper PsychImaging task.
 if strcmpi(cmd, 'AutoSetupHMD')
+  % Do we have basic runtime support?
+  if ~PsychOculusVR('Supported')
+    % Nope: Game over.
+    fprintf('PsychOculusVR:AutoSetupHMD: Could not initialize Oculus driver. Game over!\n');
+
+    % Return an empty handle to signal lack of VR HMD support to caller,
+    % so caller can cope with it somehow:
+    varargout{1} = [];
+    return;
+  end
+
   % Basic task this HMD should fulfill:
   if length(varargin) >= 1 && ~isempty(varargin{1})
     basicTask = varargin{1};

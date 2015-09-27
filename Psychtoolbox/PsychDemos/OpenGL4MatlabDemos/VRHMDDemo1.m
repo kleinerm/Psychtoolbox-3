@@ -64,6 +64,10 @@ try
   PsychImaging('PrepareConfiguration');
   %hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse', 0);
   hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp', 0);
+  if isempty(hmd)
+    fprintf('No VR-HMD available, giving up!\n');
+    return;
+  end
   [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], [], multiSample);
 
   % Textsize for text:
