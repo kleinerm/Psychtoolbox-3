@@ -92,6 +92,40 @@ function varargout = PsychVRHMD(cmd, varargin)
 % set is supported across all devices.
 %
 %
+% state = PsychVRHMD('PrepareRender', hmd [, reqmask=1][, targetTime=0]);
+% - Mark the start of the rendering cycle for a new 3D rendered stereoframe.
+% Return a struct 'state' which contains various useful bits of information
+% for 3D stereoscopic rendering of a scene, based on head tracking data.
+%
+% 'hmd' is the handle of the HMD which delivers tracking data and receives the
+% rendered content for display. 'reqmask' defines what kind of information is
+% requested to be returned in struct 'state'. Only query information you actually
+% need, as computing some of this info is expensive! 'targetTime' is the expected
+% time at which the rendered frame will display. This could potentially be used by
+% the driver to make better predictions of camera/eye/head pose for the image.
+% Omitting the value will assume "now" as the point for prediction.
+%
+% state always contains a field state.tracked, whose bits signal the status
+% of head tracking for this frame. A +1 flag means that head orientation is
+% tracked. A +2 flag means that head position is tracked via some absolute
+% position tracker like, e.g., the Oculus Rift DK2 camera.
+%
+% 'reqmask' defaults to 1 and can have the following values added together:
+%
+% +1 = Return matrices for left and right "eye cameras" which can be directly
+%      used as OpenGL GL_MODELVIEW matrices for rendering the scene. 4x4 matrices
+%      for left- and right eye are contained in state.modelView{1} and {2}.
+%
+% +2 = Return position and orientation 4x4 camera view matrices which describe
+%      position and orientation of the "eye cameras" relative to the world
+%      reference frame. They are the inverses of state.modelView{}. These
+%      matrices can be directly used to define cameras for rendering of complex
+%      3D scenes with the Horde3D 3D engine. Left- and right eye matrices are
+%      contained in state.cameraView{1} and {2}.
+%
+% More flags to follow...
+%
+%
 % PsychVRHMD('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
 % - Query the HMD 'hmd' for its properties and setup internal rendering
 % parameters in preparation for opening an onscreen window with PsychImaging

@@ -32,7 +32,7 @@ function [cameraMatrix, eyePoseT] = eyePoseToCameraMatrix(eyePose, eyeLocalTrans
 translation = eyePose(1:3);
 orientationQ = eyePose(4:7);
 
-if nargin >= 2
+if nargin >= 2 && ~isempty(eyeLocalTranslate)
   % Apply translation in the local rotated coordinate frame, e.g., if eyePose
   % is actually a head pose and we need to translate from head rotation center to
   % rotated eyes:

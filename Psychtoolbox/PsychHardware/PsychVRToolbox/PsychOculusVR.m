@@ -102,6 +102,40 @@ function varargout = PsychOculusVR(cmd, varargin)
 % installed.
 %
 %
+% state = PsychOculusVRCore('PrepareRender', hmd [, reqmask=1][, targetTime=0]);
+% - Mark the start of the rendering cycle for a new 3D rendered stereoframe.
+% Return a struct 'state' which contains various useful bits of information
+% for 3D stereoscopic rendering of a scene, based on head tracking data.
+%
+% 'hmd' is the handle of the HMD which delivers tracking data and receives the
+% rendered content for display. 'reqmask' defines what kind of information is
+% requested to be returned in struct 'state'. Only query information you actually
+% need, as computing some of this info is expensive! 'targetTime' is the expected
+% time at which the rendered frame will display. This could potentially be used by
+% the driver to make better predictions of camera/eye/head pose for the image.
+% Omitting the value will assume "now" as the point for prediction.
+%
+% state always contains a field state.tracked, whose bits signal the status
+% of head tracking for this frame. A +1 flag means that head orientation is
+% tracked. A +2 flag means that head position is tracked via some absolute
+% position tracker like, e.g., the Oculus Rift DK2 camera.
+%
+% 'reqmask' defaults to 1 and can have the following values added together:
+%
+% +1 = Return matrices for left and right "eye cameras" which can be directly
+%      used as OpenGL GL_MODELVIEW matrices for rendering the scene. 4x4 matrices
+%      for left- and right eye are contained in state.modelView{1} and {2}.
+%
+% +2 = Return position and orientation 4x4 camera view matrices which describe
+%      position and orientation of the "eye cameras" relative to the world
+%      reference frame. They are the inverses of state.modelView{}. These
+%      matrices can be directly used to define cameras for rendering of complex
+%      3D scenes with the Horde3D 3D engine. Left- and right eye matrices are
+%      contained in state.cameraView{1} and {2}.
+%
+% More flags to follow...
+%
+%
 % PsychOculusVR('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
 % - Query the HMD 'hmd' for its properties and setup internal rendering
 % parameters in preparation for opening an onscreen window with PsychImaging
@@ -245,6 +279,61 @@ if cmd == 2
     glEnd;
     glPointSize(1);
   end
+
+  return;
+end
+
+if strcmpi(cmd, 'PrepareRender')
+  % Get and validate handle -fast path open coded:
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOculusVR:PrepareRender: Specified handle does not correspond to an open HMD!');
+  end
+
+  % Valid: Get request mask of information to return:
+  if length(varargin) >= 2 && ~isempty(varargin{2})
+    reqmask = varargin{2};
+  else
+    % Default to: Provide basic tracking status flags, and directly useable
+    % GL_MODELVIEW matrices for the cameras for rendering the left- and right-eye:
+    reqmask = 1;
+  end
+
+  % Get target time for predicted camera poses, head poses etc.:
+  if length(varargin) >= 3 && ~isempty(varargin{3})
+    targetTime = varargin{3};
+  else
+    % Default: Provide values for "now", based on most recent
+    % measurements:
+    targetTime = 0;
+  end
+
+  % Mark start of a new frame render cycle for the runtime and get the data
+  % predicted for next scanout time:
+  [eyePose{1}, eyePose{2}, tracked] = PsychOculusVRCore('StartRender', myhmd.handle);
+
+  % Always return basic tracking status:
+  result.tracked = tracked;
+
+  % As a bonus we return the raw eye pose vectors, given that we have them anyway:
+  result.rawEyePose7{1} = eyePose{1};
+  result.rawEyePose7{2} = eyePose{2};
+
+  % Shall we return directly useable OpenGL GL_MODELVIEW matrices?
+  if bitand(reqmask, 1)
+    % Convert to OpenGL GL_MODELVIEW matrices:
+    result.modelView{1} = eyePoseToCameraGLModelviewMatrix(eyePose{1});
+    result.modelView{2} = eyePoseToCameraGLModelviewMatrix(eyePose{2});
+  end
+
+  % Shall we return camera view matrices that describe camera pose wrt. world reference frame?
+  if bitand(reqmask, 2)
+    % Convert to camera view matrices, the inverse matrices of the GL_MODELVIEW matrices:
+    result.cameraView{1} = eyePoseToCameraMatrix(eyePose{1});
+    result.cameraView{2} = eyePoseToCameraMatrix(eyePose{2});
+  end
+
+  varargout{1} = result;
 
   return;
 end

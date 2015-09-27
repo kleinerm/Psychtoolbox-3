@@ -255,7 +255,7 @@ try
     yo = ym;
 
     % Track head position and orientation, retrieve modelview camera matrices for each eye:
-    [eyePoseL, eyePoseR, tracked] = PsychOculusVR('StartRender', hmd);
+    state = PsychVRHMD('PrepareRender', hmd, 1 - doSeparateEyeRender);
 
     % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
     % this is supported by the current GPU + driver combo:
@@ -282,12 +282,8 @@ try
         % Select 'view' to render (left- or right-eye):
         Screen('SelectStereoDrawbuffer', win, view);
 
-        % Setup modelView matrix:
-        if view == 0
-            modelView = eyePoseToCameraGLModelviewMatrix(eyePoseL);
-        else
-            modelView = eyePoseToCameraGLModelviewMatrix(eyePoseR);
-        end
+        % Extract modelView matrix for this view's eye:
+        modelView = state.modelView{view + 1};
       end
 
       % Manually reenable 3D mode in preparation of eye draw cycle:
@@ -340,7 +336,7 @@ try
     end
 
     % Head position tracked?
-    if ~bitand(tracked, 2)
+    if ~bitand(state.tracked, 2)
       % Nope, user out of cameras view frustum. Tell it like it is:
       DrawFormattedText(win, 'Vision based tracking lost\nGet back into the cameras field of view!', 'center', 'center', [1 0 0]);
     end
