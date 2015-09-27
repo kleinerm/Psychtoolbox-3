@@ -45,7 +45,7 @@ R(1:3, 1:3) = qGetR(orientationQ);
 T = diag([1,1,1,1]);
 T(1:3, 4) = translation;
 
-cameraMatrix = R * T;
+cameraMatrix = T * R;
 
 % Output the transformed eye pose as optional 2nd return argument for reference:
 eyePoseT = [translation, orientationQ];
