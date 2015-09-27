@@ -206,7 +206,7 @@ end
 % default rendering parameters:
 if stereoMode == 103
     PsychVRHMD('AutoSetupHMD', 'Stereoscopic');
-    stereoMode = [];
+    stereoMode = -1;
 end
 
 if stereoMode == 10

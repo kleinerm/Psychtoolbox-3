@@ -80,7 +80,7 @@ if imaging
 
     if stereoMode == 103
         PsychVRHMD('AutoSetupHMD', 'Stereoscopic');
-        stereoMode = [];
+        stereoMode = -1;
     end
 
     [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], stereoMode);
