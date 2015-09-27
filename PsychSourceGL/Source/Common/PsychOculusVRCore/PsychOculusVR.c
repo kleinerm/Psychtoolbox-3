@@ -495,7 +495,7 @@ PsychError PSYCHOCULUSVRSetDynamicPrediction(void)
     // Set new enabled HMD caps:
     if (PsychCopyInIntegerArg(2, kPsychArgOptional, &dynamicPrediction)) {
         oldCaps &= ~ovrHmdCap_DynamicPrediction;
-        ovrHmd_SetEnabledCaps(oculus->hmd, oldCaps | (dynamicPrediction > 0) ? ovrHmdCap_DynamicPrediction : 0);
+        ovrHmd_SetEnabledCaps(oculus->hmd, oldCaps | ((dynamicPrediction > 0) ? ovrHmdCap_DynamicPrediction : 0));
     }
 
     return(PsychError_none);
@@ -542,7 +542,7 @@ PsychError PSYCHOCULUSVRSetLowPersistence(void)
     // Set new enabled HMD caps:
     if (PsychCopyInIntegerArg(2, kPsychArgOptional, &lowPersistence)) {
         oldCaps &= ~ovrHmdCap_LowPersistence;
-        ovrHmd_SetEnabledCaps(oculus->hmd, oldCaps | (lowPersistence > 0) ? ovrHmdCap_LowPersistence : 0);
+        ovrHmd_SetEnabledCaps(oculus->hmd, oldCaps | ((lowPersistence > 0) ? ovrHmdCap_LowPersistence : 0));
     }
 
     return(PsychError_none);
@@ -1583,6 +1583,7 @@ PsychError PSYCHOCULUSVRLatencyTester(void)
             oculus->latencyTestActive = TRUE;
         }
         else {
+            PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 0, 0, 1, &outM);
             oculus->latencyTestActive = FALSE;
         }
     }
@@ -1606,6 +1607,9 @@ PsychError PSYCHOCULUSVRLatencyTester(void)
                 outM[3] = (double) latencies[3];
                 outM[4] = (double) latencies[4];
             }
+        }
+        else {
+            PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 0, 0, 1, &outM);
         }
     }
 
