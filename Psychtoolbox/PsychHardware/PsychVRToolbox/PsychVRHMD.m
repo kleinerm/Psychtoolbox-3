@@ -10,8 +10,16 @@ function varargout = PsychVRHMD(cmd, varargin)
 %
 % Usage:
 %
+% oldverbosity = PsychVRHMD('Verbosity' [, newverbosity]);
+% - Get/Set level of verbosity for driver status messages, warning messages,
+% error messages etc. 'newverbosity' is the optional new verbosity level,
+% 'oldverbosity' is the currently set verbosity level - ie. before changing
+% it.  Valid settings are: 0 = Silent, 1 = Errors only, 2 = Warnings, 3 = Info,
+% 4 = Debug.
+%
+%
 % hmd = PsychVRHMD('AutoSetupHMD' [, basicTask][, basicQuality][, vendor][, deviceIndex]);
-% - Auto detect the first connected HMD, set it up with reasonable
+% - Automatically detect the first connected HMD, set it up with reasonable
 % default parameters, and return a device handle 'hmd' to it.
 %
 % Optional parameters: 'basicTask' what kind of task should be implemented.
@@ -35,6 +43,120 @@ function varargout = PsychVRHMD(cmd, varargin)
 %
 % If additionally the optional 'deviceIndex' parameter is provided then
 % that specific device 'deviceIndex' from that 'vendor' is opened and set up.
+%
+%
+% PsychVRHMD('SetAutoClose', hmd, mode);
+% - Set autoclose mode for HMD with handle 'hmd'. 'mode' can be
+% 0 (this is the default) to not do anything special. 1 will close
+% the HMD 'hmd' when the onscreen window is closed which displays
+% on the HMD. 2 will do the same as 1, but close all open HMDs and
+% shutdown the complete driver and runtime - a full cleanup.
+%
+%
+% isOpen = PsychVRHMD('IsOpen', hmd);
+% - Returns 1 if 'hmd' corresponds to an open HMD, 0 otherwise.
+%
+%
+% PsychVRHMD('Close' [, hmd])
+% - Close provided HMD device 'hmd'. If no 'hmd' handle is provided,
+% all HMDs will be closed and the driver will be shutdown.
+%
+%
+% info = PsychVRHMD('GetInfo', hmd);
+% - Retrieve a struct 'info' with information about the HMD 'hmd'.
+% The returned info struct contains at least the following standardized
+% fields with information:
+% handle = Driver internal handle for the specific HMD.
+% driver = Function handle to the actual driver for the HMD, e.g., @PsychOculusVR.
+% type   = Defines the type/vendor of the device, e.g., 'Oculus'.
+% modelName = Name string with the name of the model of the device, e.g., 'Rift DK2'.
+% 
+% The info struct may contain much more vendor specific information, but the above
+% set is supported across all devices.
+%
+%
+% PsychVRHMD('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
+% - Query the HMD 'hmd' for its properties and setup internal rendering
+% parameters in preparation for opening an onscreen window with PsychImaging
+% to display properly on the HMD. See section about 'AutoSetupHMD' above for
+% the meaning of the optional parameters 'basicTask' and 'basicQuality'.
+%
+% 'fov' Optional field of view in degrees, from line of sight: [leftdeg, rightdeg,
+% updeg, downdeg]. If 'fov' is omitted, the HMD runtime will be asked for a
+% good default field of view and that will be used. The field of view may be
+% dependent on the settings in the HMD user profile of the currently selected
+% user.
+%
+% 'pixelsPerDisplay' Ratio of the number of render target pixels to display pixels
+% at the center of distortion. Defaults to 1.0 if omitted. Lower values can
+% improve performance, at lower quality.
+%
+%
+% PsychVRHMD('SetBasicQuality', hmd, basicQuality);
+% - Set basic level of quality vs. required GPU performance.
+%
+%
+% PsychVRHMD('SetHSWDisplayDismiss', hmd [, dismissTypes=1+2+4]);
+% - Set how the user can dismiss the "Health and safety warning display".
+% 'dismissTypes' can be -1 to disable the HSWD, or a value >= 0 to show
+% the HSWD until a timeout and or until the user dismisses the HSWD.
+% The following flags can be added to define type of dismissal:
+%
+% +0 = Display until timeout, if any. Will wait forever if there isn't any timeout!
+% +1 = Dismiss via keyboard keypress.
+% +2 = Dismiss via mouse click or mousepad tap.
+% +4 = Dismiss via a tap to the HMD (detected via accelerometer).
+%
+%
+% [bufferSize, imagingFlags] = PsychVRHMD('GetClientRenderingParameters', hmd);
+% - Retrieve recommended size in pixels 'bufferSize' = [width, height] of the client
+% renderbuffer for each eye for rendering to the HMD. Returns parameters
+% previously computed by PsychVRHMD('SetupRenderingParameters', hmd).
+%
+% Also returns 'imagingFlags', the required imaging mode flags for setup of
+% the Screen imaging pipeline.
+%
+% This function is usually called by PsychImaging(), you don't need to deal
+% with it.
+%
+%
+% isOutput = PsychVRHMD('IsHMDOutput', hmd, scanout);
+% - Returns 1 (true) if 'scanout' describes the video output to which the
+% HMD 'hmd' is connected. 'scanout' is a struct returned by the Screen
+% function Screen('ConfigureDisplay', 'Scanout', screenid, outputid);
+% This allows probing video outputs to find the one which feeds the HMD.
+%
+%
+% headToEyeShiftv = PsychVRHMD('GetEyeShiftVector', hmd, eye);
+% - Retrieve 3D translation vector [tx, ty, tz] that defines the 3D position of the given
+% eye 'eye' for the given HMD 'hmd', relative to the origin of the local head/HMD
+% reference frame. This is needed to translate a global head pose into a eye
+% pose, e.g., to translate the output of PsychVRHMD('GetEyePose') into actual
+% tracked/predicted eye locations for stereo rendering.
+%
+%
+% [projL, projR] = PsychVRHMD('GetStaticRenderParameters', hmd [, clipNear=0.01][, clipFar=10000.0]);
+% - Retrieve parameters needed to setup the intrinsic parameters of the virtual
+% camera for scene rendering.
+%
+% 'clipNear' Optional near clipping plane for OpenGL. Defaults to 0.01.
+% 'clipFar' Optional far clipping plane for OpenGL. Defaults to 10000.0.
+%
+% Return arguments:
+%
+% 'projL' is the 4x4 OpenGL projection matrix for the left eye rendering.
+% 'projR' is the 4x4 OpenGL projection matrix for the right eye rendering.
+% Please note that projL and projR are usually identical for typical rendering
+% scenarios.
+%
+%
+% PsychVRHMD('Start', hmd);
+% - Start live operations of the 'hmd', e.g., head tracking.
+%
+%
+% PsychVRHMD('Stop', hmd);
+% - Stop live operations of the 'hmd', e.g., head tracking.
+%
 %
 
 % History:

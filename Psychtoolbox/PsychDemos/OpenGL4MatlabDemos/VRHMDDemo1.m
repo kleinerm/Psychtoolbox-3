@@ -254,7 +254,7 @@ try
     yo = ym;
 
     % Track head position and orientation, retrieve modelview camera matrices for each eye:
-    [eyePoseL, eyePoseR, tracked] = PsychVRHMD('StartRender', hmd);
+    [eyePoseL, eyePoseR, tracked] = PsychOculusVR('StartRender', hmd);
 
     % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
     % this is supported by the current GPU + driver combo:
@@ -267,7 +267,7 @@ try
         % eyePose vector for the predicted eye position to use for the virtual
         % camera rendering that eyes view. The returned pose vector actually
         % describes tracked head pose, ie. HMD position and orientation in space.
-        [headPose, eyeIndex] = PsychVRHMD('GetEyePose', hmd, view);
+        [headPose, eyeIndex] = PsychOculusVR('GetEyePose', hmd, view);
 
         % Select 'eyeIndex' to render (left- or right-eye):
         Screen('SelectStereoDrawbuffer', win, eyeIndex);

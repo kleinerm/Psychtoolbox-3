@@ -49,6 +49,26 @@ function varargout = PsychOculusVR(cmd, varargin)
 % - Returns 1 if 'hmd' corresponds to an open HMD, 0 otherwise.
 %
 %
+% PsychOculusVR('Close' [, hmd])
+% - Close provided HMD device 'hmd'. If no 'hmd' handle is provided,
+% all HMDs will be closed and the driver will be shutdown.
+%
+%
+% info = PsychOculusVR('GetInfo', hmd);
+% - Retrieve a struct 'info' with information about the HMD 'hmd'.
+% The returned info struct contains at least the following standardized
+% fields with information:
+% handle = Driver internal handle for the specific HMD.
+% driver = Function handle to the actual driver for the HMD, e.g., @PsychOculusVR.
+% type   = Defines the type/vendor of the device, e.g., 'Oculus'.
+% modelName = Name string with the name of the model of the device, e.g., 'Rift DK2'.
+%
+% The returned struct may contain more information, but the fields mentioned
+% above are the only ones guaranteed to be available over the long run. Other
+% fields may disappear or change their format and meaning anytime without
+% warning.
+%
+%
 % isSupported = PsychOculusVRCore('Supported');
 % - Returns 1 if the Oculus driver is functional, 0 otherwise. The
 % driver is functional if the VR runtime library was successfully
@@ -58,11 +78,21 @@ function varargout = PsychOculusVR(cmd, varargin)
 % installed.
 %
 %
-% PsychOculusVR('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicQuality=0])
+% PsychOculusVR('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
 % - Query the HMD 'hmd' for its properties and setup internal rendering
 % parameters in preparation for opening an onscreen window with PsychImaging
 % to display properly on the HMD. See section about 'AutoSetupHMD' above for
 % the meaning of the optional parameters 'basicTask' and 'basicQuality'.
+%
+% 'fov' Optional field of view in degrees, from line of sight: [leftdeg, rightdeg,
+% updeg, downdeg]. If 'fov' is omitted, the HMD runtime will be asked for a
+% good default field of view and that will be used. The field of view may be
+% dependent on the settings in the HMD user profile of the currently selected
+% user.
+%
+% 'pixelsPerDisplay' Ratio of the number of render target pixels to display pixels
+% at the center of distortion. Defaults to 1.0 if omitted. Lower values can
+% improve performance, at lower quality.
 %
 %
 % PsychOculusVR('SetBasicQuality', hmd, basicQuality);
@@ -88,6 +118,13 @@ function varargout = PsychOculusVR(cmd, varargin)
 %
 % Also returns 'imagingFlags', the required imaging mode flags for setup of
 % the Screen imaging pipeline.
+%
+%
+% isOutput = PsychOculusVR('IsHMDOutput', hmd, scanout);
+% - Returns 1 (true) if 'scanout' describes the video output to which the
+% HMD 'hmd' is connected. 'scanout' is a struct returned by the Screen
+% function Screen('ConfigureDisplay', 'Scanout', screenid, outputid);
+% This allows probing video outputs to find the one which feeds the HMD.
 %
 %
 % headToEyeShiftv = PsychOculusVR('GetEyeShiftVector', hmd, eye);
@@ -299,7 +336,7 @@ if strcmpi(cmd, 'Open')
   newhmd.driver = @PsychOculusVR;
   newhmd.type   = 'Oculus';
   newhmd.open = 1;
-  newhmd. modelName = modelName;
+  newhmd.modelName = modelName;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
@@ -331,6 +368,19 @@ if strcmpi(cmd, 'IsOpen')
   else
     varargout{1} = 0;
   end
+  return;
+end
+
+if strcmpi(cmd, 'GetInfo')
+  % Ok, cheap trick: We just return the passed in 'hmd' struct - the up to date
+  % internal copy that is:
+  if ~PsychOculusVR('IsOpen', varargin{1})
+    error('GetInfo: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  myhmd = varargin{1};
+  varargout{1} = hmd{myhmd.handle};
+
   return;
 end
 
@@ -450,10 +500,10 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   PsychOculusVR('SetBasicQuality', myhmd, basicQuality);
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for left eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovTanPort] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, varargin{4:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fov] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, varargin{4:end});
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovTanPort] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, varargin{4:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fov] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, varargin{4:end});
 
   return;
 end
@@ -539,7 +589,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   hmd{handle}.inputHeight = hmd{handle}.rbheight;
 
   % Query undistortion parameters for left eye view:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovTanPort);
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
   hmd{handle}.viewportLeft = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterLeft = [ptx, pty];
   hmd{handle}.HmdToEyeViewOffsetLeft = [hsx, hsy, hsz];
@@ -553,7 +603,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   hmd{handle}.eyeRotEndMatrixLeft   = diag([1 1 1 1]);
 
   % Query parameters for right eye view:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovTanPort);
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
   hmd{handle}.viewportRight = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterRight = [ptx, pty];
   hmd{handle}.HmdToEyeViewOffsetRight = [hsx, hsy, hsz];
