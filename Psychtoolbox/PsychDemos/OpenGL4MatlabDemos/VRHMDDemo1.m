@@ -62,7 +62,8 @@ try
 
   % Setup the HMD and open and setup the onscreen window for VR display:
   PsychImaging('PrepareConfiguration');
-  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 0.2);
+  %hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse', 0);
+  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp', 0);
   [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], [], multiSample);
 
   % Textsize for text:
@@ -227,10 +228,6 @@ try
   KbReleaseWait;
 
   %Priority(MaxPriority(win));
-
-  % Start the headtracker of the HMD:
-  PsychVRHMD('Start', hmd);
-  PsychVRHMD('Verbosity', 2);
 
   eyeShift(1, :) = -1 * PsychVRHMD('GetEyeShiftVector', hmd, 0);
   eyeShift(2, :) = -1 * PsychVRHMD('GetEyeShiftVector', hmd, 1);

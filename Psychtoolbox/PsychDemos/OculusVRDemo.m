@@ -12,8 +12,8 @@ screenid = max(Screen('Screens'));
 
 % Open our fullscreen onscreen window with black background clear color:
 PsychImaging('PrepareConfiguration');
-%PsychVRHMD('AutoSetupHMD', 'Monoscopic');
-PsychVRHMD('AutoSetupHMD', 'Stereoscopic');
+%PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse');
+PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'LowPersistence FastResponse');
 [win, rect] = PsychImaging('OpenWindow', screenid, 0) %, [1680, 0, 1680+1080, 1920])
 
 for eye = 0:1

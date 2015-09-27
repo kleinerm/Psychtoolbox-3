@@ -3,7 +3,7 @@ function varargout = PsychOculusVR(cmd, varargin)
 %
 % Usage:
 %
-% hmd = PsychOculusVR('AutoSetupHMD' [, basicTask='Tracked3DVR'][, basicQuality=0][, deviceIndex]);
+% hmd = PsychOculusVR('AutoSetupHMD' [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, deviceIndex]);
 % - Open a Oculus HMD, set it up with good default rendering and
 % display parameters and generate a PsychImaging('AddTask', ...)
 % line to setup the Psychtoolbox imaging pipeline for proper display
@@ -24,6 +24,30 @@ function varargout = PsychOculusVR(cmd, varargin)
 % 'Stereoscopic' sets up for display of stereoscopic stimuli, but without
 % head tracking. 'Monoscopic' sets up for display of monocular stimuli, ie.
 % the HMD is just used as a special kind of standard display monitor.
+%
+% 'basicRequirements' defines basic requirements for the task. Currently
+% defined are the following strings which can be combined into a single
+% 'basicRequirements' string: 'LowPersistence' = Try to keep exposure
+% time of visual images on the retina low if possible, ie., try to approximate
+% a pulse-type display instead of a hold-type display if possible. This has
+% no effect on the Rift DK1. On the Rift DK2 it will enable low persistence
+% scanning of the OLED display panel, to light up each pixel only a fraction
+% of a video refresh cycle duration.
+%
+% 'FastResponse' = Try to switch images with minimal delay and fast
+% pixel switching time. This has no effect on the Rift DK1. On the DK2 it
+% will enable OLED panel overdrive processing. OLED panel overdrive processing
+% is a relatively expensive post processing step.
+%
+% 'TimingSupport' = Support some hardware specific means of timestamping
+% or latency measurements. On the Rift DK1 this does nothing. On the DK2
+% it enables dynamic prediction and timing measurements with the Rifts internal
+% latency tester.
+%
+% 'TimeWarp' = Enable per eye image 2D timewarping via prediction of eye
+% poses at scanout time. This mostly only makes sense for head-tracked 3D
+% rendering. Depending on 'basicQuality' a more cheap or more expensive
+% procedure is used.
 %
 % 'basicQuality' defines the basic tradeoff between quality and required
 % computational power. A setting of 0 gives lowest quality, but with the
@@ -78,11 +102,12 @@ function varargout = PsychOculusVR(cmd, varargin)
 % installed.
 %
 %
-% PsychOculusVR('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
+% PsychOculusVR('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
 % - Query the HMD 'hmd' for its properties and setup internal rendering
 % parameters in preparation for opening an onscreen window with PsychImaging
 % to display properly on the HMD. See section about 'AutoSetupHMD' above for
-% the meaning of the optional parameters 'basicTask' and 'basicQuality'.
+% the meaning of the optional parameters 'basicTask', 'basicRequirements'
+% and 'basicQuality'.
 %
 % 'fov' Optional field of view in degrees, from line of sight: [leftdeg, rightdeg,
 % updeg, downdeg]. If 'fov' is omitted, the HMD runtime will be asked for a
@@ -247,16 +272,23 @@ if strcmpi(cmd, 'AutoSetupHMD')
     basicTask = 'Tracked3DVR';
   end
 
-  % Basic quality/performance tradeoff to choose:
+  % Basic basicRequirements to choose:
   if length(varargin) >= 2 && ~isempty(varargin{2})
-    basicQuality = varargin{2};
+    basicRequirements = varargin{2};
+  else
+    basicRequirements = 0;
+  end
+
+  % Basic quality/performance tradeoff to choose:
+  if length(varargin) >= 3 && ~isempty(varargin{3})
+    basicQuality = varargin{3};
   else
     basicQuality = 0;
   end
 
   % HMD device selection:
-  if length(varargin) >= 3 && ~isempty(varargin{3})
-    deviceIndex = varargin{3};
+  if length(varargin) >= 4 && ~isempty(varargin{4})
+    deviceIndex = varargin{4};
     newhmd = PsychOculusVR('Open', deviceIndex);
   else
     % Check if at least one Oculus HMD is connected and available:
@@ -275,7 +307,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
   PsychOculusVR('SetAutoClose', newhmd, 1);
 
   % Setup default rendering parameters:
-  PsychOculusVR('SetupRenderingParameters', newhmd, basicTask, basicQuality);
+  PsychOculusVR('SetupRenderingParameters', newhmd, basicTask, basicRequirements, basicQuality);
 
   % Add a PsychImaging task to use this HMD with the next opened onscreen window:
   PsychImaging('AddTask', 'General', 'UseVRHMD', newhmd);
@@ -351,6 +383,11 @@ if strcmpi(cmd, 'Open')
   % By default allow user to dismiss HSW display via key press,
   % mouse click, or HMD tap:
   newhmd.hswdismiss = 1 + 2 + 4;
+
+  % Setup basic task/requirement/quality specs to "nothing":
+  newhmd.basicQuality = 0;
+  newhmd.basicTask = '';
+  newhmd.basicRequirements = '';
 
   % Store in internal array:
   hmd{handle} = newhmd;
@@ -431,50 +468,40 @@ if strcmpi(cmd, 'SetBasicQuality')
   myhmd = varargin{1};
   handle = myhmd.handle;
   basicQuality = varargin{2};
-
-  % Define 5 quality levels internally:
   basicQuality = min(max(basicQuality, 0), 1);
-  basicQuality = floor(basicQuality * 5);
   hmd{handle}.basicQuality = basicQuality;
 
-  if basicQuality == 0
-    % Max speed, minimum quality:
-    hmd{handle}.useTimeWarp = 0;
+  if ~isempty(strfind(hmd{handle}.basicRequirements, 'FastResponse'))
+    hmd{handle}.useOverdrive = 1;
+  else
+    % Overdrive off by default because expensive:
     hmd{handle}.useOverdrive = 0;
+  end
+
+  if ~isempty(strfind(hmd{handle}.basicRequirements, 'TimeWarp'))
+    if basicQuality >= 0.5
+      hmd{handle}.useTimeWarp = 2;
+    else
+      hmd{handle}.useTimeWarp = 1;
+    end
+  else
+    % TimeWarp is off by default:
+    hmd{handle}.useTimeWarp = 0;
+  end
+
+  if ~isempty(strfind(hmd{handle}.basicRequirements, 'LowPersistence'))
+    PsychOculusVRCore('SetLowPersistence', handle, 1);
+  else
     PsychOculusVRCore('SetLowPersistence', handle, 0);
-    PsychOculusVRCore('SetDynamicPrediction', handle, 1);
   end
 
-  if basicQuality == 1
-    % Max speed, low persistence for less blur:
-    hmd{handle}.useTimeWarp = 0;
-    hmd{handle}.useOverdrive = 0;
-    PsychOculusVRCore('SetLowPersistence', handle, 1);
+  % Dynamic prediction enables the DK2 latency tester, advanced head tracking
+  % prediction and eye timewarping:
+  if ~isempty(strfind(hmd{handle}.basicRequirements, 'TimingSupport')) || ...
+     hmd{handle}.useTimeWarp || ~isempty(strfind(hmd{handle}.basicTask, 'Tracked3DVR'))
     PsychOculusVRCore('SetDynamicPrediction', handle, 1);
-  end
-
-  if basicQuality == 2
-    % Basic timewarp, low persistence for less blur:
-    hmd{handle}.useTimeWarp = 1;
-    hmd{handle}.useOverdrive = 0;
-    PsychOculusVRCore('SetLowPersistence', handle, 1);
-    PsychOculusVRCore('SetDynamicPrediction', handle, 1);
-  end
-
-  if basicQuality == 3
-    % Basic timewarp, low persistence for less blur and expensive overdrive:
-    hmd{handle}.useTimeWarp = 1;
-    hmd{handle}.useOverdrive = 1;
-    PsychOculusVRCore('SetLowPersistence', handle, 1);
-    PsychOculusVRCore('SetDynamicPrediction', handle, 1);
-  end
-
-  if basicQuality >= 4
-    % Full delayed timewarp, low persistence for less blur and expensive overdrive:
-    hmd{handle}.useTimeWarp = 2;
-    hmd{handle}.useOverdrive = 1;
-    PsychOculusVRCore('SetLowPersistence', handle, 1);
-    PsychOculusVRCore('SetDynamicPrediction', handle, 1);
+  else
+    PsychOculusVRCore('SetDynamicPrediction', handle, 0);
   end
 
   return;
@@ -490,21 +517,30 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     basicTask = 'Tracked3DVR';
   end
 
-  % Basic quality/performance tradeoff to choose:
+  % Basic requirements to choose:
   if length(varargin) >= 3 && ~isempty(varargin{3})
-    basicQuality = varargin{3};
+    basicRequirements = varargin{3};
+  else
+    basicRequirements = 0;
+  end
+
+  % Basic quality/performance tradeoff to choose:
+  if length(varargin) >= 4 && ~isempty(varargin{4})
+    basicQuality = varargin{4};
   else
     basicQuality = 0;
   end
 
   hmd{myhmd.handle}.basicTask = basicTask;
+  hmd{myhmd.handle}.basicRequirements = basicRequirements;
+
   PsychOculusVR('SetBasicQuality', myhmd, basicQuality);
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for left eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fov] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, varargin{4:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fov] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, varargin{5:end});
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fov] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, varargin{4:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fov] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, varargin{5:end});
 
   return;
 end
@@ -1034,6 +1070,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       % Clear HSW text:
       Screen('Flip', win);
     end
+  end
+
+  if ~isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR'))
+    % 3D head tracked VR rendering task: Start tracking as a convenience:
+    PsychOculusVRCore('Start', handle);
   end
 
   % Return success result code 1:

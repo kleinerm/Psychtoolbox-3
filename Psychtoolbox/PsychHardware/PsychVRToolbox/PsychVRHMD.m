@@ -18,7 +18,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 4 = Debug.
 %
 %
-% hmd = PsychVRHMD('AutoSetupHMD' [, basicTask][, basicQuality][, vendor][, deviceIndex]);
+% hmd = PsychVRHMD('AutoSetupHMD' [, basicTask][, basicRequirements][, basicQuality][, vendor][, deviceIndex]);
 % - Automatically detect the first connected HMD, set it up with reasonable
 % default parameters, and return a device handle 'hmd' to it.
 %
@@ -29,6 +29,21 @@ function varargout = PsychVRHMD(cmd, varargin)
 % 'Stereoscopic' sets up for display of stereoscopic stimuli, but without
 % head tracking. 'Monoscopic' sets up for display of monocular stimuli, ie.
 % the HMD is just used as a special kind of standard display monitor.
+%
+% 'basicRequirements' defines basic requirements for the task. Currently
+% defined are the following strings which can be combined into a single
+% 'basicRequirements' string: 'LowPersistence' = Try to keep exposure
+% time of visual images on the retina low if possible, ie., try to approximate
+% a pulse-type display instead of a hold-type display if possible.
+% 'FastResponse' = Try to switch images with minimal delay and fast
+% pixel switching time, e.g., by use of panel overdrive processing.
+% 'TimingSupport' = Support some hardware specific means of timestamping
+% or latency measurements.
+%
+% These basic requirements get translated into a device specific set of
+% settings. The settings can also be specific to the selected 'basicTask',
+% and if a quality vs. performance / system load tradeoff is unavoidable
+% then the 'basicQuality' parameter may modulate the strategy.
 %
 % 'basicQuality' defines the basic tradeoff between quality and required
 % computational power. A setting of 0 gives lowest quality, but with the
@@ -75,11 +90,12 @@ function varargout = PsychVRHMD(cmd, varargin)
 % set is supported across all devices.
 %
 %
-% PsychVRHMD('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
+% PsychVRHMD('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
 % - Query the HMD 'hmd' for its properties and setup internal rendering
 % parameters in preparation for opening an onscreen window with PsychImaging
 % to display properly on the HMD. See section about 'AutoSetupHMD' above for
-% the meaning of the optional parameters 'basicTask' and 'basicQuality'.
+% the meaning of the optional parameters 'basicTask', 'basicRequirements'
+% and 'basicQuality'.
 %
 % 'fov' Optional field of view in degrees, from line of sight: [leftdeg, rightdeg,
 % updeg, downdeg]. If 'fov' is omitted, the HMD runtime will be asked for a
@@ -182,21 +198,31 @@ if strcmpi(cmd, 'AutoSetupHMD')
   end
 
   if length(varargin) >= 2 && ~isempty(varargin{2})
-    basicQuality = varargin{2};
+    basicRequirements = varargin{2};
+  else
+    basicRequirements = '';
+  end
+
+  if length(varargin) >= 3 && ~isempty(varargin{3})
+    basicQuality = varargin{3};
   else
     basicQuality = 0;
   end
 
-  if length(varargin) >= 4 && ~isempty(varargin{4})
-    deviceIndex = varargin{4};
+  if length(varargin) >= 5 && ~isempty(varargin{5})
+    deviceIndex = varargin{5};
   else
     deviceIndex = [];
   end
 
-  if length(varargin) >= 3 && ~isempty(varargin{3})
-    vendor = varargin{3};
+  if length(varargin) >= 4 && ~isempty(varargin{4})
+    vendor = varargin{4};
     if strcmpi(vendor, 'Oculus')
-      hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicQuality, deviceIndex)
+      hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+
+      % Return the handle:
+      varargout{1} = hmd;
+      return;
     end
 
     error('AutoSetupHMD: Invalid ''vendor'' requested. This vendor is not supported.');
@@ -209,7 +235,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
   if PsychOculusVR('Supported') && PsychOculusVR('GetCount') > 0
     % Yes. Use that one. This will also inject a proper PsychImaging task
     % for setup of the imaging pipeline:
-    hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicQuality, deviceIndex);
+    hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
     % Return the handle:
     varargout{1} = hmd;
@@ -221,7 +247,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
   % No success with finding any real supported HMD so far. Try to find a driver
   % that at least supports an emulated HMD for very basic testing:
   if PsychOculusVR('Supported')
-    hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicQuality, deviceIndex);
+    hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
     varargout{1} = hmd;
     return;
   end
