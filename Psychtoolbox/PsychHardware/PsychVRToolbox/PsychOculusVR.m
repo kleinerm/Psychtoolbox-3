@@ -249,6 +249,32 @@ function varargout = PsychOculusVR(cmd, varargin)
 % - Set basic level of quality vs. required GPU performance.
 %
 %
+% oldSetting = PsychOculusVR('SetFastResponse', hmd [, enable]);
+% - Return old setting for 'FastResponse' mode in 'oldSetting',
+% optionally enable or disable the mode via specifying the 'enable'
+% parameter as 1 or 0. Please note that if you want to use 'FastResponse',
+% you must request and thereby enable it at the beginning of a session, as
+% the driver must do some neccessary setup prep work at startup of the HMD.
+% Once it was initially enabled, you can switch the setting at runtime with
+% this function.
+%
+%
+% oldSetting = PsychOculusVR('SetTimeWarp', hmd [, enable]);
+% - Return old setting for 'TimeWarp' mode in 'oldSetting',
+% optionally enable or disable the mode via specifying the 'enable'
+% parameter as 1 or 0. Please note that if you want to use 'TimeWarp',
+% you must request and thereby enable it at the beginning of a session, as
+% the driver must do some neccessary setup prep work at startup of the HMD.
+% Once it was initially enabled, you can switch the setting at runtime with
+% this function.
+%
+%
+% oldSetting = PsychOculusVR('SetLowPersistence', hmd [, enable]);
+% - Return old setting for 'LowPersistence' mode in 'oldSetting',
+% optionally enable or disable the mode via specifying the 'enable'
+% parameter as 1 or 0.
+%
+%
 % PsychOculusVR('SetHSWDisplayDismiss', hmd [, dismissTypes=1+2+4]);
 % - Set how the user can dismiss the "Health and safety warning display".
 % 'dismissTypes' can be -1 to disable the HSWD, or a value >= 0 to show
@@ -652,9 +678,28 @@ if strcmpi(cmd, 'Open')
 
   % Default to no use of timewarp:
   newhmd.useTimeWarp = 0;
+  newhmd.readyForWarp = 0;
 
   % Default to no use of pixel luminance overdrive:
   newhmd.useOverdrive = 0;
+  newhmd.lastOverdriveTex = -1;
+
+  % Assign default overdrive contrast scale factors for rising
+  % (UpScale) and falling (DownScale) pixel color component
+  % intensities wrt. previous rendered frame:
+  newhmd.overdriveUpScale   = 0.10;
+  newhmd.overdriveDownScale = 0.05;
+
+  % Perform a gamma / degamma pass on color values for a
+  % gamma correction of 2.2 (hard-coded in the shader) by
+  % default.
+  %
+  % Overdrive is optimized to operate in gamma space. As
+  % we normally render and process in linear space, we
+  % need to convert linear -> gamma -> Overdrive -> linear.
+  % A setting of 0 for overdriveGammaCorrect would disable
+  % gamma->degamma and operate purely linear:
+  newhmd.overdriveGammaCorrect = 1;
 
   % By default allow user to dismiss HSW display via key press,
   % mouse click, or HMD tap:
@@ -778,6 +823,114 @@ if strcmpi(cmd, 'SetBasicQuality')
     PsychOculusVRCore('SetDynamicPrediction', handle, 1);
   else
     PsychOculusVRCore('SetDynamicPrediction', handle, 0);
+  end
+
+  return;
+end
+
+if strcmpi(cmd, 'SetFastResponse')
+  myhmd = varargin{1};
+  if ~PsychOculusVR('IsOpen', myhmd)
+    error('SetFastResponse: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  % FastResponse determines use of GPU accelerated panel overdrive
+  % on the Rift DK1/DK2. Return old setting:
+  varargout{1} = hmd{myhmd.handle}.useOverdrive;
+
+  % New setting requested?
+  if (length(varargin) >= 2) && ~isempty(varargin{2})
+    % Check if an enable is requested, and if so, if the neccessary prep work
+    % has been done during AutoSetupHMD / SetupRenderingParameters  etc. at
+    % startup:
+    if (varargin{2} > 0)  && (hmd{myhmd.handle}.lastOverdriveTex < 0)
+      error('SetFastResponse: Tried to enable fast response mode, but feature has not been requested during initial HMD setup, as required.');
+    end
+
+    % All good. Can select the new overdrive mode:
+    hmd{myhmd.handle}.useOverdrive = varargin{2};
+    handle = myhmd.handle;
+
+    % Set new overdrive parameters for shaders:
+    if varargin{2} > 0
+      overdriveUpScale = hmd{handle}.overdriveUpScale;
+      overdriveDownScale = hmd{handle}.overdriveDownScale;
+      overdriveGammaCorrect = hmd{handle}.overdriveGammaCorrect;
+    else
+      overdriveUpScale = 0;
+      overdriveDownScale = 0;
+      overdriveGammaCorrect = 0;
+    end
+
+    glUseProgram(hmd{handle}.shaderLeft(1));
+    glUniform3f(glGetUniformLocation(hmd{handle}.shaderLeft(1), 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
+    glUseProgram(hmd{handle}.shaderRight(1));
+    glUniform3f(glGetUniformLocation(hmd{handle}.shaderRight(1), 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
+    glUseProgram(0);
+  end
+
+  return;
+end
+
+if strcmpi(cmd, 'SetTimeWarp')
+  myhmd = varargin{1};
+  if ~PsychOculusVR('IsOpen', myhmd)
+    error('SetTimeWarp: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  % SetTimeWarp determines use of GPU accelerated 2D texture sampling
+  % warp on the Rift DK1/DK2. Return old setting:
+  varargout{1} = hmd{myhmd.handle}.useTimeWarp;
+
+  % New setting requested?
+  if (length(varargin) >= 2) && ~isempty(varargin{2})
+    % Check if an enable is requested, and if so, if the neccessary prep work
+    % has been done during AutoSetupHMD / SetupRenderingParameters  etc. at
+    % startup:
+    if (varargin{2} > 0)  && ~hmd{myhmd.handle}.readyForWarp
+      error('SetTimeWarp: Tried to enable eye timewarp mode, but feature has not been requested during initial HMD setup, as required.');
+    end
+
+    % TimeWarp transition from enabled to disabled?
+    if (varargin{2} <= 0) && (hmd{myhmd.handle}.useTimeWarp > 0)
+      % Need to reset shaders matrices to identity matrices:
+      handle = myhmd.handle;
+
+      % Setup left shaders warp matrices:
+      glUseProgram(hmd{handle}.shaderLeft(1));
+      hmd{handle}.eyeRotStartMatrixLeft = diag([1 1 1 1]);
+      hmd{handle}.eyeRotEndMatrixLeft   = diag([1 1 1 1]);
+      glUniformMatrix4fv(hmd{handle}.shaderLeft(2), 1, 1, hmd{handle}.eyeRotStartMatrixLeft);
+      glUniformMatrix4fv(hmd{handle}.shaderLeft(3), 1, 1, hmd{handle}.eyeRotEndMatrixLeft);
+
+      % Setup right shaders warp matrices:
+      glUseProgram(hmd{handle}.shaderRight(1));
+      hmd{handle}.eyeRotStartMatrixRight = diag([1 1 1 1]);
+      hmd{handle}.eyeRotEndMatrixRight   = diag([1 1 1 1]);
+      glUniformMatrix4fv(hmd{handle}.shaderRight(2), 1, 1, hmd{handle}.eyeRotStartMatrixRight);
+      glUniformMatrix4fv(hmd{handle}.shaderRight(3), 1, 1, hmd{handle}.eyeRotEndMatrixRight);
+      glUseProgram(0);
+    end
+
+    % All good. Can select the new timeWarp mode:
+    hmd{myhmd.handle}.useTimeWarp = varargin{2};
+  end
+
+  return;
+end
+
+if strcmpi(cmd, 'SetLowPersistence')
+  myhmd = varargin{1};
+  if ~PsychOculusVR('IsOpen', myhmd)
+    error('SetLowPersistence: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  % SetLowPersistence determines use low persistence mode on the Rift DK2. Return old setting:
+  varargout{1} = PsychOculusVRCore('SetLowPersistence', myhmd.handle);
+
+  % New setting requested?
+  if (length(varargin) >= 2) && ~isempty(varargin{2})
+    PsychOculusVRCore('SetLowPersistence', myhmd.handle, varargin{2});
   end
 
   return;
@@ -1145,8 +1298,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Overdrive enabled: Assign overdrive contrast scale factors for
     % rising (UpScale) and falling (DownScale) pixel color component
     % intensities wrt. previous rendered frame:
-    overdriveUpScale   = 0.10;
-    overdriveDownScale = 0.05;
+    overdriveUpScale = hmd{handle}.overdriveUpScale;
+    overdriveDownScale = hmd{handle}.overdriveDownScale;
 
     % Perform a gamma / degamma pass on color values for a
     % gamma correction of 2.2 (hard-coded in the shader).
@@ -1155,10 +1308,10 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % need to convert linear -> gamma -> Overdrive -> linear.
     % A setting of 0 for overdriveGammaCorrect would disable
     % gamma->degamma and operate purely linear:
-    overdriveGammaCorrect = 1;
+    overdriveGammaCorrect = hmd{handle}.overdriveGammaCorrect;
   else
     % Overdrive disabled:
-    overdriveUpScale   = 0;
+    overdriveUpScale = 0;
     overdriveDownScale = 0;
     overdriveGammaCorrect = 0;
   end
@@ -1223,6 +1376,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     posstring = sprintf('InsertAt%iMFunction', slot);
     cmdString = sprintf('PsychOculusVR(1, %i);', handle);
     Screen('Hookfunction', win, posstring, procchain, 'OculusVRTimeWarpSetup', cmdString);
+    hmd{handle}.readyForWarp = 1;
   end
 
   if hmd{handle}.useOverdrive

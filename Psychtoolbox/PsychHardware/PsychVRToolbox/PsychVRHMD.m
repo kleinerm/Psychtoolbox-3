@@ -249,6 +249,32 @@ function varargout = PsychVRHMD(cmd, varargin)
 % - Set basic level of quality vs. required GPU performance.
 %
 %
+% oldSetting = PsychVRHMD('SetFastResponse', hmd [, enable]);
+% - Return old setting for 'FastResponse' mode in 'oldSetting',
+% optionally enable or disable the mode via specifying the 'enable'
+% parameter as 1 or 0. Please note that if you want to use 'FastResponse',
+% you must request and thereby enable it at the beginning of a session, as
+% the driver must do some neccessary setup prep work at startup of the HMD.
+% Once it was initially enabled, you can switch the setting at runtime with
+% this function.
+%
+%
+% oldSetting = PsychVRHMD('SetTimeWarp', hmd [, enable]);
+% - Return old setting for 'TimeWarp' mode in 'oldSetting',
+% optionally enable or disable the mode via specifying the 'enable'
+% parameter as 1 or 0. Please note that if you want to use 'TimeWarp',
+% you must request and thereby enable it at the beginning of a session, as
+% the driver must do some neccessary setup prep work at startup of the HMD.
+% Once it was initially enabled, you can switch the setting at runtime with
+% this function.
+%
+%
+% oldSetting = PsychVRHMD('SetLowPersistence', hmd [, enable]);
+% - Return old setting for 'LowPersistence' mode in 'oldSetting',
+% optionally enable or disable the mode via specifying the 'enable'
+% parameter as 1 or 0.
+%
+%
 % PsychVRHMD('SetHSWDisplayDismiss', hmd [, dismissTypes=1+2+4]);
 % - Set how the user can dismiss the "Health and safety warning display".
 % 'dismissTypes' can be -1 to disable the HSWD, or a value >= 0 to show
