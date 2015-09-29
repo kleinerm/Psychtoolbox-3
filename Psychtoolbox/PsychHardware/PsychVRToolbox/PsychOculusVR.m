@@ -86,6 +86,13 @@ function varargout = PsychOculusVR(cmd, varargin)
 % driver = Function handle to the actual driver for the HMD, e.g., @PsychOculusVR.
 % type   = Defines the type/vendor of the device, e.g., 'Oculus'.
 % modelName = Name string with the name of the model of the device, e.g., 'Rift DK2'.
+% separateEyePosesSupported = 1 if use of PsychOculusVR('GetEyePose') will improve
+%                             the quality of the VR experience, 0 if no improvement
+%                             is to be expected, so 'GetEyePose' can be avoided
+%                             to save processing time without a loss of quality.
+%                             This always returns 1 for at least the Rift DK1 and DK2,
+%                             as use of that function can enhance the quality of the
+%                             VR experience with fast head movements.
 %
 % The returned struct may contain more information, but the fields mentioned
 % above are the only ones guaranteed to be available over the long run. Other
@@ -102,18 +109,37 @@ function varargout = PsychOculusVR(cmd, varargin)
 % installed.
 %
 %
-% state = PsychOculusVRCore('PrepareRender', hmd [, reqmask=1][, targetTime=0]);
+% state = PsychOculusVRCore('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
 % - Mark the start of the rendering cycle for a new 3D rendered stereoframe.
 % Return a struct 'state' which contains various useful bits of information
 % for 3D stereoscopic rendering of a scene, based on head tracking data.
 %
 % 'hmd' is the handle of the HMD which delivers tracking data and receives the
-% rendered content for display. 'reqmask' defines what kind of information is
-% requested to be returned in struct 'state'. Only query information you actually
-% need, as computing some of this info is expensive! 'targetTime' is the expected
-% time at which the rendered frame will display. This could potentially be used by
-% the driver to make better predictions of camera/eye/head pose for the image.
-% Omitting the value will assume "now" as the point for prediction.
+% rendered content for display.
+%
+% 'reqmask' defines what kind of information is requested to be returned in
+% struct 'state'. Only query information you actually need, as computing some
+% of this info is expensive! See below for supported values for 'reqmask'.
+%
+% 'targetTime' is the expected time at which the rendered frame will display.
+% This could potentially be used by the driver to make better predictions of
+% camera/eye/head pose for the image. Omitting the value will use a target time
+% that is implementation specific, but known to give generally good results,
+% e.g., the midpoint of scanout of the next video frame.
+%
+% 'userTransformMatrix' is an optional 4x4 right hand side (RHS) transformation
+% matrix. It gets applied to the tracked head pose as a global transformation
+% before computing results based on head pose like, e.g., camera transformations.
+% You can use this to translate the "virtual head" and thereby the virtual eyes/
+% cameras in the 3D scene, so observer motion is not restricted to the real world
+% tracking volume of your headset. A typical 'userTransformMatrix' would be a
+% combined translation and rotation matrix to position the observer at some
+% 3D location in space, then define his/her global looking direction, aka as
+% heading angle, yaw orientation, or rotation around the y-axis in 3D space.
+% Head pose tracking results would then operate relative to this global transform.
+% If 'userTransformMatrix' is left out, it will default to an identity transform,
+% in other words, it will do nothing.
+%
 %
 % state always contains a field state.tracked, whose bits signal the status
 % of head tracking for this frame. A +1 flag means that head orientation is
@@ -126,14 +152,79 @@ function varargout = PsychOculusVR(cmd, varargin)
 %      used as OpenGL GL_MODELVIEW matrices for rendering the scene. 4x4 matrices
 %      for left- and right eye are contained in state.modelView{1} and {2}.
 %
-% +2 = Return position and orientation 4x4 camera view matrices which describe
+%      Return position and orientation 4x4 camera view matrices which describe
 %      position and orientation of the "eye cameras" relative to the world
 %      reference frame. They are the inverses of state.modelView{}. These
 %      matrices can be directly used to define cameras for rendering of complex
 %      3D scenes with the Horde3D 3D engine. Left- and right eye matrices are
 %      contained in state.cameraView{1} and {2}.
 %
+%      Additionally tracked/predicted head pose is returned in state.localHeadPoseMatrix
+%      and the global head pose after application of the 'userTransformMatrix' is
+%      returned in state.globalHeadPoseMatrix - this is the basis for computing
+%      the camera transformation matrices.
+%
 % More flags to follow...
+%
+%
+% eyePose = PsychOculusVR('GetEyePose', hmd, renderPass [, userTransformMatrix][, targetTime]);
+% - Return a struct 'eyePose' which contains various useful bits of information
+% for 3D stereoscopic rendering of the stereo view of one eye, based on head
+% tracking data. This function provides essentially the same information as
+% the 'PrepareRender' function, but only for one eye. Therefore you will need
+% to call this function twice, once for each of the two renderpasses, at the
+% beginning of each renderpass.
+%
+% 'hmd' is the handle of the HMD which delivers tracking data and receives the
+% rendered content for display.
+%
+% 'renderPass' defines if information should be returned for the 1st renderpass
+% (renderPass == 0) or for the 2nd renderpass (renderPass == 1). The driver will
+% decide for you if the 1st renderpass should render the left eye and the 2nd
+% pass the right eye, or if the 1st renderpass should render the right eye and
+% then the 2nd renderpass the left eye. The ordering depends on the properties
+% of the video display of your HMD, specifically on the video scanout order:
+% Is it right to left, left to right, or top to bottom? For each scanout order
+% there is an optimal order for the renderpasses to minimize perceived lag.
+%
+% 'targetTime' is the expected time at which the rendered frame will display.
+% This could potentially be used by the driver to make better predictions of
+% camera/eye/head pose for the image. Omitting the value will use a target time
+% that is implementation specific, but known to give generally good results.
+%
+% 'userTransformMatrix' is an optional 4x4 right hand side (RHS) transformation
+% matrix. It gets applied to the tracked head pose as a global transformation
+% before computing results based on head pose like, e.g., camera transformations.
+% You can use this to translate the "virtual head" and thereby the virtual eyes/
+% cameras in the 3D scene, so observer motion is not restricted to the real world
+% tracking volume of your headset. A typical 'userTransformMatrix' would be a
+% combined translation and rotation matrix to position the observer at some
+% 3D location in space, then define his/her global looking direction, aka as
+% heading angle, yaw orientation, or rotation around the y-axis in 3D space.
+% Head pose tracking results would then operate relative to this global transform.
+% If 'userTransformMatrix' is left out, it will default to an identity transform,
+% in other words, it will do nothing.
+%
+% Return values in struct 'eyePose':
+%
+% 'eyeIndex' The eye for which this information applies. 0 = Left eye, 1 = Right eye.
+%            You can pass 'eyeIndex' into the Screen('SelectStereoDrawBuffer', win, eyeIndex)
+%            to select the proper eye target render buffer.
+%
+% 'modelView' is a 4x4 RHS OpenGL matrix which can be directly used as OpenGL
+%             GL_MODELVIEW matrix for rendering the scene.
+%
+% 'cameraView' contains a 4x4 RHS camera matrix which describes position and
+%              orientation of the "eye camera" relative to the world reference
+%              frame. It is the inverse of eyePose.modelView. This matrix can
+%              be directly used to define the camera for rendering of complex
+%              3D scenes with the Horde3D 3D engine or other engines which want
+%              absolute camera pose instead of the inverse matrix.
+%
+% Additionally tracked/predicted head pose is returned in eyePose.localHeadPoseMatrix
+% and the global head pose after application of the 'userTransformMatrix' is
+% returned in eyePose.globalHeadPoseMatrix - this is the basis for computing
+% the camera transformation matrix.
 %
 %
 % PsychOculusVR('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
@@ -187,12 +278,15 @@ function varargout = PsychOculusVR(cmd, varargin)
 % This allows probing video outputs to find the one which feeds the HMD.
 %
 %
-% headToEyeShiftv = PsychOculusVR('GetEyeShiftVector', hmd, eye);
+% [headToEyeShiftv, headToEyeShiftMatrix] = PsychOculusVR('GetEyeShiftVector', hmd, eye);
 % - Retrieve 3D translation vector [tx, ty, tz] that defines the 3D position of the given
 % eye 'eye' for the given HMD 'hmd', relative to the origin of the local head/HMD
 % reference frame. This is needed to translate a global head pose into a eye
 % pose, e.g., to translate the output of PsychOculusVR('GetEyePose') into actual
 % tracked/predicted eye locations for stereo rendering.
+%
+% In addition to the 'headToEyeShiftv' vector, a corresponding 4x4 translation
+% matrix is also returned in 'headToEyeShiftMatrix' for convenience.
 %
 %
 
@@ -284,15 +378,23 @@ if cmd == 2
 end
 
 if strcmpi(cmd, 'PrepareRender')
-  % Get and validate handle -fast path open coded:
+  % Get and validate handle - fast path open coded:
   myhmd = varargin{1};
   if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
     error('PsychOculusVR:PrepareRender: Specified handle does not correspond to an open HMD!');
   end
 
-  % Valid: Get request mask of information to return:
+  % Get 'userTransformMatrix' if any:
   if length(varargin) >= 2 && ~isempty(varargin{2})
-    reqmask = varargin{2};
+    userTransformMatrix = varargin{2};
+  else
+    % Default: Identity transform to do nothing:
+    userTransformMatrix = diag([1 1 1 1]);
+  end
+
+  % Valid: Get request mask of information to return:
+  if length(varargin) >= 3 && ~isempty(varargin{3})
+    reqmask = varargin{3};
   else
     % Default to: Provide basic tracking status flags, and directly useable
     % GL_MODELVIEW matrices for the cameras for rendering the left- and right-eye:
@@ -300,12 +402,15 @@ if strcmpi(cmd, 'PrepareRender')
   end
 
   % Get target time for predicted camera poses, head poses etc.:
-  if length(varargin) >= 3 && ~isempty(varargin{3})
-    targetTime = varargin{3};
+  if length(varargin) >= 4 && ~isempty(varargin{4})
+    targetTime = varargin{4};
   else
-    % Default: Provide values for "now", based on most recent
-    % measurements:
-    targetTime = 0;
+    % Default: Provide predicted value for the midpoint of the next video
+    % refresh cycle - assuming we hit the flip deadline for the next video
+    % frame, so that point in time will be exactly in the middle of both
+    % eyes:
+    winfo = Screen('GetWindowInfo', hmd{myhmd.handle}.win);
+    targetTime = winfo.LastVBLTime + 1.5 * hmd{myhmd.handle}.videoRefreshDuration;
   end
 
   % Mark start of a new frame render cycle for the runtime and get the data
@@ -319,19 +424,89 @@ if strcmpi(cmd, 'PrepareRender')
   result.rawEyePose7{1} = eyePose{1};
   result.rawEyePose7{2} = eyePose{2};
 
-  % Shall we return directly useable OpenGL GL_MODELVIEW matrices?
+  % Want matrices which take a usercode supplied global transformation into account?
   if bitand(reqmask, 1)
-    % Convert to OpenGL GL_MODELVIEW matrices:
-    result.modelView{1} = eyePoseToCameraGLModelviewMatrix(eyePose{1});
-    result.modelView{2} = eyePoseToCameraGLModelviewMatrix(eyePose{2});
+    % Yes: We need tracked + predicted head pose, so we can apply the user transform,
+    % and then per-eye transforms:
+
+    % Get predicted head pose for targetTime:
+    state = PsychOculusVRCore('GetTrackingState', myhmd.handle, targetTime);
+
+    % Bonus feature: HeadPose as 7 component translation + orientation quaternion vector:
+    result.headPose = state.HeadPose;
+
+    % Convert head pose vector to 4x4 OpenGL right handed reference frame matrix:
+    result.localHeadPoseMatrix = eyePoseToCameraMatrix(state.HeadPose);
+
+    % Premultiply usercode provided global transformation matrix:
+    result.globalHeadPoseMatrix = userTransformMatrix * result.localHeadPoseMatrix;
+
+    % Compute per-eye global pose matrices:
+    result.cameraView{1} = result.globalHeadPoseMatrix * hmd{myhmd.handle}.eyeShiftMatrix{1};
+    result.cameraView{2} = result.globalHeadPoseMatrix * hmd{myhmd.handle}.eyeShiftMatrix{2};
+
+    % Compute inverse matrices, useable as OpenGL GL_MODELVIEW matrices for rendering:
+    result.modelView{1} = inv(result.cameraView{1});
+    result.modelView{2} = inv(result.cameraView{2});
   end
 
-  % Shall we return camera view matrices that describe camera pose wrt. world reference frame?
-  if bitand(reqmask, 2)
-    % Convert to camera view matrices, the inverse matrices of the GL_MODELVIEW matrices:
-    result.cameraView{1} = eyePoseToCameraMatrix(eyePose{1});
-    result.cameraView{2} = eyePoseToCameraMatrix(eyePose{2});
+  varargout{1} = result;
+
+  return;
+end
+
+if strcmpi(cmd, 'GetEyePose')
+  % Get and validate handle - fast path open coded:
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOculusVR:GetEyePose: Specified handle does not correspond to an open HMD!');
   end
+
+  % Valid: Get view render pass for which to return information:
+  if length(varargin) < 2 || isempty(varargin{2})
+    error('PsychOculusVR:GetEyePose: Required ''renderPass'' argument missing.');
+  end
+  renderPass = varargin{2};
+
+  % Get 'userTransformMatrix' if any:
+  if length(varargin) >= 3 && ~isempty(varargin{3})
+    userTransformMatrix = varargin{3};
+  else
+    % Default: Identity transform to do nothing:
+    userTransformMatrix = diag([1 1 1 1]);
+  end
+
+  % Get target time for predicted camera poses, head poses etc.:
+  % NOTE: Currently not used, as Oculus SDK 0.5 does not support passing
+  % targetTime into the underlying SDK function for 'GetEyePose'. The
+  % Oculus runtime predicts something meaningful internally.
+  %
+  %  if length(varargin) >= 4 && ~isempty(varargin{4})
+  %    targetTime = varargin{4};
+  %  else
+  %    % Default: Provide predicted value for the midpoint of the next video
+  %    % refresh cycle - assuming we hit the flip deadline for the next video
+  %    % frame, so that point in time will be exactly in the middle of both
+  %    % eyes:
+  %    winfo = Screen('GetWindowInfo', hmd{myhmd.handle}.win);
+  %    targetTime = winfo.LastVBLTime + 1.5 * hmd{myhmd.handle}.videoRefreshDuration;
+  %  end
+
+  % Get eye pose for this renderPass, or more exactly the headPose from which this
+  % renderPass eyePose will get computed:
+  [result.headPose, result.eyeIndex] = PsychOculusVRCore('GetEyePose', myhmd.handle, renderPass);
+
+  % Convert head pose vector to 4x4 OpenGL right handed reference frame matrix:
+  result.localHeadPoseMatrix = eyePoseToCameraMatrix(result.headPose);
+
+  % Premultiply usercode provided global transformation matrix:
+  result.globalHeadPoseMatrix = userTransformMatrix * result.localHeadPoseMatrix;
+
+  % Compute per-eye global pose matrix for this eyeIndex:
+  result.cameraView = result.globalHeadPoseMatrix * hmd{myhmd.handle}.eyeShiftMatrix{result.eyeIndex + 1};
+
+  % Compute inverse matrix, useable as OpenGL GL_MODELVIEW matrix for rendering:
+  result.modelView = inv(result.cameraView);
 
   varargout{1} = result;
 
@@ -470,6 +645,7 @@ if strcmpi(cmd, 'Open')
   newhmd.type   = 'Oculus';
   newhmd.open = 1;
   newhmd.modelName = modelName;
+  newhmd.separateEyePosesSupported = 1;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
@@ -680,8 +856,10 @@ if strcmpi(cmd, 'GetEyeShiftVector')
 
   if varargin{2} == 0
     varargout{1} = hmd{myhmd.handle}.HmdToEyeViewOffsetLeft;
+    varargout{2} = hmd{myhmd.handle}.eyeShiftMatrix{1};
   else
     varargout{1} = hmd{myhmd.handle}.HmdToEyeViewOffsetRight;
+    varargout{2} = hmd{myhmd.handle}.eyeShiftMatrix{2};
   end
 
   return;
@@ -742,7 +920,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
   hmd{handle}.viewportLeft = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterLeft = [ptx, pty];
-  hmd{handle}.HmdToEyeViewOffsetLeft = [hsx, hsy, hsz];
+  hmd{handle}.HmdToEyeViewOffsetLeft = -1 * [hsx, hsy, hsz];
   hmd{handle}.meshVerticesLeft = meshVL;
   hmd{handle}.meshIndicesLeft = meshIL;
   hmd{handle}.uvScaleLeft = uvScale;
@@ -756,7 +934,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
   hmd{handle}.viewportRight = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterRight = [ptx, pty];
-  hmd{handle}.HmdToEyeViewOffsetRight = [hsx, hsy, hsz];
+  hmd{handle}.HmdToEyeViewOffsetRight = -1 * [hsx, hsy, hsz];
   hmd{handle}.meshVerticesRight = meshVR;
   hmd{handle}.meshIndicesRight = meshIR;
   hmd{handle}.uvScaleRight = uvScale;
@@ -765,6 +943,16 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Init warp matrices to identity, until we get something better from live tracking:
   hmd{handle}.eyeRotStartMatrixRight = diag([1 1 1 1]);
   hmd{handle}.eyeRotEndMatrixRight   = diag([1 1 1 1]);
+
+  % Convert head to eye shift vectors into 4x4 matrices, as we'll need
+  % them frequently:
+  EyeT = diag([1 1 1 1]);
+  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetLeft';
+  hmd{handle}.eyeShiftMatrix{1} = EyeT;
+
+  EyeT = diag([1 1 1 1]);
+  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetRight';
+  hmd{handle}.eyeShiftMatrix{2} = EyeT;
 
   % Assign proper target processing chain for imaging pipeline:
   if ~strcmpi(hmd{handle}.basicTask, 'Monoscopic')

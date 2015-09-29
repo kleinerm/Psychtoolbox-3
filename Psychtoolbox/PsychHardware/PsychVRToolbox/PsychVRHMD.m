@@ -87,23 +87,46 @@ function varargout = PsychVRHMD(cmd, varargin)
 % driver = Function handle to the actual driver for the HMD, e.g., @PsychOculusVR.
 % type   = Defines the type/vendor of the device, e.g., 'Oculus'.
 % modelName = Name string with the name of the model of the device, e.g., 'Rift DK2'.
+% separateEyePosesSupported = 1 if use of PsychVRHMD('GetEyePose') will improve
+%                             the quality of the VR experience, 0 if no improvement
+%                             is to be expected, so 'GetEyePose' can be avoided
+%                             to save processing time without a loss of quality.
 % 
 % The info struct may contain much more vendor specific information, but the above
 % set is supported across all devices.
 %
 %
-% state = PsychVRHMD('PrepareRender', hmd [, reqmask=1][, targetTime=0]);
+% state = PsychVRHMD('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
 % - Mark the start of the rendering cycle for a new 3D rendered stereoframe.
 % Return a struct 'state' which contains various useful bits of information
 % for 3D stereoscopic rendering of a scene, based on head tracking data.
 %
 % 'hmd' is the handle of the HMD which delivers tracking data and receives the
-% rendered content for display. 'reqmask' defines what kind of information is
-% requested to be returned in struct 'state'. Only query information you actually
-% need, as computing some of this info is expensive! 'targetTime' is the expected
-% time at which the rendered frame will display. This could potentially be used by
-% the driver to make better predictions of camera/eye/head pose for the image.
-% Omitting the value will assume "now" as the point for prediction.
+% rendered content for display.
+%
+% 'reqmask' defines what kind of information is requested to be returned in
+% struct 'state'. Only query information you actually need, as computing some
+% of this info is expensive! See below for supported values for 'reqmask'.
+%
+% 'targetTime' is the expected time at which the rendered frame will display.
+% This could potentially be used by the driver to make better predictions of
+% camera/eye/head pose for the image. Omitting the value will use a target time
+% that is implementation specific, but known to give generally good results,
+% e.g., the midpoint of scanout of the next video frame.
+%
+% 'userTransformMatrix' is an optional 4x4 right hand side (RHS) transformation
+% matrix. It gets applied to the tracked head pose as a global transformation
+% before computing results based on head pose like, e.g., camera transformations.
+% You can use this to translate the "virtual head" and thereby the virtual eyes/
+% cameras in the 3D scene, so observer motion is not restricted to the real world
+% tracking volume of your headset. A typical 'userTransformMatrix' would be a
+% combined translation and rotation matrix to position the observer at some
+% 3D location in space, then define his/her global looking direction, aka as
+% heading angle, yaw orientation, or rotation around the y-axis in 3D space.
+% Head pose tracking results would then operate relative to this global transform.
+% If 'userTransformMatrix' is left out, it will default to an identity transform,
+% in other words, it will do nothing.
+%
 %
 % state always contains a field state.tracked, whose bits signal the status
 % of head tracking for this frame. A +1 flag means that head orientation is
@@ -116,14 +139,92 @@ function varargout = PsychVRHMD(cmd, varargin)
 %      used as OpenGL GL_MODELVIEW matrices for rendering the scene. 4x4 matrices
 %      for left- and right eye are contained in state.modelView{1} and {2}.
 %
-% +2 = Return position and orientation 4x4 camera view matrices which describe
+%      Return position and orientation 4x4 camera view matrices which describe
 %      position and orientation of the "eye cameras" relative to the world
 %      reference frame. They are the inverses of state.modelView{}. These
 %      matrices can be directly used to define cameras for rendering of complex
 %      3D scenes with the Horde3D 3D engine. Left- and right eye matrices are
 %      contained in state.cameraView{1} and {2}.
 %
+%      Additionally tracked/predicted head pose is returned in state.localHeadPoseMatrix
+%      and the global head pose after application of the 'userTransformMatrix' is
+%      returned in state.globalHeadPoseMatrix - this is the basis for computing
+%      the camera transformation matrices.
+%
 % More flags to follow...
+%
+%
+% eyePose = PsychVRHMD('GetEyePose', hmd, renderPass [, userTransformMatrix][, targetTime]);
+% - Return a struct 'eyePose' which contains various useful bits of information
+% for 3D stereoscopic rendering of the stereo view of one eye, based on head
+% tracking data. This function provides essentially the same information as
+% the 'PrepareRender' function, but only for one eye. Therefore you will need
+% to call this function twice, once for each of the two renderpasses, at the
+% beginning of each renderpass.
+%
+% Note: The 'GetEyePose' function may not be implemented in a meaningful/beneficial
+% way for all supported types of HMD. This means that while the function will work
+% on all supported HMDs, there may not be any benefit of using it in terms of
+% performance or quality of the VR experience, because the underlying driver may
+% only emulate / fake the results for compatibility. Currently only the driver for
+% the Oculus VR Rift DK1 and DK2 supports this function in a way that will improve
+% the VR experience, the status for future Oculus HMDs, or HMDs from other vendors
+% is currently unknown. The info struct returned by PsychVRHMD('GetInfo') will return
+% info.separateEyePosesSupported == 1 if there is a benefit to be expected from use
+% of this function, or info.separateEyePosesSupported == 0 if no benefit is expected
+% and simply using the data from PsychVRHMD('PrepareRender') will provide results with
+% the same quality at a lower computational cost.
+%
+% 'hmd' is the handle of the HMD which delivers tracking data and receives the
+% rendered content for display.
+%
+% 'renderPass' defines if information should be returned for the 1st renderpass
+% (renderPass == 0) or for the 2nd renderpass (renderPass == 1). The driver will
+% decide for you if the 1st renderpass should render the left eye and the 2nd
+% pass the right eye, or if the 1st renderpass should render the right eye and
+% then the 2nd renderpass the left eye. The ordering depends on the properties
+% of the video display of your HMD, specifically on the video scanout order:
+% Is it right to left, left to right, or top to bottom? For each scanout order
+% there is an optimal order for the renderpasses to minimize perceived lag.
+%
+% 'targetTime' is the expected time at which the rendered frame will display.
+% This could potentially be used by the driver to make better predictions of
+% camera/eye/head pose for the image. Omitting the value will use a target time
+% that is implementation specific, but known to give generally good results.
+%
+% 'userTransformMatrix' is an optional 4x4 right hand side (RHS) transformation
+% matrix. It gets applied to the tracked head pose as a global transformation
+% before computing results based on head pose like, e.g., camera transformations.
+% You can use this to translate the "virtual head" and thereby the virtual eyes/
+% cameras in the 3D scene, so observer motion is not restricted to the real world
+% tracking volume of your headset. A typical 'userTransformMatrix' would be a
+% combined translation and rotation matrix to position the observer at some
+% 3D location in space, then define his/her global looking direction, aka as
+% heading angle, yaw orientation, or rotation around the y-axis in 3D space.
+% Head pose tracking results would then operate relative to this global transform.
+% If 'userTransformMatrix' is left out, it will default to an identity transform,
+% in other words, it will do nothing.
+%
+% Return values in struct 'eyePose':
+%
+% 'eyeIndex' The eye for which this information applies. 0 = Left eye, 1 = Right eye.
+%            You can pass 'eyeIndex' into the Screen('SelectStereoDrawBuffer', win, eyeIndex)
+%            to select the proper eye target render buffer.
+%
+% 'modelView' is a 4x4 RHS OpenGL matrix which can be directly used as OpenGL
+%             GL_MODELVIEW matrix for rendering the scene.
+%
+% 'cameraView' contains a 4x4 RHS camera matrix which describes position and
+%              orientation of the "eye camera" relative to the world reference
+%              frame. It is the inverse of eyePose.modelView. This matrix can
+%              be directly used to define the camera for rendering of complex
+%              3D scenes with the Horde3D 3D engine or other engines which want
+%              absolute camera pose instead of the inverse matrix.
+%
+% Additionally tracked/predicted head pose is returned in eyePose.localHeadPoseMatrix
+% and the global head pose after application of the 'userTransformMatrix' is
+% returned in eyePose.globalHeadPoseMatrix - this is the basis for computing
+% the camera transformation matrix.
 %
 %
 % PsychVRHMD('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
@@ -180,12 +281,15 @@ function varargout = PsychVRHMD(cmd, varargin)
 % This allows probing video outputs to find the one which feeds the HMD.
 %
 %
-% headToEyeShiftv = PsychVRHMD('GetEyeShiftVector', hmd, eye);
+% [headToEyeShiftv, headToEyeShiftMatrix] = PsychVRHMD('GetEyeShiftVector', hmd, eye);
 % - Retrieve 3D translation vector [tx, ty, tz] that defines the 3D position of the given
 % eye 'eye' for the given HMD 'hmd', relative to the origin of the local head/HMD
 % reference frame. This is needed to translate a global head pose into a eye
-% pose, e.g., to translate the output of PsychVRHMD('GetEyePose') into actual
+% pose, e.g., to translate the output of PsychOculusVR('GetEyePose') into actual
 % tracked/predicted eye locations for stereo rendering.
+%
+% In addition to the 'headToEyeShiftv' vector, a corresponding 4x4 translation
+% matrix is also returned in 'headToEyeShiftMatrix' for convenience.
 %
 %
 % [projL, projR] = PsychVRHMD('GetStaticRenderParameters', hmd [, clipNear=0.01][, clipFar=10000.0]);

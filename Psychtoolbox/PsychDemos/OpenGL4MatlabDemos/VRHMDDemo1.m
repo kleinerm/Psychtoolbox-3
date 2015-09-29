@@ -1,11 +1,14 @@
 function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain)
 % VRHMDDemo1 -- Show 3D stereo display via MOGL OpenGL on a VR headset.
 %
-% Usage: VRHMDDemo1([doSeparateEyeRender=1][, multiSample=0][, fountain=0]);
+% This demo shows how to use Psychtoolbox PsychVRHMD() driver to display
+% stereoscopically rendered 3D scenes on a Virtual Reality head mounted display
+% (HMD). The HMD position and orientation is tracked via head tracking, and the
+% tracked head pose is used to position the observer in the 3D scene, in this
+% case in "Happy teapot land". Obviously, this demo will only work if you have
+% one of the supported HMDs connected to your machine.
 %
-% Pressing any key continues the demo and progresses to next
-% subdemo. Mouse clicks will pause some demos, until another mouse click
-% continues the demo.
+% Usage: VRHMDDemo1([doSeparateEyeRender=0][, multiSample=0][, fountain=0]);
 %
 % Optional parameters:
 %
@@ -14,12 +17,11 @@ function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain)
 % individually during each render pass to optimize for head tracking prediction
 % accuracy. If set to 0, query matrices for rendering simultaneously for both eyes,
 % and render in a potentially non-optimized order. The latter is a bit simpler, but
-% potentially less accurate, causing additional motion artifacts. Defaults to 1, ie.
-% use more complex but potentially more optimal method in terms of quality.
+% potentially less accurate, causing additional motion artifacts. If the setting is
+% omitted then the underlying HMD driver will be asked for the optimal value.
 %
 % 'multiSample' if set to a non-zero value will enable multi-sample
-% anti-aliasing. This however usually doesn't give good results with
-% smoothed 3D dots.
+% anti-aliasing. Can increase quality but also increases GPU load.
 %
 % 'fountain' if set to 1 will also emit a particle fountain from the nozzle
 % of the teapot. Nicer, but higher gpu load.
@@ -29,6 +31,7 @@ function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain)
 % Mouse left/right = Global camera movement left/right.
 % Mouse up/down = Global camera movement up/down.
 % Mouse up/down + Left mouse button pressed = Global camera movement forward/backward.
+% Mouse left/right + Middle or right button pressed: Change looking direction (heading).
 %
 
 % History:
@@ -38,7 +41,7 @@ function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain)
 global GL;
 
 if nargin < 1 || isempty(doSeparateEyeRender)
-  doSeparateEyeRender = 1;
+  doSeparateEyeRender = [];
 end
 
 if nargin < 2 || isempty(multiSample)
@@ -62,13 +65,30 @@ try
 
   % Setup the HMD and open and setup the onscreen window for VR display:
   PsychImaging('PrepareConfiguration');
-  %hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse', 0);
-  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp', 0);
+  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse', 0);
+  %hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp', 0);
   if isempty(hmd)
     fprintf('No VR-HMD available, giving up!\n');
     return;
   end
   [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], [], multiSample);
+
+  % Query infos about this HMD:
+  hmdinfo = PsychVRHMD('GetInfo', hmd);
+
+  % Did user leave the choice to us, if separate eye rendering passes
+  % should be used?
+  if isempty(doSeparateEyeRender)
+    % Yes: Ask the driver if separate passes would be beneficial, and
+    % use them if the driver claims it is good for us:
+    doSeparateEyeRender = hmdinfo.separateEyePosesSupported;
+  end
+
+  if doSeparateEyeRender
+    fprintf('Will use separate eye render passes for enhanced quality on this HMD.\n');
+  else
+    fprintf('Will not use separate eye render passes, because on this HMD they would not be beneficial for quality.\n');
+  end
 
   % Textsize for text:
   Screen('TextSize', win, 18);
@@ -104,11 +124,9 @@ try
   % well, the best aproximation one can do with 3 lines of code ;-)
   glMatrixMode(GL.PROJECTION);
 
-  % Retrieve projection matrix for optimal rendering on the HMD:
-  [projL, projR] = PsychVRHMD('GetStaticRenderParameters', hmd);
-
-  % Set left cameras matrix:
-  glLoadMatrixd(projL);
+  % Retrieve and set camera projection matrix for optimal rendering on the HMD:
+  projMatrix = PsychVRHMD('GetStaticRenderParameters', hmd);
+  glLoadMatrixd(projMatrix);
 
   % Setup modelview matrix: This defines the position, orientation and
   % looking direction of the virtual camera:
@@ -127,11 +145,6 @@ try
   % Finish OpenGL rendering into PTB window. This will switch back to the
   % standard 2D drawing functions of Screen and will check for OpenGL errors.
   Screen('EndOpenGL', win);
-
-  % Second version: Does use occlusion testing via depth buffer, does use
-  % lighting. Uses manual switching between 2D and 3D for higher efficiency.
-  % Creates a real 3D point-cloud around a teapot, as well as a vertex-shaded
-  % fountain of particles that is emitted by the teapot:
 
   % Number of random dots, whose positions are computed in Matlab on CPU:
   ndots = 100;
@@ -231,65 +244,97 @@ try
   % Make sure all keys are released:
   KbReleaseWait;
 
-  %Priority(MaxPriority(win));
-
-  eyeShift(1, :) = -1 * PsychVRHMD('GetEyeShiftVector', hmd, 0);
-  eyeShift(2, :) = -1 * PsychVRHMD('GetEyeShiftVector', hmd, 1);
+  Priority(MaxPriority(win));
 
   % Get duration of a single frame:
   ifi = Screen('GetFlipInterval', win);
 
+  globalPos = [0, 0, 0];
+  heading = 0;
+
+  [xc, yc] = RectCenter(winRect);
+  SetMouse(xc,yc, screenid);
+  HideCursor(screenid);
+  [xo, yo] = GetMouse(screenid);
+
   % Initial flip to sync us to VBL and get start timestamp:
   [vbl, onset] = Screen('Flip', win);
   tstart = vbl;
-  globalPos = [0, 0, 0];
-  [xo, yo] = GetMouse;
 
   % VR render loop: Runs until keypress:
   while ~KbCheck
     % Update global position (x,y,z) by mouse movement:
     [xm, ym, buttons] = GetMouse;
-    globalPos(1) = globalPos(1) + 0.005 * (xm - xo);
-    globalPos(2 + buttons(1)) = globalPos(2 + buttons(1)) + 0.005 * (ym - yo);
-    xo = xm;
-    yo = ym;
+    if ~any(buttons)
+      % x-movement:
+      globalPos(1) = globalPos(1) + 0.005 * (xm - xo);
 
-    % Track head position and orientation, retrieve modelview camera matrices for each eye:
-    state = PsychVRHMD('PrepareRender', hmd, 1 - doSeparateEyeRender);
+      % y-movement:
+      globalPos(2) = globalPos(2) + 0.005 * (yo - ym);
+    else
+      if buttons(1)
+        % z-movement:
+        globalPos(3) = globalPos(3) + 0.005 * (ym - yo);
+      end
+
+      if buttons(2)
+        % Heading, ie. looking direction:
+        heading = heading + 0.01 * (xm - xo);
+      end
+    end
+
+    % Reposition mouse cursor for next drive cycle:
+    SetMouse(xc,yc, screenid);
+    [xo, yo] = GetMouse(screenid);
+
+    % Compute a transformation matrix to globally position and orient the
+    % observer in the scene. This allows mouse control of observer position
+    % and heading on top of the head tracking:
+    globalHeadPose = PsychGetPositionYawMatrix(globalPos, heading);
+
+    % Track and predict head position and orientation, retrieve modelview
+    % camera matrices for rendering of each eye. Apply some global transformation
+    % to returned camera matrices. In this case a translation + rotation, as defined
+    % by the PsychGetPositionYawMatrix() helper function:
+    state = PsychVRHMD('PrepareRender', hmd, globalHeadPose);
 
     % Start rendertime measurement on GPU: 'gpumeasure' will be 1 if
     % this is supported by the current GPU + driver combo:
     gpumeasure = Screen('GetWindowInfo', win, 5);
 
     % We render the scene separately for each eye:
-    for view = 0:1
+    for renderPass = 0:1
+      % doSeparateEyeRender = 1 uses a method which may give slightly better
+      % quality for fast head movements results on some manufacturers HMDs.
+      % However, this comes at a small additional performance cost, so should
+      % be avoided on HMDs where we know it won't help. See above on how one
+      % can find out automatically if this will help or not, ie. how the value
+      % of doSeparateEyeRender can be determined automatically.
       if doSeparateEyeRender
-        % Query which eye to render in this 'view' renderpass, and query its
+        % Query which eye to render in this renderpass, and query its
         % eyePose vector for the predicted eye position to use for the virtual
         % camera rendering that eyes view. The returned pose vector actually
         % describes tracked head pose, ie. HMD position and orientation in space.
-        [headPose, eyeIndex] = PsychOculusVR('GetEyePose', hmd, view);
+        eye = PsychVRHMD('GetEyePose', hmd, renderPass, globalHeadPose);
 
         % Select 'eyeIndex' to render (left- or right-eye):
-        Screen('SelectStereoDrawbuffer', win, eyeIndex);
+        Screen('SelectStereoDrawbuffer', win, eye.eyeIndex);
 
-        % Add additional global translation, mouse controlled in 2D x-z plane:
-        headPose(1:3) = headPose(1:3) + globalPos;
-
-        % Setup modelView matrix:
-        modelView = eyePoseToCameraGLModelviewMatrix(headPose, eyeShift(eyeIndex + 1, :));
+        % Extract modelView matrix for this eye:
+        modelView = eye.modelView;
       else
-        % Select 'view' to render (left- or right-eye):
-        Screen('SelectStereoDrawbuffer', win, view);
+        % Selected 'view' to render (left- or right-eye) equals the renderPass,
+        % as order of rendering does not matter in this mode:
+        Screen('SelectStereoDrawbuffer', win, renderPass);
 
-        % Extract modelView matrix for this view's eye:
-        modelView = state.modelView{view + 1};
+        % Extract modelView matrix for this renderPass's eye:
+        modelView = state.modelView{renderPass + 1};
       end
 
       % Manually reenable 3D mode in preparation of eye draw cycle:
       Screen('BeginOpenGL', win);
 
-      % Setup camera position and orientation for this eyes 'view':
+      % Setup camera position and orientation for this eyes view:
       glMatrixMode(GL.MODELVIEW);
       glLoadMatrixd(modelView);
 
@@ -332,7 +377,7 @@ try
       % Manually disable 3D mode before switching to other eye or to flip:
       Screen('EndOpenGL', win);
 
-      % Repeat for view of other eye:
+      % Repeat for renderPass of other eye:
     end
 
     % Head position tracked?
@@ -343,7 +388,7 @@ try
 
     % Stimulus ready. Show it on the HMD. We don't clear the color buffer here,
     % as this is done in the next iteration via glClear() call anyway:
-    vbl = Screen('Flip', win, [], 1);
+    [vbl, onset] = Screen('Flip', win, [], 1);
     fcount = fcount + 1;
 
     % Result of GPU time measurement expected?
@@ -366,18 +411,15 @@ try
     % Next frame ...
   end
 
+  % Cleanup:
+  Priority(0);
+  ShowCursor(screenid);
+  sca;
+
+  % Stats for nerds:
   fps = fcount / (vbl - tstart);
   gpudur = gpudur(1:fcount);
   fprintf('Average framerate was %f fps. Average GPU rendertime per frame = %f msec.\n', fps, 1000 * mean(gpudur));
-
-  Priority(0);
-
-  % Now a benchmark run to test different strategies for their speed...
-
-  KbReleaseWait;
-  Screen('Flip', win);
-
-  sca;
   plot(1000 * gpudur);
 catch
   sca;
