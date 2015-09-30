@@ -10,7 +10,7 @@ function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, 
 % pipeline for stereo display -- allows to set gains for anaglyph stereo
 % and other more advanced anaglyph algorithms.
 %
-% stereoMode 103 activates Oculus Rift stereo display.
+% stereoMode 103 activates stereo display on a VR HMD.
 %
 % 'anaglyphmode' when imaging is enabled, allows to select the type of
 % anaglyph algorithm:
@@ -34,7 +34,7 @@ function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, 
 % History:
 % 11.11.2007 Written (MK)
 % 17.06.2013 Cleaned up (MK)
-% 08.09.2015 Add Oculus VR Rift support. (MK)
+% 30.09.2015 Add VR HMD support. (MK)
 
 AssertOpenGL;
 
