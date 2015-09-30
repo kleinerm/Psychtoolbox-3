@@ -103,7 +103,15 @@ else
 end;
 
 % Go for it!
-[win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode);
+PsychImaging('PrepareConfiguration');
+% Use a VR HMD if available for head tracked stereoscopic 3D presentation:
+hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse', 0);
+[win , winRect] = PsychImaging('OpenWindow', screenid, 0, rect, [], [], stereomode);
+
+if ~isempty(hmd)
+  % Fake some stereomode if HMD is used, to trigger stereo rendering:
+  stereomode = 6;
+end
 
 % Setup texture mapping if wanted:
 if ( textureon==1 )
@@ -226,10 +234,15 @@ glEnable(GL.NORMALIZE);
 glMatrixMode(GL.PROJECTION);
 glLoadIdentity;
 
-% Field of view is +/- 25 degrees from line of sight. Objects close than
-% 0.1 distance units or farther away than 200 distance units get clipped
-% away, aspect ratio is adapted to the monitors aspect ratio:
-gluPerspective(25.0,1/ar,0.1,200.0);
+if ~isempty(hmd)
+  % HMD in use: Get optimal projection matrix from its driver:
+  glLoadMatrixd(PsychVRHMD('GetStaticRenderParameters', hmd));
+else
+  % Field of view is +/- 25 degrees from line of sight. Objects close than
+  % 0.1 distance units or farther away than 200 distance units get clipped
+  % away, aspect ratio is adapted to the monitors aspect ratio:
+  gluPerspective(25.0,1/ar,0.1,200.0);
+end
 
 % Setup modelview matrix: This defines the position, orientation and
 % looking direction of the virtual camera:
@@ -302,6 +315,9 @@ Screen('EndOpenGL', win);
 % Compute initial morphed shape for next frame, based on initial weights:
 moglmorpher('computeMorph', w, morphnormals);
 
+% Block keyboard input from spilling into Console:
+ListenChar(2);
+
 % Retrieve duration of a single monitor flip interval: Needed for smooth
 % animation.
 ifi = Screen('GetFlipInterval', win);
@@ -317,13 +333,25 @@ waitframes = 1;
 % Animation loop: Run until key press or one minute has elapsed...
 t = GetSecs;
 while ((GetSecs - t) < 60)
+    if ~isempty(hmd)
+        % Track and predict head position and orientation, retrieve modelview
+        % camera matrices for rendering of each eye. Apply some global transformation
+        % to returned camera matrices. In this case a translation + rotation, as defined
+        % by the PsychGetPositionYawMatrix() helper function:
+        state = PsychVRHMD('PrepareRender', hmd, PsychGetPositionYawMatrix([0, 0, zz], 0));
+    end
+
     % Switch to OpenGL rendering for drawing of next frame:
     Screen('BeginOpenGL', win);
 
-    % Left-eye cam is located at 3D position (-eye_halfdist,0,zz), points upright (0,1,0) and fixates
-    % at the origin (0,0,0) of the worlds coordinate system:
-    glLoadIdentity;
-    gluLookAt(-eye_halfdist, 0, zz, 0, 0, 0, 0, 1, 0);
+    if isempty(hmd)
+      % Left-eye cam is located at 3D position (-eye_halfdist,0,zz), points upright (0,1,0) and fixates
+      % at the origin (0,0,0) of the worlds coordinate system:
+      glLoadIdentity;
+      gluLookAt(-eye_halfdist, 0, zz, 0, 0, 0, 0, 1, 0);
+    else
+      glLoadMatrixd(state.modelView{1});
+    end
 
     % Draw into image buffer for left eye:
     Screen('EndOpenGL', win);
@@ -337,14 +365,19 @@ while ((GetSecs - t) < 60)
     drawShape(ang, theta, rotatev, dotson, normalson);
     
     % Stereo rendering requested?
-    if (stereomode > 0)
+    if stereomode > 0
         % Yes! We need to render the same object again, just with a different
         % camera position, this time for the right eye:
-                
-        % Right-eye cam is located at 3D position (+eye_halfdist,0,zz), points upright (0,1,0) and fixates
-        % at the origin (0,0,0) of the worlds coordinate system:
-        glLoadIdentity;
-        gluLookAt(+eye_halfdist, 0, zz, 0, 0, 0, 0, 1, 0);
+
+        if isempty(hmd)
+            % Right-eye cam is located at 3D position (+eye_halfdist,0,zz), points upright (0,1,0) and fixates
+            % at the origin (0,0,0) of the worlds coordinate system:
+            glLoadIdentity;
+            gluLookAt(+eye_halfdist, 0, zz, 0, 0, 0, 0, 1, 0);
+        else
+            glLoadMatrixd(state.modelView{2});
+        end
+
         % Draw into image buffer for right eye:
         Screen('EndOpenGL', win);
         Screen('SelectStereoDrawBuffer', win, 1);
@@ -355,7 +388,7 @@ while ((GetSecs - t) < 60)
         
         % Call subfunction that does the actual drawing of the shape (see below):
         drawShape(ang, theta, rotatev, dotson, normalson)
-    end;
+    end
     
     % Finish OpenGL rendering into Psychtoolbox - window and check for OpenGL errors.
     Screen('EndOpenGL', win);
@@ -435,6 +468,9 @@ moglmorpher('reset');
 
 % Close onscreen window and release all other ressources:
 Screen('CloseAll');
+
+% Enable regular keyboard again:
+ListenChar(0);
 
 % Reenable Synctests after this simple demo:
 Screen('Preference','SkipSyncTests', oldskip);
