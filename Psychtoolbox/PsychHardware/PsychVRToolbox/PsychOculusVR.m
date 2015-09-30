@@ -35,9 +35,9 @@ function varargout = PsychOculusVR(cmd, varargin)
 % of a video refresh cycle duration.
 %
 % 'FastResponse' = Try to switch images with minimal delay and fast
-% pixel switching time. This has no effect on the Rift DK1. On the DK2 it
-% will enable OLED panel overdrive processing. OLED panel overdrive processing
-% is a relatively expensive post processing step.
+% pixel switching time. This will enable OLED panel overdrive processing
+% on the Oculus Rift DK1 and DK2. OLED panel overdrive processing is a
+% relatively expensive post processing step.
 %
 % 'TimingSupport' = Support some hardware specific means of timestamping
 % or latency measurements. On the Rift DK1 this does nothing. On the DK2
@@ -251,12 +251,16 @@ function varargout = PsychOculusVR(cmd, varargin)
 %
 % oldSetting = PsychOculusVR('SetFastResponse', hmd [, enable]);
 % - Return old setting for 'FastResponse' mode in 'oldSetting',
-% optionally enable or disable the mode via specifying the 'enable'
-% parameter as 1 or 0. Please note that if you want to use 'FastResponse',
-% you must request and thereby enable it at the beginning of a session, as
-% the driver must do some neccessary setup prep work at startup of the HMD.
-% Once it was initially enabled, you can switch the setting at runtime with
-% this function.
+% optionally disable or enable the mode via specifying the 'enable'
+% parameter as 0 or greater than zero. Please note that if you want to
+% use 'FastResponse', you must request and thereby enable it at the
+% beginning of a session, as the driver must do some neccessary setup
+% prep work at startup of the HMD. Once it was initially enabled, you
+% can switch the setting at runtime with this function.
+%
+% Currently implemented are an algorithmic overdrive mode if 'enable'
+% is set to 1, and two lookup table (LUT) based modes for 'enable'
+% settings of 2 or 3, each selecting a slightly different lookup table.
 %
 %
 % oldSetting = PsychOculusVR('SetTimeWarp', hmd [, enable]);
@@ -351,7 +355,7 @@ end
 if cmd == 1
   handle = varargin{1};
 
-  if hmd{handle}.useOverdrive
+  if hmd{handle}.useOverdrive > 0
     % Find next output texture and bind it as 2nd rendertarget to the output fbo.
     % It will capture a copy of the rendered output frame, with geometry correction,
     % color aberration correction and vignette correction applied, but without the
@@ -366,6 +370,19 @@ if cmd == 1
     % frame rendercycle:
     glActiveTextureARB(GL.TEXTURE2);
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT, hmd{handle}.overdriveTex(hmd{handle}.lastOverdriveTex + 1));
+
+    % LUT based panel overdrive?
+    if hmd{handle}.useOverdrive > 1
+      % Bind overdrive lookup table texture to unit3 for LUT based overdrive:
+      % The LUT encodes all transitions from each of the 256 possible start
+      % values to each of the possible 256 end values, for each of the 3 color
+      % channels, as a 256x256x4 RGBA8 texture with alpha channel unused. The
+      % shader can directly use the optimal overdrive color at lut(startpix, endpix, colorchannel):
+      glActiveTextureARB(GL.TEXTURE3);
+      glBindTexture(GL.TEXTURE_RECTANGLE_EXT, hmd{handle}.overdriveLut(hmd{handle}.useOverdrive - 1));
+    end
+
+    % Back to standard texture unit 0:
     glActiveTextureARB(GL.TEXTURE0);
 
     % Prepare next rendercycle already: Swap the textures.
@@ -849,27 +866,33 @@ if strcmpi(cmd, 'SetFastResponse')
   if ~PsychOculusVR('IsOpen', myhmd)
     error('SetFastResponse: Passed in handle does not refer to a valid and open HMD.');
   end
+  handle = myhmd.handle;
 
   % FastResponse determines use of GPU accelerated panel overdrive
   % on the Rift DK1/DK2. Return old setting:
-  varargout{1} = hmd{myhmd.handle}.useOverdrive;
+  varargout{1} = hmd{handle}.useOverdrive;
 
   % New setting requested?
   if (length(varargin) >= 2) && ~isempty(varargin{2})
     % Check if an enable is requested, and if so, if the neccessary prep work
     % has been done during AutoSetupHMD / SetupRenderingParameters  etc. at
     % startup:
-    if (varargin{2} > 0)  && (hmd{myhmd.handle}.lastOverdriveTex < 0)
+    if (varargin{2} > 0)  && (hmd{handle}.lastOverdriveTex < 0)
       error('SetFastResponse: Tried to enable fast response mode, but feature has not been requested during initial HMD setup, as required.');
     end
 
-    % All good. Can select the new overdrive mode:
-    hmd{myhmd.handle}.useOverdrive = varargin{2};
-    handle = myhmd.handle;
+    % All good. Can select the new overdrive mode between 0 and 3:
+    hmd{handle}.useOverdrive = max(0, min(varargin{2}, 3));
 
     % Set new overdrive parameters for shaders:
-    if varargin{2} > 0
-      overdriveUpScale = hmd{handle}.overdriveUpScale;
+    if hmd{handle}.useOverdrive > 0
+      if hmd{handle}.useOverdrive > 1
+        % LUT based overdrive - signal to the shader via value > 1000:
+        overdriveUpScale = 10000;
+      else
+        % Algorithmic overdrive:
+        overdriveUpScale = hmd{handle}.overdriveUpScale;
+      end
       overdriveDownScale = hmd{handle}.overdriveDownScale;
       overdriveGammaCorrect = hmd{handle}.overdriveGammaCorrect;
     else
@@ -911,7 +934,14 @@ if strcmpi(cmd, 'PanelOverdriveParameters')
     hmd{handle}.overdriveDownScale = newparams(2);
     hmd{handle}.overdriveGammaCorrect = newparams(3);
 
-    overdriveUpScale = hmd{handle}.overdriveUpScale;
+    if hmd{handle}.useOverdrive > 1
+      % LUT based overdrive - signal to the shader via value > 1000:
+      overdriveUpScale = 10000;
+    else
+      % Algorithmic overdrive:
+      overdriveUpScale = hmd{handle}.overdriveUpScale;
+    end
+
     overdriveDownScale = hmd{handle}.overdriveDownScale;
     overdriveGammaCorrect = hmd{handle}.overdriveGammaCorrect;
 
@@ -1351,7 +1381,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Overdrive enabled: Assign overdrive contrast scale factors for
     % rising (UpScale) and falling (DownScale) pixel color component
     % intensities wrt. previous rendered frame:
-    overdriveUpScale = hmd{handle}.overdriveUpScale;
+    if hmd{handle}.useOverdrive > 1
+      % LUT based overdrive - signal to the shader via value > 1000:
+      overdriveUpScale = 10000;
+    else
+      % Algorithmic overdrive:
+      overdriveUpScale = hmd{handle}.overdriveUpScale;
+    end
+
     overdriveDownScale = hmd{handle}.overdriveDownScale;
 
     % Perform a gamma / degamma pass on color values for a
@@ -1374,6 +1411,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   glUseProgram(glsl);
   glUniform1i(glGetUniformLocation(glsl, 'Image'), 0);
   glUniform1i(glGetUniformLocation(glsl, 'PrevImage'), 2);
+  glUniform1i(glGetUniformLocation(glsl, 'OverdriveLUT'), 3);
   glUniform3f(glGetUniformLocation(glsl, 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
   glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVOffset'), hmd{handle}.uvOffsetLeft(1) * hmd{handle}.inputWidth, hmd{handle}.uvOffsetLeft(2) * hmd{handle}.inputHeight);
   glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), hmd{handle}.uvScaleLeft(1) * hmd{handle}.inputWidth, hmd{handle}.uvScaleLeft(2) * hmd{handle}.inputHeight);
@@ -1410,6 +1448,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   glUniform1i(glGetUniformLocation(glsl, 'PrevImage'), 2);
+  glUniform1i(glGetUniformLocation(glsl, 'OverdriveLUT'), 3);
   glUniform3f(glGetUniformLocation(glsl, 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
   glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVOffset'), hmd{handle}.uvOffsetRight(1) * hmd{handle}.inputWidth, hmd{handle}.uvOffsetRight(2) * hmd{handle}.inputHeight);
   glUniform2f(glGetUniformLocation(glsl, 'EyeToSourceUVScale'), hmd{handle}.uvScaleRight(1) * hmd{handle}.inputWidth, hmd{handle}.uvScaleRight(2) * hmd{handle}.inputHeight);
@@ -1447,6 +1486,16 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     woverdrive2 = Screen('OpenOffscreenwindow', win, [0 255 0], [0, 0, realw * 2, realh], [], 32);
     hmd{handle}.overdriveTex(2) = Screen('GetOpenGLTexture', woverdrive2, woverdrive2);
     hmd{handle}.lastOverdriveTex = 0;
+
+    % Load precomputed overdrive lut into variable 'lut', then build a overdriveLut
+    % texture out of it:
+    load([fileparts(mfilename('fullpath')) filesep 'RiftDK2lut1.mat']);
+    luttex = Screen('MakeTexture', win, lut, [], 32, [], 2);
+    hmd{handle}.overdriveLut(1) = Screen('GetOpenGLTexture', win, luttex);
+
+    load([fileparts(mfilename('fullpath')) filesep 'RiftDK2lut2.mat']);
+    luttex = Screen('MakeTexture', win, lut, [], 32, [], 2);
+    hmd{handle}.overdriveLut(2) = Screen('GetOpenGLTexture', win, luttex);
   end
 
   % Need to call the PsychOculusVR(2) callback to do needed finalizer work:

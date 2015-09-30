@@ -251,12 +251,16 @@ function varargout = PsychVRHMD(cmd, varargin)
 %
 % oldSetting = PsychVRHMD('SetFastResponse', hmd [, enable]);
 % - Return old setting for 'FastResponse' mode in 'oldSetting',
-% optionally enable or disable the mode via specifying the 'enable'
-% parameter as 1 or 0. Please note that if you want to use 'FastResponse',
+% optionally disable or enable the mode via specifying the 'enable'
+% parameter as 0 or > 0. Please note that if you want to use 'FastResponse',
 % you must request and thereby enable it at the beginning of a session, as
 % the driver must do some neccessary setup prep work at startup of the HMD.
 % Once it was initially enabled, you can switch the setting at runtime with
 % this function.
+%
+% Some drivers may implement different strategies for 'FastResponse', selectable
+% via different settings for the 'enable' flag here. E.g., the Oculus Rift driver
+% support three different methods 1, 2 and 3 at the moment.
 %
 %
 % oldSetting = PsychVRHMD('SetTimeWarp', hmd [, enable]);
