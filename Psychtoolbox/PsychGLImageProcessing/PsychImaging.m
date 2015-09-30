@@ -4239,7 +4239,7 @@ if ~isempty(floc)
 
     % Ok, perform setup after onscreen window is open, e.g., setting up the special
     % shaders for the stereo compositor:
-    if ~hmd.driver('PerformPostWindowOpenSetup', hmd, win)
+    if ~hmd.driver('PerformPostWindowOpenSetup', hmd, win, clearcolor)
         sca;
         error('In UseVRHMD: Failed to setup image post-processing for the VR HMD.');
     end

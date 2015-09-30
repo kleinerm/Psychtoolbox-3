@@ -1133,6 +1133,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Keep track of window handle of associated onscreen window:
   hmd{handle}.win = win;
 
+  % Need to know user selected clearcolor:
+  clearcolor = varargin{3};
+
   % Also keep track of video refresh duration of the HMD:
   hmd{handle}.videoRefreshDuration = Screen('Framerate', win);
   if hmd{handle}.videoRefreshDuration == 0
@@ -1203,6 +1206,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetRight';
   hmd{handle}.eyeShiftMatrix{2} = EyeT;
 
+  % Switch to clear color black and do a clear by double flip:
+  Screen('FillRect', win, 0);
+  Screen('Flip', win);
+  Screen('Flip', win);
+
   % Assign proper target processing chain for imaging pipeline:
   if ~strcmpi(hmd{handle}.basicTask, 'Monoscopic')
     % Stereoscopic display: Stereo composer chain.
@@ -1224,13 +1232,34 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     % Remove old standard anaglyph shader:
     Screen('HookFunction', win, 'Remove', procchain, slot);
+
+    % Play more stupid tricks to get intermediate (bounce buffer FBOs) buffers cleared to black:
+    Screen('HookFunction', win, 'AppendBuiltin', procchain, 'Builtin:IdentityBlit', '');
+    Screen('Flip', win);
+    Screen('Flip', win);
+    Screen('HookFunction', win, 'Remove', procchain, slot);
   else
     % Monoscopic display: Final output formatter:
     procchain = 'FinalOutputFormattingBlit';
     Screen('HookFunction', win, 'Enable', procchain);
+
+    % For overdrive need stupid tricks to get intermediate bounce buffer FBO's cleared:
+    if hmd{handle}.useOverdrive
+      % Need a bufferflip command:
+      Screen('HookFunction', win, 'PrependBuiltin', procchain, 'Builtin:FlipFBOs', '');
+      Screen('HookFunction', win, 'PrependBuiltin', procchain, 'Builtin:IdentityBlit', '');
+      Screen('Flip', win);
+      Screen('HookFunction', win, 'Remove', procchain, 0);
+      Screen('HookFunction', win, 'Remove', procchain, 0);
+    end
+
     slot = 0;
     glsl = 0;
   end
+
+  % Go back to user requested clear color, now that all our buffers
+  % are cleared to black:
+  Screen('FillRect', win, clearcolor);
 
   % Build the unwarp mesh display list within the OpenGL context of Screen():
   Screen('BeginOpenGL', win, 1);
@@ -1475,15 +1504,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   blittercfg = sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gldRight);
   Screen('Hookfunction', win, posstring, procchain, 'OculusVRClientCompositingShaderRightEye', glsl, blittercfg);
 
-  % TimeWarp or panel overdrive in use?
-  if hmd{handle}.useTimeWarp || hmd{handle}.useOverdrive
-    % Need to call the PsychOculusVR(1) callback to do needed setup work:
-    posstring = sprintf('InsertAt%iMFunction', slot);
-    cmdString = sprintf('PsychOculusVR(1, %i);', handle);
-    Screen('Hookfunction', win, posstring, procchain, 'OculusVRTimeWarpSetup', cmdString);
-    hmd{handle}.readyForWarp = 1;
-  end
-
   if hmd{handle}.useOverdrive
     if strcmpi(hmd{handle}.basicTask, 'Monoscopic')
       % Need a bufferflip command:
@@ -1494,9 +1514,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:IdentityBlit:OvrSize:%i:%i', realw, realh));
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
 
-    woverdrive1 = Screen('OpenOffscreenwindow', win, [255 0 0], [0, 0, realw * 2, realh], [], 32);
+    woverdrive1 = Screen('OpenOffscreenwindow', win, 0, [0, 0, realw * 2, realh], [], 32);
     hmd{handle}.overdriveTex(1) = Screen('GetOpenGLTexture', woverdrive1, woverdrive1);
-    woverdrive2 = Screen('OpenOffscreenwindow', win, [0 255 0], [0, 0, realw * 2, realh], [], 32);
+    woverdrive2 = Screen('OpenOffscreenwindow', win, 0, [0, 0, realw * 2, realh], [], 32);
     hmd{handle}.overdriveTex(2) = Screen('GetOpenGLTexture', woverdrive2, woverdrive2);
     hmd{handle}.lastOverdriveTex = 0;
 
@@ -1509,6 +1529,15 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     load([fileparts(mfilename('fullpath')) filesep 'RiftDK2lut2.mat']);
     luttex = Screen('MakeTexture', win, lut, [], 32, [], 2);
     hmd{handle}.overdriveLut(2) = Screen('GetOpenGLTexture', win, luttex);
+  end
+
+  % TimeWarp or panel overdrive in use?
+  if hmd{handle}.useTimeWarp || hmd{handle}.useOverdrive
+    % Need to call the PsychOculusVR(1) callback to do needed setup work:
+    posstring = sprintf('InsertAt%iMFunction', slot);
+    cmdString = sprintf('PsychOculusVR(1, %i);', handle);
+    Screen('Hookfunction', win, posstring, procchain, 'OculusVRTimeWarpSetup', cmdString);
+    hmd{handle}.readyForWarp = 1;
   end
 
   % Need to call the PsychOculusVR(2) callback to do needed finalizer work:

@@ -70,6 +70,6 @@ void main()
      * and distortion/aberration corrected color to regular output MRT0.
      */
     gl_FragData[0] = vec4(newcorrectedcolor, 1.0);
-    gl_FragData[1] = vec4(1.0, 0.0, 0.0, 1.0);
+    gl_FragData[1] = vec4(0.0, 0.0, 0.0, 1.0);
   }
 }
