@@ -8,7 +8,7 @@ function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain)
 % case in "Happy teapot land". Obviously, this demo will only work if you have
 % one of the supported HMDs connected to your machine.
 %
-% Usage: VRHMDDemo1([doSeparateEyeRender=0][, multiSample=0][, fountain=0]);
+% Usage: VRHMDDemo1([doSeparateEyeRender][, multiSample=0][, fountain=0]);
 %
 % Optional parameters:
 %
@@ -27,6 +27,10 @@ function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain)
 % of the teapot. Nicer, but higher gpu load.
 %
 % Press any key to end the demo.
+%
+% Plots a timing chart at the end, showing how many milliseconds of GPU processing
+% time were needed for each frame. However, these results are often wrong on the
+% buggy OSX operating system!
 %
 % Mouse left/right = Global camera movement left/right.
 % Mouse up/down = Global camera movement up/down.
@@ -223,7 +227,7 @@ try
   % speed -- this because our shader interprets positions as velocities!
   gld = glGenLists(1);
   glNewList(gld, GL.COMPILE);
-  moglDrawDots3D(win, particlesxyzt, particleSize, particlecolors, -StartPosition, 1);
+  moglDrawDots3D(win, particlesxyzt, particleSize, particlecolors, [], 1);
   glEndList;
 
   % Enable lighting:
@@ -249,7 +253,7 @@ try
   % Get duration of a single frame:
   ifi = Screen('GetFlipInterval', win);
 
-  globalPos = [0, 0, 0];
+  globalPos = [0, 0, 3];
   heading = 0;
 
   [xc, yc] = RectCenter(winRect);
@@ -343,9 +347,6 @@ try
       % Clear color and depths buffers:
       glClear;
 
-      % Position teapot at origin - 1.5 m in z direction:
-      glTranslatef(0, 0, -1.5);
-
       % Bring a bit of extra spin into this :-)
       glRotated(10 * telapsed, 0, 1, 0);
       glRotated(5  * telapsed, 1, 0, 0);
@@ -364,11 +365,9 @@ try
         % Assign updated simulation time to shader:
         glUniform1f(glGetUniformLocation(glsl, 'Time'), telapsed);
 
-        % Draw the particles. Here particlesxyzt does not encode position,
-        % but speed vectors -- this because our shader interprets positions
-        % as velocities!
-        moglDrawDots3D(win, particlesxyzt, particleSize, particlecolors, [], 1);
-        %glCallList(gld);
+        % Draw the particles: We have preencoded them into a OpenGL display list
+        % above for higher performance of drawing:
+        glCallList(gld);
 
         % Done with shaded drawing:
         glUseProgram(0);
@@ -421,6 +420,7 @@ try
   gpudur = gpudur(1:fcount);
   fprintf('Average framerate was %f fps. Average GPU rendertime per frame = %f msec.\n', fps, 1000 * mean(gpudur));
   plot(1000 * gpudur);
+  title('GPU processing time per frame [msecs]: (Often wrong on buggy OSX!)');
 catch
   sca;
   psychrethrow(psychlasterror);
