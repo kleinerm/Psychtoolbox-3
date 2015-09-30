@@ -1,6 +1,19 @@
 function varargout = PsychOculusVR(cmd, varargin)
 % PsychOculusVR - A high level driver for Oculus VR hardware.
 %
+% Note: If you want to write VR code that is portable across
+% VR headsets of different vendors, then use the PsychVRHMD()
+% driver instead of this driver. The PsychVRHMD driver will use
+% this driver as appropriate when connecting to a Oculus Rift
+% or similar Oculus device, but it will also automaticaly work
+% with other head mounted displays. This driver does however
+% expose a few functions specific to Oculus hardware, so you can
+% mix calls to this driver with calls to PsychVRHMD to do some
+% mix & match.
+%
+% For setup instructions for Oculus HMDs see "help OculusVR".
+%
+%
 % Usage:
 %
 % hmd = PsychOculusVR('AutoSetupHMD' [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, deviceIndex]);
