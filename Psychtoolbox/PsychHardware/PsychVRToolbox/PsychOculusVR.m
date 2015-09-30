@@ -1407,7 +1407,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   % Setup left eye shader:
-  glsl = LoadGLSLProgramFromFiles('OculusRiftCorrectionShader');
+  glsl = LoadGLSLProgramFromFiles([fileparts(mfilename('fullpath')) filesep 'OculusRiftCorrectionShader']);
   glUseProgram(glsl);
   glUniform1i(glGetUniformLocation(glsl, 'Image'), 0);
   glUniform1i(glGetUniformLocation(glsl, 'PrevImage'), 2);
@@ -1437,7 +1437,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   Screen('Hookfunction', win, posstring, procchain, 'OculusVRClientCompositingShaderLeftEye', glsl, blittercfg);
 
   % Setup right eye shader:
-  glsl = LoadGLSLProgramFromFiles('OculusRiftCorrectionShader');
+  glsl = LoadGLSLProgramFromFiles([fileparts(mfilename('fullpath')) filesep 'OculusRiftCorrectionShader']);
   glUseProgram(glsl);
   if ~strcmpi(hmd{handle}.basicTask, 'Monoscopic')
     % Stereoscopic display: Source from right eye buffer:
