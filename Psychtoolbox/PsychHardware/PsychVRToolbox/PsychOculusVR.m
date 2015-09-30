@@ -275,6 +275,22 @@ function varargout = PsychOculusVR(cmd, varargin)
 % parameter as 1 or 0.
 %
 %
+% oldSettings = PsychOculusVR('PanelOverdriveParameters', hmd [, newparams]);
+% - Return old settings for panel overdrive mode in 'oldSettings',
+% optionally set new settings in 'newparams'. This changes the operating
+% parameters of OLED panel overdrive on the Rift DK-2 if 'FastResponse'
+% mode is active. newparams is a vector [upscale, downscale, gamma] with
+% the following meaning: gamma = 1 Use gamma/degamma pass to perform
+% overdrive boost in gamma 2.2 corrected space. This is the startup default.
+% upscale = How much should rising pixel color intensity values be boosted.
+% Default is 0.10 for a 10% boost.
+% downscale = How much should rising pixel color intensity values be reduced.
+% Default is 0.05 for a 5% reduction.
+% The Rift DK-2 OLED panel controller is slower on rising intensities than on
+% falling intensities, therefore the higher boost on rising than on falling
+% direction.
+%
+%
 % PsychOculusVR('SetHSWDisplayDismiss', hmd [, dismissTypes=1+2+4]);
 % - Set how the user can dismiss the "Health and safety warning display".
 % 'dismissTypes' can be -1 to disable the HSWD, or a value >= 0 to show
@@ -861,6 +877,43 @@ if strcmpi(cmd, 'SetFastResponse')
       overdriveDownScale = 0;
       overdriveGammaCorrect = 0;
     end
+
+    glUseProgram(hmd{handle}.shaderLeft(1));
+    glUniform3f(glGetUniformLocation(hmd{handle}.shaderLeft(1), 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
+    glUseProgram(hmd{handle}.shaderRight(1));
+    glUniform3f(glGetUniformLocation(hmd{handle}.shaderRight(1), 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
+    glUseProgram(0);
+  end
+
+  return;
+end
+
+if strcmpi(cmd, 'PanelOverdriveParameters')
+  myhmd = varargin{1};
+  if ~PsychOculusVR('IsOpen', myhmd)
+    error('PanelOverdriveParameters: Passed in handle does not refer to a valid and open HMD.');
+  end
+  handle = myhmd.handle;
+
+  % PanelOverdriveParameters determines the parameters of GPU accelerated panel overdrive
+  % on the Rift DK1/DK2. Return old setting:
+  varargout{1} = [hmd{handle}.overdriveUpScale, hmd{handle}.overdriveDownScale, hmd{handle}.overdriveGammaCorrect];
+
+  % New setting requested?
+  if (length(varargin) >= 2) && ~isempty(varargin{2})
+    % Set new overdrive parameters for shaders:
+    newparams = varargin{2};
+    if length(newparams) ~= 3
+      error('PanelOverdriveParameters: Invalid new overdrive parameters. Not a 3-component vector [upscale, downscale, gamma].');
+    end
+
+    hmd{handle}.overdriveUpScale = newparams(1);
+    hmd{handle}.overdriveDownScale = newparams(2);
+    hmd{handle}.overdriveGammaCorrect = newparams(3);
+
+    overdriveUpScale = hmd{handle}.overdriveUpScale;
+    overdriveDownScale = hmd{handle}.overdriveDownScale;
+    overdriveGammaCorrect = hmd{handle}.overdriveGammaCorrect;
 
     glUseProgram(hmd{handle}.shaderLeft(1));
     glUniform3f(glGetUniformLocation(hmd{handle}.shaderLeft(1), 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
