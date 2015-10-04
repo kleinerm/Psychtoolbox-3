@@ -292,6 +292,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 07/23/13 mk  Do not prevent execution on 32-Bit Matlab on OSX!
 % 05/18/14 mk  No support for 32-Bit Matlab on Linux and Windows anymore for 3.0.12.
 %              Clarify there's also no support for < OSX 10.8 anymore.
+% 10/04/15 mk  Compatibility fixes for Octave-4, cosmetic cleanups.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -355,7 +356,7 @@ end
 
 % Check if this is a Matlab of version prior to V 7.4 aka R2007a:
 v = ver('matlab');
-if ~isempty(v)
+if ~isempty(v) && ~isempty(v(1).Version)
     v = v(1).Version; v = sscanf(v, '%i.%i.%i');
     if (v(1) < 7) || ((v(1) == 7) && (v(2) < 4))
         % Matlab version < 7.4 detected. This is no longer
@@ -500,28 +501,28 @@ else
     % simply have to hope that it is in some system dependent search path.
 
     % Currently, we only know how to check this for Mac OSX.
-	if IsOSX
-		svnpath = '';
-		
-		if isempty(svnpath) && exist('/opt/subversion/bin/svn', 'file')
-			svnpath = '/opt/subversion/bin/';
-		end
+    if IsOSX
+        svnpath = '';
 
-		if isempty(svnpath) && exist('/usr/bin/svn','file')
-			svnpath='/usr/bin/';
-		end
+        if isempty(svnpath) && exist('/opt/subversion/bin/svn', 'file')
+            svnpath = '/opt/subversion/bin/';
+        end
 
-		if isempty(svnpath) && exist('/usr/local/bin/svn','file')
-			svnpath='/usr/local/bin/';
-		end
+        if isempty(svnpath) && exist('/usr/bin/svn','file')
+            svnpath='/usr/bin/';
+        end
 
-		if isempty(svnpath) && exist('/bin/svn','file')
-			svnpath='/bin/';
-		end
+        if isempty(svnpath) && exist('/usr/local/bin/svn','file')
+            svnpath='/usr/local/bin/';
+        end
 
-		if isempty(svnpath) && exist('/opt/local/bin/svn', 'file')
-			svnpath = '/opt/local/bin/';
-		end
+        if isempty(svnpath) && exist('/bin/svn','file')
+            svnpath='/bin/';
+        end
+
+        if isempty(svnpath) && exist('/opt/local/bin/svn', 'file')
+            svnpath = '/opt/local/bin/';
+        end
 
         if isempty(svnpath)
             fprintf('The Subversion client "svn" is not in one of its expected\n');
@@ -531,7 +532,7 @@ else
             fprintf('and then run %s again.\n', mfilename);
             error('Subversion client is missing. Please install it.');
         end
-	end
+    end
 end
 
 if ~isempty(svnpath)
@@ -560,13 +561,13 @@ if err
         % If this works then we're likely on Matlab:
         p=fullfile(matlabroot,'toolbox','local','pathdef.m');
         fprintf(['Sorry, SAVEPATH failed. Probably the pathdef.m file lacks write permission. \n'...
-            'Please ask a user with administrator privileges to enable \n'...
-            'write by everyone for the file:\n\n''%s''\n\n'],p);
+                 'Please ask a user with administrator privileges to enable \n'...
+                 'write by everyone for the file:\n\n''%s''\n\n'],p);
     catch
         % Probably on Octave:
         fprintf(['Sorry, SAVEPATH failed. Probably your ~/.octaverc file lacks write permission. \n'...
-            'Please ask a user with administrator privileges to enable \n'...
-            'write by everyone for that file.\n\n']);
+                 'Please ask a user with administrator privileges to enable \n'...
+                 'write by everyone for that file.\n\n']);
     end
     
     fprintf(['Once "savepath" works (no error message), run ' mfilename ' again.\n']);
@@ -585,7 +586,7 @@ p='Psychtoolbox123test';
 if success
     rmdir(fullfile(targetdirectory,p));
 else
-	fprintf('Write permission test in folder %s failed.\n', targetdirectory);
+    fprintf('Write permission test in folder %s failed.\n', targetdirectory);
     if strcmp(m,'Permission denied')
         if IsOSX
             fprintf([
@@ -759,43 +760,6 @@ if IsOSX || IsLinux
 else
     [err,result]=dos(checkoutcommand, '-echo');
 end
-
-% MK: Pointless fallbacks disabled, as GitHub only supports https protocol, so a
-% failure of the first try is game over.
-%
-% if err && (downloadmethod < 1)
-%     % Failed! Let's retry it via http protocol. This may work-around overly
-%     % restrictive firewalls or otherwise screwed network proxies:
-%     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
-%     fprintf('%s\n\n',result);
-%     fprintf('Will retry now by use of alternative http protocol...\n');
-%     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
-%     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
-%     fprintf('%s\n\n',checkoutcommand);
-%     if IsOSX || IsLinux
-%         [err]=system(checkoutcommand);
-%         result = 'For reason, see output above.';
-%     else
-%         [err,result]=dos(checkoutcommand, '-echo');
-%     end    
-% end
-% 
-% if err && (downloadmethod > 0)
-%     % Failed! Let's retry it via https protocol. This may work-around overly
-%     % restrictive firewalls or otherwise screwed network proxies:
-%     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
-%     fprintf('%s\n\n',result);
-%     fprintf('Will retry now by use of alternative https protocol...\n');
-%     checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
-%     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
-%     fprintf('%s\n\n',checkoutcommand);
-%     if IsOSX || IsLinux
-%         [err]=system(checkoutcommand);
-%         result = 'For reason, see output above.';
-%     else
-%         [err,result]=dos(checkoutcommand, '-echo');
-%     end    
-% end
 
 if err
     fprintf('Sorry, the download command "CHECKOUT" failed with error code %d: \n',err);
