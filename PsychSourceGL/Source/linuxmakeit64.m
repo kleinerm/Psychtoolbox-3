@@ -109,4 +109,14 @@ if mode == 11
     cd(curdir);
 end
 
+if mode==12
+    % Build PsychOculusVRCore.mexa64:
+    try
+        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output PsychOculusVRCore -largeArrayDims -D_GNU_SOURCE -DPTBMODULE_PsychOculusVRCore -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychOculusVRCore/*.c" -lc -lrt /usr/local/lib/libOVR.a -ldl
+    catch
+        disp(psychlasterror);
+    end
+    unix(['mv ../Projects/Linux/build/PsychOculusVRCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end
+
 return;

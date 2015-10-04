@@ -2210,6 +2210,10 @@
 		8342DA600B0A466000E0A2F4 /* ptbstartlogo.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ptbstartlogo.h; path = ../../../Source/Common/Screen/ptbstartlogo.h; sourceTree = SOURCE_ROOT; };
 		83495CD909F701B8003973EA /* SCREENLoadCLUT.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLoadCLUT.c; path = ../../../Source/Common/Screen/SCREENLoadCLUT.c; sourceTree = SOURCE_ROOT; };
 		83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetVideoCaptureParameter.c; path = ../../../Source/Common/Screen/SCREENSetVideoCaptureParameter.c; sourceTree = SOURCE_ROOT; };
+		834988061BACFA1500D5B2C6 /* PsychOculusVR.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = PsychOculusVR.c; sourceTree = "<group>"; };
+		834988071BACFA1500D5B2C6 /* PsychOculusVR.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PsychOculusVR.h; sourceTree = "<group>"; };
+		834988081BACFA1500D5B2C6 /* RegisterProject.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = RegisterProject.c; sourceTree = "<group>"; };
+		834988091BACFA1500D5B2C6 /* RegisterProject.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RegisterProject.h; sourceTree = "<group>"; };
 		834CE35C19A3082F0094D258 /* PsychMovieSupportGStreamer010.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychMovieSupportGStreamer010.c; path = ../../../Source/Common/Screen/PsychMovieSupportGStreamer010.c; sourceTree = "<group>"; };
 		834CE35D19A3082F0094D258 /* PsychMovieWritingSupportGStreamer010.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychMovieWritingSupportGStreamer010.c; path = ../../../Source/Common/Screen/PsychMovieWritingSupportGStreamer010.c; sourceTree = "<group>"; };
 		834CE35E19A3082F0094D258 /* PsychVideoCaptureSupportGStreamer010.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportGStreamer010.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportGStreamer010.c; sourceTree = "<group>"; };
@@ -3362,6 +3366,7 @@
 				83C802C80B8CECE500097021 /* MirrorFaceCore */,
 				83E2C4200D2FCA2000FFD350 /* PsychCV */,
 				83051FA3129DC82400AD11E7 /* PsychKinect */,
+				834988051BACFA1500D5B2C6 /* PsychOculusVRCore */,
 				833C1F200BB1A49D00FB9B4F /* PsychPortAudio */,
 				2F9ABA17045F3596007A7274 /* PsychHID */,
 				832CE63E094CE99F00578C09 /* PsychSound */,
@@ -3904,6 +3909,18 @@
 			name = OpenEyesCVEyeTracker;
 			path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker;
 			sourceTree = SOURCE_ROOT;
+		};
+		834988051BACFA1500D5B2C6 /* PsychOculusVRCore */ = {
+			isa = PBXGroup;
+			children = (
+				834988061BACFA1500D5B2C6 /* PsychOculusVR.c */,
+				834988071BACFA1500D5B2C6 /* PsychOculusVR.h */,
+				834988081BACFA1500D5B2C6 /* RegisterProject.c */,
+				834988091BACFA1500D5B2C6 /* RegisterProject.h */,
+			);
+			name = PsychOculusVRCore;
+			path = ../../../Source/Common/PsychOculusVRCore;
+			sourceTree = "<group>";
 		};
 		83C802C80B8CECE500097021 /* MirrorFaceCore */ = {
 			isa = PBXGroup;

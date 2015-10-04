@@ -23,10 +23,13 @@
 #include "PsychEyelink.h"
 
 
-static char useString[] = "[status =] Eyelink('OpenFile','filename')";
+static char useString[] = "[status =] Eyelink('OpenFile', filename [, dontOpenExisting=0])";
 
 static char synopsisString[] = 
-    "Opens an EDF file, closes any existing file\n"
+    "Opens an EDF file 'filename' on the tracker computer, closes any existing file.\n"
+    "If the optional flag 'dontOpenExisting' is set to a non-zero value, then the file "
+    "is only opened, and thereby created, if it doesn't already exist. Otherwise the function "
+    "aborts with an error.\n"
     "Returns 0 if success, else error code" ;
 
 static char seeAlsoString[] = "";
@@ -41,6 +44,7 @@ PURPOSE:
 PsychError EyelinkOpenFile(void)
 {
    int iOpenFileStatus = -1;
+   int dontOpenExisting = 0;
    char *filename;
 
    //all sub functions should have these two lines
@@ -48,15 +52,24 @@ PsychError EyelinkOpenFile(void)
    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
    //check to see if the user supplied superfluous arguments
-   PsychErrorExit(PsychCapNumInputArgs(1));
+   PsychErrorExit(PsychCapNumInputArgs(2));
    PsychErrorExit(PsychRequireNumInputArgs(1));
    PsychErrorExit(PsychCapNumOutputArgs(1));
 
-	// Verify eyelink is up and running
-	EyelinkSystemIsConnected();
-	EyelinkSystemIsInitialized();
+   // Verify eyelink is up and running
+   EyelinkSystemIsConnected();
+   EyelinkSystemIsInitialized();
 
    PsychAllocInCharArg(1, TRUE, &filename);
+
+   // Should we only open new files, not open - and overwrite - existing ones?
+   if (PsychCopyInIntegerArg(2, FALSE, &dontOpenExisting) && dontOpenExisting) {
+       // Yes. Check if file already exists, abort with error if so:
+       if (file_exists(filename) != 0) {
+           printf("Eyelink openfile: The EDF file '%s' already exists and i was asked to abort in this case, so i'll abort.\n", filename);
+           PsychErrorExitMsg(PsychError_user, "Tried to open already existing EDF file and user asked to not do that, so i abort.");
+       }
+   }
 
    iOpenFileStatus = open_data_file(filename);
    if (iOpenFileStatus!=0)

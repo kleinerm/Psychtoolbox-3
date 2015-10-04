@@ -40,3 +40,4 @@
 % DrawDots3DDemo         -- Demonstrates use of the moglDrawDots3D command for 3D dot drawing,
 %                           and of fast GLSL vertex shading for 3D dot animation.
 %
+% VRHMDDemo1             -- Display 3D rendered scene on a VR HMD headset for true immersion.

@@ -1,0 +1,50 @@
+/* Vertex shader for performing corrections for the Oculus VR Rift
+ * (w) 2015 by Mario Kleiner. Licensed under MIT license.
+ */
+
+uniform vec2 EyeToSourceUVScale;
+uniform vec2 EyeToSourceUVOffset;
+uniform mat4 EyeRotationStart;
+uniform mat4 EyeRotationEnd;
+
+varying float vignette;
+
+vec2 TimewarpTexCoord(vec2 TexCoord, mat4 rotMat)
+{
+  /* Vertex inputs are in TanEyeAngle space for the R,G,B channels (i.e. after chromatic
+   * aberration and distortion). These are now "real world" vectors in direction (x,y,1)
+   * relative to the eye of the HMD. Apply the 3x3 timewarp rotation to these vectors.
+   */
+  vec3 transformed = vec3( (rotMat * vec4(TexCoord.xy, 1.0, 1.0)).xyz );
+
+  /* Project them back onto the Z=1 plane of the rendered images. */
+  vec2 flattened = (transformed.xy / transformed.z);
+
+  /* Scale them into ([0,0.5],[0,1]) or ([0.5,0],[0,1]) UV lookup space (depending on eye) */
+  return(EyeToSourceUVScale * flattened + EyeToSourceUVOffset);
+}
+
+void main(void)
+{
+  /* Linearly interpolate between the two eye rotation matrices, using the timewarpLerpFactor
+   * stored in the vertex z component:
+   */
+  mat4 lerpedEyeRot;
+  float timewarpLerpFactor = gl_Vertex.z;
+  lerpedEyeRot[0] = mix(EyeRotationStart[0], EyeRotationEnd[0], timewarpLerpFactor);
+  lerpedEyeRot[1] = mix(EyeRotationStart[1], EyeRotationEnd[1], timewarpLerpFactor);
+  lerpedEyeRot[2] = mix(EyeRotationStart[2], EyeRotationEnd[2], timewarpLerpFactor);
+  lerpedEyeRot[3] = mix(EyeRotationStart[3], EyeRotationEnd[3], timewarpLerpFactor);
+
+  /* Apply timewarp rotation to the texture coordinates of all three color channels: */
+  /* These are individual texcoord sets for color aberration correction per channel. */
+  gl_TexCoord[0].xy = TimewarpTexCoord(gl_MultiTexCoord0.xy, lerpedEyeRot);
+  gl_TexCoord[1].xy = TimewarpTexCoord(gl_MultiTexCoord1.xy, lerpedEyeRot);
+  gl_TexCoord[2].xy = TimewarpTexCoord(gl_MultiTexCoord2.xy, lerpedEyeRot);
+  
+  /* Position is vertex xy position: */
+  gl_Position = vec4(gl_Vertex.xy, 0.5, 1.0);
+  
+  /* Vignette correction fade out factor is stored in vertex w component: */
+  vignette = gl_Vertex.w;
+}

@@ -170,6 +170,9 @@ static char synopsisString[] =
     "Please note that not all GPU's and operating systems support this function. If the "
     "function is unsupported, a value of zero will be returned in the info struct and by any call "
     "with 'infoType' of 5 or 6.\n\n"
+    "An 'infoType' of 7 does return the same information as the default 'infoType' 0, but does not "
+    "set the window 'windowPtr' as drawing target, does not activate its OpenGL context and only "
+    "returns information that is safe to return without setting the window as drawing target.\n\n"
     "The info struct contains all kinds of information. Just check its output to see what "
     "is returned. Most of this info is not interesting for normal users, mostly provided "
     "for internal use by M-Files belonging to Psychtoolbox itself, e.g., display tests.\n\n"
@@ -250,7 +253,7 @@ PsychError SCREENGetWindowInfo(void)
 
     // Query infoType flag: Defaults to zero.
     PsychCopyInIntegerArg(2, FALSE, &infoType);
-    if (infoType < 0 || infoType > 6) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3, 4, 5 and 6.");
+    if (infoType < 0 || infoType > 7) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3, 4, 5, 6, 7.");
 
     // Windowserver info requested?
     if (infoType == 2 || infoType == 3) {
@@ -416,8 +419,8 @@ PsychError SCREENGetWindowInfo(void)
         // Set OpenGL context (always needed) and drawing target, as setting
         // our windowRecord as a drawingtarget is an expected side-effect of
         // this function. Quite a bit of PTB M-Functions and usercode rely on
-        // this:
-        PsychSetDrawingTarget(windowRecord);
+        // this. Exception is infoType 7 which asks to omit this call:
+        if (infoType != 7) PsychSetDrawingTarget(windowRecord);
 
         // Return all information:
         PsychAllocOutStructArray(1, FALSE, 1, fieldCount, FieldNames, &s);
@@ -453,7 +456,7 @@ PsychError SCREENGetWindowInfo(void)
         PsychSetStructArrayDoubleElement("OSSwapTimestamp", 0, windowRecord->osbuiltin_swaptime, s);
 
         // Any GPU rendertime queries submitted whose results we shall collect?
-        if (windowRecord->gpuRenderTimeQuery) {
+        if ((infoType != 7) && (windowRecord->gpuRenderTimeQuery)) {
             // Yes: Poll if query result is available, otherwise no-op for this invocation:
             gpuTimeElapsed = 0;
             glGetQueryObjectuiv(windowRecord->gpuRenderTimeQuery, GL_QUERY_RESULT_AVAILABLE, &gpuTimeElapsed);
@@ -569,12 +572,14 @@ PsychError SCREENGetWindowInfo(void)
             PsychSetStructArrayDoubleElement("GPUMinorType", 0, (double) gpuMinorType, s);
         }
 
-        // Renderer information: This comes last, and would fail if async flips
-        // are active, because it needs PsychSetDrawingTarget, which in turn needs async
-        // flips to be inactive, unless imaging pipeline is fully enabled:
-        PsychSetStructArrayStringElement("GLVendor", 0, (char*) glGetString(GL_VENDOR), s);
-        PsychSetStructArrayStringElement("GLRenderer", 0, (char*) glGetString(GL_RENDERER), s);
-        PsychSetStructArrayStringElement("GLVersion", 0, (char*) glGetString(GL_VERSION), s);
+        if (infoType != 7) {
+            // Renderer information: This comes last, and would fail if async flips
+            // are active, because it needs PsychSetDrawingTarget, which in turn needs async
+            // flips to be inactive, unless imaging pipeline is fully enabled:
+            PsychSetStructArrayStringElement("GLVendor", 0, (char*) glGetString(GL_VENDOR), s);
+            PsychSetStructArrayStringElement("GLRenderer", 0, (char*) glGetString(GL_RENDERER), s);
+            PsychSetStructArrayStringElement("GLVersion", 0, (char*) glGetString(GL_VERSION), s);
+        }
     }
 
     // Done.

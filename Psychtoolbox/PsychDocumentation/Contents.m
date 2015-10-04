@@ -18,6 +18,9 @@
 % GStreamer              - Installation instructions for the GStreamer
 %                          media framework.
 %
+% Oculus_Health_and_Safety_Warnings.pdf - Info about how to use the Oculus
+%                          VR virtual reality headsets safely.
+%
 % InstallKinect          - Installation instructions for the Kinect
 %                          drivers.
 %

@@ -75,6 +75,7 @@ $lioncount = 0;
 $mountainlioncount = 0;
 $maverickscount = 0;
 $yosemitecount = 0;
+$elcapitancount = 0;
 
 $winunknowncount = 0;
 $win2kcount = 0;
@@ -83,6 +84,7 @@ $winvistacount = 0;
 $win7count = 0;
 $win8count = 0;
 $win81count = 0;
+$win10count = 0;
 
 $winmatr200xcount = 0;
 $winmatr2006count = 0;
@@ -112,6 +114,7 @@ $matv82count = 0;
 $matv83count = 0;
 $matv84count = 0;
 $matv85count = 0;
+$matv86count = 0;
 
 $octavelinuxcount = 0;
 $octaveosxcount   = 0;
@@ -259,6 +262,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '<ENVVERSION>8.3')) { $matv83count++; }
     if (strpos($ofl, '<ENVVERSION>8.4')) { $matv84count++; }
     if (strpos($ofl, '<ENVVERSION>8.5')) { $matv85count++; }
+    if (strpos($ofl, '<ENVVERSION>8.6')) { $matv86count++; }
   }
 
   if (strpos($ofl, '<ENVIRONMENT>Octave')) {
@@ -292,6 +296,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, 'Version 6.1 (Build') || strpos($ofl, 'NT-6.1')) { $win7count++; $iswin = 2; }
     if (strpos($ofl, 'Version 6.2 (Build') || strpos($ofl, 'NT-6.2')) { $win8count++; $iswin = 2; }
     if (strpos($ofl, 'Version 6.3 (Build') || strpos($ofl, 'NT-6.3')) { $win81count++; $iswin = 2; }
+    if (strpos($ofl, 'Version 6.4 (Build') || strpos($ofl, 'NT-6.4')) { $win10count++; $iswin = 2; }
 
     if (($iswin < 2) && ($debugmode > 0)) print "LOGPARSER-WARNING: UNASSIGNED WINDOWS - MACID: $ofl <br />";
 
@@ -330,6 +335,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '10.8.')) { $mountainlioncount++; }
     if (strpos($ofl, '10.9.')) { $maverickscount++; }
     if (strpos($ofl, '10.10.')) { $yosemitecount++; }
+    if (strpos($ofl, '10.11.')) { $elcapitancount++; }
 
     if (strpos($ofl, '<CPUARCH>ppc')) {
       // It is a PowerPC Macintosh:
@@ -411,6 +417,7 @@ print "10.7  - Lion                  : $lioncount<br />";
 print "10.8  - Mountain Lion         : $mountainlioncount<br />";
 print "10.9  - Mavericks             : $maverickscount<br />";
 print "10.10 - Yosemite              : $yosemitecount<br />";
+print "10.11 - El Capitan            : $elcapitancount<br />";
 
 print "<br />For MS-Windows - Breakdown by Windows version:<br /><br />";
 print "Windows additional preVistas : $winunknowncount<br />";
@@ -420,6 +427,7 @@ print "Windows Vista                : $winvistacount<br />";
 print "Windows 7                    : $win7count<br />";
 print "Windows 8                    : $win8count<br />";
 print "Windows 8.1                  : $win81count<br />";
+print "Windows 10                   : $win10count<br />";
 
 print "<br />For MS-Windows - Breakdown by Matlab release:<br /><br />";
 
@@ -454,6 +462,7 @@ print "Matlab 8.2   (R2013b)        : $matv82count<br />";
 print "Matlab 8.3   (R2014a)        : $matv83count<br />";
 print "Matlab 8.4   (R2014b)        : $matv84count<br />";
 print "Matlab 8.5   (R2015a)        : $matv85count<br />";
+print "Matlab 8.6   (R2015b)        : $matv86count<br />";
 
 print "<br />Number of GNU/Octave V3+ installations by system:<br /><br />";
 printf('Octave on OS/X               : %8d (%7.3f%% of all OS/X installs) <br />', $octaveosxcount, 100 * $octaveosxcount / $osxcount);

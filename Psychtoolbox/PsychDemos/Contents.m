@@ -103,4 +103,5 @@
 %    VideoRecordingDemo      - Record captured video to movie files, possibly with audio.
 %    VideoTextureExtractionDemo - Use video capture + some computer based tracking to extract textures of objects in video.
 %    VignettingCorrectionDemo - Demonstrate how to do display devignetting aka per-pixel gain correction.
+%    VRHMDDemo                - Demonstrate how to use a Virtual reality head mounted display in the most basic way.
 %

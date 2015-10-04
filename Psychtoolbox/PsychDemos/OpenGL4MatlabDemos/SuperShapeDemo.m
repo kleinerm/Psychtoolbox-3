@@ -32,6 +32,7 @@ function SuperShapeDemo
 
 % History:
 % 16-Sep-2013   jsl  Written.
+% 30-Sep-2015    mk  Pimped with VR HMD support.
 
 if IsARM
     % Does not work on OpenGL-ES due to unsupported OpenGL display lists:
@@ -39,6 +40,7 @@ if IsARM
 end
 
 %% Initialization
+stereoscopic = 0;
 
 % Setup unified keynames and normalized 0-1 color space:
 PsychDefaultSetup(2);
@@ -57,6 +59,8 @@ screenid = max(Screen('Screens'));
 backgroundColor = GrayIndex(screenid);
 
 % Open a double-buffered full-screen window:
+PsychImaging('PrepareConfiguration');
+hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse', 0);
 [win , winRect] = PsychImaging('OpenWindow', screenid, backgroundColor);
 
 DrawFormattedText(win, 'Hang on, I am working on my first supershape :)', 'center', 'center');
@@ -82,10 +86,20 @@ glViewport(0, 0, RectWidth(winRect), RectHeight(winRect));
 glMatrixMode(GL.PROJECTION);
 glLoadIdentity;
 
-% Field of view is 25 degrees from line of sight. Objects closer than
-% 0.1 distance units or farther away than 100 distance units get clipped
-% away, aspect ratio is adapted to the monitors aspect ratio:
-gluPerspective(25, 1/ar, 0.1, 100);
+if ~isempty(hmd)
+    % Use VR HMD for 3D stereoscopic display:
+    % Retrieve and set camera projection matrix for optimal rendering on the HMD:
+    projMatrix = PsychVRHMD('GetStaticRenderParameters', hmd);
+    glLoadMatrixd(projMatrix);
+
+    % Enable stereo rendering:
+    stereoscopic = 1;
+else
+    % Field of view is 25 degrees from line of sight. Objects closer than
+    % 0.1 distance units or farther away than 100 distance units get clipped
+    % away, aspect ratio is adapted to the monitors aspect ratio:
+    gluPerspective(25, 1/ar, 0.1, 100);
+end
 
 % Setup modelview matrix: This defines the position, orientation and
 % looking direction of the virtual camera:
@@ -94,8 +108,7 @@ glLoadIdentity;
 
 % Cam is located at 3D position (0,10,15), points upright (0,1,0) and fixates
 % at the origin (0,0,0) of the worlds coordinate system:
-gluLookAt(0,10,15,0,0,0,0,1,0);
-
+gluLookAt(0, 10, 15,0,0,0,0,1,0);
 
 %% Setup position and emission properties of the light source:
 
@@ -158,100 +171,121 @@ glNewList(super_list, GL.COMPILE);
 supershape(super_vertices);
 glEndList;
 
+Screen('EndOpenGL', win);
+abort = 0;
+
+% Camera position when using head tracking + HMD:
+camPos = [0, 0, 1];
+
 %% Animation loop: Run until escape key is pressed
-while (1)
-    [pressed, ~, keyCode] = KbCheck;
-    
-    if pressed
+while ~abort
+    if ~isempty(hmd)
+        state = PsychVRHMD('PrepareRender', hmd, PsychGetPositionYawMatrix(camPos, 0));
+    end
+
+    for view = 0:stereoscopic
+        Screen('SelectStereoDrawBuffer', win, view);
+
+        Screen('BeginOpenGL', win);
+
+        % HMD in use?
+        if ~isempty(hmd)
+            % Use per-eye modelView matrices, driven by head tracking:
+            modelView = state.modelView{view + 1};
+            glLoadMatrixd(modelView);
+        end
+
+        [pressed, ~, keyCode] = KbCheck;
         
-        if length(find(keyCode)) == 1 
+        if pressed
             
-            switch find(keyCode)
+            if length(find(keyCode)) == 1
                 
-                case {KbName('LeftArrow')}
-                    glRotatef(-5,0.0,1.0,0.0);
+                switch find(keyCode)
                     
-                case {KbName('RightArrow')}
-                    glRotatef(5,0.0,1.0,0.0);
-                    
-                case {KbName('UpArrow')}
-                    glRotatef(-5,1.0,0.0,0.0);
-                    
-                case {KbName('DownArrow')}
-                    glRotatef(5,1.0,0.0,0.0);
-                    
-                case {KbName('m'),KbName('a'),KbName('b'),KbName('j'),KbName('k'),KbName('l')}                    
-                    % Finish OpenGL rendering into PTB window and check for OpenGL errors.
-                    Screen('EndOpenGL', win);
-                    
-                    if find(keyCode) == KbName('m')
-                        m = GetEchoNumber(win, 'Please input a new number for parameter m followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
-                    end
-                    
-                    if find(keyCode) == KbName('a')
-                        a = GetEchoNumber(win, 'Please input a new number for parameter a followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
-                    end
-                    
-                    if find(keyCode) == KbName('b')
-                        b = GetEchoNumber(win, 'Please input a new number for parameter b followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
-                    end
-                    
-                    if find(keyCode) == KbName('j')
-                        n1 = GetEchoNumber(win, 'Please input a new number for parameter n1 followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
-                    end
-                    
-                    if find(keyCode) == KbName('k')
-                        n2 = GetEchoNumber(win, 'Please input a new number for parameter n2 followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
-                    end
-                    
-                    if find(keyCode) == KbName('l')
-                        n3 = GetEchoNumber(win, 'Please input a new number for parameter n3 followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
-                    end
+                    case {KbName('LeftArrow')}
+                        glRotatef(-5,0.0,1.0,0.0);
+                        
+                    case {KbName('RightArrow')}
+                        glRotatef(5,0.0,1.0,0.0);
+                        
+                    case {KbName('UpArrow')}
+                        glRotatef(-5,1.0,0.0,0.0);
+                        
+                    case {KbName('DownArrow')}
+                        glRotatef(5,1.0,0.0,0.0);
+                        
+                    case {KbName('m'),KbName('a'),KbName('b'),KbName('j'),KbName('k'),KbName('l')}                    
+                        % Finish OpenGL rendering into PTB window and check for OpenGL errors.
+                        Screen('EndOpenGL', win);
+                        
+                        if find(keyCode) == KbName('m')
+                            m = GetEchoNumber(win, 'Please input a new number for parameter m followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
+                        end
+                        
+                        if find(keyCode) == KbName('a')
+                            a = GetEchoNumber(win, 'Please input a new number for parameter a followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
+                        end
+                        
+                        if find(keyCode) == KbName('b')
+                            b = GetEchoNumber(win, 'Please input a new number for parameter b followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
+                        end
+                        
+                        if find(keyCode) == KbName('j')
+                            n1 = GetEchoNumber(win, 'Please input a new number for parameter n1 followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
+                        end
+                        
+                        if find(keyCode) == KbName('k')
+                            n2 = GetEchoNumber(win, 'Please input a new number for parameter n2 followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
+                        end
+                        
+                        if find(keyCode) == KbName('l')
+                            n3 = GetEchoNumber(win, 'Please input a new number for parameter n3 followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
+                        end
 
-                    Screen('Flip', win);
-                    DrawFormattedText(win, 'Hang on, I am thinking hard about your numbers...', 'center', 'center');
-                    Screen('Flip', win);
-                    
-                    % Switch to OpenGL rendering again for drawing of next frame:
-                    Screen('BeginOpenGL', win);                    
+                        Screen('Flip', win);
+                        DrawFormattedText(win, 'Hang on, I am thinking hard about your numbers...', 'center', 'center');
+                        Screen('Flip', win);
+                        
+                        % Switch to OpenGL rendering again for drawing of next frame:
+                        Screen('BeginOpenGL', win);
 
-                    % generate vertices
-                    super_vertices = superformula(a,b,m,n1,n2,n3);
-                    % predraw strip
-                    super_list = glGenLists(1);
-                    glNewList(super_list, GL.COMPILE);
-                    supershape(super_vertices);
-                    glEndList;
-               
-                case {KbName('ESCAPE')}
-                    break;
+                        % generate vertices
+                        super_vertices = superformula(a,b,m,n1,n2,n3);
+                        % predraw strip
+                        super_list = glGenLists(1);
+                        glNewList(super_list, GL.COMPILE);
+                        supershape(super_vertices);
+                        glEndList;
+                   
+                    case {KbName('ESCAPE')}
+                        abort = 1;
+                end
             end
         end
+        
+        % Clear framebuffer and redraw supershape:
+        glClear;
+        glCallList(super_list);
+        
+        % Finish OpenGL rendering into PTB window and check for OpenGL errors.
+        Screen('EndOpenGL', win);
+        
+        text1 = 'SuperShape with parameters a, b, m, j (aka n1), k (aka n2) and l (aka n3).';
+        text2 = ['Current values: m = ' num2str(m) ', a = ' num2str(a) ', b = ' num2str(b) ', j = ' num2str(n1) ', k = ' num2str(n2) ', l = ' num2str(n3)];
+        text3 = 'To change a parameter press the corresponding key. To rotate the object use the arrows. To quit the program press escape';
+        DrawFormattedText(win, text1, 0.05*winRect(3), 0.8*winRect(4));
+        DrawFormattedText(win, text2, 0.05*winRect(3), 0.83*winRect(4));
+        DrawFormattedText(win, text3, 0.05*winRect(3), 0.88*winRect(4));
+        Screen('FrameRect', win, 0.5, [0 0 5 5]);
     end
-    
-    % Clear framebuffer and redraw supershape:
-    glClear;
-    glCallList(super_list);
-    
-    % Finish OpenGL rendering into PTB window and check for OpenGL errors.
-    Screen('EndOpenGL', win);
-    
-    text1 = 'SuperShape with parameters a, b, m, j (aka n1), k (aka n2) and l (aka n3).';
-    text2 = ['Current values: m = ' num2str(m) ', a = ' num2str(a) ', b = ' num2str(b) ', j = ' num2str(n1) ', k = ' num2str(n2) ', l = ' num2str(n3)];
-    text3 = 'To change a parameter press the corresponding key. To rotate the object use the arrows. To quit the program press escape';
-    DrawFormattedText(win, text1, 0.05*winRect(3), 0.8*winRect(4));
-    DrawFormattedText(win, text2, 0.05*winRect(3), 0.83*winRect(4));
-    DrawFormattedText(win, text3, 0.05*winRect(3), 0.88*winRect(4));
-    Screen('FrameRect', win, 0.5, [0 0 5 5]);
     
     % Show rendered image at next vertical retrace:
     Screen('Flip', win);
-    
-    % Switch to OpenGL rendering again for drawing of next frame:
-    Screen('BeginOpenGL', win);
 end
 
 % Delete super_list and exit OpenGL rendering:
+Screen('BeginOpenGL', win);
 glDeleteLists(super_list,1);
 Screen('EndOpenGL', win);
 

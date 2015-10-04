@@ -11,7 +11,7 @@ function osxsetoctaverpath(mexfname, mexpath)
 %
 
     if ~IsOSX(1) || ~IsOctave
-        error('osxmakeitoctave3 only works with a 64-Bit version of Octave for OSX!');
+        error('osxsetoctaverpath only works with a 64-Bit version of Octave for OSX!');
     end
 
     % Set default path for finding the mex file to process, if omitted:
@@ -53,7 +53,7 @@ function osxsetoctaverpath(mexfname, mexpath)
     % library directories, ie., as settings for @rpath:
     for i = 1:length(lpaths)
         system(['install_name_tool -add_rpath ' lpaths{i} ' ' mexfname]);
-        fprintf('Added @rpath %s to mex file %s ...\n', lpaths{i}, mexfname);
+        fprintf('Added Octave-3 @rpath %s to mex file %s ...\n', lpaths{i}, mexfname);
     end
 
 return;
