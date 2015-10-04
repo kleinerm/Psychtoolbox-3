@@ -30,6 +30,7 @@
 % GetKeyboardIndices  - All: Get indices of keyboards in PsychHID device list.
 % GetMouseIndices     - All: Get indices of mice in the PsychHID device list.
 % OptiCAL             - All: Interface to the CRS OptiCAL luminance meter device.
+% PsychGPURasterizerOffsets - All: Test GPU drivers for spatial misplacement of content.
 % PsychGPUTestAndTweakGammaTables - All: Helper function. Auto-tweak gamma tables for DataPixx et al. and Bits#
 % PsychHID            - All: Read/write any HID-compliant USB device. See web page:
 %                            web http://psychtoolbox.org/usb.html
