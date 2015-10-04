@@ -42,8 +42,8 @@ function MovingLineDemo(xv, twolines, screenid)
 
 lw = 1;
 
-% Make sure we're running on PTB-3:
-AssertOpenGL;
+% Make sure we're running on PTB-3, setup defaults:
+PsychDefaultSetup(1);
 
 % Use a movement speed of 1 horizontal pixel per redraw cycle by default:
 if nargin < 1 
@@ -69,9 +69,16 @@ end
 
 % Open window with black background color, query its size and redraw
 % interval, do initial flip to sync us to vertical retrace:
-win = Screen('OpenWindow', screenid, 128);
+PsychImaging('PrepareConfiguration');
+% Try to open us on a VR HMD if one is connected, otherwise use regular
+% display:
+hmd = PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse');
+win = PsychImaging('OpenWindow', screenid, 128);
 [w, h] = Screen('WindowSize', win);
 ifi = Screen('GetFlipInterval', win);
+
+HideCursor(screenid);
+
 vbl=Screen('Flip', win);
 
 % Init defaults:
@@ -82,20 +89,25 @@ button = 0;
 while ~button(1)
     % Query mouse:
     [xm, ym, button] = GetMouse;
-    
+
     % Move line pair by 'xv' unless right mouse button is pressed, which
     % will pause the animation:
     if button(2)==0
         x=mod(x+xv, w);
     end
-    
+
+    if ~isempty(hmd) && KbCheck
+        KbReleaseWait;
+        PsychVRHMD('SetLowPersistence', hmd, 1 - PsychVRHMD('SetLowPersistence', hmd));
+    end
+
     % We use 'DrawLines' so we can easily define a vertical intensity
     % gradient:
     Screen('DrawLines', win, [x, x ; 0, h], lw, [0, 255; 0, 255; 0, 255]);
     if twolines
         Screen('DrawLines', win, [x+xv, x+xv ; 0, h], lw, [0, 255; 0, 255; 0, 255]);
     end
-    
+
     % We use 'vbl' based timing, just that the frame-skip detector works
     % accurately and we get notified of possibly skipped frames -- Allows
     % to see if perceived jerks come frome timing issues or are induced by
@@ -103,7 +115,8 @@ while ~button(1)
     vbl=Screen('Flip', win,vbl+ifi/2);
 end
 
+ShowCursor(screenid);
+
 % Done. Close windows and exit:
 Screen('CloseAll');
-
 return;

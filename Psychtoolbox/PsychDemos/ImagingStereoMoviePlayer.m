@@ -10,6 +10,8 @@ function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, 
 % pipeline for stereo display -- allows to set gains for anaglyph stereo
 % and other more advanced anaglyph algorithms.
 %
+% stereoMode 103 activates stereo display on a VR HMD.
+%
 % 'anaglyphmode' when imaging is enabled, allows to select the type of
 % anaglyph algorithm:
 %
@@ -32,6 +34,7 @@ function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, 
 % History:
 % 11.11.2007 Written (MK)
 % 17.06.2013 Cleaned up (MK)
+% 30.09.2015 Add VR HMD support. (MK)
 
 AssertOpenGL;
 
@@ -74,6 +77,12 @@ end
 if imaging
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+
+    if stereoMode == 103
+        PsychVRHMD('AutoSetupHMD', 'Stereoscopic');
+        stereoMode = -1;
+    end
+
     [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], stereoMode);
 else
     [win, winRect] = Screen('OpenWindow', screenid, 0, [], [], [], stereoMode);
@@ -138,7 +147,7 @@ Screen('PlayMovie', movie, 1, 1, 1);
 SetMouse(x, y, win);
 
 % Hide mouse cursor:
-HideCursor;
+HideCursor(screenid);
 
 % Setup variables:
 tex = 0;
@@ -192,7 +201,7 @@ try
     % Done with playback:
     
     % Show mouse cursor:
-    ShowCursor;
+    ShowCursor(screenid);
     
     % Stop and close movie:
     Screen('PlayMovie', movie, 0);
@@ -200,7 +209,7 @@ try
     
     % Close screen:
     Screen('CloseAll');
-    
+
     return;
     
 catch %#ok<CTCH>

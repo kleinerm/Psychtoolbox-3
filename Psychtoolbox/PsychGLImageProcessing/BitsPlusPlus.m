@@ -1010,7 +1010,7 @@ if strcmpi(cmd, 'OpenWindowBits++')
 
     % Test accuracy/correctness of GPU's rasterizer for different output
     % positioning methods: Return (non-zero) dx,dy offsets, if any:
-    [rpfx, rpfy, rpix, rpiy, vix] = RasterizerOffsets(win, drivername); %#ok<ASGLU>
+    [rpfx, rpfy, rpix, rpiy, vix] = PsychGPURasterizerOffsets(win, drivername); %#ok<ASGLU>
         
     if rpix~=0
         tlockXOffset = -rpix;
@@ -1492,7 +1492,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     
     % Test accuracy/correctness of GPU's rasterizer for different output
     % positioning methods: Return (non-zero) dx,dy offsets, if any:
-    [rpfx, rpfy, rpix, rpiy, vix] = RasterizerOffsets(win, drivername); %#ok<ASGLU>
+    [rpfx, rpfy, rpix, rpiy, vix] = PsychGPURasterizerOffsets(win, drivername); %#ok<ASGLU>
         
     if rpix~=0
         tlockXOffset = -rpix;
@@ -1753,152 +1753,6 @@ function displist = SetupDIOFinalizer(win, stereomode)
         Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
     end
 
-end
-
-function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win, drivername)
-
-    global GL;
-
-    winfo = Screen('GetWindowInfo', win);
-    if bitand(winfo.ImagingMode, kPsychNeedFastBackingStore)
-        % Imaging pipeline: Read from drawBuffer. Important in case imaging
-        % pipeline applies geometric transformations, e.g., gpu panel
-        % fitting. Otherwise we'd get false positives in test below.
-        readbuffer = 'drawBuffer';
-    else
-        % Read from system backbuffer:
-        readbuffer = 'backBuffer';
-    end
-    
-    % Test for off-by-one bugs in graphics drivers / GPU's and compute
-    % corrective offsets for our Bits++ T-Lock blitters...
-
-    % glRasterPos2f(): Used by Screen('PutImage') for output-positioning:
-    
-    % Clear out top-left 20x20 rectangle of framebuffer:
-    Screen('FillRect', win, 0, [0 0 20 20]);
-
-    % Define drawposition via glRasterPos2f:
-    glRasterPos2f(2, 1);
-
-    % Draw RGB = [128, 0, 0] pixel to that location:
-    testpixel = uint8([128 0 0]);
-    glDrawPixels(1, 1, GL.RGB, GL.UNSIGNED_BYTE, testpixel);
-
-    % Sync the pipeline, so we know the backbuffer contains the result:
-    Screen('DrawingFinished', win, 0, 1);
-
-    % Read top-left 4x4 rectangle back, only the red channel:
-    testreadback = Screen('GetImage', win, [0 0 4 4], readbuffer, 0, 1);
-
-    % Must flip here, to clear the "drawingfinished" state from above:
-    Screen('Flip', win);
-    
-    % Find location of red == 128 pixel:
-    pixposition = find(testreadback == 128);
-    if ~isempty(pixposition)
-        [pixy, pixx] = ind2sub(size(testreadback), pixposition);
-        % Map from Matlab indexing to OpenGL indexing: Only x is remapped,
-        % y-offset is consistent due to 1 offset inside our y-origin inside
-        % Screen:
-        pixx = pixx - 1;
-    else
-        pixy = -1;
-        pixx = -1;
-    end
-
-    rpfx = pixx - 2;
-    rpfy = pixy - 1;
-
-    % At expected location?
-    if rpfx~=0
-        fprintf('%s:GPU-Rasterizertest: Warning: glRasterPos2f() command draws at wrong position (Offset %i, %i)!\n', drivername, rpfx, rpfy);
-    end
-
-    % glRasterPos2i(): Used by our DIO T-Lock blitter for output-positioning:
-    
-    % Clear out top-left 20x20 rectangle of framebuffer:
-    Screen('FillRect', win, 0, [0 0 20 20]);
-
-    % Define drawposition via glRasterPos2i:
-    glRasterPos2i(2, 1);
-
-    % Draw RGB = [128, 0, 0] pixel to that location:
-    testpixel = uint8([128 0 0]);
-    glDrawPixels(1, 1, GL.RGB, GL.UNSIGNED_BYTE, testpixel);
-
-    % Sync the pipeline, so we know the backbuffer contains the result:
-    Screen('DrawingFinished', win, 0, 1);
-
-    % Read top-left 4x4 rectangle back, only the red channel:
-    testreadback = Screen('GetImage', win, [0 0 4 4], readbuffer, 0, 1);
-
-    % Must flip here, to clear the "drawingfinished" state from above:
-    Screen('Flip', win);
-
-    % Find location of red == 128 pixel:
-    pixposition = find(testreadback == 128);
-    if ~isempty(pixposition)
-        [pixy, pixx] = ind2sub(size(testreadback), pixposition);
-        % Map from Matlab indexing to OpenGL indexing: Only x is remapped,
-        % y-offset is consistent due to 1 offset inside our y-origin inside
-        % Screen:
-        pixx = pixx - 1;
-    else
-        pixy = -1;
-        pixx = -1;
-    end
-
-    rpix = pixx - 2;
-    rpiy = pixy - 1;
-
-    % At expected location?
-    if rpix~=0
-        fprintf('%s:GPU-Rasterizertest: Warning: glRasterPos2i() command draws at wrong position (Offset %i, %i)!\n', drivername, rpix, rpiy);
-    end
-
-    % glVertex2i(): Used by Screen's CLUT T-Lock blitter for output-positioning:
-    
-    % Clear out top-left 20x20 rectangle of framebuffer:
-    Screen('FillRect', win, 0, [0 0 20 20]);
-
-    glPointSize(1);
-    glBegin(GL.POINTS);
-    % Draw RGB = [128, 0, 0] pixel:
-    glColor3ub(128, 0, 0);
-    % Submit glVertex2i at test location:
-    glVertex2i(2, 1);
-    glEnd;
-    
-    % Sync the pipeline, so we know the backbuffer contains the result:
-    Screen('DrawingFinished', win, 0, 1);
-
-    % Read top-left 4x4 rectangle back, only the red channel:
-    testreadback = Screen('GetImage', win, [0 0 4 4], readbuffer, 0, 1);
-
-    % Must flip here, to clear the "drawingfinished" state from above:
-    Screen('Flip', win);
-    
-    % Find location of red == 128 pixel:
-    pixposition = find(testreadback == 128);
-    if ~isempty(pixposition)
-        [pixy, pixx] = ind2sub(size(testreadback), pixposition);
-        % Map from Matlab indexing to OpenGL indexing: Only x is remapped,
-        % y-offset is consistent due to 1 offset inside our y-origin inside
-        % Screen:
-        pixx = pixx - 1;
-    else
-        pixy = -1;
-        pixx = -1;
-    end
-
-    vix = pixx - 2;
-    viy = pixy - 1;
-
-    % At expected location?
-    if vix~=0
-        fprintf('%s:GPU-Rasterizertest: Warning: glVertex2i() command draws at wrong position (Offset %i, %i)!\n', drivername, vix, viy);
-    end
 end
 
 function scanline = BitsSharpGetScanline(bitsSharpPort, lineNr, nrPixels)

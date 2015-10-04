@@ -139,6 +139,35 @@
 %                           within Psychtoolbox. See "help SerialComm" for
 %                           author and source of the file.
 %
+% The PsychOculusVRCore mex files for use of Oculus VR virtual reality
+% devices, e.g., the Oculus Rift DK1 and DK2, is built using the Oculus SDK,
+% and statically links against portions of the SDK. That SDK is:
+%
+% "Copyright © 2014 Oculus VR, LLC. All rights reserved.”
+%
+% The full text of the Oculus license can be found in the
+% Psychtoolbox/PsychHardware/PsychVRToolbox/ subfolder of Psychtoolbox under
+% the filename “LICENSE_Oculus.txt”.
+%
+% Copies of the SDKs useable for building the PsychOculusVRCore mex files
+% can be found in the PsychSourceGL/Cohorts/OculusSDK/ subfolder of the
+% Psychtoolbox source distribution (see help UseTheSource for download).
+%
+% The PsychDocumentation folder includes a PDF with “Health and safety warnings”
+% related to the Oculus Rift devices, named Oculus_Health_and_Safety_Warnings.pdf,
+% which is also "Copyright © 2014 Oculus VR, LLC. All rights reserved.”
+%
+% The qGetR.m file for converting a rotation/orientation Quaternion into a
+% 3x3 RHS rotation matrix is a modified version of qGetR from the "quaternion"
+% package of  Przemyslaw Baranski downloaded from Mathworks File Exchange at URL:
+%
+% http://de.mathworks.com/matlabcentral/fileexchange/35475-quaternions
+%
+% The file and its parent toolbox are licensed under BSD License, with
+% Copyright (c) 2012, Przemyslaw Baranski. The full license text is included
+% in the qGetR.m file in Psychtoolbox/PsychOpenGL/qGetR.m
+%
+%
 % Matlab/Octave to OpenGL wrapper MOGL - MIT license : Richard F. Murray, Mario Kleiner.
 % MOGL moglcore for MS-Windows links dynamically against the freeglut library, which is
 % Copyright (c) 1999-2000 Pawel W. Olszta, licensed to us under compatible MIT/X11 license.
