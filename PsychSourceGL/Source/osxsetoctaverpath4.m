@@ -37,9 +37,10 @@ function osxsetoctaverpath4(mexfname, mexpath)
     % different versions of octave, installed via different package
     % managers:
 
-    % Start with Octave-Forge stuff, followed by HomeBrew stuff, followed by Fink stuff:
+    % Start with HomeBrew stuff, followed by Fink stuff:
     % This would give current lib path on devel system: octave_config_info.octlibdir
     lpaths = {  '/usr/local/Cellar/octave/4.0.0/lib/octave/4.0.0', ...
+                '/usr/local/Cellar/octave/4.0.0_1/lib/octave/4.0.0', ...
                 '/sw/lib/octave/4.0.0', ...
              };
 
