@@ -185,10 +185,12 @@ function HighColorPrecisionDrawingTest(testconfig, maxdepth, testblocks)
 % 04/20/08  Written (MK).
 % 10/22/10  Refined to account for small differences between GPU's (MK).
 % 06/20/15  Add case 6 for testing 'DrawText' (MK).
+% 10/04/15  Use PsychGPURasterizerOffsets() to compensate for driver flaws (MK).
 
 global win;
 
 close all;
+drivername = mfilename;
 
 % Octave's new plotting backend 'fltk' interferes with Screen(),
 % due to internal use of OpenGL. Problem is it changes the
@@ -485,6 +487,9 @@ if ismember(3, testblocks)
     % Open window with black background color:
     [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 514 514], [], [], [], []);
 
+    % Test GPU output positioning, report trouble:
+    [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
+
     % Set color clamping (and precision) for standard 2D draw commands:
     Screen('ColorRange', win, 1, ColorClamping);
 
@@ -508,24 +513,22 @@ if ismember(3, testblocks)
 
     % DrawDots test: All pixels in a rectangular block in top-left corner,
     % each with a different color:
-    dyOffset = 0;
-    Screen('DrawDots', win, xy, 1, rgbacolors, [0,dyOffset], 0);
+    Screen('DrawDots', win, xy, 1, rgbacolors, [-vfx, -vfy], 0);
     testname = 'DrawDots';
 
     % Evaluate and log:
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
     if goodbits == 0
         fprintf ('DrawDots result is nonsense. Retrying with a slight twist...\n');
-        % resstring = resstring(1:findstr(resstring, 'DrawDots')-1);
-        resstring = '';
         dyOffset = 1;
-        Screen('DrawDots', win, xy, 1, rgbacolors, [0,dyOffset], 0);
+        Screen('DrawDots', win, xy, 1, rgbacolors, [-vfx, -vfy + dyOffset], 0);
         testname = 'DrawDots';
 
         % Evaluate and log:
-        [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+        [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
     end
-    
+    resstring = [resstring resstring2];
+
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
     
@@ -547,21 +550,21 @@ if ismember(3, testblocks)
     % We draw the lines without line-smoothing (=0), as it only works with
     % alpha-blending and we do not want to use alpha-blending in this test
     % block:
-    Screen('DrawLines', win, lxy, 1, cxy, [], 0);
+    Screen('DrawLines', win, lxy, 1, cxy, [-vfx, -vfy], 0);
     testname = 'DrawLines';
 
     % Evaluate and log:
-    [resstring2, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
     if goodbits == 0
         fprintf ('DrawLines result is nonsense. Retrying with a slight twist...\n');
-        Screen('DrawLines', win, lxy, 1, cxy, [0,1], 0);
+        Screen('DrawLines', win, lxy, 1, cxy, [-vfx, -vfy + 1], 0);
         testname = 'DrawLines';
 
         % Evaluate and log:
-        [resstring2, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+        [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
     end
-    resstring = resstring2;
-    
+    resstring = [resstring resstring2];
+
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
 
@@ -609,7 +612,7 @@ if ismember(3, testblocks)
     end
     
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
-    Screen('DrawTexture', win, tex, [], fbrect, [], Filters);
+    Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, -vfx, -vfy), [], Filters);
     Screen('Close', tex);
     testname = 'DrawTexture';
 
@@ -646,7 +649,7 @@ if ismember(3, testblocks)
     end
     
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
-    Screen('DrawTexture', win, tex, [], fbrect, [], Filters, [], [], gammaShader);
+    Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, -vfx, -vfy), [], Filters, [], [], gammaShader);
     Screen('Close', tex);
     testname = 'GammaCorrection';
 
@@ -668,6 +671,9 @@ if ismember(4, testblocks)
 
     % Open window with black background color:
     [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 514 514], [], [], [], []);
+
+    % Test GPU output positioning, report trouble:
+    [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
 
     % Set color clamping (and precision) for standard 2D draw commands. In
     % our case here, this affects the precision and clamping of the
@@ -726,7 +732,7 @@ if ismember(4, testblocks)
         end
 
         % DrawTexture, modulateColor == [mc mc mc 1] modulated:
-        Screen('DrawTexture', win, tex, [], fbrect, [], Filters, [], mc);
+        Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, -vfx, -vfy), [], Filters, [], mc);
         
         % While the GPU does its thing, we compute the Matlab reference
         % patch:
@@ -756,6 +762,9 @@ if ismember(5, testblocks)
 
     % Open window with black background color:
     [win rect] = PsychImaging('OpenWindow', screenid, [0 0 0 0], [0 0 514 514], [], [], [], []);
+
+    % Test GPU output positioning, report trouble:
+    [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
 
     % Set color clamping (and precision) for standard 2D draw commands. In
     % our case here, this affects the precision and clamping of the
@@ -820,7 +829,7 @@ if ismember(5, testblocks)
 
         % DrawTexture, modulateColor == [mc mc mc 1] modulated:
         for odc=1:nroverdraws
-            Screen('DrawTexture', win, tex, [], fbrect, [], Filters, [], [mc mc mc alpha]);
+            Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, -vfx, -vfy), [], Filters, [], [mc mc mc alpha]);
         end
         
         % While the GPU does its thing, we compute the Matlab reference
