@@ -268,7 +268,7 @@ try
   % VR render loop: Runs until keypress:
   while ~KbCheck
     % Update global position (x,y,z) by mouse movement:
-    [xm, ym, buttons] = GetMouse;
+    [xm, ym, buttons] = GetMouse(screenid);
     if ~any(buttons)
       % x-movement:
       globalPos(1) = globalPos(1) + 0.005 * (xm - xo);
