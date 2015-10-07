@@ -657,6 +657,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Retain reference of this window to its screen:
     screenRefCount[screenSettings->screenNumber]++;
 
+    // Give gfx-system a second to settle:
+    PsychYieldIntervalSeconds(1);
+
     // Done.
     return(TRUE);
 }
@@ -697,16 +700,6 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 
     // Disable rendering context:
     CGLSetCurrentContext(NULL);
-
-    if (windowRecord->targetSpecific.windowHandle == NULL) {
-        // Shutdown sequence for CGL, i.e., no NSOpenGL + Cocoa mode:
-        if (PsychIsOnscreenWindow(windowRecord)) {
-            // Destroy onscreen window, detach context:
-            CGLClearDrawable(windowRecord->targetSpecific.contextObject);
-            if (windowRecord->targetSpecific.glusercontextObject) CGLClearDrawable(windowRecord->targetSpecific.glusercontextObject);
-            if (windowRecord->targetSpecific.glswapcontextObject) CGLClearDrawable(windowRecord->targetSpecific.glswapcontextObject);
-        }
-    }
 
     // Destroy pixelformat object:
     CGLDestroyPixelFormat(windowRecord->targetSpecific.pixelFormatObject);
