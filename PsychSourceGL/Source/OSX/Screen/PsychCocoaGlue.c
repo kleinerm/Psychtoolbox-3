@@ -115,7 +115,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     }
 
     // Disable auto-flushing of drawed content to frontbuffer:
-    //[cocoaWindow disableFlushWindow];
+    [cocoaWindow disableFlushWindow];
 
     // Position the window unless its position is left to the window manager:
     if (!(windowRecord->specialflags & kPsychGUIWindowWMPositioned)) {
