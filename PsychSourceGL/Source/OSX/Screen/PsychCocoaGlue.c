@@ -115,7 +115,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     }
 
     // Disable auto-flushing of drawed content to frontbuffer:
-    [cocoaWindow disableFlushWindow];
+    //[cocoaWindow disableFlushWindow];
 
     // Position the window unless its position is left to the window manager:
     if (!(windowRecord->specialflags & kPsychGUIWindowWMPositioned)) {
@@ -403,13 +403,6 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
         [glswapContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
         [glswapContext setView:[cocoaWindow contentView]];
     }
-
-    // Another tribute to the most broken OS in existence. The setView: method calls
-    // above disable screen updates for god knows whatever reason, but don't reenable
-    // them anymore, causing OSX to complain in the system log, and generally screw
-    // us. Try to "fix" this with the dirty hack of reenabling screen updates ourselves.
-    // This new feature brought to you by OSX El Capitan:
-    NSEnableScreenUpdates();
 
     // Assign contexts for use in window close sequence later on:
     windowRecord->targetSpecific.nsmasterContext = (void*) masterContext;
