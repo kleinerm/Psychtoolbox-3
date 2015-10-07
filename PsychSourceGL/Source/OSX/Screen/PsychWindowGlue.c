@@ -657,7 +657,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Retain reference of this window to its screen:
     screenRefCount[screenSettings->screenNumber]++;
 
-    // Give gfx-system a second to settle:
+    // Give gfx-system a second to settle: This stupid hack to
+    // counteract a new type of stupid bug introduced in OSX 10.11
+    // El Capitan: Sync failure at each first run after application
+    // startup:
     PsychYieldIntervalSeconds(1);
 
     // Done.

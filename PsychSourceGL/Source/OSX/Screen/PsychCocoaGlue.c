@@ -326,12 +326,15 @@ void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
-    // Release NSOpenGLContext's - this will also release the wrapped
-    // CGLContext's and finally really destroy them:
+    // Manually detach NSOpenGLContext from drawable. This seems to help to reduce
+    // the frequency of those joyful "frozen screen hangs until mouse click" events
+    // that OSX 10.9 brought to our happy little world:
     if (windowRecord->targetSpecific.nsmasterContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsmasterContext) clearDrawable];
     if (windowRecord->targetSpecific.nsswapContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsswapContext) clearDrawable];
     if (windowRecord->targetSpecific.nsuserContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsuserContext) clearDrawable];
 
+    // Release NSOpenGLContext's - this will also release the wrapped
+    // CGLContext's and finally really destroy them:
     if (windowRecord->targetSpecific.nsmasterContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsmasterContext) release];
     if (windowRecord->targetSpecific.nsswapContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsswapContext) release];
     if (windowRecord->targetSpecific.nsuserContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsuserContext) release];
@@ -400,6 +403,13 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
         [glswapContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
         [glswapContext setView:[cocoaWindow contentView]];
     }
+
+    // Another tribute to the most broken OS in existence. The setView: method calls
+    // above disable screen updates for god knows whatever reason, but don't reenable
+    // them anymore, causing OSX to complain in the system log, and generally screw
+    // us. Try to "fix" this with the dirty hack of reenabling screen updates ourselves.
+    // This new feature brought to you by OSX El Capitan:
+    NSEnableScreenUpdates();
 
     // Assign contexts for use in window close sequence later on:
     windowRecord->targetSpecific.nsmasterContext = (void*) masterContext;
