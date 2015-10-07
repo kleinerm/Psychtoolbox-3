@@ -78,7 +78,7 @@ function datapixxmakemex()
         S = [S ' ' VPIXXDIR 'VPixx_Software_Tools/libusb/usb.c'];
         S = [S ' ' VPIXXDIR 'VPixx_Software_Tools/libusb/darwin.c'];
         S = [S ' ' PTBDIR 'PsychSourceGL/Source/OSX/Base/PsychTimeGlue.c'];
-        S = [S ' "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit,-syslibroot,''/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.9.sdk'' -mmacosx-version-min=''10.8'' "'];
+        S = [S ' "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit,-syslibroot,''/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk'' -mmacosx-version-min=''10.8'' "'];
         if (IsOctave)
             S = [S ' --output ' VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/macosx/Datapixx.mex'];
         else
@@ -144,6 +144,8 @@ function datapixxmakemex()
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/OSX/Base/*.o'], '/', filesep));
             system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/macosx/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3OSXFiles64'], '/', filesep));
             osxsetoctaverpath('Datapixx', [PTBDIR 'Psychtoolbox/PsychBasic/Octave3OSXFiles64/']);
+            system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/macosx/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave4OSXFiles64'], '/', filesep));
+            osxsetoctaverpath4('Datapixx', [PTBDIR 'Psychtoolbox/PsychBasic/Octave4OSXFiles64/']);
         elseif (IsLinux)
             system(strrep([DELCMD VPIXXDIR 'VPixx_Software_Tools/libusb/*.o'], '/', filesep));
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/Linux/Base/*.o'], '/', filesep));
