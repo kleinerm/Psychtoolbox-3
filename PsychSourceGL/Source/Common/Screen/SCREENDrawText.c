@@ -1502,7 +1502,7 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
                 // larger problems and side effects somewhere else (haha, hope against hope,
                 // this would be the first time a dirty hack wouldn't bite us when dealing with
                 // Apples crappy products).
-                if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Closing stderr to work around broken OSX 10.11 on Octave. This may have unpleasant side-effects!\n");
+                if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Suppressing startup output of Drawtext plugin to deal with broken OSX 10.11 on Octave.\n");
                 PsychPluginSetTextVerbosity(0);
             }
             else
