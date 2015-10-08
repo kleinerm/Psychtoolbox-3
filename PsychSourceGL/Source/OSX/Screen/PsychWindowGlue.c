@@ -319,6 +319,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Show it! Unless a windowLevel of -1 requests hiding the window:
     if (windowLevel != -1) PsychCocoaShowWindow(cocoaWindow);
 
+    // If usercode wants a black startup screen then we add a pause of 0.5 seconds here
+    // before proceeding. This will avoid a white flash at window open time, which might
+    // be something the user wanted to avoid. Why does this help or is needed at all?
+    // Nobody knows, but this is Apples ridiculous toy OS, so why even ask such questions?
+    if (PsychPrefStateGet_VisualDebugLevel() < 4)
+        PsychYieldIntervalSeconds(0.5);
+
     // Level zero means: Place behind all other windows:
     if (windowLevel == 0) PsychCocoaSendBehind(cocoaWindow);
 

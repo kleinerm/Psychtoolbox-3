@@ -95,6 +95,10 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         [cocoaWindow setOpaque:false];
         [cocoaWindow setBackgroundColor:[NSColor colorWithDeviceWhite:0.0 alpha:0.0]];
     }
+    else {
+        [cocoaWindow setOpaque:true];
+        [cocoaWindow setBackgroundColor:[NSColor colorWithDeviceWhite:0.0 alpha:1.0]];
+    }
 
     // Make window "transparent" for mouse events like clicks and drags, if requested:
     // For levels 1000 to 1499, where the window is a partially transparent
