@@ -108,16 +108,11 @@ void InitializePsychDisplayGlue(void)
 
     #ifdef PTBOCTAVE3MEX
         // Restrict the latest idiotic hack to Octave on OSX 10.11+
-        // Currently known side-effect of this hack is a hang
-        // of any script that tries to use DrawText, probably
-        // due to the text rendering plugin trying to output
-        // some startup info through the now-closed stderr stream.
-        // Or for that matter: Probably anything that wants to write to stderr will end badly.
         int major, minor, patchlevel;
         PsychCocoaGetOSXVersion(&major, &minor, &patchlevel);
         if ((major > 10) || (minor >= 11)) {
-            // Another tribute to the most idiotic OS in existence: Close the stderr
-            // stream, so OSX 10.11 El Capitans broken logger can't flood us with
+            // Another tribute to the most idiotic OS in existence: Redirect the stderr
+            // stream, so OSX 10.11.0 El Capitans broken logger can't flood us with
             // pointless warning messages anymore. These unsolicited and unexpected
             // spam messages caused Octave's GUI to lock up completely after the first
             // run of a PTB script. The softer method of installing an asl filter didn't
@@ -125,8 +120,8 @@ void InitializePsychDisplayGlue(void)
             // larger problems and side effects somewhere else (haha, hope against hope,
             // this would be the first time a dirty hack wouldn't bite us when dealing with
             // Apples crappy products).
-            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Redirecting stderr to work around broken OSX 10.11 on Octave. This may have unpleasant side-effects!\n");
-            freopen("/dev/null", "a", stderr);
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Redirecting stderr to work around broken OSX 10.11. This may have unpleasant side-effects.\n");
+            freopen(((getenv("PSYCH_REDIRECT_STDERR_PATH")) ? getenv("PSYCH_REDIRECT_STDERR_PATH") : "/dev/null"), "a", stderr);
         }
     #endif
 
