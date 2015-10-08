@@ -4305,6 +4305,14 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             PsychWaitPixelSyncToken(windowRecord, TRUE);
         }
 
+        if (PSYCH_SYSTEM == PSYCH_OSX) {
+            // Give gfx-system a second to settle: This stupid hack to
+            // counteract a new type of stupid bug introduced in OSX 10.11
+            // El Capitan: Sync failure at each first run after application
+            // startup. Thanks Apple!
+            PsychYieldIntervalSeconds(1);
+        }
+
         // Take samples during consecutive refresh intervals:
         // We measure until either:
         // - A maximum measurment time of maxsecs seconds has elapsed... (This is the emergency switch to prevent infinite loops).
