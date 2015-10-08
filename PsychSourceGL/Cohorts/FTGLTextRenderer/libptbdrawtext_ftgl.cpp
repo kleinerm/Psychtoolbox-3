@@ -30,15 +30,15 @@
  *							for simple Unicode string handling.
  *
  *
- * The OS/X 64-Bit build on 10.7 Lion assumes the default install locations for libfontconfig and libfreetype in /usr/X11R6/include and /usr/X11R6/lib:
+ * The OS/X 64-Bit build on 10.7 Lion assumes the default install locations for libfontconfig and libfreetype in /usr/X11/include and /usr/X11/lib:
  *
- * g++ -g -DHAVE_OPENGL_DIR -I.  -I/usr/X11R6/include/ -I/usr/X11R6/include/freetype2/ -L/usr/X11R6/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl64.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp
+ * g++ -g -DHAVE_OPENGL_DIR -I.  -I/usr/X11/include/ -I/usr/X11/include/freetype2/ -L/usr/X11/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl64.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp
  *
  * Building for Linux:
  * 
  * g++ -g -fPIC -I. -I/usr/include/ -I/usr/include/freetype2/ -L/usr/lib -pie -shared -Wl,-Bsymbolic -Wl,-Bsymbolic-functions -Wl,--version-script=linuxexportlist.txt -o libptbdrawtext_ftgl.so.1 libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lGL -lGLU -lfontconfig -lfreetype
  *
- * libptbdrawtext_ftgl is copyright (c) 2010-2013 by Mario Kleiner.
+ * libptbdrawtext_ftgl is copyright (c) 2010-2015 by Mario Kleiner.
  * It is licensed to you as follows:
  *
  * Permission is hereby granted, free of charge, to any person obtaining
@@ -173,7 +173,7 @@ fontCacheItem* getForContext(int contextId)
                 // Match! We have cached OGLFT font objects for this font on this context. Return them:
                 hitcount++;
 
-                if (_verbosity > 10) fprintf(stderr, "libptbdrawtext_ftgl: Cache hit for contextId %i at slot %i. Hit ratio is %f%%\n", contextId, i, (double) hitcount / (double) nowtime * 100);
+                if (_verbosity > 10) fprintf(stdout, "libptbdrawtext_ftgl: Cache hit for contextId %i at slot %i. Hit ratio is %f%%\n", contextId, i, (double) hitcount / (double) nowtime * 100);
 
                 // Update last access timestamp for LRU:
                 fi->timestamp = nowtime;
@@ -193,16 +193,16 @@ fontCacheItem* getForContext(int contextId)
     if ((freeslot >= 0) && ((lruslotid == -1) || (freecount > MIN_GUARANTEED_CONTEXTS))) {
         // Yes. Fill it with new font object of matching properties:
         fi = &(cache[freeslot]);
-        if (_verbosity > 9) fprintf(stderr, "libptbdrawtext_ftgl: Nothing cached for contextId %i. Using new slot %i. %i free slots remaining.\n", contextId, freeslot, freecount);
+        if (_verbosity > 9) fprintf(stdout, "libptbdrawtext_ftgl: Nothing cached for contextId %i. Using new slot %i. %i free slots remaining.\n", contextId, freeslot, freecount);
     }
     else if (lruslotid >= 0) {
         // No. Overwrite least recently used font object for current contextId:
         fi = &(cache[lruslotid]);
-        if (_verbosity > 9) fprintf(stderr, "libptbdrawtext_ftgl: Nothing cached for contextId %i but cache full. LRU replacing slot %i, age %i. %i free slots remaining.\n", contextId, lruslotid, lruage, freecount);
+        if (_verbosity > 9) fprintf(stdout, "libptbdrawtext_ftgl: Nothing cached for contextId %i but cache full. LRU replacing slot %i, age %i. %i free slots remaining.\n", contextId, lruslotid, lruage, freecount);
     }
     else {
         // Cache full, with no possibility to even LRU replace on this new context (aka window). Game over!
-        if (_verbosity > 0) fprintf(stderr, "libptbdrawtext_ftgl: ERROR when trying to setup new drawtext context %i: Font cache full with no way to free up resources! Text drawing will fail!\n", contextId);
+        if (_verbosity > 0) fprintf(stdout, "libptbdrawtext_ftgl: ERROR when trying to setup new drawtext context %i: Font cache full with no way to free up resources! Text drawing will fail!\n", contextId);
         return(NULL);
     }
 
@@ -249,7 +249,7 @@ int PsychRebuildFont(fontCacheItem* fi)
         if (fi->faceM) delete(fi->faceM);
         fi->faceM = NULL;
 
-		if (_verbosity > 9) fprintf(stderr, "libptbdrawtext_ftgl: Destroying old font face...\n");
+		if (_verbosity > 9) fprintf(stdout, "libptbdrawtext_ftgl: Destroying old font face...\n");
 		
 		// Delete underlying FreeType representation:
         FT_Done_Face(fi->ft_face);
@@ -287,14 +287,14 @@ int PsychRebuildFont(fontCacheItem* fi)
 		FcDefaultSubstitute(target);
 		if (!FcConfigSubstitute(NULL, target, FcMatchPattern)) {
 			// Failed!
-			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig failed to substitute default properties for family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
+			if (_verbosity > 1) fprintf(stdout, "libptbdrawtext_ftgl: FontConfig failed to substitute default properties for family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
 			FcPatternDestroy(target);
 			return(1);
 		}
 		
 		// Have a matching pattern:
 		if (_verbosity > 5) {
-			fprintf(stderr, "libptbdrawtext_ftgl: Trying to find font that closely matches following specification:\n");
+			fprintf(stdout, "libptbdrawtext_ftgl: Trying to find font that closely matches following specification:\n");
 			FcPatternPrint(target);
 		}
 
@@ -303,14 +303,14 @@ int PsychRebuildFont(fontCacheItem* fi)
 		FcPattern* matched = FcFontMatch(NULL, target, &result);
 		if ((matched == NULL) || (result == FcResultNoMatch)) {
 			// Failed!
-			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig failed to find a matching font for family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
+			if (_verbosity > 1) fprintf(stdout, "libptbdrawtext_ftgl: FontConfig failed to find a matching font for family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
 			FcPatternDestroy(target);
 			return(1);
 		}
 
 		// Success: Extract relevant information for Freetype-2, the font filename and faceIndex:
 		if (_verbosity > 5) {
-			fprintf(stderr, "libptbdrawtext_ftgl: Best matching font which will be selected for drawing has following specs:\n");
+			fprintf(stdout, "libptbdrawtext_ftgl: Best matching font which will be selected for drawing has following specs:\n");
 			FcPatternPrint(matched);
 		}
 
@@ -318,7 +318,7 @@ int PsychRebuildFont(fontCacheItem* fi)
 		FcChar8* localfontFileName = NULL;
 		if (FcPatternGetString(matched, FC_FILE, 0, (FcChar8**) &localfontFileName) != FcResultMatch) {
 			// Failed!
-			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig did not find filename for font with family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
+			if (_verbosity > 1) fprintf(stdout, "libptbdrawtext_ftgl: FontConfig did not find filename for font with family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
 			FcPatternDestroy(target);
 			FcPatternDestroy(matched);
 			return(1);
@@ -329,7 +329,7 @@ int PsychRebuildFont(fontCacheItem* fi)
 		// Retrieve faceIndex within fontfile:
 		if (FcPatternGetInteger(matched, FC_INDEX, 0, &faceIndex) != FcResultMatch)  {
 			// Failed!
-			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig did not find faceIndex for font file %s, family %s, size %f pts and style flags %i.\n", fontFileName, _fontName, (float) _fontSize, _fontStyle);
+			if (_verbosity > 1) fprintf(stdout, "libptbdrawtext_ftgl: FontConfig did not find faceIndex for font file %s, family %s, size %f pts and style flags %i.\n", fontFileName, _fontName, (float) _fontSize, _fontStyle);
 			FcPatternDestroy(target);
 			FcPatternDestroy(matched);
 			return(1);
@@ -338,7 +338,7 @@ int PsychRebuildFont(fontCacheItem* fi)
 		// Retrieve font family name for matched font:
 		if (FcPatternGetString(matched, FC_FAMILY, 0, (FcChar8**) &localfontFileName) != FcResultMatch) {
             // Failed!
-            if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig did not return actual font family name for font with requested family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
+            if (_verbosity > 1) fprintf(stdout, "libptbdrawtext_ftgl: FontConfig did not return actual font family name for font with requested family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
             FcPatternDestroy(target);
             FcPatternDestroy(matched);
             return(1);
@@ -363,11 +363,11 @@ int PsychRebuildFont(fontCacheItem* fi)
 	// possible with the higher-level OGLFT constructor...
 	FT_Error error = FT_New_Face( OGLFT::Library::instance(), fontFileName, faceIndex, &fi->ft_face );
 	if (error) {
-		if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: Freetype did not load face with index %i from font file %s.\n", faceIndex, fontFileName);
+		if (_verbosity > 1) fprintf(stdout, "libptbdrawtext_ftgl: Freetype did not load face with index %i from font file %s.\n", faceIndex, fontFileName);
 		return(1);
 	}
 	else {
-        if (_verbosity > 5) fprintf(stderr, "libptbdrawtext_ftgl: Freetype loaded face %p with index %i from font file %s.\n", fi->ft_face, faceIndex, fontFileName);
+        if (_verbosity > 5) fprintf(stdout, "libptbdrawtext_ftgl: Freetype loaded face %p with index %i from font file %s.\n", fi->ft_face, faceIndex, fontFileName);
 	}
 
 	// Create FTGL face from Freetype face with given size and a 72 DPI resolution, aka _fontSize == pixelsize:
@@ -375,7 +375,7 @@ int PsychRebuildFont(fontCacheItem* fi)
         fi->faceT = new OGLFT::TranslucentTexture(fi->ft_face, _fontSize, 72);
 		// Test the created face to make sure it will work correctly:
         if (!fi->faceT->isValid()) {
-			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: Freetype did not recognize %s as a font file.\n", _fontName);
+			if (_verbosity > 1) fprintf(stdout, "libptbdrawtext_ftgl: Freetype did not recognize %s as a font file.\n", _fontName);
             delete(fi->faceT);
             fi->faceT = NULL;
 			return(1);
@@ -385,7 +385,7 @@ int PsychRebuildFont(fontCacheItem* fi)
         fi->faceM = new OGLFT::MonochromeTexture(fi->ft_face, _fontSize, 72);
 		// Test the created face to make sure it will work correctly:
         if (!fi->faceM->isValid()) {
-			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: Freetype did not recognize %s as a font file.\n", _fontName);
+			if (_verbosity > 1) fprintf(stdout, "libptbdrawtext_ftgl: Freetype did not recognize %s as a font file.\n", _fontName);
             delete(fi->faceM);
             fi->faceM = NULL;
 			return(1);
@@ -580,7 +580,7 @@ int PsychInitText(void)
 
 	// Try to initialize libfontconfig - our fontMapper library for font matching and selection:
 	if (!FcInit()) {
-		if (_verbosity > 0) fprintf(stderr, "libptbdrawtext_ftgl: FontMapper initialization failed!\n");
+		if (_verbosity > 0) fprintf(stdout, "libptbdrawtext_ftgl: FontMapper initialization failed!\n");
 		return(1);
 	}
 
@@ -589,13 +589,13 @@ int PsychInitText(void)
     for (int i = 0; i < MAX_CACHE_SLOTS; i++) cache[i].contextId = -1;
 
 	if (_verbosity > 2)	{
-		fprintf(stderr, "libptbdrawtext_ftgl: External 'DrawText' text rendering plugin initialized.\n");
-        fprintf(stderr, "libptbdrawtext_ftgl: Maximum number of cacheable fonts is %i, minimum number of supported concurrent windows is %i.\n", MAX_CACHE_SLOTS, MIN_GUARANTEED_CONTEXTS);
-        fprintf(stderr, "libptbdrawtext_ftgl: This plugin uses multiple excellent free software libraries to do its work:\n");
-		fprintf(stderr, "libptbdrawtext_ftgl: OGLFT (http://oglft.sourceforge.net/) the OpenGL-FreeType library.\n");
-		fprintf(stderr, "libptbdrawtext_ftgl: The FreeType-2 (http://freetype.sourceforge.net/) library.\n");
-		fprintf(stderr, "libptbdrawtext_ftgl: The FontConfig (http://www.fontconfig.org) library.\n");
-		fprintf(stderr, "libptbdrawtext_ftgl: Thanks!\n\n");
+		fprintf(stdout, "libptbdrawtext_ftgl: External 'DrawText' text rendering plugin initialized.\n");
+        fprintf(stdout, "libptbdrawtext_ftgl: Maximum number of cacheable fonts is %i, minimum number of supported concurrent windows is %i.\n", MAX_CACHE_SLOTS, MIN_GUARANTEED_CONTEXTS);
+        fprintf(stdout, "libptbdrawtext_ftgl: This plugin uses multiple excellent free software libraries to do its work:\n");
+		fprintf(stdout, "libptbdrawtext_ftgl: OGLFT (http://oglft.sourceforge.net/) the OpenGL-FreeType library.\n");
+		fprintf(stdout, "libptbdrawtext_ftgl: The FreeType-2 (http://freetype.sourceforge.net/) library.\n");
+		fprintf(stdout, "libptbdrawtext_ftgl: The FontConfig (http://www.fontconfig.org) library.\n");
+		fprintf(stdout, "libptbdrawtext_ftgl: Thanks!\n\n");
 	}
 
 	return(0);
@@ -613,7 +613,7 @@ int PsychShutdownText(int context)
                 fi->contextId = -1;
 
                 if (fi->faceT || fi->faceM) {
-                    if (_verbosity > 5) fprintf(stderr, "libptbdrawtext_ftgl: In shutdown for context %i, slot %i:  faceT = %p faceM = %p\n", context, i, fi->faceT, fi->faceM);
+                    if (_verbosity > 5) fprintf(stdout, "libptbdrawtext_ftgl: In shutdown for context %i, slot %i:  faceT = %p faceM = %p\n", context, i, fi->faceT, fi->faceM);
 
                     // Delete OGLFT face objects:
                     if (fi->faceT) delete(fi->faceT);
@@ -633,7 +633,7 @@ int PsychShutdownText(int context)
     }
 
     // Complete shutdown for the plugin:
-    if (_verbosity > 5) fprintf(stderr, "libptbdrawtext_ftgl: Shutting down. Overall cache hit ratio was %f%%\n", (double) hitcount / (double) nowtime * 100);
+    if (_verbosity > 5) fprintf(stdout, "libptbdrawtext_ftgl: Shutting down. Overall cache hit ratio was %f%%\n", (double) hitcount / (double) nowtime * 100);
     _firstCall = false;
 
 	// Shutdown fontmapper library:
