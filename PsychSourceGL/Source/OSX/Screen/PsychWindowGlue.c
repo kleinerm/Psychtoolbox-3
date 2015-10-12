@@ -449,8 +449,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
 
     // If stereo display output is requested with OpenGL native stereo, request a stereo-enabled rendering context.
+    // This is deprecated since 10.11 El Capitan, and in fact does no longer work - OpenGL quad buffered stereo is
+    // dead on 10.11 on all tested GPU's from Intel, NVidia, AMD.
     if(stereomode==kPsychOpenGLStereo) {
-        attribs[attribcount++]=kCGLPFAStereo;
+        attribs[attribcount++] = kCGLPFAStereo;
     }
 
     // Multisampled Anti-Aliasing requested?
@@ -471,49 +473,54 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     windowRecord->targetSpecific.glusercontextObject = NULL;
     windowRecord->targetSpecific.glswapcontextObject = NULL;
 
-    // First try in choosing a matching format for multisample mode:
-    if (windowRecord->multiSample > 0) {
-        error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
-        if (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
-            // Failed. Probably due to too demanding multisample requirements: Lets lower them...
-            for (i=0; i<attribcount && attribs[i]!=kCGLPFASamples; i++);
-            while (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
-                attribs[i+1]--;
-                windowRecord->multiSample--;
-                error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
-            }
-            if (windowRecord->multiSample == 0 && windowRecord->targetSpecific.pixelFormatObject==NULL) {
-                for (i=0; i<attribcount && attribs[i]!=kCGLPFASampleBuffers; i++);
-                attribs[i+1]=0;
-            }
-        }
-    }
+    // Try to find matching pixelformat:
+    error = CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
 
-    // Choose a matching display configuration and create the window and rendering context:
-    // If one of these two fails, then the installed gfx hardware is not good enough to satisfy our
-    // requirements, or we have massive ressource shortage in the system. -> Screwed up anyway, so we abort.
-    if (windowRecord->targetSpecific.pixelFormatObject==NULL) error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
-    if (error) {
-        printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]: The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
-        return(FALSE);
-    }
-
-    // No valid pixelformat found? And stereo format requested?
-    if ((windowRecord->targetSpecific.pixelFormatObject == NULL) && (stereomode == kPsychOpenGLStereo)) {
+    // No valid pixelformat found and stereo format requested?
+    if ((error || (windowRecord->targetSpecific.pixelFormatObject == NULL)) && (stereomode == kPsychOpenGLStereo)) {
         // Yep: Stereo may be the culprit. Remove the stereo attribute by overwriting it with something
         // that is essentially a no-op, specifically kCGLPFAAccelerated which is supported by all real
         // renderers that might end up in this code-path:
-        for (i=0; i<attribcount && attribs[i]!=kCGLPFAStereo; i++);
+        for (i = 0; i < attribcount && attribs[i] != kCGLPFAStereo; i++);
         attribs[i] = kCGLPFAAccelerated;
-
+        
         // Retry query of pixelformat without request for native OpenGL quad-buffered stereo. If we succeed, we're
         // sort of ok, as the higher-level code will fallback to stereomode kPsychFrameSequentialStereo - our own
         // homegrown frame-sequential stereo support, which may be good enough.
         error = CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
         if (error || (windowRecord->targetSpecific.pixelFormatObject == NULL)) {
-            printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
-            return(FALSE);
+            windowRecord->targetSpecific.pixelFormatObject = NULL;
+            printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]: Disabling OpenGL native quad-buffered stereo did not help. Moving on...\n\n", CGLErrorString(error));
         }
+    }
+
+    // Now try if choosing a matching format for a lower multisample mode helps to get unstuck:
+    if (windowRecord->multiSample > 0) {
+        if (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
+            // Failed. Probably due to too demanding multisample requirements: Lets lower them...
+            for (i = 0; i < attribcount && attribs[i] != kCGLPFASamples; i++);
+            while (windowRecord->targetSpecific.pixelFormatObject == NULL && windowRecord->multiSample > 0) {
+                attribs[i+1]--;
+                windowRecord->multiSample--;
+                error = CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+            }
+
+            if (windowRecord->multiSample == 0 && windowRecord->targetSpecific.pixelFormatObject == NULL) {
+                // Ok, multisampling is now at zero and we still don't succeed. Disable multisampling completely:
+                for (i=0; i<attribcount && attribs[i]!=kCGLPFASampleBuffers; i++);
+                attribs[i+1] = 0;
+                printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]: Disabling multisample anti-aliasing did not help. Moving on...\n\n", CGLErrorString(error));
+            }
+        }
+    }
+
+    // Try choosing a matching display configuration again and create the window and rendering context:
+    // If one of these two fails, then the installed gfx hardware is not good enough to satisfy our
+    // requirements, or we have massive ressource shortage in the system. -> Screwed up anyway, so we abort.
+    if (windowRecord->targetSpecific.pixelFormatObject == NULL) error = CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+    if (error) {
+        printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]: Reason unknown. There could be insufficient video memory or a driver malfunction. Giving up.\n\n", CGLErrorString(error));
+        return(FALSE);
     }
 
     // Create an OpenGL rendering context with the selected pixelformat: Share its ressources with 'slaveWindow's context, if slaveWindow is non-NULL.
