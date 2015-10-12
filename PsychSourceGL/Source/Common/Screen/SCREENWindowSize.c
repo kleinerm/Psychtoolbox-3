@@ -36,7 +36,6 @@ PsychError SCREENWindowSize(void)
 {
 	PsychWindowRecordType *windowRecord;
 	int screenNumber;
-	PsychRectType rect;
 	double	rectWidth, rectHeight;
     long fbWidth, fbHeight;
     int realFBSize = 0;
