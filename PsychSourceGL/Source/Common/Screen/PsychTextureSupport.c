@@ -146,7 +146,6 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	GLint                           glinternalFormat = 0, gl_realinternalformat = 0;
 	static GLint                    gl_lastrequestedinternalFormat = 0;
 	GLint							gl_rbits=0, gl_gbits=0, gl_bbits=0, gl_abits=0, gl_lbits=0;
-	long							screenWidth, screenHeight;
 	int								twidth, theight, pass, texcount;
 	void*							texmemptr;
 	psych_bool						recycle = FALSE, avoidCPUGPUSync;
