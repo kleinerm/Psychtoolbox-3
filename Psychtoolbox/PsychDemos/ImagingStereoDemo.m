@@ -206,7 +206,7 @@ end
 % default rendering parameters:
 if stereoMode == 103
     PsychVRHMD('AutoSetupHMD', 'Stereoscopic');
-    stereoMode = -1;
+    stereoMode = 0;
 end
 
 if stereoMode == 10
@@ -319,9 +319,16 @@ if writeMovie
         % encoder at default settings will create good looking video, but
         % we do it anyway, just to show you how.
         %
+        % We also select Profile 2 for H264 encoding. Profile 2 is "Main Profile",
+        % and that is about the maximum that deficient playback software like Apples
+        % Quicktime player can handle. Without that setting, encoding would happen in
+        % "High Profile" and stupid Quicktime would be unable to play movies. Other more
+        % high quality open source players like VLC would of course handle such movies
+        % without any problems.
+        %
         % For more optional settings and a description of the syntax of the
         % optional 'movieOptions' string, read "help VideoRecording".
-        movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 30, ':CodecSettings=AddAudioTrack=2@48000 Videoquality=0.5');
+        movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 30, ':CodecSettings=AddAudioTrack=2@48000 Videoquality=0.5 Profile=2');
         
         % Create a sequence of 10 tones, each of 1 second duration, each 100 Hz higher
         % than its predecessor. Each of the two stereo channels gets a slightly different sound:
@@ -333,7 +340,7 @@ if writeMovie
         % Only video, no sound:
         % We raise video quality to 50% for decent looking movies. See
         % comments in if-branch for more details about codec settings.
-        movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 30, ':CodecSettings=Videoquality=0.5');
+        movie = Screen('CreateMovie', windowPtr, 'MyTestMovie.mov', 512, 512, 30, ':CodecSettings=Videoquality=0.5 Profile=2');
     end
     
     % Other examples of valid and more low-level codec settings to allow

@@ -234,7 +234,7 @@ PsychError SCREENEndOpenGL(void)
         printf("PTB-ERROR: error was: %s\n\n", (const char*) gluErrorString(error));
 
 		// Reset further error state for this context:
-		while (glGetError()!=GL_NO_ERROR);
+        while (glGetError()!=GL_NO_ERROR) {};
 		
 		// Abort script:
         PsychErrorExitMsg(PsychError_user, "Failure in external OpenGL code.");
@@ -303,7 +303,7 @@ PsychError SCREENEndOpenGL(void)
         }
 
         // Reset error state for our internal context:
-        if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) while (glGetError()!=GL_NO_ERROR);
+        if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) while (glGetError()!=GL_NO_ERROR) {};
     }
     
 	// Current intermediate state: Preswitch state restored, ie. the OpenGL context and
@@ -320,7 +320,7 @@ PsychError SCREENEndOpenGL(void)
         PsychSetDrawingTarget(windowRecord); 
 
         // Reset error state for our internal context:
-        if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) while (glGetError()!=GL_NO_ERROR);
+        if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) while (glGetError()!=GL_NO_ERROR) {};
     }
     
     // Reset preswitch record and state:

@@ -152,6 +152,33 @@
 %                  may need to lower video quality, so your poor machine can
 %                  cope.
 %
+% Profile=x - A value selecting the video encoding profile, where this is applicable.
+%             Currently only the H264 encoder supports this setting and provides the
+%             following profiles to select from:
+%
+%             0 = Baseline constrained profile.
+%             1 = Baseline profile.
+%             2 = Main profile.
+%             3 = High profile.
+%             4 = High profile with 10 bpc support.
+%             5 = High profile with YUV 4:2:2 sampling.
+%             6 = High profile with YUV 4:4:4 full resolution sampling.
+%             7 = High profile with 10 bpc support. Intra frame only.
+%             8 = High profile with YUV 4:2:2 sampling. Intra frame only.
+%             9 = High profile with YUV 4:4:4 full resolution sampling. Intra frame only.
+%
+%             Note that not all values may be supported on your system, esp. the 10 bpc
+%             profiles may not be supported by current PTB + GStreamer versions.
+%
+%             Note that deficient video software like Apples Quicktime player may
+%             only be able to play back movie files encoded in Baseline and maybe Main
+%             profile, ie., for profile values 0, 1, and maybe 2.
+%
+%             If Profile isn't specified, the default will be High profile, ie., it will
+%             play back at high quality on good playback software like Psychtoolbox movie
+%             playback engine, or with VLC and many other open-source playback applications,
+%             but it won't play back with Apples Quicktime player.
+%
 % Audio encoding settings:
 % ------------------------
 %

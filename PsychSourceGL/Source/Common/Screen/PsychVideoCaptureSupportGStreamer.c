@@ -1889,18 +1889,6 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
                 strcat(videocodec, "key-int-max=30 ");
             }
 
-            // Encoding profile specified?
-            /* Not (any longer, or ever??) availabe for x264enc:
-            if (profile >= 0) {
-                // Assign profile:
-                sprintf(codecoption, "profile=%i ", profile);
-                strcat(videocodec, codecoption);
-            } else {
-                // Default to "High" profile: 640 x 480 @ 30 fps possible:
-                strcat(videocodec, "profile=3 ");
-            }
-            */
-
             // Quality vs. Speed tradeoff specified?
             if (videoQuality >= 0) {
                 // Yes: Map quality vs. speed scalar to 0-10 number for speed preset:
@@ -1925,6 +1913,57 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 
             // Create videocodec from options string:
             capdev->videoenc = CreateGStreamerElementFromString(videocodec, "VideoCodec=", videocodec);
+
+            // This must go last, after CreateGStreamerElementFromString()! Encoding profile specified?
+            if (profile >= 0) {
+                // Assign profile:
+                switch (profile) {
+                    case 0:
+                        sprintf(codecoption, " ! video/x-h264, profile=constrained-baseline");
+                        break;
+
+                    case 1:
+                        sprintf(codecoption, " ! video/x-h264, profile=baseline");
+                        break;
+
+                    case 2:
+                        sprintf(codecoption, " ! video/x-h264, profile=main");
+                        break;
+
+                    case 3:
+                        sprintf(codecoption, " ! video/x-h264, profile=high");
+                        break;
+
+                    case 4:
+                        sprintf(codecoption, " ! video/x-h264, profile=high-10");
+                        break;
+
+                    case 5:
+                        sprintf(codecoption, " ! video/x-h264, profile=high-4:2:2");
+                        break;
+
+                    case 6:
+                        sprintf(codecoption, " ! video/x-h264, profile=high-4:4:4");
+                        break;
+
+                    case 7:
+                        sprintf(codecoption, " ! video/x-h264, profile=high-10-intra");
+                        break;
+
+                    case 8:
+                        sprintf(codecoption, " ! video/x-h264, profile=high-4:2:2-intra");
+                        break;
+
+                    case 9:
+                        sprintf(codecoption, " ! video/x-h264, profile=high-4:4:4-intra");
+                        break;
+
+                    default:
+                        printf("PTB-WARNING: Invalid 'Profile=' option value for H264 encoding! Valid values must be between 0 and 9. Ignoring option and using default.\n");
+                        codecoption[0] = 0;
+                }
+                strcat(videocodec, codecoption);
+            }
 
             // If specific codec couldn't be created but encoding profiles are in use then we "fake" a
             // 0x1 codec to suppress warning messages and error/fallback handling. The encoding profile

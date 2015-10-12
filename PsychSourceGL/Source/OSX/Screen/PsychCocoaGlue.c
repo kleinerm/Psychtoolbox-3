@@ -95,6 +95,10 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         [cocoaWindow setOpaque:false];
         [cocoaWindow setBackgroundColor:[NSColor colorWithDeviceWhite:0.0 alpha:0.0]];
     }
+    else {
+        [cocoaWindow setOpaque:true];
+        [cocoaWindow setBackgroundColor:[NSColor colorWithDeviceWhite:0.0 alpha:1.0]];
+    }
 
     // Make window "transparent" for mouse events like clicks and drags, if requested:
     // For levels 1000 to 1499, where the window is a partially transparent
@@ -325,6 +329,13 @@ void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
 
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // Manually detach NSOpenGLContext from drawable. This seems to help to reduce
+    // the frequency of those joyful "frozen screen hangs until mouse click" events
+    // that OSX 10.9 brought to our happy little world:
+    if (windowRecord->targetSpecific.nsmasterContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsmasterContext) clearDrawable];
+    if (windowRecord->targetSpecific.nsswapContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsswapContext) clearDrawable];
+    if (windowRecord->targetSpecific.nsuserContext) [((NSOpenGLContext*) windowRecord->targetSpecific.nsuserContext) clearDrawable];
 
     // Release NSOpenGLContext's - this will also release the wrapped
     // CGLContext's and finally really destroy them:
