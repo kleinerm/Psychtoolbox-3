@@ -1,5 +1,5 @@
-function [Y,index] = Shuffle(X, bindDim)
-% [Y,index] = Shuffle(X)
+function [Y,index] = Shuffle(X [, bindDim])
+% [Y,index] = Shuffle(X [, bindDim])
 %
 % Randomly sorts X.
 % If X is a vector, sorts all of X, so Y = X(index).
