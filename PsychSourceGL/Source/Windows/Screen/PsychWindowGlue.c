@@ -310,37 +310,40 @@ HWND hostwinHandle = 0;
  */
 BOOL CALLBACK PsychHostWindowEnumFunc(HWND hwnd, LPARAM passId)
 {
-	// Get text in title bar of Window hwnd as string for pattern matching:
+    // Get text in title bar of Window hwnd as string for pattern matching:
     GetWindowText(hwnd, hostwinName, sizeof(hostwinName) - 1);
-	if (PsychPrefStateGet_Verbosity() > 15) printf("PTB-DEBUG: Window enumeration: Pass %i, HWND = %p Current: %s\n", passId, hwnd, hostwinName);
+    if (PsychPrefStateGet_Verbosity() > 15) printf("PTB-DEBUG: Window enumeration: Pass %i, HWND = %p Current: %s\n", passId, hwnd, hostwinName);
 
-	// Which runtime?
-	#ifndef PTBOCTAVE3MEX
-		// Running on Matlab: Use Matlab name matching:
-		// Pass 1: Scan for Matlab in GUI mode:
-		if ((passId == 1) && (strstr(hostwinName, "MATLAB  ") || strstr(hostwinName, "MATLAB R20"))) {
-			// Found something that looks ok:
-			hostwinHandle = hwnd;
-			return(FALSE);
-		}
-		
-		// Pass 2: Scan for Matlab in Console mode:
-		if ((passId == 2) && strstr(hostwinName, "MATLAB Command Window")) {
-			// Found something that looks ok:
-			hostwinHandle = hwnd;
-			return(FALSE);
-		}
-	#else
-		// Running on Octave: Use Octave name matching:
-		// Pass 1: Scan for Octave in Console mode or for QtOctave in GUI mode:
-		if ((passId == 1) && strstr(hostwinName, "Octave")) {
-			// Found something that looks ok:
-			hostwinHandle = hwnd;
-			return(FALSE);
-		}
-	#endif
-	
-	// Nothing yet? Continue enumeration:
+    // Which runtime?
+    #ifndef PTBOCTAVE3MEX
+        // Running on Matlab: Use Matlab name matching:
+        // Pass 1: Scan for Matlab in GUI mode:
+        if ((passId == 1) && (strstr(hostwinName, "MATLAB  ") || strstr(hostwinName, "MATLAB R20"))) {
+            // Found something that looks ok:
+            hostwinHandle = hwnd;
+            return(FALSE);
+        }
+        
+        // Pass 2: Scan for Matlab in Console mode:
+        if ((passId == 2) && strstr(hostwinName, "MATLAB Command Window")) {
+            // Found something that looks ok:
+            hostwinHandle = hwnd;
+            return(FALSE);
+        }
+    #else
+        // Running on Octave: Use Octave name matching:
+        // Pass 1: Scan for Octave in Console mode or for QtOctave in GUI mode:
+        if ((passId == 1) && strstr(hostwinName, "Octave")) {
+            // Found something that looks ok:
+            // DISABLE this for Octave-4. Does cause hangs of Octave 4's QT GUI.
+            // Disabling it solves the problem and does not seem to have any
+            // known downsides, as testing showed.
+            //hostwinHandle = hwnd;
+            //return(FALSE);
+        }
+    #endif
+
+    // Nothing yet? Continue enumeration:
     return(TRUE);
 }
 
