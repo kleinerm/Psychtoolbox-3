@@ -67,6 +67,7 @@ function InitializePsychSound(reallyneedlowlatency)
 %             default, as the PTB V3.0.9 MIT style license allows bundling
 %             of an ASIO enabled proprietary dll with Psychtoolbox. (MK)
 % 09/11/2012  Add support for 64-Bit portaudio_x64.dll for Windows. (MK)
+% 10/16/2015  Disable use of our own portaudio_x64 dll On Windows + Octave. (MK)
 
 if nargin < 1
     reallyneedlowlatency = [];
@@ -77,7 +78,10 @@ if isempty(reallyneedlowlatency)
 end
 
 % The usual tricks for MS-Windows:
-if IsWin
+% But currently skip in Octave-4, as we use Octave-4's included
+% PortAudio DLL, which doesn't need this linking trick but also
+% does not support ASIO or DIM.
+if IsWin && ~IsOctave
     % Special ASIO enabled low-latency driver installed?
     if exist([PsychtoolboxRoot 'portaudio_x86.dll'], 'file') || exist([PsychtoolboxRoot 'portaudio_x64.dll'], 'file')
         % Yes! Use it:
