@@ -60,6 +60,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 05/18/2014 No support for 32-Bit Matlab on Linux and Windows anymore for 3.0.12. (MK)
 % 09/23/2014 No support for OSX 10.7 and earlier anymore. (MK)
 % 10/05/2014 Add some request for donations at the end. (MK)
+% 10/17/2015 Also add call to PsychStartup() to Octave startup for MS-Windows. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -176,15 +177,28 @@ if IsWin
     % Is it already implanted? Then we ain't nothing to do:
     if ~IsPsychStartupImplantedInStartup
         % Nope. Does a proper file already exist?
-        whereisit = which('startup.m');
+        if IsOctave
+            whereisit = [get_home_directory filesep '.octaverc'];
+            if exist(whereisit, 'file') == 0
+                whereisit = '';
+            end
+        else
+          whereisit = which('startup.m');
+        end
+
         if isempty(whereisit)
             % No: Create our own one.
-            whereisit = [PsychtoolboxRoot 'PsychInitialize' filesep 'startup.m'];
-            fprintf('Creating a startup.m file for Psychtoolbox at %s\n', whereisit);
+            if IsOctave
+                whereisit = [get_home_directory filesep '.octaverc'];
+                fprintf('Creating a .octaverc file for Psychtoolbox at %s\n', whereisit);
+            else
+                whereisit = [PsychtoolboxRoot 'PsychInitialize' filesep 'startup.m'];
+                fprintf('Creating a startup.m file for Psychtoolbox at %s\n', whereisit);
+            end
         else
-            fprintf('Adding PsychStartup() call to Matlab startup.m file for Psychtoolbox at %s\n', whereisit);            
+            fprintf('Adding PsychStartup() call to startup file for Psychtoolbox at %s\n', whereisit);
         end
-        
+
         % whereisit points to the location of the existing or to be created
         % file. Open (or create) it in append mode:
         try
@@ -195,7 +209,7 @@ if IsWin
             fprintf(fd, '\n');
             fclose(fd);
         catch
-            fprintf('WARNING: Failed to update or create startup.m file to add a call to PsychStartup()! Trouble ahead.\n');
+            fprintf('WARNING: Failed to update or create startup file to add a call to PsychStartup()! Trouble ahead.\n');
         end
     end
     

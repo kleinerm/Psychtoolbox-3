@@ -9,7 +9,8 @@ function PsychStartup
 % work. It performs GStreamer setup, or outputs a warning if the runtime is
 % missing.
 %
-% This function is normally called from the startup.m Matlab startup file.
+% This function is normally called from the startup.m Matlab startup file,
+% or from the .octaverc startup file on GNU/Octave.
 %
 
 % History:
@@ -17,6 +18,7 @@ function PsychStartup
 % 14.01.2013  mk  Make path detection more robust.
 % 12.09.2013  mk  Also apply GStreamer-SDK setup to 32-Bit Matlab on Windows.
 % 26.08.2014  mk  Switch the 64-Bit setup to the GStreamer-1.4.0+ runtime.
+% 17.10.2015  mk  Add warning about complete failure of Screen() for Octave on Windows.
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
@@ -114,7 +116,11 @@ try
         if isempty(sdkroot)
             fprintf('\nPsychStartup: Path to GStreamer runtime is undefined! This probably means that\n');
             fprintf('PsychStartup: the 64-Bit GStreamer 1.x runtime from www.gstreamer.net is not installed.\n');
-            fprintf('PsychStartup: The Psychtoolbox Screen() multimedia functions will fail to work until you fix\n');
+            if IsOctave
+                fprintf('PsychStartup: The Psychtoolbox Screen() function will not work at all until you fix\n');
+            else
+                fprintf('PsychStartup: The Psychtoolbox Screen() multimedia functions will fail to work until you fix\n');
+            end
             fprintf('PsychStartup: this! Read ''help GStreamer'' for instructions.\n\n');
         else
             sdkroot = [sdkroot 'bin'];
