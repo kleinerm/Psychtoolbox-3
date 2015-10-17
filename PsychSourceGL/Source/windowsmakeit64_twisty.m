@@ -4,7 +4,7 @@ function windowsmakeit64_twisty(what, onoctave)
 % against a VirtualBox VM running MS-Windows 7 64-Bit.
 %
 
-if ~(IsWin(1) || (IsWin && IsOctave))
+if ~IsWin(1)
     error('%s must be run on MS-Windows within 32-Bit Octave or 64-Bit Matlab!', mfilename);
 end
 
@@ -134,8 +134,7 @@ else
     % Octave-4 build:
     if what == 0
         % Default: Build Screen.mex
-        % TODO FIXME - x86 GStreamer SDK needed
-        mexoctave -g -v --output ..\Projects\Windows\build\Screen.mex -DPTBMODULE_Screen -DPTBOCTAVE3MEX -DGLEW_STATIC -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib
+        mexoctave -g -v --output ..\Projects\Windows\build\Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBOCTAVE3MEX -DGLEW_STATIC -LC:\gstreamer\1.0\x86_64\lib -IC:\gstreamer\1.0\x86_64\include -IC:\gstreamer\1.0\x86_64\include\gstreamer-1.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\x86_64\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0
         movefile(['..\Projects\Windows\build\Screen.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
     end
 
@@ -177,7 +176,6 @@ else
 
     if what == 6
         % Build moglcore.mex
-        % TODO FIXME
         curdir = pwd;
         cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
         try
@@ -192,7 +190,7 @@ else
 
     if what == 7
         % Build Eyelink.mex
-        % TODO FIXME 32-Bit EyeLink SDK needed.
+        % TODO FIXME EyeLink SDK needed.
         mexoctave -g -v --output ..\Projects\Windows\build\Eyelink.mex -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -LD:\SRResearch\EyeLink\libs -ID:\SRResearch\EyeLink\Includes\eyelink -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib eyelink_core.lib eyelink_w32_comp.lib eyelink_exptkit20.lib
         movefile(['..\Projects\Windows\build\Eyelink.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
     end
@@ -207,6 +205,10 @@ else
     if what == 9
         % Build PsychHID.mex:
         % TODO FIXME libUSB-1.0 compatible with mingw32 / gcc needed.
+        % Building works and PsychHID works as well, at least KbCheck,
+        % KbQueues, HID device enumeration and handling. What does not work
+        % is USB low level access, as that needs libusb and that ends in a
+        % crash until we provide a mingw32 compatible libusb.
         mexoctave -g -v --output ..\Projects\Windows\build\PsychHID.mex -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -L..\Cohorts\libusb1-win32\MS64\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.cpp Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c dinput8.lib kernel32.lib user32.lib winmm.lib libusb-1.0.lib setupapi.lib
         movefile(['..\Projects\Windows\build\PsychHID.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
     end
