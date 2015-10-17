@@ -213,6 +213,20 @@ else
         movefile(['..\Projects\Windows\build\PsychHID.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
     end
 
+    if what == 11
+        % Build pnet
+        curdir = pwd;
+        cd('../../Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/')
+        try
+            mexoctave -g -v --output pnet.mex -DWIN32 pnet.c ws2_32.lib winmm.lib
+            movefile(['pnet.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+        catch
+        end
+        % Remove stale object files:
+        delete('*.o');
+        cd(curdir);
+    end
+
     if what == 12
         % Build PsychOculusVRCore:
         % Needs the Oculus VR SDK v 0.5.01 installed in side-by-side to
