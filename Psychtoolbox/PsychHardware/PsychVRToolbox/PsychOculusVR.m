@@ -589,9 +589,13 @@ if strcmpi(cmd, 'Supported')
   % Check if the Oculus VR runtime is supported and active on this
   % installation, so it can be used to open connections to real HMDs,
   % or at least to emulate a HMD for simple debugging purposes:
-  if exist('PsychOculusVRCore', 'file') && PsychOculusVRCore('GetCount') >= 0
-    varargout{1} = 1;
-  else
+  try
+    if exist('PsychOculusVRCore', 'file') && PsychOculusVRCore('GetCount') >= 0
+      varargout{1} = 1;
+    else
+      varargout{1} = 0;
+    end
+  catch
     varargout{1} = 0;
   end
   return;
