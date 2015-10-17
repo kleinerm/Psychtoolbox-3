@@ -178,8 +178,16 @@ else
     if what == 6
         % Build moglcore.mex
         % TODO FIXME
-        mexoctave -g -v --output ..\Projects\Windows\build\moglcore.mex -DWINR2007a -DWINDOWS -DGLEW_STATIC -DPTBOCTAVE3MEX -IU:\projects\OpenGLPsychtoolbox\Psychtoolbox-3\Psychtoolbox\PsychOpenGL\MOGL\source -DWINDOWS -DGLEW_STATIC windowhacks.c gl_auto.c gl_manual.c mogl_rebinder.c moglcore.c glew.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib glut32.lib
-        movefile(['..\Projects\Windows\build\moglcore.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+        curdir = pwd;
+        cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
+        try
+            mexoctave -g -v --output moglcore.mex -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib\x64 -I. windowhacks.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c gl_auto.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
+            movefile(['moglcore.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+        catch
+        end
+        % Remove stale object files:
+        delete('*.o');
+        cd(curdir);
     end
 
     if what == 7
@@ -211,6 +219,9 @@ else
         mexoctave -g -v --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib ..\..\..\OculusSDKWin\LibOVR\Lib\Windows\x64\Release\VS2010\LibOVR.lib
         movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
     end
+
+    % Remove stale object files:
+    delete('*.o');
 end
 
 catch %#ok<*CTCH>
