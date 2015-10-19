@@ -19,6 +19,7 @@
 % MeasSpd             - All: Use color meter to measure a spectral power 
 %                            distribution.
 % MeasXYZ             - All: Use color meter to measure XYZ coordinates.
+% nvstusb-extractfw   - Linux: Extract firmware for NVidia NVision kit. See "help NVision3D"
 % PR650Toolbox        - All: Talk to PR650 Colorimeter.
 % PR655Toolbox        - All: Talk to PR655 Colorimeter.
 % PR670Toolbox        - All: Talk to PR670 Colorimeter.

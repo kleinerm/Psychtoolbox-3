@@ -54,6 +54,33 @@
 #include <errno.h>
 #endif
 
+// Support for nvstusb library requested to drive Nvidia NVision stereo shutter goggles?
+#ifdef PTB_USE_NVSTUSB
+
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+// Include for dynamic loading of external nvstusb library plugin:
+#include <dlfcn.h>
+#endif
+
+#include "nvstusb.h"
+typedef struct nvstusb_context* (*NVSTUSB_INIT_PROC)(char const * fw);
+typedef void (*NVSTUSB_DEINIT_PROC)(struct nvstusb_context *ctx);
+typedef void (*NVSTUSB_SET_RATE_PROC)(struct nvstusb_context *ctx, float rate);
+typedef void (*NVSTUSB_SWAP_PROC)(struct nvstusb_context *ctx, enum nvstusb_eye eye, void (*swapfunc)());
+typedef void (*NVSTUSB_GET_KEYS_PROC)(struct nvstusb_context *ctx, struct nvstusb_keys *keys);
+typedef void (*NVSTUSB_INVERT_EYES_PROC)(struct nvstusb_context *ctx);
+
+NVSTUSB_INIT_PROC Nvstusb_init_proc = NULL;
+NVSTUSB_DEINIT_PROC Nvstusb_deinit_proc = NULL;
+NVSTUSB_SET_RATE_PROC Nvstusb_set_rate_proc = NULL;
+NVSTUSB_SWAP_PROC Nvstusb_swap_proc = NULL;
+NVSTUSB_GET_KEYS_PROC Nvstusb_get_keys_proc = NULL;
+NVSTUSB_INVERT_EYES_PROC Nvstusb_invert_eyes_proc = NULL;
+
+static void* nvstusb_plugin = NULL;
+static struct nvstusb_context* nvstusb_goggles = NULL;
+#endif
+
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 #include "ptbstartlogo.h"
 #else
@@ -1846,7 +1873,12 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
         PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPostGLShutdown, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
 
         // Reduce count of onscreen windows with our own threaded framesequential stereo mode active:
-        if (windowRecord->stereomode == kPsychFrameSequentialStereo) frameSeqStereoActive--;
+        if (windowRecord->stereomode == kPsychFrameSequentialStereo) {
+            frameSeqStereoActive--;
+
+            // Perform shutdown of shutter goggle driver if needed:
+            PsychSetupShutterGoggles(windowRecord, FALSE);
+        }
 
         // If this was the last onscreen window then we reset the currentRendertarget etc. to pre-Screen load time:
         if (PsychIsLastOnscreenWindow(windowRecord)) {
@@ -1961,6 +1993,234 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 void PsychFlushGL(PsychWindowRecordType *windowRecord)
 {
     if(PsychIsOnscreenWindow(windowRecord) && PsychPrefStateGet_EmulateOldPTB()) glFinish();
+}
+
+/* PsychSetupShutterGoggles()
+ *
+ * Setup/Enable or Disable support for NVidia's NVision stereo emitter kit, which
+ * allows to drive stereo shutter goggles from NVidia in frame-sequential stereo mode.
+ *
+ * We use the LGPL licensed libnvstusb to do this. It is dynamically loaded as a shared
+ * library, as is the firmware that needs to be loaded into the NVision controller.
+ * libnvstusb emits the neccessary USB trigger packets as usb bulk transfers, using
+ * the reverse-engineered protocol of the NVision USB controller.
+ *
+ * If no libnvstusb.so library is found, no firmware file is found, or no suitable
+ * controller is connected then this function does nothing and we end up with the
+ * usual blue line sync stereo. The function is currently also only for Linux. Porting
+ * to OSX or Windows would be possible with small adjustments here and more significant
+ * but doable modifications to libnvstusb.
+ *
+ */
+void PsychSetupShutterGoggles(PsychWindowRecordType *windowRecord, psych_bool doInit)
+{
+    #ifdef PTB_USE_NVSTUSB
+        char pluginPath[FILENAME_MAX];
+        char firmwareFile[FILENAME_MAX];
+        char pluginName[100];
+        char backupenv[100];
+        FILE *fw;
+
+        // Init or shutdown?
+        if (doInit) {
+            // Init.
+
+            // Try to find required firmware file. First in the Psychtoolbox configuration directory, then in the users $HOME directory:
+            sprintf(firmwareFile, "%snvstusb.fw", PsychRuntimeGetPsychtoolboxRoot(TRUE));
+            errno = 0;
+            if ((fw = fopen(firmwareFile, "rb")) != NULL) {
+                fclose(fw);
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 4)
+                    printf("PTB-DEBUG: PsychSetupShutterGoggles: Could not find NVision firmware file at '%s' [%s].\n", firmwareFile, strerror(errno));
+
+                sprintf(firmwareFile, "%s/nvstusb.fw", getenv("HOME"));
+                errno = 0;
+                if ((fw = fopen(firmwareFile, "rb")) != NULL) {
+                    fclose(fw);
+                }
+                else {
+                    if (PsychPrefStateGet_Verbosity() > 4)
+                        printf("PTB-DEBUG: PsychSetupShutterGoggles: Could not find NVision firmware file at '%s' [%s].\n", firmwareFile, strerror(errno));
+                    if (PsychPrefStateGet_Verbosity() > 2)
+                        printf("PTB-INFO: Could not find any firmware file for NVidia NVision stereo goggles, therefore not driving such goggles.\n");
+                    return;
+                }
+            }
+
+            // Firmware file found - Probably the user wants us to drive such Goggles.
+
+            // Plugin already loaded and linked?
+            if (NULL == nvstusb_plugin) {
+                // No. Try to load and bind the library:
+                sprintf(pluginName, "libnvstusb.so");
+
+                // Try to get it from the PsychPlugins folder:
+                if (strlen(PsychRuntimeGetPsychtoolboxRoot(FALSE)) > 0) {
+                    // Yes! Assemble full path name to plugin:
+                    sprintf(pluginPath, "%sPsychBasic/PsychPlugins/%s", PsychRuntimeGetPsychtoolboxRoot(FALSE), pluginName);
+                    if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychSetupShutterGoggles: Trying to load external driver plugin from following file: [ %s ]\n", pluginPath);
+                }
+                else {
+                    // Failed! Assign only plugin name and hope the user installed the plugin into
+                    // a folder on the system library search path:
+                    sprintf(pluginPath, "%s", pluginName);
+                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: PsychSetupShutterGoggles: Failed to find installation directory for external driver plugin [ %s ].\nHoping it is somewhere in the library search path...\n", pluginPath);
+                }
+
+                if ((dlopen("libusb-1.0.so.0", RTLD_NOW | RTLD_GLOBAL | RTLD_NOLOAD) == NULL) &&
+                    (PsychPrefStateGet_Verbosity() > 0)) {
+                    printf("PTB-DEBUG: PsychSetupShutterGoggles: Failed to reopen libusb-1.0.so.0 in no-reload-mode [%s]. nvstusb plugin load will likely fail...\n", (const char*) dlerror());
+                }
+
+                nvstusb_plugin = dlopen(pluginPath, RTLD_NOW | RTLD_GLOBAL);
+                if (NULL == nvstusb_plugin) {
+                    // First try failed:
+                    if (PsychPrefStateGet_Verbosity() > 3) {
+                        printf("PTB-DEBUG: PsychSetupShutterGoggles: Failed to load external driver plugin [%s]. Retrying under generic name [%s].\n", (const char*) dlerror(), pluginName);
+                    }
+
+                    sprintf(pluginPath, "%s", pluginName);
+                    nvstusb_plugin = dlopen(pluginPath, RTLD_NOW | RTLD_GLOBAL);
+                }
+
+                if (NULL == nvstusb_plugin) {
+                    // Game over.
+                    if (PsychPrefStateGet_Verbosity() > 2)
+                        printf("PTB-INFO: PsychSetupShutterGoggles: Could not load stereo goggle driver plugin [%s]. Goggle support disabled.\n", (const char*) dlerror());
+                    return;
+                }
+
+                // Plugin loaded. Bind entry points:
+                Nvstusb_init_proc = dlsym(nvstusb_plugin, "nvstusb_init");
+                Nvstusb_deinit_proc = dlsym(nvstusb_plugin, "nvstusb_deinit");
+                Nvstusb_set_rate_proc = dlsym(nvstusb_plugin, "nvstusb_set_rate");
+                Nvstusb_swap_proc = dlsym(nvstusb_plugin, "nvstusb_swap");
+                Nvstusb_get_keys_proc = dlsym(nvstusb_plugin, "nvstusb_get_keys");
+                Nvstusb_invert_eyes_proc = dlsym(nvstusb_plugin, "nvstusb_invert_eyes");
+
+                // Successfully linked?
+                if (!Nvstusb_init_proc || !Nvstusb_deinit_proc || !Nvstusb_set_rate_proc || !Nvstusb_swap_proc || !Nvstusb_get_keys_proc || !Nvstusb_invert_eyes_proc) {
+                    if (PsychPrefStateGet_Verbosity() > 2)
+                        printf("PTB-INFO: PsychSetupShutterGoggles: Could not load link goggle driver plugin [%s]. Goggle support disabled.\n", (const char*) dlerror());
+
+                    // Request shutdown of stuff again:
+                    doInit = FALSE;
+                }
+            }
+
+            // Still green to go? Otherwise we fall through to the shutdown path:
+            if (doInit) {
+                // Ok, the plugin is ready. Let's see if we have actual goggles to drive.
+
+                // First we set the environment variable __GL_SYNC_TO_VBLANK before
+                // calling Nvstusb_init_proc(). This will cause the init routine to
+                // select a drive strategy for the goggles that is optimal for our
+                // frame sequential stereo implementation. Specifically it will simply
+                // immediately send the USB goggle trigger packet to the goggles when
+                // we ask it to do so. We make sure to call the function after swap
+                // completion is confirmed by the OS.
+
+                // Step 1: Backup the current setting of __GL_SYNC_TO_VBLANK:
+                if (getenv("__GL_SYNC_TO_VBLANK")) {
+                    strcpy(backupenv, getenv("__GL_SYNC_TO_VBLANK"));
+                }
+                else {
+                    backupenv[0] = 0;
+                }
+
+                // Step 2: Force it to our wanted value:
+                setenv("__GL_SYNC_TO_VBLANK", "1", 1);
+
+                // Step 3: Init library:
+                nvstusb_goggles = Nvstusb_init_proc(firmwareFile);
+
+                // Step 4: Restore old setting of __GL_SYNC_TO_VBLANK, if any:
+                if (backupenv[0] != 0) {
+                    setenv("__GL_SYNC_TO_VBLANK", backupenv, 1);
+                }
+                else {
+                    unsetenv("__GL_SYNC_TO_VBLANK");
+                }
+
+                // Step 5: Check if init actually worked:
+                if (NULL == nvstusb_goggles) {
+                    // Nope. We are done here.
+                    if (PsychPrefStateGet_Verbosity() > 2)
+                        printf("PTB-INFO: Could not connect to NVidia NVision stereo goggles, therefore not enabling such goggles.\n");
+                    doInit = FALSE;
+                }
+                else {
+                    // Yes. Set expected update rate as video refresh rate:
+                    Nvstusb_set_rate_proc(nvstusb_goggles, (float) (1.0 / windowRecord->VideoRefreshInterval));
+                    if (PsychPrefStateGet_Verbosity() > 2)
+                        printf("PTB-INFO: Activated NVidia NVision stereo goggles.\n");
+                    return;
+                }
+            }
+        }
+
+        // Shutdown requested?
+        if (!doInit) {
+            // Perform cleanup and shutdown:
+            if (nvstusb_goggles) {
+                // Goggles online. Deinit them and the library:
+                if (PsychPrefStateGet_Verbosity() > 2)
+                    printf("PTB-INFO: Shutting down NVidia NVision stereo goggles.\n");
+
+                Nvstusb_deinit_proc(nvstusb_goggles);
+                nvstusb_goggles = NULL;
+            }
+
+            if (nvstusb_plugin) {
+                if (PsychPrefStateGet_Verbosity() > 4)
+                    printf("PTB-DEBUG: Unloading nvstusb library.\n");
+
+                Nvstusb_init_proc = NULL;
+                Nvstusb_deinit_proc = NULL;
+                Nvstusb_set_rate_proc = NULL;
+                Nvstusb_swap_proc = NULL;
+                Nvstusb_get_keys_proc = NULL;
+                Nvstusb_invert_eyes_proc = NULL;
+                dlclose(nvstusb_plugin);
+                nvstusb_plugin = NULL;
+            }
+
+            // Done.
+            return;
+        }
+
+    #endif
+}
+
+/* PsychTriggerShutterGoggles()
+ *
+ * Use libnvstusb to emit USB stereo trigger packets to a NVidia NVision stereo controller.
+ * Do nothing if no such setup was enabled via PsychSetupShutterGoggles().
+ *
+ */
+void PsychTriggerShutterGoggles(PsychWindowRecordType *windowRecord, int viewid)
+{
+    static int oldviewid = -1;
+
+    #ifdef PTB_USE_NVSTUSB
+        // Emit shutter trigger if frameSeqStereoActive and NVideo NVision driver active:
+        if (nvstusb_plugin && nvstusb_goggles && (windowRecord->stereomode == kPsychFrameSequentialStereo)) {
+            Nvstusb_swap_proc(nvstusb_goggles, ((viewid == 0) ? nvstusb_left : nvstusb_right), NULL);
+            if (PsychPrefStateGet_Verbosity() > 9) printf("PTB-DEBUG: PsychTriggerShutterGoggles: Triggering for viewid %i.\n", viewid);
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychTriggerShutterGoggles: No-Op call for viewid %i.\n", viewid);
+        }
+    #endif
+
+    // Check if stereo views alternate nicely at each invocation:
+    if ((oldviewid != -1) && (oldviewid != 1 - viewid)) {
+        if (PsychPrefStateGet_Verbosity() > 9)
+            printf("PTB-WARNING: Frame sequential stereo sequencing order mismatch. Double take on viewid %i. Visual glitch expected in stereo presentation.\n", viewid);
+    }
+    oldviewid = viewid;
 }
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -2124,7 +2384,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
     double tnow, lastvbl;
     int dummy1;
     double dummy2, dummy3, dummy4;
-    int viewid;
+    int viewid = 0;
     psych_uint64 vblcount = 0;
     psych_uint64 vblqcount = 0;
 
@@ -2366,6 +2626,9 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
                 flipRequest->vbl_timestamp = PsychFlipWindowBuffers(windowRecord, 0, 0, 2, flipRequest->flipwhen, &(flipRequest->beamPosAtFlip),
                                                                     &(flipRequest->miss_estimate), &(flipRequest->time_at_flipend), &(flipRequest->time_at_onset));
 
+                // Trigger an update of the shutters of potentially connected stereo goggles:
+                PsychTriggerShutterGoggles(windowRecord, viewid);
+
                 // Maintain virtual vblank counter on platforms where we need it:
                 vblcount++;
 
@@ -2397,6 +2660,10 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 
                 // Execute synchronous flip to make it the frontbuffer: This resets the framebuffer binding to 0 at exit:
                 PsychFlipWindowBuffers(windowRecord, 0, 0, 2, tnow, &dummy1, &dummy2, &dummy3, &dummy4);
+
+                // Trigger an update of the shutters of potentially connected stereo goggles:
+                viewid = 1 - viewid;
+                PsychTriggerShutterGoggles(windowRecord, viewid);
 
                 // Maintain virtual vblank counter on platforms where we need it:
                 vblcount++;
@@ -2436,6 +2703,10 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
                     PsychWaitPixelSyncToken(windowRecord, FALSE);
                     PsychGetAdjustedPrecisionTimerSeconds(&(windowRecord->time_at_last_vbl));
                 }
+
+                // Trigger an update of the shutters of potentially connected stereo goggles:
+                viewid = 1 - viewid;
+                PsychTriggerShutterGoggles(windowRecord, viewid);
 
                 // Maintain virtual vblank counter on platforms where we need it:
                 vblcount++;
@@ -2621,8 +2892,14 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
             // Set initial thread state to "inactive, not initialized at all":
             flipRequest->flipperState = 0;
 
-            // Increment count of onscreen windows with our own threaded framesequential stereo mode active, if this is such a window:
-            if (windowRecord->stereomode == kPsychFrameSequentialStereo) frameSeqStereoActive++;
+            // Setup for our own framesequential stereo implementation:
+            if (windowRecord->stereomode == kPsychFrameSequentialStereo) {
+                // Increment count of onscreen windows with our own threaded framesequential stereo mode active:
+                frameSeqStereoActive++;
+
+                // Perform setup of shutter goggle driver if needed:
+                PsychSetupShutterGoggles(windowRecord, TRUE);
+            }
 
             // Create and startup thread:
             if ((rc=PsychCreateThread(&(flipRequest->flipperThread), NULL, PsychFlipperThreadMain, (void*) windowRecord))) {

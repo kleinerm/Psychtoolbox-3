@@ -1,0 +1,56 @@
+libnvstusb (0.0.8-1ubuntu1) maverick; urgency=low
+
+  * Fixed nvstusb-tool package
+
+ -- Johann Baudy <johann.baudy@gnu-log.net>  Sun, 10 Apr 2011 21:13:43 +0200
+
+libnvstusb (0.0.7-4ubuntu1) maverick; urgency=low
+
+  * Added nvstusb-quad binary
+  * Added nvstusb-extractfw binary
+  * Added nvstusb-vsync binary
+  * Added firmware path to nvstusb_init()
+
+ -- Johann Baudy <johann.baudy@gnu-log.net>  Sat, 09 Apr 2011 17:26:41 +0200
+
+libnvstusb (0.0.7-1) maverick; urgency=low
+
+  * Added stereo thread
+
+ -- Johann Baudy <johann.baudy@gnu-log.net>  Mon, 08 Nov 2010 22:45:12 +0100
+
+libnvstusb (0.0.6-1) maverick; urgency=low
+
+  * Added stereo thread
+
+ -- Johann Baudy <johann.baudy@gnu-log.net>  Mon, 08 Nov 2010 22:45:12 +0100
+
+libnvstusb (0.0.5-1) maverick; urgency=low
+
+  * Added Invert eye method
+
+ -- Johann Baudy <johann.baudy@gnu-log.net>  Sat, 06 Nov 2010 20:10:57 +0100
+
+libnvstusb (0.0.4-1) maverick; urgency=low
+
+  * Support Quad Buffering
+
+ -- Johann Baudy <johann.baudy@gnu-log.net>  Wed, 03 Nov 2010 21:08:11 +0100
+
+libnvstusb (0.0.3-1) lucid; urgency=low
+
+  * Fixed x64 (extract fw)
+
+ -- Johann Baudy <johann.baudy@gnu-log.net>  Wed, 27 Oct 2010 23:57:59 +0200
+
+libnvstusb (0.0.2-1) lucid; urgency=low
+
+  * x64 fixes (bis) 
+
+ -- Johann Baudy <johann.baudy@gnu-log.net>  Wed, 27 Oct 2010 23:37:49 +0200
+
+libnvstusb (0.0.1-1) lucid; urgency=low
+
+  * x64 fixes
+
+ -- Johann Baudy <johann.baudy@gnu-log.net>  Wed, 27 Oct 2010 22:54:36 +0200
