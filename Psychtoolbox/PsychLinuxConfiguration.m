@@ -46,6 +46,9 @@ function PsychLinuxConfiguration
 %  6.01.2012   mk  Written.
 % 16.04.2013   mk  Add info about 'dialout' group for serial port access.
 % 25.01.2015   mk  Add Matlab R2014b OpenGL reconfiguration.
+% 20.10.2015   mk  Make sudo handling under Octave+GUI less confusing.
+
+rerun = 0;
 
 if ~IsLinux
   return;
@@ -94,16 +97,23 @@ else
 end
 
 if needinstall && answer == 'y'
-  fprintf('I will copy my most recent rules file to your system. Please enter\n');
-  fprintf('now your system administrator password. You will not see any feedback.\n');
-  drawnow;
-
-  cmd = sprintf('sudo cp %s/PsychBasic/psychtoolbox.rules /etc/udev/rules.d/', PsychtoolboxRoot);
-  [rc, msg] = system(cmd);
-  if rc == 0
-    fprintf('Success! You may need to reboot your machine for some changes to take effect.\n');
+  if IsOctave && IsGUI
+    rerun = 1;
+    fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
+    fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
+    fprintf('GUI, e.g., via executing: octave --no-gui\n');
+    fprintf('Then run the PsychLinuxConfiguration command to make things work.\n');
   else
-    fprintf('Failed! The error message was: %s\n', msg);
+    fprintf('I will copy my most recent rules file to your system. Please enter\n');
+    fprintf('now your system administrator password. You will not see any feedback.\n');
+    drawnow;
+    cmd = sprintf('sudo cp %s/PsychBasic/psychtoolbox.rules /etc/udev/rules.d/', PsychtoolboxRoot);
+    [rc, msg] = system(cmd);
+    if rc == 0
+      fprintf('Success! You may need to reboot your machine for some changes to take effect.\n');
+    else
+      fprintf('Failed! The error message was: %s\n', msg);
+    end
   end
 end
 
@@ -151,29 +161,37 @@ if ~(mlockok && rtpriook)
   fprintf('\n\nThe file seems to be missing some suitable setup lines.\n');
   answer = input('Should i add them for you? [y/n] : ', 's');
   if answer == 'y'
-    fprintf('I will try to add config lines to your system. Please enter\n');
-    fprintf('now your system administrator password. You will not see any feedback.\n');
-    drawnow;
-
-    % Set amount of lockable memory to unlimited for all users:
-    [rc, msg] = system('sudo /bin/bash -c ''echo "@psychtoolbox     -     memlock     unlimited" >> /etc/security/limits.conf''');
-    if rc ~= 0
-      fprintf('Failed! The error message was: %s\n', msg);
-    end
-
-    % Set allowable realtime priority for all users to 50:
-    [rc2, msg] = system('sudo /bin/bash -c ''echo "@psychtoolbox     -     rtprio      50" >> /etc/security/limits.conf''');
-    if rc2 ~= 0
-      fprintf('Failed! The error message was: %s\n', msg);
-    end
-
-    % Must add a psychtoolbox user group:
-    addgroup = 1;
-
-    if (rc == 0) && (rc2 == 0)
-      fprintf('\n\nSuccess!\n\n');
+    if IsOctave && IsGUI
+      rerun = 1;
+      fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
+      fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
+      fprintf('GUI, e.g., via executing: octave --no-gui\n');
+      fprintf('Then run the PsychLinuxConfiguration command to make things work.\n');
     else
-      fprintf('\n\nFailed! Maybe ask a system administrator for help?\n\n');
+      fprintf('I will try to add config lines to your system. Please enter\n');
+      fprintf('now your system administrator password. You will not see any feedback.\n');
+      drawnow;
+
+      % Set amount of lockable memory to unlimited for all users:
+      [rc, msg] = system('sudo /bin/bash -c ''echo "@psychtoolbox     -     memlock     unlimited" >> /etc/security/limits.conf''');
+      if rc ~= 0
+        fprintf('Failed! The error message was: %s\n', msg);
+      end
+
+      % Set allowable realtime priority for all users to 50:
+      [rc2, msg] = system('sudo /bin/bash -c ''echo "@psychtoolbox     -     rtprio      50" >> /etc/security/limits.conf''');
+      if rc2 ~= 0
+        fprintf('Failed! The error message was: %s\n', msg);
+      end
+
+      % Must add a psychtoolbox user group:
+      addgroup = 1;
+
+      if (rc == 0) && (rc2 == 0)
+        fprintf('\n\nSuccess!\n\n');
+      else
+        fprintf('\n\nFailed! Maybe ask a system administrator for help?\n\n');
+      end
     end
   end
 else
@@ -181,54 +199,83 @@ else
 end
 
 else
-% Realtime setup for systems with /etc/security/limits.d/ directory:
-% Simply install a ptb specific config file - a cleaner solution:
-if ~exist('/etc/security/limits.d/99-psychtoolboxlimits.conf', 'file')
-  fprintf('\n\nThe file /etc/security/limits.d/99-psychtoolboxlimits.conf is\n');
-  fprintf('not yet installed on your system. It allows painless realtime operation.\n');
-  answer = input('Should i install the file for you? [y/n] : ', 's');
-  if answer == 'y'
-    fprintf('I will try to install it now to your system. Please enter\n');
-    fprintf('now your system administrator password. You will not see any feedback.\n');
-    drawnow;
-    cmd = sprintf('sudo cp %s/PsychBasic/99-psychtoolboxlimits.conf /etc/security/limits.d/', PsychtoolboxRoot);
-    [rc, msg] = system(cmd);
-    if rc ~= 0
-      fprintf('Failed! The error message was: %s\n', msg);
-    else
-      fprintf('Success!\n\n');
+  % Realtime setup for systems with /etc/security/limits.d/ directory:
+  % Simply install a ptb specific config file - a cleaner solution:
+  if ~exist('/etc/security/limits.d/99-psychtoolboxlimits.conf', 'file')
+    fprintf('\n\nThe file /etc/security/limits.d/99-psychtoolboxlimits.conf is\n');
+    fprintf('not yet installed on your system. It allows painless realtime operation.\n');
+    answer = input('Should i install the file for you? [y/n] : ', 's');
+    if answer == 'y'
+      if IsOctave && IsGUI
+        rerun = 1;
+        fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
+        fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
+        fprintf('GUI, e.g., via executing: octave --no-gui\n');
+        fprintf('Then run the PsychLinuxConfiguration command to make things work.\n');
+      else
+        fprintf('I will try to install it now to your system. Please enter\n');
+        fprintf('now your system administrator password. You will not see any feedback.\n');
+        drawnow;
+        cmd = sprintf('sudo cp %s/PsychBasic/99-psychtoolboxlimits.conf /etc/security/limits.d/', PsychtoolboxRoot);
+        [rc, msg] = system(cmd);
+        if rc ~= 0
+          fprintf('Failed! The error message was: %s\n', msg);
+        else
+          fprintf('Success!\n\n');
 
-      % Must add a psychtoolbox user group:
-      addgroup = 1;
+          % Must add a psychtoolbox user group:
+          addgroup = 1;
+        end
+      end
     end
   end
-end
 end
 
 % Need to create a Unix user group 'psychtoolbox' and add user to it?
 if addgroup
-  % This will create the psychtoolbox user group, unless the group
-  % already exists. In such a case it simply does nothing:
-  system('sudo groupadd --force psychtoolbox');
+  if IsOctave && IsGUI
+    rerun = 1;
+    fprintf('I will try to create a new Unix user group called "psychtoolbox" on your system.\n');
+    fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
+    fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
+    fprintf('GUI, e.g., via executing: octave --no-gui\n');
+    fprintf('Then run the PsychLinuxConfiguration command to make things work.\n');
+    addgroup = 0;
+  else
+    % This will create the psychtoolbox user group, unless the group
+    % already exists. In such a case it simply does nothing:
+    system('sudo groupadd --force psychtoolbox');
 
-  fprintf('I have created a new Unix user group called "psychtoolbox" on your system.\n');
+    fprintf('I have created a new Unix user group called "psychtoolbox" on your system.\n');
+    addgroup = 1;
+  end
 else
   fprintf('\n\nYour system has a Unix user group called "psychtoolbox".\n');
+  addgroup = 1;
 end
 
-fprintf('All members of that group can use the Priority() command now without the need\n');
-fprintf('to run Matlab or Octave as sudo root user.\n\n');
-fprintf('You need to add each user of Psychtoolbox to that group. You could do this\n');
-fprintf('with the user management tools of your system. Or you can open a terminal window\n');
-fprintf('and type the following command (here as an example to add yourself to that group):\n\n');
-fprintf('sudo usermod -a -G psychtoolbox %s\n\n', username);
-fprintf('One should also add oneself to the ''dialout'' group for access to serial port devices:\n\n');
-fprintf('sudo usermod -a -G dialout %s\n\n', username);
-fprintf('After that, the new group member must log out and then login again for the\n');
-fprintf('settings to take effect.\n\n');
-fprintf('\nFinished. Your system should now be ready for use with Psychtoolbox.\n');
-fprintf('If you encounter problems, try rebooting the machine. Some of the settings only\n');
-fprintf('become effective after a reboot.\n\n\n');
+if addgroup
+  fprintf('All members of that group can use the Priority() command now without the need\n');
+  fprintf('to run Matlab or Octave as sudo root user.\n\n');
+  fprintf('You need to add each user of Psychtoolbox to that group. You could do this\n');
+  fprintf('with the user management tools of your system. Or you can open a terminal window\n');
+  fprintf('and type the following command (here as an example to add yourself to that group):\n\n');
+  fprintf('sudo usermod -a -G psychtoolbox %s\n\n', username);
+  fprintf('One should also add oneself to the ''dialout'' group for access to serial port devices:\n\n');
+  fprintf('sudo usermod -a -G dialout %s\n\n', username);
+  fprintf('After that, the new group member must log out and then login again for the\n');
+  fprintf('settings to take effect.\n\n');
+end
+
+if ~rerun
+  fprintf('\nFinished. Your system should now be ready for use with Psychtoolbox.\n');
+  fprintf('If you encounter problems, try rebooting the machine. Some of the settings only\n');
+  fprintf('become effective after a reboot.\n\n\n');
+else
+  fprintf('\nSetup failed due to lack of administrator permissions. Please run octave\n');
+  fprintf('from a terminal window via octave --no-gui and then execute the command\n');
+  fprintf('PsychLinuxConfiguration to rerun this script again. Then it should work.\n\n\n');
+end
 fprintf('Press any key to continue.\n');
 pause;
 fprintf('\n\n\n');
