@@ -36,7 +36,9 @@ function PsychLinuxConfiguration
 % The script calls into the shell via "sudo" to achieve this
 % setup task, which itself needs admin privileges to modify
 % system files etc. "sudo" will prompt the user for his admin
-% password to complete the tasks.
+% password to complete the tasks. This does not work on Octave
+% with GUI though. You will need octave --no-gui to execute this
+% script once if you use octave.
 %
 % The script also checks if any special configuration is required
 % to work around Linux specific OpenGL quirks of Matlab R2014b or
@@ -47,6 +49,7 @@ function PsychLinuxConfiguration
 % 16.04.2013   mk  Add info about 'dialout' group for serial port access.
 % 25.01.2015   mk  Add Matlab R2014b OpenGL reconfiguration.
 % 20.10.2015   mk  Make sudo handling under Octave+GUI less confusing.
+% 20.10.2015   mk  Trigger auto-reload and coldplug of udev devices via udevadm.
 
 rerun = 0;
 
@@ -110,9 +113,21 @@ if needinstall && answer == 'y'
     cmd = sprintf('sudo cp %s/PsychBasic/psychtoolbox.rules /etc/udev/rules.d/', PsychtoolboxRoot);
     [rc, msg] = system(cmd);
     if rc == 0
-      fprintf('Success! You may need to reboot your machine for some changes to take effect.\n');
+      fprintf('Success! Trying to apply the new rules file.\n');
     else
       fprintf('Failed! The error message was: %s\n', msg);
+    end
+
+    if rc == 0
+        % Call udevadm to try to trigger a reload of the new rules file and trigger
+        % a redetection of devices to apply the new rules without need for a reboot:
+        cmd = sprintf('sudo udevadm control --reload ; sudo udevadm trigger');
+        [rc, msg] = system(cmd);
+        if rc == 0
+          fprintf('Success! You may need to reboot your machine for some changes to take effect.\n');
+        else
+          fprintf('Failed! The error message was: %s\n', msg);
+        end
     end
   end
 end
