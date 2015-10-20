@@ -1,6 +1,8 @@
 function linuxmakeitoctave3(mode)
 % This is the GNU/Linux version of makeit to build the Linux
-% mex files for Octave on Linux.
+% mex files for Octave-3 on Linux. It also creates copies of
+% the mex files build against Octave-3 and modifies them to
+% work on Octave-4.
 
 if ~IsLinux || ~IsOctave
     error('This script is for Octave on Linux only!');
@@ -28,8 +30,10 @@ fprintf('Building plugin type %i ...\n\n', mode);
 % Target folder depends if this is a 64 bit or 32 bit runtime:
 if ~isempty(strfind(computer, '_64'))
     target = 'PsychBasic/Octave3LinuxFiles64/';
+    target4 = 'PsychBasic/Octave4LinuxFiles64/';
 else
     target = 'PsychBasic/Octave3LinuxFiles/';
+    target4 = 'PsychBasic/Octave4LinuxFiles/';
 end
 
 % Special folder for ARM binaries:
@@ -51,8 +55,12 @@ if mode==0
         mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-0.10 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lgstreamer-0.10 -lgstbase-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
     end
     
-    unix(['mv ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'Screen.mex'], 0, 1);
 end
 
 if mode==100
@@ -60,8 +68,12 @@ if mode==100
     fprintf('Building Screen() for native Wayland.\n');
     mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_WAYLAND -DPTB_USE_WAFFLE -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/x86_64-linux-gnu/ -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -I/usr/include/colord-1 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1 -lwayland-cursor -lxkbcommon -lcolord
 
-    unix(['mv ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'Screen.mex'], 0, 1);
 end
 
 if mode==101
@@ -69,8 +81,12 @@ if mode==101
     fprintf('Hmm, me likes some Waffle with this Screen :-)\n');
     mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_WAYLAND_PRESENT -DPTB_USE_WAFFLE -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/x86_64-linux-gnu/ -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1
 
-    unix(['mv ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'Screen.mex'], 0, 1);
 end
 
 if mode==1000
@@ -78,43 +94,67 @@ if mode==1000
     fprintf('Hmm, me likes some mobile Waffle with this Screen :-)\n');
     mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -DPTBMODULE_Screen -DPTB_USE_WAFFLE -DPTB_USE_EGL -DPTB_USE_GLES1 -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/arm-linux-gnueabihf/ -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGLESv1_CM -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1
 
-    unix(['mv ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/Screen.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'Screen.mex'], 0, 1);
 end
 
 if mode==1
     % Build GetSecs.mex:
     mex -v -g --output ../Projects/Linux/build/GetSecs.mex -DPTBMODULE_GetSecs -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/GetSecs -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/GetSecs/*.c -lc -lrt 
-    unix(['mv ../Projects/Linux/build/GetSecs.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/GetSecs.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'GetSecs.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/GetSecs.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'GetSecs.mex'], 0, 1);
 end
 
 if mode==2
     % Build WaitSecs.mex:
     mex -v -g --output ../Projects/Linux/build/WaitSecs.mex -DPTBMODULE_WaitSecs -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/WaitSecs -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/WaitSecs/*.c -lc -lrt 
-    unix(['mv ../Projects/Linux/build/WaitSecs.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/WaitSecs.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'WaitSecs.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/WaitSecs.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'WaitSecs.mex'], 0, 1);
 end
 
 if mode==3
     % Build PsychPortAudio.mex:
     mex -v -g --output ../Projects/Linux/build/PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/PsychPortAudio -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychPortAudio/*.c /usr/local/lib/libportaudio.a -lc -lrt -lasound
-    unix(['mv ../Projects/Linux/build/PsychPortAudio.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/PsychPortAudio.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychPortAudio.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/PsychPortAudio.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'PsychPortAudio.mex'], 0, 1);
 end
 
 if mode==4
     % Build Eyelink.mex:
     mex -v -g --output ../Projects/Linux/build/Eyelink.mex -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/Eyelink/*.c -leyelink_core -lc -lrt
-    unix(['mv ../Projects/Linux/build/Eyelink.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/Eyelink.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'Eyelink.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/Eyelink.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'Eyelink.mex'], 0, 1);
 end
 
 if mode==5
     % Build IOPort.mex:
     mex -v -g --output ../Projects/Linux/build/IOPort.mex -DPTBMODULE_IOPort -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/IOPort -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/IOPort/*.c -lc -lrt
-    unix(['mv ../Projects/Linux/build/IOPort.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/IOPort.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'IOPort.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/IOPort.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'IOPort.mex'], 0, 1);
 end
 
 if mode==6
@@ -125,10 +165,15 @@ if mode==6
        mex -v -g --output moglcore.mex -DPTB_USE_WAYLAND -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
     end
-    unix(['mv moglcore.mex ' PsychtoolboxRoot target]);
+    unix(['cp moglcore.mex ' PsychtoolboxRoot target]);
+    unix(['mv moglcore.mex ' PsychtoolboxRoot target4]);
     cd(curdir);
     striplibsfrommexfile([PsychtoolboxRoot target 'moglcore.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    striplibsfrommexfile([PsychtoolboxRoot target4 'moglcore.mex'], 0, 1);
 end
+
 
 if mode==6000
     % Build moglcore.mex for OpenGL-ES:
@@ -138,9 +183,13 @@ if mode==6000
        mex -v -g --output moglcore.mex -DPTB_USE_WAFFLE -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGLESv1_CM -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch
     end
-    unix(['mv moglcore.mex ' PsychtoolboxRoot target]);
+    unix(['cp moglcore.mex ' PsychtoolboxRoot target]);
+    unix(['mv moglcore.mex ' PsychtoolboxRoot target4]);
     cd(curdir);
     striplibsfrommexfile([PsychtoolboxRoot target 'moglcore.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    striplibsfrommexfile([PsychtoolboxRoot target4 'moglcore.mex'], 0, 1);
 end
 
 if mode==7
@@ -148,15 +197,23 @@ if mode==7
     % Official build method: mex -v -g --output ../Projects/Linux/build/PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
     % Test build against libfreenect-0.5 from GitHub repo:
     mex -v -g --output ../Projects/Linux/build/PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/local/include/libfreenect -L/usr/local/lib/ -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
-    unix(['mv ../Projects/Linux/build/PsychKinectCore.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/PsychKinectCore.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychKinectCore.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/PsychKinectCore.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'PsychKinectCore.mex'], 0, 1);
 end
 
 if mode==8
     % Build PsychHID.mex:
     mex -v -g --output ../Projects/Linux/build/PsychHID.mex -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -ICommon/Base -ILinux/Base -ICommon/PsychHID -ILinux/PsychHID -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychHID/*.c Linux/PsychHID/*.c -lc -ldl -lrt -lusb-1.0 -lX11 -lXi -lutil
-    unix(['mv ../Projects/Linux/build/PsychHID.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/PsychHID.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychHID.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/PsychHID.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'PsychHID.mex'], 0, 1);
 end
 
 if mode==9
@@ -167,16 +224,24 @@ if mode==9
        mex -v -g --output moalcore.mex -DLINUX -DPTBOCTAVE3MEX -lc -lopenal moalcore.c al_auto.c al_manual.c alm.c 
     catch
     end
-    unix(['mv moalcore.mex ' PsychtoolboxRoot target]);
+    unix(['cp moalcore.mex ' PsychtoolboxRoot target]);
+    unix(['mv moalcore.mex ' PsychtoolboxRoot target4]);
     cd(curdir);
     striplibsfrommexfile([PsychtoolboxRoot target 'moalcore.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    striplibsfrommexfile([PsychtoolboxRoot target4 'moalcore.mex'], 0, 1);
 end
 
 if mode == 10
     % Build PsychCV
     mex -v -g --output PsychCV.mex -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include  Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a -lglut
-    unix(['mv PsychCV.mex ' PsychtoolboxRoot target]);
+    unix(['cp PsychCV.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychCV.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv PsychCV.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'PsychCV.mex'], 0, 1);
 end
 
 if mode == 11
@@ -187,9 +252,13 @@ if mode == 11
         mex -v -g pnet.c
     catch
     end
-    unix(['mv pnet.mex ' PsychtoolboxRoot target]);
+    unix(['cp pnet.mex ' PsychtoolboxRoot target]);
+    unix(['mv pnet.mex ' PsychtoolboxRoot target4]);
     cd(curdir);
     striplibsfrommexfile([PsychtoolboxRoot target 'pnet.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    striplibsfrommexfile([PsychtoolboxRoot target4 'pnet.mex'], 0, 1);
 end
 
 if mode==12
@@ -218,8 +287,12 @@ if mode==12
         delete('Common/PsychOculusVRCore/PsychOculusVR.cc');
     end
 
-    unix(['mv ../Projects/Linux/build/PsychOculusVRCore.mex ' PsychtoolboxRoot target]);
+    unix(['cp ../Projects/Linux/build/PsychOculusVRCore.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychOculusVRCore.mex']);
+
+    % Rewrite mex files for use with Octave-4 and move them into target folder:
+    unix(['mv ../Projects/Linux/build/PsychOculusVRCore.mex ' PsychtoolboxRoot target4]);
+    striplibsfrommexfile([PsychtoolboxRoot target4 'PsychOculusVRCore.mex'], 0, 1);
 end
 
 % Remove stale object files:
