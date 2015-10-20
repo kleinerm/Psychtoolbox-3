@@ -1019,19 +1019,22 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
         // We do it again for right backbuffer to clear possible stereo-contexts as well...
-        if ((*windowRecord)->stereomode==kPsychOpenGLStereo) {
+        if (((*windowRecord)->stereomode == kPsychOpenGLStereo) && ((*windowRecord)->gfxcaps & kPsychGfxCapNativeStereo)) {
             glDrawBuffer(GL_BACK_RIGHT);
 
             PsychDrawSplash(*windowRecord);
             PsychOSFlipWindowBuffers(*windowRecord);
+            PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
             PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
             PsychDrawSplash(*windowRecord);
             PsychOSFlipWindowBuffers(*windowRecord);
+            PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
             PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
             PsychDrawSplash(*windowRecord);
             PsychOSFlipWindowBuffers(*windowRecord);
+            PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
             PsychLockedTouchFramebufferIfNeeded(*windowRecord);
         }
 
