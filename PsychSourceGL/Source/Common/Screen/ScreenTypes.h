@@ -258,6 +258,10 @@ typedef struct {
 // needed.
 #define kPsychForceOpenMLTSWorkaround (1 << 27)
 
+// Force setting of the kPsychAssumeVCColorsGood flag for graphics capabilities, ie.,
+// assume the gpu can process/interpolate vertex colors at full 32bpc float precision.
+#define kPsychAssumeGfxCapVCGood (1 << 28)
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

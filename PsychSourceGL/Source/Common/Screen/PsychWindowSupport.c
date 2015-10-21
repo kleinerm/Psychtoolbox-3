@@ -6671,6 +6671,12 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         }
     }
 
+    // Allow usercode to override our pessimistic view of vertex color precision:
+    if (PsychPrefStateGet_ConserveVRAM() & kPsychAssumeGfxCapVCGood) {
+        if (verbose) printf("Assuming hardware can process vertex colors at full 32bpc float precision, as requested by usercode via ConserveVRAMSetting kPsychAssumeGfxCapVCGood.\n");
+        windowRecord->gfxcaps |= kPsychGfxCapVCGood;
+    }
+
     // Native OpenGL quad-buffered stereo context?
     glGetBooleanv(GL_STEREO, &nativeStereo);
     if (nativeStereo) {
