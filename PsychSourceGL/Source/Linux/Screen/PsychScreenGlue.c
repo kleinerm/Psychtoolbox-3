@@ -52,6 +52,9 @@
 // Maximum number of slots in a gamma table to set/query: This should be plenty.
 #define MAX_GAMMALUT_SIZE 16384
 
+// Defined in PsychGraphicsHardwareHALSupport.c, but accessed and initialized here:
+extern unsigned int crtcoff[kPsychMaxPossibleCrtcs];
+
 // If non-zero entries, then we are or have been running on Mesa
 // and mesaversion encodes major.minor.patchlevel:
 extern int mesaversion[3];
@@ -98,7 +101,43 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-/* Mappings up to date for June 2015 (last update e-mail patch / commit 2015-05-12). Would need updates for anything after start of July 2015 */
+/* Mappings up to date for October 2015 (last update e-mail patch / commit 2015-10-16). Would need updates for anything after start of November 2015 */
+
+/* Is a given ATI/AMD GPU a DCE11 type ASIC, i.e., with the new display engine? */
+static psych_bool isDCE11(int screenId)
+{
+    psych_bool isDCE11 = false;
+
+    // CARRIZO and STONEY are DCE11 -- This is part of the "Volcanic Islands" GPU family.
+
+    // CARRIZO: 0x987x so far.
+    if ((fPCIDeviceId & 0xFFF0) == 0x9870) isDCE11 = true;
+
+    // STONEY: 0x98E4 so far.
+    if ((fPCIDeviceId & 0xFFFF) == 0x98E4) isDCE11 = true;
+
+    return(isDCE11);
+}
+
+/* Is a given ATI/AMD GPU a DCE10 type ASIC, i.e., with the new display engine? */
+static psych_bool isDCE10(int screenId)
+{
+    psych_bool isDCE10 = false;
+
+    // TONGA and FIJI are DCE10 -- This is part of the "Volcanic Islands" GPU family.
+
+    // TONGA: 0x692x - 0x693x so far.
+    if ((fPCIDeviceId & 0xFFF0) == 0x6920) isDCE10 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6930) isDCE10 = true;
+
+    // FIJI in 0x7300 range:
+    if ((fPCIDeviceId & 0xFF00) == 0x7300) isDCE10 = true;
+
+    // All DCE11 are also DCE10, so far...
+    if (isDCE11(screenId)) isDCE10 = true;
+
+    return(isDCE10);
+}
 
 /* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE8(int screenId)
@@ -123,6 +162,10 @@ static psych_bool isDCE8(int screenId)
 
     // MULLINS in 0x985x range:
     if ((fPCIDeviceId & 0xFFF0) == 0x9850) isDCE8 = true;
+
+    // CAUTION: DCE 10 and higher are *not* DCE8 as well!
+    // These new parts have a different register layout, so
+    // need separate code!
 
     return(isDCE8);
 }
@@ -588,13 +631,20 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         }
 
         if (fDeviceType == kPsychRadeon) {
-            // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) or DCE-8 (80) for now.
-            fCardType = isDCE8(screenId) ? 80 : (isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : (isDCE3(screenId) ? 30 : 10))));
+            // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60), DCE-8 (80), DCE-10 (100), DCE-11 (110) for now.
+            fCardType = isDCE11(screenId) ? 110 : isDCE10(screenId) ? 100 : isDCE8(screenId) ? 80 : (isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : (isDCE3(screenId) ? 30 : 10))));
 
-            // On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
-            // offset to the base address of the 1st CRTC register block for now:
-            if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId)) {
+            // Setup for DCE-4/5/6/8:
+            if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId) || isDCE8(screenId)) {
                 gfx_lowlimit = 0;
+
+                // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
+                crtcoff[0] = EVERGREEN_CRTC0_REGISTER_OFFSET;
+                crtcoff[1] = EVERGREEN_CRTC1_REGISTER_OFFSET;
+                crtcoff[2] = EVERGREEN_CRTC2_REGISTER_OFFSET;
+                crtcoff[3] = EVERGREEN_CRTC3_REGISTER_OFFSET;
+                crtcoff[4] = EVERGREEN_CRTC4_REGISTER_OFFSET;
+                crtcoff[5] = EVERGREEN_CRTC5_REGISTER_OFFSET;
 
                 // Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 or DCE-6.4 (which have only 2) or DCE-6.1 (4 heads), supports up to six display heads:
                 if (!isDCE41(screenId) && !isDCE61(screenId) && !isDCE64(screenId)) fNumDisplayHeads = 6;
@@ -603,8 +653,32 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 if (!isDCE41(screenId) && isDCE61(screenId)) fNumDisplayHeads = 4;
             }
 
+            // Setup for DCE-10/11:
+            if (isDCE10(screenId) || isDCE11(screenId)) {
+                // DCE-10/11 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
+                // but the offsets for the different CRTC blocks are different wrt. to pre DCE-10. Therefore
+                // need to initialize the offsets differently. Also, some of these parts seem to support up
+                // to 7 display engines instead of the old limit of 6 engines:
+                gfx_lowlimit = 0;
+
+                // Offset of crtc blocks of Volcanic Islands DCE-10/11 gpu's for each of the possible crtc's:
+                crtcoff[0] = DCE10_CRTC0_REGISTER_OFFSET;
+                crtcoff[1] = DCE10_CRTC1_REGISTER_OFFSET;
+                crtcoff[2] = DCE10_CRTC2_REGISTER_OFFSET;
+                crtcoff[3] = DCE10_CRTC3_REGISTER_OFFSET;
+                crtcoff[4] = DCE10_CRTC4_REGISTER_OFFSET;
+                crtcoff[5] = DCE10_CRTC5_REGISTER_OFFSET;
+                crtcoff[6] = DCE10_CRTC6_REGISTER_OFFSET;
+
+                // DCE-10 has 6 display controllers:
+                if (isDCE10(screenId)) fNumDisplayHeads = 6;
+
+                // DCE-11 has 3 display controllers:
+                if (isDCE11(screenId)) fNumDisplayHeads = 3;
+            }
+
             if (PsychPrefStateGet_Verbosity() > 2) {
-                printf("PTB-INFO: Connected to %s %s GPU with %s display engine [%i heads]. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (fCardType >= 40) ? (fCardType >= 60) ? "DCE-6" : ((fCardType >= 50) ? "DCE-5" : "DCE-4") : ((fCardType >= 30) ? "DCE-3" : "AVIVO"), fNumDisplayHeads);
+                printf("PTB-INFO: Connected to %s %s GPU with DCE-%f display engine [%i heads]. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (float) fCardType / 10, fNumDisplayHeads);
                 fflush(NULL);
             }
         }
@@ -2987,7 +3061,7 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 
         residual = INT_MAX;
 
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): About to resynchronize all DCE-4 display heads by use of a 1 second CRTC stop->start cycle:\n");
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): About to resynchronize all DCE-4+ display heads by use of a 1 second CRTC stop->start cycle:\n");
 
         if (PsychPrefStateGet_Verbosity() > 3) {
             printf("Trying to stop and reset all display heads by disabling them one by one.\n");
@@ -3130,8 +3204,8 @@ PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int
     }
 
     // DCE-4 display engine of Evergreen or later?
-    if (isDCE4(screenId) || isDCE5(screenId)) {
-        // Yes. Use DCE-4 specific sync routine:
+    if (isDCE4(screenId) || isDCE5(screenId) || isDCE10(screenId) || isDCE11(screenId)) {
+        // Yes. Use DCE-4+ specific sync routine:
         return(PsychOSSynchronizeDisplayScreensDCE4(numScreens, screenIds, residuals, syncMethod, syncTimeOut, allowedResidual));
     }
 
@@ -3280,8 +3354,8 @@ int PsychOSKDGetBeamposition(int screenId)
     if (gfx_cntl_mem) {
         // Query code for ATI/AMD Radeon/FireGL/FirePro:
         if (fDeviceType == kPsychRadeon) {
-            if (isDCE4(screenId) || isDCE5(screenId)) {
-                // DCE-4 display engine (CEDAR and later afaik): Up to six crtc's.
+            if (isDCE4(screenId) || isDCE5(screenId) || isDCE10(screenId) || isDCE11(screenId)) {
+                // DCE-4+ display engine (CEDAR and later afaik): Up to six or seven crtc's.
 
                 // Read raw beampostion from GPU:
                 beampos = (int) (ReadRegister(EVERGREEN_CRTC_STATUS_POSITION + crtcoff[headId]) & RADEON_VBEAMPOSITION_BITMASK);
@@ -3358,7 +3432,7 @@ int PsychOSKDGetBeamposition(int screenId)
 // Try to change hardware dither mode on GPU:
 void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
 {
-    static unsigned int oldDither[(DCE4_MAXHEADID + 1)] = { 0, 0, 0, 0, 0, 0 };
+    static unsigned int oldDither[kPsychMaxPossibleCrtcs] = { 0, 0, 0, 0, 0, 0 };
     unsigned int reg;
     int headId, iter;
 
@@ -3403,9 +3477,8 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
             if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Trying to %s digital display dithering on display head %d.\n", (ditherOn) ? "enable" : "disable", headId);
 
             // Map headId to proper hardware control register offset:
-            if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId) || isDCE8(screenId)) {
-                // DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
-                // register offset for this headId:
+            if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId) || isDCE8(screenId) || isDCE10(screenId) || isDCE11(screenId)) {
+                // DCE-4+ display engine (CEDAR and later afaik): Map to proper register offset for this headId:
                 if (headId > ((int) fNumDisplayHeads - 1)) {
                     // Invalid head - bail:
                     if (PsychPrefStateGet_Verbosity() > 0) printf("SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
@@ -3524,7 +3597,7 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
     if (fDeviceType == kPsychRadeon) {
         if (PsychPrefStateGet_Verbosity() > 3) printf("PsychOSKDGetLUTState(): Checking LUT and bias values on GPU for headId %d.\n", headId);
 
-        if (isDCE4(screenId) || isDCE5(screenId)) {
+        if (isDCE4(screenId) || isDCE5(screenId) || isDCE10(screenId) || isDCE11(screenId)) {
             // DCE-4.0 and later: Up to (so far) six display heads:
             if (headId > (fNumDisplayHeads - 1)) {
                 // Invalid head - bail:
@@ -3625,8 +3698,8 @@ unsigned int PsychOSKDLoadIdentityLUT(int screenId, unsigned int headId)
     if (fDeviceType == kPsychRadeon) {
         if (PsychPrefStateGet_Verbosity() > 3) printf("PsychOSKDLoadIdentityLUT(): Uploading identity LUT and bias values into GPU for headId %d.\n", headId);
 
-        if (isDCE4(screenId) || isDCE5(screenId)) {
-            // DCE-4.0 and later: Up to (so far) six display heads:
+        if (isDCE4(screenId) || isDCE5(screenId) || isDCE10(screenId) || isDCE11(screenId)) {
+            // DCE-4.0+ and later: Up to (so far) six display heads:
             if (headId > (fNumDisplayHeads - 1)) {
                 // Invalid head - bail:
                 if (PsychPrefStateGet_Verbosity() > 3) printf("PsychOSKDLoadIdentityLUT: ERROR! Invalid headId %d provided. Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
@@ -3638,7 +3711,7 @@ unsigned int PsychOSKDLoadIdentityLUT(int screenId, unsigned int headId)
 
             WriteRegister(EVERGREEN_DC_LUT_CONTROL + offset, 0);
 
-            if (isDCE5(screenId)) {
+            if (isDCE5(screenId) || isDCE10(screenId)) {
                 WriteRegister(NI_INPUT_CSC_CONTROL + offset,
                               (NI_INPUT_CSC_GRPH_MODE(NI_INPUT_CSC_BYPASS) |
                                NI_INPUT_CSC_OVL_MODE(NI_INPUT_CSC_BYPASS)));
@@ -3704,7 +3777,7 @@ unsigned int PsychOSKDLoadIdentityLUT(int screenId, unsigned int headId)
             WriteRegister(reg, m);
         }
 
-        if (isDCE5(screenId)) {
+        if (isDCE5(screenId) || isDCE10(screenId)) {
             WriteRegister(NI_DEGAMMA_CONTROL + offset,
                           (NI_GRPH_DEGAMMA_MODE(NI_DEGAMMA_BYPASS) |
                            NI_OVL_DEGAMMA_MODE(NI_DEGAMMA_BYPASS) |

@@ -34,6 +34,10 @@
 // Include specifications of the GPU registers:
 #include "PsychGraphicsCardRegisterSpecs.h"
 
+// Array with register offsets of the CRTCs used by AMD/ATI gpus.
+// Initialized by OS specific screen glue, accessed from different locations:
+unsigned int crtcoff[kPsychMaxPossibleCrtcs];
+
 // Maps screenid's to Graphics hardware pipelines: Used to choose pipeline for beampos-queries and similar
 // GPU crtc specific stuff. Each screen can have up to kPsychMaxPossibleCrtcs assigned. Slot 0 contains the
 // primary crtc, used for beamposition timestamping, framerate queries etc. A -1 value in a slot terminates
@@ -123,7 +127,7 @@ PsychError PsychSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* 
  *                  value of 'ditherEnable'. The value is GPU specific.
  *
  */
-psych_bool  PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int screenId, unsigned int ditherEnable)
+psych_bool PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int screenId, unsigned int ditherEnable)
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 
@@ -318,12 +322,12 @@ unsigned int PsychSetGPUIdentityPassthrough(PsychWindowRecordType* windowRecord,
  * 'enable'   True = Enable high bit depth support, False = Disable high bit depth support, reenable ARGB8888 support.
  *
  */
-psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord, psych_bool enable)
+psych_bool PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord, psych_bool enable)
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
     int i, si, ei, headid, headiter, screenId;
     unsigned int lutreg, ctlreg, value, status;
-    int gpuMaintype, gpuMinortype;
+    int gpuMaintype, gpuMinortype, fNumDisplayHeads;
 
     // Child protection:
     if (windowRecord && !PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_internal, "Invalid non-onscreen windowRecord provided!!!");
@@ -332,7 +336,7 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
     screenId = (windowRecord) ? windowRecord->screenNumber : -1;
 
     // We only support Radeon GPU's, nothing else:
-    if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+    if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, &fNumDisplayHeads) ||
         (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0xffff)) {
         return(FALSE);
     }
@@ -359,8 +363,8 @@ psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
             }
             else {
                 // DCE-4 and later:
-                if (headid > DCE4_MAXHEADID) {
-                    printf("PTB-ERROR: Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, DCE4_MAXHEADID);
+                if (headid > fNumDisplayHeads - 1) {
+                    printf("PTB-ERROR: Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, fNumDisplayHeads - 1);
                     return(false);
                 }
 
@@ -520,7 +524,7 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
     int headiter, headid, screenId;
     unsigned int ctlreg, lutreg, val1, val2;
-    int gpuMaintype, gpuMinortype;
+    int gpuMaintype, gpuMinortype, fNumDisplayHeads;
 
     // Fixup needed? Only if 10bpc mode is supposed to be active! Early exit if not:
     if (!(windowRecord->specialflags & kPsychNative10bpcFBActive)) return;
@@ -530,7 +534,7 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
     screenId = windowRecord->screenNumber;
 
     // We only support Radeon GPU's, nothing else:
-    if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+    if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, &fNumDisplayHeads) ||
         (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0xffff)) {
         return;
     }
@@ -561,8 +565,8 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
         }
         else {
             // DCE-4 and later:
-            if (headid > DCE4_MAXHEADID) {
-                printf("PTB-ERROR: Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, DCE4_MAXHEADID);
+            if (headid > fNumDisplayHeads - 1) {
+                printf("PTB-ERROR: Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, fNumDisplayHeads - 1);
                 return;
             }
 
@@ -613,7 +617,7 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecord, psych_uint64* primarySurface, psych_uint64* secondarySurface, psych_bool* updatePending)
 {
     #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-        int gpuMaintype, gpuMinortype;
+        int gpuMaintype, gpuMinortype, fNumDisplayHeads;
         unsigned int updateStatus;
 
         // If we are called, we know that 'windowRecord' is an onscreen window.
@@ -624,7 +628,7 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
         if (!PsychOSIsKernelDriverAvailable(screenId)) return(FALSE);
 
         // We only support AMD Radeon/Fire GPU's, nothing else:
-        if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) || (gpuMaintype != kPsychRadeon)) {
+        if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, &fNumDisplayHeads) || (gpuMaintype != kPsychRadeon)) {
             return(FALSE);
         }
 
@@ -640,8 +644,8 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
 
         if  (gpuMinortype >= 40) {
             // DCE-4 or later display hardware:
-            if (headid < 0 || headid > DCE4_MAXHEADID) {
-                if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: PsychGetCurrentGPUSurfaceAddresses(): Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, DCE4_MAXHEADID);
+            if (headid < 0 || headid > fNumDisplayHeads - 1) {
+                if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: PsychGetCurrentGPUSurfaceAddresses(): Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, fNumDisplayHeads - 1);
                 return(FALSE);
             }
 
@@ -904,7 +908,7 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
  * A return value of -1 for a given rankId means that no such output is assigned,
  * it terminates the array.
  */
-int	PsychScreenToHead(int screenId, int rankId)
+int PsychScreenToHead(int screenId, int rankId)
 {
     return(displayScreensToPipes[screenId][rankId]);
 }
