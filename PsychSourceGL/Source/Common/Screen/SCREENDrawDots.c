@@ -52,11 +52,19 @@
 
 static char PointSmoothFragmentShaderSrc[] =
 "\n"
+"uniform int drawRoundDots;\n"
 "varying vec4 unclampedFragColor;\n"
-"uniform float pointSize;\n"
+"varying float pointSize;\n"
 "\n"
 "void main()\n"
 "{\n"
+"    /* Non-round, aliased square dots requested? */\n"
+"    if (drawRoundDots == 0) {\n"
+"       /* Yes. Simply passthrough unclamped color and be done: */\n"
+"       gl_FragColor = unclampedFragColor;\n"
+"       return;\n"
+"    }\n"
+"\n"
 "    /* Passthrough RGB color values: */\n"
 "    gl_FragColor.rgb = unclampedFragColor.rgb;\n"
 "\n"
@@ -77,10 +85,11 @@ char PointSmoothVertexShaderSrc[] =
 "/* gl_MultiTexCoord0 as varying unclampedFragColor to circumvent vertex color       */ \n"
 "/* clamping on gfx-hardware / OS combos that don't support unclamped operation:     */ \n"
 "/* PTBs color handling is expected to pass the vertex color in gl_MultiTexCoord0    */ \n"
-"/* for unclamped drawing for this reason in unclamped color mode. */ \n"
+"/* for unclamped drawing for this reason in unclamped color mode. gl_MultiTexCoord2 */ \n"
+"/* delivers individual point size (diameter) information for each point.            */ \n"
 "\n"
 "uniform int useUnclampedFragColor;\n"
-"uniform float pointSize;\n"
+"varying float pointSize;\n"
 "varying vec4 unclampedFragColor;\n"
 "\n"
 "void main()\n"
@@ -97,7 +106,8 @@ char PointSmoothVertexShaderSrc[] =
 "    /* Output position is the same as fixed function pipeline: */\n"
 "    gl_Position = ftransform();\n"
 "\n"
-"    /* Point size comes via pointSize uniform: */\n"
+"    /* Point size comes via texture coordinate set 2: */\n"
+"    pointSize = gl_MultiTexCoord2[0];\n"
 "    gl_PointSize = pointSize;\n"
 "}\n\0";
 
@@ -117,12 +127,15 @@ static char synopsisString[] =
 "Instead of a single \"color\" you can also provide a 3 or 4 row vector,"
 "which specifies an individual RGB or RGBA color for each corresponding point.\n"
 "\"dot_type\" is a flag that determines what type of dot is drawn: "
-"0 (default) squares, 1 circles (with anti-aliasing), 2 circles (with high-quality "
-"anti-aliasing, if supported by your hardware). 3 Use builtin shader-based implementation. "
+"0 (default) and 4 draw square dots, whereas 1, 2 and 3 draw round dots (circles) with anti-aliasing: "
+"1 favors performance, 2 tries to use high-quality anti-aliasing, if supported by your hardware. "
+"3 Uses a builtin shader-based implementation. "
 "dot_type 1 and 2 may not be supported by all graphics cards and drivers. On some systems "
-"Screen() will then automatically use dot_type 3 - our own implementation - in such a case. "
-"If you use dot_type > 0 you'll also need to set a proper blending mode with the "
-"Screen('BlendFunction') command.";
+"Screen() will then automatically switch to dot_type 3 - our own implementation - in such a case. "
+"If you use round dot_type 1, 2 or 3 you'll also need to set a proper blending mode with the "
+"Screen('BlendFunction') command, e.g., GL_SRC_ALPHA + GL_ONE_MINUS_SRC_ALPHA. A dot_type of 4 will "
+"draw square dots like dot_type 0, but may be faster when drawing lots of dots of different sizes by "
+"use of an efficient shader based path.";
 static char seeAlsoString[] = "BlendFunction";
 
 PsychError SCREENDrawDots(void)
@@ -136,7 +149,9 @@ PsychError SCREENDrawDots(void)
     unsigned char                           *bytecolors;
     GLfloat                                 pointsizerange[2];
     psych_bool                              lenient = FALSE;
-    GLint                                   pointSizeUniformLoc = -1;
+    psych_bool                              usePointSizeArray = FALSE;
+    static psych_bool                       nocando = FALSE;
+    int                                     oldverbosity;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -180,48 +195,81 @@ PsychError SCREENDrawDots(void)
         idot_type = 0;
     } else {
         PsychAllocInDoubleMatArg(6, TRUE, &m, &n, &p, &dot_type);
-        if(p!=1 || n!=1 || m!=1 || (dot_type[0]<0 || dot_type[0]>2))
-            PsychErrorExitMsg(PsychError_user, "dot_type must be 0, 1 or 2");
+        if(p != 1 || n != 1 || m != 1 || (dot_type[0] < 0 || dot_type[0] > 4))
+            PsychErrorExitMsg(PsychError_user, "dot_type must be 0, 1, 2, 3 or 4");
         idot_type = (int) dot_type[0];
     }
 
     // Turn on antialiasing to draw circles
     if (idot_type) {
-        glEnable(GL_POINT_SMOOTH);
-        glGetFloatv(GL_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
+        // Type 4 is actually aliased square dots, but shader-based implementation:
+        if (idot_type != 4) {
+            // Request smooth round points from hardware:
+            glEnable(GL_POINT_SMOOTH);
+            glGetFloatv(GL_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
 
-        // A dot type of 2 requests for highest quality point smoothing:
-        glHint(GL_POINT_SMOOTH_HINT, (idot_type > 1) ? GL_NICEST : GL_DONT_CARE);
+            // A dot type of 2 requests for highest quality point smoothing:
+            glHint(GL_POINT_SMOOTH_HINT, (idot_type > 1) ? GL_NICEST : GL_DONT_CARE);
+        }
+        else {
+            // Request square dots, without anti-aliasing:
+            glDisable(GL_POINT_SMOOTH);
+            glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
+        }
 
         // Smooth point rendering supported by gfx-driver and hardware? And user does not request our own stuff?
-        if ((idot_type == 3) || !(windowRecord->gfxcaps & kPsychGfxCapSmoothPrimitives)) {
+        if ((idot_type == 3) || (idot_type == 4) || !(windowRecord->gfxcaps & kPsychGfxCapSmoothPrimitives)) {
             // No. Need to roll our own shader + point sprite solution.
-            if (!windowRecord->smoothPointShader) {
+            if (!windowRecord->smoothPointShader && !nocando) {
                 parentWindowRecord = PsychGetParentWindow(windowRecord);
                 if (!parentWindowRecord->smoothPointShader) {
+                    // Build and assign shader to parent window, but allow this to silently fail:
+                    oldverbosity = PsychPrefStateGet_Verbosity();
+                    PsychPrefStateSet_Verbosity(0);
                     parentWindowRecord->smoothPointShader = PsychCreateGLSLProgram(PointSmoothFragmentShaderSrc, PointSmoothVertexShaderSrc, NULL);
-                    if (!parentWindowRecord->smoothPointShader)
-                        PsychErrorExitMsg(PsychError_user, "Point smoothing unsupported on your system and our shader based implementation failed as well in Screen('DrawDots').");
+                    PsychPrefStateSet_Verbosity(oldverbosity);
                 }
-                windowRecord->smoothPointShader = parentWindowRecord->smoothPointShader;
+
+                if (parentWindowRecord->smoothPointShader) {
+                    // Got one compiled - assign it for use:
+                    windowRecord->smoothPointShader = parentWindowRecord->smoothPointShader;
+                }
+                else {
+                    // Failed. Record this failure so we can avoid retrying at next DrawDots invocation:
+                    nocando = TRUE;
+                }
             }
 
-            // Activate point smooth shader, and point sprite operation on texunit 1 for coordinates on set 1:
-            PsychSetShader(windowRecord, windowRecord->smoothPointShader);
-            glActiveTexture(GL_TEXTURE1);
-            glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE);
-            glActiveTexture(GL_TEXTURE0);
-            glEnable(GL_POINT_SPRITE);
+            if (windowRecord->smoothPointShader) {
+                // Activate point smooth shader, and point sprite operation on texunit 1 for coordinates on set 1:
+                PsychSetShader(windowRecord, windowRecord->smoothPointShader);
+                glActiveTexture(GL_TEXTURE1);
+                glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE);
+                glActiveTexture(GL_TEXTURE0);
+                glEnable(GL_POINT_SPRITE);
 
-            // Tell shader from where to get its color information: Unclamped high precision colors from texture coordinate set 0, or regular colors from vertex color attribute?
-            glUniform1i(glGetUniformLocation(windowRecord->smoothPointShader, "useUnclampedFragColor"), (windowRecord->defaultDrawShader) ? 1 : 0);
+                // Tell shader from where to get its color information: Unclamped high precision colors from texture coordinate set 0, or regular colors from vertex color attribute?
+                glUniform1i(glGetUniformLocation(windowRecord->smoothPointShader, "useUnclampedFragColor"), (windowRecord->defaultDrawShader) ? 1 : 0);
 
-            // Tell shader about current point size in pointSize uniform:
-            pointSizeUniformLoc = glGetUniformLocation(windowRecord->smoothPointShader, "pointSize");
-            glEnable(GL_PROGRAM_POINT_SIZE);
+                // Tell shader if it should shade smooth round dots, or square dots:
+                glUniform1i(glGetUniformLocation(windowRecord->smoothPointShader, "drawRoundDots"), (idot_type != 4) ? 1 : 0);
+
+                // Tell shader about current point size in pointSize uniform:
+                glEnable(GL_PROGRAM_POINT_SIZE);
+                usePointSizeArray = TRUE;
+            }
+            else if (idot_type != 4) {
+                // Game over for round dot drawing:
+                PsychErrorExitMsg(PsychError_user, "Point smoothing unsupported on your system and our shader based implementation failed as well in Screen('DrawDots').");
+            }
+            else {
+                // Type 4 requested but unsupported. Fallback to type 0, which is the same, just slower:
+                idot_type = 0;
+            }
         }
     }
     else {
+        glDisable(GL_POINT_SMOOTH);
         glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
     }
 
@@ -241,8 +289,8 @@ PsychError SCREENDrawDots(void)
     }
 
     // Setup initial common point size for all points:
-    if (!lenient && pointSizeUniformLoc == -1) glPointSize((sizef) ? sizef[0] : (float) size[0]);
-    if (!lenient && pointSizeUniformLoc > -1) glUniform1f(pointSizeUniformLoc, (sizef) ? sizef[0] : (float) size[0]);
+    if (!lenient && !usePointSizeArray) glPointSize((sizef) ? sizef[0] : (float) size[0]);
+    if (!lenient && usePointSizeArray) glMultiTexCoord1f(GL_TEXTURE2, (sizef) ? sizef[0] : (float) size[0]);
 
     // Setup modelview matrix to perform translation by 'center':
     glMatrixMode(GL_MODELVIEW);
@@ -270,16 +318,45 @@ PsychError SCREENDrawDots(void)
     }
 
     // Render all n points, starting at point 0, render them as POINTS:
-    if (nrsize==1) {
-        // One common point size for all dots provided. Good! This is very efficiently
-        // done with one single render-call:
+    if ((nrsize == 1) || (!lenient && usePointSizeArray)) {
+        // Only one common size provided, or efficient shader based
+        // path in use. We can use the fast path of only submitting
+        // one glDrawArrays call to draw all GL_POINTS. For a single
+        // common size, no further setup is needed.
+        if (nrsize > 1) {
+            // Individual size for each dot provided. Setup texture unit 2
+            // with a 1D texcoord array that stores per point size info in
+            // texture coordinate set 2. But first validate point sizes:
+            for (i = 0; i < nrpoints; i++) {
+                if (!lenient && ((sizef && (sizef[i] > pointsizerange[1] || sizef[i] < pointsizerange[0])) ||
+                    (!sizef && (size[i] > pointsizerange[1] || size[i] < pointsizerange[0])))) {
+                    printf("PTB-ERROR: You requested a point size of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
+                           (sizef) ? sizef[i] : size[i], pointsizerange[0], pointsizerange[1]);
+                    PsychErrorExitMsg(PsychError_user, "Unsupported point size requested in Screen('DrawDots').");
+                }
+            }
+
+            // Sizes are fine, setup texunit 2:
+            glClientActiveTexture(GL_TEXTURE2);
+            glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+            glTexCoordPointer(1, (sizef) ? GL_FLOAT : GL_DOUBLE, 0, (sizef) ? (const GLvoid*) sizef : (const GLvoid*) size);
+        }
+
+        // Draw all points:
         glDrawArrays(GL_POINTS, 0, nrpoints);
+
+        if (nrsize > 1) {
+            // Individual size for each dot provided. Reset texture unit 2:
+            glTexCoordPointer(1, (sizef) ? GL_FLOAT : GL_DOUBLE, 0, (const GLvoid*) NULL);
+            glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+
+            // Back to default texunit 0:
+            glClientActiveTexture(GL_TEXTURE0);
+        }
     }
     else {
-        // Different size for each dot provided: We have to do One GL - call per dot.
-        // This is *pretty inefficient* and should be reimplemented in the future via
-        // Point-Sprite extensions, cleverly used display lists or via vertex-shaders...
-        // For now we do it the stupid way:
+        // Different size for each dot provided and we can't use our shader based implementation:
+        // We have to do One GL - call per dot:
         for (i=0; i<nrpoints; i++) {
             if (!lenient && ((sizef && (sizef[i] > pointsizerange[1] || sizef[i] < pointsizerange[0])) ||
                 (!sizef && (size[i] > pointsizerange[1] || size[i] < pointsizerange[0])))) {
@@ -289,8 +366,7 @@ PsychError SCREENDrawDots(void)
             }
 
             // Setup point size for this point:
-            if (!lenient && pointSizeUniformLoc == -1) glPointSize((sizef) ? sizef[i] : (float) size[i]);
-            if (!lenient && pointSizeUniformLoc > -1) glUniform1f(pointSizeUniformLoc, (sizef) ? sizef[i] : (float) size[i]);
+            if (!lenient && !usePointSizeArray) glPointSize((sizef) ? sizef[i] : (float) size[i]);
 
             // Render point:
             glDrawArrays(GL_POINTS, i, 1);
