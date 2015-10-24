@@ -65,49 +65,6 @@ PsychError SCREENNull(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
-    #if PSYCH_SYSTEM != PSYCH_WINDOWS
-    {
-                // Test GPU low-level dithering control:
-                int screenId, ditherEnable, headid;
-                int gpuMaintype, gpuMinortype;
-                unsigned int ctlreg, value;
-                PsychCopyInIntegerArg(1, TRUE, &screenId);
-                ditherEnable = 0;
-                PsychCopyInIntegerArg(2, TRUE, &ditherEnable);
-
-                // We only support Radeon GPU's with DCE-3 or later:
-                if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-                    (gpuMaintype != kPsychRadeon) || (gpuMinortype < 30)) {
-                    printf("PTB-ERROR: Unsupported GPU for this method. Not a AMD gpu with at least DCE-3 display engine!\n");
-                    return(PsychError_user);
-                }
-
-                if (PsychPrefStateGet_Verbosity() > 2) printf("Set format clamp control: ScreenId %i : Setting %i.\n", screenId, ditherEnable);
-                headid = PsychScreenToCrtcId(screenId, 0);
-
-                // Select Radeon HW registers for corresponding heads:
-                if (gpuMinortype < 40) {
-                    // DCE-3 and earlier:
-                    ctlreg = (headid == 0) ? DCE3_FMT_CLAMP_CONTROL : DCE3_FMT_CLAMP_CONTROL + 0x800;
-                }
-                else {
-                    // DCE-4 and later:
-                    if (headid > DCE4_MAXHEADID) {
-                        printf("PTB-ERROR: Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, DCE4_MAXHEADID);
-                        return(PsychError_user);
-                    }
-
-                    ctlreg = EVERGREEN_FMT_CLAMP_CONTROL + crtcoff[headid];
-                }
-
-                value = PsychOSKDReadRegister(screenId, ctlreg, NULL);
-                printf("Current value of DCE bit depth clamp control for head %i: 0x%x\n", headid, value);
-                if (ditherEnable > 0) PsychOSKDWriteRegister(screenId, ctlreg, ditherEnable, NULL);
-                value = PsychOSKDReadRegister(screenId, ctlreg, NULL);
-                printf("New value of DCE bit depth clamp control for head %i: 0x%x\n", headid, value);
-                return(PsychError_none);
-    }
-    #endif
 
 	#if PSYCH_SYSTEM == PSYCH_LINUX
 /*		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
