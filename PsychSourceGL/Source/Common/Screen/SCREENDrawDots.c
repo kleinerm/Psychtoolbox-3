@@ -50,30 +50,84 @@
 
 #include "Screen.h"
 
+static char PointSmoothFragmentShaderSrc[] =
+"\n"
+"varying vec4 unclampedFragColor;\n"
+"uniform float pointSize;\n"
+"\n"
+"void main()\n"
+"{\n"
+"    /* Passthrough RGB color values: */\n"
+"    gl_FragColor.rgb = unclampedFragColor.rgb;\n"
+"\n"
+"    /* Adapt alpha value dependent on relative radius of the fragment within a dot:   */\n"
+"    /* This for point smoothing on GPU's that don't support this themselves.          */\n"
+"    /* Points on the border of the dot, at [radius - 0.5 ; radius + 0.5] pixels, will */\n"
+"    /* get their alpha value reduced from 1.0 * alpha to 0.0, so they completely      */\n"
+"    /* disappear over a distance of 1 pixel distance unit.                            */\n"
+"    float r = length(gl_TexCoord[1].st - vec2(0.5, 0.5)) * pointSize;\n"
+"    r = 1.0 - clamp(r - (0.5 * pointSize - 0.5), 0.0, 1.0);\n"
+"    gl_FragColor.a = unclampedFragColor.a * r;\n"
+"    if (r <= 0.0)\n"
+"        discard;\n"
+"}\n\0";
+
+char PointSmoothVertexShaderSrc[] =
+"/* Vertex shader: Emulates fixed function pipeline, but in HDR color mode passes    */ \n"
+"/* gl_MultiTexCoord0 as varying unclampedFragColor to circumvent vertex color       */ \n"
+"/* clamping on gfx-hardware / OS combos that don't support unclamped operation:     */ \n"
+"/* PTBs color handling is expected to pass the vertex color in gl_MultiTexCoord0    */ \n"
+"/* for unclamped drawing for this reason in unclamped color mode. */ \n"
+"\n"
+"uniform int useUnclampedFragColor;\n"
+"uniform float pointSize;\n"
+"varying vec4 unclampedFragColor;\n"
+"\n"
+"void main()\n"
+"{\n"
+"    if (useUnclampedFragColor > 0) {\n"
+"       /* Simply copy input unclamped RGBA pixel color into output varying color: */\n"
+"       unclampedFragColor = gl_MultiTexCoord0;\n"
+"    }\n"
+"    else {\n"
+"       /* Simply copy regular RGBA pixel color into output varying color: */\n"
+"       unclampedFragColor = gl_Color;\n"
+"    }\n"
+"\n"
+"    /* Output position is the same as fixed function pipeline: */\n"
+"    gl_Position = ftransform();\n"
+"\n"
+"    /* Point size comes via pointSize uniform: */\n"
+"    gl_PointSize = pointSize;\n"
+"}\n\0";
+
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "Screen('DrawDots', windowPtr, xy [,size] [,color] [,center] [,dot_type]);";
 //                                            1          2    3       4        5         6
 static char synopsisString[] =
 "Quickly draw an array of dots.  "
 "\"xy\" is a two-row vector containing the x and y coordinates of the dot centers, "
-"relative to \"center\" (default center is [0 0]).  "
-"\"size\" is the width of each dot in pixels (default is 1). "
+"relative to \"center\" (default center is [0 0]).\n"
+"\"size\" is the diameter of each dot in pixels (default is 1). "
 "Instead of a common size for all dots you can also provide a "
-"vector which defines a different dot size for each dot.  "
+"vector which defines a different dot size for each dot. Different graphics cards do "
+"have different limits on the maximum size of dots, 10 or 63 are typical limits.\n"
 "\"color\" is the the clut index (scalar or [r g b a] vector) "
 "that you want to poke into each dot pixel (default is black).  "
 "Instead of a single \"color\" you can also provide a 3 or 4 row vector,"
-"which specifies an individual RGB or RGBA color for each corresponding point."
+"which specifies an individual RGB or RGBA color for each corresponding point.\n"
 "\"dot_type\" is a flag that determines what type of dot is drawn: "
 "0 (default) squares, 1 circles (with anti-aliasing), 2 circles (with high-quality "
-"anti-aliasing, if supported by your hardware). "
-"If you use dot_type = 1 you'll also need to set a proper blending mode with the "
-"Screen('BlendFunction') command!";
+"anti-aliasing, if supported by your hardware). 3 Use builtin shader-based implementation. "
+"dot_type 1 and 2 may not be supported by all graphics cards and drivers. On some systems "
+"Screen() will then automatically use dot_type 3 - our own implementation - in such a case. "
+"If you use dot_type > 0 you'll also need to set a proper blending mode with the "
+"Screen('BlendFunction') command.";
 static char seeAlsoString[] = "BlendFunction";
 
 PsychError SCREENDrawDots(void)
 {
-    PsychWindowRecordType                   *windowRecord;
+    PsychWindowRecordType                   *windowRecord, *parentWindowRecord;
     int                                     m,n,p,mc,nc,idot_type;
     int                                     i, nrpoints, nrsize;
     psych_bool                              isArgThere, usecolorvector, isdoublecolors, isuint8colors;
@@ -82,6 +136,7 @@ PsychError SCREENDrawDots(void)
     unsigned char                           *bytecolors;
     GLfloat                                 pointsizerange[2];
     psych_bool                              lenient = FALSE;
+    GLint                                   pointSizeUniformLoc = -1;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -131,11 +186,40 @@ PsychError SCREENDrawDots(void)
     }
 
     // Turn on antialiasing to draw circles
-    if(idot_type) {
+    if (idot_type) {
         glEnable(GL_POINT_SMOOTH);
         glGetFloatv(GL_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
+
         // A dot type of 2 requests for highest quality point smoothing:
-        glHint(GL_POINT_SMOOTH_HINT, (idot_type>1) ? GL_NICEST : GL_DONT_CARE);
+        glHint(GL_POINT_SMOOTH_HINT, (idot_type > 1) ? GL_NICEST : GL_DONT_CARE);
+
+        // Smooth point rendering supported by gfx-driver and hardware? And user does not request our own stuff?
+        if ((idot_type == 3) || !(windowRecord->gfxcaps & kPsychGfxCapSmoothPrimitives)) {
+            // No. Need to roll our own shader + point sprite solution.
+            if (!windowRecord->smoothPointShader) {
+                parentWindowRecord = PsychGetParentWindow(windowRecord);
+                if (!parentWindowRecord->smoothPointShader) {
+                    parentWindowRecord->smoothPointShader = PsychCreateGLSLProgram(PointSmoothFragmentShaderSrc, PointSmoothVertexShaderSrc, NULL);
+                    if (!parentWindowRecord->smoothPointShader)
+                        PsychErrorExitMsg(PsychError_user, "Point smoothing unsupported on your system and our shader based implementation failed as well in Screen('DrawDots').");
+                }
+                windowRecord->smoothPointShader = parentWindowRecord->smoothPointShader;
+            }
+
+            // Activate point smooth shader, and point sprite operation on texunit 1 for coordinates on set 1:
+            PsychSetShader(windowRecord, windowRecord->smoothPointShader);
+            glActiveTexture(GL_TEXTURE1);
+            glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE);
+            glActiveTexture(GL_TEXTURE0);
+            glEnable(GL_POINT_SPRITE);
+
+            // Tell shader from where to get its color information: Unclamped high precision colors from texture coordinate set 0, or regular colors from vertex color attribute?
+            glUniform1i(glGetUniformLocation(windowRecord->smoothPointShader, "useUnclampedFragColor"), (windowRecord->defaultDrawShader) ? 1 : 0);
+
+            // Tell shader about current point size in pointSize uniform:
+            pointSizeUniformLoc = glGetUniformLocation(windowRecord->smoothPointShader, "pointSize");
+            glEnable(GL_PROGRAM_POINT_SIZE);
+        }
     }
     else {
         glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
@@ -157,7 +241,8 @@ PsychError SCREENDrawDots(void)
     }
 
     // Setup initial common point size for all points:
-    if (!lenient) glPointSize((sizef) ? sizef[0] : (float) size[0]);
+    if (!lenient && pointSizeUniformLoc == -1) glPointSize((sizef) ? sizef[0] : (float) size[0]);
+    if (!lenient && pointSizeUniformLoc > -1) glUniform1f(pointSizeUniformLoc, (sizef) ? sizef[0] : (float) size[0]);
 
     // Setup modelview matrix to perform translation by 'center':
     glMatrixMode(GL_MODELVIEW);
@@ -204,7 +289,8 @@ PsychError SCREENDrawDots(void)
             }
 
             // Setup point size for this point:
-            if (!lenient) glPointSize((sizef) ? sizef[i] : (float) size[i]);
+            if (!lenient && pointSizeUniformLoc == -1) glPointSize((sizef) ? sizef[i] : (float) size[i]);
+            if (!lenient && pointSizeUniformLoc > -1) glUniform1f(pointSizeUniformLoc, (sizef) ? sizef[i] : (float) size[i]);
 
             // Render point:
             glDrawArrays(GL_POINTS, i, 1);
@@ -221,7 +307,19 @@ PsychError SCREENDrawDots(void)
     glPopMatrix();
 
     // turn off antialiasing again
-    if(idot_type) glDisable(GL_POINT_SMOOTH);
+    if (idot_type) {
+        glDisable(GL_POINT_SMOOTH);
+
+        if (windowRecord->smoothPointShader) {
+            // Deactivate point smooth shader and point sprite operation on texunit 1:
+            PsychSetShader(windowRecord, 0);
+            glActiveTexture(GL_TEXTURE1);
+            glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_FALSE);
+            glActiveTexture(GL_TEXTURE0);
+            glDisable(GL_POINT_SPRITE);
+            glDisable(GL_PROGRAM_POINT_SIZE);
+        }
+    }
 
     // Reset pointsize to 1.0
     glPointSize(1);

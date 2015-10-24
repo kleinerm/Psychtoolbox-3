@@ -93,6 +93,7 @@
 #define kPsychGfxCapNPOTTex                 (1 << 18)    // Hw supports non-power-of-twp GL_TEXTURE_2D textures.
 #define kPsychGfxCapSupportsBufferAge       (1 << 19)    // Hw supports EXT_buffer_age extension.
 #define kPsychGfxCapFBOScaledResolveBlit    (1 << 20)    // Hw supports simultaneous multisample resolve and rescaling in one framebuffer blit.
+#define kPsychGfxCapSmoothPrimitives        (1 << 21)    // Hw supports GL_POINT_SMOOTH, LINE smooth etc.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
@@ -410,6 +411,7 @@ typedef struct _PsychWindowRecordType_{
     double                      colorRange;                                 // Maximum allowable color component value. See SCREENColorRange.c for explanation.
     GLuint                      unclampedDrawShader;                        // Handle of GLSL shader object for drawing of non-texture stims without vertex color clamping. Zero by default.
     GLuint                      defaultDrawShader;                          // Default GLSL shader object for drawing of non-texture stims. Zero by default.
+    GLuint                      smoothPointShader;                          // GLSL shader to implement point smoothing via point sprites.
     double                      currentColor[4];                            // Current unclamped but colorrange remapped RGBA drawcolor for whatever drawop, as spec'd by PsychSetGLColor().
     double                      clearColor[4];                              // Window clear color (as GL double vector) to use in PsychGLClear();
     int                         imagingMode;                                // Master mode switch for imaging and callback hook pipeline.
