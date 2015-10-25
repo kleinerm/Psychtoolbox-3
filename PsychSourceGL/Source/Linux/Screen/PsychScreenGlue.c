@@ -1284,6 +1284,39 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
     return(mode);
 }
 
+const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm_width, unsigned long *mm_height)
+{
+    static char outputName[100];
+    int o;
+    XRROutputInfo *output_info = NULL;
+    XRRScreenResources *res = displayX11ScreenResources[screenId];
+    RRCrtc crtc = res->crtcs[PsychScreenToHead(screenId, outputIdx)];
+
+    // Find output associated with the crtc for this outputIdx on this screen:
+    PsychLockDisplay();
+    for (o = 0; o < res->noutput; o++) {
+        output_info = XRRGetOutputInfo(displayCGIDs[screenId], res, res->outputs[o]);
+        if (output_info->crtc == crtc) break;
+        XRRFreeOutputInfo(output_info);
+    }
+    PsychUnlockDisplay();
+
+    // Got it?
+    if (o == res->noutput) PsychErrorExitMsg(PsychError_user, "Invalid output index provided! No such output for this screen!");
+
+    // Store output name to return:
+    sprintf(outputName, "%s", output_info->name);
+
+    // And width / height in mm:
+    if (mm_width) *mm_width = output_info->mm_width;
+    if (mm_height) *mm_height = output_info->mm_height;
+
+    XRRFreeOutputInfo(output_info);
+
+    // Return output name:
+    return(&outputName[0]);
+}
+
 void InitCGDisplayIDList(void)
 {
     int major, minor;
