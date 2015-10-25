@@ -92,7 +92,43 @@
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for June 2015 (last update e-mail patch / commit 2015-05-12). Would need updates for anything after start of July 2015 */
+/* Mappings up to date for October 2015 (last update e-mail patch / commit 2015-10-16). Would need updates for anything after start of November 2015 */
+
+/* Is a given ATI/AMD GPU a DCE11 type ASIC, i.e., with the new display engine? */
+bool PsychtoolboxKernelDriver::isDCE11(void)
+{
+    bool isDCE11 = false;
+
+    // CARRIZO and STONEY are DCE11 -- This is part of the "Volcanic Islands" GPU family.
+
+    // CARRIZO: 0x987x so far.
+    if ((fPCIDeviceId & 0xFFF0) == 0x9870) isDCE11 = true;
+
+    // STONEY: 0x98E4 so far.
+    if ((fPCIDeviceId & 0xFFFF) == 0x98E4) isDCE11 = true;
+
+    return(isDCE11);
+}
+
+/* Is a given ATI/AMD GPU a DCE10 type ASIC, i.e., with the new display engine? */
+bool PsychtoolboxKernelDriver::isDCE10(void)
+{
+    bool isDCE10 = false;
+
+    // TONGA and FIJI are DCE10 -- This is part of the "Volcanic Islands" GPU family.
+
+    // TONGA: 0x692x - 0x693x so far.
+    if ((fPCIDeviceId & 0xFFF0) == 0x6920) isDCE10 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6930) isDCE10 = true;
+
+    // FIJI in 0x7300 range:
+    if ((fPCIDeviceId & 0xFF00) == 0x7300) isDCE10 = true;
+
+    // All DCE11 are also DCE10, so far...
+    if (isDCE11()) isDCE10 = true;
+
+    return(isDCE10);
+}
 
 /* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE8(void)
@@ -358,18 +394,49 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
         if (PCI_VENDOR_ID_ATI == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have ATI's vendor id.\n", getName());
         if (PCI_VENDOR_ID_AMD == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have AMD's vendor id.\n", getName());
 
-        IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE6() ? "DCE-6" : (isDCE5() ? "DCE-5" : (isDCE4() ? "DCE-4" : (isDCE3() ? "DCE-3" : "AVIVO"))));
+        IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE11() ? "DCE-11" : isDCE10() ? "DCE-10" : isDCE8() ? "DCE-8" : isDCE6() ? "DCE-6" : (isDCE5() ? "DCE-5" : (isDCE4() ? "DCE-4" : (isDCE3() ? "DCE-3" : "AVIVO"))));
 
-        // On DCE-4 and later GPU's (Evergreen) we limit the minimum MMIO
-        // offset to the base address of the 1st CRTC register block for now:
-        if (isDCE4() || isDCE5() || isDCE6()) {
+        // Setup for DCE-4/5/6/8:
+        if (isDCE4() || isDCE5() || isDCE6() || isDCE8()) {
             fRadeonLowlimit = 0;
+
+            // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
+            crtcoff[0] = EVERGREEN_CRTC0_REGISTER_OFFSET;
+            crtcoff[1] = EVERGREEN_CRTC1_REGISTER_OFFSET;
+            crtcoff[2] = EVERGREEN_CRTC2_REGISTER_OFFSET;
+            crtcoff[3] = EVERGREEN_CRTC3_REGISTER_OFFSET;
+            crtcoff[4] = EVERGREEN_CRTC4_REGISTER_OFFSET;
+            crtcoff[5] = EVERGREEN_CRTC5_REGISTER_OFFSET;
 
             // Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 or DCE-6.4 (which have only 2) or DCE-6.1 (4 heads), supports up to six display heads:
             if (!isDCE41() && !isDCE61() && !isDCE64()) fNumDisplayHeads = 6;
 
             // DCE-6.1 "Trinity" chip family supports 4 display heads:
             if (!isDCE41() && isDCE61()) fNumDisplayHeads = 4;
+        }
+
+        // Setup for DCE-10/11:
+        if (isDCE10() || isDCE11()) {
+            // DCE-10/11 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
+            // but the offsets for the different CRTC blocks are different wrt. to pre DCE-10. Therefore
+            // need to initialize the offsets differently. Also, some of these parts seem to support up
+            // to 7 display engines instead of the old limit of 6 engines:
+            fRadeonLowlimit = 0;
+
+            // Offset of crtc blocks of Volcanic Islands DCE-10/11 gpu's for each of the possible crtc's:
+            crtcoff[0] = DCE10_CRTC0_REGISTER_OFFSET;
+            crtcoff[1] = DCE10_CRTC1_REGISTER_OFFSET;
+            crtcoff[2] = DCE10_CRTC2_REGISTER_OFFSET;
+            crtcoff[3] = DCE10_CRTC3_REGISTER_OFFSET;
+            crtcoff[4] = DCE10_CRTC4_REGISTER_OFFSET;
+            crtcoff[5] = DCE10_CRTC5_REGISTER_OFFSET;
+            crtcoff[6] = DCE10_CRTC6_REGISTER_OFFSET;
+
+            // DCE-10 has 6 display controllers:
+            if (isDCE10()) fNumDisplayHeads = 6;
+
+            // DCE-11 has 3 display controllers:
+            if (isDCE11()) fNumDisplayHeads = 3;
         }
     }
 
@@ -633,7 +700,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
     //
     //      Of course, this behaviour may change on each different gfx-card and OS/X release, so it is
     //    not desirable for production use -- Tradeoffs all over the place...
-    if (false && (fDeviceType == kPsychRadeon) && !isDCE4()) {
+    if (false && (fDeviceType == kPsychRadeon) && !isDCE4() && !isDCE10()) {
         // Setup our own interrupt handler for gfx-card interrupts:
         if (!InitializeInterruptHandler()) {
             // Failed!
@@ -741,7 +808,10 @@ bool PsychtoolboxKernelDriver::init(OSDictionary* dictionary)
     fInterruptCounter = 0;
     fVBLCounter[0] = 0;
     fVBLCounter[1] = 0;
-    for (i = 0; i <= DCE4_MAXHEADID; i++) oldDither[i] = 0;
+    for (i = 0; i <= MAXHEADID; i++) {
+        oldDither[i] = 0;
+        crtcoff[i] = 0;
+    }
 
     return true;
 }
@@ -1057,12 +1127,12 @@ void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
         IOLog("%s: SetDitherMode: Trying to %s digital display dithering on display head %d.\n", getName(), (ditherOn) ? "enable" : "disable", headId);
 
         // Map headId to proper hardware control register offset:
-        if (isDCE4() || isDCE5() || isDCE6() || isDCE8()) {
+        if (isDCE4() || isDCE5() || isDCE6() || isDCE8() || isDCE10()) {
             // DCE-4 display engine (CEDAR and later afaik): Up to six crtc's. Map to proper
             // register offset for this headId:
-            if (headId > DCE4_MAXHEADID) {
+            if (headId > fNumDisplayHeads - 1) {
                 // Invalid head - bail:
-                IOLog("%s: SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", getName(), headId);
+                IOLog("%s: SetDitherMode: ERROR! Invalid headId %d provided. Must be between 0 and %d. Aborted.\n", getName(), headId, fNumDisplayHeads - 1);
                 return;
             }
 
@@ -1175,7 +1245,7 @@ UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 {
     SInt32 beampos = 0;
 
-    if (headId >= fNumDisplayHeads) {
+    if (headId > fNumDisplayHeads - 1) {
         // Invalid head - bail:
         IOLog("%s: GetBeamPosition: ERROR! Invalid headId %d provided. Must be between 0 and %d. Aborted.\n", getName(), headId, fNumDisplayHeads - 1);
         return(0);
@@ -1183,7 +1253,7 @@ UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 
     // Query code for ATI/AMD Radeon/FireGL/FirePro:
     if (fDeviceType == kPsychRadeon) {
-        if (isDCE4() || isDCE5()) {
+        if (isDCE4() || isDCE5() || isDCE10()) {
             // DCE-4 display engine (CEDAR and later afaik): Up to six crtc's.
 
             // Read raw beampostion from GPU:
@@ -1262,7 +1332,7 @@ SInt32 PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
     IOLog("%s: FastSynchronizeAllDisplayHeads(): About to resynchronize all display heads by use of a 1 second CRTC stop->start cycle:\n", getName());
 
     // DCE-4 needs a different strategy for now:
-    if (isDCE4() || isDCE5()) {
+    if (isDCE4() || isDCE5() || isDCE10()) {
         // Shut down heads one by one:
 
         // Detect enabled heads:
@@ -1428,8 +1498,8 @@ void PsychtoolboxKernelDriver::GetGPUInfo(UInt32 *inOutArgs)
     // Default to "don't know".
     inOutArgs[2] = 0;
 
-    // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) or DCE-8 (80) for now.
-    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE8() ? 80 : (isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : (isDCE3() ? 30 : 10))));
+    // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) or DCE-8 (80), DCE-10 (100) or DCE-11 (110) for now.
+    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE11() ? 110 : isDCE10() ? 100 : isDCE8() ? 80 : (isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : (isDCE3() ? 30 : 10))));
 
     // On NVidia's we distinguish between chip family, e.g., 0x40 for the NV-40 family.
     if (fDeviceType == kPsychGeForce) inOutArgs[2] = fCardType;
@@ -1452,11 +1522,11 @@ UInt32 PsychtoolboxKernelDriver::GetLUTState(UInt32 headId, UInt32 debug)
     if (fDeviceType == kPsychRadeon) {
         IOLog("%s: GetLUTState(): Checking LUT and bias values on GPU for headId %d.\n", getName(), headId);
 
-        if (isDCE4() || isDCE5()) {
+        if (isDCE4() || isDCE5() || isDCE10()) {
             // DCE-4.0 and later: Up to (so far) six display heads:
-            if (headId > DCE4_MAXHEADID) {
+            if (headId > fNumDisplayHeads - 1) {
                 // Invalid head - bail:
-                IOLog("%s: GetLUTState: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", getName(), headId);
+                IOLog("%s: GetLUTState: ERROR! Invalid headId %d provided. Must be between 0 and %d. Aborted.\n", getName(), headId, fNumDisplayHeads - 1);
                 return(0xffffffff);
             }
 
@@ -1554,11 +1624,11 @@ UInt32 PsychtoolboxKernelDriver::LoadIdentityLUT(UInt32 headId)
     if (fDeviceType == kPsychRadeon) {
         IOLog("%s: LoadIdentityLUT(): Uploading identity LUT and bias values into GPU for headId %d.\n", getName(), headId);
 
-        if (isDCE4() || isDCE5()) {
+        if (isDCE4() || isDCE5() || isDCE10()) {
             // DCE-4.0 and later: Up to (so far) six display heads:
-            if (headId > DCE4_MAXHEADID) {
+            if (headId > fNumDisplayHeads - 1) {
                 // Invalid head - bail:
-                IOLog("%s: LoadIdentityLUT: ERROR! Invalid headId %d provided. Must be between 0 and 5. Aborted.\n", getName(), headId);
+                IOLog("%s: LoadIdentityLUT: ERROR! Invalid headId %d provided. Must be between 0 and %d. Aborted.\n", getName(), headId, fNumDisplayHeads - 1);
                 return(0);
             }
 
@@ -1567,7 +1637,7 @@ UInt32 PsychtoolboxKernelDriver::LoadIdentityLUT(UInt32 headId)
 
             WriteRegister(EVERGREEN_DC_LUT_CONTROL + offset, 0);
 
-            if (isDCE5()) {
+            if (isDCE5() || isDCE10()) {
                 WriteRegister(NI_INPUT_CSC_CONTROL + offset,
                               (NI_INPUT_CSC_GRPH_MODE(NI_INPUT_CSC_BYPASS) |
                                NI_INPUT_CSC_OVL_MODE(NI_INPUT_CSC_BYPASS)));
@@ -1632,7 +1702,7 @@ UInt32 PsychtoolboxKernelDriver::LoadIdentityLUT(UInt32 headId)
             WriteRegister(reg, m);
         }
 
-        if (isDCE5()) {
+        if (isDCE5() || isDCE10()) {
             WriteRegister(NI_DEGAMMA_CONTROL + offset,
                           (NI_GRPH_DEGAMMA_MODE(NI_DEGAMMA_BYPASS) |
                            NI_OVL_DEGAMMA_MODE(NI_DEGAMMA_BYPASS) |

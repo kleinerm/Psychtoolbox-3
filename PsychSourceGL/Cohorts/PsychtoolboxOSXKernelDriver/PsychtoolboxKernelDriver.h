@@ -44,6 +44,8 @@
 #define ByteCount_FORMAT    UInt32_FORMAT
 #endif
 
+#define MAXHEADID 10
+
 struct PsychKDCommandStruct;
 
 class PsychtoolboxKernelDriver : public IOService
@@ -66,7 +68,8 @@ private:
     UInt32                          fInterruptCookie;
     UInt32                          fInterruptCounter;
     UInt32                          fVBLCounter[2];
-    UInt32                          oldDither[(DCE4_MAXHEADID + 1)];
+    UInt32                          oldDither[(MAXHEADID + 1)];
+    UInt32                          crtcoff[(MAXHEADID + 1)];
 
     // Initialize our own interrupt handler for snooping on gfx-card state changes:
     bool InitializeInterruptHandler(void);
