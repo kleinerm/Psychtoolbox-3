@@ -43,16 +43,17 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 {
   int x,y, pos;
   double dblimgptr;
-  
+  static int counter = 0;
+
   /* Fill our rawimage image array with content: */
   pos = 0;
   for(y=0; y<480; y++)
     for (x=0; x<640; x++) {
-      // Red channel:
+      /* Red channel: */
       rawimage[pos++] = (unsigned char) x;
-      // Green channel:
+      /* Green channel: */
       rawimage[pos++] = (unsigned char) y;
-      // Blue channel:
+      /* Blue channel: */
       rawimage[pos++] = (unsigned char) 0;
     }
 
@@ -64,4 +65,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
   /* Return double-encoded pointer to Matlab: */
   plhs[0]=mxCreateDoubleMatrix(1, 1, mxREAL);
   *mxGetPr(plhs[0]) = dblimgptr;
+  
+  /* Little extra test: Return an incrementing counter value */
+  /* to caller, but in input argument 1, to check if this trick works. */
+  if (nrhs > 0) {
+    *mxGetPr(prhs[0]) = (double) counter++;      
+  }
 }
