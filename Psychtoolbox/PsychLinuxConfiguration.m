@@ -1,5 +1,5 @@
-function PsychLinuxConfiguration
-% PsychLinuxConfiguration -- Optimize setup of Linux system.
+function usedAnswers = PsychLinuxConfiguration(answers)
+% PsychLinuxConfiguration([answers]) -- Optimize setup of Linux system.
 %
 % This script modifies system settings and configuration files
 % to optimize a Linux system for use with Psychtoolbox.
@@ -50,11 +50,24 @@ function PsychLinuxConfiguration
 % 25.01.2015   mk  Add Matlab R2014b OpenGL reconfiguration.
 % 20.10.2015   mk  Make sudo handling under Octave+GUI less confusing.
 % 20.10.2015   mk  Trigger auto-reload and coldplug of udev devices via udevadm.
+% 25.10.2015   mk  Remember y/n answers to allow quicker reexec of the command if
+%                  reexecution is needed from octave-cli or as admin user.
+%                  Add option to automatically add user to dialout and psychtoolbox
+%                  Unix user groups, and to add other optional users as well.
+%                  Allow upgrade of the 99-psychtoolbox.limits conf file as well.
 
 rerun = 0;
 
 if ~IsLinux
   return;
+end
+
+if nargin < 1 || isempty(answers)
+  answers = '???';
+else
+  if ~ischar(answers) || length(answers) ~= 3
+    error('Provided input argument ''answers'' must be a 3 character string with characters y, n or ?');
+  end
 end
 
 % Retrieve login username of current user:
@@ -83,7 +96,12 @@ if ~exist('/etc/udev/rules.d/psychtoolbox.rules', 'file')
   % No: Needs to be installed.
   needinstall = 1;
   fprintf('The udev rules file for Psychtoolbox is not installed on your system.\n');
-  answer = input('Should i install it? [y/n] : ', 's');
+  if ismember(answers(1), 'yn')
+    answer = answers(1);
+  else
+    answer = input('Should i install it? [y/n] : ', 's');
+    answers(1) = answer;
+  end
 else
   % Yes.
   fprintf('The udev rules file for Psychtoolbox is already installed on your system.\n');
@@ -95,7 +113,12 @@ else
   if r.datenum > i.datenum
     needinstall = 2;
     fprintf('However, it seems to be outdated. I have a more recent version with me.\n');
-    answer = input('Should i update it? [y/n] : ', 's');
+    if ismember(answers(1), 'yn')
+      answer = answers(1);
+    else
+      answer = input('Should i update it? [y/n] : ', 's');
+      answers(1) = answer;
+    end
   end
 end
 
@@ -105,7 +128,7 @@ if needinstall && answer == 'y'
     fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
     fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
     fprintf('GUI, e.g., via executing: octave --no-gui\n');
-    fprintf('Then run the PsychLinuxConfiguration command to make things work.\n');
+    fprintf('Then run the PsychLinuxConfiguration command again to make things work.\n');
   else
     fprintf('I will copy my most recent rules file to your system. Please enter\n');
     fprintf('now your system administrator password. You will not see any feedback.\n');
@@ -174,14 +197,20 @@ drawnow;
 % ...and?
 if ~(mlockok && rtpriook)
   fprintf('\n\nThe file seems to be missing some suitable setup lines.\n');
-  answer = input('Should i add them for you? [y/n] : ', 's');
+  if ismember(answers(2), 'yn')
+    answer = answers(2);
+  else
+    answer = input('Should i add them for you? [y/n] : ', 's');
+    answers(2) = answer;
+  end
+
   if answer == 'y'
     if IsOctave && IsGUI
       rerun = 1;
       fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
       fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
       fprintf('GUI, e.g., via executing: octave --no-gui\n');
-      fprintf('Then run the PsychLinuxConfiguration command to make things work.\n');
+      fprintf('Then run the PsychLinuxConfiguration command again to make things work.\n');
     else
       fprintf('I will try to add config lines to your system. Please enter\n');
       fprintf('now your system administrator password. You will not see any feedback.\n');
@@ -216,17 +245,36 @@ end
 else
   % Realtime setup for systems with /etc/security/limits.d/ directory:
   % Simply install a ptb specific config file - a cleaner solution:
+  donttouchthis = 1;
   if ~exist('/etc/security/limits.d/99-psychtoolboxlimits.conf', 'file')
+    donttouchthis = 0;
+  else
+    r = dir([PsychtoolboxRoot '/PsychBasic/99-psychtoolboxlimits.conf']);
+    i = dir('/etc/security/limits.d/99-psychtoolboxlimits.conf');
+
+    if r.datenum > i.datenum
+      donttouchthis = 0;
+    end
+  end
+
+  if ~donttouchthis
     fprintf('\n\nThe file /etc/security/limits.d/99-psychtoolboxlimits.conf is\n');
-    fprintf('not yet installed on your system. It allows painless realtime operation.\n');
-    answer = input('Should i install the file for you? [y/n] : ', 's');
+    fprintf('not yet installed or outdated on your system. It allows painless realtime operation.\n');
+
+    if ismember(answers(2), 'yn')
+      answer = answers(2);
+    else
+      answer = input('Should i install or upgrade to my most recent file for you? [y/n] : ', 's');
+      answers(2) = answer;
+    end
+
     if answer == 'y'
       if IsOctave && IsGUI
         rerun = 1;
         fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
         fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
         fprintf('GUI, e.g., via executing: octave --no-gui\n');
-        fprintf('Then run the PsychLinuxConfiguration command to make things work.\n');
+        fprintf('Then run the PsychLinuxConfiguration command again to make things work.\n');
       else
         fprintf('I will try to install it now to your system. Please enter\n');
         fprintf('now your system administrator password. You will not see any feedback.\n');
@@ -254,7 +302,7 @@ if addgroup
     fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
     fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
     fprintf('GUI, e.g., via executing: octave --no-gui\n');
-    fprintf('Then run the PsychLinuxConfiguration command to make things work.\n');
+    fprintf('Then run the PsychLinuxConfiguration command again to make things work.\n');
     addgroup = 0;
   else
     % This will create the psychtoolbox user group, unless the group
@@ -280,6 +328,31 @@ if addgroup
   fprintf('sudo usermod -a -G dialout %s\n\n', username);
   fprintf('After that, the new group member must log out and then login again for the\n');
   fprintf('settings to take effect.\n\n');
+  if ismember(answers(3), 'yn')
+    answer = answers(3);
+  else
+    fprintf('Actually we could do this for you right now.\n');
+    answer = input('Should i add you to the psychtoolbox and dialout user groups? [y/n] : ', 's');
+    answers(3) = answer;
+  end
+
+  if answer == 'y'
+    againagain = 1;
+    while againagain
+      fprintf('\nAdding user %s to groups...\n', username);
+      cmd = sprintf('sudo usermod -a -G psychtoolbox %s', username);
+      system(cmd);
+      cmd = sprintf('sudo usermod -a -G dialout %s', username);
+      system(cmd);
+
+      % Another one?
+      username = input('Enter the name of another user to add, or just press Return to be done: ', 's');
+      if isempty(username)
+        againagain = 0;
+      end
+    end
+    fprintf('\n');
+  end
 end
 
 if ~rerun
@@ -288,10 +361,13 @@ if ~rerun
   fprintf('become effective after a reboot.\n\n\n');
 else
   fprintf('\nSetup failed due to lack of administrator permissions. Please run octave\n');
-  fprintf('from a terminal window via octave --no-gui and then execute the command\n');
-  fprintf('PsychLinuxConfiguration to rerun this script again. Then it should work.\n\n\n');
+  fprintf('from a terminal window via octave --no-gui while logged in as an administrator user\n');
+  fprintf('and then execute the command\n\nPsychLinuxConfiguration(''%s'');\n\n', answers);
+  fprintf('to rerun this script again with the same settings, so you can avoid\n');
+  fprintf('answering all yes/no questions again. Then it should work.\n\n\n');
 end
-fprintf('Press any key to continue.\n');
+
+fprintf('Press Return key to continue.\n');
 pause;
 fprintf('\n\n\n');
 
@@ -317,5 +393,8 @@ if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0')
     fprintf('\n\n');
   end
 end
+
+% Return the given answers / used config:
+usedAnswers = answers;
 
 return;
