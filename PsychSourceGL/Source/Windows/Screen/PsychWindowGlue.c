@@ -769,7 +769,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   GLenum      glerr;
   DWORD		  flags;
   BOOL        compositorEnabled, compositorPostEnabled;
-  
+  const char* hidpitrouble;
+
   psych_bool fullscreen = FALSE;
   DWORD windowStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
 
@@ -1830,6 +1831,12 @@ dwmdontcare:
 	// Enforce a one-shot GUI event queue dispatch via this dummy call to PsychGetMouseButtonState() to
 	// make windows GUI event processing happy:
 	PsychGetMouseButtonState(NULL);
+
+    // Check and warn user if we are about to potentially run into HiDPI display trouble:
+    hidpitrouble = PsychOSDisplayDPITrouble(screenSettings->screenNumber);
+    if (hidpitrouble && (PsychPrefStateGet_Verbosity() > 1)) {
+        printf("%s", hidpitrouble);
+    }
 
     // Ok, we should be ready for OS independent setup...
 	 if (PsychPrefStateGet_Verbosity()>4) {

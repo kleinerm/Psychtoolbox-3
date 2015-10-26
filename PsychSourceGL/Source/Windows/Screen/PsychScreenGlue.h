@@ -66,7 +66,7 @@ psych_bool					PsychRestoreScreenSettings(int screenNumber);
 void						PsychHideCursor(int screenNumber, int deviceIdx);
 void						PsychShowCursor(int screenNumber, int deviceIdx);
 void						PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx);
-void			    PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable);
+void                        PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable);
 unsigned int                PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable);
 char*                       PsychGetDisplayDeviceName(int screenNumber);
 int                         PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber);
@@ -74,7 +74,7 @@ psych_bool					PsychOSIsKernelDriverAvailable(int screenId);
 
 // Return identifying information about GPU for a given screen screenNumber:
 psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads);
+const char*                 PsychOSDisplayDPITrouble(unsigned int screenNumber);
 
 //end include once
 #endif
-
