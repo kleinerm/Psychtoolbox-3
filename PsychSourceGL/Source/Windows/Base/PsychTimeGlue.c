@@ -234,6 +234,32 @@ int PsychIsMSVista(void)
 	return(isVista);
 }
 
+/* Returns TRUE on Microsoft Windows 8 and later, FALSE otherwise: */
+int PsychOSIsMSWin8(void)
+{
+    // Info struct for queries to OS:
+    OSVERSIONINFO osvi;
+    
+    // Init flag to -1 aka unknown:
+    static int isWin8 = -1;
+    
+    if (isWin8 == -1) {
+        // First call: Do the query!
+        
+        // Query info about Windows version:
+        memset(&osvi, 0, sizeof(OSVERSIONINFO));
+        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+        GetVersionEx(&osvi);
+        
+        // It is a Windows-8 or later if version is equal to 6.2 or higher:
+        // 6.0  = Vista, 6.1 = Windows-7, 6.2 = Windows-8, 6.3 = Windows-8.1
+        isWin8 = ((osvi.dwMajorVersion > 6) || ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion >= 2))) ? 1 : 0;
+    }
+    
+    // Return flag:
+    return(isWin8);
+}
+
 /* Called at module init time: */
 void PsychInitTimeGlue(void)
 {
