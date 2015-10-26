@@ -690,8 +690,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
             }
         }
 
-        // Perform auto-detection of screen to head mappings, unless already done by XRandR:
-        if (!has_xrandr_1_2) PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
+        // Perform auto-detection of screen to head mappings: This will no-op if users script
+        // has already manually specified mappings via Screen('Preference','ScreenToHead', ...):
+        PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
 
         // Ready to rock!
     } else {
@@ -1443,6 +1444,11 @@ void InitCGDisplayIDList(void)
     // Initialize screenId -> GPU headId mapping to identity mappings,
     // unless already setup by XRandR setup code:
     if (!has_xrandr_1_2) PsychInitScreenToHeadMappings(numDisplays);
+
+    // Mark screen+output mappings as not yet overriden by user. We used PsychScreenToCrtcId() above which
+    // set that flag, but we only want this flag set if triggered by true override from usercode by use of
+    // Screen('Preference', 'ScreenToHead', screenId, ...):
+    PsychResetCrtcIdUserOverride();
 
     // Prepare atoms for "Desktop composition active?" queries:
     // Each atom corresponds to one X-Screen. It is selection-owned by the

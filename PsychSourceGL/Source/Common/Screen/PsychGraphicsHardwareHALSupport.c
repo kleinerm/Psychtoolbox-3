@@ -44,8 +44,7 @@ unsigned int crtcoff[kPsychMaxPossibleCrtcs];
 // the sequence of assigned crtc's.
 static int  displayScreensToCrtcIds[kPsychMaxPossibleDisplays][kPsychMaxPossibleCrtcs];
 static int  displayScreensToPipes[kPsychMaxPossibleDisplays][kPsychMaxPossibleCrtcs];
-static int  numScreenMappings = 0;
-static psych_bool displayScreensToPipesUserOverride = FALSE;
+static psych_bool displayScreensToCrtcIdsUserOverride = FALSE;
 static psych_bool displayScreensToPipesAutoDetected = FALSE;
 
 // Corrective values for beamposition queries to correct for any constant and systematic offsets in
@@ -918,9 +917,6 @@ void PsychSetScreenToHead(int screenId, int headId, int rankId)
 {
     // Assign new mapping:
     displayScreensToPipes[screenId][rankId] = headId;
-
-    // Mark mappings as user-defined instead of auto-detected/default-setup:
-    displayScreensToPipesUserOverride = TRUE;
 }
 
 /* PsychScreenToCrtcId()
@@ -962,6 +958,14 @@ void PsychSetScreenToCrtcId(int screenId, int crtcId, int rankId)
 {
     // Assign new mapping:
     displayScreensToCrtcIds[screenId][rankId] = crtcId;
+
+    // Mark mappings as user-defined instead of auto-detected/default-setup:
+    displayScreensToCrtcIdsUserOverride = TRUE;
+}
+
+void PsychResetCrtcIdUserOverride(void)
+{
+    displayScreensToCrtcIdsUserOverride = FALSE;
 }
 
 /* PsychInitScreenToHeadMappings() - Setup initial mapping for 'numDisplays' displays:
@@ -983,6 +987,7 @@ void PsychInitScreenToHeadMappings(int numDisplays)
 {
     int i, j;
     char* ptbpipelines = NULL;
+    (void) numDisplays;
 
     displayScreensToPipesAutoDetected = FALSE;
 
@@ -1009,78 +1014,83 @@ void PsychInitScreenToHeadMappings(int numDisplays)
             PsychSetScreenToCrtcId(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < 10)) ? (ptbpipelines[i] - 0x30) : -1, 0);
         }
     }
-
-    // Store number of mapping entries internally:
-    numScreenMappings = numDisplays;
 }
 
 // Try to auto-detect screen to head mappings if possible and not yet overriden by usercode:
 void PsychAutoDetectScreenToHeadMappings(int maxHeads)
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-
+    int gpuMaintype, gpuMinortype;
     float nullTable[256];
-    int screenId, headId, numEntries;
+    int screenId, outputId, headId, numEntries;
     float *redTable, *greenTable, *blueTable;
-
-    // MK FIXME TODO: DISABLED FOR NOW!
-    // As far as i understand, the all-zero gamma tables that are loaded into the crtc's by this routine get
-    // "sticky". Our low-level lut readback code reads "all zeros" gamma tables back long after the gamma tables
-    // have been restored to their original settings by the OS high level code -- the gpu is "lying" to us
-    // about its hardware state :-(
-    // This needs more careful examination. Until then we disable auto-detection. With the hard-coded default
-    // settings - which are often correct and user-tweakable - the identity passthrough setup code for devices
-    // like Bits+ and Datapixx seems to work ok.
-    return;
 
     // If user / usercode has provided manual mapping, i.e., overriden the
     // default identity mapping, then we don't do anything, but accept the
     // users choice instead. Also skip this if it has been successfully executed
     // already:
-    if (displayScreensToPipesUserOverride || displayScreensToPipesAutoDetected) return;
+    if (displayScreensToCrtcIdsUserOverride || displayScreensToPipesAutoDetected) return;
 
     // nullTable is our all-zero gamma table:
     memset(&nullTable[0], 0, sizeof(nullTable));
 
     // Ok, iterate over all logical screens and try to update
     // their mapping:
-    for (screenId = 0; screenId < numScreenMappings; screenId++) {
+    for (screenId = 0; screenId < PsychGetNumDisplays(); screenId++) {
         // Kernel driver for this screenId enabled? Otherwise we skip it:
         if (!PsychOSIsKernelDriverAvailable(screenId)) continue;
 
+        // We only support AMD/ATI gpus at the moment, nothing else:
+        if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
+            (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0xffff)) {
+            continue;
+        }
+
         // Yes. Perform detection sequence:
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to detect screenId to display head mapping for screenid %i ...", screenId);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to detect screenId to display head mapping for screenid %i ...", screenId);
 
-        // Retrieve current gamma table. Need to back it up internally:
-        PsychReadNormalizedGammaTable(screenId, -1, &numEntries, &redTable, &greenTable, &blueTable);
-
-        // Now load an all-zero gamma table for that screen:
-        PsychLoadNormalizedGammaTable(screenId, -1, 256, nullTable, nullTable, nullTable);
-
-        // Wait for 100 msecs, so the gamma table has actually settled (e.g., if its update was
-        // delayed until next vblank on a >= 20 Hz display):
-        PsychYieldIntervalSeconds(0.100);
-
-        // Check all display heads to find the null table:
-        for (headId = 0; headId < maxHeads; headId++) {
-            if (PsychOSKDGetLUTState(screenId, headId, 0) == 1) {
-                // Got it. Store mapping:
-                displayScreensToPipes[screenId][0] = headId;
-
-                // Done with searching:
-                if (PsychPrefStateGet_Verbosity() > 2) printf(" found headId %i.", headId);
+        // Iterate over all outputs for this screen:
+        for (outputId = 0; outputId < kPsychMaxPossibleCrtcs; outputId++) {
+            // Abort iteration if last output reached:
+            if (PsychScreenToHead(screenId, outputId) < 0)
                 break;
+
+            if (PsychPrefStateGet_Verbosity() > 3) printf(" ... probing for video output %i ... ");
+
+            // Retrieve current gamma table. Need to back it up internally:
+            PsychReadNormalizedGammaTable(screenId, outputId, &numEntries, &redTable, &greenTable, &blueTable);
+
+            // Now load an all-zero gamma table for that screen:
+            PsychLoadNormalizedGammaTable(screenId, outputId, 256, nullTable, nullTable, nullTable);
+
+            // Wait for 100 msecs, so the gamma table has actually settled (e.g., if its update was
+            // delayed until next vblank on a >= 20 Hz display):
+            PsychYieldIntervalSeconds(0.100);
+
+            // Check all display heads to find the null table:
+            for (headId = 0; headId < maxHeads; headId++) {
+                if (PsychOSKDGetLUTState(screenId, headId, 0) == 1) {
+                    // Got it. Store mapping:
+                    displayScreensToCrtcIds[screenId][outputId] = headId;
+
+                    // Done with searching:
+                    if (PsychPrefStateGet_Verbosity() > 3) printf(" found GPU hardware headId %i for output %i. ", headId, outputId);
+                    break;
+                }
             }
-        } 
 
-        // Now restore original gamma table for that screen:
-        PsychLoadNormalizedGammaTable(screenId, -1, numEntries, redTable, greenTable, blueTable);
+            // Now restore original gamma table for that screen:
+            PsychLoadNormalizedGammaTable(screenId, outputId, numEntries, redTable, greenTable, blueTable);
 
-        // Wait for 100 msecs, so the gamma table has actually settled (e.g., if its update was
-        // delayed until next vblank on a >= 20 Hz display):
-        PsychYieldIntervalSeconds(0.100);        
+            // Wait for 100 msecs, so the gamma table has actually settled (e.g., if its update was
+            // delayed until next vblank on a >= 20 Hz display):
+            PsychYieldIntervalSeconds(0.100);
 
-        if (PsychPrefStateGet_Verbosity() > 2) printf(" Done.\n");
+            if (PsychPrefStateGet_Verbosity() > 3) printf(" Done.\n");
+
+            // Next output for this screen.
+        }
+        // Next screen.
     }
 
     // Done.
