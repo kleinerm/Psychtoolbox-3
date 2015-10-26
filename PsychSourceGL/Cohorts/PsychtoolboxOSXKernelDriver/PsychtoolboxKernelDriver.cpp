@@ -714,8 +714,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
     // We should be ready...
     IOLog("\n");
-    IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.9 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
-    IOLog("%s: This driver is copyright 2008 - 2014 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
+    IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.10 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
+    IOLog("%s: This driver is copyright 2008 - 2015 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
     IOLog("%s: The driver is licensed to you under the MIT free and open-source software license.\n", getName());
     IOLog("%s: See the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
     IOLog("%s: The driver contains bits of code derived from the free software nouveau and radeon kms drivers on Linux.\n", getName());
