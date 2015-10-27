@@ -112,7 +112,7 @@ static PsychWindowRecordType* currentRendertarget = NULL;
 // The handle of the masterthread - The Matlab/Octave/PTB main interpreter thread: This
 // is initialized when opening the first onscreen window. Its used in PsychSetDrawingTarget()
 // to discriminate between the masterthread and the worker threads for async flip operations:
-static psych_threadid    masterthread = (psych_threadid) NULL;
+static psych_threadid    masterthread = (psych_threadid) 0;
 
 // Count of currently async-flipping onscreen windows:
 static unsigned int    asyncFlipOpsActive = 0;

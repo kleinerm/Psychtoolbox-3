@@ -59,23 +59,23 @@ LPDIRECTDRAWENUMERATEEX PsychDirectDrawEnumerateEx = NULL;
 // file local variables
 
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.
-static psych_bool			displayLockSettingsFlags[kPsychMaxPossibleDisplays];
-static CFDictionaryRef		displayOriginalCGSettings[kPsychMaxPossibleDisplays];        	//these track the original video state before the Psychtoolbox changed it.
-static psych_bool			displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
-static CFDictionaryRef		displayOverlayedCGSettings[kPsychMaxPossibleDisplays];        	//these track settings overlayed with 'Resolutions'.
-static psych_bool			displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
-static CGDisplayCount 		numDisplays;
-static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];				// DC device contexts for displays.
-static char*                displayDeviceName[kPsychMaxPossibleDisplays];			// Windows internal monitor device name. Default display has NULL
-static int 	                displayDeviceStartX[kPsychMaxPossibleDisplays];			// Top-Left corner of display on virtual screen. Default display has (0,0).
-static int 	                displayDeviceStartY[kPsychMaxPossibleDisplays];
-static LPDIRECTDRAW         displayDeviceDDrawObject[kPsychMaxPossibleDisplays];	// Pointer to associated DirectDraw object, if any. NULL otherwise.
-static HMONITOR				displayDevicehMonitor[kPsychMaxPossibleDisplays];		// HMonitor handle of associated monitor, NULL otherwise.
-static GUID					displayDeviceGUID[kPsychMaxPossibleDisplays];			// GUID for DDRAW display device, unless displayDevicelpGUIDValid < 2.
-static int					displayDeviceGUIDValid[kPsychMaxPossibleDisplays];		// GUID for DDRAW display device valid? 0 = No, 1 = Must be NULL, 2 = Valid.
-static int					ddrawnumDisplays;
+static psych_bool           displayLockSettingsFlags[kPsychMaxPossibleDisplays];
+static CFDictionaryRef      displayOriginalCGSettings[kPsychMaxPossibleDisplays];       //these track the original video state before the Psychtoolbox changed it.
+static psych_bool           displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
+static CFDictionaryRef      displayOverlayedCGSettings[kPsychMaxPossibleDisplays];      //these track settings overlayed with 'Resolutions'.
+static psych_bool           displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
+static CGDisplayCount       numDisplays;
+static CGDirectDisplayID    displayCGIDs[kPsychMaxPossibleDisplays];              // DC device contexts for displays.
+static char*                displayDeviceName[kPsychMaxPossibleDisplays];         // Windows internal monitor device name. Default display has NULL
+static int                  displayDeviceStartX[kPsychMaxPossibleDisplays];       // Top-Left corner of display on virtual screen. Default display has (0,0).
+static int                  displayDeviceStartY[kPsychMaxPossibleDisplays];
+static LPDIRECTDRAW         displayDeviceDDrawObject[kPsychMaxPossibleDisplays];  // Pointer to associated DirectDraw object, if any. NULL otherwise.
+static HMONITOR             displayDevicehMonitor[kPsychMaxPossibleDisplays];     // HMonitor handle of associated monitor, NULL otherwise.
+static GUID                 displayDeviceGUID[kPsychMaxPossibleDisplays];         // GUID for DDRAW display device, unless displayDevicelpGUIDValid < 2.
+static int                  displayDeviceGUIDValid[kPsychMaxPossibleDisplays];    // GUID for DDRAW display device valid? 0 = No, 1 = Must be NULL, 2 = Valid.
+static int                  ddrawnumDisplays;
 
-static psych_bool enableVBLBeamposWorkaround = FALSE;	// Is the special workaround for beamposition queries needed?
+static psych_bool enableVBLBeamposWorkaround = FALSE; // Is the special workaround for beamposition queries needed?
 static HCURSOR oldCursor = NULL; // Backup copy of current cursor shape, while cursor is "hidden" and NULL-Shape assigned.
 static HCURSOR invisibleCursor = NULL;
 
@@ -168,7 +168,7 @@ unsigned int PsychGetMonitorDPI(HMONITOR hMonitor)
         // Encode 16 bit horizontal DPI and vertical DPI in one 32 bit uint:
         return(((unsigned int) horDPI << 16) | (unsigned int) verDPI);
     }
-    
+
     // Query failed or unsupported:
     return(0);
 }
@@ -435,7 +435,7 @@ BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription,
 
 void InitCGDisplayIDList(void)
 {
-    int i, w1, w2, h1, h2;
+    long int i, w1, w2, h1, h2;
     psych_uint32 beampos = 100000;
     HRESULT rc;
     
@@ -1269,7 +1269,7 @@ psych_bool PsychOSIsKernelDriverAvailable(int screenId)
 // some possible bugs. Enable proper workarounds if bugs should be encountered:
 void PsychTestDDrawBeampositionQueries(int screenNumber)
 {
-    int w1, w2, h1, h2, vbldetectcount, bogusvaluecount, bogusvalueinvblcount, totalcount;
+    long int w1, w2, h1, h2, vbldetectcount, bogusvaluecount, bogusvalueinvblcount, totalcount;
     psych_uint32 maxvpos;
     psych_uint32 beampos = 100000;
     HRESULT rc;

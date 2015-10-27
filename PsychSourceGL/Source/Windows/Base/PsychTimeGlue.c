@@ -1239,7 +1239,7 @@ void PsychTestCancelThread(psych_thread* threadhandle)
 	rc = (int) WaitForSingleObject((*threadhandle)->terminateReq, 0);
 	if (rc == WAIT_FAILED) {
 		rc = (int) GetLastError();
-		printf("PTB-CRITICAL: In call to PsychTestCancelThread(%p): WaitForSingleObject(%i) FAILED [GetLastError()=%i]! Expect disaster!!!", threadhandle, (int) (*threadhandle)->terminateReq, rc);
+		printf("PTB-CRITICAL: In call to PsychTestCancelThread(%p): WaitForSingleObject(%p) FAILED [GetLastError()=%i]! Expect disaster!!!", threadhandle, (*threadhandle)->terminateReq, rc);
 		return;
 	}
 
@@ -1307,7 +1307,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 		thread = GetCurrentThread();
 		
 		// Is this a special "Masterthread" pseudo-handle?
-		if (0x1 == (int) threadhandle) {
+		if ((psych_thread*) 0x1 == threadhandle) {
 			// Yes: This is the Psychtoolbox main thread calling. We don't have
 			// a "normal" psych_thread* threadhandle for this one, so we need to
 			// kind'a bootstrap one for this thread. Space for one handle for the
