@@ -1827,22 +1827,25 @@ dwmdontcare:
 
     // If the DWM is enabled, try to optimize its presentation parameters for our purpose:
     OptimizeDWMParameters(windowRecord);
-    
-	// Enforce a one-shot GUI event queue dispatch via this dummy call to PsychGetMouseButtonState() to
-	// make windows GUI event processing happy:
-	PsychGetMouseButtonState(NULL);
 
-    // Check and warn user if we are about to potentially run into HiDPI display trouble:
-    hidpitrouble = PsychOSDisplayDPITrouble(screenSettings->screenNumber);
-    if (hidpitrouble && (PsychPrefStateGet_Verbosity() > 1)) {
-        printf("%s", hidpitrouble);
+    // Enforce a one-shot GUI event queue dispatch via this dummy call to PsychGetMouseButtonState() to
+    // make windows GUI event processing happy:
+    PsychGetMouseButtonState(NULL);
+
+    // Fullscreen window for which we expect proper timing?
+    if (fullscreen && (windowLevel >= 2000)) {
+        // Check and warn user if we are about to potentially run into HiDPI display trouble:
+        hidpitrouble = PsychOSDisplayDPITrouble(screenSettings->screenNumber);
+        if (hidpitrouble && (PsychPrefStateGet_Verbosity() > 1)) {
+            printf("%s", hidpitrouble);
+        }
     }
 
     // Ok, we should be ready for OS independent setup...
-	 if (PsychPrefStateGet_Verbosity()>4) {
-		 printf("PTB-DEBUG: Final low-level window setup finished. Continuing with OS-independent setup.\n");
-		 fflush(NULL);
-	 }
+    if (PsychPrefStateGet_Verbosity()>4) {
+        printf("PTB-DEBUG: Final low-level window setup finished. Continuing with OS-independent setup.\n");
+        fflush(NULL);
+    }
 
     // Well Done!
     return(TRUE);
