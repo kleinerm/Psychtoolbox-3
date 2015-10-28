@@ -44,32 +44,6 @@
 typedef void (*PaUtilLogCallback ) (const char *log);
 void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
 
-// On Octave for MS-Windows we currently use the portaudio library
-// supplied by the Octave-4 installation itself. This one lacks
-// support for debug output and our custom extension for zero-latency
-// DirectInputMonitoring. As both is not absolutely crucial for most
-// common use cases, we get along without those features for the time being.
-// Add a shim implementation here to avoid compile/link failure:
-#if (PSYCH_SYSTEM == PSYCH_WINDOWS) && defined(PTBOCTAVE3MEX)
-void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
-{
-    (void) cb;
-}
-
-PaError Pa_DirectInputMonitoring(PaStream *stream, int enable, int inputChannel, int outputChannel, double gain, double pan)
-{
-    (void) stream;
-    (void) enable;
-    (void) inputChannel;
-    (void) outputChannel;
-    (void) gain;
-    (void) pan;
-
-    printf("PsychPortAudio('DirectInputMonitoring'): ERROR: This function is not yet supported under GNU/Octave for MS-Windows.\n");
-    return(paBadIODeviceCombination);
-}
-#endif
-
 #define MAX_SYNOPSIS_STRINGS 50
 
 //declare variables local to this file.

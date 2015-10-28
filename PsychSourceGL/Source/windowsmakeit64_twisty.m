@@ -146,11 +146,18 @@ else
 
     if what == 2
         % Build PsychPortAudio.mex
-        % TODO FIXME - libportaudio_x86 compatible with mingw32 / gcc needed,
-        % use libportaudio bundled with Octave-4 for now -> No ASIO or DIM!
-        %mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio   -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio_x64
-        mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio
-        movefile(['..\Projects\Windows\build\PsychPortAudio.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+        % This needs a libportaudio_x86 compatible with mingw32 gcc. The way we do this
+        % is by taking the libportaudio_x86.dll from the PsychSound folder and copying
+        % it into the PsychSourceGL/Cohorts/PortAudio/MinGW32 folder, but with the file extension
+        % changed from .dll to .lib, ie. libportaudio_x86.lib - Weird but true, this makes
+        % mingws linker accept the file as input. Same procedure for libportaudio_x64.dll to
+        % libportaudio_x64.lib into targetfolder MinGW64.
+        if Is64Bit
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW64 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio_x64
+        else
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW32 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio_x86
+        end
+        movefile(['..\Projects\Windows\build\PsychPortAudio.' mexext], target);
     end
 
     if what == 3

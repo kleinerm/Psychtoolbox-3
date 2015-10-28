@@ -78,10 +78,7 @@ if isempty(reallyneedlowlatency)
 end
 
 % The usual tricks for MS-Windows:
-% But currently skip in Octave-4, as we use Octave-4's included
-% PortAudio DLL, which doesn't need this linking trick but also
-% does not support ASIO or DIM.
-if IsWin && ~IsOctave
+if IsWin
     % Special ASIO enabled low-latency driver installed?
     if exist([PsychtoolboxRoot 'portaudio_x86.dll'], 'file') || exist([PsychtoolboxRoot 'portaudio_x64.dll'], 'file')
         % Yes! Use it:
