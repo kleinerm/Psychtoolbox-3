@@ -209,9 +209,12 @@ else
 
     if what == 8
         % Build PsychKinectCore.mex:
-        % TODO FIXME libUSB-1.0 compatible with mingw32 / gcc needed.
-        mexoctave -g -v --output ..\Projects\Windows\build\PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -L..\Cohorts\Kinect-v16-withsource\libusb\lib\msvc_x64 -I..\Cohorts\Kinect-v16-withsource -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib -lusb
-        movefile(['..\Projects\Windows\build\PsychKinectCore.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+        if Is64Bit
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -L..\Cohorts\Kinect-v16-withsource\libusb\lib\gcc -I..\Cohorts\Kinect-v16-withsource -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib -lusb
+        else
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -L..\Cohorts\Kinect-v16-withsource\libusb\lib\gcc -I..\Cohorts\Kinect-v16-withsource -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib -lusb
+        end
+        movefile(['..\Projects\Windows\build\PsychKinectCore.' mexext], target);
     end;
 
     if what == 9
