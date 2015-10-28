@@ -1,11 +1,16 @@
 function windowsmakeit64_twisty(what, onoctave)
-% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave and Matlab.
+% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-4 and Matlab.
+% As a bonus it also builds the 32-Bit Psychtoolbox for 32-Bit Octave-4.
 % This script is customized for MK's build machine "twisty", building
 % against a VirtualBox VM running MS-Windows 7 64-Bit.
 %
 
-if ~IsWin(1)
-    error('%s must be run on MS-Windows within 32-Bit Octave or 64-Bit Matlab!', mfilename);
+if ~IsWin
+    error('%s must be run on MS-Windows!', mfilename);
+end
+
+if ~Is64Bit && ~IsOctave
+    error('%s must be run on MS-Windows within 32 or 64 Bit Octave or within 64-Bit Matlab!', mfilename);
 end
 
 if nargin < 1
@@ -132,6 +137,12 @@ if onoctave == 0
     end
 else
     % Octave-4 build:
+    if Is64Bit
+        target = [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\'];
+    else
+        target = [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles\'];
+    end
+
     if what == 0
         % Default: Build Screen.mex
         if Is64Bit
@@ -145,7 +156,7 @@ else
     if what == 1
         % Build WaitSecs.mex
         mexoctave -g -v --output ../Projects/Windows/build/WaitSecs.mex -DPTBMODULE_WaitSecs -DPTBOCTAVE3MEX -ICommon\Base -ICommon\WaitSecs -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\WaitSecs\*.c kernel32.lib user32.lib winmm.lib
-        movefile(['..\Projects\Windows\build\WaitSecs.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+        movefile(['..\Projects\Windows\build\WaitSecs.' mexext], target);
     end
 
     if what == 2
@@ -167,13 +178,13 @@ else
     if what == 3
         % Build GetSecs.mex
         mexoctave -g -v --output ..\Projects\Windows\build\GetSecs.mex -DPTBMODULE_GetSecs -DPTBOCTAVE3MEX -ICommon\Base -ICommon\GetSecs -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\GetSecs\*.c kernel32.lib user32.lib winmm.lib
-        movefile(['..\Projects\Windows\build\GetSecs.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+        movefile(['..\Projects\Windows\build\GetSecs.' mexext], target);
     end
 
     if what == 4
         % Build IOPort.mex
         mexoctave -g -v --output ..\Projects\Windows\build\IOPort.mex -DPTBMODULE_IOPort -DPTBOCTAVE3MEX -ICommon\Base -ICommon\IOPort -IWindows\Base -IWindows\IOPort Windows\Base\*.c Common\Base\*.c Common\IOPort\*.c Windows\IOPort\*.c kernel32.lib user32.lib winmm.lib
-        movefile(['..\Projects\Windows\build\IOPort.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+        movefile(['..\Projects\Windows\build\IOPort.' mexext], target);
     end
 
     if what == 5
@@ -182,7 +193,7 @@ else
         % distribute PsychCV.mex at the moment. Let's see if anybody
         % actually misses this mex file...
         % mexoctave -g -v --output ..\Projects\Windows\build\PsychCV.mex -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -ID:\install\QuickTimeSDK\CIncludes -ID:\MicrosoftDirectXSDK\Include -ICommon\Base -ICommon\PsychCV -IWindows\Base -I..\Cohorts\ARToolkit\include Windows\Base\*.c Common\Base\*.c Common\PsychCV\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib libARvideo.lib libARgsub.lib libARgsub_lite.lib libARgsubUtil.lib libARMulti.lib libAR.lib
-        %movefile(['..\Projects\Windows\build\PsychCV.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+        %movefile(['..\Projects\Windows\build\PsychCV.' mexext], target);
     end
 
     if what == 6
@@ -208,7 +219,7 @@ else
         % Build Eyelink.mex
         % TODO FIXME EyeLink SDK needed.
         mexoctave -g -v --output ..\Projects\Windows\build\Eyelink.mex -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -LD:\SRResearch\EyeLink\libs -ID:\SRResearch\EyeLink\Includes\eyelink -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib eyelink_core.lib eyelink_w32_comp.lib eyelink_exptkit20.lib
-        movefile(['..\Projects\Windows\build\Eyelink.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+        movefile(['..\Projects\Windows\build\Eyelink.' mexext], target);
     end
 
     if what == 8
@@ -237,7 +248,7 @@ else
         cd('../../Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/')
         try
             mexoctave -g -v --output pnet.mex -DWIN32 pnet.c ws2_32.lib winmm.lib
-            movefile(['pnet.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+            movefile(['pnet.' mexext], target);
         catch
         end
         % Remove stale object files:
