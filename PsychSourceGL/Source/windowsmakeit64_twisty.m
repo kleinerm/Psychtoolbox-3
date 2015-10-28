@@ -242,9 +242,13 @@ else
         % Build PsychOculusVRCore:
         % Needs the Oculus VR SDK v 0.5.01 installed in side-by-side to
         % the Psychtoolbox-3 folder, ie., in the same parent directory, and
-        % renamed from OculusSDK to OculusSDKWin:
-        mexoctave -g -v --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib ..\..\..\OculusSDKWin\LibOVR\Lib\Windows\x64\Release\VS2010\LibOVR.lib
-        movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles64\']);
+        % renamed from OculusSDK to OculusSDKWin. Needs to Oculus VR runtime
+        % for Windows installed as well. Then we copy the installed runtime DLL
+        % C:\Windows\SysWOW64\LibOVRRT32_0_5.dll into the SDK folder and abuse that
+        % as import library for our mex file. Weird but true - this seems to work!
+        copyfile('C:\Windows\SysWOW64\LibOVRRT32_0_5.dll', '..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010\');
+        mexoctave -g -v --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT32_0_5
+        movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], target);
     end
 
     % Remove stale object files:
