@@ -39,8 +39,8 @@ try
         else
             % Leave Gstreamer-SDK setup intact for 32-Bit Matlab on Windows,
             % although hopefully we won't need it again ever:
-            sdkroot = getenv('GSTREAMER_SDK_ROOT_X86');
-            %sdkroot = getenv('GSTREAMER_1_0_ROOT_X86');
+            %sdkroot = getenv('GSTREAMER_SDK_ROOT_X86');
+            sdkroot = getenv('GSTREAMER_1_0_ROOT_X86');
             suffix = 'x86\';
         end
         
