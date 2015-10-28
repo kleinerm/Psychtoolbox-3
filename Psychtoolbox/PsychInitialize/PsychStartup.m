@@ -48,7 +48,7 @@ try
             if Is64Bit
                 fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86_64 is undefined.\n');
             else
-                fprintf('PsychStartup: Environment variable GSTREAMER_SDK_ROOT_X86 is undefined.\n');
+                fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86 is undefined.\n');
             end
             fprintf('PsychStartup: Either GStreamer-1.4 is not installed at all, or if it is installed then something\n');
             fprintf('PsychStartup: is botched. Trying various common locations for the GStreamer runtime to keep going.\n');
