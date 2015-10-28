@@ -27,7 +27,7 @@ if isempty(rc)
 end
 
 if isempty(rc64)
-     rc64 = rc && ~isempty(strfind(computer, '64'));
+     rc64 = rc && (~isempty(strfind(computer, 'x86_64')) || streq(computer,'PCWIN64'));
 end
 
 if is64 == 0
