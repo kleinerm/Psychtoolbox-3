@@ -2769,6 +2769,7 @@ static GstPadProbeReturn PsychHaveVideoDataCallback(GstPad *pad, GstPadProbeInfo
     unsigned char *input_image;
     PsychVidcapRecordType *capdev = (PsychVidcapRecordType *) dataptr;
     GstBuffer *videoBuffer = info->data;
+    #pragma warning( disable : 4068 )
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo mapinfo = GST_MAP_INFO_INIT;
