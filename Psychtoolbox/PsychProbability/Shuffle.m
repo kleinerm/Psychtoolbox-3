@@ -1,21 +1,13 @@
-function [Y,index] = Shuffle(X [, bindDim])
+function [Y,index] = Shuffle(X, bindDim)
 % [Y,index] = Shuffle(X [, bindDim])
 %
 % Randomly sorts X.
+%
 % If X is a vector, sorts all of X, so Y = X(index).
 % If X is an m-by-n matrix, sorts each column of X, so
 %	for j=1:n, Y(:,j)=X(index(:,j),j).
 %
-% Also see SORT, Sample, Randi, and RandSample.
-
-% xx/xx/92  dhb  Wrote it.
-% 10/25/93  dhb  Return index.
-% 5/25/96   dgp  Made consistent with sort and "for i=Shuffle(1:10)"
-% 6/29/96	dgp  Edited comments above.
-% 5/18/02   dhb  Modified code to do what comments say, for matrices.
-% 6/2/02    dhb  Fixed bug introduced 5/18.
-
-% 9/10/15   niki Add bindDim. so that this function can shuffle with the
+% The optional 'bindDim' parameter allows this function to shuffle with the
 % same order across the bindDim. It also work with higher dimension arrays.
 % for example, if you have an n by m matrix X and hope shuffle each column
 % with same random order (Shuffle the rows), rather than shuffle each
@@ -24,36 +16,51 @@ function [Y,index] = Shuffle(X [, bindDim])
 % dimension, it will shuffle the rows on each page independently. If I bind
 % the 2nd and 3rd dimension, then it will shuffle the layer of the 3-d
 % array.
-
-
+%
 % Examples:
+%
 % create a 2-d array:
 %   x = repmat((1:4)',1,5)
+%
 % Shuffle each column of x independently:
 %   y1 = Shuffle(x)
+%
 % Shuffle columns of x with same order:
 %   y2 = Shuffle(x,2)
-% 
+%
 % Create a 3-d array (4 by 5 by 3), each column contains a vector [1:4]'
 %   x = reshape(repmat(reshape(kron([1,1,1],1:4),4,3),5,1),4,5,3)
+%
 % Shuffle each column independently on each page:
 %   [y,ind]=Shuffle(x)
+%
 % Shuffle 1*5 rows independently on each page:
 %   [y,ind]=Shuffle(x,[2])
+%
 % Shuffle 1*1*3 rows independently on each column:
 %   [y,ind]=Shuffle(x,[3])
+%
 % Create a 3-d array (3 by 4 by 5), each row contains a vector [1:4]
 %   x = reshape(repmat(reshape(kron(1:4,[1,1,1]),3,4),1,5),3,4,5)
+%
 % Shuffle 3*1*5 page along the 2nd dimension:
 %   [y,ind]=Shuffle(x,[1,3])
+%
 % This is same as:
 %   y2 = RandDim(x,2)
-% 
 %   x = reshape(repmat(reshape(repmat(reshape(kron(1:4,[1,1,1]),3,4),1,5),3,4,5),1,2),3,4,5,2)
 %   [y,ind]=Shuffle(x,[1,3])
+%
+% Also see SORT, Sample, Randi, RandDim, and RandSample.
 
-% See also RandDim.m
-
+% xx/xx/92  dhb  Wrote it.
+% 10/25/93  dhb  Return index.
+% 05/25/96  dgp  Made consistent with sort and "for i=Shuffle(1:10)"
+% 06/29/96  dgp  Edited comments above.
+% 05/18/02  dhb  Modified code to do what comments say, for matrices.
+% 06/2/02   dhb  Fixed bug introduced 5/18.
+% 9/10/15   niki Add bindDim. so that this function can shuffle with the same
+%                order across the bindDim.
 
 if nargin<2
     bindDim = [];
