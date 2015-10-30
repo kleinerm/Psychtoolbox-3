@@ -197,7 +197,9 @@ else
     end
 
     if what == 6
-        % Build moglcore.mex
+        % Build moglcore.mex: Please note that 32-Bit moglcore.mex for Octave
+        % actually links against libfreeglut.a, *not* libfreeglut.lib in the
+        % lib folder!
         curdir = pwd;
         cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
         try
