@@ -31,7 +31,16 @@ if isempty(g_serialPort)
     % 1 stopbit, no handshake (aka FlowControl=none) already as
     % built-in defaults, so no need to pass them:
     oldverbo = IOPort('Verbosity', 2);
-    g_serialPort = IOPort('OpenSerialPort', portNumber, 'Lenient DontFlushOnWrite=1');
+    if IsOSX
+        % Must flush on write, ie., not don't flush on write, at least with PR655
+        % on OSX 10.10, as reported in forum message #19808 for more reliable
+        % connections:
+        g_serialPort = IOPort('OpenSerialPort', portNumber, 'Lenient DontFlushOnWrite=0');
+    else
+        % On at least Linux (status on Windows is unknown atm.), we must not flush
+        % on write - the opposite of OSX behaviour (see forum msg thread #15565):
+        g_serialPort = IOPort('OpenSerialPort', portNumber, 'Lenient DontFlushOnWrite=1');
+    end
     IOPort('Verbosity', oldverbo);
 end
 
