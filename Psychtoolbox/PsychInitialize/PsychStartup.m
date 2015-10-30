@@ -19,6 +19,7 @@ function PsychStartup
 % 12.09.2013  mk  Also apply GStreamer-SDK setup to 32-Bit Matlab on Windows.
 % 26.08.2014  mk  Switch the 64-Bit setup to the GStreamer-1.4.0+ runtime.
 % 17.10.2015  mk  Add warning about complete failure of Screen() for Octave on Windows.
+% 30.10.2015  mk  Setenv PSYCH_GSTREAMER_SDK_ROOT to help GStreamer on Octave-4 for Windows. 
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
@@ -133,6 +134,10 @@ try
             % Prepend sdkroot to path:
             newpath = [sdkroot ';' path];
             setenv('PATH', newpath);
+            
+            % Also store sdkroot in a separate environment variable, to be used
+            % by Screen for Octave internally:
+            setenv('PSYCH_GSTREAMER_SDK_ROOT', sdkroot);
         end
     end
 catch %#ok<*CTCH>
