@@ -8,13 +8,13 @@ function datapixxmakemex()
         if Is64Bit
           VPIXXDIR = '/home/kleinerm/projects/';
         else
-          VPIXXDIR = '/media/sf_kleinerm/projects/';        
+          VPIXXDIR = '/media/sf_kleinerm/projects/';
         end
-        
+
         CPYCMD = 'cp ';
         DELCMD = 'rm ';
     elseif (IsWin)
-        VPIXXDIR = 'T:/projects/';        
+        VPIXXDIR = 'T:/projects/';
         CPYCMD = 'copy ';
         DELCMD = 'del ';
     end
@@ -114,7 +114,12 @@ function datapixxmakemex()
         if (Is64Bit)
             S = [S ' -L' VPIXXDIR 'VPixx_Software_Tools/libusb_win32/libusb-win32-device-bin-0.1.12.2/lib/msvc_x64 -llibusb'];
         else
-            S = [S ' -L' VPIXXDIR 'VPixx_Software_Tools/libusb_win32/libusb-win32-device-bin-0.1.12.2/lib/msvc -llibusb'];
+            if IsOctave
+                %S = [S ' -L' VPIXXDIR 'VPixx_Software_Tools/libusb_win32/libusb-win32-device-bin-0.1.12.2/lib/gcc libusb.a'];
+                S = [S ' ' VPIXXDIR 'VPixx_Software_Tools/libusb_win32/libusb-win32-device-bin-0.1.12.2/lib/gcc/libusb.a'];
+            else
+                S = [S ' -L' VPIXXDIR 'VPixx_Software_Tools/libusb_win32/libusb-win32-device-bin-0.1.12.2/lib/msvc -llibusb'];
+            end
         end
         if (IsOctave)
             S = [S ' -lWinmm']; % for timeGetTime() et al
@@ -131,9 +136,9 @@ function datapixxmakemex()
 
     eval(strrep(S, '/', filesep));
 
-%   Move mex file to final destination, and clean up any temporary build files.
-%   Octave puts object files in same folders as source files, and we have to delete them manually.
-%   Matlab is a bit smarter, putting the object files in the current directory, then immediately cleaning them up.
+    %   Move mex file to final destination, and clean up any temporary build files.
+    %   Octave puts object files in same folders as source files, and we have to delete them manually.
+    %   Matlab is a bit smarter, putting the object files in the current directory, then immediately cleaning them up.
     if (IsOctave)
         system(strrep([DELCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/src/*.o'], '/', filesep));
         system(strrep([DELCMD VPIXXDIR 'VPixx_Software_Tools/libdpx/src/*.o'], '/', filesep));
@@ -160,7 +165,7 @@ function datapixxmakemex()
             end
         elseif (IsWin)
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/Windows/Base/*.o'], '/', filesep));
-            system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/win32/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3WindowsFiles'], '/', filesep));
+            system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/win32/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave4WindowsFiles'], '/', filesep));
         end
     else
         if (IsOSX(1))           % 64-bit MATLAB on OS X
