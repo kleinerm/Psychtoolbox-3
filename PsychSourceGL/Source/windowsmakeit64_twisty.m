@@ -246,6 +246,27 @@ else
         movefile(['..\Projects\Windows\build\PsychHID.' mexext], target);
     end
 
+    if what == 10
+        % Build moalcore 32-Bit:
+        % We copy the installed runtime DLL
+        % C:\Windows\SysWOW64\OpenAL32dll into the build folder and abuse that
+        % as import library for our mex file, as the import .lib of the SDK is
+        % useable by the linker:
+        curdir = pwd;
+        cd('../../Psychtoolbox/PsychSound/MOAL/source/')
+        copyfile('C:\Windows\SysWOW64\OpenAL32.dll', '.\');
+        try
+            mexoctave -g -v --output moalcore.mex -DWINDOWS -I'C:\Program Files (x86)\OpenAL 1.1 SDK\include' -L. moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
+            movefile(['moalcore.' mexext], target);
+        catch
+            lasterr
+        end
+        % Remove stale object files:
+        delete('*.o');
+        delete('OpenAL32.dll');
+        cd(curdir);
+    end
+
     if what == 11
         % Build pnet
         curdir = pwd;
@@ -261,7 +282,7 @@ else
     end
 
     if what == 12
-        % Build PsychOculusVRCore:
+        % Build PsychOculusVRCore 32 Bit:
         % Needs the Oculus VR SDK v 0.5.01 installed in side-by-side to
         % the Psychtoolbox-3 folder, ie., in the same parent directory, and
         % renamed from OculusSDK to OculusSDKWin. Needs to Oculus VR runtime
