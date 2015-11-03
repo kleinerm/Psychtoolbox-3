@@ -3716,7 +3716,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // OS-Builtin timestamping failed, is unsupported, or it is disabled by usercode.
             if ((swap_msc < -1) && (verbosity > 1)) {
                 printf("PTB-WARNING:PsychOSGetSwapCompletionTimestamp() FAILED: errorcode = %lld, tSwapComplete = %lf.\n", swap_msc, tSwapComplete);
-                printf("PTB-WARNING: This likely means that timestamping will *not work at all* and has to be considered\n");
+                printf("PTB-WARNING: If this message shows up frequently during sessions, instead of only very sporadically, then\n");
+                printf("PTB-WARNING: this likely means that timestamping will *not work at all* and has to be considered\n");
                 printf("PTB-WARNING: not trustworthy! Check your system configuration, e.g., /etc/X11/xorg.conf and\n");
                 printf("PTB-WARNING: /var/log/XOrg.0.log on Linux for hints on what could be misconfigured. This is \n");
                 printf("PTB-WARNING: very likely not a bug, but a system misconfiguration by you or your distribution vendor.\n");
