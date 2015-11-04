@@ -33,6 +33,11 @@ function usedAnswers = PsychLinuxConfiguration(answers)
 % by Psychtoolbox, and for optimal performance for the kind
 % of typical PTB use cases.
 %
+% The script also creates a /etc/X11/xorg.conf.d/ directory for
+% xorg.conf configuration files which are writable by members
+% of the 'psychtoolbox' group to allow easy reconfiguration of
+% the X11 display system for running experiment sessions.
+%
 % The script calls into the shell via "sudo" to achieve this
 % setup task, which itself needs admin privileges to modify
 % system files etc. "sudo" will prompt the user for his admin
@@ -44,6 +49,7 @@ function usedAnswers = PsychLinuxConfiguration(answers)
 % to work around Linux specific OpenGL quirks of Matlab R2014b or
 % later.
 %
+
 % History:
 %  6.01.2012   mk  Written.
 % 16.04.2013   mk  Add info about 'dialout' group for serial port access.
@@ -55,6 +61,10 @@ function usedAnswers = PsychLinuxConfiguration(answers)
 %                  Add option to automatically add user to dialout and psychtoolbox
 %                  Unix user groups, and to add other optional users as well.
 %                  Allow upgrade of the 99-psychtoolbox.limits conf file as well.
+% 04.11.2015   mk  Support creation of /etc/X11/xorg.conf.d/ directory owned by
+%                  group 'psychtoolbox' with setgid flag set, and write permissions,
+%                  to allow members of the 'psychtoolbox' user group to add/remove/
+%                  modify xorg.conf files without need for admin permissions.
 
 rerun = 0;
 
@@ -63,10 +73,10 @@ if ~IsLinux
 end
 
 if nargin < 1 || isempty(answers)
-  answers = '???';
+  answers = '????';
 else
-  if ~ischar(answers) || length(answers) ~= 3
-    error('Provided input argument ''answers'' must be a 3 character string with characters y, n or ?');
+  if ~ischar(answers) || length(answers) ~= 4
+    error('Provided input argument ''answers'' must be a 4 character string with characters y, n or ?');
   end
 end
 
@@ -296,9 +306,9 @@ end
 
 % Need to create a Unix user group 'psychtoolbox' and add user to it?
 if addgroup
+  fprintf('I will try to create a new Unix user group called "psychtoolbox" on your system.\n');
   if IsOctave && IsGUI
     rerun = 1;
-    fprintf('I will try to create a new Unix user group called "psychtoolbox" on your system.\n');
     fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
     fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
     fprintf('GUI, e.g., via executing: octave --no-gui\n');
@@ -352,6 +362,36 @@ if addgroup
       end
     end
     fprintf('\n');
+  end
+end
+
+if addgroup
+  if ~exist('/etc/X11/xorg.conf.d', 'dir')
+    fprintf('\n\nThe X11 configuration directory /etc/X11/xorg.conf.d does not exist.\n');
+    fprintf('I would like to create it and allow users of the psychtoolbox Unix group\n');
+    fprintf('to write xorg config files into that directory. This will allow easy change\n');
+    fprintf('of display configuration when needed to setup for an experiment.\n\n');
+
+    if ismember(answers(4), 'yn')
+      answer = answers(4);
+    else
+      answer = input('Should i create a X11 config directory that is writable for you? [y/n] : ', 's');
+      answers(4) = answer;
+    end
+
+    if answer == 'y'
+      if IsOctave && IsGUI
+        rerun = 1;
+        fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
+        fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
+        fprintf('GUI, e.g., via executing: octave --no-gui\n');
+        fprintf('Then run the PsychLinuxConfiguration command again to make things work.\n');
+      else
+        system('sudo mkdir /etc/X11/xorg.conf.d');
+        system('sudo chown :psychtoolbox /etc/X11/xorg.conf.d');
+        system('sudo chmod g+rwxs /etc/X11/xorg.conf.d');
+      end
+    end
   end
 end
 

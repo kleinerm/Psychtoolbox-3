@@ -44,8 +44,9 @@
 % EyelinkToolbox      - All: Toolbox for control of the SR-Research Eyelink gazetrackers.
 % iViewXToolbox       - All: Toolbox for control of the MSI-Research iView gazetrackers.
 % NetStation          - All: Control the EGI Netstation EEG recording system via network.
+% XOrgConfCreator   - Linux: A setup assistant for easy creation of X11 config files.
+% XOrgConfSelector  - Linux: A assistant for easy selection of X11 config files.
 %
-% 
 % Minolta Toolbox
 % Set of m-files and sample code that can be used for reading luminance data
 % from the Minolta LS-110 luminance meter. Contains simple program for 
