@@ -463,7 +463,7 @@ function xdriver = DetectDDX(winfo)
     % NVidia part under nouveau -> nouveau ddx:
     fprintf('Nvidia GPU with open-source driver detected. ');
     xdriver = 'nouveau';
-  elseif strfind(winfo.GLVender, 'NVIDIA')
+  elseif strfind(winfo.GLVendor, 'NVIDIA')
     % NVidia part under binary blob -> nvidia ddx:
     fprintf('Nvidia GPU with proprietary driver detected. ');
     xdriver = 'nvidia';
