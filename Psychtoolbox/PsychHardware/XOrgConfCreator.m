@@ -41,13 +41,11 @@ end
 fprintf('Detecting type of graphics card (GPU) and driver to use...\n');
 oldVerbosity = Screen('Preference', 'Verbosity', 1);
 oldSyncTests = Screen('Preference', 'SkipSyncTests', 2);
-oldLevel = Screen('Preference', 'WindowShieldingLevel', -1);
 
 try
   win = Screen('OpenWindow', 0, 0, [0 0 32 32]);
   winfo = Screen('GetWindowInfo', win);
   Screen('CloseAll');
-  Screen('Preference', 'WindowShieldingLevel', oldLevel);
 
   xdriver = DetectDDX(winfo);
   fprintf('Will use the xf86-video-%s DDX video driver.\n', xdriver);
