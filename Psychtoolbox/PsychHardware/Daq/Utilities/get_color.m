@@ -9,7 +9,7 @@ function colorvector = get_color(colorstring)
 % calls to strcmp.  I suspect that the compiled version is identical, but this
 % looks more elegant.
 
-while colorstring(length(colorstring)) == setstr(' '),
+while colorstring(length(colorstring)) == ' '
   colorstring(length(colorstring)) = [];
 end;
 

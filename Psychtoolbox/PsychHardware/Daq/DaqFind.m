@@ -7,6 +7,7 @@ function daq = DaqFind
 %
 % History: 12/10/07   mpr   consolidated calls from other code
 %           1/23/08   mpr   added second attempt option if No daq found
+%          11/05/15   mk    Improved error handling in case no Daq found after clear.
 %
 % see also DaqDeviceIndex and DaqReset
 
@@ -21,10 +22,11 @@ if isempty(daq)
       BeenToDaqFind = 1;
       clear PsychHID;
       clear PsychHIDDAQS;
-      daq = DaqFind;
-      if isempty(daq)
+      try
+        daq = DaqFind;
+      catch
         error('Did not find daq after clearance; are you sure it is connected?');
-      end  
+      end
     else
       error('No daq listed in current PsychHID enumeration.');
     end
