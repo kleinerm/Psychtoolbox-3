@@ -36,16 +36,16 @@
 #include "PsychIncludes.h"
 
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
-	#undef printf
-	#define printf mexPrintf
+    #undef printf
+    #define printf mexPrintf
 #endif
 
 //platform dependent macro defines 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
     // Define snprintf as _snprintf to take Microsoft brain-damage into account:
-	#ifndef snprintf
-	#define snprintf _snprintf
-	#endif
+    #ifndef snprintf
+    #define snprintf _snprintf
+    #endif
 
     // MSVC wants _strdup instead of strdup:
     #ifdef _MSC_VER
@@ -97,16 +97,16 @@ typedef unsigned char		psych_bool;
         typedef unsigned int CFDictionaryRef;
 
         // Datatype for condition variables:
-        typedef pthread_cond_t		psych_condition;
+        typedef pthread_cond_t  psych_condition;
         // Datatype for Mutex Locks:
-        typedef pthread_mutex_t		psych_mutex;
+        typedef pthread_mutex_t psych_mutex;
         // Datatype for threads:
-        typedef pthread_t			psych_thread;
-        typedef pthread_t			psych_threadid;
+        typedef pthread_t   psych_thread;
+        typedef pthread_t   psych_threadid;
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        typedef LONGLONG						psych_int64;
+        typedef LONGLONG                        psych_int64;
         typedef ULONGLONG                       psych_uint64;
         typedef DWORD                           psych_uint32;
         typedef BYTE                            psych_uint8;
@@ -124,37 +124,37 @@ typedef unsigned char		psych_bool;
 
         // Define missing types on Windows:
         typedef char         Str255[256];
-        typedef unsigned int CFDictionaryRef;                
+        typedef unsigned int CFDictionaryRef;
 
         // Datatype for condition variables:
-		typedef HANDLE					psych_condition;		
-		// Datatype for Mutex Locks:
-		typedef CRITICAL_SECTION		psych_mutex;
-		// Datatype for threads:
-		typedef struct psych_threadstruct {
-			HANDLE				handle;			// Handle to actual thread (NULL == Invalid).
-			DWORD				threadId;		// Unique numeric id (0 = Invalid.)
-			psych_condition		terminateReq;	// Condition/Event object to signal the request for termination.
-			HANDLE				taskHandleMMCS; // Handle to task for MMCSS scheduled thread, NULL otherwise.
-		} psych_threadstruct;
-		typedef struct psych_threadstruct*	psych_thread;
+        typedef HANDLE  psych_condition;
+        // Datatype for Mutex Locks:
+        typedef CRITICAL_SECTION  psych_mutex;
+        // Datatype for threads:
+        typedef struct psych_threadstruct {
+          HANDLE  handle;               // Handle to actual thread (NULL == Invalid).
+          DWORD   threadId;             // Unique numeric id (0 = Invalid.)
+          psych_condition terminateReq; // Condition/Event object to signal the request for termination.
+          HANDLE  taskHandleMMCS;       // Handle to task for MMCSS scheduled thread, NULL otherwise.
+        } psych_threadstruct;
+        typedef struct psych_threadstruct*  psych_thread;
 
-		typedef psych_uint32		psych_threadid;
+        typedef psych_uint32  psych_threadid;
 
 #elif PSYCH_SYSTEM == PSYCH_OSX
-        typedef UInt8				psych_uint8;
-		typedef UInt16				psych_uint16;
-        typedef UInt32				psych_uint32;
-        typedef unsigned long long	psych_uint64;
-        typedef long long			psych_int64;
+        typedef UInt8         psych_uint8;
+        typedef UInt16        psych_uint16;
+        typedef UInt32        psych_uint32;
+        typedef unsigned long long  psych_uint64;
+        typedef long long     psych_int64;
 
-		// Datatype for condition variables:
-		typedef pthread_cond_t		psych_condition;
-		// Datatype for Mutex Locks:	
-		typedef pthread_mutex_t		psych_mutex;
-		// Datatype for threads:
-		typedef pthread_t			psych_thread;
-		typedef pthread_t			psych_threadid;
+        // Datatype for condition variables:
+        typedef pthread_cond_t  psych_condition;
+        // Datatype for Mutex Locks:
+        typedef pthread_mutex_t psych_mutex;
+        // Datatype for threads:
+        typedef pthread_t     psych_thread;
+        typedef pthread_t     psych_threadid;
 #endif
 
 #if PSYCH_LANGUAGE == PSYCH_MATLAB

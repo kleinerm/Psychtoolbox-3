@@ -314,6 +314,22 @@
 % need ever arise again in the future.
 %
 %
+% 2^28 == kPsychAssumeGfxCapVCGood
+% Force the assumption that the graphics hardware is capable of processing
+% OpenGL vertex colors at full 32 bpc floating point precision. This allows
+% to avoid the use of special texture filter shaders when drawing bilinearly
+% filtered floating point textures while color clamping is disabled on a
+% floating point onscreen window or offscreen window. Instead the standard
+% fixed function pipeline is used by default. By default Psychtoolbox assumes
+% insufficient precision and uses such a shader, but some defective graphics
+% drivers, e.g., for AMD graphics cards under Mac OSX 10.11 "El Capitan", will
+% perform bilinear texture sampling at insufficient precision, which can be a
+% hazard for vision research which requires > 8 bpc color/luminance/contrast
+% precision. This flag allows to enforce fixed function as a potential plan B.
+% The HighColorPrecisionDrawingTest() script will detect such defective graphics
+% drivers and advice the user to use this flag in such situations.
+%
+%
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
 % meant as a last ressort, e.g., if you need to get something going quickly

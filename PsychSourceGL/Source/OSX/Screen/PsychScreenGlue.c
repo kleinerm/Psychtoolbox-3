@@ -1108,9 +1108,6 @@ void InitPsychtoolboxKernelDriverInterface(void)
                 printf("PTB-INFO: require you to run a 64-Bit kernel on your machine. The 32-Bit driver is no longer updated, so it will stay outdated.\n");
             }
 
-            // Perform auto-detection of screen to head mappings:
-            // Disabled - Does not work as expected, coded to a no-op if called: PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
-
             // Increment instance count by one:
             numKernelDrivers++;
         }
@@ -1159,6 +1156,9 @@ void InitPsychtoolboxKernelDriverInterface(void)
         activeGPU = atoi(getenv("PSYCH_USE_GPUIDX"));
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Will try to use GPU number %i for low-level access during this session, as requested by usercode.\n", activeGPU);
     }
+
+    // Perform auto-detection of screen to head mappings:
+    PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads[activeGPU]);
 
 error_abort:
 

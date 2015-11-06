@@ -1370,6 +1370,27 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
     return(&rrmode);
 }
 
+const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm_width, unsigned long *mm_height)
+{
+    static char outputName[100];
+    struct output_info* output;
+
+    if (screenId >= numDisplays || screenId < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
+    if (PsychScreenToHead(screenId, outputIdx) < 0) PsychErrorExitMsg(PsychError_internal, "outputIdx is out of range");
+
+    output = displayOutputs[screenId];
+
+    // Store output name to return:
+    sprintf(outputName, "%s %s", output->geometry.make, output->geometry.model);
+
+    // And width / height in mm:
+    if (mm_width) *mm_width = (unsigned long) output->geometry.physical_width;
+    if (mm_height) *mm_height = (unsigned long) output->geometry.physical_height;
+
+    // Return output name:
+    return(&outputName[0]);
+}
+
 void InitCGDisplayIDList(void)
 {
     Dl_info libcolord_info;

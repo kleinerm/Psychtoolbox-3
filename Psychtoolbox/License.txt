@@ -167,6 +167,11 @@
 % Copyright (c) 2012, Przemyslaw Baranski. The full license text is included
 % in the qGetR.m file in Psychtoolbox/PsychOpenGL/qGetR.m
 %
+% Support for NVidia NVision stereo emitter/stereo goggles under Linux is
+% implemented by use of libnvstusb from http://sourceforge.net/projects/libnvstusb/
+% This library is licensed under LGPLv2 license. The source code for our
+% binary build can be found in the PsychSourceGL/Cohorts/libnvstusb-code-32
+% subfolder of the PTB source distribution.
 %
 % Matlab/Octave to OpenGL wrapper MOGL - MIT license : Richard F. Murray, Mario Kleiner.
 % MOGL moglcore for MS-Windows links dynamically against the freeglut library, which is

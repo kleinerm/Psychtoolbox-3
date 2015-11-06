@@ -157,7 +157,7 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 				PsychTestCancelThread(&(device->readerThread));
 
 				// Read 1 Byte:
-				if (ReadFile(device->fileDescriptor, &lastcharacter, 1, &nread, NULL) == 0) {
+				if (ReadFile(device->fileDescriptor, &lastcharacter, 1, (LPDWORD) &nread, NULL) == 0) {
 					// Some error:
 					nread = -1;
 				}
@@ -197,7 +197,7 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 			if (naccumread < 0) naccumread = 0;
 			
 			// Enough data available. Read it!
-			if (ReadFile(device->fileDescriptor, &(device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)]), naccumread, &nread, NULL) == 0) {
+			if (ReadFile(device->fileDescriptor, &(device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)]), naccumread, (LPDWORD) &nread, NULL) == 0) {
 				// Some error:
 				if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Error during blocking read from device %s - (%d).\n", device->portSpec, GetLastError());
 			}
@@ -1108,7 +1108,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 
 		// Write the data: Take pre- and postwrite timestamps.
 		PsychGetAdjustedPrecisionTimerSeconds(&timestamp[1]);
-		if (WriteFile(device->fileDescriptor, writedata, amount, &nwritten, NULL) == 0)
+		if (WriteFile(device->fileDescriptor, writedata, amount, (LPDWORD) &nwritten, NULL) == 0)
 		{
 			sprintf(errmsg, "Error during non-blocking write to device %s - (%d).\n", device->portSpec, GetLastError());
 			return(-1);
@@ -1120,7 +1120,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 
 		// Write the data: Take pre- and postwrite timestamps.
 		PsychGetAdjustedPrecisionTimerSeconds(&timestamp[1]);
-		if (WriteFile(device->fileDescriptor, writedata, amount, &nwritten, NULL) == 0)
+		if (WriteFile(device->fileDescriptor, writedata, amount, (LPDWORD) &nwritten, NULL) == 0)
 		{
 			sprintf(errmsg, "Error during blocking write to device %s - (%d).\n", device->portSpec, GetLastError());
 			return(-1);
@@ -1223,7 +1223,7 @@ int PsychIOOSReadSerialPort( PsychSerialDeviceRecord* device, void** readdata, u
 			}
 			
 			// Read the data, at most 'amount' bytes, nonblocking:
-			if (ReadFile(device->fileDescriptor, device->readBuffer, amount, &nread, NULL) == 0)
+			if (ReadFile(device->fileDescriptor, device->readBuffer, amount, (LPDWORD) &nread, NULL) == 0)
 			{			
 				// Some error:
 				sprintf(errmsg, "Error during non-blocking read from device %s - (%d).\n", device->portSpec, GetLastError());
@@ -1300,7 +1300,7 @@ int PsychIOOSReadSerialPort( PsychSerialDeviceRecord* device, void** readdata, u
 			}
 
 			// Read the data, exactly 'amount' bytes, blocking, unless timeout occurs:
-			if (ReadFile(device->fileDescriptor, device->readBuffer, amount, &nread, NULL) == 0)
+			if (ReadFile(device->fileDescriptor, device->readBuffer, amount, (LPDWORD) &nread, NULL) == 0)
 			{			
 				// Some error:
 				sprintf(errmsg, "Error during blocking read from device %s - (%d).\n", device->portSpec, GetLastError());

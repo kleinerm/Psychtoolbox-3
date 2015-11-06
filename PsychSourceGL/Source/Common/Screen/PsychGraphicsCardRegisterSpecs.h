@@ -68,9 +68,6 @@
 #define kPsychRadeon   2
 #define kPsychIntelIGP 3
 
-// Maximum number of crtc's on DCE-4 style Radeon hardware:
-#define DCE4_MAXHEADID 5
-
 // The following register offsets and specs are taken from the official AMD/ATI
 // specs, downloadable from http://www.x.org/docs/AMD/ the website of the X-ORG
 // foundation, home of the open source Linux X11 server. These specs are official
@@ -343,8 +340,16 @@
 #       define NI_REGAMMA_PROG_B                       4
 #       define NI_OVL_REGAMMA_MODE(x)                  (((x) & 0x7) << 4)
 
-// Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
-static const unsigned int crtcoff[(DCE4_MAXHEADID + 1)] = { EVERGREEN_CRTC0_REGISTER_OFFSET, EVERGREEN_CRTC1_REGISTER_OFFSET, EVERGREEN_CRTC2_REGISTER_OFFSET, EVERGREEN_CRTC3_REGISTER_OFFSET, EVERGREEN_CRTC4_REGISTER_OFFSET, EVERGREEN_CRTC5_REGISTER_OFFSET };
+/* "Volcanic Islands" DCE10/11 display controller offsets used for crtc/cur/lut/grph/viewport/etc. */
+/* These are from amdgpu's vid.h defines. Multiply by 4 as we expect byte offsets, but vid.h defines
+ * dword (= 4 bytes) aligned offsets. */
+#define DCE10_CRTC0_REGISTER_OFFSET                 ((0x1b9c - 0x1b9c) * 4)
+#define DCE10_CRTC1_REGISTER_OFFSET                 ((0x1d9c - 0x1b9c) * 4)
+#define DCE10_CRTC2_REGISTER_OFFSET                 ((0x1f9c - 0x1b9c) * 4)
+#define DCE10_CRTC3_REGISTER_OFFSET                 ((0x419c - 0x1b9c) * 4)
+#define DCE10_CRTC4_REGISTER_OFFSET                 ((0x439c - 0x1b9c) * 4)
+#define DCE10_CRTC5_REGISTER_OFFSET                 ((0x459c - 0x1b9c) * 4)
+#define DCE10_CRTC6_REGISTER_OFFSET                 ((0x479c - 0x1b9c) * 4)
 
 // NVIDIA REGISTERS:
 // -----------------

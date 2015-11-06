@@ -1053,12 +1053,19 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // and worked well for us, but it prevents the windowmanager from seeing properties on
     // our windows which allow us to control desktop composition, e.g., on KDE/KWIN and GNOME-3/Mutter,
     // as well as on other wm's compliant with latest ICCCM spec:
-    // Ok, for now we only use the new-style path if we are running under KDE/KWin and user
-    // doesn't explicitely override/forbid that choice. Otherwise we use the old path, as
-    // that seems to perform better, at least on tested Unity/compiz, GNOME3-Shell and LXDE/OpenBox.
+    // UPDATE April-2015: Use newstyle_setup if user wants it, or if this is a KDE single display setup,
+    // where it helps. On KDE multi-display we can't use it due to the KWin problems mentioned above, on
+    // other desktop environments we don't need it. This is like before, just we also use this on KDE +
+    // non-Intel gpu's, to save the user the extra setup step for "unredirect_fullscreen_windows" in the KDE
+    // GUI, as this is a bit more convenient.
+    //
+    // UPDATE June-2015: Use old style setup also on KDE with multiple X-Screens, not only multiple outputs
+    // on one X-Screen. Otherwise at least the future KDE 5.3 Plasma desktop will do stupid things.
     PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, NULL, NULL, NULL);
-    if ((!getenv("PSYCH_NEW_OVERRIDEREDIRECT") && (gpuMaintype != kPsychIntelIGP)) || (PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
-        !getenv("KDE_FULL_SESSION") || (PsychScreenToHead(screenSettings->screenNumber, 1) >= 0)) {
+    if (!getenv("PSYCH_NEW_OVERRIDEREDIRECT") &&
+        ((PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
+        !getenv("KDE_FULL_SESSION") || (PsychScreenToHead(screenSettings->screenNumber, 1) >= 0) ||
+        (PsychGetNumDisplays() > 1))) {
         // Old style: Always override_redirect to lock out window manager, except when a real "GUI-Window"
         // is requested, which needs to behave and be treated like any other desktop app window:
         attr.override_redirect = (windowRecord->specialflags & kPsychGUIWindow) ? 0 : 1;

@@ -97,6 +97,7 @@ void PsychUnlockDisplay(void);
 XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc);
 double PsychOSVRefreshFromMode(XRRModeInfo *mode);
 int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int newHeight, int newHz, int newX, int newY);
+const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm_width, unsigned long *mm_height);
 
 // Calls XDefineCursor() or XIDefineCursor(..., deviceId, ...), setting cursor of all onscreen windows to 'cursor':
 void PsychOSDefineX11Cursor(int screenNumber, int deviceId, Cursor cursor);

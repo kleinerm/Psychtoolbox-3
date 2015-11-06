@@ -1,5 +1,5 @@
-function striplibsfrommexfile(filename, testrun)
-% striplibsfrommexfile(filename [, testrun=0]);
+function striplibsfrommexfile(filename, testrun, alsorenameit)
+% striplibsfrommexfile(filename [, testrun=0][, alsorenameit=0]);
 %
 % Remove a certain set of dynamic library dependencies from MEX/OCT file
 % given via 'filename'. Optional 'testrun' if set to non-zero value will
@@ -18,8 +18,12 @@ function striplibsfrommexfile(filename, testrun)
 % dependency. Then it rewrites the stripped mex binary.
 %
 
-if nargin < 2
+if nargin < 2 || isempty(testrun)
     testrun = 0;
+end
+
+if nargin < 3 || isempty(alsorenameit)
+    alsorenameit = 0;
 end
 
 if exist(filename, 'file')
@@ -41,6 +45,16 @@ if exist(filename, 'file')
     image = stripLibrary(image, 'libz');
     image = stripLibrary(image, 'libcruft');
     image = stripLibrary(image, 'liboctave');
+
+    if alsorenameit
+        % Rename the following libraries in image: We rename from .so.2 to .so.3
+        % as that is what Octave-4 provides and we want to make these mex files
+        % built on/against Octave-3 compatible with Octave-4. This works because
+        % while the liboctinterp's so-name/version has changed, the api/abi of
+        % Octave-4's C-Mex interface has not changed. Or so we hope until proven
+        % wrong...
+        image = renameLibrary(image, 'liboctinterp.so.2', 'liboctinterp.so.3');
+    end
 
     % Write stripped image:
     frewind(fd);
@@ -95,4 +109,53 @@ function image = stripLibrary(image, library)
         error('After strip op, image is no longer of uint8 class as required! Stripping failed!!');
     end
     
+return
+
+function image = renameLibrary(image, oldlibrary, newlibrary)
+
+    dodebug = 0;
+
+    if length(newlibrary) > length(oldlibrary)
+        error('New replacement library name longer than to be replaced old name! Forbidden.');
+    end
+
+    % Find first character of library in image:
+    pStart = strfind(char(image'), oldlibrary);
+    if ~isempty(pStart)
+        % Iterate over all occurences, kill each of them:
+        for cStart = pStart
+            % Kill occurence at cStart:
+
+            if dodebug
+                disp(char(image(cStart:cStart + 20)))
+            end
+
+            % Start at the start:
+            p = cStart;
+            c = 1;
+
+            % Rename-Loop: Replace chars until zero-byte:
+            while (image(p) ~= 0)
+                if c <= length(newlibrary)
+                    % Replace this character:
+                    image(p) = newlibrary(c);
+                else
+                    % 0-out this character:
+                    image(p) = 0;
+                end
+
+                % Next one...
+                p = p + 1;
+                c = c + 1;
+            end
+
+            if dodebug
+                disp(char(image(cStart:cStart + 20)))
+            end
+        end
+    end
+
+    if ~isa(image, 'uint8')
+        error('After rename op, image is no longer of uint8 class as required! Renaming failed!!');
+    end
 return

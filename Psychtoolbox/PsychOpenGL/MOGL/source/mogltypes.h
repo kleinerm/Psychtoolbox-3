@@ -8,7 +8,7 @@
  * 24-Mar-2011 -- Make 64-bit clean (MK).
  * 27-Mar-2011 -- Remove obsolete and totally bitrotten Octave-2 support (MK).
  * 01-Jul-2012 -- Kill Matlab R11 support (MK).
- *
+ * 17-Oct-2015 -- For Octave-4 we need the gluUnProject4 definition like on Matlab (MK).
  */
 
 #define PSYCH_MATLAB 0
@@ -90,12 +90,7 @@ double gluBuild1DMipmapLevels(double a1, double a2, double a3, double a4, double
 double gluBuild2DMipmapLevels(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8, double a9, void* a10);
 double gluBuild3DMipmapLevels(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8, double a9, double a10, void* a11);
 double gluBuild3DMipmaps(double a1, double a2, double a3, double a4, double a5, double a6, double a7, void* a8);
-
-#ifndef PTBOCTAVE3MEX
-// This one already defined on Octave-3, no need to "fake" it:
 double gluUnProject4(double a1, double a2, double a3, double a4, double* a5, double* a6, int* a7, double a8, double a9, double* a10, double* a11, double* a12, double* a13);
-#endif
-
 #endif
 
 // Mapping of scalar buffer offset value (in units of bytes) to an

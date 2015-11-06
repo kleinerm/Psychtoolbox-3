@@ -1132,6 +1132,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             mesamapi_strdupbug = TRUE;
             if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Mesa version < 10.5.2 does not have the mapi strdup() bug fix. Needs the mex file locking workaround.\n");
         }
+        else {
+            // Mesa 10.5.2 or later. This means it has sane DRI3/Present support. Let's check if the X-Server
+            // has sane DRI3/Present support as well, ie., is it at least XOrg 1.16.3?
+            if (XVendorRelease(windowRecord->targetSpecific.deviceContext) >= 11603000) {
+                // Yes. This combo is considered safe for use with DRI3/Present, so mark
+                // our windowRecord as safe for this mode of display:
+                windowRecord->specialflags |= kPsychSafeForDRI3;
+                if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: This combo of X-Server and Mesa is considered safe for use under DRI3/Present.\n");
+            }
+        }
     }
 
     // Ok, the OpenGL rendering context is up and running.

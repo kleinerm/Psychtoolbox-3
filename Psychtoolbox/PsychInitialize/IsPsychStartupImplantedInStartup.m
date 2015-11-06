@@ -14,7 +14,15 @@ function isImplanted = IsPsychStartupImplantedInStartup
 commandString='PsychStartup';
 commentChar='%';
 
-pth=which('startup.m');
+if IsOctave
+    pth = [get_home_directory filesep '.octaverc'];
+    if exist(pth, 'file') == 0
+        pth = '';
+    end
+else
+  pth=which('startup.m');
+end
+
 if isempty(pth)
     isImplanted=0;
 else
@@ -71,7 +79,7 @@ else
     if numFoundCalls > 1
         % we can't print multiline warnings using warning so just print the
         % the word "warning"
-        fprintf('Warning: The startup.m script:\n');
+        fprintf('Warning: The startup script:\n');
         fprintf(['\t' pth '\n']);
         fprintf(['seems to call "' commandString '" ' int2str(numFoundCalls) ' times.  Only one call is necessary\n']);
     end

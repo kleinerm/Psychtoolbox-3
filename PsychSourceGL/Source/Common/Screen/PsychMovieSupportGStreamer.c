@@ -1348,6 +1348,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     double          tNow;
     double          preT, postT;
     unsigned char*  releaseMemPtr = NULL;
+    #pragma warning( disable : 4068 )
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo      mapinfo = GST_MAP_INFO_INIT;

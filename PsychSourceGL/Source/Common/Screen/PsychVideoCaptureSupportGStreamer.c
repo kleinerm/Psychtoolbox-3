@@ -210,7 +210,56 @@ void PsychGSCheckInit(const char* engineName)
             // OSX linker sets the symbol to NULL if dynamic weak linking during runtime failed.
             // On failure we'll output some helpful error-message instead:
             #if PSYCH_SYSTEM == PSYCH_WINDOWS
+                #ifdef PTBOCTAVE3MEX
+                // Octave-4 on Windows specific code. Delay loading of the main dependencies
+                // does not work, because Octave-4 always resolves dependencies of mex files
+                // immediately and fails if it can not do that.
+                //
+                // However we need a Octave-4.0.0 specific hack here to prevent failure of runtime
+                // loading of some GStreamer plugins, e.g., for movie playback. Octave-4 comes
+                // with its own version of libbz2, needed by GraphicsMagick for some image format.
+                // This version is incompatible with the libbz2 provided by GStreamer and needed
+                // by some of its plugins. Our hacky solution is to runtime load libbz2 from the
+                // GStreamer installation directory now, thereby overriding the default dll search
+                // order which would try to load from the application installation directory instead,
+                // which would mean to load the "wrong" libbz2 from Octave-4's bin directory.
+                char gst_libbz2_path[FILENAME_MAX];
+                gst_libbz2_path[0] = 0;
+                if (NULL == getenv("PSYCH_GSTREAMER_SDK_ROOT")) {
+                    if (PsychPrefStateGet_Verbosity() > 1) {
+                        printf("PTB-WARNING: Environment variable PSYCH_GSTREAMER_SDK_ROOT undefined. Apparently PsychStartup.m\n");
+                        printf("PTB-WARNING: didn't set it? This can cause failure to load required GStreamer plugins, at least\n");
+                        printf("PTB-WARNING: on official 32-Bit Octave-4.0.0, unless special setup steps have been performed to\n");
+                        printf("PTB-WARNING: replace some unsuitable Octave DLL's with suitable corresponding DLL's from GStreamer.\n");
+                        printf("PTB-WARNING: If you experience failure of multi-media functions, this might be the reason for it.\n");
+                    }
+                }
+                else {
+                    // GStreamer runtime path defined by PsychStartup.m run. Try to load override dll(s) from GStreamer
+                    // runtime directory:
+                    sprintf(gst_libbz2_path, "%s\\libbz2.dll", getenv("PSYCH_GSTREAMER_SDK_ROOT"));
+                    if (NULL == LoadLibraryEx(gst_libbz2_path, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)) {
+                        if (PsychPrefStateGet_Verbosity() > 0) {
+                            printf("PTB-ERROR: Oh oh! libbz2.dll loading from GStreamer runtime directory as '%s' failed!\n",
+                                   gst_libbz2_path);
+                            printf("PTB-ERROR: Error code %d. This can cause failure to load required GStreamer plugins, at least\n",
+                                   GetLastError());
+                            printf("PTB-ERROR: on official 32-Bit Octave-4.0.0, unless special setup steps have been performed to\n");
+                            printf("PTB-ERROR: replace some unsuitable Octave DLL's with suitable corresponding DLL's from GStreamer.\n");
+                            printf("PTB-ERROR: If you experience failure of multi-media functions, this might be the reason for it.\n");
+                        }
+                    }
+                    else if (PsychPrefStateGet_Verbosity() > 3) {
+                        printf("PTB-DEBUG: Loaded '%s' from GStreamer runtime directory to override Octave's incompatible DLL.\n", gst_libbz2_path);
+                    }
+                }
+
+                // We don't fail in the Octave specific startup path:
+                if (FALSE) {
+                #else
+                // Non-Octave (Matlab) specific code, where delay loading works:
                 if ((NULL == LoadLibrary("libgstreamer-1.0-0.dll")) || (NULL == LoadLibrary("libgstapp-1.0-0.dll"))) {
+                #endif
             #endif
             #if PSYCH_SYSTEM == PSYCH_OSX
                 if (NULL == gst_init_check) {
@@ -2769,6 +2818,7 @@ static GstPadProbeReturn PsychHaveVideoDataCallback(GstPad *pad, GstPadProbeInfo
     unsigned char *input_image;
     PsychVidcapRecordType *capdev = (PsychVidcapRecordType *) dataptr;
     GstBuffer *videoBuffer = info->data;
+    #pragma warning( disable : 4068 )
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo mapinfo = GST_MAP_INFO_INIT;

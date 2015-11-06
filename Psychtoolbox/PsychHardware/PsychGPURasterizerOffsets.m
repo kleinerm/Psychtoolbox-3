@@ -206,7 +206,7 @@ function [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffset
     vfy = pixy - 1;
 
     % At expected location?
-    if vfx~=0
+    if vfx~=0 || vfy~=0
         fprintf('%s:GPU-Rasterizertest: Warning: glVertex2f() command draws at wrong position (Offset %i, %i)!\n', drivername, vfx, vfy);
     end
 

@@ -20,46 +20,47 @@ function wrappedString=WrapString(string,maxLineLength)
 % 6/30/02 dgp Wrote it.
 % 10/2/02 dgp Make it clear that maxLineLength is in characters, not pixels.
 % 09/20/09 mk Improve argument handling as per suggestion of Peter April.
+% 10/31/14 mk Fix Octave-4 warning, white-space/indentation cleanup.
 
-if nargin>2 || nargout>1 
-	error('Usage: wrappedString=WrapString(string,[maxLineLength])\n');
+if nargin>2 || nargout>1
+  error('Usage: wrappedString=WrapString(string,[maxLineLength])\n');
 end
 
 if nargin<2
-    maxLineLength=[];
+  maxLineLength=[];
 end
 
 if isempty(maxLineLength) || isnan(maxLineLength)
-	maxLineLength=74;
+  maxLineLength=74;
 end
 
 eol=sprintf('\n');
 wrapped='';
 while length(string)>maxLineLength
-	l=min([strfind(char(string),eol) length(string)+1]);
-	if l<maxLineLength
-		% line is already short enough
-		[wrapped,string]=onewrap(wrapped,string,l);
-	else
-		s=strfind(char(string),' ');
-		n=find(s<maxLineLength);
-		if ~isempty(n)
-			% ignore spaces before the furthest one before maxLineLength
-			s=s(max(n):end);
-		end
-		% break at nearest space, linebreak, or end.
-		s=sort([s l]);
-		[wrapped,string]=onewrap(wrapped,string,s(1));
-	end
+  l=min([strfind(char(string),eol) length(string)+1]);
+  if l<maxLineLength
+    % line is already short enough
+    [wrapped,string]=onewrap(wrapped,string,l);
+  else
+    s=strfind(char(string),' ');
+    n=find(s<maxLineLength);
+    if ~isempty(n)
+      % ignore spaces before the furthest one before maxLineLength
+      s=s(max(n):end);
+    end
+    % break at nearest space, linebreak, or end.
+    s=sort([s l]);
+    [wrapped,string]=onewrap(wrapped,string,s(1));
+  end
 end
 wrappedString=[wrapped string];
 return
 
 function [wrapped,string]=onewrap(wrapped,string,n)
 if n>length(string)
-	wrapped=[wrapped string];
-	string=[];
-	return
+  wrapped=[wrapped string];
+  string='';
+  return
 end
 wrapped=[wrapped string(1:n-1) sprintf('\n')];
 string=string(n+1:end);

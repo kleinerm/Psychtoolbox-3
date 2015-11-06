@@ -60,6 +60,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 05/18/2014 No support for 32-Bit Matlab on Linux and Windows anymore for 3.0.12. (MK)
 % 09/23/2014 No support for OSX 10.7 and earlier anymore. (MK)
 % 10/05/2014 Add some request for donations at the end. (MK)
+% 10/17/2015 Also add call to PsychStartup() to Octave startup for MS-Windows. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -146,9 +147,9 @@ catch
     fprintf('Info: Failed to remove .svn subfolders from path. Not a big deal...\n');
 end
 
-% Octave on Windows? This is unsupported as of Version 3.0.10.
-if IsWin && IsOctave
-    error('Use of GNU/Octave on MS-Windows with Psychtoolbox 3.0.10 is no longer supported. Aborted.');
+% Octave 64-Bit on Windows? This is unsupported as of Version 3.0.12, October 2015.
+if IsWin(1) && IsOctave
+    warning('Use of GNU/Octave-4 64-Bit on MS-Windows with Psychtoolbox 3.0.12 is not yet officially supported. Some stuff may work, other stuff not so much.');
 end
 
 % 32-Bit Octave or 32-Bit Matlab on OSX? This is unsupported as of Version 3.0.11.
@@ -176,15 +177,28 @@ if IsWin
     % Is it already implanted? Then we ain't nothing to do:
     if ~IsPsychStartupImplantedInStartup
         % Nope. Does a proper file already exist?
-        whereisit = which('startup.m');
+        if IsOctave
+            whereisit = [get_home_directory filesep '.octaverc'];
+            if exist(whereisit, 'file') == 0
+                whereisit = '';
+            end
+        else
+          whereisit = which('startup.m');
+        end
+
         if isempty(whereisit)
             % No: Create our own one.
-            whereisit = [PsychtoolboxRoot 'PsychInitialize' filesep 'startup.m'];
-            fprintf('Creating a startup.m file for Psychtoolbox at %s\n', whereisit);
+            if IsOctave
+                whereisit = [get_home_directory filesep '.octaverc'];
+                fprintf('Creating a .octaverc file for Psychtoolbox at %s\n', whereisit);
+            else
+                whereisit = [PsychtoolboxRoot 'PsychInitialize' filesep 'startup.m'];
+                fprintf('Creating a startup.m file for Psychtoolbox at %s\n', whereisit);
+            end
         else
-            fprintf('Adding PsychStartup() call to Matlab startup.m file for Psychtoolbox at %s\n', whereisit);            
+            fprintf('Adding PsychStartup() call to startup file for Psychtoolbox at %s\n', whereisit);
         end
-        
+
         % whereisit points to the location of the existing or to be created
         % file. Open (or create) it in append mode:
         try
@@ -195,7 +209,7 @@ if IsWin
             fprintf(fd, '\n');
             fclose(fd);
         catch
-            fprintf('WARNING: Failed to update or create startup.m file to add a call to PsychStartup()! Trouble ahead.\n');
+            fprintf('WARNING: Failed to update or create startup file to add a call to PsychStartup()! Trouble ahead.\n');
         end
     end
     
@@ -342,17 +356,20 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
     
-    if (octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 2)
+    if (IsWin && (octavemajorv < 4)) || (octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 2)
         fprintf('\n\n=================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is obsolete. We strongly recommend\n', version);
         if IsLinux
             % On Linux everything >= 3.2 is fine:
             fprintf('WARNING: using the latest stable version of the Octave 3.2.x series or later for use with Psychtoolbox.\n');
-        else
-            % On other OS'es we only care about >= 3.8 atm:
+        elseif IsOSX
+            % On OSX we only care about >= 3.8 atm:
             fprintf('WARNING: using the latest stable version of the Octave 3.8.x series or later for use with Psychtoolbox.\n');
+        else
+            % On Windows we only care about >= 4.0 atm:
+            fprintf('WARNING: using the latest stable version of the Octave 4.0.x series for use with Psychtoolbox.\n');
         end
-        fprintf('WARNING: Stuff may not work at all or only suboptimal with earlier versions and we\n');
+        fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
         fprintf('\nPress any key to continue with setup.\n');
         fprintf('=================================================================================\n\n');
@@ -376,8 +393,8 @@ if IsOctave
         % Failed! Either screwed setup of path or missing runtime
         % libraries.
         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
-        fprintf('ERROR: One reason might be that your version %s of Octave is incompatible. We recommend\n', version);        
-        fprintf('ERROR: use of the latest stable version of Octave-3 as announced on the www.octave.org website.\n');
+        fprintf('ERROR: One reason might be that your version %s of Octave is incompatible. We recommend\n', version);
+        fprintf('ERROR: use of the latest stable version of Octave-3 or 4 as announced on the www.octave.org website.\n');
         fprintf('ERROR: Another conceivable reason would be missing or incompatible required system libraries on your system.\n\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
@@ -388,9 +405,9 @@ if IsOctave
 end
 
 % Special case handling for different Matlab releases on MS-Windoze:
-if IsWin
+if IsWin && ~IsOctave
     rc = 0; %#ok<NASGU>
-    
+
     if strfind(cd,'system32')
         % the below code fails if the current directory is system32 (e.g.
         % C:\Windows\system32), as it contains dlls like version.dll, which

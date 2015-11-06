@@ -67,6 +67,7 @@ function InitializePsychSound(reallyneedlowlatency)
 %             default, as the PTB V3.0.9 MIT style license allows bundling
 %             of an ASIO enabled proprietary dll with Psychtoolbox. (MK)
 % 09/11/2012  Add support for 64-Bit portaudio_x64.dll for Windows. (MK)
+% 10/16/2015  Disable use of our own portaudio_x64 dll On Windows + Octave. (MK)
 
 if nargin < 1
     reallyneedlowlatency = [];

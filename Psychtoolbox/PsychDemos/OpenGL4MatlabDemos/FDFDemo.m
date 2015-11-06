@@ -139,7 +139,7 @@ try
     maxBGDots = dotDensity;
     
     % Init texture mapping toggle flag to "texturemapping off":
-    textoggle = 0;
+    textoggle = 1;
     
     % Use occlusion culling: Dots that would stick to the occluded part of
     % the 3D objects surface are not drawn. By default - if this parameter
@@ -166,7 +166,7 @@ try
         % Very recent GPU's may be able to do this themselves, e.g., NVidia
         % Geforce 8800 and later on OS/X 10.5.6 and later. In such a case,
         % setting doPointSprites to zero may provide a slight speedup:
-        doPointSprites = 1;
+        doPointSprites = 1
         glUniform1i(glGetUniformLocation(drawShader, 'doSmooth'), doPointSprites);
 
         % Assign mixweight: 0.0 = static color only, 1.0 = texture only,

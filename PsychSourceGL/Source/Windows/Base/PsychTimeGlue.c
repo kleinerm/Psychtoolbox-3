@@ -234,6 +234,32 @@ int PsychIsMSVista(void)
 	return(isVista);
 }
 
+/* Returns TRUE on Microsoft Windows 8 and later, FALSE otherwise: */
+int PsychOSIsMSWin8(void)
+{
+    // Info struct for queries to OS:
+    OSVERSIONINFO osvi;
+    
+    // Init flag to -1 aka unknown:
+    static int isWin8 = -1;
+    
+    if (isWin8 == -1) {
+        // First call: Do the query!
+        
+        // Query info about Windows version:
+        memset(&osvi, 0, sizeof(OSVERSIONINFO));
+        osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+        GetVersionEx(&osvi);
+        
+        // It is a Windows-8 or later if version is equal to 6.2 or higher:
+        // 6.0  = Vista, 6.1 = Windows-7, 6.2 = Windows-8, 6.3 = Windows-8.1
+        isWin8 = ((osvi.dwMajorVersion > 6) || ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion >= 2))) ? 1 : 0;
+    }
+    
+    // Return flag:
+    return(isWin8);
+}
+
 /* Called at module init time: */
 void PsychInitTimeGlue(void)
 {
@@ -1213,7 +1239,7 @@ void PsychTestCancelThread(psych_thread* threadhandle)
 	rc = (int) WaitForSingleObject((*threadhandle)->terminateReq, 0);
 	if (rc == WAIT_FAILED) {
 		rc = (int) GetLastError();
-		printf("PTB-CRITICAL: In call to PsychTestCancelThread(%p): WaitForSingleObject(%i) FAILED [GetLastError()=%i]! Expect disaster!!!", threadhandle, (int) (*threadhandle)->terminateReq, rc);
+		printf("PTB-CRITICAL: In call to PsychTestCancelThread(%p): WaitForSingleObject(%p) FAILED [GetLastError()=%i]! Expect disaster!!!", threadhandle, (*threadhandle)->terminateReq, rc);
 		return;
 	}
 
@@ -1281,7 +1307,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 		thread = GetCurrentThread();
 		
 		// Is this a special "Masterthread" pseudo-handle?
-		if (0x1 == (int) threadhandle) {
+		if ((psych_thread*) 0x1 == threadhandle) {
 			// Yes: This is the Psychtoolbox main thread calling. We don't have
 			// a "normal" psych_thread* threadhandle for this one, so we need to
 			// kind'a bootstrap one for this thread. Space for one handle for the
