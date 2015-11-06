@@ -66,7 +66,7 @@
 #define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "Matlab" PTB_ARCHITECTURE
 #else
 // Binary plugin for Octave-3 or later via the MEX interface:
-#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "GNU/Octave-3" PTB_ARCHITECTURE
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "GNU/Octave" PTB_ARCHITECTURE
 #endif
 #endif
 

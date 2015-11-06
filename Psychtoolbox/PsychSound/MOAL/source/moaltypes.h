@@ -26,6 +26,8 @@
 // Include mex.h with MEX - API definition for Matlab:
 #include "mex.h"
 
+#include <stdio.h>
+
 /* Includes specific to MacOS-X version of moal: */
 #ifdef MACOSX
 

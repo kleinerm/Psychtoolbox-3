@@ -373,6 +373,7 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
     float               v;
     unsigned int        n, i;
     GstBuffer*          pushBuffer;
+    #pragma warning( disable : 4068 )
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo          mapinfo = GST_MAP_INFO_INIT;

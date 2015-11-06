@@ -1,21 +1,29 @@
-function FlipTimingWithRTBoxPhotoDiodeTest(configFile)
-% FlipTimingWithRTBoxPhotoDiodeTest(configFile)
+function FlipTimingWithRTBoxPhotoDiodeTest(configFile, targetFolder)
+% FlipTimingWithRTBoxPhotoDiodeTest([configFile][, targetFolder])
 %
 % Test visual stimulus onset timing accuracy and visual stimulus onset
 % timestamping precision and robustness under varying loads, conditions and
 % modes of operation. This requires one of the supported external
 % measurement devices to provide the "ground truth" for true stimulus onset
-% times. Currently supported: UCST RTBox with photo-diode, VPixx Inc. DataPixx,
-% UBW32/Bitwhacker + UCST VideoSwitcher. Can also be used without external
-% equipment to just test stimulus onset accuracy with only indirect test of
-% timestamping.
+% times. Currently supported: UCST RTBox with photo-diode, VPixx Inc. DataPixx/
+% ViewPixx/ProPixx, UBW32/Bitwhacker + UCST VideoSwitcher. The script can also
+% be used without external equipment to just test stimulus onset accuracy with
+% only indirect test of timestamping.
 %
 % This documentation is incomplete for now, good luck!
 %
-% 'configFile' Filename of benchmark configuration file.
+% 'configFile' Filename of benchmark configuration file. If none is specified,
+% the file fliptimingdefaultconfig.mat from the Psychtoolbox/PsychTests/TestConfigurations/
+% folder is used for some reasonable default testing setup.
 %
-% Mandatory variables in file:
-% ----------------------------
+% 'targetFolder' Target folder for result files. If none is specified, a reasonable
+% location is selected if that location exists and is writable, if that does not work,
+% a fallback location is selected, if that does not work, the users home directory is
+% selected. If a folder is specified, that folder is used if it is writable, otherwise
+% the users home directory is tried as target.
+%
+% Mandatory variables in the config file, part of the struct variable 'conf':
+% ---------------------------------------------------------------------------
 %
 % conf.Stereo              = Stereomode to use.
 % conf.Priority            = Realtime priority to use.
@@ -32,26 +40,61 @@ function FlipTimingWithRTBoxPhotoDiodeTest(configFile)
 
 % History:
 % xx.10.2009  mk  Written.
+% 25.10.2015  mk  Try to improve selection of storage location for result file.
+%                 Try to select reasonable default file if none is specified.
+%                 Allow to override target folder location for results file.
+%                 Is this an improvement? I don't know.
 
 global sd;
 
 AssertOpenGL;
 
-if nargin < 1
-    error('"configFile" name missing!');
-end
-
-if isempty(configFile)
-    configFile = [ PsychtoolboxRoot 'PsychTests' filesep 'fliptimingdefaultconfig.mat' ];
+if (nargin < 1) || isempty(configFile)
+    configFile = [ PsychtoolboxRoot 'PsychTests' filesep 'TestConfigurations' filesep 'fliptimingdefaultconfig.mat' ];
 end
 
 if ~exist(configFile, 'file')
-    error('configFile %s does not exist or inaccessible!', configFile);
+    error('configFile ''%s'' does not exist or inaccessible!', configFile);
 end
 
 % Get basepath of config file: Will use it as basepath for result file:
 [basepath configBaseFile] = fileparts(configFile);
-basepath = [ PsychtoolboxRoot 'PsychTests' ]; 
+if isempty(basepath) || strcmp(basepath, '.')
+    % Replace empty basepath or curdir basepath by fully qualified
+    % current working directory:
+    basepath = pwd;
+end
+
+% Override basepath with provided targetFolder, if any:
+if (nargin >= 2) && ~isempty(targetFolder)
+    basepath = targetFolder;
+end
+
+% Is it the standard path for config files?
+if strcmp([PsychtoolboxRoot 'PsychTests' filesep 'TestConfigurations'], basepath)
+    % Yes. Then assume target folder is our standard folder in PsychTests.
+    % Does this folder exist as a target for our result files and is writable by us?
+    [fileex, fprops] = fileattrib([PsychtoolboxRoot 'PsychTests' filesep 'TimingtestResults']);
+    if fileex && fprops.directory && fprops.UserWrite
+        % Yes. Use it as target:
+        basepath = [PsychtoolboxRoot 'PsychTests' filesep 'TimingtestResults'];
+        fprintf('Will store results into standard TimingtestResults folder: %s\n', basepath);
+    else
+        fprintf('\nStandard TimingtestResults folder ''%s'' does not exist or is not writable!\n', ...
+                [PsychtoolboxRoot 'PsychTests' filesep 'TimingtestResults']);
+        fprintf('Will store to folder which contains the config file instead.\n');
+        fprintf('Abort now, if you do not want this.\n\n');
+    end
+end
+
+% Check again if selected basepath is writable by us:
+[fileex, fprops] = fileattrib(basepath);
+if ~fileex || ~fprops.directory || ~fprops.UserWrite
+    % No. Just store into the users home directory:
+    fprintf('Target folder for timing test results ''%s'' does not exist or is not writable.\n', basepath);
+    basepath = PsychHomeDir;
+    fprintf('Will store result files into your home directory ''%s'' instead as a fallback.\n', basepath);
+end
 
 % Load configuration: This will define a struct 'conf' with all
 % configuration settings:
@@ -121,9 +164,9 @@ res.mydate = datestr(clock);
 res.mydate(isspace(res.mydate)) = '_';
 res.mydate(res.mydate == ':') = '-';
 
-res.outFilename = sprintf('%s/TimingtestResults/Res_%s_On_%s_at_%s.mat', basepath, configBaseFile, res.machineName, res.mydate);
+res.outFilename = sprintf('%s/Res_%s_On_%s_at_%s.mat', basepath, configBaseFile, res.machineName, res.mydate);
 [foo, res.outFile] = fileparts(res.outFilename);
-fprintf('Will write results to file "%s" [path: %s]\n', res.outFile, res.outFilename);
+fprintf('Will write results to file "%s"\n[path: %s]\n', res.outFile, res.outFilename);
 
 screenId = str2num(input('Which screen? ', 's')); %#ok<ST2NM>
 screens = Screen('Screens');

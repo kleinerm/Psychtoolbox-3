@@ -186,11 +186,14 @@ function HighColorPrecisionDrawingTest(testconfig, maxdepth, testblocks)
 % 10/22/10  Refined to account for small differences between GPU's (MK).
 % 06/20/15  Add case 6 for testing 'DrawText' (MK).
 % 10/04/15  Use PsychGPURasterizerOffsets() to compensate for driver flaws (MK).
+% 10/21/15  Fix the fixes for rasterizer offsets, fix Octave-4 warnings, add
+%           hint to new ConserveVRAMSetting to work around OSX 10.11 AMD bugs.
 
 global win;
 
 close all;
 drivername = mfilename;
+maybeSamplerbug = 0;
 
 % Octave's new plotting backend 'fltk' interferes with Screen(),
 % due to internal use of OpenGL. Problem is it changes the
@@ -612,12 +615,16 @@ if ismember(3, testblocks)
     end
     
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
-    Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, -vfx, -vfy), [], Filters);
+    Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], Filters);
     Screen('Close', tex);
     testname = 'DrawTexture';
 
     % Evaluate and log:
     [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+
+    if goodbits < maxdepth
+        maybeSamplerbug = 1;
+    end
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
@@ -649,13 +656,17 @@ if ismember(3, testblocks)
     end
     
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
-    Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, -vfx, -vfy), [], Filters, [], [], gammaShader);
+    Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], Filters, [], [], gammaShader);
     Screen('Close', tex);
     testname = 'GammaCorrection';
 
     % Evaluate and log:
     gammapatch = refpatch .^ gamma;
     [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, gammapatch, fbrect);
+
+    if goodbits < 16
+        maybeSamplerbug = 1;
+    end
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
@@ -732,7 +743,7 @@ if ismember(4, testblocks)
         end
 
         % DrawTexture, modulateColor == [mc mc mc 1] modulated:
-        Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, -vfx, -vfy), [], Filters, [], mc);
+        Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], Filters, [], mc);
         
         % While the GPU does its thing, we compute the Matlab reference
         % patch:
@@ -749,7 +760,11 @@ if ismember(4, testblocks)
     end
     
     resstring = [resstring sprintf('%s : Maxdiff.: %1.17f --> Accurate to at least %i bits.\n', testname, max(maxv), mingoodbits)];
-    
+
+    if mingoodbits < 16
+        maybeSamplerbug = 1;
+    end
+
     Screen('Close', tex);
         
     Screen('CloseAll');
@@ -784,15 +799,15 @@ if ismember(5, testblocks)
 
     % Compute corresponding 'xy' matrix of output positions:
     [outx , outy] = meshgrid(0:2^floor(maxdepth/2)-1, 0:2^floor(maxdepth/2)-1);
-    
+
     % Build 2-row matrix of (x,y) pixel positions:
     xy = [outx(:)' ; outy(:)'];
-        
+
     % Compute color patch:
     colpatch = reshape(rgbacolors(1,:), length(outy), length(outx));
     colpatch = [colpatch , -colpatch];
-    
-    
+
+
     % Readout region of framebuffer:
     fbrect = [0, 0, max(xy(1,:))+1, max(xy(2,:))+1];
 
@@ -805,7 +820,7 @@ if ismember(5, testblocks)
         % values is 0-255 instead of 0.0 - 1.0. Need to rescale:
         teximg = uint8(colpatch * 255);
     end
-    
+
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
     fbrect = Screen('Rect', tex)
 
@@ -829,7 +844,7 @@ if ismember(5, testblocks)
 
         % DrawTexture, modulateColor == [mc mc mc 1] modulated:
         for odc=1:nroverdraws
-            Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, -vfx, -vfy), [], Filters, [], [mc mc mc alpha]);
+            Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], Filters, [], [mc mc mc alpha]);
         end
         
         % While the GPU does its thing, we compute the Matlab reference
@@ -841,7 +856,7 @@ if ismember(5, testblocks)
             % MK: This is needed for ATI X1600 under Tiger to emulate the known color clamping bug: refpatch = max(0, min(1, (refpatch + colpatch * mc * alpha)));
             refpatch = (refpatch + colpatch * mc * alpha);
         end
-        
+
         testname = 'DrawTexture-modulateColor&Blend1+1';
 
         % Evaluate and log:
@@ -849,11 +864,15 @@ if ismember(5, testblocks)
         mingoodbits = min([mingoodbits, goodbits]);
         
         % Visualize and clear buffer back to zero aka black:
-        Screen('Flip', win, 0, 0, 2);        
+        Screen('Flip', win, 0, 0, 2);
     end
     
     resstring = [resstring sprintf('%s : Maxdiff.: %1.17f --> Accurate to at least %i bits with %i overdraws.\n', testname, max(maxv), mingoodbits, nroverdraws)];
-    
+
+    if mingoodbits < 16
+        maybeSamplerbug = 1;
+    end
+
     Screen('Close', tex);
         
     Screen('CloseAll');
@@ -946,6 +965,16 @@ fprintf('\n\nTest summary:\n');
 fprintf('-------------\n\n');
 fprintf('%s\n\n', resstring);
 
+% Check if this is the samplerbug we found on OSX 10.11 El Capitan with AMD gpus:
+if maybeSamplerbug && (Filters > 0) && (ColorClamping == 0)
+    fprintf('The precision of some test results involving texture drawing with bilinear filtering\n');
+    fprintf('enabled and color clamping disabled is suspiciously low. This hints at a graphics driver\n');
+    fprintf('bug or low precision hardware wrt. shader based texture filtering. You may be able to work\n');
+    fprintf('around this issue by using the Screen ConserveVRAMSetting kPsychAssumeGfxCapVCGood. See the help of\n');
+    fprintf('''help ConserveVRAMSettings'' for more info. If you do not need filtered texture drawing, then it\n');
+    fprintf('would be advisable to use the Screen DrawTexture command with a filterMode of 0 on your system.\n\n');
+end
+
 % Restore synctest settings:
 Screen('Preference', 'SkipSyncTests', oldsync);
 Screen('Preference', 'Verbosity', 3);
@@ -966,6 +995,10 @@ function [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname,
     goodbits = floor(-(log2(maxv))) - 1;
     if goodbits < 0
         goodbits = 0;
+    end
+
+    if isempty(resstring)
+        resstring = '';
     end
 
     if goodbits <= maxdepth

@@ -90,8 +90,8 @@ PsychError SCREENWaitBlanking(void)
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, windowRecord->screenNumber);
 
     // Get window size and vblank startline:
-    windowwidth = PsychGetWidthFromRect(windowRecord->rect);
-    windowheight = PsychGetHeightFromRect(windowRecord->rect);
+    windowwidth = (long) PsychGetWidthFromRect(windowRecord->rect);
+    windowheight = (long) PsychGetHeightFromRect(windowRecord->rect);
     vbl_startline = windowRecord->VBL_Startline;
 
     // Query duration of a monitor refresh interval: We try to use the measured interval,

@@ -30,6 +30,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 void    PsychCloseOnscreenWindow(PsychWindowRecordType *windowRecord);
 void    PsychCloseWindow(PsychWindowRecordType *windowRecord);
 void    PsychFlushGL(PsychWindowRecordType *windowRecord);
+void    PsychSetupShutterGoggles(PsychWindowRecordType *windowRecord, psych_bool doInit);
+void    PsychTriggerShutterGoggles(PsychWindowRecordType *windowRecord, int viewid);
 double  PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip, int vbl_synclevel, int dont_clear, double flipwhen, int* beamPosAtFlip, double* miss_estimate, double* time_at_flipend, double* time_at_onset);
 void    PsychSetGLContext(PsychWindowRecordType *windowRecord);
 void    PsychUnsetGLContext(void);

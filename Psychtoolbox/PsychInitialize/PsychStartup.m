@@ -9,7 +9,8 @@ function PsychStartup
 % work. It performs GStreamer setup, or outputs a warning if the runtime is
 % missing.
 %
-% This function is normally called from the startup.m Matlab startup file.
+% This function is normally called from the startup.m Matlab startup file,
+% or from the .octaverc startup file on GNU/Octave.
 %
 
 % History:
@@ -17,6 +18,8 @@ function PsychStartup
 % 14.01.2013  mk  Make path detection more robust.
 % 12.09.2013  mk  Also apply GStreamer-SDK setup to 32-Bit Matlab on Windows.
 % 26.08.2014  mk  Switch the 64-Bit setup to the GStreamer-1.4.0+ runtime.
+% 17.10.2015  mk  Add warning about complete failure of Screen() for Octave on Windows.
+% 30.10.2015  mk  Setenv PSYCH_GSTREAMER_SDK_ROOT to help GStreamer on Octave-4 for Windows. 
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
@@ -37,8 +40,8 @@ try
         else
             % Leave Gstreamer-SDK setup intact for 32-Bit Matlab on Windows,
             % although hopefully we won't need it again ever:
-            sdkroot = getenv('GSTREAMER_SDK_ROOT_X86');
-            %sdkroot = getenv('GSTREAMER_1_0_ROOT_X86');
+            %sdkroot = getenv('GSTREAMER_SDK_ROOT_X86');
+            sdkroot = getenv('GSTREAMER_1_0_ROOT_X86');
             suffix = 'x86\';
         end
         
@@ -46,7 +49,7 @@ try
             if Is64Bit
                 fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86_64 is undefined.\n');
             else
-                fprintf('PsychStartup: Environment variable GSTREAMER_SDK_ROOT_X86 is undefined.\n');
+                fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86 is undefined.\n');
             end
             fprintf('PsychStartup: Either GStreamer-1.4 is not installed at all, or if it is installed then something\n');
             fprintf('PsychStartup: is botched. Trying various common locations for the GStreamer runtime to keep going.\n');
@@ -114,7 +117,11 @@ try
         if isempty(sdkroot)
             fprintf('\nPsychStartup: Path to GStreamer runtime is undefined! This probably means that\n');
             fprintf('PsychStartup: the 64-Bit GStreamer 1.x runtime from www.gstreamer.net is not installed.\n');
-            fprintf('PsychStartup: The Psychtoolbox Screen() multimedia functions will fail to work until you fix\n');
+            if IsOctave
+                fprintf('PsychStartup: The Psychtoolbox Screen() function will not work at all until you fix\n');
+            else
+                fprintf('PsychStartup: The Psychtoolbox Screen() multimedia functions will fail to work until you fix\n');
+            end
             fprintf('PsychStartup: this! Read ''help GStreamer'' for instructions.\n\n');
         else
             sdkroot = [sdkroot 'bin'];
@@ -127,6 +134,10 @@ try
             % Prepend sdkroot to path:
             newpath = [sdkroot ';' path];
             setenv('PATH', newpath);
+            
+            % Also store sdkroot in a separate environment variable, to be used
+            % by Screen for Octave internally:
+            setenv('PSYCH_GSTREAMER_SDK_ROOT', sdkroot);
         end
     end
 catch %#ok<*CTCH>

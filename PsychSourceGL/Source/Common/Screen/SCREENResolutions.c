@@ -65,14 +65,17 @@ PsychError SCREENConfigureDisplay(void)
                     "\n\n"
                     "'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'. "
                     "Returns a struct 'oldSettings' with the current settings for that output. Only supported on Linux.\n"
-                    "It returns and accepts the following optional parameters:\n"
-                    "* Display resolution \"newwidth\" x \"newheight\", and nominal refresh rate \"newHz\". "
+                    "It returns and accepts the following optional parameters:\n\n"
+                    "* Display resolution \"newwidth\" x \"newheight\", and nominal refresh rate \"newHz\".\n"
                     "* Panning ('newX','newY') - The location of the top-left corner of the display in the framebuffer.\n"
-                    "Providing invalid or incompatible settings will raise an error.\n";
+                    "Readonly properties:\n\n"
+                    "* Display size \"displayWidthMM\" x \"displayHeightMM\" in millimeters, as reported by attached display.\n"
+                    "* Video output name \"name\".\n"
+                    "\nProviding invalid or incompatible settings will raise an error.\n";
 
     static char seeAlsoString[] = "Screen('Resolutions'), Screen('Resolution');";
 
-    const char *OutputFieldNames[]={"width", "height", "pixelSize", "hz", "xStart", "yStart"};
+    const char *OutputFieldNames[] = { "width", "height", "pixelSize", "hz", "xStart", "yStart", "name", "displayWidthMM", "displayHeightMM" };
     char *settingName = NULL;
     int screenNumber, outputId, ditherEnable;
 
@@ -321,7 +324,7 @@ PsychError SCREENConfigureDisplay(void)
     if(outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid display output index provided.");
 
     // Create a structure and populate it.
-    PsychAllocOutStructArray(1, FALSE, 1, 6, OutputFieldNames, &oldResStructArray);
+    PsychAllocOutStructArray(1, FALSE, 1, 9, OutputFieldNames, &oldResStructArray);
 
     // Query current video mode of this output:
     XRRCrtcInfo *crtc_info = NULL;
@@ -342,6 +345,12 @@ PsychError SCREENConfigureDisplay(void)
     newHeight = (int) mode->height;
     PsychSetStructArrayDoubleElement("width", 0, newWidth, oldResStructArray);
     PsychSetStructArrayDoubleElement("height", 0, newHeight, oldResStructArray);
+
+    // Query and return output name, and physical size of display in mm:
+    unsigned long mm_width, mm_height;
+    PsychSetStructArrayStringElement("name", 0, (char*) PsychOSGetOutputProps(screenNumber, outputId, &mm_width, &mm_height), oldResStructArray);
+    PsychSetStructArrayDoubleElement("displayWidthMM", 0, mm_width, oldResStructArray);
+    PsychSetStructArrayDoubleElement("displayHeightMM", 0, mm_height, oldResStructArray);
 
     // Query and return refresh rate:
 

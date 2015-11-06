@@ -252,7 +252,7 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
     dinfo *dev;
     int i;
     int numKeys, numAxis;
-    char *type = "";
+    char *type = (char*) "";
     
     // Preparse: Count matching devices for deviceClass
     numDeviceStructElements = ndevices;
@@ -269,19 +269,19 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
         switch(dev->dwDevType & 0xff) {
             case DI8DEVTYPE_MOUSE:
 			case DI8DEVTYPE_SCREENPOINTER:
-				type = "slave pointer";
+				type = (char*) "slave pointer";
 				if (dev->usagePage == 0) dev->usagePage = 1;
 				if (dev->usageValue == 0) dev->usageValue = 2;
 			break;
 
 			case DI8DEVTYPE_KEYBOARD:
-				type = "slave keyboard";
+				type = (char*) "slave keyboard";
 				if (dev->usagePage == 0) dev->usagePage = 1;
 				if (dev->usageValue == 0) dev->usageValue = 6;
 			break;
 			
 			case DI8DEVTYPE_JOYSTICK:
-				type = "slave joystick";
+				type = (char*) "slave joystick";
 				if (dev->usagePage == 0) dev->usagePage = 1;
 				if (dev->usageValue == 0) dev->usageValue = 4;
 			break;			

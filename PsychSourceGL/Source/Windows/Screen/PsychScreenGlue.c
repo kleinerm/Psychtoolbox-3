@@ -59,23 +59,23 @@ LPDIRECTDRAWENUMERATEEX PsychDirectDrawEnumerateEx = NULL;
 // file local variables
 
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.
-static psych_bool			displayLockSettingsFlags[kPsychMaxPossibleDisplays];
-static CFDictionaryRef		displayOriginalCGSettings[kPsychMaxPossibleDisplays];        	//these track the original video state before the Psychtoolbox changed it.
-static psych_bool			displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
-static CFDictionaryRef		displayOverlayedCGSettings[kPsychMaxPossibleDisplays];        	//these track settings overlayed with 'Resolutions'.
-static psych_bool			displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
-static CGDisplayCount 		numDisplays;
-static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];				// DC device contexts for displays.
-static char*                displayDeviceName[kPsychMaxPossibleDisplays];			// Windows internal monitor device name. Default display has NULL
-static int 	                displayDeviceStartX[kPsychMaxPossibleDisplays];			// Top-Left corner of display on virtual screen. Default display has (0,0).
-static int 	                displayDeviceStartY[kPsychMaxPossibleDisplays];
-static LPDIRECTDRAW         displayDeviceDDrawObject[kPsychMaxPossibleDisplays];	// Pointer to associated DirectDraw object, if any. NULL otherwise.
-static HMONITOR				displayDevicehMonitor[kPsychMaxPossibleDisplays];		// HMonitor handle of associated monitor, NULL otherwise.
-static GUID					displayDeviceGUID[kPsychMaxPossibleDisplays];			// GUID for DDRAW display device, unless displayDevicelpGUIDValid < 2.
-static int					displayDeviceGUIDValid[kPsychMaxPossibleDisplays];		// GUID for DDRAW display device valid? 0 = No, 1 = Must be NULL, 2 = Valid.
-static int					ddrawnumDisplays;
+static psych_bool           displayLockSettingsFlags[kPsychMaxPossibleDisplays];
+static CFDictionaryRef      displayOriginalCGSettings[kPsychMaxPossibleDisplays];       //these track the original video state before the Psychtoolbox changed it.
+static psych_bool           displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
+static CFDictionaryRef      displayOverlayedCGSettings[kPsychMaxPossibleDisplays];      //these track settings overlayed with 'Resolutions'.
+static psych_bool           displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
+static CGDisplayCount       numDisplays;
+static CGDirectDisplayID    displayCGIDs[kPsychMaxPossibleDisplays];              // DC device contexts for displays.
+static char*                displayDeviceName[kPsychMaxPossibleDisplays];         // Windows internal monitor device name. Default display has NULL
+static int                  displayDeviceStartX[kPsychMaxPossibleDisplays];       // Top-Left corner of display on virtual screen. Default display has (0,0).
+static int                  displayDeviceStartY[kPsychMaxPossibleDisplays];
+static LPDIRECTDRAW         displayDeviceDDrawObject[kPsychMaxPossibleDisplays];  // Pointer to associated DirectDraw object, if any. NULL otherwise.
+static HMONITOR             displayDevicehMonitor[kPsychMaxPossibleDisplays];     // HMonitor handle of associated monitor, NULL otherwise.
+static GUID                 displayDeviceGUID[kPsychMaxPossibleDisplays];         // GUID for DDRAW display device, unless displayDevicelpGUIDValid < 2.
+static int                  displayDeviceGUIDValid[kPsychMaxPossibleDisplays];    // GUID for DDRAW display device valid? 0 = No, 1 = Must be NULL, 2 = Valid.
+static int                  ddrawnumDisplays;
 
-static psych_bool enableVBLBeamposWorkaround = FALSE;	// Is the special workaround for beamposition queries needed?
+static psych_bool enableVBLBeamposWorkaround = FALSE; // Is the special workaround for beamposition queries needed?
 static HCURSOR oldCursor = NULL; // Backup copy of current cursor shape, while cursor is "hidden" and NULL-Shape assigned.
 static HCURSOR invisibleCursor = NULL;
 
@@ -90,13 +90,179 @@ void PsychTestDDrawBeampositionQueries(int screenNumber);
 // This is actually a function in PsychWindowGlue.c, we redefine the prototype here to make compiler happy:
 extern psych_bool ChangeScreenResolution (int screenNumber, int width, int height, int bitsPerPixel, int fps);
 
+// DPI awareness and query functions from Win8.1 SDK's ShellScalingApi.h header file:
+typedef enum MONITOR_DPI_TYPE {
+    MDT_EFFECTIVE_DPI  = 0,
+    MDT_ANGULAR_DPI    = 1,
+    MDT_RAW_DPI        = 2,
+    MDT_DEFAULT        = MDT_EFFECTIVE_DPI
+} MONITOR_DPI_TYPE;
+
+typedef enum PROCESS_DPI_AWARENESS {
+    PROCESS_DPI_UNAWARE = 0,
+    PROCESS_SYSTEM_DPI_AWARE = 1,
+    PROCESS_PER_MONITOR_DPI_AWARE = 2
+} PROCESS_DPI_AWARENESS;
+
+typedef BOOL(WINAPI *PsychGetProcessDpiAwarenessProc) (HANDLE, PROCESS_DPI_AWARENESS*);
+typedef BOOL(WINAPI *PsychIsProcessDPIAwareProc)(VOID);
+typedef HRESULT(WINAPI *PsychGetDpiForMonitorProc)(HMONITOR, MONITOR_DPI_TYPE, UINT*, UINT*);
+
+PsychGetProcessDpiAwarenessProc PsychGetProcessDPIAwareness = NULL;
+PsychIsProcessDPIAwareProc PsychIsProcessGlobalDPIAware = NULL;
+PsychGetDpiForMonitorProc PsychGetDpiForMonitor = NULL;
+
+// Process dpi awareness level:
+PROCESS_DPI_AWARENESS process_dpi_awareness;
+
+// Global system DPI, corresponding to the primary displays settings:
+static unsigned int primaryDPI;
+
+// screenNumber of primary display screen:
+static unsigned int primaryDisplayScreen;
+
+static PROCESS_DPI_AWARENESS PsychQueryProcessDpiAwareness(void) {
+    PROCESS_DPI_AWARENESS awarenesslevel;
+
+    // Try to query process dpi awareness with Windows 8.1+ API:
+    PsychGetProcessDPIAwareness = (PsychGetProcessDpiAwarenessProc) GetProcAddress(GetModuleHandleA("user32.dll"), "GetProcessDpiAwarenessInternal");
+    if (PsychGetProcessDPIAwareness && (S_OK == PsychGetProcessDPIAwareness(NULL, &awarenesslevel))) {
+        if (PsychPrefStateGet_Verbosity() > 3) {
+            printf("PTB-INFO: Process DPI awareness level is: %s.\n", (awarenesslevel == PROCESS_PER_MONITOR_DPI_AWARE) ? "Per Monitor aware" :
+                   ((awarenesslevel == PROCESS_SYSTEM_DPI_AWARE) ? "System global aware" : "Unaware"));
+        }
+
+        // Return awareness level:
+        return (awarenesslevel);
+    }
+
+    // Query failed or unsupported, e.g., on a pre Windows-8.1 system. Try old
+    // API to check for global awareness vs. no awareness:
+    PsychIsProcessGlobalDPIAware = (PsychIsProcessDPIAwareProc) GetProcAddress(GetModuleHandleA("user32.dll"), "IsProcessDPIAware");
+    if (PsychIsProcessGlobalDPIAware) {
+        awarenesslevel = (PsychIsProcessGlobalDPIAware()) ? PROCESS_SYSTEM_DPI_AWARE : PROCESS_DPI_UNAWARE;
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: Process DPI awareness level is: %s.\n", (awarenesslevel == PROCESS_SYSTEM_DPI_AWARE) ? "System global aware" : "Unaware");
+        return (awarenesslevel);
+    }
+
+    // Total failure. Just assume no DPI awareness:
+    if (PsychPrefStateGet_Verbosity() > 2)
+        printf("PTB-INFO: Process DPI awareness level unknown. Assuming level: Unaware.\n");
+
+    return (PROCESS_DPI_UNAWARE);
+}
+
+static unsigned int PsychOSGetMonitorDPI(HMONITOR hMonitor)
+{
+    UINT horDPI, verDPI;
+    HMODULE hModule = NULL;
+
+    // Try to bind query function from Windows 8.1+ and execute a query for effective DPI for hMonitor:
+    if (NULL == PsychGetDpiForMonitor) {
+        hModule = GetModuleHandleA("shcore.dll");
+        if (hModule) PsychGetDpiForMonitor = (PsychGetDpiForMonitorProc) GetProcAddress(hModule, "GetDpiForMonitor");
+    }
+
+    if (PsychGetDpiForMonitor && (S_OK == PsychGetDpiForMonitor(hMonitor, MDT_EFFECTIVE_DPI, &horDPI, &verDPI))) {
+        // Encode 16 bit horizontal DPI and vertical DPI in one 32 bit uint:
+        return(((unsigned int) horDPI << 16) | (unsigned int) verDPI);
+    }
+
+    // Query failed or unsupported:
+    return(0);
+}
+
+const char* PsychOSDisplayDPITrouble(unsigned int screenNumber)
+{
+    static char dpiTroubleMsg[1024];
+
+    // Get DPI of the monitor for this screen, or 0 if DPI unknown on Windows-8 and earlier:
+    unsigned int monitorDPI = PsychOSGetMonitorDPI(displayDevicehMonitor[screenNumber]);
+
+    // No trouble expected on pre-Vista systems due to lack of DWM, or on later systems
+    // if the DWM is disabled for sure. Also if the DWM is disabled then the DPI situation
+    // can't cause timing trouble and we are done.
+    if (!PsychIsMSVista() || !PsychOSIsDWMEnabled(screenNumber)) return(NULL);
+
+    // At this point we know that the DWM runs at least on some display, and the
+    // DPI config could be one reason for the DWM running, so lets check things.
+
+    // If process is DPI unaware, then monitorDPI zero is non-diagnostic, and
+    // any non-zero value other than 96 DPI means trouble:
+    if (process_dpi_awareness == PROCESS_DPI_UNAWARE) {
+        // A monitor DPI of 96 should not cause trouble even in this config:
+        if (monitorDPI == (((unsigned int) 96 << 16) | (unsigned int) 96)) return(NULL);
+
+        if (monitorDPI == 0) {
+            // DPI query failed, most likely because we are on Windows 8, which does not
+            // support the per-monitor DPI api and does not allow disabling the DWM to
+            // avoid DPI related trouble. We don't know if this is the cause of ending here,
+            // so the best we can do is pointing out this potential source of trouble:
+            sprintf(dpiTroubleMsg, "PTB-WARNING: Your version of %s is not DPI aware. Trying to use display screen %i with a pixel density other than 96 DPI\n"
+                                   "would cause visual timing trouble due to DWM interference! Read 'help RetinaDisplay' for more info.\n",
+                    PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, screenNumber);
+        }
+        else {
+            // Ok, lack of DPI awareness is definitely the cause of the trouble:
+            sprintf(dpiTroubleMsg, "PTB-WARNING: Your version of %s is not DPI aware, but you try to use display screen %i with a density (%i, %i) other than 96 DPI.\n"
+                                   "Expect visual timing trouble! Read 'help RetinaDisplay' for more info.\n",
+                    PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, screenNumber, monitorDPI >> 16, monitorDPI & 0xffff);
+        }
+    }
+
+    // If process is global system DPI aware, then monitorDPI zero is non-diagnostic, and
+    // any non-zero value other than the DPI density of the primary display (global DPI) means trouble:
+    if (process_dpi_awareness == PROCESS_SYSTEM_DPI_AWARE) {
+        // Display DPI matches primary display DPI so all should be good?
+        if (monitorDPI == primaryDPI) return(NULL);
+
+        if (monitorDPI == 0) {
+            // No result for this specific display to compare against primaryDPI.
+            // However, on a single display setup, that one single display would
+            // be by definition the primary display and system dpi aware processes
+            // should always work correctly on the primary display, so if we are
+            // single display then we should be good. The same is obviously true if
+            // screenNumber denotes the primary screen:
+            if ((PsychGetNumDisplays() == 1) || (screenNumber == primaryDisplayScreen)) {
+                return(NULL);
+            }
+            else {
+                // Unknown DPI on a secondary monitor of a multi-display setup, without
+                // per monitor awareness. We can't know if this will make trouble, but
+                // a word of caution does not hurt:
+                sprintf(dpiTroubleMsg, "PTB-WARNING: Your version of %s is not per monitor DPI aware, but you try to use a secondary (non-primary) display screen %i\n"
+                                       "PTB-WARNING: of unknown pixel density. This will make visual timing trouble if that display does not have the same (%i, %i) DPI\n"
+                                       "as the primary screen. Read 'help RetinaDisplay' for more info.\n",
+                                        PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, screenNumber, primaryDPI >> 16, primaryDPI & 0xffff);
+            }
+        }
+        else {
+            // Could be multi-display with mismatched DPI to primary,
+            sprintf(dpiTroubleMsg, "PTB-WARNING: Your version of %s is not per monitor DPI aware, but you try to use display screen %i with a density (%i, %i)\n"
+                                   "PTB-WARNING: other than the (%i,%i) DPI set on the primary display. Expect visual timing trouble!\n"
+                                   "PTB-WARNING: Read 'help RetinaDisplay' for more info.\n",
+                                    PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, screenNumber, monitorDPI >> 16,
+                                    monitorDPI & 0xffff, primaryDPI >> 16, primaryDPI & 0xffff);
+        }
+    }
+
+    // A per-monitor DPI aware application should not have any DPI related problems, only
+    // the usual MS-Windows Vista+ multi-display problems, but that's a different story:
+    if (process_dpi_awareness == PROCESS_PER_MONITOR_DPI_AWARE) return(NULL);
+
+    // Should never reach this point, but make the compiler happy:
+    return(&dpiTroubleMsg[0]);
+}
+
 //Initialization functions
 void InitializePsychDisplayGlue(void)
 {
     BYTE andMask[32][32];
     BYTE xorMask[32][32];
     int i;
-    
+    HDC hdc;
+
     //init the display settings flags.
     for(i=0;i<kPsychMaxPossibleDisplays;i++){
         displayLockSettingsFlags[i] = FALSE;
@@ -107,13 +273,65 @@ void InitializePsychDisplayGlue(void)
         displayDeviceGUIDValid[i] = 0;
         displayCGIDs[i] = NULL;
     }
-    
+
     // Disable beampos workaround by default:
     enableVBLBeamposWorkaround = FALSE;
-    
+
     //init the list of Core Graphics display IDs.
     InitCGDisplayIDList();
-    
+
+    // Query current DPI awareness level of the running host process.
+    //
+    // See https://msdn.microsoft.com/en-us/library/windows/desktop/ee308410%28v=vs.85%29.aspx
+    //
+    // In a nutshell: If we are running on a HiDPI display setup and the process is not DPI aware,
+    // the DWM compositor will kick in to rescale our output images and timing will go bonkers.
+    // If we are not per-monitor DPI aware and on a HiDPI multi-display setup, DWM will make timing go bonkers.
+    // Per monitor awareness is only possible for Windows 8.1 and later.
+    // Global awareness (ie. at least works on a single-display HiDPI setup) is possible starting with Vista.
+    //
+    // Final catch: If Matlab or Octave have already set DPI awareness, or if awareness level is encoded in the
+    // application manifest (of the .exe), then we can't override that choice and if it is the wrong choice for
+    // precise visual timing, then we are so lost.
+
+    // Query process DPI awareness level: This is fixed for the application lifetime.
+    process_dpi_awareness = PsychQueryProcessDpiAwareness();
+
+    // Query global DPI of primary display:
+    primaryDPI = 0;
+    hdc = GetDC(NULL);
+    if (hdc) {
+        primaryDPI = ((unsigned int) GetDeviceCaps(hdc, LOGPIXELSX) << 16) | (unsigned int) GetDeviceCaps(hdc, LOGPIXELSY);
+        ReleaseDC(NULL, hdc);
+    }
+
+    if (((PsychPrefStateGet_Verbosity() > 2) && PsychOSIsMSWin8()) || (PsychPrefStateGet_Verbosity() > 3)) {
+        switch (process_dpi_awareness) {
+            case PROCESS_DPI_UNAWARE:
+                printf("PTB-INFO: Your version of %s is not DPI aware. On Windows-8 or later, without DPI awareness, fullscreen\n", PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME);
+                printf("PTB-INFO: onscreen windows will only work properly when displayed on displays with 96 DPI effective pixel density.\n");
+                printf("PTB-INFO: Displaying on anything other than a 96 DPI display will cause mysterious visual timing problems, sync failures etc.\n");
+                printf("PTB-INFO: Read 'help RetinaDisplay' for more info on this topic.\n");
+            break;
+
+            case PROCESS_SYSTEM_DPI_AWARE:
+                if (PsychGetNumDisplays() > 1) {
+                    printf("PTB-INFO: Your version of %s is global system DPI aware. On Windows-8 or later, fullscreen onscreen windows will only work \n", PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME);
+                    printf("PTB-INFO: properly timing-wise when displayed on displays with the same pixel density as your systems primary display monitor.\n");
+                    printf("PTB-INFO: For your multi-display setup the stimulus display monitor must have a DPI of (%i, %i), matching that of\n", primaryDPI >> 16, primaryDPI & 0xffff);
+                    printf("PTB-INFO: your primary display monitor. Ideally you will only display on the primary display in the first place.\n");
+                    printf("PTB-INFO: Displaying on anything with a different DPI will cause mysterious visual timing problems, sync failures etc.\n");
+                    printf("PTB-INFO: Read 'help RetinaDisplay' for more info on this topic.\n");
+                }
+            break;
+
+            case PROCESS_PER_MONITOR_DPI_AWARE:
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PTB-INFO: Your version of %s is per monitor DPI aware. This should avoid DPI display scaling related problems on any current version of MS-Windows.\n", PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME);
+            break;
+        }
+    }
+
     // No cursor shape for backup/restore in Show/HideCursor() yet:
     oldCursor = NULL;
     
@@ -190,7 +408,10 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
     
     // Store HMONITOR handle for DirectDraw device enumeration:
     displayDevicehMonitor[numDisplays] = hMonitor;
-    
+
+    // Store index of designated primary monitor:
+    if (moninfo.dwFlags & MONITORINFOF_PRIMARY) primaryDisplayScreen = numDisplays;
+
     // Increase global counter of available separate displays:
     numDisplays++;
     
@@ -233,7 +454,7 @@ BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription,
 
 void InitCGDisplayIDList(void)
 {
-    int i, w1, w2, h1, h2;
+    long int i, w1, w2, h1, h2;
     psych_uint32 beampos = 100000;
     HRESULT rc;
     
@@ -1067,7 +1288,7 @@ psych_bool PsychOSIsKernelDriverAvailable(int screenId)
 // some possible bugs. Enable proper workarounds if bugs should be encountered:
 void PsychTestDDrawBeampositionQueries(int screenNumber)
 {
-    int w1, w2, h1, h2, vbldetectcount, bogusvaluecount, bogusvalueinvblcount, totalcount;
+    long int w1, w2, h1, h2, vbldetectcount, bogusvaluecount, bogusvalueinvblcount, totalcount;
     psych_uint32 maxvpos;
     psych_uint32 beampos = 100000;
     HRESULT rc;

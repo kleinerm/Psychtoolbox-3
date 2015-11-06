@@ -1,0 +1,12 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libnvstusb
+Description: Portable library for accessing the NVIDIA 3D Stereo Controller.
+Version: 0.1
+Requires: libusb-1.0
+Libs: -L${libdir} -lnvstusb
+Cflags: -I${includedir}/libnvstusb
+

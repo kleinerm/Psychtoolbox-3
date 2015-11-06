@@ -74,6 +74,7 @@ void PsychInitScreenToHeadMappings(int numDisplays);
 // Map PTB screenId and output head id to the index of the associated low-level crtc scanout engine of the GPU: rankId selects which output head (0 = primary).
 int PsychScreenToCrtcId(int screenId, int rankId);
 void PsychSetScreenToCrtcId(int screenId, int crtcId, int rankId);
+void PsychResetCrtcIdUserOverride(void);
 
 // Get/Set corrective offsets for scanout position queries on certain GPU's:
 void PsychGetBeamposCorrection(int screenId, int *vblbias, int *vbltotal);

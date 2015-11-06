@@ -136,8 +136,11 @@ try
         moviefiles = [];
         
         % Make sure a cache directory for buffering exists.
-        PsychHomeDir('.cache');
-        
+        try
+            PsychHomeDir('.cache');
+        catch
+        end
+
         % Linus Torvalds DebConf 2014 Q & A:
         moviefiles(end+1).name = 'http://meetings-archive.debian.net/pub/debian-meetings/2014/debconf14/webm/QA_with_Linus_Torvalds.webm';
         moviefiles(end).url = 'http://meetings-archive.debian.net/pub/debian-meetings/2014/debconf14/webm/QA_with_Linus_Torvalds.webm';

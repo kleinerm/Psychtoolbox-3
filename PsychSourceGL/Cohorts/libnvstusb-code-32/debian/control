@@ -1,0 +1,28 @@
+Source: libnvstusb
+Priority: extra
+Maintainer: ’Johann <johann.baudy@gnu-log.net>
+Build-Depends: debhelper (>= 7), pkg-config, autoconf, libtool, automake,  libxxf86vm-dev, libdevil-dev, libusb-1.0-0-dev, libgl1-mesa-dev, libglut3-dev
+Standards-Version: 3.8.3
+Section: libs
+Homepage: http://libnvstusb.sourceforge.net
+
+Package: libnvstusb-dev
+Section: libdevel
+Architecture: any
+Depends: libnvstusb (= ${binary:Version})
+Description: Portable library (dev) for accessing the NVIDIA 3D Stereo Controller.
+
+Package: libnvstusb
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Portable library for accessing the NVIDIA 3D Stereo Controller.
+
+Package: nvstusb-tools
+Section: devel
+Architecture: any
+Depends: ${shlibs:Depends}, libnvstusb (= ${binary:Version}) 
+Description: NVIDIA 3D Stereo Controller tools
+ nvstusb-quad : Background swap tool for quad buffering applications (GL_STEREO).
+ nvstusb-extractfw: Tool to generate nvstusb.fw from NVIDIA drivers (nvstusb.sys)
+ nvstusb-vsync: Vsync screen test

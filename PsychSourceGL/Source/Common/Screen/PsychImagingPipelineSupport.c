@@ -1367,7 +1367,7 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
 
     // Supported at all on this hardware?
     if (!glewIsSupported("GL_ARB_shader_objects") || !glewIsSupported("GL_ARB_shading_language_100")) {
-        printf("PTB-ERROR: Your graphics hardware does not support GLSL fragment shaders! Use of imaging pipeline with current settings impossible!\n");
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Your graphics hardware does not support GLSL fragment shaders! Use of imaging pipeline with current settings impossible!\n");
         return(0);
     }
 
@@ -1380,7 +1380,7 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
 
         // Supported on this hardware?
         if (!glewIsSupported("GL_ARB_fragment_shader")) {
-            printf("PTB-ERROR: Your graphics hardware does not support GLSL fragment shaders! Use of imaging pipeline with current settings impossible!\n");
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Your graphics hardware does not support GLSL fragment shaders! Use of imaging pipeline with current settings impossible!\n");
             return(0);
         }
 
@@ -1394,11 +1394,15 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
 
         glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
         if (status != GL_TRUE) {
-            printf("PTB-ERROR: Shader compilation for builtin fragment shader failed:\n");
-            glGetShaderInfoLog(shader, 9999, NULL, (GLchar*) &errtxt);
-            printf("%s\n\n", errtxt);
+            if (PsychPrefStateGet_Verbosity() > 0) {
+                printf("PTB-ERROR: Shader compilation for builtin fragment shader failed:\n");
+                glGetShaderInfoLog(shader, 9999, NULL, (GLchar*) &errtxt);
+                printf("%s\n\n", errtxt);
+            }
+
             glDeleteShader(shader);
             glDeleteProgram(glsl);
+
             // Failed!
             while (glGetError());
 
@@ -1415,7 +1419,7 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
 
         // Supported on this hardware?
         if (!glewIsSupported("GL_ARB_vertex_shader")) {
-            printf("PTB-ERROR: Your graphics hardware does not support GLSL vertex shaders! Use of imaging pipeline with current settings impossible!\n");
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Your graphics hardware does not support GLSL vertex shaders! Use of imaging pipeline with current settings impossible!\n");
             return(0);
         }
 
@@ -1430,11 +1434,15 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
 
         glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
         if (status != GL_TRUE) {
-            printf("PTB-ERROR: Shader compilation for builtin vertex shader failed:\n");
-            glGetShaderInfoLog(shader, 9999, NULL, (GLchar*) &errtxt);
-            printf("%s\n\n", errtxt);
+            if (PsychPrefStateGet_Verbosity() > 0) {
+                printf("PTB-ERROR: Shader compilation for builtin vertex shader failed:\n");
+                glGetShaderInfoLog(shader, 9999, NULL, (GLchar*) &errtxt);
+                printf("%s\n\n", errtxt);
+            }
+
             glDeleteShader(shader);
             glDeleteProgram(glsl);
+
             // Failed!
             while (glGetError());
             return(0);
@@ -1450,10 +1458,14 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
     // Check link status:
     glGetProgramiv(glsl, GL_LINK_STATUS, &status);
     if (status != GL_TRUE) {
-        printf("PTB-ERROR: Shader link operation for builtin glsl program failed:\n");
-        glGetProgramInfoLog(glsl, 9999, NULL, (GLchar*) &errtxt);
-        printf("Error output follows:\n\n%s\n\n", errtxt);
+        if (PsychPrefStateGet_Verbosity() > 0) {
+            printf("PTB-ERROR: Shader link operation for builtin glsl program failed:\n");
+            glGetProgramInfoLog(glsl, 9999, NULL, (GLchar*) &errtxt);
+            printf("Error output follows:\n\n%s\n\n", errtxt);
+        }
+
         glDeleteProgram(glsl);
+
         // Failed!
         while (glGetError());
 

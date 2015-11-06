@@ -293,6 +293,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 05/18/14 mk  No support for 32-Bit Matlab on Linux and Windows anymore for 3.0.12.
 %              Clarify there's also no support for < OSX 10.8 anymore.
 % 10/04/15 mk  Compatibility fixes for Octave-4, cosmetic cleanups.
+% 10/28/15 mk  32-Bit Octave-4 support for MS-Windows reestablished.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -318,10 +319,10 @@ if ~isempty(strfind(computer, 'apple-darwin')) && isempty(strfind(computer, '64'
     error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
 end
 
-% Check if this is Octave on Windows, which we don't support at all:
+% Check if this is Octave-3 on Windows, which we don't support at all:
 if strcmp(computer, 'i686-pc-mingw32')
-    fprintf('Psychtoolbox 3.0.10 and later does no longer work with GNU/Octave on MS-Windows.\n');
-    fprintf('You need to use MacOS/X or GNU/Linux if you want to use Psychtoolbox with Octave.\n');
+    fprintf('Psychtoolbox 3.0.10 and later does no longer work with GNU/Octave-3 on MS-Windows.\n');
+    fprintf('You need to use 32-Bit Octave-4 if you want to use Psychtoolbox with Octave on Windows.\n');
     fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
     fprintf('an old legacy copy of Psychtoolbox-3.0.9 which did support 32-Bit Octave 3.2 on Windows.\n');
     error('Tried to setup on Octave, which is no longer supported on MS-Windows.');
@@ -337,7 +338,7 @@ if strcmp(computer,'MAC')
 end
 
 % Check OS
-IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-pc-mingw32');
+IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-w64-mingw32');
 IsOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
 IsLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
 

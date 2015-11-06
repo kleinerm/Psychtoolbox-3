@@ -1,0 +1,89 @@
+Disclaimer
+==========
+
+This is an experimental proof of concept to get the NVIDIA 3d stereo
+controller working with OpenGL on linux. If this program or any part
+of it causes any damage to your hardware, software or health, it is your
+own fault. You have been warned.
+
+I do not claim any copyright or ownership on the firmware or drivers of
+any device by NVIDIA.
+
+
+Prerequisites
+=============
+
+If you dare to try this out, you will need the following things first:
+
+- The NVIDIA 3d stereo controller and compatible shutter glasses
+- Hardware accelerated graphics
+- A monitor capable of 120 Hz (I didn't try out any other refresh rate)
+
+- The firmware extracted from the windows driver (see below)
+
+- libusb
+- GLUT
+- gcc and make
+- XF86vmode
+
+
+Building and running
+====================
+
+To build everything just type
+  ./configure
+  make
+
+To try it out type
+
+  ./example/example
+
+If everything works you should now see a white 3-dimensional triangle. In
+the upper left corner is an additional triangle that is meant to be seen
+only by the left eye. In the upper right corner another triangle should
+only be seen by the right eye.
+
+You can change the view a little by using the wheel on the back of the 
+controller.
+
+
+It doesn't work
+===============
+
+I don't give any support for this program. However here are some ideas
+what could be problems and how to solve them.
+
+- Make sure the LED on the front of the controller is glowing bright
+  green. 
+  
+  If it is not glowing at all, check the cable connections. 
+  
+  If it stopped glowing on program startup, an error probably occured during 
+  uploading of the firmware. Disconnect and reconnect to reset the device.
+
+  If it is glowing red, no firmware was uploaded, probably the device was
+  not found.
+
+- Make sure your monitor is actually running at 120 Hz.
+
+  Consult the documentation of your X on how to configure it.
+
+- Disable any compositors, or disable the Composite extension completely.
+
+
+Where do I get the firmware?
+============================
+
+It must be extracted from the Windows driver. Its file name is nvstusb.sys
+and you can find it under c:\windows\system32\drivers if you have a windows
+installation. Or you can try finding it on the internet. Currently I only 
+tried it with version 6.14.11.9062 of the file. Others might work as well
+but I give no promises. 
+
+To extract the firmware simply run
+
+  ./tools/extractfw path-to-nvstusb.sys
+
+and hope everything works just fine. ;)
+
+

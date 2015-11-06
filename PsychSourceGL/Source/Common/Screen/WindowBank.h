@@ -93,6 +93,7 @@
 #define kPsychGfxCapNPOTTex                 (1 << 18)    // Hw supports non-power-of-twp GL_TEXTURE_2D textures.
 #define kPsychGfxCapSupportsBufferAge       (1 << 19)    // Hw supports EXT_buffer_age extension.
 #define kPsychGfxCapFBOScaledResolveBlit    (1 << 20)    // Hw supports simultaneous multisample resolve and rescaling in one framebuffer blit.
+#define kPsychGfxCapSmoothPrimitives        (1 << 21)    // Hw supports GL_POINT_SMOOTH, LINE smooth etc.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
@@ -148,13 +149,14 @@
 #define kPsychNeedOpenMLTSWorkaround        (1 << 20) // 'specialflags' setting 2^20: KMS pageflip completion events are faulty on a FOSS driver: Use glXGetSyncValuesOML workaround.
 #define kPsychClockPrecisionOneTimeWarningDone (1 << 21) // 'specialflags' setting 2^21: Signals that the one-time warning wrt. imprecise visual onset timestamp was issued.
 #define kPsychIsDRI3Window                  (1 << 22) // 'specialflags' setting 2^22: This X11 window uses DRI3/Present for visual stimulus presentation.
-#define kPsychBufferAgeWarningDone          (1 << 23) // 'specialflags' setting 2^22: One time warning for non-double-buffering due to ext_buffer_age queries already done.
+#define kPsychBufferAgeWarningDone          (1 << 23) // 'specialflags' setting 2^23: One time warning for non-double-buffering due to ext_buffer_age queries already done.
+#define kPsychSafeForDRI3                   (1 << 24) // 'specialflags' setting 2^24: This window is considered safe for use with DRI3/Present, given X-Server and Mesa version in use.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19. --> Flags of 2^20 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23. --> Flags of 2^24 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24. --> Flags of 2^25 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*   PtrPsychHookFunction;
@@ -410,6 +412,7 @@ typedef struct _PsychWindowRecordType_{
     double                      colorRange;                                 // Maximum allowable color component value. See SCREENColorRange.c for explanation.
     GLuint                      unclampedDrawShader;                        // Handle of GLSL shader object for drawing of non-texture stims without vertex color clamping. Zero by default.
     GLuint                      defaultDrawShader;                          // Default GLSL shader object for drawing of non-texture stims. Zero by default.
+    GLuint                      smoothPointShader;                          // GLSL shader to implement point smoothing via point sprites.
     double                      currentColor[4];                            // Current unclamped but colorrange remapped RGBA drawcolor for whatever drawop, as spec'd by PsychSetGLColor().
     double                      clearColor[4];                              // Window clear color (as GL double vector) to use in PsychGLClear();
     int                         imagingMode;                                // Master mode switch for imaging and callback hook pipeline.

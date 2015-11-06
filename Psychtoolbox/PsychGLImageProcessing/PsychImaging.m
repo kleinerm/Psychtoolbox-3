@@ -159,21 +159,21 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %
 % * 'UseRetinaResolution' Ask to prefer a framebuffer with the full native
-%   resolution of attached HiDPI "Retina" displays, instead of a scaled
+%   resolution of attached HiDPI "Retina" displays on OSX, instead of a scaled
 %   down lower resolution framebuffer with typically half the horizontal
 %   and vertical resolution of the Retina display. This setting will be
 %   ignored if the onscreen window is not displayed on a HiDPI "Retina"
 %   display in a scaled display mode, or if the panel fitter is in use by
 %   specifying the 'UsePanelFitter' task. By default, Screen() would use a
-%   downscaled framebuffer on a Retina display and scale that low
+%   downscaled framebuffer on a Retina display under OSX and scale that low
 %   resolution buffer up to full display panel resolution, just as Apples
 %   OSX operating system does it by default. This in order to reduce
 %   computational load, improve graphics performance, and avoid problems
 %   with backward compatibility of old code. If you want to make full use
 %   of the resolution of your HiDPI display, specify this task to tell
-%   Screen() to use the full display panel resolution, even if this may
+%   Screen() to use the full display panel resolution on OSX, even if this may
 %   introduce some compatibility issues into your code and causes a decrease
-%   in graphics performance due to the very high graphics rendering load.
+%   in graphics performance due to the higher graphics rendering load.
 %
 %   If 'UseRetinaResolution' is used with a non-fullscreen window, ie.
 %   the 'rect' parameter in PsychImaging('OpenWindow', ...) is provided
