@@ -889,17 +889,28 @@ void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable)
 {
     CGDirectDisplayID   cgDisplayID;
-    static float        localRed[1024], localGreen[1024], localBlue[1024];
+    static float        localRed[4096], localGreen[4096], localBlue[4096];
     CGDisplayErr        error;
-    uint32_t            sampleCount;
+    uint32_t            sampleCount, realLutCapacity;
 
     *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue;
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-    if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: ReadNormalizedGammatable: screenid %i mapped to CGDisplayId %p.\n", screenNumber, cgDisplayID);
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: ReadNormalizedGammatable: screenid %i mapped to CGDisplayId %p.\n", screenNumber, cgDisplayID);
 
-    error=CGGetDisplayTransferByTable(cgDisplayID, 1024, *redTable, *greenTable, *blueTable, &sampleCount);
+    // Another hack for the brain-damaged OSX. Tell the OS we can't take more than what it claims
+    // the real LUT size is, to avoid it doing stupid interpolation tricks which seem to be buggy
+    // in at least OSX 10.11.
+    realLutCapacity = CGDisplayGammaTableCapacity(cgDisplayID);
+    if (realLutCapacity > 4096) {
+        if (PsychPrefStateGet_Verbosity() > 1)
+            printf("PTB-WARNING: ReadNormalizedGammatable: OSX reported LUT size %i exceeds our current limit of 4096 slots, clamping! Please tell the PTB developers about this.\n",
+                   realLutCapacity);
+        realLutCapacity = 4096;
+    }
+
+    error=CGGetDisplayTransferByTable(cgDisplayID, realLutCapacity, *redTable, *greenTable, *blueTable, &sampleCount);
     *numEntries=(int)sampleCount;
-    if(PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: ReadNormalizedGammatable: numEntries = %i.\n", *numEntries);
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: ReadNormalizedGammatable: numEntries = %i.\n", *numEntries);
 }
 
 unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int numEntries, float *redTable, float *greenTable, float *blueTable)
