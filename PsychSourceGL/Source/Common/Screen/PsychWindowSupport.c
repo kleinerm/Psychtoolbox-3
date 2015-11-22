@@ -142,6 +142,11 @@ static void PsychDrawSplash(PsychWindowRecordType* windowRecord)
     int logo_x, logo_y;
     int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
 
+    // Skip this function on OpenGL-ES or on BroadCom VideoCore-4 gpu, as it is
+    // either unsupported, or too slow:
+    if (!PsychIsGLClassic(windowRecord) || strstr(windowRecord->gpuCoreId, "VC4"))
+        return;
+
     // Compute logo_x and logo_y x,y offset for drawing the startup logo:
     logo_x = ((int) PsychGetWidthFromRect(windowRecord->rect) - (int) splash_image.width) / 2;
     logo_x = (logo_x > 0) ? logo_x : 0;
