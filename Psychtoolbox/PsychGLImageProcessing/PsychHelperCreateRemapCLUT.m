@@ -19,6 +19,8 @@ function remapCLUTId = PsychHelperCreateRemapCLUT(cmd, arg1, arg2)
 
 % History:
 % 03.04.2011 Written (MK).
+% 22.11.2015 Fix uninitialized mem bug, that luckily never caused a crash.
+%            Init with an identity mapping linear ramp instead of all zeros. (MK)
 
 % This routine assumes that a mogl GL context is properly set up:
 global GL;
@@ -32,7 +34,7 @@ if cmd == 1
     % New gamma table received from Screen()'s 'LoadNormalizedGammatable'
     % command. Need to update our clut texture, so this applies during next
     % execution of Screen('Flip'):
-    
+
     % Update lookup table: 3 LUT's (Red,Green,Blue) with nslots slots with 4
     % output color components RGBA8 per entry, ie., a 32 bpp value:
     nslots = size(arg2, 1);
@@ -42,7 +44,7 @@ if cmd == 1
     rlut(1,:) = single(arg2(:,1));
     glut(2,:) = single(arg2(:,2));
     blut(3,:) = single(arg2(:,3));
-    
+
     % Build final clut memory buffer for texture update:
     clut = [ rlut(:) ; glut(:) ; blut(:) ]; 
 
@@ -60,14 +62,16 @@ end
 
 if cmd == 0
     % Build initial clut texture during init call from PsychImaging():
-    
     nslots = arg1;
-    
+
     % Preinit our lut arrays, so we save (re-)allocation time in the
     % realtime path for command code 1:
     rlut = single(zeros(4, nslots));
     glut = single(zeros(4, nslots));
     blut = single(zeros(4, nslots));
+
+    % Build final clut memory buffer for texture update:
+    clut = [ rlut(:) ; glut(:) ; blut(:) ];
 
     % High precision > 8 bpc clut requested?
     internalFormat = GL.RGBA;
@@ -86,14 +90,22 @@ if cmd == 0
             error('EnableCLUTMapping: Aborting. Use different hardware or fix your scripts PsychImaging(...''EnableCLUTMapping'' ...); function.');
         end
     end
-    
+
     % Create and setup texture with arg1 slots:
     remapCLUTId = glGenTextures(1);
     glActiveTexture(GL.TEXTURE1_ARB);
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT, remapCLUTId);
-    glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, internalFormat, nslots, 3, 0, GL.RGBA, GL.FLOAT, single(zeros(nslots, 3)));
+    glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, internalFormat, nslots, 3, 0, GL.RGBA, GL.FLOAT, clut);
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT, 0);
     glActiveTexture(GL.TEXTURE0_ARB);
+
+    % Self-Call to init to a linear identity ramp:
+    identity = zeros(nslots, 3);
+    for i = 0:nslots-1
+        identity(i+1, :) = [i, i, i] / (nslots - 1);
+    end
+
+    PsychHelperCreateRemapCLUT(1, remapCLUTId, identity);
     return;
 end
 
