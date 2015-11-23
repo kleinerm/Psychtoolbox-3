@@ -44,6 +44,9 @@
 // Include for mouse cursor control via Cocoa:
 #include "PsychCocoaGlue.h"
 
+// Defined in PsychGraphicsHardwareHALSupport.c, but accessed and initialized here:
+extern unsigned int crtcoff[kPsychMaxPossibleCrtcs];
+
 // file local variables:
 unsigned int  activeGPU = 0;
 unsigned int  fDeviceType[kPsychMaxPossibleDisplays];
@@ -1117,6 +1120,37 @@ void InitPsychtoolboxKernelDriverInterface(void)
                 printf("PTB-INFO: With the outdated driver, robustness of > 8 bits per color displays (10 bit framebuffer, Bits+, Datapixx etc.) will be limited \n");
                 printf("PTB-INFO: on your AMD graphics card due to limitations of this driver. You will need to install the latest 64-Bit driver, which will\n");
                 printf("PTB-INFO: require you to run a 64-Bit kernel on your machine. The 32-Bit driver is no longer updated, so it will stay outdated.\n");
+            }
+
+            // Need to setup crtc offsets separate for use in PsychGraphicsHardwareHALSupport.c on AMD hw:
+            if (fDeviceType[numKernelDrivers] == kPsychRadeon) {
+                // Setup for DCE-4/5/6/8:
+                if ((fCardType[numKernelDrivers] == 40) || (fCardType[numKernelDrivers] == 50) || (fCardType[numKernelDrivers] == 60) || (fCardType[numKernelDrivers] == 80)) {
+                    // Offset of crtc blocks of evergreen gpu's for each of the six possible crtc's:
+                    crtcoff[0] = EVERGREEN_CRTC0_REGISTER_OFFSET;
+                    crtcoff[1] = EVERGREEN_CRTC1_REGISTER_OFFSET;
+                    crtcoff[2] = EVERGREEN_CRTC2_REGISTER_OFFSET;
+                    crtcoff[3] = EVERGREEN_CRTC3_REGISTER_OFFSET;
+                    crtcoff[4] = EVERGREEN_CRTC4_REGISTER_OFFSET;
+                    crtcoff[5] = EVERGREEN_CRTC5_REGISTER_OFFSET;
+                }
+
+                // Setup for DCE-10/11:
+                if ((fCardType[numKernelDrivers] == 100) || (fCardType[numKernelDrivers] == 110)) {
+                    // DCE-10/11 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
+                    // but the offsets for the different CRTC blocks are different wrt. to pre DCE-10. Therefore
+                    // need to initialize the offsets differently. Also, some of these parts seem to support up
+                    // to 7 display engines instead of the old limit of 6 engines:
+
+                    // Offset of crtc blocks of Volcanic Islands DCE-10/11 gpu's for each of the possible crtc's:
+                    crtcoff[0] = DCE10_CRTC0_REGISTER_OFFSET;
+                    crtcoff[1] = DCE10_CRTC1_REGISTER_OFFSET;
+                    crtcoff[2] = DCE10_CRTC2_REGISTER_OFFSET;
+                    crtcoff[3] = DCE10_CRTC3_REGISTER_OFFSET;
+                    crtcoff[4] = DCE10_CRTC4_REGISTER_OFFSET;
+                    crtcoff[5] = DCE10_CRTC5_REGISTER_OFFSET;
+                    crtcoff[6] = DCE10_CRTC6_REGISTER_OFFSET;
+                }
             }
 
             // Increment instance count by one:
