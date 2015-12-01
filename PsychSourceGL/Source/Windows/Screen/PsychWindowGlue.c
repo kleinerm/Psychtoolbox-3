@@ -2172,8 +2172,6 @@ int PsychOSIsDWMEnabled(int screenNumber)
  */
 double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
 {
-    (void) onlyForCalibration;
-
     // Will the MS-Windows DWM desktop compositor affect our window? If so, compensate, otherwise just return unaltered targetTime:
     if (PsychIsMSVista() && PsychOSIsDWMEnabled(0) && ((PsychGetNumDisplays() == 1) || !(windowRecord->specialflags & kPsychIsFullscreenWindow))) {
         // Yes. Definitely our window will be subject to desktop composition. This will introduce
@@ -2190,7 +2188,10 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
         // swap request one frame earlier and counteract the 1 frame delay of the DWM. Of course
         // this only works for swap deadlines > 1 frame away from now. Otherwise we'll just have
         // to suffer the delay and deadline miss:
-        targetTime -= windowRecord->VideoRefreshInterval;
+        if (PsychPrefStateGet_Verbosity() > 14) printf("PTB-DEBUG: PsychOSAdjustForCompositorDelay: Pre-targetTime: %f secs. VideoRefreshInterval %f secs.\n", targetTime, windowRecord->VideoRefreshInterval);
+
+        // Always adjust targetTime on Windows Vista and Windows-7. Only adjust on Win8+ for refresh calibration:
+        if (!PsychOSIsMSWin8() || onlyForCalibration) targetTime -= windowRecord->VideoRefreshInterval;
     }
 
     return(targetTime);
@@ -2318,6 +2319,8 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         // triggered by the DWM in response to the composition pass which was triggered
         // by our OpenGL SwapBuffers() call for our onscreen window:
         if (targetSBC == 0) targetSBC = dwmtiming.cDXPresentSubmitted;
+
+        if (PsychPrefStateGet_Verbosity() > 14) printf("PTB-DEBUG: PsychOSGetSwapCompletionTimestamp: Waiting on targetSBC %i (cDXPresentSubmitted), current %i (cDXPresentConfirmed)\n", (int) targetSBC, (int) dwmtiming.cDXPresentConfirmed);
 
         // Do have all outstanding DirectX Present() requests up to our targetSBC
         // have completed, ie., their corresponding buffers were flipped onscreen?
