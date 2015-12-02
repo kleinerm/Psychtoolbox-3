@@ -38,9 +38,9 @@ fprintf('Retinal irradiance: %0.3g Watts/M2 (%0.3g check), %0.3g Watts/deg2\n', 
     retIrradianceWattsPerM2,retIrradianceWattsPerM2Check,retIrradianceWattsPerDegrees2);
 if (abs(retIrradianceWattsPerM2-retIrradianceWattsPerM2Check) > 1e-10)
     error('Retinal irradiance unit calculations do not invert');
-else
+end
     
-%% Convert retinal irradiance to corneal irradiance and back
+%% Convert retinal irradiance to corneal irradiance two ways and check.
 fractionalTolerance = 0.005;
 cornIrradianceWattsPerM2 = RadianceAndDistanceAreaToCornIrradiance(radianceWattsPerSrM2,stimulusDistanceM,stimulusAreaM2);
 cornIrradianceWattsPerM2Check = RadianceAndDegrees2ToCornIrradiance(radianceWattsPerSrM2,stimulusAreaDeg2);
@@ -49,14 +49,33 @@ fprintf('Corneal irradiance: %0.3g Watts/M2 (%0.3g check)\n', ...
 if (abs(cornIrradianceWattsPerM2-cornIrradianceWattsPerM2Check)/cornIrradianceWattsPerM2 > fractionalTolerance)
     error('Two ways of computing corneal irradiance from radiance do not agree');
 end
+
+%% Convert corneal irradiance to radiance and make sure we get what we started with
 radianceWattsPerSrM2Check = CornIrradianceAndDegrees2ToRadiance(cornIrradianceWattsPerM2,stimulusAreaDeg2);
-fprintf('Radiance: %0.4f Watts/[sr-M2] (%0.4f check)\n', ...
+fprintf('Radiance: %0.4g Watts/[sr-M2] (%0.4g check)\n', ...
     radianceWattsPerSrM2,radianceWattsPerSrM2Check);
 if (abs(radianceWattsPerSrM2-radianceWattsPerSrM2Check)/radianceWattsPerSrM2 > fractionalTolerance)
     error('Radiance to corneal irradiance and back does not agree');
 end
 
-
+%% Convert corneal irradiance directly to retinal irradiance 
+% and make sure it matches what we get from the direct conversion from
+% radiance to retinal irradiance.
+retIrradianceWattsPerDegrees2Check = cornIrradianceWattsPerM2*pupilAreaM2/stimulusAreaDeg2;
+if (abs(retIrradianceWattsPerDegrees2-retIrradianceWattsPerDegrees2Check)/retIrradianceWattsPerDegrees2 > fractionalTolerance)
+    error('Cannot get same retinal irradiance per degrees^2 in two ways');
 end
+fprintf('Retinal irradiance: %0.4g Watts/deg2 (%0.4g check)\n', ...
+    retIrradianceWattsPerDegrees2,retIrradianceWattsPerDegrees2Check);
 
-
+%% Convert retinal irradiance directly to units of M2 on the retina
+MMPerDeg = DegreesToRetinalMM(1,eyeLengthM*1000);
+MPerDeg = MMPerDeg*10^-3;
+MM2PerDeg2 = MPerDeg^2;
+retIrradianceWattsPerM2CheckCheck = retIrradianceWattsPerDegrees2/MM2PerDeg2;
+retIrradianceWattsPerM2Check = RetIrradiancePerDegrees2AndEyeLengthToRetIrradiancePerArea(retIrradianceWattsPerDegrees2,eyeLengthM);
+fprintf('Retinal irradiance: %0.3g Watts/M2 (%0.3g check)\n', ...
+    retIrradianceWattsPerM2,retIrradianceWattsPerM2CheckCheck);
+if (abs(retIrradianceWattsPerM2-retIrradianceWattsPerM2CheckCheck) > 1e-10)
+    error('Another retinal irradiance calculation leads to inconsistency');
+end
