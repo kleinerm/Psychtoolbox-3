@@ -95,6 +95,9 @@ PsychError PSYCHHIDGetDevices(void)
         #if PSYCH_SYSTEM == PSYCH_OSX
             char tmpString[1024];
             CFStringRef cfusageName = NULL;
+            io_string_t device_path;
+            char *interfaceIdLoc = NULL;
+            int interfaceId;
 
             PsychSetStructArrayDoubleElement("usagePageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsagePage(currentDevice), deviceStruct);
             PsychSetStructArrayDoubleElement("usageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsage(currentDevice), deviceStruct);
@@ -217,8 +220,19 @@ PsychError PSYCHHIDGetDevices(void)
             PsychSetStructArrayDoubleElement("dials",           deviceIndex,     (double) dials,         deviceStruct);
             PsychSetStructArrayDoubleElement("wheels",          deviceIndex,     (double) wheels,         deviceStruct);
 
-            // Store dummy value -1 to mark interfaceID as invalid/unknown on OSX:
-            PsychSetStructArrayDoubleElement("interfaceID",    deviceIndex, (double) -1, deviceStruct);
+            // Init dummy value -1 to mark interfaceID as invalid/unknown on OSX as a safe default, and then retrieve full
+            // IOServicePlane path for the HID device: ( Credits to GitHub user Brendan Shanks aka "mrpippy" for this approach,
+            // using it in a pull request to improve HIDAPI: https://github.com/signal11/hidapi/pull/40 )
+            interfaceId = -1;
+            if (KERN_SUCCESS == IORegistryEntryGetPath((io_object_t) IOHIDDeviceGetService((IOHIDDeviceRef) currentDevice), kIOServicePlane, device_path)) {
+                // Got full device path in IOServicePlane. Parse HID interface id out of it, if possible:
+                interfaceIdLoc = strstr((const char*) device_path, "IOUSBInterface@");
+                if (interfaceIdLoc)
+                    sscanf(interfaceIdLoc, "IOUSBInterface@%i", &interfaceId);
+            }
+
+            // Assign detected interfaceID, or "don't know" value -1:
+            PsychSetStructArrayDoubleElement("interfaceID",    deviceIndex, (double) interfaceId, deviceStruct);
         #else
             // Linux, Windows:
 
