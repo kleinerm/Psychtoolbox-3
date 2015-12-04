@@ -1,45 +1,43 @@
 /*
-  PsychToolbox3/Source/Common/PsychHID/PsychHIDGetDevices.c		
-  
+  PsychToolbox3/Source/Common/PsychHID/PsychHIDGetDevices.c
+
   PROJECTS: PsychHID
-  
-  PLATFORMS:  All  
-  
+
+  PLATFORMS:  All
+
   AUTHORS:
       Allen.Ingling@nyu.edu         awi
       mario.kleiner.de@gmail.com    mk
- 
+
   HISTORY:
+
       4/29/03  awi  Created.
-  
-  TO DO:
-  
 */
 
 #include "PsychHID.h"
 
 static char useString[]= "devices=PsychHID('Devices' [, deviceClass])";
 static char synopsisString[] =  "Return a struct array describing each connected USB HID device.\n"
-				"'deviceClass' optionally selects for the class of input device. "
-				"This is not supported on all operating systems and will be silently "
-				"ignored if unsupported. On Linux you can select the following classes "
-				"of input devices: 1 = MasterPointer, 2 = MasterKeyboard, 3 = SlavePointer "
-				"4 = SlaveKeyboard, 5 = Floating slave device.\n\n"
-                "deviceClass -1 returns the numeric deviceIndex of the default keyboard device for keyboard queues.\n\n"
-                "Not all device properties are returned on all operating systems. A zero, "
-                "empty or -1 value for a property in the returned structs can mean that "
-                "the information could not be returned.\n";
+                                "'deviceClass' optionally selects for the class of input device. "
+                                "This is not supported on all operating systems and will be silently "
+                                "ignored if unsupported. On Linux you can select the following classes "
+                                "of input devices: 1 = MasterPointer, 2 = MasterKeyboard, 3 = SlavePointer "
+                                "4 = SlaveKeyboard, 5 = Floating slave device.\n\n"
+                                "deviceClass -1 returns the numeric deviceIndex of the default keyboard device for keyboard queues.\n\n"
+                                "Not all device properties are returned on all operating systems. A zero, "
+                                "empty or -1 value for a property in the returned structs can mean that "
+                                "the information could not be returned.\n";
 static char seeAlsoString[] = "";
 
-PsychError PSYCHHIDGetDevices(void) 
+PsychError PSYCHHIDGetDevices(void)
 {
-    pRecDevice 			currentDevice=NULL;
-    
-    const char *deviceFieldNames[]={"usagePageValue", "usageValue", "usageName", "index", "transport", "vendorID", "productID", "version", 
-                                    "manufacturer", "product", "serialNumber", "locationID", "interfaceID", "totalElements", "features", "inputs", 
+    pRecDevice currentDevice=NULL;
+
+    const char *deviceFieldNames[]={"usagePageValue", "usageValue", "usageName", "index", "transport", "vendorID", "productID", "version",
+                                    "manufacturer", "product", "serialNumber", "locationID", "interfaceID", "totalElements", "features", "inputs",
                                     "outputs", "collections", "axes", "buttons", "hats", "sliders", "dials", "wheels"};
     int numDeviceStructElements, numDeviceStructFieldNames=24, deviceIndex, deviceClass;
-    PsychGenericScriptType	*deviceStruct;		
+    PsychGenericScriptType *deviceStruct;
     char usageName[PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH];
 
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -50,7 +48,6 @@ PsychError PSYCHHIDGetDevices(void)
 
     if (PsychCopyInIntegerArg(1, FALSE, &deviceClass)) {
         // Operating system specific enumeration of devices, selected by deviceClass:
-
         if (deviceClass == -1) {
             PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychHIDGetDefaultKbQueueDevice());
             return(PsychError_none);
@@ -66,40 +63,39 @@ PsychError PSYCHHIDGetDevices(void)
     numDeviceStructElements=(int)HIDCountDevices();
     PsychAllocOutStructArray(1, FALSE, numDeviceStructElements, numDeviceStructFieldNames, deviceFieldNames, &deviceStruct);
     deviceIndex=0;
-    for(currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)){
-
+    for (currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)) {
         // Code path for Linux and Windows:
         #if (PSYCH_SYSTEM != PSYCH_OSX)
-            PsychSetStructArrayDoubleElement("usagePageValue",	deviceIndex, 	(double)currentDevice->usagePage,	deviceStruct);
-            PsychSetStructArrayDoubleElement("usageValue",		deviceIndex, 	(double)currentDevice->usage, 		deviceStruct);
+            PsychSetStructArrayDoubleElement("usagePageValue",    deviceIndex,     (double)currentDevice->usagePage,    deviceStruct);
+            PsychSetStructArrayDoubleElement("usageValue",        deviceIndex,     (double)currentDevice->usage,         deviceStruct);
 
-            PsychSetStructArrayStringElement("transport",		deviceIndex, 	currentDevice->transport, 		deviceStruct);
-            PsychSetStructArrayDoubleElement("vendorID",		deviceIndex, 	(double)currentDevice->vendorID, 	deviceStruct);
-            PsychSetStructArrayDoubleElement("productID",		deviceIndex, 	(double)currentDevice->productID, 	deviceStruct);
-            PsychSetStructArrayDoubleElement("version",         deviceIndex, 	(double)currentDevice->version, 	deviceStruct);
-            PsychSetStructArrayStringElement("manufacturer",	deviceIndex, 	currentDevice->manufacturer, 		deviceStruct);
-            PsychSetStructArrayStringElement("product",         deviceIndex, 	currentDevice->product, 		deviceStruct);
-            PsychSetStructArrayStringElement("serialNumber",	deviceIndex, 	currentDevice->serial, 			deviceStruct);
-            PsychSetStructArrayDoubleElement("locationID",		deviceIndex, 	(double)currentDevice->locID, 		deviceStruct);
+            PsychSetStructArrayStringElement("transport",        deviceIndex,     currentDevice->transport,         deviceStruct);
+            PsychSetStructArrayDoubleElement("vendorID",        deviceIndex,     (double)currentDevice->vendorID,     deviceStruct);
+            PsychSetStructArrayDoubleElement("productID",        deviceIndex,     (double)currentDevice->productID,     deviceStruct);
+            PsychSetStructArrayDoubleElement("version",         deviceIndex,     (double)currentDevice->version,     deviceStruct);
+            PsychSetStructArrayStringElement("manufacturer",    deviceIndex,     currentDevice->manufacturer,         deviceStruct);
+            PsychSetStructArrayStringElement("product",         deviceIndex,     currentDevice->product,         deviceStruct);
+            PsychSetStructArrayStringElement("serialNumber",    deviceIndex,     currentDevice->serial,             deviceStruct);
+            PsychSetStructArrayDoubleElement("locationID",        deviceIndex,     (double)currentDevice->locID,         deviceStruct);
 
-            PsychSetStructArrayDoubleElement("totalElements",	deviceIndex, 	(double)currentDevice->totalElements, 	deviceStruct);
-            PsychSetStructArrayDoubleElement("features",		deviceIndex, 	(double)currentDevice->features, 	deviceStruct);
-            PsychSetStructArrayDoubleElement("inputs",          deviceIndex, 	(double)currentDevice->inputs, 		deviceStruct);
-            PsychSetStructArrayDoubleElement("outputs",         deviceIndex, 	(double)currentDevice->outputs, 	deviceStruct);
-            PsychSetStructArrayDoubleElement("collections",		deviceIndex, 	(double)currentDevice->collections, 	deviceStruct);
-            PsychSetStructArrayDoubleElement("axes",            deviceIndex, 	(double)currentDevice->axis, 		deviceStruct);
-            PsychSetStructArrayDoubleElement("buttons",         deviceIndex, 	(double)currentDevice->buttons, 	deviceStruct);
-            PsychSetStructArrayDoubleElement("hats",            deviceIndex, 	(double)currentDevice->hats, 		deviceStruct);
-            PsychSetStructArrayDoubleElement("sliders",         deviceIndex, 	(double)currentDevice->sliders, 	deviceStruct);
-            PsychSetStructArrayDoubleElement("dials",           deviceIndex, 	(double)currentDevice->dials, 		deviceStruct);
-            PsychSetStructArrayDoubleElement("wheels",          deviceIndex, 	(double)currentDevice->wheels, 		deviceStruct);
+            PsychSetStructArrayDoubleElement("totalElements",    deviceIndex,     (double)currentDevice->totalElements,     deviceStruct);
+            PsychSetStructArrayDoubleElement("features",        deviceIndex,     (double)currentDevice->features,     deviceStruct);
+            PsychSetStructArrayDoubleElement("inputs",          deviceIndex,     (double)currentDevice->inputs,         deviceStruct);
+            PsychSetStructArrayDoubleElement("outputs",         deviceIndex,     (double)currentDevice->outputs,     deviceStruct);
+            PsychSetStructArrayDoubleElement("collections",        deviceIndex,     (double)currentDevice->collections,     deviceStruct);
+            PsychSetStructArrayDoubleElement("axes",            deviceIndex,     (double)currentDevice->axis,         deviceStruct);
+            PsychSetStructArrayDoubleElement("buttons",         deviceIndex,     (double)currentDevice->buttons,     deviceStruct);
+            PsychSetStructArrayDoubleElement("hats",            deviceIndex,     (double)currentDevice->hats,         deviceStruct);
+            PsychSetStructArrayDoubleElement("sliders",         deviceIndex,     (double)currentDevice->sliders,     deviceStruct);
+            PsychSetStructArrayDoubleElement("dials",           deviceIndex,     (double)currentDevice->dials,         deviceStruct);
+            PsychSetStructArrayDoubleElement("wheels",          deviceIndex,     (double)currentDevice->wheels,         deviceStruct);
         #endif
 
         // OSX specific:
         #if PSYCH_SYSTEM == PSYCH_OSX
             char tmpString[1024];
             CFStringRef cfusageName = NULL;
-    
+
             PsychSetStructArrayDoubleElement("usagePageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsagePage(currentDevice), deviceStruct);
             PsychSetStructArrayDoubleElement("usageValue", deviceIndex, (double) IOHIDDevice_GetPrimaryUsage(currentDevice), deviceStruct);
 
@@ -139,7 +135,7 @@ PsychError PSYCHHIDGetDevices(void)
                 HIDGetProductNameFromVendorProductID(IOHIDDevice_GetVendorID(currentDevice), IOHIDDevice_GetProductID(currentDevice), tmpString);
             }
             PsychSetStructArrayStringElement("product", deviceIndex, tmpString, deviceStruct);
-    
+
             sprintf(tmpString, "");
             cfusageName = IOHIDDevice_GetTransport(currentDevice);
             if (cfusageName && (CFStringGetLength(cfusageName) > 0)) {
@@ -164,14 +160,14 @@ PsychError PSYCHHIDGetDevices(void)
             pRecElement currentElement, lastElement = NULL;
             long usagePage, usage;
             unsigned int axis = 0, sliders = 0, dials = 0, wheels = 0, hats = 0, buttons = 0;
-            for(currentElement = HIDGetFirstDeviceElement(currentDevice, kHIDElementTypeInput); 
+            for(currentElement = HIDGetFirstDeviceElement(currentDevice, kHIDElementTypeInput);
                 (currentElement != NULL) && (currentElement != lastElement);
                 currentElement = HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput)) {
                 lastElement = currentElement;
-                
+
                 usagePage = IOHIDElementGetUsagePage(currentElement);
                 usage = IOHIDElementGetUsage(currentElement);
-                
+
                 switch (usagePage) {
                     case kHIDPage_GenericDesktop:
                         switch (usage) {
@@ -183,67 +179,68 @@ PsychError PSYCHHIDGetDevices(void)
                             case kHIDUsage_GD_Rz:
                                 axis++;
                             break;
-                                
+
                             case kHIDUsage_GD_Slider:
                                 sliders++;
                             break;
 
                             case kHIDUsage_GD_Dial:
                                 dials++;
-                                break;
+                            break;
 
                             case kHIDUsage_GD_Wheel:
                                 wheels++;
-                                break;
+                            break;
 
                             case kHIDUsage_GD_Hatswitch:
                                 hats++;
-                                break;
+                            break;
+
                             default:
                                 break;
                         }
                     break;
-                        
+
                     case kHIDPage_Button:
                         buttons++;
                     break;
-                        
+
                     default:
                     break;
                 }
             }
 
-            PsychSetStructArrayDoubleElement("axes",            deviceIndex, 	(double) axis, 		deviceStruct);
-            PsychSetStructArrayDoubleElement("buttons",         deviceIndex, 	(double) buttons, 	deviceStruct);
-            PsychSetStructArrayDoubleElement("hats",            deviceIndex, 	(double) hats, 		deviceStruct);
-            PsychSetStructArrayDoubleElement("sliders",         deviceIndex, 	(double) sliders, 	deviceStruct);
-            PsychSetStructArrayDoubleElement("dials",           deviceIndex, 	(double) dials, 		deviceStruct);
-            PsychSetStructArrayDoubleElement("wheels",          deviceIndex, 	(double) wheels, 		deviceStruct);
-        
+            PsychSetStructArrayDoubleElement("axes",            deviceIndex,     (double) axis,         deviceStruct);
+            PsychSetStructArrayDoubleElement("buttons",         deviceIndex,     (double) buttons,     deviceStruct);
+            PsychSetStructArrayDoubleElement("hats",            deviceIndex,     (double) hats,         deviceStruct);
+            PsychSetStructArrayDoubleElement("sliders",         deviceIndex,     (double) sliders,     deviceStruct);
+            PsychSetStructArrayDoubleElement("dials",           deviceIndex,     (double) dials,         deviceStruct);
+            PsychSetStructArrayDoubleElement("wheels",          deviceIndex,     (double) wheels,         deviceStruct);
+
             // Store dummy value -1 to mark interfaceID as invalid/unknown on OSX:
-            PsychSetStructArrayDoubleElement("interfaceID",	deviceIndex, (double) -1, deviceStruct);
+            PsychSetStructArrayDoubleElement("interfaceID",    deviceIndex, (double) -1, deviceStruct);
         #else
             // Linux, Windows:
 
             // USB interface id only available on non OS/X:
-            PsychSetStructArrayDoubleElement("interfaceID",	deviceIndex, (double)currentDevice->interfaceId, deviceStruct);
+            PsychSetStructArrayDoubleElement("interfaceID",    deviceIndex, (double)currentDevice->interfaceId, deviceStruct);
 
             // TODO FIXME Usage name: Mapping of usagePage + usage to human readable string
             // is to be done for Linux/Windows: HIDGetUsageName (currentDevice->usagePage, currentDevice->usage, usageName);
-            sprintf(usageName, "TBD");        
+            sprintf(usageName, "TBD");
         #endif
 
         // UsageName as parsed in os specific code above:
         PsychSetStructArrayStringElement("usageName", deviceIndex, usageName, deviceStruct);
-        
+
         // Logical device index for ptb:
         PsychSetStructArrayDoubleElement("index", deviceIndex, (double) deviceIndex+1, deviceStruct);
 
         // Next device...
-        ++deviceIndex; 
+        ++deviceIndex;
     }
 
-    return(PsychError_none);	
+    return(PsychError_none);
 }
 
 #if PSYCH_SYSTEM == PSYCH_OSX
@@ -265,7 +262,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
     switch (valueUsagePage)
     {
         case kHIDPage_Undefined:
-			switch (valueUsage)
+            switch (valueUsage)
         {
             default: sprintf (cstrName, "Undefined Page, Usage 0x%lx", valueUsage); break;
         }
@@ -280,7 +277,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
             case kHIDUsage_GD_Keyboard: sprintf (cstrName, "Keyboard"); break;
             case kHIDUsage_GD_Keypad: sprintf (cstrName, "Keypad"); break;
             case kHIDUsage_GD_MultiAxisController: sprintf (cstrName, "Multi-Axis Controller"); break;
-                
+
             case kHIDUsage_GD_X: sprintf (cstrName, "X-Axis"); break;
             case kHIDUsage_GD_Y: sprintf (cstrName, "Y-Axis"); break;
             case kHIDUsage_GD_Z: sprintf (cstrName, "Z-Axis"); break;
@@ -296,7 +293,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
             case kHIDUsage_GD_MotionWakeup: sprintf (cstrName, "Motion Wakeup"); break;
             case kHIDUsage_GD_Start: sprintf (cstrName, "Start"); break;
             case kHIDUsage_GD_Select: sprintf (cstrName, "Select"); break;
-                
+
             case kHIDUsage_GD_Vx: sprintf (cstrName, "X-Velocity"); break;
             case kHIDUsage_GD_Vy: sprintf (cstrName, "Y-Velocity"); break;
             case kHIDUsage_GD_Vz: sprintf (cstrName, "Z-Velocity"); break;
@@ -304,7 +301,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
             case kHIDUsage_GD_Vbry: sprintf (cstrName, "Y-Rotation Velocity"); break;
             case kHIDUsage_GD_Vbrz: sprintf (cstrName, "Z-Rotation Velocity"); break;
             case kHIDUsage_GD_Vno: sprintf (cstrName, "Vno"); break;
-                
+
             case kHIDUsage_GD_SystemControl: sprintf (cstrName, "System Control"); break;
             case kHIDUsage_GD_SystemPowerDown: sprintf (cstrName, "System Power Down"); break;
             case kHIDUsage_GD_SystemSleep: sprintf (cstrName, "System Sleep"); break;
@@ -319,14 +316,14 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
             case kHIDUsage_GD_SystemMenuLeft: sprintf (cstrName, "System Menu Left"); break;
             case kHIDUsage_GD_SystemMenuUp: sprintf (cstrName, "System Menu Up"); break;
             case kHIDUsage_GD_SystemMenuDown: sprintf (cstrName, "System Menu Down"); break;
-                
+
             case kHIDUsage_GD_DPadUp: sprintf (cstrName, "DPad Up"); break;
             case kHIDUsage_GD_DPadDown: sprintf (cstrName, "DPad Down"); break;
             case kHIDUsage_GD_DPadRight: sprintf (cstrName, "DPad Right"); break;
             case kHIDUsage_GD_DPadLeft: sprintf (cstrName, "DPad Left"); break;
-                
+
             case kHIDUsage_GD_Reserved: sprintf (cstrName, "Reserved"); break;
-                
+
             default: sprintf (cstrName, "Generic Desktop Usage 0x%lx", valueUsage); break;
         }
             break;
@@ -363,7 +360,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
         case kHIDPage_LEDs:
             switch (valueUsage)
         {
-				// some LED usages
+                // some LED usages
             case kHIDUsage_LED_IndicatorRed: sprintf (cstrName, "Red LED"); break;
             case kHIDUsage_LED_IndicatorGreen: sprintf (cstrName, "Green LED"); break;
             case kHIDUsage_LED_IndicatorAmber: sprintf (cstrName, "Amber LED"); break;
@@ -404,23 +401,23 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
         }
             break;
         case kHIDPage_PID:
-			if (((valueUsage >= 0x02) && (valueUsage <= 0x1F)) || ((valueUsage >= 0x29) && (valueUsage <= 0x2F)) ||
+            if (((valueUsage >= 0x02) && (valueUsage <= 0x1F)) || ((valueUsage >= 0x29) && (valueUsage <= 0x2F)) ||
                 ((valueUsage >= 0x35) && (valueUsage <= 0x3F)) || ((valueUsage >= 0x44) && (valueUsage <= 0x4F)) ||
                 (valueUsage == 0x8A) || (valueUsage == 0x93)  || ((valueUsage >= 0x9D) && (valueUsage <= 0x9E)) ||
                 ((valueUsage >= 0xA1) && (valueUsage <= 0xA3)) || ((valueUsage >= 0xAD) && (valueUsage <= 0xFFFF)))
                 sprintf (cstrName, "PID Reserved");
-			else
-				switch (valueUsage)
-            {
+            else
+                switch (valueUsage)
+                {
                 case 0x00: sprintf (cstrName, "PID Undefined Usage"); break;
                 case kHIDUsage_PID_PhysicalInterfaceDevice: sprintf (cstrName, "Physical Interface Device"); break;
                 case kHIDUsage_PID_Normal: sprintf (cstrName, "Normal Force"); break;
-                    
+
                 case kHIDUsage_PID_SetEffectReport: sprintf (cstrName, "Set Effect Report"); break;
                 case kHIDUsage_PID_EffectBlockIndex: sprintf (cstrName, "Effect Block Index"); break;
                 case kHIDUsage_PID_ParamBlockOffset: sprintf (cstrName, "Parameter Block Offset"); break;
                 case kHIDUsage_PID_ROM_Flag: sprintf (cstrName, "ROM Flag"); break;
-                    
+
                 case kHIDUsage_PID_EffectType: sprintf (cstrName, "Effect Type"); break;
                 case kHIDUsage_PID_ET_ConstantForce: sprintf (cstrName, "Effect Type Constant Force"); break;
                 case kHIDUsage_PID_ET_Ramp: sprintf (cstrName, "Effect Type Ramp"); break;
@@ -439,22 +436,22 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
                 case kHIDUsage_PID_Gain: sprintf (cstrName, "Effect Gain"); break;
                 case kHIDUsage_PID_TriggerButton: sprintf (cstrName, "Effect Trigger Button"); break;
                 case kHIDUsage_PID_TriggerRepeatInterval: sprintf (cstrName, "Effect Trigger Repeat Interval"); break;
-                    
+
                 case kHIDUsage_PID_AxesEnable: sprintf (cstrName, "Axis Enable"); break;
                 case kHIDUsage_PID_DirectionEnable: sprintf (cstrName, "Direction Enable"); break;
-                    
+
                 case kHIDUsage_PID_Direction: sprintf (cstrName, "Direction"); break;
-                    
+
                 case kHIDUsage_PID_TypeSpecificBlockOffset: sprintf (cstrName, "Type Specific Block Offset"); break;
-                    
+
                 case kHIDUsage_PID_BlockType: sprintf (cstrName, "Block Type"); break;
-                    
+
                 case kHIDUsage_PID_SetEnvelopeReport: sprintf (cstrName, "Set Envelope Report"); break;
                 case kHIDUsage_PID_AttackLevel: sprintf (cstrName, "Envelope Attack Level"); break;
                 case kHIDUsage_PID_AttackTime: sprintf (cstrName, "Envelope Attack Time"); break;
                 case kHIDUsage_PID_FadeLevel: sprintf (cstrName, "Envelope Fade Level"); break;
                 case kHIDUsage_PID_FadeTime: sprintf (cstrName, "Envelope Fade Time"); break;
-                    
+
                 case kHIDUsage_PID_SetConditionReport: sprintf (cstrName, "Set Condition Report"); break;
                 case kHIDUsage_PID_CP_Offset: sprintf (cstrName, "Condition CP Offset"); break;
                 case kHIDUsage_PID_PositiveCoefficient: sprintf (cstrName, "Condition Positive Coefficient"); break;
@@ -462,70 +459,70 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
                 case kHIDUsage_PID_PositiveSaturation: sprintf (cstrName, "Condition Positive Saturation"); break;
                 case kHIDUsage_PID_NegativeSaturation: sprintf (cstrName, "Condition Negative Saturation"); break;
                 case kHIDUsage_PID_DeadBand: sprintf (cstrName, "Condition Dead Band"); break;
-                    
+
                 case kHIDUsage_PID_DownloadForceSample: sprintf (cstrName, "Download Force Sample"); break;
                 case kHIDUsage_PID_IsochCustomForceEnable: sprintf (cstrName, "Isoch Custom Force Enable"); break;
-                    
+
                 case kHIDUsage_PID_CustomForceDataReport: sprintf (cstrName, "Custom Force Data Report"); break;
                 case kHIDUsage_PID_CustomForceData: sprintf (cstrName, "Custom Force Data"); break;
-                    
+
                 case kHIDUsage_PID_CustomForceVendorDefinedData: sprintf (cstrName, "Custom Force Vendor Defined Data"); break;
                 case kHIDUsage_PID_SetCustomForceReport: sprintf (cstrName, "Set Custom Force Report"); break;
                 case kHIDUsage_PID_CustomForceDataOffset: sprintf (cstrName, "Custom Force Data Offset"); break;
                 case kHIDUsage_PID_SampleCount: sprintf (cstrName, "Custom Force Sample Count"); break;
-                    
+
                 case kHIDUsage_PID_SetPeriodicReport: sprintf (cstrName, "Set Periodic Report"); break;
                 case kHIDUsage_PID_Offset: sprintf (cstrName, "Periodic Offset"); break;
                 case kHIDUsage_PID_Magnitude: sprintf (cstrName, "Periodic Magnitude"); break;
                 case kHIDUsage_PID_Phase: sprintf (cstrName, "Periodic Phase"); break;
                 case kHIDUsage_PID_Period: sprintf (cstrName, "Periodic Period"); break;
-                    
+
                 case kHIDUsage_PID_SetConstantForceReport: sprintf (cstrName, "Set Constant Force Report"); break;
-                    
+
                 case kHIDUsage_PID_SetRampForceReport: sprintf (cstrName, "Set Ramp Force Report"); break;
                 case kHIDUsage_PID_RampStart: sprintf (cstrName, "Ramp Start"); break;
                 case kHIDUsage_PID_RampEnd: sprintf (cstrName, "Ramp End"); break;
-                    
+
                 case kHIDUsage_PID_EffectOperationReport: sprintf (cstrName, "Effect Operation Report"); break;
-                    
+
                 case kHIDUsage_PID_EffectOperation: sprintf (cstrName, "Effect Operation"); break;
                 case kHIDUsage_PID_OpEffectStart: sprintf (cstrName, "Op Effect Start"); break;
                 case kHIDUsage_PID_OpEffectStartSolo: sprintf (cstrName, "Op Effect Start Solo"); break;
                 case kHIDUsage_PID_OpEffectStop: sprintf (cstrName, "Op Effect Stop"); break;
                 case kHIDUsage_PID_LoopCount: sprintf (cstrName, "Op Effect Loop Count"); break;
-                    
+
                 case kHIDUsage_PID_DeviceGainReport: sprintf (cstrName, "Device Gain Report"); break;
                 case kHIDUsage_PID_DeviceGain: sprintf (cstrName, "Device Gain"); break;
-                    
+
                 case kHIDUsage_PID_PoolReport: sprintf (cstrName, "PID Pool Report"); break;
                 case kHIDUsage_PID_RAM_PoolSize: sprintf (cstrName, "RAM Pool Size"); break;
                 case kHIDUsage_PID_ROM_PoolSize: sprintf (cstrName, "ROM Pool Size"); break;
                 case kHIDUsage_PID_ROM_EffectBlockCount: sprintf (cstrName, "ROM Effect Block Count"); break;
                 case kHIDUsage_PID_SimultaneousEffectsMax: sprintf (cstrName, "Simultaneous Effects Max"); break;
                 case kHIDUsage_PID_PoolAlignment: sprintf (cstrName, "Pool Alignment"); break;
-                    
+
                 case kHIDUsage_PID_PoolMoveReport: sprintf (cstrName, "PID Pool Move Report"); break;
                 case kHIDUsage_PID_MoveSource: sprintf (cstrName, "Move Source"); break;
                 case kHIDUsage_PID_MoveDestination: sprintf (cstrName, "Move Destination"); break;
                 case kHIDUsage_PID_MoveLength: sprintf (cstrName, "Move Length"); break;
-                    
+
                 case kHIDUsage_PID_BlockLoadReport: sprintf (cstrName, "PID Block Load Report"); break;
-                    
+
                 case kHIDUsage_PID_BlockLoadStatus: sprintf (cstrName, "Block Load Status"); break;
                 case kHIDUsage_PID_BlockLoadSuccess: sprintf (cstrName, "Block Load Success"); break;
                 case kHIDUsage_PID_BlockLoadFull: sprintf (cstrName, "Block Load Full"); break;
                 case kHIDUsage_PID_BlockLoadError: sprintf (cstrName, "Block Load Error"); break;
                 case kHIDUsage_PID_BlockHandle: sprintf (cstrName, "Block Handle"); break;
-                    
+
                 case kHIDUsage_PID_BlockFreeReport: sprintf (cstrName, "PID Block Free Report"); break;
-                    
+
                 case kHIDUsage_PID_TypeSpecificBlockHandle: sprintf (cstrName, "Type Specific Block Handle"); break;
-                    
+
                 case kHIDUsage_PID_StateReport: sprintf (cstrName, "PID State Report"); break;
                 case kHIDUsage_PID_EffectPlaying: sprintf (cstrName, "Effect Playing"); break;
-                    
+
                 case kHIDUsage_PID_DeviceControlReport: sprintf (cstrName, "PID Device Control Report"); break;
-                    
+
                 case kHIDUsage_PID_DeviceControl: sprintf (cstrName, "PID Device Control"); break;
                 case kHIDUsage_PID_DC_EnableActuators: sprintf (cstrName, "Device Control Enable Actuators"); break;
                 case kHIDUsage_PID_DC_DisableActuators: sprintf (cstrName, "Device Control Disable Actuators"); break;
@@ -539,11 +536,11 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
                 case kHIDUsage_PID_ActuatorOverrideSwitch: sprintf (cstrName, "Actuator Override Switch"); break;
                 case kHIDUsage_PID_ActuatorPower: sprintf (cstrName, "Actuator Power"); break;
                 case kHIDUsage_PID_StartDelay: sprintf (cstrName, "Start Delay"); break;
-                    
+
                 case kHIDUsage_PID_ParameterBlockSize: sprintf (cstrName, "Parameter Block Size"); break;
                 case kHIDUsage_PID_DeviceManagedPool: sprintf (cstrName, "Device Managed Pool"); break;
                 case kHIDUsage_PID_SharedParameterBlocks: sprintf (cstrName, "Shared Parameter Blocks"); break;
-                    
+
                 case kHIDUsage_PID_CreateNewEffectReport: sprintf (cstrName, "Create New Effect Report"); break;
                 case kHIDUsage_PID_RAM_PoolAvailable: sprintf (cstrName, "RAM Pool Available"); break;
                 default: sprintf (cstrName, "PID Usage 0x%lx", valueUsage); break;
@@ -556,13 +553,13 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
         }
             break;
         case kHIDPage_PowerDevice:
-			if (((valueUsage >= 0x06) && (valueUsage <= 0x0F)) || ((valueUsage >= 0x26) && (valueUsage <= 0x2F)) ||
+            if (((valueUsage >= 0x06) && (valueUsage <= 0x0F)) || ((valueUsage >= 0x26) && (valueUsage <= 0x2F)) ||
                 ((valueUsage >= 0x39) && (valueUsage <= 0x3F)) || ((valueUsage >= 0x48) && (valueUsage <= 0x4F)) ||
                 ((valueUsage >= 0x58) && (valueUsage <= 0x5F)) || (valueUsage == 0x6A) ||
                 ((valueUsage >= 0x74) && (valueUsage <= 0xFC)))
                 sprintf (cstrName, "Power Device Reserved");
-			else
-				switch (valueUsage)
+            else
+                switch (valueUsage)
             {
                 case kHIDUsage_PD_Undefined: sprintf (cstrName, "Power Device Undefined Usage"); break;
                 case kHIDUsage_PD_iName: sprintf (cstrName, "Power Device Name Index"); break;
@@ -570,7 +567,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
                 case kHIDUsage_PD_ChangedStatus: sprintf (cstrName, "Power Device Changed Status"); break;
                 case kHIDUsage_PD_UPS: sprintf (cstrName, "Uninterruptible Power Supply"); break;
                 case kHIDUsage_PD_PowerSupply: sprintf (cstrName, "Power Supply"); break;
-                    
+
                 case kHIDUsage_PD_BatterySystem: sprintf (cstrName, "Battery System Power Module"); break;
                 case kHIDUsage_PD_BatterySystemID: sprintf (cstrName, "Battery System ID"); break;
                 case kHIDUsage_PD_Battery: sprintf (cstrName, "Battery"); break;
@@ -593,7 +590,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
                 case kHIDUsage_PD_GangID: sprintf (cstrName, "Power Device Gang ID"); break;
                 case kHIDUsage_PD_PowerSummary: sprintf (cstrName, "Power Device Power Summary"); break;
                 case kHIDUsage_PD_PowerSummaryID: sprintf (cstrName, "Power Device Power Summary ID"); break;
-                    
+
                 case kHIDUsage_PD_Voltage: sprintf (cstrName, "Power Device Voltage"); break;
                 case kHIDUsage_PD_Current: sprintf (cstrName, "Power Device Current"); break;
                 case kHIDUsage_PD_Frequency: sprintf (cstrName, "Power Device Frequency"); break;
@@ -603,7 +600,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
                 case kHIDUsage_PD_Temperature: sprintf (cstrName, "Power Device Temperature"); break;
                 case kHIDUsage_PD_Humidity: sprintf (cstrName, "Power Device Humidity"); break;
                 case kHIDUsage_PD_BadCount: sprintf (cstrName, "Power Device Bad Condition Count"); break;
-                    
+
                 case kHIDUsage_PD_ConfigVoltage: sprintf (cstrName, "Power Device Nominal Voltage"); break;
                 case kHIDUsage_PD_ConfigCurrent: sprintf (cstrName, "Power Device Nominal Current"); break;
                 case kHIDUsage_PD_ConfigFrequency: sprintf (cstrName, "Power Device Nominal Frequency"); break;
@@ -611,7 +608,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
                 case kHIDUsage_PD_ConfigActivePower: sprintf (cstrName, "Power Device Nominal RMS Power"); break;
                 case kHIDUsage_PD_ConfigPercentLoad: sprintf (cstrName, "Power Device Nominal Percent Load"); break;
                 case kHIDUsage_PD_ConfigTemperature: sprintf (cstrName, "Power Device Nominal Temperature"); break;
-                    
+
                 case kHIDUsage_PD_ConfigHumidity: sprintf (cstrName, "Power Device Nominal Humidity"); break;
                 case kHIDUsage_PD_SwitchOnControl: sprintf (cstrName, "Power Device Switch On Control"); break;
                 case kHIDUsage_PD_SwitchOffControl: sprintf (cstrName, "Power Device Switch Off Control"); break;
@@ -624,7 +621,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
                 case kHIDUsage_PD_Test: sprintf (cstrName, "Power Device Test Request/Result"); break;
                 case kHIDUsage_PD_ModuleReset: sprintf (cstrName, "Power Device Reset Request/Result"); break;
                 case kHIDUsage_PD_AudibleAlarmControl: sprintf (cstrName, "Power Device Audible Alarm Control"); break;
-                    
+
                 case kHIDUsage_PD_Present: sprintf (cstrName, "Power Device Present"); break;
                 case kHIDUsage_PD_Good: sprintf (cstrName, "Power Device Good"); break;
                 case kHIDUsage_PD_InternalFailure: sprintf (cstrName, "Power Device Internal Failure"); break;
@@ -634,7 +631,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
                 case kHIDUsage_PD_OverCharged: sprintf (cstrName, "Power Device Over Charged"); break;
                 case kHIDUsage_PD_OverTemperature: sprintf (cstrName, "Power Device Over Temperature"); break;
                 case kHIDUsage_PD_ShutdownRequested: sprintf (cstrName, "Power Device Shutdown Requested"); break;
-                    
+
                 case kHIDUsage_PD_ShutdownImminent: sprintf (cstrName, "Power Device Shutdown Imminent"); break;
                 case kHIDUsage_PD_SwitchOnOff: sprintf (cstrName, "Power Device On/Off Switch Status"); break;
                 case kHIDUsage_PD_Switchable: sprintf (cstrName, "Power Device Switchable"); break;
@@ -645,7 +642,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
                 case kHIDUsage_PD_Tested: sprintf (cstrName, "Power Device Tested"); break;
                 case kHIDUsage_PD_AwaitingPower: sprintf (cstrName, "Power Device Awaiting Power"); break;
                 case kHIDUsage_PD_CommunicationLost: sprintf (cstrName, "Power Device Communication Lost"); break;
-                    
+
                 case kHIDUsage_PD_iManufacturer: sprintf (cstrName, "Power Device Manufacturer String Index"); break;
                 case kHIDUsage_PD_iProduct: sprintf (cstrName, "Power Device Product String Index"); break;
                 case kHIDUsage_PD_iserialNumber: sprintf (cstrName, "Power Device Serial Number String Index"); break;
@@ -653,14 +650,14 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
             }
             break;
         case kHIDPage_BatterySystem:
-			if (((valueUsage >= 0x0A) && (valueUsage <= 0x0F)) || ((valueUsage >= 0x1E) && (valueUsage <= 0x27)) ||
+            if (((valueUsage >= 0x0A) && (valueUsage <= 0x0F)) || ((valueUsage >= 0x1E) && (valueUsage <= 0x27)) ||
                 ((valueUsage >= 0x30) && (valueUsage <= 0x3F)) || ((valueUsage >= 0x4C) && (valueUsage <= 0x5F)) ||
                 ((valueUsage >= 0x6C) && (valueUsage <= 0x7F)) || ((valueUsage >= 0x90) && (valueUsage <= 0xBF)) ||
                 ((valueUsage >= 0xC3) && (valueUsage <= 0xCF)) || ((valueUsage >= 0xDD) && (valueUsage <= 0xEF)) ||
                 ((valueUsage >= 0xF2) && (valueUsage <= 0xFF)))
                 sprintf (cstrName, "Power Device Reserved");
-			else
-				switch (valueUsage)
+            else
+                switch (valueUsage)
             {
                 case kHIDUsage_BS_Undefined: sprintf (cstrName, "Battery System Undefined"); break;
                 case kHIDUsage_BS_SMBBatteryMode: sprintf (cstrName, "SMB Mode"); break;
@@ -763,7 +760,7 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
             default: sprintf (cstrName, "Alphanumeric Display Usage 0x%lx", valueUsage); break;
         }
             break;
-		case kHIDPage_BarCodeScanner:
+        case kHIDPage_BarCodeScanner:
             switch (valueUsage)
         {
             default: sprintf (cstrName, "Bar Code Scanner Usage 0x%lx", valueUsage); break;
@@ -788,10 +785,10 @@ void HIDGetUsageName (const long valueUsagePage, const long valueUsage, char * c
         }
             break;
         default:
-			if (valueUsagePage > kHIDPage_VendorDefinedStart)
-				sprintf (cstrName, "Vendor Defined Usage 0x%lx", valueUsage);
-			else
-				sprintf (cstrName, "Page: 0x%lx, Usage: 0x%lx", valueUsagePage, valueUsage);
+            if (valueUsagePage > kHIDPage_VendorDefinedStart)
+                sprintf (cstrName, "Vendor Defined Usage 0x%lx", valueUsage);
+            else
+                sprintf (cstrName, "Page: 0x%lx, Usage: 0x%lx", valueUsagePage, valueUsage);
             break;
     }
 }
