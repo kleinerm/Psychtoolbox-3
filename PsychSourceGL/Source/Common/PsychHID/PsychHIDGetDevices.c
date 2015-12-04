@@ -226,9 +226,10 @@ PsychError PSYCHHIDGetDevices(void)
             interfaceId = -1;
             if (KERN_SUCCESS == IORegistryEntryGetPath((io_object_t) IOHIDDeviceGetService((IOHIDDeviceRef) currentDevice), kIOServicePlane, device_path)) {
                 // Got full device path in IOServicePlane. Parse HID interface id out of it, if possible:
-                interfaceIdLoc = strstr((const char*) device_path, "IOUSBInterface@");
+                if (getenv("PSYCHHID_TELLME")) printf("PsychHID-DEBUG: USB-HID IOKIT path: %s\n", (const char*) device_path);
+                interfaceIdLoc = strstr((const char*) device_path, "Interface@");
                 if (interfaceIdLoc)
-                    sscanf(interfaceIdLoc, "IOUSBInterface@%i", &interfaceId);
+                    sscanf(interfaceIdLoc, "Interface@%i", &interfaceId);
             }
 
             // Assign detected interfaceID, or "don't know" value -1:
