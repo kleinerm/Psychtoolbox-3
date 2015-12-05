@@ -2172,8 +2172,13 @@ int PsychOSIsDWMEnabled(int screenNumber)
  */
 double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
 {
+    (void) onlyForCalibration;
+
     // Will the MS-Windows DWM desktop compositor affect our window? If so, compensate, otherwise just return unaltered targetTime:
-    if (PsychIsMSVista() && PsychOSIsDWMEnabled(0) && ((PsychGetNumDisplays() == 1) || !(windowRecord->specialflags & kPsychIsFullscreenWindow))) {
+    // This only affects Windows Vista and Windows-7. On Windows 8 and later the compositors scheduling strategy has changed, so
+    // no adjustment is needed - in fact it is harmful, so avoid it. Note: This was confirmed on one Windows-10 machine, that this
+    // already would apply to Windows 8 or 8.1 is just an assumption.
+    if (PsychIsMSVista() && !PsychOSIsMSWin8() && PsychOSIsDWMEnabled(0) && ((PsychGetNumDisplays() == 1) || !(windowRecord->specialflags & kPsychIsFullscreenWindow))) {
         // Yes. Definitely our window will be subject to desktop composition. This will introduce
         // an additional swap delay of at least 1 video refresh cycle after submitting the SwapBuffers()
         // request, because a SwapBuffers() request will be translated into a composition request for
@@ -2190,8 +2195,7 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
         // to suffer the delay and deadline miss:
         if (PsychPrefStateGet_Verbosity() > 14) printf("PTB-DEBUG: PsychOSAdjustForCompositorDelay: Pre-targetTime: %f secs. VideoRefreshInterval %f secs.\n", targetTime, windowRecord->VideoRefreshInterval);
 
-        // Always adjust targetTime on Windows Vista and Windows-7. Only adjust on Win8+ for refresh calibration:
-        if (!PsychOSIsMSWin8() || onlyForCalibration) targetTime -= windowRecord->VideoRefreshInterval;
+        targetTime -= windowRecord->VideoRefreshInterval;
     }
 
     return(targetTime);
