@@ -715,19 +715,21 @@ static void OptimizeDWMParameters(PsychWindowRecordType *windowRecord)
     DWM_PRESENT_PARAMETERS dwmPresentParams;
 
     if (!PsychOSIsDWMEnabled(0)) return;
-    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Optimizing windows DWM present parameters. Using minimum queue length of 2 buffers.\n");
 
     memset(&dwmPresentParams, 0, sizeof(dwmPresentParams));
     dwmPresentParams.cbSize = sizeof(dwmPresentParams);
     dwmPresentParams.cBuffer = 2;
 
-    // Call function if DWM is supported and enabled: We don't check its return code, as this
-    // function is only really implemented on Windows-Vista, Windows-7 and Windows-8. It is
-    // deprecated as of Windows-8 and support for it will be removed in Windows-9, ie., the
-    // function will turn into a no-op and always return error code E_NOTSUP -- "Not supported".
+    // Call function if DWM is supported and enabled:
+    // This function is only really implemented on Windows-Vista, Windows-7 and Windows-8. It is
+    // deprecated as of Windows-8 and support for it was removed in Windows-8.1, ie., the
+    // function turns into a no-op and always returns error code E_NOTSUP -- "Not supported".
     // See: http://msdn.microsoft.com/en-us/library/windows/desktop/hh994465%28v=vs.85%29.aspx
     // "Queued present model is being deprecated" on MSDN.
-    PsychDwmSetPresentParameters(windowRecord->targetSpecific.windowHandle, &dwmPresentParams);
+    if ((S_OK == PsychDwmSetPresentParameters(windowRecord->targetSpecific.windowHandle, &dwmPresentParams)) &&
+        (PsychPrefStateGet_Verbosity() > 3)) {
+        printf("PTB-DEBUG: Optimizing windows DWM present parameters. Using minimum queue length of 2 buffers.\n");
+    }
 
     return;
 }
@@ -859,8 +861,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
       fullscreen = FALSE;
     }
 
-    // DWM supported?
-    if (dwmSupported) {
+    // DWM supported on a Windows Vista or Windows-7 system? No point in doing the query/disable/enable dance on
+    // Windows-8 or later, as we don't have any control about it anymore:
+    if (dwmSupported && !PsychOSIsMSWin8()) {
         // This is Vista, Windows-7, or a later system with DWM compositing window manager.
 		
 		// Check current enable state:
@@ -965,6 +968,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
                 printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to switch Windows desktop compositor to realtime scheduling! Expect timing and performance problems!!\n");
             }
         }		
+    }
+
+    // DWM suported on Windows-8 or later?
+    if (dwmSupported && PsychOSIsMSWin8()) {
+        // Compositor is always enabled on Win8+ so try to optimize its scheduling:
+        if ((PsychDwmEnableMMCSS(TRUE)) && (PsychPrefStateGet_Verbosity() > 1)) {
+            printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to switch Windows-8+ desktop compositor to realtime scheduling! Expect additional timing and performance problems!!\n");
+        }
     }
 
 // goto target jump label for skipping DWM state changes in the "Don't care" case:
@@ -2159,7 +2170,8 @@ int PsychOSIsDWMEnabled(int screenNumber)
     // reports nominal enable state, but an enabled compositor still (should) get out of our way and therefore be
     // effectively disabled if a fullscreen window is displayed. A query to PsychDwmGetCompositionTimingInfo() will
     // succeed if the DWM is really active, but fail if the DWM is on standby.
-    IsDWMEnabled = (dwmSupported && (0 == PsychDwmIsCompositionEnabled(&compositorEnabled)) && compositorEnabled && (0 == PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)));
+    IsDWMEnabled = (dwmSupported && (0 == PsychDwmIsCompositionEnabled(&compositorEnabled)) && (compositorEnabled || PsychOSIsMSWin8()) &&
+                    (0 == PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)));
     return(IsDWMEnabled);
 }
 
@@ -2343,6 +2355,8 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     // our best estimate of swap completion time:
     msc = dwmtiming.cDXRefreshConfirmed;
     ust = dwmtiming.qpcVBlank - ((dwmtiming.cDXRefresh - dwmtiming.cDXRefreshConfirmed) * dwmtiming.qpcRefreshPeriod);
+    if (PsychPrefStateGet_Verbosity() > 14) printf("PTB-DEBUG: PsychOSGetSwapCompletionTimestamp: cDXRefresh %i vs. cDXRefreshConfirmed %i --> DeltaFrames %i.\n",
+                                                   dwmtiming.cDXRefresh, dwmtiming.cDXRefreshConfirmed, dwmtiming.cDXRefresh - dwmtiming.cDXRefreshConfirmed);
 
     // Translate to GetSecs time:
     tSwapMapped = PsychMapPrecisionTimerTicksToSeconds(ust);
