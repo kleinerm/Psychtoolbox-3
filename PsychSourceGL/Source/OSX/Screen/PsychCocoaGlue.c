@@ -512,7 +512,7 @@ void PsychCocoaPreventAppNap(psych_bool preventAppNap)
         options |= NSActivityUserInitiated | NSActivityLatencyCritical;
 
         activity = [[NSProcessInfo processInfo] beginActivityWithOptions:options reason:@"Psychtoolbox does not want to nap, it has need for speed!"];
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Running on OSX 10.9+ - Enabling protection against AppNap and other evils.\n");
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Running on OSX 10.9+ - Enabling protection against AppNap and other evils.\n");
         return;
     }
 

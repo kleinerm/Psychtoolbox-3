@@ -919,7 +919,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     CGDisplayCount totaldisplaycount=0;
     CGGetOnlineDisplayList(0, NULL, &totaldisplaycount);
 
-    if ((PsychPrefStateGet_Verbosity() > 2) && ((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW)) {
+    if ((PsychPrefStateGet_Verbosity() > 3) && ((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW)) {
         multidisplay = (totaldisplaycount>1) ? true : false;
         if (multidisplay) {
             printf("\n\nPTB-INFO: You are using a multi-display setup (%i active displays):\n", totaldisplaycount);
