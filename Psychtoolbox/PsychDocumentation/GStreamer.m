@@ -40,7 +40,10 @@
 % You must install GStreamer if you want to use multi-media functions! If
 % you don't intend to use multi-media functions then installation of
 % GStreamer is optional. Screen will work normally, but abort with an error
-% message if you try to use any multi-media functions.
+% message if you try to use any multi-media functions. For use with Octave-4 on
+% Windows you must install GStreamer regardless if you want to use multi-media
+% functionality, as the Screen() mex file won't work at all without GStreamer
+% installed.
 %
 % Download and install the latest 64-Bit ("x86_64") GStreamer runtimes from:
 %
@@ -50,13 +53,17 @@
 % system for best reliability and performance. However, as a convenience, at time
 % of this writing (February 2015) the required downloads would be:
 %
-% For MS-Windows: 64-Bit Intel runtime v1.4.5
+% For MS-Windows: 64-Bit Intel runtime v1.6.1 for use with 64-Bit Matlab.
 %
-% <http://gstreamer.freedesktop.org/data/pkg/windows/1.4.5/gstreamer-1.0-x86_64-1.4.5.msi>
+% <http://gstreamer.freedesktop.org/data/pkg/windows/1.6.1/gstreamer-1.0-x86_64-1.6.1.msi>
 %
-% For Apple OSX: Universal runtime v1.4.5
+% For MS-Windows: 32-Bit Intel runtime v1.6.1 for use with 32-Bit GNU/Octave-4.
 %
-% <http://gstreamer.freedesktop.org/data/pkg/osx/1.4.5/gstreamer-1.0-1.4.5-universal.pkg>
+% <http://gstreamer.freedesktop.org/data/pkg/windows/1.6.1/gstreamer-1.0-x86-1.6.1.msi>
+%
+% For Apple OSX: Runtime v1.6.1
+%
+% <http://gstreamer.freedesktop.org/data/pkg/osx/1.6.1/gstreamer-1.0-1.6.1-x86_64.pkg>
 %
 %
 % When the installer asks you to select the components it should install,

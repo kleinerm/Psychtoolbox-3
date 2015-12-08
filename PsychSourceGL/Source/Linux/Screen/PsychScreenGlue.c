@@ -537,8 +537,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         }
 
         if (gpu->vendor_id == PCI_VENDOR_ID_ATI || gpu->vendor_id == PCI_VENDOR_ID_AMD) {
-            // BAR 2 is MMIO:
-            region = &gpu->regions[2];
+            // BAR 2 is MMIO on old AMD gpus, BAR 5 is MMIO on DCE-8/10/11/... "Sea Islands" gpus and later models:
+            region = &gpu->regions[(isDCE8(screenId) || isDCE10(screenId)) ? 5 : 2];
             fDeviceType = kPsychRadeon;
             fNumDisplayHeads = 2;
         }

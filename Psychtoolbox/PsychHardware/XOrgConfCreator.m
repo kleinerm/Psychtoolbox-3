@@ -73,7 +73,7 @@ try
   fprintf('Found a total of %i video output displays on %i X-Screens.\n\n', outputCnt, length(screenNumbers));
 
   % Single display setup?
-  if numOutputs == 1
+  if outputCnt == 1
     % Yes. That answers the question if multi-x-screen is wanted:
     fprintf('Only a single active display connected, so obviously you want a single-display setup.\n');
     multixscreen = 0;

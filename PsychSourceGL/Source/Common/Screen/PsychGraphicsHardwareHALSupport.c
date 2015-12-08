@@ -1055,7 +1055,7 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
             if (PsychScreenToHead(screenId, outputId) < 0)
                 break;
 
-            if (PsychPrefStateGet_Verbosity() > 3) printf(" ... probing for video output %i ... ");
+            if (PsychPrefStateGet_Verbosity() > 3) printf(" ... probing for video output %i ... ", outputId);
 
             // Retrieve current gamma table. Need to back it up internally:
             PsychReadNormalizedGammaTable(screenId, outputId, &numEntries, &redTable, &greenTable, &blueTable);
