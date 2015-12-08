@@ -2407,6 +2407,16 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // specialFlags 16: Never dither audio data:
     if (specialFlags & 16) sflags |= paDitherOff;
 
+    // Check if the requested sample format and settings are likely supported by Audio API:
+    err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
+    if (err != paNoError) {
+        printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device. PortAudio reports this error: %s \n", audiodevicecount, Pa_GetErrorText(err));
+        printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel allocation, or audio sample format.\n");
+        if (PSYCH_SYSTEM == PSYCH_LINUX)
+            printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
+        PsychErrorExitMsg(PsychError_system, "Failed to open PortAudio audio device due to unsupported combination of audio parameters.");
+    }
+
     // Try to create & open stream:
     err = Pa_OpenStream(
                         &stream,                                                        /* Return stream pointer here on success. */

@@ -1,5 +1,5 @@
 function ClutAnimDemo(method)
-% ClutAnimDemo([method=0])
+% ClutAnimDemo([method=2])
 %
 % Display an animated grating using CLUT animation via the
 % Screen('LoadNormalizedGammaTable') command, or via the PsychImaging()
@@ -11,11 +11,11 @@ function ClutAnimDemo(method)
 % potentially unreliable in the timing domain (except for method 2) and most
 % often more painful and inflexible to use than a proper modern approach.
 %
-% If 'method' is left out or set to 0, hardware gamma tables are
-% immediately updated. A setting of 1 will update hardware gamma tables in
-% sync with Screen('Flip'), or more accurately, it will try to.
-% Synchronization can't be guaranteed, only that a good effort is made to
-% achieve sync. A 'method' setting of 2 will use the Psychtoolbox image
+% If 'method' is set to 0, hardware gamma tables are immediately updated.
+% A setting of 1 will update hardware gamma tables in sync with Screen('Flip'),
+% or more accurately, it will try to. Synchronization can't be guaranteed,
+% only that a good effort is made to achieve sync.
+% A 'method' setting of 2, which is the default, will use the Psychtoolbox image
 % processing pipeline to implement clut animation, instead of updating the
 % hardware gamma tables. This is the only reliable method with respect to
 % timing precision. It is also the only method that works on MS-Windows.
@@ -39,9 +39,10 @@ function ClutAnimDemo(method)
 %                   PsychImaging.
 %  22/07/14   mk    Fixup for gpu's with > 256 gamma table slots, in which this
 %                   didn't work, as it assumed exactly 256 slots.
+%  22/11/15   mk    Switch to method 2 (imaging pipeline) by default.
 
 if nargin < 1 || isempty(method)
-    method = 0;
+    method = 2;
 end
 
 % Is this the M$-Windows version? This demo doesn't work under Windows...
@@ -89,7 +90,7 @@ try
     LoadIdentityClut(w);
 
     newLUT=origLUT;
-    
+
     % Find the color value which corresponds to black.  Though on OS
     % X we currently only support true color and thus, for scalar color
     % arguments,
@@ -132,12 +133,12 @@ try
         backupLUT=newLUT(2, :);
         newLUT(2:255, :)=newLUT(3:256, :);
         newLUT(256, :)=backupLUT;
-        
+
         if method == 0
             % This 'Flip' waits for vertical retrace...
             Screen('Flip', w, 0, 2);
         end
-        
+
         % Update the hardware CLUT with our newLUT:
         Screen('LoadNormalizedGammaTable', w, newLUT, method);
 
@@ -145,7 +146,7 @@ try
             % This 'Flip' waits for vertical retrace...
             Screen('Flip', w, 0, 2);
         end
-        
+
         t1=GetSecs;
         tavg=tavg+(t1-t0);
         t0=t1;
@@ -175,5 +176,4 @@ catch
     Screen('CloseAll');
     Screen('Preference', 'SkipSyncTests', 0);
     psychrethrow(psychlasterror);
-    
 end %try..catch..

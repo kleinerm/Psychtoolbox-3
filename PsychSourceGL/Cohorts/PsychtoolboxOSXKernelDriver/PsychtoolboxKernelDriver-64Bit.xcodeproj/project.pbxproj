@@ -410,7 +410,7 @@
 		1DEB91DE08733DB10010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_IDENTITY = "Mac Developer: Mario Kleiner (75VYGGG8D7)";
 				ENABLE_TESTABILITY = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1";
 				GCC_VERSION_i386 = 4.2.1;
@@ -433,7 +433,7 @@
 		1DEB91DF08733DB10010E9CD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Mac Developer";
+				CODE_SIGN_IDENTITY = "Mac Developer: Mario Kleiner (75VYGGG8D7)";
 				GCC_VERSION_i386 = 4.2.1;
 				GCC_VERSION_ppc = 3.3;
 				GCC_VERSION_x64 = 4.2;

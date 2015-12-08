@@ -359,6 +359,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Request a 10 bit per color component framebuffer with 2 bit alpha channel:
         printf("PTB-INFO: Trying to enable 10 bpc, 30 bit integer framebuffer...\n");
         attribs[attribcount++]=kCGLPFANoRecovery;
+        attribs[attribcount++]=kCGLPFAMinimumPolicy;
         attribs[attribcount++]=kCGLPFAColorSize;
         attribs[attribcount++]=10*3;
         attribs[attribcount++]=kCGLPFAAlphaSize;
@@ -370,6 +371,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Request a ~ 11 bit per color component framebuffer without alpha channel:
         printf("PTB-INFO: Trying to enable 11 bpc, 32 bit integer framebuffer...\n");
         attribs[attribcount++]=kCGLPFANoRecovery;
+        attribs[attribcount++]=kCGLPFAMinimumPolicy;
         attribs[attribcount++]=kCGLPFAColorSize;
         attribs[attribcount++]=32;
         attribs[attribcount++]=kCGLPFAAlphaSize;
@@ -381,6 +383,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Request a 16 bit per color component framebuffer:
         printf("PTB-INFO: Trying to enable 16 bpc, 64 bit integer framebuffer...\n");
         attribs[attribcount++]=kCGLPFANoRecovery;
+        attribs[attribcount++]=kCGLPFAMinimumPolicy;
         attribs[attribcount++]=kCGLPFAColorSize;
         attribs[attribcount++]=16*3;
         attribs[attribcount++]=kCGLPFAAlphaSize;
@@ -392,6 +395,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Request a floating point framebuffer in 16-bit half-float format, i.e., RGBA = 16 bits per component.
         printf("PTB-INFO: Trying to enable 16 bpc float framebuffer...\n");
         attribs[attribcount++]=kCGLPFAColorFloat;
+        attribs[attribcount++]=kCGLPFAMinimumPolicy;
         attribs[attribcount++]=kCGLPFAColorSize;
         attribs[attribcount++]=16*3;
         attribs[attribcount++]=kCGLPFAAlphaSize;
@@ -403,6 +407,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Request a floating point framebuffer in 32-bit float format, i.e., RGBA = 32 bits per component.
         printf("PTB-INFO: Trying to enable 32 bpc float framebuffer...\n");
         attribs[attribcount++]=kCGLPFAColorFloat;
+        attribs[attribcount++]=kCGLPFAMinimumPolicy;
         attribs[attribcount++]=kCGLPFAColorSize;
         attribs[attribcount++]=32*3;
         attribs[attribcount++]=kCGLPFAAlphaSize;
