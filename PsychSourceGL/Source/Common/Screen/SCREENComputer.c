@@ -378,6 +378,15 @@ PsychError SCREENComputer(void)
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
     GetVersionEx(&osvi);
 
+    // Special case for Windows-10 and later, as GetVersionEx() doesn't report
+    // version numbers faithfully beyond Windows 8, unless application manifest
+    // would mark the app as Windows-8.1+ compatible. Fake a 10.0 version if this
+    // is Windows 10 or later - should be good enough for our purposes.
+    if (PsychOSIsMSWin10()) {
+        osvi.dwMajorVersion = 10;
+        osvi.dwMinorVersion = 0;
+    }
+
     // Convert into string with major.minor.buildnumber - Name of service packs (max 128 chars) etc.:
     // Versions to products: 6.1 = Windows-7, 6.0  = Vista, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
     sprintf(versionString, "NT-%i.%i.%i - %s", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber, (char*) osvi.szCSDVersion);

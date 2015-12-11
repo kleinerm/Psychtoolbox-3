@@ -1577,32 +1577,47 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     // Check for desktop compositor activity on MS-Windows Vista and later:
     if ((PsychPrefStateGet_Verbosity() > 1) && PsychIsMSVista() && PsychOSIsDWMEnabled(0)) {
-        // DWM is active on at least one display. On a single-display setup, this means
-        // it will definitely affect/interfere with our onscreen windows timing and we should
-        // warn the user about likely performance and timing degradation. The same is true if
-        // our onscreen window is not a fullscreen window, in which case it will always interfere
-        // with our window:
-        if ((PsychGetNumDisplays() == 1) || !((*windowRecord)->specialflags & kPsychIsFullscreenWindow)) {
-            // Ok, DWM will definitely mess with our stimuli: Warn the user about the likely hazard.
-            printf("PTB-WARNING: ==============================================================================================================================\n");
-            printf("PTB-WARNING: WINDOWS DWM DESKTOP COMPOSITOR IS ACTIVE! ALL FLIP STIMULUS ONSET TIMESTAMPS WILL BE VERY LIKELY UNRELIABLE AND LESS ACCURATE!\n");
-            printf("PTB-WARNING: STIMULUS ONSET TIMING WILL BE UNRELIABLE AS WELL, AND GRAPHICS PERFORMANCE MAY BE SEVERELY REDUCED! STIMULUS IMAGES MAY NOT\n");
-            printf("PTB-WARNING: SHOW UP AT ALL! DO NOT USE THIS MODE FOR RUNNING REAL EXPERIMENT SESSIONS WITH ANY REQUIREMENTS FOR ACCURATE TIMING!\n");
-            printf("PTB-WARNING: ==============================================================================================================================\n");
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        // Regular fullscreen onscreen window on Windows-10 or later OS'es?
+        if (PsychOSIsMSWin10() && ((*windowRecord)->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_WindowShieldingLevel() >= 2000)) {
+            // Yes. Initial testing suggests we might be mostly fine timing-wise despite the DWM being active, both
+            // on single-display and multi-display setups. Therefore tone down the DWM warnings and just tell the user
+            // to tread carefully:
+            printf("PTB-INFO: ==============================================================================================================================\n");
+            printf("PTB-INFO: WINDOWS DWM DESKTOP COMPOSITOR IS ACTIVE. On this Windows-10 or later system, Psychtoolbox can no longer reliably detect if\n");
+            printf("PTB-INFO: this will cause trouble for timing and integrity of visual stimuli or not. You might be just fine, or you could be in trouble.\n");
+            printf("PTB-INFO: Use external measurement equipment and independent procedures to verify reliability of timing if you care about proper timing.\n");
+            printf("PTB-INFO: ==============================================================================================================================\n");
         }
         else {
-            // This is a multi-display setup with the DWM active on at least some display(s) and our
-            // stimulus onscreen window is a fullscreen window that covers at least one whole display.
-            // We can't know if our stimulus display is affected, or only other irrelevant GUI desktop
-            // displays. At least on one tested recent versions of Windows-7 and presumably Windows-8,
-            // DWM was interfering massively with fullscreen stimulus displays, leading to completely
-            // wrong stimulus onset timestamps:
-            printf("PTB-WARNING: ============================================================================================================================\n");
-            printf("PTB-WARNING: WINDOWS DWM DESKTOP COMPOSITOR IS ACTIVE ON AT LEAST ONE DISPLAY! ALL FLIP STIMULUS ONSET TIMESTAMPS WILL BE LIKELY WRONG!\n");
-            printf("PTB-WARNING: STIMULUS ONSET TIMING WILL BE UNRELIABLE AS WELL, AND GRAPHICS PERFORMANCE MAY BE SEVERELY REDUCED! STIMULUS IMAGES MAY NOT\n");
-            printf("PTB-WARNING: SHOW UP AT ALL! DO NOT USE THIS MODE FOR RUNNING REAL EXPERIMENT SESSIONS WITH ANY REQUIREMENTS FOR ACCURATE TIMING!\n");
-            printf("PTB-WARNING: ============================================================================================================================\n");
+            // DWM is active on at least one display. On a single-display setup, this means
+            // it will definitely affect/interfere with our onscreen windows timing and we should
+            // warn the user about likely performance and timing degradation. The same is true if
+            // our onscreen window is not a fullscreen window, in which case it will always interfere
+            // with our window:
+            if ((PsychGetNumDisplays() == 1) || !((*windowRecord)->specialflags & kPsychIsFullscreenWindow)) {
+                // Ok, DWM will definitely mess with our stimuli: Warn the user about the likely hazard.
+                printf("PTB-WARNING: ==============================================================================================================================\n");
+                printf("PTB-WARNING: WINDOWS DWM DESKTOP COMPOSITOR IS ACTIVE! ALL FLIP STIMULUS ONSET TIMESTAMPS WILL BE VERY LIKELY UNRELIABLE AND LESS ACCURATE!\n");
+                printf("PTB-WARNING: STIMULUS ONSET TIMING WILL BE UNRELIABLE AS WELL, AND GRAPHICS PERFORMANCE MAY BE SEVERELY REDUCED! STIMULUS IMAGES MAY NOT\n");
+                printf("PTB-WARNING: SHOW UP AT ALL! DO NOT USE THIS MODE FOR RUNNING REAL EXPERIMENT SESSIONS WITH ANY REQUIREMENTS FOR ACCURATE TIMING!\n");
+                printf("PTB-WARNING: ==============================================================================================================================\n");
+            }
+            else {
+                // This is a multi-display setup with the DWM active on at least some display(s) and our
+                // stimulus onscreen window is a fullscreen window that covers at least one whole display.
+                // We can't know if our stimulus display is affected, or only other irrelevant GUI desktop
+                // displays. At least on one tested recent versions of Windows-7 and presumably Windows-8,
+                // DWM was interfering massively with fullscreen stimulus displays, leading to completely
+                // wrong stimulus onset timestamps:
+                printf("PTB-WARNING: ============================================================================================================================\n");
+                printf("PTB-WARNING: WINDOWS DWM DESKTOP COMPOSITOR IS ACTIVE ON AT LEAST ONE DISPLAY! ALL FLIP STIMULUS ONSET TIMESTAMPS WILL BE LIKELY WRONG!\n");
+                printf("PTB-WARNING: STIMULUS ONSET TIMING WILL BE UNRELIABLE AS WELL, AND GRAPHICS PERFORMANCE MAY BE SEVERELY REDUCED! STIMULUS IMAGES MAY NOT\n");
+                printf("PTB-WARNING: SHOW UP AT ALL! DO NOT USE THIS MODE FOR RUNNING REAL EXPERIMENT SESSIONS WITH ANY REQUIREMENTS FOR ACCURATE TIMING!\n");
+                printf("PTB-WARNING: ============================================================================================================================\n");
+            }
         }
+        #endif
     }
     else if ((PsychPrefStateGet_Verbosity() > 1) && PsychIsMSVista() && (PsychGetNumDisplays() > 1)) {
         // MS-Vista or later with DWM effectively disabled/inactive. On a single display setup,

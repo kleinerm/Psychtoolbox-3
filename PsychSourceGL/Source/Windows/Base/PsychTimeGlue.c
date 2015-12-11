@@ -260,6 +260,37 @@ int PsychOSIsMSWin8(void)
     return(isWin8);
 }
 
+/* Returns TRUE on Microsoft Windows 10 and later, FALSE otherwise: */
+int PsychOSIsMSWin10(void)
+{
+#ifdef PTBMODULE_Screen
+    HKEY hkey;
+    // Init flag to -1 aka unknown:
+    static int isWin10 = -1;
+
+    if (isWin10 == -1) {
+        // First call: Do the query!
+        if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0, KEY_READ, &hkey)) {
+            // CurrentMajorVersionNumber key exists and could be opened? This is only possible on Windows-10 or later.
+            isWin10 = (ERROR_SUCCESS == RegQueryValueEx(hkey, "CurrentMajorVersionNumber", NULL, NULL, NULL, NULL)) ? 1 : 0;
+            RegCloseKey(hkey);
+        }
+        else {
+            // Not Windows-10 or later:
+            isWin10 = 0;
+        }
+    }
+
+    // Return flag:
+    return(isWin10);
+#else
+    // Only Screen() is currently allowed to call this function, because any mex file which needs this function must link against advapi32.lib, which Screen
+    // does, but most other mex files don't. Warn and return false -- non Windows-10 -- as safe result.
+    printf("PTB-WARNING: Called PsychOSIsMSWin10() from something else than PTBMODULE_Screen! This won't work. Modify source code to make it work if needed!\n");
+    return(0);
+#endif
+}
+
 /* Called at module init time: */
 void PsychInitTimeGlue(void)
 {
@@ -1602,12 +1633,23 @@ const char* PsychSupportStatus(void)
 		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
 		GetVersionEx(&osvi);
 
+        // Special case for Windows-10 and later, as GetVersionEx() doesn't report
+        // version numbers faithfully beyond Windows 8, unless application manifest
+        // would mark the app as Windows-8.1+ compatible. Fake a 10.0 version if this
+        // is Windows 10 or later - should be good enough for our purposes.
+        if (PsychOSIsMSWin10()) {
+            osvi.dwMajorVersion = 10;
+            osvi.dwMinorVersion = 0;
+        }
+
 		// It is a Vista or later if major version is equal to 6 or higher:
 		// 6.0  = Vista, 6.1 = Windows-7, 6.2 = Windows-8, 6.3 = Windows-8.1, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
-		isSupported = ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion >= 1)) ? 1 : 0;
+        // 10.0 = Windows-10
+		isSupported = ((osvi.dwMajorVersion == 10) || ((osvi.dwMajorVersion == 6) && (osvi.dwMinorVersion >= 1))) ? 1 : 0;
 
         if (isSupported) {
-            sprintf(statusString, "Windows version %i.%i %ssupported.", osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMinorVersion != 1) ? "partially " : "");
+            // Windows-7 is fully supported, Windows-8 and later only partially:
+            sprintf(statusString, "Windows version %i.%i %ssupported.", osvi.dwMajorVersion, osvi.dwMinorVersion, ((osvi.dwMajorVersion == 10) || (osvi.dwMinorVersion != 1)) ? "partially " : "");
         }
         else {
             sprintf(statusString, "Windows version %i.%i is not supported.", osvi.dwMajorVersion, osvi.dwMinorVersion);
