@@ -9,9 +9,9 @@
 % was written before the era of Retina displays, or with Psychtoolbox
 % 3.0.11 or earlier versions. If you want to make full use of the native
 % high resolution of your Retina display, use the imaging pipeline task
-% PsychImaging('AddTask', 'General', 'UseRetinaResolution'); to enable use
-% in full resolution mode. This will expose the full resolution but also
-% require more graphics performance from your graphics card.
+% PsychImaging('AddTask', 'General', 'UseRetinaResolution');. This will
+% expose the full resolution but also require more graphics performance
+% from your graphics card.
 %
 % On MS-Windows the situation can be difficult, depending on the Windows
 % version and Matlab version in use, and potentially on what other
@@ -30,44 +30,35 @@
 % displays. All versions of Matlab older than R2015b are not DPI aware and
 % will likely suffer from this problems.
 %
-% On Windows 8 and later, e.g., Windows 8.1 and Windows 10, Psychtoolbox
-% can not disable the DWM. If you display a Psychtoolbox window on a
-% standard resolution display, stuff will probably work. If you try to
-% display on a HiDPI Retina display then you will need to make sure that
-% you either use GNU/Octave, or you use a Matlab version that is DPI aware,
-% ie., at least R2015b. You will probably also have to make sure that no
-% other non-DPI aware application is running or at least not displaying on
-% your stimulus monitor, as such applications would trigger use of the DWM
-% and thereby cause stimulus timing problems.
+% On Windows 8 and later, Psychtoolbox can not disable the DWM. If you
+% display a Psychtoolbox window on a standard resolution display, stuff
+% will probably work. If you try to display on a HiDPI Retina display then
+% you will need to make sure that you either use GNU/Octave, or you use a
+% Matlab version that is DPI aware, ie., at least R2015b. You will probably
+% also have to make sure that no other non-DPI aware application is running
+% or at least not displaying on your stimulus monitor, as such applications
+% would trigger use of the DWM and thereby cause stimulus timing problems.
 %
 % Additionally, on Windows 8 you must make sure that the stimulation
 % display is the designated "primary display", so Windows 8 DPI settings,
 % which always apply to the primary display, thereby apply to your stimulus
 % display. Applications displayed on other than the primary display will be
 % subject to DWM scaling if those other displays do not have the same DPI
-% setting as the primary display. As such a running Matlab or Octave would
-% trigger harmful use of the DWM on such a non-matching display. In general
-% it is a good idea for timing precision to make your stimulus display the
+% setting as the primary display. A running Matlab or Octave would trigger
+% harmful use of the DWM on such a non-matching display. In general it is a
+% good idea for timing precision to make your stimulus display the
 % designated primary display (this can be set in the display settings
-% control display).
+% control display, maybe via a "Make this my main display" checkbox).
 %
-% On Windows 8.1 or later, e.g., Windows 10, GNU/Octave should just work,
-% as Octave is multi-monitor DPI aware on these operating systems.
-%
-% The situation for Matlab R2015b and later is unknown atm. If Matlab would
-% be per-monitor DPI aware, then it should just work. If Matlab would be
-% only global system DPI aware, then see the section above for Windows 8,
-% as the same restrictions would apply.
-%
-% Now use of Matlab R2015b itself can cause other problems with
-% Psychtoolbox as of October 2015 due to some incompatibilities between
-% Psychtoolbox and Matlabs new execution engine. Therefore it is probably a
-% good idea to use GNU/Octave-4 if you must use Retina displays under
-% Windows, unless and until the problems with R2015b are resolved.
+% Use of Matlab R2015b itself can cause other problems with Psychtoolbox,
+% as of October 2015, due to some incompatibilities between Psychtoolbox
+% and Matlabs new execution engine. Therefore it is probably a good idea to
+% use GNU/Octave-4 if you must use Retina displays under Windows, unless
+% and until the problems with R2015b and later versions are resolved.
 %
 % If you must use a system setup with Retina display and a version of
-% Matlab or of Windows 8 or later that does not allow you to circumvent or
-% solve these problems, then there exists also the option to either
+% Matlab, or of Windows 8 or later, that does not allow you to circumvent
+% or solve these problems, then there exists also the option to either
 % override Windows DPI settings (somewhere under display control panel,
 % advanced settings or "Make text appear bigger or smaller" - Try a Google
 % search to find it) - this would get rid of DPI related timing problems at
@@ -82,14 +73,14 @@
 % called "Disable display scaling on high DPI settings", then click "OK" to
 % apply the new settings and restart the application.
 %
-% As you can see Windows is not only troublesome for proper visual
-% stimulation and stimulation timing in itself, it can be especially
-% troublesome when used with HiDPI / Retina displays. Therefore it might be
-% a good idea to switch to Linux, or if you have to use Windows, to stick
-% to Windows-7, or if you have to use a later Windows version, upgrade to
-% at least Windows 8.1 if you are on Windows 8. It is probably also a good
-% idea to then limit yourself to a single display setup and/or make sure
-% that only DPI aware applications are running on this setup.
+% Windows is not only troublesome for proper visual stimulation and
+% stimulation timing in itself, it can be especially troublesome when used
+% with HiDPI / Retina displays. Therefore it might be a good idea to switch
+% to Linux, or if you have to use Windows, to stick to Windows-7, or if you
+% have to use a later Windows version, upgrade to Windows 10. It is
+% probably also a good idea to then limit yourself to a single display
+% setup and/or make sure that only DPI aware applications are running on
+% this setup.
 %
 % Good luck!
 %
