@@ -495,7 +495,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     // if provided without any other flags, will not startup the full pipeline, but only allow creation of FBO-backed
     // offscreen windows and fast switching between them and the system framebuffer.
     if (imagingmode == kPsychNeedFastOffscreenWindows) {
-        if (PsychPrefStateGet_Verbosity()>2) printf("PTB-INFO: Support for fast OffscreenWindows enabled.\n");
+        if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Support for fast OffscreenWindows enabled.\n");
         fflush(NULL);
         return;
     }

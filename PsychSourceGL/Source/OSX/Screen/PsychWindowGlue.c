@@ -282,7 +282,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
     if (PsychMatchRect(screenrect, windowRecord->rect)) windowRecord->specialflags |= kPsychIsFullscreenWindow;
 
-    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
+    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 3)) {
         printf("PTB-INFO: Always using Cocoa for fullscreen windows to work around graphics driver bugs in OSX.\n");
         printf("PTB-INFO: Presentation timing precision is not yet known for this configuration on most machines. Check your results.\n");
     }
