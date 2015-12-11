@@ -554,11 +554,11 @@ void InitCGDisplayIDList(void)
         PsychGetScreenSize(1, &w1, &h1);
         PsychGetScreenSize(2, &w2, &h2);
         if (w1!=w2 || h1!=h2) {
-            printf("PTB-WARNING: Screens 1 and 2 do have non-equal width and height. This will probably cause wrong behaviour\n");
-            printf("PTB-WARNING: when trying to open a fullscreen window on Screen 0 that is supposed to fully cover displays 1 and 2.\n");
-            printf("PTB-WARNING: In that case, either change your screen settings to matching size and refresh rate in the display control\n");
-            printf("PTB-WARNING: panel and retry after a 'clear all', or manually specify a [rect] parameter for the window in the\n");
-            printf("PTB-WARNING: Screen('OpenWindow', 0, [color], [rect]); command to manually enforce creation of a proper onscreen window.\n");
+            //printf("PTB-WARNING: Screens 1 and 2 do have non-equal width and height. This will probably cause wrong behaviour\n");
+            //printf("PTB-WARNING: when trying to open a fullscreen window on Screen 0 that is supposed to fully cover displays 1 and 2.\n");
+            //printf("PTB-WARNING: In that case, either change your screen settings to matching size and refresh rate in the display control\n");
+            //printf("PTB-WARNING: panel and retry after a 'clear all', or manually specify a [rect] parameter for the window in the\n");
+            //printf("PTB-WARNING: Screen('OpenWindow', 0, [color], [rect]); command to manually enforce creation of a proper onscreen window.\n");
         }
         
         printf("\n"); fflush(NULL);
