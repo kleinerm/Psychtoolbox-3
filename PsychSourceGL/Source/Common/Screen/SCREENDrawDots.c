@@ -112,8 +112,8 @@ char PointSmoothVertexShaderSrc[] =
 "}\n\0";
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "Screen('DrawDots', windowPtr, xy [,size] [,color] [,center] [,dot_type]);";
-//                                            1          2    3       4        5         6
+static char useString[] = "[minSmoothPointSize, maxSmoothPointSize, minAliasedPointSize, maxAliasedPointSize] = Screen('DrawDots', windowPtr, xy [,size] [,color] [,center] [,dot_type][, lenient]);";
+//                          1                   2                   3                    4                                         1          2    3       4        5         6           7
 static char synopsisString[] =
 "Quickly draw an array of dots.  "
 "\"xy\" is a two-row vector containing the x and y coordinates of the dot centers, "
@@ -135,7 +135,14 @@ static char synopsisString[] =
 "If you use round dot_type 1, 2 or 3 you'll also need to set a proper blending mode with the "
 "Screen('BlendFunction') command, e.g., GL_SRC_ALPHA + GL_ONE_MINUS_SRC_ALPHA. A dot_type of 4 will "
 "draw square dots like dot_type 0, but may be faster when drawing lots of dots of different sizes by "
-"use of an efficient shader based path.";
+"use of an efficient shader based path.\n"
+"\"lenient\" If set to 1, will not check the sizes of dots for validity, so you can try requesting "
+"sizes bigger than what the hardware claims to support.\n\n"
+"The optional return arguments [minSmoothPointSize, maxSmoothPointSize, minAliasedPointSize, maxAliasedPointSize] "
+"allow you to query the minimum and maximum allowed 'size' for smooth anti-aliased dots (dot_type 1,2,3) and for "
+"non anti-aliased square dots (dot_type 0 and 4). Calling [...] = Screen('DrawDots', windowPtr) will only query "
+"these point size limits without drawing any dots.\n";
+
 static char seeAlsoString[] = "BlendFunction";
 
 PsychError SCREENDrawDots(void)
@@ -158,11 +165,28 @@ PsychError SCREENDrawDots(void)
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     // Check for superfluous arguments
-    PsychErrorExit(PsychCapNumInputArgs(6));   //The maximum number of inputs
-    PsychErrorExit(PsychCapNumOutputArgs(0));  //The maximum number of outputs
+    PsychErrorExit(PsychCapNumInputArgs(7));   //The maximum number of inputs
+    PsychErrorExit(PsychCapNumOutputArgs(4));  //The maximum number of outputs
 
     // Get the window record from the window record argument and get info from the window record
     PsychAllocInWindowRecordArg(1, kPsychArgRequired, &windowRecord);
+
+    // Query for supported point size range?
+    if (PsychGetNumOutputArgs() > 0) {
+        PsychSetDrawingTarget(windowRecord);
+
+        glGetFloatv(GL_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
+        PsychCopyOutDoubleArg(1, FALSE, (double) pointsizerange[0]);
+        PsychCopyOutDoubleArg(2, FALSE, (double) pointsizerange[1]);
+
+        glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
+        PsychCopyOutDoubleArg(3, FALSE, (double) pointsizerange[0]);
+        PsychCopyOutDoubleArg(4, FALSE, (double) pointsizerange[1]);
+
+        // If this was only a query then we are done:
+        if (PsychGetNumInputArgs() < 2)
+            return(PsychError_none);
+    }
 
     // Query, allocate and copy in all vectors...
     nrpoints = 2;
@@ -280,6 +304,9 @@ PsychError SCREENDrawDots(void)
         lenient = TRUE;
     }
 
+    // Accept optional 'lenient' flag, if provided:
+    PsychCopyInFlagArg(7, FALSE, &lenient);
+
     // Set size of a single dot:
     if (!lenient && ((sizef && (sizef[0] > pointsizerange[1] || sizef[0] < pointsizerange[0])) ||
         (!sizef && (size[0] > pointsizerange[1] || size[0] < pointsizerange[0])))) {
@@ -289,8 +316,8 @@ PsychError SCREENDrawDots(void)
     }
 
     // Setup initial common point size for all points:
-    if (!lenient && !usePointSizeArray) glPointSize((sizef) ? sizef[0] : (float) size[0]);
-    if (!lenient && usePointSizeArray) glMultiTexCoord1f(GL_TEXTURE2, (sizef) ? sizef[0] : (float) size[0]);
+    if (!usePointSizeArray) glPointSize((sizef) ? sizef[0] : (float) size[0]);
+    if (usePointSizeArray) glMultiTexCoord1f(GL_TEXTURE2, (sizef) ? sizef[0] : (float) size[0]);
 
     // Setup modelview matrix to perform translation by 'center':
     glMatrixMode(GL_MODELVIEW);
@@ -318,7 +345,7 @@ PsychError SCREENDrawDots(void)
     }
 
     // Render all n points, starting at point 0, render them as POINTS:
-    if ((nrsize == 1) || (!lenient && usePointSizeArray)) {
+    if ((nrsize == 1) || usePointSizeArray) {
         // Only one common size provided, or efficient shader based
         // path in use. We can use the fast path of only submitting
         // one glDrawArrays call to draw all GL_POINTS. For a single
@@ -366,7 +393,7 @@ PsychError SCREENDrawDots(void)
             }
 
             // Setup point size for this point:
-            if (!lenient && !usePointSizeArray) glPointSize((sizef) ? sizef[i] : (float) size[i]);
+            if (!usePointSizeArray) glPointSize((sizef) ? sizef[i] : (float) size[i]);
 
             // Render point:
             glDrawArrays(GL_POINTS, i, 1);
