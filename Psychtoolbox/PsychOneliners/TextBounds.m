@@ -1,31 +1,44 @@
-function bounds=TextBounds(w,text)
-% bounds=TextBounds(window,string)
+function bounds=TextBounds(w,text,yPositionIsBaseline)
+% bounds=TextBounds(window, string [, yPositionIsBaseline=0])
 %
-% Returns the smallest enclosing rect for the drawn text, relative to
-% the current location. This bound is based on the actual pixels
-% drawn, so it incorporates effects of text smoothing, etc. "text"
-% may be a cell array or matrix of 1 or more strings. The strings are
-% drawn one on top of another, at the same initial position, before
-% the bounds are calculated. This returns the smallest box that will
-% contain all the strings. The prior contents of the scratch window
-% are lost. Usually it should be an offscreen window, so the user
-% won't see it. The scratch window should be at least twice as wide
-% and height as the text, because the text to cope with uncertainties
-% about text direction (e.g. Hebrew) and some unusual characters that extend
-% greatly to the left of their nominal starting point. If you only
-% know your nominal text size and number of characters, you might do
-% this to create your scratch window:
+% Returns the smallest enclosing rect for the drawn text, relative to the
+% current location. This bound is based on the actual pixels drawn, so it
+% incorporates effects of text smoothing, etc. "text" may be a cell array
+% or matrix of 1 or more strings. The strings are drawn one on top of
+% another, at the same initial position, before the bounds are calculated.
+% This returns the smallest box that will contain all the strings. The
+% prior contents of the scratch window are lost. Usually it should be an
+% offscreen window, so the user won't see it. The scratch window should be
+% at least twice as wide and high as the text, to cope with uncertainties
+% about text direction (e.g. Hebrew) and some unusual characters that
+% extend greatly to the left of their nominal starting point. If you only
+% know your nominal text size and number of characters, you might do this
+% to create your scratch window:
 %
-% textSize=24;
-% string='Hello world.';
-% With 'w' being the handle of the onscreen window, e.g., w=Screen('OpenWindow',0,0);
-% woff=Screen(w,'OpenOffscreenWindow',[],[0 0 3*textSize*length(string) 2*textSize]);
+% Get the bounding box.
+% textSize=48;
+% string='Good morning.';
+% yPositionIsBaseline=1; % 0 or 1
+% w=Screen('OpenWindow',0,255);
+% woff=Screen('OpenOffscreenWindow',w,[],[0 0 2*textSize*length(string) 2*textSize]);
 % Screen(woff,'TextFont','Arial');
 % Screen(woff,'TextSize',textSize);
-% Screen(woff,'TextStyle',1); % 0=plain (default for new window), 1=bold, etc.
-% bounds=TextBounds(woff,string);
-% ...
-% Screen(woff,'Close');
+% t=GetSecs;
+% bounds=TextBounds(woff,string,yPositionIsBaseline)
+% fprintf('TextBounds took %.3f seconds.\n',GetSecs-t);
+% Screen('Close',woff);
+%
+% Show that it's correct by using the bounding box to frame the text.
+% x0=100;
+% y0=100;
+% Screen(w,'TextFont','Arial');
+% Screen(w,'TextSize',textSize);
+% Screen('DrawText',w,string,x0,y0,0,255,yPositionIsBaseline);
+% Screen('FrameRect',w,0,InsetRect(OffsetRect(bounds,x0,y0),-1,-1));
+% Screen('Flip',w);
+% Speak('Click to quit');
+% GetClicks;
+% Screen('Close',w);
 %
 % The suggested window size in that call is generously large because there
 % aren't any guarantees from the font makers about how big the text might
@@ -34,16 +47,11 @@ function bounds=TextBounds(w,text)
 %
 % Be warned that TextBounds and TextCenteredBounds are slow (taking many
 % seconds) if the window is large. They use the whole window, so if the
-% window is 1024x1204 they process a million pixels. The two slowest calls
+% window is 1024x1024 they process a million pixels. The two slowest calls
 % are Screen 'GetImage' and FIND. Their processing time is proportional to
-% the number of pixels in the window.
+% the number of pixels in the window. So keep your window small.
 %
-% OSX: Also see Screen 'TextBounds'.
-%
-% The user interface would be cleaner if this function opened and closed
-% its own offscreen window, instead of writing in the user's window.
-% Unfortunately, this might cause some prohibitive overhead.
-%
+% Also see Screen 'TextBounds'.
 % Also see TextCenteredBounds.
 
 % 9/1/98   dgp wrote it.
@@ -57,31 +65,56 @@ function bounds=TextBounds(w,text)
 % 1/28/05  dgp Cosmetic.
 % 2/4/05   dgp Support both OSX and OS9.
 % 12/22/07 mk  Significant rewrite to adapt to current PTB-3.
+% 12/16/15 dgp Added yPositionIsBaseline argument.
+
+if nargin < 2 || isempty(text)
+    error('Require at least 2 arguments. bounds=TextBounds(window,string [,yPositionIsBaseline])');
+end
+
+if nargin < 3 || isempty(yPositionIsBaseline)
+    yPositionIsBaseline = 0;
+end
 
 white = 1;
 
 % Clear scratch window to background color black:
 Screen('FillRect',w,0);
 
-% Draw text strings, always with the top-left corner of text bounding box
-% in top-left corner of window:
+if yPositionIsBaseline
+    % Draw text string baseline at location x,y with a wide margin from lower
+    % left corner of screen. The left and lower margins accommodate the many
+    % fonts with descenders, and the occasional fonts that have fancy capital
+    % letters with flourishes that extend to the left of the starting point.
+    screenRect=Screen('Rect',w);
+    x0=screenRect(1)+min(2*Screen('TextSize',w),RectWidth(screenRect)/20);
+    y0=screenRect(4)-min(2*Screen('TextSize',w),RectHeight(screenRect)/2);
+else
+    % Draw text string with bounding box origin at upper left corner of screen.
+    x0=0;
+    y0=0;
+end
+
 if iscell(text)
     for i=1:length(text)
         string=char(text(i));
-        Screen('DrawText',w,string,0,0,white, [], 0);
+        Screen('DrawText',w,string,x0,y0,white,[],yPositionIsBaseline);
     end
 else
     for i=1:size(text,1)
         string=char(text(i,:));
-        Screen('DrawText',w,string,0,0,white, [], 0);
+        Screen('DrawText',w,string,x0,y0,white,[],yPositionIsBaseline);
     end
 end
 
 % Read back only 1 color channel for efficiency reasons:
 image1=Screen('GetImage', w, [], 'backBuffer', 0, 1);
 
-% Search non-zero (==non background) pixels:
+% Find all nonzero, i.e. non background, pixels:
 [y,x]=find(image1(:,:));
+
+% Use coordinates relative to the origin of the DrawText command.
+y=y-y0;
+x=x-x0;
 
 % Compute their bounding rect and return it:
 if isempty(y) || isempty(x)
@@ -89,4 +122,5 @@ if isempty(y) || isempty(x)
 else
     bounds=SetRect(min(x)-1,min(y)-1,max(x),max(y));
 end
+
 return;
