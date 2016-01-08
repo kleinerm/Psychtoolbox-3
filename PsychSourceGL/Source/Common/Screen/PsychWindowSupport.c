@@ -990,7 +990,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glClearColor(0,0,0,1);
     }
 
-    if (PsychIsGLClassic(*windowRecord)) {
+    // Use class code path for classic OpenGL, unless we are on the Raspberry Pi's VideoCore-4
+    // gpu, where this path is so slow it would cause sync-failure and other cascading trouble:
+    if (PsychIsGLClassic(*windowRecord) && !strstr((*windowRecord)->gpuCoreId, "VC4")) {
         double tDummy;
 
         // Classic OpenGL-1/2 splash image drawing code:
@@ -1042,6 +1044,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     }
     else {
         // Non-classic (OpenGL-3/4 and OpenGL-ES) splash screen display code:
+        double tDummy;
         PsychWindowRecordType *textureRecord;
         PsychCreateWindowRecord(&textureRecord);
         textureRecord->windowType = kPsychTexture;
@@ -1091,6 +1094,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glClear(GL_COLOR_BUFFER_BIT);
         if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
         PsychOSFlipWindowBuffers(*windowRecord);
+        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
 
         // Protect against multi-threading trouble if needed:
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
@@ -1098,6 +1102,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glClear(GL_COLOR_BUFFER_BIT);
         if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
         PsychOSFlipWindowBuffers(*windowRecord);
+        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
 
         // Protect against multi-threading trouble if needed:
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
@@ -1105,6 +1110,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glClear(GL_COLOR_BUFFER_BIT);
         if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
         PsychOSFlipWindowBuffers(*windowRecord);
+        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
 
         // Protect against multi-threading trouble if needed:
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
@@ -6397,6 +6403,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     psych_bool ati = FALSE;
     psych_bool intel = FALSE;
     psych_bool llvmpipe = FALSE;
+    psych_bool vc4 = FALSE;
     GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
     GLboolean nativeStereo = FALSE;
 
@@ -6423,6 +6430,10 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // Detection code for Linux DRI driver stack with ATI GPU:
     if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI")) {
         ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100");
+    }
+
+    if (strstr((char*) glGetString(GL_VENDOR), "Broadcom") || strstr((char*) glGetString(GL_RENDERER), "VC4")) {
+        vc4 = TRUE; sprintf(windowRecord->gpuCoreId, "VC4");
     }
 
     // Check if this is an open-source (Mesa/Gallium) graphics driver on Linux with X11
@@ -6695,6 +6706,14 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // just assume optimistically that it will work atm. until testing disproves this:
     if ((PSYCH_SYSTEM != PSYCH_LINUX) || nvidia) {
         if (verbose) printf("Assuming hardware supports native OpenGL primitive smoothing (points, lines).\n");
+        windowRecord->gfxcaps |= kPsychGfxCapSmoothPrimitives;
+    }
+
+    if (vc4) {
+        // The Gallium VC4 driver as of beginning 2016 doesn't support control flow in shaders yet, ie. no if/else/while/for.
+        // Therefore our shader based point smooth implementation can't work. Instead of failing totally, we pretend the hw
+        // can do point smooth so our workaround can be skipped and the user gets to see at least something:
+        if (verbose) printf("Raspberry Pi Gallium VC4 workaround: Pretending hardware supports native OpenGL primitive smoothing (points, lines).\n");
         windowRecord->gfxcaps |= kPsychGfxCapSmoothPrimitives;
     }
 
