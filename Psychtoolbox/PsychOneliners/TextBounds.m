@@ -66,6 +66,8 @@ function bounds=TextBounds(w,text,yPositionIsBaseline)
 % 2/4/05   dgp Support both OSX and OS9.
 % 12/22/07 mk  Significant rewrite to adapt to current PTB-3.
 % 12/16/15 dgp Added yPositionIsBaseline argument.
+% 01/10/16 mk  Switch GetImage buffer from backBuffer to drawBuffer for compat with
+%              use of onscreen window as scratch window with imaging pipeline active.
 
 if nargin < 2 || isempty(text)
     error('Require at least 2 arguments. bounds=TextBounds(window,string [,yPositionIsBaseline])');
@@ -107,7 +109,7 @@ else
 end
 
 % Read back only 1 color channel for efficiency reasons:
-image1=Screen('GetImage', w, [], 'backBuffer', 0, 1);
+image1=Screen('GetImage', w, [], 'drawBuffer', 0, 1);
 
 % Find all nonzero, i.e. non background, pixels:
 [y,x]=find(image1(:,:));
