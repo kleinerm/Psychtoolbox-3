@@ -38,7 +38,7 @@
  * 
  * g++ -g -fPIC -I. -I/usr/include/ -I/usr/include/freetype2/ -L/usr/lib -pie -shared -Wl,-Bsymbolic -Wl,-Bsymbolic-functions -Wl,--version-script=linuxexportlist.txt -o libptbdrawtext_ftgl.so.1 libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lGL -lGLU -lfontconfig -lfreetype
  *
- * libptbdrawtext_ftgl is copyright (c) 2010-2015 by Mario Kleiner.
+ * libptbdrawtext_ftgl is copyright (c) 2010-2016 by Mario Kleiner.
  * It is licensed to you as follows:
  *
  * Permission is hereby granted, free of charge, to any person obtaining
@@ -121,23 +121,33 @@ FT_Face ft_face;
 } fontCacheItem;
 fontCacheItem cache[MAX_CACHE_SLOTS];
 
+#ifdef _MSC_VER
+#ifdef OGLFT_BUILD
+#define OGLFT_API __declspec(dllexport)
+#else
+#define OGLFT_API __declspec(dllimport)
+#endif
+#else
+#define OGLFT_API
+#endif
+
 extern "C" {
 
-int PsychInitText(void);
-int PsychShutdownText(int context);
-int PsychRebuildFont(fontCacheItem* fi);
-int PsychSetTextFont(int context, const char* fontName);
-const char* PsychGetTextFont(int context);
-int PsychSetTextStyle(int context, unsigned int fontStyle);
-int PsychSetTextSize(int context, double fontSize);
-void PsychSetTextFGColor(int context, double* color);
-void PsychSetTextBGColor(int context, double* color);
-void PsychSetTextUseFontmapper(unsigned int useMapper, unsigned int mapperFlags);
-void PsychSetTextViewPort(int context, double xs, double ys, double w, double h);
-int PsychDrawText(int context, double xStart, double yStart, int textLen, double* text);
-int PsychMeasureText(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax);
-void PsychSetTextVerbosity(unsigned int verbosity);
-void PsychSetTextAntiAliasing(int context, int antiAliasing);
+OGLFT_API int PsychInitText(void);
+OGLFT_API int PsychShutdownText(int context);
+OGLFT_API int PsychRebuildFont(fontCacheItem* fi);
+OGLFT_API int PsychSetTextFont(int context, const char* fontName);
+OGLFT_API const char* PsychGetTextFont(int context);
+OGLFT_API int PsychSetTextStyle(int context, unsigned int fontStyle);
+OGLFT_API int PsychSetTextSize(int context, double fontSize);
+OGLFT_API void PsychSetTextFGColor(int context, double* color);
+OGLFT_API void PsychSetTextBGColor(int context, double* color);
+OGLFT_API void PsychSetTextUseFontmapper(unsigned int useMapper, unsigned int mapperFlags);
+OGLFT_API void PsychSetTextViewPort(int context, double xs, double ys, double w, double h);
+OGLFT_API int PsychDrawText(int context, double xStart, double yStart, int textLen, double* text);
+OGLFT_API int PsychMeasureText(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax);
+OGLFT_API void PsychSetTextVerbosity(unsigned int verbosity);
+OGLFT_API void PsychSetTextAntiAliasing(int context, int antiAliasing);
 
 fontCacheItem* getForContext(int contextId)
 {
@@ -173,7 +183,7 @@ fontCacheItem* getForContext(int contextId)
                 // Match! We have cached OGLFT font objects for this font on this context. Return them:
                 hitcount++;
 
-                if (_verbosity > 10) fprintf(stdout, "libptbdrawtext_ftgl: Cache hit for contextId %i at slot %i. Hit ratio is %f%%\n", contextId, i, (double) hitcount / (double) nowtime * 100);
+                if (_verbosity > 15) fprintf(stdout, "libptbdrawtext_ftgl: Cache hit for contextId %i at slot %i. Hit ratio is %f%%\n", contextId, i, (double) hitcount / (double) nowtime * 100);
 
                 // Update last access timestamp for LRU:
                 fi->timestamp = nowtime;
@@ -193,12 +203,12 @@ fontCacheItem* getForContext(int contextId)
     if ((freeslot >= 0) && ((lruslotid == -1) || (freecount > MIN_GUARANTEED_CONTEXTS))) {
         // Yes. Fill it with new font object of matching properties:
         fi = &(cache[freeslot]);
-        if (_verbosity > 9) fprintf(stdout, "libptbdrawtext_ftgl: Nothing cached for contextId %i. Using new slot %i. %i free slots remaining.\n", contextId, freeslot, freecount);
+        if (_verbosity > 12) fprintf(stdout, "libptbdrawtext_ftgl: Nothing cached for contextId %i. Using new slot %i. %i free slots remaining.\n", contextId, freeslot, freecount);
     }
     else if (lruslotid >= 0) {
         // No. Overwrite least recently used font object for current contextId:
         fi = &(cache[lruslotid]);
-        if (_verbosity > 9) fprintf(stdout, "libptbdrawtext_ftgl: Nothing cached for contextId %i but cache full. LRU replacing slot %i, age %i. %i free slots remaining.\n", contextId, lruslotid, lruage, freecount);
+        if (_verbosity > 12) fprintf(stdout, "libptbdrawtext_ftgl: Nothing cached for contextId %i but cache full. LRU replacing slot %i, age %i. %i free slots remaining.\n", contextId, lruslotid, lruage, freecount);
     }
     else {
         // Cache full, with no possibility to even LRU replace on this new context (aka window). Game over!
@@ -249,7 +259,7 @@ int PsychRebuildFont(fontCacheItem* fi)
         if (fi->faceM) delete(fi->faceM);
         fi->faceM = NULL;
 
-		if (_verbosity > 9) fprintf(stdout, "libptbdrawtext_ftgl: Destroying old font face...\n");
+		if (_verbosity > 12) fprintf(stdout, "libptbdrawtext_ftgl: Destroying old font face...\n");
 		
 		// Delete underlying FreeType representation:
         FT_Done_Face(fi->ft_face);
