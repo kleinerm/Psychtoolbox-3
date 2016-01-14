@@ -776,7 +776,7 @@ PsychError PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
         // Use GDI based text renderer on Windows, instead of display list based one?
-        if (PsychPrefStateGet_TextRenderer() == 1) {
+        if (PsychPrefStateGet_TextRenderer() >= 0) {
             // Call the GDI based renderer instead:
             return(PsychOSDrawUnicodeTextGDI(winRec, boundingbox, stringLengthChars, textUniDoubleString, xp, yp, yPositionIsBaseline, textColor, backgroundColor));
         }
@@ -1372,7 +1372,6 @@ drawtext_noop:
 // false on error. Reverts to builtin text renderer on error:
 psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 {
-#if PSYCH_SYSTEM != PSYCH_WINDOWS
     char pluginPath[FILENAME_MAX];
     char pluginName[100];
     unsigned int retrycount = 0;
@@ -1383,12 +1382,23 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
     // directly for use within the code, with no need to dlsym() manually bind'em:
     if (NULL == drawtext_plugin) {
         while ((NULL == drawtext_plugin) && (retrycount < ((PSYCH_SYSTEM == PSYCH_LINUX) ? 2 : 1))) {
-            // Assign name to search for:
             // Assign name of plugin shared library based on target OS:
-            #if PSYCH_SYSTEM == PSYCH_OSX
+            if (PSYCH_SYSTEM == PSYCH_OSX) {
                 // OS/X: Only 64-Bit OpenGL plugin.
-                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl64.dylib");
-            #else
+                sprintf(pluginName, "libptbdrawtext_ftgl64.dylib");
+            }
+
+            if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+                #ifdef PTBOCTAVE3MEX
+                    // Octave is currently 32-Bit:
+                    sprintf(pluginName, "libptbdrawtext_ftgl.dll");
+                #else
+                    // Matlab is always 64-Bit:
+                    sprintf(pluginName, "libptbdrawtext_ftgl64.dll");
+                #endif
+            }
+
+            if (PSYCH_SYSTEM == PSYCH_LINUX) {
                 // Linux: More machine architectures, also support for OpenGL-ES et al.:
 
                 // Try 32-Bit Intel, or Debian machine arch specific version first:
@@ -1396,12 +1406,12 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 
                 // ARM 32-Bit has its own version suffix, unless provided by Debian:
                 #if defined(__arm__) || defined(__thumb__)
-                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl%s_arm.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
+                    if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl%s_arm.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
                 #endif
 
                 // ARM 64-Bit has its own version suffix, unless provided by Debian:
                 #if defined(__aarch64__)
-                if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl%s_arm64.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
+                    if (retrycount == 0) sprintf(pluginName, "libptbdrawtext_ftgl%s_arm64.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
                 #endif
 
                 // Retry on Intel with 64-Bit or 32-Bit specific plugin:
@@ -1410,7 +1420,7 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
                 #else
                     if (retrycount == 1) sprintf(pluginName, "libptbdrawtext_ftgl%s.so.1", (PsychIsGLES(windowRecord)) ? "es" : "");
                 #endif
-            #endif
+            }
 
             // Try to auto-detect install location of plugin inside the Psychtoolbox/PsychBasic folder.
             // If we manage to find the path to that folder, we can load with absolute path and thereby
@@ -1418,7 +1428,12 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
             // install it, works plug & play :-)
             if (strlen(PsychRuntimeGetPsychtoolboxRoot(FALSE)) > 0) {
                 // Yes! Assemble full path name to plugin:
-                sprintf(pluginPath, "%s/PsychBasic/PsychPlugins/%s", PsychRuntimeGetPsychtoolboxRoot(FALSE), pluginName);
+                if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+                    sprintf(pluginPath, "%sPsychBasic\\PsychPlugins\\%s", PsychRuntimeGetPsychtoolboxRoot(FALSE), pluginName);
+                }
+                else {
+                    sprintf(pluginPath, "%s/PsychBasic/PsychPlugins/%s", PsychRuntimeGetPsychtoolboxRoot(FALSE), pluginName);
+                }
                 if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: DrawText: Trying to load external text renderer plugin from following file: [ %s ]\n", pluginPath);
             }
             else {
@@ -1428,16 +1443,26 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
                 if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: DrawText: Failed to find installation directory for text renderer plugin [ %s ].\nHoping it is somewhere in the library search path...\n", pluginPath);
             }
 
-            drawtext_plugin = dlopen(pluginPath, RTLD_NOW | RTLD_GLOBAL);
-            if (NULL == drawtext_plugin) {
-                // First try failed:
-                if (PsychPrefStateGet_Verbosity() > 3) {
-                    printf("PTB-DEBUG: DrawText: Failed to load external drawtext plugin [%s]. Retrying under generic name [%s].\n", (const char*) dlerror(), pluginName);
+            #if PSYCH_SYSTEM == PSYCH_WINDOWS
+                drawtext_plugin = LoadLibrary(pluginPath);
+                if (NULL == drawtext_plugin) {
+                    // First - and only - try failed:
+                    if (PsychPrefStateGet_Verbosity() > 3) {
+                        printf("PTB-DEBUG: DrawText: Failed to load external drawtext plugin [%s].\n", (const char*) "Unknown error");
+                    }
                 }
-
-                sprintf(pluginPath, "%s", pluginName);
+            #else
                 drawtext_plugin = dlopen(pluginPath, RTLD_NOW | RTLD_GLOBAL);
-            }
+                if (NULL == drawtext_plugin) {
+                    // First try failed:
+                    if (PsychPrefStateGet_Verbosity() > 3) {
+                        printf("PTB-DEBUG: DrawText: Failed to load external drawtext plugin [%s]. Retrying under generic name [%s].\n", (const char*) dlerror(), pluginName);
+                    }
+
+                    sprintf(pluginPath, "%s", pluginName);
+                    drawtext_plugin = dlopen(pluginPath, RTLD_NOW | RTLD_GLOBAL);
+                }
+            #endif
 
             retrycount++;
         }
@@ -1452,9 +1477,13 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
     if (NULL == drawtext_plugin) {
         // Failed! Revert to standard text rendering code below:
         if (PsychPrefStateGet_Verbosity() > 1) {
-            printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [%s]. Reverting to legacy text renderer.\n", (const char*) dlerror());
-            printf("PTB-WARNING: DrawText: Functionality of Screen('DrawText') and Screen('TextBounds') may be limited and text quality may be impaired.\n");
-            printf("PTB-WARNING: DrawText: Type 'help DrawTextPlugin' at the command prompt to receive instructions for troubleshooting.\n\n");
+            #if PSYCH_SYSTEM != PSYCH_WINDOWS
+                printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [%s]. Reverting to legacy text renderer.\n", (const char*) dlerror());
+                printf("PTB-WARNING: DrawText: Functionality of Screen('DrawText') and Screen('TextBounds') may be limited and text quality may be impaired.\n");
+                printf("PTB-WARNING: DrawText: Type 'help DrawTextPlugin' at the command prompt to receive instructions for troubleshooting.\n\n");
+            #else
+                printf("PTB-INFO: DrawText: Failed to load external drawtext plugin. Reverting to legacy GDI text renderer. 'help DrawTextPlugin' for info.\n");
+            #endif
         }
 
         // Switch to renderer zero, which is the legacy fallback renderer on all operating systems:
@@ -1467,21 +1496,37 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
     // Plugin loaded. Perform first time init, if needed:
     if (drawtext_plugin_firstcall) {
         // Dynamically bind all functions to their proper plugin entry points:
-        PsychPluginInitText = dlsym(drawtext_plugin, "PsychInitText");
-        PsychPluginShutdownText = dlsym(drawtext_plugin, "PsychShutdownText");
-        PsychPluginSetTextFont = dlsym(drawtext_plugin, "PsychSetTextFont");
-        PsychPluginGetTextFont = dlsym(drawtext_plugin, "PsychGetTextFont");
-        PsychPluginSetTextStyle = dlsym(drawtext_plugin, "PsychSetTextStyle");
-        PsychPluginSetTextSize = dlsym(drawtext_plugin, "PsychSetTextSize");
-        PsychPluginSetTextFGColor = dlsym(drawtext_plugin, "PsychSetTextFGColor");
-        PsychPluginSetTextBGColor = dlsym(drawtext_plugin, "PsychSetTextBGColor");
-        PsychPluginSetTextUseFontmapper = dlsym(drawtext_plugin, "PsychSetTextUseFontmapper");
-        PsychPluginSetTextViewPort = dlsym(drawtext_plugin, "PsychSetTextViewPort");
-        PsychPluginDrawText = dlsym(drawtext_plugin, "PsychDrawText");
-        PsychPluginMeasureText = dlsym(drawtext_plugin, "PsychMeasureText");
-        PsychPluginSetTextVerbosity = dlsym(drawtext_plugin, "PsychSetTextVerbosity");
-        PsychPluginSetTextAntiAliasing = dlsym(drawtext_plugin, "PsychSetTextAntiAliasing");
-
+        #if PSYCH_SYSTEM != PSYCH_WINDOWS
+            PsychPluginInitText = dlsym(drawtext_plugin, "PsychInitText");
+            PsychPluginShutdownText = dlsym(drawtext_plugin, "PsychShutdownText");
+            PsychPluginSetTextFont = dlsym(drawtext_plugin, "PsychSetTextFont");
+            PsychPluginGetTextFont = dlsym(drawtext_plugin, "PsychGetTextFont");
+            PsychPluginSetTextStyle = dlsym(drawtext_plugin, "PsychSetTextStyle");
+            PsychPluginSetTextSize = dlsym(drawtext_plugin, "PsychSetTextSize");
+            PsychPluginSetTextFGColor = dlsym(drawtext_plugin, "PsychSetTextFGColor");
+            PsychPluginSetTextBGColor = dlsym(drawtext_plugin, "PsychSetTextBGColor");
+            PsychPluginSetTextUseFontmapper = dlsym(drawtext_plugin, "PsychSetTextUseFontmapper");
+            PsychPluginSetTextViewPort = dlsym(drawtext_plugin, "PsychSetTextViewPort");
+            PsychPluginDrawText = dlsym(drawtext_plugin, "PsychDrawText");
+            PsychPluginMeasureText = dlsym(drawtext_plugin, "PsychMeasureText");
+            PsychPluginSetTextVerbosity = dlsym(drawtext_plugin, "PsychSetTextVerbosity");
+            PsychPluginSetTextAntiAliasing = dlsym(drawtext_plugin, "PsychSetTextAntiAliasing");
+        #else
+            PsychPluginInitText = GetProcAddress(drawtext_plugin, "PsychInitText");
+            PsychPluginShutdownText = GetProcAddress(drawtext_plugin, "PsychShutdownText");
+            PsychPluginSetTextFont = GetProcAddress(drawtext_plugin, "PsychSetTextFont");
+            PsychPluginGetTextFont = GetProcAddress(drawtext_plugin, "PsychGetTextFont");
+            PsychPluginSetTextStyle = GetProcAddress(drawtext_plugin, "PsychSetTextStyle");
+            PsychPluginSetTextSize = GetProcAddress(drawtext_plugin, "PsychSetTextSize");
+            PsychPluginSetTextFGColor = GetProcAddress(drawtext_plugin, "PsychSetTextFGColor");
+            PsychPluginSetTextBGColor = GetProcAddress(drawtext_plugin, "PsychSetTextBGColor");
+            PsychPluginSetTextUseFontmapper = GetProcAddress(drawtext_plugin, "PsychSetTextUseFontmapper");
+            PsychPluginSetTextViewPort = GetProcAddress(drawtext_plugin, "PsychSetTextViewPort");
+            PsychPluginDrawText = GetProcAddress(drawtext_plugin, "PsychDrawText");
+            PsychPluginMeasureText = GetProcAddress(drawtext_plugin, "PsychMeasureText");
+            PsychPluginSetTextVerbosity = GetProcAddress(drawtext_plugin, "PsychSetTextVerbosity");
+            PsychPluginSetTextAntiAliasing = GetProcAddress(drawtext_plugin, "PsychSetTextAntiAliasing");
+        #endif
         // Assign current level of verbosity:
         PsychPluginSetTextVerbosity((unsigned int) PsychPrefStateGet_Verbosity());
 
@@ -1492,16 +1537,6 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
         // parameters, based on the font/text spec provided by us:
         PsychPluginSetTextUseFontmapper(1, 0);
     }
-
-#else
-    if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [Not supported on MS-Windows yet]. Reverting to standard text renderer.\n");
-
-    // Switch to renderer one, which is the default renderer on Windows:
-    PsychPrefStateSet_TextRenderer(1);
-
-    // Return failure:
-    return(FALSE);
-#endif
 
     // Return success:
     return(TRUE);
@@ -1545,6 +1580,8 @@ void PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord)
             #if PSYCH_SYSTEM != PSYCH_WINDOWS
             // Jettison plugin:
             dlclose(drawtext_plugin);
+            #else
+            FreeLibrary(drawtext_plugin);
             #endif
 
             drawtext_plugin = NULL;
@@ -1945,8 +1982,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 
     // Does usercode want us to use a text rendering plugin instead of our standard OS specific renderer?
     // If so, load it if not already loaded:
-    if (((PsychPrefStateGet_TextRenderer() == 2) || ((PsychPrefStateGet_TextRenderer() == 1) && (PSYCH_SYSTEM != PSYCH_WINDOWS))) &&
-        PsychLoadTextRendererPlugin(winRec)) {
+    if ((PsychPrefStateGet_TextRenderer() == 1) && PsychLoadTextRendererPlugin(winRec)) {
 
         // Use external dynamically loaded plugin:
 
@@ -2052,8 +2088,8 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
         PsychErrorExitMsg(PsychError_user, "The external text renderer plugin failed to render the text string for some reason!");
     }
 
-    // If we reach this point then either text rendering via OS specific renderer is requested, or
-    // the external rendering plugin failed to load and we use the OS specific renderer as fallback.
+    // If we reach this point then either text rendering via OS specific legacy renderer is requested, or
+    // the external rendering plugin failed to load and we use the OS specific legacy renderer as fallback.
     return(PsychOSDrawUnicodeText(winRec, boundingbox, stringLengthChars, textUniDoubleString, xp, yp, yPositionIsBaseline, textColor, backgroundColor));
 }
 
