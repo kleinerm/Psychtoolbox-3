@@ -1,7 +1,8 @@
 % GStreamer - Installation instructions for the GStreamer media framework.
 %
 % Psychtoolbox uses the GStreamer multi-media framework for all multi-media
-% related operations.
+% related operations. On Windows with Matlab, GStreamer is also needed for
+% high quality text rendering via Screen('DrawText').
 %
 % All movie playback, movie creation, video capture and video recording
 % operations are based on GStreamer. These functions won't work without a
@@ -9,7 +10,7 @@
 % capture from firewire DCAM/IIDC machine vision cameras on Linux and OSX).
 %
 % You will need at least version 1.0 of GStreamer, but we recommend to
-% use the latest available releases of the version 1 series.
+% use the latest available stable release of the version 1 series.
 %
 % Installation instructions:
 %
@@ -37,12 +38,16 @@
 %
 % MS-Windows and Apple OSX:
 %
-% You must install GStreamer if you want to use multi-media functions! If
-% you don't intend to use multi-media functions then installation of
+% You must install GStreamer if you want to use multi-media functions!
+% You must also install GStreamer if you want to use the high-quality text
+% renderer on Windows with Matlab, instead of the lower quality legacy GDI
+% text renderer.
+%
+% If you don't intend to use such functionality then installation of
 % GStreamer is optional. Screen will work normally, but abort with an error
 % message if you try to use any multi-media functions. For use with Octave-4 on
 % Windows you must install GStreamer regardless if you want to use multi-media
-% functionality, as the Screen() mex file won't work at all without GStreamer
+% functionality or not, as the Screen() mex file won't work at all without GStreamer
 % installed.
 %
 % Download and install the latest 64-Bit ("x86_64") GStreamer runtimes from:
@@ -53,17 +58,17 @@
 % system for best reliability and performance. However, as a convenience, at time
 % of this writing (February 2015) the required downloads would be:
 %
-% For MS-Windows: 64-Bit Intel runtime v1.6.1 for use with 64-Bit Matlab.
+% For MS-Windows: 64-Bit Intel runtime v1.6.2 for use with 64-Bit Matlab.
 %
-% <http://gstreamer.freedesktop.org/data/pkg/windows/1.6.1/gstreamer-1.0-x86_64-1.6.1.msi>
+% <http://gstreamer.freedesktop.org/data/pkg/windows/1.6.2/gstreamer-1.0-x86_64-1.6.2.msi>
 %
-% For MS-Windows: 32-Bit Intel runtime v1.6.1 for use with 32-Bit GNU/Octave-4.
+% For MS-Windows: 32-Bit Intel runtime v1.6.2 for use with 32-Bit GNU/Octave-4.
 %
-% <http://gstreamer.freedesktop.org/data/pkg/windows/1.6.1/gstreamer-1.0-x86-1.6.1.msi>
+% <http://gstreamer.freedesktop.org/data/pkg/windows/1.6.2/gstreamer-1.0-x86-1.6.2.msi>
 %
-% For Apple OSX: Runtime v1.6.1
+% For Apple OSX: Runtime v1.6.2
 %
-% <http://gstreamer.freedesktop.org/data/pkg/osx/1.6.1/gstreamer-1.0-1.6.1-x86_64.pkg>
+% <http://gstreamer.freedesktop.org/data/pkg/osx/1.6.1/gstreamer-1.0-1.6.2-x86_64.pkg>
 %
 %
 % When the installer asks you to select the components it should install,
