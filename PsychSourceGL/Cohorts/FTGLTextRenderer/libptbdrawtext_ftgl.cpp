@@ -532,6 +532,11 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
         glRectf(xmin + xStart, ymin + yStart, xmax + xStart, ymax + yStart);
     }
 
+    // Enable alpha-test against an alpha-value greater zero during draw.
+    // This way, non-text pixels (with alpha equal to zero) are discarded.
+    glEnable(GL_ALPHA_TEST);
+    glAlphaFunc(GL_GREATER, 0);
+
     // Draw the text at selected start location:
     if (fi->faceT) {
         fi->faceT->draw(xStart, yStart, uniCodeText);
@@ -539,6 +544,9 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     else {
         fi->faceM->draw(xStart, yStart, uniCodeText);
     }
+
+    // Disable alpha test after blit:
+    glDisable(GL_ALPHA_TEST);
 
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
