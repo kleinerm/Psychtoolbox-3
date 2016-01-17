@@ -21,9 +21,10 @@ function newRect = OffsetRect(oldRect,x,y)
 % 5/31/09  mk   Improved error handling. Add support for offsetting a
 %               single rect multiple times, ie., pass x,y as vectors, then
 %               create many offset versions of single input rect.
+% 1/17/16  mscain Resolve ambiguity for 4x4 matrix to fix failure.
 
 if nargin~=3
-	error('Usage:  newRect = OffsetRect(oldRect,x,y)');
+    error('Usage:  newRect = OffsetRect(oldRect,x,y)');
 end
 
 if PsychNumel(oldRect) == 4
@@ -50,8 +51,10 @@ if PsychNumel(oldRect) == 4
         end
     end
 else
-    % Multirect case: Offsets (x,y) can be vectors, or a single point:    
-    if size(oldRect, 1)==4
+    % Multirect case: Offsets (x,y) can be vectors, or a single point:
+    % A 4x4 matrix is a special case, treated as 4 rects in 4 rows to
+    % resolve the ambiguity, as proposed by GitHub user mscain.
+    if size(oldRect, 1)==4 && size(oldRect, 2)~=4
         newRect(RectTop, :) = oldRect(RectTop, :) + y;
         newRect(RectBottom, :) = oldRect(RectBottom, :) + y;
         newRect(RectLeft, :) = oldRect(RectLeft, :) + x;
