@@ -141,6 +141,7 @@ function err = Snd(command,signal,rate,sampleSize)
 % 7/20/15    mk Make commands case insensitive, white-space cleanup, try to
 %               make Snd('Open'); Snd('Close'); sequences work to avoid problems
 %               like in PTB forum message #19284 on Linux or Windows.
+% 1/19/16    mk Make more robust against failing InitializePsychSound. Fallback to sound().
 
 persistent ptb_snd_oldstyle;
 persistent pahandle;
@@ -170,7 +171,15 @@ if isempty(ptb_snd_oldstyle)
         fprintf('Snd(): Initializing PsychPortAudio driver for sound output.\n');
 
         % Low-Latency preinit. Not that we'd need it, but doesn't hurt:
-        InitializePsychSound(1);
+        try
+            InitializePsychSound(1);
+        catch
+            fprintf('Snd(): ERROR!\n');
+            ple;
+            psychlasterror('reset');
+            fprintf('Snd(): PsychPortAudio initialization failed - See error messages above. Trying to use old sound() fallback instead.\n');
+            ptb_snd_oldstyle = 1;
+        end
     end
 end
 
