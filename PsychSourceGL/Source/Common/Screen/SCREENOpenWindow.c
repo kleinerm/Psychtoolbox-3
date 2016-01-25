@@ -319,6 +319,10 @@ PsychError SCREENOpenWindow(void)
         }
     }
 
+    // Filter out "used up" flags, they must not pass into PsychOpenOnscreenWindow() or PsychInitializeImagingPipeline(),
+    // or they might screw up MSAA or fast offscreen window support:
+    imagingmode &= ~kPsychNeedRetinaResolution;
+
     // We require use of the imaging pipeline if stereomode for dualwindow display is requested.
     // This makes heavy use of FBO's and blit operations, so imaging pipeline is needed.
     if ((stereomode==kPsychDualWindowStereo) || (imagingmode & kPsychNeedDualWindowOutput)) {

@@ -1335,6 +1335,20 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 {
     Display* dpy = windowRecord->targetSpecific.deviceContext;
 
+    // We have to rebind the OpenGL context for this swapbuffers call to work around some
+    // mesa bug for intel drivers which would cause a crash without context:
+    PsychLockDisplay();
+    glXMakeCurrent(dpy, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.contextObject);
+    PsychUnlockDisplay();
+
+    // Perform a fully synced flip with backbuffer cleared to black, to have a defined final
+    // frontbuffer color for switching back to windowing system. Avoids leaving pixel trash
+    // behind on some multi-x-screen setups with some drivers:
+    glClearColor(0,0,0,1);
+    glClear(GL_COLOR_BUFFER_BIT);
+    PsychOSFlipWindowBuffers(windowRecord);
+    PsychOSGetPostSwapSBC(windowRecord);
+
     // Check if we are trying to close the window after it had an "odd" (== non-even)
     // number of bufferswaps. If so, we execute one last bufferswap to make the count
     // even. This means that if this window was swapped via page-flipping, the system
@@ -1343,12 +1357,6 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     // managers (e.g., Compiz).
     if (PsychOSGetPostSwapSBC(windowRecord) % 2) {
         // Uneven count. Submit a swapbuffers request and wait for it to truly finish:
-
-        // We have to rebind the OpenGL context for this swapbuffers call to work around some
-        // mesa bug for intel drivers which would cause a crash without context:
-        PsychLockDisplay();
-        glXMakeCurrent(dpy, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.contextObject);
-        PsychUnlockDisplay();
 
         // A glClear to touch the framebuffer before flip. Why? To accomodate some quirks of
         // the Intel ddx as of 2.99.917 with DRI2+SNA and triple-buffering enabled. Makes

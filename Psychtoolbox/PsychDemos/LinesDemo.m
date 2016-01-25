@@ -1,4 +1,3 @@
-
 function LinesDemo
 % Line motion demo using SCREEN('DrawLines') subfunction
 % Derived from DotDemo, whose original author was Keith Schneider, 12/13/04
@@ -10,6 +9,7 @@ function LinesDemo
 %
 % mm/dd/yy
 % 12/03/06 Derived it from DotDemo. (MK)
+% 12/15/15 Query and obey gpu line width limits. (MK)
 
 AssertOpenGL;
 
@@ -56,7 +56,7 @@ try
     end;
 
     white = WhiteIndex(w);
-    HideCursor;	% Hide the mouse cursor
+    HideCursor; % Hide the mouse cursor
 
     % Do initial flip...
     vbl=Screen('Flip', w);
@@ -70,9 +70,9 @@ try
     s = dot_w * ppd;                                        % line size (pixels)
     fix_cord = [center-fix_r*ppd center+fix_r*ppd];
 
-    rmax = max_d * ppd;	% maximum radius of annulus (pixels from center)
+    rmax = max_d * ppd; % maximum radius of annulus (pixels from center)
     rmin = min_d * ppd; % minimum
-    r = rmax * sqrt(rand(ndots,1));	% r
+    r = rmax * sqrt(rand(ndots,1)); % r
     r(r<rmin) = rmin;
     t = 2*pi*rand(ndots,1);                     % theta polar coordinate
     cs = [cos(t), sin(t)];
@@ -96,6 +96,10 @@ try
         s=(1+rand(1, ndots)*(differentsizes-1))*s;
     end;
 
+    % Clamp line widths to range supported by graphics hardware:
+    [minsmooth,maxsmooth] = Screen('DrawLines', w)
+    s = min(max(s, minsmooth), maxsmooth);
+
     xymatrix=zeros(2, ndots*2);
 
     % --------------
@@ -103,7 +107,7 @@ try
     % --------------
     for i = 1:nframes
         if (i>1)
-            Screen('FillOval', w, uint8(white), fix_cord);	% draw fixation dot (flip erases it)
+            Screen('FillOval', w, uint8(white), fix_cord);  % draw fixation dot (flip erases it)
             Screen('DrawLines', w, xymatrix, s, colvect, center,1);  % change 1 to 0 to draw non anti-aliased lines.
             Screen('DrawingFinished', w); % Tell PTB that no further drawing commands will follow before Screen('Flip')
         end;
@@ -113,12 +117,12 @@ try
         end;
 
         oldxy = xy - 15*dxdy;
-        xy = xy + dxdy;						% move lines
-        r = r + dr;							% update polar coordinates too
+        xy = xy + dxdy; % move lines
+        r = r + dr; % update polar coordinates too
 
         % check to see which lines have gone beyond the borders of the
         % annuli
-        r_out = find(r > rmax | r < rmin | rand(ndots,1) < f_kill);	% lines to reposition
+        r_out = find(r > rmax | r < rmin | rand(ndots,1) < f_kill); % lines to reposition
         nout = length(r_out);
 
         if nout
@@ -154,9 +158,9 @@ try
         vbl=Screen('Flip', w, vbl + (waitframes-0.5)*ifi);
     end;
 
-    ShowCursor
+    ShowCursor;
     Screen('CloseAll');
 catch
-    ShowCursor
+    ShowCursor;
     Screen('CloseAll');
 end

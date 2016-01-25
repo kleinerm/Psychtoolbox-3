@@ -145,8 +145,12 @@ try
     % requested:
     if (differentsizes>0)
         s=(1+rand(1, ndots)*(differentsizes-1))*s;
-    end;
-    
+    end
+
+    % Clamp point sizes to range supported by graphics hardware:
+    [minsmooth,maxsmooth] = Screen('DrawDots', w)
+    s = min(max(s, minsmooth), maxsmooth);
+
     buttons=0;
     
     % --------------

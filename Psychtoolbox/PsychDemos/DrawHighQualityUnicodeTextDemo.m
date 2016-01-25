@@ -82,9 +82,9 @@ try
     % Draw some yellow oval, just to make the scene more interesting...
     Screen('FillOval', w, [255 255 0], [0 0 400 400]);
 
-    % Select 'Courier New' as font, choose a text size of 48pts and a
+    % Select 'Arial' as font, choose a text size of 48pts and a
     % default text style:
-    Screen('TextFont',w, 'Courier New');
+    Screen('TextFont',w, 'Arial');
     Screen('TextSize',w, 48);
     Screen('TextStyle', w, 0);
     
@@ -96,7 +96,7 @@ try
     % Add to the text, starting at the last text cursor position. This
     % should append the text to the previously drawn text...
     Screen('DrawText', w, double('World! Smooth & Funky'));
-    
+
     % Now for some Unicode text rendering... 
     % The following array of double values encodes some japanese text in
     % UTF-16 Unicode. Unicode text must be passed to Screens text drawing
@@ -137,15 +137,16 @@ try
     % After that, text drawing seems to "just work" with our "Courier New"
     % font as selected above.
     
-    % Under OS/X...
+    % Under OS/X if the legacy text renderer type 0 is used ...
     if IsOSX
         % ... we must select a font that supports japanese characters...
         Screen('TextFont', w, 'Hiragino Mincho Pro');
     end
 
-    if IsLinux
-        % On Linux, we can auto-select fonts by their supported languages,
-        % e.g., we simply require a font with...
+    if Screen('Preference', 'TextRenderer') == 1
+        % We can auto-select fonts by their supported languages on the
+        % default cross-platform text renderer plugin (type 1), e.g., we
+        % simply require a font with...
         if 1
             % ... support for the 'ja'panese language, whatever fits best:
             Screen('TextFont', w, '-:lang=ja');
@@ -156,7 +157,6 @@ try
             % hebrew characters (unicode code points) then:
             unicodetext = 1488:1514;
         end
-        % ... this would also work on OS/X if 'TextRenderer', type 2 is selected ...
     end
 
     % Let's draw the text once with the low-level Screen command at

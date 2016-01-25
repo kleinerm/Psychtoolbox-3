@@ -347,6 +347,7 @@ function [rc, varargout] = moglmorpher(cmd, arg1, arg2, arg3, arg4, arg5)
 %
 % 10.01.2013  Fix bug in argument checking (MK).
 % 04.04.2013  Make OpenGL-ES compatible, at least basic functionality (MK).
+% 08.01.2016  Require 32 bit float framebuffers and textures for GPU based morphing (MK).
 
 % The GL OpenGL constant definition struct is shared with all other modules:
 global GL;
@@ -504,10 +505,9 @@ if isempty(gpubasedmorphing)
             (~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_APPLE_float_pixels')) || ...
              ~isempty(findstr(glGetString(GL.EXTENSIONS), '_color_buffer_float')))
         % Test passed: All required extensions are supported.
-        
+
         % Check if at least minimal imaging pipeline is active. Otherwise
         % this won't work:
-        
         [targetwindow, IsOpenGLRendering] = Screen('GetOpenGLDrawMode');
         if IsOpenGLRendering
             % Disable OpenGL mode:
@@ -515,7 +515,7 @@ if isempty(gpubasedmorphing)
         end
 
         winfo=Screen('GetWindowInfo', win);
-        
+
         if IsOpenGLRendering
             % Reenable OpenGL mode:
             Screen('BeginOpenGL', targetwindow);
@@ -526,10 +526,16 @@ if isempty(gpubasedmorphing)
             fprintf('moglmorpher: HINT: Please set the optional "imagingMode" flag of Screen(''OpenWindow'', ...)\n');
             fprintf('moglmorpher: HINT: at least equal to "kPsychNeedFastOffscreenWindows" in order to enable fast mode.\n\n');
         else
-            % Switch to fully GPU based morphing and rendering. All work done by GPU, CPU
-            % will be mostly idle:
-            gpubasedmorphing = 1;
-            fprintf('moglmorpher: INFO: Fully GPU based Morphing & Rendering enabled!\n');
+            % We also need floating point textures and framebuffers of 32 bit float format:
+            if winfo.GLSupportsFBOUpToBpc < 32 || winfo.GLSupportsTexturesUpToBpc < 32
+                fprintf('\n\nmoglmorpher: INFO: Your gfx-hardware is not capable of handling textures and buffers with the required precision\n');
+                fprintf('moglmorpher: INFO: for GPU based morphing. Therefore only using CPU based morphing.\n');
+            else
+                % Switch to fully GPU based morphing and rendering. All work done by GPU, CPU
+                % will be mostly idle:
+                gpubasedmorphing = 1;
+                fprintf('moglmorpher: INFO: Fully GPU based Morphing & Rendering enabled!\n');
+            end
         end
     else
         fprintf('moglmorpher: INFO: Only using CPU based Morphing.\n');
