@@ -3,19 +3,26 @@
 % You may have arrived here because Screen() instructed you to go here
 % after Screen failed to load the external text renderer plugin.
 %
-% On both GNU/Linux and Apple MacOS/X, the functions Screen('DrawText') and
-% Screen('TextBounds') use an external text rendering plugin for
+% On all operating systems the functions Screen('DrawText') and
+% Screen('TextBounds') try to use an external text rendering plugin for
 % drawing and handling of high quality text. This allows for advanced text
 % layout and formatting, high-quality anti-aliased rendering of text at
 % arbitrary text sizes, support for modern fonts like TrueType, and support
 % for drawing of the full international Unicode character set.
 %
-% The plugin-based textrenderer is selected on OS/X and Linux by default.
+% This plugin-based textrenderer type 1 is selected by default.
+%
 % On OSX one can still select Apple's CoreText text renderer via the command
 % Screen('Preference','TextRenderer', 0); although Apples text renderer is
-% inferior in essentially any respect. Apples CoreText renderer would also
+% inferior in essentially any aspect. Apples CoreText renderer would also
 % get automatically selected if the plugin renderer would not work for some
-% reason.
+% reason. On MS-Windows one can still select the legacy MS-Windows GDI text
+% renderer via Screen('Preference','TextRenderer', 0). This renderer provides
+% lower quality anti-aliasing, less accurate computation of text bounding boxes
+% via Screen('TextBounds'), and less accurate text positioning, as well as a
+% lower text drawing speed. Additionally this legacy GDI text renderer has
+% problems on HiDPI "Retina" displays and can misrender text in both size and
+% appearance.
 %
 % The text renderer plugin implements a high-speed renderer based on a
 % combination of multiple free software libraries for text rendering and
@@ -44,7 +51,7 @@
 % The source code of the plugin can be found in the Psychtoolbox source
 % tree under PsychSourceGL/Cohorts/FTGLTextRenderer/
 %
-% The plugins themselves - one per operating system - are stored in the
+% The plugins themselves are stored in the
 % Psychtoolbox/PsychBasic/PsychPlugins folder of your Psychtoolbox
 % installation. This is where Screen() expects to find the plugins for
 % dynamic loading.
@@ -53,12 +60,12 @@
 % FontConfig libraries on your operating system, ie., somewhere in the
 % system library search path.
 %
-% These libraries are part of the default installation of any decent
+% On Linux these libraries are part of the default installation of any decent
 % GNU/Linux distribution, so there ain't any need for manual setup work on
 % your part.
 %
-% In the unlikely case they are missing on your Linux setup, something like
-% the following commands (on a Debian compatible system like Ubuntu Linux)
+% In the extremely unlikely case they are missing on your Linux setup, something
+% like the following commands (on a Debian compatible system like Ubuntu Linux)
 % should do the job:
 %
 % sudo apt-get install freetype
@@ -69,6 +76,12 @@
 %
 % On OS/X, these libraries are part of the X-Server, so if you have an
 % X-Server installed, you'll have those libraries available.
+%
+% On MS-Windows with GNU/Octave the libraries are bundled with Octave.
+% On MS-Windows with Matlab you will need to install the GStreamer multi-
+% media framework - see "help GStreamer" for installation instructions -
+% otherwise Psychtoolbox will use the old lower quality GDI text renderer
+% instead.
 %
 % Reasons for failure to load the plugin:
 %
@@ -84,6 +97,10 @@
 %    required by the plugin, and some diagnostic to tell you if matching
 %    libraries were found or are missing. This should allow you to find out
 %    what libraries are missing or incompatible, and to fix the problem.
+%
+%    Usually just make sure to have the software installed which is mentioned
+%    above: X11 on OSX, GStreamer on Windows when used with Matlab, nothing
+%    to do on Linux.
 %
 % 2. The plugin can't be found in your Psychtoolbox/PsychBasic/PsychPlugins
 %    folder, either because it is missing, or the path to that folder can't

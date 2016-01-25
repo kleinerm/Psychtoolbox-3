@@ -70,6 +70,7 @@ function DotDemo(showSprites, waitframes)
 %                   screen.
 % 5/31/05   mk      Some modifications to use new Flip command...
 % 4/18/10   mk      Add support for demo'ing PsychDrawSprites2D() command.
+% 12/15/15  mk      Query and obey gpu point size limits.
 
 AssertOpenGL;
 
@@ -184,8 +185,11 @@ try
     % requested:
     if (differentsizes>0)
         s = (1+rand(1, ndots)*(differentsizes-1))*s;
-        s = max(s, 1);
     end;
+
+    % Clamp point sizes to range supported by graphics hardware:
+    [minsmooth,maxsmooth] = Screen('DrawDots', w)
+    s = min(max(s, minsmooth), maxsmooth);
 
     % Wanna show textured sprites instead of dots?
     if showSprites == 1
@@ -278,10 +282,10 @@ try
         vbl=Screen('Flip', w, vbl + (waitframes-0.5)*ifi);
     end;
     Priority(0);
-    ShowCursor
+    ShowCursor;
     Screen('CloseAll');
 catch
     Priority(0);
-    ShowCursor
+    ShowCursor;
     Screen('CloseAll');
 end

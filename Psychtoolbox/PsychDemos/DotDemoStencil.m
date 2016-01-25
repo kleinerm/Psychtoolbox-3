@@ -115,7 +115,7 @@ try
 
     doublebuffer=1
     screens=Screen('Screens');
-	screenNumber=max(screens);
+    screenNumber=max(screens);
     InitializeMatlabOpenGL(0,0);
     
     % [w, rect] = Screen('OpenWindow', screenNumber, 0,[1,1,801,601],[], doublebuffer+1);
@@ -133,7 +133,7 @@ try
     % for drawing of smoothed points:
     Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     [center(1), center(2)] = RectCenter(rect);
-	 fps=Screen('FrameRate',w);      % frames per second
+    fps=Screen('FrameRate',w);      % frames per second
     ifi=Screen('GetFlipInterval', w);
     if fps==0
        fps=1/ifi;
@@ -180,8 +180,12 @@ try
     % requested:
     if (differentsizes>0)
         s=(1+rand(1, ndots)*(differentsizes-1))*s;        
-    end;
-    
+    end
+
+    % Clamp point sizes to range supported by graphics hardware:
+    [minsmooth,maxsmooth] = Screen('DrawDots', w)
+    s = min(max(s, minsmooth), maxsmooth);
+
     buttons=0;
 
     % Wanna show textured sprites instead of dots?
