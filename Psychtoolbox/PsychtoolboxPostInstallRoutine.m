@@ -61,6 +61,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 09/23/2014 No support for OSX 10.7 and earlier anymore. (MK)
 % 10/05/2014 Add some request for donations at the end. (MK)
 % 10/17/2015 Also add call to PsychStartup() to Octave startup for MS-Windows. (MK)
+% 01/27/2016 Use Octave3 folder for mex files for both Octave-3 and Octave-4. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -310,9 +311,17 @@ if IsOctave
         octavev = sscanf(version, '%i.%i');
         octavemajorv = octavev(1);
         octaveminorv = octavev(2);
-        
-        rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
-        
+
+        fprintf('Octave major version %i detected. Will prepend the following folder to your Octave path:\n', octavemajorv);
+
+        % Octave-3 and Octave-4 can share the same mex files in the Octave-3
+        % folder on Linux:
+        if ismember(octavemajorv, [3,4]) && IsLinux
+            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave3'];
+        else
+            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
+        end
+
         % Add proper OS dependent postfix:
         if IsLinux
             rdir = [rdir 'LinuxFiles'];
@@ -336,7 +345,6 @@ if IsOctave
             rdir = [rdir '64'];
         end
         
-        fprintf('Octave major version %i detected. Will prepend the following folder to your Octave path:\n', octavemajorv);
         fprintf(' %s ...\n', rdir);
         addpath(rdir);
         
