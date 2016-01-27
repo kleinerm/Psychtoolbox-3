@@ -1,5 +1,5 @@
 function striplibsfrommexfile(filename, testrun, alsorenameit)
-% striplibsfrommexfile(filename [, testrun=0][, alsorenameit=0]);
+% striplibsfrommexfile(filename [, testrun=0][, alsorenameit=1]);
 %
 % Remove a certain set of dynamic library dependencies from MEX/OCT file
 % given via 'filename'. Optional 'testrun' if set to non-zero value will
@@ -23,7 +23,7 @@ if nargin < 2 || isempty(testrun)
 end
 
 if nargin < 3 || isempty(alsorenameit)
-    alsorenameit = 0;
+    alsorenameit = 1;
 end
 
 if exist(filename, 'file')
@@ -47,13 +47,13 @@ if exist(filename, 'file')
     image = stripLibrary(image, 'liboctave');
 
     if alsorenameit
-        % Rename the following libraries in image: We rename from .so.2 to .so.3
-        % as that is what Octave-4 provides and we want to make these mex files
-        % built on/against Octave-3 compatible with Octave-4. This works because
-        % while the liboctinterp's so-name/version has changed, the api/abi of
+        % Rename the following libraries in image: We rename from .so.2 to .so,
+        % to make these mex files built on/against Octave-3 compatible with
+        % at least Octave-3 and Octave-4. This works because while the
+        % liboctinterp's so-name/version has changed, the api/abi of
         % Octave-4's C-Mex interface has not changed. Or so we hope until proven
         % wrong...
-        image = renameLibrary(image, 'liboctinterp.so.2', 'liboctinterp.so.3');
+        image = renameLibrary(image, 'liboctinterp.so.2', 'liboctinterp.so');
     end
 
     % Write stripped image:
