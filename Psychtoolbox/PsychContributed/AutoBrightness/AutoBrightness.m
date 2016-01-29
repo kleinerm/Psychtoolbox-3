@@ -9,7 +9,16 @@ function [oldSetting, status] = AutoBrightness(screenNumber, newSetting)
 % is changed. The current state is always reported in the returned
 % oldSetting (0 or 1). The optionally returned "status" is always zero
 % unless the applescript failed.
-%   
+%
+% If the user has not yet given permission for MATLAB to control the
+% computer (in System Preferences:Security & Privacy:Accessibility), then
+% the AutoBrightness applescript will put up a helpful alert and wait for
+% the user to enable control. CAUTION: Call AutoBrightness BEFORE you open
+% a Psychtoolbox window: If the alert window is hidden by a Psychtoolbox
+% window, then the user won't know that the program is waiting for him or
+% her. For this reason the AutoBrightness function will abort with an error
+% if you try to call it while an onscreen window is already open.
+%
 % AutoBrightness.m uses AutoBrightness.applescript to allow you to turn off
 % a pesky feature of Apple's liquid crystal displays. In Mac OSX, this
 % feature is manually enabled/disabled by the"Automatically adjust
@@ -21,9 +30,9 @@ function [oldSetting, status] = AutoBrightness(screenNumber, newSetting)
 % on/off setting of that feature, and enable or disable it. For use in
 % MATLAB, please put both files anywhere in MATLAB's path. I hope they will
 % be added to the Psychtoolbox.
-%  
+%
 % Written by denis.pelli@nyu.edu for the Psychtoolbox, May 21, 2015.
-%   
+%
 % This Psychtoolbox MATLAB function calls my AutoBrightness applescript,
 % which allows you to temporarily disable a feature of Apple Macintosh
 % laptops that is undesirable for vision experiments and display
@@ -43,21 +52,21 @@ function [oldSetting, status] = AutoBrightness(screenNumber, newSetting)
 % itsef, which is controlled by the color lookup table. The luminance at
 % the viewer's eye is presumably the product of the two factors: luminance
 % of the source and transmission of the liquid crystal, at each wavelength.
-%  
+%
 % INSTALLATION. To work with MATLAB, please put both files anywhere in
 % MATLAB's path. I hope they will be added to the Psychtoolbox.
-%   
+%
 % CAUTION. This uses the "System Preferences: Displays" panel, which takes
 % 30 s to open if it isn't already open. I set up the AutoBrightness
 % applescript to always leave System Preferences open, so you won't waste
 % your observer's time waiting 30 s for System Preferences to open every
 % time you call AutoBrightness.
-%   
+%
 % BRIGHTNESS. Psychtoolbox for MATLAB and Macintosh already has a Screen
 % call to get and set the brightness, so we don't need applescript for
 % that. The Psychtoolbox call is:
 % [oldBrightness]=Screen('ConfigureDisplay','Brightness', screenId [,outputId][,brightness]);
-%   
+%
 % APPLE SECURITY. The first time any application (e.g. MATLAB) calls
 % AutoBrightness.applescript, the request will be blocked and an error
 % dialog window will appear saying the application is "not allowed
@@ -65,12 +74,12 @@ function [oldSetting, status] = AutoBrightness(screenNumber, newSetting)
 % administrator's permission to access the System Preferences. A user with
 % admin privileges should then click as requested to provide that
 % permission. This needs to be done only once (for each application).
-%   
+%
 % MULTIPLE SCREENS: All my computers have only one screen, so I haven't
 % implemented support for multiple screens. I think that would be
 % straightforward. I would add a second, optional, argument that specifies
 % which screen.
-%  
+%
 % LINUX and WINDOWS. Applescript works only under Mac OS X. When running
 % under any operating system other that Mac OS X, this program ignores the
 % newSetting argument and always returns zero as the oldSetting. It is
@@ -100,6 +109,10 @@ if ~IsOSX
     status = 1;
 
     return;
+end
+
+if length(Screen('Windows')) > 0
+    error('AutoBrightness called while onscreen windows are open. Only call this function before opening the first onscreen window!');
 end
 
 scriptPath = which('AutoBrightness.applescript');
