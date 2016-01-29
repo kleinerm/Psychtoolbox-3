@@ -93,7 +93,7 @@ try
     [wW, wH]=WindowSize(w);
 	% wW=wRect(3);
 	% wH=wRect(4);
-	 if ix>wW || iy>wH
+    if ix>wW || iy>wH
         disp('Image size exceeds screen size');
         disp('Image will be cropped');
     end
@@ -191,7 +191,7 @@ try
     Priority(priorityLevel);
 
     % Wait until all keys on keyboard are released:
-    while KbCheck; WaitSecs(0.1); end;
+    KbReleaseWait;
 
     mxold=0;
     myold=0;
@@ -207,7 +207,7 @@ try
         % Query current mouse cursor position (our "pseudo-eyetracker") -
         % (mx,my) is our gaze position.
         if (hurryup==0)
-            [mx, my, buttons]=GetMouse; %(w);
+            [mx, my, buttons]=GetMouse(w);
         else
             % In benchmark mode, we just do a quick sinusoidal motion
             % without query of the mouse:
