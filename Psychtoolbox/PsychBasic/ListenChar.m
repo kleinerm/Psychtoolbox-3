@@ -2,8 +2,8 @@ function ListenChar(listenFlag)
 % function ListenChar([listenFlag])
 %
 % Tell the Psychtoolbox function "GetChar" to start or stop listening for
-% keyboard input.  By default ListenChar listens when no argument is
-% supplied.  Passing 0 will turn off character listening and reset the
+% keyboard input. By default ListenChar enables listening when no argument is
+% supplied. Passing 0 will turn off character listening and reset the
 % buffer which holds the captured characters. Passing a value of 1 or not
 % passing any value will enable listening. Passing a value of 2 will enable
 % listening, additionally any output of keypresses to Matlabs or Octaves
@@ -11,6 +11,17 @@ function ListenChar(listenFlag)
 % error, Matlab or Octave may be left with a dead keyboard until the user
 % presses CTRL+C to reenable keyboard input. 'listenFlag' 2 is silently
 % ignored on Matlab in -nojvm mode under MS-Windows.
+%
+% Passing the listenFlag -1 will only suppress keypresses into Matlabs or
+% Octaves command window, but not collect characters for use with CharAvail
+% or GetChar. This allows concurrent use of ListenChar for character suppression
+% while at the same time using keyboard queues for character and key input.
+% Reenabling keypresses into Matlab and Octave is only possible via a call
+% with listenFlag 0 if suppression was enabled with listenFlag -1. Use of
+% listenFlag -1 does not block keyboard queues, so if you want to get keyboard
+% input, the better way might be to use keyboard queues (see KbEventAvail,
+% KbEventGet and KbEventFlush) for input and ListenChar(-1) and ListenChar(0)
+% to suppress characters into the Matlab/Octave command window or console.
 %
 % This function isn't entirely necessary to turn on listening as calling
 % GetChar, CharAvail, or FlushEvents will trigger listening on. However,
@@ -33,7 +44,7 @@ function ListenChar(listenFlag)
 % Some of the restrictions and caveats:
 %
 % 1. Works very well with Matlab and its Java based GUI enabled on Linux
-% and MacOSX, as well as on WindowsXP.
+% and MacOSX, as well as on WindowsXP and earlier versions of Windows.
 %
 % 2. When used on Windows Vista or later (Vista, Windows-7, Windows-8, ...)
 % with Matlab's Java GUI, you cannot use any KbQueue functions at the same
@@ -44,18 +55,18 @@ function ListenChar(listenFlag)
 % KbQueueCreate and then use those functions. Vice versa, after a call to
 % KbQueueCreate, CharAvail, FlushEvents, and GetChar are dysfunctional and
 % ListenChar may be limited. You need to call KbQueueRelease before you can
-% use them again. This is generally true on MacOSX, and true for use of the
-% default keyboard (the keyboard that GetChar et al. use) on MS-Windows and
-% Linux. Use of other keyboards than the default keyboard, or of other
-% devices, e.g., mouse or joystick, is not prohibited during use of GetChar
-% et al.
+% use them again. Use of other devices, e.g., mouse or joystick, is not
+% prohibited during use of GetChar et al.
 %
 % 3. If you use Matlab in "matlab -nojvm" mode without its GUI, or if you
 % use GNU/Octave instead of Matlab, the same restrictions as in 2. apply -
-% no parallel use of the default keyboards KbQueue.
-% The only feature that works in parallel with KbQueues
+% no parallel use of the default keyboards KbQueue. KbQueues can be used
+% for other input devices and on Linux and OSX for keyboards other than the
+% default keyboard.
+%
+% The only feature that works in parallel with KbQueues on the default keyboard
 % is the suppression of spilling of keystroke characters into the Matlab or
-% Octave window during ListenChar(2) - at least on Linux and OSX, on
+% Octave window during ListenChar(2) - at least on Linux and OSX. On
 % Windows this can't be prevented at all in "matlab -nojvm" mode. However,
 % if you switch to ListenChar(2) mode, you cannot break out of it by
 % pressing CTRL+C on Linux if the keyboard queue that is in parallel use
@@ -76,7 +87,7 @@ function ListenChar(listenFlag)
 % not advisable, or if needed, great care must be taken to sidestep all the
 % mentioned limitations. Also the KbQueue functions usually have better
 % timing precision and allow to flexibly address multiple keyboards
-% separately at least on Linux.
+% separately at least on Linux and OSX.
 %
 %
 % For further explanation see help for "GetChar".  
@@ -95,8 +106,10 @@ function ListenChar(listenFlag)
 % 10/13/06 mk    Support for setting the redispatch-mode of GetChar and
 %                friends.
 % 05/31/09 mk    Add support for Octave and Matlab in noJVM mode.
+% 01/31/16 mk    Add support for listenFlag -1 for only blocking input.
 
 global OSX_JAVA_GETCHAR;
+persistent keyboard_blocked;
  
 if nargin == 0
     listenFlag = 1;
@@ -104,10 +117,13 @@ elseif nargin > 1
     error('Too many arguments to ListenChar!  See "help ListenChar" for more information');
 end
 
-if ~ismember(listenFlag, [0,1,2])
+if ~ismember(listenFlag, [-1,0,1,2])
     error('Invalid listenFlag provided!  See "help ListenChar" for more information');
 end
 
+if isempty(keyboard_blocked)
+    keyboard_blocked = 0;
+end
 
 % Is this Matlab? Is the JVM running?
 if psychusejava('desktop')
@@ -122,7 +138,7 @@ if psychusejava('desktop')
         end
     end
 
-    if listenFlag
+    if listenFlag ~= 0
         % Start listening for characters.
         OSX_JAVA_GETCHAR.register;
 
@@ -134,7 +150,7 @@ if psychusejava('desktop')
         end
 
         % Should we block output of characters to Matlab?
-        if listenFlag > 1
+        if listenFlag > 1 || listenFlag == -1
             % Disable redispatching:
             OSX_JAVA_GETCHAR.setRedispatchFlag(1);
         else
@@ -156,10 +172,64 @@ if psychusejava('desktop')
     if ~IsWinVista
         return;
     end
+
+    % Windows Vista or later with Matlabs Java based GUI running.
+
+    % If only the keyboard was blocked via listenFlag -1 before and
+    % this is a unblock request via listenFlag 0 then we are done, as
+    % setRedispatchFlag() above has already done all the work.
+    if listenFlag == 0 && keyboard_blocked
+        keyboard_blocked = 0;
+        return;
+    end
+
+    % If just keyboard blocking was requested via listenFlag -1 then
+    % setRedispatchFlag() above has done all the work and we just need
+    % to note this in keyboard_blocked, other than that we are done.
+    if listenFlag == -1
+        keyboard_blocked = 1;
+        return;
+    end
 end
 
-% Running either on Octave, or on Matlab in No JVM mode, or on a MS-Vista
-% system or later.
+% Running either on Octave with or without GUI, or on Matlab in No JVM mode,
+% or on a MS-Vista system or later while user wants keyboard input.
+
+% Does the user only want to block keyboard input from spilling into the
+% command window / console, but not use GetChar et al.?
+if listenFlag == -1
+    % Yes. No need for use of keyboard queues, only use low level tricks
+    % to prevent keyboard input on Octave or on Matlab nojvm.
+    keyboard_blocked = 1;
+
+    % LoadPsychHID is needed on MS-Windows. It no-ops if called redundantly:
+    LoadPsychHID;
+
+    % Disable character forwarding to console:
+    PsychHID('KeyboardHelper', -12);
+
+    return;
+end
+
+% Does the user only want to unblock keyboard input from spilling into the
+% command window / console after blocking it before with listenFlag -1?
+if listenFlag == 0 && keyboard_blocked
+    % Yes. Just reenable keyboard input
+    keyboard_blocked = 0;
+
+    % LoadPsychHID is needed on MS-Windows. It no-ops if called redundantly:
+    LoadPsychHID;
+
+    % Reenable character forwarding to console:
+    PsychHID('KeyboardHelper', -10);
+
+    return;
+end
+
+if keyboard_blocked
+    % Reset keyboard only blocked state on other transitions:
+    keyboard_blocked = 0;
+end
 
 % On all systems we prefer to (ab)use keyboard queues. This allows character
 % suppression via ListenChar(2) to work at least on OSX and Linux and provides
@@ -174,7 +244,7 @@ if ~IsLinux || ~KbQueueReserve(3, 2, [])
 
     % LoadPsychHID is needed on MS-Windows. It no-ops if called redundantly:
     LoadPsychHID;
-    
+
     if listenFlag > 0
         % Only need to reserve/create/start queue if we don't have it
         % already:
@@ -189,13 +259,13 @@ if ~IsLinux || ~KbQueueReserve(3, 2, [])
                     % 32-Bit OSX, or MS-Windows:
                     warning('PTB3:KbQueueBusy', 'Keyboard queue for default keyboard device already in use by KbQueue/KbEvent functions et al. Use of ListenChar/GetChar etc. and keyboard queues is mutually exclusive!');
                 end
-                
+
                 % We fall through to KeyboardHelper to enable input
                 % redirection on 64-Bit OSX. While our CharAvail() and
                 % GetChar() are lost causes, input redirection and CTRL+C
                 % can work if usercode has called KbQueueStart, as the
                 % users kbqueue-thread gives us a free-ride for our
-                % purpose.                
+                % purpose.
             else
                 % Got it. Allocate and start it:
                 PsychHID('KbQueueCreate');
@@ -208,7 +278,7 @@ if ~IsLinux || ~KbQueueReserve(3, 2, [])
             % Yes. Stop and release it:
             PsychHID('KbQueueStop');
             PsychHID('KbQueueRelease');
-            KbQueueReserve(2, 1, []);            
+            KbQueueReserve(2, 1, []);
         end
     end
 
@@ -228,7 +298,7 @@ if ~IsLinux || ~KbQueueReserve(3, 2, [])
         PsychHID('KeyboardHelper', -10);
     end
 
-   return;
+    return;
 end
 
 % This fallback code is only executed on Linux as a last resort. It uses
