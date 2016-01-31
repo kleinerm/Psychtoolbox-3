@@ -6,7 +6,7 @@
 % 6/16/03  dhb  Wrote it.
 
 % Clear
-clear all; close all;
+clear; close all;
 
 % Fill in some structs
 theStructs(1).field1 = 'joe';

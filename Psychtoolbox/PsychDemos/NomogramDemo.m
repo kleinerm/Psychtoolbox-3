@@ -8,7 +8,7 @@
 %              useful.
 
 % Clear out
-clear all; close all
+clear; close all
 
 % Set parameters
 S = [380 5 81];

@@ -1,4 +1,4 @@
-clear all;
+clear;
 commandwindow;
 fprintf('Testing EyelinkToolbox functions\n');
 Eyelink

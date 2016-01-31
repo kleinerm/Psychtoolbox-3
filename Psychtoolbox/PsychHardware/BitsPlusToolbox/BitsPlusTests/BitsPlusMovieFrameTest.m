@@ -15,7 +15,7 @@
 % 11/4/02  dhb, jmh Comments, etc.
 % 11/6/02  jmh  Modified BitsPlusMovieDemo to test for lost frames
 
-clear all; close all
+clear; close all
 
 % Define screen
 whichScreen=1;

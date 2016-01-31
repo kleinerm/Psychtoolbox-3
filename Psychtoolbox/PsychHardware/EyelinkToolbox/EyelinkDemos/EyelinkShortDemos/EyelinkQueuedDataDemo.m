@@ -9,7 +9,7 @@ function EyelinkQueuedDataDemo
 % 20/04/15   Removed intwarning() - no longer suppored by Matlab (MK).
 
 format long g
-clear all
+clear
 clear classes
 close all
 clc

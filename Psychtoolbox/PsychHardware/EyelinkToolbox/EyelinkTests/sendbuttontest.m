@@ -1,4 +1,4 @@
-clear all;
+clear;
 commandwindow;
 Eyelink('ShutDown');
 

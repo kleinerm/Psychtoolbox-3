@@ -11,7 +11,7 @@
 %                   is unclear to me.
 
 % Clear
-clear all;
+clear;
 
 % Define screen
 whichScreen=max(Screen('Screens'));

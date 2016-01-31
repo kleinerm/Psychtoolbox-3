@@ -3,7 +3,7 @@
 
 
 fprintf([mfilename ' start\n']);
-clear all;
+clear;
 try
     streaming=0;
     %     [result, ivx]=iViewX('clear', ivx);

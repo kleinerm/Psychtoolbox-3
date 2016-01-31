@@ -1,4 +1,4 @@
-clear all;
+clear;
 commandwindow;
 fprintf('OSX Eyelink GetKeys Test\n\n\t');
 % input('Hit the return key to continue.','s');

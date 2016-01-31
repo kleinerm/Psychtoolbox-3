@@ -230,7 +230,7 @@ glRotatef(pitch, 1, 0, 0);
 glRotatef(roll, 0, 0, 1);
 glTranslatef(0,-50,0);
 
-% Setup clear color and clear all buffers:
+% Setup clear color and clear buffers:
 clearcolor = [0.9 0.9 1 1];
 glClearColor(clearcolor(1),clearcolor(2),clearcolor(3),clearcolor(4));
 glClear; % Clear depth and color buffer.

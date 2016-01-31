@@ -1,5 +1,5 @@
 % Clear
-clear all;
+clear;
 
 % Define screen
 whichScreen = max(Screen('Screens'));
