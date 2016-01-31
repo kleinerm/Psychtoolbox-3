@@ -2,7 +2,7 @@
 % 
 % Use of Color++ mode.
 %
-% 8/8/04	dhb		Started it.
+% 8/8/04    dhb     Started it.
 % 18/4/05   ejw     Converted it to run with OSX version of Psychtoolbox
 % 10/24/13  dhb     Pass scaling args to packing routine and truncate test image.
 %                   These were needed to make this work with my Bits++ in Color++ mode
@@ -32,9 +32,7 @@ packedImage = BitsPlusPackColorImage(theImage,1,1);
 rect = [0 0 m n];
 fprintf('Showing image\n');
 % Open a double buffered fullscreen window
-% does not like opening it 24 bit deep, so stick with 32 bits,
-% though we don't want alpha!!
-[window,screenRect] = Screen('OpenWindow',whichScreen,0,[],32,2);
+[window,screenRect] = Screen('OpenWindow',whichScreen,0);
 
 % find out how big the window is
 [screenWidth, screenHeight]=Screen('WindowSize', window);
@@ -52,14 +50,14 @@ white=WhiteIndex(whichScreen);
 black=BlackIndex(whichScreen);
 gray=(white+black)/2;
 if round(gray)==white
-	gray=black;
+  gray=black;
 end
 
 % the following is not necessary, it just stops you staring at a blank
 % screen if you are not in colour++ mode, and have a black LUT loaded into
 % Bits++ :<(
 %   restore the Bits++ LUT to a linear ramp
-linear_lut =  repmat(round(linspace(0, 2^16 -1, 256))', 1, 3);
+linear_lut = repmat(round(linspace(0, 2^16 -1, 256))', 1, 3);
 BitsPlusSetClut(window,linear_lut);
 
 % draw a gray background on front and back buffers
@@ -70,19 +68,12 @@ Screen('FillRect',window, black);
 % make sure the graphics card LUT is set to a linear ramp
 % (else the encoded data will not be recognised by Bits++).
 % There is a bug with the underlying OpenGL function, hence the scaling 0 to 255/256.   
-Screen('LoadNormalizedGammaTable',window,linspace(0,(255/256),256)'*ones(1,3));
-
-%textureIndex= Screen('MakeTexture',whichScreen,packedImage);
-%Screen('DrawTexture',window,textureIndex);
-
+LoadIdentityClut(window);
 Screen('PutImage',window,packedImage);
 Screen(window,'Flip');
 
 fprintf('Hit any character to continue\n');
-
-% GetChar causes problems so replace with KbWait
-%GetChar;
-KbWait;
+KbStrokeWait;
 
 % if the system only has one screen, set the LUT in Bits++ to a linear ramp
 % if the system has two or more screens, then blank the screen.
@@ -98,7 +89,7 @@ if (whichScreen == 0)
     Screen('Flip', window);
 
     % Close the window.
-    Screen('CloseAll');    
+    Screen('CloseAll');
 else
     % Blank the screen
     BitsPlusSetClut(window,zeros(256,3));
@@ -110,6 +101,4 @@ else
     Screen('Flip', window);
 
     Screen('CloseAll');
-end 	 
-
-	
+end
