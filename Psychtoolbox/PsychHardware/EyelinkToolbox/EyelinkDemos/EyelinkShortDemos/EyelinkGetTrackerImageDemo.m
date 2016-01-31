@@ -5,15 +5,15 @@ PsychDefaultSetup(1);
 
 try
     % Disable key output to Matlab window:
-    ListenChar(2);
-    
+    ListenChar(-1);
+
     % Open a window for eye image display:
     w = Screen('OpenWindow', max(Screen('Screens')), [255 255 0], [0 0 800 600]);
-    
+
     % Initialize 'el' eyelink struct with proper defaults for output to
     % window 'w':
     el=EyelinkInitDefaults(w);
-    
+
     % Initialize Eyelink connection (real or dummy). The flag '1' requests
     % use of callback function and eye camera image display:
     if ~EyelinkInit([], 1)
@@ -21,17 +21,17 @@ try
         cleanup;
         return;
     end
-    
+
     % This would display additional debug output, if commented in:
     %    Eyelink('Verbosity',10);
-    
+
     % Run synthetic test suite for the fun of it, if commented in:
     Eyelink('TestSuite');
-    
+
     % Perform tracker setup: The flag 1 requests interactive setup with
     % video display:
     result = Eyelink('StartSetup',1);
-    
+
     % Perform drift correction: The special flags 1,1,1 request
     % interactive correction with video display:
     % You have to hit esc before return.
@@ -40,11 +40,11 @@ try
     % Done.
 catch
     % In case of error, be tidy:
-    cleanup
+    cleanup;
 end
 
 % Shutdown everything at regular end:
-cleanup
+cleanup;
 
 end
 
@@ -55,7 +55,7 @@ function cleanup
 
     % Close window:
     sca;
-    
+
     % Restore keyboard output to Matlab:
     ListenChar(0);
 end
