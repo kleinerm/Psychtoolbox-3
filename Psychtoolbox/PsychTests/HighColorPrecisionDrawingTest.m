@@ -490,7 +490,8 @@ if ismember(3, testblocks)
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 514 514], [], [], [], []);
+    winsize = 2^(ceil(maxdepth / 2)) + 2;
+    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 winsize winsize], [], [], [], []);
 
     % Test GPU output positioning, report trouble:
     [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
@@ -692,7 +693,8 @@ if ismember(4, testblocks)
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 514 514], [], [], [], []);
+    winsize = max(514, 2^(ceil(maxdepth / 2)) + 2);
+    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 winsize winsize], [], [], [], []);
 
     % Test GPU output positioning, report trouble:
     [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
@@ -741,7 +743,7 @@ if ismember(4, testblocks)
     
     i=0;
     mingoodbits = inf;
-    % Step through range 1 down to zero, in 1/1000th decrements:
+    % Step through range 1 down to -1, in 1/1000th decrements:
     for mc = 1.0:-0.001:-1.0
         i=i+1;
 
@@ -755,21 +757,21 @@ if ismember(4, testblocks)
 
         % DrawTexture, modulateColor == [mc mc mc 1] modulated:
         Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], Filters, [], mc);
-        
+
         % While the GPU does its thing, we compute the Matlab reference
         % patch:
         refpatch = colpatch * mc;
-        
+
         testname = 'DrawTexture-modulateColor';
 
         % Evaluate and log:
         [dummy, minv, maxv(i), goodbits] = comparePatches([], testname, maxdepth, refpatch, fbrect);
         mingoodbits = min([mingoodbits, goodbits]);
-        
+
         % Visualize and clear buffer back to zero aka black:
-        Screen('Flip', win, 0, 0, 2);        
+        Screen('Flip', win, 0, 0, 2);
     end
-    
+
     resstring = [resstring sprintf('%s : Maxdiff.: %1.17f --> Accurate to at least %i bits.\n', testname, max(maxv), mingoodbits)];
 
     if mingoodbits < 16
@@ -777,7 +779,6 @@ if ismember(4, testblocks)
     end
 
     Screen('Close', tex);
-        
     Screen('CloseAll');
 end % Test 4.
 
@@ -787,7 +788,8 @@ if ismember(5, testblocks)
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    [win rect] = PsychImaging('OpenWindow', screenid, [0 0 0 0], [0 0 514 514], [], [], [], []);
+    winsize = max(514, 2^(ceil(maxdepth / 2)) + 2);
+    [win rect] = PsychImaging('OpenWindow', screenid, [0 0 0 0], [0 0 winsize winsize], [], [], [], []);
 
     % Test GPU output positioning, report trouble:
     [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
@@ -841,7 +843,7 @@ if ismember(5, testblocks)
     alpha=1;
     i=0;
     mingoodbits = inf;
-    % Step through range 1 down to zero, in 1/1000th decrements:
+    % Step through range 1 down to -1, in 1/1000th decrements:
     for mc = 1.0:-0.001:-1.0
         i=i+1;
 
