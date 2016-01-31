@@ -188,6 +188,8 @@ function HighColorPrecisionDrawingTest(testconfig, maxdepth, testblocks)
 % 10/04/15  Use PsychGPURasterizerOffsets() to compensate for driver flaws (MK).
 % 10/21/15  Fix the fixes for rasterizer offsets, fix Octave-4 warnings, add
 %           hint to new ConserveVRAMSetting to work around OSX 10.11 AMD bugs.
+% 01/31/16  Change filterMode to zero for gamma correction test. Better matches
+%           real world use conditions. (MK)
 
 global win;
 
@@ -592,7 +594,7 @@ if ismember(3, testblocks)
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
-    
+
     % FillOval test:
     foxy = [xy ; xy + repmat([2;2], 1, size(xy, 2))];
     Screen('FillOval', win, rgbacolors, foxy);
@@ -603,7 +605,7 @@ if ismember(3, testblocks)
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
-        
+
     % DrawTexture test: Need only 1 texture draw to test all values
     % simultaneously:
     foxy = [xy ; xy + repmat([2;2], 1, size(xy, 2))];
@@ -613,7 +615,7 @@ if ismember(3, testblocks)
         % values is 0-255 instead of 0.0 - 1.0. Need to rescale:
         teximg = uint8(refpatch * 255);
     end
-    
+
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
     Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], Filters);
     Screen('Close', tex);
@@ -628,7 +630,7 @@ if ismember(3, testblocks)
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
-    
+
     % Test of gamma correction shader: This is the
     % 'SimpleGamma' shader used by the imaging
     % pipeline, setup by PsychColorCorrection():
@@ -647,16 +649,25 @@ if ismember(3, testblocks)
 
     glUniform2f(glGetUniformLocation(gammaShader, 'ICMClampToColorRange'), 0.0, 1.0);
     glUseProgram(0);
-    
+
     teximg = refpatch;
     if Textures <=0
         % Integer texture instead of float texture: Now expected range of
         % values is 0-255 instead of 0.0 - 1.0. Need to rescale:
         teximg = uint8(refpatch * 255);
     end
-    
+
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
-    Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], Filters, [], [], gammaShader);
+    % Use filterMode 0 aka nearest neighbour sampling for the gamma test. The reason is that
+    % shader based gamma correction is typically done with the image postprocessing pipeline
+    % with nearest neighbour sampling, or when done manually with filterMode 0. A bilinear
+    % filter usually doesn't make much sense. Some gfx hardware and drivers do not sample
+    % precise enough here in bilinear mode, and that will cause this test to report a gamma
+    % precision much lower than what one would actually get in real world use. So lets adapt
+    % the test to the real world use conditions here. Problems with precision will still show
+    % up in tests where they matter to users under real world conditions, e.g., the tests for
+    % texture drawing with alpha-blending and 1+1 overdraws alpha-blending.
+    Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], 0, [], [], gammaShader);
     Screen('Close', tex);
     testname = 'GammaCorrection';
 
