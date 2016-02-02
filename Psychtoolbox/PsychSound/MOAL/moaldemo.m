@@ -29,9 +29,9 @@ freq = 44100;
 % Try to load some impressive sound...
 if IsOSX
    try
-      %mynoise = wavread('/Users/kleinerm/Music/iTunes/iTunes Music/Unknown Artist/Unknown Album/sound_bubbles.wav');
+      %mynoise = psychwavread('/Users/kleinerm/Music/iTunes/iTunes Music/Unknown Artist/Unknown Album/sound_bubbles.wav');
       freq = 44100;
-      mynoise = wavread('/Users/kleinerm/Documents/One.wav');
+      mynoise = psychwavread('/Users/kleinerm/Documents/One.wav');
    catch
       % Load Matlabs demo sound matrix if everything else fails..
       load handel;
@@ -42,7 +42,7 @@ end
 
 if IsWin
    try
-      mynoise = wavread('C:\WINNT\MEDIA\Windows-Anmeldeklang.wav');
+      mynoise = psychwavread('C:\WINNT\MEDIA\Windows-Anmeldeklang.wav');
       freq = 16384;
    catch
       % Load Matlabs demo sound matrix if everything else fails..
