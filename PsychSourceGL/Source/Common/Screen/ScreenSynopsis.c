@@ -112,10 +112,11 @@ void InitializeSynopsis()
     synopsis[i++] = "oldTextSize=Screen('TextSize', windowPtr [,textSize]);";
     synopsis[i++] = "oldStyle=Screen('TextStyle', windowPtr [,style]);";
     synopsis[i++] = "[oldFontName,oldFontNumber,oldTextStyle]=Screen('TextFont', windowPtr [,fontNameOrNumber][,textStyle]);";
-    synopsis[i++] = "[normBoundsRect, offsetBoundsRect]= Screen('TextBounds', windowPtr, text [,x] [,y] [,yPositionIsBaseline] [,swapTextDirection]);";
-    synopsis[i++] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color] [,backgroundColor] [,yPositionIsBaseline] [,swapTextDirection]);";
+    synopsis[i++] = "[normBoundsRect, offsetBoundsRect, textHeight]= Screen('TextBounds', windowPtr, text [,x] [,y] [,yPositionIsBaseline] [,swapTextDirection]);";
+    synopsis[i++] = "[newX, newY, textHeight]=Screen('DrawText', windowPtr, text [,x] [,y] [,color] [,backgroundColor] [,yPositionIsBaseline] [,swapTextDirection]);";
     synopsis[i++] = "oldTextColor=Screen('TextColor', windowPtr [,colorVector]);";
     synopsis[i++] = "oldTextBackgroundColor=Screen('TextBackgroundColor', windowPtr [,colorVector]);";
+    synopsis[i++] = "oldMatrix = Screen('TextTransform', windowPtr [, newMatrix]);";
 
     // Copy an image, very quickly, between textures and onscreen windows
     synopsis[i++] = "\n% Copy an image, very quickly, between textures, offscreen windows and onscreen windows.";
