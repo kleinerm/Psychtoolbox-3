@@ -26,16 +26,19 @@
 #include "Screen.h"
 
 static char useString[] =  "Screen('CopyWindow',srcWindowPtr,dstWindowPtr,[srcRect],[dstRect],[copyMode])";
-static char synopsisString[] =  "Copy images, quickly, between two windows (on- or off- screen). "
+static char synopsisString[] =  "Copy images, quickly, between two windows (on- or off- screen).\n"
+                                "Content from onscreen windows is copied from the onscreen windows back buffer, "
+                                "or the onscreen windows draw buffer if the imaging pipeline is enabled, but never "
+                                "from the onscreen windows front buffer.\n"
                                 "srcRect and dstRect are set to the size of windows srcWindowPtr and dstWindowPtr "
-                                "by default. [copyMode] is accepted as input but currently ignored. "
+                                "by default. [copyMode] is accepted as input but currently ignored.\n"
                                 "CopyWindow is mostly here for compatibility to PTB-2. If you want to "
                                 "copy images really quickly, use the 'MakeTexture' and 'DrawTexture' commands. "
-                                "They also allow for rotated drawing and advanced blending operations. "
+                                "They also allow for rotated drawing and advanced blending operations.\n"
                                 "The current CopyWindow implementation has a couple of restrictions on old "
                                 "graphics cards, which may not apply anymore on modern cards:\n"
-                                "One can't copy from an offscreen window into the -same- offscreen window. "
-                                "One can't copy from an onscreen window into a -different- onscreen window. "
+                                "One can't copy from an offscreen window into the -same- offscreen window.\n"
+                                "One can't copy from an onscreen window into a -different- onscreen window.\n"
                                 "Sizes of sourceRect and targetRect need to match for Onscreen->Offscreen copy.\n";
 
 static char seeAlsoString[] = "PutImage, GetImage, OpenOffscreenWindow, MakeTexture, DrawTexture";
