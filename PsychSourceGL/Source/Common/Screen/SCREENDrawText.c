@@ -308,8 +308,15 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     // Create the Core Graphics bitmap graphics context. We can tell CoreGraphics to use the same memory storage
     // format as will our GL texture, and in fact use the idential memory for both.
 
-    // There is another OSX bug here. The format constant should be ARGB not RBGA to agree with the texture format.
-    cgContext = CGBitmapContextCreate(textureMemory, textureWidth, textureHeight, 8, memoryRowSizeBytes, cgColorSpace, (CGBitmapInfo) kCGImageAlphaPremultipliedFirst);
+    // Setup Quartz2D offscreen rendering context into bitmap. The interesting bit is the use of the constant
+    // kCGBitmapByteOrder32Host if high quality LCD sub-pixel anti-aliasing is requested. Using that flag and
+    // the according byte order is needed for Apples CoreText renderer to enable subpixel anti-aliasing instead
+    // of only full-pixel anti-aliasing. This completely undocumented behaviour brought to you by Apples shoddy
+    // documentation. A second condition is that the text must be rendererd with a filled background of constant
+    // color via the Screen('TextBackgroundColor') setting, user controlled 'TextAlphaBlending' must be enabled
+    // and the text background color must be fully opaque, ie., have an alpha of 255:
+    cgContext = CGBitmapContextCreate(textureMemory, textureWidth, textureHeight, 8, memoryRowSizeBytes, cgColorSpace,
+                                      (CGBitmapInfo) kCGImageAlphaPremultipliedFirst | ((PsychPrefStateGet_TextAntiAliasing() >= 2) ? kCGBitmapByteOrder32Host : 0));
     if(!cgContext){
         free((void *)textureMemory);
         printf("PTB-ERROR: In Screen('DrawText'): Failed to allocate CG Bitmap Context for: texWidth=%i, texHeight=%i, memRowSize=%i\n", textureWidth, textureHeight, memoryRowSizeBytes);
@@ -490,7 +497,19 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     PsychTestForGLErrors();
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,  (GLsizei)textureWidth, (GLsizei)textureHeight, 0, GL_BGRA, (bigendian) ? GL_UNSIGNED_INT_8_8_8_8_REV : GL_UNSIGNED_INT_8_8_8_8, textureMemory);
+
+    // Subpixel anti-aliasing requested?
+    if (PsychPrefStateGet_TextAntiAliasing() >= 2) {
+        // Yes: Need to invert component order in pixel data buffer -- !bigendian instead of bigendian:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,  (GLsizei)textureWidth, (GLsizei)textureHeight, 0, GL_BGRA,
+                     (!bigendian) ? GL_UNSIGNED_INT_8_8_8_8_REV : GL_UNSIGNED_INT_8_8_8_8, textureMemory);
+    }
+    else {
+        // No: Standard component order in pixel data buffer:
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,  (GLsizei)textureWidth, (GLsizei)textureHeight, 0, GL_BGRA,
+                     (bigendian) ? GL_UNSIGNED_INT_8_8_8_8_REV : GL_UNSIGNED_INT_8_8_8_8, textureMemory);
+    }
+
     free((void *)textureMemory);    // Free the texture memory: OpenGL has its own copy now in internal buffers.
     textureMemory = NULL;
 
