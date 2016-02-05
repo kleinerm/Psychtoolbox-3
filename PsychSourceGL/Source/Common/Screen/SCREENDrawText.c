@@ -325,9 +325,9 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     CGContextSetFillColorSpace(cgContext,cgColorSpace);
 
     // Define affine text transformation matrix:
-    CGContextSetTextMatrix(cgContext, CGAffineTransformMake ( (CGFloat) winRec->text2DMatrix[0][0], (CGFloat) winRec->text2DMatrix[0][1],
-                                                              (CGFloat) winRec->text2DMatrix[1][0], (CGFloat) winRec->text2DMatrix[1][1],
-                                                              (CGFloat) winRec->text2DMatrix[0][2], (CGFloat) winRec->text2DMatrix[1][2] );
+    CGContextSetTextMatrix(cgContext, CGAffineTransformMake ( (CGFloat) winRec->text2DMatrix[0][0], (CGFloat) winRec->text2DMatrix[1][0],
+                                                              (CGFloat) winRec->text2DMatrix[0][1], (CGFloat) winRec->text2DMatrix[1][1],
+                                                              (CGFloat) winRec->text2DMatrix[0][2], (CGFloat) winRec->text2DMatrix[1][2] ));
 
     // OSX only so far: Screen('TextMode') support:
     CGContextSetTextDrawingMode(cgContext, (CGTextDrawingMode) winRec->textAttributes.textMode);
@@ -426,11 +426,12 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     quartzRect.size.height=(float)textureHeight;
     PsychCoerceColorMode(backgroundColor);
     PsychConvertColorToDoubleVector(backgroundColor, winRec, backgroundColorVector);
+    CGFloat bgColor[4] = { (float) backgroundColorVector[0], (float) backgroundColorVector[1], (float) backgroundColorVector[2], (float) backgroundColorVector[3] };
 
     // Override alpha-blending settings if needed:
     if(!PsychPrefStateGet_TextAlphaBlending()) backgroundColorVector[3]=0;
 
-    CGContextSetRGBFillColor(cgContext, (float)(backgroundColorVector[0]), (float)(backgroundColorVector[1]), (float)(backgroundColorVector[2]), (float)(backgroundColorVector[3]));
+    CGContextSetFillColor(cgContext, bgColor);
     CGContextFillRect(cgContext, quartzRect);
 
     // Now draw the text and close up the CoreGraphics shop before we proceed to textures.
@@ -486,8 +487,8 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     }
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     PsychTestForGLErrors();
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,  (GLsizei)textureWidth, (GLsizei)textureHeight, 0, GL_BGRA, (bigendian) ? GL_UNSIGNED_INT_8_8_8_8_REV : GL_UNSIGNED_INT_8_8_8_8, textureMemory);
     free((void *)textureMemory);    // Free the texture memory: OpenGL has its own copy now in internal buffers.
