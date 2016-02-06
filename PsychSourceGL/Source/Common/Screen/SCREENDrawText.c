@@ -202,12 +202,24 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     int                 ix;
     GLubyte             *rpb;
     psych_bool          bigendian;
+    psych_bool          slowMode;
 
     // Detect endianity (byte-order) of machine:
     ix = 255;
     rpb = (GLubyte*) &ix;
     bigendian = ( *rpb == 255 ) ? FALSE : TRUE;
     ix = 0; rpb = NULL;
+
+    // Is a non-identity affine transformation matrix set? If so, we need to use slow mode to avoid the transformation
+    // causing the text to move outside its small bounding box:
+    if (winRec->text2DMatrix[0][0] != 1 || winRec->text2DMatrix[1][1] != 1 || winRec->text2DMatrix[1][0] != 0 ||
+        winRec->text2DMatrix[0][1] != 0 || winRec->text2DMatrix[0][2] != 0 || winRec->text2DMatrix[1][2] != 0) {
+        slowMode = TRUE;
+        if (PsychPrefStateGet_Verbosity() > 9) printf("PTB-INFO: Drawtext OSX slow mode engaged due to affine transformation.\n");
+    }
+    else {
+        slowMode = FALSE;
+    }
 
     // Convert input text string from double-vector encoding to OS/X UniChar encoding:
     textUniString = (UniChar*) PsychMallocTemp(sizeof(UniChar) * stringLengthChars);
@@ -242,24 +254,34 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     double lineWidth = CTLineGetTypographicBounds(line, &ascent, &descent, &leading);
 
     // Define the meaning of the y position of the specified drawing cursor.
-    if (yPositionIsBaseline) {
+    if ((!slowMode && yPositionIsBaseline) || (slowMode && !yPositionIsBaseline)) {
         // Y position of drawing cursor defines distance between top of text and
         // baseline of text, i.e. the textheight excluding descenders of letters.
         // ascent encodes the height of the text from the top-left corner to the
         // baseline, so this defines the offset of y coordinates needed to make
         // the y position the position of the text baseline:
         textHeightToBaseline = ascent;
+        if (slowMode) textHeightToBaseline -= descent;
     }
     else {
         // Y position of drawing cursor defines top of text, therefore no offset (==0) needed:
         textHeightToBaseline = 0;
     }
 
-    // Compute generous bounding rectangle based on typographic bounds:
-    textBoundsPRect[kPsychLeft]   = - (double) leading;
-    textBoundsPRect[kPsychRight]  = lineWidth;
-    textBoundsPRect[kPsychTop]    = - (double) ascent;
-    textBoundsPRect[kPsychBottom] = (double) descent;
+    if (slowMode) {
+        // Use a full window size rect:
+        textBoundsPRect[kPsychLeft] = 0;
+        textBoundsPRect[kPsychTop] = 0;
+        textBoundsPRect[kPsychRight] = PsychGetWidthFromRect(winRec->clientrect);
+        textBoundsPRect[kPsychBottom] = PsychGetHeightFromRect(winRec->clientrect);
+    }
+    else {
+        // Compute generous bounding rectangle based on typographic bounds:
+        textBoundsPRect[kPsychLeft]   = - (double) leading;
+        textBoundsPRect[kPsychRight]  = lineWidth;
+        textBoundsPRect[kPsychTop]    = - (double) ascent;
+        textBoundsPRect[kPsychBottom] = (double) descent;
+    }
 
     // printf("Leading %f, Linewidth %f, Ascent %f, Descent %f -> textHeightToBaseline = %f\n", leading, lineWidth, ascent, descent, textHeightToBaseline);
     // printf("R: Top %lf x Bottom %lf :: ",textBoundsPRect[kPsychTop], textBoundsPRect[kPsychBottom]);
@@ -269,8 +291,14 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
 
     // printf("N: Top %lf x Bottom %lf :: ",textBoundsPRectOrigin[kPsychTop], textBoundsPRectOrigin[kPsychBottom]);
 
-    // Compute smallest matching texture rectangle for classic power-of-two textures:
-    PsychFindEnclosingTextureRect(textBoundsPRectOrigin, textureRect);
+    if (slowMode) {
+        // Normalize to a bounding rectangle with top-left = 0,0:
+        PsychNormalizeRect(textBoundsPRect, textureRect);
+    }
+    else {
+        // Compute smallest matching texture rectangle for classic power-of-two textures:
+        PsychFindEnclosingTextureRect(textBoundsPRectOrigin, textureRect);
+    }
 
     //Allocate memory the size of the texture. The CG context will be the same size.
     textureWidth = PsychGetWidthFromRect(textureRect);
@@ -285,7 +313,7 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     // are incorrect/inaccurate/too small. We over-allocate here, then recompute precise bounds
     // below with the "more than big enough" graphics context and adjust properly to only render
     // and draw the actual text bits:
-    textureHeight = PsychGetHeightFromRect(textureRect) * 2;
+    textureHeight = PsychGetHeightFromRect(textureRect) * ((slowMode) ? 1 : 2);
 
     // Reclamp maximum size of text bitmap to maximum supported texture size of GPU:
     if (textureWidth > winRec->maxTextureSize) textureWidth = winRec->maxTextureSize;
@@ -332,9 +360,11 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     CGContextSetFillColorSpace(cgContext,cgColorSpace);
 
     // Define affine text transformation matrix:
-    CGContextSetTextMatrix(cgContext, CGAffineTransformMake ( (CGFloat) winRec->text2DMatrix[0][0], (CGFloat) winRec->text2DMatrix[1][0],
-                                                              (CGFloat) winRec->text2DMatrix[0][1], (CGFloat) winRec->text2DMatrix[1][1],
-                                                              (CGFloat) winRec->text2DMatrix[0][2], (CGFloat) winRec->text2DMatrix[1][2] ));
+    CGContextConcatCTM(cgContext, CGAffineTransformMakeTranslation(*xp, textureHeight - *yp - textHeightToBaseline));
+    CGContextConcatCTM(cgContext, CGAffineTransformMake((CGFloat) winRec->text2DMatrix[0][0], (CGFloat) winRec->text2DMatrix[1][0],
+                                                        (CGFloat) winRec->text2DMatrix[0][1], (CGFloat) winRec->text2DMatrix[1][1],
+                                                        (CGFloat) winRec->text2DMatrix[0][2], (CGFloat) winRec->text2DMatrix[1][2]));
+    CGContextConcatCTM(cgContext, CGAffineTransformMakeTranslation(-(*xp), - (textureHeight - *yp - textHeightToBaseline)));
 
     // OSX only so far: Screen('TextMode') support:
     CGContextSetTextDrawingMode(cgContext, (CGTextDrawingMode) winRec->textAttributes.textMode);
@@ -367,33 +397,43 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
         CGContextSetAllowsFontSmoothing(cgContext, true);
     }
 
-    // Define start position of text drawing cursor within bitmap. Must be shifted upwards by
-    // maximum height of descenders for this font, otherwise descenders would get clipped away:
-    CGContextSetTextPosition(cgContext, 0, descent);
+    if (slowMode) {
+        // Define start position of text drawing cursor within bitmap. Must be shifted upwards by
+        // maximum height of descenders for this font, otherwise descenders would get clipped away:
+        CGContextSetTextPosition(cgContext, *xp, textureHeight - *yp - textHeightToBaseline);
+    }
+    else {
+        // Define start position of text drawing cursor within bitmap. Must be shifted upwards by
+        // maximum height of descenders for this font, otherwise descenders would get clipped away:
+        CGContextSetTextPosition(cgContext, 0, descent);
+    }
 
     // Recompute true bounding box, now more accurate by use of cgContext:
     CGRect boundingRect = CTLineGetImageBounds(line, cgContext);
-    if (PsychPrefStateGet_Verbosity() > 9) printf("CGRect: x %f , y %f, w %f, h %f\n", boundingRect.origin.x, boundingRect.origin.y, boundingRect.size.width, boundingRect.size.height);
+    if (PsychPrefStateGet_Verbosity() > 9)
+        printf("CGRect: x %f , y %f, w %f, h %f\n", boundingRect.origin.x, boundingRect.origin.y, boundingRect.size.width, boundingRect.size.height);
 
-    // Adapt bounding box and text baseline if needed for special types of fonts:
-    if (boundingRect.origin.y < 0) {
-        double shifty = floor(boundingRect.origin.y);
-        CGContextSetTextPosition(cgContext, 0, descent - shifty);
-        textBoundsPRectOrigin[kPsychBottom] -= shifty;
-    }
+    if (!slowMode) {
+        // Adapt bounding box and text baseline if needed for special types of fonts:
+        if (boundingRect.origin.y < 0) {
+            double shifty = floor(boundingRect.origin.y);
+            CGContextSetTextPosition(cgContext, 0, descent - shifty);
+            textBoundsPRectOrigin[kPsychBottom] -= shifty;
+        }
 
-    if (boundingRect.size.height > PsychGetHeightFromRect(textBoundsPRectOrigin)) {
-        double shifty = boundingRect.size.height - PsychGetHeightFromRect(textBoundsPRectOrigin);
+        if (boundingRect.size.height > PsychGetHeightFromRect(textBoundsPRectOrigin)) {
+            double shifty = boundingRect.size.height - PsychGetHeightFromRect(textBoundsPRectOrigin);
 
-        // Move upper border up to make space for "super-ascenders"
-        textBoundsPRectOrigin[kPsychTop] -= shifty;
+            // Move upper border up to make space for "super-ascenders"
+            textBoundsPRectOrigin[kPsychTop] -= shifty;
 
-        // Adapt baseline accordingly:
-        if (yPositionIsBaseline) textHeightToBaseline += shifty;
+            // Adapt baseline accordingly:
+            if (yPositionIsBaseline) textHeightToBaseline += shifty;
 
-        // Shift the whole bounding box down to adapt - This to allow return of proper bounding boxes:
-        textBoundsPRectOrigin[kPsychBottom] += shifty;
-        textBoundsPRectOrigin[kPsychTop]    += shifty;
+            // Shift the whole bounding box down to adapt - This to allow return of proper bounding boxes:
+            textBoundsPRectOrigin[kPsychBottom] += shifty;
+            textBoundsPRectOrigin[kPsychTop]    += shifty;
+        }
     }
 
     // Compute effective text width and height:
@@ -403,10 +443,18 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     // Only text boundingbox in absolute coordinates requested?
     if (boundingbox) {
         // Yes. Compute and assign it:
-        (*boundingbox)[kPsychLeft]   = textBoundsPRectOrigin[kPsychLeft]   + *xp;
-        (*boundingbox)[kPsychRight]  = textBoundsPRectOrigin[kPsychRight]  + *xp;
-        (*boundingbox)[kPsychTop]    = textBoundsPRectOrigin[kPsychTop]    + *yp - textHeightToBaseline;
-        (*boundingbox)[kPsychBottom] = textBoundsPRectOrigin[kPsychBottom] + *yp - textHeightToBaseline;
+        if (!slowMode) {
+            (*boundingbox)[kPsychLeft]   = textBoundsPRectOrigin[kPsychLeft]   + *xp;
+            (*boundingbox)[kPsychRight]  = textBoundsPRectOrigin[kPsychRight]  + *xp;
+            (*boundingbox)[kPsychTop]    = textBoundsPRectOrigin[kPsychTop]    + *yp - textHeightToBaseline;
+            (*boundingbox)[kPsychBottom] = textBoundsPRectOrigin[kPsychBottom] + *yp - textHeightToBaseline;
+        }
+        else {
+            (*boundingbox)[kPsychLeft]   = boundingRect.origin.x;
+            (*boundingbox)[kPsychRight]  = boundingRect.origin.x + boundingRect.size.width;
+            (*boundingbox)[kPsychTop]    = textureHeight - (boundingRect.origin.y + boundingRect.size.height);
+            (*boundingbox)[kPsychBottom] = textureHeight - boundingRect.origin.y;
+        }
 
         // Release resources:
         CFRelease(line);
@@ -433,19 +481,28 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     quartzRect.size.height=(float)textureHeight;
     PsychCoerceColorMode(backgroundColor);
     PsychConvertColorToDoubleVector(backgroundColor, winRec, backgroundColorVector);
-    CGFloat bgColor[4] = { (float) backgroundColorVector[0], (float) backgroundColorVector[1], (float) backgroundColorVector[2], (float) backgroundColorVector[3] };
 
     // Override alpha-blending settings if needed:
     if(!PsychPrefStateGet_TextAlphaBlending()) backgroundColorVector[3]=0;
 
+    CGFloat bgColor[4] = { (float) backgroundColorVector[0], (float) backgroundColorVector[1], (float) backgroundColorVector[2], (float) backgroundColorVector[3] };
     CGContextSetFillColor(cgContext, bgColor);
-    CGContextFillRect(cgContext, quartzRect);
+
+    if (slowMode)
+        CGContextFillRect(cgContext, boundingRect);
+    else
+        CGContextFillRect(cgContext, quartzRect);
 
     // Now draw the text and close up the CoreGraphics shop before we proceed to textures.
     CTLineDraw(line, cgContext);
     CFRelease(line);
 
     CGContextFlush(cgContext);
+
+    if (slowMode) {
+        CGPoint tpos = CGContextGetTextPosition(cgContext);
+        *xp = tpos.x;
+    }
 
     // Remove references from Core Graphics to the texture memory.  CG and OpenGL can share concurrently, but we don't won't need this anymore.
     CGColorSpaceRelease(cgColorSpace);
@@ -523,12 +580,26 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     textureTextFractionXRight = textWidth / textureWidth;
     textureTextFractionY      = 1.0 - textHeight / textureHeight;
 
-    // Final screen position of the textured text-quad:
-    quadLeft   = *xp;
-    quadRight  = *xp + textWidth;
-    // quadTop needs to be adjusted by textHeightToBaseline, see above:
-    quadTop    = *yp - textHeightToBaseline;
-    quadBottom = quadTop + textHeight;
+    if (!slowMode) {
+        // Final screen position of the textured text-quad:
+        quadLeft   = *xp;
+        quadRight  = *xp + textWidth;
+        // quadTop needs to be adjusted by textHeightToBaseline, see above:
+        quadTop    = *yp - textHeightToBaseline;
+        quadBottom = quadTop + textHeight;
+    }
+    else {
+        // Final screen position of the textured text-quad:
+        quadLeft   = 0;
+        quadRight  = textWidth;
+        quadTop    = 0;
+        quadBottom = textHeight;
+    }
+
+    // Enable alpha-test against an alpha-value greater zero during blit. This
+    // This way, non-text pixels (with alpha equal to zero) are discarded.
+    glEnable(GL_ALPHA_TEST);
+    glAlphaFunc(GL_GREATER, 0);
 
     // Submit quad to pipeline:
     glBegin(GL_QUADS);
@@ -537,6 +608,8 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
     glTexCoord2d(textureTextFractionXRight, 1.0);                   glVertex2d(quadRight, quadBottom);
     glTexCoord2d(textureTextFractionXLeft, 1.0);                    glVertex2d(quadLeft, quadBottom);
     glEnd();
+
+    glDisable(GL_ALPHA_TEST);
 
     // Done with this texture:
     glDisable(GL_TEXTURE_2D);
@@ -562,7 +635,8 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
 
     // Update drawing cursor: Place cursor so that text could
     // be appended right-hand of the drawn text.
-    *xp = quadRight;
+    if (!slowMode)
+        *xp = quadRight;
 
     // We jump directly to this position in the code if the textstring is empty --> No op.
 drawtext_skipped:
@@ -1277,7 +1351,7 @@ PsychError PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectTyp
     PsychUpdateAlphaBlendingFactorLazily(winRec);
 
     // Enable alpha-test against an alpha-value greater zero during blit. This
-    // This way, non-text pixess (with alpha equal to zero) are discarded.
+    // This way, non-text pixels (with alpha equal to zero) are discarded.
     glEnable(GL_ALPHA_TEST);
     glAlphaFunc(GL_GREATER, 0);
 
@@ -2234,7 +2308,11 @@ PsychError SCREENTextTransform(void)
     "in other words, no affine transformation is applied to a window by default.\n"
     "Not all text renderers do support application of affine transformations to text. If a "
     "renderer does not support affine transformations then the selected affine transformation "
-    "is silently ignored during text drawing.\n"
+    "is silently ignored during text drawing. As of February 2016 only the standard FTGL text "
+    "renderer supports affine transforms in a meaningful way. The legacy Apple OSX CoreText "
+    "renderer only supports transforms in a somewhat broken and limited manner, at drastically "
+    "reduced performance, and with known memory leaks caused by OSX operating system bugs, so "
+    "your script might crash due to out of memory errors after a certain runtime.\n"
     "The precision of text bounding boxes as returned by Screen('TextBounds') may be impaired "
     "if non-identity affine transformations are applied. Text positioning may also be impaired. "
     "Different text renderers may provide inconsistent results wrt. text positioning and bounding "
