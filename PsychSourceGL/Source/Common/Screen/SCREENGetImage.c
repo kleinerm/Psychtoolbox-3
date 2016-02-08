@@ -30,10 +30,12 @@ static char synopsisString[] =
 "the window due to Screen('AsyncFlipBegin') is not allowed. Finalize such flips first. "
 "Readback of other onscreen or offscreen windows or textures is possible during async "
 "flip, but discouraged because it will have a significant impact on performance.\n\n"
-"The returned imageArray by default has three layers, i.e. it's an RGB image. "
+"The returned imageArray by default has three layers, i.e. it is an RGB image.\n\n"
 "\"windowPtr\" is the handle of the onscreen window, offscreen window or texture whose image "
-"should be returned. "
+"should be returned.\n\n"
 "\"rect\" is the rectangular subregion to copy, and its default is the whole window. "
+"The specified image subregion must be fully contained inside the window, otherwise this "
+"function will abort with an error.\n\n"
 "Matlab/Octave will complain if you try to do math on a uint8 array, so you may need "
 "to use DOUBLE to convert it, e.g. imageArray/255 will produce an error, but "
 "double(imageArray)/255 is ok. Also see Screen 'PutImage' and 'CopyWindow'.\n\n"
@@ -94,7 +96,8 @@ static char synopsisString2[] =
 "The function will only honor the top-left corner of the 'rect' argument, but ignore "
 "the bottom-right corner and thereby the width and height as defined by the 'rect'. "
 "The size of added video frames is fully defined as the fixed size of movie frames as "
-"specified at movie creation time via the Screen('CreateMovie') call.\n\n"
+"specified at movie creation time via the Screen('CreateMovie') call. The specified "
+"image region must be fully contained inside the window.\n\n"
 "\"bufferName\" is a string specifying the buffer from which to copy the image: "
 "The 'bufferName' argument is meaningless for offscreen windows and textures and "
 "will be silently ignored. For onscreen windows, it defaults to 'frontBuffer', i.e., "
@@ -431,6 +434,12 @@ PsychError SCREENGetImage(void)
     // Compute sampling rectangle:
     if ((PsychGetWidthFromRect(sampleRect) >= INT_MAX) || (PsychGetHeightFromRect(sampleRect) >= INT_MAX)) {
         PsychErrorExitMsg(PsychError_user, "Too big 'rect' argument provided. Both width and height of the rect must not exceed 2^31 pixels!");
+    }
+
+    // Make sure the sampling rectangle is completely inside the source window:
+    if (sampleRect[kPsychLeft] < windowRect[kPsychLeft] || sampleRect[kPsychTop] < windowRect[kPsychTop] ||
+        sampleRect[kPsychRight] > windowRect[kPsychRight] || sampleRect[kPsychBottom] > windowRect[kPsychBottom]) {
+        PsychErrorExitMsg(PsychError_user, "Invalid 'rect' specified - (Partially) outside of source window.");
     }
 
     sampleRectWidth = (size_t) PsychGetWidthFromRect(sampleRect);

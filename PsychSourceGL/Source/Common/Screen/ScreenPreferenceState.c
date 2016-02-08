@@ -32,9 +32,9 @@
 // Default textrenderer already defined? E.g., Compile time options?
 #ifndef PTB_DEFAULT_TEXTRENDERER
 // Nope: Default to the high-quality OS specific renderer 1.
-// A setting of 0 would map to the legacy Apple CoreText renderer on OS/X and legacy display list renderers on Windows and Linux.
-// A setting of 1 maps to GDI renderer on Windows, and the FTGL plugin on Linux and OSX, if available.
-// A setting of 2 would map to the FTGL plugin on Linux, OS/X and Windows, if available.
+// A setting of -1 on Windows maps to the "broken beyond any sense" legacy display list renderer.
+// A setting of 0 would map to the legacy Apple CoreText renderer on OS/X, legacy GDI renderer on Windows and legacy X11 display list renderer on Linux.
+// A setting of 1 maps to the unified FTGL renderer plugin on Linux, Windows and OSX, if available and possible. It falls back to setting 0 on failure.
 #define PTB_DEFAULT_TEXTRENDERER 1
 #endif
 
@@ -42,20 +42,20 @@
 #define PTB_DEFAULTVIDCAPENGINE 3
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
-#define INITIAL_DEFAULT_FONT_NAME       "Times"
+#define INITIAL_DEFAULT_FONT_NAME       "Arial"
 #define INITIAL_DEFAULT_FONT_SIZE       24
 #define INITIAL_DEFAULT_FONT_STYLE      0
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-#define INITIAL_DEFAULT_FONT_NAME       "Geneva"
-#define INITIAL_DEFAULT_FONT_SIZE       12
+#define INITIAL_DEFAULT_FONT_NAME       "Arial"
+#define INITIAL_DEFAULT_FONT_SIZE       24
 #define INITIAL_DEFAULT_FONT_STYLE      0
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-#define INITIAL_DEFAULT_FONT_NAME       "Courier New"
-#define INITIAL_DEFAULT_FONT_SIZE       18
+#define INITIAL_DEFAULT_FONT_NAME       "Arial"
+#define INITIAL_DEFAULT_FONT_SIZE       24
 #define INITIAL_DEFAULT_FONT_STYLE      0
 #endif
 
@@ -129,7 +129,7 @@ void PrepareScreenPreferences(void)
     screenConserveVRAM=0;
     EmulateOldPTB=FALSE;
     Enable_3d_gfx=0;
-    screenVBLTimestampingMode = ((PSYCH_SYSTEM == PSYCH_LINUX) || (PSYCH_SYSTEM == PSYCH_WINDOWS)) ? 4 : 0;
+    screenVBLTimestampingMode = (PSYCH_SYSTEM == PSYCH_LINUX) ? 4 : 0;
     screenVBLEndlineOverride=-1;
     screenVBLEndlineMaxFactor=1.25;
     videoCaptureEngineId=PTB_DEFAULTVIDCAPENGINE;

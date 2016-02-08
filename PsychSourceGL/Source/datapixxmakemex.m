@@ -156,12 +156,10 @@ function datapixxmakemex()
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/Linux/Base/*.o'], '/', filesep));
             if (Is64Bit)
                 system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux64/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles64'], '/', filesep));
-                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux64/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave4LinuxFiles64'], '/', filesep));
-                striplibsfrommexfile([PTBDIR 'Psychtoolbox/PsychBasic/Octave4LinuxFiles64/Datapixx.mex'], 0, 1);
+                striplibsfrommexfile([PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles64/Datapixx.mex']);
             else
                 system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles'], '/', filesep));
-                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave4LinuxFiles'], '/', filesep));
-                striplibsfrommexfile([PTBDIR 'Psychtoolbox/PsychBasic/Octave4LinuxFiles/Datapixx.mex'], 0, 1);
+                striplibsfrommexfile([PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles/Datapixx.mex']);
             end
         elseif (IsWin)
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/Windows/Base/*.o'], '/', filesep));

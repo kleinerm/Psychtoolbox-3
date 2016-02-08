@@ -266,28 +266,32 @@ function [data,params]=DaqAInScan(daq,options)
 %             DAQ is running.
 % 6/21/15 mk  Implement options.sendChannelRange for the 1608-FS to allow skipping
 %             of DaqALoadQueue, which is likely pretty expensive.
+%
+% 12/6/15 mk  Try to select interfaces ascending by interfaceID for assignment to
+%             IndexRange, instead of hard-coding ranges. This should not change
+%             anything on Linux or Windows, but maybe it helps the brain-dead OSX.
 
 % These USB-1280FS parameters are computed from the user-supplied
 % arguments.
 % "timer_prescale" chooses the timer prescaler (0 - 8).
-% 	0 = 1:1 prescale
-% 	1 = 1:2 prescale
-% 	2 = 1:4 prescale
-% 	3 = 1:8 prescale
-% 	4 = 1:16 prescale
-% 	5 = 1:32 prescale
-% 	6 = 1:64 prescale
-% 	7 = 1:128 prescale
-% 	8 = 1:256 prescale
+%   0 = 1:1 prescale
+%   1 = 1:2 prescale
+%   2 = 1:4 prescale
+%   3 = 1:8 prescale
+%   4 = 1:16 prescale
+%   5 = 1:32 prescale
+%   6 = 1:64 prescale
+%   7 = 1:128 prescale
+%   8 = 1:256 prescale
 % "timer_preload" is the 16-bit timer preload value.
 % "options" controls various options
-% 	bit 0: 	1 = single execution, 0 = continuous execution
-% 	bit 1:	1 = immediate-transfer mode, 0 = block transfer mode
-% 	bit 2: 	1 = use external trigger
-% 	bit 3:	not used
-% 	bit 4:	1 = use channel gain queue, 0 = use channel parameters specified
-% 	bit 5:	1 = retrigger mode, 0 = normal trigger
-% 	bits 6-7: 	not used
+%   bit 0:  1 = single execution, 0 = continuous execution
+%   bit 1:  1 = immediate-transfer mode, 0 = block transfer mode
+%   bit 2:  1 = use external trigger
+%   bit 3:  not used
+%   bit 4:  1 = use channel gain queue, 0 = use channel parameters specified
+%   bit 5:  1 = retrigger mode, 0 = normal trigger
+%   bits 6-7:   not used
 %
 % The sample rate is set by the internal 16-bit incrementing timer running
 % at a base rate of 10 MHz.  The timer is controlled by timer_prescale and
@@ -310,7 +314,7 @@ end
 
 if strcmp(AllHIDDevices(daq).product(5:6),'16')
     Is1608 = 1;
-    
+
     % These options differ from those of 1208
     if ~isfield(options,'burst')
         options.burst = 0;
@@ -469,63 +473,52 @@ if options.begin
     % in DaqFind.  Nevertheless, to be safe I will add a check here to make
     % certain the interfaces are consecutive, and that there are seven of them.
     % -- mpr
-    
+    %
+    % Update: Now PsychHID can not only detect interfaceID on Linux and Windows, but
+    % possibly also on OSX, so we use that field to detect and assign interfaces in
+    % ascending order to IndexRange. I don't know if this will help the brain-dead OSX,
+    % but it should not hurt the so far well working Linux and Windows OS'es and can't
+    % become worse than it was before - complete failure - on OSX, so maybe it helps?
+    % -- mk
+
+    % Find all other interfaces of device 'daq', by looking for devices
+    % with the same serial number as daq:
+    SN = AllHIDDevices(daq).product;
+
+    % Fill empty .product fields with filler, otherwise the
+    % following strvcat deletes them!
+    for kk = 1:length(AllHIDDevices)
+        if isempty(AllHIDDevices(kk).product)
+            AllHIDDevices(kk).product = 'xoxo';
+        end
+    end
+
+    % Find device indices with the same "serial number" / "product" name:
+    AllSNs = strvcat(AllHIDDevices.product);
+    InterfaceInds = transpose(strmatch(SN,AllSNs));
+
+    % The 1608 has 7 interfaces (0-6), the other ones have 4 (0-3):
     if Is1608
-        SN = AllHIDDevices(daq).product;
-        
-        % Fill empty .product fields with filler, otherwise the
-        % following strvcat deletes them!
-        for kk = 1:length(AllHIDDevices)
-            if isempty(AllHIDDevices(kk).product)
-                AllHIDDevices(kk).product = 'xoxo';
-            end
-        end
-        
-        AllSNs = strvcat(AllHIDDevices.product);
-        InterfaceInds = strmatch(SN,AllSNs);
-        if length(InterfaceInds) ~= 7 || ~all(InterfaceInds' == (daq-6):daq)
-            % Horrible hack for the horrible 64-Bit OSX:
-            if ~IsOSX(1)
-                error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
-            else
-                warning('Not all 7 interfaces found. Will fake most common interface config and hope for the best. Run "help DaqReset" for suggestions.');
-            end
-        end
-        IndexRange = -1:-1:-6;
+        maxInterface = 6;
     else
-        % Find all other interfaces of device 'daq', by looking for devices
-        % with the same serial number:
-        SN = AllHIDDevices(daq).product;
+        maxInterface = 3;
+    end
 
-        % Fill empty .product fields with filler, otherwise the
-        % following strvcat deletes them!
-        for kk = 1:length(AllHIDDevices)
-            if isempty(AllHIDDevices(kk).product)
-                AllHIDDevices(kk).product = 'xoxo';
-            end
-        end
+    if length(InterfaceInds) ~= (maxInterface + 1)
+        error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
+    end
 
-        AllSNs = strvcat(AllHIDDevices.product);
-        InterfaceInds = transpose(strmatch(SN,AllSNs));
-        if length(InterfaceInds) ~= 4
-            % Horrible hack for the horrible 64-Bit OSX:
-            if ~IsOSX(1)
-                error('Not all interfaces found.  Run "help DaqReset" for suggestions.');
-            else
-                warning('Not all 4 interfaces found. Will fake most common interface config and hope for the best. Run "help DaqReset" for suggestions.');
+    % Throw out the primary interface with index 'daq':
+    InterfaceInds = InterfaceInds(find(InterfaceInds ~= daq));
+
+    % Find and assign interfaces 1 to maxInterface in ascending order to IndexRange:
+    IndexRange = [];
+    for kk = 1:maxInterface
+        for jj = 1:length(InterfaceInds)
+            if AllHIDDevices(InterfaceInds(jj)).interfaceID == kk
+                % Convert to indices/range relative to 'daq', as needed later on:
+                IndexRange(kk) = InterfaceInds(jj) - daq;
             end
-        end
-        
-        % Throw out the primary interface with index 'daq':
-        InterfaceInds = InterfaceInds(find(InterfaceInds ~= daq));
-        
-        % Convert to indices/range relative to 'daq', as needed later on:
-        IndexRange = InterfaceInds - daq;
-        
-        % Horrible hack for the horrible 64-Bit OSX:
-        if IsOSX(1)
-          % Hardcode index range, in the hope it helps that brain-dead os:
-          IndexRange = -1:-1:-3;
         end
     end
 
@@ -533,6 +526,7 @@ if options.begin
     for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
         err=PsychHID('ReceiveReports',daq+d);
     end
+
     for d=IndexRange % Interfaces 1,2,3 (1208FS) or 1:6 (1608FS)
         [reports,err]=PsychHID('GiveMeReports',daq+d);
         if ~isempty(reports) && options.print
@@ -540,6 +534,7 @@ if options.begin
         end
     end
 end
+
 err.n = 0;
 if Is1608
     % How many channels?

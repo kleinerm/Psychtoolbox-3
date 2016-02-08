@@ -28,9 +28,6 @@ function osxsetoctaverpath(mexfname, mexpath)
     % Replace absolute path to liboctave.2.dylib with @rpath:
     system(['install_name_tool -change ' octave_config_info.octlibdir '/liboctave.2.dylib @rpath/liboctave.2.dylib ' mexfname]);
 
-    % Replace absolute path to libcruft.2.dylib with @rpath:
-    system(['install_name_tool -change ' octave_config_info.octlibdir '/libcruft.2.dylib @rpath/libcruft.2.dylib ' mexfname]);
-
     % Ok, now all octave library locations are encoded relative to @rpath.
     % Encode a whole bunch of rpath runtime pathes into the mex file, for
     % different versions of octave, installed via different package

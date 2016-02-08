@@ -75,6 +75,11 @@ function daq = DaqDeviceIndex(DeviceName, IShouldWarn)
 %             heuristic only used if only 1 DAQ device is detected and only
 %             on OSX, as the regular matching code works well on Linux and
 %             Windows.
+%
+% 12/06/15 mk Try to use interfaceID on OSX to find interface #0 directly without
+%             all the awful hacks. PsychHID learned to extract interfaceID with
+%             this release. Well, we don't know if it works with DAQ boxes, we
+%             just hope it will work.
 
 if nargin < 2 || isempty(IShouldWarn)
     IShouldWarn=1;
@@ -88,9 +93,9 @@ else
     if ~ischar(DeviceName)
         error('DaqDeviceIndex expects a character string as input.');
     end
-    
+
     AcceptAlternateNames = 0;
-    
+
     % Validate given DeviceName against list of supported devices:
     switch DeviceName
         case {'PMD-1208FS','USB-1208FS','PMD-1408FS','USB-1408FS'}
@@ -114,80 +119,40 @@ for k=1:length(devices)
     if devices(k).vendorID ~= 2523
         continue;
     end
-    
-    % It is a MCC device. The product name string is only well defined on
-    % OSX and Linux, but non-sensical on Windows. The USB productID is well
-    % defined and accessible on all systems, so we remap the productID to
-    % the name string: Database with id's available at
-    % ftp://ftp.measurementcomputing.com/Customer/JBR/ULHelp/Users_Guide/Appendix/BoardType_Codes.htm
-    % This remapping of product name string from productID is actually done
-    % in our helper function PsychHIDDAQS above.
-    
-    % Set NumOutputs threshold value known to be consistent with
-    % interface 0 on OSX. On Window and Linux we don't need this hack.
-    %
-    % Use as flag to prevent processing of unsupported devices, therefore
-    % init to empty.
-    NumOutputs = [];
-    
-    % 1024-LS type product ID?
-    if devices(k).productID == 118
-        % MK: This NumOutputs threshold needs to be tinkered with to find the
-        % correct number for the actual output interface of 1024LS:
-        NumOutputs = 0;
-    end
-    
-    % 1608FS type product ID?
-    if devices(k).productID == 125
-        NumOutputs = 65;
-    end
-    
-    % 1208FS type product ID?
-    if devices(k).productID == 130
-        NumOutputs = 69;
-    end
-    
-    % 1408FS type product ID?
-    if devices(k).productID == 161
-        NumOutputs = 65;
-    end
-    
+
     % It is a MCC device.
     if AcceptAlternateNames
-        if ~isempty(NumOutputs)
-            if isempty(NumInterfaces)
-                NumInterfaces = 1;
-                MatchedDeviceName = devices(k).product;
-                MatchedSerialNumbers = devices(k).serialNumber;
-            else
-                % Device already known - stored in our list?
-                matchedIt = 0;
-                for l=1:size(MatchedDeviceName,1)
-                    if ~isempty(strfind(MatchedDeviceName(l,:),devices(k).product)) && ...
-                            ~isempty(strfind(MatchedSerialNumbers(l,:),devices(k).serialNumber))
-                        % Yes: Increment its interface count:
-                        NumInterfaces(l) = NumInterfaces(l) + 1;
-                        matchedIt = 1;
-                    end
-                end % for l=1:size(MatchedDeviceName,1)
-                
-                % Found at least 1 match in list of already known devices?
-                if ~matchedIt
-                    % Nope: Add this devices name/id and serialNumber to array,
-                    % init to at least one interface we found by definition of
-                    % reaching this point:
-                    MatchedDeviceName    = char(MatchedDeviceName,devices(k).product);
-                    MatchedSerialNumbers = char(MatchedSerialNumbers,devices(k).serialNumber);
-                    NumInterfaces(end+1) = 1;
+        if isempty(NumInterfaces)
+            NumInterfaces = 1;
+            MatchedDeviceName = devices(k).product;
+            MatchedSerialNumbers = devices(k).serialNumber;
+        else
+            % Device already known - stored in our list?
+            matchedIt = 0;
+            for l=1:size(MatchedDeviceName,1)
+                if ~isempty(strfind(MatchedDeviceName(l,:),devices(k).product)) && ...
+                   ~isempty(strfind(MatchedSerialNumbers(l,:),devices(k).serialNumber))
+                    % Yes: Increment its interface count:
+                    NumInterfaces(l) = NumInterfaces(l) + 1;
+                    matchedIt = 1;
                 end
-            end % if isempty(NumInterfaces); else
-            
-            % We want interface #0. We get it by checking for it on Linux and
-            % Windows, and indirectly detecting it by the number of outputs on OS/X:
-            if (devices(k).outputs > NumOutputs) || (devices(k).interfaceID == 0)
-                daq(end+1) = k;
-            end            
-        end % if ~isempty(NumOutputs)
+            end % for l=1:size(MatchedDeviceName,1)
+
+            % Found at least 1 match in list of already known devices?
+            if ~matchedIt
+                % Nope: Add this devices name/id and serialNumber to array,
+                % init to at least one interface we found by definition of
+                % reaching this point:
+                MatchedDeviceName    = char(MatchedDeviceName,devices(k).product);
+                MatchedSerialNumbers = char(MatchedSerialNumbers,devices(k).serialNumber);
+                NumInterfaces(end+1) = 1;
+            end
+        end % if isempty(NumInterfaces); else
+        
+        % We want interface #0:
+        if devices(k).interfaceID == 0
+            daq(end+1) = k;
+        end
     else % if ~AcceptAlternateNames
         if streq(devices(k).product,DeviceName)
             if isempty(NumInterfaces)
@@ -203,7 +168,7 @@ for k=1:length(devices)
                         matchedIt = 1;
                     end
                 end
-                
+
                 % Found at least 1 match in list of already known devices?
                 if ~matchedIt
                     % Nope: Add this devices serialNumber to array, init to at
@@ -213,13 +178,11 @@ for k=1:length(devices)
                     NumInterfaces(end+1) = 1;
                 end
             end % if isempty(NumInterfaces); else branch.
-            
-            % We want interface #0. We get it by checking for it on Linux and
-            % Windows, and indirectly detecting it by the number of outputs on OS/X:
-            if (devices(k).outputs > NumOutputs) || (devices(k).interfaceID == 0)
+
+            % We want interface #0:
+            if devices(k).interfaceID == 0
                 daq(end+1) = k; %#ok<*AGROW>
             end
-            
         end % if streq(devices(k).product,DeviceName)
     end % if AcceptAlternateNames; else
 end % for k=1:length(devices)
@@ -229,56 +192,10 @@ if IShouldWarn
         if ~isempty(strfind(devices(daq(k)).product,'1608'))
             if NumInterfaces(k) < 7
                 ConfirmInfo(sprintf(['Only found %d interfaces for DeviceIndex %d.  Execute ' ...
-                    '"help DaqReset" for suggestions.'], ...
-                    NumInterfaces(k),daq(k)));
+                            '"help DaqReset" for suggestions.'], ...
+                            NumInterfaces(k),daq(k)));
             end
         end
-    end
-end
-
-if (length(daq) == 1) && IsOSX
-    % This is OSX, the most f$%@#$d up system in existence, and exactly 1
-    % DAQ device was detected. This is the common case. We know that the
-    % daq index corresponding to interface #0 seems to be always the one
-    % with the maximal index in the devices list, and the NumOutputs
-    % heuristic is badly broken due to the mostly random and varying number
-    % of outputs reported by OSX across OS versions.
-    % So let's try to fix this up for the common case of exactly 1 device
-    % on OSX with a new heuristic. Simply select the last device in the
-    % list, ie., the one with maximal index:
-    maxidx = -1;
-
-    fprintf('\nOnly one DAQ device detected and this is the horribly broken OSX OS.\n');
-    fprintf('Will return daq device index as the one with the highest index number,\n');
-    fprintf('assuming it to be interface #0, as our interface matching is too\n');
-    fprintf('unreliable on OSX, thanks to Apple''s broken operating systems. Good luck!\n');
-    
-    for k=1:length(devices)
-        % Skip all devices with a vendorId other than 2523 aka 0x09db, ie. all
-        % devices that are not from Measurement Computing:
-        if devices(k).vendorID ~= 2523
-            continue;
-        end
-        
-        % Skip all devices which don't match the proper product name if
-        % name filtering is requested by user:
-        if ~AcceptAlternateNames && ~streq(devices(k).product,DeviceName)
-            continue;
-        end
-        
-        if devices(k).outputs == 0
-            continue;
-        end
-        
-        % Ok, index k is a MCC devices which matches. Keep track of the
-        % device with maximum index:
-        maxidx = max(maxidx, k);
-    end
-    
-    if maxidx >= 0
-        % Assign maximum index as proper daq index for interface #0 of only
-        % detected DAQ device on OSX:
-        daq = maxidx;
     end
 end
 

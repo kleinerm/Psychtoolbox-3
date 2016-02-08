@@ -101,8 +101,8 @@ void InitializeSynopsis()
     synopsis[i++] = "\n% New OpenGL functions for OS X:";
     synopsis[i++] = "Screen('glPoint', windowPtr, color, x, y [,size]);";
     synopsis[i++] = "Screen('gluDisk', windowPtr, color, x, y [,size]);";
-    synopsis[i++] = "Screen('DrawDots', windowPtr, xy [,size] [,color] [,center] [,dot_type]);";
-    synopsis[i++] = "Screen('DrawLines', windowPtr, xy [,width] [,colors] [,center] [,smooth]);";
+    synopsis[i++] = "[minSmoothPointSize, maxSmoothPointSize, minAliasedPointSize, maxAliasedPointSize] = Screen('DrawDots', windowPtr, xy [,size] [,color] [,center] [,dot_type] [,lenient]);";
+    synopsis[i++] = "[minSmoothLineWidth, maxSmoothLineWidth, minAliasedLineWidth, maxAliasedLineWidth] = Screen('DrawLines', windowPtr, xy [,width] [,colors] [,center] [,smooth] [,lenient]);";
     synopsis[i++] = "[sourceFactorOld, destinationFactorOld, colorMaskOld]=Screen('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew], [colorMaskNew]);";
 
     // Draw Text in windows

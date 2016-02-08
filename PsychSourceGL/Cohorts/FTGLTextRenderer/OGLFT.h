@@ -76,7 +76,7 @@
 #include <QColor>
 // MK changed to include qstringqcharemulation.h on OGLFT_QT_VERSION == 0
 #elif OGLFT_QT_VERSION == 0
-#include <qstringqcharemulation.h>
+#include "qstringqcharemulation.h"
 #endif
 #endif
 
@@ -87,7 +87,8 @@
 #include FT_TRIGONOMETRY_H
 #include FT_BITMAP_H
 
-#ifdef _MSC_VER
+//#ifdef _MSC_VER
+#if 0
 #ifdef OGLFT_BUILD
 #define OGLFT_API __declspec(dllexport)
 #else

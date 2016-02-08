@@ -73,7 +73,7 @@ try
   fprintf('Found a total of %i video output displays on %i X-Screens.\n\n', outputCnt, length(screenNumbers));
 
   % Single display setup?
-  if numOutputs == 1
+  if outputCnt == 1
     % Yes. That answers the question if multi-x-screen is wanted:
     fprintf('Only a single active display connected, so obviously you want a single-display setup.\n');
     multixscreen = 0;
@@ -439,7 +439,12 @@ function WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, screenN
 
   if ~isempty(screenNumber)
     if ~isempty(ZaphodHeads)
-      fprintf(fid, '  Option      "ZaphodHeads" "%s"\n', ZaphodHeads);
+      if strcmp(xdriver, 'nvidia')
+        fprintf(fid, '  Option      "UseDisplayDevice" "%s"\n', ZaphodHeads);
+      else
+        fprintf(fid, '  Option      "ZaphodHeads" "%s"\n', ZaphodHeads);
+      end
+
       for i=1:length(xscreenoutputs)
         scanout = outputs{(xscreenoutputs(i))};
         fprintf(fid, '  Option      "Monitor-%s" "%s"\n', scanout.name, scanout.name);
@@ -487,8 +492,14 @@ function xdriver = DetectDDX(winfo)
       xdriver = 'fglrx';
     end
   else
-    warning('Could not identify your graphics driver. Will use modesetting driver as fallback.');
-    fprintf('GPU with unknown driver detected. ');
+    % Warn if we use modesetting ddx because we can not identify gpu, otherwise
+    % we still use modesetting ddx for known gpu's if we end here, but we don't
+    % warn about it because we know this is the right ddx for those known gpus:
+    if ~strcmp(winfo.GPUCoreId, 'VC4')
+      warning('Could not identify your graphics driver. Will use modesetting driver as fallback.');
+      fprintf('GPU with unknown driver detected. ');
+    end
+
     xdriver = 'modesetting';
   end
 end

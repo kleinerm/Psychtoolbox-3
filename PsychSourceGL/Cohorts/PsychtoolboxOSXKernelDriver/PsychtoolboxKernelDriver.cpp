@@ -387,8 +387,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
     // AMD/ATI card?
     if ((PCI_VENDOR_ID_AMD == fPCIVendorId) || (PCI_VENDOR_ID_ATI == fPCIVendorId)) {
-        // Assume it is a ATI Radeon GPU: BAR 2 is the MMIO registers:
-        pciBARReg = kIOPCIConfigBaseAddress2;
+        // Assume it is a ATI Radeon GPU: BAR 2 is the MMIO registers for old GPU's, BAR 5 for DCE-8 "Sea Islands" and later:
+        pciBARReg = (isDCE8() || isDCE10()) ? kIOPCIConfigBaseAddress5 : kIOPCIConfigBaseAddress2;
         fDeviceType = kPsychRadeon;
         IOLog("%s: This is a ATI/AMD GPU, hopefully a compatible Radeon...\n", getName());
         if (PCI_VENDOR_ID_ATI == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have ATI's vendor id.\n", getName());

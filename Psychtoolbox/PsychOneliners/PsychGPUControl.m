@@ -188,7 +188,7 @@ function rc = executeRadeoncmd(cmdpostfix)
 
     if IsWin
         % For 32-Bit or 64-Bit Windows we always use a 32-Bit executable:
-        cmdprefix = '/PsychContributed/ATIRadeonperf_Windows';
+        cmdprefix = '/PsychContributed/ATIRadeonperf_Windows.exe';
     end
 
     % Does the executable exist? Otherwise error out early:
