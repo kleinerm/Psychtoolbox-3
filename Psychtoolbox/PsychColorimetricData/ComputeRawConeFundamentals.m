@@ -111,7 +111,7 @@ if (~isempty(params.lambdaMaxShift))
         error('Length of passed lambdaMaxShift does not match number of absorbances available to shift');
     end
     
-    absorbance = ShiftPhotopigmentAbsorbance(staticParams.S,absorbance,lambdaMaxShift);
+    absorbance = ShiftPhotopigmentAbsorbance(staticParams.S,absorbance,params.lambdaMaxShift);
 end
 
 % Compute absorptance

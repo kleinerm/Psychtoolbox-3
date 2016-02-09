@@ -100,6 +100,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % 05/24/14 dhb  Add fractionPigmentBleached optional arg.
 % 05/26/14 dhb  Comment improvements.
 % 02/08/16 dhb, ms  Add lambdaMaxShift argument.
+%          ms   Don't do two way check when lambdaMax is shifted.
 
 %% Are we doing rods rather than cones?
 if (nargin < 8 || isempty(DORODS))
@@ -224,6 +225,10 @@ if (~isfield(params,'absorbance'))
     end
 end
 
+if any(~(params.lambdaMaxShift == 0))
+    CHECK_FOR_AGREEMENT = false;
+end
+
 %% Drop into more general routine to compute
 %
 % See comment in ComputeRawConeFundamentals about the fact that
@@ -239,11 +244,11 @@ end
 if (CHECK_FOR_AGREEMENT)
     diffs = abs(T_quantalAbsorptions(:)-photoreceptors.effectiveAbsorptance(:));
     if (max(diffs(:)) > 1e-7)
-        error('Two ways of computing absorption quantal efficiency referred to the cornea DO NOT AGREE\n');
+        error('Two ways of computing absorption quantal efficiency referred to the cornea DO NOT AGREE');
     end
     diffs = abs(T_quantalIsomerizations(:)-photoreceptors.isomerizationAbsorptance(:));
     if (max(diffs(:)) > 1e-7)
-        error('Two ways of computing isomerization quantal efficiency referred to the cornea DO NOT AGREE\n');
+        error('Two ways of computing isomerization quantal efficiency referred to the cornea DO NOT AGREE');
     end
 end
 
