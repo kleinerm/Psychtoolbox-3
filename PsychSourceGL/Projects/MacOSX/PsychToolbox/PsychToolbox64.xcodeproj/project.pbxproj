@@ -1970,7 +1970,6 @@
 		2F4A2DEF069CBAFA0005EA67 /* FontInfo.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = FontInfo.h; path = ../../../Source/OSX/Fonts/FontInfo.h; sourceTree = SOURCE_ROOT; };
 		2F4A2DF0069CBAFA0005EA67 /* FontInfo.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = FontInfo.c; path = ../../../Source/OSX/Fonts/FontInfo.c; sourceTree = SOURCE_ROOT; };
 		2F4A2DF1069CBAFA0005EA67 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/OSX/Fonts/RegisterProject.h; sourceTree = SOURCE_ROOT; };
-		2F4A57DD053A94E600A80166 /* SCREENTestTexture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENTestTexture.c; path = ../../../Source/Common/Screen/SCREENTestTexture.c; sourceTree = SOURCE_ROOT; };
 		2F4D83D907B8282C00CE685A /* PsychAlphaBlending.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychAlphaBlending.c; path = ../../../Source/Common/Screen/PsychAlphaBlending.c; sourceTree = SOURCE_ROOT; };
 		2F4D83DA07B8282C00CE685A /* PsychAlphaBlending.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychAlphaBlending.h; path = ../../../Source/Common/Screen/PsychAlphaBlending.h; sourceTree = SOURCE_ROOT; };
 		2F5434D70904C5DB0051D6CC /* PsychHIDGiveMeReports.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDGiveMeReports.c; path = ../../../Source/Common/PsychHID/PsychHIDGiveMeReports.c; sourceTree = SOURCE_ROOT; };
@@ -3781,7 +3780,6 @@
 				2FE3CC130569E436007A711C /* SCREENTextModes.c */,
 				2F44AD77056B166A007A711C /* SCREENTextSize.c */,
 				2F6B77C3056C74AB007A711C /* SCREENTextStyle.c */,
-				2F4A57DD053A94E600A80166 /* SCREENTestTexture.c */,
 				2F875A6905F679A3008AC8DE /* SCREENTestTextureTwo.c */,
 				0F6B343C0B696A0D0000A951 /* SCREENTransformTexture.c */,
 				830572260984860000EB51EE /* SCREENWaitBlanking.c */,

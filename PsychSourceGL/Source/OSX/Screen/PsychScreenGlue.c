@@ -812,7 +812,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
 
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.
     isCaptured = PsychIsScreenCaptured(screenNumber);
-    if (!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
+    if (!isCaptured) printf("PTB-ERROR: Attempt to change video settings without capturing the display on screen %i.\n", screenNumber);
 
     // Change the display mode.
     CGDisplayConfigRef configRef;
@@ -825,7 +825,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
         CGCancelDisplayConfiguration(configRef);
     }
 
-    if (error) PsychErrorExitMsg(PsychError_internal, "Unable to set switch video modes");
+    if (error) printf("PTB-ERROR: Unable to restore original video mode setting on screen %i.\n", screenNumber);
 
     return(true);
 }
