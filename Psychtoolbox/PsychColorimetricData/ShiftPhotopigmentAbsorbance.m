@@ -10,19 +10,33 @@ function absorbance = ShiftPhotopigmentAbsorbance(S,absorbance,lambdaMaxShift)
 % input.
 %
 % 2/8/16  dhb, ms  Wrote it.
+% 2/10/16 dhb, ms  Do shifting on a fine (0.25 nm) wavelength spacing.
 
 % Check
 if (length(lambdaMaxShift) ~= size(absorbance,1))
     error('Number of absorbances and length of shift vector do not match');
 end
 
-% Normalize the wave number and log wavelength
+% Do the shifting on a fine wavelength spacing scale, so as to avoid
+% unexpected wavelength quantization artifacts as a result of the shift.
 wls = MakeItWls(S);
-[~, maxIdx] = max(absorbance, [], 2);
-for ii = 1:size(absorbance,1);
-	logWavelengthsNorm = log10(wls) - log10(wls(maxIdx(ii)));
-    logWavelengthsNew = logWavelengthsNorm + log10(wls(maxIdx(ii))+lambdaMaxShift(ii));
-    wlsNew = 10.^logWavelengthsNew;
-    absorbance(ii, :) = interp1(wlsNew, absorbance(ii, :), wls, 'linear','extrap');
+fineSpacing = 0.25;
+if (S(2) < fineSpacing)
+    error('Not a good idea to run this function with an input wavelength spacing less than 0.25 nm');
 end
+wlsFine = (wls(1):fineSpacing:wls(end))';
+SFine = WlsToS(wlsFine);
+absorbanceFine = SplineCmf(S,absorbance,SFine);
+
+% Normalize the wave number and log wavelength
+[~, maxIdx] = max(absorbanceFine, [], 2);
+for ii = 1:size(absorbanceFine,1);
+	logWavelengthsNorm = log10(wlsFine) - log10(wlsFine(maxIdx(ii)));
+    logWavelengthsNew = logWavelengthsNorm + log10(wlsFine(maxIdx(ii))+lambdaMaxShift(ii));
+    wlsFineNew = 10.^logWavelengthsNew;
+    absorbanceFine(ii, :) = interp1(wlsFineNew, absorbanceFine(ii, :), wlsFine, 'linear','extrap');
+end
+
+% Spline the shifted function back to the original wavelength spacing
+absorbance = SplineCmf(SFine,absorbanceFine,S);
 
