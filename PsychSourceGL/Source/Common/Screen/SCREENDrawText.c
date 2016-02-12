@@ -1540,7 +1540,7 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
                     sprintf(pluginPath, "%sPsychBasic\\PsychPlugins\\%s", PsychRuntimeGetPsychtoolboxRoot(FALSE), pluginName);
                 }
                 else {
-                    sprintf(pluginPath, "%s/PsychBasic/PsychPlugins/%s", PsychRuntimeGetPsychtoolboxRoot(FALSE), pluginName);
+                    sprintf(pluginPath, "%sPsychBasic/PsychPlugins/%s", PsychRuntimeGetPsychtoolboxRoot(FALSE), pluginName);
                 }
                 if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: DrawText: Trying to load external text renderer plugin from following file: [ %s ]\n", pluginPath);
             }
@@ -1555,16 +1555,18 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
                 drawtext_plugin = LoadLibrary(pluginPath);
                 if (NULL == drawtext_plugin) {
                     // First - and only - try failed:
-                    if (PsychPrefStateGet_Verbosity() > 3) {
+                    if (PsychPrefStateGet_Verbosity() > 1) {
                         printf("PTB-DEBUG: DrawText: Failed to load external drawtext plugin [%s].\n", (const char*) "Unknown error");
                     }
                 }
             #else
                 drawtext_plugin = dlopen(pluginPath, RTLD_NOW | RTLD_GLOBAL);
                 if (NULL == drawtext_plugin) {
-                    // First try failed:
-                    if (PsychPrefStateGet_Verbosity() > 3) {
-                        printf("PTB-DEBUG: DrawText: Failed to load external drawtext plugin [%s]. Retrying under generic name [%s].\n", (const char*) dlerror(), pluginName);
+                    // First try failed: Need higher verbosity for debug output on Linux, as failure
+                    // during first try is expected on 64-Bit Non-NeuroDebian Linux, due to the way
+                    // probing is done.
+                    if (PsychPrefStateGet_Verbosity() > ((PSYCH_SYSTEM == PSYCH_LINUX) ? 3 : 1)) {
+                        printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [%s]. Retrying under generic name [%s].\n", (const char*) dlerror(), pluginName);
                     }
 
                     sprintf(pluginPath, "%s", pluginName);
@@ -1590,7 +1592,7 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
                 printf("PTB-WARNING: DrawText: Functionality of Screen('DrawText') and Screen('TextBounds') may be limited and text quality may be impaired.\n");
                 printf("PTB-WARNING: DrawText: Type 'help DrawTextPlugin' at the command prompt to receive instructions for troubleshooting.\n\n");
             #else
-                printf("PTB-INFO: DrawText: Failed to load external drawtext plugin '%s'. Reverting to legacy GDI text renderer. 'help DrawTextPlugin' for info.\n", pluginName);
+                printf("PTB-INFO: DrawText: Failed to load external drawtext plugin '%s'. Reverting to legacy GDI text renderer. 'help DrawTextPlugin' for troubleshooting.\n", pluginName);
             #endif
         }
 
