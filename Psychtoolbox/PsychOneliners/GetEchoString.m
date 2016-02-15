@@ -1,5 +1,5 @@
-function string = GetEchoString(windowPtr, msg, x, y, textColor, bgColor, useKbCheck, varargin)
-% string = GetEchoString(window, msg, x, y, [textColor], [bgColor], [useKbCheck=0], [deviceIndex], [untilTime=inf], [KbCheck args...])
+function [string,terminatorChar] = GetEchoString(windowPtr, msg, x, y, textColor, bgColor, useKbCheck, varargin)
+% [string,terminatorChar] = GetEchoString(window,msg,x,y,[textColor],[bgColor],[useKbCheck=0],[deviceIndex],[untilTime=inf],[KbCheck args...]);
 % 
 % Get a string typed at the keyboard. Entry is terminated by <return> or
 % <enter>.
@@ -44,6 +44,7 @@ function string = GetEchoString(windowPtr, msg, x, y, textColor, bgColor, useKbC
 % 09/06/13  mk        Do not clear window during typing of characters, only
 %                     erase relevant portions of the displayed text string.
 % 02/10/16  mk        Adapt 'TextAlphaBlending' setup for cross-platform FTGL plugin.
+% 02/15/16  dgp       Accept ESC for termination, return terminatorChar.
 
 if nargin < 7
     useKbCheck = [];
@@ -92,12 +93,14 @@ while true
 
     if isempty(char)
         string = '';
+        terminatorChar = 0;
         break;
     end
-        
-    switch (abs(char))
-        case {13, 3, 10}
-            % ctrl-C, enter, or return
+
+    switch abs(char)
+        case {13, 3, 10, 27}
+            % ctrl-C, enter, return, or escape
+            terminatorChar = abs(char);
             break;
         case 8
             % backspace
@@ -107,9 +110,9 @@ while true
                 oldTextColor = Screen('TextColor', windowPtr);
                 Screen('DrawText', windowPtr, output, x, y, bgColor, bgColor);
                 Screen('TextColor', windowPtr, oldTextColor);
-                
+
                 % Remove last character from string:
-                string = string(1:length(string)-1);                
+                string = string(1:length(string)-1);
             end
         otherwise
             string = [string, char]; %#ok<AGROW>
