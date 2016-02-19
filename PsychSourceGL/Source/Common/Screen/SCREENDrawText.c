@@ -460,6 +460,7 @@ PsychError    PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectTyp
         CFRelease(line);
         CGColorSpaceRelease(cgColorSpace);
         CGContextRelease(cgContext);
+        free((void *) textureMemory);
 
         // Done.
         return(PsychError_none);
