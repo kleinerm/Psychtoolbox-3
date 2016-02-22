@@ -1,6 +1,6 @@
 % iviewx simulator test
 fprintf([mfilename ' start\n']);
-clear all;
+clear;
 try
 
     

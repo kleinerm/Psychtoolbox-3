@@ -188,6 +188,8 @@ function HighColorPrecisionDrawingTest(testconfig, maxdepth, testblocks)
 % 10/04/15  Use PsychGPURasterizerOffsets() to compensate for driver flaws (MK).
 % 10/21/15  Fix the fixes for rasterizer offsets, fix Octave-4 warnings, add
 %           hint to new ConserveVRAMSetting to work around OSX 10.11 AMD bugs.
+% 01/31/16  Change filterMode to zero for gamma correction test. Better matches
+%           real world use conditions. (MK)
 
 global win;
 
@@ -488,7 +490,8 @@ if ismember(3, testblocks)
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 514 514], [], [], [], []);
+    winsize = 2^(ceil(maxdepth / 2)) + 2;
+    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 winsize winsize], [], [], [], []);
 
     % Test GPU output positioning, report trouble:
     [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
@@ -592,7 +595,7 @@ if ismember(3, testblocks)
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
-    
+
     % FillOval test:
     foxy = [xy ; xy + repmat([2;2], 1, size(xy, 2))];
     Screen('FillOval', win, rgbacolors, foxy);
@@ -603,7 +606,7 @@ if ismember(3, testblocks)
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
-        
+
     % DrawTexture test: Need only 1 texture draw to test all values
     % simultaneously:
     foxy = [xy ; xy + repmat([2;2], 1, size(xy, 2))];
@@ -613,7 +616,7 @@ if ismember(3, testblocks)
         % values is 0-255 instead of 0.0 - 1.0. Need to rescale:
         teximg = uint8(refpatch * 255);
     end
-    
+
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
     Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], Filters);
     Screen('Close', tex);
@@ -628,7 +631,7 @@ if ismember(3, testblocks)
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
-    
+
     % Test of gamma correction shader: This is the
     % 'SimpleGamma' shader used by the imaging
     % pipeline, setup by PsychColorCorrection():
@@ -647,16 +650,25 @@ if ismember(3, testblocks)
 
     glUniform2f(glGetUniformLocation(gammaShader, 'ICMClampToColorRange'), 0.0, 1.0);
     glUseProgram(0);
-    
+
     teximg = refpatch;
     if Textures <=0
         % Integer texture instead of float texture: Now expected range of
         % values is 0-255 instead of 0.0 - 1.0. Need to rescale:
         teximg = uint8(refpatch * 255);
     end
-    
+
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
-    Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], Filters, [], [], gammaShader);
+    % Use filterMode 0 aka nearest neighbour sampling for the gamma test. The reason is that
+    % shader based gamma correction is typically done with the image postprocessing pipeline
+    % with nearest neighbour sampling, or when done manually with filterMode 0. A bilinear
+    % filter usually doesn't make much sense. Some gfx hardware and drivers do not sample
+    % precise enough here in bilinear mode, and that will cause this test to report a gamma
+    % precision much lower than what one would actually get in real world use. So lets adapt
+    % the test to the real world use conditions here. Problems with precision will still show
+    % up in tests where they matter to users under real world conditions, e.g., the tests for
+    % texture drawing with alpha-blending and 1+1 overdraws alpha-blending.
+    Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], 0, [], [], gammaShader);
     Screen('Close', tex);
     testname = 'GammaCorrection';
 
@@ -681,7 +693,8 @@ if ismember(4, testblocks)
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 514 514], [], [], [], []);
+    winsize = max(514, 2^(ceil(maxdepth / 2)) + 2);
+    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 winsize winsize], [], [], [], []);
 
     % Test GPU output positioning, report trouble:
     [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
@@ -730,7 +743,7 @@ if ismember(4, testblocks)
     
     i=0;
     mingoodbits = inf;
-    % Step through range 1 down to zero, in 1/1000th decrements:
+    % Step through range 1 down to -1, in 1/1000th decrements:
     for mc = 1.0:-0.001:-1.0
         i=i+1;
 
@@ -744,21 +757,21 @@ if ismember(4, testblocks)
 
         % DrawTexture, modulateColor == [mc mc mc 1] modulated:
         Screen('DrawTexture', win, tex, [], OffsetRect(fbrect, 0, 0), [], Filters, [], mc);
-        
+
         % While the GPU does its thing, we compute the Matlab reference
         % patch:
         refpatch = colpatch * mc;
-        
+
         testname = 'DrawTexture-modulateColor';
 
         % Evaluate and log:
         [dummy, minv, maxv(i), goodbits] = comparePatches([], testname, maxdepth, refpatch, fbrect);
         mingoodbits = min([mingoodbits, goodbits]);
-        
+
         % Visualize and clear buffer back to zero aka black:
-        Screen('Flip', win, 0, 0, 2);        
+        Screen('Flip', win, 0, 0, 2);
     end
-    
+
     resstring = [resstring sprintf('%s : Maxdiff.: %1.17f --> Accurate to at least %i bits.\n', testname, max(maxv), mingoodbits)];
 
     if mingoodbits < 16
@@ -766,7 +779,6 @@ if ismember(4, testblocks)
     end
 
     Screen('Close', tex);
-        
     Screen('CloseAll');
 end % Test 4.
 
@@ -776,7 +788,8 @@ if ismember(5, testblocks)
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    [win rect] = PsychImaging('OpenWindow', screenid, [0 0 0 0], [0 0 514 514], [], [], [], []);
+    winsize = max(514, 2^(ceil(maxdepth / 2)) + 2);
+    [win rect] = PsychImaging('OpenWindow', screenid, [0 0 0 0], [0 0 winsize winsize], [], [], [], []);
 
     % Test GPU output positioning, report trouble:
     [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
@@ -830,7 +843,7 @@ if ismember(5, testblocks)
     alpha=1;
     i=0;
     mingoodbits = inf;
-    % Step through range 1 down to zero, in 1/1000th decrements:
+    % Step through range 1 down to -1, in 1/1000th decrements:
     for mc = 1.0:-0.001:-1.0
         i=i+1;
 

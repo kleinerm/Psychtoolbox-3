@@ -102,7 +102,7 @@ for i=1:nfiles
     try
         % Make sure we don't abort if we encounter an unreadable sound
         % file. This is achieved by the try-catch clauses...
-        [audiodata, infreq] = wavread(char(wavfilenames(i)));
+        [audiodata, infreq] = psychwavread(char(wavfilenames(i)));
         dontskip = 1;
     catch
         fprintf('Failed to read and add file %s. Skipped.\n', char(wavfilenames(i)));

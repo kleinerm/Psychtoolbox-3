@@ -192,12 +192,25 @@ try
     tstart=vbl;
     count=-100;
     while ~KbCheck && count < 1200
+        % Test affine text transformations?
+        if 0
+            % Yes. Apply some rotation and some translation:
+            angle = 2 * (GetSecs - tstart) / 360 * 2 * 3.141592654;
+            delta = 10 * sin((GetSecs - tstart));
+            newmatrix = [ cos(angle), -sin(angle), delta ; ...
+                          sin(angle),  cos(angle), delta ];
+
+            oldmatrix = Screen('TextTransform', w, newmatrix)
+            Screen('TextBackgroundColor', w, [0 255 0 128]);
+        end
+
         % Draw text baseline in green...
         Screen('DrawLine', w, [0 255 0], 100, count, 1400, count);
         % Compute texts bounding box...
         [normRect realRect] = Screen('TextBounds', w, 'Hit any key to exit.', 100, count);
         % Draw the text...
         Screen('DrawText', w, 'Hit any key to exit.', 100, count, [255, 0, 0, 255]);
+        Screen('DrawText', w, 'This is yellow.', [], [], [255, 255, 0, 255]);
         % Visualize its bounding box:
         Screen('FrameRect', w, [255 0 255], realRect);
 

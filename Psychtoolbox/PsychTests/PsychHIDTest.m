@@ -1,5 +1,5 @@
-function PsychHIDTest
-% PsychHIDTest
+function PsychHIDTest(doStupidTests)
+% PsychHIDTest([doStupidTests=0])
 %
 % NOTE: This test is mostly useless on current operating systems, a relic of the
 % past days of OSX on PowerPC. Running it will almost always confuse you without
@@ -8,8 +8,19 @@ function PsychHIDTest
 %
 %
 % PsychHIDTest exercises the PsychHID mex file. We list all the HID
-% devices. We read from the keyboard and mouse. We flicker the keyboard
-% LEDs.
+% devices on all systems. Please note that the type of devices that
+% can be listed depends on operating system type. Security mechanisms
+% in many OS'es prevent listing of certain HID devices, or of details
+% of certain devices, e.g., keyboards and mice. This is especially true
+% on MS-Windows, and to a lesser degree on Linux.
+%
+%
+% On OSX, if you set the optional flag 'doStupidTests' to 1, we try to
+% read from the keyboard and mouse. We try to flicker the keyboard
+% LEDs. Both due to the brokeness of Apples recent operating systems and
+% due to limitations of this test, this may not work on many recent
+% keyboards, so a failure of this test may not indicate real trouble.
+% That is why the test is disabled by default, to not cause extra confusion.
 %
 % On non OSX we only list the HID devices, as mouse and keyboard are
 % not really accessible for PsychHID on MS-Windows, and dangerous to access on Linux.
@@ -32,6 +43,11 @@ function PsychHIDTest
 % 5/14/12  mk Cleanup and improve.
 % 7/01/14  mk Skip all but HID device enumeration on Windows.
 % 12/08/15 mk Skip all but HID device enumeration on other than OSX.
+% 02/20/16 mk Skip all but HID device enumeration by default.
+
+if nargin < 1 || isempty(doStupidTests)
+    doStupidTests = 0;
+end
 
 fprintf('PsychHIDTest\n');
 fprintf('Making a list of all your HID-compliant devices. ...');
@@ -66,9 +82,13 @@ switch length(daq)
         fprintf('You have %d USB-1208FS boxes. Each appears as four devices in the table above.\n',length(daq));
 end
 
-if ~IsOSX
+if ~IsOSX || ~doStupidTests
     return;
 end
+
+fprintf('I will now try to test your keyboard and mouse. There is a high likelihood of failure,\n');
+fprintf('and that does not neccessarily mean your system is broken, just that the test is inadequate.\n\n');
+
 
 % Keyboard.
 fprintf('\n');

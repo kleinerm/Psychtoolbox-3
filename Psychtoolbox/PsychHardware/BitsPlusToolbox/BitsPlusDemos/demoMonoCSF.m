@@ -40,7 +40,7 @@
 
 
 
-clear all; close all
+clear; close all
 
 
 

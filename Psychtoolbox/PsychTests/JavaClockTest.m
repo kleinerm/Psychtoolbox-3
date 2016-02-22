@@ -12,11 +12,16 @@ function timeDiffs=JavaClockTest(testDurationMinutes)
 % 6/15/06  awi  Modified for new JavaTimeToGetSecs which does not cache
 %                clock difference. 
 
+if IsOctave
+    fprintf('This test is pointless on Octave. Bye.\n');
+    timeDiffs = 0;
+    return;
+end
 
 if nargin<1
     testDurationMinutes=3;
 end
-    
+
 testIntervalMinutes = 1;
 samplesPerTest= 100;
 
@@ -24,9 +29,7 @@ samplesPerTest= 100;
 fprintf(['TestJavaClock will sample clocks at ' num2str(testIntervalMinutes) '-minute intervals for ' num2str(testDurationMinutes) ' minutes.\n' ]);
 validKeyFlag=0;
 while ~validKeyFlag
-    fprintf('Proceed with test? [y/n]: ');
-    c=GetChar;
-    fprintf([' ' c '\n']);
+    c = input('Proceed with test? [y/n]: ', 's');
     proceedFlag=strcmp(upper(c), 'Y');
     exitFlag=strcmp(upper(c), 'N');
     validKeyFlag= exitFlag || proceedFlag;
@@ -34,6 +37,7 @@ while ~validKeyFlag
         fprintf('Unrecognized response.\n');
     end
 end
+
 if exitFlag
     fprintf('Exiting TestJavaClock function without running test.\n');
     return;
@@ -52,7 +56,7 @@ while i<= numTests
     while GetSecs < testTimesSecsAbsolute(i);
         WaitSecs(testTimesSecsAbsolute(i) - GetSecs);
     end
-        fprintf(['Starting time sample loop ' int2str(i) ' of ' int2str(numTests) ' at ' datestr(now) '\n']);
+    fprintf(['Starting time sample loop ' int2str(i) ' of ' int2str(numTests) ' at ' datestr(now) '\n']);
     oldPriority=Priority;
     try 
         Priority(9);

@@ -16,7 +16,7 @@
 % 7/11/03  dhb  Wrote this test program.
 
 % Clear
-clear all
+clear
 
 % Generate some test data
 S = [380 5 81];

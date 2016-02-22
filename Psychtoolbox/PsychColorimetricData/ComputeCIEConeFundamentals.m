@@ -1,5 +1,7 @@
-function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,lambdaMax,whichNomogram,LserWeight,DORODS,rodAxialDensity,fractionPigmentBleached)
-% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,[lambdaMax],[whichNomogram],[LserWeight],[DORODS],[rodAxialDensity],[fractionPigmentBleached])
+function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,lambdaMax,whichNomogram,LserWeight, ...
+    DORODS,rodAxialDensity,fractionPigmentBleached,lambdaMaxShift)
+% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,[lambdaMax],[whichNomogram],[LserWeight], ...
+%   [DORODS],[rodAxialDensity],[fractionPigmentBleached],[lambdaMaxShift])
 %
 % Function to compute normalized cone quantal sensitivities
 % from underlying pieces, as specified in CIE 170-1:2006.
@@ -48,6 +50,10 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % the nomogram behavior, pass a lambdaMax vector. You can then also optionally pass a nomogram
 % source (default: StockmanSharpe).
 %
+% You can shift the absorbances along a wavenumber axis after you have
+% obtained them.  To do this, pass argument lambdaMaxShift with the same
+% number of entries as the number of absorbances that are used.
+%
 % The nominal values of lambdaMax to fit the CIE 2-degree fundamentals with the
 % Stockman-Sharpe nomogram are 558.9, 530.3, and 420.7 nm for the LMS cones respectively.
 % These in fact do a reasonable job of reconstructing the CIE 2-degree fundamentals, although
@@ -93,6 +99,8 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 %               what's returned by ComputeRawConeFundamentals.
 % 05/24/14 dhb  Add fractionPigmentBleached optional arg.
 % 05/26/14 dhb  Comment improvements.
+% 02/08/16 dhb, ms  Add lambdaMaxShift argument.
+%          ms   Don't do two way check when lambdaMax is shifted.
 
 %% Are we doing rods rather than cones?
 if (nargin < 8 || isempty(DORODS))
@@ -104,6 +112,13 @@ if (nargin < 10 || isempty(fractionPigmentBleached))
     DOBLEACHING = 0;
 else
     DOBLEACHING = 1;
+end
+
+%% Check for passed lambdaMaxShift
+if (nargin < 11 || isempty(lambdaMaxShift))
+    params.lambdaMaxShift = [];
+else
+    params.lambdaMaxShift = lambdaMaxShift;
 end
 
 %% Get some basic parameters.
@@ -210,6 +225,10 @@ if (~isfield(params,'absorbance'))
     end
 end
 
+if any(~(params.lambdaMaxShift == 0))
+    CHECK_FOR_AGREEMENT = false;
+end
+
 %% Drop into more general routine to compute
 %
 % See comment in ComputeRawConeFundamentals about the fact that
@@ -225,11 +244,11 @@ end
 if (CHECK_FOR_AGREEMENT)
     diffs = abs(T_quantalAbsorptions(:)-photoreceptors.effectiveAbsorptance(:));
     if (max(diffs(:)) > 1e-7)
-        error('Two ways of computing absorption quantal efficiency referred to the cornea DO NOT AGREE\n');
+        error('Two ways of computing absorption quantal efficiency referred to the cornea DO NOT AGREE');
     end
     diffs = abs(T_quantalIsomerizations(:)-photoreceptors.isomerizationAbsorptance(:));
     if (max(diffs(:)) > 1e-7)
-        error('Two ways of computing isomerization quantal efficiency referred to the cornea DO NOT AGREE\n');
+        error('Two ways of computing isomerization quantal efficiency referred to the cornea DO NOT AGREE');
     end
 end
 

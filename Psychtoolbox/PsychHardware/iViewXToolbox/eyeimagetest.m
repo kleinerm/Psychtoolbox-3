@@ -18,7 +18,7 @@
 
 
 fprintf([mfilename ' start\n']);
-clear all;
+clear;
 try
 
     red.right=KbName('RightArrow');

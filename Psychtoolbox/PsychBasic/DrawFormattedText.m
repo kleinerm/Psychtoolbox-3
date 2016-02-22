@@ -106,6 +106,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 07/25/15  Remove Windows & -> && special handling, now handled by Screen('DrawText')
 %           via DT_NOPREFIX flag. Suggested by Diederick. (MK)
 % 08/08/15  Fix bug for Unicode text introduced when improving single-line text centering. (MK)
+% 02/16/16  Improve bounding box calculations for multi-line text, esp. for vSpacing > 1. (MK)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
@@ -496,7 +497,15 @@ while ~isempty(tstring)
 end
 
 % Add one line height:
-maxy = maxy + theight;
+if numlines > 1
+    % Make sure to discount vSpacing for the last line
+    % to avoid a large void below the drawn text.
+    maxy = maxy + theight / vSpacing;
+else
+    % Special case one-liner without linefeed. Snugly
+    % fit the bounding box:
+    maxy = maxy + theight;
+end
 
 % Create final bounding box:
 textbounds = SetRect(minx, miny - baselineHeight, maxx, maxy - baselineHeight);

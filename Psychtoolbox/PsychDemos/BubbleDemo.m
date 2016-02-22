@@ -1,8 +1,6 @@
 function BubbleDemo(mode, ms, myimgfile)
 % BubbleDemo(mode, ms, myimgfile)
 %
-% OS X and WINDOWS: _______________________________________________________
-%
 % Demo implementation of a generic bubble display.
 % We take one input image and create - via image processing - two images
 % out of it: An image to show at the screen location were the subject
@@ -190,7 +188,7 @@ try
     Priority(priorityLevel);
 
     % Wait until all keys on keyboard are released:
-    while KbCheck; WaitSecs(0.1); end;
+    KbReleaseWait;
 
     mxold=0;
     myold=0;
@@ -213,7 +211,7 @@ try
         % Query current mouse cursor position (our "pseudo-eyetracker") -
         % (mx,my) is our gaze position.
         if (hurryup==0)
-            [mx, my, buttons]=GetMouse(0);
+            [mx, my, buttons]=GetMouse(w);
         else
             % mx=500 + 500*sin(GetSecs()); my=300;
             mx=500 + 500*sin(ncount/10); my=300;

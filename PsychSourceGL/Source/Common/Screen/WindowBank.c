@@ -245,7 +245,15 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	
 	//Intialize the text settings field within the window record to default values which should be (but are not yet) specified in Psychtoolbox preferences.
 	PsychInitTextRecordSettings(&((*winRec)->textAttributes));
-	
+
+        // Init text 2D affine transform matrix to identity transformation:
+        (*winRec)->text2DMatrix[0][0] = 1;
+        (*winRec)->text2DMatrix[0][1] = 0;
+        (*winRec)->text2DMatrix[1][0] = 0;
+        (*winRec)->text2DMatrix[1][1] = 1;
+        (*winRec)->text2DMatrix[0][2] = 0;
+        (*winRec)->text2DMatrix[1][2] = 0;
+
 	//Initialize the fields about textures.  
 	PsychInitWindowRecordTextureFields(*winRec);
 	

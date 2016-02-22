@@ -1,4 +1,4 @@
-clear all;
+clear;
 try
     fprintf('Very simple OSX  iViewX calibration demo\n\n\t');
     %     fprintf('At the end of the demo, press any key to quit\n\n\t');

@@ -10,14 +10,9 @@ function EyelinkExample
 % ~2006     fwc    created it, to use updated functions
 % 15-06-10  fwc    updated to enable eye image display
 % 17-06-10  fwc    made colour of the gaze dot change, just for fun
-
-clear all;
-commandwindow;
-
 PsychDefaultSetup(1);
 
 try
-    
     fprintf('EyelinkToolbox Example\n\n\t');
     dummymode=0;       % set to 1 to initialize in dummymode (rather pointless for this example though)
     
@@ -33,9 +28,10 @@ try
     % in a structure that also contains useful defaults
     % and control codes (e.g. tracker state bit and Eyelink key values).
     el=EyelinkInitDefaults(window);
+
     % Disable key output to Matlab window:
     ListenChar(2);
-        
+
     % STEP 3
     % Initialization of the connection with the Eyelink Gazetracker.
     % exit program if this fails.
@@ -149,25 +145,21 @@ try
     
     cleanup;
     
-catch myerr
+catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
     cleanup;
-    commandwindow;
-    myerr;
-    myerr.message
-    myerr.stack.line
-
+    psychrethrow(psychlasterror);
 end %try..catch.
 
 
 % Cleanup routine:
 function cleanup
-% Shutdown Eyelink:
-Eyelink('Shutdown');
+    % Shutdown Eyelink:
+    Eyelink('Shutdown');
 
-% Close window:
-sca;
+    % Close window:
+    sca;
 
-% Restore keyboard output to Matlab:
-ListenChar(0);
+    % Restore keyboard output to Matlab:
+    ListenChar(0);

@@ -60,6 +60,10 @@
 % FontConfig libraries on your operating system, ie., somewhere in the
 % system library search path.
 %
+%
+% Linux:
+% ------
+%
 % On Linux these libraries are part of the default installation of any decent
 % GNU/Linux distribution, so there ain't any need for manual setup work on
 % your part.
@@ -74,10 +78,20 @@
 % You may need to search around a bit or use your graphical package manager
 % if the names don't match perfectly.
 %
+% OSX:
+% ----
+%
 % On OS/X, these libraries are part of the X-Server, so if you have an
-% X-Server installed, you'll have those libraries available.
+% X11 X-Server installed, you'll have those libraries available. Other
+% sources for the libraries may be HomeBrew or other package managers.
+% GStreamer may also provide compatible libraries, but this has not been
+% tested.
+%
+% Windows:
+% --------
 %
 % On MS-Windows with GNU/Octave the libraries are bundled with Octave.
+%
 % On MS-Windows with Matlab you will need to install the GStreamer multi-
 % media framework - see "help GStreamer" for installation instructions -
 % otherwise Psychtoolbox will use the old lower quality GDI text renderer

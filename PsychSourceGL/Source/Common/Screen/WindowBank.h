@@ -467,6 +467,8 @@ typedef struct _PsychWindowRecordType_{
 
     GLint                       panelFitterParams[11];              // Parameters used for panel fitting.
 
+    double                      text2DMatrix[2][3];                 // 2D affine transform matrix for text.
+
     // Used only when this structure holds a window:
     // CAUTION FIXME TODO: Due to some pretty ugly circular include dependencies in the #include chain of
     // PTB, this field can not be used in files that #define PSYCH_DONT_INCLUDE_TEXTATTRIBUTES_IN_WINDOWRECORD,

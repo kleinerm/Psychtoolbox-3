@@ -2,7 +2,7 @@
 % assumed to be a unittest that is to return true upon success or false
 % otherwise
 
-clear all; close all;
+clear; close all;
 
 % get all scripts from subfolder (note that the FileFromFolder function
 % can't be broken for this to work of course... :P)

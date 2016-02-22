@@ -101,6 +101,10 @@ unsigned int _fontStyle = 0;
 double _fontSize = 0.0;
 GLfloat _fgcolor[4];
 GLfloat _bgcolor[4];
+FT_Matrix _matrix;
+FT_Vector _vector;
+double _xp;
+double _yp;
 
 typedef struct fontCacheItem_t {
     int contextId;
@@ -110,6 +114,8 @@ typedef struct fontCacheItem_t {
     char fontRealName[FILENAME_MAX];
     unsigned int fontStyle;
     double fontSize;
+    FT_Matrix matrix;
+    FT_Vector vector;
     OGLFT::TranslucentTexture    *faceT;
     OGLFT::MonochromeTexture    *faceM;
     FT_Face ft_face;
@@ -143,6 +149,8 @@ OGLFT_API int PsychDrawText(int context, double xStart, double yStart, int textL
 OGLFT_API int PsychMeasureText(int context, int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax);
 OGLFT_API void PsychSetTextVerbosity(unsigned int verbosity);
 OGLFT_API void PsychSetTextAntiAliasing(int context, int antiAliasing);
+OGLFT_API void PsychSetAffineTransformMatrix(int context, double matrix[2][3]);
+OGLFT_API void PsychGetTextCursor(int context, double* xp, double* yp, double* height);
 
 fontCacheItem* getForContext(int contextId)
 {
@@ -174,7 +182,9 @@ fontCacheItem* getForContext(int contextId)
             // is returned to Screen(), we could get into a funny loop which causes false cache misses if the loaded font
             // doesn't match exactly the required one.
             if ((fi->antiAliasing == _antiAliasing) && (fi->fontStyle == _fontStyle) && (fi->fontSize == _fontSize) &&
-                ((strcmp(fi->fontName, _fontName) == 0) || (strcmp(fi->fontRealName, _fontName) == 0))) {
+                ((strcmp(fi->fontName, _fontName) == 0) || (strcmp(fi->fontRealName, _fontName) == 0)) &&
+                (fi->matrix.xx == _matrix.xx && fi->matrix.xy == _matrix.xy && fi->matrix.yx == _matrix.yx && fi->matrix.yy == _matrix.yy &&
+                 fi->vector.x == _vector.x && fi->vector.y == _vector.y)) {
                 // Match! We have cached OGLFT font objects for this font on this context. Return them:
                 hitcount++;
 
@@ -220,6 +230,8 @@ fontCacheItem* getForContext(int contextId)
     fi->fontStyle = _fontStyle;
     fi->fontSize = _fontSize;
     strcpy(fi->fontName, _fontName);
+    fi->matrix = _matrix;
+    fi->vector = _vector;
 
     // Update last access timestamp for LRU:
     fi->timestamp = nowtime;
@@ -375,6 +387,9 @@ int PsychRebuildFont(fontCacheItem* fi)
         if (_verbosity > 5) fprintf(stdout, "libptbdrawtext_ftgl: Freetype loaded face %p with index %i from font file %s.\n", fi->ft_face, faceIndex, fontFileName);
     }
 
+    // Apply affine transformations, if any:
+    FT_Set_Transform(fi->ft_face, &_matrix, &_vector);
+
     // Create FTGL face from Freetype face with given size and a 72 DPI resolution, aka _fontSize == pixelsize:
     if (_antiAliasing != 0) {
         fi->faceT = new OGLFT::TranslucentTexture(fi->ft_face, _fontSize, 72);
@@ -385,6 +400,10 @@ int PsychRebuildFont(fontCacheItem* fi)
             fi->faceT = NULL;
             return(1);
         }
+
+        // Do not reset GL_MODELVIEW matrix after text drawing, so
+        // we can read out the post-draw text cursor position from it:
+        fi->faceT->setAdvance(true);
     }
     else {
         fi->faceM = new OGLFT::MonochromeTexture(fi->ft_face, _fontSize, 72);
@@ -395,6 +414,10 @@ int PsychRebuildFont(fontCacheItem* fi)
             fi->faceM = NULL;
             return(1);
         }
+
+        // Do not reset GL_MODELVIEW matrix after text drawing, so
+        // we can read out the post-draw text cursor position from it:
+        fi->faceM->setAdvance(true);
     }
 
     // Ready!
@@ -466,6 +489,37 @@ int PsychSetTextSize(int context, double fontSize)
     return(0);
 }
 
+// Assign affine 2D text transformation matrix:
+void PsychSetAffineTransformMatrix(int context, double matrix[2][3])
+{
+    // Matrix in 16.16 format:
+    _matrix.xx = (FT_Fixed) (matrix[0][0] * 65536);
+    _matrix.xy = (FT_Fixed) (matrix[0][1] * 65536);
+    _matrix.yx = (FT_Fixed) (matrix[1][0] * 65536);
+    _matrix.yy = (FT_Fixed) (matrix[1][1] * 65536);
+    // Translation vector in 26.6 format:
+    _vector.x  = (FT_Pos)   (matrix[0][2] * 64);
+    _vector.y  = (FT_Pos)   (matrix[1][2] * 64);
+}
+
+void PsychGetTextCursor(int context, double* xp, double* yp, double* height)
+{
+    fontCacheItem *fi = getForContext(context);
+    *xp = _xp;
+    *yp = _yp;
+
+    // Try to get line height of font:
+    if (fi) {
+        if (fi->faceT)
+            *height = fi->faceT->height();
+        else
+            *height = fi->faceM->height();
+    }
+    else {
+        *height = 0;
+    }
+}
+
 const char* PsychGetTextFont(int context)
 {
     // Check if rebuild of font face needed due to parameter
@@ -481,6 +535,7 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     int i;
     GLuint ti;
     QChar* myUniChars;
+    GLdouble modelview[4][4];
 
     // On first invocation after init we need to generate a useless texture object.
     // This is a weird workaround for some weird bug somewhere in FTGL...
@@ -538,12 +593,19 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     glAlphaFunc(GL_GREATER, 0);
 
     // Draw the text at selected start location:
+    glPushMatrix();
     if (fi->faceT) {
         fi->faceT->draw(xStart, yStart, uniCodeText);
     }
     else {
         fi->faceM->draw(xStart, yStart, uniCodeText);
     }
+
+    // Extract final text cursor position from GL_MODELVIEW matrix:
+    glGetDoublev(GL_MODELVIEW_MATRIX, &(modelview[0][0]));
+    _xp = modelview[3][0];
+    _yp = modelview[3][1];
+    glPopMatrix();
 
     // Disable alpha test after blit:
     glDisable(GL_ALPHA_TEST);
@@ -579,7 +641,9 @@ int PsychMeasureText(int context, int textLen, double* text, float* xmin, float*
     delete [] myUniChars;
 
     // Compute its bounding box:
+    glPushMatrix();
     OGLFT::BBox box = (fi->faceT) ? fi->faceT->measure(uniCodeText) : fi->faceM->measure(uniCodeText);
+    glPopMatrix();
 
     *xmin = box.x_min_;
     *ymin = box.y_min_;

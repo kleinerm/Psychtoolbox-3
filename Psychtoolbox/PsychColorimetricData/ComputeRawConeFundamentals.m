@@ -105,6 +105,15 @@ else
     absorbance = PhotopigmentNomogram(staticParams.S,params.lambdaMax,staticParams.whichNomogram);
 end
 
+% Shift absorbance along log wavelength axis, if desired
+if (~isempty(params.lambdaMaxShift))
+    if (length(params.lambdaMaxShift) ~= size(absorbance,1))
+        error('Length of passed lambdaMaxShift does not match number of absorbances available to shift');
+    end
+    
+    absorbance = ShiftPhotopigmentAbsorbance(staticParams.S,absorbance,params.lambdaMaxShift);
+end
+
 % Compute absorptance
 %
 % Handle special case where we deal with ser/ala polymorphism for L cone

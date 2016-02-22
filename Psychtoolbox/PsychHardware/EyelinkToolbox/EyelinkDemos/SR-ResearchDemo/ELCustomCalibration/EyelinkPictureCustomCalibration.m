@@ -28,7 +28,7 @@ function EyelinkPictureCustomCalibration
 
 
 
-clear all;
+clear;
 if ~IsOctave
     commandwindow;
 else

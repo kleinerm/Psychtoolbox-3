@@ -67,8 +67,6 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % first called. They'll then stay loaded until you flush them (e.g. by
 % changing directory or calling CLEAR MEX).
 %
-% OSX, Linux, and Windows with Octave or Matlab R2007a and later: _________
-%
 % KbCheck uses the PsychHID function, a general purpose function for
 % reading from the Human Interface Device (HID) class of USB devices.
 %
@@ -89,7 +87,19 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 %
 % On MS-Windows 2000 and earlier, KbCheck can address individual keyboards.
 % On Windows-XP and later, it can't.
-% 
+%
+% To save time, PsychHID and KbCheck enumerate the devices and count keyboards
+% only once, and cache the answer. If you add or remove a keyboard during a
+% running experiment session, you must flush their caches. Otherwise the new
+% keyboard won't noticed or KbCheck may issue a fatal error trying to access
+% a non-existent keyboard. However, in general it is a rather bad idea to allow
+% addition or removal of devices during a running session, as various other
+% Psychtoolbox functions may also cache devices and device settings and get
+% confused by such surprising changes in hardware configuration.
+%
+%   clear PsychHID; % Force new enumeration of devices.
+%   clear KbCheck; % Clear persistent cache of keyboard devices.
+%
 % As a little bonus, KbCheck can also query other HID human input devices
 % which have keys or buttons as if they were keyboards. If you pass in the
 % deviceIndex of a mouse (GetMouseIndices will provide with them), it will

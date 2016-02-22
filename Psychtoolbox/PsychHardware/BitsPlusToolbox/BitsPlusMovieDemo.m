@@ -15,7 +15,7 @@
 % 11/4/02  dhb, jmh Comments, etc.
 % 9/20/03  dhb  No more calls to BitsPlus mex file.
 
-clear all; close all
+clear; close all
 
 % Define screen
 whichScreen=max(Screen('Screens'));

@@ -52,6 +52,8 @@ function FrameSequentialStereoTest(screenid)
 
 % History:
 % 08/14/07 Written (MK).
+% 02/09/16 Updated slightly. OSX support more broken thanks to Apple,
+%          Linux support fully available. (MK)
 
 % Running on PTB-3?
 AssertOpenGL;
@@ -69,12 +71,12 @@ if isempty(screenid)
     screenid = max(Screen('Screens'));
 end
 
-if IsOSX==0
+if ~IsLinux
     fprintf('Caution: While the perceptual test in this script will still work (perceptually),\n');
     fprintf('query of the stereobuffer presentation with which flip was synchronized and control\n');
     fprintf('of target stereobuffer to which flip should synchronize, will not work on your operating\n');
-    fprintf('system. This feature is only available on Macintosh OS/X systems, and scheduled for inclusion\n');
-    fprintf('on GNU/Linux systems. No support for MS-Windows is planned, due to limitations of that OS.\n\n');
+    fprintf('system. This feature is only available on GNU/Linux. OSX support got destroyed by Apple.\n');
+    fprintf('No support for MS-Windows is possible, due to limitations of that OS.\n\n');
 end
 
 % Open double-buffered frame-sequential stereo window on display
@@ -83,7 +85,7 @@ win = Screen('OpenWindow', screenid, 0, [], [], [], 1);
 ifi = Screen('GetFlipInterval', win)
 
 % Wait until all keys are released:
-while KbCheck; end;
+KbReleaseWait;
 count = 0;
 delta=[];
 
@@ -149,7 +151,7 @@ while 1
         end
 
         if keycode(KbName('x'))
-            while KbCheck; end;
+            KbReleaseWait;
             KbWait;
         end
     end

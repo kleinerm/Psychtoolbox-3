@@ -5,10 +5,6 @@ function result=EyelinkImageExample
 %
 % History
 % 15-06-10  fwc     created it, based on EyelinkExample.m
-
-clear all;
-commandwindow;
-
 try
     
     fprintf('EyelinkToolbox Image View Example\n\n\t');
@@ -97,23 +93,21 @@ try
     Eyelink('CloseFile');    
     cleanup;
     
-catch myerr
+catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if it's open.
     cleanup;
-    myerr
-    myerr.message
-    myerr.stack
+    psychrethrow(psychlasterror);
 end %try..catch.
 
 
 % Cleanup routine:
 function cleanup
-% Shutdown Eyelink:
-Eyelink('Shutdown');
+    % Shutdown Eyelink:
+    Eyelink('Shutdown');
 
-% Close window:
-sca;
-commandwindow;
-% Restore keyboard output to Matlab:
-ListenChar(0);
+    % Close window:
+    sca;
+    commandwindow;
+    % Restore keyboard output to Matlab:
+    ListenChar(0);

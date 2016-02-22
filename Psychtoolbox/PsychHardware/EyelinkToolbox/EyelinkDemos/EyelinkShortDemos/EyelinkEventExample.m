@@ -10,9 +10,6 @@ function EyelinkEventExample
 % 07-07-10  fwc adapted to use new psychtooblox/eyelink functions, finally
 %           got toggling correct too ;-)
 %
-
-clear all;
-commandwindow;
 dummymode=0;       % set to 1 to run in dummymode (using mouse as pseudo-eyetracker)
 showboxes=1;        % set to 1 to show boxes within which you have to fixate in order to toggle a number
 
@@ -174,10 +171,7 @@ catch myerr
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
     cleanup;
-    commandwindow;
-    myerr;
-    myerr.message
-    myerr.stack.line
+    psychrethrow(psychlasterror);
 end %try..catch.
 
 
