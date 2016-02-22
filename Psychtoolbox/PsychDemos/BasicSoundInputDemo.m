@@ -183,7 +183,7 @@ PsychPortAudio('Close', pahandle);
 
 % Shall we store recorded sound to wavfile?
 if ~isempty(wavfilename)
-    wavwrite(transpose(recordedaudio), 44100, 16, wavfilename)
+    psychwavwrite(transpose(recordedaudio), 44100, 16, wavfilename)
 end
 
 % Done.

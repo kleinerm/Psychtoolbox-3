@@ -53,7 +53,6 @@ try
     stopkey=KbName('space');
     
     if 1; Screen('Preference', 'SkipSyncTests', 1); end;
-    commandwindow;
     
     % Set hurryup = 1 for benchmarking - Syncing to retrace is disabled
     % in that case so we'll get the maximum refresh rate.

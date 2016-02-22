@@ -16,7 +16,7 @@
 % 9/20/03  dhb  No more calls to BitsPlus mex file.
 % 18/4/05  ejw  Converted it to run with OSX version of Psychtoolbox
 
-clear all; close all
+clear; close all
 
 % Define screen
 whichScreen=max(Screen('Screens'));

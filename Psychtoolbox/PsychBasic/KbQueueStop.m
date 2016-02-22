@@ -20,6 +20,9 @@ end
 
 % Try to check if keyboard queue for 'deviceIndex' is reserved for our exclusive use:
 if ~KbQueueReserve(3, 2, deviceIndex) && KbQueueReserve(3, 1, deviceIndex)
+    if isempty(deviceIndex)
+        deviceIndex = NaN;
+    end
     error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceIndex);
 end
 

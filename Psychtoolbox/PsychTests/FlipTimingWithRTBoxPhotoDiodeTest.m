@@ -384,7 +384,7 @@ try
     if conf.withSound > 0
         wavfilename = [ PsychtoolboxRoot 'PsychDemos' filesep 'SoundFiles' filesep 'funk.wav'];
         % Read WAV file from filesystem:
-        [y, freq ] = wavread(wavfilename);
+        [y, freq ] = psychwavread(wavfilename);
         wavedata = y';
         nrchannels = size(wavedata,1); % Number of rows == number of channels.
 

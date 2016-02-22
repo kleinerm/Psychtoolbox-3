@@ -125,10 +125,10 @@ try
     if dpixx
         % Use M16 mode with overlay:
         PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
-        
+
         % Reduce timeout for recognition of PSYNC code to about 1 second on
         % a 100 Hz display:
-        oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);        
+        oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);
     else
         % Use Mono++ mode with overlay:
         PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
@@ -185,6 +185,7 @@ try
 
     % Create static image in overlay window:
     Screen('TextSize', overlaywin, 18);
+    Screen('TextStyle', overlaywin, 1+2);
     mytext = ['This is what you should see if everything works correctly:\n\n' ...
         'This text should be shown in blue.\n' ...
         'The "COLORFUL" couple of lines below should cycle through different\n' ...
@@ -239,18 +240,18 @@ try
 
     % Last slot is blue:
     ovllut(256, :) = [0 , 0, 1];
-    
+
     angle = 0;
     lutidx = -1;
     bluelutenable = 1;
-    
+
     KbName('UnifyKeyNames');
     escape = KbName('ESCAPE');
     space = KbName('space');
     key_s = KbName('s');
     key_o = KbName('o');
     key_p = KbName('p');
-    
+
     KbReleaseWait;
 
     while 1
@@ -328,7 +329,7 @@ try
                     Screen('LoadNormalizedGammaTable', win, modlut);
                 end
             end
-            
+
             KbReleaseWait;
         end
     end
@@ -338,7 +339,7 @@ try
 
     % This flip is needed for the 'LoadIdentityClut' to take effect:
     Screen('Flip', win);
-    
+
     % Release our dedicated "encoder test" connection to Bits#
     BitsPlusPlus('Close');
 
@@ -353,7 +354,7 @@ try
     if exist('oldpsynctimeout', 'var')
         PsychDataPixx('PsyncTimeoutFrames', oldpsynctimeout);
     end
-    
+
     fprintf('Finished. Bye.\n\n');
 
 catch %#ok<CTCH>

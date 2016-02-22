@@ -26,7 +26,7 @@ function PosterBatchAnalyzeTimestamps
 % solutions". The same data is used in the corresponding table of his PhD
 % Dissertation.
 %
-    clear all;
+    clear;
     
     global res;
     

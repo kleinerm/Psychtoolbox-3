@@ -66,7 +66,7 @@ for i=1:nsources
     soundname = [sounddir soundfiles(mod(perm(i), length(soundfiles))+1).name];
     
     % Load it...
-    [mynoise freq]= wavread(soundname);
+    [mynoise freq]= psychwavread(soundname);
     
     % Convert it...
     mynoise = int16(mynoise * 32767);

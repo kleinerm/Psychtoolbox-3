@@ -162,10 +162,7 @@ try
     %get rid of the mouse cursor, we don't have anything to click at anyway
     HideCursor;
 
-    %         %Syntax for querying user input, e.g. subject initials:
-    %         reply=Ask(expWin,'Enter subject initials: ',[],[],'GetChar',RectLeft,RectTop,20);
-
-    %Preparing and displaying the welcome screen
+    % Preparing and displaying the welcome screen
     % We choose a text size of 24 pixels - Well readable on most screens:
     Screen('TextSize', expWin, 24);
     

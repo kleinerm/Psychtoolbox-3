@@ -1,4 +1,4 @@
-clear all;
+clear;
 fprintf('My OSX Eyelink Test\n\n\t');
 input('Hit the return key to continue.','s');
 fprintf('Thanks.\n');

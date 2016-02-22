@@ -142,6 +142,9 @@ end
 
 % Try to reserve keyboard queue for 'deviceNumber' for our exclusive use:
 if ~KbQueueReserve(1, 2, deviceNumber)
+  if isempty(deviceNumber)
+      deviceNumber = NaN;
+  end
   error('Keyboard queue for device %i already in use by GetChar() et al. Use of GetChar and keyboard queues is mutually exclusive!', deviceNumber);
 end
 

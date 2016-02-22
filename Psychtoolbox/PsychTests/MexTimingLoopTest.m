@@ -64,7 +64,7 @@
 % If loopPassDuration > periodSeconds then we must also have
 % actualMATLABCPUUsage <= computationSeconds.
 
-clear all;  
+clear;  
 
 % designate an index for the block of test parameters to be used. 
 tci = 1;                    %tci stands for  test condition index.  

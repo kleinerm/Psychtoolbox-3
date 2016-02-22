@@ -20,8 +20,9 @@ function KbQueueDemo(deviceIndex)
 
 % Roger Woods, November, 2007
 
-% 11/3/07	rpw Wrote demos 1-5
+% 11/03/07  rpw Wrote demos 1-5
 % 05/21/12  mk  Add event buffer test to demo 5.
+% 01/31/16  mk  Suppress keypress spilling via ListenChar(-1);
 
 if nargin < 1
   deviceIndex = [];
@@ -31,27 +32,38 @@ end
 % all operating systems:
 KbName('UnifyKeyNames');
 
+% Prevent spilling of keystrokes into console:
+ListenChar(-1);
+
 %% Runs 5 demos in sequence
 
-% Report keyboard key number for any pressed keys, including
-% modifier keys such as <shift>, <control>, <caps lock> and <option>.  The
-% only key not reported is the start key, which turns on the computer.
-KbQueueDemoPart1(deviceIndex);
-WaitSecs(0.5);
+try
+  % Report keyboard key number for any pressed keys, including
+  % modifier keys such as <shift>, <control>, <caps lock> and <option>.  The
+  % only key not reported is the start key, which turns on the computer.
+  KbQueueDemoPart1(deviceIndex);
+  WaitSecs(0.5);
 
-% Report time of keypress, using KbQueueCheck.
-KbQueueDemoPart2(deviceIndex);
-WaitSecs(0.5);
+  % Report time of keypress, using KbQueueCheck.
+  KbQueueDemoPart2(deviceIndex);
+  WaitSecs(0.5);
 
-% Report time of keypress, using KbQueueWait.
-KbQueueDemoPart3(deviceIndex);
-WaitSecs(0.5);
+  % Report time of keypress, using KbQueueWait.
+  KbQueueDemoPart3(deviceIndex);
+  WaitSecs(0.5);
 
-% Use keys as real-time controls of a dynamic display.
-KbQueueDemoPart4(deviceIndex);
+  % Use keys as real-time controls of a dynamic display.
+  KbQueueDemoPart4(deviceIndex);
 
-% Identify keys pressed while other code is executing
-KbQueueDemoPart5(deviceIndex);
+  % Identify keys pressed while other code is executing
+  KbQueueDemoPart5(deviceIndex);
+
+  ListenChar(0);
+catch
+  ListenChar(0);
+  psychrethrow(psychlasterror);
+end
+
 return
 
 %% Part 1

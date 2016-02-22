@@ -31,7 +31,7 @@ function EyeLinkPicture
 
 
 
-clear all;
+clear;
 
 if ~IsOctave
     commandwindow;

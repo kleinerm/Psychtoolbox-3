@@ -13,7 +13,8 @@ function [ch, when] = GetKbChar(varargin)
 % and numbers, and a few special symbols like the ones on top of the
 % numeric keys. It only recognizes the delete, space and return keys as
 % special function keys, not other keys like Function keys, CTRL, ALT or
-% cursor keys. It always assumes a US keyboard mapping.
+% cursor keys. Pressing the ESCape key will also terminate input.
+% It always assumes a US keyboard mapping.
 %
 % It polls the keyboard, so may miss very brief keystrokes and doesn't use
 % the keyboard queue.
@@ -26,6 +27,7 @@ function [ch, when] = GetKbChar(varargin)
 
 % History:
 % 22.10.2010  mk  Wrote it.
+% 14.02.2016  dgp Accept the Escape key, return it as char(27).
 
 persistent shiftkeys;
 
@@ -96,6 +98,9 @@ elseif length(ch) > 2
     end
     if strcmpi(ch, 'DELETE') || strcmpi(ch, 'BackSpace')
         ch = char(8);
+    end
+    if strcmpi(ch,'ESCAPE')
+       ch=char(27);
     end
     
     % Catch otherwise unhandled special keys:

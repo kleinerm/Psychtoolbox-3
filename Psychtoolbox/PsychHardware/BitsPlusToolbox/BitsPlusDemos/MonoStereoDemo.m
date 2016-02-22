@@ -15,7 +15,7 @@
 %
 % 26/04/2005    ejw     wrote it.
 
-clear all; close all
+clear; close all
 
 % Define screen
 whichScreen=max(Screen('Screens'));

@@ -6,7 +6,7 @@ if IsOctave
     return;
 end
 
-close all; clear all
+close all; clear
 
 % stair input
 probeset    = -15:0.5:15;       % set of possible probe values
