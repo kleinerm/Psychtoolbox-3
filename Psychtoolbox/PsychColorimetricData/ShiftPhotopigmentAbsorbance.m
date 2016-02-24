@@ -1,7 +1,8 @@
 function absorbance = ShiftPhotopigmentAbsorbance(S,absorbance,lambdaMaxShift,shiftMode)
 % absorbance = ShiftPhotopigmentAbsorbance(S,absorbance,lambdaMaxShift,shiftMode)
 %
-% Function shift photopigment absorbances.
+% Function to shift photopigment absorbances.  Probably a reasonable
+% approximation to biological reality for small shifts of lambda max.
 %
 % There are two ways of shifting photopigment absorbances:
 % 'linear' - default
