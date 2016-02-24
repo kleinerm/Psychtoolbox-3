@@ -83,7 +83,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 %     photopigment peak density.
 %   indDiffParams.lambdaMaxShift - vector of values (in nm) to shift lambda max of
 %     each photopigment absorbance by.  
-%   indDiffParams.lambdaMaxShiftType - 'linear' (default) or 'log'.
+%   indDiffParams.hhiftType - 'linear' (default) or 'log'.
 %
 % You also can shift the absorbances along a wavenumber axis after you have
 % obtained them.  To do this, pass argument lambdaMaxShift with the same

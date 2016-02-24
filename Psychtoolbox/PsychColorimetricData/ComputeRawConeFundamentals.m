@@ -1,74 +1,73 @@
 function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeRawConeFundamentals(params,staticParams)
 % [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeRawConeFundamentals(params,staticParams)
 %
-% Function to compute normalized cone quantal sensitivities
-% from underlying pieces and parameters.
+% Function to compute normalized cone quantal sensitivities from underlying
+% pieces and parameters.
 %
-% Note that this routine returns quantal sensitivities.  You
-% may want energy sensitivities.  In that case, use EnergyToQuanta to convert
+% Note that this routine returns quantal sensitivities.  You may want
+% energy sensitivities.  In that case, use EnergyToQuanta to convert
 %   T_energy = EnergyToQuanta(S,T_quantal')'
 % and then renormalize.  (You call EnergyToQuanta because you're converting
 % sensitivities, which go the opposite directoin from spectra.)
 %
-% The routine also returns two quantal sensitivity functions.  The first gives
-% the probability that a photon will be absorbed.  The second is the probability
-% that the photon will cause a photopigment isomerization.  It is the latter
-% that is what you want to compute isomerization rates from retinal illuminance.
-% See note at the end of function FillInPhotoreceptors for some information about
-% convention.  In particular, this routine takes pre-retinal absorption into
-% account in its computation of probability of absorptions and isomerizations,
-% so that the relevant retinal illuminant is one computed without accounting for
-% those factors.  This routine does not account for light attenuation due to
-% the pupil, however.  The only use of pupil size here is becuase of its
-% slight effect on lens density as accounted for in the CIE standard.
+% The routine also returns two quantal sensitivity functions.  The first
+% gives the probability that a photon will be absorbed.  The second is the
+% probability that the photon will cause a photopigment isomerization.  It
+% is the latter that is what you want to compute isomerization rates from
+% retinal illuminance. See note at the end of function FillInPhotoreceptors
+% for some information about convention.  In particular, this routine takes
+% pre-retinal absorption into account in its computation of probability of
+% absorptions and isomerizations, so that the relevant retinal illuminant
+% is one computed without accounting for those factors.  This routine does
+% not account for light attenuation due to the pupil, however.  The only
+% use of pupil size here is becuase of its slight effect on lens density as
+% accounted for in the CIE standard.
 %
-% In the passed params structure, you can either pass
-% the lambdaMax values for the photopigment, in which
-% case the absorbance is computed from the specified
-% nomogram, or you can pass the absorbance values
-% directly in T_xxx format.  A typical choice in this
-% case would be 10.^T_lgo10coneabsorbance_ss for the
-% Stockman-Sharpe/CIE estimates.
+% In the passed params structure, you can either pass the lambdaMax values
+% for the photopigment, in which case the absorbance is computed from the
+% specified nomogram, or you can pass the absorbance values directly in
+% T_xxx format.  A typical choice in this case would be
+% 10.^T_lgo10coneabsorbance_ss for the Stockman-Sharpe/CIE estimates.
 %
-% The typical use of this function is to be called by 
-% ComputeCIEConeFundamentals, which sets up the
-% passed structures acording to the CIE standard. 
-% This routine, however, could in principle be used
+% The typical use of this function is to be called by
+% ComputeCIEConeFundamentals, which sets up the passed structures acording
+% to the CIE standard. This routine, however, could in principle be used
 % with a wide variety of choices of the component pieces.
 %
-% The other place this function is used is in attempts to
-% fit a set of cone fundamentals by doing parameter search
-% over the pieces.  It is this second use that led to the
-% parameters being split over two separate structures, one
-% that is held static during the fit and the other which
-% contains the parameters that could be searched over by a calling
-% routine.  For examples, see:
+% The other place this function is used is in attempts to fit a set of cone
+% fundamentals by doing parameter search over the pieces.  It is this
+% second use that led to the parameters being split over two separate
+% structures, one that is held static during the fit and the other which
+% contains the parameters that could be searched over by a calling routine.
+% For examples, see:
 %   FitConeFundamentalsWithNomogram, FitConeFundamentalsTest.
-% Looking around today (8/10/13), I (DHB) don't see any examples where
-% this routine is called directly.  Rather, it is a subfunction
-% called by ComputeCIEConeFundamentals.  The search routines above
-% use ComputeCIEConeFundamentals, and only search over lambdaMax
-% values.  I think I wrote this with the thought that I might one
-% day search over more parameters, but lost motivation to carry it
-% throught.
+% Looking around today (8/10/13), I (DHB) don't see any examples where this
+% routine is called directly.  Rather, it is a subfunction called by
+% ComputeCIEConeFundamentals.  The search routines above use
+% ComputeCIEConeFundamentals, and only search over lambdaMax values.  I
+% think I wrote this with the thought that I might one day search over more
+% parameters, but lost motivation to carry it throught.
 %
-% The computations done here are very similar to those done in
-% routine FillInPhotoreceptors.  I (DHB) think that I forgot about
-% what FillInPhotoreceptors could do when I wrote this, which has
-% led to some redundancy. FillInPhotoreceptors returns a field
-% called effectiveAbsorptance, which are the actual quantal efficiencies
-% (not normalized) referred to the cornea.  FillInPhotoceptors also
-% computes a field isomerizationAbsorptance, which takes the quantal
-% efficiency of isomerizations (probability of an isomerization given
-% an absorption into acount.  This routine does not do that.
+% The computations done here are very similar to those done in routine
+% FillInPhotoreceptors.  I (DHB) think that I forgot about what
+% FillInPhotoreceptors could do when I wrote this, which has led to some
+% redundancy. FillInPhotoreceptors returns a field called
+% effectiveAbsorptance, which are the actual quantal efficiencies (not
+% normalized) referred to the cornea.  FillInPhotoceptors also computes a
+% field isomerizationAbsorptance, which takes the quantal efficiency of
+% isomerizations (probability of an isomerization given an absorption into
+% acount.  This routine does not do that.
 %
-% It would probably be clever to unify the two sets of routines a
-% little more, but we may never get to it.  The routine ComputeCIEConeFundamentals
-% does contain a check that this routine and what is returned by FillInPhotoreceptors
-% agree with each other, for cases where the parameters match.
+% It would probably be clever to unify the two sets of routines a little
+% more, but we may never get to it.  The routine ComputeCIEConeFundamentals
+% does contain a check that this routine and what is returned by
+% FillInPhotoreceptors agree with each other, for cases where the
+% parameters match.
 %
-% See also: ComputeCIEConeFundamentals, CIEConeFundamentalsTest, FitConeFundamentalsWithNomogram,
-%           FitConeFundamentalsTest, DefaultPhotoreceptors, FillInPhotoreceptors.
+% See also: ComputeCIEConeFundamentals, CIEConeFundamentalsTest,
+% FitConeFundamentalsWithNomogram,
+%           FitConeFundamentalsTest, DefaultPhotoreceptors,
+%           FillInPhotoreceptors.
 %
 % 8/12/11  dhb  Starting to make this actually work.
 % 8/14/11  dhb  Change name, expand comments.
@@ -80,12 +79,44 @@ if (~isempty(index))
     params.axialDensity(index) = 0.0001;
 end
 
-% Handle optional values
+% Figure out how many receptor classes we're handling
+if (isfield(params,'absorbance'))
+    nReceptorTypes = size(params.absorbance,1);
+else
+    nReceptorTypes = length(params.lambdaMax)
+end
+
+% Fill in null individual differences parameters if they are not passed
+if (~isfield(params,'indDiffParams'))
+    params.indDiffParams.lambdaMaxShift = zeros(nReceptorTypes,1);
+    params.indDiffParams.shiftType = 'linear';
+    params.indDiffParams.dlens = 0;
+    params.indDiffParams.dmac = 0;
+    params.indDiffParams.dphotopigment = zeros(nReceptorTypes,1);
+end
+
+% Handle optional values for lens and macular pigment density
+% in the parameters structure.  There are two mutually exclusive
+% ways to do this.  For historical reasons, we can pass an additive
+% density adjustment.  More recently we implemented the Asano et al. (2016)
+% parameterization.  We don't allow both to happen at once.
 if (~isfield(params,'extraLens'))
     params.extraLens = 0;
 end
 if (~isfield(params,'extraMac'))
     params.extraMac = 0;
+end
+if (params.extraLens ~= 0 & params.indDiffParams.dlens ~= 0)
+    error('Cannot specify lens density adjustment two ways');
+end    
+if (params.extraMac ~= 0 & params.indDiffParams.dmac ~= 0)
+    error('Cannot specify macular pigment density adjustment two ways');
+end 
+if (params.extraLens == 0)
+    params.extraLens = params.indDiffParams.dlens/100;
+end
+if (params.extraMac == 0)
+    params.extraMac = params.indDiffParams.dmac/100;
 end
 
 % Prereceptor transmittance.  Sometimes adjustments of peak density
@@ -105,7 +136,7 @@ else
     absorbance = PhotopigmentNomogram(staticParams.S,params.lambdaMax,staticParams.whichNomogram);
 end
 
-% Shift absorbance along log wavelength axis, if desired
+% Shift absorbance, if desired
 if (~isempty(params.indDiffParams.lambdaMaxShift))
     if (length(params.indDiffParams.lambdaMaxShift) ~= size(absorbance,1))
         error('Length of passed lambdaMaxShift does not match number of absorbances available to shift');
@@ -118,16 +149,26 @@ end
 %
 % Handle special case where we deal with ser/ala polymorphism for L cone
 if (size(absorbance,1) == 4)
+    if (any(params.indDiffParams.dphotopigment ~= 0))
+        error('Cannot use Asano et al. individual cone model with our weird 4 cone calling mode');
+    end
     absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,...
         [params.axialDensity(1) ; params.axialDensity(1) ; ...
         params.axialDensity(2) ; params.axialDensity(3)]);
 elseif (size(absorbance,1) == 3)
-    absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,...
-        [params.axialDensity(1) ; params.axialDensity(2) ; ...
-        params.axialDensity(3)]);
+    if (length(params.indDiffParms.dphotopigment) ~= 3)
+        error('Density adjustment parameter length not right for cones');
+    end
+    LDensity = params.axialDensity(1) + params.indDiffParams.dphotopigment(1)/100;
+    MDensity = params.axialDensity(2) + params.indDiffParams.dphotopigment(2)/100;
+    SDensity = params.axialDensity(3) + params.indDiffParams.dphotopigment(3)/100;
+    absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,[LDensity ; MDensity ; SDensity]);
 elseif (size(absorbance,1) == 1 && params.DORODS)
-    absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,...
-        params.axialDensity(1));
+    if (length(params.indDiffParms.dphotopigment) ~= 1)
+        error('Density adjustment parameter length not right for rods');
+    end
+    RodDensity = params.axialDensity(1) + params.indDiffParams.dphotopigment(1)/100;=
+    absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,RodDensity));
 else
     error('Unexpected number of photopigment lambda max values passed');
 end
