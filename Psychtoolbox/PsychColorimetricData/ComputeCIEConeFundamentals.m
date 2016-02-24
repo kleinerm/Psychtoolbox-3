@@ -1,7 +1,7 @@
 function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,lambdaMax,whichNomogram,LserWeight, ...
-    DORODS,rodAxialDensity,fractionPigmentBleached,lambdaMaxShift)
+    DORODS,rodAxialDensity,fractionPigmentBleached,indDiffParams)
 % [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,[lambdaMax],[whichNomogram],[LserWeight], ...
-%   [DORODS],[rodAxialDensity],[fractionPigmentBleached],[lambdaMaxShift])
+%   [DORODS],[rodAxialDensity],[fractionPigmentBleached],indDiffParams)
 %
 % Function to compute normalized cone quantal sensitivities
 % from underlying pieces, as specified in CIE 170-1:2006.
@@ -48,21 +48,15 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % This routine will compute from tabulated absorbance or absorbance based on a nomogram, where
 % whichNomogram can be any source understood by the routine PhotopigmentNomogram.  To obtain
 % the nomogram behavior, pass a lambdaMax vector. You can then also optionally pass a nomogram
-% source (default: StockmanSharpe).
-%
-% You can shift the absorbances along a wavenumber axis after you have
-% obtained them.  To do this, pass argument lambdaMaxShift with the same
-% number of entries as the number of absorbances that are used.
+% source (default: StockmanSharpe).  This option (using shifted nomograms) is not part of the
+% CIE standard. See NOTE below for another way to handle individual differences 
 %
 % The nominal values of lambdaMax to fit the CIE 2-degree fundamentals with the
 % Stockman-Sharpe nomogram are 558.9, 530.3, and 420.7 nm for the LMS cones respectively.
 % These in fact do a reasonable job of reconstructing the CIE 2-degree fundamentals, although
 % there are small deviations from what you get if you simply read in the tabulated cone
-% absorbances.  Thus starting with these as nominal values and shifting is a reasonable way to
+% absorbances.  Thus starting with these as nominal values and shifting is one way to
 % produce fundamentals tailored to observers with different known photopigments.
-% 
-% Relevant to that enterprise, S & S (2000) estimate the wavelength difference
-% between the ser/ala variants to be be 2.7 nm (ser longer).
 %
 % If you pass lambaMax and its length is 4, then first two values are treated as
 % the peak wavelengths of the ser/ala variants of the L cone pigment, and these
@@ -71,6 +65,29 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % agreement between the nomogram based fundamentals and the tabulated fundamentals
 % I (DHB) gave up and decided that using a single lambdaMax is as good as anything
 % else I could come up with. If you are interested, see FitConeFundametnalsTest.
+%
+% NOTE: When we first implemented the CIE standard, adding this shifting feature
+% seemed like a good idea to allow exploration of individual differences in photopigments.
+% But, with 0 shift, none of the nomograms exactly reproduce the tabulated photopigment absorbance
+% spectral sensitivities, and this is not so good.  We are phasing out our
+% use of this feature in favor of simply shifting the tabulated
+% photopigment absorbances, and indeed in favor of adopting the method
+% published by Asano, Fairchild, & Bonde (2016), PLOS One, doi: 10.1371/journal.pone.0145671
+% to tailor the CIE fundamentals to individual observers.  This is done by
+% passing the argument indDiffParams, which is a structure as follows.
+%     'linear' gets the Asano et al. behavior
+%   indDiffParams.dlens - deviation in % from CIE computed peak lens density
+%   indDiffParams.dmac - deviation in % from CIE peak macular pigment
+%     density
+%   indDiffParams.dphotopigment - vector of deviations in % from CIE
+%     photopigment peak density.
+%   indDiffParams.lambdaMaxShift - vector of values (in nm) to shift lambda max of
+%     each photopigment absorbance by.  
+%   indDiffParams.lambdaMaxShiftType - 'linear' (default) or 'log'.
+%
+% You also can shift the absorbances along a wavenumber axis after you have
+% obtained them.  To do this, pass argument lambdaMaxShift with the same
+% number of entries as the number of absorbances that are used.
 %
 % This function also has an option to compute rod spectral sensitivities, using
 % the pre-retinal values that come from the CIE standard.  Set DORODS to true on
@@ -88,6 +105,9 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % a column vector with same length as number of spectral sensitivities being
 % computed.  You need to estimate the fraction elsewhere.
 %
+% Relevant to individual differences, S & S (2000) estimate the wavelength difference
+% between the ser/ala variants to be be 2.7 nm (ser longer).
+%
 % See also: ComputeRawConeFundamentals, CIEConeFundamentalsTest, 
 % FitConeFundamentalsTest, FitConeFundamentalsWithNomogram, StockmanSharpeNomogram,
 % ComputePhotopigmentBleaching.
@@ -101,6 +121,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % 05/26/14 dhb  Comment improvements.
 % 02/08/16 dhb, ms  Add lambdaMaxShift argument.
 %          ms   Don't do two way check when lambdaMax is shifted.
+% 02/24/16 dhb, ms  Started to implement Asano et al. individual difference model
 
 %% Are we doing rods rather than cones?
 if (nargin < 8 || isempty(DORODS))
@@ -115,10 +136,10 @@ else
 end
 
 %% Check for passed lambdaMaxShift
-if (nargin < 11 || isempty(lambdaMaxShift))
-    params.lambdaMaxShift = [];
+if (nargin < 11 || isempty(indDiffParams))
+    params.indDiffParams = [];
 else
-    params.lambdaMaxShift = lambdaMaxShift;
+    params.indDiffParams = indDiffParams;
 end
 
 %% Get some basic parameters.
@@ -225,8 +246,12 @@ if (~isfield(params,'absorbance'))
     end
 end
 
-if any(~(params.lambdaMaxShift == 0))
+% Shift in lambda max bookkeeping.
+if any(~(params.indDiffParams.lambdaMaxShift == 0))
     CHECK_FOR_AGREEMENT = false;
+end
+if (~isfield(params.indDiffParams,'shiftType'))
+    params.indDiffParams.shiftType = 'linear';
 end
 
 %% Drop into more general routine to compute
