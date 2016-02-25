@@ -23,7 +23,7 @@ function absorbance = ShiftPhotopigmentAbsorbance(S,absorbance,lambdaMaxShift,sh
 % 2/12/16 ms       Implement linear and log shifting.
 
 % Assume linear shifting as default
-if (nargin < 4 | ismepty(shiftMode))
+if (nargin < 4 | isempty(shiftMode))
     shiftMode = 'linear';
 end
 

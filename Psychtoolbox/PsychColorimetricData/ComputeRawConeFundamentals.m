@@ -156,7 +156,7 @@ if (size(absorbance,1) == 4)
         [params.axialDensity(1) ; params.axialDensity(1) ; ...
         params.axialDensity(2) ; params.axialDensity(3)]);
 elseif (size(absorbance,1) == 3)
-    if (length(params.indDiffParms.dphotopigment) ~= 3)
+    if (length(params.indDiffParams.dphotopigment) ~= 3)
         error('Density adjustment parameter length not right for cones');
     end
     LDensity = params.axialDensity(1) + params.indDiffParams.dphotopigment(1)/100;
@@ -167,8 +167,8 @@ elseif (size(absorbance,1) == 1 && params.DORODS)
     if (length(params.indDiffParms.dphotopigment) ~= 1)
         error('Density adjustment parameter length not right for rods');
     end
-    RodDensity = params.axialDensity(1) + params.indDiffParams.dphotopigment(1)/100;=
-    absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,RodDensity));
+    RodDensity = params.axialDensity(1) + params.indDiffParams.dphotopigment(1)/100;
+    absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,RodDensity);
 else
     error('Unexpected number of photopigment lambda max values passed');
 end
