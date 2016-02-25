@@ -72,7 +72,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % spectral sensitivities, and this is not so good.  We are phasing out our
 % use of this feature in favor of simply shifting the tabulated
 % photopigment absorbances, and indeed in favor of adopting the method
-% published by Asano, Fairchild, & Bonde (2016), PLOS One, doi: 10.1371/journal.pone.0145671
+% published by Asano, Fairchild, & Blondé (2016), PLOS One, doi: 10.1371/journal.pone.0145671
 % to tailor the CIE fundamentals to individual observers.  This is done by
 % passing the argument indDiffParams, which is a structure as follows.
 %     'linear' gets the Asano et al. behavior
