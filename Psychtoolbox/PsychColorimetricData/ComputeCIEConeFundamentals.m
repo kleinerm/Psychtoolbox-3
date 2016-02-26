@@ -250,9 +250,6 @@ end
 if isfield(params,'indDiffParams')
     CHECK_FOR_AGREEMENT = false;
 end
-if (~isfield(params.indDiffParams,'shiftType'))
-    params.indDiffParams.shiftType = 'linear';
-end
 
 %% Drop into more general routine to compute
 %

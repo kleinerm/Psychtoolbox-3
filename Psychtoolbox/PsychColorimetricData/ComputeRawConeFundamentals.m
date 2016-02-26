@@ -87,11 +87,11 @@ end
 if (isfield(params,'absorbance'))
     nReceptorTypes = size(params.absorbance,1);
 else
-    nReceptorTypes = length(params.lambdaMax)
+    nReceptorTypes = length(params.lambdaMax);
 end
 
 % Fill in null individual differences parameters if they are not passed
-if (~isfield(params,'indDiffParams'))
+if isempty(params.indDiffParams)
     params.indDiffParams.lambdaMaxShift = zeros(nReceptorTypes,1);
     params.indDiffParams.shiftType = 'linear';
     params.indDiffParams.dlens = 0;
