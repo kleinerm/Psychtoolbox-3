@@ -64,6 +64,9 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % FillInPhotoreceptors agree with each other, for cases where the
 % parameters match.
 %
+% See ComputeCIEConeFundamentals for the breakdown of how the Asano et al.
+% (2016) individual differences model is specified in params.indDiffParams.
+%
 % See also: ComputeCIEConeFundamentals, CIEConeFundamentalsTest,
 % FitConeFundamentalsWithNomogram,
 %           FitConeFundamentalsTest, DefaultPhotoreceptors,
@@ -72,6 +75,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % 8/12/11  dhb  Starting to make this actually work.
 % 8/14/11  dhb  Change name, expand comments.
 % 8/10/13  dhb  Expand comments.  Return unscaled quantal efficiencies too.
+% 2/26/16  dhb, ms  Add in Asano et al. (2016) individual observer adjustments.
 
 % Handle bad value
 index = find(params.axialDensity <= 0.0001);
@@ -100,6 +104,11 @@ end
 % ways to do this.  For historical reasons, we can pass an additive
 % density adjustment.  More recently we implemented the Asano et al. (2016)
 % parameterization.  We don't allow both to happen at once.
+%
+% The logic here is a little hairy, because the way that we used to
+% adjust lens and mac density was additive, but Asano et al. (2016) do
+% it in a multipilcative fashion, so we need a flag to keep track of what
+% we're going to do with the numbers down below.
 if (~isfield(params,'extraLens'))
     params.extraLens = 0;
 end
@@ -112,21 +121,37 @@ end
 if (params.extraMac ~= 0 & params.indDiffParams.dmac ~= 0)
     error('Cannot specify macular pigment density adjustment two ways');
 end
+OLDLENSWAY = true;
 if (params.extraLens == 0)
+    OLDLENSWAY = false;
     params.extraLens = params.indDiffParams.dlens/100;
 end
+OLDMACWAY = true;
 if (params.extraMac == 0)
+    OLDMACWAY = false;
     params.extraMac = params.indDiffParams.dmac/100;
 end
 
-% Prereceptor transmittance.  Sometimes adjustments of peak density
-% recommended by various standards push the density less than
-% zero at some wavelengths, so we need to make sure we never have
-% transmittance greater than 1.
-lens = 10.^-(-log10(staticParams.lensTransmittance) * (1 + params.extraLens));
-lens(lens > 1) = 1;
-mac = 10.^-(-log10(staticParams.macularTransmittance) * (1 + params.extraMac));
-mac(mac > 1) = 1;
+% Prereceptor transmittance.  Check that passed parameters are not so weird
+% as to lead to transmittances greater than 1, and throw error if so.
+if (OLDLENSWAY)
+    lens = 10.^-(-log10(staticParams.lensTransmittance)+params.extraLens);
+else
+    lens = 10.^-(-log10(staticParams.lensTransmittance) * (1 + params.extraLens));
+end
+if (any(lens > 1))
+    error('You have passed parameters that make lens transmittance greater than 1');
+end
+%lens(lens > 1) = 1;
+if (OLDMACWAY)
+    mac = 10.^-(-log10(staticParams.macularTransmittance)+params.extraMac);
+else
+    mac = 10.^-(-log10(staticParams.macularTransmittance) * (1 + params.extraMac));
+end
+if (any(mac > 1))
+    error('You have passed parameters that make macular pigment transmittance greater than 1');
+end
+%mac(mac > 1) = 1;
 
 % Compute nomogram if absorbance wasn't passed directly.  We detect
 % a direct pass by the existance of params.absorbance.
@@ -148,6 +173,17 @@ end
 % Compute absorptance
 %
 % Handle special case where we deal with ser/ala polymorphism for L cone
+%
+% We've put in the Asano et al. (2016) multiplicative adjustment.  Since we
+% weren't adjusting photopigment density previously (except for
+% self-screening), we don't have to deal with two threads here.
+%
+% Note that density can also get adjusted according to light level to
+% account for photopigment bleaching.  That happens in
+% FillInPhotoreceptors, which would typically be called before we get here.
+% We think this is OK, because both the Asano et al. and the fraction
+% bleaching adjustment are multiplicative adjustments of axial density, and
+% multiplication commutes so it doesn't matter what order we do things in.
 if (size(absorbance,1) == 4)
     if (any(params.indDiffParams.dphotopigment ~= 0))
         error('Cannot use Asano et al. individual cone model with our weird 4 cone calling mode');
