@@ -5,7 +5,7 @@ function datapixxmakemex()
         CPYCMD = 'cp ';
         DELCMD = 'rm ';
     elseif (IsLinux)
-        if Is64Bit
+        if Is64Bit || IsARM
           VPIXXDIR = '/home/kleinerm/projects/';
         else
           VPIXXDIR = '/media/sf_kleinerm/projects/';
@@ -158,8 +158,13 @@ function datapixxmakemex()
                 system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux64/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles64'], '/', filesep));
                 striplibsfrommexfile([PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles64/Datapixx.mex']);
             else
-                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles'], '/', filesep));
-                striplibsfrommexfile([PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles/Datapixx.mex']);
+                if IsARM
+                    system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFilesARM'], '/', filesep));
+                    striplibsfrommexfile([PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFilesARM/Datapixx.mex']);
+                else
+                    system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles'], '/', filesep));
+                    striplibsfrommexfile([PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles/Datapixx.mex']);
+                end
             end
         elseif (IsWin)
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/Windows/Base/*.o'], '/', filesep));
