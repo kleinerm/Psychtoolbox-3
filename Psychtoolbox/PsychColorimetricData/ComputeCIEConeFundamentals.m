@@ -247,7 +247,7 @@ if (~isfield(params,'absorbance'))
 end
 
 % Shift in lambda max bookkeeping.
-if any(~(params.indDiffParams.lambdaMaxShift == 0))
+if isfield(params,'indDiffParams')
     CHECK_FOR_AGREEMENT = false;
 end
 if (~isfield(params.indDiffParams,'shiftType'))

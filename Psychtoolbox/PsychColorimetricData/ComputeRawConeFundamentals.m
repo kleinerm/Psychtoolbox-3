@@ -108,10 +108,10 @@ if (~isfield(params,'extraMac'))
 end
 if (params.extraLens ~= 0 & params.indDiffParams.dlens ~= 0)
     error('Cannot specify lens density adjustment two ways');
-end    
+end
 if (params.extraMac ~= 0 & params.indDiffParams.dmac ~= 0)
     error('Cannot specify macular pigment density adjustment two ways');
-end 
+end
 if (params.extraLens == 0)
     params.extraLens = params.indDiffParams.dlens/100;
 end
@@ -123,9 +123,9 @@ end
 % recommended by various standards push the density less than
 % zero at some wavelengths, so we need to make sure we never have
 % transmittance greater than 1.
-lens = 10.^-(-log10(staticParams.lensTransmittance)+params.extraLens);
+lens = 10.^-(-log10(staticParams.lensTransmittance) * (1 + params.extraLens));
 lens(lens > 1) = 1;
-mac = 10.^-(-log10(staticParams.macularTransmittance)+params.extraMac);
+mac = 10.^-(-log10(staticParams.macularTransmittance) * (1 + params.extraMac));
 mac(mac > 1) = 1;
 
 % Compute nomogram if absorbance wasn't passed directly.  We detect
@@ -159,9 +159,9 @@ elseif (size(absorbance,1) == 3)
     if (length(params.indDiffParams.dphotopigment) ~= 3)
         error('Density adjustment parameter length not right for cones');
     end
-    LDensity = params.axialDensity(1) + params.indDiffParams.dphotopigment(1)/100;
-    MDensity = params.axialDensity(2) + params.indDiffParams.dphotopigment(2)/100;
-    SDensity = params.axialDensity(3) + params.indDiffParams.dphotopigment(3)/100;
+    LDensity = params.axialDensity(1) * (1 + params.indDiffParams.dphotopigment(1)/100);
+    MDensity = params.axialDensity(2) * (1 + params.indDiffParams.dphotopigment(2)/100);
+    SDensity = params.axialDensity(3) * (1 + params.indDiffParams.dphotopigment(3)/100);
     absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,[LDensity ; MDensity ; SDensity]);
 elseif (size(absorbance,1) == 1 && params.DORODS)
     if (length(params.indDiffParms.dphotopigment) ~= 1)
