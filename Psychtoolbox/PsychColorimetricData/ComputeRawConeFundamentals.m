@@ -135,6 +135,7 @@ end
 % Prereceptor transmittance.  Check that passed parameters are not so weird
 % as to lead to transmittances greater than 1, and throw error if so.
 if (OLDLENSWAY)
+    fprintf('Using old way of adjusting lens density.  Consider switching to newer implementation via the params.indDiffParams field\n');
     lens = 10.^-(-log10(staticParams.lensTransmittance)+params.extraLens);
 else
     lens = 10.^-(-log10(staticParams.lensTransmittance) * (1 + params.extraLens));
@@ -144,6 +145,7 @@ if (any(lens > 1))
 end
 %lens(lens > 1) = 1;
 if (OLDMACWAY)
+    fprintf('Using old way of adjusting macular pigment density.  Consider switching to newer implementation via the params.indDiffParams field\n');
     mac = 10.^-(-log10(staticParams.macularTransmittance)+params.extraMac);
 else
     mac = 10.^-(-log10(staticParams.macularTransmittance) * (1 + params.extraMac));
