@@ -36,9 +36,11 @@ static char synopsisString[] =
     "with 11% of the maximum blue-gun intensity. The range of values 0-1 gets mapped to the hardware with "
     "the accuracy attainable by the hardwares DAC's, typically between 8 and 10 bits.\n"
     "The required number of rows 'nrows' is typically 256 for consumer graphics cards.\n"
+    "If the 'loadOnNextFlip' flag is set to a value < 2 for updating the graphics cards gamma table "
+    "then the following limits apply: On MS-Windows, only gamma tables with 256 rows are accepted for the graphis card. "
     "On OS-X you can also pass 512, 1024, 2048, ..., 65535 rows instead of 256 rows, although this only "
-    "makes sense for a few selected applications, e.g., setup for the Bits++ box. On Linux/X11 with some "
-    "pro-graphics cards, e.g., some NVidia QuadroFX cards, you can pass more than 256 rows, similar to OS/X.\n"
+    "makes sense for few selected applications. On Linux/X11 with some pro-graphics cards, "
+    "e.g., some NVidia QuadroFX cards, you can pass more than 256 rows, similar to OS/X.\n"
     "If you provide the index of an onscreen window as 'ScreenNumber' and you set the (optional) "
     "flag 'loadOnNextFlip' to 1, then update of the gamma table will not happen immediately, but only at "
     "execution of the Screen('Flip', windowPtrOrScreenNumber) command. This allows to synchronize change of "
@@ -147,20 +149,13 @@ PsychError SCREENLoadNormalizedGammaTable(void)
     // Sanity check dimensions:
     if((inN != 3) || (inP != 1)) PsychErrorExitMsg(PsychError_user, "The gamma table must have 3 columns (Red, Green, Blue).");
 
-    #if PSYCH_SYSTEM != PSYCH_WINDOWS
-        // OS-X and Linux/X11 allow tables with other than 256 slots:
-        // OS/X either passes them to hw if in native size, or performs
-        // software interpolation to convert it into native size. We allow any table size with 1 - x slots.
-        // A table size of 1 row will have a special meaning. It interprets the 1 row of the table as gamma formula
-        // min, max, gamma and lets the OS compute a corresponding gamma correction table.
-        // A table size of zero rows will trigger an internal upload of an identity table via byte transfer.
-        // On Linux/X11 we need to interpolate ourselves on non-matching table sizes.
-    #else
-        // Windows requires 256 slots:
-        if(inM != 256) {
-            PsychErrorExitMsg(PsychError_user, "The gamma table must have 256 rows.");
-        }
-    #endif
+    // OS-X and Linux/X11 allow tables with other than 256 slots, Windows only ones with 256 slots.
+    // OS/X either passes them to hw if in native size, or performs
+    // software interpolation to convert it into native size. We allow any table size with 1 - x slots.
+    // A table size of 1 row will have a special meaning. It interprets the 1 row of the table as gamma formula
+    // min, max, gamma and lets the OS compute a corresponding gamma correction table.
+    // A table size of zero rows will trigger an internal upload of an identity table via byte transfer.
+    // On Linux/X11 we need to interpolate ourselves on non-matching table sizes.
 
     // Copy in optional loadOnNextFlip - flag. It defaults to zero. If provided
     // with a non-zero value, we will defer actual update of the gamma table to
