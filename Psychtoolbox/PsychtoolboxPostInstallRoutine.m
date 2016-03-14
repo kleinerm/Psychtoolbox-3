@@ -62,6 +62,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 10/05/2014 Add some request for donations at the end. (MK)
 % 10/17/2015 Also add call to PsychStartup() to Octave startup for MS-Windows. (MK)
 % 01/27/2016 Use Octave3 folder for mex files for both Octave-3 and Octave-4. (MK)
+% 03/15/2016 Need liboctave-dev package for symlinks liboctinterp.so -> Octave specific liboctinterp.x.so (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -401,6 +402,11 @@ if IsOctave
         % Failed! Either screwed setup of path or missing runtime
         % libraries.
         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
+        if ismember(octavemajorv, [3,4]) && IsLinux
+            fprintf('ERROR: Make sure to have the ''liboctave-dev'' package installed, otherwise symlinks\n');
+            fprintf('ERROR: from liboctinterp.so to the liboctinterp library of your Octave installation\n');
+            fprintf('ERROR: might by missing, causing our mex files to fail to load with linker errors.\n');
+        end
         fprintf('ERROR: One reason might be that your version %s of Octave is incompatible. We recommend\n', version);
         fprintf('ERROR: use of the latest stable version of Octave-3 or 4 as announced on the www.octave.org website.\n');
         fprintf('ERROR: Another conceivable reason would be missing or incompatible required system libraries on your system.\n\n');
