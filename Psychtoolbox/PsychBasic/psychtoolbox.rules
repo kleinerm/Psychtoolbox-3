@@ -55,3 +55,7 @@ ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="2833", MODE="0666"
 
 # Enable non-root access of libusb to the NVIDIA 3D Vision USB IR Emitter:
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="0007", MODE="0666"
+
+# Add a /dev/input/powermate symlink, with non-root access for all for the Griffin PowerMate USB knob,
+# which is controlled by the Linux powermate kernel driver.
+ACTION=="add", ENV{ID_USB_DRIVER}=="powermate", SYMLINK+="input/powermate", MODE="0666"
