@@ -1,11 +1,10 @@
 -- AutoBrightness.applescript
--- Denis G. Pelli denis.pelli@nyu.edu
--- May 21, 2015. 
--- Enhanced May 29, 2015 to allow specification of screenNumber.
--- I hope this new version will work with Macs running under Mac OS X
--- localized for any language, not just English. For this, we now select
--- the Display/Colors panel by the internal name "displaysDisplayTab" 
--- instead using the localized name "Display". 
+-- Denis G. Pelli, denis.pelli@nyu.edu
+-- February 29, 2016. 
+--
+-- HISTORY
+-- May 21, 2015. First version.
+-- May 29, 2015 Enhanced to allow specification of screenNumber.
 -- June 1, 2015. Polished the comments.
 -- July 25, 2015 Previously worked on Mavericks (Mac OS X 10.9). 
 -- Now enhanced to also support Yosemite (Mac OS X 10.10.4).
@@ -14,9 +13,18 @@
 -- the checkbox is always in group 1. Under Mac OS X 10.10 I have previously
 -- found it in group 2, but now I find it in group 1, so it seems best for the
 -- program to keep trying groups until it finds the checkbox: first 1, then 2, then give up.
--- Not yet tested on earlier version of Mac OS X (< 10.9) or
--- on El Capitan (OS X 10.11).
+-- February 29, 2016 Improved the wording of the pop-up screen to spell 
+-- out what the user needs to do to allow MATLAB to control the computer.
 --
+-- COMPATIBILITY
+-- Works on Mavericks, Yosemite, and El Capitan (Mac OS X 10.9 to 10.11).
+-- Not yet tested on earlier versions of Mac OS X (< 10.9).
+-- I hope this will work internationally, with Macs running under Mac OS X
+-- localized for any language, not just English. That is why we select
+-- the Display/Colors panel by the internal name "displaysDisplayTab" 
+-- instead using the localized name "Display". 
+--
+-- INTRODUCTION
 -- This applescript allows you to disable (or re-enable) a feature of Apple 
 -- Macintosh liquid crystal displays that is undesirable for vision experiments 
 -- and display calibration. This applescript is equivalent to manually opening
@@ -142,7 +150,7 @@ on run argv
 			tell application "System Preferences"
 				activate
 				reveal anchor "Privacy_Accessibility" of pane id "com.apple.preference.security"
-				display alert "To set Displays preferences, " & applicationName & " needs your permission to control the computer.  Please check the appropriate box to allow this. Then try again."
+				display alert "To set Displays preferences, " & applicationName & " needs your permission to control this computer.  BEFORE you click OK below, please unlock the Privacy panel and click the box that allows the app to control your computer. THEN click OK."
 				delay 1
 			end tell
 			return -99

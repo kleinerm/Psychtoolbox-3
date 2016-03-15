@@ -35,8 +35,8 @@ $debugmode = 0;
 date_default_timezone_set('UTC');
 
 // Default filename for registration log file:
-$filename = "/Users/colorweb/ptbregistrationlog";
-//$filename = "./ptbregistrationlog";
+//$filename = "/Users/colorweb/ptbregistrationlog";
+$filename = "./ptbregistrationlog";
 if (file_exists($filename)===FALSE) {
    print "<br />The file $filename does not exist!<br />";
    return;
@@ -115,10 +115,12 @@ $matv83count = 0;
 $matv84count = 0;
 $matv85count = 0;
 $matv86count = 0;
+$matv90count = 0;
 
 $octavelinuxcount = 0;
 $octaveosxcount   = 0;
 $octavewincount   = 0;
+$octave4wincount  = 0;
 
 $linux64count = 0;
 $osx64count = 0;
@@ -263,6 +265,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '<ENVVERSION>8.4')) { $matv84count++; }
     if (strpos($ofl, '<ENVVERSION>8.5')) { $matv85count++; }
     if (strpos($ofl, '<ENVVERSION>8.6')) { $matv86count++; }
+    if (strpos($ofl, '<ENVVERSION>9.0')) { $matv90count++; }
   }
 
   if (strpos($ofl, '<ENVIRONMENT>Octave')) {
@@ -296,7 +299,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, 'Version 6.1 (Build') || strpos($ofl, 'NT-6.1')) { $win7count++; $iswin = 2; }
     if (strpos($ofl, 'Version 6.2 (Build') || strpos($ofl, 'NT-6.2')) { $win8count++; $iswin = 2; }
     if (strpos($ofl, 'Version 6.3 (Build') || strpos($ofl, 'NT-6.3')) { $win81count++; $iswin = 2; }
-    if (strpos($ofl, 'Version 6.4 (Build') || strpos($ofl, 'NT-6.4')) { $win10count++; $iswin = 2; }
+    if (strpos($ofl, 'Version 10.0 (Build') || strpos($ofl, 'NT-10.')) { $win10count++; $iswin = 2; }
 
     if (($iswin < 2) && ($debugmode > 0)) print "LOGPARSER-WARNING: UNASSIGNED WINDOWS - MACID: $ofl <br />";
 
@@ -315,7 +318,7 @@ foreach($uniqueptbs as $ofl) {
         }
     }
 
-    if (strpos($ofl, '<ENVARCH>PCWIN64') || strpos($ofl, '<ENVARCH>i686-pc-mingw64')) {
+    if (strpos($ofl, '<ENVARCH>PCWIN64') || strpos($ofl, '<ENVARCH>i686-pc-mingw64') || strpos($ofl, '<ENVARCH>i686-w64-mingw64')) {
       $win64count++;
     }
   }
@@ -363,6 +366,7 @@ foreach($uniqueptbs as $ofl) {
 
     if ($iswin > 0) {
         $octavewincount++;
+        if (strpos($ofl, '<ENVVERSION>4.')) { $octave4wincount++; }
     }
   }
 
@@ -394,7 +398,7 @@ print "Psychtoolbox-3.0.11-PreWinGst : $ptb3011oldgscount<br />";
 print "Psychtoolbox-3.0.11           : $ptb3011count<br />";
 print "Unclassified                  : $unknowncount<br />";
 
-print "<br />Breakdown by host operating system:<br /><br />";
+print "<br />Estimated breakdown by host operating system (*):<br /><br />";
 printf('MacOS-X all                  : %8d (%7.3f%%) <br />', $osxcount, 100 * $osxcount / $totalcount);
 printf('Windows all                  : %8d (%7.3f%%) <br />', $wincount, 100 * $wincount / $totalcount);
 printf('Linux all                    : %8d (%7.3f%%) <br />', $linuxcount, 100 * $linuxcount / $totalcount);
@@ -402,6 +406,7 @@ printf('Linux on ARM embedded/mobile : %8d <br />', $linuxarmcount);
 printf('Linux   64 Bit Matlab/Octave : %8d (%7.3f%% of all Linux systems) <br />', $linux64count, 100 * $linux64count / $linuxcount);
 printf('Windows 64 Bit Matlab/Octave : %8d (%7.3f%% of all Windows systems) <br />', $win64count, 100 * $win64count / $wincount);
 printf('MacOS-X 64 Bit Matlab/Octave : %8d (%7.3f%% of all MacOS-X systems) <br />', $osx64count, 100 * $osx64count / $osxcount);
+print "<br />(*) Strong underestimate for Linux, overestimate for Windows and OSX!<br /><br />";
 
 print "<br />For Macintosh - Breakdown by system architecture:<br /><br />";
 
@@ -463,11 +468,13 @@ print "Matlab 8.3   (R2014a)        : $matv83count<br />";
 print "Matlab 8.4   (R2014b)        : $matv84count<br />";
 print "Matlab 8.5   (R2015a)        : $matv85count<br />";
 print "Matlab 8.6   (R2015b)        : $matv86count<br />";
+print "Matlab 9.0   (R2016a)        : $matv90count<br />";
 
 print "<br />Number of GNU/Octave V3+ installations by system:<br /><br />";
 printf('Octave on OS/X               : %8d (%7.3f%% of all OS/X installs) <br />', $octaveosxcount, 100 * $octaveosxcount / $osxcount);
 printf('Octave on Linux              : %8d (%7.3f%% of all Linux installs) <br />', $octavelinuxcount, 100 * $octavelinuxcount / $linuxcount);
-printf('Octave on Windows            : %8d (%7.3f%% of all Windows installs) <br />', $octavewincount, 100 * $octavewincount / $wincount);
+printf('Octave all on Windows        : %8d (%7.3f%% of all Windows installs) <br />', $octavewincount, 100 * $octavewincount / $wincount);
+printf('Octave 4 on Windows          : %8d (%7.3f%% of all Windows installs) <br />', $octave4wincount, 100 * $octave4wincount / $wincount);
 
 print "</pre></h3><pre>";
 print "Parsed lines in registration log        : $linescount<br />";

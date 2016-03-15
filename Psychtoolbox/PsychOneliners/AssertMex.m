@@ -85,7 +85,7 @@ if IsOctave
                 fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave3WindowsFiles' oext]);
             end
             
-            fprintf('\n\nIf you have just installed Psychtoolbox, it worked properly and suddenly stopped working\n');
+            fprintf('\n\nIf, on Octave-3.2.0, you have just installed Psychtoolbox, it worked properly and suddenly stopped working\n');
             fprintf('after you have restarted Octave, then you may encounter a bug present in Octave 3.2.0.\n');
             fprintf('Try the following at the Octave prompt: First type "savepath" + Enter to save the current Octave path again.\n');
             fprintf('Then exit Octave and restart it. After that try again - It may work then, if the problem was caused by aforementioned bug.\n\n');
@@ -99,7 +99,6 @@ if IsOctave
             end
             
             fprintf('A reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
-            fprintf('Our default installation also only supports 32 bit versions of operating system and Octave.\n');
             fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');
         end
     end

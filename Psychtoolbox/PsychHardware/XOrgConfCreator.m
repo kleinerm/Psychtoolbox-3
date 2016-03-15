@@ -280,8 +280,16 @@ try
     end
     % End of advanced configuration.
   end
-
 catch
+  fprintf('Sorry, something went wrong. Aborting. The error message was:\n');
+
+  % Close all windows:
+  Screen('CloseAll');
+
+  % Restore old Screen settings:
+  Screen('Preference', 'SkipSyncTests', oldSyncTests);
+  Screen('Preference', 'Verbosity', oldVerbosity);
+  psychrethrow(psychlasterror);
 end
 
 fprintf('\n\n');
