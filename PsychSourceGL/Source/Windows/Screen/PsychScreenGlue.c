@@ -334,7 +334,7 @@ void InitializePsychDisplayGlue(void)
 
     // No cursor shape for backup/restore in Show/HideCursor() yet:
     oldCursor = NULL;
-    
+
     // Create our own "invisible Cursor":
     memset(andMask, 0xff, sizeof(andMask));
     memset(xorMask, 0x00, sizeof(xorMask));
@@ -345,16 +345,16 @@ void PsychCleanupDisplayGlue(void)
 {
     int i;
     unsigned long refcount;
-    
+
     // Release reference to global device context of main desktop:
     if (displayCGIDs[0]) ReleaseDC(GetDesktopWindow(), displayCGIDs[0]);
     displayCGIDs[0] = NULL;
-    
+
     for (i = 1; i < kPsychMaxPossibleDisplays; i++) {
         // Delete the device contexts we created for additional displays, if any:
         if (displayCGIDs[i]) DeleteDC(displayCGIDs[i]);
         displayCGIDs[i] = NULL;
-        
+
         // Release additional DirectDraw interfaces for additional displays if any, and if they
         // are not simple copies of the primary interface in index [0]:
         if (displayDeviceDDrawObject[i] && (displayDeviceDDrawObject[i] != displayDeviceDDrawObject[0])) {
@@ -363,14 +363,14 @@ void PsychCleanupDisplayGlue(void)
         }
         displayDeviceDDrawObject[i] = NULL;
     }
-    
+
     // Delete primary DDRAW interface, if any:
     if (displayDeviceDDrawObject[0]) {
         refcount = IDirectDraw_Release(displayDeviceDDrawObject[0]);
         if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Released primary DDRAW interface. Refcount now %i.\n", (int) refcount);
     }
     displayDeviceDDrawObject[0] = NULL;
-    
+
     // Release/Unload DirectDraw DLL library itself, if any:
     if (ddrawlibrary) {
         if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Unloading DirectDraw DLL...\n");
@@ -390,22 +390,22 @@ BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription,
 BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
     MONITORINFOEX moninfo;
-    
+
     // hMonitor is the handle to the monitor info. Resolve it to a moninfo information struct:
     moninfo.cbSize = sizeof(MONITORINFOEX);
     GetMonitorInfo(hMonitor, (LPMONITORINFO) &moninfo);
-    
+
     // Query and copy the display device name into our own screenNumber->Name mapping array:
     displayDeviceName[numDisplays] = (char*) malloc(256);
     strncpy(displayDeviceName[numDisplays], moninfo.szDevice, 256);
-    
+
     // Query and copy the top-left corner of the monitor:
     displayDeviceStartX[numDisplays] = moninfo.rcMonitor.left;
     displayDeviceStartY[numDisplays] = moninfo.rcMonitor.top;
-    
+
     // Create a device context for this display and store it in our displayCGIDs array:
     displayCGIDs[numDisplays] = CreateDC(displayDeviceName[numDisplays], displayDeviceName[numDisplays], NULL, NULL);
-    
+
     // Store HMONITOR handle for DirectDraw device enumeration:
     displayDevicehMonitor[numDisplays] = hMonitor;
 
@@ -414,7 +414,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 
     // Increase global counter of available separate displays:
     numDisplays++;
-    
+
     // Return and ask system to continue display enumeration:
     return(TRUE);
 }
@@ -425,7 +425,7 @@ BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription,
 {
     // Retrieve index into our display array for the display to enumerate / map in this callback:
     int idx = (int) displayIdx;
-    
+
     // Is the passed in hMonitor identical to the hMonitor of target display "idx"?
     if (hMonitor == displayDevicehMonitor[idx]) {
         // Bingo! Store the GUID globally unique display device handle for this display. We'll need this
@@ -440,14 +440,14 @@ BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription,
             displayDeviceGUIDValid[idx] = 1;
         }
         // printf("PTB-DEBUG: In DDRAW enumeration: Screenid %i: '%s' and '%s' -> lpGUID %p.\n", idx, (char*) lpDriverDescription, (char*) lpDriverName, lpGUID);
-        
+
         // Finalize enumeration pass:
         return(FALSE);
     }
     else {
         // printf("PTB-DEBUG: In enum call for screenid %i: FAIL for '%s' , '%s'\n", idx, (char*) lpDriverDescription, (char*) lpDriverName);
     }
-    
+
     // Nope. Continue enumeration:
     return(TRUE);
 }
@@ -457,7 +457,7 @@ void InitCGDisplayIDList(void)
     long int i, w1, w2, h1, h2;
     psych_uint32 beampos = 100000;
     HRESULT rc;
-    
+
     // We always provide the full (virtual) desktop as screen number zero. This way,
     // queries to screen 0 will always provide the global settings and dimensions of
     // the full desktop (either single display, or extended desktop on multi-display systems).
@@ -470,17 +470,17 @@ void InitCGDisplayIDList(void)
     displayDeviceName[0] = NULL;
     displayDeviceStartX[0] = 0;
     displayDeviceStartY[0] = 0;
-    
+
     // Since Windows Vista/7 we need to manually load the DirectDraw runtime DLL and bind
     // the functions we need manually. Thanks Microsoft for creating pointless extra work!
     ddrawlibrary = LoadLibrary("ddraw.dll");
     if (ddrawlibrary) {
         // Load success. Dynamically bind the relevant functions:
         if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: DirectDraw DLL available. Binding controls ...");
-        
+
         PsychDirectDrawCreate      = (LPDIRECTDRAWCREATE) GetProcAddress(ddrawlibrary, "DirectDrawCreate");
         PsychDirectDrawEnumerateEx = (LPDIRECTDRAWENUMERATEEX) GetProcAddress(ddrawlibrary, "DirectDrawEnumerateExA");
-        
+
         if (PsychDirectDrawCreate && PsychDirectDrawEnumerateEx) {
             // Mark DirectDraw as supported:
             if (PsychPrefStateGet_Verbosity() > 5) printf(" ...done\n");
@@ -497,7 +497,7 @@ void InitCGDisplayIDList(void)
     else {
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: DirectDraw runtime DLL unsupported! Trouble ahead!\n");
     }
-    
+
     // Create a DirectDraw object for the primary display device, i.e. the single display on a
     // single display setup or the display device corresponding to the desktop on a multi-display setup:
     if ((ddrawlibrary == 0) || (PsychDirectDrawCreate((GUID FAR *) DDCREATE_HARDWAREONLY, &(displayDeviceDDrawObject[0]), NULL) != DD_OK)) {
@@ -513,7 +513,7 @@ void InitCGDisplayIDList(void)
                 case DDERR_UNSUPPORTED:
                     printf("PTB-INFO: Beamposition query unsupported on this system configuration.\n");
                     break;
-                    
+
                 default:
                     printf("PTB-INFO: Beamposition query test failed: Direct Draw Error.\n");
             }
@@ -526,7 +526,7 @@ void InitCGDisplayIDList(void)
     // Now call M$-Windows monitor enumeration routine. It will call our callback-function
     // MonitorEnumProc() for each detected display device...
     EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
-    
+
     // Only one additional display found?
     if (numDisplays <=2) {
         // Single display mode: Enumeration only found the single monitor that constitutes
@@ -544,7 +544,7 @@ void InitCGDisplayIDList(void)
         for (i=1; i<numDisplays; i++) {
             printf("PTB-INFO: Screen %i corresponds to the display area of the monitor with the Windows-internal name %s ...\n", i, displayDeviceName[i]);
         }
-        
+
         // Check for sane display dimensions: Our emulation trick for creating a display spanning screen 0 will only work,
         // if the first two physical displays 1 and 2 are of the same resolution/size and if they are arranged so that both
         // together are suitable for a horizontal desktop spanning window, aka they touch each other at their horizontal borders.
@@ -560,15 +560,15 @@ void InitCGDisplayIDList(void)
             //printf("PTB-WARNING: panel and retry after a 'clear all', or manually specify a [rect] parameter for the window in the\n");
             //printf("PTB-WARNING: Screen('OpenWindow', 0, [color], [rect]); command to manually enforce creation of a proper onscreen window.\n");
         }
-        
+
         printf("\n"); fflush(NULL);
-        
+
         // Try to enumerate all DirectDraw devices for all our enumerated display monitors:
         // We'd like to create one DDRAW object per display, so we have per-display beamposition queries available.
         for (i = 1; i < numDisplays; i++) {
             // Enumerate for display screen 'i':
             rc = 0;
-            
+
             if (PsychDirectDrawEnumerateEx && ((rc = PsychDirectDrawEnumerateEx(PsychDirectDrawEnumProc, (LPVOID) i, DDENUM_ATTACHEDSECONDARYDEVICES)) == DD_OK) && (displayDeviceGUIDValid[i] > 1)) {
                 // Success: Create corresponding DDRAW device interface for this screen:
                 if ((rc = PsychDirectDrawCreate(&displayDeviceGUID[i], &(displayDeviceDDrawObject[i]), NULL)) != DD_OK) {
@@ -592,7 +592,7 @@ void InitCGDisplayIDList(void)
             }
             // Done with this one. Init next display...
         }
-        
+
         // Do we have per-display beamposition queries available via corresponding DDRAW objects?
         // If ddrawnumDisplays < numDisplays, then we missed some out. In that case use of the beamposition
         // mechanism may be unsafe and we have to use our heuristic to decide if we cope or fail...
@@ -622,10 +622,10 @@ void InitCGDisplayIDList(void)
             }
         }
     }
-    
+
     // Setup screenId -> display head mappings:
     PsychInitScreenToHeadMappings(numDisplays);
-    
+
     // Ready.
     return;
 }
@@ -643,17 +643,17 @@ char* PsychGetDisplayDeviceName(int screenNumber)
 }
 
 /*  About locking display settings:
- 
+
  SCREENOpenWindow and SCREENOpenOffscreenWindow  set the lock when opening  windows and
  SCREENCloseWindow unsets upon the close of the last of a screen's windows. PsychSetVideoSettings checks for a lock
  before changing the settings.  Anything (SCREENOpenWindow or SCREENResolutions) which attemps to change
  the display settings should report that attempts to change a dipslay's settings are not allowed when its windows are open.
- 
+
  PsychSetVideoSettings() may be called by either SCREENOpenWindow or by Resolutions().  If called by Resolutions it both sets the video settings
  and caches the video settings so that subsequent calls to OpenWindow can use the cached mode regardless of whether interceding calls to OpenWindow
  have changed the display settings or reverted to the virgin display settings by closing.  SCREENOpenWindow should thus invoke the cached mode
  settings if they have been specified and not current actual display settings.
- 
+
  */
 void PsychLockScreenSettings(int screenNumber)
 {
@@ -681,7 +681,7 @@ void PsychCaptureScreen(int screenNumber)
         enableVBLBeamposWorkaround = TRUE;
         return;
     }
-    
+
     if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
 
     // For now, this is a "No operation" on Windows. Don't know if facilities for
@@ -689,7 +689,7 @@ void PsychCaptureScreen(int screenNumber)
     // for HWND window handles, but that applies to windows, not screens and i don't
     // know, what it actually does...
     PsychLockScreenSettings(screenNumber);
-    
+
     // However we do call the testing/workaround routine for working beamposition queries here:
     PsychTestDDrawBeampositionQueries(screenNumber);
 }
@@ -700,7 +700,7 @@ void PsychCaptureScreen(int screenNumber)
 void PsychReleaseScreen(int screenNumber)
 {
     CGDisplayErr  error=0;
-    
+
     if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
     PsychUnlockScreenSettings(screenNumber);
 }
@@ -726,9 +726,9 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 {
     int i, rc;
     DEVMODE result;
-    
+
     if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
-    
+
     // Query all available modes for this display device and retrieve their
     // depth values:
     i=0;
@@ -738,7 +738,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
         result.dmDriverExtra = 0;
         rc = EnumDisplaySettings(PsychGetDisplayDeviceName(screenNumber), i, &result);
         i++;
-        
+
         // Valid setting returned?
         if (rc) {
             // Yes. Add its depth-value to our depth struct:
@@ -750,17 +750,17 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 
 /*   PsychGetAllSupportedScreenSettings()
  *
- *	 Queries the display system for a list of all supported display modes, ie. all valid combinations
- *	 of resolution, pixeldepth and refresh rate. Allocates temporary arrays for storage of this list
- *	 and returns it to the calling routine. This function is basically only used by Screen('Resolutions').
+ *     Queries the display system for a list of all supported display modes, ie. all valid combinations
+ *     of resolution, pixeldepth and refresh rate. Allocates temporary arrays for storage of this list
+ *     and returns it to the calling routine. This function is basically only used by Screen('Resolutions').
  */
 int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** widths, long** heights, long** hz, long** bpp)
 {
     int i, rc, numPossibleModes;
     DEVMODE result;
-    
+
     if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
-    
+
     // First pass: How many modes are supported?
     i=-1;
     do {
@@ -769,17 +769,17 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
         rc = EnumDisplaySettings(PsychGetDisplayDeviceName(screenNumber), i, &result);
         i++;
     } while (rc!=0);
-    
+
     // Get a list of avialable modes for the specified display:
     numPossibleModes= i;
-    
+
     // Allocate output arrays: These will get auto-released at exit
     // from Screen():
     *widths = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
     *heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
     *hz = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
     *bpp = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
-    
+
     // Fetch modes and store into arrays:
     for(i=0; i < numPossibleModes; i++) {
         result.dmSize = sizeof(DEVMODE);
@@ -790,53 +790,53 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** wi
         (*hz)[i] = (long) result.dmDisplayFrequency;
         (*bpp)[i] = (long) result.dmBitsPerPel;
     }
-    
+
     return(numPossibleModes);
 }
 
 /*
  static PsychGetCGModeFromVideoSettings()
- 
+
  */
 psych_bool  PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
 {
     /*
      FIXME - We just return a 1.
-     
+
      CFArrayRef modeList;
      CFNumberRef n;
      int i, numPossibleModes;
      long width, height, depth, frameRate, tempWidth, tempHeight, tempDepth,  tempFrameRate;
-     
+
      if(setting->screenNumber>=numDisplays)
      PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); //also checked within SCREENPixelSizes
-     
+
      //adjust parameter formats
      width=(long)PsychGetWidthFromRect(setting->rect);
      height=(long)PsychGetHeightFromRect(setting->rect);
      depth=(long)PsychGetValueFromDepthStruct(0,&(setting->depth));
      frameRate=(long)setting->nominalFrameRate;
-     
+
      //get a list of avialable modes for the specified display and iterate over the list looking for our mode.
      modeList = CGDisplayAvailableModes(displayCGIDs[setting->screenNumber]);
      numPossibleModes= CFArrayGetCount(modeList);
      for(i=0;i<numPossibleModes;i++){
      *cgMode = CFArrayGetValueAtIndex(modeList,i);
-     n=CFDictionaryGetValue(*cgMode, kCGDisplayWidth);		//width
+     n=CFDictionaryGetValue(*cgMode, kCGDisplayWidth);        //width
      CFNumberGetValue(n,kCFNumberLongType, &tempWidth);
-     n=CFDictionaryGetValue(*cgMode, kCGDisplayHeight);		//height
+     n=CFDictionaryGetValue(*cgMode, kCGDisplayHeight);        //height
      CFNumberGetValue(n,kCFNumberLongType, &tempHeight);
-     n=CFDictionaryGetValue(*cgMode, kCGDisplayRefreshRate);	//frequency
+     n=CFDictionaryGetValue(*cgMode, kCGDisplayRefreshRate);    //frequency
      CFNumberGetValue(n, kCFNumberLongType, &tempFrameRate) ;
-     n=CFDictionaryGetValue(*cgMode, kCGDisplayBitsPerPixel);	//depth
+     n=CFDictionaryGetValue(*cgMode, kCGDisplayBitsPerPixel);    //depth
      CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
      if(width==tempWidth && height==tempHeight && frameRate==tempFrameRate && depth==tempDepth)
      return(TRUE);
      }
      return(FALSE);
-     
+
      */
-    
+
     // Dummy assignment:
     *cgMode = 1;
     return(TRUE);
@@ -845,7 +845,7 @@ psych_bool  PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenS
 
 /*
  PsychCheckVideoSettings()
- 
+
  Check all available video display modes for the specified screen number and return true if the
  settings are valid and false otherwise.
  */
@@ -857,7 +857,7 @@ psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
 
 /*
  PsychGetScreenDepth()
- 
+
  The caller must allocate and initialize the depth struct.
  */
 void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
@@ -869,8 +869,8 @@ void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
 
 int PsychGetScreenDepthValue(int screenNumber)
 {
-    PsychDepthType	depthStruct;
-    
+    PsychDepthType    depthStruct;
+
     PsychInitDepthStruct(&depthStruct);
     PsychGetScreenDepth(screenNumber, &depthStruct);
     return(PsychGetValueFromDepthStruct(0,&depthStruct));
@@ -880,7 +880,7 @@ int PsychGetScreenDepthValue(int screenNumber)
 int PsychGetNominalFramerate(int screenNumber)
 {
     if (PsychPrefStateGet_ConserveVRAM() & kPsychIgnoreNominalFramerate) return(0);
-    
+
     if(screenNumber>=numDisplays)
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range");
     return(GetDeviceCaps(displayCGIDs[screenNumber], VREFRESH));
@@ -916,7 +916,7 @@ void PsychGetScreenSize(int screenNumber, long *width, long *height)
 void PsychGetGlobalScreenRect(int screenNumber, double *rect)
 {
     long width, height;
-    
+
     PsychGetScreenSize(screenNumber, &width, &height);
     rect[kPsychLeft]= (int) displayDeviceStartX[screenNumber];
     rect[kPsychTop]= (int) displayDeviceStartY[screenNumber];
@@ -928,7 +928,7 @@ void PsychGetGlobalScreenRect(int screenNumber, double *rect)
 void PsychGetScreenRect(int screenNumber, double *rect)
 {
     long width, height;
-    
+
     PsychGetScreenSize(screenNumber, &width, &height);
     rect[kPsychLeft]=0;
     rect[kPsychTop]=0;
@@ -940,23 +940,23 @@ void PsychGetScreenRect(int screenNumber, double *rect)
 PsychColorModeType PsychGetScreenMode(int screenNumber)
 {
     PsychDepthType depth;
-    
+
     PsychInitDepthStruct(&depth);
     PsychGetScreenDepth(screenNumber, &depth);
     return(PsychGetColorModeFromDepthStruct(&depth));
 }
 
 /*
-	This is a place holder for a function which uncovers the number of dacbits.  To be filled in at a later date.
-	If you know that your card supports >8 then you can fill that in the PsychtPreferences and the psychtoolbox
-	will act accordingly.
-	
-	There seems to be no way to uncover the dacbits programatically.  According to apple CoreGraphics
-	sends a 16-bit word and the driver throws out whatever it chooses not to use.
- 
-	For now we just use 8 to avoid false precision.
-	
-	If we can uncover the video card model then  we can implement a table lookup of video card model to number of dacbits.
+    This is a place holder for a function which uncovers the number of dacbits.  To be filled in at a later date.
+    If you know that your card supports >8 then you can fill that in the PsychtPreferences and the psychtoolbox
+    will act accordingly.
+
+    There seems to be no way to uncover the dacbits programatically.  According to apple CoreGraphics
+    sends a 16-bit word and the driver throws out whatever it chooses not to use.
+
+    For now we just use 8 to avoid false precision.
+
+    If we can uncover the video card model then  we can implement a table lookup of video card model to number of dacbits.
  */
 int PsychGetDacBitsFromDisplay(int screenNumber)
 {
@@ -967,9 +967,9 @@ int PsychGetDacBitsFromDisplay(int screenNumber)
 
 /*
  PsychGetVideoSettings()
- 
+
  Fills a structure describing the screen settings such as x, y, depth, frequency, etc.
- 
+
  Consider inverting the calling sequence so that this function is at the bottom of call hierarchy.
  */
 void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
@@ -990,33 +990,33 @@ void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
 
 /*
  PsychSetScreenSettings()
-	
+
  Accept a PsychScreenSettingsType structure holding a video mode and set the display mode accordingly.
- 
+
  If we can not change the display settings because of a lock (set by open window or close window) then return false.
- 
+
  SCREENOpenWindow should capture the display before it sets the video mode.  If it doesn't, then PsychSetVideoSettings will
  detect that and exit with an error.  SCREENClose should uncapture the display.
- 
+
  The duties of SCREENOpenWindow are:
  -Lock the screen which serves the purpose of preventing changes in video setting with open Windows.
  -Capture the display which gives the application synchronous control of display parameters.
- 
+
  TO DO: for 8-bit palletized mode there is probably more work to do.
- 
+
  */
 
 psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings)
 {
     CFDictionaryRef     cgMode;
     psych_bool          isValid, isCaptured;
-    
+
     if(settings->screenNumber>=numDisplays)
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychSetScreenSettings() is out of range");
-    
+
     //Check for a lock which means onscreen or offscreen windows tied to this screen are currently open.
     // MK: Disabled : if(PsychCheckScreenSettingsLock(settings->screenNumber)) return(false);  //calling function should issue an error for attempt to change display settings while windows were open.
-    
+
     //store the original display mode if this is the first time we have called this function.  The psychtoolbox will disregard changes in
     //the screen state made through the control panel after the Psychtoolbox was launched. That is, OpenWindow will by default continue to
     //open windows with finder settings which were in place at the first call of OpenWindow.  That's not intuitive, but not much of a problem
@@ -1025,14 +1025,14 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
         displayOriginalCGSettings[settings->screenNumber]= 1; // FIXME!!! CGDisplayCurrentMode(displayCGIDs[settings->screenNumber]);
         displayOriginalCGSettingsValid[settings->screenNumber]=TRUE;
     }
-    
+
     //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.
     isValid=PsychGetCGModeFromVideoSetting(&cgMode, settings);
     if(!isValid){
         PsychErrorExitMsg(PsychError_internal, "Attempt to set invalid video settings");
         //this is an internal error because the caller is expected to check first.
     }
-    
+
     //If the caller passed cache settings (then it is SCREENResolutions) and we should cache the current video mode settings for this display.  These
     //are cached in the form of CoreGraphics settings and not Psychtoolbox video settings.  The only caller which should pass a set cache flag is
     //SCREENResolutions
@@ -1040,11 +1040,11 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
         displayOverlayedCGSettings[settings->screenNumber]=cgMode;
         displayOverlayedCGSettingsValid[settings->screenNumber]=TRUE;
     }
-    
+
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.
     isCaptured=PsychIsScreenCaptured(settings->screenNumber);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
-    
+
     // Change the display mode.
     // We do this in PsychOSOpenWindow() if necessary for fullscreen-mode, but without changing any settings except
     // switch to fullscreen mode. Here we call PsychOSOpenWindow's helper routine to really change video settings:
@@ -1053,32 +1053,31 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 
 /*
  PsychRestoreVideoSettings()
- 
+
  Restores video settings to the state set by the finder.  Returns TRUE if the settings can be restored or false if they
  can not be restored because a lock is in effect, which would mean that there are still open windows.
- 
+
  */
 psych_bool PsychRestoreScreenSettings(int screenNumber)
 {
-    psych_bool 			isCaptured;
-    CGDisplayErr 		error=0;
-    
-    
+    psych_bool           isCaptured;
+    CGDisplayErr         error=0;
+
     if(screenNumber>=numDisplays)
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); //also checked within SCREENPixelSizes
-    
+
     //Check for a lock which means onscreen or offscreen windows tied to this screen are currently open.
     // Disabled: if(PsychCheckScreenSettingsLock(screenNumber)) return(false);  //calling function will issue error for attempt to change display settings while windows were open.
-    
+
     //Check to make sure that the original graphics settings were cached.  If not, it means that the settings were never changed, so we can just
     //return true.
     if(!displayOriginalCGSettingsValid[screenNumber])
         return(true);
-    
+
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.
     isCaptured=PsychIsScreenCaptured(screenNumber);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
-    
+
     // Restore video settings from the defaults in the Windows registry:
     if (PsychGetNumDisplays() > 2 && screenNumber == 0) {
         // Special case: screenNumber 0 on a dual-display setup or multi-display setup. This is a "virtual" screen,
@@ -1090,7 +1089,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
         // Standard case: Just reset given screen:
         ChangeDisplaySettingsEx(PsychGetDisplayDeviceName(screenNumber), NULL, NULL, 0, NULL);
     }
-    
+
     return(true);
 }
 
@@ -1101,13 +1100,13 @@ void PsychHideCursor(int screenNumber, int deviceIdx)
     // cursor, in case ShowCursor() doesn't do its job right, which is sadly
     // the case on many modern Matlab + MS-Windows combos :-( :
     if (!oldCursor) oldCursor = SetCursor(invisibleCursor);
-    
+
     // Hide the mouse cursor: We ignore the screenNumber as Windows
     // doesn't allow to set the cursor per screen anyway. We decrement to -1000
     // instead of -1 as needed, so other apps (Matlab) will have a harder time
     // unhiding the cursor, unless they are as cunning as us.
     while(ShowCursor(FALSE) >= -1000);
-    
+
     return;
 }
 
@@ -1116,7 +1115,7 @@ void PsychShowCursor(int screenNumber, int deviceIdx)
     // Restore old cursor shape:
     if (oldCursor) SetCursor(oldCursor);
     oldCursor = NULL;
-    
+
     // Show the mouse cursor: We ignore the screenNumber as Windows
     // doesn't allow to set the cursor per screen anyway.
     while(ShowCursor(TRUE)<0);
@@ -1140,35 +1139,35 @@ void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
 
 /*
  PsychReadNormalizedGammaTable()
- 
+
  TO DO: This should probably be changed so that the caller allocates the memory.
  TO DO: Adopt a naming convention which distinguishes between functions which allocate memory for return variables from those which do not.
  For example, PsychReadNormalizedGammaTable() vs. PsychGetNormalizedGammaTable().
- 
+
  */
 void PsychReadNormalizedGammaTable(int screenNumber, int outputId, int *numEntries, float **redTable, float **greenTable, float **blueTable)
 {
-    CGDirectDisplayID	cgDisplayID;
+    CGDirectDisplayID    cgDisplayID;
     static  float localRed[256], localGreen[256], localBlue[256];
-    
+
     // Windows hardware LUT has 3 tables for R,G,B, 256 slots each, concatenated to one table.
     // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC.
-    psych_uint16	gammaTable[256 * 3];
+    psych_uint16  gammaTable[256 * 3];
     psych_bool    ok;
-    int     i;
-    
+    int           i;
+
     // Query OS for gamma table:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
     ok=GetDeviceGammaRamp(cgDisplayID, &gammaTable);
     if (!ok) PsychErrorExitMsg(PsychError_internal, "Failed to query the hardware gamma table from graphics adapter!");
-    
+
     // Convert concatenated table into three separate tables, map 16-bit values into
     // 0-1 normalized floats
     *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue;
     for (i=0; i<256; i++) localRed[i]   = ((float) gammaTable[i]) / 65535.0f;
     for (i=0; i<256; i++) localGreen[i] = ((float) gammaTable[i+256]) / 65535.0f;
     for (i=0; i<256; i++) localBlue[i]  = ((float) gammaTable[i+512]) / 65535.0f;
-    
+
     // The LUT's always have 256 slots for the 8-bit framebuffer:
     *numEntries= 256;
 }
@@ -1189,7 +1188,7 @@ unsigned int PsychLoadNormalizedGammaTable(int screenNumber, int outputId, int n
     if (numEntries == 0) return(0xffffffff);
 
     // Table must have 256 slots!
-    if (numEntries!=256) PsychErrorExitMsg(PsychError_user, "Loadable hardware gamma tables must have 256 slots!");
+    if (numEntries!=256) PsychErrorExitMsg(PsychError_user, "Loadable hardware gamma tables must have 256 slots on MS-Windows.");
 
     // Convert input table to Windows specific gammaTable:
     for (i=0; i<256; i++) gammaTable[i]     = (int)(redTable[i]   * 65535.0f + 0.5f);
@@ -1236,11 +1235,11 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
     HRESULT rc;
     int vblbias, vbltotal;
     psych_uint32 ubeampos = 0;
-    int	beampos = -1;
-    
+    int beampos = -1;
+
     // Apply remapping of screenId's to heads, if any: Usually identity mapping.
     screenNumber = PsychScreenToHead(screenNumber, 0);
-    
+
     if(displayDeviceDDrawObject[screenNumber]) {
         // We have a Direct draw object: Try to use GetScanLine():
         if (enableVBLBeamposWorkaround) {
@@ -1253,23 +1252,23 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
             // No known problems with query in VBL. Do a one-time query:
             rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[screenNumber], (LPDWORD) &ubeampos);
         }
-        
+
         // Mask returned ubeampos with 0xffff: This will not allow any
         // beamposition greater than 65535 scanlines to be returned.
         // A reasonable limit for the foreseeable future:
         ubeampos &= 0xffff;
-        
+
         beampos = (int) ubeampos;
-        
+
         // Apply corrective offsets if any (i.e., if non-zero):
         PsychGetBeamposCorrection(screenNumber, &vblbias, &vbltotal);
         beampos = beampos - vblbias;
         if (beampos < 0) beampos = vbltotal + beampos;
-        
+
         // Valid result? If so, return it. Otherwise fall-through to error return...
         if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) return(beampos);
     }
-    
+
     // Direct Draw unavailable or function unsupported, or hardware
     // doesn't support query under given configuration or error condition:
     // We return -1 as an indicator to high-level routines that we don't
@@ -1294,11 +1293,11 @@ void PsychTestDDrawBeampositionQueries(int screenNumber)
     HRESULT rc;
     double tdeadline, now;
     int verbosity = PsychPrefStateGet_Verbosity();
-    
+
     // Check how beamposition query behaves inside the vertical blanking interval:
     if((displayDeviceDDrawObject[PsychScreenToHead(screenNumber, 0)]) && (PsychPrefStateGet_VBLTimestampingMode()>=0)) {
         // We have a Direct draw object and beampos queries are enabled: Try to test GetScanLine():
-        
+
         // First find reference height values for display, aka start of vertical blank.
         // Valid values inside the vertical blank area should be between h1 and 1.25*h1
         // or between h2 and 1.25*h2, i.e., we assume the VBL doesn't extend more than
@@ -1307,7 +1306,7 @@ void PsychTestDDrawBeampositionQueries(int screenNumber)
         // or lower values, then that likely means that the gfx-driver doesn't report meaningful
         // beampos values during VBL, but does overwrite our default 0xdeadbeef canary with some
         // random trash.
-        
+
         // Do all screens have their own individual beampos query DDRAW object assigned?
         if ((ddrawnumDisplays == numDisplays) || (numDisplays == 1)) {
             // Yes. Our reference maxvpos is the screen height of the target screen 'screenNumber':
@@ -1321,47 +1320,47 @@ void PsychTestDDrawBeampositionQueries(int screenNumber)
             PsychGetScreenSize(2, &w2, &h2);
             maxvpos = (psych_uint32) ((h1 > h2) ? h1 : h2);
         }
-        
+
         // maxvpos is maximum valid scanline:
         maxvpos = (psych_uint32) (((float) PsychPrefStateGet_VBLEndlineMaxFactor()) * ((float) maxvpos));
-        
+
         // We measure for 500 msecs -- That is at least 30 video refresh cycles:
         vbldetectcount = 0;
         bogusvaluecount = 0;
         bogusvalueinvblcount = 0;
         totalcount = 0;
-        
+
         PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
         now = tdeadline;
         tdeadline+=0.500;
-        
+
         while (now < tdeadline) {
             // Update timestamp:
             PsychGetAdjustedPrecisionTimerSeconds(&now);
-            
+
             // Query beam position:
             beampos = 0xdeadbeef;
             rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[PsychScreenToHead(screenNumber, 0)], (LPDWORD) &beampos);
             if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) {
                 // Some sample returned...
                 totalcount++;
-                
+
                 // Bogus value, ie., beampos not updated at all or out of range?
                 if ((beampos != 0xdeadbeef) && ((beampos < 0) || (beampos > maxvpos))) beampos = 0xdead;
-                
+
                 // Update total count of bogus values:
                 if (beampos == 0xdeadbeef || beampos == 0xdead) bogusvaluecount++;
-                
+
                 if (rc == DDERR_VERTICALBLANKINPROGRESS) {
                     // Update count of VBLs:
                     vbldetectcount++;
-                    
+
                     // Update total count of bogus values while VBL active:
                     if (beampos == 0xdeadbeef || beampos == 0xdead) bogusvalueinvblcount++;
                 }
             }
         }
-        
+
         // Ok, run the numbers:
         if (bogusvaluecount > 0) {
             // Some failed queries:
@@ -1372,7 +1371,7 @@ void PsychTestDDrawBeampositionQueries(int screenNumber)
                     printf("PTB-WARNING: During a total of %i queries within blanking interval, %i reported wrong values.\n", vbldetectcount, bogusvalueinvblcount);
                 }
             }
-            
+
             // All queries failed in VBL?
             if (bogusvalueinvblcount == bogusvaluecount) {
                 // Yes. This allows for an ugly but workable workaround:
@@ -1385,7 +1384,7 @@ void PsychTestDDrawBeampositionQueries(int screenNumber)
                     printf("PTB-INFO: intervention, should you need that last bit of accuracy. A second drawback is increased cpu load,\n");
                     printf("PTB-INFO: which may cause louder air-fan noise due to heat production and lower battery runtime of laptops.\n");
                 }
-                
+
                 // Enable beampos workaround by default:
                 enableVBLBeamposWorkaround = TRUE;
             }
@@ -1393,13 +1392,13 @@ void PsychTestDDrawBeampositionQueries(int screenNumber)
                 // No. Some bogus values also happen outside VBL. In this case, our workaround won't work
                 // and this problem is unfixable for now. The only safe and sane solution is to totally
                 // disable beamposition based timestamping:
-                
+
                 // Disable beampos workaround:
                 enableVBLBeamposWorkaround = FALSE;
-                
+
                 // Disable beampos queries:
                 PsychPrefStateSet_VBLTimestampingMode(-1);
-                
+
                 if (verbosity > 1) {
                     printf("PTB-WARNING: Some of the queries fail even outside the vertical blank interval, so no effective workaround for this driver bug exists.\n");
                     printf("PTB-WARNING: This renders beamposition queries pretty useless -- Disabling high precision timestamping for now.\n");
@@ -1424,13 +1423,13 @@ void PsychTestDDrawBeampositionQueries(int screenNumber)
                     printf("PTB-INFO: intervention, should you need that last bit of accuracy. A second drawback is increased cpu load,\n");
                     printf("PTB-INFO: which may cause louder air-fan noise due to heat production and lower battery runtime of laptops.\n");
                 }
-                
+
                 // Enable beampos workaround by default:
-                enableVBLBeamposWorkaround = TRUE;				
+                enableVBLBeamposWorkaround = TRUE;
             }
         }
     } // Beamposition queries supported and requested.
-    
+
     return;
 }
 
@@ -1453,15 +1452,15 @@ psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortyp
 {
     // A no-op on Windows:
     return(FALSE);
-    
+
     /*
      if (!PsychOSIsKernelDriverAvailable(screenNumber)) return(FALSE);
-     
+
      if (gpuMaintype) *gpuMaintype = fDeviceType;
      if (gpuMinortype) *gpuMinortype = fCardType;
      if (pciDeviceId) *pciDeviceId = fPCIDeviceId;
      if (numDisplayHeads) *numDisplayHeads = fNumDisplayHeads;
-     
+
      return(TRUE);
      */
 }

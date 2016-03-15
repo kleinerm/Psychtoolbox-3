@@ -1,16 +1,31 @@
-function absorbance = ShiftPhotopigmentAbsorbance(S,absorbance,lambdaMaxShift)
-% absorbance = ShiftPhotopigmentAbsorbance(S,absorbance,lambdaMaxShift)
-% 
-% Shift a photopigment absorbance along a log wavelength axis to give it
-% a new lambda max while plausibly retaining its shape appropriately.  
-% This is probabably very reasonable for small shifts and less so for big
-% ones.
+function absorbance = ShiftPhotopigmentAbsorbance(S,absorbance,lambdaMaxShift,shiftMode)
+% absorbance = ShiftPhotopigmentAbsorbance(S,absorbance,lambdaMaxShift,shiftMode)
+%
+% Function to shift photopigment absorbances.  Probably a reasonable
+% approximation to biological reality for small shifts of lambda max.
+%
+% There are two ways of shifting photopigment absorbances:
+% 'linear' - default
+%   Shifts the photopigment absorbance on a linear wavelength axis.  This
+%   is what Asano, Fairchild, & Bonde (2016), PLOS One, doi:
+%   10.1371/journal.pone.0145671 do.
+%
+% 'log'
+%   Shift the photopigment absorbance along a log wavelength axis to give it
+%   a new lambda max.  This is the way Lamb (1995) suggested would lead to a
+%   close approximation of biological shifts in photopigment lambda-max.
 %
 % Linearly extrapolates as necessary to preserve wavelength sampling of
 % input.
 %
 % 2/8/16  dhb, ms  Wrote it.
 % 2/10/16 dhb, ms  Do shifting on a fine (0.25 nm) wavelength spacing.
+% 2/12/16 ms       Implement linear and log shifting.
+
+% Assume linear shifting as default
+if (nargin < 4 | isempty(shiftMode))
+    shiftMode = 'linear';
+end
 
 % Check
 if (length(lambdaMaxShift) ~= size(absorbance,1))
@@ -28,15 +43,21 @@ wlsFine = (wls(1):fineSpacing:wls(end))';
 SFine = WlsToS(wlsFine);
 absorbanceFine = SplineCmf(S,absorbance,SFine);
 
-% Normalize the wave number and log wavelength
-[~, maxIdx] = max(absorbanceFine, [], 2);
-for ii = 1:size(absorbanceFine,1);
-	logWavelengthsNorm = log10(wlsFine) - log10(wlsFine(maxIdx(ii)));
-    logWavelengthsNew = logWavelengthsNorm + log10(wlsFine(maxIdx(ii))+lambdaMaxShift(ii));
-    wlsFineNew = 10.^logWavelengthsNew;
-    absorbanceFine(ii, :) = interp1(wlsFineNew, absorbanceFine(ii, :), wlsFine, 'linear','extrap');
+switch shiftMode
+    case 'linear'
+        for ii = 1:size(absorbanceFine,1);
+            absorbanceFine(ii, :) = interp1(wlsFine+lambdaMaxShift(ii), absorbanceFine(ii, :), wlsFine, 'linear', 'extrap');
+        end
+    case 'log'
+        % Normalize the wave number and log wavelength
+        [~, maxIdx] = max(absorbanceFine, [], 2);
+        for ii = 1:size(absorbanceFine,1);
+            logWavelengthsNorm = log10(wlsFine) - log10(wlsFine(maxIdx(ii)));
+            logWavelengthsNew = logWavelengthsNorm + log10(wlsFine(maxIdx(ii))+lambdaMaxShift(ii));
+            wlsFineNew = 10.^logWavelengthsNew;
+            absorbanceFine(ii, :) = interp1(wlsFineNew, absorbanceFine(ii, :), wlsFine, 'linear','extrap');
+        end
 end
 
 % Spline the shifted function back to the original wavelength spacing
 absorbance = SplineCmf(SFine,absorbanceFine,S);
-
