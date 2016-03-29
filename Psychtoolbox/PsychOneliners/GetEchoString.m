@@ -62,7 +62,7 @@ end
 % specified. This makes text background colors actually work, e.g., on OSX:
 if ~isempty(bgColor)
     if Screen('Preference', 'TextRenderer') >= 1
-        oldalpha = Screen('Preference', 'TextAlphaBlending', 0)
+        oldalpha = Screen('Preference', 'TextAlphaBlending', 0);
     else
         oldalpha = Screen('Preference', 'TextAlphaBlending', 1-IsLinux);
     end

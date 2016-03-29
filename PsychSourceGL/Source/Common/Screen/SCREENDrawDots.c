@@ -171,17 +171,38 @@ PsychError SCREENDrawDots(void)
     // Get the window record from the window record argument and get info from the window record
     PsychAllocInWindowRecordArg(1, kPsychArgRequired, &windowRecord);
 
+    // Get dot_type argument, if any, as it is already needed for a pure point size range query below:
+    isArgThere = PsychIsArgPresent(PsychArgIn, 6);
+    if(!isArgThere){
+        idot_type = 0;
+    } else {
+        PsychAllocInDoubleMatArg(6, TRUE, &m, &n, &p, &dot_type);
+        if(p != 1 || n != 1 || m != 1 || (dot_type[0] < 0 || dot_type[0] > 4))
+            PsychErrorExitMsg(PsychError_user, "dot_type must be 0, 1, 2, 3 or 4");
+        idot_type = (int) dot_type[0];
+    }
+
     // Query for supported point size range?
     if (PsychGetNumOutputArgs() > 0) {
         PsychSetDrawingTarget(windowRecord);
 
-        glGetFloatv(GL_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
-        PsychCopyOutDoubleArg(1, FALSE, (double) pointsizerange[0]);
-        PsychCopyOutDoubleArg(2, FALSE, (double) pointsizerange[1]);
-
+        // Always query and return aliased range:
         glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
         PsychCopyOutDoubleArg(3, FALSE, (double) pointsizerange[0]);
         PsychCopyOutDoubleArg(4, FALSE, (double) pointsizerange[1]);
+
+        // If driver supports smooth points and usercode doesn't specify a dot type (idot_type 0)
+        // or does not request shader + point-sprite based drawing then return smooth point
+        // size range as "smooth point size range" - query and assign it. Otherwise, ie., code
+        // explicitely wants to use a shader (idot_type >= 3) or has to use one, we will use
+        // point-sprites and that means the GL_ALIASED_POINT_SIZE_RANGE limits apply also to
+        // our shader based smooth dots, so return those:
+        if ((windowRecord->gfxcaps & kPsychGfxCapSmoothPrimitives) && (idot_type < 3))
+            glGetFloatv(GL_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
+
+        // Whatever the final choice for smooth dots is, return its limits:
+        PsychCopyOutDoubleArg(1, FALSE, (double) pointsizerange[0]);
+        PsychCopyOutDoubleArg(2, FALSE, (double) pointsizerange[1]);
 
         // If this was only a query then we are done:
         if (PsychGetNumInputArgs() < 2)
@@ -213,34 +234,8 @@ PsychError SCREENDrawDots(void)
         if(p!=1 || n!=2 || m!=1) PsychErrorExitMsg(PsychError_user, "center must be a 1-by-2 vector");
     }
 
-    // Get dot_type argument
-    isArgThere = PsychIsArgPresent(PsychArgIn, 6);
-    if(!isArgThere){
-        idot_type = 0;
-    } else {
-        PsychAllocInDoubleMatArg(6, TRUE, &m, &n, &p, &dot_type);
-        if(p != 1 || n != 1 || m != 1 || (dot_type[0] < 0 || dot_type[0] > 4))
-            PsychErrorExitMsg(PsychError_user, "dot_type must be 0, 1, 2, 3 or 4");
-        idot_type = (int) dot_type[0];
-    }
-
-    // Turn on antialiasing to draw circles
+    // Turn on antialiasing to draw circles? Or idot_type 4 for shader based square dots?
     if (idot_type) {
-        // Type 4 is actually aliased square dots, but shader-based implementation:
-        if (idot_type != 4) {
-            // Request smooth round points from hardware:
-            glEnable(GL_POINT_SMOOTH);
-            glGetFloatv(GL_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
-
-            // A dot type of 2 requests for highest quality point smoothing:
-            glHint(GL_POINT_SMOOTH_HINT, (idot_type > 1) ? GL_NICEST : GL_DONT_CARE);
-        }
-        else {
-            // Request square dots, without anti-aliasing:
-            glDisable(GL_POINT_SMOOTH);
-            glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
-        }
-
         // Smooth point rendering supported by gfx-driver and hardware? And user does not request our own stuff?
         if ((idot_type == 3) || (idot_type == 4) || !(windowRecord->gfxcaps & kPsychGfxCapSmoothPrimitives)) {
             // No. Need to roll our own shader + point sprite solution.
@@ -290,6 +285,20 @@ PsychError SCREENDrawDots(void)
                 // Type 4 requested but unsupported. Fallback to type 0, which is the same, just slower:
                 idot_type = 0;
             }
+
+            // Request square dots, without anti-aliasing: Better compatibility with
+            // shader + point sprite operation, and needed for idot_type 0 fallback.
+            glDisable(GL_POINT_SMOOTH);
+            glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
+        }
+        else {
+            // User wants hw anti-aliased round smooth dots (idot_type = 1 or 2) and
+            // hardware + driver support this. Request smooth points from hardware:
+            glEnable(GL_POINT_SMOOTH);
+            glGetFloatv(GL_POINT_SIZE_RANGE, (GLfloat*) &pointsizerange);
+
+            // A dot type of 2 requests highest quality point smoothing:
+            glHint(GL_POINT_SMOOTH_HINT, (idot_type > 1) ? GL_NICEST : GL_DONT_CARE);
         }
     }
     else {
