@@ -51,6 +51,7 @@ function SetupPsychtoolbox
 % 07/02/13 mk  Drop support for 32-Bit Matlab on OSX, and thereby for 32-Bit OSX.
 % 05/18/14 mk  No support for 32-Bit Matlab on Linux and Windows anymore for 3.0.12.
 % 10/28/15 mk  32-Bit Octave-4 support for MS-Windows reestablished.
+% 04/01/16 mk  64-Bit Octave-4 support for MS-Windows established.
 
 % Flush all MEX files: This is needed at least on M$-Windows to
 % work if Screen et al. are still loaded.
@@ -95,7 +96,7 @@ if strcmp(computer,'MAC')
 end
 
 % Check OS
-IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-w64-mingw32');
+IsWin = ~isempty(strfind(computer, 'PCWIN')) || ~isempty(strfind(computer, '-w64-mingw32'));
 IsOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
 IsLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
 
@@ -141,7 +142,7 @@ if err
             'Please ask a user with administrator privileges to enable \n'...
             'write by everyone for that file.\n\n']);
     end
-    
+
     fprintf(['Once "savepath" works (no error message), run ' mfilename ' again.\n']);
     fprintf('Alternatively you can choose to continue with installation, but then you will have\n');
     fprintf('to resolve this permission isssue later and add the path to the Psychtoolbox manually.\n\n');

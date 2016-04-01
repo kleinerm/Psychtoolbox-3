@@ -1498,11 +1498,11 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
             }
 
             if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
-                #ifdef PTBOCTAVE3MEX
-                    // Octave is currently 32-Bit:
+                #if !defined(_WIN64) && !defined(__LP64__)
+                    // 32-Bit:
                     sprintf(pluginName, "libptbdrawtext_%s.dll", pluginid);
                 #else
-                    // Matlab is always 64-Bit:
+                    // 64-Bit:
                     sprintf(pluginName, "libptbdrawtext_%s64.dll", pluginid);
                 #endif
             }
