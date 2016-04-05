@@ -202,7 +202,7 @@ elseif (size(absorbance,1) == 3)
     SDensity = params.axialDensity(3) * (1 + params.indDiffParams.dphotopigment(3)/100);
     absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,[LDensity ; MDensity ; SDensity]);
 elseif (size(absorbance,1) == 1 && params.DORODS)
-    if (length(params.indDiffParms.dphotopigment) ~= 1)
+    if (length(params.indDiffParams.dphotopigment) ~= 1)
         error('Density adjustment parameter length not right for rods');
     end
     RodDensity = params.axialDensity(1) + params.indDiffParams.dphotopigment(1)/100;
