@@ -488,8 +488,10 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
     PsychHIDEventRecord evt;
     XKeyPressedEvent key;
     XIDeviceEvent* event;
+    XIRawEvent* rawevent;
+    psych_bool valid;
     double tnow;
-    int i;
+    int i, index, deviceid;
     char asciiChar;
 
     while (1) {
@@ -529,22 +531,44 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
             // Yes. Process it:
             if (XGetEventData(thread_dpy, cookie)) {
                 // Process it:
+
                 // printf("Event type %d received\n", cookie->evtype);
-                event = (XIDeviceEvent*) cookie->data;
+                if (cookie->evtype == XI_RawButtonPress || cookie->evtype == XI_RawButtonRelease) {
+                    // Raw device event for mice and similar devices:
+                    rawevent = (XIRawEvent*) cookie->data;
+                    event = NULL;
+                    valid = TRUE; // Always true for raw devices like mice etc. Checking for following would suppress scroll events (mouse wheel, PowerMate knob etc.): !(rawevent->flags & XIKeyRepeat);
+                    index = rawevent->detail;
+                    deviceid = rawevent->deviceid;
+                }
+                else {
+                    // Regular device event:
+                    event = (XIDeviceEvent*) cookie->data;
+                    rawevent = NULL;
+                    valid = !(event->flags & XIKeyRepeat);
+                    index = event->detail;
+                    deviceid = event->deviceid;
+                }
 
                 // Map Xinput device id to PTB 'deviceIndex' aka the proper keyboard queue:
-                for (i = 0; i < ndevices; i++) if (event->deviceid == info[i].deviceid) break;
+                for (i = 0; i < ndevices; i++) if (deviceid == info[i].deviceid) break;
 
                 // We're only interested in key press and release events, and only in
                 // real ones, not XServer generated synthetic key auto-repeat events.
                 // Also only for a device that we've registered:
-                if ((i < ndevices) && !(event->flags & XIKeyRepeat) &&
-                    ((cookie->evtype == XI_KeyPress) || (cookie->evtype == XI_KeyRelease) || (cookie->evtype == XI_ButtonPress) || (cookie->evtype == XI_ButtonRelease))) {
+                if ((i < ndevices) && valid &&
+                    ((cookie->evtype == XI_KeyPress) || (cookie->evtype == XI_KeyRelease) ||
+                     (cookie->evtype == XI_ButtonPress) || (cookie->evtype == XI_ButtonRelease) ||
+                     (cookie->evtype == XI_RawButtonPress) || (cookie->evtype == XI_RawButtonRelease))) {
 
                     // If this is a button event from a mouse/joystick etc. instead of a key event from a keyboard/keypad, then
                     // all button indices are shifted by an offset of 1 for some weird reason. Decrement index by one to compensate
                     // for this. [Tested on Ubuntu 10.10 and 11.10 with two mice and 1 joystick]
-                    if (((cookie->evtype == XI_ButtonPress) || (cookie->evtype == XI_ButtonRelease)) && (event->detail > 0)) event->detail--;
+                    if ((index > 0) &&
+                        ((cookie->evtype == XI_ButtonPress) || (cookie->evtype == XI_ButtonRelease) ||
+                         (cookie->evtype == XI_RawButtonPress) || (cookie->evtype == XI_RawButtonRelease))) {
+                        index--;
+                    }
 
                     // Key release on keyboard maps to character code 0.
                     if (cookie->evtype == XI_KeyRelease) evt.cookedEventCode = 0;
@@ -567,7 +591,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                         key.serial       = event->serial;
                         key.display      = thread_dpy;
 
-                        key.keycode      = event->detail;
+                        key.keycode      = index;
                         key.state        = event->mods.effective;
 
                         if (1 == XLookupString(((XKeyEvent*) (&key)), &asciiChar, 1, NULL, NULL)) {
@@ -599,28 +623,28 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 
                     // This keyboard queue created and started? Interested in this
                     // keycode?
-                    if (psychHIDKbQueueActive[i] && (psychHIDKbQueueScanKeys[i][event->detail] != 0)) {
+                    if (psychHIDKbQueueActive[i] && (psychHIDKbQueueScanKeys[i][index] != 0)) {
                         // Yes: The queue wants to receive info about this key event.
 
                         // Press or release?
-                        if ((cookie->evtype == XI_KeyPress) || (cookie->evtype == XI_ButtonPress)) {
+                        if ((cookie->evtype == XI_KeyPress) || (cookie->evtype == XI_ButtonPress) || (cookie->evtype == XI_RawButtonPress)) {
                             // Enqueue key press. Always in the "last press" array, because any
                             // press at this time is the best candidate for the last press.
                             // Only enqeue in "first press" if there wasn't any registered before,
                             // ie., the slot is so far empty:
-                            if (psychHIDKbQueueFirstPress[i][event->detail] == 0) psychHIDKbQueueFirstPress[i][event->detail] = tnow;
-                            psychHIDKbQueueLastPress[i][event->detail] = tnow;
+                            if (psychHIDKbQueueFirstPress[i][index] == 0) psychHIDKbQueueFirstPress[i][index] = tnow;
+                            psychHIDKbQueueLastPress[i][index] = tnow;
                             evt.status |= (1 << 0);
                         } else {
                             // Enqueue key release. See logic above:
-                            if (psychHIDKbQueueFirstRelease[i][event->detail] == 0) psychHIDKbQueueFirstRelease[i][event->detail] = tnow;
-                            psychHIDKbQueueLastRelease[i][event->detail] = tnow;
+                            if (psychHIDKbQueueFirstRelease[i][index] == 0) psychHIDKbQueueFirstRelease[i][index] = tnow;
+                            psychHIDKbQueueLastRelease[i][index] = tnow;
                             evt.status &= ~(1 << 0);
                         }
 
                         // Update event buffer:
                         evt.timestamp = tnow;
-                        evt.rawEventCode = event->detail + 1;
+                        evt.rawEventCode = index + 1;
                         PsychHIDAddEventToEventBuffer(i, &evt);
 
                         // Tell waiting userspace (under KbQueueMutex protection for better scheduling) something interesting has changed:
@@ -953,8 +977,8 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     XISetMask(mask, XI_KeyRelease);
 
     // For mouse, joystick, gamepad and other "keyboardish" devices with buttons:
-    XISetMask(mask, XI_ButtonPress);
-    XISetMask(mask, XI_ButtonRelease);
+    XISetMask(mask, XI_RawButtonPress);
+    XISetMask(mask, XI_RawButtonRelease);
 
     // XISetMask(mask, XI_Motion);
 
