@@ -27,7 +27,7 @@ while isempty(inStr) && waited < timeout
     waited = GetSecs - StartTime;
 end
 
-if waited == timeout
+if waited >= timeout
    error('Unable to get reading from radiometer');
 else
     readStr = inStr;
