@@ -4,15 +4,26 @@ function varargout = PsychPowerMate(cmd, varargin)
 % Note:
 %
 % This driver is currently only for the PowerMate USB edition, not for the
-% bluetooth product. It also only supports modern Linux systems, e.g.,
+% bluetooth product. It best supports modern Linux systems, e.g.,
 % Ubuntu 14.04.2 LTS or later, Debian-8 or later, or other similar modern
 % systems with version 2.9.0 or later of the "evdev" X11 input driver.
+%
+% Support on Apple OSX and Microsoft Windows is much more limited. Expect worse
+% reliability, higher cpu load, higher latencies, less accurate timing. While
+% on Linux, the current driver can internally record up to 53 full knob rotations
+% without losing information, the Windows variant can at most record 5 rotations,
+% and the OSX driver will probably not even manage to record one full rotation.
+% To avoid loss of position data, you will need to call PsychPowerMate('Get')
+% frequently on OSX and Windows, even if you do not need the information at that
+% moment.
+%
+% On Windows, setting LED brightness does not work.
 %
 % The current driver can only address one PowerMate, as it does not have
 % proper device selection code in place at the moment.
 %
-% Linux:
-% ======
+% Linux setup:
+% ============
 %
 % You must install a specific xorg input configuration file for the PowerMate
 % to be recognized. In a terminal window do:
@@ -20,6 +31,9 @@ function varargout = PsychPowerMate(cmd, varargin)
 % 1. cd into the Psychtoolbox working directory (output of PsychtoolboxRoot)
 % 2. sudo cp PsychHardware/50-evdev-powermate.conf /usr/share/X11/xorg.conf.d/
 % 3. Logout and login again.
+%
+% Interesting technical background info:
+% ======================================
 %
 % Technical background info, copied from the Linux powermate.c device driver,
 % written by William R Sowerbutts, the author of the Linux driver:
@@ -57,7 +71,8 @@ function varargout = PsychPowerMate(cmd, varargin)
 %
 % PsychPowerMate('SetBrightness', handle, level);
 % -- Change brightness of the LED of the PowerMate specified by 'handle'
-% to 'level'. Level can be between 0 and 255.
+% to 'level'. Level can be between 0 and 255. Note: This does not currently
+% work on MS-Windows.
 %
 % Note: Currently 'handle' is ignored, so you can not select which one
 % of multiple PowerMate's would get its brightness set and this only
@@ -96,9 +111,13 @@ function varargout = PsychPowerMate(cmd, varargin)
 
 % History:
 % 08-Apr-2016  mk  Written.
+persistent turnval;
+persistent buttonval;
+persistent firstcall;
 
-if ~IsLinux
-  error('Sorry, this driver currently only supports Linux.');
+if ~IsLinux && isempty(firstcall)
+  firstcall = 0;
+  warning('This driver only works perfectly on Linux. Read help carefully for use on this legacy operating system.');
 end
 
 if nargin < 1 || isempty(cmd) || ~ischar(cmd)
@@ -108,6 +127,7 @@ end
 
 if strcmpi(cmd, 'Open')
   devId = [];
+
   if IsLinux
     % Enumerate all mouse devices:
     [idx, devnames, devinfos] = GetMouseIndices('slavePointer');
@@ -139,6 +159,47 @@ if strcmpi(cmd, 'Open')
     KbQueueCreate(devId);
   end
 
+  if IsOSX || IsWin
+    LoadPsychHID;
+    devinfos = PsychHID('Devices');
+
+    % Search for 1st Griffin PowerMate:
+    for i=1:length(devinfos)
+      if devinfos(i).vendorID == 1917 && devinfos(i).productID == 1040
+        devId = devinfos(i).index;
+        break;
+      end
+    end
+
+    if isempty(devId)
+      fprintf('PsychPowerMate: Could not find a Griffin PowerMate. Not plugged in or not configured? ''clear all'' might help.\n');
+      varargout{1} = [];
+      varargout{2} = [];
+      return;
+    end
+
+    % Return "mouse" device index:
+    varargout{1} = devId;
+
+    % Return a somewhat identifying location id. locationID is the
+    % best we have for differentiating between multiple PowerMate's.
+    varargout{2} = devinfos(i).locationID;
+
+    % Start HID report reception from PowerMate, with 1 msecs max
+    % processing time allocated per pass:
+    options.secs = 0.001;
+    PsychHID('ReceiveReports', devId, options);
+
+    % Init variables for tracking knob state:
+    turnval(devId) = 0;
+    buttonval(devId) = logical(0);
+    
+    if IsOSX
+        % Create a keyboard queue for collecting button responses:
+        KbQueueCreate(devId);
+    end
+  end
+
   return;
 end
 
@@ -147,9 +208,14 @@ if strcmpi(cmd, 'Close')
     error('PowerMate device handle missing.');
   end
 
-  if IsLinux
+  if IsLinux || IsOSX
     KbQueueStop(varargin{1});
     KbQueueRelease(varargin{1});
+  end
+
+  if IsOSX || IsWin
+    PsychHID('ReceiveReportsStop', varargin{1});
+    PsychHID('GiveMeReports', varargin{1});
   end
 
   return;
@@ -189,6 +255,7 @@ if strcmpi(cmd, 'Get')
     error('PowerMate device handle missing.');
   end
 
+  % Linux keeps track of live button state and turn angle, can just query:
   if IsLinux
     % Query proper "mouse" pointer device:
     [xd, yd, buttons, fd, valuator] = GetMouse([], varargin{1});
@@ -199,6 +266,38 @@ if strcmpi(cmd, 'Get')
     varargout{2} = valuator(3);
   end
 
+  % OSX and Windows can not keep track of live state. Must derive button
+  % state and knob turn angle from accumulated deltas in HID reports:
+  if IsOSX || IsWin
+    accumlength = 0;
+
+    while 1
+      PsychHID('ReceiveReports', varargin{1});
+      reports = PsychHID('GiveMeReports', varargin{1});
+      if isempty(reports)
+        break;
+      end
+
+      accumlength = accumlength + length(reports);
+
+      for i=1:length(reports)
+        turnval(varargin{1}) = turnval(varargin{1}) + double(typecast(reports(i).report(2), 'int8'));
+        buttonval(varargin{1}) = logical(reports(i).report(1));
+      end
+    end
+
+    % MS-Windows can keep track of at most 512 reports aka PowerMate "clicks",
+    % if more reports arrive inbetween calls to 'Get', we will lose them and
+    % therefore have wrong knob position reporting from now on:
+    if accumlength >= 512 && IsWin
+      fprintf('PsychPowerMate: Processed %d samples, more than system limit of 512 samples!\n', accumlength);
+      warning('PsychPowerMate(''Get''): Input samples from PowerMate may have been lost, position reporting might be wrong!');
+    end
+
+    varargout{1} = buttonval(varargin{1});
+    varargout{2} = turnval(varargin{1});
+  end
+
   return;
 end
 
@@ -207,11 +306,12 @@ if strcmpi(cmd, 'WaitButton')
     error('PowerMate device handle missing.');
   end
 
-  if IsLinux
+  % Can use Kb queues on Linux and OSX for button handling:
+  if IsLinux || IsOSX
     KbEventFlush(varargin{1});
     KbQueueStart(varargin{1});
     while 1
-      [event, nremaining] = KbEventGet(varargin{1}, 1);
+      event = KbEventGet(varargin{1}, 1);
       if ~isempty(event) && event.Pressed && event.Keycode == 1
         break;
       end
@@ -222,6 +322,17 @@ if strcmpi(cmd, 'WaitButton')
     varargout{1} = event.Time;
   end
 
+  % No Kb queues on Windows for this - use hack:
+  if IsWin
+    PsychPowerMate('Get', varargin{1});
+    while ~PsychPowerMate('Get', varargin{1})
+      WaitSecs('YieldSecs', 0.001);
+    end
+
+    % Return GetSecs time of button press:
+    varargout{1} = GetSecs;
+  end
+
   return;
 end
 
@@ -230,11 +341,12 @@ if strcmpi(cmd, 'WaitRotate')
     error('PowerMate device handle missing.');
   end
 
+  % On Linux kb queues also keep track of knob turns:
   if IsLinux
     KbEventFlush(varargin{1});
     KbQueueStart(varargin{1});
     while 1
-      [event, nremaining] = KbEventGet(varargin{1}, 1);
+      event = KbEventGet(varargin{1}, 1);
       if ~isempty(event) && event.Pressed && event.Keycode > 1
         break;
       end
@@ -243,6 +355,21 @@ if strcmpi(cmd, 'WaitRotate')
 
     % Return GetSecs time of knob movement:
     varargout{1} = event.Time;
+  end
+
+  % Must use HID report hack on OSX and Windows:
+  if IsOSX || IsWin
+    [dummy, baseRotate] = PsychPowerMate('Get', varargin{1});
+    while 1
+      [dummy, curRotate] = PsychPowerMate('Get', varargin{1});
+      if curRotate ~= baseRotate
+        break;
+      end
+      WaitSecs('YieldSecs', 0.001);
+    end
+
+    % Return GetSecs time of button press:
+    varargout{1} = GetSecs;
   end
 
   return;
