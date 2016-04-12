@@ -35,6 +35,7 @@
 % PsychGPUTestAndTweakGammaTables - All: Helper function. Auto-tweak gamma tables for DataPixx et al. and Bits#
 % PsychHID            - All: Read/write any HID-compliant USB device. See web page:
 %                            web http://psychtoolbox.org/usb.html
+% PsychPowerMate    - Linux: Driver for the Griffin Technologies PowerMate USB knob.
 % PsychRTBox          - All: Driver for RTBox reaction time button box.
 % PsychVRToolbox      - All: Functions for access to and use of Virtual Reality devices.
 % SerialComm          - OSX  Send and receive through serial ports.      -> DEPRECATED: Use IOPort instead!

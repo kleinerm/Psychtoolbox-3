@@ -56,19 +56,19 @@
 %
 % You should check for and install the latest runtime packages available for your
 % system for best reliability and performance. However, as a convenience, at time
-% of this writing (February 2015) the required downloads would be:
+% of this writing (April 2016) the required downloads would be:
 %
-% For MS-Windows: 64-Bit Intel runtime v1.6.2 for use with 64-Bit Matlab.
+% For MS-Windows: 64-Bit Intel runtime v1.8.0 for use with 64-Bit Matlab/Octave.
 %
-% <http://gstreamer.freedesktop.org/data/pkg/windows/1.6.2/gstreamer-1.0-x86_64-1.6.2.msi>
+% <http://gstreamer.freedesktop.org/data/pkg/windows/1.8.0/gstreamer-1.0-x86_64-1.8.0.msi>
 %
-% For MS-Windows: 32-Bit Intel runtime v1.6.2 for use with 32-Bit GNU/Octave-4.
+% For MS-Windows: 32-Bit Intel runtime v1.8.0 for use with 32-Bit GNU/Octave-4.
 %
-% <http://gstreamer.freedesktop.org/data/pkg/windows/1.6.2/gstreamer-1.0-x86-1.6.2.msi>
+% <http://gstreamer.freedesktop.org/data/pkg/windows/1.8.0/gstreamer-1.0-x86-1.8.0.msi>
 %
-% For Apple OSX: Runtime v1.6.2
+% For Apple OSX: Runtime v1.8.0
 %
-% <http://gstreamer.freedesktop.org/data/pkg/osx/1.6.1/gstreamer-1.0-1.6.2-x86_64.pkg>
+% <http://gstreamer.freedesktop.org/data/pkg/osx/1.8.0/gstreamer-1.0-1.8.0-x86_64.pkg>
 %
 %
 % When the installer asks you to select the components it should install,

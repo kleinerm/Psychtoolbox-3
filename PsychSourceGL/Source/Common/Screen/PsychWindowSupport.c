@@ -6402,8 +6402,8 @@ int PsychSetShader(PsychWindowRecordType *windowRecord, int shader)
  */
 void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 {
+    int gpuMaintype, gpuMinortype;
     psych_bool verbose = (PsychPrefStateGet_Verbosity() > 5) ? TRUE : FALSE;
-
     psych_bool nvidia = FALSE;
     psych_bool ati = FALSE;
     psych_bool intel = FALSE;
@@ -6412,6 +6412,9 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
     GLboolean nativeStereo = FALSE;
 
+    if (!PsychGetGPUSpecs(windowRecord->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL))
+        gpuMaintype = kPsychUnknown;
+    
     // Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
     // so use at most 7 letters!
     memset(&(windowRecord->gpuCoreId[0]), 0, 8);
@@ -6852,6 +6855,15 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         // Age queries for current backbuffer supported:
         if (verbose) printf("System supports backbuffer age queries.\n");
         windowRecord->gfxcaps |= kPsychGfxCapSupportsBufferAge;
+
+        // Is this a pre NV-50 gpu (GeForce 7xxx or earlier)? If so we don't use buffer age queries,
+        // because quite a few of the NVidia proprietary graphics drivers for these old gpus do have
+        // bugs in their query mechanism that could cause us to spew a lot of false positive about
+        // broken visual stimulation timing. NV-50 and later have well working drivers available:
+        if ((gpuMaintype == kPsychGeForce) && (gpuMinortype > 0x0) && (gpuMinortype < 0x50)) {
+            windowRecord->gfxcaps &= ~kPsychGfxCapSupportsBufferAge;
+            if (verbose) printf("Not using backbuffer age queries due to pre NV-50 NVidia gpu with potentially problematic driver wrt. this feature.\n");
+        }
     }
     PsychUnlockDisplay();
     #endif
