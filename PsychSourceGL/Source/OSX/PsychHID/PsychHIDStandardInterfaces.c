@@ -24,7 +24,7 @@
 #include "PsychHIDStandardInterfaces.h"
 #include <errno.h>
 
-#define NUMDEVICEUSAGES 7
+#define NUMDEVICEUSAGES 8
 
 static  UInt32 modifierKeyState[PSYCH_HID_MAX_DEVICES];
 static  double* psychHIDKbQueueFirstPress[PSYCH_HID_MAX_DEVICES];
@@ -75,8 +75,8 @@ int PsychHIDOSGetKbQueueDevice(int HIDdeviceIndex, pRecDevice *deviceRecord)
 
 void PsychHIDInitializeHIDStandardInterfaces(void)
 {
-    long KbDeviceUsagePages[NUMDEVICEUSAGES] = {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop};
-    long KbDeviceUsages[NUMDEVICEUSAGES] = {kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController};
+    long KbDeviceUsagePages[NUMDEVICEUSAGES] = {kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_GenericDesktop, kHIDPage_Consumer};
+    long KbDeviceUsages[NUMDEVICEUSAGES] = {kHIDUsage_GD_Keyboard, kHIDUsage_GD_Keypad, kHIDUsage_GD_Mouse, kHIDUsage_GD_Pointer, kHIDUsage_GD_Joystick, kHIDUsage_GD_GamePad, kHIDUsage_GD_MultiAxisController, 0x01};
     int  numDeviceUsages = NUMDEVICEUSAGES;
     int  rc, i;
 
