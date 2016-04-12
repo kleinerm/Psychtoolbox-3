@@ -370,7 +370,8 @@ if addgroup
     fprintf('\n\nThe X11 configuration directory /etc/X11/xorg.conf.d does not exist.\n');
     fprintf('I would like to create it and allow users of the psychtoolbox Unix group\n');
     fprintf('to write xorg config files into that directory. This will allow easy change\n');
-    fprintf('of display configuration when needed to setup for an experiment.\n\n');
+    fprintf('of display configuration when needed to setup for an experiment by use of the\n');
+    fprintf('XOrgConfCreator and XOrgConfSelector functions of Psychtoolbox.\n\n');
 
     if ismember(answers(4), 'yn')
       answer = answers(4);

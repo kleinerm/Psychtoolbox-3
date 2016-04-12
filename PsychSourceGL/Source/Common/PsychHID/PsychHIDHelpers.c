@@ -904,7 +904,7 @@ void PsychHIDVerifyInit(void)
                 // devId with the hid_dev pointer value, to get a devId and thereby
                 // location id in case proper parsing of a container id doesn't work:
                 busId = 0;
-                devId = (int) hid_dev;
+                devId = (int) (size_t) hid_dev;
                 if (strstr(hid_dev->path, "{")) sscanf(strstr(hid_dev->path, "{"), "{%x-%x", &busId, &devId);
                 currentDevice->locID = (double) (((psych_uint64) busId << 32) + devId);
             }

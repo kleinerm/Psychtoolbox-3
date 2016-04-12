@@ -46,7 +46,7 @@ if onoctave == 0
         % MSVCRT 2010:
         if 1
             % GStreamer 1.0:
-            mex -v -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -largeArrayDims -DPTB_USE_GSTREAMER -DGLEW_STATIC -LC:\gstreamer\1.0\x86_64\lib -IC:\gstreamer\1.0\x86_64\include -IC:\gstreamer\1.0\x86_64\include\gstreamer-1.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\glib-2.0\include -IC:\gstreamer\1.0\x86_64\include\libxml2 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 LINKFLAGS="$LINKFLAGS /DELAYLOAD:libgobject-2.0-0.dll /DELAYLOAD:libglib-2.0-0.dll /DELAYLOAD:libgstreamer-1.0-0.dll /DELAYLOAD:libgstapp-1.0-0.dll /DELAYLOAD:libgstvideo-1.0-0.dll /DELAYLOAD:libgstpbutils-1.0-0.dll"
+            mex -v -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -largeArrayDims -DPTB_USE_GSTREAMER -DGLEW_STATIC -LC:\gstreamer\1.0\x86_64\lib -IC:\gstreamer\1.0\x86_64\include -IC:\gstreamer\1.0\x86_64\include\gstreamer-1.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\x86_64\include\libxml2 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 LINKFLAGS="$LINKFLAGS /DELAYLOAD:libgobject-2.0-0.dll /DELAYLOAD:libglib-2.0-0.dll /DELAYLOAD:libgstreamer-1.0-0.dll /DELAYLOAD:libgstapp-1.0-0.dll /DELAYLOAD:libgstvideo-1.0-0.dll /DELAYLOAD:libgstpbutils-1.0-0.dll"
         else
             % Legacy 0.10 GStreamer:
             mex -v -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -largeArrayDims -DPTB_USE_GSTREAMER -DGLEW_STATIC -LC:\gstreamer-sdk\0.10\x86_64\lib -IC:\gstreamer-sdk\0.10\x86_64\include -IC:\gstreamer-sdk\0.10\x86_64\include\gstreamer-0.10 -IC:\gstreamer-sdk\0.10\x86_64\include\glib-2.0 -IC:\gstreamer-sdk\0.10\x86_64\include\glib-2.0\include -IC:\gstreamer-sdk\0.10\x86_64\lib\glib-2.0\include -IC:\gstreamer-sdk\0.10\x86_64\include\libxml2 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lgthread-2.0 -lglib-2.0 -lgstreamer-0.10 -lgstapp-0.10 -lgstinterfaces-0.10 -lgstpbutils-0.10 LINKFLAGS="$LINKFLAGS /DELAYLOAD:libgobject-2.0-0.dll /DELAYLOAD:libgthread-2.0-0.dll /DELAYLOAD:libglib-2.0-0.dll /DELAYLOAD:libgstreamer-0.10-0.dll /DELAYLOAD:libgstapp-0.10-0.dll /DELAYLOAD:libgstinterfaces-0.10-0.dll /DELAYLOAD:libgstpbutils-0.10-0.dll"
@@ -220,8 +220,13 @@ else
     if what == 7
         % Build Eyelink.mex
         try
-            copyfile('C:\Program Files (x86)\SR Research\EyeLink\libs\*.dll', '..\..\..\');
-            mexoctave -g -v -W'l,--enable-stdcall-fixup' --output ..\Projects\Windows\build\Eyelink.mex -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -I'C:\Program Files (x86)\SR Research\EyeLink\Includes\eyelink' -L..\..\.. -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib -leyelink_core -leyelink_w32_comp
+            if Is64Bit
+                copyfile('C:\Program Files (x86)\SR Research\EyeLink\libs\x64\*.dll', '..\..\..\');
+                mexoctave -g -v -W'l,--enable-stdcall-fixup' --output ..\Projects\Windows\build\Eyelink.mex -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -I'C:\Program Files (x86)\SR Research\EyeLink\Includes\eyelink' -L..\..\.. -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib -leyelink_core64 -leyelink_w32_comp64
+            else
+                copyfile('C:\Program Files (x86)\SR Research\EyeLink\libs\*.dll', '..\..\..\');
+                mexoctave -g -v -W'l,--enable-stdcall-fixup' --output ..\Projects\Windows\build\Eyelink.mex -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -I'C:\Program Files (x86)\SR Research\EyeLink\Includes\eyelink' -L..\..\.. -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib -leyelink_core -leyelink_w32_comp
+            end
             movefile(['..\Projects\Windows\build\Eyelink.' mexext], target);
         catch
         end
@@ -231,7 +236,7 @@ else
     if what == 8
         % Build PsychKinectCore.mex:
         if Is64Bit
-            mexoctave -g -v --output ..\Projects\Windows\build\PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -L..\Cohorts\Kinect-v16-withsource\libusb\lib\gcc -I..\Cohorts\Kinect-v16-withsource -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib -lusb
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -L..\Cohorts\Kinect-v16-withsource\libusb\lib\msvc_x64 -I..\Cohorts\Kinect-v16-withsource -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib libusb.lib
         else
             mexoctave -g -v --output ..\Projects\Windows\build\PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -L..\Cohorts\Kinect-v16-withsource\libusb\lib\gcc -I..\Cohorts\Kinect-v16-withsource -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib -lusb
         end
@@ -250,13 +255,19 @@ else
 
     if what == 10
         % Build moalcore 32-Bit:
-        % We copy the installed runtime DLL
+        % For 32-Bit we copy the installed runtime DLL
         % C:\Windows\SysWOW64\OpenAL32dll into the build folder and abuse that
         % as import library for our mex file, as the import .lib of the SDK is
-        % useable by the linker:
+        % unuseable by the linker.
+        % However, for 64-Bit strangely the .lib from the SDK works.
         curdir = pwd;
         cd('../../Psychtoolbox/PsychSound/MOAL/source/')
-        copyfile('C:\Windows\SysWOW64\OpenAL32.dll', '.\');
+        if Is64Bit
+            copyfile('C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64\OpenAL32.lib', '.\');
+        else
+            copyfile('C:\Windows\SysWOW64\OpenAL32.dll', '.\');
+        end
+
         try
             mexoctave -g -v --output moalcore.mex -DWINDOWS -I'C:\Program Files (x86)\OpenAL 1.1 SDK\include' -L. moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
             movefile(['moalcore.' mexext], target);
@@ -265,6 +276,7 @@ else
         end
         % Remove stale object files:
         delete('*.o');
+        delete('OpenAL32.lib');
         delete('OpenAL32.dll');
         cd(curdir);
     end
@@ -284,15 +296,21 @@ else
     end
 
     if what == 12
-        % Build PsychOculusVRCore 32 Bit:
+        % Build PsychOculusVRCore 32/64 Bit:
         % Needs the Oculus VR SDK v 0.5.01 installed in side-by-side to
         % the Psychtoolbox-3 folder, ie., in the same parent directory, and
         % renamed from OculusSDK to OculusSDKWin. Needs to Oculus VR runtime
         % for Windows installed as well. Then we copy the installed runtime DLL
+        % C:\windows\system32\LibOVRRT64_0_5.dll or - for 32-Bit -
         % C:\Windows\SysWOW64\LibOVRRT32_0_5.dll into the SDK folder and abuse that
         % as import library for our mex file. Weird but true - this seems to work!
-        copyfile('C:\Windows\SysWOW64\LibOVRRT32_0_5.dll', '..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010\');
-        mexoctave -g -v --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT32_0_5
+        if Is64Bit
+            copyfile('C:\windows\system32\LibOVRRT64_0_5.dll', '..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010\');
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT64_0_5
+        else
+            copyfile('C:\Windows\SysWOW64\LibOVRRT32_0_5.dll', '..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010\');
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT32_0_5
+        end
         movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], target);
     end
 
