@@ -748,7 +748,7 @@ PsychError PsychHIDOSKbElementAdd(IOHIDElementRef element, IOHIDQueueRef queue, 
     }
 
     if (getenv("PSYCHHID_TELLME")) {
-        printf("--> Accepting key %i as new KbQueue element%s.\n", IOHIDElementGetUsage(element) - 1, (queueIsAKeyboard) ? " for a keyboard" : "");
+        printf("--> Accepting key %i as new KbQueue element%s.\n", IOHIDElementGetUsage(element) - 1, (queueIsAKeyboard[deviceIndex]) ? " for a keyboard" : "");
     }
 
     // Put the element cookie into the queue:
@@ -760,6 +760,7 @@ PsychError PsychHIDOSKbElementAdd(IOHIDElementRef element, IOHIDQueueRef queue, 
 PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys)
 {
     pRecDevice deviceRecord;
+    psych_bool verbose = getenv("PSYCHHID_TELLME") != NULL;
 
     // Valid number of keys?
     if (scanKeys && (numScankeys != 256)) {
@@ -824,7 +825,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 
                 usage     = IOHIDElementGetUsage(currentElement);
                 usagePage = IOHIDElementGetUsagePage(currentElement);
-                if (getenv("PSYCHHID_TELLME")) {
+                if (verbose) {
                     printf("PTB-DEBUG: [KbQueueCreate]: ce %p page %d usage: %d isArray: %d\n", currentElement, usagePage, usage, IOHIDElementIsArray(currentElement));
                 }
 
@@ -833,11 +834,19 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
                     if (!children) continue;
 
                     CFIndex idx, cnt = CFArrayGetCount(children);
+                    if (verbose) {
+                        printf("PTB-DEBUG: [KbQueueCreate]: ce %p Collection with %d children:\n", currentElement, cnt);
+                    }
+                    
                     for (idx = 0; idx < cnt; idx++) {
                         IOHIDElementRef tIOHIDElementRef = (IOHIDElementRef) CFArrayGetValueAtIndex(children, idx);
                         if (tIOHIDElementRef && ((IOHIDElementGetType(tIOHIDElementRef) == kIOHIDElementTypeInput_Button) ||
                                                 (IOHIDElementGetType(tIOHIDElementRef) == kIOHIDElementTypeInput_ScanCodes))) {
                             usage = IOHIDElementGetUsage(tIOHIDElementRef);
+                            usagePage = IOHIDElementGetUsagePage(tIOHIDElementRef);
+                            if (verbose) {
+                                printf("PTB-DEBUG: [KbQueueCreate]: ce %p child %d page %d usage: %d isArray: %d\n", currentElement, idx, usagePage, usage, IOHIDElementIsArray(tIOHIDElementRef));
+                            }
                             if ((usage <= 256) && (usage >= 1) && ( (scanKeys == NULL) || (scanKeys[usage - 1] > 0) )) {
                                 // Add it for use in keyboard queue:
                                 PsychHIDOSKbElementAdd(tIOHIDElementRef, queue[deviceIndex], deviceIndex);
