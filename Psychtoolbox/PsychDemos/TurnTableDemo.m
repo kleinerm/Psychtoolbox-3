@@ -41,6 +41,7 @@ function TurnTableDemo(wavfilename, wavfilenames)
 % History:
 % 18-Oct-2013  mk  Written, but not released.
 % 10-Apr-2016  mk  Revamped, tweaked, PowerMate support added.
+% 14-Apr-2016  mk  Bug fixes.
 
 % Simulated RPM of turntable:
 rpm = 30;
@@ -261,7 +262,7 @@ PsychPortAudio('FillBuffer', patable1, wavedata(:, 1:prefetchCnt));
 
 % Setup key mappings and variables:
 playhead = prefetchCnt + 1;
-oldangle = -1;
+oldangle = [];
 visangle = 0;
 oldkc = [];
 KbReleaseWait;
@@ -269,7 +270,7 @@ GetMouse(win);
 
 % Realtime for real!
 Priority(MaxPriority(win));
-ListenChar(2);
+ListenChar(-1);
 
 % Start master wait for it to be started. We won't stop the
 % master until the end of the session.
@@ -361,7 +362,7 @@ try
             % Yes: Drive sound due to scratching / movement by user:
             
             % Valid old angle from previous sampling?
-            if oldangle > -1
+            if ~isempty(oldangle)
                 % Yes. Compute delta angle of finger movement since last
                 % sampling:
                 delta = angle - oldangle;
@@ -381,7 +382,7 @@ try
             end
         else
             % No: Table turns by itself at rpm revolutions per minute:
-            oldangle = -1;
+            oldangle = [];
             delta = 360 * (rpm / 60) * dT;
             
             if 0 && (radius < turntableradius)
