@@ -101,20 +101,20 @@ int _kbhit(void) {
             // Switching from unsuppressed to suppressed.
             // Or more specifically: From ctty->stdin to
             // pipe->stdin.
-            
+
             // Get backup of filedescriptor fd of real stdin:
             fd = dup(fileno(stdin));
-            
+
             // Get current termios state of real stdin:
             tcgetattr(fileno(stdin), &term);
-            
+
             // Back it up:
             oldterm = term;
-            
+
             // Disable echo on real stdin:
             term.c_lflag &= ~ECHO;
             tcsetattr(fileno(stdin), TCSANOW, &term);
-            
+
             #if (PSYCH_SYSTEM == PSYCH_LINUX) && defined(PTBOCTAVE3MEX)
             // Linux with Octave: We can't use a pty or unix pipe(), as
             // Octave would terminate if we tried to detach from a pty or
@@ -130,11 +130,11 @@ int _kbhit(void) {
             // Detach stdin from controlling tty, redirect to
             // /dev/zero, so it doesn't get any input from now on,
             // regardless what characters go to the terminal:
-            freopen("/dev/zero", "r", stdin);
-
+            if (NULL == freopen("/dev/zero", "r", stdin))
+                printf("PsychHID-WARNING: Could not detach stdin from controlling tty [%s]. Character to terminal suppression may not work.\n", strerror(errno));
             // We are detached: No characters received from terminal,
             // no characters echo'ed by terminal itself.
-            
+
             #else
             // OSX, or Linux with Matlab:
             //
@@ -183,7 +183,7 @@ int _kbhit(void) {
                 // printf("PsychHID-INFO: Using pty %s.\n", ptyname);
             }
             #endif
-            
+
             // Attach the read descriptor [0] to stdin of the runtime.
             // This way, everything written into stdinpipe[1] will appear
             // as input to stdin -> gets fed into our host application:
@@ -191,14 +191,14 @@ int _kbhit(void) {
 
             // Clear potential error conditions:
             clearerr(stdin);
-            
+
             // Attach write descriptor to standard FILE* stdinject for
             // simple use with fwrite() et al.:
             stdininject = fdopen(stdinpipe[1], "a");
             if (NULL == stdininject) printf("PsychHID-WARNING: Creation of stdinject failed! [%s]\n", strerror(errno));
             #endif
         }
-        
+
         // Disable of character suppression requested Linux?
         // Or disable of any character processing requested on OSX?
         // See above for explanation of this OS difference.

@@ -85,12 +85,39 @@
 % List of submodules with their associated licenses, as far as they deviate
 % from the MIT license printed above, and their main authors:
 %
+% Psychtoolbox/PsychSound: portaudio_x86.dll and portaudio_x86.dll_nonASIO
+%
+% The PsychPortAudio driver on Microsoft Windows dynamically loads
+% a DLL, the "portaudio_x86.dll" from the Psychtoolbox/PsychSound/ subfolder.
+% This dll is bundled in two precompiled versions. The portaudio_x86.dll, which is
+% used by default, contains a backend for the proprietary ASIO sound system, whereas
+% the portaudio_x86.dll_nonASIO file does not contain ASIO support. Both dll's
+% are compiled from a modified version of the free/open-source PortAudio library.
+% The source code of this MIT licensed library and of all modifications we made
+% can be found in a Psychtoolbox C-Sourcecode download in the subfolder
+% PsychSourceGL/Cohorts/PortAudio/. Building from this source code will yield
+% portaudio_x86.dll_nonASIO which is fully MIT licensed. However, the portaudio_x86.dll
+% which is also bundled with Psychtoolbox and used by default is based on that source
+% code and additional source code from the proprietary ASIO SDK from Steinberg.
+%
+% We are not allowed to distribute the source code of that SDK with Psychtoolbox,
+% and you are not allowed to modify, reverse engineer or disassemble the portaudio_x86.dll
+% which "contains" that source code. You are only allowed to use the dll "as is" for
+% the purpose of using it with Psychtoolbox. If you don't like this, then delete
+% the dll from your Psychtoolbox and rename the portaudio_x86.dll_nonASIO file into
+% portaudio_x86.dll, so Psychtoolbox will use the completely free/open-source version.
+% The limitation will be that without ASIO backend support, you won't be able to
+% achieve any precise sound timing or low-latency. See the "PortAudioLICENSE.txt"
+% file inside Psychtoolbox/PsychSound/ for exact licensing details of this audio dll.
+%
+%
+%
 % Psychtoolbox/PsychContributed: See individual licenses and output of
 %                                "help PsychContributed" in that folder.
 %
 %
 % The tcp_udp_ip toolbox under Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/
-% is Copyright Peter Rydes�ter et al., 1998-2003. Licensed under GPL v2 and
+% is Copyright Peter Rydesaeter et al., 1998-2003. Licensed under GPL v2 and
 % later, with special linking exception for linking against non-free
 % software. See its included license.txt file for details. Contains also
 % special low-latency enhancements to the pnet mex file by Mario Kleiner.
@@ -112,12 +139,56 @@
 %                           within Psychtoolbox. See "help SerialComm" for
 %                           author and source of the file.
 %
+% The PsychOculusVRCore mex files for use of Oculus VR virtual reality
+% devices, e.g., the Oculus Rift DK1 and DK2, is built using the Oculus SDK,
+% and statically links against portions of the SDK. That SDK is:
+%
+% "Copyright © 2014 Oculus VR, LLC. All rights reserved.”
+%
+% The full text of the Oculus license can be found in the
+% Psychtoolbox/PsychHardware/PsychVRToolbox/ subfolder of Psychtoolbox under
+% the filename “LICENSE_Oculus.txt”.
+%
+% Copies of the SDKs useable for building the PsychOculusVRCore mex files
+% can be found in the PsychSourceGL/Cohorts/OculusSDK/ subfolder of the
+% Psychtoolbox source distribution (see help UseTheSource for download).
+%
+% The PsychDocumentation folder includes a PDF with “Health and safety warnings”
+% related to the Oculus Rift devices, named Oculus_Health_and_Safety_Warnings.pdf,
+% which is also "Copyright © 2014 Oculus VR, LLC. All rights reserved.”
+%
+% The qGetR.m file for converting a rotation/orientation Quaternion into a
+% 3x3 RHS rotation matrix is a modified version of qGetR from the "quaternion"
+% package of  Przemyslaw Baranski downloaded from Mathworks File Exchange at URL:
+%
+% http://de.mathworks.com/matlabcentral/fileexchange/35475-quaternions
+%
+% The file and its parent toolbox are licensed under BSD License, with
+% Copyright (c) 2012, Przemyslaw Baranski. The full license text is included
+% in the qGetR.m file in Psychtoolbox/PsychOpenGL/qGetR.m
+%
+% Support for NVidia NVision stereo emitter/stereo goggles under Linux is
+% implemented by use of libnvstusb from http://sourceforge.net/projects/libnvstusb/
+% This library is licensed under LGPLv2 license. The source code for our
+% binary build can be found in the PsychSourceGL/Cohorts/libnvstusb-code-32
+% subfolder of the PTB source distribution.
+%
 % Matlab/Octave to OpenGL wrapper MOGL - MIT license : Richard F. Murray, Mario Kleiner.
+% MOGL moglcore for MS-Windows links dynamically against the freeglut library, which is
+% Copyright (c) 1999-2000 Pawel W. Olszta, licensed to us under compatible MIT/X11 license.
+% The source code and license file can be found in PsychSourceGL/Cohorts/freeglut.zip.
+% The license itself can be found in Psychtoolbox/PsychOpenGL/MOGL/core/Copying-freeglut.txt
+%
 % Matlab/Octave to OpenAL wrapper MOAL - MIT license : Richard F. Murray, Mario Kleiner.
 %
 % GLSL shaders for the OpenGL GLSL.m demo from the "Orange book" are
 % Copyright (C) 2002-2006  3Dlabs Inc. Ltd., licensed under a BSD-3 style
 % license. See file: PsychDemos/OpenGL4MatlabDemos/GLSLDemoShaders/3Dlabs-License.txt
+%
+% GLSL shaders for Perlin noise: - MIT license, Copyright (C) 2011 Ashima Arts and
+%                                  Copyright (c) 2011 Stefan Gustavson.
+%                                  Files from https://github.com/ashima/webgl-noise
+%                                  With minimal modifications for PTB by Mario Kleiner.
 %
 % All other OpenGL GLSL shaders - MIT license : Mario Kleiner.
 %
@@ -126,6 +197,13 @@
 % or other documentation          the material itself.
 %
 % The PsychtoolboxKernelDriver.kext - MIT license : Mario Kleiner.
+%
+% Screen on Linux, when compiled for multiple graphics and display
+% backends, typically on embedded devices, utilizes Chad Versaces
+% excellent Waffle display library, which is copyright and funded by
+% Intel, licensed to us under a compatible OSS license - see below for
+% exact licensing text: http://people.freedesktop.org/~chadversary/waffle/
+%
 %
 % PsychCV MEX file        - Individual source files BSD-3 or GPL v2+
 %                           license, see their source code for details.
@@ -156,6 +234,14 @@
 % The earth surface JPEG-image used in MinimalisticOpenGLDemo.m is taken
 % from the Linux/KDE application kdeworldclock. kdeworldclock and its
 % components are licensed under GPL v2+.
+%
+% The "Heart logo" of Gratipay in the startup splash screen is taken
+% from www.gratipay.com. They permit free use of their materials
+% (See "Terms and Conditions" section, section "Disclaimer of copyright")
+% by attributing their material to the public domain under the
+% "CC0 1.0 Universal Public Domain Dedication"
+% (http://creativecommons.org/publicdomain/zero/1.0/) - Thanks!
+%
 %
 % All other image files and movie files     - MIT license.
 %
@@ -1279,3 +1365,33 @@
 %
 % =========================================================================
 %
+% Full text of Waffle library license:
+% ====================================
+% Copyright 2012 Intel Corporation
+%
+% All rights reserved.
+%
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are met:
+%
+% - Redistributions of source code must retain the above copyright notice, this
+%   list of conditions and the following disclaimer.
+%
+% - Redistributions in binary form must reproduce the above copyright notice,
+%   this list of conditions and the following disclaimer in the documentation
+%   and/or other materials provided with the distribution.
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+% AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+% IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+% DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+% FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+% DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+% SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+% CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+% OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+% OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+%
+% END OF TERMS AND CONDITIONS
+% 
+% =========================================================================

@@ -294,6 +294,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 %              Clarify there's also no support for < OSX 10.8 anymore.
 % 10/04/15 mk  Compatibility fixes for Octave-4, cosmetic cleanups.
 % 10/28/15 mk  32-Bit Octave-4 support for MS-Windows reestablished.
+% 04/01/16 mk  64-Bit Octave-4 support for MS-Windows established.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -338,7 +339,7 @@ if strcmp(computer,'MAC')
 end
 
 % Check OS
-IsWin = ~isempty(strfind(computer, 'PCWIN')) || strcmp(computer, 'i686-w64-mingw32');
+IsWin = ~isempty(strfind(computer, 'PCWIN')) || ~isempty(strfind(computer, '-w64-mingw32'));
 IsOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
 IsLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
 
@@ -391,7 +392,7 @@ if isempty(targetdirectory)
         fprintf('installed. This is required for Microsoft Windows and Linux installation. Please enter a full\n');
         fprintf('path as the first argument to this script, e.g. DownloadPsychtoolbox(''C:\\Toolboxes\\'').\n');
         error('For Windows and Linux, the call to %s must specify a full path for the location of installation.',mfilename);
-    end     
+    end
 end
 
 % Strip trailing fileseperator, if any:
@@ -433,7 +434,7 @@ switch (flavor)
     % 'current' is a synonym for 'beta'.
     case 'beta'
     case 'current'
-        flavor = 'beta';        
+        flavor = 'beta';
     case 'stable'
         fprintf('\n\n\nYou request download of the "stable" flavor of Psychtoolbox.\n');
         fprintf('The "stable" flavor is no longer available, it has been renamed to "unsupported".\n');
@@ -453,7 +454,7 @@ switch (flavor)
             flavor = 'beta';
             fprintf('Download of "unsupported" flavor cancelled, will download recommended "beta" flavor instead...\n');
         else
-            fprintf('Download of "unsupported" flavor proceeds. You are in for quite a bit of pain...\n');            
+            fprintf('Download of "unsupported" flavor proceeds. You are in for quite a bit of pain...\n');
         end
 
         fprintf('\n\nPress any key to continue...\n');
@@ -738,7 +739,7 @@ pt = strcat('"',p,'"');
 if ~strcmp(flavor, 'trunk')
     dflavor = ['branches/' flavor];
 else
-    dflavor = flavor;    
+    dflavor = flavor;
 end
 
 % Choose initial download method. Defaults to zero, ie. https protocol:

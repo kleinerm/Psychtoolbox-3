@@ -170,8 +170,15 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
         printf("PsychHID-ERROR: Error return from DirectInput8 EnumDevices(): %x! Game over!\n", (int) rc);
         goto out;
 	}
-    
-	// Create keyboard queue mutex for later use:
+
+    // Enumerate all other DirectInput devices:
+    rc = dinput->EnumDevices(DI8DEVCLASS_DEVICE, (LPDIENUMDEVICESCALLBACK) keyboardEnumCallback, NULL, DIEDFL_ATTACHEDONLY | DIEDFL_INCLUDEHIDDEN);
+    if (DI_OK != rc) {
+        printf("PsychHID-ERROR: Error return from DirectInput8 EnumDevices(): %x! Game over!\n", (int) rc);
+        goto out;
+    }
+
+    // Create keyboard queue mutex for later use:
 	KbQueueThreadTerminate = FALSE;
 	PsychInitMutex(&KbQueueMutex);
 	PsychInitCondition(&KbQueueCondition, NULL);
@@ -265,7 +272,7 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
     for(i = 0; i < ndevices; i++) {
         // Check i'th device:
         dev = &info[i];
-        
+
         switch(dev->dwDevType & 0xff) {
             case DI8DEVTYPE_MOUSE:
 			case DI8DEVTYPE_SCREENPOINTER:
@@ -279,14 +286,20 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
 				if (dev->usagePage == 0) dev->usagePage = 1;
 				if (dev->usageValue == 0) dev->usageValue = 6;
 			break;
-			
+
 			case DI8DEVTYPE_JOYSTICK:
 				type = (char*) "slave joystick";
 				if (dev->usagePage == 0) dev->usagePage = 1;
 				if (dev->usageValue == 0) dev->usageValue = 4;
-			break;			
+			break;
+            
+            default:
+                type = (char*) "slave customer usage";
+                if (dev->usagePage == 0) dev->usagePage = 12;
+                if (dev->usageValue == 0) dev->usageValue = 1;
+            break;
         }
-        
+
         PsychSetStructArrayDoubleElement("usagePageValue",	deviceIndex, 	(double) dev->usagePage, deviceStruct);        
         PsychSetStructArrayDoubleElement("usageValue",	deviceIndex,        (double) dev->usageValue, deviceStruct);
         
@@ -701,8 +714,8 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 						if (keycode >= 128) continue;
 					break;
 				
-					default: // Unkown device -- Skip it.
-						continue;
+					default: // Custom device -- Use "as is".
+                    break;
                 }
 
                 // This keyboard queue interested in this keycode?

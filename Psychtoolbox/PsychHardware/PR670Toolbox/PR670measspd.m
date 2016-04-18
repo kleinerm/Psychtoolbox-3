@@ -44,7 +44,14 @@ readStr = PR670rawspd(timeout);
 
 % Extract the result code.
 qual = sscanf(readStr, '%f', 1);
-	 
+if (~isnumeric(qual))
+    fprintf('The returned value of qual should be numeric, but it is not.\n');
+    fprintf('Dumping both qual and the string it was read from, then exiting.\n');
+    qual
+    readStr
+    error('Exiting because do not know what to do with a totally unexpected value of qual');
+end
+try
 switch qual
 	% Measurement OK
 	case 0
@@ -70,4 +77,11 @@ switch qual
 	
 	otherwise
 		error('Bad return code %g from meter', qual);
+end
+catch e
+    fprintf('The returned value of qual should be numeric, but it is not.\n');
+    fprintf('Dumping both qual and the string it was read from, then rethrowing the error.\n');
+    qual
+    readStr
+    rethrow(e); 
 end

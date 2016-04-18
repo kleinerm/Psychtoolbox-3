@@ -2,10 +2,20 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical][, vSpacing][, righttoleft][, winRect])
 %
 % Draws a string of text 'tstring' into Psychtoolbox window 'win'. Allows
-% some basic formatting. The text string 'tstring' may contain newline
-% characters '\n'. Whenever a newline character '\n' is encountered, a
-% linefeed and carriage return is performed, breaking the text string into
-% lines. 'sx' defines the left border of the text: If it is left out, text
+% some basic formatting.
+%
+% Please note that all formatting of text and returned information about
+% the bounding box of the text is only approximative and may be inaccurate
+% for some text strings, fonts, font settings and combination of parameters
+% for this function. Centering of text and bounding box calculations work
+% best for single line text, vertical centering may be a bit off for multi-
+% line text.
+%
+% The text string 'tstring' may contain newline characters '\n'.
+% Whenever a newline character '\n' is encountered, a linefeed and
+% carriage return is performed, breaking the text string into lines.
+%
+% 'sx' defines the left border of the text: If it is left out, text
 % starts at x-position zero, otherwise it starts at the specified position
 % 'sx'. If sx=='center', then each line of text is horizontally centered in
 % the window. If sx=='right', then each line of text is right justified to
@@ -24,10 +34,17 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % from the target width of the text, with ptb_drawformattedtext_padthresh being
 % a global variable you can set. It defaults to 0.333 ie., doesn't justify text
 % lines if the text lines are more than 33% shorter than the reference line.
+% If sx=='centerblock' then text is not horizontally centered individually for
+% each line of text, as with 'center', but for multi-line text, the whole block
+% of text is roughly centered, by starting all lines left-justified, but then shifting
+% this whole block of left justified text horizontally so that the longest line
+% in the block of text is horizontally centered in the target window or 'winRect'.
 %
-% 'sy' defines the top border of the text. If left out, it starts at the top
-% of the window, otherwise it starts at the specified vertical pixel position.
-% If sy=='center', then the whole text is vertically centered in the
+% 'sy' defines the baseline of the (first line of the) text. If left out, text starts
+% roughly at the top of the window, otherwise it starts at the specified vertical
+% pixel position.
+%
+% If sy=='center', then the whole text is roughly vertically centered in the
 % window. 'color' is the color value of the text (color index or [r g b]
 % triplet or [r g b a] quadruple). If color is left out, the current text
 % color from previous text drawing commands is used. 'wrapat', if provided,
@@ -76,7 +93,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % be used as new start position for connecting further text strings to the
 % bottom of the drawn text string. Calculation of these bounds is
 % approximative, so it may give wrong results with some text fonts and
-% styles on some operating systems.
+% styles on some operating systems, depending on the various settings.
 %
 % See DrawFormattedTextDemo for a usage example.
 
@@ -107,6 +124,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 %           via DT_NOPREFIX flag. Suggested by Diederick. (MK)
 % 08/08/15  Fix bug for Unicode text introduced when improving single-line text centering. (MK)
 % 02/16/16  Improve bounding box calculations for multi-line text, esp. for vSpacing > 1. (MK)
+% 03/29/16  Add sx='centerblock', always use yPosIsBaseline, update help text. (MK)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
@@ -147,17 +165,21 @@ if ischar(sx)
     if strcmpi(sx, 'center')
         xcenter = 1;
     end
-    
+
     if strcmpi(sx, 'right')
         rjustify = 1;
     end
-    
+
     if strcmpi(sx, 'wrapat')
         bjustify = 1;
     end
 
     if strcmpi(sx, 'justifytomax')
         bjustify = 2;
+    end
+
+    if strcmpi(sx, 'centerblock')
+        bjustify = 3;
     end
 
     % Set sx to neutral setting:
@@ -205,7 +227,7 @@ end
 if isa(tstring, 'double')
     repchar = 10;
 elseif isa(tstring, 'uint8')
-    repchar = uint8(10);    
+    repchar = uint8(10);
 else
     repchar = char(10);
 end
@@ -236,7 +258,9 @@ end
 
 % Default y start position is top of window:
 if nargin < 4 || isempty(sy)
-    sy=0;
+    % As we use y-position is baseline, need to shift it down
+    % a bit to roughly start text at top of the window:
+    sy = Screen('TextSize', win);
 end
 
 % Default rectangle for centering/formatting text is the client rectangle
@@ -257,6 +281,9 @@ if ischar(sy) && strcmpi(sy, 'center')
     % Initialize vertical start position sy with vertical offset of
     % centered text box:
     sy = dv;
+    yPosIsBaseline = 0;
+else
+    yPosIsBaseline = 1;
 end
 
 % Keep current text color if noone provided:
@@ -280,20 +307,22 @@ end
 disableClip = (ptb_drawformattedtext_disableClipping ~= -1) && ...
               ((ptb_drawformattedtext_disableClipping > 0) || (nargout >= 3));
 
+% Need some approximation of the height to baseline:
+blankbounds = Screen('TextBounds', win, 'X', [], [], 1, righttoleft);
+if yPosIsBaseline
+    baselineHeight = RectHeight(blankbounds);
+else
+    baselineHeight = 0;
+end
+
 if bjustify
     % Compute width of a single blank ' ' space, in case we need it. We use
     % a 'X' instead of ' ', because with some text renderers, ' ' has an
     % empty bounding box, so this would fail. As justification only works
     % with monospaced fonts anyway, we can do this substitution with good
     % results:
-    blankbounds = Screen('TextBounds', win, 'X', [], [], 1, righttoleft);
     blankwidth = RectWidth(blankbounds);
     sx = winRect(RectLeft);
-    
-    % Also need some approximation of the height to baseline:
-    baselineHeight = RectHeight(blankbounds);
-else
-    baselineHeight = 0;
 end
 
 % Init cursor position:
@@ -310,14 +339,14 @@ if bjustify == 1
     padwidth = RectWidth(Screen('TextBounds', win, char(repmat('X', 1, wrapat)), [], [], 1, righttoleft));
 end
 
-if bjustify == 2
+if bjustify == 2 || bjustify == 3
     % Iterate over whole text string and find widest
     % text line. Use it as reference for padding:
     backuptext = tstring;
-    
+
     % No clipping allowed in this opmode:
     disableClip = 1;
-    
+
     % Iterate:
     padwidth = 0;
     while ~isempty(tstring)
@@ -330,7 +359,7 @@ if bjustify == 2
             curstring = tstring;
             tstring =[];
         end
-        
+
         if ~isempty(curstring)
             padwidth = max(padwidth, RectWidth(Screen('TextBounds', win, curstring, [], [], 1, righttoleft)));
         end
@@ -379,15 +408,15 @@ while ~isempty(tstring)
         % make sure special unicode encoding (e.g., double()'s) does not
         % get lost for actual drawing:
         curstring = cast(curstring, stringclass);
-        
+
         % Need bounding box?
         if xcenter || flipHorizontal || flipVertical || rjustify
             % Compute text bounding box for this substring:
-            [bbox, refbbox] = Screen('TextBounds', win, curstring, 0, 0, [], righttoleft);
+            [bbox, refbbox] = Screen('TextBounds', win, curstring, 0, 0, 1, righttoleft);
             deltaboxX = refbbox(RectLeft) - bbox(RectLeft);
             deltaboxY = refbbox(RectTop) - bbox(RectTop);
         end
-        
+
         % Horizontally centered output required?
         if xcenter
             % Yes. Compute dh, dv position offsets to center it in the center of window.
@@ -395,7 +424,13 @@ while ~isempty(tstring)
             % Set drawing cursor to horizontal x offset:
             xp = dh - deltaboxX;
         end
-        
+
+        % Horizontally centered output of the block containing the full text string as a whole required?
+        if bjustify == 3
+            rect = CenterRect([0, 0, padwidth, 1], winRect);
+            xp = rect(RectLeft);
+        end
+
         % Right justified (aligned) output required?
         if rjustify
             xp = winRect(RectRight) - RectWidth(bbox);
@@ -405,7 +440,7 @@ while ~isempty(tstring)
             if bjustify
                 warning('Text justification to wrapat''th right column border not supported for flipHorizontal or flipVertical text drawing.');
             end
-            
+
             textbox = OffsetRect(bbox, xp, yp);
             [xc, yc] = RectCenter(textbox);
 
@@ -421,20 +456,20 @@ while ~isempty(tstring)
             if flipVertical
                 Screen('glScale', win, 1, -1, 1);
             end
-            
+
             if flipHorizontal
                 Screen('glScale', win, -1, 1, 1);
             end
 
             % We need to undo the translations...
             Screen('glTranslate', win, -xc, -yc, 0);
-            [nx ny] = Screen('DrawText', win, curstring, xp, yp, color, [], [], righttoleft);
+            [nx ny] = Screen('DrawText', win, curstring, xp, yp, color, [], yPosIsBaseline, righttoleft);
             Screen('glPopMatrix', win);
         else
             % Block justification (align to left border and a right border at 'wrapat' columns)?
-            if bjustify
+            if ismember(bjustify, [1,2])
                 % Calculate required amount of padding in pixels:
-                strwidth = padwidth - RectWidth(Screen('TextBounds', win, curstring(~isspace(curstring)), [], [], 1, righttoleft));
+                strwidth = padwidth - RectWidth(Screen('TextBounds', win, curstring(~isspace(curstring)), [], [], yPosIsBaseline, righttoleft));
                 padpergapneeded = length(find(isspace(curstring)));
                 % Padding needed and possible?
                 if (padpergapneeded > 0) && (strwidth > 0)
@@ -451,13 +486,13 @@ while ~isempty(tstring)
                 else
                     padpergapneeded = 0;
                 end
-                
+
                 % Render text line word by word, adding padpergapneeded pixels of blank space
                 % between consecutive words, to evenly distribute the padding space needed:
                 [wordup, remstring] = strtok(curstring);
                 cxp = xp;
                 while ~isempty(wordup)
-                    [nx ny] = Screen('DrawText', win, wordup, cxp, yp, color, [], 1, righttoleft);
+                    [nx ny] = Screen('DrawText', win, wordup, cxp, yp, color, [], yPosIsBaseline, righttoleft);
                     if ~isempty(remstring)
                         nx = nx + padpergapneeded;
                         cxp = nx;
@@ -465,7 +500,7 @@ while ~isempty(tstring)
                     [wordup, remstring] = strtok(remstring);
                 end
             else
-                [nx ny] = Screen('DrawText', win, curstring, xp, yp, color, [], [], righttoleft);
+                [nx ny] = Screen('DrawText', win, curstring, xp, yp, color, [], yPosIsBaseline, righttoleft);
             end
         end
     else

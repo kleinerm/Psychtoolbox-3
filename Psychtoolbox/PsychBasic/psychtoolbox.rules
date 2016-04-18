@@ -57,5 +57,10 @@ ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="2833", MODE="0666"
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="0007", MODE="0666"
 
 # Add a /dev/input/powermate symlink, with non-root access for all for the Griffin PowerMate USB knob,
-# which is controlled by the Linux powermate kernel driver.
+# which is controlled by the Linux powermate kernel driver. Additionally allow non-root access to the
+# /dev/eventXX file, in case multiple PowerMates are in use.
 ACTION=="add", ENV{ID_USB_DRIVER}=="powermate", SYMLINK+="input/powermate", MODE="0666"
+ACTION=="add", ENV{ID_USB_DRIVER}=="powermate", MODE="0666"
+
+# Enable non-root access of libusb to the Griffin PowerMate:
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="077d", ATTR{idProduct}=="0410", MODE="0666"

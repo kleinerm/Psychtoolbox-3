@@ -4,11 +4,16 @@ function makeftglplugin
 
 if IsWin
     if IsOctave
-        % 32-Bit build with gcc:
-        cmd = 'g++ -g -o libptbdrawtext_ftgl.dll -fno-exceptions -shared -LC:\gstreamer\1.0\x86\lib -I. -IC:\gstreamer\1.0\x86\include\freetype2 -IC:\gstreamer\1.0\x86\include\fontconfig libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lopengl32 -lglu32 -lfontconfig -lfreetype';
-        name = 'libptbdrawtext_ftgl.dll';
+        if Is64Bit
+            % 64-Bit build with gcc:
+            cmd = 'g++ -g -m64 -o libptbdrawtext_ftgl64.dll -fno-exceptions -shared -LC:\gstreamer\1.0\x86_64\lib -I. -IC:\gstreamer\1.0\x86_64\include\freetype2 -IC:\gstreamer\1.0\x86_64\include\fontconfig libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lopengl32 -lglu32 -lfontconfig -lfreetype'
+            name = 'libptbdrawtext_ftgl64.dll';
+        else
+            % 32-Bit build with gcc:
+            cmd = 'g++ -g -o libptbdrawtext_ftgl.dll -fno-exceptions -shared -LC:\gstreamer\1.0\x86\lib -I. -IC:\gstreamer\1.0\x86\include\freetype2 -IC:\gstreamer\1.0\x86\include\fontconfig libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lopengl32 -lglu32 -lfontconfig -lfreetype';
+            name = 'libptbdrawtext_ftgl.dll';
+        end
     else
-        % For Octave-64 Bit: cmd = 'g++ -g -m64 -o libptbdrawtext_ftgl64.dll -fno-exceptions -shared -LC:\gstreamer\1.0\x86_64\lib -I. -IC:\gstreamer\1.0\x86_64\include\freetype2 -IC:\gstreamer\1.0\x86_64\include\fontconfig libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lopengl32 -lglu32 -lfontconfig -lfreetype'
         % 64-Bit build with MSVC 2010, done from a separate MS-DOS batch script:
         cmd = 'buildftglpluginformsvc64Bit.bat';
         name = 'libptbdrawtext_ftgl64.dll';
