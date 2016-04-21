@@ -1,167 +1,120 @@
+function BitsStereoDemo
 % BitsStereoDemo
 %
-% demonstration of displaying a precalculated texture based movie, whilst
+% Demonstration of displaying a precalculated texture based movie, whilst
 % controlling the FE1 goggles using a Tlock packet.
 %
-% For use with the OSX version of Psychtoolbox.
-% tested with version 1.0.5.
-% uses the hidden 'LoadNormalizedGammaTable' screen function.
+% This demo needs the Bits++ or Bits# from Cambridge Research Systems!
 %
-% Please note that this demo as configured needs 256MB system ram.
-% It also needs the Bits++ from Cambridge Research Systems!!
-%
-% Sections have been lifted from the OSX movie demo etc.
-%
-% 26/04/2005    ejw     wrote it.
+% 26/04/2005  ejw  Wrote it.
+% 21/04/2016  mk   Rewritten to use modern PTB functions.
 
-clear; close all
+% Startup checks, KbName works identical on all operating systems:
+PsychDefaultSetup(1);
 
-% Define screen
-whichScreen=max(Screen('Screens'));
+% Define screen to use:
+whichScreen = max(Screen('Screens'));
 
-% Find the color values which correspond to white and black.  Though on OS
-% X we currently only support true color and thus, for scalar color
-% arguments,
-% black is always 0 and white 255, this rule is not true on other platforms will
-% not remain true on OS X after we add other color depth modes.  
-white=WhiteIndex(whichScreen);
-black=BlackIndex(whichScreen);
-gray=GrayIndex(whichScreen);
+% Get color index values for black and 50% gray:
+black = BlackIndex(whichScreen);
+gray = GrayIndex(whichScreen);
 
-% Open up the a window on the screen.
-% This is done by calling the Screen function of the Psychophysics
-% Toolbox. We need to open the onscreen window first, so that
-% the offscreen storage allocated subsequently is properly
-% matched to the onscreen frame buffer.
-[window,screenRect] = Screen('OpenWindow',whichScreen,128,[],32,2);
+% Open up a window on the screen for use in Bits++ mode on a
+% CRS Bits+, Bits# etc. This will also load an identity gamma
+% ramp into the Bits device. Ask for stereomode 1 = frame-sequential
+% stereo:
+PsychImaging('PrepareConfiguration');
+PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
+window = PsychImaging('OpenWindow', whichScreen, gray, [], [], [], 1);
 
-% THE FOLLOWING STEP IS IMPORTANT.
-% make sure the graphics card LUT is set to a linear ramp
-% (else the encoded data will not be recognised by Bits++).
-% There is a bug with the underlying OpenGL function, hence the scaling 0 to 255/256.  
-% This demo will not work using a default gamma table in the graphics card,
-% or even if you set the gamma to 1.0, due to this bug.
-% This is NOT a bug with Psychtoolbox!
-Screen('LoadNormalizedGammaTable',window,linspace(0,(255/256),256)'*ones(1,3));
+% Switch a Bits# display device into Bits++ mode. On a older Bits+
+% this will do nothing, as that one needs to be configured manually:
+BitsPlusPlus('SwitchToBits++');
 
-% draw a gray background on front and back buffers
-Screen('FillRect',window, gray);
-Screen('Flip', window);
-Screen('FillRect',window, gray);
+% Enable FE1 stereo goggles connected to the Bits device:
+BitsPlusPlus('UseFE1StereoGoggles', window, 1);
 
 % =================================================================
 % CODE NEEDED HERE !
-% "linear_lut" should be replaced here with one giving the inverse
+% "linearizing_lut" should be replaced here with one giving the inverse
 % characteristic of the monitor.
 % =================================================================
 % restore the Bits++ LUT to a linear ramp
-linear_lut =  repmat(round(linspace(0, 2^16 -1, 256))', 1, 3);
-BitsPlusSetClut(window,linear_lut);
+linearizing_lut = repmat(linspace(0, 1, 256)', 1, 3);
+Screen('LoadNormalizedGammaTable', window, linearizing_lut, 2);
 
-% find out how big the window is
-[screenWidth, screenHeight]=Screen('WindowSize', window);
-
-% textures can't seem to be bigger than the screen, though they have to be
-% square. So the max texture size is the smaller of the screen dimensions!!
-max_texture_size = min([screenWidth screenHeight]);
-
-% pre calculate two counter rotating gratings
-
-% some graphics cards have a hardware texture size limit of 256 square
-% (any bigger and it is slow). Be aware that textures use up RAM very quickly.
-texture_size=256;
-
-if (max_texture_size < texture_size)
-    error('screen must have a minimum resolution of 256');
-end    
-
-image=zeros(texture_size,texture_size,3);
+texture_size = 256;
 [x,y] = meshgrid(1: texture_size, 1: texture_size);
 
 % number of cycles of sine wave in patch
 cycles=10;
- 
-
 for orient=1:180
-    fprintf('Calculating angle %d\n',orient);
     phase=cycles*2*pi*((sin(pi*(orient-1)/180)*(y - texture_size/2)+cos(pi*(orient-1)/180)*(x - texture_size/2)) - 1)/(texture_size/2);
     mono=gray*(sin(phase)+1);
-    image(:,:,1) = mono;
-    image(:,:,2) = mono;
-    image(:,:,3) = mono;     
-  
-    left(orient)= Screen('MakeTexture',whichScreen,image); 
+    left(orient) = Screen('MakeTexture', window, mono);
 
     phase=cycles*2*pi*((-sin(pi*(orient-1)/180)*(y - texture_size/2)+cos(pi*(orient-1)/180)*(x - texture_size/2)) - 1)/(texture_size/2);
     mono=gray*(sin(phase)+1);
-    image(:,:,1) = mono;
-    image(:,:,2) = mono;
-    image(:,:,3) = mono; 
-    
-    right(orient)= Screen('MakeTexture',whichScreen,image); 
-end  
-
-% now quickly display the previously calculated textures,
-% addind the control for the goggles
+    right(orient) = Screen('MakeTexture', window, mono);
+end
 
 fprintf('Displaying counter-rotating gratings, hold a key to exit \n');
+KbReleaseWait;
 
-while(~KbCheck)
-    for orient= 1:180
-        Screen('DrawTexture',window,left(orient));
-        % bitsgoggles adds the one line image to control the digital o/p
-        % then calls 'Flip'
-        % Note that bitsGoggles controls the goggle state for the frame
-        % >after< it is displayed, hence we set the right goggle open now
-        bitsGoggles(1,0,window);
-    
-       Screen('DrawTexture',window,right(orient));
-       % bitsgoggles adds the one line image to control the digital o/p
-        % then calls 'Flip'
-        % Note that bitsGoggles controls the goggle state for the frame
-        % >after< it is displayed, hence we set the left goggle open now        
-        bitsGoggles(0,1,window);    
+% Run until key press:
+while ~KbCheck
+    for orient = 1:180
+        % Left eye image:
+        Screen('SelectStereoDrawBuffer', window, 0);
+        Screen('DrawTexture', window, left(orient));
+        Screen('DrawText', window, 'Displaying counter-rotating gratings, hold a key to exit.', 30, 30, 0);
+
+        % Right eye image:
+        Screen('SelectStereoDrawBuffer', window, 1, 0);
+        Screen('DrawTexture', window, right(orient));
+
+        % Show them:
+        Screen('Flip', window);
+
+        if KbCheck
+            break;
+        end
     end
 end
 
-% reset the digital output data
-Mask=0;
-Command=0;
-Data=zeros(1,248);
-bitsEncodeDIO(Mask,Data,Command, window);
+% Release all textures:
+Screen('Close');
 
-% if the system only has one screen, set the LUT in Bits++ to a linear ramp
-% if the system has two or more screens, then blank the screen.
-if (whichScreen == 0)
-    % =================================================================
-    % CODE NEEDED HERE !
-    % "linear_lut" should be replaced here with one giving the inverse
-    % characteristic of the monitor.
-    % =================================================================
-    % restore the Bits++ LUT to a linear ramp
-    linear_lut =  repmat(round(linspace(0, 2^16 -1, 256))', 1, 3);
-    BitsPlusSetClut(window,linear_lut);
-    
-    % draw a gray background on front and back buffers to clear out any old LUTs
-    Screen('FillRect',window, gray);
-    Screen('Flip', window);
-    Screen('FillRect',window, gray);
-    Screen('Flip', window);
+% Disable FE1 stereo goggles connected to the Bits device:
+BitsPlusPlus('UseFE1StereoGoggles', window, 0);
 
-    % Close the window.
-    Screen('CloseAll');    
-else
-    % Blank the screen
-    BitsPlusSetClut(window,zeros(256,3));
-
-    % draw a black background on front and back buffers to clear out any old LUTs
-    Screen('FillRect',window, black);
-    Screen('Flip', window);
-    Screen('FillRect',window, black);
-    Screen('Flip', window);
-
-    Screen('CloseAll');
+% Not sure if this makes sense, as it would bring back the FE1
+% goggles into an undefined state? But it was there in the original
+% demo, so we'll leave it for now:
+%
+if 1
+    % Reset the digital output pins at the next flip:
+    Mask = 0;
+    Command = 0;
+    Data = zeros(1,248);
+    BitsPlusPlus('DIOCommand', window, 1, Mask, Data, Command);
 end
 
+% If the system only has one screen, set the LUT in Bits++ to a linear ramp
+% if the system has two or more screens, then blank the screen.
+if whichScreen == 0
+    % Restore the Bits++ LUT to a linear ramp:
+    BitsPlusPlus('LoadIdentityClut', window);
+else
+    % Blank the screen:
+    Screen('LoadNormalizedGammaTable', window, zeros(256,3), 2);
+end
 
+% This flip applies the LUT update and the DIOCommand scheduled above:
+Screen('Flip', window);
 
+% Close the window.
+Screen('CloseAll');
+
+% We are done.
+return;

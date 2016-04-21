@@ -53,7 +53,13 @@ if exist(filename, 'file')
         % liboctinterp's so-name/version has changed, the api/abi of
         % Octave-4's C-Mex interface has not changed. Or so we hope until proven
         % wrong...
-        image = renameLibrary(image, 'liboctinterp.so.2', 'liboctinterp.so');
+        if str2num(version ()(1)) == 4
+            % Octave 4.x - liboctinterp.so.3:
+            image = renameLibrary(image, 'liboctinterp.so.3', 'liboctinterp.so');
+        else
+            % Octave 3.8.x, maybe earlier Octave 3.x.y as well - liboctinterp.so.2:
+            image = renameLibrary(image, 'liboctinterp.so.2', 'liboctinterp.so');
+        end
     end
 
     % Write stripped image:

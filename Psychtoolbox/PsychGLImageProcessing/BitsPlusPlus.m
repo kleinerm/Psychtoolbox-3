@@ -35,6 +35,13 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % Bits++.
 %
 %
+% BitsPlusPlus('UseFE1StereoGoggles', window, enable [, shutterState=0]);
+% If 'enable' is 1, enable use of the CRS FE1 stereo goggles connected
+% to the Bits display device. If 'enable' is 0 then disable use of the
+% goggles again and put them in a resting state with either both shutters
+% open ('shutterState = 0') or closed ('shutterState = 1').
+%
+%
 % Schedule a Bits++ DIO command for execution on next Screen('Flip'):
 %
 % BitsPlusPlus('DIOCommand', window, repetitions, mask, data, command [, xpos, ypos]);
@@ -1074,7 +1081,7 @@ if strcmpi(cmd, 'OpenWindowBits++')
     
     Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 
-    if (~isempty(stereomode) && stereomode == 1)
+    if ~isempty(stereomode) && ismember(stereomode, [1, 11])
         % This is only needed on quad-buffered stereo contexts for Bits+.
         % Enable CLUT updates via T-Lock on right stereo buffer as well:
 
@@ -1568,7 +1575,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
 
         Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 
-        if (~isempty(stereomode) && stereomode == 1)
+        if ~isempty(stereomode) && ismember(stereomode, [1, 11])
             % This is only needed on quad-buffered stereo contexts for Bits+.
             % Enable CLUT updates via T-Lock on right stereo buffer as well:
 
@@ -1671,6 +1678,150 @@ if strcmpi(cmd, 'CheckGPUSanity')
     return;
 end
 
+if strcmpi(cmd, 'UseFE1StereoGoggles')
+    % Assign onscreen window index:
+    if nargin < 2 || isempty(arg) || ~isa(arg, 'double') || Screen('WindowKind', arg) ~= 1
+        error('%s: "UseFE1StereoGoggles" called without valid onscreen window handle.', drivername);
+    end
+    win = arg;
+
+    winfo = Screen('GetWindowInfo', win);
+    if ~ismember(winfo.StereoMode, [1,11])
+        % No frame-sequential mode, no point in having sync lines -> No operation.
+        fprintf('UseFE1StereoGoggles: Info: Provided onscreen window is not switched to frame-sequential stereo mode. Call ignored.\n');
+        return;
+    end
+
+    if nargin < 3 || isempty(dummy) || ~ismember(dummy, [0, 1])
+        error('%s: "UseFE1StereoGoggles" called without valid enable flag.', drivername);
+    end
+    enableIt = dummy;
+
+    % Disable instead of enable requested?
+    if ~enableIt
+        % Existing hookslots found?
+        lslot = Screen('HookFunction', win, 'Query', 'LeftFinalizerBlitChain', 'RenderStereoFE1LeftTLock');
+        rslot = Screen('HookFunction', win, 'Query', 'RightFinalizerBlitChain', 'RenderStereoFE1RightTLock');
+        if (lslot ~= -1) && (rslot ~= -1)
+            % Yes. Delete them to disable the T-Lock blitting:
+            Screen('HookFunction', win, 'Remove', 'LeftFinalizerBlitChain' , lslot);
+            Screen('HookFunction', win, 'Remove', 'RightFinalizerBlitChain', rslot);
+        end
+
+        % Now the T-Lock blitting for frame-sequential stereo is off and
+        % the shutter goggles are in some unknown state. Set them to
+        % requested state, which defaults to 0 for "both eyes open":
+        if nargin < 4 || isempty(varargin{1}) || varargin{1} ~= 1
+            shutterState = 0;
+        else
+            shutterState = 1;
+        end
+
+        % Schedule T-Lock for setting final shutter state at next flip:
+        [encodedDIOdata, Mask, Data, Command] = bitsGoggles(shutterState, shutterState);
+        BitsPlusPlus('DIOCommand', win, 1, Mask, Data, Command);
+
+        % Execute!
+        Screen('Flip', win);
+
+        % Ok, shutter glasses should be open, we are done.
+        return;
+    end
+
+    % Enable case - Do the setup dance:
+
+    % Build display list for left-eye image T-Lock:
+    displist = glGenLists(1);
+    glNewList(displist, GL.COMPILE);
+
+    % Generate DIO T-Lock image as Matlab matrix to open the
+    % right shutter at the end of scanout of the left stereo image:
+    tlockdata = bitsGoggles(1, 0);
+
+    % Convert from Matlab matrix to OpenGL pixel format:
+    encodedDIOdata = uint8(zeros(3, 508));
+
+    % Pack 3 separate RGB planes into rows 1,2,3. As Matlabs data format is
+    % column major order, this will end up as tightly packed pixel array in
+    % format RGBRGBRGB.... just as glDrawPixels likes it.
+    encodedDIOdata(1,:) = tlockdata(1,:,1);
+    encodedDIOdata(2,:) = tlockdata(1,:,2);
+    encodedDIOdata(3,:) = tlockdata(1,:,3);
+
+    % Place T-Lock at start position (0, display height - 1):
+    [xDIO, yDIO] = Screen('WindowSize', win, 1);
+    yDIO = yDIO - 1;
+
+    % Add command sequence for this T-Lock code to display list:
+    glRasterPos2i(tlockXOffset, yDIO);
+    glDrawPixels(508, 1, GL.RGB, GL.UNSIGNED_BYTE, encodedDIOdata);
+
+    % Finish left display list;
+    glEndList;
+    pStringLeft = sprintf('glCallList(%i);', displist);
+
+    % Build display list for right-eye image T-Lock:
+    displist = glGenLists(1);
+    glNewList(displist, GL.COMPILE);
+
+    % Generate DIO T-Lock image as Matlab matrix to open the
+    % left shutter at the end of scanout of the right stereo image:
+    tlockdata = bitsGoggles(0, 1);
+
+    % Convert from Matlab matrix to OpenGL pixel format:
+    encodedDIOdata = uint8(zeros(3, 508));
+
+    % Pack 3 separate RGB planes into rows 1,2,3. As Matlabs data format is
+    % column major order, this will end up as tightly packed pixel array in
+    % format RGBRGBRGB.... just as glDrawPixels likes it.
+    encodedDIOdata(1,:) = tlockdata(1,:,1);
+    encodedDIOdata(2,:) = tlockdata(1,:,2);
+    encodedDIOdata(3,:) = tlockdata(1,:,3);
+
+    % Place T-Lock at start position (0, display height - 1):
+    [xDIO, yDIO] = Screen('WindowSize', win, 1);
+    yDIO = yDIO - 1;
+
+    % Add command sequence for this T-Lock code to display list:
+    glRasterPos2i(tlockXOffset, yDIO);
+    glDrawPixels(508, 1, GL.RGB, GL.UNSIGNED_BYTE, encodedDIOdata);
+
+    % Finish left display list;
+    glEndList;
+    pStringRight = sprintf('glCallList(%i);', displist);
+
+    % Ok 'win'dowhandle is fine. Any blue line sync function already applied?
+    lslot = Screen('HookFunction', win, 'Query', 'LeftFinalizerBlitChain', 'Builtin:RenderStereoSyncLine');
+    rslot = Screen('HookFunction', win, 'Query', 'RightFinalizerBlitChain', 'Builtin:RenderStereoSyncLine');
+
+    % Existing hookslots found?
+    if (lslot ~= -1) && (rslot ~= -1)
+        % Yes. Need to recreate with T-Lock for FE1 instead of standard blue-line sync lines:
+
+        % Destroy old ones:
+        Screen('HookFunction', win, 'Remove', 'LeftFinalizerBlitChain' , lslot);
+        Screen('HookFunction', win, 'Remove', 'RightFinalizerBlitChain', rslot);
+
+        % Insert new slots at former position of the old ones:
+        posstring = sprintf('InsertAt%iMFunction', lslot);
+        Screen('Hookfunction', win, posstring, 'LeftFinalizerBlitChain', 'RenderStereoFE1LeftTLock', pStringLeft);
+        posstring = sprintf('InsertAt%iMFunction', rslot);
+        Screen('Hookfunction', win, posstring, 'RightFinalizerBlitChain', 'RenderStereoFE1RightTLock', pStringRight);
+    else
+        % No. Create new slots at end:
+        Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'RenderStereoFE1LeftTLock', pStringLeft);
+        Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'RenderStereoFE1RightTLock', pStringRight);
+    end
+
+    fprintf('UseFE1StereoGoggles: Info: Enabling automatic generation of sync signals for external FE1 shutter glasses.\n');
+
+    % Enable finalizer hookchains, if not already enabled:
+    Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
+    Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
+
+    return;
+end
+
 error('%s: Unknown subcommand provided. Read "help BitsPlusPlus".', drivername);
 end
 
@@ -1747,7 +1898,7 @@ function displist = SetupDIOFinalizer(win, stereomode)
     Screen('HookFunction', win, 'PrependMFunction', 'LeftFinalizerBlitChain', 'Render T-Lock DIO data callback', 'BitsPlusPlus(1);');
     Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 
-    if (~isempty(stereomode) && stereomode == 1)
+    if ~isempty(stereomode) && ismember(stereomode, [1, 11])
         % This is only needed on quad-buffered stereo contexts.
         Screen('HookFunction', win, 'PrependMFunction', 'RightFinalizerBlitChain', 'Render T-Lock DIO data callback',  'BitsPlusPlus(1);');
         Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
