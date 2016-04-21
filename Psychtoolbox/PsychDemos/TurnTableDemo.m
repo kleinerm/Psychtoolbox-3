@@ -103,7 +103,7 @@ if nargin < 1 || isempty(wavfilename)
 end
 
 % Read WAV file from filesystem:
-[y, freq] = wavread(wavfilename);
+[y, freq] = psychwavread(wavfilename);
 wavedata = y';
 nrchannels = size(wavedata,1); % Number of rows == number of channels.
 
@@ -186,7 +186,7 @@ for i=1:nfiles
     try
         % Make sure we don't abort if we encounter an unreadable sound
         % file. This is achieved by the try-catch clauses...
-        [audiodata, infreq] = wavread(char(wavfilenames(i)));
+        [audiodata, infreq] = psychwavread(char(wavfilenames(i)));
         dontskip = 1;
     catch
         fprintf('Failed to read and add file %s. Skipped.\n', char(wavfilenames(i)));
