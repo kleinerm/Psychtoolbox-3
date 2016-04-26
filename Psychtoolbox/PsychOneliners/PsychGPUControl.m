@@ -44,9 +44,39 @@ function rc = PsychGPUControl(cmd, varargin)
 % is currently the only way to get decent timing and precise visual stimulus
 % onset timestamping. The optional vector of 'screenIds' selects which screens
 % should be affected by the change. If left out or set to [], all detected
-% screens will be changed.
+% screens will be changed. This will also apply a workaround for a limitation in
+% Ubuntu Linux standard Unity GUI (actually in the Compiz compositor) when used on
+% a single-x-screen setup with multiple video outputs, e.g., a single x-screen,
+% dual-display stereo setup. For the workaround to work, you may have to logout
+% and login again once, as sometimes the system does not seem to pick up the new
+% settings until a logout/login cycle.
 %
-% 
+%
+% rc = PsychGPUControl('EnableCompizMultiDisplayWorkaround', enableFlag);
+% - Enable or disable workaround for a limitation of the Ubuntu Linux Unity GUI
+% if one wants to do multi-display visual stimulation on a single x-screen setup
+% or on X-Screen 0 of a multi x-screen setup. Trying to open a Psychtoolbox
+% fullscreen window on PTB screen 0 aka X-Screen 0 if that X-Screen has multiple
+% active displays attached, e.g., for dual-display stereo stimulation, can fail
+% to work without severe visual stimulation timing problems. This is due to a
+% design limitation of Unity's Compiz desktop compositor, as of Ubuntu 16.04.0 LTS
+% and earlier distribution versions. You can either solve this problem by switching
+% to a different desktop GUI environment like GNOME-3 or KDE, or by attaching all
+% visual stimulation displays to a secondary X-Screen, e.g., screen 1 (run XOrgConfCreator
+% to set up such a setup). If you want to use Unity, you can use this function to
+% enable a workaround that fixes the problem, either immediately or after a logout
+% and login. There are no known downsides of the workaround when using your system
+% with a single display attached. The downside of the workaround on multi-display
+% setups will be that while Psychtoolbox will work fine, during your regular use of
+% the desktop GUI, automatic window placement and resizing of regular GUI applications
+% may be suboptimal due to the workaround interfering. Windows will no longer maximize
+% on a single display screen if you ask them to, but over the whole desktop. You can
+% use this function to enable and disable the workaround if you tend to use your desktop
+% not only for multi-display stimulation, but also for regular multi-display desktop use.
+%
+% Set 'enableFlag' to 1 to enable the workaround for visual stimulation, and 0
+% to disable the workaround for more ergonomic multi-display desktop use.
+%
 
 % History:
 %  3.01.2010  mk  Written.
@@ -55,7 +85,7 @@ function rc = PsychGPUControl(cmd, varargin)
 % 16.01.2011  mk  Add function to control desktop composition on Linux with
 %                 Compiz.
 % 18.04.2013  mk  Add use of 64-Bit ATIRadeonperf_Linux64 exe on 64-Bit Linux.
-%
+% 26.04.2016  mk  Add 'EnableCompizMultiDisplayWorkaround' for multi-display setups.
 
 if nargin < 1
   error('Subfunction command argument missing!');
@@ -159,6 +189,49 @@ if strcmpi(cmd, 'FullScreenWindowDisablesCompositor')
       fprintf('This can cause visual onset timing problems! See ''help SyncTrouble'' - the Linux specific subsection for tips.\n');
     end
   end
+  return;
+end
+
+if strcmpi(cmd, 'EnableCompizMultiDisplayWorkaround')
+  if isempty(varargin)
+    error('EnableCompizMultiDisplayWorkaround: flag argument missing!');
+  end
+
+  workaround = varargin{1};
+  if ~ismember(workaround, 0:1)
+    error('EnableCompizMultiDisplayWorkaround: Invalid flag argument, not an integer of value 0 or 1!');
+  end
+
+  % Which OS?
+  if ~IsLinux
+    % Nothing to do on non-Linux as this is a Compiz on Linux only thing:
+    rc = 1;
+    return;
+  end
+
+  % Settings are persistent across sessions and (should) take effect immediately:
+  rc = [];
+  if workaround
+    newstate = 'en';
+    rc(end+1) = system(sprintf('dconf write /org/compiz/profiles/unity/plugins/core/outputs "[''50000x50000'']"'));
+    rc(end+1) = system(sprintf('dconf write /org/compiz/profiles/unity/plugins/core/detect-outputs false'));
+  else
+    newstate = 'dis';
+    rc(end+1) = system(sprintf('dconf write /org/compiz/profiles/unity/plugins/core/detect-outputs true'));
+  end
+
+  if ~all(rc)
+    rc = 0;
+    fprintf('PsychGPUControl:EnableCompizMultiDisplayWorkaround: Compiz workaround %sabled.\n', newstate);
+    fprintf('On some setups it may be neccessary to logout and login again for the workaround to be effective.\n');
+  else
+    rc = 1;
+    fprintf('PsychGPUControl:EnableCompizMultiDisplayWorkaround: FAILED to %sable Compiz workaround!\n', newstate);
+    fprintf('This can cause visual onset timing problems on setups with multiple stimulation displays attached to screen 0!\n');
+    fprintf('However, single-display setups, or multi-display setups on separate X-Screens, should be unaffected. Other desktop\n');
+    fprintf('environments like GNOME-3 or KDE, would not be affected either.\n');
+  end
+
   return;
 end
 
