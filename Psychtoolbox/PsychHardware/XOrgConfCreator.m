@@ -21,6 +21,7 @@ function XOrgConfCreator
 
 % History:
 % 04-Nov-2015  mk  Written.
+% 25-Apr-2016  mk  Add support for selection of modesetting ddx on XOrg 1.18+
 
 clc;
 
@@ -213,8 +214,44 @@ try
     triplebuffer = 'd';
     useuxa = 'd';
     dri3 = 'd';
+    modesetting = 'd';
   else
     % Ask questions for setup of advanced options:
+    modesetting = 'd';
+
+    % Which X-Server version is in use?
+    [rc, text] = system('xdpyinfo | grep ''X.Org version''');
+    if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting')
+      % XOrg 1.18.0 or later? xf86-video-modesetting is only good enough for our purposes on 1.18 and later.
+      % Also must be a Mesa version safe for use with DRI3/Present:
+      xversion = sscanf (text, 'X.Org version: %d.%d.%d');
+      if (xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 18)) && ...
+         strfind(winfo.GLVersion, 'Mesa') && (bitand(winfo.SpecialFlags, 2^24) > 0)
+        % Yes: The xf86-video-modesetting driver is an option that supports DRI3/Present well.
+        fprintf('\n\nDo you want to use the new kms modesetting driver xf86-video-modesetting?\n');
+        fprintf('This is a new video driver, which works with all open-source display drivers.\n');
+        fprintf('It is shown to be rather efficient, but not as feature rich and well tested as other drivers yet.\n');
+        fprintf('If you are not sure what to select, answer n for no as a safe choice.\n');
+        if multixscreen
+          fprintf('CAUTION: When setting up a multi-x-screen setup with modesetting, you must do this in two separate\n');
+          fprintf('CAUTION: steps. First run this script followed by XOrgConfSelector to select modesetting in a\n');
+          fprintf('CAUTION: single x-screen setup, then logout and login again. Then run XOrgConfCreator again, selecting\n');
+          fprintf('CAUTION: a multi-x-screen setup with the modesetting driver selected again. If you do not follow this\n');
+          fprintf('CAUTION: order you may end up with a dysfunctional graphical user interface!\n');
+        end
+        usemodesetting = '';
+        while isempty(usemodesetting) || ~ismember(usemodesetting, ['y', 'n', 'd'])
+          usemodesetting = input('Use modesetting driver [y for yes, n for no, d for don''t care]? ', 's');
+        end
+
+        % Only choose modesetting on explicit yes for now:
+        if usemodesetting == 'y'
+          xdriver = 'modesetting';
+          modesetting = 'y';
+        end
+      end
+    end
+
     if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
       fprintf('\n\nDo you want to allow the use of triple-buffering under DRI2?\n');
       fprintf('Triple buffering can potentially cause a slight increase in performance for very\n');
@@ -258,7 +295,7 @@ try
     end
 
     % Is the use of DRI3/Present safely possible with this combo of Mesa and X-Server?
-    if strfind(winfo.GLVersion, 'Mesa') && (bitand(winfo.SpecialFlags, 2^24) > 0)
+    if ~strcmp(xdriver, 'modesetting') && strfind(winfo.GLVersion, 'Mesa') && (bitand(winfo.SpecialFlags, 2^24) > 0)
       % Yes. Propose it:
       fprintf('\n\nDo you want to allow the use of the new DRI3/Present display backend?\n');
       fprintf('DRI3 is a new method of displaying content which is potentially more efficient\n');
@@ -304,7 +341,7 @@ Screen('Preference', 'Verbosity', oldVerbosity);
 % We have all information and answers we wanted. Synthesize a xorg.conf:
 
 % Actually any xorg.conf for non-standard settings needed?
-if (multixscreen == 0) && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd'
+if (multixscreen == 0) && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd'
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default. There isn't any need or purpose for
   % a xorg.conf file, so we are done.
@@ -317,9 +354,9 @@ end
 fdir = PsychtoolboxConfigDir ('XorgConfs');
 
 if multixscreen > 0
-  fname = [fdir sprintf('90-ptbconfig_%i_xscreens_%i_outputs.conf', screenNumber+1, totalAssignedOutputCnt)];
+  fname = [fdir sprintf('90-ptbconfig_%i_xscreens_%i_outputs_%s.conf', screenNumber+1, totalAssignedOutputCnt, xdriver)];
 else
-  fname = [fdir '90-ptbconfig_single_xscreen.conf'];
+  fname = [fdir sprintf('90-ptbconfig_single_xscreen_%s.conf', xdriver)];
 end
 
 fprintf('Ready to write the config file. I propose this filename and location:\n');
@@ -392,7 +429,8 @@ end
 % Done writing the file:
 fclose(fid);
 
-fprintf('We are done. Bye!\n\n');
+fprintf('\n\nWe are done. Now you can run XOrgConfSelector any time to select this configuration\n');
+fprintf('file to setup your system, or to switch back to the default setup of your system. Bye!\n\n');
 
 end
 
