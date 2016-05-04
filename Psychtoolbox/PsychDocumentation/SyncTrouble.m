@@ -204,7 +204,7 @@
 %
 % Further examples:
 %
-% On most systems, graphics adapters are only capable of properly timed
+% On all systems, graphics adapters are only capable of properly timed
 % bufferswaps and proper visual stimulus onset timestamps syncing to
 % retrace if the onscreen window is a full-screen window. Synchronization
 % fails if the onscreen window only covers part of the screen (i.e., when
@@ -365,19 +365,21 @@
 % fullscreen) windows, ie. windows which don't cover the complete desktop of
 % a Psychtoolbox screen (also known as X-Screen), or for transparent windows,
 % e.g., when the PsychDebugWindowConfiguration() command was used. Use of
-% rotated display output (90, 180, 270 degrees etc.) will also prevent
-% proper timing, just as on the other systems. Psychtoolbox PsychImaging
-% command and Panelfitter (cfe. PanelFitterDemo) provide means to rotate
-% or scale display output with correctly working timing.
+% rotated display output (90, 180, 270 degrees etc.) or mirror/clone mode
+% also prevents proper timing, just as on the other systems. Psychtoolbox
+% PsychImaging command and Panelfitter (cfe. PanelFitterDemo) provide means
+% to rotate or scale display output with correctly working timing.
 %
 % Your windows must be non-transparent, decoration/borderless, fullscreen
 % and cover a complete X-Window system screen. On a multi-display setup
 % that means that either your window must cover all connected displays, or
 % you need to setup separate X-Screens in the graphics driver control panel
-% GUI or via the /etc/X11/xorg.conf file for different displays, so that all
+% GUI or via a /etc/X11/xorg.conf file for different displays, so that all
 % stimulus displays are grouped in one (or multiple) X-Screen which are
 % fully covered by your PTB onscreen window, and other displays, e.g.,
-% operator GUI displays, are grouped into a different X-Screen.
+% operator GUI displays, are grouped into a different X-Screen. The most
+% easy way to set up such a configuration is to use the XOrgConfCreator
+% script, followed by use of the XOrgConfSelector script.
 %
 % 2. A major source of timing trouble can be 3D desktop compositors. Either
 % use a user interface that doesn't employ a desktop compositor, e.g., the
@@ -388,27 +390,40 @@
 % How to configure your desktop compositor to do this? On modern Linux
 % distributions, usually no manual steps are required for typical use:
 %
-% - Ubuntus Unity GUI under Ubuntu Linux 12.04.2 LTS or later doesn't
-%   require any setup.
+% - Ubuntu's Unity GUI under Ubuntu Linux 12.04.2 LTS or later doesn't
+%   require any setup for "single display single x-screen" setups, or for
+%   multi display setups if the visual stimulation display(s) are attached
+%   to one or multiple secondary X-Screens (screen 1, 2, ...). If you want
+%   to use multiple displays connected to the primary X-Screen (screen 0)
+%   for visual stimulation, you need to execute the following setup command
+%   once to configure the system for proper presentation timing:
+%
+%   PsychGPUControl('EnableCompizMultiDisplayWorkaround', 1);
 %
 % - On other GUI's with the Compiz compositor, the command ...
 %   PsychGPUControl('FullScreenWindowDisablesCompositor', 1);
 %   ... can do this setup step for you. It is executed automatically during
 %   installation of Psychtoolbox, so you usually don't need this command.
+%   Multi display stimulation for displays attached to X-Screen 0 may not
+%   work properly though, at least as tested on Ubuntu 16.04.0 LTS. In the
+%   unlikely case you would want to use such a setup on Compiz, ask on the
+%   Psychtoolbox forum for setup help for such legacy desktop environments.
 %
 % - On GNOME-3, no special setup is required.
 %
 % - On KDE with single display setup, usually no special setup is required.
 %
 % - KDE multi-display setups sometimes require some manual configuration:
-%   Do this: Open "KDE System Settings" -> "Desktop Effects" ->
+%   Do this on (K)Ubuntu 14.04 LTS: Open "KDE System Settings" -> "Desktop Effects" ->
 %   "Advanced" Tab -> "Suspend desktop effects for fullscreen windows"
 %   -> Check the checkbox -> "Apply" -> Done.
+%   On (K)Ubuntu 16.04.0 LTS, the setting may be found under "System Settings"
+%   -> "Monitors" -> "Compositor" instead.
 %
 %   If on KDE you still get warnings or errors by PTB related to display timing,
 %   or want maximum graphics performance, you can also try to completely
 %   disable desktop composition, either by pressing SHIFT + ALT + F12
-%   before the beginning and after the end of your experiment session, to
+%   before the beginning and after the end of your experiment session to
 %   completely disable the compositor during the runtime of your experiment
 %   script. Or you disable composition completely: Open "KDE System Settings"
 %   -> "Desktop Effects" -> Uncheck the "Enable desktop effects at startup"
@@ -416,8 +431,11 @@
 %   still very nice looking and ergonomic but frees up additional
 %   resources for PTB's graphics and timing requirements. This measure may
 %   be especially effective or needed when using an Intel graphics card.
+%   On (K)Ubuntu 16.04.0 LTS, the setting may be found under "System Settings"
+%   -> "Monitors" -> "Compositor" instead.
 %
-% If you'd use a different desktop compositor, or very old versions of
+%
+% If you would use a different desktop compositor, or very old versions of
 % compiz, you'd need to check the manuals/help of your system on how to enable
 % the option "unredirect_fullscreen_windows" manually. E.g., on old Ubuntu
 % systems you can install the "CompizConfig settings manager" GUI tool (CCSM),
@@ -464,16 +482,11 @@
 % read "help LinuxDrivers" instead on how to install customized graphics drivers
 % for your system which solve this and other problems in a more elegant way.
 %
-% If you use a different Linux distribution, read on for how to manually
-% configure the driver.
+% Use the XOrgConfCreator and XOrgConfSelector scripts to easily set up
+% your system for optimal timing or multi-display configurations in case.
+% These scripts will guide you through the setup.
 %
-% On Intel graphics drivers, add the options:
-%
-% Option "TripleBuffer"    "off"
-%
-% On the nouveau open-source graphics driver for NVidia cards, add:
-% Option "SwapLimit" "1"
-% Option "GLXVBlank" "on"
+% For very special needs - if XOrgConfCreator can not do the job for you:
 %
 % The Psychtoolbox subfolder "PsychHardware/LinuxX11ExampleXorgConfs/"
 % contains a collection of xorg.conf sample files which show how to

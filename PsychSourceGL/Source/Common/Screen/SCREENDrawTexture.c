@@ -249,8 +249,9 @@ PsychError SCREENDrawTextures(void)
     double* auxParameters;
     int numAuxParams, numAuxComponents;
     psych_bool isclassic;
-    int textureShader, backupShader;
+    int textureShader, backupShader = 0;
     int specialFlags = 0;
+    psych_bool batchIt = FALSE;
 
     //all subfunctions should have these two lines.
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -427,6 +428,23 @@ PsychError SCREENDrawTextures(void)
     // Assign any other optional special flags:
     PsychCopyInIntegerArg(10, kPsychArgOptional, &specialFlags);
 
+    // Check if efficient batch drawing is possible at the GL level:
+    if (isclassic && (numTexs == 1) && (numFilterModes <= 1)) {
+        batchIt = TRUE;
+    }
+    else {
+        batchIt = FALSE;
+    }
+
+    if (PsychPrefStateGet_Verbosity() > 5)
+        printf("PTB-DEBUG: DrawTextures optimized batch submit: %i\n", (int) batchIt);
+
+    if (batchIt) {
+        // Signal start of new batch with numRef drawn textures, all sourced from source and
+        // drawn into windo target with filterMode:
+        PsychBatchBlitTexturesToDisplay(0, numRef, source, target, NULL, NULL, 0, filterMode, 1.0);
+    }
+
     // Texture blitting loop:
     for (i=0; i < numRef; i++) {
         // Draw i'th texture:
@@ -509,7 +527,6 @@ PsychError SCREENDrawTextures(void)
                 if (mc==3) {
                     if (colors) {
                         // RGB double:
-                        glColor3dv(&(colors[i*3]));
                         target->currentColor[0]=colors[i*3 + 0];
                         target->currentColor[1]=colors[i*3 + 1];
                         target->currentColor[2]=colors[i*3 + 2];
@@ -517,7 +534,6 @@ PsychError SCREENDrawTextures(void)
                     }
                     else {
                         // RGB uint8:
-                        glColor3ubv(&(bytecolors[i*3]));
                         target->currentColor[0]=((double) bytecolors[i*3 + 0] / 255.0);
                         target->currentColor[1]=((double) bytecolors[i*3 + 1] / 255.0);
                         target->currentColor[2]=((double) bytecolors[i*3 + 2] / 255.0);
@@ -527,7 +543,6 @@ PsychError SCREENDrawTextures(void)
                 else {
                     if (colors) {
                         // RGBA double:
-                        glColor4dv(&(colors[i*4]));
                         target->currentColor[0]=colors[i*4 + 0];
                         target->currentColor[1]=colors[i*4 + 1];
                         target->currentColor[2]=colors[i*4 + 2];
@@ -535,7 +550,6 @@ PsychError SCREENDrawTextures(void)
                     }
                     else {
                         // RGBA uint8:
-                        glColor4ubv(&(bytecolors[i*4]));
                         target->currentColor[0]=((double) bytecolors[i*4 + 0] / 255.0);
                         target->currentColor[1]=((double) bytecolors[i*4 + 1] / 255.0);
                         target->currentColor[2]=((double) bytecolors[i*4 + 2] / 255.0);
@@ -557,16 +571,23 @@ PsychError SCREENDrawTextures(void)
         if (specialFlags & kPsychUseTextureMatrixForRotation) source->specialflags|=kPsychUseTextureMatrixForRotation;
         if (specialFlags & kPsychDontDoRotation) source->specialflags|=kPsychDontDoRotation;
 
-        // Perform blit operation for i'th texture, either with or without an override texture shader applied:
         if (textureShader > -1) {
             backupShader = source->textureFilterShader;
             source->textureFilterShader = -1 * textureShader;
-            PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, (int) filterMode, globalAlpha);
-            source->textureFilterShader = backupShader;
+        }
+
+        if (batchIt) {
+            // Add current element to the batch to be drawn:
+            PsychBatchBlitTexturesToDisplay(2, numRef, source, target, sourceRect, targetRect, rotationAngle, (int) filterMode, globalAlpha);
         }
         else {
+            // Perform blit operation for i'th texture, either with or without an override texture shader applied:
+            glColor4dv(target->currentColor);
             PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, (int) filterMode, globalAlpha);
         }
+
+        if (textureShader > -1)
+            source->textureFilterShader = backupShader;
 
         // Reset rotation mode flag:
         source->specialflags &= ~(kPsychUseTextureMatrixForRotation | kPsychDontDoRotation);
@@ -576,6 +597,11 @@ PsychError SCREENDrawTextures(void)
 
     target->auxShaderParams = NULL;
     target->auxShaderParamsCount = 0;
+
+    if (batchIt) {
+        // Finalize batch drawing:
+        PsychBatchBlitTexturesToDisplay(1, numRef, source, target, NULL, NULL, 0, filterMode, 1.0);
+    }
 
     // Mark end of drawing op. This is needed for single buffered drawing:
     PsychFlushGL(target);
