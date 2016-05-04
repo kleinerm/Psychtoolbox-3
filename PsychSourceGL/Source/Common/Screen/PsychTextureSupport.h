@@ -1,20 +1,18 @@
 /*
-	PsychToolbox3/Source/Common/Screen/PsychTextureSupport.h
-	
-	PLATFORMS:	This is the OS independent version.  
-				
-	AUTHORS:
-	Allen Ingling		awi     Allen.Ingling@nyu.edu
-	Mario Kleiner		mk      mario.kleiner@tuebingen.mpg.de
+    PsychToolbox3/Source/Common/Screen/PsychTextureSupport.h
 
-    HISTORY:
+    AUTHORS:
 
-    3/9/04		awi		Wrote it 
-							
-	DESCRIPTION:
-	
-	Psychtoolbox functions for dealing with textures.
+    Allen Ingling       awi     Allen.Ingling@nyu.edu
+    Mario Kleiner       mk      mario.kleiner.de@gmail.com
 
+HISTORY:
+
+    3/9/2004  awi     Wrote it
+
+    DESCRIPTION:
+
+    Psychtoolbox functions for dealing with textures.
 */
 
 //include once
@@ -31,6 +29,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 GLenum PsychGetTextureTarget(PsychWindowRecordType *win);
 void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty);
 void PsychDetectTextureTarget(PsychWindowRecordType *win);
-
+void PsychBatchBlitTexturesToDisplay(unsigned int opMode, unsigned int count, PsychWindowRecordType *source, PsychWindowRecordType *target, double *sourceRect, double *targetRect,
+                                     double rotationAngle, int filterMode, double globalAlpha);
 //end include once
 #endif

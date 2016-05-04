@@ -798,16 +798,18 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         if (texturetarget != GL_TEXTURE_2D) PsychErrorExitMsg(PsychError_user, "You asked me to use mip-mapped texture filtering on a texture that is not of GL_TEXTURE_2D type! Unsupported.");
 
         if (NULL != glGenerateMipmapEXT) {
+            GLint mipattrib = 0;
+
             // Select highest quality downsampling method:
             glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
 
             // Is automatic mipmap generation already enabled for this texture?
-            glGetTexParameteriv(texturetarget, GL_GENERATE_MIPMAP, &attrib);
+            glGetTexParameteriv(texturetarget, GL_GENERATE_MIPMAP, &mipattrib);
 
             // Need to manually trigger regen if automatic mode not yet enabled, or
             // if the "dirty" flag is set, because some render-to-texture activity has
             // happened since last drawing this texture, which is not covered by the auto-update:
-            if (source->needsViewportSetup || !attrib) {
+            if (source->needsViewportSetup || !mipattrib) {
                 // No: We trigger hardware-accelerated mipmap generation manually for this draw call:
                 glGenerateMipmapEXT(texturetarget);
 
@@ -1317,5 +1319,603 @@ void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
     *ty = sourceY;
 
     // Done.
+    return;
+}
+
+static float transX, transY;
+static float crt, srt;
+static unsigned int useXForm = 0;
+
+static inline void glVertexXform(GLfloat x, GLfloat y)
+{
+    GLfloat xo, yo;
+
+    if (useXForm == 1) {
+        x = x - transX;
+        y = y - transY;
+
+        xo = crt * x - srt * y;
+        yo = srt * x + crt * y;
+
+        xo = xo + transX;
+        yo = yo + transY;
+    }
+    else {
+        xo = x;
+        yo = y;
+    }
+
+    glVertex2f(xo, yo);
+}
+
+static inline void glTexCoordXform(GLfloat x, GLfloat y)
+{
+    GLfloat xo, yo;
+
+    if (useXForm == 2) {
+        x = x - transX;
+        y = y - transY;
+
+        xo = crt * x - srt * y;
+        yo = srt * x + crt * y;
+
+        xo = xo + transX;
+        yo = yo + transY;
+    }
+    else {
+        xo = x;
+        yo = y;
+    }
+
+    glTexCoord2f(xo, yo);
+}
+
+void PsychBatchBlitTexturesToDisplay(unsigned int opMode, unsigned int count, PsychWindowRecordType *source, PsychWindowRecordType *target, double *sourceRect, double *targetRect,
+                                     double rotationAngle, int filterMode, double globalAlpha)
+{
+    static unsigned int index = 0;
+    static float *vertices, *colors, *texcoords;
+
+    static GLint attribs[11];
+    static GLenum texturetarget;
+    static GLint textureNumber = -1;
+    static GLint mattrib = -1;
+    static GLuint shader = 0;
+    static int tWidth = 0, tHeight = 0;
+    static double oldRotationAngle;
+    static GLdouble sourceWidth, sourceHeight;
+
+    GLint attrib;
+    GLdouble sourceX, sourceY, sourceXEnd, sourceYEnd;
+
+    if (opMode == 0) {
+        // Start new batch:
+        if (vertices || colors || texcoords)
+            PsychErrorExitMsg(PsychError_internal, "Non-NULL arrays at start of batch for opMode 0!\n");
+
+        index = 0;
+        //vertices = malloc(count * 2 *sizeof(float));
+        //colors = malloc(count * 4 * sizeof(float));
+        //texcoords = malloc(count * 2 * sizeof(float));
+
+        // Enable targets framebuffer as current drawingtarget, except if this is a
+        // blit operation from a window into itself and the imaging pipe is on:
+        if ((source != target) || (target->imagingMode==0)) {
+            PsychSetDrawingTarget(target);
+        }
+        else {
+            // Activate rendering context of target window without changing drawing target:
+            PsychSetGLContext(target);
+        }
+
+        // Disable Transform:
+        useXForm = 0;
+        oldRotationAngle = 0;
+
+        shader = 0;
+        return;
+    }
+
+    if (opMode == 1) {
+        // Finalize this batch:
+
+        // DRAW DRAW DRAW DRAW!
+
+        glEnd();
+
+        // Disable Transform:
+        useXForm = 0;
+        oldRotationAngle = 0;
+
+        // Only disable texture mapping if we actually enabled it.
+        if (textureNumber > 0) {
+            // Reset filters to nearest: This is important in case this texture
+            // is used as color buffer attachment of a FBO, because using the
+            // FBO would fail in puzzling ways if filtermode!=GL_NEAREST.
+            glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+            // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
+            if  ((texturetarget == GL_TEXTURE_2D) && !PsychIsGLES(source)) {
+                glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+                glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+            }
+
+            // Unbind texture:
+            glBindTexture(texturetarget, 0);
+            glDisable(texturetarget);
+        }
+
+        //free(vertices);
+        vertices = NULL;
+        //free(colors);
+        colors = NULL;
+        //free(texcoords);
+        texcoords = NULL;
+
+        return;
+    }
+
+    // opMode 2: Add a new texture to buffers:
+
+    // First element to draw? Need some more setup from information derived from
+    // first item:
+    if (index == 0) {
+        // Setup texture-target if not already done:
+        PsychDetectTextureTarget(target);
+
+        // Query target for this specific texture:
+        texturetarget = PsychGetTextureTarget(source);
+
+        // 0 == Transposed as from Matlab image array. 2 == Offscreen window in normal orientation.
+        if (source->textureOrientation == 2) {
+            sourceHeight=PsychGetHeightFromRect(source->rect);
+            sourceWidth=PsychGetWidthFromRect(source->rect);
+        }
+        else {
+            sourceHeight=PsychGetWidthFromRect(source->rect);
+            sourceWidth=PsychGetHeightFromRect(source->rect);
+        }
+
+        // Overrides for special cases: Upside-down texture.
+        if (source->textureOrientation == 3) {
+            sourceHeight=PsychGetHeightFromRect(source->rect);
+            sourceWidth=PsychGetWidthFromRect(source->rect);
+        }
+
+        // This case can happen with some QT movies, they are upside down in an unusual way:
+        if (source->textureOrientation == 4) {
+            sourceHeight=PsychGetHeightFromRect(source->rect);
+            sourceWidth=PsychGetWidthFromRect(source->rect);
+        }
+
+        // Special case handling for GL_TEXTURE_2D textures. We need to map the
+        // absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
+        // 1.0 == full extent of power of two texture...
+        if (texturetarget == GL_TEXTURE_2D) {
+            // NPOT supported?
+            if (!(source->gfxcaps & kPsychGfxCapNPOTTex)) {
+                // No: Find size of real underlying texture (smallest power of two which is
+                // greater than or equal to the image size:
+                tWidth=1;
+                while (tWidth < (int) sourceWidth) tWidth*=2;
+                tHeight=1;
+                while (tHeight < (int) sourceHeight) tHeight*=2;
+            }
+            else {
+                // Yes:
+                tWidth = (int) sourceWidth;
+                tHeight = (int) sourceHeight;
+            }
+        }
+
+        // Only enable actual texture hardware if a real texture is provided.
+        // In the case of no real texture, we don't bind a real texture, don't
+        // enable texture mapping and just blit the quad, with interpolated
+        // texture coordinates set up for purely procedural shading.
+        glDisable(GL_TEXTURE_2D);
+        if (source->textureNumber > 0) {
+            glEnable(texturetarget);
+            glBindTexture(texturetarget, source->textureNumber);
+        }
+
+        // Use of OpenGL mip-mapping requested? And automatic mipmap generation wanted - aka not forbidden?
+        if (!(source->specialflags & kPsychDontAutoGenMipMaps) && (filterMode < 0 || filterMode > 1)) {
+            // Yes: Automatically build a mip-map pyramid.
+            if (texturetarget != GL_TEXTURE_2D) PsychErrorExitMsg(PsychError_user, "You asked me to use mip-mapped texture filtering on a texture that is not of GL_TEXTURE_2D type! Unsupported.");
+
+            if (NULL != glGenerateMipmapEXT) {
+                GLint mipattrib = 0;
+
+                // Select highest quality downsampling method:
+                glHint(GL_GENERATE_MIPMAP_HINT, GL_NICEST);
+
+                // Is automatic mipmap generation already enabled for this texture?
+                glGetTexParameteriv(texturetarget, GL_GENERATE_MIPMAP, &mipattrib);
+
+                // Need to manually trigger regen if automatic mode not yet enabled, or
+                // if the "dirty" flag is set, because some render-to-texture activity has
+                // happened since last drawing this texture, which is not covered by the auto-update:
+                if (source->needsViewportSetup || !mipattrib) {
+                    // No: We trigger hardware-accelerated mipmap generation manually for this draw call:
+                    glGenerateMipmapEXT(texturetarget);
+
+                    // Enable automatic mipmap generation for future updates to this texture object. This
+                    // will automatically trigger regen if new image content is uploaded into this texture
+                    // object:
+                    glTexParameteri(texturetarget, GL_GENERATE_MIPMAP, GL_TRUE);
+
+                    // Clear "dirty" flag:
+                    source->needsViewportSetup = FALSE;
+                }
+            }
+            else if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Was asked to draw a texture with mip-mapping, but automatic mipmap generation unsupported by this system! Check your stimulus!\n");
+            }
+        }
+
+        // Linear filtering on non-capable hardware via shader emulation?
+        if ((filterMode != 0) && (source->textureFilterShader > 0)) {
+            // Yes. Bind the shader:
+            shader = source->textureFilterShader;
+            if (0 == PsychSetShader(target, shader)) PsychErrorExitMsg(PsychError_user, "Tried to use a bilinear texture filter shader, but your hardware doesn't support GLSL shaders.");
+
+            if (filterMode < 0 || filterMode > 1) {
+                // Some mip-mapped filtermode. Choose nearest neighbour sampling within mipmap levels, so shader can decide about sample locations itself.
+                // In filterMode 2 choose the nearest mipmap, in others interpolate linearly between two nearest mipmap levels:
+                glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, (filterMode == 2) ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST_MIPMAP_LINEAR);
+                glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            }
+            else {
+                // No mip-mapping: Switch hardware samplers into nearest neighbour mode so we don't get any interference:
+                glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+            }
+
+            // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
+            // This makes even sense for negative filterMode arguments, because the filterMode
+            // parameter is passed as an attribute to the filtershader, so the shader itself can
+            // decide how to implement a specific blur level on its own, unrestricted by us:
+            if ((texturetarget == GL_TEXTURE_2D) && !PsychIsGLES(source)) {
+                glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+                glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+            }
+        }
+        else {
+            // Standard hardware texture sampling/filtering: Select filter-mode for texturing:
+            if (filterMode >= 0) {
+                // Select specific hardware sampling strategy:
+                switch (filterMode) {
+                    case 0: // Nearest-Neighbour filtering:
+                        glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                        glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                        break;
+
+                    case 1: // Bilinear filtering:
+                        glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                        glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                        break;
+
+                    case 2: // Linear filtering with nearest neighbour mipmapping:
+                        glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+                        glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                        break;
+
+                    case 3: // Linear filtering with linear mipmapping --> This is full trilinear filtering:
+                        glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+                        glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                        break;
+
+                    case 4: // Nearest-Neighbour filtering with nearest neighbour mipmapping:
+                        glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+                        glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                        break;
+
+                    case 5: // Nearest-Neighbour filtering with linear mipmapping:
+                        glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
+                        glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                        break;
+                }
+
+                // Don't restrict mipmap-levels for sampling, reset to initial system defaults:
+                if ((texturetarget == GL_TEXTURE_2D) && !PsychIsGLES(source)) {
+                    glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, 0);
+                    glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  1000);
+                }
+            }
+            else {
+                // Negative filterMode: This is mostly meant for fast drawing of blurred (low-pass filtered) textures
+                // by selecting a specific integral mip-level:
+                glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+                glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+                // A negative filterMode means to select a specific mip-level in the
+                // mipmap pyramid, according to the filterMode, starting with mip level 0, i.e,
+                // full resolution for a value of -1, then level 1 aka half-resolution for a value
+                // of -2 etc.:
+                if ((texturetarget == GL_TEXTURE_2D) && !PsychIsGLES(source)) {
+                    glTexParameteri(texturetarget, GL_TEXTURE_BASE_LEVEL, (-1 * filterMode) - 1);
+                    glTexParameteri(texturetarget, GL_TEXTURE_MAX_LEVEL,  (-1 * filterMode) - 1);
+                }
+            }
+
+            // Optional texture lookup shader set up (in Screen('MakeTexture') or due to disabled color clamping...)
+            if (source->textureLookupShader > 0) {
+                shader = source->textureLookupShader;
+                if (0 == PsychSetShader(target, shader)) PsychErrorExitMsg(PsychError_user, "Tried to use a texture lookup shader, but your hardware doesn't support GLSL shaders.");
+            }
+        }
+
+        // Support for basic shading during texture blitting: Useful for very simple
+        // single-pass isotropic image processing and for procedural texture mapping:
+        if (source->textureFilterShader < 0) {
+            // User supplied texture shader for either some on-the-fly texture image processing,
+            // or for procedural texture shading/on-the-fly texture synthesis. These can be
+            // assigned in Screen('MakeTexture') for procedural texture shading or via a
+            // optional shader handle to Screen('DrawTexture');
+            shader = -1 * source->textureFilterShader;
+            if (0 == PsychSetShader(target, shader)) PsychErrorExitMsg(PsychError_user, "Tried to use a user defined texture shader or procedural texture, but your hardware doesn't support GLSL shaders.");
+
+            // Query and cache all vertex attrib locations - Can't do within glBegin/End():
+            attribs[0] = glGetAttribLocationARB(shader, "srcRect");
+            attribs[1] = glGetAttribLocationARB(shader, "dstRect");
+            attribs[2] = glGetAttribLocationARB(shader, "sizeAngleFilterMode");
+            attribs[3] = glGetAttribLocationARB(shader, "auxParameters0");
+            attribs[4] = glGetAttribLocationARB(shader, "auxParameters1");
+            attribs[5] = glGetAttribLocationARB(shader, "auxParameters2");
+            attribs[6] = glGetAttribLocationARB(shader, "auxParameters3");
+            attribs[7] = glGetAttribLocationARB(shader, "auxParameters4");
+            attribs[8] = glGetAttribLocationARB(shader, "auxParameters5");
+            attribs[9] = glGetAttribLocationARB(shader, "auxParameters6");
+            attribs[10] = glGetAttribLocationARB(shader, "auxParameters7");
+        }
+
+        if (shader > 0) {
+            // In case our texture (filter)/(lookup) shader also requests/defines a 'modulateColor'
+            // attribute in its vertex shader part, this attribute is assigned the
+            // unclamped RGBA 'modulateColor' after normalization via the colorrange
+            // value of Screen('ColorRange'), or the unclamped globalAlpha value:
+            mattrib = glGetAttribLocationARB(shader, "modulateColor");
+        }
+        else {
+            // Not needed:
+            mattrib = -1;
+        }
+
+        // Setup texture wrap-mode: We usually default to clamping - the best we can do
+        // for the rectangle textures we usually use. Special case is the intentional
+        // use of power-of-two textures with a real power-of-two size. In that case we
+        // enable wrapping mode to allow for scrolling effects -- useful for drifting
+        // gratings.
+        if (texturetarget==GL_TEXTURE_2D && tWidth==sourceWidth && tHeight==sourceHeight) {
+            // Special case: Scrollable real power-of-two textures. Enable wrapping.
+            glTexParameteri(texturetarget, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(texturetarget, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        }
+        else {
+            // Default: Clamp to edge.
+            glTexParameteri(texturetarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(texturetarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        }
+
+        // We use GL_MODULATE texture application mode together with the special rectangle color
+        // (1,1,1,globalAlpha) -- This way, the alpha blending value is the product of the alpha-
+        // value of each texel and the globalAlpha value. --> Can apply global alpha value for
+        // global blending without need for a texture alpha-channel...
+        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+        // Test for standard case: No shader requested for this texture. In that case we make sure that really no shader is bound.
+        if (shader == 0) {
+            PsychSetShader(target, 0);
+        }
+        else {
+            #if PSYCH_SYSTEM == PSYCH_OSX
+            // On OS-X we can query the OS if the bound shader is running on the GPU or if it is running in emulation mode on the CPU.
+            // This is an expensive operation - it triggers OpenGL internal state revalidation. Only use for debugging and testing!
+            if (PsychPrefStateGet_Verbosity() > 10) {
+                GLint vsgpu=0, fsgpu=0;
+                CGLGetParameter(CGLGetCurrentContext(), kCGLCPGPUVertexProcessing, &vsgpu);
+                CGLGetParameter(CGLGetCurrentContext(), kCGLCPGPUFragmentProcessing, &fsgpu);
+                printf("PTB-DEBUG: In Screen('DrawTextures') aka PsychBatchBlitTexturesToDisplay():  GPU shading state: Vertex processing on %s : Fragment processing on %s.\n", (vsgpu) ? "GPU" : "CPU!!", (fsgpu) ? "GPU" : "CPU!!");
+            }
+            #endif
+        }
+
+        textureNumber = source->textureNumber;
+
+        glBegin(GL_QUADS);
+
+        // End of prep for first texture quad.
+    }
+
+    // 0 == Transposed as from Matlab image array. 2 == Offscreen window in normal orientation.
+    if (source->textureOrientation == 2) {
+        sourceX=sourceRect[kPsychLeft];
+        sourceY=sourceHeight - sourceRect[kPsychBottom];
+        sourceXEnd=sourceRect[kPsychRight];
+        sourceYEnd=sourceHeight - sourceRect[kPsychTop];
+    }
+    else {
+        sourceX=sourceRect[kPsychTop];
+        sourceY=sourceRect[kPsychLeft];
+        sourceXEnd=sourceRect[kPsychBottom];
+        sourceYEnd=sourceRect[kPsychRight];
+    }
+
+    // Overrides for special cases: Upside-down texture.
+    if (source->textureOrientation == 3) {
+        sourceX=sourceRect[kPsychLeft];
+        sourceY=sourceRect[kPsychBottom];
+        sourceXEnd=sourceRect[kPsychRight];
+        sourceYEnd=sourceRect[kPsychTop];
+    }
+
+    // This case can happen with some QT movies, they are upside down in an unusual way:
+    if (source->textureOrientation == 4) {
+        sourceX=sourceRect[kPsychLeft];
+        sourceY=sourceHeight - sourceRect[kPsychBottom];
+        sourceXEnd=sourceRect[kPsychRight];
+        sourceYEnd=sourceHeight - sourceRect[kPsychTop];
+    }
+
+    // Special case handling for GL_TEXTURE_2D textures. We need to map the
+    // absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
+    // 1.0 == full extent of power of two texture...
+    if (texturetarget == GL_TEXTURE_2D) {
+        // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
+        // mapping to accomodate for roundoff-error in the power-of-two gfx
+        // hardware...
+        // For a good intro into the issue of texture border seams, due to interpolation
+        // problems at texture borders, see:
+        // http://home.planet.nl/~monstrous/skybox.html
+        sourceXEnd-=0.5f;
+        sourceYEnd-=0.5f;
+
+        // Remap:
+        sourceX=sourceX / (double) tWidth;
+        sourceXEnd=sourceXEnd / (double) tWidth;
+        sourceY=sourceY / (double) tHeight;
+        sourceYEnd=sourceYEnd / (double) tHeight;
+    }
+
+    // Any automatic shader assigned yet?
+    if (shader > 0 && mattrib >= 0) {
+        if (globalAlpha == DBL_MAX) {
+            // globalAlpha disabled: Pass the 'modulateColor' vector:
+            glVertexAttrib4dvARB(mattrib, target->currentColor);
+        }
+        else {
+            // modulateColor disabled: Pass (1,1,1) as RGB color and globalAlpha as alpha:
+            glVertexAttrib4fARB(mattrib, 1.0, 1.0, 1.0, (GLfloat) globalAlpha);
+        }
+    }
+
+    // Fixed function pipeline color assignment:
+    if (globalAlpha == DBL_MAX) {
+        glColor4dv(target->currentColor);
+    }
+    else {
+        glColor4f(1, 1, 1, (GLfloat) globalAlpha);
+    }
+
+    if ((rotationAngle != 0) && !(source->specialflags & kPsychDontDoRotation)) {
+        // Apply a rotation transform for rotated drawing, either to modelview-,
+        // or texture matrix.
+        if (!(source->specialflags & kPsychUseTextureMatrixForRotation)) {
+            // Standard case: Transform quad vertex coordinates:
+            useXForm = 1;
+            transX=(targetRect[kPsychRight] + targetRect[kPsychLeft]) * 0.5;
+            transY=(targetRect[kPsychTop] + targetRect[kPsychBottom]) * 0.5;
+        }
+        else {
+            // Transform texture coordinates:
+            useXForm = 2;
+            transX=(sourceX + sourceXEnd) * 0.5;
+            transY=(sourceY + sourceYEnd) * 0.5;
+        }
+
+        // Avoid redundant updates of rotation transform 2D "matrix":
+        if (rotationAngle != oldRotationAngle) {
+            double rotAngleRad;
+
+            // New angle. Update rotation matrix coefficients:
+            rotAngleRad = rotationAngle * M_PI / 180.0;
+            crt = cos(rotAngleRad);
+            srt = sin(rotAngleRad);
+        }
+    }
+    else {
+        // Disable transform:
+        useXForm = 0;
+    }
+
+    oldRotationAngle = rotationAngle;
+
+    // Support for basic shading during texture blitting: Useful for very simple
+    // single-pass isotropic image processing and for procedural texture mapping:
+    if (source->textureFilterShader < 0) {
+        // User supplied texture shader for either some on-the-fly texture image processing,
+        // or for procedural texture shading/on-the-fly texture synthesis already assigned
+        // at first quad submission above.
+        //
+        // Now need parameter transfer for advanced procedural shading:
+        // We encode all parameters about the blit operation into additional
+        // vertex attributes so a complex shader can derive useful information.
+
+        // 'srcRect' parameter: The glTexCoord() calls below encode texture coordinates
+        // - and thereby the corners of 'srcRect' - into each vertex, however this
+        // info gets potentially transformed by the texture matrix, also each vertex
+        // only sees one corner of the srcRect: Therefore we encode srcrect = [left top right bottom]
+        // on demand:
+        if (attribs[0] >= 0) glVertexAttrib4fARB(attribs[0], (GLfloat) sourceRect[kPsychLeft], (GLfloat) sourceRect[kPsychTop], (GLfloat) sourceRect[kPsychRight], (GLfloat) sourceRect[kPsychBottom]);
+
+        // 'dstRect' parameter: The glVertex() calls below encode target pixel coordinates
+        // - and thereby the corners of 'dstRect' - into each vertex, however this
+        // info gets potentially transformed by the modelview/proj. matrix, also each vertex
+        // only sees one corner of the dstRect: Therefore we encode dstrect = [left top right bottom]
+        // on demand:
+        if (attribs[1] >= 0) glVertexAttrib4fARB(attribs[1], (GLfloat) targetRect[kPsychLeft], (GLfloat) targetRect[kPsychTop], (GLfloat) targetRect[kPsychRight], (GLfloat) targetRect[kPsychBottom]);
+
+        // 'sizeAngleFilterMode' - if requested - encodes texture width in .x component, height in .y
+        // requested rotationAngle in .z and the 'filterMode' flags in .w:
+        if (attribs[2] >= 0) glVertexAttrib4fARB(attribs[2], (GLfloat) sourceWidth, (GLfloat) sourceHeight, (GLfloat) rotationAngle, (GLfloat) filterMode);
+
+        // 'auxParameters0' is the first for components (rows) of the 'auxParameters' argument
+        // of Screen('DrawTexture(s)') - if such an argument was spec'd:
+        if (target->auxShaderParams) {
+            if ((target->auxShaderParamsCount >=4) && (attribs[3] >= 0)) glVertexAttrib4dvARB(attribs[3], target->auxShaderParams);
+            if ((target->auxShaderParamsCount >=8) && (attribs[4] >= 0)) glVertexAttrib4dvARB(attribs[4], &(target->auxShaderParams[4]));
+            if ((target->auxShaderParamsCount >=12) && (attribs[5] >= 0)) glVertexAttrib4dvARB(attribs[5], &(target->auxShaderParams[8]));
+            if ((target->auxShaderParamsCount >=16) && (attribs[6] >= 0)) glVertexAttrib4dvARB(attribs[6], &(target->auxShaderParams[12]));
+            if ((target->auxShaderParamsCount >=20) && (attribs[7] >= 0)) glVertexAttrib4dvARB(attribs[7], &(target->auxShaderParams[16]));
+            if ((target->auxShaderParamsCount >=24) && (attribs[8] >= 0)) glVertexAttrib4dvARB(attribs[8], &(target->auxShaderParams[20]));
+            if ((target->auxShaderParamsCount >=28) && (attribs[9] >= 0)) glVertexAttrib4dvARB(attribs[9], &(target->auxShaderParams[24]));
+            if ((target->auxShaderParamsCount >=32) && (attribs[10] >= 0)) glVertexAttrib4dvARB(attribs[10], &(target->auxShaderParams[28]));
+        }
+    }
+
+    // Coordinate assignments depend on internal texture orientation...
+    if (source->textureOrientation == 2 ||
+        source->textureOrientation == 3 || source->textureOrientation == 4) {
+        // Use "normal" coordinate assignments, so that the rotation == 0 deg. case
+        // is the fastest case --> Most common orientation has highest performance.
+        //lower left
+        glTexCoordXform((GLfloat)sourceX, (GLfloat)sourceYEnd);
+        glVertexXform((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));        //upper left vertex in window
+
+        //upper left
+        glTexCoordXform((GLfloat)sourceX, (GLfloat)sourceY);
+        glVertexXform((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));     //lower left vertex in window
+
+        //upper right
+        glTexCoordXform((GLfloat)sourceXEnd, (GLfloat)sourceY);
+        glVertexXform((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );   //lower right  vertex in window
+
+        //lower right
+        glTexCoordXform((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);
+        glVertexXform((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));       //upper right in window
+    }
+    else {
+        // Use swapped texture coordinates....
+        //lower left
+        glTexCoordXform((GLfloat)sourceX, (GLfloat)sourceY);                                       //lower left vertex in  window
+        glVertexXform((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));        //upper left vertex in window
+
+        //upper left
+        glTexCoordXform((GLfloat)sourceXEnd, (GLfloat)sourceY);                                    //upper left vertex in texture
+        glVertexXform((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));     //lower left vertex in window
+
+        //upper right
+        glTexCoordXform((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);                                 //upper right vertex in texture
+        glVertexXform((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );   //lower right  vertex in window
+
+        //lower right
+        glTexCoordXform((GLfloat)sourceX, (GLfloat)sourceYEnd);                                    //lower right in texture
+        glVertexXform((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));       //upper right in window
+    }
+
+    index++;
+
+    // Finished!
     return;
 }

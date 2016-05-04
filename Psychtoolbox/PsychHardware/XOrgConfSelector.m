@@ -15,6 +15,7 @@ function XOrgConfSelector(sdir)
 
 % History:
 % 04-Nov-2015  mk  Created.
+% 25-Apr-2016  mk  Add troubleshooting tips in case somebody needs them.
 
   if nargin < 1 || isempty(sdir)
     sdir = PsychtoolboxConfigDir ('XorgConfs');
@@ -45,20 +46,27 @@ function XOrgConfSelector(sdir)
     % Remove existing file:
     if exist('/etc/X11/xorg.conf.d/90-ptbxorg.conf')
       delete('/etc/X11/xorg.conf.d/90-ptbxorg.conf');
-      fprintf('Removed the old existing xorg.conf file from the X11 config folder. under\n');
+      fprintf('Removed the old existing xorg.conf file from the X11 config folder under:\n');
       updated = 1;
     else
-      fprintf('There isn''t any old configuration file to remove in the X11 config folder under\n');
+      fprintf('There isn''t any old configuration file to remove in the X11 config folder under:\n');
     end
   else
     % Copy selected file into the X11 config directory:
     copyfile([sdir conffiles{answer}], '/etc/X11/xorg.conf.d/90-ptbxorg.conf');
-    fprintf('Copied the xorg.conf file into the X11 config folder. under\n');
+    fprintf('Copied the xorg.conf file into the X11 config folder under:\n');
     updated = 1;
   end
 
   fprintf('/etc/X11/xorg.conf.d/90-ptbxorg.conf\n\n');
+
   if updated
-    fprintf('Now please logout and login again for the configuration to take effect.\n\n');
+    fprintf('Troubleshooting tip in case of emergency:\n\n');
+    fprintf('In case something goes seriously wrong and you end up with a non-functioning GUI,\n');
+    fprintf('you can always press(*) ''CTRL+ALT+F1'', which provides you with a text console. Then login\n');
+    fprintf('there, run octave or matlab from the text console and call XOrgConfSelector to remove\n');
+    fprintf('the troublesome config file. Or type this: rm /etc/X11/xorg.conf.d/90-ptbxorg.conf\n\n');
+    fprintf('(*)Apple computer users may need to press ''FN+CTRL+ALT+F1'' instead of CTRL+ALT+F1\n\n');
+    fprintf('Now please logout and login again for the new configuration to take effect.\n\n');
   end
 end
