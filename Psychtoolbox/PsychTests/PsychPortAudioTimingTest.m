@@ -125,6 +125,13 @@ freq = 44100;       % Must set this. 96khz, 48khz, 44.1khz.
 buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
 suggestedLatencySecs = [];
 
+if IsARM
+    % ARM processor, probably the RaspberryPi SoC. This can not quite handle the
+    % low latency settings of a Intel PC, so be more lenient:
+    suggestedLatencySecs = 0.025 %#ok<NOPRT>
+    fprintf('Choosing a high suggestedLatencySecs setting of 25 msecs to account for lower performing ARM SoC.\n');
+end
+
 if IsWin
     % Hack to accomodate bad Windows systems or sound cards. By default,
     % the more aggressive default setting of something like 5 msecs can
