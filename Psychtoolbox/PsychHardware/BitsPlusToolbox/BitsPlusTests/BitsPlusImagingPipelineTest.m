@@ -70,7 +70,7 @@ if answer == 'd'
     BitsPlusPlus('SetTargetDeviceType', 1);
 else
     % Tell BitsPlusPlus driver that this is operating on a Bits+ or Bits# :
-    BitsPlusPlus('SetTargetDeviceType', 0);    
+    BitsPlusPlus('SetTargetDeviceType', 0);
 end
 
 % If it is a Bits#, open a connection to it:
