@@ -63,6 +63,17 @@ function varargout = PsychProPixx(cmd, varargin)
 % image onset for the whole composite image, otherwise it will return
 % as 0 if an image has just been queued for presentation.
 %
+% If you pass a 'tWhen' value of -1 then the Screen('Flip') is not executed
+% automatically. Instead 'presenting' is returned as 1 when a flip needs to
+% be performed as soon as possible, and you need to manually call the function
+% presenting = PsychProPixx('Flip' [, tWhen]); to trigger the actual flip. The
+% return value 'presenting' has the same meaning as the one of 'QueueImage'.
+% This allows to split queuing and processing of stimulus images from actually
+% flipping. This allows to overlap cpu computations in Octave/Matlab with gpu
+% rendering better, by putting the cpu computations mostly between 'QueueImage'
+% and final 'Flip'. This is mostly advantageous for flipmethod 0, and to some
+% degree flipmethod 1, but not as efficient as using the Linux-only flipmethod 2.
+%
 %
 % samples = PsychProPixx('GetTimingSamples');
 % -- Returns 'Flip' timestamps in the vector 'samples'. Depending
@@ -106,6 +117,9 @@ if nargin < 1
   %  varargout{2} = filterMode;
   return;
 end
+
+% Abused as flip trigger:
+tstamp = 0;
 
 if strcmpi(cmd, 'QueueImage')
   sourceImage = varargin{1};
@@ -158,57 +172,81 @@ if strcmpi(cmd, 'QueueImage')
     % Restore colormask to normal:
     Screen('Blendfunction', win, [], [], [1 1 1 1]);
 
-    sampleCount = mod(sampleCount + 1, 1200);
+    % Separation of Queue and Flip requested?
+    if tWhen < 0
+      % Yes: Signal end of all rendering ops, stating that we won't clear
+      % the backbuffer after flip. This kicks off all remaining parallel
+      % gpu processing before the flip:
+      Screen('DrawingFinished', win, 2);
 
-    % Schedule a flip, do not clear the window after flip:
-    if flipmethod == 0
-      tvbl(sampleCount + 1) = Screen('Flip', win, tWhen, 2);
-      tstamp = tvbl(sampleCount + 1);
-    end
-
-    if flipmethod == 1
-      tvbl(sampleCount + 1) = Screen('AsyncFlipBegin', win, tWhen, 2);
-      tstamp = tvbl(sampleCount + 1);
-    end
-
-    if flipmethod == 2
-      % A sync flip, but non-blocking, without timestamping.
-      % Instead we use swap completion logging to collect all
-      % timestamps at the end of the session. Linux only feature...
-      Screen('Flip', win, tWhen, 2, 1);
+      % Only signal a Flip is needed, but do not execute it:
+      varargout{1} = 1;
+      return;
+    else
+      % Signal to following code it should execute a Flip now:
       tstamp = 1;
     end
-
-    if dogpumeasure
-        % Result of GPU time measurement expected?
-        if gpumeasure
-            % Retrieve results from GPU load measurement:
-            % Need to poll, as this is asynchronous and non-blocking,
-            % so may return a zero time value at first invocation(s),
-            % depending on how deep the rendering pipeline is:
-            while 1
-                winfo = Screen('GetWindowInfo', win);
-                if winfo.GPULastFrameRenderTime > 0
-                    break;
-                end
-            end
-
-            % Store it:
-            gpudur(sampleCount + 1) = winfo.GPULastFrameRenderTime;
-            gpumeasure = 0;
-        end
-
-        % Start GPU timer: gpumeasure will be true if this
-        % is actually supported and will return valid results:
-        gpumeasure = Screen('GetWindowInfo', win, 5);
-    end
-
-    % Signal flip either needed or already scheduled:
-    varargout{1} = tstamp;
   else
     varargout{1} = 0;
+    return;
+  end
+end
+
+if tstamp || strcmpi(cmd, 'Flip')
+  if ~tstamp
+    if length(varargin) >= 1
+      tWhen = varargin{1};
+    else
+      tWhen = [];
+    end
   end
 
+  sampleCount = mod(sampleCount + 1, 1200);
+
+  % Schedule a flip, do not clear the window after flip:
+  if flipmethod == 0
+    tstamp = Screen('Flip', win, tWhen, 2);
+    tvbl(sampleCount + 1) = tstamp;
+  end
+
+  if flipmethod == 1
+    tstamp = Screen('AsyncFlipBegin', win, tWhen, 2);
+    tvbl(sampleCount + 1) = tstamp;
+  end
+
+  if flipmethod == 2
+    % A sync flip, but non-blocking, without timestamping.
+    % Instead we use swap completion logging to collect all
+    % timestamps at the end of the session. Linux only feature...
+    Screen('Flip', win, tWhen, 2, 1);
+    tstamp = 1;
+  end
+
+  if dogpumeasure
+      % Result of GPU time measurement expected?
+      if gpumeasure
+          % Retrieve results from GPU load measurement:
+          % Need to poll, as this is asynchronous and non-blocking,
+          % so may return a zero time value at first invocation(s),
+          % depending on how deep the rendering pipeline is:
+          while 1
+              winfo = Screen('GetWindowInfo', win);
+              if winfo.GPULastFrameRenderTime > 0
+                  break;
+              end
+          end
+
+          % Store it:
+          gpudur(sampleCount + 1) = winfo.GPULastFrameRenderTime;
+          gpumeasure = 0;
+      end
+
+      % Start GPU timer: gpumeasure will be true if this
+      % is actually supported and will return valid results:
+      gpumeasure = Screen('GetWindowInfo', win, 5);
+  end
+
+  varargout{1} = tstamp;
   return;
 end
 
@@ -321,6 +359,12 @@ if strcmpi(cmd, 'GetTimingSamples')
 end
 
 if strcmpi(cmd, 'DisableFastDisplayMode')
+
+  % Finalize potentially pending async flips:
+  if Screen('GetWindowInfo', win, 4) > 0
+      Screen('AsyncFlipEnd', win);
+  end
+
   if length(varargin) >= 1 && ~isempty(varargin{1}) && varargin{1}
     tvbl = diff(tvbl);
     tvbl = tvbl(find(tvbl >= 0 & tvbl < 1));
