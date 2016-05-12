@@ -545,7 +545,7 @@ if ismember(3, testblocks)
     testname = 'DrawDots';
 
     % Evaluate and log:
-    [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
+    [resstring2, minv, maxv, goodbits] = comparePatches(plotit, '', testname, maxdepth, refpatch, fbrect);
     if goodbits == 0
         fprintf ('DrawDots result is nonsense. Retrying with a slight twist...\n');
         dyOffset = 1;
@@ -553,7 +553,7 @@ if ismember(3, testblocks)
         testname = 'DrawDots';
 
         % Evaluate and log:
-        [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
+        [resstring2, minv, maxv, goodbits] = comparePatches(plotit, '', testname, maxdepth, refpatch, fbrect);
     end
     resstring = [resstring resstring2];
 
@@ -582,14 +582,14 @@ if ismember(3, testblocks)
     testname = 'DrawLines';
 
     % Evaluate and log:
-    [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
+    [resstring2, minv, maxv, goodbits] = comparePatches(plotit, '', testname, maxdepth, refpatch, fbrect);
     if goodbits == 0
         fprintf ('DrawLines result is nonsense. Retrying with a slight twist...\n');
         Screen('DrawLines', win, lxy, 1, cxy, [-vfx, -vfy + 1], 0);
         testname = 'DrawLines';
 
         % Evaluate and log:
-        [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
+        [resstring2, minv, maxv, goodbits] = comparePatches(plotit, '', testname, maxdepth, refpatch, fbrect);
     end
     resstring = [resstring resstring2];
 
@@ -602,7 +602,7 @@ if ismember(3, testblocks)
     testname = 'FillRect';
 
     % Evaluate and log:
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, refpatch, fbrect);
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
@@ -613,7 +613,7 @@ if ismember(3, testblocks)
     testname = 'FrameRect';
 
     % Evaluate and log:
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, refpatch, fbrect);
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
@@ -624,7 +624,7 @@ if ismember(3, testblocks)
     testname = 'FillOval';
 
     % Evaluate and log:
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, refpatch, fbrect);
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
@@ -645,7 +645,7 @@ if ismember(3, testblocks)
     testname = 'DrawTexture';
 
     % Evaluate and log:
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, refpatch, fbrect);
 
     if goodbits < maxdepth
         maybeSamplerbug = 1;
@@ -696,7 +696,7 @@ if ismember(3, testblocks)
 
     % Evaluate and log:
     gammapatch = refpatch .^ gamma;
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, gammapatch, fbrect);
+    [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, gammapatch, fbrect);
 
     if goodbits < 16
         maybeSamplerbug = 1;
@@ -789,7 +789,7 @@ if ismember(4, testblocks)
         testname = 'DrawTexture-modulateColor';
 
         % Evaluate and log:
-        [dummy, minv, maxv(i), goodbits] = comparePatches([], testname, maxdepth, refpatch, fbrect);
+        [dummy, minv, maxv(i), goodbits] = comparePatches(plotit, [], testname, maxdepth, refpatch, fbrect);
         mingoodbits = min([mingoodbits, goodbits]);
 
         % Visualize and clear buffer back to zero aka black:
@@ -901,7 +901,7 @@ if ismember(5, testblocks)
         testname = 'DrawTexture-modulateColor&Blend1+1';
 
         % Evaluate and log:
-        [dummy, minv, maxv(i), goodbits] = comparePatches([], testname, maxdepth, refpatch, fbrect);
+        [dummy, minv, maxv(i), goodbits] = comparePatches(plotit, [], testname, maxdepth, refpatch, fbrect);
         mingoodbits = min([mingoodbits, goodbits]);
         
         % Visualize and clear buffer back to zero aka black:
@@ -1038,14 +1038,16 @@ Screen('Preference', 'Verbosity', oldVerbosity);
 
 end
 
-function [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect)
+function [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, refpatch, fbrect)
     global win;
 
     % Readback drawbuffer with float precision, only the red/luminance channel:
     patch = Screen('GetImage', win, fbrect, 'drawBuffer', 1, 1);
-        
+
     deltacolors = single(refpatch) - single(patch);
-    imagesc(deltacolors);
+    if plotit
+        imagesc(deltacolors);
+    end
 
     minv = min(min(abs(deltacolors)));
     maxv = max(max(abs(deltacolors)));
