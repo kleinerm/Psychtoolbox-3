@@ -540,9 +540,9 @@ try
             Screen('FillRect', wo, 0);
             % Need to use text color values in 0-255 range, instead of
             % normalized 0-1 range:
-            DrawFormattedText(wo, [txt0 txt1 txt2 txt3 txt4 txt5], 0, 0, 255);
+            DrawFormattedText(wo, [txt0 txt1 txt2 txt3 txt4 txt5], 0, 20, 255);
         else
-            DrawFormattedText(w, [txt0 txt1 txt2 txt3 txt4 txt5], 0, 0, 1.0);
+            DrawFormattedText(w, [txt0 txt1 txt2 txt3 txt4 txt5], 0, 20, 1.0);
         end
         
         framecount = framecount + 1;
