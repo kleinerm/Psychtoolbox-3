@@ -142,6 +142,12 @@ static void PsychDrawSplash(PsychWindowRecordType* windowRecord)
     int logo_x, logo_y;
     int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
 
+    // See call below for explanation: This workaround is also needed on VideoCore-4 + DRI3/Present, so maybe the assumption
+    // that this is an intel-ddx sna bug is wrong, and it is actually a Mesa DRI3/Present bug in drawable invalidation/revalidation?
+    if (strstr(windowRecord->gpuCoreId, "Intel") || strstr(windowRecord->gpuCoreId, "VC4")) {
+        PsychWaitPixelSyncToken(windowRecord, TRUE);
+    }
+
     // Skip this function on OpenGL-ES or on BroadCom VideoCore-4 gpu, as it is
     // either unsupported, or too slow:
     if (!PsychIsGLClassic(windowRecord) || strstr(windowRecord->gpuCoreId, "VC4"))
@@ -2881,7 +2887,21 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
         windowRecord->PipelineFlushDone = TRUE;
 
         // ... and flush & finish the pipe:
-        glFinish();
+        if (windowRecord->stereomode == kPsychFrameSequentialStereo) {
+            // In frame sequential mode we need to glFinish() to make sure our
+            // finalizedFBO's are really ready for immediate consumption without
+            // blocking the stereo flipperThread, as that would glitch the left-right
+            // eye alternating and break stereo:
+            glFinish();
+        }
+        else {
+            // For a regular async flip, a glFlush is good enough - it doesn't matter
+            // if we block here, or if the flipperThread will eventually block on pending
+            // rendering. However not blocking here might help some high-perf rendering to
+            // get some more parallelism between gpu rendering and cpu processing in the
+            // interpreter thread:
+            glFlush();
+        }
 
         // Detach from our OpenGL context:
         // This is important even with the new-style model, because it enforces
@@ -4606,11 +4626,6 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
         // Protect against multi-threading trouble if needed:
         PsychLockedTouchFramebufferIfNeeded(windowRecord);
-
-        // See call below for explanation:
-        if (strstr((const char*) glGetString(GL_RENDERER), "Intel")) {
-            PsychWaitPixelSyncToken(windowRecord, TRUE);
-        }
 
         if (PSYCH_SYSTEM == PSYCH_OSX) {
             // Give gfx-system a second to settle: This stupid hack to

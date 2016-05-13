@@ -31,6 +31,10 @@ if nargin < 1
     ts = 96;
 end
 
+if IsOctave
+  pkg load image;
+end
+
 try
     % Disable automatic text anti-aliasing by operating system:
     oldSetting = Screen('Preference', 'TextAntiAliasing', 0);

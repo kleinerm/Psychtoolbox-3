@@ -1,5 +1,5 @@
-function HighColorPrecisionDrawingTest(testconfig, maxdepth, testblocks)
-% HighColorPrecisionDrawingTest([testconfig][, maxdepth][, testblocks])
+function HighColorPrecisionDrawingTest(testconfig, maxdepth, testblocks, plotit)
+% HighColorPrecisionDrawingTest([testconfig][, maxdepth][, testblocks][, plotit=0])
 %
 % Test for numeric drawing precision of your graphics card (GPU). Exercises
 % a number of tests, where some 2D drawing primitive(s) is drawn in some
@@ -180,6 +180,10 @@ function HighColorPrecisionDrawingTest(testconfig, maxdepth, testblocks)
 % 6  = Test of color precision of text drawing. This only tests to a fixed
 %      precision of 8 bits for 256 levels at the moment, as our the text
 %      renderer doesn't have a higher precision.
+%
+% 'plotit' parameter: If set to 1, output some error plots after tests where it
+% makes sense. No plotting happens by default.
+%
 
 % History:
 % 04/20/08  Written (MK).
@@ -190,6 +194,9 @@ function HighColorPrecisionDrawingTest(testconfig, maxdepth, testblocks)
 %           hint to new ConserveVRAMSetting to work around OSX 10.11 AMD bugs.
 % 01/31/16  Change filterMode to zero for gamma correction test. Better matches
 %           real world use conditions. (MK)
+% 05/09/16  Abort tests via left mouse button on top of screen edge, suppress most
+%           Screen output - only errors - to not drown results in debug clutter.
+%           Use GUI window, so it can be repositioned or hidden. (MK)
 
 global win;
 
@@ -230,6 +237,10 @@ if nargin < 3 || isempty(testblocks)
 end
 fprintf('Executing the following tests: %i.\n', testblocks);
 
+if nargin < 4 || isempty(plotit)
+    plotit = 0;
+end
+
 screenid = max(Screen('Screens'));
 
 ColorClamping = testconfig(1)
@@ -259,11 +270,14 @@ if Framebuffer == 4
 end
 
 fprintf('Selected framebuffer mode: %s\n', fbdef);
+fprintf('\n\nMove mouse cursor to top edge of screen, then hold down the left mouse button\n');
+fprintf('for a while to skip or abort tests. Results of aborted tests will be wrong though!\n\n');
+
 resstring = '';
 
 % Disable sync tests for this script:
 oldsync = Screen('Preference', 'SkipSyncTests', 2);
-Screen('Preference', 'Verbosity', 4);
+oldVerbosity = Screen('Preference', 'Verbosity', 1);
 
 % Generate testvector of all color values to test. We test the full
 % intensity range from 0.0 (black) to 1.0 (white) divided into 2^maxdepth steps
@@ -274,11 +288,12 @@ Screen('Preference', 'Verbosity', 4);
 testcolors = 1 - linspace(0,1,2^maxdepth);
 
 if ismember(1, testblocks)
-    PsychImaging('PrepareConfiguration')
+    invalidated = 0;
+    PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 25 25], [], [], [], []);
+    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 125 125], [], [], [], [], [], kPsychGUIWindow);
 
     % Set color clamping (and precision) for standard 2D draw commands:
     Screen('ColorRange', win, 1, ColorClamping);
@@ -291,7 +306,8 @@ if ismember(1, testblocks)
     % Test 1: Precision of backbuffer clears during Screen('Flip'):
     for tc = testcolors
         [xm ym buttons] = GetMouse;
-        if buttons(1)
+        if buttons(1) && (ym == 0)
+            invalidated = 1;
             break;
         end
 
@@ -324,35 +340,37 @@ if ismember(1, testblocks)
     Screen('CloseAll');
 
     % Test done.
-    deltacolors = single(testcolors(1:i-1)) - drawncolors(1:i-1);
-    minv = min(abs(deltacolors));
-    maxv = max(abs(deltacolors));
-    goodbits = floor(-(log2(maxv))) - 1;
-    if goodbits < 0
-        goodbits = 0;
-    end
+    if ~invalidated
+        deltacolors = single(testcolors(1:i-1)) - drawncolors(1:i-1);
+        minv = min(abs(deltacolors));
+        maxv = max(abs(deltacolors));
+        goodbits = floor(-(log2(maxv))) - 1;
+        if goodbits < 0
+            goodbits = 0;
+        end
 
-    if goodbits <= maxdepth
-        resstring = [resstring sprintf('Clearbuffer test: Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to %i bits out of max tested bitdepths %i.\n', minv, maxv, goodbits, maxdepth)];
-    else
-        resstring = [resstring sprintf('Clearbuffer test: Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to full tested bitdepth range of %i bits.\n', minv, maxv, maxdepth)];
-    end
+        if goodbits <= maxdepth
+            resstring = [resstring sprintf('Clearbuffer test: Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to %i bits out of max tested bitdepths %i.  --> PROBLEMATIC\n', minv, maxv, goodbits, maxdepth)];
+        else
+            resstring = [resstring sprintf('Clearbuffer test: Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to full tested bitdepth range of %i bits.   --> GOOD\n', minv, maxv, maxdepth)];
+        end
 
-    plot(deltacolors);
-    drawnow;
-    
+        if plotit, plot(deltacolors); end;
+        drawnow;
+    end
 end % Of Test 1.
 
 if ismember(2, testblocks)
+    invalidated = 0;
     % Test 2: Precision of non-batched Screen 2D drawing commands.
     % This tests how well assignment and interpolation of vertex
     % colors across primitives works - or how well the generic 'varying'
     % interpolators work in case that our own shader based solution is active:
-    PsychImaging('PrepareConfiguration')
+    PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 250 250], [], [], [], []);
+    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 350 350], [], [], [], [], [], kPsychGUIWindow);
 
     % Set color clamping (and precision) for standard 2D draw commands:
     Screen('ColorRange', win, 1, ColorClamping);
@@ -364,7 +382,8 @@ if ismember(2, testblocks)
 
     for tc = testcolors
         [xm ym buttons] = GetMouse;
-        if buttons(1)
+        if buttons(1) && (ym == 0)
+            invalidated = 1;
             break;
         end
 
@@ -453,32 +472,35 @@ if ismember(2, testblocks)
 
     Screen('CloseAll');
 
-    % Test done.
-    primname = {'FillRect', 'FrameRect', 'FillOval', 'FrameOval', 'FillArc', 'DrawLine', 'FramePoly', 'FillPoly', 'glPoint', 'gluDisk'};
+    if ~invalidated
+        % Test done.
+        primname = {'FillRect', 'FrameRect', 'FillOval', 'FrameOval', 'FillArc', 'DrawLine', 'FramePoly', 'FillPoly', 'glPoint', 'gluDisk'};
 
-    for j=1:size(drawncolors, 1)
-        deltacolors = single(testcolors(1:i-1)) - drawncolors(j, 1:i-1);
-        minv = min(abs(deltacolors));
-        maxv = max(abs(deltacolors));
-        goodbits = floor(-(log2(maxv))) - 1;
-        if goodbits < 0
-            goodbits = 0;
+        for j=1:size(drawncolors, 1)
+            deltacolors = single(testcolors(1:i-1)) - drawncolors(j, 1:i-1);
+            minv = min(abs(deltacolors));
+            maxv = max(abs(deltacolors));
+            goodbits = floor(-(log2(maxv))) - 1;
+            if goodbits < 0
+                goodbits = 0;
+            end
+
+            testname = char(primname{j});
+
+            if goodbits <= maxdepth
+                resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to %i bits out of max tested bitdepths %i.  --> PROBLEMATIC\n', testname, minv, maxv, goodbits, maxdepth)];
+            else
+                resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to full tested bitdepth range of %i bits.   --> GOOD\n', testname, minv, maxv, maxdepth)];
+            end
+
+            if plotit, plot(deltacolors); end;
+            drawnow;
         end
-
-        testname = char(primname{j});
-
-        if goodbits <= maxdepth
-            resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to %i bits out of max tested bitdepths %i.\n', testname, minv, maxv, goodbits, maxdepth)];
-        else
-            resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to full tested bitdepth range of %i bits.\n', testname, minv, maxv, maxdepth)];
-        end
-
-        plot(deltacolors);
-        drawnow;
     end
 end % Test 2.
 
 if ismember(3, testblocks)
+    invalidated = 0;
     % Test 3: Precision of Screen 2D batch drawing commands.
     % This tests how well assignment and interpolation of vertex
     % colors across primitives works - or how well the generic 'varying'
@@ -486,12 +508,12 @@ if ismember(3, testblocks)
     % active. Batch drawing commands use a different code-path inside
     % Screen for efficient submission of many primitives and colors values,
     % that's why we need to test them extra.
-    PsychImaging('PrepareConfiguration')
+    PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    winsize = 2^(ceil(maxdepth / 2)) + 2;
-    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 winsize winsize], [], [], [], []);
+    winsize = 2^(ceil(maxdepth / 2)) + 2 + 100;
+    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 winsize winsize], [], [], [], [], [], kPsychGUIWindow);
 
     % Test GPU output positioning, report trouble:
     [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
@@ -523,7 +545,7 @@ if ismember(3, testblocks)
     testname = 'DrawDots';
 
     % Evaluate and log:
-    [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
+    [resstring2, minv, maxv, goodbits] = comparePatches(plotit, '', testname, maxdepth, refpatch, fbrect);
     if goodbits == 0
         fprintf ('DrawDots result is nonsense. Retrying with a slight twist...\n');
         dyOffset = 1;
@@ -531,7 +553,7 @@ if ismember(3, testblocks)
         testname = 'DrawDots';
 
         % Evaluate and log:
-        [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
+        [resstring2, minv, maxv, goodbits] = comparePatches(plotit, '', testname, maxdepth, refpatch, fbrect);
     end
     resstring = [resstring resstring2];
 
@@ -550,24 +572,24 @@ if ismember(3, testblocks)
     lxy(:, 2:2:(2*size(xy,2))-0) = xy + repmat([1;0], 1, size(xy, 2));
 
     % Same replication for color values:
-    cxy(:, 1:2:(2*size(xy,2))-1) = rgbacolors;    
+    cxy(:, 1:2:(2*size(xy,2))-1) = rgbacolors;
     cxy(:, 2:2:(2*size(xy,2))-0) = rgbacolors;
     
     % We draw the lines without line-smoothing (=0), as it only works with
     % alpha-blending and we do not want to use alpha-blending in this test
     % block:
-    Screen('DrawLines', win, lxy, 1, cxy, [-vfx, -vfy], 0);
+    Screen('DrawLines', win, lxy, 1, cxy, [0, 0], 0);
     testname = 'DrawLines';
 
     % Evaluate and log:
-    [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
+    [resstring2, minv, maxv, goodbits] = comparePatches(plotit, '', testname, maxdepth, refpatch, fbrect);
     if goodbits == 0
         fprintf ('DrawLines result is nonsense. Retrying with a slight twist...\n');
         Screen('DrawLines', win, lxy, 1, cxy, [-vfx, -vfy + 1], 0);
         testname = 'DrawLines';
 
         % Evaluate and log:
-        [resstring2, minv, maxv, goodbits] = comparePatches('', testname, maxdepth, refpatch, fbrect);
+        [resstring2, minv, maxv, goodbits] = comparePatches(plotit, '', testname, maxdepth, refpatch, fbrect);
     end
     resstring = [resstring resstring2];
 
@@ -580,7 +602,7 @@ if ismember(3, testblocks)
     testname = 'FillRect';
 
     % Evaluate and log:
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, refpatch, fbrect);
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
@@ -591,7 +613,7 @@ if ismember(3, testblocks)
     testname = 'FrameRect';
 
     % Evaluate and log:
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, refpatch, fbrect);
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
@@ -602,7 +624,7 @@ if ismember(3, testblocks)
     testname = 'FillOval';
 
     % Evaluate and log:
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, refpatch, fbrect);
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
@@ -623,7 +645,7 @@ if ismember(3, testblocks)
     testname = 'DrawTexture';
 
     % Evaluate and log:
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect);
+    [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, refpatch, fbrect);
 
     if goodbits < maxdepth
         maybeSamplerbug = 1;
@@ -674,7 +696,7 @@ if ismember(3, testblocks)
 
     % Evaluate and log:
     gammapatch = refpatch .^ gamma;
-    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, gammapatch, fbrect);
+    [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, gammapatch, fbrect);
 
     if goodbits < 16
         maybeSamplerbug = 1;
@@ -688,13 +710,14 @@ if ismember(3, testblocks)
 end % Test 3.
 
 if ismember(4, testblocks)
+    invalidated = 0;
     % Test 4: Precision of texture drawing commands.
-    PsychImaging('PrepareConfiguration')
+    PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    winsize = max(514, 2^(ceil(maxdepth / 2)) + 2);
-    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 winsize winsize], [], [], [], []);
+    winsize = max(514, 2^(ceil(maxdepth / 2)) + 2) + 100;
+    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 winsize winsize], [], [], [], [], [], kPsychGUIWindow);
 
     % Test GPU output positioning, report trouble:
     [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
@@ -736,7 +759,7 @@ if ismember(4, testblocks)
     end
     
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
-    fbrect = Screen('Rect', tex)
+    fbrect = Screen('Rect', tex);
 
     % Now we test modulation of drawn texture pixels with the
     % 'modulateColor' argument:
@@ -749,8 +772,9 @@ if ismember(4, testblocks)
 
         if mod(i, 100)==0
             beep; drawnow;
-            [blah bloh buttons] = GetMouse(win);
-            if any(buttons)
+            [xm ym buttons] = GetMouse;
+            if buttons(1) && (ym == 0)
+                invalidated = 1;
                 break;
             end
         end
@@ -765,17 +789,19 @@ if ismember(4, testblocks)
         testname = 'DrawTexture-modulateColor';
 
         % Evaluate and log:
-        [dummy, minv, maxv(i), goodbits] = comparePatches([], testname, maxdepth, refpatch, fbrect);
+        [dummy, minv, maxv(i), goodbits] = comparePatches(plotit, [], testname, maxdepth, refpatch, fbrect);
         mingoodbits = min([mingoodbits, goodbits]);
 
         % Visualize and clear buffer back to zero aka black:
         Screen('Flip', win, 0, 0, 2);
     end
 
-    resstring = [resstring sprintf('%s : Maxdiff.: %1.17f --> Accurate to at least %i bits.\n', testname, max(maxv), mingoodbits)];
+    if ~invalidated
+        resstring = [resstring sprintf('%s : Maxdiff.: %1.17f --> Accurate to at least %i bits.\n', testname, max(maxv), mingoodbits)];
 
-    if mingoodbits < 16
-        maybeSamplerbug = 1;
+        if mingoodbits < 16
+            maybeSamplerbug = 1;
+        end
     end
 
     Screen('Close', tex);
@@ -783,13 +809,14 @@ if ismember(4, testblocks)
 end % Test 4.
 
 if ismember(5, testblocks)
+    invalidated = 0;
     % Test 5: Precision of alpha blending commands.
-    PsychImaging('PrepareConfiguration')
+    PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    winsize = max(514, 2^(ceil(maxdepth / 2)) + 2);
-    [win rect] = PsychImaging('OpenWindow', screenid, [0 0 0 0], [0 0 winsize winsize], [], [], [], []);
+    winsize = max(514, 2^(ceil(maxdepth / 2)) + 2) + 100;
+    [win rect] = PsychImaging('OpenWindow', screenid, [0 0 0 0], [0 0 winsize winsize], [], [], [], [], [], kPsychGUIWindow);
 
     % Test GPU output positioning, report trouble:
     [rpfx, rpfy, rpix, rpiy, vix, viy, vfx, vfy] = PsychGPURasterizerOffsets(win, drivername);
@@ -835,7 +862,7 @@ if ismember(5, testblocks)
     end
 
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
-    fbrect = Screen('Rect', tex)
+    fbrect = Screen('Rect', tex);
 
     % Now we test modulation of drawn texture pixels with the
     % 'modulateColor' argument:
@@ -849,8 +876,9 @@ if ismember(5, testblocks)
 
         if mod(i, 100)==0
             beep; drawnow;
-            [blah bloh buttons] = GetMouse(win);
-            if any(buttons)
+            [xm ym buttons] = GetMouse;
+            if buttons(1) && (ym == 0)
+                invalidated = 1;
                 break;
             end
         end
@@ -873,17 +901,18 @@ if ismember(5, testblocks)
         testname = 'DrawTexture-modulateColor&Blend1+1';
 
         % Evaluate and log:
-        [dummy, minv, maxv(i), goodbits] = comparePatches([], testname, maxdepth, refpatch, fbrect);
+        [dummy, minv, maxv(i), goodbits] = comparePatches(plotit, [], testname, maxdepth, refpatch, fbrect);
         mingoodbits = min([mingoodbits, goodbits]);
         
         % Visualize and clear buffer back to zero aka black:
         Screen('Flip', win, 0, 0, 2);
     end
-    
-    resstring = [resstring sprintf('%s : Maxdiff.: %1.17f --> Accurate to at least %i bits with %i overdraws.\n', testname, max(maxv), mingoodbits, nroverdraws)];
 
-    if mingoodbits < 16
-        maybeSamplerbug = 1;
+    if ~invalidated
+        resstring = [resstring sprintf('%s : Maxdiff.: %1.17f --> Accurate to at least %i bits with %i overdraws.\n', testname, max(maxv), mingoodbits, nroverdraws)];
+        if mingoodbits < 16
+            maybeSamplerbug = 1;
+        end
     end
 
     Screen('Close', tex);
@@ -893,11 +922,12 @@ end % Test 5.
 
 if ismember(6, testblocks)
     % Test 6: Precision of DrawText.
-    PsychImaging('PrepareConfiguration')
+    invalidated = 0;
+    PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', fbdef);
 
     % Open window with black background color:
-    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 128 128], [], [], [], []);
+    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 228 228], [], [], [], [], [], kPsychGUIWindow);
 
     % Set color clamping (and precision) for standard 2D draw commands:
     Screen('ColorRange', win, 1, ColorClamping);
@@ -914,7 +944,8 @@ if ismember(6, testblocks)
 
     for tc = texttestcolors
         [xm ym buttons] = GetMouse;
-        if buttons(1)
+        if buttons(1) && (ym == 0)
+            invalidated = 1;
             break;
         end
 
@@ -962,14 +993,14 @@ if ismember(6, testblocks)
         end
 
         testname = char(primname{j});
-
-        if goodbits <= textmaxdepth
-            resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to %i bits out of max tested bitdepths %i.\n', testname, minv, maxv, goodbits, textmaxdepth)];
-        else
-            resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to full tested bitdepth range of %i bits.\n', testname, minv, maxv, textmaxdepth)];
+        if ~invalidated
+            if goodbits <= textmaxdepth
+                resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to %i bits out of max tested bitdepths %i.  --> PROBLEMATIC!\n', testname, minv, maxv, goodbits, textmaxdepth)];
+            else
+                resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to full tested bitdepth range of %i bits.   --> GOOD!\n', testname, minv, maxv, textmaxdepth)];
+            end
         end
-
-        plot(deltacolors);
+        if plotit, plot(deltacolors); end;
         drawnow;
     end
 end % Test 6.
@@ -978,7 +1009,8 @@ fprintf('\n\nTest summary:\n');
 fprintf('-------------\n\n');
 fprintf('%s\n\n', resstring);
 
-% Check if this is the samplerbug we found on OSX 10.11 El Capitan with AMD gpus:
+% Check if this is the samplerbug we found on OSX 10.11 El Capitan with AMD gpus
+% and also to a lesser degree on KUbuntu 16.04.0 LTS with Mesa 11.2.0 on modern AMD gpus.
 if maybeSamplerbug && (Filters > 0) && (ColorClamping == 0)
     fprintf('The precision of some test results involving texture drawing with bilinear filtering\n');
     fprintf('enabled and color clamping disabled is suspiciously low. This hints at a graphics driver\n');
@@ -986,22 +1018,36 @@ if maybeSamplerbug && (Filters > 0) && (ColorClamping == 0)
     fprintf('around this issue by using the Screen ConserveVRAMSetting kPsychAssumeGfxCapVCGood. See the help of\n');
     fprintf('''help ConserveVRAMSettings'' for more info. If you do not need filtered texture drawing, then it\n');
     fprintf('would be advisable to use the Screen DrawTexture command with a filterMode of 0 on your system.\n\n');
+
+    if bitand(Screen('Preference','ConserveVRAM'), 2^28) == 0
+        fprintf('I will rerun the problematic tests now with that ConserveVRAMSetting...\n\n');
+        oldConserveVRAM = Screen('Preference','ConserveVRAM', 2^28);
+        HighColorPrecisionDrawingTest(testconfig, maxdepth, intersect(testblocks, [3,4,5]));
+        Screen('Preference','ConserveVRAM', oldConserveVRAM);
+    else
+        fprintf('Ok, retesting did not improve it to perfection. Retrying with filterMode 0 to see how nearest neighbour filtering performs...\n\n');
+        Screen('Preference','ConserveVRAM', 0);
+        testconfig(5) = 0;
+        HighColorPrecisionDrawingTest(testconfig, maxdepth, intersect(testblocks, [3,4,5]));
+    end
 end
 
 % Restore synctest settings:
 Screen('Preference', 'SkipSyncTests', oldsync);
-Screen('Preference', 'Verbosity', 3);
+Screen('Preference', 'Verbosity', oldVerbosity);
 
 end
 
-function [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, refpatch, fbrect)
+function [resstring, minv, maxv, goodbits] = comparePatches(plotit, resstring, testname, maxdepth, refpatch, fbrect)
     global win;
 
     % Readback drawbuffer with float precision, only the red/luminance channel:
     patch = Screen('GetImage', win, fbrect, 'drawBuffer', 1, 1);
-        
+
     deltacolors = single(refpatch) - single(patch);
-    imagesc(deltacolors);
+    if plotit
+        imagesc(deltacolors);
+    end
 
     minv = min(min(abs(deltacolors)));
     maxv = max(max(abs(deltacolors)));
@@ -1015,8 +1061,8 @@ function [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname,
     end
 
     if goodbits <= maxdepth
-        resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to %i bits out of max tested bitdepths %i.\n', testname, minv, maxv, goodbits, maxdepth)];
+        resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to %i bits out of max tested bitdepths %i.  --> PROBLEMATIC!\n', testname, minv, maxv, goodbits, maxdepth)];
     else
-        resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to full tested bitdepth range of %i bits.\n', testname, minv, maxv, maxdepth)];
+        resstring = [resstring sprintf('2D drawing test: %s : Mindiff.: %1.17f, Maxdiff.: %1.17f --> Accurate to full tested bitdepth range of %i bits.   --> GOOD!\n', testname, minv, maxv, maxdepth)];
     end
 end

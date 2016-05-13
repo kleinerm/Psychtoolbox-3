@@ -595,9 +595,11 @@ if strcmpi(cmd, 'ResetOnWindowClose')
     % Reset videomode to pass-through:
     doDatapixx('SetVideoMode', 0);
 
-    % Set stereomode to "auto" and horizontal split to "auto":
-    doDatapixx('SetVideoHorizontalSplit', 2);
-    doDatapixx('SetVideoVerticalStereo', 2);
+    if doDatapixx('IsDatapixx')
+        % Set stereomode to "auto" and horizontal split to "auto":
+        doDatapixx('SetVideoHorizontalSplit', 2);
+        doDatapixx('SetVideoVerticalStereo', 2);
+    end
 
     % Disable Pixelsyncline:
     doDatapixx('SetVideoPixelSyncLine', 0, 0, 0);
@@ -917,15 +919,19 @@ end
 
 if strcmpi(cmd, 'SetVideoHorizontalSplit')
     % Set new horizontal split mode, apply immediately:
-    doDatapixx('SetVideoHorizontalSplit', varargin{1});
-    doDatapixx('RegWrRd');
+    if doDatapixx('IsDatapixx')
+        doDatapixx('SetVideoHorizontalSplit', varargin{1});
+        doDatapixx('RegWrRd');
+    end
     return;
 end
 
 if strcmpi(cmd, 'SetVideoVerticalStereo')
     % Set new vertical sync-doubling mode, apply immediately:
-    doDatapixx('SetVideoVerticalStereo', varargin{1});
-    doDatapixx('RegWrRd');
+    if doDatapixx('IsDatapixx')
+        doDatapixx('SetVideoVerticalStereo', varargin{1});
+        doDatapixx('RegWrRd');
+    end
     return;
 end
 

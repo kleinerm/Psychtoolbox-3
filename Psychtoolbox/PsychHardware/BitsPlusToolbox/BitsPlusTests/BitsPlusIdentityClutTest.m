@@ -235,8 +235,8 @@ try
     ovllut(101:250, 1) = linspace(0,1,150)';
     ovllut(101:250, 2:3) = 0;
 
-    % Build random colors in slots 251:255:
-    ovllut(251:255,:) = rand(5,3);
+    % Build 5 different easily distinguishable colors in slots 251:255:
+    ovllut(251:255,:) = [[1 0 0]; [0 1 0]; [1 1 0]; [0 0 1]; [1 0 1]];
 
     % Last slot is blue:
     ovllut(256, :) = [0 , 0, 1];
