@@ -64,6 +64,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 01/27/2016 Use Octave3 folder for mex files for both Octave-3 and Octave-4. (MK)
 % 03/15/2016 Need liboctave-dev package for symlinks liboctinterp.so -> Octave specific liboctinterp.x.so (MK)
 % 04/01/2016 64-Bit Octave-4 support for MS-Windows established. (MK)
+% 05/13/2016 Add new rpath fixup for Octave on OSX - Copy runtime libs to search dirs. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -379,6 +380,25 @@ if IsOctave
         fprintf('\nPress any key to continue with setup.\n');
         fprintf('=================================================================================\n\n');
         pause;
+    end
+
+    if IsOSX
+        % Need to copy the Octave runtime libraries somewhere our mex files can find them. The only low-maintenance
+        % way of dealing with this mess of custom library pathes per octave version, revision and packaging format.
+        % Preferred location is the folder with our mex files - found by rpath = @loader_path
+        if ~copyfile([octave_config_info.octlibdir filesep 'liboctinterp.3.dylib'], [rdir filesep], 'f') || ...
+           ~copyfile([octave_config_info.octlibdir filesep 'liboctave.3.dylib'], [rdir filesep], 'f')
+            % Copy into our mex files folder failed. A second location where the linker will search is the
+            % $HOME/lib directory of the current user, so try that as target location:
+            tdir = PsychHomeDir('lib');
+            fprintf('\n\nFailed to copy Octave runtime libraries to mex file folder [%s].\nRetrying in users private lib dir: %s ...\n', rdir, tdir);
+            if ~copyfile([octave_config_info.octlibdir filesep 'liboctinterp.3.dylib'], tdir, 'f') || ...
+               ~copyfile([octave_config_info.octlibdir filesep 'liboctave.3.dylib'], tdir, 'f')
+                fprintf('\nFailed to copy runtime libs to [%s] as well :(.\n', tdir);
+                fprintf('Our mex files will likely not work this way. Maybe the directories lack file write permissions?\n');
+                fprintf('\n\n\nA last workaround would be to restart octave from a terminal via this line:\n\nexport DYLD_LIBRARY_PATH=%s ; octave\n\n\n', octave_config_info.octlibdir);
+            end
+        end
     end
 
     try
