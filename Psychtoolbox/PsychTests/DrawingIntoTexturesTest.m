@@ -1,5 +1,8 @@
 function DrawingIntoTexturesTest(imagingmode)
 
+if IsOctave
+  pkg load image;
+end
 
 AssertOpenGL;
 

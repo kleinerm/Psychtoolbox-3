@@ -1296,7 +1296,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
 
     if (havespoken == 0) && (bitand(imagingmode, kPsychNeed32BPCFloat) || bitand(imagingmode, kPsychUse32BPCFloatAsap))
         fprintf('PTB - Info: Your framebuffer is configured for maximum precision. All internal processing will be done\n');
-        fprintf('PTB - Info: with about 23 bits of precision -- %s will be able to finally output with %i bits precision.\n', devname, devbits);
+        fprintf('PTB - Info: with about 23 bits of linear precision -- %s will be able to finally output with %i bits precision.\n', devname, devbits);
         if winfo.GLSupportsBlendingUpToBpc < 32
             fprintf('PTB - Info: Alpha-blending will not work at this precision with your hardware though.\n');
             fprintf('PTB - Info: You can either live with this limitation, or upgrade your graphics hardware to Direct3D-10\n');
