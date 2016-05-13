@@ -17,3 +17,5 @@ PsychSourceGL/Cohorts/libDC1394/libdc1394-2.0.1/
 Psychtoolbox/PsychInitialize/startup.m
 Psychtoolbox/ptbflavorinfo.txt
 .fuse_*
+liboctave.*
+liboctinterp.*
