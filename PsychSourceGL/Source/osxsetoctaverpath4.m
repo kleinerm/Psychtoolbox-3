@@ -1,5 +1,5 @@
 function osxsetoctaverpath4(mexfname, mexpath)
-% osxsetoctaverpath4(mexfname [, mexpath])
+% osxsetoctaverpath4([mexfname][, mexpath])
 %
 % Change the @rpath library search path for the octave
 % runtime libraries inside the given mex file to make
@@ -10,6 +10,8 @@ function osxsetoctaverpath4(mexfname, mexpath)
 % osxsetoctaverpath4('Screen'); would rewrite Screen.mex
 % to use the @rpath settings stored in this function.
 %
+% osxsetoctaverpath4() would rewrite all mex files in the
+% standard folder for mex files aka Octave4OSXFiles64
 
     if ~IsOSX(1) || ~IsOctave
         error('osxsetoctaverpath4 only works with a 64-Bit version of Octave for OSX!');
@@ -18,6 +20,25 @@ function osxsetoctaverpath4(mexfname, mexpath)
     % Set default path for finding the mex file to process, if omitted:
     if nargin < 2 || isempty(mexpath)
         mexpath = '../Projects/MacOSX/build/';
+    end
+
+    % If no mex filename given, iterate over 'mexpath' - or the default install
+    % location of mex files - and apply the rpath editing to each mex file there:
+    if nargin < 1 || isempty(mexfname)
+        if nargin < 2 || isempty(mexpath)
+            mexpath = [PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/'];
+        end
+
+        d = dir (mexpath);
+        for j = 1:length(d)
+            if ~d(j).isdir
+                [a, mexfname, extension] = fileparts(d(j).name);
+                if ~isempty(strfind(extension, mexext))
+                    osxsetoctaverpath4(mexfname, mexpath);
+                end
+            end
+        end
+        return;
     end
 
     % Build full path to file:
