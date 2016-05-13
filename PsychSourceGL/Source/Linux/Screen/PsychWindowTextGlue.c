@@ -56,7 +56,7 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 	/* to initialize the font record to coherent settings, we choose a default font and lookup the matching number */
 	foundFont=PsychGetFontRecordFromFontFamilyNameAndFontStyle(tryFontName, settings->textStyle, &initFontRecord);
 	if(!foundFont)
-	  PsychErrorExitMsg(PsychError_internal,"Failed to initialze the window record because the default font for DrawText, Geneva, was not found.");
+	  PsychErrorExitMsg(PsychError_internal,"Failed to initialze the window record because the default font for DrawText was not found.");
 #endif
 
 	strcpy(settings->textFontName, tryFontName);
