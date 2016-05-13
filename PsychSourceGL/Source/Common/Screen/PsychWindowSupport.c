@@ -2887,7 +2887,21 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
         windowRecord->PipelineFlushDone = TRUE;
 
         // ... and flush & finish the pipe:
-        glFinish();
+        if (windowRecord->stereomode == kPsychFrameSequentialStereo) {
+            // In frame sequential mode we need to glFinish() to make sure our
+            // finalizedFBO's are really ready for immediate consumption without
+            // blocking the stereo flipperThread, as that would glitch the left-right
+            // eye alternating and break stereo:
+            glFinish();
+        }
+        else {
+            // For a regular async flip, a glFlush is good enough - it doesn't matter
+            // if we block here, or if the flipperThread will eventually block on pending
+            // rendering. However not blocking here might help some high-perf rendering to
+            // get some more parallelism between gpu rendering and cpu processing in the
+            // interpreter thread:
+            glFlush();
+        }
 
         // Detach from our OpenGL context:
         // This is important even with the new-style model, because it enforces
