@@ -1,5 +1,5 @@
 function osxsetoctaverpath4(mexfname, mexpath)
-% osxsetoctaverpath4(mexfname [, mexpath])
+% osxsetoctaverpath4([mexfname][, mexpath])
 %
 % Change the @rpath library search path for the octave
 % runtime libraries inside the given mex file to make
@@ -10,6 +10,8 @@ function osxsetoctaverpath4(mexfname, mexpath)
 % osxsetoctaverpath4('Screen'); would rewrite Screen.mex
 % to use the @rpath settings stored in this function.
 %
+% osxsetoctaverpath4() would rewrite all mex files in the
+% standard folder for mex files aka Octave4OSXFiles64
 
     if ~IsOSX(1) || ~IsOctave
         error('osxsetoctaverpath4 only works with a 64-Bit version of Octave for OSX!');
@@ -18,6 +20,25 @@ function osxsetoctaverpath4(mexfname, mexpath)
     % Set default path for finding the mex file to process, if omitted:
     if nargin < 2 || isempty(mexpath)
         mexpath = '../Projects/MacOSX/build/';
+    end
+
+    % If no mex filename given, iterate over 'mexpath' - or the default install
+    % location of mex files - and apply the rpath editing to each mex file there:
+    if nargin < 1 || isempty(mexfname)
+        if nargin < 2 || isempty(mexpath)
+            mexpath = [PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/'];
+        end
+
+        d = dir (mexpath);
+        for j = 1:length(d)
+            if ~d(j).isdir
+                [a, mexfname, extension] = fileparts(d(j).name);
+                if ~isempty(strfind(extension, mexext))
+                    osxsetoctaverpath4(mexfname, mexpath);
+                end
+            end
+        end
+        return;
     end
 
     % Build full path to file:
@@ -34,14 +55,34 @@ function osxsetoctaverpath4(mexfname, mexpath)
     % different versions of octave, installed via different package
     % managers:
 
-    % Start with HomeBrew stuff, followed by Fink stuff:
-    % This would give current lib path on devel system: octave_config_info.octlibdir
+    % Delete old rpath's from mex file:
     lpaths = {  '/usr/local/Cellar/octave/4.0.0_1/lib/octave/4.0.0', ...
                 '/usr/local/Cellar/octave/4.0.0_5/lib/octave/4.0.0', ...
                 '/usr/local/Cellar/octave/4.0.0_6/lib/octave/4.0.0', ...
                 '/usr/local/Cellar/octave/4.0.0_7/lib/octave/4.0.0', ...
+                '/usr/local/Cellar/octave/4.0.2/lib/octave/4.0.2', ...
+                '/usr/local/Cellar/octave/4.0.2_1/lib/octave/4.0.2', ...
                 '/sw/lib/octave/4.0.0', ...
+                '/usr/local/octave/3.8.2/lib/octave/3.8.2', ...
+                '/usr/local/octave/3.8.0/lib/octave/3.8.0', ...
+                '/usr/local/Cellar/octave/3.8.2_1/lib/octave/3.8.2', ...
+                '/usr/local/Cellar/octave/3.8.2/lib/octave/3.8.2', ...
+                '/usr/local/Cellar/octave/3.8.2_2/lib/octave/3.8.2', ...
+                '/sw/lib/octave/3.8.2', ...
+                '/sw/lib/octave/3.8.1', ...
+                '/sw/lib/octave/3.8.0', ...
              };
+
+    for i = 1:length(lpaths)
+        system(['install_name_tool -delete_rpath ' lpaths{i} ' ' mexfname]);
+        fprintf('Removed Octave-4 @rpath %s from mex file %s ...\n', lpaths{i}, mexfname);
+    end
+
+    % Add one single rpath: @loader_path. This is the path to our folder where our
+    % mex file is stored. If we place copies of liboctave.3.dylib and liboctinterp.3.dylib
+    % there, then the linker will find them. In absence, the linker will also search the
+    % users $HOME/lib/ directory as a possible fallback:
+    lpaths = { '@loader_path' };
 
     % Add all paths in lpaths as potential search paths for the octave
     % library directories, ie., as settings for @rpath:
