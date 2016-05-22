@@ -4,7 +4,7 @@ function AddToMatlabPathDynamically(directory)
 % Add the directory and its subdirectories to Matlab's path, dynamically,
 % with strippint out of .svn and .git directories.
 % 
-% Use for for putting routines onto path that are specifict to a particular
+% Use for putting routines onto path that are specifict to a particular
 % project, without them staying around and clogging up the name space.
 %
 % Typical usages:
