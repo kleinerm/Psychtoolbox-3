@@ -55,7 +55,7 @@ for i = 0:255
   pixels = pixels(1,1:10);
   fprintf('Ref %i: ', i);
   fprintf('%i ', pixels);
-  if (range(pixels) ~= 0) | (pixels(1,1) ~= i)
+  if (range(pixels) ~= 0) || (pixels(1,1) ~= i)
     fprintf(' --> TROUBLE!');
     trouble = trouble + 1;
   end
