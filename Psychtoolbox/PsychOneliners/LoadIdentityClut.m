@@ -64,6 +64,7 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType, disableD
 % 04/04/15   mk  Only use PsychGPUControl() dither disable on Windows by
 %                default. Only use on Linux + AMD as fallback if low-level
 %                dither disable fails.
+% 05/18/16   mk  Add detection for Broadcom VC4 SoC gpu in RaspberryPi.
 
 global ptb_original_gfx_cluts;
 
@@ -299,6 +300,10 @@ else
                 % Intel card: Type 0 LUT is correct at least on Linux:
                 gfxhwtype = 0;
                 fprintf('LoadIdentityClut: Intel integrated graphics chip detected. Using type-0 LUT.\n');
+            elseif ~isempty(strfind(gfxhwtype, 'Broadcom')) && ~isempty(strfind(winfo.GLRenderer, 'VC4'))
+                % VC4 in RaspberryPi: Type 0 LUT is correct at least on Linux:
+                gfxhwtype = 0;
+                fprintf('LoadIdentityClut: VideoCore-4 SoC graphics chip detected. Using type-0 LUT.\n');
             else
                 % Unknown card: Default to NVidia behaviour:
                 gfxhwtype = 0;
