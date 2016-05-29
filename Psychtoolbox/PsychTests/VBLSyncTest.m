@@ -1,5 +1,5 @@
 function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx, screenNumber)
-% VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx)
+% VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx, screenNumber)
 %
 % Tests syncing of PTB-OSX to the vertical retrace (VBL) and demonstrates
 % how to implement the old Screen('WaitBlanking') behaviour with

@@ -42,6 +42,8 @@ LoadIdentityClut(w);
 
 even = zeros(1,256);
 odd  = even;
+trouble = 0;
+fprintf('\n\n\n\n');
 
 for i = 0:255
   Screen('FillRect', w, i);
@@ -53,6 +55,10 @@ for i = 0:255
   pixels = pixels(1,1:10);
   fprintf('Ref %i: ', i);
   fprintf('%i ', pixels);
+  if (range(pixels) ~= 0) || (pixels(1,1) ~= i)
+    fprintf(' --> TROUBLE!');
+    trouble = trouble + 1;
+  end
   fprintf('\n');
   even(i+1) = pixels(1,1);
   odd(i+1) = pixels(1, 2);
@@ -61,7 +67,12 @@ end
 Datapixx('Close');
 sca;
 
-close all;
-plot(0:255, even, 'r', 0:255, odd, 'g');
+if trouble > 0
+  fprintf('\n\nFAILURE! Many wrong pixels detected! Trouble for %i separate levels!!!\n', trouble);
+  close all;
+  plot(0:255, even, 'r', 0:255, odd, 'g');
+else
+  fprintf('\n\nALL GOOD :)\n');
+end
 
 return;
