@@ -269,7 +269,7 @@ isetDaySpd = isetDaySpd/max(isetDaySpd(:));
 if (any(abs(isetDaySpd-ptbDaySpd) > 1e-10))
     fprintf('PTB-ISET DIFFERENCE for daylight');
 else
-    fprintf('PTB-ISET AGREE for for daylight\n');
+    fprintf('PTB-ISET AGREE for daylight\n');
 end
 
 %% Not yet really implemented

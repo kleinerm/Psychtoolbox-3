@@ -15,7 +15,7 @@
   
   DESCRIPTION:
   
-	Holds the master initialization for for the Psychtoolbox function.
+	Holds the master initialization for the Psychtoolbox function.
 	sections hold their own inits which are called by the master
 	init function contained herein.  After the Psychtoolbox library
 	has initialzed itself in then invokes the project init which 
