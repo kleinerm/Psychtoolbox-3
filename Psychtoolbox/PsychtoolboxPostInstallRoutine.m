@@ -65,6 +65,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 03/15/2016 Need liboctave-dev package for symlinks liboctinterp.so -> Octave specific liboctinterp.x.so (MK)
 % 04/01/2016 64-Bit Octave-4 support for MS-Windows established. (MK)
 % 05/13/2016 Add new rpath fixup for Octave on OSX - Copy runtime libs to search dirs. (MK)
+% 06/01/2016 32-Bit Octave-4 support for MS-Windows removed. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -152,13 +153,14 @@ catch
 end
 
 % 32-Bit Octave or 32-Bit Matlab on OSX? This is unsupported as of Version 3.0.11.
-if IsOSX && ~Is64Bit
-    fprintf('Psychtoolbox 3.0.11 and later do no longer work with 32-Bit versions of Octave or Matlab on OSX.\n');
-    fprintf('You need to upgrade to a 64-Bit version of Octave or Matlab on OSX, which is fully supported.\n');
+if (IsOSX || IsWin) && ~Is64Bit
+    fprintf('Psychtoolbox 3.0.13 and later versions do no longer work with 32-Bit versions of Octave or Matlab on OSX or Windows.\n');
+    fprintf('You need to upgrade to a 64-Bit version of Octave or Matlab on these systems, which is fully supported.\n');
     fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
     fprintf('an old legacy copy of Psychtoolbox-3.0.9, which did support 32-Bit Octave 3.2 on OSX, or use\n');
     fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.10'', which does support 32-Bit Matlab on OSX.\n');
-    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX.');
+    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.12'', does support 32-Bit Octave-4 on Windows.\n');
+    error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX or Windows.');
 end
 
 if ~Is64Bit && ~IsOctave
