@@ -1,6 +1,6 @@
 function osxmakeit(mode)
 % This is the MacOS/X version of makeit: It is meant for building PTB for
-% 64-Bit Matlab on OSX IntelMac, 10.9 Mavericks:
+% 64-Bit Matlab on OSX 10.10 "Yosemite" and later, using the 10.11 SDK.
 
 if ~IsOSX(1) || IsOctave
     error('osxmakeit only works with a 64-Bit version of Matlab for OSX!');
@@ -83,7 +83,7 @@ end
 if mode==4
     % Depends: eyelink-SDK: eyelink_core.framework
     % Build Eyelink:
-    mex -v -outdir ../Projects/MacOSX/build -output Eyelink -largeArrayDims -DPTBMODULE_Eyelink LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework eyelink_core" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
+    mex -v -outdir ../Projects/MacOSX/build -output Eyelink -largeArrayDims -DPTBMODULE_Eyelink LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework eyelink_core" -I/usr/local/include -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
     unix(['mv ../Projects/MacOSX/build/Eyelink.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
