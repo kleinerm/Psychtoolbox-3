@@ -22,7 +22,14 @@
 %   is variation within the field, as well as individual variation around
 %   the CIE estimates, is important when considering things like the effect
 %   of inadvertant stimulation of cones when one tries to isolate
-%   melanopsin using silent substitution.
+%   melanopsin using silent substitution.  Note in particular that the CIE
+%   formula is trying to capture large field color matches where subjects
+%   are instructed to ignore the center of the field as best they can.  In
+%   a threshold experiment, this might not be how subjects were instructed
+%   and would in any case be rather hard to do.  And if you used annular
+%   stimuli, you'd be a bit off and might want to think about how to
+%   estimate the fundamentals from the annulus.  Studying the Moreland and
+%   Alexander paper below in detail might help with thinking on that.
 %
 % Refs:
 %   Mooreland & Alexander (1997).  Effect of macular pigment on color 
@@ -60,7 +67,10 @@
 %   distribution measured in a subject with oculocutaneous albinism.
 %   Journal of Optometry, 7, 241-245.
 %
+% See ComputeCIEConeFundamentals, CIEConeFundamentalsTest.
+%
 % 5/25/16  dhb  Wrote it.
+% 6/1/16   dhb  Polished it up a bit, and added to PTB distribution.
 
 % Initialize and clear
 clear; close all;
@@ -87,7 +97,9 @@ for ii = 1:length(fieldSizesDegrees)
     % since I believe the above comes from an "equivlent" density
     % appropriate for a uniform field.  But we can at least look at this
     % too.  The original data are in Putnam & Bland (2014).
-    macDenIsetbio(ii) = macularDensity(fieldSizesDegrees(ii));
+    if (exist('macularDensity','file'))
+        macDenIsetbio(ii) = macularDensity(fieldSizesDegrees(ii));
+    end
 end
 macFig = figure; clf; hold on
 plot(fieldSizesDegrees,macDen,'ro','MarkerSize',8,'MarkerFaceColor','r');
@@ -96,9 +108,15 @@ plot(fieldSizesDegrees,macDen,'r');
 % This is what the isetbio function returns.  Not clear it is really
 % comparable in exact form.  Here multiplicatively scaled to have the
 % same max as the CIE function, but not clear that is the right thing
-% to do.
-plot(fieldSizesDegrees,max(macDen(:))*macDenIsetbio/max(macDenIsetbio(:)),'bo','MarkerSize',8,'MarkerFaceColor','b');
-plot(fieldSizesDegrees,max(macDen(:))*macDenIsetbio/max(macDenIsetbio(:)),'b');
+% to do.  When you compare, this falls off faster than the CIE formula,
+% but this makes a certain amount of sense since the CIE formula is trying
+% to express an equivalent macular pigment density over a uniform field
+% (but excluding the very center, which subjects are instructed to ignore
+% in making large field color matches).
+if (exist('macularDensity','file'))
+    plot(fieldSizesDegrees,max(macDen(:))*macDenIsetbio/max(macDenIsetbio(:)),'bo','MarkerSize',8,'MarkerFaceColor','b');
+    plot(fieldSizesDegrees,max(macDen(:))*macDenIsetbio/max(macDenIsetbio(:)),'b');
+end
 
 ylim([0 1]);
 xlabel('Field Size (Degrees)');
