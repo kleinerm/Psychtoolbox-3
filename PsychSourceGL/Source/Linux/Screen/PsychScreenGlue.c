@@ -101,12 +101,23 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-/* Mappings up to date for October 2015 (last update e-mail patch / commit 2015-10-16). Would need updates for anything after start of November 2015 */
+/* Mappings up to date for May 2016 (last update e-mail patch / commit 2016-05-18). Would need updates for anything after start of June 2016 */
 
 /* Is a given ATI/AMD GPU a DCE11 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE11(int screenId)
 {
     psych_bool isDCE11 = false;
+
+    // POLARIS10/11 are DCE11.2, but for our purpose we can so far
+    // treat them as DCE11.0:
+
+    // POLARIS10: 0x67C0 - 0x67DF
+    if ((fPCIDeviceId & 0xFFF0) == 0x67C0) isDCE11 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x67D0) isDCE11 = true;
+
+    // POLARIS11: 0x67E0 - 0x67FF
+    if ((fPCIDeviceId & 0xFFF0) == 0x67E0) isDCE11 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x67F0) isDCE11 = true;
 
     // CARRIZO and STONEY are DCE11 -- This is part of the "Volcanic Islands" GPU family.
 
