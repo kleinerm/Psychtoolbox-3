@@ -447,6 +447,12 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
     gfx_length = 0;
     gpu = NULL;
 
+    // On ARM architecture system? If so, we assume it is a SoC without PCI bus, ergo no low-level PCI MMIO mapping/access:
+    #if defined(__arm__) || defined(__thumb__) || defined(__aarch64__)
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Not using any low-level access to GPU, as this is an ARM SoC.\n");
+        return(FALSE);
+    #endif
+
     // Initialize libpciaccess:
     ret = pci_system_init();
     if (ret) {
