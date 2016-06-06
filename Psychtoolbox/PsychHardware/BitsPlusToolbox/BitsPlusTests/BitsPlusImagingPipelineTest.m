@@ -572,6 +572,7 @@ Screen('CloseAll');
 RestoreCluts;
 
 fprintf('\n\nSUMMARY: BitsPlusPlus imaging pipeline verified to work correctly. Validation info stored.\n');
+fprintf('You may want to run BitsPlusIdentityClutTest next to test the path from framebuffer to output device.\n');
 
 % Done for now.
 return;
