@@ -82,15 +82,6 @@ if answer == 's'
     BitsPlusPlus('OpenBits#', bitsSharpPortName);
 end
 
-% Device specific low-level diagnostics to be run?
-if (answer == 'd') || (answer == 's') 
-    answer = input('Run external DataPixx/ViewPixx/ProPixx/Bits# device diagnostics as well [Time consuming]? [y/n] ', 's');
-    if answer == 'y'
-        % Enable one-shot diagnostic of GPU encoders via DataPixx et al. or Bits#:
-        BitsPlusPlus('TestGPUEncoders');
-    end
-end
-
 oldverbosity = Screen('Preference', 'Verbosity', 2);
 oldsynclevel = Screen('Preference', 'SkipSyncTests', 2);
 
