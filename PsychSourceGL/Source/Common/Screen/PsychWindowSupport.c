@@ -4285,8 +4285,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                 *time_at_onset = tSwapComplete;
 
                 // Also check for flips that completed before their target time, which
-                // would indicate a failure in swap scheduling:
-                if ((targetWhen > 0) && (tSwapComplete < targetWhen)) {
+                // would indicate a failure in swap scheduling. Usual roundoff fudge applies:
+                if ((targetWhen > 0) && (tSwapComplete < targetWhen - 0.001)) {
                     if (verbosity > 0) {
                         printf("PTB-ERROR: OpenML timestamping reports that flip completed before its requested target time [Target no earlier than %f secs, completed at %f secs]!\n",
                                targetWhen, tSwapComplete);
