@@ -157,7 +157,8 @@ spo = [ 0, -1, -1, -1,  0,  0, +1, +1, +1 ; ...
         0, -1,  0, +1, -1, +1, -1,  0, +1];
 
 fprintf('\n\n');
-    
+minerror = inf;
+
 for idx = 1:size(spo, 2)
     dx = spo(1, idx);
     dy = spo(2, idx);
@@ -250,7 +251,8 @@ for idx = 1:size(spo, 2)
     % Compute absolute effective maximum error in color intensity over all
     % values, pixels and channels. This is the true "human visible" error.
     maxerror = max(maxdiff);
-    
+    minerror = min(minerror, maxerror);
+
     % Error small enough to be acceptable for practical purposes?
     if maxerror <= acceptableerror
         % Yes. Skip further tests at different rasterizer offsets:
@@ -295,6 +297,7 @@ if (mdr>0 || mdg>0 || mdb>0)
     else
         % Error too big to be acceptable.
         fprintf('The effective absolute maximal error of %f is bigger than the\nrejection threshold of %f units.\n', maxerror, acceptableerror);
+        fprintf('The best case absolute minimal error of %f is bigger than the\nrejection threshold of %f units.\n', minerror, acceptableerror);
         fprintf('This should not happen on properly and accurately working graphics hardware.\n');
         fprintf('Either there is a bug in the graphics driver, or something is misconfigured or\n');
         fprintf('your hardware is too old and not capable of performing the calculations in sufficient\n');
