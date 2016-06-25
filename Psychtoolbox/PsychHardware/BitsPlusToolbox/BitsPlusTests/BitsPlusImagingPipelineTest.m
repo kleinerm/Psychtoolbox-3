@@ -565,9 +565,8 @@ end
 
 fprintf('\n\n------------------- Mono++ test success! -------------------------------------\n\n');
 
-% All tests successful: Write this configuration to file as being
-% validated:
-BitsPlusPlus('StoreValidation', window);
+% All tests successful: Write this configuration to file as the imaging pipeline from usercode -> framebuffer being validated:
+BitsPlusPlus('StoreValidation', window, 1);
 
 % Done. Close everything down:
 BitsPlusPlus('ResetOnWindowClose');
