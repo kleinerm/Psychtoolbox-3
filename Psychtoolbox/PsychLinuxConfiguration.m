@@ -355,6 +355,12 @@ if addgroup
       cmd = sprintf('sudo usermod -a -G dialout %s', username);
       system(cmd);
 
+      % On RaspberryPi also add to the gpio group for GPIO access:
+      if IsARM
+        cmd = sprintf('sudo usermod -a -G gpio %s', username);
+        system(cmd);
+      end
+
       % Another one?
       username = input('Enter the name of another user to add, or just press Return to be done: ', 's');
       if isempty(username)
