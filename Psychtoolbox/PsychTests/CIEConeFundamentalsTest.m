@@ -1,6 +1,6 @@
 % CIEConeFundamentalsTest
 %
-% This program tests the fit cones routine, and demonstrates its use.
+% This program tests the CIE cone fundamentals routines, and demonstrates their use.
 %
 % The goal here is to find parameters that reproduce a set of cone
 % fundamentals from their underlying parts.  That would then let
