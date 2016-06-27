@@ -65,6 +65,13 @@ function usedAnswers = PsychLinuxConfiguration(answers)
 %                  group 'psychtoolbox' with setgid flag set, and write permissions,
 %                  to allow members of the 'psychtoolbox' user group to add/remove/
 %                  modify xorg.conf files without need for admin permissions.
+% 27.06.2016   mk  Optionally install a /etc/modprobe.d/blacklist-psychtoolbox.conf
+%                  file to prevent loading of certain kernel modules, e.g., the 'lp'
+%                  module for control of parallel port line printers, which would prevent
+%                  exclusive access to parallel ports for digital i/o.
+%                  Also add users to the 'lp' group for parallel port access, and
+%                  on ARM architecture (RaspberryPi) to the 'gpio' group for GPIO
+%                  pin access.
 
 rerun = 0;
 
@@ -73,10 +80,10 @@ if ~IsLinux
 end
 
 if nargin < 1 || isempty(answers)
-  answers = '????';
+  answers = '?????';
 else
-  if ~ischar(answers) || length(answers) ~= 4
-    error('Provided input argument ''answers'' must be a 4 character string with characters y, n or ?');
+  if ~ischar(answers) || length(answers) ~= 5
+    error('Provided input argument ''answers'' must be a 5 character string with characters y, n or ?');
   end
 end
 
@@ -161,6 +168,59 @@ if needinstall && answer == 'y'
         else
           fprintf('Failed! The error message was: %s\n', msg);
         end
+    end
+  end
+end
+
+% Check if psychtoolbox modules blacklist file exists:
+fprintf('\n\n');
+if ~exist('/etc/modprobe.d/blacklist-psychtoolbox.conf', 'file')
+  % No: Needs to be installed.
+  needinstall = 1;
+  fprintf('The blacklist file for Psychtoolbox is not installed on your system.\n');
+  if ismember(answers(5), 'yn')
+    answer = answers(5);
+  else
+    answer = input('Should i install it? [y/n] : ', 's');
+    answers(5) = answer;
+  end
+else
+  % Yes.
+  fprintf('The blacklist file for Psychtoolbox is already installed on your system.\n');
+
+  % Compare its modification date with the one in PTB:
+  r = dir([PsychtoolboxRoot '/PsychHardware/blacklist-psychtoolbox.conf']);
+  i = dir('/etc/modprobe.d/blacklist-psychtoolbox.conf');
+
+  if r.datenum > i.datenum
+    needinstall = 2;
+    fprintf('However, it seems to be outdated. I have a more recent version with me.\n');
+    if ismember(answers(5), 'yn')
+      answer = answers(5);
+    else
+      answer = input('Should i update it? [y/n] : ', 's');
+      answers(5) = answer;
+    end
+  end
+end
+
+if needinstall && answer == 'y'
+  if IsOctave && IsGUI
+    rerun = 1;
+    fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
+    fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
+    fprintf('GUI, e.g., via executing: octave --no-gui\n');
+    fprintf('Then run the PsychLinuxConfiguration command again to make things work.\n');
+  else
+    fprintf('I will copy my most recent blacklist file to your system. Please enter\n');
+    fprintf('now your system administrator password. You will not see any feedback.\n');
+    drawnow;
+    cmd = sprintf('sudo cp %s/PsychHardware/blacklist-psychtoolbox.conf /etc/modprobe.d/', PsychtoolboxRoot);
+    [rc, msg] = system(cmd);
+    if rc == 0
+      fprintf('Success! You may need to reboot your machine for some changes to take effect.\n');
+    else
+      fprintf('Failed! The error message was: %s\n', msg);
     end
   end
 end
@@ -336,13 +396,19 @@ if addgroup
   fprintf('sudo usermod -a -G psychtoolbox %s\n\n', username);
   fprintf('One should also add oneself to the ''dialout'' group for access to serial port devices:\n\n');
   fprintf('sudo usermod -a -G dialout %s\n\n', username);
+  fprintf('One should also add oneself to the ''lp'' group for access to parallel port devices:\n\n');
+  fprintf('sudo usermod -a -G lp %s\n\n', username);
+  if IsARM
+    fprintf('One should also add oneself to the ''gpio'' group for access to GPIO pins:\n\n');
+    fprintf('sudo usermod -a -G gpio %s\n\n', username);
+  end
   fprintf('After that, the new group member must log out and then login again for the\n');
   fprintf('settings to take effect.\n\n');
   if ismember(answers(3), 'yn')
     answer = answers(3);
   else
     fprintf('Actually we could do this for you right now.\n');
-    answer = input('Should i add you to the psychtoolbox and dialout user groups? [y/n] : ', 's');
+    answer = input('Should i add you to the user groups proposed above? [y/n] : ', 's');
     answers(3) = answer;
   end
 
@@ -353,6 +419,8 @@ if addgroup
       cmd = sprintf('sudo usermod -a -G psychtoolbox %s', username);
       system(cmd);
       cmd = sprintf('sudo usermod -a -G dialout %s', username);
+      system(cmd);
+      cmd = sprintf('sudo usermod -a -G lp %s', username);
       system(cmd);
 
       % On RaspberryPi also add to the gpio group for GPIO access:
@@ -408,8 +476,9 @@ if ~rerun
   fprintf('become effective after a reboot.\n\n\n');
 else
   fprintf('\nSetup failed due to lack of administrator permissions. Please run octave\n');
-  fprintf('from a terminal window via octave --no-gui while logged in as an administrator user\n');
-  fprintf('and then execute the command\n\nPsychLinuxConfiguration(''%s'');\n\n', answers);
+  fprintf('from a terminal window via ''octave --no-gui'' while logged in as a user with\n');
+  fprintf('administrator capabilities.\n');
+  fprintf('Then execute the command\n\nPsychLinuxConfiguration(''%s'');\n\n', answers);
   fprintf('to rerun this script again with the same settings, so you can avoid\n');
   fprintf('answering all yes/no questions again. Then it should work.\n\n\n');
 end
