@@ -164,7 +164,7 @@ for idx = 1:size(spo, 2)
     dy = spo(2, idx);
     
     % Take screenshot of GPU converted image:
-    convImage=Screen('GetImage', window, OffsetRect(ScaleRect(dstRect, 2, 1), dx + 4, dy + 1),'backBuffer');
+    convImage=Screen('GetImage', window, OffsetRect(ScaleRect(dstRect, 2, 1), dx + 2, dy + 1),'backBuffer');
 
     % Compute difference images between Matlab converted packedImage and GPU converted
     % HDR image:
@@ -270,7 +270,7 @@ Screen('HookFunction', window, 'Disable', 'FinalOutputFormattingBlit');
 % Build and draw texture from packed image:
 texpacked= Screen('MakeTexture', window, packedImage);
 dstRect = Screen('Rect', texpacked);
-Screen('DrawTexture', window, texpacked, [], OffsetRect(dstRect, 4, 1), [], 0);
+Screen('DrawTexture', window, texpacked, [], OffsetRect(dstRect, 2, 1), [], 0);
 
 % Show it:
 vbl = Screen('Flip', window, vbl + 1);
