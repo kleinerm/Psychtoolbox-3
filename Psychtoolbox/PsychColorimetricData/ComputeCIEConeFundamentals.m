@@ -66,7 +66,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % I (DHB) gave up and decided that using a single lambdaMax is as good as anything
 % else I could come up with. If you are interested, see FitConeFundametnalsTest.
 %
-% NOTE: When we first implemented the CIE standard, adding this shifting feature
+% NOTE 1: When we first implemented the CIE standard, adding this shifting feature
 % seemed like a good idea to allow exploration of individual differences in photopigments.
 % But, with 0 shift, none of the nomograms exactly reproduce the tabulated photopigment absorbance
 % spectral sensitivities, and this is not so good.  We are phasing out our
@@ -108,7 +108,13 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % Relevant to individual differences, S & S (2000) estimate the wavelength difference
 % between the ser/ala variants to be be 2.7 nm (ser longer).
 %
-% See also: ComputeRawConeFundamentals, CIEConeFundamentalsTest, 
+% NOTE 2.  The CIE standard is specified for field sizes between 1 and 10
+% degrees.  Our code will extrapolate using the given formulae to larger
+% field sizes without complaining.  We think this is reasonable; see
+% CIEConeFundamentalsFieldSizeTest and its header comments, but be aware
+% that you have sailed into little charted territory if you do this.
+%
+% See also: ComputeRawConeFundamentals, CIEConeFundamentalsTest, CIEConeFundamentalsFieldSizeTest, 
 % FitConeFundamentalsTest, FitConeFundamentalsWithNomogram, StockmanSharpeNomogram,
 % ComputePhotopigmentBleaching.
 %
