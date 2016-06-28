@@ -136,7 +136,7 @@ try
 
         if method == 0
             % This 'Flip' waits for vertical retrace...
-            Screen('Flip', w, 0, 2);
+            Screen('Flip', w, 0, 1);
         end
 
         % Update the hardware CLUT with our newLUT:
@@ -144,7 +144,7 @@ try
 
         if method > 0
             % This 'Flip' waits for vertical retrace...
-            Screen('Flip', w, 0, 2);
+            Screen('Flip', w, 0, 1);
         end
 
         t1=GetSecs;
