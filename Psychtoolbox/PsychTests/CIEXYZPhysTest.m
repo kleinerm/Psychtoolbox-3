@@ -98,12 +98,12 @@ end
 
 fprintf('10-degree transform, applied from left to cones as column vector');
 M10
-% expectedM10 = [];
-% check3 = M10-expectedM10;
-% tolerance = 1e-3;
-% if (max(abs(check3(:))) > tolerance)
-%     error('10-degree transformation matrix is off')
-% end
+expectedM10 = [1.93986443 -1.34664359 0.43044935 ; 0.69283932 0.34967567 0 ; 0 0 2.14687945];
+check3 = M10-expectedM10;
+tolerance = 1e-6;
+if (max(abs(check3(:))) > tolerance)
+    error('10-degree transformation matrix is off')
+end
 
 %% Check consistency of xyz and Y
 % 
