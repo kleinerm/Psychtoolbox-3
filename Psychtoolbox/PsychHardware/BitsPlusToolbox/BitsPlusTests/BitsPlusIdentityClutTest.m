@@ -340,8 +340,8 @@ try
 
             if keyCode(space)
                 % Match 'lutidx' with available indices in LoadIdentityClut!!
-                % Currently indices 0 to 3 are available, ie., 4 indices total:
-                lutidx = mod(lutidx + 1, 4);
+                % Currently indices 0 to 4 are available, ie., 5 indices total:
+                lutidx = mod(lutidx + 1, 5);
                 fprintf('Switching GPU identity CLUT to type %i.\n', lutidx);
 
                 % Upload new corresponding gamma table immediately to GPU:
