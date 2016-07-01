@@ -1893,7 +1893,14 @@ function ValidateBitsPlusImaging(win, writefile, devname, validationType)
 
             RestoreCluts;
             Screen('CloseAll'); ShowCursor; Priority(0);
-            
+
+            % Perform device shutdown for display device:
+            if ~isempty(strfind(devname, 'Pixx'))
+                PsychDataPixx('ResetOnWindowClose');
+            else
+                BitsPlusPlus('ResetOnWindowClose');
+            end
+
             error('Configuration not yet verified. Please do it now.');
         end
     end
