@@ -10,30 +10,28 @@ try
     % Enclose all your real code between try and catch.
     
     % Removes the blue screen flash and minimize extraneous warnings.
-	oldVisualDebugLevel = Screen('Preference', 'VisualDebugLevel', 3);
+    oldVisualDebugLevel = Screen('Preference', 'VisualDebugLevel', 3);
     oldSupressAllWarnings = Screen('Preference', 'SuppressAllWarnings', 1);
 
     % Find out how many screens and use largest screen number.
     whichScreen = max(Screen('Screens'));
-    
+
     Screen('OpenWindow', whichScreen);
     error('Oops!');
-    
+
     % Clean up, although in this case we never get here.
-    Screen('CloseAll');
+    sca;
     Screen('Preference', 'VisualDebugLevel', oldVisualDebugLevel);
     Screen('Preference', 'SuppressAllWarnings', oldSupressAllWarnings);
 
 catch
     % If an error occurs, the catch statements executed.  We restore as
     % best we can and then rethrow the error so user can see what it was.
-    
-    Screen('CloseAll');
+    sca;
     Screen('Preference', 'VisualDebugLevel', oldVisualDebugLevel);
     Screen('Preference', 'SuppressAllWarnings', oldSupressAllWarnings);
     
     fprintf('We''ve hit an error.\n');
     psychrethrow(psychlasterror);
     fprintf('This last text never prints.\n');
-    
 end

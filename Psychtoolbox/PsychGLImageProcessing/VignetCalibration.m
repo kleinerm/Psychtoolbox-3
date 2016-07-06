@@ -184,7 +184,7 @@ function s = VignetCalibration(filename, screenId)
 		ShowCursor('Arrow');
 
 		%reset screen values
-		Screen('CloseAll');
+		sca;
 		Screen('Preference', 'SkipSyncTests', oldsynclevel);
 		Screen('Preference', 'Verbosity', oldverbosity);
 
@@ -202,7 +202,7 @@ function s = VignetCalibration(filename, screenId)
 	ShowCursor('Arrow');
 
 	%reset screen values
-	Screen('CloseAll');
+	sca;
 	Screen('Preference', 'SkipSyncTests', oldsynclevel);
 	Screen('Preference', 'Verbosity', oldverbosity);
 	

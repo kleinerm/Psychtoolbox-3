@@ -467,7 +467,7 @@ fps = framecount / (vbl - tstart) %#ok<NOPRT,NASGU>
 moglmorpher('reset');
 
 % Close onscreen window and release all other ressources:
-Screen('CloseAll');
+sca;
 
 % Enable regular keyboard again:
 ListenChar(0);

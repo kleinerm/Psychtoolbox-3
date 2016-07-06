@@ -342,7 +342,7 @@ oldverbosity = Screen('Preference', 'Verbosity', 1);
 if isfield(scal, 'rect')
     % rect defined. Check for match with current screens rect:
     if sum(screenrect - scal.rect)~=0,
-        Screen('CloseAll');
+        sca;
         error('The resolution of the monitor does not match the resolution stored in spatial calibration input file! Aborted.')
     end
 else
@@ -365,7 +365,7 @@ if ~isempty(referenceImage)
     try
         refImg = imread(referenceImage);
     catch
-        Screen('CloseAll');
+        sca;
         error(sprintf('Reference image file %s failed to load - No such file or permission problems?! Aborted.', referenceImage));
     end
     
@@ -501,7 +501,7 @@ end
 ShowCursor('Arrow');
 
 % Close display:
-Screen('CloseAll');
+sca;
 
 % Restore sync test settings:
 Screen('Preference', 'SkipSyncTests', oldsynclevel);

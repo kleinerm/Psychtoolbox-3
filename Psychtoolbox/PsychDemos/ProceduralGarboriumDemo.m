@@ -250,7 +250,7 @@ count
 avgfps = count / (vbl - tstart)
 
 % Close onscreen window, release all ressources:
-Screen('CloseAll');
+sca;
 
 % Done.
 return;

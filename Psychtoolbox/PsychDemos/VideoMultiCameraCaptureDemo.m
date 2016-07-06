@@ -483,7 +483,7 @@ try
     Screen('Close');
     
     % Close all windows and release all remaining display resources:
-    Screen('CloseAll');
+    sca;
     Screen('Preference', 'SkipSyncTests', oldsynctests);
 catch %#ok<*CTCH>
     % Emergency shutdown:

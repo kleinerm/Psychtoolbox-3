@@ -247,12 +247,12 @@ try
         end
     end
 
-    Screen('CloseAll');
+    sca;
 
     fprintf('\n4 of 4.  Done.\n');
 
 catch
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 end
 return

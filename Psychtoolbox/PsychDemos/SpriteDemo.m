@@ -100,7 +100,7 @@ try
     ShowCursor; 
     
     % Close screen
-    Screen('CloseAll');
+    sca;
     
     % Restore preferences
     Screen('Preference', 'VisualDebugLevel', oldVisualDebugLevel);
@@ -111,7 +111,7 @@ catch
     % If there is an error in our try block, let's
     % return the user to the familiar MATLAB prompt.
     ShowCursor; 
-    Screen('CloseAll');
+    sca;
     Screen('Preference', 'VisualDebugLevel', oldVisualDebugLevel);
     Screen('Preference', 'SuppressAllWarnings', oldSupressAllWarnings);
     psychrethrow(psychlasterror);

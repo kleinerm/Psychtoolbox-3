@@ -170,7 +170,7 @@ try
     Screen('CloseMovie', movie);
     
     % Close screen:
-    Screen('CloseAll');
+    sca;
     
     % Done.
     return;

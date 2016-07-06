@@ -80,7 +80,7 @@ try
     ShowCursor('Arrow', [], mouse);
   end
 
-  Screen('CloseAll');
+  sca;
 catch
   sca;
   psychrethrow(psychlasterror);

@@ -100,6 +100,6 @@ end
 
 % Done. Close window and release all ressources:
 ShowCursor;
-Screen('CloseAll');
+sca;
 
 return;

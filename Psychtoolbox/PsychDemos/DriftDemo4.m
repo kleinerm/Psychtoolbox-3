@@ -127,7 +127,7 @@ while ~KbCheck
 end
 
 % We're done. Close the window. This will also release all other ressources:
-Screen('CloseAll');
+sca;
 
 % Bye bye!
 return;

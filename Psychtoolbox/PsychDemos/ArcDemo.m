@@ -94,12 +94,12 @@ try
     
     % Done. Show cursor and close window.
     ShowCursor;
-    Screen('CloseAll');
+    sca;
 
 catch
     % This section is executed in case an error happens in the
     % experiment code implemented between try and catch...
     ShowCursor;
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 end;

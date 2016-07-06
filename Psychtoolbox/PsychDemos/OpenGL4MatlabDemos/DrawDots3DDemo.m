@@ -697,7 +697,7 @@ try
         end
     end
     % Done. Close screen and exit:
-    Screen('CloseAll');
+    sca;
 
     % Reenable all keys for KbCheck:
     RestrictKeysForKbCheck([]);

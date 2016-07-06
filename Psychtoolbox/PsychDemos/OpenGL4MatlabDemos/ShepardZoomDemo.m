@@ -445,7 +445,7 @@ end % Next iteration of animation loop...
 Screen('EndOpenGL', win);
 
 % We're done! Close window and release all texture ressources:
-Screen('CloseAll');
+sca;
 
 % Restore synctest setting to pre-demo state:
 Screen('Preference', 'SkipSyncTests', oldlevel);

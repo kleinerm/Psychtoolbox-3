@@ -252,7 +252,7 @@ if benchmark == 2
 end
 
 % Close window, release all ressources:
-Screen('CloseAll');
+sca;
 
 % Restore old settings for sync-tests:
 Screen('Preference', 'SkipSyncTests', oldSyncLevel);

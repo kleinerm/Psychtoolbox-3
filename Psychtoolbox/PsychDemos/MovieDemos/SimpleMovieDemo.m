@@ -73,7 +73,7 @@ try
     Screen('CloseMovie', movie);
     
     % Close Screen, we're done:
-    Screen('CloseAll');
+    sca;
     
 catch %#ok<CTCH>
     sca;

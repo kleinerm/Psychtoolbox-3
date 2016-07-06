@@ -253,7 +253,7 @@ try
 
     % Done. Close screen and finish:
     ShowCursor;
-    Screen('CloseAll');
+    sca;
     
     % Compute avg. computation time for redraw:
     avgredrawtime = mean(diff(tonset)) * 1000
@@ -264,6 +264,6 @@ try
 catch
     % Error. Close screen, show cursor, rethrow error:
     ShowCursor;
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 end

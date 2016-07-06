@@ -150,4 +150,4 @@ avgfps = count / (vbl - ts);
 fprintf('Average redraw rate in Hz was: %f\n', avgfps);
 
 % Close window, release all ressources:
-Screen('CloseAll');
+sca;

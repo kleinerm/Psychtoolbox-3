@@ -157,10 +157,10 @@ try
     updaterate = count / telapsed
     
     % Done. Close Screen, release all ressouces:
-    Screen('CloseAll');
+    sca;
 catch
     % Our usual error handler: Close screen and then...
-    Screen('CloseAll');
+    sca;
     % ... rethrow the error.
     psychrethrow(psychlasterror);
 end

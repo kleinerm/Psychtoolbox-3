@@ -242,12 +242,12 @@ try
     Screen('Preference', 'DefaultTextYPositionIsBaseline', 0);
 
     % Close the screen, we're done...
-    Screen('CloseAll');
+    sca;
 
 catch
     % This "catch" section executes in case of an error in the "try" section
     % above.  Importantly, it closes the onscreen window if it's open.
     Screen('Preference', 'DefaultTextYPositionIsBaseline', 0);
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 end

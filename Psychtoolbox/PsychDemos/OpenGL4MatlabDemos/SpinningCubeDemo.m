@@ -221,7 +221,7 @@ glDeleteTextures(length(texname),texname);
 Screen('EndOpenGL', win);
 
 % Close onscreen window and release all other ressources:
-Screen('CloseAll');
+sca;
 
 % Well done!
 return

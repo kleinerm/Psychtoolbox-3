@@ -343,7 +343,7 @@ try
     end
 
     % Done.
-    Screen('CloseAll');
+    sca;
     ListenChar(0);
 
     fprintf('Calibration finished :-)\n\n');
@@ -360,7 +360,7 @@ try
 
     return;
 catch
-    Screen('CloseAll');
+    sca;
     ListenChar(0);
     psychrethrow(psychlasterror);
 end

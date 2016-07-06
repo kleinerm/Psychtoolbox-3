@@ -347,7 +347,7 @@ try
 
     %clean up before exit
     ShowCursor;
-    sca; %or Screen('CloseAll');
+    sca; %or sca;
     ListenChar(0);
     %return to olddebuglevel
     Screen('Preference', 'VisualDebuglevel', olddebuglevel);
@@ -356,7 +356,7 @@ catch
     % This section is executed only in case an error happens in the
     % experiment code implemented between try and catch...
     ShowCursor;
-    Screen('CloseAll'); %or sca
+    sca; %or sca
     ListenChar(0);
     Screen('Preference', 'VisualDebuglevel', olddebuglevel);
     %output the error message

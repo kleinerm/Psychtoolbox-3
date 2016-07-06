@@ -254,7 +254,7 @@ try
 
     PsychOpenEyes('CloseTracker', oeyes);
     ShowCursor('Arrow', screenid);
-    Screen('CloseAll');
+    sca;
     ListenChar(0);
     Screen('Preference', 'SkipSyncTests', oldsync);
     return;
@@ -265,7 +265,7 @@ catch
     end
     
     ShowCursor('Arrow', screenid);
-    Screen('CloseAll');
+    sca;
     Screen('Preference', 'SkipSyncTests', oldsync);
     psychrethrow(psychlasterror);
     return;

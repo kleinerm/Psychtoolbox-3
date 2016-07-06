@@ -1892,7 +1892,7 @@ function ValidateBitsPlusImaging(win, writefile, devname, validationType)
             fprintf('Configuration to verify: %s\n', gfxconfig);
 
             RestoreCluts;
-            Screen('CloseAll'); ShowCursor; Priority(0);
+            sca; ShowCursor; Priority(0);
 
             % Perform device shutdown for display device:
             if ~isempty(strfind(devname, 'Pixx'))

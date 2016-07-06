@@ -467,13 +467,13 @@ try
     Screen('DrawTexture', w, secondImage);
     Screen('Flip', w);
 
-    Screen('CloseAll');
+    sca;
     fprintf('End of ImageMixingTutorial. Bye!\n\n');
     return;
 catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
-    Screen('CloseAll');
+    sca;
     ShowCursor;
     Priority(0);
     psychrethrow(psychlasterror);
