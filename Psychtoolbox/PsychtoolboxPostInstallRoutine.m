@@ -68,6 +68,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 06/01/2016 32-Bit Octave-4 support for MS-Windows removed. (MK)
 %            64-Bit Octave-3 support for OSX removed. (MK)
 %            OSX 10.8 and 10.9 support removed. (MK)
+% 07/06/2016 No upstream support for 32-Bit Octave on Linux anymore. NeuroDebian provides it though. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -163,6 +164,17 @@ if (IsOSX || IsWin) && ~Is64Bit
     fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.10'', which does support 32-Bit Matlab on OSX.\n');
     fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.12'', does support 32-Bit Octave-4 on Windows.\n');
     error('Tried to setup on 32-Bit Octave, which is no longer supported on OSX or Windows.');
+end
+
+if IsLinux && ~Is64Bit && IsOctave && ~IsARM
+    fprintf('Psychtoolbox 3.0.13 no longer provides up to date mex files for 32-Bit Octave on Linux.\n');
+    fprintf('The only exception is 32-Bit Octave for Linux on ARM processors like the RaspberryPi.\n');
+    fprintf('Not to worry though, you can get a fully supported Psychtoolbox 3.0.13 for 32-Bit Octave\n');
+    fprintf('on Linux from the NeuroDebian project if you run Debian GNU/Linux or a Ubuntu flavor.\n');
+    fprintf('Go to this link for installation instructions:\n');
+    fprintf('http://neuro.debian.net/pkgs/octave-psychtoolbox-3.html#pkg-octave-psychtoolbox-3\n\n');
+    fprintf('\n\nPress any key to continue after you have read and understood above message.\n\n');
+    pause;
 end
 
 if ~Is64Bit && ~IsOctave
