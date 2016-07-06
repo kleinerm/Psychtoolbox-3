@@ -40,12 +40,26 @@ function [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height, 
 % definition of a gabor. Therefore we allow to disable this normalization.
 %
 % 'contrastPreMultiplicator' Optional, defaults to 1. This value is
-% multiplied as a scaling factor to the requested contrast value. If you
-% set the 'disableNorm' parameter to 1 to disable the builtin normf
+% multiplied as a scaling factor to the requested contrast value.
+%
+% Michelson contrast:
+%
+% If you use the normalized 0-1 color range and select 'modulateColor' below
+% as unit values, e.g., modulateColor = [1 1 1 0], and leave globalAlpha out
+% or set it to its 1.0 default, then the following seems to apply:
+%
+% If you set the 'disableNorm' parameter to 1 to disable the builtin normf
 % normalization and then specify contrastPreMultiplicator = 0.5 then the
 % per gabor 'contrast' value will correspond to what practitioners of the
-% field usually understand to be the contrast value of a gabor.
-%
+% field usually understand to be the contrast value of a gabor. Specifically,
+% assuming a 0.5 (=50%) gray background and a properly gamma corrected /
+% linearized display, the 'contrast' value, as described below, that you
+% pass to Screen('DrawTexture',...) will then allow to directly specify
+% Michelson contrast: 'contrast' = (Imax - Imin) / (Imin + Imax)
+% of course assuming isolated, non-superimposing gabors, so the Michelson
+% contrast corresponds to the maxima and minima of the gabor patch under
+% a suitable phase shift, where the minimum or maximum of the patch lies
+% in the center of the patch.
 %
 % The function returns a procedural texture handle 'gaborid' that you can
 % pass to the Screen('DrawTexture(s)', windowPtr, gaborid, ...) functions

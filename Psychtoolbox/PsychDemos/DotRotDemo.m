@@ -211,9 +211,9 @@ try
     end;
     Priority(0);
     ShowCursor
-    Screen('CloseAll');
+    sca;
 catch
     Priority(0);
     ShowCursor
-    Screen('CloseAll');
+    sca;
 end

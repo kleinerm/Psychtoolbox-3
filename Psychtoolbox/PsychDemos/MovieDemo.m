@@ -194,7 +194,7 @@ try
 	frames2=sum(s2Diffs)*frameRate-length(s2Diffs);
 	
 	% Close the on- and off-screen windows
-	Screen('CloseAll');
+	sca;
 	
 	if round(frames1)==0 && round(frames2)==0
 		s=sprintf('Success! The movie was shown twice. Both showings were frame-accurate.');
@@ -213,7 +213,7 @@ try
 catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
-    Screen('CloseAll');
+    sca;
     ShowCursor;
     Priority(0);
     psychrethrow(psychlasterror);

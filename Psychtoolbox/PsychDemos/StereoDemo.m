@@ -197,6 +197,6 @@ try
 
 catch
     % Executes in case of an error: Closes onscreen window:
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 end;

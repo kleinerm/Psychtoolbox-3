@@ -166,7 +166,7 @@ try
   % ---------- Window Cleanup ---------- 
 
   % Closes all windows.
-  Screen('CloseAll');
+  sca;
 
   % Restores the mouse cursor.
   ShowCursor;
@@ -182,7 +182,7 @@ catch
   % to the MATLAB prompt even if there is an error in our code.  Without this try-catch
   % block, Screen could still have control of the display when MATLAB throws an error, in
   % which case the user will not see the MATLAB prompt.
-  Screen('CloseAll');
+  sca;
 
   % Restores the mouse cursor.
   ShowCursor;

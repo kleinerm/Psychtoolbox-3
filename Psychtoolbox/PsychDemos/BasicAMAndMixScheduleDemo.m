@@ -42,6 +42,13 @@ if IsWin
     sugLat = 0.015;
 end
 
+if IsARM
+    % ARM processor, probably the RaspberryPi SoC. This can not quite handle the
+    % low latency settings of a Intel PC, so be more lenient:
+    sugLat = 0.025;
+    fprintf('Choosing a high suggestedLatencySecs setting of 25 msecs to account for lower performing ARM SoC.\n');
+end
+
 pamaster = PsychPortAudio('Open', [], 1+8, 1, freq, nrchannels, [], sugLat);
 
 % Start master immediately, wait for it to be started. We won't stop the

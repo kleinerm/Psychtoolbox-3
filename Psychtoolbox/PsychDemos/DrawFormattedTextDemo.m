@@ -166,12 +166,12 @@ try
     end
     
     % End of demo, close window:
-    Screen('CloseAll');
+    sca;
 catch %#ok<*CTCH>
     % This "catch" section executes in case of an error in the "try"
     % section []
     % above.  Importantly, it closes the onscreen window if it's open.
-    Screen('CloseAll');
+    sca;
     fclose('all');
     psychrethrow(psychlasterror);
 end

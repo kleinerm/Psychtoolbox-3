@@ -99,7 +99,7 @@ try
     % Stop capture, close engine and onscreen window:
     Screen('StopVideoCapture', grabber);
     Screen('CloseVideoCapture', grabber);
-    Screen('CloseAll');
+    sca;
     
     % Restore preference settings:
     Screen('Preference','SkipSyncTests', skipsync);
@@ -111,7 +111,7 @@ try
     
 catch %#ok<CTCH>
     % Close windows and shutdown capture engine:
-    Screen('CloseAll');
+    sca;
     
     % Restore preference settings:
     Screen('Preference','SkipSyncTests', skipsync);

@@ -142,6 +142,6 @@ end
 avgfps = count / (GetSecs - ts)
 
 % Close the window, release all ressources:
-Screen('CloseAll');
+sca;
 
 % Done.

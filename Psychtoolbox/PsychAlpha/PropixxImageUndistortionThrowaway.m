@@ -211,7 +211,7 @@ PsychProPixx('GetTimingSamples');
 RestrictKeysForKbCheck([]);
 
 % Close all windows and ressources:
-Screen('CloseAll');
+sca;
 
 avgframetimemsecs = 1000 * (tend - tstart) / (count / rate)
 

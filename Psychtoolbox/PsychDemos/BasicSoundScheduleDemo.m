@@ -140,11 +140,20 @@ end
 % Recompute number of available sounds:
 nfiles = length(buffer);
 
+suggestedLatencySecs = [];
+
+if IsARM
+    % ARM processor, probably the RaspberryPi SoC. This can not quite handle the
+    % low latency settings of a Intel PC, so be more lenient:
+    suggestedLatencySecs = 0.025;
+    fprintf('Choosing a high suggestedLatencySecs setting of 25 msecs to account for lower performing ARM SoC.\n');
+end
+
 % Open the default audio device [], with default mode [] (==Only playback),
 % and a required latencyclass of 1 == standard low-latency mode, as well as
 % a playback frequency of 'freq' and 'nrchannels' sound output channels.
 % This returns a handle 'pahandle' to the audio device:
-pahandle = PsychPortAudio('Open', [], [], 1, freq, nrchannels);
+pahandle = PsychPortAudio('Open', [], [], 1, freq, nrchannels, [], suggestedLatencySecs);
 
 % Enable use of sound schedules: We create a schedule of default size,
 % currently 128 slots by default. From now on, the driver will not play

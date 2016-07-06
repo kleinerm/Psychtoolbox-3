@@ -256,7 +256,7 @@ if ~isempty(calibinfilename)
     % Old file provided: Setup from that file:
     calib = load(calibinfilename);
     if ~strcmp(calib.warptype, 'BezierDisplayList')
-        Screen('CloseAll');
+        sca;
         error('Provided input calibration file %s does not describe a calibration created with this routine!', calibinfilename);
     end
     
@@ -471,7 +471,7 @@ warptype = 'BezierDisplayList'; %#ok<NASGU>
 save(caliboutfilename, 'warptype', 'subdivision', 'frompts', 'topts', '-mat', '-V6');
 
 % Close Display:
-Screen('CloseAll');
+sca;
 
 % Done.
 return;

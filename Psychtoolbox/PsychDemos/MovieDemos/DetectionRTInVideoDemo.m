@@ -274,7 +274,7 @@ try
     
     % Done with the experiment. Close onscreen window and finish.
     ShowCursor;
-    Screen('CloseAll');
+    sca;
     fprintf('Done. Bye!\n');
     return;
 catch %#ok<CTCH>

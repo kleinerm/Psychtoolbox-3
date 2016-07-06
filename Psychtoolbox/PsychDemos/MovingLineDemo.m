@@ -118,5 +118,5 @@ end
 ShowCursor(screenid);
 
 % Done. Close windows and exit:
-Screen('CloseAll');
+sca;
 return;

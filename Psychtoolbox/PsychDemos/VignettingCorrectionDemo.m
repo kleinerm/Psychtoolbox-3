@@ -120,7 +120,7 @@ try
     KbStrokeWait;
         
     % Done. Close everything down and terminate:
-    Screen('CloseAll');
+    sca;
     
 catch
     % Usual error handling...

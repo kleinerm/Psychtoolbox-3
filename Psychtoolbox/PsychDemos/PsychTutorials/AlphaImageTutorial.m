@@ -217,7 +217,7 @@ try
 
     % The same command which closes onscreen and offscreen windows also
     % closes textures.
-    Screen('CloseAll');
+    sca;
     ShowCursor;
     Priority(0);
     
@@ -229,7 +229,7 @@ try
 % above.  Importantly, it closes the onscreen window if it's open.
 catch
 
-    Screen('CloseAll');
+    sca;
     ShowCursor;
     Priority(0);
     

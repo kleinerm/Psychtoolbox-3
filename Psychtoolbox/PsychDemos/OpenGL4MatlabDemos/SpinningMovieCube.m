@@ -196,7 +196,7 @@ Screen('EndOpenGL', win);
 Screen('CloseMovie', movie);
 
 % Close onscreen window and release all ressources:
-Screen('CloseAll');
+sca;
 
 return
 

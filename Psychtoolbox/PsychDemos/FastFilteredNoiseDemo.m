@@ -96,7 +96,7 @@ if dontclear > 0
     dontclear = 2;
 end
 
-%try
+try
     % Find screen with maximal index:
     screenid = max(Screen('Screens'));
 
@@ -131,25 +131,21 @@ end
         case 7
             kernel = ones(kwidth, kwidth)*1;
             for i=1:length(kernel)*length(kernel)
-%                kernel(i) = 1 - 2*mod(i,2);
+                kernel(i) = 1 - 2*mod(i,2);
             end
     end
 
-stype = 2;
-channels = 1;
+    stype = 2;
+    channels = 1;
 
     if filtertype > 0
         % Build shader from kernel:
-%        shader = EXPCreateStatic2DConvolutionShader(kernel, channels, 1, 1, stype);
         convoperator = CreateGLOperator(win, kPsychNeed32BPCFloat);
         if filtertype~=5
             Add2DConvolutionToGLOperator(convoperator, kernel, [], channels, 1, 4, stype);
         else
             Add2DSeparableConvolutionToGLOperator(convoperator, kernel1, kernel2, [], channels, 1, 4, stype);
         end
-        
-%        Add2DConvolutionToGLOperator(convoperator, kernel, [], channels, 1, 4, stype);
-%        Add2DConvolutionToGLOperator(convoperator, kernel, [], channels, 1, 4, stype);
     end
 
     glFinish;
@@ -271,6 +267,10 @@ channels = 1;
     glFinish;
     telapsed = GetSecs - tstart
     updaterate = count / telapsed
+
+    % Done. Close Screen, release all ressouces:
+    sca;
+
     if validate
         avgspeedup=mean(cput(2:end)) / mean(gput(2:end))
         close all;
@@ -280,12 +280,9 @@ channels = 1;
         figure;
         imagesc(gpu);
     end
-
-    % Done. Close Screen, release all ressouces:
-    Screen('CloseAll');
-%catch
+catch
     % Our usual error handler: Close screen and then...
-%    Screen('CloseAll');
+    sca;
     % ... rethrow the error.
-%    psychrethrow(psychlasterror);
-%end
+    psychrethrow(psychlasterror);
+end

@@ -54,7 +54,7 @@ PsychError SCREENWaitBlanking(void)
 {
     PsychWindowRecordType *windowRecord;
     int waitFrames, framesWaited;
-    double tvbl, ifi;
+    double tvbl, ifi, tDummy;
     long windowwidth, windowheight;
     int vbl_startline, beampos, lastline;
     psych_uint64 vblCount, vblRefCount;
@@ -200,7 +200,9 @@ PsychError SCREENWaitBlanking(void)
             PsychErrorExitMsg(PsychError_internal, "WaitBlanking tried to perform swap-waiting on a single buffered window!");
         }
 
-        // Setup buffers for front->back copy op:
+        // Safe-Reset drawing target, or this procedure will fail if the
+        // imaging pipeline is enabled:
+        PsychSetDrawingTarget((PsychWindowRecordType*) 0x1);
 
         // Backup old read- writebuffer assignments:
         glGetIntegerv(GL_READ_BUFFER, &read_buffer);
@@ -236,6 +238,7 @@ PsychError SCREENWaitBlanking(void)
 
             // Trigger bufferswap in sync with retrace:
             PsychOSFlipWindowBuffers(windowRecord);
+            PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tDummy);
 
             // Protect against multi-threading trouble if needed:
             PsychLockedTouchFramebufferIfNeeded(windowRecord);
@@ -245,17 +248,6 @@ PsychError SCREENWaitBlanking(void)
 
             // VBL happened - Take system timestamp:
             PsychGetAdjustedPrecisionTimerSeconds(&tvbl);
-
-            // This code-chunk is an alternate way of syncing, only used for debugging:
-            if (false) {
-                // Disable beamsyncing of bufferswaps to VBL:
-                PsychOSSetVBLSyncLevel(windowRecord, 0);
-                // Swap buffers immediately without vsync:
-                PsychOSFlipWindowBuffers(windowRecord);
-
-                // Protect against multi-threading trouble if needed:
-                PsychLockedTouchFramebufferIfNeeded(windowRecord);
-            }
 
             // Decrement remaining number of frames to wait:
             waitFrames--;

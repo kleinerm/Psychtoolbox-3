@@ -202,7 +202,7 @@ try
     end
     
     % Close down everything else:
-    Screen('CloseAll');
+    sca;
     
 catch %#ok<*CTCH>
     % Error handling, emergency shutdown:

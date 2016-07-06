@@ -45,12 +45,12 @@ global GL;
     if nargin < 4
         error('Required minimum 3 parameters missing!');
     end
-    
+
     if deviceType == 0
         % Open our own connection to Datapixx:
         devName = 'PsychDataPixx';
         PsychDataPixx('Open');
-        
+
         % Repeat each measurement 60 times on DataPixx:
         numRescans = 60;
     end
@@ -64,7 +64,7 @@ global GL;
         % Repeat each measurement 20 times on Bits# to compensate for its
         % slow readback:
         numRescans = 20;
-        
+
         % Switch to Bits# status screen before pixel readback. Why? Pixel readback would
         % implicitely switch to status screen if it is not already active, but this
         % switch takes multiple seconds and causes instable operation of pixel readback,
@@ -83,7 +83,7 @@ global GL;
         Screen('LoadNormalizedGammaTable', win, oldlut * 0.95);
         %Screen('LoadNormalizedGammaTable', win, rand(size(oldlut)));
     end
-    
+
     % Build 256 pixel level RGB test gradient:
     testdata = uint8(zeros(3, 256));
     testdata(:,:) = uint8(repmat(0:255, 3, 1));
@@ -105,7 +105,7 @@ global GL;
     % At this point the GPU gamma tables should be already loaded with an
     % identity LUT via LoadIdentityClut(). The GL struct and moglcore are
     % initialized so we can use low-level glXXX commands.
-    
+
     % Testing loop: Will display the horizontal test gradient in the top
     % scanline of the display, then read it back from the device. If
     % everything works correctly then the readback gradient should match
@@ -120,7 +120,7 @@ global GL;
     oldlut = Screen('ReadNormalizedGammaTable', win);
     nrlutslots = size(oldlut, 1);
     curlut = oldlut;
-    
+
     psychlasterror('reset');
 
     % We tweak gamma table elements in steps of 1/1024 units per iteration.
@@ -136,7 +136,7 @@ global GL;
     regressioncount = 0;
     fluctcount = 0;
     retry = 1;
-    
+
     % Draw test pattern: We don't "start" drawing the 10 scanlines high
     % test strip at y position 10, but already at 8, so technically the
     % two topmost lines will be outside the screen. This in case some
@@ -147,13 +147,13 @@ global GL;
 
     % Show it at next retrace:
     Screen('Flip', win);
-    
+
     % Wait generous 5 retrace cycles in case a compositor is delaying things:
-    Screen('WaitBlanking', win, 5);
-    
+    WaitSecs('YieldSecs', 5 * Screen('GetFlipInterval', win));
+
     fprintf('%s: INFO: GPU gamma table and display encoder test running. Please be patient...\n', devName);
     tStart = GetSecs;
-    
+
     % Enter test and auto-correction loop:
     while retry
         retry2=1;
@@ -167,8 +167,8 @@ global GL;
             end
 
             if deviceType == 1
-                % Wait for next vsync:
-                Screen('WaitBlanking', win);
+                % Wait until at least next vsync:
+                WaitSecs('YieldSecs', 1 * Screen('GetFlipInterval', win));
 
                 % Readback 2nd topmost scanline from Bits# :
                 oldrealpixels = BitsPlusPlus('GetVideoLine', 256, 2);
@@ -186,8 +186,8 @@ global GL;
                 end
 
                 if deviceType == 1
-                    % Wait for next vsync:
-                    Screen('WaitBlanking', win);
+                    % Wait until at least next vsync:
+                    WaitSecs('YieldSecs', 1 * Screen('GetFlipInterval', win));
 
                     % Readback 2nd topmost scanline from Bits# :
                     realpixels = BitsPlusPlus('GetVideoLine', 256, 2);
@@ -210,7 +210,7 @@ global GL;
                 end
             end
         end
-        
+
         if fluctcount >= nIter
             % Totally unstable DVI signal. This could be due to
             % (spatio-)temporal dithering being enabled on the display head
@@ -218,36 +218,35 @@ global GL;
             fprintf('%s: INFO: No stable signal received during over %i iterations! Interference by dithering?!?\n', devName, nIter);
             fluctcount = 0;     
         end
-        
+
         % 'realpixels' contains a measurement that has been stable for at
         % least numRescans video cycles. We use this to judge the quality of the
         % current GPU LUT settings and perform corrections if needed.
-        
+
         % Compute delta matrix to reference values: This should contain
         % all-zeros on properly working GPU's:
         deltavec = int16(testdata) - int16(realpixels);
-        
+
         % Difference?
         if any(any(deltavec))
-            % Ohoh!
             if failcount == 0
                 fprintf('%s: WARNING: Your GPU has a wrong identity gamma table loaded, possibly due to driver bugs.\n', devName);
                 fprintf('%s: WARNING: I will try to automatically compensate for this now. Please standby...\n', devName);
             end
-            
+
             failcount = failcount + 1;
-            
+
             if successcount > 0
                 regressioncount = regressioncount + 1;
                 fprintf('%s: WARNING: %i. regression detected after tweak %i! Previously successfull setting produces wrong values now\nafter %i successfull iterations!\n', devName, regressioncount, failcount, successcount);
                 successcount = 0;
             end
-            
+
             % Convert to double matrix and transpose to match LUT format.
             % Then convert to a corrective increment of stepsize units per
             % 1 pixel unit error:
             deltavec = transpose(double(deltavec)) * stepsize;
-            
+
             % Build correction vector tweakvec: deltavec is a 256 rows by 3
             % columns matrix of delta values to add to curlut for tweaking
             % it to a more correct value. curlut, as read from the GPU,
@@ -269,20 +268,20 @@ global GL;
             for tchunk = 0:255
                 tweakvec((1 + (tchunk * chunksize)):((tchunk * chunksize) + chunksize), :) = repmat(deltavec(1 + tchunk, :), chunksize, 1);
             end
-            
+
             % Update gamma lut:
             curlut = curlut + tweakvec;
-            
+
             mmcount = sum(sum(deltavec ~= 0));
             fprintf('%s: INFO: Gamma table tweak iteration %i. Had %i mismatching pixels. Retesting with updated LUT...\n', devName, failcount, mmcount);
-            
+
             % Clamp to valid 0-1 range:
             curlut(curlut > 1) = 1;
             curlut(curlut < 0) = 0;
-            
+
             % Upload modified LUT to GPU:
             Screen('LoadNormalizedGammaTable', win, curlut);
-            
+
             % Tried too long, too hard?
             if failcount > 255
                 % Running with non-zero rasterizer offset?
@@ -295,7 +294,7 @@ global GL;
                     curlut = oldlut;
 
                     Screen('LoadNormalizedGammaTable', win, oldlut);
-                    
+
                     % Draw test pattern:
                     Screen('Flip', win);
                     xoffset = 0;
@@ -304,15 +303,16 @@ global GL;
 
                     % Show it at next retrace:
                     Screen('Flip', win);
-                    Screen('WaitBlanking', win);
+                    % Wait until at least next vsync:
+                    WaitSecs('YieldSecs', 1 * Screen('GetFlipInterval', win));
   
                     % Encore une fois...
                     continue;
                 end
-                
+
                 % Ok, this can't be. Restore gamma table and give up:
                 Screen('LoadNormalizedGammaTable', win, oldlut);
-                                
+
                 % Fail:
                 fprintf('%s: ERROR: Did not reach a stable result after 256 tweak iterations.\n', devName);
                 fprintf('%s: ERROR: This is hopeless, something is seriously wrong with your GPU. I give up!\n', devName);
@@ -320,7 +320,7 @@ global GL;
                 fprintf('%s: ERROR: display due to some graphics driver bug, which prevents me from converging\n', devName);
                 fprintf('%s: ERROR: to a stable result. Your high precision device will not be useable for high-precision\n', devName);
                 fprintf('%s: ERROR: color or luminance displays with this broken graphics card/driver. Fix your system!\n', devName);
-                
+
                 if deviceType == 0
                     % Close our own connection to Datapixx:
                     PsychDataPixx('Close');
@@ -335,7 +335,7 @@ global GL;
             successcount = successcount + 1;
 
             fprintf('%s: INFO: Posttest iteration %i passed. Good! [Total elapsed time so far %f seconds.]\n', devName, successcount, GetSecs - tStart);
-            
+
             if successcount >= 10
                 % 10 successfull consecutive repetitions. That's good
                 % enough for us:
@@ -346,7 +346,7 @@ global GL;
 
     % Ok, we managed to get through:
     Screen('Flip', win);
-    
+
     % How did we do?
     if (successcount >= 10) && (failcount == 0)
         % Purrfect! Return full success:
@@ -370,7 +370,7 @@ global GL;
             disp(curlut - oldlut);
         end
         fprintf('\n\n');
-        
+
         % Store the current gamma table LUT in a config file for later use
         % by LoadIdentityClut in successive runs:
         SaveIdentityClut(win);

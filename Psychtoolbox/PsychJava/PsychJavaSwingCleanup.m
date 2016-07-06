@@ -23,7 +23,7 @@ function PsychJavaSwingCleanup
 % 5-March-2015  mk  Use size 1x1 instead of 0x0 for RM reset.
 
 % Running on Matlab with Java based desktop GUI enabled? Otherwise we no-op.
-if psychusejava('desktop')
+if ~IsOctave && psychusejava('desktop')
     % Yes: Need to do the cleanup cycle:
     
     % Set backing store size of Java Swing Repaint manager to almost zero (1,1), then
@@ -43,5 +43,13 @@ if psychusejava('desktop')
         f(i).repaint();
     end
 end
+
+state = warning;
+try
+    warning off;
+    delete([PsychtoolboxConfigDir 'screen_buildnr_*']);
+catch
+end
+warning(state);
 
 return;

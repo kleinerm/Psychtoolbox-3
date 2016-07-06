@@ -103,9 +103,9 @@ try
     telapsed = GetSecs - t
     Screen('StopVideoCapture', grabber);
     Screen('CloseVideoCapture', grabber);
-    Screen('CloseAll');
+    sca;
     avgfps = count / telapsed
 catch
-   Screen('CloseAll');
+   sca;
    psychrethrow(psychlasterror);
 end;

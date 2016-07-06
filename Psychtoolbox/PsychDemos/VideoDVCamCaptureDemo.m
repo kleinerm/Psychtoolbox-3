@@ -281,8 +281,8 @@ try
     Screen('StopVideoCapture', grabber);
     Screen('CloseVideoCapture', grabber);
     
-    Screen('CloseAll');
+    sca;
     avgfps = count / telapsed %#ok<NOPRT,NASGU>
 catch %#ok<CTCH>
-    Screen('CloseAll');
+    sca;
 end

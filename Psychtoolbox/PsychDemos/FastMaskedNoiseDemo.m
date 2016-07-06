@@ -107,7 +107,7 @@ try
     
     % Now just for the fun of it a bit of text in red, with a randomly
     % selected alpha value between 50% transparent and fully transparent.
-    Screen('TextSize', aperture, 24);
+    Screen('TextSize', aperture, 22);
     Screen('TextStyle', aperture, 1);
     DrawFormattedText(aperture, 'Subliminal\n\nMessage', 'center', 'center', [255 0 0 (255 * 0.5 * rand)]);
     
@@ -211,10 +211,10 @@ try
     updaterate = count / telapsed
     
     % Done. Close Screen, release all ressouces:
-    Screen('CloseAll');
+    sca;
 catch
     % Our usual error handler: Close screen and then...
-    Screen('CloseAll');
+    sca;
     % ... rethrow the error.
     psychrethrow(psychlasterror);
 end

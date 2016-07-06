@@ -61,6 +61,7 @@ function KbDemo
 % 10/16/06  mk  Add call 'UnifyKeyNames' -> Same keynames on all systems.
 % 10/17/06  mk  Remove calls to FlushEvents. They are meaningless for KbWait and KbCheck,
 %               would only affect CharAvail and GetChar.
+% 06/11/16  mk  Make sure to not crash on multiple key press.
 
 % Enable unified mode of KbName, so KbName accepts identical key names on
 % all operating systems:
@@ -104,15 +105,15 @@ while KbCheck; end % Wait until all keys are released.
 while 1
     % Check the state of the keyboard.
     [ keyIsDown, seconds, keyCode ] = KbCheck;
+    keyCode = find(keyCode, 1);
 
     % If the user is pressing a key, then display its code number and name.
     if keyIsDown
-
         % Note that we use find(keyCode) because keyCode is an array.
         % See 'help KbCheck'
-        fprintf('You pressed key %i which is %s\n', find(keyCode), KbName(keyCode));
+        fprintf('You pressed key %i which is %s\n', keyCode, KbName(keyCode));
 
-        if keyCode(escapeKey)
+        if keyCode == escapeKey
             break;
         end
 
@@ -136,9 +137,11 @@ startSecs = GetSecs;
 
 while 1
     [ keyIsDown, timeSecs, keyCode ] = KbCheck;
+    keyCode = find(keyCode, 1);
+
     if keyIsDown
         fprintf('"%s" typed at time %.3f seconds\n', KbName(keyCode), timeSecs - startSecs);
-        if keyCode(escapeKey)
+        if keyCode == escapeKey
             break;
         end
 
@@ -158,6 +161,8 @@ fprintf('\n3 of 4.  Testing KbWait: hit any key.  Just once.\n');
 startSecs = GetSecs;
 timeSecs = KbWait;
 [ keyIsDown, t, keyCode ] = KbCheck;
+keyCode = find(keyCode, 1);
+
 fprintf('"%s" typed at time %.3f seconds\n', KbName(keyCode), timeSecs - startSecs);
 
 return
@@ -242,12 +247,12 @@ try
         end
     end
 
-    Screen('CloseAll');
+    sca;
 
     fprintf('\n4 of 4.  Done.\n');
 
 catch
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 end
 return

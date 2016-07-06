@@ -317,14 +317,14 @@ try
     Screen('CloseVideoCapture', grabber);
     
     % Close display, release all remaining ressources:
-    Screen('CloseAll');
+    sca;
     
     avgfps = count / telapsed
 catch
     % In case of error, the 'CloseAll' call will perform proper shutdown
     % and cleanup:
     RestrictKeysForKbCheck([]);
-    Screen('CloseAll');
+    sca;
 end;
 
 % Allow KbCheck et al. to query all keys:

@@ -111,7 +111,7 @@ Screen('Flip', w);
 fprintf('Done.\n');
 fprintf('\n');
 WaitSecs(6);
-Screen('CloseAll');
+sca;
 
 
 

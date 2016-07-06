@@ -1,7 +1,9 @@
 function DatapixxGPUDitherpatternTest(fullscreen)
 % DatapixxGPUDitherpatternTest([fullscreen=1])
 %
-% Low level diagnostic for GPU dithering via Datapixx.
+% Low level diagnostic for GPU dithering via a VPixx
+% devices like Datapixx/ViewPixx/Propixx, or a CRS
+% device like the Bits# - but *not* the original Bits+.
 %
 % Steps through all 256 grayscale levels and uses
 % Datapixx et al. scanline readback to check what
@@ -21,9 +23,9 @@ function DatapixxGPUDitherpatternTest(fullscreen)
 
 % History:
 % 13-Aug-2015  mk  Wrote it.
+% 03-Jul-2016  mk  Add support for CRS Bits#.
 
 PsychDefaultSetup(0);
-Datapixx('Open');
 
 if nargin < 1 || isempty(fullscreen)
   fullscreen = 1;
@@ -37,6 +39,15 @@ else
   rect = [0, 0, Screen('WindowSize', screenid), 90];
 end
 
+if BitsPlusPlus('OpenBits#')
+  BitsPlusPlus('SwitchToStatusScreen');
+  WaitSecs(4);
+  bitssharp = 1;
+else
+  Datapixx('Open');
+  bitssharp = 0;
+end
+
 w = Screen('Openwindow', screenid, 0, rect);
 LoadIdentityClut(w);
 
@@ -48,10 +59,16 @@ fprintf('\n\n\n\n');
 for i = 0:255
   Screen('FillRect', w, i);
   Screen('Flip', w);
-  Datapixx('RegWrRdVideoSync');
-  Datapixx('RegWrRdVideoSync');
-  Datapixx('RegWrRdVideoSync');
-  pixels = Datapixx('GetVideoLine');
+  if bitssharp
+    WaitSecs('YieldSecs', 3 * Screen('GetFlipInterval', w));
+    % Readback 2nd topmost scanline from Bits# :
+    pixels = BitsPlusPlus('GetVideoLine', 256, 2);
+  else
+    Datapixx('RegWrRdVideoSync');
+    Datapixx('RegWrRdVideoSync');
+    Datapixx('RegWrRdVideoSync');
+    pixels = Datapixx('GetVideoLine');
+  end
   pixels = pixels(1,1:10);
   fprintf('Ref %i: ', i);
   fprintf('%i ', pixels);
@@ -64,7 +81,13 @@ for i = 0:255
   odd(i+1) = pixels(1, 2);
 end
 
-Datapixx('Close');
+if bitssharp
+  BitsPlusPlus('SwitchToBits++');
+  BitsPlusPlus('Close');
+else
+  Datapixx('Close');
+end
+
 sca;
 
 if trouble > 0

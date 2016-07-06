@@ -108,6 +108,6 @@ Screen('Flip', w);
 KbStrokeWait;
 
 % Close all windows and ressources:
-Screen('CloseAll');
+sca;
 
 return;

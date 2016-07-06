@@ -70,10 +70,10 @@ try
     end
         
     % Done. Close display and return:
-    Screen('CloseAll');
+    sca;
     return;
     
 catch
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 end

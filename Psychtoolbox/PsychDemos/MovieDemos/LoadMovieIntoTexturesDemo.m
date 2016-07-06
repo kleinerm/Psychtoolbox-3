@@ -417,13 +417,13 @@ try
     Screen('CloseMovie', movie);
    
     ShowCursor;
-    Screen('CloseAll');
+    sca;
     fprintf('Done. Bye!\n');
     return;
 
 catch %#ok<CTCH>
     % Error handling: Close all windows and movies, release all ressources.
     ShowCursor;
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 end;

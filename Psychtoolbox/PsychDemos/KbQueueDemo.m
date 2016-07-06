@@ -245,13 +245,13 @@ try
             end
             
     end
-    Screen('CloseAll');
+    sca;
     KbQueueRelease(deviceIndex);  % Note that KbQueueRelease is also in the catch clause
     fprintf('\n4 of 5.  Done.\n');    
 
 catch
     KbQueueRelease(deviceIndex);
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 end
 return

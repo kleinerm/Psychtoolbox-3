@@ -228,6 +228,20 @@ if mode==12
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychOculusVRCore.mex']);
 end
 
+if mode == 13 && IsARM
+    % Build RPiGPIOMex for RaspberryPi. Needs libwiringPi
+    curdir = pwd;
+    cd('../../Psychtoolbox/PsychContributed/')
+    try
+        mex -v -g RPiGPIOMex.c -lwiringPi
+    catch
+    end
+    unix(['mv RPiGPIOMex.mex ' PsychtoolboxRoot target]);
+    delete('RPiGPIOMex.o');
+    cd(curdir);
+    striplibsfrommexfile([PsychtoolboxRoot target 'RPiGPIOMex.mex']);
+end
+
 % Remove stale object files:
 delete('*.o');
 

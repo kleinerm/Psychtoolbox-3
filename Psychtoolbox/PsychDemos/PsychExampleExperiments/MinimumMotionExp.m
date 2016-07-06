@@ -486,7 +486,7 @@ try
     RestoreCluts;
 
     % Close window and release all ressources:
-    Screen('CloseAll');
+    sca;
 
     % Done!
     return;
@@ -507,7 +507,7 @@ catch %#ok<*CTCH>
     RestoreCluts;
     
     % Close window and release all ressources:
-    Screen('CloseAll');
+    sca;
 
     % Rethrow the error for Matlabs error reporting to kick in:
     psychrethrow(psychlasterror);

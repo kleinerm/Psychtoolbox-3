@@ -172,7 +172,7 @@ end;
 
 % The same commands wich close onscreen and offscreen windows also close
 % textures.
-Screen('CloseAll');
+sca;
 
 % Well done!
 return;

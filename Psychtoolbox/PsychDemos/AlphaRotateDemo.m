@@ -172,12 +172,12 @@ try
     tavg=tavg / (movieDurationFrames - numFrames)
 
     % We're done: Close all windows and textures:
-    Screen('CloseAll');
+    sca;
     
 catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
     Priority(0);
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 end %try..catch..
