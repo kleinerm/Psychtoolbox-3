@@ -86,7 +86,7 @@ glBindFramebufferEXT(GL.FRAMEBUFFER_EXT, fbo);
 for i=1:nrbuffers
     % Enable texture by binding it:
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT,texids(i));
-foo = format
+
     % Create representation: A rectangle texture with only mipmap level zero
     % and without a border, single precision float, RGBA:
     glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, format, width, height, 0, GL.RGBA, GL.FLOAT, 0);
