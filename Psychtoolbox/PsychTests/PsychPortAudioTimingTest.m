@@ -97,6 +97,12 @@ if isempty(deviceid)
     deviceid = -1;
 end
 
+% Needs to determined via measurement once for each piece of audio
+% hardware:
+if nargin < 3
+   latbias = [];
+end
+
 if deviceid == -1
     fprintf('Will use auto-selected default output device. This is the system default output\n');
     fprintf('device in "normal" (=reliable but high latency) mode. In low-latency mode its the\n');
@@ -125,6 +131,17 @@ freq = 44100;       % Must set this. 96khz, 48khz, 44.1khz.
 buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
 suggestedLatencySecs = [];
 
+if IsARM
+    % ARM processor, probably the RaspberryPi SoC. This can not quite handle the
+    % low latency settings of a Intel PC, so be more lenient:
+    suggestedLatencySecs = 0.025;
+    if isempty(latbias)
+        latbias = 0.000593;
+        fprintf('Choosing a latbias setting of 0.000593 secs or 0.593 msecs, assuming this is a RaspberryPi ARM SoC.\n');
+    end
+    fprintf('Choosing a high suggestedLatencySecs setting of 25 msecs to account for lower performing ARM SoC.\n');
+end
+
 if IsWin
     % Hack to accomodate bad Windows systems or sound cards. By default,
     % the more aggressive default setting of something like 5 msecs can
@@ -132,12 +149,6 @@ if IsWin
     suggestedLatencySecs = 0.015 %#ok<NOPRT>
     fprintf('Choosing a high suggestedLatencySecs setting of 15 msecs to account for shoddy Windows operating system.\n');
     fprintf('For low-latency applications, you may want to tweak this to lower values if your system works better than average timing-wise.\n');
-end
-
-% Needs to determined via measurement once for each piece of audio
-% hardware:
-if nargin < 3 
-   latbias = [];
 end
 
 if isempty(latbias)

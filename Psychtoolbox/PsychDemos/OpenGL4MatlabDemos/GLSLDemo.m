@@ -245,7 +245,7 @@ end
 Screen('EndOpenGL', win);
 
 % Close onscreen window and release all other ressources:
-Screen('CloseAll');
+sca;
 
 % Reenable Synctests after this simple demo:
 Screen('Preference','SkipSyncTests',1);

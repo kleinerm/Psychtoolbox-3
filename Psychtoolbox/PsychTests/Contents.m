@@ -13,6 +13,8 @@
 %   BatchAnalyzeTiming              - Batch version of AnalyzeTiming.
 %   BeampositionTest                - Test GPU scanout position ("beamposition") queries.
 %   CIEConeFundamentalsTest         - Test/demonstrate routines for producing cone fundamentals according to CIE 170-1:2006
+%   CIEConeFundamentalsFieldSizeTest - Test behavior of underying formulae as field size exceeds the 10-deg limit of the standard.
+%   CIEXYZPhysTest                  - Test properties of CIE physiological XYZ color matching function.
 %   Color3DLUTTest                  - Test PsychColorCorrection() method for 3D-CLUT color correction.
 %   ConvolutionKernelTest           - Test routine for correctness, accuracy and speed of PTB imaging convolution shaders.
 %   DatapixxGPUDitherpatternTest    - Low level diagnostic of GPU dithering bugs via Datapixx et al.

@@ -91,5 +91,5 @@ end
 % Show mouse cursor:
 ShowCursor;
 
-Screen('CloseAll');
+sca;
 return;

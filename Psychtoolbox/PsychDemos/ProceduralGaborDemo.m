@@ -95,8 +95,18 @@ end
 % Close previous figure plots:
 close all;
 
-% Make sure this is running on OpenGL Psychtoolbox:
-AssertOpenGL;
+% Octave's new plotting backend 'fltk' interferes with Screen(),
+% due to internal use of OpenGL. Problem is it changes the
+% bound OpenGL rendering context behind our back and we
+% don't protect ourselves against this yet. Switch plotting backend
+% to good'ol gnuplot to work around this issue until we fix it properly
+% inside Screen():
+if IsOctave && exist('graphics_toolkit')
+    graphics_toolkit ('gnuplot');
+end
+
+% Default settings, and unit color range:
+PsychDefaultSetup(2);
 
 % Initial stimulus params for the gabor patch:
 res = 1*[323 323];
@@ -113,18 +123,19 @@ oldSyncLevel = Screen('Preference', 'SkipSyncTests', 2);
 % Choose screen with maximum id - the secondary display:
 screenid = max(Screen('Screens'));
 
+PsychImaging('PrepareConfiguration');
+
 % Setup imagingMode and window position/size depending on mode:
 if benchmark==2
     rect = [0 0 res(1) res(2)];
-    imagingMode = kPsychNeed32BPCFloat;
+    PsychImaging('AddTask','General', 'FloatingPoint32Bit');
 else
     rect = [];
-    imagingMode = 0;
 end
 
 % Open a fullscreen onscreen window on that display, choose a background
-% color of 128 = gray with 50% max intensity:
-win = Screen('OpenWindow', screenid, 128, rect, [], [], [], [], imagingMode);
+% color of 0.5 = gray with 50% max intensity:
+win = PsychImaging('OpenWindow', screenid, 0.5, rect);
 
 tw = res(1);
 th = res(2);
@@ -149,7 +160,7 @@ totmax = 0;
 % Animation loop: Run for 10000 iterations:
 while count < 10000
     count = count + 1;
-    
+
     % Set new rotation angle:
     tilt = count/10;
 
@@ -158,7 +169,7 @@ while count < 10000
         phase = count * 10;
         aspectratio = 1 + count * 0.01;
     end
-    
+
     % In non-benchmark mode, we also compute a gabor patch in Matlab, as a
     % reference for the optimal outcome:
     if benchmark == 2
@@ -175,12 +186,12 @@ while count < 10000
         %imshow(m);
         %drawnow;
     end
-    
+
     % Draw the Gabor patch: We simply draw the procedural texture as any other
     % texture via 'DrawTexture', but provide the parameters for the gabor as
     % optional 'auxParameters'.
     Screen('DrawTexture', win, gabortex, [], [], 90+tilt, [], [], [], [], kPsychDontDoRotation, [180-phase, freq, sc, contrast, aspectratio, 0, 0, 0]);
-    
+
     if benchmark > 0
         % Go as fast as you can without any sync to retrace and without
         % clearing the backbuffer -- we want to measure gabor drawing speed,
@@ -190,7 +201,7 @@ while count < 10000
         % Go at normal refresh rate for good looking gabors:
         Screen('Flip', win);
     end
-    
+
     % In non-benchmark mode, we now readback the drawn gabor from the
     % framebuffer and then compare it against the Matlab reference:
     if benchmark == 2
@@ -208,7 +219,7 @@ while count < 10000
 
         % Compute per-pixel difference image of absolute differences:
         dimg = abs(mgpu - m);
-        
+
         % Compute maximum difference value in 'totmax':
         maxdiff = max(max(dimg));
         totmax = max([maxdiff totmax]);
@@ -218,7 +229,7 @@ while count < 10000
         colorbar;
         drawnow;
     end
-    
+
     if benchmark~=1
         % Abort requested? Test for keypress:
         if KbCheck
@@ -241,7 +252,7 @@ if benchmark == 2
 end
 
 % Close window, release all ressources:
-Screen('CloseAll');
+sca;
 
 % Restore old settings for sync-tests:
 Screen('Preference', 'SkipSyncTests', oldSyncLevel);

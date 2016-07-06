@@ -19,3 +19,4 @@ Psychtoolbox/ptbflavorinfo.txt
 .fuse_*
 liboctave.*
 liboctinterp.*
+Psychtoolbox/PsychTests/TimingtestResults/*

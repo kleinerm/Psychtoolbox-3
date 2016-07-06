@@ -288,7 +288,7 @@ try
     
     % The same command which closes onscreen and offscreen windows also
     % closes textures.
-    Screen('CloseAll');
+    sca;
     ShowCursor;
     Priority(0);
     tavg = tavg / ncount * 1000;
@@ -297,7 +297,7 @@ try
 catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
-    Screen('CloseAll');
+    sca;
     ShowCursor;
     Priority(0);
     psychrethrow(psychlasterror);

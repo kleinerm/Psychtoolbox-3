@@ -228,7 +228,7 @@ try
     % Stop capture, close engine and onscreen window:
     Screen('StopVideoCapture', grabber);
     Screen('CloseVideoCapture', grabber);
-    Screen('CloseAll');
+    sca;
 
     % Shutdown tracker:
     PsychCV('ARShutdown');
@@ -236,7 +236,7 @@ try
     % Stats...
     avgfps = count / telapsed %#ok<NOPRT,NASGU>
 catch
-   Screen('CloseAll');
+   sca;
    PsychCV('ARShutdown');
 end;
 

@@ -1,12 +1,21 @@
-function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect)
+function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect, useclutmodeonly)
 % Test signal transmission from the framebuffer to your CRS Bits+/Bits#
-% device or VPixx Inc. DataPixx/ViewPixx device and similar CRS and VPixx
-% products.
+% device or VPixx Inc. DataPixx/ViewPixx/Propixx device and similar CRS and
+% VPixx products.
 %
-% Test proper function of the T-Lock mechanism, proper loading of identity
-% gamma tables into the GPU, and for bad interference of dithering hardware
-% with the DVI stream. This test is meant for Mono++ mode of Bits+, it
-% won't work properly in any other mode!!
+% Test proper function of the T-Lock mechanism on CRS devices and PSYNC
+% mechanism on VPixx devices, as well as proper loading of identity gamma
+% tables into the GPU, and for bad interference of dithering hardware
+% with the DVI stream. This test is meant for Mono++ mode of Bits+/Bits# or
+% M16 mode of DataPixx, ViewPixx, ProPixx. It requires a modern graphics card
+% which supports at least OpenGL-2.1 and therefore supports these modes.
+%
+% If you only have older graphics hardware that can only drive Bits++ or
+% L48 clut display mode, or you have an old CRS Bits+ device switched to
+% Bits++ mode and don't want the hassle of setting it to Mono++ mode then
+% this test script can also perform a slightly more limited test in Bits++
+% mode or L48 clut mode. Set the optional parameter 'useclutmodeonly' to 1
+% to use this simpler test mode.
 %
 % Disclaimer: This test only exists because of the huge number of serious &
 % embarassing bugs in the graphics drivers and operating systems from
@@ -19,22 +28,25 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect)
 %
 % Usage:
 %
-% BitsPlusIdentityClutTest([whichScreen=max][, usedpixx=0][, winrect=[]]);
+% BitsPlusIdentityClutTest([whichScreen=max][, usedpixx=0][, winrect=[]][, useclutmodeonly=0]);
 %
 % How to test:
 %
 % 1. Make sure your Bits+ box is switched to Mono++ mode by uploading the
-%    proper firmware. Or make sure your DataPixx is connected, both DVI
-%    cable and USB cable.
+%    proper firmware. Or make sure your DataPixx/ViewPixx/ProPixx or CRS
+%    Bits# is connected, both DVI cable and USB cable. Alternatively set
+%    'useclutmodeonly' to 1 to test in Bits++ mode on a CRS device or L48
+%    mode on a VPixx device. In useclutmodeonly = 1 case, skip to step 3.
 %
 % 2. Run the BitsPlusImagingPipelineTest script to validate that your
 %    graphics card can create properly formatted images in the framebuffer
-%    for Bits+ or DataPixx.
+%    for Bits+/Bits# or DataPixx/ViewPixx/ProPixx.
 %
 % 3. Run this script, optionally passing a screenid. It will test the
 %    secondary display on a multi-display setup by default, or the external
 %    display on a laptop. For a DataPixx device or similar, set the
-%    optional 'usedpixx' flag to 1.
+%    optional 'usedpixx' flag to 1. Set 'useclutmodeonly' flag to 1 if you
+%    want to test in Bits++ or L48 mode instead of Mono++ or M16 mode.
 %
 % If everything works, what you see onscreen should match the description
 % in the blue text that is displayed.
@@ -47,7 +59,8 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect)
 % use this setting in all future sessions of your experiment scripts.
 %
 % You can exit the test by pressing the ESCape key, regardless if it was
-% successfull or not.
+% successfull or not. The test will then ask you if you rate the results
+% as success or failure and use your feedback for further operation.
 %
 % What could also happen is that you get a partial success: The display
 % behaves roughly as described in the text, but you see the T-Lock color
@@ -61,20 +74,20 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect)
 % rotating gradient patch at all. In that case, the lut uploaded in your
 % GPU may be correct, but due to some serious graphics driver or operating
 % system bug, the GPU is applying spatial or temporal dithering to the
-% video stream which will confuse the Bits+ and cause random artifacts and
-% failure of the T-Lock mechanism.
+% video stream which will confuse your display device and cause random
+% artifacts and failure of the T-Lock or PSYNC mechanism, as well as display
+% of wrong or inaccurate color or luminance values!
 %
 % You should also double-check the cabling and connections to rule out
 % connection problems and other defects.
-%
-% In that case, contact CRS support or check the Psychtoolbox Wiki for a
-% workaround. Currently we have a workaround for MacOS/X systems, but not
-% for MS-Windows systems.
 %
 
 % History:
 % 09/20/09    mk  Written.
 % 03/xx/2012  mk  Major updates for Bits# and other polishing.
+% 06/25/2016  mk  Store validation info if test succeeds.
+%                 Implement more limited test mode for Bits++ clut only mode
+%                 to allow testing with older graphics cards.
 
 % Select screen for test/display:
 if nargin < 1 || isempty(whichScreen)
@@ -87,6 +100,10 @@ end
 
 if nargin < 3
     winrect = [];
+end
+
+if nargin < 4 || isempty(useclutmodeonly)
+    useclutmodeonly = 0;
 end
 
 % Disable text anti-aliasing for this test:
@@ -113,34 +130,47 @@ try
     % Setup imaging pipeline:
     PsychImaging('PrepareConfiguration');
 
-    % Require a 32 bpc float framebuffer: This would be the default anyway, but
-    % just here to be explicit about it:
-    PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
+    if ~useclutmodeonly
+        % Require a 32 bpc float framebuffer: This would be the default anyway, but
+        % just here to be explicit about it:
+        PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
 
-    % Make sure we run with our default color correction mode for this test:
-    % 'ClampOnly' is the default, but we set it here explicitely, so no state
-    % from previously running scripts can bleed through:
-    PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'ClampOnly');
+        % Make sure we run with our default color correction mode for this test:
+        % 'ClampOnly' is the default, but we set it here explicitely, so no state
+        % from previously running scripts can bleed through:
+        PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'ClampOnly');
+    end
 
     if dpixx
-        % Use M16 mode with overlay:
-        PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
+        if ~useclutmodeonly
+            % Use M16 mode with overlay:
+            PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
+        else
+            % Use L48 clut mode:
+            PsychImaging('AddTask', 'General', 'EnableDataPixxL48Output');
+        end
 
         % Reduce timeout for recognition of PSYNC code to about 1 second on
         % a 100 Hz display:
         oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);
     else
-        % Use Mono++ mode with overlay:
-        PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
+        if ~useclutmodeonly
+            % Use Mono++ mode with overlay:
+            PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
+        else
+            % Use Bits++ clut mode:
+            PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
+        end
     end
 
     % DataPixx or Bits# used? They allow advanced diagnostics.
     if dpixx || BitsPlusPlus('OpenBits#')
         fprintf('\n\nYou can run extended diagnostics and fixes if you answer the following question\n');
         fprintf('with yes. However, we recommend first running this script once, answering no. Then\n');
-        fprintf('if that at least somewhat succeeds, rerun the script and answer yes, to either fix\n');
-        fprintf('remaining errors and glitches, or verify perfect function of your setup. If you don''t\n');
-        fprintf('do it in this order, the test may hang on some setups.\n\n');
+        fprintf('if that at least somewhat succeeds, save the closest to good result via ''s'' key,\n');
+        fprintf('then rerun the script and answer yes, to either fix remaining errors and glitches,\n');
+        fprintf('or verify perfect function of your setup. If you don''t do it in this order, the\n');
+        fprintf('test may hang on some setups.\n\n');
         answer = input('Run DataPixx/Bits# based diagnostics as well [Time consuming]? [y/n] ', 's');
         if answer == 'y'
             % Enable one-shot diagnostic of GPU encoders via Data/View/ProPixx or Bits# :
@@ -148,11 +178,22 @@ try
         end
     end
 
+    % Force skip of validation check, as otherwise we can not run to actually
+    % perform validation of the last stage of the pipeline:
+    BitsPlusPlus('ForceUnvalidatedRun');
+
     % Open the window, assign a gray background color with a 50% intensity gray:
     [win, screenRect] = PsychImaging('OpenWindow', whichScreen, 0.5, winrect);
 
     % Get handle to overlay:
-    overlaywin = PsychImaging('GetOverlayWindow', win);
+    if ~useclutmodeonly
+        overlaywin = PsychImaging('GetOverlayWindow', win);
+    else
+        overlaywin = win;
+        % Use black background color index for clut palette index 0:
+        Screen('FillRect', win, 0);
+        Screen('Flip', win);
+    end
 
     HideCursor;
 
@@ -175,13 +216,15 @@ try
     % script (otherwise the user would be unable to run this testscript at
     % all).
 
-    % Generate a synthetic grating that covers the whole
-    % intensity range from 0 to 16384, mapped to the 0.0 - 1.0 range:
-    theImage=zeros(256,256,1);
-    theImage(:,:)=reshape(double(linspace(0, 2^16 - 1, 2^16)), 256, 256)' / (2^16 - 1);
+    if ~useclutmodeonly
+        % Generate a synthetic grating that covers the whole
+        % intensity range from 0 to 16384, mapped to the 0.0 - 1.0 range:
+        theImage=zeros(256,256,1);
+        theImage(:,:)=reshape(double(linspace(0, 2^16 - 1, 2^16)), 256, 256)' / (2^16 - 1);
 
-    % Build HDR texture:
-    hdrtexIndex= Screen('MakeTexture', win, theImage, [], [], 2);
+        % Build HDR texture:
+        hdrtexIndex= Screen('MakeTexture', win, theImage, [], [], 2);
+    end
 
     % Create static image in overlay window:
     Screen('TextSize', overlaywin, 18);
@@ -191,7 +234,8 @@ try
         'The "COLORFUL" couple of lines below should cycle through different\n' ...
         'rainbow colors at a rate of multiple frames per second.\n\n' ...
         'You should see some smoothly "drifting" red gradient-like pattern.\n' ...
-        'And some rotating gray level gradient test patch. All in front of a gray background.\n\n' ...
+        'Also some rotating gray level gradient test patch if you test in Mono++ or M16 mode.\n' ...
+        ' All in front of a gray background.\n\n' ...
         'What you should not see is random speckles of color somewhere on the screen, or a\n' ...
         'jerky animation with only occassional updates.\n\n' ...
         'If what you see is not what you should see, try to cycle through different\n' ...
@@ -217,10 +261,13 @@ try
     % Create LUT for Mono++ overlay:
     ovllut = ones(256, 3);
 
-    % This fills the first 100 slots with random colors. Given that our overlay
+    % This is the gray background color in Bits+ 'useclutmodeonly' mode:
+    ovllut(1,:) = [0.5, 0.5, 0.5];
+
+    % This fills the low 99 slots with random colors. Given that our overlay
     % window is cleared to colorindex zero by default - which means:
     % Transparent for the "underlying" Mono++ luminance image, and given that
-    % we don't use color indices 1-100 in our overlay anywhere, this random
+    % we don't use color indices 2-100 in our overlay anywhere, this random
     % color assignment should have no perceptible effect whatsoever. If the
     % gamma LUT's of the GPU however contains wrong values or some offset is
     % introduced somwhere on the way from the framebuffer to the DVI-Port, then
@@ -229,7 +276,7 @@ try
     % interprets these non-zero components in the blue channel as overlay
     % pixels and assigns these random colors to the displayed image --> we will
     % see lots of random colorful flickering junk on the display.
-    ovllut(1:100,:) = rand(100,3);
+    ovllut(2:100,:) = rand(99,3);
 
     % Build red gradient in slots 101 to 250:
     ovllut(101:250, 1) = linspace(0,1,150)';
@@ -260,10 +307,12 @@ try
 
         % Draw rotated luminance patch:
         angle = angle + 1;
-        Screen('DrawTexture', win, hdrtexIndex, [], [], angle/10);
+        if ~useclutmodeonly
+            Screen('DrawTexture', win, hdrtexIndex, [], [], angle/10);
+        end
 
         % Update display:
-        Screen('Flip', win);
+        Screen('Flip', win, [], useclutmodeonly);
 
         % Update ovllut for color animations:
 
@@ -276,7 +325,7 @@ try
         end
 
         % Color in low slots gets re-randomized:
-        ovllut(1:100,:) = rand(100,3);
+        ovllut(2:100,:) = rand(99,3);
 
         [isdown, secs, keyCode] = KbCheck; %#ok<*ASGLU>
         if isdown
@@ -291,8 +340,8 @@ try
 
             if keyCode(space)
                 % Match 'lutidx' with available indices in LoadIdentityClut!!
-                % Currently indices 0 to 3 are available, ie., 4 indices total:
-                lutidx = mod(lutidx + 1, 4);
+                % Currently indices 0 to 4 are available, ie., 5 indices total:
+                lutidx = mod(lutidx + 1, 5);
                 fprintf('Switching GPU identity CLUT to type %i.\n', lutidx);
 
                 % Upload new corresponding gamma table immediately to GPU:
@@ -343,6 +392,20 @@ try
     % Release our dedicated "encoder test" connection to Bits#
     BitsPlusPlus('Close');
 
+    Screen('FillRect', overlaywin, 0);
+    Screen('FillRect', win, 0);
+    Screen('Flip', win);
+    Screen('TextSize', win, 40);
+    Screen('TextStyle', win, 1+2);
+    answer = GetEchoString(win, 'Did it work as expected? [y/n + RETURN]: ', 10, 10,255,0,1,-1);
+    if ~isempty(answer) && answer(1) == 'y'
+        % Write this configuration to file as the framebuffer -> display device being validated:
+        BitsPlusPlus('StoreValidation', win, 2);
+        outmsg = sprintf('\n\nSUCCESS: BitsPlusIdentityClutTest verified to work correctly. Validation info stored.\n');
+    else
+        outmsg = sprintf('\n\nTEST FAILED: You did not answer ''y''es when i asked if it worked correctly, so i am taking this as a no.\n');
+    end
+
     % Done. Close everything down:
     ShowCursor;
     Screen('CloseAll');
@@ -355,7 +418,7 @@ try
         PsychDataPixx('PsyncTimeoutFrames', oldpsynctimeout);
     end
 
-    fprintf('Finished. Bye.\n\n');
+    fprintf('%s\n\n', outmsg);
 
 catch %#ok<CTCH>
     sca;

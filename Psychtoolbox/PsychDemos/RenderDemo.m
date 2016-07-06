@@ -158,7 +158,7 @@ try
     
     % Close old window, as its content is not compatible with the gamma
     % table we're gonna set now:
-    Screen('CloseAll');
+    sca;
     
     % Show same thing in a GUI window of 300 x 300 pixels.
     fprintf('Now we do exactly the same thing, just displaying in a onscreen window.\n');

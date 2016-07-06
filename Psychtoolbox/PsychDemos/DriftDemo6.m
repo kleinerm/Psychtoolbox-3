@@ -193,12 +193,12 @@ try
     end;
 
     % The same commands wich close onscreen and offscreen windows also close textures.
-    Screen('CloseAll');
+    sca;
 
 catch
     % This "catch" section executes in case of an error in the "try" section
     % above. Importantly, it closes the onscreen window if it is open.
-    Screen('CloseAll');
+    sca;
     psychrethrow(psychlasterror);
 
 end %try..catch..

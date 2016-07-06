@@ -1918,7 +1918,7 @@ if strcmpi(cmd, 'OpenWindow')
                     colorcorrectionmethod = reqs{row, 3};
 
                     if isempty(colorcorrectionmethod) || ~ischar(colorcorrectionmethod)
-                        Screen('CloseAll');
+                        sca;
                         error('PsychImaging: Name of color correction method for ''DisplayColorCorrection'' missing or not of string type!');
                     end
 
@@ -2035,12 +2035,12 @@ if strcmpi(cmd, 'OpenWindow')
         slavescreenid = reqs{rows, 3};
 
         if isempty(slavescreenid)
-            Screen('CloseAll');
+            sca;
             error('In PsychImaging MirrorDisplayTo2ndOutputHead: You must provide the index of the secondary screen "slavescreen"!');
         end
         
         if ~any(ismember(Screen('Screens'), slavescreenid))
-            Screen('CloseAll');
+            sca;
             error('In PsychImaging MirrorDisplayTo2ndOutputHead: You must provide the index of a valid secondary screen "slavescreen"!');
         end
         
@@ -2050,7 +2050,7 @@ if strcmpi(cmd, 'OpenWindow')
         end
         
         if stereomode == 1
-            Screen('CloseAll');
+            sca;
             error('In PsychImaging MirrorDisplayTo2ndOutputHead: Tried to simultaneously enable frame-sequential stereomode 1! This is not supported.');
         end
         
@@ -2077,22 +2077,22 @@ if strcmpi(cmd, 'OpenWindow')
         slavescreenid = reqs{rows, 3};
 
         if isempty(slavescreenid)
-            Screen('CloseAll');
+            sca;
             error('In PsychImaging EnableDualPipeHDROutput: You must provide the index of the secondary screen "slavescreen"!');
         end
         
         if ~any(ismember(Screen('Screens'), slavescreenid))
-            Screen('CloseAll');
+            sca;
             error('In PsychImaging EnableDualPipeHDROutput: You must provide the index of a valid secondary screen "slavescreen"!');
         end
         
         if stereomode == 1
-            Screen('CloseAll');
+            sca;
             error('In PsychImaging EnableDualPipeHDROutput: Tried to simultaneously enable frame-sequential stereomode 1! This is not supported.');
         end
         
         if stereomode == 10
-            Screen('CloseAll');
+            sca;
             error('In PsychImaging EnableDualPipeHDROutput: Tried to simultaneously enable dual display output stereomode 10! This is not supported.');
         end
         
@@ -2118,12 +2118,12 @@ if strcmpi(cmd, 'OpenWindow')
         slavescreenid = reqs{rows, 3};
 
         if isempty(slavescreenid)
-            Screen('CloseAll');
+            sca;
             error('In PsychImaging DualWindowStereo: You must provide the index of the secondary screen "slavescreen"!');
         end
         
         if ~any(ismember(Screen('Screens'), slavescreenid))
-            Screen('CloseAll');
+            sca;
             error('In PsychImaging DualWindowStereo: You must provide the index of a valid secondary screen "slavescreen"!');
         end
 
@@ -2137,7 +2137,7 @@ if strcmpi(cmd, 'OpenWindow')
     end
     
     % Matlab? Does the Java swing cleanup function exist?
-    if ~IsOctave && exist('PsychJavaSwingCleanup', 'file')
+    if exist('PsychJavaSwingCleanup', 'file')
         % Attach a window close callback for cleanup of Java's memory
         % management mess at window close time when Matlab with Java based
         % GUI is in use:
@@ -2202,7 +2202,7 @@ if strcmpi(cmd, 'RestrictProcessingToROI')
     % in time exactly one such ROI can be active for a chain:
 
     if nargin < 4
-        Screen('CloseAll');
+        sca;
         error('You must provide all parameters for subfunction "RestrictProcessingToROI!"');
     end
     
@@ -2210,7 +2210,7 @@ if strcmpi(cmd, 'RestrictProcessingToROI')
     win = varargin{1};
     
     if ~isscalar(win) || ~isnumeric(win) || Screen('WindowKind', win) ~= 1
-        Screen('CloseAll');
+        sca;
         error('Provided window parameter for subfunction "RestrictProcessingToROI!" is not the handle of a valid onscreen window!');
     end
     
@@ -2224,7 +2224,7 @@ if strcmpi(cmd, 'RestrictProcessingToROI')
     scissorrect = varargin{3};
     
     if size(scissorrect,1)~=1 || size(scissorrect,2)~=4
-        Screen('CloseAll');
+        sca;
         error('Command "RestrictProcessingToROI" in channel %s expects a 1-by-4 ROI rectangle to define the ROI, e.g, [left top right bottom]!', whichView);
     end
 
@@ -2275,7 +2275,7 @@ if strcmpi(cmd, 'UnrestrictProcessing')
     % runtime function. Each invocation will search the given channel if
     % such a command exists, then delete it if so.
     if nargin < 3
-        Screen('CloseAll');
+        sca;
         error('You must provide all parameters for subfunction "UnrestrictProcessing!"');
     end
     
@@ -2283,7 +2283,7 @@ if strcmpi(cmd, 'UnrestrictProcessing')
     win = varargin{1};
     
     if ~isscalar(win) || ~isnumeric(win) || Screen('WindowKind', win) ~= 1
-        Screen('CloseAll');
+        sca;
         error('Provided window parameter for subfunction "UnrestrictProcessing!" is not the handle of a valid onscreen window!');
     end
     
@@ -3276,7 +3276,7 @@ if ~isempty(floc)
             end
             
             if ~isnumeric(nClutSlots)
-                Screen('CloseAll');
+                sca;
                 error('PsychImaging: Number of clut slots parameter for ''EnableCLUTMapping'' missing or not of numeric type!');
             end
 
@@ -3369,7 +3369,7 @@ if ~isempty(floc)
             PixelOffset = reqs{row, 3};
             
             if isempty(PixelOffset) || ~isnumeric(PixelOffset)
-                Screen('CloseAll');
+                sca;
                 error('PsychImaging: Parameter for ''AddOffsetToImage'' missing or not of numeric type!');
             end
             
@@ -3382,7 +3382,7 @@ if ~isempty(floc)
                 PixelGain = 1;
             else
                 if ~isnumeric(PixelGain)
-                    Screen('CloseAll');
+                    sca;
                     error('PsychImaging: Optional Gain-Parameter for ''AddOffsetToImage'' not of numeric type!');
                 end
             end
@@ -3395,7 +3395,7 @@ if ~isempty(floc)
                 PixelPreOffset = 0;
             else
                 if ~isnumeric(PixelPreOffset)
-                    Screen('CloseAll');
+                    sca;
                     error('PsychImaging: Optional "Offset before Gain"- PrescaleParameter for ''AddOffsetToImage'' not of numeric type!');
                 end
             end
@@ -3465,7 +3465,7 @@ if ~isempty(floc)
             calibfilename = reqs{row, 3};
             
             if isempty(calibfilename)
-                Screen('CloseAll');
+                sca;
                 error('PsychImaging: Parameter for ''GeometryCorrection'' missing!');
             end
             
@@ -3487,7 +3487,7 @@ if ~isempty(floc)
                 % calibration file: Just pass it to CreateDisplayWarp(),
                 % after some parameter validation:
                 if ischar(calibfilename) && ~exist(calibfilename, 'file')
-                    Screen('CloseAll');
+                    sca;
                     error('PsychImaging: Passed an argument to ''GeometryCorrection'' which is not a valid name of an accessible calibration file!');
                 end
             
@@ -3518,7 +3518,7 @@ if ~isempty(floc)
                 gld = warpstruct.gld;
                 if ~glIsList(gld)
                     % Game over:
-                    Screen('CloseAll');
+                    sca;
                     error('PsychImaging: Passed a handle to ''GeometryCorrection'' which is not a valid OpenGL display list!');
                 end
 
@@ -3680,7 +3680,7 @@ if ~isempty(floc)
                 end
             else
                 % Game over:
-                Screen('CloseAll');
+                sca;
                 error('PsychImaging: Passed a handle for a not yet implemented display undistortion method!');
             end
         end
@@ -3700,7 +3700,7 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
     startright = reqs{rows, 3};
 
     if startright~=0 && startright~=1
-        Screen('CloseAll');
+        sca;
         error('PsychImaging: The "startright" parameter must be zero or one!');
     end
     
@@ -3737,7 +3737,7 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedColumnStereo')))
     startright = reqs{rows, 3};
 
     if startright~=0 && startright~=1
-        Screen('CloseAll');
+        sca;
         error('PsychImaging: The "startright" parameter must be zero or one!');
     end
     
@@ -3867,7 +3867,7 @@ if ~isempty(floc)
             colorcorrectionmethod = reqs{row, 3};
             
             if isempty(colorcorrectionmethod) || ~ischar(colorcorrectionmethod)
-                Screen('CloseAll');
+                sca;
                 error('PsychImaging: Name of color correction method for ''DisplayColorCorrection'' missing or not of string type!');
             end
 
@@ -4105,7 +4105,7 @@ if ~isempty(find(mystrcmp(reqs, 'NormalizedHighresColorRange')))
     applyAlsoToMakeTexture = reqs{row, 3};
     if ~isempty(applyAlsoToMakeTexture)
         if ~isnumeric(applyAlsoToMakeTexture) || ~ismember(applyAlsoToMakeTexture, [0, 1])
-            Screen('CloseAll');
+            sca;
             error('In NormalizedHighresColorRange: Invalid applyAlsoToMakeTexture flag specified. Must be 0 or 1.');
         end
     else
@@ -4118,7 +4118,7 @@ end
 floc = find(mystrcmp(reqs, 'StereoCrosstalkReduction'));
 if ~isempty(floc)
     if winfo.StereoMode == 0
-        Screen('CloseAll');
+        sca;
         error('PsychImaging task ''StereoCrosstalkReduction'' requested, but no suitable stereomode active?! Aborted.');
     end
 
@@ -4279,7 +4279,7 @@ if ~isempty(floc)
     end
     
     if isempty(lut) || ~isnumeric(lut)
-        Screen('CloseAll');
+        sca;
         error('PsychImaging: Mandatory lookup table parameter lut for ''EnableGenericHighPrecisionLuminanceOutput'' missing or not of numeric type!');
     end
 
@@ -4338,12 +4338,12 @@ if ~isempty(floc)
         btrr = PsychVideoSwitcher('GetDefaultConfig', win);
     else
         if ~isnumeric(btrr) || ~isscalar(btrr)
-            Screen('CloseAll');
+            sca;
             error('PsychImaging: Optional "btrr" parameter for VideoSwitcher output not of numeric scalar type!');
         end
         
         if btrr < 0
-            Screen('CloseAll');
+            sca;
             error('PsychImaging: Optional "btrr" parameter for VideoSwitcher output is negative -- Impossible!');
         end
     end
@@ -4361,7 +4361,7 @@ if ~isempty(floc)
         VideoSwitcherTriggerflag = 0;
     else
         if ~isnumeric(VideoSwitcherTriggerflag) || ~isscalar(VideoSwitcherTriggerflag)
-            Screen('CloseAll');
+            sca;
             error('PsychImaging: Optional "trigger" parameter for VideoSwitcher output not of numeric scalar type!');
         end
         
@@ -4399,7 +4399,7 @@ if ~isempty(floc)
             [dummy, lut] = PsychVideoSwitcher('GetDefaultConfig', win);
         else
             if ~isa(lut, 'double') || ~isvector(lut) || length(lut)~=257
-                Screen('CloseAll');
+                sca;
                 error('PsychImaging: Lookup table parameter lut for VideoSwitcher output invalid: Must be a vector of double values with 257 elements!');
             end
         end

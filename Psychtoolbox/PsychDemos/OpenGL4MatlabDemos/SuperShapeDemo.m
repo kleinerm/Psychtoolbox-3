@@ -290,7 +290,7 @@ glDeleteLists(super_list,1);
 Screen('EndOpenGL', win);
 
 % Close onscreen window and release all other ressources:
-Screen('CloseAll');
+sca;
 
 % Enable character output to Matlab:
 ListenChar(0);

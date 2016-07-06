@@ -348,11 +348,11 @@ try
     end;
     
     % Close screens.
-    Screen('CloseAll');
+    sca;
     
     % Done.
     return;
 catch %#ok<*CTCH>
     % Error handling: Close all windows and movies, release all ressources.
-    Screen('CloseAll');
+    sca;
 end

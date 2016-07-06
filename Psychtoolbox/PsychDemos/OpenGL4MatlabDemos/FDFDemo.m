@@ -486,11 +486,11 @@ try
     moglFDF('DestroyContext', fdf);
 
     % Close onscreen window and release all other ressources:
-    Screen('CloseAll');
+    sca;
 catch
     % In case of error, a Screen('CloseAll') will also do a good
     % post-mortem cleanup job:
-    Screen('CloseAll');
+    sca;
     
     psychrethrow(psychlasterror);
 end

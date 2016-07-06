@@ -64,8 +64,8 @@ function ProceduralGarboriumDemo(ngabors)
 % 05/18/2008 Rewritten, beautified, adapted to current PTB (MK).
 % 11/24/2014 Add support for gaussian blobs (CreateProceduralGaussBlob()) (MK).
 
-% PTB-3 correctly installed and functional? Abort otherwise.
-AssertOpenGL;
+% Setup defaults and unit color range:
+PsychDefaultSetup(2);
 
 % Set number of gabor patches to 200 if no number provided:
 if nargin < 1 || isempty(ngabors)
@@ -85,7 +85,7 @@ screenid = max(Screen('Screens'));
 % abort if your graphics hardware is not capable of any of this.
 PsychImaging('PrepareConfiguration');
 PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
-[win winRect] = PsychImaging('OpenWindow', screenid, 128);
+[win winRect] = PsychImaging('OpenWindow', screenid, 0.5);
 
 % Retrieve size of window in pixels, need it later to make sure that our
 % moving gabors don't move out of the visible screen area:
@@ -123,7 +123,7 @@ sc = 10.0;
 % Frequency of sine grating:
 freq = .05;
 % Contrast of grating:
-contrast = 10.0;
+contrast = 10;
 % Aspect ratio width vs. height:
 aspectratio = 1.0;
 
@@ -250,7 +250,7 @@ count
 avgfps = count / (vbl - tstart)
 
 % Close onscreen window, release all ressources:
-Screen('CloseAll');
+sca;
 
 % Done.
 return;

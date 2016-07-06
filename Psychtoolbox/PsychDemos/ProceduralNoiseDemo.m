@@ -167,7 +167,7 @@ avgfps = count / (tend - ts);
 fprintf('The average framerate was %f frames per second.\n', avgfps);
 
 % Close window, release all ressources:
-Screen('CloseAll');
+sca;
 
 % Restore old settings for sync-tests:
 Screen('Preference', 'SkipSyncTests', oldSyncLevel);

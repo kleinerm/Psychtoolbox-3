@@ -178,12 +178,6 @@ glUseProgram(0);
 % This shows the normalized 0-1 edge-map:
 moglChooseFBO(fbos(1), 1);
 img = glReadPixels(0, 0, msize, msize, GL_RGB, GL_FLOAT);
-imshow(img);
-figure
-
-% 
-
-
 
 if singlefbo==0
     % Dual FBO-case:
@@ -194,8 +188,6 @@ else
 end;
 
 img2 = glReadPixels(0, 0, msize, msize, GL_RGB, GL_FLOAT);
-imshow(img2, [0 255]);
-figure
 
 % Unbind FBO, reset to normal framebuffer:
 moglChooseFBO(0);
@@ -209,7 +201,12 @@ end;
 Screen('EndOpenGL', win);
 
 % Close onscreen window and release all other ressources:
-Screen('CloseAll');
+sca;
+
+imshow(img);
+figure
+imshow(img2, [0 255]);
+figure
 
 imshow(inputimage, [0 255]);
 

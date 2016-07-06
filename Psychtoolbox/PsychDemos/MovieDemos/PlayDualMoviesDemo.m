@@ -98,32 +98,35 @@ try
                 % time and sound.
                 % tex either the texture handle or zero if no new frame is
                 % ready yet.
-                tex = Screen('GetMovieImage', win, movie, 1);
-                tex2 = Screen('GetMovieImage', win, movie2, 1);
+                tex = Screen('GetMovieImage', win, movie, 0);
+                tex2 = Screen('GetMovieImage', win, movie2, 0);
                 
                 % Valid texture returned?
-                if tex>0
+                if tex > 0
                     % Draw the new texture immediately to screen:
                     Screen('DrawTexture', win, tex, [], rect1);
                     % Release texture:
                     Screen('Close', tex);
-                end;
+                end
                 
                 % Valid 2nd texture returned?
-                if tex2>0
+                if tex2 > 0
                     % Draw the new texture immediately to screen:
                     Screen('DrawTexture', win, tex2, [], rect2);
                     % Release texture:
                     Screen('Close', tex2);
-                end;
+                end
                 
                 % Update display if there is anything to update:
-                if (tex>0 || tex2>0)
+                if (tex > 0 || tex2 > 0)
                     % We use clearmode=1, aka don't clear on flip. This is
                     % needed to avoid flicker...
                     Screen('Flip', win, 0, 1);
-                end;
-            end;
+                else
+                    % Sleep a bit before next poll...
+                    WaitSecs('YieldSecs', 0.001);
+                end
+            end
             
             % Check for abortion:
             abortit=0;
@@ -132,12 +135,12 @@ try
                 % Set the abort-demo flag.
                 abortit=2;
                 break;
-            end;
+            end
             
             if (keyIsDown==1 && keyCode(space))
                 % Exit while-loop: This will load the next movie...
                 break;
-            end;
+            end
             
             if (keyIsDown==1 && keyCode(right))
                 % Advance movietime by one second:
@@ -149,7 +152,7 @@ try
                 % Rewind movietime by one second:
                 Screen('SetMovieTimeIndex', movie, Screen('GetMovieTimeIndex', movie) - 1);
                 Screen('SetMovieTimeIndex', movie2, Screen('GetMovieTimeIndex', movie2) - 1);
-            end;
+            end
             
             if (keyIsDown==1 && keyCode(up))
                 % Increase playback rate by 1 unit.
@@ -161,7 +164,7 @@ try
                 end;
                 Screen('PlayMovie', movie, rate, 1, 1.0);
                 Screen('PlayMovie', movie2, rate, 1, 1.0);
-            end;
+            end
             
             if (keyIsDown==1 && keyCode(down))
                 % Decrease playback rate by 1 unit.
@@ -173,8 +176,8 @@ try
                 end;
                 Screen('PlayMovie', movie, rate, 1, 1.0);
                 Screen('PlayMovie', movie2, rate, 1, 1.0);
-            end;
-        end;
+            end
+        end
         
         fprintf('Elapsed time %f secs, count %i.\n', GetSecs - t1, i);
         
@@ -191,14 +194,14 @@ try
         % Close movie objects:
         Screen('CloseMovie', movie);
         Screen('CloseMovie', movie2);
-    end;
+    end
     
     % Close screens.
-    Screen('CloseAll');
+    sca;
     
     % Done.
     return;
 catch %#ok<CTCH>
     % Error handling: Close all windows and movies, release all ressources.
-    Screen('CloseAll');
+    sca;
 end

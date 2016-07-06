@@ -328,7 +328,7 @@ try
     % Cleanup at end of experiment - Close window, show mouse cursor, close
     % result file, switch Matlab/Octave back to priority 0 -- normal
     % priority:
-    Screen('CloseAll');
+    sca;
     ShowCursor;
     fclose('all');
     Priority(0);
@@ -340,7 +340,7 @@ catch
     % 'try' part due to programming error etc.:
     
     % Do same cleanup as at the end of a regular session...
-    Screen('CloseAll');
+    sca;
     ShowCursor;
     fclose('all');
     Priority(0);

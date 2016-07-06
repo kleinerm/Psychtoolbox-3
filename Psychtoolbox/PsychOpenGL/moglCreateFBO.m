@@ -18,17 +18,12 @@ function [fbo , texids] = moglCreateFBO(width, height, nrbuffers, layers, format
 
 % History:
 % 30.05.2006 Wrote it. (MK)
+% 06.07.2016 Remove weird Linux + Nvidia format hack. Caused failure.
 
 global GL;
 
 % Child protection:
 AssertGLSL;
-
-% Hack, needs to be improved...
-if IsLinux
-    % Redefine vor NVidia:
-    GL.RGBA_FLOAT32_APPLE = hex2dec('8883');
-end;
 
 if nargin < 2
     error('Must specify a widht x height of FBO in CreateGLFBO!');
@@ -91,7 +86,7 @@ glBindFramebufferEXT(GL.FRAMEBUFFER_EXT, fbo);
 for i=1:nrbuffers
     % Enable texture by binding it:
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT,texids(i));
-
+foo = format
     % Create representation: A rectangle texture with only mipmap level zero
     % and without a border, single precision float, RGBA:
     glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, format, width, height, 0, GL.RGBA, GL.FLOAT, 0);

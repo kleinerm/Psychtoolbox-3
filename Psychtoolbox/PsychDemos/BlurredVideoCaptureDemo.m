@@ -119,7 +119,7 @@ try
     Screen('CloseVideoCapture', grabber);
     
     % Close down everything else:
-    Screen('CloseAll');
+    sca;
     
     avgfps = count / telapsed
 catch

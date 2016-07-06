@@ -362,6 +362,11 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % 12.01.2013 Make compatible with PTB panelfitter. (MK)
 % 13.03.2013 Make compatible with CRS Bits# video display system. (MK)
 % 15.04.2013 Add mode = BitsPlusPlus('GetColorConversionMode', win); (MK)
+% 24.06.2016 Improved diagnostics. Now need validation from BitsPlusImagingPipelineTest
+%            and BitsPlusIdentityClutTest, instead of only BitsPlusImagingPipelineTest.
+%            Now also triggers revalidation if OS kernel version/release changes, as
+%            things like dithering or output color depth control are usually located in
+%            the kernel level display drivers, so new kernel can imply new bugs.
 
 global GL;
 
@@ -933,7 +938,8 @@ if strcmpi(cmd, 'StoreValidation')
     % Enforce use of this routine without verification of correct function
     % of the imaging pipeline. This is used by the correctness test itself
     % in order to be able to run the validation.
-    ValidateBitsPlusImaging(arg, 1, devname);
+    validationType = dummy;
+    ValidateBitsPlusImaging(arg, 1, devname, validationType);
     return;
 end
 
@@ -1100,25 +1106,23 @@ if strcmpi(cmd, 'OpenWindowBits++')
         % Setup finalizer callback for DIO T-Lock updates:
         tlockhandle = SetupDIOFinalizer(win, stereomode);
     end
-    
+
     % Load an identity CLUT into the Bits++ to start with:
     linear_lut =  repmat(linspace(0, 1, 256)', 1, 3);
     Screen('LoadNormalizedGammaTable', win, linear_lut, 2);
     
     % Check validation:
     if ~validated
-        % MK: Actually, don't! Validation code doesn't check/validate
-        % anything in Bits++ mode, so this is pointless... Leave it here
-        % for documentation.
-        % ValidateBitsPlusImaging(win, 0, devname);
+        % Only validate output display pipeline from framebuffer to display device:
+        ValidateBitsPlusImaging(win, 0, devname, 2);
     end
-    
+
     % Reset validation flag after first run:
     validated = 0;
 
     % Set colorConversionMode for this window to safe "undefined" default:
     colorConversionModeWin(win) = -1;
-    
+
     % Ready!
     return;
 end
@@ -1624,7 +1628,13 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     
     % Check validation:
     if ~validated
-        ValidateBitsPlusImaging(win, 0, devname);
+        % Validate imaging / display pipeline:
+
+        % From usercode drawing commands to framebuffer...
+        ValidateBitsPlusImaging(win, 0, devname, 1);
+
+        % ... and from framebuffer to display device:
+        ValidateBitsPlusImaging(win, 0, devname, 2);
     end
 
     % Reset validation flag after first run:
@@ -1826,20 +1836,27 @@ error('%s: Unknown subcommand provided. Read "help BitsPlusPlus".', drivername);
 end
 
 % Helper function: Check if system already validated for current settings:
-function ValidateBitsPlusImaging(win, writefile, devname)
-    
+function ValidateBitsPlusImaging(win, writefile, devname, validationType)
+
     % Compute fingerprint of this system configuration:
     validated = 0;
     global GL;
-    
+
     screenid = Screen('WindowScreenNumber', win);
     [w, h] = Screen('WindowSize', screenid);
     d = Screen('PixelSize', win);
     v = Screen('Version');
     v = v.version;
+    c = Screen('Computer');
+    if IsLinux || IsOSX
+        c = c.kern.version;
+    else
+        c = c.system;
+    end
+
     gfxconfig = [ glGetString(GL.VENDOR) ':' glGetString(GL.RENDERER) ':' glGetString(GL.VERSION) ];
-    gfxconfig = sprintf('%s : Screen %i : Resolution %i x %i x %i : ScreenVersion = %s', gfxconfig, screenid, w, h, d, v);
-    
+    gfxconfig = sprintf('VTYPE %i : %s : Screen %i : Resolution %i x %i x %i : ScreenVersion = %s : System = %s', validationType, gfxconfig, screenid, w, h, d, v, c);
+
     if ~writefile
         % Check if a validation file exists and if it contains this
         % configuration:
@@ -1859,18 +1876,35 @@ function ValidateBitsPlusImaging(win, writefile, devname)
             fprintf('\n\n------------------------------------------------------------------------------------------------------------------\n')
             fprintf('\n\nThis specific configuration of graphics hardware, graphics driver and Psychtoolbox version has not yet been tested\n');
             fprintf('for correct working with %s for the given display screen, screen resolution and color depths.\n\n', devname);
-            fprintf('Please run the test script "BitsPlusImagingPipelineTest(%i);" once, so this configuration can be verified.\n', Screen('WindowScreenNumber', win));
+            if validationType == 1
+                fprintf('Please run the test script "BitsPlusImagingPipelineTest(%i);" once, so this configuration can be verified.\n', Screen('WindowScreenNumber', win));
+            else
+                if ~isempty(strfind(devname, 'Pixx'))
+                    fprintf('Please run the test script "BitsPlusIdentityClutTest(%i, 1);" once, so this configuration can be verified.\n', Screen('WindowScreenNumber', win));
+                    fprintf('Alternatively "BitsPlusIdentityClutTest(%i, 1, [], 1);" can be used for verification in L48 mode.\n', Screen('WindowScreenNumber', win));
+                else
+                    fprintf('Please run the test script "BitsPlusIdentityClutTest(%i);" once, so this configuration can be verified.\n', Screen('WindowScreenNumber', win));
+                    fprintf('Alternatively "BitsPlusIdentityClutTest(%i, 0, [], 1);" can be used for verification in Bits++ mode.\n', Screen('WindowScreenNumber', win));
+                end
+            end
             fprintf('After that test script suceeded, re-run your experiment script.\nThanks.\n');
             fprintf('\n');
             fprintf('Configuration to verify: %s\n', gfxconfig);
 
             RestoreCluts;
-            Screen('CloseAll'); ShowCursor; Priority(0);
-            
+            sca; ShowCursor; Priority(0);
+
+            % Perform device shutdown for display device:
+            if ~isempty(strfind(devname, 'Pixx'))
+                PsychDataPixx('ResetOnWindowClose');
+            else
+                BitsPlusPlus('ResetOnWindowClose');
+            end
+
             error('Configuration not yet verified. Please do it now.');
         end
     end
-    
+
     if writefile
         % Append current configuration to file to mark it as verified:
         [fid msg]= fopen([PsychtoolboxConfigDir 'ptbbitsplusplusvalidationfile.txt'], 'a');

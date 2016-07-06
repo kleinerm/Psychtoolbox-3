@@ -179,26 +179,26 @@ end
 
 
 try
-	% This script calls Psychtoolbox commands available only in OpenGL-based 
-	% versions of the Psychtoolbox. The Psychtoolbox command AssertPsychOpenGL will issue
-	% an error message if someone tries to execute this script on a computer without
-	% an OpenGL Psychtoolbox
-	AssertOpenGL;
-	
-	% Get the list of screens and choose the one with the highest screen number.
-	% Screen 0 is, by definition, the display with the menu bar. Often when 
-	% two monitors are connected the one without the menu bar is used as 
-	% the stimulus display.  Chosing the display with the highest dislay number is 
-	% a best guess about where you want the stimulus displayed.  
-	screenNumber = max(Screen('Screens'));
-    
+    % This script calls Psychtoolbox commands available only in OpenGL-based 
+    % versions of the Psychtoolbox. The Psychtoolbox command AssertPsychOpenGL will issue
+    % an error message if someone tries to execute this script on a computer without
+    % an OpenGL Psychtoolbox
+    AssertOpenGL;
+
+    % Get the list of screens and choose the one with the highest screen number.
+    % Screen 0 is, by definition, the display with the menu bar. Often when 
+    % two monitors are connected the one without the menu bar is used as 
+    % the stimulus display.  Chosing the display with the highest dislay number is 
+    % a best guess about where you want the stimulus displayed.  
+    screenNumber = max(Screen('Screens'));
+
     % Open a double-buffered fullscreen window with a gray (intensity =
     % 0.5) background and support for 16- or 32 bpc floating point framebuffers.
     PsychImaging('PrepareConfiguration');
 
     lrect = [];
     rrect = [];
-    
+
     % This will try to get 32 bpc float precision if the hardware supports
     % simultaneous use of 32 bpc float and alpha-blending. Otherwise it
     % will use a 16 bpc floating point framebuffer for drawing and
@@ -256,7 +256,7 @@ try
             % blue-to-red ratio from the global configuration file is used
             % for calibrated output:
             PsychImaging('AddTask', 'General', 'EnableVideoSwitcherSimpleLuminanceOutput', [], 1);
-            
+
             % Switch the device to high precision luminance mode:
             PsychVideoSwitcher('SwitchMode', screenNumber, 1);
             overlay = 0;
@@ -265,39 +265,39 @@ try
             % Again the videoswitcher, but in lookup-table calibrated mode,
             % where additionally to the BTRR, a lookup table is loaded:
             PsychImaging('AddTask', 'General', 'EnableVideoSwitcherCalibratedLuminanceOutput', [], [], 1);
-            
+
             % Switch the device to high precision luminance mode:
             PsychVideoSwitcher('SwitchMode', screenNumber, 1);
             overlay = 0;
-            
+
         case {'PseudoGray'}
             % Enable bitstealing aka PseudoGray shader:
             PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
             overlay = 0;
-            
+
         case {'Native10Bit'}
             % Enable ATI GPU's 10 bit framebuffer under certain conditions
             % (see help for this file):
             PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
             overlay = 0;
-            
+
         case {'Native11Bit'}
             % Enable ATI GPU's ~11 bit framebuffer under certain conditions
             % (see help for this file):
             PsychImaging('AddTask', 'General', 'EnableNative11BitFramebuffer');
             overlay = 0;
-            
+
         case {'Native16Bit'}
             % Enable AMD GPU's up to 16 bit framebuffer under certain conditions
             % (see help for this file):
             PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer');
             overlay = 0;
-            
+
         case {'BrightSide'}
             % Enable drivers for BrightSide's HDR display:
             PsychImaging('AddTask', 'General', 'EnableBrightSideHDROutput');
             overlay = 0;
-            
+
         case {'None'}
             % No high precision output, just the plain 8 bit framebuffer,
             % but with software gamma correction:
@@ -312,13 +312,13 @@ try
 
         case {'DualPipeHDR'}
             % Enable experimental dual display, dual pipeline HDR output:
-            
+
             % Handle single-screen vs. dual-screen output:
             if length(Screen('Screens')) == 1
                 lrect = [0 0 600 600];
                 rrect = [601 0 1201 600];
             end
-            
+
             % Request actual output mode:
             PsychImaging('AddTask', 'General', 'EnableDualPipeHDROutput', min(Screen('Screens')), rrect);
             overlay = 0;
@@ -331,7 +331,7 @@ try
         % Request per pixel 2D gain correction for display:
         PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'GainMatrix');
     end
-    
+
     % Do not use gamma correction in calibrated video switcher mode or no
     % gamma mode -- wouldn't make sense in either of these:
     if ~strcmp(outputdevice, 'NoneNoGamma')
@@ -348,14 +348,14 @@ try
     else
         doTheGamma = 0;
     end
-    
+
     %PsychImaging('AddTask', 'General', 'InterleavedLineStereo', 0);
-    
+
     % Finally open a window according to the specs given with above
     % PsychImaging calls, clear it to a background color of 0.5 aka 50%
     % luminance:
     [w, wRect]=PsychImaging('OpenWindow', screenNumber, 0.5, lrect);
-    
+
     % Use of overlay in Bits++ box Mono++ mode or DPixx box M16 mode wanted?
     if overlay
         % Get overlay window handle: Drawing into this window will affect
@@ -365,7 +365,7 @@ try
     else
         wo = 0;
     end
-    
+
     % Calibrated conversion driver for VideoSwitcher in use?
     if strcmp(outputdevice, 'VideoSwitcherCalibrated')
         % Tell the driver what luminance the background has. This allows
@@ -394,12 +394,12 @@ try
                 clut = 3800 * (0:1)';
             otherwise,
                 clut = colormap;
-        end                
+        end
 
         % Assign the CLUT:
         PsychColorCorrection('SetLookupTable', w, clut);
     end
-    
+
     if doTheGamma
         % We set initial encoding gamma to correct for a display with a
         % decoding gamma of 2.0 -- A good tradeoff, given most displays are
@@ -409,12 +409,11 @@ try
     else
         gamma = 1;
     end
-        
+
     % From here on, all color values should be specified in the range 0.0
     % to 1.0 for displayable luminance values. Values outside that range
     % are allowed as intermediate results, but the final stimulus image
     % should be in range 0-1, otherwise result will be undefined.
-    
     [width, height]=Screen('WindowSize', w);
 
     if doGainCorrection
@@ -422,26 +421,26 @@ try
         gainmatrix = meshgrid(1:width, 1:height) / width * 1.5;
         PsychColorCorrection('SetGainMatrix', w, gainmatrix);
     end
-    
+
     % Enable alpha blending. We switch it into additive mode which takes
     % source alpha into account:
     Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE);
 
-	inc=0.25;
-	
-	% Compute one frame of a static grating: It has a total size of third
-	% the screen size:
+    inc=0.25;
+
+    % Compute one frame of a static grating: It has a total size of third
+    % the screen size:
     s=min(width, height) / 6;
-	[x,y]=meshgrid(-s:s-1, -s:s-1);
-	angle=30*pi/180; % 30 deg orientation.
-	f=0.01*2*pi; % cycles/pixel
+    [x,y]=meshgrid(-s:s-1, -s:s-1);
+    angle=30*pi/180; % 30 deg orientation.
+    f=0.01*2*pi; % cycles/pixel
     a=cos(angle)*f;
-	b=sin(angle)*f;
-                
+    b=sin(angle)*f;
+
     % Build grating texture:
     m=sin(a*x+b*y);
     tex=Screen('MakeTexture', w, m,[],[], 2);
-    
+
     % Show the gray background:
     Screen('Flip', w);
 
@@ -449,21 +448,21 @@ try
     rotate = 0;
     yd =0;
     show2nd = 1;
-    
+
     if overlay
         Screen('TextSize', wo, 18);
     else
         Screen('TextSize', w, 18);
     end
-    
+
     % Center mouse on stimulus display, then make mouse cursor invisible:
     [cx, cy] = RectCenter(wRect);
     SetMouse(cx, cy, w);
     HideCursor(screenNumber);
     framecount = 0;
-    
+
     tstart = GetSecs;
-    
+
     % Animation loop:
     while 1
         Screen('DrawTexture', w, tex, [], [], [], [], 0.25);
@@ -483,7 +482,7 @@ try
            dstRect=CenterRectOnPoint(Screen('Rect', tex), x, y+yd);
            Screen('DrawTexture', w, tex, [], dstRect, i, [], inc);
         end
-        
+
         [d1 d2 keycode]=KbCheck; %#ok<*ASGLU>
         if d1
             if keycode(UpArrow)
@@ -507,7 +506,7 @@ try
                 gamma = min(gamma+0.001, 1.0);
                 PsychColorCorrection('SetEncodingGamma', w, gamma);
             end
-            
+
             if keycode(GammaDecrease) && doTheGamma
                 gamma = max(gamma-0.001, 0.0);
                 PsychColorCorrection('SetEncodingGamma', w, gamma);
@@ -544,9 +543,9 @@ try
         else
             DrawFormattedText(w, [txt0 txt1 txt2 txt3 txt4 txt5], 0, 20, 1.0);
         end
-        
+
         framecount = framecount + 1;
-        
+
         % For the fun of it: Set a specific scanline to send a trigger
         % signal for the VideoSwitcher. This does nothing if the driver for
         % VideoSwitcher is not selected. We send out a trigger for 1 redraw
@@ -555,15 +554,15 @@ try
         if mod(framecount, 30) == 0
             PsychVideoSwitcher('SetTrigger', w, 10, 1);
         end
-        
+
         % Show stimulus at next display retrace:
         Screen('Flip', w);
     end
-        
+
     % Done.
     avgfps = framecount / (GetSecs - tstart);
     fprintf('Average redraw rate in demo was %f Hz.\n', avgfps);
-    
+
     % Again, just to test conversion speed: A fast benchmark with sync of
     % buffer swaps to retrace disabled -- Go as fast as you can!
     nmaxbench = 300;
@@ -573,17 +572,18 @@ try
     end
     tend = Screen('Flip', w);
     fprintf('Average update rate in pipeline was %f Hz.\n', nmaxbench / (tend - tstart));
-    
+
     Screen('Preference','TextAntiAliasing', 1);
-    
+
     % We're done: Close all windows and textures:
-    Screen('CloseAll');    
+    sca;
+
 catch %#ok<*CTCH>
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
-    Screen('CloseAll');
-    Screen('Preference','TextAntiAliasing', 1);
     ShowCursor(screenNumber);
+    sca;
+    Screen('Preference','TextAntiAliasing', 1);
     psychrethrow(psychlasterror);
 end %try..catch..
 

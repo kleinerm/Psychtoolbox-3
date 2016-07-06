@@ -404,7 +404,7 @@ moglmorpher('reset');
 
 % Close onscreen window and release all other ressources:
 %Screen('Flip', win);
-Screen('CloseAll');
+sca;
 
 % Reenable Synctests after this simple demo:
 Screen('Preference','SkipSyncTests', oldskip);

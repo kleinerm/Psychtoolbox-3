@@ -211,9 +211,10 @@ else
         % systems:
 
         % Query OS type and version:
+        compinfo = Screen('Computer');
+
         if IsOSX
             % Which OS/X version?
-            compinfo = Screen('Computer');
             osxversion = sscanf(compinfo.system, '%*s %*s %i.%i.%i');
         end
 
@@ -277,18 +278,25 @@ else
                 % A good default at least on OS/X is type 1:
                 gfxhwtype = 1;
 
-                if (IsWin || IsLinux) && ~isempty(strfind(winfo.GPUCoreId, 'R600'))
+                if IsWin && ~isempty(strfind(winfo.GPUCoreId, 'R600'))
                     % At least the Radeon HD 3470 under Windows Vista and Linux needs type 0
                     % LUT's. Let's assume for the moment this is true for all R600
                     % cores, ie., all Radeon HD series cards.
                     fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later detected. Using type-0 LUT.\n');
                     gfxhwtype = 0;
                 elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'on AMD')))
-                    % At least the Radeon R3xx/4xx/5xx under Linux with DRI2 Mesa needs type 0
-                    % LUT's. Let's assume for the moment this is true for all R600
-                    % cores, ie., all Radeon HD series cards.
-                    fprintf('LoadIdentityClut: ATI Radeon on Linux DRI2 detected. Using type-0 LUT.\n');
-                    gfxhwtype = 0;
+                    if ~isempty(strfind(winfo.GPUCoreId, 'R600'))
+                        % At least the Radeon R9 380 Tonga Pro with DCE10 display engine under Linux with DRI2 Mesa needs type 3
+                        % LUT's. Let's assume for the moment this is true for all such R600+ cores, ie., all Radeon HD series cards.
+                        fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later on Linux DRI2/DRI3 detected. Using type-3 LUT.\n');
+                        gfxhwtype = 3;
+                    else
+                        % At least the Radeon R3xx/4xx/5xx under Linux with DRI2 Mesa needs type 0
+                        % LUT's. Let's assume for the moment this is true for all R600
+                        % cores, ie., all Radeon HD series cards.
+                        fprintf('LoadIdentityClut: ATI Radeon on Linux DRI2 detected. Using type-0 LUT.\n');
+                        gfxhwtype = 0;
+                    end
                 elseif IsOSX && (~isempty(strfind(winfo.GLRenderer, 'Radeon HD 5')))
                     % At least on OS/X 10.6 with ATI Radeon HD-5000 series,
                     % type 2 seems to be the correct choice, according to Cesar
@@ -297,9 +305,22 @@ else
                     gfxhwtype = 2;
                 end
             elseif ~isempty(strfind(gfxhwtype, 'Intel'))
-                % Intel card: Type 0 LUT is correct at least on Linux:
+                % Intel card: Type 0 LUT is correct at least on Linux versions
+                % < Linux 4.7. Take this as a baseline:
                 gfxhwtype = 0;
-                fprintf('LoadIdentityClut: Intel integrated graphics chip detected. Using type-0 LUT.\n');
+
+                % Linux got a new color management for Intel-kms in 4.7+
+                if IsLinux
+                    osrelease = sscanf(compinfo.kern.osrelease, '%i.%i');
+                    if (osrelease(1) > 4) || (osrelease(1) == 4 && osrelease(2) >= 7)
+                        % Linux 4.7 or later. New color management for Intel:
+                        gfxhwtype = 4;
+                    else
+                        % Older kernel: Old color management for Intel:
+                        gfxhwtype = 0;
+                    end
+                end
+                fprintf('LoadIdentityClut: Intel integrated graphics chip detected. Using type-%i LUT.\n', gfxhwtype);
             elseif ~isempty(strfind(gfxhwtype, 'Broadcom')) && ~isempty(strfind(winfo.GLRenderer, 'VC4'))
                 % VC4 in RaspberryPi: Type 0 LUT is correct at least on Linux:
                 gfxhwtype = 0;
@@ -391,7 +412,15 @@ else
         oldClut = Screen('LoadNormalizedGammaTable', windowPtr, loadlut, loadOnNextFlip);
     end
 
-    if ~ismember(gfxhwtype, [-1,0,1,2,3])
+    if gfxhwtype == 4
+        % This is a very close approximation of the default gamma table used by the
+        % Intel drm/kms display driver for Linux 4.8 and later, after they implemented
+        % the new color management. At least valid for Intel HD-4000 IvyBridge down to
+        % a match which is accurate to approx. 16 bits.
+        oldClut = Screen('LoadNormalizedGammaTable', windowPtr, (0:1/256:0.99611)' * ones(1, 3), loadOnNextFlip);
+    end
+
+    if ~ismember(gfxhwtype, [-1,0,1,2,3,4])
         sca;
         error('Could not upload identity CLUT to GPU! Invalid LUT or invalid LUT id or other invalid arguments passed?!?');
     end

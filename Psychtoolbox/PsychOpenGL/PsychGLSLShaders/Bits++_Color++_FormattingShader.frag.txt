@@ -45,7 +45,7 @@ void main()
     readpos.s = (readpos.s - mod(readpos.s, 2.0)) * sampleSpacing;
 
     /* Retrieve RGBA HDR input color value for a virtual Bits++ pixel. */
-    vec4 incolor = texture2DRect(Image, readpos);
+    vec4 incolor = texture2DRect(Image, readpos + vec2(0.5, 0.0));
 
     /* Apply some color transformation (clamping, gamma correction etc.): */
     incolor = icmTransformColor(incolor);

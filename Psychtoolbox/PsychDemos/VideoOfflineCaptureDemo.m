@@ -145,7 +145,7 @@ try
   Screen('CloseVideoCapture', grabber);
 
   % Close window, clean up.
-  Screen('CloseAll');
+  sca;
 catch
-  Screen('CloseAll');
+  sca;
 end

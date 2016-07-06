@@ -115,7 +115,7 @@ log = PsychVideoDelayLoop('GetLog');
 PsychVideoDelayLoop('Close');
 
 % Close onscreen window, release all other ressources:
-Screen('CloseAll');
+sca;
 
 if firewireBasler
     % Restore capture engine settings:

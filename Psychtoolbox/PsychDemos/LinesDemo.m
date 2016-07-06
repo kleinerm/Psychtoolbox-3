@@ -159,8 +159,8 @@ try
     end;
 
     ShowCursor;
-    Screen('CloseAll');
+    sca;
 catch
     ShowCursor;
-    Screen('CloseAll');
+    sca;
 end
