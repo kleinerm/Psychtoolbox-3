@@ -2,11 +2,18 @@ language: octave
 
 os:
   - linux
-  - osx
+#  - osx
+
+cache:
+  - apt
 
 compiler:
   - gcc
-  - clang
+#  - clang
+
+env:
+  global:
+    - XVFB_OPTS="-screen 0 1024x768x24 -ac +extension GLX +render -noreset"
 
 # addons:
 #   apt:
@@ -18,4 +25,4 @@ before_install:
 
 script:
   - cd Psychtoolbox
-  - yes|octave --eval 'SetupPsychtoolbox.m'
+  - yes| xvfb-run --auto-servernum --server-num=20 -s "$XVFB_OPTS" octave --eval 'SetupPsychtoolbox.m'
