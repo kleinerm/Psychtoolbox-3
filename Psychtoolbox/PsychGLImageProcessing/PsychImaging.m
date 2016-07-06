@@ -2137,7 +2137,7 @@ if strcmpi(cmd, 'OpenWindow')
     end
     
     % Matlab? Does the Java swing cleanup function exist?
-    if ~IsOctave && exist('PsychJavaSwingCleanup', 'file')
+    if exist('PsychJavaSwingCleanup', 'file')
         % Attach a window close callback for cleanup of Java's memory
         % management mess at window close time when Matlab with Java based
         % GUI is in use:
