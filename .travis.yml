@@ -29,6 +29,9 @@ compiler:
 before_install:
   - managementtools/ci/travis_${TRAVIS_OS_NAME}
 
+install:
+  - managementtools/ci/build_all
+
 script:
   - cd Psychtoolbox
 #  - { yes | head -n 10; yes '' | head -n 3; } | xvfb-run --auto-servernum --server-num=20 -s "$XVFB_OPTS" octave --eval 'SetupPsychtoolbox.m'
