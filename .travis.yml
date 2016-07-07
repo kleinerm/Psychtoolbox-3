@@ -2,29 +2,38 @@ language: octave
 
 os:
   - linux
-  - osx
+#  - osx
+
+sudo: required
+
+cache:
+  - apt
 
 compiler:
   - gcc
-  - clang
+#  - clang
 
-addons:
-  apt:
-    packages:
-      - mplayer
-    
-before install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew tap homebrew/science; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew update; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install mplayer fontconfig ftgl; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install octave --with-gui; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then wget -O- http://neuro.debian.net/lists/xenial.us-nh.full | sudo tee /etc/apt/sources.list.d/neurodebian.sources.list; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-key adv --recv-keys --keyserver hkp://pgp.mit.edu:80 0xA5D32F012649A5A9; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get -qq update; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y mplayer fontconfig; fi
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install -y octave; fi
+#
+# TODOs:
+#  - create xvfb-runner helper
+#  - port running of the tests from the NeuroDebian's debian/rules
+#  - may be also prep it sufficient for running SetupPsychtoolbox.m
+#
+#env:
+#  global:
+#    - XVFB_OPTS="-screen 0 1024x768x24 -ac +extension GLX +render -noreset"
+
+# addons:
+#   apt:
+#     packages:
+#       - mplayer
+
+before_install:
+  - managementtools/ci/travis_${TRAVIS_OS_NAME}
+
+install:
+  - managementtools/ci/build_all
 
 script:
   - cd Psychtoolbox
-  - yes|octave --eval 'SetupPsychtoolbox.m'
+#  - { yes | head -n 10; yes '' | head -n 3; } | xvfb-run --auto-servernum --server-num=20 -s "$XVFB_OPTS" octave --eval 'SetupPsychtoolbox.m'
