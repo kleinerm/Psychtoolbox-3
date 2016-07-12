@@ -887,6 +887,11 @@ unsigned int PsychGetNVidiaGPUType(PsychWindowRecordType* windowRecord)
             // Maxwell: GeForce 750+ series: 3rd gen scanout engine, up to 4 CRTC's.
             card_type = 0x110;
             break;
+        case 0x130:
+            // Pascal: GeForce 1000+ series: 3rd gen scanout engine, up to 4 CRTC's.
+            card_type = 0x130;
+            break;
+
         default:
             printf("PTB-DEBUG: Unknown NVidia chipset 0x%08x - Assuming latest generation.\n", reg0);
             card_type = 0x000;
