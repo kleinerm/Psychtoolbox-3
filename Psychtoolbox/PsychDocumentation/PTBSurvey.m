@@ -24,4 +24,10 @@ function PTBSurvey
 %
 %  Thanks!
 
+try
+    fid = fopen([PsychtoolboxConfigDir 'surveydone'], 'w');
+    fclose(fid);
+catch
+end
+
 help PTBSurvey;
