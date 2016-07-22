@@ -1342,6 +1342,7 @@ void InitCGDisplayIDList(void)
     char* ptbdisplays = NULL;
     char displayname[1000];
     CGDirectDisplayID x11_dpy = NULL;
+    char* ptbpipelines = NULL;
 
     // NULL-out array of displays:
     for(i=0;i<kPsychMaxPossibleDisplays;i++) displayCGIDs[i]=NULL;
@@ -1466,6 +1467,16 @@ void InitCGDisplayIDList(void)
     // set that flag, but we only want this flag set if triggered by true override from usercode by use of
     // Screen('Preference', 'ScreenToHead', screenId, ...):
     PsychResetCrtcIdUserOverride();
+
+    // Did user provide an override for the screenid --> pipeline mapping? Need to reapply it as it
+    // may have gotten clobbered by GetRandRScreenConfig() above:
+    ptbpipelines = getenv("PSYCHTOOLBOX_PIPEMAPPINGS");
+    if (ptbpipelines) {
+        // The default is "012...", ie screen 0 = pipe 0, 1 = pipe 1, 2 =pipe 2, n = pipe n
+        for (i = 0; (i < (int) strlen(ptbpipelines)) && (i < kPsychMaxPossibleDisplays); i++) {
+            PsychSetScreenToCrtcId(i, (((ptbpipelines[i] - 0x30) >=0) && ((ptbpipelines[i] - 0x30) < 10)) ? (ptbpipelines[i] - 0x30) : -1, 0);
+        }
+    }
 
     // Prepare atoms for "Desktop composition active?" queries:
     // Each atom corresponds to one X-Screen. It is selection-owned by the

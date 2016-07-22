@@ -33,9 +33,16 @@ function RaspberryPiGPIODemo
 % use a M-File wrapper around it to simplify transition to a
 % future better I/O driver.
 %
+% All pin numbers used with RPiGPIOMex are Broadcom GPIO pin
+% numbers, not pin numbers on the connector or wiringPi pin numbers!
+%
+% A nice translation table between connector pins and Broadcom GPIO
+% pins can be found on the following website: https://pinout.xyz
+%
 
 % History:
 % 26-Jun-2016 mk  Written.
+% 22-Jul-2016 mk  Clarify pin numbering more, reference https://pinout.xyz
 
 % Get Pi revision. We only handle > 1 at the moment:
 revision = RPiGPIOMex

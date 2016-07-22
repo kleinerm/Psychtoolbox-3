@@ -637,51 +637,63 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
         reg0 = ReadRegister(NV03_PMC_BOOT_0);
 
         /* We're dealing with >=NV10 */
-        if ((reg0 & 0x0f000000) > 0) {
-            /* Bit 27-20 contain the architecture in hex */
-            chipset = (reg0 & 0xff00000) >> 20;
+        if ((reg0 & 0x1f000000) > 0) {
+            /* Bit 28-20 contain the architecture in hex */
+            chipset = (reg0 & 0x1ff00000) >> 20;
             /* NV04 or NV05 */
         } else if ((reg0 & 0xff00fff0) == 0x20004000) {
             if (reg0 & 0x00f00000)
                 chipset = 0x05;
             else
                 chipset = 0x04;
-        } else {
+        } else
             chipset = 0xff;
-        }
 
-        switch (chipset & 0xf0) {
-            case 0x00:
+        switch (chipset & 0x1f0) {
+            case 0x000:
                 // NV_04/05: RivaTNT , RivaTNT2
                 fCardType = 0x04;
                 break;
-            case 0x10:
-            case 0x20:
-            case 0x30:
+            case 0x010:
+            case 0x020:
+            case 0x030:
                 // NV30 or earlier: GeForce-5 / GeForceFX and earlier:
                 fCardType = chipset & 0xf0;
                 break;
-            case 0x40:
-            case 0x60:
-                // NV40: GeForce6/7 series: "Curie"
-                fCardType = 0x40;
+            case 0x040:
+            case 0x060:
+                // NV40: GeForce6/7 series:
+                fCardType = 0x040;
                 break;
-            case 0x50:
-            case 0x80:
-            case 0x90:
-            case 0xa0:
-                // NV50: GeForce8/9/Gxxx: "Tesla"
-                fCardType = 0x50;
+            case 0x050:
+            case 0x080:
+            case 0x090:
+            case 0x0a0:
+                // NV50: GeForce8/9/G100-G300.
+                fCardType = 0x050;
                 break;
-            case 0xc0:
-                // NVC0: GeForce-400/500: "Fermi"
-                fCardType = 0xc0;
+            case 0x0c0:
+                // Fermi: GeForce G400/500 series:
+                fCardType = 0x0c0;
                 break;
-            case 0xd0:
-            case 0xe0:
-            case 0xf0:
-                // NVE0: GeForce-600: "Kepler"
-                fCardType = 0xe0;
+            case 0x0d0:
+                // Fermi: But with 3rd gen scanout engine, but still only 2 CRTC's:
+                fCardType = 0x0d0;
+                break;
+            case 0x0e0:
+            case 0x0f0:
+            case 0x100:
+                // Kepler: GeForce G600+ series: 3rd gen scanout engine, but now up to 4 CRTC's.
+                fCardType = 0x0e0;
+                break;
+            case 0x110:
+            case 0x120:
+                // Maxwell: GeForce 750+ series: 3rd gen scanout engine, up to 4 CRTC's.
+                fCardType = 0x110;
+                break;
+            case 0x130:
+                // Pascal: GeForce 1000+ series: 3rd gen scanout engine, up to 4 CRTC's.
+                fCardType = 0x130;
                 break;
             default:
                 IOLog("%s: Unknown NVidia chipset 0x%08x. Optimistically assuming latest generation GPU too new to be known.\n", getName(), reg0);
@@ -691,7 +703,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
         // "Kepler" chip family and later supports 4 display heads:
         if ((fCardType == 0x0) || (fCardType >= 0xe0)) fNumDisplayHeads = 4;
 
-        if (fCardType > 0x00) IOLog("%s: NV-%02x GPU with %d display heads detected.\n", getName(), fCardType, fNumDisplayHeads);
+        if (fCardType > 0x00) IOLog("%s: NV-%03x family GPU with %d display heads detected.\n", getName(), fCardType, fNumDisplayHeads);
     }
 
     // The following code chunk if enabled, will detaching the Radeon driver IRQ handler and
