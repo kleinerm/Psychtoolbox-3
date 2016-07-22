@@ -179,12 +179,6 @@ for idx = 1:size(spo, 2)
 
     fprintf('ReadbackOffset (%i, %i): Maximum raw data difference: red= %f green = %f blue = %f\n', dx, dy, mdr, mdg, mdb);
 
-    % Perfect results?
-    if ((mdr == 0) && (mdg == 0) && (mdb == 0))
-        % Yep. Done!
-        break;
-    end
-
     % If there is a difference, show plotted difference if requested:
     if (mdr>0 || mdg>0 || mdb>0) && plotdiffs
         % Differences detected!
@@ -247,11 +241,17 @@ for idx = 1:size(spo, 2)
         % No error: Set maxdiff to zero.
         maxdiff = 0;
     end
-    
+
     % Compute absolute effective maximum error in color intensity over all
     % values, pixels and channels. This is the true "human visible" error.
     maxerror = max(maxdiff);
-    minerror = min(minerror, maxerror);
+
+    % Track minimum error and the settings that lead to it:
+    if maxerror < minerror
+        minerror = maxerror;
+        mindx = dx;
+        mindy = dy;
+    end
 
     % Error small enough to be acceptable for practical purposes?
     if maxerror <= acceptableerror
@@ -259,6 +259,10 @@ for idx = 1:size(spo, 2)
         break;
     end
 end
+
+% Move ahead with the dx,dy offsets that gave the best results:
+dx = mindx;
+dy = mindy;
 
 % Show GPU converted image. Should obviously not make any visual difference if
 % it is the same as the Matlab converted image.

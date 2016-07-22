@@ -47,7 +47,9 @@ end
 state = warning;
 try
     warning off;
-    delete([PsychtoolboxConfigDir 'screen_buildnr_*']);
+    if ~exist([PsychtoolboxConfigDir 'surveydone'], 'file')
+        delete([PsychtoolboxConfigDir 'screen_buildnr_*']);
+    end
 catch
 end
 warning(state);
