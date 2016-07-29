@@ -3,7 +3,7 @@ function nflushed = KbQueueFlush(deviceIndex, flushType)
 %
 %  Flush KbQueue and/or KbQueue event buffer. By default, if flushType is
 %  omitted, only the KbQueues events are deleted. Other 'flushTypes' affect
-%  the KbQueue event buffer, but rather use the KbBufferFlush() function to
+%  the KbQueue event buffer, but rather use the KbEventFlush() function to
 %  do this.
 %
 %  If 'flushType' is 0, only the number of currently queued events will be
@@ -12,9 +12,9 @@ function nflushed = KbQueueFlush(deviceIndex, flushType)
 %  If 'flushType' is 1, only events returned by KbQueueCheck will be flushed. This
 %  is the default.
 %
-%  If 'flushType' is 2, only events returned by KbQueueGetEvent will be flushed.
+%  If 'flushType' is 2, only events returned by KbEventGet will be flushed.
 %
-%  If 'flushType' is 3, events returned by both KbQueueCheck and KbQueueGetEvent
+%  If 'flushType' is 3, events returned by both KbQueueCheck and KbEventGet
 %  will be flushed.
 %
 %  If 'flushType' is 4, only the number of key-press events with valid, mapped ASCII
