@@ -15,8 +15,9 @@ function err=DaqDConfigPort(daq,port,direction)
 % maximal speed is an overarching requirement.  
 % See also Daq, DaqFunctions, DaqPins, DaqTest, PsychHidTest.
 %
-% USB-1024LS: Has three ports, probably numbered: 1 = port A, 4 = port B,
-% 10 = port C (the sum of: 8 = portC low, 2 = portC high).
+% USB-1024LS: Has three ports: 1 = port A, 4 = port B, 10 = port C (the sum
+% of: 8 = portC low, 2 = portC high). The card is verified to work well with
+% using port A or B for output and port C as a whole for input.
 %
 % 4/15/05   dgp Wrote it.
 % 12/18/07  mpr extended for 1608
@@ -25,6 +26,7 @@ function err=DaqDConfigPort(daq,port,direction)
 % 5/22/08   mk  Add (untested!) support for USB-1024LS box. 
 % 5/23/08   mk  Add caching for HID device list. 
 % 8/12/2010 sdv Fixed error when other HID devices have short names
+% 07/31/16  mk  Remove experimental note about 1024LS. It's tested and known to work.
 
 % Perform internal caching of list of HID devices in 'TheDevices'
 % to speedup call:
@@ -43,16 +45,15 @@ if length(TheDevices(daq).product)>=6,  % check for sufficient length
       if nargin == 2
         direction = port;
       end
-    
     end
 end
 
 % Denis(?) commented this out for some reason...
 % if ~ismember(port,0:1)
-% 	error('"port" must be 0 or 1.');
+% error('"port" must be 0 or 1.');
 % end
 if ~ismember(direction,0:1)
-	error('"direction" must be 0 (out) or 1 (in).');
+  error('"direction" must be 0 (out) or 1 (in).');
 end
 if Is1608
   report = uint8([1 direction]);
@@ -62,13 +63,13 @@ end
 
 % Is this a USB-1024LS or similar?
 if ismember(TheDevices(daq).productID, [ 118, 127 ])
-    % Yes. Need different reportId and report:
-    reportId = 0;
-    report=uint8([13 port direction 0 0 0 0 0]);    
+  % Yes. Need different reportId and report:
+  reportId = 0;
+  report=uint8([13 port direction 0 0 0 0 0]);    
 end
 
 err=PsychHID('SetReport',daq,2,reportId,report); % Configure digital port.
 if err.n
-    fprintf('DaqDConfigPort error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
+  fprintf('DaqDConfigPort error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
 end
 return
