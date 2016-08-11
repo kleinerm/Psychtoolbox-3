@@ -153,7 +153,7 @@ else
     elseif IsOSX || IsLinux
         fprintf('LoadIdentityClut: Info: Could not use GPU low-level setup for setup of pixel passthrough. Will use fallback method.\n');
         % AMD GPU, aka GPU core of format 'R100', 'R500', ... starting with a 'R'?
-        if winfo.GPUCoreId(1) == 'R'
+        if ~isempty(strfind(winfo.DisplayCoreId, 'AMD'))
             % Some advice for AMD users on Linux and OSX:
             fprintf('LoadIdentityClut: Info: On your AMD/ATI GPU, you may get this working by loading the PsychtoolboxKernelDriver\n');
             fprintf('LoadIdentityClut: Info: on OS/X or using a Linux system properly setup with PsychLinuxConfiguration.\n');
@@ -266,12 +266,11 @@ else
                 end
             end
             
-            % Is this a latest generation NVidia QuadroFX card under Linux with NVidia binary blob?
-            [dummy, dummy2, nrslots] = Screen('ReadNormalizedGammatable', windowPtr); %#ok<ASGLU>
-            if IsLinux && ~isempty(strfind(winfo.GLRenderer, 'Quadro')) && (nrslots > 256)
-                % LUT type 3:
+            if IsLinux
+                % LUT type 3 seems to be right for both GeForce under nouveau-kms, and Quadro under
+                % nvidia blob, so probably for all NVidia gpus on Linux:
                 gfxhwtype = 3;
-                fprintf('LoadIdentityClut: NVidia Quadro or later on Linux with binary Blob detected. Enabling special type-III LUT.\n');
+                fprintf('LoadIdentityClut: NVidia gpu detected. Enabling type-III LUT.\n');
             end
         else
             if ~isempty(strfind(winfo.DisplayCoreId, 'AMD')) || ~isempty(strfind(gfxhwtype, 'ATI')) || ~isempty(strfind(gfxhwtype, 'AMD')) || ~isempty(strfind(gfxhwtype, 'Advanced Micro Devices')) || ...
