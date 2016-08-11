@@ -398,6 +398,8 @@ if addgroup
   fprintf('sudo usermod -a -G dialout %s\n\n', username);
   fprintf('One should also add oneself to the ''lp'' group for access to parallel port devices:\n\n');
   fprintf('sudo usermod -a -G lp %s\n\n', username);
+  fprintf('One should also add oneself to the ''video'' group for use on hybrid graphics laptops:\n\n');
+  fprintf('sudo usermod -a -G video %s\n\n', username);
   if IsARM
     fprintf('One should also add oneself to the ''gpio'' group for access to GPIO pins:\n\n');
     fprintf('sudo usermod -a -G gpio %s\n\n', username);
@@ -421,6 +423,8 @@ if addgroup
       cmd = sprintf('sudo usermod -a -G dialout %s', username);
       system(cmd);
       cmd = sprintf('sudo usermod -a -G lp %s', username);
+      system(cmd);
+      cmd = sprintf('sudo usermod -a -G video %s', username);
       system(cmd);
 
       % On RaspberryPi also add to the gpio group for GPIO access:
