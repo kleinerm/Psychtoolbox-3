@@ -65,6 +65,8 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType, disableD
 %                default. Only use on Linux + AMD as fallback if low-level
 %                dither disable fails.
 % 05/18/16   mk  Add detection for Broadcom VC4 SoC gpu in RaspberryPi.
+% 08/11/16   mk  Add detection based on winfo.DisplayCoreId on Linux to handle
+%                hybrid graphics laptops.
 
 global ptb_original_gfx_cluts;
 
@@ -221,7 +223,8 @@ else
         % We derive type of hardware and thereby our strategy from the vendor name:
         gfxhwtype = winfo.GLVendor;
 
-        if ~isempty(strfind(gfxhwtype, 'NVIDIA')) || ~isempty(strfind(gfxhwtype, 'nouveau'))
+        if ~isempty(strfind(winfo.DisplayCoreId, 'NVidia')) || ~isempty(strfind(gfxhwtype, 'NVIDIA')) || ...
+           ~isempty(strfind(gfxhwtype, 'nouveau'))
             % NVidia card:
 
             % We start with assumption that it is a "normal" one:
@@ -271,7 +274,7 @@ else
                 fprintf('LoadIdentityClut: NVidia Quadro or later on Linux with binary Blob detected. Enabling special type-III LUT.\n');
             end
         else
-            if ~isempty(strfind(gfxhwtype, 'ATI')) || ~isempty(strfind(gfxhwtype, 'AMD')) || ~isempty(strfind(gfxhwtype, 'Advanced Micro Devices')) || ...
+            if ~isempty(strfind(winfo.DisplayCoreId, 'AMD')) || ~isempty(strfind(gfxhwtype, 'ATI')) || ~isempty(strfind(gfxhwtype, 'AMD')) || ~isempty(strfind(gfxhwtype, 'Advanced Micro Devices')) || ...
                     ~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'on AMD'))
                 % AMD/ATI card:
 
@@ -304,7 +307,7 @@ else
                     fprintf('LoadIdentityClut: ATI Radeon HD-5000 Evergreen on OS/X detected. Using type-2 LUT.\n');
                     gfxhwtype = 2;
                 end
-            elseif ~isempty(strfind(gfxhwtype, 'Intel'))
+            elseif ~isempty(strfind(winfo.DisplayCoreId, 'Intel')) || ~isempty(strfind(gfxhwtype, 'Intel'))
                 % Intel card: Type 0 LUT is correct at least on Linux versions
                 % < Linux 4.7. Take this as a baseline:
                 gfxhwtype = 0;
