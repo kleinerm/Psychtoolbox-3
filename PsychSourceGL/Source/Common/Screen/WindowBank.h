@@ -381,6 +381,7 @@ typedef struct _PsychWindowRecordType_{
     psych_bool                  PipelineFlushDone;      // MK: Will be set by SCREENDrawingFinished to signal pipeline flush.
     psych_bool                  backBufferBackupDone;   // MK: Will be set by SCREENDrawingFinished to signal backbuffer backup.
     psych_bool                  vSynced;                // MK: Flag that stores VSYNC enable state: TRUE = Sync to VBL, FALSE = Don't.
+    psych_bool                  hybridGraphics;         // true on a hybrid graphics laptop that needs special treatment.
     int                         nr_missed_deadlines;    // MK: Counter, incremented by Flip if it detects a missed/skipped frame.
     int                         flipCount;              // Counter of total number of finished flip operations - A swapcounter.
     double                      rawtime_at_swapcompletion; // Raw timestamp of swapcompletion (result without high-precision timestamping).

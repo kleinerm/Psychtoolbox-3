@@ -481,10 +481,10 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 // some KDE-specific hacks for override_redirect handling in window setup need to know
                 // about running on an Intel IGP, even if we don't actually mmap() the gpu, and the hacks
                 // need to know about this before we have an easy to probe OpenGL context online:
-                if (dev->vendor_id == PCI_VENDOR_ID_INTEL) fDeviceType = kPsychIntelIGP;
+                if ((dev->vendor_id == PCI_VENDOR_ID_INTEL) && pci_device_is_boot_vga(dev)) fDeviceType = kPsychIntelIGP;
 
                 // Skip intel gpu's, unless the PSYCH_ALLOW_DANGEROUS env variable is set:
-                // Intel IGP's have a design defect which can cause machine hard lockup if multiple
+                // Intel IGP's have a design quirk which can cause machine hard lockup if multiple
                 // regs are accessed simultaneously! As we can't serialize our MMIO reads with the
                 // kms-driver, using our MMIO code on Intel is unsafe. Horrible crashes are reported
                 // against Haswell on the freedesktop bug tracker for this issue.
@@ -493,10 +493,13 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                     continue;
                 }
 
-                // Select the targetgpuidx'th detected gpu:
+                // Select the targetgpuidx'th detected gpu. If none is explicitely selected, use
+                // the boot_vga gpu, which is the one and only gpu in a single gpu system, and the
+                // active display gpu in a hybrid graphics laptop.
+                //
                 // TODO: Replace this hack by true multi-gpu support and - far in the future? -
                 // automatic mapping of screens to gpu's:
-                if (currentgpuidx >= targetgpuidx) {
+                if (((targetgpuidx >= 0) && (currentgpuidx >= targetgpuidx)) || ((targetgpuidx < 0) && pci_device_is_boot_vga(dev))) {
                     if ((PsychPrefStateGet_Verbosity() > 2) && (targetgpuidx >= 0)) printf("PTB-INFO: Choosing GPU number %i for low-level access during this session.\n", currentgpuidx);
 
                     // Assign as gpu:
@@ -588,8 +591,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
             }
 
             ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);
-            // Mapping MMIO for write access is a nono on Intel with latest kernels, so retry a readonly mapping:
-            if ((ret == EAGAIN) && (fDeviceType == kPsychIntelIGP)) {
+            // Mapping MMIO for write access is a nono on Intel with latest kernels, so retry a readonly mapping. Actually
+            // read only is fine for anything but AMD, as we don't benefit from write access on other vendors gpus:
+            if ((ret == EAGAIN) && (fDeviceType != kPsychRadeon)) {
                 ret = pci_device_map_range(gpu, region->base_addr, region->size, 0, (void**) &gfx_cntl_mem);
             }
         }

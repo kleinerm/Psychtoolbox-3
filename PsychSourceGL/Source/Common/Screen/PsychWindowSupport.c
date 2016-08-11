@@ -1434,7 +1434,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // possible that the gfx-hw is not capable of downsampling fast enough to do it every refresh
         // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
         (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-        if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0) {
+        if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 || (*windowRecord)->hybridGraphics) {
             // Flip frame stereo or multiSampling enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
             if ((ifi_beamestimate>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_beamestimate && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_beamestimate) ||
                 (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_nominal && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_nominal)) {
@@ -4701,7 +4701,8 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 if ((tdur >= 0.004 && tdur <= 0.050) &&
                     ((intervalHint<=0) || (intervalHint>0 &&
                     (((tdur > 0.8 * intervalHint) && (tdur < 1.2 * intervalHint)) ||
-                    (((windowRecord->stereomode==kPsychOpenGLStereo) || (windowRecord->multiSample > 0)) && (tdur > 0.8 * 2 * intervalHint) && (tdur < 1.2 * 2 * intervalHint))
+                    (((windowRecord->stereomode==kPsychOpenGLStereo) || (windowRecord->multiSample > 0) || windowRecord->hybridGraphics) &&
+                     (tdur > 0.8 * 2 * intervalHint) && (tdur < 1.2 * 2 * intervalHint))
                     )))) {
                     // Valid measurement - Update our estimate:
                     windowRecord->IFIRunningSum = windowRecord->IFIRunningSum + tdur;
@@ -6430,7 +6431,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
     if (!PsychGetGPUSpecs(windowRecord->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL))
         gpuMaintype = kPsychUnknown;
-    
+
     // Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
     // so use at most 7 letters!
     memset(&(windowRecord->gpuCoreId[0]), 0, 8);
@@ -6458,6 +6459,12 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
     if (strstr((char*) glGetString(GL_VENDOR), "Broadcom") || strstr((char*) glGetString(GL_RENDERER), "VC4")) {
         vc4 = TRUE; sprintf(windowRecord->gpuCoreId, "VC4");
+    }
+
+    // Is this a hybrid graphics dual-gpu laptop which uses DRI PRIME for muxless render offload?
+    if (getenv("DRI_PRIME")) {
+        windowRecord->hybridGraphics = TRUE;
+        if (verbose) printf("PTB-DEBUG: Hybrid graphics laptop with DRI PRIME muxless render offload detected. Being more lenient wrt. framerate.\n");
     }
 
     // Check if this is an open-source (Mesa/Gallium) graphics driver on Linux with X11
