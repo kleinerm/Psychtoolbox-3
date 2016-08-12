@@ -355,7 +355,7 @@ PsychError SCREENConfigureDisplay(void)
     // Query and return refresh rate:
 
     // Modeline with plausible values returned by RandR?
-    if (mode && (mode->hTotal > mode->width) && (mode->vTotal > mode->height)) {
+    if (mode && (mode->hTotal >= mode->width) && (mode->vTotal >= mode->height)) {
         // Yes: use RandR results:
         newHz = (int) (PsychOSVRefreshFromMode(mode) + 0.5);
     } else {

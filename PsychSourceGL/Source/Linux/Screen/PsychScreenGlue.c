@@ -1282,7 +1282,7 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
 
     // Query info about video modeline and crtc of output 'outputIdx':
     XRRScreenResources *res = displayX11ScreenResources[screenId];
-    if (has_xrandr_1_2 && (PsychScreenToHead(screenId, outputIdx) >= 0)) {
+    if (res && has_xrandr_1_2 && (PsychScreenToHead(screenId, outputIdx) >= 0)) {
         crtc_info = XRRGetCrtcInfo(displayCGIDs[screenId], res, res->crtcs[PsychScreenToHead(screenId, outputIdx)]);
 
         for (m = 0; (m < res->nmode) && crtc_info; m++) {
@@ -1311,8 +1311,18 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm
     static char outputName[100];
     int o;
     XRROutputInfo *output_info = NULL;
+    RRCrtc crtc;
     XRRScreenResources *res = displayX11ScreenResources[screenId];
-    RRCrtc crtc = res->crtcs[PsychScreenToHead(screenId, outputIdx)];
+
+    // No RandR 1.3 -> No such info:
+    if (res == NULL) {
+        sprintf(outputName, "Unknown");
+        if (mm_width) *mm_width = 0;
+        if (mm_height) *mm_height = 0;
+        return(&outputName[0]);
+    }
+
+    crtc = res->crtcs[PsychScreenToHead(screenId, outputIdx)];
 
     // Find output associated with the crtc for this outputIdx on this screen:
     PsychLockDisplay();
@@ -1884,7 +1894,7 @@ float PsychGetNominalFramerate(int screenNumber)
     PsychUnlockDisplay();
 
     // Modeline with plausible values returned by RandR?
-    if (mode && (mode->hTotal > mode->width) && (mode->vTotal > mode->height)) {
+    if (mode && (mode->hTotal >= mode->width) && (mode->vTotal >= mode->height)) {
         if (PsychPrefStateGet_Verbosity() > 4) {
             printf ("RandR: %s (0x%x) %6.1fMHz\n",
                     mode->name, (int)mode->id,
@@ -2169,7 +2179,7 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
     // Need this later:
     PsychGetDisplaySize(screenNumber, &widthMM, &heightMM);
 
-    if (has_xrandr_1_2 && (PsychScreenToHead(screenNumber, outputId) >= 0)) {
+    if (res && has_xrandr_1_2 && (PsychScreenToHead(screenNumber, outputId) >= 0)) {
         PsychLockDisplay();
         crtc_info = XRRGetCrtcInfo(dpy, res, res->crtcs[PsychScreenToHead(screenNumber, outputId)]);
         PsychUnlockDisplay();
