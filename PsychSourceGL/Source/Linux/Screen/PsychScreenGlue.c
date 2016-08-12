@@ -1137,17 +1137,17 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     Window root = RootWindow(dpy, displayX11Screens[idx]);
     XRRSelectInput(dpy, root, RRScreenChangeNotifyMask);
 
+    if (!has_xrandr_1_3) {
+        printf("PTB-WARNING: XRandR version 1.3 unsupported! Could not query useful info for x-screen %i on display %s. Infos and configuration will be very limited.\n",
+                displayX11Screens[idx], DisplayString(dpy));
+        return;
+    }
+
     // Fetch current screen configuration info for this screen and display:
     XRRScreenResources* res = XRRGetScreenResourcesCurrent(dpy, root);
     displayX11ScreenResources[idx] = res;
     if (NULL == res) {
         printf("PTB-WARNING: Could not query configuration of x-screen %i on display %s. Display infos and configuration will be very limited.\n",
-                displayX11Screens[idx], DisplayString(dpy));
-        return;
-    }
-
-    if (!has_xrandr_1_2) {
-        printf("PTB-WARNING: XRandR version 1.2 unsupported! Could not query useful info for x-screen %i on display %s. Infos and configuration will be very limited.\n",
                 displayX11Screens[idx], DisplayString(dpy));
         return;
     }
