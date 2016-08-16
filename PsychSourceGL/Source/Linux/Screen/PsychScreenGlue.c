@@ -483,6 +483,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 // need to know about this before we have an easy to probe OpenGL context online:
                 if ((dev->vendor_id == PCI_VENDOR_ID_INTEL) && pci_device_is_boot_vga(dev)) fDeviceType = kPsychIntelIGP;
 
+                // Get PCI device id early for dual-gpu PRIME handling:
+                if (pci_device_is_boot_vga(dev)) fPCIDeviceId = dev->device_id;
+
                 // Skip intel gpu's, unless the PSYCH_ALLOW_DANGEROUS env variable is set:
                 // Intel IGP's have a design quirk which can cause machine hard lockup if multiple
                 // regs are accessed simultaneously! As we can't serialize our MMIO reads with the
@@ -751,12 +754,12 @@ psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortyp
 {
   // Provide the basic device type, ie., unknown, intel, amd, ...
   if (gpuMaintype) *gpuMaintype = fDeviceType;
+  if (pciDeviceId) *pciDeviceId = fPCIDeviceId;
 
   // Remaining info is only available for mapped gpu's:
   if (!PsychOSIsKernelDriverAvailable(screenNumber)) return(FALSE);
 
   if (gpuMinortype) *gpuMinortype = fCardType;
-  if (pciDeviceId) *pciDeviceId = fPCIDeviceId;
   if (numDisplayHeads) *numDisplayHeads = fNumDisplayHeads;
 
   return(TRUE);
