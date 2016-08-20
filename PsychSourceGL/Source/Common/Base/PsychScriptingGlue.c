@@ -3064,8 +3064,8 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
 	static psych_bool firstTime = TRUE;
 	static char	psychtoolboxRootPath[FILENAME_MAX+1];
 	static char psychtoolboxConfigPath[FILENAME_MAX+1];
-	PsychGenericScriptType* myPathvar = NULL;
 	char*	myPathvarChar = NULL;
+	mxArray *plhs[1]; // Capture the runtime result of PsychtoolboxRoot/ConfigDir
 
 	if (firstTime) {
 		// Reset firstTime flag:
@@ -3075,34 +3075,38 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
 		psychtoolboxRootPath[0] = 0;
 		psychtoolboxConfigPath[0] = 0;
 
-		// Call into runtime to persuade it to create a global ptb_RootPath variable with
-		// the path to the root folder: This will return zero on success.
-		if (0 == PsychRuntimeEvaluateString("global ptb_RootPath; ptb_RootPath = ''; if exist('PsychtoolboxRoot', 'file'), ptb_RootPath = PsychtoolboxRoot; end;")) {
-			// Success. Try to retrieve global ptb_RootPath from runtime:
-			if (PsychRuntimeGetVariablePtr("global", "ptb_RootPath", &myPathvar)) {
-				// Success, got a read-only pointer to variable. Try to convert into char* string:
-				if (PsychAllocInCharFromNativeArg(myPathvar, &myPathvarChar)) {
-					// Success. myPathvarChar is a temporary char string, so copy it to our persistent memory:
-					strncpy(psychtoolboxRootPath, myPathvarChar, FILENAME_MAX);
-				}
-			}
+		mexSetTrapFlag(1); // Tell Octave/MATLAB that we'll handle exceptions
+		// We could have used mexCallMATLABWithTrap below, but Octave doesn't support it.
+		// Unfortunately, MATLAB plans to deprecate mexSetTrapFlag in lieu of *WithTrap, so
+		// we'll need to patch Octave or make some sort of wrapper function in here.
+
+		// Call into runtime to get the path to the root folder: This will return 0 on success.
+		// A non-zero return value probably means that the script wasn't in the path. When that
+		// happens, there will be an error in the command window, but control stays with the mex
+		// file (thanks to mexSetTrapFlag(1) above) and it'll continue to run.
+		if (0 == mexCallMATLAB(1, plhs, 0, NULL, "PsychtoolboxRoot")) {
+			myPathvarChar = mxArrayToString(plhs[0]);
+			if (myPathvarChar) {
+				strncpy(psychtoolboxRootPath, myPathvarChar, FILENAME_MAX);
+				mxFree(myPathvarChar);
+			}			
 		}
-		
+		mxDestroyArray(plhs[0]);		
+
 		// At this point we did our best and psychtoolboxRootPath is valid: Either a path string,
 		// or an empty string signalling failure to get the path.
 
 		// Same game again for PsychtoolboxConfigDir:
-		if (0 == PsychRuntimeEvaluateString("global ptb_ConfigPath; ptb_ConfigPath = ''; if exist('PsychtoolboxConfigDir', 'file'), ptb_ConfigPath = PsychtoolboxConfigDir; end;")) {
-			// Success. Try to retrieve global ptb_RootPath from runtime:
-			if (PsychRuntimeGetVariablePtr("global", "ptb_ConfigPath", &myPathvar)) {
-				// Success, got a read-only pointer to variable. Try to convert into char* string:
-				if (PsychAllocInCharFromNativeArg(myPathvar, &myPathvarChar)) {
-					// Success. myPathvarChar is a temporary char string, so copy it to our persistent memory:
-					strncpy(psychtoolboxConfigPath, myPathvarChar, FILENAME_MAX);
-				}
+		if (0 == mexCallMATLAB(1, plhs, 0, NULL, "PsychtoolboxConfigDir")) {
+			myPathvarChar = mxArrayToString(plhs[0]);
+			if (myPathvarChar) {
+				strncpy(psychtoolboxConfigPath, myPathvarChar, FILENAME_MAX);
+				mxFree(myPathvarChar);
 			}
 		}
+		mxDestroyArray(plhs[0]);
 
+		mexSetTrapFlag(0); // Tell the runtime that we'll no longer handle exceptions
 	}
 
 	// Return whatever we've got:
