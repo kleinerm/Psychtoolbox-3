@@ -504,19 +504,19 @@ function WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, screenN
 end
 
 function xdriver = DetectDDX(winfo)
-  if strfind(winfo.GPUCoreId, 'Intel')
+  if strfind(winfo.DisplayCoreId, 'Intel')
     % Intel part -> intel ddx:
     fprintf('Intel GPU detected. ');
     xdriver = 'intel';
-  elseif strfind(winfo.GLVendor, 'nouveau')
+  elseif strfind(winfo.DisplayCoreId, 'NVidia') && strfind(winfo.GLVendor, 'nouveau')
     % NVidia part under nouveau -> nouveau ddx:
     fprintf('Nvidia GPU with open-source driver detected. ');
     xdriver = 'nouveau';
-  elseif strfind(winfo.GLVendor, 'NVIDIA')
+  elseif strfind(winfo.DisplayCoreId, 'NVidia') && strfind(winfo.GLVendor, 'NVIDIA')
     % NVidia part under binary blob -> nvidia ddx:
     fprintf('Nvidia GPU with proprietary driver detected. ');
     xdriver = 'nvidia';
-  elseif winfo.GPUCoreId(1) == 'R'
+  elseif strfind(winfo.DisplayCoreId, 'AMD')
     % Some AMD/ATI Radeon/Fire series part:
     if strfind(winfo.GLVersion, 'Mesa')
       % Controlled by the open-source drivers. GPU minor
