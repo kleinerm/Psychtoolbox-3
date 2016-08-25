@@ -13,8 +13,9 @@ function out = RandLim(n,lower,upper)
 
 % DN 2008-07-21 Wrote it
 % DN 2008-09-19 Support for vector lower and upper limits
+% DN 2016-08-25 Switched from deprecated nargchk to narginchk
 
-error(nargchk(3, 3, nargin, 'struct'))
+narginchk(3,3);
 
 r = rand(n);
 if (~isscalar(lower) && any(size(lower)~=size(r))) || (~isscalar(upper) && any(size(upper)~=size(r)))
