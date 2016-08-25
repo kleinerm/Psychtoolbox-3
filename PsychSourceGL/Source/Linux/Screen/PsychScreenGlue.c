@@ -108,6 +108,8 @@ static psych_bool isDCE11(int screenId)
 {
     psych_bool isDCE11 = false;
 
+    (void) screenId;
+
     // POLARIS10/11 are DCE11.2, but for our purpose we can so far
     // treat them as DCE11.0:
 
@@ -135,6 +137,8 @@ static psych_bool isDCE10(int screenId)
 {
     psych_bool isDCE10 = false;
 
+    (void) screenId;
+
     // TONGA and FIJI are DCE10 -- This is part of the "Volcanic Islands" GPU family.
 
     // TONGA: 0x692x - 0x693x so far.
@@ -154,6 +158,8 @@ static psych_bool isDCE10(int screenId)
 static psych_bool isDCE8(int screenId)
 {
     psych_bool isDCE8 = false;
+
+    (void) screenId;
 
     // Everything >= BONAIRE is DCE8 -- This is part of the "Sea Islands" GPU family.
 
@@ -186,6 +192,8 @@ static psych_bool isDCE64(int screenId)
 {
     psych_bool isDCE64 = false;
 
+    (void) screenId;
+
     // Everything == OLAND is DCE6.4 -- This is part of the "Southern Islands" GPU family.
 
     // OLAND in 0x66xx range:
@@ -198,6 +206,8 @@ static psych_bool isDCE64(int screenId)
 static psych_bool isDCE61(int screenId)
 {
     psych_bool isDCE61 = false;
+
+    (void) screenId;
 
     // Everything >= ARUBA which is an IGP is DCE6.1 -- This is the "Trinity" GPU family.
 
@@ -268,6 +278,8 @@ static psych_bool isDCE41(int screenId)
 {
     psych_bool isDCE41 = false;
 
+    (void) screenId;
+
     // Everything after PALM which is an IGP is DCE-4.1
     // Currently these are Palm, Sumo and Sumo2.
     // DCE-4.1 is a real subset of DCE-4, with all its
@@ -311,6 +323,8 @@ static psych_bool isDCE4(int screenId)
 static psych_bool isDCE3(int screenId)
 {
     psych_bool isDCE3 = false;
+
+    (void) screenId;
 
     // RV620, RV635, RS780, RS880, RV770, RV710, RV730, RV740,
     // aka roughly HD4330 - HD5165, HD5xxV, and some HD4000 parts.
@@ -1069,7 +1083,7 @@ psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
 static void InitXInputExtensionForDisplay(CGDirectDisplayID dpy, int idx)
 {
     int major, minor;
-    int rc, i;
+    int rc;
 
     // XInputExtension supported? If so do basic init:
     if (!XQueryExtension(dpy, "XInputExtension", &xi_opcode, &xi_event, &xi_error)) {
@@ -1118,7 +1132,7 @@ static void ProcessRandREvents(int screenNumber)
 static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
 {
     int major, minor;
-    int o, m, num_crtcs, isPrimary, crtcid, crtccount;
+    int o, isPrimary, crtcid, crtccount;
     int primaryOutput = -1, primaryCRTC = -1, primaryCRTCIdx = -1;
     int crtcs[100];
 
@@ -1354,8 +1368,7 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm
 
 void InitCGDisplayIDList(void)
 {
-    int major, minor;
-    int rc, i, j, k, count, scrnid;
+    int i, j, k, count, scrnid;
     char* ptbdisplays = NULL;
     char displayname[1000];
     CGDirectDisplayID x11_dpy = NULL;
@@ -1678,7 +1691,6 @@ double PsychOSVRefreshFromMode(XRRModeInfo *mode)
 int PsychGetAllSupportedScreenSettings(int screenNumber, int outputId, long** widths, long** heights, long** hz, long** bpp)
 {
     int i, j, o, nsizes, nrates, numPossibleModes;
-    XRRModeInfo *mode = NULL;
     XRROutputInfo *output_info = NULL;
 
     if(screenNumber >= numDisplays || screenNumber < 0) PsychErrorExit(PsychError_invalidScumber);
@@ -1972,6 +1984,8 @@ float PsychGetNominalFramerate(int screenNumber)
 // Error callback handler for X11 errors:
 static int x11VidModeErrorHandler(Display* dis, XErrorEvent* err)
 {
+    (void) dis;
+
     // If x11_errorbase not yet setup, simply return and ignore this error:
     if (x11_errorbase == 0) return(0);
 
@@ -1992,7 +2006,6 @@ float PsychSetNominalFramerate(int screenNumber, float requestedHz)
     // Information returned by/sent to the XF86VidModeExtension:
     XF86VidModeModeLine mode_line;  // The mode line of the current video mode.
     int dot_clock;                  // The RAMDAC / TDMS pixel clock frequency.
-    int rc;
     int event_base;
 
     // We start with a default vrefresh of zero, which means "couldn't query refresh from OS":
@@ -2161,6 +2174,8 @@ void PsychGetScreenRect(int screenNumber, double *rect)
 */
 int PsychGetDacBitsFromDisplay(int screenNumber)
 {
+    (void) screenNumber;
+
     return(8);
 }
 
@@ -2233,7 +2248,7 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
 
         // Disable target crtc:
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Disabling crtc %i.\n", outputId);
-        Status rc = XRRSetCrtcConfig(dpy, res, res->crtcs[PsychScreenToHead(screenNumber, outputId)], crtc_info->timestamp,
+        XRRSetCrtcConfig(dpy, res, res->crtcs[PsychScreenToHead(screenNumber, outputId)], crtc_info->timestamp,
                                     0, 0, None, RR_Rotate_0, NULL, 0);
 
         // Resize screen: MK Don't! Skip this for now, use PsychSetScreenSettings() aka Screen('Resolution') to resize
@@ -2245,7 +2260,7 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Enabling crtc %i.\n", outputId);
 
         crtc_info2 = XRRGetCrtcInfo(dpy, res, res->crtcs[PsychScreenToHead(screenNumber, outputId)]);
-        rc = XRRSetCrtcConfig(dpy, res, res->crtcs[PsychScreenToHead(screenNumber, outputId)], crtc_info2->timestamp,
+        XRRSetCrtcConfig(dpy, res, res->crtcs[PsychScreenToHead(screenNumber, outputId)], crtc_info2->timestamp,
                                 newX, newY, res->modes[modeid].id, crtc_info->rotation,
                                 crtc_info->outputs, crtc_info->noutput);
         XRRFreeCrtcInfo(crtc_info);
@@ -2291,6 +2306,8 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     short           rate;
     Time            cfg_timestamp;
     CGDirectDisplayID dpy;
+
+    (void) cacheSettings;
 
     if (settings->screenNumber >= numDisplays || settings->screenNumber < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychSetScreenSettings() is out of range");
     dpy = displayCGIDs[settings->screenNumber];
@@ -2945,6 +2962,8 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
     int vblbias, vbltotal;
     int beampos = -1;
 
+    (void) cgDisplayId;
+
     // Get beamposition from low-level driver code:
     if (PsychOSIsKernelDriverAvailable(screenNumber) && displayBeampositionHealthy[screenNumber]) {
         // Is application of the beamposition workaround requested by high-level code?
@@ -3028,6 +3047,8 @@ void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 
 psych_bool PsychOSIsKernelDriverAvailable(int screenId)
 {
+    (void) screenId;
+
     // Currently our "kernel driver" is available if MMIO mem could be mapped:
     // A real driver would indicate its presence via numKernelDrivers > 0 (see init/teardown code just above this routine):
     return((gfx_cntl_mem) ? TRUE : FALSE);

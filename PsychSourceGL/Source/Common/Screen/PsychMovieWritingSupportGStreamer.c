@@ -373,11 +373,7 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
     float               v;
     unsigned int        n, i;
     GstBuffer*          pushBuffer;
-    #pragma warning( disable : 4068 )
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo          mapinfo = GST_MAP_INFO_INIT;
-    #pragma GCC diagnostic pop
 
     // Child protection: Audio writing enabled for this movie?
     if (NULL == pwriterRec->ptbaudioappsrc) {
@@ -497,6 +493,8 @@ static psych_bool PsychMoviePipelineSetState(GstElement* camera, GstState state,
 /* Receive messages from the pipeline message bus and handle them: */
 static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
 {
+  (void) bus;
+
   PsychMovieWriterRecordType* dev = (PsychMovieWriterRecordType*) dataptr;
   if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: PsychMovieWriterBusCallback: Msg source name and type: %s : %s\n", GST_MESSAGE_SRC_NAME(msg), GST_MESSAGE_TYPE_NAME(msg));
 

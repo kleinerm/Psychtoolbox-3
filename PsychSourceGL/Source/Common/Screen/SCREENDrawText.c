@@ -871,7 +871,7 @@ PsychError PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
 {
     char                *textString;
     unsigned int        i;
-    float               accumWidth, maxHeight, textHeightToBaseline, scalef;
+    float               accumWidth, maxHeight, textHeightToBaseline;
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
         // Use GDI based text renderer on Windows, instead of display list based one?
@@ -879,6 +879,8 @@ PsychError PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
             // Call the GDI based renderer instead:
             return(PsychOSDrawUnicodeTextGDI(winRec, boundingbox, stringLengthChars, textUniDoubleString, xp, yp, yPositionIsBaseline, textColor, backgroundColor));
         }
+    #else
+        (void) backgroundColor;
     #endif
 
     // Malloc charstring and convert unicode string to char string:
@@ -904,8 +906,8 @@ PsychError PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     accumWidth=0;
     maxHeight=0;
     for (i = 0; i < stringLengthChars; i++) {
-        accumWidth += winRec->textAttributes.glyphWidth[textString[i]];
-        maxHeight   = (winRec->textAttributes.glyphHeight[textString[i]] > maxHeight) ? winRec->textAttributes.glyphHeight[textString[i]] : maxHeight;
+        accumWidth += winRec->textAttributes.glyphWidth[(int) textString[i]];
+        maxHeight   = (winRec->textAttributes.glyphHeight[(int) textString[i]] > maxHeight) ? winRec->textAttributes.glyphHeight[(int) textString[i]] : maxHeight;
     }
 
     accumWidth *= (PSYCH_SYSTEM == PSYCH_WINDOWS) ? (float) winRec->textAttributes.textSize : 1.0f;

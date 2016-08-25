@@ -283,11 +283,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     int logo_x, logo_y;
 
     CGDirectDisplayID cgDisplayID;
-    int attribcount=0;
     int ringTheBell=-1;
     GLint VRAMTotal=0;
     GLint TexmemTotal=0;
-    psych_bool multidisplay = FALSE;
     psych_bool sync_trouble = FALSE;
     psych_bool sync_disaster = FALSE;
     psych_bool did_pageflip = FALSE;
@@ -305,6 +303,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     char splashPath[FILENAME_MAX];
     char* dummychar;
     FILE* splashFd;
+
+    (void) dummychar;
 
     // OS-9 emulation? If so, then we only work in double-buffer mode:
     if (PsychPrefStateGet_EmulateOldPTB()) numBuffers = 2;
@@ -3249,7 +3249,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 */
 double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip, int vbl_synclevel, int dont_clear, double flipwhen, int* beamPosAtFlip, double* miss_estimate, double* time_at_flipend, double* time_at_onset)
 {
-    int screenheight, screenwidth;
+    int screenheight;
     GLint read_buffer, draw_buffer;
     unsigned char bufferstamp;
     const psych_bool vblsyncworkaround=false;  // Setting this to 'true' would enable some checking code. Leave it false by default.
@@ -3340,7 +3340,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
     // Retrieve display id and screen size spec that is needed later...
     PsychGetCGDisplayIDFromScreenNumber(&displayID, windowRecord->screenNumber);
-    screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
     screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
     vbl_startline = windowRecord->VBL_Startline;
 
@@ -6349,6 +6348,8 @@ int PsychRessourceCheckAndReminder(psych_bool displayMessage) {
  */
 int PsychGetCurrentShader(PsychWindowRecordType *windowRecord) {
     int curShader;
+
+    (void) windowRecord;
 
     if (GLEW_VERSION_2_0) {
         glGetIntegerv(GL_CURRENT_PROGRAM, &curShader);

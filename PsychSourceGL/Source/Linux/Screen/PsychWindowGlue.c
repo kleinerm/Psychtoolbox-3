@@ -125,6 +125,8 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
     unsigned int depth_return, border_width_return, w, h;
     int x, y;
 
+    (void) flags;
+
     // Trigger event queue dispatch processing for GUI windows:
     if (windowRecord == NULL) {
         // No op, so far...
@@ -307,7 +309,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     psych_bool xfixes_available = FALSE;
     psych_bool newstyle_setup = FALSE;
     int gpuMaintype = 0;
-    unsigned char* mesaver = NULL;
+    const char* mesaver = NULL;
     psych_bool mesamapi_strdupbug = FALSE;
 
     // Include onscreen window index in title:
@@ -403,14 +405,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     glXQueryVersion(dpy, &major, &minor) && ((major > 1) || ((major == 1) && (minor >= 3))));
 
     // Initialize GLX-1.3 protocol support. Use if possible:
-    glXChooseFBConfig = (PFNGLXCHOOSEFBCONFIGPROC) glXGetProcAddressARB("glXChooseFBConfig");
-    glXGetFBConfigAttrib = (PFNGLXGETFBCONFIGATTRIBPROC) glXGetProcAddressARB("glXGetFBConfigAttrib");
-    glXGetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC) glXGetProcAddressARB("glXGetVisualFromFBConfig");
-    glXCreateWindow = (PFNGLXCREATEWINDOWPROC) glXGetProcAddressARB("glXCreateWindow");
-    glXCreateNewContext = (PFNGLXCREATENEWCONTEXTPROC) glXGetProcAddressARB("glXCreateNewContext");
-    glXDestroyWindow = (PFNGLXDESTROYWINDOWPROC) glXGetProcAddressARB("glXDestroyWindow");
-    glXSelectEvent = (PFNGLXSELECTEVENTPROC) glXGetProcAddressARB("glXSelectEvent");
-    glXGetSelectedEvent = (PFNGLXGETSELECTEDEVENTPROC) glXGetProcAddressARB("glXGetSelectedEvent");
+    glXChooseFBConfig = (PFNGLXCHOOSEFBCONFIGPROC) glXGetProcAddressARB((const GLubyte *) "glXChooseFBConfig");
+    glXGetFBConfigAttrib = (PFNGLXGETFBCONFIGATTRIBPROC) glXGetProcAddressARB((const GLubyte *) "glXGetFBConfigAttrib");
+    glXGetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC) glXGetProcAddressARB((const GLubyte *) "glXGetVisualFromFBConfig");
+    glXCreateWindow = (PFNGLXCREATEWINDOWPROC) glXGetProcAddressARB((const GLubyte *) "glXCreateWindow");
+    glXCreateNewContext = (PFNGLXCREATENEWCONTEXTPROC) glXGetProcAddressARB((const GLubyte *) "glXCreateNewContext");
+    glXDestroyWindow = (PFNGLXDESTROYWINDOWPROC) glXGetProcAddressARB((const GLubyte *) "glXDestroyWindow");
+    glXSelectEvent = (PFNGLXSELECTEVENTPROC) glXGetProcAddressARB((const GLubyte *) "glXSelectEvent");
+    glXGetSelectedEvent = (PFNGLXGETSELECTEDEVENTPROC) glXGetProcAddressARB((const GLubyte *) "glXGetSelectedEvent");
 
     PsychUnlockDisplay();
 
@@ -1236,10 +1238,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // that actually uses the setup call -- no special cases or extra code needed there :-)
         // This special glXSwapIntervalSGI() call will simply accept an input value of zero for
         // disabling vsync'ed bufferswaps as a valid input parameter:
-        glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB("glXSwapIntervalMESA");
+        glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalMESA");
 
         // Additionally bind the Mesa query call:
-        glXGetSwapIntervalMESA = (PFNGLXGETSWAPINTERVALMESAPROC) glXGetProcAddressARB("glXGetSwapIntervalMESA");
+        glXGetSwapIntervalMESA = (PFNGLXGETSWAPINTERVALMESAPROC) glXGetProcAddressARB((const GLubyte *) "glXGetSwapIntervalMESA");
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GLX_MESA_swap_control extension for control of vsync.\n");
     }
     else {
@@ -1250,14 +1252,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Special case: Buggy ATI driver: Supports the VSync extension and glXSwapIntervalSGI, but provides the
     // wrong extension namestring "WGL_EXT_swap_control" (from MS-Windows!), so GLEW doesn't auto-detect and
     // bind the extension. If this special case is present, we do it here manually ourselves:
-    if ((glXSwapIntervalSGI == NULL) && (strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control") != NULL)) {
+    if ((glXSwapIntervalSGI == NULL) && (strstr((const char *) glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control") != NULL)) {
         // Looks so: Bind manually...
-        glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB("glXSwapIntervalSGI");
+        glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalSGI");
     }
 
     // Extension finally supported?
-    if (glXSwapIntervalSGI==NULL || ( strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_SGI_swap_control")==NULL &&
-        strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")==NULL && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control")==NULL )) {
+    if (glXSwapIntervalSGI==NULL || ( strstr((const char *) glXQueryExtensionsString(dpy, scrnum), "GLX_SGI_swap_control")==NULL &&
+        strstr((const char *) glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")==NULL && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control")==NULL )) {
         // No, total failure to bind extension:
         glXSwapIntervalSGI = NULL;
 
@@ -1859,7 +1861,7 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 
     // We check Linux versions 3.13 to 3.15 for broken kms-pageflip events if we are running on nouveau-kms.
     // Exceptions are -rc release candidate kernels, so MK can still use rc's built from git/source for patch testing.
-    if ((((major == 3) && ((minor >= 13) && (minor <= 15))) && !strstr(unameresult.release, "-rc")) && strstr(glGetString(GL_VENDOR), "nouveau")) {
+    if ((((major == 3) && ((minor >= 13) && (minor <= 15))) && !strstr(unameresult.release, "-rc")) && strstr((const char *) glGetString(GL_VENDOR), "nouveau")) {
         // Potentially faulty nouveau-kms. Check against the known kernel patchlevels when the bug was fixed:
         // We know Linux stable kernels 3.13.11.5+, 3.14.12+ and 3.15.5+ are fixed.
         // As far as Ubuntu distribution kernels go, we know the ones based on 3.13.11.5+ are fine,

@@ -41,7 +41,6 @@ const PsychTextDrawingModeType PsychTextDrawingModes[]= {kPsychTextFill, kPsychT
 void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 {
 	const char*	tryFontName;
-	psych_bool	foundFont;
 	// FIXME	PsychFontStructType	*initFontRecord;
 	PsychPrefStateGet_DefaultFontName(&tryFontName);
 
@@ -52,6 +51,7 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 	settings->textStyle= PsychPrefStateGet_DefaultTextStyle();	// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend	
 
 #ifdef COMMENTEDOUT
+	psych_bool	foundFont;
 	// FIXME!
 	/* to initialize the font record to coherent settings, we choose a default font and lookup the matching number */
 	foundFont=PsychGetFontRecordFromFontFamilyNameAndFontStyle(tryFontName, settings->textStyle, &initFontRecord);
@@ -78,6 +78,8 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 void PsychGetTextDrawingModeNameFromTextDrawingModeConstant(char *modeNameStr, int modeNameStrSize, PsychTextDrawingModeType mode)
 {
     int i;
+
+    (void) modeNameStrSize;
     for(i=0; i<kPsychNumTextDrawingModes; i++){
         if(mode==PsychTextDrawingModes[i]){
             strncpy(modeNameStr, PsychTextDrawingModeNames[i], 255); 

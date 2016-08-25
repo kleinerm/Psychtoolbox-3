@@ -1386,6 +1386,8 @@ void PsychBatchBlitTexturesToDisplay(unsigned int opMode, unsigned int count, Ps
     static GLdouble sourceWidth, sourceHeight;
     GLdouble sourceX, sourceY, sourceXEnd, sourceYEnd;
 
+    (void) count;
+
     if (opMode == 0) {
         // Start new batch:
         if (vertices || colors || texcoords)
