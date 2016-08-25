@@ -2820,7 +2820,13 @@ static GstPadProbeReturn PsychHaveVideoDataCallback(GstPad *pad, GstPadProbeInfo
     unsigned char *input_image;
     PsychVidcapRecordType *capdev = (PsychVidcapRecordType *) dataptr;
     GstBuffer *videoBuffer = info->data;
-    GstMapInfo mapinfo = GST_MAP_INFO_INIT;
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+    #pragma warning( disable : 4068 )
+#endif
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+    GstMapInfo      mapinfo = GST_MAP_INFO_INIT;
+    #pragma GCC diagnostic pop
 
     (void) pad;
 
@@ -4512,7 +4518,16 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     int nrdropped = 0;
     unsigned char* input_image = NULL;
 
+    // Disable warning about missing field initializer in calls
+    // like GstMapInfo mapinfo = = GST_MAP_INFO_INIT;
+    // Not our bug, but GStreamer's, so suppress for now.
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+    #pragma warning( disable : 4068 )
+#endif
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo mapinfo = GST_MAP_INFO_INIT;
+    #pragma GCC diagnostic pop
 
     (void) timeindex;
 
