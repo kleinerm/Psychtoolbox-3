@@ -417,6 +417,16 @@ if multixscreen > 0
     fprintf(fid, 'Section "Screen"\n');
     fprintf(fid, '  Identifier    "Screen%i"\n', i);
     fprintf(fid, '  Device        "Card%i"\n', i);
+    % If there's exactly one ZaphodHead for this screen then
+    % explicitly assign the Monitor id here. This is also done
+    % in the Device section per ZaphodHead, and doing it here
+    % as well doesn't make sense to me, but that's what is
+    % mysteriously needed on XUbuntu 16.04, according to a user
+    % report. Lets hope this only helps but doesn't hurt.
+    if length(xscreenoutputs{i + 1}) == 1
+      scanout = outputs{(xscreenoutputs{i + 1}(1))};
+      fprintf(fid, '  Monitor       "%s"\n', scanout.name);
+    end
     fprintf(fid, 'EndSection\n\n');
   end
 else
