@@ -619,7 +619,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   with 10 bit precision per color channel (10 bpc / 30 bpp / "Deep color")
 %   on graphics hardware that supports native 10 bpc framebuffers.
 %
-%   Many graphics cards of the professional class AMD/ATI Fire series 
+%   Many graphics cards of the professional class AMD/ATI Fire series
 %   (2008 models and later) and all current models of the professional class
 %   NVidia Quadro series (2008 models and later), as well as all current models
 %   of the consumer class NVidia GeForce series under Linux, do support 10 bpc
@@ -689,15 +689,14 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   capable displays on Linux, and maybe also on MS-Windows. All AMD graphics cards of model
 %   Radeon HD-5000 or later (and equivalent Fire-Series models) can output to HDMI deep color
 %   capable displays with 10 bpc real precision at least if you use a Linux kernel of version 3.16
-%   or later with the open-source AMD graphics drivers. At least on Linux 3.16 you will need to add
-%   the kernel command line option "radeon.deep_color=1" to the kernel boot loader options, e.g.,
-%   by editing /etc/default/grub and running "sudo update-grub2" afterwards. This because deep
-%   color output is disabled by default, to work around various broken hdmi display devices.
+%   or later with the open-source AMD graphics drivers. Run PsychLinuxConfiguration to set up
+%   this >= 10 bpc deep color output mode, then reboot your machine once to enable it.
 %
 %   The status with the proprietary AMD drivers on Linux or on MS-Windows is unknown.
 %   Apple OSX 10.9 and earlier do not support any high precision video output over any digital
 %   output, neither DVI-D, nor DisplayPort or HDMI. All you'll get at best on OSX is simulated > 8
-%   bpc via dithering.
+%   bpc via dithering. Apple OSX 10.11 and later will disable / sabotage our support to even
+%   provide 10 bpc via simulation or over VGA output.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer' [, disableDithering=0]);
 %
@@ -742,15 +741,17 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   need 33 bits per pixel, and current graphics hardware can't handle that.
 %
 %   How many bits of precision of these ~ 11 bpc actually reach your display device?
+%
 %   - Analog VGA only provides for maximum 10 bpc output precision on all shipping
 %     NVidia and AMD graphics cards. Intel graphics cards only allow for 8 bpc.
+%
 %   - DisplayPort or HDMI might allow for transfer of 11 bpc precision, in general they
 %     support up to 12 bpc. However additional hardware restrictions for your graphics
 %     card may limit precision to as low as 10 bpc. To our knowledge, only AMD graphics
 %     cards support ~ 11 bpc framebuffers at all. Radeon HD-7000 and earlier can only
 %     truly process up to 10 bpc, so 'EnableNative11BitFramebuffer' may not gain you any
 %     precision over 'EnableNative10BitFramebuffer' in practice on these cards. AMD cards
-%     of the "Sea Islands" family or later, mostly models from the year 2014, should be able
+%     of the "Sea Islands" family or later, mostly models from the year >= 2014, should be able
 %     to process and output up to 12 bpc over HDMI or DisplayPort, so they'd be able to output
 %     true ~11 bpc images. However, this hasn't been verified by us so far due to lack of
 %     suitable hardware.
@@ -776,7 +777,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   precision is further limited to < 16 bpc by your display, video connection and specific model
 %   of graphics card. As of September 2014, the maximum effective output precision is limited
 %   to 12 bpc (4096 levels of red, green and blue) by the graphics card, and this precision is only
-%   attainable on the latest generation of AMD graphics cards of the so called "Sea Islands" family.
+%   attainable on AMD graphics cards of the so called "Southern Islands" family when used with the
+%   radeon-kms display driver. Any older or more recent cards, e.g., "Sea Islands" or "Volcanic Islands"
+%   will not work with this hack.
+%
 %   High bit depth output only works over HDMI or DisplayPort, and may be further restricted by
 %   your specific display device, so measure your results carefully! See the sections about 11 bpc and
 %   10 bpc native framebuffers above for further details.

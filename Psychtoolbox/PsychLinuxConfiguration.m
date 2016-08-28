@@ -72,6 +72,9 @@ function usedAnswers = PsychLinuxConfiguration(answers)
 %                  Also add users to the 'lp' group for parallel port access, and
 %                  on ARM architecture (RaspberryPi) to the 'gpio' group for GPIO
 %                  pin access.
+% 28.08.2016   mk  Optionally install a /etc/modprobe.d/amddeepcolor-psychtoolbox.conf
+%                  file to switch radeon-kms / amdgpu-kms into deep color mode for
+%                  driving suitable HDMI/DP > 8 bpc displays.
 
 rerun = 0;
 
@@ -80,10 +83,10 @@ if ~IsLinux
 end
 
 if nargin < 1 || isempty(answers)
-  answers = '?????';
+  answers = '??????';
 else
-  if ~ischar(answers) || length(answers) ~= 5
-    error('Provided input argument ''answers'' must be a 5 character string with characters y, n or ?');
+  if ~ischar(answers) || length(answers) ~= 6
+    error('Provided input argument ''answers'' must be a 6 character string with characters y, n or ?');
   end
 end
 
@@ -216,6 +219,63 @@ if needinstall && answer == 'y'
     fprintf('now your system administrator password. You will not see any feedback.\n');
     drawnow;
     cmd = sprintf('sudo cp %s/PsychHardware/blacklist-psychtoolbox.conf /etc/modprobe.d/', PsychtoolboxRoot);
+    [rc, msg] = system(cmd);
+    if rc == 0
+      fprintf('Success! You may need to reboot your machine for some changes to take effect.\n');
+    else
+      fprintf('Failed! The error message was: %s\n', msg);
+    end
+  end
+end
+
+% Check if psychtoolbox AMD kms modules config file exists:
+fprintf('\n\n');
+if ~exist('/etc/modprobe.d/amddeepcolor-psychtoolbox.conf', 'file')
+  % No: Needs to be installed.
+  needinstall = 1;
+  fprintf('The amd deep color file for Psychtoolbox is not installed on your system.\n');
+  fprintf('This file needs to be installed if you want to use a graphics card from AMD\n');
+  fprintf('to drive a HDMI or DisplayPort high precision display device with more than\n');
+  fprintf('8 bpc color depths, ie. more than 256 levels of red, green and blue color.\n');
+  fprintf('You do not need to install it for pure 8 bpc mode or with other graphics cards.\n');
+  if ismember(answers(6), 'yn')
+    answer = answers(6);
+  else
+    answer = input('Should i install it? [y/n] : ', 's');
+    answers(6) = answer;
+  end
+else
+  % Yes.
+  fprintf('The amd deep color file for Psychtoolbox is already installed on your system.\n');
+
+  % Compare its modification date with the one in PTB:
+  r = dir([PsychtoolboxRoot '/PsychHardware/amddeepcolor-psychtoolbox.conf']);
+  i = dir('/etc/modprobe.d/amddeepcolor-psychtoolbox.conf');
+
+  if r.datenum > i.datenum
+    needinstall = 2;
+    fprintf('However, it seems to be outdated. I have a more recent version with me.\n');
+    if ismember(answers(6), 'yn')
+      answer = answers(6);
+    else
+      answer = input('Should i update it? [y/n] : ', 's');
+      answers(6) = answer;
+    end
+  end
+end
+
+if needinstall && answer == 'y'
+  if IsOctave && IsGUI
+    rerun = 1;
+    fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
+    fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
+    fprintf('GUI, e.g., via executing: octave --no-gui\n');
+    fprintf('Then run the PsychLinuxConfiguration command again to make things work.\n');
+  else
+    fprintf('I will copy my most recent amd deep color file to your system. Please enter\n');
+    fprintf('now your system administrator password. You will not see any feedback.\n');
+    drawnow;
+    cmd = sprintf('sudo cp %s/PsychHardware/amddeepcolor-psychtoolbox.conf /etc/modprobe.d/', PsychtoolboxRoot);
     [rc, msg] = system(cmd);
     if rc == 0
       fprintf('Success! You may need to reboot your machine for some changes to take effect.\n');
