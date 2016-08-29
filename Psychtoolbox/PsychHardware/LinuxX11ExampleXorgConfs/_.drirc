@@ -1,0 +1,47 @@
+<driconf>
+    <device driver="loader">
+        <application name="GNU/Octave" executable="octave-gui">
+            <option name="device_id" value="pci-0000_01_00_0" />
+        </application>
+        <application name="GNU/Octave" executable="octave-cli">
+            <option name="device_id" value="pci-0000_01_00_0" />
+        </application>
+        <application name="Matlab" executable="matlab">
+            <option name="device_id" value="pci-0000_01_00_0" />
+        </application>
+    </device>
+</driconf>
+
+<!--
+
+# The above example driconf snippet, if copied into the file
+# ~/.driconf will make sure that a properly configured
+# Linux system with open-source graphics drivers will
+# use the GPU with PCI bus id 0000-01-00-0 as the gpu
+# in a Hybrid graphics "Optimus" or "Enduro" laptop.
+#
+# You need to adjust the pci string to your specific
+# hardware. How to get the right string?
+#
+# Type this into a terminal:
+#
+# grep PCI /var/log/Xorg.0.log
+#
+# The output will be something like:
+#
+# [  2237.765] (--) PCI:*(0:0:2:0) 8086:0046:0000:0000 rev 24, Mem @ 0xd3400000/4194304, 0xb0000000/268435456, I/O @ 0x00003130/8
+# [  2237.765] (--) PCI: (0:1:0:0) 10de:0a29:0000:0000 rev 162, Mem @ 0xd2000000/16777216, 0xc0000000/268435456, 0xd0000000/33554432, I/O @ 0x00002000/128, BIOS @ 0x????????/524288
+#
+# Take the number of the PCI entry which does not have a * prefixed, ie.
+# the 2nd line in the example output where the numbers are (0:1:0:0),
+# which translates into the "pci-0000_01_00_0 string to use, ie.
+# (A:B:C:D) --> "pci-AAAA_BB_CC_D"
+#
+# The entry with the * is the id of the display GPU, usually your
+# integrated low-performance but power-efficient Intel graphics chip
+# or AMD graphics chip. The entry without the * is the discrete,
+# power-hungry high performance gpu you want to use for visual
+# stimulation in Matlab or Octave.
+#
+
+-->
