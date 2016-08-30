@@ -95,7 +95,6 @@ bool _firstCall = true;
 bool _useOwnFontmapper = false;
 unsigned _mapperFlags;
 int _antiAliasing = 1;
-double _vxs, _vys, _vw, _vh;
 char _fontName[FILENAME_MAX] = { 0 };
 unsigned int _fontStyle = 0;
 double _fontSize = 0.0;
@@ -450,11 +449,7 @@ void PsychSetTextBGColor(int context, double* color)
 // renderbackend needs a different geometric setup:
 void PsychSetTextViewPort(int context, double xs, double ys, double w, double h)
 {
-    _vxs = xs;
-    _vys = ys;
-    _vw  = w;
-    _vh  = h;
-
+    // no-op for this plugin
     return;
 }
 
@@ -564,11 +559,12 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     glEnable( GL_TEXTURE_2D );
     glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE );
 
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    gluOrtho2D(_vxs, _vxs + _vw, _vys, _vys + _vh);
     glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    // FTGL assumes bottom-left origin, our projection matrix has top-left origin: flip text vertically
+    glTranslated(0., yStart, 0.);
+    glScaled(1., -1., 1.);
+    glTranslated(0, -yStart, 0.);
 
     // Set text color: This will be filtered by OGLFT for redundant settings:
     if (fi->faceT) {
@@ -610,9 +606,7 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     // Disable alpha test after blit:
     glDisable(GL_ALPHA_TEST);
 
-    glMatrixMode(GL_PROJECTION);
     glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
     glDisable( GL_TEXTURE_2D );
     glPopAttrib();
     glPopClientAttrib();
