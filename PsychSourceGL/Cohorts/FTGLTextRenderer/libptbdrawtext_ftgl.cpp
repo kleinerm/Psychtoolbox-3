@@ -95,6 +95,7 @@ bool _firstCall = true;
 bool _useOwnFontmapper = false;
 unsigned _mapperFlags;
 int _antiAliasing = 1;
+double _vxs, _vys, _vw, _vh;
 char _fontName[FILENAME_MAX] = { 0 };
 unsigned int _fontStyle = 0;
 double _fontSize = 0.0;
@@ -449,7 +450,11 @@ void PsychSetTextBGColor(int context, double* color)
 // renderbackend needs a different geometric setup:
 void PsychSetTextViewPort(int context, double xs, double ys, double w, double h)
 {
-    // no-op for this plugin
+    _vxs = xs;
+    _vys = ys;
+    _vw  = w;
+    _vh  = h;
+
     return;
 }
 
