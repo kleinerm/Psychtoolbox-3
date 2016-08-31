@@ -564,6 +564,10 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     glEnable( GL_TEXTURE_2D );
     glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE );
 
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    gluOrtho2D(_vxs, _vxs + _vw, _vys + _vh, _vys);
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
     // FTGL assumes bottom-left origin, our projection matrix has top-left origin: flip text vertically
@@ -611,6 +615,9 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     // Disable alpha test after blit:
     glDisable(GL_ALPHA_TEST);
 
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
     glDisable( GL_TEXTURE_2D );
     glPopAttrib();
