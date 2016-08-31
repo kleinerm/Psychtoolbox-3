@@ -100,19 +100,15 @@ function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat, untilTime)
 % overload the system in realtime mode. 5 msecs seems to be an ok value...
 yieldInterval = 0.005;
 
+if nargin < 1
+    deviceNumber = [];
+end
+
 if nargin < 2 || isempty(forWhat)
     forWhat = 0;
 end
 
-if nargin == 0
-    deviceNumber = [];
-end
-
-if nargin < 3
-    untilTime = inf;
-end
-
-if isempty(untilTime)
+if nargin < 3 || isempty(untilTime)
     untilTime = inf;
 end
 

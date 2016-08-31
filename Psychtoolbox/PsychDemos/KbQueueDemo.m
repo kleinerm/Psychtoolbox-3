@@ -23,6 +23,7 @@ function KbQueueDemo(deviceIndex)
 % 11/03/07  rpw Wrote demos 1-5
 % 05/21/12  mk  Add event buffer test to demo 5.
 % 01/31/16  mk  Suppress keypress spilling via ListenChar(-1);
+% 08/30/16  dcn Add exercising all options of KbQueueWait
 
 if nargin < 1
   deviceIndex = [];
@@ -57,6 +58,10 @@ try
 
   % Identify keys pressed while other code is executing
   KbQueueDemoPart5(deviceIndex);
+  WaitSecs(0.5);
+
+  % Exercise all options of KbQueueWait
+  KbQueueDemoPart6(deviceIndex);
 
   ListenChar(0);
 catch
@@ -70,7 +75,7 @@ return
 function KbQueueDemoPart1(deviceIndex)
 % Displays the key number when the user presses a key.
 
-fprintf('1 of 5.  Testing KbQueueCheck and KbName: press a key to see its number.\n');
+fprintf('1 of 6.  Testing KbQueueCheck and KbName: press a key to see its number.\n');
 fprintf('Press the escape key to proceed to the next demo.\n');
 escapeKey = KbName('ESCAPE');
 KbQueueCreate(deviceIndex);
@@ -105,7 +110,7 @@ return
 function KbQueueDemoPart2(deviceIndex)
 % Displays the number of seconds that have elapsed when the user presses a
 % key.
-fprintf('\n2 of 5. Testing KbQueueCheck timing: please type a few keys.  (Try shift keys too.)\n');
+fprintf('\n2 of 6. Testing KbQueueCheck timing: please type a few keys.  (Try shift keys too.)\n');
 fprintf('Type the escape key to proceed to the next demo.\n');
 escapeKey = KbName('ESCAPE');
 startSecs = GetSecs;
@@ -135,7 +140,7 @@ function KbQueueDemoPart3(deviceIndex)
 keysOfInterest=zeros(1,256);
 keysOfInterest(KbName('a'))=1;
 KbQueueCreate(deviceIndex, keysOfInterest);
-fprintf('\n3 of 5.  Testing KbQueueWait: waiting for a press of the "a" key; all others will be ignored\n');
+fprintf('\n3 of 6.  Testing KbQueueWait: waiting for a press of the "a" key; all others will be ignored\n');
 startSecs = GetSecs;
 KbQueueStart(deviceIndex);
 timeSecs = KbQueueWait(deviceIndex);
@@ -247,7 +252,7 @@ try
     end
     sca;
     KbQueueRelease(deviceIndex);  % Note that KbQueueRelease is also in the catch clause
-    fprintf('\n4 of 5.  Done.\n');    
+    fprintf('\n4 of 6.  Done.\n');    
 
 catch
     KbQueueRelease(deviceIndex);
@@ -261,7 +266,7 @@ return
 function KbQueueDemoPart5(deviceIndex)
 % Prints a list of keys that were pressed while other code was executing
 
-fprintf('5 of 5.  Testing KbQueueCheck asynchronously:\nPress one or more keys during the next 10 seconds.\n');
+fprintf('5 of 6.  Testing KbQueueCheck asynchronously:\nPress one or more keys during the next 10 seconds.\n');
 KbQueueCreate(deviceIndex);
 KbQueueStart(deviceIndex);
 WaitSecs(10);
@@ -290,6 +295,44 @@ else
     fprintf('Ohoh! There were %i events remaining, while i expected zero events?!?\n', n);
 end
 fprintf('KbEventBuffer test finished.\n\n');
+
+KbQueueRelease(deviceIndex);
+return
+
+
+%% Part 6
+function KbQueueDemoPart6(deviceIndex)
+% Exercise all options of KbQueueWait
+
+fprintf('6 of 6.  Testing KbQueueWait''s various wait modes.\n');
+% waiting for all keys
+KbQueueCreate(deviceIndex);
+KbQueueStart(deviceIndex);
+startSecs = GetSecs;
+
+% wait for keyup
+fprintf('Soon we''ll wait for a key release. Press any key within the next 5 seconds\n');
+WaitSecs(5);
+fprintf('waiting for key release, release the key you pressed\n');
+timeSecs = KbQueueWait(deviceIndex,1);
+fprintf('key released at time %.3f seconds\n\n', timeSecs - startSecs);
+
+% wait for keydown
+fprintf('Waiting for key press on the keyboard. Press and hold any key\n');
+timeSecs = KbQueueWait(deviceIndex,0);
+fprintf('key pressed at time %.3f seconds\n\n', timeSecs - startSecs);
+
+% wait for all keys released and then for keydown
+fprintf('Waiting for key press, but ignoring any keys that are already down.\nRelease the pressed key now and press another key\n');
+timeSecs = KbQueueWait(deviceIndex,2);
+fprintf('key pressed at time %.3f seconds\n\n', timeSecs - startSecs);
+
+% wait for keystroke: wait for all keys released and then wait for a
+% keydown->key up sequence. Reported time is of the key down, not of the
+% key up event that triggers this mode to return
+fprintf('Waiting for key stroke, ignoring any keys that are already down.\nRelease the pressed key now and press another key and then release it again\n');
+timeSecs = KbQueueWait(deviceIndex,3);
+fprintf('key pressed at time %.3f seconds (and released again later)\n', timeSecs - startSecs);
 
 KbQueueRelease(deviceIndex);
 return
