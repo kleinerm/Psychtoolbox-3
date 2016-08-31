@@ -25,6 +25,11 @@ function secs=KbQueueWait(deviceIndex, forWhat, untilTime)
 % immediate when forWhat is 1 even though a key was depressed before the
 % flush and is still being held. KbQueueWait correctly deals with previous
 % events in the buffer.
+% NB. Previously, use of KbQueueFlush before calling this function was
+% recommended. The current function maintains backwards compatibility for
+% this use case. However, any changes of existing code to follow the new
+% recommendation and remove preceding KbQueueFlush calls should be
+% carefully considered and tested (don't change what works).
 %
 % Note that this command will not respond to any keys that were inactivated
 % by using the keyList argument to KbQueueCreate.
@@ -41,6 +46,8 @@ function secs=KbQueueWait(deviceIndex, forWhat, untilTime)
 % 8/23/07    rpw  Modifications to add KbQueueFlush
 % 5/14/12    mk   Small fixes: Use 1 msec wait interval.
 % 7/29/16    dcn  Added forWhat and untilTime arguments mirroring KbWait
+% 8/31/16    dcn  Additional help note about changed KbQueueFlush
+%                 recommendation
 
 if nargin < 1
     deviceIndex = [];
