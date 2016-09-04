@@ -125,6 +125,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 08/08/15  Fix bug for Unicode text introduced when improving single-line text centering. (MK)
 % 02/16/16  Improve bounding box calculations for multi-line text, esp. for vSpacing > 1. (MK)
 % 03/29/16  Add sx='centerblock', always use yPosIsBaseline, update help text. (MK)
+% 08/24/16  Made vertical flip work when using FTGL plugin. (DCN)
 
 % Set ptb_drawformattedtext_disableClipping to 1 if text clipping should be disabled:
 global ptb_drawformattedtext_disableClipping;
@@ -442,7 +443,14 @@ while ~isempty(tstring)
             end
 
             textbox = OffsetRect(bbox, xp, yp);
-            [xc, yc] = RectCenter(textbox);
+            [xc, yc] = RectCenterd(textbox);
+            % FTGL plugin uses coordinate system with origin at bottom-left
+            % instead of PTB's top-left. Remap vertical center if doing
+            % vertical flips
+            if flipVertical && Screen('Preference', 'TextRenderer')
+                wRect = Screen('Rect', win);        % must get true height of window, not rect possibly provided by user
+                yc    = wRect(4)-yc;
+            end
 
             % Make a backup copy of the current transformation matrix for later
             % use/restoration of default state:
