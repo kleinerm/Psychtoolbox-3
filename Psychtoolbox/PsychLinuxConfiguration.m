@@ -72,11 +72,12 @@ function usedAnswers = PsychLinuxConfiguration(answers)
 %                  Also add users to the 'lp' group for parallel port access, and
 %                  on ARM architecture (RaspberryPi) to the 'gpio' group for GPIO
 %                  pin access.
-% 28.08.2016   mk  Optionally install a /etc/modprobe.d/amddeepcolor-psychtoolbox.conf
+% 04.09.2016   mk  Optionally install a /etc/modprobe.d/amddeepcolor-psychtoolbox.conf
 %                  file to switch radeon-kms / amdgpu-kms into deep color mode for
 %                  driving suitable HDMI/DP > 8 bpc displays.
 
 rerun = 0;
+updateinitramfs = 0;
 
 if ~IsLinux
   return;
@@ -278,7 +279,8 @@ if needinstall && answer == 'y'
     cmd = sprintf('sudo cp %s/PsychHardware/amddeepcolor-psychtoolbox.conf /etc/modprobe.d/', PsychtoolboxRoot);
     [rc, msg] = system(cmd);
     if rc == 0
-      fprintf('Success! You may need to reboot your machine for some changes to take effect.\n');
+      updateinitramfs = 1;
+      fprintf('Success! You will need to reboot your machine for this change to take effect.\n');
     else
       fprintf('Failed! The error message was: %s\n', msg);
     end
@@ -532,6 +534,11 @@ if addgroup
       end
     end
   end
+end
+
+if updateinitramfs
+  fprintf('\nNow updating the initramfs for some settings to take effect. This can take some time.\n');
+  system('sudo update-initramfs -u -k all');
 end
 
 if ~rerun
