@@ -9,7 +9,7 @@ function bool = Ellipse(a,b,horpow,verpow)
 % geometric formula (x./a).^power + (y./b).^power < 1
 %
 % Ellipse(a,b,horpow,verpow) generates a generalized superEllipse according
-% to the geometric formula(x./a).^horpow + (y./b).^verpow < 1
+% to the geometric formula (x./a).^horpow + (y./b).^verpow < 1
 %
 % For more info on superEllipses, see
 %   http://en.wikipedia.org/wiki/SuperEllipse
@@ -21,8 +21,9 @@ function bool = Ellipse(a,b,horpow,verpow)
 % DN 2009-02-02 Updated to do Circles and input argument handling more
 %               efficiently
 % DN 2011-08-31 Output wasn't always of right size (ceil(2*input))
+% DN 2016-08-25 Switched from deprecated nargchk to narginchk
 
-error(nargchk(1, 4, nargin, 'struct'));
+narginchk(1,4);
 
 if nargin < 2
     b = a;

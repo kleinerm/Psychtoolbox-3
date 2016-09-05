@@ -34,8 +34,9 @@ function [A, tf] = Replace(A, S1, S2)
 % 1.3 (oct 2006) fixed error when using matrices
 % 1.4 (dec 2006) added additional outputs of TF and LOC
 % 1.5 (apr 2008) DN: optimized for R2007b
+% 1.6 (aug 2016) DN: Switched from deprecated nargchk to narginchk
 
-error(nargchk(3,3,nargin)) ;
+narginchk(3,3);
 
 % all three inputs should be cell arrays or numerical arrays
 if ~isequal(iscell(A), iscell(S1), iscell(S2)),
