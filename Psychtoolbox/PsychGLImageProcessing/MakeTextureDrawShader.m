@@ -23,13 +23,16 @@ function glsl = MakeTextureDrawShader(windowPtr, shadertype, backgroundColorOffs
 % - 'SeparateAlphaChannel': Alpha values are looked up at the regular
 % locations defined via the 'srcRect' parameter in a Screen('DrawTexture')
 % call. RGB color values are looked up at srcRect, offset by some (dx,dy)
-% offset, as provided by the 'auxParameters' vector [dx, dy, 0, 0].
+% offset, and (dx2,dy2) offset, as provided by the 'auxParameters' vector
+% [dx, dy, dx2, dy2].
 % Providing non-zero offset values for dx and dy allows to "shift" or
 % "scroll" the RGB or Luminance image inside a texture during drawing,
 % while keeping the alpha image at a fixed location, solely defined by
 % 'srcRect'. This is mostly useful if you want to draw some drifting
 % stimulus with a fixed alpha channel mask applied, ie., the color image
-% should move, but the alpha mask should stay fixed.
+% should move, but the alpha mask should stay fixed. The (dx2,dy2) offsets
+% allow to apply some offset before applying rotations, again only to the
+% color channels, not the alpha channel.
 %
 % - 'PremultipliedAlphaChannel': Like 'SeparateAlphaChannel', but the alpha
 % value is not written to the framebuffer, but premultiplied to the RGB
