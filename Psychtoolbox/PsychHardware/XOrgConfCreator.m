@@ -22,6 +22,7 @@ function XOrgConfCreator
 % History:
 % 04-Nov-2015  mk  Written.
 % 25-Apr-2016  mk  Add support for selection of modesetting ddx on XOrg 1.18+
+% 28-Aug-2016  mk  Add basic hybrid graphics setup support.
 
 clc;
 
@@ -35,10 +36,10 @@ if IsWayland
   return;
 end
 
-% Step 1: Get the currently active OpenGL driver and derive the required
+% Step 1: Get the currently active display gpu and derive the required
 % X video driver from it. We do this by opening a little invisble
 % onscreen window, then querying its window info to get the type
-% of graphics driver used:
+% of primary display gpu used:
 fprintf('Detecting type of graphics card (GPU) and driver to use...\n');
 oldVerbosity = Screen('Preference', 'Verbosity', 1);
 oldSyncTests = Screen('Preference', 'SkipSyncTests', 2);
@@ -72,6 +73,9 @@ try
   end
 
   fprintf('Found a total of %i video output displays on %i X-Screens.\n\n', outputCnt, length(screenNumbers));
+
+  % HybridGraphics laptop?
+  [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdriver);
 
   % Single display setup?
   if outputCnt == 1
@@ -116,6 +120,42 @@ try
       multixscreen = 1;
     else
       multixscreen = 0;
+    end
+  end
+
+  % Setup of NoAutoAddGPU needed? Some muxed hybrid graphics laptops
+  % need this if both gpus have outputs, but the set of outputs of one
+  % of the gpus is free floating if the other one is selected via mux.
+  % The ghost outputs then confuse the X-Servers setup of screen layout
+  % and one has outputs which occupy x-screen space but can't display
+  % anything, causing a deeply confusing desktop layout.
+  % NoAutoAddGPU prevents secondary gpus from being added as slave gpus
+  % to the X-Screen, thereby there outputs don't show up. Downside would
+  % be a regular GUI setup won't be able to access external displays on
+  % a dual-gpu setup where only the 2nd gpu can drive external outputs.
+  % A dual-x-screen setup won't have that problem though, so a typical
+  % visual stimulation setup would not suffer, only regular desktop use.
+  noautoaddgpu = 0;
+  if multigpu
+    answer = '';
+    while isempty(answer) || ~ismember(answer, ['y', 'n'])
+      answer = input('Do you experience weird issues with display arrangements and want me to try to fix it? [y / n] ', 's');
+    end
+
+    if answer == 'y'
+      noautoaddgpu = 1;
+    end
+  end
+
+  if multigpu && suitable
+    answer = '';
+    while isempty(answer) || ~ismember(answer, ['y', 'n'])
+      answer = input('Do you want to make use of the high-performance secondary discrete gpu (Optimus/Enduro)? [y / n] ', 's');
+    end
+
+    % Treat a "no" as if the laptop does not have multiple gpus:
+    if answer == 'n'
+      multigpu = 0;
     end
   end
 
@@ -221,7 +261,9 @@ try
 
     % Which X-Server version is in use?
     [rc, text] = system('xdpyinfo | grep ''X.Org version''');
-    if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting')
+    if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting') && ...
+       (~multigpu || (~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'ati')))
+      % HybridGraphics Intel + NVidia/AMD needs intel-ddx, modesetting won't work. Ditto for AMD + AMD.
       % XOrg 1.18.0 or later? xf86-video-modesetting is only good enough for our purposes on 1.18 and later.
       % Also must be a Mesa version safe for use with DRI3/Present:
       xversion = sscanf (text, 'X.Org version: %d.%d.%d');
@@ -281,7 +323,8 @@ try
       triplebuffer = 'd';
     end
 
-    if strcmp(xdriver, 'intel')
+    % Allow use of UXA only for non Prime renderoffload, as UXA isn't tested with it so far.
+    if strcmp(xdriver, 'intel') && ~multigpu
       fprintf('\n\nShould the alternative Intel display acceleration backend "uxa" be used instead of\n');
       fprintf('the default "sna" backend? Usually "sna" is a fine choice, but this allows you\n');
       fprintf('to choose the alternative backend as a backup plan, if you suspect "sna" causing any\n');
@@ -340,14 +383,34 @@ Screen('Preference', 'Verbosity', oldVerbosity);
 
 % We have all information and answers we wanted. Synthesize a xorg.conf:
 
+% Hybrid graphics use requested by user?
+if multigpu && suitable && dri3 ~= 'y'
+  % Override use of dri3 to 'y'es, as we need DRI3/Present for renderoffload:
+  dri3 = 'y';
+  fprintf('Override: Enabling DRI3/Present, as this is needed for hybrid graphics Optimus/Enduro support.\n');
+end
+
+primehacks = 0;
+if multigpu && suitable && ~fullysupported
+  primehacks = 1;
+end
+
 % Actually any xorg.conf for non-standard settings needed?
-if (multixscreen == 0) && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd'
+if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd'
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default. There isn't any need or purpose for
   % a xorg.conf file, so we are done.
   fprintf('With the settings you requested, there is no need for a xorg.conf file at all,\n');
   fprintf('so i will not create one and we are done. Bye!\n\n');
   return;
+end
+
+if strcmp(xdriver, 'nvidia')
+  fprintf('\n\nCAUTION! You are using the proprietary NVIDIA graphics driver. This script\n');
+  fprintf('is not well suited to deal with that driver and may well write an invalid\n');
+  fprintf('configuration file! You may want to abort here via pressing CTRL+C and use\n');
+  fprintf('NVIDIAs GUI setup tool instead as a more fool proof and safe option.\n');
+  fprintf('------------------------ CAUTION -----------------------------------------\n\n');
 end
 
 % Define filename of output file:
@@ -378,63 +441,84 @@ end
 % Header:
 fprintf(fid, '# Auto generated xorg.conf - Created by Psychtoolbox XOrgConfCreator.\n\n');
 
-% Multi X-Screen setup requested? Then we need the full show:
-if multixscreen > 0
-  % General server layout: Which X-Screens to use, their relative
-  % spatial location wrt. each other:
-  fprintf(fid, 'Section "ServerLayout"\n');
-  fprintf(fid, '  Identifier    "PTB-Hydra"\n');
-  fprintf(fid, '  Screen 0      "Screen0" 0 0\n');
-  for i = 1:screenNumber
-    fprintf(fid, '  Screen %i      "Screen%i" RightOf "Screen%i"\n', i, i, i-1);
-  end
+if noautoaddgpu > 0
+  fprintf(fid, 'Section "ServerFlags"\n');
+  fprintf(fid, '  Option "AutoAddGPU"     "false"\n');
   fprintf(fid, 'EndSection\n\n');
+end
 
-  % Monitor sections, one for each assigned video output. Monitor's within
-  % a given X-Screen are ordered relative to each other left to right in the
-  % order their corresponding ZaphodHeads outputs were defined by the user:
-  for i = 0:screenNumber
-    for j=1:length(xscreenoutputs{i + 1})
-      scanout = outputs{(xscreenoutputs{i + 1}(j))};
-      fprintf(fid, 'Section "Monitor"\n');
-      fprintf(fid, '  Identifier    "%s"\n', scanout.name);
-      if j > 1
-        scanout = outputs{(xscreenoutputs{i + 1}(j-1))};
-        fprintf(fid, '  Option        "RightOf" "%s"\n', scanout.name);
+if multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd'
+  % Done writing the file:
+  fclose(fid);
+else
+  % Multi X-Screen setup requested? Then we need the full show:
+  if multixscreen > 0
+    % General server layout: Which X-Screens to use, their relative
+    % spatial location wrt. each other:
+    fprintf(fid, 'Section "ServerLayout"\n');
+    fprintf(fid, '  Identifier    "PTB-Hydra"\n');
+    fprintf(fid, '  Screen 0      "Screen0" 0 0\n');
+    for i = 1:screenNumber
+      fprintf(fid, '  Screen %i      "Screen%i" RightOf "Screen%i"\n', i, i, i-1);
+    end
+    fprintf(fid, 'EndSection\n\n');
+
+    % Monitor sections, one for each assigned video output. Monitor's within
+    % a given X-Screen are ordered relative to each other left to right in the
+    % order their corresponding ZaphodHeads outputs were defined by the user:
+    for i = 0:screenNumber
+      for j=1:length(xscreenoutputs{i + 1})
+        scanout = outputs{(xscreenoutputs{i + 1}(j))};
+        fprintf(fid, 'Section "Monitor"\n');
+        fprintf(fid, '  Identifier    "%s"\n', scanout.name);
+        if j > 1
+          scanout = outputs{(xscreenoutputs{i + 1}(j-1))};
+          fprintf(fid, '  Option        "RightOf" "%s"\n', scanout.name);
+        end
+        fprintf(fid, 'EndSection\n\n');
+      end
+    end
+
+    % Create device sections, one for each x-screen aka the driver instance
+    % associated with that x-screen:
+    for i = 0:screenNumber
+      WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, primehacks, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
+    end
+
+    % One screen section per x-screen, mapping screen i to card i:
+    for i = 0:screenNumber
+      fprintf(fid, 'Section "Screen"\n');
+      fprintf(fid, '  Identifier    "Screen%i"\n', i);
+      fprintf(fid, '  Device        "Card%i"\n', i);
+      % If there's exactly one ZaphodHead for this screen then
+      % explicitly assign the Monitor id here. This is also done
+      % in the Device section per ZaphodHead, and doing it here
+      % as well doesn't make sense to me, but that's what is
+      % mysteriously needed on XUbuntu 16.04, according to a user
+      % report. Lets hope this only helps but doesn't hurt.
+      if length(xscreenoutputs{i + 1}) == 1
+        scanout = outputs{(xscreenoutputs{i + 1}(1))};
+        fprintf(fid, '  Monitor       "%s"\n', scanout.name);
       end
       fprintf(fid, 'EndSection\n\n');
     end
+  else
+    % Only a single X-Screen. We only need to create a single device
+    % section with override Option values for the gpu driving that
+    % single X-Screen.
+    WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, primehacks, [], [], []);
   end
 
-  % Create device sections, one for each x-screen aka the driver instance
-  % associated with that x-screen:
-  for i = 0:screenNumber
-    WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
-  end
-
-  % One screen section per x-screen, mapping screen i to card i:
-  for i = 0:screenNumber
-    fprintf(fid, 'Section "Screen"\n');
-    fprintf(fid, '  Identifier    "Screen%i"\n', i);
-    fprintf(fid, '  Device        "Card%i"\n', i);
-    fprintf(fid, 'EndSection\n\n');
-  end
-else
-  % Only a single X-Screen. We only need to create a single device
-  % section with override Option values for the gpu driving that
-  % single X-Screen.
-  WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, [], [], []);
+  % Done writing the file:
+  fclose(fid);
 end
-
-% Done writing the file:
-fclose(fid);
 
 fprintf('\n\nWe are done. Now you can run XOrgConfSelector any time to select this configuration\n');
 fprintf('file to setup your system, or to switch back to the default setup of your system. Bye!\n\n');
 
 end
 
-function WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
+function WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, primehacks, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
   fprintf(fid, 'Section "Device"\n');
 
   if isempty(screenNumber)
@@ -483,6 +567,17 @@ function WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, screenN
     fprintf(fid, '  Option      "AccelMethod" "%s"\n', useuxa);
   end
 
+  if strcmp(xdriver, 'ati') && primehacks
+    % The ati ddx for old radeon-kms driven AMD cards allows to disable color tiling
+    % for the scanout buffer, and that allows us to get good Enduro hybrid graphics
+    % renderoffload on dual-AMD (APU iGPU + AMD dGPU) iff a special hacked kernel is
+    % used. This is a dirty trick as a stop-gap measure until we have something well
+    % working and clean upstream.
+    fprintf(fid, '  Option      "ColorTiling"   "off"\n');
+    fprintf(fid, '  Option      "ColorTiling2D" "off"\n');
+    fprintf('Enabling special dirty hacks for hybrid graphics Enduro support on legacy AMD+AMD laptops.\n');
+  end
+
   if ~isempty(screenNumber)
     if ~isempty(ZaphodHeads)
       if strcmp(xdriver, 'nvidia')
@@ -504,19 +599,19 @@ function WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, screenN
 end
 
 function xdriver = DetectDDX(winfo)
-  if strfind(winfo.GPUCoreId, 'Intel')
+  if strfind(winfo.DisplayCoreId, 'Intel')
     % Intel part -> intel ddx:
     fprintf('Intel GPU detected. ');
     xdriver = 'intel';
-  elseif strfind(winfo.GLVendor, 'nouveau')
+  elseif strfind(winfo.DisplayCoreId, 'NVidia') && strfind(winfo.GLVendor, 'nouveau')
     % NVidia part under nouveau -> nouveau ddx:
     fprintf('Nvidia GPU with open-source driver detected. ');
     xdriver = 'nouveau';
-  elseif strfind(winfo.GLVendor, 'NVIDIA')
+  elseif strfind(winfo.DisplayCoreId, 'NVidia') && strfind(winfo.GLVendor, 'NVIDIA')
     % NVidia part under binary blob -> nvidia ddx:
     fprintf('Nvidia GPU with proprietary driver detected. ');
     xdriver = 'nvidia';
-  elseif winfo.GPUCoreId(1) == 'R'
+  elseif strfind(winfo.DisplayCoreId, 'AMD')
     % Some AMD/ATI Radeon/Fire series part:
     if strfind(winfo.GLVersion, 'Mesa')
       % Controlled by the open-source drivers. GPU minor
@@ -548,4 +643,138 @@ function xdriver = DetectDDX(winfo)
 
     xdriver = 'modesetting';
   end
+end
+
+function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdriver)
+  % Be pessimistic to start with:
+  suitable = 0;
+  fullysupported = 0;
+  multigpu = 0;
+
+  % Does this machine have multiple gpu's, e.g., hybrid graphics laptop?
+  if ~exist('/dev/dri/card1','file')
+    % Nope:
+    return;
+  end
+
+  % Yes, likely a hybrid graphics laptop:
+  multigpu = 1;
+
+  % Display gpu not Intel?
+  if ~strcmp(xdriver, 'intel')
+    % Then the display gpu must be Nvidia or AMD. Existing hybrid graphics
+    % laptops will have either NVidia + NVidia (rarely) or AMD + AMD (more often).
+    % Confirm that primary and secondary gpu are from the same vendor to match that
+    % pattern, otherwise we might be dealing with a mux'ed laptop currently switched
+    % to the discrete NVidia or AMD gpu:
+    if ~exist('/sys/class/drm/card0/device/vendor','file') || ~exist('/sys/class/drm/card1/device/vendor','file')
+      return;
+    end
+
+    [status, out] = system ('diff /sys/class/drm/card0/device/vendor /sys/class/drm/card1/device/vendor');
+    if status ~= 0 || ~isempty(out)
+      % Mismatched gpu vendors. Play it safe and assume this is not muxless Optimus or Enduro:
+      return;
+    end
+  end
+
+  fprintf('This seems to be a hybrid graphics laptop. Let''s check if i can use this.\n');
+
+  c = Screen('Computer');
+  osrelease = sscanf(c.kern.osrelease, '%i.%i');
+
+  % Mesa and X-Server safe to use for DRI3/Present Prime render offloading?
+  primeuseable = ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0);
+
+  % Primary display gpu is Intel?
+  if strcmp(xdriver, 'intel')
+    % These work well with both NVidia (Optimus) and AMD (Enduro) discrete
+    % gpu's as of X-Server 1.18, Mesa with well working DRI3/Present support,
+    % and Linux kernel 4.5 and later.
+    if ~(osrelease(1) > 4 || (osrelease(1) == 4 && osrelease(2) >=5))
+      % Kernel too old to provide proper PRIME sync:
+      fprintf('Your Linux kernel %s is too old to support proper hybrid graphics with Intel graphics chips.\n', c.kern.osrelease);
+      fprintf('However, upgrading an Ubuntu Linux flavor or derivative to a suitable kernel is trivial.\n');
+      fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
+      fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
+      fprintf('assistant can not help you with setting them up.\n');
+      fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, follow them, then retry.\n\n');
+      return;
+    end
+
+    if ~primeuseable
+      fprintf('Your version of X-Server or Mesa is too old to support proper hybrid graphics on most laptops\n');
+      fprintf('with Intel graphics chips. Upgrading to a minimum of X-Server 1.16.3 or later, Mesa 10.5.2 is\n');
+      fprintf('required, the more recent versions the better! Hybrid graphics was successfully tested with\n');
+      fprintf('Ubuntu 14.04.5 LTS, with XServer 1.18.3, Mesa 11.2.0 and on later on Ubuntu 16.04.1 LTS, with\n');
+      fprintf('Intel integrated graphics chip + both NVidia and AMD discrete graphics cards, so we strongly\n');
+      fprintf('recommend to use one of these tested versions/configurations or later ones.\n');
+      fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
+      fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
+      fprintf('assistant can not help you with setting them up.\n');
+      fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, follow them, then retry.\n\n');
+      return;
+    end
+
+    % DRI3/Present PRIME render offloading is possible on this setup.
+    fprintf('This hardware + software setup should allow use of the discrete gpu for faster rendering.\n');
+    fprintf('Enabling DRI3/Present support is needed for that, i will do that for you.\n');
+    fprintf('You will also need to setup your system to use the powerful gpu with Matlab or Octave.\n');
+    fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, how to do that.\n');
+    fprintf('While with most modern hybrid graphics laptops it should then just work, some more exotic\n');
+    fprintf('models may still not be able to output anything with good timing to external video outputs.\n');
+    fprintf('I can not detect myself if your laptop is such an exotic machine or not, so you will have to try.\n');
+    fprintf('Such models can then be set up in a dual-X-Screen configuration to make them work with\n');
+    fprintf('research grade timing, but this assistant can not set them up automatically, so you would\n');
+    fprintf('have to do it manually. See ''help HybridGraphics'' and the Psychtoolbox website for instructions.\n\n');
+    suitable = 1;
+    fullysupported = 1;
+    return;
+  end
+
+  % Non Intel display gpu, ie., either NVidia + NVidia or AMD + AMD?
+  if ~strfind(winfo.DisplayCoreId, 'NVidia') && ~strfind(winfo.DisplayCoreId, 'AMD')
+    % Nope, something else like VC4 - No hybrid graphics.
+    return;
+  end
+
+  % Dual NVidia or dual AMD. At this point in time it would require a specially
+  % hacked custom kernel from Mario Kleiner + a few more configuration hacks.
+  if ~primeuseable
+    fprintf('Your version of X-Server or Mesa is too old to support proper hybrid graphics on most laptops\n');
+    fprintf('with NVidia/AMD graphics chips. Upgrading to a minimum of X-Server 1.16.3 or later, Mesa 10.5.2 is\n');
+    fprintf('required, the more recent versions the better!\n');
+    fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
+    fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
+    fprintf('assistant can not help you with setting them up.\n');
+    fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, follow them, then retry.\n\n');
+    return;
+  end
+
+  % No hope for amdgpu kms/ddx driven cards atm.:
+  if strcmp(xdriver, 'amdgpu')
+    fprintf('Your dual AMD graphics card laptop does not support Enduro with proper visual timing at\n');
+    fprintf('this point in time for most Enduro laptop models, sorry.\n');
+    fprintf('Some small subset of Enduro laptops would allow you to utilize the powerful gpu\n');
+    fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
+    fprintf('assistant can not help you with setting them up.\n');
+    fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for background info.\n\n');
+    return;
+  end
+
+  if strcmp(xdriver, 'ati')
+    fprintf('Your dual-gpu AMD Enduro laptop currently requires a specially hacked Linux kernel\n');
+    fprintf('and some additional dirty configuration hacks to make Enduro work.\n');
+  else
+    fprintf('Your dual-gpu NVidia Optimus laptop currently requires a specially hacked Linux kernel\n');
+    fprintf('to make Optimus work.\n');
+  end
+  fprintf('I will perform some of the required configuration steps if you want, but some manual work is left for you.\n');
+  fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for background info.\n\n');
+  fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
+  fprintf('in a dual X-Screen configuration for the external video outputs without special kernels or hacks,\n');
+  fprintf('although this assistant can not help you with setting them up.\n');
+  fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for background info.\n\n');
+  suitable = 1;
+  return;
 end

@@ -10,23 +10,33 @@
 # file you need to reboot your machine once for all settings to take effect.
 
 # Rules to allow Psychtoolbox to access the MMIO registers of all supported GPU's
-# while running inside an unprivileged Matlab/Octave userspace process without sudo root:
+# while running inside an unprivileged Matlab/Octave userspace process without sudo root,
+# as long as the user is member of the 'psychtoolbox' Unix user group.
 
 # For each attached ATI GPU, set the permissions on its resource2/5 files to o+rw to allow mapping BAR-2 and BAR-5 from unprivileged userspace apps like Psychtoolbox:
-ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1002", RUN+="/bin/chmod o+rw %S%p/resource2"
-ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1002", RUN+="/bin/chmod o+rw %S%p/resource5"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1002", RUN+="/bin/chmod g+rw %S%p/resource2"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1002", RUN+="/bin/chgrp psychtoolbox %S%p/resource2"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1002", RUN+="/bin/chmod g+rw %S%p/resource5"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1002", RUN+="/bin/chgrp psychtoolbox %S%p/resource5"
 
 # For each attached AMD GPU, set the permissions on its resource2/5 file to o+rw to allow mapping BAR-2 and BAR-5 from unprivileged userspace apps like Psychtoolbox:
-ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1022", RUN+="/bin/chmod o+rw %S%p/resource2"
-ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1022", RUN+="/bin/chmod o+rw %S%p/resource5"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1022", RUN+="/bin/chmod g+rw %S%p/resource2"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1022", RUN+="/bin/chgrp psychtoolbox %S%p/resource2"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1022", RUN+="/bin/chmod g+rw %S%p/resource5"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x1022", RUN+="/bin/chgrp psychtoolbox %S%p/resource5"
 
 # For each attached NVidia GPU, set the permissions on its resource0 file to o+rw to allow mapping BAR-0 from unprivileged userspace apps like Psychtoolbox:
-ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x10de", RUN+="/bin/chmod o+rw %S%p/resource0"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x10de", RUN+="/bin/chmod g+rw %S%p/resource0"
+ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x10de", RUN+="/bin/chgrp psychtoolbox %S%p/resource0"
 
-# For each attached Intel GPU, set the permissions on its resource0 file to o+rw to allow mapping BAR-0 from unprivileged userspace apps like Psychtoolbox:
-ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x8086", RUN+="/bin/chmod o+rw %S%p/resource0"
+# Mapping Intel gpu's is dangerous without coordination with the kms driver, proper power management, power well control etc.
+# Also current kernels don't allow mmap()ing anyway... Just left here for reference.
+# OBSOLETE: For each attached Intel GPU, set the permissions on its resource0 file to o+rw to allow mapping BAR-0 from unprivileged userspace apps like Psychtoolbox:
+# ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x8086", RUN+="/bin/chmod g+rw %S%p/resource0"
+# ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x8086", RUN+="/bin/chgrp psychtoolbox %S%p/resource0"
 # Intel GEN-2 hardware uses BAR-1 instead of BAR-0, therefore need to enable it as well:
-ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x8086", RUN+="/bin/chmod o+rw %S%p/resource1"
+# ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x8086", RUN+="/bin/chmod g+rw %S%p/resource1"
+# ACTION=="add", SUBSYSTEM=="pci", ATTR{class}=="0x030000", ATTR{vendor}=="0x8086", RUN+="/bin/chgrp psychtoolbox %S%p/resource1"
 
 # Make devices from "Cambridge Research Systems" accessible by unprivileged user processes:
 ATTR{manufacturer}=="CRS Ltd", MODE="0666"

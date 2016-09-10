@@ -209,6 +209,7 @@ static char synopsisString[] =
     "R100 = Very old ATI GPUs, R300 = GPU's roughly starting at Radeon 9000, R500 = Radeon X1000 or later, R600 = Radeon HD2000 or later.\n"
     "NV10 = Very old NVidia GPUs, NV30 = NV30 or later, NV40 = Geforce6000/7000 or later, G80 = Geforce8000 or later.\n"
     "An empty GPUCoreId string means a different, unspecified core.\n\n"
+    "DisplayCoreId: Vendor of the display engine / display gpu, NVidia, AMD, Intel, or same as 'GPUCoreId'. May differ from 'GPUCoreId' in hybrid graphics laptops.\n"
     "BitsPerColorComponent: Effective color depths of window/framebuffer in bits per color channel component (bpc).\n"
     "GLSupportsFBOUpToBpc: 0 = No support for framebuffer objects. Otherwise maximum supported bpc (8, 16, 32).\n"
     "GLSupportsBlendingUpToBpc: Maximum supported bpc for hardware accelerated framebuffer blending (alpha blending).\n"
@@ -227,9 +228,9 @@ PsychError SCREENGetWindowInfo(void)
     const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "TimeAtSwapRequest", "TimePostSwapRequest", "RawSwapTimeOfFlip",
                                 "VBLTimePostFlip", "OSSwapTimestamp", "GPULastFrameRenderTime", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "FlipCount", "StereoDrawBuffer",
                                 "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", "GPUMinorType",
-                                "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
+                                "DisplayCoreId", "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
                                 "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags", "SwapGroup", "SwapBarrier" };
-    const int fieldCount = 36;
+    const int fieldCount = 37;
     PsychGenericScriptType *s;
 
     PsychWindowRecordType *windowRecord;
@@ -241,7 +242,7 @@ PsychError SCREENGetWindowInfo(void)
     psych_bool onscreen;
     int queryState;
     unsigned int gpuTimeElapsed;
-    int gpuMinorType;
+    int gpuMaintype, gpuMinorType;
 
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -562,14 +563,30 @@ PsychError SCREENGetWindowInfo(void)
             PsychSetStructArrayDoubleElement("GLSupportsFP32Shading", 0, 1, s);
         } else PsychSetStructArrayDoubleElement("GLSupportsFP32Shading", 0, 0, s);
 
-        // Try to get and return vendor specific gpuMinorType:
-        // On AMD this is the DCE display engine revision, on NVidia the chip family name:
-        if (!PsychGetGPUSpecs(windowRecord->screenNumber, NULL, &gpuMinorType, NULL, NULL)) {
+        // Try to get and return vendor specific gpuMaintype + gpuMinorType:
+        // On AMD gpuMinorType is the DCE display engine revision, on NVidia the chip family name:
+        gpuMaintype = 0;
+        if (!PsychGetGPUSpecs(windowRecord->screenNumber, &gpuMaintype, &gpuMinorType, NULL, NULL)) {
             // Query failed or unsupported:
             PsychSetStructArrayDoubleElement("GPUMinorType", 0, -1, s);
         }
         else {
             PsychSetStructArrayDoubleElement("GPUMinorType", 0, (double) gpuMinorType, s);
+        }
+
+        switch (gpuMaintype) {
+            case kPsychGeForce:
+                PsychSetStructArrayStringElement("DisplayCoreId", 0, "NVidia", s);
+                break;
+            case kPsychRadeon:
+                PsychSetStructArrayStringElement("DisplayCoreId", 0, "AMD", s);
+                break;
+            case kPsychIntelIGP:
+                PsychSetStructArrayStringElement("DisplayCoreId", 0, "Intel", s);
+                break;
+            default:
+                PsychSetStructArrayStringElement("DisplayCoreId", 0, windowRecord->gpuCoreId, s);
+                break;
         }
 
         if (infoType != 7) {

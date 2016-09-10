@@ -688,6 +688,20 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         }
     }
 
+    if (!visinfo && !fbconfig) {
+        // Another possible problem: No alpha channel available, e.g., on the XMing X-Server for MS-Windows hosts:
+        printf("PTB-WARNING: Have to disable alpha channel due to limitations of your gfx-hardware or driver. Some 3D Gfx algorithms may fail, Screen('Blendfunction') will be ineffective.\n");
+        for (i = 0; i < attribcount && attrib[i] != GLX_ALPHA_SIZE; i++);
+        attrib[i+1] = 0;
+
+        // Retry:
+        if (useGLX13) {
+            fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
+        } else {
+            visinfo = glXChooseVisual(dpy, scrnum, attrib );
+        }
+    }
+
     PsychUnlockDisplay();
 
     if (!visinfo && !fbconfig) {

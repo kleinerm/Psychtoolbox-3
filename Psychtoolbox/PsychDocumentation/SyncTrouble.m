@@ -150,6 +150,11 @@
 % problems or tearing artifacts on one of the display if you do dual
 % display stimulation. It may also cause failures in timetamping.
 %
+% -> If you use a hybrid graphics laptop, also known as switchable graphics
+% laptop, dual-gpu laptop, or by its marketing name "NVidia Optimus" or
+% "AMD Enduro", then read "help HybridGraphics" on how to set up your Linux
+% system for proper timing and performance and to learn how to work around
+% timing problems that are unavoidable on MS-Windows.
 %
 % 2. Temporary timing glitches or system malfunction: It may help to
 % restart Matlab/Octave, or to reboot your machine. Sometimes this resolves
@@ -464,7 +469,7 @@
 % in use, about some error in "PsychOSGetSwapCompletionTimestamp" and some
 % system configuration problems.
 %
-% The latest version of Psychtoolbox from April 2015 can deal with the
+% The versions of Psychtoolbox since April 2015 can deal with the
 % triple-buffering of both the nouveau graphics driver for NVidia cards,
 % and the Intel graphics driver for Intel graphics chips automatically,
 % at least for the drivers shipping with Ubuntu 14.04.2 LTS and later,

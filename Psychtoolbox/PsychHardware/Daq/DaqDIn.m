@@ -16,9 +16,11 @@ function data=DaqDIn(daq,NumberOfPorts, port)
 % code about 1 to 2  milliseconds per call on a dual core MacI with 2.67
 % GHz processors. -- mpr 
 %
-% USB-1024LS: Has three ports, probably numbered: 1 = port A, 4 = port B,
+% USB-1024LS: Has three ports, numbered: 1 = port A, 4 = port B,
 % 10 = port C (the sum of: 8 = portC low, 2 = portC high). Maybe you'll
 % need to read port C separately in two calls for low- and high- part.
+% The card is verified to work well with port C for input, not addressing
+% the high and low port C separately, but the whole port C at once.
 %
 % See also Daq, DaqFunctions, DaqPins, DaqTest, PsychHIDTest.
 % DaqDeviceIndex, DaqDOut, DaqAIn, DaqAOut, DaqAInScan,DaqAOutScan.
@@ -29,6 +31,7 @@ function data=DaqDIn(daq,NumberOfPorts, port)
 %                     functions
 % 5/22/08   mk  Add (untested!) support for USB-1024LS box. 
 % 5/23/08   mk  Add caching for HID device list. 
+% 07/31/16  mk  Remove experimental note about 1024LS. It's tested and known to work.
 
 % Perform internal caching of list of HID devices in 'TheDevices'
 % to speedup call:

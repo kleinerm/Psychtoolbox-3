@@ -8,13 +8,14 @@
  * interpolators, then performs per fragment calculations to
  * compute and write the final pixel color.
  *
- * (c) 2007, 2008 by Mario Kleiner, licensed under MIT license.
- *		 
+ * (c) 2007 - 2016 by Mario Kleiner, licensed under MIT license.
+ *
  */
 
 #extension GL_ARB_texture_rectangle : enable
 
 uniform vec4 Offset;
+uniform vec2 validModulationRange;
 
 varying float Angle;
 varying vec4  baseColor;
@@ -48,5 +49,5 @@ void main()
     /* Multiply/Modulate base color and alpha with calculated sine/gauss      */
     /* values, add some constant color/alpha Offset, assign as final fragment */
     /* output color: */
-    gl_FragColor = (baseColor * (ev * sv )) + Offset;
+    gl_FragColor = (baseColor * clamp(ev * sv, validModulationRange[0], validModulationRange[1])) + Offset;
 }
