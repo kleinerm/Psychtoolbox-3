@@ -1,15 +1,10 @@
 function daq = DaqDeviceIndex(DeviceName, IShouldWarn)
 % daq = DaqDeviceIndex([DeviceName][, ShowInterfaceNumberWarning=1])
-% Returns a list of all your USB -1208FS, -1408FS, or -1608FS daqs.
+% Returns a list of all your USB -1024LS, -1208FS, -1408FS, or -1608FS daqs.
 %
 % CAUTION: This routine works well on GNU/Linux and MS-Windows, but is very
 % unreliable on Apple OSX, especially with multiple DAQ devices connected.
 % You may be better off guessing a proper daq index.
-%
-% Also implements experimental code for detection of the USB-1024LS.
-% However that code has not been tested yet and may need some small amount
-% of tweaking to make it really work. Search the Psychtoolbox forum for
-% corresponding messages...
 %
 % TECHNICAL NOTE: When we call PsychHID('Devices'), each USB-1208FS/1408FS
 % box presents itself as four HID "devices" sharing the same serial number. They
@@ -80,6 +75,8 @@ function daq = DaqDeviceIndex(DeviceName, IShouldWarn)
 %             all the awful hacks. PsychHID learned to extract interfaceID with
 %             this release. Well, we don't know if it works with DAQ boxes, we
 %             just hope it will work.
+%
+% 07/31/16 mk Remove experimental note about 1024LS. It's tested and known to work.
 
 if nargin < 2 || isempty(IShouldWarn)
     IShouldWarn=1;

@@ -189,6 +189,15 @@ if isempty(macosx)
         allowPsychHID = 0;
     else
         allowPsychHID = 1;
+        % Try PsychHID:
+        try
+            PsychHID('Version');
+        catch
+            % Failed: Happens, e.g., under MS-Windows "Windows subsystem for Linux" with MingW
+            % X-Server.
+            allowPsychHID = 0;
+            psychlasterror ('reset');
+        end
     end
 end
 

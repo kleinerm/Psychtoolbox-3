@@ -1943,7 +1943,10 @@ PsychError PSYCHPORTAUDIOOpen(void)
     static char useString[] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency][, selectchannels][, specialFlags=0]);";
     //                                                            1             2         3                    4        5            6              7                      8                      9
     static char synopsisString[] =
-    "Open a PortAudio audio device and initialize it. Returns a 'pahandle' device handle for the device. "
+    "Open a PortAudio audio device and initialize it. Returns a 'pahandle' device handle for the device.\n\n"
+    "On most operating systems you can open each physical sound device only once per running session. If "
+    "you feel the need to call 'Open' multiple times on the same audio device, read the section about slave "
+    "devices and the help 'PsychPortAudio OpenSlave?' instead for a suitable solution.\n"
     "All parameters are optional and have reasonable defaults. 'deviceid' Index to select amongst multiple "
     "logical audio devices supported by PortAudio. Defaults to whatever the systems default sound device is. "
     "Different device id's may select the same physical device, but controlled by a different low-level sound "
@@ -2409,8 +2412,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     // Check if the requested sample format and settings are likely supported by Audio API:
     err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
-    if (err != paNoError) {
-        printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device. PortAudio reports this error: %s \n", audiodevicecount, Pa_GetErrorText(err));
+    if (err != paNoError && err != paDeviceUnavailable) {
+        printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device. PortAudio reports this error: %s \n", deviceid, Pa_GetErrorText(err));
         printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel allocation, or audio sample format.\n");
         if (PSYCH_SYSTEM == PSYCH_LINUX)
             printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
@@ -2418,18 +2421,27 @@ PsychError PSYCHPORTAUDIOOpen(void)
     }
 
     // Try to create & open stream:
-    err = Pa_OpenStream(
-                        &stream,                                                        /* Return stream pointer here on success. */
-                        ((mode & kPortAudioCapture) ?  &inputParameters : NULL),        /* Requested input settings, or NULL in pure playback case. */
-                        ((mode & kPortAudioPlayBack) ? &outputParameters : NULL),       /* Requested input settings, or NULL in pure playback case. */
-                        freq,                                                           /* Requested sampling rate. */
-                        buffersize,                                                     /* Requested buffer size. */
-                        sflags,                                                         /* Define special stream property flags. */
-                        paCallback,                                                     /* Our processing callback. */
-                        &audiodevices[audiodevicecount]);                               /* Our own device info structure */
+    if (err == paNoError)
+        err = Pa_OpenStream(
+                            &stream,                                                        /* Return stream pointer here on success. */
+                            ((mode & kPortAudioCapture) ?  &inputParameters : NULL),        /* Requested input settings, or NULL in pure playback case. */
+                            ((mode & kPortAudioPlayBack) ? &outputParameters : NULL),       /* Requested input settings, or NULL in pure playback case. */
+                            freq,                                                           /* Requested sampling rate. */
+                            buffersize,                                                     /* Requested buffer size. */
+                            sflags,                                                         /* Define special stream property flags. */
+                            paCallback,                                                     /* Our processing callback. */
+                            &audiodevices[audiodevicecount]);                               /* Our own device info structure */
 
-    if(err!=paNoError || stream == NULL) {
-        printf("PTB-ERROR: Failed to open audio device %i. PortAudio reports this error: %s \n", audiodevicecount, Pa_GetErrorText(err));
+    if (err != paNoError || stream == NULL) {
+        printf("PTB-ERROR: Failed to open audio device %i. PortAudio reports this error: %s \n", deviceid, Pa_GetErrorText(err));
+        if (err == paDeviceUnavailable) {
+            printf("PTB-ERROR: Could not open audio device, most likely because it is already in use by a previous call to\n");
+            printf("PTB-ERROR: PsychPortAudio('Open', ...). You can open each audio device only once per session. If you need\n");
+            printf("PTB-ERROR: multiple independent devices simulated on one physical audio device, look into use of audio\n");
+            printf("PTB-ERROR: slave devices. See help for this by typing 'PsychPortAudio OpenSlave?'.\n");
+            PsychErrorExitMsg(PsychError_user, "Audio device unavailable. Most likely tried to open device multiple times.");
+        }
+
         PsychErrorExitMsg(PsychError_system, "Failed to open PortAudio audio device.");
     }
 
@@ -2520,7 +2532,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     #endif
 
     if (verbosity > 3) {
-        printf("PTB-INFO: New audio device with handle %i opened as PortAudio stream:\n",audiodevicecount);
+        printf("PTB-INFO: New audio device %i with handle %i opened as PortAudio stream:\n", deviceid, audiodevicecount);
 
         if (audiodevices[audiodevicecount].opmode & kPortAudioPlayBack) {
             printf("PTB-INFO: For %i channels Playback: Audio subsystem is %s, Audio device name is ", (int) audiodevices[audiodevicecount].outchannels, Pa_GetHostApiInfo(outputDevInfo->hostApi)->name);

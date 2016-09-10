@@ -48,6 +48,7 @@ $lines = file ($filename);
 // Reset our counters:
 $transactioncount = 0;
 $totalcount = 0;
+$updatecount = 0;
 $betacount = 0;
 $stablecount = 0;
 $trunkcount = 0;
@@ -207,6 +208,10 @@ foreach($lines as $fl){
 
 // Done with parsing the log file: Do the stats on all users.
 foreach($uniqueptbs as $ofl) {
+  $ls = strpos($ofl, '<DATE>');
+  $le = strpos($ofl, '</DATE>');
+  $curdate = substr($ofl, $ls, $le - $ls);
+
   // Increase total unique count:
   $totalcount++;
 
@@ -370,6 +375,12 @@ foreach($uniqueptbs as $ofl) {
     }
   }
 
+  if (strpos($ofl, '<ISUPDATE>1')) {
+    if (strpos($curdate, '20') || strpos($curdate, '2010') || strpos($curdate, '2011') || strpos($curdate, '2012') || strpos($curdate, '2013') || strpos($curdate, '2014') || strpos($curdate, '2015') || strpos($curdate, '2016') || strpos($curdate, '2017')) {
+      $updatecount++;
+    }
+  }
+
   if ($assigned < 2 && $debugmode > 0) print "LOGPARSER-WARNING: UNASSIGNED MACID: $ofl <br />";
   if ($assigned > 2 && $debugmode > 0) print "LOGPARSER-WARNING: DOUBLE-ASSIGNED MACID: $ofl <br />";
 }
@@ -384,6 +395,7 @@ print "Total number of downloads + updates     : $transactioncount<br />";
 
 print "<br />";
 print "Total number of unique installations    : $totalcount<br />";
+print "Number of PTB's updated at least once   : $updatecount<br />";
 
 print "<br />Breakdown of installations by Psychtoolbox flavor:<br /><br />";
 print "'beta'/'current'              : $betacount<br />";

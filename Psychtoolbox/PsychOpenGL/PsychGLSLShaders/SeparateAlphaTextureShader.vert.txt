@@ -4,8 +4,8 @@
  * separately from the RGB channels, i.e. RGB texel lookup uses texture
  * coordinates offset by given optional shift parameters.
  *
- * (c) 2009 by Mario Kleiner, licensed under MIT license.
- *		 
+ * (c) 2009 - 2016 by Mario Kleiner, licensed under MIT license.
+ *
  */
 
 /* Attributes passed from Screen(): See the ProceduralShadingAPI.m file for infos: */
@@ -20,11 +20,22 @@ void main()
     /* Apply standard geometric transformations to patch: */
     gl_Position = ftransform();
 
-    /* Don't pass real texture coordinates, but ones corrected for hardware offsets (-0.5,0.5) */
+    /* Alpha: Do not pass real texture coordinates, but ones corrected for hardware offsets (-0.5,0.5) */
     gl_TexCoord[0] = (gl_TextureMatrix[0] * gl_MultiTexCoord0) + vec4(-0.5, 0.5, 0.0, 0.0);
 
-    /* Apply offset to primary texcoords, then pass them as secondary texcoords set: */
-    gl_TexCoord[1] = gl_TexCoord[0] + auxParameters0;
+    /* Color: Apply offsets to primary texcoords, then pass them as secondary texcoords set: */
+
+    /* Start with original texcoords: */
+    vec4 modTexCoord = gl_MultiTexCoord0;
+
+    /* Add (x,y) offset passed in 3rd and 4th auxParameters0 elements: */
+    modTexCoord.xy = modTexCoord.xy + auxParameters0.zw;
+
+    /* Correct for hw offsets, apply texture matrix: */
+    gl_TexCoord[1] = (gl_TextureMatrix[0] * modTexCoord) + vec4(-0.5, 0.5, 0.0, 0.0);
+
+    /* Apply (x,y) offsets past matrix transformations, from 1st and 2nd auxParameters0 elements: */
+    gl_TexCoord[1].xy = gl_TexCoord[1].xy + auxParameters0.xy;
 
     /* Pass through modulateColor: */
     baseColor = modulateColor;

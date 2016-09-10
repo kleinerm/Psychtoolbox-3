@@ -481,10 +481,13 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 // some KDE-specific hacks for override_redirect handling in window setup need to know
                 // about running on an Intel IGP, even if we don't actually mmap() the gpu, and the hacks
                 // need to know about this before we have an easy to probe OpenGL context online:
-                if (dev->vendor_id == PCI_VENDOR_ID_INTEL) fDeviceType = kPsychIntelIGP;
+                if ((dev->vendor_id == PCI_VENDOR_ID_INTEL) && pci_device_is_boot_vga(dev)) fDeviceType = kPsychIntelIGP;
+
+                // Get PCI device id early for dual-gpu PRIME handling:
+                if (pci_device_is_boot_vga(dev)) fPCIDeviceId = dev->device_id;
 
                 // Skip intel gpu's, unless the PSYCH_ALLOW_DANGEROUS env variable is set:
-                // Intel IGP's have a design defect which can cause machine hard lockup if multiple
+                // Intel IGP's have a design quirk which can cause machine hard lockup if multiple
                 // regs are accessed simultaneously! As we can't serialize our MMIO reads with the
                 // kms-driver, using our MMIO code on Intel is unsafe. Horrible crashes are reported
                 // against Haswell on the freedesktop bug tracker for this issue.
@@ -493,10 +496,13 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                     continue;
                 }
 
-                // Select the targetgpuidx'th detected gpu:
+                // Select the targetgpuidx'th detected gpu. If none is explicitely selected, use
+                // the boot_vga gpu, which is the one and only gpu in a single gpu system, and the
+                // active display gpu in a hybrid graphics laptop.
+                //
                 // TODO: Replace this hack by true multi-gpu support and - far in the future? -
                 // automatic mapping of screens to gpu's:
-                if (currentgpuidx >= targetgpuidx) {
+                if (((targetgpuidx >= 0) && (currentgpuidx >= targetgpuidx)) || ((targetgpuidx < 0) && pci_device_is_boot_vga(dev))) {
                     if ((PsychPrefStateGet_Verbosity() > 2) && (targetgpuidx >= 0)) printf("PTB-INFO: Choosing GPU number %i for low-level access during this session.\n", currentgpuidx);
 
                     // Assign as gpu:
@@ -588,8 +594,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
             }
 
             ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);
-            // Mapping MMIO for write access is a nono on Intel with latest kernels, so retry a readonly mapping:
-            if ((ret == EAGAIN) && (fDeviceType == kPsychIntelIGP)) {
+            // Mapping MMIO for write access is a nono on Intel with latest kernels, so retry a readonly mapping. Actually
+            // read only is fine for anything but AMD, as we don't benefit from write access on other vendors gpus:
+            if ((ret == EAGAIN) && (fDeviceType != kPsychRadeon)) {
                 ret = pci_device_map_range(gpu, region->base_addr, region->size, 0, (void**) &gfx_cntl_mem);
             }
         }
@@ -747,12 +754,12 @@ psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortyp
 {
   // Provide the basic device type, ie., unknown, intel, amd, ...
   if (gpuMaintype) *gpuMaintype = fDeviceType;
+  if (pciDeviceId) *pciDeviceId = fPCIDeviceId;
 
   // Remaining info is only available for mapped gpu's:
   if (!PsychOSIsKernelDriverAvailable(screenNumber)) return(FALSE);
 
   if (gpuMinortype) *gpuMinortype = fCardType;
-  if (pciDeviceId) *pciDeviceId = fPCIDeviceId;
   if (numDisplayHeads) *numDisplayHeads = fNumDisplayHeads;
 
   return(TRUE);
@@ -1133,17 +1140,17 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     Window root = RootWindow(dpy, displayX11Screens[idx]);
     XRRSelectInput(dpy, root, RRScreenChangeNotifyMask);
 
+    if (!has_xrandr_1_3) {
+        printf("PTB-WARNING: XRandR version 1.3 unsupported! Could not query useful info for x-screen %i on display %s. Infos and configuration will be very limited.\n",
+                displayX11Screens[idx], DisplayString(dpy));
+        return;
+    }
+
     // Fetch current screen configuration info for this screen and display:
     XRRScreenResources* res = XRRGetScreenResourcesCurrent(dpy, root);
     displayX11ScreenResources[idx] = res;
     if (NULL == res) {
         printf("PTB-WARNING: Could not query configuration of x-screen %i on display %s. Display infos and configuration will be very limited.\n",
-                displayX11Screens[idx], DisplayString(dpy));
-        return;
-    }
-
-    if (!has_xrandr_1_2) {
-        printf("PTB-WARNING: XRandR version 1.2 unsupported! Could not query useful info for x-screen %i on display %s. Infos and configuration will be very limited.\n",
                 displayX11Screens[idx], DisplayString(dpy));
         return;
     }
@@ -1278,7 +1285,7 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
 
     // Query info about video modeline and crtc of output 'outputIdx':
     XRRScreenResources *res = displayX11ScreenResources[screenId];
-    if (has_xrandr_1_2 && (PsychScreenToHead(screenId, outputIdx) >= 0)) {
+    if (res && has_xrandr_1_2 && (PsychScreenToHead(screenId, outputIdx) >= 0)) {
         crtc_info = XRRGetCrtcInfo(displayCGIDs[screenId], res, res->crtcs[PsychScreenToHead(screenId, outputIdx)]);
 
         for (m = 0; (m < res->nmode) && crtc_info; m++) {
@@ -1307,8 +1314,18 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm
     static char outputName[100];
     int o;
     XRROutputInfo *output_info = NULL;
+    RRCrtc crtc;
     XRRScreenResources *res = displayX11ScreenResources[screenId];
-    RRCrtc crtc = res->crtcs[PsychScreenToHead(screenId, outputIdx)];
+
+    // No RandR 1.3 -> No such info:
+    if (res == NULL) {
+        sprintf(outputName, "Unknown");
+        if (mm_width) *mm_width = 0;
+        if (mm_height) *mm_height = 0;
+        return(&outputName[0]);
+    }
+
+    crtc = res->crtcs[PsychScreenToHead(screenId, outputIdx)];
 
     // Find output associated with the crtc for this outputIdx on this screen:
     PsychLockDisplay();
@@ -1880,7 +1897,7 @@ float PsychGetNominalFramerate(int screenNumber)
     PsychUnlockDisplay();
 
     // Modeline with plausible values returned by RandR?
-    if (mode && (mode->hTotal > mode->width) && (mode->vTotal > mode->height)) {
+    if (mode && (mode->hTotal >= mode->width) && (mode->vTotal >= mode->height)) {
         if (PsychPrefStateGet_Verbosity() > 4) {
             printf ("RandR: %s (0x%x) %6.1fMHz\n",
                     mode->name, (int)mode->id,
@@ -2165,7 +2182,7 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
     // Need this later:
     PsychGetDisplaySize(screenNumber, &widthMM, &heightMM);
 
-    if (has_xrandr_1_2 && (PsychScreenToHead(screenNumber, outputId) >= 0)) {
+    if (res && has_xrandr_1_2 && (PsychScreenToHead(screenNumber, outputId) >= 0)) {
         PsychLockDisplay();
         crtc_info = XRRGetCrtcInfo(dpy, res, res->crtcs[PsychScreenToHead(screenNumber, outputId)]);
         PsychUnlockDisplay();

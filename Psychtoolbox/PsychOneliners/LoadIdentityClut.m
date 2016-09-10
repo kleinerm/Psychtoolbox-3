@@ -65,6 +65,8 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType, disableD
 %                default. Only use on Linux + AMD as fallback if low-level
 %                dither disable fails.
 % 05/18/16   mk  Add detection for Broadcom VC4 SoC gpu in RaspberryPi.
+% 08/11/16   mk  Add detection based on winfo.DisplayCoreId on Linux to handle
+%                hybrid graphics laptops.
 
 global ptb_original_gfx_cluts;
 
@@ -151,7 +153,7 @@ else
     elseif IsOSX || IsLinux
         fprintf('LoadIdentityClut: Info: Could not use GPU low-level setup for setup of pixel passthrough. Will use fallback method.\n');
         % AMD GPU, aka GPU core of format 'R100', 'R500', ... starting with a 'R'?
-        if winfo.GPUCoreId(1) == 'R'
+        if ~isempty(strfind(winfo.DisplayCoreId, 'AMD'))
             % Some advice for AMD users on Linux and OSX:
             fprintf('LoadIdentityClut: Info: On your AMD/ATI GPU, you may get this working by loading the PsychtoolboxKernelDriver\n');
             fprintf('LoadIdentityClut: Info: on OS/X or using a Linux system properly setup with PsychLinuxConfiguration.\n');
@@ -221,7 +223,8 @@ else
         % We derive type of hardware and thereby our strategy from the vendor name:
         gfxhwtype = winfo.GLVendor;
 
-        if ~isempty(strfind(gfxhwtype, 'NVIDIA')) || ~isempty(strfind(gfxhwtype, 'nouveau'))
+        if ~isempty(strfind(winfo.DisplayCoreId, 'NVidia')) || (~IsLinux && (~isempty(strfind(gfxhwtype, 'NVIDIA')) || ...
+           ~isempty(strfind(gfxhwtype, 'nouveau'))))
             % NVidia card:
 
             % We start with assumption that it is a "normal" one:
@@ -263,16 +266,15 @@ else
                 end
             end
             
-            % Is this a latest generation NVidia QuadroFX card under Linux with NVidia binary blob?
-            [dummy, dummy2, nrslots] = Screen('ReadNormalizedGammatable', windowPtr); %#ok<ASGLU>
-            if IsLinux && ~isempty(strfind(winfo.GLRenderer, 'Quadro')) && (nrslots > 256)
-                % LUT type 3:
+            if IsLinux
+                % LUT type 3 seems to be right for both GeForce under nouveau-kms, and Quadro under
+                % nvidia blob, so probably for all NVidia gpus on Linux:
                 gfxhwtype = 3;
-                fprintf('LoadIdentityClut: NVidia Quadro or later on Linux with binary Blob detected. Enabling special type-III LUT.\n');
+                fprintf('LoadIdentityClut: NVidia gpu detected. Enabling type-III LUT.\n');
             end
         else
-            if ~isempty(strfind(gfxhwtype, 'ATI')) || ~isempty(strfind(gfxhwtype, 'AMD')) || ~isempty(strfind(gfxhwtype, 'Advanced Micro Devices')) || ...
-                    ~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'on AMD'))
+            if ~isempty(strfind(winfo.DisplayCoreId, 'AMD')) || (~IsLinux && (~isempty(strfind(gfxhwtype, 'ATI')) || ~isempty(strfind(gfxhwtype, 'AMD')) || ~isempty(strfind(gfxhwtype, 'Advanced Micro Devices')) || ...
+                    ~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'on AMD'))))
                 % AMD/ATI card:
 
                 % A good default at least on OS/X is type 1:
@@ -304,7 +306,7 @@ else
                     fprintf('LoadIdentityClut: ATI Radeon HD-5000 Evergreen on OS/X detected. Using type-2 LUT.\n');
                     gfxhwtype = 2;
                 end
-            elseif ~isempty(strfind(gfxhwtype, 'Intel'))
+            elseif ~isempty(strfind(winfo.DisplayCoreId, 'Intel')) || (~IsLinux && (~isempty(strfind(gfxhwtype, 'Intel'))))
                 % Intel card: Type 0 LUT is correct at least on Linux versions
                 % < Linux 4.7. Take this as a baseline:
                 gfxhwtype = 0;
