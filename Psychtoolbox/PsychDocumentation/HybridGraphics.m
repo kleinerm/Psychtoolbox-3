@@ -133,6 +133,7 @@
 % * Laptops with an Intel iGPU combined with an AMD dGPU ("AMD Enduro" models):
 %
 <<<<<<< HEAD
+<<<<<<< HEAD
 %   These should work perfectly if you use the open source graphics drivers, at
 %   least as far as testing with two special PC setups showed. Stimuli are displayed
 %   without any artifacts and timing and timestamping is accurate and trustworthy.
@@ -160,19 +161,29 @@
 %   radeon-kms driver, is unknown. They could behave fine under all conditions, or they
 %   could expose problems under high load like the "Volcanic Islands" GPUs. The problem
 %   is under investigation and will hopefully be resolved soon.
+=======
+%   These should work very well if you use the open source graphics drivers with slightly
+%   older models of AMD GPUs, ie. not the very latest models of the "Volcanic Islands" /
+%   GCN 1.2 GPU family. Specifically, GPUs using the classic open-source display driver
+%   radeon-kms will work with perfectly trustworthy timing and quality. GPUs of the
+%   "Volcanic Islands" GCN 1.2 generation which use the new open-source amdgpu-kms driver
+%   will only work well under light to moderate load, but may expose visual stimulus
+%   artifacts under high-load scenarios. The reason for this problem known and will likely
+%   be fixed soon. Check back on the forum or PTB website for updates.
+>>>>>>> upstream/master
 %
 %   These results are based on testing with two PC setups:
 %
-%   - Intel HD Haswell desktop graphics chip + AMD Radeon R9 380 Tonga Pro. Perfect under
-%     light/medium load, malfunctions under high load. (amdgpu-kms + Gallium radeonsi)
+%   - Intel HD "Haswell desktop" graphics chip + AMD Radeon R9 380 Tonga Pro. Perfect under
+%     light/medium load, malfunctions under high load. (amdgpu-kms)
 %
-%   - Intel HD Ivybridge desktop graphics chip + AMD FireGL "Cedar". Perfect under all
-%     conditions. (radeon-kms + Gallium r600).
+%   - Intel HD "Ivybridge desktop" graphics chip + AMD FireGL "Cedar". Perfect under all
+%     conditions. (radeon-kms).
 %
 %   Stimuli are displayed without any artifacts and timing and timestamping is accurate and
 %   trustworthy. Note that this is the *expectation extrapolated from those PC testing setups*,
 %   not actual results from real Enduro laptops, as no such laptops were available for testing
-%   so far, although in all likelyhood they should behave in a similar fashion.
+%   so far, although they should behave in the same way.
 %
 %   You will get acceptable performance out of the box. For good performance you will either
 %   need Mesa version 12.1 or later, which is not yet released as of August 2016, or you need
@@ -261,17 +272,17 @@
 %     yet. Ask for assistance on the Psychtoolbox user forum if you happen to have such a
 %     laptop.
 %
-% [2] You can get Linux 4.7.2 for Ubuntu 16.04-LTS for manual installation from here:
-%     http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.7.2/
+% [2] You can get Linux 4.7.3 for Ubuntu 16.04-LTS for manual installation from here:
+%     http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.7.3/
 %
 %     Look always for the most recent version with the latest bug fixes! Maybe there is
-%     a 4.7.3 or 4.7.4 folder available when you read this file...
+%     a 4.7.4 or 4.7.5 folder available when you read this file...
 %
 %     On a 64-Bit system you'd download and install the files in the amd64 section, e.g.
 %
-%     linux-headers-4.7.2-040702_4.7.2-040702.201608201334_all.deb
-%     linux-headers-4.7.2-040702-lowlatency_4.7.2-040702.201608201334_amd64.deb
-%     linux-image-4.7.2-040702-lowlatency_4.7.2-040702.201608201334_amd64.deb
+%     linux-headers-4.7.3-040703_4.7.3-040703.201609070334_all.deb
+%     linux-headers-4.7.3-040703-lowlatency_4.7.3-040703.201609070334_amd64.deb
+%     linux-image-4.7.3-040703-lowlatency_4.7.3-040703.201609070334_amd64.deb
 %
 %     You could install them by clicking on them to start the GUI installer. Or you
 %     could type "sudo dpkg -i linux-*4.7*" in a terminal window. After a reboot the

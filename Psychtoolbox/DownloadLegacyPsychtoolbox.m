@@ -1,6 +1,11 @@
 function DownloadLegacyPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flavor)
 % DownloadLegacyPsychtoolbox([targetdirectory] [,downloadmethod=0] [,targetRevision][,flavor])
 %
+% THIS SCRIPT IS CURRENTLY NON-FUNCTIONAL. Contact the PTB forum for
+% help if you need old copies of PTB, or check on the PTB website for
+% instructions.
+%
+
 % CAUTION: This script is for legacy downloads. Use DownloadPsychtoolbox
 % for downloads of the current Psychtoolbox 3.0.10 or later. Psychtoolbox
 % 3.0.9 and earlier are completely unsupported and unmaintained!
@@ -280,6 +285,10 @@ function DownloadLegacyPsychtoolbox(targetdirectory,downloadmethod,targetRevisio
 %              question if old PTB folder should be deleted, caused
 %              *deletion* of the folder! Oh dear! This bug present since
 %              late 2011.
+
+clc;
+help DownloadLegacyPsychtoolbox;
+return;
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
