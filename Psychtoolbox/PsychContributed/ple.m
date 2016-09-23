@@ -40,8 +40,8 @@ end
 
 fprintf(1,'Last Error: %s (%s)\n',s.message,s.identifier);
 
-% Do we have a stack?
-if ~isfield(s, 'stack')
+% Do we have a stack? This is a field or property.
+if (isstruct(s) && ~isfield(s, 'stack')) || (isobject(s) && ~isprop(s, 'stack'))
     % Nope. This is not Matlab 7 or later. We're done.
     fprintf(1,'Error message does not contain a stack.\n');
     return;
