@@ -130,7 +130,7 @@ end
 % Extract command code:
 eyecmd = callArgs(1);
 
-if isempty(3)
+if isempty(eyewin)
     warning('Got called as callback function from Eyelink() but usercode has not set a valid target onscreen window handle yet! Aborted.'); %#ok<WNTAG>
     return;
 end
