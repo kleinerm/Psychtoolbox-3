@@ -272,6 +272,13 @@ function [data,params]=DaqAInScan(daq,options)
 % 12/6/15 mk  Try to select interfaces ascending by interfaceID for assignment to
 %             IndexRange, instead of hard-coding ranges. This should not change
 %             anything on Linux or Windows, but maybe it helps the brain-dead OSX.
+%
+% 9/24/16 js  Remembers the serial number of the Daq device when options.begin is true,
+%             then only uses device IDs with the same serial number; this allows multiple
+%             devices to be attached to the same system. Adds optional field options.nodiscard
+%             to keep all data, regardless of the consecutivity of reports.
+%
+% 9/26/16 mk  Runs on Matlab R2013a and later, replacing the deprecated bitcmp function.
 
 % These USB-1280FS parameters are computed from the user-supplied
 % arguments.
@@ -451,6 +458,8 @@ persistent IndexRange;
 persistent  snomax;
 
 % Remembers the DAQ serial number each time options.begin is 1
+persistent  daqsno;
+
 if options.begin
     % It might be running, so stop it.
     % hex2dec('12') is 18.
@@ -487,6 +496,9 @@ if options.begin
     % become worse than it was before - complete failure - on OSX, so maybe it helps?
     % -- mk
 
+    % Initialise DAQ serial number -- js
+    daqsno = AllHIDDevices( daq ).serialNumber ;
+
     % Find all other interfaces of device 'daq', by looking for devices
     % with the same serial number as daq:
     SN = AllHIDDevices(daq).product;
@@ -500,8 +512,14 @@ if options.begin
     end
 
     % Find device indices with the same "serial number" / "product" name:
+    % Keep indeces for later -- js
     AllSNs = strvcat(AllHIDDevices.product);
-    InterfaceInds = transpose(strmatch(SN,AllSNs));
+    kk = strmatch ( SN , AllSNs ) ;
+    InterfaceInds = transpose ( kk ) ;
+
+    % Filter interface id's by DAQ serial number:
+    kk = strcmp ( daqsno , { AllHIDDevices( kk ).serialNumber } ) ;
+    InterfaceInds = InterfaceInds ( kk ) ;
 
     % The 1608 has 7 interfaces (0-6), the other ones have 4 (0-3):
     if Is1608
@@ -544,6 +562,11 @@ if options.begin
     snomax = -1 ;
 
 % options.begin is 0, so check if options.continue or options.end is 1 and
+% make sure that the correct daq was specified -- js
+elseif (options.continue || options.end) && ...
+    ~strcmp(daqsno, AllHIDDevices(daq).serialNumber)
+
+    error('DAQ with serial number %s expected', daqsno);
 end
 
 err.n = 0;
@@ -904,38 +927,35 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
         data = data/32768-1;
     else
         vmax=[20 10 5 4 2.5 2 1.25 1];
-        
+
         DiffChannels = find(channel < 8);
         SE_Channels = find(channel > 7);
-        
+
         data(:,DiffChannels) = bitshift(data(:,DiffChannels),-4);
         
 		ix = data(:,DiffChannels) > 2048;
         data(ix) = -bitcmp(data(ix),12)-1;
 		
         SE_Data = data(:,SE_Channels);
-        
         OverflowInds = find(SE_Data > 32752);
         UnderflowInds = find(SE_Data > 32736);
         OKInds = find(SE_Data < 32737);
-        
+
         SE_Data(OverflowInds) = -2048*ones(size(OverflowInds));
         SE_Data(UnderflowInds) = 2047*ones(size(UnderflowInds));
         SE_Data(OKInds) = bitand(4095,bitshift(SE_Data(OKInds),-3))-2048;
-        
+
         data(:,SE_Channels) = SE_Data;
-        
-        data=data/2047;
-        
+        data = data / 2047;
+
         % for PsychHID calls, single-ended measurements must have range set to 0,
-        % but
-        % for vmax determination range must be 1 because scale is +/- 10 V
+        % but for vmax determination range must be 1 because scale is +/- 10 V
         range(SE_Channels) = ones(length(SE_Channels),1);
     end
-    
+
     range=vmax(range+1);
     data=repmat(range,size(data,1),1).*data;
-    
+
     if Is1608
         TheChannels = options.FirstChannel:options.LastChannel;
         DataUncalibrated = ones(1,c);
@@ -952,11 +972,11 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
                         [DaysSinceLast,BestIndex] = min(ThisDay-TheDays);
                         AllThatDay = find(TheDays == TheDays(BestIndex));
                         MostRecentPolyFit = CalData(GoodIndices(AllThatDay(end)),3:5);
-                        
+
                         if DaysSinceLast > 30
                             warning('Psych:Daq:CalibOutdated', 'Calibration of channel %d has not been performed since %s!!',TheChannels(k),datestr(TheDays(BestIndex)));
                         end
-                        
+
                         data(:,k) = polyval(MostRecentPolyFit,data(:,k));
                         DataUncalibrated(k) = 0;
                     end
