@@ -278,7 +278,8 @@ function [data,params]=DaqAInScan(daq,options)
 %             devices to be attached to the same system. Adds optional field options.nodiscard
 %             to keep all data, regardless of the consecutivity of reports.
 %
-% 9/26/16 mk  Runs on Matlab R2013a and later, replacing the deprecated bitcmp function.
+% 9/26/16 mk  Runs on Matlab R2013a and later, replacing the deprecated bitcmp function
+%             for handling of 12 bit differential channels on non-USB 1608FS. Untested.
 
 % These USB-1280FS parameters are computed from the user-supplied
 % arguments.
@@ -923,19 +924,23 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
     end
     
     if Is1608
+        % 1608-FS 16 bit 2-complement data:
         vmax=[10 5 2.5 2 1.25 1 0.625 0.3125];
         data = data/32768-1;
     else
+        % Non 1608-FS. Only 12 MSB's contain 2-complement data
+        % for differential channels.
         vmax=[20 10 5 4 2.5 2 1.25 1];
 
         DiffChannels = find(channel < 8);
         SE_Channels = find(channel > 7);
 
+        % Remap 12 bit data in differential channels to [-2048 ; 2047] range:
         data(:,DiffChannels) = bitshift(data(:,DiffChannels),-4);
-        
-		ix = data(:,DiffChannels) > 2048;
-        data(ix) = -bitcmp(data(ix),12)-1;
-		
+        ix = data(:,DiffChannels) >= 2048;
+        data(ix) = data(ix) - 4096;
+
+        % Treat single ended channels differently:
         SE_Data = data(:,SE_Channels);
         OverflowInds = find(SE_Data > 32752);
         UnderflowInds = find(SE_Data > 32736);
