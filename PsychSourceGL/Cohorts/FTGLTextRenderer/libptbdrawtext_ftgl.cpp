@@ -510,10 +510,13 @@ void PsychGetTextCursor(int context, double* xp, double* yp, double* height)
 
     // Try to get line height of font:
     if (fi) {
-        if (fi->faceT)
-            *height = fi->faceT->height();
-        else
-            *height = fi->faceM->height();
+        // an OGLFT face's height() function uses the font height in the
+        // font's design units (perhaps a bug?). We need the font height
+        // scaled for the current character size display resolution.
+        // These are provided to FreeType during the FTGL face's
+        // constructor execution. We can directly access the scaled font
+        // info from the underlying FT_FACE.
+        *height = fi->ft_face->size->metrics.height / 64.;
     }
     else {
         *height = 0;
