@@ -59,10 +59,9 @@ PsychError PsychInit(void)
 PsychError PsychExit(void)
 {
     PsychFunctionPtr projectExit;
-    PsychError error;
 
     projectExit = PsychGetProjectExitFunction();
-    if(projectExit != NULL) error=(*projectExit)();
+    if(projectExit != NULL) (*projectExit)();
 
     // Put whatever cleanup of the Psychtoolbox is required here.
     PsychExitTimeGlue();

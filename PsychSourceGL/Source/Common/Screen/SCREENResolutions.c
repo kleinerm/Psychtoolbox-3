@@ -151,7 +151,6 @@ PsychError SCREENConfigureDisplay(void)
 
         CGDirectDisplayID dpy;
         int screen;
-        float brightness;
         double nbrightness;
 
         // Map screenNumber and outputIdx to dpy, rootwindow and RandR output:

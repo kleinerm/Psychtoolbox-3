@@ -845,7 +845,7 @@ void PsychGLRectd(PsychWindowRecordType *windowRecord, double x1, double y1, dou
 void PsychDrawDisc(PsychWindowRecordType *windowRecord, float xc, float yc, float innerRadius, float outerRadius, int numSlices, float xScale, float yScale, float startAngle, float arcAngle)
 {
     float Rads, outerX, outerY, innerX, innerY;
-	int i, count = 0;
+	int i;
 	#ifndef M_PI
 	#define M_PI 3.141592654
 	#endif
@@ -857,6 +857,7 @@ void PsychDrawDisc(PsychWindowRecordType *windowRecord, float xc, float yc, floa
     startAngle = (float) (M_PI/2 - startAngle * 2 * M_PI / 360);
 
     /* Disable for now, do it slooow ...
+       int count = 0;
        float *vertices = PsychMallocTemp(sizeof(float) * 4 * (numSlices + 1));
        memset(vertices, 0, sizeof(float) * 4 * (numSlices + 1));
     */
