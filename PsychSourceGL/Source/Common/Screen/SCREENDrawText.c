@@ -960,10 +960,12 @@ PsychError PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
         // Position our "cursor": These are 3D fonts where the glyphs are represented by 3D geometry.
         glTranslated(*xp, *yp - textHeightToBaseline + winRec->textAttributes.textSize, -0.5);
-
-        // Scale to final size:
-        scalef = (float) MulDiv(winRec->textAttributes.textSize, GetDeviceCaps(winRec->targetSpecific.deviceContext, LOGPIXELSY), 72);
-        glScalef(scalef, -1 * scalef, 1);
+        {
+            float scalef;
+            // Scale to final size:
+            scalef = (float) MulDiv(winRec->textAttributes.textSize, GetDeviceCaps(winRec->targetSpecific.deviceContext, LOGPIXELSY), 72);
+            glScalef(scalef, -1 * scalef, 1);
+        }
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_LINUX
