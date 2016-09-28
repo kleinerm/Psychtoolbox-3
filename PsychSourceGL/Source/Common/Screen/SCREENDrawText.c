@@ -2192,7 +2192,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
         }
         else {
             // Draw text by calling into the plugin:
-            rc += PsychPluginDrawText(ctx, *xp, winRec->clientrect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
+            rc += PsychPluginDrawText(ctx, *xp, myyp, stringLengthChars, textUniDoubleString);
         }
 
         // Restore alpha-blending settings if needed:
@@ -2210,7 +2210,6 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
             if (PsychPluginGetTextCursor) {
                 // Plugin provides accurate text cursor measurement - use it:
                 PsychPluginGetTextCursor(ctx, xp, yp, theight);
-                *yp = winRec->clientrect[kPsychBottom] - *yp;
                 if (!yPositionIsBaseline)
                     *yp = *yp - ymax;
             }
