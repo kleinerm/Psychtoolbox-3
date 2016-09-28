@@ -570,8 +570,13 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
     glLoadIdentity();
-    gluOrtho2D(_vxs, _vxs + _vw, _vys, _vys + _vh);
+    gluOrtho2D(_vxs, _vxs + _vw, _vys + _vh, _vys);
     glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    // FTGL assumes bottom-left origin, our projection matrix has top-left origin: flip text vertically
+    glTranslated(0., yStart, 0.);
+    glScaled(1., -1., 1.);
+    glTranslated(0, -yStart, 0.);
 
     // Set text color: This will be filtered by OGLFT for redundant settings:
     if (fi->faceT) {
@@ -616,6 +621,7 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     glMatrixMode(GL_PROJECTION);
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
+    glPopMatrix();
     glDisable( GL_TEXTURE_2D );
     glPopAttrib();
     glPopClientAttrib();
