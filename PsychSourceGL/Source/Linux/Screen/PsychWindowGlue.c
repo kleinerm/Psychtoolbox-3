@@ -2635,10 +2635,20 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
  */
 double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
 {
-    (void) windowRecord;
-    (void) onlyForCalibration;
+    // Nothing to do for classic X11/GLX. Just return identity. However, if this
+    // is a NVidia Optimus Laptop with Intel iGPU + NVidia dGPU and the proprietary
+    // NVidia binary graphics driver is used for output source -> output sink PRIME
+    // mode, then we have to work around a NVidia oddity: There is always 1 frame extra
+    // delay after a bufferswap request until flip at minimum. Ergo, subtract one video
+    // refresh duration from the target time to Increase our chance of hitting the proper
+    // target frame. This as of the design of driver version 370.23 with XOrg 1.19-rc1.
+    if (!onlyForCalibration && (windowRecord->hybridGraphics == 2)) {
+        if (PsychPrefStateGet_Verbosity() > 14)
+            printf("PTB-DEBUG: PsychOSAdjustForCompositorDelay: Pre-targetTime: %f secs. VideoRefreshInterval %f secs.\n",
+                   targetTime, windowRecord->VideoRefreshInterval);
+        targetTime -= windowRecord->VideoRefreshInterval;
+    }
 
-    // Nothing to do for classic X11/GLX. Just return identity:
     return(targetTime);
 }
 

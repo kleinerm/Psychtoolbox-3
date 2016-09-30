@@ -1434,7 +1434,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // possible that the gfx-hw is not capable of downsampling fast enough to do it every refresh
         // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
         (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-        if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 || (*windowRecord)->hybridGraphics) {
+        if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 || ((*windowRecord)->hybridGraphics == 1)) {
             // Flip frame stereo or multiSampling enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
             if ((ifi_beamestimate>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_beamestimate && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_beamestimate) ||
                 (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_nominal && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_nominal)) {
@@ -3830,6 +3830,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                                 if (buffer_age == 1) printf("PTB-WARNING: One potential cause for this is that some kind of desktop compositor is active and interfering.\n");
                                 if (buffer_age == 3) printf("PTB-WARNING: One potential cause for this is that TripleBuffering is enabled somewhere in the driver or xorg.conf settings.\n");
                                 if (buffer_age > 3) printf("PTB-WARNING: One potential cause for this is that %i-Buffering is enabled somewhere in the driver or xorg.conf settings.\n", buffer_age);
+                                if ((windowRecord->hybridGraphics == 2) && strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
+                                    printf("PTB-WARNING: The most likely cause on this NVidia Optimus setup is the use of the proprietary driver, which will massively impair proper timing!\n");
+                                    printf("PTB-WARNING: Use the open-source nouveau graphics driver, or do not use the NVidia gpu at all, if you care about research grade timing.!\n");
+                                }
                                 printf("PTB-WARNING: This is a one-time warning which will not repeat, even if the problem persists during this session.\n\n");
                             }
 
@@ -4250,6 +4254,16 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                 time_at_vbl = time_at_swapcompletion;
                 *time_at_onset=time_at_vbl;
             }
+        }
+
+        // Special case NVidia Optimus laptop with proprietary graphics driver. Only DRI PRIME slave output operation
+        // available, not the precise and reliable gpu renderoffload. Timestamping is highly fragile, unreliable and
+        // inaccurate, but one thing we do know, at least in the initial XOrg 1.19 implementation, is that the timestamp
+        // will be at least one video refresh too early. Therefore, if we have such a type 2 setup, we add 1 refresh duration
+        // to the so far computed timestamps.
+        if ((PSYCH_SYSTEM == PSYCH_LINUX) && (windowRecord->specialflags & kPsychIsX11Window) && (windowRecord->hybridGraphics == 2)) {
+            time_at_vbl += windowRecord->VideoRefreshInterval;
+            *time_at_onset += windowRecord->VideoRefreshInterval;
         }
 
         // Shall OS-Builtin optimal timestamping override all other results (vbltimestampmode 4)
@@ -6474,10 +6488,52 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         (((int) rendergpuModel != gpuModel) || (gpuMaintype == kPsychIntelIGP && rendergpuVendor != PCI_VENDOR_ID_INTEL) ||
         (gpuMaintype == kPsychGeForce && rendergpuVendor != PCI_VENDOR_ID_NVIDIA) ||
         (gpuMaintype == kPsychRadeon && rendergpuVendor != PCI_VENDOR_ID_AMD && rendergpuVendor != PCI_VENDOR_ID_ATI)))) {
-        windowRecord->hybridGraphics = TRUE;
+        windowRecord->hybridGraphics = 1;
         if (verbose) printf("PTB-DEBUG: Prime indicators: rendergpuVendor %x, rendergpuModel %x, displaygpuModel %x displaygpuType %x.\n", rendergpuVendor, rendergpuModel, gpuModel, gpuMaintype);
         if (PsychPrefStateGet_Verbosity() >= 3) printf("PTB-INFO: Hybrid graphics setup with DRI PRIME muxless render offload detected. Being more lenient wrt. framerate.\n");
     }
+
+    // Find out if the primary output of the screen on which this window is
+    // displaying has a "PRIME Synchronization" output property. If so then
+    // we are likely running under a NVidia Optimus PRIME setup with output slave
+    // instead of a DRI3/Present renderoffload setup and need to take note
+    // of this for some special case handling:
+    if (windowRecord->specialflags & kPsychIsX11Window) {
+        static Atom nvidiaprimesync;
+        CGDirectDisplayID dpy;
+        int screen;
+
+        // Map screenNumber to dpy, screen, rootwindow and RandR output:
+        PsychGetCGDisplayIDFromScreenNumber(&dpy, windowRecord->screenNumber);
+        screen = PsychGetXScreenIdForScreen(windowRecord->screenNumber);
+
+        PsychLockDisplay();
+
+        nvidiaprimesync = XInternAtom(dpy, "PRIME Synchronization", True);
+        if (nvidiaprimesync != None) {
+            Window root = RootWindow(dpy, screen);
+            XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
+            if (resources) {
+                // Prime sync property exposed?
+                unsigned long nitems;
+                unsigned long bytes_after;
+                unsigned char *prop;
+                Atom actual_type;
+                int actual_format;
+                RROutput output = resources->outputs[0];
+                if (XRRGetOutputProperty(dpy, output, nvidiaprimesync, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) {
+                    XFree(prop);
+                    windowRecord->hybridGraphics = 2;
+
+                    if (PsychPrefStateGet_Verbosity() >= 3)
+                        printf("PTB-INFO: Hybrid graphics setup with DRI PRIME Sync output slaving detected. Trying corrective actions, timing will be impaired.\n");
+                }
+                XRRFreeScreenResources(resources);
+            }
+        }
+        PsychUnlockDisplay();
+    }
+
     #endif
 
     // Check if this is an open-source (Mesa/Gallium) graphics driver on Linux with X11
