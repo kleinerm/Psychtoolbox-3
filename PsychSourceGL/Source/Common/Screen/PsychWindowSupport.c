@@ -931,7 +931,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     CGGetOnlineDisplayList(0, NULL, &totaldisplaycount);
 
     if ((PsychPrefStateGet_Verbosity() > 3) && ((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW)) {
-        multidisplay = (totaldisplaycount>1) ? true : false;
+        psych_bool multidisplay = (totaldisplaycount>1) ? true : false;
         if (multidisplay) {
             printf("\n\nPTB-INFO: You are using a multi-display setup (%i active displays):\n", totaldisplaycount);
             printf("PTB-INFO: Please read 'help MultiDisplaySetups' for specific information on the Do's, Dont's,\n");

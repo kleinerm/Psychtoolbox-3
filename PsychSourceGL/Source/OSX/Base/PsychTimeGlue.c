@@ -569,7 +569,7 @@ const char* PsychSupportStatus(void)
             sprintf(statusString, "OSX 10.%i Supported and tested.", osMinor);
         }
         else {
-            sprintf(statusString, "OSX version 10.%i is not supported or tested anymore.", osMinor);
+            sprintf(statusString, "OSX version 10.%i is not supported or tested for this release.", osMinor);
         }
     }
 
