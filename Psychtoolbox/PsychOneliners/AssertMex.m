@@ -30,11 +30,11 @@ function callStack = AssertMex(varargin)
 % 01/11/05  awi     Merged fwc fix into psychtoolbox.org master copy.
 % 01/29/05  dgp     Cosmetic.
 % 03/07/05  fwc     Fixed bugs due to which failed Assertmex to accept 'OSX', 'OS9' as valid input.
-%					In line 80/81 badNames was often {''} which is not empty for isempty().
-%					Also changed || into | in line 90
+%                   In line 80/81 badNames was often {''} which is not empty for isempty().
+%                   Also changed || into | in line 90
 % 03/08/05  dgp     Add support for 'WIN'.
-% 10/06/05	awi     Fixed bug: Changed "okSupNameMatches"  to match addition of  'WIN' to
-%								to "okSupNames"
+% 10/06/05  awi     Fixed bug: Changed "okSupNameMatches"  to match addition of  'WIN' to
+%                   to "okSupNames"
 % 3/3/06    awi     Rewrote help for improved clarity.
 % 6/13/09    mk     Update to handle execution failures and missing files
 %                   on Octave-3.2 et al. as well.
@@ -79,26 +79,17 @@ if IsOctave
                 fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles' oext]);
             end
             if IsOSX
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles' oext]);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles' oext]);
             end
             if IsWindows
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave3WindowsFiles' oext]);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles' oext]);
             end
-            
-            fprintf('\n\nIf, on Octave-3.2.0, you have just installed Psychtoolbox, it worked properly and suddenly stopped working\n');
-            fprintf('after you have restarted Octave, then you may encounter a bug present in Octave 3.2.0.\n');
-            fprintf('Try the following at the Octave prompt: First type "savepath" + Enter to save the current Octave path again.\n');
-            fprintf('Then exit Octave and restart it. After that try again - It may work then, if the problem was caused by aforementioned bug.\n\n');
         else
             % Correct file with correct extension, still load failure:
             % Check for supported Octave version:
-            curversion = sscanf(version, '%i.%i.%i');
-            if curversion(1) < 3 || curversion(2) < 2
-                fprintf('Your version of Octave (%s) is incompatible with Psychtoolbox: We support Octave 3.2.0 or later.\n', version);
-                error('Tried to run Psychtoolbox on an incompatible Octave version.\n');
-            end
-            
-            fprintf('A reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
+            fprintf('Your version of Octave (%s) might be incompatible with Psychtoolbox: We support Octave 4.0.0 or later.\n', version);
+
+            fprintf('Another reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
             fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');
         end
     end
