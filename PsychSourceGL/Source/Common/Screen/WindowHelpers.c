@@ -74,6 +74,7 @@ psych_bool PsychIsOnscreenWindow(PsychWindowRecordType *windowRecord)
 */
 psych_bool PsychIsMatlabOnscreenWindow(PsychWindowRecordType *windowRecord)
 {
+    (void) windowRecord;
     return(FALSE);
 }
 

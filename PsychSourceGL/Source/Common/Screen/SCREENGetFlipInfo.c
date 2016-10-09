@@ -57,8 +57,7 @@ PsychError SCREENGetFlipInfo(void)
 {
 #if PSYCH_SYSTEM == PSYCH_LINUX
     PsychWindowRecordType *windowRecord;
-    int infoType = 0, retIntArg;
-    double auxArg1, auxArg2, auxArg3;
+    int infoType = 0;
 #endif
 
     // All subfunctions should have these two lines.

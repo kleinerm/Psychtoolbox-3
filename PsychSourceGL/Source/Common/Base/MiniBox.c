@@ -130,17 +130,20 @@ char *int2str(psych_int64 num)
 
 size_t PsychIndexElementFrom2DArray(size_t mDim/*|Y|*/, size_t nDim/*|X|*/, size_t m/*y*/, size_t n/*x*/)
 {
+	(void) nDim;
 	return(n*mDim + m);  
 }
 
 size_t PsychIndexElementFrom3DArray(size_t mDim/*|Y|*/, size_t nDim/*|X|*/, size_t pDim/*|Z|*/, size_t m/*y*/, size_t n/*x*/, size_t p/*z*/)
-{	
+{
+	(void) pDim;
 	return(p*mDim*nDim + n*mDim + m);  //planeindex * planesize + columnindex * columsize + rowindex    
 }
 
 size_t PsychIndexPlaneFrom3DArray(size_t mDim, size_t nDim, size_t pDim, size_t planeIndex)
 {
-        return(planeIndex*mDim*nDim);
+	(void) pDim;
+	return(planeIndex*mDim*nDim);
 }
 
 psych_int64 maxInt(psych_int64 a, psych_int64 b)

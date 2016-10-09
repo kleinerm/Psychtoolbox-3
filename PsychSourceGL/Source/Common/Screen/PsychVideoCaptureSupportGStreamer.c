@@ -480,7 +480,8 @@ static psych_bool PsychVideoPipelineSetState(GstElement* camera, GstState state,
 /* Receive messages from the playback pipeline message bus and handle them: */
 static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
 {
-    PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) dataptr;
+    (void) bus, (void) dataptr;
+
     if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: PsychVideoBusCallback: Msg source name and type: %s : %s\n", GST_MESSAGE_SRC_NAME(msg), GST_MESSAGE_TYPE_NAME(msg));
 
     switch (GST_MESSAGE_TYPE (msg)) {
@@ -539,8 +540,9 @@ static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 /* Called at each end-of-stream event at end of playback: */
 static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 {
-    PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
+    (void) sink;
 
+    PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
     PsychLockMutex(&capdev->mutex);
     printf("PTB-DEBUG: Videosink reached EOS.\n");
     // Signal EOS to trigger an abort of device open sequence:
@@ -585,6 +587,8 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
     GstSample *videoSample;
     int w = 0, h = 0;
 
+    (void) sink;
+
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
 
     PsychLockMutex(&capdev->mutex);
@@ -618,6 +622,8 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
  */
 static GstFlowReturn PsychNewBufferCallback(GstAppSink *sink, gpointer user_data)
 {
+    (void) sink;
+
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
 
     PsychLockMutex(&capdev->mutex);
@@ -630,8 +636,11 @@ static GstFlowReturn PsychNewBufferCallback(GstAppSink *sink, gpointer user_data
 }
 
 /* Not used by us, but needs to be defined as no-op anyway: */
+/*
 static GstFlowReturn PsychNewBufferListCallback(GstAppSink *sink, gpointer user_data)
 {
+    (void) sink;
+
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
 
     PsychLockMutex(&capdev->mutex);
@@ -640,10 +649,12 @@ static GstFlowReturn PsychNewBufferListCallback(GstAppSink *sink, gpointer user_
 
     return(GST_FLOW_OK);
 }
+*/
 
 /* Not used by us, but needs to be defined as no-op anyway: */
 static void PsychDestroyNotifyCallback(gpointer user_data)
 {
+    (void) user_data;
     return;
 }
 
@@ -651,8 +662,7 @@ static GstAppSinkCallbacks videosinkCallbacks = {
     PsychEOSCallback,
     PsychNewPrerollCallback,
     PsychNewBufferCallback,
-    PsychNewBufferListCallback,
-    NULL
+    {0}
 };
 
 /*
@@ -743,10 +753,11 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, const char*
     GParamSpec          *paramSpec;
     GstElement          *videosource;
     char                port_str[64];
-    char                *device_name = NULL;
     gchar               *pstring = NULL;
     gchar               *devString = NULL;
     psych_uint64        deviceURI = 0;
+
+    (void) flags;
 
     if (PsychPrefStateGet_Verbosity() > 5) {
         devString = gst_device_get_device_class(device);
@@ -959,11 +970,7 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
     char                class_str[64];
     int                 inputIndex;
     GstElement          *videosource = NULL;
-    GValueArray         *viddevs = NULL;
-    GValue              *dev = NULL;
-    char                *device_name = NULL;
     gchar               *pstring = NULL;
-    psych_uint64        deviceURI = 0;
     int                 oldverbose;
 
     // Info to the user:
@@ -1181,11 +1188,6 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
 
     int                 i;
-    GstElement          *videosource = NULL;
-    GValueArray         *viddevs = NULL;
-    GValue              *dev = NULL;
-    char                *device_name = NULL;
-    gchar               *pstring = NULL;
     PsychVideosourceRecordType *mydevice = NULL;
 
     // Make sure GStreamer is ready:
@@ -2818,11 +2820,15 @@ static GstPadProbeReturn PsychHaveVideoDataCallback(GstPad *pad, GstPadProbeInfo
     unsigned char *input_image;
     PsychVidcapRecordType *capdev = (PsychVidcapRecordType *) dataptr;
     GstBuffer *videoBuffer = info->data;
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
     #pragma warning( disable : 4068 )
+#endif
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-    GstMapInfo mapinfo = GST_MAP_INFO_INIT;
+    GstMapInfo      mapinfo = GST_MAP_INFO_INIT;
     #pragma GCC diagnostic pop
+
+    (void) pad;
 
     // Is a special markertracker plugin loaded for this camera? If so, execute it on this frame:
     if (capdev->markerTrackerPlugin) {
@@ -2880,8 +2886,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     GstCaps         *colorcaps;
     GstCaps         *vfcaps, *reccaps;
     GstElement      *camera = NULL;
-    GMainLoop       *VideoContext = NULL;
-    GstBus          *bus = NULL;
     GstElement      *videosink = NULL;
     GstElement      *videosource = NULL;
     GstElement      *videosource_filter = NULL;
@@ -2911,6 +2915,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     device_name[0] = 0;
     plugin_name[0] = 0;
     prop_name[0] = 0;
+
+    (void) allow_lowperf_fallback;
 
     // Init capturehandle to none:
     *capturehandle = -1;
@@ -4127,7 +4133,6 @@ int PsychGSDrainBufferQueue(PsychVidcapRecordType* capdev, int numFramesToDrain,
 int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
 {
     GstElement              *camera = NULL;
-    GstBuffer               *videoBuffer = NULL;
     guint64                 nrInFrames, nrOutFrames, nrDroppedFrames, nrDuplicatedFrames;
     GstCaps                 *caps = NULL;
     GstCaps                 *capsi = NULL;
@@ -4138,7 +4143,6 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
     double                  fpsmin, fpsmax;
     int                     dropped = 0;
     int                     drainedCount;
-    float                   framerate = 0;
 
     // Retrieve device record for handle:
     PsychVidcapRecordType* capdev = PsychGetGSVidcapRecord(capturehandle);
@@ -4501,7 +4505,6 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     PsychVidcapRecordType *capdev;
     GstBuffer *videoBuffer = NULL;
     GstSample *videoSample = NULL;
-    gint64 bufferIndex;
     double deltaT = 0;
     GstClockTime baseTime;
 
@@ -4511,7 +4514,6 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     unsigned int count, i;
     unsigned char* pixptr;
     psych_uint16* pixptrs;
-    psych_bool newframe = FALSE;
     double tstart, tend;
     int nrdropped = 0;
     unsigned char* input_image = NULL;
@@ -4519,10 +4521,15 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Disable warning about missing field initializer in calls
     // like GstMapInfo mapinfo = = GST_MAP_INFO_INIT;
     // Not our bug, but GStreamer's, so suppress for now.
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+    #pragma warning( disable : 4068 )
+#endif
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo mapinfo = GST_MAP_INFO_INIT;
     #pragma GCC diagnostic pop
+
+    (void) timeindex;
 
     // Make sure GStreamer is ready:
     PsychGSCheckInit("videocapture");
@@ -4729,8 +4736,6 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             PsychProbeSampleProps(videoSample, NULL, NULL, &capdev->fps);
             printf("Bufferprobe: newfps = %f altfps = %f\n", capdev->fps, (float) ((deltaT > 0) ? 1.0 / deltaT : 0.0));
         }
-
-        bufferIndex = GST_BUFFER_OFFSET(videoBuffer);
     } else {
         if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_sample! Something's wrong. Aborting fetch.\n");
         return(-1);
@@ -5015,7 +5020,6 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     float oldfvalue = FLT_MAX;
     double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
     psych_bool assigned = false;
-    psych_bool present  = false;
     GstColorBalance* cb = NULL;
     GList* cl = NULL;
     GList* iter = NULL;
