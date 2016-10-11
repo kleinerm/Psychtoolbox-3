@@ -211,20 +211,20 @@ else
             if isempty(NSIDENTIFIER) || (NSIDENTIFIER < 0)
                 status = 1;
             else
-                if nargin < 2
+                if nargin < 2 || isempty(varargin{2})
                     event = 'EVEN';
                 else
                     event = [char(varargin{2}) '    '];
                 end
 
-                if nargin < 3
+                if nargin < 3 || isempty(varargin{3})
                     start = GetSecs();
                 else
                     start = varargin{3};
                 end
                 start = start - SYNCHEPOCH;
 
-                if nargin < 4
+                if nargin < 4 || isempty(varargin{4})
                     duration=.001;
                 else
                     duration=varargin{4};
@@ -237,33 +237,45 @@ else
                     duration = .001;
                 end
 
+                %IF there's only a key and no value return
+                % error message
+                if ( nargin>4 && mod(nargin,2))
+                    status = 8;
+                    error=nserr(status);
+                    return
+                end
+                
                 if nargin > 4
                     keyn = floor((nargin - 4) / 2);
-                    keylength = 0;
-                    realkeyn = 0;
-                    for k = 1:keyn
-                        len = keycodedata(varargin{k*2+4});
-                        if len > 0
-                            keylength = keylength + len + 10;
-                            realkeyn = realkeyn + 1;
-                        end
-                    end
-
-                    send(NSIDENTIFIER,'D',uint16(15+keylength),int32(start*1000),uint32(duration*1000),event(1:4),int16(0),uint8(realkeyn));
-
-                    for k = 1 : keyn
-                        id = [char(varargin{(k-1)*2+5}) '    '];
-                        [len, code, val] = keycodedata(varargin{k*2+4});
-                        if len > 0
-                            send(NSIDENTIFIER,id(1:4),code,uint16(len),val);
-                        end
-                    end
-                    if strcmpi(varargin{1},'event')
-                        rep = receive(NSIDENTIFIER,1);
-                    end
-                    status=0;
+                else
+                    keyn = 0;
                 end
+                
+                keylength = 0;
+                realkeyn = 0;
+                for k = 1:keyn
+                    len = keycodedata(varargin{k*2+4});
+                    if len > 0
+                        keylength = keylength + len + 10;
+                        realkeyn = realkeyn + 1;
+                    end
+                end
+                
+                send(NSIDENTIFIER,'D',uint16(15+keylength),int32(start*1000),uint32(duration*1000),event(1:4),int16(0),uint8(realkeyn));
+                
+                for k = 1 : keyn
+                    id = [char(varargin{(k-1)*2+5}) '    '];
+                    [len, code, val] = keycodedata(varargin{k*2+4});
+                    if len > 0
+                        send(NSIDENTIFIER,id(1:4),code,uint16(len),val);
+                    end
+                end
+                if strcmpi(varargin{1},'event')
+                    rep = receive(NSIDENTIFIER,1);
+                end
+                status=0;
             end
+            
         case 'flushreadbuffer'
             data='1';
             bufferCount=0;
@@ -316,6 +328,8 @@ function errstr=nserr(status)
             errstr='NS event: Unsuccesful';
         case 7
             errstr='Unknown NetStation command';
+        case 8 
+            errstr='Incorrect event calling parameters';
         otherwise
             errstr='NS unknown error';
     end

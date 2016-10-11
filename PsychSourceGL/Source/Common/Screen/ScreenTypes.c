@@ -113,6 +113,7 @@ void PsychCopyDepthStruct(PsychDepthType *toDepth, PsychDepthType *fromDepth)
 */ 
 PsychColorModeType PsychGetColorModeFromDepthStruct(PsychDepthType *depth)
 {
+	(void) depth;
 	return(kPsychRGBAColor);
 }
 

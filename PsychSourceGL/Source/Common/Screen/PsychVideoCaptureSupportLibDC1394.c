@@ -342,11 +342,12 @@ psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     dc1394camera_list_t   *cameras=NULL;
     unsigned int          numCameras;
     dc1394error_t         err;
-    int                   i;
     char                  msgerr[10000];
     char*                 codecSpec = NULL;
     uint32_t              rc_dummy1;
     uint64_t              rc_dummy2;
+
+    (void) win, (void) allow_lowperf_fallback;
 
     *capturehandle = -1;
 
@@ -584,9 +585,6 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
     dc1394bool_t iscolor;
     uint32_t bpc;
     int nonyuvbonus;
-    float bpp;
-    int framerate_matched = false;
-    int roi_matched = false;
     int mode_found = false;
 
     // Query supported video modes for this camera:
@@ -671,13 +669,12 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
             maximgarea = mw * mh;
             maximgmode = mode;
             mode_found = true;
-            roi_matched = true;
+
             if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes max image size check mw %i x mh %i  --> New favorite.\n", mw, mh);
         }
         else {
             // Yes. Check for exact match, reject everything else:
             if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || w != (int) mw || h != (int) mh) continue;
-            roi_matched = true;
 
             if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes exact ROI size match mw %i x mh %i\n", mw, mh);
 
@@ -797,11 +794,10 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
     // Ok, we've got the closest match we could get. Good enough?
     if ((fabs(framerate - capturerate) < 0.5) || (capturerate == DBL_MAX)) {
         // Perfect match of delivered and requested framerate. Nothing to do so far...
-        framerate_matched=true;
     }
     else {
         // No perfect match :(.
-        framerate_matched=false;
+
         if(framerate < capturerate) {
             printf("PTB-WARNING: Camera does not support requested capture framerate of %f fps. Using maximum of %f fps instead.\n",
                               (float) capturerate, framerate);
@@ -830,20 +826,15 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     float mindifframerate = 0;
     int minpacket_size = 0;
     dc1394video_mode_t minimgmode, mode;
-    int i, j, w, h, numF7Available=0;
+    int i, w, h, numF7Available=0;
     dc1394speed_t speed;
     unsigned int mw, mh, pbmin, pbmax, depth;
     int num_packets, packet_size;
     float framerate;
-    dc1394framerate_t dc1394_framerate;
-    dc1394framerates_t supported_framerates;
     dc1394video_modes_t video_modes;
     dc1394color_coding_t color_code;
     dc1394bool_t iscolor;
     uint32_t bpc;
-    float bpp;
-    int framerate_matched = false;
-    int roi_matched = false;
     float bus_period;
 
     // Query IEEE1394 bus speed code and map it to bus_period:
@@ -974,7 +965,6 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
             // Set maximum size:
             if (dc1394_format7_set_image_size(capdev->camera, mode, mw, mh)!=DC1394_SUCCESS) continue;
             w=mw; h=mh;
-            roi_matched = true;
         }
         else {
             // Yes. Check for exact match, reject everything else:
@@ -993,7 +983,6 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
             if (dc1394_format7_set_image_position(capdev->camera, mode, (unsigned int) capdev->roirect[kPsychLeft], (unsigned int) capdev->roirect[kPsychTop])!=DC1394_SUCCESS) continue;
 
             // If we reach this point, then we should have exactly the ROI we wanted.
-            roi_matched = true;
         }
 
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-Info: Passes size / ROI validation for mw x mh = %i x %i...\n", mw, mh);
@@ -1149,11 +1138,9 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     // Ok, we've got the closest match we could get. Good enough?
     if ((mindiff < 0.5) || (capturerate == DBL_MAX)) {
         // Perfect match of delivered and requested framerate. Nothing to do so far...
-        framerate_matched=true;
     }
     else {
         // No perfect match :(.
-        framerate_matched=false;
         if(framerate < capturerate) {
             printf("PTB-WARNING: Camera does not support requested capture framerate of %f fps at given ROI setting. Using %f fps instead.\n",
                               (float) capturerate, framerate);
@@ -1681,17 +1668,11 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
     int dropped = 0;
     float framerate = 0;
     dc1394speed_t speed;
-    dc1394video_mode_t maximgmode, mode;
-    int i, j, w, h, packetsize;
-    unsigned int mw, mh;
+    dc1394video_mode_t mode;
+    int i, w, h, packetsize;
     dc1394framerate_t dc1394_framerate;
-    dc1394framerates_t supported_framerates;
-    dc1394video_modes_t video_modes;
     dc1394color_coding_t color_code;
-    float bpp;
     uint32_t depth;
-    int framerate_matched = false;
-    int roi_matched = false;
     dc1394error_t err;
     int rc;
 
@@ -2289,21 +2270,19 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex,
                                  PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer)
 {
-    GLuint texid;
     int w, h;
-    double targetdelta, realdelta, frames;
     psych_uint64 intensity = 0;
     unsigned int count, i;
     unsigned char* pixptr;
     psych_uint16* pixptrs;
-    psych_bool newframe = FALSE;
     psych_bool frame_ready;
     double tstart, tend;
-    unsigned int pixval, alphacount;
     dc1394error_t error;
     int rc;
     int nrdropped = 0;
     unsigned char* input_image = NULL;
+
+    (void) timeindex;
 
     // Retrieve device record for handle:
     PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
@@ -2758,13 +2737,11 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
  */
 double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, double value)
 {
-    dc1394featureset_t features;
     dc1394feature_t feature;
     dc1394bool_t present;
     dc1394error_t err;
-    dc1394basler_sff_feature_t sfffeature_id;
     unsigned int minval, maxval, intval, oldintval;
-    int triggercount, i;
+    int i;
 
     double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
     psych_bool assigned = false;

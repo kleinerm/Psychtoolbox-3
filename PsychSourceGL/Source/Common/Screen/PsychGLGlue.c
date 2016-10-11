@@ -1,22 +1,18 @@
 /*
-	PsychToolbox2/Source/Common/Screen/PsychGLGlue.c
-	
-	PLATFORMS:	Windows
-				MacOS9
-			
-	
-	AUTHORS:
-	Allen Ingling		awi		Allen.Ingling@nyu.edu
+    PsychToolbox3/Source/Common/Screen/PsychGLGlue.c
 
-	HISTORY:
-	09/09/02			awi		wrote it.  
-	
-	DESCRIPTION:
-	
-	Functions to convert between Psych toolbox data types and GL data types.  	
-        
-        TO DO:
-        
+    PLATFORMS: All
+
+    AUTHORS:
+    Allen Ingling   awi     Allen.Ingling@nyu.edu
+    Mario Kleiner   mk      mario.kleiner.de@gmail.com
+
+    HISTORY:
+    09/09/02        awi     wrote it.
+
+    DESCRIPTION:
+
+    Functions to convert between Psych toolbox data types and GL data types.
 */
 
 #include "Screen.h"
@@ -26,21 +22,21 @@ static int global_glApiType = 0;
 
 /*
     PsychConvertColorToDoubleVector()
-    
+
     Accept a color structure and a screen depth and return either three or four double values in the range between
     0-1 which specify r, g, b and optinally alpha values.
-    
+
     The value array argument should be be four elements long.
-    
+
 */
 int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType *windowRecord, GLdouble *valueArray)
 {
     GLdouble deno;
-    
+
     // Read denominator from windowRecord. Need to get rid of the sign, because it
     // encodes if we have color clamping enabled or not:
     deno = fabs(windowRecord->colorRange);
-	
+
     switch(color->mode){
         case kPsychIndexColor:
             valueArray[0]=color->value.index.i/deno;
@@ -49,8 +45,8 @@ int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType
             valueArray[0]=color->value.rgb.r/deno;
             valueArray[1]=color->value.rgb.g/deno;
             valueArray[2]=color->value.rgb.b/deno;
-	    valueArray[3]=1.0;	// Needed to init the valueArray completely.
-            return(3); 
+            valueArray[3]=1.0;	// Needed to init the valueArray completely.
+            return(3);
         case kPsychRGBAColor:
             valueArray[0]=color->value.rgba.r/deno;
             valueArray[1]=color->value.rgba.g/deno;
@@ -61,7 +57,7 @@ int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType
             PsychErrorExitMsg(PsychError_internal,"Unspecified display mode");
     }
     PsychErrorExitMsg(PsychError_internal,"Unknown display mode");
-    return(0); //make the compiler happy.  
+    return(0); //make the compiler happy.
 }
 
 // Define submission command for submitting single unclamped colors to drawshader.
@@ -70,24 +66,24 @@ int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType
 #define HDRglColor4dv(v) glTexCoord4dv((v))
 
 /*
-    PsychSetGLColor()
-    
-    Accept a Psych color structure and a depth value and call the appropriate variant of glColor.       
-*/
+ *   PsychSetGLColor()
+ *
+ *   Accept a Psych color structure and a depth value and call the appropriate variant of glColor.
+ */
 void PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord)
 {
     int numVals;
-    
-    numVals=PsychConvertColorToDoubleVector(color, windowRecord, (GLdouble*) &(windowRecord->currentColor));
-    if(numVals < 3 || numVals > 4) PsychErrorExitMsg(PsychError_internal, "Palette mode not yet implemented or illegal color specifier.");
 
-	// Set the color in GL:
-	if (windowRecord->defaultDrawShader) {
-		// Drawshader color submission:
-		HDRglColor4dv(windowRecord->currentColor);
-	}
-	else {
-		// Fixed function pipe:
+    numVals=PsychConvertColorToDoubleVector(color, windowRecord, (GLdouble*) &(windowRecord->currentColor));
+    if (numVals < 3 || numVals > 4) PsychErrorExitMsg(PsychError_internal, "Palette mode not yet implemented or illegal color specifier.");
+
+    // Set the color in GL:
+    if (windowRecord->defaultDrawShader) {
+        // Drawshader color submission:
+        HDRglColor4dv(windowRecord->currentColor);
+    }
+    else {
+        // Fixed function pipe:
         if (PsychIsGLClassic(windowRecord)) {
             // OpenGL-1/2:
             glColor4dv(windowRecord->currentColor);
@@ -97,98 +93,96 @@ void PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord)
             glColor4f((float) windowRecord->currentColor[0], (float) windowRecord->currentColor[1], (float) windowRecord->currentColor[2], (float) windowRecord->currentColor[3]);
             PsychGLColor4f(windowRecord, (float) windowRecord->currentColor[0], (float) windowRecord->currentColor[1], (float) windowRecord->currentColor[2], (float) windowRecord->currentColor[3]);
         }
-	}
+    }
 }
 
 /* PsychSetupVertexColorArrays()
-
-   Helper routine, called from the different batch drawing functions of Screen():
-*/
+ * Helper routine, called from the different batch drawing functions of Screen():
+ */
 void PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, psych_bool enable, int mc, double* colors, unsigned char *bytecolors)
 {
-	if (enable) {
-		// Enable and setup whatever's used:
-		if (windowRecord->defaultDrawShader) {
-			// Shader based unclamped path:
-			if (colors) glTexCoordPointer(mc, PSYCHGLFLOAT, 0, colors);
+    if (enable) {
+        // Enable and setup whatever's used:
+        if (windowRecord->defaultDrawShader) {
+            // Shader based unclamped path:
+            if (colors) glTexCoordPointer(mc, PSYCHGLFLOAT, 0, colors);
 
-			// Can't support uint8 datatype for this vertex attribute :-(
-			if (bytecolors) PsychErrorExitMsg(PsychError_user, "Sorry, this function can't accept matrices of uint8 type for colors\nif color clamping is disabled or high precision mode active.\n Use the double() operator to convert to double matrix.");
+            // Can't support uint8 datatype for this vertex attribute :-(
+            if (bytecolors) PsychErrorExitMsg(PsychError_user, "Sorry, this function can't accept matrices of uint8 type for colors\nif color clamping is disabled or high precision mode active.\n Use the double() operator to convert to double matrix.");
 
-			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-			glColorPointer(4, PSYCHGLFLOAT, 0, NULL);
-		}
-		else {
-			// Standard path:
-			if (colors)     glColorPointer(mc, PSYCHGLFLOAT, 0, colors);
-			if (bytecolors) glColorPointer(mc, GL_UNSIGNED_BYTE, 0, bytecolors);
+            glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+            glColorPointer(4, PSYCHGLFLOAT, 0, NULL);
+        }
+        else {
+            // Standard path:
+            if (colors)     glColorPointer(mc, PSYCHGLFLOAT, 0, colors);
+            if (bytecolors) glColorPointer(mc, GL_UNSIGNED_BYTE, 0, bytecolors);
 
-			glEnableClientState(GL_COLOR_ARRAY);
-			glTexCoordPointer(4, PSYCHGLFLOAT, 0, NULL);
-		}
-	}
-	else {
-		// Disable whatever's used:
-		if (windowRecord->defaultDrawShader) {
-			// Shader based unclamped path:
-			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
-		}
-		else {
-			// Standard path:
-			glDisableClientState(GL_COLOR_ARRAY);
-		}
-		
-		glColorPointer(4, PSYCHGLFLOAT, 0, NULL);
-		glTexCoordPointer(4, PSYCHGLFLOAT, 0, NULL);
-	}
+            glEnableClientState(GL_COLOR_ARRAY);
+            glTexCoordPointer(4, PSYCHGLFLOAT, 0, NULL);
+        }
+    }
+    else {
+        // Disable whatever's used:
+        if (windowRecord->defaultDrawShader) {
+            // Shader based unclamped path:
+            glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+        }
+        else {
+            // Standard path:
+            glDisableClientState(GL_COLOR_ARRAY);
+        }
+
+        glColorPointer(4, PSYCHGLFLOAT, 0, NULL);
+        glTexCoordPointer(4, PSYCHGLFLOAT, 0, NULL);
+    }
 }
 
 /* PsychSetArrayColor()
-
-   Helper routine, called from the different batch drawing functions of Screen():
-*/
+ * Helper routine, called from the different batch drawing functions of Screen():
+ */
 static GLdouble currentColor[4];
 void PsychSetArrayColor(PsychWindowRecordType *windowRecord, int i, int mc, double* colors, unsigned char *bytecolors)
 {
     psych_bool isgles = !PsychIsGLClassic(windowRecord);
 
-	if ((windowRecord->defaultDrawShader) || isgles) {
-		// Draw shader assigned or OpenGL-ES in use. Need to feed color values into high-precision
-		// alternative channel for unclamped, high-precision color handling:
-		if (mc==3) {
-			i=i * 3;
-			if (colors) {
-				// RGB double:
-				currentColor[0]=colors[i++];
-				currentColor[1]=colors[i++];
-				currentColor[2]=colors[i++];
-				currentColor[3]=1.0;
-			}
-			else {
-				// RGB uint8:
-				currentColor[0]=((double) bytecolors[i++] / 255.0);
-				currentColor[1]=((double) bytecolors[i++] / 255.0);
-				currentColor[2]=((double) bytecolors[i++] / 255.0);
-				currentColor[3]=1.0;
-			}
-		}
-		else {
-			i=i * 4;
-			if (colors) {
-				// RGBA double:
-				currentColor[0]=colors[i++];
-				currentColor[1]=colors[i++];
-				currentColor[2]=colors[i++];
-				currentColor[3]=colors[i++];
-			}
-			else {
-				// RGBA uint8:
-				currentColor[0]=((double) bytecolors[i++] / 255.0);
-				currentColor[1]=((double) bytecolors[i++] / 255.0);
-				currentColor[2]=((double) bytecolors[i++] / 255.0);
-				currentColor[3]=((double) bytecolors[i++] / 255.0);
-			}
-		}				
+    if ((windowRecord->defaultDrawShader) || isgles) {
+        // Draw shader assigned or OpenGL-ES in use. Need to feed color values into high-precision
+        // alternative channel for unclamped, high-precision color handling:
+        if (mc==3) {
+            i = i * 3;
+            if (colors) {
+                // RGB double:
+                currentColor[0]=colors[i++];
+                currentColor[1]=colors[i++];
+                currentColor[2]=colors[i++];
+                currentColor[3]=1.0;
+            }
+            else {
+                // RGB uint8:
+                currentColor[0]=((double) bytecolors[i++] / 255.0);
+                currentColor[1]=((double) bytecolors[i++] / 255.0);
+                currentColor[2]=((double) bytecolors[i++] / 255.0);
+                currentColor[3]=1.0;
+            }
+        }
+        else {
+            i = i * 4;
+            if (colors) {
+                // RGBA double:
+                currentColor[0]=colors[i++];
+                currentColor[1]=colors[i++];
+                currentColor[2]=colors[i++];
+                currentColor[3]=colors[i++];
+            }
+            else {
+                // RGBA uint8:
+                currentColor[0]=((double) bytecolors[i++] / 255.0);
+                currentColor[1]=((double) bytecolors[i++] / 255.0);
+                currentColor[2]=((double) bytecolors[i++] / 255.0);
+                currentColor[3]=((double) bytecolors[i++] / 255.0);
+            }
+        }
 
         if (isgles) {
             // GLES can only do glColor4f(), nothing else:
@@ -197,32 +191,32 @@ void PsychSetArrayColor(PsychWindowRecordType *windowRecord, int i, int mc, doub
         else {
             HDRglColor4dv(currentColor);
         }
-	}
-	else {
-		// Standard fixed-function pipeline assigned: Feed into standard glColorXXX() calls:
-		if (mc==3) {
-			if (colors) {
-				// RGB double:
-				glColor3dv(&(colors[i*3]));
-			}
-			else {
-				// RGB uint8:
-				glColor3ubv(&(bytecolors[i*3]));
-			}
-		}
-		else {
-			if (colors) {
-				// RGBA double:
-				glColor4dv(&(colors[i*4]));
-			}
-			else {
-				// RGBA uint8:
-				glColor4ubv(&(bytecolors[i*4]));
-			}					
-		}
-	}
-	
-	return;
+    }
+    else {
+        // Standard fixed-function pipeline assigned: Feed into standard glColorXXX() calls:
+        if (mc==3) {
+            if (colors) {
+                // RGB double:
+                glColor3dv(&(colors[i*3]));
+            }
+            else {
+                // RGB uint8:
+                glColor3ubv(&(bytecolors[i*3]));
+            }
+        }
+        else {
+            if (colors) {
+                // RGBA double:
+                glColor4dv(&(colors[i*4]));
+            }
+            else {
+                // RGBA uint8:
+                glColor4ubv(&(bytecolors[i*4]));
+            }
+        }
+    }
+
+    return;
 }
 
 /* PsychGLClear()
@@ -232,48 +226,48 @@ void PsychSetArrayColor(PsychWindowRecordType *windowRecord, int i, int mc, doub
  */
 void PsychGLClear(PsychWindowRecordType *windowRecord)
 {
-	int oldShader, nowShader;
-	
-	// Unclamped/High-precision color mode enabled via GLSL shaders?
-	if ((windowRecord->defaultDrawShader != 0) && (windowRecord->defaultDrawShader == windowRecord->unclampedDrawShader)) {
-		// Yes. Can't use standard clear, but need to clear via drawing a full-window rect with
-		// clear color:
+    int oldShader, nowShader;
 
-		// Query currently bound shader:
-		oldShader = PsychGetCurrentShader(windowRecord);
+    // Unclamped/High-precision color mode enabled via GLSL shaders?
+    if ((windowRecord->defaultDrawShader != 0) && (windowRecord->defaultDrawShader == windowRecord->unclampedDrawShader)) {
+        // Yes. Can't use standard clear, but need to clear via drawing a full-window rect with
+        // clear color:
 
-		// Assign hdr draw shader:
-		nowShader = PsychSetShader(windowRecord, -1);
+        // Query currently bound shader:
+        oldShader = PsychGetCurrentShader(windowRecord);
 
-		// Assign HDR clear color for window:
-		HDRglColor4dv(windowRecord->clearColor);
+        // Assign hdr draw shader:
+        nowShader = PsychSetShader(windowRecord, -1);
 
-		// Draw a fullscreen rect in the clear color, make sure
-		// no alpha blending is active:
-		if (glIsEnabled(GL_BLEND)) {
-			glDisable(GL_BLEND);
-			PsychGLRect(windowRecord->rect);
-			glEnable(GL_BLEND);
-		}
-		else {
-			PsychGLRect(windowRecord->rect);
-		}
-		
-		// Revert to old shader binding:
-		if (nowShader != oldShader) PsychSetShader(windowRecord, oldShader);
-	}
-	else {
-		// Standard clear path: Can use OpenGL's fast color buffer clear:
-		glClearColor((GLclampf) windowRecord->clearColor[0], (GLclampf) windowRecord->clearColor[1], (GLclampf) windowRecord->clearColor[2], (GLclampf) windowRecord->clearColor[3]);
-		glClear(GL_COLOR_BUFFER_BIT);
-	}
+        // Assign HDR clear color for window:
+        HDRglColor4dv(windowRecord->clearColor);
 
-	return;
+        // Draw a fullscreen rect in the clear color, make sure
+        // no alpha blending is active:
+        if (glIsEnabled(GL_BLEND)) {
+            glDisable(GL_BLEND);
+            PsychGLRect(windowRecord->rect);
+            glEnable(GL_BLEND);
+        }
+        else {
+            PsychGLRect(windowRecord->rect);
+        }
+
+        // Revert to old shader binding:
+        if (nowShader != oldShader) PsychSetShader(windowRecord, oldShader);
+    }
+    else {
+        // Standard clear path: Can use OpenGL's fast color buffer clear:
+        glClearColor((GLclampf) windowRecord->clearColor[0], (GLclampf) windowRecord->clearColor[1], (GLclampf) windowRecord->clearColor[2], (GLclampf) windowRecord->clearColor[3]);
+        glClear(GL_COLOR_BUFFER_BIT);
+    }
+
+    return;
 }
 
 /*
-    PsychGLRect()
-*/
+ * PsychGLRect()
+ */
 void PsychGLRect(PsychRectType psychRect)
 {
     // Call our glRectd helper which makes sure glRectd() works
@@ -281,10 +275,10 @@ void PsychGLRect(PsychRectType psychRect)
     // OpenGL and OpenGL-ES. Passing a NULL windowRecord will make
     // it use the cached api type spec:
     PsychGLRectd(NULL,
-                 (GLdouble)(psychRect[kPsychLeft]),
-                 (GLdouble)(psychRect[kPsychTop]),
-                 (GLdouble)(psychRect[kPsychRight]),
-                 (GLdouble)(psychRect[kPsychBottom]));
+                (GLdouble)(psychRect[kPsychLeft]),
+                (GLdouble)(psychRect[kPsychTop]),
+                (GLdouble)(psychRect[kPsychRight]),
+                (GLdouble)(psychRect[kPsychBottom]));
 }
 
 char *PsychGetGLErrorNameString(GLenum errorConstant)
@@ -297,9 +291,9 @@ char *PsychGetGLErrorNameString(GLenum errorConstant)
     static char GL_STACK_UNDERFLOW_str[] = "GL_STACK_UNDERFLOW";
     static char GL_OUT_OF_MEMORY_str[] = "GL_OUT_OF_MEMORY";
     static char GL_TABLE_TOO_LARGE_str[] = "GL_TABLE_TOO_LARGE";
-	static char GL_INVALID_FRAMEBUFFER_OPERATION_EXT_str[] = "GL_INVALID_FRAMEBUFFER_OPERATION_EXT";
+    static char GL_INVALID_FRAMEBUFFER_OPERATION_EXT_str[] = "GL_INVALID_FRAMEBUFFER_OPERATION_EXT";
     static char unrecognized_error_str[] = "unrecognized GL error constant";
-    
+
     switch(errorConstant){
         case GL_NO_ERROR: return(GL_NO_ERROR_str);
         case GL_INVALID_ENUM: return(GL_INVALID_ENUM_str);
@@ -309,94 +303,94 @@ char *PsychGetGLErrorNameString(GLenum errorConstant)
         case GL_STACK_UNDERFLOW: return(GL_STACK_UNDERFLOW_str);
         case GL_OUT_OF_MEMORY: return(GL_OUT_OF_MEMORY_str);
         case GL_TABLE_TOO_LARGE: return(GL_TABLE_TOO_LARGE_str);
-		case GL_INVALID_FRAMEBUFFER_OPERATION_EXT: return(GL_INVALID_FRAMEBUFFER_OPERATION_EXT_str);
+        case GL_INVALID_FRAMEBUFFER_OPERATION_EXT: return(GL_INVALID_FRAMEBUFFER_OPERATION_EXT_str);
     }
     return(unrecognized_error_str);
 }
 
 /*
-	PsychGetGLErrorListString()
-	
-*/ 
+ *  PsychGetGLErrorListString()
+ */
 psych_bool PsychGetGLErrorListString(const char **errorListStr)
 {
-	#define MAX_GL_ERROR_LIST_LEN			2048
-	#define MAX_GL_ERROR_LIST_DELTA_LEN		256
-	static char	errorListString[MAX_GL_ERROR_LIST_LEN];
-	char	*errorNameStr;
-	int		currentIndex, deltaStrLen, nextCurrentIndex;
-    GLenum	glError;
-    psych_bool	isError=FALSE;
+    #define MAX_GL_ERROR_LIST_LEN               2048
+    #define MAX_GL_ERROR_LIST_DELTA_LEN         256
+    static char errorListString[MAX_GL_ERROR_LIST_LEN];
+    char        *errorNameStr;
+    int         currentIndex, deltaStrLen, nextCurrentIndex;
+    GLenum      glError;
+    psych_bool  isError=FALSE;
 
     // Skip this routine with "no error" return status, if kPsychAvoidCPUGPUSync
     // is set as conserveVRAM setting by usercode:
     *errorListStr = NULL;
     if (PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync) return(FALSE);
-	
-	currentIndex=0;
+
+    currentIndex=0;
     for(glError=glGetError(); glError!=GL_NO_ERROR; glError=glGetError()){
-		errorNameStr=PsychGetGLErrorNameString(glError);
-		deltaStrLen = (int) strlen(errorNameStr)+2;  //2 chars: comma and space
-		nextCurrentIndex=currentIndex+deltaStrLen;
-		if(nextCurrentIndex >= MAX_GL_ERROR_LIST_LEN)
-			PsychErrorExitMsg(PsychError_internal,"string memory overflow");
-		if(isError)
-			sprintf(&(errorListString[currentIndex]), " ,%s", errorNameStr);
-		else
-			sprintf(&(errorListString[currentIndex]), "%s", errorNameStr);
-		currentIndex=nextCurrentIndex;
-		isError=TRUE;		
-	}
-	if(isError)
-		*errorListStr=errorListString;
-	else
-		*errorListStr=NULL;
-	return(isError);
+        errorNameStr=PsychGetGLErrorNameString(glError);
+        deltaStrLen = (int) strlen(errorNameStr)+2;  //2 chars: comma and space
+        nextCurrentIndex=currentIndex+deltaStrLen;
+        if (nextCurrentIndex >= MAX_GL_ERROR_LIST_LEN)
+            PsychErrorExitMsg(PsychError_internal,"string memory overflow");
+        if (isError)
+            sprintf(&(errorListString[currentIndex]), " ,%s", errorNameStr);
+        else
+            sprintf(&(errorListString[currentIndex]), "%s", errorNameStr);
+        currentIndex=nextCurrentIndex;
+        isError=TRUE;
+    }
+
+    if(isError)
+        *errorListStr=errorListString;
+    else
+        *errorListStr=NULL;
+    return(isError);
 }
 
 void PsychTestForGLErrorsC(int lineNum, const char *funcName, const char *fileName)
 {
-    psych_bool			isError;
-	const char		*glErrorListString;
-    
-	isError=PsychGetGLErrorListString(&glErrorListString);
-	if(isError)
-		PsychErrorExitC(PsychError_OpenGL, 
-						glErrorListString, 
-						lineNum, 
-						funcName, 
-						fileName);
+    psych_bool  isError;
+    const char  *glErrorListString;
+
+    isError=PsychGetGLErrorListString(&glErrorListString);
+    if (isError)
+        PsychErrorExitC(PsychError_OpenGL,
+                        glErrorListString,
+                        lineNum,
+                        funcName,
+                        fileName);
 }
 
 /*
-	PsychExtractQuadVertexFromRect()
-	
-	Return one of the four vertices define by a Psych rect in a 2-element array of GLdoubles.
-	Vertices are numbered from the top left corner (0) clockwise to the bottom left corner (3).
+        PsychExtractQuadVertexFromRect()
+
+        Return one of the four vertices define by a Psych rect in a 2-element array of GLdoubles.
+        Vertices are numbered from the top left corner (0) clockwise to the bottom left corner (3).
 */
 GLdouble *PsychExtractQuadVertexFromRect(double *rect, int vertexNumber, GLdouble *vertex)
 {
-	switch(vertexNumber){
-		case 0:
-			vertex[0]=(GLdouble)rect[0];
-			vertex[1]=(GLdouble)rect[1];
-			break;
-		case 1:
-			vertex[0]=(GLdouble)rect[2];
-			vertex[1]=(GLdouble)rect[1];
-			break;
-		case 2:
-			vertex[0]=(GLdouble)rect[2];
-			vertex[1]=(GLdouble)rect[3];
-			break;
-		case 3:
-			vertex[0]=(GLdouble)rect[0];
-			vertex[1]=(GLdouble)rect[3];
-			break;
-		default:
-			PsychErrorExitMsg(PsychError_internal, "Illegal vertex value");
-	}
-	return(vertex);
+    switch(vertexNumber){
+        case 0:
+            vertex[0]=(GLdouble)rect[0];
+            vertex[1]=(GLdouble)rect[1];
+            break;
+        case 1:
+            vertex[0]=(GLdouble)rect[2];
+            vertex[1]=(GLdouble)rect[1];
+            break;
+        case 2:
+            vertex[0]=(GLdouble)rect[2];
+            vertex[1]=(GLdouble)rect[3];
+            break;
+        case 3:
+            vertex[0]=(GLdouble)rect[0];
+            vertex[1]=(GLdouble)rect[3];
+            break;
+        default:
+            PsychErrorExitMsg(PsychError_internal, "Illegal vertex value");
+    }
+    return(vertex);
 }
 
 /* PsychPrepareRenderBatch()
@@ -411,88 +405,89 @@ GLdouble *PsychExtractQuadVertexFromRect(double *rect, int vertexNumber, GLdoubl
  */
 void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos, int* coords_count, double** xy, int colors_pos, int* colors_count, int* colorcomponent_count, double** colors, unsigned char** bytecolors, int sizes_pos, int* sizes_count, double** size, psych_bool usefloat)
 {
-	PsychColorType							color;
-	int                                     m,n,p,mc,nc,pc;
-	int                                     i, nrpoints, nrsize;
-	psych_bool                              isArgThere, isdoublecolors, isuint8colors, usecolorvector, needxy;
-	double									*tmpcolors, *pcolors, *tcolors;
-	double									convfactor, whiteValue;
-	float									*pcolorsf, *tcolorsf;
-    float                                   convfactorf;
-    unsigned char                           *pcolorsb, *tcolorsb;
+    PsychColorType      color;
+    int                 m,n,p,mc,nc,pc;
+    int                 i, nrpoints, nrsize;
+    psych_bool          isArgThere, isdoublecolors, isuint8colors, usecolorvector, needxy;
+    double              *tmpcolors, *pcolors, *tcolors;
+    double              convfactor, whiteValue;
+    float               *pcolorsf, *tcolorsf;
+    float               convfactorf;
+    unsigned char       *pcolorsb, *tcolorsb;
 
-	needxy = (coords_pos > 0) ? TRUE: FALSE;
-	coords_pos = abs(coords_pos);
-	colors_pos = abs(colors_pos);
-	sizes_pos = abs(sizes_pos);
+    needxy = (coords_pos > 0) ? TRUE: FALSE;
+    coords_pos = abs(coords_pos);
+    colors_pos = abs(colors_pos);
+    sizes_pos = abs(sizes_pos);
 
-	// Get mandatory or optional xy coordinates argument
-	isArgThere = PsychIsArgPresent(PsychArgIn, coords_pos);
-	if(!isArgThere && needxy) {
-		PsychErrorExitMsg(PsychError_user, "No position argument supplied");
-	}
-	
-	if (isArgThere) {
-		if (usefloat) {
+    // Get mandatory or optional xy coordinates argument
+    isArgThere = PsychIsArgPresent(PsychArgIn, coords_pos);
+    if(!isArgThere && needxy) {
+        PsychErrorExitMsg(PsychError_user, "No position argument supplied");
+    }
+
+    if (isArgThere) {
+        if (usefloat) {
             PsychAllocInFloatMatArg(coords_pos, TRUE, &m, &n, &p, (float**) xy);
         }
         else {
             PsychAllocInDoubleMatArg(coords_pos, TRUE, &m, &n, &p, xy);
         }
 
-		if(p!=1 || (m!=*coords_count && (m*n)!=*coords_count)) {
-			printf("PTB-ERROR: Coordinates must be a %i tuple or a %i rows vector.\n", *coords_count, *coords_count);
-			PsychErrorExitMsg(PsychError_user, "Invalid format for coordinate specification.");
-		}
-		
-		if (m!=1) {
-			nrpoints=n;
-			*coords_count = n;
-		}
-		else {
-			// Special case: 1 row vector provided for single argument.
-			nrpoints=1;
-			*coords_count = 1;
-		}
-	}
-	else {
-		nrpoints = 0;
-		*coords_count = 0;
-	}
-	
-	if (size) {
-		// Get optional size argument
-		isArgThere = PsychIsArgPresent(PsychArgIn, sizes_pos);
-		if(!isArgThere){
-			// No size provided: Use a default size of 1.0:
-			*size = (double *) PsychMallocTemp(sizeof(double));
-			*size[0] = 1;
-			nrsize=1;
-		} else {
+        if (p!=1 || (m!=*coords_count && (m*n)!=*coords_count)) {
+            printf("PTB-ERROR: Coordinates must be a %i tuple or a %i rows vector.\n", *coords_count, *coords_count);
+            PsychErrorExitMsg(PsychError_user, "Invalid format for coordinate specification.");
+        }
+
+        if (m!=1) {
+            nrpoints=n;
+            *coords_count = n;
+        }
+        else {
+            // Special case: 1 row vector provided for single argument.
+            nrpoints=1;
+            *coords_count = 1;
+        }
+    }
+    else {
+        nrpoints = 0;
+        *coords_count = 0;
+    }
+
+    if (size) {
+        // Get optional size argument
+        isArgThere = PsychIsArgPresent(PsychArgIn, sizes_pos);
+        if (!isArgThere) {
+                // No size provided: Use a default size of 1.0:
+                *size = (double *) PsychMallocTemp(sizeof(double));
+                *size[0] = 1;
+                nrsize=1;
+        } else {
             if (usefloat) {
                 PsychAllocInFloatMatArg(sizes_pos, TRUE, &m, &n, &p, (float**) size);
             }
             else {
                 PsychAllocInDoubleMatArg(sizes_pos, TRUE, &m, &n, &p, size);
             }
-			if(p!=1) PsychErrorExitMsg(PsychError_user, "Size must be a scalar or a vector with one column or row");
-			nrsize=m*n;
-			if (nrsize!=nrpoints && nrsize!=1 && *sizes_count!=1) PsychErrorExitMsg(PsychError_user, "Size vector must contain one size value per item.");
-		}
-		
-		*sizes_count = nrsize;
-	}	
 
-	// Check if color argument is provided:
-	isArgThere = PsychIsArgPresent(PsychArgIn, colors_pos);
-	if(!isArgThere) {
-		// No color argument provided - Use defaults:
-		whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
-		PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
-		usecolorvector=false;
-	}
-	else {
-		// Some color argument provided. Check first, if it's a valid color vector:
+            if (p!=1) PsychErrorExitMsg(PsychError_user, "Size must be a scalar or a vector with one column or row");
+            nrsize=m*n;
+            if (nrsize!=nrpoints && nrsize!=1 && *sizes_count!=1) PsychErrorExitMsg(PsychError_user, "Size vector must contain one size value per item.");
+        }
+
+        *sizes_count = nrsize;
+    }
+
+    // Check if color argument is provided:
+    isArgThere = PsychIsArgPresent(PsychArgIn, colors_pos);
+    if(!isArgThere) {
+        // No color argument provided - Use defaults:
+        whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
+        PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
+        usecolorvector=false;
+    }
+    else {
+        // Some color argument provided. Check first, if it's a valid color vector:
         if (usefloat) {
             isdoublecolors = PsychAllocInFloatMatArg(colors_pos, kPsychArgAnything, &mc, &nc, &pc, (float**) colors);
         }
@@ -500,22 +495,23 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
             isdoublecolors = PsychAllocInDoubleMatArg(colors_pos, kPsychArgAnything, &mc, &nc, &pc, colors);
         }
 
-		isuint8colors  = PsychAllocInUnsignedByteMatArg(colors_pos, kPsychArgAnything, &mc, &nc, &pc, bytecolors);
-		
-		// Do we have a color vector, aka one element per vertex?
-		if((isdoublecolors || isuint8colors) && pc==1 && mc!=1 && nc==nrpoints && nrpoints>1) {
-			// Looks like we might have a color vector... ... Double-check it:
-			if (mc!=3 && mc!=4) PsychErrorExitMsg(PsychError_user, "Color vector must be a 3 or 4 row vector");
-			// Yes. colors is a valid pointer to it.
-			usecolorvector=true;
-			
-			if (isdoublecolors) {
-				if (fabs(windowRecord->colorRange)!=1) {
-					// We have to loop through the vector and divide all values by windowRecord->colorRange, so the input values
-					// 0-colorRange get mapped to the range 0.0-1.0, as OpenGL expects values in range 0-1 when
-					// a color vector is passed in Double- or Float format.
-					// This is inefficient, as it burns some cpu-cycles, but necessary to keep color
-					// specifications consistent in the PTB - API.
+        isuint8colors  = PsychAllocInUnsignedByteMatArg(colors_pos, kPsychArgAnything, &mc, &nc, &pc, bytecolors);
+
+        // Do we have a color vector, aka one element per vertex?
+        if ((isdoublecolors || isuint8colors) && pc==1 && mc!=1 && nc==nrpoints && nrpoints>1) {
+            // Looks like we might have a color vector... ... Double-check it:
+            if (mc!=3 && mc!=4) PsychErrorExitMsg(PsychError_user, "Color vector must be a 3 or 4 row vector");
+
+            // Yes. colors is a valid pointer to it.
+            usecolorvector=true;
+
+            if (isdoublecolors) {
+                if (fabs(windowRecord->colorRange)!=1) {
+                    // We have to loop through the vector and divide all values by windowRecord->colorRange, so the input values
+                    // 0-colorRange get mapped to the range 0.0-1.0, as OpenGL expects values in range 0-1 when
+                    // a color vector is passed in Double- or Float format.
+                    // This is inefficient, as it burns some cpu-cycles, but necessary to keep color
+                    // specifications consistent in the PTB - API.
                     if (usefloat) {
                         // OpenGL-ES 1 code path: Color arrays must have 4 component RGBA spec in
                         // single precision float format. Make it so:
@@ -549,9 +545,9 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
                             *(tcolors++)=(*pcolors++) * convfactor;
                         }
                     }
-				}
-				else {
-					// colorRange is == 1 --> No remapping needed as colors are already in proper range.
+                }
+                else {
+                    // colorRange is == 1 --> No remapping needed as colors are already in proper range.
                     if (usefloat && (mc == 3)) {
                         // OpenGL-ES 1 and only 3 channel RGB input: Extend to RGBA:
                         tmpcolors = PsychMallocTemp(sizeof(float) * nc * 4);
@@ -570,12 +566,12 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
                         // Desktop OpenGL: Just setup pointer to our unaltered input color vector:
                         tmpcolors=*colors;
                     }
-				}
-				
-				*colors = tmpcolors;
-			}
-			else {
-				// Color vector in uint8 format. Nothing to do, unless this is OpenGL-ES 1 and
+                }
+
+                *colors = tmpcolors;
+            }
+            else {
+                // Color vector in uint8 format. Nothing to do, unless this is OpenGL-ES 1 and
                 // input is only RGB instead of required RGBA:
                 if (usefloat && (mc == 3)) {
                     // OpenGL-ES 1 and only 3 channel RGB input: Extend to RGBA:
@@ -593,50 +589,50 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 
                     *bytecolors = (unsigned char*) tmpcolors;
                 }
-			}
-		}
-		else {
-			// No color vector provided: Check for a single valid color triplet or quadruple:
-			usecolorvector=false;
-			isArgThere=PsychCopyInColorArg(colors_pos, TRUE, &color);                
-		}
-	}
+            }
+        }
+        else {
+            // No color vector provided: Check for a single valid color triplet or quadruple:
+            usecolorvector=false;
+            isArgThere=PsychCopyInColorArg(colors_pos, TRUE, &color);
+        }
+    }
 
     // OpenGL-ES 1 always has 4 component RGBA color vectors:
     if (usefloat) mc = 4;
-	
-	// Enable this windowRecords framebuffer as current drawingtarget:
-	PsychSetDrawingTarget(windowRecord);
-	
-	// Setup default drawshader:
-	PsychSetShader(windowRecord, -1);
-	
-	// Setup alpha blending properly:
-	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
-	
- 	// Setup common color for all objects if no color vector has been provided:
-	if (!usecolorvector) {
-		PsychCoerceColorMode(&color);
-		PsychSetGLColor(&color, windowRecord);
-		*colors_count = 1;
-	}
-	else {
-		*colors_count = nc;
-	}
-	*colorcomponent_count = mc;
-		
-	return;
+
+    // Enable this windowRecords framebuffer as current drawingtarget:
+    PsychSetDrawingTarget(windowRecord);
+
+    // Setup default drawshader:
+    PsychSetShader(windowRecord, -1);
+
+    // Setup alpha blending properly:
+    PsychUpdateAlphaBlendingFactorLazily(windowRecord);
+
+    // Setup common color for all objects if no color vector has been provided:
+    if (!usecolorvector) {
+        PsychCoerceColorMode(&color);
+        PsychSetGLColor(&color, windowRecord);
+        *colors_count = 1;
+    }
+    else {
+        *colors_count = nc;
+    }
+    *colorcomponent_count = mc;
+
+    return;
 }
 
 /* Emit a single pixel in top-left corner of window and wait for its rendering
- * to complete. Our classic trick to wait for double-buffer swap completion on
- * systems where we don't have better system-provided timestamping and syncing
- * methods. This needs different implementations on classic OpenGL vs. non-
- * immediate mode OpenGL.
- *
- * A 'flushOnly' flag of TRUE will only flush, not wait.
- *
- */
+* to complete. Our classic trick to wait for double-buffer swap completion on
+* systems where we don't have better system-provided timestamping and syncing
+* methods. This needs different implementations on classic OpenGL vs. non-
+* immediate mode OpenGL.
+*
+* A 'flushOnly' flag of TRUE will only flush, not wait.
+*
+*/
 void PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord, psych_bool flushOnly)
 {
     // Classic desktop OpenGL in use?
@@ -784,7 +780,7 @@ void PsychGLVertex4f(PsychWindowRecordType *windowRecord, float x, float y, floa
     gl_buffer[gl_buffer_index++] = (float) currentColor[1];
     gl_buffer[gl_buffer_index++] = (float) currentColor[2];
     gl_buffer[gl_buffer_index++] = (float) currentColor[3];
-    
+
     // Then current texture coordinates (s,t,u,v):
     gl_buffer[gl_buffer_index++] = currentTexCoord[0];
     gl_buffer[gl_buffer_index++] = currentTexCoord[1];
@@ -836,19 +832,19 @@ void PsychGLRectd(PsychWindowRecordType *windowRecord, double x1, double y1, dou
 }
 
 /* A rather lame implementation of gluDisc() - OpenGL-ES compatible, but as inefficient as
- * it gets. Good enough for a start though...
- *
- * Thinking about this was avoided by adapting freely available sample code from Thomas Visser:
- * http://www.cocos2d-iphone.org/forum/topic/2207
- *
- */
+* it gets. Good enough for a start though...
+*
+* Thinking about this was avoided by adapting freely available sample code from Thomas Visser:
+* http://www.cocos2d-iphone.org/forum/topic/2207
+*
+*/
 void PsychDrawDisc(PsychWindowRecordType *windowRecord, float xc, float yc, float innerRadius, float outerRadius, int numSlices, float xScale, float yScale, float startAngle, float arcAngle)
 {
     float Rads, outerX, outerY, innerX, innerY;
-	int i, count = 0;
-	#ifndef M_PI
-	#define M_PI 3.141592654
-	#endif
+        int i;
+        #ifndef M_PI
+        #define M_PI 3.141592654
+        #endif
 
     // Sweep clock-wise over arcAngle degrees, split up into 'numSlices' steps:
     float step = (float) ((arcAngle * 2 * M_PI / 360) / (float) numSlices);
@@ -856,28 +852,19 @@ void PsychDrawDisc(PsychWindowRecordType *windowRecord, float xc, float yc, floa
     // Start at startAngle degrees, where 0 deg. = Upward, 90 deg. = Rightward.
     startAngle = (float) (M_PI/2 - startAngle * 2 * M_PI / 360);
 
-    /* Disable for now, do it slooow ...
-       float *vertices = PsychMallocTemp(sizeof(float) * 4 * (numSlices + 1));
-       memset(vertices, 0, sizeof(float) * 4 * (numSlices + 1));
-    */
-
     GLBEGIN(GL_TRIANGLE_STRIP);
-	for (i = 0; i <= numSlices; i++) {
-		// calculating the current vertice on the outer side of the segment
-		Rads = startAngle - i * step;
-		outerX = xScale * outerRadius * (float) cos( Rads );
-		outerY = yScale * outerRadius * (float) sin( Rads );
-		//vertices[count++] = outerX;
-		//vertices[count++] = outerY;
-		GLVERTEX2f(xc + outerX, yc + outerY);
+        for (i = 0; i <= numSlices; i++) {
+            // calculating the current vertice on the outer side of the segment
+            Rads = startAngle - i * step;
+            outerX = xScale * outerRadius * (float) cos( Rads );
+            outerY = yScale * outerRadius * (float) sin( Rads );
+            GLVERTEX2f(xc + outerX, yc + outerY);
 
-		// calculating the current vertice on the inner side of the segment
-		innerX = xScale * innerRadius * (float) cos( Rads );
-		innerY = yScale * innerRadius * (float) sin( Rads );
-		//vertices[count++] = innerX;
-		//vertices[count++] = innerY;
-		GLVERTEX2f(xc + innerX, yc + innerY);
-	}
+            // calculating the current vertice on the inner side of the segment
+            innerX = xScale * innerRadius * (float) cos( Rads );
+            innerY = yScale * innerRadius * (float) sin( Rads );
+            GLVERTEX2f(xc + innerX, yc + innerY);
+        }
     GLEND();
 
     return;
