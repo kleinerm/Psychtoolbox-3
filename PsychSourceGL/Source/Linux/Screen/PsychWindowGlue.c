@@ -311,6 +311,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     int gpuMaintype = 0;
     const char* mesaver = NULL;
     psych_bool mesamapi_strdupbug = FALSE;
+    int saved_default_screen = 0;
 
     // Include onscreen window index in title:
     sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
@@ -873,6 +874,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // is assigned for that purpose as master-window. We request a direct
     // rendering context (True) if possible:
     if (fbconfig) {
+        // Workaround for bug introduced into Mesa 12.0, potentially backported to some 11.2 releases
+        // by commit cf804b4455fac9e585b3600a8318caaced9c23de. glXCreateNewContext() does not perform
+        // some validation of fbconfig correctly against the X-Screen stored in the fbconfig for our
+        // target X-Screen, but instead always validates against X-Screen 0 -- the DefaultScreen(dpy).
+        // This ends badly whenever we are not trying to create a context on X-Screen 0. Work around
+        // this by temporarily assigning dpy->default_screen as our target screen 'scrnum' while
+        // glXCreateNewContext is called. Note: A bug fix for this bug was submitted upstream to resolve
+        // this properly, but that doesn't help us if we need to run on affected Mesa 12.0.x releases,
+        // as shipping with Ubuntu 16.10 and presumably future Ubuntu 16.04.2-LTS:
+        saved_default_screen = ((_XPrivDisplay) dpy)->default_screen;
+        ((_XPrivDisplay) dpy)->default_screen = scrnum;
+
         ctx = glXCreateNewContext(dpy, fbconfig[0], GLX_RGBA_TYPE, ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL), True);
     } else {
         ctx = glXCreateContext(dpy, visinfo, ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL), True );
@@ -943,7 +956,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     XFree(visinfo);
 
     // Release fbconfig array, if any:
-    if (fbconfig) XFree(fbconfig);
+    if (fbconfig) {
+        // Restore true default screen for dpy:
+        ((_XPrivDisplay) dpy)->default_screen = saved_default_screen;
+        XFree(fbconfig);
+    }
 
     PsychLockDisplay();
 
