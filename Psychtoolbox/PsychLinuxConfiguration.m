@@ -222,6 +222,7 @@ if needinstall && answer == 'y'
     cmd = sprintf('sudo cp %s/PsychHardware/blacklist-psychtoolbox.conf /etc/modprobe.d/', PsychtoolboxRoot);
     [rc, msg] = system(cmd);
     if rc == 0
+      updateinitramfs = 1;
       fprintf('Success! You may need to reboot your machine for some changes to take effect.\n');
     else
       fprintf('Failed! The error message was: %s\n', msg);
