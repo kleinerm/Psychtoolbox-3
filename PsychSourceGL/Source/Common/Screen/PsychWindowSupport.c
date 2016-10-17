@@ -3653,8 +3653,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // of the video display although video scanout has already started - resulting in tearing!
     //
     // Note that this isn't needed if OS specific swap scheduling is used, as that is supposed to take
-    // care of such nuisances - and if it didn't, this wouldn't help anyway ;) :
-    if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (!osspecific_asyncflip_scheduled) &&
+    // care of such nuisances - and if it didn't, this wouldn't help anyway. This wait must not be used
+    // for Prime-Synced outputSrc -> outputSink setups, as that would add 1 frame extra lag. by preventing
+    // us from subitting a swaprequest 1 frame ahead to compensate for the 1 frame lag of Prime sync.
+    if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (!osspecific_asyncflip_scheduled) && (windowRecord->hybridGraphics != 2) &&
         ((time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002) || ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0)))) {
         // Less than 2 msecs passed since last bufferswap, although swap in sync with retrace requested.
         // Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
@@ -4261,6 +4263,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // inaccurate, but one thing we do know, at least in the initial XOrg 1.19 implementation, is that the timestamp
         // will be at least one video refresh too early. Therefore, if we have such a type 2 setup, we add 1 refresh duration
         // to the so far computed timestamps.
+        // Note that these assignments get overriden directly below in VBLTimestampingMode 4 if we are running under the
+        // custom modified XOrg 1.19 modesetting ddx as a fullscreen window and therefore received a high precision timestamp
+        // in tSwapComplete from PsychOSGetSwapCompletionTimestamp(). This snippet only gets used in the fallback on unmodified
+        // XOrg 1.19 to keep us limping along with bad/inaccurate/unreliable timestamps that are at least somehow self-consistent
+        // in some sense:
         if ((PSYCH_SYSTEM == PSYCH_LINUX) && (windowRecord->specialflags & kPsychIsX11Window) && (windowRecord->hybridGraphics == 2)) {
             time_at_vbl += windowRecord->VideoRefreshInterval;
             *time_at_onset += windowRecord->VideoRefreshInterval;
