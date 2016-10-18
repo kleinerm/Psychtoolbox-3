@@ -322,6 +322,12 @@ else
                         gfxhwtype = 0;
                     end
                 end
+
+                if IsOSX
+                    % Type 2 needed at least on 10.12.1 with at least Intel HD-4000:
+                    gfxhwtype = 2;
+                end
+
                 fprintf('LoadIdentityClut: Intel integrated graphics chip detected. Using type-%i LUT.\n', gfxhwtype);
             elseif ~isempty(strfind(gfxhwtype, 'Broadcom')) && ~isempty(strfind(winfo.GLRenderer, 'VC4'))
                 % VC4 in RaspberryPi: Type 0 LUT is correct at least on Linux:
