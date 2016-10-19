@@ -86,11 +86,7 @@
 % LINUX:
 % ------
 %
-<<<<<<< HEAD
-% On Linux, as of August 2016, good progress has been made in implementing methods
-=======
 % On Linux, as of September 2016, good progress has been made in implementing methods
->>>>>>> upstream/master
 % which provide both good performance and reliable, trustworthy, accurate visual
 % timing and timestamping. Some - but not all - types of Laptop hardware should
 % work well, but for all of them some special configuration or software upgrades
@@ -132,36 +128,6 @@
 %
 % * Laptops with an Intel iGPU combined with an AMD dGPU ("AMD Enduro" models):
 %
-<<<<<<< HEAD
-<<<<<<< HEAD
-%   These should work perfectly if you use the open source graphics drivers, at
-%   least as far as testing with two special PC setups showed. Stimuli are displayed
-%   without any artifacts and timing and timestamping is accurate and trustworthy.
-%   Note that this is the *expectation extrapolated from a PC testing setup*, not actual
-%   results from real Enduro laptops, as no such laptops were available for testing so far,
-%   so there is still some small level of uncertainty at this point, with no 100% perfectly
-%   solid real-world proof available, especially not for the latest generation "Volcanic
-%   Islands" gpu family which uses the new amdgpu-kms kernel driver instead of the older
-%   radeon-kms driver.
-%
-%   These work with the open-source graphics drivers with acceptable performance
-%   out of the box. For good performance you will either need Mesa version 12.1 or
-%   later, which is not yet released as of August 2016, or you need to set the
-%   R600_DEBUG environment variable to 'forcedma', ie., execute setenv('R600_DEBUG','forcedma');
-=======
-%   These should work well if you use the open source graphics drivers with slightly
-%   older models of AMD gpu's, ie. *not* the very latest models of the "Volcanic Islands" /
-%   GCN 1.2 GPU family. Specifically GPUs using the old open-source graphics and display
-%   drivers radeon-kms + Mesa Gallium r600 should work with perfectly trustworthy timing
-%   and quality. GPUs of the "Volcanic Islands" GCN 1.2 generation which use the new open-
-%   source amdgpu-kms + radeonsi graphics drivers will only work well under light to moderate
-%   load, but may expose timing problems and severe visual stimulus artifacts in high-load
-%   scenarios. The status of GCN 1.0/1.1 GPUs of the "Sea Islands" or "Southern Islands"
-%   GPU family, which use the new Gallium radeonsi driver in combination with the old
-%   radeon-kms driver, is unknown. They could behave fine under all conditions, or they
-%   could expose problems under high load like the "Volcanic Islands" GPUs. The problem
-%   is under investigation and will hopefully be resolved soon.
-=======
 %   These should work very well if you use the open source graphics drivers with slightly
 %   older models of AMD GPUs, ie. not the very latest models of the "Volcanic Islands" /
 %   GCN 1.2 GPU family. Specifically, GPUs using the classic open-source display driver
@@ -170,7 +136,6 @@
 %   will only work well under light to moderate load, but may expose visual stimulus
 %   artifacts under high-load scenarios. The reason for this problem known and will likely
 %   be fixed soon. Check back on the forum or PTB website for updates.
->>>>>>> upstream/master
 %
 %   These results are based on testing with two PC setups:
 %
@@ -188,7 +153,6 @@
 %   You will get acceptable performance out of the box. For good performance you will either
 %   need Mesa version 12.1 or later, which is not yet released as of August 2016, or you need
 %   to set the R600_DEBUG environment variable to 'forcedma', ie., execute setenv('R600_DEBUG','forcedma');
->>>>>>> upstream/master
 %   at the very start of your Octave or Matlab session, e.g., from the ~/.octaverc
 %   script or Matlabs startup.m script. Better yet, you can install the current Mesa 12.1
 %   development prototype for Ubuntu 16.04 LTS flavors and derivatives from this ppa:
@@ -199,11 +163,7 @@
 % * Laptops with dual NVidia gpus NVidia iGPU + NVidia dGPU:
 %
 %   Muxless won't work with any current official solution [1]. However, i am not aware of
-<<<<<<< HEAD
-%   any recent muxless laptops - or any such laptops actually - which use dual-NVidia
-=======
 %   any recent muxless laptops - or any such muxless laptops actually - which use dual-NVidia
->>>>>>> upstream/master
 %   gpus. All known dual-NVidia laptops are rather old and use a hardware mux, so Linux
 %   vgaswitcheroo can be used to switch between gpus.
 %
