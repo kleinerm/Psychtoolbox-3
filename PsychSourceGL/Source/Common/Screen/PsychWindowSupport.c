@@ -52,6 +52,8 @@
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 #include <errno.h>
+// utsname for uname() so we can find out on which kernel we're running:
+#include <sys/utsname.h>
 #endif
 
 // Support for nvstusb library requested to drive Nvidia NVision stereo shutter goggles?
@@ -1491,8 +1493,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         }
         else {
             if ((PsychPrefStateGet_VBLTimestampingMode()==4) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)) {
-                printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n",
-                       ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->winsysType != WAFFLE_PLATFORM_WAYLAND)) ? "OpenML sync control support" : "method");
+                if ((*windowRecord)->hybridGraphics == 3)
+                    printf("PTB-INFO: Will try to use PRIME custom modesetting-ddx protocol for accurate Flip timestamping.\n");
+                else
+                    printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n",
+                           ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->winsysType != WAFFLE_PLATFORM_WAYLAND)) ? "OpenML sync control support" : "method");
             }
             else if ((PsychPrefStateGet_VBLTimestampingMode()==1 || PsychPrefStateGet_VBLTimestampingMode()==3) &&
                      (PSYCH_SYSTEM == PSYCH_OSX || ((PSYCH_SYSTEM == PSYCH_LINUX) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)))) {
@@ -3656,7 +3661,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // care of such nuisances - and if it didn't, this wouldn't help anyway. This wait must not be used
     // for Prime-Synced outputSrc -> outputSink setups, as that would add 1 frame extra lag. by preventing
     // us from subitting a swaprequest 1 frame ahead to compensate for the 1 frame lag of Prime sync.
-    if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (!osspecific_asyncflip_scheduled) && (windowRecord->hybridGraphics != 2) &&
+    if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (!osspecific_asyncflip_scheduled) && (windowRecord->hybridGraphics < 2) &&
         ((time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002) || ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0)))) {
         // Less than 2 msecs passed since last bufferswap, although swap in sync with retrace requested.
         // Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
@@ -3834,7 +3839,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                                 if (buffer_age > 3) printf("PTB-WARNING: One potential cause for this is that %i-Buffering is enabled somewhere in the driver or xorg.conf settings.\n", buffer_age);
                                 if ((windowRecord->hybridGraphics == 2) && strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
                                     printf("PTB-WARNING: The most likely cause on this NVidia Optimus setup is the use of the proprietary driver, which will massively impair proper timing!\n");
-                                    printf("PTB-WARNING: Use the open-source nouveau graphics driver, or do not use the NVidia gpu at all, if you care about research grade timing.!\n");
+                                    printf("PTB-WARNING: Use the open-source nouveau graphics driver, or install the enhanced modesetting ddx, or do not use the NVidia gpu at all, if you\n");
+                                    printf("PTB-WARNING: care about research grade timing. See 'help HybridGraphics' for more info.\n");
                                 }
                                 printf("PTB-WARNING: This is a one-time warning which will not repeat, even if the problem persists during this session.\n\n");
                             }
@@ -4268,7 +4274,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // in tSwapComplete from PsychOSGetSwapCompletionTimestamp(). This snippet only gets used in the fallback on unmodified
         // XOrg 1.19 to keep us limping along with bad/inaccurate/unreliable timestamps that are at least somehow self-consistent
         // in some sense:
-        if ((PSYCH_SYSTEM == PSYCH_LINUX) && (windowRecord->specialflags & kPsychIsX11Window) && (windowRecord->hybridGraphics == 2)) {
+        if ((PSYCH_SYSTEM == PSYCH_LINUX) && (windowRecord->specialflags & kPsychIsX11Window) && ((windowRecord->hybridGraphics == 2) || (windowRecord->hybridGraphics == 3))) {
             time_at_vbl += windowRecord->VideoRefreshInterval;
             *time_at_onset += windowRecord->VideoRefreshInterval;
         }
@@ -6532,8 +6538,25 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                     XFree(prop);
                     windowRecord->hybridGraphics = 2;
 
-                    if (PsychPrefStateGet_Verbosity() >= 3)
-                        printf("PTB-INFO: Hybrid graphics setup with DRI PRIME Sync output slaving detected. Trying corrective actions, timing will be impaired.\n");
+                    // Are we running under the hacked/enhanced modesetting ddx as outputSink
+                    // driver, which supports our custom UDP flip timestamping protocol?
+                    if (XInternAtom(dpy, "PrimeTimingHack1", True) != None) {
+                        windowRecord->hybridGraphics = 3;
+                    }
+
+                    if (PsychPrefStateGet_Verbosity() >= 3) {
+                        printf("PTB-INFO: Hybrid graphics setup with DRI PRIME Sync output slaving detected. Applying corrective measures.\n");
+                        if (windowRecord->hybridGraphics < 3) {
+                            printf("PTB-INFO: Both visual timing and timestamping will be highly unreliable. Please read 'help HybridGraphics'\n");
+                            printf("PTB-INFO: on how to install a custom modesetting ddx in order to fix visual onset timestamping and improve timing.\n");
+                        }
+                        else {
+                            printf("PTB-INFO: Custom modesetting ddx detected. Visual timestamping should be mostly reliable at least on display setups\n");
+                            printf("PTB-INFO: with at most one display per X-Screen and one fullscreen window on that X-Screen. Accurate onset timing\n");
+                            printf("PTB-INFO: requires strict following of our recommended practices for use of Screen('Flip', window, tWhen) 'tWhen' times.\n");
+                            printf("PTB-INFO: An extra stimulus onset delay of 1 video refresh cycle can't be avoided for immediate flips though.\n");
+                        }
+                    }
                 }
                 XRRFreeScreenResources(resources);
             }
@@ -6541,6 +6564,19 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         PsychUnlockDisplay();
     }
 
+    // On a hybridGraphics setup always make sure our Linux kernel is recent enough:
+    if ((windowRecord->hybridGraphics) && (PsychPrefStateGet_Verbosity() > 1)) {
+        struct utsname unameresult;
+        int major = 0, minor = 0, patchlevel = 0;
+        uname(&unameresult);
+        sscanf(unameresult.release, "%i.%i.%i", &major, &minor, &patchlevel);
+
+        // If the display iGPU is an Intel chip then we need kernel 4.5 or later for proper sync:
+        if ((gpuMaintype == kPsychIntelIGP) && (major < 4 || (major == 4 && minor < 5))) {
+            printf("PTB-WARNING: This hybrid graphics setup uses a Intel gpu for display, but your Linux kernel %i.%i.%i is too old.\n", major, minor, patchlevel);
+            printf("PTB-WARNING: Please upgrade to Linux version 4.5 or later for hybrid graphics support without visual stimulation artifacts.\n");
+        }
+    }
     #endif
 
     // Check if this is an open-source (Mesa/Gallium) graphics driver on Linux with X11

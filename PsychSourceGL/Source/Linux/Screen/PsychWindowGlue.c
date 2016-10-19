@@ -1590,7 +1590,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     // This only works for unredirected fullscreen windows, as only then we can be somewhat certain that
     // pageflips on the outputSink iGPU are triggered by our OpenGL bufferswaps.
     if (((NULL == glXWaitForSbcOML) || (windowRecord->specialflags & kPsychOpenMLDefective)) &&
-        (windowRecord->hybridGraphics == 2) && (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
+        (windowRecord->hybridGraphics == 3) && (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
         const int targetCompletionMode = 0;
         int xscreen = PsychGetXScreenIdForScreen(windowRecord->screenNumber);
 
@@ -2860,9 +2860,9 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     // delay after a bufferswap request until flip at minimum. Ergo, subtract one video
     // refresh duration from the target time to Increase our chance of hitting the proper
     // target frame. This as of the design of driver version 370.23 with XOrg 1.19-rc1.
-    if (!onlyForCalibration && (windowRecord->hybridGraphics == 2)) {
+    if (!onlyForCalibration && ((windowRecord->hybridGraphics == 2) || (windowRecord->hybridGraphics == 3))) {
         if (PsychPrefStateGet_Verbosity() > 14)
-            printf("PTB-DEBUG: PsychOSAdjustForCompositorDelay: Pre-targetTime: %f secs. VideoRefreshInterval %f secs.\n",
+            printf("PTB-DEBUG: PsychOSAdjustForCompositorDelay: Optimus Pre-targetTime: %f secs. VideoRefreshInterval %f secs.\n",
                    targetTime, windowRecord->VideoRefreshInterval);
         targetTime -= windowRecord->VideoRefreshInterval;
     }
