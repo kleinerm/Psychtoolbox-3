@@ -1436,7 +1436,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // possible that the gfx-hw is not capable of downsampling fast enough to do it every refresh
         // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
         (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-        if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 || ((*windowRecord)->hybridGraphics == 1)) {
+        if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 || ((*windowRecord)->hybridGraphics == 1) || ((*windowRecord)->hybridGraphics == 3)) {
             // Flip frame stereo or multiSampling enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
             if ((ifi_beamestimate>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_beamestimate && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_beamestimate) ||
                 (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_nominal && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_nominal)) {
