@@ -1680,8 +1680,21 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
                 if (PsychPrefStateGet_Verbosity() > 12)
                     printf("0-Screen %i: flipcomplete %i : sbc=%lld : msc=%lld : ust=%lld\n", buf.scrnIndex, buf.flags, windowRecord->reference_sbc, buf.frame, buf.usec);
 
-                // Proper completion packet of type targetCompletionMode received?
+                // glXSwapBuffers fence packet received from ourselves, ie. PsychOSFlipWindowBuffers?
                 if (buf.flags == 100) {
+                    // Exit blocking receive loop:
+                    break;
+                }
+            }
+
+            // Then, if waitig for flip completion, wait for the preceeding flip-scheduled packet via a blocking receive:
+            while (targetCompletionMode == 1) {
+                recv(prime_sockfd[xscreen], &buf, sizeof(buf), MSG_WAITALL);
+                if (PsychPrefStateGet_Verbosity() > 12)
+                    printf("0-Screen %i: flipcomplete %i : sbc=%lld : msc=%lld : ust=%lld\n", buf.scrnIndex, buf.flags, windowRecord->reference_sbc, buf.frame, buf.usec);
+
+                // Proper "flip queued" packet received?
+                if (buf.flags == 0) {
                     // Exit blocking receive loop:
                     break;
                 }
