@@ -1590,8 +1590,10 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     // This only works for unredirected fullscreen windows, as only then we can be somewhat certain that
     // pageflips on the outputSink iGPU are triggered by our OpenGL bufferswaps.
     if (((NULL == glXWaitForSbcOML) || (windowRecord->specialflags & kPsychOpenMLDefective)) &&
-        (windowRecord->hybridGraphics == 3) && (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
-        const int targetCompletionMode = 0;
+        (windowRecord->hybridGraphics == 3 || windowRecord->hybridGraphics == 4) &&
+        (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
+        // Type 4 setup uses wait for true flip completion, type 3 setup only waits for flip scheduled:
+        int targetCompletionMode = (windowRecord->hybridGraphics == 4) ? 1 : 0;
         int xscreen = PsychGetXScreenIdForScreen(windowRecord->screenNumber);
 
         // Yes. Try to use our own custom UDP network protocol to get swap completion timestamps
