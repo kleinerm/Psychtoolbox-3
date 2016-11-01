@@ -353,6 +353,7 @@ void PsychIOOSShutdownSerialReaderThread( PsychSerialDeviceRecord* device)
  */
 PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const char* configString, char* errmsg)
 {
+    char portPath[1000];
     HANDLE fileDescriptor = INVALID_HANDLE_VALUE;
     DCB options;
     PsychSerialDeviceRecord* device = NULL;
@@ -362,8 +363,11 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
     // Init errmsg error message to empty == no error:
     errmsg[0] = 0;
 
+    // See https://support.microsoft.com/en-us/kb/115831 for explanation of this madness:
+    snprintf(portPath, 1000, "\\\\.\\%s", portSpec);
+
     // Open the serial port read/write, for exclusive access with normal attributes and default other settings:
-    fileDescriptor = CreateFile(portSpec, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    fileDescriptor = CreateFile(portPath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (fileDescriptor == INVALID_HANDLE_VALUE) {
         myerrno = GetLastError();
         if (myerrno == ERROR_FILE_NOT_FOUND) {
