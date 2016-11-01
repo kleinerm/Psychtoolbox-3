@@ -145,6 +145,8 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % 01/07/10 mk Code refactoring: Unified check-code for all deviceIndex
 %             values.
 % 12/29/14 mk Add safeguard against using PsychHID on non-X11 Linux backends.
+% 08/13/16 mk Add safeguard for PTB running under "Windows subsystem for Linux".
+% 11/01/16 mk Fix safeguard for PTB running under "Windows subsystem for Linux".
 
 % ptb_kbcheck_disabledKeys is a vector of keyboard scancodes. It allows
 % to define keys which should never be reported as 'down', i.e. disabled
@@ -189,14 +191,16 @@ if isempty(macosx)
         allowPsychHID = 0;
     else
         allowPsychHID = 1;
-        % Try PsychHID:
-        try
-            PsychHID('Version');
-        catch
-            % Failed: Happens, e.g., under MS-Windows "Windows subsystem for Linux" with MingW
-            % X-Server.
-            allowPsychHID = 0;
-            psychlasterror ('reset');
+        if IsLinux
+            % Try PsychHID on Linux:
+            try
+                PsychHID('Version');
+            catch
+                % Failed: Happens, e.g., under MS-Windows "Windows subsystem for Linux" with MingW
+                % X-Server.
+                allowPsychHID = 0;
+                psychlasterror('reset');
+            end
         end
     end
 end
@@ -247,12 +251,6 @@ if allowPsychHID && (~IsWin || (IsWin && ~isempty(deviceNumber)))
         [keyIsDown, secs, keyCode]= PsychHID('KbCheck', [], ptb_kbcheck_enabledKeys);
     end
 else
-   % No-Op for now on Linux without X11 X-Server:
-   if ~allowPsychHID && IsLinux
-      keyIsDown=0; keyCode=zeros(1,256); secs = 0; deltaSecs = 0;
-      %return;
-   end
-
    % We use the built-in KbCheck facility of Screen on MS-Windows
    % for KbChecks if the usercode didn't specify any 'deviceIndex', so
    % the user gets a good "works out of the box" experience for the default
