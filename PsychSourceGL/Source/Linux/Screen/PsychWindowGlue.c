@@ -1590,8 +1590,10 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     // This only works for unredirected fullscreen windows, as only then we can be somewhat certain that
     // pageflips on the outputSink iGPU are triggered by our OpenGL bufferswaps.
     if (((NULL == glXWaitForSbcOML) || (windowRecord->specialflags & kPsychOpenMLDefective)) &&
-        (windowRecord->hybridGraphics == 3) && (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
-        const int targetCompletionMode = 0;
+        (windowRecord->hybridGraphics == 3 || windowRecord->hybridGraphics == 4) &&
+        (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
+        // Type 4 setup uses wait for true flip completion, type 3 setup only waits for flip scheduled:
+        int targetCompletionMode = (windowRecord->hybridGraphics == 4) ? 1 : 0;
         int xscreen = PsychGetXScreenIdForScreen(windowRecord->screenNumber);
 
         // Yes. Try to use our own custom UDP network protocol to get swap completion timestamps
@@ -1653,6 +1655,11 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
             if (PsychPrefStateGet_Verbosity() > 2)
                 printf("PTB-INFO: Custom PRIME Flip completion timestamping for screen %i enabled. Will start at next Flip...\n", windowRecord->screenNumber);
 
+            // Warn about use of multiple video outputs per screen. This cannot possibly work with any level of reliability:
+            if ((PsychScreenToHead(windowRecord->screenNumber, 1) >= 0) && (PsychPrefStateGet_Verbosity() > 1))
+                printf("PTB-WARNING: Custom PRIME Flip completion timestamping for screen %i will not work reliably, because multiple displays are active on this screen!\n",
+                       windowRecord->screenNumber);
+
             // We must skip this one, as the X-Server may have sent out feedback for this flip already,
             // before we managed to create and bind our UDP socket, so the info may be lost and we would
             // hang if we tried to wait for it to arrive. The next flip will be processed by us:
@@ -1680,8 +1687,21 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
                 if (PsychPrefStateGet_Verbosity() > 12)
                     printf("0-Screen %i: flipcomplete %i : sbc=%lld : msc=%lld : ust=%lld\n", buf.scrnIndex, buf.flags, windowRecord->reference_sbc, buf.frame, buf.usec);
 
-                // Proper completion packet of type targetCompletionMode received?
+                // glXSwapBuffers fence packet received from ourselves, ie. PsychOSFlipWindowBuffers?
                 if (buf.flags == 100) {
+                    // Exit blocking receive loop:
+                    break;
+                }
+            }
+
+            // Then, if waitig for flip completion, wait for the preceeding flip-scheduled packet via a blocking receive:
+            while (targetCompletionMode == 1) {
+                recv(prime_sockfd[xscreen], &buf, sizeof(buf), MSG_WAITALL);
+                if (PsychPrefStateGet_Verbosity() > 12)
+                    printf("0-Screen %i: flipcomplete %i : sbc=%lld : msc=%lld : ust=%lld\n", buf.scrnIndex, buf.flags, windowRecord->reference_sbc, buf.frame, buf.usec);
+
+                // Proper "flip queued" packet received?
+                if (buf.flags == 0) {
                     // Exit blocking receive loop:
                     break;
                 }

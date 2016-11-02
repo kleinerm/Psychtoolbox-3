@@ -1436,7 +1436,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // possible that the gfx-hw is not capable of downsampling fast enough to do it every refresh
         // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
         (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-        if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 || ((*windowRecord)->hybridGraphics == 1)) {
+        if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 ||
+            ((*windowRecord)->hybridGraphics == 1) || ((*windowRecord)->hybridGraphics == 3) || ((*windowRecord)->hybridGraphics == 4)) {
             // Flip frame stereo or multiSampling enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
             if ((ifi_beamestimate>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_beamestimate && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_beamestimate) ||
                 (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_nominal && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_nominal)) {
@@ -1493,7 +1494,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         }
         else {
             if ((PsychPrefStateGet_VBLTimestampingMode()==4) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)) {
-                if ((*windowRecord)->hybridGraphics == 3)
+                if ((*windowRecord)->hybridGraphics == 3 || (*windowRecord)->hybridGraphics == 4)
                     printf("PTB-INFO: Will try to use PRIME custom modesetting-ddx protocol for accurate Flip timestamping.\n");
                 else
                     printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n",
@@ -6544,17 +6545,24 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                         windowRecord->hybridGraphics = 3;
                     }
 
+                    // Is this a modesetting ddx with additional 1 frame lag avoidance?
+                    if (XInternAtom(dpy, "PrimeTimingHack2", True) != None) {
+                        windowRecord->hybridGraphics = 4;
+                    }
+
                     if (PsychPrefStateGet_Verbosity() >= 3) {
-                        printf("PTB-INFO: Hybrid graphics setup with DRI PRIME Sync output slaving detected. Applying corrective measures.\n");
+                        printf("PTB-INFO: Hybrid graphics setup with DRI PRIME-Sync output slaving detected. Applying corrective measures.\n");
                         if (windowRecord->hybridGraphics < 3) {
                             printf("PTB-INFO: Both visual timing and timestamping will be highly unreliable. Please read 'help HybridGraphics'\n");
                             printf("PTB-INFO: on how to install a custom modesetting ddx in order to fix visual onset timestamping and improve timing.\n");
                         }
                         else {
                             printf("PTB-INFO: Custom modesetting ddx detected. Visual timestamping should be mostly reliable at least on display setups\n");
-                            printf("PTB-INFO: with at most one display per X-Screen and one fullscreen window on that X-Screen. Accurate onset timing\n");
-                            printf("PTB-INFO: requires strict following of our recommended practices for use of Screen('Flip', window, tWhen) 'tWhen' times.\n");
-                            printf("PTB-INFO: An extra stimulus onset delay of 1 video refresh cycle can't be avoided for immediate flips though.\n");
+                            printf("PTB-INFO: with at most one display per X-Screen and one fullscreen window on that X-Screen.\n");
+                            if (windowRecord->hybridGraphics < 4) {
+                                printf("PTB-INFO: Accurate onset timing requires strict adherence to recommended practices for Screen('Flip', window, tWhen) 'tWhen' times.\n");
+                                printf("PTB-INFO: An extra stimulus onset delay of 1 video refresh cycle can't be avoided for immediate flips though.\n");
+                            }
                         }
                     }
                 }
