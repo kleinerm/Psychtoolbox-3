@@ -99,11 +99,14 @@
 % Ubuntu Linux 14.04.5 LTS with its latest hardware enablement stack IV, or even
 % better, Ubuntu 16.04 LTS do provide sufficiently modern versions of these software
 % components. Additionally you will need one of the most recent Linux kernels:
-% At least Linux 4.5 on PC laptops, at least Linux 4.6 on Apple MacBookPro machines.
+% At least Linux 4.5 on PC laptops, at least Linux 4.6 on Apple MacBookPro machines
+% if you have an Intel integrated graphics chip combined with a NVidia gpu or an older
+% AMD gpu. Modern AMD gpus will require even more modern kernels.
 %
-% As of August 2016, Linux 4.7 would be recommended as the most modern Linux kernel [2].
-% The autumn 2016 updates of Linux distributions, e.g., Ubuntu 16.10, will ship with
-% Linux 4.8 by default, requiring no special software updates anymore.
+% As of November 2016, Linux 4.8 would be recommended as the most modern Linux kernel [2].
+% The autumn 2016 updates of Linux distributions, e.g., Ubuntu 16.10, do ship with
+% Linux 4.8 by default, requiring no special software updates anymore, unless you use
+% an Intel iGPU with one of the latest generation AMD dGPU's.
 %
 %
 % * Laptops with an Intel iGPU combined with a NVidia dGPU ("NVidia Optimus" models):
@@ -117,8 +120,8 @@
 %
 %   If you want to use the NVidia proprietary display driver for Linux instead,
 %   no well working solution with correct timing and display is available yet [1].
-%   However, a beta version of a solution is currently in early testing, so this
-%   should be a solved problem in the forseeable future. See the following thread
+%   However, a usable version of a solution is currently in final testing, so this
+%   should be less of a problem in the foreseeable future. See the following thread
 %   for the current state of the NVidia proprietary implementation and for some more
 %   nice background info on the challenges of proper handshaking and synchronization
 %   on muxless laptops:
@@ -131,16 +134,19 @@
 %   These should work very well if you use the open source graphics drivers with slightly
 %   older models of AMD GPUs, ie. not the very latest models of the "Volcanic Islands" /
 %   GCN 1.2 GPU family. Specifically, GPUs using the classic open-source display driver
-%   radeon-kms will work with perfectly trustworthy timing and quality. GPUs of the
-%   "Volcanic Islands" GCN 1.2 generation which use the new open-source amdgpu-kms driver
+%   "radeon-kms" will work with perfectly trustworthy timing and quality. GPUs of the
+%   "Volcanic Islands" GCN 1.2 generation which use the new open-source "amdgpu-kms" driver
 %   will only work well under light to moderate load, but may expose visual stimulus
-%   artifacts under high-load scenarios. The reason for this problem known and will likely
-%   be fixed soon. Check back on the forum or PTB website for updates.
+%   artifacts under high-load scenarios. A fix for this problem has been implemented for
+%   the upcoming Linux kernel version 4.9 (expected release data early December 2016), and
+%   the expectation is that this fix will become available to Linux 4.8 as well, sometime
+%   after the release of Linux 4.9. Check back on the forum or PTB website for updates.
 %
 %   These results are based on testing with two PC setups:
 %
 %   - Intel HD "Haswell desktop" graphics chip + AMD Radeon R9 380 Tonga Pro. Perfect under
-%     light/medium load, malfunctions under high load. (amdgpu-kms)
+%     light/medium load, malfunctions under high load with Linux kernels older than Linux 4.10.
+%     (amdgpu-kms)
 %
 %   - Intel HD "Ivybridge desktop" graphics chip + AMD FireGL "Cedar". Perfect under all
 %     conditions. (radeon-kms).
@@ -151,11 +157,11 @@
 %   so far, although they should behave in the same way.
 %
 %   You will get acceptable performance out of the box. For good performance you will either
-%   need Mesa version 12.1 or later, which is not yet released as of August 2016, or you need
-%   to set the R600_DEBUG environment variable to 'forcedma', ie., execute setenv('R600_DEBUG','forcedma');
-%   at the very start of your Octave or Matlab session, e.g., from the ~/.octaverc
-%   script or Matlabs startup.m script. Better yet, you can install the current Mesa 12.1
-%   development prototype for Ubuntu 16.04 LTS flavors and derivatives from this ppa:
+%   need Mesa version 13 or later, or you need to set the R600_DEBUG environment variable to
+%   'forcedma', ie., execute setenv('R600_DEBUG','forcedma'); at the very start of your Octave
+%   or Matlab session, e.g., from the ~/.octaverc script or Matlabs startup.m script. Better yet,
+%   you can install the current Mesa 13.1 development prototype for Ubuntu 16.04 LTS flavors and
+%   derivatives from this ppa:
 %
 %   https://launchpad.net/~paulo-miguel-dias/+archive/ubuntu/mesa/+packages
 %
@@ -232,19 +238,16 @@
 %     yet. Ask for assistance on the Psychtoolbox user forum if you happen to have such a
 %     laptop.
 %
-% [2] You can get Linux 4.7.3 for Ubuntu 16.04-LTS for manual installation from here:
-%     http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.7.3/
-%
-%     Look always for the most recent version with the latest bug fixes! Maybe there is
-%     a 4.7.4 or 4.7.5 folder available when you read this file...
+% [2] You can get Linux 4.8.8 for Ubuntu 16.04-LTS for manual installation from here:
+%     http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.8.8/
 %
 %     On a 64-Bit system you'd download and install the files in the amd64 section, e.g.
 %
-%     linux-headers-4.7.3-040703_4.7.3-040703.201609070334_all.deb
-%     linux-headers-4.7.3-040703-lowlatency_4.7.3-040703.201609070334_amd64.deb
-%     linux-image-4.7.3-040703-lowlatency_4.7.3-040703.201609070334_amd64.deb
+%     linux-headers-4.8.8-040808_4.8.8-040808.201611150231_all.deb
+%     linux-headers-4.8.8-040808-lowlatency_4.8.8-040808.201611150231_amd64.deb
+%     linux-image-4.8.8-040808-lowlatency_4.8.8-040808.201611150231_amd64.deb
 %
 %     You could install them by clicking on them to start the GUI installer. Or you
-%     could type "sudo dpkg -i linux-*4.7*" in a terminal window. After a reboot the
+%     could type "sudo dpkg -i linux-*4.8*" in a terminal window. After a reboot the
 %     kernel should become available for use.
 %

@@ -6579,10 +6579,34 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         uname(&unameresult);
         sscanf(unameresult.release, "%i.%i.%i", &major, &minor, &patchlevel);
 
-        // If the display iGPU is an Intel chip then we need kernel 4.5 or later for proper sync:
-        if ((gpuMaintype == kPsychIntelIGP) && (major < 4 || (major == 4 && minor < 5))) {
-            printf("PTB-WARNING: This hybrid graphics setup uses a Intel gpu for display, but your Linux kernel %i.%i.%i is too old.\n", major, minor, patchlevel);
-            printf("PTB-WARNING: Please upgrade to Linux version 4.5 or later for hybrid graphics support without visual stimulation artifacts.\n");
+        // If the display iGPU is an Intel chip then we need kernel 4.5 or later for proper dmabuf-fence sync:
+        if (gpuMaintype == kPsychIntelIGP) {
+            // Need at least Linux 4.5 for Intel iGPU + some dGPU:
+            if (major < 4 || (major == 4 && minor < 5)) {
+                printf("PTB-WARNING: This hybrid graphics setup uses a Intel gpu for display, but your Linux kernel %i.%i.%i is too old.\n", major, minor, patchlevel);
+                printf("PTB-WARNING: Please upgrade to Linux version 4.5 or later for hybrid graphics support without visual stimulation artifacts.\n");
+            }
+            else if ((windowRecord->hybridGraphics == 1) && (rendergpuVendor == PCI_VENDOR_ID_AMD || rendergpuVendor == PCI_VENDOR_ID_ATI)) {
+                // Intel iGPU + AMD dGPU renderoffload on Linux 4.5 or later. All is fine on older AMD
+                // parts driven by radeon-kms. "Volcanic Islands" GCN 1.2+ gpus driven by amdgpu-kms
+                // need at least Linux 4.9 as of November 2016 in order to provide proper fence sync
+                // under high load. Specifically the following patch is needed for amdgpu-kms:
+                // http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=8e94a46c1770884166b31adc99eba7da65a446a7
+
+                // Probe if amdgpu-kms driver modules is loaded:
+                FILE *amdgpu = fopen("/sys/module/amdgpu", "r");
+                if (amdgpu) {
+                    // Yes, dGPU is driven by amdgpu-kms.
+                    fclose(amdgpu);
+
+                    // As of November 2016 we need kernel 4.9 or later, otherwise warn about potential display artifacts:
+                    if (major == 4 && minor < 9) {
+                        printf("PTB-WARNING: This hybrid graphics setup uses a Intel iGPU for display and AMD dGPU for rendering, but your Linux kernel %i.%i.%i\n", major, minor, patchlevel);
+                        printf("PTB-WARNING: is too old to guarantee reliable visual stimulation. Upgrade to Linux version 4.9 or later for hybrid graphics support\n");
+                        printf("PTB-WARNING: without visual stimulation artifacts.\n");
+                    }
+                }
+            }
         }
     }
     #endif
