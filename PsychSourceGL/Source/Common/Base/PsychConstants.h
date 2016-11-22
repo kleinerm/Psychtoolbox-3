@@ -32,6 +32,13 @@
 #define WINDOWS_LEAN_AND_MEAN
 // Otherwise no math constants like M_PI defined in math.h et al. under MSVC:
 #define _USE_MATH_DEFINES
+
+// Some versions of MINGW64 for Windows lack this, causing _putenv_s to be
+// undefined.
+#ifndef MINGW_HAS_SECURE_API
+#define MINGW_HAS_SECURE_API 1
+#endif
+
 #endif
 
 //bring in the standard c and system headers 
