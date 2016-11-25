@@ -14,7 +14,7 @@
  * 24-Mar-2011 -- Make 64-bit clean (MK).
  * 27-Mar-2011 -- Remove obsolete and totally bitrotten Octave-2 support (MK).
  * 03-Apr-2011 -- Allow to receive pointers encoded in double's, uint32 or uint64. Adapt dynamically (MK).
- *
+ * 26-Nov-2016 -- Most history is in Git since years, these entries are moot. (MK)
  */
 
 #include "mogltypes.h"
@@ -189,6 +189,19 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         // auto-detect and dynamically link/bind all core OpenGL functionality
         // as well as all possible OpenGL extensions on OS-X, Linux and Windows.
         err = GLEW_OK;
+
+#if 0
+        // DISABLED for the moment. Upgrading to GLEW-2.0 makes this more complex. It now provides
+        // builtin EGL support, but only compile-time switching, not runtime switching, so we still
+        // can't do this cleanly at runtime without hacking up GLEW-2.0 again. Furthermore, moglcore's
+        // and Screen's backends are not capable of runtime switching between X11 and Wayland, so the
+        // only important use-case won't work without refactoring of Screen() anyway.
+        //
+        // Let's defer the decision if we need these hacks in some new format, or improvements to
+        // upstream GLEW-2.x until we actually decide if we want runtime switching for Screen() between
+        // X11 and Wayland et al., ie. GLX and EGL et al. Maybe we'll just go with compile-time switching
+        // and then these hacks would be moot, as GLEW-2 already supports compile-time switching.
+
         #if defined(PTB_USE_WAFFLE) || defined(PTB_USE_WAYLAND)
         // Linux is special: If we use the Waffle backend for display system binding, then our display backend
         // may be something else than GLX (e.g., X11/EGL, Wayland/EGL, GBM/EGL, ANDROID/EGL etc.), in which case
@@ -208,7 +221,9 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
             // Other os'es, or Linux without Waffle backend: Always init GLEW:
             err = glewInit();
         #endif
+#endif
 
+        err = glewInit();
         if (GLEW_OK != err) {
             // Failed! Something is seriously wrong - We have to abort :(
             printf("MOGL: Failed to initialize! Probably you called an OpenGL command *before* opening an onscreen window?!?\n");
@@ -217,33 +232,33 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
         }
 
         // Success. Ready to go...
-		if (debuglevel > 1) {
-			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2015 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
+        if (debuglevel > 1) {
+            printf("MOGL - OpenGL for Matlab & GNU/Octave initialized. MOGL is (c) 2006-2016 Richard F. Murray & Mario Kleiner, licensed to you under MIT license.\n");
             #ifdef WINDOWS
-			printf("On MS-Windows, we make use of the freeglut library, which is Copyright (c) 1999-2000 Pawel W. Olszta, licensed under compatible MIT/X11 license.\n");
-            printf("The precompiled Windows binary DLL's have been kindly provided by http://www.transmissionzero.co.uk/software/freeglut-devel/ -- Thanks!\n");
+                printf("On MS-Windows, we make use of the freeglut library, which is Copyright (c) 1999-2000 Pawel W. Olszta, licensed under compatible MIT/X11 license.\n");
+                printf("The precompiled Windows binary DLL's have been kindly provided by http://www.transmissionzero.co.uk/software/freeglut-devel/ -- Thanks!\n");
             #endif
-			printf("See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n");
-		}
+            printf("See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n");
+        }
         fflush(NULL);
 
         // Perform dynamic rebinding of ARB extensions to core functions, if necessary:
         mogl_rebindARBExtensionsToCore();
 
-		#ifdef FREEGLUT
-		// FreeGlut must be initialized, otherwise it will emergency abort the whole application.
-		// However, we skip init if we're on a setup without GLX display backend, as this would
-		// abort us due to lack of GLX. On non-GLX we simply can't use FreeGlut at all. Now on
-                // Wayland we'd really like to use FreeGlut and with a XOrg 1.16 server or later we luckily
-                // have XWayland available as a X11/GLX emulation, so we can glutInit() on such a setup if
-                // the DISPLAY variable is defined and signals availability of basic X11/GLX. The fact we don't
-                // use it doesn't matter, as our use of GLUT is restricted to rendering of teapots and other primitives
-                // anyway, and those don't require any Windowing system dependencies in the first place.
-		if (!getenv("PSYCH_USE_DISPLAY_BACKEND") || strstr(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx") || getenv("DISPLAY")) {
-			// GLX display backend - Init and use FreeGlut:
-			glutInit( &noargs, &dummyargp);
-		}
-		#endif
+        #ifdef FREEGLUT
+            // FreeGlut must be initialized, otherwise it will emergency abort the whole application.
+            // However, we skip init if we're on a setup without GLX display backend, as this would
+            // abort us due to lack of GLX. On non-GLX we simply can't use FreeGlut at all. Now on
+            // Wayland we'd really like to use FreeGlut and with a XOrg 1.16 server or later we luckily
+            // have XWayland available as a X11/GLX emulation, so we can glutInit() on such a setup if
+            // the DISPLAY variable is defined and signals availability of basic X11/GLX. The fact we don't
+            // use it doesn't matter, as our use of GLUT is restricted to rendering of teapots and other primitives
+            // anyway, and those don't require any Windowing system dependencies in the first place.
+            if (!getenv("PSYCH_USE_DISPLAY_BACKEND") || strstr(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx") || getenv("DISPLAY")) {
+                // GLX display backend - Init and use FreeGlut:
+                glutInit(&noargs, &dummyargp);
+            }
+        #endif
 
         // Running on a OpenGL-ES rendering api under Linux?
         if (getenv("PSYCH_USE_GFX_BACKEND") && strstr(getenv("PSYCH_USE_GFX_BACKEND"), "gles")) {

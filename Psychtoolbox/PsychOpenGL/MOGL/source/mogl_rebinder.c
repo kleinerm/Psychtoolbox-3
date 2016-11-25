@@ -4,7 +4,7 @@
  *
  */
 
-#include "glew.h"
+#include "GL/glew.h"
 
 // Dynamic extension rebinding: This is in an extra file mogl_rebinder.c and defined
 // with explicit C linkage. Reason: For the Octave version, we need to compile all
@@ -29,7 +29,7 @@ extern "C" void mogl_rebindARBExtensionsToCore(void)
 #else
 void mogl_rebindARBExtensionsToCore(void)
 #endif
-{   
+{
 #ifndef NULL
 #define NULL 0
 #endif
