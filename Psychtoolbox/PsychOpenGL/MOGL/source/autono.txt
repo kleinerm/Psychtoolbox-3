@@ -88,3 +88,6 @@ glTexCoordPointer
 glTexImage2D
 glVertexAttribPointer
 glVertexPointer
+
+- this one is broken due to OpenGL 4.5 api spec bugs, so needs manual fix or disable
+glClearNamedFramebufferfi

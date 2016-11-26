@@ -51,6 +51,17 @@ void glu_getstring( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 
 }
 
+void gl_clearnamedframebufferfi( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+    if (NULL == glClearNamedFramebufferfi) mogl_glunsupported("glClearNamedFramebufferfi");
+    glClearNamedFramebufferfi((GLuint)mxGetScalar(prhs[0]),
+                              (GLenum)mxGetScalar(prhs[1]),
+                              (GLint)mxGetScalar(prhs[2]),
+                              (const GLfloat)mxGetScalar(prhs[3]),
+                              (GLint)mxGetScalar(prhs[4]));
+
+}
+
 void gl_samplepass( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
     // MK: This function is a zombie. It was specified in some early draft of the
 	// multisample extension and then removed from the spec. Unfortunately its definition
@@ -969,7 +980,7 @@ void gles_end( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 // *** it's important that this list be kept in alphabetical order, 
 //     and that gl_manual_map_count be updated
 //     for each new entry ***
-int gl_manual_map_count=45;
+int gl_manual_map_count=46;
 cmdhandler gl_manual_map[] = {
 { "ftglBegin",                      gles_begin                          },
 { "ftglColor4f",                    gles_color4f                        },
@@ -978,6 +989,7 @@ cmdhandler gl_manual_map[] = {
 { "ftglVertex2f",                   gles_vertex2f                       },
 { "ftglVertex3f",                   gles_vertex3f                       },
 { "glBufferData",                   gl_bufferdata                       },
+{ "glClearNamedFramebufferfi",      gl_clearnamedframebufferfi          },
 { "glColorPointer",                 gl_colorpointer                     },
 { "glDrawElements",                 gl_drawelements                     },
 { "glDrawRangeElements",            gl_drawrangeelements                },
