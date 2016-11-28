@@ -1,4 +1,3 @@
-
 /*
  * mogl_rebinder.c -- Dynamic extension rebinding.
  *
@@ -75,7 +74,7 @@ void mogl_rebindARBExtensionsToCore(void)
     if (NULL == glGetProgramInfoLog) glGetProgramInfoLog = glGetInfoLogARB;
     if (NULL == glValidateProgram) glValidateProgram = glValidateProgramARB;
     if (NULL == glIsProgram) glIsProgram = glIsProgramARB;
-    
+
     // ARB_vertex_buffer_object:
     if (NULL == glGenBuffers) glGenBuffers = glGenBuffersARB;
     if (NULL == glDeleteBuffers) glDeleteBuffers = glDeleteBuffersARB;
