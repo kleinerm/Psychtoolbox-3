@@ -17828,7 +17828,17 @@ GLenum GLEWAPIENTRY glewInit (void)
 #elif defined(_WIN32)
   return wglewInit();
 #elif !defined(__APPLE__) || defined(GLEW_APPLE_GLX) /* _UNIX */
-  return glxewInit();
+  /* MK CHANGED FOR PTB:
+   * This hack allows runtime switching between X11/GLX and Wayland et al, where we cannot use
+   * GLX and ergo glxewInit() would fail. On Wayland et al. we use EGL but unfortunately can't
+   * use GLEW 2.0's builtin EGL support, because GLEW's design only allows compile-time switching.
+   * Such is life... The environment variable is set to something else than "glx" by Screen() when
+   * initializing Wayland or other EGL backends.
+   */
+  if (!getenv("PSYCH_USE_DISPLAY_BACKEND") || strstr(getenv("PSYCH_USE_DISPLAY_BACKEND"), "glx"))
+    return glxewInit();
+  else
+    return r;
 #else
   return r;
 #endif /* _WIN32 */
