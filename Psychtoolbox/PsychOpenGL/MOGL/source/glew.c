@@ -17812,6 +17812,10 @@ const GLubyte * GLEWAPIENTRY glewGetString (GLenum name)
 
 GLboolean glewExperimental = GL_FALSE;
 
+/* MK: Declare functions we need for our hack below: */
+char *getenv(const char *name);
+char *strstr(const char *haystack, const char *needle);
+
 GLenum GLEWAPIENTRY glewInit (void)
 {
   GLenum r;
