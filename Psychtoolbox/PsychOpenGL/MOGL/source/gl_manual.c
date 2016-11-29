@@ -400,6 +400,64 @@ void moglcopymatrixtobuffer(int nlhs, mxArray *plhs[], int nrhs, const mxArray *
     memcpy(dst, src, nin);
 }
 
+void gl_genbuffers( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+    // R2015b compat fix.
+    // Need manual allocation and passing of return argument - a vector of uint32() buffer handles:
+    mwSize outdims;
+
+    if (NULL == glGenBuffers) mogl_glunsupported("glGenBuffers");
+
+    outdims = (mwSize) (GLsizei) mxGetScalar(prhs[0]);
+    plhs[0] = mxCreateNumericArray(1, &outdims, mxUINT32_CLASS, mxREAL);
+
+    glGenBuffers((GLsizei)mxGetScalar(prhs[0]),
+                 (GLuint*)mxGetData(plhs[0]));
+}
+
+void gl_genbuffersarb( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+    // R2015b compat fix.
+    // Need manual allocation and passing of return argument - a vector of uint32() buffer handles:
+    mwSize outdims;
+
+    if (NULL == glGenBuffersARB) mogl_glunsupported("glGenBuffersARB");
+
+    outdims = (mwSize) (GLsizei) mxGetScalar(prhs[0]);
+    plhs[0] = mxCreateNumericArray(1, &outdims, mxUINT32_CLASS, mxREAL);
+
+    glGenBuffersARB((GLsizei)mxGetScalar(prhs[0]),
+                    (GLuint*)mxGetData(plhs[0]));
+}
+
+void gl_getbufferparameteriv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+    // R2015b compat fix.
+    // Need manual allocation and passing of return argument - a int32() value:
+    mwSize outdims;
+
+    if (NULL == glGetBufferParameteriv) mogl_glunsupported("glGetBufferParameteriv");
+
+    outdims = 1;
+    plhs[0] = mxCreateNumericArray(1, &outdims, mxINT32_CLASS, mxREAL);
+
+    glGetBufferParameteriv((GLenum)mxGetScalar(prhs[0]),
+                           (GLenum)mxGetScalar(prhs[1]),
+                           (GLint*)mxGetData(plhs[0]));
+}
+
+void gl_getbufferparameterivarb( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+    // R2015b compat fix.
+    // Need manual allocation and passing of return argument - a int32() value:
+    mwSize outdims;
+
+    if (NULL == glGetBufferParameterivARB) mogl_glunsupported("glGetBufferParameterivARB");
+
+    outdims = 1;
+    plhs[0] = mxCreateNumericArray(1, &outdims, mxINT32_CLASS, mxREAL);
+
+    glGetBufferParameterivARB((GLenum)mxGetScalar(prhs[0]),
+                              (GLenum)mxGetScalar(prhs[1]),
+                              (GLint*)mxGetData(plhs[0]));
+}
+
 void gl_bufferdata( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
     if (NULL == glBufferData) mogl_glunsupported("glBufferData");
@@ -978,7 +1036,7 @@ void gles_end( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 // *** it's important that this list be kept in alphabetical order,
 //     and that gl_manual_map_count be updated
 //     for each new entry ***
-int gl_manual_map_count=46;
+int gl_manual_map_count=50;
 cmdhandler gl_manual_map[] = {
 { "ftglBegin",                      gles_begin                          },
 { "ftglColor4f",                    gles_color4f                        },
@@ -992,6 +1050,10 @@ cmdhandler gl_manual_map[] = {
 { "glDrawElements",                 gl_drawelements                     },
 { "glDrawRangeElements",            gl_drawrangeelements                },
 { "glFeedbackBuffer",               gl_feedbackbuffer                   },
+{ "glGenBuffers",                   gl_genbuffers                       },
+{ "glGenBuffersARB",                gl_genbuffersarb                    },
+{ "glGetBufferParameteriv",         gl_getbufferparameteriv             },
+{ "glGetBufferParameterivARB",      gl_getbufferparameterivarb          },
 { "glGetBufferPointerv",            gl_getbufferpointerv                },
 { "glGetPointerv",                  gl_getpointerv                      },
 { "glGetString",                    gl_getstring                        },

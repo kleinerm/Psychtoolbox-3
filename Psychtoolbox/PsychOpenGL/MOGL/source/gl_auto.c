@@ -3864,14 +3864,6 @@ void gl_deletebuffers( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
 
 }
 
-void gl_genbuffers( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glGenBuffers) mogl_glunsupported("glGenBuffers");
-	glGenBuffers((GLsizei)mxGetScalar(prhs[0]),
-		(GLuint*)mxGetData(prhs[1]));
-
-}
-
 void gl_isbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glIsBuffer) mogl_glunsupported("glIsBuffer");
@@ -3914,15 +3906,6 @@ void gl_unmapbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] 
 	if (NULL == glUnmapBuffer) mogl_glunsupported("glUnmapBuffer");
 	plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
 	*mxGetPr(plhs[0])=(double)glUnmapBuffer((GLenum)mxGetScalar(prhs[0]));
-
-}
-
-void gl_getbufferparameteriv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glGetBufferParameteriv) mogl_glunsupported("glGetBufferParameteriv");
-	glGetBufferParameteriv((GLenum)mxGetScalar(prhs[0]),
-		(GLenum)mxGetScalar(prhs[1]),
-		(GLint*)mxGetData(prhs[2]));
 
 }
 
@@ -11583,14 +11566,6 @@ void gl_deletebuffersarb( int nlhs, mxArray *plhs[], int nrhs, const mxArray *pr
 
 }
 
-void gl_genbuffersarb( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glGenBuffersARB) mogl_glunsupported("glGenBuffersARB");
-	glGenBuffersARB((GLsizei)mxGetScalar(prhs[0]),
-		(GLuint*)mxGetData(prhs[1]));
-
-}
-
 void gl_isbufferarb( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glIsBufferARB) mogl_glunsupported("glIsBufferARB");
@@ -11642,15 +11617,6 @@ void gl_unmapbufferarb( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs
 	if (NULL == glUnmapBufferARB) mogl_glunsupported("glUnmapBufferARB");
 	plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
 	*mxGetPr(plhs[0])=(double)glUnmapBufferARB((GLenum)mxGetScalar(prhs[0]));
-
-}
-
-void gl_getbufferparameterivarb( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glGetBufferParameterivARB) mogl_glunsupported("glGetBufferParameterivARB");
-	glGetBufferParameterivARB((GLenum)mxGetScalar(prhs[0]),
-		(GLenum)mxGetScalar(prhs[1]),
-		(GLint*)mxGetData(prhs[2]));
 
 }
 
@@ -23092,7 +23058,7 @@ void gl_replacementcodeuitexcoord2fcolor4fnormal3fvertex3fvsun( int nlhs, mxArra
 
 }
 
-int gl_auto_map_count=2464;
+int gl_auto_map_count=2460;
 cmdhandler gl_auto_map[] = {
 { "glAccum",                         gl_accum                            },
 { "glActiveProgramEXT",              gl_activeprogramext                 },
@@ -23652,8 +23618,6 @@ cmdhandler gl_auto_map[] = {
 { "glFrustum",                       gl_frustum                          },
 { "glFrustumfOES",                   gl_frustumfoes                      },
 { "glGenAsyncMarkersSGIX",           gl_genasyncmarkerssgix              },
-{ "glGenBuffers",                    gl_genbuffers                       },
-{ "glGenBuffersARB",                 gl_genbuffersarb                    },
 { "glGenFencesAPPLE",                gl_genfencesapple                   },
 { "glGenFencesNV",                   gl_genfencesnv                      },
 { "glGenFragmentShadersATI",         gl_genfragmentshadersati            },
@@ -23708,8 +23672,6 @@ cmdhandler gl_auto_map[] = {
 { "glGetBooleani_v",                 gl_getbooleani_v                    },
 { "glGetBooleanv",                   gl_getbooleanv                      },
 { "glGetBufferParameteri64v",        gl_getbufferparameteri64v           },
-{ "glGetBufferParameteriv",          gl_getbufferparameteriv             },
-{ "glGetBufferParameterivARB",       gl_getbufferparameterivarb          },
 { "glGetBufferParameterui64vNV",     gl_getbufferparameterui64vnv        },
 { "glGetBufferSubData",              gl_getbuffersubdata                 },
 { "glGetBufferSubDataARB",           gl_getbuffersubdataarb              },
