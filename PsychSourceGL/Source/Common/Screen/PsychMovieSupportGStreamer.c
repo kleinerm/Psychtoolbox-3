@@ -369,9 +369,8 @@ static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
  */
 static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_data)
 {
-    (void) sink;
-
     PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
+    (void) sink;
 
     PsychLockMutex(&movie->mutex);
     //printf("PTB-DEBUG: New PrerollBuffer received.\n");
@@ -387,9 +386,9 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
  */
 static GstFlowReturn PsychNewBufferCallback(GstAppSink *sink, gpointer user_data)
 {
+    PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
     (void) sink;
 
-    PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
     PsychLockMutex(&movie->mutex);
     //printf("PTB-DEBUG: New Buffer received.\n");
     movie->frameAvail++;

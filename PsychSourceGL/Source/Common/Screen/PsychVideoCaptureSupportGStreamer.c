@@ -540,9 +540,9 @@ static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 /* Called at each end-of-stream event at end of playback: */
 static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 {
+    PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
     (void) sink;
 
-    PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
     PsychLockMutex(&capdev->mutex);
     printf("PTB-DEBUG: Videosink reached EOS.\n");
     // Signal EOS to trigger an abort of device open sequence:
@@ -586,10 +586,8 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
 {
     GstSample *videoSample;
     int w = 0, h = 0;
-
-    (void) sink;
-
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
+    (void) sink;
 
     PsychLockMutex(&capdev->mutex);
     videoSample = gst_app_sink_pull_preroll(GST_APP_SINK(capdev->videosink));
@@ -622,9 +620,8 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
  */
 static GstFlowReturn PsychNewBufferCallback(GstAppSink *sink, gpointer user_data)
 {
-    (void) sink;
-
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
+    (void) sink;
 
     PsychLockMutex(&capdev->mutex);
     capdev->frameAvail++;

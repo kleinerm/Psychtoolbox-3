@@ -3799,10 +3799,10 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
     char* strp;
     psych_bool bilinearfiltering;
 
-    (void) srcIsReadonly, (void) allowFBOSwizzle, (void) srcfbo2, (void) dstfbo, (void) bouncefbo;
-
     // hookUserData, if non-NULL, can provide override parameter string:
     char* pString1 = (hookUserData) ? (char*) hookUserData : hookfunc->pString1;
+
+    (void) srcIsReadonly, (void) allowFBOSwizzle, (void) srcfbo2, (void) dstfbo, (void) bouncefbo;
 
     // Child protection:
     if (!(srcfbo1 && (*srcfbo1))) {
