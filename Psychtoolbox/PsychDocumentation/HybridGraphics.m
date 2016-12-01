@@ -49,8 +49,8 @@
 % with either the dGPU active and the Laptop behaves like a machine with
 % one gpu, or the active gpu can be switched via the Linux "vgaswitcheroo"
 % mechanism. The same applies for other PC laptops which are equipped
-% with a mux. Iow. one can manually select the performance vs. power consumption
-% tradeoff.
+% with a mux. Iow. one can manually select the performance vs. power
+% consumption tradeoff.
 %
 % Most modern common PC laptops are muxless. The iGPU is hard-wired to
 % the video outputs, both to the laptop flat panel and the external outputs.
@@ -64,7 +64,7 @@
 % copy image data from the dGPU to the iGPU, converting the data into a format
 % the iGPU can display. For this reason, display latency on a muxless laptop
 % will always be longer and absolute graphics performance lower than on a laptop
-% which only has a dGPU, or a muxless laptop. A big problem is the need to
+% which only has a dGPU, or on a muxless laptop. A big problem is the need to
 % properly synchronize the rendering of the dGPU with the display of the iGPU.
 % Depending on how this synchronization or handshake is implemented, visual
 % stimulus onset timing and timestamping can be highly unreliable and inaccurate.
@@ -86,9 +86,9 @@
 % LINUX:
 % ------
 %
-% On Linux, as of September 2016, good progress has been made in implementing methods
-% which provide both good performance and reliable, trustworthy, accurate visual
-% timing and timestamping. Some - but not all - types of Laptop hardware should
+% On Linux, as of December 2016, good progress has been made in implementing methods
+% which provide both good performance *and* reliable, trustworthy, accurate visual
+% timing and timestamping. Some - but not all! - types of Laptop hardware should
 % work well, but for all of them some special configuration or software upgrades
 % are needed:
 %
@@ -97,21 +97,25 @@
 % completely untested by us and therefore in no way guaranteed to work.
 %
 % Ubuntu Linux 14.04.5 LTS with its latest hardware enablement stack IV, or even
-% better, Ubuntu 16.04 LTS do provide sufficiently modern versions of these software
+% better Ubuntu 16.04 LTS, do provide sufficiently modern versions of these software
 % components. Additionally you will need one of the most recent Linux kernels:
-% At least Linux 4.5 on PC laptops, at least Linux 4.6 on Apple MacBookPro machines
-% if you have an Intel integrated graphics chip combined with a NVidia gpu or an older
-% AMD gpu. Modern AMD gpus will require even more modern kernels.
+% At least Linux 4.6 if you have an Intel integrated graphics chip combined with a
+% NVidia gpu or with an older AMD gpu. Modern AMD gpus will require the even more
+% modern Linux 4.8.11 kernel or later.
 %
-% As of November 2016, Linux 4.8 would be recommended as the most modern Linux kernel [2].
-% The autumn 2016 updates of Linux distributions, e.g., Ubuntu 16.10, do ship with
+% As of December 2016, Linux 4.8.11 would be recommended as the most modern Linux kernel
+% to cover all bases. See the download and installation instructions under section [2] below.
+%
+% The autumn 2016 updates of Linux distributions, e.g., Ubuntu 16.10, did ship with
 % Linux 4.8 by default, requiring no special software updates anymore, unless you use
-% an Intel iGPU with one of the latest generation AMD dGPU's.
+% an Intel iGPU with one of the latest generation AMD dGPU's (Linux 4.8.11 required),
+% or an Intel iGPU with a NVidia graphics card *and* the proprietary NVidia display
+% driver instead of the open-source nouveau driver.
 %
 %
 % * Laptops with an Intel iGPU combined with a NVidia dGPU ("NVidia Optimus" models):
 %
-%   These should work perfectly if you use the "nouveau" open source graphics driver,
+%   These should work perfectly if you use the "nouveau" open-source graphics driver,
 %   at least as far as testing with two different laptops went. Stimuli are displayed
 %   without any artifacts and timing and timestamping is accurate and trustworthy.
 %   Performance is highly dependent on the model of NVidia gpu though, with the latest
@@ -131,30 +135,26 @@
 %
 % * Laptops with an Intel iGPU combined with an AMD dGPU ("AMD Enduro" models):
 %
-%   These should work very well if you use the open source graphics drivers with slightly
-%   older models of AMD GPUs, ie. not the very latest models of the "Volcanic Islands" /
-%   GCN 1.2 GPU family. Specifically, GPUs using the classic open-source display driver
-%   "radeon-kms" will work with perfectly trustworthy timing and quality. GPUs of the
-%   "Volcanic Islands" GCN 1.2 generation which use the new open-source "amdgpu-kms" driver
-%   will only work well under light to moderate load, but may expose visual stimulus
-%   artifacts under high-load scenarios. A fix for this problem has been implemented for
-%   the upcoming Linux kernel version 4.9 (expected release data early December 2016), and
-%   the expectation is that this fix will become available to Linux 4.8 as well, sometime
-%   after the release of Linux 4.9. Check back on the forum or PTB website for updates.
+%   These should work very well on Ubuntu 16.10 or with Linux 4.6 and later if you use
+%   the open source graphics drivers with slightly older models of AMD GPUs, ie. not the
+%   very latest models of the "Volcanic Islands" / GCN 1.2 GPU family. Specifically, GPUs
+%   using the classic open-source display driver "radeon-kms" will work with perfectly
+%   trustworthy timing and quality.
+%
+%   GPUs of the "Volcanic Islands" GCN 1.2 generation, which use the new open-source
+%   "amdgpu-kms" driver, will currently need you to manually upgrade your Linux kernel to
+%   at least Linux 4.8.11. See section [2] below on how to do that.
 %
 %   These results are based on testing with two PC setups:
 %
-%   - Intel HD "Haswell desktop" graphics chip + AMD Radeon R9 380 Tonga Pro. Perfect under
-%     light/medium load, malfunctions under high load with Linux kernels older than Linux 4.10.
-%     (amdgpu-kms)
+%   - Intel HD "Haswell desktop" graphics chip + AMD Radeon R9 380 Tonga Pro. Perfect when
+%     used with Linux 4.8.11 or later kernels. (amdgpu-kms)
 %
 %   - Intel HD "Ivybridge desktop" graphics chip + AMD FireGL "Cedar". Perfect under all
-%     conditions. (radeon-kms).
+%     conditions with Linux 4.6 and later. (radeon-kms).
 %
 %   Stimuli are displayed without any artifacts and timing and timestamping is accurate and
-%   trustworthy. Note that this is the *expectation extrapolated from those PC testing setups*,
-%   not actual results from real Enduro laptops, as no such laptops were available for testing
-%   so far, although they should behave in the same way.
+%   trustworthy.
 %
 %   You will get acceptable performance out of the box. For good performance you will either
 %   need Mesa version 13 or later, or you need to set the R600_DEBUG environment variable to
@@ -171,7 +171,7 @@
 %   Muxless won't work with any current official solution [1]. However, i am not aware of
 %   any recent muxless laptops - or any such muxless laptops actually - which use dual-NVidia
 %   gpus. All known dual-NVidia laptops are rather old and use a hardware mux, so Linux
-%   vgaswitcheroo can be used to switch between gpus.
+%   "vgaswitcheroo" mechanism can be used to switch between gpus for perfect results.
 %
 %
 % * Laptops with dual AMD gpus AMD iGPU + AMD dGPU ("AMD Enduro" models):
@@ -204,9 +204,10 @@
 %      global /etc/drirc file if it should apply to all users on a machine.
 %
 % 3. Verify the handshaking and synchronization actually works. Psychtoolbox must not
-%    report any timing or timestamping related errors or warnings. Typical tests like
-%    PerceptualVBLSyncTest or VBLSyncTest must work correctly. All demos should display
-%    without any visual artifacts, tearing artifacts etc.
+%    report any timing or timestamping related errors or warnings, or other warnings
+%    relating to hybrid graphics problems. Typical tests like PerceptualVBLSyncTest or
+%    VBLSyncTest must work correctly. All demos should display without any visual artifacts,
+%    tearing artifacts etc.
 %
 %    Additionally you can use the Linux ftrace script i915_optimus_trace.sh in the
 %    Psychtoolbox/PsychHardware/ folder. Instructions on how to use it are inside the
@@ -238,14 +239,15 @@
 %     yet. Ask for assistance on the Psychtoolbox user forum if you happen to have such a
 %     laptop.
 %
-% [2] You can get Linux 4.8.8 for Ubuntu 16.04-LTS for manual installation from here:
-%     http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.8.8/
+% [2] You can get Linux 4.8.11 for Ubuntu 16.04-LTS (and later) for manual installation from here:
+%     http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.8.11/
 %
-%     On a 64-Bit system you'd download and install the files in the amd64 section, e.g.
+%     On a 64-Bit system you'd download and install the files in the amd64 section, i.e.
+%     the files (download links) named:
 %
-%     linux-headers-4.8.8-040808_4.8.8-040808.201611150231_all.deb
-%     linux-headers-4.8.8-040808-lowlatency_4.8.8-040808.201611150231_amd64.deb
-%     linux-image-4.8.8-040808-lowlatency_4.8.8-040808.201611150231_amd64.deb
+%     linux-headers-4.8.11-040811_4.8.11-040811.201611260431_all.deb
+%     linux-headers-4.8.11-040811-lowlatency_4.8.11-040811.201611260431_amd64.deb
+%     linux-image-4.8.11-040811-lowlatency_4.8.11-040811.201611260431_amd64.deb
 %
 %     You could install them by clicking on them to start the GUI installer. Or you
 %     could type "sudo dpkg -i linux-*4.8*" in a terminal window. After a reboot the
