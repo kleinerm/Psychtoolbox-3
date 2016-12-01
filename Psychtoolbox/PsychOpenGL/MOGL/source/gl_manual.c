@@ -323,7 +323,7 @@ void moglfreeall(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 void moglcopybuffertomatrix(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
     int type;
     size_t dims;
-    mwSize outdims;
+    mwSize outdims[2];
     GLenum mattype;
     GLfloat* dst;
 
@@ -372,8 +372,9 @@ void moglcopybuffertomatrix(int nlhs, mxArray *plhs[], int nrhs, const mxArray *
     }
 
     // Allocate the beast:
-    outdims = (mwSize) dims;
-    plhs[0] = mxCreateNumericArray(1, &outdims, type, mxREAL);
+    outdims[0] = (mwSize) dims;
+    outdims[1] = 1;
+    plhs[0] = mxCreateNumericArray(2, &outdims, type, mxREAL);
 
     // Retrieve pointer to output matrix:
     dst = (GLfloat*) mxGetData(plhs[0]);
@@ -403,12 +404,13 @@ void moglcopymatrixtobuffer(int nlhs, mxArray *plhs[], int nrhs, const mxArray *
 void gl_genbuffers( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
     // R2015b compat fix.
     // Need manual allocation and passing of return argument - a vector of uint32() buffer handles:
-    mwSize outdims;
+    mwSize outdims[2];
 
     if (NULL == glGenBuffers) mogl_glunsupported("glGenBuffers");
 
-    outdims = (mwSize) (GLsizei) mxGetScalar(prhs[0]);
-    plhs[0] = mxCreateNumericArray(1, &outdims, mxUINT32_CLASS, mxREAL);
+    outdims[0] = (mwSize) (GLsizei) mxGetScalar(prhs[0]);
+    outdims[1] = 1;
+    plhs[0] = mxCreateNumericArray(2, &outdims, mxUINT32_CLASS, mxREAL);
 
     glGenBuffers((GLsizei)mxGetScalar(prhs[0]),
                  (GLuint*)mxGetData(plhs[0]));
@@ -417,12 +419,13 @@ void gl_genbuffers( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 void gl_genbuffersarb( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
     // R2015b compat fix.
     // Need manual allocation and passing of return argument - a vector of uint32() buffer handles:
-    mwSize outdims;
+    mwSize outdims[2];
 
     if (NULL == glGenBuffersARB) mogl_glunsupported("glGenBuffersARB");
 
-    outdims = (mwSize) (GLsizei) mxGetScalar(prhs[0]);
-    plhs[0] = mxCreateNumericArray(1, &outdims, mxUINT32_CLASS, mxREAL);
+    outdims[0] = (mwSize) (GLsizei) mxGetScalar(prhs[0]);
+    outdims[1] = 1;
+    plhs[0] = mxCreateNumericArray(2, &outdims, mxUINT32_CLASS, mxREAL);
 
     glGenBuffersARB((GLsizei)mxGetScalar(prhs[0]),
                     (GLuint*)mxGetData(plhs[0]));
@@ -431,12 +434,12 @@ void gl_genbuffersarb( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
 void gl_getbufferparameteriv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
     // R2015b compat fix.
     // Need manual allocation and passing of return argument - a int32() value:
-    mwSize outdims;
+    mwSize outdims[2];
 
     if (NULL == glGetBufferParameteriv) mogl_glunsupported("glGetBufferParameteriv");
 
-    outdims = 1;
-    plhs[0] = mxCreateNumericArray(1, &outdims, mxINT32_CLASS, mxREAL);
+    outdims[0] = outdims[1] = 1;
+    plhs[0] = mxCreateNumericArray(2, &outdims, mxINT32_CLASS, mxREAL);
 
     glGetBufferParameteriv((GLenum)mxGetScalar(prhs[0]),
                            (GLenum)mxGetScalar(prhs[1]),
@@ -446,12 +449,12 @@ void gl_getbufferparameteriv( int nlhs, mxArray *plhs[], int nrhs, const mxArray
 void gl_getbufferparameterivarb( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
     // R2015b compat fix.
     // Need manual allocation and passing of return argument - a int32() value:
-    mwSize outdims;
+    mwSize outdims[2];
 
     if (NULL == glGetBufferParameterivARB) mogl_glunsupported("glGetBufferParameterivARB");
 
-    outdims = 1;
-    plhs[0] = mxCreateNumericArray(1, &outdims, mxINT32_CLASS, mxREAL);
+    outdims[0] = outdims[1] = 1;
+    plhs[0] = mxCreateNumericArray(2, &outdims, mxINT32_CLASS, mxREAL);
 
     glGetBufferParameterivARB((GLenum)mxGetScalar(prhs[0]),
                               (GLenum)mxGetScalar(prhs[1]),
