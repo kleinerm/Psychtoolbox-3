@@ -17812,9 +17812,11 @@ const GLubyte * GLEWAPIENTRY glewGetString (GLenum name)
 
 GLboolean glewExperimental = GL_FALSE;
 
-/* MK: Declare functions we need for our hack below: */
+#if !defined(__APPLE__) && !defined(_WIN32)
+/* MK: Declare functions we need for our Linux hack below: */
 char *getenv(const char *name);
 char *strstr(const char *haystack, const char *needle);
+#endif
 
 GLenum GLEWAPIENTRY glewInit (void)
 {
