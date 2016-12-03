@@ -110,7 +110,7 @@ static char** getStrings(const mxArray *prhs, GLsizei *outCount, int debugflag)
 
     // Ok, now srcstrings should be an array of count char*'s to single line,
     // null-terminated strings:
-    *outCount = count;
+    *outCount = (GLsizei) count;
 
     if (debugflag > 0) {
         printf("\n\n");
@@ -139,7 +139,7 @@ void gl_transformfeedbackvaryings( int nlhs, mxArray *plhs[], int nrhs, const mx
 
     if (NULL == glTransformFeedbackVaryings) mogl_glunsupported("glTransformFeedbackVaryings");
 
-    srcstrings = getStrings(prhs[2], &outCount, mxGetScalar(prhs[4]));
+    srcstrings = getStrings(prhs[2], &outCount, (int) mxGetScalar(prhs[4]));
     if (NULL == srcstrings) mogl_printfexit("MOGL-Info: glTransformFeedbackVaryings(): Called with debug flag set, therefore i've dumped the names to the console and will now exit.");
 
     // Have all we need, do the deed:
@@ -160,7 +160,7 @@ void gl_transformfeedbackvaryingsext( int nlhs, mxArray *plhs[], int nrhs, const
 
     if (NULL == glTransformFeedbackVaryingsEXT) mogl_glunsupported("glTransformFeedbackVaryingsEXT");
 
-    srcstrings = getStrings(prhs[2], &outCount, mxGetScalar(prhs[4]));
+    srcstrings = getStrings(prhs[2], &outCount, (int) mxGetScalar(prhs[4]));
     if (NULL == srcstrings) mogl_printfexit("MOGL-Info: glTransformFeedbackVaryingsEXT(): Called with debug flag set, therefore i've dumped the names to the console and will now exit.");
 
     // Have all we need, do the deed:
@@ -374,7 +374,7 @@ void moglcopybuffertomatrix(int nlhs, mxArray *plhs[], int nrhs, const mxArray *
     // Allocate the beast:
     outdims[0] = (mwSize) dims;
     outdims[1] = 1;
-    plhs[0] = mxCreateNumericArray(2, &outdims, type, mxREAL);
+    plhs[0] = mxCreateNumericArray(2, outdims, type, mxREAL);
 
     // Retrieve pointer to output matrix:
     dst = (GLfloat*) mxGetData(plhs[0]);
