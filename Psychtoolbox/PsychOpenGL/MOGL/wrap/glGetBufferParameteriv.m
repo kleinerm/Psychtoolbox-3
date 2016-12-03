@@ -15,7 +15,8 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-params = moglcore( 'glGetBufferParameteriv', target, pname);
+params = int32(0);
+
+moglcore( 'glGetBufferParameteriv', target, pname, params );
 
 return
-% ---skip---

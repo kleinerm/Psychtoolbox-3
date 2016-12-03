@@ -91,9 +91,3 @@ glVertexPointer
 
 - this one is broken due to OpenGL 4.5 api spec bugs, so needs manual fix or disable
 glClearNamedFramebufferfi
-
-- these are broken in Matlab R2015b and later due to backwards incompatible change in Matlabs execution engine. Need manual fixes
-glGenBuffers
-glGenBuffersARB
-glGetBufferParameteriv
-glGetBufferParameterivARB
