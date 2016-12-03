@@ -11,34 +11,7 @@ function textures = glGenTextures( n )
 % ---allocate---
 % ---protected---
 
-textures = uint32(zeros(n,1));
+textures = uint32(zeros(n+1,1));
 moglcore( 'glGenTextures', n, textures );
-textures = double(textures);
-
+textures = textures(1:end-1);
 return
-
-
-% ---autocode---
-%
-% function textures = glGenTextures( n )
-% 
-% % glGenTextures  Interface to OpenGL function glGenTextures
-% %
-% % usage:  textures = glGenTextures( n )
-% %
-% % C function:  void glGenTextures(GLsizei n, GLuint* textures)
-% 
-% % 05-Mar-2006 -- created (generated automatically from header files)
-% 
-% % ---allocate---
-% 
-% if nargin~=1,
-%     error('invalid number of arguments');
-% end
-% 
-% textures = uint32(0);
-% 
-% moglcore( 'glGenTextures', n, textures );
-% 
-% return
-%

@@ -15,9 +15,9 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-params = int32(1);
+params = int32([1,0]);
 
 moglcore( 'glGetFramebufferAttachmentParameterivEXT', target, attachment, pname, params );
-
+params = params(1:end-1);
 return
 % ---skip---

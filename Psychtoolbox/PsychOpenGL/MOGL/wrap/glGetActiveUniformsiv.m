@@ -15,8 +15,8 @@ if nargin~=4,
     error('invalid number of arguments');
 end
 
-params = int32(zeros(1,uniformCount));
+params = int32(zeros(1,1+uniformCount));
 
 moglcore( 'glGetActiveUniformsiv', program, uniformCount, uint32(uniformIndices), pname, params );
-
+params = params(1:end-1);
 return
