@@ -17,7 +17,9 @@ end
 
 params = int32(1);
 
+params=int32(repmat(intmax, [ 16 1 ]));
 moglcore( 'glGetRenderbufferParameterivEXT', target, pname, params );
+params = params(find(params~=intmax));
 
 return
 % ---skip---

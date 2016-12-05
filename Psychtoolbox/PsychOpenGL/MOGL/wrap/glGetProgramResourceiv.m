@@ -15,9 +15,9 @@ if nargin~=6,
     error('invalid number of arguments');
 end
 
-length = int32(0);
-params = int32(zeros(1, bufSize);
+length = int32([0,0]);
+params = int32(zeros(1, bufSize));
 
 moglcore( 'glGetProgramResourceiv', program, programInterface, index, propCount, uint32(props), bufSize, length, params );
-
+length = length(1:end-1);
 return

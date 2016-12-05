@@ -15,8 +15,8 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-params = int64(0);
+params = int64([0,0]);
 
 moglcore( 'glGetQueryObjecti64v', id, pname, params );
-
+params = params(1:end-1);
 return

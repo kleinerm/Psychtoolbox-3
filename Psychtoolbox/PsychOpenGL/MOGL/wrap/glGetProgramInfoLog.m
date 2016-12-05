@@ -15,10 +15,10 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-length = int32(0);
+length = int32([0,0]);
 infoLog = uint8(zeros(1,bufSize));
 
 moglcore( 'glGetProgramInfoLog', program, bufSize, length, infoLog );
 infoLog = char(infoLog);
-
+length = length(1:end-1);
 return
