@@ -110,7 +110,8 @@
 % Linux 4.8 by default, requiring no special software updates anymore, unless you use
 % an Intel iGPU with one of the latest generation AMD dGPU's (Linux 4.8.11 required),
 % or an Intel iGPU with a NVidia graphics card *and* the proprietary NVidia display
-% driver instead of the open-source nouveau driver.
+% driver instead of the open-source nouveau driver. Psychtoolbox will tell you if you
+% need to upgrade your kernel, if you run it on a hybrid graphics Laptop.
 %
 %
 % * Laptops with an Intel iGPU combined with a NVidia dGPU ("NVidia Optimus" models):
@@ -122,13 +123,36 @@
 %   generations currently providing only relatively low performance, and ongoing work
 %   to improve the performance for recent models.
 %
-%   If you want to use the NVidia proprietary display driver for Linux instead,
-%   no well working solution with correct timing and display is available yet [1].
-%   However, a usable version of a solution is currently in final testing, so this
-%   should be less of a problem in the foreseeable future. See the following thread
-%   for the current state of the NVidia proprietary implementation and for some more
-%   nice background info on the challenges of proper handshaking and synchronization
-%   on muxless laptops:
+%   If you want to use the NVidia proprietary display driver for Linux instead, there
+%   now exists a solution which works with correct timing and timestamping. However, the
+%   solution is less flexible and power-efficient than use of the "nouveau" open-source
+%   driver. It also requires substantial manual setup work, and it needs XOrg X-Server 1.19.0
+%   or later. In practice this means you either need to use a Linux distribution which
+%   uses X-Server 1.19, which in December 2016 is essentially "Fedora 25" or "Debian unstable",
+%   or you will have to wait for the Ubuntu 17.04 release in April 2017, or you will have
+%   to download and compile your own X-Server 1.19 if you are not afraid of compilers and
+%   Makefiles and willing to spend a workday doing this.
+%
+%   Once you have a X-Server 1.19 up and running, you will need the NVidia proprietary
+%   display drivers of version 375.20 or later for 64-Bit Intel processors. Then you need
+%   to copy various configuration files into various places, and adapt some of these files
+%   to your specific system. Finally you need to install a custom xf86-video-modesetting
+%   display driver onto your system. This modesetting driver is specifically made to
+%   interoperate with Psychtoolbox to provide research grade precision timing and
+%   timestamping. Then, after a reboot, you may be rewarded with a NVidia Optimus laptop
+%   which can efficiently use your discrete high-performance NVidia gpu with research grade
+%   timing. However, research grade timing is only provided for pure single-display setups,
+%   not for any kind of multi-display operation. That means your Laptop can have exactly
+%   one display enabled, either the Laptops internal flat-panel, or one externally connected
+%   display. Also timing is only reliable and trustworthy for a Psychtoolbox fullscreen
+%   window. As you can see, the setup is somewhat limited and inflexible, and setting it up
+%   requires quite a bit of effort as of December 2016. You will find all the needed config
+%   files and custom made display driver and setup instructions in the Psychtoolbox
+%   subdirectory Psychtoolbox/PsychHardware/LinuxDrivers/NVidiaOptimus/
+%
+%   See the following thread for the current state of the NVidia proprietary implementation
+%   and for some more nice background info on the challenges of proper handshaking and
+%   synchronization on muxless laptops:
 %
 %   https://devtalk.nvidia.com/default/topic/957814/linux/prime-and-prime-synchronization
 %
