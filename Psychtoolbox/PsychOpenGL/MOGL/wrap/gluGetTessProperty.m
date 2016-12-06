@@ -17,10 +17,10 @@ if nargin~=2,
 end
 
 if ~strcmp(class(tess),'double'),
-	error([ 'argument ''tess'' must be a pointer coded as type double ' ]);
+  error([ 'argument ''tess'' must be a pointer coded as type double ' ]);
 end
 
-data = double(0);
+data = double([0,0]);
 moglcore( 'gluGetTessProperty', tess, which, data );
-
+data = data(1:end-1);
 return

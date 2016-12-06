@@ -15,11 +15,8 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-% a hack to find out how many values are returned
-f=glGetTexGendv(coord,pname);
-
-params = int32(zeros(size(f)));
+params = int32(repmat(intmax('int32'),[ 32 1 ]));
 moglcore( 'glGetTexGeniv', coord, pname, params );
-
+params = params(find(params ~= intmax('int32'))); %#ok<FNDSB>
 return
 % ---skip---

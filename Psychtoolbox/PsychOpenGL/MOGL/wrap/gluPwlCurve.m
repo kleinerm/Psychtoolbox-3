@@ -16,7 +16,7 @@ if nargin~=4,
 end
 
 if ~isa(nurb,'double')
-	error('argument ''nurb'' must be a pointer coded as type double');
+  error('argument ''nurb'' must be a pointer coded as type double');
 end
 
 moglcore( 'gluPwlCurve', nurb, count, single(data), stride, type );

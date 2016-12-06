@@ -16,10 +16,8 @@ if nargin~=1,
 end
 
 % a hack to find out how many values are returned
-f=glGetPixelMapfv(map);
-
-values = uint32(zeros(size(f)));
+values = uint32(repmat(intmax('uint32'),[ 32 1 ]));
 moglcore( 'glGetPixelMapuiv', map, values );
-
+values = values(find(values ~= intmax('uint32'))); %#ok<FNDSB>
 return
 % ---skip---

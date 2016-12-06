@@ -12,16 +12,17 @@ function [ length, values ] = glGetSynciv( sync, pname, bufSize )
 % ---protected---
 
 if nargin~=3,
-    error('invalid number of arguments');
+  error('invalid number of arguments');
 end
 
 if ~strcmp(class(sync),'double'),
-	error([ 'argument ''sync'' must be a pointer coded as type double ' ]);
+  error([ 'argument ''sync'' must be a pointer coded as type double ' ]);
 end
 
-length = int32(0);
-values = int32(zeros(1, bufSize));
+length = int32([0,0]);
+values = int32(zeros(1, bufSize+1));
 
 moglcore( 'glGetSynciv', sync, pname, bufSize, length, values );
-
+length = length(1:end-1);
+values = values(1:end-1);
 return

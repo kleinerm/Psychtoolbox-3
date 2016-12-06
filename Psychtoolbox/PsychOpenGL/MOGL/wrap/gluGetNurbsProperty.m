@@ -17,11 +17,11 @@ if nargin~=2,
 end
 
 if ~strcmp(class(nurb),'double'),
-	error([ 'argument ''nurb'' must be a pointer coded as type double ' ]);
+  error([ 'argument ''nurb'' must be a pointer coded as type double ' ]);
 end
 
-data = single(0);
+data = single([0,0]);
 
 moglcore( 'gluGetNurbsProperty', nurb, property, data );
-
+data = data(1:end-1);
 return

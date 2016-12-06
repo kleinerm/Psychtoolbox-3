@@ -15,6 +15,6 @@ if nargin~=5,
     error('invalid number of arguments');
 end
 
-moglcore( 'gluPickMatrix', x, y, delX, delY, viewport );
+moglcore( 'gluPickMatrix', x, y, delX, delY, int32(viewport) );
 
 return
