@@ -9160,16 +9160,6 @@ void gl_clearnamedframebufferfv( int nlhs, mxArray *plhs[], int nrhs, const mxAr
 
 }
 
-void gl_clearnamedframebufferfi( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glClearNamedFramebufferfi) mogl_glunsupported("glClearNamedFramebufferfi");
-	glClearNamedFramebufferfi((GLuint)mxGetScalar(prhs[0]),
-		(GLenum)mxGetScalar(prhs[1]),
-		(const GLfloat)mxGetScalar(prhs[2]),
-		(GLint)mxGetScalar(prhs[3]));
-
-}
-
 void gl_blitnamedframebuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glBlitNamedFramebuffer) mogl_glunsupported("glBlitNamedFramebuffer");
@@ -23102,7 +23092,7 @@ void gl_replacementcodeuitexcoord2fcolor4fnormal3fvertex3fvsun( int nlhs, mxArra
 
 }
 
-int gl_auto_map_count=2465;
+int gl_auto_map_count=2464;
 cmdhandler gl_auto_map[] = {
 { "glAccum",                         gl_accum                            },
 { "glActiveProgramEXT",              gl_activeprogramext                 },
@@ -23253,7 +23243,6 @@ cmdhandler gl_auto_map[] = {
 { "glClearNamedBufferDataEXT",       gl_clearnamedbufferdataext          },
 { "glClearNamedBufferSubData",       gl_clearnamedbuffersubdata          },
 { "glClearNamedBufferSubDataEXT",    gl_clearnamedbuffersubdataext       },
-{ "glClearNamedFramebufferfi",       gl_clearnamedframebufferfi          },
 { "glClearNamedFramebufferfv",       gl_clearnamedframebufferfv          },
 { "glClearNamedFramebufferiv",       gl_clearnamedframebufferiv          },
 { "glClearNamedFramebufferuiv",      gl_clearnamedframebufferuiv         },

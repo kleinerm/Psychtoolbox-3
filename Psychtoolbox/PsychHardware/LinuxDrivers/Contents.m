@@ -2,11 +2,18 @@
 %
 % Customized device drivers for Linux.
 %
-% This folder currently contains customized X11 graphics
-% drivers for Linux which provide enhanced functionality
-% or bug fixes not yet available in standard Linux
-% distributions but useful for better visual stimulus
-% presentation.
+% The subfolder NVidiaOptimus/ contains a customized
+% display modesetting driver and configuration files
+% for 64-Bit X-Server 1.19, to use NVidia Optimus
+% Laptops with the proprietary NVidia graphics driver
+% instead of the open-source nouveau driver.
+%
+% This folder contains some customized drivers for old
+% Ubuntu 14.04.2 LTS. Nowadays you should rather upgrade
+% your Linux distribution to Ubuntu 14.04.5 LTS er even
+% better to Ubuntu 16.04 LTS, instead of installing these
+% custom drivers for old and outdated Ubuntu versions.
+%
 %
 % CAUTION: These drivers are only for specific processor
 % architectures and versions of the X-Server, and thereby

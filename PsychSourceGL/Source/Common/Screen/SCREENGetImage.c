@@ -151,7 +151,7 @@ PsychError SCREENGetImage(void)
 {
     PsychRectType   windowRect, sampleRect;
     int             nrchannels, invertedY, stride;
-    size_t          ix, iy, sampleRectWidth, sampleRectHeight, redReturnIndex, greenReturnIndex, blueReturnIndex, alphaReturnIndex, planeSize;
+    size_t          ix, iy, sampleRectWidth, sampleRectHeight, redReturnIndex, greenReturnIndex, blueReturnIndex, alphaReturnIndex;
     int             viewid = 0;
     psych_uint8     *returnArrayBase, *redPlane;
     float           *dredPlane;
@@ -473,7 +473,6 @@ PsychError SCREENGetImage(void)
             else {
                 redPlane  = (psych_uint8*) PsychMallocTemp((size_t) nrchannels * sampleRectWidth * sampleRectHeight);
             }
-            planeSize = sampleRectWidth * sampleRectHeight;
 
             glPixelStorei(GL_PACK_ALIGNMENT,1);
             invertedY = (int) (windowRect[kPsychBottom] - sampleRect[kPsychBottom]);
@@ -531,7 +530,6 @@ PsychError SCREENGetImage(void)
                 dredPlane = (float*) PsychMallocTemp((size_t) nrchannels * sizeof(float) * sampleRectWidth * sampleRectHeight);
                 stride = nrchannels;
             }
-            planeSize = sampleRectWidth * sampleRectHeight * sizeof(float);
 
             glPixelStorei(GL_PACK_ALIGNMENT, 1);
             invertedY = (int) (windowRect[kPsychBottom]-sampleRect[kPsychBottom]);

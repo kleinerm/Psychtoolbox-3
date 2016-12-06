@@ -15,8 +15,8 @@
   Accept one pointer to an offscreen window and one to an  onscreen window.  "Texturize" the contents of the offscreen window and copy them to the onscreen window.
 
   This is version two of TestTexture.  Herin we experiment with all of the ingredients necessary to impliment fast copy windows:
-	¥Client side texture storage
-	¥glCopyTexImage2D in conjunction with the above.
+	Client side texture storage
+	glCopyTexImage2D in conjunction with the above.
 	
   NOTES:
   
@@ -43,12 +43,12 @@
 
 #include "Screen.h"
 
-
-static char useString[] = "SCREEN('TestTexture', sourceWindowPntr, destWindowPntr, sourceWindowRect, destWindowRect);";
-static char synopsisString[] = 
-	"Test out textures for implementing  offscreen windows.";
-static char seeAlsoString[] = "";
-
+#if PSYCH_SYSTEM == PSYCH_OSX
+    static char useString[] = "SCREEN('TestTexture', sourceWindowPntr, destWindowPntr, sourceWindowRect, destWindowRect);";
+    static char synopsisString[] = 
+	    "Test out textures for implementing  offscreen windows.";
+    static char seeAlsoString[] = "";
+#endif
 
 PsychError SCREENTestTextureTwo(void) 
 {

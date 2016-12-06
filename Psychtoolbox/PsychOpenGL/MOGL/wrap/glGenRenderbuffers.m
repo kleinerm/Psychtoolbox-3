@@ -15,8 +15,8 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-renderbuffers = uint32(zeros(1,n));
+renderbuffers = uint32(zeros(1,n+1));
 
 moglcore( 'glGenRenderbuffers', n, renderbuffers );
-
+renderbuffers = renderbuffers(1:end-1);
 return

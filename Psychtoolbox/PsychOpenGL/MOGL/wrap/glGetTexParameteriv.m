@@ -16,10 +16,8 @@ if nargin~=2,
 end
 
 % a hack to find out how many values are returned
-f=glGetTexParameterfv(target,pname);
-
-params = int32(zeros(size(f)));
+params = int32(repmat(intmax('int32'),[ 32 1 ]));
 moglcore( 'glGetTexParameteriv', target, pname, params );
-
+params = params(find(params ~= intmax('int32'))); %#ok<FNDSB>
 return
 % ---skip---

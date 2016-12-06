@@ -15,9 +15,10 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-count = int32(0);
-shaders = uint32(zeros(1,maxCount));
+count = int32([0,0]);
+shaders = uint32(zeros(1,maxCount+1));
 
 moglcore( 'glGetAttachedShaders', program, maxCount, count, shaders );
-
+shaders = shaders(1:end-1);
+count = count(1:end-1);
 return

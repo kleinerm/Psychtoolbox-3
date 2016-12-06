@@ -15,12 +15,14 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-length = int32(0);
-size = int32(0);
-type = uint32(0);
+length = int32([0,0]);
+size = int32([0,0]);
+type = uint32([0,0]);
 name = uint8(zeros(1,bufSize));
 
 moglcore( 'glGetActiveUniform', program, index, bufSize, length, size, type, name );
 name = char(name);
-
+length = length(1:end-1);
+size = size(1:end-1);
+type = type(1:end-1);
 return

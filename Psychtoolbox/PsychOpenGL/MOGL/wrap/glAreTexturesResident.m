@@ -18,9 +18,9 @@ elseif nargin~=2,
     error('invalid number of arguments');
 end
 
-residences = uint8(zeros(n,1));
+residences = uint8(zeros(n+1,1));
 r = moglcore( 'glAreTexturesResident', n, uint32(textures), residences );
-
+residences = residences(1:end-1);
 return
 
 

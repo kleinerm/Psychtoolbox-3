@@ -140,21 +140,3 @@ int PsychGetPointVersionNumber(void)
 {
 	return(PSYCHTOOLBOX_POINT_VERSION);
 }
-
-
-/* PsychSetModuleAuthor()
-
-	Information about Psychtoolbox authors, such as their names and email addresss, is returned by the module command "version", along with 
-	version numbers.  For example, "Screen('Version')".  For all Psychtoolbox mex files there is one canonical source for this information,
-	the file MODULEVersion.c shared between all mex files which provide the "Version" command.  Becausue not all Psychtoolbox authors 
-	are authors on all modules, we provide a mechanism to enable reporting of particular authors for particular modules.  From within
-	the function PsychModuleInit in your module source call PsychSetModuleAuthor() once for each author which you want to register.  
-	once for each author.  PsychSetModuleAuthor identifies authors by their initials, which you can find find in MODULEVersion.c.   
-*/	
-void PsychSetModuleAuthor(char *initials)
-{
-	
-
-}
-
-

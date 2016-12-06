@@ -15,10 +15,10 @@ if nargin~=4,
     error('invalid number of arguments');
 end
 
-length = int32(0);
+length = int32([0,0]);
 name = uint8(zeros(1,bufsize));
 
 moglcore( 'glGetActiveSubroutineName', program, shadertype, index, bufsize, length, name );
 name = char(name);
-
+length=length(1:end-1);
 return

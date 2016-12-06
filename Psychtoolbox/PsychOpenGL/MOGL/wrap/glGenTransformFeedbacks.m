@@ -15,8 +15,8 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-ids = uint32(zeros(1,n));
+ids = uint32(zeros(1,n+1));
 
 moglcore( 'glGenTransformFeedbacks', n, ids );
-
+ids = ids(1:end-1);
 return

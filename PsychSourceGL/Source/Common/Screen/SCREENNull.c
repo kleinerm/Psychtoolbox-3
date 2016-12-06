@@ -51,14 +51,12 @@ PsychError SCREENNull(void)
 //#define RADEON_R500_GEN_INT_CNTL   0x200
 //#define RADEON_R500_GEN_INT_STATUS 0x204
 
-	const double defaultMatrix[] = {1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4};
-	const double defaultM=2, defaultN=4; 
+  PsychWindowRecordType *windowRecord;
 	double tempValue; 
 	double *array;
-	int i, m,n, p, numInArgs, numOutArgs, numNamedOutArgs;
+	int i, m,n, p, numInArgs;
 	char *str;
 	PsychArgFormatType format;
-	PsychWindowRecordType *windowRecord;
 	const char defaultString[] = "I am the default string\n";
 
 	//all sub functions should have these two lines
@@ -84,7 +82,7 @@ PsychError SCREENNull(void)
 */
 
 		unsigned int regOffset, value, hi, lo;
-		PsychCopyInIntegerArg(1, TRUE, &regOffset);
+		PsychCopyInIntegerArg(1, TRUE, (int *) &regOffset);
 		value = PsychOSKDReadRegister(0, regOffset, NULL);
 
 		hi = value >> 16;
@@ -445,11 +443,11 @@ classToMatch = IOServiceNameMatching("ATIRadeonX1000");
 
 	//copy all the input argument to their outputs if we have doubles, if not error.  
 	numInArgs = PsychGetNumInputArgs();
-	numOutArgs = PsychGetNumOutputArgs();
-	numNamedOutArgs = PsychGetNumNamedOutputArgs();
 	PsychErrorExit(PsychCapNumOutputArgs(numInArgs));
 
 	/*
+	numOutArgs = PsychGetNumOutputArgs();
+	numNamedOutArgs = PsychGetNumNamedOutputArgs();
 	printf("number of input arguments: %d\n", numInArgs);
 	printf("number of output arguments: %d\n", numOutArgs);
 	printf("number of named output arguments: %d\n", numNamedOutArgs);

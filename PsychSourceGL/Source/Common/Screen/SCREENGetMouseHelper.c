@@ -621,8 +621,6 @@ PsychError SCREENGetMouseHelper(void)
     double* buttonArray;
     PsychNativeBooleanType* buttonStates;
     int keysdown;
-    XEvent event_return;
-    XKeyPressedEvent keypressevent;
     int screenNumber;
     int priorityLevel;
     struct sched_param schedulingparam;
@@ -928,7 +926,7 @@ PsychError SCREENGetMouseHelper(void)
 
                 // Request current keyboard state from X-Server:
                 PsychLockDisplay();
-                XQueryKeymap(dpy, keys_return);
+                XQueryKeymap(dpy, (char *) keys_return);
                 PsychUnlockDisplay();
 
                 // Request current time of query:

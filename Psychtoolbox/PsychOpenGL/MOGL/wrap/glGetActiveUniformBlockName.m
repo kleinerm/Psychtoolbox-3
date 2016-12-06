@@ -15,10 +15,10 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-length = int32(0);
+length = int32([0,0]);
 uniformBlockName = uint8(zeros(1,bufSize));
 
 moglcore( 'glGetActiveUniformBlockName', program, uniformBlockIndex, bufSize, length, uniformBlockName );
 uniformBlockName = char(uniformBlockName);
-
+length = length(1:end-1);
 return

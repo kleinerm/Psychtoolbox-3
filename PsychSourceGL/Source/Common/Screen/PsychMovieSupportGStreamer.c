@@ -242,6 +242,9 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 {
     GstSeekFlags rewindFlags = 0;
     PsychMovieRecordType* movie = (PsychMovieRecordType*) dataptr;
+
+    (void) bus;
+
     if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: PsychMovieBusCallback: Msg source name and type: %s : %s\n", GST_MESSAGE_SRC_NAME(msg), GST_MESSAGE_TYPE_NAME(msg));
 
     switch (GST_MESSAGE_TYPE (msg)) {
@@ -349,12 +352,14 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 /* Called at each end-of-stream event at end of playback: */
 static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 {
-    PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
+    (void) sink, (void) user_data;
 
+    //PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
     //PsychLockMutex(&movie->mutex);
     //printf("PTB-DEBUG: Videosink reached EOS.\n");
     //PsychSignalCondition(&movie->condition);
     //PsychUnlockMutex(&movie->mutex);
+
     return;
 }
 
@@ -365,6 +370,7 @@ static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_data)
 {
     PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
+    (void) sink;
 
     PsychLockMutex(&movie->mutex);
     //printf("PTB-DEBUG: New PrerollBuffer received.\n");
@@ -381,6 +387,7 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
 static GstFlowReturn PsychNewBufferCallback(GstAppSink *sink, gpointer user_data)
 {
     PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
+    (void) sink;
 
     PsychLockMutex(&movie->mutex);
     //printf("PTB-DEBUG: New Buffer received.\n");
@@ -392,10 +399,12 @@ static GstFlowReturn PsychNewBufferCallback(GstAppSink *sink, gpointer user_data
 }
 
 /* Not used by us, but needs to be defined as no-op anyway: */
+/* // There are only 3 function pointers in GstAppSinkCallbacks now
 static GstFlowReturn PsychNewBufferListCallback(GstAppSink *sink, gpointer user_data)
 {
-    PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
+    (void) sink, (void) user_data;
 
+    //PsychMovieRecordType* movie = (PsychMovieRecordType*) user_data;
     //PsychLockMutex(&movie->mutex);
     //printf("PTB-DEBUG: New Bufferlist received.\n");
     //PsychSignalCondition(&movie->condition);
@@ -403,10 +412,13 @@ static GstFlowReturn PsychNewBufferListCallback(GstAppSink *sink, gpointer user_
 
     return(GST_FLOW_OK);
 }
+*/
 
 /* Not used by us, but needs to be defined as no-op anyway: */
 static void PsychDestroyNotifyCallback(gpointer user_data)
 {
+    (void) user_data;
+
     return;
 }
 
@@ -431,25 +443,28 @@ static void PsychMovieAboutToFinishCB(GstElement *theMovie, gpointer user_data)
 }
 
 /* Not used, didn't work, but left here in case we find a use for it in the future. */
+/*
 static void PsychMessageErrorCB(GstBus *bus, GstMessage *msg)
 {
-      gchar  *debug;
-      GError *error;
+    gchar  *debug;
+    GError *error;
 
-      gst_message_parse_error (msg, &error, &debug);
-      g_free (debug);
+    (void) bus;
 
-      printf("PTB-BUSERROR: %s\n", error->message);
-      g_error_free (error);
-	return;
+    gst_message_parse_error (msg, &error, &debug);
+    g_free (debug);
+
+    printf("PTB-BUSERROR: %s\n", error->message);
+    g_error_free (error);
+    return;
 }
+*/
 
 static GstAppSinkCallbacks videosinkCallbacks = {
     PsychEOSCallback,
     PsychNewPrerollCallback,
     PsychNewBufferCallback,
-    PsychNewBufferListCallback,
-    NULL
+    {0}
 };
 
 /*
@@ -474,8 +489,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     GstCaps         *colorcaps = NULL;
     GstElement      *theMovie = NULL;
     GstElement      *videocodec = NULL;
-    GMainLoop       *MovieContext = NULL;
-    GstBus          *bus = NULL;
     GstElement      *videosink = NULL;
     GstElement      *audiosink;
     gchar*          pstring;
@@ -487,9 +500,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     gint            rate1, rate2;
     int             i, slotid;
     int             max_video_threads;
-    GError          *error = NULL;
     char            movieLocation[FILENAME_MAX];
-    psych_bool      trueValue = TRUE;
     psych_bool      printErrors;
     GstIterator     *it;
     psych_bool      done;
@@ -1336,7 +1347,6 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
                                 PsychWindowRecordType *out_texture, double *presentation_timestamp)
 {
     GstElement      *theMovie;
-    unsigned int    failcount=0;
     double          rate;
     double          targetdelta, realdelta, frames;
     GstBuffer       *videoBuffer = NULL;
@@ -1348,7 +1358,9 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
     double          tNow;
     double          preT, postT;
     unsigned char*  releaseMemPtr = NULL;
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
     #pragma warning( disable : 4068 )
+#endif
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo      mapinfo = GST_MAP_INFO_INIT;

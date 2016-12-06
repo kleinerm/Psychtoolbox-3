@@ -16,8 +16,8 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-arrays = uint32(zeros(1,n));
+arrays = uint32(zeros(1,n+1));
 
 moglcore( 'glGenVertexArraysAPPLE', n, arrays );
-
+arrays = arrays(1:end-1);
 return

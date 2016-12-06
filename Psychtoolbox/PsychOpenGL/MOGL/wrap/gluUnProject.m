@@ -15,10 +15,12 @@ if nargin~=6,
     error('invalid number of arguments');
 end
 
-objX = double(0);
-objY = double(0);
-objZ = double(0);
+objX = double([0,0]);
+objY = double([0,0]);
+objZ = double([0,0]);
 r = moglcore( 'gluUnProject', winX, winY, winZ, double(model), double(proj), int32(view), objX, objY, objZ );
-
+objX = objX(1:end-1);
+objY = objY(1:end-1);
+objZ = objZ(1:end-1);
 return
 % ---skip---

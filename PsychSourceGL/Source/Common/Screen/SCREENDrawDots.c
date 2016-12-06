@@ -150,7 +150,7 @@ PsychError SCREENDrawDots(void)
     PsychWindowRecordType                   *windowRecord, *parentWindowRecord;
     int                                     m,n,p,mc,nc,idot_type;
     int                                     i, nrpoints, nrsize;
-    psych_bool                              isArgThere, usecolorvector, isdoublecolors, isuint8colors;
+    psych_bool                              isArgThere, usecolorvector;
     double                                  *xy, *size, *center, *dot_type, *colors;
     float                                   *sizef;
     unsigned char                           *bytecolors;
@@ -216,8 +216,6 @@ PsychError SCREENDrawDots(void)
     bytecolors = NULL;
 
     PsychPrepareRenderBatch(windowRecord, 2, &nrpoints, &xy, 4, &nc, &mc, &colors, &bytecolors, 3, &nrsize, &size, (GL_FLOAT == PsychGLFloatType(windowRecord)));
-    isdoublecolors = (colors) ? TRUE:FALSE;
-    isuint8colors  = (bytecolors) ? TRUE:FALSE;
     usecolorvector = (nc>1) ? TRUE:FALSE;
 
     // Assign sizef as float-type array of sizes, if float mode active, NULL otherwise:

@@ -15,8 +15,8 @@ if nargin~=4,
     error('invalid number of arguments');
 end
 
-params = int32(zeros(1,bufSize));
+params = int32(zeros(1,bufSize+1));
 
 moglcore( 'glGetInternalformativ', target, internalformat, pname, bufSize, params );
-
+params = params(1:end-1);
 return

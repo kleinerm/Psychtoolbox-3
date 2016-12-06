@@ -15,8 +15,8 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-location = int32(0);
+location = int32([0,0]);
 
 moglcore( 'glGetTransformFeedbackVaryingNV', program, index, location );
-
+location = location(1:end-1);
 return

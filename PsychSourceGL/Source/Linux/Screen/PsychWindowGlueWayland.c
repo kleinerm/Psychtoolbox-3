@@ -15,7 +15,7 @@
 
   DESCRIPTION:
 
-  Functions in this file comprise an abstraction layer for probing and controlling window state, except for window content.  
+  Functions in this file comprise an abstraction layer for probing and controlling window state, except for window content.
 
   This is the Wayland specific backend.
 
@@ -23,7 +23,7 @@
 
   Preformatted via: indent -linux -l240 -i4 PsychWindowGlueWayland.c
 
-  TO DO: 
+  TO DO:
 
 */
 
@@ -351,12 +351,12 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
   -The pixel format and the context are stored in the target specific field of the window recored.  Close
   should clean up by destroying both the pixel format and the context.
 
-  -We mantain the context because it must be be made the current context by drawing functions to draw into 
+  -We mantain the context because it must be be made the current context by drawing functions to draw into
   the specified window.
 
   -We maintain the pixel format object because there seems to be now way to retrieve that from the context.
 
-  -To tell the caller to clean up PsychOSOpenOnscreenWindow returns FALSE if we fail to open the window. It 
+  -To tell the caller to clean up PsychOSOpenOnscreenWindow returns FALSE if we fail to open the window. It
   would be better to just issue an PsychErrorExit() and have that clean up everything allocated outside of
   PsychOpenOnscreenWindow().
 */
@@ -838,7 +838,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // For windowLevels between 1000 and 1999, make the window background transparent, so standard GUI
         // would be visible, wherever nothing is drawn, i.e., where alpha channel is zero:
 
-        // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:        
+        // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
         unsigned int opacity = (unsigned int)(0xffffffff * (((float)(windowLevel % 500)) / 499.0));
 
         // TODO FIXME Wayland...
@@ -944,35 +944,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Activate the associated rendering context:
     waffle_make_current(waffle_display, window, ctx);
 
-    // Running on top of a FOSS Mesa graphics driver?
-    if ((open_windowcount == 0) && strstr((const char*) glGetString(GL_VERSION), "Mesa") && !getenv("PSYCH_DONT_LOCK_MOGLCORE")) {
-        // Yes. At least as of Mesa 10.1 as shipped in Ubuntu 14.04-LTS, Mesa
-        // will become seriously crashy if our Screen() mex files is flushed
-        // from memory due to a clear all/mex/Screen and afterwards reloaded.
-        // This because Mesa maintains pointers back into our library image,
-        // which will turn into dangling pointers if we get unloaded/reloaded
-        // into a new location. To prevent Mesa crashes on clear Screen -> reload,
-        // prevent this mex file against clearing from Octave/Matlab address space.
-        // An ugly solution which renders "clear Screen" useless, but the best i can
-        // come up with at the moment :(
-        if (PsychRuntimeEvaluateString("moglcore('LockModule');") > 0) {
-            if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: Failed to enable moglcore locking workaround for Mesa OpenGL bug. Trying alternative workaround.\n");
-                printf("PTB-WARNING: Calling 'clear all', 'clear mex', 'clear java', 'clear moglcore' is now unsafe and may crash if you try.\n");
-                printf("PTB-WARNING: You may add setenv('PSYCH_DONT_LOCK_MOGLCORE','1'); to your Octave/Matlab startup script to work around this issue in future sessions.\n");
-            }
-            setenv("PSYCH_DONT_LOCK_MOGLCORE", "1", 0);
-        }
-        else {
-            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Workaround: Disabled ability to 'clear moglcore', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
-        }
-    }
-
     // Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
-    // available OpenGL extensions via GLEW. Must be careful to only call GLX independent
-    // init code as we are not using the X11/GLX backend, so call glewContextInit() instead
-    // of the regular glewInit():
-    glerr = glewContextInit();
+    // available OpenGL extensions via GLEW:
+    glerr = glewInit();
     if (GLEW_OK != glerr) {
         /* Problem: glewContextInit failed, something is seriously wrong. */
         if (PsychPrefStateGet_Verbosity() > 0) printf("\nPTB-ERROR[GLEW init failed: %s]: Please report this to the forum. Will try to continue, but may crash soon!\n\n", glewGetErrorString(glerr));
@@ -1569,7 +1543,7 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 /*
   PsychOSSetGLContext()
 
-  Set the window to which GL drawing commands are sent.  
+  Set the window to which GL drawing commands are sent.
 */
 void PsychOSSetGLContext(PsychWindowRecordType * windowRecord)
 {
@@ -1608,7 +1582,7 @@ void PsychOSSetGLContext(PsychWindowRecordType * windowRecord)
 /*
   PsychOSUnsetGLContext()
 
-  Clear the drawing context.  
+  Clear the drawing context.
 */
 void PsychOSUnsetGLContext(PsychWindowRecordType * windowRecord)
 {

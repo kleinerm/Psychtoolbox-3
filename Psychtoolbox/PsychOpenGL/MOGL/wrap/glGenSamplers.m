@@ -15,8 +15,8 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-samplers = uint32(zeros(1,count));
+samplers = uint32(zeros(1,count+1));
 
 moglcore( 'glGenSamplers', count, samplers );
-
+samplers = samplers(1:end-1);
 return

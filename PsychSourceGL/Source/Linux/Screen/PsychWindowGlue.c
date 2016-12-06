@@ -44,6 +44,21 @@ int mesaversion[3];
 // utsname for uname() so we can find out on which kernel we're running:
 #include <sys/utsname.h>
 
+// Needed for our custom PRIME outputSink timestamping via UDP connection
+// to the hacked up modesetting ddx:
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+typedef struct _buf {
+    uint64_t frame;
+    uint64_t usec;
+    int scrnIndex;
+    unsigned char flags;
+} _buf;
+
+static int prime_sockfd[kPsychMaxPossibleDisplays] = { 0 };
+static int prime_sockfd2[kPsychMaxPossibleDisplays] = { 0 };
+
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
  *    PsychRealtimePriority(true) enables realtime-scheduling (like Priority(>0) would do in Matlab).
  *    PsychRealtimePriority(false) restores scheduling to the state before last invocation of PsychRealtimePriority(true),
@@ -124,6 +139,8 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
     Window rootRet;
     unsigned int depth_return, border_width_return, w, h;
     int x, y;
+
+    (void) flags;
 
     // Trigger event queue dispatch processing for GUI windows:
     if (windowRecord == NULL) {
@@ -307,8 +324,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     psych_bool xfixes_available = FALSE;
     psych_bool newstyle_setup = FALSE;
     int gpuMaintype = 0;
-    unsigned char* mesaver = NULL;
+    const char* mesaver = NULL;
     psych_bool mesamapi_strdupbug = FALSE;
+    int saved_default_screen = 0;
 
     // Include onscreen window index in title:
     sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
@@ -403,14 +421,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     glXQueryVersion(dpy, &major, &minor) && ((major > 1) || ((major == 1) && (minor >= 3))));
 
     // Initialize GLX-1.3 protocol support. Use if possible:
-    glXChooseFBConfig = (PFNGLXCHOOSEFBCONFIGPROC) glXGetProcAddressARB("glXChooseFBConfig");
-    glXGetFBConfigAttrib = (PFNGLXGETFBCONFIGATTRIBPROC) glXGetProcAddressARB("glXGetFBConfigAttrib");
-    glXGetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC) glXGetProcAddressARB("glXGetVisualFromFBConfig");
-    glXCreateWindow = (PFNGLXCREATEWINDOWPROC) glXGetProcAddressARB("glXCreateWindow");
-    glXCreateNewContext = (PFNGLXCREATENEWCONTEXTPROC) glXGetProcAddressARB("glXCreateNewContext");
-    glXDestroyWindow = (PFNGLXDESTROYWINDOWPROC) glXGetProcAddressARB("glXDestroyWindow");
-    glXSelectEvent = (PFNGLXSELECTEVENTPROC) glXGetProcAddressARB("glXSelectEvent");
-    glXGetSelectedEvent = (PFNGLXGETSELECTEDEVENTPROC) glXGetProcAddressARB("glXGetSelectedEvent");
+    glXChooseFBConfig = (PFNGLXCHOOSEFBCONFIGPROC) glXGetProcAddressARB((const GLubyte *) "glXChooseFBConfig");
+    glXGetFBConfigAttrib = (PFNGLXGETFBCONFIGATTRIBPROC) glXGetProcAddressARB((const GLubyte *) "glXGetFBConfigAttrib");
+    glXGetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC) glXGetProcAddressARB((const GLubyte *) "glXGetVisualFromFBConfig");
+    glXCreateWindow = (PFNGLXCREATEWINDOWPROC) glXGetProcAddressARB((const GLubyte *) "glXCreateWindow");
+    glXCreateNewContext = (PFNGLXCREATENEWCONTEXTPROC) glXGetProcAddressARB((const GLubyte *) "glXCreateNewContext");
+    glXDestroyWindow = (PFNGLXDESTROYWINDOWPROC) glXGetProcAddressARB((const GLubyte *) "glXDestroyWindow");
+    glXSelectEvent = (PFNGLXSELECTEVENTPROC) glXGetProcAddressARB((const GLubyte *) "glXSelectEvent");
+    glXGetSelectedEvent = (PFNGLXGETSELECTEDEVENTPROC) glXGetProcAddressARB((const GLubyte *) "glXGetSelectedEvent");
 
     PsychUnlockDisplay();
 
@@ -871,6 +889,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // is assigned for that purpose as master-window. We request a direct
     // rendering context (True) if possible:
     if (fbconfig) {
+        // Workaround for bug introduced into Mesa 12.0, potentially backported to some 11.2 releases
+        // by commit cf804b4455fac9e585b3600a8318caaced9c23de. glXCreateNewContext() does not perform
+        // some validation of fbconfig correctly against the X-Screen stored in the fbconfig for our
+        // target X-Screen, but instead always validates against X-Screen 0 -- the DefaultScreen(dpy).
+        // This ends badly whenever we are not trying to create a context on X-Screen 0. Work around
+        // this by temporarily assigning dpy->default_screen as our target screen 'scrnum' while
+        // glXCreateNewContext is called. Note: A bug fix for this bug was submitted upstream to resolve
+        // this properly, but that doesn't help us if we need to run on affected Mesa 12.0.x releases,
+        // as shipping with Ubuntu 16.10 and presumably future Ubuntu 16.04.2-LTS:
+        saved_default_screen = ((_XPrivDisplay) dpy)->default_screen;
+        ((_XPrivDisplay) dpy)->default_screen = scrnum;
+
         ctx = glXCreateNewContext(dpy, fbconfig[0], GLX_RGBA_TYPE, ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL), True);
     } else {
         ctx = glXCreateContext(dpy, visinfo, ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL), True );
@@ -941,7 +971,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     XFree(visinfo);
 
     // Release fbconfig array, if any:
-    if (fbconfig) XFree(fbconfig);
+    if (fbconfig) {
+        // Restore true default screen for dpy:
+        ((_XPrivDisplay) dpy)->default_screen = saved_default_screen;
+        XFree(fbconfig);
+    }
 
     PsychLockDisplay();
 
@@ -1236,10 +1270,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // that actually uses the setup call -- no special cases or extra code needed there :-)
         // This special glXSwapIntervalSGI() call will simply accept an input value of zero for
         // disabling vsync'ed bufferswaps as a valid input parameter:
-        glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB("glXSwapIntervalMESA");
+        glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalMESA");
 
         // Additionally bind the Mesa query call:
-        glXGetSwapIntervalMESA = (PFNGLXGETSWAPINTERVALMESAPROC) glXGetProcAddressARB("glXGetSwapIntervalMESA");
+        glXGetSwapIntervalMESA = (PFNGLXGETSWAPINTERVALMESAPROC) glXGetProcAddressARB((const GLubyte *) "glXGetSwapIntervalMESA");
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GLX_MESA_swap_control extension for control of vsync.\n");
     }
     else {
@@ -1250,14 +1284,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Special case: Buggy ATI driver: Supports the VSync extension and glXSwapIntervalSGI, but provides the
     // wrong extension namestring "WGL_EXT_swap_control" (from MS-Windows!), so GLEW doesn't auto-detect and
     // bind the extension. If this special case is present, we do it here manually ourselves:
-    if ((glXSwapIntervalSGI == NULL) && (strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control") != NULL)) {
+    if ((glXSwapIntervalSGI == NULL) && (strstr((const char *) glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control") != NULL)) {
         // Looks so: Bind manually...
-        glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB("glXSwapIntervalSGI");
+        glXSwapIntervalSGI = (PFNGLXSWAPINTERVALSGIPROC) glXGetProcAddressARB((const GLubyte *) "glXSwapIntervalSGI");
     }
 
     // Extension finally supported?
-    if (glXSwapIntervalSGI==NULL || ( strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_SGI_swap_control")==NULL &&
-        strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")==NULL && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control")==NULL )) {
+    if (glXSwapIntervalSGI==NULL || ( strstr((const char *) glXQueryExtensionsString(dpy, scrnum), "GLX_SGI_swap_control")==NULL &&
+        strstr((const char *) glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")==NULL && strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_MESA_swap_control")==NULL )) {
         // No, total failure to bind extension:
         glXSwapIntervalSGI = NULL;
 
@@ -1453,6 +1487,14 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 
     PsychUnlockDisplay();
 
+    // Shut down the PRIME UDP socket if any was in use:
+    if (prime_sockfd[PsychGetXScreenIdForScreen(windowRecord->screenNumber)] > 0)
+        close(prime_sockfd[PsychGetXScreenIdForScreen(windowRecord->screenNumber)]);
+    prime_sockfd[PsychGetXScreenIdForScreen(windowRecord->screenNumber)] = 0;
+    if (prime_sockfd2[PsychGetXScreenIdForScreen(windowRecord->screenNumber)] > 0)
+        close(prime_sockfd2[PsychGetXScreenIdForScreen(windowRecord->screenNumber)]);
+    prime_sockfd2[PsychGetXScreenIdForScreen(windowRecord->screenNumber)] = 0;
+
     // Done.
     return;
 }
@@ -1541,6 +1583,189 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     msc = -1;
 
     #ifdef GLX_OML_sync_control
+
+    // DRI Prime hybridGraphics setup in outputSource -> outputSink mode? Typically a NVidia Optimus
+    // Laptop under the proprietary NVidia driver, which can't do the much better Prime DRI3/Present gpu renderoffload.
+    // If OML_sync_control is not supported natively, then use our custom UDP protocol between the modesetting-ddx and us.
+    // This only works for unredirected fullscreen windows, as only then we can be somewhat certain that
+    // pageflips on the outputSink iGPU are triggered by our OpenGL bufferswaps.
+    if (((NULL == glXWaitForSbcOML) || (windowRecord->specialflags & kPsychOpenMLDefective)) &&
+        (windowRecord->hybridGraphics == 3 || windowRecord->hybridGraphics == 4) &&
+        (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
+        // Type 4 setup uses wait for true flip completion, type 3 setup only waits for flip scheduled:
+        int targetCompletionMode = (windowRecord->hybridGraphics == 4) ? 1 : 0;
+        int xscreen = PsychGetXScreenIdForScreen(windowRecord->screenNumber);
+
+        // Yes. Try to use our own custom UDP network protocol to get swap completion timestamps
+        // from the specially hacked modesetting ddx.
+        if (prime_sockfd[xscreen] == 0) {
+            struct _buf buf;
+            struct sockaddr_in client_addr;
+            memset(&client_addr, 0, sizeof(client_addr));
+            client_addr.sin_family = AF_INET;
+            client_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+            client_addr.sin_port = htons(10000 + xscreen);
+
+            // Get socket:
+            prime_sockfd[xscreen] = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+            if (prime_sockfd[xscreen] < 0) {
+                if (PsychPrefStateGet_Verbosity() > 0)
+                    printf("PTB-ERROR:PsychOSGetSwapCompletionTimestamp: Failed to create UDP receive socket for Prime slave-output timestampig on screen %i! [%s]\n",
+                           windowRecord->screenNumber, strerror(errno));
+                return(-1);
+            }
+
+            // Try to bind it to localhost loopback receive port 10000 + X-Screen numbeer:
+            if (bind(prime_sockfd[xscreen], (struct sockaddr *) &client_addr, sizeof(client_addr))) {
+                // Failed.
+                if (PsychPrefStateGet_Verbosity() > 0)
+                    printf("PTB-ERROR:PsychOSGetSwapCompletionTimestamp: Failed to bind UDP socket for Prime slave-output timestampig on screen %i to port %i! [%s]\n",
+                           windowRecord->screenNumber, 10000 + xscreen, strerror(errno));
+                close(prime_sockfd[xscreen]);
+                prime_sockfd[xscreen] = -1;
+                return(-1);
+            }
+
+            prime_sockfd2[xscreen] = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+            if (prime_sockfd2[xscreen] < 0) {
+                if (PsychPrefStateGet_Verbosity() > 0)
+                    printf("PTB-ERROR:PsychOSGetSwapCompletionTimestamp: Failed to create UDP send socket for Prime slave-output timestampig on screen %i! [%s]\n",
+                           windowRecord->screenNumber, strerror(errno));
+                close(prime_sockfd[xscreen]);
+                prime_sockfd[xscreen] = -1;
+                return(-1);
+            }
+
+            client_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+            if(connect(prime_sockfd2[xscreen], (struct sockaddr *) &client_addr, sizeof(client_addr))) {
+                // Failed.
+                if (PsychPrefStateGet_Verbosity() > 0)
+                    printf("PTB-ERROR:PsychOSGetSwapCompletionTimestamp: Failed to connect UDP send socket for Prime slave-output timestampig on screen %i to port %i! [%s]\n",
+                           windowRecord->screenNumber, 10000 + xscreen, strerror(errno));
+                close(prime_sockfd[xscreen]);
+                prime_sockfd[xscreen] = -1;
+                close(prime_sockfd2[xscreen]);
+                prime_sockfd2[xscreen] = -1;
+                return(-1);
+            }
+
+            // Ready to rock at next flip:
+            windowRecord->specialflags &= ~kPsychOpenMLDefective;
+
+            if (PsychPrefStateGet_Verbosity() > 2)
+                printf("PTB-INFO: Custom PRIME Flip completion timestamping for screen %i enabled. Will start at next Flip...\n", windowRecord->screenNumber);
+
+            // Warn about use of multiple video outputs per screen. This cannot possibly work with any level of reliability:
+            if ((PsychScreenToHead(windowRecord->screenNumber, 1) >= 0) && (PsychPrefStateGet_Verbosity() > 1))
+                printf("PTB-WARNING: Custom PRIME Flip completion timestamping for screen %i will not work reliably, because multiple displays are active on this screen!\n",
+                       windowRecord->screenNumber);
+
+            // We must skip this one, as the X-Server may have sent out feedback for this flip already,
+            // before we managed to create and bind our UDP socket, so the info may be lost and we would
+            // hang if we tried to wait for it to arrive. The next flip will be processed by us:
+            windowRecord->reference_sbc = 0;
+
+            // Wait for half a second to make sure that any potential pending flips complete
+            // and any in-flight UDP packets have been received by our new socket. Then drain
+            // whatever got received, until nothing gets received for at least 10 msecs.
+            // We want to make sure the sockets receive queue is in a well defined (=empty)
+            // state before we use the connection for actual swap timestamping:
+            PsychWaitIntervalSeconds(0.5);
+            while (recv(prime_sockfd[xscreen], &buf, sizeof(buf), MSG_DONTWAIT | MSG_WAITALL) >= 0)
+                PsychWaitIntervalSeconds(0.010);
+
+            return(-1);
+        }
+
+        // Prime custom timestamping ready?
+        if (prime_sockfd[xscreen] > 0) {
+            struct _buf buf;
+
+            // First wait for swap fence packet via a blocking receive:
+            while (TRUE) {
+                recv(prime_sockfd[xscreen], &buf, sizeof(buf), MSG_WAITALL);
+                if (PsychPrefStateGet_Verbosity() > 12)
+                    printf("0-Screen %i: flipcomplete %i : sbc=%lld : msc=%lld : ust=%lld\n", buf.scrnIndex, buf.flags, windowRecord->reference_sbc, buf.frame, buf.usec);
+
+                // glXSwapBuffers fence packet received from ourselves, ie. PsychOSFlipWindowBuffers?
+                if (buf.flags == 100) {
+                    // Exit blocking receive loop:
+                    break;
+                }
+            }
+
+            // Then, if waitig for flip completion, wait for the preceeding flip-scheduled packet via a blocking receive:
+            while (targetCompletionMode == 1) {
+                recv(prime_sockfd[xscreen], &buf, sizeof(buf), MSG_WAITALL);
+                if (PsychPrefStateGet_Verbosity() > 12)
+                    printf("0-Screen %i: flipcomplete %i : sbc=%lld : msc=%lld : ust=%lld\n", buf.scrnIndex, buf.flags, windowRecord->reference_sbc, buf.frame, buf.usec);
+
+                // Proper "flip queued" packet received?
+                if (buf.flags == 0) {
+                    // Exit blocking receive loop:
+                    break;
+                }
+            }
+
+            // Then wait for desired flip scheduled/completion packet via a blocking receive:
+            while (msc == -1) {
+                recv(prime_sockfd[xscreen], &buf, sizeof(buf), MSG_WAITALL);
+                if (PsychPrefStateGet_Verbosity() > 12)
+                    printf("1-Screen %i: flipcomplete %i : sbc=%lld : msc=%lld : ust=%lld\n", buf.scrnIndex, buf.flags, windowRecord->reference_sbc, buf.frame, buf.usec);
+
+                // Proper completion packet of type targetCompletionMode received?
+                if (buf.flags == targetCompletionMode) {
+                    // Yes. Assign preliminary result:
+                    msc = buf.frame;
+                    ust = buf.usec;
+
+                    // Exit blocking receive loop:
+                    break;
+                }
+            }
+
+            // We have a useable result. But is it the most recent - and thereby right - one, or stale data?
+            // Perform non-blocking receives until the sockets receive queue is drained. If a UDP packet of
+            // our targetCompletionMode is received its content will overwrite our previous results:
+            while (recv(prime_sockfd[xscreen], &buf, sizeof(buf), MSG_DONTWAIT | MSG_WAITALL) == sizeof(buf)) {
+                if (PsychPrefStateGet_Verbosity() > 12)
+                    printf("2-Screen %i: flipcomplete %i : sbc=%lld : msc=%lld : ust=%lld\n", buf.scrnIndex, buf.flags, windowRecord->reference_sbc, buf.frame, buf.usec);
+
+                // Proper completion packet of type targetCompletionMode received?
+                if (buf.flags == targetCompletionMode) {
+                    // Yes. Overwrite previous result with this more recent one:
+                    msc = buf.frame;
+                    ust = buf.usec;
+                }
+            }
+
+            // Make sure msc is always positive and incrementing (needed, because msc is defined as signed integer):
+            msc &= ~(1ULL << 63);
+
+            // If no actual timestamp / msc was requested, then we return here:
+            if (tSwap == NULL) return(msc);
+
+            // Success at least for timestamping. Translate ust into system time in seconds:
+            *tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
+
+            if (targetCompletionMode == 0) {
+                *tSwap += windowRecord->VideoRefreshInterval;
+                ust += (psych_int64) (windowRecord->VideoRefreshInterval * 1e6);
+            }
+
+            // Update cached reference values for future swaps:
+            windowRecord->reference_ust = ust;
+            windowRecord->reference_msc = msc;
+            windowRecord->reference_sbc++;
+
+            if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %lld, refmsc = %lld, refsbc = %lld.\n", ust, msc, sbc);
+
+            // Return msc of swap completion:
+            return(msc);
+        }
+
+        // Does not work: Fall through to OML_sync_control timestamping.
+    }
 
     // Extension unsupported or known to be defective? Return -1 "unsupported" in that case:
     if ((NULL == glXWaitForSbcOML) || (windowRecord->specialflags & kPsychOpenMLDefective)) return(-1);
@@ -1859,7 +2084,7 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 
     // We check Linux versions 3.13 to 3.15 for broken kms-pageflip events if we are running on nouveau-kms.
     // Exceptions are -rc release candidate kernels, so MK can still use rc's built from git/source for patch testing.
-    if ((((major == 3) && ((minor >= 13) && (minor <= 15))) && !strstr(unameresult.release, "-rc")) && strstr(glGetString(GL_VENDOR), "nouveau")) {
+    if ((((major == 3) && ((minor >= 13) && (minor <= 15))) && !strstr(unameresult.release, "-rc")) && strstr((const char *) glGetString(GL_VENDOR), "nouveau")) {
         // Potentially faulty nouveau-kms. Check against the known kernel patchlevels when the bug was fixed:
         // We know Linux stable kernels 3.13.11.5+, 3.14.12+ and 3.15.5+ are fixed.
         // As far as Ubuntu distribution kernels go, we know the ones based on 3.13.11.5+ are fine,
@@ -2228,6 +2453,21 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     // new problems under DRI2 + triple-buffering. See PsychOSScheduleFlipWindowBuffers() for
     // why we want to work around these if possible for some performance gain...
     if (PsychOSScheduleFlipWindowBuffers(windowRecord, 0.0, 0, 0, 0, 0) >= 0) return;
+
+    // For NVidia Optimus outputSink style Prime sync emit a "swap submitted" marker packet, so
+    // our completion code in PsychOSGetSwapCompletionTimestamp can find the start of the most
+    // recent swaps data in the UDP receive queue, filtering out spurious packets from page-flips
+    // which were not triggered by ourselves, e.g., instead triggered by mouse cursor visual
+    // updates (NVidia proprietary driver uses a SW cursor on Optimus setups):
+    if (prime_sockfd2[PsychGetXScreenIdForScreen(windowRecord->screenNumber)] > 0) {
+        struct _buf buf;
+        buf.frame = 0;
+        buf.usec = 0;
+        buf.scrnIndex = PsychGetXScreenIdForScreen(windowRecord->screenNumber);
+        buf.flags = 100;
+        if (send(prime_sockfd2[buf.scrnIndex], &buf, sizeof(buf), MSG_DONTWAIT) != sizeof(buf))
+            printf("PTB-ERROR:PsychOSFlipWindowBuffers: Failed to send UDP swap fence for screen %i.\n", windowRecord->screenNumber);
+    }
 
     // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
     PsychLockDisplay();
@@ -2633,10 +2873,20 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
  */
 double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
 {
-    (void) windowRecord;
-    (void) onlyForCalibration;
+    // Nothing to do for classic X11/GLX. Just return identity. However, if this
+    // is a NVidia Optimus Laptop with Intel iGPU + NVidia dGPU and the proprietary
+    // NVidia binary graphics driver is used for output source -> output sink PRIME
+    // mode, then we have to work around a NVidia oddity: There is always 1 frame extra
+    // delay after a bufferswap request until flip at minimum. Ergo, subtract one video
+    // refresh duration from the target time to Increase our chance of hitting the proper
+    // target frame. This as of the design of driver version 370.23 with XOrg 1.19-rc1.
+    if (!onlyForCalibration && ((windowRecord->hybridGraphics == 2) || (windowRecord->hybridGraphics == 3))) {
+        if (PsychPrefStateGet_Verbosity() > 14)
+            printf("PTB-DEBUG: PsychOSAdjustForCompositorDelay: Optimus Pre-targetTime: %f secs. VideoRefreshInterval %f secs.\n",
+                   targetTime, windowRecord->VideoRefreshInterval);
+        targetTime -= windowRecord->VideoRefreshInterval;
+    }
 
-    // Nothing to do for classic X11/GLX. Just return identity:
     return(targetTime);
 }
 
