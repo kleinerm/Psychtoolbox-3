@@ -356,6 +356,54 @@ void PsychGSVideoCaptureInit(void)
     }
     numCaptureRecords = 0;
 
+    // On OSX, while most .dylibs on which the Screen mex file depends
+    // get unloaded when Screen() gets unloaded, e.g., "clear all", "clear Screen",
+    // for some reason libglib does not get unloaded, but sticks around until process
+    // termination. This causes a problem with libgobject: libgobject uses the glib
+    // function g_quark_from_static_string() during its initialization. That function
+    // must only be used if the library calling it _never_ gets unloaded during process
+    // lifetime, as it holds references to memory containing some static strings. Now
+    // libgobject _does_ get unloaded whenever Screen() is cleared from memory, but
+    // libglib, which now holds references to invalid memory to non-existent libgobject,
+    // does _not_ get unloaded and now has dangling pointers into process memory. When
+    // Screen gets reloaded, a new instance of libgobject gets reloaded and initalized,
+    // which during its initalization tries to g_quark_from_static_string() again, which
+    // triggers a hash table lookup in glib to avoid redundant string creation, which
+    // triggers an access to the dangling pointer for the old, now non-existent memory
+    // image of former libgobject instance. The result is a nice crash of Matlab or Octave.
+    //
+    // Try to avoid this by preventing libgobject from ever unloading, once it was loaded
+    // during 1st load of Screen mex. We try to dlopen() the library, and if it gets loaded,
+    // get loaded if it wasn't already loaded during 1st load of Screen, but iff it was
+    // its reference count gets bumped, a handle gets returned - for which we don't care -
+    // and most importantly, it gets tagged NODELETE to prevent it from ever unloading
+    // until regular termination of the Matlab/Octave process. For some reason we have to
+    // specify the absolute path to the library part of GStreamer or the OSX dynamic linker
+    // will load other copies of libgobject in its search path, e.g., if HomeBrew is installed,
+    // and we have a useless zombie copy and the actual GStreamer copy in our address space!
+    //
+    // So far the theory which seems to work on both Matlab and Octave. Lets hope no other
+    // of the dylibs which are part of GStreamer also use g_quark_from_static_string() or
+    // this will turn into hell really quick.
+    //
+    // We call this code unconditionally from PsychGSVideoCaptureInit() even when GStreamer
+    // is not used in a session, because apparently the OSX dynamic linker does not load the
+    // GStreamer libraries on first actual use, but at Screen load time - if they exist in
+    // the linkers search path. Iow. weak_library linking prevents Screen load failure if
+    // GStreamer is not installed on the system, but it doesn't prevent early/redundant loading
+    // of GStreamer iff it is installed on the system, even if it isn't used at all during
+    // a session.
+    //
+    // Note: This workaround is not needed on MS-Windows, or on Linux. On both systems i have
+    // verified that libglib and libgobject never get unloaded before process termination on both
+    // Matlab and Octave. On Linux i've additionally verified that this is by design of these
+    // libraries, not just by some happy accident.
+    #if PSYCH_SYSTEM == PSYCH_OSX
+        if ((NULL == dlopen("/Library/Frameworks/GStreamer.framework/Versions/1.0/lib/libgobject-2.0.0.dylib", RTLD_NODELETE)) &&
+            (PsychPrefStateGet_Verbosity() > 3))
+            printf("PTB-DEBUG: libgobject-2.0.0.dylib unavailable, ergo GStreamer not available in this session.\n");
+    #endif
+
     return;
 }
 
@@ -480,7 +528,8 @@ static psych_bool PsychVideoPipelineSetState(GstElement* camera, GstState state,
 /* Receive messages from the playback pipeline message bus and handle them: */
 static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
 {
-    PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) dataptr;
+    (void) bus, (void) dataptr;
+
     if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: PsychVideoBusCallback: Msg source name and type: %s : %s\n", GST_MESSAGE_SRC_NAME(msg), GST_MESSAGE_TYPE_NAME(msg));
 
     switch (GST_MESSAGE_TYPE (msg)) {
@@ -540,6 +589,7 @@ static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 {
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
+    (void) sink;
 
     PsychLockMutex(&capdev->mutex);
     printf("PTB-DEBUG: Videosink reached EOS.\n");
@@ -584,8 +634,8 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
 {
     GstSample *videoSample;
     int w = 0, h = 0;
-
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
+    (void) sink;
 
     PsychLockMutex(&capdev->mutex);
     videoSample = gst_app_sink_pull_preroll(GST_APP_SINK(capdev->videosink));
@@ -619,6 +669,7 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
 static GstFlowReturn PsychNewBufferCallback(GstAppSink *sink, gpointer user_data)
 {
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
+    (void) sink;
 
     PsychLockMutex(&capdev->mutex);
     capdev->frameAvail++;
@@ -630,8 +681,11 @@ static GstFlowReturn PsychNewBufferCallback(GstAppSink *sink, gpointer user_data
 }
 
 /* Not used by us, but needs to be defined as no-op anyway: */
+/*
 static GstFlowReturn PsychNewBufferListCallback(GstAppSink *sink, gpointer user_data)
 {
+    (void) sink;
+
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
 
     PsychLockMutex(&capdev->mutex);
@@ -640,10 +694,12 @@ static GstFlowReturn PsychNewBufferListCallback(GstAppSink *sink, gpointer user_
 
     return(GST_FLOW_OK);
 }
+*/
 
 /* Not used by us, but needs to be defined as no-op anyway: */
 static void PsychDestroyNotifyCallback(gpointer user_data)
 {
+    (void) user_data;
     return;
 }
 
@@ -651,8 +707,7 @@ static GstAppSinkCallbacks videosinkCallbacks = {
     PsychEOSCallback,
     PsychNewPrerollCallback,
     PsychNewBufferCallback,
-    PsychNewBufferListCallback,
-    NULL
+    {0}
 };
 
 /*
@@ -743,10 +798,11 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, const char*
     GParamSpec          *paramSpec;
     GstElement          *videosource;
     char                port_str[64];
-    char                *device_name = NULL;
     gchar               *pstring = NULL;
     gchar               *devString = NULL;
     psych_uint64        deviceURI = 0;
+
+    (void) flags;
 
     if (PsychPrefStateGet_Verbosity() > 5) {
         devString = gst_device_get_device_class(device);
@@ -959,11 +1015,7 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
     char                class_str[64];
     int                 inputIndex;
     GstElement          *videosource = NULL;
-    GValueArray         *viddevs = NULL;
-    GValue              *dev = NULL;
-    char                *device_name = NULL;
     gchar               *pstring = NULL;
-    psych_uint64        deviceURI = 0;
     int                 oldverbose;
 
     // Info to the user:
@@ -1181,11 +1233,6 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
 
     int                 i;
-    GstElement          *videosource = NULL;
-    GValueArray         *viddevs = NULL;
-    GValue              *dev = NULL;
-    char                *device_name = NULL;
-    gchar               *pstring = NULL;
     PsychVideosourceRecordType *mydevice = NULL;
 
     // Make sure GStreamer is ready:
@@ -2818,11 +2865,15 @@ static GstPadProbeReturn PsychHaveVideoDataCallback(GstPad *pad, GstPadProbeInfo
     unsigned char *input_image;
     PsychVidcapRecordType *capdev = (PsychVidcapRecordType *) dataptr;
     GstBuffer *videoBuffer = info->data;
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
     #pragma warning( disable : 4068 )
+#endif
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-    GstMapInfo mapinfo = GST_MAP_INFO_INIT;
+    GstMapInfo      mapinfo = GST_MAP_INFO_INIT;
     #pragma GCC diagnostic pop
+
+    (void) pad;
 
     // Is a special markertracker plugin loaded for this camera? If so, execute it on this frame:
     if (capdev->markerTrackerPlugin) {
@@ -2880,8 +2931,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     GstCaps         *colorcaps;
     GstCaps         *vfcaps, *reccaps;
     GstElement      *camera = NULL;
-    GMainLoop       *VideoContext = NULL;
-    GstBus          *bus = NULL;
     GstElement      *videosink = NULL;
     GstElement      *videosource = NULL;
     GstElement      *videosource_filter = NULL;
@@ -2911,6 +2960,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     device_name[0] = 0;
     plugin_name[0] = 0;
     prop_name[0] = 0;
+
+    (void) allow_lowperf_fallback;
 
     // Init capturehandle to none:
     *capturehandle = -1;
@@ -4127,7 +4178,6 @@ int PsychGSDrainBufferQueue(PsychVidcapRecordType* capdev, int numFramesToDrain,
 int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
 {
     GstElement              *camera = NULL;
-    GstBuffer               *videoBuffer = NULL;
     guint64                 nrInFrames, nrOutFrames, nrDroppedFrames, nrDuplicatedFrames;
     GstCaps                 *caps = NULL;
     GstCaps                 *capsi = NULL;
@@ -4138,7 +4188,6 @@ int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframe
     double                  fpsmin, fpsmax;
     int                     dropped = 0;
     int                     drainedCount;
-    float                   framerate = 0;
 
     // Retrieve device record for handle:
     PsychVidcapRecordType* capdev = PsychGetGSVidcapRecord(capturehandle);
@@ -4501,7 +4550,6 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     PsychVidcapRecordType *capdev;
     GstBuffer *videoBuffer = NULL;
     GstSample *videoSample = NULL;
-    gint64 bufferIndex;
     double deltaT = 0;
     GstClockTime baseTime;
 
@@ -4511,7 +4559,6 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     unsigned int count, i;
     unsigned char* pixptr;
     psych_uint16* pixptrs;
-    psych_bool newframe = FALSE;
     double tstart, tend;
     int nrdropped = 0;
     unsigned char* input_image = NULL;
@@ -4519,10 +4566,15 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Disable warning about missing field initializer in calls
     // like GstMapInfo mapinfo = = GST_MAP_INFO_INIT;
     // Not our bug, but GStreamer's, so suppress for now.
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+    #pragma warning( disable : 4068 )
+#endif
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo mapinfo = GST_MAP_INFO_INIT;
     #pragma GCC diagnostic pop
+
+    (void) timeindex;
 
     // Make sure GStreamer is ready:
     PsychGSCheckInit("videocapture");
@@ -4729,8 +4781,6 @@ int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             PsychProbeSampleProps(videoSample, NULL, NULL, &capdev->fps);
             printf("Bufferprobe: newfps = %f altfps = %f\n", capdev->fps, (float) ((deltaT > 0) ? 1.0 / deltaT : 0.0));
         }
-
-        bufferIndex = GST_BUFFER_OFFSET(videoBuffer);
     } else {
         if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: No new video frame received in gst_app_sink_pull_sample! Something's wrong. Aborting fetch.\n");
         return(-1);
@@ -5015,7 +5065,6 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     float oldfvalue = FLT_MAX;
     double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
     psych_bool assigned = false;
-    psych_bool present  = false;
     GstColorBalance* cb = NULL;
     GList* cl = NULL;
     GList* iter = NULL;

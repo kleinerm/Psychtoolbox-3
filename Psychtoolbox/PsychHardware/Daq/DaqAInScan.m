@@ -152,6 +152,8 @@ function [data,params]=DaqAInScan(daq,options)
 % "options.begin" is 1 (default) to begin a new scan.
 % "options.continue" is 1 (default) to receive reports (inside PsychHID).
 % "options.end" is 1 (default) to wait until done and return the result.
+% "options.nodiscard" is an optional field. If 1 (true) then the check for
+%      consecutively numbered reports is skipped. No data is discarded.
 %
 % LIMITATION: The literature from Measurement Computing mentions a speed of
 % 50 kHz, but that's a theoretical limit. As of 17 April 2005, DaqAInScan
@@ -270,6 +272,14 @@ function [data,params]=DaqAInScan(daq,options)
 % 12/6/15 mk  Try to select interfaces ascending by interfaceID for assignment to
 %             IndexRange, instead of hard-coding ranges. This should not change
 %             anything on Linux or Windows, but maybe it helps the brain-dead OSX.
+%
+% 9/24/16 js  Remembers the serial number of the Daq device when options.begin is true,
+%             then only uses device IDs with the same serial number; this allows multiple
+%             devices to be attached to the same system. Adds optional field options.nodiscard
+%             to keep all data, regardless of the consecutivity of reports.
+%
+% 9/26/16 mk  Runs on Matlab R2013a and later, replacing the deprecated bitcmp function
+%             for handling of 12 bit differential channels on non-USB 1608FS. Untested.
 
 % These USB-1280FS parameters are computed from the user-supplied
 % arguments.
@@ -445,6 +455,12 @@ end
 persistent start;
 persistent IndexRange;
 
+% Keeps track of the maximum report's serial number returned in the last read.
+persistent  snomax;
+
+% Remembers the DAQ serial number each time options.begin is 1
+persistent  daqsno;
+
 if options.begin
     % It might be running, so stop it.
     % hex2dec('12') is 18.
@@ -481,6 +497,9 @@ if options.begin
     % become worse than it was before - complete failure - on OSX, so maybe it helps?
     % -- mk
 
+    % Initialise DAQ serial number -- js
+    daqsno = AllHIDDevices( daq ).serialNumber ;
+
     % Find all other interfaces of device 'daq', by looking for devices
     % with the same serial number as daq:
     SN = AllHIDDevices(daq).product;
@@ -494,8 +513,14 @@ if options.begin
     end
 
     % Find device indices with the same "serial number" / "product" name:
+    % Keep indeces for later -- js
     AllSNs = strvcat(AllHIDDevices.product);
-    InterfaceInds = transpose(strmatch(SN,AllSNs));
+    kk = strmatch ( SN , AllSNs ) ;
+    InterfaceInds = transpose ( kk ) ;
+
+    % Filter interface id's by DAQ serial number:
+    kk = strcmp ( daqsno , { AllHIDDevices( kk ).serialNumber } ) ;
+    InterfaceInds = InterfaceInds ( kk ) ;
 
     % The 1608 has 7 interfaces (0-6), the other ones have 4 (0-3):
     if Is1608
@@ -533,6 +558,16 @@ if options.begin
             fprintf('Flushing %d stale reports from DeviceIndex %d.\n',length(reports),daq+d);
         end
     end
+
+    % Initialise max report's serial number on last read so that first number is 0:
+    snomax = -1 ;
+
+% options.begin is 0, so check if options.continue or options.end is 1 and
+% make sure that the correct daq was specified -- js
+elseif (options.continue || options.end) && ...
+    ~strcmp(daqsno, AllHIDDevices(daq).serialNumber)
+
+    error('DAQ with serial number %s expected', daqsno);
 end
 
 err.n = 0;
@@ -713,7 +748,7 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
             end
         end
     end
-    
+
     % Stop DAQ and flush receive buffers if this is really end of aquisition:
     if options.end
         % hex2dec('12') is 18.
@@ -743,7 +778,7 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
             end
         end
     end
-    
+
     % Post processing of raw report data:
     reports=r;
     if isempty(reports)
@@ -755,74 +790,84 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
     for k=1:length(reports)
         reports(k).serial=double(reports(k).report(63))+double(reports(k).report(64))*256;
     end
-    
+
     % Sort by serial number.
     [r,ri]=sort([reports.serial]);
     reports=reports(ri);
-    
-    InitReports = reports;
-    
-    % Keep only the consecutively numbered reports, from 0 on. Discard
-    % everything after a gap.  -- author presumably dgp...
-    %
-    % This turned out to be a real problem for me; not sure why, but for some
-    % reason a report or two can get lost even though the FIFO buffer is not full
-    % and you have not reached the limit on the number of reports.  I was losing
-    % data hand over fist with my USB-1608; not sure what conditions cause it, but
-    % here's some of what I can say: I found I cannot use DaqAInScanContinue,
-    % because it takes too long to send "ReceiveReports" for every interface, so
-    % when timing is an issue, I try to send just enough calls to
-    % "PsychHID('ReceiveReports',daq+k);" to prevent the FIFO from overflowing.
-    % For "k" I use an index of the form k=rem(k,NumberOfInterfaces)+1; so that
-    % each successive call asks for the next interface in order.  But for some
-    % reason -- I think particularly if the computer spends a bit too much time
-    % doing other things -- a report or two gets dropped.  I've added a check for
-    % that.  Previously data were discarded here without warning!
-    ri=[reports.serial]==0:length(reports)-1;
-    reports=reports(ri);
-    
-    if length(InitReports) ~= length(reports)
-        if length(InitReports)-length(reports) == 1
-            diffindex = diff(r);
-            % I think the index math is such that this will always be
-            % length(reports)-1, but to be safe:
-            BadOne = r(find(diffindex > 1)); %#ok<*FNDSB>
-            fprintf('\n1 report discarded (%d reports received, but report(s) missed after report %d).\n', ...
-                length(InitReports),BadOne);
-        else
-            % This warns user if reports are thrown away; if you get this warning
-            % unacceptably often, I suggest you first try to modify your code to put
-            % in more frequent calls to PsychHID('ReceiveReports, ...)  If you can't
-            % do that or you can and it doesn't work, then you may be faced with the
-            % hard choice of deciding how to handle the problem...  One thing you
-            % might do is modify this code so that it doesn't just throw away the
-            % reports obtained after a miss.  In my case, I frequently found that I'd
-            % lose more than 9000 reports just because 1 report was missed after the
-            % 500th (or so) report.  I got the problem to go away by reducing the time
-            % the computer spent doing other things between ReceiveReports calls, but
-            % I can imagine wanting to make due with all the data I managed to get
-            % from the device rather than just the first sequential reports.  So you
-            % could rewrite the above code so that instead of throwing away data
-            % acquired after a missed report, the function returns all the data it
-            % gets back along with a vector specifying the indices.  Difficulties
-            % you'll face: meaning of sequence numbers differ according to value of
-            % options.immediate, fact that params.times isn't helpful (time that
-            % reports are received from device not monotonically related to time that
-            % data within said reports are acquired).
-            fprintf('\n%d reports discarded! (out of %d reports received; %d reports missed)\n', ...
-                length(InitReports)-length(reports),length(InitReports),InitReports(end).serial+1-length(reports));
-        end
-        %% For Diagnostic purposes:
+
+    % Don't discard anything. Anyway, we get time stamps. If nodiscard is 1
+    % then skip discard section -- js
+    if ~isfield ( options , 'nodiscard' ) || ~options.nodiscard
+        InitReports = reports;
+        % Keep only the consecutively numbered reports, from 0 on. Discard
+        % everything after a gap.  -- author presumably dgp...
         %
-        % [ErrMsg,HomeDir] = unix('echo $HOME');
-        %% trim trailing carriage return
-        % HomeDir(end) = [];
-        % FileNo = 0;
-        % while exist([HomeDir 'Desktop/DiscardedReports' int2str(FileNo) '.mat'],'file')
-        %   FileNo = FileNo+1;
-        % end
-        % save([HomeDir 'Desktop/DiscardedReports' int2str(FileNo)]);
-    end
+        % This turned out to be a real problem for me; not sure why, but for some
+        % reason a report or two can get lost even though the FIFO buffer is not full
+        % and you have not reached the limit on the number of reports.  I was losing
+        % data hand over fist with my USB-1608; not sure what conditions cause it, but
+        % here's some of what I can say: I found I cannot use DaqAInScanContinue,
+        % because it takes too long to send "ReceiveReports" for every interface, so
+        % when timing is an issue, I try to send just enough calls to
+        % "PsychHID('ReceiveReports',daq+k);" to prevent the FIFO from overflowing.
+        % For "k" I use an index of the form k=rem(k,NumberOfInterfaces)+1; so that
+        % each successive call asks for the next interface in order.  But for some
+        % reason -- I think particularly if the computer spends a bit too much time
+        % doing other things -- a report or two gets dropped.  I've added a check for
+        % that.  Previously data were discarded here without warning!
+        %
+        % ri=[reports.serial]==0:length(reports)-1;
+        %
+        % Line replaced to take into account partial reads. Serial number will
+        % be 1 + max_number of last read, stored in snomax -- js
+        ri = [ reports.serial ] == snomax + 1 : snomax + length( reports );
+        snomax = reports( end ).serial ;
+        reports=reports(ri);
+
+        if length(InitReports) ~= length(reports)
+            if length(InitReports)-length(reports) == 1
+                diffindex = diff(r);
+                % I think the index math is such that this will always be
+                % length(reports)-1, but to be safe:
+                BadOne = r(find(diffindex > 1)); %#ok<*FNDSB>
+                fprintf('\n1 report discarded (%d reports received, but report(s) missed after report %d).\n', ...
+                        length(InitReports),BadOne);
+            else
+                % This warns user if reports are thrown away; if you get this warning
+                % unacceptably often, I suggest you first try to modify your code to put
+                % in more frequent calls to PsychHID('ReceiveReports, ...)  If you can't
+                % do that or you can and it doesn't work, then you may be faced with the
+                % hard choice of deciding how to handle the problem...  One thing you
+                % might do is modify this code so that it doesn't just throw away the
+                % reports obtained after a miss.  In my case, I frequently found that I'd
+                % lose more than 9000 reports just because 1 report was missed after the
+                % 500th (or so) report.  I got the problem to go away by reducing the time
+                % the computer spent doing other things between ReceiveReports calls, but
+                % I can imagine wanting to make due with all the data I managed to get
+                % from the device rather than just the first sequential reports.  So you
+                % could rewrite the above code so that instead of throwing away data
+                % acquired after a missed report, the function returns all the data it
+                % gets back along with a vector specifying the indices.  Difficulties
+                % you'll face: meaning of sequence numbers differ according to value of
+                % options.immediate, fact that params.times isn't helpful (time that
+                % reports are received from device not monotonically related to time that
+                % data within said reports are acquired).
+                fprintf('\n%d reports discarded! (out of %d reports received; %d reports missed)\n', ...
+                        length(InitReports)-length(reports),length(InitReports),InitReports(end).serial+1-length(reports));
+            end
+            %% For Diagnostic purposes:
+            %
+            % [ErrMsg,HomeDir] = unix('echo $HOME');
+            %% trim trailing carriage return
+            % HomeDir(end) = [];
+            % FileNo = 0;
+            % while exist([HomeDir 'Desktop/DiscardedReports' int2str(FileNo) '.mat'],'file')
+            %   FileNo = FileNo+1;
+            % end
+            % save([HomeDir 'Desktop/DiscardedReports' int2str(FileNo)]);
+        end
+    end % options.nodiscard
+
     % Diagnostic print of the raw reports
     if options.immediate
         % report length
@@ -879,42 +924,43 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
     end
     
     if Is1608
+        % 1608-FS 16 bit 2-complement data:
         vmax=[10 5 2.5 2 1.25 1 0.625 0.3125];
         data = data/32768-1;
     else
+        % Non 1608-FS. Only 12 MSB's contain 2-complement data
+        % for differential channels.
         vmax=[20 10 5 4 2.5 2 1.25 1];
-        
+
         DiffChannels = find(channel < 8);
         SE_Channels = find(channel > 7);
-        
+
+        % Remap 12 bit data in differential channels to [-2048 ; 2047] range:
         data(:,DiffChannels) = bitshift(data(:,DiffChannels),-4);
-        
-		ix = data(:,DiffChannels) > 2048;
-        data(ix) = -bitcmp(data(ix),12)-1;
-		
+        ix = data(:,DiffChannels) >= 2048;
+        data(ix) = data(ix) - 4096;
+
+        % Treat single ended channels differently:
         SE_Data = data(:,SE_Channels);
-        
         OverflowInds = find(SE_Data > 32752);
         UnderflowInds = find(SE_Data > 32736);
         OKInds = find(SE_Data < 32737);
-        
+
         SE_Data(OverflowInds) = -2048*ones(size(OverflowInds));
         SE_Data(UnderflowInds) = 2047*ones(size(UnderflowInds));
         SE_Data(OKInds) = bitand(4095,bitshift(SE_Data(OKInds),-3))-2048;
-        
+
         data(:,SE_Channels) = SE_Data;
-        
-        data=data/2047;
-        
+        data = data / 2047;
+
         % for PsychHID calls, single-ended measurements must have range set to 0,
-        % but
-        % for vmax determination range must be 1 because scale is +/- 10 V
+        % but for vmax determination range must be 1 because scale is +/- 10 V
         range(SE_Channels) = ones(length(SE_Channels),1);
     end
-    
+
     range=vmax(range+1);
     data=repmat(range,size(data,1),1).*data;
-    
+
     if Is1608
         TheChannels = options.FirstChannel:options.LastChannel;
         DataUncalibrated = ones(1,c);
@@ -931,11 +977,11 @@ if options.end || (isfield(options, 'livedata') && options.livedata)
                         [DaysSinceLast,BestIndex] = min(ThisDay-TheDays);
                         AllThatDay = find(TheDays == TheDays(BestIndex));
                         MostRecentPolyFit = CalData(GoodIndices(AllThatDay(end)),3:5);
-                        
+
                         if DaysSinceLast > 30
                             warning('Psych:Daq:CalibOutdated', 'Calibration of channel %d has not been performed since %s!!',TheChannels(k),datestr(TheDays(BestIndex)));
                         end
-                        
+
                         data(:,k) = polyval(MostRecentPolyFit,data(:,k));
                         DataUncalibrated(k) = 0;
                     end

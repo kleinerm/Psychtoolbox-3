@@ -871,7 +871,7 @@ PsychError PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
 {
     char                *textString;
     unsigned int        i;
-    float               accumWidth, maxHeight, textHeightToBaseline, scalef;
+    float               accumWidth, maxHeight, textHeightToBaseline;
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
         // Use GDI based text renderer on Windows, instead of display list based one?
@@ -879,6 +879,8 @@ PsychError PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
             // Call the GDI based renderer instead:
             return(PsychOSDrawUnicodeTextGDI(winRec, boundingbox, stringLengthChars, textUniDoubleString, xp, yp, yPositionIsBaseline, textColor, backgroundColor));
         }
+    #else
+        (void) backgroundColor;
     #endif
 
     // Malloc charstring and convert unicode string to char string:
@@ -904,8 +906,8 @@ PsychError PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     accumWidth=0;
     maxHeight=0;
     for (i = 0; i < stringLengthChars; i++) {
-        accumWidth += winRec->textAttributes.glyphWidth[textString[i]];
-        maxHeight   = (winRec->textAttributes.glyphHeight[textString[i]] > maxHeight) ? winRec->textAttributes.glyphHeight[textString[i]] : maxHeight;
+        accumWidth += winRec->textAttributes.glyphWidth[(int) textString[i]];
+        maxHeight   = (winRec->textAttributes.glyphHeight[(int) textString[i]] > maxHeight) ? winRec->textAttributes.glyphHeight[(int) textString[i]] : maxHeight;
     }
 
     accumWidth *= (PSYCH_SYSTEM == PSYCH_WINDOWS) ? (float) winRec->textAttributes.textSize : 1.0f;
@@ -958,10 +960,12 @@ PsychError PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
         // Position our "cursor": These are 3D fonts where the glyphs are represented by 3D geometry.
         glTranslated(*xp, *yp - textHeightToBaseline + winRec->textAttributes.textSize, -0.5);
-
-        // Scale to final size:
-        scalef = (float) MulDiv(winRec->textAttributes.textSize, GetDeviceCaps(winRec->targetSpecific.deviceContext, LOGPIXELSY), 72);
-        glScalef(scalef, -1 * scalef, 1);
+        {
+            float scalef;
+            // Scale to final size:
+            scalef = (float) MulDiv(winRec->textAttributes.textSize, GetDeviceCaps(winRec->targetSpecific.deviceContext, LOGPIXELSY), 72);
+            glScalef(scalef, -1 * scalef, 1);
+        }
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -2188,7 +2192,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
         }
         else {
             // Draw text by calling into the plugin:
-            rc += PsychPluginDrawText(ctx, *xp, winRec->clientrect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
+            rc += PsychPluginDrawText(ctx, *xp, myyp, stringLengthChars, textUniDoubleString);
         }
 
         // Restore alpha-blending settings if needed:
@@ -2206,7 +2210,6 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
             if (PsychPluginGetTextCursor) {
                 // Plugin provides accurate text cursor measurement - use it:
                 PsychPluginGetTextCursor(ctx, xp, yp, theight);
-                *yp = winRec->clientrect[kPsychBottom] - *yp;
                 if (!yPositionIsBaseline)
                     *yp = *yp - ymax;
             }

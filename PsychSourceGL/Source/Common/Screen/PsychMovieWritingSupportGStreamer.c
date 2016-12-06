@@ -373,7 +373,9 @@ psych_bool PsychAddAudioBufferToMovie(int moviehandle, unsigned int nrChannels, 
     float               v;
     unsigned int        n, i;
     GstBuffer*          pushBuffer;
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
     #pragma warning( disable : 4068 )
+#endif
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
     GstMapInfo          mapinfo = GST_MAP_INFO_INIT;
@@ -498,6 +500,8 @@ static psych_bool PsychMoviePipelineSetState(GstElement* camera, GstState state,
 static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dataptr)
 {
   PsychMovieWriterRecordType* dev = (PsychMovieWriterRecordType*) dataptr;
+  (void) bus;
+
   if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: PsychMovieWriterBusCallback: Msg source name and type: %s : %s\n", GST_MESSAGE_SRC_NAME(msg), GST_MESSAGE_TYPE_NAME(msg));
 
   switch (GST_MESSAGE_TYPE (msg)) {

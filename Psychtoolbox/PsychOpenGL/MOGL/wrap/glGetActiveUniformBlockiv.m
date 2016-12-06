@@ -20,11 +20,11 @@ end
 % GL.UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES has a variable number of return indices, which
 % we need to query to prealloc properly:
 if pname == GL.UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES
-    params = int32(zeros(1, glGetActiveUniformBlockiv( program, uniformBlockIndex, GL.UNIFORM_BLOCK_ACTIVE_UNIFORMS)));
+    params = int32(zeros(1, 1+glGetActiveUniformBlockiv( program, uniformBlockIndex, GL.UNIFORM_BLOCK_ACTIVE_UNIFORMS)));
 else
-    params = int32(0);
+    params = int32([0,0]);
 end
 
 moglcore( 'glGetActiveUniformBlockiv', program, uniformBlockIndex, pname, params );
-
+params = params(1:end-1);
 return

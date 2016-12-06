@@ -42,7 +42,7 @@
 /* glew.h is part of GLEW library for automatic detection and binding of
    OpenGL core functionality and extensions.
  */
-#include "glew.h"
+#include "GL/glew.h"
 
 /* Includes specific to MacOS-X version of mogl: */
 #ifdef MACOSX
@@ -67,7 +67,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include "glxew.h"
+#include "GL/glxew.h"
 #include <GL/gl.h>
 #include <GL/glu.h>
 #include <GL/glut.h>
@@ -80,7 +80,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "wglew.h"
+#include "GL/wglew.h"
 #include <GL/glut.h>
 #define CALLCONV __stdcall
 

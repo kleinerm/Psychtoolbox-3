@@ -15,10 +15,10 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-stringlen = int32(0);
+stringlen = int32([0,0]);
 string = uint8(zeros(1,bufSize));
 
 moglcore( 'glGetNamedStringARB', namelen, uint8(name), bufSize, stringlen, string );
 string = char(string);
-
+stringlen = stringlen(1:end-1);
 return

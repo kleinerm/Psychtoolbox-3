@@ -15,8 +15,8 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-params = single(0);
+params = single([0,0]);
 
 moglcore( 'glGetMinmaxParameterfv', target, pname, params );
-
+params = params(1:end-1);
 return

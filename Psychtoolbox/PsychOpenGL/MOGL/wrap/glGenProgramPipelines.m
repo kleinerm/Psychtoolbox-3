@@ -15,8 +15,8 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-pipelines = uint32(zeros(1,n));
+pipelines = uint32(zeros(1,n+1));
 
 moglcore( 'glGenProgramPipelines', n, pipelines );
-
+pipelines = pipelines(1:end-1);
 return

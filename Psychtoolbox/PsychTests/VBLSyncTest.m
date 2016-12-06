@@ -1,12 +1,12 @@
 function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx, screenNumber)
 % VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx, screenNumber)
 %
-% Tests syncing of PTB-OSX to the vertical retrace (VBL) and demonstrates
+% Tests syncing of Psychtoolbox to the vertical retrace (VBL) and demonstrates
 % how to implement the old Screen('WaitBlanking') behaviour with
 % Screen('Flip')...
 %
-% This script provides a means to test, how well PTB on OS-X synchronizes
-% stimulus onset and execution of Matlab with the vertical retrace
+% This script provides a means to test, how well PTB synchronizes
+% stimulus onset and execution of Matlab/Octave with the vertical retrace
 % (also known as vertical blank or VBL) on your specific hardware setup.
 %
 % The script first opens a double-buffered fullscreen window. Then it
@@ -203,7 +203,7 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 %
 %
 % Date:   05/09/05
-% Author: Mario Kleiner  (mario.kleiner at tuebingen.mpg.de)
+% Author: Mario Kleiner  (mario.kleiner.de@gmail.com)
 %
 
 %%% VBLSyncTest(1000, 0, 0.6, 0, 0, 1, 0)
@@ -245,13 +245,9 @@ if nargin < 9
 end
 
 try
-    % This script calls Psychtoolbox commands available only in OpenGL-based 
-    % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
-    % only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
-    % an error message if someone tries to execute this script on a computer without
-    % an OpenGL Psychtoolbox
-    AssertOpenGL;
-    
+    PsychDefaultSetup(1);
+    RestrictKeysForKbCheck(KbName('ESCAPE'));
+
     if IsWin && 0
         % Enforce use of DWM on Windows-Vista and later: This simulates the
         % situation of Windows-8 or later on Windows-Vista and Windows-7:
@@ -488,6 +484,8 @@ try
         sodpixx = PsychDataPixx('BoxsecsToGetsecs', boxTime);
     end
 
+    RestrictKeysForKbCheck([]);
+
     % Shutdown realtime scheduling:
     Priority(0)
 
@@ -495,6 +493,19 @@ try
     % Flip, Psychtoolbox will automatically display some warning message on the Matlab
     % console:
     sca;
+
+    % Restrict to actual number of collected samples:
+    n = i;
+    ts = ts(1:n);
+    so = so(1:n);
+    flipfin = flipfin(1:n);
+    missest = missest(1:n);
+    beampos = beampos(1:n);
+    td = td(1:n);
+    dpixxdelay = dpixxdelay(1:n);
+    tSecondary = tSecondary(1:n);
+    sodpixx = sodpixx(1:n);
+    boxTime = boxTime(1:n);
 
     % Count and output number of missed flip on VBL deadlines:
     numbermisses=0;
@@ -652,6 +663,8 @@ catch %#ok<*CTCH>
     % This "catch" section executes in case of an error in the "try" section
     % above. Importantly, it closes the onscreen window if its open and
     % shuts down realtime-scheduling of Matlab:
+    RestrictKeysForKbCheck([]);
+
     sca;
     
     % Disable realtime-priority in case of errors.

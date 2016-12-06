@@ -213,7 +213,7 @@ void PsychGetPrecisionTimerTicks(psych_uint64 *ticks)
 }
 
 void PsychGetPrecisionTimerTicksPerSecond(double *frequency)
-{struct timespec rqtp;
+{
   // MK: Ok, set this to 1 million. Our timesource is gettimeofday(), which
   // resolves time at microsecond resolution, so one can think of it as a
   // virtual timer with a tickrate of 1 Mhz
@@ -404,9 +404,8 @@ void PsychSetPrecisionTimerAdjustmentFactor(double *factor)
 */
 void PsychEstimateGetSecsValueAtTickCountZero(void)
 {
-  double		nowTicks, nowSecs;
-
   // MK: Todo - Implement GetTickCout().
+  // double nowTicks, nowSecs;
   // nowTicks=(double) GetTickCount();
   // PsychGetAdjustedPrecisionTimerSeconds(&nowSecs);
   // estimatedGetSecsValueAtTickCountZero=nowSecs - nowTicks * (1/1000.0f); 
@@ -477,7 +476,7 @@ int PsychUnlockMutex(psych_mutex* mutex)
 int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*start_routine)(void *), void *arg)
 {
 	// threadparams not yet used, this line just to make compiler happy:
-	(void*) threadparams;
+	(void) threadparams;
 	
 	// Return result code of pthread_create - We're a really thin wrapper around this Posix call:
 	return( pthread_create(threadhandle, NULL, start_routine, arg) );
@@ -504,7 +503,7 @@ int PsychAbortThread(psych_thread* threadhandle)
 void PsychTestCancelThread(psych_thread* threadhandle)
 {
 	// threadhandle unused on POSIX: This line just to make compiler happy:
-	(psych_thread*) threadhandle;
+	(void) threadhandle;
 	
 	// Test for cancellation, cancel if so:
 	pthread_testcancel();
@@ -703,6 +702,7 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
  */
 psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
 {
+    (void) curCpuMask;
     // No op on Linux.
     return(INT64_MAX);
 }

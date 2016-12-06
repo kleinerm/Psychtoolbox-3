@@ -15,10 +15,10 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-length = int32(0);
+length = int32([0,0]);
 uniformName = uint8(zeros(1,bufSize));
 
 moglcore( 'glGetActiveUniformName', program, uniformIndex, bufSize, length, uniformName );
 uniformName = char(uniformName);
-
+length = length(1:end-1);
 return

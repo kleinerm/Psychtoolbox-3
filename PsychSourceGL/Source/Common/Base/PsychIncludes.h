@@ -1,27 +1,26 @@
 /*
-  Psychtoolbox3/Source/Common/PsychIncludes.h		
-  
+  Psychtoolbox3/Source/Common/PsychIncludes.h
+
   AUTHORS:
- 
-  Allen.Ingling@nyu.edu                 awi
-  mario.kleiner@tuebingen.mpg.de        mk
- 
-  PLATFORMS: All 
-  
-  PROJECTS:
-  07/16/02	awi		Screen on MacOS9
-   
+
+  Allen.Ingling@nyu.edu         awi
+  mario.kleiner.de@gmail.com    mk
+
+  PLATFORMS: All
+
+  PROJECTS: All
 
   HISTORY:
-  07/16/02  awi		Pulled out of PsychPlatform.h
-  11/15/02  awi		Added includes for OSX.  
-  
+  07/16/02  awi         Pulled out of PsychPlatform.h
+  11/15/02  awi         Added includes for OSX.
+
   DESCRIPTION:
-  PsychIncludes.h includes all C, system, and language binding 
-  header files which a Psychtoolbox library 
+
+  PsychIncludes.h includes all C, system, and language binding
+  header files which a Psychtoolbox library
   would require.
-  
-  This file should ONLY be included by PsychConstants.h 
+
+  This file should ONLY be included by PsychConstants.h
 
 */
 
@@ -45,9 +44,9 @@ typedef __CHAR16_TYPE__ char16_t;
 
 // Platform independent include for glew: This is a catch-all
 // for all OpenGL definitions and functions, currently up to
-// OpenGL 2.1:
+// OpenGL 4.5 + latest extensions beyond that:
 #if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo)
-#include "../Screen/glew.h"
+#include "../Screen/GL/glew.h"
 #endif
 
 //platform dependent includes stage 1
@@ -63,7 +62,7 @@ typedef __CHAR16_TYPE__ char16_t;
 
     // This is the new glew include for GLX extension support:
 #if defined(PTBMODULE_Screen)
-    #include "../Screen/glxew.h"
+    #include "../Screen/GL/glxew.h"
 #endif
 
     #include <X11/Xlib.h>
@@ -88,7 +87,7 @@ typedef __CHAR16_TYPE__ char16_t;
     // support. We now just have to be careful to not use post-WinXP functionality.
     // We comment these defines out and trust the platform SDK / compiler,
     // but leave them here for quick WinXP backwards compatibility testing.
-    #if 0   
+    #if 0
         #define _WIN32_WINNT 0x0500
         #define WINVER       0x0500
     #endif // Conditional enable.
@@ -98,7 +97,7 @@ typedef __CHAR16_TYPE__ char16_t;
 
     // For building Screen, include wglew.h - Windows specific GLEW header files:
     #if defined(PTBMODULE_Screen)
-    #include "../Screen/wglew.h"
+    #include "../Screen/GL/wglew.h"
     #endif
 
 #elif PSYCH_SYSTEM == PSYCH_OSX
@@ -132,7 +131,7 @@ typedef __CHAR16_TYPE__ char16_t;
     #include <OpenGL/OpenGL.h>
     #include <CoreText/CoreText.h>
     #endif
-#endif 
+#endif
 
 // C standard library headers:
 

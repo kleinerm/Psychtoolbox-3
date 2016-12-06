@@ -54,9 +54,10 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENTextFont(void)
 {
-    psych_bool                  doSetByName, doSetByNumber, foundFont;
+    psych_bool                  doSetByName, doSetByNumber;
     PsychWindowRecordType       *windowRecord;
 #if PSYCH_SYSTEM == PSYCH_OSX
+    psych_bool foundFont = 0;
     PsychFontStructType         *fontRecord;
 #endif
     int                         oldTextFontNumber, inputTextFontNumber;
@@ -87,7 +88,6 @@ PsychError SCREENTextFont(void)
     PsychCheckInputArgType(2, kPsychArgOptional, PsychArgType_double | PsychArgType_char);  //if the argument is there check that it is the right type.
     doSetByNumber= PsychCopyInIntegerArg(2, kPsychArgAnything, &inputTextFontNumber);
     doSetByName= PsychAllocInCharArg(2, kPsychArgAnything, &inputTextFontName);
-    foundFont=0;
 #if PSYCH_SYSTEM == PSYCH_OSX
     if(doSetByNumber) {
         foundFont=PsychGetFontRecordFromFontNumber(inputTextFontNumber, &fontRecord);

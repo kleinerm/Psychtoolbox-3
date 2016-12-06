@@ -20,11 +20,11 @@ end
 % GL.COMPATIBLE_SUBROUTINES has a variable number of return indices, which
 % we need to query to prealloc properly:
 if pname == GL.COMPATIBLE_SUBROUTINES
-    values = int32(zeros(1, glGetActiveSubroutineUniformiv( program, shadertype, index, GL.NUM_COMPATIBLE_SUBROUTINES)));
+    values = int32(zeros(1, 1 + glGetActiveSubroutineUniformiv( program, shadertype, index, GL.NUM_COMPATIBLE_SUBROUTINES)));
 else
-    values = int32(0);
+    values = int32([0,0]);
 end
 
 moglcore( 'glGetActiveSubroutineUniformiv', program, shadertype, index, pname, values );
-
+values = values(1:end-1);
 return

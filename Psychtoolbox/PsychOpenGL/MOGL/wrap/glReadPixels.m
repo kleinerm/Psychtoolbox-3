@@ -74,7 +74,7 @@ end;
 if bufferoffset == -1
     % Readback to host memory, aka Matlab- or Octave- matrix:
     % Allocate memory:
-    pixels=zeros(numperpixel, width, height);
+    pixels=zeros(numperpixel, width, height, 2);
 
     % Tell OpenGL that we accept byte-aligned aka unaligned data.
     glPixelStorei(GL.PACK_ALIGNMENT, 1);
@@ -108,6 +108,13 @@ if bufferoffset == -1
 
     % Execute actual call:
     moglcore( 'glReadPixels', x, y, width, height, format, type, pixels );
+
+    % Hack around Matlab R2015b+ bug: Needs > 1 component to be passed into
+    % moglcore as prhs argument for data return to work, so we extend pixels
+    % by a 4th dimension with one useless 2nd layer, which we strip away here
+    % again before returning data to usercode. The 2nd layer guarantees that
+    % prhs pixels has at least 2 components if width=height=numperpixel==1
+    pixels = pixels(:,:,:,1);
 
     % Rearrange data in Matlab friendly format:
     retpixels = zeros(size(pixels,2), size(pixels,3), size(pixels,1), pclass);

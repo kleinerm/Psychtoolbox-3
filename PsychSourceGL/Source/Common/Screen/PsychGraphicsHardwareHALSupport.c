@@ -766,7 +766,6 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 
     // If we are called, we know that 'windowRecord' is an onscreen window.
     int screenId = windowRecord->screenNumber;
-    int headid = PsychScreenToCrtcId(screenId, 0);
 
     // Retrieve display id and screen size spec that is needed later...
     PsychGetCGDisplayIDFromScreenNumber(&displayID, screenId);
@@ -781,7 +780,6 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 
     // Driver is online. Enter polling loop:
     while (TRUE) {
-
         PsychGetAdjustedPrecisionTimerSeconds(timestamp);
 
         if ((PsychIsGPUPageflipUsed(windowRecord) > 0) || (*timestamp > deadline)) {

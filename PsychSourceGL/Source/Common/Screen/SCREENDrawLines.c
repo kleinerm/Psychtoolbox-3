@@ -84,7 +84,7 @@ PsychError SCREENDrawLines(void)
     PsychWindowRecordType       *windowRecord;
     int                         m,n,p, smooth;
     int                         nrsize, nrvertices, mc, nc, i;
-    psych_bool                  isArgThere, usecolorvector, isdoublecolors, isuint8colors;
+    psych_bool                  isArgThere, usecolorvector;
     double                      *xy, *size, *center, *dot_type, *colors;
     unsigned char               *bytecolors;
     float                       linesizerange[2];
@@ -127,8 +127,6 @@ PsychError SCREENDrawLines(void)
     bytecolors = NULL;
 
     PsychPrepareRenderBatch(windowRecord, 2, &nrvertices, &xy, 4, &nc, &mc, &colors, &bytecolors, 3, &nrsize, &size, (GL_FLOAT == PsychGLFloatType(windowRecord)));
-    isdoublecolors = (colors) ? TRUE:FALSE;
-    isuint8colors  = (bytecolors) ? TRUE:FALSE;
     usecolorvector = (nc>1) ? TRUE:FALSE;
 
     // Assign sizef as float-type array of sizes, if float mode active, NULL otherwise:

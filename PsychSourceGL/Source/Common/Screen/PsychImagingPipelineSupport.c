@@ -1362,6 +1362,8 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
     GLint status;
     char errtxt[10000];
 
+    (void) primitivesrc;
+
     // Reset error state:
     while (glGetError());
 
@@ -2604,6 +2606,9 @@ void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, psych_boo
 void PsychPipelineListAllHooks(PsychWindowRecordType *windowRecord)
 {
     int i;
+
+    (void) windowRecord;
+
     printf("PTB-INFO: The Screen command currently provides the following hook functions:\n");
     printf("=============================================================================\n");
     for (i=0; i<MAX_SCREEN_HOOKS; i++) {
@@ -3380,7 +3385,6 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
 psych_bool PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
     psych_bool dispatched = FALSE;
-    char* execString = NULL;
 
     // Dispatch by hook function type:
     switch(hookfunc->hookfunctype) {
@@ -3798,6 +3802,8 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
     // hookUserData, if non-NULL, can provide override parameter string:
     char* pString1 = (hookUserData) ? (char*) hookUserData : hookfunc->pString1;
 
+    (void) srcIsReadonly, (void) allowFBOSwizzle, (void) srcfbo2, (void) dstfbo, (void) bouncefbo;
+
     // Child protection:
     if (!(srcfbo1 && (*srcfbo1))) {
         PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): srcfbo1 is a NULL - Pointer!!!");
@@ -4009,6 +4015,8 @@ psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHoo
     float sx, sy;
     char* strp;
     psych_bool bilinearfiltering;
+
+    (void) hookUserData, (void) srcIsReadonly, (void) allowFBOSwizzle, (void) srcfbo2, (void) dstfbo, (void) bouncefbo;
 
     // Not available on non-classic OpenGL. Need to find some replacement for display lists at some point in time to make this work :(
     if (!PsychIsGLClassic(windowRecord)) {
