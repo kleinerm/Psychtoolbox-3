@@ -15,10 +15,10 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-length = int32(0);
+length = int32([0,0]);
 source = uint8(zeros(1,bufSize));
 
 moglcore( 'glGetShaderSource', shader, bufSize, length, source );
 source = char(source);
-
+length = length(1:end-1);
 return

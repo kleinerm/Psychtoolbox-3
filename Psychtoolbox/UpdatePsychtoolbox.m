@@ -96,6 +96,14 @@ if any(isspace(targetdirectory))
     fprintf('The targetdirectory spec contains white-space. This should work, but has not been tested extensively.\n');
 end
 
+% Check if this is 32-Bit Octave-4 on Windows, which we don't support at all:
+if isempty(strfind(computer, 'x86_64')) && ~isempty(strfind(computer, 'mingw32'))
+    fprintf('Psychtoolbox 3.0.13 and later do no longer work with 32-Bit GNU/Octave-4 on MS-Windows.\n');
+    fprintf('You need to use 64-Bit Octave-4 if you want to use Psychtoolbox with Octave on Windows.\n');
+    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.12'', does support 32-Bit Octave-4 on Windows.\n');
+    error('Tried to setup on 32-Bit Octave, which is no longer supported on Windows.');
+end
+
 % Check if this is 32-Bit Matlab on Windows or Linux, which we don't support anymore:
 if (strcmp(computer, 'PCWIN') || strcmp(computer, 'GLNX86'))
     fprintf('Psychtoolbox 3.0.12 and later do no longer work with 32-Bit versions of Matlab.\n');
@@ -123,14 +131,6 @@ if strcmp(computer, 'i686-pc-mingw32')
     fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
     fprintf('an old legacy copy of Psychtoolbox-3.0.9 which did support 32-Bit Octave 3.2 on Windows.\n');
     error('Tried to setup on Octave, which is no longer supported on MS-Windows.');
-end
-
-% Check if this is 32-Bit Octave-4 on Windows, which we don't support at all:
-if isempty(strfind(computer, 'x86_64')) && ~isempty(strfind(computer, 'mingw32'))
-    fprintf('Psychtoolbox 3.0.13 and later do no longer work with 32-Bit GNU/Octave-4 on MS-Windows.\n');
-    fprintf('You need to use 64-Bit Octave-4 if you want to use Psychtoolbox with Octave on Windows.\n');
-    fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.12'', does support 32-Bit Octave-4 on Windows.\n');
-    error('Tried to setup on 32-Bit Octave, which is no longer supported on Windows.');
 end
 
 if strcmp(computer,'MAC')

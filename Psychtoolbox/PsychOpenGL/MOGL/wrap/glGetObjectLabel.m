@@ -15,10 +15,10 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-length = int32(0);
-label = uint8(zeros(1, bufSize));
+length = int32([0,0]);
+label = uint8(zeros(1, bufSize+1));
 
 moglcore( 'glGetObjectLabel', identifier, name, bufSize, length, label );
-label = char(label);
-
+label = char(label(1:end-1));
+length = length(1:end-1);
 return

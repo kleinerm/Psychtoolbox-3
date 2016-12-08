@@ -51,6 +51,7 @@ PsychError SCREENNull(void)
 //#define RADEON_R500_GEN_INT_CNTL   0x200
 //#define RADEON_R500_GEN_INT_STATUS 0x204
 
+  PsychWindowRecordType *windowRecord;
 	double tempValue; 
 	double *array;
 	int i, m,n, p, numInArgs;

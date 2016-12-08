@@ -16,7 +16,7 @@ if nargin~=11,
 end
 
 if ~isa(nurb,'double')
-	error('argument ''nurb'' must be a pointer coded as type double');
+  error('argument ''nurb'' must be a pointer coded as type double');
 end
 
 moglcore( 'gluNurbsSurface', nurb, sKnotCount, single(sKnots), tKnotCount, single(tKnots), sStride, tStride, single(control), sOrder, tOrder, type );

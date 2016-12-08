@@ -1,0 +1,260 @@
+From 6d6e1526b949ab7ac40efceddbca54ef7cfc01a1 Mon Sep 17 00:00:00 2001
+From: Mario Kleiner <mario.kleiner.de@gmail.com>
+Date: Sat, 15 Oct 2016 10:22:12 +0200
+Subject: [PATCH xserver 1/2] modesetting: Add custom UDP Prime-Sync protocol
+ for Psychtoolbox.
+
+The new Prime-Sync code contributed to XOrg 1.19 by NVidia's
+Alex Goins for implementing properly synchronized and serialized
+NVidia dGPU outputSource -> Intel iGPU outputSlave Prime support,
+to support Optimus Laptops, works well for preventing tearing or
+incomplete rendering.
+
+A current limitation is that it doesn't provide any way to
+reliably signal completion of an OpenGL double-buffer swap to
+a running fullscreen OpenGL client, e.g., Psychtoolbox.
+
+Therefore the current X-Server 1.19 implementation is not
+useable for vision science applications which require precise
+visual stimulus onset timing or any kind of reliable time-
+stamping.
+
+As it is too late for some better solution for the 1.19 cycle,
+and use of nouveau is not always possible for (lack of)performance
+reasons, we use the following hack to make NVidia Optimus
+useable for vision science applications on modern gpus:
+
+This patch implements a custom UDP protocol between the
+modesetting-ddx which drives the slaveOutput iGPU, and
+interested clients, ie. Psychtoolbox. The modesetting-ddx
+creates one UDP socket for emission of UDP packets for each
+X-Screen. A UDP packet is sent to localhost:10000+(x-screenId),
+e.g., localhost:10000 for X-Screen 0, localhost:10001 for
+X-Screen 1 etc., whenever a kms-pageflip has been scheduled
+or completed on the iGPU. The send operation is non-blocking,
+so the X-Server can't get stalled if there isn't any client
+listening at the receiving port.
+
+1. "Flip scheduled" packets are sent out after a successfull
+   call to drmModePageFlip, including the vblank count (msc)
+   and timestamp (ust) of the vblank in which the flip was
+   scheduled. The expectation is that usually such a flip
+   will complete at msc + 1 and ust + 1 videorefresh duration.
+   This allows Psychtoolbox to know that a Flip will likely
+   complete one frame duration ahead of likely completion.
+
+2. "Flip completed" packets with msc and ust of completion
+   are sent out when a kms pageflip completed, iow. visual
+   stimulus onset after vblank msc at time ust is guaranteed.
+
+Ideally Psychtoolbox could just wait for "Flip completed" packets,
+but the current implementation of slaveOutput update scheduling
+in the modesetting ddx introduces 1 frame extra lag for each
+client glXSwapBuffers call. Therefore PTB must not wait for flip
+completion, but start rendering the next frame already when
+a type 1 "Flip scheduled" packet arrives, so it can submit
+glXSwapBuffers calls 1 frame early to compensate for the 1 frame
+delay. This allows to achieve full framerate (fps == display Hz)
+at the expense that timestamping could be wrong under very high
+load scenarios, where the dGPU can't complete the DMA copy of the
+new framebuffer from VRAM to the shared dmabuf in system RAM within
+1 video refresh cycle, or where some massive kthread scheduling
+delay would prevent hw pageflip programming within 1 refresh cycle.
+In practice no such glitch was observed during testing.
+
+For highest reliability PTB can instead wait for type 2 packets,
+trading loss of performance for highest reliability.
+
+The modesetting ddx creates a new XAtom to signal to PTB or
+other clients that it supports this custom protocol, so PTB
+et al. can enable their corresponding receiver and timestamping
+code.
+
+An important limitation is that the outputSlave / modesetting
+driver can not detect the reason for a requested output update.
+It could be an OpenGL bufferswap of a unredirected fullscreen
+window, or any kind of visual update on a regular desktop GUI,
+or even the visual movement/appearance change of a software cursor.
+As such this timestamping/swap completion protocol can only work
+somewhat reliable if the client displays a unredirected fullscreen
+window covering the whole X-Screen -- luckily the common scenario
+for vision science stimulation. It also only works well if there
+is one single active output attached to the X-Screen, as the Prime
+implementation will update/pageflip each active output individually
+and send out separate UDP packets for flip completion. The client
+has no way to disambiguate which packet to use for its flip completion
+handling. A third limitation seems to be that we can only drive one
+X-Screen in a session with NVidia's Optimus + proprietary driver and
+GLX module. At least i could not find a xorg.conf which would allow
+to successfully setup a multi-x-screen ZaphodHeads setup or such, so
+this is so far only successfully tested on a single display setup,
+either Laptop panel only, or external video output only, but not both
+at the same time.
+
+This patch tested against the NVidia 375.20 release driver with final
+X-Server 1.19.0 on a Lenovo Z50 Optimus laptop with Intel HD 4400
++ GeForce 840M. Datapixx confirms correct timestamps.
+
+Signed-off-by: Mario Kleiner <mario.kleiner.de@gmail.com>
+---
+ hw/xfree86/drivers/modesetting/drmmode_display.c | 108 +++++++++++++++++++++++
+ 1 file changed, 108 insertions(+)
+
+diff --git a/hw/xfree86/drivers/modesetting/drmmode_display.c b/hw/xfree86/drivers/modesetting/drmmode_display.c
+index 6e755e9..d0cf665 100644
+--- a/hw/xfree86/drivers/modesetting/drmmode_display.c
++++ b/hw/xfree86/drivers/modesetting/drmmode_display.c
+@@ -29,6 +29,11 @@
+ #include "dix-config.h"
+ #endif
+ 
++/* For Unix UDP socket (msc,ust) side channel: */
++#include <sys/socket.h>
++#include <sys/fcntl.h>
++#include <netinet/ip.h>
++
+ #include <errno.h>
+ #include <sys/ioctl.h>
+ #include <sys/mman.h>
+@@ -199,6 +204,95 @@ drmmode_SetSlaveBO(PixmapPtr ppix,
+     return TRUE;
+ }
+ 
++static int fd_primestatus[1024] = { 0 };
++static struct buf {
++    uint64_t frame;
++    uint64_t usec;
++    int scrnIndex;
++    unsigned char flags;
++} buf;
++
++static void
++drmmode_InitSharedPixmapFeedback(drmmode_ptr drmmode)
++{
++    static Atom PrimeTimingHack1 = None;
++    int scrnIndex = drmmode->scrn->scrnIndex % 256;
++    struct sockaddr_in addr = { 0 };
++
++    fd_primestatus[scrnIndex] = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
++    if  (-1 == fd_primestatus[scrnIndex]) {
++        xf86DrvMsg(drmmode->scrn->scrnIndex, X_ERROR,
++                    "Failed to create Unix UDP socket for Prime feedback! %s\n",
++                   strerror(errno));
++    } else {
++        memset(&addr, 0, sizeof(addr));
++        addr.sin_family = AF_INET;
++        addr.sin_port = htons(10000 + scrnIndex);
++        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
++
++        if(connect(fd_primestatus[scrnIndex], (struct sockaddr *) &addr, sizeof(addr))) {
++            close(fd_primestatus[scrnIndex]);
++            fd_primestatus[scrnIndex] = 0;
++            xf86DrvMsg(drmmode->scrn->scrnIndex, X_ERROR,
++                        "Failed to connect() socket for Prime feedback on localhost:%i! %s\n",
++                       10000 + scrnIndex,strerror(errno));
++        }
++        else {
++            unsigned char sendpriority = IPTOS_LOWDELAY;
++            setsockopt(fd_primestatus[scrnIndex], SOL_IP, IP_TOS, &sendpriority, sizeof(sendpriority));
++
++            fcntl(fd_primestatus[scrnIndex], F_SETFL, O_NONBLOCK);
++
++            xf86DrvMsg(drmmode->scrn->scrnIndex, X_INFO,
++                        "Bound Unix UDP socket for Prime feedback on localhost:%i\n", 10000 + scrnIndex);
++        }
++    }
++
++    /* Create an Atom to signal that this is an enhanced modesetting-ddx with custom UDP
++     * Prime timestamping.
++     */
++    if (PrimeTimingHack1 == None)
++        PrimeTimingHack1 = MakeAtom("PrimeTimingHack1", strlen("PrimeTimingHack1"), TRUE);
++}
++
++static void
++drmmode_FiniSharedPixmapFeedback(drmmode_ptr drmmode)
++{
++    int scrnIndex = drmmode->scrn->scrnIndex % 256;
++    if (fd_primestatus[scrnIndex] > 0) {
++        close(fd_primestatus[scrnIndex]);
++        fd_primestatus[scrnIndex] = 0;
++        xf86DrvMsg(drmmode->scrn->scrnIndex, X_INFO,
++                   "Closed Unix UDP socket for Prime feedback.\n");
++    }
++}
++
++static void
++drmmode_SetSharedPixmapFeedback(int scrnIndex, uint64_t frame, uint64_t usec)
++{
++    scrnIndex = scrnIndex % 256;
++
++    if (fd_primestatus[scrnIndex] <= 0)
++        return;
++
++    buf.frame = frame;
++    buf.usec = usec;
++    buf.scrnIndex = scrnIndex;
++}
++
++static void
++drmmode_SendSharedPixmapFeedback(Bool flipcomplete)
++{
++    if (fd_primestatus[buf.scrnIndex] <= 0)
++        return;
++
++    buf.flags = flipcomplete ? 1 : 0;
++
++    if ((send(fd_primestatus[buf.scrnIndex], &buf, sizeof(buf), MSG_DONTWAIT) == sizeof(buf)) && FALSE)
++        xf86DrvMsg(buf.scrnIndex, X_DEBUG,
++                   "Send for Prime feedback: flipcompletion=%d : msc=%lu : ust=%lu\n", buf.flags, buf.frame, buf.usec);
++}
++
+ static Bool
+ drmmode_SharedPixmapPresent(PixmapPtr ppix, xf86CrtcPtr crtc,
+                             drmmode_ptr drmmode)
+@@ -248,7 +342,12 @@ drmmode_SharedPixmapVBlankEventHandler(uint64_t frame, uint64_t usec,
+ 
+     drmmode_crtc_private_ptr drmmode_crtc = args->crtc->driver_private;
+ 
++    drmmode_SetSharedPixmapFeedback(args->drmmode->scrn->scrnIndex, frame, usec);
++
+     if (args->flip) {
++        /* pageflip completed - Send completion packet */
++        drmmode_SendSharedPixmapFeedback(TRUE);
++
+         /* frontTarget is being displayed, update crtc to reflect */
+         drmmode_crtc->prime_pixmap = args->frontTarget;
+         drmmode_crtc->prime_pixmap_back = args->backTarget;
+@@ -342,6 +441,10 @@ drmmode_SharedPixmapFlip(PixmapPtr frontTarget, xf86CrtcPtr crtc,
+         return FALSE;
+     }
+ 
++    /* pageflip scheduled - Send scheduled packet */
++    if (drmmode_crtc->flipping_active)
++        drmmode_SendSharedPixmapFeedback(FALSE);
++
+     return TRUE;
+ }
+ 
+@@ -360,6 +463,9 @@ drmmode_InitSharedPixmapFlipping(xf86CrtcPtr crtc, drmmode_ptr drmmode)
+         drmmode_SharedPixmapPresent(drmmode_crtc->prime_pixmap_back,
+                                     crtc, drmmode);
+ 
++    if (drmmode_crtc->flipping_active)
++        drmmode_InitSharedPixmapFeedback(drmmode);
++
+     return drmmode_crtc->flipping_active;
+ }
+ 
+@@ -384,6 +490,8 @@ drmmode_FiniSharedPixmapFlipping(xf86CrtcPtr crtc, drmmode_ptr drmmode)
+                           drmmode_crtc->prime_pixmap_back)->flip_seq;
+     if (seq)
+         ms_drm_abort_seq(crtc->scrn, seq);
++
++    drmmode_FiniSharedPixmapFeedback(drmmode);
+ }
+ 
+ static Bool drmmode_set_target_scanout_pixmap(xf86CrtcPtr crtc, PixmapPtr ppix,
+-- 
+2.7.4
+

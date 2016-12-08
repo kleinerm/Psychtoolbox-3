@@ -49,8 +49,8 @@
 % with either the dGPU active and the Laptop behaves like a machine with
 % one gpu, or the active gpu can be switched via the Linux "vgaswitcheroo"
 % mechanism. The same applies for other PC laptops which are equipped
-% with a mux. Iow. one can manually select the performance vs. power consumption
-% tradeoff.
+% with a mux. Iow. one can manually select the performance vs. power
+% consumption tradeoff.
 %
 % Most modern common PC laptops are muxless. The iGPU is hard-wired to
 % the video outputs, both to the laptop flat panel and the external outputs.
@@ -64,7 +64,7 @@
 % copy image data from the dGPU to the iGPU, converting the data into a format
 % the iGPU can display. For this reason, display latency on a muxless laptop
 % will always be longer and absolute graphics performance lower than on a laptop
-% which only has a dGPU, or a muxless laptop. A big problem is the need to
+% which only has a dGPU, or on a muxless laptop. A big problem is the need to
 % properly synchronize the rendering of the dGPU with the display of the iGPU.
 % Depending on how this synchronization or handshake is implemented, visual
 % stimulus onset timing and timestamping can be highly unreliable and inaccurate.
@@ -86,9 +86,9 @@
 % LINUX:
 % ------
 %
-% On Linux, as of September 2016, good progress has been made in implementing methods
-% which provide both good performance and reliable, trustworthy, accurate visual
-% timing and timestamping. Some - but not all - types of Laptop hardware should
+% On Linux, as of December 2016, good progress has been made in implementing methods
+% which provide both good performance *and* reliable, trustworthy, accurate visual
+% timing and timestamping. Some - but not all! - types of Laptop hardware should
 % work well, but for all of them some special configuration or software upgrades
 % are needed:
 %
@@ -97,65 +97,95 @@
 % completely untested by us and therefore in no way guaranteed to work.
 %
 % Ubuntu Linux 14.04.5 LTS with its latest hardware enablement stack IV, or even
-% better, Ubuntu 16.04 LTS do provide sufficiently modern versions of these software
+% better Ubuntu 16.04 LTS, do provide sufficiently modern versions of these software
 % components. Additionally you will need one of the most recent Linux kernels:
-% At least Linux 4.5 on PC laptops, at least Linux 4.6 on Apple MacBookPro machines.
+% At least Linux 4.6 if you have an Intel integrated graphics chip combined with a
+% NVidia gpu or with an older AMD gpu. Modern AMD gpus will require the even more
+% modern Linux 4.8.11 kernel or later.
 %
-% As of August 2016, Linux 4.7 would be recommended as the most modern Linux kernel [2].
-% The autumn 2016 updates of Linux distributions, e.g., Ubuntu 16.10, will ship with
-% Linux 4.8 by default, requiring no special software updates anymore.
+% As of December 2016, Linux 4.8.11 would be recommended as the most modern Linux kernel
+% to cover all bases. See the download and installation instructions under section [2] below.
+%
+% The autumn 2016 updates of Linux distributions, e.g., Ubuntu 16.10, did ship with
+% Linux 4.8 by default, requiring no special software updates anymore, unless you use
+% an Intel iGPU with one of the latest generation AMD dGPU's (Linux 4.8.11 required),
+% or an Intel iGPU with a NVidia graphics card *and* the proprietary NVidia display
+% driver instead of the open-source nouveau driver. Psychtoolbox will tell you if you
+% need to upgrade your kernel, if you run it on a hybrid graphics Laptop.
 %
 %
 % * Laptops with an Intel iGPU combined with a NVidia dGPU ("NVidia Optimus" models):
 %
-%   These should work perfectly if you use the "nouveau" open source graphics driver,
+%   These should work perfectly if you use the "nouveau" open-source graphics driver,
 %   at least as far as testing with two different laptops went. Stimuli are displayed
 %   without any artifacts and timing and timestamping is accurate and trustworthy.
 %   Performance is highly dependent on the model of NVidia gpu though, with the latest
 %   generations currently providing only relatively low performance, and ongoing work
 %   to improve the performance for recent models.
 %
-%   If you want to use the NVidia proprietary display driver for Linux instead,
-%   no well working solution with correct timing and display is available yet [1].
-%   However, a beta version of a solution is currently in early testing, so this
-%   should be a solved problem in the forseeable future. See the following thread
-%   for the current state of the NVidia proprietary implementation and for some more
-%   nice background info on the challenges of proper handshaking and synchronization
-%   on muxless laptops:
+%   If you want to use the NVidia proprietary display driver for Linux instead, there
+%   now exists a solution which works with correct timing and timestamping. However, the
+%   solution is less flexible and power-efficient than use of the "nouveau" open-source
+%   driver. It also requires substantial manual setup work, and it needs XOrg X-Server 1.19.0
+%   or later. In practice this means you either need to use a Linux distribution which
+%   uses X-Server 1.19, which in December 2016 is essentially "Fedora 25" or "Debian unstable",
+%   or you will have to wait for the Ubuntu 17.04 release in April 2017, or you will have
+%   to download and compile your own X-Server 1.19 if you are not afraid of compilers and
+%   Makefiles and willing to spend a workday doing this.
+%
+%   Once you have a X-Server 1.19 up and running, you will need the NVidia proprietary
+%   display drivers of version 375.20 or later for 64-Bit Intel processors. Then you need
+%   to copy various configuration files into various places, and adapt some of these files
+%   to your specific system. Finally you need to install a custom xf86-video-modesetting
+%   display driver onto your system. This modesetting driver is specifically made to
+%   interoperate with Psychtoolbox to provide research grade precision timing and
+%   timestamping. Then, after a reboot, you may be rewarded with a NVidia Optimus laptop
+%   which can efficiently use your discrete high-performance NVidia gpu with research grade
+%   timing. However, research grade timing is only provided for pure single-display setups,
+%   not for any kind of multi-display operation. That means your Laptop can have exactly
+%   one display enabled, either the Laptops internal flat-panel, or one externally connected
+%   display. Also timing is only reliable and trustworthy for a Psychtoolbox fullscreen
+%   window. As you can see, the setup is somewhat limited and inflexible, and setting it up
+%   requires quite a bit of effort as of December 2016. You will find all the needed config
+%   files and custom made display driver and setup instructions in the Psychtoolbox
+%   subdirectory Psychtoolbox/PsychHardware/LinuxDrivers/NVidiaOptimus/
+%
+%   See the following thread for the current state of the NVidia proprietary implementation
+%   and for some more nice background info on the challenges of proper handshaking and
+%   synchronization on muxless laptops:
 %
 %   https://devtalk.nvidia.com/default/topic/957814/linux/prime-and-prime-synchronization
 %
 %
 % * Laptops with an Intel iGPU combined with an AMD dGPU ("AMD Enduro" models):
 %
-%   These should work very well if you use the open source graphics drivers with slightly
-%   older models of AMD GPUs, ie. not the very latest models of the "Volcanic Islands" /
-%   GCN 1.2 GPU family. Specifically, GPUs using the classic open-source display driver
-%   radeon-kms will work with perfectly trustworthy timing and quality. GPUs of the
-%   "Volcanic Islands" GCN 1.2 generation which use the new open-source amdgpu-kms driver
-%   will only work well under light to moderate load, but may expose visual stimulus
-%   artifacts under high-load scenarios. The reason for this problem known and will likely
-%   be fixed soon. Check back on the forum or PTB website for updates.
+%   These should work very well on Ubuntu 16.10 or with Linux 4.6 and later if you use
+%   the open source graphics drivers with slightly older models of AMD GPUs, ie. not the
+%   very latest models of the "Volcanic Islands" / GCN 1.2 GPU family. Specifically, GPUs
+%   using the classic open-source display driver "radeon-kms" will work with perfectly
+%   trustworthy timing and quality.
+%
+%   GPUs of the "Volcanic Islands" GCN 1.2 generation, which use the new open-source
+%   "amdgpu-kms" driver, will currently need you to manually upgrade your Linux kernel to
+%   at least Linux 4.8.11. See section [2] below on how to do that.
 %
 %   These results are based on testing with two PC setups:
 %
-%   - Intel HD "Haswell desktop" graphics chip + AMD Radeon R9 380 Tonga Pro. Perfect under
-%     light/medium load, malfunctions under high load. (amdgpu-kms)
+%   - Intel HD "Haswell desktop" graphics chip + AMD Radeon R9 380 Tonga Pro. Perfect when
+%     used with Linux 4.8.11 or later kernels. (amdgpu-kms)
 %
 %   - Intel HD "Ivybridge desktop" graphics chip + AMD FireGL "Cedar". Perfect under all
-%     conditions. (radeon-kms).
+%     conditions with Linux 4.6 and later. (radeon-kms).
 %
 %   Stimuli are displayed without any artifacts and timing and timestamping is accurate and
-%   trustworthy. Note that this is the *expectation extrapolated from those PC testing setups*,
-%   not actual results from real Enduro laptops, as no such laptops were available for testing
-%   so far, although they should behave in the same way.
+%   trustworthy.
 %
 %   You will get acceptable performance out of the box. For good performance you will either
-%   need Mesa version 12.1 or later, which is not yet released as of August 2016, or you need
-%   to set the R600_DEBUG environment variable to 'forcedma', ie., execute setenv('R600_DEBUG','forcedma');
-%   at the very start of your Octave or Matlab session, e.g., from the ~/.octaverc
-%   script or Matlabs startup.m script. Better yet, you can install the current Mesa 12.1
-%   development prototype for Ubuntu 16.04 LTS flavors and derivatives from this ppa:
+%   need Mesa version 13 or later, or you need to set the R600_DEBUG environment variable to
+%   'forcedma', ie., execute setenv('R600_DEBUG','forcedma'); at the very start of your Octave
+%   or Matlab session, e.g., from the ~/.octaverc script or Matlabs startup.m script. Better yet,
+%   you can install the current Mesa 13.1 development prototype for Ubuntu 16.04 LTS flavors and
+%   derivatives from this ppa:
 %
 %   https://launchpad.net/~paulo-miguel-dias/+archive/ubuntu/mesa/+packages
 %
@@ -165,7 +195,7 @@
 %   Muxless won't work with any current official solution [1]. However, i am not aware of
 %   any recent muxless laptops - or any such muxless laptops actually - which use dual-NVidia
 %   gpus. All known dual-NVidia laptops are rather old and use a hardware mux, so Linux
-%   vgaswitcheroo can be used to switch between gpus.
+%   "vgaswitcheroo" mechanism can be used to switch between gpus for perfect results.
 %
 %
 % * Laptops with dual AMD gpus AMD iGPU + AMD dGPU ("AMD Enduro" models):
@@ -198,9 +228,10 @@
 %      global /etc/drirc file if it should apply to all users on a machine.
 %
 % 3. Verify the handshaking and synchronization actually works. Psychtoolbox must not
-%    report any timing or timestamping related errors or warnings. Typical tests like
-%    PerceptualVBLSyncTest or VBLSyncTest must work correctly. All demos should display
-%    without any visual artifacts, tearing artifacts etc.
+%    report any timing or timestamping related errors or warnings, or other warnings
+%    relating to hybrid graphics problems. Typical tests like PerceptualVBLSyncTest or
+%    VBLSyncTest must work correctly. All demos should display without any visual artifacts,
+%    tearing artifacts etc.
 %
 %    Additionally you can use the Linux ftrace script i915_optimus_trace.sh in the
 %    Psychtoolbox/PsychHardware/ folder. Instructions on how to use it are inside the
@@ -232,19 +263,17 @@
 %     yet. Ask for assistance on the Psychtoolbox user forum if you happen to have such a
 %     laptop.
 %
-% [2] You can get Linux 4.7.3 for Ubuntu 16.04-LTS for manual installation from here:
-%     http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.7.3/
+% [2] You can get Linux 4.8.11 for Ubuntu 16.04-LTS (and later) for manual installation from here:
+%     http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.8.11/
 %
-%     Look always for the most recent version with the latest bug fixes! Maybe there is
-%     a 4.7.4 or 4.7.5 folder available when you read this file...
+%     On a 64-Bit system you'd download and install the files in the amd64 section, i.e.
+%     the files (download links) named:
 %
-%     On a 64-Bit system you'd download and install the files in the amd64 section, e.g.
-%
-%     linux-headers-4.7.3-040703_4.7.3-040703.201609070334_all.deb
-%     linux-headers-4.7.3-040703-lowlatency_4.7.3-040703.201609070334_amd64.deb
-%     linux-image-4.7.3-040703-lowlatency_4.7.3-040703.201609070334_amd64.deb
+%     linux-headers-4.8.11-040811_4.8.11-040811.201611260431_all.deb
+%     linux-headers-4.8.11-040811-lowlatency_4.8.11-040811.201611260431_amd64.deb
+%     linux-image-4.8.11-040811-lowlatency_4.8.11-040811.201611260431_amd64.deb
 %
 %     You could install them by clicking on them to start the GUI installer. Or you
-%     could type "sudo dpkg -i linux-*4.7*" in a terminal window. After a reboot the
+%     could type "sudo dpkg -i linux-*4.8*" in a terminal window. After a reboot the
 %     kernel should become available for use.
 %

@@ -16,7 +16,7 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-params=uint64(0);
+params=uint64([0,0]);
 moglcore( 'glGetPointerv', pname, params );
-
+params=params(1:end-1);
 return
