@@ -356,6 +356,54 @@ void PsychGSVideoCaptureInit(void)
     }
     numCaptureRecords = 0;
 
+    // On OSX, while most .dylibs on which the Screen mex file depends
+    // get unloaded when Screen() gets unloaded, e.g., "clear all", "clear Screen",
+    // for some reason libglib does not get unloaded, but sticks around until process
+    // termination. This causes a problem with libgobject: libgobject uses the glib
+    // function g_quark_from_static_string() during its initialization. That function
+    // must only be used if the library calling it _never_ gets unloaded during process
+    // lifetime, as it holds references to memory containing some static strings. Now
+    // libgobject _does_ get unloaded whenever Screen() is cleared from memory, but
+    // libglib, which now holds references to invalid memory to non-existent libgobject,
+    // does _not_ get unloaded and now has dangling pointers into process memory. When
+    // Screen gets reloaded, a new instance of libgobject gets reloaded and initalized,
+    // which during its initalization tries to g_quark_from_static_string() again, which
+    // triggers a hash table lookup in glib to avoid redundant string creation, which
+    // triggers an access to the dangling pointer for the old, now non-existent memory
+    // image of former libgobject instance. The result is a nice crash of Matlab or Octave.
+    //
+    // Try to avoid this by preventing libgobject from ever unloading, once it was loaded
+    // during 1st load of Screen mex. We try to dlopen() the library, and if it gets loaded,
+    // get loaded if it wasn't already loaded during 1st load of Screen, but iff it was
+    // its reference count gets bumped, a handle gets returned - for which we don't care -
+    // and most importantly, it gets tagged NODELETE to prevent it from ever unloading
+    // until regular termination of the Matlab/Octave process. For some reason we have to
+    // specify the absolute path to the library part of GStreamer or the OSX dynamic linker
+    // will load other copies of libgobject in its search path, e.g., if HomeBrew is installed,
+    // and we have a useless zombie copy and the actual GStreamer copy in our address space!
+    //
+    // So far the theory which seems to work on both Matlab and Octave. Lets hope no other
+    // of the dylibs which are part of GStreamer also use g_quark_from_static_string() or
+    // this will turn into hell really quick.
+    //
+    // We call this code unconditionally from PsychGSVideoCaptureInit() even when GStreamer
+    // is not used in a session, because apparently the OSX dynamic linker does not load the
+    // GStreamer libraries on first actual use, but at Screen load time - if they exist in
+    // the linkers search path. Iow. weak_library linking prevents Screen load failure if
+    // GStreamer is not installed on the system, but it doesn't prevent early/redundant loading
+    // of GStreamer iff it is installed on the system, even if it isn't used at all during
+    // a session.
+    //
+    // Note: This workaround is not needed on MS-Windows, or on Linux. On both systems i have
+    // verified that libglib and libgobject never get unloaded before process termination on both
+    // Matlab and Octave. On Linux i've additionally verified that this is by design of these
+    // libraries, not just by some happy accident.
+    #if PSYCH_SYSTEM == PSYCH_OSX
+        if ((NULL == dlopen("/Library/Frameworks/GStreamer.framework/Versions/1.0/lib/libgobject-2.0.0.dylib", RTLD_NODELETE)) &&
+            (PsychPrefStateGet_Verbosity() > 3))
+            printf("PTB-DEBUG: libgobject-2.0.0.dylib unavailable, ergo GStreamer not available in this session.\n");
+    #endif
+
     return;
 }
 
@@ -540,9 +588,9 @@ static gboolean PsychVideoBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
 /* Called at each end-of-stream event at end of playback: */
 static void PsychEOSCallback(GstAppSink *sink, gpointer user_data)
 {
+    PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
     (void) sink;
 
-    PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
     PsychLockMutex(&capdev->mutex);
     printf("PTB-DEBUG: Videosink reached EOS.\n");
     // Signal EOS to trigger an abort of device open sequence:
@@ -586,10 +634,8 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
 {
     GstSample *videoSample;
     int w = 0, h = 0;
-
-    (void) sink;
-
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
+    (void) sink;
 
     PsychLockMutex(&capdev->mutex);
     videoSample = gst_app_sink_pull_preroll(GST_APP_SINK(capdev->videosink));
@@ -622,9 +668,8 @@ static GstFlowReturn PsychNewPrerollCallback(GstAppSink *sink, gpointer user_dat
  */
 static GstFlowReturn PsychNewBufferCallback(GstAppSink *sink, gpointer user_data)
 {
-    (void) sink;
-
     PsychVidcapRecordType* capdev = (PsychVidcapRecordType*) user_data;
+    (void) sink;
 
     PsychLockMutex(&capdev->mutex);
     capdev->frameAvail++;

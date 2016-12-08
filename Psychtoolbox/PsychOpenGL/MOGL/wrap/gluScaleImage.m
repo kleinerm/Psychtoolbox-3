@@ -11,6 +11,8 @@ function r = gluScaleImage( format, wIn, hIn, typeIn, dataIn, wOut, hOut, typeOu
 % ---allocate---
 % ---protected---
 
+error('This function is unsupported.');
+
 if nargin~=9,
     error('invalid number of arguments');
 end

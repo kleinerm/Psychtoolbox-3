@@ -16,8 +16,8 @@ if nargin~=2,
 end
 
 range = int32(zeros(1,2));
-precision = int32(0);
+precision = int32([0,0]);
 
 moglcore( 'glGetShaderPrecisionFormat', shadertype, precisiontype, range, precision );
-
+precision = precision(1:end-1);
 return

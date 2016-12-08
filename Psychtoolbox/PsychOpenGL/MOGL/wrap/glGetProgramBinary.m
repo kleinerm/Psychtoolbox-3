@@ -15,10 +15,11 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-length = int32(0);
-binaryFormat = uint32(0);
+length = int32([0,0]);
+binaryFormat = uint32([0,0]);
 binary = uint8(zeros(1,bufSize));
 
 moglcore( 'glGetProgramBinary', program, bufSize, length, binaryFormat, binary );
-
+length = length(1:end-1);
+binaryFormat = binaryFormat(1:end-1);
 return

@@ -15,8 +15,8 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-values = int32(0);
+values = int32([0,0]);
 
 moglcore( 'glGetProgramStageiv', program, shadertype, pname, values );
-
+values = values(1:end-1);
 return

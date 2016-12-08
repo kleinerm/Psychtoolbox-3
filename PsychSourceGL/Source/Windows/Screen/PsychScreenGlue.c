@@ -424,7 +424,7 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription, LPSTR lpDriverName, LPVOID displayIdx, HMONITOR hMonitor)
 {
     // Retrieve index into our display array for the display to enumerate / map in this callback:
-    int idx = (int) displayIdx;
+    int idx = (int) (size_t) displayIdx;
 
     // Is the passed in hMonitor identical to the hMonitor of target display "idx"?
     if (hMonitor == displayDevicehMonitor[idx]) {
@@ -569,7 +569,7 @@ void InitCGDisplayIDList(void)
             // Enumerate for display screen 'i':
             rc = 0;
 
-            if (PsychDirectDrawEnumerateEx && ((rc = PsychDirectDrawEnumerateEx(PsychDirectDrawEnumProc, (LPVOID) i, DDENUM_ATTACHEDSECONDARYDEVICES)) == DD_OK) && (displayDeviceGUIDValid[i] > 1)) {
+            if (PsychDirectDrawEnumerateEx && ((rc = PsychDirectDrawEnumerateEx(PsychDirectDrawEnumProc, (LPVOID) (size_t) i, DDENUM_ATTACHEDSECONDARYDEVICES)) == DD_OK) && (displayDeviceGUIDValid[i] > 1)) {
                 // Success: Create corresponding DDRAW device interface for this screen:
                 if ((rc = PsychDirectDrawCreate(&displayDeviceGUID[i], &(displayDeviceDDrawObject[i]), NULL)) != DD_OK) {
                     // Failed to create Direct Draw object for this screen:
@@ -705,7 +705,7 @@ void PsychReleaseScreen(int screenNumber)
     PsychUnlockScreenSettings(screenNumber);
 }
 
-psych_bool PsychIsScreenCaptured(screenNumber)
+psych_bool PsychIsScreenCaptured(int screenNumber)
 {
     return(PsychCheckScreenSettingsLock(screenNumber));
 }

@@ -6587,19 +6587,27 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         uname(&unameresult);
         sscanf(unameresult.release, "%i.%i.%i", &major, &minor, &patchlevel);
 
-        // If the display iGPU is an Intel chip then we need kernel 4.5 or later for proper dmabuf-fence sync:
+        // If the display iGPU is an Intel chip then we need kernel 4.6 or later for proper dmabuf-fence sync:
         if (gpuMaintype == kPsychIntelIGP) {
-            // Need at least Linux 4.5 for Intel iGPU + some dGPU:
-            if (major < 4 || (major == 4 && minor < 5)) {
+            // Need at least Linux 4.6 for Intel iGPU + some dGPU. In principle 4.5 would do,
+            // but NVIDIA found some performance issues when running on their Optimus drivers
+            // wrt. concurrent hardware cursor updates on the Intel side. Linux 4.6 seems to
+            // fix that, according to them.
+            if (major < 4 || (major == 4 && minor < 6)) {
                 printf("PTB-WARNING: This hybrid graphics setup uses a Intel gpu for display, but your Linux kernel %i.%i.%i is too old.\n", major, minor, patchlevel);
-                printf("PTB-WARNING: Please upgrade to Linux version 4.5 or later for hybrid graphics support without visual stimulation artifacts.\n");
+                printf("PTB-WARNING: Please upgrade to Linux version 4.6 or later for hybrid graphics support without visual stimulation artifacts.\n");
+                printf("PTB-WARNING: If your machine has a modern AMD discrete gpu, upgrading to Linux 4.8.11 or later is required.\n");
             }
             else if ((windowRecord->hybridGraphics == 1) && (ati || rendergpuVendor == PCI_VENDOR_ID_AMD || rendergpuVendor == PCI_VENDOR_ID_ATI)) {
-                // Intel iGPU + AMD dGPU renderoffload on Linux 4.5 or later. All is fine on older AMD
+                // Intel iGPU + AMD dGPU renderoffload on Linux 4.6 or later. All is fine on older AMD
                 // parts driven by radeon-kms. "Volcanic Islands" GCN 1.2+ gpus driven by amdgpu-kms
-                // need at least Linux 4.9 as of November 2016 in order to provide proper fence sync
+                // need at least Linux 4.8.11 in order to provide proper fence sync
                 // under high load. Specifically the following patch is needed for amdgpu-kms:
                 // http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=8e94a46c1770884166b31adc99eba7da65a446a7
+                // The patch has been back-ported already to the Linux 4.8.11 kernel, and also by
+                // Canonical's kernel team to their upcoming Ubuntu-4.8.0-29.31 kernel for Ubuntu 16.10
+                // and the future Ubuntu 16.04.2-LTS HWE-1 stack:
+                // http://kernel.ubuntu.com/git/ubuntu/ubuntu-yakkety.git/commit/?h=master-next&id=d8ae64bcc02ff9e1c171539bdea55640ef53a1eb
 
                 // Probe if amdgpu-kms driver modules is loaded:
                 FILE *amdgpu = fopen("/sys/module/amdgpu", "r");
@@ -6609,11 +6617,39 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
                     if (verbose) printf("PTB-DEBUG: Render gpu driven by amdgpu-kms. Checking required kernel version...\n");
 
-                    // As of November 2016 we need kernel 4.9 or later, otherwise warn about potential display artifacts:
-                    if (major == 4 && minor < 9) {
+                    if (major == 4 && minor == 8 && patchlevel == 0) {
+                        char extraversionsignature[512];
+                        // Kernel release 4.8.0 could mean a Ubuntu kernel, ie., an Ubuntu kernel
+                        // originally based on 4.8.0, but then maintained independent of mainline.
+                        // If so, then the /proc/version_signature file should exist and contain
+                        // the release of the mainline kernel on which the Ubuntu 4.8.0-XXX kernel
+                        // is based. Ubuntu 16.10 "Yaketty Yak", and Ubuntu 16.04.2-LTS HWE kernel
+                        // are based on 4.8.0, so lets handle this Ubuntu specific special case.
+                        // Is this a Ubuntu distro kernel?
+                        FILE* fd = fopen("/proc/version_signature", "rt");
+                        if (fd && fgets(extraversionsignature, sizeof(extraversionsignature), fd)) {
+                            // Seems so. Find signature of the stable kernel on which this one is based:
+                            if (strstr(extraversionsignature, "Ubuntu")) {
+                                // Ubuntu 4.8.0-X Yaketty kernel, based on 4.8.x upstream. Lets find out
+                                // on which upstream kernel it is based and use that for checking Prime
+                                // renderoffload capabilities:
+                                if (sscanf(extraversionsignature, "%*s %*s %i.%i.%i", &major, &minor, &patchlevel) == 3) {
+                                    if (verbose) printf("PTB-DEBUG: Ubuntu 4.8.0 Yaketty/16.04.2-LTS HWE-I kernel detected. Based on mainline kernel %i.%i.%i. Using this for detection.\n",
+                                                        major, minor, patchlevel);
+                                }
+                                else {
+                                    printf("PTB-WARNING: Could not find mainline kernel version of this Ubuntu 4.8.0 based kernel. May misdetect AMD hybrid graphics capabilities!\n");
+                                }
+                            }
+                        }
+                        if (fd) fclose(fd);
+                    }
+
+                    // As of November 2016 we need kernel 4.8.11 or later, otherwise warn about potential display artifacts:
+                    if (major == 4 && minor < 9 && !(minor == 8 && patchlevel >= 11)) {
                         printf("PTB-WARNING: This hybrid graphics setup uses a Intel iGPU for display and AMD dGPU for rendering, but your Linux kernel %i.%i.%i\n", major, minor, patchlevel);
-                        printf("PTB-WARNING: is too old to guarantee reliable visual stimulation. Upgrade to Linux version 4.9 or later for hybrid graphics support\n");
-                        printf("PTB-WARNING: without visual stimulation artifacts.\n");
+                        printf("PTB-WARNING: is too old to guarantee reliable visual stimulation. Upgrade to Linux version 4.8.11 or later for hybrid graphics support\n");
+                        printf("PTB-WARNING: without visual stimulation artifacts. On a Ubuntu flavor, upgrade to at least Ubuntu Linux kernel 'Ubuntu-4.8.0-29.31'.\n");
                     }
                 }
             }

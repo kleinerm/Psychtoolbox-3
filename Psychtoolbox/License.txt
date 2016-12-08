@@ -115,6 +115,10 @@
 % Psychtoolbox/PsychContributed: See individual licenses and output of
 %                                "help PsychContributed" in that folder.
 %
+% Psychtoolbox/PsychHardware/LinuxDrivers/ modified versions of Linux device
+% drivers, currently XOrg video drivers (DDX modules). These have their own
+% licenses attached as part of their source code or Readme files. But usually
+% some form of the MIT/X11 license. Check the sources for details.
 %
 % The tcp_udp_ip toolbox under Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/
 % is Copyright Peter Rydesaeter et al., 1998-2003. Licensed under GPL v2 and

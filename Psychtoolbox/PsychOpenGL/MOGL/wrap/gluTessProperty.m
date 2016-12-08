@@ -17,7 +17,7 @@ if nargin~=3,
 end
 
 if ~strcmp(class(tess),'double'),
-	error([ 'argument ''tess'' must be a pointer coded as type double ' ]);
+  error([ 'argument ''tess'' must be a pointer coded as type double ' ]);
 end
 
 moglcore( 'gluTessProperty', tess, which, data );
