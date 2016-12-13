@@ -41,7 +41,7 @@ function AlphaImageTutorial
 %             dhb     More comments, cleaned.
 
 % PsychDefaultSetup(featurelevel) - Perform standard setup for Psychtoolbox, 
-% the feature level % of 2 sets PTB up to use an unclamped 0 - 1 color range.
+% the feature level of 2 sets PTB up to use an unclamped 0 - 1 color range.
 PsychDefaultSetup(2);
 
 % Screen is able to do a lot of configuration and performance checks on
