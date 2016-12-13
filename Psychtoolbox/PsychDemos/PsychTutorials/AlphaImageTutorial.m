@@ -40,11 +40,9 @@ function AlphaImageTutorial
 %  10/14/06   dhb     Rename without OSX bit.  Fewer warnings.
 %             dhb     More comments, cleaned.
 
-% This script calls Psychtoolbox commands available only in OpenGL-based
-% versions of the Psychtoolbox. The Psychtoolbox command AssertPsychOpenGL will issue
-% an error message if someone tries to execute this script on a computer without
-% an OpenGL Psychtoolbox
-AssertOpenGL;
+% PsychDefaultSetup(featurelevel) - Perform standard setup for Psychtoolbox, 
+% the feature level % of 2 sets PTB up to use an unclamped 0 - 1 color range.
+PsychDefaultSetup(2);
 
 % Screen is able to do a lot of configuration and performance checks on
 % open, and will print out a fair amount of detailed information when
@@ -69,7 +67,6 @@ try
 	
 	% Open a double buffered fullscreen window and draw a gray background
 	% and front and back buffers.
-	PsychDefaultSetup(2);
 	[w, wRect]=PsychImaging('OpenWindow',screenNumber, 0.5, [], 32, 2);
 	
 	%This is our alpha blending mode
