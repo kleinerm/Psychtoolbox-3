@@ -1,6 +1,6 @@
 function osxmakeit(mode)
 % This is the MacOS/X version of makeit: It is meant for building PTB for
-% 64-Bit Matlab on OSX 10.10 "Yosemite" and later, using the 10.11 SDK.
+% 64-Bit Matlab on OSX 10.11 "El Crapitan" and later, using the 10.12 SDK.
 
 if ~IsOSX(1) || IsOctave
     error('osxmakeit only works with a 64-Bit version of Matlab for OSX!');
