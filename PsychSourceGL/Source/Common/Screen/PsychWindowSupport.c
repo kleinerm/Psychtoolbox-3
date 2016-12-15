@@ -502,16 +502,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // Ask the OS what it thinks it has set atm.:
         glGetIntegerv(GL_RED_BITS, &bpc);
 
-        // Support for kernel driver available? Only on Linux and OSX:
-#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-        if ((PSYCH_SYSTEM == PSYCH_OSX) && (bpc >= (*windowRecord)->depth / 3)) {
-            // OSX and the OS claims it runs at at least requested bpc. Good, take
-            // it at face value. Note: As of September 2014, no shipping OSX version supports this,
-            // not even 10.9 Mavericks:
-            printf("PTB-INFO: OSX native %i bit per color framebuffer requested, and the OS claims it is working fine. Good.\n", bpc);
-        }
-        else if ((PSYCH_SYSTEM == PSYCH_LINUX) && (bpc >= (*windowRecord)->depth / 3)) {
-            // Linux and the OS claims it runs at at least requested bpc. Good, take it at face value.
+        // Support for kernel driver available? Only on Linux:
+#if PSYCH_SYSTEM == PSYCH_LINUX
+        if (bpc >= (*windowRecord)->depth / 3) {
+            // Linux, and the OS claims it runs at at least requested bpc. Good, take it at face value.
             printf("PTB-INFO: Linux native %i bit per color framebuffer requested, and the OS claims it is working fine. Good.\n", bpc);
         }
         else {
@@ -534,29 +528,18 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff) || (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24)) {
                 printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but i can't provide this for you, because\n", (*windowRecord)->depth, (*windowRecord)->depth / 3);
                 if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
-                    if (PSYCH_SYSTEM == PSYCH_OSX) {
-                        printf("PTB-ERROR: the OSX PsychtoolboxKernelDriver isn't loaded or accessible by Psychtoolbox in this session.\n");
-                        printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional on your graphics card for this to work,\n");
-                        printf("PTB-ERROR: and only one Matlab or Octave session can use the driver at any given time on your computer.\n");
-                        printf("PTB_ERROR: Read 'help PsychtoolboxKernelDriver' for setup information.\n\n");
-                    }
-                    if (PSYCH_SYSTEM == PSYCH_LINUX) {
-                        printf("PTB-ERROR: Linux low-level MMIO access by Psychtoolbox is disabled or not permitted on your system in this session.\n");
-                        printf("PTB-ERROR: On Linux you must either configure your system by executing the script 'PsychLinuxConfiguration' once,\n");
-                        printf("PTB-ERROR: or start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n\n");
-                    }
+                    printf("PTB-ERROR: Linux low-level MMIO access by Psychtoolbox is disabled or not permitted on your system in this session.\n");
+                    printf("PTB-ERROR: On Linux you must either configure your system by executing the script 'PsychLinuxConfiguration' once,\n");
+                    printf("PTB-ERROR: or start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n\n");
                 }
                 else if ((gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff)) {
                     printf("PTB-ERROR: this functionality is not supported on your model of graphics card. Only AMD/ATI GPU's of the\n");
                     printf("PTB-ERROR: Radeon X1000 series, and Radeon HD-2000 series and later models, and corresponding FireGL/FirePro\n");
                     printf("PTB-ERROR: cards are supported. This covers basically all AMD graphics cards since about the year 2007.\n");
-                    if (PSYCH_SYSTEM == PSYCH_LINUX) {
-                        printf("PTB-ERROR: NVidia graphics cards since the GeForce-8000 series and corresponding Quadro cards can be setup\n");
-                        printf("PTB-ERROR: for 10 bpc framebuffer support by specifying a 'DefaultDepth' setting of 30 bit in the xorg.conf file.\n");
-                        printf("PTB-ERROR: The latest Intel graphics cards may be able to achieve 10 bpc with 'DefaultDepth' 30 setting if your\n");
-                        printf("PTB-ERROR: graphics driver is recent enough, however this hasn't been actively tested on Intel cards so far.\n\n");
-                    }
-                    else printf("\n");
+                    printf("PTB-ERROR: NVidia graphics cards since the GeForce-8000 series and corresponding Quadro cards can be setup\n");
+                    printf("PTB-ERROR: for 10 bpc framebuffer support by specifying a 'DefaultDepth' setting of 30 bit in the xorg.conf file.\n");
+                    printf("PTB-ERROR: The latest Intel graphics cards may be able to achieve 10 bpc with 'DefaultDepth' 30 setting if your\n");
+                    printf("PTB-ERROR: graphics driver is recent enough, however this hasn't been actively tested on Intel cards so far.\n\n");
                 }
                 else if (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24) {
                     printf("PTB-ERROR: your display is not set to 24 bit 'DefaultDepth' color depth, but to %i bit color depth in xorg.conf.\n\n",
@@ -586,13 +569,33 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // Not supported by our own code and kernel driver (we don't have such a driver for Windows), but some recent 2008
         // series AMD FireGL and NVidia Quadro cards at least provide the option to enable this natively - although it didn't
         // work properly in our tests around the year 2009.
-        if (bpc >= ((*windowRecord)->depth / 3)) {
+        if ((PSYCH_SYSTEM == PSYCH_OSX) && (bpc >= (*windowRecord)->depth / 3)) {
+            // OSX and the OS claims it runs at at least requested bpc. Good, take
+            // it at face value. This should work on OSX >= 10.11.2 at least for
+            // some graphics cards, as far as the framebuffer is concerned.
+            // The actual output bit depth is totally unverified, but supposed to
+            // achieve 10 bpc on some Apple machines (MacPro 2013, iMac Retina 5k 2014 & 2015). See:
+            // https://developer.apple.com/library/content/releasenotes/MacOSX/WhatsNewInOSX/Articles/MacOSX10_11_2.html#//apple_ref/doc/uid/TP40016630-SW1
+            //
+            // Note that this is a floating point framebuffer, so the effective linear bit depth for the
+            // displayable color range is much lower. E.g., the 16 bpc half-float translate into actual
+            // ~ 10 bpc linear precision!
+            printf("PTB-INFO: OSX native floating point %i bit per color framebuffer requested, and the OS claims it is working fine. Good.\n", bpc);
+            printf("PTB-INFO: Please note that the effective linear output precision will be *much* lower, e.g., only at most 10 bpc for 16 bpc float.\n");
+            printf("PTB-INFO: Also, only some very limited subset of Apple hardware can actually output 10 bpc precision on a few displays.\n");
+            printf("PTB-INFO: As of the year 2016, only the MacPro 2013, and iMac Retina 5k models from late 2014 and late 2015 are claimed\n");
+            printf("PTB-INFO: by Apple, but *not* verified by us, to support 10 bit output on some supported displays under some conditions!\n");
+        }
+        else if (bpc >= ((*windowRecord)->depth / 3)) {
             printf("PTB-INFO: Windows native %i bit per color framebuffer requested, and the OS claims it is working. Good.\n", bpc);
         }
         else {
-            printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but the OS rejected your request and only provides %i bpc.", (*windowRecord)->depth, (*windowRecord)->depth / 3, bpc);
-            printf("\nPTB-ERROR: Some year 2008 and later AMD/ATI FireGL/FirePro and NVidia Quadro cards may support 10 bpc with some drivers,");
-            printf("\nPTB-ERROR: but you must enable it manually in the Catalyst or Quadro Control center (somewhere under ''Workstation settings'').\n");
+            printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but the OS rejected your request and only provides %i bpc.\n",
+                   (*windowRecord)->depth, (*windowRecord)->depth / 3, bpc);
+            if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+                printf("PTB-ERROR: Some year 2008 and later AMD/ATI FireGL/FirePro and NVidia Quadro cards may support 10 bpc with some drivers,\n");
+                printf("PTB-ERROR: but you must enable it manually in the Catalyst or Quadro Control center (somewhere under ''Workstation settings'').\n");
+            }
             PsychOSCloseWindow(*windowRecord);
             FreeWindowRecordFromPntr(*windowRecord);
             return(FALSE);
