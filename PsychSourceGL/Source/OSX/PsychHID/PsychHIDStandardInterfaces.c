@@ -100,7 +100,33 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     PsychHIDGetDeviceListByUsages(numDeviceUsages, KbDeviceUsagePages, KbDeviceUsages, &ndevices, deviceIndices, deviceRecords);
 
     // Nothing?
-    if (ndevices == 0) printf("PTB-WARNING: No keyboard, keypad, mouse, touchpad, joystick etc. input devices detected! KbQueues won't work.\n");
+    if (ndevices == 0) printf("PTB-WARNING: No keyboard, keypad, mouse, touchpad, joystick etc. button input devices detected! KbQueues and KbCheck won't work.\n");
+
+    // Find default keyboard device. We start with the fail-safe assumption
+    // that the first detected keyboard is really a keyboard, then iterate
+    // over all candidates, first keyboards, then keypads, mice, pointing
+    // devices, joysticks, gamepads. If none is valid, we will fall back to
+    // device 0 as best "worst choice".
+    //
+    // In the past we simply used device 0, the first keyboard, but the iToys
+    // company decided to make life difficult again when introducing the
+    // MacBook"Pro" 2016 with a new iToy gadget, the oh so magic touchbar. This
+    // touchbar enumerates as the first "keyboard" in the system, with no
+    // transport, version, manufacturer, product name or serial number, but
+    // instead fricking 1046 keys. Luckily this thing also has an invalid
+    // locationID of zero, so we can filter it out with this code by only
+    // accepting keyboards with a non-zero locationID. The 2nd keyboard is
+    // then the actual keyboard of the MacBook"Pro" 2016
+    defaultKeyboardIndex = 0;
+    for (i = 0; i < ndevices; i++) {
+        // Filter out / ignore devices with an invalid locationID of zero,
+        // like the brain-damaged TouchBar of the MacBook"Pro" 2016, which
+        // enumerates as 1st keyboard with 1046 keys:
+        if (IOHIDDevice_GetLocationID(deviceRecords[i]) != 0) {
+            defaultKeyboardIndex = i;
+            break;
+        }
+    }
 
     // Create keyboard queue mutex for later use:
     PsychInitMutex(&KbQueueMutex);
