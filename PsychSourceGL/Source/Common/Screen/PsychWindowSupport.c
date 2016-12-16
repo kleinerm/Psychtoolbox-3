@@ -144,6 +144,13 @@ static void PsychDrawSplash(PsychWindowRecordType* windowRecord)
     int logo_x, logo_y;
     int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
 
+    // Use alternate texture-mapping based splash drawing on OSX, on the hunch that Apple
+    // might have screwed up their glDrawPixels() implementation so badly on some gpu's that
+    // it causes lots of sync failures, especially on modern iMac's. Unclear if this is the
+    // case, but let's see what user testing will show:
+    if (PSYCH_SYSTEM == PSYCH_OSX)
+        return;
+
     // See call below for explanation: This workaround is also needed on VideoCore-4 + DRI3/Present, so maybe the assumption
     // that this is an intel-ddx sna bug is wrong, and it is actually a Mesa DRI3/Present bug in drawable invalidation/revalidation?
     if (strstr(windowRecord->gpuCoreId, "Intel") || strstr(windowRecord->gpuCoreId, "VC4")) {
@@ -1006,9 +1013,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glClearColor(0,0,0,1);
     }
 
-    // Use class code path for classic OpenGL, unless we are on the Raspberry Pi's VideoCore-4
-    // gpu, where this path is so slow it would cause sync-failure and other cascading trouble:
-    if (PsychIsGLClassic(*windowRecord) && !strstr((*windowRecord)->gpuCoreId, "VC4")) {
+    // Use classic code path for classic OpenGL, unless we are on the Raspberry Pi's VideoCore-4
+    // gpu, where this path is so slow it would cause sync-failure and other cascading trouble,
+    // or on OSX where we suspect Apple might have screwed up the glDrawPixels command we use in
+    // the classic path:
+    if (PsychIsGLClassic(*windowRecord) && !strstr((*windowRecord)->gpuCoreId, "VC4") && (PSYCH_SYSTEM != PSYCH_OSX)) {
         double tDummy;
 
         // Classic OpenGL-1/2 splash image drawing code:
