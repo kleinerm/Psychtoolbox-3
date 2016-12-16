@@ -1738,6 +1738,13 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             printf("Screen('Preference', 'SkipSyncTests', 1); at the top of your script, if you really know what you are doing.\n\n\n");
         }
 
+        // Apparently the busy-wait for VBL before bufferswap request workaround did not help
+        // in passing the 3rd run of the sync tests. Let's disable it again, as it can actually
+        // make things worse if one uses skip sync test setting 1, by throttling to vblank twice,
+        // once in hardware, once by our workaround. If user wants us to limp along, let us at
+        // least as fast as we can:
+        (*windowRecord)->specialflags &= ~kPsychBusyWaitForVBLBeforeBufferSwapRequest;
+
         // Abort right here if sync tests are enabled:
         if (!skip_synctests) {
             // We abort! Close the onscreen window:
@@ -1752,10 +1759,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         PsychVisualBell((*windowRecord), 1, 2);
     }
 
-    // Ok, basic syncing to VBL via CGLFlushDrawable + glFinish seems to work and we have a valid
-    // estimate of monitor refresh interval...
+    // Ok, basic syncing to VBL seems to work and we have a valid estimate of monitor refresh interval...
 
-    // Check for mismatch between measured ifi from beamposition and from glFinish() VBLSync method.
+    // Check for mismatch between measured ifi from beamposition and from VBLSync method.
     // This would indicate that the beam position is reported from a different display device
     // than the one we are VBL syncing to. -> Trouble!
     if ((ifi_beamestimate < 0.8 * ifi_estimate || ifi_beamestimate > 1.2 * ifi_estimate) && (ifi_beamestimate > 0)) {
@@ -1788,8 +1794,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     // Assign our best estimate of the scanline which marks end of vertical blanking interval:
     (*windowRecord)->VBL_Endline = VBL_Endline;
+
     // Store estimated video refresh cycle from beamposition method as well:
     (*windowRecord)->ifi_beamestimate = ifi_beamestimate;
+
     //mark the contents of the window record as valid.  Between the time it is created (always with PsychCreateWindowRecord) and when it is marked valid
     //(with PsychSetWindowRecordValid) it is a potential victim of PsychPurgeInvalidWindows.
     PsychSetWindowRecordValid(*windowRecord);
@@ -4652,7 +4660,6 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         glDrawBuffer(GL_BACK_LEFT);
 
         PsychGetAdjustedPrecisionTimerSeconds(&tnew);
-        tstart = tnew;
         told = -1;
 
         // Need to redraw our splash image, as at least under Linux with the FOSS stack
@@ -4675,9 +4682,11 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             PsychYieldIntervalSeconds(1);
         }
 
+        PsychGetAdjustedPrecisionTimerSeconds(&tstart);
+
         // Take samples during consecutive refresh intervals:
         // We measure until either:
-        // - A maximum measurment time of maxsecs seconds has elapsed... (This is the emergency switch to prevent infinite loops).
+        // - A maximum measurement time of maxsecs seconds has elapsed... (This is the emergency switch to prevent infinite loops).
         // - Or at least numSamples valid samples have been taken AND measured standard deviation is below the requested deviation stddev.
         for (i = 0; (fallthroughcount<10) && ((tnew - tstart) < *maxsecs) && (n < *numSamples || ((n >= *numSamples) && (tstddev > reqstddev))); i++) {
             // Draw splash image again, to handle Linux DRI3/Present and similar setups:
