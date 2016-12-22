@@ -981,3 +981,12 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 		PsychSetupView(windowRecord, FALSE);
 	}
 }
+
+double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
+{
+    // As we don't know the scheduling behaviour of the OSX compositor, and it
+    // has actually changed in unpredictable ways across different OSX versions,
+    // we can't adjust for it at all. Therefore this function is a no-op identity
+    // passthrough:
+    return targetTime;
+}
