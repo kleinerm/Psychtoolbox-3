@@ -603,11 +603,11 @@ function xdriver = DetectDDX(winfo)
     % Intel part -> intel ddx:
     fprintf('Intel GPU detected. ');
     xdriver = 'intel';
-  elseif strfind(winfo.DisplayCoreId, 'NVidia') && strfind(winfo.GLVendor, 'nouveau')
+  elseif ~isempty(strfind(winfo.DisplayCoreId, 'NVidia')) && ~isempty(strfind(winfo.GLVendor, 'nouveau'))
     % NVidia part under nouveau -> nouveau ddx:
     fprintf('Nvidia GPU with open-source driver detected. ');
     xdriver = 'nouveau';
-  elseif strfind(winfo.DisplayCoreId, 'NVidia') && strfind(winfo.GLVendor, 'NVIDIA')
+  elseif ~isempty(strfind(winfo.DisplayCoreId, 'NVidia')) && ~isempty(strfind(winfo.GLVendor, 'NVIDIA'))
     % NVidia part under binary blob -> nvidia ddx:
     fprintf('Nvidia GPU with proprietary driver detected. ');
     xdriver = 'nvidia';
