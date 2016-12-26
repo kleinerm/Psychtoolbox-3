@@ -4,16 +4,18 @@ function osxsetoctaverpath(mexfname, mexpath)
 % Change the @rpath library search path for the octave
 % runtime libraries inside the given mex file.
 %
-% As the mex files for Octave-4 are still built on Octave-3,
-% we change from absolute path to rpath and from the version 2
-% libraries to version 3 libraries.
+% We change from absolute path to @rpath.
 %
 % E.g.,
 %
 % osxsetoctaverpath('Screen'); would rewrite Screen.mex
-% to use the @rpath settings stored in this function and
-% work on Octave-4 instead of Octave-3.
-%
+% to use the @rpath settings stored in this function.
+% We define one rpath as @loader_path, so the runtime dylibs
+% are expected in loader_path, e.g., a system library path,
+% or the Psychtoolbox folder where the mex files are stored.
+% PsychtoolboxPostInstallRoutine copies or symlinks the Octave
+% runtime libraries into the mex file folder of PTB, so the mex
+% files should always find a dylib for the currently running Octave.
 
     if ~IsOSX(1) || ~IsOctave
         error('osxsetoctaverpath only works with a 64-Bit version of Octave for OSX!');
@@ -47,10 +49,10 @@ function osxsetoctaverpath(mexfname, mexpath)
     mexfname = [mexpath mexfname '.' mexext];
 
     % Replace absolute path to liboctinterp.2.dylib with @rpath:
-    system(['install_name_tool -change ' octave_config_info.octlibdir '/liboctinterp.2.dylib @rpath/liboctinterp.3.dylib ' mexfname]);
+    system(['install_name_tool -change ' octave_config_info.octlibdir '/liboctinterp.3.dylib @rpath/liboctinterp.3.dylib ' mexfname]);
 
     % Replace absolute path to liboctave.2.dylib with @rpath:
-    system(['install_name_tool -change ' octave_config_info.octlibdir '/liboctave.2.dylib @rpath/liboctave.3.dylib ' mexfname]);
+    system(['install_name_tool -change ' octave_config_info.octlibdir '/liboctave.3.dylib @rpath/liboctave.3.dylib ' mexfname]);
 
     % Add one single rpath: @loader_path. This is the path to our folder where our
     % mex file is stored. If we place copies of liboctave.3.dylib and liboctinterp.3.dylib

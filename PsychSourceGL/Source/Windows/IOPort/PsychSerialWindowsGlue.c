@@ -363,27 +363,33 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
     // Init errmsg error message to empty == no error:
     errmsg[0] = 0;
 
-    // See https://support.microsoft.com/en-us/kb/115831 for explanation of this madness:
-    snprintf(portPath, 1000, "\\\\.\\%s", portSpec);
+    if (!strstr(portSpec, "\\")) {
+        // Standard COMxxx port spec. Make sure Windows can handle COM ports > 9.
+        // See https://support.microsoft.com/en-us/kb/115831 for explanation of this madness:
+        snprintf(portPath, 1000, "\\\\.\\%s", portSpec);
+    } else {
+        // Non-Standard port spec. Use as is:
+        snprintf(portPath, 1000, "%s", portSpec);
+    }
 
     // Open the serial port read/write, for exclusive access with normal attributes and default other settings:
     fileDescriptor = CreateFile(portPath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (fileDescriptor == INVALID_HANDLE_VALUE) {
         myerrno = GetLastError();
         if (myerrno == ERROR_FILE_NOT_FOUND) {
-            sprintf(errmsg, "Error opening serial port device %s - No such serial port device exists! (%d) [ENOENT].\n", portSpec, myerrno);
+            sprintf(errmsg, "Error opening serial port device %s [%s] - No such serial port device exists! (%d) [ENOENT].\n", portSpec, portPath, myerrno);
             usererr = TRUE;
         }
         else if (myerrno == ERROR_SHARING_VIOLATION) {
-            sprintf(errmsg, "Error opening serial port device %s - The serial port is already open in this or some other application, close it first! (Code = %d) [ERROR_SHARING_VIOLATION].\n", portSpec, myerrno);
+            sprintf(errmsg, "Error opening serial port device %s [%s] - The serial port is already open in this or some other application, close it first! (Code = %d) [ERROR_SHARING_VIOLATION].\n", portSpec, portPath, myerrno);
             usererr = TRUE;
         }
         else if (myerrno == ERROR_ACCESS_DENIED) {
-            sprintf(errmsg, "Error opening serial port device %s - The system didn't grant access (Code = %d) [ERROR_ACCESS_DENIED]. Maybe a permission or configuration problem?\n", portSpec, myerrno);
+            sprintf(errmsg, "Error opening serial port device %s [%s] - The system didn't grant access (Code = %d) [ERROR_ACCESS_DENIED]. Maybe a permission or configuration problem?\n", portSpec, portPath, myerrno);
             usererr = TRUE;
         }
         else {
-            sprintf(errmsg, "Error opening serial port device %s - Errorcode (%d).\n", portSpec, myerrno);
+            sprintf(errmsg, "Error opening serial port device %s [%s] - Errorcode (%d).\n", portSpec, portPath, myerrno);
         }
         goto error;
     }

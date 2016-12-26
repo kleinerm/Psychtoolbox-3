@@ -1,8 +1,7 @@
 /*
-
     PsychToolbox3/Source/OSX/PsychHID/PsychHIDStandardInterfaces.c
 
-    PROJECTS: PsychHID.
+    PROJECTS: PsychHID
 
     PLATFORMS:  OSX
 
@@ -43,6 +42,7 @@ static  psych_condition KbQueueCondition;
 static  int ndevices = 0;
 static  int deviceIndices[PSYCH_HID_MAX_DEVICES];
 static  pRecDevice deviceRecords[PSYCH_HID_MAX_DEVICES];
+static  int defaultKeyboardIndex = 0;
 
 // Return real deviceIndex (aka KbQueue index) and HID device record pRecDevice
 // for a given PsychHID('Devices') style input deviceIndex. *deviceIndex is an
@@ -60,12 +60,12 @@ int PsychHIDOSGetKbQueueDevice(int HIDdeviceIndex, pRecDevice *deviceRecord)
         }
 
         if (!foundUserSpecifiedDevice)
-            PsychErrorExitMsg(PsychError_user, "Specified device number is not a suitable keyboardqueue input device.");
+            PsychErrorExitMsg(PsychError_user, "Specified device number is not a suitable keyboard type input device.");
     }
     else {
         // set the keyboard or keypad device to be the first keyboard device or, if no keyboard, the first keypad:
-        i = 0;
-        if (ndevices == 0) PsychErrorExitMsg(PsychError_user, "No KbQueue capable input devices detected!");
+        i = defaultKeyboardIndex;
+        if (ndevices == 0) PsychErrorExitMsg(PsychError_user, "Could not detect any keyboard type input devices!");
     }
 
     // Assign return deviceIndex and deviceRecord for selected i'th entry:
@@ -100,7 +100,33 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     PsychHIDGetDeviceListByUsages(numDeviceUsages, KbDeviceUsagePages, KbDeviceUsages, &ndevices, deviceIndices, deviceRecords);
 
     // Nothing?
-    if (ndevices == 0) printf("PTB-WARNING: No keyboard, keypad, mouse, touchpad, joystick etc. input devices detected! KbQueues won't work.\n");
+    if (ndevices == 0) printf("PTB-WARNING: No keyboard, keypad, mouse, touchpad, joystick etc. button input devices detected! KbQueues and KbCheck won't work.\n");
+
+    // Find default keyboard device. We start with the fail-safe assumption
+    // that the first detected keyboard is really a keyboard, then iterate
+    // over all candidates, first keyboards, then keypads, mice, pointing
+    // devices, joysticks, gamepads. If none is valid, we will fall back to
+    // device 0 as best "worst choice".
+    //
+    // In the past we simply used device 0, the first keyboard, but the iToys
+    // company decided to make life difficult again when introducing the
+    // MacBook"Pro" 2016 with a new iToy gadget, the oh so magic touchbar. This
+    // touchbar enumerates as the first "keyboard" in the system, with no
+    // transport, version, manufacturer, product name or serial number, but
+    // instead fricking 1046 keys. Luckily this thing also has an invalid
+    // locationID of zero, so we can filter it out with this code by only
+    // accepting keyboards with a non-zero locationID. The 2nd keyboard is
+    // then the actual keyboard of the MacBook"Pro" 2016
+    defaultKeyboardIndex = 0;
+    for (i = 0; i < ndevices; i++) {
+        // Filter out / ignore devices with an invalid locationID of zero,
+        // like the brain-damaged TouchBar of the MacBook"Pro" 2016, which
+        // enumerates as 1st keyboard with 1046 keys:
+        if (IOHIDDevice_GetLocationID(deviceRecords[i]) != 0) {
+            defaultKeyboardIndex = i;
+            break;
+        }
+    }
 
     // Create keyboard queue mutex for later use:
     PsychInitMutex(&KbQueueMutex);
@@ -125,6 +151,122 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
     PsychDestroyCondition(&KbQueueCondition);
 
     return;
+}
+
+PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
+{
+    pRecDevice deviceRecord;
+    pRecElement	currentElement, lastElement = NULL;
+    int	debuglevel = 0;
+    double *timeValueOutput, *isKeyDownOutput, *keyArrayOutput;
+    double dummyKeyDown;
+    double dummykeyArrayOutput[256];
+    uint32_t usage, usagePage;
+    int nout, value;
+
+    // Choose the device index and its record:
+    // Want default keyboard?
+    if (deviceIndex != INT_MAX) {
+        // No. Wants a specific one. Remap negative numbers to positive number
+        // and low-level debug output enabled for this invocation:
+        if (deviceIndex < 0) {
+            debuglevel = 1;
+            deviceIndex = -deviceIndex;
+        }
+    } else {
+        // Yes. Wants default keyboard device:
+        deviceIndex = -1;
+    }
+
+    // Do we finally have a valid keyboard or other suitable input device?
+    // PsychHIDOSGetKbQueueDevice() will error out if no suitable device
+    // for deviceIndex can be found. Otherwise it will return the HID
+    // device record and remapped deviceIndex for use with KbCheck:
+    deviceIndex = PsychHIDOSGetKbQueueDevice(deviceIndex, &deviceRecord);
+
+    // Allocate and init out return arguments.
+    //
+    // Either alloc out the arguments, or redirect to
+    // internal dummy variables. This to avoid mxMalloc() call overhead
+    // inside the PsychAllocOutXXX() routines:
+    nout = PsychGetNumNamedOutputArgs();
+
+    // keyDown flag:
+    if (nout >= 1) {
+        PsychAllocOutDoubleArg(1, FALSE, &isKeyDownOutput);
+    } else {
+        isKeyDownOutput = &dummyKeyDown;
+    }
+    *isKeyDownOutput= (double) FALSE;
+
+    // key state vector:
+    if (nout >= 3) {
+        PsychAllocOutDoubleMatArg(3, FALSE, 1, 256, 1, &keyArrayOutput);
+    }
+    else {
+        keyArrayOutput = &dummykeyArrayOutput[0];
+    }
+    memset((void*) keyArrayOutput, 0, sizeof(double) * 256);
+
+    // Query timestamp:
+    if (nout >= 2) {
+        PsychAllocOutDoubleArg(2, FALSE, &timeValueOutput);
+
+        // Get query timestamp:
+        PsychGetPrecisionTimerSeconds(timeValueOutput);
+    }
+
+    // Make sure our keyboard query mechanism is not blocked for security reasons, e.g.,
+    // secure password entry field active in another process, i.e., EnableSecureEventInput() active.
+    if (PsychHIDWarnInputDisabled("PsychHID('KbCheck')")) return(PsychError_none);
+
+    //step through the elements of the device.  Set flags in the return array for down keys.
+    for (currentElement = HIDGetFirstDeviceElement(deviceRecord, kHIDElementTypeInput | kHIDElementTypeCollection);
+         (currentElement != NULL) && (currentElement != lastElement);
+         currentElement = HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput | kHIDElementTypeCollection)) {
+        // Keep track of last queried element:
+        lastElement = currentElement;
+
+        usage = IOHIDElementGetUsage(currentElement);
+        usagePage = IOHIDElementGetUsagePage(currentElement);
+        // printf("PTB-DEBUG: [KbCheck]: ce %p page %d usage: %d isArray: %d\n", currentElement, usagePage, usage, IOHIDElementIsArray(currentElement));
+
+        if (IOHIDElementGetType(currentElement) == kIOHIDElementTypeCollection) {
+            CFArrayRef children = IOHIDElementGetChildren(currentElement);
+            if (!children) continue;
+
+            CFIndex idx, cnt = CFArrayGetCount(children);
+            for (idx = 0; idx < cnt; idx++) {
+                IOHIDElementRef tIOHIDElementRef = (IOHIDElementRef) CFArrayGetValueAtIndex(children, idx);
+                if (tIOHIDElementRef && ((IOHIDElementGetType(tIOHIDElementRef) == kIOHIDElementTypeInput_Button) ||
+                                         (IOHIDElementGetType(tIOHIDElementRef) == kIOHIDElementTypeInput_ScanCodes))) {
+                    usage = IOHIDElementGetUsage(tIOHIDElementRef);
+                    if ((usage <= 256) && (usage >= 1) && ( (scanList == NULL) || (scanList[usage - 1] > 0) )) {
+                        value = (int) IOHIDElement_GetValue(tIOHIDElementRef, kIOHIDValueScaleTypePhysical);
+                        if (debuglevel > 0) printf("PTB-DEBUG: [KbCheck]: usage: %x value: %d \n", usage, value);
+                        keyArrayOutput[usage - 1] = (value || (int) keyArrayOutput[usage - 1]);
+                        *isKeyDownOutput = keyArrayOutput[usage - 1] || *isKeyDownOutput;
+                    }
+                }
+            }
+
+            // Done with this currentElement, which was a collection of buttons/keys.
+            // Iterate to next currentElement:
+            continue;
+        }
+
+        // Classic path, or 64-Bit path for non-collection elements:
+        if (((usagePage == kHIDPage_KeyboardOrKeypad) || (usagePage == kHIDPage_Button)) && (usage <= 256) && (usage >= 1) &&
+            ( (scanList == NULL) || (scanList[usage - 1] > 0) ) ) {
+            value = (int) IOHIDElement_GetValue(currentElement, kIOHIDValueScaleTypePhysical);
+
+            if (debuglevel > 0) printf("PTB-DEBUG: [KbCheck]: usage: %x value: %d \n", usage, value);
+            keyArrayOutput[usage - 1]=(value || (int) keyArrayOutput[usage - 1]);
+            *isKeyDownOutput= keyArrayOutput[usage - 1] || *isKeyDownOutput;
+        }
+    }
+
+    return(PsychError_none);
 }
 
 /*  Table mapping HID usages in the KeyboardOrKeypad page to virtual key codes.
@@ -732,7 +874,7 @@ int PsychHIDGetDefaultKbQueueDevice(void)
 {
     // Return the default keyboard or keypad device as the first keyboard device or, if no keyboard, the first keypad:
     if (ndevices == 0) PsychErrorExitMsg(PsychError_user, "No KbQueue capable input devices detected! Game over.");
-    return(deviceIndices[0]);
+    return(deviceIndices[defaultKeyboardIndex]);
 }
 
 // Put element into the dictionary and into the queue:

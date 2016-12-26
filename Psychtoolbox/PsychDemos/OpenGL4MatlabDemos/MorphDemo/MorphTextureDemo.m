@@ -85,7 +85,7 @@ objs = [ LoadOBJFile([basepath 'texblob01.obj']) LoadOBJFile([basepath 'texblob0
 screenid=max(Screen('Screens'));
 
 % Disable Synctests for this simple demo:
-oldskip = Screen('Preference','SkipSyncTests', 1);
+oldskip = Screen('Preference','SkipSyncTests', 2);
 
 % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
 % mogl OpenGL for Matlab wrapper. We need to do this before the first call
