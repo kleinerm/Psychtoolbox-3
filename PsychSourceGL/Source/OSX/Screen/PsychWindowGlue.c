@@ -360,19 +360,35 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // 10 bit per component integer framebuffer requested (10-10-10-2)?
     if (windowRecord->depth == 30) {
-        // Request a 10 bit per color component framebuffer with 2 bit alpha channel:
-        printf("PTB-INFO: Trying to enable 10 bpc, 30 bit integer framebuffer...\n");
+        // Request a 16 bit per color component half-float framebuffer:
+        // Apple does not support > 8 bpc on anything but floating point framebuffers,
+        // and there a half-float format seems to be what one needs to request. Cfe.
+        // http://stackoverflow.com/questions/40688440/nsopenglpfacolorfloat-broken-in-macos-10-12-sierra-for-wide-gamut-30-bit-ren
+        //
+        // This does give us a 16 bpc half-float per component framebuffer, which yields
+        // about ~10 bpc linear precision per color component in the displayable range of
+        // 0.0 - 1.0, so it is a close enough match to the 10 bit integer requested.
+        //
+        // Reading back pixels from the framebuffer confirms 16 bpc half-float for the
+        // framebuffer. How much of this actually ends on the display is difficult to say.
+        // Supposedly the "Trashcan" MacPro 2013, and the iMac Retina 5k models from late
+        // 2014 and late 2015 do support 10 bpc output in this mode, but this is entirely
+        // not verified by us. Also unclear on what display (connector) types this actually
+        // applies. As usual Apple docs are essentially non-existent and maximally vague.
+        // Not sure what other Macs do? Maybe throw away the extra precision, maybe use some
+        // dithering to fake it?
+        printf("PTB-INFO: Trying to enable 16 bpc / 64 bpp half-float framebuffer to approximate requested 10 bpc, 30 bpp integer framebuffer.\n");
         attribs[attribcount++]=kCGLPFANoRecovery;
         attribs[attribcount++]=kCGLPFAMinimumPolicy;
+        attribs[attribcount++]=kCGLPFAColorFloat;
         attribs[attribcount++]=kCGLPFAColorSize;
-        attribs[attribcount++]=10*3;
-        attribs[attribcount++]=kCGLPFAAlphaSize;
-        attribs[attribcount++]=2;
+        attribs[attribcount++]=64;
     }
 
     // 11 bit per component integer framebuffer requested (11-11-10-0)?
     if (windowRecord->depth == 33) {
         // Request a ~ 11 bit per color component framebuffer without alpha channel:
+        // Unsupported on OSX, but leave it here for the fun of it.
         printf("PTB-INFO: Trying to enable 11 bpc, 32 bit integer framebuffer...\n");
         attribs[attribcount++]=kCGLPFANoRecovery;
         attribs[attribcount++]=kCGLPFAMinimumPolicy;
@@ -385,6 +401,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // 16 bit per component integer framebuffer requested (16-16-16-16)?
     if (windowRecord->depth == 48) {
         // Request a 16 bit per color component framebuffer:
+        // Unsupported on OSX, but leave it here for the fun of it.
         printf("PTB-INFO: Trying to enable 16 bpc, 64 bit integer framebuffer...\n");
         attribs[attribcount++]=kCGLPFANoRecovery;
         attribs[attribcount++]=kCGLPFAMinimumPolicy;
@@ -397,6 +414,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // 16 bit per component, 64 bit framebuffer requested (16-16-16-16)?
     if (windowRecord->depth == 64) {
         // Request a floating point framebuffer in 16-bit half-float format, i.e., RGBA = 16 bits per component.
+        // Does probably the same as our 30 bpp / 10 bpc setup path above.
         printf("PTB-INFO: Trying to enable 16 bpc float framebuffer...\n");
         attribs[attribcount++]=kCGLPFAColorFloat;
         attribs[attribcount++]=kCGLPFAMinimumPolicy;
@@ -443,7 +461,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         }
     }
 
-    if(numBuffers>=2){
+    if (numBuffers>=2) {
         // Enable double-buffering:
         attribs[attribcount++]=kCGLPFADoubleBuffer;
         if ((conserveVRAM & kPsychDisableAUXBuffers) == 0) {
@@ -962,4 +980,13 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 		PsychSetupClientRect(windowRecord);
 		PsychSetupView(windowRecord, FALSE);
 	}
+}
+
+double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
+{
+    // As we don't know the scheduling behaviour of the OSX compositor, and it
+    // has actually changed in unpredictable ways across different OSX versions,
+    // we can't adjust for it at all. Therefore this function is a no-op identity
+    // passthrough:
+    return targetTime;
 }

@@ -69,6 +69,8 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 %            64-Bit Octave-3 support for OSX removed. (MK)
 %            OSX 10.8 and 10.9 support removed. (MK)
 % 07/06/2016 No upstream support for 32-Bit Octave on Linux anymore. NeuroDebian provides it though. (MK)
+% 12/26/2016 No support for OSX 10.10 anymore. No support for Octave-4.0 on non-Linux,
+%            support 64-Bit Octave 4.2 on Windows and OSX instead. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -246,14 +248,14 @@ if IsOSX
         minorver = inf;
     end
 
-    % Is the operating system version < 10.10?
-    if minorver < 10
-        % Yes. This is MacOSX 10.9 or earlier, i.e., older than 10.10
-        % Yosemite. PTB will not work on such an old system:
+    % Is the operating system version < 10.11?
+    if minorver < 11
+        % Yes. This is MacOSX 10.10 or earlier, i.e., older than 10.11
+        % El Capitan. PTB will not work on such an old system:
         fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
         fprintf('Your operating system is Mac OS/X version 10.%i.\n\n', minorver);
         fprintf('This release of Psychtoolbox-3 is not compatible\n');
-        fprintf('to OSX versions older than 10.10 "Yosemite".\n');
+        fprintf('to OSX versions older than 10.11 "El Capitan".\n');
         fprintf('That means that almost all functionality will not work!\n\n');
         fprintf('You could download an older version of Psychtoolbox\n');
         fprintf('onto your system to get better results. See our Wiki for help.\n');
@@ -390,15 +392,15 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if (~IsLinux && (octavemajorv < 4)) || (octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 2)
+    if (~IsLinux && (octavemajorv ~= 4 || octaveminorv ~= 2)) || (octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8)
         fprintf('\n\n=================================================================================\n');
-        fprintf('WARNING: Your version %s of Octave is obsolete. We strongly recommend\n', version);
+        fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
-            % On Linux everything >= 3.2 is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 3.2.x series or later for use with Psychtoolbox.\n');
+            % On Linux everything >= 3.8 is fine:
+            fprintf('WARNING: using the latest stable version of the Octave 3.8 or 4.0 series for use with Psychtoolbox.\n');
         else
-            % On Windows/OSX we only care about >= 4.0 atm:
-            fprintf('WARNING: using the latest stable version of the Octave 4.0.x series for use with Psychtoolbox.\n');
+            % On Windows/OSX we only care about 4.2 atm:
+            fprintf('WARNING: using the latest stable version of the Octave 4.2.x series for use with Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
@@ -411,17 +413,17 @@ if IsOctave
         % Need to copy the Octave runtime libraries somewhere our mex files can find them. The only low-maintenance
         % way of dealing with this mess of custom library pathes per octave version, revision and packaging format.
         % Preferred location is the folder with our mex files - found by rpath = @loader_path
-        if ~copyfile([octave_config_info.octlibdir filesep 'liboctinterp.3.dylib'], [rdir filesep], 'f') || ...
-           ~copyfile([octave_config_info.octlibdir filesep 'liboctave.3.dylib'], [rdir filesep], 'f')
+        if ~copyfile([__octave_config_info__.octlibdir filesep 'liboctinterp.4.dylib'], [rdir filesep], 'f') || ...
+           ~copyfile([__octave_config_info__.octlibdir filesep 'liboctave.4.dylib'], [rdir filesep], 'f')
             % Copy into our mex files folder failed. A second location where the linker will search is the
             % $HOME/lib directory of the current user, so try that as target location:
             tdir = PsychHomeDir('lib');
             fprintf('\n\nFailed to copy Octave runtime libraries to mex file folder [%s].\nRetrying in users private lib dir: %s ...\n', rdir, tdir);
-            if ~copyfile([octave_config_info.octlibdir filesep 'liboctinterp.3.dylib'], tdir, 'f') || ...
-               ~copyfile([octave_config_info.octlibdir filesep 'liboctave.3.dylib'], tdir, 'f')
+            if ~copyfile([__octave_config_info__.octlibdir filesep 'liboctinterp.4.dylib'], tdir, 'f') || ...
+               ~copyfile([__octave_config_info__.octlibdir filesep 'liboctave.4.dylib'], tdir, 'f')
                 fprintf('\nFailed to copy runtime libs to [%s] as well :(.\n', tdir);
                 fprintf('Our mex files will likely not work this way. Maybe the directories lack file write permissions?\n');
-                fprintf('\n\n\nA last workaround would be to restart octave from a terminal via this line:\n\nexport DYLD_LIBRARY_PATH=%s ; octave\n\n\n', octave_config_info.octlibdir);
+                fprintf('\n\n\nA last workaround would be to restart octave from a terminal via this line:\n\nexport DYLD_LIBRARY_PATH=%s ; octave\n\n\n', __octave_config_info__.octlibdir);
             end
         end
     end

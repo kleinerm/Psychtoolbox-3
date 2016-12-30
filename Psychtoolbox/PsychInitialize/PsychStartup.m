@@ -111,6 +111,32 @@ try
 
             % Prepend sdkroot to path:
             newpath = [sdkroot ';' path];
+
+            % For Octave-4.2 on Windows, also need to prepend path to portaudio dll
+            % to library path, otherwise PsychPortAudio won't load:
+            driverloadpath = [PsychtoolboxRoot 'PsychSound'];
+            newpath = [driverloadpath ';' newpath];
+
+            % For moglcore we need to prepend the path to freeglut.dll:
+            if Is64Bit
+                % Need 64-Bit freeglut.dll:
+                driverloadpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core/x64'];
+            else
+                % Need 32-Bit freeglut.dll:
+                driverloadpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core'];
+            end
+            newpath = [driverloadpath ';' newpath];
+
+            % For PsychHID we need to prepend the path to libusb-1.0.dll:
+            if Is64Bit
+                % 64-Bit version of libusb.dll
+                driverloadpath = [PsychtoolboxRoot 'PsychContributed' filesep 'x64' filesep];
+            else
+                % 32-Bit version of libusb.dll
+                driverloadpath = [PsychtoolboxRoot 'PsychContributed' filesep ];
+            end
+            newpath = [driverloadpath ';' newpath];
+
             setenv('PATH', newpath);
 
             % Also store sdkroot in a separate environment variable, to be used

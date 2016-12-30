@@ -8,7 +8,11 @@
 % drawing and handling of high quality text. This allows for advanced text
 % layout and formatting, high-quality anti-aliased rendering of text at
 % arbitrary text sizes, support for modern fonts like TrueType, and support
-% for drawing of the full international Unicode character set.
+% for drawing of the full international Unicode character set. Its use across
+% all operating systems also allows for (more) consistent text appearance on
+% different systems. Differences between installed fonts on different operating
+% systems can still cause slight differences in text appearance if you don't
+% manage this though.
 %
 % If use of the drawtext plugin renderer fails then that likely means that
 % some required 3rd party library is not installed, or of incompatible version.
@@ -42,7 +46,6 @@
 %
 % /Applications/MATLAB_R2015b.app/bin/maci64/libfreetype.6.dylib
 %
-%
 % Windows:
 % --------
 %
@@ -52,7 +55,8 @@
 % On MS-Windows with Matlab you will need to install the GStreamer multi-
 % media framework - see "help GStreamer" for installation instructions -
 % otherwise Psychtoolbox will use the old lower quality GDI text renderer
-% instead.
+% instead. If your version of Matlab bundles an outdated libfreetype you may
+% need to get rid of that as well, just as on OSX (see above).
 %
 % More background info about Psychtoolbox's standard text renderer:
 % =================================================================

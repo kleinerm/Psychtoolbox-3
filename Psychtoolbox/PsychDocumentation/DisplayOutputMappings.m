@@ -74,10 +74,12 @@
 %    and active at the same time, then Screen() low-level functions may not
 %    work. More precisely, they will not work at all on MS-Windows. On
 %    Apple OS/X or on Linux you can make them work on exactly one GPU, the
-%    other GPU's will be ignored. By default, the first GPU in the system
-%    is chosen. You can override the choice by executing the command
-%    PsychTweak('UseGPUIndex', gpuidx); *before* other calls to Screen() to
-%    instruct Screen() to use the GPU with index gpuidx. If you call the
+%    other GPU's will be ignored. On a dual-gpu hybrid graphics laptop, the
+%    current active display gpu is chosen on Linux and OSX. On a regular multi-
+%    gpu machine, Linux chooses the primary boot gpu, on OSX the first gpu in the
+%    system is chosen for better or worse. You can override the choice by
+%    executing the command PsychTweak('UseGPUIndex', gpuidx); *before* other
+%    calls to Screen() to use the GPU with index 'gpuidx'. If you call the
 %    command after Screen() has been called already, it will usually not
 %    pick up your new setting! E.g., PsychTweak('UseGPUIndex', 1); would
 %    instruct Screen() to use the GPU with index 1, which is the 2nd GPU in
