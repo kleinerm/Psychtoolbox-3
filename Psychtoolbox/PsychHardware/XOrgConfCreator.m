@@ -268,7 +268,7 @@ try
       % Also must be a Mesa version safe for use with DRI3/Present:
       xversion = sscanf (text, 'X.Org version: %d.%d.%d');
       if (xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 18)) && ...
-         strfind(winfo.GLVersion, 'Mesa') && (bitand(winfo.SpecialFlags, 2^24) > 0)
+         ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0)
         % Yes: The xf86-video-modesetting driver is an option that supports DRI3/Present well.
         fprintf('\n\nDo you want to use the new kms modesetting driver xf86-video-modesetting?\n');
         fprintf('This is a new video driver, which works with all open-source display drivers.\n');
@@ -599,21 +599,21 @@ function WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, primeha
 end
 
 function xdriver = DetectDDX(winfo)
-  if strfind(winfo.DisplayCoreId, 'Intel')
+  if ~isempty(strfind(winfo.DisplayCoreId, 'Intel'))
     % Intel part -> intel ddx:
     fprintf('Intel GPU detected. ');
     xdriver = 'intel';
-  elseif strfind(winfo.DisplayCoreId, 'NVidia') && strfind(winfo.GLVendor, 'nouveau')
+  elseif ~isempty(strfind(winfo.DisplayCoreId, 'NVidia')) && ~isempty(strfind(winfo.GLVendor, 'nouveau'))
     % NVidia part under nouveau -> nouveau ddx:
     fprintf('Nvidia GPU with open-source driver detected. ');
     xdriver = 'nouveau';
-  elseif strfind(winfo.DisplayCoreId, 'NVidia') && strfind(winfo.GLVendor, 'NVIDIA')
+  elseif ~isempty(strfind(winfo.DisplayCoreId, 'NVidia')) && ~isempty(strfind(winfo.GLVendor, 'NVIDIA'))
     % NVidia part under binary blob -> nvidia ddx:
     fprintf('Nvidia GPU with proprietary driver detected. ');
     xdriver = 'nvidia';
-  elseif strfind(winfo.DisplayCoreId, 'AMD')
+  elseif ~isempty(strfind(winfo.DisplayCoreId, 'AMD'))
     % Some AMD/ATI Radeon/Fire series part:
-    if strfind(winfo.GLVersion, 'Mesa')
+    if ~isempty(strfind(winfo.GLVersion, 'Mesa'))
       % Controlled by the open-source drivers. GPU minor
       % type defines the DCE generation and that in turn
       % usually predicts the x driver well:
@@ -733,7 +733,7 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
   end
 
   % Non Intel display gpu, ie., either NVidia + NVidia or AMD + AMD?
-  if ~strfind(winfo.DisplayCoreId, 'NVidia') && ~strfind(winfo.DisplayCoreId, 'AMD')
+  if isempty(strfind(winfo.DisplayCoreId, 'NVidia')) && isempty(strfind(winfo.DisplayCoreId, 'AMD'))
     % Nope, something else like VC4 - No hybrid graphics.
     return;
   end

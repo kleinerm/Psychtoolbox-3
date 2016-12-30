@@ -636,14 +636,22 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   from the standard graphics drivers, ie., it won't need to use our own
 %   homegrown, experimental box of tricks to enable this.
 %
-%   Apple OSX, as of version 10.9 "Mavericks", does not support 10 bpc framebuffers,
-%   so 10 bpc output will only work with our own box of tricks - if at all.
+%   Apple OSX, as of version 10.11.2 "El Capitan", according to Apple - *not* tested
+%   by us at all, does support 10 bpc video output on some small subset of Apple
+%   hardware. At the end of the year 2016 this is supposed to be the MacPro 2013
+%   "with some suitable displays", and the iMac models late 2014 and late 2015 with
+%   Retina 5k displays. On OSX, the OS will actually initialize a 16 bit half-float
+%   framebuffer in 10 bpc mode, which provides roughly 10 bpc effective linear precision
+%   in the displayable color intensity range. The OS may or may not (unverified!) use
+%   dithering to simulate > 8 bpc output precision on displays or machines which do not
+%   support native 10 bpc. Be very cautious if you use Apple hardware under OSX for
+%   10 bpc output!
 %
 %   Psychtoolbox experimental 10 bpc framebuffer support:
 %
 %   Additionally we support ATI/AMD Radeon hardware of the X1000, HD2000 - HD8000,
-%   series and later models under Linux and OSX via our own low-level setup mechanisms.
-%   These models support a native ARGB2101010 framebuffer, ie., a system
+%   series and later models under Linux via our own low-level setup mechanisms.
+%   These graphics cards support a native ARGB2101010 framebuffer, ie., a system
 %   framebuffer with 2 bits for the alpha channel, and 10 bits per color channel.
 %
 %   As this is supported by the hardware, but not by the standard ATI
@@ -653,23 +661,12 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   16 bpc or 32 bpc stimuli into the special data format required by this
 %   framebuffer configuration.
 %
-%   You'll need to install and load the special Psychtoolbox kernel driver
-%   on OSX. On Linux you must have run PsychLinuxConfiguration at least once
-%   on your system at some point. You'll need to have one of the supported AMD
-%   Radeon gfx-cards (see above) for this to work. Read 'help PsychtoolboxKernelDriver'
-%   for info about the driver and installation instructions on OSX.
-%
-%   CAUTION: Support for 10 bpc framebuffers on AMD Radeon graphics cards
-%   under OSX is highly experimental and not guaranteed to work reliably on
-%   any system configuration. While it has been successfully tested on multiple
-%   versions of OSX (10.4, 10.5, 10.6 and 10.8) with some X1000 cards,
-%   some HD2000/3000 cards and HD 4870 cards, this feature could fail on other
-%   systems or even after any operating system upgrade! Use at your own risk and
-%   verify proper operation carefully before production use. The same experimental
-%   status is true for use on Linux with the proprietary AMD Catalyst graphics drivers.
-%   If you use Linux with the free and open-source AMD graphics drivers, 10 bpc
-%   framebuffer support should work reliably, so use of the open-source drivers on
-%   Linux is recommended for reliable results.
+%   On Linux you must have run PsychLinuxConfiguration at least once on your
+%   system at some point. You'll need to have one of the supported AMD Radeon
+%   gfx-cards (see above) for this to work. If you use Linux with the free and
+%   open-source AMD graphics drivers, 10 bpc framebuffer support should work
+%   reliably, so use of the open-source drivers on Linux is recommended for
+%   reliable results.
 %
 %   Getting a 10 bpc framebuffer working is only the first half of what you need for
 %   high color precision output. Your graphics card must also be able to transmit the
@@ -693,10 +690,6 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   this >= 10 bpc deep color output mode, then reboot your machine once to enable it.
 %
 %   The status with the proprietary AMD drivers on Linux or on MS-Windows is unknown.
-%   Apple OSX 10.9 and earlier do not support any high precision video output over any digital
-%   output, neither DVI-D, nor DisplayPort or HDMI. All you'll get at best on OSX is simulated > 8
-%   bpc via dithering. Apple OSX 10.11 and later will disable / sabotage our support to even
-%   provide 10 bpc via simulation or over VGA output.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer' [, disableDithering=0]);
 %
@@ -723,10 +716,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   with almost 11 bit precision per color channel (11 bpc / 32 bpp / "Deep color")
 %   on graphics hardware that supports native 11 bpc framebuffers. This will
 %   request an ~ 11 bpc framebuffer from the operating system. If it can't
-%   get such a framebuffer on Linux or OSX with AMD graphics hardware,
-%   it will use our own homegrown setup code to provide such a framebuffer
-%   anyway on Radeon X1000, HD-2000 and later graphics cards and equivalent
-%   Fire-Series graphics cards.
+%   get such a framebuffer on Linux with AMD graphics hardware, it will use our
+%   own homegrown setup code to provide such a framebuffer anyway on Radeon X1000,
+%   HD-2000 and later graphics cards and equivalent Fire-Series graphics cards.
 %
 %   Read all the explanations in the section above for 'EnableNative10BitFramebuffer'
 %   for capabilities, limitations and possible caveats on different systems.
@@ -777,9 +769,13 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   precision is further limited to < 16 bpc by your display, video connection and specific model
 %   of graphics card. As of September 2014, the maximum effective output precision is limited
 %   to 12 bpc (4096 levels of red, green and blue) by the graphics card, and this precision is only
-%   attainable on AMD graphics cards of the so called "Southern Islands" family when used with the
-%   radeon-kms display driver. Any older or more recent cards, e.g., "Sea Islands" or "Volcanic Islands"
-%   will not work with this hack.
+%   attainable on AMD graphics cards of the so called "Sea Islands" (cik) family when used with the
+%   radeon-kms display driver. Any older or more recent cards, e.g., "Southern Islands" or
+%   "Volcanic Islands" will not work with this hack. The specific requirement is an AMD gpu with a
+%   "DCE-8 or later" display engine that uses the old/classic ati/radeon-ddx and radeon-kms display
+%   driver, not the new amdgpu-ddx / amdgpu-kms driver. Cards older than "Sea Islands" don't have a
+%   DCE-8+ engine, and cards newer than "Sea Islands" don't work with the classic radeon driver anymore,
+%   so effectively only "Sea Islands" (cik) DCE-8.x gpu's work with this hack.
 %
 %   High bit depth output only works over HDMI or DisplayPort, and may be further restricted by
 %   your specific display device, so measure your results carefully! See the sections about 11 bpc and
@@ -2866,7 +2862,7 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'))) || ...
     % The ATI 10/11bpc formatter is not yet icm aware - Incapable of internal color correction!
     % Additionally native 10/11 bpc framebuffers, e.g., on Fire-Series or NVidia cards also don't
     % have icm aware output formatting, so a 'false' setting here is mandatory:
-    ptb_outputformatter_icmAware = 0;    
+    ptb_outputformatter_icmAware = 0;
 end
 
 % Request for native 16 bit per color component ARGB16161616 framebuffer?
@@ -4476,7 +4472,7 @@ end
 if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
 
-    % Our special shader-based 10 bpc output formatter is only needed and effective on OS/X or
+    % Our special shader-based 10 bpc output formatter is only needed and effective on
     % Linux with AMD Radeon hardware, or with FireGL/FirePro with override mode bit set.
     % Our 11 bpc and 16 bpc shader-based output formatters are only effective on Linux.
     % specialFlags setting 1024 signals that our own low-level 10/11/16 bit framebuffer
@@ -4484,7 +4480,7 @@ if ~isempty(floc)
     % Otherwise setup was (hopefully) done by the regular graphics drivers and we don't
     % need this GLSL output formatter, as system OpenGL takes care of it:
     if bitand(winfo.SpecialFlags, 1024)
-        % AMD/ATI gpu on OS/X or Linux with our 10/11/16 bit hack. Use our reformatters:
+        % AMD/ATI gpu on Linux with our 10/11/16 bit hack. Use our reformatters:
         if enableNative16BpcRequested
             % Extract optional 2nd parameter - This should be the 'encodingBPC' depth:
             encodingBPC = reqs{row, 4};
@@ -4567,7 +4563,7 @@ if ~isempty(floc)
         % degamma and other colorspace conversions disabled / bypassed:
         needsIdentityCLUT = 1;
     else
-        % Everything else: Windows OS, or AMD FireGL/FirePro without override, or a
+        % Everything else: Windows OS or OSX, or AMD FireGL/FirePro without override, or a
         % NVidia or Intel GPU.
 
         % We request an identity gamma table to be loaded into the GPU. The
@@ -4577,10 +4573,10 @@ if ~isempty(floc)
         % with the AMD path above.
         needsIdentityCLUT = 1;
     end
-    
+
     % Extract optional first parameter - This should be the 'disableDithering' flag:
     disableDithering = reqs{row, 3};
-    
+
     if isempty(disableDithering)
         % Control of output dithering on digital >= 10 bit panels should be left to
         % the OS + graphics driver by default. With the OS at the helm, it can configure
@@ -4596,7 +4592,7 @@ if ~isempty(floc)
             sca;
             error('Optional disableDithering flag with invalid value provided! Valid is 0 or 1!');
         end
-        
+
         % Yes, use it.
     end
 
@@ -4798,7 +4794,7 @@ if needsIdentityCLUT
     % Yes. Use our generic routine which is adaptive to the quirks of
     % specific gfx-cards:
     LoadIdentityClut(win, [], [], disableDithering);
-    
+
     % Is there a slave window associated for some dual-window output mode,
     % HDR mode or stereo mode?
     if ~isempty(slavewin)

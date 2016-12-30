@@ -62,7 +62,7 @@
 % This is implemented at acceptable reliability and precision on OS/X 10.6,
 % and will be used if the beamposition mechanism malfunctions or is unavailable.
 % On 10.7 and later the rather unreliable and sometimes unstable CoreVideo
-% timestamping can be enabled, at the risk of applications crashes andn wrong
+% timestamping can be enabled, at the risk of applications crashes and wrong
 % results on some setups. We always strongly recommend installing the
 % PsychtoolboxKernelDriver for best results. Intel graphics cards on MacOSX
 % are problematic: Our PsychtoolboxkernelDriver can't handle them without the
@@ -94,12 +94,8 @@
 %
 % On MacOSX by default noisy timestamps are taken.
 % On MacOSX, if you set Screen('Preference','VBLTimestampingmode', 1);
-% PTB tries to get low-level access to the kernel interrupt
-% handlers for the VBL interrupts for OSX version 10.6, or
-% CoreVideo CVDisplayLink timestamps on 10.7 and later, and uses their
-% values for timestamping the time of buffer- swap. This method is way less
-% accurate and robust than the bemposition method, but should be still
-% suitable for most applications on OSX 10.6. The robustness,
+% PTB tries to use CoreVideo CVDisplayLink timestamps, and uses their
+% values for timestamping the time of buffer- swap. The robustness,
 % precision and correctness of CVDisplayLink timestamps is not that great
 % on 10.7 and later, therefore this fallback mechanism may be removed in a
 % future PTB release. If these queries should fail as well, PTB falls back
@@ -125,7 +121,7 @@
 % -1 = Disable all cleverness, take noisy timestamps. This is the behaviour
 %      you'd get from any other psychophysics toolkit, as far as we know.
 %
-%  0 = Disable kernel-level/CoreVideo fallback method (OSX and Linux), use
+%  0 = Disable CoreVideo/kernel fallback method (OSX and Linux), use
 %      either beamposition stamps or noisy stamps if beamposition is
 %      unavailable. This is the effective default setting on OSX and Windows.
 %
@@ -177,18 +173,6 @@
 % the most common cause of failure. Psychtoolbox tries to enable
 % work-arounds for some common problems if possible. Usually you should
 % update your graphics card driver to see if that resolves the problems.
-%
-% Note: Apple's Retina MacBook Pro's ship with a broken NVidia graphics
-% driver that causes beamposition timestamping to fail on any display that
-% is not a VGA analog monitor, ie., a CRT monitor. Please install the
-% PsychtoolboxKernelDriver on such systems. This will cause PTB to use our
-% own implementation of beamosition queries, which apparently isn't as
-% shoddy as Apple's work. Additionally beamposition timestamping doesn't
-% work well on Retina panels at their typical preferred resolutions. You
-% either have to do without high precision timestamping, or use 3rd party
-% tools like SwitchResX to set the panels resolution to its true maximum
-% resolution - makes timestamping work, but breaks the user experience and
-% makes everyday work with such a display difficult.
 %
 % Note: As of Spring/Summer 2008, many graphics cards + driver combos from
 % ATI and NVidia on WindowsXP have bugs which cause beamposition queries to

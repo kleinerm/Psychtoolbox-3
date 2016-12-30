@@ -184,7 +184,7 @@
 % single-display mode or dual display mode from a single dual-output
 % graphics card.
 %
-% Microsoft Windows Vista and Windows-7/8 may provide poor performance on
+% Microsoft Windows Vista and Windows-7/8/8.1/10 may provide poor performance on
 % dual display setups if you present on both displays simultaneously,
 % although your mileage may vary widely depending on exact setup.
 %

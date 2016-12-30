@@ -128,13 +128,13 @@
 %   solution is less flexible and power-efficient than use of the "nouveau" open-source
 %   driver. It also requires substantial manual setup work, and it needs XOrg X-Server 1.19.0
 %   or later. In practice this means you either need to use a Linux distribution which
-%   uses X-Server 1.19, which in December 2016 is essentially "Fedora 25" or "Debian unstable",
+%   uses X-Server 1.19, which as of December 2016 is essentially "Fedora 25" or "Debian unstable",
 %   or you will have to wait for the Ubuntu 17.04 release in April 2017, or you will have
 %   to download and compile your own X-Server 1.19 if you are not afraid of compilers and
 %   Makefiles and willing to spend a workday doing this.
 %
 %   Once you have a X-Server 1.19 up and running, you will need the NVidia proprietary
-%   display drivers of version 375.20 or later for 64-Bit Intel processors. Then you need
+%   display drivers of version 375.26 or later for 64-Bit Intel processors. Then you need
 %   to copy various configuration files into various places, and adapt some of these files
 %   to your specific system. Finally you need to install a custom xf86-video-modesetting
 %   display driver onto your system. This modesetting driver is specifically made to
@@ -143,7 +143,7 @@
 %   which can efficiently use your discrete high-performance NVidia gpu with research grade
 %   timing. However, research grade timing is only provided for pure single-display setups,
 %   not for any kind of multi-display operation. That means your Laptop can have exactly
-%   one display enabled, either the Laptops internal flat-panel, or one externally connected
+%   one display enabled, either the Laptop internal flat-panel, or one externally connected
 %   display. Also timing is only reliable and trustworthy for a Psychtoolbox fullscreen
 %   window. As you can see, the setup is somewhat limited and inflexible, and setting it up
 %   requires quite a bit of effort as of December 2016. You will find all the needed config
@@ -167,7 +167,9 @@
 %
 %   GPUs of the "Volcanic Islands" GCN 1.2 generation, which use the new open-source
 %   "amdgpu-kms" driver, will currently need you to manually upgrade your Linux kernel to
-%   at least Linux 4.8.11. See section [2] below on how to do that.
+%   at least Linux 4.8.11. See section [2] below on how to do that. After January 19th 2017,
+%   an upgrade to Ubuntu 16.04.2 LTS should provide you with a suitable 4.8 series kernel
+%   that automatically receives future maintenance and security updates.
 %
 %   These results are based on testing with two PC setups:
 %
@@ -202,7 +204,7 @@
 %
 %   Muxless won't work with any current official solution, so you can only use the
 %   AMD iGPU [1]. A "dirty hack" solution exists from Mario Kleiner for old AMD laptops,
-%   but it is not released yet, and not clear if releasing this hack would be a good idea.
+%   but it is not released, and not clear if releasing this hack would be a good idea.
 %   Check the PTB website for updates or contact the user forum if you have questions wrt.
 %   this solution.
 %

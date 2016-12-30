@@ -58,7 +58,7 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, use
 InitializePsychSound(1);
 
 if ~IsLinux
-  PsychPortAudio('Verbosity', 10);
+    PsychPortAudio('Verbosity', 10);
 end
 
 % Force GetSecs and WaitSecs into memory to avoid latency later on:
@@ -68,7 +68,7 @@ WaitSecs(0.1);
 % If 'exactstart' wasn't provided, assume user wants to test exact sync of
 % audio and video onset, instead of testing total onset latency:
 if nargin < 1 
-   exactstart = [];
+    exactstart = [];
 end
 
 if isempty(exactstart)
@@ -90,7 +90,7 @@ end
 
 % Default to auto-selected default output device if none specified:
 if nargin < 2 
-   deviceid = [];
+    deviceid = [];
 end
 
 if isempty(deviceid)
@@ -100,7 +100,7 @@ end
 % Needs to determined via measurement once for each piece of audio
 % hardware:
 if nargin < 3
-   latbias = [];
+    latbias = [];
 end
 
 if deviceid == -1
@@ -195,13 +195,11 @@ screenid = max(Screen('Screens'));
 
 % Shall we use the DataPixx for measurement?
 if useDPixx
-    % Yes!
-    
     % Initialize audio capture subsystem of Datapixx:
     % 96 KhZ sampling rate, Mono capture: Average across channels (0), Audio
     % input is line in (2), Gain is 1.0 (1):
     DatapixxAudioKey('Open', 96000, 0, 2, 1);
-    
+
     % Check settings by printing them:
     dpixstatus = Datapixx('GetMicrophoneStatus') %#ok<NOPRT,NASGU>
 
@@ -213,7 +211,7 @@ if useDPixx
         fprintf('Using a trigger level for DataPixx of %f. This may need tweaking by you...\n', triggerLevel);
         DatapixxAudioKey('TriggerLevel', triggerLevel);
     end
-    
+
     % DataPixx: Setup Screen imagingpipeline to support measurement via the PSYNC
     % video synchronization mode of DataPixx and Screen():
     PsychImaging('PrepareConfiguration');
@@ -236,7 +234,7 @@ if isempty(waitframes)
     if isempty(suggestedLatencySecs)
         % Let's assume 12 msecs on Linux and OSX as a achievable latency by
         % default, then double it:
-        waitframes = ceil((2 * 0.012) / ifi) + 1;        
+        waitframes = ceil((2 * 0.012) / ifi) + 1;
     else
         % Whatever was provided, then double it:
         waitframes = ceil((2 * suggestedLatencySecs) / ifi) + 1;
@@ -265,7 +263,7 @@ PsychPortAudio('Stop', pahandle, 1);
 % Ok, now the audio hardware is fully initialized and our driver is on
 % hot-standby, ready to start playback of any sound with minimal latency.
 
-% Wait for keypress.
+% Wait for keystroke.
 KbStrokeWait;
 
 % Realtime scheduling: Can be used if otherwise timing is not good enough.
@@ -277,7 +275,7 @@ for i=1:10
         % Schedule start of audio capture on DataPixx at next Screen('Flip'):
         DatapixxAudioKey('CaptureAtFlip');
     end
-    
+
     % This flip clears the display to black and returns timestamp of black onset:
     % It also triggers start of audio recording by the DataPixx, if it is
     % used, so the DataPixx gets some lead-time before actual audio onset.
@@ -287,14 +285,18 @@ for i=1:10
     Screen('FillRect', win, 255);
     Screen('DrawingFinished', win);
 
+    % Compute tWhen onset time for wanted visual onset at >= tWhen:
+    tWhen = vbl1 + (waitframes - 0.5) * ifi;
+
     if exactstart
         % Schedule start of audio at exactly the predicted visual stimulus
         % onset caused by the next flip command.
-        PsychPortAudio('Start', pahandle, 1, visonset1 + waitframes * ifi, 0);
+        tPredictedVisualOnset = PredictVisualOnsetForTime(win, tWhen);
+        PsychPortAudio('Start', pahandle, 1, tPredictedVisualOnset, 0);
     end
 
     % Ok, the next flip will do a black-white transition...
-    [vbl visual_onset t1] = Screen('Flip', win, vbl1 + (waitframes - 0.5) * ifi);
+    [vbl visual_onset t1] = Screen('Flip', win, tWhen);
 
     if ~exactstart
         % No test of scheduling, but of absolute latency: Start audio
@@ -339,7 +341,7 @@ for i=1:10
         % 'expectedAudioDelta' is therefore the expected delay for the
         % measured audio onset by DataPixx:
         expectedAudioDelta = audio_onset - visonset1;
-        
+
         % Retrieve true delay from DataPixx measurement and stop recording
         % on the device:
         [audiodata, measuredAudioDelta] = DatapixxAudioKey('GetResponse', [], [], 1);
@@ -351,7 +353,7 @@ for i=1:10
             plot(audiodata);
         end
     end
-    
+
     % Stop playback:
     PsychPortAudio('Stop', pahandle, 1);
 
