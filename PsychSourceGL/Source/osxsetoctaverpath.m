@@ -18,7 +18,7 @@ function osxsetoctaverpath(mexfname, mexpath)
 % files should always find a dylib for the currently running Octave.
 
     if ~IsOSX(1) || ~IsOctave
-        error('osxsetoctaverpath only works with a 64-Bit version of Octave for OSX!');
+        error('osxsetoctaverpath only works with a 64-Bit version of Octave-4.2 for OSX!');
     end
 
     % If no mex filename given, iterate over 'mexpath' - or the default install
@@ -48,14 +48,22 @@ function osxsetoctaverpath(mexfname, mexpath)
     % Build full path to file:
     mexfname = [mexpath mexfname '.' mexext];
 
-    % Replace absolute path to liboctinterp.2.dylib with @rpath:
-    system(['install_name_tool -change ' octave_config_info.octlibdir '/liboctinterp.3.dylib @rpath/liboctinterp.3.dylib ' mexfname]);
+    % This is how the libdir should be defined automatically:
+    libdir = __octave_config_info__.octlibdir;
+    
+    % This is sadly how we have to do it with Octave-4.2 on OSX 10.12 due to
+    % the latest OSX linker crap - Hardcoding the path for a Octave-4.2 install
+    % from HomeBrew. Yes, this is sad...
+    libdir = '/usr/local/opt/octave/lib/octave/4.2.0';
 
-    % Replace absolute path to liboctave.2.dylib with @rpath:
-    system(['install_name_tool -change ' octave_config_info.octlibdir '/liboctave.3.dylib @rpath/liboctave.3.dylib ' mexfname]);
+    % Replace absolute path to liboctinterp.4.dylib with @rpath:
+    system(['install_name_tool -change ' libdir '/liboctinterp.4.dylib @rpath/liboctinterp.4.dylib ' mexfname]);
+
+    % Replace absolute path to liboctave.4.dylib with @rpath:
+    system(['install_name_tool -change ' libdir '/liboctave.4.dylib @rpath/liboctave.4.dylib ' mexfname]);
 
     % Add one single rpath: @loader_path. This is the path to our folder where our
-    % mex file is stored. If we place copies of liboctave.3.dylib and liboctinterp.3.dylib
+    % mex file is stored. If we place copies of liboctave.4.dylib and liboctinterp.4.dylib
     % there, then the linker will find them. In absence, the linker will also search the
     % users $HOME/lib/ directory as a possible fallback:
     lpaths = { '@loader_path' };

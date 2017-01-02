@@ -1,5 +1,5 @@
 % Psychtoolbox.
-% Version 3.0.13      6 July 2016
+% Version 3.0.14      30 December 2016
 %
 % The Psychophysics Toolbox is a collection of Octave and Matlab functions
 % that extend the language to give you exquisite control of your computer

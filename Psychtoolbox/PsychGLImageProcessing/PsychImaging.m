@@ -769,9 +769,13 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   precision is further limited to < 16 bpc by your display, video connection and specific model
 %   of graphics card. As of September 2014, the maximum effective output precision is limited
 %   to 12 bpc (4096 levels of red, green and blue) by the graphics card, and this precision is only
-%   attainable on AMD graphics cards of the so called "Southern Islands" family when used with the
-%   radeon-kms display driver. Any older or more recent cards, e.g., "Sea Islands" or "Volcanic Islands"
-%   will not work with this hack.
+%   attainable on AMD graphics cards of the so called "Sea Islands" (cik) family when used with the
+%   radeon-kms display driver. Any older or more recent cards, e.g., "Southern Islands" or
+%   "Volcanic Islands" will not work with this hack. The specific requirement is an AMD gpu with a
+%   "DCE-8 or later" display engine that uses the old/classic ati/radeon-ddx and radeon-kms display
+%   driver, not the new amdgpu-ddx / amdgpu-kms driver. Cards older than "Sea Islands" don't have a
+%   DCE-8+ engine, and cards newer than "Sea Islands" don't work with the classic radeon driver anymore,
+%   so effectively only "Sea Islands" (cik) DCE-8.x gpu's work with this hack.
 %
 %   High bit depth output only works over HDMI or DisplayPort, and may be further restricted by
 %   your specific display device, so measure your results carefully! See the sections about 11 bpc and
