@@ -35,6 +35,7 @@
 %   GetKbChar               - Simple, limited replacement for GetChar(), using KbCheck for character input.
 %   GetMyCaller             - Returns the name of the calling function.
 %   GetNumber               - Get a number typed at the keyboard.
+%   GetOctlibDir            - Get path to Octave runtime libraries.
 %   GetString               - Get a string typed at the keyboard.
 %   GetSubversionPath       - Return path required to invoke snv.
 %   GetSVNInfo              - Find info on SVN version number of directory or file.
