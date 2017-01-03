@@ -31,7 +31,7 @@ function varargout = PsychRTBox(varargin)
 % Current versions of the RTBox have additional functionality, e.g., more
 % digital trigger inputs, some sound trigger, and TTL trigger outputs.
 %
-% See http://lobes.usc.edu/RTbox for up to date product information and
+% See http://lobes.osu.edu/rt-box.php for up to date product information and
 % additional driver software.
 %
 % Please note that while the device documentation claims that the external
