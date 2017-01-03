@@ -50,19 +50,24 @@
 % functionality or not, as the Screen() mex file won't work at all without GStreamer
 % installed.
 %
+% NOTE: Many Matlab versions on MS-Windows show instable behavior with GStreamer,
+% e.g., crashing in SimpleMovieDemo and other demos that use GStreamer, unless
+% they are used without the Graphical user interface and without Java. That means
+% you need to start Matlab with the -nojvm command line switch, ie. matlab.exe -nojvm.
+% See also: https://github.com/Psychtoolbox-3/Psychtoolbox-3/wiki/FAQ#how-to-resolve-gstreamer-problems
+%
+%
 % Download and install the latest 64-Bit ("x86_64") GStreamer runtimes from:
 %
 % <http://gstreamer.freedesktop.org/download/>
 %
 % You should check for and install the latest runtime packages available for your
 % system for best reliability and performance. However, as a convenience, at time
-% of this writing (December 2016) the required downloads would be:
+% of this writing (January 2017) the required downloads would be:
 %
 % For MS-Windows: 64-Bit Intel runtime v1.10.2 for use with 64-Bit Matlab/Octave.
 %
 % <http://gstreamer.freedesktop.org/data/pkg/windows/1.10.2/gstreamer-1.0-x86_64-1.10.2.msi>
-%
-% <http://gstreamer.freedesktop.org/data/pkg/windows/1.8.0/gstreamer-1.0-x86-1.8.0.msi>
 %
 % For Apple OSX: Runtime v1.10.2
 %
