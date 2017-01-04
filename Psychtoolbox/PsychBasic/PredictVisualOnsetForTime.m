@@ -26,7 +26,11 @@ function tonset = PredictVisualOnsetForTime(window, when, refreshinterval)
 %
 % Accuracy of prediction:
 %
-% On systems that support timing via beamposition queries, the prediction
+% On Linux with FOSS graphics drivers on Intel, AMD and NVidia hardware,
+% and some dedicated SoC's, precision should be accurate to the low usecs
+% range.
+%
+% On other systems that support timing via beamposition queries, the prediction
 % should be accurate to better than 200 microseconds. On systems without
 % beamposition queries, the prediction may be off by up to a millisecond
 % worst case. On such systems we can't determine and correct for the
@@ -34,7 +38,8 @@ function tonset = PredictVisualOnsetForTime(window, when, refreshinterval)
 % bit too early.
 
 % History:
-% 07/03/2007 Written (MK).
+% 3-Jul-2007 Written. (MK)
+% 4-Jan-2017 Fixes for OS builtin timestamping. (MK)
 
 if nargin < 2
     error('You must provide a "window" handle and a "when" target time!');
@@ -86,18 +91,18 @@ vbl = lastvbl + (dt * ifi);
 % If this system supports beamposition queries then we can estimate the
 % real visual onset time from the 'vbl' time by adding the duration of the
 % VBL. If the system doesnt support them, then 'vbl' is our best estimate
-% of onset...
-if wininfo.VBLEndline > 0
-    % Known VBL endline! We can calculate VBL duration and add it to our
-    % 'vbl' estimate.
+% of onset. On Linux with FOSS drivers, the 'vbl' *is* already the onset
+% timestamp, so no correction needed. Need for correction can be derived
+% from SpecialFlags setting 16 (~ No OS builtin vblank timestamping).
+if (wininfo.VBLEndline > 0) && (bitand(wininfo.SpecialFlags, 16) == 16)
+    % Known VBL endline and vbl is actual vbl start. We can calculate VBL
+    % duration and add it to our 'vbl' estimate.
     vblduration = (wininfo.VBLEndline - wininfo.VBLStartline) / wininfo.VBLEndline * ifi;
     tonset = vbl + vblduration;
 else
     % No knowledge about duration of VBL. We return 'vbl' as our best
-    % estimate:
+    % estimate, which is correct onset at least on Linux + FOSS:
     tonset = vbl;
 end
 
 return;
-
-
