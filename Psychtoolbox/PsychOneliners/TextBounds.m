@@ -1,5 +1,5 @@
-function bounds=TextBounds(w,text,yPositionIsBaseline)
-% bounds=TextBounds(window, string [, yPositionIsBaseline=0])
+function bounds=TextBounds(w,text,yPositionIsBaseline,centerTheText)
+% bounds=TextBounds(window, string [, yPositionIsBaseline=0][, centerTheText=0])
 %
 % Returns the smallest enclosing rect for the drawn text, relative to the
 % current location. This bound is based on the actual pixels drawn, so it
@@ -68,13 +68,20 @@ function bounds=TextBounds(w,text,yPositionIsBaseline)
 % 12/16/15 dgp Added yPositionIsBaseline argument.
 % 01/10/16 mk  Switch GetImage buffer from backBuffer to drawBuffer for compat with
 %              use of onscreen window as scratch window with imaging pipeline active.
+% 01/6/17  dgp Added fourth argument to implement the tiny change needed for
+%              TextCenteredBounds. This makes TextCenteredBounds a trivial wrapper that
+%              automatically tracks improvements made to TextBounds.
 
 if nargin < 2 || isempty(text)
-    error('Require at least 2 arguments. bounds=TextBounds(window,string [,yPositionIsBaseline])');
+    error('Require at least 2 arguments. bounds=TextBounds(window, string [, yPositionIsBaseline][, centerTheText])');
 end
 
 if nargin < 3 || isempty(yPositionIsBaseline)
     yPositionIsBaseline = 0;
+end
+
+if nargin < 4
+    centerTheText = 0;
 end
 
 white = 1;
@@ -96,15 +103,41 @@ else
     y0=0;
 end
 
+if centerTheText
+    x0=(screenRect(1)+screenRect(3))/2;
+end
+
+% We've only got one scratch window, so we compute the widths for centering
+% in advance, so as not to mess up the accumulation of letters for the
+% bounds.
+dx=zeros(1,length(text));
+if centerTheText
+    if iscell(text)
+        for i=1:length(text)
+            string=char(text(i));
+            bounds=Screen('TextBounds',w,string);
+            width=bounds(3);
+            dx(i)=-width/2;
+        end
+    else
+        for i=1:size(text,1)
+            string=char(text(i,:));
+            bounds=Screen('TextBounds',w,string);
+            width=bounds(3);
+            dx(i)=-width/2;
+        end
+    end
+end
+
 if iscell(text)
     for i=1:length(text)
         string=char(text(i));
-        Screen('DrawText',w,string,x0,y0,white,[],yPositionIsBaseline);
+        Screen('DrawText',w,string,x0+dx(i),y0,white,[],yPositionIsBaseline);
     end
 else
     for i=1:size(text,1)
         string=char(text(i,:));
-        Screen('DrawText',w,string,x0,y0,white,[],yPositionIsBaseline);
+        Screen('DrawText',w,string,x0+dx(i),y0,white,[],yPositionIsBaseline);
     end
 end
 
