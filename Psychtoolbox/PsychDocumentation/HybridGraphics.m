@@ -263,7 +263,10 @@
 %     create a dual-x-screen setup via XOrgConfCreator, but then to manually customize the
 %     created config file, as XOrgConfCreator can't automatically handle such dual-gpu setups
 %     yet. Ask for assistance on the Psychtoolbox user forum if you happen to have such a
-%     laptop.
+%     laptop. One example xorg.conf file for handling such a setup (Intel iGPU + AMD dGPU)
+%     can be found under the name xorg.conf_SeparateScreensDualGPUIntelAndAMD in the
+%     Psychtoolbox/PsychHardware/LinuxX11ExampleXorgConfs/ folder. It would need customization
+%     though for a given Laptop, specifically adapting the "BusID" parameter for your hardware.
 %
 % [2] You can get Linux 4.8.11 for Ubuntu 16.04-LTS (and later) for manual installation from here:
 %     http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.8.11/
