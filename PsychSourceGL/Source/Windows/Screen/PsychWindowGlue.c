@@ -1,55 +1,52 @@
 /*
-    PsychToolbox3/Source/windows/Screen/PsychWindowGlue.c
-
-    PLATFORMS:
-
-        This is the Windows  version only.
-
-    AUTHORS:
-
-                Allen Ingling           awi             Allen.Ingling@nyu.edu
-                Mario Kleiner           mk              mario.kleiner.de@gmail.com
-
-    HISTORY:
-
-        12/20/02        awi        Wrote it mostly by modifying SDL-specific refugees (from an experimental SDL-based Psychtoolbox).
-        11/16/04        awi        Added description.
-        4/22/05                mk              Added support for OpenGL stereo windows and enhanced Flip-behaviour:
-                                                        Flip'ing at specified deadline, retaining instead of clear'ing backbuffer during flip,
-                                                        return of stimulus onset related timestamps, properly syncing to VBL.
-                 4/29/05                mk              Additional safety checks for VBL sync in PsychOpenOnscreenWindow().
-                 5/14/05                mk              Additional safety checks for insufficient gfx-hardware and multi-display setups,
-                                                        failing beam-position queries. New refresh interval estimation code, reworked Flip.
-                 5/19/05                mk              Extra check for 'flipwhen' values over 1000 secs in future: Abort.
-                 5/30/05                mk              Check for Screen('Preference', 'SkipSyncTests', 1) -> Shortened tests, if set.
-                 6/09/05                mk              Experimental support for busy-waiting for VBL and for multi-flip of stereo displays.
-                 9/30/05                mk              Added PsychRealtimePriority for improving timing tests in PsychOpenWindow()
-                 9/30/05                mk              Added check for Screen('Preference', 'VisualDebugLevel', level) -> Amount of vis. feedback.
-                 10/10/05               mk              Important Bugfix for PsychRealtimePriority() - didn't switch back to non-RT priority!!
-         10/19/05        awi        Cast NULL to CGLPixelFormatAttribute type to make the compiler happy.
-
-    DESCRIPTION:
-
-        Functions in this file comprise an abstraction layer for probing and controlling window state, except for window content.
-
-        Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes()
-        should be platform-neutral, despite that the calls in OS X and Windows to detect available pixel sizes are different.  The platform
-        specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, PsychWindowTextClue.
-
-    NOTES:
-
-        Technical information about the Windows-Vista display driver model (WDDM 1.0) and later: http://msdn.microsoft.com/en-us/library/ms796755.aspx
-        Contains details about driver interfaces, memory management, GPU scheduling, swap control etc.
-        Official name: "Windows Vista Display Driver Model Design Guide"
-
-        Useful information about the Vista et al. Direct-X Graphics kernel subsystem: http://msdn.microsoft.com/en-us/library/ee415671(VS.85).aspx
-        OpenGL ICD's on Vista and later communicate with the GPU (or more accurately, the Display Miniport Driver of the GPU) through the
-        Direct-X Graphics kernel subsystem. For that reason it is helpful to understand its internal working, as some of its properties and
-        of the DirectX/Direct3D driver settings may also affect OpenGL rendering and stimulus presentation.
-
-    TO DO:
-
-*/
+ *    PsychToolbox3/Source/windows/Screen/PsychWindowGlue.c
+ *
+ *    PLATFORMS:
+ *
+ *        This is the Windows  version only.
+ *
+ *    AUTHORS:
+ *
+ *        Allen Ingling  awi             Allen.Ingling@nyu.edu
+ *        Mario Kleiner  mk              mario.kleiner.de@gmail.com
+ *
+ *    HISTORY:
+ *
+ *        12/20/02        awi        Wrote it mostly by modifying SDL-specific refugees (from an experimental SDL-based Psychtoolbox).
+ *        11/16/04        awi        Added description.
+ *        4/22/05         mk         Added support for OpenGL stereo windows and enhanced Flip-behaviour:
+ *                                   Flip'ing at specified deadline, retaining instead of clear'ing backbuffer during flip,
+ *                                   return of stimulus onset related timestamps, properly syncing to VBL.
+ *        4/29/05         mk         Additional safety checks for VBL sync in PsychOpenOnscreenWindow().
+ *        5/14/05         mk         Additional safety checks for insufficient gfx-hardware and multi-display setups,
+ *                                   failing beam-position queries. New refresh interval estimation code, reworked Flip.
+ *        5/19/05         mk         Extra check for 'flipwhen' values over 1000 secs in future: Abort.
+ *        5/30/05         mk         Check for Screen('Preference', 'SkipSyncTests', 1) -> Shortened tests, if set.
+ *        6/09/05         mk         Experimental support for busy-waiting for VBL and for multi-flip of stereo displays.
+ *        9/30/05         mk         Added PsychRealtimePriority for improving timing tests in PsychOpenWindow()
+ *        9/30/05         mk         Added check for Screen('Preference', 'VisualDebugLevel', level) -> Amount of vis. feedback.
+ *        10/10/05        mk         Important Bugfix for PsychRealtimePriority() - didn't switch back to non-RT priority!!
+ *        10/19/05        awi        Cast NULL to CGLPixelFormatAttribute type to make the compiler happy.
+ *
+ *    DESCRIPTION:
+ *
+ *        Functions in this file comprise an abstraction layer for probing and controlling window state, except for window content.
+ *
+ *        Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes()
+ *        should be platform-neutral, despite that the calls in OS X and Windows to detect available pixel sizes are different.  The platform
+ *        specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, PsychWindowTextClue.
+ *
+ *    NOTES:
+ *
+ *        Technical information about the Windows-Vista display driver model (WDDM 1.0) and later: http://msdn.microsoft.com/en-us/library/ms796755.aspx
+ *        Contains details about driver interfaces, memory management, GPU scheduling, swap control etc.
+ *        Official name: "Windows Vista Display Driver Model Design Guide"
+ *
+ *        Useful information about the Vista et al. Direct-X Graphics kernel subsystem: http://msdn.microsoft.com/en-us/library/ee415671(VS.85).aspx
+ *        OpenGL ICD's on Vista and later communicate with the GPU (or more accurately, the Display Miniport Driver of the GPU) through the
+ *        Direct-X Graphics kernel subsystem. For that reason it is helpful to understand its internal working, as some of its properties and
+ *        of the DirectX/Direct3D driver settings may also affect OpenGL rendering and stimulus presentation.
+ */
 
 #include "Screen.h"
 
@@ -184,7 +181,7 @@ typedef  struct DWM_TIMING_INFO {
     // number of new completed frames that have been received
     DWM_FRAME_COUNT cFramesComplete;
 
-     // number of new frames submitted to DX but not yet complete
+    // number of new frames submitted to DX but not yet complete
     DWM_FRAME_COUNT cFramesPending;
 
     // number of frames available but not displayed, used or dropped
@@ -291,12 +288,12 @@ typedef HRESULT (APIENTRY *DwmGetCompositionTimingInfoPROC)(HWND hwnd, DWM_TIMIN
 typedef HRESULT (APIENTRY *DwmSetPresentParametersPROC)(HWND hwnd, DWM_PRESENT_PARAMETERS *pPresentParams);
 typedef HRESULT (APIENTRY *DwmFlushPROC)(void);
 
-DwmIsCompositionEnabledPROC            PsychDwmIsCompositionEnabled = NULL;
-DwmEnableCompositionPROC            PsychDwmEnableComposition = NULL;
-DwmEnableMMCSSPROC                    PsychDwmEnableMMCSS = NULL;
-DwmGetCompositionTimingInfoPROC        PsychDwmGetCompositionTimingInfo = NULL;
-DwmSetPresentParametersPROC            PsychDwmSetPresentParameters = NULL;
-DwmFlushPROC                        PsychDwmFlush = NULL;
+DwmIsCompositionEnabledPROC     PsychDwmIsCompositionEnabled = NULL;
+DwmEnableCompositionPROC        PsychDwmEnableComposition = NULL;
+DwmEnableMMCSSPROC              PsychDwmEnableMMCSS = NULL;
+DwmGetCompositionTimingInfoPROC PsychDwmGetCompositionTimingInfo = NULL;
+DwmSetPresentParametersPROC     PsychDwmSetPresentParameters = NULL;
+DwmFlushPROC                    PsychDwmFlush = NULL;
 
 char hostwinName[512];
 HWND hostwinHandle = 0;
@@ -316,31 +313,31 @@ BOOL CALLBACK PsychHostWindowEnumFunc(HWND hwnd, LPARAM passId)
 
     // Which runtime?
     #ifndef PTBOCTAVE3MEX
-        // Running on Matlab: Use Matlab name matching:
-        // Pass 1: Scan for Matlab in GUI mode:
-        if ((passId == 1) && (strstr(hostwinName, "MATLAB  ") || strstr(hostwinName, "MATLAB R20"))) {
-            // Found something that looks ok:
-            hostwinHandle = hwnd;
-            return(FALSE);
-        }
+    // Running on Matlab: Use Matlab name matching:
+    // Pass 1: Scan for Matlab in GUI mode:
+    if ((passId == 1) && (strstr(hostwinName, "MATLAB  ") || strstr(hostwinName, "MATLAB R20"))) {
+        // Found something that looks ok:
+        hostwinHandle = hwnd;
+        return(FALSE);
+    }
 
-        // Pass 2: Scan for Matlab in Console mode:
-        if ((passId == 2) && strstr(hostwinName, "MATLAB Command Window")) {
-            // Found something that looks ok:
-            hostwinHandle = hwnd;
-            return(FALSE);
-        }
+    // Pass 2: Scan for Matlab in Console mode:
+    if ((passId == 2) && strstr(hostwinName, "MATLAB Command Window")) {
+        // Found something that looks ok:
+        hostwinHandle = hwnd;
+        return(FALSE);
+    }
     #else
-        // Running on Octave: Use Octave name matching:
-        // Pass 1: Scan for Octave in Console mode or for QtOctave in GUI mode:
-        if ((passId == 1) && strstr(hostwinName, "Octave")) {
-            // Found something that looks ok:
-            // DISABLE this for Octave-4. Does cause hangs of Octave 4's QT GUI.
-            // Disabling it solves the problem and does not seem to have any
-            // known downsides, as testing showed.
-            //hostwinHandle = hwnd;
-            //return(FALSE);
-        }
+    // Running on Octave: Use Octave name matching:
+    // Pass 1: Scan for Octave in Console mode or for QtOctave in GUI mode:
+    if ((passId == 1) && strstr(hostwinName, "Octave")) {
+        // Found something that looks ok:
+        // DISABLE this for Octave-4. Does cause hangs of Octave 4's QT GUI.
+        // Disabling it solves the problem and does not seem to have any
+        // known downsides, as testing showed.
+        //hostwinHandle = hwnd;
+        //return(FALSE);
+    }
     #endif
 
     // Nothing yet? Continue enumeration:
@@ -349,19 +346,19 @@ BOOL CALLBACK PsychHostWindowEnumFunc(HWND hwnd, LPARAM passId)
 
 
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority in M$-Windows.
-    PsychRealtimePriority(true) enables realtime-scheduling (like Priority(2) would do in Matlab).
-    PsychRealtimePriority(false) restores scheduling to the state before last invocation of PsychRealtimePriority(true),
-    it undos whatever the previous switch did.
-
-    We switch to RT scheduling during PsychGetMonitorRefreshInterval() and a few other timing tests in
-    PsychOpenWindow() to reduce measurement jitter caused by possible interference of other tasks.
-*/
+ *    PsychRealtimePriority(true) enables realtime-scheduling (like Priority(2) would do in Matlab).
+ *    PsychRealtimePriority(false) restores scheduling to the state before last invocation of PsychRealtimePriority(true),
+ *    it undos whatever the previous switch did.
+ *
+ *    We switch to RT scheduling during PsychGetMonitorRefreshInterval() and a few other timing tests in
+ *    PsychOpenWindow() to reduce measurement jitter caused by possible interference of other tasks.
+ */
 psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 {
-    HANDLE       currentProcess;
+    HANDLE currentProcess;
     static psych_bool old_enable_realtime = FALSE;
-    static DWORD   oldPriority = NORMAL_PRIORITY_CLASS;
-    const  DWORD   realtime_class = REALTIME_PRIORITY_CLASS;
+    static DWORD oldPriority = NORMAL_PRIORITY_CLASS;
+    const  DWORD realtime_class = REALTIME_PRIORITY_CLASS;
 
     if (old_enable_realtime == enable_realtime) {
         // No transition with respect to previous state -> Nothing to do.
@@ -375,14 +372,14 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
     currentProcess = GetCurrentProcess();
 
     if (enable_realtime) {
-      // Transition to realtime requested:
+        // Transition to realtime requested:
 
-      // Get current scheduling policy and back it up for later restore:
-      oldPriority = GetPriorityClass(currentProcess);
+        // Get current scheduling policy and back it up for later restore:
+        oldPriority = GetPriorityClass(currentProcess);
 
-      // Check if realtime scheduling isn't already active.
-      // If we are already in RT mode (e.g., Priority(2) call in Matlab), we skip the switch...
-      if (oldPriority != realtime_class) {
+        // Check if realtime scheduling isn't already active.
+        // If we are already in RT mode (e.g., Priority(2) call in Matlab), we skip the switch...
+        if (oldPriority != realtime_class) {
             // RT scheduling not yet active -> Switch to it.
             SetPriorityClass(currentProcess, realtime_class);
 
@@ -398,15 +395,15 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
             // same scheduling range as REALTIME_PRIORITY_CLASS, even if we are non-admin users
             // on Vista and Windows-7 and later, however with a scheduler safety net applied.
             PsychSetThreadPriority((psych_thread*) 0x1, 10, 0);
-      }
+        }
     }
     else {
-      // Transition from RT to whatever-it-was-before scheduling requested: We just reestablish the backed-up old
-      // policy: If the old policy wasn't Non-RT, then we don't switch back...
-      SetPriorityClass(currentProcess, oldPriority);
+        // Transition from RT to whatever-it-was-before scheduling requested: We just reestablish the backed-up old
+        // policy: If the old policy wasn't Non-RT, then we don't switch back...
+        SetPriorityClass(currentProcess, oldPriority);
 
-      // Disable any MMCSS scheduling for us if new priority class is non-RT, bog-standard normal scheduling:
-      if (oldPriority == NORMAL_PRIORITY_CLASS) PsychSetThreadPriority((psych_thread*) 0x1, 0, 0);
+        // Disable any MMCSS scheduling for us if new priority class is non-RT, bog-standard normal scheduling:
+        if (oldPriority == NORMAL_PRIORITY_CLASS) PsychSetThreadPriority((psych_thread*) 0x1, 0, 0);
     }
 
     // Success.
@@ -416,8 +413,8 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 // Perform OS specific processing of Window events:
 void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 {
-    POINT    lPoint;
-    RECT    lRect;
+    POINT lPoint;
+    RECT lRect;
 
     // Trigger event queue dispatch processing for GUI windows:
     if (windowRecord == NULL || windowRecord->specialflags & kPsychGUIWindow) PsychGetMouseButtonState(NULL);
@@ -444,7 +441,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     static PAINTSTRUCT ps;
-    PsychWindowRecordType    **windowRecordArray;
+    PsychWindowRecordType **windowRecordArray;
     int i, numWindows;
     LRESULT res;
     int verbosity = PsychPrefStateGet_Verbosity();
@@ -468,7 +465,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                     // This is our window, and if it is a GUI window then perform activation:
                     if (windowRecordArray[i]->specialflags & kPsychGUIWindow) res = MA_ACTIVATEANDEAT;
                     break;
-                }
+                    }
             }
             PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
 
@@ -486,78 +483,78 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
             }
             break;
 
-        case WM_LBUTTONDOWN:
-            // Left mouse button depressed:
-            mousebutton_l = TRUE;
-            break;
+            case WM_LBUTTONDOWN:
+                // Left mouse button depressed:
+                mousebutton_l = TRUE;
+                break;
 
-        case WM_LBUTTONUP:
-            // Left mouse button released:
-            mousebutton_l = FALSE;
-            break;
+            case WM_LBUTTONUP:
+                // Left mouse button released:
+                mousebutton_l = FALSE;
+                break;
 
-        case WM_MBUTTONDOWN:
-            // Middle mouse button depressed:
-            mousebutton_m = TRUE;
-            break;
+            case WM_MBUTTONDOWN:
+                // Middle mouse button depressed:
+                mousebutton_m = TRUE;
+                break;
 
-        case WM_MBUTTONUP:
-            // Middle mouse button released:
-            mousebutton_m = FALSE;
-            break;
+            case WM_MBUTTONUP:
+                // Middle mouse button released:
+                mousebutton_m = FALSE;
+                break;
 
-        case WM_RBUTTONDOWN:
-            // Right mouse button depressed:
-            mousebutton_r = TRUE;
-            break;
+            case WM_RBUTTONDOWN:
+                // Right mouse button depressed:
+                mousebutton_r = TRUE;
+                break;
 
-        case WM_RBUTTONUP:
-            // Right mouse button released:
-            mousebutton_r = FALSE;
-            break;
+            case WM_RBUTTONUP:
+                // Right mouse button released:
+                mousebutton_r = FALSE;
+                break;
 
-        case WM_PAINT:
-            // Repaint event: This happens if a previously covered non-fullscreen window
-            // got uncovered, so part of it needs to be redrawn. PTB's rendering model
-            // doesn't have a concept of redrawing a stimulus. We do nothing here.
-            if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
-            break;
+            case WM_PAINT:
+                // Repaint event: This happens if a previously covered non-fullscreen window
+                // got uncovered, so part of it needs to be redrawn. PTB's rendering model
+                // doesn't have a concept of redrawing a stimulus. We do nothing here.
+                if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
+                break;
 
-        case WM_SIZE:
-            // Window resize event: Only happens in debug-mode (non-fullscreen).
-            // We resize the viewport accordingly and then trigger a repaint-op.
-            if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_SIZE!\n");
-            break;
+            case WM_SIZE:
+                // Window resize event: Only happens in debug-mode (non-fullscreen).
+                // We resize the viewport accordingly and then trigger a repaint-op.
+                if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_SIZE!\n");
+                break;
 
-        case WM_CLOSE:
-            // WM_CLOSE falls through to WM_CHAR and emulates an Abort-key press.
-            // -> Manually closing an onscreen window does the same as pressing the Abort-key.
-            if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
-            wParam='@';
-        case WM_CHAR:
-            // Character received. We only care about one key, the '@' key.
-            // Pressing '@' will immediately close all onscreen windows, show
-            // the cursor and such. It is the emergency stop key.
-            if (wParam=='@') {
-                // Emergency shutdown:
-                printf("\nPTB-INFO: Master-Abort key '@' pressed by user.\n");
-                printf("PTB-INFO: Enforcing script abortion and restoring desktop by executing Screen('CloseAll') now!\n");
-                printf("PTB-INFO: Please ignore the false error message (INTERNAL PSYCHTOOLBOX ERROR) caused by this...\n");
-                ScreenCloseAllWindows();
-                return(0);
-            }
-            else {
-                // The next failed good idea :-( Transmitting keystrokes (characters) that we received in the
-                // queue of our onscreen windows (due to us having keyboard focus) to the runtime (Matlab or Octave)
-                // by simply posting/injecting the character events into the host apps window event queue doesn't work.
-                // Well, the actual posting/injection of events does work, but the runtimes don't like this "alien"
-                // events out of nowhere and don't handle them as expected: Octave does receive them almost properly,
-                // but loses repeated characters, e.g., sequence mmm turns into a single m. Matlab in nojvm mode doesn't
-                // work at all this way. Matlab in jmv/gui mode does receive them only after huge delays, so it totally
-                // breaks tons of existing GetChar() code, including our GetCharTest correctness test.
-                //
-                // For this reason, we disable this new method by setting the following if(FALSE):
-                if (FALSE) {
+            case WM_CLOSE:
+                // WM_CLOSE falls through to WM_CHAR and emulates an Abort-key press.
+                // -> Manually closing an onscreen window does the same as pressing the Abort-key.
+                if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
+                wParam='@';
+            case WM_CHAR:
+                // Character received. We only care about one key, the '@' key.
+                // Pressing '@' will immediately close all onscreen windows, show
+                // the cursor and such. It is the emergency stop key.
+                if (wParam=='@') {
+                    // Emergency shutdown:
+                    printf("\nPTB-INFO: Master-Abort key '@' pressed by user.\n");
+                    printf("PTB-INFO: Enforcing script abortion and restoring desktop by executing Screen('CloseAll') now!\n");
+                    printf("PTB-INFO: Please ignore the false error message (INTERNAL PSYCHTOOLBOX ERROR) caused by this...\n");
+                    ScreenCloseAllWindows();
+                    return(0);
+                }
+                else {
+                    // The next failed good idea :-( Transmitting keystrokes (characters) that we received in the
+                    // queue of our onscreen windows (due to us having keyboard focus) to the runtime (Matlab or Octave)
+                    // by simply posting/injecting the character events into the host apps window event queue doesn't work.
+                    // Well, the actual posting/injection of events does work, but the runtimes don't like this "alien"
+                    // events out of nowhere and don't handle them as expected: Octave does receive them almost properly,
+                    // but loses repeated characters, e.g., sequence mmm turns into a single m. Matlab in nojvm mode doesn't
+                    // work at all this way. Matlab in jmv/gui mode does receive them only after huge delays, so it totally
+                    // breaks tons of existing GetChar() code, including our GetCharTest correctness test.
+                    //
+                    // For this reason, we disable this new method by setting the following if(FALSE):
+                    if (FALSE) {
                         // Other character received. Can we redispatch it to our host applications window?
                         if (hostwinHandle) {
                             // We have its window handle! Post a message to its message queue. This way,
@@ -568,10 +565,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                             PostMessage(hostwinHandle, WM_CHAR, wParam, lParam);
                             //SendMessage(hostwinHandle, WM_CHAR, wParam, lParam);
                         }
+                    }
+                    if (PsychPrefStateGet_Verbosity() > 16) printf("PTB-DEBUG: WndProc(): WM_CHAR '%c' (lParam = %i) received.\n", (char) wParam, (int) lParam);
                 }
-                if (PsychPrefStateGet_Verbosity() > 16) printf("PTB-DEBUG: WndProc(): WM_CHAR '%c' (lParam = %i) received.\n", (char) wParam, (int) lParam);
-            }
-            break;
+                break;
     }
 
     return DefWindowProc(hWnd, uMsg, wParam, lParam);
@@ -649,31 +646,31 @@ psych_bool ChangeScreenResolution (int screenNumber, int width, int height, int 
             switch(rc) {
                 case DISP_CHANGE_BADDUALVIEW:
                     printf("DISP_CHANGE_BADDUALVIEW     The settings change was unsuccessful because system is DualView capable.\n");
-                break;
+                    break;
 
                 case DISP_CHANGE_BADFLAGS:
                     printf("DISP_CHANGE_BADFLAGS    An invalid set of flags was passed in.\n");
-                break;
+                    break;
 
                 case DISP_CHANGE_BADMODE:
                     printf("DISP_CHANGE_BADMODE    The graphics mode is not supported.\n");
-                break;
+                    break;
 
                 case DISP_CHANGE_BADPARAM:
                     printf("DISP_CHANGE_BADPARAM    An invalid parameter was passed in. This can include an invalid flag or combination of flags.\n");
-                break;
+                    break;
 
                 case DISP_CHANGE_FAILED:
                     printf("DISP_CHANGE_FAILED    The display driver failed the specified graphics mode.\n");
-                break;
+                    break;
 
                 case DISP_CHANGE_RESTART:
                     printf("DISP_CHANGE_RESTART    The computer must be restarted in order for the graphics mode to work.\n");
-                break;
+                    break;
 
                 case DISP_CHANGE_NOTUPDATED:
                     printf("DISP_CHANGE_NOTUPDATED     Unable to write settings to the registry.\n");
-                break;
+                    break;
 
                 default:
                     printf("Unknown error condition.\n");
@@ -735,67 +732,67 @@ static void OptimizeDWMParameters(PsychWindowRecordType *windowRecord)
 }
 
 /*
-    PsychOSOpenOnscreenWindow()
-
-    Creates the pixel format and the context objects and then instantiates the context onto the screen.
-
-    -The pixel format and the context are stored in the target specific field of the window recored.  Close
-    should clean up by destroying both the pixel format and the context.
-
-    -We mantain the context because it must be be made the current context by drawing functions to draw into
-    the specified window.
-
-    -We maintain the pixel format object because there seems to be now way to retrieve that from the context.
-
-    -To tell the caller to clean up PsychOSOpenOnscreenWindow returns FALSE if we fail to open the window. It
-    would be better to just issue an PsychErrorExit() and have that clean up everything allocated outside of
-    PsychOpenOnscreenWindow().
-*/
+ *    PsychOSOpenOnscreenWindow()
+ *
+ *    Creates the pixel format and the context objects and then instantiates the context onto the screen.
+ *
+ *    -The pixel format and the context are stored in the target specific field of the window recored.  Close
+ *    should clean up by destroying both the pixel format and the context.
+ *
+ *    -We mantain the context because it must be be made the current context by drawing functions to draw into
+ *    the specified window.
+ *
+ *    -We maintain the pixel format object because there seems to be now way to retrieve that from the context.
+ *
+ *    -To tell the caller to clean up PsychOSOpenOnscreenWindow returns FALSE if we fail to open the window. It
+ *    would be better to just issue an PsychErrorExit() and have that clean up everything allocated outside of
+ *    PsychOpenOnscreenWindow().
+ */
 psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM)
 {
-  char winname[100];
-  RECT winRec;
-  PsychRectType             screenrect;
-  CGDirectDisplayID         cgDisplayID;
-  int         pf;
-  unsigned int nNumFormats;
-  HDC         hDC;
-  HWND        hWnd;
-  WNDCLASS    wc;
-  PIXELFORMATDESCRIPTOR pfd;
-  int         attribs[58];
-  int         attribcount;
-  float       fattribs[2]={0,0};
-  int x, y, width, height, i, bpc;
-  int          windowLevel;
-  GLenum      glerr;
-  DWORD          flags;
-  BOOL        compositorEnabled, compositorPostEnabled;
-  const char* hidpitrouble;
+    char winname[100];
+    RECT winRec;
+    PsychRectType screenrect;
+    CGDirectDisplayID cgDisplayID;
+    int pf;
+    unsigned int nNumFormats;
+    HDC hDC;
+    HWND hWnd;
+    WNDCLASS wc;
+    PIXELFORMATDESCRIPTOR pfd;
+    int attribs[58];
+    int attribcount;
+    float fattribs[2]={0,0};
+    int x, y, width, height, i, bpc;
+    int windowLevel;
+    GLenum glerr;
+    DWORD flags;
+    BOOL compositorEnabled, compositorPostEnabled;
+    const char* hidpitrouble;
 
-  psych_bool fullscreen = FALSE;
-  DWORD windowStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+    psych_bool fullscreen = FALSE;
+    DWORD windowStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
 
-  // The WS_EX_NOACTIVATE flag prevents the window from grabbing keyboard focus. That way,
-  // the new Java-GetChar can do its job. Can't be used with GUI windows though:
-  DWORD windowExtendedStyle = WS_EX_APPWINDOW | ((windowRecord->specialflags & kPsychGUIWindow) ? 0 : WS_EX_NOACTIVATE);
+    // The WS_EX_NOACTIVATE flag prevents the window from grabbing keyboard focus. That way,
+    // the new Java-GetChar can do its job. Can't be used with GUI windows though:
+    DWORD windowExtendedStyle = WS_EX_APPWINDOW | ((windowRecord->specialflags & kPsychGUIWindow) ? 0 : WS_EX_NOACTIVATE);
 
-  if (PsychPrefStateGet_Verbosity()>6) {
-    printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Entering Win32 specific window setup...\n");
-    fflush(NULL);
-  }
+    if (PsychPrefStateGet_Verbosity()>6) {
+        printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Entering Win32 specific window setup...\n");
+        fflush(NULL);
+    }
 
-  // Retrieve windowLevel, an indicator of where non-fullscreen windows should
-  // be located wrt. to other windows. 0 = Behind everything else, occluded by
-  // everything else. 1 - 999 = At layer windowLevel -> Occludes stuff on layers "below" it.
-  // 1000 - 1999 = At highest level, but partially translucent / alpha channel allows to make
-  // regions transparent. 2000 or higher: Above everything, fully opaque, occludes everything.
-  // 2000 is the default.
-  windowLevel = PsychPrefStateGet_WindowShieldingLevel();
+    // Retrieve windowLevel, an indicator of where non-fullscreen windows should
+    // be located wrt. to other windows. 0 = Behind everything else, occluded by
+    // everything else. 1 - 999 = At layer windowLevel -> Occludes stuff on layers "below" it.
+    // 1000 - 1999 = At highest level, but partially translucent / alpha channel allows to make
+    // regions transparent. 2000 or higher: Above everything, fully opaque, occludes everything.
+    // 2000 is the default.
+    windowLevel = PsychPrefStateGet_WindowShieldingLevel();
 
-  // Shielding levels below 1500 will let mouse event through to underlying windows, i.e.,
-  // the window is non-existent for the mouse:
-  if ((windowLevel >= 1000) && (windowLevel < 1500)) windowExtendedStyle = windowExtendedStyle | WS_EX_TRANSPARENT;
+    // Shielding levels below 1500 will let mouse event through to underlying windows, i.e.,
+    // the window is non-existent for the mouse:
+    if ((windowLevel >= 1000) && (windowLevel < 1500)) windowExtendedStyle = windowExtendedStyle | WS_EX_TRANSPARENT;
 
     // Init to safe default:
     windowRecord->targetSpecific.glusercontextObject = NULL;
@@ -851,14 +848,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Check if this should be a fullscreen window:
     PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
     if (PsychMatchRect(screenrect, windowRecord->rect) && (windowLevel >= 2000)) {
-      // This is supposed to be a fullscreen window with the dimensions of
-      // the current display/desktop:
-      fullscreen = TRUE;
+        // This is supposed to be a fullscreen window with the dimensions of
+        // the current display/desktop:
+        fullscreen = TRUE;
     }
     else {
-      // Window size different from current screen size:
-      // A regular desktop window with borders and control icons is requested, e.g., for debugging:
-      fullscreen = FALSE;
+        // Window size different from current screen size:
+        // A regular desktop window with borders and control icons is requested, e.g., for debugging:
+        fullscreen = FALSE;
     }
 
     // DWM supported on a Windows Vista or Windows-7 system? No point in doing the query/disable/enable dance on
@@ -1058,47 +1055,47 @@ dwmdontcare:
     // Assemble windows caption name from window index:
     sprintf(winname, "PTB Onscreen window [%i]:", (int) windowRecord->windowIndex);
 
-     if (PsychPrefStateGet_Verbosity()>6) {
-         printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Window parameters computed, display switch to fullscreen done (if needed). Registering window class...\n");
-         fflush(NULL);
-     }
+    if (PsychPrefStateGet_Verbosity()>6) {
+        printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Window parameters computed, display switch to fullscreen done (if needed). Registering window class...\n");
+        fflush(NULL);
+    }
 
-     // Register our own window class for Psychtoolbox onscreen windows:
-     // Only register the window class once - use hInstance as a flag.
-     if (!hInstance) {
-         // Invalidate name and handle of host applications main window:
-         hostwinName[0] = 0;
-         hostwinHandle  = NULL;
+    // Register our own window class for Psychtoolbox onscreen windows:
+    // Only register the window class once - use hInstance as a flag.
+    if (!hInstance) {
+        // Invalidate name and handle of host applications main window:
+        hostwinName[0] = 0;
+        hostwinHandle  = NULL;
 
-         hInstance = GetModuleHandle(NULL);
-         wc.style         = ((windowLevel >= 1000) && (windowLevel <  2000)) ? 0 : CS_OWNDC;
-         wc.lpfnWndProc   = WndProc;
-         wc.cbClsExtra    = 0;
-         wc.cbWndExtra    = 0;
-         wc.hInstance     = hInstance;
-         wc.hIcon         = LoadIcon(hInstance, IDI_WINLOGO);
-         wc.hCursor       = NULL; // Set window class cursor to NULL. LoadCursor(NULL, IDC_ARROW);
-         wc.hbrBackground = NULL;
-         wc.lpszMenuName  = NULL;
-         wc.lpszClassName = "PTB-OpenGL";
+        hInstance = GetModuleHandle(NULL);
+        wc.style         = ((windowLevel >= 1000) && (windowLevel <  2000)) ? 0 : CS_OWNDC;
+        wc.lpfnWndProc   = WndProc;
+        wc.cbClsExtra    = 0;
+        wc.cbWndExtra    = 0;
+        wc.hInstance     = hInstance;
+        wc.hIcon         = LoadIcon(hInstance, IDI_WINLOGO);
+        wc.hCursor       = NULL; // Set window class cursor to NULL. LoadCursor(NULL, IDC_ARROW);
+        wc.hbrBackground = NULL;
+        wc.lpszMenuName  = NULL;
+        wc.lpszClassName = "PTB-OpenGL";
 
-         if (!RegisterClass(&wc)) {
-             hInstance = 0;
-             printf("\nPTB-ERROR[Register Windowclass failed]: Unknown error, Win32 specific.\n\n");
-             return(FALSE);
-         }
+        if (!RegisterClass(&wc)) {
+            hInstance = 0;
+            printf("\nPTB-ERROR[Register Windowclass failed]: Unknown error, Win32 specific.\n\n");
+            return(FALSE);
+        }
 
-         // Try to find the window handle of the main window of our runtime environment, i.e.,
-         // the main Matlab GUI window, Matlab console window, or Octave console window. We
-         // use an enumeration and pattern matching procedure to find this. The purpose is to
-         // be able to post WM_CHAR messages received in our own WndProc() handler into the event queue
-         // of the host applications window. This way we can forward characters that were received by
-         // one of our onscreen window (e.g., due to it having the keyboard input focus) to the host
-         // app. Then the CharAvail() and GetChar() functions should be able to dequeue keystrokes from
-         // there and keep working properly if we steal keyboard focus:
-         if (PsychPrefStateGet_Verbosity() > 15) printf("PTB-DEBUG: Window enumeration running...\n");
-         for (i = 1; (hostwinHandle == NULL) && (i <= 2); i++) EnumWindows(PsychHostWindowEnumFunc, i);
-         if (hostwinHandle) {
+        // Try to find the window handle of the main window of our runtime environment, i.e.,
+        // the main Matlab GUI window, Matlab console window, or Octave console window. We
+        // use an enumeration and pattern matching procedure to find this. The purpose is to
+        // be able to post WM_CHAR messages received in our own WndProc() handler into the event queue
+        // of the host applications window. This way we can forward characters that were received by
+        // one of our onscreen window (e.g., due to it having the keyboard input focus) to the host
+        // app. Then the CharAvail() and GetChar() functions should be able to dequeue keystrokes from
+        // there and keep working properly if we steal keyboard focus:
+        if (PsychPrefStateGet_Verbosity() > 15) printf("PTB-DEBUG: Window enumeration running...\n");
+        for (i = 1; (hostwinHandle == NULL) && (i <= 2); i++) EnumWindows(PsychHostWindowEnumFunc, i);
+        if (hostwinHandle) {
             if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Window enumeration done. Our hostwindow is HWND=%p, Name: '%s'\n\n", hostwinHandle, hostwinName);
 
             // Find thread that created GUI windows aka hostwinHandle, then attach our own
@@ -1113,13 +1110,13 @@ dwmdontcare:
         else {
             if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-WARNING: Host application window enumeration failed! This may cause trouble with CharAvail() and GetChar() :-(\n\n");
         }
-     }
+    }
 
     // Adjust window bounds to account for the window borders if we are in non-fullscreen mode:
     if (!fullscreen) {
-      winRec.left=x; winRec.top=y; winRec.right=x+width; winRec.bottom=y+height;
-      AdjustWindowRectEx(&winRec, windowStyle, 0, windowExtendedStyle);
-      x=winRec.left; y=winRec.top; width=winRec.right - winRec.left; height=winRec.bottom - winRec.top;
+        winRec.left=x; winRec.top=y; winRec.right=x+width; winRec.bottom=y+height;
+        AdjustWindowRectEx(&winRec, windowStyle, 0, windowExtendedStyle);
+        x=winRec.left; y=winRec.top; width=winRec.right - winRec.left; height=winRec.bottom - winRec.top;
     }
 
     // If the window should be positioned by the window manager, tell it so by a special x-coordinate:
@@ -1132,10 +1129,10 @@ dwmdontcare:
 
     // Window class registered: Create a window of this class with some specific properties:
     hWnd = CreateWindowEx(windowExtendedStyle,
-              "PTB-OpenGL",
-              winname,
-              windowStyle,
-              x, y, width, height, NULL, NULL, hInstance, NULL);
+                          "PTB-OpenGL",
+                          winname,
+                          windowStyle,
+                          x, y, width, height, NULL, NULL, hInstance, NULL);
 
     if (hWnd == NULL) {
         printf("\nPTB-ERROR[CreateWindow() failed]: Unknown error, Win32 specific.\n\n");
@@ -1162,10 +1159,10 @@ dwmdontcare:
     // Retrieve device context for the window:
     hDC = GetDC(hWnd);
 
-     if (PsychPrefStateGet_Verbosity()>6) {
-         printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Window created - Pixelformat selection...\n");
-         fflush(NULL);
-     }
+    if (PsychPrefStateGet_Verbosity()>6) {
+        printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Window created - Pixelformat selection...\n");
+        fflush(NULL);
+    }
 
     // Setup optional flags for pixelformat:
     flags = 0;
@@ -1183,12 +1180,12 @@ dwmdontcare:
 
     // Select either floating point or fixed point framebuffer:
     if (windowRecord->depth == 64 || windowRecord->depth == 128) {
-      // Request a floating point drawable instead of a fixed-point one:
-      attribs[attribcount++]=WGL_TYPE_RGBA_FLOAT_ARB;
+        // Request a floating point drawable instead of a fixed-point one:
+        attribs[attribcount++]=WGL_TYPE_RGBA_FLOAT_ARB;
     }
     else {
-      // Request standard fixed point drawable:
-      attribs[attribcount++]=0x202B; // WGL_TYPE_RGBA_ARB
+        // Request standard fixed point drawable:
+        attribs[attribcount++]=0x202B; // WGL_TYPE_RGBA_ARB
     }
 
     // Select requested depth per color component 'bpc' for each channel:
@@ -1214,27 +1211,27 @@ dwmdontcare:
     // Stereo display support: If stereo display output is requested with OpenGL native stereo,
     // we request a stereo-enabled rendering context.
     if(stereomode==kPsychOpenGLStereo) {
-      flags = flags | PFD_STEREO;
-      attribs[attribcount++]=0x2012; // WGL_STEREO_ARB
-      attribs[attribcount++]=GL_TRUE;
+        flags = flags | PFD_STEREO;
+        attribs[attribcount++]=0x2012; // WGL_STEREO_ARB
+        attribs[attribcount++]=GL_TRUE;
     }
 
     // Double buffering requested?
     if(numBuffers>=2) {
-      // Enable double-buffering:
-      flags = flags | PFD_DOUBLEBUFFER;
-      attribs[attribcount++]=0x2011; // WGL_DOUBLE_BUFFER_ARB
-      attribs[attribcount++]=GL_TRUE;
+        // Enable double-buffering:
+        flags = flags | PFD_DOUBLEBUFFER;
+        attribs[attribcount++]=0x2011; // WGL_DOUBLE_BUFFER_ARB
+        attribs[attribcount++]=GL_TRUE;
 
-      // AUX buffers for Flip-Operations needed?
-      if ((conserveVRAM & kPsychDisableAUXBuffers) == 0) {
-    // Allocate one or two (mono vs. stereo) AUX buffers for new "don't clear" mode of Screen('Flip'):
-    // Not clearing the framebuffer after "Flip" is implemented by storing a backup-copy of
-    // the backbuffer to AUXs before flip and restoring the content from AUXs after flip.
-    pfd.cAuxBuffers=(stereomode==kPsychOpenGLStereo || stereomode==kPsychCompressedTLBRStereo || stereomode==kPsychCompressedTRBLStereo) ? 2 : 1;
-    attribs[attribcount++]=0x2024; // WGL_AUX_BUFFERS_ARB
-    attribs[attribcount++]=pfd.cAuxBuffers;
-      }
+        // AUX buffers for Flip-Operations needed?
+        if ((conserveVRAM & kPsychDisableAUXBuffers) == 0) {
+            // Allocate one or two (mono vs. stereo) AUX buffers for new "don't clear" mode of Screen('Flip'):
+            // Not clearing the framebuffer after "Flip" is implemented by storing a backup-copy of
+            // the backbuffer to AUXs before flip and restoring the content from AUXs after flip.
+            pfd.cAuxBuffers=(stereomode==kPsychOpenGLStereo || stereomode==kPsychCompressedTLBRStereo || stereomode==kPsychCompressedTRBLStereo) ? 2 : 1;
+            attribs[attribcount++]=0x2024; // WGL_AUX_BUFFERS_ARB
+            attribs[attribcount++]=pfd.cAuxBuffers;
+        }
     }
 
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Device context is %p\n", hDC);
@@ -1249,42 +1246,42 @@ dwmdontcare:
 
     // Support for OpenGL 3D rendering requested?
     if (PsychPrefStateGet_3DGfx()) {
-      // Yes. Allocate and attach a 24bit depth buffer and 8 bit stencil buffer:
-      pfd.cDepthBits = 24;
-      pfd.cStencilBits = 8;
-      attribs[attribcount++]=0x2022; // WGL_DEPTH_BITS_ARB
-      attribs[attribcount++]=24;
-      attribs[attribcount++]=0x2023; // WGL_STENCIL_BITS_ARB
-      attribs[attribcount++]=8;
-      // Alloc an accumulation buffer as well?
-      if (PsychPrefStateGet_3DGfx() & 2) {
-          // Yes: Alloc accum buffer, request 64 bpp, aka 16 bits integer per color component if possible:
-          attribs[attribcount++] = WGL_ACCUM_BITS_EXT;
-          attribs[attribcount++] = 64;
-          attribs[attribcount++] = WGL_ACCUM_RED_BITS_EXT;
-          attribs[attribcount++] = 16;
-          attribs[attribcount++] = WGL_ACCUM_GREEN_BITS_EXT;
-          attribs[attribcount++] = 16;
-          attribs[attribcount++] = WGL_ACCUM_BLUE_BITS_EXT;
-          attribs[attribcount++] = 16;
-          attribs[attribcount++] = WGL_ACCUM_ALPHA_BITS_EXT;
-          attribs[attribcount++] = 16;
-          pfd.cAccumBits      = 64;
-          pfd.cAccumRedBits   = 16;
-          pfd.cAccumGreenBits = 16;
-          pfd.cAccumBlueBits  = 16;
-          pfd.cAccumAlphaBits = 16;
-      }
+        // Yes. Allocate and attach a 24bit depth buffer and 8 bit stencil buffer:
+        pfd.cDepthBits = 24;
+        pfd.cStencilBits = 8;
+        attribs[attribcount++]=0x2022; // WGL_DEPTH_BITS_ARB
+        attribs[attribcount++]=24;
+        attribs[attribcount++]=0x2023; // WGL_STENCIL_BITS_ARB
+        attribs[attribcount++]=8;
+        // Alloc an accumulation buffer as well?
+        if (PsychPrefStateGet_3DGfx() & 2) {
+            // Yes: Alloc accum buffer, request 64 bpp, aka 16 bits integer per color component if possible:
+            attribs[attribcount++] = WGL_ACCUM_BITS_EXT;
+            attribs[attribcount++] = 64;
+            attribs[attribcount++] = WGL_ACCUM_RED_BITS_EXT;
+            attribs[attribcount++] = 16;
+            attribs[attribcount++] = WGL_ACCUM_GREEN_BITS_EXT;
+            attribs[attribcount++] = 16;
+            attribs[attribcount++] = WGL_ACCUM_BLUE_BITS_EXT;
+            attribs[attribcount++] = 16;
+            attribs[attribcount++] = WGL_ACCUM_ALPHA_BITS_EXT;
+            attribs[attribcount++] = 16;
+            pfd.cAccumBits      = 64;
+            pfd.cAccumRedBits   = 16;
+            pfd.cAccumGreenBits = 16;
+            pfd.cAccumBlueBits  = 16;
+            pfd.cAccumAlphaBits = 16;
+        }
     }
 
     // Multisampled Anti-Aliasing requested?
     if (windowRecord->multiSample > 0) {
-      // Request a multisample buffer:
-      attribs[attribcount++]= 0x2041; // WGL_SAMPLE_BUFFERS_ARB
-      attribs[attribcount++]= 1;
-      // Request at least multiSample samples per pixel:
-      attribs[attribcount++]= 0x2042; // WGL_SAMPLES_ARB
-      attribs[attribcount++]= windowRecord->multiSample;
+        // Request a multisample buffer:
+        attribs[attribcount++]= 0x2041; // WGL_SAMPLE_BUFFERS_ARB
+        attribs[attribcount++]= 1;
+        // Request at least multiSample samples per pixel:
+        attribs[attribcount++]= 0x2042; // WGL_SAMPLES_ARB
+        attribs[attribcount++]= windowRecord->multiSample;
     }
 
     // Finalize attribs-array:
@@ -1303,65 +1300,64 @@ dwmdontcare:
 
     // Do we have a valid pixelformat?
     if (pf == 0) {
-      // Nope. We give up!
-      ReleaseDC(hWnd, hDC);
-      DestroyWindow(hWnd);
-      printf("\nPTB-ERROR[ChoosePixelFormat() failed]: Unknown error, Win32 specific.\n\n");
-      return(FALSE);
+        // Nope. We give up!
+        ReleaseDC(hWnd, hDC);
+        DestroyWindow(hWnd);
+        printf("\nPTB-ERROR[ChoosePixelFormat() failed]: Unknown error, Win32 specific.\n\n");
+        return(FALSE);
     }
 
     // Yes. Set it:
     if (SetPixelFormat(hDC, pf, &pfd) == FALSE) {
-      ReleaseDC(hWnd, hDC);
-      DestroyWindow(hWnd);
+        ReleaseDC(hWnd, hDC);
+        DestroyWindow(hWnd);
 
-      printf("\nPTB-ERROR[SetPixelFormat() failed]: Unknown error, Win32 specific.\n\n");
-      return(FALSE);
+        printf("\nPTB-ERROR[SetPixelFormat() failed]: Unknown error, Win32 specific.\n\n");
+        return(FALSE);
     }
 
-     if (PsychPrefStateGet_Verbosity()>6) {
-         printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: ChoosePixelFormat(), SetPixelFormat() done... Creating OpenGL context...\n");
-         fflush(NULL);
-     }
+    if (PsychPrefStateGet_Verbosity()>6) {
+        printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: ChoosePixelFormat(), SetPixelFormat() done... Creating OpenGL context...\n");
+        fflush(NULL);
+    }
 
     // Ok, create and attach the rendering context.
     windowRecord->targetSpecific.contextObject = wglCreateContext(hDC);
     if (windowRecord->targetSpecific.contextObject == NULL) {
-      ReleaseDC(hWnd, hDC);
-      DestroyWindow(hWnd);
+        ReleaseDC(hWnd, hDC);
+        DestroyWindow(hWnd);
 
-      printf("\nPTB-ERROR:[Context creation failed] Unknown, Win32 specific.\n\n");
-      return(FALSE);
+        printf("\nPTB-ERROR:[Context creation failed] Unknown, Win32 specific.\n\n");
+        return(FALSE);
     }
 
     // Store the handles...
     windowRecord->targetSpecific.windowHandle = hWnd;
     windowRecord->targetSpecific.deviceContext = hDC;
 
-     if (PsychPrefStateGet_Verbosity()>6) {
-         printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Context created - Activating and binding context...\n");
-         fflush(NULL);
-     }
+    if (PsychPrefStateGet_Verbosity()>6) {
+        printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Context created - Activating and binding context...\n");
+        fflush(NULL);
+    }
 
     // Activate the rendering context:
     PsychOSSetGLContext(windowRecord);
 
-     if (PsychPrefStateGet_Verbosity()>6) {
-         printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Online - glewInit()...\n");
-         fflush(NULL);
-     }
+    if (PsychPrefStateGet_Verbosity()>6) {
+        printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Online - glewInit()...\n");
+        fflush(NULL);
+    }
 
     // Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
     // available OpenGL extensions via GLEW:
     glerr = glewInit();
-    if (GLEW_OK != glerr)
-      {
-    /* Problem: glewInit failed, something is seriously wrong. */
-    printf("\nPTB-ERROR[GLEW init failed: %s]: Please report this to the forum. Will try to continue, but may crash soon!\n\n", glewGetErrorString(glerr));
-    fflush(NULL);
-      }
+    if (GLEW_OK != glerr) {
+        /* Problem: glewInit failed, something is seriously wrong. */
+        printf("\nPTB-ERROR[GLEW init failed: %s]: Please report this to the forum. Will try to continue, but may crash soon!\n\n", glewGetErrorString(glerr));
+        fflush(NULL);
+    }
     else {
-      if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
+        if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
     }
 
     DescribePixelFormat(hDC, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
@@ -1377,44 +1373,44 @@ dwmdontcare:
 
     // Step 2: Ok, we have an OpenGL rendering context with all known extensions bound:
     // Do we have (or want) support for wglChoosePixelFormatARB?
-   // We skip use of it if we can do without it, i.e., when we don't need unusual framebuffer
-   // configs (like non 8bpc fixed) and we don't need multisampling. This is a work-around
-   // for hardware that has trouble (=driver bugs) with wglChoosePixelformat() in some modes, e.g., the NVidia
+    // We skip use of it if we can do without it, i.e., when we don't need unusual framebuffer
+    // configs (like non 8bpc fixed) and we don't need multisampling. This is a work-around
+    // for hardware that has trouble (=driver bugs) with wglChoosePixelformat() in some modes, e.g., the NVidia
     // Quadro gfx card, which fails to enable quad-buffered stereo when using wglChoosePixelformat(),
     // but does so perfectly well when using the old-style ChoosePixelFormat().
     if ((wglChoosePixelFormatARB == NULL) || ((bpc==8) && (windowRecord->multiSample <= 0))) {
-      // Failed (==NULL) or disabled via override.
-      if ((wglChoosePixelFormatARB == NULL) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Could not bind wglChoosePixelFormat - Extension. Some features will be unavailable, e.g., Anti-Aliasing and high precision framebuffers.\n");
+        // Failed (==NULL) or disabled via override.
+        if ((wglChoosePixelFormatARB == NULL) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Could not bind wglChoosePixelFormat - Extension. Some features will be unavailable, e.g., Anti-Aliasing and high precision framebuffers.\n");
     }
     else {
-      // Supported. We destroy the rendering context and window, then recreate it with
-      // the wglChoosePixelFormat - method...
+        // Supported. We destroy the rendering context and window, then recreate it with
+        // the wglChoosePixelFormat - method...
 
-     if (PsychPrefStateGet_Verbosity()>6) {
-         printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Need to use wglChoosePixelFormat() path due to multisampling or bpc > 8 enabled. Destroy and reinit sequence...\n");
-         fflush(NULL);
-     }
+        if (PsychPrefStateGet_Verbosity()>6) {
+            printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Need to use wglChoosePixelFormat() path due to multisampling or bpc > 8 enabled. Destroy and reinit sequence...\n");
+            fflush(NULL);
+        }
 
-      wglMakeCurrent(NULL, NULL);
+        wglMakeCurrent(NULL, NULL);
 
-      // Delete rendering context:
-      wglDeleteContext(windowRecord->targetSpecific.contextObject);
-      windowRecord->targetSpecific.contextObject=NULL;
+        // Delete rendering context:
+        wglDeleteContext(windowRecord->targetSpecific.contextObject);
+        windowRecord->targetSpecific.contextObject=NULL;
 
-      // Release device context:
-      ReleaseDC(windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.deviceContext);
-      windowRecord->targetSpecific.deviceContext=NULL;
+        // Release device context:
+        ReleaseDC(windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.deviceContext);
+        windowRecord->targetSpecific.deviceContext=NULL;
 
-      // Close & Destroy the window:
-      DestroyWindow(windowRecord->targetSpecific.windowHandle);
-      windowRecord->targetSpecific.windowHandle=NULL;
+        // Close & Destroy the window:
+        DestroyWindow(windowRecord->targetSpecific.windowHandle);
+        windowRecord->targetSpecific.windowHandle=NULL;
 
         // Ok, old window and stuff is dead. Create new window:
         hWnd = CreateWindowEx(windowExtendedStyle, "PTB-OpenGL", winname, windowStyle,
-                                       x, y, width, height, NULL, NULL, hInstance, NULL);
+                              x, y, width, height, NULL, NULL, hInstance, NULL);
         if (hWnd == NULL) {
-        printf("\nPTB-ERROR[CreateWindow() - II failed]: Unknown error, Win32 specific.\n\n");
-        return(FALSE);
+            printf("\nPTB-ERROR[CreateWindow() - II failed]: Unknown error, Win32 specific.\n\n");
+            return(FALSE);
         }
 
         // Setup transparency level for eligible non-fullscreen windows:
@@ -1425,7 +1421,7 @@ dwmdontcare:
             SetLayeredWindowAttributes(hWnd, 0, (BYTE) ((((float) (windowLevel % 500)) / 499.0) * 255 + 0.5), LWA_ALPHA);
         }
 
-       // Retrieve device context for the window:
+        // Retrieve device context for the window:
         hDC = GetDC(hWnd);
 
         if (PsychPrefStateGet_Verbosity()>6) {
@@ -1436,14 +1432,14 @@ dwmdontcare:
         pf = 0;
         nNumFormats=0;
         wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
-      if (nNumFormats==0 && windowRecord->multiSample > 0) {
-             // Failed. Probably due to too demanding multisample requirements: Lets lower them...
+        if (nNumFormats==0 && windowRecord->multiSample > 0) {
+            // Failed. Probably due to too demanding multisample requirements: Lets lower them...
             for (i=0; i<attribcount && attribs[i]!=0x2042; i++);
             // Reduce requested number of samples/pixel and retry until we get one:
             while (nNumFormats==0 && windowRecord->multiSample > 0) {
                 // printf("Failed for multisampling level %i nNum=%i\n", windowRecord->multiSample, nNumFormats);
                 attribs[i+1]--;
-                  windowRecord->multiSample--;
+                windowRecord->multiSample--;
                 wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
             }
             // If we still do not get one with 0 samples per pixel, we can try to disable
@@ -1453,13 +1449,13 @@ dwmdontcare:
                 // We 0-Out all entries related to multi-sampling, including the
                 // GL_SAMPLES_ARB and GL_SAMPLE_BUFFERS_ARB enums themselves:
                 for (i=0; i<attribcount && attribs[i]!=0x2042; i++);
-                  attribs[i]=0;
-                  for (i=0; i<attribcount && attribs[i]!=0x2041; i++);
-                  attribs[i]=0;
-                  attribs[i+1]=0;
+                attribs[i]=0;
+                for (i=0; i<attribcount && attribs[i]!=0x2041; i++);
+                attribs[i]=0;
+                attribs[i+1]=0;
                 wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
             }
-      }
+        }
 
         if (nNumFormats==0 && numBuffers>=2) {
             // We still don't have a valid pixelformat, but double-buffering is enabled.
@@ -1480,126 +1476,126 @@ dwmdontcare:
         // Either we have a multisampled or non-multisampled format, or none. If we failed,
         // then we can not do anything anymore about it.
 
-       // Do we have a valid pixelformat?
-      if (nNumFormats == 0) {
-           // Nope. We give up!
-         ReleaseDC(hWnd, hDC);
-         DestroyWindow(hWnd);
-         printf("\nPTB-ERROR[wglChoosePixelFormat() failed]: Unknown error, Win32 specific. Code: %i.\n\n", GetLastError());
-         return(FALSE);
-      }
+        // Do we have a valid pixelformat?
+        if (nNumFormats == 0) {
+            // Nope. We give up!
+            ReleaseDC(hWnd, hDC);
+            DestroyWindow(hWnd);
+            printf("\nPTB-ERROR[wglChoosePixelFormat() failed]: Unknown error, Win32 specific. Code: %i.\n\n", GetLastError());
+            return(FALSE);
+        }
 
-      // Yes. Set it:
-      if (SetPixelFormat(hDC, pf, &pfd) == FALSE) {
-         ReleaseDC(hWnd, hDC);
-         DestroyWindow(hWnd);
+        // Yes. Set it:
+        if (SetPixelFormat(hDC, pf, &pfd) == FALSE) {
+            ReleaseDC(hWnd, hDC);
+            DestroyWindow(hWnd);
 
-         printf("\nPTB-ERROR[SetPixelFormat() - II failed]: Unknown error, Win32 specific.\n\n");
-         return(FALSE);
-      }
+            printf("\nPTB-ERROR[SetPixelFormat() - II failed]: Unknown error, Win32 specific.\n\n");
+            return(FALSE);
+        }
 
-        if (PsychPrefStateGet_Verbosity()>6) {
+        if (PsychPrefStateGet_Verbosity() > 6) {
             printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: New pixelformat chosen and set - About to recreate master opengl context...\n");
             fflush(NULL);
         }
 
-      // Ok, create and attach the rendering context.
-      windowRecord->targetSpecific.contextObject = wglCreateContext(hDC);
-      if (windowRecord->targetSpecific.contextObject == NULL) {
-         ReleaseDC(hWnd, hDC);
-         DestroyWindow(hWnd);
+        // Ok, create and attach the rendering context.
+        windowRecord->targetSpecific.contextObject = wglCreateContext(hDC);
+        if (windowRecord->targetSpecific.contextObject == NULL) {
+            ReleaseDC(hWnd, hDC);
+            DestroyWindow(hWnd);
 
-         printf("\nPTB-ERROR:[Context creation II failed] Unknown, Win32 specific.\n\n");
-         return(FALSE);
-      }
+            printf("\nPTB-ERROR:[Context creation II failed] Unknown, Win32 specific.\n\n");
+            return(FALSE);
+        }
 
-      // Store the handles...
-      windowRecord->targetSpecific.windowHandle = hWnd;
-      windowRecord->targetSpecific.deviceContext = hDC;
+        // Store the handles...
+        windowRecord->targetSpecific.windowHandle = hWnd;
+        windowRecord->targetSpecific.deviceContext = hDC;
 
-        if (PsychPrefStateGet_Verbosity()>6) {
+        if (PsychPrefStateGet_Verbosity() > 6) {
             printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Context recreated - Activating...\n");
             fflush(NULL);
         }
 
-      // Activate the rendering context:
-      PsychOSSetGLContext(windowRecord);
+        // Activate the rendering context:
+        PsychOSSetGLContext(windowRecord);
 
-      DescribePixelFormat(hDC, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
+        DescribePixelFormat(hDC, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
 
         // Done with final window and OpenGL context setup. We've got our final context enabled.
-     }
+    }
 
-    if (PsychPrefStateGet_Verbosity()>6) {
+    if (PsychPrefStateGet_Verbosity() > 6) {
         printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Mastercontext created, activated and bound - Enabling multisampling if needed...\n");
         fflush(NULL);
     }
 
-     // Enable multisampling if this was requested:
+    // Enable multisampling if this was requested:
     if (windowRecord->multiSample > 0) glEnable(0x809D); // 0x809D == GL_MULTISAMPLE_ARB
-     // Throw away any error-state this could have created on old hardware...
+    // Throw away any error-state this could have created on old hardware...
 
-     while((glerr = glGetError())!=GL_NO_ERROR) {
-         if (PsychPrefStateGet_Verbosity()>6) {
-             printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: After multisample enable - if any - glGetError reports error: %s..\n", gluErrorString(glerr));
-             fflush(NULL);
-         }
-     }
+    while((glerr = glGetError())!=GL_NO_ERROR) {
+        if (PsychPrefStateGet_Verbosity() > 6) {
+            printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: After multisample enable - if any - glGetError reports error: %s..\n", gluErrorString(glerr));
+            fflush(NULL);
+        }
+    }
 
-     if (PsychPrefStateGet_Verbosity()>4) {
-         printf("PTB-DEBUG: Window and master OpenGL context creation finished.\n");
-         fflush(NULL);
-     }
+    if (PsychPrefStateGet_Verbosity() > 4) {
+        printf("PTB-DEBUG: Window and master OpenGL context creation finished.\n");
+        fflush(NULL);
+    }
 
-     while((glerr = glGetError())!=GL_NO_ERROR) {
-         if (PsychPrefStateGet_Verbosity()>6) {
-             printf("PTB-DEBUG: Before slaveWindow context sharing: glGetError reports error: %s..\n", gluErrorString(glerr));
-             fflush(NULL);
-         }
-     }
+    while((glerr = glGetError())!=GL_NO_ERROR) {
+        if (PsychPrefStateGet_Verbosity() > 6) {
+            printf("PTB-DEBUG: Before slaveWindow context sharing: glGetError reports error: %s..\n", gluErrorString(glerr));
+            fflush(NULL);
+        }
+    }
 
-     if (PsychPrefStateGet_Verbosity()>6) {
-         printf("PTB-DEBUG: Before slaveWindow context sharing: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
-         fflush(NULL);
-     }
+    if (PsychPrefStateGet_Verbosity() > 6) {
+        printf("PTB-DEBUG: Before slaveWindow context sharing: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+        fflush(NULL);
+    }
 
-     // Do we have a slaveWindow with which to share all object ressources like display lists, textures, FBO's and shaders?
-     if (windowRecord->slaveWindow) {
-         // Enable ressource sharing with slaveWindow context for this window:
-         if (!wglShareLists(windowRecord->slaveWindow->targetSpecific.contextObject, windowRecord->targetSpecific.contextObject)) {
-             // This is ugly, but not fatal...
-             if (PsychPrefStateGet_Verbosity()>0) {
-                 printf("\nPTB-WARNING[wglShareLists for slaveWindow context failed]: Ressource sharing with OpenGL context for slave window failed for unknown reasons. Dual-Window stereo may not work.\n\n");
-             }
-         }
-     }
+    // Do we have a slaveWindow with which to share all object ressources like display lists, textures, FBO's and shaders?
+    if (windowRecord->slaveWindow) {
+        // Enable ressource sharing with slaveWindow context for this window:
+        if (!wglShareLists(windowRecord->slaveWindow->targetSpecific.contextObject, windowRecord->targetSpecific.contextObject)) {
+            // This is ugly, but not fatal...
+            if (PsychPrefStateGet_Verbosity() > 0) {
+                printf("\nPTB-WARNING[wglShareLists for slaveWindow context failed]: Ressource sharing with OpenGL context for slave window failed for unknown reasons. Dual-Window stereo may not work.\n\n");
+            }
+        }
+    }
 
-     glFinish();
-     while((glerr = glGetError())!=GL_NO_ERROR) {
-         if (PsychPrefStateGet_Verbosity()>6) {
-             printf("PTB-DEBUG: After slaveWindow context sharing: glGetError reports error: %s..\n", gluErrorString(glerr));
-             fflush(NULL);
-         }
-     }
+    glFinish();
+    while((glerr = glGetError()) != GL_NO_ERROR) {
+        if (PsychPrefStateGet_Verbosity() > 6) {
+            printf("PTB-DEBUG: After slaveWindow context sharing: glGetError reports error: %s..\n", gluErrorString(glerr));
+            fflush(NULL);
+        }
+    }
 
-     if (PsychPrefStateGet_Verbosity()>6) {
-         printf("PTB-DEBUG: After slaveWindow context sharing: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
-         fflush(NULL);
-     }
+    if (PsychPrefStateGet_Verbosity() > 6) {
+        printf("PTB-DEBUG: After slaveWindow context sharing: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+        fflush(NULL);
+    }
 
     // External 3D graphics support enabled? Or OpenGL quad-buffered stereo enabled?
-     // For the former, we need this code for OpenGL state isolation. For the latter we
+    // For the former, we need this code for OpenGL state isolation. For the latter we
     // need this code as workaround for Windows brain-damage. For some reason it helps
     // to properly shutdown stereo contexts on Windows...
     // One can disable this mechanism via the flag kPsychDisableContextIsolation to account
     // for even more MS brain-damage.
-     if ((!(conserveVRAM & kPsychDisableContextIsolation)) && (PsychPrefStateGet_3DGfx() || stereomode == kPsychOpenGLStereo)) {
+    if ((!(conserveVRAM & kPsychDisableContextIsolation)) && (PsychPrefStateGet_3DGfx() || stereomode == kPsychOpenGLStereo)) {
         // Yes. We need to create an extra OpenGL rendering context for the external
         // OpenGL code to provide optimal state-isolation. The context shares all
         // heavyweight ressources likes textures, FBOs, VBOs, PBOs, display lists and
         // starts off as an identical copy of PTB's context as of here.
 
-        if (PsychPrefStateGet_Verbosity()>4) {
+        if (PsychPrefStateGet_Verbosity() > 4) {
             printf("PTB-DEBUG: Setup of userspace rendering context...\n");
             fflush(NULL);
         }
@@ -1615,19 +1611,19 @@ dwmdontcare:
             return(FALSE);
         }
 
-        if (PsychPrefStateGet_Verbosity()>4) {
+        if (PsychPrefStateGet_Verbosity() > 4) {
             printf("PTB-DEBUG: wglCreateContext() done. Now copying context state...\n");
             fflush(NULL);
         }
 
-        if (PsychPrefStateGet_Verbosity()>6) {
+        if (PsychPrefStateGet_Verbosity() > 6) {
             printf("PTB-DEBUG: Userspace context wglCreateContext() done: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
             fflush(NULL);
         }
 
         glFinish();
-        while((glerr = glGetError())!=GL_NO_ERROR) {
-            if (PsychPrefStateGet_Verbosity()>6) {
+        while((glerr = glGetError()) != GL_NO_ERROR) {
+            if (PsychPrefStateGet_Verbosity() > 6) {
                 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Pre-Switch to usercontext glGetError reports error: %s..\n", gluErrorString(glerr));
                 fflush(NULL);
             }
@@ -1637,116 +1633,116 @@ dwmdontcare:
         // Ok, we unconditionally disable this code-path, regardless what kPsychUseWindowsContextSharingWorkaround1 is.
         // The wglCopyContext() call isn't needed for proper operation, but causes crashes on recent drivers. By avoiding
         // it completely we don't lose functionality, but avoid noise on the forum about non-working stuff...
-/*
-        if (!(conserveVRAM & kPsychUseWindowsContextSharingWorkaround1)) {
+        /*
+         *        if (!(conserveVRAM & kPsychUseWindowsContextSharingWorkaround1)) {
+         *
+         *            wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
+         *
+         *            while((glerr = glGetError())!=GL_NO_ERROR) {
+         *                if (PsychPrefStateGet_Verbosity()>6) {
+         *                    printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Post-Switch to usercontext glGetError reports error: %s..\n", gluErrorString(glerr));
+         *                    fflush(NULL);
+    }
+    }
 
-            wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
+    if (PsychPrefStateGet_Verbosity()>6) {
+        printf("PTB-DEBUG: In Userspace context: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+        fflush(NULL);
+    }
 
-            while((glerr = glGetError())!=GL_NO_ERROR) {
-                if (PsychPrefStateGet_Verbosity()>6) {
-                    printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Post-Switch to usercontext glGetError reports error: %s..\n", gluErrorString(glerr));
-                    fflush(NULL);
-                }
-            }
+    glFinish();
+    wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.contextObject);
 
-            if (PsychPrefStateGet_Verbosity()>6) {
-                printf("PTB-DEBUG: In Userspace context: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
-                fflush(NULL);
-            }
+    glFinish();
+    while((glerr = glGetError())!=GL_NO_ERROR) {
+        if (PsychPrefStateGet_Verbosity()>6) {
+            printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Post-Switch to mastercontext glGetError reports error: %s..\n", gluErrorString(glerr));
+            fflush(NULL);
+    }
+    }
 
-            glFinish();
-            wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.contextObject);
+    if (PsychPrefStateGet_Verbosity()>6) {
+        printf("PTB-DEBUG: Back in mastercontext: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+        fflush(NULL);
+    }
 
-            glFinish();
-            while((glerr = glGetError())!=GL_NO_ERROR) {
-                if (PsychPrefStateGet_Verbosity()>6) {
-                    printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Post-Switch to mastercontext glGetError reports error: %s..\n", gluErrorString(glerr));
-                    fflush(NULL);
-                }
-            }
+    // Copy full state from our main context:
+    if(!wglCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS)) {
+        // This is ugly, but not fatal...
+        if (PsychPrefStateGet_Verbosity()>1) {
+            printf("\nPTB-WARNING[wglCopyContext for user context failed]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
+    }
+    }
 
-            if (PsychPrefStateGet_Verbosity()>6) {
-                printf("PTB-DEBUG: Back in mastercontext: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
-                fflush(NULL);
-            }
+    if (PsychPrefStateGet_Verbosity()>6) {
+        printf("PTB-DEBUG: After wglCopyContext(): glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+        fflush(NULL);
+    }
 
-            // Copy full state from our main context:
-            if(!wglCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS)) {
-                // This is ugly, but not fatal...
-                if (PsychPrefStateGet_Verbosity()>1) {
-                    printf("\nPTB-WARNING[wglCopyContext for user context failed]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
-                }
-            }
+    if (PsychPrefStateGet_Verbosity()>4) {
+        printf("PTB-DEBUG: wglCopyContext() done. Now enabling ressource sharing..\n");
+        fflush(NULL);
+    }
+    }
+    else {
+        if (PsychPrefStateGet_Verbosity()>4) {
+            printf("PTB-DEBUG: wglMakeCurrent(usercontext); wglMakeCurrent(mastercontext); wglCopyContext() skipped due to kPsychUseWindowsContextSharingWorkaround1 flag. Now enabling ressource sharing..\n");
+            fflush(NULL);
+    }
+    }
+    */
 
-            if (PsychPrefStateGet_Verbosity()>6) {
-                printf("PTB-DEBUG: After wglCopyContext(): glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
-                fflush(NULL);
-            }
-
-            if (PsychPrefStateGet_Verbosity()>4) {
-                printf("PTB-DEBUG: wglCopyContext() done. Now enabling ressource sharing..\n");
-                fflush(NULL);
-            }
-        }
-        else {
-            if (PsychPrefStateGet_Verbosity()>4) {
-                printf("PTB-DEBUG: wglMakeCurrent(usercontext); wglMakeCurrent(mastercontext); wglCopyContext() skipped due to kPsychUseWindowsContextSharingWorkaround1 flag. Now enabling ressource sharing..\n");
-                fflush(NULL);
-            }
-        }
-*/
-
-       // Enable ressource sharing with master context for this window:
+        // Enable ressource sharing with master context for this window:
         if (!wglShareLists(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject)) {
             // This is ugly, but not fatal...
-            if (PsychPrefStateGet_Verbosity()>1) {
+            if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("\nPTB-WARNING[wglShareLists for user context failed]: Ressource sharing with private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
             }
         }
 
-        if (PsychPrefStateGet_Verbosity()>6) {
+        if (PsychPrefStateGet_Verbosity() > 6) {
             printf("PTB-DEBUG: After wglShareLists(): glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
             fflush(NULL);
         }
 
-        if (PsychPrefStateGet_Verbosity()>4) {
+        if (PsychPrefStateGet_Verbosity() > 4) {
             printf("PTB-DEBUG: Userspace context setup done..\n");
             fflush(NULL);
         }
-     }
+    }
 
-     glFinish();
+    glFinish();
 
-     // Setup dedicated swap context for async flips:
-     windowRecord->targetSpecific.glswapcontextObject = wglCreateContext(hDC);
-     if (windowRecord->targetSpecific.glswapcontextObject == NULL) {
-         ReleaseDC(hWnd, hDC);
-         DestroyWindow(hWnd);
-         windowRecord->targetSpecific.windowHandle = NULL;
-         windowRecord->targetSpecific.deviceContext = NULL;
+    // Setup dedicated swap context for async flips:
+    windowRecord->targetSpecific.glswapcontextObject = wglCreateContext(hDC);
+    if (windowRecord->targetSpecific.glswapcontextObject == NULL) {
+        ReleaseDC(hWnd, hDC);
+        DestroyWindow(hWnd);
+        windowRecord->targetSpecific.windowHandle = NULL;
+        windowRecord->targetSpecific.deviceContext = NULL;
 
-         printf("\nPTB-ERROR[SwapContextCreation failed]: Creating a private OpenGL context for async flips failed for unknown reasons.\n\n");
-         return(FALSE);
-     }
+        printf("\nPTB-ERROR[SwapContextCreation failed]: Creating a private OpenGL context for async flips failed for unknown reasons.\n\n");
+        return(FALSE);
+    }
 
-     // Enable ressource sharing with master context for this context:
-     if (!wglShareLists(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glswapcontextObject)) {
-         // This is ugly, but not fatal...
-         if (PsychPrefStateGet_Verbosity()>1) {
-             printf("\nPTB-WARNING[wglShareLists for swap context failed]: Ressource sharing with private OpenGL context for async flips failed for unknown reasons.\n\n");
-         }
-     }
+    // Enable ressource sharing with master context for this context:
+    if (!wglShareLists(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glswapcontextObject)) {
+        // This is ugly, but not fatal...
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("\nPTB-WARNING[wglShareLists for swap context failed]: Ressource sharing with private OpenGL context for async flips failed for unknown reasons.\n\n");
+        }
+    }
 
-     if (PsychPrefStateGet_Verbosity()>4) {
+    if (PsychPrefStateGet_Verbosity() > 4) {
         printf("PTB-DEBUG: Final low-level window setup: ShowWindow(), SetCapture(), diagnostics...\n");
         fflush(NULL);
-     }
+    }
 
-     if (PsychPrefStateGet_Verbosity()>4) {
+    if (PsychPrefStateGet_Verbosity() > 4) {
         printf("PTB-DEBUG: OpenGL initialization of all master-/slave-/shared-/userspace contexts finished...\n");
         printf("PTB-DEBUG: Final low-level window setup: ShowWindow(), SetCapture(), diagnostics...\n");
         fflush(NULL);
-     }
+    }
 
     // Finally, show our new window:
     if (windowLevel != -1) ShowWindow(hWnd, SW_SHOW);
@@ -1792,10 +1788,10 @@ dwmdontcare:
         // Make sure it is the topmost window:
         SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, (SWP_NOMOVE | SWP_NOSIZE));
 
-        if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Executed SetForegroundWindow() and SetFocus() on window to optimize pageflipping and timing.\n");
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Executed SetForegroundWindow() and SetFocus() on window to optimize pageflipping and timing.\n");
     }
     else {
-        if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: No call to SetForegroundWindow() and SetFocus() on window, because trigger-conditions not satisfied.\n");
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: No call to SetForegroundWindow() and SetFocus() on window, because trigger-conditions not satisfied.\n");
     }
 
     // Capture the window if it is a fullscreen one: This window will receive all
@@ -1817,10 +1813,10 @@ dwmdontcare:
 
     // Some info for the user regarding non-fullscreen windows:
     if (!fullscreen && (PsychPrefStateGet_Verbosity() > 2)) {
-      printf("PTB-INFO: Most graphics cards will not support proper syncing to vertical retrace when\n");
-      printf("PTB-INFO: running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
-      printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 2); .\n");
-      printf("PTB-INFO: You won't get proper stimulus onset timestamps though, so windowed mode may be of limited use.\n");
+        printf("PTB-INFO: Most graphics cards will not support proper syncing to vertical retrace when\n");
+        printf("PTB-INFO: running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
+        printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 2); .\n");
+        printf("PTB-INFO: You won't get proper stimulus onset timestamps though, so windowed mode may be of limited use.\n");
     }
 
     // Check for the VSYNC extension:
@@ -1858,86 +1854,85 @@ dwmdontcare:
         fflush(NULL);
     }
 
-    // Well Done!
     return(TRUE);
 }
 
 void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 {
-  // Detach rendering context again - just to be safe!
-  wglMakeCurrent(NULL, NULL);
+    // Detach rendering context again - just to be safe!
+    wglMakeCurrent(NULL, NULL);
 
-  // Delete rendering context:
-  wglDeleteContext(windowRecord->targetSpecific.contextObject);
-  windowRecord->targetSpecific.contextObject=NULL;
+    // Delete rendering context:
+    wglDeleteContext(windowRecord->targetSpecific.contextObject);
+    windowRecord->targetSpecific.contextObject=NULL;
 
-  // Delete swap context:
-  wglDeleteContext(windowRecord->targetSpecific.glswapcontextObject);
-  windowRecord->targetSpecific.glswapcontextObject=NULL;
+    // Delete swap context:
+    wglDeleteContext(windowRecord->targetSpecific.glswapcontextObject);
+    windowRecord->targetSpecific.glswapcontextObject=NULL;
 
-  // Delete userspace context:
-  if (windowRecord->targetSpecific.glusercontextObject) {
+    // Delete userspace context:
+    if (windowRecord->targetSpecific.glusercontextObject) {
         wglDeleteContext(windowRecord->targetSpecific.glusercontextObject);
-          windowRecord->targetSpecific.glusercontextObject = NULL;
-  }
-
-  // Release device context:
-  ReleaseDC(windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.deviceContext);
-  windowRecord->targetSpecific.deviceContext=NULL;
-
-  // Release the capture, whatever that means...
-  ReleaseCapture();
-
-  // Close & Destroy the window:
-  DestroyWindow(windowRecord->targetSpecific.windowHandle);
-  windowRecord->targetSpecific.windowHandle=NULL;
-
-  // Restore video settings from the defaults in the Windows registry:
-  ChangeDisplaySettings(NULL, 0);
-
-  // Was this the last window?
-  win32_windowcount--;
-
-  if (win32_windowcount<=0) {
-    win32_windowcount=0;
-
-    // Unregister our window class if it is still registered:
-    if (hInstance) {
-      UnregisterClass("PTB-OpenGL", hInstance);
-      hInstance=NULL;
-
-      // Detach from and release dwmapi.dll if loaded and attached:
-      if (dwmSupported && dwmlibrary) {
-          // Reenable DWM if it was disabled (by us or others):
-          if (!PsychOSIsDWMEnabled(0)) {
-              // Enable compositor:
-              if (PsychDwmEnableComposition(1)) {
-                  if (PsychPrefStateGet_Verbosity() > 1) {
-                      printf("PTB-WARNING: PsychOSCloseWindow: Failed to reenable DWM Aero Windows desktop compositor!\n");
-                  }
-              }
-          }
-
-          // Detach and free:
-          FreeLibrary(dwmlibrary);
-          dwmlibrary = 0;
-          dwmSupported = FALSE;
-      }
+        windowRecord->targetSpecific.glusercontextObject = NULL;
     }
-  }
 
-  // Done.
-  return;
+    // Release device context:
+    ReleaseDC(windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.deviceContext);
+    windowRecord->targetSpecific.deviceContext=NULL;
+
+    // Release the capture, whatever that means...
+    ReleaseCapture();
+
+    // Close & Destroy the window:
+    DestroyWindow(windowRecord->targetSpecific.windowHandle);
+    windowRecord->targetSpecific.windowHandle=NULL;
+
+    // Restore video settings from the defaults in the Windows registry:
+    ChangeDisplaySettings(NULL, 0);
+
+    // Was this the last window?
+    win32_windowcount--;
+
+    if (win32_windowcount <= 0) {
+        win32_windowcount = 0;
+
+        // Unregister our window class if it is still registered:
+        if (hInstance) {
+            UnregisterClass("PTB-OpenGL", hInstance);
+            hInstance=NULL;
+
+            // Detach from and release dwmapi.dll if loaded and attached:
+            if (dwmSupported && dwmlibrary) {
+                // Reenable DWM if it was disabled (by us or others):
+                if (!PsychOSIsDWMEnabled(0)) {
+                    // Enable compositor:
+                    if (PsychDwmEnableComposition(1)) {
+                        if (PsychPrefStateGet_Verbosity() > 1) {
+                            printf("PTB-WARNING: PsychOSCloseWindow: Failed to reenable DWM Aero Windows desktop compositor!\n");
+                        }
+                    }
+                }
+
+                // Detach and free:
+                FreeLibrary(dwmlibrary);
+                dwmlibrary = 0;
+                dwmSupported = FALSE;
+            }
+        }
+    }
+
+    // Done.
+    return;
 }
 
 /*
-    PsychOSGetVBLTimeAndCount()
-
-    Returns absolute system time of last VBL and current total count of VBL interrupts since
-    startup of gfx-system for the given screen. Returns a time of -1 and a count of 0 if this
-    feature is unavailable on the given OS/Hardware configuration.
-*/
-double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
+ *    PsychOSGetVBLTimeAndCount()
+ *
+ *    Returns absolute system time of last VBL and current total count of VBL interrupts since
+ *    startup of gfx-system for the given screen. Returns a time of -1 and a count of 0 if this
+ *    feature is unavailable on the given OS/Hardware configuration.
+ */
+double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
     DWM_TIMING_INFO    dwmtiming;
     psych_uint64 ust, msc, sbc;
@@ -1962,15 +1957,15 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
         ust = (psych_uint64) dwmtiming.qpcVBlank;
 
         if (PsychPrefStateGet_Verbosity() > 15) {
-             printf("PTB-DEBUG: VBLCount = %i : VBLTime = %f secs. ClockHz = %f. rc=%x\n", (int) *vblCount, PsychMapPrecisionTimerTicksToSeconds(ust), PsychGetKernelTimebaseFrequencyHz(), rc);
+            printf("PTB-DEBUG: VBLCount = %i : VBLTime = %f secs. ClockHz = %f. rc=%x\n", (int) *vblCount, PsychMapPrecisionTimerTicksToSeconds(ust), PsychGetKernelTimebaseFrequencyHz(), rc);
         }
 
         // Convert ust into regular GetSecs timestamp:
         return(PsychMapPrecisionTimerTicksToSeconds(ust));
     }
     else {
-         if (PsychOSIsDWMEnabled(0) && PsychPrefStateGet_Verbosity()>6) {
-             printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo(%i) failed with rc = %x, GetLastError() = %i\n", dwmtiming.cbSize, rc, GetLastError());
+        if (PsychOSIsDWMEnabled(0) && PsychPrefStateGet_Verbosity() > 6) {
+            printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo(%i) failed with rc = %x, GetLastError() = %i\n", dwmtiming.cbSize, rc, GetLastError());
         }
     }
 
@@ -1978,8 +1973,8 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
     // Let's try if we have more luck with OpenML support...
 
     // Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
-    // if that extension is supported on this setup. As of mid 2009 i'm not aware of any
-    // affordable graphics card that would support this extension, but who knows??
+    // if that extension is supported on this setup. As of beginning 2017 i'm not aware of any
+    // graphics card that would support this extension, but who knows??
     if ((NULL != wglGetSyncValuesOML) && (wglGetSyncValuesOML((HDC) displayID, (INT64*) &ust, (INT64*) &msc, (INT64*) &sbc))) {
         *vblCount = msc;
 
@@ -1994,17 +1989,17 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 }
 
 /*
-    PsychOSGetPresentationTimingInfo()
-
-    Retrieve low-level counts and timestamps related to stimulus onset
-    for the last presented frame via PsychOSFlipWindowBuffers().
-
-    Returns true on success, false on error.
-
-*/
+ *    PsychOSGetPresentationTimingInfo()
+ *
+ *    Retrieve low-level counts and timestamps related to stimulus onset
+ *    for the last presented frame via PsychOSFlipWindowBuffers().
+ *
+ *    Returns true on success, false on error.
+ *
+ */
 psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord, psych_bool postSwap, unsigned int flags, psych_uint64* onsetVBLCount, double* onsetVBLTime, psych_uint64* frameId, double* compositionRate, int fullStateStructReturnArgPos)
 {
-    DWM_TIMING_INFO    dwmtiming;
+    DWM_TIMING_INFO dwmtiming;
     psych_uint64 qpcFrameDisplayed;
     static double qpcfreq = -1;
     HRESULT rc1 = 0;
@@ -2015,7 +2010,7 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
         qpcfreq = PsychGetKernelTimebaseFrequencyHz();
 
         if (PsychPrefStateGet_Verbosity() > 15) {
-             printf("PTB-DEBUG: Initial ClockHz = %f : Health = %i\n", qpcfreq, PsychGetTimeBaseHealthiness());
+            printf("PTB-DEBUG: Initial ClockHz = %f : Health = %i\n", qpcfreq, PsychGetTimeBaseHealthiness());
         }
 
         // Reliable?
@@ -2025,7 +2020,7 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
         }
 
         if (PsychPrefStateGet_Verbosity() > 15) {
-             printf("PTB-DEBUG: Final ClockHz = %f\n", qpcfreq);
+            printf("PTB-DEBUG: Final ClockHz = %f\n", qpcfreq);
         }
     }
 
@@ -2155,7 +2150,7 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
  */
 int PsychOSIsDWMEnabled(int screenNumber)
 {
-    DWM_TIMING_INFO    dwmtiming;
+    DWM_TIMING_INFO dwmtiming;
     BOOL compositorEnabled;
     psych_bool IsDWMEnabled;
 
@@ -2294,7 +2289,7 @@ psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psyc
  */
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap)
 {
-    DWM_TIMING_INFO    dwmtiming;
+    DWM_TIMING_INFO dwmtiming;
     HRESULT rc;
     psych_uint64 msc, ust;
     double tSwapMapped;
@@ -2326,7 +2321,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         // Get current timing state: Trigger standard fallback on failure.
         dwmtiming.cbSize = sizeof(dwmtiming);
         if ((rc = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) != 0) {
-        if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: PsychOSGetSwapCompletionTimestamp failed: Call to PsychDwmGetCompositionTimingInfo() failed with rc = %x, GetLastError() = %i\n", rc, GetLastError());
+            if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: PsychOSGetSwapCompletionTimestamp failed: Call to PsychDwmGetCompositionTimingInfo() failed with rc = %x, GetLastError() = %i\n", rc, GetLastError());
             return(-1);
         }
 
@@ -2356,7 +2351,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     msc = dwmtiming.cDXRefreshConfirmed;
     ust = dwmtiming.qpcVBlank - ((dwmtiming.cDXRefresh - dwmtiming.cDXRefreshConfirmed) * dwmtiming.qpcRefreshPeriod);
     if (PsychPrefStateGet_Verbosity() > 14) printf("PTB-DEBUG: PsychOSGetSwapCompletionTimestamp: cDXRefresh %i vs. cDXRefreshConfirmed %i --> DeltaFrames %i.\n",
-                                                   dwmtiming.cDXRefresh, dwmtiming.cDXRefreshConfirmed, dwmtiming.cDXRefresh - dwmtiming.cDXRefreshConfirmed);
+        dwmtiming.cDXRefresh, dwmtiming.cDXRefreshConfirmed, dwmtiming.cDXRefresh - dwmtiming.cDXRefreshConfirmed);
 
     // Translate to GetSecs time:
     tSwapMapped = PsychMapPrecisionTimerTicksToSeconds(ust);
@@ -2372,31 +2367,31 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 }
 
 /*
-    PsychOSScheduleFlipWindowBuffers()
-
-    Schedules a double buffer swap operation for given window at a given
-    specific target time or target refresh count in a specified way.
-
-    This uses OS specific API's and algorithms to schedule the asynchronous
-    swap. This function is optional, target platforms are free to not implement
-    it but simply return a "not supported" status code.
-
-    Arguments:
-
-    windowRecord - The window to be swapped.
-    tWhen        - Requested target system time for swap. Swap shall happen at first
-                   VSync >= tWhen.
-    targetMSC     - If non-zero, specifies target msc count for swap. Overrides tWhen.
-    divisor, remainder - If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
-    specialFlags - Additional options. Unused so far.
-
-    Return value:
-
-    Value greater than or equal to zero on success: The target msc for which swap is scheduled.
-    Negative value: Error. Function failed. -1 == Function unsupported on current system configuration.
-    -2 ... -x == Error condition.
-
-*/
+ *    PsychOSScheduleFlipWindowBuffers()
+ *
+ *    Schedules a double buffer swap operation for given window at a given
+ *    specific target time or target refresh count in a specified way.
+ *
+ *    This uses OS specific API's and algorithms to schedule the asynchronous
+ *    swap. This function is optional, target platforms are free to not implement
+ *    it but simply return a "not supported" status code.
+ *
+ *    Arguments:
+ *
+ *    windowRecord - The window to be swapped.
+ *    tWhen        - Requested target system time for swap. Swap shall happen at first
+ *                VSync >= tWhen.
+ *    targetMSC     - If non-zero, specifies target msc count for swap. Overrides tWhen.
+ *    divisor, remainder - If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
+ *    specialFlags - Additional options. Unused so far.
+ *
+ *    Return value:
+ *
+ *    Value greater than or equal to zero on success: The target msc for which swap is scheduled.
+ *    Negative value: Error. Function failed. -1 == Function unsupported on current system configuration.
+ *    -2 ... -x == Error condition.
+ *
+ */
 psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord, double tWhen, psych_int64 targetMSC, psych_int64 divisor, psych_int64 remainder, unsigned int specialFlags)
 {
     // On Windows this function is unsupported:
@@ -2404,10 +2399,10 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 }
 
 /*
-    PsychOSFlipWindowBuffers()
-
-    Performs OS specific double buffer swap call.
-*/
+ *    PsychOSFlipWindowBuffers()
+ *
+ *    Performs OS specific double buffer swap call.
+ */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 {
     // Execute OS neutral bufferswap code first:
@@ -2420,47 +2415,47 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
 void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval)
 {
-  static unsigned int failcount = 0;
+    static unsigned int failcount = 0;
 
-  // Enable rendering context of window:
-  PsychSetGLContext(windowRecord);
+    // Enable rendering context of window:
+    PsychSetGLContext(windowRecord);
 
-  // Store new setting also in internal helper variable, e.g., to allow workarounds to work:
-  windowRecord->vSynced = (swapInterval > 0) ? TRUE : FALSE;
+    // Store new setting also in internal helper variable, e.g., to allow workarounds to work:
+    windowRecord->vSynced = (swapInterval > 0) ? TRUE : FALSE;
 
-  // Try to set requested swapInterval if swap-control extension is supported on
-  // this windows machine. Otherwise this will be a no-op...
-  if (wglSwapIntervalEXT) {
-    if(!wglSwapIntervalEXT(swapInterval)) {
-        failcount++;
-        if (failcount <= 10) printf("PTB-ERROR: Setting wglSwapInterval(%i) failed! Expect severe display timing and display tearing problems!!! See 'help SyncTrouble' for more info.\n", swapInterval);
-        if (failcount == 10) printf("PTB-ERROR: This error message won't repeat on subsequent failure...\n");
-    }
-
-    // Double check new setting:
-    if ((NULL == wglGetSwapIntervalEXT) || (wglGetSwapIntervalEXT() != swapInterval)) {
-        failcount++;
-        if (failcount <= 10) {
-            if (NULL == wglGetSwapIntervalEXT) {
-                printf("PTB-ERROR: wglGetSwapIntervalEXT() unsupported. This is a bug in your graphics driver or system setup!! See 'help SyncTrouble' for more info.\n");
-            }
-            else {
-                printf("PTB-ERROR: Mismatch between requested display swap interval %i and actual swap interval %i! Synchronization of Screen('Flip') to display refresh will likely malfunction!\n", swapInterval, wglGetSwapIntervalEXT());
-                printf("PTB-ERROR: This is either a bug in your graphics driver or system setup, or some misconfiguration in the display setting control panel of your system. See 'help SyncTrouble' for more info.\n");
-            }
+    // Try to set requested swapInterval if swap-control extension is supported on
+    // this windows machine. Otherwise this will be a no-op...
+    if (wglSwapIntervalEXT) {
+        if(!wglSwapIntervalEXT(swapInterval)) {
+            failcount++;
+            if (failcount <= 10) printf("PTB-ERROR: Setting wglSwapInterval(%i) failed! Expect severe display timing and display tearing problems!!! See 'help SyncTrouble' for more info.\n", swapInterval);
+            if (failcount == 10) printf("PTB-ERROR: This error message won't repeat on subsequent failure...\n");
         }
-        if (failcount == 10) printf("PTB-ERROR: These error messages won't repeat on subsequent failure...\n");
-    }
-  }
 
-  return;
+        // Double check new setting:
+        if ((NULL == wglGetSwapIntervalEXT) || (wglGetSwapIntervalEXT() != swapInterval)) {
+            failcount++;
+            if (failcount <= 10) {
+                if (NULL == wglGetSwapIntervalEXT) {
+                    printf("PTB-ERROR: wglGetSwapIntervalEXT() unsupported. This is a bug in your graphics driver or system setup!! See 'help SyncTrouble' for more info.\n");
+                }
+                else {
+                    printf("PTB-ERROR: Mismatch between requested display swap interval %i and actual swap interval %i! Synchronization of Screen('Flip') to display refresh will likely malfunction!\n", swapInterval, wglGetSwapIntervalEXT());
+                    printf("PTB-ERROR: This is either a bug in your graphics driver or system setup, or some misconfiguration in the display setting control panel of your system. See 'help SyncTrouble' for more info.\n");
+                }
+            }
+            if (failcount == 10) printf("PTB-ERROR: These error messages won't repeat on subsequent failure...\n");
+        }
+    }
+
+    return;
 }
 
 /*
-    PsychOSSetGLContext()
-
-    Set the window to which GL drawing commands are sent.
-*/
+ *    PsychOSSetGLContext()
+ *
+ *    Set the window to which GL drawing commands are sent.
+ */
 void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 {
     if (wglGetCurrentContext() != windowRecord->targetSpecific.contextObject) {
@@ -2478,10 +2473,10 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 }
 
 /*
-    PsychOSUnsetGLContext()
-
-    Clear the drawing context.
-*/
+ *    PsychOSUnsetGLContext()
+ *
+ *    Clear the drawing context.
+ */
 void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
 {
     if (wglGetCurrentContext() != NULL) {
@@ -2504,13 +2499,13 @@ void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool cop
     if (windowRecord->targetSpecific.glusercontextObject == NULL) PsychErrorExitMsg(PsychError_user, "GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");
 
     if (copyfromPTBContext) {
-          wglMakeCurrent(windowRecord->targetSpecific.deviceContext, NULL);
+        wglMakeCurrent(windowRecord->targetSpecific.deviceContext, NULL);
         wglCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
     }
 
     // Setup new context if it isn't already setup. -> Avoid redundant context switch.
-       if (wglGetCurrentContext() != windowRecord->targetSpecific.glusercontextObject) {
-         wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
+    if (wglGetCurrentContext() != windowRecord->targetSpecific.glusercontextObject) {
+        wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
     }
 }
 
@@ -2538,7 +2533,7 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
     // MS-Windows: Only NV_swap_group support. Try it.
 
     // NVidia swap group extension supported?
-    if((wglewIsSupported("WGL_NV_swap_group") || glewIsSupported("WGL_NV_swap_group")) && (NULL != wglQueryMaxSwapGroupsNV)) {
+    if ((wglewIsSupported("WGL_NV_swap_group") || glewIsSupported("WGL_NV_swap_group")) && (NULL != wglQueryMaxSwapGroupsNV)) {
         // Yes. Check if given GPU really supports it:
         if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group supported. Querying available groups...\n");
 
