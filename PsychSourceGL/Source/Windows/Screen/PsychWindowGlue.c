@@ -1432,6 +1432,18 @@ dwmdontcare:
         pf = 0;
         nNumFormats=0;
         wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
+
+        if (nNumFormats == 0 && bpc > 8) {
+            // Failed. Probably due to unsupported color depth. Let's fall back to standard 8 bpc:
+            for (i = 0; i < attribcount && attribs[i] != WGL_RED_BITS_ARB; i++);
+            attribs[++i] = 8; i++; // Red = 8
+            attribs[++i] = 8; i++; // Green = 8
+            attribs[++i] = 8; i++; // Blue = 8
+            attribs[++i] = 8; i++; // Alpha = 8
+            bpc = 8;
+            wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
+        }
+
         if (nNumFormats==0 && windowRecord->multiSample > 0) {
             // Failed. Probably due to too demanding multisample requirements: Lets lower them...
             for (i=0; i<attribcount && attribs[i]!=0x2042; i++);
