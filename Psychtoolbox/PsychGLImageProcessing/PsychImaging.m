@@ -158,6 +158,20 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
 %
 %
+% * 'UseSubpixelDrive' Ask to take advantage of the so-called "Subpixel Drive"
+%   mode of certain monochromatic medical imaging displays like, e.g., the
+%   "Eizo RadiForce GS-521". This monitor essentially has a RGB panel with
+%   horizontal RGB subpixels, but with the color filters removed, so each
+%   pixel is horizontally split up into 3 luminance subpixels and these can
+%   be individually addressed by packing 3 horizontally adjacent 8 bit stimulus
+%   luminance pixels into the "RGB" color channels of an output pixel. Use
+%   of this task will create a virtual framebuffer three times the width of
+%   the output framebuffer and then pack triplets of three horizontal luminance
+%   pixels into one output pixel, to triple the effective horizontal resolution.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UseSubpixelDrive');
+%
+%
 % * 'UseRetinaResolution' Ask to prefer a framebuffer with the full native
 %   resolution of attached HiDPI "Retina" displays on OSX, instead of a scaled
 %   down lower resolution framebuffer with typically half the horizontal
@@ -1752,7 +1766,12 @@ if strcmpi(cmd, 'OpenWindow')
         if bitand(imagingMode, kPsychNeedTwiceWidthWindow)
             dstFit(RectRight) = dstFit(RectRight) * 2;
         end
-        
+
+        % Apply triple-width flag, if any:
+        if bitand(imagingMode, kPsychNeedTripleWidthWindow)
+            dstFit(RectRight) = dstFit(RectRight) * 3;
+        end
+
         winCenter = [RectWidth(dstFit)/2, RectHeight(dstFit)/2];
         
         % Extract rotation angle to use for display rotation:
@@ -2569,6 +2588,12 @@ end
 % FBO backed framebuffer needed?
 if ~isempty(find(mystrcmp(reqs, 'UseVirtualFramebuffer')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+end
+
+% Use Eizo RadiForce et al. subpixel drive pixel packing?
+if ~isempty(find(mystrcmp(reqs, 'UseSubpixelDrive')))
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedTripleWidthWindow, kPsychNeedOutputConversion);
+    ptb_outputformatter_icmAware = 0;
 end
 
 % 16 bit integer precision framebuffer needed? This is only supported on
@@ -4650,6 +4675,29 @@ if ~isempty(floc)
 end
 % --- End of experimental output formatter for Dual-Pipeline HDR display ---
 
+% --- Output formatter for Eizo RadiForce style 8 bit luminance subpixel drive ---
+floc = find(mystrcmp(reqs, 'UseSubpixelDrive'));
+if ~isempty(floc)
+    [row col]= ind2sub(size(reqs), floc);
+
+    if outputcount > 0
+        % Need a bufferflip command:
+        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+    end
+
+    pgshader = LoadGLSLProgramFromFiles('SubpixelDrive_FormattingShader', 1);
+
+    % Init the shader: Assign mapping texture units etc.:
+    glUseProgram(pgshader);
+    glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
+    glUseProgram(0);
+
+    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Subpixel drive - Output Formatter', pgshader, '');
+    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+    outputcount = outputcount + 1;
+end
+% --- End of output formatter for Eizo RadiForce style 8 bit luminance subpixel drive ---
+
 % --- END OF ALL OUTPUT FORMATTERS ---
 
 % --- This must be after setup of all output formatter shaders! ---
@@ -4935,6 +4983,11 @@ function rect = InterBufferRect(win)
     % Apply twice-width flag, if any:
     if bitand(winfo.SpecialFlags, kPsychNeedTwiceWidthWindow)
         rect(RectRight) = rect(RectRight) * 2;
+    end
+
+    % Apply triple-width flag, if any:
+    if bitand(winfo.SpecialFlags, kPsychNeedTripleWidthWindow)
+        rect(RectRight) = rect(RectRight) * 3;
     end
 return;
 

@@ -36,7 +36,7 @@
 
 */
 
-//begin include once 
+//begin include once
 #ifndef PSYCH_IS_INCLUDED_WindowBank
 #define PSYCH_IS_INCLUDED_WindowBank
 
@@ -131,6 +131,7 @@
 // Value 32768 is defined in ScreenTypes.h as kPsychBusyWaitForVBLBeforeBufferSwapRequest and is also used as a 'specialflags' setting to define
 // this behaviour on a per-window basis.
 #define kPsychTwiceWidthWindow              65536   // This flag is also used as 'specialflag' for onscreen windows. Ask for windows with twice-width, e.g., for packed pixel modes.
+#define kPsychTripleWidthWindow             (1 << 25) // This flag is also used as 'specialflag' for onscreen windows. Ask for windows with triple-width, e.g., for packed pixel modes.
 
 #define kPsychIsFullscreenWindow            4       // 'specialflags' setting 4 means: This is a fullscreen window.
 #define kPsychNeedOpenMLWorkaround1         8       // 'specialflags' setting 8 means: This needs the special workarounds for slightly broken OpenML sync control ext.
@@ -153,10 +154,10 @@
 #define kPsychSafeForDRI3                   (1 << 24) // 'specialflags' setting 2^24: This window is considered safe for use with DRI3/Present, given X-Server and Mesa version in use.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19. --> Flags of 2^20 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,S-2^25. --> Flags of 2^20 - 2^24 as well as 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24. --> Flags of 2^25 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25. --> Flags of 2^26 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*   PtrPsychHookFunction;
@@ -224,7 +225,7 @@ typedef struct{
         void*               nsswapContext;          // Cocoa OpenGL async swap context.
         void*               nsuserContext;          // Cocoa OpenGL userspace rendering context.
 } PsychTargetSpecificWindowRecordType;
-#endif 
+#endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 // Definition of Win32 Window handles, device handles and OpenGL contexts
@@ -236,7 +237,7 @@ typedef struct{
   HGLRC                     glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
   HGLRC                     glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
 } PsychTargetSpecificWindowRecordType;
-#endif 
+#endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 
@@ -292,14 +293,14 @@ typedef struct{
 #endif
 
 // End of Linux targetSpecific struct.
-#endif 
+#endif
 
 #define kPsychUnaffiliatedWindow    -1  // valid value for screenNumber field of a window record meaning that that pixel format
                                         // and alignment of the window are not set to match those of any display surface.
 
 typedef struct _PsychWindowRecordType_ *PsychWindowRecordPntrType;
 
-//typedefs for the window bank.  We use the same structure for both windows and textures.   
+//typedefs for the window bank.  We use the same structure for both windows and textures.
 typedef struct _PsychWindowRecordType_{
 
     //need to be divided up according to use for textures, windows, or both.

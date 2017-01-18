@@ -73,9 +73,9 @@
 % kPsychNeed16BPCFloat          - Request 16 bit per color component, floating point framebuffer.
 % kPsychNeed32BPCFloat          - Request 32 bit per color component, floating point framebuffer.
 % kPsychNeedDualPass            - Indicate that some of the used image processing plugins will need
-%                                    at two render passes for processing.
+%                                 at two render passes for processing.
 % kPsychNeedFastBackingStore    - Enable minimal imaging pipeline. This flag is implied when using any
-%                                    of the other flags.
+%                                 of the other flags.
 % kPsychNeedFastOffscreenWindows - Only enable support for fast Offscreen windows, nothing else.
 % kPsychNeedHalfWidthWindow     - Tell imaging pipe to create internal buffers half the real window width. Internal flag, not useful for end-user code.
 % kPsychNeedHalfHeightWindow    - Tell imaging pipe to create internal buffers half the real window height. Internal flag, not useful for end-user code.
@@ -83,4 +83,5 @@
 % kPsychNeedMultiPass           - Indicate that some of the used plugins will need more than two passes.
 % kPsychNeedOutputConversion    - Indicate that display output is going to some special output device that
 %                                 needs special output formatting, e.g., Bits++ or Brightside HDR.
-
+% kPsychNeedTwiceWidthWindow    - Tell imaging pipe to create internal buffers twice the real window width. Internal flag, not useful for end-user code.
+% kPsychNeedTripleWidthWindow   - Tell imaging pipe to create internal buffers triple the real window width. Internal flag, not useful for end-user code.
