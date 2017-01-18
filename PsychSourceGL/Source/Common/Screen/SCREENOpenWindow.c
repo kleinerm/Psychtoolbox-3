@@ -588,6 +588,12 @@ PsychError SCREENOpenWindow(void)
         imagingmode = imagingmode & (~kPsychTwiceWidthWindow);
     }
 
+    // Similar handling for triple-width windows: Used for certain packed-pixels (3 stimulus pixels in one fb pixel) formats:
+    if (imagingmode & kPsychTripleWidthWindow) {
+        windowRecord->specialflags = windowRecord->specialflags | kPsychTripleWidthWindow;
+        imagingmode = imagingmode & (~kPsychTripleWidthWindow);
+    }
+
     // Similar handling for windows of half the real height, except that none of our built-in stereo modes requires these,
     // so this is only done on request from external code via the imagingmode flag kPsychHalfHeightWindow.
     // One use of this is when using interleaved line stereo mode (PsychImaging(...'InterleavedLineStereo')) where windows
