@@ -6220,7 +6220,8 @@ void PsychSetupClientRect(PsychWindowRecordType *windowRecord)
     // and for all Screen 2D drawing functions:
     PsychMakeRect(windowRecord->clientrect,
                   windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychTop],
-                  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect) * ((windowRecord->specialflags & kPsychTwiceWidthWindow) ? 2 : 1) / ((windowRecord->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
+                  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect) * ((windowRecord->specialflags & kPsychTwiceWidthWindow) ? 2 : 1) *
+                  ((windowRecord->specialflags & kPsychTripleWidthWindow) ? 3 : 1) / ((windowRecord->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
                   windowRecord->rect[kPsychTop] + PsychGetHeightFromRect(windowRecord->rect) / ((windowRecord->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
     return;
 }

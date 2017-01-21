@@ -101,7 +101,29 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-/* Mappings up to date for May 2016 (last update e-mail patch / commit 2016-05-18). Would need updates for anything after start of June 2016 */
+/* Mappings up to date for January 2017 (last update e-mail patch / commit 2017-01-06). Would need updates for anything after mid January 2017 */
+
+static psych_bool isDCE112(int screenId)
+{
+    psych_bool isDCE112 = false;
+    (void) screenId;
+
+    // POLARIS10/11/12 are DCE11.2:
+
+    // POLARIS10: 0x67C0 - 0x67DF
+    if ((fPCIDeviceId & 0xFFF0) == 0x67C0) isDCE112 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x67D0) isDCE112 = true;
+
+    // POLARIS11: 0x67E0 - 0x67FF
+    if ((fPCIDeviceId & 0xFFF0) == 0x67E0) isDCE112 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x67F0) isDCE112 = true;
+
+    // POLARIS12: 0x6980 - 0x699F
+    if ((fPCIDeviceId & 0xFFF0) == 0x6980) isDCE112 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6990) isDCE112 = true;
+
+    return(isDCE112);
+}
 
 /* Is a given ATI/AMD GPU a DCE11 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE11(int screenId)
@@ -110,24 +132,15 @@ static psych_bool isDCE11(int screenId)
 
     (void) screenId;
 
-    // POLARIS10/11 are DCE11.2, but for our purpose we can so far
-    // treat them as DCE11.0:
-
-    // POLARIS10: 0x67C0 - 0x67DF
-    if ((fPCIDeviceId & 0xFFF0) == 0x67C0) isDCE11 = true;
-    if ((fPCIDeviceId & 0xFFF0) == 0x67D0) isDCE11 = true;
-
-    // POLARIS11: 0x67E0 - 0x67FF
-    if ((fPCIDeviceId & 0xFFF0) == 0x67E0) isDCE11 = true;
-    if ((fPCIDeviceId & 0xFFF0) == 0x67F0) isDCE11 = true;
-
-    // CARRIZO and STONEY are DCE11 -- This is part of the "Volcanic Islands" GPU family.
+    // CARRIZO and STONEY are DCE11.0 -- This is part of the "Volcanic Islands" GPU family.
 
     // CARRIZO: 0x987x so far.
     if ((fPCIDeviceId & 0xFFF0) == 0x9870) isDCE11 = true;
 
     // STONEY: 0x98E4 so far.
     if ((fPCIDeviceId & 0xFFFF) == 0x98E4) isDCE11 = true;
+
+    if (isDCE112(screenId)) isDCE11 = true;
 
     return(isDCE11);
 }
@@ -154,6 +167,41 @@ static psych_bool isDCE10(int screenId)
     return(isDCE10);
 }
 
+static psych_bool isDCE81(int screenId)
+{
+    psych_bool isDCE81 = false;
+    (void) screenId;
+
+    // KAVERI in 0x13xx range:
+    if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE81 = true;
+
+    return(isDCE81);
+}
+
+static psych_bool isDCE82(int screenId)
+{
+    psych_bool isDCE82 = false;
+    (void) screenId;
+
+    // BONAIRE in 0x664x - 0x665x range:
+    if ((fPCIDeviceId & 0xFFF0) == 0x6640) isDCE82 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6650) isDCE82 = true;
+
+    return(isDCE82);
+}
+
+static psych_bool isDCE85(int screenId)
+{
+    psych_bool isDCE85 = false;
+    (void) screenId;
+
+    // HAWAII in 0x67Ax - 0x67Bx range:
+    if ((fPCIDeviceId & 0xFFF0) == 0x67A0) isDCE85 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x67B0) isDCE85 = true;
+
+    return(isDCE85);
+}
+
 /* Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine? */
 static psych_bool isDCE8(int screenId)
 {
@@ -163,22 +211,15 @@ static psych_bool isDCE8(int screenId)
 
     // Everything >= BONAIRE is DCE8 -- This is part of the "Sea Islands" GPU family.
 
-    // BONAIRE in 0x664x - 0x665x range:
-    if ((fPCIDeviceId & 0xFFF0) == 0x6640) isDCE8 = true;
-    if ((fPCIDeviceId & 0xFFF0) == 0x6650) isDCE8 = true;
-
     // KABINI in 0x983x range:
     if ((fPCIDeviceId & 0xFFF0) == 0x9830) isDCE8 = true;
 
-    // KAVERI in 0x13xx range:
-    if ((fPCIDeviceId & 0xFF00) == 0x1300) isDCE8 = true;
-
-    // HAWAII in 0x67Ax - 0x67Bx range:
-    if ((fPCIDeviceId & 0xFFF0) == 0x67A0) isDCE8 = true;
-    if ((fPCIDeviceId & 0xFFF0) == 0x67B0) isDCE8 = true;
-
     // MULLINS in 0x985x range:
     if ((fPCIDeviceId & 0xFFF0) == 0x9850) isDCE8 = true;
+
+    if (isDCE81(screenId)) isDCE8 = true;
+    if (isDCE82(screenId)) isDCE8 = true;
+    if (isDCE85(screenId)) isDCE8 = true;
 
     // CAUTION: DCE 10 and higher are *not* DCE8 as well!
     // These new parts have a different register layout, so
@@ -687,8 +728,14 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 // Also, DCE-4 and DCE-5 and DCE-6, but not DCE-4.1 or DCE-6.4 (which have only 2) or DCE-6.1 (4 heads), supports up to six display heads:
                 if (!isDCE41(screenId) && !isDCE61(screenId) && !isDCE64(screenId)) fNumDisplayHeads = 6;
 
+                // DCE 8.2/8.5 have 6 display heads:
+                if (isDCE82(screenId) || isDCE85(screenId)) fNumDisplayHeads = 6;
+
                 // DCE-6.1 "Trinity" chip family supports 4 display heads:
                 if (!isDCE41(screenId) && isDCE61(screenId)) fNumDisplayHeads = 4;
+
+                // DCE-8.1 "Kaveri" supports 4 display heads:
+                if (isDCE81(screenId)) fNumDisplayHeads = 4;
             }
 
             // Setup for DCE-10/11:
@@ -711,8 +758,11 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 // DCE-10 has 6 display controllers:
                 if (isDCE10(screenId)) fNumDisplayHeads = 6;
 
-                // DCE-11 has 3 display controllers:
+                // DCE-11.0 has 3 display controllers:
                 if (isDCE11(screenId)) fNumDisplayHeads = 3;
+
+                // DCE-11.2 has 6 display controllers:
+                if (isDCE112(screenId)) fNumDisplayHeads = 6;
             }
 
             if (PsychPrefStateGet_Verbosity() > 2) {
@@ -832,7 +882,7 @@ void InitPsychtoolboxKernelDriverInterface(void);
 //
 // Possible applications: Multi-display setups on Linux, possibly across machines, e.g., render-clusters
 // Weird experiments with special setups. Show stimulus on display 1, query mouse or keyboard from
-// different machine... 
+// different machine...
 
 static int x11_errorval = 0;
 static int x11_errorbase = 0;
@@ -1852,7 +1902,7 @@ psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSe
 /*
     PsychGetScreenDepth()
 
-    The caller must allocate and initialize the depth struct. 
+    The caller must allocate and initialize the depth struct.
 */
 void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
 {
@@ -2151,14 +2201,14 @@ void PsychGetGlobalScreenRect(int screenNumber, double *rect)
 
 void PsychGetScreenRect(int screenNumber, double *rect)
 {
-    long width, height; 
+    long width, height;
 
     PsychGetScreenSize(screenNumber, &width, &height);
     rect[kPsychLeft]=0;
     rect[kPsychTop]=0;
     rect[kPsychRight]=(int)width;
-    rect[kPsychBottom]=(int)height; 
-} 
+    rect[kPsychBottom]=(int)height;
+}
 
 /*
     This is a place holder for a function which uncovers the number of dacbits.  To be filled in at a later date.
@@ -2288,7 +2338,7 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
     If we can not change the display settings because of a lock (set by open window or close window) then return false.
 
     SCREENOpenWindow should capture the display before it sets the video mode.  If it doesn't, then PsychSetVideoSettings will
-    detect that and exit with an error.  SCREENClose should uncapture the display. 
+    detect that and exit with an error.  SCREENClose should uncapture the display.
 
     The duties of SCREENOpenWindow are:
     -Lock the screen which serves the purpose of preventing changes in video setting with open Windows.
@@ -2318,14 +2368,14 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
     //Check for a lock which means onscreen or offscreen windows tied to this screen are currently open.
     // MK Disabled: if(PsychCheckScreenSettingsLock(settings->screenNumber)) return(false);  //calling function should issue an error for attempt to change display settings while windows were open.
 
-    //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
+    //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.
     isCaptured=PsychIsScreenCaptured(settings->screenNumber);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
 
-    // Store the original display mode if this is the first time we have called this function.  The psychtoolbox will disregard changes in 
-    // the screen state made through the control panel after the Psychtoolbox was launched. That is, OpenWindow will by default continue to 
+    // Store the original display mode if this is the first time we have called this function.  The psychtoolbox will disregard changes in
+    // the screen state made through the control panel after the Psychtoolbox was launched. That is, OpenWindow will by default continue to
     // open windows with finder settings which were in place at the first call of OpenWindow.  That's not intuitive, but not much of a problem
-    // either. 
+    // either.
     if(!displayOriginalCGSettingsValid[settings->screenNumber]) {
         PsychGetScreenSettings(settings->screenNumber, &displayOriginalCGSettings[settings->screenNumber]);
         displayOriginalCGSettingsValid[settings->screenNumber] = TRUE;
@@ -2363,10 +2413,10 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 
     // Single display configuration, go ahead:
 
-    //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
+    //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.
     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
     if (!isValid || (int) cgMode < 0) {
-        // This is an internal error because the caller is expected to check first. 
+        // This is an internal error because the caller is expected to check first.
         PsychErrorExitMsg(PsychError_user, "Attempt to set invalid video settings or function unsupported with this graphics-driver.");
     }
 
@@ -2401,8 +2451,8 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 /*
     PsychRestoreVideoSettings()
 
-    Restores video settings to the state set by the finder.  Returns TRUE if the settings can be restored or false if they 
-    can not be restored because a lock is in effect, which would mean that there are still open windows.    
+    Restores video settings to the state set by the finder.  Returns TRUE if the settings can be restored or false if they
+    can not be restored because a lock is in effect, which would mean that there are still open windows.
 
 */
 psych_bool PsychRestoreScreenSettings(int screenNumber)
@@ -2419,10 +2469,10 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); //also checked within SCREENPixelSizes
 
     //Check to make sure that the original graphics settings were cached.  If not, it means that the settings were never changed, so we can just
-    //return true. 
+    //return true.
     if(!displayOriginalCGSettingsValid[screenNumber]) return(true);
 
-    //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
+    //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.
     isCaptured=PsychIsScreenCaptured(screenNumber);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
 
@@ -2432,10 +2482,10 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
     // Invalidate settings - we want a fresh game after restoring the resolution:
     displayOriginalCGSettingsValid[screenNumber] = FALSE;
 
-    //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
+    //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.
     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
     if (!isValid || (int) cgMode < 0){
-        // This is an internal error because the caller is expected to check first. 
+        // This is an internal error because the caller is expected to check first.
         PsychErrorExitMsg(PsychError_user, "Attempt to restore invalid video settings or function unsupported with this graphics-driver.");
     }
 
@@ -3763,7 +3813,7 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             // intended for a 8 bit output encoder, i.e., 2 least significant bits
             // zero to avoid dithering and similar stuff:
             r = i << 2;
-            m = (r << 20) | (r << 10) | (r << 0); 
+            m = (r << 20) | (r << 10) | (r << 0);
 
             // Mismatch? Not a perfect identity LUT:
             if (v != m) isIdentity = 0;
@@ -3876,7 +3926,7 @@ unsigned int PsychOSKDLoadIdentityLUT(int screenId, unsigned int headId)
             // bits for each 10 bit color channel linearly increasing one unit
             // per slot:
             r = i << 2;
-            m = (r << 20) | (r << 10) | (r << 0); 
+            m = (r << 20) | (r << 10) | (r << 0);
 
             // Write 32 bit value of this slot:
             WriteRegister(reg, m);

@@ -3,27 +3,25 @@
 
     PLATFORMS:
 
-      This is the Windows version.  
+        This is the Windows version.
 
     AUTHORS:
 
-      Mario Kleiner       mk      mario.kleiner.de@gmail.com
+        Mario Kleiner     mk      mario.kleiner.de@gmail.com
 
     HISTORY:
 
-      11/18/03    awi     Wrote it 
-      12/30/05    mk      Ported to Windows. Derived from Allen's OS-X version.
+        12/30/05          mk      Ported to Windows. Derived from Allen's OS-X version.
 
 */
 
 #include "Screen.h"
 
-const char *PsychTextDrawingModeNames[]={"TextFill", "TextStroke", "TextFillStroke", "TextInvisible", 
-                                "FillClip", "StrokeClip", "TextFillStrokeClip", "TextClip" };
+const char *PsychTextDrawingModeNames[]= {"TextFill", "TextStroke", "TextFillStroke", "TextInvisible",
+                                          "FillClip", "StrokeClip", "TextFillStrokeClip", "TextClip"};
 
 const PsychTextDrawingModeType PsychTextDrawingModes[]= {kPsychTextFill, kPsychTextStroke, kPsychTextFillStroke, kPsychTextInvisible,
                                                          kPsychTextFillClip, kPsychTextStrokeClip, kPsychTextFillStrokeClip, kPsychTextClip};
-
 
 void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 {
@@ -35,10 +33,10 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
     // We use a different textSize (18 vs. 12) on Windoofs to compensate for its broken text renderer.
     // We also compensate for more MS-Braindamage by selecting bold text by default.
     settings->textSize= PsychPrefStateGet_DefaultTextSize();
-    settings->textStyle= PsychPrefStateGet_DefaultTextStyle();	// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend	
+    settings->textStyle= PsychPrefStateGet_DefaultTextStyle();	// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
 
     strcpy(settings->textFontName, tryFontName);
-    settings->textFontNumber=0; // FIXME: Don't know yet how to assign a reasonable value. 
+    settings->textFontNumber=0; // Unused on Windows.
     PsychLoadColorStruct(&(settings->textColor), kPsychIndexColor,  0.0);  //index type which may be coerced into anything.
     PsychLoadColorStruct(&(settings->textBackgroundColor), kPsychRGBAColor, 0.0, 0.0, 0.0, 0.0); // Assign black with zero alpha -- transparent.
     PsychCoerceColorMode(&(settings->textColor));
@@ -48,17 +46,16 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
     settings->needsRebuild=TRUE;    // We need to build the display list on first invocation of DrawText.
 }
 
-
-/* 
+/*
     PsychGetTextDrawingModeNameFromTextDrawingModeConstant()
-*/
+ */
 void PsychGetTextDrawingModeNameFromTextDrawingModeConstant(char *modeNameStr, int modeNameStrSize, PsychTextDrawingModeType mode)
 {
     int i;
-    for(i=0; i<kPsychNumTextDrawingModes; i++){
-        if(mode==PsychTextDrawingModes[i]){
-            strncpy(modeNameStr, PsychTextDrawingModeNames[i], 255); 
-            modeNameStr[255]='\0';
+    for(i = 0; i < kPsychNumTextDrawingModes; i++){
+        if(mode == PsychTextDrawingModes[i]){
+            strncpy(modeNameStr, PsychTextDrawingModeNames[i], 255);
+            modeNameStr[255] ='\0';
             return;
         }
     }
@@ -67,20 +64,19 @@ void PsychGetTextDrawingModeNameFromTextDrawingModeConstant(char *modeNameStr, i
 
 /*
     PsychGetTextDrawingModeConstantFromTextDrawingModeName()
-    
     Convert a string specifying a drawing mode into a constant specifing a drawing mode.  If we fail to find
-    the string in the list of allowable strings then return true to indicate error.  Otherwise return FALSE to 
-    indicate no error. 
-*/
+    the string in the list of allowable strings then return true to indicate error.  Otherwise return FALSE to
+    indicate no error.
+ */
 psych_bool PsychGetTextDrawingModeConstantFromTextDrawingModeName(PsychTextDrawingModeType *mode, char *modeNameStr)
 {
     int i;
 
-    for(i=0; i<kPsychNumTextDrawingModes; i++){
+    for(i = 0; i < kPsychNumTextDrawingModes; i++){
         if(!strcmp(modeNameStr, PsychTextDrawingModeNames[i])) {
-            *mode=PsychTextDrawingModes[i];
+            *mode = PsychTextDrawingModes[i];
             return(FALSE);
-        } //if
-    } //for
+        }
+    }
     return(TRUE);
 }

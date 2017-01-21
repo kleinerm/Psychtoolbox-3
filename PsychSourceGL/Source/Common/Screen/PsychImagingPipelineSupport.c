@@ -770,6 +770,11 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             winwidth = winwidth * 2;
         }
 
+        if (windowRecord->specialflags & kPsychTripleWidthWindow) {
+            // Special case: Three times the real window width:
+            winwidth = winwidth * 3;
+        }
+
         if (windowRecord->specialflags & kPsychHalfHeightWindow) {
             // Special case for stereo: Only half the real window height:
             winheight = winheight / 2;
@@ -940,6 +945,11 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             winwidth = winwidth * 2;
         }
 
+        if (windowRecord->specialflags & kPsychTripleWidthWindow) {
+            // Special case: Three times the real window width:
+            winwidth = winwidth * 3;
+        }
+
         if (windowRecord->specialflags & kPsychHalfHeightWindow) {
             // Special case for stereo: Only half the real window height:
             winheight = winheight / 2;
@@ -1030,6 +1040,11 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
         if (windowRecord->specialflags & kPsychTwiceWidthWindow) {
             // Special case: Twice the real window width:
             winwidth = winwidth * 2;
+        }
+
+        if (windowRecord->specialflags & kPsychTripleWidthWindow) {
+            // Special case: Three times the real window width:
+            winwidth = winwidth * 3;
         }
 
         // These FBO's don't need z- or stencil buffers anymore:

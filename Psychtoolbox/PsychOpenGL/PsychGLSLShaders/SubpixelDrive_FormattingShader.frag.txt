@@ -1,0 +1,33 @@
+/* SubpixelDrive_FormattingShader -- Subpixel drive output formatter
+ *
+ * This shader packs 3 horizontally adjacent 8 bpc luminance pixels
+ * into one output pixel, packing the three 8 bpc luminance values
+ * into the three color channels of the output pixel. A monitor with
+ * subpixel drive will decode this info again to drive 3 luminance
+ * subpixels per output pixel, for three times the horizontal resolution.
+ *
+ * This shader is intended for use as a plugin for the 'FinalOutputFormattingBlit'
+ * chain of the Psychtoolbox-3 imaging pipeline and used for the PsychImaging
+ * task 'UseSubpixelDrive'.
+ *
+ * (c) 2017 by Mario Kleiner, part of PTB-3, licensed to you under MIT license.
+ * See file License.txt in the Psychtoolbox root folder for the license.
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect Image;
+
+void main()
+{
+    /* Get output framebuffer pixel position (x,y): x is column, y is row of image. */
+    vec2 outpos = gl_FragCoord.xy;
+
+    /* We sample horizontal groups of 3 adjacent input texels for one output pixel. */
+    outpos.x = floor(outpos.x) * 3.0;
+
+    /* Sample red channel (=luminance) at three horizontal offsets and pack into 1 pixel. */
+    gl_FragColor.r = texture2DRect(Image, vec2(outpos.x + 0.5, outpos.y + 0.5)).r;
+    gl_FragColor.g = texture2DRect(Image, vec2(outpos.x + 1.5, outpos.y + 0.5)).r;
+    gl_FragColor.b = texture2DRect(Image, vec2(outpos.x + 2.5, outpos.y + 0.5)).r;
+}

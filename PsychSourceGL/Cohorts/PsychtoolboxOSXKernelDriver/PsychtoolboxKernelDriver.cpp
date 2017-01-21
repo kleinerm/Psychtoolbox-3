@@ -92,31 +92,44 @@
 #define super IOService
 OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
-/* Mappings up to date for May 2016 (last update e-mail patch / commit 2016-05-18). Would need updates for anything after start of June 2016 */
+/* Mappings up to date for January 2017 (last update e-mail patch / commit 2017-01-06). Would need updates for anything after mid January 2017 */
+
+/* Is a given ATI/AMD GPU a DCE11 type ASIC, i.e., with the new display engine? */
+bool PsychtoolboxKernelDriver::isDCE112(void)
+{
+    bool isDCE112 = false;
+
+    // POLARIS10/11 are DCE11.2:
+
+    // POLARIS10: 0x67C0 - 0x67DF
+    if ((fPCIDeviceId & 0xFFF0) == 0x67C0) isDCE112 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x67D0) isDCE112 = true;
+
+    // POLARIS11: 0x67E0 - 0x67FF
+    if ((fPCIDeviceId & 0xFFF0) == 0x67E0) isDCE112 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x67F0) isDCE112 = true;
+
+    // POLARIS12: 0x6980 - 0x699F
+    if ((fPCIDeviceId & 0xFFF0) == 0x6980) isDCE112 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6990) isDCE112 = true;
+
+    return(isDCE112);
+}
 
 /* Is a given ATI/AMD GPU a DCE11 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE11(void)
 {
     bool isDCE11 = false;
 
-    // POLARIS10/11 are DCE11.2, but for our purpose we can so far
-    // treat them as DCE11.0:
-
-    // POLARIS10: 0x67C0 - 0x67DF
-    if ((fPCIDeviceId & 0xFFF0) == 0x67C0) isDCE11 = true;
-    if ((fPCIDeviceId & 0xFFF0) == 0x67D0) isDCE11 = true;
-
-    // POLARIS11: 0x67E0 - 0x67FF
-    if ((fPCIDeviceId & 0xFFF0) == 0x67E0) isDCE11 = true;
-    if ((fPCIDeviceId & 0xFFF0) == 0x67F0) isDCE11 = true;
-
-    // CARRIZO and STONEY are DCE11 -- This is part of the "Volcanic Islands" GPU family.
+    // CARRIZO and STONEY are DCE11.0 -- This is part of the "Volcanic Islands" GPU family.
 
     // CARRIZO: 0x987x so far.
     if ((fPCIDeviceId & 0xFFF0) == 0x9870) isDCE11 = true;
 
     // STONEY: 0x98E4 so far.
     if ((fPCIDeviceId & 0xFFFF) == 0x98E4) isDCE11 = true;
+
+    if (isDCE112()) isDCE11 = true;
 
     return(isDCE11);
 }
@@ -448,6 +461,9 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
             // DCE-11 has 3 display controllers:
             if (isDCE11()) fNumDisplayHeads = 3;
+
+            // DCE-11.2 has 6 display controllers:
+            if (isDCE112()) fNumDisplayHeads = 6;
         }
     }
 
@@ -737,8 +753,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
     // We should be ready...
     IOLog("\n");
-    IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.11 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
-    IOLog("%s: This driver is copyright 2008 - 2016 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
+    IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.12 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
+    IOLog("%s: This driver is copyright 2008 - 2017 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
     IOLog("%s: The driver is licensed to you under the MIT free and open-source software license.\n", getName());
     IOLog("%s: See the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
     IOLog("%s: The driver contains bits of code derived from the free software nouveau and radeon kms drivers on Linux.\n", getName());
