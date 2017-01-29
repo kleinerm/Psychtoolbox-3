@@ -87,7 +87,7 @@ try
         a=cos(angle)*f;
         b=sin(angle)*f;
         m=exp(-((x/90).^2)-((y/90).^2)).*sin(a*x+b*y+phase);
-        tex(i)=Screen('MakeTexture', w, gray+inc*m); %#ok<AGROW>
+        tex(i)=Screen('MakeTexture', w, round(gray+inc*m)); %#ok<AGROW>
     end
 
     % Run the movie animation for a fixed period.

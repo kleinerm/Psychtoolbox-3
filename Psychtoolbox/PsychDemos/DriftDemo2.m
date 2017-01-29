@@ -100,46 +100,46 @@ texsize=gratingsize / 2;
 % Screen('Preference', 'SkipSyncTests', 1);
 
 try
-	% This script calls Psychtoolbox commands available only in OpenGL-based 
-	% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
-	% only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
-	% an error message if someone tries to execute this script on a computer without
-	% an OpenGL Psychtoolbox
-	AssertOpenGL;
-	
-	% Get the list of screens and choose the one with the highest screen number.
-	% Screen 0 is, by definition, the display with the menu bar. Often when 
-	% two monitors are connected the one without the menu bar is used as 
-	% the stimulus display.  Chosing the display with the highest dislay number is 
-	% a best guess about where you want the stimulus displayed.  
-	screens=Screen('Screens');
-	screenNumber=max(screens);
-	
+    % This script calls Psychtoolbox commands available only in OpenGL-based 
+    % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
+    % only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
+    % an error message if someone tries to execute this script on a computer without
+    % an OpenGL Psychtoolbox
+    AssertOpenGL;
+
+    % Get the list of screens and choose the one with the highest screen number.
+    % Screen 0 is, by definition, the display with the menu bar. Often when 
+    % two monitors are connected the one without the menu bar is used as 
+    % the stimulus display.  Chosing the display with the highest dislay number is 
+    % a best guess about where you want the stimulus displayed.  
+    screens=Screen('Screens');
+    screenNumber=max(screens);
+
     % Find the color values which correspond to white and black: Usually
-	% black is always 0 and white 255, but this rule is not true if one of
-	% the high precision framebuffer modes is enabled via the
-	% PsychImaging() commmand, so we query the true values via the
-	% functions WhiteIndex and BlackIndex:
-	white=WhiteIndex(screenNumber);
-	black=BlackIndex(screenNumber);
-    
+    % black is always 0 and white 255, but this rule is not true if one of
+    % the high precision framebuffer modes is enabled via the
+    % PsychImaging() commmand, so we query the true values via the
+    % functions WhiteIndex and BlackIndex:
+    white=WhiteIndex(screenNumber);
+    black=BlackIndex(screenNumber);
+
     % Round gray to integral number, to avoid roundoff artifacts with some
     % graphics cards:
-	gray=round((white+black)/2);
+    gray=round((white+black)/2);
 
     % This makes sure that on floating point framebuffers we still get a
     % well defined gray. It isn't strictly neccessary in this demo:
     if gray == white
-		gray=white / 2;
+        gray=white / 2;
     end
-    
+
     % Contrast 'inc'rement range for given white and gray values:
-	inc=white-gray;
+    inc=white-gray;
 
     % Open a double buffered fullscreen window and set default background
-	% color to gray:
-	[w screenRect]=Screen('OpenWindow',screenNumber, gray);
-    
+    % color to gray:
+    [w screenRect]=Screen('OpenWindow',screenNumber, gray);
+
     if drawmask
         % Enable alpha blending for proper combination of the gaussian aperture
         % with the drifting sine grating:
@@ -190,11 +190,11 @@ try
     % gaussian (exp()) aperture mask:
     mask=ones(2*texsize+1, 2*texsize+1, 2) * gray;
     [x,y]=meshgrid(-1*texsize:1*texsize,-1*texsize:1*texsize);
-    mask(:, :, 2)=white * (1 - exp(-((x/90).^2)-((y/90).^2)));
+    mask(:, :, 2)= round(white * (1 - exp(-((x/90).^2)-((y/90).^2))));
     masktex=Screen('MakeTexture', w, mask);
 
     % Query maximum useable priorityLevel on this system:
-	priorityLevel=MaxPriority(w); %#ok<NASGU>
+    priorityLevel=MaxPriority(w); %#ok<NASGU>
 
     % We don't use Priority() in order to not accidentally overload older
     % machines that can't handle a redraw every 40 ms. If your machine is
@@ -246,8 +246,7 @@ try
     i=0;
     
     % Animationloop:
-    while(vbl < vblendtime)
-
+    while vbl < vblendtime
         % Shift the grating by "shiftperframe" pixels per frame:
         % the mod'ulo operation makes sure that our "aperture" will snap
         % back to the beginning of the grating, once the border is reached.
@@ -278,7 +277,7 @@ try
         if drawmask==1
             % Draw gaussian mask over grating:
             Screen('DrawTexture', w, masktex, [0 0 visiblesize visiblesize], dstRect, angle);
-        end;
+        end
 
         % Flip 'waitframes' monitor refresh intervals after last redraw.
         % Providing this 'when' timestamp allows for optimal timing
@@ -291,16 +290,16 @@ try
         % Abort demo if any key is pressed:
         if KbCheck
             break;
-        end;
-    end;
+        end
+    end
 
     % Restore normal priority scheduling in case something else was set
     % before:
     Priority(0);
-	
-	%The same commands wich close onscreen and offscreen windows also close
-	%textures.
-	sca;
+
+    %The same commands wich close onscreen and offscreen windows also close
+    %textures.
+    sca;
 
 catch
     %this "catch" section executes in case of an error in the "try" section
