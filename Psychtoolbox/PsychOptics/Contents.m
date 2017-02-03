@@ -6,8 +6,9 @@
 %   AiryPattern         - Compute Airy diffraction PSF.
 %   ComputeDiffLimit    - Compute diffraction limit.
 %   DavilaGeislerLSFMinutes - Line spread function used by Davila & Geisler 1991
-%   DiffractionMTF      - Incoherent diffraction limited MTF from wl and pupil size
+%   DiffractionMTF      - Incoherent diffraction limited MTF from wl and pupil size.
 %   GoodmanDiffrac      - Diffraction limited MTF, based on cutoff freq, Goodman's formula.
+%   GenerateCircularlySymmetricPhaseComponent - FFT magic.  See comments in routine.
 %   LsfToPsf            - Convert line spread function to point spread function.
 %   MakeRadiusMat       - Create a matrix whose entries are equal to their radius.
 %   PsfToLsf            - Convert point spread function to line spread function.

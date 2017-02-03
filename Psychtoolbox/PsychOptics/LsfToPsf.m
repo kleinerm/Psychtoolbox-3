@@ -80,7 +80,7 @@ psfOTF = ifftshift(psfOTFCentered);
 % don't do it the ifft2 does not do what we expect and if we do, we get a
 % psf that then reproduces our lsf when we go the other way.  If we were
 % real signal processing mavens, we might understand.
-circularlySymmetricPhase = generateCircularlySymmetricPhaseComponent(size(psfOTF,1), size(psfOTF,2));
+circularlySymmetricPhase = GenerateCircularlySymmetricPhaseComponent(size(psfOTF,1), size(psfOTF,2));
 psfOTFWithPhase = psfOTF .* exp(1i*circularlySymmetricPhase);
 
 % Take ifft2 to get the PSF.
@@ -98,28 +98,3 @@ psf = psf/sum(psf(:));
 
 end
 
-function circularlySymmetricPhase = generateCircularlySymmetricPhaseComponent(rows,cols)
-%CIRCULARLYSYMMETRICPHASE  Create phase appropriate for circularly symmetric function.
-%   circularlySymmetricPhase = generateCircularlySymmetricPhaseComponent(rows,cols) 
-%
-%   Create the frequency domain phase values that we need to insert before
-%   the ifft2 to recover a real circularly symmetric function in the space
-%   domain.  We don't understand why we need to do it, it's black magic
-%   that works.
-%
-%   See also LSFTOPSF
-
-%   Passed row and colum dimension must be even.
-if (mod(rows,2) ~= 0)
-    error('Number of rows must be even');
-end
-if (mod(cols,2) ~= 0)
-    error('Number of cols must be even');
-end
-
-% Nicolas figured out that this works.
-x = 0:cols-1;
-y = 0:rows-1;
-[X,Y] = meshgrid(x,y);
-circularlySymmetricPhase = ((-1).^(X+Y+1)+1)/2*pi;
-end
