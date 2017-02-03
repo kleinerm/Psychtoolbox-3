@@ -109,11 +109,6 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % 
 % See also: FlushEvents, KbName, KbDemo, KbWait, GetChar, CharAvail.
 
-% TO DO:
-%
-%  - Mention that on USB systems there the USB bus is sampled at 100 Hz.
-%  - We could augment this to to accept an optional keyboard device number. 
-
 % 3/6/97  dhb  Wrote it.
 % 8/2/97  dgp  Explain difference between key and character.
 % 1/28/98 dgp  Explain CapsLock.
@@ -147,6 +142,7 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % 12/29/14 mk Add safeguard against using PsychHID on non-X11 Linux backends.
 % 08/13/16 mk Add safeguard for PTB running under "Windows subsystem for Linux".
 % 11/01/16 mk Fix safeguard for PTB running under "Windows subsystem for Linux".
+% 1-Feb-17 mk Add workaround to also check master keyboard on Linux for deviceIndex -1.
 
 % ptb_kbcheck_disabledKeys is a vector of keyboard scancodes. It allows
 % to define keys which should never be reported as 'down', i.e. disabled
@@ -174,10 +170,10 @@ persistent allowPsychHID;
 if isempty(macosx)
     % First time invocation: Query and cache type of OS:
     macosx = IsOSX;
-    
+
     % Set initial oldSecs to minus infinity: No such query before...
     oldSecs = -inf;
-    
+
     % Init ptb_kbcheck_enabledKeys to empty, if it hasn't been set
     % externally already:
     if ~exist('ptb_kbcheck_enabledKeys', 'var')
@@ -215,21 +211,30 @@ if allowPsychHID && (~IsWin || (IsWin && ~isempty(deviceNumber)))
         if isempty(keyboardsdetected)
             % No. Do it now:
             % Query indices of all attached keyboards, in case we need'em:
-            kbs=GetKeyboardIndices;
-            kps=GetKeypadIndices;
+            kbs = GetKeyboardIndices;
+            if IsLinux
+                % Workaround: On some Linux machines some keyboards don't
+                % show up as dedicated slave keyboards. Try to query master
+                % keyboards as well, to work around this:
+                masterKeyboards = PsychHID('Devices', 2);
+                for i =1:length(masterKeyboards)
+                    kbs(end+1) = masterKeyboards(i).index; %#ok<AGROW>
+                end
+            end
+            kps = GetKeypadIndices;
             keyboardsdetected = 1;
         end
-        
+
         % Select keyboard(s):
         if deviceNumber==-1
             % Query all attached keyboards:
             keyt = kbs;
         elseif deviceNumber==-2
             % Query all attached keypads:
-            keyt = kps; 
+            keyt = kps;
         elseif deviceNumber==-3
             % Query all attached keyboards and keypads:
-            keyt = [kbs kps]; 
+            keyt = [kbs kps];
         else
             % Query a specific keyboard device number:
             keyt = deviceNumber;
@@ -245,7 +250,7 @@ if allowPsychHID && (~IsWin || (IsWin && ~isempty(deviceNumber)))
             end
         else
             [keyIsDown, secs, keyCode]= PsychHID('KbCheck', [], ptb_kbcheck_enabledKeys);
-        end   
+        end
     else
         % Query primary keyboard:
         [keyIsDown, secs, keyCode]= PsychHID('KbCheck', [], ptb_kbcheck_enabledKeys);
