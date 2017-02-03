@@ -5,6 +5,11 @@ function lsf = WestLSFMinutes(distance)
 %   Compute Westheimer's LSF function as a function
 %   of passed distance.  Distance passed in minutes of arc.
 %
+%   Formula from Westheimer G. 1986. The eye as an optical instrument.  In
+%   Handbook of perception and human performance, KR Boff, L Kaufman,
+%   JP Thomas (eds). New York: Wiley.  Equation 8.
+
+%
 %   This is only approximately consistent with Westheimer's PSF estimate.
 %
 %   This comes back normalized to a maximum of 1.
