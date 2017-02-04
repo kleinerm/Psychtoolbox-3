@@ -33,9 +33,9 @@ distanceMinutes2D = maxPositionMinutes*MakeRadiusMat(nSpatialSamples,nSpatialSam
 if (any(distanceMinutes2D(centerPosition,:) ~= abs(distanceMinutes1D)))
     error('Did not build correct 2D radius matrix.');
 end
-WestPSF = WestPSFMinutes(abs(distanceMinutes2D));
-WestPSF = WestPSF/sum(WestPSF(:));
-if (WestPSF(centerPosition,centerPosition) ~= max(WestPSF(:)))
+WestPSFFormula = WestPSFMinutes(abs(distanceMinutes2D));
+WestPSFFormula = WestPSFFormula/sum(WestPSFFormula(:));
+if (WestPSFFormula(centerPosition,centerPosition) ~= max(WestPSFFormula(:)))
     error('We don''t understand spatial coordinates as well as we should.');
 end
 
@@ -47,8 +47,9 @@ DavilaGeislerPSFDerived = LsfToPsf(DavilaGeislerLSF);
 %
 % This is done by convolution and if things are working will produce
 % what we started with to good approximation.
-WestRecoveredLSF = PsfToLsf(WestPSFDerived);
-DavilaGeislerRecoveredLSF = PsfToLsf(DavilaGeislerPSFDerived);
+WestLSFFromPSFFormula = PsfToLsf(WestPSFFormula);
+WestLSFFromPSFDerived = PsfToLsf(WestPSFDerived);
+DavilaGeislerLSFFromPSFDerived = PsfToLsf(DavilaGeislerPSFDerived);
 
 %% Check that max of returned psf is where we think it should be.
 %
@@ -63,20 +64,21 @@ end
 
 %% Make a figure that compares the original and derived LSFs
 figure;
-set(gcf,'Position',[100 100 1000 700]);
+set(gcf,'Position',[100 100 1200 800]);
 set(gca, 'FontSize', 14);
 subplot(2,2,1); hold on
 plot(distanceMinutes1D,WestLSF,'r','LineWidth',4);
-plot(distanceMinutes1D,WestRecoveredLSF,'g-', 'LineWidth', 2);
+plot(distanceMinutes1D,WestLSFFromPSFDerived,'g-', 'LineWidth', 2);
+plot(distanceMinutes1D,WestLSFFromPSFFormula,'k-', 'LineWidth', 2);
 xlim([-4 4]);
 xlabel('Position (minutes');
 ylabel('Normalized LSF');
 title('Westheimer')
-legend({'Original','Recovered from PSF'},'Location','NorthEast');
+legend({'Original','Recovered from Derived PSF','Recovered from Formula PSF'},'Location','NorthEast');
 
 subplot(2,2,2); hold on
 plot(distanceMinutes1D,DavilaGeislerLSF,'r','LineWidth',4);
-plot(distanceMinutes1D,DavilaGeislerRecoveredLSF,'g-', 'LineWidth', 2);
+plot(distanceMinutes1D,DavilaGeislerLSFFromPSFDerived,'g-', 'LineWidth', 2);
 xlim([-4 4]);
 xlabel('Position (minutes');
 ylabel('Normalized LSF');
@@ -84,19 +86,19 @@ title('Davila-Geisler');
 legend({'Original','Recovered from PSF'},'Location','NorthEast');
 
 subplot(2,2,3); hold on
-plot(distanceMinutes1D,WestPSFDerived(centerPosition,:),'r','LineWidth',4);
-plot(distanceMinutes1D,WestPSF(centerPosition,:),'g-','LineWidth',2);
+plot(distanceMinutes1D,WestPSFDerived(centerPosition,:)/max(WestPSFDerived(centerPosition,:)),'r','LineWidth',4);
+plot(distanceMinutes1D,WestPSFFormula(centerPosition,:)/max(WestPSFFormula(centerPosition,:)),'k-','LineWidth',2);
 xlim([-4 4]);
 title('Westheimer')
 xlabel('Position (minutes');
-ylabel('PSF Slice');
-legend({'Derived from LSF','Westheimer Formula'},'Location','NorthEast');
+ylabel('Normalized PSF Slice');
+legend({'Derived from LSF','Formula PSF'},'Location','NorthEast');
 
 subplot(2,2,4); hold on
-plot(distanceMinutes1D,DavilaGeislerPSFDerived(centerPosition,:),'r','LineWidth',4);
+plot(distanceMinutes1D,DavilaGeislerPSFDerived(centerPosition,:)/max(DavilaGeislerPSFDerived(centerPosition,:)),'r','LineWidth',4);
 xlim([-4 4]);
 xlabel('Position (minutes');
-ylabel('PSF Slice');
+ylabel('Normalized PSF Slice');
 title('Davila-Geisler')
 legend({'Derived from LSF'},'Location','NorthEast');
 

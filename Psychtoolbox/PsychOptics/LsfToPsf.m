@@ -24,13 +24,12 @@ function psf = LsfToPsf(lsf,varargin)
 %   that have the general feature that the zero position is at location
 %   n/2 + 1, where n is the number of samples. This means that there is one
 %   more negative position than positive position in the spatial support.
-%   Doing it this way is important because of the way the FFT works. If you
-%   don't you are likely to get complex values in the MTF despite the fact
-%   that the LSF is real and symmetric.
+%   Doing it this way is important because of the way the FFT works.
+%   Probably you could write code to do it with odd support, but that would
+%   require more fussing than I am willing to do.
 %
-%   Although this routine will still return something if the passed lsf
-%   does not drop to zero at the outer edges of its support, it will not be
-%   a reasonable answer in this case.
+%   You want to make sure that the spatial suport is large enough to
+%   capture the full lsf.
 %
 %   The returned psf is normalized to have unit volume.
 %
@@ -50,9 +49,17 @@ end
     
 % Convert LSF to 1-D MTF
 %
-% Taking the absolute value
+% Taking the absolute value.  The fftshift calls wrapping the fft lets us
+% work in a coordinate system where 0 in both space and frequency is at
+% position n1D/2+1.  If n1D were odd, we'd have to figure out more
+% precisely the difference between fftshift and ifftshift, this may not be
+% used completely correctly here.  My current view is that ifftshift takes
+% one from 0 centered to 0 at first entry, and fftshift goes the other way.
 lsfNormalized = lsf/sum(lsf(:));
-lsfMTFCenteredRaw = fftshift(fft(lsf));
+lsfMTFCenteredRaw = fftshift(fft(ifftshift(lsf)));
+
+% Result should be real.  Check that it's OK to tolerance and then get rid
+% of any pesky imaginary components.
 lsfOTFCenteredImag = imag(lsfMTFCenteredRaw);
 if (any(abs(lsfOTFCenteredImag > 1e-8)))
     error('Imaginary part of 1D MTF is bigger than makes sense from numerical error alone');
@@ -67,26 +74,12 @@ lsfOTFCentered = abs(lsfMTFCenteredRaw);
 radiusMatrix = MakeRadiusMat(n1D,n1D,centerPosition);
 psfOTFCentered = interp1(0:n1D/2-1,lsfOTFCentered(centerPosition:end),radiusMatrix,'linear',0);
 
-% Do inverse fft shift to put this into the format that iff2 wants
-psfOTF = ifftshift(psfOTFCentered);
+% Do inverse fft, now in 2D.  Again wrap with ifftshift and fftshift so that we
+% are working in 0 centered coordinates.
+psfRaw = fftshift(ifft2(ifftshift(psfOTFCentered)));
 
-% Construct phase
-%
-% The generated OTF is constructed from the magnitude, so it zero phase everywhere.
-% Generate the phase component for a circularly symmetric function with an
-% even number of rows,cols.
-%
-% Honestly, we are a bit confused as to why this is necessary, but if we
-% don't do it the ifft2 does not do what we expect and if we do, we get a
-% psf that then reproduces our lsf when we go the other way.  If we were
-% real signal processing mavens, we might understand.
-circularlySymmetricPhase = GenerateCircularlySymmetricPhaseComponent(size(psfOTF,1), size(psfOTF,2));
-psfOTFWithPhase = psfOTF .* exp(1i*circularlySymmetricPhase);
-
-% Take ifft2 to get the PSF.
-%
-% This should be real 
-psfRaw = ifft2(psfOTFWithPhase);
+% Result should be real.  Check that it's OK to tolerance and then get rid
+% of any pesky imaginary components.
 psfImag = imag(psfRaw);
 if (any(abs(psfImag) > 1e-8))
     error('Imaginary component of derived psf too big for comfort.');
