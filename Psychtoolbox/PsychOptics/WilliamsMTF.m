@@ -12,8 +12,9 @@ function mtf = WilliamsMTF(s)
 %   Formulae given in Equation 1 ff.
 %
 %   Spatial frequency passed in cycles/deg.
-% 
-%   See also WILLIAMSRESTMTF
+%
+%   See also OTFTOPSF, WILLIAMSRESTMTF, DIFFRACTIONMTF,
+%   WILLIAMSTABULATEDPSF, PSYCHOPTICSTEST.
 
 % 7/11/94		dhb		Wrote it.
 % 7/14/94		dhb		Pulled calculation of rest into separate function.

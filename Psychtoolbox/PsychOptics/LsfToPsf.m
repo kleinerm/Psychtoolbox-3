@@ -33,7 +33,7 @@ function psf = LsfToPsf(lsf,varargin)
 %
 %   The returned psf is normalized to have unit volume.
 %
-%   See also PSFTOLSF
+%   See also PSFTOLSF, PSYCHOPTICSTEST
 
 % Check for even support and symmetry
 n1D = length(lsf);

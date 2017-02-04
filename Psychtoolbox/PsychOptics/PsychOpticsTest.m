@@ -32,7 +32,6 @@ maxPositionMinutes = 8;
 maxSfCyclesPerDegree = 60*(nSpatialSamples/2)/(2*maxPositionMinutes);
 integerSamples1D = -nSpatialSamples/2:nSpatialSamples/2-1;
 positionMinutes1D = maxPositionMinutes*integerSamples1D/(centerPosition-1);
-%sfCyclesPerDegree1D = 60*integerSamples1D/(2*maxPositionMinutes);
 
 % These produce two similar lsf's for the human eye, from the literature.
 WestLSF = WestLSFMinutes(abs(positionMinutes1D));
@@ -140,7 +139,11 @@ WilliamsOTF = WilliamsMTF(radiusSfCyclesDeg2D);
 
 % Compare these wonderful things
 %
-% First the otfs
+% First the otfs. These are very close, although not exactly the same.  Not
+% sure if this is just a numerical thing, or maybe the result of not quite
+% converting between position and spatial frequency exactly right, or some similar
+% subtle problem in the routines that computer the Airy pattern and the diffraction
+% limited otf.  Clearly this is working well enough for practical purposes.
 fig2 = figure;
 set(gcf,'Position',[100 100 1200 800]);
 set(gca, 'FontSize', 14);

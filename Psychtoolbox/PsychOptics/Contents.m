@@ -19,5 +19,6 @@
 %   WestPSFMinutes      - Compute Westheimer's point spread function, in minutes.
 %   WilliamsMTF         - Compute MTF given in Williams' et al.
 %   WilliamsRestMTF     - Subfunction called by WilliamsMTF.
+%   WilliamsTabulatedPSF - Tabulated PSF data from Williams et al.
 
 % Copyright (c) 1997-2017 by David Brainard & Denis Pelli

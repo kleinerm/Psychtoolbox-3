@@ -25,7 +25,14 @@ function [xSfGridCyclesDeg,ySfGridCyclesDeg,otf] = PsfToOtf(xGridMinutes,yGridMi
 %    and because we want a routine that deals with the conversion of
 %    spatial support to spatial frequency support.
 %
-%    See also OTFTOPSF.
+%    PSYCHOPTICSTEST shows that this works very well when we go back and
+%    forth for diffraction limited OTF/PSF.  But not exactly exactly
+%    perfectly.  A signal processing maven might be able to track down
+%    whether this is just a numerical thing or whether some is some small
+%    error, for example in how position is converted to sf or back again in
+%    the OTFTOPSF.
+%
+%    See also OTFTOPSF, PSYCHOPTICSTEST.
 
 %% Reality checks on passed input
 [m,n] = size(xGridMinutes);
