@@ -10,8 +10,10 @@
 %   GoodmanDiffrac      - Diffraction limited MTF, based on cutoff freq, Goodman's formula.
 %   LsfToPsf            - Convert line spread function to point spread function.
 %   MakeRadiusMat       - Create a matrix whose entries are equal to their radius.
+%   OtfToPsf            - Convert optical transfer function to point spread function.
 %   PsfToLsf            - Convert point spread function to line spread function.
-%   PsychOpticsTest      - Test script for some of the routines in this folder.
+%   PsfToOtf            - Convert point spread function to optical transfer function.
+%   PsychOpticsTest     - Test script for some of the routines in this folder.
 %   WestLSFMinutes      - Compute Westheimer's line spread function.
 %   WestPSFDegrees      - Compute Westheimer's point spread function, in degrees.
 %   WestPSFMinutes      - Compute Westheimer's point spread function, in minutes.

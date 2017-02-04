@@ -61,7 +61,7 @@ lsfMTFCenteredRaw = fftshift(fft(ifftshift(lsf)));
 % Result should be real.  Check that it's OK to tolerance and then get rid
 % of any pesky imaginary components.
 lsfOTFCenteredImag = imag(lsfMTFCenteredRaw);
-if (any(abs(lsfOTFCenteredImag > 1e-8)))
+if (any(abs(lsfOTFCenteredImag > 1e-10)))
     error('Imaginary part of 1D MTF is bigger than makes sense from numerical error alone');
 end
 lsfOTFCentered = abs(lsfMTFCenteredRaw);
@@ -81,7 +81,7 @@ psfRaw = fftshift(ifft2(ifftshift(psfOTFCentered)));
 % Result should be real.  Check that it's OK to tolerance and then get rid
 % of any pesky imaginary components.
 psfImag = imag(psfRaw);
-if (any(abs(psfImag) > 1e-8))
+if (any(abs(psfImag) > 1e-10))
     error('Imaginary component of derived psf too big for comfort.');
 end
 psf = abs(psfRaw);
