@@ -49,7 +49,7 @@ static  int defaultKeyboardIndex = 0;
 // in/out parameter:
 int PsychHIDOSGetKbQueueDevice(int HIDdeviceIndex, pRecDevice *deviceRecord)
 {
-    psych_bool foundUserSpecifiedDevice;
+    psych_bool foundUserSpecifiedDevice = FALSE;
     int i;
 
     // A negative device number causes the default device to be used:
