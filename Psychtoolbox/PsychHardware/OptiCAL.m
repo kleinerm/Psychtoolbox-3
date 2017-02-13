@@ -141,7 +141,7 @@ function handle = OptiCALOpen(port)
 
     % Open serial port
     OptiCALCfg.port = port;
-    handle = IOPort('OpenSerialPort', OptiCALCfg.port);
+    handle = IOPort('OpenSerialPort', OptiCALCfg.port, 'RTS=1');
     WaitSecs('YieldSecs', 0.1); % Why needed? Does not reliably work w/o.
 
     % Calibrate
