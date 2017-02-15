@@ -174,6 +174,8 @@ if nargin < 2 || isempty(tstring)
     return;
 end
 
+wordbounds = [];
+
 % Store data class of input string for later use in re-cast ops:
 stringclass = class(tstring);
 
@@ -472,7 +474,7 @@ while ~isempty(tstring)
             end
 
             % Per word bounding boxes too much implementation effort atm.:
-            if isargout(4)
+            if nargout >= 4
                 error('Return of per-word bounding boxes ''wordbounds'' not supported for flipHorizontal or flipVertical text drawing.');
             end
 
@@ -527,7 +529,7 @@ while ~isempty(tstring)
 
             % Non-zero padpergapneeded for block justification? Or per-word bounding boxes
             % requested? Then we need to render text line word by word:
-            if isargout(4) || padpergapneeded > 0
+            if nargout >= 4 || padpergapneeded > 0
                 % Render text line word by word, adding padpergapneeded pixels of blank space
                 % between consecutive words:
                 nx = xp;
@@ -535,7 +537,7 @@ while ~isempty(tstring)
                 [wordup, remstring] = strtok(curstring);
                 cxp = xp;
                 while ~isempty(wordup)
-                    if isargout(4)
+                    if nargout >= 4
                         % Caller wants per-word bounding boxes returned:
                         [~, wordbound] = Screen('TextBounds', win, wordup, cxp, yp, yPosIsBaseline, righttoleft);
                         wordbounds(end+1, :) = wordbound;
@@ -605,7 +607,7 @@ textbounds = SetRect(minx, miny - baselineHeight, maxx, maxy - baselineHeight);
 nx = xp;
 ny = yp;
 
-if isargout(4) && ~exist('wordbounds', 'var')
+if nargout >= 4 && isempty(wordbounds)
     wordbounds = textbounds;
 end
 
