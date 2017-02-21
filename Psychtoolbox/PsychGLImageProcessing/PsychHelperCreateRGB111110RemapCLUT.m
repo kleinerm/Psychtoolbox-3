@@ -43,7 +43,7 @@ function remapCLUTId = PsychHelperCreateRGB111110RemapCLUT
 global GL;
 
 % Try to get LUT from cached .mat file -- faster:
-cachedFile = [PsychtoolboxConfigDir 'rgb111110remaplut.mat'];
+cachedFile = [PsychtoolboxConfigDir 'rgb111110remaplutv2.mat'];
 
 if exist(cachedFile, 'file')
     % Get cached LUT from file:
