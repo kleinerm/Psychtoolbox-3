@@ -4513,8 +4513,10 @@ if ~isempty(floc)
             % Assign maximum bit depth default for given GPU, if no specific depth requested:
             if isempty(encodingBPC)
                 if winfo.GPUMinorType >= 80
-                    % DCE-8.0 or later display engine of "Sea Islands Family" or later: Does 12 bpc.
-                    encodingBPC = 12;
+                    % DCE-8.0 or later display engine of "Sea Islands Family" or later: Does 12 bpc,
+                    % but due to hw changes apparently needs an encodingBPC of 16. See PTB forum
+                    % message 21600 and predecessors in that thread for reference.
+                    encodingBPC = 16;
                 else
                     % Older engine. Only does 10 bpc, so using this mode is pointless and only good
                     % for debugging.
