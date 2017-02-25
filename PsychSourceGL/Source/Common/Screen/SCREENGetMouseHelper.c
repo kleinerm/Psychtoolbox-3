@@ -798,7 +798,7 @@ PsychError SCREENGetMouseHelper(void)
             if (indevs->use == XIMasterPointer) {
                 // Query pointer location and state:
                 PsychLockDisplay();
-                XIQueryPointer(dpy, indevs->deviceid, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), &rootwin, &childwin, &mxd, &myd, &dxd, &dyd,
+                XIQueryPointer(dpy, indevs->deviceid, mywin, &rootwin, &childwin, &dxd, &dyd, &mxd, &myd,
                                &buttons_return, &modifiers_return, &group_return);
                 PsychUnlockDisplay();
             }
@@ -833,7 +833,7 @@ PsychError SCREENGetMouseHelper(void)
         else {
             // Old school core protocol query of virtual core pointer:
             PsychLockDisplay();
-            XQueryPointer(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), &rootwin, &childwin, &mx, &my, &dx, &dy, &mask_return);
+            XQueryPointer(dpy, mywin, &rootwin, &childwin, &dx, &dy, &mx, &my, &mask_return);
             PsychUnlockDisplay();
 
             // Copy out mouse x and y position:
