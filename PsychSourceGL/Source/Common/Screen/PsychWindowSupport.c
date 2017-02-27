@@ -2455,7 +2455,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
     // Get a handle to our info structs: These pointers must not be NULL!!!
     PsychWindowRecordType*    windowRecord = (PsychWindowRecordType*) windowRecordToCast;
     PsychFlipInfoStruct*    flipRequest     = windowRecord->flipInfo;
-    psych_bool useOpenML = (windowRecord->specialflags & kPsychOpenMLDefective) ? FALSE : TRUE;
+    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !(windowRecord->specialflags & kPsychOpenMLDefective));
 
     // Assign a name to ourselves, for debugging:
     PsychSetThreadName("ScreenFlipper");
@@ -6690,19 +6690,19 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // to the framebuffer happens after swap and we can't lock-protect everything, so we intentionally
     // do a dummy-write immediately after each swap, under lock protection, so we know this revalidation
     // roundtrip will happen under proper lock protection. Without this, we'd get crashes on the
-    // FOSS drivers. This hack is probably not needed on other non-X11 display backends. It is definitely
-    // not needed with the NVidia proprietary drivers, as they do their buffer revalidation without
-    // involvement of the X11 protocol. The situation with AMD Catalyst is unknown.
+    // FOSS drivers. This hack is not needed with the NVidia proprietary drivers, as they do their
+    // buffer revalidation without involvement of the X11 protocol. AMD Catalyst likely and AMD amdgpu-pro
+    // definitely do need this workaround as well.
     //
     // So the rules are: If this onscreen window is using a X11 display connection for its operation
     // and the graphics driver is not in a white-list of known multithread-safe drivers (ie., it is
     // not the NVidia binary blob), we assume locking is required after each scheduled swap:
     if (windowRecord->specialflags & kPsychIsX11Window) {
-        // X11 display backend in use. Lock-protect unless it is the white-listed NVidia blob or AMD Catalyst:
-        if (!strstr((char*) glGetString(GL_VENDOR), "NVIDIA") && !strstr((char*) glGetString(GL_VENDOR), "ATI Technologies")) {
+        // X11 display backend in use. Lock-protect unless it is the white-listed NVidia blob:
+        if (!strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
             // Driver requires locked framebuffer dummy-write + flush:
             windowRecord->specialflags |= kPsychNeedPostSwapLockedFlush;
-            if (verbose) printf("PTB-DEBUG: Linux X11 backend with FOSS drivers - Enabling locked pixeltoken-write + flush workaround for XLib thread-safety.\n");
+            if (verbose) printf("PTB-DEBUG: Linux X11 backend with non-NVidia blob drivers - Enabling locked pixeltoken-write + flush workaround for XLib thread-safety.\n");
         }
     }
 

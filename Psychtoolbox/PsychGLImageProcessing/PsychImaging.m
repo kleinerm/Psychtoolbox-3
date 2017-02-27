@@ -2897,8 +2897,8 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
 
     % Validate current config to make sure it makes sense for this stunt:
-    if ~IsLinux
-        error('PsychImaging: Native 16 bpc framebuffer requested, but not running on Linux. This is unsupported.');
+    if ~IsLinux || IsWayland
+        error('PsychImaging: Native 16 bpc framebuffer requested, but not running on Linux X11. This is unsupported.');
     end
 
     % Get number of attached video outputs (aka scanout engines) and properties
@@ -2916,6 +2916,15 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
     if (2 * refOutput.width ~= swidth) || (2 * refOutput.height ~= sheight)
         fprintf('PsychImaging: Screen width and height is not twice the width and height of the first video output in native 16 bpc framebuffer mode. Adapting...\n');
         oldres = Screen('Resolution', screenid, 2 * refOutput.width, 2 * refOutput.height, [], [], 2);
+        while 1
+            [swidth, sheight] = Screen('WindowSize', screenid, 1);
+            if (2 * refOutput.width == swidth) && (2 * refOutput.height == sheight)
+                % Change applied. Carry on!
+                break;
+            end
+            fprintf('PsychImaging: Screen resize to %i x %i pixels for 16 bpc mode still in progress. Waiting...\n', 2 * refOutput.width, 2 * refOutput.height);
+            WaitSecs(1);
+        end
     else
         oldres = [];
     end
@@ -4513,8 +4522,10 @@ if ~isempty(floc)
             % Assign maximum bit depth default for given GPU, if no specific depth requested:
             if isempty(encodingBPC)
                 if winfo.GPUMinorType >= 80
-                    % DCE-8.0 or later display engine of "Sea Islands Family" or later: Does 12 bpc.
-                    encodingBPC = 12;
+                    % DCE-8.0 or later display engine of "Sea Islands Family" or later: Does 12 bpc,
+                    % but due to hw changes apparently needs an encodingBPC of 16. See PTB forum
+                    % message 21600 and predecessors in that thread for reference.
+                    encodingBPC = 16;
                 else
                     % Older engine. Only does 10 bpc, so using this mode is pointless and only good
                     % for debugging.

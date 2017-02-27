@@ -157,6 +157,10 @@ nvstusb_usb_open_device(
   struct libusb_device_handle *handle = 
     libusb_open_device_with_vid_pid(nvstusb_usb_context, 0x0955, 0x0007);
 
+  /* Some new emitters have pid 0x7003 before firmware is loaded, so check for that as well. */
+  if (0 == handle)
+    handle = libusb_open_device_with_vid_pid(nvstusb_usb_context, 0x0955, 0x7003);
+
   if (0 == handle) {
     fprintf(stderr, "nvstusb: No NVIDIA 3d stereo controller found...\n");
     return 0;
@@ -176,6 +180,11 @@ nvstusb_usb_open_device(
     libusb_close(dev->handle);
     usleep(250000);
     handle = dev->handle = libusb_open_device_with_vid_pid(nvstusb_usb_context, 0x0955, 0x0007);
+    if (0 == handle) {
+      fprintf(stderr, "nvstusb: Failed to reopen NVIDIA 3d stereo controller after firmware loading.\n");
+      return 0;
+    }
+
     libusb_reset_device(dev->handle);
     usleep(250000);
   }
