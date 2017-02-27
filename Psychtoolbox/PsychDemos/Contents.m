@@ -34,6 +34,7 @@
 %    DotDemo                 - Animate dots with Screen('DrawDots).
 %    DKLDemo                 - Demonstrate DKL color space.
 %    DrawFormattedTextDemo   - Demonstrate formatted text drawing via DrawFormattedText()
+%    DrawFormattedText2Demo  - Demonstrate formatted text drawing with more options via DrawFormattedText2()
 %    DrawHighQualityUnicodeTextDemo - Demonstrate drawing of high quality, anti-aliased and Unicode text.
 %    DrawManuallyAntiAliasedTextDemo - Manually anti-alias text for special purpose applications.
 %    DrawMirroredTextDemo    - Shows how to draw horizontally mirrored text.
