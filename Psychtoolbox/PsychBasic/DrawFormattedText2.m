@@ -30,12 +30,15 @@ function [nx, ny, textbounds, cache] = DrawFormattedText2(varargin)
 % need to be closed. At the exit of the function, the state of the font
 % renderer (font, text size, etc) is reset to the state upon function entry
 % or the state stored in the cache if drawing from cache.
-% - <i>:          toggles italicization
-% - <b>:          toggles bolding
-% - <u>:          toggles underlining
-% - <color=HEX>   switches to a new color
-% - <font=name>   switches to a new font
-% - <size=number> switches to a new font size
+% - <i>:                toggles italicization
+% - <b>:                toggles bolding
+% - <u>:                toggles underlining
+% - <color=colorFmt>    switches to a new color
+% - <font=name>         switches to a new font
+% - <size=number>       switches to a new font size
+% The <i>, <b> and <u> tags toggle whether text is italicized, bolded or
+% underlined and remain active (possibly until the end of the input string)
+% until the same <i>, <b> or <u> tag is encountered again.
 % The <color>, <font> and <size> tags can be provided empty (i.e., without
 % argument), in which case they cause to revert back to the color, font or
 % size active before the previous switch. Multiple of these in a row go
@@ -43,10 +46,27 @@ function [nx, ny, textbounds, cache] = DrawFormattedText2(varargin)
 % To escape a tag, prepend it with a slash, e.g., /<color>. If you want a
 % slash right in front of a tag, escape it by making it a double /:
 % //<color>. No other slashes should be escaped.
-% <color>'s HEX argument is a 1, 2, 6 or 8 hexadecimal digit string. If 1
-% or 2 digits are provided, this is interpreted as a grayscale value. 6
-% hexadecimal digits are interpreted as R, G and B values (2 digits each).
-% 8 digits further includes an alpha value.
+% <color>'s argument can have one of two formats, it can either be a
+% hexadecimal string (HEX), or a comma-separated floating point array
+% (FPN). If a HEX input is provided, it should encode colors using a 1, 2,
+% 6 or 8 hexadecimal digit string. If 1 or 2 digits are provided, this is
+% interpreted as a grayscale value. 6 hexadecimal digits are interpreted as
+% R, G and B values (2 digits each). 8 digits further includes an alpha
+% value. Using the HEX values, color values range from 0 to 255. Example:
+% <color=ff0000> changes the text color to red (ff corresponds to 255). The
+% FPN format consists of 1, 3 or 4 comma separated floating point color
+% values (luminance, RGB, or RGBA) that can take on any value, but will be
+% processed according to the current color settings for the window as
+% indicated by Screen('ColorRange'). Typically, the values provided will
+% range from 0.0--1.0 per component. Floating point values should include
+% the decimal point to ensure that single element FPN values are parsed
+% correctly. Examples: <color=1.,0.,0.> and <color=.5>. If a floating point
+% value is specified but Screen('ColorRange') returns 255, indicating 8bit
+% color values are used for the window, the floating point color values
+% provided are automatically scaled and rounded to the 0-255 range. If the
+% HEX format is used but Screen('ColorRange') returns 1.0, indicating
+% floating point color values are used for the window, the uint8 color
+% values are automatically converted to the 0.0-1.0 range.
 % A size/font command before a newline can change the height of the line on
 % which it occurs. So if you want to space two words 'test' and 'text'
 % vertically by white space equivalent to an 80pts line, use:
@@ -80,7 +100,7 @@ function [nx, ny, textbounds, cache] = DrawFormattedText2(varargin)
 %
 % 'baseColor' is the color in which the text will be drawn (until changed
 % by a <color> format call. This is also the color that will remain active
-% after invocation of this function, if 'resetStyle' (see below) is true.
+% after invocation of this function.
 %
 % 'wrapat', if provided, will automatically break text strings longer than
 % 'wrapat' characters into newline separated strings of roughly 'wrapat'
@@ -711,19 +731,15 @@ function [tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,tstring,s
 % This function parses tags out of the text and turns them into formatting
 % textstyles, colors, font and text sizes to use when drawing.
 % allowable codes:
-% - <i> To toggle italicization
-% - <b> To toggle bolding
-% - <u> To toggle underlining
-% - <color=HEX>   To switch to a new color
-% - <font=name>   To switch to a new font
-% - <size=number> To switch to a new font size
-% The <color>, <font> and <size> tags can be provided empty (i.e., without
-% argument), in which case they cause to revert back to the color, font or
-% size active before the previous switch. Multiple of these in a row go
-% back further in history (until start color, font, size is reached).
-% To escape a tag, prepend it with a slash, e.g., /<color>. If you want a
-% slash right in front of a tag, escape it by making it a double /. All
-% other slashes should not be escaped.
+% - <i>                 To toggle italicization
+% - <b>                 To toggle bolding
+% - <u>                 To toggle underlining
+% - <color=HEX or FPN>  To switch to a new color
+% - <font=name>         To switch to a new font
+% - <size=number>       To switch to a new font size
+
+% get colorrange of window, to interpret colors
+cr = Screen('ColorRange',win);
 
 % get current active text options
 previous.style  = Screen('TextStyle', win);
@@ -743,13 +759,24 @@ end
 
 % convert color to hex
 if isnumeric(base.color)
-    % convert to hex
-    base.color = sprintf('%0*X',[repmat(2,size(base.color));base.color]);
-    % TODO: what to do if floating point buffer and colors range from 0--1?
-    % What to do about high precision (10bit) value specs?
+    if cr==1.0
+        % convert to comma separated floating point
+        base.color = sprintf('%f,',base.color);
+        base.color(end) = [];   % remove trailing comma
+    else
+        % convert to hex
+        base.color = sprintf('%0*X',[repmat(2,size(base.color));base.color]);
+    end
 else
-    % if user provided hex input, store in format we can use in PTB later
-    previous.color = hex2dec(reshape(previous.color,2,[]).').';
+    % if user provided color input, store in format we can use in PTB later
+    if any(previous.color=='.')||any(previous.color==',')
+        % user provided floating point input
+        previous.color = sscanf(previous.color,'%f,').';
+    else
+        % user provided hex input
+        previous.color = hex2dec(reshape(previous.color,2,[]).').';
+        base.color     = upper(base.color); % ensure hex color is uppercase so below logic works correctly
+    end
 end
 
 % prepare outputs
@@ -824,8 +851,14 @@ if ~isempty(tagis)
                 case 'color'
                     color = tagt{p}{2};
                     % check color is valid
-                    assert(any(length(color)==[1 2 6 8]),'DrawFormattedText2: color tag argument must be a hex value of length 1, 2, 6, or 8')
-                    assert(all(isstrprop(color,'xdigit')),'DrawFormattedText2: color tag argument must be specified in hex values')
+                    % detect FPN: if comma or decimal point
+                    qComma = color==',';
+                    if any(color=='.') || any(qComma)
+                        assert(all(isstrprop(color,'digit')|color=='.'|qComma),'DrawFormattedText2: color tag argument must be specified as comma-separated floating point values, or hexadecimal values')
+                    else
+                        assert(any(length(color)==[1 2 6 8]),'DrawFormattedText2: if color tag argument is a hexidecimal value, it should have length 1, 2, 6, or 8')
+                        assert(all(isstrprop(color,'xdigit')),'DrawFormattedText2: color tag argument must be specified as hexadecimal values, or comma-separated floating point values')
+                    end
                     % find new color or add to table
                     iColor = find(strcmpi(tables.color,color),1);
                     if isempty(iColor)
@@ -907,13 +940,29 @@ codes.size (toStrip) = [];
 
 % process colors, hex->dec
 for p=1:length(tables.color)
-    % above we made sure all colors are uppercase and valid hex
-    % then, convert letter to their numerical value
-    % -48 for numbers (ascii<=64)
-    % -55 for letters (ascii>64)
-    tables.color{p} = tables.color{p}-48-(tables.color{p}>64)*7;
-    % then, sum in pairs, while multiplying first of each pair by its base, 16
-    tables.color{p} = sum([tables.color{p}(1:2:end)*16;tables.color{p}(2:2:end)]);
+    qComma = tables.color{p}==',';
+    if any(tables.color{p}=='.') || any(qComma)
+        % at this point, all we know is that the string contains digits,
+        % decimal points and commas (checked above).
+        tables.color{p} = sscanf(tables.color{p},'%f,');
+        assert(any(length(tables.color{p})==[1 3 4]),'DrawFormattedText2: if color tag argument is a comma-separated floating point value, it should have length 1, 3, or 4')
+        if cr==255
+            % scale
+            tables.color{p} = round(tables.color{p}.*255);
+        end
+    else
+        % above we made sure all colors are uppercase and valid hex
+        % then, convert letter to their numerical value
+        % -48 for numbers (ascii<=64)
+        % -55 for letters (ascii>64)
+        tables.color{p} = tables.color{p}-48-(tables.color{p}>64)*7;
+        % then, sum in pairs, while multiplying first of each pair by its base, 16
+        tables.color{p} = sum([tables.color{p}(1:2:end)*16;tables.color{p}(2:2:end)]);
+        if cr==1.0
+            % scale
+            tables.color{p} = tables.color{p}./255;
+        end
+    end
 end
 
 % consolidate codes into one, indicating unique combinations. Also produce
@@ -923,6 +972,10 @@ end
 c = [codes.style; codes.color; codes.font; codes.size];
 % where do changes occur?
 switches = logical(diff([[previous.style; 1; 1; previous.size] c],[],2));
+% if user-provided baseColor, make sure it is applied!
+if ~isnumeric(startColor)
+    switches(2,1) = true;
+end
 % get unique formats and where each of these formats is to be applied
 % the below is equivalent to:
 % [format,~,fmtCombs] = unique(c.','rows');

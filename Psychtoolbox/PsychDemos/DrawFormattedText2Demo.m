@@ -41,8 +41,8 @@ try
     Screen('FrameRect', w, 0, rect);
     DrawFormattedText2('top\ncenter','win',w,'sx','center','sy',scrY-150,'xalign','center','yalign','bottom','xlayout','center');
     DrawFormattedText2('top\nleft<color=ff0000>1','win',w,'sx',scrX-150,'sy',scrY-150,'xalign','right','yalign','bottom','xlayout','right');
-    DrawFormattedText2('top\nleft<color=00ff00>2','win',w,'sx',scrX-150,'sy',scrY-150,'xalign', 'left','yalign','bottom');
-    DrawFormattedText2('center\ninside','win',w,'sx','center','sy','center','xalign','center','yalign','center','xlayout','center','winRect',rect);
+    DrawFormattedText2('top\nleft<color=0.,1.,0.>2','win',w,'sx',scrX-150,'sy',scrY-150,'xalign', 'left','yalign','bottom');
+    DrawFormattedText2('center\n<b>inside','win',w,'sx','center','sy','center','xalign','center','yalign','center','xlayout','center','winRect',rect);
     DrawFormattedText2('bottom\n<i>left' ,'win',w,'sx',scrX-150,'sy',scrY+150,'xalign','right','yalign','top','xlayout','right');
     DrawFormattedText2('bottom\n<u>right','win',w,'sx',scrX+150,'sy',scrY+150,'xalign', 'left','yalign','top');
 
@@ -81,10 +81,10 @@ try
     
     % draw some text, then draw it again in exact same location but rotated
     % 180 degrees. should have exact same bounding box
-    [~,~,bbox1,c]=DrawFormattedText2('<size=40>c<i>r<size>a<i>p&\n<size=120>ajX\n<size=60>t<font=comic sans>estddd<color=ff0000>ddda<i>d','win',wpnt,'sx','center','sy',1500,'xalign','left','baseColor',0);
+    [~,~,bbox1,c]=DrawFormattedText2('<size=40>c<i>r<size>a<i>p&\n<size=120>ajX\n<size=60>t<font=comic sans>estddd<color=ff0000>ddda<i>d','win',w,'sx','center','sy',1500,'xalign','left','baseColor',0);
     [~,~,bbox2]  =DrawFormattedText2(c,'transform',{'rotate',180});
-    Screen('FrameRect',wpnt,[255 0 0 128],bbox1,3);
-    Screen('FrameRect',wpnt,[0 255 0 128],bbox2,3);
+    Screen('FrameRect',w,[255 0 0 128],bbox1,3);
+    Screen('FrameRect',w,[0 255 0 128],bbox2,3);
     fprintf('Both bounding boxes exactly the same? %d\n',isequal(bbox1,bbox2));
     
     Screen('Flip',w);
@@ -99,14 +99,14 @@ try
     t = fread(fd,inf,'*char').';
     fclose(fd);
     % flop it all on the screen
-    DrawFormattedText2(t,'win',wpnt,'sx','center','xalign','center','sy',150,'baseColor',0);
+    DrawFormattedText2(t,'win',w,'sx','center','xalign','center','sy',150,'baseColor',0);
     
     Screen('Flip',w);
     KbStrokeWait;
     
     % now scroll it over the screen. first pregenerate whole text at middle
     % of screen, and get cache only
-    [~,~,bbox,cache]=DrawFormattedText2(t,'win',wpnt,'sx','center','xalign','center','sy','center','baseColor',0,'cacheOnly',true);
+    [~,~,bbox,cache]=DrawFormattedText2(t,'win',w,'sx','center','xalign','center','sy','center','baseColor',0,'cacheOnly',true);
     % scroll over screen in 5 seconds
     frate = Screen('FrameRate',screenNumber);
     textHeight = RectHeight(bbox);
