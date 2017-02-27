@@ -229,6 +229,8 @@ if isempty(ptb_drawformattedtext2_padthresh)
 end
 padthresh = ptb_drawformattedtext2_padthresh;
 
+assert(Screen('Preference','TextRenderer') == 1, 'DrawFormattedText2 only works with the FTGL based text drawing plugin, but this plugin is not selected activated with Screen(''Preference'',''TextRenderer'',1), or did not load correctly. See help DrawTextPlugin for more information.');
+
 
 %% process key-value input
 [opt,qCalledWithCache] = parseInputs(varargin,nargout);

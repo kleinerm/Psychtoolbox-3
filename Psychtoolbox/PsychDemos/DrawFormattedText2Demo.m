@@ -11,7 +11,7 @@
 % 09/15/16    dcn    Wrote it.
 
 try
-    AssertOpenGL;   % check PTB is functioning
+    PsychDefaultSetup(1);   % check PTB is functioning and do default setup
     
     % Choosing the display with the highest display number is
     % a best guess about where you want the stimulus displayed.
@@ -20,8 +20,7 @@ try
 
     % Open window with default settings:
     PsychImaging('PrepareConfiguration');
-    % make screen partially transparent on OSX and windows vista or
-    % higher, so we can debug.
+    % make screen partially transparent so we can debug.
 %    PsychDebugWindowConfiguration;
     [w,wrect]=PsychImaging('OpenWindow', screenNumber, 128);
     
@@ -29,10 +28,10 @@ try
     % each operating system: It is not really needed, as the high quality
     % renderer is the default on all operating systems, so this is more of
     % a "better safe than sorry" setting. DrawFormattedText2 _only_ works
-    % with this renderer. So it fails to load (see the warnings on the
-    % command line, the output of this demo will look horrible)
+    % with this renderer. So if it fails to load (see the warnings on the
+    % command line), the output of this demo will look horrible. See
+    % help DrawTextPlugin for more information.
     Screen('Preference', 'TextRenderer', 1);
-    Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     Screen('Preference', 'TextAntiAliasing', 2);
 
     
