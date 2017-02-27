@@ -3,7 +3,7 @@ function [nx, ny, textbounds, cache] = DrawFormattedText2(varargin)
 % or:
 % [nx, ny, textbounds, cache] = DrawFormattedText2(cache, key-value pairs)
 % 
-% When called with a string, the following key-valu pairs are understood:
+% When called with a string, the following key-value pairs are understood:
 % win [, sx][, sy][, xalign][, yalign][, xlayout][, color][, wrapat][, transform][, vSpacing][, righttoleft][, winRect][, resetStyle][, cacheOnly]
 % Those enclosed in square braces are optional.
 % 
