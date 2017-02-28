@@ -212,30 +212,30 @@ typedef struct PsychFlipInfoStruct {
 #if PSYCH_SYSTEM == PSYCH_OSX
 // Definition of OS-X core graphics and Core OpenGL handles:
 typedef struct{
-        CGLContextObj       contextObject;
-        CGLPixelFormatObj   pixelFormatObject;
-        CGLContextObj       glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
-        CGLContextObj       glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-        void*               deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
-        // NSWindow* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
-        void*               windowHandle;           // Handle for Cocoa window when using windowed mode. (NULL in non-windowed mode).
+    CGLContextObj       contextObject;
+    CGLPixelFormatObj   pixelFormatObject;
+    CGLContextObj       glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
+    CGLContextObj       glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+    void*               deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
+    // NSWindow* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
+    void*               windowHandle;           // Handle for Cocoa window when using windowed mode. (NULL in non-windowed mode).
 
-        // NSOpenGLContext* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
-        void*               nsmasterContext;        // Cocoa OpenGL master context.
-        void*               nsswapContext;          // Cocoa OpenGL async swap context.
-        void*               nsuserContext;          // Cocoa OpenGL userspace rendering context.
+    // NSOpenGLContext* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
+    void*               nsmasterContext;        // Cocoa OpenGL master context.
+    void*               nsswapContext;          // Cocoa OpenGL async swap context.
+    void*               nsuserContext;          // Cocoa OpenGL userspace rendering context.
 } PsychTargetSpecificWindowRecordType;
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 // Definition of Win32 Window handles, device handles and OpenGL contexts
 typedef struct{
-  HGLRC                     contextObject;          // OpenGL rendering context.
-  HDC                       deviceContext;          // Device context of the window.
-  HWND                      windowHandle;           // The window handle.
-  PIXELFORMATDESCRIPTOR     pixelFormatObject;      // The context's pixel format object.
-  HGLRC                     glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
-  HGLRC                     glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+    HGLRC                     contextObject;          // OpenGL rendering context.
+    HDC                       deviceContext;          // Device context of the window.
+    HWND                      windowHandle;           // The window handle.
+    PIXELFORMATDESCRIPTOR     pixelFormatObject;      // The context's pixel format object.
+    HGLRC                     glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
+    HGLRC                     glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
 } PsychTargetSpecificWindowRecordType;
 #endif
 
@@ -264,16 +264,16 @@ typedef struct {
 #else
 // For the Linux Waffle generic backend:
 typedef struct {
-  struct waffle_context*    contextObject;                  // GLX OpenGL rendering context.
-  int                       pixelFormatObject;              // Just here for compatibility. Its a dummy entry without meaning.
-  struct waffle_display*    deviceContext;                  // Pointer to the X11 display connection.
-  Display*                  privDpy;                        // Pointer to the private X11 display connection for non-OpenGL ops.
-  struct waffle_window*     windowHandle;                   // Handle to the onscreen window.
-  Window                    xwindowHandle;                  // Associated X-Window if any.
-  struct waffle_context*    glusercontextObject;            // OpenGL context for userspace rendering code, e.g., moglcore...
-  struct waffle_context*    glswapcontextObject;            // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+    struct waffle_context*    contextObject;                  // GLX OpenGL rendering context.
+    int                       pixelFormatObject;              // Just here for compatibility. Its a dummy entry without meaning.
+    struct waffle_display*    deviceContext;                  // Pointer to the X11 display connection.
+    Display*                  privDpy;                        // Pointer to the private X11 display connection for non-OpenGL ops.
+    struct waffle_window*     windowHandle;                   // Handle to the onscreen window.
+    Window                    xwindowHandle;                  // Associated X-Window if any.
+    struct waffle_context*    glusercontextObject;            // OpenGL context for userspace rendering code, e.g., moglcore...
+    struct waffle_context*    glswapcontextObject;            // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
 #ifdef PTB_USE_WAYLAND_PRESENT
-  struct wl_list            presentation_feedback_list;     // Used for Wayland backend presentation_feedback extension to queue feedback events.
+    struct wl_list            presentation_feedback_list;     // Used for Wayland backend presentation_feedback extension to queue feedback events.
 #endif
 } PsychTargetSpecificWindowRecordType;
 #endif
@@ -281,14 +281,14 @@ typedef struct {
 #else
 // Definition of Linux/X11 specific information:
 typedef struct{
-  GLXContext        contextObject;       // GLX OpenGL rendering context.
-  int               pixelFormatObject;   // Just here for compatibility. Its a dummy entry without meaning.
-  Display*          deviceContext;       // Pointer to the X11 display connection.
-  Display*          privDpy;             // Pointer to the private X11 display connection for non-OpenGL ops.
-  GLXWindow         windowHandle;        // Handle to the onscreen window.
-  Window            xwindowHandle;       // Associated X-Window if any.
-  GLXContext        glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
-  GLXContext        glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+    GLXContext        contextObject;       // GLX OpenGL rendering context.
+    int               pixelFormatObject;   // Just here for compatibility. Its a dummy entry without meaning.
+    Display*          deviceContext;       // Pointer to the X11 display connection.
+    Display*          privDpy;             // Pointer to the private X11 display connection for non-OpenGL ops.
+    GLXWindow         windowHandle;        // Handle to the onscreen window.
+    Window            xwindowHandle;       // Associated X-Window if any.
+    GLXContext        glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
+    GLXContext        glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
 } PsychTargetSpecificWindowRecordType;
 #endif
 

@@ -1,29 +1,29 @@
 /*
-  SCREENGetFlipInterval.c
+    SCREENGetFlipInterval.c
 
-  AUTHORS:
-  Allen.Ingling@nyu.edu                 awi
-  mario.kleiner.de@gmail.com            mk
+    AUTHORS:
 
-  PLATFORMS:    All
+        Allen.Ingling@nyu.edu                 awi
+        mario.kleiner.de@gmail.com            mk
 
+    PLATFORMS:    All
 
-  HISTORY:
-  03/10/02  awi         Created.
-  05/09/05  mk          Put into use.
+    HISTORY:
 
-  DESCRIPTION:
+        03/10/02  awi         Created.
+        05/09/05  mk          Put into use.
 
-   Returns the estimated/measured flip interval for the specified onscreen window surface.
-   It either returns the value of a previous estimate (e.g., from Screen('OpenWindow',...)) or performs
-   a measurement run.
+    DESCRIPTION:
 
+        Returns the estimated/measured flip interval for the specified onscreen window surface.
+        It either returns the value of a previous estimate (e.g., from Screen('OpenWindow',...)) or performs
+        a measurement run.
 */
 
 #include "Screen.h"
 
 static char useString[] = "[ monitorFlipInterval nrValidSamples stddev ] =Screen('GetFlipInterval', windowPtr [, nrSamples] [, stddev] [, timeout]);";
-static char synopsisString[] = 
+static char synopsisString[] =
     "Returns an estimate of the monitor flip interval for the specified onscreen window."
     "\"windowPtr\" is the handle of the onscreen window for which info should be returned. "
     "\"nrSamples\" If left out, the estimated interval from previous calls to GetFlipInterval "
@@ -46,7 +46,7 @@ static char synopsisString[] =
 
 static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 
-PsychError SCREENGetFlipInterval(void) 
+PsychError SCREENGetFlipInterval(void)
 {
     PsychWindowRecordType *windowRecord;
 
@@ -56,12 +56,12 @@ PsychError SCREENGetFlipInterval(void)
     int nrSamples=0;
     double ifi_hint;
 
-    //all subfunctions should have these two lines.  
+    //all subfunctions should have these two lines.
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     PsychErrorExit(PsychCapNumInputArgs(4));     //The maximum number of inputs
-    PsychErrorExit(PsychRequireNumInputArgs(1)); //The required number of inputs	
+    PsychErrorExit(PsychRequireNumInputArgs(1)); //The required number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(3));    //The maximum number of outputs
 
     //get the window record from the window record argument and get info from the window record
