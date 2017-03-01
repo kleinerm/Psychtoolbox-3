@@ -21,7 +21,7 @@ try
     % Open window with default settings:
     PsychImaging('PrepareConfiguration');
     % make screen partially transparent so we can debug.
-%    PsychDebugWindowConfiguration;
+    % PsychDebugWindowConfiguration;
     [w,wrect]=PsychImaging('OpenWindow', screenNumber, 128);
     
     % This preference setting selects the high quality text renderer 
@@ -32,6 +32,7 @@ try
     % command line), the output of this demo will look horrible. See
     % help DrawTextPlugin for more information.
     Screen('Preference', 'TextRenderer', 1);
+    Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);   % has no effect on text rendering, used below for semi-transparent bounding boxes
     Screen('Preference', 'TextAntiAliasing', 2);
 
     
@@ -51,7 +52,7 @@ try
 
     % draw few lines of text, with varying formatting, and draw it again
     % from cache with some transformation
-    [~,~,bbox,cache]=DrawFormattedText2('<font=Courier New><size=27>test\n<font=Times New Roman>scr<font><font>een<font> is\n<b><size=50>UGLY\n<size=8><b><u><i>Isn''t it?','win',w,'sx','center','sy','center','xalign','center','yalign','center');
+    [~,~,bbox,cache]=DrawFormattedText2('<font=Courier New><size=27>test\n<font=Times New Roman>scr<font><font>een<font> is\n<b><size=50>UGLY\n<size=12><b><u><i>Isn''t it?','win',w,'sx','center','sy','center','xalign','center','yalign','center');
     Screen('FrameRect', w, [255 0 0], bbox);
     % calling with the cache and only sx and/or sy, translated the text by
     % (sx,sy)
@@ -81,7 +82,7 @@ try
     
     % draw some text, then draw it again in exact same location but rotated
     % 180 degrees. should have exact same bounding box
-    [~,~,bbox1,c]=DrawFormattedText2('<size=40>c<i>r<size>a<i>p&\n<size=120>ajX\n<size=60>t<font=comic sans>estddd<color=ff0000>ddda<i>d','win',w,'sx','center','sy',1500,'xalign','left','baseColor',0);
+    [~,~,bbox1,c]=DrawFormattedText2('<size=40>t<i>e<size>x<i>t&\n<size=120>ajX\n<size=60>t<font=comic sans>estddd<color=ff0000>ddda<i>d','win',w,'sx','center','sy',200,'xalign','left','baseColor',0);
     [~,~,bbox2]  =DrawFormattedText2(c,'transform',{'rotate',180});
     Screen('FrameRect',w,[255 0 0 128],bbox1,3);
     Screen('FrameRect',w,[0 255 0 128],bbox2,3);
