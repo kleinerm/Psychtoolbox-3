@@ -2767,8 +2767,14 @@ end
 
 % Custom color correction for display wanted?
 if ~isempty(find(mystrcmp(reqs, 'DisplayColorCorrection')))
-    % Yes. Need full pipeline in any case, ie fast backing store and output conversion:
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion);
+    % Color correction in output chain?
+    if (~isempty(find(mystrcmp(reqs, 'AllViews'))) || ~isempty(find(mystrcmp(reqs, 'FinalFormatting'))))
+        % Yes. Need full pipeline in any case, ie fast backing store and output conversion:
+        imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion);
+    else
+        % No. Fast backing store is enough, per-view chains will get enabled below for Left/RightView:
+        imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    end
 end
 
 % Replication of left half of window into right half needed?
