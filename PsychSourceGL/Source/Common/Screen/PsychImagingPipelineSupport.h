@@ -86,6 +86,9 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 // Create OpenGL framebuffer object for internal rendering, setup PTB info struct for it:
 psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool needzbuffer, int width, int height, int multisample, int specialFlags);
 
+// Delete PsychFBO struct with all attached OpenGL resources:
+void PsychDeleteFBO(PsychFBO* fboptr);
+
 // Check if provided PTB texture already has a PsychFBO attached. Do nothing if so. If a FBO is missing, create one:
 void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_bool asRendertarget, int forImagingmode);
 

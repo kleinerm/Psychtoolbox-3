@@ -2218,6 +2218,45 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
     return(TRUE);
 }
 
+void PsychDeleteFBO(PsychFBO* fboptr)
+{
+    if (!fboptr)
+        return;
+
+    // Detach and delete color buffer texture/renderbuffer:
+    if (fboptr->coltexid) {
+        if (glIsTexture(fboptr->coltexid)) {
+            // Color buffer is a texture:
+            glDeleteTextures(1, &(fboptr->coltexid));
+        }
+        else {
+            // Color buffer is a renderbuffer:
+            glDeleteRenderbuffersEXT(1, &(fboptr->coltexid));
+        }
+    }
+
+    // Detach and delete depth buffer (and probably stencil buffer) texture, if any:
+    if (fboptr->ztexid) {
+        if (glIsTexture(fboptr->ztexid)) {
+            // Depths buffer is a texture:
+            glDeleteTextures(1, &(fboptr->ztexid));
+        }
+        else {
+            // Depths buffer is a renderbuffer:
+            glDeleteRenderbuffersEXT(1, &(fboptr->ztexid));
+        }
+    }
+
+    // Detach and delete stencil renderbuffer, if a separate stencil buffer was needed:
+    if (fboptr->stexid) glDeleteRenderbuffersEXT(1, &(fboptr->stexid));
+
+    // Delete FBO itself:
+    if (fboptr->fboid) glDeleteFramebuffersEXT(1, &(fboptr->fboid));
+
+    // Delete PsychFBO struct associated with this FBO:
+    free(fboptr); fboptr = NULL;
+}
+
 /* PsychCreateShadowFBOForTexture()
  * Check if provided PTB texture already has a PsychFBO attached. Do nothing if so.
  * If a FBO is missing, create one.
@@ -2565,38 +2604,8 @@ void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, psych_boo
                 // Delete all remaining references to this fbo:
                 for (i=0; i<windowRecord->fboCount; i++) if (fboptr == windowRecord->fboTable[i]) windowRecord->fboTable[i] = NULL;
 
-                // Detach and delete color buffer texture/renderbuffer:
-                if (fboptr->coltexid) {
-                    if (glIsTexture(fboptr->coltexid)) {
-                        // Color buffer is a texture:
-                        glDeleteTextures(1, &(fboptr->coltexid));
-                    }
-                    else {
-                        // Color buffer is a renderbuffer:
-                        glDeleteRenderbuffersEXT(1, &(fboptr->coltexid));
-                    }
-                }
-
-                // Detach and delete depth buffer (and probably stencil buffer) texture, if any:
-                if (fboptr->ztexid) {
-                    if (glIsTexture(fboptr->ztexid)) {
-                        // Depths buffer is a texture:
-                        glDeleteTextures(1, &(fboptr->ztexid));
-                    }
-                    else {
-                        // Depths buffer is a renderbuffer:
-                        glDeleteRenderbuffersEXT(1, &(fboptr->ztexid));
-                    }
-                }
-
-                // Detach and delete stencil renderbuffer, if a separate stencil buffer was needed:
-                if (fboptr->stexid) glDeleteRenderbuffersEXT(1, &(fboptr->stexid));
-
-                // Delete FBO itself:
-                if (fboptr->fboid) glDeleteFramebuffersEXT(1, &(fboptr->fboid));
-
-                // Delete PsychFBO struct associated with this FBO:
-                free(fboptr); fboptr = NULL;
+                // Delete PsychFBO and all underlying OpenGL objects:
+                PsychDeleteFBO(fboptr);
             }
         }
     }
