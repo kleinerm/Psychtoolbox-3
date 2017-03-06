@@ -881,9 +881,9 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
         // The target of the drawBufferFBO's is already the final FB if not processing is needed. This is the case
         // if all of the following holds:
         // a) No image processing requested.
-        // b) No stereo mode active, therefore no need for any kind of stereo compositing or merging.
+        // b) No stereo mode active, or separate streams for stereo, so no need for any kind of stereo compositing or merging.
         // c) No output conversion / final formatting needed.
-        targetisfinalFB = ( !needimageprocessing && (windowRecord->stereomode == kPsychMonoscopic) && !needoutputconversion ) ? TRUE : FALSE;
+        targetisfinalFB = ( !needimageprocessing && ((windowRecord->stereomode == kPsychMonoscopic) || needseparatestreams) && !needoutputconversion ) ? TRUE : FALSE;
 
         if (!targetisfinalFB) {
             // Yes. Setup real inputBuffers as multisample-resolve / scaler targets:
