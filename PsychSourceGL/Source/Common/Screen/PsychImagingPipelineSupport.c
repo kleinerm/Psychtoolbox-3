@@ -1553,6 +1553,7 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
         (*fbo)->fboid = 0;
         (*fbo)->stexid = 0;
         (*fbo)->ztexid = 0;
+        (*fbo)->format = 0;
 
         (*fbo)->width = width;
         (*fbo)->height = height;
@@ -2213,6 +2214,9 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
     // Override texture target for color buffer texture if a multi-sample texture
     // is in use:
     if (multisampled_coltex) (*fbo)->textarget = GL_TEXTURE_2D_MULTISAMPLE;
+
+    // Assign final FBO colorbuffer format:
+    if (fboInternalFormat > 1) (*fbo)->format = fboInternalFormat;
 
     // Well done.
     return(TRUE);

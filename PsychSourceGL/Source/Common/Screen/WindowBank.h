@@ -177,6 +177,7 @@ typedef struct PsychFBO {
     GLuint                  coltexid;       // Texture handle for color buffer texture (color attachment zero). A multisampled Renderbuffer handle, if multisample > 0.
     GLuint                  ztexid;         // Texture handle for z-Buffer texture, if any. Zero otherwise.
     GLuint                  stexid;         // Texture handle for stencil-Buffer texture, if any. Zero otherwise.
+    GLenum                  format;         // fboInternalFormat of the colorbuffer0 attachment.
     int                     width;          // Width of FBO.
     int                     height;         // Height of FBO.
     int                     multisample;    // Multisampling level of FBO: 0 == No multisampling. > 0 means Multisampled.
