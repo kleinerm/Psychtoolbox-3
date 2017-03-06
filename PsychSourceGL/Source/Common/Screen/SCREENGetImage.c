@@ -166,6 +166,7 @@ PsychError SCREENGetImage(void)
     unsigned int    twidth, theight, numChannels, bitdepth;
     unsigned char*  framepixels;
     psych_bool      isOES;
+    psych_bool      readFromfinalizedFBO = FALSE;
 
     // Called as 2nd personality "AddFrameToMovie" ?
     psych_bool isAddMovieFrame = PsychMatch(PsychGetFunctionName(), "AddFrameToMovie");
@@ -233,7 +234,7 @@ PsychError SCREENGetImage(void)
     if (windowRecord->stereomode == kPsychFrameSequentialStereo) isStereo = TRUE;
 
     // Assign read buffer:
-    if(PsychIsOnscreenWindow(windowRecord)) {
+    if (PsychIsOnscreenWindow(windowRecord)) {
         // Onscreen window: We read from the front- or front-left buffer by default.
         // This works on single-buffered and double buffered contexts in a consistent fashion:
 
@@ -320,6 +321,7 @@ PsychError SCREENGetImage(void)
 
                 // Bind finalizedFBO as framebuffer to read from:
                 glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid);
+                readFromfinalizedFBO = TRUE;
 
                 // Make sure binding gets released at end of routine:
                 viewid = -1;
@@ -415,7 +417,7 @@ PsychError SCREENGetImage(void)
         }
     }
 
-    if (whichBuffer == GL_COLOR_ATTACHMENT0_EXT) {
+    if ((whichBuffer == GL_COLOR_ATTACHMENT0_EXT) && !readFromfinalizedFBO) {
         // FBO of texture / offscreen window / onscreen drawBuffer/inputBuffer
         // has size of clientrect -- potentially larger or smaller than backbuffer:
         PsychCopyRect(windowRect, windowRecord->clientrect);
@@ -427,7 +429,7 @@ PsychError SCREENGetImage(void)
     }
 
     // Retrieve optional read rectangle:
-    if(!PsychCopyInRectArg(2, FALSE, sampleRect)) PsychCopyRect(sampleRect, windowRect);
+    if (!PsychCopyInRectArg(2, FALSE, sampleRect)) PsychCopyRect(sampleRect, windowRect);
 
     if (IsPsychRectEmpty(sampleRect)) return(PsychError_none);
 
