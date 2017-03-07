@@ -319,10 +319,15 @@ PsychError SCREENGetImage(void)
                 // We can get the equivalent of the backLeft/RightBuffer from the finalizedFBO's in this mode. Get their content:
                 viewid = (whichBuffer == GL_BACK_RIGHT) ? 1 : 0;
                 whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
-
-                // Bind finalizedFBO as framebuffer to read from:
-                glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid);
                 readFromfinalizedFBO = TRUE;
+
+                // Is the finalizedFBO multisampled? If so, create a temporary MSAA resolve target FBO as
+                // resolveFBO, otherwise set resolveFBO == NULL:
+                resolveFBO = PsychMSAAResolveToTemp(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]);
+                if (!resolveFBO) {
+                    // Directly bind finalizedFBO as framebuffer to read from:
+                    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid);
+                }
 
                 // Make sure binding gets released at end of routine:
                 viewid = -1;
@@ -333,29 +338,12 @@ PsychError SCREENGetImage(void)
                 PsychSetDrawingTarget(windowRecord);
                 whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
 
-                // Is the drawBufferFBO multisampled?
+                // Is the drawBufferFBO multisampled? If so, create a temporary MSAA resolve target FBO as
+                // resolveFBO, otherwise set resolveFBO == NULL:
                 viewid = (((windowRecord->stereomode > 0) && (windowRecord->stereodrawbuffer == 1)) ? 1 : 0);
-                if (windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->multisample > 0) {
-                    // It is! We can't read from a multisampled FBO. Need to perform a multisample resolve operation and read
-                    // from the resolved unisample buffer instead. Create a temporary resolve target buffer for this purpose.
-                    GLenum format;
-                    int winwidth, winheight;
-                    winwidth = windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width;
-                    winheight = windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height;
-                    format = windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->format;
-
-                    if (!PsychCreateFBO(&resolveFBO, format, FALSE, winwidth, winheight, 0, 0)) {
-                        PsychErrorExitMsg(PsychError_system, "Failed to create temporary MSAA resolve buffer to 'GetImage' from MSAA drawBuffer.");
-                    }
-
-                    // Ok, the inputBufferFBO is a suitable temporary resolve buffer. Perform a multisample resolve blit to it:
-                    // A simple glBlitFramebufferEXT() call will do the copy & downsample operation:
-                    glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->fboid);
-                    glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, resolveFBO->fboid);
-                    glBlitFramebufferEXT(0, 0, winwidth, winheight, 0, 0, winwidth, winheight, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-                    // Bind resolveFBO as framebuffer for pixel read:
-                    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, resolveFBO->fboid);
+                resolveFBO = PsychMSAAResolveToTemp(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]);
+                if (resolveFBO) {
+                    // MSAA resolved single-sample resolveFBO is now bound as framebuffer for pixel read:
                     viewid = -1;
                 }
             }
@@ -371,13 +359,10 @@ PsychError SCREENGetImage(void)
             whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
 
             // We do not support multisampled readout:
-            if (windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->multisample > 0) {
-                printf("PTB-ERROR: You tried to Screen('GetImage', ...); from an offscreen window or texture which has multisample anti-aliasing enabled.\n");
-                printf("PTB-ERROR: This operation is not supported. You must first use Screen('CopyWindow') to create a non-multisampled copy of the\n");
-                printf("PTB-ERROR: texture or offscreen window, then use 'GetImage' on that copy. The copy will be anti-aliased, so you'll get what you\n");
-                printf("PTB-ERROR: wanted with a bit more effort. Sorry for the inconvenience, but this is mostly a hardware limitation.\n\n");
-
-                PsychErrorExitMsg(PsychError_user, "Tried to 'GetImage' from a multi-sampled texture or offscreen window. Unsupported operation.");
+            resolveFBO = PsychMSAAResolveToTemp(windowRecord->fboTable[windowRecord->drawBufferFBO[0]]);
+            if (resolveFBO) {
+                // MSAA resolved single-sample resolveFBO is now bound as framebuffer for pixel read:
+                viewid = -1;
             }
         }
     }

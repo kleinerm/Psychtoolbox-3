@@ -2261,6 +2261,34 @@ void PsychDeleteFBO(PsychFBO* fboptr)
     free(fboptr); fboptr = NULL;
 }
 
+/* PsychMSAAResolveToTemp()
+ *
+ * Check if given msaaFBO is multi-sampled. If not, return NULL.
+ * If yes, create a matching single-sample PsychFBO, MSAA resolve
+ * msaaFBO into it, and return the resolved PsychFBO. Also bind the
+ * resolved FBO for immediate use.
+ */
+PsychFBO* PsychMSAAResolveToTemp(PsychFBO* msaaFBO)
+{
+    PsychFBO* resolvedFBO;
+
+    // Nothing to do on single-sample buffers:
+    if (msaaFBO->multisample == 0)
+        return(NULL);
+
+    if (!PsychCreateFBO(&resolvedFBO, msaaFBO->format, FALSE, msaaFBO->width, msaaFBO->height, 0, 0)) {
+        PsychErrorExitMsg(PsychError_system, "Failed to create temporary MSAA resolve buffer from MSAA drawBuffer!");
+    }
+
+    // Ok, the resolveFBO is a suitable temporary resolve buffer. Perform a multisample resolve blit to it:
+    // A simple glBlitFramebufferEXT() call will do the copy & downsample operation:
+    glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, msaaFBO->fboid);
+    glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, resolvedFBO->fboid);
+    glBlitFramebufferEXT(0, 0, msaaFBO->width, msaaFBO->height, 0, 0, msaaFBO->width, msaaFBO->height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, resolvedFBO->fboid);
+    return(resolvedFBO);
+}
+
 /* PsychCreateShadowFBOForTexture()
  * Check if provided PTB texture already has a PsychFBO attached. Do nothing if so.
  * If a FBO is missing, create one.

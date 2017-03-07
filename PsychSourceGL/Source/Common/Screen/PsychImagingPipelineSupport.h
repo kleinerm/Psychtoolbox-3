@@ -89,6 +89,9 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 // Delete PsychFBO struct with all attached OpenGL resources:
 void PsychDeleteFBO(PsychFBO* fboptr);
 
+// MSAA resolve given PsychFBO into a new single-sampled PsychFBO, if it is multi-sampled:
+PsychFBO* PsychMSAAResolveToTemp(PsychFBO* msaaFBO);
+
 // Check if provided PTB texture already has a PsychFBO attached. Do nothing if so. If a FBO is missing, create one:
 void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_bool asRendertarget, int forImagingmode);
 
