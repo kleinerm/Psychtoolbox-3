@@ -115,10 +115,13 @@
 #define kPsychNeedDualWindowOutput    16384 // Apply imaging pipelines output formatting to two visual output streams and distribute result to two onscreen
                                             // windows. This allows e.g., to drive two physical displays from one input stimulus image, but applying different
                                             // post-processing to the two outputs. An example is display mirroring or special HDR displays.
-#define kPsychNeedGPUPanelFitter      32768 // This flag is used for imagingMode to signal need/use of the GPU based imaging pipeline panel fitter.
-#define kPsychNeedOtherStreamInput (1 << 17) // This flag signals that the input image for the other view channel of a stereo pipeline should be bound to texture unit 1 as 2nd input.
-#define kPsychNeedRetinaResolution (1 << 18) // Do not auto-enable panelfitter on Retina display, ie., user-framebuffer shall be full native Retina resolution.
-#define kPsychNeedClientRectNoFitter (1 << 19) // Do not use the panelfitter, but still use provided clientRect to define window geometry as seen by client code.
+#define kPsychNeedGPUPanelFitter      32768     // This flag is used for imagingMode to signal need/use of the GPU based imaging pipeline panel fitter.
+#define kPsychNeedOtherStreamInput (1 << 17)    // This flag signals that the input image for the other view channel of a stereo pipeline should be bound to texture unit 1 as 2nd input.
+#define kPsychNeedRetinaResolution (1 << 18)    // Do not auto-enable panelfitter on Retina display, ie., user-framebuffer shall be full native Retina resolution.
+#define kPsychNeedClientRectNoFitter (1 << 19)  // Do not use the panelfitter, but still use provided clientRect to define window geometry as seen by client code.
+#define kPsychNeedFinalizedFBOSinks   (1 << 20) // finalizedFBO's must be backed by real OpenGL FBO's as image sinks, not by the system backbuffer, as would be the default.
+#define kPsychUseExternalSinkTextures (1 << 21) // finalizedFBO's have backing OpenGL FBO's which use externally created and injected OpenGL textures as color attachment (aka rendertargets).
+#define kPsychSinkIsMSAACapable       (1 << 22) // External sinks for finalizedFBO color buffer textures can process GL_TEXTURE_2D_MULTISAMPLE textures as input, not only GL_TEXTURE_2D textures.
 
 // 'specialflags' fields, partially shared with imagingmode flags:
 #define kPsychUseTextureMatrixForRotation   1       // Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
@@ -154,7 +157,7 @@
 #define kPsychSafeForDRI3                   (1 << 24) // 'specialflags' setting 2^24: This window is considered safe for use with DRI3/Present, given X-Server and Mesa version in use.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,S-2^25. --> Flags of 2^20 - 2^24 as well as 2^26 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,S-2^25. --> Flags of 2^23 - 2^24 as well as 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25. --> Flags of 2^26 and higher are available...

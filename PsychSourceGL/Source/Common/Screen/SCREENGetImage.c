@@ -231,8 +231,8 @@ PsychError SCREENGetImage(void)
         isDoubleBuffer = TRUE;
     }
 
-    // Force "quad-buffered" stereo mode if our own homegrown implementation is active:
-    if (windowRecord->stereomode == kPsychFrameSequentialStereo) isStereo = TRUE;
+    // Force "quad-buffered" stereo mode if our own homegrown implementation is active or dual-stream stereo for external display sinks is used:
+    if (windowRecord->stereomode == kPsychFrameSequentialStereo || windowRecord->stereomode == kPsychDualStreamStereo) isStereo = TRUE;
 
     // Assign read buffer:
     if (PsychIsOnscreenWindow(windowRecord)) {
@@ -314,9 +314,34 @@ PsychError SCREENGetImage(void)
                 }
             }
 
-            // Homegrown frame-sequential stereo active and backleft or backright buffer requested?
-            if (((whichBuffer == GL_BACK_LEFT) || (whichBuffer == GL_BACK_RIGHT)) && (windowRecord->stereomode == kPsychFrameSequentialStereo)) {
-                // We can get the equivalent of the backLeft/RightBuffer from the finalizedFBO's in this mode. Get their content:
+            // Dualstream stereo needs remapping:
+            if (windowRecord->stereomode == kPsychDualStreamStereo || windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks) {
+                // Back/Front buffers map to backleft/frontleft buffers:
+                if (whichBuffer == GL_BACK) whichBuffer = GL_BACK_LEFT;
+                if (whichBuffer == GL_FRONT) whichBuffer = GL_FRONT_LEFT;
+
+                // Special case: Want to read from stereo front buffer?
+                if ((whichBuffer == GL_FRONT_LEFT) || (whichBuffer == GL_FRONT_RIGHT)) {
+                    // These don't really exist for Dualstream stereo. Their equivalents are the
+                    // display framebuffers of the special output device, e.g., the final output
+                    // buffers of a VR compositor if a VR HMD is connected as output device. The
+                    // regular windowing system or OpenGL context does not have provide access to
+                    // these buffers in any standardized way, so some special purpose trickery may
+                    // be needed to get some approximation of what the user would expect.
+
+                    // TODO: VR ENABLEMENT Find a solution for this!
+                    if (PsychPrefStateGet_Verbosity() > 1) {
+                        printf("PTB-WARNING: In Screen('GetImage'): You selected retrieval of one of the stereo front buffers, while kPsychDualStreamStereo\n");
+                        printf("PTB-WARNING: In Screen('GetImage'): stereo display mode is active. This is not implemented yet! Expect pixeltrash returned!!!\n");
+                    }
+                }
+            }
+
+            // Homegrown frame-sequential stereo or dual stream stereo active and backleft or backright buffer requested?
+            if (((whichBuffer == GL_BACK_LEFT) || (whichBuffer == GL_BACK_RIGHT)) &&
+                ((windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->stereomode == kPsychDualStreamStereo) ||
+                 (windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks))) {
+                // We can get the equivalent of the backLeft/RightBuffer from the finalizedFBO's in these modes. Get their content:
                 viewid = (whichBuffer == GL_BACK_RIGHT) ? 1 : 0;
                 whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
                 readFromfinalizedFBO = TRUE;

@@ -654,7 +654,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     needzbuffer = (PsychPrefStateGet_3DGfx()>0) ? TRUE : FALSE;
 
     // Do we need separate streams for stereo? Only for OpenGL quad-buffered mode and dual-window stereo mode:
-    needseparatestreams = (windowRecord->stereomode == kPsychOpenGLStereo || windowRecord->stereomode == kPsychDualWindowStereo || windowRecord->stereomode == kPsychFrameSequentialStereo) ? TRUE : FALSE;
+    needseparatestreams = (windowRecord->stereomode == kPsychOpenGLStereo || windowRecord->stereomode == kPsychDualWindowStereo ||
+                           windowRecord->stereomode == kPsychFrameSequentialStereo || windowRecord->stereomode == kPsychDualStreamStereo) ? TRUE : FALSE;
 
     // Do we need some intermediate image processing?
     needimageprocessing= (imagingmode & kPsychNeedImageProcessing) ? TRUE : FALSE;
@@ -678,8 +679,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     // which describe the system framebuffer (backbuffer). This is done to simplify pipeline design:
 
     // Allocate empty FBO info struct and assign it:
-    winwidth=(int)PsychGetWidthFromRect(windowRecord->rect);
-    winheight=(int)PsychGetHeightFromRect(windowRecord->rect);
+    winwidth  = (int) PsychGetWidthFromRect(windowRecord->rect);
+    winheight = (int) PsychGetHeightFromRect(windowRecord->rect);
 
     if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), 0, FALSE, winwidth, winheight, 0, 0)) {
         // Failed!
@@ -691,7 +692,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
     // We use the same struct for both buffers, because in the end, there is only one backbuffer. Separate channels
     // with same mapping allow some interesting extensions in the future for additional stereo modes or snapshot
-    // creation...
+    // creation. This common assignment gets overriden below for special stereo modes or dual-window/dual-stream
+    // output modes:
     windowRecord->finalizedFBO[0]=fbocount;
     windowRecord->finalizedFBO[1]=fbocount;
     fbocount++;
@@ -743,6 +745,17 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
         if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0, 0)) {
             // Failed!
             PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for frame-sequential stereo (right eye).");
+        }
+
+        windowRecord->finalizedFBO[1]=fbocount;
+        fbocount++;
+    }
+
+    // Dualstream stereo definitely needs a separate finalizedFBO[1] PsychFBO for right-eye:
+    if (windowRecord->stereomode == kPsychDualStreamStereo) {
+        if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), 0, FALSE, winwidth, winheight, 0, 0)) {
+            // Failed!
+            PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline.");
         }
 
         windowRecord->finalizedFBO[1]=fbocount;
@@ -849,7 +862,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     if (imagingmode & kPsychUse32BPCFloatAsap) fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
 
     if (PsychPrefStateGet_Verbosity()>2) {
-        switch(fboInternalFormat) {
+        switch (fboInternalFormat) {
             case GL_RGBA8:
                 printf("PTB-INFO: Will use 8 bits per color component framebuffer for stimulus post-processing (if any).\n");
             break;
@@ -1135,6 +1148,200 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
         windowRecord->preConversionFBO[1] = windowRecord->preConversionFBO[0];
     }
 
+    // Do we need FBO backed finalizedFBO's, because dual stream / separate stream stereo is requested,
+    // or userspace requests it via imagingmode flag?
+    if (windowRecord->stereomode == kPsychDualStreamStereo || imagingmode & kPsychNeedFinalizedFBOSinks) {
+        // Yes. Check if we can share storage with earlier stages and save memory and processing overhead.
+
+        // Any processing on the drawBuffer content for MSAA, panelfitter or post-processing?
+        if (!needoutputconversion &&
+            (windowRecord->preConversionFBO[0] == windowRecord->drawBufferFBO[0]) &&
+            (windowRecord->stereomode == 0 || windowRecord->preConversionFBO[1] == windowRecord->drawBufferFBO[1])) {
+            // No processing whatsoever after userspace drawing of stimulus into drawBufferFBO's. This means we
+            // can directly hook our finalizedFBO's sinks into the original source drawBufferFBO's and thereby
+            // to their OpenGL FBO's as already allocated & setup above in stage 1 setup:
+            windowRecord->finalizedFBO[0] = windowRecord->drawBufferFBO[0];
+            windowRecord->finalizedFBO[1] = windowRecord->drawBufferFBO[1];
+
+            // Disable MSAA flag which signals the sink should provide or expect MSAA textures, as no MSAA used:
+            imagingmode &= ~kPsychSinkIsMSAACapable;
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: No image processing needed. Enabling zero-copy redirected output mode.\n");
+        }
+        else {
+            // Some processing would happen. If it would just be a MSAA resolve from a MSAA texture, but no panel fitting,
+            // and our external sink is capable of taking unresolved MSAA textures as input, then we can skip the resolve
+            // step and again directly pass the unprocessed drawBufferFBO's:
+            if ((windowRecord->inputBufferFBO[0] == windowRecord->finalizedFBO[0]) &&
+                (windowRecord->stereomode == 0 || windowRecord->inputBufferFBO[1] == windowRecord->finalizedFBO[1]) &&
+                !(imagingmode & kPsychNeedGPUPanelFitter) &&
+                ((multiSample <= 0) ||
+                ((imagingmode & kPsychSinkIsMSAACapable) && (windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->textarget == GL_TEXTURE_2D_MULTISAMPLE)))) {
+                // inputBufferFBO would be last buffer stage in pipeline, receiving the final output
+                // image, so the only processing that could happen from drawBuffer to finalizedFBO is
+                // MSAA resolve or active GPU panel fitting. With GPU panel fitting excluded, only MSAA
+                // resolve to a single-sample texture would be needed as processing step. If userspace
+                // signals via kPsychSinkIsMSAACapable that the final recipient of our output images is
+                // able to deal with multisample textures as input itself (or even provides them) and
+                // we already have such a multisample texture allocated, then we can skip this one and
+                // only processing step and again shortcut our finalizedFBO's directly to the virtual
+                // framebuffer aka drawBufferFBO's and thereby to their OpenGL FBO's as already allocated
+                // and setup above in stage 1 setup:
+                windowRecord->finalizedFBO[0] = windowRecord->drawBufferFBO[0];
+                windowRecord->finalizedFBO[1] = windowRecord->drawBufferFBO[1];
+
+                // Disable MSAA flag which signals the sink should provide or expect MSAA textures if no MSAA used:
+                if (multiSample <= 0)
+                    imagingmode &= ~kPsychSinkIsMSAACapable;
+
+                if (PsychPrefStateGet_Verbosity() > 2)
+                    printf("PTB-INFO: %s image processing needed. Enabling zero-copy redirected output mode.\n", (imagingmode & kPsychSinkIsMSAACapable) ? "Only external MSAA" : "No");
+            }
+            else {
+                // No luck. We need to allocate and setup our own PsychFBO's with attached OpenGL FBO's
+                // in our current fboTable slots, so final output gets routed into our FBO's:
+                int winwidth, winheight;
+                int texflags = 1; // Use GL_TEXTURE_2D non-power-of-two textures for backing store.
+
+                // Should and can we allocate a multisample texture?
+                if ((windowRecord->inputBufferFBO[0] == windowRecord->finalizedFBO[0]) &&
+                    (windowRecord->stereomode == 0 || windowRecord->inputBufferFBO[1] == windowRecord->finalizedFBO[1]) &&
+                    (multiSample > 0) && (imagingmode & kPsychSinkIsMSAACapable) &&
+                    (windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->textarget == GL_TEXTURE_2D_MULTISAMPLE)) {
+                    texflags |= 2; // Request a GL_TEXTURE_2D_MULTISAMPLE
+                }
+                else {
+                    // MSAA texture not possible - Operate single-sampled:
+                    imagingmode &= ~kPsychSinkIsMSAACapable;
+                }
+
+                if (PsychPrefStateGet_Verbosity() > 2)
+                    printf("PTB-INFO: Full processing %sneeded for redirected output mode.\n", (texflags & 2) ? "with external MSAA " : ((multiSample > 0) ? "with internal MSAA " : ""));
+
+                // Delete and recreate finalizedFBO[0] with our new backingstore:
+                winwidth = windowRecord->fboTable[windowRecord->finalizedFBO[0]]->width;
+                winheight = windowRecord->fboTable[windowRecord->finalizedFBO[0]]->height;
+                PsychDeleteFBO(windowRecord->fboTable[windowRecord->finalizedFBO[0]]);
+                if (!PsychCreateFBO(&(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), finalizedFBOFormat, FALSE, winwidth, winheight, (texflags & 2) ? multiSample : 0, texflags)) {
+                    PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 4 of imaging pipeline [finalizedFBO[0] backing buffers for external sink].");
+                }
+
+                // Are we supposed to use externally injected colorbuffer textures?
+                if (imagingmode & kPsychUseExternalSinkTextures) {
+                    // Yes. Detach and delete color buffer texture:
+                    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->finalizedFBO[0]]->fboid);
+                    glDeleteTextures(1, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]->coltexid));
+                    windowRecord->fboTable[windowRecord->finalizedFBO[0]]->coltexid = 0;
+                    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+                    if (PsychPrefStateGet_Verbosity() > 2)
+                        printf("PTB-INFO: Using external 2D npot-textures as sinks for redirected output mode.\n");
+                }
+
+                if (windowRecord->stereomode > 0) {
+                    // Delete and recreate finalizedFBO[0] with our new backingstore:
+                    winwidth = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->width;
+                    winheight = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->height;
+                    PsychDeleteFBO(windowRecord->fboTable[windowRecord->finalizedFBO[1]]);
+                    if (!PsychCreateFBO(&(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), finalizedFBOFormat, FALSE, winwidth, winheight, (texflags & 2) ? multiSample : 0, texflags)) {
+                        PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 4 of imaging pipeline [finalizedFBO[1] backing buffers for external sink].");
+                    }
+
+                    // Are we supposed to use externally injected colorbuffer textures?
+                    if (imagingmode & kPsychUseExternalSinkTextures) {
+                        // Yes. Detach and delete color buffer texture:
+                        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid);
+                        glDeleteTextures(1, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]->coltexid));
+                        windowRecord->fboTable[windowRecord->finalizedFBO[1]]->coltexid = 0;
+                        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+                    }
+                }
+            }
+        }
+
+        // Can we use the drawBufferFBO's as finalizedFBO's?
+        if (windowRecord->finalizedFBO[0] == windowRecord->drawBufferFBO[0]) {
+            // Yes. At this point the PsychFBO's we "inherited"/share with the
+            // drawBufferFBO's are already fully set up with depth/stencil/colorbuffer
+            // textures attached to a "framebuffer complete" OpenGL FBO.
+
+            // Short-circuit the inputBufferFBO's to the drawBufferFBO's, so they are zero-copies of
+            // them. This so the imaging pipeline processing will skip the actual MSAA resolve.
+            windowRecord->inputBufferFBO[0] = windowRecord->drawBufferFBO[0];
+            windowRecord->inputBufferFBO[1] = windowRecord->drawBufferFBO[1];
+
+            // Short-circuit the preConversionFBO's to the finalizedFBO's, so they are zero-copies of
+            // them. This so the final output formatting will skip a redundant/wrong identity blit
+            // from preConversionFBO -> finalizedFBO:
+            windowRecord->preConversionFBO[0] = windowRecord->finalizedFBO[0];
+            windowRecord->preConversionFBO[1] = windowRecord->finalizedFBO[1];
+
+            // Are we supposed to use externally injected colorbuffer textures?
+            if (imagingmode & kPsychUseExternalSinkTextures) {
+                // Yes. Detach and delete color buffer texture:
+                glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->finalizedFBO[0]]->fboid);
+                glDeleteTextures(1, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]->coltexid));
+                windowRecord->fboTable[windowRecord->finalizedFBO[0]]->coltexid = 0;
+                if (windowRecord->stereomode > 0) {
+                    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->finalizedFBO[1]]->fboid);
+                    glDeleteTextures(1, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]->coltexid));
+                    windowRecord->fboTable[windowRecord->finalizedFBO[1]]->coltexid = 0;
+                }
+
+                glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
+                if (PsychPrefStateGet_Verbosity() > 2)
+                    printf("PTB-INFO: Using external 2D npot-textures as sinks for redirected output mode.\n");
+            }
+            else {
+                // No. Check if the currently attached color buffer texture is of suitable format.
+                // If it is a multisampled 2D texture then the format is correct and compatible with
+                // MSAA enabled and an external sink that can handle multisample textures. Otherwise
+                // we do not use MSAA and the texture must be a GL_TEXTURE_2D non-pot-texture for export
+                // to external consumers. If none of this holds then our texture is of incompatible format
+                // and we need to recreate buffers of suitable format:
+                if ((windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->textarget != GL_TEXTURE_2D_MULTISAMPLE) &&
+                    (windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->textarget != GL_TEXTURE_2D)) {
+                    // Unsuitable format. Need to rebuild from scratch:
+                    GLenum format;
+                    int winwidth, winheight;
+                    int texflags = 1; // Use GL_TEXTURE_2D non-power-of-two textures for backing store.
+
+                    // Should and can we allocate a multisample texture?
+                    if ((multiSample > 0) && (imagingmode & kPsychSinkIsMSAACapable)) {
+                        texflags |= 2; // Request a GL_TEXTURE_2D_MULTISAMPLE
+                    }
+                    else {
+                        // MSAA texture not possible - Operate single-sampled:
+                        imagingmode &= ~kPsychSinkIsMSAACapable;
+                    }
+
+                    if (PsychPrefStateGet_Verbosity() > 2)
+                        printf("PTB-INFO: Recreating 2D npot-texture redirection surfaces %sfor redirected output mode.\n", (texflags & 2) ? "with external MSAA " : "without MSAA anti-aliasing ");
+
+                    // Delete and recreate finalizedFBO[0] with our new backingstore:
+                    winwidth = windowRecord->fboTable[windowRecord->finalizedFBO[0]]->width;
+                    winheight = windowRecord->fboTable[windowRecord->finalizedFBO[0]]->height;
+                    format = windowRecord->fboTable[windowRecord->finalizedFBO[0]]->format;
+                    PsychDeleteFBO(windowRecord->fboTable[windowRecord->finalizedFBO[0]]);
+                    if (!PsychCreateFBO(&(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), format, needzbuffer, winwidth, winheight, (texflags & 2) ? multiSample : 0, texflags)) {
+                        PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not re-setup stage 1 of imaging pipeline [draw/finalizedFBO[0] backing buffers for external sink].");
+                    }
+
+                    if (windowRecord->stereomode > 0) {
+                        // Delete and recreate finalizedFBO[0] with our new backingstore:
+                        winwidth = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->width;
+                        winheight = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->height;
+                        format = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->format;
+                        PsychDeleteFBO(windowRecord->fboTable[windowRecord->finalizedFBO[1]]);
+                        if (!PsychCreateFBO(&(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), format, needzbuffer, winwidth, winheight, (texflags & 2) ? multiSample : 0, texflags)) {
+                            PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not re-setup stage 1 of imaging pipeline [draw/finalizedFBO[1] backing buffers for external sink].");
+                        }
+                    }
+                }
+            }
+        }
+    } // Handling of dual-stream stereo / finalizedFBO's with enforced FBO buffers, e.g., for external sinks.
+
     // Setup imaging mode flags:
     newimagingmode = (needseparatestreams) ? kPsychNeedSeparateStreams : 0;
     if (!needseparatestreams && (windowRecord->stereomode > 0)) newimagingmode |= kPsychNeedStereoMergeOp;
@@ -1154,6 +1361,16 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     if (imagingmode & kPsychNeedGPUPanelFitter) newimagingmode |= kPsychNeedGPUPanelFitter;
     if (imagingmode & kPsychNeedClientRectNoFitter) newimagingmode |= kPsychNeedClientRectNoFitter;
     if ((imagingmode & kPsychNeedOtherStreamInput) && (windowRecord->stereomode > 0)) newimagingmode |= kPsychNeedOtherStreamInput;
+
+    // Signal true finalizedFBO state and caps:
+    if ((imagingmode & kPsychNeedFinalizedFBOSinks) || (windowRecord->stereomode == kPsychDualStreamStereo)) newimagingmode |= kPsychNeedFinalizedFBOSinks;
+    if ((newimagingmode & kPsychNeedFinalizedFBOSinks) && (imagingmode & kPsychUseExternalSinkTextures)) newimagingmode |= kPsychUseExternalSinkTextures;
+
+    // kPsychSinkIsMSAACapable will be set if we provide or expect MSAA GL_TEXTURE_2D_MULTISAMPLE textures to/from the sink.
+    // If no MSAA is used, or if we use it for drawing but have to resolve to single-sample textures earlier for some reason,
+    // e.g., due to image processing, or panel fitting, or lack of support, then the flag gets cleared, so the sink knows to
+    // provide or expect single-sample standard GL_TEXTURE_2D npot textures:
+    if ((newimagingmode & kPsychNeedFinalizedFBOSinks) && (imagingmode & kPsychSinkIsMSAACapable)) newimagingmode |= kPsychSinkIsMSAACapable;
 
     // Set new final imaging mode and fbocount:
     windowRecord->imagingMode = newimagingmode;
@@ -1178,14 +1395,14 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     PsychPipelineAddBuiltinFunctionToHook(windowRecord, "IdentityBlitChain", "Builtin:IdentityBlit", INT_MAX, "");
     PsychPipelineEnableHook(windowRecord, "IdentityBlitChain");
 
-    // Setup of GLSL stereo shaders for stereo modes that need some merging operations:
+    // Setup for stereo modes that need some merging or other operations:
     // Quad-buffered stereo and mono mode don't need these...
     if (windowRecord->stereomode > kPsychOpenGLStereo) {
         // Merged stereo mode requested.
         glsl = 0;
 
         // Which mode?
-        switch(windowRecord->stereomode) {
+        switch (windowRecord->stereomode) {
             // Anaglyph mode?
             case kPsychAnaglyphRGStereo:
             case kPsychAnaglyphGRStereo:
@@ -1328,6 +1545,10 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             break;
 
             case kPsychDualWindowStereo:
+                // Nothing to do for now.
+            break;
+
+            case kPsychDualStreamStereo:
                 // Nothing to do for now.
             break;
 

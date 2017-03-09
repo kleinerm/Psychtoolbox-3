@@ -76,18 +76,19 @@ typedef enum {
 } PsychWindowType; //naming conventions dictate "PsychWindowTypeType" but thats silly.
 
 typedef enum  {
-    kPsychMonoscopic   = 0,           // Monoscopic display aka non-stereo. This is the default setting.
-    kPsychOpenGLStereo = 1,           // Stereo display via built-in native OpenGL stereo facilities.
-    kPsychCompressedTLBRStereo = 2,   // Vertical compression stereo with assingment top=left-eye, bottom=right-eye.
-    kPsychCompressedTRBLStereo = 3,   // Vertical compression stereo with assingment top=right-eye, bottom=left-eye.
-    kPsychFreeFusionStereo = 4,       // Stereo via free fusion of left and right view on a horizontally split screen.
-    kPsychFreeCrossFusionStereo = 5,  // Stereo via free cross-fusion of left and right view on a horizontally split screen.
-    kPsychAnaglyphRGStereo = 6,       // Stereo via color filter glasses (Anaglyph principle): Red-Green
-    kPsychAnaglyphGRStereo = 7,       // Stereo via color filter glasses (Anaglyph principle): Green-Red
-    kPsychAnaglyphRBStereo = 8,       // Stereo via color filter glasses (Anaglyph principle): Red-Blue
-    kPsychAnaglyphBRStereo = 9,       // Stereo via color filter glasses (Anaglyph principle): Blue-Red
-    kPsychDualWindowStereo = 10,      // Stereo for dual-display setups, where each view is rendered into its own onscreen window. (Imaging pipe only!)
-    kPsychFrameSequentialStereo = 11  // Stereo for frame-sequential display, but using PTB's own implementation instead of native OpenGL mode.
+    kPsychMonoscopic   = 0,             // Monoscopic display aka non-stereo. This is the default setting.
+    kPsychOpenGLStereo = 1,             // Stereo display via built-in native OpenGL stereo facilities.
+    kPsychCompressedTLBRStereo = 2,     // Vertical compression stereo with assingment top=left-eye, bottom=right-eye.
+    kPsychCompressedTRBLStereo = 3,     // Vertical compression stereo with assingment top=right-eye, bottom=left-eye.
+    kPsychFreeFusionStereo = 4,         // Stereo via free fusion of left and right view on a horizontally split screen.
+    kPsychFreeCrossFusionStereo = 5,    // Stereo via free cross-fusion of left and right view on a horizontally split screen.
+    kPsychAnaglyphRGStereo = 6,         // Stereo via color filter glasses (Anaglyph principle): Red-Green
+    kPsychAnaglyphGRStereo = 7,         // Stereo via color filter glasses (Anaglyph principle): Green-Red
+    kPsychAnaglyphRBStereo = 8,         // Stereo via color filter glasses (Anaglyph principle): Red-Blue
+    kPsychAnaglyphBRStereo = 9,         // Stereo via color filter glasses (Anaglyph principle): Blue-Red
+    kPsychDualWindowStereo = 10,        // Stereo for dual-display setups, where each view is rendered into its own onscreen window. (Imaging pipe only!)
+    kPsychFrameSequentialStereo = 11,   // Stereo for frame-sequential display, but using PTB's own implementation instead of native OpenGL mode.
+    kPsychDualStreamStereo = 12         // Stereo mode which needs two separate streams but is not used for frame-sequential stereo, native OpenGL or our own.
 } PsychStereoDisplayType;
 
 typedef enum {
