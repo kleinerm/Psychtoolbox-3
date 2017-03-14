@@ -3435,6 +3435,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // Reset color write mask to "all enabled"
     glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
 
+    // Reset viewport, projection etc. to full window backbuffer:
+    PsychSetupView(windowRecord, TRUE);
+
     // Part 1 of workaround- /checkcode for syncing to vertical retrace:
     if (vblsyncworkaround) {
         glDrawBuffer(GL_BACK);

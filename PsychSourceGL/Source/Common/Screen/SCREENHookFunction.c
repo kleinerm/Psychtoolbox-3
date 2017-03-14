@@ -123,6 +123,39 @@ static char synopsisString[] =
     "Change or query imagingMode flags of provided proxy window 'proxyPtr' to 'imagingMode'. Proxy windows are used to define "
     "image processing operations, mostly for Screen('TransformTexture'). Returns old imaging mode."
     "\n\n"
+    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'SetDisplayBufferTextures' [, hookname][, leftglHandle][, rightglHandle][, glTextureTarget][, format][, multiSample][, width][, height]); \n"
+    "Changes the external backing textures and their parameters for the final output color buffers of the imaging pipeline.\n"
+    "Optionally returns the previously used backing textures and their old parameters. All new parameters are optional, the "
+    "old values are left as they were if a parameter is not provided.\n"
+    "This only works if imagingMode flags kPsychNeedFinalizedFBOSinks and kPsychUseExternalSinkTextures are set, "
+    "otherwise external changes are rejected. It is not allowed to set a configuration which would cause the underlying "
+    "framebuffers to become framebuffer incomplete. Trying to do so will fail and try to revert to the old framebuffer configuration. "
+    "It is not allowed to switch from multisample backing textures to single-sample textures or vice versa, as that would cause various "
+    "processing failures in the image post-processing for a stimulus. Setting the kPsychSinkIsMSAACapable imagingMode flag signals that "
+    "the external sink is capable of providing multisample backing textures and desires such textures, otherwise only external single-sample "
+    "textures are desired. The implementation will decide if it honors the request for multisample textures, depending on general imaging "
+    "pipeline setup. It may decide to allow MSAA for rendering but perform the multiSample resolve step internally. In any case the presence "
+    "of kPsychSinkIsMSAACapable in the final imagingMode for the window signals if the caller of this function should provide multisample or "
+    "single sample non-power-of-two textures (GL_TEXTURE_2D_MULTISAMPLE vs. GL_TEXTURE_2D). The current implementation does not allow for a "
+    "change in multiSample setting, ie., the effective number of samples per pixel for a backing texture. This limitation may get relaxed "
+    "in future versions of the software if possible and sensible.\n"
+    "Parameters and their meaning:\n"
+    "'hookName' Currently ignored, placeholder for future extensions.\n"
+    "'leftglHandle' OpenGL texture object handle of the left-eye texture in stereoMode 12, or of the mono-texture in mono mode.\n"
+    "'rightglHandle' OpenGL texture object handle of the right-eye texture in stereoMode 12, or ignored in mono mode.\n"
+    "'glTextureTarget' OpenGL texture target: GL_TEXTURE_2D or GL_TEXTURE_2D_MULTISAMPLE, depending on multisample configuration.\n"
+    "'format' OpenGL internal texture format, e.g., GL_RGBA. Must be a framebuffer renderable format to prevent framebuffer incompleteness.\n"
+    "'multiSample' The number of samples per texel. Must be 0 for single-sampled GL_TEXTURE_2D textures, > 0 for GL_TEXTURE_2D_MULTISAMPLE textures.\n"
+    "'width' and 'height' Width and height of the output framebuffer (=texture) in pixels or texels.\n"
+    "\n\n"
+    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'GetDisplayBufferTextures'); \n"
+    "Get the OpenGL handles of the backing textures and their parameters for the final output color buffers of the imaging pipeline.\n"
+    "For the meaning of return values see 'SetDisplayBufferTextures' above.\n"
+    "This only works if imagingMode flag kPsychNeedFinalizedFBOSinks is set or stereoMode 12 is active, which implicitely sets that flag.\n"
+    "This query function works both with internally generated and maintained backing textures and externally injected/maintained ones.\n"
+    "For internally generated textures (without flag kPsychUseExternalSinkTextures), the handles should be considered read-only: Binding "
+    "the textures for sampling/reading from them is appropriate, modifying them in any way is forbidden.\n"
+    "\n"
     "General notes:\n\n"
     "* Hook chains are per onscreen window, so each window can have a different configuration and enable state.\n"
     "* Read all available documentation on the Psychtoolbox imaging pipeline in 'help PsychGLImageprocessing', the PsychDocumentation folder "
@@ -135,7 +168,8 @@ PsychError SCREENHookFunction(void)
     PsychWindowRecordType       *windowRecord;
     char                        numString[10];
     char                        *cmdString, *hookString, *idString, *blitterString, *insertString;
-    int                         cmd, slotid, whereloc = 0;
+    int                         cmd, slotid, flag1, whereloc = 0;
+    int                         leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height;
     double                      doubleptr;
     double                      shaderid, luttexid1 = 0;
 
@@ -145,7 +179,7 @@ PsychError SCREENHookFunction(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    PsychErrorExit(PsychCapNumInputArgs(7));
+    PsychErrorExit(PsychCapNumInputArgs(10));
     PsychErrorExit(PsychRequireNumInputArgs(2));
     PsychErrorExit(PsychCapNumOutputArgs(7));
 
@@ -167,12 +201,14 @@ PsychError SCREENHookFunction(void)
     if (strcmp(cmdString, "ImagingMode")==0) cmd=11;
     if (strstr(cmdString, "InsertAt")) { cmd=12; whereloc = -1; sscanf(cmdString, "InsertAt%i", &whereloc); }
     if (strstr(cmdString, "Remove")) cmd=13;
+    if (strcmp(cmdString, "GetDisplayBufferTextures")==0) cmd=14;
+    if (strcmp(cmdString, "SetDisplayBufferTextures")==0) cmd=15;
 
     if(cmd==0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
     if(whereloc < 0) PsychErrorExitMsg(PsychError_user, "Unknown/Invalid/Unparseable insert location specified to 'HookFunction' 'InsertAtXXX'.");
 
     // Need hook name?
-    if(cmd!=9 && cmd!=8 && cmd!=11) {
+    if(cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15) {
         // Get it:
         PsychAllocInCharArg(3, kPsychArgRequired, &hookString);
     }
@@ -333,6 +369,44 @@ PsychError SCREENHookFunction(void)
         case 13: // Remove slot at given index.
             PsychCopyInIntegerArg(4, TRUE, &slotid);
             PsychPipelineDeleteHookSlot(windowRecord, hookString, slotid);
+        break;
+
+        case 14: // GetDisplayBufferTextures
+            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height))
+                printf("PTB-ERROR: Invalid HookFunction call to GetDisplayBufferTextures! Not supported with current imagingMode. Trying to carry on - Prepare for trouble!\n");
+
+            PsychCopyOutDoubleArg(1, FALSE, leftglHandle);
+            PsychCopyOutDoubleArg(2, FALSE, rightglHandle);
+            PsychCopyOutDoubleArg(3, FALSE, glTextureTarget);
+            PsychCopyOutDoubleArg(4, FALSE, format);
+            PsychCopyOutDoubleArg(5, FALSE, multiSample);
+            PsychCopyOutDoubleArg(6, FALSE, width);
+            PsychCopyOutDoubleArg(7, FALSE, height);
+        break;
+
+        case 15: // SetDisplayBufferTextures
+            // Get old values and return them:
+            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height))
+                printf("PTB-ERROR: Invalid HookFunction call to SetDisplayBufferTextures! Not supported with current imagingMode. Trying to carry on - Prepare for trouble!\n");
+
+            PsychCopyOutDoubleArg(1, FALSE, leftglHandle);
+            PsychCopyOutDoubleArg(2, FALSE, rightglHandle);
+            PsychCopyOutDoubleArg(3, FALSE, glTextureTarget);
+            PsychCopyOutDoubleArg(4, FALSE, format);
+            PsychCopyOutDoubleArg(5, FALSE, multiSample);
+            PsychCopyOutDoubleArg(6, FALSE, width);
+            PsychCopyOutDoubleArg(7, FALSE, height);
+
+            // Get new optional override values and set them:
+            PsychCopyInIntegerArg(4, FALSE, &leftglHandle);
+            PsychCopyInIntegerArg(5, FALSE, &rightglHandle);
+            PsychCopyInIntegerArg(6, FALSE, &glTextureTarget);
+            PsychCopyInIntegerArg(7, FALSE, &format);
+            PsychCopyInIntegerArg(8, FALSE, &multiSample);
+            PsychCopyInIntegerArg(9, FALSE, &width);
+            PsychCopyInIntegerArg(10, FALSE, &height);
+            if (!PsychSetPipelineExportTexture(windowRecord, leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height))
+                printf("PTB-ERROR: HookFunction call to SetDisplayBufferTextures failed. See above error message for details. Trying to carry on - Prepare for trouble!\n");
         break;
     }
 
