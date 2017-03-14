@@ -1545,34 +1545,64 @@ if strcmpi(cmd, 'OpenWindow')
 
     % Running on a VR headset?
     if ~isempty(find(mystrcmp(reqs, 'UseVRHMD')));
-        % Yes. Trying to display on a screen with more than one video output?
-        if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
-            % Yes. Not good, as this will impair graphics performance and timing a lot.
-            % Warn about this, then try to at least position the onscreen window on the
-            % right output.
-            fprintf('PsychImaging-WARNING: You are requesting display to a VR HMD on a screen with multiple active video outputs.\n');
-            fprintf('PsychImaging-WARNING: This will impair visual stimulation timing and cause decreased VR performance!\n');
-            fprintf('PsychImaging-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
-            fprintf('PsychImaging-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
+        % Yes:
+        floc = find(mystrcmp(reqs, 'UseVRHMD'));
+        [rows cols] = ind2sub(size(reqs), floc(1));
+        row = rows(1);
 
-            floc = find(mystrcmp(reqs, 'UseVRHMD'));
-            [rows cols] = ind2sub(size(reqs), floc(1));
-            row = rows(1);
+        % Extract first parameter - This should be the handle of the HMD device:
+        hmd = reqs{row, 3};
 
-            % Extract first parameter - This should be the handle of the HMD device:
-            hmd = reqs{row, 3};
+        % Verify it is already open:
+        if ~hmd.driver('IsOpen', hmd)
+            error('PsychImaging(''OpenWindow''): Invalid HMD handle specified for UseVRHMD task. No such device opened.');
+        end
 
-            % Try to find the output with the Rift HMD:
-            for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
-                scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
-                if hmd.driver('IsHMDOutput', hmd, scanout)
-                    % This output i has proper resolution to be the HMD panel.
-                    % Position our onscreen window accordingly:
-                    winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
-                    fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
-                            winRect(1), winRect(2), winRect(3), winRect(4), i);
+        % Old Oculus VR driver for v0.5 SDK/Runtime?
+        if hmd.driver == @PsychOculusVR
+            % Yes. Trying to display on a screen with more than one video output?
+            if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
+                % Yes. Not good, as this will impair graphics performance and timing a lot.
+                % Warn about this, then try to at least position the onscreen window on the
+                % right output.
+                fprintf('PsychImaging-WARNING: You are requesting display to a VR HMD on a screen with multiple active video outputs.\n');
+                fprintf('PsychImaging-WARNING: This will impair visual stimulation timing and cause decreased VR performance!\n');
+                fprintf('PsychImaging-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
+                fprintf('PsychImaging-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
+
+
+                % Try to find the output with the Rift HMD:
+                for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
+                    scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
+                    if hmd.driver('IsHMDOutput', hmd, scanout)
+                        % This output i has proper resolution to be the HMD panel.
+                        % Position our onscreen window accordingly:
+                        winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
+                        fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
+                                winRect(1), winRect(2), winRect(3), winRect(4), i);
+                    end
                 end
             end
+        end
+
+        % New Oculus VR driver for v1.11 SDK/Runtime?
+        if hmd.driver == @PsychOculusVR1
+            % Yes. The current design iteration requires the PTB parent onscreen window
+            % to have the same size (width x height) as the renderbuffer for one
+            % eye, so enforce that constraint.
+
+            % Get required output buffer size and therefore window size:
+            clientRes = hmd.driver('GetClientRenderingParameters', hmd);
+
+            % Set rect of that size, possibly positioned to start where user wants it:
+            if isempty(winRect)
+                winRect = [0, 0, clientRes(1), clientRes(2)];
+            else
+                winRect = OffsetRect([0, 0, clientRes(1), clientRes(2)], winRect(RectLeft), winRect(RectTop));
+            end
+
+            fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to work with HMD Direct output.\n', ...
+                    winRect(1), winRect(2), winRect(3), winRect(4));
         end
     end
 
@@ -2738,7 +2768,7 @@ if ~isempty(floc)
     % Append our generated 'UsePanelFitter' task to setup the panelfitter for
     % our needs at 'OpenWindow' time if panel fitting is needed:
     [clientRes, imagingFlags, stereoMode] = hmd.driver('GetClientRenderingParameters', hmd);
-    if clientRes(1) ~= 0 && clientRes(2) ~= 0
+    if clientRes(1) ~= 0 && clientRes(2) ~= 0 && hmd.driver == @PsychOculusVR
         x{1} = 'General';
         x{2} = 'UsePanelFitter';
         x{3} = clientRes;
