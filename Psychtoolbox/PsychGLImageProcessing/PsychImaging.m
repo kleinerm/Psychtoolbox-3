@@ -2736,22 +2736,24 @@ if ~isempty(floc)
     end
 
     % Append our generated 'UsePanelFitter' task to setup the panelfitter for
-    % our needs at 'OpenWindow' time:
+    % our needs at 'OpenWindow' time if panel fitting is needed:
     [clientRes, imagingFlags, stereoMode] = hmd.driver('GetClientRenderingParameters', hmd);
-    x{1} = 'General';
-    x{2} = 'UsePanelFitter';
-    x{3} = clientRes;
-    x{4} = 'Custom';
-    x{5} = [0, 0, clientRes(1), clientRes(2)];
-    x{6} = [0, 0, clientRes(1), clientRes(2)];
+    if clientRes(1) ~= 0 && clientRes(2) ~= 0
+        x{1} = 'General';
+        x{2} = 'UsePanelFitter';
+        x{3} = clientRes;
+        x{4} = 'Custom';
+        x{5} = [0, 0, clientRes(1), clientRes(2)];
+        x{6} = [0, 0, clientRes(1), clientRes(2)];
 
-    % Pad to maxreqarg arguments:
-    if length(x) < maxreqarg
-        for i=length(x)+1:maxreqarg
-            x{i}='';
+        % Pad to maxreqarg arguments:
+        if length(x) < maxreqarg
+            for i=length(x)+1:maxreqarg
+                x{i}='';
+            end
         end
+        reqs = [reqs ; x];
     end
-    reqs = [reqs ; x];
 
     % Add imaging mode flags requested by HMD driver:
     imagingMode = mor(imagingMode, imagingFlags);
