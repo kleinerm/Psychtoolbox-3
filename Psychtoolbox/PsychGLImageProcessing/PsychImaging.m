@@ -1543,6 +1543,9 @@ if strcmpi(cmd, 'OpenWindow')
         winRect = varargin{3};
     end
 
+    % Set override special flags to "none" by default:
+    ovrSpecialFlags = [];
+
     % Running on a VR headset?
     if ~isempty(find(mystrcmp(reqs, 'UseVRHMD')));
         % Yes:
@@ -1603,6 +1606,17 @@ if strcmpi(cmd, 'OpenWindow')
 
             fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to work with HMD Direct output.\n', ...
                     winRect(1), winRect(2), winRect(3), winRect(4));
+
+            % As the onscreen window is not used for displaying on the HMD, but
+            % either not at all, or just for debug output, make it a regular GUI
+            % window, managed by the window manager, so user can easily get it out
+            % of the way:
+            ovrSpecialFlags = kPsychGUIWindowWMPositioned;
+
+            % Skip all visual timing sync tests and calibrations, as display timing
+            % of the onscreen window doesn't matter, only the timing on the HMD direct
+            % output matters:
+            Screen('Preference', 'SkipSyncTests', 2);
         end
     end
 
@@ -1676,7 +1690,7 @@ if strcmpi(cmd, 'OpenWindow')
     imagingMode = mor(imagingMode, imagingovm);
 
     if nargin < 10 || isempty(varargin{9})
-        specialFlags = [];
+        specialFlags = ovrSpecialFlags;
     else
         specialFlags = varargin{9};
     end
