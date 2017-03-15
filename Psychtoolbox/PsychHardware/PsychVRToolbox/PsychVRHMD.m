@@ -402,7 +402,15 @@ if strcmpi(cmd, 'AutoSetupHMD')
   if length(varargin) >= 4 && ~isempty(varargin{4})
     vendor = varargin{4};
     if strcmpi(vendor, 'Oculus')
-      hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      if exist('PsychOculusVR1', 'file')
+        hmd = PsychOculusVR1('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      else
+        hmd = [];
+      end
+
+      if isempty(hmd)
+        hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      end
 
       % Return the handle:
       varargout{1} = hmd;
@@ -415,7 +423,18 @@ if strcmpi(cmd, 'AutoSetupHMD')
   % Probe sequence:
   hmd = [];
 
-  % Oculus runtime supported and online? At least one real HMD connected?
+  % Oculus runtime v1.11+ supported and online? At least one real HMD connected?
+  if exist('PsychOculusVR1', 'file') && PsychOculusVR1('Supported') && PsychOculusVR1('GetCount') > 0
+    % Yes. Use that one. This will also inject a proper PsychImaging task
+    % for setup of the imaging pipeline:
+    hmd = PsychOculusVR1('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+
+    % Return the handle:
+    varargout{1} = hmd;
+    return;
+  end
+
+  % Oculus sdk/runtime v0.5 supported and online? At least one real HMD connected?
   if PsychOculusVR('Supported') && PsychOculusVR('GetCount') > 0
     % Yes. Use that one. This will also inject a proper PsychImaging task
     % for setup of the imaging pipeline:
