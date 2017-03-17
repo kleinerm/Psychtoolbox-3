@@ -537,7 +537,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   'AllViews' as we'd usually do. Both specs will work, but a selection
 %   of 'FinalFormatting' will lead to faster processing in many cases, so
 %   this is preferred here if you want to apply the same setting to all
-%   view channels - or to a single monoscopic display. Should you find 
+%   view channels - or to a single monoscopic display. Should you find
 %   that things don't work as expected, you might try 'AllViews' instead
 %   of 'FinalFormatting' - There are subtle differences in how they
 %   process your instructions, which may matter in some corner cases.
@@ -1309,7 +1309,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 
 % Notes:
 %
-% 
+%
 %
 
 % History:
@@ -1344,7 +1344,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 % 26.04.2010  Disable workarounds from 04.03.2010, as Screen() is fixed now. (MK)
 %
-% 02.09.2010  Add support for 'InterleavedColumnStereo'- for auto-stereoscopic 
+% 02.09.2010  Add support for 'InterleavedColumnStereo'- for auto-stereoscopic
 %             displays, e.g., parallax barrier and lenticular sheets. (MK)
 %
 % 03.04.2011  Add support for 'EnableCLUTMapping' for old fashioned clut animation. (MK)
@@ -1416,24 +1416,24 @@ if strcmpi(cmd, 'PrepareConfiguration')
         fprintf('I will restart configuration now and forget the previously made PsychImaging(''AddTask'', ...); settings.\n');
         warning('Tried to prepare a new configuration phase, but you did not finalize the previous phase yet!');
     end
-    
+
     % Enter configuration mode, accept 'AddTask' specifications:
     configphase_active = 1;
-    
+
     % Reset old settings:
-    
+
     % MK: This clear reqs causes malfunctions on Octave 3.2.0 for some reason, so don't use it! clear reqs;
     reqs = [];
     ptb_outputformatter_icmAware = 0;
-    
+
     % Set GPGPU api type indicator to zero "none in use" default:
     if isempty(psych_gpgpuapi)
         psych_gpgpuapi = 0;
     end
-    
+
     % Assign default success return code rc:
     rc = 0;
-    
+
     return;
 end
 
@@ -1441,11 +1441,11 @@ if strcmpi(cmd, 'AddTask')
     if nargin < 3 || isempty(varargin{1}) || isempty(varargin{2})
         error('Parameters missing: Need at least "whichChannel" and "whichTask"!');
     end
-    
+
     if configphase_active ~= 1
         error('Call PsychImaging(''PrepareConfiguration''); first to prepare the configuration phase!');
     end
-    
+
     % Store requirement in our cell array of requirements. We need to
     % extend each requirement vector to some number of max elements, so all
     % rows in the cell array have the same length:
@@ -1455,7 +1455,7 @@ if strcmpi(cmd, 'AddTask')
             x{i}='';
         end
     end
-    
+
     % First use of 'reqs' array?
     if isempty(reqs)
         % Yes: Initialize the array with content of 'x':
@@ -1465,7 +1465,7 @@ if strcmpi(cmd, 'AddTask')
         % array 'reqs':
         reqs = [reqs ; x];
     end
-    
+
     rc = 0;
     return;
 end
@@ -1480,13 +1480,13 @@ if strcmpi(cmd, 'FinalizeConfiguration')
     end
 
     configphase_active = 2;
-    
+
     % Compute correct imagingMode - Settings for current configuration and
     % return it:
     [imagingMode, needStereoMode, reqs] = FinalizeConfiguration(reqs);
     rc = imagingMode;
     winRect = needStereoMode;
-    
+
     return;
 end
 
@@ -1494,7 +1494,7 @@ if strcmpi(cmd, 'PostConfiguration')
     if configphase_active ~= 2
         error('Tried to call PostConfiguration without calling FinalizeConfiguration before!');
     end
-    
+
     if nargin < 2 || isempty(varargin{1}) || Screen('WindowKind', varargin{1})~=1
         error('No "windowPtr" or invalid "windowPtr" or non-onscreen window handle provided!');
     end
@@ -1504,20 +1504,20 @@ if strcmpi(cmd, 'PostConfiguration')
     else
         clearcolor = varargin{2};
     end
-    
+
     rc = PostConfiguration(reqs, varargin{1}, clearcolor);
 
     configphase_active = 0;
     return;
 end
-    
+
 if strcmpi(cmd, 'OpenWindow')
 
     % Allow 'OpenWindow' without task specs. Simply open with empty task requirements list:
     if ismember(configphase_active, [0, 2])
         PsychImaging('PrepareConfiguration');
     end
-    
+
     if configphase_active ~= 1
         error('You tried to OpenWindow, but didn''t specify any imaging configuration!');
     end
@@ -1525,54 +1525,98 @@ if strcmpi(cmd, 'OpenWindow')
     if nargin < 2
         error('You must supply at least a "screenId" for the screen on which the window should be opened');
     end
-    
+
     % Final config phase:
     configphase_active = 2; %#ok<NASGU>
-    
+
     screenid = varargin{1};
-    
+
     if nargin < 3 || isempty(varargin{2})
         clearcolor = [];
     else
         clearcolor = varargin{2};
     end
-    
+
     if nargin < 4 || isempty(varargin{3})
         winRect = [];
     else
         winRect = varargin{3};
     end
 
+    % Set override special flags to "none" by default:
+    ovrSpecialFlags = [];
+
     % Running on a VR headset?
     if ~isempty(find(mystrcmp(reqs, 'UseVRHMD')));
-        % Yes. Trying to display on a screen with more than one video output?
-        if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
-            % Yes. Not good, as this will impair graphics performance and timing a lot.
-            % Warn about this, then try to at least position the onscreen window on the
-            % right output.
-            fprintf('PsychImaging-WARNING: You are requesting display to a VR HMD on a screen with multiple active video outputs.\n');
-            fprintf('PsychImaging-WARNING: This will impair visual stimulation timing and cause decreased VR performance!\n');
-            fprintf('PsychImaging-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
-            fprintf('PsychImaging-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
+        % Yes:
+        floc = find(mystrcmp(reqs, 'UseVRHMD'));
+        [rows cols] = ind2sub(size(reqs), floc(1));
+        row = rows(1);
 
-            floc = find(mystrcmp(reqs, 'UseVRHMD'));
-            [rows cols] = ind2sub(size(reqs), floc(1));
-            row = rows(1);
+        % Extract first parameter - This should be the handle of the HMD device:
+        hmd = reqs{row, 3};
 
-            % Extract first parameter - This should be the handle of the HMD device:
-            hmd = reqs{row, 3};
+        % Verify it is already open:
+        if ~hmd.driver('IsOpen', hmd)
+            error('PsychImaging(''OpenWindow''): Invalid HMD handle specified for UseVRHMD task. No such device opened.');
+        end
 
-            % Try to find the output with the Rift HMD:
-            for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
-                scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
-                if hmd.driver('IsHMDOutput', hmd, scanout)
-                    % This output i has proper resolution to be the HMD panel.
-                    % Position our onscreen window accordingly:
-                    winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
-                    fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
-                            winRect(1), winRect(2), winRect(3), winRect(4), i);
+        % Old Oculus VR driver for v0.5 SDK/Runtime?
+        if hmd.driver == @PsychOculusVR
+            % Yes. Trying to display on a screen with more than one video output?
+            if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
+                % Yes. Not good, as this will impair graphics performance and timing a lot.
+                % Warn about this, then try to at least position the onscreen window on the
+                % right output.
+                fprintf('PsychImaging-WARNING: You are requesting display to a VR HMD on a screen with multiple active video outputs.\n');
+                fprintf('PsychImaging-WARNING: This will impair visual stimulation timing and cause decreased VR performance!\n');
+                fprintf('PsychImaging-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
+                fprintf('PsychImaging-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
+
+
+                % Try to find the output with the Rift HMD:
+                for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
+                    scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
+                    if hmd.driver('IsHMDOutput', hmd, scanout)
+                        % This output i has proper resolution to be the HMD panel.
+                        % Position our onscreen window accordingly:
+                        winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
+                        fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
+                                winRect(1), winRect(2), winRect(3), winRect(4), i);
+                    end
                 end
             end
+        end
+
+        % New Oculus VR driver for v1.11 SDK/Runtime?
+        if hmd.driver == @PsychOculusVR1
+            % Yes. The current design iteration requires the PTB parent onscreen window
+            % to have the same size (width x height) as the renderbuffer for one
+            % eye, so enforce that constraint.
+
+            % Get required output buffer size and therefore window size:
+            clientRes = hmd.driver('GetClientRenderingParameters', hmd);
+
+            % Set rect of that size, possibly positioned to start where user wants it:
+            if isempty(winRect)
+                winRect = [0, 0, clientRes(1), clientRes(2)];
+            else
+                winRect = OffsetRect([0, 0, clientRes(1), clientRes(2)], winRect(RectLeft), winRect(RectTop));
+            end
+
+            fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to work with HMD Direct output.\n', ...
+                    winRect(1), winRect(2), winRect(3), winRect(4));
+
+            % As the onscreen window is not used for displaying on the HMD, but
+            % either not at all, or just for debug output, make it a regular GUI
+            % window, managed by the window manager, so user can easily get it out
+            % of the way:
+            ovrSpecialFlags = kPsychGUIWindowWMPositioned;
+
+            % Skip all visual timing sync tests and calibrations, as display timing
+            % of the onscreen window doesn't matter, only the timing on the HMD direct
+            % output matters:
+            Screen('Preference', 'SkipSyncTests', 2);
         end
     end
 
@@ -1594,16 +1638,16 @@ if strcmpi(cmd, 'OpenWindow')
         % Ignore pixelSize:
         pixelSize = [];
     end
-    
+
     % Override numbuffers -- always 2:
     numbuffers = 2;
-        
+
     if nargin < 7 || isempty(varargin{6})
         stereomode = 0;
     else
         stereomode = varargin{6};
     end
-        
+
     % Compute correct imagingMode - Settings for current configuration and
     % return it:
     [imagingMode, needStereoMode, reqs] = FinalizeConfiguration(reqs, stereomode, screenid);
@@ -1630,27 +1674,27 @@ if strcmpi(cmd, 'OpenWindow')
             end
         end
     end
-    
+
     if nargin < 8 || isempty(varargin{7})
         multiSample = 0;
     else
         multiSample = varargin{7};
     end
-    
+
     if nargin < 9 || isempty(varargin{8})
         imagingovm = 0;
     else
         imagingovm = varargin{8};
     end
-    
+
     imagingMode = mor(imagingMode, imagingovm);
-    
+
     if nargin < 10 || isempty(varargin{9})
-        specialFlags = [];
+        specialFlags = ovrSpecialFlags;
     else
         specialFlags = varargin{9};
     end
-    
+
     if nargin < 11 || isempty(varargin{10})
         clientRect = [];
     else
@@ -1663,7 +1707,7 @@ if strcmpi(cmd, 'OpenWindow')
         if length(floc) > 1
             error('PsychImaging: Multiple definitions of task "UseDisplayRotation"! There can be only one.');
         end
-        
+
         % Check for collisions with mutually exclusive "UsePanelFitter" task:
         if ~isempty(find(mystrcmp(reqs, 'UsePanelFitter')))
             fprintf('\n\n');
@@ -1673,21 +1717,21 @@ if strcmpi(cmd, 'OpenWindow')
             fprintf('PsychImaging: a simple convenience shortcut to "UsePanelFitter".\n');
             error('PsychImaging: Task "UsePanelFitter" also requested, but you can only use either "UsePanelFitter" or "UseDisplayRotation".');
         end
-        
+
         [row cols] = ind2sub(size(reqs), floc); %#ok<NASGU>
         rotAngle = reqs{row, 3};
-        
+
         if isempty(rotAngle) || ~isnumeric(rotAngle) || ~isscalar(rotAngle)
             error('PsychImaging: For task "UseDisplayRotation", required rotation angle parameter missing or not a scalar angle in degrees.');
         end
-        
+
         % Get full size of output framebuffer:
         if isempty(winRect)
             [clientRes(1), clientRes(2)] = Screen('WindowSize', screenid, 1);
         else
             clientRes = [RectWidth(winRect), RectHeight(winRect)];
         end
-        
+
         % Rotation into a portrait orientation?
         if (round(rotAngle / 90) == (rotAngle / 90))
             if (mod(round(rotAngle / 90), 2) > 0)
@@ -1698,7 +1742,7 @@ if strcmpi(cmd, 'OpenWindow')
             fprintf('PsychImaging: Provided rotation angle for task "UseDisplayRotation" is not a multiple of 90 degrees.\n');
             fprintf('PsychImaging: You are probably in for a bit of trouble for such rotation angles...\n');
         end
-        
+
         % No-Op for rotation angle of 0 degrees, as that does nothing.
         if rotAngle ~= 0
             % Build a 'UsePanelFitter' task from our tasks parameters by
@@ -1711,7 +1755,7 @@ if strcmpi(cmd, 'OpenWindow')
             reqs{row, 7} = rotAngle;
         end
     end
-    
+
     % Use and high-level setup of panelfitter requested?
     if ~isempty(find(mystrcmp(reqs, 'UsePanelFitter'))) %#ok<*EFIND>
         % Yes. Extract parameters:
@@ -1719,24 +1763,24 @@ if strcmpi(cmd, 'OpenWindow')
         if length(floc) > 1
             error('PsychImaging: Multiple definitions of task "UsePanelFitter"! There can be only one.');
         end
-        
+
         [row cols] = ind2sub(size(reqs), floc); %#ok<NASGU>
-        
+
         % Extract requested resolution of virtual framebuffer...
         clientRes = reqs{row, 3};
         if length(clientRes) ~= 2 || ~isnumeric(clientRes) || min(clientRes) < 1
             error('PsychImaging: Mandatory "size" parameter of task "UsePanelFitter" is missing or not a two component [width, height] size vector with positive width and height as expected.');
         end
-        
+
         clientRes = round(clientRes);
-        
+
         if ~isempty(clientRect)
             fprintf('PsychImaging: OpenWindow: Warning: User provided "clientRect" overriden by specification in PsychImaging task "UsePanelFitter".');
         end
-        
+
         % ... and define clientRect accordingly:
         clientRect = [0, 0, clientRes(1), clientRes(2)];
-        
+
         % Extract scaling strategy:
         fitterStrategy = reqs{row, 4};
         if isempty(fitterStrategy) || ~ischar(fitterStrategy)
@@ -1749,19 +1793,19 @@ if strcmpi(cmd, 'OpenWindow')
         else
             dstFit = SetRect(0, 0, RectWidth(winRect), RectHeight(winRect));
         end
-        
+
         % Adapt dstFit according to window size flags:
-        
+
         % Apply half-height flag, if any:
         if bitand(imagingMode, kPsychNeedHalfHeightWindow)
             dstFit(RectBottom) = dstFit(RectBottom) / 2;
         end
-        
+
         % Apply half-width flag, if any:
         if bitand(imagingMode, kPsychNeedHalfWidthWindow) || ismember(stereomode, [4, 5])
             dstFit(RectRight) = dstFit(RectRight) / 2;
         end
-        
+
         % Apply twice-width flag, if any:
         if bitand(imagingMode, kPsychNeedTwiceWidthWindow)
             dstFit(RectRight) = dstFit(RectRight) * 2;
@@ -1773,7 +1817,7 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         winCenter = [RectWidth(dstFit)/2, RectHeight(dstFit)/2];
-        
+
         % Extract rotation angle to use for display rotation:
         rotX = [];
         rotY = [];
@@ -1786,10 +1830,10 @@ if strcmpi(cmd, 'OpenWindow')
         else
             % Round to full degrees:
             rotAngle = round(rotAngle);
-            
+
             if rotAngle ~= 0
                 fprintf('PsychImaging: PanelFitter will apply a display rotation of %i degrees.\n', rotAngle);
-                
+
                 % Check if rotation angle is -90, +90, -270, +270, ... degrees,
                 % ie. the image is effectively tilted by 90 degrees clockwise
                 % or counter-clockwise:
@@ -1814,17 +1858,17 @@ if strcmpi(cmd, 'OpenWindow')
             if ~isnumeric(srcFit) || length(srcFit) ~= 4
                 error('PsychImaging: Mandatory parameter "srcRect" of task "UsePanelFitter" for fitting strategy "Custom" missing or not a 4 element rect.');
             end
-            
+
             if ~isnumeric(dstFit) || length(dstFit) ~= 4
                 error('PsychImaging: Mandatory parameter "dstRect" of task "UsePanelFitter" for fitting strategy "Custom" missing or not a 4 element rect.');
-            end            
+            end
         elseif strcmpi(fitterStrategy, 'Centered')
             % Don't rescale but blit one-to-one. Center in target
             % framebuffer, crop if neccessary:
 
             % Try to center clientRect in destination framebuffer rect:
             srcFit = CenterRect(clientRect, dstFit);
-            
+
             % Does it fully fit in?
             if any(srcFit < 0)
                 % No. We need to crop/clip it to fit in:
@@ -1840,7 +1884,7 @@ if strcmpi(cmd, 'OpenWindow')
             % Rescale source framebuffer to full target framebuffer, not
             % taking aspect ratio into account:
             srcFit = clientRect;
-            
+
             if RectWidth(srcFit) / RectHeight(srcFit) ~= RectWidth(dstFit) / RectHeight(dstFit)
                 fprintf('PsychImaging: Using full resolution fitting strategy. Scaling will not preserve aspect ratio of original stimulus!\n');
             else
@@ -1848,7 +1892,7 @@ if strcmpi(cmd, 'OpenWindow')
             end
         elseif strcmpi(fitterStrategy, 'AspectWidth') || strcmpi(fitterStrategy, 'AspectHeight') || strcmpi(fitterStrategy, 'Aspect')
             % Rescale aspect ratio preserving:
-            
+
             if strcmpi(fitterStrategy, 'AspectWidth')
                 % Cover full width of window, maybe crop top and bottom:
                 sf = RectWidth(dstFit) / RectWidth(clientRect);
@@ -1869,21 +1913,21 @@ if strcmpi(cmd, 'OpenWindow')
                 sf = min(sfw, sfh);
                 fprintf('PsychImaging: Using scaling to the most maximal size which still preserves aspect ratio. There may be borders.\n');
             end
-            
+
             % Compute scaled size target rectangle:
             scaleFit = ScaleRect(clientRect, sf, sf);
-            
+
             % Center it in destination framebuffer dstFit:
             scaleFit = CenterRect(scaleFit, dstFit);
-            
+
             % Clip it against dstFit's size, crop away borders if neccessary:
             % dstFit now contains the destination retangle in the window:
             dstFit = ClipRect(scaleFit, dstFit);
-            
+
             % Compute originating source rectangle of original size for
             % 'dstFit' by undoing the scaling:
             scaleFit = SetRect(0, 0, RectWidth(dstFit)/sf, RectHeight(dstFit)/sf);
-            
+
             % Center properly sized source rectangle in clientRect source
             % framebuffer to compute final srcRect for scaling blit:
             srcFit = CenterRect(scaleFit, clientRect);
@@ -1894,25 +1938,25 @@ if strcmpi(cmd, 'OpenWindow')
         if rotAngle ~= 0
             [rotX, rotY] = RectCenter(clientRect);
         end
-                
+
         if rot90Deg
             % Offset compensation for multiple of 90 degrees rotations:
             degrad = 2 * pi * rotAngle / 360;
             rotOffset(1) = -(winCenter(2) - rotX) * sin(degrad);
-            rotOffset(2) =  (winCenter(1) - rotY) * sin(degrad);            
+            rotOffset(2) =  (winCenter(1) - rotY) * sin(degrad);
             dstFit = OffsetRect(dstFit, rotOffset(1), rotOffset(2));
         end
-        
+
         % Build final fitterParams vector:
         fitterParams = [srcFit dstFit rotAngle rotX rotY];
-        
+
         % Restore clientRect to original one:
         clientRect = [0, 0, clientRes(1), clientRes(2)];
     else
         % No panel fitter in use. Or at least, none we would set up:
         fitterParams = [];
     end
-    
+
     % Custom color correction for display wanted on a Bits+ display in
     % Mono++ or Color++ mode or a DataPixx?
     if ~isempty(find(mystrcmp(reqs, 'DisplayColorCorrection')))
@@ -1922,13 +1966,13 @@ if strcmpi(cmd, 'OpenWindow')
             % efficient for a single color correction plugin, but not
             % useable with multiple plugins! Need to handle both
             % cases specially.
-            
-            % More than one color correction plugin requested for pipeline?            
+
+            % More than one color correction plugin requested for pipeline?
             floc = find(mystrcmp(reqs, 'DisplayColorCorrection'));
             if length(floc) == 1
                 % Single plugin. Use BitsPlusPlus internal setup code,
                 % just provide proper method setting for it now:
-                
+
                 % Which channel?
                 x=floc;
                 [rows cols] = ind2sub(size(reqs), x); %#ok<NASGU>
@@ -1975,12 +2019,12 @@ if strcmpi(cmd, 'OpenWindow')
             myopenstring = 'DummyOpenWindow';
             warning('BrightSide HDR output device selected on a non MS-Windows platform! Unsupported! Will use dummy emulation mode instead!');
         end
-        
+
         if nargin >= 12
             [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
             [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
-        end        
+        end
     end
 
     if ~isempty(find(mystrcmp(reqs, 'EnableBits++Bits++Output')))
@@ -1994,7 +2038,7 @@ if strcmpi(cmd, 'OpenWindow')
             [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
             [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
-        end        
+        end
     end
 
     if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')))
@@ -2009,12 +2053,12 @@ if strcmpi(cmd, 'OpenWindow')
         else
             bpcom = 'OpenWindowMono++';
         end
-        
+
         if nargin >= 12
             [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
             [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
-        end        
+        end
     end
 
     if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
@@ -2028,7 +2072,7 @@ if strcmpi(cmd, 'OpenWindow')
             [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
         else
             [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
-        end        
+        end
     end
 
     if isempty(win)
@@ -2039,10 +2083,10 @@ if strcmpi(cmd, 'OpenWindow')
             [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
         end
     end
-    
+
     % No secondary slave window by default:
     slavewin = [];
-    
+
     % Display mirroring requested?
     if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
         % Yes. Need to open secondary slave window:
@@ -2057,27 +2101,27 @@ if strcmpi(cmd, 'OpenWindow')
             sca;
             error('In PsychImaging MirrorDisplayTo2ndOutputHead: You must provide the index of the secondary screen "slavescreen"!');
         end
-        
+
         if ~any(ismember(Screen('Screens'), slavescreenid))
             sca;
             error('In PsychImaging MirrorDisplayTo2ndOutputHead: You must provide the index of a valid secondary screen "slavescreen"!');
         end
-        
+
         if stereomode == 10
             fprintf('PsychImaging: WARNING! You simultaneously requested display mirroring to 2nd output head and dual display stereomode 10.\n');
             fprintf('PsychImaging: WARNING! These are mutually exclusive! Will choose stereomode 10 instead of mirroring.\n');
         end
-        
+
         if stereomode == 1
             sca;
             error('In PsychImaging MirrorDisplayTo2ndOutputHead: Tried to simultaneously enable frame-sequential stereomode 1! This is not supported.');
         end
-        
+
         % Extract optional 2nd parameter - The window rectangle of the slave
         % window on the slave screen to which the display should get mirrored:
         slavewinrect = reqs{rows, 4};
         if isempty(slavewinrect), slavewinrect = []; end
-        
+
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
         % chain properly:
@@ -2099,27 +2143,27 @@ if strcmpi(cmd, 'OpenWindow')
             sca;
             error('In PsychImaging EnableDualPipeHDROutput: You must provide the index of the secondary screen "slavescreen"!');
         end
-        
+
         if ~any(ismember(Screen('Screens'), slavescreenid))
             sca;
             error('In PsychImaging EnableDualPipeHDROutput: You must provide the index of a valid secondary screen "slavescreen"!');
         end
-        
+
         if stereomode == 1
             sca;
             error('In PsychImaging EnableDualPipeHDROutput: Tried to simultaneously enable frame-sequential stereomode 1! This is not supported.');
         end
-        
+
         if stereomode == 10
             sca;
             error('In PsychImaging EnableDualPipeHDROutput: Tried to simultaneously enable dual display output stereomode 10! This is not supported.');
         end
-        
+
         % Extract optional 2nd parameter - The window rectangle of the slave
         % window on the slave screen to which the pipe 1 display should get outputted:
         slavewinrect = reqs{rows, 4};
         if isempty(slavewinrect), slavewinrect = []; end
-        
+
         % Open slave window on slave screen: Set the special dual window
         % output flag, so Screen('OpenWindow') initializes the internal blit
         % chain properly:
@@ -2140,7 +2184,7 @@ if strcmpi(cmd, 'OpenWindow')
             sca;
             error('In PsychImaging DualWindowStereo: You must provide the index of the secondary screen "slavescreen"!');
         end
-        
+
         if ~any(ismember(Screen('Screens'), slavescreenid))
             sca;
             error('In PsychImaging DualWindowStereo: You must provide the index of a valid secondary screen "slavescreen"!');
@@ -2150,11 +2194,11 @@ if strcmpi(cmd, 'OpenWindow')
         % window on the slave screen:
         slavewinrect = reqs{rows, 4};
         if isempty(slavewinrect), slavewinrect = []; end
-        
+
         % Open slave window on slave screen:
         slavewin = Screen('OpenWindow', slavescreenid, [], slavewinrect, pixelSize, [], 10);
     end
-    
+
     % Matlab? Does the Java swing cleanup function exist?
     if exist('PsychJavaSwingCleanup', 'file')
         % Attach a window close callback for cleanup of Java's memory
@@ -2162,7 +2206,7 @@ if strcmpi(cmd, 'OpenWindow')
         % GUI is in use:
         Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychJavaSwingCleanup().', 'PsychJavaSwingCleanup;');
         Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
-        
+
         % Some slave window opened?
         if ~isempty(slavewin)
             % Yes: Apply java cleanup there as well:
@@ -2175,7 +2219,7 @@ if strcmpi(cmd, 'OpenWindow')
     % background color:
     Screen('Flip', win);
     Screen('Flip', win);
-    
+
     % Window open. Perform imaging pipe postconfiguration:
     PostConfiguration(reqs, win, clearcolor, slavewin);
 
@@ -2194,7 +2238,7 @@ if strcmpi(cmd, 'OpenWindow')
         % background clear color, which should be the most well defined
         % choice:
         Screen('PanelFitter', win, round(fitterParams));
-        
+
         % Now that the fitter is fully configured, perform an extra
         % double-flip to apply proper scaling and borders and such:
         Screen('Flip', win);
@@ -2224,24 +2268,24 @@ if strcmpi(cmd, 'RestrictProcessingToROI')
         sca;
         error('You must provide all parameters for subfunction "RestrictProcessingToROI!"');
     end
-    
+
     % Extract window handle:
     win = varargin{1};
-    
+
     if ~isscalar(win) || ~isnumeric(win) || Screen('WindowKind', win) ~= 1
         sca;
         error('Provided window parameter for subfunction "RestrictProcessingToROI!" is not the handle of a valid onscreen window!');
     end
-    
+
     % Extract window information:
     winfo = Screen('GetWindowInfo', win);
-    
+
     % Extract view channel:
     whichView = varargin{2};
-    
+
     % Extract scissor rectangle:
     scissorrect = varargin{3};
-    
+
     if size(scissorrect,1)~=1 || size(scissorrect,2)~=4
         sca;
         error('Command "RestrictProcessingToROI" in channel %s expects a 1-by-4 ROI rectangle to define the ROI, e.g, [left top right bottom]!', whichView);
@@ -2297,21 +2341,21 @@ if strcmpi(cmd, 'UnrestrictProcessing')
         sca;
         error('You must provide all parameters for subfunction "UnrestrictProcessing!"');
     end
-    
+
     % Extract window handle:
     win = varargin{1};
-    
+
     if ~isscalar(win) || ~isnumeric(win) || Screen('WindowKind', win) ~= 1
         sca;
         error('Provided window parameter for subfunction "UnrestrictProcessing!" is not the handle of a valid onscreen window!');
     end
-    
+
     % Extract window information:
     winfo = Screen('GetWindowInfo', win);
-    
+
     % Extract view channel:
     whichView = varargin{2};
-    
+
     if mystrcmp(whichView, 'LeftView') || mystrcmp(whichView, 'AllViews')
         % Need to restrict left view processing:
         DoRemoveScissorRestriction(win, 'StereoLeftCompositingBlit');
@@ -2343,10 +2387,10 @@ if strcmpi(cmd, 'GetOverlayWindow')
     % Pass this call through to BitsPlusPlus.m driver -- the only one which
     % currently supports such overlays.
     % MK: May need to do something more clever in the future...
-    
+
     % rc is the 'win'dowhandle, winRect is its Screen('Rect'):
     [rc, winRect] = BitsPlusPlus('GetOverlayWindow', varargin{:});
-    
+
     return;
 end
 
@@ -2403,7 +2447,7 @@ floc = find(mystrcmp(reqs, 'UseGPGPUCompute'));
 if ~isempty(floc)
     % Yes.
     [row cols] = ind2sub(size(reqs), floc); %#ok<NASGU>
-    
+
     % Extract first mandatory parameter, the apitype to use:
     apitype = reqs{row, 3};
     if ~ischar(apitype) || (~strcmpi(apitype, 'Auto') && ~strcmpi(apitype, 'GPUmat'))
@@ -2411,7 +2455,7 @@ if ~isempty(floc)
         sca;
         error('PsychImaging: Use of GPU compute device via UseGPGPUCompute was requested, but mandatory apitype parameter is missing or invalid!');
     end
-    
+
     % Extract 2nd optional parameter, the compute flags:
     gpgpuflags = reqs{row, 4};
     if ~isempty(gpgpuflags) && ~ischar(gpgpuflags)
@@ -2428,7 +2472,7 @@ if ~isempty(floc)
         sca;
         error('PsychImaging: Use of GPU compute device via UseGPGPUCompute was requested, but the required GPUmat toolbox seems to be missing!');
     end
-    
+
     % Available. Start it:
     psychlasterror('reset');
     try
@@ -2443,10 +2487,10 @@ if ~isempty(floc)
         sca;
         error('PsychImaging: GPGPU init failed!');
     end
-    
+
     % Ok, GPUmat is online. Set a global marker that it is running:
     fprintf('PsychImaging: GPGPU computing support via GPUmat toolbox enabled.\n');
-    
+
     % Type 1 is GPUmat:
     psych_gpgpuapi = 1; %#ok<NASGU>
 end
@@ -2514,7 +2558,7 @@ if ~isempty(floc)
     reqs(end+1, :) = cell(1, size(reqs, 2));
     reqs{end, 2} = 'UseDataPixx';
     datapixxmode = 1;
-    
+
     % Initialize connection, switch immediately to L48 mode:
     PsychDataPixx('Open');
     PsychDataPixx('SetVideoMode', 1);
@@ -2570,11 +2614,11 @@ if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))
     if datapixxmode == 0
         % Open connection:
         PsychDataPixx('Open');
-        
+
         % As no other special high precision output mode is requested, set
         % video mode to "normal passthrough":
         PsychDataPixx('SetVideoMode', 0);
-        
+
         % Mark as online:
         datapixxmode = 1;
     end
@@ -2639,11 +2683,11 @@ end
 if userstereomode > 0 || stereoMode > 0
     % Enable imaging pipeline based stereo,ie., kPsychNeedFastBackingStore:
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    
+
     % Datapixx - if any - needs special setup:
     if datapixxmode
         % Datapixx device active:
-        
+
         % Frame sequential style mode via top-down "sync-doubling" mode?
         if ismember(userstereomode, 2) || ismember(stereoMode, 2)
             % Switch Datapixx to sync-doubling stereo mode:
@@ -2654,7 +2698,7 @@ if userstereomode > 0 || stereoMode > 0
             % Switch Datapixx to non stereo mode:
             PsychDataPixx('SetVideoVerticalStereo', 0);
         end
-        
+
         % Frame-Sequential stereo driven by GPU or us, instead of Datapixx?
         if ismember(userstereomode, [1,11]) || ismember(stereoMode, [1,11])
             % Ask Datapixx to interpret the blue-line-sync stereo sync line
@@ -2673,7 +2717,7 @@ if userstereomode > 0 || stereoMode > 0
             % Ask ViewPixx to enable its scanning backlight for faster /
             % ghost-free response:
             PsychDataPixx('EnableVideoScanningBacklight');
-            
+
             % Tell Screen() to tolerate a VBLANK interval that is up to 50%
             % the height of VACTIVE, ie. allow a max VTOTAL = 1.5 * VACTIVE.
             % This is needed because Screen's beamposition query startup
@@ -2687,7 +2731,7 @@ if userstereomode > 0 || stereoMode > 0
             % ViewPixx shall disable scanning backlight by default:
             PsychDataPixx('DisableVideoScanningBacklight');
         end
-        
+
         % Dual-Display stereo via left-right stereo?
         if ismember(userstereomode, [4,5]) || ismember(stereoMode, [4,5])
             % Switch Datapixx to stereo mode by splitting display
@@ -2736,22 +2780,24 @@ if ~isempty(floc)
     end
 
     % Append our generated 'UsePanelFitter' task to setup the panelfitter for
-    % our needs at 'OpenWindow' time:
+    % our needs at 'OpenWindow' time if panel fitting is needed:
     [clientRes, imagingFlags, stereoMode] = hmd.driver('GetClientRenderingParameters', hmd);
-    x{1} = 'General';
-    x{2} = 'UsePanelFitter';
-    x{3} = clientRes;
-    x{4} = 'Custom';
-    x{5} = [0, 0, clientRes(1), clientRes(2)];
-    x{6} = [0, 0, clientRes(1), clientRes(2)];
+    if clientRes(1) ~= 0 && clientRes(2) ~= 0 && hmd.driver == @PsychOculusVR
+        x{1} = 'General';
+        x{2} = 'UsePanelFitter';
+        x{3} = clientRes;
+        x{4} = 'Custom';
+        x{5} = [0, 0, clientRes(1), clientRes(2)];
+        x{6} = [0, 0, clientRes(1), clientRes(2)];
 
-    % Pad to maxreqarg arguments:
-    if length(x) < maxreqarg
-        for i=length(x)+1:maxreqarg
-            x{i}='';
+        % Pad to maxreqarg arguments:
+        if length(x) < maxreqarg
+            for i=length(x)+1:maxreqarg
+                x{i}='';
+            end
         end
+        reqs = [reqs ; x];
     end
-    reqs = [reqs ; x];
 
     % Add imaging mode flags requested by HMD driver:
     imagingMode = mor(imagingMode, imagingFlags);
@@ -2767,8 +2813,14 @@ end
 
 % Custom color correction for display wanted?
 if ~isempty(find(mystrcmp(reqs, 'DisplayColorCorrection')))
-    % Yes. Need full pipeline in any case, ie fast backing store and output conversion:
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion);
+    % Color correction in output chain?
+    if (~isempty(find(mystrcmp(reqs, 'AllViews'))) || ~isempty(find(mystrcmp(reqs, 'FinalFormatting'))))
+        % Yes. Need full pipeline in any case, ie fast backing store and output conversion:
+        imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion);
+    else
+        % No. Fast backing store is enough, per-view chains will get enabled below for Left/RightView:
+        imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    end
 end
 
 % Replication of left half of window into right half needed?
@@ -2787,7 +2839,7 @@ end
 % 16 bpc float framebuffers needed?
 if ~isempty(find(mystrcmp(reqs, 'FloatingPoint16Bit')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    imagingMode = mor(imagingMode, kPsychNeed16BPCFloat);    
+    imagingMode = mor(imagingMode, kPsychNeed16BPCFloat);
 end
 
 % 32 bpc float framebuffers needed?
@@ -2806,7 +2858,7 @@ if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
     % The BrightSide formatter is not icm aware - Incapable of internal color correction!
     ptb_outputformatter_icmAware = 0;
-    
+
     % Tell BrightSide driver that it is called from us, so it can adapt to
     % some specific boundary conditions caused by us:
     BrightSideHDR('CalledFromPsychImaging', 1);
@@ -2855,7 +2907,7 @@ if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
     % Extract first parameter - This should be the colorConversionMode:
     colorConversionMode = reqs{row, 3};
     BitsPlusPlus('SetColorConversionMode', colorConversionMode);
-    
+
     % These settings are mildly redundant, as the dedicated
     % OpenWindowColor++ code in the BitsPlusPlus.m helper file will do all
     % neccessary setup, especially deciding of kPsychNeedHalfWidthWindow is
@@ -2957,7 +3009,7 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
                 end
                 error('PsychImaging: At least one secondary video output in native 16 bpc framebuffer mode is not located right of the first output, or cloning the first output! This is unsupported.');
             end
-            
+
             % At least one output establishing a dual-display side-by-side config?
             if testOutput.xStart == refOutput.width
                 isASideBySideConfig = 1;
@@ -3011,7 +3063,7 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
     end
 
     % The AMD 16 bpc formatter is not icm aware - Incapable of internal color correction!
-    ptb_outputformatter_icmAware = 0;    
+    ptb_outputformatter_icmAware = 0;
 end
 
 % Request for dual display pipeline custom HDR system?
@@ -3068,7 +3120,7 @@ if bitand(imagingMode, kPsychNeedImageProcessing)
     % Yes. How many commands per chain?
     nrslots = max(length(find(mystrcmp(reqs, 'LeftView'))), length(find(mystrcmp(reqs, 'RightView'))));
     nrslots = nrslots + length(find(mystrcmp(reqs, 'AllViews')));
-    
+
     % More than one slot per chain? Otherwise we use the default
     % single-pass chain:
     if nrslots > 1
@@ -3236,7 +3288,7 @@ if leftLRFlip || leftUDFlip
     clear curmap;
     [xg,yg] = meshgrid(hv, vv);
     curmap(:,:,1) = xg;
-    curmap(:,:,2) = yg;    
+    curmap(:,:,2) = yg;
     ptb_geometry_inverseWarpMap{win}.(reqs{row, 1}) = int16(curmap);
 end
 
@@ -3308,7 +3360,7 @@ if ~isempty(floc)
             if isempty(nClutSlots)
                 nClutSlots = 256;
             end
-            
+
             if ~isnumeric(nClutSlots)
                 sca;
                 error('PsychImaging: Number of clut slots parameter for ''EnableCLUTMapping'' missing or not of numeric type!');
@@ -3319,7 +3371,7 @@ if ~isempty(floc)
             if isempty(highprec)
                 highprec = 0;
             end
-            
+
             % Use our reformatter shader for mapping RGB indices to RGB
             % triplets.
 
@@ -3360,7 +3412,7 @@ if ~isempty(floc)
             % Enable left chain unconditionally, so the above clut setup
             % code gets executed:
             Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
-            
+
             % Attach shaders and slots to proper processing chain.
             % These perform the clut color conversion blit of each input
             % image into a transformed output image. They're executed at
@@ -3401,12 +3453,12 @@ if ~isempty(floc)
         for row=rows'
             % Extract first parameter - This should be the offset:
             PixelOffset = reqs{row, 3};
-            
+
             if isempty(PixelOffset) || ~isnumeric(PixelOffset)
                 sca;
                 error('PsychImaging: Parameter for ''AddOffsetToImage'' missing or not of numeric type!');
             end
-            
+
             % Further (optional) parameters passed?
             % 2nd parameter, if any, would be a gain value to apply before
             % applying the PixelOffset:
@@ -3439,14 +3491,14 @@ if ~isempty(floc)
 
             % Init the shader: Assign mapping of input image and offsets, gains:
             glUseProgram(shader);
-            
+
             glUniform1i(glGetUniformLocation(shader, 'Image'), 0);
             glUniform1f(glGetUniformLocation(shader, 'postscaleoffset'), PixelOffset);
             glUniform1f(glGetUniformLocation(shader, 'prescaleoffset'), PixelPreOffset);
             glUniform1f(glGetUniformLocation(shader, 'scalefactor'), PixelGain);
-            
+
             glUseProgram(0);
-            
+
             % Ok, 'gld' should contain a valid OpenGL display list for
             % geometry correction. Attach proper shader to proper chain:
             if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
@@ -3497,12 +3549,12 @@ if ~isempty(floc)
             % Extract first parameter - This should be the name of a
             % calibration file:
             calibfilename = reqs{row, 3};
-            
+
             if isempty(calibfilename)
                 sca;
                 error('PsychImaging: Parameter for ''GeometryCorrection'' missing!');
             end
-            
+
             % Is 'calibfilename' a function handle or a final warpstruct?
             if (~isstruct(calibfilename) && ~ischar(calibfilename)) || ...
                (isstruct(calibfilename) && isfield(calibfilename, 'gld') && isfield(calibfilename, 'glsl'))
@@ -3524,7 +3576,7 @@ if ~isempty(floc)
                     sca;
                     error('PsychImaging: Passed an argument to ''GeometryCorrection'' which is not a valid name of an accessible calibration file!');
                 end
-            
+
                 % Filename or calibstruct valid. Further (optional) parameters passed?
                 % 2nd parameter, if any, would be a 'visualize' flag that
                 % asks for plotting of some calibration info and additional
@@ -3534,16 +3586,16 @@ if ~isempty(floc)
                     % No such flag: Default to "silence":
                     showCalibOutput = 0;
                 end
-                
+
                 % Additional parameters provided? Pass 'em along. Currently
                 % defined are up to additional 6 parameters 5 to 10. These
                 % default to empty if not provided by user-code.
-                
+
                 % Use helper function to read the calibration file or
                 % parameter struct and build a proper warp-function:
                 [warpstruct, filterMode] = CreateDisplayWarp(win, calibfilename, showCalibOutput, reqs{row, 5:10});
             end
-            
+
             % Is it a display list handle?
             if ~isempty(warpstruct.gld)
                 % This must be a display list handle for display list
@@ -3586,7 +3638,7 @@ if ~isempty(floc)
                 % supported? Otherwise this is a no-go:
                 if (winfo.GLSupportsTexturesUpToBpc >= 32) || ~isempty(strfind(glGetString(GL.EXTENSIONS), '_texture_snorm'))
                     % Yes.
-                    
+
                     % Check if previous code already defined some inverse
                     % mapping:
                     if ~isempty(ptb_geometry_inverseWarpMap{win}) && isfield(ptb_geometry_inverseWarpMap{win}, reqs{row, 1})
@@ -3600,7 +3652,7 @@ if ~isempty(floc)
                         % point:
                         [xg,yg] = meshgrid(0:winwidth-1, 0:winheight-1);
                     end
-                    
+
                     % Need to use snorm 16 bit textures because 32 bpc
                     % float textures unavailable?
                     invmap_needs_snorm = (winfo.GLSupportsTexturesUpToBpc < 32);
@@ -3611,7 +3663,7 @@ if ~isempty(floc)
                     inmap = zeros(winheight, winwidth, 3);
                     inmap(:,:,1) = xg / winwidth;
                     inmap(:,:,2) = yg / winheight;
-                    
+
                     if invmap_needs_snorm
                         % Need to use 16 bit snorm textures. We request 16
                         % bit floating point precision on this hw that
@@ -3621,7 +3673,7 @@ if ~isempty(floc)
                         % process mappings for up to 32k x 32k pixels aka 1
                         % Gigapixel:
                         premaptex = Screen('MakeTexture', win, inmap, [], [], 1);
-                        postmaptex = Screen('OpenOffscreenWindow', win, 0, Screen('Rect', premaptex), 64);                        
+                        postmaptex = Screen('OpenOffscreenWindow', win, 0, Screen('Rect', premaptex), 64);
                     else
                         % We have 32 bpc float texture support: Use it.
                         premaptex = Screen('MakeTexture', win, inmap, [], [], 2);
@@ -3653,7 +3705,7 @@ if ~isempty(floc)
                     % precision, inverse mapping won't work:
                     fprintf('PsychImaging GeometryCorrection:Warning: GPU does not support features needed for RemapMouse() command.\n');
                 end
-                
+
                 % Setup imaging pipeline - Attach proper blitters to proper chains:
                 if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
                     % Need to setup left view warp:
@@ -3667,14 +3719,14 @@ if ~isempty(floc)
                     % whole buffer area, and "uninitialized pixel trash"
                     % may shine through otherwise:
                     Screen('Hookfunction', win, 'AppendMFunction', 'StereoLeftCompositingBlit', 'Clear target buffer', 'glClear(16384);');
-                    
+
                     if glsl
-                        Screen('HookFunction', win, 'AppendShader', 'StereoLeftCompositingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));  
+                        Screen('HookFunction', win, 'AppendShader', 'StereoLeftCompositingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));
                     else
                         Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));
                     end
                     Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
-                    leftcount = leftcount + 1;                    
+                    leftcount = leftcount + 1;
                 end
 
                 if mystrcmp(reqs{row, 1}, 'RightView') || (mystrcmp(reqs{row, 1}, 'AllViews') && winfo.StereoMode > 0)
@@ -3703,7 +3755,7 @@ if ~isempty(floc)
                     end
 
                     Screen('Hookfunction', win, 'AppendMFunction', 'FinalOutputFormattingBlit', 'Clear target buffer', 'glClear(16384);');
-                    
+
                     if glsl
                         Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));
                     else
@@ -3737,7 +3789,7 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
         sca;
         error('PsychImaging: The "startright" parameter must be zero or one!');
     end
-    
+
     % Init the shader: Assign mapping of left- and right image:
     glUseProgram(shader);
     glUniform1i(glGetUniformLocation(shader, 'Image1'), 1-startright);
@@ -3745,7 +3797,7 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
 
     glUniform2f(glGetUniformLocation(shader, 'Offset'), 0, 0);
     glUseProgram(0);
-    
+
     % Reset compositor chain: It got initialized inside Screen() with an
     % unsuitable shader for our purpose:
     Screen('HookFunction', win, 'Reset', 'StereoCompositingBlit');
@@ -3753,7 +3805,7 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
     % Append our new shader and enable chain:
     Screen('HookFunction', win, 'AppendShader', 'StereoCompositingBlit', 'StereoCompositingShaderInterleavedLineStereo', shader, 'Blitter:IdentityBlit:Offset:0:0:Scaling:1.0:2.0');
     Screen('HookFunction', win, 'Enable', 'StereoCompositingBlit');
-    
+
     % Correct mouse position via proper gain:
     ptb_geometry_inverseWarpMap{win}.gy = ptb_geometry_inverseWarpMap{win}.gy * 0.5;
 end
@@ -3774,7 +3826,7 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedColumnStereo')))
         sca;
         error('PsychImaging: The "startright" parameter must be zero or one!');
     end
-    
+
     % Init the shader: Assign mapping of left- and right image:
     glUseProgram(shader);
     glUniform1i(glGetUniformLocation(shader, 'Image1'), 1-startright);
@@ -3782,7 +3834,7 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedColumnStereo')))
 
     glUniform2f(glGetUniformLocation(shader, 'Offset'), 0, 0);
     glUseProgram(0);
-    
+
     % Reset compositor chain: It got initialized inside Screen() with an
     % unsuitable shader for our purpose:
     Screen('HookFunction', win, 'Reset', 'StereoCompositingBlit');
@@ -3803,7 +3855,7 @@ if ~isempty(find(mystrcmp(reqs, 'SideBySideCompressedStereo')))
     % shader, which was automatically generated by Screen('Openwindow'),
     % into a left-right side-by-side compressed shader.
     SetCompressedStereoSideBySideParameters(win);
-    
+
     % Correct mouse position via proper gain:
     % Need to apply a 2x gain to horizontal cursor position to compensate
     % for horizontal compression...
@@ -3857,7 +3909,7 @@ if ~isempty(floc)
 
     handlebrightside  = 0;
     handlebitspluplus = 0;
-    
+
     % Bits+ Mono++ or Color++ mode active?
     if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
         % Only one 'DisplayColorCorrection' plugin in the whole pipeline?
@@ -3879,7 +3931,7 @@ if ~isempty(floc)
             handlebitspluplus=1;
         end
     end
-    
+
     if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
         % The BrightSide plugin is already attached to the output
         % formatting chain, so our own plugins need to be placed properly
@@ -3892,14 +3944,14 @@ if ~isempty(floc)
         % Use unit color range, without clamping, but in high-precision mode:
         needsUnitUnclampedColorRange = 1;
     end
-    
+
     % Which channel?
     for x=floc
         [rows cols]= ind2sub(size(reqs), x);
         for row=rows'
             % Extract first parameter - This should be the method of correction:
             colorcorrectionmethod = reqs{row, 3};
-            
+
             if isempty(colorcorrectionmethod) || ~ischar(colorcorrectionmethod)
                 sca;
                 error('PsychImaging: Name of color correction method for ''DisplayColorCorrection'' missing or not of string type!');
@@ -3907,7 +3959,7 @@ if ~isempty(floc)
 
             % Select method:
             PsychColorCorrection('ChooseColorCorrection', colorcorrectionmethod);
-            
+
             % Load and build shader objects: icmshader is the compiled
             % color correction shader:
             [icmshader icmstring icmconfig icmoverrideMain] = PsychColorCorrection('GetCompiledShaders', win, 1);
@@ -3928,12 +3980,12 @@ if ~isempty(floc)
                 %
                 % Additionally there must be no need for a non-standard
                 % main() routine for color correction shader.
-                
+
                 % Good. We create the icmshader here according to specs,
                 % but then pass it along downstream to the output formatter
                 % setup code which will attach it.
                 icmformatting_downstream = 1;
-                
+
             else
                 % Downstream color correction not possible due to use of
                 % either a per viewchannel correction, or due to use of
@@ -3941,7 +3993,7 @@ if ~isempty(floc)
                 % one, or because multi-pass color correction needed, or
                 % non-standard main routine needed:
                 icmformatting_downstream = 0;
-                
+
                 % Need to build full standalone shader, including main()
                 % stub routine and full link and post-link:
                 if isempty(icmoverrideMain)
@@ -3953,7 +4005,7 @@ if ~isempty(floc)
                     % PsychColorCorrection():
                     shBody = icmoverrideMain;
                 end
-                
+
                 % shMain is the main() routine which needs to get compiled into
                 % a valid shader object:
                 shMain = sprintf('\n#extension GL_ARB_texture_rectangle : enable \n\n%s', shBody);
@@ -4007,7 +4059,7 @@ if ~isempty(floc)
                 % MK Resolved 26.4.2010: HACK FIXME BUG: 'AllViews' -> Move back to
                 % 'FinalFormatting' below, once Screens() pipeline is
                 % fixed!!
-                if mystrcmp(reqs{row, 1}, 'FinalFormatting') || mystrcmp(reqs{row, 1}, 'AllViews')                    
+                if mystrcmp(reqs{row, 1}, 'FinalFormatting') || mystrcmp(reqs{row, 1}, 'AllViews')
                     % Need to attach to final formatting:
                     if ~handlebitspluplus && ~handlebrightside
                         % Standard case:
@@ -4052,7 +4104,7 @@ if ~isempty(floc)
                             % colorcorrection applies:
                             insertPos = 0;
                         end
-                        
+
                         % Then need to prepend our shader in front of that
                         % FlipFBO's:
                         insertSlot = sprintf('InsertAt%iShader', insertPos);
@@ -4064,7 +4116,7 @@ if ~isempty(floc)
                         if outputcount > 0
                             % Need to test slot right before us:
                             insertPos = insertPos - 1;
-                            
+
                             % Test what's there at the moment:
                             [dummy testNameString ] = Screen('HookFunction', win, 'Query', 'FinalOutputFormattingBlit', insertPos);
                             if (dummy == - 1) || ~mystrcmp(testNameString, 'Builtin:FlipFBOs')
@@ -4073,7 +4125,7 @@ if ~isempty(floc)
                                 Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
                             end
                         end
-                       
+
                         % BrightSide setup?
                         if handlebrightside
                             % Tell BrightSide driver that it is called from us, so it can adapt to
@@ -4131,7 +4183,7 @@ end
 if ~isempty(find(mystrcmp(reqs, 'NormalizedHighresColorRange')))
     % Use unit color range, without clamping, but in high-precision mode:
     needsUnitUnclampedColorRange = 1;
-    
+
     % Extract first parameter - This should be the applyAlsoToMakeTexture flag:
     floc = find(mystrcmp(reqs, 'NormalizedHighresColorRange'));
     [rows cols] = ind2sub(size(reqs), floc(1));
@@ -4294,7 +4346,7 @@ if isempty(floc)
 end
 if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
-    
+
     if mystrcmp(reqs{row, 2}, 'EnablePseudoGrayOutput')
         % PseudoGray mode: We create the lut ourselves via helper function:
         lut = CreatePseudoGrayLUT;
@@ -4311,7 +4363,7 @@ if ~isempty(floc)
         % Extract first parameter - This should be the lookup table 'lut' to use:
         lut = reqs{row, 3};
     end
-    
+
     if isempty(lut) || ~isnumeric(lut)
         sca;
         error('PsychImaging: Mandatory lookup table parameter lut for ''EnableGenericHighPrecisionLuminanceOutput'' missing or not of numeric type!');
@@ -4332,7 +4384,7 @@ if ~isempty(floc)
     % Use helper routine to build a proper RGBA Lookup texture for
     % conversion of HDR luminance pixels to RGBA8 pixels:
     pglutid = PsychHelperCreateGenericLuminanceToRGBA8LUT(lut);
-    
+
     if outputcount > 0
         % Need a bufferflip command:
         Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
@@ -4342,7 +4394,7 @@ if ~isempty(floc)
     Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', pgidstring, pgshader, pgconfig);
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
     outputcount = outputcount + 1;
-    
+
     % Use unit color range, without clamping, but in high-precision mode:
     needsUnitUnclampedColorRange = 1;
 end
@@ -4363,10 +4415,10 @@ if ~isempty(floc)
     else
         simpleVideoSwitcher = 0;
     end
-    
+
     % Extract optional first parameter - This should be the 'btrr' ratio to use:
     btrr = reqs{row, 3};
-    
+
     if isempty(btrr)
         % btrr empty: Get it from config file:
         btrr = PsychVideoSwitcher('GetDefaultConfig', win);
@@ -4375,13 +4427,13 @@ if ~isempty(floc)
             sca;
             error('PsychImaging: Optional "btrr" parameter for VideoSwitcher output not of numeric scalar type!');
         end
-        
+
         if btrr < 0
             sca;
             error('PsychImaging: Optional "btrr" parameter for VideoSwitcher output is negative -- Impossible!');
         end
     end
-    
+
     if simpleVideoSwitcher
         % Extract optional 2nd parameter - This should be the 'trigger' flag:
         VideoSwitcherTriggerflag = reqs{row, 4};
@@ -4389,7 +4441,7 @@ if ~isempty(floc)
         % Extract optional 3rd parameter - This should be the 'trigger' flag:
         VideoSwitcherTriggerflag = reqs{row, 5};
     end
-    
+
     if isempty(VideoSwitcherTriggerflag)
         % triggerflag empty: Default to off:
         VideoSwitcherTriggerflag = 0;
@@ -4398,14 +4450,14 @@ if ~isempty(floc)
             sca;
             error('PsychImaging: Optional "trigger" parameter for VideoSwitcher output not of numeric scalar type!');
         end
-        
+
         if VideoSwitcherTriggerflag > 0
             VideoSwitcherTriggerflag = 1;
         else
             VideoSwitcherTriggerflag = 0;
         end
     end
-    
+
     if simpleVideoSwitcher
         % Load output formatting shader for simple VideoSwitcher output:
         % 'icmshader' is a handle to a compiled fragment shader, provided by
@@ -4437,7 +4489,7 @@ if ~isempty(floc)
                 error('PsychImaging: Lookup table parameter lut for VideoSwitcher output invalid: Must be a vector of double values with 257 elements!');
             end
         end
-                
+
         % Load output formatting shader for lut calibrated VideoSwitcher output:
         % 'icmshader' is a handle to a compiled fragment shader, provided by
         % upstream, that implements the display color correction function:
@@ -4453,15 +4505,15 @@ if ~isempty(floc)
         % luminance key -1, which shouldn't ever match in a regular
         % stimulus:
         glUniform3f(glGetUniformLocation(pgshader, 'BackgroundPixel'), 0, -1, 0);
-        glUseProgram(0);    
+        glUseProgram(0);
 
         % Convert 'lut' into lookup table texture:
         pglutid = PsychVideoSwitcher('GetLUTTexture', win, lut, btrr, pgshader);
-                
+
         pgidstring = sprintf('VideoSwitcher calibrated high precision luminance output formatting shader: %s', icmstring);
-        pgconfig = sprintf('TEXTURERECT2D(1)=%i %s', pglutid, icmconfig);        
+        pgconfig = sprintf('TEXTURERECT2D(1)=%i %s', pglutid, icmconfig);
     end
-        
+
     if outputcount > 0
         % Need a bufferflip command:
         Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
@@ -4472,9 +4524,9 @@ if ~isempty(floc)
 
     % VideoSwitcher devices need an identity clut:
     needsIdentityCLUT = 1;
-    
+
     % Use unit color range, without clamping, but in high-precision mode:
-    needsUnitUnclampedColorRange = 1;    
+    needsUnitUnclampedColorRange = 1;
 end
 
 % Setup of trigger for VideoSwitcher device needed?
@@ -4482,7 +4534,7 @@ if VideoSwitcherTriggerflag > 0
     % Yes. Attach a proper slot to the chain: The slot calls back into the
     % VideoSwitcher.m M-File, with the window handle as argument.
     pgconfig = sprintf('PsychVideoSwitcher(%i);', win);
-    Screen('HookFunction', win, 'AppendMFunction', 'FinalOutputFormattingBlit', 'VideoSwitcher trigger control callback.', pgconfig);    
+    Screen('HookFunction', win, 'AppendMFunction', 'FinalOutputFormattingBlit', 'VideoSwitcher trigger control callback.', pgconfig);
 end
 
 % --- End of output formatters for VideoSwitcher attenuator device ---
@@ -4641,7 +4693,7 @@ end
 floc = find(mystrcmp(reqs, 'EnableDualPipeHDROutput'));
 if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
-    
+
     % outputcount should be zero, i.e., the unified output formatting chain
     % should be disabled, as we use separate per channel chains:
     if outputcount > 0
@@ -4653,7 +4705,7 @@ if ~isempty(floc)
         Screen('HookFunction', win, 'Disable', 'FinalOutputFormattingBlit');
         % Screen('HookFunction', win, 'Disable', 'RightFinalizerBlitChain');
     end
-    
+
     % Setup shader for pipe 0:
     pipe0shader = LoadGLSLProgramFromFiles('DualPipeHDRPipe0_FormattingShader', 1, icmshader);
 
@@ -4661,11 +4713,11 @@ if ~isempty(floc)
         % Need a bufferflip command:
         Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit0', 'Builtin:FlipFBOs', '');
     end
-    
+
     Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit0', 'HDRPipe0 - Output Formatter', pipe0shader, '');
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit0');
     outputcount0 = outputcount0 + 1;
-    
+
     % Setup shader for pipe 1:
     pipe1shader = LoadGLSLProgramFromFiles('DualPipeHDRPipe1_FormattingShader', 1, icmshader);
 
@@ -4673,11 +4725,11 @@ if ~isempty(floc)
         % Need a bufferflip command:
         Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit1', 'Builtin:FlipFBOs', '');
     end
-    
+
     Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit1', 'HDRPipe1 - Output Formatter', pipe1shader, '');
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit1');
     outputcount1 = outputcount1 + 1;
-    
+
     % Device need an identity clut in the GPU gamma tables:
     needsIdentityCLUT = 1;
 
@@ -4724,7 +4776,7 @@ end
 
 % --- GPU based mirroring of left half of onscreen window to right half requested? ---
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
-    
+
     % Simply set up the left finalizer chain with a glCopyPixels command
     % that copies the left half of the system backbuffer to the right half
     % of the system backbuffer. Query the real backbuffer width x height,
@@ -4745,7 +4797,7 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
         % matrix etc.:
         myblitstring = sprintf('glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144);', w/2, h, w, h);
     end
-    
+
     % Attach blit command sequence to finalizer chain:
     Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'MirrorSplitWindowToSplitWindow', myblitstring);
     Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
@@ -4774,7 +4826,7 @@ if ~isempty(floc)
 
             w  = RectWidth(scissorrect);
             h  = RectHeight(scissorrect);
-            
+
             if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
                 % Need to restrict left view processing:
                 Screen('HookFunction', win, 'PrependBuiltin', 'StereoLeftCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
@@ -4784,7 +4836,7 @@ if ~isempty(floc)
                 % Need to restrict right view processing:
                 Screen('HookFunction', win, 'PrependBuiltin', 'StereoRightCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
-            
+
             if (mystrcmp(reqs{row, 1}, 'AllViews') || mystrcmp(reqs{row, 1}, 'Compositor')) && ismember(winfo.StereoMode, [6,7,8,9])
                 % Needed to restrict both views processing and a
                 % compositing mode is active. If both views are restricted
@@ -4800,7 +4852,7 @@ if ~isempty(floc)
                 oy = RectHeight(Screen('Rect', win, 1)) - scissorrect(RectBottom);
                 Screen('HookFunction', win, 'PrependBuiltin', 'FinalOutputFormattingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
-            
+
         end
     end
 end
@@ -4811,7 +4863,7 @@ end
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
     % Yes: We need to replicate the framebuffer of the master onscreen
     % window to the slave windows framebuffer.
-    
+
     % What we do: We use the right finalizer blit chain to copy the
     % contents of the master window's system backbuffer (which is bound
     % during execution of the right finalizer blit chain) to the
@@ -4837,14 +4889,14 @@ end
 % --- Datapixx in use? ---
 if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))
     % Yes: Need to call into high level DataPixx driver for final setup:
-    PsychDataPixx('PerformPostWindowOpenSetup', win);    
+    PsychDataPixx('PerformPostWindowOpenSetup', win);
 end
 % --- End of Datapixx in use? ---
 
 % --- Bits# in use? ---
 if ~isempty(find(mystrcmp(reqs, 'UseBits#')))
     % Yes: Need to call into high level BitsPlusPlus driver for final setup:
-    BitsPlusPlus('PerformPostWindowOpenSetup', win);    
+    BitsPlusPlus('PerformPostWindowOpenSetup', win);
 end
 % --- End of Bits# in use? ---
 
@@ -4873,7 +4925,7 @@ end
 if ~needsUnitUnclampedColorRange && ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
     Screen('ColorRange', win, 1, [], 1);
     applyAlsoToMakeTexture = 1;
-    
+
     % Set Screen background clear color, in normalized 0.0 - 1.0 range:
     if ~isempty(clearcolor) && (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor))
         % Looks like someone's feeding old style 0-255 integer values as
@@ -4976,16 +5028,16 @@ return;
 function rect = InterBufferRect(win)
     % Get window info flags about possible size transformations:
     winfo = Screen('GetWindowInfo', win);
-    
+
     % Get raw rectangle of true window backbuffer size as baseline:
     % Left and Top entry is always zero, due to normalized rect.
     rect = Screen('Rect', win, 1);
-    
+
     % Apply half-height flag, if any:
     if bitand(winfo.SpecialFlags, kPsychNeedHalfHeightWindow)
         rect(RectBottom) = rect(RectBottom) / 2;
     end
-    
+
     % Apply half-width flag, if any:
     if bitand(winfo.SpecialFlags, kPsychNeedHalfWidthWindow)
         rect(RectRight) = rect(RectRight) / 2;

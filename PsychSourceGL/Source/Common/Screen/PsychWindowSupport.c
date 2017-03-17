@@ -1540,6 +1540,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if ((*windowRecord)->stereomode==kPsychAnaglyphBRStereo) printf("PTB-INFO: Stereo display via Anaglyph Blue-Red stereo enabled.\n");
         if ((*windowRecord)->stereomode==kPsychDualWindowStereo) printf("PTB-INFO: Stereo display via dual window output with imaging pipeline enabled.\n");
         if ((*windowRecord)->stereomode==kPsychFrameSequentialStereo) printf("PTB-INFO: Stereo display via non-native frame-sequential stereo method enabled.\n");
+        if ((*windowRecord)->stereomode==kPsychDualStreamStereo) printf("PTB-INFO: Stereo display via dual-stream stereo for special consumers with imaging pipeline enabled.\n");
         if ((PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) && (strstr((char*) glGetString(GL_EXTENSIONS), "GL_APPLE_client_storage")==NULL)) {
             // User wants us to use client storage, but client storage is unavailable :(
             printf("PTB-WARNING: You asked me for reducing VRAM consumption but for this, your graphics hardware would need\n");
@@ -3434,6 +3435,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // Reset color write mask to "all enabled"
     glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
 
+    // Reset viewport, projection etc. to full window backbuffer:
+    PsychSetupView(windowRecord, TRUE);
+
     // Part 1 of workaround- /checkcode for syncing to vertical retrace:
     if (vblsyncworkaround) {
         glDrawBuffer(GL_BACK);
@@ -5295,8 +5299,11 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                     }
 
                     // This is a scaled blit, but all blit parameters are defined in the panelFitterParams array, which
-                    // has to be set up by external code via Screen('PanelFitterProperties'):
-                    if ((windowRecord->gfxcaps & kPsychGfxCapFBOBlit) && (windowRecord->panelFitterParams[8] == 0)) {
+                    // has to be set up by external code via Screen('PanelFitterProperties'). We can't use framebuffer blit
+                    // if the target inputBufferFBO is itself multisampled, and the src and dst regions are of different size,
+                    // as that would be a MSAA source --> MSAA target blit, for which rescaling is not supported:
+                    if ((windowRecord->gfxcaps & kPsychGfxCapFBOBlit) && (windowRecord->panelFitterParams[8] == 0) &&
+                        ((windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->multisample == 0) || (blitscalemode == GL_NEAREST))) {
                         // Framebuffer blitting supported, good!
                         glBlitFramebufferEXT(windowRecord->panelFitterParams[0], windowRecord->panelFitterParams[1], windowRecord->panelFitterParams[2],
                                             windowRecord->panelFitterParams[3],
@@ -5395,8 +5402,8 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
         // user defined (or stereo) image processing.
 
         // Stereo processing: This depends on selected stereomode...
-        if (stereo_mode <= kPsychOpenGLStereo || stereo_mode == kPsychDualWindowStereo || stereo_mode == kPsychFrameSequentialStereo) {
-            // No stereo or quad-buffered stereo or dual-window stereo or own frame-seq stereo - Nothing to do in merge stage.
+        if (stereo_mode <= kPsychOpenGLStereo || stereo_mode == kPsychDualWindowStereo || stereo_mode == kPsychFrameSequentialStereo || stereo_mode == kPsychDualStreamStereo) {
+            // No stereo or quad-buffered stereo or dual-window stereo or own frame-seq stereo, or explicitely requested dual stereo streams - Nothing to do in merge stage.
         }
         else if (stereo_mode <= kPsychAnaglyphBRStereo) {
             // Merged stereo - All work is done by the anaglyph shader that was created for this purpose
@@ -5421,19 +5428,20 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 
         // At this point we have image data ready for final post-processing and special device output formatting...
         // In mono mode: Image in preConversionFBO[0].
-        // In quad-buffered stereo mode: Left eye image in preConversionFBO[0], Right eye image in preConversionFBO[1].
+        // In quad-buffered/dual-window/frameseq/dual-stream stereo modes: Left eye image in preConversionFBO[0], Right eye image in preConversionFBO[1].
         // In other stereo modes: Merged image in both preConversionFBO[0] and preConversionFBO[1], both reference the same image buffer.
         // If dual window output mode is requested, the merged - or single monoscopic - image is also in both
         // preConversionFBO[0] and preConversionFBO[1], as both reference the same image buffer.
 
         // Ready to create the final content, either for drawing into a snapshot buffer or into the real system framebuffer.
         // finalizedFBO[0] is set up to take the final image for anything but quad-buffered stereo.
-        // In quad-buffered mode, finalizedFBO[0] shall receive the left-eye image, finalizedFBO[1] shall receive the right-eye image.
+        // In quad-buffered mode or other dual-stream/separate stream modes, finalizedFBO[0] shall receive the left-eye image, finalizedFBO[1] shall receive the right-eye image.
         // Each FBO is either a real FBO for framebuffer "screenshots" or the system framebuffer for final output into the backbuffer.
 
         // Process each of the (up to two) streams:
-        for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo || stereo_mode == kPsychFrameSequentialStereo || stereo_mode == kPsychDualWindowStereo ||
-            (imagingMode & kPsychNeedDualWindowOutput)) ? 2 : 1); viewid++) {
+        for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo || stereo_mode == kPsychFrameSequentialStereo ||
+                                    stereo_mode == kPsychDualWindowStereo || stereo_mode == kPsychDualStreamStereo ||
+                                    (imagingMode & kPsychNeedDualWindowOutput)) ? 2 : 1); viewid++) {
 
             // Select final drawbuffer if our target is the system framebuffer:
             if (windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid == 0) {

@@ -115,10 +115,13 @@
 #define kPsychNeedDualWindowOutput    16384 // Apply imaging pipelines output formatting to two visual output streams and distribute result to two onscreen
                                             // windows. This allows e.g., to drive two physical displays from one input stimulus image, but applying different
                                             // post-processing to the two outputs. An example is display mirroring or special HDR displays.
-#define kPsychNeedGPUPanelFitter      32768 // This flag is used for imagingMode to signal need/use of the GPU based imaging pipeline panel fitter.
-#define kPsychNeedOtherStreamInput (1 << 17) // This flag signals that the input image for the other view channel of a stereo pipeline should be bound to texture unit 1 as 2nd input.
-#define kPsychNeedRetinaResolution (1 << 18) // Do not auto-enable panelfitter on Retina display, ie., user-framebuffer shall be full native Retina resolution.
-#define kPsychNeedClientRectNoFitter (1 << 19) // Do not use the panelfitter, but still use provided clientRect to define window geometry as seen by client code.
+#define kPsychNeedGPUPanelFitter      32768     // This flag is used for imagingMode to signal need/use of the GPU based imaging pipeline panel fitter.
+#define kPsychNeedOtherStreamInput (1 << 17)    // This flag signals that the input image for the other view channel of a stereo pipeline should be bound to texture unit 1 as 2nd input.
+#define kPsychNeedRetinaResolution (1 << 18)    // Do not auto-enable panelfitter on Retina display, ie., user-framebuffer shall be full native Retina resolution.
+#define kPsychNeedClientRectNoFitter (1 << 19)  // Do not use the panelfitter, but still use provided clientRect to define window geometry as seen by client code.
+#define kPsychNeedFinalizedFBOSinks   (1 << 20) // finalizedFBO's must be backed by real OpenGL FBO's as image sinks, not by the system backbuffer, as would be the default.
+#define kPsychUseExternalSinkTextures (1 << 21) // finalizedFBO's have backing OpenGL FBO's which use externally created and injected OpenGL textures as color attachment (aka rendertargets).
+#define kPsychSinkIsMSAACapable       (1 << 22) // External sinks for finalizedFBO color buffer textures can process GL_TEXTURE_2D_MULTISAMPLE textures as input, not only GL_TEXTURE_2D textures.
 
 // 'specialflags' fields, partially shared with imagingmode flags:
 #define kPsychUseTextureMatrixForRotation   1       // Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
@@ -154,7 +157,7 @@
 #define kPsychSafeForDRI3                   (1 << 24) // 'specialflags' setting 2^24: This window is considered safe for use with DRI3/Present, given X-Server and Mesa version in use.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,S-2^25. --> Flags of 2^20 - 2^24 as well as 2^26 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,S-2^25. --> Flags of 2^23 - 2^24 as well as 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25. --> Flags of 2^26 and higher are available...
@@ -177,6 +180,7 @@ typedef struct PsychFBO {
     GLuint                  coltexid;       // Texture handle for color buffer texture (color attachment zero). A multisampled Renderbuffer handle, if multisample > 0.
     GLuint                  ztexid;         // Texture handle for z-Buffer texture, if any. Zero otherwise.
     GLuint                  stexid;         // Texture handle for stencil-Buffer texture, if any. Zero otherwise.
+    GLenum                  format;         // fboInternalFormat of the colorbuffer0 attachment.
     int                     width;          // Width of FBO.
     int                     height;         // Height of FBO.
     int                     multisample;    // Multisampling level of FBO: 0 == No multisampling. > 0 means Multisampled.
@@ -212,30 +216,30 @@ typedef struct PsychFlipInfoStruct {
 #if PSYCH_SYSTEM == PSYCH_OSX
 // Definition of OS-X core graphics and Core OpenGL handles:
 typedef struct{
-        CGLContextObj       contextObject;
-        CGLPixelFormatObj   pixelFormatObject;
-        CGLContextObj       glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
-        CGLContextObj       glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-        void*               deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
-        // NSWindow* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
-        void*               windowHandle;           // Handle for Cocoa window when using windowed mode. (NULL in non-windowed mode).
+    CGLContextObj       contextObject;
+    CGLPixelFormatObj   pixelFormatObject;
+    CGLContextObj       glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
+    CGLContextObj       glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+    void*               deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
+    // NSWindow* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
+    void*               windowHandle;           // Handle for Cocoa window when using windowed mode. (NULL in non-windowed mode).
 
-        // NSOpenGLContext* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
-        void*               nsmasterContext;        // Cocoa OpenGL master context.
-        void*               nsswapContext;          // Cocoa OpenGL async swap context.
-        void*               nsuserContext;          // Cocoa OpenGL userspace rendering context.
+    // NSOpenGLContext* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
+    void*               nsmasterContext;        // Cocoa OpenGL master context.
+    void*               nsswapContext;          // Cocoa OpenGL async swap context.
+    void*               nsuserContext;          // Cocoa OpenGL userspace rendering context.
 } PsychTargetSpecificWindowRecordType;
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 // Definition of Win32 Window handles, device handles and OpenGL contexts
 typedef struct{
-  HGLRC                     contextObject;          // OpenGL rendering context.
-  HDC                       deviceContext;          // Device context of the window.
-  HWND                      windowHandle;           // The window handle.
-  PIXELFORMATDESCRIPTOR     pixelFormatObject;      // The context's pixel format object.
-  HGLRC                     glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
-  HGLRC                     glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+    HGLRC                     contextObject;          // OpenGL rendering context.
+    HDC                       deviceContext;          // Device context of the window.
+    HWND                      windowHandle;           // The window handle.
+    PIXELFORMATDESCRIPTOR     pixelFormatObject;      // The context's pixel format object.
+    HGLRC                     glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
+    HGLRC                     glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
 } PsychTargetSpecificWindowRecordType;
 #endif
 
@@ -264,16 +268,16 @@ typedef struct {
 #else
 // For the Linux Waffle generic backend:
 typedef struct {
-  struct waffle_context*    contextObject;                  // GLX OpenGL rendering context.
-  int                       pixelFormatObject;              // Just here for compatibility. Its a dummy entry without meaning.
-  struct waffle_display*    deviceContext;                  // Pointer to the X11 display connection.
-  Display*                  privDpy;                        // Pointer to the private X11 display connection for non-OpenGL ops.
-  struct waffle_window*     windowHandle;                   // Handle to the onscreen window.
-  Window                    xwindowHandle;                  // Associated X-Window if any.
-  struct waffle_context*    glusercontextObject;            // OpenGL context for userspace rendering code, e.g., moglcore...
-  struct waffle_context*    glswapcontextObject;            // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+    struct waffle_context*    contextObject;                  // GLX OpenGL rendering context.
+    int                       pixelFormatObject;              // Just here for compatibility. Its a dummy entry without meaning.
+    struct waffle_display*    deviceContext;                  // Pointer to the X11 display connection.
+    Display*                  privDpy;                        // Pointer to the private X11 display connection for non-OpenGL ops.
+    struct waffle_window*     windowHandle;                   // Handle to the onscreen window.
+    Window                    xwindowHandle;                  // Associated X-Window if any.
+    struct waffle_context*    glusercontextObject;            // OpenGL context for userspace rendering code, e.g., moglcore...
+    struct waffle_context*    glswapcontextObject;            // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
 #ifdef PTB_USE_WAYLAND_PRESENT
-  struct wl_list            presentation_feedback_list;     // Used for Wayland backend presentation_feedback extension to queue feedback events.
+    struct wl_list            presentation_feedback_list;     // Used for Wayland backend presentation_feedback extension to queue feedback events.
 #endif
 } PsychTargetSpecificWindowRecordType;
 #endif
@@ -281,14 +285,14 @@ typedef struct {
 #else
 // Definition of Linux/X11 specific information:
 typedef struct{
-  GLXContext        contextObject;       // GLX OpenGL rendering context.
-  int               pixelFormatObject;   // Just here for compatibility. Its a dummy entry without meaning.
-  Display*          deviceContext;       // Pointer to the X11 display connection.
-  Display*          privDpy;             // Pointer to the private X11 display connection for non-OpenGL ops.
-  GLXWindow         windowHandle;        // Handle to the onscreen window.
-  Window            xwindowHandle;       // Associated X-Window if any.
-  GLXContext        glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
-  GLXContext        glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+    GLXContext        contextObject;       // GLX OpenGL rendering context.
+    int               pixelFormatObject;   // Just here for compatibility. Its a dummy entry without meaning.
+    Display*          deviceContext;       // Pointer to the X11 display connection.
+    Display*          privDpy;             // Pointer to the private X11 display connection for non-OpenGL ops.
+    GLXWindow         windowHandle;        // Handle to the onscreen window.
+    Window            xwindowHandle;       // Associated X-Window if any.
+    GLXContext        glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
+    GLXContext        glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
 } PsychTargetSpecificWindowRecordType;
 #endif
 
