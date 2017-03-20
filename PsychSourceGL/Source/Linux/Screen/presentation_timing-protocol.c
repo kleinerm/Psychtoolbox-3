@@ -1,37 +1,35 @@
 #if defined(PTB_USE_WAYLAND_PRESENT) || defined(PTB_USE_WAYLAND)
 
-/* 
+/*
  * Copyright © 2013-2014 Collabora, Ltd.
- * 
- * Permission to use, copy, modify, distribute, and sell this
- * software and its documentation for any purpose is hereby granted
- * without fee, provided that the above copyright notice appear in
- * all copies and that both that copyright notice and this permission
- * notice appear in supporting documentation, and that the name of
- * the copyright holders not be used in advertising or publicity
- * pertaining to distribution of the software without specific,
- * written prior permission.  The copyright holders make no
- * representations about the suitability of this software for any
- * purpose.  It is provided "as is" without express or implied
- * warranty.
- * 
- * THE COPYRIGHT HOLDERS DISCLAIM ALL WARRANTIES WITH REGARD TO THIS
- * SOFTWARE, INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
- * FITNESS, IN NO EVENT SHALL THE COPYRIGHT HOLDERS BE LIABLE FOR ANY
- * SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN
- * AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION,
- * ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
- * THIS SOFTWARE.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the "Software"),
+ * to deal in the Software without restriction, including without limitation
+ * the rights to use, copy, modify, merge, publish, distribute, sublicense,
+ * and/or sell copies of the Software, and to permit persons to whom the
+ * Software is furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice (including the next
+ * paragraph) shall be included in all copies or substantial portions of the
+ * Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL
+ * THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+ * DEALINGS IN THE SOFTWARE.
  */
 
 #include <stdlib.h>
 #include <stdint.h>
 #include "wayland-util.h"
 
-extern const struct wl_interface presentation_feedback_interface;
-extern const struct wl_interface wl_output_interface;
 extern const struct wl_interface wl_surface_interface;
+extern const struct wl_interface wp_presentation_feedback_interface;
+extern const struct wl_interface wl_output_interface;
 
 static const struct wl_interface *types[] = {
 	NULL,
@@ -42,35 +40,35 @@ static const struct wl_interface *types[] = {
 	NULL,
 	NULL,
 	&wl_surface_interface,
-	&presentation_feedback_interface,
+	&wp_presentation_feedback_interface,
 	&wl_output_interface,
 };
 
-static const struct wl_message presentation_requests[] = {
+static const struct wl_message wp_presentation_requests[] = {
 	{ "destroy", "", types + 0 },
 	{ "feedback", "on", types + 7 },
 };
 
-static const struct wl_message presentation_events[] = {
+static const struct wl_message wp_presentation_events[] = {
 	{ "clock_id", "u", types + 0 },
 };
 
-WL_EXPORT const struct wl_interface presentation_interface = {
-	"presentation", 1,
-	2, presentation_requests,
-	1, presentation_events,
+WL_EXPORT const struct wl_interface wp_presentation_interface = {
+	"wp_presentation", 1,
+	2, wp_presentation_requests,
+	1, wp_presentation_events,
 };
 
-static const struct wl_message presentation_feedback_events[] = {
+static const struct wl_message wp_presentation_feedback_events[] = {
 	{ "sync_output", "o", types + 9 },
 	{ "presented", "uuuuuuu", types + 0 },
 	{ "discarded", "", types + 0 },
 };
 
-WL_EXPORT const struct wl_interface presentation_feedback_interface = {
-	"presentation_feedback", 1,
+WL_EXPORT const struct wl_interface wp_presentation_feedback_interface = {
+	"wp_presentation_feedback", 1,
 	0, NULL,
-	3, presentation_feedback_events,
+	3, wp_presentation_feedback_events,
 };
 
 #endif
