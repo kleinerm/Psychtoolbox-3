@@ -682,7 +682,14 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 					case DI8DEVTYPE_KEYBOARD:
 						// Try to map scancode to ascii character:
                         memset(keyboardState, 0, sizeof(keyboardState));
-                        if (GetAsyncKeyState(VK_SHIFT)) keyboardState[VK_SHIFT] = 0xff;
+                        if (GetAsyncKeyState(VK_SHIFT)) keyboardState[VK_SHIFT] = 0x80;
+                        if (GetKeyState(VK_CAPITAL)) keyboardState[VK_CAPITAL] = 0x01;
+                        if (GetAsyncKeyState(VK_MENU)) keyboardState[VK_MENU] = 0x80;
+                        if (GetAsyncKeyState(VK_LMENU)) keyboardState[VK_LMENU] = 0x80;
+                        if (GetAsyncKeyState(VK_RMENU)) keyboardState[VK_RMENU] = 0x80;
+                        if (GetAsyncKeyState(VK_CONTROL)) keyboardState[VK_CONTROL] = 0x80;
+                        if (GetAsyncKeyState(VK_LCONTROL)) keyboardState[VK_LCONTROL] = 0x80;
+                        if (GetAsyncKeyState(VK_RCONTROL)) keyboardState[VK_RCONTROL] = 0x80;
                         
                         if ((1 == ToAsciiEx(MapVirtualKeyEx(keycode, 1, GetKeyboardLayout(0)), keycode, keyboardState, (LPWORD) &(asciiValue[0]), 0, GetKeyboardLayout(0)))) {
 							// Mapped to single char: Return it as cooked keycode:
