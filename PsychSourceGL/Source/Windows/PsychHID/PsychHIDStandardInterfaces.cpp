@@ -627,6 +627,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
  	PsychHIDEventRecord evt;
 	WORD asciiValue[2];
 	UCHAR keyboardState[256];
+    int nChar;
 
 	while (1) {        
 		// Single pass or multi-pass?
@@ -691,15 +692,35 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                         if (GetAsyncKeyState(VK_LCONTROL)) keyboardState[VK_LCONTROL] = 0x80;
                         if (GetAsyncKeyState(VK_RCONTROL)) keyboardState[VK_RCONTROL] = 0x80;
                         
-                        if ((1 == ToAsciiEx(MapVirtualKeyEx(keycode, 1, GetKeyboardLayout(0)), keycode, keyboardState, (LPWORD) &(asciiValue[0]), 0, GetKeyboardLayout(0)))) {
-							// Mapped to single char: Return it as cooked keycode:
-							evt.cookedEventCode = (int) (asciiValue[0] & 0xff);
-						}
-						else {
-							// Could not map key to valid ascii character: Mark as "not mapped" aka zero:
-							evt.cookedEventCode = 0;
-						}
-
+                        memset(asciiValue, 0, sizeof(asciiValue));
+                        nChar=ToAsciiEx(MapVirtualKeyEx(keycode, 1, GetKeyboardLayout(0)), keycode, keyboardState, (LPWORD) &(asciiValue[0]), 0, GetKeyboardLayout(0));
+                        switch (nChar) {
+                            case -1:
+                                // dead key pressed (not in docs for ToAsciiEx, but it works like for ToUnicodeEx)
+                                //printf("%d\t%d\t(%d)\"%c\" (dead)\n",keystate,nChar,asciiValue[0],(char)asciiValue[0] & 0xff);
+                                evt.cookedEventCode = 0;
+                            case 0:
+                                // Could not map key to valid ascii character: Mark as "not mapped" aka zero:
+                                // printf("no key\n");
+                                evt.cookedEventCode = 0;
+                            break;
+                            case 1:
+                                // Mapped to single char: Return it as cooked keycode:
+                                //printf("%d\t%d\t(%d)\"%c\"\n",keystate,nChar,asciiValue[0],(char)asciiValue[0] & 0xff);
+                                evt.cookedEventCode = (int) (asciiValue[0] & 0xff);
+                            break;
+                            case 2:
+                                // Mapped two chars (e.g. failed dead key combining): Return second as cooked keycode as it is last pressed key:
+                                //printf("%d\t%d\t%d-> (%d)\"%c\" + ",keystate,nChar,asciiValue[0],asciiValue[0] & 0xff,(char)asciiValue[0] & 0xff);
+                                //printf("(%d)\"%c\"\n",asciiValue[0] >>8,(char)(asciiValue[0] >>8));
+                                evt.cookedEventCode = (int) (asciiValue[0] >> 8);
+                            break;
+                            default:
+                                //printf("nChar: %d\n",nChar);
+                                evt.cookedEventCode = 0;
+                            break;
+                        }
+                        
                         // Map scancode 'keycode' to virtual key code 'keycode':
 						keycode = PsychHIDOSMapKey(keycode);
 					break;
