@@ -782,7 +782,11 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 
         // Perform auto-detection of screen to head mappings: This will no-op if users script
         // has already manually specified mappings via Screen('Preference','ScreenToHead', ...):
+        // Also skip on Wayland and Waffle atm., as we need fast control of gamma tables for
+        // auto-detection, which we currently don't have on Wayland and Waffle.
+        #if !defined(PTB_USE_WAYLAND) && !defined(PTB_USE_WAFFLE)
         PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
+        #endif
 
         // Ready to rock!
     } else {
