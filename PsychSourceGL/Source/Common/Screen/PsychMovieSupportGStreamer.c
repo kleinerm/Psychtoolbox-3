@@ -309,8 +309,9 @@ static gboolean PsychMovieBusCallback(GstBus *bus, GstMessage *msg, gpointer dat
             if (PsychPrefStateGet_Verbosity() > 0) {
                 // Most common case, "File not found" error? If so, we provide a pretty-printed error message:
                 if ((error->domain == GST_RESOURCE_ERROR) && (error->code == GST_RESOURCE_ERROR_NOT_FOUND)) {
-                    printf("PTB-ERROR: Could not open movie file [%s] for playback! No such moviefile with the given path and filename.\n",
+                    printf("PTB-ERROR: Could not open movie file [%s] for playback! No such moviefile with the given absolute path and filename.\n",
                            movie->movieName);
+                    printf("PTB-ERROR: Please note that you *must* provide an absolute path and filename for your movie file, filename alone won't work.\n");
                     printf("PTB-ERROR: The specific file URI of the missing movie was: %s.\n", movie->movieLocation);
                 }
                 else {
@@ -554,7 +555,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     }
 
     if (win && !PsychIsOnscreenWindow(win)) {
-        if (printErrors) PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window."); else return;
+        if (printErrors)
+            PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window.");
+        else
+            return;
     }
 
     // As a side effect of some PsychGSCheckInit() some broken GStreamer runtimes can change
@@ -564,19 +568,28 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (win) PsychSetGLContext(win);
 
     if (NULL == moviename) {
-        if (printErrors) PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of moviename passed!"); else return;
+        if (printErrors)
+            PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of moviename passed!");
+        else
+            return;
     }
 
     if (numMovieRecords >= PSYCH_MAX_MOVIES) {
         *moviehandle = -2;
-        if (printErrors) PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open movies exceeded!"); else return;
+        if (printErrors)
+            PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open movies exceeded!");
+        else
+            return;
     }
 
     // Search first free slot in movieRecordBANK:
-    for (i=0; (i < PSYCH_MAX_MOVIES) && (movieRecordBANK[i].theMovie); i++);
-    if (i>=PSYCH_MAX_MOVIES) {
+    for (i = 0; (i < PSYCH_MAX_MOVIES) && (movieRecordBANK[i].theMovie); i++);
+    if (i >= PSYCH_MAX_MOVIES) {
         *moviehandle = -2;
-        if (printErrors) PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open movies exceeded!"); else return;
+        if (printErrors)
+            PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open movies exceeded!");
+        else
+            return;
     }
 
     // Slot slotid will contain the movie record for our new movie object:
@@ -606,7 +619,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         if (theMovie == NULL) {
             printf("PTB-ERROR: Failed to create GStreamer playbin element! Your GStreamer installation is\n");
             printf("PTB-ERROR: incomplete or damaged and misses at least the gst-plugins-base set of plugins!\n");
-            PsychErrorExitMsg(PsychError_system, "Opening the movie failed. GStreamer configuration problem.");
+            if (printErrors)
+                PsychErrorExitMsg(PsychError_system, "Opening the movie failed. GStreamer configuration problem.");
+            else
+                return;
         }
 
         // Assign name of movie to play:
@@ -722,12 +738,17 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Assign a fakesink named "ptbsink0" as destination video-sink for
     // all video content. This allows us to get hold of the video frame buffers for
     // converting them into PTB OpenGL textures:
-    if (!videosink) videosink = gst_element_factory_make ("appsink", "ptbsink0");
+    if (!videosink)
+        videosink = gst_element_factory_make ("appsink", "ptbsink0");
+
     if (!videosink) {
         printf("PTB-ERROR: Failed to create video-sink appsink ptbsink! Your GStreamer installation is\n");
         printf("PTB-ERROR: incomplete or damaged and misses at least the gst-plugins-base set of plugins!\n");
         PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
-        PsychErrorExitMsg(PsychError_system, "Opening the movie failed. Reason hopefully given above.");
+        if (printErrors)
+            PsychErrorExitMsg(PsychError_system, "Opening the movie failed. Reason hopefully given above.");
+        else
+            return;
     }
 
     movieRecordBANK[slotid].videosink = videosink;
@@ -820,7 +841,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                 break;
 
             default:
-                PsychErrorExitMsg(PsychError_user, "Invalid 'pixelFormat' parameter specified!");
+                if (printErrors)
+                    PsychErrorExitMsg(PsychError_user, "Invalid 'pixelFormat' parameter specified!");
+                else
+                    // Revert to something safe, RGBA8, as we can not error abort here:
+                    movieRecordBANK[slotid].pixelFormat = 4;
                 break;
         }
 
@@ -916,14 +941,20 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         else {
             printf("PTB-ERROR: Could not create requested audio sink for playback of movie! Failing sink spec was: '%s'\n", pstring);
             free(pstring); pstring = NULL;
-            PsychErrorExitMsg(PsychError_user, "Failed to create custom audio sink for movie playback.");
+            if (printErrors)
+                PsychErrorExitMsg(PsychError_user, "Failed to create custom audio sink for movie playback.");
+            else
+                return;
         }
     }
 
     // Preload / Preroll the pipeline:
     if (!PsychMoviePipelineSetState(theMovie, GST_STATE_PAUSED, 30.0)) {
         PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
-        PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed I. Reason given above.");
+        if (printErrors)
+            PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed I. Reason given above.");
+        else
+            return;
     }
 
     // Set video decoder parameters:
@@ -990,7 +1021,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         // Ready the video codec, so a new max thread count or other parameters can be set:
         if (!PsychMoviePipelineSetState(videocodec, GST_STATE_READY, 30.0)) {
             PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
-            PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed III. Reason given above.");
+            if (printErrors)
+                PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed III. Reason given above.");
+            else
+                return;
         }
     }
 
@@ -1045,7 +1079,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         // Pause the video codec, so the new max thread count is accepted:
         if (!PsychMoviePipelineSetState(videocodec, GST_STATE_PAUSED, 30.0)) {
             PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), TRUE);
-            PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed IV. Reason given above.");
+            if (printErrors)
+                PsychErrorExitMsg(PsychError_user, "In OpenMovie: Opening the movie failed IV. Reason given above.");
+            else
+                return;
         }
     }
 
@@ -1060,7 +1097,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // We need a valid onscreen window handle for real video playback:
     if ((NULL == win) && (movieRecordBANK[slotid].nrVideoTracks > 0)) {
-        if (printErrors) PsychErrorExitMsg(PsychError_user, "No windowPtr to an onscreen window provided. Must do so for movies with videotrack!"); else return;
+        if (printErrors)
+            PsychErrorExitMsg(PsychError_user, "No windowPtr to an onscreen window provided. Must do so for movies with videotrack!");
+        else
+            return;
     }
 
     PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), FALSE);
@@ -1168,7 +1208,10 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
         // Only 1 layer and 3 layer are supported:
         if (pixelFormat != 1 && pixelFormat !=3) {
-            PsychErrorExitMsg(PsychError_user, "You specified 'specialFlags1' setting 512 for Psychtoolbox proprietary 16 bpc decoding, but pixelFormat is not 1 or 3 as required for this decoding method!");
+            if (printErrors)
+                PsychErrorExitMsg(PsychError_user, "You specified 'specialFlags1' setting 512 for Psychtoolbox proprietary 16 bpc decoding, but pixelFormat is not 1 or 3 as required for this decoding method!");
+            else
+                return;
         }
 
         // Set bitdepth of movie to 16 bpc for later texture creation from decoded video frames:
@@ -1188,12 +1231,18 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     // Make sure the input format for raw Bayer sensor data is actually 1 layer grayscale, and that PTB for this OS supports debayering:
     if (specialFlags1 & 1024) {
         if (movieRecordBANK[slotid].pixelFormat != 1) {
-            PsychErrorExitMsg(PsychError_user, "specialFlags1 & 1024 set to indicate this movie consists of raw Bayer sensor data, but pixelFormat is not == 1, as required!");
+            if (printErrors)
+                PsychErrorExitMsg(PsychError_user, "specialFlags1 & 1024 set to indicate this movie consists of raw Bayer sensor data, but pixelFormat is not == 1, as required!");
+            else
+                return;
         }
 
         // Abort early if libdc1394 support is not available on this configuration:
         #ifndef PTBVIDEOCAPTURE_LIBDC
-        PsychErrorExitMsg(PsychError_user, "Sorry, Bayer filtering of video frames, as requested by specialFlags1 setting & 1024, is not supported on this operating system.");
+        if (printErrors)
+            PsychErrorExitMsg(PsychError_user, "Sorry, Bayer filtering of video frames, as requested by specialFlags1 setting & 1024, is not supported on this operating system.");
+        else
+            return;
         #endif
     }
 

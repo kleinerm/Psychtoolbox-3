@@ -277,7 +277,7 @@ PsychError SCREENOpenMovie(void)
                 }
                 // We fall through to case 2 - Wait for "Load operation successfully finished."
 
-            case 2: // Async open operation successfully finished. Parse asyncinfo struct and return it to host environment:
+            case 2: // Async open operation finished. Parse asyncinfo struct and return it to host environment:
                 // We need to join our terminated worker thread to release its ressources. If the worker-thread
                 // isn't done yet (fallthrough from case 1 for sync. wait), this join will block us until worker
                 // completes:
@@ -292,7 +292,7 @@ PsychError SCREENOpenMovie(void)
                 // Movie successfully opened?
                 if (moviehandle < 0) {
                     // Movie loading failed for some reason.
-                    printf("PTB-ERROR: When trying to asynchronously load movie %s, the operation failed: ", asyncmovieinfo.moviename);
+                    printf("PTB-ERROR: When trying to asynchronously load movie '%s', the operation failed! Reasons given above.\n", asyncmovieinfo.moviename);
                     free(asyncmovieinfo.moviename);
                     PsychErrorExitMsg(PsychError_user, "Asynchronous loading of the movie failed.");
                 }

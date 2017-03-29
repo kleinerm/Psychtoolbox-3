@@ -14,15 +14,20 @@ function PlayMoviesWithoutGapDemo1(moviename)
 % loading: While movie i is played back, we ask Psychtoolbox to load the
 % next movie i+1 in the background, so startup time for movie i+1 will be
 % minimized.
+%
+% See also PlayMoviesWithoutGapDemo2 for a more efficient / even more "gapless"
+% solution that can be used if all movies fulfill the constraints mentioned in
+% that demo.
 
 % History:
-% 7/5/06  mk  Wrote it.
+% 05-May-2006  mk  Wrote it.
+% 29-Mar-2017  mk  Bug fixes, refinements.
 
 AssertOpenGL;
 
 if nargin < 1
     moviename = '*.mov' %#ok<NOPRT>
-end;
+end
 
 % Switch KbName into unified mode: It will use the names of the OS-X
 % platform on all platforms in order to make this script portable:
@@ -66,7 +71,7 @@ try
     newmovie = -1;
     
     % Endless loop, runs until ESC key pressed:
-    while (abortit<2)
+    while abortit < 1
         % Show basic info about movie:
         fprintf('ITER=%i::', iteration);
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
@@ -76,7 +81,7 @@ try
         % Get moviename of next file:
         iteration=iteration + 1;
         moviename=moviefiles(mod(iteration, size(moviefiles,1))+1).name;
-        
+
         t1 = GetSecs;
         
         % Playback loop: Fetch video frames and display them...
@@ -94,7 +99,7 @@ try
                     % No. This means that the end of this movie is reached.
                     % We exit the loop and prepare next movie:
                     break;
-                end;
+                end
                 
                 if (tex>0)
                     % Yes. Draw the new texture immediately to screen:
@@ -105,17 +110,17 @@ try
                     
                     % Release texture:
                     Screen('Close', tex);
-                end;
-            end;
+                end
+            end
             
             % Check for abortion by user:
-            abortit=0;
+            abortit = 0;
             [keyIsDown,secs,keyCode]=KbCheck; %#ok<ASGLU>
             if (keyIsDown==1 && keyCode(esc))
                 % Set the abort-demo flag.
-                abortit=2;
+                abortit = 1;
                 break;
-            end;
+            end
             
             % We start background loading of the next movie 0.5 seconds
             % after start of playback of the current movie:
@@ -124,8 +129,8 @@ try
                 % We simply set the async flag to 1 and don't query any
                 % return values:
                 Screen('OpenMovie', win, moviename, 1);
-                prefetched=1;
-            end;
+                prefetched = 1;
+            end
             
             % If asynchronous load of next movie has been started already
             % and we are less than 0.5 seconds from the end of the current
@@ -146,9 +151,9 @@ try
                 % Start it:
                 Screen('PlayMovie', newmovie, rate, 0, 1.0);
                 
-                prefetched=2;
-            end;
-        end;
+                prefetched = 2;
+            end
+        end
         
         telapsed = GetSecs - t1 %#ok<NOPRT,NASGU>
         finalcount=i %#ok<NOPRT,NASGU>
@@ -160,15 +165,20 @@ try
         Screen('CloseMovie', movie);
         
         % Ok, now our 'newmovie' becomes the current 'movie':
-        movie = newmovie;
-        movieduration = newmovieduration;
-        fps = newfps;
-        imgw = newimgw;
-        imgh = newimgh;
-        prefetched = 0;
+        if prefetched == 2
+            movie = newmovie;
+            movieduration = newmovieduration;
+            fps = newfps;
+            imgw = newimgw;
+            imgh = newimgh;
+            if ~abortit
+                prefetched = 0;
+            end
+        end
+
         % As playback of the new movie has been started already, we can
         % simply reenter the playback loop:
-    end;
+    end
     
     % End of movie playback. Shut down and exit:
     if prefetched == 1
@@ -194,4 +204,4 @@ try
 catch %#ok<CTCH>
     % Error handling: Close all windows and movies, release all ressources.
     sca;
-end;
+end
