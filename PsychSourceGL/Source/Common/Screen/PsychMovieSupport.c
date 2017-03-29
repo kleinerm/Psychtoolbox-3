@@ -1,27 +1,25 @@
 /*
-	PsychSourceGL/Source/Common/Screen/PsychMovieSupport.c
-	
-	PLATFORMS:	
-	
-		All.
-				
-	AUTHORS:
-	
-		Mario Kleiner           mk              mario.kleiner@tuebingen.mpg.de
+    PsychSourceGL/Source/Common/Screen/PsychMovieSupport.c
 
-	HISTORY:
-	
+    PLATFORMS:
+
+        All.
+
+    AUTHORS:
+
+        Mario Kleiner   mk      mario.kleiner.de@gmail.com
+
+    HISTORY:
+
         DESCRIPTION:
-	
-		Psychtoolbox functions for dealing with movies.
 
-		This is the master dispatcher. Function herein get called by
-		other parts of Psychtoolbox, most notably the SCREENxxx functions
-		for movie playback.
- 
-		On all platforms it is currently GStreamer or nothing.
+        Psychtoolbox functions for dealing with movies.
 
-	NOTES:
+        This is the master dispatcher. Function herein get called by
+        other parts of Psychtoolbox, most notably the SCREENxxx functions
+        for movie playback.
+
+        On all platforms it is currently GStreamer or nothing.
 
 */
 
@@ -39,21 +37,21 @@
  */
 void PsychMovieInit(void)
 {
-	#ifdef PTB_USE_GSTREAMER
-	// This will also first-time initialize Glib's threading system:
-	PsychGSMovieInit();
-	#endif
+    #ifdef PTB_USE_GSTREAMER
+    // This will also first-time initialize Glib's threading system:
+    PsychGSMovieInit();
+    #endif
 
-	return;
+    return;
 }
 
 int PsychGetMovieCount(void)
 {
-	#ifdef PTB_USE_GSTREAMER
-	return(PsychGSGetMovieCount());
-	#endif
+    #ifdef PTB_USE_GSTREAMER
+    return(PsychGSGetMovieCount());
+    #endif
 
-	return(0);
+    return(0);
 }
 
 /*
@@ -148,7 +146,7 @@ void PsychDeleteMovie(int moviehandle)
     return;
     #endif
 
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
 }
 
 /*

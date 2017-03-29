@@ -1,20 +1,17 @@
 /*
-	PsychToolbox3/Source/Common/Screen/PsychMovieSupport.h
-	
-	PLATFORMS:	All.  
-				
-	AUTHORS:
+    PsychToolbox3/Source/Common/Screen/PsychMovieSupport.h
 
-	Mario Kleiner	mk	mario.kleiner@tuebingen.mpg.de
+    PLATFORMS:
 
-	HISTORY:
+    All.
 
-        10/31/05    mk      Wrote it.
+    AUTHORS:
 
-	DESCRIPTION:
-	
-	Psychtoolbox functions for dealing with movies.
+    Mario Kleiner   mk      mario.kleiner.de@gmail.com
 
+    DESCRIPTION:
+
+    Psychtoolbox functions for dealing with movies.
 */
 
 //include once
@@ -29,8 +26,8 @@ typedef struct PsychAsyncMovieInfo {
     PsychWindowRecordType windowRecord;
     int moviehandle;
     double preloadSecs;
-	int asyncFlag;
-	int specialFlags1;
+    int asyncFlag;
+    int specialFlags1;
     int pixelFormat;
     int maxNumberThreads;
     char* movieOptions;
@@ -53,4 +50,3 @@ double PsychSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool inde
 
 //end include once
 #endif
-
