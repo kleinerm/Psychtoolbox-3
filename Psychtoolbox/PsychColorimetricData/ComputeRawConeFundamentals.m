@@ -1,5 +1,5 @@
-function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeRawConeFundamentals(params,staticParams)
-% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeRawConeFundamentals(params,staticParams)
+function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations,adjIndDiffParams] = ComputeRawConeFundamentals(params,staticParams)
+% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations,adjIndDiffParams] = ComputeRawConeFundamentals(params,staticParams)
 %
 % Function to compute normalized cone quantal sensitivities from underlying
 % pieces and parameters.
@@ -241,4 +241,7 @@ for i = 1:size(T_quantalAbsorptions,1)
     T_quantalAbsorptionsNormalized(i,:) = T_quantalAbsorptions(i,:)/max(T_quantalAbsorptions(i,:));
 end
 
-
+% Gather data for adjIndDiffParams
+adjIndDiffParams.mac = mac;
+adjIndDiffParams.lens = lens;
+adjIndDiffParams.dphotopigment = [LDensity MDensity SDensity];
