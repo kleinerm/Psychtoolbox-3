@@ -527,15 +527,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 break;
 
             case WM_CLOSE:
-                // WM_CLOSE falls through to WM_CHAR and emulates an Abort-key press.
-                // -> Manually closing an onscreen window does the same as pressing the Abort-key.
-                if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
-                wParam='@';
+                // WM_CLOSE: Window close button pressed. Close all onscreen windows.
+                if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_CLOSE!\n");
+                printf("PTB-INFO: Enforcing script abortion and restoring desktop by executing Screen('CloseAll') now!\n");
+                printf("PTB-INFO: Please ignore the false error message (INTERNAL PSYCHTOOLBOX ERROR) caused by this...\n");
+                ScreenCloseAllWindows();
+                return(0);
+
             case WM_CHAR:
+                // DISABLED: Interferes with some new text input stuff Diederick is developing, and undocumented
+                // and unimplemented on other OS'es anyway, so let it r.i.p.:
                 // Character received. We only care about one key, the '@' key.
                 // Pressing '@' will immediately close all onscreen windows, show
                 // the cursor and such. It is the emergency stop key.
-                if (wParam=='@') {
+                if (FALSE && (wParam=='@')) {
                     // Emergency shutdown:
                     printf("\nPTB-INFO: Master-Abort key '@' pressed by user.\n");
                     printf("PTB-INFO: Enforcing script abortion and restoring desktop by executing Screen('CloseAll') now!\n");
