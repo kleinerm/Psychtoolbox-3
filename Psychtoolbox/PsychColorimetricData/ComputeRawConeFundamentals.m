@@ -8,7 +8,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % energy sensitivities.  In that case, use EnergyToQuanta to convert
 %   T_energy = EnergyToQuanta(S,T_quantal')'
 % and then renormalize.  (You call EnergyToQuanta because you're converting
-% sensitivities, which go the opposite directoin from spectra.)
+% sensitivities, which go the opposite direction from spectra.)
 %
 % The routine also returns two quantal sensitivity functions.  The first
 % gives the probability that a photon will be absorbed.  The second is the
@@ -27,7 +27,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % for the photopigment, in which case the absorbance is computed from the
 % specified nomogram, or you can pass the absorbance values directly in
 % T_xxx format.  A typical choice in this case would be
-% 10.^T_lgo10coneabsorbance_ss for the Stockman-Sharpe/CIE estimates.
+% 10.^T_log10coneabsorbance_ss for the Stockman-Sharpe/CIE estimates.
 %
 % The typical use of this function is to be called by
 % ComputeCIEConeFundamentals, which sets up the passed structures acording
