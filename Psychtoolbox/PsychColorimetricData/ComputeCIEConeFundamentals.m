@@ -92,9 +92,9 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % The adjIndDiffParams output argument is a struct which is populated by ComputeRawConeFundamentals.
 % It contains the actual parameter values for the parameters adjusted using the indDiffParams 
 % input. It contains the following fields:
-%    adjIndDiffParams.mac - the adjusted macular pigment density as a function of wavelength
+%    adjIndDiffParams.mac - the adjusted macular pigment transmittance as a function of wavelength
 %                           as calculated in line 151 of ComputeRawConeFundamentals.
-%    adjIndDiffParams.lens - the adjusted lens density as a function of wavelength as calculated
+%    adjIndDiffParams.lens - the adjusted lens transmittance as a function of wavelength as calculated
 %                            in line 41 of ComputeRawConeFundamentals.
 %    adjIndDiffParams.dphotopigment - 3-vector of the adjusted photopigment axial density for
 %                                     L, M and S cones (in that order), as calculated in lines
