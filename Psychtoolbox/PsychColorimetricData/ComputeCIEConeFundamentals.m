@@ -142,6 +142,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % 02/08/16 dhb, ms  Add lambdaMaxShift argument.
 %          ms   Don't do two way check when lambdaMax is shifted.
 % 02/24/16 dhb, ms  Started to implement Asano et al. individual difference model
+% 3/30/17  ms   Added output argument returning adjusted ind differences
 
 %% Are we doing rods rather than cones?
 if (nargin < 8 || isempty(DORODS))
