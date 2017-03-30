@@ -67,6 +67,9 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % See ComputeCIEConeFundamentals for the breakdown of how the Asano et al.
 % (2016) individual differences model is specified in params.indDiffParams.
 %
+% See ComputeCIEConeFundamentals for documentation of the adjIndDiffParams
+% output argument.
+%
 % See also: ComputeCIEConeFundamentals, CIEConeFundamentalsTest,
 % FitConeFundamentalsWithNomogram,
 %           FitConeFundamentalsTest, DefaultPhotoreceptors,
