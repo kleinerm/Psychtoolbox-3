@@ -1,5 +1,5 @@
-function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeRawConeFundamentals(params,staticParams)
-% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeRawConeFundamentals(params,staticParams)
+function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations,adjIndDiffParams] = ComputeRawConeFundamentals(params,staticParams)
+% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations,adjIndDiffParams] = ComputeRawConeFundamentals(params,staticParams)
 %
 % Function to compute normalized cone quantal sensitivities from underlying
 % pieces and parameters.
@@ -67,6 +67,9 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % See ComputeCIEConeFundamentals for the breakdown of how the Asano et al.
 % (2016) individual differences model is specified in params.indDiffParams.
 %
+% See ComputeCIEConeFundamentals for documentation of the adjIndDiffParams
+% output argument.
+%
 % See also: ComputeCIEConeFundamentals, CIEConeFundamentalsTest,
 % FitConeFundamentalsWithNomogram,
 %           FitConeFundamentalsTest, DefaultPhotoreceptors,
@@ -75,7 +78,8 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % 8/12/11  dhb  Starting to make this actually work.
 % 8/14/11  dhb  Change name, expand comments.
 % 8/10/13  dhb  Expand comments.  Return unscaled quantal efficiencies too.
-% 2/26/16  dhb, ms  Add in Asano et al. (2016) individual observer adjustments.
+% 2/26/16  dhb, ms  Add in Asano et al. (2016) individual observer adjustments
+% 3/30/17  ms   Added output argument returning adjusted ind differences
 
 % Handle bad value
 index = find(params.axialDensity <= 0.0001);
@@ -241,4 +245,7 @@ for i = 1:size(T_quantalAbsorptions,1)
     T_quantalAbsorptionsNormalized(i,:) = T_quantalAbsorptions(i,:)/max(T_quantalAbsorptions(i,:));
 end
 
-
+% Gather data for adjIndDiffParams
+adjIndDiffParams.mac = mac;
+adjIndDiffParams.lens = lens;
+adjIndDiffParams.dphotopigment = [LDensity MDensity SDensity];

@@ -15,17 +15,18 @@
 % StockmanSharpeNomogram.m.
 %
 % The code here is closely related (and uses) a more general set of code
-% for setting parameters for photoreceptors and computing quantal 
+% for setting parameters for photoreceptors and computing quantal
 % sensitivities. See:
 %    DefaultPhotoreceptors, FillInPhotoreceptors, PrintPhotoreceptors,IsomerizationsInDishDemo
 %    IsomerizationsInEyeDemo, ComputeCIEConeFundamentals,
-%    ComputeRawConeFundamentals, CIEConeFundamentalsFieldSizeTEst.
+%    ComputeRawConeFundamentals, CIEConeFundamentalsFieldSizeTest.
 %
 % 8/11/11  dhb  Wrote it
 % 8/14/11  dhb  Clean up a little.
 % 12/16/12 dhb  Added test for rods.
 % 08/10/13 dhb  Better integration with the photoreceptor struct code.
 % 03/14/14 dhb  Add Smith-Pokorny to 2 degree plot, for comparison.
+% 3/31/17  ms   Added documentation of the adjIndDiffParams output args.
 
 %% Clear
 clear; close all;
@@ -217,7 +218,7 @@ if (DUMPFIGURES)
     end
 end
 
-%% Generate a rod spectral sensitivity and compare with the CIE 1951 
+%% Generate a rod spectral sensitivity and compare with the CIE 1951
 % rod spectral sensitivities
 %
 % The agreement will depend on rodLambdaMax, rodAxialDensity, and the
@@ -241,4 +242,38 @@ title('Rod fundamentals (blk), constructed (red)');
 ylabel('Normalized quantal sensitivity');
 xlabel('Wavelength');
 
+%% Test if the adjusted individual difference parameters get returned properly
+indDiffParams.dlens = 0;
+indDiffParams.dmac = 0;
+indDiffParams.dphotopigment = [0 0 0];
+indDiffParams.lambdaMaxShift = [];
+[~,~,~,adjIndDiffParamsNoChange] = ComputeCIEConeFundamentals(S,10,32,5,[], [], [], false,[],[],indDiffParams);
 
+% Change all parameters by some amount
+indDiffParamsNew.dlens = 2;
+indDiffParamsNew.dmac = -5;
+indDiffParamsNew.dphotopigment = [5 3 -4];
+indDiffParamsNew.lambdaMaxShift = [];
+[~,~,~,adjIndDiffParamsNew] = ComputeCIEConeFundamentals(S,10,32,5,[], [], [], false,[],[],indDiffParamsNew);
+
+% Calculate if they are in agreement
+fprintf('* Checking for individual difference adjustment\n');
+fprintf('> Lens density\n');
+fprintf('\tInput: \t%.2f%s\n', indDiffParamsNew.dlens, '%');
+fprintf('\tOutput: %.2f%s\n', (max(log10(adjIndDiffParamsNew.lens) ./ log10(adjIndDiffParamsNoChange.lens))-1)*100, '%');
+
+fprintf('> Macular pigment density\n');
+fprintf('\tInput: \t%.2f%s\n', indDiffParamsNew.dmac, '%');
+fprintf('\tOutput: %.2f%s\n', (max(log10(adjIndDiffParamsNew.mac) ./ log10(adjIndDiffParamsNoChange.mac))-1)*100, '%');
+
+fprintf('> L photopigment density\n');
+fprintf('\tInput: \t%.2f%s\n', indDiffParamsNew.dphotopigment(1), '%');
+fprintf('\tOutput: %.2f%s\n', ((adjIndDiffParamsNew.dphotopigment(1)/adjIndDiffParamsNoChange.dphotopigment(1))-1)*100, '%');
+
+fprintf('> M photopigment density\n');
+fprintf('\tInput: \t%.2f%s\n', indDiffParamsNew.dphotopigment(2), '%');
+fprintf('\tOutput: %.2f%s\n', ((adjIndDiffParamsNew.dphotopigment(2)/adjIndDiffParamsNoChange.dphotopigment(2))-1)*100, '%');
+
+fprintf('> S photopigment density\n');
+fprintf('\tInput: \t%.2f%s\n', indDiffParamsNew.dphotopigment(3), '%');
+fprintf('\tOutput: %.2f%s\n', ((adjIndDiffParamsNew.dphotopigment(3)/adjIndDiffParamsNoChange.dphotopigment(3))-1)*100, '%');
