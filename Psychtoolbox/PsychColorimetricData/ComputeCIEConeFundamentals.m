@@ -1,6 +1,6 @@
 function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations,adjIndDiffParams] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,lambdaMax,whichNomogram,LserWeight, ...
     DORODS,rodAxialDensity,fractionPigmentBleached,indDiffParams)
-% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,[lambdaMax],[whichNomogram],[LserWeight], ...
+% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations,adjIndDiffParams] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,[lambdaMax],[whichNomogram],[LserWeight], ...
 %   [DORODS],[rodAxialDensity],[fractionPigmentBleached],indDiffParams)
 %
 % Function to compute normalized cone quantal sensitivities
@@ -64,7 +64,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % for LserWeight is 0.56.  After travelling it for a distance to try to get better
 % agreement between the nomogram based fundamentals and the tabulated fundamentals
 % I (DHB) gave up and decided that using a single lambdaMax is as good as anything
-% else I could come up with. If you are interested, see FitConeFundametnalsTest.
+% else I could come up with. If you are interested, see FitConeFundamentalsTest.
 %
 % NOTE 1: When we first implemented the CIE standard, adding this shifting feature
 % seemed like a good idea to allow exploration of individual differences in photopigments.
@@ -89,6 +89,20 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % obtained them.  To do this, pass argument lambdaMaxShift with the same
 % number of entries as the number of absorbances that are used.
 %
+% The adjIndDiffParams output argument is a struct which is populated by ComputeRawConeFundamentals.
+% It contains the actual parameter values for the parameters adjusted using the indDiffParams 
+% input. It contains the following fields:
+%    adjIndDiffParams.mac - the adjusted macular pigment density as a function of wavelength
+%                           as calculated in line 151 of ComputeRawConeFundamentals.
+%    adjIndDiffParams.lens - the adjusted lens density as a function of wavelength as calculated
+%                            in line 41 of ComputeRawConeFundamentals.
+%    adjIndDiffParams.dphotopigment - 3-vector of the adjusted photopigment axial density for
+%                                     L, M and S cones (in that order), as calculated in lines
+%                                     200-202 of ComputeRawConeFundamentals.
+%
+% For both adjIndDiffParams.mac and adjIndDiffParams.lens, the wavelength spacing is the same
+% as in the S input variable of this function.
+%
 % This function also has an option to compute rod spectral sensitivities, using
 % the pre-retinal values that come from the CIE standard.  Set DORODS to true on
 % call.  You then need to explicitly pass a single lambdaMax value.  You can
@@ -102,7 +116,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 %
 % Finally, you can adjust the returned spectral sensitivities to account for
 % the possibility that some of the pigment in the cones is bleached.  Pass
-% a column vector with same length as number of spectral sensitivities being
+% a column vector with same length as number of spectral sensitivities beingt
 % computed.  You need to estimate the fraction elsewhere.
 %
 % Relevant to individual differences, S & S (2000) estimate the wavelength difference
