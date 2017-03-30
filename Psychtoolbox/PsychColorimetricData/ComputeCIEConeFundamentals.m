@@ -98,7 +98,8 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 %                            in line 41 of ComputeRawConeFundamentals.
 %    adjIndDiffParams.dphotopigment - 3-vector of the adjusted photopigment axial density for
 %                                     L, M and S cones (in that order), as calculated in lines
-%                                     200-202 of ComputeRawConeFundamentals.
+%                                     200-202 of ComputeRawConeFundamentals; or rods, as calculated
+%                                     in line 216 of ComputeRawConeFundamentals if params.DORODS is true.
 %
 % For both adjIndDiffParams.mac and adjIndDiffParams.lens, the wavelength spacing is the same
 % as in the S input variable of this function.
