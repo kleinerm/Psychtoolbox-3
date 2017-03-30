@@ -148,6 +148,8 @@ if (any(lens > 1))
     error('You have passed parameters that make lens transmittance greater than 1');
 end
 %lens(lens > 1) = 1;
+adjIndDiffParams.lens = lens;
+
 if (OLDMACWAY)
     fprintf('Using old way of adjusting macular pigment density.  Consider switching to newer implementation via the params.indDiffParams field\n');
     mac = 10.^-(-log10(staticParams.macularTransmittance)+params.extraMac);
@@ -157,6 +159,7 @@ end
 if (any(mac > 1))
     error('You have passed parameters that make macular pigment transmittance greater than 1');
 end
+adjIndDiffParams.mac = mac;
 %mac(mac > 1) = 1;
 
 % Compute nomogram if absorbance wasn't passed directly.  We detect
@@ -205,12 +208,14 @@ elseif (size(absorbance,1) == 3)
     MDensity = params.axialDensity(2) * (1 + params.indDiffParams.dphotopigment(2)/100);
     SDensity = params.axialDensity(3) * (1 + params.indDiffParams.dphotopigment(3)/100);
     absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,[LDensity ; MDensity ; SDensity]);
+    adjIndDiffParams.dphotopigment = [LDensity MDensity SDensity];
 elseif (size(absorbance,1) == 1 && params.DORODS)
     if (length(params.indDiffParams.dphotopigment) ~= 1)
         error('Density adjustment parameter length not right for rods');
     end
     RodDensity = params.axialDensity(1) + params.indDiffParams.dphotopigment(1)/100;
     absorptance = AbsorbanceToAbsorptance(absorbance,staticParams.S,RodDensity);
+    adjIndDiffParams.dphotopigment = RodDensity;
 else
     error('Unexpected number of photopigment lambda max values passed');
 end
@@ -244,8 +249,3 @@ for i = 1:size(T_quantalAbsorptions,1)
     T_quantalIsomerizations = T_quantalAbsorptions*staticParams.quantalEfficiency(i);
     T_quantalAbsorptionsNormalized(i,:) = T_quantalAbsorptions(i,:)/max(T_quantalAbsorptions(i,:));
 end
-
-% Gather data for adjIndDiffParams
-adjIndDiffParams.mac = mac;
-adjIndDiffParams.lens = lens;
-adjIndDiffParams.dphotopigment = [LDensity MDensity SDensity];
