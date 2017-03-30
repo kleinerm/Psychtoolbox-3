@@ -78,7 +78,8 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % 8/12/11  dhb  Starting to make this actually work.
 % 8/14/11  dhb  Change name, expand comments.
 % 8/10/13  dhb  Expand comments.  Return unscaled quantal efficiencies too.
-% 2/26/16  dhb, ms  Add in Asano et al. (2016) individual observer adjustments.
+% 2/26/16  dhb, ms  Add in Asano et al. (2016) individual observer adjustments
+% 3/30/17  ms   Added output argument returning adjusted ind differences
 
 % Handle bad value
 index = find(params.axialDensity <= 0.0001);
