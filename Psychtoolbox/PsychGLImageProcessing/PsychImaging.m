@@ -1546,6 +1546,9 @@ if strcmpi(cmd, 'OpenWindow')
     % Set override special flags to "none" by default:
     ovrSpecialFlags = [];
 
+    % Set override framebuffer rect to "none" by default:
+    ovrfbOverrideRect = [];
+
     % Running on a VR headset?
     if ~isempty(find(mystrcmp(reqs, 'UseVRHMD')));
         % Yes:
@@ -1699,6 +1702,17 @@ if strcmpi(cmd, 'OpenWindow')
         clientRect = [];
     else
         clientRect = varargin{10};
+    end
+
+    if nargin < 12 || isempty(varargin{11})
+        fbOverrideRect = [];
+    else
+        fbOverrideRect = varargin{11};
+    end
+
+    % Allow override of the fbOverrideRect from special clients like VR apps:
+    if ~isempty(ovrfbOverrideRect)
+        fbOverrideRect = ovrfbOverrideRect;
     end
 
     if ~isempty(find(mystrcmp(reqs, 'UseDisplayRotation'))) %#ok<*EFIND>
@@ -2021,9 +2035,9 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         if nargin >= 12
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
         else
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
         end
     end
 
@@ -2035,9 +2049,9 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         if nargin >= 12
-            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
         else
-            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
         end
     end
 
@@ -2055,9 +2069,9 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         if nargin >= 12
-            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
         else
-            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
         end
     end
 
@@ -2069,18 +2083,18 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         if nargin >= 12
-            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
         else
-            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
         end
     end
 
     if isempty(win)
         % Standard openwindow path:
         if nargin >= 12
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
         else
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
         end
     end
 
