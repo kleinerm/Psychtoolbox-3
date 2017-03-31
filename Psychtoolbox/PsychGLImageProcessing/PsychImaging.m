@@ -1711,6 +1711,12 @@ if strcmpi(cmd, 'OpenWindow')
         fbOverrideRect = ovrfbOverrideRect;
     end
 
+    % Define fitRefRect (used for panel fitter setup) as the effective framebuffer rectangle:
+    fitRefRect = winRect;
+    if ~isempty(fbOverrideRect)
+        fitRefRect = fbOverrideRect;
+    end
+
     if ~isempty(find(mystrcmp(reqs, 'UseDisplayRotation'))) %#ok<*EFIND>
         % Yes. Extract parameters:
         floc = find(mystrcmp(reqs, 'UseDisplayRotation'));
@@ -1736,10 +1742,10 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         % Get full size of output framebuffer:
-        if isempty(winRect)
+        if isempty(fitRefRect)
             [clientRes(1), clientRes(2)] = Screen('WindowSize', screenid, 1);
         else
-            clientRes = [RectWidth(winRect), RectHeight(winRect)];
+            clientRes = [RectWidth(fitRefRect), RectHeight(fitRefRect)];
         end
 
         % Rotation into a portrait orientation?
@@ -1798,10 +1804,10 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         % Define full size of output framebuffer:
-        if isempty(winRect)
+        if isempty(fitRefRect)
             dstFit = Screen('Rect', screenid, 1);
         else
-            dstFit = SetRect(0, 0, RectWidth(winRect), RectHeight(winRect));
+            dstFit = SetRect(0, 0, RectWidth(fitRefRect), RectHeight(fitRefRect));
         end
 
         % Adapt dstFit according to window size flags:
