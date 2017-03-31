@@ -1597,28 +1597,24 @@ if strcmpi(cmd, 'OpenWindow')
             % to have the same size (width x height) as the renderbuffer for one
             % eye, so enforce that constraint.
 
-            % Get required output buffer size and therefore window size:
+            % Get required output buffer size and therefore window framebuffer size:
             clientRes = hmd.driver('GetClientRenderingParameters', hmd);
 
-            % Set rect of that size, possibly positioned to start where user wants it:
-            if isempty(winRect)
-                winRect = [0, 0, clientRes(1), clientRes(2)];
-            else
-                winRect = OffsetRect([0, 0, clientRes(1), clientRes(2)], winRect(RectLeft), winRect(RectTop));
-            end
+            % Set as fbOverrideRect for window:
+            ovrfbOverrideRect = [0, 0, clientRes(1), clientRes(2)];
 
-            fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to work with HMD Direct output.\n', ...
-                    winRect(1), winRect(2), winRect(3), winRect(4));
+            fprintf('PsychImaging-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with VR-HMD direct output mode.\n', ...
+                    clientRes(1), clientRes(2));
 
             % As the onscreen window is not used for displaying on the HMD, but
             % either not at all, or just for debug output, make it a regular GUI
             % window, managed by the window manager, so user can easily get it out
             % of the way:
-            ovrSpecialFlags = kPsychGUIWindowWMPositioned;
+            ovrSpecialFlags = kPsychGUIWindow + kPsychGUIWindowWMPositioned;
 
             % Skip all visual timing sync tests and calibrations, as display timing
             % of the onscreen window doesn't matter, only the timing on the HMD direct
-            % output matters:
+            % output matters - and that can't be measured by our standard procedures:
             Screen('Preference', 'SkipSyncTests', 2);
         end
     end
