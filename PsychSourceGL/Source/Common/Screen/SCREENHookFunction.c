@@ -123,7 +123,7 @@ static char synopsisString[] =
     "Change or query imagingMode flags of provided proxy window 'proxyPtr' to 'imagingMode'. Proxy windows are used to define "
     "image processing operations, mostly for Screen('TransformTexture'). Returns old imaging mode."
     "\n\n"
-    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'SetDisplayBufferTextures' [, hookname][, leftglHandle][, rightglHandle][, glTextureTarget][, format][, multiSample][, width][, height]); \n"
+    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'SetDisplayBufferTextures' [, hookname][, leftglHandle][, rightglHandle][, glTextureTarget][, format][, multiSample][, width][, height]);\n"
     "Changes the external backing textures and their parameters for the final output color buffers of the imaging pipeline.\n"
     "Optionally returns the previously used backing textures and their old parameters. All new parameters are optional, the "
     "old values are left as they were if a parameter is not provided.\n"
@@ -148,14 +148,21 @@ static char synopsisString[] =
     "'multiSample' The number of samples per texel. Must be 0 for single-sampled GL_TEXTURE_2D textures, > 0 for GL_TEXTURE_2D_MULTISAMPLE textures.\n"
     "'width' and 'height' Width and height of the output framebuffer (=texture) in pixels or texels.\n"
     "\n\n"
-    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'GetDisplayBufferTextures'); \n"
+    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'GetDisplayBufferTextures');\n"
     "Get the OpenGL handles of the backing textures and their parameters for the final output color buffers of the imaging pipeline.\n"
     "For the meaning of return values see 'SetDisplayBufferTextures' above.\n"
     "This only works if imagingMode flag kPsychNeedFinalizedFBOSinks is set or stereoMode 12 is active, which implicitely sets that flag.\n"
     "This query function works both with internally generated and maintained backing textures and externally injected/maintained ones.\n"
     "For internally generated textures (without flag kPsychUseExternalSinkTextures), the handles should be considered read-only: Binding "
     "the textures for sampling/reading from them is appropriate, modifying them in any way is forbidden.\n"
-    "\n"
+    "\n\n"
+    "Screen('HookFunction', windowPtr, 'SetOneshotFlipFlags', flipFlags);\n"
+    "Assign special flags to be applied one-time during the next execution of Screen('Flip') or Screen('AsyncFlipBegin'). "
+    "These 'flipFlags' will be applied during the next window flip operation, and each applied flag will then auto-reset "
+    "after application. This is mostly meant to be called from within imaging pipeline processing chains during preflip "
+    "operations or the active presentation sequence to modify behaviour of that sequence. The following 'flipFlags' are "
+    "currently implemented: kPsychSkipVsyncForFlipOnce, kPsychSkipTimestampingForFlipOnce, kPsychSkipSwapForFlipOnce.\n"
+    "\n\n"
     "General notes:\n\n"
     "* Hook chains are per onscreen window, so each window can have a different configuration and enable state.\n"
     "* Read all available documentation on the Psychtoolbox imaging pipeline in 'help PsychGLImageprocessing', the PsychDocumentation folder "
@@ -203,12 +210,13 @@ PsychError SCREENHookFunction(void)
     if (strstr(cmdString, "Remove")) cmd=13;
     if (strcmp(cmdString, "GetDisplayBufferTextures")==0) cmd=14;
     if (strcmp(cmdString, "SetDisplayBufferTextures")==0) cmd=15;
+    if (strcmp(cmdString, "SetOneshotFlipFlags")==0) cmd=16;
 
-    if(cmd==0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
-    if(whereloc < 0) PsychErrorExitMsg(PsychError_user, "Unknown/Invalid/Unparseable insert location specified to 'HookFunction' 'InsertAtXXX'.");
+    if (cmd==0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
+    if (whereloc < 0) PsychErrorExitMsg(PsychError_user, "Unknown/Invalid/Unparseable insert location specified to 'HookFunction' 'InsertAtXXX'.");
 
     // Need hook name?
-    if(cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15) {
+    if (cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15 && cmd!=16) {
         // Get it:
         PsychAllocInCharArg(3, kPsychArgRequired, &hookString);
     }
@@ -407,6 +415,14 @@ PsychError SCREENHookFunction(void)
             PsychCopyInIntegerArg(10, FALSE, &height);
             if (!PsychSetPipelineExportTexture(windowRecord, leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height))
                 printf("PTB-ERROR: HookFunction call to SetDisplayBufferTextures failed. See above error message for details. Trying to carry on - Prepare for trouble!\n");
+        break;
+
+        case 16: // SetOneshotFlipFlags
+            PsychCopyInIntegerArg(4, TRUE, &flag1);
+            if (flag1 & ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce))
+                printf("PTB-ERROR: HookFunction call to SetOneshotFlipFlags failed, because invalid/unsupported flipFlags were specified.\n");
+            else
+                windowRecord->specialflags |= flag1;
         break;
     }
 

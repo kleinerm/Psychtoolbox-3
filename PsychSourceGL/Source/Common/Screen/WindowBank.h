@@ -156,12 +156,15 @@
 #define kPsychSafeForDRI3                   (1 << 24) // 'specialflags' setting 2^24: This window is considered safe for use with DRI3/Present, given X-Server and Mesa version in use.
 #define kPsychTripleWidthWindow             (1 << 25) // This flag is also used as 'imagingmode' for onscreen windows. Ask for windows with triple-width, e.g., for packed pixel modes.
 #define kPsychFbOverrideSizeActive          (1 << 26) // This window has a windowRecord->rect set via the 'OpenWindow' fbOverrideRect, and nothing should ever change the rect during runtime.
+#define kPsychSkipVsyncForFlipOnce          (1 << 27) // 'specialflags': Perform next flip on this window without VSYNC.
+#define kPsychSkipTimestampingForFlipOnce   (1 << 28) // 'specialflags': Perform next flip on this window without waiting for swap completion + timestamping + timing correctness checks.
+#define kPsychSkipSwapForFlipOnce           (1 << 29) // 'specialflags': Perform next flip on this window without actually performing the OpenGL bufferswap, iow. don't present to the onscreen window.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,S-2^25. --> Flags of 2^23 - 2^24 as well as 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26. --> Flags of 2^27 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29. --> Flags of 2^30 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*   PtrPsychHookFunction;
