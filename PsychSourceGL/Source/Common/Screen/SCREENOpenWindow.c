@@ -106,7 +106,7 @@ PsychError SCREENOpenWindow(void)
     int                     screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode, specialflags;
     PsychRectType           rect, screenrect, clientRect, fbOverrideRect;
     PsychColorType          color;
-    psych_bool              isArgThere, didWindowOpen, dontCaptureScreen;
+    psych_bool              isArgThere, didWindowOpen, dontCaptureScreen, clientRect_given;
     PsychScreenSettingsType screenSettings;
     PsychWindowRecordType   *windowRecord;
     PsychDepthType          specifiedDepth, possibleDepths, currentDepth, useDepth;
@@ -267,7 +267,8 @@ PsychError SCREENOpenWindow(void)
 
     // Optional clientRect defined? If so, we need to enable our internal panel scaler and
     // the imaging pipeline to actually use the scaler:
-    if (PsychCopyInRectArg(10, FALSE, clientRect)) {
+    clientRect_given = PsychCopyInRectArg(10, FALSE, clientRect);
+    if (clientRect_given) {
         // clientRect given. The panelscaler integrated into the imaging pipeline will
         // scale all content from the size of the drawBufferFBO (our virtual framebuffer),
         // which is the size of the clientRect, to the true size of the onscreen windows
@@ -323,7 +324,10 @@ PsychError SCREENOpenWindow(void)
 
             if (!EmulateOldPTB) {
                 // Enable panel fitter by setting a clientRect the size and resolution
-                // of the 'rect' - user supplied or frontend resolution:
+                // of the 'rect' - user supplied or frontend resolution.
+                // NOTE: This is preliminary! The setup code below will override
+                // such an auto-generated clientRect with the fbOverrideRect, as
+                // provided by the usercode, or computed from 'rect':
                 PsychNormalizeRect(rect, clientRect);
 
                 // Enable imaging pipeline and panelfitter:
@@ -612,40 +616,6 @@ PsychError SCREENOpenWindow(void)
         imagingmode = imagingmode & (~kPsychHalfHeightWindow);
     }
 
-    // Optional clientRect defined? If so, we need to enable our internal panel scaler and
-    // the imaging pipeline to actually use the scaler:
-    // This is part II, after part I happened above, before opening the window. This
-    // weirdness / redundancy is needed to resolve our chicken & egg problem with
-    // multisampling...
-    if (imagingmode & (kPsychNeedGPUPanelFitter | kPsychNeedClientRectNoFitter)) {
-        // clientRect given. The panelscaler integrated into the imaging pipeline will
-        // scale all content from the size of the drawBufferFBO (our virtual framebuffer),
-        // which is the size of the clientRect, to the true size of the onscreen windows
-        // system framebuffer - appropriately tweaked for special display modes of course.
-
-        // Set it as "official" window client rectangle, whose size is reported
-        // by default by functions like Screen('Rect'), Screen('WindowSize') or the
-        // returned winRect of Screen('OpenWindow'):
-        PsychNormalizeRect(clientRect, windowRecord->clientrect);
-        PsychCopyRect(clientRect, windowRecord->clientrect);
-
-        if (PsychPrefStateGet_Verbosity() > 3) {
-            if (imagingmode & kPsychNeedGPUPanelFitter)
-                printf("PTB-INFO: Trying to enable my builtin panel-fitter on user request.\n");
-            if (imagingmode & kPsychNeedClientRectNoFitter)
-                printf("PTB-INFO: Restricting 2D drawing to given 'clientRect', but skipping the panel-fitter.\n");
-        }
-    }
-    else {
-        // No specific clientRect given - the default case.
-
-        // Define windows clientrect. It is a copy of windows rect, but stretched or compressed
-        // to twice or half the width or height of the windows rect, depending on the special size
-        // flags. clientrect is used as reference for all size query functions Screen('Rect'), Screen('WindowSize')
-        // and for all Screen 2D drawing functions:
-        PsychSetupClientRect(windowRecord);
-    }
-
     // fbOverrideRect given?
     if (PsychCopyInRectArg(11, FALSE, fbOverrideRect)) {
         // Yes. Validate:
@@ -673,6 +643,47 @@ PsychError SCREENOpenWindow(void)
     // image sink, e.g., some VR display device or similar special display equipment outside the control
     // of the regular OS windowing system:
     PsychNormalizeRect(fbOverrideRect, windowRecord->rect);
+
+    // Optional clientRect defined? If so, we need to enable our internal panel scaler and
+    // the imaging pipeline to actually use the scaler:
+    // This is part II, after part I happened above, before opening the window. This
+    // weirdness / redundancy is needed to resolve our chicken & egg problem with
+    // multisampling...
+    if (imagingmode & (kPsychNeedGPUPanelFitter | kPsychNeedClientRectNoFitter)) {
+        // clientRect given. The panelscaler integrated into the imaging pipeline will
+        // scale all content from the size of the drawBufferFBO (our virtual framebuffer),
+        // which is the size of the clientRect, to the true size of the onscreen windows
+        // system framebuffer - appropriately tweaked for special display modes of course.
+
+        // If the clientRect wasn't explicitely provided by calling usercode, but
+        // computed as part of Retina compatibility mode setup above, then we need
+        // to override the stale computed clientRect with one based on our effective
+        // windowRecord->rect -- After possible fbOverrideRect overrides:
+        if (!clientRect_given)
+            PsychNormalizeRect(windowRecord->rect, clientRect);
+
+        // Set it as "official" window client rectangle, whose size is reported
+        // by default by functions like Screen('Rect'), Screen('WindowSize') or the
+        // returned winRect of Screen('OpenWindow'):
+        PsychNormalizeRect(clientRect, windowRecord->clientrect);
+        PsychCopyRect(clientRect, windowRecord->clientrect);
+
+        if (PsychPrefStateGet_Verbosity() > 3) {
+            if (imagingmode & kPsychNeedGPUPanelFitter)
+                printf("PTB-INFO: Trying to enable my builtin panel-fitter on user request.\n");
+            if (imagingmode & kPsychNeedClientRectNoFitter)
+                printf("PTB-INFO: Restricting 2D drawing to given 'clientRect', but skipping the panel-fitter.\n");
+        }
+    }
+    else {
+        // No specific clientRect given - the default case.
+
+        // Define windows clientrect. It is a copy of windows rect, but stretched or compressed
+        // to twice or half the width or height of the windows rect, depending on the special size
+        // flags. clientrect is used as reference for all size query functions Screen('Rect'), Screen('WindowSize')
+        // and for all Screen 2D drawing functions:
+        PsychSetupClientRect(windowRecord);
+    }
 
     // Initialize internal image processing pipeline if requested:
     if (numWindowBuffers > 1) PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
