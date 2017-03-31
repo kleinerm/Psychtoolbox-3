@@ -27,22 +27,22 @@
 static PsychWindowRecordType* sharedContextWindow = NULL;
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample][,imagingmode][,specialFlags][,clientRect]);";
-//                                                               1                         2        3      4           5                 6            7             8             9              10
+static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample][,imagingmode][,specialFlags][,clientRect][,fbOverrideRect]);";
+//                                                               1                         2        3      4           5                 6            7             8             9              10           11
 static char synopsisString[] =
     "Open an onscreen window. Specify a screen by a windowPtr or a screenNumber (0 is "
     "the main screen, with menu bar). \"color\" is the clut index (scalar or [r g b] "
-    "triplet or [r g b a] quadruple) that you want to poke into each pixel; default color is white.\n"
+    "triplet or [r g b a] quadruple) that you want to poke into each pixel; default color is white.\n\n"
     "If supplied, \"rect\" must contain at least one pixel. \"rect\" is in screen coordinates "
     "(origin at upper left), and defaults to the whole screen. (In all cases, "
     "subsequent references to this new window will use its coordinates: origin at its "
     "upper left.). Please note that while providing a \"rect\" parameter to open a normal "
     "window instead of a fullscreen window is convenient for debugging, drawing performance, "
-    "stimulus onset timing and onset timestamping may be impaired, so be careful.\n"
+    "stimulus onset timing and onset timestamping may be impaired, so be careful.\n\n"
     "\"pixelSize\" sets the depth (in bits) of each pixel; default is to leave depth unchanged. "
-    "You should usually not specify such a bit depth, the system knows what it is doing.\n"
+    "You should usually not specify such a bit depth, the system knows what it is doing.\n\n"
     "\"numberOfBuffers\" is the number of buffers to use. Setting anything else than 2 will be only "
-    "useful for development/debugging of PTB itself but will mess up any real experiment.\n"
+    "useful for development/debugging of PTB itself but will mess up any real experiment.\n\n"
     "\"stereomode\" Type of stereo display algorithm to use: 0 (default) means: Monoscopic viewing:\n"
     "1 means: Stereo output via OpenGL native quad-buffered stereo on any stereo hardware supports this.\n"
     "2 means: Left view compressed into top half, right view into bottom half of window for frame-doubling stereo.\n"
@@ -68,9 +68,9 @@ static char synopsisString[] =
     "video memory and lead to a reduction in framerate due to the higher computational demand. The maximum "
     "number of samples is hardware dependent. Psychtoolbox will silently clamp the number to the maximum "
     "supported by your hardware if you ask for too much. On very old hardware, the value will be ignored. "
-    "Read 'help AntiAliasing' for more in-depth information about multi-sampling.\n"
+    "Read 'help AntiAliasing' for more in-depth information about multi-sampling.\n\n"
     "\"imagingmode\" This optional parameter enables PTB's internal image processing pipeline. The pipeline is "
-    "off by default. Read 'help PsychImaging' for information about typical use and benefits of this feature.\n"
+    "off by default. Read 'help PsychImaging' for information about typical use and benefits of this feature.\n\n"
     "\"specialFlags\" This optional parameter enables some special window behaviours if the sum of certain "
     "flags is passed. A currently supported flag is the symbolic constant kPsychGUIWindow. It enables windows "
     "to behave more like regular GUI windows on your system. See 'help kPsychGUIWindow' for more info. The "
@@ -83,7 +83,12 @@ static char synopsisString[] =
     "the size of the true onscreen window, a process known as panel-scaling or panel-fitting. This allows "
     "to decouple the size of a stimulus as drawn by your code from the actual resolution of the display "
     "device. The feature is mostly useful if you need to run the same presentation code on different setups "
-    "with different native resolutions. See the 'help PsychImaging' section about 'UsePanelFitter' for more info.\n"
+    "with different native resolutions. See the 'help PsychImaging' section about 'UsePanelFitter' for more info.\n\n"
+    "\"fbOverrideRect\" This optional parameter allows to override the true size of the onscreen windows framebuffer "
+    "for the purpose of image processing operations with the imaging pipeline. While the true size of the windows "
+    "framebuffer is defined by the standard \"rect\" parameter, internal processing will instead use the given "
+    "override size. This usually only makes sense in combination with special output devices that live outside the "
+    "regular windowing system of your computer, e.g., special Virtual reality displays.\n"
     "\n"
     "Opening or closing a window takes about one to three seconds, depending on the type of connected display. "
     "If your system has noisy timing or flaky graphics drivers it might take up to 15 seconds to open a window.\n"
@@ -99,7 +104,7 @@ static char seeAlsoString[] = "OpenOffscreenWindow, SelectStereoDrawBuffer, Pane
 PsychError SCREENOpenWindow(void)
 {
     int                     screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode, specialflags;
-    PsychRectType           rect, screenrect, clientRect;
+    PsychRectType           rect, screenrect, clientRect, fbOverrideRect;
     PsychColorType          color;
     psych_bool              isArgThere, didWindowOpen, dontCaptureScreen;
     PsychScreenSettingsType screenSettings;
@@ -116,7 +121,7 @@ PsychError SCREENOpenWindow(void)
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     //cap the number of inputs
-    PsychErrorExit(PsychCapNumInputArgs(10));   //The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(11));   //The maximum number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(2));  //The maximum number of outputs
 
     //get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
@@ -352,12 +357,9 @@ PsychError SCREENOpenWindow(void)
     // Also need imaging pipeline for dual stream stereo or output redirection:
     if (stereomode == kPsychDualStreamStereo || (imagingmode & kPsychNeedFinalizedFBOSinks)) imagingmode |= kPsychNeedFastBackingStore;
 
-    //set the video mode to change the pixel size.  TO DO: Set the rect and the default color
     PsychGetScreenSettings(screenNumber, &screenSettings);
     PsychInitDepthStruct(&(screenSettings.depth));
     PsychCopyDepthStruct(&(screenSettings.depth), &useDepth);
-
-    // Here is where all the work goes on:
 
     // If the screen is not already captured then to that:
     if(!PsychIsScreenCaptured(screenNumber) && !dontCaptureScreen) {
@@ -643,6 +645,34 @@ PsychError SCREENOpenWindow(void)
         // and for all Screen 2D drawing functions:
         PsychSetupClientRect(windowRecord);
     }
+
+    // fbOverrideRect given?
+    if (PsychCopyInRectArg(11, FALSE, fbOverrideRect)) {
+        // Yes. Validate:
+        if (IsPsychRectEmpty(fbOverrideRect))
+            PsychErrorExitMsg(PsychError_user, "Invalid fbOverrideRect provided. It is empty!");
+
+        if (PsychPrefStateGet_Verbosity() > 2)
+            printf("PTB-INFO: Using usercode override framebuffer rect [%i, %i, %i, %i] for image processing.\n",
+                   (int) fbOverrideRect[0], (int) fbOverrideRect[1], (int) fbOverrideRect[2], (int) fbOverrideRect[3]);
+
+        // Mark override active and locked:
+        windowRecord->specialflags |= kPsychFbOverrideSizeActive;
+    }
+    else {
+        // No. Set to windows real framebuffer 'rect':
+        PsychCopyRect(fbOverrideRect, rect);
+    }
+
+    // Override windowRecord's real framebuffer 'rect' with the fbOverrideRect. This is either a
+    // no-op if no such fbOverrideRect was specified above, so it was set to fbOverrideRect = rect,
+    // or it actually does have a different value if a valid fbOverrideRect was specified. The most
+    // important purpose of the override here is so that PsychInitializeImagingPipeline() will create
+    // all internal framebuffers/blitter configurations etc. based on this external fbOverrideRect, e.g.,
+    // if we are not actually primarily rendering/displaying to the onscreen window, but to some external
+    // image sink, e.g., some VR display device or similar special display equipment outside the control
+    // of the regular OS windowing system:
+    PsychNormalizeRect(fbOverrideRect, windowRecord->rect);
 
     // Initialize internal image processing pipeline if requested:
     if (numWindowBuffers > 1) PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);

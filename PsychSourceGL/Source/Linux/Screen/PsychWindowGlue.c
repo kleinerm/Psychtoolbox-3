@@ -152,7 +152,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
     if (!windowRecord->targetSpecific.privDpy || !windowRecord->targetSpecific.xwindowHandle) return;
 
     // GUI windows need to behave GUIyee:
-    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
+    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord) && !(windowRecord->specialflags & kPsychFbOverrideSizeActive)) {
         // Update windows rect and globalrect, based on current size and location:
         PsychLockDisplay();
         XGetGeometry(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle, &rootRet, &x, &y,

@@ -425,7 +425,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
     }
 
     // GUI windows need to behave GUIyee:
-    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
+    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord) && !(windowRecord->specialflags & kPsychFbOverrideSizeActive)) {
         // Update windows rect and globalrect, based on current size and location:
         lPoint.x = lPoint.y = 0;
         ClientToScreen(windowRecord->targetSpecific.windowHandle, &lPoint);

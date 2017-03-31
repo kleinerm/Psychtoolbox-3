@@ -331,7 +331,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
     return;
 
     // GUI windows need to behave GUIyee:
-    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
+    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord) && !(windowRecord->specialflags & kPsychFbOverrideSizeActive)) {
         // Update windows rect and globalrect, based on current size and location:
         PsychLockDisplay();
         x = y = w = h = 0;
