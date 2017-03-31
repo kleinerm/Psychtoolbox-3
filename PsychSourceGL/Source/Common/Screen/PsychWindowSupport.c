@@ -4413,13 +4413,25 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // safe default of zero to indicate this.
         time_at_vbl = 0;
         *time_at_onset = 0;
+        *miss_estimate = 0;
         *beamPosAtFlip = -1;  // Ditto for beam position...
 
-        // Invalidate timestamp of last vbl:
-        windowRecord->time_at_last_vbl = 0;
-        windowRecord->rawtime_at_swapcompletion = 0;
+        // Was internal timstamping suppressed?
+        if (windowRecord->specialflags & kPsychSkipTimestampingForFlipOnce) {
+            // Latch potential values injected via Screen Hookfunction 'SetOneshotFlipResults':
+            time_at_vbl = windowRecord->time_at_last_vbl;
+            *time_at_onset = windowRecord->osbuiltin_swaptime;
+            *miss_estimate = windowRecord->postflip_vbltimestamp;
+        }
+        else {
+            // Invalidate timestamps of last vbl:
+            windowRecord->time_at_last_vbl = 0;
+            windowRecord->osbuiltin_swaptime = 0;
+        }
+
+        // These are always reset, as not latchable by usercode:
         windowRecord->postflip_vbltimestamp = -1;
-        windowRecord->osbuiltin_swaptime = 0;
+        windowRecord->rawtime_at_swapcompletion = 0;
     }
 
     // Increment the "flips successfully completed" counter:
