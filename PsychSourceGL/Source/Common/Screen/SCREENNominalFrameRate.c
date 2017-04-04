@@ -70,6 +70,13 @@ PsychError SCREENNominalFramerate(void)
     //get specified screen number and sanity check the number against the number of connected displays.
     PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
 
+    // Get opmode. Defaults to zero for integral precision query:
+    opmode = 0;
+    PsychCopyInIntegerArg(2, FALSE, &opmode);
+
+    // Allocate a return matrix.
+    PsychAllocOutDoubleArg(1, FALSE, &rate);
+
     // Backend override active for external display backend?
     if (PsychIsWindowIndexArg(1) &&
         PsychAllocInWindowRecordArg(1, TRUE, &windowRecord) &&
@@ -83,13 +90,6 @@ PsychError SCREENNominalFramerate(void)
 
         return(PsychError_none);
     }
-
-    // Get opmode. Defaults to zero for integral precision query:
-    opmode = 0;
-    PsychCopyInIntegerArg(2, FALSE, &opmode);
-
-    //Allocate a return matrix.
-    PsychAllocOutDoubleArg(1, FALSE, &rate);
 
     // Query mode (0 or 1)?
     if (opmode<=1) {
