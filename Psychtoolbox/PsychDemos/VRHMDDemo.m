@@ -34,7 +34,7 @@ PsychImaging('PrepareConfiguration');
 if ~stereoscopic
   % Setup the HMD to act as a regular "monoscopic" display monitor
   % by displaying the same image to both eyes:
-  PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse');
+  PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse DebugDisplay');
 else
   % Setup for stereoscopic presentation:
   PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'LowPersistence FastResponse');
