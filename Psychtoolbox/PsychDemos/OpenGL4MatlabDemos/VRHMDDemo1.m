@@ -70,11 +70,11 @@ try
   % Setup the HMD and open and setup the onscreen window for VR display:
   PsychImaging('PrepareConfiguration');
   hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse', 0);
-  %hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp', 0);
   if isempty(hmd)
     fprintf('No VR-HMD available, giving up!\n');
     return;
   end
+
   [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], [], multiSample);
 
   % Query infos about this HMD:
@@ -242,8 +242,13 @@ try
   telapsed = 0;
   fcount = 0;
 
-  % Allocate for up to 1000 seconds at 75 fps:
-  gpudur = zeros(1, 75 * 1000);
+  % Allocate for up to 1000 seconds at nominal HMD fps:
+  fps = Screen('FrameRate', win);
+  if fps == 0
+    fps = 60;
+  end
+  gpudur = zeros(1, fps * 1000);
+  onset = zeros(1, fps * 1000);
 
   % Make sure all keys are released:
   KbReleaseWait;
@@ -387,8 +392,8 @@ try
 
     % Stimulus ready. Show it on the HMD. We don't clear the color buffer here,
     % as this is done in the next iteration via glClear() call anyway:
-    [vbl, onset] = Screen('Flip', win, [], 1);
     fcount = fcount + 1;
+    [vbl, onset(fcount)] = Screen('Flip', win, [], 1);
 
     % Result of GPU time measurement expected?
     if gpumeasure
@@ -421,6 +426,9 @@ try
   fprintf('Average framerate was %f fps. Average GPU rendertime per frame = %f msec.\n', fps, 1000 * mean(gpudur));
   plot(1000 * gpudur);
   title('GPU processing time per frame [msecs]: (Often wrong on buggy OSX!)');
+  figure;
+  plot(1000 * diff(onset(1:fcount)));
+  title('Time delta between presentation of frames [msecs]: ');
 catch
   sca;
   psychrethrow(psychlasterror);
