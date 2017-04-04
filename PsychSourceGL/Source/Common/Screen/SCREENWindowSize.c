@@ -95,6 +95,7 @@ PsychError SCREENDisplaySize(void)
     "information could be pretty unreliable and therefore misleading!";
 
     static char seeAlsoString[] = "";
+    PsychWindowRecordType *windowRecord;
     int screenNumber, Width, Height;
 
     //all sub functions should have these two lines
@@ -111,6 +112,15 @@ PsychError SCREENDisplaySize(void)
 
     // Query physical size of this screen in millimeters:
     PsychGetDisplaySize(screenNumber, &Width, &Height);
+
+    // External display backend?
+    if (PsychIsWindowIndexArg(1) &&
+        PsychAllocInWindowRecordArg(1, TRUE, &windowRecord) &&
+        (windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks)) {
+        // Yes: Our queried values are invalid for it, and its values are
+        // unknown, so return "Don't know" zero return values:
+        Width = Height = 0;
+    }
 
     // Return it:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) Width);

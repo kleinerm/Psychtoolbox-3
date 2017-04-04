@@ -177,6 +177,13 @@ static char synopsisString[] =
     "'StimulusOnsetTime' Optional true stimulus onset time. Will be set to VBLTimestamp if omitted. Must be StimulusOnsetTime >= VBLTimestamp.\n"
     "'Missed' The presentation deadline miss estimate aka 'Missed' flag of Screen('Flip'). Defaults to 0 if omitted.\n"
     "\n\n"
+    "Screen('HookFunction', windowPtr, 'SetWindowBackendOverrides' [, hookname][, pixelSize][, refreshInterval]);\n"
+    "Assign override values for various window properties, as provided by the backend client instead of the windowing system.\n"
+    "'hookname' is accepted, but currently ignored. Pass '' or [] for now.\n"
+    "'pixelSize' The net color depth of the display, as returned by Screen('PixelSize', windowPtr);\n"
+    "'refreshInterval' The video refresh interval duration in seconds, as reported by the display backend, and after proper translation "
+    "returned by Screen('NominalFramerate', windowPtr), Screen('Framerate', windowPtr), and Screen('GetFlipInterval', windowPtr).\n"
+    "\n\n"
     "General notes:\n\n"
     "* Hook chains are per onscreen window, so each window can have a different configuration and enable state.\n"
     "* Read all available documentation on the Psychtoolbox imaging pipeline in 'help PsychGLImageprocessing', the PsychDocumentation folder "
@@ -226,12 +233,13 @@ PsychError SCREENHookFunction(void)
     if (strcmp(cmdString, "SetDisplayBufferTextures")==0) cmd=15;
     if (strcmp(cmdString, "SetOneshotFlipFlags")==0) cmd=16;
     if (strcmp(cmdString, "SetOneshotFlipResults")==0) cmd=17;
+    if (strcmp(cmdString, "SetWindowBackendOverrides")==0) cmd=18;
 
     if (cmd == 0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
     if (whereloc < 0) PsychErrorExitMsg(PsychError_user, "Unknown/Invalid/Unparseable insert location specified to 'HookFunction' 'InsertAtXXX'.");
 
     // Need hook name?
-    if (cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15 && cmd!=16 && cmd!=17) {
+    if (cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15 && cmd!=16 && cmd!=17 && cmd!=18) {
         // Get it:
         PsychAllocInCharArg(3, kPsychArgRequired, &hookString);
     }
@@ -471,6 +479,23 @@ PsychError SCREENHookFunction(void)
                 // missEstimate of Flip, optional:
                 if (!PsychCopyInDoubleArg(6, FALSE, &windowRecord->postflip_vbltimestamp))
                     windowRecord->postflip_vbltimestamp = 0;
+            }
+        break;
+
+        case 18: // SetWindowBackendOverrides
+            // Retrieve override values for onscreen window properties:
+            if (!(windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks))
+                PsychErrorExitMsg(PsychError_user, "In 'SetWindowBackendOverrides': No kPsychNeedFinalizedFBOSinks imaging mode selected. Overrides forbidden!");
+
+            // Screen('PixelSize'):
+            if (PsychCopyInIntegerArg(4, FALSE, &flag1))
+                windowRecord->depth = flag1;
+
+            // Video refresh interval / refresh rate / flipinterval indicators:
+            if (PsychCopyInDoubleArg(5, FALSE, &windowRecord->VideoRefreshInterval)) {
+                windowRecord->ifi_beamestimate = windowRecord->VideoRefreshInterval;
+                windowRecord->IFIRunningSum = windowRecord->VideoRefreshInterval;
+                windowRecord->nrIFISamples = 1;
             }
         break;
     }

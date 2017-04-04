@@ -54,6 +54,7 @@ static char seeAlsoString[] = "FrameRate GetFlipInterval";
 
 PsychError SCREENNominalFramerate(void)
 {
+    PsychWindowRecordType *windowRecord;
     int screenNumber, opmode;
     double *rate;
     double requestedHz;
@@ -68,6 +69,20 @@ PsychError SCREENNominalFramerate(void)
 
     //get specified screen number and sanity check the number against the number of connected displays.
     PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
+
+    // Backend override active for external display backend?
+    if (PsychIsWindowIndexArg(1) &&
+        PsychAllocInWindowRecordArg(1, TRUE, &windowRecord) &&
+        (windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks)) {
+        // Yes: Report "made up" values injected from external backend, instead
+        // of the ones associated with this windows windowing system screen:
+        *rate = 1.0 / windowRecord->VideoRefreshInterval;
+
+        // Round it to closest integer, if opmode <= 0:
+        if (opmode <= 0) *rate = (double) ((int) (*rate + 0.5));
+
+        return(PsychError_none);
+    }
 
     // Get opmode. Defaults to zero for integral precision query:
     opmode = 0;
