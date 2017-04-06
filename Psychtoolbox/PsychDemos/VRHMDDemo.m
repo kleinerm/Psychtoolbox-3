@@ -43,6 +43,7 @@ end
 [win, rect] = PsychImaging('OpenWindow', screenid);
 
 % Render one view for each eye in stereoscopic mode:
+vbl = [];
 while ~KbCheck
   for eye = 0:stereoscopic
     Screen('SelectStereoDrawBuffer', win, eye);
@@ -53,9 +54,13 @@ while ~KbCheck
     DrawFormattedText(win, sprintf('HELLO\nWORLD!\n%i', eye), 'center', 'center', [0 1 0]);
     Screen('FillOval', win, [1 0 0], CenterRect([0 0 10 10], rect));
   end
-  Screen('Flip', win);
+  vbl(end+1) = Screen('Flip', win);
 end
 
 KbStrokeWait;
 sca;
+
+close all;
+plot(1000 * diff(vbl));
+
 end
