@@ -2505,6 +2505,10 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
         PsychOSSetVBLSyncLevel(windowRecord, 1);
     }
 
+    // Are we supposed to use sRGB rendering and blending on capable framebuffers? Enable, if so:
+    if (windowRecord->imagingMode & kPsychEnableSRGBRendering)
+        glEnable(GL_FRAMEBUFFER_SRGB);
+
     // We have a special dispatch loop for our home-grown frame-sequential stereo implementation:
     if (windowRecord->stereomode != kPsychFrameSequentialStereo) {
         // Set our state as "initialized, ready & waiting":

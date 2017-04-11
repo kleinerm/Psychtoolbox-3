@@ -174,6 +174,10 @@ PsychError SCREENBeginOpenGL(void)
             // area at first bind of a context to its drawable, so we emulate this here on first
             // 'BeginOpenGL' to avoid unpleasant surprises for unsuspecting users:
             PsychSetupView(windowRecord, FALSE);
+
+            // Are we supposed to use sRGB rendering and blending on capable framebuffers? Enable, if so:
+            if (windowRecord->imagingMode & kPsychEnableSRGBRendering)
+                glEnable(GL_FRAMEBUFFER_SRGB);
         }
 
         // Running without imaging pipeline and a stereo mode is active?
