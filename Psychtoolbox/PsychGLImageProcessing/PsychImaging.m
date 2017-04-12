@@ -4641,8 +4641,16 @@ if ~isempty(floc)
               end
         elseif enableNative11BpcRequested
               % Use helper routine to build a proper RGBA Lookup texture for
-              % conversion of HDR RGB pixels to ARGB0-11-11-10 pixels:
-              pglutid = PsychHelperCreateRGB111110RemapCLUT;
+              % conversion of HDR RGB pixels to ARGB0-11-11-10 pixels.
+              % DCE-8 and later (tested on DCE-8 and DCE-10) need a different
+              % format:
+              if winfo.GPUMinorType >= 80
+                  % DCE-8+
+                  pglutid = PsychHelperCreateRGB111110RemapCLUTAMDDCE8;
+              else
+                  % Pre DCE-8, e.g., tested on DCE-4:
+                  pglutid = PsychHelperCreateRGB111110RemapCLUTOldAMD;
+              end
               pgshadername = 'Native RGB111110 framebuffer output formatting shader';
               pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
         else
