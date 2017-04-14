@@ -122,6 +122,7 @@
 #define kPsychNeedFinalizedFBOSinks   (1 << 20) // finalizedFBO's must be backed by real OpenGL FBO's as image sinks, not by the system backbuffer, as would be the default.
 #define kPsychUseExternalSinkTextures (1 << 21) // finalizedFBO's have backing OpenGL FBO's which use externally created and injected OpenGL textures as color attachment (aka rendertargets).
 #define kPsychSinkIsMSAACapable       (1 << 22) // External sinks for finalizedFBO color buffer textures can process GL_TEXTURE_2D_MULTISAMPLE textures as input, not only GL_TEXTURE_2D textures.
+#define kPsychEnableSRGBRendering     (1 << 23) // Use OpenGL sRGB rendering and blending if the target color framebuffer is in sRGB format.
 
 // 'specialflags' fields, partially shared with imagingmode flags:
 #define kPsychUseTextureMatrixForRotation   1       // Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
@@ -134,7 +135,6 @@
 // Value 32768 is defined in ScreenTypes.h as kPsychBusyWaitForVBLBeforeBufferSwapRequest and is also used as a 'specialflags' setting to define
 // this behaviour on a per-window basis.
 #define kPsychTwiceWidthWindow              65536   // This flag is also used as 'specialflag' for onscreen windows. Ask for windows with twice-width, e.g., for packed pixel modes.
-#define kPsychTripleWidthWindow             (1 << 25) // This flag is also used as 'specialflag' for onscreen windows. Ask for windows with triple-width, e.g., for packed pixel modes.
 
 #define kPsychIsFullscreenWindow            4       // 'specialflags' setting 4 means: This is a fullscreen window.
 #define kPsychNeedOpenMLWorkaround1         8       // 'specialflags' setting 8 means: This needs the special workarounds for slightly broken OpenML sync control ext.
@@ -155,12 +155,17 @@
 #define kPsychIsDRI3Window                  (1 << 22) // 'specialflags' setting 2^22: This X11 window uses DRI3/Present for visual stimulus presentation.
 #define kPsychBufferAgeWarningDone          (1 << 23) // 'specialflags' setting 2^23: One time warning for non-double-buffering due to ext_buffer_age queries already done.
 #define kPsychSafeForDRI3                   (1 << 24) // 'specialflags' setting 2^24: This window is considered safe for use with DRI3/Present, given X-Server and Mesa version in use.
+#define kPsychTripleWidthWindow             (1 << 25) // This flag is also used as 'imagingmode' for onscreen windows. Ask for windows with triple-width, e.g., for packed pixel modes.
+#define kPsychFbOverrideSizeActive          (1 << 26) // This window has a windowRecord->rect set via the 'OpenWindow' fbOverrideRect, and nothing should ever change the rect during runtime.
+#define kPsychSkipVsyncForFlipOnce          (1 << 27) // 'specialflags': Perform next flip on this window without VSYNC.
+#define kPsychSkipTimestampingForFlipOnce   (1 << 28) // 'specialflags': Perform next flip on this window without waiting for swap completion + timestamping + timing correctness checks.
+#define kPsychSkipSwapForFlipOnce           (1 << 29) // 'specialflags': Perform next flip on this window without actually performing the OpenGL bufferswap, iow. don't present to the onscreen window.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,S-2^25. --> Flags of 2^23 - 2^24 as well as 2^26 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,S-2^25. --> Flags of 2^24 as well as 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25. --> Flags of 2^26 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29. --> Flags of 2^30 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*   PtrPsychHookFunction;

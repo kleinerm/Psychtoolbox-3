@@ -2505,6 +2505,10 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
         PsychOSSetVBLSyncLevel(windowRecord, 1);
     }
 
+    // Are we supposed to use sRGB rendering and blending on capable framebuffers? Enable, if so:
+    if (windowRecord->imagingMode & kPsychEnableSRGBRendering)
+        glEnable(GL_FRAMEBUFFER_SRGB);
+
     // We have a special dispatch loop for our home-grown frame-sequential stereo implementation:
     if (windowRecord->stereomode != kPsychFrameSequentialStereo) {
         // Set our state as "initialized, ready & waiting":
@@ -3316,7 +3320,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
     int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
     PsychWindowRecordType **windowRecordArray=NULL;
-    int    i;
+    int i;
     int numWindows=0;
     int verbosity;
 
@@ -3329,7 +3333,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     verbosity = (PsychIsMasterThread() || (verbosity > 10)) ? verbosity : ((verbosity > 0) ? -1 : 0);
 
     // Child protection:
-    if(windowRecord->windowType!=kPsychDoubleBufferOnscreen)
+    if (windowRecord->windowType!=kPsychDoubleBufferOnscreen)
         PsychErrorExitMsg(PsychError_internal,"Attempt to swap a single window buffer");
 
     // Retrieve estimate of interframe flip-interval:
@@ -3373,23 +3377,59 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // Enable this windowRecords framebuffer as current drawingtarget: [No op on flipperthread!]
     PsychSetDrawingTarget(windowRecord);
 
-    // Should we sync to the onset of vertical retrace?
-    // Note: Flipping the front- and backbuffers is nearly always done in sync with VBL on
-    // a double-buffered setup. sync_to_vbl specs, if the application should wait for
-    // the VBL to start before continuing execution.
-    sync_to_vbl = (vbl_synclevel == 0 || vbl_synclevel == 3) ? true : false;
+    // Backup current assignment of read- writebuffers:
+    glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+    glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
 
-    if (vbl_synclevel==2) {
-        // We are requested to flip immediately, instead of syncing to VBL. Disable VBL-Sync.
-        PsychOSSetVBLSyncLevel(windowRecord, 0);
-        // Disable also for a slave window, if any. Unsupported for async flips.
-        if (windowRecord->slaveWindow && PsychIsMasterThread()) PsychOSSetVBLSyncLevel(windowRecord->slaveWindow, 0);
+    // Perform preflip-operations: Backbuffer backups for the different dontclear-modes
+    // and special compositing operations for specific stereo algorithms...
+    // These are not thread-safe! For async flip, this gets called in async flip start
+    // while still on the main thread, so this call here turns into a no-op:
+    PsychPreFlipOperations(windowRecord, dont_clear);
+
+    // Special imaging mode active? in that case a FBO may be bound instead of the system framebuffer.
+    if (windowRecord->imagingMode > 0) {
+        // Reset our drawing engine: This will unbind any FBO's (i.e. reset to system framebuffer)
+        // and reset the current target window to 'none'. We need this to be sure that our flip
+        // sync pixel token is written to the real system backbuffer...
+        // No-Op on flipperthread, but ok, because it always has system-fb bound.
+        PsychSetDrawingTarget(NULL);
+    }
+
+    // Skip actual stimulus presentation to onscreen window this time?
+    if (windowRecord->specialflags & kPsychSkipSwapForFlipOnce) {
+        // Yes. So not wait-for-swapcompletion, timestamping, messing with vsync either:
+        sync_to_vbl = false;    // No wait-for-swapcompletion, timestamping, checks.
+        vbl_synclevel = 1;      // No touching of vsync settings - leave vsync "on".
+        multiflip = 0;          // No multiflip.
     }
     else {
-        // The horror of Apple OS/X: Do a redundant call to enable vsync on the async
-        // glswapcontext for async flips despite vsync is already enabled on that context.
-        // Otherwise vsync will fail -- Bug found on 10.4.11:
-        if ((PSYCH_SYSTEM == PSYCH_OSX) && !PsychIsMasterThread()) PsychOSSetVBLSyncLevel(windowRecord, 1);
+        // Presentation to onscreen window enabled. Enforce non-vsynced swap?
+        if (windowRecord->specialflags & kPsychSkipVsyncForFlipOnce)
+            vbl_synclevel = 2;
+
+        // Should we sync to the onset of vertical retrace?
+        // Note: Flipping the front- and backbuffers is nearly always done in sync with VBL on
+        // a double-buffered setup. sync_to_vbl specs, if the application should wait for
+        // the VBL to start before continuing execution.
+        sync_to_vbl = (vbl_synclevel == 0 || vbl_synclevel == 3) ? true : false;
+
+        // One-time disable of wait for swapcompletion + timestamping + timing checks requested?
+        if (windowRecord->specialflags & kPsychSkipTimestampingForFlipOnce)
+            sync_to_vbl = false;
+
+        if (vbl_synclevel==2) {
+            // We are requested to flip immediately, instead of syncing to VBL. Disable VBL-Sync.
+            PsychOSSetVBLSyncLevel(windowRecord, 0);
+            // Disable also for a slave window, if any. Unsupported for async flips.
+            if (windowRecord->slaveWindow && PsychIsMasterThread()) PsychOSSetVBLSyncLevel(windowRecord->slaveWindow, 0);
+        }
+        else {
+            // The horror of Apple OS/X: Do a redundant call to enable vsync on the async
+            // glswapcontext for async flips despite vsync is already enabled on that context.
+            // Otherwise vsync will fail -- Bug found on 10.4.11:
+            if ((PSYCH_SYSTEM == PSYCH_OSX) && !PsychIsMasterThread()) PsychOSSetVBLSyncLevel(windowRecord, 1);
+        }
     }
 
     if (multiflip > 0) {
@@ -3413,25 +3453,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // No-Op on flipperthread, but safe, because PsychOSSetVBLSyncLevel() doesn't switch contexts there:
     PsychSetGLContext(windowRecord);
 
-    // Backup current assignment of read- writebuffers:
-    glGetIntegerv(GL_READ_BUFFER, &read_buffer);
-    glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
-
-    // Perform preflip-operations: Backbuffer backups for the different dontclear-modes
-    // and special compositing operations for specific stereo algorithms...
-    // These are not thread-safe! For async flip, this gets called in async flip start
-    // while still on the main thread, so this call here turns into a no-op:
-    PsychPreFlipOperations(windowRecord, dont_clear);
-
-    // Special imaging mode active? in that case a FBO may be bound instead of the system framebuffer.
-    if (windowRecord->imagingMode > 0) {
-        // Reset our drawing engine: This will unbind any FBO's (i.e. reset to system framebuffer)
-        // and reset the current target window to 'none'. We need this to be sure that our flip
-        // sync pixel token is written to the real system backbuffer...
-        // No-Op on flipperthread, but ok, because it always has system-fb bound.
-        PsychSetDrawingTarget(NULL);
-    }
-
     // Reset color write mask to "all enabled"
     glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
 
@@ -3446,7 +3467,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     }
 
     // Update of hardware gamma table in sync with flip requested?
-    if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
+    if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0) && !(windowRecord->specialflags & kPsychSkipSwapForFlipOnce)) {
         // Yes! Call the update routine now. It should schedule the actual update for
         // the same VSYNC to which our bufferswap will lock. "Should" means, we have no
         // way of checking programmatically if it really worked, only via our normal deadline
@@ -3532,46 +3553,48 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // any of the involved commands fail:
     osspecific_asyncflip_scheduled = TRUE;
 
-    // Schedule swap on main window:
-    if ((swap_msc = PsychOSScheduleFlipWindowBuffers(windowRecord, targetWhen, 0, 0, 0, targetSwapFlags)) < 0) {
-        // Scheduling failed or unsupported!
-        if ((swap_msc < -1) && (verbosity > 1)) {
-            printf("PTB-WARNING: PsychOSScheduleFlipWindowBuffers() FAILED: errorcode = %i, targetWhen = %f, targetSwapFlags = %i.\n", (int) swap_msc, (float) targetWhen, (int) targetSwapFlags);
+    if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce)) {
+        // Schedule swap on main window:
+        if ((swap_msc = PsychOSScheduleFlipWindowBuffers(windowRecord, targetWhen, 0, 0, 0, targetSwapFlags)) < 0) {
+            // Scheduling failed or unsupported!
+            if ((swap_msc < -1) && (verbosity > 1)) {
+                printf("PTB-WARNING: PsychOSScheduleFlipWindowBuffers() FAILED: errorcode = %i, targetWhen = %f, targetSwapFlags = %i.\n", (int) swap_msc, (float) targetWhen, (int) targetSwapFlags);
+            }
+
+            osspecific_asyncflip_scheduled = FALSE;
         }
 
-        osspecific_asyncflip_scheduled = FALSE;
-    }
+        // Also schedule the slave window, if any and if scheduling so far worked:
+        if ((windowRecord->slaveWindow) && (osspecific_asyncflip_scheduled) &&
+            ((swap_msc = PsychOSScheduleFlipWindowBuffers(windowRecord->slaveWindow, targetWhen, 0, 0, 0, targetSwapFlags)) < 0)) {
+            // Scheduling failed or unsupported!
+            osspecific_asyncflip_scheduled = FALSE;
 
-    // Also schedule the slave window, if any and if scheduling so far worked:
-    if ((windowRecord->slaveWindow) && (osspecific_asyncflip_scheduled) &&
-        ((swap_msc = PsychOSScheduleFlipWindowBuffers(windowRecord->slaveWindow, targetWhen, 0, 0, 0, targetSwapFlags)) < 0)) {
-        // Scheduling failed or unsupported!
-        osspecific_asyncflip_scheduled = FALSE;
-
-        // Big deal here: Because it worked on the master, but failed on the slave, we now
-        // have an inconsistent situation and can't do anything about it, except warn user
-        // of trouble ahead:
-        if (verbosity > 1) {
-            printf("PTB-WARNING: Scheduling a bufferswap on slave window of dual-window pair FAILED after successfull scheduling on masterwindow!\n");
-            printf("PTB-WARNING: Expect complete loss of sync between windows and other severe visual- and timing-artifacts!\n");
-            printf("PTB-WARNING: PsychOSScheduleFlipWindowBuffers() FAILED: errorcode = %i, targetWhen = %f, targetSwapFlags = %i.\n", (int) swap_msc, (float) targetWhen, (int) targetSwapFlags);
+            // Big deal here: Because it worked on the master, but failed on the slave, we now
+            // have an inconsistent situation and can't do anything about it, except warn user
+            // of trouble ahead:
+            if (verbosity > 1) {
+                printf("PTB-WARNING: Scheduling a bufferswap on slave window of dual-window pair FAILED after successfull scheduling on masterwindow!\n");
+                printf("PTB-WARNING: Expect complete loss of sync between windows and other severe visual- and timing-artifacts!\n");
+                printf("PTB-WARNING: PsychOSScheduleFlipWindowBuffers() FAILED: errorcode = %i, targetWhen = %f, targetSwapFlags = %i.\n", (int) swap_msc, (float) targetWhen, (int) targetSwapFlags);
+            }
         }
-    }
 
-    // Multiflip with vbl-sync requested and scheduling worked so far?
-    if ((multiflip == 1) && (osspecific_asyncflip_scheduled)) {
-        for(i = 0; (i < numWindows) && (osspecific_asyncflip_scheduled); i++) {
-            if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i] != windowRecord)) {
-                if (PsychOSScheduleFlipWindowBuffers(windowRecordArray[i], targetWhen, 0, 0, 0, targetSwapFlags) < 0) {
-                    // Scheduling failed or unsupported!
-                    osspecific_asyncflip_scheduled = FALSE;
+        // Multiflip with vbl-sync requested and scheduling worked so far?
+        if ((multiflip == 1) && (osspecific_asyncflip_scheduled)) {
+            for(i = 0; (i < numWindows) && (osspecific_asyncflip_scheduled); i++) {
+                if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i] != windowRecord)) {
+                    if (PsychOSScheduleFlipWindowBuffers(windowRecordArray[i], targetWhen, 0, 0, 0, targetSwapFlags) < 0) {
+                        // Scheduling failed or unsupported!
+                        osspecific_asyncflip_scheduled = FALSE;
 
-                    // Big deal here: Because it worked on the master, but failed on the slave, we now
-                    // have an inconsistent situation and can't do anything about it, except warn user
-                    // of trouble ahead:
-                    if (verbosity > 1) {
-                        printf("PTB-WARNING: Scheduling a bufferswap on some secondary window of a multi-window flip operation FAILED after successfull schedule on masterwindow!\n");
-                        printf("PTB-WARNING: Expect complete loss of sync between windows and other severe visual- and timing-artifacts!\n");
+                        // Big deal here: Because it worked on the master, but failed on the slave, we now
+                        // have an inconsistent situation and can't do anything about it, except warn user
+                        // of trouble ahead:
+                        if (verbosity > 1) {
+                            printf("PTB-WARNING: Scheduling a bufferswap on some secondary window of a multi-window flip operation FAILED after successfull schedule on masterwindow!\n");
+                            printf("PTB-WARNING: Expect complete loss of sync between windows and other severe visual- and timing-artifacts!\n");
+                        }
                     }
                 }
             }
@@ -3587,8 +3610,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // it means that we missed the proper video refresh cycle:
         tshouldflip = flipwhen;
 
-        // Adjust target time for potential OS-specific compositor delay:
-        flipwhen = PsychOSAdjustForCompositorDelay(windowRecord, flipwhen, FALSE);
+        if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce)) {
+            // Adjust target time for potential OS-specific compositor delay:
+            flipwhen = PsychOSAdjustForCompositorDelay(windowRecord, flipwhen, FALSE);
+        }
 
         // Some time left until deadline 'flipwhen'?
         PsychGetAdjustedPrecisionTimerSeconds(&tremaining);
@@ -3642,126 +3667,132 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // Calculate final deadline for deadline-miss detection:
     tshouldflip = tshouldflip + slackfactor * currentflipestimate;
 
-    // Low level queries to the driver:
-    // We query the timestamp and count of the last vertical retrace. This is needed for
-    // correctness checking and timestamp computation on gfx-hardware without beamposition
-    // queries (IntelMacs as of OS/X 10.4.10).
-    // In frame-sequential stereo mode it also allows to lock bufferswaps either to even
-    // or odd video refresh intervals (if windowRecord->targetFlipFieldType specifies this).
-    // That way one can require stereo stimulus onset with either the left eye view or the
-    // right eye view, depending on flip field selection. In other stereo modes or mono
-    // mode one usually doesn't care about onset in even or odd fields.
-    flipcondition_satisfied = FALSE;
-    do {
-        // Query driver:
-        preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &preflip_vblcount);
-        // Check if ready for flip, ie. if the proper even/odd video refresh cycle is approaching or
-        // if we don't care about this, or if care has been taken already by osspecific_asyncflip_scheduled:
-        flipcondition_satisfied = (windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->targetFlipFieldType == -1) ||
-                                    (preflip_vblcount == 0) || (((preflip_vblcount + 1) % 2) == (psych_uint64) windowRecord->targetFlipFieldType) ||
-                                    (osspecific_asyncflip_scheduled && !must_wait);
-        // If in wrong video cycle, we simply sleep a millisecond, then retry...
-        if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
-    } while (!flipcondition_satisfied);
+    if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce)) {
+        // Low level queries to the driver:
+        // We query the timestamp and count of the last vertical retrace. This is needed for
+        // correctness checking and timestamp computation on gfx-hardware without beamposition
+        // queries (IntelMacs as of OS/X 10.4.10).
+        // In frame-sequential stereo mode it also allows to lock bufferswaps either to even
+        // or odd video refresh intervals (if windowRecord->targetFlipFieldType specifies this).
+        // That way one can require stereo stimulus onset with either the left eye view or the
+        // right eye view, depending on flip field selection. In other stereo modes or mono
+        // mode one usually doesn't care about onset in even or odd fields.
+        flipcondition_satisfied = FALSE;
+        do {
+            // Query driver:
+            preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &preflip_vblcount);
+
+            // Check if ready for flip, ie. if the proper even/odd video refresh cycle is approaching or
+            // if we don't care about this, or if care has been taken already by osspecific_asyncflip_scheduled:
+            flipcondition_satisfied = (windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->targetFlipFieldType == -1) ||
+                                        (preflip_vblcount == 0) || (((preflip_vblcount + 1) % 2) == (psych_uint64) windowRecord->targetFlipFieldType) ||
+                                        (osspecific_asyncflip_scheduled && !must_wait);
+            // If in wrong video cycle, we simply sleep a millisecond, then retry...
+            if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
+        } while (!flipcondition_satisfied);
+
+        // Take a measurement of the beamposition at time of swap request:
+        line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
+    }
+
+    // Take preswap timestamp:
+    PsychGetAdjustedPrecisionTimerSeconds(&time_at_swaprequest);
 
     // Execute the hookchain for non-OpenGL operations that need to happen immediately before the bufferswap, e.g.,
     // sending out control signals or commands to external hardware to somehow sync it up to imminent bufferswaps:
     PsychPipelineExecuteHook(windowRecord, kPsychPreSwapbuffersOperations, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
 
-    // Take a measurement of the beamposition at time of swap request:
-    line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
+    // Only execute swap sequence + synchronized gamma table updates if no skip requested:
+    if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce)) {
+        // Some check for buggy drivers: If VBL synched flipping is requested, we expect that at least 2 msecs
+        // should pass between consecutive bufferswaps. 2 msecs is chosen because the VBL period of most displays
+        // at most settings does not last longer than 2 msecs (usually way less than 1 msec), and this would still allow
+        // for an update rate of 500 Hz -- more than any current display can do.
+        // We also don't allow swap submission in the top area of the video scanout cycle between scanline 1 and
+        // scanline min_line_allowed: Some broken drivers would still execute a swap within this forbidden top area
+        // of the video display although video scanout has already started - resulting in tearing!
+        //
+        // Note that this isn't needed if OS specific swap scheduling is used, as that is supposed to take
+        // care of such nuisances - and if it didn't, this wouldn't help anyway. This wait must not be used
+        // for Prime-Synced outputSrc -> outputSink setups, as that would add 1 frame extra lag. by preventing
+        // us from subitting a swaprequest 1 frame ahead to compensate for the 1 frame lag of Prime sync.
+        if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (!osspecific_asyncflip_scheduled) && (windowRecord->hybridGraphics < 2) &&
+            ((time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002) || ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0)))) {
+            // Less than 2 msecs passed since last bufferswap, although swap in sync with retrace requested.
+            // Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
+            // if already a swap happened in a VBL --> Multiple swaps per refresh cycle if this routine is
+            // called fast enough, ie. multiple times during one single VBL period. Not good!
+            // An example is the ATI Mobility Radeon X1600 in 2nd generation MacBookPro's under OS/X 10.4.10
+            // and 10.4.11 -- probably most cards operated by the same driver have the same problem...
+            if (verbosity > 9) printf("PTB-DEBUG: Swaprequest too close to last swap vbl (%f secs) or between forbidden scanline 1 and %i. Delaying...\n", time_at_swaprequest - windowRecord->time_at_last_vbl, min_line_allowed);
 
-    // Take preswap timestamp:
-    PsychGetAdjustedPrecisionTimerSeconds(&time_at_swaprequest);
+            // We try to enforce correct behaviour by waiting until at least 2 msecs have elapsed before the next
+            // bufferswap:
+            PsychWaitUntilSeconds(windowRecord->time_at_last_vbl + 0.002);
 
-    // Some check for buggy drivers: If VBL synched flipping is requested, we expect that at least 2 msecs
-    // should pass between consecutive bufferswaps. 2 msecs is chosen because the VBL period of most displays
-    // at most settings does not last longer than 2 msecs (usually way less than 1 msec), and this would still allow
-    // for an update rate of 500 Hz -- more than any current display can do.
-    // We also don't allow swap submission in the top area of the video scanout cycle between scanline 1 and
-    // scanline min_line_allowed: Some broken drivers would still execute a swap within this forbidden top area
-    // of the video display although video scanout has already started - resulting in tearing!
-    //
-    // Note that this isn't needed if OS specific swap scheduling is used, as that is supposed to take
-    // care of such nuisances - and if it didn't, this wouldn't help anyway. This wait must not be used
-    // for Prime-Synced outputSrc -> outputSink setups, as that would add 1 frame extra lag. by preventing
-    // us from subitting a swaprequest 1 frame ahead to compensate for the 1 frame lag of Prime sync.
-    if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (!osspecific_asyncflip_scheduled) && (windowRecord->hybridGraphics < 2) &&
-        ((time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002) || ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0)))) {
-        // Less than 2 msecs passed since last bufferswap, although swap in sync with retrace requested.
-        // Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
-        // if already a swap happened in a VBL --> Multiple swaps per refresh cycle if this routine is
-        // called fast enough, ie. multiple times during one single VBL period. Not good!
-        // An example is the ATI Mobility Radeon X1600 in 2nd generation MacBookPro's under OS/X 10.4.10
-        // and 10.4.11 -- probably most cards operated by the same driver have the same problem...
-        if (verbosity > 9) printf("PTB-DEBUG: Swaprequest too close to last swap vbl (%f secs) or between forbidden scanline 1 and %i. Delaying...\n", time_at_swaprequest - windowRecord->time_at_last_vbl, min_line_allowed);
+            // We also wait until beam leaves the forbidden area between scanline 1 and min_line_allowed, where
+            // some broken drivers allow a swap to happen although the beam is already scanning out active
+            // parts of the display:
+            do {
+                // Query beampos again:
+                line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
+            } while ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0));
 
-        // We try to enforce correct behaviour by waiting until at least 2 msecs have elapsed before the next
-        // bufferswap:
-        PsychWaitUntilSeconds(windowRecord->time_at_last_vbl + 0.002);
-
-        // We also wait until beam leaves the forbidden area between scanline 1 and min_line_allowed, where
-        // some broken drivers allow a swap to happen although the beam is already scanning out active
-        // parts of the display:
-        do {
-            // Query beampos again:
+            // Take a measurement of the beamposition at time of swap request:
             line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
-        } while ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0));
 
-        // Take a measurement of the beamposition at time of swap request:
-        line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
-
-        // Take updated preswap timestamp:
-        PsychGetAdjustedPrecisionTimerSeconds(&time_at_swaprequest);
-    }
-
-    // Update of hardware gamma table in sync with flip requested?
-    if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
-        // Perform hw-table upload on M$-Windows in sync with retrace, wait until completion. On
-        // OS-X just schedule update in sync with next retrace, but continue immediately.
-        // See above for code that made sure we only reach this statement immediately prior
-        // to the expected swap time, so this is as properly synced to target retrace as it gets:
-        PsychLoadNormalizedGammaTable(windowRecord->screenNumber, -1, windowRecord->inTableSize, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
-    }
-
-    // Only perform a bog-standard bufferswap request if no OS-specific method has been
-    // executed successfully already:
-    if (!osspecific_asyncflip_scheduled) {
-        // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace" and
-        PsychOSFlipWindowBuffers(windowRecord);
-
-        // Also swap the slave window, if any:
-        if (windowRecord->slaveWindow) {
-            // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
-            PsychSetGLContext(windowRecord->slaveWindow);
-            PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
-
-            // Protect against multi-threading trouble if needed:
-            PsychLockedTouchFramebufferIfNeeded(windowRecord->slaveWindow);
-
-            PsychSetGLContext(windowRecord);
+            // Take updated preswap timestamp:
+            PsychGetAdjustedPrecisionTimerSeconds(&time_at_swaprequest);
         }
 
-        // Multiflip with vbl-sync requested?
-        if (multiflip==1) {
-            //  Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace"
-            //  for all onscreen windows except our primary one:
-            for(i=0;i<numWindows;i++) {
-                if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
-                    // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
-                    PsychSetGLContext(windowRecordArray[i]);
-                    PsychOSFlipWindowBuffers(windowRecordArray[i]);
+        // Update of hardware gamma table in sync with flip requested?
+        if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
+            // Perform hw-table upload on M$-Windows in sync with retrace, wait until completion. On
+            // OS-X just schedule update in sync with next retrace, but continue immediately.
+            // See above for code that made sure we only reach this statement immediately prior
+            // to the expected swap time, so this is as properly synced to target retrace as it gets:
+            PsychLoadNormalizedGammaTable(windowRecord->screenNumber, -1, windowRecord->inTableSize, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
+        }
 
-                    // Protect against multi-threading trouble if needed:
-                    PsychLockedTouchFramebufferIfNeeded(windowRecordArray[i]);
-                }
+        // Only perform a bog-standard bufferswap request if no OS-specific method has been
+        // executed successfully already:
+        if (!osspecific_asyncflip_scheduled) {
+            // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace" and
+            PsychOSFlipWindowBuffers(windowRecord);
+
+            // Also swap the slave window, if any:
+            if (windowRecord->slaveWindow) {
+                // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
+                PsychSetGLContext(windowRecord->slaveWindow);
+                PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
+
+                // Protect against multi-threading trouble if needed:
+                PsychLockedTouchFramebufferIfNeeded(windowRecord->slaveWindow);
+
+                PsychSetGLContext(windowRecord);
             }
-            PsychSetGLContext(windowRecord);
-        }
-    }
 
-    // Take post-swap request line:
-    line_post_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
+            // Multiflip with vbl-sync requested?
+            if (multiflip==1) {
+                //  Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace"
+                //  for all onscreen windows except our primary one:
+                for(i=0;i<numWindows;i++) {
+                    if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
+                        // Some drivers need the context of the to-be-swapped window, e.g., NVidia binary blob on Linux:
+                        PsychSetGLContext(windowRecordArray[i]);
+                        PsychOSFlipWindowBuffers(windowRecordArray[i]);
+
+                        // Protect against multi-threading trouble if needed:
+                        PsychLockedTouchFramebufferIfNeeded(windowRecordArray[i]);
+                    }
+                }
+                PsychSetGLContext(windowRecord);
+            }
+        }
+
+        // Take post-swap request line:
+        line_post_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
+    }
 
     // Take postswap request timestamp:
     PsychGetAdjustedPrecisionTimerSeconds(&time_post_swaprequest);
@@ -3771,7 +3802,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     windowRecord->time_post_swaprequest = time_post_swaprequest;
 
     // Protect against multi-threading trouble if needed:
-    PsychLockedTouchFramebufferIfNeeded(windowRecord);
+    if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce))
+        PsychLockedTouchFramebufferIfNeeded(windowRecord);
 
     // Pause execution of application until start of VBL, if requested:
     if (sync_to_vbl) {
@@ -4385,13 +4417,25 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // safe default of zero to indicate this.
         time_at_vbl = 0;
         *time_at_onset = 0;
+        *miss_estimate = 0;
         *beamPosAtFlip = -1;  // Ditto for beam position...
 
-        // Invalidate timestamp of last vbl:
-        windowRecord->time_at_last_vbl = 0;
-        windowRecord->rawtime_at_swapcompletion = 0;
+        // Was internal timstamping suppressed?
+        if (windowRecord->specialflags & kPsychSkipTimestampingForFlipOnce) {
+            // Latch potential values injected via Screen Hookfunction 'SetOneshotFlipResults':
+            time_at_vbl = windowRecord->time_at_last_vbl;
+            *time_at_onset = windowRecord->osbuiltin_swaptime;
+            *miss_estimate = windowRecord->postflip_vbltimestamp;
+        }
+        else {
+            // Invalidate timestamps of last vbl:
+            windowRecord->time_at_last_vbl = 0;
+            windowRecord->osbuiltin_swaptime = 0;
+        }
+
+        // These are always reset, as not latchable by usercode:
         windowRecord->postflip_vbltimestamp = -1;
-        windowRecord->osbuiltin_swaptime = 0;
+        windowRecord->rawtime_at_swapcompletion = 0;
     }
 
     // Increment the "flips successfully completed" counter:
@@ -4478,6 +4522,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         windowRecord->inTableSize = 0;
         windowRecord->loadGammaTableOnNextFlip = 0;
     }
+
+    // Clear the one-shot flipFlags, so they won't automatically apply to the next flip again: XXX Better do it in SCREENFlip than here?
+    windowRecord->specialflags &= ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce);
 
     // We take a second timestamp here to mark the end of the Flip-routine and return it to "userspace"
     PsychGetAdjustedPrecisionTimerSeconds(time_at_flipend);

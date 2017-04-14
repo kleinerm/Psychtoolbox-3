@@ -123,7 +123,7 @@ static char synopsisString[] =
     "Change or query imagingMode flags of provided proxy window 'proxyPtr' to 'imagingMode'. Proxy windows are used to define "
     "image processing operations, mostly for Screen('TransformTexture'). Returns old imaging mode."
     "\n\n"
-    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'SetDisplayBufferTextures' [, hookname][, leftglHandle][, rightglHandle][, glTextureTarget][, format][, multiSample][, width][, height]); \n"
+    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'SetDisplayBufferTextures' [, hookname][, leftglHandle][, rightglHandle][, glTextureTarget][, format][, multiSample][, width][, height]);\n"
     "Changes the external backing textures and their parameters for the final output color buffers of the imaging pipeline.\n"
     "Optionally returns the previously used backing textures and their old parameters. All new parameters are optional, the "
     "old values are left as they were if a parameter is not provided.\n"
@@ -148,14 +148,42 @@ static char synopsisString[] =
     "'multiSample' The number of samples per texel. Must be 0 for single-sampled GL_TEXTURE_2D textures, > 0 for GL_TEXTURE_2D_MULTISAMPLE textures.\n"
     "'width' and 'height' Width and height of the output framebuffer (=texture) in pixels or texels.\n"
     "\n\n"
-    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'GetDisplayBufferTextures'); \n"
+    "[leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', windowPtr, 'GetDisplayBufferTextures');\n"
     "Get the OpenGL handles of the backing textures and their parameters for the final output color buffers of the imaging pipeline.\n"
     "For the meaning of return values see 'SetDisplayBufferTextures' above.\n"
     "This only works if imagingMode flag kPsychNeedFinalizedFBOSinks is set or stereoMode 12 is active, which implicitely sets that flag.\n"
     "This query function works both with internally generated and maintained backing textures and externally injected/maintained ones.\n"
     "For internally generated textures (without flag kPsychUseExternalSinkTextures), the handles should be considered read-only: Binding "
     "the textures for sampling/reading from them is appropriate, modifying them in any way is forbidden.\n"
-    "\n"
+    "\n\n"
+    "Screen('HookFunction', windowPtr, 'SetOneshotFlipFlags' [, hookname], flipFlags);\n"
+    "Assign special flags to be applied one-time during the next execution of Screen('Flip') or Screen('AsyncFlipBegin').\n"
+    "'hookname' is accepted, but currently ignored. Pass '' or [] for now.\n"
+    "These 'flipFlags' will be applied during the next window flip operation, and each applied flag will then auto-reset "
+    "after application. This is mostly meant to be called from within imaging pipeline processing chains during preflip "
+    "operations or the active presentation sequence to modify behaviour of that sequence. The following 'flipFlags' are "
+    "currently implemented: kPsychSkipVsyncForFlipOnce, kPsychSkipTimestampingForFlipOnce, kPsychSkipSwapForFlipOnce.\n"
+    "\n\n"
+    "Screen('HookFunction', windowPtr, 'SetOneshotFlipResults' [, hookname], VBLTimestamp [, StimulusOnsetTime=VBLTimestamp][, Missed=0]);\n"
+    "Assign override timestamp values to return from Screen('Flip') or Screen('AsyncFlipBegin').\n"
+    "'hookname' is accepted, but currently ignored. Pass '' or [] for now.\n"
+    "The provided timestamps will be applied during return from the next window flip operation and returned as the "
+    "corresponding Screen('Flip') return values. You must have called the 'SetOneshotFlipFlags' HookFunction beforehand "
+    "with at least the kPsychSkipTimestampingForFlipOnce flag to suppress internal timestamping.\n"
+    "This is mostly meant to be called from within imaging pipeline processing chains, notably the "
+    "'PreSwapbuffersOperations' hook chain, to inject stimulus onset timestamps provided by some external display client or "
+    "external timestamping mechanism. The following values can be injected:\n"
+    "'VBLTimestamp' The vbl timestamp of Flip completion, or something semantically equivalent, useful for Flip scheduling.\n"
+    "'StimulusOnsetTime' Optional true stimulus onset time. Will be set to VBLTimestamp if omitted. Must be StimulusOnsetTime >= VBLTimestamp.\n"
+    "'Missed' The presentation deadline miss estimate aka 'Missed' flag of Screen('Flip'). Defaults to 0 if omitted.\n"
+    "\n\n"
+    "Screen('HookFunction', windowPtr, 'SetWindowBackendOverrides' [, hookname][, pixelSize][, refreshInterval]);\n"
+    "Assign override values for various window properties, as provided by the backend client instead of the windowing system.\n"
+    "'hookname' is accepted, but currently ignored. Pass '' or [] for now.\n"
+    "'pixelSize' The net color depth of the display, as returned by Screen('PixelSize', windowPtr);\n"
+    "'refreshInterval' The video refresh interval duration in seconds, as reported by the display backend, and after proper translation "
+    "returned by Screen('NominalFramerate', windowPtr), Screen('Framerate', windowPtr), and Screen('GetFlipInterval', windowPtr).\n"
+    "\n\n"
     "General notes:\n\n"
     "* Hook chains are per onscreen window, so each window can have a different configuration and enable state.\n"
     "* Read all available documentation on the Psychtoolbox imaging pipeline in 'help PsychGLImageprocessing', the PsychDocumentation folder "
@@ -203,12 +231,15 @@ PsychError SCREENHookFunction(void)
     if (strstr(cmdString, "Remove")) cmd=13;
     if (strcmp(cmdString, "GetDisplayBufferTextures")==0) cmd=14;
     if (strcmp(cmdString, "SetDisplayBufferTextures")==0) cmd=15;
+    if (strcmp(cmdString, "SetOneshotFlipFlags")==0) cmd=16;
+    if (strcmp(cmdString, "SetOneshotFlipResults")==0) cmd=17;
+    if (strcmp(cmdString, "SetWindowBackendOverrides")==0) cmd=18;
 
-    if(cmd==0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
-    if(whereloc < 0) PsychErrorExitMsg(PsychError_user, "Unknown/Invalid/Unparseable insert location specified to 'HookFunction' 'InsertAtXXX'.");
+    if (cmd == 0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
+    if (whereloc < 0) PsychErrorExitMsg(PsychError_user, "Unknown/Invalid/Unparseable insert location specified to 'HookFunction' 'InsertAtXXX'.");
 
     // Need hook name?
-    if(cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15) {
+    if (cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15 && cmd!=16 && cmd!=17 && cmd!=18) {
         // Get it:
         PsychAllocInCharArg(3, kPsychArgRequired, &hookString);
     }
@@ -407,6 +438,65 @@ PsychError SCREENHookFunction(void)
             PsychCopyInIntegerArg(10, FALSE, &height);
             if (!PsychSetPipelineExportTexture(windowRecord, leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height))
                 printf("PTB-ERROR: HookFunction call to SetDisplayBufferTextures failed. See above error message for details. Trying to carry on - Prepare for trouble!\n");
+        break;
+
+        case 16: // SetOneshotFlipFlags
+            flag1 = 0;
+            if (!PsychCopyInIntegerArg(4, FALSE, &flag1))
+                printf("PTB-ERROR: HookFunction call to SetOneshotFlipFlags failed, because mandatory flipFlags parameter is missing.\n");
+
+            if (flag1 & ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce)) {
+                printf("PTB-ERROR: HookFunction call to SetOneshotFlipFlags failed, because invalid/unsupported flipFlags were specified.\n");
+            } else {
+                windowRecord->specialflags |= flag1;
+
+                // Any flag set that would prevent proper timestamping for the onscreen window in this cycle?
+                if (flag1 & (kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce)) {
+                    // Invalidate windowRecord's bookkeeping:
+                    windowRecord->time_at_last_vbl = 0;
+                    windowRecord->rawtime_at_swapcompletion = 0;
+                    windowRecord->postflip_vbltimestamp = -1;
+                    windowRecord->osbuiltin_swaptime = 0;
+                }
+            }
+        break;
+
+        case 17: // SetOneshotFlipResults
+            // Make sure internal timestamping is really off and override with our settings is allowed:
+            if (!(windowRecord->specialflags & kPsychSkipTimestampingForFlipOnce)) {
+                printf("PTB-ERROR: HookFunction call to SetOneshotFlipResults failed, because flipFlags did not include kPsychSkipTimestampingForFlipOnce for this sequence.\n");
+            } else {
+                // Override allowed: Assign usercode provided values: These will be latched into 'Flip' return values during flip completion.
+
+                // vblTimestamp of Flip, mandatory:
+                if (!PsychCopyInDoubleArg(4, FALSE, &windowRecord->time_at_last_vbl))
+                    printf("PTB-ERROR: HookFunction call to SetOneshotFlipResults failed, because mandatory 'VBLTimestamp' is missing!\n");
+
+                // onsetTimestamp of Flip, optional, aliasese to vblTimestamp if omitted:
+                if (!PsychCopyInDoubleArg(5, FALSE, &windowRecord->osbuiltin_swaptime))
+                    windowRecord->osbuiltin_swaptime = windowRecord->time_at_last_vbl;
+
+                // missEstimate of Flip, optional:
+                if (!PsychCopyInDoubleArg(6, FALSE, &windowRecord->postflip_vbltimestamp))
+                    windowRecord->postflip_vbltimestamp = 0;
+            }
+        break;
+
+        case 18: // SetWindowBackendOverrides
+            // Retrieve override values for onscreen window properties:
+            if (!(windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks))
+                PsychErrorExitMsg(PsychError_user, "In 'SetWindowBackendOverrides': No kPsychNeedFinalizedFBOSinks imaging mode selected. Overrides forbidden!");
+
+            // Screen('PixelSize'):
+            if (PsychCopyInIntegerArg(4, FALSE, &flag1))
+                windowRecord->depth = flag1;
+
+            // Video refresh interval / refresh rate / flipinterval indicators:
+            if (PsychCopyInDoubleArg(5, FALSE, &windowRecord->VideoRefreshInterval)) {
+                windowRecord->ifi_beamestimate = windowRecord->VideoRefreshInterval;
+                windowRecord->IFIRunningSum = windowRecord->VideoRefreshInterval;
+                windowRecord->nrIFISamples = 1;
+            }
         break;
     }
 

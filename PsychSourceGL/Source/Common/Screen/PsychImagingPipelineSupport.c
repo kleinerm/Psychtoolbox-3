@@ -1344,6 +1344,24 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     // provide or expect single-sample standard GL_TEXTURE_2D npot textures:
     if ((newimagingmode & kPsychNeedFinalizedFBOSinks) && (imagingmode & kPsychSinkIsMSAACapable)) newimagingmode |= kPsychSinkIsMSAACapable;
 
+    // Is use of sRGB rendering and blending on suitable target FBO color buffers requested?
+    if (imagingmode & kPsychEnableSRGBRendering) {
+        // Yes, supported by GPU?
+        if (glewIsSupported("GL_EXT_framebuffer_sRGB") || glewIsSupported("GL_ARB_framebuffer_sRGB")) {
+            // Yes. Here we go:
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Enabling sRGB rendering (= gamma ~2.2) into suitable framebuffers if supported.\n");
+
+            glEnable(GL_FRAMEBUFFER_SRGB);
+
+            // Mark this, so secondary OpenGL contexts, e.g., userspace rendering context can set themselves up as well:
+            newimagingmode |= kPsychEnableSRGBRendering;
+        }
+        else {
+            // Nope, run without it, but warn users about potential unexpected results:
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Enable of sRGB rendering requested, but this is unsupported by your GPU + driver combo. Ignored.\n");
+        }
+    }
+
     // Set new final imaging mode and fbocount:
     windowRecord->imagingMode = newimagingmode;
     windowRecord->fboCount = fbocount;

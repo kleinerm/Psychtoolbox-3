@@ -226,7 +226,7 @@ buttons=logical(rawButtons);
 % window local coordinates, so remapping is not only not needed,
 % but actually harmful:
 if ~isempty(windowPtrOrScreenNumber)
-    if IsLinux && (Screen('WindowKind', windowPtrOrScreenNumber) == 1)
+    if IsLinux && (Screen('WindowKind', windowPtrOrScreenNumber) == 1) && ~IsWayland
         % Linux with an onscreen window handle. 'GetMouseHelper' already
         % returns window local coordinates, ie. relative to window origin:
         x=globalX;

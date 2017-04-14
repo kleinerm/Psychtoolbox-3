@@ -1546,6 +1546,9 @@ if strcmpi(cmd, 'OpenWindow')
     % Set override special flags to "none" by default:
     ovrSpecialFlags = [];
 
+    % Set override framebuffer rect to "none" by default:
+    ovrfbOverrideRect = [];
+
     % Running on a VR headset?
     if ~isempty(find(mystrcmp(reqs, 'UseVRHMD')));
         % Yes:
@@ -1594,28 +1597,24 @@ if strcmpi(cmd, 'OpenWindow')
             % to have the same size (width x height) as the renderbuffer for one
             % eye, so enforce that constraint.
 
-            % Get required output buffer size and therefore window size:
+            % Get required output buffer size and therefore window framebuffer size:
             clientRes = hmd.driver('GetClientRenderingParameters', hmd);
 
-            % Set rect of that size, possibly positioned to start where user wants it:
-            if isempty(winRect)
-                winRect = [0, 0, clientRes(1), clientRes(2)];
-            else
-                winRect = OffsetRect([0, 0, clientRes(1), clientRes(2)], winRect(RectLeft), winRect(RectTop));
-            end
+            % Set as fbOverrideRect for window:
+            ovrfbOverrideRect = [0, 0, clientRes(1), clientRes(2)];
 
-            fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to work with HMD Direct output.\n', ...
-                    winRect(1), winRect(2), winRect(3), winRect(4));
+            fprintf('PsychImaging-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with VR-HMD direct output mode.\n', ...
+                    clientRes(1), clientRes(2));
 
             % As the onscreen window is not used for displaying on the HMD, but
             % either not at all, or just for debug output, make it a regular GUI
             % window, managed by the window manager, so user can easily get it out
             % of the way:
-            ovrSpecialFlags = kPsychGUIWindowWMPositioned;
+            ovrSpecialFlags = kPsychGUIWindow + kPsychGUIWindowWMPositioned;
 
             % Skip all visual timing sync tests and calibrations, as display timing
             % of the onscreen window doesn't matter, only the timing on the HMD direct
-            % output matters:
+            % output matters - and that can't be measured by our standard procedures:
             Screen('Preference', 'SkipSyncTests', 2);
         end
     end
@@ -1701,6 +1700,23 @@ if strcmpi(cmd, 'OpenWindow')
         clientRect = varargin{10};
     end
 
+    if nargin < 12 || isempty(varargin{11})
+        fbOverrideRect = [];
+    else
+        fbOverrideRect = varargin{11};
+    end
+
+    % Allow override of the fbOverrideRect from special clients like VR apps:
+    if ~isempty(ovrfbOverrideRect)
+        fbOverrideRect = ovrfbOverrideRect;
+    end
+
+    % Define fitRefRect (used for panel fitter setup) as the effective framebuffer rectangle:
+    fitRefRect = winRect;
+    if ~isempty(fbOverrideRect)
+        fitRefRect = fbOverrideRect;
+    end
+
     if ~isempty(find(mystrcmp(reqs, 'UseDisplayRotation'))) %#ok<*EFIND>
         % Yes. Extract parameters:
         floc = find(mystrcmp(reqs, 'UseDisplayRotation'));
@@ -1726,10 +1742,10 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         % Get full size of output framebuffer:
-        if isempty(winRect)
+        if isempty(fitRefRect)
             [clientRes(1), clientRes(2)] = Screen('WindowSize', screenid, 1);
         else
-            clientRes = [RectWidth(winRect), RectHeight(winRect)];
+            clientRes = [RectWidth(fitRefRect), RectHeight(fitRefRect)];
         end
 
         % Rotation into a portrait orientation?
@@ -1788,10 +1804,10 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         % Define full size of output framebuffer:
-        if isempty(winRect)
+        if isempty(fitRefRect)
             dstFit = Screen('Rect', screenid, 1);
         else
-            dstFit = SetRect(0, 0, RectWidth(winRect), RectHeight(winRect));
+            dstFit = SetRect(0, 0, RectWidth(fitRefRect), RectHeight(fitRefRect));
         end
 
         % Adapt dstFit according to window size flags:
@@ -2021,9 +2037,9 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         if nargin >= 12
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
         else
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
         end
     end
 
@@ -2035,9 +2051,9 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         if nargin >= 12
-            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
         else
-            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
         end
     end
 
@@ -2055,9 +2071,9 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         if nargin >= 12
-            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
         else
-            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
         end
     end
 
@@ -2069,18 +2085,18 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         if nargin >= 12
-            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
         else
-            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
         end
     end
 
     if isempty(win)
         % Standard openwindow path:
         if nargin >= 12
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, varargin{11:end});
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
         else
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect);
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
         end
     end
 
@@ -4625,8 +4641,16 @@ if ~isempty(floc)
               end
         elseif enableNative11BpcRequested
               % Use helper routine to build a proper RGBA Lookup texture for
-              % conversion of HDR RGB pixels to ARGB0-11-11-10 pixels:
-              pglutid = PsychHelperCreateRGB111110RemapCLUT;
+              % conversion of HDR RGB pixels to ARGB0-11-11-10 pixels.
+              % DCE-8 and later (tested on DCE-8 and DCE-10) need a different
+              % format:
+              if winfo.GPUMinorType >= 80
+                  % DCE-8+
+                  pglutid = PsychHelperCreateRGB111110RemapCLUTAMDDCE8;
+              else
+                  % Pre DCE-8, e.g., tested on DCE-4:
+                  pglutid = PsychHelperCreateRGB111110RemapCLUTOldAMD;
+              end
               pgshadername = 'Native RGB111110 framebuffer output formatting shader';
               pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
         else

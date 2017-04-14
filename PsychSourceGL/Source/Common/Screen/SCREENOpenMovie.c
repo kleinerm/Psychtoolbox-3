@@ -1,31 +1,29 @@
 /*
-  Psychtoolbox3/Source/Common/SCREENOpenMovie.c		
-  
+  Psychtoolbox3/Source/Common/SCREENOpenMovie.c
+
   AUTHORS:
 
-    mario.kleiner at tuebingen.mpg.de   mk
-  
-  PLATFORMS:	
+    mario.kleiner.de@gmailcom   mk
 
-  This file should build on any platform. 
+  PLATFORMS:
+
+  This file should build on any platform.
 
   HISTORY:
 
-  10/23/05  mk		Created. 
- 
+  10/23/05  mk        Created.
+
   DESCRIPTION:
-  
+
   Open a named movie file from the filesystem, create and initialize a corresponding movie object
   and return a handle to it.
- 
-  TO DO:
 
 */
 
 #include "Screen.h"
 
 static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1][, movieOptions]);";
-static char synopsisString[] = 
+static char synopsisString[] =
         "Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
         "return a handle 'moviePtr' on success.\n"
         "This function requires the GStreamer multi-media framework to be installed on your system.\n"
@@ -139,196 +137,197 @@ static char seeAlsoString[] = "CloseMovie PlayMovie GetMovieImage GetMovieTimeIn
 
 PsychAsyncMovieInfo asyncmovieinfo;
 
-PsychError SCREENOpenMovie(void) 
+PsychError SCREENOpenMovie(void)
 {
-        PsychWindowRecordType                   *windowRecord;
-        char                                    *moviefile;
-        char                                    *movieOptions;
-        char                                    dummmyOptions[1];
-        int                                     moviehandle = -1;
-        int                                     framecount;
-        double                                  durationsecs;
-        double                                  framerate;
-        double                                  aspectRatio;
-        int                                     width;
-        int                                     height;
-        int                                     asyncFlag = 0;
-        int                                     specialFlags1 = 0;
-        static psych_bool                       firstTime = TRUE;
-        double                                  preloadSecs = 1;
-        int                                     rc;
-        int                                     pixelFormat = 4;
-        int                                     maxNumberThreads = -1;
+    PsychWindowRecordType                   *windowRecord;
+    char                                    *moviefile;
+    char                                    *movieOptions;
+    char                                    dummmyOptions[1];
+    int                                     moviehandle = -1;
+    int                                     framecount;
+    double                                  durationsecs;
+    double                                  framerate;
+    double                                  aspectRatio;
+    int                                     width;
+    int                                     height;
+    int                                     asyncFlag = 0;
+    int                                     specialFlags1 = 0;
+    static psych_bool                       firstTime = TRUE;
+    double                                  preloadSecs = 1;
+    int                                     rc;
+    int                                     pixelFormat = 4;
+    int                                     maxNumberThreads = -1;
 
-        if (firstTime) {
-            // Setup asyncopeninfo on first invocation:
-            firstTime = FALSE;
-            asyncmovieinfo.asyncstate = 0; // State = No async open in progress.
-        }
+    if (firstTime) {
+        // Setup asyncopeninfo on first invocation:
+        firstTime = FALSE;
+        asyncmovieinfo.asyncstate = 0; // State = No async open in progress.
+    }
 
-        // All sub functions should have these two lines
-        PsychPushHelp(useString, synopsisString, seeAlsoString);
-        if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-        PsychErrorExit(PsychCapNumInputArgs(8));            // Max. 8 input args.
-        PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
-        PsychErrorExit(PsychCapNumOutputArgs(7));           // Max. 7 output args.
+    PsychErrorExit(PsychCapNumInputArgs(8));            // Max. 8 input args.
+    PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
+    PsychErrorExit(PsychCapNumOutputArgs(7));           // Max. 7 output args.
 
-        // Get the window record from the window record argument and get info from the window record
-        windowRecord = NULL;
-        PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, FALSE, &windowRecord);
-        // Only onscreen windows allowed:
-        if(windowRecord && !PsychIsOnscreenWindow(windowRecord)) {
-            PsychErrorExitMsg(PsychError_user, "OpenMovie called on something else than an onscreen window.");
-        }
+    // Get the window record from the window record argument and get info from the window record
+    windowRecord = NULL;
+    PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, FALSE, &windowRecord);
 
-        // Get the movie name string:
-        moviefile = NULL;
-        PsychAllocInCharArg(2, kPsychArgRequired, &moviefile);
+    // Only onscreen windows allowed:
+    if(windowRecord && !PsychIsOnscreenWindow(windowRecord)) {
+        PsychErrorExitMsg(PsychError_user, "OpenMovie called on something else than an onscreen window.");
+    }
 
-        // Get the (optional) asyncFlag:
-        PsychCopyInIntegerArg(3, FALSE, &asyncFlag);
+    // Get the movie name string:
+    moviefile = NULL;
+    PsychAllocInCharArg(2, kPsychArgRequired, &moviefile);
 
-        PsychCopyInDoubleArg(4, FALSE, &preloadSecs);
-        if (preloadSecs < 0 && preloadSecs!= -1 && preloadSecs!= -2) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid (negative, but not equal -1) 'preloadSecs' argument!");
+    // Get the (optional) asyncFlag:
+    PsychCopyInIntegerArg(3, FALSE, &asyncFlag);
 
-        // Get the (optional) specialFlags1:
-        PsychCopyInIntegerArg(5, FALSE, &specialFlags1);
-        if (specialFlags1 < 0) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'specialFlags1' setting! Only positive values allowed.");
+    PsychCopyInDoubleArg(4, FALSE, &preloadSecs);
+    if (preloadSecs < 0 && preloadSecs!= -1 && preloadSecs!= -2) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid (negative, but not equal -1) 'preloadSecs' argument!");
 
-        // Get the (optional) pixelFormat:
-        PsychCopyInIntegerArg(6, FALSE, &pixelFormat);
-        if (pixelFormat < 1 || pixelFormat > 10) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'pixelFormat' setting! Only values 1 to 10 are allowed.");
+    // Get the (optional) specialFlags1:
+    PsychCopyInIntegerArg(5, FALSE, &specialFlags1);
+    if (specialFlags1 < 0) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'specialFlags1' setting! Only positive values allowed.");
 
-        // Get the (optional) maxNumberThreads:
-        PsychCopyInIntegerArg(7, FALSE, &maxNumberThreads);
-        if (maxNumberThreads < -1) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'maxNumberThreads' setting! Only values of -1 or greater are allowed.");
+    // Get the (optional) pixelFormat:
+    PsychCopyInIntegerArg(6, FALSE, &pixelFormat);
+    if (pixelFormat < 1 || pixelFormat > 10) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'pixelFormat' setting! Only values 1 to 10 are allowed.");
 
-        // Get the (optional) movie options string: As PsychAllocInCharArg() no-ops if
-        // the optional string isn't provided, we need to point movieOptions to an empty
-        // 0-terminated string by default, so we don't have a dangling pointer:
-        dummmyOptions[0] = 0;
-        movieOptions = &dummmyOptions[0];
-        PsychAllocInCharArg(8, FALSE, &movieOptions);
+    // Get the (optional) maxNumberThreads:
+    PsychCopyInIntegerArg(7, FALSE, &maxNumberThreads);
+    if (maxNumberThreads < -1) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'maxNumberThreads' setting! Only values of -1 or greater are allowed.");
 
-        // Queueing of a new movie for seamless playback requested?
-        if (asyncFlag & 2) {
-            // Yes. Do a special call, just passing the moviename of the next
-            // movie to play. Pass the relevant moviehandle as retrieved from
-            // preloadSecs:
-            moviehandle = (int) preloadSecs;
-            preloadSecs = 0;
-            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads, movieOptions);
-            if (moviehandle == -1) PsychErrorExitMsg(PsychError_user, "Could not queue new moviefile for gapless playback.");
-            return(PsychError_none);
-        }
+    // Get the (optional) movie options string: As PsychAllocInCharArg() no-ops if
+    // the optional string isn't provided, we need to point movieOptions to an empty
+    // 0-terminated string by default, so we don't have a dangling pointer:
+    dummmyOptions[0] = 0;
+    movieOptions = &dummmyOptions[0];
+    PsychAllocInCharArg(8, FALSE, &movieOptions);
 
-        // Asynchronous Open operation in progress or requested?
-        if ((asyncmovieinfo.asyncstate == 0) && !(asyncFlag & 1)) {
-            // No. We should just synchronously open the movie:
+    // Queueing of a new movie for seamless playback requested?
+    if (asyncFlag & 2) {
+        // Yes. Do a special call, just passing the moviename of the next
+        // movie to play. Pass the relevant moviehandle as retrieved from
+        // preloadSecs:
+        moviehandle = (int) preloadSecs;
+        preloadSecs = 0;
+        PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads, movieOptions);
+        if (moviehandle == -1) PsychErrorExitMsg(PsychError_user, "Could not queue new moviefile for gapless playback.");
+        return(PsychError_none);
+    }
 
-            // Try to open the named 'moviefile' and create & initialize a corresponding movie object.
-            // A handle to the movie object is returned upon successfull operation.
-            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads, movieOptions);
-        }
-        else {
-            // Asynchronous open operation requested or running:
-            switch(asyncmovieinfo.asyncstate) {
-                case 0: // No async open running, but async open requested
-                    // Fill all information needed for opening the movie into the info struct:
-                    asyncmovieinfo.asyncstate = 1; // Mark state as "Operation in progress"
-                    asyncmovieinfo.moviename = strdup(moviefile);
-                    asyncmovieinfo.preloadSecs = preloadSecs;
-                    asyncmovieinfo.asyncFlag = asyncFlag;
-                    asyncmovieinfo.specialFlags1 = specialFlags1;
-                    asyncmovieinfo.pixelFormat = pixelFormat;
-                    asyncmovieinfo.maxNumberThreads = maxNumberThreads;
-                    asyncmovieinfo.movieOptions = strdup(movieOptions);
+    // Asynchronous Open operation in progress or requested?
+    if ((asyncmovieinfo.asyncstate == 0) && !(asyncFlag & 1)) {
+        // No. We should just synchronously open the movie:
 
-                    if (windowRecord) {
-                        memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
-                    } else {
-                        memset(&asyncmovieinfo.windowRecord, 0, sizeof(PsychWindowRecordType));
-                    }
+        // Try to open the named 'moviefile' and create & initialize a corresponding movie object.
+        // A handle to the movie object is returned upon successfull operation.
+        PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle, asyncFlag, specialFlags1, pixelFormat, maxNumberThreads, movieOptions);
+    }
+    else {
+        // Asynchronous open operation requested or running:
+        switch(asyncmovieinfo.asyncstate) {
+            case 0: // No async open running, but async open requested
+                // Fill all information needed for opening the movie into the info struct:
+                asyncmovieinfo.asyncstate = 1; // Mark state as "Operation in progress"
+                asyncmovieinfo.moviename = strdup(moviefile);
+                asyncmovieinfo.preloadSecs = preloadSecs;
+                asyncmovieinfo.asyncFlag = asyncFlag;
+                asyncmovieinfo.specialFlags1 = specialFlags1;
+                asyncmovieinfo.pixelFormat = pixelFormat;
+                asyncmovieinfo.maxNumberThreads = maxNumberThreads;
+                asyncmovieinfo.movieOptions = strdup(movieOptions);
 
-                    asyncmovieinfo.moviehandle = -1;
+                if (windowRecord) {
+                    memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
+                } else {
+                    memset(&asyncmovieinfo.windowRecord, 0, sizeof(PsychWindowRecordType));
+                }
 
-                    // Increase our scheduling priority to basic RT priority: This way we should get
-                    // more cpu time for our PTB main thread than the async. background prefetch-thread:
-                    // On Windows we must not go higher than basePriority 1 (HIGH PRIORITY) or bad interference can happen.
-                    // On OS/X we use basePriority 2 for robust realtime, using up to (4+1) == 5 msecs of time in every 10 msecs slice, allowing for up to 1 msec jitter/latency for ops.
-                    // On Linux we just use standard basePriority 2 RT-FIFO scheduling and trust the os to do the right thing.
-                    if ((rc=PsychSetThreadPriority(NULL, ((PSYCH_SYSTEM == PSYCH_WINDOWS) ? 1 : 2), ((PSYCH_SYSTEM == PSYCH_OSX) ? 4 : 0)))!=0) {
-                        printf("PTB-WARNING: In OpenMovie(): Failed to raise priority of main thread [System error %i]. Expect movie timing problems.\n", rc);
-                    }
+                asyncmovieinfo.moviehandle = -1;
 
-                    // Start our own movie loader Posix-Thread:
-                    PsychCreateThread(&asyncmovieinfo.pid, NULL, PsychAsyncCreateMovie, &asyncmovieinfo);
+                // Increase our scheduling priority to basic RT priority: This way we should get
+                // more cpu time for our PTB main thread than the async. background prefetch-thread:
+                // On Windows we must not go higher than basePriority 1 (HIGH PRIORITY) or bad interference can happen.
+                // On OS/X we use basePriority 2 for robust realtime, using up to (4+1) == 5 msecs of time in every 10 msecs slice, allowing for up to 1 msec jitter/latency for ops.
+                // On Linux we just use standard basePriority 2 RT-FIFO scheduling and trust the os to do the right thing.
+                if ((rc=PsychSetThreadPriority(NULL, ((PSYCH_SYSTEM == PSYCH_WINDOWS) ? 1 : 2), ((PSYCH_SYSTEM == PSYCH_OSX) ? 4 : 0)))!=0) {
+                    printf("PTB-WARNING: In OpenMovie(): Failed to raise priority of main thread [System error %i]. Expect movie timing problems.\n", rc);
+                }
 
-                    // Async movie open initiated. We return control to host environment:
+                // Start our own movie loader Posix-Thread:
+                PsychCreateThread(&asyncmovieinfo.pid, NULL, PsychAsyncCreateMovie, &asyncmovieinfo);
+
+                // Async movie open initiated. We return control to host environment:
+                return(PsychError_none);
+            break;
+
+            case 1: // Async open operation in progress, but not yet finished.
+                // Should we wait for completion or just return?
+                if (asyncFlag & 1) {
+                    // Async poll requested. We just return -1 to signal that open isn't finished yet:
+                    PsychCopyOutDoubleArg(1, TRUE, -1);
                     return(PsychError_none);
-                break;
+                }
+                // We fall through to case 2 - Wait for "Load operation successfully finished."
 
-                case 1: // Async open operation in progress, but not yet finished.
-                    // Should we wait for completion or just return?
-                    if (asyncFlag & 1) {
-                        // Async poll requested. We just return -1 to signal that open isn't finished yet:
-                        PsychCopyOutDoubleArg(1, TRUE, -1);
-                        return(PsychError_none);
-                    }
-                    // We fall through to case 2 - Wait for "Load operation successfully finished."
+            case 2: // Async open operation finished. Parse asyncinfo struct and return it to host environment:
+                // We need to join our terminated worker thread to release its ressources. If the worker-thread
+                // isn't done yet (fallthrough from case 1 for sync. wait), this join will block us until worker
+                // completes:
+                PsychDeleteThread(&asyncmovieinfo.pid);
 
-                case 2: // Async open operation successfully finished. Parse asyncinfo struct and return it to host environment:
-                    // We need to join our terminated worker thread to release its ressources. If the worker-thread
-                    // isn't done yet (fallthrough from case 1 for sync. wait), this join will block us until worker
-                    // completes:
-                    PsychDeleteThread(&asyncmovieinfo.pid);
+                asyncmovieinfo.asyncstate = 0; // Reset state to idle:
+                moviehandle = asyncmovieinfo.moviehandle;
 
-                    asyncmovieinfo.asyncstate = 0; // Reset state to idle:
-                    moviehandle = asyncmovieinfo.moviehandle;
+                // Release options string:
+                free(asyncmovieinfo.movieOptions);
 
-                    // Release options string:
-                    free(asyncmovieinfo.movieOptions);
-
-                    // Movie successfully opened?
-                    if (moviehandle < 0) {
-                        // Movie loading failed for some reason.
-                        printf("PTB-ERROR: When trying to asynchronously load movie %s, the operation failed: ", asyncmovieinfo.moviename);
-                        free(asyncmovieinfo.moviename);
-                        PsychErrorExitMsg(PsychError_user, "Asynchronous loading of the movie failed.");
-                    }
-
+                // Movie successfully opened?
+                if (moviehandle < 0) {
+                    // Movie loading failed for some reason.
+                    printf("PTB-ERROR: When trying to asynchronously load movie '%s', the operation failed! Reasons given above.\n", asyncmovieinfo.moviename);
                     free(asyncmovieinfo.moviename);
+                    PsychErrorExitMsg(PsychError_user, "Asynchronous loading of the movie failed.");
+                }
 
-                    // We can fall out of the switch statement and continue with the standard synchronous load code as if
-                    // the movie had been loaded synchronously.
-                break;
-                default:
-                    PsychErrorExitMsg(PsychError_internal, "Unhandled async movie state condition encountered! BUG!!");
-            }
+                free(asyncmovieinfo.moviename);
+
+                // We can fall out of the switch statement and continue with the standard synchronous load code as if
+                // the movie had been loaded synchronously.
+            break;
+            default:
+                PsychErrorExitMsg(PsychError_internal, "Unhandled async movie state condition encountered! BUG!!");
         }
+    }
 
-        // Upon sucessfull completion, we'll have a valid handle in 'moviehandle'.
-        PsychCopyOutDoubleArg(1, TRUE, (double) moviehandle);
+    // Upon sucessfull completion, we'll have a valid handle in 'moviehandle'.
+    PsychCopyOutDoubleArg(1, TRUE, (double) moviehandle);
 
-        // Retrieve infos about new movie:
+    // Retrieve infos about new movie:
 
-        // Is the "count" output argument (total number of frames) requested by user?
-        if (PsychGetNumOutputArgs() > 5) {
-            // Yes. Query the framecount (expensive!) and return it:
-            PsychGetMovieInfos(moviehandle, &width, &height, &framecount, &durationsecs, &framerate, NULL, &aspectRatio);
-            PsychCopyOutDoubleArg(6, TRUE, (double) framecount);
-        }
-        else {
-            // No. Don't compute and return it.
-            PsychGetMovieInfos(moviehandle, &width, &height, NULL, &durationsecs, &framerate, NULL, &aspectRatio);
-        }
+    // Is the "count" output argument (total number of frames) requested by user?
+    if (PsychGetNumOutputArgs() > 5) {
+        // Yes. Query the framecount (expensive!) and return it:
+        PsychGetMovieInfos(moviehandle, &width, &height, &framecount, &durationsecs, &framerate, NULL, &aspectRatio);
+        PsychCopyOutDoubleArg(6, TRUE, (double) framecount);
+    }
+    else {
+        // No. Don't compute and return it.
+        PsychGetMovieInfos(moviehandle, &width, &height, NULL, &durationsecs, &framerate, NULL, &aspectRatio);
+    }
 
-        PsychCopyOutDoubleArg(2, FALSE, (double) durationsecs);
-        PsychCopyOutDoubleArg(3, FALSE, (double) framerate);
-        PsychCopyOutDoubleArg(4, FALSE, (double) width);
-        PsychCopyOutDoubleArg(5, FALSE, (double) height);
-        PsychCopyOutDoubleArg(7, FALSE, (double) aspectRatio);
+    PsychCopyOutDoubleArg(2, FALSE, (double) durationsecs);
+    PsychCopyOutDoubleArg(3, FALSE, (double) framerate);
+    PsychCopyOutDoubleArg(4, FALSE, (double) width);
+    PsychCopyOutDoubleArg(5, FALSE, (double) height);
+    PsychCopyOutDoubleArg(7, FALSE, (double) aspectRatio);
 
     // Ready!
     return(PsychError_none);
@@ -338,60 +337,60 @@ PsychError SCREENOpenMovie(void)
 
 PsychError SCREENFinalizeMovie(void)
 {
-	static char useString[] = "Screen('FinalizeMovie', moviePtr);";
-	static char synopsisString[] = "Finish creating a new movie file with handle 'moviePtr' and store it to filesystem.\n";
-	static char seeAlsoString[] = "CreateMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
+    static char useString[] = "Screen('FinalizeMovie', moviePtr);";
+    static char synopsisString[] = "Finish creating a new movie file with handle 'moviePtr' and store it to filesystem.\n";
+    static char seeAlsoString[] = "CreateMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
 
-	int			moviehandle = -1;
+    int moviehandle = -1;
 
-	// All sub functions should have these two lines
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
-	
-	PsychErrorExit(PsychCapNumInputArgs(1));            // Max. 3 input args.
-	PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 2 input args required.
-	PsychErrorExit(PsychCapNumOutputArgs(0));           // Max. 1 output args.
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-	// Get the moviehandle:
-	PsychCopyInIntegerArg(1, kPsychArgRequired, &moviehandle);
-	
-	// Finalize the movie:
-	if (!PsychFinalizeNewMovieFile(moviehandle)) {
-		PsychErrorExitMsg(PsychError_user, "FinalizeMovie failed for reason mentioned above.");
-	}
+    PsychErrorExit(PsychCapNumInputArgs(1));            // Max. 3 input args.
+    PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 2 input args required.
+    PsychErrorExit(PsychCapNumOutputArgs(0));           // Max. 1 output args.
 
-	return(PsychError_none);
+    // Get the moviehandle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &moviehandle);
+
+    // Finalize the movie:
+    if (!PsychFinalizeNewMovieFile(moviehandle)) {
+        PsychErrorExitMsg(PsychError_user, "FinalizeMovie failed for reason mentioned above.");
+    }
+
+    return(PsychError_none);
 }
 
 PsychError SCREENCreateMovie(void)
 {
-	static char useString[] = "moviePtr = Screen('CreateMovie', windowPtr, movieFile [, width][, height][, frameRate=30][, movieOptions][, numChannels=4][, bitdepth=8]);";
-	static char synopsisString[] = 
-		"Create a new movie file with filename 'movieFile' and according to given 'movieOptions'.\n"
-		"The function returns a handle 'moviePtr' to the file.\n"
-		"Currently only single-track video encoding is supported.\n"
+    static char useString[] = "moviePtr = Screen('CreateMovie', windowPtr, movieFile [, width][, height][, frameRate=30][, movieOptions][, numChannels=4][, bitdepth=8]);";
+    static char synopsisString[] =
+        "Create a new movie file with filename 'movieFile' and according to given 'movieOptions'.\n"
+        "The function returns a handle 'moviePtr' to the file.\n"
+        "Currently only single-track video encoding is supported.\n"
         "See 'Screen AddAudioBufferToMovie?' on how to add audio tracks to movies.\n"
         "\n"
-		"Movie creation is a 3 step procedure:\n"
-		"1. Create a movie and define encoding options via 'CreateMovie'.\n"
-		"2. Add video and audio data to the movie via calls to 'AddFrameToMovie' et al.\n"
-		"3. Finalize and close the movie via a call to 'FinalizeMovie'.\n\n"
-		"All following parameters are optional and have reasonable defaults:\n\n"
-		"'width' Width of movie video frames in pixels. Defaults to width of window 'windowPtr'.\n"
-		"'height' Height of movie video frames in pixels. Defaults to height of window 'windowPtr'.\n"
-		"'frameRate' Playback framerate of movie. Defaults to 30 fps. Technically this is not the "
-		"playback framerate but the granularity in 1/frameRate seconds with which the duration of "
-		"a single movie frame can be specified. When you call 'AddFrameToMovie', there's an optional "
-		"parameter 'frameDuration' which defaults to one. The parameter defines the display duration "
-		"of that frame as the fraction 'frameDuration' / 'frameRate' seconds, so 'frameRate' defines "
-		"the denominator of that term. However, for a default 'frameDuration' of one, this is equivalent "
-		"to the 'frameRate' of the movie, at least if you leave everything at defaults.\n\n"
-		"'movieoptions' a textstring which allows to define additional parameters via keyword=parm pairs. "
+        "Movie creation is a 3 step procedure:\n"
+        "1. Create a movie and define encoding options via 'CreateMovie'.\n"
+        "2. Add video and audio data to the movie via calls to 'AddFrameToMovie' et al.\n"
+        "3. Finalize and close the movie via a call to 'FinalizeMovie'.\n\n"
+        "All following parameters are optional and have reasonable defaults:\n\n"
+        "'width' Width of movie video frames in pixels. Defaults to width of window 'windowPtr'.\n"
+        "'height' Height of movie video frames in pixels. Defaults to height of window 'windowPtr'.\n"
+        "'frameRate' Playback framerate of movie. Defaults to 30 fps. Technically this is not the "
+        "playback framerate but the granularity in 1/frameRate seconds with which the duration of "
+        "a single movie frame can be specified. When you call 'AddFrameToMovie', there's an optional "
+        "parameter 'frameDuration' which defaults to one. The parameter defines the display duration "
+        "of that frame as the fraction 'frameDuration' / 'frameRate' seconds, so 'frameRate' defines "
+        "the denominator of that term. However, for a default 'frameDuration' of one, this is equivalent "
+        "to the 'frameRate' of the movie, at least if you leave everything at defaults.\n\n"
+        "'movieoptions' a textstring which allows to define additional parameters via keyword=parm pairs. "
         "For GStreamer movie writing, you can provide the same options as for GStreamer video recording. "
         "See 'help VideoRecording' for supported options and tips.\n"
-		"Keywords unknown to a certain implementation or codec will be silently ignored:\n"
-		"EncodingQuality=x Set encoding quality to value x, in the range 0.0 for lowest movie quality to "
-		"1.0 for highest quality. Default is 0.5 = normal quality. 1.0 often provides near-lossless encoding.\n"
+        "Keywords unknown to a certain implementation or codec will be silently ignored:\n"
+        "EncodingQuality=x Set encoding quality to value x, in the range 0.0 for lowest movie quality to "
+        "1.0 for highest quality. Default is 0.5 = normal quality. 1.0 often provides near-lossless encoding.\n"
         "'numChannels' Optional number of image channels to encode: Can be 1, 3 or 4 on OpenGL graphics hardware, "
         "and 3 or 4 on OpenGL-ES hardware. 1 = Red/Grayscale channel only, 3 = RGB, 4 = RGBA. Please note that not "
         "all video codecs can encode pure 1 channel data or RGBA data, ie. an alpha channel. If an unsuitable codec "
@@ -410,80 +409,80 @@ PsychError SCREENCreateMovie(void)
         "video to reduce video file size or network bandwidth, often in a way that is not easily perceptible to the "
         "naked eye. If you require high fidelity, make sure to double-check your results for a given codec + parameter "
         "setup, e.g., via encoding + decoding the movie and checking the original data against decoded data.\n"
-		"\n";
+        "\n";
 
-	static char seeAlsoString[] = "FinalizeMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
-	
-	PsychWindowRecordType                   *windowRecord;
-	char                                    *moviefile;
-	char                                    *movieOptions;
-	int                                     moviehandle = -1;
-	double                                  framerate = 30.0;
-	int                                     width;
-	int                                     height;
-	int                                     numChannels, bitdepth;
-	char                                    defaultOptions[2] = "";
-	
-	// All sub functions should have these two lines
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
-	
-	PsychErrorExit(PsychCapNumInputArgs(8));            // Max. 8 input args.
-	PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
-	PsychErrorExit(PsychCapNumOutputArgs(1));           // Max. 1 output args.
-	
-	// Get the window record from the window record argument and get info from the window record
-	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
-	// Only onscreen windows allowed:
-	if(!PsychIsOnscreenWindow(windowRecord)) {
-		PsychErrorExitMsg(PsychError_user, "CreateMovie called on something else than an onscreen window.");
-	}
-	
-	// Get the movie name string:
-	moviefile = NULL;
-	PsychAllocInCharArg(2, kPsychArgRequired, &moviefile);
-	
-	// Get the optional size:
-	// Default Width and Height of movie frames is derived from size of window:
-	width  = (int) PsychGetWidthFromRect(windowRecord->clientrect);
-	height = (int) PsychGetHeightFromRect(windowRecord->clientrect);
-	PsychCopyInIntegerArg(3, kPsychArgOptional, &width);
-	PsychCopyInIntegerArg(4, kPsychArgOptional, &height);
-	
-	// Get the optional framerate:
-	PsychCopyInDoubleArg(5, kPsychArgOptional, &framerate);
-	
-	// Get the optional options string:
-	movieOptions = defaultOptions;
-	PsychAllocInCharArg(6, kPsychArgOptional, &movieOptions);
+    static char seeAlsoString[] = "FinalizeMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
 
-	// Get optional number of channels of movie:
-	numChannels = 4;
-	PsychCopyInIntegerArg(7, kPsychArgOptional, &numChannels);
-	if (numChannels != 1 && numChannels != 3 && numChannels != 4) PsychErrorExitMsg(PsychError_user, "Invalid number of channels 'numChannels' provided. Only 1, 3 or 4 channels allowed!");
+    PsychWindowRecordType                   *windowRecord;
+    char                                    *moviefile;
+    char                                    *movieOptions;
+    int                                     moviehandle = -1;
+    double                                  framerate = 30.0;
+    int                                     width;
+    int                                     height;
+    int                                     numChannels, bitdepth;
+    char                                    defaultOptions[2] = "";
 
-	// Get optional bitdepth of movie:
-	bitdepth = 8;
-	PsychCopyInIntegerArg(8, kPsychArgOptional, &bitdepth);
-	if (bitdepth != 8 && bitdepth != 16) PsychErrorExitMsg(PsychError_user, "Invalid 'bitdepth' provided. Only 8 bpc or 16 bpc allowed!");
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-	// Create movie of given size and framerate with given options:
-	moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, numChannels, bitdepth, movieOptions, NULL);
-	if (0 > moviehandle) {
-		PsychErrorExitMsg(PsychError_user, "CreateMovie failed for reason mentioned above.");
-	}
-	
-	// Return handle to it:
-	PsychCopyOutDoubleArg(1, FALSE, (double) moviehandle);
-	
-	return(PsychError_none);
+    PsychErrorExit(PsychCapNumInputArgs(8));            // Max. 8 input args.
+    PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
+    PsychErrorExit(PsychCapNumOutputArgs(1));           // Max. 1 output args.
+
+    // Get the window record from the window record argument and get info from the window record
+    PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
+    // Only onscreen windows allowed:
+    if(!PsychIsOnscreenWindow(windowRecord)) {
+        PsychErrorExitMsg(PsychError_user, "CreateMovie called on something else than an onscreen window.");
+    }
+
+    // Get the movie name string:
+    moviefile = NULL;
+    PsychAllocInCharArg(2, kPsychArgRequired, &moviefile);
+
+    // Get the optional size:
+    // Default Width and Height of movie frames is derived from size of window:
+    width  = (int) PsychGetWidthFromRect(windowRecord->clientrect);
+    height = (int) PsychGetHeightFromRect(windowRecord->clientrect);
+    PsychCopyInIntegerArg(3, kPsychArgOptional, &width);
+    PsychCopyInIntegerArg(4, kPsychArgOptional, &height);
+
+    // Get the optional framerate:
+    PsychCopyInDoubleArg(5, kPsychArgOptional, &framerate);
+
+    // Get the optional options string:
+    movieOptions = defaultOptions;
+    PsychAllocInCharArg(6, kPsychArgOptional, &movieOptions);
+
+    // Get optional number of channels of movie:
+    numChannels = 4;
+    PsychCopyInIntegerArg(7, kPsychArgOptional, &numChannels);
+    if (numChannels != 1 && numChannels != 3 && numChannels != 4) PsychErrorExitMsg(PsychError_user, "Invalid number of channels 'numChannels' provided. Only 1, 3 or 4 channels allowed!");
+
+    // Get optional bitdepth of movie:
+    bitdepth = 8;
+    PsychCopyInIntegerArg(8, kPsychArgOptional, &bitdepth);
+    if (bitdepth != 8 && bitdepth != 16) PsychErrorExitMsg(PsychError_user, "Invalid 'bitdepth' provided. Only 8 bpc or 16 bpc allowed!");
+
+    // Create movie of given size and framerate with given options:
+    moviehandle = PsychCreateNewMovieFile(moviefile, width, height, framerate, numChannels, bitdepth, movieOptions, NULL);
+    if (0 > moviehandle) {
+        PsychErrorExitMsg(PsychError_user, "CreateMovie failed for reason mentioned above.");
+    }
+
+    // Return handle to it:
+    PsychCopyOutDoubleArg(1, FALSE, (double) moviehandle);
+
+    return(PsychError_none);
 }
 
 PsychError SCREENAddAudioBufferToMovie(void)
 {
-	static char useString[] = "Screen('AddAudioBufferToMovie', moviePtr, audioBuffer);";
-	static char synopsisString[] = 
-		"Add a buffer filled with audio data samples to movie 'moviePtr'.\n"
+    static char useString[] = "Screen('AddAudioBufferToMovie', moviePtr, audioBuffer);";
+    static char synopsisString[] =
+        "Add a buffer filled with audio data samples to movie 'moviePtr'.\n"
         "The movie must have been created in 'CreateMovie' with an options string that "
         "enables writing of an audio track into the movie, otherwise this function will fail.\n"
         "You enable writing of audio tracks by adding the keyword 'AddAudioTrack' to the options string.\n"
@@ -495,31 +494,31 @@ PsychError SCREENAddAudioBufferToMovie(void)
         "Sample values must lie in the range between -1.0 and +1.0.\n"
         "The audio buffer is converted into a movie specific sound format and then appended to "
         "the audio samples already stored in the audio track.\n"
-		"\n";
+        "\n";
 
-	static char seeAlsoString[] = "FinalizeMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
-	
-	int     moviehandle = -1;
+    static char seeAlsoString[] = "FinalizeMovie AddFrameToMovie CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
+
+    int     moviehandle = -1;
     int     m, n, p;
     double* buffer;
-	
-	// All sub functions should have these two lines
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
-	
-	PsychErrorExit(PsychCapNumInputArgs(2));            // Max. 2 input args.
-	PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
-	PsychErrorExit(PsychCapNumOutputArgs(0));           // Max. 0 output args.
-	
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    PsychErrorExit(PsychCapNumInputArgs(2));            // Max. 2 input args.
+    PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
+    PsychErrorExit(PsychCapNumOutputArgs(0));           // Max. 0 output args.
+
     // Get movie handle:
-	PsychCopyInIntegerArg(1, kPsychArgRequired, &moviehandle);
-    
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &moviehandle);
+
     // And audio date buffer:
-	PsychAllocInDoubleMatArg(2, kPsychArgRequired, &m, &n, &p, &buffer);
+    PsychAllocInDoubleMatArg(2, kPsychArgRequired, &m, &n, &p, &buffer);
     if (p!=1 || m < 1 || n < 1) PsychErrorExitMsg(PsychError_user, "Invalid audioBuffer provided. Must be a 2D matrix with at least one row and at least one column!");
 
     // Pass audio data to movie writing engine:
     PsychAddAudioBufferToMovie(moviehandle, m, n, buffer);
-    
-	return(PsychError_none);
+
+    return(PsychError_none);
 }
