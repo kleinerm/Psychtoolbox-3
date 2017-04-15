@@ -2475,6 +2475,7 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     PsychUnlockDisplay();
 
     windowRecord->target_sbc = 0;
+    windowRecord->lastSwaptarget_msc = 0;
 }
 
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
