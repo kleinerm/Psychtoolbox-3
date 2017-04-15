@@ -127,17 +127,19 @@ theImage(:,:,3) = bPlane;
 figure; clf; image(theImage);
 
 %% What if we want to convert between cone contrast coordinates and DKL?
-%
-% Specify LMS coordiantes of the background.  Here equal LMS excitations
-% but you can try different values here.
-bgLMS = [0.2 0.2 0.2]';
 
-% Also, let's scale the cones so that they sum to luminance
+% Also, let's optionally scale the cones so that they sum to luminance
 SCALE_LMSUMTOLUM = true;
 if (SCALE_LMSUMTOLUM)
     T_cones(1,:) = T_cones(1,:)*LMLumWeights(1);
     T_cones(2,:) = T_cones(2,:)*LMLumWeights(2);
 end
+
+% Specify LMS coordiantes of the background.  Here equal LMS excitations
+% but you can try different values here.  Note that if you're mucking
+% with the scaling of the cones, then holding this vector fixed across
+% two different cone scalings is not holding the actual background fixed.
+bgLMS = [0.2 0.2 0.2]';
 
 % Compute matrix that goes into DKL
 [M_ConeIncToDKL,LMLumWeights] = ComputeDKL_M(bgLMS,T_cones,T_Y);
