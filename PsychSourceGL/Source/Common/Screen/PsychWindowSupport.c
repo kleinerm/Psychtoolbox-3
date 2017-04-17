@@ -3662,6 +3662,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // Only on the *very first* invocation of Flip either after PTB-Startup or after a non-blocking
         // Flip, we can't do this because the time_at_last_vbl timestamp isn't available...
         tshouldflip = windowRecord->time_at_last_vbl + ((floor((tshouldflip - windowRecord->time_at_last_vbl) / currentflipestimate)) * currentflipestimate);
+
+        // Make sure we don't go into the past with tshouldflip if time_at_last_vbl is
+        // in the future, e.g., because it is == stimulus onset, not start of vblank:
+        if (tshouldflip < windowRecord->time_at_last_vbl)
+            tshouldflip = windowRecord->time_at_last_vbl;
     }
 
     // Calculate final deadline for deadline-miss detection:

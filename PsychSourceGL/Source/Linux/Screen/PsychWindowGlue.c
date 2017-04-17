@@ -1422,7 +1422,8 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     PsychLockDisplay();
 
     // Detach OpenGL rendering context again - just to be safe!
-    glXMakeCurrent(dpy, None, NULL);
+    if (strcmp(glGetString(GL_VENDOR), "ATI Technologies Inc."))
+        glXMakeCurrent(dpy, None, NULL);
 
     // Delete rendering context:
     glXDestroyContext(dpy, windowRecord->targetSpecific.contextObject);
@@ -2475,6 +2476,7 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     PsychUnlockDisplay();
 
     windowRecord->target_sbc = 0;
+    windowRecord->lastSwaptarget_msc = 0;
 }
 
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
@@ -2545,17 +2547,26 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
  */
 void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
 {
+    // Any context set on current thread?
     if (glXGetCurrentContext() != NULL) {
         // We need to glFlush the context before switching, otherwise race-conditions may occur:
         glFlush();
 
         // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
         if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-    }
 
-    PsychLockDisplay();
-    glXMakeCurrent(windowRecord->targetSpecific.deviceContext, None, NULL);
-    PsychUnlockDisplay();
+        // Skip the unbind on buggy amdgpu-pro driver. As of April 2017 (v17.10.2), we crash
+        // deep inside amdgpu-pro's proprietary libGL. So skip this and hope for the best...
+        if (strcmp(glGetString(GL_VENDOR), "ATI Technologies Inc.")) {
+            PsychLockDisplay();
+            glXMakeCurrent(windowRecord->targetSpecific.deviceContext, None, NULL);
+            PsychUnlockDisplay();
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 1)
+                printf("PTB-WARNING: Skipping context detach in PsychOSUnsetGLContext() to work around buggy amdgpu-pro OpenGL driver!\n");
+        }
+    }
 }
 
 /* Same as PsychOSSetGLContext() but for selecting userspace rendering context,
