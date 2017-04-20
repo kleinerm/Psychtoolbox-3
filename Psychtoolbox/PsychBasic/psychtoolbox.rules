@@ -86,3 +86,6 @@ ACTION=="add", ENV{ID_USB_DRIVER}=="powermate", MODE="0666"
 
 # Enable non-root access of libusb to the Griffin PowerMate:
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="077d", ATTR{idProduct}=="0410", MODE="0666"
+
+# Tell ModemManager daemon to not mess with PhotoResearch devices like, e.g., the PR-670 photometer:
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="180b", ENV{ID_MM_DEVICE_IGNORE}="1"
