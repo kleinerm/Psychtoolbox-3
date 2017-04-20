@@ -112,6 +112,8 @@ fprintf('button boxes, and some special features of your graphics card, e.g., hi
 fprintf('timestamping. You will be able to access this hardware without the need to run\n');
 fprintf('Matlab or Octave as sudo root user.\n\n');
 
+answer = '';
+
 % Check if udev psychtoolbox.rules file exists:
 if ~exist('/etc/udev/rules.d/psychtoolbox.rules', 'file')
   % No: Needs to be installed.
@@ -178,6 +180,7 @@ end
 
 % Check if psychtoolbox modules blacklist file exists:
 fprintf('\n\n');
+answer = '';
 if ~exist('/etc/modprobe.d/blacklist-psychtoolbox.conf', 'file')
   % No: Needs to be installed.
   needinstall = 1;
@@ -232,6 +235,7 @@ end
 
 % Check if psychtoolbox AMD kms modules config file exists:
 fprintf('\n\n');
+answer = '';
 if ~exist('/etc/modprobe.d/amddeepcolor-psychtoolbox.conf', 'file')
   % No: Needs to be installed.
   needinstall = 1;
