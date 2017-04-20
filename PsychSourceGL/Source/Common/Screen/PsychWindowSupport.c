@@ -6586,7 +6586,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         (gpuMaintype == kPsychRadeon && rendergpuVendor != PCI_VENDOR_ID_AMD && rendergpuVendor != PCI_VENDOR_ID_ATI)))) {
         windowRecord->hybridGraphics = 1;
         if (verbose) printf("PTB-DEBUG: Prime indicators: rendergpuVendor %x, rendergpuModel %x, displaygpuModel %x displaygpuType %x.\n", rendergpuVendor, rendergpuModel, gpuModel, gpuMaintype);
-        if (PsychPrefStateGet_Verbosity() >= 3) printf("PTB-INFO: Hybrid graphics setup with DRI PRIME muxless render offload detected. Being more lenient wrt. framerate.\n");
+        if (PsychPrefStateGet_Verbosity() >= 3) printf("PTB-INFO: Hybrid graphics setup with DRI PRIME muxless render offload detected.\n");
 
         // Prime renderoffload only works with proper timing and quality if DRI3/Present
         // is used for our onscreen window:
@@ -6641,12 +6641,19 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                     }
 
                     if (PsychPrefStateGet_Verbosity() >= 3) {
-                        printf("PTB-INFO: Hybrid graphics setup with DRI PRIME-Sync output slaving detected. Applying corrective measures.\n");
-                        if (windowRecord->hybridGraphics < 3) {
-                            printf("PTB-INFO: Both visual timing and timestamping will be highly unreliable. Please read 'help HybridGraphics'\n");
+                        printf("PTB-INFO: Hybrid graphics setup with support for DRI PRIME-Sync output slaving detected.\n");
+
+                        // Ok, all we know is that the primary display runs under a PRIME sync capable ddx, usually modesetting-ddx.
+                        // This by itself doesn't indicate an actual active prime setup. Check for additional hints: Standard ddx instead
+                        // of our custom modesetting ddx, primary gpu is Intel iGPU, but primary renderer is NVidia dGPU with the NVIDIA
+                        // proprietary driver. This combo Intel iGPU + NVIDIA proprietary driver driving a NVidia dGPU as X-Screen renderer
+                        // is the only somewhat sure sign the user would be in timing-trouble without our help, so only then give some warning
+                        // and setup advice:
+                        if ((windowRecord->hybridGraphics < 3) && (gpuMaintype == kPsychIntelIGP) && strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
+                            printf("PTB-INFO: Both visual timing and timestamping will likely be highly unreliable. Please read 'help HybridGraphics'\n");
                             printf("PTB-INFO: on how to install a custom modesetting ddx in order to fix visual onset timestamping and improve timing.\n");
                         }
-                        else {
+                        else if (windowRecord->hybridGraphics >= 3) {
                             printf("PTB-INFO: Custom modesetting ddx detected. Visual timestamping should be mostly reliable at least on display setups\n");
                             printf("PTB-INFO: with at most one display per X-Screen and one fullscreen window on that X-Screen.\n");
                             if (windowRecord->hybridGraphics < 4) {
@@ -6657,6 +6664,14 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                     }
                 }
                 XRRFreeScreenResources(resources);
+            }
+        }
+        else if ((gpuMaintype == kPsychIntelIGP) && strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
+            // Intel iGPU + NVidia dGPU + NVidia proprietary driver, but no PRIME-SYNC capable ddx.
+            // This is likely hopeless, warn user:
+            if (PsychPrefStateGet_Verbosity() >= 3) {
+                printf("PTB-INFO: This seems to be an Optimus hybrid graphics setup, which may cause timing problems. Please read 'help HybridGraphics'\n");
+                printf("PTB-INFO: on how to install a custom modesetting ddx in order to fix visual onset timestamping and improve timing.\n");
             }
         }
         PsychUnlockDisplay();
