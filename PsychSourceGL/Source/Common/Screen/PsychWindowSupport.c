@@ -7019,10 +7019,11 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // Is GL_POINT_SMOOTH actually producing round, anti-aliased points? As of October 2015,
     // we know NVidia gpus support this on Linux, both with binary blob and nouveau, but the current
     // Mesa drivers for AMD and Intel don't. Windows and OSX graphics drivers do support point
-    // smoothing. However, at least on AMD hw this used to be done by a shader emulation, so it
-    // would not work in HDR high color precision modes. Haven't tested this for a while so i'll
-    // just assume optimistically that it will work atm. until testing disproves this:
-    if ((PSYCH_SYSTEM != PSYCH_LINUX) || nvidia) {
+    // smoothing. Modern AMD hardware supports point smoothing with the proprietary amdgpu-pro driver.
+    // Check for OpenGL version 4 as a sign of a modern enough AMD gpu, as we don't want shader-based
+    // in the driver:
+    if ((PSYCH_SYSTEM != PSYCH_LINUX) || nvidia ||
+        (strstr((char*) glGetString(GL_VENDOR), "ATI") && strstr((char*) glGetString(GL_VERSION), "Compatibility Profile") && !strncmp((char*) glGetString(GL_VERSION), "4.", 2))) {
         if (verbose) printf("Assuming hardware supports native OpenGL primitive smoothing (points, lines).\n");
         windowRecord->gfxcaps |= kPsychGfxCapSmoothPrimitives;
     }
