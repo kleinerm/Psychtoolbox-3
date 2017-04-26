@@ -23,7 +23,7 @@ clear; close all
 % to make the fit more interesting.  Note
 % that FitGamma assumes that a measurement
 % was made of the output for maximum device
-% input (255 in this case).  The meausurements
+% input (255 in this case).  The measurements
 % are also assumed to be dark subtracted, so
 % that the output for input 0 is zero by
 % definition.  Correction for ambient (flare)
