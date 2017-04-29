@@ -6602,7 +6602,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // we are likely running under a NVidia Optimus PRIME setup with output slave
     // instead of a DRI3/Present renderoffload setup and need to take note
     // of this for some special case handling:
-    if (windowRecord->specialflags & kPsychIsX11Window) {
+    if ((windowRecord->specialflags & kPsychIsX11Window) && (gpuMaintype == kPsychIntelIGP) && strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
         static Atom nvidiaprimesync;
         CGDirectDisplayID dpy;
         int screen;
@@ -6641,7 +6641,9 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                     }
 
                     if (PsychPrefStateGet_Verbosity() >= 3) {
-                        printf("PTB-INFO: Hybrid graphics setup with support for DRI PRIME-Sync output slaving detected.\n");
+                        printf("PTB-INFO: Hybrid graphics setup with support for DRI PRIME-Sync output slaving detected - or so i think?\n");
+                        printf("PTB-INFO: If you are displaying on a video output directly connected to the NVidia gpu though, then my\n");
+                        printf("PTB-INFO: mapping of GPU's might be wrong. Use PsychTweak('UseGPUIndex') to fix it! Otherwise timing might be wrong.\n");
 
                         // Ok, all we know is that the primary display runs under a PRIME sync capable ddx, usually modesetting-ddx.
                         // This by itself doesn't indicate an actual active prime setup. Check for additional hints: Standard ddx instead
@@ -6666,12 +6668,15 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                 XRRFreeScreenResources(resources);
             }
         }
-        else if ((gpuMaintype == kPsychIntelIGP) && strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
+        else {
             // Intel iGPU + NVidia dGPU + NVidia proprietary driver, but no PRIME-SYNC capable ddx.
             // This is likely hopeless, warn user:
             if (PsychPrefStateGet_Verbosity() >= 3) {
-                printf("PTB-INFO: This seems to be an Optimus hybrid graphics setup, which may cause timing problems. Please read 'help HybridGraphics'\n");
-                printf("PTB-INFO: on how to install a custom modesetting ddx in order to fix visual onset timestamping and improve timing.\n");
+                printf("PTB-INFO: This seems to be an Optimus hybrid graphics setup with proprietary NVidia driver, which may cause timing problems.\n");
+                printf("PTB-INFO: Please read 'help HybridGraphics' on how to install a custom modesetting ddx on X-Server 1.19 or later in order to\n");
+                printf("PTB-INFO: fix visual onset timestamping and improve timing. If you are displaying on a video output directly connected to the\n");
+                printf("PTB-INFO: NVidia gpu though, then my mapping of GPU's might be wrong (PsychTweak('UseGPUIndex') to fix it) and you can ignore\n");
+                printf("PTB-INFO: this message.\n");
             }
         }
         PsychUnlockDisplay();
