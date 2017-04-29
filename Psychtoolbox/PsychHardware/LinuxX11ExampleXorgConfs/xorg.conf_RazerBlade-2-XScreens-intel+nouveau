@@ -1,0 +1,58 @@
+# Example X-Org config file for setting up 2 separate
+# X-Screens on a Optimus Laptop, where the Intel iGPU is
+# hard-wired to the internal Laptop flatpanel and the
+# external USB-C port (useable for DisplayPort/HDMI/
+# DVI/VGA output via adapters), whereas the NVidia dGPU
+# is hard-wired to a HDMI output port.
+#
+# We assign X-Screen 0 to the Intel iGPU, so either the
+# Intel gpu can render and display on the laptop flat-panel
+# and/or the USB-C output, or DRI PRIME renderoffload can
+# be used to offload rendering for some or all applications
+# to the NVidia gpu (via nouveau), but displaying the
+# rendering via the Intel gpu.
+#
+# X-Screen 1 is assigned to nouveau + the NVidia gpu
+# only, and because nouveau can only drive/display on
+# physical outputs hard-wired to the NVidia gpu, this
+# means X-Screen 1 will always render via NVidia and
+# display on the NVidias physical HDMI output port.
+#
+# This specific config file would work on the
+# "Razer Blade 2016" "VR ready" gaming laptop wth
+# Intel HD 530 Skylake iGPU and NVidia GeForce 1060M
+# Pascal dGPU.
+
+Section "ServerFlags"
+        Option     "AutoAddGPU" "off"
+EndSection
+
+Section "ServerLayout"
+	Identifier     "RazerBlade-2XScreensOn2GPUs"
+        Screen      0  "Screen0" 0 0
+	Screen      1  "Screen1" RightOf "Screen0"
+EndSection
+
+Section "Device"
+	Identifier  "Card0"
+	Driver      "intel"
+	BusID       "PCI:0:2:0"
+        Option      "DRI" "3"
+EndSection
+
+Section "Device"
+	Identifier  "Card1"
+	Driver      "nouveau"
+	BusID       "PCI:1:0:0"
+        Option      "DRI" "3"
+EndSection
+
+Section "Screen"
+	Identifier "Screen0"
+	Device     "Card0"
+EndSection
+
+Section "Screen"
+	Identifier "Screen1"
+	Device     "Card1"
+EndSection
