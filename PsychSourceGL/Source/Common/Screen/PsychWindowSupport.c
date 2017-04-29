@@ -1450,7 +1450,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         (*windowRecord)->VideoRefreshInterval = ifi_estimate;
         if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 ||
             ((*windowRecord)->hybridGraphics == 1) || ((*windowRecord)->hybridGraphics == 3) || ((*windowRecord)->hybridGraphics == 4)) {
-            // Flip frame stereo or multiSampling enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
+            // Flip frame stereo or multiSampling enabled, or some hybrid graphics laptop? Check for ifi_estimate = 2 * ifi_beamestimate:
             if ((ifi_beamestimate>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_beamestimate && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_beamestimate) ||
                 (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_nominal && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_nominal)) {
                 // This seems to be a valid result: Flip-interval is roughly twice the monitor refresh interval.
@@ -1458,6 +1458,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 // ifi_beamestimate, in order to simplify all timing checks below. We also store this value as
                 // video refresh interval...
                 ifi_estimate = ifi_estimate * 0.5f;
+                (*windowRecord)->IFIRunningSum /= 2.0;
                 (*windowRecord)->VideoRefreshInterval = ifi_estimate;
                 if (PsychPrefStateGet_Verbosity()>2) {
                     if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
@@ -1500,7 +1501,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                     printf("PTB-INFO: Will use beamposition query for accurate Flip time stamping.\n");
                 }
                 else {
-                    printf("PTB-INFO: Beamposition queries are supported, but disabled. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
+                    printf("PTB-INFO: Beamposition queries are supported, but disabled. Using basic timestamping as fallback:\n");
+                    printf("PTB-INFO: Timestamps returned by Screen('Flip') will be therefore less robust and accurate.\n");
                 }
             }
         }
@@ -1519,7 +1521,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 }
             }
             else {
-                printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
+                printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback.\n");
+                printf("PTB-INFO: Timestamps returned by Screen('Flip') will be therefore less robust and accurate.\n");
             }
         }
 
@@ -6626,6 +6629,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                 int actual_format;
                 RROutput output = resources->outputs[0];
                 if (XRRGetOutputProperty(dpy, output, nvidiaprimesync, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) {
+                    char prime_sync_on = *((char *) prop);
                     XFree(prop);
                     windowRecord->hybridGraphics = 2;
 
@@ -6641,26 +6645,28 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                     }
 
                     if (PsychPrefStateGet_Verbosity() >= 3) {
-                        printf("PTB-INFO: Hybrid graphics setup with support for DRI PRIME-Sync output slaving detected - or so i think?\n");
-                        printf("PTB-INFO: If you are displaying on a video output directly connected to the NVidia gpu though, then my\n");
-                        printf("PTB-INFO: mapping of GPU's might be wrong. Use PsychTweak('UseGPUIndex') to fix it! Otherwise timing might be wrong.\n");
+                        printf("PTB-INFO: Hybrid graphics setup with support for \"NVidia Optimus\" DRI PRIME-Sync output slaving detected - or so i think?\n");
+                        printf("PTB-INFO: If you are displaying on a video output directly connected to the NVidia gpu, then my thinking here\n");
+                        printf("PTB-INFO: might be wrong. In that case use PsychTweak('UseGPUIndex') to fix me! Otherwise timing might be wrong.\n");
+                        printf("PTB-INFO: If i'm right, then the following assessments hold for your Optimus setup with NVidia's proprietary driver:\n");
 
-                        // Ok, all we know is that the primary display runs under a PRIME sync capable ddx, usually modesetting-ddx.
-                        // This by itself doesn't indicate an actual active prime setup. Check for additional hints: Standard ddx instead
-                        // of our custom modesetting ddx, primary gpu is Intel iGPU, but primary renderer is NVidia dGPU with the NVIDIA
-                        // proprietary driver. This combo Intel iGPU + NVIDIA proprietary driver driving a NVidia dGPU as X-Screen renderer
-                        // is the only somewhat sure sign the user would be in timing-trouble without our help, so only then give some warning
-                        // and setup advice:
-                        if ((windowRecord->hybridGraphics < 3) && (gpuMaintype == kPsychIntelIGP) && strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
-                            printf("PTB-INFO: Both visual timing and timestamping will likely be highly unreliable. Please read 'help HybridGraphics'\n");
+                        if (!prime_sync_on) {
+                            printf("PTB-WARNING: Optimus GPU synchronization seems to be disabled. Maybe the nvidia-modesetting driver is not enabled?\n");
+                            printf("PTB-WARNING: Both visual timing and timestamping will likely be highly unreliable. Please read 'help HybridGraphics'\n");
+                            printf("PTB-WARNING: on how to enable nvidia-modesetting, and then reboot once to improve quality of visual stimulation.\n");
+                        }
+                        else if (windowRecord->hybridGraphics < 3) {
+                            printf("PTB-INFO: The custom modesetting ddx of Psychtoolbox for Optimus is not installed, so visual timestamping will be wrong!\n");
+                            printf("PTB-INFO: Therefore visual timing and timestamping will likely be highly unreliable. Please read 'help HybridGraphics'\n");
                             printf("PTB-INFO: on how to install a custom modesetting ddx in order to fix visual onset timestamping and improve timing.\n");
                         }
                         else if (windowRecord->hybridGraphics >= 3) {
-                            printf("PTB-INFO: Custom modesetting ddx detected. Visual timestamping should be mostly reliable at least on display setups\n");
-                            printf("PTB-INFO: with at most one display per X-Screen and one fullscreen window on that X-Screen.\n");
+                            printf("PTB-INFO: Custom modesetting ddx detected. Visual onset timestamps should be mostly reliable at least on display setups\n");
+                            printf("PTB-INFO: with at most one display per X-Screen and one topmost, non-transparent fullscreen window on that X-Screen.\n");
                             if (windowRecord->hybridGraphics < 4) {
                                 printf("PTB-INFO: Accurate onset timing requires strict adherence to recommended practices for Screen('Flip', window, tWhen) 'tWhen' times.\n");
-                                printf("PTB-INFO: An extra stimulus onset delay of 1 video refresh cycle can't be avoided for immediate flips though.\n");
+                                printf("PTB-INFO: An extra stimulus onset delay of 1 video refresh cycle can't be avoided for immediate flips with this driver though.\n");
+                                printf("PTB-INFO: If you need low-latency stimulus onset, install the NoLag variant of the modesetting ddx instead of the highlag variant.\n");
                             }
                         }
                     }
@@ -6672,7 +6678,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             // Intel iGPU + NVidia dGPU + NVidia proprietary driver, but no PRIME-SYNC capable ddx.
             // This is likely hopeless, warn user:
             if (PsychPrefStateGet_Verbosity() >= 3) {
-                printf("PTB-INFO: This seems to be an Optimus hybrid graphics setup with proprietary NVidia driver, which may cause timing problems.\n");
+                printf("PTB-INFO: This seems to be an Optimus hybrid graphics laptop with proprietary NVidia driver, which will cause timing problems.\n");
                 printf("PTB-INFO: Please read 'help HybridGraphics' on how to install a custom modesetting ddx on X-Server 1.19 or later in order to\n");
                 printf("PTB-INFO: fix visual onset timestamping and improve timing. If you are displaying on a video output directly connected to the\n");
                 printf("PTB-INFO: NVidia gpu though, then my mapping of GPU's might be wrong (PsychTweak('UseGPUIndex') to fix it) and you can ignore\n");
