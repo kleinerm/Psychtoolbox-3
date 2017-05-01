@@ -3826,6 +3826,28 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
             continue;
         }
 
+        // Return of usercode provided tWhen target flip time requested?
+        sprintf(varName, "IMAGINGPIPE_FLIPTWHEN");
+        if ((pToken = strstr(pCurrent, varName))) {
+            // Wants us to assign current Screen('Flip', win, tWhen, ...) tWhen time to the variable IMAGINGPIPE_FLIPTWHEN:
+
+            // Delete the varName from string:
+            memset(pToken, 'X', strlen(varName));
+            repeatit = TRUE;
+
+            if ((!(windowRecord->flipInfo) || (windowRecord->flipInfo->flipwhen == -DBL_MAX)) && (PsychPrefStateGet_Verbosity() > 9))
+                printf("PTB-DEBUG: PsychPipelineProcessMacros: IMAGINGPIPE_FLIPTWHEN variable requested, but not yet set up! Screen('DrawingFinished') improper call?!?\n");
+
+            // Allocate runtime double matrix of scalar size: 'newvar' is the handle of it,
+            // dbltarget is a pointer to the target double matrix we need to fill with the tWhen time:
+            PsychAllocateNativeDoubleMat(1, 1, 1, &dbltarget, &newvar);
+            *dbltarget = (double) ((windowRecord->flipInfo && (windowRecord->flipInfo->flipwhen != -DBL_MAX)) ? windowRecord->flipInfo->flipwhen : -DBL_MAX);
+
+            // Copy to caller workspace:
+            if (PsychRuntimePutVariable("caller", varName, newvar)) {
+                if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychPipelineProcessMacros: IMAGINGPIPE_FLIPTWHEN variable assignment failed in runtime! Skipped slot!\n");
+                rc = 0;
+                goto macros_out;
             }
             else {
                 if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: ASSIGNED %f\n", (float) *dbltarget);
@@ -3834,6 +3856,69 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
             // Next parseloop iteration:
             continue;
         }
+
+        // Return of usercode provided vbl_synclevel for Flip requested?
+        sprintf(varName, "IMAGINGPIPE_FLIPVBLSYNCLEVEL");
+        if ((pToken = strstr(pCurrent, varName))) {
+            // Wants us to assign current Screen('Flip', win, tWhen, dontclear, vbl_synclevel...) vbl_synclevel to the variable IMAGINGPIPE_FLIPVBLSYNCLEVEL:
+
+            // Delete the varName from string:
+            memset(pToken, 'X', strlen(varName));
+            repeatit = TRUE;
+
+            if ((!(windowRecord->flipInfo) || (windowRecord->flipInfo->flipwhen == -DBL_MAX)) && (PsychPrefStateGet_Verbosity() > 9))
+                printf("PTB-DEBUG: PsychPipelineProcessMacros: IMAGINGPIPE_FLIPVBLSYNCLEVEL variable requested, but not yet set up! Screen('DrawingFinished') improper call?!?\n");
+
+            // Allocate runtime double matrix of scalar size: 'newvar' is the handle of it,
+            // dbltarget is a pointer to the target double matrix we need to fill with the vbl_synclevel time:
+            PsychAllocateNativeDoubleMat(1, 1, 1, &dbltarget, &newvar);
+            *dbltarget = (double) ((windowRecord->flipInfo && (windowRecord->flipInfo->flipwhen != -DBL_MAX)) ? windowRecord->flipInfo->vbl_synclevel : -DBL_MAX);
+
+            // Copy to caller workspace:
+            if (PsychRuntimePutVariable("caller", varName, newvar)) {
+                if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychPipelineProcessMacros: IMAGINGPIPE_FLIPVBLSYNCLEVEL variable assignment failed in runtime! Skipped slot!\n");
+                rc = 0;
+                goto macros_out;
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: ASSIGNED %f\n", (float) *dbltarget);
+            }
+
+            // Next parseloop iteration:
+            continue;
+        }
+
+        // Return of usercode provided dontclear flag for Flip requested?
+        sprintf(varName, "IMAGINGPIPE_FLIPDONTCLEAR");
+        if ((pToken = strstr(pCurrent, varName))) {
+            // Wants us to assign current Screen('Flip', win, tWhen, dontclear, ...) dontclear to the variable IMAGINGPIPE_FLIPDONTCLEAR:
+
+            // Delete the varName from string:
+            memset(pToken, 'X', strlen(varName));
+            repeatit = TRUE;
+
+            if ((!(windowRecord->flipInfo) || (windowRecord->flipInfo->flipwhen == -DBL_MAX)) && (PsychPrefStateGet_Verbosity() > 9))
+                printf("PTB-DEBUG: PsychPipelineProcessMacros: IMAGINGPIPE_FLIPDONTCLEAR variable requested, but not yet set up! Screen('DrawingFinished') improper call?!?\n");
+
+            // Allocate runtime double matrix of scalar size: 'newvar' is the handle of it,
+            // dbltarget is a pointer to the target double matrix we need to fill with the vbl_synclevel time:
+            PsychAllocateNativeDoubleMat(1, 1, 1, &dbltarget, &newvar);
+            *dbltarget = (double) ((windowRecord->flipInfo && (windowRecord->flipInfo->flipwhen != -DBL_MAX)) ? windowRecord->flipInfo->dont_clear : -DBL_MAX);
+
+            // Copy to caller workspace:
+            if (PsychRuntimePutVariable("caller", varName, newvar)) {
+                if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychPipelineProcessMacros: IMAGINGPIPE_FLIPDONTCLEAR variable assignment failed in runtime! Skipped slot!\n");
+                rc = 0;
+                goto macros_out;
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: ASSIGNED %f\n", (float) *dbltarget);
+            }
+
+            // Next parseloop iteration:
+            continue;
+        }
+
         // Next parse loop iteration, if any...
     }   // Parse loop.
 

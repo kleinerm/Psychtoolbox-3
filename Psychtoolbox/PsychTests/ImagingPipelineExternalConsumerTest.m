@@ -1,4 +1,4 @@
-function ImagingPipelineExternalConsumerTest
+function ImagingPipelineExternalConsumerTest(cmd, varargin)
 % ImagingPipelineExternalConsumerTest - Test code for imaging pipe output redirection.
 %
 % To proof-of-concept test the imaging pipelines mechanisms to redirect
@@ -20,6 +20,23 @@ function ImagingPipelineExternalConsumerTest
   global curtex;
   global leftTextures;
   global rightTextures;
+
+  if nargin > 0
+    if cmd == 0
+      ProducerConsumer(varargin{:});
+      return;
+    end
+
+    if cmd == 1
+      ReleaseProducer;
+      return;
+    end
+
+    if cmd == 2
+      PassiveConsumer;
+      return;
+    end
+  end
 
   PsychDefaultSetup(2);
   close all;
@@ -102,17 +119,17 @@ function ImagingPipelineExternalConsumerTest
     end
 
     if 1
-      Screen('Hookfunction', w, 'AppendMFunction', 'PreSwapbuffersOperations', 'Snapshotter', 'ProducerConsumer');
+      Screen('Hookfunction', w, 'AppendMFunction', 'PreSwapbuffersOperations', 'Snapshotter', 'ImagingPipelineExternalConsumerTest(0, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPDONTCLEAR, IMAGINGPIPE_FLIPVBLSYNCLEVEL);');
     else
-      Screen('Hookfunction', w, 'AppendMFunction', 'LeftFinalizerBlitChain', 'Snapshotter', 'ProducerConsumer');
+      Screen('Hookfunction', w, 'AppendMFunction', 'LeftFinalizerBlitChain', 'Snapshotter', 'ImagingPipelineExternalConsumerTest(0, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPDONTCLEAR, IMAGINGPIPE_FLIPVBLSYNCLEVEL);');
       Screen('Hookfunction', w, 'Enable', 'LeftFinalizerBlitChain');
     end
+    Screen('Hookfunction', w, 'PrependMFunction', 'CloseOnscreenWindowPreGLShutdown', 'ProducerConsumerTearDown', 'ImagingPipelineExternalConsumerTest(1)');
+    Screen('Hookfunction', w, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
   else
-    Screen('Hookfunction', w, 'AppendMFunction', 'PreSwapbuffersOperations', 'Snapshotter', 'PassiveConsumer');
+    Screen('Hookfunction', w, 'AppendMFunction', 'PreSwapbuffersOperations', 'Snapshotter', 'ImagingPipelineExternalConsumerTest(2)');
   end
   Screen('Hookfunction', w, 'Enable', 'PreSwapbuffersOperations');
-  Screen('Hookfunction', w, 'PrependMFunction', 'CloseOnscreenWindowPreGLShutdown', 'ProducerConsumerTearDown', 'ReleaseProducer');
-  Screen('Hookfunction', w, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
 
   if doGamma && stereomode > 0
     PsychColorCorrection('SetEncodingGamma', w, 1/2.8, 'LeftView');
@@ -145,7 +162,7 @@ function ImagingPipelineExternalConsumerTest
       DrawFormattedText(w, sprintf('%0.3f', GetSecs), 'center', 'center', [1 1 0]);
     end
 
-    Screen('Flip', w, [], 0);
+    Screen('Flip', w, GetSecs + 0.001, [], round(mod(GetSecs, 2)));
   end
   
   if stereomode > 0
@@ -155,7 +172,6 @@ function ImagingPipelineExternalConsumerTest
     bl = Screen('GetImage', w, [0 0 300 300], 'backBuffer');
   end
 
-  eval('ReleaseProducer');
   sca;
 
   figure;
@@ -202,13 +218,17 @@ function PassiveConsumer
 %  imshow(squeeze(pixels(2, :, :))');
 end
 
-function ProducerConsumer
+function ProducerConsumer(when, dontclear, synclevel)
   global GL;
   global w;
   global stereomode;
   global curtex;
   global leftTextures;
   global rightTextures;
+
+  if nargin >= 3
+    fprintf('synclevel %i : dontclear=%i : tWhen = %f secs.\n', synclevel, dontclear, when);
+  end
 
   % Advance to next buffer in swapchain:
   curtex = mod(curtex + 1, length(leftTextures));

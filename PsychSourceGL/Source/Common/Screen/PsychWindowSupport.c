@@ -1829,6 +1829,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     (*windowRecord)->flipInfo = (PsychFlipInfoStruct*) malloc(sizeof(PsychFlipInfoStruct));
     if (NULL == (*windowRecord)->flipInfo) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to malloc() flipInfo struct!");
     memset((*windowRecord)->flipInfo, 0, sizeof(PsychFlipInfoStruct));
+    (*windowRecord)->flipInfo->flipwhen = -DBL_MAX;
 
     // Wait for splashMinDurationSecs, so that the "Welcome" splash screen is
     // displayed at least that long:
