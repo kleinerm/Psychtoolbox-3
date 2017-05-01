@@ -3780,10 +3780,8 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
             windowRecord->inTableSize = 0;
             windowRecord->loadGammaTableOnNextFlip = 0;
 
-            // Copy to base workspace:
-            // N.B. caller workspace would be cleaner, but there's an incompatibility between Octave and
-            // Matlab which causes trouble if you do so, so stick to "base" for sanity of mind!
-            if (PsychRuntimePutVariable("base", varName, newvar)) {
+            // Copy to caller workspace:
+            if (PsychRuntimePutVariable("caller", varName, newvar)) {
                 if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychPipelineProcessMacros: IMAGINGPIPE_GAMMATABLE variable assignment failed in runtime! Skipped slot!\n");
                 rc = 0;
                 goto macros_out;
@@ -3810,10 +3808,8 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
             PsychAllocateNativeDoubleMat(1, 1, 1, &dbltarget, &newvar);
             *dbltarget = (double) windowRecord->flipCount;
 
-            // Copy to base workspace:
-            // N.B. caller workspace would be cleaner, but there's an incompatibility between Octave and
-            // Matlab which causes trouble if you do so, so stick to "base" for sanity of mind!
-            if (PsychRuntimePutVariable("base", varName, newvar)) {
+            // Copy to caller workspace:
+            if (PsychRuntimePutVariable("caller", varName, newvar)) {
                 if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychPipelineProcessMacros: IMAGINGPIPE_FLIPCOUNT variable assignment failed in runtime! Skipped slot!\n");
                 rc = 0;
                 goto macros_out;
