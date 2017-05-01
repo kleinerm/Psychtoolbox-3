@@ -3720,9 +3720,9 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
 {
     psych_bool repeatit = TRUE;
     char  varName[256];
-    char* pCurrent = cmdString;
+    char* pCurrent = strdup(cmdString);
     char* pToken = NULL;
-    int i;
+    int i, rc;
 
     double* dbltarget = NULL;
     PsychGenericScriptType* newvar = NULL;
@@ -3744,8 +3744,8 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
             // Wants us to assign current gammatable from Screen('LoadNormalizedGammatable', ..., 2) call
             // to the variable IMAGINGPIPE_GAMMATABLE:
 
-            // Advance to position behind the varName:
-            pCurrent = &pToken[strlen(varName)];
+            // Delete the varName from string:
+            memset(pToken, 'X', strlen(varName));
             repeatit = TRUE;
 
             // Any pending gammatable stored internally for update? If not, we skip further processing:
@@ -3753,14 +3753,16 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
                 if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: IMAGINGPIPE_GAMMATABLE variable assignment failed. No suitable CLUT set in Screen('LoadNormalizedGammaTable'). Skipped slot!\n");
 
                 // Return error code zero to abort processing of this hook slot:
-                return(0);
+                rc = 0;
+                goto macros_out;
             }
 
             if (windowRecord->inTableSize < 1) {
                 if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: IMAGINGPIPE_GAMMATABLE variable assignment failed. CLUT has less than the required 1 slots. Skipped slot!\n");
 
                 // Return error code zero to abort processing of this hook slot:
-                return(0);
+                rc = 0;
+                goto macros_out;
             }
 
             // Allocate runtime double matrix of sufficient size: 'newvar' is the handle of it,
@@ -3783,7 +3785,8 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
             // Matlab which causes trouble if you do so, so stick to "base" for sanity of mind!
             if (PsychRuntimePutVariable("base", varName, newvar)) {
                 if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychPipelineProcessMacros: IMAGINGPIPE_GAMMATABLE variable assignment failed in runtime! Skipped slot!\n");
-                return(0);
+                rc = 0;
+                goto macros_out;
             }
             else {
                 if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: IMAGINGPIPE_GAMMATABLE variable assignment success in runtime!\n");
@@ -3798,12 +3801,12 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
         if ((pToken = strstr(pCurrent, varName))) {
             // Wants us to assign current flipCount to the variable IMAGINGPIPE_FLIPCOUNT:
 
-            // Advance to position behind the varName:
-            pCurrent = &pToken[strlen(varName)];
+            // Delete the varName from string:
+            memset(pToken, 'X', strlen(varName));
             repeatit = TRUE;
 
             // Allocate runtime double matrix of scalar size: 'newvar' is the handle of it,
-            // dbltarget is a pointer to the target double matrix we need to fill with the clut:
+            // dbltarget is a pointer to the target double matrix we need to fill with the flipCount:
             PsychAllocateNativeDoubleMat(1, 1, 1, &dbltarget, &newvar);
             *dbltarget = (double) windowRecord->flipCount;
 
@@ -3812,7 +3815,17 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
             // Matlab which causes trouble if you do so, so stick to "base" for sanity of mind!
             if (PsychRuntimePutVariable("base", varName, newvar)) {
                 if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychPipelineProcessMacros: IMAGINGPIPE_FLIPCOUNT variable assignment failed in runtime! Skipped slot!\n");
-                return(0);
+                rc = 0;
+                goto macros_out;
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: ASSIGNED %f\n", (float) *dbltarget);
+            }
+
+            // Next parseloop iteration:
+            continue;
+        }
+
             }
             else {
                 if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: ASSIGNED %f\n", (float) *dbltarget);
@@ -3825,7 +3838,11 @@ int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdStr
     }   // Parse loop.
 
     // Successfully processed string:
-    return(1);
+    rc = 1;
+
+macros_out:
+    free(pCurrent);
+    return(rc);
 }
 
 /* PsychPipelineExecuteHookSlot()
