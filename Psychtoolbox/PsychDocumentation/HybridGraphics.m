@@ -288,10 +288,17 @@
 %     Psychtoolbox/PsychHardware/LinuxX11ExampleXorgConfs/ folder. It would need customization
 %     though for a given Laptop, specifically adapting the "BusID" parameter for your hardware.
 %
-%     An example X-Config file for such a laptop can be found for year 2016 Razer Blade gaming
+%     Another example X-Config file for such a laptop can be found for year 2016 Razer Blade gaming
 %     laptop with Intel HD-530 Skylake iGPU + NVidia GeForce 1060M Pascal dGPU, where the Intel
 %     iGPU is hardwired to the laptop panel and USB-C output, whereas the NVidia dGPU is hardwired
 %     to a HDMI output. The filename in the Psychtoolbox/PsychHardware/LinuxX11ExampleXorgConfs/
 %     folder is xorg.conf_RazerBlade-2-XScreens-intel+nouveau
 %
-
+%     Another X-Config example file for the Razer Blade 2016 is the file ...
+%     xorg-Razer-2-XScreens-NVidiaProprietary_iGPUPrime+dGPUHDMInative.conf
+%     ... This file is for use with the NVidia proprietary driver instead of the nouveau open-source
+%     driver. It uses the NVidia gpu to drive two separate X-Screens 0 and 1. X-Screen 0 is driven
+%     via Optimus PRIME output, displaying via the Intel HD 530 iGPU on either the laptop flatpanel
+%     or the USB-C video output, but not both at the same time if visual stimulation timing matters.
+%     X-Screen 1 is driven directly via the HDMI output connected to the NVidia dGPU.
+%
