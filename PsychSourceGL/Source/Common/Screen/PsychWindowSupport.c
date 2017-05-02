@@ -6629,7 +6629,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                 Atom actual_type;
                 int actual_format;
                 RROutput output = resources->outputs[0];
-                if (XRRGetOutputProperty(dpy, output, nvidiaprimesync, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) {
+                if ((XRRGetOutputProperty(dpy, output, nvidiaprimesync, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) && (prop != NULL)) {
                     char prime_sync_on = *((char *) prop);
                     XFree(prop);
                     windowRecord->hybridGraphics = 2;
