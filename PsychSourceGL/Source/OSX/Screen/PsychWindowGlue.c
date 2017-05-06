@@ -353,16 +353,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     attribs[attribcount++]=kCGLPFADisplayMask;
     attribs[attribcount++]=displayMask;
 
-    // 10 bit per component integer framebuffer requested (10-10-10-2)?
-    if (windowRecord->depth == 30) {
+    // 10 or 11 bit per component integer framebuffer requested (10-10-10-2/11-11-10-0)?
+    if ((windowRecord->depth == 30) || (windowRecord->depth == 33)) {
         // Request a 16 bit per color component half-float framebuffer:
         // Apple does not support > 8 bpc on anything but floating point framebuffers,
         // and there a half-float format seems to be what one needs to request. Cfe.
         // http://stackoverflow.com/questions/40688440/nsopenglpfacolorfloat-broken-in-macos-10-12-sierra-for-wide-gamut-30-bit-ren
         //
         // This does give us a 16 bpc half-float per component framebuffer, which yields
-        // about ~10 bpc linear precision per color component in the displayable range of
-        // 0.0 - 1.0, so it is a close enough match to the 10 bit integer requested.
+        // ~11 bpc linear precision per color component in the displayable range of
+        // 0.0 - 1.0, so it is a close enough match to the 10/11 bit integer requested.
         //
         // Reading back pixels from the framebuffer confirms 16 bpc half-float for the
         // framebuffer. How much of this actually ends on the display is difficult to say.
@@ -370,27 +370,24 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // 2014 and late 2015 do support 10 bpc output in this mode, but this is entirely
         // not verified by us. Also unclear on what display (connector) types this actually
         // applies. As usual Apple docs are essentially non-existent and maximally vague.
-        // Not sure what other Macs do? Maybe throw away the extra precision, maybe use some
-        // dithering to fake it?
-        printf("PTB-INFO: Trying to enable 16 bpc / 64 bpp half-float framebuffer to approximate requested 10 bpc, 30 bpp integer framebuffer.\n");
+        //
+        // At least Denis Pelli's photometer measurements on the iMac 27" Retina 5k late 2014,
+        // ie. one of the models officially supported by Apple for deep color, confirm ~11 bpc
+        // on the iMac's internal Retina panel. How this is done (dithering/native output?) is
+        // not yet clear.
+        //
+        // Other Macs seem to use their own gpu-independent software dithering implementation
+        // to fake 11 bpc output precision, e.g., on 8 bpc display panel, according to photometer
+        // measurements by myself on Radeon HD-5770 and Denis Pelli on Radeon R9 M290X in MacBookPro
+        // Retina 15-inch mid 2015.
+        printf("PTB-INFO: Trying to enable 16 bpc / 64 bpp half-float framebuffer to approximate requested %i bpc integer framebuffer.\n",
+               (windowRecord->depth == 30) ? 10 : 11);
+
         attribs[attribcount++]=kCGLPFANoRecovery;
         attribs[attribcount++]=kCGLPFAMinimumPolicy;
         attribs[attribcount++]=kCGLPFAColorFloat;
         attribs[attribcount++]=kCGLPFAColorSize;
         attribs[attribcount++]=64;
-    }
-
-    // 11 bit per component integer framebuffer requested (11-11-10-0)?
-    if (windowRecord->depth == 33) {
-        // Request a ~ 11 bit per color component framebuffer without alpha channel:
-        // Unsupported on OSX, but leave it here for the fun of it.
-        printf("PTB-INFO: Trying to enable 11 bpc, 32 bit integer framebuffer...\n");
-        attribs[attribcount++]=kCGLPFANoRecovery;
-        attribs[attribcount++]=kCGLPFAMinimumPolicy;
-        attribs[attribcount++]=kCGLPFAColorSize;
-        attribs[attribcount++]=32;
-        attribs[attribcount++]=kCGLPFAAlphaSize;
-        attribs[attribcount++]=0;
     }
 
     // 16 bit per component integer framebuffer requested (16-16-16-16)?
