@@ -2995,7 +2995,32 @@ psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bo
                                                                                               0, NULL); /* no per-device barriers */
             }
             else {
-                // A point:
+                // A point: This is a special case. Create some tight barrier double-bounding-rectangles:
+                PsychUnlockDisplay();
+
+                if (pointerBarrierCount + 8 > PSYCH_MAX_POINTER_BARRIERS) {
+                    if (PsychPrefStateGet_Verbosity() > 0)
+                        printf("PTB-ERROR:PsychOSConstrainPointer: Tried to add more mouse pointer barriers than supported - Failed! The current limit is a maximum of %i barriers.\n",
+                               PSYCH_MAX_POINTER_BARRIERS);
+                        return(FALSE);
+                }
+
+                rect[kPsychLeft]--;
+                rect[kPsychTop]--;
+                rect[kPsychRight]--;
+                rect[kPsychBottom]--;
+
+                rect[kPsychLeft]--;
+                rect[kPsychTop]--;
+                rect[kPsychRight]++;
+                rect[kPsychBottom]++;
+                PsychOSConstrainPointer(windowRecord, TRUE, rect);
+                rect[kPsychLeft]--;
+                rect[kPsychTop]--;
+                rect[kPsychRight]++;
+                rect[kPsychBottom]++;
+                PsychOSConstrainPointer(windowRecord, TRUE, rect);
+                PsychLockDisplay();
             }
 
             XFlush(dpy);
@@ -3056,6 +3081,28 @@ psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bo
             else
                 printf("PTB-DEBUG: Releasing pointer barriers for window %i which match rect [%i, %i, %i, %i].\n",
                        windowRecord->windowIndex, (int) rect[kPsychLeft], (int) rect[kPsychTop], (int) rect[kPsychRight], (int) rect[kPsychBottom]);
+        }
+
+        // rect which defines a single point a la [x,y,x,y]?
+        if (rect && (rect[kPsychLeft] == rect[kPsychRight]) && (rect[kPsychTop] == rect[kPsychBottom])) {
+            // This is a special case, as it is confined by a double rect (see above for point case).
+            // Need to unconfine it equally special:
+            rect[kPsychLeft]--;
+            rect[kPsychTop]--;
+            rect[kPsychRight]--;
+            rect[kPsychBottom]--;
+            rect[kPsychLeft]--;
+            rect[kPsychTop]--;
+            rect[kPsychRight]++;
+            rect[kPsychBottom]++;
+            PsychOSConstrainPointer(windowRecord, FALSE, rect);
+            rect[kPsychLeft]--;
+            rect[kPsychTop]--;
+            rect[kPsychRight]++;
+            rect[kPsychBottom]++;
+            PsychOSConstrainPointer(windowRecord, FALSE, rect);
+
+            return(TRUE);
         }
 
         PsychLockDisplay();

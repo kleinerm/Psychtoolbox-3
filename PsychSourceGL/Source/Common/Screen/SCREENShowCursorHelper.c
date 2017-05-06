@@ -251,9 +251,8 @@ PsychError SCREENConstrainCursor(void)
     "as there is no ambiguity or choice with only one global rect anyway.\n\n"
     "Closing an onscreen window with active cursor constraints will automatically remove all associated "
     "cursor confinement regions. This is true for proper close via Screen('Close', windowIndex), Screen('Closeall') or sca, "
-    "or during a controlled error abort with proper error handling. However, in case of a fatal crash of Psychtoolbox or Matlab or Octave, "
-    "you might end up with the active cursor confinement regions stuck, and thereby a potentially unusable mouse cursor "
-    "until you logout or reboot your system!\n\n"
+    "or during a controlled error abort with proper error handling. On Linux, quitting/killing or crashing Octave/Matlab "
+    "will also release pointer confinement. On MS-Windows, pressing ALT+TAB will release the confinement.\n\n"
     "The 'ConstrainCursor' function is not currently supported or supportable on Apple macOS due to macOS "
     "operating system limitations. See 'help SetMouse' sections referring to the 'detachFromMouse' parameter for "
     "a hint on how you may be able to work around this macOS limitation for some applications.\n\n";
