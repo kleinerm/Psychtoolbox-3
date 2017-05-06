@@ -2650,6 +2650,17 @@ psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bo
         clip.top = (LONG) rect[kPsychTop];
         clip.right = (LONG) rect[kPsychRight];
         clip.bottom = (LONG) rect[kPsychBottom];
+
+        // Windows doesn't like it if clip rect is empty ie. left==right, and/or top==bottom.
+        // It kind'a constrains the pointer to the point, but with some jitter, and then fails
+        // to ever unconstrain it again. So we fudge the rect to contain at least 1 pixel:
+        if (clip.left == clip.right)
+            clip.right++;
+
+        if (clip.top == clip.bottom)
+            clip.bottom++;
+
+        // Engage!
         ClipCursor(&clip);
 
         if (PsychPrefStateGet_Verbosity() > 5)
