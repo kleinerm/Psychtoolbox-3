@@ -581,17 +581,17 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             // it at face value. This should work on OSX >= 10.11.2 at least for
             // some graphics cards, as far as the framebuffer is concerned.
             // The actual output bit depth is totally unverified, but supposed to
-            // achieve 10 bpc on some Apple machines (MacPro 2013, iMac Retina 5k 2014 & 2015). See:
+            // achieve up to 11 bpc on some Apple machines (MacPro 2013, iMac Retina 5k 2014 & 2015). See:
             // https://developer.apple.com/library/content/releasenotes/MacOSX/WhatsNewInOSX/Articles/MacOSX10_11_2.html#//apple_ref/doc/uid/TP40016630-SW1
             //
             // Note that this is a floating point framebuffer, so the effective linear bit depth for the
             // displayable color range is much lower. E.g., the 16 bpc half-float translate into actual
-            // ~ 10 bpc linear precision!
+            // ~ 11 bpc linear precision!
             printf("PTB-INFO: OSX native floating point %i bit per color framebuffer requested, and the OS claims it is working fine. Good.\n", bpc);
-            printf("PTB-INFO: Please note that the effective linear output precision will be *much* lower, e.g., only at most 10 bpc for 16 bpc float.\n");
-            printf("PTB-INFO: Also, only some very limited subset of Apple hardware can actually output 10 bpc precision on a few displays.\n");
+            printf("PTB-INFO: Please note that the effective linear output precision will be *much* lower, e.g., only at most 11 bpc for 16 bpc float.\n");
+            printf("PTB-INFO: Also, only some very limited subset of Apple hardware can actually output up to 11 bpc precision on a few displays.\n");
             printf("PTB-INFO: As of the year 2016, only the MacPro 2013, and iMac Retina 5k models from late 2014 and late 2015 are claimed\n");
-            printf("PTB-INFO: by Apple, but *not* verified by us, to support 10 bit output on some supported displays under some conditions!\n");
+            printf("PTB-INFO: by Apple to support about 10-11 bit output on some supported displays under some conditions!\n");
         }
         else if (bpc >= ((*windowRecord)->depth / 3)) {
             printf("PTB-INFO: Windows native %i bit per color framebuffer requested, and the OS claims it is working. Good.\n", bpc);
