@@ -1904,6 +1904,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     DestroyWindow(windowRecord->targetSpecific.windowHandle);
     windowRecord->targetSpecific.windowHandle=NULL;
 
+    // Release cursor confinement for this window, if any:
+    PsychOSConstrainPointer(windowRecord, FALSE, NULL);
+
     // Restore video settings from the defaults in the Windows registry:
     ChangeDisplaySettings(NULL, 0);
 
@@ -2609,4 +2612,58 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
     if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group unsupported or join operation failed.\n");
 
     return(rc);
+}
+
+/* PsychOSConstrainPointer()
+ *
+ * Establish or release pointer confinement to a rectangle, a mouse trap if you want.
+ *
+ * Returns TRUE on success, FALSE on failure.
+ */
+psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bool constrain, PsychRectType rect)
+{
+    static PsychWindowRecordType *constrainWindow = NULL;
+    static RECT oldClip;
+    RECT clip;
+
+    if (constrain) {
+        // Cursor already constrained? MS-Windows only allows one single confinement rectangle session wide:
+        if (constrainWindow) {
+            if (PsychPrefStateGet_Verbosity() > 0)
+                printf("PTB-ERROR:PsychOSConstrainPointer: Tried to add more than one cursor confinement rect - Failed! MS-Windows only supports one such rect globally.\n");
+
+            return(FALSE);
+        }
+
+        // Translate from window local coordinates to desktop global coordinates:
+        rect[kPsychLeft] += windowRecord->globalrect[kPsychLeft];
+        rect[kPsychRight] += windowRecord->globalrect[kPsychLeft];
+        rect[kPsychTop] += windowRecord->globalrect[kPsychTop];
+        rect[kPsychBottom] += windowRecord->globalrect[kPsychTop];
+
+        // Store old setting as backup for later restore:
+        GetClipCursor(&oldClip);
+
+        // Set new confinement with this window as parent:
+        constrainWindow = windowRecord;
+        ClipCursor(&clip);
+
+        if (PsychPrefStateGet_Verbosity() > 5)
+            printf("PTB-DEBUG: Confining mouse pointer for window %i to rect [%i, %i, %i, %i]\n",
+                   windowRecord->windowIndex, (int) rect[kPsychLeft], (int) rect[kPsychTop], (int) rect[kPsychRight], (int) rect[kPsychBottom]);
+
+        return(TRUE);
+    }
+    else if (constrainWindow && (windowRecord == constrainWindow)) {
+        if (PsychPrefStateGet_Verbosity() > 5)
+            printf("PTB-DEBUG: Releasing pointer confinement for window %i.\n", windowRecord->windowIndex);
+
+        constrainWindow = NULL;
+        ClipCursor(&oldClip);
+
+        return(TRUE);
+    }
+
+    // No-Op return:
+    return(TRUE);
 }

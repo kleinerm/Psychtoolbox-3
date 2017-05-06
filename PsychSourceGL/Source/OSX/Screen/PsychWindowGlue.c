@@ -741,6 +741,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     if (windowRecord->targetSpecific.glusercontextObject) CGLReleaseContext(windowRecord->targetSpecific.glusercontextObject);
     if (windowRecord->targetSpecific.glswapcontextObject) CGLReleaseContext(windowRecord->targetSpecific.glswapcontextObject);
 
+    // Release all cursor constraints for this window:
+    PsychOSConstrainPointer(windowRecord, FALSE, NULL);
+
     // Last reference to this screen? In that case we have to shutdown the fallback
     // vbl timestamping and vblank counting facilities for this screen:
     if (screenRefCount[windowRecord->screenNumber] == 1) {
@@ -983,4 +986,28 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     // we can't adjust for it at all. Therefore this function is a no-op identity
     // passthrough:
     return targetTime;
+}
+
+/* PsychOSConstrainPointer()
+ *
+ * Establish or release pointer confinement to a rectangle, a mouse trap if you want.
+ *
+ * Returns TRUE on success, FALSE on failure.
+ */
+psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bool constrain, PsychRectType rect)
+{
+    // Unsupported on OSX:
+    (void) windowRecord;
+
+    if (constrain) {
+        if (PsychPrefStateGet_Verbosity() > 1)
+            printf("PTB-WARNING:PsychOSConstrainPointer: Usercode tried to constrain mouse pointer to rectangle [%i, %i, %i, %i]. This is unsupported on macOS (Linux and Windows only!) and will do nothing.\n",
+                   (int) rect[kPsychLeft], (int) rect[kPsychTop], (int) rect[kPsychRight], (int) rect[kPsychBottom]);
+
+        // We don't fail, just give warning above:
+        return(TRUE);
+    }
+
+    // The unconstrain op is a no-op and therefore succeeds:
+    return(TRUE);
 }
