@@ -200,6 +200,7 @@ PsychError SCREENHookFunction(void)
     int                         leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height;
     double                      doubleptr;
     double                      shaderid, luttexid1 = 0;
+    int                         verbosity = PsychPrefStateGet_Verbosity();
 
     blitterString = NULL;
 
@@ -403,8 +404,8 @@ PsychError SCREENHookFunction(void)
         break;
 
         case 14: // GetDisplayBufferTextures
-            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height))
-                printf("PTB-ERROR: Invalid HookFunction call to GetDisplayBufferTextures! Not supported with current imagingMode. Trying to carry on - Prepare for trouble!\n");
+            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height) && (verbosity > 1))
+                printf("PTB-WARNING: Invalid HookFunction call to GetDisplayBufferTextures! Not supported with current imagingMode. Trying to carry on - Prepare for trouble!\n");
 
             PsychCopyOutDoubleArg(1, FALSE, leftglHandle);
             PsychCopyOutDoubleArg(2, FALSE, rightglHandle);
@@ -417,8 +418,8 @@ PsychError SCREENHookFunction(void)
 
         case 15: // SetDisplayBufferTextures
             // Get old values and return them:
-            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height))
-                printf("PTB-ERROR: Invalid HookFunction call to SetDisplayBufferTextures! Not supported with current imagingMode. Trying to carry on - Prepare for trouble!\n");
+            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height) && (verbosity > 1))
+                printf("PTB-WARNING: Invalid HookFunction call to SetDisplayBufferTextures! Not supported with current imagingMode. Trying to carry on - Prepare for trouble!\n");
 
             PsychCopyOutDoubleArg(1, FALSE, leftglHandle);
             PsychCopyOutDoubleArg(2, FALSE, rightglHandle);
@@ -436,17 +437,18 @@ PsychError SCREENHookFunction(void)
             PsychCopyInIntegerArg(8, FALSE, &multiSample);
             PsychCopyInIntegerArg(9, FALSE, &width);
             PsychCopyInIntegerArg(10, FALSE, &height);
-            if (!PsychSetPipelineExportTexture(windowRecord, leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height))
-                printf("PTB-ERROR: HookFunction call to SetDisplayBufferTextures failed. See above error message for details. Trying to carry on - Prepare for trouble!\n");
+            if (!PsychSetPipelineExportTexture(windowRecord, leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height) && (verbosity > 1))
+                printf("PTB-WARNING: HookFunction call to SetDisplayBufferTextures failed. See above error message for details. Trying to carry on - Prepare for trouble!\n");
         break;
 
         case 16: // SetOneshotFlipFlags
             flag1 = 0;
-            if (!PsychCopyInIntegerArg(4, FALSE, &flag1))
-                printf("PTB-ERROR: HookFunction call to SetOneshotFlipFlags failed, because mandatory flipFlags parameter is missing.\n");
+            if (!PsychCopyInIntegerArg(4, FALSE, &flag1) && (verbosity > 1))
+                printf("PTB-WARNING: HookFunction call to SetOneshotFlipFlags failed, because mandatory flipFlags parameter is missing.\n");
 
             if (flag1 & ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce)) {
-                printf("PTB-ERROR: HookFunction call to SetOneshotFlipFlags failed, because invalid/unsupported flipFlags were specified.\n");
+                if (verbosity > 1)
+                    printf("PTB-WARNING: HookFunction call to SetOneshotFlipFlags failed, because invalid/unsupported flipFlags were specified.\n");
             } else {
                 windowRecord->specialflags |= flag1;
 
@@ -464,13 +466,14 @@ PsychError SCREENHookFunction(void)
         case 17: // SetOneshotFlipResults
             // Make sure internal timestamping is really off and override with our settings is allowed:
             if (!(windowRecord->specialflags & kPsychSkipTimestampingForFlipOnce)) {
-                printf("PTB-ERROR: HookFunction call to SetOneshotFlipResults failed, because flipFlags did not include kPsychSkipTimestampingForFlipOnce for this sequence.\n");
+                if (verbosity > 1)
+                    printf("PTB-WARNING: HookFunction call to SetOneshotFlipResults failed, because flipFlags did not include kPsychSkipTimestampingForFlipOnce for this sequence.\n");
             } else {
                 // Override allowed: Assign usercode provided values: These will be latched into 'Flip' return values during flip completion.
 
                 // vblTimestamp of Flip, mandatory:
-                if (!PsychCopyInDoubleArg(4, FALSE, &windowRecord->time_at_last_vbl))
-                    printf("PTB-ERROR: HookFunction call to SetOneshotFlipResults failed, because mandatory 'VBLTimestamp' is missing!\n");
+                if (!PsychCopyInDoubleArg(4, FALSE, &windowRecord->time_at_last_vbl) && (verbosity > 1))
+                    printf("PTB-WARNING: HookFunction call to SetOneshotFlipResults failed, because mandatory 'VBLTimestamp' is missing!\n");
 
                 // onsetTimestamp of Flip, optional, aliasese to vblTimestamp if omitted:
                 if (!PsychCopyInDoubleArg(5, FALSE, &windowRecord->osbuiltin_swaptime))
