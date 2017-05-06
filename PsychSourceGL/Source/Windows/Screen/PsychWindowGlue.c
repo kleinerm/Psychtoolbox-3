@@ -2646,6 +2646,10 @@ psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bo
 
         // Set new confinement with this window as parent:
         constrainWindow = windowRecord;
+        clip.left = (LONG) rect[kPsychLeft];
+        clip.top = (LONG) rect[kPsychTop];
+        clip.right = (LONG) rect[kPsychRight];
+        clip.bottom = (LONG) rect[kPsychBottom];
         ClipCursor(&clip);
 
         if (PsychPrefStateGet_Verbosity() > 5)
