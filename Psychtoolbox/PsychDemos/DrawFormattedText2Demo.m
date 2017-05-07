@@ -8,7 +8,9 @@
 %
 % see also: PsychDemos, Screen DrawText?, DrawSomeTextDemo, DrawFormattedText2Demo
 
-% 09/15/16    dcn    Wrote it.
+% 15-Sep-2016    dcn    Wrote it.
+% 07-May-2017    mk     Demo per word bounding boxes.
+
 
 try
     PsychDefaultSetup(1);   % check PTB is functioning and do default setup
@@ -52,8 +54,9 @@ try
 
     % draw few lines of text, with varying formatting, and draw it again
     % from cache with some transformation
-    [~,~,bbox,cache]=DrawFormattedText2('<font=Courier New><size=27>test\n<font=Times New Roman>scr<font><font>een<font> is\n<b><size=50>UGLY\n<size=12><b><u><i>Isn''t it?','win',w,'sx','center','sy','center','xalign','center','yalign','center');
+    [~,~,bbox,cache,wbounds]=DrawFormattedText2('<font=Courier New><size=27>test\n<font=Times New Roman>scr<font><font>een<font> is\n<b><size=50>UGLY\n<size=12><b><u><i>Isn''t it?','win',w,'sx','center','sy','center','xalign','center','yalign','center');
     Screen('FrameRect', w, [255 0 0], bbox);
+    Screen('FrameRect', w, [255 255 0], GrowRect(wbounds, 2, 2)');
     % calling with the cache and only sx and/or sy, translated the text by
     % (sx,sy)
     [~,~,bbox]=DrawFormattedText2(cache,'sx', 300);
@@ -78,8 +81,29 @@ try
     
     Screen('Flip',w);
     KbStrokeWait;
-    
-    
+
+    % Repeat, but visualize word-bounds:
+    % calling with the cache and only sx and/or sy, translated the text by
+    % (sx,sy)
+    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'transform',{'flip',3});
+    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
+    Screen('FrameRect', w, [0 255 0], bbox);
+    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sx', 300,'transform',{'flip',2});
+    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
+    Screen('FrameRect', w, [0 255 0], bbox);
+    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sx',-300,'transform',{'flip',1});
+    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
+    Screen('FrameRect', w, [0 0 255], bbox);
+    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sy', 300,'transform',{'rotate',90});
+    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
+    Screen('FrameRect', w, [0 255 255], bbox);
+    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sy',-300,'transform',{'scale',[2 1]});
+    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
+    Screen('FrameRect', w, [255 0 255], bbox);
+
+    Screen('Flip',w);
+    KbStrokeWait;
+
     % draw some text, then draw it again in exact same location but rotated
     % 180 degrees. should have exact same bounding box
     [~,~,bbox1,c]=DrawFormattedText2('<size=40>t<i>e<size>x<i>t&\n<size=120>ajX\n<size=60>t<font=comic sans>estddd<color=ff0000>ddda<i>d','win',w,'sx','center','sy',200,'xalign','left','baseColor',0);
@@ -87,7 +111,13 @@ try
     Screen('FrameRect',w,[255 0 0 128],bbox1,3);
     Screen('FrameRect',w,[0 255 0 128],bbox2,3);
     fprintf('Both bounding boxes exactly the same? %d\n',isequal(bbox1,bbox2));
-    
+
+    [~,~,bbox1,c]=DrawFormattedText2('<size=40>t<i>e<size>x<i>t&\n<size=120>ajX\n<size=60>t<font=comic sans>estddd<color=ff0000>ddda<i>d','win',w,'sx','center','sy',200,'xalign','left','baseColor',0);
+    [~,~,bbox2,~,wbounds]  =DrawFormattedText2(c,'transform',{'rotate',180});
+    Screen('FrameRect',w,[255 0 0 128],bbox1,3);
+    Screen('FrameRect',w,[0 255 0 128],bbox2,3);
+    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
+
     Screen('Flip',w);
     KbStrokeWait;
     
@@ -100,8 +130,9 @@ try
     t = fread(fd,inf,'*char').';
     fclose(fd);
     % flop it all on the screen
-    DrawFormattedText2(t,'win',w,'sx','center','xalign','center','sy',150,'baseColor',0);
-    
+    [~,~,~,~,wbounds] = DrawFormattedText2(t,'win',w,'sx','center','xalign','center','sy',150,'baseColor',0);
+    Screen('FrameRect', w, [255 255 0 128], GrowRect(wbounds, 2, 2)');
+
     Screen('Flip',w);
     KbStrokeWait;
     
