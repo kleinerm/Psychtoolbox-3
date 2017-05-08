@@ -3508,7 +3508,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // methods for swap scheduling are used if the special PreSwapBuffersOperations hookchain
     // is enabled and contains commands. The semantic of this hookchain is to execute immediately
     // before the bufferswap, so we need to to wait until immediately before the expected swap:
-    if (PsychIsHookChainOperational(windowRecord, kPsychPreSwapbuffersOperations)) must_wait = TRUE;
+    if (PsychIsHookChainOperational(windowRecord, kPsychPreSwapbuffersOperations) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce))
+        must_wait = TRUE;
 
     // Setup and execution of OS specific swap scheduling mechanisms, e.g., OpenML OML_sync_control
     // extensions:
@@ -3557,7 +3558,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // any of the involved commands fail:
     osspecific_asyncflip_scheduled = TRUE;
 
-    if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce)) {
+    // Clever swap scheduling is incompatible with the users desire to a) not swap at all, and b) to not perform swap scheduling
+    // inside Screen() at all, aka kPsychSkipWaitForFlipOnce.
+    if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce)) {
         // Schedule swap on main window:
         if ((swap_msc = PsychOSScheduleFlipWindowBuffers(windowRecord, targetWhen, 0, 0, 0, targetSwapFlags)) < 0) {
             // Scheduling failed or unsupported!
@@ -3604,6 +3607,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             }
         }
     }
+    else {
+        osspecific_asyncflip_scheduled = FALSE;
+    }
 
     // Pausing until a specific deadline requested?
     if (flipwhen > 0) {
@@ -3632,7 +3638,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // We only wait here until 'flipwhen' deadline is reached if this isn't a
             // system with OS specific swapbuffers scheduling support, or if OS specific
             // scheduling failed, or a special condition requires us to wait anyway:
-            if (!osspecific_asyncflip_scheduled || must_wait) {
+            if ((!osspecific_asyncflip_scheduled || must_wait) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce)) {
                 // We force the rendering pipeline to finish all pending OpenGL operations,
                 // so we can be sure that swapping at VBL will be as fast as possible.
                 // Btw: glFlush() is not recommended by Apple, but in this specific case
@@ -3695,7 +3701,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // if we don't care about this, or if care has been taken already by osspecific_asyncflip_scheduled:
             flipcondition_satisfied = (windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->targetFlipFieldType == -1) ||
                                         (preflip_vblcount == 0) || (((preflip_vblcount + 1) % 2) == (psych_uint64) windowRecord->targetFlipFieldType) ||
-                                        (osspecific_asyncflip_scheduled && !must_wait);
+                                        (osspecific_asyncflip_scheduled && !must_wait || (windowRecord->specialflags & kPsychSkipWaitForFlipOnce));
             // If in wrong video cycle, we simply sleep a millisecond, then retry...
             if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
         } while (!flipcondition_satisfied);
@@ -3726,6 +3732,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // for Prime-Synced outputSrc -> outputSink setups, as that would add 1 frame extra lag. by preventing
         // us from subitting a swaprequest 1 frame ahead to compensate for the 1 frame lag of Prime sync.
         if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (!osspecific_asyncflip_scheduled) && (windowRecord->hybridGraphics < 2) &&
+            !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) &&
             ((time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002) || ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0)))) {
             // Less than 2 msecs passed since last bufferswap, although swap in sync with retrace requested.
             // Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
@@ -4129,7 +4136,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         }
 
         // OS level queries of timestamps supported and consistency check wanted?
-        if (preflip_vbltimestamp > 0 && vbltimestampmode==2) {
+        if (preflip_vbltimestamp > 0 && vbltimestampmode==2 && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce)) {
             // Yes. Check both methods for consistency: We accept max. 1 ms deviation.
             if ((fabs(postflip_vbltimestamp - time_at_vbl) > 0.001) || (verbosity > 20)) {
                 printf("VBL timestamp deviation: precount=%i , postcount=%i, delta = %i, postflip_vbltimestamp = %f  -  beampos_vbltimestamp = %f  == Delta is = %f \n",
@@ -4159,7 +4166,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // was issued while outside the VBL:
         if ((time_at_vbl < time_at_swaprequest - 0.00005) && ((line_pre_swaprequest > min_line_allowed) && (line_pre_swaprequest < vbl_startline)) && (windowRecord->VBL_Endline != -1) &&
             ((line_post_swaprequest > min_line_allowed) && (line_post_swaprequest < vbl_startline)) && (line_pre_swaprequest <= line_post_swaprequest) &&
-            (vbltimestampmode >= 0) && ((vbltimestampmode < 3) || (vbltimestampmode == 4 && swap_msc < 0 && !osspecific_asyncflip_scheduled))) {
+            (vbltimestampmode >= 0) && ((vbltimestampmode < 3) || (vbltimestampmode == 4 && swap_msc < 0 && !osspecific_asyncflip_scheduled)) &&
+            !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce)) {
 
             // Ohoh! Broken timing. Disable beamposition timestamping for future operations, warn user.
             if (verbosity > -1) {
@@ -4260,7 +4268,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         }
 
         // VBL IRQ based timestamping in charge? Either because selected by usercode, or as a fallback for failed/disabled beampos timestamping or OS-Builtin timestamping?
-        if ((PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) &&
+        if ((PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) &&
             ((vbltimestampmode == 3) || (!osspecific_asyncflip_scheduled && vbltimestampmode == 4 && windowRecord->VBL_Endline == -1 && swap_msc < 0) || ((vbltimestampmode == 1 || vbltimestampmode == 2) && windowRecord->VBL_Endline == -1))) {
             // Yes. Try some consistency checks for that:
 
@@ -4352,7 +4360,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
             // Consistency check: Swap can't complete before it was scheduled: Have a fudge
             // value of 1 msec to account for roundoff errors:
-	    if ((PsychPrefStateGet_SkipSyncTests() < 2) &&
+            if ((PsychPrefStateGet_SkipSyncTests() < 2) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) &&
 		((osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) ||
                 (!osspecific_asyncflip_scheduled && (tSwapComplete < time_at_swaprequest - 0.001)))) {
                 if (verbosity > 0) {
@@ -4379,7 +4387,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
                 // Also check for flips that completed before their target time, which
                 // would indicate a failure in swap scheduling. Usual roundoff fudge applies:
-		if ((PsychPrefStateGet_SkipSyncTests() < 2) && (targetWhen > 0) && (tSwapComplete < targetWhen - 0.001)) {
+                if ((PsychPrefStateGet_SkipSyncTests() < 2) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) && (targetWhen > 0) && (tSwapComplete < targetWhen - 0.001)) {
                     if (verbosity > 0) {
                         printf("PTB-ERROR: OpenML timestamping reports that flip completed before its requested target time [Target no earlier than %f secs, completed at %f secs]!\n",
                                targetWhen, tSwapComplete);
@@ -4533,7 +4541,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     }
 
     // Clear the one-shot flipFlags, so they won't automatically apply to the next flip again: XXX Better do it in SCREENFlip than here?
-    windowRecord->specialflags &= ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce);
+    windowRecord->specialflags &= ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce | kPsychSkipWaitForFlipOnce);
 
     // We take a second timestamp here to mark the end of the Flip-routine and return it to "userspace"
     PsychGetAdjustedPrecisionTimerSeconds(time_at_flipend);

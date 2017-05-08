@@ -162,7 +162,7 @@ static char synopsisString[] =
     "These 'flipFlags' will be applied during the next window flip operation, and each applied flag will then auto-reset "
     "after application. This is mostly meant to be called from within imaging pipeline processing chains during preflip "
     "operations or the active presentation sequence to modify behaviour of that sequence. The following 'flipFlags' are "
-    "currently implemented: kPsychSkipVsyncForFlipOnce, kPsychSkipTimestampingForFlipOnce, kPsychSkipSwapForFlipOnce.\n"
+    "currently implemented: kPsychSkipVsyncForFlipOnce, kPsychSkipTimestampingForFlipOnce, kPsychSkipSwapForFlipOnce, kPsychSkipWaitForFlipOnce.\n"
     "\n\n"
     "Screen('HookFunction', windowPtr, 'SetOneshotFlipResults' [, hookname], VBLTimestamp [, StimulusOnsetTime=VBLTimestamp][, Missed=0]);\n"
     "Assign override timestamp values to return from Screen('Flip') or Screen('AsyncFlipBegin').\n"
@@ -446,7 +446,7 @@ PsychError SCREENHookFunction(void)
             if (!PsychCopyInIntegerArg(4, FALSE, &flag1) && (verbosity > 1))
                 printf("PTB-WARNING: HookFunction call to SetOneshotFlipFlags failed, because mandatory flipFlags parameter is missing.\n");
 
-            if (flag1 & ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce)) {
+            if (flag1 & ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce | kPsychSkipWaitForFlipOnce)) {
                 if (verbosity > 1)
                     printf("PTB-WARNING: HookFunction call to SetOneshotFlipFlags failed, because invalid/unsupported flipFlags were specified.\n");
             } else {
