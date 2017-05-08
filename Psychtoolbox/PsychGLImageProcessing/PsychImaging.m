@@ -549,11 +549,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   by applying an algorithn known as "Pseudo-Gray" or "Bit stealing".
 %   Selecting this mode implies use of 32 bit floating point
 %   framebuffers, unless you specify use of a 16 bit floating point
-%   framebuffer via 'FloatingPoint16Bit' explicitely. If you do that, you
-%   will not quite be able to use the full 10.8 bit output precision, but
-%   only approximately 10 bits. The expected range of luminance values is
-%   between 0 and 1. See "help CreatePseudoGrayLUT" for further
-%   explanation.
+%   framebuffer via 'FloatingPoint16Bit' explicitely. The expected range
+%   of input luminance values is between 0 and 1. See "help CreatePseudoGrayLUT"
+%   for further explanation.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
 %
@@ -4363,9 +4361,12 @@ end
 if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
 
+    % Get native depth in bits per color (bpc) of active framebuffer:
+    nativeBPC = Screen('Pixelsize', win) / 3;
+
     if mystrcmp(reqs{row, 2}, 'EnablePseudoGrayOutput')
         % PseudoGray mode: We create the lut ourselves via helper function:
-        lut = CreatePseudoGrayLUT;
+        lut = CreatePseudoGrayLUT(nativeBPC);
 
         % For proper pseudo-gray output the gfx gamma-tables must not be
         % touched by us!
@@ -4382,7 +4383,7 @@ if ~isempty(floc)
 
     if isempty(lut) || ~isnumeric(lut)
         sca;
-        error('PsychImaging: Mandatory lookup table parameter lut for ''EnableGenericHighPrecisionLuminanceOutput'' missing or not of numeric type!');
+        error('PsychImaging: Mandatory lookup table parameter lut for ''%s'' missing or not of numeric type!', reqs{floc});
     end
 
     % Load output formatting shader for GenericHighPrecisionLuminanceOutput:
@@ -4398,8 +4399,20 @@ if ~isempty(floc)
     glUseProgram(0);
 
     % Use helper routine to build a proper RGBA Lookup texture for
-    % conversion of HDR luminance pixels to RGBA8 pixels:
-    pglutid = PsychHelperCreateGenericLuminanceToRGBA8LUT(lut);
+    % conversion of HDR luminance pixels to output framebuffer pixels:
+    if isa(lut, 'uint8')
+        % uint8 classic lut: Create RGBA8 lookup texture:
+        fprintf('PsychImaging-%s: Creating LUT suitable for precision boosting of a 8 bpc native framebuffer and display or DAC.\n', reqs{floc});
+        pglutid = PsychHelperCreateGenericLuminanceToRGBA8LUT(lut);
+    elseif isa(lut, 'uint16')
+        % uint16 input lut: Store as texture of suitable depths (8, 10 or 16 bpc):
+        fprintf('PsychImaging-%s: Creating %i slot LUT suitable for precision boosting of a %i bpc native framebuffer and display or DAC.\n', ...
+                reqs{floc}, size(lut, 2), nativeBPC);
+        pglutid = PsychHelperCreateGenericLuminanceToRGBA16MaxLUT(lut, nativeBPC, win);
+    else
+        sca;
+        error('PsychImaging: Mandatory lookup table parameter lut for ''%s'' not of uint8 or uint16 type, as required!', reqs{floc});
+    end
 
     if outputcount > 0
         % Need a bufferflip command:
