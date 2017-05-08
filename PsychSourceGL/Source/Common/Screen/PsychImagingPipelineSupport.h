@@ -93,12 +93,12 @@ void PsychDeleteFBO(PsychFBO* fboptr);
 PsychFBO* PsychMSAAResolveToTemp(PsychFBO* msaaFBO);
 
 // Set new OpenGL color renderbuffer attachment backing textures for the PsychFBO's of the finalizedFBO[0/1] output render buffers:
-psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, unsigned int leftglHandle, unsigned int rightglHandle, unsigned int glTextureTarget, unsigned int format,
-                                         unsigned int multiSample, unsigned int width, unsigned int height);
+psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, int leftglHandle, int rightglHandle, int glTextureTarget, int format,
+                                         int multiSample, int width, int height);
 
 // Get current OpenGL color renderbuffer attachment backing textures for the PsychFBO's of the finalizedFBO[0/1] output render buffers:
-psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, unsigned int *leftglHandle, unsigned int *rightglHandle, unsigned int *glTextureTarget, unsigned int *format,
-                                         unsigned int *multiSample, unsigned int *width, unsigned int *height);
+psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, int *leftglHandle, int *rightglHandle, int *glTextureTarget, int *format,
+                                         int *multiSample, int *width, int *height);
 
 // Check if provided PTB texture already has a PsychFBO attached. Do nothing if so. If a FBO is missing, create one:
 void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_bool asRendertarget, int forImagingmode);

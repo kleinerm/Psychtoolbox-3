@@ -1725,11 +1725,11 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
  * worth it.
  *
  */
-psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, unsigned int leftglHandle, unsigned int rightglHandle, unsigned int glTextureTarget, unsigned int format,
-                                         unsigned int multiSample, unsigned int width, unsigned int height)
+psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, int leftglHandle, int rightglHandle, int glTextureTarget, int format,
+                                         int multiSample, int width, int height)
 {
     int viewid;
-    GLuint drawFBO = 0, readFBO = 0;
+    GLint drawFBO = 0, readFBO = 0;
     char fbodiag[100];
     PsychFBO *fbo;
     GLenum fborc = GL_FRAMEBUFFER_COMPLETE_EXT;
@@ -1843,8 +1843,8 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, un
     PsychSetDrawingTarget(NULL);
 
     // Restore old framebuffer assignments:
-    glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, drawFBO);
-    glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, readFBO);
+    glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, (GLuint) drawFBO);
+    glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, (GLuint) readFBO);
 
     return(fborc == GL_FRAMEBUFFER_COMPLETE_EXT);
 }
@@ -1856,8 +1856,8 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, un
  *
  * Returns TRUE on success, FALSE on failure.
  */
-psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, unsigned int *leftglHandle, unsigned int *rightglHandle, unsigned int *glTextureTarget, unsigned int *format,
-                                         unsigned int *multiSample, unsigned int *width, unsigned int *height)
+psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, int *leftglHandle, int *rightglHandle, int *glTextureTarget, int *format,
+                                         int *multiSample, int *width, int *height)
 {
     PsychFBO *fbo;
 
@@ -1868,19 +1868,19 @@ psych_bool PsychGetPipelineExportTexture(PsychWindowRecordType *windowRecord, un
 
     fbo = windowRecord->fboTable[windowRecord->finalizedFBO[0]];
 
-    *leftglHandle = (unsigned int) fbo->coltexid;
+    *leftglHandle = (int) fbo->coltexid;
     if (windowRecord->stereomode & kPsychDualStreamStereo) {
-        *rightglHandle = (unsigned int) windowRecord->fboTable[windowRecord->finalizedFBO[1]]->coltexid;
+        *rightglHandle = (int) windowRecord->fboTable[windowRecord->finalizedFBO[1]]->coltexid;
     }
     else {
         *rightglHandle = 0;
     }
 
-    *glTextureTarget = (unsigned int) fbo->textarget;
-    *format = (unsigned int) fbo->format;
-    *multiSample = (unsigned int) fbo->multisample;
-    *width = (unsigned int) fbo->width;
-    *height = (unsigned int) fbo->height;
+    *glTextureTarget = (int) fbo->textarget;
+    *format = (int) fbo->format;
+    *multiSample = (int) fbo->multisample;
+    *width = (int) fbo->width;
+    *height = (int) fbo->height;
 
     // Enable context for this window, so external client can act on the OpenGL textures:
     PsychSetGLContext(windowRecord);
