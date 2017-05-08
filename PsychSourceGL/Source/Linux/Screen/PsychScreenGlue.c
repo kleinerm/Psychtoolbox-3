@@ -101,7 +101,21 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-/* Mappings up to date for January 2017 (last update e-mail patch / commit 2017-01-06). Would need updates for anything after mid January 2017 */
+/* Mappings up to date for May 2017 (last update e-mail patch / commit 2017-03-30). Would need updates for any commit after March 2017 */
+
+static psych_bool isDCE12(int screenId)
+{
+    psych_bool isDCE12 = false;
+    (void) screenId;
+
+    // VEGA10 is DCE12:
+
+    // VEGA10: 0x6860 - 0x687F
+    if ((fPCIDeviceId & 0xFFF0) == 0x6860) isDCE12 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6870) isDCE12 = true;
+
+    return(isDCE12);
+}
 
 static psych_bool isDCE112(int screenId)
 {
