@@ -3701,7 +3701,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // if we don't care about this, or if care has been taken already by osspecific_asyncflip_scheduled:
             flipcondition_satisfied = (windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->targetFlipFieldType == -1) ||
                                         (preflip_vblcount == 0) || (((preflip_vblcount + 1) % 2) == (psych_uint64) windowRecord->targetFlipFieldType) ||
-                                        (osspecific_asyncflip_scheduled && !must_wait || (windowRecord->specialflags & kPsychSkipWaitForFlipOnce));
+                                        (osspecific_asyncflip_scheduled && !must_wait) || (windowRecord->specialflags & kPsychSkipWaitForFlipOnce);
             // If in wrong video cycle, we simply sleep a millisecond, then retry...
             if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
         } while (!flipcondition_satisfied);
