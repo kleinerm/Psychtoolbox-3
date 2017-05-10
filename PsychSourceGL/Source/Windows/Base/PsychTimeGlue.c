@@ -1129,8 +1129,8 @@ unsigned int PsychGetTimeBaseHealthiness(void)
 }
 
 /* Return MS-Windows wall clock, with millisecond precision. Time is
- * elapsed seconds since 12:00 A.M. January 1, 1601 Coordinated Universal Time (UTC),
- * assuming MS docs are correct, which is not yet verified.
+ * elapsed seconds since 00:00:00 at January 1, 1601 Coordinated Universal Time (UTC),
+ * measured with millisecond granularity.
  *
  * This clock is subject to manual adjustments by the sysadmin, but more importantly,
  * it is subject to automatic drift correction by NTP and similar mechanisms.
@@ -1142,18 +1142,18 @@ double PsychGetWallClockSeconds(void)
     FILETIME fileTime;
     double wallSecs;
 
-    // Get system time (msecs precision only afaik) UTC as FILETIME:
+    // Get system time (msecs precision, but expressed in 100ns ticks), UTC as FILETIME:
     GetSystemTimeAsFileTime(&fileTime);
 
-    // Convert to Nanoseconds format:
+    // Convert to 100-Nanoseconds-ticks format:
     nsecs.u.LowPart = fileTime.dwLowDateTime;
     nsecs.u.HighPart = fileTime.dwHighDateTime;
 
-    // Convert from nanoseconds to microseconds, then after conversion
+    // Convert from 100 nanosecond ticks to microseconds, then after conversion
     // to double format, to seconds with microsecond precision.
     // Note: The input timestamps are millisecond precision/granularity
     // only, so getting down to microseconds will not lose any precision.
-    wallSecs = ((double) (nsecs.QuadPart / 1000)) / 1e6;
+    wallSecs = ((double) (nsecs.QuadPart / 10)) / 1e6;
 
     return(wallSecs);
 }
