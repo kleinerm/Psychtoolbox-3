@@ -34,8 +34,8 @@ PsychError PsychModuleInit(void)
     //is invoked with no arguments:
     PsychErrorExit(PsychRegister(NULL,  &GETSECSGetSecs));
 
-    //report the version
     PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
+    PsychErrorExit(PsychRegister("AllClocks",  &GETSECSAllClocks));
 
     //register the module name
     PsychErrorExit(PsychRegister("GetSecs", NULL));

@@ -31,6 +31,7 @@
 //function prototypes
 PsychError MODULEVersion(void);
 PsychError GETSECSGetSecs(void);
+PsychError GETSECSAllClocks(void);
 
 //end include once
 #endif

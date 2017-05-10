@@ -93,3 +93,80 @@ PsychError GETSECSGetSecs(void)
 
     return(PsychError_none);
 }
+
+PsychError GETSECSAllClocks(void)
+{
+    static char useString[] = "[GetSecsTime, WallTime, syncErrorSecs] = GetSecs('AllClocks' [, maxError=0.000020]);";
+    //                          1            2         3                                       1
+    static char synopsisString[] =
+    "Return current time in seconds according to all supported clocks.\n\n"
+    "'GetSecsTime' is the usual GetSecs() clock, as returned by GetSecs(), in the timebase "
+    "used by all other Psychtoolbox functions, e.g., Screen('Flip') or PsychPortAudio timestamps.\n\n"
+    "'WallTime' is real-world system time in an operating system specific timebase. This clock is "
+    "expected to be subject to time adjustments by the system administrator or by automated mechanisms "
+    "like NTP time adjustments. Useful for synchronizing clocks across multiple machines on a local "
+    "network, as it is possible for this clock to get automatically corrected for drift.\n"
+    "On Linux and OSX, the timebase is gettimeofday(), seconds since 1. January 1970 00:00:00 UTC, "
+    "with about 1 microsecond precision typically. On MS-Windows the timebase is UTC time, with about "
+    "1 millisecond granularity, so far unverified. Zero point on Windows is 12:00 A.M. January 1, 1601 "
+    "Coordinated Universal Time (UTC).\n\n"
+    "'syncErrorSecs' How tightly together did the returned clock times get queried? A measure of "
+    "confidence as to how much all returned times actually denote the same point in physical time.\n\n"
+    "The input argument 'maxError' allows to set an allowable upper bound to 'syncErrorSecs'. The "
+    "default value is 20 microseconds. The function will try up to 10 times to get a result no worse "
+    "than 'maxError', and output a warning if it doesn't manage, e.g., due to some severely "
+    "overloaded or deficient system.";
+    static char seeAlsoString[] = "";
+
+    static psych_bool firstTimeWarning = TRUE;
+    int maxRetries = 10;
+    double *getSecsClock, getSecsClock2;
+    double maxError = 20 * 1e-6;                // Default to 20 usecs max clock mapping error.
+    double wallClock;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(3));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+
+    PsychCopyInDoubleArg(1, FALSE, &maxError);
+    if (maxError < 0.000001)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'maxError' argument supplied. Lower than minimum allowed value of 1 microsecond.\n");
+
+    // Return arg 1 is as usual GetSecs time:
+    PsychAllocOutDoubleArg(1, FALSE, &getSecsClock);
+
+    // Repeat clock queries up to maxRetries times if they can't be completed within
+    // maxError seconds and thereby "clock sync" between returned values is not good
+    // enough:
+    do {
+        PsychGetAdjustedPrecisionTimerSeconds(getSecsClock);
+        wallClock = PsychGetWallClockSeconds();
+        PsychGetAdjustedPrecisionTimerSeconds(&getSecsClock2);
+    } while ((maxRetries-- > 0) && (getSecsClock2 - *getSecsClock > maxError));
+
+    // Warn on excessive error, at least once:
+    if (firstTimeWarning && (getSecsClock2 - *getSecsClock > 2 * maxError)) {
+        firstTimeWarning = FALSE;
+        printf("PTB-WARNING: GetSecs('AllClocks') sync margin %f secs > 2 times maxError %f even after multiple retries! System timing problems?1?\n",
+               getSecsClock2 - *getSecsClock, 2 * maxError);
+        printf("PTB-WARNING: This one-time warning will not repeat, even on successive failure to reach good precision. Check your system.\n");
+    }
+
+    // Return arg 2 is Wall clock, system specific but usually related to real-world
+    // time, e.g., UTC, NTP time, or Unix time, something that translates in normal
+    // clocks like humans use it. On Unix (Linux and OSX) this is gettimeofday() Unix
+    // time, system time, measured in seconds since 1. January 1970. On Windows this is
+    // UTC time, measured in seconds since whatever. This clock is subject to changes
+    // of system time, manually by the system administrator, or automatically by NTP
+    // and similar clock sync services.
+    PsychCopyOutDoubleArg(2, FALSE, wallClock);
+
+    // Return arg3 = Confidence interval for sync between clock queries:
+    PsychCopyOutDoubleArg(3, FALSE, getSecsClock2 - *getSecsClock);
+
+    return(PsychError_none);
+}

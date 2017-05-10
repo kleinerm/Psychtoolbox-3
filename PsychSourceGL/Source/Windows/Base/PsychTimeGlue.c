@@ -1128,6 +1128,10 @@ unsigned int PsychGetTimeBaseHealthiness(void)
     return(v);
 }
 
+double PsychGetWallClockSeconds(void)
+{
+}
+
 /* Init a Mutex: */
 int PsychInitMutex(psych_mutex* mutex)
 {

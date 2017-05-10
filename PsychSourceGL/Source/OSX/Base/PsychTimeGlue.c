@@ -188,6 +188,14 @@ double PsychGetEstimatedSecsValueAtTickCountZero(void)
     return(0.0);
 }
 
+/* PsychGetWallClockSeconds - Return gettimeofday() wall clock time. */
+double PsychGetWallClockSeconds(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return(((double) tv.tv_sec) + (((double) tv.tv_usec) / 1000000.0));
+}
+
 /* Init a Mutex: */
 int	PsychInitMutex(psych_mutex* mutex)
 {
@@ -487,7 +495,7 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 }
 
 /* Set thread affinity mask of calling thread to the modules global cpuMask:
- * 
+ *
  * 'curCpuMask' is an in/out pointer. If NULL, it is completely ignored. If non-NULL,
  * the target variable of the pointer will contain the new cpu mask after a change
  * of mask. If the target variable already contains a valid (non-zero) current cpu mask
@@ -506,7 +514,7 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
  *
  * If this function is called without the time lock held, ie., from outside
  * of other timeglue functions, a small race condition exists which may cause
- * deferred updated to the real new affinity mask due to 
+ * deferred updated to the real new affinity mask due to
  *
  */
 psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
