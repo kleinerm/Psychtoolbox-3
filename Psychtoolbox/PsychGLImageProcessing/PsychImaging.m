@@ -2952,8 +2952,12 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'))) || ...
 
     % The ATI 10/11bpc formatter is not yet icm aware - Incapable of internal color correction!
     % Additionally native 10/11 bpc framebuffers, e.g., on Fire-Series or NVidia cards also don't
-    % have icm aware output formatting, so a 'false' setting here is mandatory:
-    ptb_outputformatter_icmAware = 0;
+    % have icm aware output formatting, so a 'false' setting would be mandatory. However, we leave
+    % the setting at whatever it currently is, as it defaults to 0 / false anyway, and the PseudoGray
+    % or EnableGenericHighPrecisionLuminanceOutput might have requested a 1 / true setting and we do
+    % not want to override that. This to allow to stack such a perceptual precision boosting trick
+    % on top of a 10/11 bpc framebuffer.
+    % ptb_outputformatter_icmAware = 0;
 end
 
 % Request for native 16 bit per color component ARGB16161616 framebuffer?
@@ -3077,7 +3081,9 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
     end
 
     % The AMD 16 bpc formatter is not icm aware - Incapable of internal color correction!
-    ptb_outputformatter_icmAware = 0;
+    % See 'EnableNative10BitFramebuffer' above, for why we don't touch the ptb_outputformatter_icmAware
+    % setting instead of forcing it to 0 / false:
+    % ptb_outputformatter_icmAware = 0;
 end
 
 % Request for dual display pipeline custom HDR system?
