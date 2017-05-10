@@ -1,29 +1,27 @@
 /*
 
-  	PsychToolbox3/Source/Windows/Base/PsychTimeGlue.h
+    PsychToolbox3/Source/Windows/Base/PsychTimeGlue.h
 
-  	AUTHORS:
+    AUTHORS:
 
-  	mario.kleiner@tuebingen.mpg.de	mk
+    mario.kleiner.de@gmail.com          mk
 
-	PLATFORMS: Win32 only
+    PLATFORMS:
 
-  	PROJECTS:
+    Win32 only
 
-  	1/20/03	awi		Screen on OS X
+    PROJECTS:
 
-  	HISTORY:
+    All.
 
-  	1/20/03	awi		Wrote it for OS/X.  
-	1/03/09	mk		Add generic Mutex locking support as service to ptb modules.
+    HISTORY:
 
-  	DESCRIPTION:
-
-	TO DO:
+    1/20/03     awi     Wrote it for OS/X.
+    1/03/09     mk      Add generic Mutex locking support as service to ptb modules.
 
 */
 
-//begin include once 
+//begin include once
 #ifndef PSYCH_IS_INCLUDED_PsychTimeGlue
 #define PSYCH_IS_INCLUDED_PsychTimeGlue
 
@@ -32,7 +30,7 @@
 void PsychWaitUntilSeconds(double whenSecs);
 void PsychWaitIntervalSeconds(double seconds);
 void PsychYieldIntervalSeconds(double seconds);
-double	PsychGetKernelTimebaseFrequencyHz(void);
+double PsychGetKernelTimebaseFrequencyHz(void);
 void PsychGetPrecisionTimerTicks(psych_uint64 *ticks);
 void PsychGetPrecisionTimerTicksPerSecond(double *frequency);
 void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta);
@@ -47,8 +45,8 @@ double PsychGetEstimatedSecsValueAtTickCountZero(void);
 double PsychGetTimeGetTimeValueAtLastTimeQuery(double* precisionRawtime);
 unsigned int PsychGetTimeBaseHealthiness(void);
 double PsychMapPrecisionTimerTicksToSeconds(psych_uint64 ticks);
-int	PsychInitMutex(psych_mutex* mutex);
-int	PsychDestroyMutex(psych_mutex* mutex);
+int PsychInitMutex(psych_mutex* mutex);
+int PsychDestroyMutex(psych_mutex* mutex);
 int PsychLockMutex(psych_mutex* mutex);
 int PsychTryLockMutex(psych_mutex* mutex);
 int PsychUnlockMutex(psych_mutex* mutex);
