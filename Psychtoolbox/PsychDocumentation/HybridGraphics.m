@@ -114,22 +114,32 @@
 %   solution is less flexible and power-efficient than use of the "nouveau" open-source
 %   driver. It requires some setup work, and it needs XOrg X-Server 1.19.0 or later, so
 %   you need to use a Linux distribution which uses X-Server 1.19. As of May 2017,
-%   "Ubuntu 17.04 Zesty Zappus" ships with X-Server 1.19.3, Linux 4.10, and a suitable
-%   NVidia proprietary driver of at least version 375.39, as well as a convenient setup
-%   mechanism for Optimus support. We therefore recommend Ubuntu 17.04 for Optimus laptops,
-%   as setup is simple:
+%   "Ubuntu 17.04 Zesty Zappus" ships with X-Server 1.19.3, Linux 4.10, and NVidia
+%   proprietary driver of version 375.39, as well as a convenient setup mechanism for
+%   Optimus support. We therefore recommend Ubuntu 17.04 for Optimus laptops, as setup
+%   is rather simple and this distro is successfully tested with two Optimus laptops and
+%   Psychtoolbox. However, the 375.39 driver shipping with Ubuntu 17.04 contains some bugs
+%   related to Optimus, which were fixed in driver version 375.66, so first we need to enable
+%   the proprietary graphics driver ppa to get a convenient update to NVidia driver version
+%   375.66 or later versions. Follow the following steps on Ubuntu 17.04 to get Optimus set up:
 %
-%   1. Use the 3rd party driver manager to select the NVidia proprietary driver for use
-%      on your system, or select the proprietary driver already during installation of
-%      Ubuntu 17.04. This will automatically setup standard Optimus / PRIME support.
+%   1. Install the proprietary graphics drivers ppa by typing in a terminal:
+%       sudo add-apt-repository ppa:graphics-drivers/ppa
+%       sudo apt-get update
 %
-%   2. Edit the file /etc/modprobe.d/nvidia-graphics-drivers.conf. Modify the last line
+%   2. Then launch the 3rd party driver manager GUI to select the NVidia proprietary driver
+%      for use on your system. You must select a NVidia proprietary driver of the 375 series,
+%      with a version number of 375.66 or later. This will also automatically setup standard
+%      Optimus / PRIME support for tear-free stimulus display, but getting proper visual
+%      stimulation timing and timestamping for Psychtoolbox requires some more steps.
+%
+%   3. Edit the file /etc/modprobe.d/nvidia-graphics-drivers.conf. Modify the last line
 %      in that file and replace the assignment modeset=0 with modeset=1 to enable drm
 %      modesetting support.
 %
-%   3. Execute "sudo update-initramfs -u -k all" in a terminal.
+%   4. Execute "sudo update-initramfs -u -k all" in a terminal.
 %
-%   4. Copy the custom Psychtoolbox modesetting driver into the system driver directory.
+%   5. Copy the custom Psychtoolbox modesetting driver into the system driver directory.
 %      There are two variants, the nolag variant and the highlag variant. In theory, the
 %      nolag variant would be preferrable, but it sometimes gives inconsistent performance:
 %
@@ -140,7 +150,7 @@
 %
 %      sudo cp /pathto/Psychtoolbox/PsychHardware/LinuxDrivers/NVidiaOptimus/modesetting_drv.so_highlag /usr/lib/xorg/extra-modules/modesetting_drv.so
 %
-%   5. Reboot. Now your system should be ready for research compatible Optimus.
+%   6. Reboot. Now your system should be ready for research compatible Optimus.
 %
 %   On Ubuntu, the "nvidia-settings" GUI tool allows you to switch between Optimus (PRIME) and
 %   standard Intel graphics. The section "PRIME profiles" allows to click on a toggle button
