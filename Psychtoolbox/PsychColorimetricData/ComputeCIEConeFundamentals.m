@@ -10,8 +10,8 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % may want energy sensitivities.  In that case, use EnergyToQuanta to convert
 %   T_energy = EnergyToQuanta(S,T_quantal')'
 % and then renormalize.  (You call EnergyToQuanta because you're converting
-% sensitivities, which go the opposite directoin from spectra.)
-% The routine also returns two quantal sensitivity functions.  The first gives
+% sensitivities, which go the opposite direction from spectra.)
+% The routine also returns two quantal sensitivity functions. The first gives
 % the probability that a photon will be absorbed.  The second is the probability
 % that the photon will cause a photopigment isomerization.  It is the latter
 % that is what you want to compute isomerization rates from retinal illuminance.
@@ -72,7 +72,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % spectral sensitivities, and this is not so good.  We are phasing out our
 % use of this feature in favor of simply shifting the tabulated
 % photopigment absorbances, and indeed in favor of adopting the method
-% published by Asano, Fairchild, & BlondÈ (2016), PLOS One, doi: 10.1371/journal.pone.0145671
+% published by Asano, Fairchild, & Blonde (2016), PLOS One, doi: 10.1371/journal.pone.0145671
 % to tailor the CIE fundamentals to individual observers.  This is done by
 % passing the argument indDiffParams, which is a structure as follows.
 %     'linear' gets the Asano et al. behavior

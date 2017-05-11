@@ -17,7 +17,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % retinal illuminance. See note at the end of function FillInPhotoreceptors
 % for some information about convention.  In particular, this routine takes
 % pre-retinal absorption into account in its computation of probability of
-% absorptions and isomerizations, so that the relevant retinal illuminant
+% absorptions and isomerizations, so that the relevant retinal illuminance
 % is one computed without accounting for those factors.  This routine does
 % not account for light attenuation due to the pupil, however.  The only
 % use of pupil size here is becuase of its slight effect on lens density as
