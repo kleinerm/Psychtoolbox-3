@@ -66,6 +66,13 @@ function [status, error] = NetStation(varargin)
 %
 %            Flushes the read buffer.
 %
+%   This also contains an experimental implementation of NTP clock drift corrected
+%   synchronization with EGI, under the subfunction NetStation('ntpsynchronize'), but
+%   this code is so far completely untested! It may or may not work, and its behavior
+%   may change drastically in future releases, or the subfunction may disappear again.
+%   Only for alpha-testing by dedicated testers, not to be relied on in any way fo real
+%   data collection!
+%
 %   Uses a modified version of the TCP/UDP/IP Toolbox 2.0.5, a third party GPL'ed
 %   open source toolbox, which is included in Psychtoolbox,
 %   but also available from the Mathworks website:
@@ -79,14 +86,31 @@ function [status, error] = NetStation(varargin)
 %   This function was modified by Matt Mollison to accommodate sending more than just int16s to Net Station
 %   Improved by Justin Ales 2014.
 %   Consolidated by Gergely Csibra, 2015
+%   Improved by Justin Ales 2017.
 %%
 
 persistent NSIDENTIFIER;
 persistent NSSTATUS;
 persistent NSRECORDING;
-persistent SYNCHEPOCH; %This is to fix the bug that large epochs (like unix) overflows the int32 value --JMA
+
+%Originally this was to fix the bug that large epochs (like unix) overflows
+%the int32 value. Now it's also being used to implement NTP synching--JMA
+persistent SYNCHEPOCH;
+persistent NTPSYNCED;
 
 DefaultSynchLimit = 2.5;  % The accuracy of synchronization in milliseconds
+
+%Switch for implementing debug code.
+%Set to true if no netstation is connected.
+noNetstationAvailable = false;
+netstationAvailable   = ~noNetstationAvailable; %Cause double negatives annoy me.
+
+%Debug code
+if noNetstationAvailable
+    NSIDENTIFIER = 1;
+    SYNCHEPOCH = 0;
+    NTPSYNCED = 0;
+end
 
 if nargin < 1
     if(isempty(NSSTATUS))
@@ -135,6 +159,7 @@ else
                         NSIDENTIFIER = 0;
                     end
                     SYNCHEPOCH = 0;
+                    NTPSYNCED = 0;
                 end
             end
         case 'disconnect'
@@ -183,6 +208,147 @@ else
                 if n >= 100
                     warning('\nNetStationPC synchronization did not succeed within %.1f ms\nSynchronizatoin accuracy is %.1f ms\n',NSSynchLimit,df);
                 end
+                NTPSYNCED = 0;
+            end
+
+        case 'ntpsynchronize'
+            if isempty(NSIDENTIFIER) || (NSIDENTIFIER < 0)
+                status = 1;
+            else
+                if netstationAvailable
+                    %Tell netstation to get ready for synchronization.
+                    send(NSIDENTIFIER,'A');
+                    receive(NSIDENTIFIER,1);
+                    %get the timebase from the netstation.
+                    send(NSIDENTIFIER,'S');
+                end
+
+                % Get current time in EGI's NTP adjusted timebase (seconds since 1.1.1900):
+                [ntpTimestamp] = receiveNtpTimestamp(NSIDENTIFIER);
+
+                % Get current PTB GetSecs time and NTP adjusted UTC time.
+                % ptbRefTime on Linux/OSX/Unix is time in seconds since 1.1.1970, NTP synced, microseconds resolution.
+                % ptbRefTime on Windows is time in seconds since 1.1.1601, NTP synced, milliseconds resolution.
+                [ptbTimestamp, ptbRefTime] = GetSecs('AllClocks');
+
+                %For debugging let's print what EGI gave us.
+                rawDataString = dec2hex(ntpTimestamp);
+                disp('Raw NETSTATION NTP timestamp bytes:')
+                disp(rawDataString)
+
+                %The first 32 bits is the seconds since 1900
+                netstationSyncEpochSeconds = ntpTimestamp(1);
+
+                %THe next 32 bits is fractions of a second
+                %With one tick equal to 2^-32 seconds.
+                %We want to convert this to a more convenient number.
+                %I'm using microseconds. To get these first divide the
+                %fraction by 2^-32 to convert to Seconds than multiply
+                %by 10^6 to convert seconds to microseconds.
+                %I'm using microseconds because ideally we want sub
+                %millisecond precision. Also, because I want all
+                %conversions as explicit as possible for documentation.
+                netstationSynchEpochMicroSeconds = ntpTimestamp(2) * 1e6 / 2 ^ 32;
+
+                % NetStation system time at sync, seconds since 1.1.1900, NTP synced:
+                netStationSyncFraction = netstationSyncEpochSeconds + netstationSynchEpochMicroSeconds / 1e6;
+
+                % Now we need to convert the ntp sync time to the
+                % equivalent timebase used by PTB. On Linux and OSX the
+                % epoch is 1970, on Windows the epoch is the year 1601.
+                % So first we're going to convert the netstation epoch
+                % to these:
+                if IsWin
+                    secondsFromNtpEpochToSystemEpoch = -9435484800;
+                else
+                    secondsFromNtpEpochToSystemEpoch = 2208988800;
+                end
+
+                %Let's create a human readable string for help
+                %debugging, first we make a single number for the numnber
+                %of seconds. Then we create a matlab date vector
+                %corresponding to the ntp epoch. Then we use the matlab
+                %datestr to create a human readable date.
+
+                matlabDateNum = datenum([1900 1 1 0 0  netStationSyncFraction]);
+                netstationSynchString = datestr(matlabDateNum,'yyyy-mm-dd HH:MM:SS.FFF');
+                disp('Human readable NETSTATION NTP timestamp bytes:')
+                disp(netstationSynchString)
+                rawPtbTimestamp = num2hex(ptbTimestamp);
+                disp(['Raw ptb timestamp bytes: ' rawPtbTimestamp])
+
+                %On osx the timer is in boot time not unix epoch time. We
+                %don't know when the boot happened in unix/ntp time. So we
+                %need to figure this out to have a common timebase. What
+                %I'm doing here is using an undocumented feature of GetSecs
+                %to return more outputs when called with a non-zero input.
+                %The second return value is gettimeofday() time on OSX
+                %Gettimofday() is referenced to the unix epoch.  So we can
+                %use that to figure out when the boot time was in unix
+                %epoch.
+                %Warning: I'm relying on the latency between the call to
+                %mach_absolute_time() and gettimeofday() to be shorter than
+                %a millisecond.  On my quick test of GetSecs time it was
+                %taking around .1-.3 milliseconds for the total time for
+                %GetSecs. That's ok as an upper bound, but it's
+                %uncomfortably long. There must be a better/more accurate
+                %way to find get information. It either exists somewhere to
+                %query, or we can write specific c-code for this and test
+                %it a bit more rigorously
+                %
+
+                % Difference PTB GetSecs time and ptbRefTime at this point in time,
+                % drifting over time:
+                unixEpochToCurrentEpoch = ptbRefTime - ptbTimestamp;
+
+                % Set difference between ptbRefTime and EGI time as SYNCHEPOCH:
+                SYNCHEPOCH = ptbRefTime - netStationSyncFraction;
+                NTPSYNCED = 1;
+
+                fprintf('NetStation: Clock offset GetSecs() - NTP adjusted time: %f secs.\n', unixEpochToCurrentEpoch);
+                fprintf('NetStation: Clock offset between current EGI NTP time and current PTB NTP time: %f secs.\n', -SYNCHEPOCH);
+                if IsWin
+                    fprintf('NetStation: Difference between 1. January 1601 and 1. January 1900: %f secs.\n', ...
+                            -secondsFromNtpEpochToSystemEpoch);
+                else
+                    fprintf('NetStation: Difference between 1. January 1970 and 1. January 1900: %f secs.\n', ...
+                            secondsFromNtpEpochToSystemEpoch);
+                end
+                fprintf('NetStation: Mismatch between actual and expected offset: %f secs.\n', -SYNCHEPOCH - secondsFromNtpEpochToSystemEpoch);
+
+                %This code should result in the NTP timestamp from EGI
+                %being in the PTB timebase.
+                %Ntp Starts at 1900, Unix starts at 1970, Osx starts at
+                %boot.
+                %ptbSyncEpochSeconds = netstationSyncEpochSeconds - secondsFromNtpEpochToSystemEpoch-unixEpochToCurrentEpoch;
+
+                %The fractional part of the second is the same.
+                %ptbSynchEpochMicroSeconds = netstationSynchEpochMicroSeconds;
+
+                %Finally let's put it together. We want to know what to
+                %subtract from PTB timestamps in order to
+                %count milliseconds for sending events to
+                %EGI. So SYNCHEPOCH should be a time in the PTB
+                %timebase.
+
+                %This is a floating point double so there is a
+                %slight problem that the smallest unit isn't very small
+                %and changes with time.  Currently (2017) in: to
+                %determine:
+                %eps(SYNCHEPOCH)
+                %Which is currently 2.384 e-7. Or ~0.3 microseconds.
+                %This should be sufficient for present purposes
+                %requiring 1000 microsecond precision, but is
+                %uncomfortably close for my liking and could create a
+                %problem if care isn't taken.
+                %SYNCHEPOCH = ptbSyncEpochSeconds + ptbSynchEpochMicroSeconds / 1e6;
+
+                %Debug output.
+                %rawSynchEpochBytes = num2hex(SYNCHEPOCH);
+                %disp('Raw synch epoch bytes:')
+                %disp(rawSynchEpochBytes)
+
+                status=0;
             end
         case 'startrecording'
             if isempty(NSIDENTIFIER) || (NSIDENTIFIER < 0)
@@ -217,12 +383,39 @@ else
                     event = [char(varargin{2}) '    '];
                 end
 
-                if nargin < 3 || isempty(varargin{3})
-                    start = GetSecs();
+                if nargin < 3
+                    start = [];
                 else
                     start = varargin{3};
                 end
-                start = start - SYNCHEPOCH;
+
+                % Are Psychtoolbox client computer and NetStation host computer NTP synchronized?
+                if NTPSYNCED
+                    % Yes: Translate GetSecs timestamp into PTB NTP synchronized time via local clock-sync,
+                    % then by subtracting SYNCHEPOCH, translate that into EGI's NTP synchronized time since
+                    % 1.1.1900 and implicitely subtract time of last sync with EGI, ie. final result is elapsed
+                    % seconds since 'ntpsynchronize', but NTP drift corrected, so we don't accumulate more than
+                    % a tiny amount of drift between invocations of 'ntpsynchronize', even for long experiment
+                    % runtimes:
+                    [ptbGetSecsTime, ptbRefTime] = GetSecs('AllClocks');
+                    if isempty(start)
+                        % Can skip translation and use current ptbRefTime directly,
+                        % just get delta to 'ntpsynchronize' and implict translation
+                        % from [1.1.1970 or 1.1.1601] -> 1.1.1900. This is a tad more accurate:
+                        start = ptbRefTime - SYNCHEPOCH;
+                    else
+                        % Translate, map, get delta:
+                        GetSecsToNTPTime = ptbGetSecsTime - ptbRefTime;
+                        start = start - GetSecsToNTPTime - SYNCHEPOCH;
+                    end
+                else
+                    % No: Just transmit elapsed time since event GetSecs timestamp and
+                    % EGI base timestamp from last 'synchronize'.
+                    if isempty(start)
+                        start = GetSecs();
+                    end
+                    start = start - SYNCHEPOCH;
+                end
 
                 if nargin < 4 || isempty(varargin{4})
                     duration=.001;
@@ -295,6 +488,15 @@ function rep=receive(con,len)
     rep=pnet(con,'read',len,'char');
 end
 
+% Receives 8 byte ntp timestamp from EGI system.
+function ntpTimestamp=receiveNtpTimestamp(con)
+    if noNetstationAvailable
+        ntpTimestamp(1) = 1494145042+2208988800;
+        ntpTimestamp(2) = 0;
+    else
+        ntpTimestamp=double(pnet(con,'read',2,'uint32'));
+    end
+end
 
 function errstr=nserr(status)
     switch status
