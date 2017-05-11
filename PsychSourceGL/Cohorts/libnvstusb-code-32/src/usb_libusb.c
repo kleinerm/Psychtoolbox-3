@@ -34,10 +34,10 @@ libusb_error_to_string(
     case LIBUSB_ERROR_OTHER:          return "Other error";
   }
   return "Unknown error";
-}  
+}
 
 /* initialize usb */
-bool 
+bool
 nvstusb_usb_init(
 ) {
   if (0 != nvstusb_usb_context) {
@@ -69,7 +69,7 @@ nvstusb_usb_deinit(
 
   nvstusb_usb_context = 0;
 }
-    
+
 /* get the number of endpoints on a device */
 static int
 nvstusb_usb_get_numendpoints(
@@ -113,7 +113,7 @@ nvstusb_usb_load_firmware(
 
   FILE *fw = fopen(filename, "rb");
   if (!fw) { perror(filename); return -1; }
-  
+
   fprintf(stderr, "nvstusb: Loading firmware...\n");
 
   uint8_t lenPos[4];
@@ -122,15 +122,15 @@ nvstusb_usb_load_firmware(
   while(fread(lenPos, 4, 1, fw) == 1) {
     uint16_t length = (lenPos[0]<<8) | lenPos[1];
     uint16_t pos    = (lenPos[2]<<8) | lenPos[3];
-  
-    if (fread(buf, length, 1, fw) != 1) { 
-      perror(filename); 
-      return LIBUSB_ERROR_OTHER; 
+
+    if (fread(buf, length, 1, fw) != 1) {
+      perror(filename);
+      return LIBUSB_ERROR_OTHER;
     }
 
     int res = libusb_control_transfer(
       dev->handle,
-      LIBUSB_REQUEST_TYPE_VENDOR, 
+      LIBUSB_REQUEST_TYPE_VENDOR,
       0xA0, /* 'Firmware load' */
       pos, 0x0000,
       buf, length,
@@ -144,7 +144,26 @@ nvstusb_usb_load_firmware(
 
   fclose(fw);
   return 0;
-}       
+}
+
+/* List of potential USB product id's that NVIDIA NVision emitters can have
+ * to our current knowledge. 0x0000 terminated:
+ */
+static uint16_t cand_pids[] = { 0x0007, 0x7001, 0x7002, 0x7003, 0x7004, 0x7008,
+                                0x7009, 0x700a, 0x700c, 0x700d, 0x700e, 0x0000 };
+
+/* Try to open 3d controller under all known pids, probing until one works */
+static struct libusb_device_handle* usb_open_device_with_vid_pids(void)
+{
+  int i;
+  struct libusb_device_handle *handle = NULL;
+
+  for (i = 0; !handle && cand_pids[i]; i++) {
+    handle = libusb_open_device_with_vid_pid(nvstusb_usb_context, 0x0955, cand_pids[i]);
+  }
+
+  return handle;
+}
 
 /* open 3d controller */
 struct nvstusb_usb_device *
@@ -153,9 +172,8 @@ nvstusb_usb_open_device(
 ) {
   assert(nvstusb_usb_context != 0);
 
-  int res; 
-  struct libusb_device_handle *handle = 
-    libusb_open_device_with_vid_pid(nvstusb_usb_context, 0x0955, 0x0007);
+  int res;
+  struct libusb_device_handle *handle = usb_open_device_with_vid_pids();
 
   if (0 == handle) {
     fprintf(stderr, "nvstusb: No NVIDIA 3d stereo controller found...\n");
@@ -169,18 +187,55 @@ nvstusb_usb_open_device(
 
   if (nvstusb_usb_needs_firmware(dev)) {
     if (nvstusb_usb_load_firmware(dev, firmware) < 0) {
+      libusb_close(dev->handle);
       free(dev);
       return 0;
     }
-    libusb_reset_device(dev->handle);
+
+    if ((res = libusb_reset_device(dev->handle))) {
+      fprintf(stderr, "nvstusb: Failed to USB reset NVIDIA 3d stereo controller after firmware loading [%s].\n",
+              libusb_error_to_string(res));
+      libusb_close(dev->handle);
+      free(dev);
+      return 0;
+    }
+
     libusb_close(dev->handle);
     usleep(250000);
-    handle = dev->handle = libusb_open_device_with_vid_pid(nvstusb_usb_context, 0x0955, 0x0007);
-    libusb_reset_device(dev->handle);
+
+    handle = dev->handle = usb_open_device_with_vid_pids();
+    if (0 == handle) {
+      fprintf(stderr, "nvstusb: Failed to reopen NVIDIA 3d stereo controller after firmware loading.\n");
+      free(dev);
+      return 0;
+    }
+
+    if ((res = libusb_reset_device(dev->handle))) {
+      fprintf(stderr, "nvstusb: Failed to USB reset NVIDIA 3d stereo controller after reopen [%s].\n",
+              libusb_error_to_string(res));
+      libusb_close(dev->handle);
+      free(dev);
+      return 0;
+    }
+
     usleep(250000);
   }
-  libusb_set_configuration(dev->handle, 1); // TODO: error checking
-  libusb_claim_interface(dev->handle, 0);   // TODO: error checking
+
+  if ((res = libusb_set_configuration(dev->handle, 1))) {
+    fprintf(stderr, "nvstusb: Failed to set usb configuration on NVIDIA 3d stereo controller after reopen [%s].\n",
+            libusb_error_to_string(res));
+    libusb_close(dev->handle);
+    free(dev);
+    return 0;
+  }
+
+  if ((res = libusb_claim_interface(dev->handle, 0))) {
+    fprintf(stderr, "nvstusb: Failed to claim usb interface 0 on NVIDIA 3d stereo controller after set configuration [%s].\n",
+            libusb_error_to_string(res));
+    libusb_close(dev->handle);
+    free(dev);
+    return 0;
+  }
 
   return dev;
 }
@@ -207,11 +262,18 @@ nvstusb_usb_write_bulk(
   int size
 ) {
   int sent = 0;
-  
+  int res;
+
   assert(dev         != 0);
   assert(dev->handle != 0);
 
-  return libusb_bulk_transfer(dev->handle, endpoint | LIBUSB_ENDPOINT_OUT, (unsigned char*)data, size, &sent, 0);
+  res = libusb_bulk_transfer(dev->handle, endpoint | LIBUSB_ENDPOINT_OUT, (unsigned char*)data, size, &sent, 0);
+  if (res) {
+    fprintf(stderr, "nvstusb: Failed to do a write bulk transfer on NVIDIA 3d stereo controller [%s].\n",
+            libusb_error_to_string(res));
+  }
+
+  return res;
 }
 
 /* receive data from an endpoint */
@@ -224,12 +286,15 @@ nvstusb_usb_read_bulk(
 ) {
   int recvd = 0;
   int res;
-  
+
   assert(dev         != 0);
   assert(dev->handle != 0);
-  
+
   res = libusb_bulk_transfer(dev->handle, endpoint | LIBUSB_ENDPOINT_IN, (unsigned char*) data, size, &recvd, 200);
+  if (res) {
+    fprintf(stderr, "nvstusb: Failed to do a read bulk transfer on NVIDIA 3d stereo controller [%s].\n",
+            libusb_error_to_string(res));
+  }
+
   return recvd;
 }
-
- 

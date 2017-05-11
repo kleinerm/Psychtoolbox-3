@@ -58,9 +58,9 @@
 
 #include "Screen.h"
 
-#define MAX_SYNOPSIS_STRINGS 500  
+#define MAX_SYNOPSIS_STRINGS 500
 
-//declare variables local to this file.  
+//declare variables local to this file.
 static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
 void InitializeSynopsis()
@@ -76,7 +76,7 @@ void InitializeSynopsis()
 
     // Open or close a window or texture:
     synopsis[i++] = "\n% Open or close a window or texture:";
-    synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode][,specialFlags][,clientRect]);";
+    synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode][,specialFlags][,clientRect][,fbOverrideRect]);";
     synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,specialFlags] [,multiSample]);";
     synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";
     synopsis[i++] = "oldParams = Screen('PanelFitter', windowPtr [, newParams]);";
@@ -167,6 +167,7 @@ void InitializeSynopsis()
     synopsis[i++] = "resolutions=Screen('Resolutions', screenNumber);";
     synopsis[i++] = "oldResolution=Screen('Resolution', screenNumber [, newwidth] [, newheight] [, newHz] [, newPixelSize] [, specialMode]);";
     synopsis[i++] = "oldSettings = Screen('ConfigureDisplay', setting, screenNumber, outputId [, newwidth][, newheight][, newHz][, newX][, newY]);";
+    synopsis[i++] = "Screen('ConstrainCursor', windowIndex, addConstraint [, rect]);";
 
     // Get and set information about the environment, computer, and video card (i.e. screen):
     synopsis[i++] = "\n% Get/set details of environment, computer, and video card (i.e. screen):";
@@ -190,6 +191,7 @@ void InitializeSynopsis()
     synopsis[i++] ="[x, y, buttonVector, hasKbFocus, valuators]= Screen('GetMouseHelper', numButtons [, screenNumber][, mouseIndex]);";
     synopsis[i++] = "Screen('HideCursorHelper', windowPntr [, mouseIndex]);";
     synopsis[i++] = "Screen('ShowCursorHelper', windowPntr [, cursorshapeid][, mouseIndex]);";
+    synopsis[i++] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y [, mouseIndex][, detachFromMouse]);";
     synopsis[i++] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y [, mouseIndex][, detachFromMouse]);";
 
     // Internal testing of Screen

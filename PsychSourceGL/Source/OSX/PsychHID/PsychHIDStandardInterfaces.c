@@ -49,7 +49,7 @@ static  int defaultKeyboardIndex = 0;
 // in/out parameter:
 int PsychHIDOSGetKbQueueDevice(int HIDdeviceIndex, pRecDevice *deviceRecord)
 {
-    psych_bool foundUserSpecifiedDevice;
+    psych_bool foundUserSpecifiedDevice = FALSE;
     int i;
 
     // A negative device number causes the default device to be used:
@@ -119,6 +119,10 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     // then the actual keyboard of the MacBook"Pro" 2016
     defaultKeyboardIndex = 0;
     for (i = 0; i < ndevices; i++) {
+        // Filter out "Logitech Gaming Mouse G502" which is falsely enumerated as keyboard by at least OSX 10.12:
+        if (IOHIDDevice_GetVendorID(deviceRecords[i]) == 1133 && IOHIDDevice_GetProductID(deviceRecords[i]) == 49277)
+            continue;
+
         // Filter out / ignore devices with an invalid locationID of zero,
         // like the brain-damaged TouchBar of the MacBook"Pro" 2016, which
         // enumerates as 1st keyboard with 1046 keys:
@@ -979,7 +983,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
                     if (verbose) {
                         printf("PTB-DEBUG: [KbQueueCreate]: ce %p Collection with %d children:\n", currentElement, cnt);
                     }
-                    
+
                     for (idx = 0; idx < cnt; idx++) {
                         IOHIDElementRef tIOHIDElementRef = (IOHIDElementRef) CFArrayGetValueAtIndex(children, idx);
                         if (tIOHIDElementRef && ((IOHIDElementGetType(tIOHIDElementRef) == kIOHIDElementTypeInput_Button) ||

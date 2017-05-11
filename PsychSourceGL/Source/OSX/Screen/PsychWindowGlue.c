@@ -1,47 +1,42 @@
 /*
-	PsychToolbox3/Source/OSX/Screen/PsychWindowGlue.c
-	
-	PLATFORMS:	
-	
-		This is the OS X Core Graphics version only.  
-				
-	AUTHORS:
-	
-		Allen Ingling		awi		Allen.Ingling@nyu.edu
-        Mario Kleiner       mk      mario.kleiner at tuebingen.mpg.de
+    PsychToolbox3/Source/OSX/Screen/PsychWindowGlue.c
 
-	HISTORY:
-	
-		12/20/02		awi		Wrote it mostly by modifying SDL-specific refugees (from an experimental SDL-based Psychtoolbox).
-		11/16/04		awi		Added description.
-                 4/22/05                mk              Added support for OpenGL stereo windows and enhanced Flip-behaviour:
-                                                        Flip'ing at specified deadline, retaining instead of clear'ing backbuffer during flip,
-                                                        return of stimulus onset related timestamps, properly syncing to VBL.
-                 4/29/05                mk              Additional safety checks for VBL sync in PsychOpenOnscreenWindow().
-                 5/14/05                mk              Additional safety checks for insufficient gfx-hardware and multi-display setups,
-                                                        failing beam-position queries. New refresh interval estimation code, reworked Flip.
-                 5/19/05                mk              Extra check for 'flipwhen' values over 1000 secs in future: Abort.
-                 5/30/05                mk              Check for Screen('Preference', 'SkipSyncTests', 1) -> Shortened tests, if set.
-                 6/09/05                mk              Experimental support for busy-waiting for VBL and for multi-flip of stereo displays.
-                 9/30/05                mk              Added PsychRealtimePriority for improving timing tests in PsychOpenWindow()
-                 9/30/05                mk              Added check for Screen('Preference', 'VisualDebugLevel', level) -> Amount of vis. feedback.
-                 10/10/05               mk              Important Bugfix for PsychRealtimePriority() - didn't switch back to non-RT priority!!
-                 10/19/05               awi             Cast NULL to CGLPixelFormatAttribute type to make the compiler happy.
-                 01/02/05               mk              Modified to only contain the OS-X specific code. All OS independent code has been moved to
-                                                        Common/Screen/PsychWindowSupport.c
- 
-	DESCRIPTION:
-	
-		Functions in this file comprise an abstraction layer for probing and controlling window state, except for window content.  
-		
-		Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes() 
-		should be platform-neutral, despite that the calls in OS X and Windows to detect available pixel sizes are different.  The platform 
-		specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, PsychWindowTextClue.
+    PLATFORMS:
 
-	NOTES:
-	
-	TO DO: 
+        This is the OS X Core Graphics version only.
 
+    AUTHORS:
+
+        Allen Ingling           awi     Allen.Ingling@nyu.edu
+        Mario Kleiner           mk      mario.kleiner.de@gmail.com
+
+    HISTORY:
+
+        12/20/02                awi     Wrote it mostly by modifying SDL-specific refugees (from an experimental SDL-based Psychtoolbox).
+        11/16/04                awi     Added description.
+        4/22/05                 mk      Added support for OpenGL stereo windows and enhanced Flip-behaviour:
+                                        Flip'ing at specified deadline, retaining instead of clear'ing backbuffer during flip,
+                                        return of stimulus onset related timestamps, properly syncing to VBL.
+        4/29/05                 mk      Additional safety checks for VBL sync in PsychOpenOnscreenWindow().
+        5/14/05                 mk      Additional safety checks for insufficient gfx-hardware and multi-display setups,
+                                        failing beam-position queries. New refresh interval estimation code, reworked Flip.
+        5/19/05                 mk      Extra check for 'flipwhen' values over 1000 secs in future: Abort.
+        5/30/05                 mk      Check for Screen('Preference', 'SkipSyncTests', 1) -> Shortened tests, if set.
+        6/09/05                 mk      Experimental support for busy-waiting for VBL and for multi-flip of stereo displays.
+        9/30/05                 mk      Added PsychRealtimePriority for improving timing tests in PsychOpenWindow()
+        9/30/05                 mk      Added check for Screen('Preference', 'VisualDebugLevel', level) -> Amount of vis. feedback.
+        10/10/05                mk      Important Bugfix for PsychRealtimePriority() - didn't switch back to non-RT priority!!
+        10/19/05                awi     Cast NULL to CGLPixelFormatAttribute type to make the compiler happy.
+        01/02/05                mk      Modified to only contain the OS-X specific code. All OS independent code has been moved to
+                                        Common/Screen/PsychWindowSupport.c
+
+    DESCRIPTION:
+
+        Functions in this file comprise an abstraction layer for probing and controlling window state, except for window content.
+
+        Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes()
+        should be platform-neutral, despite that the calls in OS X and Windows to detect available pixel sizes are different.  The platform
+        specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, PsychWindowTextClue.
 */
 
 #include "Screen.h"
@@ -77,13 +72,13 @@ static CVReturn PsychCVDisplayLinkOutputCallback(CVDisplayLinkRef displayLink, c
     double tVBlank;
     CVTimeStamp tVbl;
     double tHost;
-    
+
     // Retrieve screenId of associated display screen:
     int screenId = (int) (long int) displayLinkContext;
-    
+
     // Extra guard against shutdown races:
     if (NULL == cvDisplayLink[screenId]) return(kCVReturnSuccess);
-    
+
     // Translate CoreVideo inNow timestamp with time of last vbl from gpu time
     // to host system time, aka our GetSecs() timebase:
     memset(&tVbl, 0, sizeof(tVbl));
@@ -97,7 +92,7 @@ static CVReturn PsychCVDisplayLinkOutputCallback(CVDisplayLinkRef displayLink, c
     cvDisplayLinkData[screenId].vblCount++;
     cvDisplayLinkData[screenId].vblTimestamp = tVBlank;
     PsychUnlockMutex(&(cvDisplayLinkData[screenId].mutex));
-    
+
     // Low-level timestamp debugging requested?
     if (PsychPrefStateGet_Verbosity() > 20) {
         // Compare CV timestamps against host time for correctness check. We wait 4 msecs,
@@ -105,7 +100,7 @@ static CVReturn PsychCVDisplayLinkOutputCallback(CVDisplayLinkRef displayLink, c
         // computed vblank timestamp tVBlank:
         PsychWaitIntervalSeconds(0.004);
         PsychGetAdjustedPrecisionTimerSeconds(&tHost);
-        
+
         // Caution: Don't run from Matlab GUI! This printf will crash Matlab otherwise.
         printf("CVCallback: %i : tHost = %lf secs, tVBlank = %lf secs. tHost - tVBlank = %lf secs.\n", screenId, tHost, tVBlank, tHost - tVBlank);
     }
@@ -123,30 +118,30 @@ static CVReturn PsychCVDisplayLinkOutputCallback(CVDisplayLinkRef displayLink, c
 */
 psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 {
-    psych_bool				isError;
-    thread_policy_flavor_t	flavorConstant;
-    int						kernError;
-    task_t					threadID;
-    thread_policy_t			threadPolicy;
-    static thread_policy_t	old_threadPolicy;
-    mach_msg_type_number_t	policyCount, policyCountFilled;
-    static mach_msg_type_number_t	old_policyCountFilled;
-    boolean_t				isDefault;
-    
+    psych_bool                  isError;
+    thread_policy_flavor_t      flavorConstant;
+    int                         kernError;
+    task_t                      threadID;
+    thread_policy_t             threadPolicy;
+    static thread_policy_t      old_threadPolicy;
+    mach_msg_type_number_t      policyCount, policyCountFilled;
+    static mach_msg_type_number_t    old_policyCountFilled;
+    boolean_t                   isDefault;
+
     static psych_bool old_enable_realtime = FALSE;
     static psych_bool oldModeWasStandard = FALSE;
-    
+
     if (old_enable_realtime == enable_realtime) {
         // No transition with respect to previous state -> Nothing to do.
         return(TRUE);
     }
-    
+
     // Transition requested:
     old_enable_realtime = enable_realtime;
-    
+
     // Determine our threadID:
     threadID = mach_thread_self();
-    
+
     if (enable_realtime) {
         // Transition to realtime requested:
 
@@ -161,50 +156,50 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
             // Failed!
             old_enable_realtime = FALSE;
             free(old_threadPolicy);
-			printf("PsychRealtimePriority: ERROR! COULDN'T QUERY CURRENT SCHEDULING SETTINGS!!!\n");
+            printf("PsychRealtimePriority: ERROR! COULDN'T QUERY CURRENT SCHEDULING SETTINGS!!!\n");
             return(FALSE);
         }
-        
+
         // oldModeWasStandard == TRUE --> We need to revert to STANDARD POLICY later...
         oldModeWasStandard = !isDefault;
 
         // printf("PRE-RT: CURRENTLY IN %s mode\n", oldModeWasStandard ? "STANDARD" : "REALTIME");
 
-		if (!oldModeWasStandard) {
-			// We are already RT scheduled. Backup settings for later switch-back:
-			policyCount = THREAD_TIME_CONSTRAINT_POLICY_COUNT;
-			old_policyCountFilled = policyCount;
-			isDefault = FALSE;
-			// We check if STANDARD_POLICY is active and query its settings, if so...
-			kernError = thread_policy_get(threadID, THREAD_TIME_CONSTRAINT_POLICY, old_threadPolicy, &old_policyCountFilled, &isDefault);
-			if (kernError) {
-				// Failed!
-				old_enable_realtime = FALSE;
-				free(old_threadPolicy);
-				printf("PsychRealtimePriority: ERROR! COULDN'T QUERY CURRENT RT SCHEDULING SETTINGS!!!\n");
-				return(FALSE);
-			}
-		}
+        if (!oldModeWasStandard) {
+            // We are already RT scheduled. Backup settings for later switch-back:
+            policyCount = THREAD_TIME_CONSTRAINT_POLICY_COUNT;
+            old_policyCountFilled = policyCount;
+            isDefault = FALSE;
+            // We check if STANDARD_POLICY is active and query its settings, if so...
+            kernError = thread_policy_get(threadID, THREAD_TIME_CONSTRAINT_POLICY, old_threadPolicy, &old_policyCountFilled, &isDefault);
+            if (kernError) {
+                // Failed!
+                old_enable_realtime = FALSE;
+                free(old_threadPolicy);
+                printf("PsychRealtimePriority: ERROR! COULDN'T QUERY CURRENT RT SCHEDULING SETTINGS!!!\n");
+                return(FALSE);
+            }
+        }
 
-		// Switch to our ultra-high priority realtime mode: Guaranteed up to 3 msecs of uninterrupted
-		// runtime as soon as we want to run: Perfect for swap completion timestamping in refresh rate
-		// calibration - our only use-case:
-		PsychSetThreadPriority(NULL, 10, 2);
+        // Switch to our ultra-high priority realtime mode: Guaranteed up to 3 msecs of uninterrupted
+        // runtime as soon as we want to run: Perfect for swap completion timestamping in refresh rate
+        // calibration - our only use-case:
+        PsychSetThreadPriority(NULL, 10, 2);
     }
     else {
         // Transition from RT to Non-RT scheduling requested: We just reestablish the backed-up old
         // policy:
-		kernError = thread_policy_set(threadID, (oldModeWasStandard) ? THREAD_STANDARD_POLICY : THREAD_TIME_CONSTRAINT_POLICY, old_threadPolicy, old_policyCountFilled);
-		if (kernError) {
-			// Failed!
-			old_enable_realtime = TRUE;
-			free((void*) old_threadPolicy);
-			
-			printf("PsychRealtimePriority: ERROR! COULDN'T SWITCH BACK TO NON-RT SCHEDULING!!!\n");
-			fflush(NULL);
-			return(FALSE);
-		}
-        
+        kernError = thread_policy_set(threadID, (oldModeWasStandard) ? THREAD_STANDARD_POLICY : THREAD_TIME_CONSTRAINT_POLICY, old_threadPolicy, old_policyCountFilled);
+        if (kernError) {
+            // Failed!
+            old_enable_realtime = TRUE;
+            free((void*) old_threadPolicy);
+
+            printf("PsychRealtimePriority: ERROR! COULDN'T SWITCH BACK TO NON-RT SCHEDULING!!!\n");
+            fflush(NULL);
+            return(FALSE);
+        }
+
         // Successfully switchted to RT-Scheduling:
         free((void*) old_threadPolicy);
     }
@@ -216,21 +211,21 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 
 /*
     PsychOSOpenOnscreenWindow()
-    
+
     Creates the CGL pixel format and the CGL context objects and then instantiates the context onto the screen.
-    
+
     -The pixel format and the context are stored in the target specific field of the window recored.  Close
     should clean up by destroying both the pixel format and the context.
-    
-    -We mantain the context because it must be be made the current context by drawing functions to draw into 
+
+    -We mantain the context because it must be be made the current context by drawing functions to draw into
     the specified window.
-    
+
     -We maintain the pixel format object because there seems to be now way to retrieve that from the context.
-    
-    -To tell the caller to clean up PsychOSOpenOnscreenWindow returns FALSE if we fail to open the window. It 
+
+    -To tell the caller to clean up PsychOSOpenOnscreenWindow returns FALSE if we fail to open the window. It
     would be better to just issue an PsychErrorExit() and have that clean up everything allocated outside of
     PsychOpenOnscreenWindow().
-    
+
     MK: The new option 'stereomode' allows selection of stereo display instead of mono display:
     0 (default) ==  Old behaviour -> Monoscopic rendering context.
     >0          ==  Stereo display, where the number defines the type of stereo algorithm to use.
@@ -358,16 +353,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     attribs[attribcount++]=kCGLPFADisplayMask;
     attribs[attribcount++]=displayMask;
 
-    // 10 bit per component integer framebuffer requested (10-10-10-2)?
-    if (windowRecord->depth == 30) {
+    // 10 or 11 bit per component integer framebuffer requested (10-10-10-2/11-11-10-0)?
+    if ((windowRecord->depth == 30) || (windowRecord->depth == 33)) {
         // Request a 16 bit per color component half-float framebuffer:
         // Apple does not support > 8 bpc on anything but floating point framebuffers,
         // and there a half-float format seems to be what one needs to request. Cfe.
         // http://stackoverflow.com/questions/40688440/nsopenglpfacolorfloat-broken-in-macos-10-12-sierra-for-wide-gamut-30-bit-ren
         //
         // This does give us a 16 bpc half-float per component framebuffer, which yields
-        // about ~10 bpc linear precision per color component in the displayable range of
-        // 0.0 - 1.0, so it is a close enough match to the 10 bit integer requested.
+        // ~11 bpc linear precision per color component in the displayable range of
+        // 0.0 - 1.0, so it is a close enough match to the 10/11 bit integer requested.
         //
         // Reading back pixels from the framebuffer confirms 16 bpc half-float for the
         // framebuffer. How much of this actually ends on the display is difficult to say.
@@ -375,27 +370,24 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // 2014 and late 2015 do support 10 bpc output in this mode, but this is entirely
         // not verified by us. Also unclear on what display (connector) types this actually
         // applies. As usual Apple docs are essentially non-existent and maximally vague.
-        // Not sure what other Macs do? Maybe throw away the extra precision, maybe use some
-        // dithering to fake it?
-        printf("PTB-INFO: Trying to enable 16 bpc / 64 bpp half-float framebuffer to approximate requested 10 bpc, 30 bpp integer framebuffer.\n");
+        //
+        // At least Denis Pelli's photometer measurements on the iMac 27" Retina 5k late 2014,
+        // ie. one of the models officially supported by Apple for deep color, confirm ~11 bpc
+        // on the iMac's internal Retina panel. How this is done (dithering/native output?) is
+        // not yet clear.
+        //
+        // Other Macs seem to use their own gpu-independent software dithering implementation
+        // to fake 11 bpc output precision, e.g., on 8 bpc display panel, according to photometer
+        // measurements by myself on Radeon HD-5770 and Denis Pelli on Radeon R9 M290X in MacBookPro
+        // Retina 15-inch mid 2015.
+        printf("PTB-INFO: Trying to enable 16 bpc / 64 bpp half-float framebuffer to approximate requested %i bpc integer framebuffer.\n",
+               (windowRecord->depth == 30) ? 10 : 11);
+
         attribs[attribcount++]=kCGLPFANoRecovery;
         attribs[attribcount++]=kCGLPFAMinimumPolicy;
         attribs[attribcount++]=kCGLPFAColorFloat;
         attribs[attribcount++]=kCGLPFAColorSize;
         attribs[attribcount++]=64;
-    }
-
-    // 11 bit per component integer framebuffer requested (11-11-10-0)?
-    if (windowRecord->depth == 33) {
-        // Request a ~ 11 bit per color component framebuffer without alpha channel:
-        // Unsupported on OSX, but leave it here for the fun of it.
-        printf("PTB-INFO: Trying to enable 11 bpc, 32 bit integer framebuffer...\n");
-        attribs[attribcount++]=kCGLPFANoRecovery;
-        attribs[attribcount++]=kCGLPFAMinimumPolicy;
-        attribs[attribcount++]=kCGLPFAColorSize;
-        attribs[attribcount++]=32;
-        attribs[attribcount++]=kCGLPFAAlphaSize;
-        attribs[attribcount++]=0;
     }
 
     // 16 bit per component integer framebuffer requested (16-16-16-16)?
@@ -510,7 +502,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // renderers that might end up in this code-path:
         for (i = 0; i < attribcount && attribs[i] != kCGLPFAStereo; i++);
         attribs[i] = kCGLPFAAccelerated;
-        
+
         // Retry query of pixelformat without request for native OpenGL quad-buffered stereo. If we succeed, we're
         // sort of ok, as the higher-level code will fallback to stereomode kPsychFrameSequentialStereo - our own
         // homegrown frame-sequential stereo support, which may be good enough.
@@ -573,8 +565,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Ok, the master OpenGL rendering context for this new onscreen window is up and running.
     // Auto-detect and bind all available OpenGL extensions via GLEW:
     glerr = glewInit();
-    if (GLEW_OK != glerr)
-    {
+    if (GLEW_OK != glerr) {
         /* Problem: glewInit failed, something is seriously wrong. */
         printf("\nPTB-ERROR[GLEW init failed: %s]: Please report this to the forum. Will try to continue, but may crash soon!\n\n", glewGetErrorString(glerr));
         fflush(NULL);
@@ -747,6 +738,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     if (windowRecord->targetSpecific.glusercontextObject) CGLReleaseContext(windowRecord->targetSpecific.glusercontextObject);
     if (windowRecord->targetSpecific.glswapcontextObject) CGLReleaseContext(windowRecord->targetSpecific.glswapcontextObject);
 
+    // Release all cursor constraints for this window:
+    PsychOSConstrainPointer(windowRecord, FALSE, NULL);
+
     // Last reference to this screen? In that case we have to shutdown the fallback
     // vbl timestamping and vblank counting facilities for this screen:
     if (screenRefCount[windowRecord->screenNumber] == 1) {
@@ -802,79 +796,79 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
  */
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap)
 {
-	// Unsupported on OS/X:
-	return(-1);
+    // Unsupported on OS/X:
+    return(-1);
 }
 
 /*
     PsychOSScheduleFlipWindowBuffers()
-    
+
     Schedules a double buffer swap operation for given window at a given
-	specific target time or target refresh count in a specified way.
-	
-	This uses OS specific API's and algorithms to schedule the asynchronous
-	swap. This function is optional, target platforms are free to not implement
-	it but simply return a "not supported" status code.
-	
-	Arguments:
-	
-	windowRecord - The window to be swapped.
-	tWhen        - Requested target system time for swap. Swap shall happen at first
-				   VSync >= tWhen.
-	targetMSC	 - If non-zero, specifies target msc count for swap. Overrides tWhen.
-	divisor, remainder - If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
-	specialFlags - Additional options. Unused so far.
-	
-	Return value:
-	 
-	Value greater than or equal to zero on success: The target msc for which swap is scheduled.
-	Negative value: Error. Function failed. -1 == Function unsupported on current system configuration.
-	-2 ... -x == Error condition.
-	
+    specific target time or target refresh count in a specified way.
+
+    This uses OS specific API's and algorithms to schedule the asynchronous
+    swap. This function is optional, target platforms are free to not implement
+    it but simply return a "not supported" status code.
+
+    Arguments:
+
+    windowRecord - The window to be swapped.
+    tWhen        - Requested target system time for swap. Swap shall happen at first
+                   VSync >= tWhen.
+    targetMSC     - If non-zero, specifies target msc count for swap. Overrides tWhen.
+    divisor, remainder - If set to non-zero, msc at swap must satisfy (msc % divisor) == remainder.
+    specialFlags - Additional options. Unused so far.
+
+    Return value:
+
+    Value greater than or equal to zero on success: The target msc for which swap is scheduled.
+    Negative value: Error. Function failed. -1 == Function unsupported on current system configuration.
+    -2 ... -x == Error condition.
+
 */
 psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord, double tWhen, psych_int64 targetMSC, psych_int64 divisor, psych_int64 remainder, unsigned int specialFlags)
 {
-	// On OS/X this function is unsupported:
-	return(-1);
+    // On OS/X this function is unsupported:
+    return(-1);
 }
 
 /*
  * PsychOSFlipWindowBuffers() -- OS-X swapbuffers call.
  */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
-{	
-	CGLError			cglerr;
+{
+    CGLError cglerr;
     psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
-    
-	// Execute OS neutral bufferswap code first:
-	PsychExecuteBufferSwapPrefix(windowRecord);
-	
+
+    // Execute OS neutral bufferswap code first:
+    PsychExecuteBufferSwapPrefix(windowRecord);
+
     // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
     if ((cglerr = CGLFlushDrawable((oldStyle || PsychIsMasterThread()) ? windowRecord->targetSpecific.contextObject : windowRecord->targetSpecific.glswapcontextObject))) {
-		// Failed! This is an internal OpenGL/CGL error. We can't do anything about it, just report it:
-		printf("PTB-ERROR: Doublebuffer-Swap failed (probably during 'Flip')! Internal OpenGL subsystem/driver error: %s. System misconfigured or driver/operating system bug?!?\n", CGLErrorString(cglerr));
-	}
+        // Failed! This is an internal OpenGL/CGL error. We can't do anything about it, just report it:
+        printf("PTB-ERROR: Doublebuffer-Swap failed (probably during 'Flip')! Internal OpenGL subsystem/driver error: %s. System misconfigured or driver/operating system bug?!?\n", CGLErrorString(cglerr));
+    }
 }
 
 /*
     PsychOSSetGLContext()
-    
-    Set the window to which GL drawing commands are sent.  
+
+    Set the window to which GL drawing commands are sent.
 */
 void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 {
     // Setup new context if it isn't already setup. -> Avoid redundant context switch.
     if (CGLGetCurrentContext() != windowRecord->targetSpecific.contextObject) {
-		if (CGLGetCurrentContext() != NULL) {
-			// We need to glFlush the old context before switching, otherwise race-conditions may occur:
-			glFlush();
-			
-			// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
-			if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-		}
-		
-		// Switch to new context:
-		CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);		
+        if (CGLGetCurrentContext() != NULL) {
+            // We need to glFlush the old context before switching, otherwise race-conditions may occur:
+            glFlush();
+
+            // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+            if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+        }
+
+        // Switch to new context:
+        CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
     }
 }
 
@@ -883,13 +877,13 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
  */
 void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool copyfromPTBContext)
 {
-	// Child protection:
-	if (windowRecord->targetSpecific.glusercontextObject == NULL) PsychErrorExitMsg(PsychError_user, "GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");
-	
-	if (copyfromPTBContext && (PsychPrefStateGet_Verbosity() > 1)) {
+    // Child protection:
+    if (windowRecord->targetSpecific.glusercontextObject == NULL) PsychErrorExitMsg(PsychError_user, "GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");
+
+    if (copyfromPTBContext && (PsychPrefStateGet_Verbosity() > 1)) {
         // This was deprecated by the iPhone company as of OSX 10.8 - who are we to question their wisdom? Luckily seldomly needed in practice:
         printf("PTB-WARNING: Screen('BeginOpenGL', windowPtr, 2) called to synchronize userspace context state with Screen state. This is unsupported on OSX. Code may misbehave!\n");
-	}
+    }
 
     // Setup new context if it isn't already setup. -> Avoid redundant context switch.
     if (CGLGetCurrentContext() != windowRecord->targetSpecific.glusercontextObject) {
@@ -899,21 +893,21 @@ void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool cop
 
 /*
     PsychOSUnsetGLContext()
-    
-    Clear the drawing context.  
+
+    Clear the drawing context.
 */
 void PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord)
 {
-	if (CGLGetCurrentContext() != NULL) {
-		// We need to glFlush the old context before switching, otherwise race-conditions may occur:
-		glFlush();
-		
-		// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
-		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-        
+    if (CGLGetCurrentContext() != NULL) {
+        // We need to glFlush the old context before switching, otherwise race-conditions may occur:
+        glFlush();
+
+        // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+        if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
         // Detach totally:
-        CGLSetCurrentContext(NULL);        
-	}
+        CGLSetCurrentContext(NULL);
+    }
 }
 
 /* PsychOSSetVBLSyncLevel - Enable or disable synchronization of bufferswaps to
@@ -921,18 +915,18 @@ void PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord)
  */
 void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval)
 {
-    CGLError	error;
+    CGLError    error;
     GLint myinterval = (GLint) swapInterval;
     psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
-    
-	// Store new setting also in internal helper variable, e.g., to allow workarounds to work:
-	windowRecord->vSynced = (swapInterval > 0) ? TRUE : FALSE;
-	
+
+    // Store new setting also in internal helper variable, e.g., to allow workarounds to work:
+    windowRecord->vSynced = (swapInterval > 0) ? TRUE : FALSE;
+
     error=CGLSetParameter((oldStyle || PsychIsMasterThread()) ? windowRecord->targetSpecific.contextObject : windowRecord->targetSpecific.glswapcontextObject, kCGLCPSwapInterval, &myinterval);
     if (error) {
         if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace!\n\n", (swapInterval>0) ? "enable" : "disable");
     }
-    
+
     error=CGLGetParameter((oldStyle || PsychIsMasterThread()) ? windowRecord->targetSpecific.contextObject : windowRecord->targetSpecific.glswapcontextObject, kCGLCPSwapInterval, &myinterval);
     if (error || (myinterval != (GLint) swapInterval)) {
         if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace (System ignored setting)!\n\n", (swapInterval>0) ? "enable" : "disable");
@@ -957,29 +951,29 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
  */
 psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindowRecordType *slaveWindow)
 {
-	// On OS/X the situation is simple. This OS doesn't support framelock/swaplock at
-	// all on any GPU:
-	return(FALSE);
+    // On OS/X the situation is simple. This OS doesn't support framelock/swaplock at
+    // all on any GPU:
+    return(FALSE);
 }
 
 // Perform OS specific processing of Window events:
 void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 {
-	Rect globalBounds;
+    Rect globalBounds;
 
-	// Trigger event queue dispatch processing for GUI windows:
-	if (windowRecord == NULL) {
-		// No op, so far...
-		return;
-	}
-	
-	// GUI windows need to behave GUIyee:
-	if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
-		// Update windows rect and globalrect, based on current size and location:
-		PsychCocoaGetWindowBounds(windowRecord->targetSpecific.windowHandle, windowRecord->globalrect, windowRecord->rect);
-		PsychSetupClientRect(windowRecord);
-		PsychSetupView(windowRecord, FALSE);
-	}
+    // Trigger event queue dispatch processing for GUI windows:
+    if (windowRecord == NULL) {
+        // No op, so far...
+        return;
+    }
+
+    // GUI windows need to behave GUIyee:
+    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord) && !(windowRecord->specialflags & kPsychFbOverrideSizeActive)) {
+        // Update windows rect and globalrect, based on current size and location:
+        PsychCocoaGetWindowBounds(windowRecord->targetSpecific.windowHandle, windowRecord->globalrect, windowRecord->rect);
+        PsychSetupClientRect(windowRecord);
+        PsychSetupView(windowRecord, FALSE);
+    }
 }
 
 double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration)
@@ -989,4 +983,28 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     // we can't adjust for it at all. Therefore this function is a no-op identity
     // passthrough:
     return targetTime;
+}
+
+/* PsychOSConstrainPointer()
+ *
+ * Establish or release pointer confinement to a rectangle, a mouse trap if you want.
+ *
+ * Returns TRUE on success, FALSE on failure.
+ */
+psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bool constrain, PsychRectType rect)
+{
+    // Unsupported on OSX:
+    (void) windowRecord;
+
+    if (constrain) {
+        if (PsychPrefStateGet_Verbosity() > 1)
+            printf("PTB-WARNING:PsychOSConstrainPointer: Usercode tried to constrain mouse pointer to rectangle [%i, %i, %i, %i]. This is unsupported on macOS (Linux and Windows only!) and will do nothing.\n",
+                   (int) rect[kPsychLeft], (int) rect[kPsychTop], (int) rect[kPsychRight], (int) rect[kPsychBottom]);
+
+        // We don't fail, just give warning above:
+        return(TRUE);
+    }
+
+    // The unconstrain op is a no-op and therefore succeeds:
+    return(TRUE);
 }

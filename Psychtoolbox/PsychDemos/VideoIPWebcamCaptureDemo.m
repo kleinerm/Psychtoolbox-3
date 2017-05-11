@@ -1,11 +1,12 @@
 function VideoIPWebcamCaptureDemo(videourl, fullscreen, fullsize, moviename)
-% Demonstrate use of built-in video capture engine with the Android IPWebcam app.
+% Demonstrate use of built-in video capture engine with the Android IPWebcam app,
+% or with a local videoloopback source, e.g., a GStreamer screencast.
 %
 % VideoIPWebcamCaptureDemo([videourl='http://192.168.178.22:8080/videofeed'][fullscreen=0][, fullsize=1][, moviename])
 %
-% VideoIPWebcamCaptureDemo connects to a IP web video stream streamed
-% from an Android device by the Android IPWebcam application, available
-% from the Google Play Store here:
+% if 'videourl' is left out, or a URL then VideoIPWebcamCaptureDemo
+% connects to a IP web video stream streamed from an Android device by
+% the Android IPWebcam application, available from the Google Play Store here:
 %
 % https://play.google.com/store/apps/details?id=com.pas.webcam&hl=en
 %
@@ -16,10 +17,27 @@ function VideoIPWebcamCaptureDemo(videourl, fullscreen, fullsize, moviename)
 % but should likely work with OSX and Windows as well if the installed
 % GStreamer framework provides the needed plugins.
 %
+% If you provide the value 1 as videourl then VideoIPWebcamCaptureDemo tries
+% to source video from a local video source running on port 8554. E.g., on
+% Linux you can use the following command in a terminal window to perform
+% a screencast from the desktop to port 8554 scaled to 640x480 pixels resolution
+% and 30 fps target framerate:
+%
+% gst-launch-1.0 ximagesrc xname="Psychophysics Toolbox - Yahoo Groups - Mozilla Firefox" use-damage=0 ! video/x-raw,framerate=30/1 ! videoscale method=0 ! video/x-raw,width=640,height=480  ! videoconvert ! x264enc tune="zerolatency" threads=1 ! video/x-h264,stream-format=byte-stream ! tcpserversink port=8554
+%
+% The specific example would only capture from a Mozilla firefox window with the
+% title "Psychophysics Toolbox - Yahoo Groups - Mozilla Firefox"
+%
+% The following similar line might achieve screencasting on MS-Windows, but has not been tested:
+%
+% gst-launch-1.0 gdiscreencapsrc ! video/x-raw,framerate=30/1 ! videoscale method=0 ! video/x-raw,width=640,height=480  ! videoconvert ! x264enc tune="zerolatency" threads=1 ! video/x-h264,stream-format=byte-stream ! tcpserversink port=8554
+%
 %
 % Optional parameters:
 %
 % 'videourl' If not set, defaults to 'http://192.168.178.22:8080/videofeed'.
+% Instead of a URL of a IP Webcam you can also pass in the value 1 to get
+% a local videoloopback as shown above, e.g., for a screencast.
 %
 % 'fullscreen' If set to non-zero value, the image is displayed in a
 % fullscreen window, as usual, otherwise a normal GUI window is used.
@@ -98,6 +116,7 @@ function VideoIPWebcamCaptureDemo(videourl, fullscreen, fullsize, moviename)
 
 % History:
 % 07-Sep-2016  mk  Derived from VideoDVCamCaptureDemo.
+% 10-Apr-2017  mk  Add example of screencasting from a local Linux X11 desktop.
 
 PsychDefaultSetup(2);
 
@@ -134,7 +153,13 @@ try
     % Set text size for info text to 24 pixels.
     Screen('TextSize', win, 24);
 
-    capturebinspec = sprintf('souphttpsrc location="%s" do-timestamp=true is-live=true ! multipartdemux ! jpegdec ! videoconvert name=ptbdvsource', videourl);
+    if ischar(videourl)
+        % URL of Web IP cameras videofeed:
+        capturebinspec = sprintf('souphttpsrc location="%s" do-timestamp=true is-live=true ! multipartdemux ! jpegdec ! videoconvert name=ptbdvsource', videourl);
+    else
+        % 1 - flag: Get video from local loopback videosource:
+        capturebinspec = 'tcpclientsrc port=8554 host=localhost ! h264parse ! avdec_h264 name=ptbdvsource';
+    end
 
     % Assign capturebinspec as gst-launch style capture bin spec for use as video source:
     Screen('SetVideoCaptureParameter', -1, sprintf('SetNextCaptureBinSpec=%s', capturebinspec));

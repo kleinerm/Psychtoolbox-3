@@ -1,20 +1,19 @@
 /*
-	PsychSourceGL/Source/Common/Screen/PsychMovieSupportGStreamer.h
-	
-	PLATFORMS:	All with PTB_USE_GSTREAMER defined.
-				
-	AUTHORS:
+        PsychSourceGL/Source/Common/Screen/PsychMovieSupportGStreamer.h
 
-	mario.kleiner@tuebingen.mpg.de		mk	Mario Kleiner
+        PLATFORMS:      All with PTB_USE_GSTREAMER defined.
 
-	HISTORY:
+        AUTHORS:
+
+        mario.kleiner.de@gmail.com      mk      Mario Kleiner
+
+        HISTORY:
 
         28.11.2010    mk      Wrote it.
 
-	DESCRIPTION:
-	
-	Psychtoolbox functions for dealing with movies.
+        DESCRIPTION:
 
+        Psychtoolbox functions for dealing with movies.
 */
 
 #ifdef PTB_USE_GSTREAMER

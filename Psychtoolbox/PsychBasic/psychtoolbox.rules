@@ -65,8 +65,18 @@ ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="1e10", MODE="0666"
 # Enable non-root access of libusb to the USB-HID interface of the Occulus Rift DK2 HMD:
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="2833", MODE="0666"
 
-# Enable non-root access of libusb to the NVIDIA 3D Vision USB IR Emitter:
+# Enable non-root access of libusb to the NVIDIA 3D Vision USB IR Emitters:
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="0007", MODE="0666"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="7001", MODE="0666"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="7002", MODE="0666"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="7003", MODE="0666"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="7004", MODE="0666"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="7008", MODE="0666"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="7009", MODE="0666"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="700a", MODE="0666"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="700c", MODE="0666"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="700d", MODE="0666"
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0955", ATTR{idProduct}=="700e", MODE="0666"
 
 # Add a /dev/input/powermate symlink, with non-root access for all for the Griffin PowerMate USB knob,
 # which is controlled by the Linux powermate kernel driver. Additionally allow non-root access to the
@@ -76,3 +86,6 @@ ACTION=="add", ENV{ID_USB_DRIVER}=="powermate", MODE="0666"
 
 # Enable non-root access of libusb to the Griffin PowerMate:
 ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="077d", ATTR{idProduct}=="0410", MODE="0666"
+
+# Tell ModemManager daemon to not mess with PhotoResearch devices like, e.g., the PR-670 photometer:
+ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="180b", ENV{ID_MM_DEVICE_IGNORE}="1"

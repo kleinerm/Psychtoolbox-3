@@ -1,7 +1,7 @@
-function [nx, ny, textbounds, cache] = DrawFormattedText2(varargin)
-% [nx, ny, textbounds, cache] = DrawFormattedText2(tstring, key-value pairs)
+function [nx, ny, textbounds, cache, wordbounds] = DrawFormattedText2(varargin)
+% [nx, ny, textbounds, cache, wordbounds] = DrawFormattedText2(tstring, key-value pairs)
 % or:
-% [nx, ny, textbounds, cache] = DrawFormattedText2(cache, key-value pairs)
+% [nx, ny, textbounds, cache, wordbounds] = DrawFormattedText2(cache, key-value pairs)
 % 
 % When called with a string, the following key-value pairs are understood:
 % win [, sx][, sy][, xalign][, yalign][, xlayout][, color][, wrapat][, transform][, vSpacing][, righttoleft][, winRect][, resetStyle][, cacheOnly]
@@ -180,6 +180,24 @@ function [nx, ny, textbounds, cache] = DrawFormattedText2(varargin)
 % is the rect that tightly fits the rotated original bounding box, not the
 % box that tightly fits the rotated ink of the letters.
 %
+% The optional return argument 'wordbounds', if assigned in the calling
+% function, returns a n-by-4 matrix of per-word bounding boxes. Each row
+% defines a [left,top,right,bottom] rectangle with the bounding box of a
+% word in the text string, ie. row 1 = first word, row 2 = 2nd word, ...
+% white-space characters delimit single words, as do style changes and line-
+% feeds, and these delimiters are not taken into account for the bounding box,
+% ie. they don't get their own bounding boxes. The white-space separating
+% successive words is as defined by the function isspace(tstring), or by a
+% change of text style, color, formatting, etc. Use of 'wordbounds' may cause
+% a significant slow-down in text drawing, so only assign this return argument
+% if you actually need it. A current limitation is that returned bounding boxes
+% will be likely incorrect if you apply multiple transformations like 'scale'
+% 'rotate', 'translate' and 'flip' at once. A single transformation will work,
+% but multiple ones will cause misplaced per word bounding boxes. If you want
+% to get proper 'wordbounds' when drawing text from the 'cache' then you must
+% assign 'wordbounds' already in the DrawFormattedText2() invocation which
+% returns the 'cache', otherwise bounding boxes might be wrong.
+%
 % One difference in the return values from this function and
 % DrawFormattedText is that the new (nx, ny) position of the text drawing
 % cursor output is the baseline of the text. So to use (nx,ny) as the new
@@ -224,11 +242,12 @@ function [nx, ny, textbounds, cache] = DrawFormattedText2(varargin)
 % TODO:
 % - justification. I have included an interface, but not implemented (or
 %   documented it in the help above) yet.
-% - Per word bounding boxes (optionally grow them to be proper AOIs for
-%   eye-tracking)
+% - Fix per word bounding boxes (optionally grow them to be proper AOIs for
+%   eye-tracking) for multiple concatenated 'Transform's.
 
 % History:
 % 2015--2017    Written (DCN).
+% 7-May-2017    Add support for 'wordbounds' - per word bounding boxes (MK).
 
 
 global ptb_drawformattedtext2_disableClipping;
@@ -251,16 +270,22 @@ padthresh = ptb_drawformattedtext2_padthresh;
 
 assert(Screen('Preference','TextRenderer') == 1, 'DrawFormattedText2 only works with the FTGL based text drawing plugin, but this plugin is not selected activated with Screen(''Preference'',''TextRenderer'',1), or did not load correctly. See help DrawTextPlugin for more information.');
 
+% Optional per-word bounding boxes requested?
+if (nargout >= 5) && (~IsOctave || isargout(5))
+    dowordbounds = 1;
+else
+    dowordbounds = 0;
+end
 
 %% process key-value input
 [opt,qCalledWithCache] = parseInputs(varargin,nargout);
 if isempty(opt)
     % nothing to do
-    [nx, ny, textbounds, cache] = deal([]);
+    [nx, ny, textbounds, cache, wordbounds] = deal([]);
     return;
 elseif qCalledWithCache
     cache = opt.cache;
-    [nx,ny,textbounds] = DoDraw(opt.win,...
+    [nx, ny, textbounds, wordbounds] = DoDraw(opt.win,...
         disableClip,...
         cache.px,...
         cache.py,...
@@ -273,7 +298,8 @@ elseif qCalledWithCache
         cache.winRect,...
         cache.previous,...
         cache.righttoleft,...
-        cache.transform);
+        cache.transform,...
+        dowordbounds);
     % done
     return;
 end
@@ -337,7 +363,16 @@ qSwitch = any(switches,1);
 % find carriage returns (can occur at same spot as format change)
 % make them their own substring so we can process format changes happening
 % at the carriage return properly.
-qCRet = tstring==returnChar;
+if dowordbounds
+    % For per-word bounding boxes, each space as classified by isspace()
+    % counts as a "carriage return" to force the code to split strings into
+    % subStrings at word boundaries as well, not only carriage returns or
+    % style changes:
+    qCRet = tstring==returnChar | isspace(tstring);
+else
+    % No per word bounding boxes needed:
+    qCRet = tstring==returnChar;
+end
 qCRet = ismember(1:length(tstring),[find(qCRet) find(qCRet)+1]);
 % split strings
 qSplit = qSwitch|qCRet;
@@ -564,9 +599,9 @@ py = py+bbox(2);
 
 %% done processing inputs, do text drawing
 if ~cacheOnly
-    [nx,ny,textbounds] = DoDraw(win,disableClip,px,py,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform);
+    [nx, ny, textbounds, wordbounds] = DoDraw(win,disableClip,px,py,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,dowordbounds);
 else
-    [nx,ny]     = deal([]);
+    [nx,ny,wordbounds]     = deal([]);
     % the bbox in the cache is untranslated (we need to know the original
     % after all when drawing). Output transformed one here for user's info,
     % so they know what'll appear on screen eventually.
@@ -592,7 +627,9 @@ if nargout>3
 end
 
 
-function [nx,ny,bbox] = DoDraw(win,disableClip,sx,sy,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform)
+function [nx, ny, bbox, wordbounds] = DoDraw(win,disableClip,sx,sy,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,dowordbounds)
+
+wordbounds = [];
 
 [nx,ny] = deal(nan);
 
@@ -605,6 +642,8 @@ if IsOpenGLRendering
     % switch to our window:
     Screen('EndOpenGL', win);
 end
+
+refbox = bbox;
 
 if ~isempty(transform)
     [xc, yc] = RectCenterd(bbox);
@@ -681,7 +720,12 @@ for p=1:length(subStrings)
         % yPositionIsBaseline==true at least). Basically behaves like
         % printf or fprintf formatting.
         [nx,ny] = Screen('DrawText', win, curstring, xp, yp,[],[],1, righttoleft);
-        
+        if dowordbounds && ~all(isspace(curstring))
+            % Need to return per-word bounding boxes:
+            [~, wordbound] = Screen('TextBounds', win, curstring, xp, yp, 1, righttoleft);
+            wordbounds(end+1, :) = transformBBox2(wordbound, transform, refbox);
+        end
+
         % for debug, draw bounding box and baseline
         % [~,sbbox,~,xAdv] = Screen('TextBounds', win, curstring, xp, yp, 1, righttoleft);
         % Screen('FrameRect',win,[0 255 0 128],sbbox);
@@ -722,9 +766,11 @@ if previouswin > 0
     end
 end
 
+if dowordbounds && isempty(wordbounds)
+    wordbounds = bbox;
+end
+
 return;
-
-
 
 %% helpers
 function [tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,tstring,startColor,resetStyle)
@@ -1086,6 +1132,60 @@ if ~isempty(transform)
     
     % We need to undo the translations...
     bbox = OffsetRect(bbox,xc,yc);
+end
+
+function bbox = transformBBox2(bbox,transform,refbox)
+if ~isempty(transform)
+    M = eye(3,3);
+
+    [xc, yc] = RectCenterd(refbox);
+    M = M * [[1, 0, xc]; [0, 1, yc]; [0, 0, 1]];
+
+    % apply transforms
+    for p=1:2:length(transform)
+        switch transform{p}
+            case 'translate'
+                M = M * [[1, 0, transform{p+1}(1)]; [0, 1, transform{p+1}(2)]; [0, 0, 1]];
+            case 'flip'
+                % argument is flip around which axis, y (1), x (2), or both (3).
+                if transform{p+1}(1) == 1
+                    M = M * [[-1, 0, 0]; [0, 1, 0]; [0, 0, 1]];
+                end
+
+                if transform{p+1}(1) == 2
+                    M = M * [[1, 0, 0]; [0, -1, 0]; [0, 0, 1]];
+                end
+
+                if transform{p+1}(1) == 3
+                    M = M * [[-1, 0, 0]; [0, -1, 0]; [0, 0, 1]];
+                end
+            case 'scale'
+                M = M * [[transform{p+1}(1), 0, 0]; [0, transform{p+1}(2), 0]; [0, 0, 1]];
+            case 'rotate'
+                ang = transform{p+1}(1);
+                % note that for the PTB screen, a positive rotation is
+                % clockwise.
+                M = M * [[cosd(ang), -sind(ang), 0] ; [sind(ang), cosd(ang) 0] ; [0, 0, 1]];
+        end
+    end
+
+    % We need to undo the translations...
+    M = M * [[1, 0, -xc]; [0, 1, -yc]; [0, 0, 1]];
+
+    % Apply combined transforms:
+    v1 = M * [bbox(1); bbox(2); 1];
+    v2 = M * [bbox(3); bbox(2); 1];
+    v3 = M * [bbox(3); bbox(4); 1];
+    v4 = M * [bbox(1); bbox(4); 1];
+
+    % Project back to 2D plane:
+    v1 = v1 / v1(3);
+    v2 = v2 / v2(3);
+    v3 = v3 / v3(3);
+    v4 = v4 / v4(3);
+
+    % Make axis-aligned:
+    bbox = [min([v1(1),v2(1),v3(1),v4(1)]), min([v1(2),v2(2),v3(2),v4(2)]), max([v1(1),v2(1),v3(1),v4(1)]), max([v1(2),v2(2),v3(2),v4(2)])];
 end
 
 function [opt,qCalledWithCache] = parseInputs(varargs,nOutArg)

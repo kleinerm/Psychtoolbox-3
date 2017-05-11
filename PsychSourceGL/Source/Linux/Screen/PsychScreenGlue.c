@@ -101,7 +101,21 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-/* Mappings up to date for January 2017 (last update e-mail patch / commit 2017-01-06). Would need updates for anything after mid January 2017 */
+/* Mappings up to date for May 2017 (last update e-mail patch / commit 2017-03-30). Would need updates for any commit after March 2017 */
+
+static psych_bool isDCE12(int screenId)
+{
+    psych_bool isDCE12 = false;
+    (void) screenId;
+
+    // VEGA10 is DCE12:
+
+    // VEGA10: 0x6860 - 0x687F
+    if ((fPCIDeviceId & 0xFFF0) == 0x6860) isDCE12 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x6870) isDCE12 = true;
+
+    return(isDCE12);
+}
 
 static psych_bool isDCE112(int screenId)
 {
@@ -402,7 +416,8 @@ static unsigned int ReadRegister(unsigned long offset)
     // because we could be called from primary Interrupt path, so IOLog() is not
     // an option!
     if (gfx_cntl_mem == NULL || offset > gfx_length-4 || offset < gfx_lowlimit) {
-        printf("PTB-ERROR: In GPU ReadRegister(): MMIO not mapped or reg offset %p out of range [%p - %p]! Nop zero return!\n", offset, gfx_lowlimit, gfx_length-4);
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: In GPU ReadRegister(): MMIO not mapped or reg offset %p out of range [%p - %p]! Nop zero return!\n", offset, gfx_lowlimit, gfx_length-4);
         return(0);
     }
 
@@ -421,7 +436,7 @@ static unsigned int ReadRegister(unsigned long offset)
     if (fDeviceType == kPsychIntelIGP) return(value);
 
     // No-Op return:
-    printf("PTB-ERROR: In GPU ReadRegister(): UNKNOWN fDeviceType of GPU! NO OPERATION!\n");
+    if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: In GPU ReadRegister(): UNKNOWN fDeviceType of GPU! NO OPERATION!\n");
     return(0);
 }
 
@@ -434,7 +449,8 @@ static void WriteRegister(unsigned long offset, unsigned int value)
     // because we could be called from primary Interrupt path, so IOLog() is not
     // an option!
     if (gfx_cntl_mem == NULL || offset > gfx_length-4 || offset < gfx_lowlimit) {
-        printf("PTB-ERROR: In GPU WriteRegister(): MMIO not mapped or reg offset %p out of range [%p - %p]! Nop zero return!\n", offset, gfx_lowlimit, gfx_length-4);
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: In GPU WriteRegister(): MMIO not mapped or reg offset %p out of range [%p - %p]! Nop zero return!\n", offset, gfx_lowlimit, gfx_length-4);
         return;
     }
 
@@ -666,7 +682,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 printf("PTB-INFO: Failed to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
                 printf("PTB-INFO: Beamposition timestamping and other special functions disabled.\n");
                 printf("PTB-INFO: You need to run Matlab/Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
-                printf("PTB-INFO: However, if you are using the free graphics drivers, there isn't any need for this.\n");
+                printf("PTB-INFO: However, if you are using the free graphics drivers, there usually isn't a need for this.\n");
                 fflush(NULL);
             }
 
@@ -704,7 +720,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
             if ((fCardType == 0x0) || (fCardType >= 0xe0)) fNumDisplayHeads = 4;
 
             if (PsychPrefStateGet_Verbosity() > 2) {
-                printf("PTB-INFO: Connected to NVidia %s GPU of NV-%03x family with %i display heads. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), fCardType, fNumDisplayHeads);
+                printf("PTB-INFO: Connected to NVidia %s GPU of NV-%03x family with %i display heads.\n", pci_device_get_device_name(gpu), fCardType, fNumDisplayHeads);
                 fflush(NULL);
             }
         }
@@ -766,21 +782,25 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
             }
 
             if (PsychPrefStateGet_Verbosity() > 2) {
-                printf("PTB-INFO: Connected to %s %s GPU with DCE-%.1f display engine [%i heads]. Beamposition timestamping enabled.\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (float) fCardType / 10, fNumDisplayHeads);
+                printf("PTB-INFO: Connected to %s %s GPU with DCE-%.1f display engine [%i heads].\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu), (float) fCardType / 10, fNumDisplayHeads);
                 fflush(NULL);
             }
         }
 
         if (fDeviceType == kPsychIntelIGP) {
             if (PsychPrefStateGet_Verbosity() > 2) {
-                printf("PTB-INFO: Connected to Intel %s GPU%s. Beamposition timestamping enabled.\n", pci_device_get_device_name(gpu), (fCardType == 2) ? " of GEN-2 type" : "");
+                printf("PTB-INFO: Connected to Intel %s GPU%s.\n", pci_device_get_device_name(gpu), (fCardType == 2) ? " of GEN-2 type" : "");
                 fflush(NULL);
             }
         }
 
         // Perform auto-detection of screen to head mappings: This will no-op if users script
         // has already manually specified mappings via Screen('Preference','ScreenToHead', ...):
+        // Also skip on Wayland and Waffle atm., as we need fast control of gamma tables for
+        // auto-detection, which we currently don't have on Wayland and Waffle.
+        #if !defined(PTB_USE_WAYLAND) && !defined(PTB_USE_WAFFLE)
         PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads);
+        #endif
 
         // Ready to rock!
     } else {
@@ -1137,7 +1157,7 @@ static void InitXInputExtensionForDisplay(CGDirectDisplayID dpy, int idx)
 
     // XInputExtension supported? If so do basic init:
     if (!XQueryExtension(dpy, "XInputExtension", &xi_opcode, &xi_event, &xi_error)) {
-        printf("PTB-WARNING: XINPUT1/2 extension unsupported. Will only be able to handle one mouse and mouse cursor.\n");
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: XINPUT1/2 extension unsupported. Will only be able to handle one mouse and mouse cursor.\n");
         goto out;
     }
 
@@ -1192,7 +1212,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     // XRandR extension supported? If so do basic init:
     if (!XRRQueryExtension(dpy, &xr_event, &xr_error) ||
         !XRRQueryVersion(dpy, &major, &minor)) {
-        printf("PTB-WARNING: XRandR extension unsupported. Display infos and configuration functions will be very limited!\n");
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: XRandR extension unsupported. Display infos and configuration functions will be very limited!\n");
         return;
     }
 
@@ -1205,8 +1225,9 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     XRRSelectInput(dpy, root, RRScreenChangeNotifyMask);
 
     if (!has_xrandr_1_3) {
-        printf("PTB-WARNING: XRandR version 1.3 unsupported! Could not query useful info for x-screen %i on display %s. Infos and configuration will be very limited.\n",
-                displayX11Screens[idx], DisplayString(dpy));
+        if (PsychPrefStateGet_Verbosity() > 1)
+            printf("PTB-WARNING: XRandR version 1.3 unsupported! Could not query useful info for x-screen %i on display %s. Infos and configuration will be very limited.\n",
+                   displayX11Screens[idx], DisplayString(dpy));
         return;
     }
 
@@ -1214,8 +1235,9 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     XRRScreenResources* res = XRRGetScreenResourcesCurrent(dpy, root);
     displayX11ScreenResources[idx] = res;
     if (NULL == res) {
-        printf("PTB-WARNING: Could not query configuration of x-screen %i on display %s. Display infos and configuration will be very limited.\n",
-                displayX11Screens[idx], DisplayString(dpy));
+        if (PsychPrefStateGet_Verbosity() > 1)
+            printf("PTB-WARNING: Could not query configuration of x-screen %i on display %s. Display infos and configuration will be very limited.\n",
+                   displayX11Screens[idx], DisplayString(dpy));
         return;
     }
 
@@ -1226,7 +1248,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     for (o = 0; o < res->noutput; o++) {
         XRROutputInfo *output_info = XRRGetOutputInfo(dpy, res, res->outputs[o]);
         if (!output_info) {
-            printf("PTB-WARNING: Could not get output info for %i'th output of screen %i [display %s]!\n", o, displayX11Screens[idx], DisplayString(dpy));
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not get output info for %i'th output of screen %i [display %s]!\n", o, displayX11Screens[idx], DisplayString(dpy));
             continue;
         }
 
@@ -1330,7 +1352,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     PsychSetScreenToHead(idx, primaryCRTC, 0);
     PsychSetScreenToCrtcId(idx, primaryCRTCIdx, 0);
 
-    if (PsychPrefStateGet_Verbosity() > 2) {
+    if (PsychPrefStateGet_Verbosity() > 3) {
         printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
     }
 
@@ -1448,12 +1470,12 @@ void InitCGDisplayIDList(void)
             if (ptbdisplays[i]==',' || ptbdisplays[i]=='"' || ptbdisplays[i]==' ' || i == (int) strlen(ptbdisplays)) {
                 // Separator or end of string detected. Try to connect to display:
                 displayname[j]=0;
-                printf("PTB-INFO: Trying to connect to X-Display %s ...", displayname);
+                if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Trying to connect to X-Display %s ...", displayname);
 
                 x11_dpy = XOpenDisplay(displayname);
                 if (x11_dpy == NULL) {
                     // Failed.
-                    printf(" ...Failed! Skipping this display...\n");
+                    if (PsychPrefStateGet_Verbosity() > 1) printf(" ...Failed! Skipping this display...\n");
                 }
                 else {
                     // Query number of available screens on this X11 display:
@@ -1480,8 +1502,8 @@ void InitCGDisplayIDList(void)
                         GetRandRScreenConfig(x11_dpy, k);
                     }
 
-                    printf(" ...success! Added %i new physical display screens of %s as PTB screens %i to %i.\n",
-                        scrnid, displayname, numDisplays, k-1);
+                    if (PsychPrefStateGet_Verbosity() > 2)
+                        printf(" ...success! Added %i new physical display screens of %s as PTB screens %i to %i.\n", scrnid, displayname, numDisplays, k-1);
 
                     // Update total count:
                     numDisplays = k;
@@ -1514,7 +1536,7 @@ void InitCGDisplayIDList(void)
 
             // No X-Display available, but we are configured with waffle support, so
             // probably user wants to use a non-X11 based display backend.
-            printf("PTB-INFO: Could not open any X11/X-Windows system based display connection. Trying other display backends.\n");
+            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Could not open any X11/X-Windows system based display connection. Trying other display backends.\n");
             PsychInitNonX11();
             return;
         }
@@ -1537,7 +1559,7 @@ void InitCGDisplayIDList(void)
         numDisplays=i;
     }
 
-    if (numDisplays>1) printf("PTB-INFO: A total of %i X-Windows display screens is available for use.\n", numDisplays);
+    if ((numDisplays > 1) && (PsychPrefStateGet_Verbosity() > 3)) printf("PTB-INFO: A total of %i X-Windows display screens is available for use.\n", numDisplays);
 
     // Initialize screenId -> GPU headId mapping to identity mappings,
     // unless already setup by XRandR setup code:
@@ -1702,7 +1724,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
     }
     else {
         // Query failed: Assume at least 32 bits is available.
-        printf("PTB-WARNING: Couldn't query available display depths values! Returning a made up list...\n");
+        if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Couldn't query available display depths values! Returning a made up list...\n");
         fflush(NULL);
         PsychAddValueToDepthStruct(32, depths);
         PsychAddValueToDepthStruct(24, depths);
@@ -3200,7 +3222,7 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
     }
 
     if (fDeviceType != kPsychRadeon) {
-        printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): This function is not supported on non-ATI/AMD GPU's! Aborted.\n");
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): This function is not supported on non-ATI/AMD GPU's! Aborted.\n");
         return(PsychError_unimplemented);
     }
 
@@ -3231,7 +3253,8 @@ static PsychError PsychOSSynchronizeDisplayScreensDCE4(int *numScreens, int* scr
 
             // Sanity check crtc id i:
             if (i > (int) fNumDisplayHeads - 1) {
-                printf("PTB-ERROR: PsychOSSynchronizeDisplayScreens(): Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", i, (fNumDisplayHeads - 1));
+                if (PsychPrefStateGet_Verbosity() > 0)
+                    printf("PTB-ERROR: PsychOSSynchronizeDisplayScreens(): Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", i, (fNumDisplayHeads - 1));
                 return(PsychError_user);
             }
 
@@ -3354,7 +3377,7 @@ PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int
     }
 
     if (fDeviceType != kPsychRadeon) {
-        printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): This function is not supported on non-ATI/AMD GPU's! Aborted.\n");
+        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: PsychOSSynchronizeDisplayScreens(): This function is not supported on non-ATI/AMD GPU's! Aborted.\n");
         return(PsychError_unimplemented);
     }
 
@@ -3501,7 +3524,7 @@ int PsychOSKDGetBeamposition(int screenId)
     static psych_bool firstTime = TRUE;
 
     if (headId < 0 || headId > ((int) fNumDisplayHeads - 1)) {
-        printf("PTB-ERROR: PsychOSKDGetBeamposition: Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychOSKDGetBeamposition: Invalid headId %i provided! Must be between 0 and %i. Aborted.\n", headId, (fNumDisplayHeads - 1));
         return(beampos);
     }
 

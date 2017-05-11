@@ -425,7 +425,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
     }
 
     // GUI windows need to behave GUIyee:
-    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord)) {
+    if ((windowRecord->specialflags & kPsychGUIWindow) && PsychIsOnscreenWindow(windowRecord) && !(windowRecord->specialflags & kPsychFbOverrideSizeActive)) {
         // Update windows rect and globalrect, based on current size and location:
         lPoint.x = lPoint.y = 0;
         ClientToScreen(windowRecord->targetSpecific.windowHandle, &lPoint);
@@ -527,15 +527,20 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 break;
 
             case WM_CLOSE:
-                // WM_CLOSE falls through to WM_CHAR and emulates an Abort-key press.
-                // -> Manually closing an onscreen window does the same as pressing the Abort-key.
-                if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
-                wParam='@';
+                // WM_CLOSE: Window close button pressed. Close all onscreen windows.
+                if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_CLOSE!\n");
+                printf("PTB-INFO: Enforcing script abortion and restoring desktop by executing Screen('CloseAll') now!\n");
+                printf("PTB-INFO: Please ignore the false error message (INTERNAL PSYCHTOOLBOX ERROR) caused by this...\n");
+                ScreenCloseAllWindows();
+                return(0);
+
             case WM_CHAR:
+                // DISABLED: Interferes with some new text input stuff Diederick is developing, and undocumented
+                // and unimplemented on other OS'es anyway, so let it r.i.p.:
                 // Character received. We only care about one key, the '@' key.
                 // Pressing '@' will immediately close all onscreen windows, show
                 // the cursor and such. It is the emergency stop key.
-                if (wParam=='@') {
+                if (FALSE && (wParam=='@')) {
                     // Emergency shutdown:
                     printf("\nPTB-INFO: Master-Abort key '@' pressed by user.\n");
                     printf("PTB-INFO: Enforcing script abortion and restoring desktop by executing Screen('CloseAll') now!\n");
@@ -1899,6 +1904,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     DestroyWindow(windowRecord->targetSpecific.windowHandle);
     windowRecord->targetSpecific.windowHandle=NULL;
 
+    // Release cursor confinement for this window, if any:
+    PsychOSConstrainPointer(windowRecord, FALSE, NULL);
+
     // Restore video settings from the defaults in the Windows registry:
     ChangeDisplaySettings(NULL, 0);
 
@@ -2604,4 +2612,73 @@ psych_bool PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindo
     if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: NV_swap_group unsupported or join operation failed.\n");
 
     return(rc);
+}
+
+/* PsychOSConstrainPointer()
+ *
+ * Establish or release pointer confinement to a rectangle, a mouse trap if you want.
+ *
+ * Returns TRUE on success, FALSE on failure.
+ */
+psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bool constrain, PsychRectType rect)
+{
+    static PsychWindowRecordType *constrainWindow = NULL;
+    static RECT oldClip;
+    RECT clip;
+
+    if (constrain) {
+        // Cursor already constrained? MS-Windows only allows one single confinement rectangle session wide:
+        if (constrainWindow) {
+            if (PsychPrefStateGet_Verbosity() > 0)
+                printf("PTB-ERROR:PsychOSConstrainPointer: Tried to add more than one cursor confinement rect - Failed! MS-Windows only supports one such rect globally.\n");
+
+            return(FALSE);
+        }
+
+        // Translate from window local coordinates to desktop global coordinates:
+        rect[kPsychLeft] += windowRecord->globalrect[kPsychLeft];
+        rect[kPsychRight] += windowRecord->globalrect[kPsychLeft];
+        rect[kPsychTop] += windowRecord->globalrect[kPsychTop];
+        rect[kPsychBottom] += windowRecord->globalrect[kPsychTop];
+
+        // Store old setting as backup for later restore:
+        GetClipCursor(&oldClip);
+
+        // Set new confinement with this window as parent:
+        constrainWindow = windowRecord;
+        clip.left = (LONG) rect[kPsychLeft];
+        clip.top = (LONG) rect[kPsychTop];
+        clip.right = (LONG) rect[kPsychRight];
+        clip.bottom = (LONG) rect[kPsychBottom];
+
+        // Windows doesn't like it if clip rect is empty ie. left==right, and/or top==bottom.
+        // It kind'a constrains the pointer to the point, but with some jitter, and then fails
+        // to ever unconstrain it again. So we fudge the rect to contain at least 1 pixel:
+        if (clip.left == clip.right)
+            clip.right++;
+
+        if (clip.top == clip.bottom)
+            clip.bottom++;
+
+        // Engage!
+        ClipCursor(&clip);
+
+        if (PsychPrefStateGet_Verbosity() > 5)
+            printf("PTB-DEBUG: Confining mouse pointer for window %i to rect [%i, %i, %i, %i]\n",
+                   windowRecord->windowIndex, (int) rect[kPsychLeft], (int) rect[kPsychTop], (int) rect[kPsychRight], (int) rect[kPsychBottom]);
+
+        return(TRUE);
+    }
+    else if (constrainWindow && (windowRecord == constrainWindow)) {
+        if (PsychPrefStateGet_Verbosity() > 5)
+            printf("PTB-DEBUG: Releasing pointer confinement for window %i.\n", windowRecord->windowIndex);
+
+        constrainWindow = NULL;
+        ClipCursor(&oldClip);
+
+        return(TRUE);
+    }
+
+    // No-Op return:
+    return(TRUE);
 }

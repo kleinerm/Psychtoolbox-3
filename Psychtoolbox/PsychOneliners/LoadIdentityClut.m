@@ -67,6 +67,11 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType, disableD
 % 05/18/16   mk  Add detection for Broadcom VC4 SoC gpu in RaspberryPi.
 % 08/11/16   mk  Add detection based on winfo.DisplayCoreId on Linux to handle
 %                hybrid graphics laptops.
+% 06/05/17   mk  Add new lut handling for AMD gfx, to try to deal with pwl lut's
+%                in 10 bpc framebuffer mode on OSX. Preload some reasonable
+%                identity lut via LoadNormalizedGammaTable before using low-level
+%                identity lut setup, which can only deal with discrete lut's, not
+%                pwl lut's or such.
 
 global ptb_original_gfx_cluts;
 
@@ -124,6 +129,24 @@ end
 % is loaded, but should be the most reliable solution if it works:
 if ~IsWin
     % Low level control possible for some GPU's (e.g., AMD).
+
+    % For AMD hardware under OSX (and Linux, but doesn't matter yet), we preload identity
+    % lut of an ok quality via the conventional method, before using/trying the low-level
+    % setup. This in case low-level setup, which can currently only linearize the discrete
+    % hw lut's in 8 bpc format, fails to do a good job, because the display driver switches
+    % from the discrete hw lut to a piece-wise linear or non-linear lut. This seems to happen
+    % on some Apple Macs at least under macOS 10.12 when used in 10 bit native framebuffer mode.
+    % In such a case, although our low-level code does successfully load a 8 bpc, 256 slots
+    % discrete identity lut, that won't have the desired effect, as that discrete lut is not used.
+    % But if we upload a linearized lut conventionally, it should linearize the pwl/non-linear lut
+    % in the hardware. Note that for > 8 bit native modes we do not need a perfect 8 bpc pixel
+    % passthrough lut, as provided by our low-level setup code. A roughly linear lut will do to
+    % keep color/gamma calibration behaving as expected for 10 bpc display.
+    if strcmp(winfo.DisplayCoreId, 'AMD')
+      Screen('LoadNormalizedGammaTable', windowPtr, (linspace(0, 1, 256)' * ones(1, 3)), 0);
+      WaitSecs('YieldSecs', 0.25);
+    end
+
     % [] will enable full passthrough and force dithering off.
     % -1 will enable passthrough except for dithering, which is left at the OS default.
     if disableDithering
@@ -132,7 +155,7 @@ if ~IsWin
     else
         % Only identity LUTs, no color conversion, degamma etc., but leave the
         % dither settings untouched, so the OS + graphics driver stays in control:
-        passthroughrc = Screen('LoadNormalizedGammatable', windowPtr, -1);        
+        passthroughrc = Screen('LoadNormalizedGammatable', windowPtr, -1);
     end
 else
     passthroughrc = intmax;
@@ -235,7 +258,7 @@ else
                 % GeForce 250 on MS-Windows. Needs LUT type 1, according to Jon Peirce:
                 gfxhwtype = 1;
             end
-            
+
             % Is it a Geforce-8000 or later (G80 core or later) and is this OS/X?
             if ~isempty(strfind(winfo.GPUCoreId, 'G80')) && IsOSX
                 % 10.5.x Leopard?
@@ -252,7 +275,7 @@ else
                     % Yes. One of the releases with an embarassing amount of bugs,
                     % brought to you by Apple. Need to apply an especially ugly
                     % clut to force these cards into an identity mapping:
-                    
+
                     % Peter April reports his GeForce GT 330M on 10.6.8
                     % needs a type 0 LUT, so we handle this case:
                     if ~isempty(strfind(winfo.GLRenderer, '330'))
@@ -265,7 +288,7 @@ else
                     end
                 end
             end
-            
+
             if IsLinux
                 % LUT type 3 seems to be right for both GeForce under nouveau-kms, and Quadro under
                 % nvidia blob, so probably for all NVidia gpus on Linux:

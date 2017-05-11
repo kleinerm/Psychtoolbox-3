@@ -173,7 +173,7 @@ struct wl_compositor* wl_compositor = NULL;
 EGLDisplay egl_display = NULL;
 
 // Handle to the presentation extension:
-struct presentation *wayland_pres = NULL;
+struct wp_presentation *wayland_pres = NULL;
 
 // And our presentation reference clock:
 uint32_t wayland_presentation_clock_id;
@@ -576,7 +576,7 @@ static void add_output_info(struct output_info** outputSlot, uint32_t id, uint32
 }
 
 static void
-wayland_set_presentation_clock_id(void *data, struct presentation *presentation,
+wayland_set_presentation_clock_id(void *data, struct wp_presentation *presentation,
                                   uint32_t clk_id)
 {
     struct wl_display *self = data;
@@ -584,8 +584,8 @@ wayland_set_presentation_clock_id(void *data, struct presentation *presentation,
     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland presentation clock set to id %i.\n", (int) clk_id);
 }
 
-static const struct presentation_listener wayland_presentation_listener = {
-    wayland_set_presentation_clock_id
+static const struct wp_presentation_listener wayland_presentation_listener = {
+    .clock_id = wayland_set_presentation_clock_id
 };
 
 struct seat_info {
@@ -1080,16 +1080,16 @@ wayland_registry_listener_global(void *data,
 
     if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Wayland registry extension candidate: %s\n", interface);
 
-    // Look for presentation interface v1+:
-    if (!strcmp(interface, "presentation") && (version >= 1)) {
-        wayland_pres = wl_registry_bind(registry, name, &presentation_interface, 1);
+    // Look for stable presentation interface v1+:
+    if (!strcmp(interface, "wp_presentation") && (version >= 1)) {
+        wayland_pres = wl_registry_bind(registry, name, &wp_presentation_interface, 1);
         if (!wayland_pres) {
-            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: wl_registry_bind for presentation_interface failed!\n");
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: wl_registry_bind for wp_presentation_interface failed!\n");
             return;
         }
 
-        presentation_add_listener(wayland_pres, &wayland_presentation_listener, self);
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland presentation_interface bound!\n");
+        wp_presentation_add_listener(wayland_pres, &wayland_presentation_listener, self);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Wayland wp_presentation_interface bound!\n");
     }
 
     // Look for Wayland outputs ~ video outputs ~ displays ~ our PTB screens:
@@ -1136,7 +1136,7 @@ static const struct wl_registry_listener wayland_registry_listener = {
     .global_remove = wayland_registry_listener_global_remove
 };
 
-struct presentation *get_wayland_presentation_extension(PsychWindowRecordType* windowRecord)
+struct wp_presentation *get_wayland_presentation_extension(PsychWindowRecordType* windowRecord)
 {
     // Already have a cached presentation_interface? If so, just return it:
     return(wayland_pres);
@@ -1619,7 +1619,7 @@ void PsychCleanupDisplayGlue(void)
     wl_shm = NULL;
 
     // Reset our binding to presentation_feedback extension if this is our last onscreen window to close:
-    presentation_destroy(wayland_pres);
+    wp_presentation_destroy(wayland_pres);
     wayland_pres = NULL;
 
     // Destroy our reference to the registry:
@@ -1829,7 +1829,7 @@ psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
 /*
     PsychGetScreenDepth()
 
-    The caller must allocate and initialize the depth struct. 
+    The caller must allocate and initialize the depth struct.
 */
 void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
 {
@@ -1960,7 +1960,7 @@ void PsychGetGlobalScreenRect(int screenNumber, double *rect)
 // Bounding rectangle of output in compositor space units (points?):
 void PsychGetScreenRect(int screenNumber, double *rect)
 {
-    long width, height; 
+    long width, height;
 
     PsychGetScreenSize(screenNumber, &width, &height);
     rect[kPsychLeft] = 0;
@@ -2089,7 +2089,7 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
     If we can not change the display settings because of a lock (set by open window or close window) then return false.
 
     SCREENOpenWindow should capture the display before it sets the video mode.  If it doesn't, then PsychSetScreenSettings will
-    detect that and exit with an error.  SCREENClose should uncapture the display. 
+    detect that and exit with an error.  SCREENClose should uncapture the display.
 
     The duties of SCREENOpenWindow are:
     -Lock the screen which serves the purpose of preventing changes in video setting with open Windows.
@@ -2158,8 +2158,8 @@ psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsT
 /*
     PsychRestoreScreenSettings()
 
-    Restores video settings to the state set by the finder.  Returns TRUE if the settings can be restored or false if they 
-    can not be restored because a lock is in effect, which would mean that there are still open windows.    
+    Restores video settings to the state set by the finder.  Returns TRUE if the settings can be restored or false if they
+    can not be restored because a lock is in effect, which would mean that there are still open windows.
 
 */
 psych_bool PsychRestoreScreenSettings(int screenNumber)
@@ -2177,7 +2177,7 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
     // it means that the settings were never changed, so we can just return true.
     if (!displayOriginalCGSettingsValid[screenNumber]) return(TRUE);
 
-    //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
+    //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.
     isCaptured = PsychIsScreenCaptured(screenNumber);
     if (!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
 
@@ -2194,10 +2194,10 @@ psych_bool PsychRestoreScreenSettings(int screenNumber)
     // Retrieve original screen settings which we should restore for this screen:
     settings = &displayOriginalCGSettings[screenNumber];
 
-    //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.  
+    //Find core graphics video settings which correspond to settings as specified withing by an abstracted psychsettings structure.
     isValid = PsychGetCGModeFromVideoSetting(&cgMode, settings);
     if (!isValid || !cgMode) {
-        // This is an internal error because the caller is expected to check first. 
+        // This is an internal error because the caller is expected to check first.
         PsychErrorExitMsg(PsychError_user, "Attempt to restore invalid video settings.");
     }
 

@@ -2,9 +2,10 @@
 %
 % The PsychtoolboxKernelDriver (PKD) is a MacOS-X kernel extension (a
 % kext). It currently should fully work with AMD/ATI Radeon graphics cards
-% of the X1000, and HD2000 to HD8000 series and later. On NVidia and Intel
-% cards, only beamposition queries for high precision timestamping are
-% supported.
+% of the X1000 series, as well as the HD2000 series up to the most recent
+% AMD graphics cards, iow. anything released since around the year 2006.
+% On NVidia cards, only beamposition queries for high precision timestamping
+% are supported. Intel graphics chips are not supported.
 %
 % The driver needs to be manually installed by a user with administrator
 % privileges and provides a few special services to PTB-3, ie., PTB's
@@ -17,7 +18,7 @@
 % on Intel based Macintosh computers with AMD/ATI or Intel graphics.
 % The driver restores this functionality for NVidia and AMD/ATI gpu's.
 % Support for Intel gpu's is disabled by default, as it can lead to system
-% crash due to some unfixable incompatibility of Intel graphics hardware
+% crashes due to some unfixable incompatibility of Intel graphics hardware
 % which is completely out of our control.
 %
 % * Multihead display sync: The driver allows to synchronize the display
@@ -28,8 +29,10 @@
 % * Use of 10 bit per color component framebuffers: The driver enables two
 % extra bits of color output precision per color channel on your card,
 % allowing for 1 billion shades of different colors instead of the 16.8
-% million colors available without the driver. Only supported on AMD/ATI
-% graphics cards of X1000 series and later.
+% million colors available without the driver. This was only supported on
+% AMD/ATI graphics cards and is no longer supported since Psychtoolbox 3.0.14,
+% as Apple sabotaged our ability to provide this functionality on OSX 10.11
+% and later.
 %
 % * The driver implements workarounds to fix some problems caused by
 % graphics driver and operating system bugs when the graphics card is used
@@ -49,20 +52,17 @@
 % of multiple gpu's is not supported at this time.
 %
 % As this driver accesses the hardware at a very low level, bypassing the
-% whole operating system, its graphics subsystem and the drivers from AMD,
-% there is some potential for things to go wrong. Although our testing so
-% far didn't show any such problems, it may happen on your system. That is
-% why this driver is an *experimental* feature and why you need to have
-% administrator privileges to install and load the driver the first time.
+% whole operating system, its graphics subsystem and drivers, there is
+% some potential for things to go wrong. Although our testing over 10 years
+% didn't show any such problems, it could happen on some future OSX systems.
+% That is why this driver is considered a permanently experimental feature.
 %
 % How to install (one time setup):
 % --------------------------------
 %
-% OSX versions older than 10.8 "Mountain Lion" and 32-Bit operating system
-% kernels are no longer supported.
+% OSX versions older than 10.11 "El Capitan" are no longer supported.
 %
-% For OSX version 10.8 and later, use the PsychtoolboxKernelDriver64Bit.kext.zip, as exemplified
-% here.
+% Install the PsychtoolboxKernelDriver64Bit.kext.zip, as exemplified here.
 %
 % You must type this into the terminal:
 %
@@ -76,31 +76,18 @@
 % sudo unzip /Users/kleinerm/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriver64Bit.kext.zip
 %
 %
-% On modern OSX systems, this will automatically load the driver after a
-% few seconds, and also after each system restart. On older systems you
-% have to load the driver manually - on new systems you could do this for
-% debugging purposes: How to enable (each time after restarting your system):
+% This will automatically load the driver after a few seconds, and also after
+% each system restart.
 %
-% In a terminal type:
-% sudo kextload /System/Library/Extensions/PsychtoolboxKernelDriver.kext
+% If the driver fails to load, then please report it to the Psychtoolbox forum.
+% If it fails to load due to invalid cryptographic signatures you can disable
+% "System integrity protection" (SIP) as a temporary measure. The Internet will
+% tell you how to do that. This would make the kernel driver load, but reduce
+% resistance of your system against potential hacker/virus/trojan horses attacks
+% and other security threats.
 %
-% If you are running OSX 10.10 "Yosemite" or later and the driver fails to
-% load, then you will need to disable cryptographic kext signature
-% verification globally on your operating system, as that new security
-% mechanism will prevent the kernel driver from loading. This will make the
-% kernel driver load, but reduce resistance of your system against
-% potential hacker/virus/trojan horses attacks against your machine. It is
-% up to you if you want a more secure system, or a system with research
-% grade visual stimulation timing - life is full of tradeoffs...
-%
-% To disable the security mechanism and make the driver load on 10.10:
-%
-% 1. In a terminal type: sudo nvram boot-args="kext-dev-mode=1"
-% 2. Reboot your machine.
-%
-%
-% How to upgrade with a more recent version:
-% ------------------------------------------
+% How to upgrade with a more recent version, bundled with a new version of Psychtoolbox:
+% --------------------------------------------------------------------------------------
 %
 % You can unload and delete the driver before a driver upgrade via:
 %

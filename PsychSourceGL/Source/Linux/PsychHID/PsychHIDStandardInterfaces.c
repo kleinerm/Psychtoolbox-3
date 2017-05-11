@@ -730,9 +730,26 @@ int PsychHIDGetDefaultKbQueueDevice(void)
         dev = &info[deviceIndex];
 
         if ((dev->use == XISlaveKeyboard) && !strstr(dev->name, "XTEST") && !strstr(dev->name, "utton") && !strstr(dev->name, "Bus") &&
+            !strstr(dev->name, "iSight") && !strstr(dev->name, "eceiver") && !strstr(dev->name, "amera") && !strstr(dev->name, "Gaming Mouse G502")) {
+            return(deviceIndex);
+        }
+    }
+
+    // Ok, no keyboard found at all. Fallback to mice, joysticks etc.:
+    for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
+        dev = &info[deviceIndex];
+
+        if ((dev->use == XISlavePointer) && !strstr(dev->name, "XTEST") && !strstr(dev->name, "utton") && !strstr(dev->name, "Bus") &&
             !strstr(dev->name, "iSight") && !strstr(dev->name, "eceiver") && !strstr(dev->name, "amera")) {
             return(deviceIndex);
         }
+    }
+
+    // Ok, nothing at all. Fallback to XTEST keyboard, which always exists. Maybe we deal with some
+    // virtual keyboard like onscreen keyboard:
+    for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
+        dev = &info[deviceIndex];
+        if (dev->use == XISlaveKeyboard) return(deviceIndex);
     }
 
     // Nothing found? If so, abort:

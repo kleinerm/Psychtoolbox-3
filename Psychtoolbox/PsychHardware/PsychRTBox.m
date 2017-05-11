@@ -2844,7 +2844,11 @@ function openRTBox(deviceID, handle)
             % Enumerate all possible ports as candidates for box:
             % Suppose RTBox not assigned to COM1 or COM2, as these are
             % usually the native serial ports, if any:
-            ports=cellstr(num2str((3:256)','\\\\.\\COM%i'));
+            for kk=3:5
+                ports{kk - 2} = { sprintf('\\\\.\\COM%i', kk) };
+            end
+            ports = cellstr(ports);
+            % Does not work with Octave on Windows, hence replaced by code above: ports=cellstr(num2str((3:5)','\\\\.\\COM%i'))
             ports=strtrim(ports); % needed for Matlab R2009b and later.
         end
         

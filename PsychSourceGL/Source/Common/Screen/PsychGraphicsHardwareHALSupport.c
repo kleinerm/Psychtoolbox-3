@@ -111,7 +111,7 @@ PsychError PsychSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* 
 }
 
 /* PsychSetOutputDithering() - Control bit depth control and dithering on digital display output encoder:
- * 
+ *
  * This function enables or disables bit depths truncation or dithering of digital display output ports of supported
  * graphics hardware. Currently the ATI Radeon X1000/HD2000/HD3000/HD4000/HD5000 and later cards should allow this.
  *
@@ -148,7 +148,7 @@ psych_bool PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int scre
 }
 
 /* PsychSetGPUIdentityPassthrough() - Control identity passthrough of framebuffer 8 bpc pixel values to encoders/connectors:
- * 
+ *
  * This function enables or disables bit depths truncation or dithering of digital display output ports of supported
  * graphics hardware, and optionally loads a identity LUT into the hardware and configures other parts of the GPU's
  * color management for untampered passthrough of framebuffer pixels.
@@ -160,7 +160,7 @@ psych_bool PsychSetOutputDithering(PsychWindowRecordType* windowRecord, int scre
  *
  * 'windowRecord'	Is used to find the Id of the screen for which mode should be changed. If set to NULL then...
  * 'screenId'       ... is used to determine the screenId for the screen. Otherwise 'screenId' is ignored.
- * 'passthroughEnable' Zero = Disable passthrough: Currently only reenables dithering, otherwise a no-op. 
+ * 'passthroughEnable' Zero = Disable passthrough: Currently only reenables dithering, otherwise a no-op.
  *                     1 = Enable passthrough, if possible.
  * 'changeDithering' FALSE = Don't touch dither control, TRUE = Control dithering enable/disable if possible.
  *
@@ -1050,7 +1050,7 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
         }
 
         // Yes. Perform detection sequence:
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to detect screenId to display head mapping for screenid %i ...", screenId);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to detect screenId to display head mapping for screenid %i ...\n", screenId);
 
         // Iterate over all outputs for this screen:
         for (outputId = 0; outputId < kPsychMaxPossibleCrtcs; outputId++) {
@@ -1058,7 +1058,7 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
             if (PsychScreenToHead(screenId, outputId) < 0)
                 break;
 
-            if (PsychPrefStateGet_Verbosity() > 3) printf(" ... probing for video output %i ... ", outputId);
+            if (PsychPrefStateGet_Verbosity() > 3) printf(" ... probing for video output %i ...\n", outputId);
 
             // Retrieve current gamma table. Need to back it up internally:
             PsychReadNormalizedGammaTable(screenId, outputId, &numEntries, &redTable, &greenTable, &blueTable);
@@ -1077,7 +1077,7 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
                     displayScreensToCrtcIds[screenId][outputId] = headId;
 
                     // Done with searching:
-                    if (PsychPrefStateGet_Verbosity() > 3) printf(" found GPU hardware headId %i for output %i. ", headId, outputId);
+                    if (PsychPrefStateGet_Verbosity() > 3) printf(" found GPU hardware headId %i for output %i.\n", headId, outputId);
                     break;
                 }
             }

@@ -193,7 +193,8 @@ try
     count=-100;
     while ~KbCheck && count < 1200
         % Test affine text transformations?
-        if 0
+        doAffine = 0;
+        if doAffine
             % Yes. Apply some rotation and some translation:
             angle = 2 * (GetSecs - tstart) / 360 * 2 * 3.141592654;
             delta = 10 * sin((GetSecs - tstart));
@@ -220,8 +221,10 @@ try
         realRect(1) = realRect(3);
 
         % This 100 + xAdvance aka oldX + xAdvance should be the same as newX after text drawing:
-        realRect(3) = 100 + xAdvance;
-        Screen('FrameRect', w, [255 255 0], realRect);
+        if ~doAffine
+            realRect(3) = 100 + xAdvance;
+            Screen('FrameRect', w, [255 255 0], realRect);
+        end
 
         % Update count and show frame...
         count=count+1;
