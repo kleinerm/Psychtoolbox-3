@@ -1,0 +1,53 @@
+# Example xorg.conf file for a muxless dual-gpu system,
+# e.g., a muxless Laptop, where an Intel iGPU is used
+# to drive the experimenter/GUI display on X-Screen 0,
+# an AMD dGPU is used to drive the visual stimulation
+# display on X-Screen 1. This setup could be found on
+# a Laptop where the iGPU is not connected to the external
+# display outputs - it is only driving the internal
+# Laptop flat panel. The dGPU is connected only to the
+# external outputs - it is only driving external displays,
+# e.g., for visual stimulation.
+# In such a case the best setup is to assign one X-Screen
+# to each gpu, like demonstrated here. You would need to
+# adapt this xorg.conf to your specific hardware though,
+# e.g., select proper BusId parameters for your hardware.
+#
+# The most common muxless laptops nowadays only have the
+# iGPU connected to *all* display outputs (internal and
+# external), the dGPU is not connected to anything. For
+# that config, Psychtoolbox XOrgConfCreator can automatically
+# create suitable config files for so called DRI/Prime render
+# offload. Iow. for such Laptops this example config or similar
+# ones do not apply.
+
+Section "ServerLayout"
+	Identifier     "Hydra-2XScreensOn2GPUs"
+        Screen      0  "Screen0" 0 0
+	Screen      1  "Screen1" RightOf "Screen0"
+EndSection
+
+Section "Device"
+	Identifier  "Card1"
+	Driver      "amdgpu"
+	BusID       "PCI:1:0:0"
+        Option      "DRI" "3"
+EndSection
+
+Section "Device"
+	Identifier  "Card0"
+	Driver      "intel"
+	BusID       "PCI:0:2:0"
+	Option      "Tearfree" "off"
+        Option      "DRI" "3"
+EndSection
+
+Section "Screen"
+	Identifier "Screen0"
+	Device     "Card0"
+EndSection
+
+Section "Screen"
+	Identifier "Screen1"
+	Device     "Card1"
+EndSection

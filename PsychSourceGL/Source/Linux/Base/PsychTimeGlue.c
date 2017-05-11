@@ -4,7 +4,7 @@
 
 	AUTHORS:
 
-  	mario.kleiner at tuebingen.mpg.de		mk 
+  	mario.kleiner.de@gmail.com              mk
 
 	PLATFORMS: GNU/Linux Only
 
@@ -13,11 +13,11 @@
 
   	HISTORY:
 
-  	2/20/06       mk		Wrote it. Derived from Windows version.  
+  	2/20/06       mk		Wrote it. Derived from Windows version.
 1/03/09		  mk		Add generic Mutex locking support as service to ptb modules. Add PsychYieldIntervalSeconds().
 
   	DESCRIPTION:
-	
+
 	Functions for querying system time and for waiting for either a
 	specified amount of time or until a specified point in time.
 	Also returns timer ticks and resolution of timers.
@@ -72,7 +72,7 @@ void PsychWaitUntilSeconds(double whenSecs)
 
   // Convert targettime to timespec for the Posix clock functions:
   rqtp.tv_sec   = (unsigned long long) targettime;
-  rqtp.tv_nsec = ((targettime - (double) rqtp.tv_sec) * (double) 1e9);  
+  rqtp.tv_nsec = ((targettime - (double) rqtp.tv_sec) * (double) 1e9);
 
   // Use clock_nanosleep() to high-res sleep until targettime, repeat if that gets
   // prematurely interrupted for whatever reason...
@@ -90,7 +90,7 @@ void PsychWaitUntilSeconds(double whenSecs)
     // We use TIMER_ABSTIME, so we are totally drift-free and restartable in case our sleep gets interrupted by
     // signals. If clock_nanosleep gets EINTR - Interrupted by a posix signal, we simply loop and restart the
     // sleep. If it returns a different error condition, we abort sleep iteration -- something would be seriously
-    // wrong... 
+    // wrong...
     if ((rc = clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &rqtp, NULL)) && (rc != EINTR)) break;
 
     // Update our 'now' time for reiterating or continuing with busy-sleep...
@@ -131,7 +131,7 @@ void PsychWaitIntervalSeconds(double delaySecs)
   double deadline;
 
   if (delaySecs <= 0) return;
-  
+
   // Get current time:
   PsychGetPrecisionTimerSeconds(&deadline);
 
@@ -191,7 +191,7 @@ double	PsychGetKernelTimebaseFrequencyHz(void)
 void PsychInitTimeGlue(void)
 {
   // TODO: Add Mutex init code for the timeglue mutex!
-  
+
   // Set this, although its totally pointless on our implementation...
   PsychEstimateGetSecsValueAtTickCountZero();
 }
@@ -245,7 +245,7 @@ void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta)
  * return their audio timestamps in CLOCK_REALTIME time or CLOCK_MONOTONIC time,
  * so we need to dynamically check, adapt and remap if neccessary.
  *
- */ 
+ */
 double PsychOSGetLinuxMonotonicTime(void)
 {
 	struct timespec ts;
@@ -265,12 +265,12 @@ double PsychOSGetLinuxMonotonicTime(void)
 double PsychOSMonotonicToRefTime(double monotonicTime)
 {
     double now, now2, tMonotonic;
-    
+
     // Get current reftime:
     PsychGetAdjustedPrecisionTimerSeconds(&now);
     // Get current CLOCK_MONOTONIC time:
     tMonotonic = PsychOSGetLinuxMonotonicTime();
-    
+
     // Given input monotonicTime time value closer to tMonotonic than to GetSecs time?
     if (fabs(monotonicTime - tMonotonic) < fabs(monotonicTime - now)) {
         // Timestamps are in monotonic time! Need to remap.
@@ -284,19 +284,19 @@ double PsychOSMonotonicToRefTime(double monotonicTime)
             // Requery to make sure mapping is tight:
             PsychGetAdjustedPrecisionTimerSeconds(&now2);
         } while (now2 - now > 0.000020);
-        
+
         // Computer average of both timestamps to get best estimate of "now":
         now = (now + now2) / 2;
-        
+
         // tMonotonic shall be the offset between GetSecs and monotonic time,
         // i.e., the offset that needs to be added to monotonic timestamps to
         // remap them to GetSecs time:
         tMonotonic = now - tMonotonic;
-        
+
         // Correct timestamp by adding corrective offset:
         monotonicTime += tMonotonic;
     }
-    
+
     return(monotonicTime);
 }
 
@@ -356,7 +356,7 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	// clocksource selection and basically try to shoot themselves into the leg.
 	// It may also be useful is somebody is running a very old Linux kernel without
 	// sophisticated checking and for testing/debugging PTB and its error-handling itself by
-	// fault-injection... 
+	// fault-injection...
 	// MK: DISABLED FOR THIS RELEASE: Gives false alarms due to some race-condition when
 	// function is called from multiple concurrent threads. Proper fix is known, but i
 	// want to get a beta out now and not in a week...
@@ -376,13 +376,13 @@ void PsychGetPrecisionTimerSeconds(double *secs)
   oldss = ss;
 
   // Assign final time value:
-  *secs= ss;  
+  *secs= ss;
 }
 
 void PsychGetAdjustedPrecisionTimerSeconds(double *secs)
 {
   double		rawSecs, factor;
-  
+
   PsychGetPrecisionTimerSeconds(&rawSecs);
   PsychGetPrecisionTimerAdjustmentFactor(&factor);
   *secs=rawSecs * precisionTimerAdjustmentFactor;
@@ -408,7 +408,7 @@ void PsychEstimateGetSecsValueAtTickCountZero(void)
   // double nowTicks, nowSecs;
   // nowTicks=(double) GetTickCount();
   // PsychGetAdjustedPrecisionTimerSeconds(&nowSecs);
-  // estimatedGetSecsValueAtTickCountZero=nowSecs - nowTicks * (1/1000.0f); 
+  // estimatedGetSecsValueAtTickCountZero=nowSecs - nowTicks * (1/1000.0f);
 
   // This is zero by definition of our counters...
   estimatedGetSecsValueAtTickCountZero=0;
@@ -417,6 +417,14 @@ void PsychEstimateGetSecsValueAtTickCountZero(void)
 double PsychGetEstimatedSecsValueAtTickCountZero(void)
 {
   return(estimatedGetSecsValueAtTickCountZero);
+}
+
+/* PsychGetWallClockSeconds - Return gettimeofday() wall clock time. */
+double PsychGetWallClockSeconds(void)
+{
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return(((double) tv.tv_sec) + (((double) tv.tv_usec) / 1000000.0));
 }
 
 /* Init a Mutex: */
@@ -477,7 +485,7 @@ int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*st
 {
 	// threadparams not yet used, this line just to make compiler happy:
 	(void) threadparams;
-	
+
 	// Return result code of pthread_create - We're a really thin wrapper around this Posix call:
 	return( pthread_create(threadhandle, NULL, start_routine, arg) );
 }
@@ -504,7 +512,7 @@ void PsychTestCancelThread(psych_thread* threadhandle)
 {
 	// threadhandle unused on POSIX: This line just to make compiler happy:
 	(void) threadhandle;
-	
+
 	// Test for cancellation, cancel if so:
 	pthread_testcancel();
 }
@@ -556,7 +564,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 		// Retrieve handle of calling thread:
 		thread = pthread_self();
 	}
-	
+
 	// Retrieve current scheduling policy and parameters:
 	pthread_getschedparam(thread, &policy, &sp);
 
@@ -565,12 +573,12 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 			policy = SCHED_OTHER;
 			sp.sched_priority = 0;
 		break;
-		
+
 		case 1: // High priority / Round robin realtime.
 			policy = SCHED_RR;
 			sp.sched_priority = sp.sched_priority + tweakPriority;
 		break;
-		
+
 		case 2:	  // Highest priority: FIFO scheduling
 		case 10:  // Multimedia class scheduling emulation for non-Windows:
 			policy = SCHED_FIFO;
@@ -666,7 +674,7 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 	maxwaittimesecs+=tnow;
 
 	// Split maxwaittimesecs in...
-		
+
 	// ... full integral seconds (floor() it)...
 	abstime.tv_sec  = (time_t) maxwaittimesecs;
 
@@ -678,7 +686,7 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
 }
 
 /* Set thread affinity mask of calling thread to the modules global cpuMask:
- * 
+ *
  * 'curCpuMask' is an in/out pointer. If NULL, it is completely ignored. If non-NULL,
  * the target variable of the pointer will contain the new cpu mask after a change
  * of mask. If the target variable already contains a valid (non-zero) current cpu mask
@@ -697,7 +705,7 @@ int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, doub
  *
  * If this function is called without the time lock held, ie., from outside
  * of other timeglue functions, a small race condition exists which may cause
- * deferred updated to the real new affinity mask due to 
+ * deferred updated to the real new affinity mask due to
  *
  */
 psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)

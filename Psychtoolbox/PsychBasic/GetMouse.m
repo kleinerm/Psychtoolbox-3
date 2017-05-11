@@ -151,6 +151,7 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 % 05/02/12 mk   Add workaround for 64-Bit OS/X to compensate for Apple braindamage.
 % 01/08/15 mk   Add initial Wayland support.
 % 07/20/15 mk   Add support for valuators/valuatorinfo on OSX.
+% 02/25/17 mk   Fix window relative coordinates for Linux on multi-X-screen or Wayland.
 
 % We Cache the value of numMouseButtons between calls to GetMouse, so we
 % can skip the *very time-consuming* detection code on successive calls.
@@ -225,10 +226,19 @@ buttons=logical(rawButtons);
 % window local coordinates, so remapping is not only not needed,
 % but actually harmful:
 if ~isempty(windowPtrOrScreenNumber)
-    screenRect=Screen('GlobalRect',windowPtrOrScreenNumber);
-    x=globalX-screenRect(RectLeft);
-    y=globalY-screenRect(RectTop);
+    if IsLinux && (Screen('WindowKind', windowPtrOrScreenNumber) == 1) && ~IsWayland
+        % Linux with an onscreen window handle. 'GetMouseHelper' already
+        % returns window local coordinates, ie. relative to window origin:
+        x=globalX;
+        y=globalY;
+    else
+        % Non-Linux or screen number instead of window handle. Remap global -> local:
+        screenRect=Screen('GlobalRect',windowPtrOrScreenNumber);
+        x=globalX-screenRect(RectLeft);
+        y=globalY-screenRect(RectTop);
+    end
 else
+    % No window/screen handle: Just return global mouse coordinates in desktop space:
     x=globalX;
     y=globalY;
 end

@@ -1,27 +1,27 @@
 /*
-	Screen.h
-	
-	PLATFORMS:
-			
-		All.
-			
-	AUTHORS:
-	
-		Allen Ingling		awi		Allen.Ingling@nyu.edu
-		Mario Kleiner		mk		mario.kleiner@tuebingen.mpg.de
-		
-	HISTORY:
-	
-		12/18/01		awi		wrote it.  Derived from joystick.h
-		11/16/04		awi		Added  SCREENGlobalRect 
-		1/25/05			awi		Merged in mk version which provides ScreenCloseAllWindows() declaration. Then restored SCREENGetTimeList declaration.  
-		4/22/05          mk     Added new commands DrawLines, SelectStereoDrawBuffer and DrawingFinished
-		5/09/05          mk     Added new command GetFlipInterval
-		10/11/05         mk     Support for special movie playback added (include of PsychMovieSupport.h)
-		01/13/08		 mk		Added warning text and more fixes for the totally broken #include chain issues...
- */
+    Screen.h
 
-//begin include once 
+    PLATFORMS:
+
+        All.
+
+    AUTHORS:
+
+        Allen Ingling           awi     Allen.Ingling@nyu.edu
+        Mario Kleiner           mk      mario.kleiner.de@gmail.com
+
+    HISTORY:
+
+        12/18/01        awi             wrote it.  Derived from joystick.h
+        11/16/04        awi             Added  SCREENGlobalRect
+        1/25/05         awi             Merged in mk version which provides ScreenCloseAllWindows() declaration. Then restored SCREENGetTimeList declaration.
+        4/22/05          mk             Added new commands DrawLines, SelectStereoDrawBuffer and DrawingFinished
+        5/09/05          mk             Added new command GetFlipInterval
+        10/11/05         mk             Support for special movie playback added (include of PsychMovieSupport.h)
+        01/13/08         mk             Added warning text and more fixes for the totally broken #include chain issues...
+*/
+
+//begin include once
 #ifndef PSYCH_IS_INCLUDED_Screen
 #define PSYCH_IS_INCLUDED_Screen
 
@@ -85,32 +85,31 @@
 
 #include "ScreenPreferenceState.h"
 
-//functions registered with the Psychtoolbox library 
-PsychError ScreenExitFunction(void); 			//ScreenExit.c
-PsychError PsychDisplayScreenSynopsis(void);	        //ScreenSynopsis.c
+//functions registered with the Psychtoolbox library
+PsychError ScreenExitFunction(void);            // ScreenExit.c
+PsychError PsychDisplayScreenSynopsis(void);    // ScreenSynopsis.c
 
 //internal screen functions
-void InitializeSynopsis();				//ScreenExit.c
-void ScreenCloseAllWindows();           //SCREENCloseAll.c
+void InitializeSynopsis();                      //ScreenExit.c
+void ScreenCloseAllWindows();                   //SCREENCloseAll.c
 
 //PsychGLGlue.c
-int		PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType *windowRecord, GLdouble *valueArray);
-// int		PsychConvertColorAndColorSizeToDoubleVector(PsychColorType *color, int colorSize, GLdouble *valueArray);
-void		PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord);
-void		PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, psych_bool enable, int mc, double* colors, unsigned char *bytecolors);
-void		PsychSetArrayColor(PsychWindowRecordType *windowRecord, int i, int mc, double* colors, unsigned char *bytecolors);
-void		PsychGLClear(PsychWindowRecordType *windowRecord);
-void		PsychGLRect(PsychRectType psychRect);
-char		*PsychGetGLErrorNameString(GLenum errorConstant);
-#define		PsychTestForGLErrors()		PsychTestForGLErrorsC(__LINE__, __func__, __FILE__) 
-void		PsychTestForGLErrorsC(int lineNum, const char *funcName, const char *fileName);
-GLdouble	*PsychExtractQuadVertexFromRect(double *rect, int vertexNumber, GLdouble *vertex);
-void		PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos, int* coords_count, double** xy, int colors_pos, int* colors_count, int* colorcomponent_count, double** colors, unsigned char** bytecolors, int sizes_pos, int* sizes_count, double** size, psych_bool usefloat);
-void		PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord, psych_bool flushOnly);
-psych_bool	PsychIsGLClassic(PsychWindowRecordType *windowRecord);
-GLenum		PsychGLFloatType(PsychWindowRecordType *windowRecord);
+int             PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType *windowRecord, GLdouble *valueArray);
+void            PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord);
+void            PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, psych_bool enable, int mc, double* colors, unsigned char *bytecolors);
+void            PsychSetArrayColor(PsychWindowRecordType *windowRecord, int i, int mc, double* colors, unsigned char *bytecolors);
+void            PsychGLClear(PsychWindowRecordType *windowRecord);
+void            PsychGLRect(PsychRectType psychRect);
+char            *PsychGetGLErrorNameString(GLenum errorConstant);
+#define         PsychTestForGLErrors()        PsychTestForGLErrorsC(__LINE__, __func__, __FILE__)
+void            PsychTestForGLErrorsC(int lineNum, const char *funcName, const char *fileName);
+GLdouble        *PsychExtractQuadVertexFromRect(double *rect, int vertexNumber, GLdouble *vertex);
+void            PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos, int* coords_count, double** xy, int colors_pos, int* colors_count, int* colorcomponent_count, double** colors, unsigned char** bytecolors, int sizes_pos, int* sizes_count, double** size, psych_bool usefloat);
+void            PsychWaitPixelSyncToken(PsychWindowRecordType *windowRecord, psych_bool flushOnly);
+psych_bool      PsychIsGLClassic(PsychWindowRecordType *windowRecord);
+GLenum          PsychGLFloatType(PsychWindowRecordType *windowRecord);
 #define PSYCHGLFLOAT PsychGLFloatType(windowRecord)
-psych_bool	PsychIsGLES(PsychWindowRecordType *windowRecord);
+psych_bool      PsychIsGLES(PsychWindowRecordType *windowRecord);
 #define PSYCHEXECNONGLES(x) if (!PsychIsGLES(windowRecord)) (x)
 
 void PsychGLBegin(PsychWindowRecordType *windowRecord, GLenum primitive);
@@ -133,126 +132,125 @@ int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, i
 void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord);
 
 // Helper routines for text renderers:
-void		PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord);
-psych_bool	PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord);
-void		PsychDrawCharText(PsychWindowRecordType* winRec, const char* textString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, PsychRectType* boundingbox);
-PsychError	PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, double* theight, double* xAdvance, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, int swapTextDirection);
-PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor);
-psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isRequired, int *textLength, double **unicodeText);
-psych_bool	PsychSetUnicodeTextConversionLocale(char* mnewlocale);
-const char* PsychGetUnicodeTextConversionLocale(void);
+void            PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord);
+psych_bool      PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord);
+void            PsychDrawCharText(PsychWindowRecordType* winRec, const char* textString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, PsychRectType* boundingbox);
+PsychError      PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, double* theight, double* xAdvance, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, int swapTextDirection);
+PsychError      PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor);
+psych_bool      PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isRequired, int *textLength, double **unicodeText);
+psych_bool      PsychSetUnicodeTextConversionLocale(char* mnewlocale);
+const char*     PsychGetUnicodeTextConversionLocale(void);
 
-//functions implementing Screen subcommands. 
-PsychError	SCREENNull(void);					
-PsychError 	SCREENTestStructures(void);				
-PsychError 	MODULEVersion(void);					
-PsychError 	SCREENComputer(void);					
-PsychError	SCREENScreens(void);					
-PsychError 	SCREENPixelSize(void);					 
-PsychError 	SCREENPixelSizes(void);					
-PsychError 	SCREENNominalFramerate(void);			
-PsychError 	SCREENOpenWindow(void);					
-PsychError 	SCREENOpenOffscreenWindow(void);		
-PsychError 	SCREENClose(void);						
-PsychError	SCREENCloseAll(void);				
-PsychError 	SCREENCopyWindow(void);				 
-PsychError 	SCREENFlip(void);					
-PsychError 	SCREENFillRect(void);					
-PsychError	SCREENGetImage(void);					
-PsychError 	SCREENPutImage(void);					
-PsychError 	SCREENHideCursorHelper(void);					
-PsychError 	SCREENShowCursorHelper(void);					
-PsychError 	SCREENSetMouseHelper(void);				 
-PsychError 	SCREENRect(void);					
-PsychError 	SCREENWindowScreenNumber(void);			
-PsychError 	SCREENWindows(void);					 
-PsychError 	SCREENWindowKind(void);					
-PsychError 	SCREENIsOffscreen(void);				
-PsychError 	SCREENReadNormalizedGammaTable(void);	 
-PsychError 	SCREENLoadNormalizedGammaTable(void);	
-PsychError 	SCREENglPoint(void);					
-PsychError 	SCREENgluDisk(void);					 
-PsychError 	SCREENFillOval(void);					
-PsychError 	SCREENFrameOval(void) ;					
-PsychError 	SCREENTextModes(void);					
-PsychError 	SCREENTextMode(void);					
-PsychError 	SCREENTextSize(void);					
-PsychError 	SCREENTextStyle(void);					
-PsychError 	SCREENTextFont(void);					
-PsychError      SCREENTextBounds(void);					
-PsychError      SCREENTextTransform(void);
-PsychError      SCREENDrawText(void);					
-PsychError      SCREENTextColor(void);					
-PsychError      SCREENPreference(void);					
-PsychError      SCREENDrawTexture(void);			
-PsychError      SCREENMakeTexture(void);			
-PsychError      SCREENFrameRect(void);
-PsychError      SCREENDrawLine(void);
-PsychError      SCREENFillPoly(void);
-PsychError      SCREENFramePoly(void);
-PsychError      SCREENGlobalRect(void);
-PsychError	SCREENDrawDots(void); 
-PsychError	SCREENGetTimeList(void);
-PsychError	SCREENClearTimeList(void);
-PsychError	SCREENBlendFunction(void);
-PsychError      SCREENWindowSize(void); 
-PsychError	SCREENTextBackgroundColor(void); 
-PsychError      SCREENLineStipple(void);
-PsychError      SCREENSelectStereoDrawBuffer(void); 
-PsychError      SCREENDrawingFinished(void); 
-PsychError      SCREENDrawLines(void);
-PsychError      SCREENGetFlipInterval(void);
-PsychError      SCREENCloseMovie(void);
-PsychError      SCREENOpenMovie(void);
-PsychError      SCREENPlayMovie(void);
-PsychError      SCREENSetMovieTimeIndex(void);
-PsychError      SCREENGetMovieTimeIndex(void);
-PsychError      SCREENGetMovieImage(void);
-PsychError      SCREENglPushMatrix(void);
-PsychError      SCREENglPopMatrix(void);
-PsychError      SCREENglLoadIdentity(void);
-PsychError      SCREENglTranslate(void);
-PsychError      SCREENglScale(void);
-PsychError      SCREENglRotate(void);
-PsychError      SCREENPreloadTextures(void);
-PsychError      SCREENFillArc(void);
-PsychError      SCREENDrawArc(void);
-PsychError      SCREENFrameArc(void);
-PsychError      SCREENWaitBlanking(void);
-PsychError      SCREENSetOpenGLTexture(void); 
-PsychError      SCREENGetOpenGLTexture(void);
-PsychError	SCREENVideoCaptureDevices(void);
-PsychError      SCREENOpenVideoCapture(void); 
-PsychError      SCREENCloseVideoCapture(void); 
-PsychError      SCREENStartVideoCapture(void); 
-PsychError      SCREENStopVideoCapture(void); 
-PsychError      SCREENGetCapturedImage(void); 
-PsychError      SCREENSetVideoCaptureParameter(void); 
-PsychError      SCREENBeginOpenGL(void);
-PsychError      SCREENEndOpenGL(void);
-PsychError	SCREENGetOpenGLDrawMode(void);
-PsychError      SCREENLoadCLUT(void);
-PsychError      SCREENDisplaySize(void);
-PsychError      SCREENSetOpenGLTextureFromMemPointer(void);
-PsychError	SCREENColorRange(void);
-PsychError	SCREENHookFunction(void);
-PsychError	SCREENOpenProxy(void);
-PsychError	SCREENTransformTexture(void);
-PsychError	SCREENDrawTextures(void) ;
-PsychError	SCREENGetWindowInfo(void);
-PsychError	SCREENGetMouseHelper(void);
-PsychError	SCREENResolution(void);
-PsychError	SCREENResolutions(void);
-PsychError	SCREENWaitUntilAsyncFlipCertain(void);
-PsychError	SCREENCreateMovie(void);
-PsychError	SCREENFinalizeMovie(void);
-PsychError      SCREENAddAudioBufferToMovie(void);
-PsychError      SCREENGetFlipInfo(void);
-PsychError      SCREENConfigureDisplay(void);
-PsychError      SCREENPanelFitter(void);
-//PsychError SCREENSetGLSynchronous(void);		//SCREENSetGLSynchronous.c
-
+//functions implementing Screen subcommands.
+PsychError SCREENNull(void);
+PsychError SCREENTestStructures(void);
+PsychError MODULEVersion(void);
+PsychError SCREENComputer(void);
+PsychError SCREENScreens(void);
+PsychError SCREENPixelSize(void);
+PsychError SCREENPixelSizes(void);
+PsychError SCREENNominalFramerate(void);
+PsychError SCREENOpenWindow(void);
+PsychError SCREENOpenOffscreenWindow(void);
+PsychError SCREENClose(void);
+PsychError SCREENCloseAll(void);
+PsychError SCREENCopyWindow(void);
+PsychError SCREENFlip(void);
+PsychError SCREENFillRect(void);
+PsychError SCREENGetImage(void);
+PsychError SCREENPutImage(void);
+PsychError SCREENHideCursorHelper(void);
+PsychError SCREENShowCursorHelper(void);
+PsychError SCREENSetMouseHelper(void);
+PsychError SCREENConstrainCursor(void);
+PsychError SCREENRect(void);
+PsychError SCREENWindowScreenNumber(void);
+PsychError SCREENWindows(void);
+PsychError SCREENWindowKind(void);
+PsychError SCREENIsOffscreen(void);
+PsychError SCREENReadNormalizedGammaTable(void);
+PsychError SCREENLoadNormalizedGammaTable(void);
+PsychError SCREENglPoint(void);
+PsychError SCREENgluDisk(void);
+PsychError SCREENFillOval(void);
+PsychError SCREENFrameOval(void) ;
+PsychError SCREENTextModes(void);
+PsychError SCREENTextMode(void);
+PsychError SCREENTextSize(void);
+PsychError SCREENTextStyle(void);
+PsychError SCREENTextFont(void);
+PsychError SCREENTextBounds(void);
+PsychError SCREENTextTransform(void);
+PsychError SCREENDrawText(void);
+PsychError SCREENTextColor(void);
+PsychError SCREENPreference(void);
+PsychError SCREENDrawTexture(void);
+PsychError SCREENMakeTexture(void);
+PsychError SCREENFrameRect(void);
+PsychError SCREENDrawLine(void);
+PsychError SCREENFillPoly(void);
+PsychError SCREENFramePoly(void);
+PsychError SCREENGlobalRect(void);
+PsychError SCREENDrawDots(void);
+PsychError SCREENGetTimeList(void);
+PsychError SCREENClearTimeList(void);
+PsychError SCREENBlendFunction(void);
+PsychError SCREENWindowSize(void);
+PsychError SCREENTextBackgroundColor(void);
+PsychError SCREENLineStipple(void);
+PsychError SCREENSelectStereoDrawBuffer(void);
+PsychError SCREENDrawingFinished(void);
+PsychError SCREENDrawLines(void);
+PsychError SCREENGetFlipInterval(void);
+PsychError SCREENCloseMovie(void);
+PsychError SCREENOpenMovie(void);
+PsychError SCREENPlayMovie(void);
+PsychError SCREENSetMovieTimeIndex(void);
+PsychError SCREENGetMovieTimeIndex(void);
+PsychError SCREENGetMovieImage(void);
+PsychError SCREENglPushMatrix(void);
+PsychError SCREENglPopMatrix(void);
+PsychError SCREENglLoadIdentity(void);
+PsychError SCREENglTranslate(void);
+PsychError SCREENglScale(void);
+PsychError SCREENglRotate(void);
+PsychError SCREENPreloadTextures(void);
+PsychError SCREENFillArc(void);
+PsychError SCREENDrawArc(void);
+PsychError SCREENFrameArc(void);
+PsychError SCREENWaitBlanking(void);
+PsychError SCREENSetOpenGLTexture(void);
+PsychError SCREENGetOpenGLTexture(void);
+PsychError SCREENVideoCaptureDevices(void);
+PsychError SCREENOpenVideoCapture(void);
+PsychError SCREENCloseVideoCapture(void);
+PsychError SCREENStartVideoCapture(void);
+PsychError SCREENStopVideoCapture(void);
+PsychError SCREENGetCapturedImage(void);
+PsychError SCREENSetVideoCaptureParameter(void);
+PsychError SCREENBeginOpenGL(void);
+PsychError SCREENEndOpenGL(void);
+PsychError SCREENGetOpenGLDrawMode(void);
+PsychError SCREENLoadCLUT(void);
+PsychError SCREENDisplaySize(void);
+PsychError SCREENSetOpenGLTextureFromMemPointer(void);
+PsychError SCREENColorRange(void);
+PsychError SCREENHookFunction(void);
+PsychError SCREENOpenProxy(void);
+PsychError SCREENTransformTexture(void);
+PsychError SCREENDrawTextures(void) ;
+PsychError SCREENGetWindowInfo(void);
+PsychError SCREENGetMouseHelper(void);
+PsychError SCREENResolution(void);
+PsychError SCREENResolutions(void);
+PsychError SCREENWaitUntilAsyncFlipCertain(void);
+PsychError SCREENCreateMovie(void);
+PsychError SCREENFinalizeMovie(void);
+PsychError SCREENAddAudioBufferToMovie(void);
+PsychError SCREENGetFlipInfo(void);
+PsychError SCREENConfigureDisplay(void);
+PsychError SCREENPanelFitter(void);
+//PsychError SCREENSetGLSynchronous(void);        //SCREENSetGLSynchronous.c
 
 //end include once
 #endif
-

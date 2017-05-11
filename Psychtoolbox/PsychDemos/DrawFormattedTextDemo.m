@@ -79,13 +79,17 @@ try
     Screen('Flip',w);
     KbStrokeWait;
 
-    % Draw text again, this time with unlimited line length:
-    [nx, ny, bbox] = DrawFormattedText(w, mytext, 10, 10, 0);
+    % Draw text again, this time with unlimited line length.
+    % Also request individual bounding boxes for each word in the text.
+    [nx, ny, bbox, wordboxes] = DrawFormattedText(w, mytext, 10, 10, [0 0 255]);
     
-    % Show computed text bounding box:
+    % Show a bounding box for each word, slightly enlarged for clarity:
+    Screen('FrameRect', w, [0 255 0], GrowRect(wordboxes, 2, 2)');
+
+    % Show computed global text bounding box:
     Screen('FrameRect', w, 0, bbox);
 
-    Screen('DrawText', w, 'Top-Left aligned, width unconstrained: Hit any key to continue.', nx, ny, [255, 0, 0, 255]);
+    Screen('DrawText', w, 'Top-Left aligned, width unconstrained, per word bounding boxes: Hit any key to continue.', nx, ny, [255, 0, 0, 255]);
     Screen('Flip',w);
     KbStrokeWait;
 

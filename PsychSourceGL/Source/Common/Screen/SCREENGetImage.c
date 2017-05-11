@@ -166,6 +166,8 @@ PsychError SCREENGetImage(void)
     unsigned int    twidth, theight, numChannels, bitdepth;
     unsigned char*  framepixels;
     psych_bool      isOES;
+    psych_bool      readFromfinalizedFBO = FALSE;
+    PsychFBO*       resolveFBO = NULL;
 
     // Called as 2nd personality "AddFrameToMovie" ?
     psych_bool isAddMovieFrame = PsychMatch(PsychGetFunctionName(), "AddFrameToMovie");
@@ -229,11 +231,11 @@ PsychError SCREENGetImage(void)
         isDoubleBuffer = TRUE;
     }
 
-    // Force "quad-buffered" stereo mode if our own homegrown implementation is active:
-    if (windowRecord->stereomode == kPsychFrameSequentialStereo) isStereo = TRUE;
+    // Force "quad-buffered" stereo mode if our own homegrown implementation is active or dual-stream stereo for external display sinks is used:
+    if (windowRecord->stereomode == kPsychFrameSequentialStereo || windowRecord->stereomode == kPsychDualStreamStereo) isStereo = TRUE;
 
     // Assign read buffer:
-    if(PsychIsOnscreenWindow(windowRecord)) {
+    if (PsychIsOnscreenWindow(windowRecord)) {
         // Onscreen window: We read from the front- or front-left buffer by default.
         // This works on single-buffered and double buffered contexts in a consistent fashion:
 
@@ -312,14 +314,45 @@ PsychError SCREENGetImage(void)
                 }
             }
 
-            // Homegrown frame-sequential stereo active and backleft or backright buffer requested?
-            if (((whichBuffer == GL_BACK_LEFT) || (whichBuffer == GL_BACK_RIGHT)) && (windowRecord->stereomode == kPsychFrameSequentialStereo)) {
-                // We can get the equivalent of the backLeft/RightBuffer from the finalizedFBO's in this mode. Get their content:
+            // Dualstream stereo needs remapping:
+            if (windowRecord->stereomode == kPsychDualStreamStereo || windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks) {
+                // Back/Front buffers map to backleft/frontleft buffers:
+                if (whichBuffer == GL_BACK) whichBuffer = GL_BACK_LEFT;
+                if (whichBuffer == GL_FRONT) whichBuffer = GL_FRONT_LEFT;
+
+                // Special case: Want to read from stereo front buffer?
+                if ((whichBuffer == GL_FRONT_LEFT) || (whichBuffer == GL_FRONT_RIGHT)) {
+                    // These don't really exist for Dualstream stereo. Their equivalents are the
+                    // display framebuffers of the special output device, e.g., the final output
+                    // buffers of a VR compositor if a VR HMD is connected as output device. The
+                    // regular windowing system or OpenGL context does not have provide access to
+                    // these buffers in any standardized way, so some special purpose trickery may
+                    // be needed to get some approximation of what the user would expect.
+
+                    // TODO: VR ENABLEMENT Find a solution for this!
+                    if (PsychPrefStateGet_Verbosity() > 1) {
+                        printf("PTB-WARNING: In Screen('GetImage'): You selected retrieval of one of the stereo front buffers, while kPsychDualStreamStereo\n");
+                        printf("PTB-WARNING: In Screen('GetImage'): stereo display mode is active. This is not implemented yet! Expect pixeltrash returned!!!\n");
+                    }
+                }
+            }
+
+            // Homegrown frame-sequential stereo or dual stream stereo active and backleft or backright buffer requested?
+            if (((whichBuffer == GL_BACK_LEFT) || (whichBuffer == GL_BACK_RIGHT)) &&
+                ((windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->stereomode == kPsychDualStreamStereo) ||
+                 (windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks))) {
+                // We can get the equivalent of the backLeft/RightBuffer from the finalizedFBO's in these modes. Get their content:
                 viewid = (whichBuffer == GL_BACK_RIGHT) ? 1 : 0;
                 whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
+                readFromfinalizedFBO = TRUE;
 
-                // Bind finalizedFBO as framebuffer to read from:
-                glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid);
+                // Is the finalizedFBO multisampled? If so, create a temporary MSAA resolve target FBO as
+                // resolveFBO, otherwise set resolveFBO == NULL:
+                resolveFBO = PsychMSAAResolveToTemp(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]);
+                if (!resolveFBO) {
+                    // Directly bind finalizedFBO as framebuffer to read from:
+                    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid);
+                }
 
                 // Make sure binding gets released at end of routine:
                 viewid = -1;
@@ -330,39 +363,13 @@ PsychError SCREENGetImage(void)
                 PsychSetDrawingTarget(windowRecord);
                 whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
 
-                // Is the drawBufferFBO multisampled?
+                // Is the drawBufferFBO multisampled? If so, create a temporary MSAA resolve target FBO as
+                // resolveFBO, otherwise set resolveFBO == NULL:
                 viewid = (((windowRecord->stereomode > 0) && (windowRecord->stereodrawbuffer == 1)) ? 1 : 0);
-                if (windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->multisample > 0) {
-                    // It is! We can't read from a multisampled FBO. Need to perform a multisample resolve operation and read
-                    // from the resolved unisample buffer instead. This is only safe if the unisample buffer is either a dedicated
-                    // FBO, or - in case its the final system backbuffer etc. - if preflip operations haven't been performed yet.
-                    // If non dedicated buffer (aka finalizedFBO) and preflip ops have already happened, then the backbuffer contains
-                    // final content for an upcoming Screen('Flip') and we can't use (and therefore taint) that buffer.
-                    if ((windowRecord->inputBufferFBO[viewid] == windowRecord->finalizedFBO[viewid]) && (windowRecord->backBufferBackupDone)) {
-                        // Target for resolve is finalized FBO (probably system backbuffer) and preflip ops have run already. We
-                        // can't do the resolve op, as this would screw up the backbuffer with the final stimulus:
-                        printf("PTB-ERROR: Tried to 'GetImage' from a multisampled 'drawBuffer', but can't perform anti-aliasing pass due to\n");
-                        printf("PTB-ERROR: lack of a dedicated resolve buffer.\n");
-                        printf("PTB-ERROR: You can get what you wanted by either one of two options:\n");
-                        printf("PTB-ERROR: Either enable a processing stage in the imaging pipeline, even if you don't need it, e.g., by setting\n");
-                        printf("PTB-ERROR: the imagingmode argument in the 'OpenWindow' call to kPsychNeedImageProcessing. This will create a\n");
-                        printf("PTB-ERROR: suitable resolve buffer. Or place the 'GetImage' call before any Screen('DrawingFinished') call, then\n");
-                        printf("PTB-ERROR: i can (ab-)use the system backbuffer as a temporary resolve buffer.\n\n");
-                        PsychErrorExitMsg(PsychError_user, "Tried to 'GetImage' from a multi-sampled 'drawBuffer'. Unsupported operation under given conditions.");
-                    }
-                    else {
-                        // Ok, the inputBufferFBO is a suitable temporary resolve buffer. Perform a multisample resolve blit to it:
-                        // A simple glBlitFramebufferEXT() call will do the copy & downsample operation:
-                        glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->fboid);
-                        glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->fboid);
-                        glBlitFramebufferEXT(0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
-                                             0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
-                                             GL_COLOR_BUFFER_BIT, GL_NEAREST);
-
-                        // Bind inputBuffer as framebuffer:
-                        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->fboid);
-                        viewid = -1;
-                    }
+                resolveFBO = PsychMSAAResolveToTemp(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]);
+                if (resolveFBO) {
+                    // MSAA resolved single-sample resolveFBO is now bound as framebuffer for pixel read:
+                    viewid = -1;
                 }
             }
             else {
@@ -377,13 +384,10 @@ PsychError SCREENGetImage(void)
             whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
 
             // We do not support multisampled readout:
-            if (windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->multisample > 0) {
-                printf("PTB-ERROR: You tried to Screen('GetImage', ...); from an offscreen window or texture which has multisample anti-aliasing enabled.\n");
-                printf("PTB-ERROR: This operation is not supported. You must first use Screen('CopyWindow') to create a non-multisampled copy of the\n");
-                printf("PTB-ERROR: texture or offscreen window, then use 'GetImage' on that copy. The copy will be anti-aliased, so you'll get what you\n");
-                printf("PTB-ERROR: wanted with a bit more effort. Sorry for the inconvenience, but this is mostly a hardware limitation.\n\n");
-
-                PsychErrorExitMsg(PsychError_user, "Tried to 'GetImage' from a multi-sampled texture or offscreen window. Unsupported operation.");
+            resolveFBO = PsychMSAAResolveToTemp(windowRecord->fboTable[windowRecord->drawBufferFBO[0]]);
+            if (resolveFBO) {
+                // MSAA resolved single-sample resolveFBO is now bound as framebuffer for pixel read:
+                viewid = -1;
             }
         }
     }
@@ -415,7 +419,7 @@ PsychError SCREENGetImage(void)
         }
     }
 
-    if (whichBuffer == GL_COLOR_ATTACHMENT0_EXT) {
+    if ((whichBuffer == GL_COLOR_ATTACHMENT0_EXT) && !readFromfinalizedFBO) {
         // FBO of texture / offscreen window / onscreen drawBuffer/inputBuffer
         // has size of clientrect -- potentially larger or smaller than backbuffer:
         PsychCopyRect(windowRect, windowRecord->clientrect);
@@ -427,7 +431,7 @@ PsychError SCREENGetImage(void)
     }
 
     // Retrieve optional read rectangle:
-    if(!PsychCopyInRectArg(2, FALSE, sampleRect)) PsychCopyRect(sampleRect, windowRect);
+    if (!PsychCopyInRectArg(2, FALSE, sampleRect)) PsychCopyRect(sampleRect, windowRect);
 
     if (IsPsychRectEmpty(sampleRect)) return(PsychError_none);
 
@@ -639,6 +643,10 @@ PsychError SCREENGetImage(void)
         // multisample resolve ops, or of other special FBO bindings --> Activate system framebuffer:
         PsychSetDrawingTarget(NULL);
     }
+
+    // Delete temporary MSAA resolve FBO, if any:
+    if (resolveFBO)
+        PsychDeleteFBO(resolveFBO);
 
     return(PsychError_none);
 }

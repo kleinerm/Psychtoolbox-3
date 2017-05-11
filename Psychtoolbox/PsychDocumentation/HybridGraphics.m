@@ -8,14 +8,14 @@
 % BACKGROUND:
 % -----------
 %
-% Hybrid graphics laptops are laptops which have two built in
+% Hybrid graphics laptops are laptops which have two built-in
 % graphics cards (GPUs). One card is usually an integrated
 % graphics chip (iGPU) which has a low power consumption and
 % heat production, allowing for a cool laptop and long battery
 % runtime, but it also has relatively low performance. This chip
 % is sufficient for typical desktop GUI use, watching videos and
 % other light graphics applications. The 2nd card, called discrete
-% GPU (dGPU) provides much higher performance but consumes more
+% GPU (dGPU), provides much higher performance but consumes more
 % power and produces more heat, so the laptop runs hotter and/or
 % needs more cooling, all resulting in shorter battery runtimes.
 %
@@ -86,39 +86,25 @@
 % LINUX:
 % ------
 %
-% On Linux, as of December 2016, good progress has been made in implementing methods
+% On Linux, as of May 2017, good progress has been made in implementing methods
 % which provide both good performance *and* reliable, trustworthy, accurate visual
 % timing and timestamping. Some - but not all! - types of Laptop hardware should
 % work well, but for all of them some special configuration or software upgrades
-% are needed:
+% are needed.
 %
-% You always need at least XServer version 1.18 or later, and Mesa 11.2 or later.
-% Some earlier software versions might work in some cases, but these are
-% completely untested by us and therefore in no way guaranteed to work.
+% You always need at least XServer version 1.18 or later, and Mesa 11.2 or later, and
+% Linux 4.6 or later, but sometimes you need more modern versions, as described below.
 %
-% Ubuntu Linux 14.04.5 LTS with its latest hardware enablement stack IV, or even
-% better Ubuntu 16.04 LTS, do provide sufficiently modern versions of these software
-% components. Additionally you will need one of the most recent Linux kernels:
-% At least Linux 4.6 if you have an Intel integrated graphics chip combined with a
-% NVidia gpu or with an older AMD gpu. Modern AMD gpus will require the even more
-% modern Linux 4.8.11 kernel or later.
-%
-% As of December 2016, Linux 4.8.11 would be recommended as the most modern Linux kernel
-% to cover all bases. See the download and installation instructions under section [2] below.
-%
-% The autumn 2016 updates of Linux distributions, e.g., Ubuntu 16.10, did ship with
-% Linux 4.8 by default, requiring no special software updates anymore, unless you use
-% an Intel iGPU with one of the latest generation AMD dGPU's (Linux 4.8.11 required),
-% or an Intel iGPU with a NVidia graphics card *and* the proprietary NVidia display
-% driver instead of the open-source nouveau driver. Psychtoolbox will tell you if you
-% need to upgrade your kernel, if you run it on a hybrid graphics Laptop.
+% The following sections describe the current level and quality of support for different
+% types of hybrid graphics laptops, and required configuration steps. Psychtoolbox will tell
+% you if you need to upgrade your kernel, if you run it on a muxless hybrid graphics Laptop.
 %
 %
 % * Laptops with an Intel iGPU combined with a NVidia dGPU ("NVidia Optimus" models):
 %
 %   These should work perfectly if you use the "nouveau" open-source graphics driver,
-%   at least as far as testing with two different laptops went. Stimuli are displayed
-%   without any artifacts and timing and timestamping is accurate and trustworthy.
+%   at least as far as testing with three different laptops went. Stimuli are displayed
+%   without any artifacts, and timing and timestamping is accurate and trustworthy.
 %   Performance is highly dependent on the model of NVidia gpu though, with the latest
 %   generations currently providing only relatively low performance, and ongoing work
 %   to improve the performance for recent models.
@@ -126,12 +112,57 @@
 %   If you want to use the NVidia proprietary display driver for Linux instead, there
 %   now exists a solution which works with correct timing and timestamping. However, the
 %   solution is less flexible and power-efficient than use of the "nouveau" open-source
-%   driver. It also requires substantial manual setup work, and it needs XOrg X-Server 1.19.0
-%   or later. In practice this means you either need to use a Linux distribution which
-%   uses X-Server 1.19, which as of December 2016 is essentially "Fedora 25" or "Debian unstable",
-%   or you will have to wait for the Ubuntu 17.04 release in April 2017, or you will have
-%   to download and compile your own X-Server 1.19 if you are not afraid of compilers and
-%   Makefiles and willing to spend a workday doing this.
+%   driver. It requires some setup work, and it needs XOrg X-Server 1.19.0 or later, so
+%   you need to use a Linux distribution which uses X-Server 1.19. As of May 2017,
+%   "Ubuntu 17.04 Zesty Zappus" ships with X-Server 1.19.3, Linux 4.10, and NVidia
+%   proprietary driver of version 375.39, as well as a convenient setup mechanism for
+%   Optimus support. We therefore recommend Ubuntu 17.04 for Optimus laptops, as setup
+%   is rather simple and this distro is successfully tested with two Optimus laptops and
+%   Psychtoolbox. However, the 375.39 driver shipping with Ubuntu 17.04 contains some bugs
+%   related to Optimus, which were fixed in driver version 375.66, so first we need to enable
+%   the proprietary graphics driver ppa to get a convenient update to NVidia driver version
+%   375.66 or later versions. Follow the following steps on Ubuntu 17.04 to get Optimus set up:
+%
+%   1. Install the proprietary graphics drivers ppa by typing in a terminal:
+%       sudo add-apt-repository ppa:graphics-drivers/ppa
+%       sudo apt-get update
+%
+%   2. Then launch the 3rd party driver manager GUI to select the NVidia proprietary driver
+%      for use on your system. You must select a NVidia proprietary driver of the 375 series,
+%      with a version number of 375.66 or later. This will also automatically setup standard
+%      Optimus / PRIME support for tear-free stimulus display, but getting proper visual
+%      stimulation timing and timestamping for Psychtoolbox requires some more steps.
+%
+%   3. Edit the file /etc/modprobe.d/nvidia-graphics-drivers.conf. Modify the last line
+%      in that file and replace the assignment modeset=0 with modeset=1 to enable drm
+%      modesetting support.
+%
+%   4. Execute "sudo update-initramfs -u -k all" in a terminal.
+%
+%   5. Copy the custom Psychtoolbox modesetting driver into the system driver directory.
+%      There are two variants, the nolag variant and the highlag variant. In theory, the
+%      nolag variant would be preferrable, but it sometimes gives inconsistent performance:
+%
+%      sudo cp /pathto/Psychtoolbox/PsychHardware/LinuxDrivers/NVidiaOptimus/modesetting_drv.so /usr/lib/xorg/extra-modules/modesetting_drv.so
+%
+%      For use of the variant with higher lag but consistent performance, use the highlag driver
+%      instead:
+%
+%      sudo cp /pathto/Psychtoolbox/PsychHardware/LinuxDrivers/NVidiaOptimus/modesetting_drv.so_highlag /usr/lib/xorg/extra-modules/modesetting_drv.so
+%
+%   6. Reboot. Now your system should be ready for research compatible Optimus.
+%
+%   On Ubuntu, the "nvidia-settings" GUI tool allows you to switch between Optimus (PRIME) and
+%   standard Intel graphics. The section "PRIME profiles" allows to click on a toggle button
+%   to switch between "NVidia" gpu for power hungry but fast Optimus, and "Intel" for low power
+%   consumption lower performance mode.
+%
+%   If you want to use a different distribution than Ubuntu, "Fedora 25" and later, "Debian unstable",
+%   "Arch Linux" and "SuSE Tumbleweed" are known to ship required X-Server, Linux kernel and NVidia
+%   driver options for Optimus. However, these are not tested with PTB, and setup may be different
+%   from Ubuntu's approach. Alternatively you could also download and compile your own X-Server 1.19
+%   if you are not afraid of compilers and Makefiles and willing to spend a workday doing this. The
+%   following paragraph assumes you are not using Ubuntu 17.04:
 %
 %   Once you have a X-Server 1.19 up and running, you will need the NVidia proprietary
 %   display drivers of version 375.26 or later for 64-Bit Intel processors. Then you need
@@ -145,10 +176,8 @@
 %   not for any kind of multi-display operation. That means your Laptop can have exactly
 %   one display enabled, either the Laptop internal flat-panel, or one externally connected
 %   display. Also timing is only reliable and trustworthy for a Psychtoolbox fullscreen
-%   window. As you can see, the setup is somewhat limited and inflexible, and setting it up
-%   requires quite a bit of effort as of December 2016. You will find all the needed config
-%   files and custom made display driver and setup instructions in the Psychtoolbox
-%   subdirectory Psychtoolbox/PsychHardware/LinuxDrivers/NVidiaOptimus/
+%   window. You will find all the needed config files and custom made display driver and
+%   setup instructions in the Psychtoolbox subdirectory Psychtoolbox/PsychHardware/LinuxDrivers/NVidiaOptimus/
 %
 %   See the following thread for the current state of the NVidia proprietary implementation
 %   and for some more nice background info on the challenges of proper handshaking and
@@ -159,42 +188,41 @@
 %
 % * Laptops with an Intel iGPU combined with an AMD dGPU ("AMD Enduro" models):
 %
-%   These should work very well on Ubuntu 16.10 or with Linux 4.6 and later if you use
-%   the open source graphics drivers with slightly older models of AMD GPUs, ie. not the
-%   very latest models of the "Volcanic Islands" / GCN 1.2 GPU family. Specifically, GPUs
-%   using the classic open-source display driver "radeon-kms" will work with perfectly
-%   trustworthy timing and quality.
+%   These should work very well out of the box on Ubuntu 16.10 and later, or on a clean
+%   installation of Ubuntu 16.04.2 LTS from *freshly* downloaded installation media.
 %
-%   GPUs of the "Volcanic Islands" GCN 1.2 generation, which use the new open-source
-%   "amdgpu-kms" driver, will currently need you to manually upgrade your Linux kernel to
-%   at least Linux 4.8.11. See section [2] below on how to do that. After January 19th 2017,
-%   an upgrade to Ubuntu 16.04.2 LTS should provide you with a suitable 4.8 series kernel
-%   that automatically receives future maintenance and security updates.
+%   If you upgraded from a previous Ubuntu version to Ubuntu 16.04.2 LTS then you need to manually
+%   install the Linux 4.8 lowlatency "hardware enablement" (HWE) kernel by typing the following
+%   command into a terminal windows, and after its successful completion by a reboot of the machine:
 %
-%   These results are based on testing with two PC setups:
+%   sudo apt install linux-lowlatency-hwe-16.04
 %
-%   - Intel HD "Haswell desktop" graphics chip + AMD Radeon R9 380 Tonga Pro. Perfect when
-%     used with Linux 4.8.11 or later kernels. (amdgpu-kms)
+%   On Ubuntu 16.04.2 LTS or Ubuntu 16.10 you will get acceptable performance out of the box.
+%   For great performance you will need Mesa version 13 or later. Such a Mesa version is part of
+%   Ubuntu 17.04 since April 2017. On current Ubuntu 16.04.2 LTS you can install the most recent
+%   stable Mesa version 17.0 or later from this ppa instead:
 %
-%   - Intel HD "Ivybridge desktop" graphics chip + AMD FireGL "Cedar". Perfect under all
-%     conditions with Linux 4.6 and later. (radeon-kms).
+%   https://launchpad.net/~paulo-miguel-dias/+archive/ubuntu/pkppa
+%
+%   If you want good performance without upgrading Mesa, you can set the R600_DEBUG environment
+%   variable to 'forcedma', ie., execute setenv('R600_DEBUG','forcedma'); at the very start of your
+%   Octave or Matlab session, e.g., from the ~/.octaverc script or from Matlabs startup.m script.
+%
+%   On other Linux distributions make sure to install Linux 4.8.11 or later versions of the Linux
+%   kernel, together with X-Server 1.18 or later, and Mesa version 17.0 or later.
+%
+%   AMD Enduro hybrid graphics was tested with two PC setups:
+%
+%   - Intel HD "Haswell desktop" graphics chip + AMD Radeon R9 380 Tonga Pro.
+%   - Intel HD "Ivybridge desktop" graphics chip + AMD FireGL "Cedar".
 %
 %   Stimuli are displayed without any artifacts and timing and timestamping is accurate and
 %   trustworthy.
 %
-%   You will get acceptable performance out of the box. For good performance you will either
-%   need Mesa version 13 or later, or you need to set the R600_DEBUG environment variable to
-%   'forcedma', ie., execute setenv('R600_DEBUG','forcedma'); at the very start of your Octave
-%   or Matlab session, e.g., from the ~/.octaverc script or Matlabs startup.m script. Better yet,
-%   you can install the current Mesa 13.1 development prototype for Ubuntu 16.04 LTS flavors and
-%   derivatives from this ppa:
-%
-%   https://launchpad.net/~paulo-miguel-dias/+archive/ubuntu/mesa/+packages
-%
 %
 % * Laptops with dual NVidia gpus NVidia iGPU + NVidia dGPU:
 %
-%   Muxless won't work with any current official solution [1]. However, i am not aware of
+%   Muxless would not work with any current official solution [1]. However, i am not aware of
 %   any recent muxless laptops - or any such muxless laptops actually - which use dual-NVidia
 %   gpus. All known dual-NVidia laptops are rather old and use a hardware mux, so Linux
 %   "vgaswitcheroo" mechanism can be used to switch between gpus for perfect results.
@@ -211,7 +239,8 @@
 %
 % For those combinations that should work (Intel iGPU + NVidia/AMD dGPU "Optimus/Enduro"),
 % after you've upgraded to all the required software, the following setup steps are
-% needed:
+% needed for muxless PRIME mode. Note that these *do not apply* to Optimus with the proprietary
+% graphics driver from NVidia:
 %
 % 1. Run the "XOrgConfCreator" script to create a proper XOrg configuration file,
 %    and then "XOrgConfSelector" to switch to that configuration file, logout and
@@ -229,7 +258,7 @@
 %      The <device> ... <\device> section in that file can also be included into the
 %      global /etc/drirc file if it should apply to all users on a machine.
 %
-% 3. Verify the handshaking and synchronization actually works. Psychtoolbox must not
+% 3. Optionally verify the handshaking and synchronization actually works. Psychtoolbox must not
 %    report any timing or timestamping related errors or warnings, or other warnings
 %    relating to hybrid graphics problems. Typical tests like PerceptualVBLSyncTest or
 %    VBLSyncTest must work correctly. All demos should display without any visual artifacts,
@@ -252,30 +281,34 @@
 %    slower gpus. Just to give you a perspective on the potential performance loss or
 %    added latency compared to a single gpu laptop.
 %
-% [1] There also exist some muxless Laptop models where the iGPU is hard-wired to
-%     the internal Laptop flat panel, whereas the dGPU is hard-wired to the external
-%     video outputs. On these models one can configure a dual-x-screen setup for visual
-%     stimulation and then assign the iGPU to drive X-Screen 0 on the internal panel and
-%     assign the dGPU to drive X-Screen 1 on the external video outputs. This would
-%     work with high performance and timing precision even on hybrid graphics laptops
+% [1] There also exist some muxless Laptop models where the iGPU is hard-wired to the internal
+%     Laptop flat panel, whereas the dGPU is hard-wired to (some of) the external video outputs.
+%     On these models one can configure a dual-x-screen setup for visual stimulation and then
+%     assign the iGPU to drive X-Screen 0 on the internal panel and assign the dGPU to drive
+%     X-Screen 1 on the external video outputs.
+%
+%     This would work with high performance and timing precision even on hybrid graphics laptops
 %     which otherwise wouldn't work, e.g., dual NVidia or dual AMD laptops. Such a setup
 %     wouldn't require any of the setup steps mentioned above. Instead it would require to
 %     create a dual-x-screen setup via XOrgConfCreator, but then to manually customize the
 %     created config file, as XOrgConfCreator can't automatically handle such dual-gpu setups
 %     yet. Ask for assistance on the Psychtoolbox user forum if you happen to have such a
-%     laptop.
+%     laptop. One example xorg.conf file for handling such a setup (Intel iGPU + AMD dGPU)
+%     can be found under the name xorg.conf_SeparateScreensDualGPUIntelAndAMD in the
+%     Psychtoolbox/PsychHardware/LinuxX11ExampleXorgConfs/ folder. It would need customization
+%     though for a given Laptop, specifically adapting the "BusID" parameter for your hardware.
 %
-% [2] You can get Linux 4.8.11 for Ubuntu 16.04-LTS (and later) for manual installation from here:
-%     http://kernel.ubuntu.com/~kernel-ppa/mainline/v4.8.11/
+%     Another example X-Config file for such a laptop can be found for year 2016 Razer Blade gaming
+%     laptop with Intel HD-530 Skylake iGPU + NVidia GeForce 1060M Pascal dGPU, where the Intel
+%     iGPU is hardwired to the laptop panel and USB-C output, whereas the NVidia dGPU is hardwired
+%     to a HDMI output. The filename in the Psychtoolbox/PsychHardware/LinuxX11ExampleXorgConfs/
+%     folder is xorg.conf_RazerBlade-2-XScreens-intel+nouveau
 %
-%     On a 64-Bit system you'd download and install the files in the amd64 section, i.e.
-%     the files (download links) named:
-%
-%     linux-headers-4.8.11-040811_4.8.11-040811.201611260431_all.deb
-%     linux-headers-4.8.11-040811-lowlatency_4.8.11-040811.201611260431_amd64.deb
-%     linux-image-4.8.11-040811-lowlatency_4.8.11-040811.201611260431_amd64.deb
-%
-%     You could install them by clicking on them to start the GUI installer. Or you
-%     could type "sudo dpkg -i linux-*4.8*" in a terminal window. After a reboot the
-%     kernel should become available for use.
+%     Another X-Config example file for the Razer Blade 2016 is the file ...
+%     xorg-Razer-2-XScreens-NVidiaProprietary_iGPUPrime+dGPUHDMInative.conf
+%     ... This file is for use with the NVidia proprietary driver instead of the nouveau open-source
+%     driver. It uses the NVidia gpu to drive two separate X-Screens 0 and 1. X-Screen 0 is driven
+%     via Optimus PRIME output, displaying via the Intel HD 530 iGPU on either the laptop flatpanel
+%     or the USB-C video output, but not both at the same time if visual stimulation timing matters.
+%     X-Screen 1 is driven directly via the HDMI output connected to the NVidia dGPU.
 %

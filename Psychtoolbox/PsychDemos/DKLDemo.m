@@ -10,13 +10,16 @@
 % 4/9/05	dhb		Wrote it.
 % 5/26/11   dhb     Updated to use PTB3TestCal, SetSensorColorSpace
 %           dhb     Remove OS9 option.
+% 4/13/17   dhb     Switch default cone type to Stockman-Sharpe.
+%                   Demonstrate conversion from cone contrast coords to
+%                   DKL, code at end.
 
-% Clear
+%% Clear
 clear; close all
 
-% Define parameters.  Image size should be an odd number.
+%% Define parameters.  Image size should be an odd number.
 imageSize = 513;
-whichCones = 'SmithPokorny';
+whichCones = 'StockmanSharpe';
 
 % Load spectral data and set calibration file
 switch (whichCones)
@@ -42,18 +45,19 @@ calLMS = SetSensorColorSpace(cal,T_cones,S_cones);
 calLMS = SetGammaMethod(calLMS,1);
 calLum = SetSensorColorSpace(cal,T_Y,S_Y);
 
-% Define background.  Here we just take the
+%% Define background.  Here we just take the
 % monitor mid-point.
 bgLMS = PrimaryToSensor(calLMS,[0.5 0.5 0.5]');
 
+%% Basic transformation matrices.  ComputeDKL_M() does the work.
+%
 % Get matrix that transforms between incremental
 % cone coordinates and DKL coordinates 
 % (Lum, RG, S).
-M_ConeIncToDKL = ComputeDKL_M(bgLMS,T_cones,T_Y);
+[M_ConeIncToDKL,LMLumWeights] = ComputeDKL_M(bgLMS,T_cones,T_Y);
 M_DKLToConeInc = inv(M_ConeIncToDKL);
 
-% Now find incremental cone directions corresponding
-% to DKL isoluminant directions.
+%% Find incremental cone directions corresponding to DKL isoluminant directions.
 rgConeInc = M_DKLToConeInc*[0 1 0]';
 sConeInc = M_DKLToConeInc*[0 0 1]';
 
@@ -99,6 +103,8 @@ lums = sort([bgLum rgPlusLum rgMinusLum sPlusLum sMinusLum]);
 fprintf('Luminance range in isoluminant plane is %0.2f to %0.2f\n',...
 	lums(1), lums(end));
 
+%% Make a picture
+%
 % Now we have the coordinates we desire, make a picture of the
 % isoluminant plane.
 [X,Y] = meshgrid(0:imageSize-1,0:imageSize-1);
@@ -119,3 +125,63 @@ theImage(:,:,3) = bPlane;
 
 % Show the image for illustrative purposes
 figure; clf; image(theImage);
+
+%% What if we want to convert between cone contrast coordinates and DKL?
+
+% Also, let's optionally scale the cones so that they sum to luminance
+SCALE_LMSUMTOLUM = true;
+if (SCALE_LMSUMTOLUM)
+    T_cones(1,:) = T_cones(1,:)*LMLumWeights(1);
+    T_cones(2,:) = T_cones(2,:)*LMLumWeights(2);
+end
+
+% Specify LMS coordiantes of the background.  Here equal LMS excitations
+% but you can try different values here.  Note that if you're mucking
+% with the scaling of the cones, then holding this vector fixed across
+% two different cone scalings is not holding the actual background fixed.
+bgLMS = [0.2 0.2 0.2]';
+
+% Compute matrix that goes into DKL
+[M_ConeIncToDKL,LMLumWeights] = ComputeDKL_M(bgLMS,T_cones,T_Y);
+
+% Set up modulations that should isolate each DKL direction.  Isochromatic
+% is easy, because that is equal contrasts for all three cone types.
+theBaseConeContrast = 0.5;
+theIsochromaticConeContrast = [theBaseConeContrast theBaseConeContrast theBaseConeContrast]';
+M_ConeContrastToConeInc = diag(bgLMS);
+M_ConeIncToConeContrast = diag(1./bgLMS);
+theIsochromaticDKL = M_ConeIncToDKL*M_ConeContrastToConeInc*theIsochromaticConeContrast;
+
+% Red green is a little tricker.  We need red/green increments that have
+% equal and opposite luminances.  Since increment depends on the
+% background, we have to work backwards from increments to the appropriate
+% contrasts.  These will not be equal to each other, in general.
+relMContrast = bgLMS(1)/bgLMS(2)*LMLumWeights(1)/LMLumWeights(2);
+meanRedGreenAbsConeContrast = mean([theBaseConeContrast relMContrast*theBaseConeContrast]);
+theRedGreenConeContrast = [theBaseConeContrast -relMContrast*theBaseConeContrast 0]';
+theRedGreenDKL = M_ConeIncToDKL*M_ConeContrastToConeInc*theRedGreenConeContrast;
+
+% The third DKL isolating direction is also easy, because it's just S cone
+% contrast.
+theBYConeContrast = [0 0 theBaseConeContrast]';
+theBYDKL = M_ConeIncToDKL*M_ConeContrastToConeInc*theBYConeContrast;
+
+% Choose a scaling matrix so that the first DKL length is the luminance
+% contrast, the second is the average of the LM contrasts for the
+% isoluminant red-green direciton, and the third is the S cone contrast.
+M_scaleDKLForContrastInput = diag(1./[theIsochromaticDKL(1)/theBaseConeContrast theRedGreenDKL(2)/meanRedGreenAbsConeContrast theBYDKL(3)/theBaseConeContrast]);
+M_coneContrastToDKL = M_scaleDKLForContrastInput*M_ConeIncToDKL*M_ConeContrastToConeInc;
+
+% Test full scaling.  This should be diagonal with the first and third
+% entries equal to the base contrast and the middle one equal to the mean
+% of the isoluminant red green cone contrasts.
+theDKLFromConeContrasts = M_coneContrastToDKL*[theIsochromaticConeContrast theRedGreenConeContrast theBYConeContrast];
+
+% Get the isolating directions.
+M_DKLToConeContrast = inv(M_coneContrastToDKL);
+
+% Check that regression on the isolating directions does what we expect.
+% The output here should match what we get ju
+theDKLFromConeContrastsCheck = M_DKLToConeContrast\[theIsochromaticConeContrast theRedGreenConeContrast theBYConeContrast];
+
+

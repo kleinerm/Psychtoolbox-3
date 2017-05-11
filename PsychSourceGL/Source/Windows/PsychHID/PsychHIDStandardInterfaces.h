@@ -1,18 +1,17 @@
 /*
-  PsychToolbox3/Source/Windows/PsychHID/PsychHIDStandardInterfaces.h
-  
-  PROJECTS: PsychHID only.
-  
-  PLATFORMS:  Windows.
-  
-  AUTHORS:
-  mario.kleiner@tuebingen.mpg.de    mk
+    PsychToolbox3/Source/Windows/PsychHID/PsychHIDStandardInterfaces.h
 
-  HISTORY:
-  27.07.2011     mk     Created.
-  
-  TO DO:
+    PROJECTS: PsychHID only.
 
+    PLATFORMS:  Windows.
+
+    AUTHORS:
+
+    mario.kleiner.de@gmail.com  mk
+
+    HISTORY:
+
+    27.07.2011     mk     Created.
 */
 
 #ifndef PSYCH_IS_INCLUDED_PsychHIDStandardIntefaces

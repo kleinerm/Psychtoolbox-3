@@ -10,6 +10,7 @@
 %     DisableKeysForKbCheck - Tell KbCheck and KbWait to ignore specific keys.
 %     DoNothing            - Does nothing. Used to time Matlab's overhead.
 %     DrawFormattedText    - Drawing of formatted text into windows.
+%     DrawFormattedText2   - Drawing of formatted text into windows, with more formatting options.
 %     FlushEvents          - Flush any unprocessed events. 
 %     FontInfo             - Return a struct array describing installed fonts.
 %     Gestalt              - Query system configuration on OS 9 and OS X. 

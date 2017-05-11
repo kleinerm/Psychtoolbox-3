@@ -1,5 +1,5 @@
-function remapCLUTId = PsychHelperCreateRGB111110RemapCLUT
-% remapCLUTId = PsychHelperCreateRGB111110RemapCLUT;
+function remapCLUTId = PsychHelperCreateRGB111110RemapCLUTAMDDCE8
+% remapCLUTId = PsychHelperCreateRGB111110RemapCLUTAMDDCE8;
 %
 % Helper function for Psychtoolbox imaging pipeline, called by
 % PsychImaging(), not meant to be called by normal user code!
@@ -43,7 +43,7 @@ function remapCLUTId = PsychHelperCreateRGB111110RemapCLUT
 global GL;
 
 % Try to get LUT from cached .mat file -- faster:
-cachedFile = [PsychtoolboxConfigDir 'rgb111110remaplut.mat'];
+cachedFile = [PsychtoolboxConfigDir 'rgb111110remaplut_DCE8.mat'];
 
 if exist(cachedFile, 'file')
     % Get cached LUT from file:

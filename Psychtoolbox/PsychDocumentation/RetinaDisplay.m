@@ -50,12 +50,6 @@
 % designated primary display (this can be set in the display settings
 % control display, maybe via a "Make this my main display" checkbox).
 %
-% Use of Matlab R2015b itself can cause other problems with Psychtoolbox,
-% as of October 2015, due to some incompatibilities between Psychtoolbox
-% and Matlabs new execution engine. Therefore it is probably a good idea to
-% use GNU/Octave-4 if you must use Retina displays under Windows, unless
-% and until the problems with R2015b and later versions are resolved.
-%
 % If you must use a system setup with Retina display and a version of
 % Matlab, or of Windows 8 or later, that does not allow you to circumvent
 % or solve these problems, then there exists also the option to either

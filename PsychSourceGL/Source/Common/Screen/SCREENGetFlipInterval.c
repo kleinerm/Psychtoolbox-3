@@ -1,31 +1,31 @@
 /*
-  SCREENGetFlipInterval.c
+    SCREENGetFlipInterval.c
 
-  AUTHORS:
-  Allen.Ingling@nyu.edu                 awi
-  mario.kleiner.de@gmail.com            mk
+    AUTHORS:
 
-  PLATFORMS:    All
+        Allen.Ingling@nyu.edu                 awi
+        mario.kleiner.de@gmail.com            mk
 
+    PLATFORMS:    All
 
-  HISTORY:
-  03/10/02  awi         Created.
-  05/09/05  mk          Put into use.
+    HISTORY:
 
-  DESCRIPTION:
+        03/10/02  awi         Created.
+        05/09/05  mk          Put into use.
 
-   Returns the estimated/measured flip interval for the specified onscreen window surface.
-   It either returns the value of a previous estimate (e.g., from Screen('OpenWindow',...)) or performs
-   a measurement run.
+    DESCRIPTION:
 
+        Returns the estimated/measured flip interval for the specified onscreen window surface.
+        It either returns the value of a previous estimate (e.g., from Screen('OpenWindow',...)) or performs
+        a measurement run.
 */
 
 #include "Screen.h"
 
 static char useString[] = "[ monitorFlipInterval nrValidSamples stddev ] =Screen('GetFlipInterval', windowPtr [, nrSamples] [, stddev] [, timeout]);";
-static char synopsisString[] = 
-    "Returns an estimate of the monitor flip interval for the specified onscreen window."
-    "\"windowPtr\" is the handle of the onscreen window for which info should be returned. "
+static char synopsisString[] =
+    "Returns an estimate of the monitor flip interval for the specified onscreen window.\n"
+    "\"windowPtr\" is the handle of the onscreen window for which info should be returned.\n"
     "\"nrSamples\" If left out, the estimated interval from previous calls to GetFlipInterval "
     "or from the initial calibration done during Screen('OpenWindow'...) is reported. "
     "If set to a value greater zero, PTB will perform a measurement loop "
@@ -35,18 +35,18 @@ static char synopsisString[] =
     "doesn't converge for some reason. Timeout is 10 seconds and stddev is 50 microseconds by default. "
     "PTB automatically takes at least 50 valid samples when opening an onscreen-window, trying to achieve a "
     "standard deviation below 100 microseconds, but timing out after a maximum of 15 seconds. "
-    "If you require very high precision, call this routine with values that suit your demands. "
+    "If you require very high precision, call this routine with values that suit your demands.\n"
     "The returned monitorRefreshInterval is in seconds, but has sub-millisecond accuracy. "
-    "The real number of valid samples taken and the final standard deviation is returned as well. "
-    "CAUTION: When using OpenGL flip-frame stereo (stereomode=1 in OpenWindow) on ATI graphics hardware, "
-    "the flip interval (as reported here) may be twice as long as the monitor refresh interval! Using "
+    "The real number of valid samples taken and the final standard deviation is returned as well.\n"
+    "CAUTION: When using frame-sequential stereo (stereomode=1/11 in OpenWindow), "
+    "the flip interval (as reported here) may be twice as long as the monitor refresh interval. Using "
     "Anti-Aliasing with a high multiSample level at a high display resolution may also cause the graphics "
     "hardware to switch to a flip-interval twice as long as the monitor refresh interval, because it is "
-    "not capable of performing all anti-aliasing computations in one single refresh interval. ";
+    "not capable of performing all anti-aliasing computations in one single refresh interval.";
 
 static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 
-PsychError SCREENGetFlipInterval(void) 
+PsychError SCREENGetFlipInterval(void)
 {
     PsychWindowRecordType *windowRecord;
 
@@ -56,36 +56,36 @@ PsychError SCREENGetFlipInterval(void)
     int nrSamples=0;
     double ifi_hint;
 
-    //all subfunctions should have these two lines.  
+    //all subfunctions should have these two lines.
     PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 
     PsychErrorExit(PsychCapNumInputArgs(4));     //The maximum number of inputs
-    PsychErrorExit(PsychRequireNumInputArgs(1)); //The required number of inputs	
+    PsychErrorExit(PsychRequireNumInputArgs(1)); //The required number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(3));    //The maximum number of outputs
 
     //get the window record from the window record argument and get info from the window record
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
 
-    if(windowRecord->windowType!=kPsychDoubleBufferOnscreen) {
+    if (windowRecord->windowType != kPsychDoubleBufferOnscreen) {
         PsychErrorExitMsg(PsychError_user, "GetFlipInterval called on window without backbuffers.");
     }
 
     // Query number of valid samples to take for calibration. Defaults to zero = Just query, don't measure...
     PsychCopyInIntegerArg(2, FALSE, &nrSamples);
-    if (nrSamples<0) {
+    if (nrSamples < 0) {
         PsychErrorExitMsg(PsychError_user, "nrSamples must be greater or equal to zero.");
     }
 
     // Query threshold for stddev... Defaults 50 microseconds jitter.
     PsychCopyInDoubleArg(3, FALSE, &stddev);
-    if (stddev<0.00002) {
-        PsychErrorExitMsg(PsychError_user, "stddev be greater or equal to 0.00002 secs aka 20 microseconds.");
+    if (stddev < 0.00002) {
+        PsychErrorExitMsg(PsychError_user, "stddev must be greater or equal to 0.00002 secs aka 20 microseconds.");
     }
 
     // Query timeout... Defaults to 10 seconds.
     PsychCopyInDoubleArg(4, FALSE, &maxsecs);
-    if (maxsecs<=0) {
+    if (maxsecs <= 0) {
         PsychErrorExitMsg(PsychError_user, "maxsecs must be greater than zero seconds.");
     }
 
@@ -102,10 +102,18 @@ PsychError SCREENGetFlipInterval(void)
         ifi_hint = windowRecord->ifi_beamestimate;
     }
 
-    ifi_estimate = PsychGetMonitorRefreshInterval(windowRecord, &nrSamples, &maxsecs, &stddev, ifi_hint, NULL);
-    // Child protection:
-    if (ifi_estimate==0) {
-        PsychErrorExitMsg(PsychError_user, "GetFlipInterval failed to compute good estimate of monitor refresh! Somethings screwed up with VBL syncing!");
+    // Backend override active for external display backend?
+    if (windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks) {
+        // Yes: Report "made up" values injected from external backend, instead
+        // of the ones associated with this windows windowing system screen:
+        ifi_estimate = windowRecord->VideoRefreshInterval;
+        nrSamples = 1;
+        stddev = 0.0;
+    }
+    else {
+        ifi_estimate = PsychGetMonitorRefreshInterval(windowRecord, &nrSamples, &maxsecs, &stddev, ifi_hint, NULL);
+        if (ifi_estimate == 0)
+            PsychErrorExitMsg(PsychError_user, "GetFlipInterval failed to compute good estimate of monitor refresh! Somethings screwed up with VBL syncing!");
     }
 
     // Return the measured IFI:

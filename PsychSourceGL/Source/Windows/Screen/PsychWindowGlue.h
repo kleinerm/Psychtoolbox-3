@@ -1,37 +1,21 @@
 /*
-	PsychToolbox3/Source/windows/Screen/PsychWindowGlue.h
-	
-	PLATFORMS:	
-	
-		This is the Windows version only.  
-				
-	AUTHORS:
-	
-		Allen Ingling		awi		Allen.Ingling@nyu.edu
+    PsychToolbox3/Source/windows/Screen/PsychWindowGlue.h
 
-	HISTORY:
-	
-		12/20/02		awi		Wrote it mostly by modifying SDL-specific refugees (from an experimental SDL-based Psychtoolbox).
-		11/16/04		awi		Added description.  
-		04/03/05                mk              Support for stereo display output and enhanced Screen('Flip') behaviour.
-                05/09/05                mk              New function PsychGetMonitorRefreshInterval -- queries (and measures) monitor refresh.
-	
-        DESCRIPTION:
-	
-		Functions in this file comprise an abstraction layer for probing and controlling window state, except for window content.  
-		
-		Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes() 
-		should be platform-neutral, despite that the calls in OS X and Windows to detect available pixel sizes are different.  Platform 
-		specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, PsychWindowTextClue.
+    PLATFORMS:
 
-	NOTES:
-	
-	TO DO: 
-	
-		¥ The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
-		name by their placement in a directory tree.
-		
-		¥ PsychFlushGL() and PsychGLFlush() need to be merged.
+        This is the Windows version only.
+
+    AUTHORS:
+
+        Mario Kleiner   mk      mario.kleiner.de@gmail.com
+
+    DESCRIPTION:
+
+        Functions in this file comprise an abstraction layer for probing and controlling window state, except for window content.
+
+        Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes()
+        should be platform-neutral, despite that the calls in OS X and Windows to detect available pixel sizes are different.  Platform
+        specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, PsychWindowTextClue.
 
 */
 
@@ -60,6 +44,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap);
 void    PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags);
 double  PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration);
+psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bool constrain, PsychRectType rect);
 
 //end include once
 #endif
