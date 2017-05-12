@@ -630,8 +630,8 @@ PsychError SCREENOpenWindow(void)
         windowRecord->specialflags |= kPsychFbOverrideSizeActive;
     }
     else {
-        // No. Set to windows real framebuffer 'rect':
-        PsychCopyRect(fbOverrideRect, rect);
+        // No. Set to windows real framebuffer rectangle (in *pixels* on Retina displays, not dots!):
+        PsychCopyRect(fbOverrideRect, windowRecord->rect);
     }
 
     // Override windowRecord's real framebuffer 'rect' with the fbOverrideRect. This is either a
@@ -654,13 +654,6 @@ PsychError SCREENOpenWindow(void)
         // scale all content from the size of the drawBufferFBO (our virtual framebuffer),
         // which is the size of the clientRect, to the true size of the onscreen windows
         // system framebuffer - appropriately tweaked for special display modes of course.
-
-        // If the clientRect wasn't explicitely provided by calling usercode, but
-        // computed as part of Retina compatibility mode setup above, then we need
-        // to override the stale computed clientRect with one based on our effective
-        // windowRecord->rect -- After possible fbOverrideRect overrides:
-        if (!clientRect_given)
-            PsychNormalizeRect(windowRecord->rect, clientRect);
 
         // Set it as "official" window client rectangle, whose size is reported
         // by default by functions like Screen('Rect'), Screen('WindowSize') or the
