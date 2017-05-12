@@ -141,7 +141,9 @@ else
                 else
                     NSIDENTIFIER = c;
                     NSRECORDING = 0;
-                    send(NSIDENTIFIER,'QMAC-');
+                    % Use 10 seconds read timeout:
+                    pnet(NSIDENTIFIER, 'setreadtimeout', 10);
+                    send(NSIDENTIFIER,'QNTEL');
                     rep = receive(NSIDENTIFIER,1);
                     switch char(rep)
                         case 'F'
@@ -221,6 +223,11 @@ else
                     receive(NSIDENTIFIER,1);
                     %get the timebase from the netstation.
                     send(NSIDENTIFIER,'S');
+                    rep = receive(NSIDENTIFIER,1);
+                    if char(rep) ~= 'Z'
+                        status = 4;
+                        warning('NTP query reports failure!');
+                    end
                 end
 
                 % Get current time in EGI's NTP adjusted timebase (seconds since 1.1.1900):
@@ -301,12 +308,11 @@ else
                 % drifting over time:
                 unixEpochToCurrentEpoch = ptbRefTime - ptbTimestamp;
 
-                % Set difference between ptbRefTime and EGI time as SYNCHEPOCH:
-                SYNCHEPOCH = ptbRefTime - netStationSyncFraction;
+                % Set EGI baseline NTP time, mapped to OS specific PTB wall clock time as SYNCHEPOCH:
+                SYNCHEPOCH = netStationSyncFraction - secondsFromNtpEpochToSystemEpoch;
                 NTPSYNCED = 1;
 
                 fprintf('NetStation: Clock offset GetSecs() - NTP adjusted time: %f secs.\n', unixEpochToCurrentEpoch);
-                fprintf('NetStation: Clock offset between current EGI NTP time and current PTB NTP time: %f secs.\n', -SYNCHEPOCH);
                 if IsWin
                     fprintf('NetStation: Difference between 1. January 1601 and 1. January 1900: %f secs.\n', ...
                             -secondsFromNtpEpochToSystemEpoch);
@@ -314,39 +320,7 @@ else
                     fprintf('NetStation: Difference between 1. January 1970 and 1. January 1900: %f secs.\n', ...
                             secondsFromNtpEpochToSystemEpoch);
                 end
-                fprintf('NetStation: Mismatch between actual and expected offset: %f secs.\n', -SYNCHEPOCH - secondsFromNtpEpochToSystemEpoch);
-
-                %This code should result in the NTP timestamp from EGI
-                %being in the PTB timebase.
-                %Ntp Starts at 1900, Unix starts at 1970, Osx starts at
-                %boot.
-                %ptbSyncEpochSeconds = netstationSyncEpochSeconds - secondsFromNtpEpochToSystemEpoch-unixEpochToCurrentEpoch;
-
-                %The fractional part of the second is the same.
-                %ptbSynchEpochMicroSeconds = netstationSynchEpochMicroSeconds;
-
-                %Finally let's put it together. We want to know what to
-                %subtract from PTB timestamps in order to
-                %count milliseconds for sending events to
-                %EGI. So SYNCHEPOCH should be a time in the PTB
-                %timebase.
-
-                %This is a floating point double so there is a
-                %slight problem that the smallest unit isn't very small
-                %and changes with time.  Currently (2017) in: to
-                %determine:
-                %eps(SYNCHEPOCH)
-                %Which is currently 2.384 e-7. Or ~0.3 microseconds.
-                %This should be sufficient for present purposes
-                %requiring 1000 microsecond precision, but is
-                %uncomfortably close for my liking and could create a
-                %problem if care isn't taken.
-                %SYNCHEPOCH = ptbSyncEpochSeconds + ptbSynchEpochMicroSeconds / 1e6;
-
-                %Debug output.
-                %rawSynchEpochBytes = num2hex(SYNCHEPOCH);
-                %disp('Raw synch epoch bytes:')
-                %disp(rawSynchEpochBytes)
+                fprintf('NetStation: Events will be labeled with time difference to EGI baseline %f secs.\n', SYNCHEPOCH);
 
                 status=0;
             end
@@ -392,16 +366,13 @@ else
                 % Are Psychtoolbox client computer and NetStation host computer NTP synchronized?
                 if NTPSYNCED
                     % Yes: Translate GetSecs timestamp into PTB NTP synchronized time via local clock-sync,
-                    % then by subtracting SYNCHEPOCH, translate that into EGI's NTP synchronized time since
-                    % 1.1.1900 and implicitely subtract time of last sync with EGI, ie. final result is elapsed
-                    % seconds since 'ntpsynchronize', but NTP drift corrected, so we don't accumulate more than
-                    % a tiny amount of drift between invocations of 'ntpsynchronize', even for long experiment
-                    % runtimes:
+                    % then by subtracting SYNCHEPOCH, translate that into time delta since EGI's NTP baseline
+                    % time. This would be NTP drift corrected for synchronized machines, so we don't accumulate
+                    % timestamp error, even for long experiment runtimes:
                     [ptbGetSecsTime, ptbRefTime] = GetSecs('AllClocks');
                     if isempty(start)
                         % Can skip translation and use current ptbRefTime directly,
-                        % just get delta to 'ntpsynchronize' and implict translation
-                        % from [1.1.1970 or 1.1.1601] -> 1.1.1900. This is a tad more accurate:
+                        % just get delta to EGI baseline. This is a tad more accurate:
                         start = ptbRefTime - SYNCHEPOCH;
                     else
                         % Translate, map, get delta:
@@ -495,6 +466,10 @@ function ntpTimestamp=receiveNtpTimestamp(con)
         ntpTimestamp(2) = 0;
     else
         ntpTimestamp=double(pnet(con,'read',2,'uint32'));
+        if isempty(ntpTimestamp)
+            % Timed out:
+            error('NTP timestamp receive timed out!');
+        end
     end
 end
 
