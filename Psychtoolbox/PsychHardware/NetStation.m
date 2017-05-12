@@ -141,7 +141,9 @@ else
                 else
                     NSIDENTIFIER = c;
                     NSRECORDING = 0;
-                    send(NSIDENTIFIER,'QMAC-');
+                    % Use 10 seconds read timeout:
+                    pnet(NSIDENTIFIER, 'setreadtimeout', 10);
+                    send(NSIDENTIFIER,'QNTEL');
                     rep = receive(NSIDENTIFIER,1);
                     switch char(rep)
                         case 'F'
@@ -221,6 +223,11 @@ else
                     receive(NSIDENTIFIER,1);
                     %get the timebase from the netstation.
                     send(NSIDENTIFIER,'S');
+                    rep = receive(NSIDENTIFIER,1);
+                    if char(rep) ~= 'Z'
+                        status = 4;
+                        warning('NTP query reports failure!');
+                    end
                 end
 
                 % Get current time in EGI's NTP adjusted timebase (seconds since 1.1.1900):
@@ -459,6 +466,10 @@ function ntpTimestamp=receiveNtpTimestamp(con)
         ntpTimestamp(2) = 0;
     else
         ntpTimestamp=double(pnet(con,'read',2,'uint32'));
+        if isempty(ntpTimestamp)
+            % Timed out:
+            error('NTP timestamp receive timed out!');
+        end
     end
 end
 
