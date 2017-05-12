@@ -1592,7 +1592,7 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         % Old Oculus VR driver for v0.5 SDK/Runtime?
-        if hmd.driver == @PsychOculusVR
+        if 1 % || hmd.driver == @PsychOculusVR
             % Yes. Trying to display on a screen with more than one video output?
             if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
                 % Yes. Not good, as this will impair graphics performance and timing a lot.
@@ -1619,7 +1619,7 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         % New Oculus VR driver for v1.11 SDK/Runtime?
-        if hmd.driver == @PsychOculusVR1
+        if  0 % && hmd.driver == @PsychOculusVR1
             % Yes. The current design iteration requires the PTB parent onscreen window
             % to have the same size (width x height) as the renderbuffer for one
             % eye, so enforce that constraint.
@@ -2825,7 +2825,7 @@ if ~isempty(floc)
     % Append our generated 'UsePanelFitter' task to setup the panelfitter for
     % our needs at 'OpenWindow' time if panel fitting is needed:
     [clientRes, imagingFlags, stereoMode] = hmd.driver('GetClientRenderingParameters', hmd);
-    if clientRes(1) ~= 0 && clientRes(2) ~= 0 && hmd.driver == @PsychOculusVR
+    if clientRes(1) ~= 0 && clientRes(2) ~= 0 %&& hmd.driver == @PsychOculusVR
         x{1} = 'General';
         x{2} = 'UsePanelFitter';
         x{3} = clientRes;
