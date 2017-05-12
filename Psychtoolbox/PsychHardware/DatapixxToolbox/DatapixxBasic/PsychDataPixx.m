@@ -1025,7 +1025,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     % Attach a postflip callback for things like timestamp and status
     % collection from the device after flip completion:
-    % Screen('Hookfunction', win, 'AppendMFunction', 'ScreenFlipImpliedOperations', 'Postflip callback into PsychDataPixx driver.', 'evalin(''base'', ''PsychDataPixx(2, IMAGINGPIPE_FLIPCOUNT);'');');
+    % Screen('Hookfunction', win, 'AppendMFunction', 'ScreenFlipImpliedOperations', 'Postflip callback into PsychDataPixx driver.', 'PsychDataPixx(2, IMAGINGPIPE_FLIPCOUNT);');
     Screen('Hookfunction', win, 'AppendMFunction', 'ScreenFlipImpliedOperations', 'Postflip callback into PsychDataPixx driver.', 'PsychDataPixx(2);');
     Screen('HookFunction', win, 'Enable', 'ScreenFlipImpliedOperations');
 

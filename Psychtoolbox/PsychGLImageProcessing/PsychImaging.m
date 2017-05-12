@@ -549,11 +549,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   by applying an algorithn known as "Pseudo-Gray" or "Bit stealing".
 %   Selecting this mode implies use of 32 bit floating point
 %   framebuffers, unless you specify use of a 16 bit floating point
-%   framebuffer via 'FloatingPoint16Bit' explicitely. If you do that, you
-%   will not quite be able to use the full 10.8 bit output precision, but
-%   only approximately 10 bits. The expected range of luminance values is
-%   between 0 and 1. See "help CreatePseudoGrayLUT" for further
-%   explanation.
+%   framebuffer via 'FloatingPoint16Bit' explicitely. The expected range
+%   of input luminance values is between 0 and 1. See "help CreatePseudoGrayLUT"
+%   for further explanation.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
 %
@@ -650,30 +648,41 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   from the standard graphics drivers, ie., it won't need to use our own
 %   homegrown, experimental box of tricks to enable this.
 %
-%   Apple OSX, as of version 10.11.2 "El Capitan", according to Apple - *not* tested
-%   by us at all, does support 10 bpc video output on some small subset of Apple
-%   hardware. At the end of the year 2016 this is supposed to be the MacPro 2013
-%   "with some suitable displays", and the iMac models late 2014 and late 2015 with
-%   Retina 5k displays. On OSX, the OS will actually initialize a 16 bit half-float
-%   framebuffer in 10 bpc mode, which provides roughly 10 bpc effective linear precision
-%   in the displayable color intensity range. The OS may or may not (unverified!) use
-%   dithering to simulate > 8 bpc output precision on displays or machines which do not
-%   support native 10 bpc. Be very cautious if you use Apple hardware under OSX for
-%   10 bpc output!
+%   Apple OSX, since version 10.11.2 "El Capitan", does support native 10 bpc video
+%   output on some small subset of Apple hardware, as of May 2017 these are the MacPro
+%   2013 "with some suitable displays" (Apple quotation), and the 27 inch iMac models
+%   late 2014 and late 2015 with Retina 5k displays. We've confirmed this to be working
+%   on the iMac 5k Retina 27 inch late 2014 model via photometer measurements. On OSX,
+%   the OS will actually provide a 16 bit half-float framebuffer for our onscreen windows.
+%   This buffer provides ~11 bpc effective linear precision in the displayable color
+%   intensity range 0.0-1.0. The OS outputs this 11 bpc framebuffer as a native 10 bpc
+%   video signal on suitable displays and uses some Apple proprietary software spatial
+%   dithering algorithm to add 1 extra bit of simulated precision, so a photometer would
+%   measure up to 11 bpc perceived/measured precision. On some other Mac models, which are
+%   not in Apples list of 10 bit capable Macs, Apple uses a proprietary spatial dithering
+%   algorithm implemented in software to fake a precision of 11 bpc on standard 8 bpc
+%   framebuffers and displays, at least convincing enough for a photometer. The downside
+%   of this proprietary dithering scheme is that visual stimulus onset timing precision
+%   and timestamping precision is impaired, so Macs in "10 bit" framebuffer mode are not
+%   suitable if trustworthy frame accurate visual timing is needed. Nothing we could do
+%   about this. To summarize: EnableNative10BitFramebuffer mode on OSX will actually give
+%   you a simulated 11 bpc framebuffer on some Mac hardware, plus severe visual timing
+%   problems.
 %
 %   Psychtoolbox experimental 10 bpc framebuffer support:
 %
 %   Additionally we support ATI/AMD Radeon hardware of the X1000, HD2000 - HD8000,
-%   series and later models under Linux via our own low-level setup mechanisms.
-%   These graphics cards support a native ARGB2101010 framebuffer, ie., a system
-%   framebuffer with 2 bits for the alpha channel, and 10 bits per color channel.
+%   series and later models (everything since at least the year 2006) under Linux
+%   via our own low-level setup mechanisms. These graphics cards support a native
+%   ARGB2101010 framebuffer, ie., a system framebuffer with 2 bits for the alpha
+%   channel, and 10 bits per color channel.
 %
-%   As this is supported by the hardware, but not by the standard ATI
-%   graphics drivers, we follow a hybrid approach: We use a special kernel
-%   level driver to reconfigure the hardware for 10 bpc framebuffer support.
-%   Then we use a special imaging pipeline formatting plugin to convert
-%   16 bpc or 32 bpc stimuli into the special data format required by this
-%   framebuffer configuration.
+%   As this is supported by the hardware, but not always by the standard AMD
+%   graphics drivers, we follow a hybrid approach: We use special low-level
+%   hardware access to reconfigure the hardware for 10 bpc framebuffer support.
+%   Then we use a special imaging pipeline formatting plugin to convert 16 bpc or
+%   32 bpc stimuli into the special data format required by this framebuffer
+%   configuration.
 %
 %   On Linux you must have run PsychLinuxConfiguration at least once on your
 %   system at some point. You'll need to have one of the supported AMD Radeon
@@ -686,22 +695,31 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   high color precision output. Your graphics card must also be able to transmit the
 %   video signal at high precision to the display device and the display must be able
 %   to faithfully reproduce the high precision image. 10 bpc output has been verified
-%   to work for analog VGA connected CRT monitors and displays on both AMD and
-%   NVidia graphics cards which do support 10 bpc framebuffers, so with a analog VGA
-%   CRT you should be safe. The status of 10 bpc output to digital display devices differs
-%   a lot across devices and OS'es. Output of 10 bpc framebuffers to standard 8 bpc digital panels
-%   via digital dithering is known to work, but that is not the real thing, only a simulation
-%   of 10 bpc via dithering to 8 bpc. This may or may not be good enough for your specific
-%   visual stimulation paradigm. On a DVI-D connected digital display, this dithered output
-%   is the best you will ever get. DisplayPort: Recent NVidia and AMD graphics cards can
-%   output to some suitable DisplayPort displays with 10 bpc or higher precision on Linux,
-%   and maybe also on MS-Windows, but you have to verify this carefully for your specific display.
+%   to work for analog VGA connected CRT monitors and displays on both AMD and NVidia
+%   graphics cards which do support 10 bpc framebuffers, so with a analog VGA CRT you
+%   should be safe. Note that this only applies to native VGA output via VGA connectors
+%   or passive DVI-I to VGA adapters connected to a DVI-I connector. Active DisplayPort
+%   to VGA adapters or active HDMI to VGA adapters may be limited to maximum 8 bpc output.
+%   The status of 10 bpc output to digital display devices differs a lot across devices
+%   and OS'es. Output of 10 bpc framebuffers to standard 8 bpc digital laptop panels or
+%
+%   DVI/HDMI/DisplayPort panels via digital dithering is known to work, but that is not
+%   the real thing, only a simulation of 10 bpc via dithering to 8 bpc. This may or may
+%   not be good enough for your specific visual stimulation paradigm. On a DVI-D connected
+%   standard digital display, this dithered output is the best you will ever get.
+%
+%   DisplayPort: Recent NVidia and AMD graphics cards can output to some suitable DisplayPort
+%   displays with 10 bpc or higher precision on Linux, and maybe also on MS-Windows, but you
+%   have to verify this carefully for your specific display.
+%
 %   HDMI: Recent Intel graphics cards can output up to 12 bpc precision to HDMI deep color
-%   capable displays on Linux, and maybe also on MS-Windows. All AMD graphics cards of model
-%   Radeon HD-5000 or later (and equivalent Fire-Series models) can output to HDMI deep color
-%   capable displays with 10 bpc real precision at least if you use a Linux kernel of version 3.16
-%   or later with the open-source AMD graphics drivers. Run PsychLinuxConfiguration to set up
-%   this >= 10 bpc deep color output mode, then reboot your machine once to enable it.
+%   capable displays on Linux, and maybe also on MS-Windows. However, > 8 bpc framebuffers
+%   are not yet supported, so this can only be used for gamma correction. All AMD graphics
+%   cards of model Radeon HD-5000 or later (and equivalent Fire-Series models) can output to
+%   HDMI deep color capable displays with 10 bpc real precision at least if you use a Linux
+%   kernel of version 3.16 or later with the open-source AMD graphics drivers. Execute
+%   PsychLinuxConfiguration to enable this >= 10 bpc deep color output mode, then reboot your
+%   machine once to enable it.
 %
 %   The status with the proprietary AMD drivers on Linux or on MS-Windows is unknown.
 %
@@ -718,27 +736,29 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   your machine. A well working OS would disable dithering on a 10 bpc or
 %   higher color depth display, if the display reports its capability to the
 %   OS via its EDID info. It would enable dithering on < 10 bpc displays, so
-%   you'd get a "pseudo 10 bpc" display where 10 bpc color depths is
-%   simulated on a 6 bpc or 8 bpc display via the dithering.
+%   you'd get a "pseudo 10 bpc" display where 10 bpc color depths is simulated
+%   on a 6 bpc or 8 bpc display via the dithering.
 %
 %   You can disable dithering manually on some graphics cards by providing the
 %   optional 'disableDithering' flag as 1. Currently mostly AMD cards allow this
 %   control. NVidia or Intel cards require manual setup to force dithering off.
 %
 %
-% * 'EnableNative11BitFramebuffer' Enable support for output of stimuli
-%   with almost 11 bit precision per color channel (11 bpc / 32 bpp / "Deep color")
-%   on graphics hardware that supports native 11 bpc framebuffers. This will
-%   request an ~ 11 bpc framebuffer from the operating system. If it can't
-%   get such a framebuffer on Linux with AMD graphics hardware, it will use our
-%   own homegrown setup code to provide such a framebuffer anyway on Radeon X1000,
-%   HD-2000 and later graphics cards and equivalent Fire-Series graphics cards.
+% * 'EnableNative11BitFramebuffer' Enable support for output of stimuli with (almost)
+%   11 bit precision per color channel (11 bpc / 32 bpp / "Deep color") on graphics
+%   hardware that supports native 11 bpc framebuffers. This will request an ~ 11 bpc
+%   framebuffer from the operating system. If it can't get such a framebuffer on Linux
+%   with AMD graphics hardware, it will use our own homegrown setup code to provide
+%   such a framebuffer anyway on Radeon X1000, HD-2000 and later graphics cards and
+%   equivalent Fire-Series graphics cards. On OSX 10.11.2 it will request and get a
+%   ~11 bpc framebuffer on some Mac models. See the explanations above for 10 bpc on
+%   OSX.
 %
 %   Read all the explanations in the section above for 'EnableNative10BitFramebuffer'
 %   for capabilities, limitations and possible caveats on different systems.
 %
-%   Please note that this "11 Bit framebuffer" is not quite 11 bpc precision, but
-%   only about ~ 10.6666 bpc precision. Specifically, the framebuffer can only
+%   Please note that on Linux this "11 Bit framebuffer" is not quite 11 bpc precision,
+%   but only about ~ 10.6666 bpc precision. Specifically, the framebuffer can only
 %   store at most 32 bits of color information per pixel, so it will store 11 bit
 %   precision for the red channel (2048 distinct red intensity levels), 11 bit
 %   (2048 levels) for the green channel, but only 10 bit (1024 levels) for the blue
@@ -749,7 +769,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   How many bits of precision of these ~ 11 bpc actually reach your display device?
 %
 %   - Analog VGA only provides for maximum 10 bpc output precision on all shipping
-%     NVidia and AMD graphics cards. Intel graphics cards only allow for 8 bpc.
+%     NVidia and AMD graphics cards at best. Intel graphics cards only allow for 8 bpc.
 %
 %   - DisplayPort or HDMI might allow for transfer of 11 bpc precision, in general they
 %     support up to 12 bpc. However additional hardware restrictions for your graphics
@@ -757,13 +777,15 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %     cards support ~ 11 bpc framebuffers at all. Radeon HD-7000 and earlier can only
 %     truly process up to 10 bpc, so 'EnableNative11BitFramebuffer' may not gain you any
 %     precision over 'EnableNative10BitFramebuffer' in practice on these cards. AMD cards
-%     of the "Sea Islands" family or later, mostly models from the year >= 2014, should be able
-%     to process and output up to 12 bpc over HDMI or DisplayPort, so they'd be able to output
-%     true ~11 bpc images. However, this hasn't been verified by us so far due to lack of
-%     suitable hardware.
+%     of the "Sea Islands" family or later, mostly models from the year >= 2014, should be
+%     able to process and output up to 12 bpc over HDMI or DisplayPort, so they'd be able
+%     to output true ~11 bpc images. However, this hasn't been verified by us so far due to
+%     lack of suitable hardware - we don't know if it really works.
 %
 %   So obviously: Measure very carefully on your setup what kind of precision you really
-%   get and make sure not to be fooled by dithering.
+%   get and make sure not to be fooled by dithering if you need precise low-level control
+%   of spatial stimulus properties, or per-pixel high precision, instead of just averaged
+%   over larger clusters of pixels.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative11BitFramebuffer' [, disableDithering=0]);
 %
@@ -771,27 +793,29 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % * 'EnableNative16BitFramebuffer'  Enable up to 16 bpc, 64 bpp framebuffer on some setups.
 %   This asks to enable a framebuffer with a color depth of up to 16 bpc for up to 65535 levels
 %   of intensity per red, green and blue channel or 48 bits = different 2^48 colors. Currently,
-%   as of September 2014, this mode of operation is only supported on Linux when using the
-%   open-source FOSS radeon graphics drivers on modern AMD graphics cards, and only after
-%   some special configuration of your X-Server and display setup has been performed by you.
-%   This is essentially a low-level hack that works under those specific conditions, but uses a
-%   relatively large amount of graphics memory and compute resources to implement. If you can
-%   do with less than 12 bpc, you're better off with the other high bit depth modes, as they are
-%   easier to set up and more efficient/faster in operation. On suitable setups, this will establish
-%   a 16 bpc framebuffer which packs 3 * 16 bpc = 48 bit color info into 64 bpp pixels and the
-%   gpu's display engine will scan out that framebuffer at 16 bpc. However, effective output
-%   precision is further limited to < 16 bpc by your display, video connection and specific model
-%   of graphics card. As of September 2014, the maximum effective output precision is limited
-%   to 12 bpc (4096 levels of red, green and blue) by the graphics card, and this precision is only
-%   attainable on AMD graphics cards of the so called "Sea Islands" (cik) family when used with the
-%   radeon-kms display driver. Any older or more recent cards, e.g., "Southern Islands" or
-%   "Volcanic Islands" will not work with this hack. The specific requirement is an AMD gpu with a
-%   "DCE-8 or later" display engine that uses the old/classic ati/radeon-ddx and radeon-kms display
-%   driver, not the new amdgpu-ddx / amdgpu-kms driver. Cards older than "Sea Islands" don't have a
-%   DCE-8+ engine, and cards newer than "Sea Islands" don't work with the classic radeon driver anymore,
-%   so effectively only "Sea Islands" (cik) DCE-8.x gpu's work with this hack.
+%   as of May 2017, this mode of operation is only supported on Linux when using the open-source
+%   FOSS radeon graphics drivers on modern AMD graphics cards, and only after some special config-
+%   uration of your X-Server and display setup has been performed by you. This is essentially a
+%   low-level hack that works under those specific conditions, but uses a relatively large amount
+%   of graphics memory and compute resources to implement. If you can do with less than 12 bpc, you
+%   are better off with the other high bit depth modes, as they are easier to set up and more efficient
+%   and faster in operation. On suitable setups, this will establish a 16 bpc framebuffer which packs
+%   3 * 16 bpc = 48 bit color info into 64 bpp pixels and the gpu's display engine will scan out that
+%   framebuffer at 16 bpc. However, effective output precision is further limited to < 16 bpc by your
+%   display, video connection and specific model of graphics card. As of May 2017, the maximum effective
+%   output precision is limited to at most 12 bpc (4096 levels of red, green and blue) by the graphics
+%   card, and this precision may only be attainable on AMD graphics cards of the so called "Sea Islands"
+%   (cik) family when used with the radeon-kms display driver. Any older or more recent cards, e.g.,
+%   "Southern Islands" or "Volcanic Islands" will not work with this hack. The specific requirement is
+%   an AMD gpu with a "DCE-8 or later" display engine that uses the old/classic ati/radeon-ddx and
+%   radeon-kms display driver, not the new amdgpu-ddx / amdgpu-kms driver. Cards older than "Sea Islands"
+%   don't have a DCE-8+ engine, and cards newer than "Sea Islands" don't work with the classic radeon
+%   driver anymore, so effectively only "Sea Islands" (cik) DCE-8.x gpu's may work with this hack.
+%   Please note that actual 12 bpc output precision even in the best case scenario has not been verified
+%   by us so far, due to lack of suitable 12 bpc display hardware, so this mode is highly experimental and
+%   may not work at all.
 %
-%   High bit depth output only works over HDMI or DisplayPort, and may be further restricted by
+%   High bit depth output would only work over HDMI or DisplayPort, and may be further restricted by
 %   your specific display device, so measure your results carefully! See the sections about 11 bpc and
 %   10 bpc native framebuffers above for further details.
 %
@@ -803,8 +827,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %      way to achieve this is to copy our simple template xorg.conf file into the config folder of
 %      your machine:
 %
-%      a) Open a terminal window and use sudo cp to copy our template to the /etc/X11 folder:
-%      sudo cp /path/to/Psychtoolbox/PsychGLImageProcessing/xorg.conf_For_AMD16bpcFramebuffer /etc/X11/xorg.conf
+%      a) Open a terminal window and use cp to copy our template to the /etc/X11 folder:
+%      cp /path/to/Psychtoolbox/PsychGLImageProcessing/xorg.conf_For_AMD16bpcFramebuffer /etc/X11/xorg.conf.d/xorg.conf
 %
 %      b) Logout and login again, so the display server picks up the changed configuration.
 %
@@ -818,6 +842,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %      showing the left half of your onscreen window, the other showing the right half of your onscreen
 %      window, ie., a typical setup for dual-display side-by-side stereo presentation. Pretty much any other
 %      display setup will display undefined results, e.g., corrupted images or random pixel trash.
+%      Also note that not all desktop GUI environments work: GNOME-3 desktop "Gnome shell" is known to work
+%      at least as tested on Ubuntu Linux 16.04 LTS. Ubuntu Unity may work. KDE-5 usually does not work,
+%      other desktop GUI's are not tested.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer' [, disableDithering=0][, bpc]);
 %
@@ -2954,8 +2981,12 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'))) || ...
 
     % The ATI 10/11bpc formatter is not yet icm aware - Incapable of internal color correction!
     % Additionally native 10/11 bpc framebuffers, e.g., on Fire-Series or NVidia cards also don't
-    % have icm aware output formatting, so a 'false' setting here is mandatory:
-    ptb_outputformatter_icmAware = 0;
+    % have icm aware output formatting, so a 'false' setting would be mandatory. However, we leave
+    % the setting at whatever it currently is, as it defaults to 0 / false anyway, and the PseudoGray
+    % or EnableGenericHighPrecisionLuminanceOutput might have requested a 1 / true setting and we do
+    % not want to override that. This to allow to stack such a perceptual precision boosting trick
+    % on top of a 10/11 bpc framebuffer.
+    % ptb_outputformatter_icmAware = 0;
 end
 
 % Request for native 16 bit per color component ARGB16161616 framebuffer?
@@ -3079,7 +3110,9 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
     end
 
     % The AMD 16 bpc formatter is not icm aware - Incapable of internal color correction!
-    ptb_outputformatter_icmAware = 0;
+    % See 'EnableNative10BitFramebuffer' above, for why we don't touch the ptb_outputformatter_icmAware
+    % setting instead of forcing it to 0 / false:
+    % ptb_outputformatter_icmAware = 0;
 end
 
 % Request for dual display pipeline custom HDR system?
@@ -4363,9 +4396,12 @@ end
 if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
 
+    % Get native depth in bits per color (bpc) of active framebuffer:
+    nativeBPC = Screen('Pixelsize', win) / 3;
+
     if mystrcmp(reqs{row, 2}, 'EnablePseudoGrayOutput')
         % PseudoGray mode: We create the lut ourselves via helper function:
-        lut = CreatePseudoGrayLUT;
+        lut = CreatePseudoGrayLUT(nativeBPC);
 
         % For proper pseudo-gray output the gfx gamma-tables must not be
         % touched by us!
@@ -4382,7 +4418,7 @@ if ~isempty(floc)
 
     if isempty(lut) || ~isnumeric(lut)
         sca;
-        error('PsychImaging: Mandatory lookup table parameter lut for ''EnableGenericHighPrecisionLuminanceOutput'' missing or not of numeric type!');
+        error('PsychImaging: Mandatory lookup table parameter lut for ''%s'' missing or not of numeric type!', reqs{floc});
     end
 
     % Load output formatting shader for GenericHighPrecisionLuminanceOutput:
@@ -4398,8 +4434,20 @@ if ~isempty(floc)
     glUseProgram(0);
 
     % Use helper routine to build a proper RGBA Lookup texture for
-    % conversion of HDR luminance pixels to RGBA8 pixels:
-    pglutid = PsychHelperCreateGenericLuminanceToRGBA8LUT(lut);
+    % conversion of HDR luminance pixels to output framebuffer pixels:
+    if isa(lut, 'uint8')
+        % uint8 classic lut: Create RGBA8 lookup texture:
+        fprintf('PsychImaging-%s: Creating LUT suitable for precision boosting of a 8 bpc native framebuffer and display or DAC.\n', reqs{floc});
+        pglutid = PsychHelperCreateGenericLuminanceToRGBA8LUT(lut);
+    elseif isa(lut, 'uint16')
+        % uint16 input lut: Store as texture of suitable depths (8, 10 or 16 bpc):
+        fprintf('PsychImaging-%s: Creating %i slot LUT suitable for precision boosting of a %i bpc native framebuffer and display or DAC.\n', ...
+                reqs{floc}, size(lut, 2), nativeBPC);
+        pglutid = PsychHelperCreateGenericLuminanceToRGBA16MaxLUT(lut, nativeBPC, win);
+    else
+        sca;
+        error('PsychImaging: Mandatory lookup table parameter lut for ''%s'' not of uint8 or uint16 type, as required!', reqs{floc});
+    end
 
     if outputcount > 0
         % Need a bufferflip command:

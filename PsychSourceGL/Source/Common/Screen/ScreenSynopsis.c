@@ -167,6 +167,7 @@ void InitializeSynopsis()
     synopsis[i++] = "resolutions=Screen('Resolutions', screenNumber);";
     synopsis[i++] = "oldResolution=Screen('Resolution', screenNumber [, newwidth] [, newheight] [, newHz] [, newPixelSize] [, specialMode]);";
     synopsis[i++] = "oldSettings = Screen('ConfigureDisplay', setting, screenNumber, outputId [, newwidth][, newheight][, newHz][, newX][, newY]);";
+    synopsis[i++] = "Screen('ConstrainCursor', windowIndex, addConstraint [, rect]);";
 
     // Get and set information about the environment, computer, and video card (i.e. screen):
     synopsis[i++] = "\n% Get/set details of environment, computer, and video card (i.e. screen):";
@@ -190,6 +191,7 @@ void InitializeSynopsis()
     synopsis[i++] ="[x, y, buttonVector, hasKbFocus, valuators]= Screen('GetMouseHelper', numButtons [, screenNumber][, mouseIndex]);";
     synopsis[i++] = "Screen('HideCursorHelper', windowPntr [, mouseIndex]);";
     synopsis[i++] = "Screen('ShowCursorHelper', windowPntr [, cursorshapeid][, mouseIndex]);";
+    synopsis[i++] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y [, mouseIndex][, detachFromMouse]);";
     synopsis[i++] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y [, mouseIndex][, detachFromMouse]);";
 
     // Internal testing of Screen

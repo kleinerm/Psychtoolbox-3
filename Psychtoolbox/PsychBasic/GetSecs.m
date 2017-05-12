@@ -6,7 +6,13 @@ function s=GetSecs(s,subscript)
 % point (point in time where GetSecs would report a value of zero) is
 % operating system dependent and nothing to be relied on.
 %
+% GetSecs additionally supports these subfunctions:
+%
+% 'Version' - Tell version number etc.
+% 'AllClocks' - Return time from all supported clocks.
 % 
+% Type "GetSecs AllClocks?" for more infos/help.
+%
 % TIMING ADVICE: The first time you access any MEX function or M file,
 % Matlab takes several hundred milliseconds to load it from disk.
 % Allocating a variable takes time too. Usually you'll want to omit

@@ -1,18 +1,18 @@
 /*
 
-  Psychtoolbox3/Source/Common/SCREENNull.c		
+  Psychtoolbox3/Source/Common/SCREENNull.c
 
   AUTHORS:
 
-  Allen.Ingling@nyu.edu		awi 
+  Allen.Ingling@nyu.edu		awi
 
-  PLATFORMS:	
+  PLATFORMS:
 
-  This file should build on any platform. 
+  This file should build on any platform.
 
   HISTORY:
 
-  11/26/02  awi		Created. 
+  11/26/02  awi		Created.
 
   DESCRIPTION:
 
@@ -28,19 +28,22 @@
 
 #include "PsychGraphicsCardRegisterSpecs.h"
 
+// Defined in PsychGraphicsHardwareHALSupport.c, but accessed here:
+extern unsigned int crtcoff[kPsychMaxPossibleCrtcs];
+
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include <IOKit/IOKitLib.h>
 #include <sys/time.h>
 #endif
 
 static char useString[] = "[[value1], [value2] ..]=SCREEN('Null',[value1],[value2],...);";
-static char synopsisString[] = 
+static char synopsisString[] =
     "Special test function for Psychtoolbox testing and developments. Normal users: DO NOT USE!\n"
     "On Linux/OSX with AMD DCE-3 or later: FMT_CLAMP_CONTROL REG read/write. Meaningful values:\n"
     "0 = Read only. 1 = Clamp to 6 bpc, 65537 = Clamp to 8 bpc, 131073 = Clamp to 10 bpc.\n";
 static char seeAlsoString[] = "";
 
-PsychError SCREENNull(void) 
+PsychError SCREENNull(void)
 {
 #define RADEON_D1CRTC_INTERRUPT_CONTROL 0x60DC
 
@@ -52,7 +55,7 @@ PsychError SCREENNull(void)
 //#define RADEON_R500_GEN_INT_STATUS 0x204
 
   PsychWindowRecordType *windowRecord;
-	double tempValue; 
+	double tempValue;
 	double *array;
 	int i, m,n, p, numInArgs;
 	char *str;
@@ -64,23 +67,8 @@ PsychError SCREENNull(void)
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
 
+/*
 	#if PSYCH_SYSTEM == PSYCH_LINUX
-/*		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
-
-		// Return current OpenML kPsychOpenMLDefective state:
-		PsychCopyOutDoubleArg(1, FALSE, (int) (windowRecord->specialflags & kPsychOpenMLDefective));
-
-		// Enable/Disable current OpenML workaround2:
-		if (PsychCopyInIntegerArg(2, FALSE, &i)) {
-			if (i > 0) windowRecord->specialflags |= kPsychOpenMLDefective;
-			if (i == 0) windowRecord->specialflags &= ~kPsychOpenMLDefective;
-		}
-
-		if (PsychCopyInIntegerArg(3, FALSE, &i)) {
-			windowRecord->specialflags = i;
-		}
-*/
-
 		unsigned int regOffset, value, hi, lo;
 		PsychCopyInIntegerArg(1, TRUE, (int *) &regOffset);
 		value = PsychOSKDReadRegister(0, regOffset, NULL);
@@ -96,7 +84,7 @@ PsychError SCREENNull(void)
 
 		return(PsychError_none);
 	#endif
-	
+*/
 
 	#if PSYCH_SYSTEM == PSYCH_WINDOWS
 		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
@@ -104,8 +92,63 @@ PsychError SCREENNull(void)
 		return(PsychError_none);
 	#endif
 
-	#if PSYCH_SYSTEM == PSYCH_OSX
+        #if PSYCH_SYSTEM != PSYCH_WINDOWS
+        {
+            unsigned int headid = PsychScreenToCrtcId(0, 0);
+            unsigned int lutreg, ctlreg, value, status;
 
+            lutreg = EVERGREEN_DC_LUT_10BIT_BYPASS + crtcoff[headid];
+            ctlreg = EVERGREEN_GRPH_CONTROL + crtcoff[headid];
+
+            value = PsychOSKDReadRegister(0, lutreg, &status);
+            if (status)
+                printf("PTB-ERROR: LUTReg read failed.\n");
+            else
+                printf("PTB-ERROR: LUTBypassReg = %x.\n", value);
+
+            value = PsychOSKDReadRegister(0, ctlreg, &status);
+            if (status)
+                printf("PTB-ERROR: GRPHCONReg read failed.\n");
+            else
+                printf("PTB-ERROR: GRPHCONReg = %x.\n", value);
+
+            #define mmFMT_BIT_DEPTH_CONTROL 0x1BF2
+            lutreg = (4 * mmFMT_BIT_DEPTH_CONTROL) + crtcoff[headid];
+            value = PsychOSKDReadRegister(0, lutreg, &status);
+            if (status)
+                printf("PTB-ERROR: mmFMT_BIT_DEPTH_CONTROL read failed.\n");
+            else
+                printf("PTB-ERROR: mmFMT_BIT_DEPTH_CONTROL = %x.\n", value);
+
+            #define mmFMT_CLAMP_CNTL 0x1BF9
+            lutreg = (4 * mmFMT_CLAMP_CNTL) + crtcoff[headid];
+            value = PsychOSKDReadRegister(0, lutreg, &status);
+            if (status)
+                printf("PTB-ERROR: mmFMT_CLAMP_CNTL read failed.\n");
+            else
+                printf("PTB-ERROR: mmFMT_CLAMP_CNTL = %x.\n", value);
+
+            #define mmFMT_CONTROL 0x1BEE
+            lutreg = (4 * mmFMT_CONTROL) + crtcoff[headid];
+            value = PsychOSKDReadRegister(0, lutreg, &status);
+            if (status)
+                printf("PTB-ERROR: mmFMT_CONTROL read failed.\n");
+            else
+                printf("PTB-ERROR: mmFMT_CONTROL = %x.\n", value);
+
+            #define mmFMT_DYNAMIC_EXP_CNTL 0x1BED
+            lutreg = (4 * mmFMT_DYNAMIC_EXP_CNTL) + crtcoff[headid];
+            value = PsychOSKDReadRegister(0, lutreg, &status);
+            if (status)
+                printf("PTB-ERROR: mmFMT_DYNAMIC_EXP_CNTL read failed.\n");
+            else
+                printf("PTB-ERROR: mmFMT_DYNAMIC_EXP_CNTL = %x.\n", value);
+        }
+
+        return(PsychError_none);
+        #endif
+
+#if 0
 // ----------- Linux DRI2/Radeon-KMS Scanline-Timestamping prototype for R500 core.
 
 	#define RADEON_D1CRTC_STATUS_POSITION  0x60a0
@@ -116,21 +159,21 @@ PsychError SCREENNull(void)
 	#define AVIVO_D1CRTC_V_BLANK_START_END 0x6024
 	#define AVIVO_D1CRTC_V_TOTAL           0x6020
 	#define AVIVO_D1CRTC_H_TOTAL           0x6000
-	
+
 	int crtcid = 0, verbose = 0;
 	PsychCopyInIntegerArg(1, FALSE, &crtcid);
 	PsychCopyInIntegerArg(2, FALSE, &verbose);
-	
+
 	const int pedantic = 1;
 	int vbl_start, vbl_end, vbl, htotal, vtotal, dotclock;
 	psych_int64 linedur_ns, pixeldur_ns;
 	psych_bool invbl = TRUE;
 	int scanline, scanpixel, vblcount;
 	unsigned int cardId;
-	
+
 	psych_uint32 crtco = (crtcid > 0) ? RADEON_D2CRTC_OFFSET : 0;
 	struct timeval raw_time;
-	struct timeval delta_time;	
+	struct timeval delta_time;
 	struct timeval vblank_time;
 
 	// NVidia GPU? Check OpenGL vendor string and for recognized gpu-id:
@@ -139,10 +182,10 @@ PsychError SCREENNull(void)
 		if ((cardId = PsychGetNVidiaGPUType(NULL)) >= 0x50) {
 			// NV50 or later, aka GeForce-8000 or later: Same registers for
 			// everything shipping from NV50 up to at least NVC0 "Fermi":
-			
+
 			// Offset between crtc's is 0x800:
 			crtco = (crtcid > 0) ? 0x800 : 0;
-			
+
 			// Lower 16 bits are horizontal scanout position, upper 16 bits are always zero:
 			scanpixel = (PsychOSKDReadRegister(crtcid, 0x616344 + crtco, NULL)) & 0xFFFF;
 
@@ -155,7 +198,7 @@ PsychError SCREENNull(void)
 			if (verbose > 1 || verbose < 0) {
 //				printf("%i\n", (PsychOSKDReadRegister(crtcid, 0x616340 + crtco + 4 * verbose, NULL)));
 				long int i;
-				
+
 				// crtc stride for CRTC control block (CRTC_VAL at offset 0xa00, stride 0x540)
 				crtco = (crtcid > 0) ? 0x540 : 0;
 
@@ -186,7 +229,7 @@ if (1) {
 			// DISPLAY_TOTAL: Encodes VTOTAL in high-word, HTOTAL in low-word:
 			int vtotal = (PsychOSKDReadRegister(crtcid, 0x610000 + 0xa00 + 0xf8 + ((crtcid > 0) ? 0x540 : 0), NULL) >> 16) & 0xFFFF;
 			printf("head %i: vbloffset = %i : vtotal = %i\n", crtcid, vbloffset, vtotal);
-			
+
 		}
 		else {
 			// NV40 or earlier, aka GeForce-7000 or earlier: Same registers down to
@@ -213,7 +256,7 @@ if (1) {
 		PsychCopyOutDoubleArg(1, FALSE, (double) scanpixel);
 		PsychCopyOutDoubleArg(2, FALSE, (double) scanline);
 		PsychCopyOutDoubleArg(3, FALSE, (double) vblcount);
-	
+
 		// Done with NVidia GPU test:
 		return(PsychError_none);
 	}
@@ -230,12 +273,12 @@ if (1) {
 
 	// Dotclock shall be 160 Mhz:
 	dotclock = 120 * 1e6;
-	
+
 	// Convert line length in pixel and video dot clock to line duration
 	// in nanoseconds:
 	linedur_ns = htotal * 1e9 / dotclock;
 	pixeldur_ns = 1e9 / dotclock;
-	
+
 	if (verbose > 1) printf("CRTC %i : vbl_start %i : vbl_end %i : vtotal %i : htotal %i : linedur_ns = %i\n", crtcid, vbl_start, vbl_end, vtotal, htotal, linedur_ns);
 
 	// Query current beampos:
@@ -247,14 +290,14 @@ if (1) {
 	else {
 		scanline = PsychOSKDReadRegister(crtcid, RADEON_D1CRTC_STATUS_POSITION + crtco, NULL) & RADEON_VBEAMPOSITION_BITMASK;
 	}
-	
+
 	// Query current time:
 	gettimeofday(&raw_time, NULL);
 
 	// In vertical blank?
 	if ((scanline < vbl_start) && (scanline >= vbl_end))
 		invbl = FALSE;
-	
+
     scanline = scanline - vbl_end;
 
     if (invbl && (scanline >= vbl_end))
@@ -271,7 +314,7 @@ if (1) {
 	// operand:
 	if (scanline >= 0) {
 		// Convert scanline into microseconds elapsed:
-		delta_time.tv_usec = scanline * linedur_ns / 1000;		
+		delta_time.tv_usec = scanline * linedur_ns / 1000;
 		if (pedantic) delta_time.tv_usec = (scanline * linedur_ns + scanpixel * pixeldur_ns) / 1000;
 		timersub(&raw_time, &delta_time, &vblank_time);
 	}
@@ -289,9 +332,9 @@ if (1) {
 	tUptime = ((double) vblank_time.tv_sec + ((double) vblank_time.tv_usec) / 1e6) - tUptime;
 
 	if (verbose > 0) printf("CRTC %i : At time %i.%i secs : Scanline %i : vblank = %i.%i secs.\n", crtcid, raw_time.tv_sec, raw_time.tv_usec, scanline, vblank_time.tv_sec, vblank_time.tv_usec);
-	
+
 	PsychCopyOutDoubleArg(1, FALSE, (double) tUptime);
-	
+
 	// Done.
 	return(PsychError_none);
 
@@ -306,7 +349,7 @@ if (1) {
 //		PsychCopyInDoubleArg(4, TRUE, &auxArg2);
 //		PsychCopyOutDoubleArg(1, FALSE, (double) PsychOSKDReadRegister((int) auxArg1, (unsigned int) auxArg2, NULL));
 //	}
-//	
+//
 //	if (infoType == 3) {
 //		// MMIO register Write for screenid "auxArg1", register offset "auxArg2", to value "auxArg3":
 //		PsychCopyInDoubleArg(3, TRUE, &auxArg1);
@@ -330,7 +373,7 @@ if (1) {
 		psych_uint8* mypropdata = CFDataGetMutableBytePtr((CFMutableDataRef) myprop);
 		if (mypropdata == NULL) PsychErrorExitMsg(PsychError_system, "PTB-DEBUG: FAILED TO GET MUTABLE DATA PTR OF AAPL00,Dither key!!\n");
 		for (i=0; i < m; i++) printf("%x ", mypropdata[i]);
-		
+
 		mypropdata[0] = 0x1;
 		//	FAILS with kIOReturnUnsupported error:	printf("\n COMMIT! RC is %x [kIOReturnUnsupported = %x] \n", (int) IORegistryEntrySetCFProperty(myentry, CFSTR("AAPL00,Dither"), myprop), kIOReturnUnsupported);
 		io_connect_t myconnect;
@@ -346,15 +389,15 @@ if (1) {
 		}
 
 		if (1) {
-			kern_return_t	kernResult; 
+			kern_return_t	kernResult;
 			io_service_t	service;
 			io_connect_t	connect;
 			io_iterator_t 	iterator;
 			CFDictionaryRef	classToMatch;
 			unsigned int				i;
-			
+
 			// Setup matching criterion to find our driver in the IORegistry device tree:
-//WORKS but useless for our purpose:			
+//WORKS but useless for our purpose:
 classToMatch = IOServiceNameMatching("ATIRadeonX1000");
 //WORKS but fails to open:			classToMatch = IOServiceNameMatching("ATY,Wormy");
 //WORKS, IS WHAT WE NEED but fails to open:			classToMatch = IOServiceNameMatching("display");
@@ -362,7 +405,7 @@ classToMatch = IOServiceNameMatching("ATIRadeonX1000");
 				printf("PTB-DEBUG: IOServiceMatching() for Psychtoolbox kernel support driver returned a NULL dictionary. Kernel driver support disabled.\n");
 				PsychErrorExitMsg(PsychError_system, "FAIL!");
 			}
-			
+
 			// This creates an io_iterator_t of all instances of our driver that exist in the I/O Registry. Each installed graphics card
 			// will get its own instance of a driver. The iterator allows to iterate over all instances:
 			kernResult = IOServiceGetMatchingServices(kIOMasterPortDefault, classToMatch, &iterator);
@@ -370,20 +413,20 @@ classToMatch = IOServiceNameMatching("ATIRadeonX1000");
 				printf("PTB-DEBUG: IOServiceGetMatchingServices for Psychtoolbox kernel support driver returned 0x%08x. Kernel driver support disabled.\n", kernResult);
 				PsychErrorExitMsg(PsychError_system, "FAIL!");
 			}
-			
+
 			// In a polished final version we would want to handle the case where more than one gfx-card is attached.
 			// The iterator would return multiple instances of our driver and we need to decide which one to connect to.
 			// For now, we do not handle this case but instead just get the first item from the iterator.
 			service = IOIteratorNext(iterator);
-			
+
 			// Release the io_iterator_t now that we're done with it.
 			IOObjectRelease(iterator);
-			
+
 			if (service == IO_OBJECT_NULL) {
 				printf("PTB-INFO: Couldn't find requested IOService.\n");
 				PsychErrorExitMsg(PsychError_system, "FAIL!");
 			}
-			
+
 			// Try in a loop to open with different connect flags i = 0 to 0xffff:
 			for(i=0; i< 0xffff; i++) {
 				kernResult = IOServiceOpen(service, mach_task_self(), i, &myconnect);
@@ -397,12 +440,12 @@ classToMatch = IOServiceNameMatching("ATIRadeonX1000");
 					if (kernResult != kIOReturnUnsupported) printf("\nNOCON5(%i): %x\n", i, kernResult);
 				}
 			}
-			if (kIOReturnSuccess != kernResult) printf("PTB-INFO: Couldn't open requested IOService.\n");	
+			if (kIOReturnSuccess != kernResult) printf("PTB-INFO: Couldn't open requested IOService.\n");
 		}
-		
+
 		CFRelease(myprop);
 	}
-	
+
 	if (0) {
 		CFStringRef myprop = IORegistryEntryCreateCFProperty(myentry, CFSTR("name"), kCFAllocatorDefault, 0);
 		CFStringGetCString(myprop, pbuf, 1024, kCFStringEncodingASCII);
@@ -415,15 +458,14 @@ classToMatch = IOServiceNameMatching("ATIRadeonX1000");
 	// Release registry entry:
 	IOObjectRelease(myentry);
 
-	#endif
 
 	return(PsychError_none);
-	
+
 	#if PSYCH_SYSTEM == PSYCH_OSX
 		printf("PTB-DEBUG: Shutting down connection to PsychtoolboxKernelDriver, if any...\n");
 		PsychOSShutdownPsychtoolboxKernelDriverInterface();
 	#endif
-	
+
 	#if PSYCH_SYSTEM == PSYCH_LINUX
 		printf("PTB-DEBUG: PreRADEON_R500_GEN_INT_CNTL: %x\n", PsychOSKDReadRegister(0, 0x040, NULL));
 		PsychOSKDWriteRegister(0, 0x040, PsychOSKDReadRegister(0, 0x040, NULL) | 0x1, NULL);
@@ -441,7 +483,7 @@ classToMatch = IOServiceNameMatching("ATIRadeonX1000");
 	//demonstrate how we find the function and subfunction names
 	//printf("Psychtoolbox function: %s, subfunction %s\n", PsychGetModuleName(), PsychGetFunctionName() );
 
-	//copy all the input argument to their outputs if we have doubles, if not error.  
+	//copy all the input argument to their outputs if we have doubles, if not error.
 	numInArgs = PsychGetNumInputArgs();
 	PsychErrorExit(PsychCapNumOutputArgs(numInArgs));
 
@@ -453,8 +495,8 @@ classToMatch = IOServiceNameMatching("ATIRadeonX1000");
 	printf("number of named output arguments: %d\n", numNamedOutArgs);
 	*/
 
-	//iterate over each of the supplied inputs.  If the input is a two-dimensional array 
-	//of doubles or a character array, then copy it to the output.  
+	//iterate over each of the supplied inputs.  If the input is a two-dimensional array
+	//of doubles or a character array, then copy it to the output.
 	for(i=1;i<=numInArgs;i++){
 
 		format = PsychGetArgType(i);
@@ -483,9 +525,9 @@ classToMatch = IOServiceNameMatching("ATIRadeonX1000");
 
 			case PsychArgType_char:
 
-				str=NULL; //This tells PsychGetCharArg() to use its own (volatile) memory. 
+				str=NULL; //This tells PsychGetCharArg() to use its own (volatile) memory.
 
-				PsychAllocInCharArg(i, FALSE, &str); 
+				PsychAllocInCharArg(i, FALSE, &str);
 
 				PsychCopyOutCharArg(i, FALSE, str);
 
@@ -502,4 +544,5 @@ classToMatch = IOServiceNameMatching("ATIRadeonX1000");
 	}
 
 	return(PsychError_none);
+#endif
 }

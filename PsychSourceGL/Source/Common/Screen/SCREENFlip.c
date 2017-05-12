@@ -403,6 +403,9 @@ PsychError SCREENFlip(void)
 
         // Execute hook chain for preparation of user space drawing ops:
         PsychPipelineExecuteHook(windowRecord, kPsychUserspaceBufferDrawingPrepare, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
+
+        // Reset flipwhen to "not assigned":
+        flipRequest->flipwhen = -DBL_MAX;
     }
 
     return(PsychError_none);

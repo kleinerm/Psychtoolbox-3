@@ -59,6 +59,13 @@ typedef struct _buf {
 static int prime_sockfd[kPsychMaxPossibleDisplays] = { 0 };
 static int prime_sockfd2[kPsychMaxPossibleDisplays] = { 0 };
 
+// Pointer barriers, global array for all windows:
+#define PSYCH_MAX_POINTER_BARRIERS 1024
+static PointerBarrier barriers[PSYCH_MAX_POINTER_BARRIERS] = { 0 };
+static PsychRectType barrierRects[PSYCH_MAX_POINTER_BARRIERS] = { 0 };
+static PsychWindowRecordType* barrierParentWindows[PSYCH_MAX_POINTER_BARRIERS] = { 0 };
+static int pointerBarrierCount = 0;
+
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
  *    PsychRealtimePriority(true) enables realtime-scheduling (like Priority(>0) would do in Matlab).
  *    PsychRealtimePriority(false) restores scheduling to the state before last invocation of PsychRealtimePriority(true),
@@ -190,6 +197,9 @@ static psych_bool useGLX13 = FALSE;
 // Event base for GLX extension:
 static int glx_error_base, glx_event_base;
 
+static int xfixes_event_base1, xfixes_event_base2, xfixes_majorversion;
+static psych_bool xfixes_available = FALSE;
+
 // Number of currently open onscreen windows:
 static int x11_windowcount = 0;
 
@@ -320,8 +330,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     int depth, bpc;
     int windowLevel;
     int major, minor;
-    int xfixes_event_base1, xfixes_event_base2;
-    psych_bool xfixes_available = FALSE;
     psych_bool newstyle_setup = FALSE;
     int gpuMaintype = 0;
     const char* mesaver = NULL;
@@ -413,7 +421,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // XFixes extension version 2.0 or later available and initialized?
     if (XFixesQueryExtension(dpy, &xfixes_event_base1, &xfixes_event_base2) &&
-        XFixesQueryVersion(dpy, &major, &minor) && (major >= 2)) xfixes_available = TRUE;
+        XFixesQueryVersion(dpy, &major, &minor) && (major >= 2)) {
+        xfixes_available = TRUE;
+        xfixes_majorversion = major;
+    }
+
     major = minor = 0;
 
     // Init GLX extension, get its version, determine if at least V1.3 supported:
@@ -1445,6 +1457,12 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     if (useGLX13) glXDestroyWindow(dpy, windowRecord->targetSpecific.windowHandle);
     windowRecord->targetSpecific.windowHandle = 0;
 
+    // Release all active X11 pointer barriers for this window, drop lock temporarily,
+    // as it is aquired by PsychOSConstrainPointer() itself:
+    PsychUnlockDisplay();
+    PsychOSConstrainPointer(windowRecord, FALSE, NULL);
+    PsychLockDisplay();
+
     // Close & Destroy the window:
     XUnmapWindow(dpy, windowRecord->targetSpecific.xwindowHandle);
 
@@ -1465,10 +1483,10 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     x11_windowcount--;
 
     // Was this the last window?
-    if (x11_windowcount<=0) {
+    if (x11_windowcount <= 0) {
         int dummy;
 
-        x11_windowcount=0;
+        x11_windowcount = 0;
 
         // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
         // Set screensaver to previous settings, potentially enabling it:
@@ -1492,6 +1510,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     if (prime_sockfd[PsychGetXScreenIdForScreen(windowRecord->screenNumber)] > 0)
         close(prime_sockfd[PsychGetXScreenIdForScreen(windowRecord->screenNumber)]);
     prime_sockfd[PsychGetXScreenIdForScreen(windowRecord->screenNumber)] = 0;
+
     if (prime_sockfd2[PsychGetXScreenIdForScreen(windowRecord->screenNumber)] > 0)
         close(prime_sockfd2[PsychGetXScreenIdForScreen(windowRecord->screenNumber)]);
     prime_sockfd2[PsychGetXScreenIdForScreen(windowRecord->screenNumber)] = 0;
@@ -2899,6 +2918,208 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     }
 
     return(targetTime);
+}
+
+static int getFreeBarrierSlot(PsychWindowRecordType *windowRecord, PsychRectType rect)
+{
+    int i;
+    for (i = 0; (i < PSYCH_MAX_POINTER_BARRIERS) && (barrierParentWindows[i] != NULL); i++);
+    if (i == PSYCH_MAX_POINTER_BARRIERS)
+        return(-1);
+
+    // One more barrier used up:
+    barrierParentWindows[i] = windowRecord;
+    PsychCopyRect(barrierRects[i], rect);
+    pointerBarrierCount++;
+    return(i);
+}
+
+/* PsychOSConstrainPointer()
+ *
+ * Establish or release pointer confinement to a rectangle, a mouse trap if you want.
+ * As a Linux X11 only feature, it is also possible to define random additional horizontal
+ * or vertical line segments which the pointer shall not pass.
+ *
+ * Returns TRUE on success, FALSE on failure, e.g., maximum number of barriers exceeded.
+ */
+psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bool constrain, PsychRectType rect)
+{
+    int i;
+    CGDirectDisplayID dpy;
+    PsychGetCGDisplayIDFromScreenNumber(&dpy, windowRecord->screenNumber);
+
+    // Need XFixes version 5+, available since X-Server 1.11 (released Aug 2011):
+    if (xfixes_majorversion < 5) {
+        if ((PsychPrefStateGet_Verbosity() > 0) && constrain)
+            printf("PTB-ERROR:PsychOSConstrainPointer: Tried to add mouse pointer barrier, but your X-Server is too old to support this - Failed! Upgrade to X-Server 1.11 or later.\n");
+
+        return(FALSE);
+    }
+
+    if (rect) {
+        // Translate from window local coordinates to X-Screen global coordinates:
+        rect[kPsychLeft] += windowRecord->globalrect[kPsychLeft];
+        rect[kPsychRight] += windowRecord->globalrect[kPsychLeft];
+        rect[kPsychTop] += windowRecord->globalrect[kPsychTop];
+        rect[kPsychBottom] += windowRecord->globalrect[kPsychTop];
+    }
+
+    // Should we create new pointer barriers?
+    if (constrain) {
+        // Single barrier line? An empty rect would define a line:
+        if (IsPsychRectEmpty(rect)) {
+            if (pointerBarrierCount + 1 > PSYCH_MAX_POINTER_BARRIERS) {
+                if (PsychPrefStateGet_Verbosity() > 0)
+                    printf("PTB-ERROR:PsychOSConstrainPointer: Tried to add more mouse pointer barriers than supported - Failed! The current limit is a maximum of %i barriers.\n",
+                           PSYCH_MAX_POINTER_BARRIERS);
+                    return(FALSE);
+            }
+
+            PsychLockDisplay();
+
+            // Add a single line barrier:
+            if ((rect[kPsychLeft] == rect[kPsychRight]) && (rect[kPsychTop] != rect[kPsychBottom])) {
+                // Vertical barrier line:
+                barriers[getFreeBarrierSlot(windowRecord, rect)] = XFixesCreatePointerBarrier(dpy, windowRecord->targetSpecific.xwindowHandle,
+                                                                                              rect[kPsychLeft], rect[kPsychTop],
+                                                                                              rect[kPsychLeft], rect[kPsychBottom],
+                                                                                              0, /* block in all directions */
+                                                                                              0, NULL); /* no per-device barriers */
+            }
+            else if ((rect[kPsychLeft] != rect[kPsychRight]) && (rect[kPsychTop] == rect[kPsychBottom])) {
+                // Horizontal barrier line:
+                barriers[getFreeBarrierSlot(windowRecord, rect)] = XFixesCreatePointerBarrier(dpy, windowRecord->targetSpecific.xwindowHandle,
+                                                                                              rect[kPsychLeft], rect[kPsychTop],
+                                                                                              rect[kPsychRight], rect[kPsychTop],
+                                                                                              0, /* block in all directions */
+                                                                                              0, NULL); /* no per-device barriers */
+            }
+            else {
+                // A point: This is a special case. Create some tight barrier double-bounding-rectangles:
+                PsychUnlockDisplay();
+
+                if (pointerBarrierCount + 8 > PSYCH_MAX_POINTER_BARRIERS) {
+                    if (PsychPrefStateGet_Verbosity() > 0)
+                        printf("PTB-ERROR:PsychOSConstrainPointer: Tried to add more mouse pointer barriers than supported - Failed! The current limit is a maximum of %i barriers.\n",
+                               PSYCH_MAX_POINTER_BARRIERS);
+                        return(FALSE);
+                }
+
+                rect[kPsychLeft]--;
+                rect[kPsychTop]--;
+                rect[kPsychRight]--;
+                rect[kPsychBottom]--;
+
+                rect[kPsychLeft]--;
+                rect[kPsychTop]--;
+                rect[kPsychRight]++;
+                rect[kPsychBottom]++;
+                PsychOSConstrainPointer(windowRecord, TRUE, rect);
+                rect[kPsychLeft]--;
+                rect[kPsychTop]--;
+                rect[kPsychRight]++;
+                rect[kPsychBottom]++;
+                PsychOSConstrainPointer(windowRecord, TRUE, rect);
+                PsychLockDisplay();
+            }
+
+            XFlush(dpy);
+            PsychUnlockDisplay();
+        }
+        else {
+            // Want a barrier rectangle to constrain pointer to the inside of a box:
+            if (pointerBarrierCount + 4 > PSYCH_MAX_POINTER_BARRIERS) {
+                if (PsychPrefStateGet_Verbosity() > 0)
+                    printf("PTB-ERROR:PsychOSConstrainPointer: Tried to add more mouse pointer barriers than supported - Failed! The current global limit is a maximum of %i barriers.\n",
+                           PSYCH_MAX_POINTER_BARRIERS);
+                return(FALSE);
+            }
+
+            PsychLockDisplay();
+
+            // Barrier at left edge of rect:
+            barriers[getFreeBarrierSlot(windowRecord, rect)] = XFixesCreatePointerBarrier(dpy, windowRecord->targetSpecific.xwindowHandle,
+                                                                                          rect[kPsychLeft], rect[kPsychTop],
+                                                                                          rect[kPsychLeft], rect[kPsychBottom],
+                                                                                          0, /* block in all directions */
+                                                                                          0, NULL); /* no per-device barriers */
+
+            // Barrier at right edge of rect:
+            barriers[getFreeBarrierSlot(windowRecord, rect)] = XFixesCreatePointerBarrier(dpy, windowRecord->targetSpecific.xwindowHandle,
+                                                                                          rect[kPsychRight], rect[kPsychTop],
+                                                                                          rect[kPsychRight], rect[kPsychBottom],
+                                                                                          0, /* block in all directions */
+                                                                                          0, NULL); /* no per-device barriers */
+
+            // Barrier at top edge of rect:
+            barriers[getFreeBarrierSlot(windowRecord, rect)] = XFixesCreatePointerBarrier(dpy, windowRecord->targetSpecific.xwindowHandle,
+                                                                                          rect[kPsychLeft], rect[kPsychTop],
+                                                                                          rect[kPsychRight], rect[kPsychTop],
+                                                                                          0, /* block in all directions */
+                                                                                          0, NULL); /* no per-device barriers */
+
+            // Barrier at bottom edge of rect:
+            barriers[getFreeBarrierSlot(windowRecord, rect)] = XFixesCreatePointerBarrier(dpy, windowRecord->targetSpecific.xwindowHandle,
+                                                                                          rect[kPsychLeft], rect[kPsychBottom],
+                                                                                          rect[kPsychRight], rect[kPsychBottom],
+                                                                                          0, /* block in all directions */
+                                                                                          0, NULL); /* no per-device barriers */
+            XFlush(dpy);
+            PsychUnlockDisplay();
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 5)
+            printf("PTB-DEBUG: Adding pointer barrier for window %i with defining rect [%i, %i, %i, %i]\n",
+                   windowRecord->windowIndex, (int) rect[kPsychLeft], (int) rect[kPsychTop], (int) rect[kPsychRight], (int) rect[kPsychBottom]);
+    }
+    else {
+        // Release all pointer barriers for the window if rect == NULL,
+        // otherwise release the barrier(s) for the window which are matching the given rect.
+        if (PsychPrefStateGet_Verbosity() > 5) {
+            if (rect == NULL)
+                printf("PTB-DEBUG: Releasing pointer barriers for window %i.\n", windowRecord->windowIndex);
+            else
+                printf("PTB-DEBUG: Releasing pointer barriers for window %i which match rect [%i, %i, %i, %i].\n",
+                       windowRecord->windowIndex, (int) rect[kPsychLeft], (int) rect[kPsychTop], (int) rect[kPsychRight], (int) rect[kPsychBottom]);
+        }
+
+        // rect which defines a single point a la [x,y,x,y]?
+        if (rect && (rect[kPsychLeft] == rect[kPsychRight]) && (rect[kPsychTop] == rect[kPsychBottom])) {
+            // This is a special case, as it is confined by a double rect (see above for point case).
+            // Need to unconfine it equally special:
+            rect[kPsychLeft]--;
+            rect[kPsychTop]--;
+            rect[kPsychRight]--;
+            rect[kPsychBottom]--;
+            rect[kPsychLeft]--;
+            rect[kPsychTop]--;
+            rect[kPsychRight]++;
+            rect[kPsychBottom]++;
+            PsychOSConstrainPointer(windowRecord, FALSE, rect);
+            rect[kPsychLeft]--;
+            rect[kPsychTop]--;
+            rect[kPsychRight]++;
+            rect[kPsychBottom]++;
+            PsychOSConstrainPointer(windowRecord, FALSE, rect);
+
+            return(TRUE);
+        }
+
+        PsychLockDisplay();
+
+        for (i = 0; i < PSYCH_MAX_POINTER_BARRIERS; i++)
+            if ((barrierParentWindows[i] == windowRecord) && ((rect == NULL) || PsychMatchRect(barrierRects[i], rect))) {
+                XFixesDestroyPointerBarrier(dpy, barriers[i]);
+                barriers[i] = 0;
+                barrierParentWindows[i] = NULL;
+                pointerBarrierCount--;
+            }
+
+        XFlush(dpy);
+        PsychUnlockDisplay();
+    }
+
+    return(TRUE);
 }
 
 /* End of classic X11/GLX backend: */

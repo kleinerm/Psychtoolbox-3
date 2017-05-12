@@ -581,17 +581,17 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             // it at face value. This should work on OSX >= 10.11.2 at least for
             // some graphics cards, as far as the framebuffer is concerned.
             // The actual output bit depth is totally unverified, but supposed to
-            // achieve 10 bpc on some Apple machines (MacPro 2013, iMac Retina 5k 2014 & 2015). See:
+            // achieve up to 11 bpc on some Apple machines (MacPro 2013, iMac Retina 5k 2014 & 2015). See:
             // https://developer.apple.com/library/content/releasenotes/MacOSX/WhatsNewInOSX/Articles/MacOSX10_11_2.html#//apple_ref/doc/uid/TP40016630-SW1
             //
             // Note that this is a floating point framebuffer, so the effective linear bit depth for the
             // displayable color range is much lower. E.g., the 16 bpc half-float translate into actual
-            // ~ 10 bpc linear precision!
+            // ~ 11 bpc linear precision!
             printf("PTB-INFO: OSX native floating point %i bit per color framebuffer requested, and the OS claims it is working fine. Good.\n", bpc);
-            printf("PTB-INFO: Please note that the effective linear output precision will be *much* lower, e.g., only at most 10 bpc for 16 bpc float.\n");
-            printf("PTB-INFO: Also, only some very limited subset of Apple hardware can actually output 10 bpc precision on a few displays.\n");
+            printf("PTB-INFO: Please note that the effective linear output precision will be *much* lower, e.g., only at most 11 bpc for 16 bpc float.\n");
+            printf("PTB-INFO: Also, only some very limited subset of Apple hardware can actually output up to 11 bpc precision on a few displays.\n");
             printf("PTB-INFO: As of the year 2016, only the MacPro 2013, and iMac Retina 5k models from late 2014 and late 2015 are claimed\n");
-            printf("PTB-INFO: by Apple, but *not* verified by us, to support 10 bit output on some supported displays under some conditions!\n");
+            printf("PTB-INFO: by Apple to support about 10-11 bit output on some supported displays under some conditions!\n");
         }
         else if (bpc >= ((*windowRecord)->depth / 3)) {
             printf("PTB-INFO: Windows native %i bit per color framebuffer requested, and the OS claims it is working. Good.\n", bpc);
@@ -1450,7 +1450,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         (*windowRecord)->VideoRefreshInterval = ifi_estimate;
         if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 ||
             ((*windowRecord)->hybridGraphics == 1) || ((*windowRecord)->hybridGraphics == 3) || ((*windowRecord)->hybridGraphics == 4)) {
-            // Flip frame stereo or multiSampling enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
+            // Flip frame stereo or multiSampling enabled, or some hybrid graphics laptop? Check for ifi_estimate = 2 * ifi_beamestimate:
             if ((ifi_beamestimate>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_beamestimate && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_beamestimate) ||
                 (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_nominal && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_nominal)) {
                 // This seems to be a valid result: Flip-interval is roughly twice the monitor refresh interval.
@@ -1458,6 +1458,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 // ifi_beamestimate, in order to simplify all timing checks below. We also store this value as
                 // video refresh interval...
                 ifi_estimate = ifi_estimate * 0.5f;
+                (*windowRecord)->IFIRunningSum /= 2.0;
                 (*windowRecord)->VideoRefreshInterval = ifi_estimate;
                 if (PsychPrefStateGet_Verbosity()>2) {
                     if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
@@ -1500,7 +1501,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                     printf("PTB-INFO: Will use beamposition query for accurate Flip time stamping.\n");
                 }
                 else {
-                    printf("PTB-INFO: Beamposition queries are supported, but disabled. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
+                    printf("PTB-INFO: Beamposition queries are supported, but disabled. Using basic timestamping as fallback:\n");
+                    printf("PTB-INFO: Timestamps returned by Screen('Flip') will be therefore less robust and accurate.\n");
                 }
             }
         }
@@ -1519,7 +1521,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 }
             }
             else {
-                printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
+                printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback.\n");
+                printf("PTB-INFO: Timestamps returned by Screen('Flip') will be therefore less robust and accurate.\n");
             }
         }
 
@@ -1826,6 +1829,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     (*windowRecord)->flipInfo = (PsychFlipInfoStruct*) malloc(sizeof(PsychFlipInfoStruct));
     if (NULL == (*windowRecord)->flipInfo) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to malloc() flipInfo struct!");
     memset((*windowRecord)->flipInfo, 0, sizeof(PsychFlipInfoStruct));
+    (*windowRecord)->flipInfo->flipwhen = -DBL_MAX;
 
     // Wait for splashMinDurationSecs, so that the "Welcome" splash screen is
     // displayed at least that long:
@@ -3504,7 +3508,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // methods for swap scheduling are used if the special PreSwapBuffersOperations hookchain
     // is enabled and contains commands. The semantic of this hookchain is to execute immediately
     // before the bufferswap, so we need to to wait until immediately before the expected swap:
-    if (PsychIsHookChainOperational(windowRecord, kPsychPreSwapbuffersOperations)) must_wait = TRUE;
+    if (PsychIsHookChainOperational(windowRecord, kPsychPreSwapbuffersOperations) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce))
+        must_wait = TRUE;
 
     // Setup and execution of OS specific swap scheduling mechanisms, e.g., OpenML OML_sync_control
     // extensions:
@@ -3553,7 +3558,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // any of the involved commands fail:
     osspecific_asyncflip_scheduled = TRUE;
 
-    if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce)) {
+    // Clever swap scheduling is incompatible with the users desire to a) not swap at all, and b) to not perform swap scheduling
+    // inside Screen() at all, aka kPsychSkipWaitForFlipOnce.
+    if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce)) {
         // Schedule swap on main window:
         if ((swap_msc = PsychOSScheduleFlipWindowBuffers(windowRecord, targetWhen, 0, 0, 0, targetSwapFlags)) < 0) {
             // Scheduling failed or unsupported!
@@ -3600,6 +3607,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             }
         }
     }
+    else {
+        osspecific_asyncflip_scheduled = FALSE;
+    }
 
     // Pausing until a specific deadline requested?
     if (flipwhen > 0) {
@@ -3628,7 +3638,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // We only wait here until 'flipwhen' deadline is reached if this isn't a
             // system with OS specific swapbuffers scheduling support, or if OS specific
             // scheduling failed, or a special condition requires us to wait anyway:
-            if (!osspecific_asyncflip_scheduled || must_wait) {
+            if ((!osspecific_asyncflip_scheduled || must_wait) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce)) {
                 // We force the rendering pipeline to finish all pending OpenGL operations,
                 // so we can be sure that swapping at VBL will be as fast as possible.
                 // Btw: glFlush() is not recommended by Apple, but in this specific case
@@ -3691,7 +3701,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // if we don't care about this, or if care has been taken already by osspecific_asyncflip_scheduled:
             flipcondition_satisfied = (windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->targetFlipFieldType == -1) ||
                                         (preflip_vblcount == 0) || (((preflip_vblcount + 1) % 2) == (psych_uint64) windowRecord->targetFlipFieldType) ||
-                                        (osspecific_asyncflip_scheduled && !must_wait);
+                                        (osspecific_asyncflip_scheduled && !must_wait) || (windowRecord->specialflags & kPsychSkipWaitForFlipOnce);
             // If in wrong video cycle, we simply sleep a millisecond, then retry...
             if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
         } while (!flipcondition_satisfied);
@@ -3722,6 +3732,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // for Prime-Synced outputSrc -> outputSink setups, as that would add 1 frame extra lag. by preventing
         // us from subitting a swaprequest 1 frame ahead to compensate for the 1 frame lag of Prime sync.
         if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (!osspecific_asyncflip_scheduled) && (windowRecord->hybridGraphics < 2) &&
+            !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) &&
             ((time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002) || ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0)))) {
             // Less than 2 msecs passed since last bufferswap, although swap in sync with retrace requested.
             // Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
@@ -4125,7 +4136,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         }
 
         // OS level queries of timestamps supported and consistency check wanted?
-        if (preflip_vbltimestamp > 0 && vbltimestampmode==2) {
+        if (preflip_vbltimestamp > 0 && vbltimestampmode==2 && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce)) {
             // Yes. Check both methods for consistency: We accept max. 1 ms deviation.
             if ((fabs(postflip_vbltimestamp - time_at_vbl) > 0.001) || (verbosity > 20)) {
                 printf("VBL timestamp deviation: precount=%i , postcount=%i, delta = %i, postflip_vbltimestamp = %f  -  beampos_vbltimestamp = %f  == Delta is = %f \n",
@@ -4155,7 +4166,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // was issued while outside the VBL:
         if ((time_at_vbl < time_at_swaprequest - 0.00005) && ((line_pre_swaprequest > min_line_allowed) && (line_pre_swaprequest < vbl_startline)) && (windowRecord->VBL_Endline != -1) &&
             ((line_post_swaprequest > min_line_allowed) && (line_post_swaprequest < vbl_startline)) && (line_pre_swaprequest <= line_post_swaprequest) &&
-            (vbltimestampmode >= 0) && ((vbltimestampmode < 3) || (vbltimestampmode == 4 && swap_msc < 0 && !osspecific_asyncflip_scheduled))) {
+            (vbltimestampmode >= 0) && ((vbltimestampmode < 3) || (vbltimestampmode == 4 && swap_msc < 0 && !osspecific_asyncflip_scheduled)) &&
+            !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce)) {
 
             // Ohoh! Broken timing. Disable beamposition timestamping for future operations, warn user.
             if (verbosity > -1) {
@@ -4256,7 +4268,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         }
 
         // VBL IRQ based timestamping in charge? Either because selected by usercode, or as a fallback for failed/disabled beampos timestamping or OS-Builtin timestamping?
-        if ((PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) &&
+        if ((PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) &&
             ((vbltimestampmode == 3) || (!osspecific_asyncflip_scheduled && vbltimestampmode == 4 && windowRecord->VBL_Endline == -1 && swap_msc < 0) || ((vbltimestampmode == 1 || vbltimestampmode == 2) && windowRecord->VBL_Endline == -1))) {
             // Yes. Try some consistency checks for that:
 
@@ -4348,7 +4360,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
             // Consistency check: Swap can't complete before it was scheduled: Have a fudge
             // value of 1 msec to account for roundoff errors:
-	    if ((PsychPrefStateGet_SkipSyncTests() < 2) &&
+            if ((PsychPrefStateGet_SkipSyncTests() < 2) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) &&
 		((osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) ||
                 (!osspecific_asyncflip_scheduled && (tSwapComplete < time_at_swaprequest - 0.001)))) {
                 if (verbosity > 0) {
@@ -4375,7 +4387,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
                 // Also check for flips that completed before their target time, which
                 // would indicate a failure in swap scheduling. Usual roundoff fudge applies:
-		if ((PsychPrefStateGet_SkipSyncTests() < 2) && (targetWhen > 0) && (tSwapComplete < targetWhen - 0.001)) {
+                if ((PsychPrefStateGet_SkipSyncTests() < 2) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) && (targetWhen > 0) && (tSwapComplete < targetWhen - 0.001)) {
                     if (verbosity > 0) {
                         printf("PTB-ERROR: OpenML timestamping reports that flip completed before its requested target time [Target no earlier than %f secs, completed at %f secs]!\n",
                                targetWhen, tSwapComplete);
@@ -4529,7 +4541,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     }
 
     // Clear the one-shot flipFlags, so they won't automatically apply to the next flip again: XXX Better do it in SCREENFlip than here?
-    windowRecord->specialflags &= ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce);
+    windowRecord->specialflags &= ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce | kPsychSkipWaitForFlipOnce);
 
     // We take a second timestamp here to mark the end of the Flip-routine and return it to "userspace"
     PsychGetAdjustedPrecisionTimerSeconds(time_at_flipend);
@@ -6586,7 +6598,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         (gpuMaintype == kPsychRadeon && rendergpuVendor != PCI_VENDOR_ID_AMD && rendergpuVendor != PCI_VENDOR_ID_ATI)))) {
         windowRecord->hybridGraphics = 1;
         if (verbose) printf("PTB-DEBUG: Prime indicators: rendergpuVendor %x, rendergpuModel %x, displaygpuModel %x displaygpuType %x.\n", rendergpuVendor, rendergpuModel, gpuModel, gpuMaintype);
-        if (PsychPrefStateGet_Verbosity() >= 3) printf("PTB-INFO: Hybrid graphics setup with DRI PRIME muxless render offload detected. Being more lenient wrt. framerate.\n");
+        if (PsychPrefStateGet_Verbosity() >= 3) printf("PTB-INFO: Hybrid graphics setup with DRI PRIME muxless render offload detected.\n");
 
         // Prime renderoffload only works with proper timing and quality if DRI3/Present
         // is used for our onscreen window:
@@ -6602,7 +6614,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // we are likely running under a NVidia Optimus PRIME setup with output slave
     // instead of a DRI3/Present renderoffload setup and need to take note
     // of this for some special case handling:
-    if (windowRecord->specialflags & kPsychIsX11Window) {
+    if ((windowRecord->specialflags & kPsychIsX11Window) && (gpuMaintype == kPsychIntelIGP) && strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
         static Atom nvidiaprimesync;
         CGDirectDisplayID dpy;
         int screen;
@@ -6625,7 +6637,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                 Atom actual_type;
                 int actual_format;
                 RROutput output = resources->outputs[0];
-                if (XRRGetOutputProperty(dpy, output, nvidiaprimesync, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) {
+                if ((XRRGetOutputProperty(dpy, output, nvidiaprimesync, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) && (prop != NULL)) {
+                    char prime_sync_on = *((char *) prop);
                     XFree(prop);
                     windowRecord->hybridGraphics = 2;
 
@@ -6641,22 +6654,44 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                     }
 
                     if (PsychPrefStateGet_Verbosity() >= 3) {
-                        printf("PTB-INFO: Hybrid graphics setup with DRI PRIME-Sync output slaving detected. Applying corrective measures.\n");
-                        if (windowRecord->hybridGraphics < 3) {
-                            printf("PTB-INFO: Both visual timing and timestamping will be highly unreliable. Please read 'help HybridGraphics'\n");
+                        printf("PTB-INFO: Hybrid graphics setup with support for \"NVidia Optimus\" DRI PRIME-Sync output slaving detected - or so i think?\n");
+                        printf("PTB-INFO: If you are displaying on a video output directly connected to the NVidia gpu, then my thinking here\n");
+                        printf("PTB-INFO: might be wrong. In that case use PsychTweak('UseGPUIndex') to fix me! Otherwise timing might be wrong.\n");
+                        printf("PTB-INFO: If i'm right, then the following assessments hold for your Optimus setup with NVidia's proprietary driver:\n");
+
+                        if (!prime_sync_on) {
+                            printf("PTB-WARNING: Optimus GPU synchronization seems to be disabled. Maybe the nvidia-modesetting driver is not enabled?\n");
+                            printf("PTB-WARNING: Both visual timing and timestamping will likely be highly unreliable. Please read 'help HybridGraphics'\n");
+                            printf("PTB-WARNING: on how to enable nvidia-modesetting, and then reboot once to improve quality of visual stimulation.\n");
+                        }
+                        else if (windowRecord->hybridGraphics < 3) {
+                            printf("PTB-INFO: The custom modesetting ddx of Psychtoolbox for Optimus is not installed, so visual timestamping will be wrong!\n");
+                            printf("PTB-INFO: Therefore visual timing and timestamping will likely be highly unreliable. Please read 'help HybridGraphics'\n");
                             printf("PTB-INFO: on how to install a custom modesetting ddx in order to fix visual onset timestamping and improve timing.\n");
                         }
-                        else {
-                            printf("PTB-INFO: Custom modesetting ddx detected. Visual timestamping should be mostly reliable at least on display setups\n");
-                            printf("PTB-INFO: with at most one display per X-Screen and one fullscreen window on that X-Screen.\n");
+                        else if (windowRecord->hybridGraphics >= 3) {
+                            printf("PTB-INFO: Custom modesetting ddx detected. Visual onset timestamps should be mostly reliable at least on display setups\n");
+                            printf("PTB-INFO: with at most one display per X-Screen and one topmost, non-transparent fullscreen window on that X-Screen.\n");
                             if (windowRecord->hybridGraphics < 4) {
                                 printf("PTB-INFO: Accurate onset timing requires strict adherence to recommended practices for Screen('Flip', window, tWhen) 'tWhen' times.\n");
-                                printf("PTB-INFO: An extra stimulus onset delay of 1 video refresh cycle can't be avoided for immediate flips though.\n");
+                                printf("PTB-INFO: An extra stimulus onset delay of 1 video refresh cycle can't be avoided for immediate flips with this driver though.\n");
+                                printf("PTB-INFO: If you need low-latency stimulus onset, install the NoLag variant of the modesetting ddx instead of the highlag variant.\n");
                             }
                         }
                     }
                 }
                 XRRFreeScreenResources(resources);
+            }
+        }
+        else {
+            // Intel iGPU + NVidia dGPU + NVidia proprietary driver, but no PRIME-SYNC capable ddx.
+            // This is likely hopeless, warn user:
+            if (PsychPrefStateGet_Verbosity() >= 3) {
+                printf("PTB-INFO: This seems to be an Optimus hybrid graphics laptop with proprietary NVidia driver, which will cause timing problems.\n");
+                printf("PTB-INFO: Please read 'help HybridGraphics' on how to install a custom modesetting ddx on X-Server 1.19 or later in order to\n");
+                printf("PTB-INFO: fix visual onset timestamping and improve timing. If you are displaying on a video output directly connected to the\n");
+                printf("PTB-INFO: NVidia gpu though, then my mapping of GPU's might be wrong (PsychTweak('UseGPUIndex') to fix it) and you can ignore\n");
+                printf("PTB-INFO: this message.\n");
             }
         }
         PsychUnlockDisplay();
@@ -7004,10 +7039,11 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // Is GL_POINT_SMOOTH actually producing round, anti-aliased points? As of October 2015,
     // we know NVidia gpus support this on Linux, both with binary blob and nouveau, but the current
     // Mesa drivers for AMD and Intel don't. Windows and OSX graphics drivers do support point
-    // smoothing. However, at least on AMD hw this used to be done by a shader emulation, so it
-    // would not work in HDR high color precision modes. Haven't tested this for a while so i'll
-    // just assume optimistically that it will work atm. until testing disproves this:
-    if ((PSYCH_SYSTEM != PSYCH_LINUX) || nvidia) {
+    // smoothing. Modern AMD hardware supports point smoothing with the proprietary amdgpu-pro driver.
+    // Check for OpenGL version 4 as a sign of a modern enough AMD gpu, as we don't want shader-based
+    // in the driver:
+    if ((PSYCH_SYSTEM != PSYCH_LINUX) || nvidia ||
+        (strstr((char*) glGetString(GL_VENDOR), "ATI") && strstr((char*) glGetString(GL_VERSION), "Compatibility Profile") && !strncmp((char*) glGetString(GL_VERSION), "4.", 2))) {
         if (verbose) printf("Assuming hardware supports native OpenGL primitive smoothing (points, lines).\n");
         windowRecord->gfxcaps |= kPsychGfxCapSmoothPrimitives;
     }

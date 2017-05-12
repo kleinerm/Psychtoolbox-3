@@ -4,9 +4,9 @@
 
 	AUTHORS:
 
-  	Allen.Ingling@nyu.edu				awi 
+  	Allen.Ingling@nyu.edu				awi
 	mario.kleiner at tuebingen.mpg.de	mk
-  
+
 	PLATFORMS: Mac Only
 
   	PROJECTS:
@@ -15,7 +15,7 @@
 
   	HISTORY:
 
-  	1/20/03	awi		Wrote it.  
+  	1/20/03	awi		Wrote it.
 	1/03/09	mk		Add generic Mutex locking support as service to ptb modules.
 
   	DESCRIPTION:
@@ -23,7 +23,7 @@
 	TO DO:
 */
 
-//begin include once 
+//begin include once
 #ifndef PSYCH_IS_INCLUDED_PsychTimeGlue
 #define PSYCH_IS_INCLUDED_PsychTimeGlue
 
@@ -52,7 +52,7 @@ kern_return_t	thread_policy_get(
 void PsychWaitUntilSeconds(double whenSecs);
 void PsychWaitIntervalSeconds(double seconds);
 void PsychYieldIntervalSeconds(double seconds);
-double	PsychGetKernelTimebaseFrequencyHz(void);
+double PsychGetKernelTimebaseFrequencyHz(void);
 void PsychGetPrecisionTimerTicks(psych_uint64 *ticks);
 void PsychGetPrecisionTimerTicksPerSecond(double *frequency);
 void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta);
@@ -64,8 +64,9 @@ void PsychInitTimeGlue(void);
 void PsychExitTimeGlue(void);
 void PsychEstimateGetSecsValueAtTickCountZero(void);
 double PsychGetEstimatedSecsValueAtTickCountZero(void);
-int	PsychInitMutex(psych_mutex* mutex);
-int	PsychDestroyMutex(psych_mutex* mutex);
+double PsychGetWallClockSeconds(void);
+int PsychInitMutex(psych_mutex* mutex);
+int PsychDestroyMutex(psych_mutex* mutex);
 int PsychLockMutex(psych_mutex* mutex);
 int PsychTryLockMutex(psych_mutex* mutex);
 int PsychUnlockMutex(psych_mutex* mutex);

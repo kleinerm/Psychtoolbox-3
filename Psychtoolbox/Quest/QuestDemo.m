@@ -212,7 +212,7 @@ fprintf('collected to estimate threshold are typically concentrated at one\n');
 fprintf('contrast and don''t constrain beta. To estimate beta, it is better to use\n');
 fprintf('100 trials per intensity (typically log contrast) at several uniformly\n');
 fprintf('spaced intensities. We recommend using such data to estimate beta once,\n');
-fprintf('and then using that beta in your daily threshold meausurements. With\n');
+fprintf('and then using that beta in your daily threshold measurements. With\n');
 fprintf('that disclaimer, here''s the analysis with beta as a free parameter.\n');
 QuestBetaAnalysis(q); % optional
 fprintf('Actual parameters of simulated observer:\n');

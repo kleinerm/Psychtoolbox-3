@@ -116,7 +116,7 @@ end
 % Initialize the 'res' result struct with it:
 res = conf;
 
-res.measurementType = input('Measure with (p)hotodiode, (v)ideoswitcher or (d)atapixx? Or don''t measure (n)? ', 's');
+res.measurementType = input('Measure with (p)hotodiode/BNC-Trigger, (v)ideoswitcher or (d)atapixx? Or don''t measure (n)? ', 's');
 useRTbox = [];
 if strcmpi(res.measurementType, 'p')
     useRTbox = 1;
@@ -141,7 +141,7 @@ res.configFile = configFile;
 res.OSName = OSName;
 comp = Screen('Computer');
 res.computer = comp;
-if isfield(comp, 'system') 
+if isfield(comp, 'system')
     res.OSSystem = comp.system;
 else
     res.OSSystem = 'Linux2.6';
@@ -192,23 +192,23 @@ if conf.DWMEnabled == 0
     conserveVRAM = conserveVRAM + 2^17; % = kPsychDisableAeroDWM
     fprintf('DWM forced OFF.\n');
 end
-    
+
 % DWM enable state: 1 = On, 0 = Off, -1 = Auto-Select
 if conf.DWMEnabled == 1
-    % Forecefully enable DWM: 
+    % Forecefully enable DWM:
     conserveVRAM = conserveVRAM + 16384; % = kPsychUseCompositorForFullscreenWindows
     fprintf('DWM forced ON, if the os allows it.\n');
 end
-    
+
 % SetForegroundWindow enable state: 1 = On, 0 = Off, -1 = Auto-Select
 if conf.SetForegroundWindow == 0
     % Disable SetForegroundWindow:
     conserveVRAM = conserveVRAM + 2^18; % = kPsychPreventForegroundWindow
     fprintf('Fullscreen window workarounds on Windows forced OFF.\n');
 end
-    
+
 if conf.SetForegroundWindow == 1
-    % Forecefully enable SetForegroundWindow: 
+    % Forecefully enable SetForegroundWindow:
     conserveVRAM = conserveVRAM + 128; % = kPsychEnforceForegroundWindow
     fprintf('Fullscreen window workarounds on Windows foreced ON.\n');
 end
@@ -244,14 +244,14 @@ try
         [w, winrect] = Screen('OpenWindow', res.screenId, 0, [], [], [], conf.Stereo);
     end
     res.winfo = Screen('GetWindowInfo', w);
-    
+
     % Switch to selectable realtime-priority level to reduce timing jitter
     % and interruptions caused by other applications and the operating
     % system itself:
     if IsOSX && conf.Priority > 0
        conf.Priority = 9;
     end
-    
+
     Priority(conf.Priority);
     res.Priority = round(Priority);
     if res.Priority ~= conf.Priority
@@ -259,7 +259,7 @@ try
     else
         fprintf('Running at Priority %i.\n', res.Priority);
     end
-    
+
     % Query nominal framerate as returned by Operating system:
     % If OS returns 0, then we assume that we run on a flat-panel with
     % fixed 60 Hz refresh interval.
@@ -268,22 +268,22 @@ try
         nominalFramerate=60;
     end;
     fprintf('Nominal Hz %f.\n', nominalFramerate);
-    
+
     % Nominal refresh interval:
     ifiNominal= 1 / nominalFramerate;
     fprintf('The refresh interval reported by the operating system is %2.5f ms.\n', ifiNominal*1000);
     res.ifiNominal = ifiNominal;
-    
+
     % Query calibrated refresh rate and stats:
     [ ifi nvalid stddev ]= Screen('GetFlipInterval', w);
     fprintf('Measured refresh interval, as reported by "GetFlipInterval" is %2.5f ms. (nsamples = %i, stddev = %2.5f ms)\n', ifi*1000, nvalid, stddev*1000);
     res.ifi = ifi;
     res.nvalid = nvalid;
     res.stddev = stddev;
-    
+
     % Number of trials to perform:
     n = size(conf.waitFramesSched, 2);
-    
+
     % Init data-collection arrays for collection of n samples:
     res.rawFlipTime     = zeros(1, n);
     res.finishFlipTime  = zeros(1, n);
@@ -304,19 +304,19 @@ try
     res.swapRequestSubmissionTime = zeros(1, n);
     res.TimeAtSwapBuffers = zeros(1, n);
     res.TimePostSwapBuffers = zeros(1, n);
-    
+
     % Compute random load distribution for provided loadjitter values:
     res.timingLoad      = rand(size(conf.loadjitter)) * ifi .* conf.loadjitter;
 
     % Use GPU load "as is":
     res.gpuLoad         = conf.gpuLoad;
-        
+
     % Precompute arrays for creating GPU load:
     ww=RectWidth(winrect);
     wh=RectHeight(winrect);
     sizeX=80;
     sizeY=80;
-    
+
     % Generate a matrix which specs n filled rectangles, with randomized
     % position, color and (dot-,line-)size parameter
     for j = 1:ceil(res.maxGPULoadFrames * max(conf.gpuLoad))
@@ -328,10 +328,10 @@ try
     if j > 0
         myrect = transpose(myrect);
     end
-    
+
     % Hide the cursor!
     HideCursor;
-    
+
     % Perform some initial Flip to get us in sync with retrace:
     % tvbl is the timestamp (system time in seconds) when the retrace
     % started. We need it as a reference value for our WaitBlanking
@@ -340,7 +340,7 @@ try
     tvbl=Screen('Flip', w);
 
     WaitSecs(1);
-    
+
     if useRTbox ~= -1000
         if useRTbox == 1
             rtbox = PsychRTBox('Open'); %, 'COM5');
@@ -349,9 +349,10 @@ try
             res.boxinfo = PsychRTBox('BoxInfo', rtbox);
             disp(res.boxinfo);
 
-            % Enable photo-diode input of box, and only that one:
+            % Enable photo-diode and TTL trigger input of box, and only those:
             PsychRTBox('Disable', rtbox, 'all');
             PsychRTBox('Enable', rtbox, 'light');
+            PsychRTBox('Enable', rtbox, 'pulse');
             WaitSecs(1);
 
             % Clear receive buffers to start clean:
@@ -380,7 +381,7 @@ try
             end
         end
     end
-    
+
     if conf.withSound > 0
         wavfilename = [ PsychtoolboxRoot 'PsychDemos' filesep 'SoundFiles' filesep 'funk.wav'];
         % Read WAV file from filesystem:
@@ -404,7 +405,7 @@ try
         % start it immediately (0) and wait for the playback to start:
         PsychPortAudio('Start', pahandle, 0, 0, 1);
     end
-        
+
     WaitSecs(1);
 
     % Flash screen in full intensity white:
@@ -413,12 +414,12 @@ try
     else
         Screen('DrawLine', w, [255 255 255], 0, 1, 1000, 1, 5);
     end
-    
+
     if useRTbox == -1
         % Datapixx: Enable single-shot logging of next flip-op:
         PsychDataPixx('LogOnsetTimestamps', 1);
     end
-    
+
     % Test-loop: Collects n samples.
     for i=1:n
         % Presentation time calculation for waiting 'conf.waitFramesSched(i)' monitor refresh
@@ -439,10 +440,10 @@ try
 
         % Store specified target 'when' onset time:
         res.targetWhentime(i) = tdeadline;
-        
+
         % Predict onsettime, based of current information and request:
         res.predictedOnset(i) = PredictVisualOnsetForTime(w, tdeadline, ifi);
-        
+
         % Do the flip relevant for measurement: Store time at submission.
         res.swapRequestSubmissionTime(i) = GetSecs;
         if conf.CheckAsyncFlip == 0
@@ -451,13 +452,13 @@ try
         else
             % Async background flip:
             Screen('AsyncFlipBegin', w, tdeadline);
-            
+
             % Waituntilasyncflipcertain?
             if conf.CheckAsyncFlip == 3
                 % Yes: Wait until async flip confirmed to be imminent by GPU:
                 [res.asyncPredictFlipTime(i) res.asyncPredictOnsetFlipTime(i) res.asyncSwapCertainTime(i)] = Screen('WaitUntilAsyncFlipCertain', w);
             end
-            
+
             if conf.CheckAsyncFlip ~= 2
                 % Wait blocking for async-flip completion, return timestamps:
                 [ tvbl res.onsetFlipTime(i) res.finishFlipTime(i) res.skipEstimate(i) res.beamPosition(i)] = Screen('AsyncFlipEnd', w);
@@ -469,7 +470,7 @@ try
                 end
             end
         end
-        
+
         res.vblFlipTime(i) = tvbl;
         winfo = Screen('GetWindowInfo', w);
         res.rawFlipTime(i) = winfo.RawSwapTimeOfFlip;
@@ -477,7 +478,7 @@ try
         % sent:
         res.TimeAtSwapBuffers(i) = winfo.TimeAtSwapRequest;
         res.TimePostSwapBuffers(i) = winfo.TimePostSwapRequest;
-        
+
         % Perform immediate flip to blank so we don't get extraneous TTL
         % triggers:
         Screen('FillRect', w, 0);
@@ -508,6 +509,7 @@ try
                     res.measuredTime(i) = mytstamp;
                 end
                 PsychRTBox('EngageLightTrigger', rtbox);
+                PsychRTBox('EngagePulseTrigger', rtbox);
             else
                 if useRTbox ~= -1
                     tdeadline = GetSecs + 0.002;
@@ -538,13 +540,13 @@ try
                         res.measuredTime(i) = evt.time;
                     end
                 end
-                
+
                 if useRTbox == -1
                     % Datapixx: Fetch raw timestamp:
                     res.failFlag(i) = 0;
                     res.measuredTime(i) = PsychDataPixx('GetLastOnsetTimestamp');
                     % Reenable one-shot timestamping for next trial:
-                    PsychDataPixx('LogOnsetTimestamps', 1);                    
+                    PsychDataPixx('LogOnsetTimestamps', 1);
                 end
             end
         end
@@ -566,31 +568,31 @@ try
         else
             Screen('DrawLine', w, [255 255 255], 0, 1, 1000, 1, 5);
         end
-        
+
         % Call to 'Drawingfinished' wanted?
         if res.drawingFinished > 0
             % If drawingfinished == 2, do a glFinish, instead of glFlush:
             Screen('DrawingFinished', w, 0, res.drawingFinished - 1);
         end
-        
+
         % Sleep a random amount of time, just to simulate some work being
         % done in the Matlab loop:
         WaitSecs(res.timingLoad(i));
-        
+
         % And give user a chance to abort the test by pressing any key:
         if KbCheck
             break;
         end;
-        
+
         % Draw next frame...
     end;
-	    
+
     % Shutdown realtime scheduling:
     finalprio = Priority(0) %#ok<NASGU,NOPRT>
 
     % Show the cursor:
     ShowCursor;
-    
+
     % Need to perform remapping on Datapixx before Screen('CloseAll'):
     if useRTbox == -1
         % Datapixx: Remap timestamps to GetSecs time:
@@ -632,11 +634,11 @@ try
             end
         end
     end
-    
+
     % Store results to filesystem before we start shutdown and plotting:
     save(res.outFilename, 'res', '-V6');
     res.outFilename = [];
-    
+
     if ~IsOSX
         % Plot all our measurement results:
 
@@ -686,7 +688,7 @@ try
 
         figure;
     end
-    
+
     valids = (res.failFlag == 0);
     fprintf('Measured samples %i [realvalid %i, corrupted %i] vs. Flip samples %i.\n', length(res.measuredTime), length(find(res.failFlag == 0)), length(find(res.failFlag == 1)), i);
     res.measuredTime = res.measuredTime(valids);
@@ -702,7 +704,7 @@ try
         title('Difference dt = FlipOnset - MeasurementBOX in msecs:');
     end
     fprintf('Avg. diff. between Flip stimulus onset time and external timestamping (flip - external [ground truth]) is %f usecs, stddev = %f usecs, range = %f usecs.\n', mean(difference) * 1000, std(difference) * 1000, range(difference) * 1000);
-    
+
     % Count and output number of missed flip on VBL deadlines:
     numbermisses=0;
     numberearly=0;
@@ -731,12 +733,12 @@ try
         fprintf('CAUTION: a serious bug or misconfiguration in its graphics driver!!!\n');
     end
     fprintf('Have a look at the plots for more details...\n');
-    
+
     % Close the audio device:
     if exist('pahandle', 'var')
         PsychPortAudio('Close');
     end
-    
+
     % Done.
 catch
     % This "catch" section executes in case of an error in the "try" section
@@ -744,7 +746,7 @@ catch
     % shuts down realtime-scheduling of Matlab:
     ShowCursor;
     Screen('CloseAll');
-    
+
     if ~isempty(res.outFilename)
         % Store results to filesystem before we start shutdown and plotting:
         save(res.outFilename, 'res', '-V6');
@@ -765,7 +767,7 @@ catch
             end
         end
     end
-    
+
     % Close the audio device:
     if exist('pahandle', 'var')
         PsychPortAudio('Close');
