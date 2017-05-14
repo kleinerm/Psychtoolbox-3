@@ -1667,6 +1667,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         hswtext = [hswtext 'Slightly tap the headset'];
       end
 
+      Screen('Flip', win);
+      Screen('Flip', win);
+
       oldTextSize = Screen('TextSize', win, 16);
       Screen('SelectStereoDrawBuffer', win, 1);
       DrawFormattedText(win, hswtext, 'center', 'center', [0 255 0]);
