@@ -330,6 +330,20 @@ function varargout = PsychOculusVR(cmd, varargin)
 % pipeline.
 %
 %
+% needPanelFitter = PsychOculusVR('GetPanelFitterParameters', hmd);
+% - 'needPanelFitter' is 1 if a custom panel fitter tasks is needed, and 'bufferSize'
+% from the PsychVRHMD('GetClientRenderingParameters', hmd); defines the size of the
+% clientRect for the onscreen window. 'needPanelFitter' is 0 if no panel fitter is
+% needed.
+%
+%
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% - Compute special override parameters for given input/output arguments, as needed
+% for a specific HMD. Take other preparatory steps as needed, immediately before the
+% Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
+% with the user provided hmd, screenid, winRect etc.
+%
+%
 % isOutput = PsychOculusVR('IsHMDOutput', hmd, scanout);
 % - Returns 1 (true) if 'scanout' describes the video output to which the
 % HMD 'hmd' is connected. 'scanout' is a struct returned by the Screen
@@ -1101,6 +1115,50 @@ if strcmpi(cmd, 'GetClientRenderingParameters')
 
   varargout{2} = imagingMode;
   varargout{3} = stereoMode;
+  return;
+end
+
+if strcmpi(cmd, 'GetPanelFitterParameters')
+  % We need use of custom PanelFitter task for the v0.5 Oculus SDK/Runtime:
+  varargout{1} = 1;
+  return;
+end
+
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+if strcmpi(cmd, 'OpenWindowSetup')
+  myhmd = varargin{1};
+  screenid = varargin{2};
+  winRect = varargin{3};
+  ovrfbOverrideRect = varargin{4};
+  ovrSpecialFlags = varargin{5};
+
+  % Yes. Trying to display on a screen with more than one video output?
+  if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
+    % Yes. Not good, as this will impair graphics performance and timing a lot.
+    % Warn about this, then try to at least position the onscreen window on the
+    % right output.
+    fprintf('PsychOculusVR-WARNING: You are requesting display to a VR HMD on a screen with multiple active video outputs.\n');
+    fprintf('PsychOculusVR-WARNING: This will impair visual stimulation timing and cause decreased VR performance!\n');
+    fprintf('PsychOculusVR-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
+    fprintf('PsychOculusVR-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
+
+    % Try to find the output with the Rift HMD:
+    for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
+      scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
+      if myhmd.driver('IsHMDOutput', myhmd, scanout)
+        % This output i has proper resolution to be the HMD panel.
+        % Position our onscreen window accordingly:
+        winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
+        fprintf('PsychOculusVR-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
+                winRect(1), winRect(2), winRect(3), winRect(4), i);
+      end
+    end
+  end
+
+  varargout{1} = winRect;
+  varargout{2} = ovrfbOverrideRect;
+  varargout{3} = ovrSpecialFlags;
+
   return;
 end
 

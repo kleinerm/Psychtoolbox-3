@@ -304,6 +304,20 @@ function varargout = PsychVRHMD(cmd, varargin)
 % with it.
 %
 %
+% needPanelFitter = PsychVRHMD('GetPanelFitterParameters', hmd);
+% - 'needPanelFitter' is 1 if a custom panel fitter tasks is needed, and 'bufferSize'
+% from the PsychVRHMD('GetClientRenderingParameters', hmd); defines the size of the
+% clientRect for the onscreen window. 'needPanelFitter' is 0 if no panel fitter is
+% needed.
+%
+%
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychVRHMD('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% - Compute special override parameters for given input/output arguments, as needed
+% for a specific HMD. Take other preparatory steps as needed, immediately before the
+% Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
+% with the user provided hmd, screenid, winRect etc.
+%
+%
 % isOutput = PsychVRHMD('IsHMDOutput', hmd, scanout);
 % - Returns 1 (true) if 'scanout' describes the video output to which the
 % HMD 'hmd' is connected. 'scanout' is a struct returned by the Screen
