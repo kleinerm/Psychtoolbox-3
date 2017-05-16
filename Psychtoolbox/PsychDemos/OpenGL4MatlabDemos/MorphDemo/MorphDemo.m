@@ -245,8 +245,8 @@ glMatrixMode(GL.PROJECTION);
 glLoadIdentity;
 
 if ~isempty(hmd)
-  % HMD in use: Get optimal projection matrix from its driver:
-  glLoadMatrixd(PsychVRHMD('GetStaticRenderParameters', hmd));
+  % HMD in use: Get optimal projection matrices from its driver:
+  [projMatrix{1}, projMatrix{2}] = PsychVRHMD('GetStaticRenderParameters', hmd);
 else
   % Field of view is +/- 25 degrees from line of sight. Objects close than
   % 0.1 distance units or farther away than 200 distance units get clipped
@@ -360,6 +360,9 @@ while ((GetSecs - t) < 60)
       glLoadIdentity;
       gluLookAt(-eye_halfdist, 0, zz, 0, 0, 0, 0, 1, 0);
     else
+      glMatrixMode(GL.PROJECTION);
+      glLoadMatrixd(projMatrix{1});
+      glMatrixMode(GL.MODELVIEW);
       glLoadMatrixd(state.modelView{1});
     end
 
@@ -385,6 +388,9 @@ while ((GetSecs - t) < 60)
             glLoadIdentity;
             gluLookAt(+eye_halfdist, 0, zz, 0, 0, 0, 0, 1, 0);
         else
+            glMatrixMode(GL.PROJECTION);
+            glLoadMatrixd(projMatrix{2});
+            glMatrixMode(GL.MODELVIEW);
             glLoadMatrixd(state.modelView{2});
         end
 

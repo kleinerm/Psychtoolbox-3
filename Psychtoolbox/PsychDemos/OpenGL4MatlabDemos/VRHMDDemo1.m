@@ -122,15 +122,8 @@ try
   glEnable(GL.BLEND);
   glBlendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
 
-  % Set projection matrix: This defines a perspective projection,
-  % corresponding to the model of a pin-hole camera - which is a good
-  % approximation of the human eye and of standard real world cameras --
-  % well, the best aproximation one can do with 3 lines of code ;-)
-  glMatrixMode(GL.PROJECTION);
-
   % Retrieve and set camera projection matrix for optimal rendering on the HMD:
-  projMatrix = PsychVRHMD('GetStaticRenderParameters', hmd);
-  glLoadMatrixd(projMatrix);
+  [projMatrix{1}, projMatrix{2}] = PsychVRHMD('GetStaticRenderParameters', hmd);
 
   % Setup modelview matrix: This defines the position, orientation and
   % looking direction of the virtual camera:
@@ -342,6 +335,13 @@ try
 
       % Manually reenable 3D mode in preparation of eye draw cycle:
       Screen('BeginOpenGL', win);
+
+      % Set per-eye projection matrix: This defines a perspective projection,
+      % corresponding to the model of a pin-hole camera - which is a good
+      % approximation of the human eye and of standard real world cameras --
+      % well, the best aproximation one can do with 2 lines of code ;-)
+      glMatrixMode(GL.PROJECTION);
+      glLoadMatrixd(projMatrix{renderPass+1});
 
       % Setup camera position and orientation for this eyes view:
       glMatrixMode(GL.MODELVIEW);

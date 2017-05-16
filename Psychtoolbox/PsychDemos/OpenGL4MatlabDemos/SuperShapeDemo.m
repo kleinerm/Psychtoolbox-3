@@ -89,8 +89,7 @@ glLoadIdentity;
 if ~isempty(hmd)
     % Use VR HMD for 3D stereoscopic display:
     % Retrieve and set camera projection matrix for optimal rendering on the HMD:
-    projMatrix = PsychVRHMD('GetStaticRenderParameters', hmd);
-    glLoadMatrixd(projMatrix);
+    [projMatrix{1}, projMatrix{2}] = PsychVRHMD('GetStaticRenderParameters', hmd);
 
     % Enable stereo rendering:
     stereoscopic = 1;
@@ -190,8 +189,13 @@ while ~abort
 
         % HMD in use?
         if ~isempty(hmd)
+            % Use per-eye projection matrices:
+            glMatrixMode(GL.PROJECTION);
+            glLoadMatrixd(projMatrix{view + 1});
+
             % Use per-eye modelView matrices, driven by head tracking:
             modelView = state.modelView{view + 1};
+            glMatrixMode(GL.MODELVIEW);
             glLoadMatrixd(modelView);
         end
 
