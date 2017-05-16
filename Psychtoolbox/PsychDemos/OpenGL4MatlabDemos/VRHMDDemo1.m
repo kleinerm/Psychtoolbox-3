@@ -8,7 +8,7 @@ function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain)
 % case in "Happy teapot land". Obviously, this demo will only work if you have
 % one of the supported HMDs connected to your machine.
 %
-% Usage: VRHMDDemo1([doSeparateEyeRender][, multiSample=0][, fountain=0]);
+% Usage: VRHMDDemo1([doSeparateEyeRender][, multiSample=1][, fountain=1]);
 %
 % Optional parameters:
 %
@@ -49,11 +49,11 @@ if nargin < 1 || isempty(doSeparateEyeRender)
 end
 
 if nargin < 2 || isempty(multiSample)
-  multiSample = 0;
+  multiSample = 8;
 end
 
 if nargin < 3 || isempty(fountain)
-  fountain = 0;
+  fountain = 1;
 end
 
 % Default setup:
