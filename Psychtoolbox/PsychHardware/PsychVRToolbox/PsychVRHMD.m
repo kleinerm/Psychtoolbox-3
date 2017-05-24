@@ -366,6 +366,9 @@ function varargout = PsychVRHMD(cmd, varargin)
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
 
+% Global OVR handle for access to VR runtime constants:
+global OVR;
+
 if nargin < 1 || isempty(cmd)
   help PsychVRHMD;
   return;
@@ -414,6 +417,8 @@ if strcmpi(cmd, 'AutoSetupHMD')
 
       % Return the handle:
       varargout{1} = hmd;
+      evalin('caller','global OVR');
+
       return;
     end
 
@@ -431,6 +436,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
 
     % Return the handle:
     varargout{1} = hmd;
+    evalin('caller','global OVR');
     return;
   end
 
@@ -442,6 +448,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
 
     % Return the handle:
     varargout{1} = hmd;
+    evalin('caller','global OVR');
     return;
   end
 
@@ -452,6 +459,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
   if PsychOculusVR('Supported')
     hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
     varargout{1} = hmd;
+    evalin('caller','global OVR');
     return;
   end
 
