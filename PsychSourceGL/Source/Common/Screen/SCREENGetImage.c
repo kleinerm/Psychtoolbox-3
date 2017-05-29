@@ -325,14 +325,15 @@ PsychError SCREENGetImage(void)
                     // These don't really exist for Dualstream stereo. Their equivalents are the
                     // display framebuffers of the special output device, e.g., the final output
                     // buffers of a VR compositor if a VR HMD is connected as output device. The
-                    // regular windowing system or OpenGL context does not have provide access to
-                    // these buffers in any standardized way, so some special purpose trickery may
-                    // be needed to get some approximation of what the user would expect.
-
-                    // TODO: VR ENABLEMENT Find a solution for this!
-                    if (PsychPrefStateGet_Verbosity() > 1) {
-                        printf("PTB-WARNING: In Screen('GetImage'): You selected retrieval of one of the stereo front buffers, while kPsychDualStreamStereo\n");
-                        printf("PTB-WARNING: In Screen('GetImage'): stereo display mode is active. This is not implemented yet! Expect pixeltrash returned!!!\n");
+                    // regular windowing system or OpenGL context does not provide access to these
+                    // buffers in any standardized way, so some special purpose trickery is needed
+                    // to get some approximation of what the user would expect into the windowing
+                    // system front buffers before calling 'GetImage'. Output some debug output at
+                    // high verbosity to hint to this:
+                    if (PsychPrefStateGet_Verbosity() > 9) {
+                        printf("PTB-DEBUG: In Screen('GetImage'): Redirecting frontBuffer(s) read for dual-stream stereo/finalizedFBOs to true onscreen\n");
+                        printf("PTB-DEBUG: front buffers of window globalrect size [%i, %i, %i, %i]\n", windowRecord->globalrect[kPsychLeft],
+                               windowRecord->globalrect[kPsychTop], windowRecord->globalrect[kPsychRight], windowRecord->globalrect[kPsychBottom]);
                     }
                 }
             }
@@ -428,6 +429,21 @@ PsychError SCREENGetImage(void)
         // Non-FBO backed texture / offscreen window / onscreen window has size
         // of raw rect (==clientrect for non-onscreen, == backbuffer size for onscreen):
         PsychCopyRect(windowRect, windowRecord->rect);
+
+        // Special case, rendering into finalizedFBOs as final image sinks for the
+        // primary display output provider, e.g., for VR HMD's and similar, but code
+        // wants snapshot of the "frontBuffer(s)", iow. the final output image as
+        // displayed to that output device. We don't have a standardized way of getting
+        // to that content, so for now we get a snapshot for the onscreen windows real
+        // frontBuffer(s). External code is responsible to somehow get a useful snapshot
+        // of what the user actually wants into the onscreen windows frontbuffer.
+        // If kPsychFbOverrideSizeActive is set then use the windowRecords globalrect
+        // as proxy for the windows real frontBuffer size, as the clientrect and rect
+        // are overriden with values only useful for feeding the finalizedFBOs:
+        if ((windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks) &&
+            (windowRecord->specialflags & kPsychFbOverrideSizeActive) &&
+            ((whichBuffer == GL_FRONT_LEFT) || (whichBuffer == GL_FRONT_RIGHT)))
+            PsychNormalizeRect(windowRecord->globalrect, windowRect);
     }
 
     // Retrieve optional read rectangle:
