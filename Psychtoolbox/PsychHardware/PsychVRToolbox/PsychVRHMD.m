@@ -79,6 +79,13 @@ function varargout = PsychVRHMD(cmd, varargin)
 % all HMDs will be closed and the driver will be shutdown.
 %
 %
+% PsychVRHMD('Controllers', hmd);
+% - Return a bitmask of all connected controllers: Can be the bitand
+% of the OVR.ControllerType_XXX flags described in 'GetInputState'.
+% This does not detect if controllers are hot-plugged or unplugged after
+% the HMD was opened. Iow. only probed at 'Open'.
+%
+%
 % info = PsychVRHMD('GetInfo', hmd);
 % - Retrieve a struct 'info' with information about the HMD 'hmd'.
 % The returned info struct contains at least the following standardized
@@ -102,6 +109,67 @@ function varargout = PsychVRHMD(cmd, varargin)
 %
 % The info struct may contain much more vendor specific information, but the above
 % set is supported across all devices.
+%
+%
+% input = PsychVRHMD('GetInputState', hmd, controllerType);
+% - Get input state of controller 'controllerType' associated with HMD 'hmd'.
+%
+% Note that if the underlying driver does not support special VR controllers, ie.,
+% hmdinfo = PsychVRHMD('GetInfo') returns hmdinfo.VRControllersSupported == 0, then
+% only a minimally useful 'input' state is returned, which is based on emulating or
+% faking input from real controllers, so this function will be of limited use. Specifically,
+% on emulated controllers, only the input.Time and input.Buttons fields are returned, all
+% other fields are missing.
+%
+% 'controllerType' can be one of OVR.ControllerType_LTouch, OVR.ControllerType_RTouch,
+% OVR.ControllerType_Touch, OVR.ControllerType_Remote, OVR.ControllerType_XBox, or
+% OVR.ControllerType_Active for selecting whatever controller is currently active.
+%
+% Return argument 'input' is a struct with fields describing the state of buttons and
+% other input elements of the specified 'controllerType'. It has the following fields:
+%
+% 'Time' Time of last input state change of controller.
+% 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
+% vector returned by KbCheck() for regular keyboards. Each position in the vector
+% reports pressed (1) or released (0) state of a specific button. Use the OVR.Button_XXX
+% constants to map buttons to positions.
+%
+% 'Touches' Like 'Buttons' but for touch buttons. Use the OVR.Touch_XXX constants to map
+% touch points to positions.
+%
+% 'Trigger'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered and with dead-zone.
+% 'TriggerNoDeadzone'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered.
+% 'TriggerRaw'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, raw values unfiltered.
+% 'Grip'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered and with dead-zone.
+% 'GripNoDeadzone'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered.
+% 'GripRaw'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, raw values unfiltered.
+%
+% 'Thumbstick' = 2x2 matrix: Column 1 contains left thumbsticks [x;y] axis values, column 2 contains
+%  right sticks [x;y] axis values. Values are in range -1 to +1, filtered and with deadzone applied.
+% 'ThumbstickNoDeadzone' = Like 'Thumbstick', filtered, but without a deadzone applied.
+% 'ThumbstickRaw' = 'Thumbstick' raw date without deadzone or filtering applied.
+%
+%
+% pulseEndTime = PsychVRHMD('HapticPulse', hmd, controllerType [, duration=XX][, freq=1.0][, amplitude=1.0]);
+% - Trigger a haptic feedback pulse, some controller vibration, on the specified 'controllerType'
+% associated with the specified 'hmd'. 'duration' is desired pulse duration in seconds. On Oculus
+% devices, by default a maximum of 2.5 seconds pulse is executed, but other vendors devices may have
+% a different maximum. 'freq' is normalized frequency in range 0.0 - 1.0. A value of 0 will try to
+% disable an ongoing pulse. How this normalized 'freq' maps to a specific haptic device is highly
+% device and runtime dependent.
+%
+% 'amplitude' is the amplitude of the vibration in normalized 0.0 - 1.0 range.
+%
+% 'pulseEndTime' returns the expected stop time of vibration in seconds, given the parameters.
+% Currently the function will return immediately for a (default) 'duration', and the pulse
+% will end after the maximum duration supported by the given device. Smaller 'duration' values than
+% the maximum duration will block the execution of the function until the 'duration' has passed on
+% some types of controllers.
+%
+% Please note that behaviour of this function is highly dependent on the type of VR driver and
+% devices used. You should consult driver specific documentation for details, e.g., the help of
+% 'PsychOculusVR' or 'PsychOculusVR1' for Oculus systems. On some drivers the function may do
+% nothing at all.
 %
 %
 % state = PsychVRHMD('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
