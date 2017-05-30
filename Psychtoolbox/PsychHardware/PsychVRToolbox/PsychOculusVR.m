@@ -47,6 +47,12 @@ function varargout = PsychOculusVR(cmd, varargin)
 % scanning of the OLED display panel, to light up each pixel only a fraction
 % of a video refresh cycle duration.
 %
+% 'PerEyeFOV' = Request use of per eye individual and asymmetric fields of view even
+% when the 'basicTask' was selected to be 'Monoscopic' or 'Stereoscopic'. This allows
+% for wider field of view in these tasks, but requires the usercode to adapt to these
+% different and asymmetric fields of view for each eye, e.g., by selecting proper 3D
+% projection matrices for each eye.
+%
 % 'FastResponse' = Try to switch images with minimal delay and fast
 % pixel switching time. This will enable OLED panel overdrive processing
 % on the Oculus Rift DK1 and DK2. OLED panel overdrive processing is a
@@ -1382,10 +1388,39 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   PsychOculusVR('SetBasicQuality', myhmd, basicQuality);
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for left eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fov] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, varargin{5:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovL] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, varargin{5:end});
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fov] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, varargin{5:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovR] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, varargin{5:end});
+
+  % If the basic task is not a 3D VR rendering one (with or without HMD tracking),
+  % and the special requirement 'PerEyeFOV' is not set, then assume usercode wants
+  % to do pure 2D rendering (monocular, or stereoscopic), e.g., with the Screen()
+  % 2D drawing commands, and doesn't set up per-eye projection and modelview matrices.
+  % In this case we must use a field of view that is identical for both eyes, and
+  % both vertically and horizontally symmetric, ie. no special treatment of the nose
+  % facing field of view! Why? Because standard 2D mono/stereo drawing code doesn't
+  % know about/can't use per eye view projection matrices, which are needed for proper
+  % results for asymmetric per-eye FOV. It would cause weird shifts in display on the
+  % HMD. This effect is almost imperceptible/negligible on the Rift DK1/DK2, but very
+  % disturbing on the Rift CV1.
+  if isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR')) && ...
+     isempty(strfind(hmd{myhmd.handle}.basicTask, '3DVR')) && ...
+     isempty(strfind(hmd{myhmd.handle}.basicRequirements, 'PerEyeFOV'))
+    % Need identical, symmetric FOV for both eyes. Build one that has the same
+    % vertical FOV as proposed by the runtime, but horizontally uses the minimal
+    % left/right FOV extension of both per-eye FOV's, so we get a symmetric FOV
+    % identical for both eyes, guaranteed to lie within the view cone not occluded
+    % by the nose of the user.
+    fov(1) = min(hmd{myhmd.handle}.fovL(1), hmd{myhmd.handle}.fovR(1));
+    fov(2) = min(hmd{myhmd.handle}.fovL(2), hmd{myhmd.handle}.fovR(2));
+    fov(3) = min(hmd{myhmd.handle}.fovL(3), hmd{myhmd.handle}.fovR(3));
+    fov(4) = min(hmd{myhmd.handle}.fovL(4), hmd{myhmd.handle}.fovR(4));
+
+    % Recompute parameters based on override fov:
+    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovL] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, fov, varargin{6:end});
+    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovR] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, fov, varargin{6:end});
+  end
 
   return;
 end
@@ -1533,7 +1568,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   hmd{handle}.inputHeight = hmd{handle}.rbheight;
 
   % Query undistortion parameters for left eye view:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovL);
   hmd{handle}.viewportLeft = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterLeft = [ptx, pty];
   hmd{handle}.HmdToEyeViewOffsetLeft = -1 * [hsx, hsy, hsz];
@@ -1547,7 +1582,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   hmd{handle}.eyeRotEndMatrixLeft   = diag([1 1 1 1]);
 
   % Query parameters for right eye view:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovR);
   hmd{handle}.viewportRight = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterRight = [ptx, pty];
   hmd{handle}.HmdToEyeViewOffsetRight = -1 * [hsx, hsy, hsz];
