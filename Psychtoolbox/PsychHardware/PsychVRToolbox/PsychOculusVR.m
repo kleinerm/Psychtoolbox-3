@@ -221,6 +221,31 @@ function varargout = PsychOculusVR(cmd, varargin)
 % tracked. A +2 flag means that head position is tracked via some absolute
 % position tracker like, e.g., the Oculus Rift DK2 camera.
 %
+% state always contains a field state.tracked, whose bits signal the status
+% of head tracking for this frame. A +1 flag means that head orientation is
+% tracked. A +2 flag means that head position is tracked via some absolute
+% position tracker like, e.g., the Oculus Rift DK2 camera. We also return a +128
+% flag which means the HMD is actually strapped onto the subjects head and displaying
+% our visual content. We can't detect actual HMD display state, but do this for
+% compatibility to other drivers.
+%
+% state also always contains a field state.SessionState, whose bits signal general
+% VR session status. In our case we always return +7 on this classic Oculus driver,
+% as we can't detect ShouldQuit, ShouldRecenter or DisplayLost conditions, neither
+% if the HMD is strapped to the users head.
+%
+% +1  = Our rendering goes to the HMD, ie. we have control over it. Lack of this could
+%       mean the Health and Safety warning is displaying at the moment and waiting for
+%       acknowledgement, or the Oculus GUI application is in control.
+% +2  = HMD is present and active.
+% +4  = HMD is strapped onto users head. E.g., a Oculus Rift CV1 would switch off/blank
+%       if not on the head.
+% +8  = DisplayLost condition! Some hardware/software malfunction, need to completely quit this
+%       Psychtoolbox session to recover from this.
+% +16 = ShouldQuit The user interface / user asks us to voluntarily terminate this session.
+% +32 = ShouldRecenter = The user interface asks us to recenter/recalibrate our tracking origin.
+%
+%
 % 'reqmask' defaults to 1 and can have the following values added together:
 %
 % +1 = Return matrices for left and right "eye cameras" which can be directly
@@ -238,6 +263,36 @@ function varargout = PsychOculusVR(cmd, varargin)
 %      and the global head pose after application of the 'userTransformMatrix' is
 %      returned in state.globalHeadPoseMatrix - this is the basis for computing
 %      the camera transformation matrices.
+%
+% +2 = Return matrices for tracked left and right hands of user, ie. of tracked positions
+%      and orientations of left and right hand tracking controllers, if any. As the old
+%      driver does not support hand tracking, this reports hard-coded neutral results and
+%      reports a state.handStatus of 0 = "Not tracked/Invalid data".
+%
+%      state.handStatus(1) = Tracking status of left hand: 0 = Untracked, signalling that
+%                            all the following information is invalid and can not be used
+%                            in any meaningful way.
+%
+%      state.handStatus(2) = Tracking status of right hand. 0 = Untracked.
+%
+%      state.localHandPoseMatrix{1} = 4x4 OpenGL right handed reference frame matrix with
+%                                     hand position and orientation encoded to define a
+%                                     proper GL_MODELVIEW transform for rendering stuff
+%                                     "into"/"relative to" the oriented left hand. Always
+%                                     a 4x4 unit identity matrix for hand resting in origin.
+%
+%      state.localHandPoseMatrix{2} = Ditto for the right hand.
+%
+%      state.globalHandPoseMatrix{1} = userTransformMatrix * state.localHandPoseMatrix{1};
+%                                      Left hand pose transformed by passed in userTransformMatrix.
+%
+%      state.globalHandPoseMatrix{2} = Ditto for the right hand.
+%
+%      state.globalHandPoseInverseMatrix{1} = Inverse of globalHandPoseMatrix{1} for collision
+%                                             testing/grasping of virtual objects relative to
+%                                             hand pose of left hand.
+%
+%      state.globalHandPoseInverseMatrix{2} = Ditto for right hand.
 %
 % More flags to follow...
 %
@@ -566,7 +621,10 @@ if strcmpi(cmd, 'PrepareRender')
   [eyePose{1}, eyePose{2}, tracked] = PsychOculusVRCore('StartRender', myhmd.handle);
 
   % Always return basic tracking status:
-  result.tracked = tracked;
+  result.tracked = bitor(tracked, 128);
+
+  % Always return faked session state:
+  result.SessionState = 7; % = 1 + 2 + 4 = All is fine, no trouble, subject is attentive ;-)
 
   % As a bonus we return the raw eye pose vectors, given that we have them anyway:
   result.rawEyePose7{1} = eyePose{1};
@@ -596,6 +654,29 @@ if strcmpi(cmd, 'PrepareRender')
     % Compute inverse matrices, useable as OpenGL GL_MODELVIEW matrices for rendering:
     result.modelView{1} = inv(result.cameraView{1});
     result.modelView{2} = inv(result.cameraView{2});
+  end
+
+  % Want matrices with tracked position and orientation of touch controllers ~ users hands?
+  if bitand(reqmask, 2)
+    % Yes: We can't do this on the legacy 0.5 SDK, so fake stuff:
+
+    for i=1:2
+      result.handStatus(i) = 0;
+
+      % Bonus feature: HandPoses as 7 component translation + orientation quaternion vectors:
+      result.handPose{i} = [0, 0, 0, 0, 0, 0, 1];
+
+      % Convert hand pose vector to 4x4 OpenGL right handed reference frame matrix:
+      % In our untracked case, simply an identity matrix:
+      result.localHandPoseMatrix{i} = diag([1,1,1,1]);
+
+      % Premultiply usercode provided global transformation matrix - here use as is:
+      result.globalHandPoseMatrix{i} = userTransformMatrix;
+
+      % Compute inverse matrix, maybe useable for collision testing / virtual grasping of virtual objects:
+      % Provides a transform that maps absolute geometry into geometry as "seen" from the pov of the hand.
+      result.globalHandPoseInverseMatrix{i} = inv(result.globalHandPoseMatrix{i});
+    end
   end
 
   varargout{1} = result;
