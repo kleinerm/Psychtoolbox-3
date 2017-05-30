@@ -232,7 +232,24 @@ function varargout = PsychVRHMD(cmd, varargin)
 % state always contains a field state.tracked, whose bits signal the status
 % of head tracking for this frame. A +1 flag means that head orientation is
 % tracked. A +2 flag means that head position is tracked via some absolute
-% position tracker like, e.g., the Oculus Rift DK2 camera.
+% position tracker like, e.g., the Oculus Rift DK2 or Rift CV1 camera. A +128
+% flag means the HMD is actually strapped onto the subjects head and displaying
+% our visual content. Lack of this flag means the HMD is off and thereby blanked
+% and dark, or we lost access to it to another application.
+%
+% state also always contains a field state.SessionState, whose bits signal general
+% VR session status:
+%
+% +1  = Our rendering goes to the HMD, ie. we have control over it. Lack of this could
+%       mean the Health and Safety warning is displaying at the moment and waiting for
+%       acknowledgement, or the Oculus GUI application is in control.
+% +2  = HMD is present and active.
+% +4  = HMD is strapped onto users head. E.g., a Oculus Rift CV1 would switch off/blank
+%       if not on the head.
+% +8  = DisplayLost condition! Some hardware/software malfunction, need to completely quit this
+%       Psychtoolbox session to recover from this.
+% +16 = ShouldQuit The user interface / user asks us to voluntarily terminate this session.
+% +32 = ShouldRecenter = The user interface asks us to recenter/recalibrate our tracking origin.
 %
 % 'reqmask' defaults to 1 and can have the following values added together:
 %
@@ -251,6 +268,34 @@ function varargout = PsychVRHMD(cmd, varargin)
 %      and the global head pose after application of the 'userTransformMatrix' is
 %      returned in state.globalHeadPoseMatrix - this is the basis for computing
 %      the camera transformation matrices.
+%
+% +2 = Return matrices for tracked left and right hands of user, ie. of tracked positions
+%      and orientations of left and right hand tracking controllers, if any.
+%
+%      state.handStatus(1) = Tracking status of left hand: 0 = Untracked, 1 = Orientation
+%                            tracked, 2 = Position tracked, 3 = Orientation and position
+%                            tracked. If handStatus is == 0 then all the following information
+%                            is invalid and can not be used in any meaningful way.
+%
+%      state.handStatus(2) = Tracking status of right hand.
+%
+%      state.localHandPoseMatrix{1} = 4x4 OpenGL right handed reference frame matrix with
+%                                     hand position and orientation encoded to define a
+%                                     proper GL_MODELVIEW transform for rendering stuff
+%                                     "into"/"relative to" the oriented left hand.
+%
+%      state.localHandPoseMatrix{2} = Ditto for the right hand.
+%
+%      state.globalHandPoseMatrix{1} = userTransformMatrix * state.localHandPoseMatrix{1};
+%                                      Left hand pose transformed by passed in userTransformMatrix.
+%
+%      state.globalHandPoseMatrix{2} = Ditto for the right hand.
+%
+%      state.globalHandPoseInverseMatrix{1} = Inverse of globalHandPoseMatrix{1} for collision
+%                                             testing/grasping of virtual objects relative to
+%                                             hand pose of left hand.
+%
+%      state.globalHandPoseInverseMatrix{2} = Ditto for right hand.
 %
 % More flags to follow...
 %
