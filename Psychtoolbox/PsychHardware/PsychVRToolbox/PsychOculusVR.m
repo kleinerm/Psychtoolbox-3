@@ -131,6 +131,29 @@ function varargout = PsychOculusVR(cmd, varargin)
 % installed.
 %
 %
+% [isVisible, playAreaBounds, OuterAreaBounds] = PsychOculusVRCore('VRAreaBoundary', hmd [, requestVisible]);
+% - Request visualization of the VR play area boundary for 'hmd' and returns its
+% current extents.
+%
+% As VR area boundaries are not actually supported by this Oculus classic driver,
+% this function returns no-op results, compatible with what the new Oculus driver
+% would return if the Oculus guardian system would not be set up, e.g., because the
+% hardware setup does not include Oculus touch controllers.
+%
+% The input flag 'requestVisible' is silently ignored:
+% 'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't
+% request showing the markers.
+%
+% Returns in 'isVisible' the current visibility status of the VR area boundaries.
+% This is always 0 for "invisible".
+%
+% 'playAreaBounds' is an empty matrix defining the play area boundaries. The empty
+% return argument means that the play area is so far undefined on this driver.
+%
+% 'OuterAreaBounds' defines the outer area boundaries in the same way as
+% 'playAreaBounds'. In other words, it always returns an empty matrix.
+%
+%
 % input = PsychOculusVRCore('GetInputState', hmd, controllerType);
 % - Get input state of controller 'controllerType' associated with HMD 'hmd'.
 %
@@ -709,6 +732,17 @@ if strcmpi(cmd, 'HapticPulse')
     varargout{1} = GetSecs + 2.5;
   end
 
+  return;
+end
+
+if strcmpi(cmd, 'VRAreaBoundary')
+  myhmd = varargin{1};
+  if ~PsychOculusVR('IsOpen', myhmd)
+    error('VRAreaBoundary: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  % Return no-op values:
+  [varargout{1}, varargout{2}, varargout{3}] = deal(0, [], []);
   return;
 end
 
