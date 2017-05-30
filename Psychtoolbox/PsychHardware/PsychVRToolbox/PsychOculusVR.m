@@ -951,6 +951,8 @@ if strcmpi(cmd, 'Open')
   newhmd.separateEyePosesSupported = 1;
   newhmd.controllerTypes = 0;
   newhmd.VRControllersSupported = 0;
+  newhmd.handTrackingSupported = 0;
+  newhmd.hapticFeedbackSupported = 0;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
