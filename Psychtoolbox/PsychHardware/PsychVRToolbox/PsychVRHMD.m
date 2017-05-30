@@ -86,12 +86,20 @@ function varargout = PsychVRHMD(cmd, varargin)
 % handle = Driver internal handle for the specific HMD.
 % driver = Function handle to the actual driver for the HMD, e.g., @PsychOculusVR.
 % type   = Defines the type/vendor of the device, e.g., 'Oculus'.
+% subtype = Defines the type of driver more specific, e.g., 'Oculus-classic' or 'Oculus-1'.
 % modelName = Name string with the name of the model of the device, e.g., 'Rift DK2'.
+%
 % separateEyePosesSupported = 1 if use of PsychVRHMD('GetEyePose') will improve
 %                             the quality of the VR experience, 0 if no improvement
 %                             is to be expected, so 'GetEyePose' can be avoided
 %                             to save processing time without a loss of quality.
-% 
+%
+% VRControllersSupported = 1 if use of PsychVRHMD('GetInputState') will provide input
+%                            from actual dedicated VR controllers. Value is 0 if
+%                            controllers are only emulated to some limited degree,
+%                            e.g., by abusing a regular keyboard as a button controller,
+%                            ie. mapping keyboard keys to OVR.Button_XXX buttons.
+%
 % The info struct may contain much more vendor specific information, but the above
 % set is supported across all devices.
 %

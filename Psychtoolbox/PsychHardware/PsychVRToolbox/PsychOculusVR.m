@@ -733,9 +733,11 @@ if strcmpi(cmd, 'Open')
   newhmd.handle = handle;
   newhmd.driver = @PsychOculusVR;
   newhmd.type   = 'Oculus';
+  newhmd.subtype = 'Oculus-classic';
   newhmd.open = 1;
   newhmd.modelName = modelName;
   newhmd.separateEyePosesSupported = 1;
+  newhmd.VRControllersSupported = 0;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
