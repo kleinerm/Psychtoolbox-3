@@ -34,13 +34,72 @@ function varargout = PsychVRHMD(cmd, varargin)
 %
 % 'basicRequirements' defines basic requirements for the task. Currently
 % defined are the following strings which can be combined into a single
-% 'basicRequirements' string: 'LowPersistence' = Try to keep exposure
-% time of visual images on the retina low if possible, ie., try to approximate
-% a pulse-type display instead of a hold-type display if possible.
+% 'basicRequirements' string:
+%
+% 'LowPersistence' = Try to keep exposure time of visual images on the retina
+% low if possible, ie., try to approximate a pulse-type display instead of a
+% hold-type display if possible. This has no effect on the Oculus Rift DK1.
+% On the Rift DK2 it will enable low persistence scanning of the OLED display
+% panel, to light up each pixel only a fraction of a video refresh cycle duration.
+% On the Rift CV1, low persistence is always active, so this setting is redundant.
+%
+% 'DebugDisplay' = Show the output which is displayed on the HMD inside the
+% Psychtoolbox onscreen window as well. This will have a negative impact on
+% performance, latency and timing of the HMD visual presentation, so should only
+% be used for debugging, as it may cause a seriously degraded VR experience.
+% By default, no such debug output is produced and the Psychtoolbox onscreen
+% window is not actually displayed on the desktop. This option is silently ignored
+% on the old classic Oculus driver at the moment.
+%
+% 'Float16Display' = Request rendering, compositing and display in 16 bpc float
+% format on some HMD's and drivers. This will ask Psychtoolbox to render and
+% post-process stimuli in 16 bpc linear floating point format, and allocate 16 bpc
+% half-float textures as final renderbuffers to be sent to the VR compositor.
+% If the VR compositor takes advantage of the high source image precision is at
+% the discretion of the compositor and HMD. By default, if this request is omitted,
+% processing and display in sRGB format is requested from Psychtoolbox and the compositor
+% on some drivers, e.g., for the Oculus 1.11+ runtime and Rift CV1, ie., a roughly
+% gamma 2.2 8 bpc format is used, which is optimized for the gamma response curve of
+% at least the Oculus Rift CV1 display. On other HMDs or drivers, this option may do
+% nothing and get silently ignored.
+%
+% 'PerEyeFOV' = Request use of per eye individual and asymmetric fields of view, even
+% when the 'basicTask' was selected to be 'Monoscopic' or 'Stereoscopic'. This allows
+% for wider field of view in these tasks, but requires the usercode to adapt to these
+% different and asymmetric fields of view for each eye, e.g., by selecting proper 3D
+% projection matrices for each eye. If a 'basicTask' of '3DVR' for non-tracked 3D, or
+% (the default) 'Tracked3DVR' for head tracking driven 3D is selected, then that implies
+% per-eye individual and asymmetric fields of view, iow. 'PerEyeFOV' is implied. For pure
+% 'basicTask' of 'Monoscopic' or 'Stereoscopic' for Screen() 2D drawing, the system uses
+% identical and symmetric fields of view for both eyes by default, so 'PerEyeFOV' would
+% be needed to override this choice. COMPATIBILITy NOTE: Psychtoolbox-3 releases before
+% June 2017 always used identical and symmetric fields of view for both eyes, which was
+% a bug. However the error made was very small, due to the imaging properties of the
+% Oculus Rift DK2, essentially imperceptible to the unknowing observer with the naked
+% eye. Releases starting June 2017 now use separate fields of view in 3D rendering
+% modes, and optionally for 2D mono/stereo modes with this 'PerEyeFOV' opt-in parameter,
+% so stimulus display may change slightly for the same HMD hardware and user-code,
+% compared to older Psychtoolbox-3 releases. This change was crucial to accomodate the
+% rather different imaging properties of the Oculus Rift CV1 and possible other future
+% HMD's.
+%
 % 'FastResponse' = Try to switch images with minimal delay and fast
-% pixel switching time, e.g., by use of panel overdrive processing.
+% pixel switching time. This will enable OLED panel overdrive processing
+% on the Oculus Rift DK1 and DK2. OLED panel overdrive processing is a
+% relatively expensive post processing step. On the Rift CV1, and generally
+% with the new Oculus v1.11+ runtime, this is always active, so 'FastResponse'
+% is redundant on such panels and drivers.
+%
 % 'TimingSupport' = Support some hardware specific means of timestamping
-% or latency measurements.
+% or latency measurements. On the Rift DK1 this does nothing. On the DK2
+% it enables dynamic prediction and timing measurements with the Rifts internal
+% latency tester. This does nothing anymore on Rift CV1.
+%
+% 'TimeWarp' = Enable per eye image 2D timewarping via prediction of eye
+% poses at scanout time. This mostly only makes sense for head-tracked 3D
+% rendering. Depending on 'basicQuality' a more cheap or more expensive
+% procedure is used. On the v1.11 Oculus runtime and Rift CV1, 'TimeWarp'
+% is always active, so this option is redundant.
 %
 % These basic requirements get translated into a device specific set of
 % settings. The settings can also be specific to the selected 'basicTask',
