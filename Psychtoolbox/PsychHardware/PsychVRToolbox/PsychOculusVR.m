@@ -485,6 +485,7 @@ function varargout = PsychOculusVR(cmd, varargin)
 
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
+global OVR;
 
 persistent hmd;
 
@@ -772,23 +773,23 @@ if strcmpi(cmd, 'GetInputState')
   [anykey, rc.Time, keyCodes] = KbCheck(-1);
   rc.Buttons = zeros(1, 32);
   if anykey
-    rc.Buttons(Button_A) = keyCodes(KbName('a'));
-    rc.Buttons(Button_B) = keyCodes(KbName('b'));
-    rc.Buttons(Button_X) = keyCodes(KbName('x'));
-    rc.Buttons(Button_Y) = keyCodes(KbName('y'));
-    rc.Buttons(Button_Back) = keyCodes(KbName('BackSpace'));
-    rc.Buttons(Button_Enter) = keyCodes(KbName('Return'));
-    rc.Buttons(Button_Right) = keyCodes(KbName('RightArrow'));
-    rc.Buttons(Button_Left) = keyCodes(KbName('LeftArrow'));
-    rc.Buttons(Button_Up) = keyCodes(KbName('UpArrow'));
-    rc.Buttons(Button_Down) = keyCodes(KbName('DownArrow'));
-    rc.Buttons(Button_VolUp) = keyCodes(KbName('F12'));
-    rc.Buttons(Button_VolDown) = keyCodes(KbName('F11'));
-    rc.Buttons(Button_RShoulder) = keyCodes(KbName('RightShift'));
-    rc.Buttons(Button_LShoulder) = keyCodes(KbName('LeftShift'));
-    rc.Buttons(Button_Home) = keyCodes(KbName('Home'));
-    rc.Buttons(Button_RThumb) = keyCodes(KbName('RightControl'));
-    rc.Buttons(Button_LThumb) = keyCodes(KbName('LeftControl'));
+    rc.Buttons(OVR.Button_A) = keyCodes(KbName('a'));
+    rc.Buttons(OVR.Button_B) = keyCodes(KbName('b'));
+    rc.Buttons(OVR.Button_X) = keyCodes(KbName('x'));
+    rc.Buttons(OVR.Button_Y) = keyCodes(KbName('y'));
+    rc.Buttons(OVR.Button_Back) = keyCodes(KbName('BackSpace'));
+    rc.Buttons(OVR.Button_Enter) = any(keyCodes(KbName('Return')));
+    rc.Buttons(OVR.Button_Right) = keyCodes(KbName('RightArrow'));
+    rc.Buttons(OVR.Button_Left) = keyCodes(KbName('LeftArrow'));
+    rc.Buttons(OVR.Button_Up) = keyCodes(KbName('UpArrow'));
+    rc.Buttons(OVR.Button_Down) = keyCodes(KbName('DownArrow'));
+    rc.Buttons(OVR.Button_VolUp) = keyCodes(KbName('F12'));
+    rc.Buttons(OVR.Button_VolDown) = keyCodes(KbName('F11'));
+    rc.Buttons(OVR.Button_RShoulder) = keyCodes(KbName('RightShift'));
+    rc.Buttons(OVR.Button_LShoulder) = keyCodes(KbName('LeftShift'));
+    rc.Buttons(OVR.Button_Home) = keyCodes(KbName('Home'));
+    rc.Buttons(OVR.Button_RThumb) = any(keyCodes(KbName({'RightControl', 'RightAlt'})));
+    rc.Buttons(OVR.Button_LThumb) = any(keyCodes(KbName({'LeftControl', 'LeftAlt'})));
   end
 
   varargout{1} = rc;
