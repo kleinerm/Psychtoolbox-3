@@ -111,6 +111,31 @@ function varargout = PsychVRHMD(cmd, varargin)
 % set is supported across all devices.
 %
 %
+% [isVisible, playAreaBounds, OuterAreaBounds] = PsychVRHMD('VRAreaBoundary', hmd [, requestVisible]);
+% - Request visualization of the VR play area boundary for 'hmd' and returns its
+% current extents.
+%
+% 'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't
+% request showing the markers.
+% If the driver can control area boundary visibility is highly dependent on the VR
+% driver in use. This flag may get ignored. See driver specific help, e.g.,
+% "help PsychOculusVR1", for behaviour of a specific driver.
+%
+% Some drivers or hardware setups may not supports VR area boundaries at all, in
+% which case the function will return empty boundaries.
+%
+% Returns in 'isVisible' the current visibility status of the VR area boundaries.
+%
+% 'playAreaBounds' is a 3-by-n matrix defining the play area boundaries. Each
+% column represents the [x;y;z] coordinates of one 3D definition point. Connecting
+% successive points by line segments defines the boundary, as projected onto the
+% floor. Points are listed in clock-wise direction. An empty return argument means
+% that the play area is so far undefined.
+%
+% 'OuterAreaBounds' defines the outer area boundaries in the same way as
+% 'playAreaBounds'.
+%
+%
 % input = PsychVRHMD('GetInputState', hmd, controllerType);
 % - Get input state of controller 'controllerType' associated with HMD 'hmd'.
 %
