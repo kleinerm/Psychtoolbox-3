@@ -107,6 +107,21 @@ function varargout = PsychVRHMD(cmd, varargin)
 %                            e.g., by abusing a regular keyboard as a button controller,
 %                            ie. mapping keyboard keys to OVR.Button_XXX buttons.
 %
+% handTrackingSupported = 1 if PsychVRHMD('PrepareRender') with reqmask +2 will provide
+%                           valid hand tracking info, 0 if this is not supported and will
+%                           just report fake values. A driver may report 1 here but still
+%                           don't provide meaningful info at runtime, e.g., if required
+%                           tracking hardware is missing or gets disconnected. The flag
+%                           just aids extra performance optimizations in your code.
+%
+% hapticFeedbackSupported = 1 if basic haptic feedback is supported in principle on some controllers.
+%                             0 otherwise. A flag of zero means no haptic feedback support, but
+%                             a flag of 1 may still mean no actual feedback, e.g., if suitable
+%                             hardware is not configured and present. Flags higher than 1 can
+%                             signal presence of more advanced haptic feedback, so you should
+%                             test for a setting == 1 to know if PsychVRHMD('HapticPulse') works
+%                             in principle, which is considered basic feedback ability.
+%
 % The info struct may contain much more vendor specific information, but the above
 % set is supported across all devices.
 %
@@ -194,7 +209,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % Please note that behaviour of this function is highly dependent on the type of VR driver and
 % devices used. You should consult driver specific documentation for details, e.g., the help of
 % 'PsychOculusVR' or 'PsychOculusVR1' for Oculus systems. On some drivers the function may do
-% nothing at all.
+% nothing at all, e.g., if the 'GetInfo' function returns info.hapticFeedbackSupported == 0.
 %
 %
 % state = PsychVRHMD('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
@@ -270,7 +285,8 @@ function varargout = PsychVRHMD(cmd, varargin)
 %      the camera transformation matrices.
 %
 % +2 = Return matrices for tracked left and right hands of user, ie. of tracked positions
-%      and orientations of left and right hand tracking controllers, if any.
+%      and orientations of left and right hand tracking controllers, if any. See also
+%      section about 'GetInfo' for some performance comments.
 %
 %      state.handStatus(1) = Tracking status of left hand: 0 = Untracked, 1 = Orientation
 %                            tracked, 2 = Position tracked, 3 = Orientation and position
