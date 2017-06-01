@@ -3400,13 +3400,7 @@ if ~isempty(floc)
             % processing chain, as this chain is almost always used anyway.
             % It needs to execute only once per flip, as it updates state
             % global to all views (in a stereo setup):
-
-            % We need this weird evalin('base', ...); wrapper so the
-            % function gets called from the base-workspace, where the
-            % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
-            % define it there reliably due to incompatibilities between
-            % Matlab and Octave in variable assignment inside Screen() :-(
-            rclutcmd = sprintf('evalin(''base'', ''PsychHelperCreateRemapCLUT(1, %i, IMAGINGPIPE_GAMMATABLE);'');', pglutid);
+            rclutcmd = sprintf('PsychHelperCreateRemapCLUT(1, %i, IMAGINGPIPE_GAMMATABLE);', pglutid);
             Screen('HookFunction', win, 'AppendMFunction', 'StereoLeftCompositingBlit', 'Upload new clut into shader callback', rclutcmd);
 
             % Enable left chain unconditionally, so the above clut setup
