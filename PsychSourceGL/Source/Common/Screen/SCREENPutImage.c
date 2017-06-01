@@ -137,15 +137,10 @@ PsychError SCREENPutImage(void)
                 if (inputMatrixType == PsychArgType_uint8) {
                     // If the color range is > 255, then force it to 255 for 8-bit values.
                     matrixGrayValue = (GLfloat)inputMatrixByte[matrixGrayIndex];
-                    if (windowRecord->colorRange > 255) {
-                        matrixGrayValue /= (GLfloat)255;
-                    }
-                    else {
-                        matrixGrayValue /= (GLfloat)windowRecord->colorRange;
-                    }
+                    matrixGrayValue /= (GLfloat)255;
                 }
                 else {
-                    matrixGrayValue = (GLfloat)(inputMatrixDouble[matrixGrayIndex] / windowRecord->colorRange);
+                    matrixGrayValue = (GLfloat)(inputMatrixDouble[matrixGrayIndex] / fabs(windowRecord->colorRange));
                 }
 
                 // RGB will all be the same for grayscale.  We'll go ahead and fix alpha to the max value.
@@ -164,21 +159,14 @@ PsychError SCREENPutImage(void)
                     matrixRedValue = (GLfloat)inputMatrixByte[matrixRedIndex];
                     matrixGreenValue = (GLfloat)inputMatrixByte[matrixGreenIndex];
                     matrixBlueValue = (GLfloat)inputMatrixByte[matrixBlueIndex];
-                    if (windowRecord->colorRange > 255) {
-                        matrixRedValue /= (GLfloat)255;
-                        matrixGreenValue /= (GLfloat)255;
-                        matrixBlueValue /= (GLfloat)255;
-                    }
-                    else {
-                        matrixRedValue /= (GLfloat)windowRecord->colorRange;
-                        matrixGreenValue /= (GLfloat)windowRecord->colorRange;
-                        matrixBlueValue /= (GLfloat)windowRecord->colorRange;
-                    }
+                    matrixRedValue /= (GLfloat)255;
+                    matrixGreenValue /= (GLfloat)255;
+                    matrixBlueValue /= (GLfloat)255;
                 }
                 else {
-                    matrixRedValue = (GLfloat)(inputMatrixDouble[matrixRedIndex] / windowRecord->colorRange);
-                    matrixGreenValue = (GLfloat)(inputMatrixDouble[matrixGreenIndex] / windowRecord->colorRange);
-                    matrixBlueValue = (GLfloat)(inputMatrixDouble[matrixBlueIndex] / windowRecord->colorRange);
+                    matrixRedValue = (GLfloat)(inputMatrixDouble[matrixRedIndex] / fabs(windowRecord->colorRange));
+                    matrixGreenValue = (GLfloat)(inputMatrixDouble[matrixGreenIndex] / fabs(windowRecord->colorRange));
+                    matrixBlueValue = (GLfloat)(inputMatrixDouble[matrixBlueIndex] / fabs(windowRecord->colorRange));
                 }
 
                 pixelData[pixelIndex++] = matrixRedValue;
@@ -198,24 +186,16 @@ PsychError SCREENPutImage(void)
                     matrixGreenValue = (GLfloat)inputMatrixByte[matrixGreenIndex];
                     matrixBlueValue = (GLfloat)inputMatrixByte[matrixBlueIndex];
                     matrixAlphaValue = (GLfloat)inputMatrixByte[matrixAlphaIndex];
-                    if (windowRecord->colorRange > 255) {
-                        matrixRedValue /= (GLfloat)255;
-                        matrixGreenValue /= (GLfloat)255;
-                        matrixBlueValue /= (GLfloat)255;
-                        matrixAlphaValue /= (GLfloat)255;
-                    }
-                    else {
-                        matrixRedValue /= (GLfloat)windowRecord->colorRange;
-                        matrixGreenValue /= (GLfloat)windowRecord->colorRange;
-                        matrixBlueValue /= (GLfloat)windowRecord->colorRange;
-                        matrixAlphaValue /= (GLfloat)windowRecord->colorRange;
-                    }
+                    matrixRedValue /= (GLfloat)255;
+                    matrixGreenValue /= (GLfloat)255;
+                    matrixBlueValue /= (GLfloat)255;
+                    matrixAlphaValue /= (GLfloat)255;
                 }
                 else {
-                    matrixRedValue = (GLfloat)(inputMatrixDouble[matrixRedIndex] / windowRecord->colorRange);
-                    matrixGreenValue = (GLfloat)(inputMatrixDouble[matrixGreenIndex] / (GLfloat)windowRecord->colorRange);
-                    matrixBlueValue = (GLfloat)(inputMatrixDouble[matrixBlueIndex] / (GLfloat)windowRecord->colorRange);
-                    matrixAlphaValue = (GLfloat)(inputMatrixDouble[matrixAlphaIndex] / (GLfloat)windowRecord->colorRange);
+                    matrixRedValue = (GLfloat)(inputMatrixDouble[matrixRedIndex] / fabs(windowRecord->colorRange));
+                    matrixGreenValue = (GLfloat)(inputMatrixDouble[matrixGreenIndex] / (GLfloat)fabs(windowRecord->colorRange));
+                    matrixBlueValue = (GLfloat)(inputMatrixDouble[matrixBlueIndex] / (GLfloat)fabs(windowRecord->colorRange));
+                    matrixAlphaValue = (GLfloat)(inputMatrixDouble[matrixAlphaIndex] / (GLfloat)fabs(windowRecord->colorRange));
                 }
 
                 pixelData[pixelIndex++] = matrixRedValue;
