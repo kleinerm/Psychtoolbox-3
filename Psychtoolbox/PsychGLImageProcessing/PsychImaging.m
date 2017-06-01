@@ -3386,7 +3386,7 @@ if ~isempty(floc)
             glUniform1i(glGetUniformLocation(pgshader, 'CLUT'),  1);
 
             % Assign number of clut slots to use:
-            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), nClutSlots);
+            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), nClutSlots - 1);
             glUseProgram(0);
 
             % Use helper routine to build a proper RGBA lookup texture:
@@ -4624,7 +4624,7 @@ if ~isempty(floc)
         else
             % CLUT based mapping:
             glUniform1i(glGetUniformLocation(pgshader, 'CLUT'), 1);
-            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1024, enableNative11BpcRequested));
+            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1024, enableNative11BpcRequested) - 1);
         end
         glUseProgram(0);
 
