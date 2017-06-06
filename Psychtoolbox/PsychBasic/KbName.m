@@ -795,6 +795,7 @@ elseif ischar(arg)      % argument is a character, so find the code
              'Alt_L', 'LeftAlt';
              'Alt_R', 'RightAlt';
              'Mode_switch', 'RightAlt';
+             'ISO_Level3_Shift', 'RightAlt';
              'Super_L', 'LeftGUI';
              'Super_R', 'RightGUI';
              'Menu', 'Application';

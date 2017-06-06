@@ -1591,59 +1591,8 @@ if strcmpi(cmd, 'OpenWindow')
             error('PsychImaging(''OpenWindow''): Invalid HMD handle specified for UseVRHMD task. No such device opened.');
         end
 
-        % Old Oculus VR driver for v0.5 SDK/Runtime?
-        if 1 % || hmd.driver == @PsychOculusVR
-            % Yes. Trying to display on a screen with more than one video output?
-            if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
-                % Yes. Not good, as this will impair graphics performance and timing a lot.
-                % Warn about this, then try to at least position the onscreen window on the
-                % right output.
-                fprintf('PsychImaging-WARNING: You are requesting display to a VR HMD on a screen with multiple active video outputs.\n');
-                fprintf('PsychImaging-WARNING: This will impair visual stimulation timing and cause decreased VR performance!\n');
-                fprintf('PsychImaging-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
-                fprintf('PsychImaging-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
-
-
-                % Try to find the output with the Rift HMD:
-                for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
-                    scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
-                    if hmd.driver('IsHMDOutput', hmd, scanout)
-                        % This output i has proper resolution to be the HMD panel.
-                        % Position our onscreen window accordingly:
-                        winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
-                        fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
-                                winRect(1), winRect(2), winRect(3), winRect(4), i);
-                    end
-                end
-            end
-        end
-
-        % New Oculus VR driver for v1.11 SDK/Runtime?
-        if  0 % && hmd.driver == @PsychOculusVR1
-            % Yes. The current design iteration requires the PTB parent onscreen window
-            % to have the same size (width x height) as the renderbuffer for one
-            % eye, so enforce that constraint.
-
-            % Get required output buffer size and therefore window framebuffer size:
-            clientRes = hmd.driver('GetClientRenderingParameters', hmd);
-
-            % Set as fbOverrideRect for window:
-            ovrfbOverrideRect = [0, 0, clientRes(1), clientRes(2)];
-
-            fprintf('PsychImaging-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with VR-HMD direct output mode.\n', ...
-                    clientRes(1), clientRes(2));
-
-            % As the onscreen window is not used for displaying on the HMD, but
-            % either not at all, or just for debug output, make it a regular GUI
-            % window, managed by the window manager, so user can easily get it out
-            % of the way:
-            ovrSpecialFlags = kPsychGUIWindow + kPsychGUIWindowWMPositioned;
-
-            % Skip all visual timing sync tests and calibrations, as display timing
-            % of the onscreen window doesn't matter, only the timing on the HMD direct
-            % output matters - and that can't be measured by our standard procedures:
-            Screen('Preference', 'SkipSyncTests', 2);
-        end
+        % Compute special OpenWindow overrides for winRect, framebuffer rect, and specialflags, as needed:
+        [winRect, ovrfbOverrideRect, ovrSpecialFlags] = hmd.driver('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
     end
 
     if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
@@ -2822,10 +2771,15 @@ if ~isempty(floc)
         error('UseVRHMD: Invalid HMD handle specified. No such device opened.');
     end
 
-    % Append our generated 'UsePanelFitter' task to setup the panelfitter for
-    % our needs at 'OpenWindow' time if panel fitting is needed:
+    % Get imagingMode flags and stereoMode to use for this HMD:
     [clientRes, imagingFlags, stereoMode] = hmd.driver('GetClientRenderingParameters', hmd);
-    if clientRes(1) ~= 0 && clientRes(2) ~= 0 %&& hmd.driver == @PsychOculusVR
+
+    % Add imaging mode flags requested by HMD driver:
+    imagingMode = mor(imagingMode, imagingFlags);
+
+    % Do we need the PanelFitter?
+    needPanelFitter = hmd.driver('GetPanelFitterParameters', hmd);
+    if needPanelFitter
         x{1} = 'General';
         x{2} = 'UsePanelFitter';
         x{3} = clientRes;
@@ -2841,9 +2795,6 @@ if ~isempty(floc)
         end
         reqs = [reqs ; x];
     end
-
-    % Add imaging mode flags requested by HMD driver:
-    imagingMode = mor(imagingMode, imagingFlags);
 end
 
 % Display replication needed?
@@ -3435,7 +3386,7 @@ if ~isempty(floc)
             glUniform1i(glGetUniformLocation(pgshader, 'CLUT'),  1);
 
             % Assign number of clut slots to use:
-            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), nClutSlots);
+            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), nClutSlots - 1);
             glUseProgram(0);
 
             % Use helper routine to build a proper RGBA lookup texture:
@@ -3449,13 +3400,7 @@ if ~isempty(floc)
             % processing chain, as this chain is almost always used anyway.
             % It needs to execute only once per flip, as it updates state
             % global to all views (in a stereo setup):
-
-            % We need this weird evalin('base', ...); wrapper so the
-            % function gets called from the base-workspace, where the
-            % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
-            % define it there reliably due to incompatibilities between
-            % Matlab and Octave in variable assignment inside Screen() :-(
-            rclutcmd = sprintf('evalin(''base'', ''PsychHelperCreateRemapCLUT(1, %i, IMAGINGPIPE_GAMMATABLE);'');', pglutid);
+            rclutcmd = sprintf('PsychHelperCreateRemapCLUT(1, %i, IMAGINGPIPE_GAMMATABLE);', pglutid);
             Screen('HookFunction', win, 'AppendMFunction', 'StereoLeftCompositingBlit', 'Upload new clut into shader callback', rclutcmd);
 
             % Enable left chain unconditionally, so the above clut setup
@@ -4673,7 +4618,7 @@ if ~isempty(floc)
         else
             % CLUT based mapping:
             glUniform1i(glGetUniformLocation(pgshader, 'CLUT'), 1);
-            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1024, enableNative11BpcRequested));
+            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1024, enableNative11BpcRequested) - 1);
         end
         glUseProgram(0);
 

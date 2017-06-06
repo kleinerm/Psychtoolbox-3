@@ -218,19 +218,32 @@ else
                 status = 1;
             else
                 if netstationAvailable
-                    %Tell netstation to get ready for synchronization.
+                    % Tell netstation to get ready for synchronization.
+                    % MK: Maybe not needed, but at least should not hurt.
                     send(NSIDENTIFIER,'A');
                     receive(NSIDENTIFIER,1);
-                    %get the timebase from the netstation.
-                    send(NSIDENTIFIER,'S');
-                    rep = receive(NSIDENTIFIER,1);
-                    if char(rep) ~= 'Z'
-                        status = 4;
-                        warning('NTP query reports failure!');
+
+                    % Get the NTP baseline time from netstation. We have to
+                    % send a 64-Bit NTP time with the absolute start time of
+                    % our clock, even if that doesn't make sense for the 'S'
+                    % type NTP sync command. We just sent 0 seconds NTP time,
+                    % ie. claim our clock starts at 1.1.1900. If that works then
+                    % no effort wasted encoding a useless true timestamp from "now":
+                    send(NSIDENTIFIER, 'S', uint32(0), uint32(0));
+
+                    % The following code inside the "if 1" statement may not be needed,
+                    % or even harmful, not clear from docs or sample code. If your script
+                    % hangs in 'ntpsynchronize', retry with "if 0"
+                    if 1
+                        rep = receive(NSIDENTIFIER,1);
+                        if char(rep) ~= 'Z'
+                            status = 4;
+                            warning('NTP query reports failure!');
+                        end
                     end
                 end
 
-                % Get current time in EGI's NTP adjusted timebase (seconds since 1.1.1900):
+                % Get baseline for timing in EGI's NTP adjusted timebase (seconds since 1.1.1900):
                 [ntpTimestamp] = receiveNtpTimestamp(NSIDENTIFIER);
 
                 % Get current PTB GetSecs time and NTP adjusted UTC time.

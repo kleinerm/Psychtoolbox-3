@@ -2,15 +2,15 @@ function SuperShapeDemo
 % Draw SuperShapes with OpenGL
 %
 % This demo computes and displays a 3D supershape using the formula
-% found by Gielis (A generic geometric transformation that unifies 
+% found by Gielis (A generic geometric transformation that unifies
 % a wide range of natural and abstract shapes. American Journal of
 % Botany 90(3):333�338, 2003)
 %
 % See also http://en.wikipedia.org/wiki/Superformula
 %
-% "The parameter m relates to the number of symmetries of a shape, 
-% parameter n1 determines flatness and sharpness of corners and convexity 
-% of sides. Both parameters n2 and n3 denote whether the shape is inscribed 
+% "The parameter m relates to the number of symmetries of a shape,
+% parameter n1 determines flatness and sharpness of corners and convexity
+% of sides. Both parameters n2 and n3 denote whether the shape is inscribed
 % or circumscribed in the unit circle." (from
 % http://know-center.tugraz.at/download_extern/papers/ISGI_SuperShapes_Lex_Kienreich.pdf)
 %
@@ -31,8 +31,9 @@ function SuperShapeDemo
 %
 
 % History:
-% 16-Sep-2013   jsl  Written.
-% 30-Sep-2015    mk  Pimped with VR HMD support.
+% 16-Sep-2013   jsl Written.
+% 30-Sep-2015   mk  Pimped with VR HMD support.
+% 01-Jun-2017   mk  Pimped VR HMD support a bit more - Performance optimization.
 
 if IsARM
     % Does not work on OpenGL-ES due to unsupported OpenGL display lists:
@@ -60,7 +61,7 @@ backgroundColor = GrayIndex(screenid);
 
 % Open a double-buffered full-screen window:
 PsychImaging('PrepareConfiguration');
-hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse', 0);
+hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse DebugDisplay', 0);
 [win , winRect] = PsychImaging('OpenWindow', screenid, backgroundColor);
 
 DrawFormattedText(win, 'Hang on, I am working on my first supershape :)', 'center', 'center');
@@ -89,8 +90,7 @@ glLoadIdentity;
 if ~isempty(hmd)
     % Use VR HMD for 3D stereoscopic display:
     % Retrieve and set camera projection matrix for optimal rendering on the HMD:
-    projMatrix = PsychVRHMD('GetStaticRenderParameters', hmd);
-    glLoadMatrixd(projMatrix);
+    [projMatrix{1}, projMatrix{2}] = PsychVRHMD('GetStaticRenderParameters', hmd);
 
     % Enable stereo rendering:
     stereoscopic = 1;
@@ -172,6 +172,8 @@ supershape(super_vertices);
 glEndList;
 
 Screen('EndOpenGL', win);
+overlaytex = updateTextOverlay(win, a,b,m,n1,n2,n3);
+showhelp = 1;
 abort = 0;
 
 % Camera position when using head tracking + HMD:
@@ -190,55 +192,60 @@ while ~abort
 
         % HMD in use?
         if ~isempty(hmd)
+            % Use per-eye projection matrices:
+            glMatrixMode(GL.PROJECTION);
+            glLoadMatrixd(projMatrix{view + 1});
+
             % Use per-eye modelView matrices, driven by head tracking:
             modelView = state.modelView{view + 1};
+            glMatrixMode(GL.MODELVIEW);
             glLoadMatrixd(modelView);
         end
 
         [pressed, ~, keyCode] = KbCheck;
-        
+
         if pressed
-            
+
             if length(find(keyCode)) == 1
-                
+
                 switch find(keyCode)
-                    
+
                     case {KbName('LeftArrow')}
                         glRotatef(-5,0.0,1.0,0.0);
-                        
+
                     case {KbName('RightArrow')}
                         glRotatef(5,0.0,1.0,0.0);
-                        
+
                     case {KbName('UpArrow')}
                         glRotatef(-5,1.0,0.0,0.0);
-                        
+
                     case {KbName('DownArrow')}
                         glRotatef(5,1.0,0.0,0.0);
-                        
-                    case {KbName('m'),KbName('a'),KbName('b'),KbName('j'),KbName('k'),KbName('l')}                    
+
+                    case {KbName('m'),KbName('a'),KbName('b'),KbName('j'),KbName('k'),KbName('l')}
                         % Finish OpenGL rendering into PTB window and check for OpenGL errors.
                         Screen('EndOpenGL', win);
-                        
+
                         if find(keyCode) == KbName('m')
                             m = GetEchoNumber(win, 'Please input a new number for parameter m followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
                         end
-                        
+
                         if find(keyCode) == KbName('a')
                             a = GetEchoNumber(win, 'Please input a new number for parameter a followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
                         end
-                        
+
                         if find(keyCode) == KbName('b')
                             b = GetEchoNumber(win, 'Please input a new number for parameter b followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
                         end
-                        
+
                         if find(keyCode) == KbName('j')
                             n1 = GetEchoNumber(win, 'Please input a new number for parameter n1 followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
                         end
-                        
+
                         if find(keyCode) == KbName('k')
                             n2 = GetEchoNumber(win, 'Please input a new number for parameter n2 followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
                         end
-                        
+
                         if find(keyCode) == KbName('l')
                             n3 = GetEchoNumber(win, 'Please input a new number for parameter n3 followed by enter', 0.05*winRect(3),0.05*winRect(4), [], backgroundColor);
                         end
@@ -246,7 +253,9 @@ while ~abort
                         Screen('Flip', win);
                         DrawFormattedText(win, 'Hang on, I am thinking hard about your numbers...', 'center', 'center');
                         Screen('Flip', win);
-                        
+
+                        overlaytex = updateTextOverlay(overlaytex, a,b,m,n1,n2,n3);
+
                         % Switch to OpenGL rendering again for drawing of next frame:
                         Screen('BeginOpenGL', win);
 
@@ -257,29 +266,31 @@ while ~abort
                         glNewList(super_list, GL.COMPILE);
                         supershape(super_vertices);
                         glEndList;
-                   
+
                     case {KbName('ESCAPE')}
                         abort = 1;
+
+                    case {KbName('space')}
+                        KbReleaseWait;
+                        showhelp = ~showhelp;
                 end
             end
         end
-        
+
         % Clear framebuffer and redraw supershape:
         glClear;
         glCallList(super_list);
-        
+
         % Finish OpenGL rendering into PTB window and check for OpenGL errors.
         Screen('EndOpenGL', win);
-        
-        text1 = 'SuperShape with parameters a, b, m, j (aka n1), k (aka n2) and l (aka n3).';
-        text2 = ['Current values: m = ' num2str(m) ', a = ' num2str(a) ', b = ' num2str(b) ', j = ' num2str(n1) ', k = ' num2str(n2) ', l = ' num2str(n3)];
-        text3 = 'To change a parameter press the corresponding key. To rotate the object use the arrows. To quit the program press escape';
-        DrawFormattedText(win, text1, 0.05*winRect(3), 0.8*winRect(4));
-        DrawFormattedText(win, text2, 0.05*winRect(3), 0.83*winRect(4));
-        DrawFormattedText(win, text3, 0.05*winRect(3), 0.88*winRect(4));
+
         Screen('FrameRect', win, 0.5, [0 0 5 5]);
     end
-    
+
+    if showhelp
+        Screen('DrawTexture', win, overlaytex, [], []);
+    end
+
     % Show rendered image at next vertical retrace:
     Screen('Flip', win);
 end
@@ -290,6 +301,7 @@ glDeleteLists(super_list,1);
 Screen('EndOpenGL', win);
 
 % Close onscreen window and release all other ressources:
+Screen('Close', overlaytex);
 sca;
 
 % Enable character output to Matlab:
@@ -298,32 +310,50 @@ ListenChar(0);
 % Well done!
 return
 
+function overlaytex = updateTextOverlay(overlaytex, a,b,m,n1,n2,n3)
+    if Screen('WindowKind', overlaytex) == -1
+        Screen('FillRect', overlaytex, 0.5);
+    else
+        winRect = Screen('Rect', overlaytex);
+        overlaytex = Screen('OpenOffscreenWindow', overlaytex, 0.5, [0, 0, RectWidth(winRect), 0.2 * RectHeight(winRect)]);
+    end
+
+    text1 = 'SuperShape with parameters a, b, m, j (aka n1), k (aka n2) and l (aka n3).';
+    text2 = ['Current values: m = ' num2str(m) ', a = ' num2str(a) ', b = ' num2str(b) ', j = ' num2str(n1) ', k = ' num2str(n2) ', l = ' num2str(n3)];
+    text3 = 'To change a parameter press the corresponding key.\nTo rotate the object use the arrows.\nTo quit the program press escape';
+    text4 = 'To toggle help press space';
+    fulltext = [text1 '\n' text2 '\n' text3 '\n' text4];
+    DrawFormattedText(overlaytex, fulltext, 'center', 'center', 0, 80)
+    %DrawFormattedText(overlaytex, text1, 0.05*winRect(3), 0.03*winRect(4));
+    %DrawFormattedText(overlaytex, text2, 0.05*winRect(3), 0.06*winRect(4));
+    %DrawFormattedText(overlaytex, text3, 0.05*winRect(3), 0.10*winRect(4));
+return
 
 %% this function creates quad_strips with the given input vertices
 function supershape(vertices)
 global GL
 
 for row_ind = 1:size(vertices(:,:,1),1)-1
-    
+
     % Begin drawing of a new quad strip:
     glBegin(GL.QUAD_STRIP);
-    
+
     for column_ind = 1:size(vertices(:,:,1),2)
-        
+
         for k = 1:-1:0
-            
+
             aux_var = row_ind + k;
-            
+
             x = vertices(aux_var,column_ind,1);
             y = vertices(aux_var,column_ind,2);
             z = vertices(aux_var,column_ind,3);
-            
+
             norm_vector = calculateNormVec(vertices, aux_var, column_ind);
             glNormal3f(norm_vector(1),norm_vector(2),norm_vector(3));
             glVertex3f(x,y,z)
         end
     end
-    
+
     glEnd;
 end
 
@@ -331,13 +361,13 @@ return
 
 
 %% this function creates the vertices of a 3D supershape using the formula
-% found by Gielis (A generic geometric transformation that unifies 
+% found by Gielis (A generic geometric transformation that unifies
 % a wide range of natural and abstract shapes. American Journal of
 % Botany 90(3):333�338, 2003). See also http://en.wikipedia.org/wiki/Superformula
 
-% "The parameter m relates to the number of symmetries of a shape, 
-% parameter n1 determines flatness and sharpness of corners and convexity 
-% of sides. Both parameters n2 and n3 denote whether the shape is inscribed 
+% "The parameter m relates to the number of symmetries of a shape,
+% parameter n1 determines flatness and sharpness of corners and convexity
+% of sides. Both parameters n2 and n3 denote whether the shape is inscribed
 % or circumscribed in the unit circle." (from
 % http://know-center.tugraz.at/download_extern/papers/ISGI_SuperShapes_Lex_Kienreich.pdf)
 function [super_vertices] = superformula(a,b,m,n1,n2,n3)
@@ -352,17 +382,17 @@ z = zeros(length(theta),length(phi));
 super_vertices = zeros(length(theta),length(phi),3);
 
 for theta_ind = 1:length(theta)
-    
+
     for phi_ind = 1:length(phi)
-        
+
         r_theta = (abs(1/a*cos(theta(theta_ind)* m/4)).^n2  +  abs(1/b*sin(theta(theta_ind)*m/4)).^n3)^(1/n1);
         r_phi = (abs(1/a*cos(phi(phi_ind)* m/4)).^n2  +  abs(1/b*sin(phi(phi_ind)*m/4)).^n3)^(1/n1);
-        
+
         x(theta_ind,phi_ind) = r_theta*cos(theta(theta_ind))*r_phi*cos(phi(phi_ind));
         y(theta_ind,phi_ind) = r_theta*sin(theta(theta_ind))*r_phi*cos(phi(phi_ind));
         z(theta_ind,phi_ind) = r_phi*sin(phi(phi_ind));
     end;
-    
+
 end
 
 super_vertices(:,:,1) = x./max(max(abs(x)));
@@ -372,13 +402,13 @@ super_vertices(:,:,3) = z./max(max(abs(z)));
 return
 
 
-%% this function creates the normal vector at a given vertex. 
+%% this function creates the normal vector at a given vertex.
 function [norm_vector] = calculateNormVec(vertices, row_ind, column_ind)
 
 size_aux = vertices(:,:,1);
 
 if column_ind == 1
-    
+
     % if column_ind equals one, this mean phi equals -pi/2 and hence, that we
     % are at the buttom point of the supershape, which is oriented along the
     % z-axis. Hence the normal vector at any of the vertices with column = 1
@@ -386,33 +416,33 @@ if column_ind == 1
     norm_vector = [0 0 -1];
 
 elseif column_ind == size(size_aux,2)
-    
-    % if column_ind equals size(size_aux,2), this mean phi equals pi/2 and 
-    % hence, that we are at the upper point of the supershape, which is 
-    % oriented along the z-axis. Hence the normal vector at any of the  
-    % vertices with column = size(size_aux,2) equals [0 0 1];    
+
+    % if column_ind equals size(size_aux,2), this mean phi equals pi/2 and
+    % hence, that we are at the upper point of the supershape, which is
+    % oriented along the z-axis. Hence the normal vector at any of the
+    % vertices with column = size(size_aux,2) equals [0 0 1];
     norm_vector = [0 0 1];
 
 elseif row_ind == 1 || row_ind == size(size_aux,1)
-    
+
     % in these cases we are at the edge where the supershape closes
     % (basically theta equals 0 and 2*pi. To calculate the normal at these
     % the same as below is done, only that one has to consider values at
     % the end/beginning of the rows instead.
     row_aux = 1;
-    
+
     norm_vector1 = cross(vertices(row_aux+1,column_ind,:)-vertices(row_aux,column_ind,:),vertices(row_aux,column_ind+1,:)-vertices(row_aux,column_ind,:));
     norm_vector1_aux = [norm_vector1(1,1,1) norm_vector1(1,1,2) norm_vector1(1,1,3)]./norm([norm_vector1(1,1,1) norm_vector1(1,1,2) norm_vector1(1,1,3)]);
-    
+
     norm_vector2 = cross(vertices(row_aux,column_ind+1,:)-vertices(row_aux,column_ind,:),vertices(end-1,column_ind,:)-vertices(row_aux,column_ind,:));
     norm_vector2_aux = [norm_vector2(1,1,1) norm_vector2(1,1,2) norm_vector2(1,1,3)]./norm([norm_vector2(1,1,1) norm_vector2(1,1,2) norm_vector2(1,1,3)]);
-    
+
     norm_vector3 = cross(vertices(end-1,column_ind,:)-vertices(row_aux,column_ind,:),vertices(row_aux,column_ind-1,:)-vertices(row_aux,column_ind,:));
     norm_vector3_aux = [norm_vector3(1,1,1) norm_vector3(1,1,2) norm_vector3(1,1,3)]./norm([norm_vector3(1,1,1) norm_vector3(1,1,2) norm_vector3(1,1,3)]);
-    
+
     norm_vector4 = cross(vertices(row_aux,column_ind-1,:)-vertices(row_aux,column_ind,:),vertices(row_aux+1,column_ind,:)-vertices(row_aux,column_ind,:));
     norm_vector4_aux = [norm_vector4(1,1,1) norm_vector4(1,1,2) norm_vector4(1,1,3)]./norm([norm_vector4(1,1,1) norm_vector4(1,1,2) norm_vector4(1,1,3)]);
-    
+
     norm_vector = sum([norm_vector1_aux; norm_vector2_aux; norm_vector3_aux; norm_vector4_aux]);
 
 else
@@ -421,18 +451,18 @@ else
     % give the normal at the vertex
     norm_vector1 = cross(vertices(row_ind+1,column_ind,:)-vertices(row_ind,column_ind,:),vertices(row_ind,column_ind+1,:)-vertices(row_ind,column_ind,:));
     norm_vector1_aux = [norm_vector1(1,1,1) norm_vector1(1,1,2) norm_vector1(1,1,3)]./norm([norm_vector1(1,1,1) norm_vector1(1,1,2) norm_vector1(1,1,3)]);
-    
+
     norm_vector2 = cross(vertices(row_ind,column_ind+1,:)-vertices(row_ind,column_ind,:),vertices(row_ind-1,column_ind,:)-vertices(row_ind,column_ind,:));
     norm_vector2_aux = [norm_vector2(1,1,1) norm_vector2(1,1,2) norm_vector2(1,1,3)]./norm([norm_vector2(1,1,1) norm_vector2(1,1,2) norm_vector2(1,1,3)]);
-    
+
     norm_vector3 = cross(vertices(row_ind-1,column_ind,:)-vertices(row_ind,column_ind,:),vertices(row_ind,column_ind-1,:)-vertices(row_ind,column_ind,:));
     norm_vector3_aux = [norm_vector3(1,1,1) norm_vector3(1,1,2) norm_vector3(1,1,3)]./norm([norm_vector3(1,1,1) norm_vector3(1,1,2) norm_vector3(1,1,3)]);
-    
+
     norm_vector4 = cross(vertices(row_ind,column_ind-1,:)-vertices(row_ind,column_ind,:),vertices(row_ind+1,column_ind,:)-vertices(row_ind,column_ind,:));
     norm_vector4_aux = [norm_vector4(1,1,1) norm_vector4(1,1,2) norm_vector4(1,1,3)]./norm([norm_vector4(1,1,1) norm_vector4(1,1,2) norm_vector4(1,1,3)]);
-    
+
     norm_vector = sum([norm_vector1_aux; norm_vector2_aux; norm_vector3_aux; norm_vector4_aux]);
-    
+
 end
 
 return

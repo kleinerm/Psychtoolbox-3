@@ -7048,14 +7048,6 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         windowRecord->gfxcaps |= kPsychGfxCapSmoothPrimitives;
     }
 
-    if (vc4) {
-        // The Gallium VC4 driver as of beginning 2016 doesn't support control flow in shaders yet, ie. no if/else/while/for.
-        // Therefore our shader based point smooth implementation can't work. Instead of failing totally, we pretend the hw
-        // can do point smooth so our workaround can be skipped and the user gets to see at least something:
-        if (verbose) printf("Raspberry Pi Gallium VC4 workaround: Pretending hardware supports native OpenGL primitive smoothing (points, lines).\n");
-        windowRecord->gfxcaps |= kPsychGfxCapSmoothPrimitives;
-    }
-
     // Allow usercode to override our pessimistic view of vertex color precision:
     if (PsychPrefStateGet_ConserveVRAM() & kPsychAssumeGfxCapVCGood) {
         if (verbose) printf("Assuming hardware can process vertex colors at full 32bpc float precision, as requested by usercode via ConserveVRAMSetting kPsychAssumeGfxCapVCGood.\n");
