@@ -538,7 +538,7 @@ function myCorrectionMatrix = getColorCALIICorrectionMatrix(portHandle)
             % character. 13 represents a carriage return and should be included
             % at the end of every command to indicate when a command is
             % finished.
-            IOPort('Write', portHandle, uint8(['r0' num2str(j) 13]));
+            IOPort('Write', portHandle, uint8(['r0' num2str(j) char(13)]));
 
             % This command returns a blank character at the start of each line
             % by default that can confuse efforts to read the values. Therefore
