@@ -1395,7 +1395,7 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
     return(mode);
 }
 
-const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm_width, unsigned long *mm_height)
+const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm_width, unsigned long *mm_height, unsigned long *rrOutputPrimary)
 {
     static char outputName[100];
     int o;
@@ -1408,6 +1408,7 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm
         sprintf(outputName, "Unknown");
         if (mm_width) *mm_width = 0;
         if (mm_height) *mm_height = 0;
+        if (rrOutputPrimary) *rrOutputPrimary = 0;
         return(&outputName[0]);
     }
 
@@ -1431,6 +1432,7 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm
     // And width / height in mm:
     if (mm_width) *mm_width = output_info->mm_width;
     if (mm_height) *mm_height = output_info->mm_height;
+    if (rrOutputPrimary) *rrOutputPrimary = (unsigned long) res->outputs[o];
 
     XRRFreeOutputInfo(output_info);
 
