@@ -23,6 +23,9 @@ function XOrgConfCreator
 % 04-Nov-2015  mk  Written.
 % 25-Apr-2016  mk  Add support for selection of modesetting ddx on XOrg 1.18+
 % 28-Aug-2016  mk  Add basic hybrid graphics setup support.
+% 09-Jun-2017  mk  Add 30 bpp framebuffer support and 16 bpc framebuffer support
+%                  on AMD Sea Islands gpus, to simplify setup of high color bit
+%                  depth framebuffers.
 
 clc;
 
@@ -256,6 +259,7 @@ try
     dri3 = 'd';
     modesetting = 'd';
     depth30bpp = 'd';
+    atinotiling = 'd';
   else
     % Ask questions for setup of advanced options:
     modesetting = 'd';
@@ -360,8 +364,28 @@ try
       dri3 = 'd';
     end
 
-    % Does the driver + gpu combo support 30 bpp, 10 bpc framebuffers natively?
-    if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro')
+    % AMD "Sea Islands" gpu with DCE-8 display engine, running under classic ati-ddx?
+    if strcmp(xdriver, 'ati') && (winfo.GPUMinorType >= 80 && winfo.GPUMinorType < 100)
+      % Up to 12 bpc in theory, if we encode into a 16 bpc framebuffer, using our PTB
+      % special framebuffer encoding hack, which needs a linear, non-tiled framebuffer.
+      % Ask if user wants to trade performance for increased color precision:
+      fprintf('\n\nDo you want to allow use of an up to 12 bpc precision per color channel framebuffer?\n');
+      fprintf('This only works on Sea Islands AMD gpus like yours, and only with some displays and video\n');
+      fprintf('outputs. It also causes substantial reduction in graphics performance, and only works with\n');
+      fprintf('some desktop GUI environments, e.g., GNOME-3. This function is highly experimental and may\n');
+      fprintf('not work at all on your setup, so use a photometer to verify actual precision carefully!\n');
+      fprintf('Answer no here if a 10 bpc / 30 bpp framebuffer is sufficient for your needs.\n');
+      atinotiling = '';
+      while isempty(atinotiling) || ~ismember(atinotiling, ['y', 'n', 'd'])
+        atinotiling = input('Use a slower linear framebuffer to allow for up to 12 bpc color depth [y for yes, n for no, d for don''t care]? ', 's');
+      end
+    else
+      atinotiling = 'd';
+    end
+
+    % Does the driver + gpu combo support 30 bpp, 10 bpc framebuffers natively, and user has not chosen 12 bpc mode yet?
+    if (atinotiling ~= 'y') && ...
+       (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro'))
       fprintf('\n\nDo you want to setup a 30 bpp framebuffer for 10 bpc precision per color channel?\n');
       if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
         fprintf('This will need the very latest drivers, so a very recent (or even future?) late 2017, or even 2018 Linux distribution.\n');
@@ -384,6 +408,7 @@ try
     else
       depth30bpp = 'd';
     end
+
     % End of advanced configuration.
   end
 catch
@@ -423,7 +448,7 @@ end
 
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
-   ismember(depth30bpp, ['d', 'n'])
+   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n'])
 
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default. There isn't any need or purpose for
@@ -476,10 +501,15 @@ if noautoaddgpu > 0
 end
 
 if multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
-   ismember(depth30bpp, ['d', 'n'])
+   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n'])
   % Done writing the file:
   fclose(fid);
 else
+  % Requesting no tiling from the ati-ddx is the same as applying primehacks:
+  if atinotiling == 'y'
+    primehacks = 1;
+  end
+
   % Multi X-Screen setup requested? Then we need the full show:
   if multixscreen > 0
     % General server layout: Which X-Screens to use, their relative
@@ -625,7 +655,7 @@ function WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, primeha
     % working and clean upstream.
     fprintf(fid, '  Option      "ColorTiling"   "off"\n');
     fprintf(fid, '  Option      "ColorTiling2D" "off"\n');
-    fprintf('Enabling special dirty hacks for hybrid graphics Enduro support on legacy AMD+AMD laptops.\n');
+    fprintf('Enabling special dirty hacks for hybrid graphics Enduro support on legacy AMD+AMD laptops, or for 12 bpc framebuffers.\n');
   end
 
   if ~isempty(screenNumber)
