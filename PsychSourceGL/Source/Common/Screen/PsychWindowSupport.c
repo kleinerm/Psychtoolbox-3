@@ -6618,6 +6618,10 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         static Atom nvidiaprimesync;
         CGDirectDisplayID dpy;
         int screen;
+        RROutput output = (RROutput) 0;
+
+        // Get XID / RROutput id of primary output for this screen:
+        PsychOSGetOutputProps(windowRecord->screenNumber, 0, NULL, NULL, (unsigned long *) &output);
 
         // Map screenNumber to dpy, screen, rootwindow and RandR output:
         PsychGetCGDisplayIDFromScreenNumber(&dpy, windowRecord->screenNumber);
@@ -6636,7 +6640,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                 unsigned char *prop;
                 Atom actual_type;
                 int actual_format;
-                RROutput output = resources->outputs[0];
+                // Get Prime sync property for primary output:
                 if ((XRRGetOutputProperty(dpy, output, nvidiaprimesync, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) && (prop != NULL)) {
                     char prime_sync_on = *((char *) prop);
                     XFree(prop);

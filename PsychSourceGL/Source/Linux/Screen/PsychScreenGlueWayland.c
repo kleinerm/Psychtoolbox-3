@@ -1370,7 +1370,7 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
     return(&rrmode);
 }
 
-const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm_width, unsigned long *mm_height)
+const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm_width, unsigned long *mm_height, unsigned long *rrOutputPrimary)
 {
     static char outputName[100];
     struct output_info* output;
@@ -1386,6 +1386,7 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm
     // And width / height in mm:
     if (mm_width) *mm_width = (unsigned long) output->geometry.physical_width;
     if (mm_height) *mm_height = (unsigned long) output->geometry.physical_height;
+    if (rrOutputPrimary) *rrOutputPrimary = 0;
 
     // Return output name:
     return(&outputName[0]);
