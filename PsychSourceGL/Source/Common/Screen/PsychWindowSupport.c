@@ -6618,6 +6618,10 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         static Atom nvidiaprimesync;
         CGDirectDisplayID dpy;
         int screen;
+        RROutput output = (RROutput) 0;
+
+        // Get XID / RROutput id of primary output for this screen:
+        PsychOSGetOutputProps(windowRecord->screenNumber, 0, NULL, NULL, (unsigned long *) &output);
 
         // Map screenNumber to dpy, screen, rootwindow and RandR output:
         PsychGetCGDisplayIDFromScreenNumber(&dpy, windowRecord->screenNumber);
@@ -6636,7 +6640,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                 unsigned char *prop;
                 Atom actual_type;
                 int actual_format;
-                RROutput output = resources->outputs[0];
+                // Get Prime sync property for primary output:
                 if ((XRRGetOutputProperty(dpy, output, nvidiaprimesync, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) && (prop != NULL)) {
                     char prime_sync_on = *((char *) prop);
                     XFree(prop);
@@ -7045,14 +7049,6 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     if ((PSYCH_SYSTEM != PSYCH_LINUX) || nvidia ||
         (strstr((char*) glGetString(GL_VENDOR), "ATI") && strstr((char*) glGetString(GL_VERSION), "Compatibility Profile") && !strncmp((char*) glGetString(GL_VERSION), "4.", 2))) {
         if (verbose) printf("Assuming hardware supports native OpenGL primitive smoothing (points, lines).\n");
-        windowRecord->gfxcaps |= kPsychGfxCapSmoothPrimitives;
-    }
-
-    if (vc4) {
-        // The Gallium VC4 driver as of beginning 2016 doesn't support control flow in shaders yet, ie. no if/else/while/for.
-        // Therefore our shader based point smooth implementation can't work. Instead of failing totally, we pretend the hw
-        // can do point smooth so our workaround can be skipped and the user gets to see at least something:
-        if (verbose) printf("Raspberry Pi Gallium VC4 workaround: Pretending hardware supports native OpenGL primitive smoothing (points, lines).\n");
         windowRecord->gfxcaps |= kPsychGfxCapSmoothPrimitives;
     }
 

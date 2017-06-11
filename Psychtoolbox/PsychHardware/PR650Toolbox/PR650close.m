@@ -5,16 +5,9 @@ function PR650close
 % serial global.
 %
 
-global g_serialPort g_useIOPort;
+global g_serialPort;
 
-if g_useIOPort
-	if ~isempty(g_serialPort)
-		IOPort('Close', g_serialPort);
-		g_serialPort = [];
-	end
-else
-	if ~isempty(g_serialPort)
-		SerialComm('close', g_serialPort);
-		g_serialPort = [];
-	end
+if ~isempty(g_serialPort)
+  IOPort('Close', g_serialPort);
+  g_serialPort = [];
 end

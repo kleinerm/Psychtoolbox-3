@@ -47,13 +47,8 @@ ATTR{manufacturer}=="VPixx", MODE="0666"
 
 # Set latency timer of FTDI serial-over-usb chips to 1 msec, as this is used by
 # our PsychRTBox.m driver and similar drivers for low-latency data reception over
-# FTDI USB serial ports. We have this here just as a backup. The IOPort driver itself
-# will set the latency_timer to 1 msecs if 'ReceiveLatency' is set to a value <= 0.001
-# seconds. Yet another way to do it is to use the user-callable shell command:
-# "setserial /dev/ttyUSB0 low_latency"
-# On current Linux kernels, this isn't strictly needed, because the ftdi_sio
-# kernel driver inits low-latency mode on its devices by default since kernel 2.6.31
-# from June 2009:
+# Yet another way to do it would be to use the user-callable shell command:
+# "setserial /dev/ttyUSB0 low_latency" iff seterial is setuid root, or called with sudo.
 ACTION=="add", SUBSYSTEM=="usb-serial", DRIVER=="ftdi_sio", ATTR{latency_timer}="1"
 
 # Enable non-root access of libusb to the USB-HID DAQ devices supported by the DAQ toolbox:

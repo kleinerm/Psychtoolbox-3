@@ -2064,7 +2064,9 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("\nPTB-WARNING: Flip for window %i didn't use pageflipping for flip. Visual presentation timing and timestamps are likely unreliable!\n", windowRecord->windowIndex);
                 printf("PTB-WARNING: Something is misconfigured on your system, otherwise pageflipping would have been used by the graphics driver for reliable timing.\n");
-                printf("PTB-WARNING: Read the Linux specific section of 'help SyncTrouble' for some common causes and fixes for this problem.\n");
+                printf("PTB-WARNING: However, if you see this message only sporadically, this might be caused by onscreen popup messages a la \"You have new mail!\" or\n");
+                printf("PTB-WARNING: \"New updates are ready to install\" etc., so that would be a benign, although annoying, cause.\n");
+                printf("PTB-WARNING: Read the Linux specific section of 'help SyncTrouble' for some other common causes and fixes for this problem.\n");
             }
         }
     }

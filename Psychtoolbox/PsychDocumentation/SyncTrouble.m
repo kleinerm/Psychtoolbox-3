@@ -386,11 +386,32 @@
 % easy way to set up such a configuration is to use the XOrgConfCreator
 % script, followed by use of the XOrgConfSelector script.
 %
+% One source of spurious warnings about "page flipping" not being used, can
+% be if your desktop GUI displays some onscreen notification messages, e.g.,
+% little popup boxes with messages like "You have new mail!", "New software
+% updates available", "Meeting reminder at XXX clock", "Network connection lost",
+% ... etc. Obviously if this happens during an experiment session, it will cause
+% the stimulation onscreen window to be be partially occluded for some time
+% by the popup, and that would temporarily impair stimulation timing and print
+% one such warning messsage for each Screen('Flip'). Try to disable the notification
+% or the source of the notification popup during experiment sessions to avoid this.
+%
+% Another cause for spurious warnings like these, usually at the startup/beginning
+% of your experiment session is low system memory. This prevents the graphics drivers
+% from using the optimized page-flipping mode which is needed for precise timing,
+% but requires more memory. The system will try to free up memory and then switch
+% to page-flipping, so the warnings go eventually away after a couple of seconds of
+% runtime. An indicator that this happened is if the problem goes away on successive
+% runs of your experiment, and/or after you've closed unneeded applications, so enough
+% free memory is available from the start of your script. This type of low RAM problem
+% is especially likely on machines with not much RAM and Intel integrated graphics chips,
+% as those depend on enough free system RAM.
+%
 % 2. A major source of timing trouble can be 3D desktop compositors. Either
 % use a user interface that doesn't employ a desktop compositor, e.g., the
-% GNOME-2 classic 2D desktop, LXDE or XFCE desktop, or configure your
-% desktop compositor of choice to "unredirect_fullscreen_windows", which
-% will disable the compositor for Psychtoolbox fullscreen windows.
+% GNOME-2 classic 2D desktop, LXDE or XFCE desktop at default settings, or
+% configure your desktop compositor of choice to "unredirect_fullscreen_windows",
+% which will disable the compositor for Psychtoolbox fullscreen windows.
 %
 % How to configure your desktop compositor to do this? On modern Linux
 % distributions, usually no manual steps are required for typical use:
@@ -422,7 +443,8 @@
 %   Do this on (K)Ubuntu 14.04 LTS: Open "KDE System Settings" -> "Desktop Effects" ->
 %   "Advanced" Tab -> "Suspend desktop effects for fullscreen windows"
 %   -> Check the checkbox -> "Apply" -> Done.
-%   On (K)Ubuntu 16.04.0 LTS, the setting may be found under "System Settings"
+%
+%   On (K)Ubuntu 16.04 LTS, the setting may be found under "System Settings"
 %   -> "Monitors" -> "Compositor" instead.
 %
 %   If on KDE you still get warnings or errors by PTB related to display timing,
@@ -436,7 +458,7 @@
 %   still very nice looking and ergonomic but frees up additional
 %   resources for PTB's graphics and timing requirements. This measure may
 %   be especially effective or needed when using an Intel graphics card.
-%   On (K)Ubuntu 16.04.0 LTS, the setting may be found under "System Settings"
+%   On (K)Ubuntu 16.04 LTS, the setting may be found under "System Settings"
 %   -> "Monitors" -> "Compositor" instead.
 %
 %
@@ -459,8 +481,9 @@
 % irregularly timed flicker during PerceptualVBLSyncTest indicate that a
 % desktop compositor is in use. On Linux with the free and open-source
 % graphics drivers radeon, nouveau or intel, PTB will output warnings about
-% non-pageflipped flips in such a case. It will also output warnings if the
-% proprietary driver is recent enough to support detecting this.
+% non-pageflipped flips in such a case. It will also output similar warnings
+% about triple-buffering or one-buffering if the proprietary NVidia or AMD
+% driver is recent enough to support detecting this.
 %
 % 3. Another reason for timestamping problems can be the use of
 % triple-buffering.

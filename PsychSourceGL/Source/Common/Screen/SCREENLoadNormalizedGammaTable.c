@@ -228,6 +228,9 @@ PsychError SCREENLoadNormalizedGammaTable(void)
             outTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 2, 0)]=(double)outBlueTable[i];
         }
     }
+    else {
+        PsychAllocOutDoubleMatArg(1, FALSE, 0, 0, 0, &outTable);
+    }
 
     // Now set the new gamma table in case of an immediate load request:
     if (loadOnNextFlip == 0) {
