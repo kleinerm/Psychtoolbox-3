@@ -160,8 +160,8 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
 PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 {
     pRecDevice deviceRecord;
-    pRecElement	currentElement, lastElement = NULL;
-    int	debuglevel = 0;
+    pRecElement currentElement, lastElement = NULL;
+    int    debuglevel = 0;
     double *timeValueOutput, *isKeyDownOutput, *keyArrayOutput;
     double dummyKeyDown;
     double dummykeyArrayOutput[256];
@@ -293,7 +293,7 @@ enum
 {
     /*  Virtual key codes handled specially (from: Inside Macintosh: Text, Appendix C)
 
-    Function keys. These are handled by loading the releveant string IFF the
+    Function keys. These are handled by loading the relevant string IFF the
     character code 10 (kCC_FKey) is generated. This allows the function keys
     to be remapped.
 
@@ -325,7 +325,7 @@ enum
     kVKC_Esc      = 53,
     kVKC_Clear      = 71,
 
-    /*  The following are handled directy by recognising the virtual code. */
+    /*  The following are handled directly by recognising the virtual code. */
     kVKC_Space      = 49,
     kVKC_CapsLock    = 57,
     kVKC_Shift      = 56,
