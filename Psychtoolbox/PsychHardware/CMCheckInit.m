@@ -1,11 +1,11 @@
 function CMCheckInit(meterType, PortString)
 % CMCheckInit([meterType], [PortString])
 %
-% Initialize the color meter.  The routine calls the
+% Initialize the color meter. The routine calls the
 % lower level routines for given 'meterType'. If the low level routine
 % fails, this routine retries, then prompts the user to take appropriate
-% action.  If the low level routine succeeds, this
-% routine  is silent.
+% action. If the low level routine succeeds, this
+% routine is silent.
 %
 % The following colormeters are supported:
 %
@@ -35,16 +35,16 @@ function CMCheckInit(meterType, PortString)
 % methods and this routine just calls their setup code with default
 % settings.
 %
-% 9/15/93 dhb		Modified to use new CMInit properly.
-% 1/18/94 jms		Added gHardware switch
-% 1/24/94 dhb		Changed sign of gHardware switch.
-% 2/20/94 dhb		Call through CMETER rather than CM... routines.
+% 9/15/93 dhb       Modified to use new CMInit properly.
+% 1/18/94 jms       Added gHardware switch
+% 1/24/94 dhb       Changed sign of gHardware switch.
+% 2/20/94 dhb       Call through CMETER rather than CM... routines.
 % 4/4/00  dhb       Optional port name, only used on SERIAL version.
 % 9/11/00 dhb       Added meterType.
 % 1/4/02  dhb, ly   Try to get OS9 version to work with Megawolf board and SERIAL.
 % 1/10/02 dhb, ly   Change calling convention.  Remove passing of port, but read
 %                   port from a "calibration" file in PsychCalLocalData if it's there.
-% 4/13/02 dgp		Cosmetic.
+% 4/13/02 dgp       Cosmetic.
 % 2/26/03 dhb       Add CRS Colorimeter, change meter type of PR-650 to 1.
 % 10/05/06 dhb, cgb OSX version.
 % 11/27/07 mpr      replaced hard coded portNameIn with FindSerialPort for OS X, and
@@ -62,13 +62,8 @@ function CMCheckInit(meterType, PortString)
 % 4/10/13  dhb      More flexible behavior supported via PRXXXPorts calibration file.
 % 1/25/13  dhb, ms  More info printed on failure for PR-670 case.  Trying to track down intermittant
 %                   failures to initialize when routine is called multiple times in a long calibration loop.
-
-global g_serialPort g_useIOPort;
-
-% Default method of serial communication
-if isempty(g_useIOPort)
-    g_useIOPort = 1;
-end
+% 6/11/17  mk       Remove dead SerialComm() driver path.
+global g_serialPort;
 
 % Number of retries before giving up:
 DefaultNumberOfTries = 5;
@@ -117,13 +112,13 @@ switch meterType
         meterports = LoadCalFile('PR650Ports');
         if isempty(meterports)
             if IsWin || IsOSX || IsLinux
-                portNameIn = FindSerialPort(PortString, g_useIOPort);
+                portNameIn = FindSerialPort(PortString, 1);
             else
                 error(['Unsupported OS ' computer]);
             end
         else
             if (isfield(meterports,'PortString'))
-                portNameIn = FindSerialPort(meterports.PortString, g_useIOPort);
+                portNameIn = FindSerialPort(meterports.PortString, 1);
             else
                 portNameIn = meterports.in;
             end
@@ -143,14 +138,7 @@ switch meterType
                 status = sscanf(stat,'%f');
                 NumTries = NumTries+1;
                 if (isempty(status) || status == -1) && NumTries >= 3
-                    if IsOSX
-                        if ~g_useIOPort
-                            evalc(['SerialComm(''close'',' int2str(portNameIn) ');']);
-                            evalc('clear SerialComm');
-                        else
-                            IOPort('Close', g_serialPort);
-                        end
-                    end
+                    IOPort('Close', g_serialPort);
                     % Release global port handle:
                     clear global g_serialPort;
                     
@@ -186,13 +174,13 @@ switch meterType
         meterports = LoadCalFile('PR655Ports');
         if isempty(meterports)
             if IsWin || IsOSX || IsLinux
-                portNameIn = FindSerialPort(PortString, g_useIOPort);
+                portNameIn = FindSerialPort(PortString, 1);
             else
                 error(['Unsupported OS ' computer]);
             end
         else
             if (isfield(meterports,'PortString'))
-                portNameIn = FindSerialPort(meterports.PortString, g_useIOPort);
+                portNameIn = FindSerialPort(meterports.PortString, 1);
             else
                 portNameIn = meterports.in;
             end
@@ -219,10 +207,10 @@ switch meterType
             % no special information present, then use defaults.
             meterports = LoadCalFile('PR670Ports');
             if isempty(meterports)
-                portNameIn = FindSerialPort(PortString, g_useIOPort);
+                portNameIn = FindSerialPort(PortString, 1);
             else
                 if (isfield(meterports,'PortString'))
-                    portNameIn = FindSerialPort(meterports.PortString, g_useIOPort);
+                    portNameIn = FindSerialPort(meterports.PortString, 1);
                 else
                     portNameIn = meterports.in;
                 end
@@ -249,10 +237,10 @@ switch meterType
         if IsWin || IsOSX || IsLinux
             meterports = LoadCalFile('PR705Ports');
             if isempty(meterports)
-                portNameIn = FindSerialPort(PortString, g_useIOPort);
+                portNameIn = FindSerialPort(PortString, 1);
             else
                 if (isfield(meterports,'PortString'))
-                    portNameIn = FindSerialPort(meterports.PortString, g_useIOPort);
+                    portNameIn = FindSerialPort(meterports.PortString, 1);
                 else
                     portNameIn = meterports.in;
                 end
