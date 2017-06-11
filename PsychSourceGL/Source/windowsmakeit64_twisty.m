@@ -313,9 +313,10 @@ else
     delete('*.o');
 end
 
-catch %#ok<*CTCH>
+catch err
     % Empty. We just want to make sure the delete() call below is executed
     % in both success and failure case.
+    disp(err.message)
 end
 
 return;
