@@ -347,7 +347,7 @@ PsychError SCREENConfigureDisplay(void)
 
     // Query and return output name, and physical size of display in mm:
     unsigned long mm_width, mm_height;
-    PsychSetStructArrayStringElement("name", 0, (char*) PsychOSGetOutputProps(screenNumber, outputId, &mm_width, &mm_height), oldResStructArray);
+    PsychSetStructArrayStringElement("name", 0, (char*) PsychOSGetOutputProps(screenNumber, outputId, &mm_width, &mm_height, NULL), oldResStructArray);
     PsychSetStructArrayDoubleElement("displayWidthMM", 0, mm_width, oldResStructArray);
     PsychSetStructArrayDoubleElement("displayHeightMM", 0, mm_height, oldResStructArray);
 

@@ -8,7 +8,7 @@ function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain)
 % case in "Happy teapot land". Obviously, this demo will only work if you have
 % one of the supported HMDs connected to your machine.
 %
-% Usage: VRHMDDemo1([doSeparateEyeRender][, multiSample=0][, fountain=0]);
+% Usage: VRHMDDemo1([doSeparateEyeRender][, multiSample=1][, fountain=1]);
 %
 % Optional parameters:
 %
@@ -49,11 +49,11 @@ if nargin < 1 || isempty(doSeparateEyeRender)
 end
 
 if nargin < 2 || isempty(multiSample)
-  multiSample = 0;
+  multiSample = 8;
 end
 
 if nargin < 3 || isempty(fountain)
-  fountain = 0;
+  fountain = 1;
 end
 
 % Default setup:
@@ -69,7 +69,7 @@ try
 
   % Setup the HMD and open and setup the onscreen window for VR display:
   PsychImaging('PrepareConfiguration');
-  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse', 0);
+  hmd = PsychVRHMD('AutoSetupHMD', 'Tracked3DVR', 'LowPersistence TimeWarp FastResponse DebugDisplay', 0);
   if isempty(hmd)
     fprintf('No VR-HMD available, giving up!\n');
     return;
@@ -122,15 +122,8 @@ try
   glEnable(GL.BLEND);
   glBlendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
 
-  % Set projection matrix: This defines a perspective projection,
-  % corresponding to the model of a pin-hole camera - which is a good
-  % approximation of the human eye and of standard real world cameras --
-  % well, the best aproximation one can do with 3 lines of code ;-)
-  glMatrixMode(GL.PROJECTION);
-
   % Retrieve and set camera projection matrix for optimal rendering on the HMD:
-  projMatrix = PsychVRHMD('GetStaticRenderParameters', hmd);
-  glLoadMatrixd(projMatrix);
+  [projMatrix{1}, projMatrix{2}] = PsychVRHMD('GetStaticRenderParameters', hmd);
 
   % Setup modelview matrix: This defines the position, orientation and
   % looking direction of the virtual camera:
@@ -342,6 +335,13 @@ try
 
       % Manually reenable 3D mode in preparation of eye draw cycle:
       Screen('BeginOpenGL', win);
+
+      % Set per-eye projection matrix: This defines a perspective projection,
+      % corresponding to the model of a pin-hole camera - which is a good
+      % approximation of the human eye and of standard real world cameras --
+      % well, the best aproximation one can do with 2 lines of code ;-)
+      glMatrixMode(GL.PROJECTION);
+      glLoadMatrixd(projMatrix{renderPass+1});
 
       % Setup camera position and orientation for this eyes view:
       glMatrixMode(GL.MODELVIEW);

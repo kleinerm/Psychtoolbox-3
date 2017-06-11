@@ -646,7 +646,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   If such a combination of graphics card and display is present on your system
 %   on Linux or Microsoft Windows, then Psychtoolbox will request native support
 %   from the standard graphics drivers, ie., it won't need to use our own
-%   homegrown, experimental box of tricks to enable this.
+%   homegrown, experimental box of tricks to enable this. You do need to enable/
+%   unlock 10 bpc mode somewhere in the display driver settings though. On Linux you
+%   can do this for supported cards and drivers via XOrgConfCreator + XOrgConfSelector,
+%   on Windows the method is vendor specific.
 %
 %   Apple OSX, since version 10.11.2 "El Capitan", does support native 10 bpc video
 %   output on some small subset of Apple hardware, as of May 2017 these are the MacPro
@@ -793,7 +796,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % * 'EnableNative16BitFramebuffer'  Enable up to 16 bpc, 64 bpp framebuffer on some setups.
 %   This asks to enable a framebuffer with a color depth of up to 16 bpc for up to 65535 levels
 %   of intensity per red, green and blue channel or 48 bits = different 2^48 colors. Currently,
-%   as of May 2017, this mode of operation is only supported on Linux when using the open-source
+%   as of June 2017, this mode of operation is only supported on Linux when using the open-source
 %   FOSS radeon graphics drivers on modern AMD graphics cards, and only after some special config-
 %   uration of your X-Server and display setup has been performed by you. This is essentially a
 %   low-level hack that works under those specific conditions, but uses a relatively large amount
@@ -802,7 +805,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   and faster in operation. On suitable setups, this will establish a 16 bpc framebuffer which packs
 %   3 * 16 bpc = 48 bit color info into 64 bpp pixels and the gpu's display engine will scan out that
 %   framebuffer at 16 bpc. However, effective output precision is further limited to < 16 bpc by your
-%   display, video connection and specific model of graphics card. As of May 2017, the maximum effective
+%   display, video connection and specific model of graphics card. As of June 2017, the maximum effective
 %   output precision is limited to at most 12 bpc (4096 levels of red, green and blue) by the graphics
 %   card, and this precision may only be attainable on AMD graphics cards of the so called "Sea Islands"
 %   (cik) family when used with the radeon-kms display driver. Any older or more recent cards, e.g.,
@@ -823,12 +826,11 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   1. You must create a custom made xorg.conf file for your graphics card and X-Server to setup
 %      the display screen for use of a linear, non-tiled framebuffer at a color depth of 24 bit.
-%      If you only have a single AMD graphics card installed in your Linux machine, the most easy
-%      way to achieve this is to copy our simple template xorg.conf file into the config folder of
-%      your machine:
+%      Setup for this is easily achieved via XOrgConfCreator on supported gpu's and drivers:
 %
-%      a) Open a terminal window and use cp to copy our template to the /etc/X11 folder:
-%      cp /path/to/Psychtoolbox/PsychGLImageProcessing/xorg.conf_For_AMD16bpcFramebuffer /etc/X11/xorg.conf.d/xorg.conf
+%      a) Use XOrgConfCreator to create a custom xorg.conf file for this purpose. If it asks for
+%         "Special setup options" answer 'y'es. When it asks for use of a linear, non-tiled framebuffer,
+%         answer 'y'es. This will create a proper config file. Use XOrgConfSelector to select that file.
 %
 %      b) Logout and login again, so the display server picks up the changed configuration.
 %
@@ -1591,59 +1593,8 @@ if strcmpi(cmd, 'OpenWindow')
             error('PsychImaging(''OpenWindow''): Invalid HMD handle specified for UseVRHMD task. No such device opened.');
         end
 
-        % Old Oculus VR driver for v0.5 SDK/Runtime?
-        if 1 % || hmd.driver == @PsychOculusVR
-            % Yes. Trying to display on a screen with more than one video output?
-            if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
-                % Yes. Not good, as this will impair graphics performance and timing a lot.
-                % Warn about this, then try to at least position the onscreen window on the
-                % right output.
-                fprintf('PsychImaging-WARNING: You are requesting display to a VR HMD on a screen with multiple active video outputs.\n');
-                fprintf('PsychImaging-WARNING: This will impair visual stimulation timing and cause decreased VR performance!\n');
-                fprintf('PsychImaging-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
-                fprintf('PsychImaging-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
-
-
-                % Try to find the output with the Rift HMD:
-                for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
-                    scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
-                    if hmd.driver('IsHMDOutput', hmd, scanout)
-                        % This output i has proper resolution to be the HMD panel.
-                        % Position our onscreen window accordingly:
-                        winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
-                        fprintf('PsychImaging-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
-                                winRect(1), winRect(2), winRect(3), winRect(4), i);
-                    end
-                end
-            end
-        end
-
-        % New Oculus VR driver for v1.11 SDK/Runtime?
-        if  0 % && hmd.driver == @PsychOculusVR1
-            % Yes. The current design iteration requires the PTB parent onscreen window
-            % to have the same size (width x height) as the renderbuffer for one
-            % eye, so enforce that constraint.
-
-            % Get required output buffer size and therefore window framebuffer size:
-            clientRes = hmd.driver('GetClientRenderingParameters', hmd);
-
-            % Set as fbOverrideRect for window:
-            ovrfbOverrideRect = [0, 0, clientRes(1), clientRes(2)];
-
-            fprintf('PsychImaging-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with VR-HMD direct output mode.\n', ...
-                    clientRes(1), clientRes(2));
-
-            % As the onscreen window is not used for displaying on the HMD, but
-            % either not at all, or just for debug output, make it a regular GUI
-            % window, managed by the window manager, so user can easily get it out
-            % of the way:
-            ovrSpecialFlags = kPsychGUIWindow + kPsychGUIWindowWMPositioned;
-
-            % Skip all visual timing sync tests and calibrations, as display timing
-            % of the onscreen window doesn't matter, only the timing on the HMD direct
-            % output matters - and that can't be measured by our standard procedures:
-            Screen('Preference', 'SkipSyncTests', 2);
-        end
+        % Compute special OpenWindow overrides for winRect, framebuffer rect, and specialflags, as needed:
+        [winRect, ovrfbOverrideRect, ovrSpecialFlags] = hmd.driver('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
     end
 
     if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
@@ -2822,10 +2773,15 @@ if ~isempty(floc)
         error('UseVRHMD: Invalid HMD handle specified. No such device opened.');
     end
 
-    % Append our generated 'UsePanelFitter' task to setup the panelfitter for
-    % our needs at 'OpenWindow' time if panel fitting is needed:
+    % Get imagingMode flags and stereoMode to use for this HMD:
     [clientRes, imagingFlags, stereoMode] = hmd.driver('GetClientRenderingParameters', hmd);
-    if clientRes(1) ~= 0 && clientRes(2) ~= 0 %&& hmd.driver == @PsychOculusVR
+
+    % Add imaging mode flags requested by HMD driver:
+    imagingMode = mor(imagingMode, imagingFlags);
+
+    % Do we need the PanelFitter?
+    needPanelFitter = hmd.driver('GetPanelFitterParameters', hmd);
+    if needPanelFitter
         x{1} = 'General';
         x{2} = 'UsePanelFitter';
         x{3} = clientRes;
@@ -2841,9 +2797,6 @@ if ~isempty(floc)
         end
         reqs = [reqs ; x];
     end
-
-    % Add imaging mode flags requested by HMD driver:
-    imagingMode = mor(imagingMode, imagingFlags);
 end
 
 % Display replication needed?
@@ -3435,7 +3388,7 @@ if ~isempty(floc)
             glUniform1i(glGetUniformLocation(pgshader, 'CLUT'),  1);
 
             % Assign number of clut slots to use:
-            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), nClutSlots);
+            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), nClutSlots - 1);
             glUseProgram(0);
 
             % Use helper routine to build a proper RGBA lookup texture:
@@ -3449,13 +3402,7 @@ if ~isempty(floc)
             % processing chain, as this chain is almost always used anyway.
             % It needs to execute only once per flip, as it updates state
             % global to all views (in a stereo setup):
-
-            % We need this weird evalin('base', ...); wrapper so the
-            % function gets called from the base-workspace, where the
-            % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
-            % define it there reliably due to incompatibilities between
-            % Matlab and Octave in variable assignment inside Screen() :-(
-            rclutcmd = sprintf('evalin(''base'', ''PsychHelperCreateRemapCLUT(1, %i, IMAGINGPIPE_GAMMATABLE);'');', pglutid);
+            rclutcmd = sprintf('PsychHelperCreateRemapCLUT(1, %i, IMAGINGPIPE_GAMMATABLE);', pglutid);
             Screen('HookFunction', win, 'AppendMFunction', 'StereoLeftCompositingBlit', 'Upload new clut into shader callback', rclutcmd);
 
             % Enable left chain unconditionally, so the above clut setup
@@ -4673,7 +4620,7 @@ if ~isempty(floc)
         else
             % CLUT based mapping:
             glUniform1i(glGetUniformLocation(pgshader, 'CLUT'), 1);
-            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1024, enableNative11BpcRequested));
+            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1024, enableNative11BpcRequested) - 1);
         end
         glUseProgram(0);
 

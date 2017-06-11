@@ -34,13 +34,72 @@ function varargout = PsychVRHMD(cmd, varargin)
 %
 % 'basicRequirements' defines basic requirements for the task. Currently
 % defined are the following strings which can be combined into a single
-% 'basicRequirements' string: 'LowPersistence' = Try to keep exposure
-% time of visual images on the retina low if possible, ie., try to approximate
-% a pulse-type display instead of a hold-type display if possible.
+% 'basicRequirements' string:
+%
+% 'LowPersistence' = Try to keep exposure time of visual images on the retina
+% low if possible, ie., try to approximate a pulse-type display instead of a
+% hold-type display if possible. This has no effect on the Oculus Rift DK1.
+% On the Rift DK2 it will enable low persistence scanning of the OLED display
+% panel, to light up each pixel only a fraction of a video refresh cycle duration.
+% On the Rift CV1, low persistence is always active, so this setting is redundant.
+%
+% 'DebugDisplay' = Show the output which is displayed on the HMD inside the
+% Psychtoolbox onscreen window as well. This will have a negative impact on
+% performance, latency and timing of the HMD visual presentation, so should only
+% be used for debugging, as it may cause a seriously degraded VR experience.
+% By default, no such debug output is produced and the Psychtoolbox onscreen
+% window is not actually displayed on the desktop. This option is silently ignored
+% on the old classic Oculus driver at the moment.
+%
+% 'Float16Display' = Request rendering, compositing and display in 16 bpc float
+% format on some HMD's and drivers. This will ask Psychtoolbox to render and
+% post-process stimuli in 16 bpc linear floating point format, and allocate 16 bpc
+% half-float textures as final renderbuffers to be sent to the VR compositor.
+% If the VR compositor takes advantage of the high source image precision is at
+% the discretion of the compositor and HMD. By default, if this request is omitted,
+% processing and display in sRGB format is requested from Psychtoolbox and the compositor
+% on some drivers, e.g., for the Oculus 1.11+ runtime and Rift CV1, ie., a roughly
+% gamma 2.2 8 bpc format is used, which is optimized for the gamma response curve of
+% at least the Oculus Rift CV1 display. On other HMDs or drivers, this option may do
+% nothing and get silently ignored.
+%
+% 'PerEyeFOV' = Request use of per eye individual and asymmetric fields of view, even
+% when the 'basicTask' was selected to be 'Monoscopic' or 'Stereoscopic'. This allows
+% for wider field of view in these tasks, but requires the usercode to adapt to these
+% different and asymmetric fields of view for each eye, e.g., by selecting proper 3D
+% projection matrices for each eye. If a 'basicTask' of '3DVR' for non-tracked 3D, or
+% (the default) 'Tracked3DVR' for head tracking driven 3D is selected, then that implies
+% per-eye individual and asymmetric fields of view, iow. 'PerEyeFOV' is implied. For pure
+% 'basicTask' of 'Monoscopic' or 'Stereoscopic' for Screen() 2D drawing, the system uses
+% identical and symmetric fields of view for both eyes by default, so 'PerEyeFOV' would
+% be needed to override this choice. COMPATIBILITy NOTE: Psychtoolbox-3 releases before
+% June 2017 always used identical and symmetric fields of view for both eyes, which was
+% a bug. However the error made was very small, due to the imaging properties of the
+% Oculus Rift DK2, essentially imperceptible to the unknowing observer with the naked
+% eye. Releases starting June 2017 now use separate fields of view in 3D rendering
+% modes, and optionally for 2D mono/stereo modes with this 'PerEyeFOV' opt-in parameter,
+% so stimulus display may change slightly for the same HMD hardware and user-code,
+% compared to older Psychtoolbox-3 releases. This change was crucial to accomodate the
+% rather different imaging properties of the Oculus Rift CV1 and possible other future
+% HMD's.
+%
 % 'FastResponse' = Try to switch images with minimal delay and fast
-% pixel switching time, e.g., by use of panel overdrive processing.
+% pixel switching time. This will enable OLED panel overdrive processing
+% on the Oculus Rift DK1 and DK2. OLED panel overdrive processing is a
+% relatively expensive post processing step. On the Rift CV1, and generally
+% with the new Oculus v1.11+ runtime, this is always active, so 'FastResponse'
+% is redundant on such panels and drivers.
+%
 % 'TimingSupport' = Support some hardware specific means of timestamping
-% or latency measurements.
+% or latency measurements. On the Rift DK1 this does nothing. On the DK2
+% it enables dynamic prediction and timing measurements with the Rifts internal
+% latency tester. This does nothing anymore on Rift CV1.
+%
+% 'TimeWarp' = Enable per eye image 2D timewarping via prediction of eye
+% poses at scanout time. This mostly only makes sense for head-tracked 3D
+% rendering. Depending on 'basicQuality' a more cheap or more expensive
+% procedure is used. On the v1.11 Oculus runtime and Rift CV1, 'TimeWarp'
+% is always active, so this option is redundant.
 %
 % These basic requirements get translated into a device specific set of
 % settings. The settings can also be specific to the selected 'basicTask',
@@ -79,6 +138,13 @@ function varargout = PsychVRHMD(cmd, varargin)
 % all HMDs will be closed and the driver will be shutdown.
 %
 %
+% PsychVRHMD('Controllers', hmd);
+% - Return a bitmask of all connected controllers: Can be the bitand
+% of the OVR.ControllerType_XXX flags described in 'GetInputState'.
+% This does not detect if controllers are hot-plugged or unplugged after
+% the HMD was opened. Iow. only probed at 'Open'.
+%
+%
 % info = PsychVRHMD('GetInfo', hmd);
 % - Retrieve a struct 'info' with information about the HMD 'hmd'.
 % The returned info struct contains at least the following standardized
@@ -86,14 +152,123 @@ function varargout = PsychVRHMD(cmd, varargin)
 % handle = Driver internal handle for the specific HMD.
 % driver = Function handle to the actual driver for the HMD, e.g., @PsychOculusVR.
 % type   = Defines the type/vendor of the device, e.g., 'Oculus'.
+% subtype = Defines the type of driver more specific, e.g., 'Oculus-classic' or 'Oculus-1'.
 % modelName = Name string with the name of the model of the device, e.g., 'Rift DK2'.
+%
 % separateEyePosesSupported = 1 if use of PsychVRHMD('GetEyePose') will improve
 %                             the quality of the VR experience, 0 if no improvement
 %                             is to be expected, so 'GetEyePose' can be avoided
 %                             to save processing time without a loss of quality.
-% 
+%
+% VRControllersSupported = 1 if use of PsychVRHMD('GetInputState') will provide input
+%                            from actual dedicated VR controllers. Value is 0 if
+%                            controllers are only emulated to some limited degree,
+%                            e.g., by abusing a regular keyboard as a button controller,
+%                            ie. mapping keyboard keys to OVR.Button_XXX buttons.
+%
+% handTrackingSupported = 1 if PsychVRHMD('PrepareRender') with reqmask +2 will provide
+%                           valid hand tracking info, 0 if this is not supported and will
+%                           just report fake values. A driver may report 1 here but still
+%                           don't provide meaningful info at runtime, e.g., if required
+%                           tracking hardware is missing or gets disconnected. The flag
+%                           just aids extra performance optimizations in your code.
+%
+% hapticFeedbackSupported = 1 if basic haptic feedback is supported in principle on some controllers.
+%                             0 otherwise. A flag of zero means no haptic feedback support, but
+%                             a flag of 1 may still mean no actual feedback, e.g., if suitable
+%                             hardware is not configured and present. Flags higher than 1 can
+%                             signal presence of more advanced haptic feedback, so you should
+%                             test for a setting == 1 to know if PsychVRHMD('HapticPulse') works
+%                             in principle, which is considered basic feedback ability.
+%
 % The info struct may contain much more vendor specific information, but the above
 % set is supported across all devices.
+%
+%
+% [isVisible, playAreaBounds, OuterAreaBounds] = PsychVRHMD('VRAreaBoundary', hmd [, requestVisible]);
+% - Request visualization of the VR play area boundary for 'hmd' and returns its
+% current extents.
+%
+% 'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't
+% request showing the markers.
+% If the driver can control area boundary visibility is highly dependent on the VR
+% driver in use. This flag may get ignored. See driver specific help, e.g.,
+% "help PsychOculusVR1", for behaviour of a specific driver.
+%
+% Some drivers or hardware setups may not supports VR area boundaries at all, in
+% which case the function will return empty boundaries.
+%
+% Returns in 'isVisible' the current visibility status of the VR area boundaries.
+%
+% 'playAreaBounds' is a 3-by-n matrix defining the play area boundaries. Each
+% column represents the [x;y;z] coordinates of one 3D definition point. Connecting
+% successive points by line segments defines the boundary, as projected onto the
+% floor. Points are listed in clock-wise direction. An empty return argument means
+% that the play area is so far undefined.
+%
+% 'OuterAreaBounds' defines the outer area boundaries in the same way as
+% 'playAreaBounds'.
+%
+%
+% input = PsychVRHMD('GetInputState', hmd, controllerType);
+% - Get input state of controller 'controllerType' associated with HMD 'hmd'.
+%
+% Note that if the underlying driver does not support special VR controllers, ie.,
+% hmdinfo = PsychVRHMD('GetInfo') returns hmdinfo.VRControllersSupported == 0, then
+% only a minimally useful 'input' state is returned, which is based on emulating or
+% faking input from real controllers, so this function will be of limited use. Specifically,
+% on emulated controllers, only the input.Time and input.Buttons fields are returned, all
+% other fields are missing.
+%
+% 'controllerType' can be one of OVR.ControllerType_LTouch, OVR.ControllerType_RTouch,
+% OVR.ControllerType_Touch, OVR.ControllerType_Remote, OVR.ControllerType_XBox, or
+% OVR.ControllerType_Active for selecting whatever controller is currently active.
+%
+% Return argument 'input' is a struct with fields describing the state of buttons and
+% other input elements of the specified 'controllerType'. It has the following fields:
+%
+% 'Time' Time of last input state change of controller.
+% 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
+% vector returned by KbCheck() for regular keyboards. Each position in the vector
+% reports pressed (1) or released (0) state of a specific button. Use the OVR.Button_XXX
+% constants to map buttons to positions.
+%
+% 'Touches' Like 'Buttons' but for touch buttons. Use the OVR.Touch_XXX constants to map
+% touch points to positions.
+%
+% 'Trigger'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered and with dead-zone.
+% 'TriggerNoDeadzone'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered.
+% 'TriggerRaw'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, raw values unfiltered.
+% 'Grip'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered and with dead-zone.
+% 'GripNoDeadzone'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered.
+% 'GripRaw'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, raw values unfiltered.
+%
+% 'Thumbstick' = 2x2 matrix: Column 1 contains left thumbsticks [x;y] axis values, column 2 contains
+%  right sticks [x;y] axis values. Values are in range -1 to +1, filtered and with deadzone applied.
+% 'ThumbstickNoDeadzone' = Like 'Thumbstick', filtered, but without a deadzone applied.
+% 'ThumbstickRaw' = 'Thumbstick' raw date without deadzone or filtering applied.
+%
+%
+% pulseEndTime = PsychVRHMD('HapticPulse', hmd, controllerType [, duration=XX][, freq=1.0][, amplitude=1.0]);
+% - Trigger a haptic feedback pulse, some controller vibration, on the specified 'controllerType'
+% associated with the specified 'hmd'. 'duration' is desired pulse duration in seconds. On Oculus
+% devices, by default a maximum of 2.5 seconds pulse is executed, but other vendors devices may have
+% a different maximum. 'freq' is normalized frequency in range 0.0 - 1.0. A value of 0 will try to
+% disable an ongoing pulse. How this normalized 'freq' maps to a specific haptic device is highly
+% device and runtime dependent.
+%
+% 'amplitude' is the amplitude of the vibration in normalized 0.0 - 1.0 range.
+%
+% 'pulseEndTime' returns the expected stop time of vibration in seconds, given the parameters.
+% Currently the function will return immediately for a (default) 'duration', and the pulse
+% will end after the maximum duration supported by the given device. Smaller 'duration' values than
+% the maximum duration will block the execution of the function until the 'duration' has passed on
+% some types of controllers.
+%
+% Please note that behaviour of this function is highly dependent on the type of VR driver and
+% devices used. You should consult driver specific documentation for details, e.g., the help of
+% 'PsychOculusVR' or 'PsychOculusVR1' for Oculus systems. On some drivers the function may do
+% nothing at all, e.g., if the 'GetInfo' function returns info.hapticFeedbackSupported == 0.
 %
 %
 % state = PsychVRHMD('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
@@ -131,7 +306,24 @@ function varargout = PsychVRHMD(cmd, varargin)
 % state always contains a field state.tracked, whose bits signal the status
 % of head tracking for this frame. A +1 flag means that head orientation is
 % tracked. A +2 flag means that head position is tracked via some absolute
-% position tracker like, e.g., the Oculus Rift DK2 camera.
+% position tracker like, e.g., the Oculus Rift DK2 or Rift CV1 camera. A +128
+% flag means the HMD is actually strapped onto the subjects head and displaying
+% our visual content. Lack of this flag means the HMD is off and thereby blanked
+% and dark, or we lost access to it to another application.
+%
+% state also always contains a field state.SessionState, whose bits signal general
+% VR session status:
+%
+% +1  = Our rendering goes to the HMD, ie. we have control over it. Lack of this could
+%       mean the Health and Safety warning is displaying at the moment and waiting for
+%       acknowledgement, or the Oculus GUI application is in control.
+% +2  = HMD is present and active.
+% +4  = HMD is strapped onto users head. E.g., a Oculus Rift CV1 would switch off/blank
+%       if not on the head.
+% +8  = DisplayLost condition! Some hardware/software malfunction, need to completely quit this
+%       Psychtoolbox session to recover from this.
+% +16 = ShouldQuit The user interface / user asks us to voluntarily terminate this session.
+% +32 = ShouldRecenter = The user interface asks us to recenter/recalibrate our tracking origin.
 %
 % 'reqmask' defaults to 1 and can have the following values added together:
 %
@@ -150,6 +342,35 @@ function varargout = PsychVRHMD(cmd, varargin)
 %      and the global head pose after application of the 'userTransformMatrix' is
 %      returned in state.globalHeadPoseMatrix - this is the basis for computing
 %      the camera transformation matrices.
+%
+% +2 = Return matrices for tracked left and right hands of user, ie. of tracked positions
+%      and orientations of left and right hand tracking controllers, if any. See also
+%      section about 'GetInfo' for some performance comments.
+%
+%      state.handStatus(1) = Tracking status of left hand: 0 = Untracked, 1 = Orientation
+%                            tracked, 2 = Position tracked, 3 = Orientation and position
+%                            tracked. If handStatus is == 0 then all the following information
+%                            is invalid and can not be used in any meaningful way.
+%
+%      state.handStatus(2) = Tracking status of right hand.
+%
+%      state.localHandPoseMatrix{1} = 4x4 OpenGL right handed reference frame matrix with
+%                                     hand position and orientation encoded to define a
+%                                     proper GL_MODELVIEW transform for rendering stuff
+%                                     "into"/"relative to" the oriented left hand.
+%
+%      state.localHandPoseMatrix{2} = Ditto for the right hand.
+%
+%      state.globalHandPoseMatrix{1} = userTransformMatrix * state.localHandPoseMatrix{1};
+%                                      Left hand pose transformed by passed in userTransformMatrix.
+%
+%      state.globalHandPoseMatrix{2} = Ditto for the right hand.
+%
+%      state.globalHandPoseInverseMatrix{1} = Inverse of globalHandPoseMatrix{1} for collision
+%                                             testing/grasping of virtual objects relative to
+%                                             hand pose of left hand.
+%
+%      state.globalHandPoseInverseMatrix{2} = Ditto for right hand.
 %
 % More flags to follow...
 %
@@ -304,6 +525,20 @@ function varargout = PsychVRHMD(cmd, varargin)
 % with it.
 %
 %
+% needPanelFitter = PsychVRHMD('GetPanelFitterParameters', hmd);
+% - 'needPanelFitter' is 1 if a custom panel fitter tasks is needed, and 'bufferSize'
+% from the PsychVRHMD('GetClientRenderingParameters', hmd); defines the size of the
+% clientRect for the onscreen window. 'needPanelFitter' is 0 if no panel fitter is
+% needed.
+%
+%
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychVRHMD('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% - Compute special override parameters for given input/output arguments, as needed
+% for a specific HMD. Take other preparatory steps as needed, immediately before the
+% Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
+% with the user provided hmd, screenid, winRect etc.
+%
+%
 % isOutput = PsychVRHMD('IsHMDOutput', hmd, scanout);
 % - Returns 1 (true) if 'scanout' describes the video output to which the
 % HMD 'hmd' is connected. 'scanout' is a struct returned by the Screen
@@ -352,6 +587,9 @@ function varargout = PsychVRHMD(cmd, varargin)
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
 
+% Global OVR handle for access to VR runtime constants:
+global OVR;
+
 if nargin < 1 || isempty(cmd)
   help PsychVRHMD;
   return;
@@ -388,10 +626,20 @@ if strcmpi(cmd, 'AutoSetupHMD')
   if length(varargin) >= 4 && ~isempty(varargin{4})
     vendor = varargin{4};
     if strcmpi(vendor, 'Oculus')
-      hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      if exist('PsychOculusVR1', 'file')
+        hmd = PsychOculusVR1('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      else
+        hmd = [];
+      end
+
+      if isempty(hmd)
+        hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      end
 
       % Return the handle:
       varargout{1} = hmd;
+      evalin('caller','global OVR');
+
       return;
     end
 
@@ -401,7 +649,19 @@ if strcmpi(cmd, 'AutoSetupHMD')
   % Probe sequence:
   hmd = [];
 
-  % Oculus runtime supported and online? At least one real HMD connected?
+  % Oculus runtime v1.11+ supported and online? At least one real HMD connected?
+  if exist('PsychOculusVR1', 'file') && PsychOculusVR1('Supported') && PsychOculusVR1('GetCount') > 0
+    % Yes. Use that one. This will also inject a proper PsychImaging task
+    % for setup of the imaging pipeline:
+    hmd = PsychOculusVR1('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+
+    % Return the handle:
+    varargout{1} = hmd;
+    evalin('caller','global OVR');
+    return;
+  end
+
+  % Oculus sdk/runtime v0.5 supported and online? At least one real HMD connected?
   if PsychOculusVR('Supported') && PsychOculusVR('GetCount') > 0
     % Yes. Use that one. This will also inject a proper PsychImaging task
     % for setup of the imaging pipeline:
@@ -409,6 +669,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
 
     % Return the handle:
     varargout{1} = hmd;
+    evalin('caller','global OVR');
     return;
   end
 
@@ -419,6 +680,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
   if PsychOculusVR('Supported')
     hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
     varargout{1} = hmd;
+    evalin('caller','global OVR');
     return;
   end
 

@@ -305,7 +305,7 @@
 %     folder is xorg.conf_RazerBlade-2-XScreens-intel+nouveau
 %
 %     Another X-Config example file for the Razer Blade 2016 is the file ...
-%     xorg-Razer-2-XScreens-NVidiaProprietary_iGPUPrime+dGPUHDMInative.conf
+%     xorg.conf_RazerBlade-2-XScreens-NVidiaProprietary_iGPUPrime+dGPUHDMInative.conf
 %     ... This file is for use with the NVidia proprietary driver instead of the nouveau open-source
 %     driver. It uses the NVidia gpu to drive two separate X-Screens 0 and 1. X-Screen 0 is driven
 %     via Optimus PRIME output, displaying via the Intel HD 530 iGPU on either the laptop flatpanel

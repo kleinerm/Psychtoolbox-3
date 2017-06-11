@@ -47,6 +47,12 @@ function varargout = PsychOculusVR(cmd, varargin)
 % scanning of the OLED display panel, to light up each pixel only a fraction
 % of a video refresh cycle duration.
 %
+% 'PerEyeFOV' = Request use of per eye individual and asymmetric fields of view even
+% when the 'basicTask' was selected to be 'Monoscopic' or 'Stereoscopic'. This allows
+% for wider field of view in these tasks, but requires the usercode to adapt to these
+% different and asymmetric fields of view for each eye, e.g., by selecting proper 3D
+% projection matrices for each eye.
+%
 % 'FastResponse' = Try to switch images with minimal delay and fast
 % pixel switching time. This will enable OLED panel overdrive processing
 % on the Oculus Rift DK1 and DK2. OLED panel overdrive processing is a
@@ -91,6 +97,15 @@ function varargout = PsychOculusVR(cmd, varargin)
 % all HMDs will be closed and the driver will be shutdown.
 %
 %
+% PsychOculusVR('Controllers', hmd);
+% - Return a bitmask of all connected controllers: Can be the bitand
+% of the OVR.ControllerType_XXX flags described in 'GetInputState'.
+% This does not detect if controllers are hot-plugged or unplugged after
+% the HMD was opened. Iow. only probed at 'Open'.
+% As the classic Oculus driver does not support dedicated controllers at the
+% moment, this always returns 0.
+%
+%
 % info = PsychOculusVR('GetInfo', hmd);
 % - Retrieve a struct 'info' with information about the HMD 'hmd'.
 % The returned info struct contains at least the following standardized
@@ -120,6 +135,59 @@ function varargout = PsychOculusVR(cmd, varargin)
 % established. It would return 0 if the server process would not be
 % running, or if the required runtime library would not be correctly
 % installed.
+%
+%
+% [isVisible, playAreaBounds, OuterAreaBounds] = PsychOculusVRCore('VRAreaBoundary', hmd [, requestVisible]);
+% - Request visualization of the VR play area boundary for 'hmd' and returns its
+% current extents.
+%
+% As VR area boundaries are not actually supported by this Oculus classic driver,
+% this function returns no-op results, compatible with what the new Oculus driver
+% would return if the Oculus guardian system would not be set up, e.g., because the
+% hardware setup does not include Oculus touch controllers.
+%
+% The input flag 'requestVisible' is silently ignored:
+% 'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't
+% request showing the markers.
+%
+% Returns in 'isVisible' the current visibility status of the VR area boundaries.
+% This is always 0 for "invisible".
+%
+% 'playAreaBounds' is an empty matrix defining the play area boundaries. The empty
+% return argument means that the play area is so far undefined on this driver.
+%
+% 'OuterAreaBounds' defines the outer area boundaries in the same way as
+% 'playAreaBounds'. In other words, it always returns an empty matrix.
+%
+%
+% input = PsychOculusVRCore('GetInputState', hmd, controllerType);
+% - Get input state of controller 'controllerType' associated with HMD 'hmd'.
+%
+% As this driver does not actually support special VR controllers, only a minimally
+% useful 'input' state is returned for compatibility with other drivers, which is
+% based on emulating or faking input from real controllers, so this function will be
+% of limited use. Specifically, only the input.Time and input.Buttons fields are
+% returned, all other fields are missing. input.Buttons maps defined OVR.Button_XXX
+% fields to similar or corresponding buttons on the regular keyboard.
+%
+% 'controllerType' can be one of OVR.ControllerType_LTouch, OVR.ControllerType_RTouch,
+% OVR.ControllerType_Touch, OVR.ControllerType_Remote, OVR.ControllerType_XBox, or
+% OVR.ControllerType_Active for selecting whatever controller is currently active.
+%
+% Return argument 'input' is a struct with fields describing the state of buttons and
+% other input elements of the specified 'controllerType'. It has the following fields:
+%
+% 'Time' Time of last input state change of controller.
+% 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
+% vector returned by KbCheck() for regular keyboards. Each position in the vector
+% reports pressed (1) or released (0) state of a specific button. Use the OVR.Button_XXX
+% constants to map buttons to positions.
+%
+%
+% pulseEndTime = PsychOculusVR('HapticPulse', hmd, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);
+% - Fake triggering a haptic feedback pulse. This does nothing, but return a made up
+% but consistent 'pulseEndTime', as this classic Oculus driver does not support haptic
+% feedback.
 %
 %
 % state = PsychOculusVRCore('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
@@ -159,6 +227,31 @@ function varargout = PsychOculusVR(cmd, varargin)
 % tracked. A +2 flag means that head position is tracked via some absolute
 % position tracker like, e.g., the Oculus Rift DK2 camera.
 %
+% state always contains a field state.tracked, whose bits signal the status
+% of head tracking for this frame. A +1 flag means that head orientation is
+% tracked. A +2 flag means that head position is tracked via some absolute
+% position tracker like, e.g., the Oculus Rift DK2 camera. We also return a +128
+% flag which means the HMD is actually strapped onto the subjects head and displaying
+% our visual content. We can't detect actual HMD display state, but do this for
+% compatibility to other drivers.
+%
+% state also always contains a field state.SessionState, whose bits signal general
+% VR session status. In our case we always return +7 on this classic Oculus driver,
+% as we can't detect ShouldQuit, ShouldRecenter or DisplayLost conditions, neither
+% if the HMD is strapped to the users head.
+%
+% +1  = Our rendering goes to the HMD, ie. we have control over it. Lack of this could
+%       mean the Health and Safety warning is displaying at the moment and waiting for
+%       acknowledgement, or the Oculus GUI application is in control.
+% +2  = HMD is present and active.
+% +4  = HMD is strapped onto users head. E.g., a Oculus Rift CV1 would switch off/blank
+%       if not on the head.
+% +8  = DisplayLost condition! Some hardware/software malfunction, need to completely quit this
+%       Psychtoolbox session to recover from this.
+% +16 = ShouldQuit The user interface / user asks us to voluntarily terminate this session.
+% +32 = ShouldRecenter = The user interface asks us to recenter/recalibrate our tracking origin.
+%
+%
 % 'reqmask' defaults to 1 and can have the following values added together:
 %
 % +1 = Return matrices for left and right "eye cameras" which can be directly
@@ -176,6 +269,36 @@ function varargout = PsychOculusVR(cmd, varargin)
 %      and the global head pose after application of the 'userTransformMatrix' is
 %      returned in state.globalHeadPoseMatrix - this is the basis for computing
 %      the camera transformation matrices.
+%
+% +2 = Return matrices for tracked left and right hands of user, ie. of tracked positions
+%      and orientations of left and right hand tracking controllers, if any. As the old
+%      driver does not support hand tracking, this reports hard-coded neutral results and
+%      reports a state.handStatus of 0 = "Not tracked/Invalid data".
+%
+%      state.handStatus(1) = Tracking status of left hand: 0 = Untracked, signalling that
+%                            all the following information is invalid and can not be used
+%                            in any meaningful way.
+%
+%      state.handStatus(2) = Tracking status of right hand. 0 = Untracked.
+%
+%      state.localHandPoseMatrix{1} = 4x4 OpenGL right handed reference frame matrix with
+%                                     hand position and orientation encoded to define a
+%                                     proper GL_MODELVIEW transform for rendering stuff
+%                                     "into"/"relative to" the oriented left hand. Always
+%                                     a 4x4 unit identity matrix for hand resting in origin.
+%
+%      state.localHandPoseMatrix{2} = Ditto for the right hand.
+%
+%      state.globalHandPoseMatrix{1} = userTransformMatrix * state.localHandPoseMatrix{1};
+%                                      Left hand pose transformed by passed in userTransformMatrix.
+%
+%      state.globalHandPoseMatrix{2} = Ditto for the right hand.
+%
+%      state.globalHandPoseInverseMatrix{1} = Inverse of globalHandPoseMatrix{1} for collision
+%                                             testing/grasping of virtual objects relative to
+%                                             hand pose of left hand.
+%
+%      state.globalHandPoseInverseMatrix{2} = Ditto for right hand.
 %
 % More flags to follow...
 %
@@ -330,6 +453,20 @@ function varargout = PsychOculusVR(cmd, varargin)
 % pipeline.
 %
 %
+% needPanelFitter = PsychOculusVR('GetPanelFitterParameters', hmd);
+% - 'needPanelFitter' is 1 if a custom panel fitter tasks is needed, and 'bufferSize'
+% from the PsychVRHMD('GetClientRenderingParameters', hmd); defines the size of the
+% clientRect for the onscreen window. 'needPanelFitter' is 0 if no panel fitter is
+% needed.
+%
+%
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% - Compute special override parameters for given input/output arguments, as needed
+% for a specific HMD. Take other preparatory steps as needed, immediately before the
+% Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
+% with the user provided hmd, screenid, winRect etc.
+%
+%
 % isOutput = PsychOculusVR('IsHMDOutput', hmd, scanout);
 % - Returns 1 (true) if 'scanout' describes the video output to which the
 % HMD 'hmd' is connected. 'scanout' is a struct returned by the Screen
@@ -354,6 +491,7 @@ function varargout = PsychOculusVR(cmd, varargin)
 
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
+global OVR;
 
 persistent hmd;
 
@@ -490,7 +628,10 @@ if strcmpi(cmd, 'PrepareRender')
   [eyePose{1}, eyePose{2}, tracked] = PsychOculusVRCore('StartRender', myhmd.handle);
 
   % Always return basic tracking status:
-  result.tracked = tracked;
+  result.tracked = bitor(tracked, 128);
+
+  % Always return faked session state:
+  result.SessionState = 7; % = 1 + 2 + 4 = All is fine, no trouble, subject is attentive ;-)
 
   % As a bonus we return the raw eye pose vectors, given that we have them anyway:
   result.rawEyePose7{1} = eyePose{1};
@@ -520,6 +661,29 @@ if strcmpi(cmd, 'PrepareRender')
     % Compute inverse matrices, useable as OpenGL GL_MODELVIEW matrices for rendering:
     result.modelView{1} = inv(result.cameraView{1});
     result.modelView{2} = inv(result.cameraView{2});
+  end
+
+  % Want matrices with tracked position and orientation of touch controllers ~ users hands?
+  if bitand(reqmask, 2)
+    % Yes: We can't do this on the legacy 0.5 SDK, so fake stuff:
+
+    for i=1:2
+      result.handStatus(i) = 0;
+
+      % Bonus feature: HandPoses as 7 component translation + orientation quaternion vectors:
+      result.handPose{i} = [0, 0, 0, 0, 0, 0, 1];
+
+      % Convert hand pose vector to 4x4 OpenGL right handed reference frame matrix:
+      % In our untracked case, simply an identity matrix:
+      result.localHandPoseMatrix{i} = diag([1,1,1,1]);
+
+      % Premultiply usercode provided global transformation matrix - here use as is:
+      result.globalHandPoseMatrix{i} = userTransformMatrix;
+
+      % Compute inverse matrix, maybe useable for collision testing / virtual grasping of virtual objects:
+      % Provides a transform that maps absolute geometry into geometry as "seen" from the pov of the hand.
+      result.globalHandPoseInverseMatrix{i} = inv(result.globalHandPoseMatrix{i});
+    end
   end
 
   varargout{1} = result;
@@ -598,6 +762,75 @@ if strcmpi(cmd, 'Supported')
   catch
     varargout{1} = 0;
   end
+  return;
+end
+
+if strcmpi(cmd, 'GetInputState')
+  % Get and validate handle - fast path open coded:
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOculusVR:GetInputState: Specified handle does not correspond to an open HMD!');
+  end
+
+  if length(varargin) < 2 || isempty(varargin{2})
+    error('PsychOculusVR:GetInputState: Required ''controllerType'' argument missing.');
+  end
+
+  [anykey, rc.Time, keyCodes] = KbCheck(-1);
+  rc.Buttons = zeros(1, 32);
+  if anykey
+    rc.Buttons(OVR.Button_A) = keyCodes(KbName('a'));
+    rc.Buttons(OVR.Button_B) = keyCodes(KbName('b'));
+    rc.Buttons(OVR.Button_X) = keyCodes(KbName('x'));
+    rc.Buttons(OVR.Button_Y) = keyCodes(KbName('y'));
+    rc.Buttons(OVR.Button_Back) = keyCodes(KbName('BackSpace'));
+    rc.Buttons(OVR.Button_Enter) = any(keyCodes(KbName('Return')));
+    rc.Buttons(OVR.Button_Right) = keyCodes(KbName('RightArrow'));
+    rc.Buttons(OVR.Button_Left) = keyCodes(KbName('LeftArrow'));
+    rc.Buttons(OVR.Button_Up) = keyCodes(KbName('UpArrow'));
+    rc.Buttons(OVR.Button_Down) = keyCodes(KbName('DownArrow'));
+    rc.Buttons(OVR.Button_VolUp) = keyCodes(KbName('F12'));
+    rc.Buttons(OVR.Button_VolDown) = keyCodes(KbName('F11'));
+    rc.Buttons(OVR.Button_RShoulder) = keyCodes(KbName('RightShift'));
+    rc.Buttons(OVR.Button_LShoulder) = keyCodes(KbName('LeftShift'));
+    rc.Buttons(OVR.Button_Home) = keyCodes(KbName('Home'));
+    rc.Buttons(OVR.Button_RThumb) = any(keyCodes(KbName({'RightControl', 'RightAlt'})));
+    rc.Buttons(OVR.Button_LThumb) = any(keyCodes(KbName({'LeftControl', 'LeftAlt'})));
+  end
+
+  varargout{1} = rc;
+
+  return;
+end
+
+if strcmpi(cmd, 'HapticPulse')
+  % Get and validate handle - fast path open coded:
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOculusVR:HapticPulse: Specified handle does not correspond to an open HMD!');
+  end
+
+  if length(varargin) < 2 || isempty(varargin{2})
+    error('PsychOculusVR:HapticPulse: Required ''controllerType'' argument missing.');
+  end
+
+  if length(varargin) >= 3 && ~isempty(varargin{3}) && varargin{3} < 2.5
+    varargout{1} = WaitSecs(varargin{3});
+  else
+    varargout{1} = GetSecs + 2.5;
+  end
+
+  return;
+end
+
+if strcmpi(cmd, 'VRAreaBoundary')
+  myhmd = varargin{1};
+  if ~PsychOculusVR('IsOpen', myhmd)
+    error('VRAreaBoundary: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  % Return no-op values:
+  [varargout{1}, varargout{2}, varargout{3}] = deal(0, [], []);
   return;
 end
 
@@ -719,9 +952,14 @@ if strcmpi(cmd, 'Open')
   newhmd.handle = handle;
   newhmd.driver = @PsychOculusVR;
   newhmd.type   = 'Oculus';
+  newhmd.subtype = 'Oculus-classic';
   newhmd.open = 1;
   newhmd.modelName = modelName;
   newhmd.separateEyePosesSupported = 1;
+  newhmd.controllerTypes = 0;
+  newhmd.VRControllersSupported = 0;
+  newhmd.handTrackingSupported = 0;
+  newhmd.hapticFeedbackSupported = 0;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
@@ -760,6 +998,80 @@ if strcmpi(cmd, 'Open')
   newhmd.basicTask = '';
   newhmd.basicRequirements = '';
 
+  if isempty(OVR)
+    % Define global OVR.XXX constants:
+    OVR.ControllerType_LTouch = hex2dec('0001');
+    OVR.ControllerType_RTouch = hex2dec('0002');
+    OVR.ControllerType_Touch = OVR.ControllerType_LTouch + OVR.ControllerType_RTouch;
+    OVR.ControllerType_Remote = hex2dec('0004');
+    OVR.ControllerType_XBox = hex2dec('0010');
+    OVR.ControllerType_Active = hex2dec('ffffffff');
+
+    OVR.Button_A = 1 + log2(hex2dec('00000001'));
+    OVR.Button_B = 1 + log2(hex2dec('00000002'));
+    OVR.Button_RThumb = 1 + log2(hex2dec('00000004'));
+    OVR.Button_RShoulder = 1 + log2(hex2dec('00000008'));
+    OVR.Button_X = 1 + log2(hex2dec('00000100'));
+    OVR.Button_Y = 1 + log2(hex2dec('00000200'));
+    OVR.Button_LThumb = 1 + log2(hex2dec('00000400'));
+    OVR.Button_LShoulder = 1 + log2(hex2dec('00000800'));
+    OVR.Button_Up = 1 + log2(hex2dec('00010000'));
+    OVR.Button_Down = 1 + log2(hex2dec('00020000'));
+    OVR.Button_Left = 1 + log2(hex2dec('00040000'));
+    OVR.Button_Right = 1 + log2(hex2dec('00080000'));
+    OVR.Button_Enter = 1 + log2(hex2dec('00100000'));
+    OVR.Button_Back = 1 + log2(hex2dec('00200000'));
+    OVR.Button_VolUp = 1 + log2(hex2dec('00400000'));
+    OVR.Button_VolDown = 1 + log2(hex2dec('00800000'));
+    OVR.Button_Home = 1 + log2(hex2dec('01000000'));
+    OVR.Button_Private = [OVR.Button_VolUp, OVR.Button_VolDown, OVR.Button_Home];
+    OVR.Button_RMask = [OVR.Button_A, OVR.Button_B, OVR.Button_RThumb, OVR.Button_RShoulder];
+    OVR.Button_LMask = [OVR.Button_X, OVR.Button_Y, OVR.Button_LThumb, OVR.Button_LShoulder, OVR.Button_Enter];
+
+    OVR.Touch_A = OVR.Button_A;
+    OVR.Touch_B = OVR.Button_B;
+    OVR.Touch_RThumb = OVR.Button_RThumb;
+    OVR.Touch_RThumbRest = 1 + log2(hex2dec('00000008'));
+    OVR.Touch_RIndexTrigger = 1 + log2(hex2dec('00000010'));
+    OVR.Touch_RButtonMask = [OVR.Touch_A, OVR.Touch_B, OVR.Touch_RThumb, OVR.Touch_RThumbRest, OVR.Touch_RIndexTrigger];
+    OVR.Touch_X = OVR.Button_X;
+    OVR.Touch_Y = OVR.Button_Y;
+    OVR.Touch_LThumb = OVR.Button_LThumb;
+    OVR.Touch_LThumbRest = 1 + log2(hex2dec('00000800'));
+    OVR.Touch_LIndexTrigger = 1 + log2(hex2dec('00001000'));
+    OVR.Touch_LButtonMask = [OVR.Touch_X, OVR.Touch_Y, OVR.Touch_LThumb, OVR.Touch_LThumbRest, OVR.Touch_LIndexTrigger];
+    OVR.Touch_RIndexPointing = 1 + log2(hex2dec('00000020'));
+    OVR.Touch_RThumbUp = 1 + log2(hex2dec('00000040'));
+    OVR.Touch_LIndexPointing = 1 + log2(hex2dec('00002000'));
+    OVR.Touch_LThumbUp = 1 + log2(hex2dec('00004000'));
+    OVR.Touch_RPoseMask =  [OVR.Touch_RIndexPointing, OVR.Touch_RThumbUp];
+    OVR.Touch_LPoseMask = [OVR.Touch_LIndexPointing, OVR.Touch_LThumbUp];
+
+    OVR.TrackedDevice_HMD        = hex2dec('0001');
+    OVR.TrackedDevice_LTouch     = hex2dec('0002');
+    OVR.TrackedDevice_RTouch     = hex2dec('0004');
+    OVR.TrackedDevice_Touch      = OVR.TrackedDevice_LTouch + OVR.TrackedDevice_RTouch;
+
+    OVR.TrackedDevice_Object0    = hex2dec('0010');
+    OVR.TrackedDevice_Object1    = hex2dec('0020');
+    OVR.TrackedDevice_Object2    = hex2dec('0040');
+    OVR.TrackedDevice_Object3    = hex2dec('0080');
+
+    OVR.TrackedDevice_All        = hex2dec('FFFF');
+
+    OVR.KEY_USER = 'User';
+    OVR.KEY_NAME = 'Name';
+    OVR.KEY_GENDER = 'Gender';
+    OVR.KEY_DEFAULT_GENDER = 'Unknown';
+    OVR.KEY_PLAYER_HEIGHT = 'PlayerHeight';
+    OVR.KEY_EYE_HEIGHT = 'EyeHeight';
+    OVR.KEY_NECK_TO_EYE_DISTANCE = 'NeckEyeDistance';
+    OVR.KEY_EYE_TO_NOSE_DISTANCE = 'EyeToNoseDist';
+
+    newhmd.OVR = OVR;
+    evalin('caller','global OVR');
+  end
+
   % Store in internal array:
   hmd{handle} = newhmd;
 
@@ -777,6 +1089,16 @@ if strcmpi(cmd, 'IsOpen')
   else
     varargout{1} = 0;
   end
+  return;
+end
+
+if strcmpi(cmd, 'Controllers')
+  myhmd = varargin{1};
+  if ~PsychOculusVR('IsOpen', myhmd)
+    error('Controllers: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  varargout{1} = myhmd.controllerTypes;
   return;
 end
 
@@ -1066,10 +1388,39 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   PsychOculusVR('SetBasicQuality', myhmd, basicQuality);
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for left eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fov] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, varargin{5:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovL] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, varargin{5:end});
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fov] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, varargin{5:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovR] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, varargin{5:end});
+
+  % If the basic task is not a 3D VR rendering one (with or without HMD tracking),
+  % and the special requirement 'PerEyeFOV' is not set, then assume usercode wants
+  % to do pure 2D rendering (monocular, or stereoscopic), e.g., with the Screen()
+  % 2D drawing commands, and doesn't set up per-eye projection and modelview matrices.
+  % In this case we must use a field of view that is identical for both eyes, and
+  % both vertically and horizontally symmetric, ie. no special treatment of the nose
+  % facing field of view! Why? Because standard 2D mono/stereo drawing code doesn't
+  % know about/can't use per eye view projection matrices, which are needed for proper
+  % results for asymmetric per-eye FOV. It would cause weird shifts in display on the
+  % HMD. This effect is almost imperceptible/negligible on the Rift DK1/DK2, but very
+  % disturbing on the Rift CV1.
+  if isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR')) && ...
+     isempty(strfind(hmd{myhmd.handle}.basicTask, '3DVR')) && ...
+     isempty(strfind(hmd{myhmd.handle}.basicRequirements, 'PerEyeFOV'))
+    % Need identical, symmetric FOV for both eyes. Build one that has the same
+    % vertical FOV as proposed by the runtime, but horizontally uses the minimal
+    % left/right FOV extension of both per-eye FOV's, so we get a symmetric FOV
+    % identical for both eyes, guaranteed to lie within the view cone not occluded
+    % by the nose of the user.
+    fov(1) = min(hmd{myhmd.handle}.fovL(1), hmd{myhmd.handle}.fovR(1));
+    fov(2) = min(hmd{myhmd.handle}.fovL(2), hmd{myhmd.handle}.fovR(2));
+    fov(3) = min(hmd{myhmd.handle}.fovL(3), hmd{myhmd.handle}.fovR(3));
+    fov(4) = min(hmd{myhmd.handle}.fovL(4), hmd{myhmd.handle}.fovR(4));
+
+    % Recompute parameters based on override fov:
+    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovL] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 0, fov, varargin{6:end});
+    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovR] = PsychOculusVRCore('GetFovTextureSize', myhmd.handle, 1, fov, varargin{6:end});
+  end
 
   return;
 end
@@ -1101,6 +1452,50 @@ if strcmpi(cmd, 'GetClientRenderingParameters')
 
   varargout{2} = imagingMode;
   varargout{3} = stereoMode;
+  return;
+end
+
+if strcmpi(cmd, 'GetPanelFitterParameters')
+  % We need use of custom PanelFitter task for the v0.5 Oculus SDK/Runtime:
+  varargout{1} = 1;
+  return;
+end
+
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+if strcmpi(cmd, 'OpenWindowSetup')
+  myhmd = varargin{1};
+  screenid = varargin{2};
+  winRect = varargin{3};
+  ovrfbOverrideRect = varargin{4};
+  ovrSpecialFlags = varargin{5};
+
+  % Yes. Trying to display on a screen with more than one video output?
+  if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
+    % Yes. Not good, as this will impair graphics performance and timing a lot.
+    % Warn about this, then try to at least position the onscreen window on the
+    % right output.
+    fprintf('PsychOculusVR-WARNING: You are requesting display to a VR HMD on a screen with multiple active video outputs.\n');
+    fprintf('PsychOculusVR-WARNING: This will impair visual stimulation timing and cause decreased VR performance!\n');
+    fprintf('PsychOculusVR-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
+    fprintf('PsychOculusVR-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
+
+    % Try to find the output with the Rift HMD:
+    for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
+      scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
+      if myhmd.driver('IsHMDOutput', myhmd, scanout)
+        % This output i has proper resolution to be the HMD panel.
+        % Position our onscreen window accordingly:
+        winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
+        fprintf('PsychOculusVR-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
+                winRect(1), winRect(2), winRect(3), winRect(4), i);
+      end
+    end
+  end
+
+  varargout{1} = winRect;
+  varargout{2} = ovrfbOverrideRect;
+  varargout{3} = ovrSpecialFlags;
+
   return;
 end
 
@@ -1173,7 +1568,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   hmd{handle}.inputHeight = hmd{handle}.rbheight;
 
   % Query undistortion parameters for left eye view:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovL);
   hmd{handle}.viewportLeft = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterLeft = [ptx, pty];
   hmd{handle}.HmdToEyeViewOffsetLeft = -1 * [hsx, hsy, hsz];
@@ -1187,7 +1582,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   hmd{handle}.eyeRotEndMatrixLeft   = diag([1 1 1 1]);
 
   % Query parameters for right eye view:
-  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fovR);
   hmd{handle}.viewportRight = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterRight = [ptx, pty];
   hmd{handle}.HmdToEyeViewOffsetRight = -1 * [hsx, hsy, hsz];
@@ -1608,6 +2003,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       if bitand(hmd{myhmd.handle}.hswdismiss, 4)
         hswtext = [hswtext 'Slightly tap the headset'];
       end
+
+      Screen('Flip', win);
+      Screen('Flip', win);
 
       oldTextSize = Screen('TextSize', win, 16);
       Screen('SelectStereoDrawBuffer', win, 1);

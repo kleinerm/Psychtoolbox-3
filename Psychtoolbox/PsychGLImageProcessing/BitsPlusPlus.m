@@ -1081,11 +1081,6 @@ if strcmpi(cmd, 'OpenWindowBits++')
     end
     
     if targetdevicetype == 1
-        % We need this weird evalin('base', ...); wrapper so the
-        % function gets called from the base-workspace, where the
-        % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
-        % define it there reliably due to incompatibilities between
-        % Matlab and Octave in variable assignment inside Screen() :-(
         rclutcmd = 'PsychDataPixx(1, IMAGINGPIPE_GAMMATABLE);';
         Screen('HookFunction', win, 'PrependMFunction', 'LeftFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
     end
@@ -1573,11 +1568,6 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         end
 
         if targetdevicetype == 1
-            % We need this weird evalin('base', ...); wrapper so the
-            % function gets called from the base-workspace, where the
-            % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
-            % define it there reliably due to incompatibilities between
-            % Matlab and Octave in variable assignment inside Screen() :-(
             rclutcmd = 'PsychDataPixx(1, IMAGINGPIPE_GAMMATABLE);';
             Screen('HookFunction', win, 'PrependMFunction', 'LeftFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
         end

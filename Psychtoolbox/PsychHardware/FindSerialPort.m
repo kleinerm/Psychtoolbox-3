@@ -1,5 +1,5 @@
 function PortNumber = FindSerialPort(PortString, forIOPort, dontFail)
-% Syntax: PortNumber = FindSerialPort([PortString][, forIOPort=0][, dontFail=0])
+% Syntax: PortNumber = FindSerialPort([PortString][, forIOPort=1][, dontFail=0])
 %
 % Purpose: Find serial port number/name associated with a particular input string.
 %
@@ -7,11 +7,10 @@ function PortNumber = FindSerialPort(PortString, forIOPort, dontFail)
 % built-in list of default serial port names to search for. Otherwise it
 % will try to find a serial port with a name matching 'PortString'.
 %
-% If the optional flag 'forIOPort' is zero or left out, the routine will return
-% a 'PortNumber' compatible with use of the SerialComm() serial port driver
-% for MacOS/X with Matlab. If 'forIOPort' is non-zero, it will return a
-% serial port device string in 'PortNumber', suitable for use with the new
-% IOPort serial port driver which works on all operating systems and
+% The optional flag 'forIOPort' has no meaning anymore, is ignored, and only
+% exists for backwards compatibility with ancient code. This function will
+% always return a serial port device string in 'PortNumber' suitable for use
+% with the IOPort serial port driver which works on all operating systems and
 % runtime environments.
 %
 % By default, the function will abort with an error message if it doesn't
@@ -20,10 +19,6 @@ function PortNumber = FindSerialPort(PortString, forIOPort, dontFail)
 % will continue in such cases without any error message: It will simply
 % return an empty [] PortNumber if no matching port can be found, or the
 % 1st detected matching port, if multiple matches exist.
-%
-% Please note that support of SerialComm for OS/X is a legacy, only left
-% for backwards compatibility! New code should only use the new IOPort
-% driver and therefore set the 'forIOPort' flag to 1.
 %
 % For intersting in-depths comments on the use of this function with PR-650
 % style photometers, read the source code of this file.
@@ -44,6 +39,7 @@ function PortNumber = FindSerialPort(PortString, forIOPort, dontFail)
 %          12/04/12   zlb   Removed usa19* from PortDB since Keyserial1 is
 %                           an alias for the first port anyway.
 %           3/11/13   mk    Add /dev/ttyACM* devices to Linux enumeration.
+%           6/11/17   mk    Remove dead SerialComm() driver path.
 
 % Comments from mpr:
 %
@@ -72,27 +68,23 @@ function PortNumber = FindSerialPort(PortString, forIOPort, dontFail)
 %
 
 if ~nargin || isempty(PortString)	
-	% List of serial port devices to look for. These should all be lower case:
+    % List of serial port devices to look for. These should all be lower case:
     if IsOSX
         PortDB = { lower('keyserial1'), lower('usbmodem'), lower('usbserial') };
     end
-    
+
     if IsLinux
         PortDB = { lower('USB'), lower('ACM') };
     end
-    
+
     if IsWin
         PortDB = { 'com1', 'com2', 'com3', 'com4', 'com5' };
     end
     selectionType = 'default';
-else	
-	% Make the port string lowercase for easier string comparison later.
-	PortDB = {lower(PortString)};
-	selectionType = 'requested';
-end
-
-if nargin < 2 || isempty(forIOPort)
-    forIOPort = 0;
+else
+    % Make the port string lowercase for easier string comparison later.
+    PortDB = {lower(PortString)};
+    selectionType = 'requested';
 end
 
 if nargin < 3 || isempty(dontFail)
@@ -104,31 +96,30 @@ PortNumber = [];
 
 if IsWin
     % MS - Windows:
-    
+
     % List of all candidates COM1 to COM256
     ports = strtrim(cellstr(num2str((1:256)', 'COM%i')));
-    
+
     % For OS/X and Linux, it is easy to get all existing ports, while for
     % Windows, there seems no way to get the list. So we try all possible ports
     % one by one. Fortunately, it won't take much time if a port doesn't exist.
-    
+
     % Start with empty cell arrays:
     availPorts={}; busyPorts={};
-    
+
     % Disable output of IOPort during probe-run:
-    oldverbosity=IOPort('Verbosity', 0);
-    
+    oldverbosity = IOPort('Verbosity', 0);
+
     % Test each port for existence:
-    for i=1:length(ports)
-        
+    for i = 1:length(ports)
         % Try to open:
         [h, errmsg] = IOPort('OpenSerialPort', ports{i});
 
         % Open succeeded?
-        if h>=0
+        if h >= 0
             % Yes, this is an existing and available port. Close it again:
             IOPort('Close', h);
-            
+
             % Add to list of available ports:
             availPorts{end+1} = ports{i}; %#ok<AGROW>
         elseif isempty(strfind(errmsg, 'ENOENT'))
@@ -136,7 +127,7 @@ if IsWin
             % to list of busy ports:
             busyPorts{end+1} = ports{i}; %#ok<AGROW>
         end
-        
+
         % Scan next COM port...
     end
 
@@ -168,20 +159,20 @@ end
 
 % Check to see if any serial devices were found.
 if isempty(ThePortDevices) && (dontFail == 0)
-	error('\n%s\n%s\n', ...
-		'No serial devices were found.  Make sure the serial device is plugged', ...
-		'in and the drivers installed.');
+    error('\n%s\n%s\n', ...
+          'No serial devices were found.  Make sure the serial device is plugged', ...
+          'in and the drivers installed.');
 end
 
 % For each serial type in the PortDB cell array, see if any attached serial
 % devices match.
 FoundIndices = [];
 for i = 1:length(PortDB)
-	for j = 1:length(ThePortDevices)
-		if ~isempty(strfind(lower(ThePortDevices(j).name), PortDB{i}))
-			FoundIndices(end+1) = j; %#ok<AGROW>
-		end
-	end
+    for j = 1:length(ThePortDevices)
+        if ~isempty(strfind(lower(ThePortDevices(j).name), PortDB{i}))
+            FoundIndices(end+1) = j; %#ok<AGROW>
+        end
+    end
 end
 numPortsFound = length(FoundIndices);
 
@@ -214,31 +205,13 @@ else
     return;
 end
 
-if ~forIOPort
-    % Old-Style, using SerialComm:
-    % Convert the port name into a port number.
-
-    if ~IsOSX
-        error('This routine is not supported for use with SerialComm under other systems than Mac OS/X. Use with forIOPort=1 flag instead!');
-    end
-
-    if IsOctave
-        error('This routine is not supported for use with SerialComm under Octave. Use with forIOPort=1 flag instead!');
-    end
-
-    if numPortsFound > 0
-        portString = sprintf('/dev/%s', ThePortDevices(FoundIndices(1)).name);
-        PortNumber = SerialComm('name2number', portString);
-    end
+% New-Style: Path name of port itself for use with IOPort:
+if ~IsWin
+    % Unix systems: Absolute device file path needed:
+    PortNumber = sprintf('/dev/%s', ThePortDevices(FoundIndices).name);
 else
-    % New-Style: Path name of port itself for use with IOPort:
-    if ~IsWin
-        % Unix systems: Absolute device file path needed:
-        PortNumber = sprintf('/dev/%s', ThePortDevices(FoundIndices).name);
-    else
-        % Windows: Pass "as is":
-        PortNumber = upper(sprintf('%s', ThePortDevices(FoundIndices).name));
-    end
+    % Windows: Pass "as is":
+    PortNumber = upper(sprintf('%s', ThePortDevices(FoundIndices).name));
 end
 
 return;
@@ -246,7 +219,7 @@ return;
 function s = makeDesiredPortTypesString(PortDB)
 s = [];
 for i = 1:length(PortDB)
-	s = [char(s) sprintf('\t\t%s\n', PortDB{i})]; %#ok<AGROW>
+    s = [char(s) sprintf('\t\t%s\n', PortDB{i})]; %#ok<AGROW>
 end
 
 function s = makeFoundDevicesString(ThePortDevices)
