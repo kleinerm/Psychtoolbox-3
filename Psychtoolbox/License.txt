@@ -138,10 +138,6 @@
 % The Datapixx toolbox    - LGPL license : Peter April VPixx Inc., Mario Kleiner.
 %
 % The Daq toolbox         - MIT : Denis Pelli, Mickey P. Rowe, Mario Kleiner.
-% SerialComm mex files    - Binary only. No standardized license, but permission
-%                           by the author Tom Davis to use royalty free
-%                           within Psychtoolbox. See "help SerialComm" for
-%                           author and source of the file.
 %
 % The PsychOculusVRCore mex files for use of Oculus VR virtual reality
 % devices, e.g., the Oculus Rift DK1 and DK2, is built using the Oculus SDK,
