@@ -1,6 +1,12 @@
 function [seed,whichGen] = ClockRandSeed(seed,whichGen)
 % [seed,whichGen] = ClockRandSeed([seed],[whichGen])
 %
+% NOTE: This routine is obsolete as it causes Matlab to invoke an out of
+% date random number algorithm.  Use rng('shuffle') instead.  There is a
+% page in the current (2017) Matlab docs describing the issues.  Type
+% "help rand" and then follow to the note on "Replace Discouraged Syntaxes
+% of rand and randn" that is at the end of the Description section.
+%
 % ClockRandSeed seeds the random number from the time-of-day clock. If seed
 % is passed this is used instead.
 % 
@@ -25,7 +31,7 @@ function [seed,whichGen] = ClockRandSeed(seed,whichGen)
 % string whichGen contains 'seed' for the version 4 generator and 'state'
 % for the version 5 generator.
 %
-% See also: rand, randn.
+% See also: rng, rand, randn.
 
 % 10/15/93	dhb	Made this a function.
 % 4/11/94	dhb	Added randn seeding.
@@ -35,13 +41,13 @@ function [seed,whichGen] = ClockRandSeed(seed,whichGen)
 % 8/13/97   dhb Optional return of which generator used and passing of seed/generator.
 % 7/24/04   awi Cosmetic.
 % 1/29/05   dgp Cosmetic.
-% 06/15/17  dhb Added warning text.
+% 06/15/17  dhb Added warning and help text that this is obsolete.
 
 fprintf('*** WARNING ***');
 fprintf('ClockRandSeed cause the random number generator calls to invoke an old version\n');
 fprintf('of the Matlab random number generator.  It is obsolete.\n');
 fprintf('Matlab recommends using rng(''shuffle'') to produce a seed based on the current\n');
-fprintf('time.  See "help rng" for more information.\n');
+fprintf('time.  See "help rng" and "help rand" for more information.\n');
 fprintf('We recommend you update to avoid using the obsolete code.\n');
 fprintf('At some point, this warning will turn into a fatal error.\n');
 
