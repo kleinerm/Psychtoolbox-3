@@ -35,7 +35,15 @@ function [seed,whichGen] = ClockRandSeed(seed,whichGen)
 % 8/13/97   dhb Optional return of which generator used and passing of seed/generator.
 % 7/24/04   awi Cosmetic.
 % 1/29/05   dgp Cosmetic.
+% 06/15/17  dhb Added warning text.
 
+fprintf('*** WARNING ***');
+fprintf('ClockRandSeed cause the random number generator calls to invoke an old version\n');
+fprintf('of the Matlab random number generator.  It is obsolete.\n');
+fprintf('Matlab recommends using rng(''shuffle'') to produce a seed based on the current\n');
+fprintf('time.  See "help rng" for more information.\n');
+fprintf('We recommend you update to avoid using the obsolete code.\n');
+fprintf('At some point, this warning will turn into a fatal error.\n');
 
 if (nargin == 0)
 	seed = fix(1e6*sum(clock));
