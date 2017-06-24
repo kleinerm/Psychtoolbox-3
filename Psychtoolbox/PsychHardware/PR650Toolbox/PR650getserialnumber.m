@@ -8,7 +8,7 @@ function serialnumStr = PR650getserialnumber
 %
 % 2/13/10  dhb  Wrote it, based on PR650getsyncfrequency.
 
-global g_serialPort g_useIOPort;
+global g_serialPort;
 
 % Check for initialization
 if isempty(g_serialPort)
@@ -22,33 +22,30 @@ timeout = 30;
 % fprintf('Flush\n');
 dumpStr = '0';
 while ~isempty(dumpStr)
-	dumpStr = PR650serialread;
+  dumpStr = PR650serialread;
 end
 
 % Send command
-if g_useIOPort
-	IOPort('write', g_serialPort, ['d110' char(10)]);
-else
-	SerialComm('write', g_serialPort, ['d110' char(10)]);
-end
+IOPort('write', g_serialPort, ['d110' char(10)]);
 
 % Get at least one character
 waited = 0;
 inStr = [];
 while isempty(inStr) && (waited < timeout)
-	WaitSecs(1);
-	waited = waited + 1;
-	inStr = PR650serialread;
+  WaitSecs(1);
+  waited = waited + 1;
+  inStr = PR650serialread;
 end
+
 if waited == timeout
-	error('No response from meter');
+  error('No response from meter');
 end
 
 % Pick up entire buffer.
 readStr = inStr;
 while ~isempty(inStr)
-	inStr = PR650serialread;
-	readStr = [readStr inStr];
+  inStr = PR650serialread;
+  readStr = [readStr inStr];
 end
 
 % Parse return.  This may contain

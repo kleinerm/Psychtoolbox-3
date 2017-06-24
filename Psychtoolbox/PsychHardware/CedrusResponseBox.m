@@ -80,8 +80,8 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % driver for communication (ptb_cedrus_drivertype = 2). If you want to use
 % a different driver for testing, change the 'ptb_cedrus_drivertype'
 % parameter inside the code with the id of a supported driver (Matlab
-% serial() on Windows and Linux, SerialComm on OS/X). This option may go
-% away in the future and is for debugging only!
+% serial()). This option may go away in the future and is for debugging
+% only!
 %
 %
 % CedrusResponseBox('Close', handle);
@@ -397,6 +397,7 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % 04/23/08 Add additional setup and query commands for external port. (MK)
 % 05/09/10 Add additional button label definitions for RB830, contributed
 %          by Jochen Laubrock. (MK)
+% 6/11/17  Remove dead SerialComm() driver path. (MK)
 
 % Hard-Coded drivertype to use: Defaults to our IOPort driver.
 global ptb_cedrus_drivertype;
@@ -1765,56 +1766,24 @@ if ptb_cedrus_drivertype == 2
     return;
 end
 
-% Some non-standard driver: We support serial() on Windows and Linux,
-% SerialComm on OS/X:
-% Which OS?
-if IsOSX
-    % SerialComm:
-    try
-        % Open 'port' with 'baudrate' baud, no parity, 8 data bits, 1
-        % stopbit.
-        SerialComm('open', port, sprintf('%i,n,8,1', baudrate));
+% Some non-standard driver: We support Matlab's serial() 
+% Windows or Linux: Matlab supports serial() object in JVM mode:
+if ~psychusejava('desktop')
+    error('You must run Matlab in JVM mode (JAVA enabled) for Cedrus response box to work!');
+end
 
-        % Disable handshaking 'n' == none:
-        SerialComm('hshake', port, 'n');
+try
+    % Ok, Matlab with JVM on Windows or Linux: Let's do it!
+    dev.link = serial(port, 'BaudRate', baudrate, 'DataBits', 8, 'StopBits', 1,...
+        'FlowControl', 'none', 'Parity', 'none', 'Terminator', 'CR', 'Timeout', 400,...
+        'InputBufferSize', 16000);
 
-        % Wait a bit...
-        WaitSecs(0.5);
-
-        % And flush all send- and receivebuffers:
-        purgedata = SerialComm('read', port);
-
-        if ~isempty(purgedata)
-            fprintf('CedrusResponseBox: Open: Purged some trash data...\n');
-        end
-
-        % Assign and init stuff:
-        dev.port = port;
-        dev.link = port;
-        dev.driver = 1;
-        dev.recvQueue = [];
-    catch
-        error('Failed to open port %i on OS/X for Cedrus response box via SerialComm() driver.', port);
-    end
-else
-    % Windows or Linux: Matlab supports serial() object in JVM mode:
-    if ~psychusejava('desktop')
-        error('You must run Matlab in JVM mode (JAVA enabled) for Cedrus response box to work!');
-    end
-
-    try
-        % Ok, Matlab with JVM on Windows or Linux: Let's do it!
-        dev.link = serial(port, 'BaudRate', baudrate, 'DataBits', 8, 'StopBits', 1,...
-            'FlowControl', 'none', 'Parity', 'none', 'Terminator', 'CR', 'Timeout', 400,...
-            'InputBufferSize', 16000);
-
-        fopen(dev.link);
-        dev.driver = 0;
-        dev.port = port;
-        dev.recvQueue = [];
-    catch
-        error('Failed to open port %s on Windows or Linux for Cedrus response box via Matlab serial() driver.', port);
-    end
+    fopen(dev.link);
+    dev.driver = 0;
+    dev.port = port;
+    dev.recvQueue = [];
+catch
+    error('Failed to open port %s on Windows or Linux for Cedrus response box via Matlab serial() driver.', port);
 end
 
 % Ready.
@@ -1845,19 +1814,13 @@ function CloseDev(handle)
         delete(dev.link);
         clear dev.link;
     else
-        if ptb_cedrus_devices{handle}.driver == 1
-            % OS/X + Matlab + SerialComm driver:
-            SerialComm('purge', ptb_cedrus_devices{handle}.link);
-            SerialComm('close', ptb_cedrus_devices{handle}.link);
-        end
-
         if ptb_cedrus_devices{handle}.driver == 2
             % IOPort driver:
             IOPort('Purge', ptb_cedrus_devices{handle}.link);
             IOPort('Close', ptb_cedrus_devices{handle}.link);
         end
     end
-    
+
     % Clear out device struct:
     ptb_cedrus_devices{handle} = [];
 
@@ -1872,18 +1835,6 @@ function nrAvail = BytesAvailable(handle)
         % Readout BytesAvailable subfield of device link object:
         nrAvail = ptb_cedrus_devices{handle}.link.BytesAvailable;
     else
-        if ptb_cedrus_devices{handle}.driver == 1
-            % OS/X + Matlab + SerialComm driver:
-            
-            % All reads are non-blocking and there isn't any BytesAvailable
-            % command. We fetch all data that's currently available via
-            % non-blocking read and attach it to our own queue, then return
-            % the total number of bytes in the queue:
-            data = transpose(SerialComm('read', ptb_cedrus_devices{handle}.link));
-            ptb_cedrus_devices{handle}.recvQueue = [ptb_cedrus_devices{handle}.recvQueue data];
-            nrAvail = length(ptb_cedrus_devices{handle}.recvQueue);
-        end
-
         if ptb_cedrus_devices{handle}.driver == 2
             % IOPort driver:            
             nrAvail = IOPort('BytesAvailable', ptb_cedrus_devices{handle}.link);
@@ -1907,42 +1858,6 @@ function data = ReadDev(handle, nwanted)
         % wanted 'nwanted' bytes or until timeout / error:
         data = transpose(fread(ptb_cedrus_devices{handle}.link, nwanted));
     else
-        if ptb_cedrus_devices{handle}.driver == 1
-            % OS/X + Matlab + SerialComm driver:
-            
-            % Call BytesAvailable to trigger read-in of data from serial
-            % port to our internal queue and to update the available stats,
-            % until at least the 'nwanted' bytes are available, or until
-            % the read operation times out after 2 seconds:
-            currtime = GetSecs;
-            timeout = currtime + 2;
-            while (BytesAvailable(handle) < nwanted) && (currtime < timeout)
-                % We are on OS/X, so waiting for 1 msec should suffice, no
-                % need to wait 4 msecs as on that other deficient OS:
-                currtime = WaitSecs(0.001);
-            end;
-            
-            if currtime >= timeout
-                fprintf('Timed out: nwanted = %i, got %i bytes: %s\n', nwanted, BytesAvailable(handle), char(ptb_cedrus_devices{handle}.recvQueue));
-                fprintf('Read operation on response box timed out after 2 secs!\n');
-                data = [];
-                return;
-            end
-            
-            % Have at least the nwanted bytes, so fetch the first nwanted
-            % bytes from queue:
-            data = ptb_cedrus_devices{handle}.recvQueue(1:nwanted);
-            
-            % Dequeue them from queue:
-            if length(ptb_cedrus_devices{handle}.recvQueue) > nwanted
-                % Keep tail of queue:
-                ptb_cedrus_devices{handle}.recvQueue = ptb_cedrus_devices{handle}.recvQueue(nwanted+1:end);
-            else
-                % Nothing more in queue: Delete it.
-                ptb_cedrus_devices{handle}.recvQueue = [];
-            end            
-        end
-
         if ptb_cedrus_devices{handle}.driver == 2
             % IOPort driver: Returns all data as data type double:
             % fprintf('In read....\n');
@@ -1969,13 +1884,6 @@ function WriteDev(handle, data)
         % completion:
         fwrite(ptb_cedrus_devices{handle}.link, char(data));
     else
-        if ptb_cedrus_devices{handle}.driver == 1
-            % OS/X + Matlab + SerialComm driver:
-            
-            % Write data - without terminator - via SerialComm:
-            SerialComm('write', ptb_cedrus_devices{handle}.link, double(data));
-        end
-
         if ptb_cedrus_devices{handle}.driver == 2
             % IOPort driver:
             

@@ -646,7 +646,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   If such a combination of graphics card and display is present on your system
 %   on Linux or Microsoft Windows, then Psychtoolbox will request native support
 %   from the standard graphics drivers, ie., it won't need to use our own
-%   homegrown, experimental box of tricks to enable this.
+%   homegrown, experimental box of tricks to enable this. You do need to enable/
+%   unlock 10 bpc mode somewhere in the display driver settings though. On Linux you
+%   can do this for supported cards and drivers via XOrgConfCreator + XOrgConfSelector,
+%   on Windows the method is vendor specific.
 %
 %   Apple OSX, since version 10.11.2 "El Capitan", does support native 10 bpc video
 %   output on some small subset of Apple hardware, as of May 2017 these are the MacPro
@@ -793,7 +796,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % * 'EnableNative16BitFramebuffer'  Enable up to 16 bpc, 64 bpp framebuffer on some setups.
 %   This asks to enable a framebuffer with a color depth of up to 16 bpc for up to 65535 levels
 %   of intensity per red, green and blue channel or 48 bits = different 2^48 colors. Currently,
-%   as of May 2017, this mode of operation is only supported on Linux when using the open-source
+%   as of June 2017, this mode of operation is only supported on Linux when using the open-source
 %   FOSS radeon graphics drivers on modern AMD graphics cards, and only after some special config-
 %   uration of your X-Server and display setup has been performed by you. This is essentially a
 %   low-level hack that works under those specific conditions, but uses a relatively large amount
@@ -802,7 +805,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   and faster in operation. On suitable setups, this will establish a 16 bpc framebuffer which packs
 %   3 * 16 bpc = 48 bit color info into 64 bpp pixels and the gpu's display engine will scan out that
 %   framebuffer at 16 bpc. However, effective output precision is further limited to < 16 bpc by your
-%   display, video connection and specific model of graphics card. As of May 2017, the maximum effective
+%   display, video connection and specific model of graphics card. As of June 2017, the maximum effective
 %   output precision is limited to at most 12 bpc (4096 levels of red, green and blue) by the graphics
 %   card, and this precision may only be attainable on AMD graphics cards of the so called "Sea Islands"
 %   (cik) family when used with the radeon-kms display driver. Any older or more recent cards, e.g.,
@@ -823,12 +826,11 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   1. You must create a custom made xorg.conf file for your graphics card and X-Server to setup
 %      the display screen for use of a linear, non-tiled framebuffer at a color depth of 24 bit.
-%      If you only have a single AMD graphics card installed in your Linux machine, the most easy
-%      way to achieve this is to copy our simple template xorg.conf file into the config folder of
-%      your machine:
+%      Setup for this is easily achieved via XOrgConfCreator on supported gpu's and drivers:
 %
-%      a) Open a terminal window and use cp to copy our template to the /etc/X11 folder:
-%      cp /path/to/Psychtoolbox/PsychGLImageProcessing/xorg.conf_For_AMD16bpcFramebuffer /etc/X11/xorg.conf.d/xorg.conf
+%      a) Use XOrgConfCreator to create a custom xorg.conf file for this purpose. If it asks for
+%         "Special setup options" answer 'y'es. When it asks for use of a linear, non-tiled framebuffer,
+%         answer 'y'es. This will create a proper config file. Use XOrgConfSelector to select that file.
 %
 %      b) Logout and login again, so the display server picks up the changed configuration.
 %
