@@ -1,18 +1,20 @@
 function kbNameResult = KbName(arg)
 %  kbNameResult = KbName(arg)
 %
-%  KbName maps between KbCheck-style keyscan codes and key names.
+%  KbName maps between KbCheck-style key codes and key names.
 %
-%  * If arg is a string designating a key label then KbName returns the 
-%    keycode of the indicated key.  
+%  * If arg is a string designating a key label then KbName returns the
+%    keycodes of the indicated key. Some key label may have multiple keys
+%    assigned on some operating systems and keyboards. Therefore the returned
+%    keycodes may be a vector of multiple keycodes, not just one unique key code.
 %
-%  * If arg is a keycode, KbName returns the label of the designated key. 
+%  * If arg is a keycode, KbName returns the label of the designated key.
 %
-%  * If no argument is supplied then KbName waits one second and then 
+%  * If no argument is supplied then KbName waits one second and then
 %    calls KbCheck.  KbName then returns a cell array holding the names of
-%    all keys which were down at the time of the KbCheck call. The 
-%    one-second delay preceeding the call to KbCheck avoids catching the 
-%    <return> keypress used to execute the KbName function. 
+%    all keys which were down at the time of the KbCheck call. The
+%    one-second delay preceeding the call to KbCheck avoids catching the
+%    <return> keypress used to execute the KbName function.
 %
 %  * If arg is 'UnifyKeyNames', KbName will switch its internal naming
 %    scheme from the operating system specific scheme (which was used in
@@ -39,8 +41,8 @@ function kbNameResult = KbName(arg)
 %  * If arg is 'KeyNamesLinux', KbName will print out a table of all
 %    keycodes->keynames mappings for GNU/Linux, X11.
 %
-%  KbName deals with keys, not characters. See KbCheck help for an 
-%  explanation of keys, characters, and keycodes.   
+%  KbName deals with keys, not characters. See KbCheck help for an
+%  explanation of keys, characters, and keycodes.
 %
 %  Please note that KbName always assumes a US keyboard layout. Changing
 %  the keyboard layout settings in your operating system will have no
@@ -50,35 +52,34 @@ function kbNameResult = KbName(arg)
 %  be reported as 'Y' key, because these two keys are interchanged on the
 %  german keyboard wrt. the US keyboard.
 %
-%  There are standard character sets, but there are no standard key 
+%  There are standard character sets, but there are no standard key
 %  names.  The convention KbName follows is to name keys with  the primary
 %  key label printed on the key.  For example, the the "]}"  key is named
 %  "]" because "]" is the primary key label and "}" is the  shifted key
 %  function.  In the case of  labels such as "5", which appears  on two
 %  keys, the name "5" designates the "5" key on the numeric keypad  and
-%  "5%" designates the QWERTY "5" key. Here, "5" specifies the primary 
-%  label of the key and the shifted label, "%" refines the specification, 
-%  distinguishing it from keypad "5".  Keys labeled with symbols not 
+%  "5%" designates the QWERTY "5" key. Here, "5" specifies the primary
+%  label of the key and the shifted label, "%" refines the specification,
+%  distinguishing it from keypad "5".  Keys labeled with symbols not
 %  represented in character sets are assigned names describing those
 %  symbols  or the key function, for example the space bar is named
 %  "space" and the apple  key is named "apple".  Some keyboards have
-%  identically-labelled keys distinguished 
+%  identically-labelled keys distinguished
 %  only by their positions on the keyboard, for example, left and right
 %  shift  keys.  Windows operating systems more recent than Windows 95 can
 %  distinguish between such keys.  To name such keys, we precede the key
 %  label with either  "left_" or "right_", to create the key name.  For
 %  example, the left shift key  is called "left_shift".
 %
-%  Use KbName to make your scripts more readable and portable, using key 
-%  labels instead of keycodes, which are cryptic and vary between Mac and
-%  Windows computers.  
+%  Use KbName to make your scripts more readable and portable, using key
+%  labels instead of keycodes, which are cryptic and vary between different
+%  computers.
 %
-%  For example, 
+%  For example,
 %
-%  yesKey = KbName('return');           
+%  yesKeys = KbName('return');
 %  [a,b,keyCode] = KbCheck;
-%  if keyCode(yesKey)
-%    flushevents('keyDown');
+%  if any(keyCode(yesKeys))
 %    ...
 %  end;
 %
@@ -106,13 +107,13 @@ function kbNameResult = KbName(arg)
 %  Historically, different operating systems used different keycodes
 %  because they used different types of keyboards: PS/2 for Windows, ADB
 %  for OS 9, and USB for OS 9, Windows, and OSX. KbCheck on OS X returns
-%  USB keycodes. 
+%  USB keycodes.
 %
 %  _________________________________________________________________________
 %
 %  See also KbCheck, KbDemo, KbWait.
 
-%   HISTORY 
+%   HISTORY
 %
 %   12/16/98    awi     wrote it
 %   02/12/99    dgp     cosmetic editing of comments
@@ -120,37 +121,37 @@ function kbNameResult = KbName(arg)
 %   02/07/02    awi     added Windows keycodes
 %   02/10/02    awi     modified to return key names within a cell array in the case
 %                       where no arguments are passed to KbName and it calls KbCheck.
-%   02/10/02    awi     Modifed comments for changes made to Windows version. 
+%   02/10/02    awi     Modifed comments for changes made to Windows version.
 %   04/10/02    awi     Cosmetic
 %                       -Fixed bug where "MAC2"  case was not in quotes
 %                       -Fixed bug where Mac loop searching for empty cells overran max index.
 %   09/27/02    awi     Wrapped an index in Find() becasue Matlab will no longer index
-%                       matrices with logicals. 
-%   06/18/03    awi     Complete rewrite featuring recursive calls to KbName, new key names, and 
+%                       matrices with logicals.
+%   06/18/03    awi     Complete rewrite featuring recursive calls to KbName, new key names, and
 %                       a shared execution path for all platforms.  The key codes have been renamed
 %                       to be abbreviations of standard USB keycode names.  This breaks scripts
 %                       which relied on the old names but fixes the problem
 %                       that KbName returned different names on Mac and Windows. See www.usb.org
-%                       for a table of USB HID keycodes and key names.  
-%   06/24/03    awi     Added keycodes for OS 9 KbCheck  
+%                       for a table of USB HID keycodes and key names.
+%   06/24/03    awi     Added keycodes for OS 9 KbCheck
 %   06/25/03    awi     -Lowered all keycodes by 1 to match official USB table.  Previously
 %                       the KbCheck keycodes were the offical USB keycodes + 1 because
 %                       the USB table is zero-indexed whereas Matlab matrices are one-indexed.
 %                       As a consequence of this change KbName and KbCheck will not handle keycode
-%                       0, but that is ok because keycode 0 is not really used for anything.  
-%                       -Moved test for logical above the the test for doubles  
+%                       0, but that is ok because keycode 0 is not really used for anything.
+%                       -Moved test for logical above the the test for doubles
 %                       because on OS 9 logicals are also doubles.
-%                       -Declared the cell arrays to be persistent to conserve 
+%                       -Declared the cell arrays to be persistent to conserve
 %                       resources.
 %   06/25/03    awi     The comment of 09/27/02 (see above) is incorrect, Matlab does still
 %                       support indexing with logical vectors.  Really the problem
 %                       was that with Matlab 6 the C mex API had changed and mxSetLogical
-%                       was unsupported.  KbCheck was not returning an array marked as 
-%                       type logical. Mex files should use mxCreateLogicalArray() or 
-%                       mxCreateLogicalMatrix() instead of mxSetLogical.  
+%                       was unsupported.  KbCheck was not returning an array marked as
+%                       type logical. Mex files should use mxCreateLogicalArray() or
+%                       mxCreateLogicalMatrix() instead of mxSetLogical.
 %
 %   10/12/04    awi     Cosmetic changes to comments.
-%   10/4/05     awi     Note here cosmetic changes by dgp on unknown date between 10/12/04 and 10/4/05   
+%   10/4/05     awi     Note here cosmetic changes by dgp on unknown date between 10/12/04 and 10/4/05
 %   12/31/05    mk      Transplanted the keycode table from old WinPTB KbName to OS-X KbName.
 %                       This is a hack until we have PsychHID for Windows and can share the table
 %                       with OS-X table.
@@ -168,15 +169,7 @@ function kbNameResult = KbName(arg)
 %   29.09.10    mk      Add missing definition of ',<' key to Windows version.
 %   20.10.11    mk      Add missing definition of 'pause' key to Windows version.
 %   14.01.15    mk      Add Linux Wayland backend support. Whitespace cleanup.
-
-%   TO DO
-%
-%   -Add feature where we accept a matrix of logical row vectors.   
-%
-%   -Update help documentation:  Add OS X section, Explain new key names, the feature which returns
-%   the table, that k=KbName;streq(KbName(KbName(k)),k) is one test of KbName,
-%   that keyboards do not distinquish between left and right versions of
-%   keys though the standard specifies different keycodes, the problem with the 'a' key.  
+%   07.07.17    mk      Whitespace cleanup. Clarify multiple key codes per key name possible.
 
 persistent kkOSX kkOS9 kkWin kkLinux kk
 persistent escapedLine
@@ -198,7 +191,7 @@ if isempty(kkOSX)
      % Need to manually encode sequence '\|' so Octave doesn't complain about
      % unrecognized escaped character sequence :-I
      escapedLine = char([92, 124]);
-     
+
      % MK: Until we have a PsychHID for windows, we use this table for the
      % Windows keycode mappings. I stole it from the old WinPTB ;)
      kkWin{65} = 'a';
@@ -296,7 +289,7 @@ if isempty(kkOSX)
      kkWin{39} = 'right';
      kkWin{40} = 'down';
      kkWin{38} = 'up';
-     
+
      % Keynames used only on Windows
      kkWin{91} = 'windows_left';
      kkWin{92} = 'windows_right';
@@ -408,10 +401,10 @@ if isempty(kkOSX)
     kkOSX{67} = 'F10';                              kkOS9{110}='F10';
     kkOSX{68} = 'F11';                              kkOS9{104}='F11';
     kkOSX{69} = 'F12';                              kkOS9{112}='F12';
-    kkOSX{70} = 'PrintScreen';                      
-    kkOSX{71} = 'ScrollLock';                       
-    kkOSX{72} = 'Pause';                            
-    kkOSX{73} = 'Insert';                           
+    kkOSX{70} = 'PrintScreen';
+    kkOSX{71} = 'ScrollLock';
+    kkOSX{72} = 'Pause';
+    kkOSX{73} = 'Insert';
     kkOSX{74} = 'Home';                             kkOS9{116}='Home';
     kkOSX{75} = 'PageUp';                           kkOS9{117}='PageUp';
     kkOSX{76} = 'DeleteForward';                    kkOS9{118}='DeleteForward';
@@ -452,29 +445,29 @@ if isempty(kkOSX)
     kkOSX{104} = 'F13';                             kkOS9{106}='F13';
     kkOSX{105} = 'F14';                             kkOS9{108}='F14';
     kkOSX{106} = 'F15';                             kkOS9{114}='F15';
-    kkOSX{107} = 'F16';                            
-    kkOSX{108} = 'F17';                            
-    kkOSX{109} = 'F18';                            
-    kkOSX{110} = 'F19';                             
-    kkOSX{111} = 'F20';                           
-    kkOSX{112} = 'F21';                           
-    kkOSX{113} = 'F22';                            
-    kkOSX{114} = 'F23';                             
-    kkOSX{115} = 'F24';                            
-    kkOSX{116} = 'Execute';                        
+    kkOSX{107} = 'F16';
+    kkOSX{108} = 'F17';
+    kkOSX{109} = 'F18';
+    kkOSX{110} = 'F19';
+    kkOSX{111} = 'F20';
+    kkOSX{112} = 'F21';
+    kkOSX{113} = 'F22';
+    kkOSX{114} = 'F23';
+    kkOSX{115} = 'F24';
+    kkOSX{116} = 'Execute';
     kkOSX{117} = 'Help';                            kkOS9{115}='Help';
-    kkOSX{118} = 'Menu';                            
-    kkOSX{119} = 'Select';                         
-    kkOSX{120} = 'Stop';                            
-    kkOSX{121} = 'Again';                          
-    kkOSX{122} = 'Undo';                           
-    kkOSX{123} = 'Cut';                          
-    kkOSX{124} = 'Copy';                            
-    kkOSX{125} = 'Paste';                           
-    kkOSX{126} = 'Find';                            
-    kkOSX{127} = 'Mute';                           
-    kkOSX{128} = 'VolumeUp';                        
-    kkOSX{129} = 'VolumeDown';                      
+    kkOSX{118} = 'Menu';
+    kkOSX{119} = 'Select';
+    kkOSX{120} = 'Stop';
+    kkOSX{121} = 'Again';
+    kkOSX{122} = 'Undo';
+    kkOSX{123} = 'Cut';
+    kkOSX{124} = 'Copy';
+    kkOSX{125} = 'Paste';
+    kkOSX{126} = 'Find';
+    kkOSX{127} = 'Mute';
+    kkOSX{128} = 'VolumeUp';
+    kkOSX{129} = 'VolumeDown';
 
     %Implemented as a locking key; sent as a toggle button. Available for legacy support; however, most systems should use the non-locking version of this key.
     kkOSX{130} = 'LockingCapsLock';
@@ -489,96 +482,96 @@ if isempty(kkOSX)
     %This represents the closest possible match, and system software should do the correct mapping based on the current locale setting.
     kkOSX{133} = 'Comma';
 
-    kkOSX{134} = 'EqualSign';                       
-    kkOSX{135} = 'International1';                 
-    kkOSX{136} = 'International2';                  
-    kkOSX{137} = 'International3';                  
-    kkOSX{138} = 'International4';                  
-    kkOSX{139} = 'International5';                  
-    kkOSX{140} = 'International6';                  
-    kkOSX{141} = 'International7';                  
-    kkOSX{142} = 'International8';                  
-    kkOSX{143} = 'International9';                  
-    kkOSX{144} = 'LANG1';                           
-    kkOSX{145} = 'LANG2';                           
-    kkOSX{146} = 'LANG3';                          
-    kkOSX{147} = 'LANG4';                          
-    kkOSX{148} = 'LANG5';                          
-    kkOSX{149} = 'LANG6';                         
-    kkOSX{150} = 'LANG7';                           
-    kkOSX{151} = 'LANG8';                          
-    kkOSX{152} = 'LANG9';                           
-    kkOSX{153} = 'AlternateErase';                 
-    kkOSX{154} = 'SysReq/Attention';               
-    kkOSX{155} = 'Cancel';                         
-    kkOSX{156} = 'Clear';                          
-    kkOSX{157} = 'Prior';                        
-    kkOSX{158} = 'Return';                         
-    kkOSX{159} = 'Separator';                       
-    kkOSX{160} = 'Out';                          
-    kkOSX{161} = 'Oper';                        
-    kkOSX{162} = 'Clear/Again';                 
-    kkOSX{163} = 'CrSel/Props';                  
-    kkOSX{164} = 'ExSel';                           
-    kkOSX{165} = 'Undefined';                       
-    kkOSX{166} = 'Undefined';                       
-    kkOSX{167} = 'Undefined';                       
-    kkOSX{168} = 'Undefined';                       
-    kkOSX{169} = 'Undefined';                       
-    kkOSX{170} = 'Undefined';                       
-    kkOSX{171} = 'Undefined';                       
-    kkOSX{172} = 'Undefined';                      
-    kkOSX{173} = 'Undefined';                       
-    kkOSX{174} = 'Undefined';                      
-    kkOSX{175} = 'Undefined';                       
-    kkOSX{176} = '00';                              
-    kkOSX{177} = '000';                            
-    kkOSX{178} = 'ThousandsSeparator';             
-    kkOSX{179} = 'DecimalSeparator';               
-    kkOSX{180} = 'CurrencyUnit';                    
-    kkOSX{181} = 'CurrencySub-unit';                
-    kkOSX{182} = '(';                              
-    kkOSX{183} = ')';                               
-    kkOSX{184} = '{';                               
-    kkOSX{185} = '}';                               
-    kkOSX{186} = 'KeypadTab';                       
-    kkOSX{187} = 'KeypadBackspace';                 
-    kkOSX{188} = 'KeypadA';                         
-    kkOSX{189} = 'KeypadB';                        
-    kkOSX{190} = 'KeypadC';                         
-    kkOSX{191} = 'KeypadD';                        
-    kkOSX{192} = 'KeypadE';                        
-    kkOSX{193} = 'KeypadF';                         
-    kkOSX{194} = 'XOR';                            
-    kkOSX{195} = '^';                               
-    kkOSX{196} = '%';                               
-    kkOSX{197} = '<';                               
-    kkOSX{198} = '>';                               
-    kkOSX{199} = '&';                              
-    kkOSX{200} = '&&';                              
-    kkOSX{201} = '|';                              
-    kkOSX{202} = '||';                            
-    kkOSX{203} = ':';                            
-    kkOSX{204} = '#';                               
-    kkOSX{205} = 'KeypadSpace';                     
-    kkOSX{206} = '@';                              
-    kkOSX{207} = '!';                               
-    kkOSX{208} = 'MemoryStore';                     
-    kkOSX{209} = 'MemoryRecall';                   
-    kkOSX{210} = 'MemoryClear';                     
-    kkOSX{211} = 'MemoryAdd';                      
-    kkOSX{212} = 'MemorySubtract';                 
-    kkOSX{213} = 'MemoryMultiply';                 
-    kkOSX{214} = 'MemoryDivide';                   
-    kkOSX{215} = '+/-';                             
-    kkOSX{216} = 'KeypadClear';                    
-    kkOSX{217} = 'KeypadClearEntry';                
-    kkOSX{218} = 'KeypadBinary';                    
-    kkOSX{219} = 'KeypadOctal';                     
-    kkOSX{220} = 'KeypadDecimal';                  
-    kkOSX{221} = 'Undefined';                       
-    kkOSX{222} = 'Undefined';                       
-    kkOSX{223} = 'Undefined';                       
+    kkOSX{134} = 'EqualSign';
+    kkOSX{135} = 'International1';
+    kkOSX{136} = 'International2';
+    kkOSX{137} = 'International3';
+    kkOSX{138} = 'International4';
+    kkOSX{139} = 'International5';
+    kkOSX{140} = 'International6';
+    kkOSX{141} = 'International7';
+    kkOSX{142} = 'International8';
+    kkOSX{143} = 'International9';
+    kkOSX{144} = 'LANG1';
+    kkOSX{145} = 'LANG2';
+    kkOSX{146} = 'LANG3';
+    kkOSX{147} = 'LANG4';
+    kkOSX{148} = 'LANG5';
+    kkOSX{149} = 'LANG6';
+    kkOSX{150} = 'LANG7';
+    kkOSX{151} = 'LANG8';
+    kkOSX{152} = 'LANG9';
+    kkOSX{153} = 'AlternateErase';
+    kkOSX{154} = 'SysReq/Attention';
+    kkOSX{155} = 'Cancel';
+    kkOSX{156} = 'Clear';
+    kkOSX{157} = 'Prior';
+    kkOSX{158} = 'Return';
+    kkOSX{159} = 'Separator';
+    kkOSX{160} = 'Out';
+    kkOSX{161} = 'Oper';
+    kkOSX{162} = 'Clear/Again';
+    kkOSX{163} = 'CrSel/Props';
+    kkOSX{164} = 'ExSel';
+    kkOSX{165} = 'Undefined';
+    kkOSX{166} = 'Undefined';
+    kkOSX{167} = 'Undefined';
+    kkOSX{168} = 'Undefined';
+    kkOSX{169} = 'Undefined';
+    kkOSX{170} = 'Undefined';
+    kkOSX{171} = 'Undefined';
+    kkOSX{172} = 'Undefined';
+    kkOSX{173} = 'Undefined';
+    kkOSX{174} = 'Undefined';
+    kkOSX{175} = 'Undefined';
+    kkOSX{176} = '00';
+    kkOSX{177} = '000';
+    kkOSX{178} = 'ThousandsSeparator';
+    kkOSX{179} = 'DecimalSeparator';
+    kkOSX{180} = 'CurrencyUnit';
+    kkOSX{181} = 'CurrencySub-unit';
+    kkOSX{182} = '(';
+    kkOSX{183} = ')';
+    kkOSX{184} = '{';
+    kkOSX{185} = '}';
+    kkOSX{186} = 'KeypadTab';
+    kkOSX{187} = 'KeypadBackspace';
+    kkOSX{188} = 'KeypadA';
+    kkOSX{189} = 'KeypadB';
+    kkOSX{190} = 'KeypadC';
+    kkOSX{191} = 'KeypadD';
+    kkOSX{192} = 'KeypadE';
+    kkOSX{193} = 'KeypadF';
+    kkOSX{194} = 'XOR';
+    kkOSX{195} = '^';
+    kkOSX{196} = '%';
+    kkOSX{197} = '<';
+    kkOSX{198} = '>';
+    kkOSX{199} = '&';
+    kkOSX{200} = '&&';
+    kkOSX{201} = '|';
+    kkOSX{202} = '||';
+    kkOSX{203} = ':';
+    kkOSX{204} = '#';
+    kkOSX{205} = 'KeypadSpace';
+    kkOSX{206} = '@';
+    kkOSX{207} = '!';
+    kkOSX{208} = 'MemoryStore';
+    kkOSX{209} = 'MemoryRecall';
+    kkOSX{210} = 'MemoryClear';
+    kkOSX{211} = 'MemoryAdd';
+    kkOSX{212} = 'MemorySubtract';
+    kkOSX{213} = 'MemoryMultiply';
+    kkOSX{214} = 'MemoryDivide';
+    kkOSX{215} = '+/-';
+    kkOSX{216} = 'KeypadClear';
+    kkOSX{217} = 'KeypadClearEntry';
+    kkOSX{218} = 'KeypadBinary';
+    kkOSX{219} = 'KeypadOctal';
+    kkOSX{220} = 'KeypadDecimal';
+    kkOSX{221} = 'Undefined';
+    kkOSX{222} = 'Undefined';
+    kkOSX{223} = 'Undefined';
     kkOSX{224} = 'LeftControl';                     kkOS9{60}='LeftControl';    %double entry
     kkOSX{225} = 'LeftShift';                       kkOS9{57}='LeftShift';      %double entry
     kkOSX{226} = 'LeftAlt';                         kkOS9{59}='LeftAlt';        %double entry
@@ -590,31 +583,31 @@ if isempty(kkOSX)
     kkOSX{229} = 'RightShift';                      %kkOS9{57}='RightShift'; % FIX double entry
     kkOSX{230} = 'RightAlt';                        %kkOS9{59}='RightAlt';   % FIX double entry
     kkOSX{231} = 'RightGUI';                        %kkOSX{56} ='RightGUI';  % FIX double entry
-    kkOSX{232} = 'Undefined';                      
-    kkOSX{233} = 'Undefined';                     
-    kkOSX{234} = 'Undefined';                   
-    kkOSX{235} = 'Undefined';                      
-    kkOSX{236} = 'Undefined';                   
-    kkOSX{237} = 'Undefined';                       
-    kkOSX{238} = 'Undefined';                      
-    kkOSX{239} = 'Undefined';                      
-    kkOSX{240} = 'Undefined';                       
-    kkOSX{241} = 'Undefined';                      
-    kkOSX{242} = 'Undefined';                    
-    kkOSX{243} = 'Undefined';                      
-    kkOSX{244} = 'Undefined';                    
-    kkOSX{245} = 'Undefined';                       
-    kkOSX{246} = 'Undefined';                      
-    kkOSX{247} = 'Undefined';                       
-    kkOSX{248} = 'Undefined';                      
-    kkOSX{249} = 'Undefined';                       
-    kkOSX{250} = 'Undefined';                       
-    kkOSX{251} = 'Undefined';                       
-    kkOSX{252} = 'Undefined';                      
-    kkOSX{253} = 'Undefined';                     
-    kkOSX{254} = 'Undefined';                       
-    kkOSX{255} = 'Undefined';                       
-    kkOSX{256} = 'Undefined';                       
+    kkOSX{232} = 'Undefined';
+    kkOSX{233} = 'Undefined';
+    kkOSX{234} = 'Undefined';
+    kkOSX{235} = 'Undefined';
+    kkOSX{236} = 'Undefined';
+    kkOSX{237} = 'Undefined';
+    kkOSX{238} = 'Undefined';
+    kkOSX{239} = 'Undefined';
+    kkOSX{240} = 'Undefined';
+    kkOSX{241} = 'Undefined';
+    kkOSX{242} = 'Undefined';
+    kkOSX{243} = 'Undefined';
+    kkOSX{244} = 'Undefined';
+    kkOSX{245} = 'Undefined';
+    kkOSX{246} = 'Undefined';
+    kkOSX{247} = 'Undefined';
+    kkOSX{248} = 'Undefined';
+    kkOSX{249} = 'Undefined';
+    kkOSX{250} = 'Undefined';
+    kkOSX{251} = 'Undefined';
+    kkOSX{252} = 'Undefined';
+    kkOSX{253} = 'Undefined';
+    kkOSX{254} = 'Undefined';
+    kkOSX{255} = 'Undefined';
+    kkOSX{256} = 'Undefined';
     % 257-65535 E8-FFFF Reserved
 
     % Platform-specific key names.  The PowerBook G3 built-in keyboard might
@@ -666,9 +659,9 @@ elseif isempty(arg)
     % KbCheck did not report any depressed keys:
     kbNameResult=[];
 
-    % if the argument is a logical array then convert to a list of doubles and recur on the result. 
+    % if the argument is a logical array then convert to a list of doubles and recur on the result.
     % Note that this case must come before the test for double below. In Matlab 5 logicals are also
-    % doubles but in Matlab 6.5 logicals are not doubles.  
+    % doubles but in Matlab 6.5 logicals are not doubles.
 elseif islogical(arg) || (isa(arg,'double') && length(arg)==256) || (isa(arg,'uint8') && length(arg)==256)
     kbNameResult=KbName(find(arg));
 
@@ -679,7 +672,7 @@ elseif isa(arg,'double') || isa(arg,'uint8')
     if length(arg) == 1
         if(arg < 1 || arg > 65535)
             error('Argument exceeded allowable range of 1-65536');
-        elseif arg > 255 
+        elseif arg > 255
             kbNameResult='Undefined';
         else
             kbNameResult=kk{arg};
@@ -774,7 +767,7 @@ elseif ischar(arg)      % argument is a character, so find the code
             kk{93} = 'Application';
             kk{19} = 'Pause';
         end
-        
+
         if IsLinux
             % Remapping of Linux aka X11 keynames to OS-X/USB-HID keynames:
             % All relevant/important keys should be there now.
@@ -850,12 +843,12 @@ elseif ischar(arg)      % argument is a character, so find the code
                 end
             end
         end
-        
+
         if IsOSX
             kk{131} = 'NumLock'; % Override 'LockingNumLock' ...
             % FIXME: kk{83} = 'NumLock'; % Override 'NumLockClear' as well?!?
         end
-        
+
         % End of keyname unification code.
     else
         if IsOctave && IsWin
@@ -879,7 +872,7 @@ elseif ischar(arg)      % argument is a character, so find the code
         end
     end
 
-% we have a cell arry of strings so iterate over the cell array and recur on each element.    
+% we have a cell arry of strings so iterate over the cell array and recur on each element.
 elseif isa(arg, 'cell')
     kbNameResult = [];
     cnt = 1;
