@@ -14,6 +14,14 @@
 % systems can still cause slight differences in text appearance if you don't
 % manage this though.
 %
+% Which text renderer should be used can be set via
+% Screen('Preference','TextRenderer', type), and after a first call to
+% Screen('DrawText', ...), type = Screen('Preference','TextRenderer') will
+% report which 'type' of text renderer is actually used. A 'type' of 1 means
+% that the plugin based renderer is used, a 'type' of 0 or -1 would mean the
+% use of a less high quality fallback renderer, e.g., because loading the
+% text rendering plugin failed.
+%
 % If use of the drawtext plugin renderer fails then that likely means that
 % some required 3rd party library is not installed, or of incompatible version.
 % The plugin requires a working installation of the FreeType-2 and
