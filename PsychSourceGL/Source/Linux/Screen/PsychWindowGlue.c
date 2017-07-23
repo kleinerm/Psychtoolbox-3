@@ -1404,6 +1404,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     // Perform a fully synced flip with backbuffer cleared to black, to have a defined final
     // frontbuffer color for switching back to windowing system. Avoids leaving pixel trash
     // behind on some multi-x-screen setups with some drivers:
+    PsychSetupView(windowRecord, TRUE);
     glClearColor(0,0,0,1);
     glClear(GL_COLOR_BUFFER_BIT);
     PsychOSFlipWindowBuffers(windowRecord);
