@@ -1,14 +1,23 @@
 function ReturnFigh = ConfirmInfo(TheQuestion,ButtonString,HowLongToWait)
 % Syntax: [FigureHandle] = ConfirmInfo(TheQuestion,[ButtonString],[TimeoutPeriod])
 % 
-% Purpose: Create simple dialog box asking user to verify receipt of information
+% Purpose: Create simple dialog box asking user to verify receipt of information.
 %
-% History: 1/11/05		mpr		modified this from TwoStateQuery
-%					 1/21/05		mpr		allowed font size to be reduced for longer strings
+% On Octave, Matlab in non-GUI mode, or Matlab version R2014b (8.4) or later,
+% this will just print 'TheQuestion' to the command window and wait for a key
+% press for confirmation. Older Matlab versions present a GUI dialog box.
+%
+% 'TheQuestion' Text string with the question/statement to confirm.
+% 'ButtonString' Optional label on the GUI button, otherwise 'Okay' is used.
+% 'HowLongToWait' How long to wait for response before timing out. Defaults to
+%                 infinite wait.
+%
+% History: 1/11/05    mpr   modified this from TwoStateQuery
+%          1/21/05    mpr   allowed font size to be reduced for longer strings
 %           5/3/06    mpr   added third argument to limit time for response;
 %                           defaults to Inf; works only in version 7 (requires
 %                           timer object class)
-%					 5/15/06		mpr		allowed figure to be non-modal; under that
+%          5/15/06    mpr   allowed figure to be non-modal; under that
 %                           condition, clicking button deletes figure; to make
 %                           nonmodal, in version 5, pass non-zero non-Inf third
 %                           argument; in version 7, pass NaN as third argument;
@@ -19,7 +28,7 @@ function ReturnFigh = ConfirmInfo(TheQuestion,ButtonString,HowLongToWait)
 %         12/14/07    mpr   commented call to RepaintAllPushButtons because
 %                           the Matlab bug is now almost fixed 
 %         12/29/07    mpr   made three-line questions possible
-%					 1/3/08			mpr		introduced NLChar for cross-platform compatibility
+%          1/3/08     mpr   introduced NLChar for cross-platform compatibility
 %          3/5/08     mpr   small cosmetic fix for new case where a third line
 %                           was needed even though Extent(3) < 2...
 %          3/21/08    mpr   allowed return value to signal if user closed window
@@ -27,15 +36,15 @@ function ReturnFigh = ConfirmInfo(TheQuestion,ButtonString,HowLongToWait)
 %                           figure is modal)
 %          3/31/08    mpr   added check to make sure search for appropriate
 %                           space does not overrun number of spaces
-%          5/20/13    mk Add text only fallback for Octave and non-GUI.
-
+%          5/20/13    mk    Add text only fallback for Octave and non-GUI.
+%          7/20/17    mk    Use text only fallback on Matlab R2014b and later.
 DoModal = 1;
 if nargin < 3 || isempty(HowLongToWait)
   HowLongToWait = Inf;
 end
 
 % Provide text fallback for non-GUI mode or Octave:
-if ~IsGUI || IsOctave
+if ~IsGUI || IsOctave || ~verLessThan('matlab','8.4')
   fprintf('%s\nPress any key to continue.\n', TheQuestion);
   [secs, keyCode] = KbStrokeWait (-1, GetSecs + HowLongToWait);
   if any(keyCode)
