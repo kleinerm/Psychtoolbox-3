@@ -72,6 +72,8 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType, disableD
 %                identity lut via LoadNormalizedGammaTable before using low-level
 %                identity lut setup, which can only deal with discrete lut's, not
 %                pwl lut's or such.
+% 07/10/17   MR  Added gfxhwtype=5 for AMD graphics cards under Windows (see also 
+%                the new variable 'ditherApiVer'). 
 
 global ptb_original_gfx_cluts;
 
@@ -120,7 +122,14 @@ if disableDithering && IsWin
     % we don't know how trustworthy it is. Also this only affects dithering,
     % not gamma table identity setup, so the code-pathes below must run anyway
     % for proper setup, even if their dithering disable effect may be redundant.
-    PsychGPUControl('SetDitheringEnabled', 0);
+    [rc, ditherApiVer] = PsychGPUControl('SetDitheringEnabled', 0);
+    % As long as there is no clear indication that it was dither API v2,
+    % we assume it was the old dithering API v1. Will be only used for AMD anyway.
+    if rc~=0 || isempty(ditherApiVer)
+        ditherApiVer = 1;
+    end
+else
+    ditherApiVer = 1;
 end
 
 % Ask Screen to use low-level setup code to configure the GPU for
@@ -307,8 +316,16 @@ else
                     % At least the Radeon HD 3470 under Windows Vista and Linux needs type 0
                     % LUT's. Let's assume for the moment this is true for all R600
                     % cores, ie., all Radeon HD series cards.
-                    fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later detected. Using type-0 LUT.\n');
-                    gfxhwtype = 0;
+                    % gfxhwtype==0 does not work for newer drivers. Since the driver version seems 
+                    % to be less indicative for the change, we base our decision on the dither API 
+                    % version implemented by AMD's display library (ADL). 
+                    if ditherApiVer==2
+                        fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later with dither API v2 detected. Using type-5 LUT.\n');
+                        gfxhwtype = 5;
+                    else
+                        fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later detected. Using type-0 LUT.\n');
+                        gfxhwtype = 0;
+                    end
                 elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'on AMD')))
                     if ~isempty(strfind(winfo.GPUCoreId, 'R600'))
                         % At least the Radeon R9 380 Tonga Pro with DCE10 display engine under Linux with DRI2 Mesa needs type 3
@@ -451,7 +468,18 @@ else
         oldClut = Screen('LoadNormalizedGammaTable', windowPtr, (0:1/256:0.99611)' * ones(1, 3), loadOnNextFlip);
     end
 
-    if ~ismember(gfxhwtype, [-1,0,1,2,3,4])
+    if gfxhwtype == 5
+        % Probably all AMD Radeon cards under Windows with graphics card drivers 
+        % Catalyst 15.7.1 or later (a better indicator than the driver version is 
+        % the version of the ADL dither API though, which changed in an incompatible  
+        % way sometime around 15.7.1). This is equivalent to gfxhwtype==4 but with 
+        % the last element set to 1.
+        % Tested with HD7750 and RX460 under Win7/Win10. 
+        % See also https://github.com/Psychtoolbox-3/Psychtoolbox-3/issues/402.
+        oldClut = Screen('LoadNormalizedGammaTable', windowPtr, [(0:254)*256/(2^16-1), 1]' * ones(1, 3), loadOnNextFlip);        
+    end    
+
+    if ~ismember(gfxhwtype, [-1,0,1,2,3,4,5])
         sca;
         error('Could not upload identity CLUT to GPU! Invalid LUT or invalid LUT id or other invalid arguments passed?!?');
     end
