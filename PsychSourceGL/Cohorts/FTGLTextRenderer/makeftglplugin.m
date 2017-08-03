@@ -43,12 +43,11 @@ end
 
 if ~isempty(cmd)
     [rc, ret] = system(cmd);
+    disp(ret);
     if rc == 0
         movefile(name, [PsychtoolboxRoot 'PsychBasic' filesep 'PsychPlugins']);
-        disp(ret);
         fprintf('Success.\n');
     else
-        disp(ret);
         fprintf('FAILED!\n');
     end
 end

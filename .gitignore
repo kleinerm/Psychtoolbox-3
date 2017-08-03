@@ -21,3 +21,7 @@ liboctave.*
 liboctinterp.*
 Psychtoolbox/PsychTests/TimingtestResults/*
 managementtools/ptbregistration*
+*.ipch
+*.VC.db
+*.suo
+*.sqlite
