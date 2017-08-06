@@ -643,6 +643,20 @@ if strcmpi(cmd, 'AutoSetupHMD')
       return;
     end
 
+    if strcmpi(vendor, 'OpenHMD')
+      if exist('PsychOpenHMDVR', 'file')
+        hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+      else
+        hmd = [];
+      end
+
+      % Return the handle:
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+
+      return;
+    end
+
     error('AutoSetupHMD: Invalid ''vendor'' requested. This vendor is not supported.');
   end
 
@@ -673,12 +687,31 @@ if strcmpi(cmd, 'AutoSetupHMD')
     return;
   end
 
+  % OpenHMD VR supported and online? At least one real HMD connected?
+  if PsychOpenHMDVR('Supported') && PsychOpenHMDVR('GetCount') > 0
+    % Yes. Use that one. This will also inject a proper PsychImaging task
+    % for setup of the imaging pipeline:
+    hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+
+    % Return the handle:
+    varargout{1} = hmd;
+    evalin('caller','global OVR');
+    return;
+  end
+
   % Add probe and autosetup calls for other HMD vendors here...
 
   % No success with finding any real supported HMD so far. Try to find a driver
   % that at least supports an emulated HMD for very basic testing:
   if PsychOculusVR('Supported')
     hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+    varargout{1} = hmd;
+    evalin('caller','global OVR');
+    return;
+  end
+
+  if PsychOpenHMDVR('Supported')
+    hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
     varargout{1} = hmd;
     evalin('caller','global OVR');
     return;

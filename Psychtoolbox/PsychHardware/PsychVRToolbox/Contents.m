@@ -5,3 +5,4 @@
 % OculusVR              - How to setup Oculus VR head mounted displays and general intro.
 % PsychVRHMD            - General driver for VR head mounted displays (HMDs).
 % PsychOculusVR         - Driver for devices from Oculus VR, e.g., the Oculus Rift.
+% PsychOpenHMDVR        - Driver for devices supported by OpenHMD (http://www.openhmd.net).
