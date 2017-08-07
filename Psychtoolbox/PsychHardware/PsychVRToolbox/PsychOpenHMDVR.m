@@ -480,6 +480,16 @@ if cmd == 0
   % Switch to onscreen window system backbuffer:
   glBindFramebuffer(GL.FRAMEBUFFER, 0);
 
+  % Fast-path: Use precompiled display list to execute VR warp blit:
+  if ~isempty(hmd{handle}.dl)
+    glCallList(hmd{handle}.dl);
+    return;
+  end
+
+  % Need to create a display list with VR warp blit first:
+  dl = glGenLists(1);
+  glNewList(dl, GL.COMPILE);
+
   glMatrixMode(GL.MODELVIEW);
   glPushMatrix;
   glLoadIdentity;
@@ -521,13 +531,17 @@ if cmd == 0
       glVertex3d(   0,  1, 0);
     end
     glEnd();
-    glBindTexture(GL.TEXTURE_2D, 0);
   end
 
+  glBindTexture(GL.TEXTURE_2D, 0);
   glUseProgram(0);
   glPopMatrix();
   glMatrixMode(GL.MODELVIEW);
   glPopMatrix();
+
+  % Done compiling the display list:
+  glEndList;
+  hmd{handle}.dl = dl;
 
   return;
 end
@@ -890,7 +904,7 @@ if strcmpi(cmd, 'Open')
 
   if strcmp(modelName, 'Rift (DK2)')
     % Probably right for DK2:
-    metersPerTanAngleAtCenter = 0.0425;
+    metersPerTanAngleAtCenter = 0.0425 * 1.33;
   end
 
   if strcmp(modelName, 'Rift (CV1)')
@@ -902,7 +916,7 @@ if strcmpi(cmd, 'Open')
     % Set size of display in meters per radians tan angle at the display center.
     % Default to the setting of a Oculus Rift DK2, so we have something
     % to work with if we can't find the true value for a HMD:
-    metersPerTanAngleAtCenter = 0.0425;
+    metersPerTanAngleAtCenter = 0.0425 * 1.33;
     warning('PsychOpenHMDVRCore: Open: metersPerTanAngleAtCenter value unknown for this HMD, using Oculus Rift DK2 default. Please try to find a proper setting!');
   end
 
@@ -1360,6 +1374,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Keep track of window handle of associated onscreen window:
   hmd{handle}.win = win;
 
+  % Init display list handle to none:
+  hmd{handle}.dl = [];
+
   % Need to know user selected clearcolor:
   clearcolor = varargin{3};
 
@@ -1401,11 +1418,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetRight';
   hmd{handle}.eyeShiftMatrix{2} = EyeT;
 
-  % Switch to clear color black and do a clear by double flip: TODO needed?
-  Screen('FillRect', win, 0);
-  Screen('Flip', win);
-  Screen('Flip', win);
-
   % Retrieve texture handles for the finalizedFBOs, which contain our per-eye input data for VR compositing:
   [hmd{handle}.inTex(1), hmd{handle}.inTex(2), glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', win, 'GetDisplayBufferTextures');
 
@@ -1414,10 +1426,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   if winfo.StereoMode == 0
     hmd{handle}.inTex(2) = hmd{handle}.inTex(1);
   end
-
-  % Go back to user requested clear color, now that all our buffers
-  % are cleared to black:
-  Screen('FillRect', win, clearcolor);
 
   % Get GLSL shader source code for the distortion shaders:
   [vertexShaderSrc, fragmentShaderSrc] = PsychOpenHMDVRCore('GetCorrectionShaders', handle);
