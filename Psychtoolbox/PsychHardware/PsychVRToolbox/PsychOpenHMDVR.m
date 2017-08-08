@@ -909,7 +909,7 @@ if strcmpi(cmd, 'Open')
 
   if strcmp(modelName, 'Rift (CV1)')
     % Maybe right for CV1?
-    metersPerTanAngleAtCenter = 0.036;
+    metersPerTanAngleAtCenter = 0.036 * 1.33;
   end
 
   if metersPerTanAngleAtCenter == 0
