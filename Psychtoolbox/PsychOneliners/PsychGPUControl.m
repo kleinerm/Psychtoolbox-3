@@ -1,5 +1,5 @@
-function rc = PsychGPUControl(cmd, varargin)
-% rc = PsychGPUControl(cmd, arg); -- Control low-level GPU settings.
+function [rc,rcExt] = PsychGPUControl(cmd, varargin)
+% [rc,rcExt] = PsychGPUControl(cmd, arg); -- Control low-level GPU settings.
 %
 % PsychGPUControl calls into external helper tools to change certain
 % low-level operating settings of your systems graphics card (GPU).
@@ -12,17 +12,21 @@ function rc = PsychGPUControl(cmd, varargin)
 %
 % All subfunctions return an optional 'rc' return code of zero on success,
 % non-zero on error or if the feature is unsupported.
+% 'rcExt' is optional as well and its meaning depends on the subfunction.
 %
 % Subfunctions and their syntax & meaning:
 %
-% rc = PsychGPUControl('SetDitheringEnabled', enableFlag);
+% [rc,rcExt] = PsychGPUControl('SetDitheringEnabled', enableFlag);
 % - Depending on the setting of 'enableFlag', either enable (=1) or
 % disable (=0) display color dithering on all connected displays.
+% 'rcExt' returns the version of the low-level dithering API (currently 1 or 2) 
+% that had to be used in order to overcome compatibility issues (Windows/AMD 
+% only). 'rcExt' is only non-empty when the API was reported by the low-level
+% function.
 %
 % Under normal circumstances, the GPU should decide itself if dithering
 % should be used or not. This function allows you to override the GPU's
 % automatic choice.
-%
 %
 % rc = PsychGPUControl('SetGPUPerformance', gpuPerformance);
 % - Select the performance state of the GPU. 'gpuPerformance' can be set to
@@ -86,11 +90,15 @@ function rc = PsychGPUControl(cmd, varargin)
 %                 Compiz.
 % 18.04.2013  mk  Add use of 64-Bit ATIRadeonperf_Linux64 exe on 64-Bit Linux.
 % 26.04.2016  mk  Add 'EnableCompizMultiDisplayWorkaround' for multi-display setups.
+% 10.07.2017  MR  Add 'rcExt' for returning the dithering API version used by ATIRadeonperf_Windows.
+%                 Suppress the output of ATIRadeonperf_Windows as long as there are no errors.
+
 
 if nargin < 1
   error('Subfunction command argument missing!');
 end
 
+rcExt = [];
 if strcmpi(cmd, 'SetDitheringEnabled')
   if isempty(varargin)
     error('SetDitheringEnabled: enableFlag argument missing!');
@@ -103,7 +111,7 @@ if strcmpi(cmd, 'SetDitheringEnabled')
 
   % Command code 1 means: Control ditherstate, according to 2nd arg 0 or 1 == disable, enable.
   cmdpostfix = sprintf(' 1 %i', enable);
-  rc = executeRadeoncmd(cmdpostfix);
+  [rc, rcExt] = executeRadeoncmd(cmdpostfix);
   return;
 end
 
@@ -239,7 +247,9 @@ error('Invalid subfunction provided. Read the help for valid commands!');
 return; %#ok<UNRCH>
 end
 
-function rc = executeRadeoncmd(cmdpostfix)
+function [rc, rcExt] = executeRadeoncmd(cmdpostfix)
+
+    rcExt = [];
     if IsOSX
         % A no-op on OS/X, as this is not supported at all.
         rc = 1;
@@ -280,10 +290,18 @@ function rc = executeRadeoncmd(cmdpostfix)
     % convention:
     rc = 1 - rc;
 
+    if IsWin
+        % Extract dithering API version.
+        i = strfind(msg, 'dithering API v');
+        if ~isempty(i)
+            rcExt = sscanf(msg(i(1):end),'dithering API v%d');
+        end
+    end
+    
     % Output potential status or error messages, unless it is a message
     % that signals we are not executing on a AMD/ATI GPU with Catalyst
     % driver, ie., that the whole thing was a no-op:
-    if isempty(strfind(msg, 'ADL library not found!'))
+    if rc~=0 && isempty(strfind(msg, 'ADL library not found!'))
         disp(msg);
     end
 

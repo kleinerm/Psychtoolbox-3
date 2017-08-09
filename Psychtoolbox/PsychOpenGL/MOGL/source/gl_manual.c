@@ -190,14 +190,28 @@ void gl_shadersource( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
     size_t i, count, savedlength;
     count = 0;
 
-    // Ok, glShaderSource needs a list of one-line strings for the single lines
-    // of code in a shader program. We take a single big string of newline-
-    // separated lines of code and break it up into a list of strings.
+    if (NULL == glShaderSource) mogl_glunsupported("glShaderSource");
 
     // Retrieve handle to shader:
     handle = (GLuint) mxGetScalar(prhs[0]);
+
     // Retrieve shader source code string:
     sourcestring = mxArrayToString(prhs[1]);
+
+    // Reset error state:
+    glGetError();
+
+    // New style if flag 4 set to non-zero. Simply pass string "as is":
+    if (((GLuint) mxGetScalar(prhs[3])) > 0) {
+        glShaderSource(handle, 1, (const char**) &sourcestring, NULL);
+        mxFree(sourcestring);
+        return;
+    }
+
+    // Old style: glShaderSource gets a list of one-line strings for the single lines
+    // of code in a shader program. We take a single big string of newline-
+    // separated lines of code and break it up into a list of strings.
+
     // Count number of lines in string:
     savedlength = strlen(sourcestring);
     for (i=0; i<savedlength; i++) if(sourcestring[i]=='\n') count++;
@@ -232,18 +246,8 @@ void gl_shadersource( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
         mogl_printfexit("MOGL-Info: In call to glShaderSource(): Called with debug flag set to non-zero.\nMOGL-Info: Therefore i've dumped the shader source code to the console and will now exit.");
     }
 
-    if (NULL == glShaderSource) {
-        // Free the sourcestring:
-        mxFree(sourcestring);
-        // Free our array:
-        free(srcstrings);
-        // Abort with error:
-        mogl_glunsupported("glShaderSource");
-    }
-
     // Ok, now srcstrings should be an array of count char*'s to single line, null-terminated
     // strings, suitable for glShaderSource. Call it.
-    glGetError();
     glShaderSource(handle, (GLsizei) count, (const char**) srcstrings, NULL);
 
     // Free the sourcestring:
