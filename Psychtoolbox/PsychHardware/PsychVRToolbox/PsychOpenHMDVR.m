@@ -14,8 +14,16 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % This driver needs libopenhmd.so version 0.3 or later to be installed
 % in a linker accessible path (e.g., /usr/local/lib/ on a Linux system).
 % You can either download, compile and install it from ...
+%
 % https://github.com/OpenHMD/OpenHMD
-% ... or get a precompiled library for TODO from TODO.
+%
+% ... or get a precompiled library for libopenhmd.so from:
+%
+% RaspberryPi/Raspbian: https://github.com/Psychtoolbox-3/MiscStuff/tree/master/OpenHMD32BitRaspbianARMv7
+%
+% 64-Bit Intel/Ubuntu:  https://github.com/Psychtoolbox-3/MiscStuff/tree/master/OpenHMD64BitIntelUbuntuLinux
+%
+% Follow instructions in the accompanying Readme.txt files.
 %
 % libopenhmd.so in turn needs libhidapi-libusb.so to be installed in
 % a similar path. On Debian GNU/Linux based systems you can install HIDAPI
