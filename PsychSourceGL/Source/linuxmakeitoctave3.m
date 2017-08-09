@@ -17,7 +17,7 @@ if mode == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for mode = 0:13
+    for mode = 0:14
         linuxmakeitoctave3(mode);
     end
     elapsedsecs = toc;
@@ -240,6 +240,18 @@ if mode == 13 && IsARM
     delete('RPiGPIOMex.o');
     cd(curdir);
     striplibsfrommexfile([PsychtoolboxRoot target 'RPiGPIOMex.mex']);
+end
+
+if mode==14
+    % Build PsychOpenHMDVRCore.mex:
+    try
+        mex -v -g --output ../Projects/Linux/build/PsychOpenHMDVRCore.mex -DPTBMODULE_PsychOpenHMDVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOpenHMDVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOpenHMDVRCore/*.c -lc -lrt -lopenhmd
+    catch
+        disp(psychlasterror);
+    end
+
+    unix(['cp ../Projects/Linux/build/PsychOpenHMDVRCore.mex ' PsychtoolboxRoot target]);
+    striplibsfrommexfile([PsychtoolboxRoot target 'PsychOpenHMDVRCore.mex']);
 end
 
 % Remove stale object files:

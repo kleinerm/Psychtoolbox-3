@@ -1,7 +1,9 @@
 function UserResponse = TwoStateQuery(TheQuestion,TheChoices)
 % Syntax: UserResponse = TwoStateQuery(TheQuestion,[TheChoices])
 % 
-% Purpose: Create simple dialog box asking user an either/or question
+% Purpose: Create simple dialog box asking user an either/or question.
+% On non-GUI setups or Matlab R2014b or later, it will ask a question
+% in the command window instead of showing a GUI dialog box.
 %
 % History:  5/5/04   mpr   decided whether or not to celebrate cinco de mayo
 %           10/13/04 mpr   set Yes Button automatically to be enlarged for large
@@ -25,6 +27,7 @@ function UserResponse = TwoStateQuery(TheQuestion,TheChoices)
 %                          fixed
 %           5/20/13  mk    Add text only fallback for Octave and non-GUI.
 %          11/05/15  mk    Add GUI dialog for Octave in GUI mode. White-space cleanup.
+%          7/20/17   mk    Use text only fallback on Matlab R2014b and later.
 
 if nargin < 2 || isempty(TheChoices)
   TheChoices{1} = 'Yes';
@@ -42,8 +45,8 @@ for k=length(UnderScoreSpots):-1:1
   TheQuestion = [TheQuestion(1:(UnderScoreSpots(k)-1)) '\' TheQuestion(UnderScoreSpots(k):end)];
 end
 
-% Provide text fallback for non-GUI mode:
-if ~IsGUI
+% Provide text fallback for non-GUI mode or Matlab R2014b and later:
+if ~IsGUI || (~IsOctave && ~verLessThan('matlab','8.4'))
   fprintf('%s\n', TheQuestion);
   fprintf('0 = %s\n', TheChoices{2});
   fprintf('1 = %s\n', TheChoices{1});

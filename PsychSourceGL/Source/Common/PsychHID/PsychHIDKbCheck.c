@@ -7,12 +7,12 @@
 
   AUTHORS:
 
-  Allen.Ingling@nyu.edu             awi 
+  Allen.Ingling@nyu.edu             awi
   mario.kleiner.de@gmail.com        mk
 
   HISTORY:
-  5/12/03  awi		Created.
-  12/17/09 rpw		Added keypad support
+  5/12/03  awi      Created.
+  12/17/09 rpw      Added keypad support
   07/28/11 mk       Refactored for multi-os support.
 
   TO DO:
@@ -21,7 +21,7 @@
 
 #include "PsychHID.h"
 
-static char useString[]= "[keyIsDown,secs,keyCode]=PsychHID('KbCheck' [, deviceNumber][, scanList])";
+static char useString[] = "[keyIsDown,secs,keyCode]=PsychHID('KbCheck' [, deviceNumber][, scanList])";
 static char synopsisString[] =
         "Scan a keyboard, keypad, or other HID device with buttons, and return a vector of logical values indicating the "
         "state of each key.\n"
@@ -39,16 +39,16 @@ static char synopsisString[] =
         "reasons to do otherwise and really know what you're doing!";
 
 static char seeAlsoString[] = "";
- 
+
 PsychError PSYCHHIDKbCheck(void)
 {
     int deviceIndex;
-    int	m, n, p;
+    int m, n, p;
     double *scanList = NULL;
     psych_bool isDeviceSpecified;
 
     PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(2));
