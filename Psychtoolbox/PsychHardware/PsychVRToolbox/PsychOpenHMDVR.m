@@ -1073,9 +1073,11 @@ if strcmpi(cmd, 'IsHMDOutput')
   scanout = varargin{2};
 
   % Is this an output with a resolution matching HMD panel resolution?
-  % Assumption here is that it is a tilted panel in portrait mode, like
-  % for the Rift DK2:
-  if (scanout.width == myhmd.panelHeight) && (scanout.height == myhmd.panelWidth)
+  % Assumption here is that it is a tilted panel in portrait mode in case of
+  % the Rift DK1/DK2, but a non-tilted panel in landscape mode on other HMDs,
+  % e.g., the Rift CV1:
+  if (~isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelHeight) && (scanout.height == myhmd.panelWidth)) || ...
+     (isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelWidth) && (scanout.height == myhmd.panelHeight))
     varargout{1} = 1;
   else
     varargout{1} = 0;
@@ -1274,6 +1276,20 @@ if strcmpi(cmd, 'OpenWindowSetup')
   winRect = varargin{3};
   ovrfbOverrideRect = varargin{4};
   ovrSpecialFlags = varargin{5};
+
+  if ~isempty(strfind(myhmd.modelName, 'Rift (CV1)'))
+    % Wait for 3 seconds, so the probably just enabled video output has time
+    % to stabilize and enumerate properly:
+    WaitSecs(3);
+
+    % TODO FIXME HACK Hack hack hack! Must clear Screen, so newly enabled video
+    % output of HMD gets detected:
+    oldEnableFlags = Screen('Preference', 'Enable3DGraphics');
+    oldConserveFlags = Screen('Preference', 'ConserveVRAM');
+    clear Screen;
+    Screen('Preference', 'ConserveVRAM', oldConserveFlags);
+    Screen('Preference', 'Enable3DGraphics', oldEnableFlags);
+  end
 
   % Override winRect for the OpenHMD dummy HMD device:
   if strcmp(myhmd.modelName, 'Dummy Device') || strcmp(myhmd.modelName, 'External Device')
