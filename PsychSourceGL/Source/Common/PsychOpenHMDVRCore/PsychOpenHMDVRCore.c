@@ -290,6 +290,7 @@ PsychError PSYCHOPENHMDVROpen(void)
     static char seeAlsoString[] = "GetCount Close";
 
     PsychOpenHMDDevice* openhmd;
+    int trycount;
     int deviceIndex = 0;
     int handle = 0;
 
@@ -329,8 +330,20 @@ PsychError PSYCHOPENHMDVROpen(void)
 
     // Try to open real or emulated HMD with deviceIndex:
     if (deviceIndex >= 0) {
-        // The real thing:
-        openhmddevices[handle].hmd = ohmd_list_open_device(ctx, deviceIndex);
+        // The real thing: Try open 5 times, in case we collide with the openhmdkeepalive
+        // daemon having the device opened for its keep-alive cycle at just this time:
+        for (trycount = 0; trycount < 5; trycount++) {
+            openhmddevices[handle].hmd = ohmd_list_open_device(ctx, deviceIndex);
+
+            // Worked?
+            if (openhmddevices[handle].hmd)
+                break;
+
+            // Nope. Wait a few milliseconds before retry, so the keeep alive daemon
+            // can release the HMD if that is what keeps it from opening up to us:
+            PsychWaitIntervalSeconds(0.5);
+        }
+
         if (NULL == openhmddevices[handle].hmd) {
             if (verbosity >= 0) {
                 printf("PsychOpenHMDVRCore-ERROR: Failed to connect to OpenHMD device with deviceIndex %i. This could mean that the device\n", deviceIndex);
