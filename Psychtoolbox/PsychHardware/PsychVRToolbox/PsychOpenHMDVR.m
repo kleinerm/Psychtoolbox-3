@@ -1451,7 +1451,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   left_lens_center(1) = viewport_scale(1) + hmd{handle}.HmdToEyeViewOffsetLeft(1);
   right_lens_center(1) = hmd{handle}.HmdToEyeViewOffsetRight(1);
 
-  if left_lens_center > right_lens_center
+  if left_lens_center(1) > right_lens_center(1)
     warp_scale = left_lens_center(1);
   else
     warp_scale = right_lens_center(1);
