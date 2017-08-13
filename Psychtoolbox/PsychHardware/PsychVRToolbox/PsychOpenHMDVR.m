@@ -29,6 +29,12 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % a similar path. On Debian GNU/Linux based systems you can install HIDAPI
 % via the package libhidapi-libusb0 (apt-get install libhidapi-libusb0).
 %
+% From the same URL above, you need to get openhmdkeepalivedaemon, an executable
+% file, and make sure it gets started during system boot of your machine. This so
+% the HMD gets correctly detected as video output by the X-Server and by Psychtoolbox,
+% otherwise stimuli may not display on the HMD, but on your regular display. This
+% executable is not needed for the Oculus Rift DK1 or DK2.
+%
 % LIMITATIONS: This driver is currently considered BETA quality and may
 % undergo backwards incompatible changes without prior warning or notice.
 % Use at your own risk!
@@ -1284,20 +1290,6 @@ if strcmpi(cmd, 'OpenWindowSetup')
   winRect = varargin{3};
   ovrfbOverrideRect = varargin{4};
   ovrSpecialFlags = varargin{5};
-
-  if ~isempty(strfind(myhmd.modelName, 'Rift (CV1)'))
-    % Wait for 3 seconds, so the probably just enabled video output has time
-    % to stabilize and enumerate properly:
-    WaitSecs(3);
-
-    % TODO FIXME HACK Hack hack hack! Must clear Screen, so newly enabled video
-    % output of HMD gets detected:
-    oldEnableFlags = Screen('Preference', 'Enable3DGraphics');
-    oldConserveFlags = Screen('Preference', 'ConserveVRAM');
-    clear Screen;
-    Screen('Preference', 'ConserveVRAM', oldConserveFlags);
-    Screen('Preference', 'Enable3DGraphics', oldEnableFlags);
-  end
 
   % Override winRect for the OpenHMD dummy HMD device:
   if strcmp(myhmd.modelName, 'Dummy Device') || strcmp(myhmd.modelName, 'External Device')
