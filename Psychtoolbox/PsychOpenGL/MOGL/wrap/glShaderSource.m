@@ -33,7 +33,7 @@ end
 % of parsing is output to the Matlab command window.
 if nargin < 3
     debug = 0;
-end;
+end
 
 shadersource = char(shadersource);
 if size(shadersource,1)==1
@@ -44,6 +44,17 @@ end
 repidx = find(double(shadersource) == 13);
 shadersource(repidx) = char(10);
 
-moglcore('glShaderSource', shader, transpose(shadersource), debug);
+% Flag newstyle = 1 at the end chooses simple glShaderSource implementation,
+% which just passes the string "as is". A flag of 0 would select the old
+% behavior from pre August 2017, which splits the source string into individual
+% substrings, one per line of newline terminated GLSL source code.
+newstyle = 1;
+if debug
+    % Need old style for debug flag, as the debug output code is only
+    % implemented in that code path:
+    newstyle = 0;
+end
+
+moglcore('glShaderSource', shader, transpose(shadersource), debug, newstyle);
 
 return

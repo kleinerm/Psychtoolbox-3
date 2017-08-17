@@ -2059,6 +2059,9 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
                         codecoption[0] = 0;
                 }
                 strcat(videocodec, codecoption);
+                // Copy 'profile= spec' into outCodecName, if any set:
+                if (use_profiles && (codecoption[0] != 0))
+                    sprintf(outCodecName, "%s", strstr(codecoption, "video"));
             }
 
             // If specific codec couldn't be created but encoding profiles are in use then we "fake" a

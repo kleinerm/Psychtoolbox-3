@@ -7102,10 +7102,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         printf("OML_sync_control indicators: glXGetSyncValuesOML=%p , glXWaitForMscOML=%p, glXWaitForSbcOML=%p, glXSwapBuffersMscOML=%p\n",
                 glXGetSyncValuesOML, glXWaitForMscOML, glXWaitForSbcOML, glXSwapBuffersMscOML);
         printf("OML_sync_control indicators: glxewIsSupported() says %i.\n", (int) glxewIsSupported("GLX_OML_sync_control"));
+        printf("OML_sync_control indicators: glXQueryExtensionsString() says %i.\n",
+               !!((long) strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, PsychGetXScreenIdForScreen(windowRecord->screenNumber)), "GLX_OML_sync_control")));
     }
 
     // Check if OpenML extensions for precisely scheduled stimulus onset and onset timestamping are supported:
-    if (glxewIsSupported("GLX_OML_sync_control") && (glXGetSyncValuesOML && glXWaitForMscOML && glXWaitForSbcOML && glXSwapBuffersMscOML)) {
+    if (glxewIsSupported("GLX_OML_sync_control") && (glXGetSyncValuesOML && glXWaitForMscOML && glXWaitForSbcOML && glXSwapBuffersMscOML) &&
+        strstr(glXQueryExtensionsString(windowRecord->targetSpecific.deviceContext, PsychGetXScreenIdForScreen(windowRecord->screenNumber)), "GLX_OML_sync_control")) {
     #else
     // Disable this whole code-path if PTB_USE_WAFFLE:
     if (FALSE) {

@@ -1,6 +1,8 @@
-function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations,adjIndDiffParams] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,lambdaMax,whichNomogram,LserWeight, ...
+function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations,adjIndDiffParams,params,staticParams] = ...
+    ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,lambdaMax,whichNomogram,LserWeight, ...
     DORODS,rodAxialDensity,fractionPigmentBleached,indDiffParams)
-% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations,adjIndDiffParams] = ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,[lambdaMax],[whichNomogram],[LserWeight], ...
+% [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomerizations,adjIndDiffParams,params,staticParams] = ...
+%   ComputeCIEConeFundamentals(S,fieldSizeDegrees,ageInYears,pupilDiameterMM,[lambdaMax],[whichNomogram],[LserWeight], ...
 %   [DORODS],[rodAxialDensity],[fractionPigmentBleached],indDiffParams)
 %
 % Function to compute normalized cone quantal sensitivities
@@ -89,7 +91,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % obtained them.  To do this, pass argument lambdaMaxShift with the same
 % number of entries as the number of absorbances that are used.
 %
-% The adjIndDiffParams output argument is a struct which is populated by ComputeRawConeFundamentals.
+% The adjIndDiffParams outputsis a struct which is populated by ComputeRawConeFundamentals.
 % It contains the actual parameter values for the parameters adjusted using the indDiffParams 
 % input. It contains the following fields:
 %    adjIndDiffParams.mac - the adjusted macular pigment transmittance as a function of wavelength
@@ -101,8 +103,19 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 %                                     200-202 of ComputeRawConeFundamentals; or rods, as calculated
 %                                     in line 216 of ComputeRawConeFundamentals if params.DORODS is true.
 %
-% For both adjIndDiffParams.mac and adjIndDiffParams.lens, the wavelength spacing is the same
-% as in the S input variable of this function.
+% For both adjIndDiffParams.mac and adjIndDiffParams.lens, the wavelength
+% spacing is the same as in the S input variable of this function.
+%
+% The params and staticParams outputs are the argument strucutures that
+% were passed to ComputeRawConeFundamentals by this routine to do the work.
+% These can be useful if you'd like, say, to susequently use
+% ComputeRawConeFundamentals to produce estimates for (e.g.) melanopsin or
+% the rods, where you keep everything else as consistent as possible to
+% what this routine does. Note that this is all a bit klugy for historical
+% reasons, as there is redundancy between what you can/might do with
+% adjIndDiffParams and with these two return outputs. In particular, these
+% two return outputs would let you call ComputeRawConeFundamentals and get
+% adjIndDiffParams directly from there.
 %
 % This function also has an option to compute rod spectral sensitivities, using
 % the pre-retinal values that come from the CIE standard.  Set DORODS to true on
@@ -144,6 +157,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 %          ms   Don't do two way check when lambdaMax is shifted.
 % 02/24/16 dhb, ms  Started to implement Asano et al. individual difference model
 % 3/30/17  ms   Added output argument returning adjusted ind differences
+% 8/1/17   dhb, ms  Added return of params and staticParams.
 
 %% Are we doing rods rather than cones?
 if (nargin < 8 || isempty(DORODS))

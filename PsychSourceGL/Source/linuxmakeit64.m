@@ -15,7 +15,7 @@ if mode == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for mode = 0:13
+    for mode = 0:14
         linuxmakeit64(mode);
     end
     elapsedsecs = toc;
@@ -117,6 +117,16 @@ if mode==12
         disp(psychlasterror);
     end
     unix(['mv ../Projects/Linux/build/PsychOculusVRCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end
+
+if mode==14
+    % Build PsychOpenHMDVRCore.mex:
+    try
+        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions' -v -outdir ../Projects/Linux/build/ -output PsychOpenHMDVRCore -largeArrayDims -D_GNU_SOURCE -DPTBMODULE_PsychOpenHMDVRCore -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOpenHMDVRCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychOpenHMDVRCore/*.c" -lc -lrt -lopenhmd
+    catch
+        disp(psychlasterror);
+    end
+    unix(['mv ../Projects/Linux/build/PsychOpenHMDVRCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 return;
