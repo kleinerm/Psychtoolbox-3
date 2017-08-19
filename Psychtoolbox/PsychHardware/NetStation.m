@@ -32,6 +32,27 @@ function [status, error] = NetStation(varargin)
 %           Synchronize to the connected host. "SynchLimit" could specify the maximum allowed difference
 %           IN MILLISECONDS. Default is 2.5 ms.
 %
+%   NetStation( 'GetNTPSynchronize', ntpserver )
+%
+%           Synchronize to the amps built-in NTP server using EGI N-type
+%           synchronization (eci_NTPClockSynch method). So far only tested
+%           for 400 series amps with NetStation 5.3 and Psychtoolbox on
+%           Linux! ntpserver is the amp ip, e.g. '10.10.10.51'.
+%
+%           NTP synchronization might possibly also work for 300 series
+%           amps (using the NetStation PC as NTP server) and other
+%           NetStation versions and OS. Please report on the Psychtoolbox
+%           mailing list if you could test other versions (EGI photodiode
+%           and AV tester box required).
+%   
+%           Note that Psychtoolbox client time is NOT required to be
+%           adjusted to NTP server time. Rather current NTP server (i.e.
+%           amp) time is queried at event time (using the GetNTP client).
+%           Possible delays between event and NTP request times and network
+%           delays are accounted for. NTP synchronization is expected to be
+%           considerably more accurate than regular synchronization on
+%           quiet local networks.
+%
 %   NetStation('StartRecording')
 %
 %           Instructs NetStation to start recording.
@@ -79,12 +100,16 @@ function [status, error] = NetStation(varargin)
 %   This function was modified by Matt Mollison to accommodate sending more than just int16s to Net Station
 %   Improved by Justin Ales 2014.
 %   Consolidated by Gergely Csibra, 2015
+%   Improved by Justin Ales 2017.
+%   GetNTPSynchronize added by Andreas Widmann, 2017
 %%
 
 persistent NSIDENTIFIER;
 persistent NSSTATUS;
 persistent NSRECORDING;
 persistent SYNCHEPOCH; %This is to fix the bug that large epochs (like unix) overflows the int32 value --JMA
+
+persistent NTPSOCK GETNTPSYNCED NTPLOG;
 
 DefaultSynchLimit = 2.5;  % The accuracy of synchronization in milliseconds
 
@@ -135,6 +160,7 @@ else
                         NSIDENTIFIER = 0;
                     end
                     SYNCHEPOCH = 0;
+                    GETNTPSYNCED = 0;
                 end
             end
         case 'disconnect'
@@ -152,6 +178,10 @@ else
                 rep=receive(NSIDENTIFIER,1);
                 WaitSecs(.5);
                 pnet( NSIDENTIFIER, 'close' );
+                if ~isempty( NTPSOCK )
+                    GetNTP( 'close', NTPSOCK );
+                    NTPSOCK = [];
+                end
                 NSIDENTIFIER = -1;
                 status = 0;
             end
@@ -183,7 +213,53 @@ else
                 if n >= 100
                     warning('\nNetStationPC synchronization did not succeed within %.1f ms\nSynchronizatoin accuracy is %.1f ms\n',NSSynchLimit,df);
                 end
+                GETNTPSYNCED = 0;
             end
+
+        case 'getntpsynchronize'
+            
+            if isempty(NSIDENTIFIER) || (NSIDENTIFIER < 0)
+                status = 1;
+            else
+                
+                % Open UDP socket for NTP server connection
+                if isempty( NTPSOCK )
+                    if nargin < 2 || isempty( varargin { 2 } )
+                        error( 'NTP server host name required.' );
+                    end
+                    NTPSOCK = GetNTP( 'open', varargin{ 2 } );
+                end
+                
+                % Get initial drift estimate
+                NTPLOG = [];
+                fprintf( 'NetStation-INFO: Estimating drift...\n' );
+                for iQuery = 1:5
+                    Ntp = GetNTP( 'read', NTPSOCK );
+                    NTPLOG( end + 1, : ) = [ Ntp.timestamps( 1:2 ) Ntp.delay ]; %#ok<AGROW>
+                    WaitSecs( 1 );
+                end
+                
+                send( NSIDENTIFIER, 'A' ); % Attention!
+                receive( NSIDENTIFIER, 1 ); % Return byte
+                
+                Ntp = GetNTP( 'read', NTPSOCK );
+                % Use current NTP timestamp for synchronization. Actually arbitrary
+                sendTimestamp( 1 ) = floor( Ntp.timestamps(2) );
+                % Important! Send 0 for fractions of seconds. With NetStation 5.3 drifts
+                % and offsets are observed otherwise (presumably due to improper handling
+                % of the fractions of seconds part)
+                sendTimestamp( 2 ) = 0;
+                
+                pnet( NSIDENTIFIER, 'write', 'N');
+                pnet( NSIDENTIFIER, 'write', uint32( sendTimestamp( 1 ) ), 'network' );
+                pnet( NSIDENTIFIER, 'write', uint32( sendTimestamp( 2 ) ), 'network' );
+                receive( NSIDENTIFIER, 1 );
+                
+                SYNCHEPOCH = sendTimestamp( 1 );
+                GETNTPSYNCED = 1;
+                status = 0;
+            end
+
         case 'startrecording'
             if isempty(NSIDENTIFIER) || (NSIDENTIFIER < 0)
                 status = 1;
@@ -222,7 +298,32 @@ else
                 else
                     start = varargin{3};
                 end
-                start = start - SYNCHEPOCH;
+
+                if GETNTPSYNCED
+                    Ntp = GetNTP( 'read', NTPSOCK );
+
+                    DELAY_THRESH = 0.002; DELAY_COUNT_THRESH = 5; DELAY_COUNT = 0;
+                    while Ntp.delay > DELAY_THRESH && DELAY_COUNT < DELAY_COUNT_THRESH
+                        Ntp = GetNTP( 'read', NTPSOCK );
+                        DELAY_COUNT = DELAY_COUNT + 1;
+                    end
+
+                    if DELAY_COUNT >= DELAY_COUNT_THRESH
+                        warning( 'Reduced event timestamp precision due to network delay.' );
+                    end
+
+                    NTPLOG( end + 1, : ) = [ Ntp.timestamps( 1:2 ) Ntp.delay ];
+                    % Keep at max. 50 timestamps to compensate clock wander
+                    if size( NTPLOG, 1 ) > 50
+                        NTPLOG( 1:end - 50, : ) = [];
+                    end
+                    x = linreg( ( NTPLOG( :, 2 ) - NTPLOG( :, 3 ) / 2 )', NTPLOG( :, 1 )' );
+
+                    % NTP server receive timestamp - half delay - drift corrected delta
+                    start = Ntp.timestamps( 2 ) - Ntp.delay / 2 - x( 2 ) * ( Ntp.timestamps( 1 ) - start ) - SYNCHEPOCH;
+                else
+                    start = start - SYNCHEPOCH;
+                end
 
                 if nargin < 4 || isempty(varargin{4})
                     duration=.001;
@@ -290,8 +391,8 @@ else
 end
 
 error=nserr(status);
-return
 
+end
 
 function send(con,varargin)
     i=1;
@@ -300,13 +401,12 @@ function send(con,varargin)
         pnet(con,'write',varargin{i},'network');
         i = i+1;
     end
-return
-
+end
 
 
 function rep=receive(con,len)
   rep=pnet(con,'read',len,'char');
-return
+end
 
 function errstr=nserr(status)
     switch status
@@ -333,7 +433,7 @@ function errstr=nserr(status)
         otherwise
             errstr='NS unknown error';
     end
-return
+end
 
 function [len, code, val] = keycodedata(data)
 
@@ -368,4 +468,14 @@ function [len, code, val] = keycodedata(data)
             len = length(val);
     end
 
-return
+end
+
+function x = linreg( B, A )
+
+    m_A = mean( A ); % Very large numbers involved; center to improve precision
+    m_B = mean( B );
+
+    x = ( B - m_B ) / [ ones( 1, length( A ) ); A - m_A ];
+    x( 1 ) = m_B - m_A * x( 2 );
+
+end

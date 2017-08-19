@@ -385,7 +385,7 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
 
     if (navail) {
         // Return event struct:
-        PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 5, FieldNames, &retevent);
+        PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 4, FieldNames, &retevent);
         PsychSetStructArrayDoubleElement("Time",        0,         evt.timestamp,                   retevent);
         PsychSetStructArrayDoubleElement("Pressed",     0, (double)(evt.status & (1 << 0)) ? 1 : 0, retevent);
         PsychSetStructArrayDoubleElement("Keycode",     0, (double)evt.rawEventCode,                retevent);

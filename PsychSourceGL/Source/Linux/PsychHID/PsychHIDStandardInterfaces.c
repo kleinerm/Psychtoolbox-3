@@ -847,6 +847,14 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
     return;
 }
 
+// Helper: Set same event mask for all root windows of all x-screens for a server:
+static void MultiXISelectEvents(XIEventMask *pemask)
+{
+    int i;
+    for (i = 0; i < ScreenCount(thread_dpy); i++)
+        XISelectEvents(thread_dpy, RootWindow(thread_dpy, i), pemask, 1);
+}
+
 void PsychHIDOSKbQueueStop(int deviceIndex)
 {
     psych_bool queueActive;
@@ -886,7 +894,7 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
     emask.deviceid = info[deviceIndex].deviceid;
     emask.mask_len = sizeof(mask);
     emask.mask = mask;
-    XISelectEvents(thread_dpy, DefaultRootWindow(thread_dpy), &emask, 1);
+    MultiXISelectEvents(&emask);
     XFlush(thread_dpy);
 
     // Mark queue logically stopped:
@@ -1002,7 +1010,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     emask.deviceid = info[deviceIndex].deviceid;
     emask.mask_len = sizeof(mask);
     emask.mask = mask;
-    XISelectEvents(thread_dpy, DefaultRootWindow(thread_dpy), &emask, 1);
+    MultiXISelectEvents(&emask);
     XFlush(thread_dpy);
 
     // Mark this queue as logically started:

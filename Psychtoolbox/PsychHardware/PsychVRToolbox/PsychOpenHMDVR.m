@@ -29,6 +29,12 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % a similar path. On Debian GNU/Linux based systems you can install HIDAPI
 % via the package libhidapi-libusb0 (apt-get install libhidapi-libusb0).
 %
+% From the same URL above, you need to get openhmdkeepalivedaemon, an executable
+% file, and make sure it gets started during system boot of your machine. This so
+% the HMD gets correctly detected as video output by the X-Server and by Psychtoolbox,
+% otherwise stimuli may not display on the HMD, but on your regular display. This
+% executable is not needed for the Oculus Rift DK1 or DK2.
+%
 % LIMITATIONS: This driver is currently considered BETA quality and may
 % undergo backwards incompatible changes without prior warning or notice.
 % Use at your own risk!
@@ -520,22 +526,24 @@ if cmd == 0
     glBindTexture(GL.TEXTURE_2D, hmd{handle}.inTex(i));
     glBegin(GL.QUADS);
     if i == 1
-      glTexCoord2d( 0,  0);
+      ipd = -hmd{handle}.ipd;
+      glTexCoord2d(ipd + 0,  0);
       glVertex3d(  -1, -1, 0);
-      glTexCoord2d( 1,  0);
+      glTexCoord2d(ipd + 1,  0);
       glVertex3d(   0, -1, 0);
-      glTexCoord2d( 1,  1);
+      glTexCoord2d(ipd + 1,  1);
       glVertex3d(   0,  1, 0);
-      glTexCoord2d( 0,  1);
+      glTexCoord2d(ipd + 0,  1);
       glVertex3d(  -1,  1, 0);
     else
-      glTexCoord2d( 0,  0);
+      ipd = +hmd{handle}.ipd;
+      glTexCoord2d(ipd + 0,  0);
       glVertex3d(   0, -1, 0);
-      glTexCoord2d( 1,  0);
+      glTexCoord2d(ipd + 1,  0);
       glVertex3d(   1, -1, 0);
-      glTexCoord2d( 1,  1);
+      glTexCoord2d(ipd + 1,  1);
       glVertex3d(   1,  1, 0);
-      glTexCoord2d( 0,  1);
+      glTexCoord2d(ipd + 0,  1);
       glVertex3d(   0,  1, 0);
     end
     glEnd();
@@ -543,6 +551,17 @@ if cmd == 0
 
   glBindTexture(GL.TEXTURE_2D, 0);
   glUseProgram(0);
+
+  if 0
+    glPointSize(10);
+    glBegin(GL.POINTS);
+    glColor3f(1,1,0);
+    glVertex2d(-0.5, 0);
+    glVertex2d(+0.5, 0);
+    glEnd;
+    glPointSize(1);
+  end
+
   glPopMatrix();
   glMatrixMode(GL.MODELVIEW);
   glPopMatrix();
@@ -1081,9 +1100,11 @@ if strcmpi(cmd, 'IsHMDOutput')
   scanout = varargin{2};
 
   % Is this an output with a resolution matching HMD panel resolution?
-  % Assumption here is that it is a tilted panel in portrait mode, like
-  % for the Rift DK2:
-  if (scanout.width == myhmd.panelHeight) && (scanout.height == myhmd.panelWidth)
+  % Assumption here is that it is a tilted panel in portrait mode in case of
+  % the Rift DK1/DK2, but a non-tilted panel in landscape mode on other HMDs,
+  % e.g., the Rift CV1:
+  if (~isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelHeight) && (scanout.height == myhmd.panelWidth)) || ...
+     (isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelWidth) && (scanout.height == myhmd.panelHeight))
     varargout{1} = 1;
   else
     varargout{1} = 0;
@@ -1443,7 +1464,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   left_lens_center(1) = viewport_scale(1) + hmd{handle}.HmdToEyeViewOffsetLeft(1);
   right_lens_center(1) = hmd{handle}.HmdToEyeViewOffsetRight(1);
 
-  if left_lens_center > right_lens_center
+  if left_lens_center(1) > right_lens_center(1)
     warp_scale = left_lens_center(1);
   else
     warp_scale = right_lens_center(1);
@@ -1512,6 +1533,15 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
 
     Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
+  end
+
+  if ~isempty(strfind(hmd{handle}.modelName, 'Rift (CV'))
+    % Attach override projection matrices at least for the Rift CV1:
+    [~, ~, ipd] = PsychOpenHMDVRCore('GetStaticRenderParameters', handle);
+    hmd{handle}.ipd = ipd / 16 / viewport_scale(1);
+  else
+    % No ipd correction for other HMDs:
+    hmd{handle}.ipd = 0;
   end
 
   % Need HSW display?
@@ -1600,6 +1630,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   if ~isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR'))
     % 3D head tracked VR rendering task. Start tracking as a convenience:
     PsychOpenHMDVRCore('Start', handle);
+  end
+
+  % 3D rendering requested, instead of pure 2D rendering?
+  if ~isempty(strfind(hmd{myhmd.handle}.basicTask, '3D'))
+    % Yes. Disable ipd correction as it seems to do more harm than good
+    % on the only HMD on which it would be used - the Rift CV:
+    hmd{handle}.ipd = 0;
   end
 
   % Return success result code 1:
