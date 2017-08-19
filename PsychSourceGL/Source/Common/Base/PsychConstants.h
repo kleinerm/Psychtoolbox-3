@@ -28,8 +28,10 @@
 
 #define __STDC_LIMIT_MACROS 1
 
-// For pthread_setname_np() definition:
+// For pthread_setname_np() definition and various other needs:
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 //bring in the standard c and system headers
 #include "PsychIncludes.h"
