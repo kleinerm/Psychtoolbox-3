@@ -29,9 +29,7 @@ function [gamepadIndices, productNames, allInfos]= GetGamepadIndices(product, se
 %                as locationID is not meaningful in the current implementation.
 %
 % WINDOWS: ________________________________________________________________
-% 
 % GetGamepadIndices does not work on Windows.
-% 
 % _________________________________________________________________________
 %
 % see also: GetKeyboardIndices

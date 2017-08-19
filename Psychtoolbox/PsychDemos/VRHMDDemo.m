@@ -1,6 +1,6 @@
-function VRHMDDemo(stereoscopic)
+function VRHMDDemo(stereoscopic, deviceindex)
 % 
-% VRHMDDemo([stereoscopic=1])
+% VRHMDDemo([stereoscopic=1][, deviceindex=0])
 %
 % A very basic demo for the most basic setup of
 % VR HMDs, e.g., the Oculus VR Rift DK2. It shows the
@@ -10,6 +10,9 @@ function VRHMDDemo(stereoscopic)
 % 'stereoscopic' if set to 1 (which is the default), configures the
 % HMD as a stereoscopic display. A setting of 0 configures it as a
 % monoscopic display.
+%
+% 'deviceindex' if provided, selects the HMD with given index. Otherwise
+% the first HMD (deviceindex 0) is chosen.
 %
 % The demo just renders one static simple 2D image, or image
 % pair in stereoscopic mode, then displays it in a loop until a
@@ -26,6 +29,10 @@ if nargin < 1 || isempty(stereoscopic)
   stereoscopic = 1;
 end
 
+if nargin < 2
+  deviceindex = [];
+end
+
 % Select screen with highest id as Oculus output display:
 screenid = max(Screen('Screens'));
 
@@ -34,10 +41,10 @@ PsychImaging('PrepareConfiguration');
 if ~stereoscopic
   % Setup the HMD to act as a regular "monoscopic" display monitor
   % by displaying the same image to both eyes:
-  PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse DebugDisplay');
+  PsychVRHMD('AutoSetupHMD', 'Monoscopic', 'LowPersistence FastResponse DebugDisplay', [], [], deviceindex);
 else
   % Setup for stereoscopic presentation:
-  PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'LowPersistence FastResponse');
+  PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'LowPersistence FastResponse', [], [], deviceindex);
 end
 
 [win, rect] = PsychImaging('OpenWindow', screenid);

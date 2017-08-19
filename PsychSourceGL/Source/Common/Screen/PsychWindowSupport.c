@@ -6266,12 +6266,24 @@ void PsychSetupView(PsychWindowRecordType *windowRecord, psych_bool useRawFrameb
 
     // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
     glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    if (!PsychIsGLES(windowRecord)) {
-        gluOrtho2D(rect[kPsychLeft], rect[kPsychRight], rect[kPsychBottom], rect[kPsychTop]);
+    if ((windowRecord->proj == NULL) || useRawFramebufferSize) {
+        // Default case: No override projection matrix assigned, or use of it not wanted.
+        // Setup standard ortho transform:
+        glLoadIdentity();
+        if (!PsychIsGLES(windowRecord)) {
+            gluOrtho2D(rect[kPsychLeft], rect[kPsychRight], rect[kPsychBottom], rect[kPsychTop]);
+        }
+        else {
+            glOrthofOES((float) rect[kPsychLeft], (float) rect[kPsychRight], (float) rect[kPsychBottom], (float) rect[kPsychTop], (float) -1, (float) 1);
+        }
     }
     else {
-        glOrthofOES((float) rect[kPsychLeft], (float) rect[kPsychRight], (float) rect[kPsychBottom], (float) rect[kPsychTop], (float) -1, (float) 1);
+        // Override projection matrix/matrices assigned. Select proper one for given
+        // mono/stereo view:
+        if (windowRecord->stereomode > 0 && windowRecord->stereodrawbuffer == 1)
+            glLoadMatrixd(&(windowRecord->proj[16]));
+        else
+            glLoadMatrixd(&(windowRecord->proj[0]));
     }
 
     // Switch back to modelview matrix, but leave it unaltered:
