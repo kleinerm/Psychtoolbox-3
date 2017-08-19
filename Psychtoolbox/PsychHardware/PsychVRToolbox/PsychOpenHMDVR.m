@@ -526,22 +526,24 @@ if cmd == 0
     glBindTexture(GL.TEXTURE_2D, hmd{handle}.inTex(i));
     glBegin(GL.QUADS);
     if i == 1
-      glTexCoord2d( 0,  0);
+      ipd = -hmd{handle}.ipd;
+      glTexCoord2d(ipd + 0,  0);
       glVertex3d(  -1, -1, 0);
-      glTexCoord2d( 1,  0);
+      glTexCoord2d(ipd + 1,  0);
       glVertex3d(   0, -1, 0);
-      glTexCoord2d( 1,  1);
+      glTexCoord2d(ipd + 1,  1);
       glVertex3d(   0,  1, 0);
-      glTexCoord2d( 0,  1);
+      glTexCoord2d(ipd + 0,  1);
       glVertex3d(  -1,  1, 0);
     else
-      glTexCoord2d( 0,  0);
+      ipd = +hmd{handle}.ipd;
+      glTexCoord2d(ipd + 0,  0);
       glVertex3d(   0, -1, 0);
-      glTexCoord2d( 1,  0);
+      glTexCoord2d(ipd + 1,  0);
       glVertex3d(   1, -1, 0);
-      glTexCoord2d( 1,  1);
+      glTexCoord2d(ipd + 1,  1);
       glVertex3d(   1,  1, 0);
-      glTexCoord2d( 0,  1);
+      glTexCoord2d(ipd + 0,  1);
       glVertex3d(   0,  1, 0);
     end
     glEnd();
@@ -549,6 +551,17 @@ if cmd == 0
 
   glBindTexture(GL.TEXTURE_2D, 0);
   glUseProgram(0);
+
+  if 0
+    glPointSize(10);
+    glBegin(GL.POINTS);
+    glColor3f(1,1,0);
+    glVertex2d(-0.5, 0);
+    glVertex2d(+0.5, 0);
+    glEnd;
+    glPointSize(1);
+  end
+
   glPopMatrix();
   glMatrixMode(GL.MODELVIEW);
   glPopMatrix();
@@ -1522,6 +1535,15 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
   end
 
+  if ~isempty(strfind(hmd{handle}.modelName, 'Rift (CV'))
+    % Attach override projection matrices at least for the Rift CV1:
+    [~, ~, ipd] = PsychOpenHMDVRCore('GetStaticRenderParameters', handle);
+    hmd{handle}.ipd = ipd / 16 / viewport_scale(1);
+  else
+    % No ipd correction for other HMDs:
+    hmd{handle}.ipd = 0;
+  end
+
   % Need HSW display?
   if (hmd{handle}.hswdismiss >= 0) && isempty(getenv('PSYCH_OpenHMD_HSWSKIP'))
     if IsWin
@@ -1608,6 +1630,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   if ~isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR'))
     % 3D head tracked VR rendering task. Start tracking as a convenience:
     PsychOpenHMDVRCore('Start', handle);
+  end
+
+  % 3D rendering requested, instead of pure 2D rendering?
+  if ~isempty(strfind(hmd{myhmd.handle}.basicTask, '3D'))
+    % Yes. Disable ipd correction as it seems to do more harm than good
+    % on the only HMD on which it would be used - the Rift CV:
+    hmd{handle}.ipd = 0;
   end
 
   % Return success result code 1:
