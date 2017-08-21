@@ -274,6 +274,9 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
     (*winRec)->inBlueTable = NULL;
     (*winRec)->loadGammaTableOnNextFlip = 0;
 
+    // No override projection matrices:
+    (*winRec)->proj = NULL;
+
     // Set cached display list handles for drawing functions to "uninitialized":
     (*winRec)->fillOvalDisplayList = 0;
     (*winRec)->frameOvalDisplayList = 0;
@@ -364,6 +367,9 @@ PsychError FreeWindowRecordFromIndex(PsychWindowIndexType windex)
     free(windowRecordArrayWINBANK[windex]->inRedTable);
     free(windowRecordArrayWINBANK[windex]->inGreenTable);
     free(windowRecordArrayWINBANK[windex]->inBlueTable);
+
+    // Release override projection matrices if any:
+    free(windowRecordArrayWINBANK[windex]->proj);
 
     free(windowRecordArrayWINBANK[windex]);
     windowRecordArrayWINBANK[windex] = NULL;

@@ -177,12 +177,14 @@ static char synopsisString[] =
     "'StimulusOnsetTime' Optional true stimulus onset time. Will be set to VBLTimestamp if omitted. Must be StimulusOnsetTime >= VBLTimestamp.\n"
     "'Missed' The presentation deadline miss estimate aka 'Missed' flag of Screen('Flip'). Defaults to 0 if omitted.\n"
     "\n\n"
-    "Screen('HookFunction', windowPtr, 'SetWindowBackendOverrides' [, hookname][, pixelSize][, refreshInterval]);\n"
+    "Screen('HookFunction', windowPtr, 'SetWindowBackendOverrides' [, hookname][, pixelSize][, refreshInterval][, proj]);\n"
     "Assign override values for various window properties, as provided by the backend client instead of the windowing system.\n"
     "'hookname' is accepted, but currently ignored. Pass '' or [] for now.\n"
     "'pixelSize' The net color depth of the display, as returned by Screen('PixelSize', windowPtr);\n"
     "'refreshInterval' The video refresh interval duration in seconds, as reported by the display backend, and after proper translation "
     "returned by Screen('NominalFramerate', windowPtr), Screen('Framerate', windowPtr), and Screen('GetFlipInterval', windowPtr).\n"
+    "'proj' Override projection matrix/matrices for 2D drawing: proj = [] == don't change, proj = 1 == Disable overrides, proj = 4x4 matrix "
+    "for mono-mode drawing, proj = 4x4x2 matrices for separate matrices in stereo modes (:,:,1) left eye, (:,:,2) right eye.\n"
     "\n\n"
     "General notes:\n\n"
     "* Hook chains are per onscreen window, so each window can have a different configuration and enable state.\n"
@@ -200,6 +202,8 @@ PsychError SCREENHookFunction(void)
     int                         leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height;
     double                      doubleptr;
     double                      shaderid, luttexid1 = 0;
+    int                         n, m, p;
+    double                      *dblmat;
     int                         verbosity = PsychPrefStateGet_Verbosity();
 
     blitterString = NULL;
@@ -499,6 +503,28 @@ PsychError SCREENHookFunction(void)
                 windowRecord->ifi_beamestimate = windowRecord->VideoRefreshInterval;
                 windowRecord->IFIRunningSum = windowRecord->VideoRefreshInterval;
                 windowRecord->nrIFISamples = 1;
+            }
+
+            if (PsychAllocInDoubleMatArg(6, kPsychArgOptional, &n, &m, &p, &dblmat)) {
+                // Release old ones, if any:
+                if (windowRecord->proj) {
+                    free(windowRecord->proj);
+                    windowRecord->proj = NULL;
+                }
+
+                // Validate and assign:
+                if (n * m * p == 1) {
+                    // Empty assignment - No-op, as matrix is already NULL'ed above, just for clarity:
+                    windowRecord->proj = NULL;
+                }
+                else {
+                    // New override matrix assignment:
+                    if (n !=4 || m != 4 || (p != 1 && p != 2))
+                        PsychErrorExitMsg(PsychError_user, "Invalid 'proj' matrices specified. Must be a 4x4 matrix or a stack of two 4x4 matrices.");
+
+                    windowRecord->proj = (double*) malloc(2 * 16 * sizeof(double));
+                    memcpy(windowRecord->proj, dblmat, m * n * p * sizeof(double));
+                }
             }
         break;
     }

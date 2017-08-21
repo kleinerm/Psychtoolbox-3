@@ -82,8 +82,8 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychOpenHMDVRCore('Start', openhmdPtr);";
     synopsis[i++] = "PsychOpenHMDVRCore('Stop', openhmdPtr);";
     synopsis[i++] = "state = PsychOpenHMDVRCore('GetTrackingState', openhmdPtr [, predictionTime=0]);";
-    synopsis[i++] = "[projL, projR] = PsychOpenHMDVRCore('GetStaticRenderParameters', openhmdPtr [, clipNear=0.01][, clipFar=10000.0]);";
-    synopsis[i++] = "[eyePose, eyeIndex] = PsychOpenHMDVRCore('GetEyePose', openhmdPtr, renderPass);";
+    synopsis[i++] = "[projL, projR, ipd] = PsychOpenHMDVRCore('GetStaticRenderParameters', openhmdPtr [, clipNear=0.01][, clipFar=10000.0]);";
+    synopsis[i++] = "[eyePose, eyeIndex, glModelviewMatrix] = PsychOpenHMDVRCore('GetEyePose', openhmdPtr, renderPass);";
     synopsis[i++] = "[width, height, fovPort] = PsychOpenHMDVRCore('GetFovTextureSize', openhmdPtr, eye, metersPerTanAngleAtCenter [, fov=[HMDRecommended]]);";
     synopsis[i++] = "[width, height, hmdShiftx, hmdShifty, hmdShiftz, abberation, distortion, scrnHorSize, scrnVertSize] = PsychOpenHMDVRCore('GetUndistortionParameters', openhmdPtr, eye [, inputWidth][, inputHeight][, fov]);";
     synopsis[i++] = "[vertexShaderSrc, fragmentShaderSrc] = PsychOpenHMDVRCore('GetCorrectionShaders', openhmdPtr);";
@@ -1047,8 +1047,8 @@ PsychError PSYCHOPENHMDVRGetCorrectionShaders(void)
 
 PsychError PSYCHOPENHMDVRGetStaticRenderParameters(void)
 {
-    static char useString[] = "[projL, projR] = PsychOpenHMDVRCore('GetStaticRenderParameters', openhmdPtr [, clipNear=0.01][, clipFar=10000.0]);";
-    //                          1      2                                                        1             2                3
+    static char useString[] = "[projL, projR, ipd] = PsychOpenHMDVRCore('GetStaticRenderParameters', openhmdPtr [, clipNear=0.01][, clipFar=10000.0]);";
+    //                          1      2      3                                                      1             2                3
     static char synopsisString[] =
     "Retrieve static rendering parameters for OpenHMD device 'openhmdPtr' at current settings.\n"
     "'clipNear' Optional near clipping plane for OpenGL. Defaults to 0.01.\n"
@@ -1056,6 +1056,7 @@ PsychError PSYCHOPENHMDVRGetStaticRenderParameters(void)
     "\nReturn arguments:\n\n"
     "'projL' is the 4x4 OpenGL projection matrix for the left eye rendering.\n"
     "'projR' is the 4x4 OpenGL projection matrix for the right eye rendering.\n"
+    "'ipd' is estimated inter-pupillar distance.\n"
     "Please note that projL and projR are usually identical for typical rendering scenarios.\n";
     static char seeAlsoString[] = "";
 
@@ -1064,7 +1065,7 @@ PsychError PSYCHOPENHMDVRGetStaticRenderParameters(void)
     float M[4][4];
     int i, j;
     double clip_near, clip_far;
-    float  f_clip_near, f_clip_far;
+    float  f_clip_near, f_clip_far, ipd;
     double *outM;
 
     // All sub functions should have these two lines
@@ -1072,7 +1073,7 @@ PsychError PSYCHOPENHMDVRGetStaticRenderParameters(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -1109,13 +1110,17 @@ PsychError PSYCHOPENHMDVRGetStaticRenderParameters(void)
         for (j = 0; j < 4; j++)
             *(outM++) = (double) M[i][j];
 
+    // Inter-pupillar distance:
+    ohmd_device_getf(openhmd->hmd, OHMD_EYE_IPD, &ipd);
+    PsychCopyOutDoubleArg(3, kPsychArgOptional, ipd);
+
     return(PsychError_none);
 }
 
 PsychError PSYCHOPENHMDVRGetEyePose(void)
 {
-    static char useString[] = "[eyePose, eyeIndex] = PsychOpenHMDVRCore('GetEyePose', openhmdPtr, renderPass);";
-    //                          1        2                                            1           2
+    static char useString[] = "[eyePose, eyeIndex, glModelviewMatrix] = PsychOpenHMDVRCore('GetEyePose', openhmdPtr, renderPass);";
+    //                          1        2         3                                                     1           2
     static char synopsisString[] =
     "Return current predicted pose vector for an eye for OpenHMD device 'openhmdPtr'.\n"
     "NOTE: As of August 2017, this function does not provide optimized predicted pose and is here just "
@@ -1130,13 +1135,16 @@ PsychError PSYCHOPENHMDVRGetEyePose(void)
     "first, or if the right eye should be rendered first, depends on the visual scanning order of the HMD "
     "display panel - is it top to bottom, left to right, or right to left? This function provides that optimized "
     "mapping. Using this function to query the parameters for render setup of an eye can provide a bit more "
-    "accuracy in rendering, at the expense of more complex usercode.\n";
+    "accuracy in rendering, at the expense of more complex usercode.\n"
+    "'glModelviewMatrix' OpenGL modelview matrix, as computed by OpenHMD from tracking data.\n";
 
     static char seeAlsoString[] = "";
 
     int handle, renderPass;
     PsychOpenHMDDevice *openhmd;
     float state[7];
+    float M[4][4];
+    int i, j;
     double *outM;
 
     // All sub functions should have these two lines
@@ -1144,7 +1152,7 @@ PsychError PSYCHOPENHMDVRGetEyePose(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(2));
 
@@ -1179,6 +1187,13 @@ PsychError PSYCHOPENHMDVRGetEyePose(void)
 
     // Copy out preferred eye render order for info:
     PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) renderPass);
+
+    // Return modelview matrix as computed by OpenHMD:
+    ohmd_device_getf(openhmd->hmd, (renderPass == 0) ? OHMD_LEFT_EYE_GL_MODELVIEW_MATRIX : OHMD_RIGHT_EYE_GL_MODELVIEW_MATRIX, &M[0][0]);
+    PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 4, 4, 1, &outM);
+    for (i = 0; i < 4; i++)
+        for (j = 0; j < 4; j++)
+            *(outM++) = (double) M[i][j];
 
     return(PsychError_none);
 }

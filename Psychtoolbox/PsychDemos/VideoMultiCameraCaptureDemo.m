@@ -80,7 +80,7 @@ dropframes = 1;
 % Flags to use for video recording. 16 = Use multi-threaded recording.
 if doVideoRecording
     captureFlags = 16;
-    codec = ':CodecType=DEFAULTencoder UseVFR'; % Use default codec. UseVFR for variable framerate recording.
+    codec = ':CodecType=DEFAULTencoder UseVFR Videoquality=0.5 Profile=2'; % Use default codec. UseVFR for variable framerate recording.
     
     % The huffyuv and ffenc_sgi codecs are lossless codecs. They use lossless compression, so video images
     % are stored exactly, but the resulting movie files will be comparably large!
