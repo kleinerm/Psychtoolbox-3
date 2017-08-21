@@ -1103,7 +1103,7 @@ if strcmpi(cmd, 'IsHMDOutput')
   % Assumption here is that it is a tilted panel in portrait mode in case of
   % the Rift DK1/DK2, but a non-tilted panel in landscape mode on other HMDs,
   % e.g., the Rift CV1:
-  if (~isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelHeight) && (scanout.height == myhmd.panelWidth)) || ...
+  if (~isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelHeight) && (scanout.height == myhmd.panelWidth || scanout.height == 948)) || ...
      (isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelWidth) && (scanout.height == myhmd.panelHeight))
     varargout{1} = 1;
   else
@@ -1340,9 +1340,13 @@ if strcmpi(cmd, 'OpenWindowSetup')
   end
 
   % How is the panel mounted in the HMD, portrait or landscape?
-  if RectWidth(panelRect) < RectHeight(panelRect)
+  % Have special case for Rift DK2 as it can also operate in 1080 x 948 mode at 120 Hz.
+  if RectWidth(panelRect) < RectHeight(panelRect) || strcmp(myhmd.modelName, 'Rift (DK2)')
     % Portrait: Need to rotate our rendering:
     hmd{myhmd.handle}.panelRotated = 1;
+    % Make sure Rift DK2 is handled properly also in 1080 x 948 @120 Hz.
+    hmd{myhmd.handle}.panelWidth = RectHeight(panelRect);
+    hmd{myhmd.handle}.panelHeight = RectWidth(panelRect);
   else
     % Landscape: No need to rotate:
     hmd{myhmd.handle}.panelRotated = 0;
