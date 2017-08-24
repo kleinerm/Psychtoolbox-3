@@ -61,7 +61,12 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % in some kind of 3D virtual world. This is the default if omitted. The task
 % 'Stereoscopic' sets up for display of stereoscopic stimuli, but without
 % head tracking. 'Monoscopic' sets up for display of monocular stimuli, ie.
-% the HMD is just used as a special kind of standard display monitor.
+% the HMD is just used as a special kind of standard display monitor. Please
+% note that the Oculus Rift DK2 has a special video mode for such monoscopic
+% presentation: If you set the video mode to 1080x948@120 Hz, then the DK2
+% will only display a monoscopic image identical to both eyes, but at a refresh
+% rate of 120 Hz. This allows you to (ab)use the DK2 as a high-speed 120 Hz
+% monitor!
 %
 % 'basicRequirements' defines basic requirements for the task. Currently
 % defined are the following strings which can be combined into a single
@@ -501,6 +506,8 @@ if cmd == 0
   end
 
   % Need to create a display list with VR warp blit first:
+  imax = 2;
+
   dl = glGenLists(1);
   glNewList(dl, GL.COMPILE);
 
@@ -517,11 +524,29 @@ if cmd == 0
     glViewport(0, 0, hmd{handle}.panelWidth, hmd{handle}.panelHeight);
   end
 
+  % Is this a Rift DK2 in special 1080x948 @ 120Hz video mode?
+  if strcmp(hmd{handle}.modelName, 'Rift (DK2)') && hmd{handle}.panelRotated && (hmd{handle}.panelWidth == 948)
+    % Yes. In this mode, the content of the framebuffer is considered a monoscopic image,
+    % and it is replicated into the top and bottom half of the display panel, thereby
+    % cloning the framebuffer as identical image into left and right eye of the user.
+    % Iow. the Rift acts as a monoscopic image viewer, with 120 Hz refresh rate. It still
+    % needs lens distortion correction and color abberation correction though. Ergo still
+    % run our warp shader, but only the left-eye one, sourcing from one input texture,
+    % doing the warp:
+    imax = 1;
+
+    % Extend the blitted quad from that one shader pass to the full framebuffer/viewport
+    % size, by some translation and scaling of the quad. The Rift will undo this during
+    % "cloning" of the "fullscreen" quad into both eyes:
+    glTranslatef(1, 0, 0);
+    glScalef(2, 1, 1);
+  end
+
   glMatrixMode(GL.PROJECTION);
   glPushMatrix;
   glLoadIdentity;
 
-  for i=1:2
+  for i=1:imax
     glUseProgram(hmd{handle}.glsl(i));
     glBindTexture(GL.TEXTURE_2D, hmd{handle}.inTex(i));
     glBegin(GL.QUADS);
@@ -1103,7 +1128,7 @@ if strcmpi(cmd, 'IsHMDOutput')
   % Assumption here is that it is a tilted panel in portrait mode in case of
   % the Rift DK1/DK2, but a non-tilted panel in landscape mode on other HMDs,
   % e.g., the Rift CV1:
-  if (~isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelHeight) && (scanout.height == myhmd.panelWidth)) || ...
+  if (~isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelHeight) && (scanout.height == myhmd.panelWidth || scanout.height == 948)) || ...
      (isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelWidth) && (scanout.height == myhmd.panelHeight))
     varargout{1} = 1;
   else
@@ -1340,9 +1365,13 @@ if strcmpi(cmd, 'OpenWindowSetup')
   end
 
   % How is the panel mounted in the HMD, portrait or landscape?
-  if RectWidth(panelRect) < RectHeight(panelRect)
+  % Have special case for Rift DK2 as it can also operate in 1080 x 948 mode at 120 Hz.
+  if RectWidth(panelRect) < RectHeight(panelRect) || strcmp(myhmd.modelName, 'Rift (DK2)')
     % Portrait: Need to rotate our rendering:
     hmd{myhmd.handle}.panelRotated = 1;
+    % Make sure Rift DK2 is handled properly also in 1080 x 948 @120 Hz.
+    hmd{myhmd.handle}.panelWidth = RectHeight(panelRect);
+    hmd{myhmd.handle}.panelHeight = RectWidth(panelRect);
   else
     % Landscape: No need to rotate:
     hmd{myhmd.handle}.panelRotated = 0;
@@ -1637,6 +1666,16 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Yes. Disable ipd correction as it seems to do more harm than good
     % on the only HMD on which it would be used - the Rift CV:
     hmd{handle}.ipd = 0;
+  end
+
+  % Is this a Rift DK2 in special 1080x948 @ 120Hz video mode? And no Monoscopic mode selected?
+  if strcmp(hmd{handle}.modelName, 'Rift (DK2)') && hmd{handle}.panelRotated && (hmd{handle}.panelWidth == 948) && ...
+     isempty(strfind(hmd{myhmd.handle}.basicTask, 'Monoscopic'))
+     % Yes. Inform user that this is probably suboptimal, as stereoscopic display
+     % won't work in this op-mode of the DK2:
+     fprintf('PsychOpenHMDVR: WARNING: Rift DK2 in 1080x948@120 Hz MONO mode detected, but you are not using the Monoscopic\n');
+     fprintf('PsychOpenHMDVR: WARNING: basicTask. Note that stereoscopic rendering and display will not work. You only get the\n');
+     fprintf('PsychOpenHMDVR: WARNING: left eye view displayed to both eyes, while still wasting resources on stereo rendering.\n');
   end
 
   % Return success result code 1:

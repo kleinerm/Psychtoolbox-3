@@ -1,4 +1,4 @@
-function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain)
+function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain, checkerboard)
 % VRHMDDemo1 -- Show 3D stereo display via MOGL OpenGL on a VR headset.
 %
 % This demo shows how to use Psychtoolbox PsychVRHMD() driver to display
@@ -8,7 +8,7 @@ function VRHMDDemo1(doSeparateEyeRender, multiSample, fountain)
 % case in "Happy teapot land". Obviously, this demo will only work if you have
 % one of the supported HMDs connected to your machine.
 %
-% Usage: VRHMDDemo1([doSeparateEyeRender][, multiSample=1][, fountain=1]);
+% Usage: VRHMDDemo1([doSeparateEyeRender][, multiSample=1][, fountain=1][, checkerboard=0]);
 %
 % Optional parameters:
 %
@@ -54,6 +54,10 @@ end
 
 if nargin < 3 || isempty(fountain)
   fountain = 1;
+end
+
+if nargin < 4  || isempty(checkerboard)
+  checkerboard = 0;
 end
 
 % Default setup:
@@ -232,6 +236,41 @@ try
   % Manually disable 3D mode.
   Screen('EndOpenGL', win);
 
+  if checkerboard
+    % Apply regular checkerboard pattern as texture:
+    bv = zeros(32);
+    wv = ones(32);
+    myimg = double(repmat([bv wv; wv bv],32,32) > 0.5);
+    mytex = Screen('MakeTexture', win, myimg, [], 1);
+
+    % Retrieve OpenGL handles to the PTB texture. These are needed to use the texture
+    % from "normal" OpenGL code:
+    [gltex, gltextarget] = Screen('GetOpenGLTexture', win, mytex);
+
+    % Begin OpenGL rendering into onscreen window again:
+    Screen('BeginOpenGL', win);
+
+    % Enable texture mapping for this type of textures...
+    glEnable(gltextarget);
+
+    % Bind our texture, so it gets applied to all following objects:
+    glBindTexture(gltextarget, gltex);
+
+    % Textures color texel values shall modulate the color computed by lighting model:
+    glTexEnvfv(GL.TEXTURE_ENV,GL.TEXTURE_ENV_MODE,GL.REPLACE);
+
+    % Clamping behaviour shall be a cyclic repeat:
+    glTexParameteri(gltextarget, GL.TEXTURE_WRAP_S, GL.REPEAT);
+    glTexParameteri(gltextarget, GL.TEXTURE_WRAP_T, GL.REPEAT);
+
+    % Enable mip-mapping and generate the mipmap pyramid:
+    glTexParameteri(gltextarget, GL.TEXTURE_MIN_FILTER, GL.LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(gltextarget, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
+    glGenerateMipmapEXT(GL.TEXTURE_2D);
+
+    Screen('EndOpenGL', win);
+  end
+
   telapsed = 0;
   fcount = 0;
 
@@ -352,9 +391,24 @@ try
       % Clear color and depths buffers:
       glClear;
 
-      % Bring a bit of extra spin into this :-)
-      glRotated(10 * telapsed, 0, 1, 0);
-      glRotated(5  * telapsed, 1, 0, 0);
+      if checkerboard
+        % Checkerboard to better visualize distortions:
+        glBegin(GL.QUADS)
+        glColor3f(1,1,1);
+        glTexCoord2f(0,0);
+        glVertex2f(-1,-1);
+        glTexCoord2f(1,0);
+        glVertex2f(1,-1);
+        glTexCoord2f(1,1);
+        glVertex2f(1,1);
+        glTexCoord2f(0,1);
+        glVertex2f(-1,1);
+        glEnd;
+      else
+        % Bring a bit of extra spin into this :-)
+        glRotated(10 * telapsed, 0, 1, 0);
+        glRotated(5  * telapsed, 1, 0, 0);
+      end
 
       % Draw a solid teapot of size 1.0:
       glutSolidTeapot(1);
@@ -385,7 +439,7 @@ try
     end
 
     % Head position tracked?
-    if ~bitand(state.tracked, 2)
+    if ~bitand(state.tracked, 2) && ~checkerboard
       % Nope, user out of cameras view frustum. Tell it like it is:
       DrawFormattedText(win, 'Vision based tracking lost\nGet back into the cameras field of view!', 'center', 'center', [1 0 0]);
     end
