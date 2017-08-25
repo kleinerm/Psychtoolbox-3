@@ -1972,5 +1972,17 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     return(targetTime);
 }
 
+/* PsychOSConstrainPointer()
+ *
+ * Establish or release pointer confinement to a rectangle, a mouse trap if you want.
+ *
+ * Returns TRUE on success, FALSE on failure, e.g., maximum number of barriers exceeded.
+ */
+psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bool constrain, PsychRectType rect)
+{
+    // Not yet supported on Wayland:
+    return(FALSE);
+}
+
 /* End of PTB_USE_WAYLAND */
 #endif
