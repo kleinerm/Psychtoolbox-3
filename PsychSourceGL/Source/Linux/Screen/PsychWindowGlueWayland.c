@@ -384,6 +384,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     struct waffle_wayland_window *wayland_window;
     struct waffle_context *ctx;
 
+    // Always init the list for wayland present events:
+    wl_list_init(&windowRecord->targetSpecific.presentation_feedback_list);
+
     // Define default rendering backend:
     #ifdef PTB_USE_GLES1
     opengl_api = WAFFLE_CONTEXT_OPENGL_ES1;
@@ -1436,9 +1439,6 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 
     // Timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
     windowRecord->specialflags |= kPsychOpenMLDefective;
-
-    // Always init the list for wayland present events:
-    wl_list_init(&windowRecord->targetSpecific.presentation_feedback_list);
 
     // Try to get a handle to the Wayland presentation_interface: non-NULL == Success.
     if (!get_wayland_presentation_extension(windowRecord)) {
