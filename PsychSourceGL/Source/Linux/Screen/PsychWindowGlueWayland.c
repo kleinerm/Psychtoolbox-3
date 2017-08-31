@@ -384,6 +384,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     struct waffle_wayland_window *wayland_window;
     struct waffle_context *ctx;
 
+    // Always init the list for wayland present events:
+    wl_list_init(&windowRecord->targetSpecific.presentation_feedback_list);
+
     // Define default rendering backend:
     #ifdef PTB_USE_GLES1
     opengl_api = WAFFLE_CONTEXT_OPENGL_ES1;
@@ -1437,9 +1440,6 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     // Timestamping in PsychOSGetSwapCompletionTimestamp() and PsychOSGetVBLTimeAndCount() disabled:
     windowRecord->specialflags |= kPsychOpenMLDefective;
 
-    // Always init the list for wayland present events:
-    wl_list_init(&windowRecord->targetSpecific.presentation_feedback_list);
-
     // Try to get a handle to the Wayland presentation_interface: non-NULL == Success.
     if (!get_wayland_presentation_extension(windowRecord)) {
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: No Wayland wp_presentation_feedback extension. Using naive standard implementation.\n");
@@ -1970,6 +1970,18 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     }
 
     return(targetTime);
+}
+
+/* PsychOSConstrainPointer()
+ *
+ * Establish or release pointer confinement to a rectangle, a mouse trap if you want.
+ *
+ * Returns TRUE on success, FALSE on failure, e.g., maximum number of barriers exceeded.
+ */
+psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bool constrain, PsychRectType rect)
+{
+    // Not yet supported on Wayland:
+    return(FALSE);
 }
 
 /* End of PTB_USE_WAYLAND */
