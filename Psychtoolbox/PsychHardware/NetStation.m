@@ -1,4 +1,4 @@
-function [status, error] = NetStation(varargin)
+function [status, errormsg] = NetStation(varargin)
 %
 % NetStation - Basic control of the EGI/NetStation EEG recording system via
 % TCP/IP network connection. (See http://www.egi.com)
@@ -10,10 +10,10 @@ function [status, error] = NetStation(varargin)
 %
 % General syntax
 %
-%   [status, error] = NetStation('command', ...)
+%   [status, errormsg] = NetStation('command', ...)
 %
 %   if status == 0, the command has been succesfully executed
-%   otherwise see string "error" for error message
+%   otherwise see string "errormsg" for error message
 %
 % Commands
 %
@@ -225,7 +225,7 @@ else
                 % Open UDP socket for NTP server connection
                 if isempty( NTPSOCK )
                     if nargin < 2 || isempty( varargin { 2 } )
-                        error( 'NTP server host name required.' );
+                        error( 'NetStation-ERROR: NTP server host name required.' );
                     end
                     NTPSOCK = GetNTP( 'open', varargin{ 2 } );
                 end
@@ -253,7 +253,12 @@ else
                 pnet( NSIDENTIFIER, 'write', 'N');
                 pnet( NSIDENTIFIER, 'write', uint32( sendTimestamp( 1 ) ), 'network' );
                 pnet( NSIDENTIFIER, 'write', uint32( sendTimestamp( 2 ) ), 'network' );
-                receive( NSIDENTIFIER, 1 );
+                rep = receive( NSIDENTIFIER, 1 );
+                if strcmp( 'Z', rep )
+                    fprintf( 'NetStation-INFO: GetNTP synchronization successful. Synchronization timestamp is UTC %s.\n', datestr( datenum( [ 1900 1 1 0 0 sendTimestamp( 1 ) ] ), 'yyyy-mm-dd HH:MM:SS.FFF' ) );
+                else
+                    error( 'NetStation-ERROR: GetNTP synchronization failed. NetStation acquisition ON?!' );
+                end
                 
                 SYNCHEPOCH = sendTimestamp( 1 );
                 GETNTPSYNCED = 1;
@@ -342,7 +347,7 @@ else
                 % error message
                 if ( nargin>4 && mod(nargin,2))
                     status = 8;
-                    error=nserr(status);
+                    errormsg=nserr(status);
                     return
                 end
                 
@@ -390,7 +395,7 @@ else
     end
 end
 
-error=nserr(status);
+errormsg=nserr(status);
 
 end
 
