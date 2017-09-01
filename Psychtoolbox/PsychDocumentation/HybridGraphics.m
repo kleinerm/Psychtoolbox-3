@@ -52,7 +52,7 @@
 % with a mux. Iow. one can manually select the performance vs. power
 % consumption tradeoff.
 %
-% Most modern common PC laptops are muxless. The iGPU is hard-wired to
+% Most modern common PC laptops are muxless though. The iGPU is hard-wired to
 % the video outputs, both to the laptop flat panel and the external outputs.
 % The iGPU is always active and drives the displays and takes care of drawing
 % the GUI and handling 2D applications. The dGPU can be powered up as needed
@@ -61,7 +61,7 @@
 % has to copy its rendered images into the RAM of the iGPU and the iGPU then
 % displays the images on behalf of the dGPU. This involves some significant
 % overhead: Multiple milliseconds of time are needed for each Screen('Flip') to
-% copy image data from the dGPU to the iGPU, converting the data into a format
+% copy image data from the dGPU to the iGPU, and converting the data into a format
 % the iGPU can display. For this reason, display latency on a muxless laptop
 % will always be longer and absolute graphics performance lower than on a laptop
 % which only has a dGPU, or on a muxless laptop. A big problem is the need to
@@ -86,18 +86,28 @@
 % LINUX:
 % ------
 %
-% On Linux, as of May 2017, good progress has been made in implementing methods
+% On Linux, as of August 2017, good progress has been made in implementing methods
 % which provide both good performance *and* reliable, trustworthy, accurate visual
 % timing and timestamping. Some - but not all! - types of Laptop hardware should
 % work well, but for all of them some special configuration or software upgrades
 % are needed.
 %
-% You always need at least XServer version 1.18 or later, and Mesa 11.2 or later, and
-% Linux 4.6 or later, but sometimes you need more modern versions, as described below.
+% We recommend XServer version 1.19.3 or later, and Mesa version 13 or later, and
+% Linux 4.10 or later, as this combination provides best performance and ease of
+% setup for all supported types of hybrid graphics laptops. Users of Ubuntu Linux
+% can simply install Ubuntu 16.04.3 LTS (or Ubuntu 17.04 and later) from fresh
+% installation media, or upgrade to 16.04.3 LTS from earlier Ubuntu releases and then
+% install the new hardware enablement stack (HWE) via ...
+%
+% sudo apt install --install-recommends linux-lowlatency-hwe-16.04 xserver-xorg-hwe-16.04
+%
+% ... if it isn't already automatically installed after an upgrade to 16.04.3 LTS.
 %
 % The following sections describe the current level and quality of support for different
-% types of hybrid graphics laptops, and required configuration steps. Psychtoolbox will tell
-% you if you need to upgrade your kernel, if you run it on a muxless hybrid graphics Laptop.
+% types of hybrid graphics laptops, and required configuration steps, assuming you have
+% sufficiently up to date kernel, X-Server and Mesa as explained in the previous paragraph.
+% Psychtoolbox would tell you if you need to upgrade your kernel, if you'd run it on a
+% muxless hybrid graphics Laptop.
 %
 %
 % * Laptops with an Intel iGPU combined with a NVidia dGPU ("NVidia Optimus" models):
@@ -110,18 +120,14 @@
 %   to improve the performance for recent models.
 %
 %   If you want to use the NVidia proprietary display driver for Linux instead, there
-%   now exists a solution which works with correct timing and timestamping. However, the
-%   solution is less flexible and power-efficient than use of the "nouveau" open-source
-%   driver. It requires some setup work, and it needs XOrg X-Server 1.19.0 or later, so
-%   you need to use a Linux distribution which uses X-Server 1.19. As of May 2017,
-%   "Ubuntu 17.04 Zesty Zappus" ships with X-Server 1.19.3, Linux 4.10, and NVidia
-%   proprietary driver of version 375.39, as well as a convenient setup mechanism for
-%   Optimus support. We therefore recommend Ubuntu 17.04 for Optimus laptops, as setup
-%   is rather simple and this distro is successfully tested with two Optimus laptops and
-%   Psychtoolbox. However, the 375.39 driver shipping with Ubuntu 17.04 contains some bugs
-%   related to Optimus, which were fixed in driver version 375.66, so first we need to enable
-%   the proprietary graphics driver ppa to get a convenient update to NVidia driver version
-%   375.66 or later versions. Follow the following steps on Ubuntu 17.04 to get Optimus set up:
+%   now exists a solution which works with correct timing and timestamping, as verified
+%   on two Optimus Laptops, a Lenovo Lenovo Ideapad Z50-70 with GeForce 840M and a Razer
+%   Blade 2016 with GeForce 1060M. However, the solution is less flexible and power-efficient
+%   than use of the "nouveau" open-source driver. It requires some setup work, and it needs
+%   a NVidia proprietary driver of at least version 375.66. If you can't select a recent
+%   enough driver of at least version 375.66, you need to enable the proprietary graphics
+%   driver ppa to get a convenient update to NVidia driver version 375.66 or later versions.
+%   Follow the following steps to get Optimus set up:
 %
 %   1. Install the proprietary graphics drivers ppa by typing in a terminal:
 %       sudo add-apt-repository ppa:graphics-drivers/ppa
@@ -138,6 +144,9 @@
 %      modesetting support.
 %
 %   4. Execute "sudo update-initramfs -u -k all" in a terminal.
+%      NOTE: You may need to repeat both steps 3 and 4 every time after a significant upgrade
+%      of your distributions software. Otherwise Psychtoolbox may complain about timing and
+%      synchronization problems after such an upgrade.
 %
 %   5. Copy the custom Psychtoolbox modesetting driver into the system driver directory.
 %      There are two variants, the nolag variant and the highlag variant. In theory, the
@@ -165,7 +174,7 @@
 %   following paragraph assumes you are not using Ubuntu 17.04:
 %
 %   Once you have a X-Server 1.19 up and running, you will need the NVidia proprietary
-%   display drivers of version 375.26 or later for 64-Bit Intel processors. Then you need
+%   display drivers of version 375.66 or later for 64-Bit Intel processors. Then you need
 %   to copy various configuration files into various places, and adapt some of these files
 %   to your specific system. Finally you need to install a custom xf86-video-modesetting
 %   display driver onto your system. This modesetting driver is specifically made to
@@ -188,25 +197,8 @@
 %
 % * Laptops with an Intel iGPU combined with an AMD dGPU ("AMD Enduro" models):
 %
-%   These should work very well out of the box on Ubuntu 16.10 and later, or on a clean
-%   installation of Ubuntu 16.04.2 LTS from *freshly* downloaded installation media.
-%
-%   If you upgraded from a previous Ubuntu version to Ubuntu 16.04.2 LTS then you need to manually
-%   install the Linux 4.8 lowlatency "hardware enablement" (HWE) kernel by typing the following
-%   command into a terminal windows, and after its successful completion by a reboot of the machine:
-%
-%   sudo apt install linux-lowlatency-hwe-16.04
-%
-%   On Ubuntu 16.04.2 LTS or Ubuntu 16.10 you will get acceptable performance out of the box.
-%   For great performance you will need Mesa version 13 or later. Such a Mesa version is part of
-%   Ubuntu 17.04 since April 2017. On current Ubuntu 16.04.2 LTS you can install the most recent
-%   stable Mesa version 17.0 or later from this ppa instead:
-%
-%   https://launchpad.net/~paulo-miguel-dias/+archive/ubuntu/pkppa
-%
-%   If you want good performance without upgrading Mesa, you can set the R600_DEBUG environment
-%   variable to 'forcedma', ie., execute setenv('R600_DEBUG','forcedma'); at the very start of your
-%   Octave or Matlab session, e.g., from the ~/.octaverc script or from Matlabs startup.m script.
+%   These should work very well out of the box on Ubuntu 16.04.3 LTS and later, as explained
+%   above.
 %
 %   On other Linux distributions make sure to install Linux 4.8.11 or later versions of the Linux
 %   kernel, together with X-Server 1.18 or later, and Mesa version 17.0 or later.
@@ -312,3 +304,5 @@
 %     or the USB-C video output, but not both at the same time if visual stimulation timing matters.
 %     X-Screen 1 is driven directly via the HDMI output connected to the NVidia dGPU.
 %
+%     NOTE: If you copy these files into the /etc/X11/xorg.conf.d/ folder you must rename them to
+%           end with the suffix .conf otherwise they won't be actually used!
