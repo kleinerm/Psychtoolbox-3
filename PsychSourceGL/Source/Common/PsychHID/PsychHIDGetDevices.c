@@ -226,21 +226,23 @@ PsychError PSYCHHIDGetDevices(void)
         // Init dummy value -1 to mark interfaceID as invalid/unknown on OSX as a safe default, and then retrieve full
         // IOServicePlane path for the HID device: ( Credits to GitHub user Brendan Shanks aka "mrpippy" for this approach,
         // using it in a pull request to improve HIDAPI: https://github.com/signal11/hidapi/pull/40 )
+        // Update 28-9-2017: The iToys company broke it again for USB DAQ's, as of OSX 10.12.6. Adapted parsing, so it
+        // should at least work on 10.12.6.
         interfaceId = -1;
         if (KERN_SUCCESS == IORegistryEntryGetPath((io_object_t)IOHIDDeviceGetService((IOHIDDeviceRef)currentDevice), kIOServicePlane, device_path)) {
             // Got full device path in IOServicePlane. Parse HID interface id out of it, if possible:
             if (getenv("PSYCHHID_TELLME")) printf("PsychHID-DEBUG: USB-HID IOKIT path: %s\n", (const char*)device_path);
-            interfaceIdLoc = strstr((const char*)device_path, "Interface@");
+            interfaceIdLoc = strstr((const char*) device_path, "IOUSBHostHIDDevice@");
             if (interfaceIdLoc)
-                sscanf(interfaceIdLoc, "Interface@%i", &interfaceId);
+                sscanf(interfaceIdLoc, "IOUSBHostHIDDevice@%*x,%i", &interfaceId);
         }
 
         // Assign detected interfaceID, or "don't know" value -1:
         PsychSetStructArrayDoubleElement("interfaceID", deviceIndex, (double)interfaceId, deviceStruct);
 #else
-    // Linux, Windows:
+        // Linux, Windows:
 
-    // USB interface id only available on non OS/X:
+        // USB interface id:
         PsychSetStructArrayDoubleElement("interfaceID", deviceIndex, (double)currentDevice->interfaceId, deviceStruct);
 
         // TODO FIXME Usage name: Mapping of usagePage + usage to human readable string
