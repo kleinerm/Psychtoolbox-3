@@ -4907,15 +4907,29 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             free(samples);
             samples = NULL;
 
-            // Summary of pageflip only makes sense if !useOpenML, so actual accounting was done:
-            if (!useOpenML && (PsychIsGPUPageflipUsed(windowRecord) >= 0)) {
-                printf("PTB-DEBUG: %i out of %i samples confirm use of GPU pageflipping for the swap.\n", pflip_count, i);
-                if (pflip_count >= i - 1) printf("PTB-DEBUG: --> Good, one neccessary condition for defined visual timing is satisfied.\n");
-            }
-
             printf("PTB-DEBUG: End of calibration data for this run...\n\n");
         }
 
+        // Summary of pageflip only makes sense if !useOpenML, so actual accounting was done:
+        if (!useOpenML && (PsychIsGPUPageflipUsed(windowRecord) >= 0)) {
+            if (PsychPrefStateGet_Verbosity() > 4)
+                printf("PTB-DEBUG: %i out of %i samples confirm use of GPU pageflipping for the swap during refresh calibration.\n", pflip_count, i);
+
+            // Good result?
+            if (pflip_count >= i - 1) {
+                if (PsychPrefStateGet_Verbosity() > 4)
+                    printf("PTB-DEBUG: --> Good, one neccessary condition for defined visual timing is satisfied.\n");
+            }
+            else if (PsychPrefStateGet_Verbosity() > 1) {
+                // No reliable pageflipping or pageflipping at all. This is pretty much game over for reliable
+                // visual timing or timestamping:
+                printf("PTB-WARNING: Pageflipping wasn't used %s during refresh calibration. Visual presentation timing on your system\n",
+                       (pflip_count > 0) ? "consistently" : "at all");
+                printf("PTB-WARNING: is broken on your system and all followup tests and workarounds will likely fail as well.\n");
+                printf("PTB-WARNING: On a Apple macOS system you probably don't need to even bother asking anybody for help. Just\n");
+                printf("PTB-WARNING: upgrade to Linux if you care about trustworthy visual timing and stimulation.\n\n");
+            }
+        }
     } // End of IFI measurement code.
     else {
         // No measurements taken...
