@@ -947,7 +947,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if (multidisplay) {
             printf("\n\nPTB-INFO: You are using a multi-display setup (%i active displays):\n", totaldisplaycount);
             printf("PTB-INFO: Please read 'help MultiDisplaySetups' for specific information on the Do's, Dont's,\n");
-            printf("PTB-INFO: and possible causes of trouble and how to diagnose and resolve them.");
+            printf("PTB-INFO: and possible causes of trouble and how to diagnose and resolve them.\n\n");
         }
     }
 #endif

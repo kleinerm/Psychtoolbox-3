@@ -4926,15 +4926,14 @@ psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windo
     glVertex2f(0, (float) PsychGetHeightFromRect(windowRecord->rect)+1);
     glEnd();
 
-    // Draw the sync-lines:
-    glLineWidth(1);
-    glBegin(GL_LINES);
+    // Draw the sync-lines -- actually a quad 3 scanlines high, to compensate for
+    // driver positioning bugs:
+    glBegin(GL_QUADS);
     glColor3f(r, g, b);
     glVertex2f(0, h);
     glVertex2f(w*blackpoint, h);
-    glColor3f(0, 0, 0);
-    glVertex2f(w*blackpoint, h);
-    glVertex2f(w, h);
+    glVertex2f(w*blackpoint, h+2);
+    glVertex2f(0, h+2);
     glEnd();
 
     return(TRUE);
