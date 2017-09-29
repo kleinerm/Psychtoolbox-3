@@ -748,7 +748,7 @@ int PsychHIDGetDefaultKbQueueDevice(void)
     PsychErrorExitMsg(PsychError_user, "Could not find any useable keyboard device!");
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots)
 {
     XIDeviceInfo* dev = NULL;
 
@@ -794,7 +794,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     }
 
     // Create event buffer:
-    if (!PsychHIDCreateEventBuffer(deviceIndex)) {
+    if (!PsychHIDCreateEventBuffer(deviceIndex, numValuators, numSlots)) {
         PsychHIDOSKbQueueRelease(deviceIndex);
         PsychErrorExitMsg(PsychError_system, "Failed to create keyboard queue due to out of memory condition.");
     }
@@ -1167,7 +1167,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     }
 
     // Create keyboard queue with proper mask:
-    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0]);
+    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0], 0, 0);
     PsychHIDOSKbQueueStart(deviceIndex);
 
     PsychLockMutex(&KbQueueMutex);

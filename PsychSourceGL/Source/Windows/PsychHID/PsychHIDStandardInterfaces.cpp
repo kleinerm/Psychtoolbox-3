@@ -500,7 +500,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     // Keyboard queue for this deviceIndex already exists?
     if (NULL == psychHIDKbQueueFirstPress[deviceIndex]) {
         // No. Create one which accepts all keys:
-        PsychHIDOSKbQueueCreate(deviceIndex, 0, NULL);
+        PsychHIDOSKbQueueCreate(deviceIndex, 0, NULL, 0, 0);
     }
 
     // Keyboard queue for this device active? If not, we need
@@ -836,7 +836,7 @@ void* KbQueueWorkerThreadMain(void* dummy)
     return(NULL);
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots)
 {
     dinfo* dev = NULL;
 
@@ -852,6 +852,9 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
         // Out of range index:
         PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
     }
+
+    if (numValuators > 0)
+        PsychErrorExitMsg(PsychError_unimplemented, "Valuators are not supported yet on MS-Windows.");
 
     // Do we finally have a valid keyboard?
     dev = &info[deviceIndex];
@@ -879,7 +882,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     }
 
     // Create event buffer:
-    if (!PsychHIDCreateEventBuffer(deviceIndex)) {
+    if (!PsychHIDCreateEventBuffer(deviceIndex, numValuators, numSlots)) {
         PsychHIDOSKbQueueRelease(deviceIndex);
         PsychErrorExitMsg(PsychError_system, "Failed to create keyboard queue due to out of memory condition.");
     }
@@ -1274,7 +1277,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     }
 
     // Create keyboard queue with proper mask:
-    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0]);
+    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0], 0, 0);
     PsychHIDOSKbQueueStart(deviceIndex);
 
     PsychLockMutex(&KbQueueMutex);

@@ -1,5 +1,5 @@
-function KbQueueCreate(deviceNumber, keyList)
-% KbQueueCreate([deviceNumber][, keyList])
+function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots)
+% KbQueueCreate([deviceNumber][, keyList][, numValuators=0][, numSlots=10000])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for
@@ -35,14 +35,29 @@ function KbQueueCreate(deviceNumber, keyList)
 % It is acceptable to call KbQueueCreate at any time (e.g., to switch to a new
 %  device or to change the list of queued keys) without calling KbQueueRelease.
 %
-%  KbQueueCreate([deviceNumber][, keyList])
+%  KbQueueCreate([deviceNumber][, keyList][, numValuators=0][, numSlots=10000])
 %      Creates the queue for the specified (or default) device number
 %      If the device number is less than zero, the default device is used.
-%      keyList is an optional 256-length vector of doubles (not logicals)
+%      'keyList' is an optional 256-length vector of doubles (not logicals)
 %      with each element corresponding to a particular key (use KbName
 %      to map between keys and their positions). If the double value
 %      corresponding to a particular key is zero, events for that key
 %      are not added to the queue and will not be reported.
+%      'numValuators' is an optional maximum number of additional values to report.
+%      It defaults to zero. For values greater than zero, if the selected type
+%      of input device supports this, and if the operating system supports this,
+%      additional info will be recorded. For pointing devices like mice, the mouse
+%      position may be reported, for joysticks the state of their various axis, etc.
+%      See "help KbEventGet" for how to retrieve potential additionally recorded
+%      information.
+%      'numSlots' defines how many events the event buffer can store. If a script
+%      does not periodically remove events via KbEventGet() or KbEventFlush(), the
+%      buffer will fill up, and once 'numSlots' elements are stored, it will stop
+%      recording new events. 10000 elements capacity is the default, which may be
+%      too little if you use 'numValuators' > 0 to store dynamic (motion) data like
+%      mouse movements or touchscreen input, which can be generated at rates of
+%      multiple hundred events per second of data collection.
+%
 %      No events are delivered to the queue until KbQueueStart or 
 %      KbQueueWait is called.
 %      KbQueueCreate can be called again at any time. The function can also
@@ -153,12 +168,16 @@ if isempty(macosxrecent)
   LoadPsychHID;
 end
 
-if nargin == 2
+if nargin == 4
+  PsychHID('KbQueueCreate', deviceNumber, keyList, numValuators, numSlots);
+elseif nargin == 3
+  PsychHID('KbQueueCreate', deviceNumber, keyList, numValuators);
+elseif nargin == 2
   PsychHID('KbQueueCreate', deviceNumber, keyList);
 elseif nargin == 1
   PsychHID('KbQueueCreate', deviceNumber);
 elseif nargin == 0
   PsychHID('KbQueueCreate');
-elseif nargin > 2
+elseif nargin > 4
   error('Too many arguments supplied to KbQueueCreate'); 
 end

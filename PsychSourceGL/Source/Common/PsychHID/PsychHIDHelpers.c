@@ -262,21 +262,36 @@ pRecDevice PsychHIDGetDeviceRecordPtrFromIndex(int deviceIndex)
     return(NULL);  //make the compiler happy.
 }
 
-psych_bool PsychHIDCreateEventBuffer(int deviceIndex)
+psych_bool PsychHIDCreateEventBuffer(int deviceIndex, int numValuators, int numSlots)
 {
     unsigned int bufferSize;
 
     if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
 
+    if (numSlots < 0) {
+        printf("PTB-ERROR: PsychHIDCreateEventBuffer(): numSlots %i invalid. Must be at least 0.\n", numSlots);
+        return(FALSE);
+    }
+
+    // Non-zero numSlots ==> Set new capacity, otherwise leave at default/last capacity:
+    if (numSlots > 0)
+        hidEventBufferCapacity[deviceIndex] = numSlots;
+
     bufferSize = hidEventBufferCapacity[deviceIndex];
 
     // Already created? If so, nothing to do:
-    if (hidEventBuffer[deviceIndex] || (bufferSize < 1)) return FALSE;
+    if (hidEventBuffer[deviceIndex] || (bufferSize < 1)) return(FALSE);
 
-    hidEventBuffer[deviceIndex] = (PsychHIDEventRecord*)calloc(sizeof(PsychHIDEventRecord), bufferSize);
+    if (numValuators > PSYCH_HID_MAX_VALUATORS) {
+        printf("PTB-ERROR: PsychHIDCreateEventBuffer(): numValuators %i > current compile time maximum of %i!\n",
+               numValuators, PSYCH_HID_MAX_VALUATORS);
+        return(FALSE);
+    }
+
+    hidEventBuffer[deviceIndex] = (PsychHIDEventRecord*) calloc(sizeof(PsychHIDEventRecord), bufferSize);
     if (NULL==hidEventBuffer[deviceIndex]) {
         printf("PTB-ERROR: PsychHIDCreateEventBuffer(): Insufficient memory to create KbQueue event buffer!");
-        return FALSE;
+        return(FALSE);
     }
 
     // Prepare mutex for buffer:
@@ -286,7 +301,7 @@ psych_bool PsychHIDCreateEventBuffer(int deviceIndex)
     // Flush it:
     PsychHIDFlushEventBuffer(deviceIndex);
 
-    return TRUE;
+    return(TRUE);
 }
 
 psych_bool PsychHIDDeleteEventBuffer(int deviceIndex)
@@ -355,11 +370,13 @@ unsigned int PsychHIDAvailEventBuffer(int deviceIndex, unsigned int flags)
 
 int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double maxWaitTimeSecs)
 {
-    unsigned int navail;
+    unsigned int navail, j;
     PsychHIDEventRecord evt;
     PsychGenericScriptType *retevent;
     double* foo = NULL;
-    const char *FieldNames[] = { "Time", "Pressed", "Keycode", "CookedKey" };
+    PsychGenericScriptType *outMat;
+    double *v;
+    const char *FieldNames[] = { "Type", "Time", "Pressed", "Keycode", "CookedKey", "ButtonStates", "Motion", "X", "Y", "Valuators" };
 
     if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
     if (!hidEventBuffer[deviceIndex]) return(0);
@@ -381,21 +398,44 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
         memcpy(&evt, &(hidEventBuffer[deviceIndex][hidEventBufferReadPos[deviceIndex] % hidEventBufferCapacity[deviceIndex]]), sizeof(PsychHIDEventRecord));
         hidEventBufferReadPos[deviceIndex]++;
     }
+
     PsychUnlockMutex(&hidEventBufferMutex[deviceIndex]);
 
     if (navail) {
         // Return event struct:
-        PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 4, FieldNames, &retevent);
-        PsychSetStructArrayDoubleElement("Time",        0,         evt.timestamp,                   retevent);
-        PsychSetStructArrayDoubleElement("Pressed",     0, (double)(evt.status & (1 << 0)) ? 1 : 0, retevent);
-        PsychSetStructArrayDoubleElement("Keycode",     0, (double)evt.rawEventCode,                retevent);
-        PsychSetStructArrayDoubleElement("CookedKey",   0, (double)evt.cookedEventCode,             retevent);
-        return navail - 1;
+        switch (evt.type) {
+            case 0: // Press/Release
+            case 1: // Motion/Valuator change
+                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 10, FieldNames, &retevent);
+                break;
+
+
+            default:
+                PsychErrorExitMsg(PsychError_internal, "Unhandled keyboard queue event type!");
+        }
+
+        PsychSetStructArrayDoubleElement("Type",         0, (double) evt.type,                        retevent);
+        PsychSetStructArrayDoubleElement("Time",         0, evt.timestamp,                            retevent);
+        PsychSetStructArrayDoubleElement("Pressed",      0, (double) (evt.status & (1 << 0)) ? 1 : 0, retevent);
+        PsychSetStructArrayDoubleElement("Keycode",      0, (double) evt.rawEventCode,                retevent);
+        PsychSetStructArrayDoubleElement("CookedKey",    0, (double) evt.cookedEventCode,             retevent);
+        PsychSetStructArrayDoubleElement("ButtonStates", 0, (double) evt.buttonStates,                retevent);
+        PsychSetStructArrayDoubleElement("Motion",       0, (double) (evt.status & (1 << 1)) ? 1 : 0, retevent);
+        PsychSetStructArrayDoubleElement("X",            0, (double) evt.valuators[0],                retevent);
+        PsychSetStructArrayDoubleElement("Y",            0, (double) evt.valuators[1],                retevent);
+
+        // Copy out all valuators (including redundant (X,Y) again:
+        PsychAllocateNativeDoubleMat(1, evt.numValuators, 1, &v, &outMat);
+        for (j = 0; j < evt.numValuators; j++)
+            *(v++) = (double) evt.valuators[j];
+        PsychSetStructArrayNativeElement("Valuators", 0, outMat, retevent);
+
+        return(navail - 1);
     }
     else {
         // Return empty matrix:
         PsychCopyOutDoubleMatArg(outArgIndex, kPsychArgOptional, 0, 0, 0, foo);
-        return 0;
+        return(0);
     }
 }
 

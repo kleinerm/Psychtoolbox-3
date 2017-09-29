@@ -903,7 +903,7 @@ PsychError PsychHIDOSKbElementAdd(IOHIDElementRef element, IOHIDQueueRef queue, 
     return(PsychError_none);
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots)
 {
     pRecDevice deviceRecord;
     psych_bool verbose = getenv("PSYCHHID_TELLME") != NULL;
@@ -912,6 +912,9 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     if (scanKeys && (numScankeys != 256)) {
         PsychErrorExitMsg(PsychError_user, "Second argument to KbQueueCreate must be a vector with 256 elements.");
     }
+
+    if (numValuators > 0)
+        PsychErrorExitMsg(PsychError_unimplemented, "Valuators are not supported on macOS.");
 
     // Do we finally have a valid keyboard or other suitable input device?
     // PsychHIDOSGetKbQueueDevice() will error out if no suitable device
@@ -1019,7 +1022,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     IOHIDQueueRegisterValueAvailableCallback(queue[deviceIndex], (IOHIDCallback) PsychHIDKbQueueCallbackFunction, (void*) (long) deviceIndex);
 
     // Create event buffer:
-    if (!PsychHIDCreateEventBuffer(deviceIndex)) {
+    if (!PsychHIDCreateEventBuffer(deviceIndex, numValuators, numSlots)) {
         PsychHIDOSKbQueueRelease(deviceIndex);
         PsychErrorExitMsg(PsychError_system, "Failed to create keyboard queue for detecting key press.");
     }
