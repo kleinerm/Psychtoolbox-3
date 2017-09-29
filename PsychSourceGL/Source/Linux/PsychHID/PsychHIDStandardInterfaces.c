@@ -30,6 +30,8 @@ static double* psychHIDKbQueueFirstRelease[PSYCH_HID_MAX_DEVICES];
 static double* psychHIDKbQueueLastPress[PSYCH_HID_MAX_DEVICES];
 static double* psychHIDKbQueueLastRelease[PSYCH_HID_MAX_DEVICES];
 static int*    psychHIDKbQueueScanKeys[PSYCH_HID_MAX_DEVICES];
+static int     psychHIDKbQueueNumValuators[PSYCH_HID_MAX_DEVICES];
+static PsychHIDEventRecord psychHIDKbQueueOldEvent[PSYCH_HID_MAX_DEVICES];
 static psych_bool psychHIDKbQueueActive[PSYCH_HID_MAX_DEVICES];
 static psych_mutex KbQueueMutex;
 static psych_condition KbQueueCondition;
@@ -59,6 +61,8 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     memset(&psychHIDKbQueueLastRelease[0], 0, sizeof(psychHIDKbQueueLastRelease));
     memset(&psychHIDKbQueueActive[0], 0, sizeof(psychHIDKbQueueActive));
     memset(&psychHIDKbQueueScanKeys[0], 0, sizeof(psychHIDKbQueueScanKeys));
+    memset(&psychHIDKbQueueNumValuators[0], 0, sizeof(psychHIDKbQueueNumValuators));
+    memset(&psychHIDKbQueueOldEvent[0], 0, sizeof(psychHIDKbQueueOldEvent));
 
     // We must initialize XLib for multithreading-safe operations / access on first
     // call if usercode explicitely requests this via environment variable PSYCH_XINITTHREADS.
@@ -491,7 +495,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
     XIRawEvent* rawevent;
     psych_bool valid;
     double tnow;
-    int i, index, deviceid;
+    int i, j, index, deviceid, numValuators;
     char asciiChar;
 
     while (1) {
@@ -540,6 +544,22 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                     valid = !(event->flags & XIKeyRepeat);
                     index = event->detail;
                     deviceid = event->deviceid;
+                }
+
+                if (event) {
+                    // Process device button state:
+                    for (j = 0; (j < event->buttons.mask_len * 8) && (j < 32); j++) {
+                        // j'th device button pressed?
+                        if (XIMaskIsSet(event->buttons.mask, j)) {
+                            // Yes: Set status to "pressed" as at least one device button is pressed:
+                            // Note this gets overriden for some event types below, like touch and
+                            // keyboard. It only really affects mouse/gamepad/joystick movements.
+                            evt.status |= (1 << 0);
+
+                            // Mark button pressed:
+                            evt.buttonStates |= (1 << j);
+                        }
+                    }
                 }
 
                 // Map Xinput device id to PTB 'deviceIndex' aka the proper keyboard queue:
@@ -637,6 +657,12 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                         // Update event buffer:
                         evt.timestamp = tnow;
                         evt.rawEventCode = index + 1;
+
+                        // Also provide (x,y) relative position of the pointing device at time of event:
+                        evt.valuators[0] = (event) ? event->event_x : 0;
+                        evt.valuators[1] = (event) ? event->event_y : 0;
+                        evt.numValuators += (event) ? 2 : 0;
+
                         PsychHIDAddEventToEventBuffer(i, &evt);
 
                         // Tell waiting userspace (under KbQueueMutex protection for better scheduling) something interesting has changed:
@@ -644,6 +670,71 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                     }
 
                     // Done with shared data access:
+                    PsychUnlockMutex(&KbQueueMutex);
+                }
+                else {
+                    PsychLockMutex(&KbQueueMutex);
+
+                    if ((i < ndevices) && valid && psychHIDKbQueueActive[i] && (psychHIDKbQueueNumValuators[i] > 0)) {
+                        // Handling of motion events / valuator change events. These only go into the event buffer,
+                        // not legacy KbQueue arrays, as those don't make sense here:
+                        numValuators = psychHIDKbQueueNumValuators[i];
+
+                        evt.cookedEventCode = -1;
+                        evt.timestamp = tnow;
+                        evt.rawEventCode = 0;
+
+                        // Mouse/Touchpad/Trackpad/Trackpoint/Trackball/Joystick/Pointing device
+                        // change of position or axis state:
+                        if ((cookie->evtype == XI_Motion) && (numValuators >= 2)) {
+                            // Type is a pointer or axis motion event:
+                            evt.type = 1;
+
+                            // Motion event:
+                            evt.status |= (1 << 1);
+
+                            // Store window relative position in first two valuators:
+                            evt.valuators[0] = event->event_x;
+                            evt.valuators[1] = event->event_y;
+                            evt.numValuators += 2;
+
+                            // More than 2 standard valuators for (x,y) position or deflection?
+                            if (numValuators > 2) {
+                                // Store up to numValuators valuator values:
+                                double *valuator = event->valuators.values;
+                                for (j = 0; (j < event->valuators.mask_len * 8) && (2 + j < numValuators); j++) {
+                                    evt.numValuators++;
+                                    // Updated valuator value?
+                                    if (XIMaskIsSet(event->valuators.mask, j)) {
+                                        // Yes: Assign.
+                                        evt.valuators[2 + j] = (float) *valuator;
+                                        valuator++;
+                                    }
+                                    else {
+                                        // No: Assign old value from last pass:
+                                        evt.valuators[2 + j] = (float) psychHIDKbQueueOldEvent[i].valuators[2 + j];
+                                    }
+                                }
+
+                                // Keep track of last event for above valuator updating:
+                                memcpy(&psychHIDKbQueueOldEvent[i], &evt, sizeof(psychHIDKbQueueOldEvent[i]));
+                            }
+                        }
+
+                                }
+                            }
+
+
+
+
+                            // Update event buffer:
+                            PsychHIDAddEventToEventBuffer(i, &evt);
+
+                            // Tell waiting userspace (under KbQueueMutex protection for better scheduling) something interesting has changed:
+                            PsychSignalCondition(&KbQueueCondition);
+                        }
+                    }
+
                     PsychUnlockMutex(&KbQueueMutex);
                 }
 
@@ -783,6 +874,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     psychHIDKbQueueLastPress[deviceIndex]    = calloc(256, sizeof(double));
     psychHIDKbQueueLastRelease[deviceIndex]  = calloc(256, sizeof(double));
     psychHIDKbQueueScanKeys[deviceIndex]     = calloc(256, sizeof(int));
+    memset(&psychHIDKbQueueOldEvent[deviceIndex], 0, sizeof(psychHIDKbQueueOldEvent[deviceIndex]));
 
     // Assign scanKeys vector, if any:
     if (scanKeys) {
@@ -792,6 +884,9 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
         // None provided. Enable all keys by default:
         memset(psychHIDKbQueueScanKeys[deviceIndex], 1, 256 * sizeof(int));
     }
+
+    // Store how many valuators we should return at most for this device:
+    psychHIDKbQueueNumValuators[deviceIndex] = numValuators;
 
     // Create event buffer:
     if (!PsychHIDCreateEventBuffer(deviceIndex, numValuators, numSlots)) {
@@ -946,6 +1041,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 {
     psych_bool queueActive;
     int i;
+    int numValuators;
 
     if (deviceIndex < 0) {
         deviceIndex = PsychHIDGetDefaultKbQueueDevice();
@@ -983,6 +1079,8 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     memset(psychHIDKbQueueLastPress[deviceIndex]    , 0, (256 * sizeof(double)));
     memset(psychHIDKbQueueLastRelease[deviceIndex]  , 0, (256 * sizeof(double)));
 
+    numValuators = psychHIDKbQueueNumValuators[deviceIndex];
+
     // Setup event mask, so events from our associated xinput device
     // get enqueued in our event queue:
     XIEventMask emask;
@@ -996,7 +1094,9 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     XISetMask(mask, XI_RawButtonPress);
     XISetMask(mask, XI_RawButtonRelease);
 
-    // XISetMask(mask, XI_Motion);
+    // Report motion events on pointing devices (mouse, trackpad etc.) if requested:
+    if ((numValuators >= 2) && (info[deviceIndex].use == XIMasterPointer || info[deviceIndex].use == XISlavePointer || info[deviceIndex].use == XIFloatingSlave))
+        XISetMask(mask, XI_Motion);
 
     emask.deviceid = info[deviceIndex].deviceid;
     emask.mask_len = sizeof(mask);
