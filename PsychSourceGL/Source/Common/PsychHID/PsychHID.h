@@ -1,37 +1,23 @@
 /*
-PsychToolbox3/Source/Common/PsychHID/PsychHID.h
+    PsychToolbox3/Source/Common/PsychHID/PsychHID.h
 
-PROJECTS: PsychHID
+    PROJECTS: PsychHID
 
-PLATFORMS:  All
+    PLATFORMS:  All
 
-AUTHORS:
+    AUTHORS:
 
-Allen.Ingling@nyu.edu             awi
-mario.kleiner@tuebingen.mpg.de    mk
+        Allen.Ingling@nyu.edu               awi
+        mario.kleiner.de@gmail.com          mk
 
-HISTORY:
-    4/29/03  awi        Created.
-    3/15/05  dgp        Added Get/SetReport
-    3/15/05  dgp        Added missing prototypes from PsychHIDHelpers.c to make compiler happy.
-    4/3/05   dgp        Added prototype for PsychHIDReceiveReportsCleanup.
-    8/23/07  rpw        Added prototypes for PsychHIDKbTriggerWait and PsychHIDKbQueue suite.
-    12/17/09 rpw        Added prototype for PsychHIDGetDeviceListByUsages.
+    HISTORY:
 
-TO DO:
-
-    DONE    1- Emulate KbCheck
-            2- Add Queues
-    DONE    3- Have structure returned b GetCollections include list of constituent elements
-            4- Try outputs, such as force feedback joysticks
-            5- Accept structs as input args as alternative to  device, element or collection indices.
-            6- Report vendor-specific usages.
-            7- Return logical arrays
-            8- Maintain an internal queue beyond the 50-elements stored by the kernel
-            9- KbCheck could read any device with elements of type button.
-
-
-
+        4/29/03  awi        Created.
+        3/15/05  dgp        Added Get/SetReport
+        3/15/05  dgp        Added missing prototypes from PsychHIDHelpers.c to make compiler happy.
+        4/3/05   dgp        Added prototype for PsychHIDReceiveReportsCleanup.
+        8/23/07  rpw        Added prototypes for PsychHIDKbTriggerWait and PsychHIDKbQueue suite.
+        12/17/09 rpw        Added prototype for PsychHIDGetDeviceListByUsages.
 */
 
 //begin include once

@@ -1,17 +1,17 @@
 /*
   PsychToolbox3/Source/Linux/PsychHID/PsychHIDStandardInterfaces.h
-  
+
   PROJECTS: PsychHID only.
-  
+
   PLATFORMS:  Linux.
-  
+
   AUTHORS:
-  mario.kleiner@tuebingen.mpg.de    mk
+
+    mario.kleiner.de@gmail.com          mk
 
   HISTORY:
+
   27.07.2011     mk     Created.
-  
-  TO DO:
 
 */
 
