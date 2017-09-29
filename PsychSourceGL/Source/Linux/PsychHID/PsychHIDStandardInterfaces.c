@@ -510,13 +510,6 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
         // Take timestamp:
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
 
-        if (FALSE) {
-            if (KbQueue_xevent.type == KeyPress) {
-                printf("KeyPress core event: key %i = %i\n", (int) ((XKeyEvent*) (&KbQueue_xevent))->keycode, (int) ((XKeyEvent*) (&KbQueue_xevent))->state);
-                fflush(NULL);
-            }
-        }
-
         // Clear ringbuffer event:
         memset(&evt, 0 , sizeof(evt));
 
@@ -527,7 +520,6 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 
         // Is this an event we're interested in?
         if ((cookie->type == GenericEvent) && (cookie->extension == xi_opcode)) {
-
             // Yes. Process it:
             if (XGetEventData(thread_dpy, cookie)) {
                 // Process it:
@@ -759,7 +751,6 @@ int PsychHIDGetDefaultKbQueueDevice(void)
 PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys)
 {
     XIDeviceInfo* dev = NULL;
-    // int numKeys, j;
 
     // Valid number of keys?
     if (scanKeys && (numScankeys != 256)) {
@@ -776,8 +767,8 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 
     // Do we finally have a valid keyboard?
     dev = &info[deviceIndex];
-    if ((dev->use == XIMasterKeyboard) || (dev->use == XIMasterPointer)) {
-        PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. Master keyboards or master pointers cannot be handled by this function.");
+    if (dev->use == XIMasterKeyboard) {
+        PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. Master keyboards can not be handled by this function.");
     }
 
     // Keyboard queue for this deviceIndex already created?
