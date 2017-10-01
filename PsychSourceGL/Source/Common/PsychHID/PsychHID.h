@@ -136,6 +136,8 @@ struct PsychHIDEventRecord_Struct {
     int cookedEventCode;        // Translated key code, e.g., GetChar() style. May be same as rawEventCode
     int numValuators;           // Number of actual valuator values in this event.
     float valuators[PSYCH_HID_MAX_VALUATORS];
+    float normX;                // X coordinate normalized to 0. 0 - 1.0 range.
+    float normY;                // Y coordinate normalized to 0. 0 - 1.0 range.
 };
 
 typedef struct PsychHIDEventRecord_Struct PsychHIDEventRecord;
@@ -279,6 +281,7 @@ extern "C" {
     psych_bool  PsychHIDFlushEventBuffer(int deviceIndex);
     unsigned int PsychHIDAvailEventBuffer(int deviceIndex, unsigned int flags);
     int         PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double maxWaitTimeSecs);
+    PsychHIDEventRecord* PsychHIDLastTouchEventFromEventBuffer(int deviceIndex, int touchID);
     int         PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt);
 
 #ifdef __cplusplus

@@ -259,8 +259,8 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
 {
     const char *deviceFieldNames[]={"usagePageValue", "usageValue", "usageName", "index", "transport", "vendorID", "productID", "version",
                                     "manufacturer", "product", "serialNumber", "locationID", "interfaceID", "totalElements", "features", "inputs",
-                                    "outputs", "collections", "axes", "buttons", "hats", "sliders", "dials", "wheels"};
-    int numDeviceStructElements, numDeviceStructFieldNames=24, deviceIndex;
+                                    "outputs", "collections", "axes", "buttons", "hats", "sliders", "dials", "wheels", "touchDeviceType", "maxTouchpoints"};
+    int numDeviceStructElements, numDeviceStructFieldNames=26, deviceIndex;
     PsychGenericScriptType *deviceStruct;
     dinfo *dev;
     int i;
@@ -335,6 +335,9 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
         PsychSetStructArrayDoubleElement("sliders", deviceIndex, (double) 0, deviceStruct);
         PsychSetStructArrayDoubleElement("dials", deviceIndex, (double) 0, deviceStruct);
         PsychSetStructArrayDoubleElement("wheels", deviceIndex, (double) 0, deviceStruct);
+        PsychSetStructArrayDoubleElement("maxTouchpoints",  deviceIndex, (double) -1, deviceStruct);
+        PsychSetStructArrayDoubleElement("touchDeviceType",  deviceIndex, (double) -1, deviceStruct);
+
         deviceIndex++;
     }
 

@@ -35,8 +35,8 @@ PsychError PSYCHHIDGetDevices(void)
 
     const char *deviceFieldNames[] = {"usagePageValue", "usageValue", "usageName", "index", "transport", "vendorID", "productID", "version",
                                       "manufacturer", "product", "serialNumber", "locationID", "interfaceID", "totalElements", "features", "inputs",
-                                      "outputs", "collections", "axes", "buttons", "hats", "sliders", "dials", "wheels"};
-    int numDeviceStructElements, numDeviceStructFieldNames = 24, deviceIndex, deviceClass;
+                                      "outputs", "collections", "axes", "buttons", "hats", "sliders", "dials", "wheels", "touchDeviceType", "maxTouchpoints"};
+    int numDeviceStructElements, numDeviceStructFieldNames = 26, deviceIndex, deviceClass;
     PsychGenericScriptType *deviceStruct;
     char usageName[PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH];
 
@@ -89,6 +89,8 @@ PsychError PSYCHHIDGetDevices(void)
         PsychSetStructArrayDoubleElement("sliders",         deviceIndex, (double)currentDevice->sliders,        deviceStruct);
         PsychSetStructArrayDoubleElement("dials",           deviceIndex, (double)currentDevice->dials,          deviceStruct);
         PsychSetStructArrayDoubleElement("wheels",          deviceIndex, (double)currentDevice->wheels,         deviceStruct);
+        PsychSetStructArrayDoubleElement("maxTouchpoints",  deviceIndex, (double) -1,                           deviceStruct);
+        PsychSetStructArrayDoubleElement("touchDeviceType", deviceIndex, (double) -1,                           deviceStruct);
 #endif
 
         // OSX specific:
@@ -222,6 +224,8 @@ PsychError PSYCHHIDGetDevices(void)
         PsychSetStructArrayDoubleElement("sliders", deviceIndex, (double)sliders,   deviceStruct);
         PsychSetStructArrayDoubleElement("dials",   deviceIndex, (double)dials,     deviceStruct);
         PsychSetStructArrayDoubleElement("wheels",  deviceIndex, (double)wheels,    deviceStruct);
+        PsychSetStructArrayDoubleElement("maxTouchpoints",  deviceIndex, (double) -1, deviceStruct);
+        PsychSetStructArrayDoubleElement("touchDeviceType", deviceIndex, (double) -1, deviceStruct);
 
         // Init dummy value -1 to mark interfaceID as invalid/unknown on OSX as a safe default, and then retrieve full
         // IOServicePlane path for the HID device: ( Credits to GitHub user Brendan Shanks aka "mrpippy" for this approach,

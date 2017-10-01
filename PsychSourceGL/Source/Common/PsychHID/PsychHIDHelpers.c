@@ -298,7 +298,8 @@ psych_bool PsychHIDCreateEventBuffer(int deviceIndex, int numValuators, int numS
     PsychInitMutex(&hidEventBufferMutex[deviceIndex]);
     PsychInitCondition(&hidEventBufferCondition[deviceIndex], NULL);
 
-    // Flush it:
+    // Init & Flush it:
+    hidEventBufferWritePos[deviceIndex] = 0;
     PsychHIDFlushEventBuffer(deviceIndex);
 
     return(TRUE);
@@ -329,7 +330,7 @@ psych_bool PsychHIDFlushEventBuffer(int deviceIndex)
     if (!hidEventBuffer[deviceIndex]) return FALSE;
 
     PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
-    hidEventBufferReadPos[deviceIndex] = hidEventBufferWritePos[deviceIndex] = 0;
+    hidEventBufferReadPos[deviceIndex] = hidEventBufferWritePos[deviceIndex];
     PsychUnlockMutex(&hidEventBufferMutex[deviceIndex]);
 
     return TRUE;
@@ -376,7 +377,7 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
     double* foo = NULL;
     PsychGenericScriptType *outMat;
     double *v;
-    const char *FieldNames[] = { "Type", "Time", "Pressed", "Keycode", "CookedKey", "ButtonStates", "Motion", "X", "Y", "Valuators" };
+    const char *FieldNames[] = { "Type", "Time", "Pressed", "Keycode", "CookedKey", "ButtonStates", "Motion", "X", "Y", "NormX", "NormY", "Valuators" };
 
     if (deviceIndex < 0) deviceIndex = PsychHIDGetDefaultKbQueueDevice();
     if (!hidEventBuffer[deviceIndex]) return(0);
@@ -406,9 +407,17 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
         switch (evt.type) {
             case 0: // Press/Release
             case 1: // Motion/Valuator change
-                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 10, FieldNames, &retevent);
+                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 12, FieldNames, &retevent);
                 break;
 
+            case 2: // Touch begin
+            case 3: // Touch update/move
+            case 4: // Touch end
+            case 5: // Touch sequence compromised marker. If this one shows up - with magic touch point
+                    // id 0xffffffff btw., then the user script knows the sequence was cut short / aborted
+                    // by some higher priority consumer, e.g., some global gesture recognizer.
+                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 12, FieldNames, &retevent);
+                break;
 
             default:
                 PsychErrorExitMsg(PsychError_internal, "Unhandled keyboard queue event type!");
@@ -423,6 +432,8 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
         PsychSetStructArrayDoubleElement("Motion",       0, (double) (evt.status & (1 << 1)) ? 1 : 0, retevent);
         PsychSetStructArrayDoubleElement("X",            0, (double) evt.valuators[0],                retevent);
         PsychSetStructArrayDoubleElement("Y",            0, (double) evt.valuators[1],                retevent);
+        PsychSetStructArrayDoubleElement("NormX",        0, (double) evt.normX,                       retevent);
+        PsychSetStructArrayDoubleElement("NormY",        0, (double) evt.normY,                       retevent);
 
         // Copy out all valuators (including redundant (X,Y) again:
         PsychAllocateNativeDoubleMat(1, evt.numValuators, 1, &v, &outMat);
@@ -437,6 +448,37 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
         PsychCopyOutDoubleMatArg(outArgIndex, kPsychArgOptional, 0, 0, 0, foo);
         return(0);
     }
+}
+
+PsychHIDEventRecord* PsychHIDLastTouchEventFromEventBuffer(int deviceIndex, int touchID)
+{
+    int nend, current;
+    PsychHIDEventRecord *evt;
+
+    if (!hidEventBuffer[deviceIndex]) return(0);
+
+    PsychLockMutex(&hidEventBufferMutex[deviceIndex]);
+    nend = (hidEventBufferWritePos[deviceIndex] - 1) % hidEventBufferCapacity[deviceIndex];
+    current = nend;
+
+    // Go backwards through all touch events until the most recent one with touchID is found:
+    do {
+        if ((hidEventBuffer[deviceIndex][current].type >= 2) &&
+            (hidEventBuffer[deviceIndex][current].type <= 4) &&
+            (hidEventBuffer[deviceIndex][current].rawEventCode == touchID))
+            break;
+
+        current = (current - 1) % hidEventBufferCapacity[deviceIndex];
+    } while ((current != nend) && (current >= 0));
+
+    if (hidEventBuffer[deviceIndex][current].rawEventCode == touchID)
+        evt = &(hidEventBuffer[deviceIndex][current]);
+    else
+        evt = NULL;
+
+    PsychUnlockMutex(&hidEventBufferMutex[deviceIndex]);
+
+    return (evt);
 }
 
 int PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt)
