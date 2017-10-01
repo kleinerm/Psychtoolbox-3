@@ -2,7 +2,7 @@ function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots)
 % KbQueueCreate([deviceNumber][, keyList][, numValuators=0][, numSlots=10000])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
-%  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacments for
+%  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacements for
 %  KbCheck and KbWait, providing the following advantages:
 %
 %     1) Brief key presses that would be missed by KbCheck or KbWait
