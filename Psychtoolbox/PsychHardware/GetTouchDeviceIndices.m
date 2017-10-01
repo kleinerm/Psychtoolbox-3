@@ -21,7 +21,8 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 % 'masterPointer' will only return indices of so called "master pointer"
 % devices. These correspond to visible mouse cursors. 'slavePointer' will
 % only return indices of slave pointer devices. Often only 'slavePointer'
-% devices work properly or with full functionality for touch devices.
+% devices work properly or with full functionality for touch devices, that's
+% why typeOnly defaults to 'slavePointer' if the argument is omitted.
 %
 % _________________________________________________________________________
 %
@@ -47,13 +48,14 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 % see also: GetKeyboardIndices, GetKeypadIndices, GetGamepadIndices
 
 % HISTORY
-% 01-Oct-2017 mk  Wrote it. Based on GetMouseIndices
+% 01-Oct-2017 mk  Wrote it. Based on GetMouseIndices.
+
 touchIndices=[];
 productNames=cell(0);
 allInfo=cell(0);
 
-if nargin < 1
-    typeOnly = [];
+if nargin < 1 || isempty(typeOnly)
+    typeOnly = 'slavePointer';
 end
 
 if nargin < 2 || isempty(touchTypeOnly)
