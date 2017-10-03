@@ -17,7 +17,7 @@ function MultiTouchTest
 
   % Open a default onscreen window with black background color and
   % 0-1 color range:
-  [w, rect] = PsychImaging('OpenWindow', 0, 0, [200 0 400 400]);
+  [w, rect] = PsychImaging('OpenWindow', 0, 0);
   baseSize = RectWidth(rect) / 20;
 
   try
@@ -50,8 +50,8 @@ function MultiTouchTest
           % Select it as a immediately released/dying blob:
           blobcol{id}.mul = 0.999;
           blobcol{id}.col = rand(3, 1);
-          blobcol{id}.x = evt.X;
-          blobcol{id}.y = evt.Y;
+          blobcol{id}.x = evt.mappedX;
+          blobcol{id}.y = evt.mappedY;
 
           foo = evt
         end
@@ -60,21 +60,21 @@ function MultiTouchTest
           % New touch point -> New blob!
           blobcol{id}.col = rand(3, 1);
           blobcol{id}.mul = 1.0;
-          blobcol{id}.x = evt.X;
-          blobcol{id}.y = evt.Y;
+          blobcol{id}.x = evt.mappedX;
+          blobcol{id}.y = evt.mappedY;
         end
 
         if evt.Type == 3
           % Moving touch point -> Moving blob!
-          blobcol{id}.x = evt.X;
-          blobcol{id}.y = evt.Y;
+          blobcol{id}.x = evt.mappedX;
+          blobcol{id}.y = evt.mappedY;
         end
 
         if evt.Type == 4
           % Touch released - finger taken off the screen -> Dying blob!
           blobcol{id}.mul = 0.999;
-          blobcol{id}.x = evt.X;
-          blobcol{id}.y = evt.Y;
+          blobcol{id}.x = evt.mappedX;
+          blobcol{id}.y = evt.mappedY;
         end
       end
 
