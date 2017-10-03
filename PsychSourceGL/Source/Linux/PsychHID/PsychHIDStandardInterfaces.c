@@ -31,6 +31,7 @@ static double* psychHIDKbQueueLastPress[PSYCH_HID_MAX_DEVICES];
 static double* psychHIDKbQueueLastRelease[PSYCH_HID_MAX_DEVICES];
 static int*    psychHIDKbQueueScanKeys[PSYCH_HID_MAX_DEVICES];
 static int     psychHIDKbQueueNumValuators[PSYCH_HID_MAX_DEVICES];
+static unsigned int psychHIDKbQueueFlags[PSYCH_HID_MAX_DEVICES];
 static PsychHIDEventRecord psychHIDKbQueueOldEvent[PSYCH_HID_MAX_DEVICES];
 static psych_bool psychHIDKbQueueActive[PSYCH_HID_MAX_DEVICES];
 static psych_mutex KbQueueMutex;
@@ -62,6 +63,7 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     memset(&psychHIDKbQueueScanKeys[0], 0, sizeof(psychHIDKbQueueScanKeys));
     memset(&psychHIDKbQueueNumValuators[0], 0, sizeof(psychHIDKbQueueNumValuators));
     memset(&psychHIDKbQueueOldEvent[0], 0, sizeof(psychHIDKbQueueOldEvent));
+    memset(&psychHIDKbQueueFlags[0], 0, sizeof(psychHIDKbQueueFlags));
 
     // We must initialize XLib for multithreading-safe operations / access on first
     // call if usercode explicitely requests this via environment variable PSYCH_XINITTHREADS.
@@ -534,7 +536,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                     // Raw device event for mice and similar devices:
                     rawevent = (XIRawEvent*) cookie->data;
                     event = NULL;
-                    valid = TRUE; // Always true for raw devices like mice etc. Checking for following would suppress scroll events (mouse wheel, PowerMate knob etc.): !(rawevent->flags & XIKeyRepeat);
+                    valid = TRUE; // Always true for raw devices like mice etc., unless queue flag 1 is set, see below.
                     index = rawevent->detail;
                     deviceid = rawevent->deviceid;
                 }
@@ -572,6 +574,18 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 
                 // Map Xinput device id to PTB 'deviceIndex' aka the proper keyboard queue:
                 for (i = 0; i < ndevices; i++) if (deviceid == info[i].deviceid) break;
+
+                // Special handling for synthetic key repeat flags required?
+                if ((i < ndevices) && (psychHIDKbQueueFlags[i] & 0x3)) {
+                    // Yes: Filter out key repeat on raw events (from pointer devices) as well?
+                    // This will suppress scroll events (mouse wheel, PowerMate knob etc.):
+                    if (rawevent && (psychHIDKbQueueFlags[i] & 0x1))
+                        valid = !(rawevent->flags & XIKeyRepeat);
+
+                    // Always accept key repeats:
+                    if (psychHIDKbQueueFlags[i] & 0x2)
+                        valid = TRUE;
+                }
 
                 // We're only interested in key press and release events, and only in
                 // real ones, not XServer generated synthetic key auto-repeat events.
@@ -1007,7 +1021,7 @@ int PsychHIDGetDefaultKbQueueDevice(void)
     PsychErrorExitMsg(PsychError_user, "Could not find any useable keyboard device!");
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags)
 {
     XIDeviceInfo* dev = NULL;
 
@@ -1055,6 +1069,9 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 
     // Store how many valuators we should return at most for this device:
     psychHIDKbQueueNumValuators[deviceIndex] = numValuators;
+
+    // Store queue specific flags:
+    psychHIDKbQueueFlags[deviceIndex] = flags;
 
     // Create event buffer:
     if (!PsychHIDCreateEventBuffer(deviceIndex, numValuators, numSlots)) {
@@ -1443,7 +1460,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     }
 
     // Create keyboard queue with proper mask:
-    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0], 0, 0);
+    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0], 0, 0, 0);
     PsychHIDOSKbQueueStart(deviceIndex);
 
     PsychLockMutex(&KbQueueMutex);

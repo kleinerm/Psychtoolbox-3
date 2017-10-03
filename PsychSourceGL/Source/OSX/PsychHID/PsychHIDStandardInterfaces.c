@@ -903,7 +903,7 @@ PsychError PsychHIDOSKbElementAdd(IOHIDElementRef element, IOHIDQueueRef queue, 
     return(PsychError_none);
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags)
 {
     pRecDevice deviceRecord;
     psych_bool verbose = getenv("PSYCHHID_TELLME") != NULL;
