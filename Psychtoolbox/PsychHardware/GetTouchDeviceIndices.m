@@ -3,16 +3,21 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 %
 % Return 'touchIndices' a set of handles to select touch input devices
 % like touchscreens, tablets and touchpads for touch input with the
-% PsychTouchXXX functions.
+% TouchXXX functions (TouchQueueCreate, TouchEventGet etc.).
 %
 % Also returns corresponding productNames for the devices and detailed
 % info in the allInfo struct-array.
 %
+% WINDOWS: ________________________________________________________________
+%
+% This function currently returns nothing, as touch devices aren't yet
+% supported.
+%
 % OS X: ___________________________________________________________________
 %
 % This function currently returns nothing, as OSX does not support touch
-% screens in a meaningful way as far as we know. At least Psychtoolbox for
-% OSX does not implement any support.
+% screens in a meaningful way as far as we know. And Psychtoolbox for OSX
+% currently does not implement any special support for touchpads or such.
 %
 % LINUX: __________________________________________________________________
 %
@@ -29,6 +34,9 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 % If you have touch devices connected you can restrict the set of
 % returned devices by specifying the following optional match-critera:
 %
+% typeOnly      = 'masterPointer' or 'slavePointer' or 'allPointers'. If left
+%                 out, this will default to 'slavePointer'.
+%
 % touchTypeOnly = 0 for touchpads, 1 for true touchscreens.
 %
 % product       = Product name of target devices, as returned in 'productNames'.
@@ -44,8 +52,8 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 %                 reboots of the machine, but may not be persistent across
 %                 operating system upgrades - or may not be persistent at
 %                 all in case of os bugs. Your mileage may vary...
-% _________________________________________________________________________
-% see also: GetKeyboardIndices, GetKeypadIndices, GetGamepadIndices
+% __________________________________________________________________________________
+% see also: GetKeyboardIndices, GetKeypadIndices, GetGamepadIndices, GetMouseIndices
 
 % HISTORY
 % 01-Oct-2017 mk  Wrote it. Based on GetMouseIndices.
