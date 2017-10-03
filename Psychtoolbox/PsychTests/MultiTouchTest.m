@@ -1,4 +1,4 @@
-function MultiTouchTest
+function MultiTouchTest(dev)
 % MultiTouchTest - A minimal test for multi-touch touchscreens.
 %
 % Run it. Pressing any key will stop it.
@@ -12,13 +12,36 @@ function MultiTouchTest
   % Setup useful PTB defaults:
   PsychDefaultSetup(2);
 
-  % Get first touchscreen or touchpad (only tested with touchscreen):
-  dev = min(GetTouchDeviceIndices);
+  if nargin < 1
+    dev = [];
+  end
+
+  % If no user-specified 'dev' was given, try to auto-select:
+  if isempty(dev)
+    % Get first touchscreen:
+    dev = min(GetTouchDeviceIndices([], 1));
+  end
+
+  if isempty(dev)
+    % Get first touchpad:
+    dev = min(GetTouchDeviceIndices([], 0));
+  end
+
+  if isempty(dev) || ~ismember(dev, GetTouchDeviceIndices)
+    fprintf('No touch input device found, or invalid dev given. Bye.\n');
+    return;
+  else
+    info = GetTouchDeviceInfo(dev);
+    valInfos = info.valuatorInfos;
+    disp(info);
+  end
 
   % Open a default onscreen window with black background color and
   % 0-1 color range:
   [w, rect] = PsychImaging('OpenWindow', 0, 0);
   baseSize = RectWidth(rect) / 20;
+
+  HideCursor(w);
 
   try
     % Create and start touch queue for window and device:
@@ -45,15 +68,14 @@ function MultiTouchTest
         if evt.Type == 1 || evt.Type == 0
           % Not really a touch point, but movement of the
           % simulated mouse cursor, driven by the primary
-          % touch-point. Associate a blob 1 to it:
+          % touch-point. Or a button event on the touch device.
+          % Associate a blob 1 to it:
           id = 1;
           % Select it as a immediately released/dying blob:
           blobcol{id}.mul = 0.999;
           blobcol{id}.col = rand(3, 1);
           blobcol{id}.x = evt.mappedX;
           blobcol{id}.y = evt.mappedY;
-
-          foo = evt
         end
 
         if evt.Type == 2
@@ -62,12 +84,17 @@ function MultiTouchTest
           blobcol{id}.mul = 1.0;
           blobcol{id}.x = evt.mappedX;
           blobcol{id}.y = evt.mappedY;
+          blobcol{id}.t = evt.Time;
+          blobcol{id}.dt = 0;
         end
 
         if evt.Type == 3
           % Moving touch point -> Moving blob!
           blobcol{id}.x = evt.mappedX;
           blobcol{id}.y = evt.mappedY;
+          blobcol{id}.dt = (evt.Time - blobcol{id}.t) * 1000;
+          blobcol{id}.t = evt.Time;
+          % disp(GetTouchValuators(evt.Valuators, valInfos));
         end
 
         if evt.Type == 4
@@ -75,6 +102,11 @@ function MultiTouchTest
           blobcol{id}.mul = 0.999;
           blobcol{id}.x = evt.mappedX;
           blobcol{id}.y = evt.mappedY;
+        end
+
+        if evt.Type == 5
+          % Lost touch data for some reason:
+          fprintf('Ooops - Sequence data loss!\n');
         end
       end
 
@@ -90,8 +122,9 @@ function MultiTouchTest
             % An orphaned blob with no finger touching anymore, so slowly fade it out:
             blobcol{i}.mul = blobcol{i}.mul * 0.95;
           else
-            % An active touch. Print its unique touch id:
+            % An active touch. Print its unique touch id and dT timestamp delta between updates in msecs:
             Screen('DrawText', w, num2str(i), blobcol{i}.x, blobcol{i}.y, [1 1 0]);
+            Screen('DrawText', w, num2str(blobcol{i}.dt), blobcol{i}.x, blobcol{i}.y - 100, [1 1 0]);
           end
         else
           % Below threshold: Kill the blob:
@@ -107,6 +140,7 @@ function MultiTouchTest
 
     TouchQueueStop(dev);
     TouchQueueRelease(dev);
+    ShowCursor(w);
     sca;
   catch
     TouchQueueRelease(dev);
