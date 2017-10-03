@@ -430,8 +430,8 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
         PsychSetStructArrayDoubleElement("CookedKey",    0, (double) evt.cookedEventCode,             retevent);
         PsychSetStructArrayDoubleElement("ButtonStates", 0, (double) evt.buttonStates,                retevent);
         PsychSetStructArrayDoubleElement("Motion",       0, (double) (evt.status & (1 << 1)) ? 1 : 0, retevent);
-        PsychSetStructArrayDoubleElement("X",            0, (double) evt.valuators[0],                retevent);
-        PsychSetStructArrayDoubleElement("Y",            0, (double) evt.valuators[1],                retevent);
+        PsychSetStructArrayDoubleElement("X",            0, (double) evt.X,                           retevent);
+        PsychSetStructArrayDoubleElement("Y",            0, (double) evt.Y,                           retevent);
         PsychSetStructArrayDoubleElement("NormX",        0, (double) evt.normX,                       retevent);
         PsychSetStructArrayDoubleElement("NormY",        0, (double) evt.normY,                       retevent);
 

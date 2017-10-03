@@ -9,16 +9,18 @@ function MultiTouchTest
 % History:
 % 01-Oct-2017 mk  Written.
 
-  % Setup useful PTB defaults:
-  PsychDefaultSetup(2);
-
   % Get first touchscreen or touchpad (only tested with touchscreen):
   dev = min(GetTouchDeviceIndices);
 
   % Open a default onscreen window with black background color and
   % 0-1 color range:
-  [w, rect] = PsychImaging('OpenWindow', 0, 0, [200 0 400 400]);
+  PsychDefaultSetup(2);
+  PsychImaging('PrepareConfiguration');
+  PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+  [w, rect] = PsychImaging('OpenWindow', 0, 0);
   baseSize = RectWidth(rect) / 20;
+
+  Screen('Blendfunction', w, GL_SRC_ALPHA, GL_ONE);
 
   try
     % Create and start touch queue for window and device:
@@ -41,40 +43,27 @@ function MultiTouchTest
         % Touch blob id - Unique in the session at least as
         % long as the finger stays on the screen:
         id = evt.Keycode;
-
-        if evt.Type == 1 || evt.Type == 0
-          % Not really a touch point, but movement of the
-          % simulated mouse cursor, driven by the primary
-          % touch-point. Associate a blob 1 to it:
-          id = 1;
-          % Select it as a immediately released/dying blob:
-          blobcol{id}.mul = 0.999;
-          blobcol{id}.col = rand(3, 1);
-          blobcol{id}.x = evt.X;
-          blobcol{id}.y = evt.Y;
-
-          foo = evt
-        end
-
         if evt.Type == 2
           % New touch point -> New blob!
-          blobcol{id}.col = rand(3, 1);
+          blobcol{id}.col = [rand(3, 1) ; 0.8];
           blobcol{id}.mul = 1.0;
-          blobcol{id}.x = evt.X;
-          blobcol{id}.y = evt.Y;
+          blobcol{id}.x = evt.mappedX;
+          blobcol{id}.y = evt.mappedY;
+          Screen('DrawDots', w, [blobcol{id}.x ; blobcol{id}.y], blobcol{id}.mul * baseSize, blobcol{id}.col);
         end
 
         if evt.Type == 3
           % Moving touch point -> Moving blob!
-          blobcol{id}.x = evt.X;
-          blobcol{id}.y = evt.Y;
+          blobcol{id}.x = evt.mappedX;
+          blobcol{id}.y = evt.mappedY;
+          Screen('DrawDots', w, [blobcol{id}.x ; blobcol{id}.y], blobcol{id}.mul * baseSize, blobcol{id}.col);
         end
 
         if evt.Type == 4
           % Touch released - finger taken off the screen -> Dying blob!
           blobcol{id}.mul = 0.999;
-          blobcol{id}.x = evt.X;
-          blobcol{id}.y = evt.Y;
+          blobcol{id}.x = evt.mappedX;
+          blobcol{id}.y = evt.mappedY;
         end
       end
 
@@ -84,14 +73,11 @@ function MultiTouchTest
       for i=1:length(blobcol)
         if ~isempty(blobcol{i}) && blobcol{i}.mul > 0.1
           % Draw it: .mul defines size of the blob:
-          Screen('DrawDots', w, [blobcol{i}.x ; blobcol{i}.y], blobcol{i}.mul * baseSize, blobcol{i}.col);
+          Screen('DrawDots', w, [blobcol{i}.x ; blobcol{i}.y], blobcol{i}.mul * baseSize, blobcol{i}.col * blobcol{i}.mul);
 
           if blobcol{i}.mul < 1
-            % An orphaned blob with no finger touching anymore, so slowly fade it out:
+            % An orphaned blob, so slowly fade it out:
             blobcol{i}.mul = blobcol{i}.mul * 0.95;
-          else
-            % An active touch. Print its unique touch id:
-            Screen('DrawText', w, num2str(i), blobcol{i}.x, blobcol{i}.y, [1 1 0]);
           end
         else
           % Below threshold: Kill the blob:
@@ -100,7 +86,7 @@ function MultiTouchTest
       end
 
       % Done repainting - Show it:
-      Screen('Flip', w);
+      Screen('Flip', w, [], 1);
 
       % Next touch processing -> redraw -> flip cycle:
     end

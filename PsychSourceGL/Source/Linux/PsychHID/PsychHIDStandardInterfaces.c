@@ -496,6 +496,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
     psych_bool valid;
     double tnow;
     int i, j, index, deviceid, numValuators;
+    unsigned int screen_width, screen_height;
     char asciiChar;
 
     while (1) {
@@ -539,11 +540,18 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                 }
                 else {
                     // Regular device event:
+                    Window rootRet;
+                    unsigned int depth_return, border_width_return;
+                    int x, y;
+
                     event = (XIDeviceEvent*) cookie->data;
                     rawevent = NULL;
                     valid = !(event->flags & XIKeyRepeat);
                     index = event->detail;
                     deviceid = event->deviceid;
+
+                    // Get width x height of associated root window, aka screen size for touch coordinate remapping:
+                    XGetGeometry(thread_dpy, event->root, &rootRet, &x, &y, &screen_width, &screen_height, &border_width_return, &depth_return);
                 }
 
                 if (event && (cookie->evtype != XI_TouchOwnership)) {
@@ -663,6 +671,14 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                         evt.valuators[1] = (event) ? event->event_y : 0;
                         evt.numValuators += (event) ? 2 : 0;
 
+                        evt.X = evt.valuators[0];
+                        evt.Y = evt.valuators[1];
+
+                        if (event) {
+                            evt.normX = evt.X / screen_width;
+                            evt.normY = evt.Y / screen_height;
+                        }
+
                         PsychHIDAddEventToEventBuffer(i, &evt);
 
                         // Tell waiting userspace (under KbQueueMutex protection for better scheduling) something interesting has changed:
@@ -697,6 +713,12 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                             evt.valuators[0] = event->event_x;
                             evt.valuators[1] = event->event_y;
                             evt.numValuators += 2;
+
+                            evt.X = evt.valuators[0];
+                            evt.Y = evt.valuators[1];
+
+                            evt.normX = evt.X / screen_width;
+                            evt.normY = evt.Y / screen_height;
 
                             // More than 2 standard valuators for (x,y) position or deflection?
                             if (numValuators > 2) {
@@ -752,7 +774,8 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                                 }
                             }
 
-                            // Normalize x and y positions to 0.0 - 1.0 range (at least for absolute touch devices):
+                            // Normalize x and y positions to 0.0 - 1.0 range (at least for absolute touch devices).
+                            // Also remap to X-Screen space:
                             for (j = 0; j < dev->num_classes; j++) {
                                 XIAnyClassInfo *class = dev->classes[j];
                                 XIValuatorClassInfo *v = (XIValuatorClassInfo*) class;
@@ -764,11 +787,15 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                                 r = v->max - v->min;
                                 if (r > 0) {
                                     if (v->number == 0)
-                                        evt.normX = (float) (evt.valuators[0] / r);
+                                        evt.normX = (float) ((evt.valuators[0] - v->min) / r);
 
                                     if (v->number == 1)
-                                        evt.normY = (float) (evt.valuators[1] / r);
+                                        evt.normY = (float) ((evt.valuators[1] - v->min) / r);
                                 }
+
+                                // Remap to X-Screen / RootWindow width x height:
+                                evt.X = evt.normX * screen_width;
+                                evt.Y = evt.normY * screen_height;
                             }
 
                             switch (cookie->evtype) {
@@ -783,7 +810,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                                     evt.status |= 1 + 2;
                                     evt.type = 3;
 
-                                    // If we get signalled this is the end of the physical touch sequence,
+                                    // If we get signalled that this is the end of the physical touch sequence,
                                     // but somebody else has a grab on it and hasn't decided to accept/reject
                                     // yet, then we know we've seen the full touch sequence. We may or may not
                                     // get a XI_TouchOwnership event before the XI_TouchEnd, but we know we are
@@ -819,13 +846,11 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                                     break;
 
                                 case XI_TouchOwnership:
-                                    // Ownership marker: Set integrity bit for this touch point in last event for it:
+                                    // Ownership marker: We are the sole owner of this sequence, so got all the data
+                                    // untampered :) - Set integrity bit for this touch point in last event for it:
                                     if (oldevt)
                                         oldevt->status |= (1 << 31);
 
-                                    //memcpy(&evt, PsychHIDLastTouchEventFromEventBuffer(i, event->detail), sizeof(PsychHIDEventRecord));
-                                    // Then override type to ownership, aka sequence integrity:
-                                    //evt.type = 5;
                                     break;
                             }
 

@@ -136,6 +136,8 @@ struct PsychHIDEventRecord_Struct {
     int cookedEventCode;        // Translated key code, e.g., GetChar() style. May be same as rawEventCode
     int numValuators;           // Number of actual valuator values in this event.
     float valuators[PSYCH_HID_MAX_VALUATORS];
+    float X;                    // X coordinate in native display space of operating system + winsys backend.
+    float Y;                    // Y coordinate in native display space of operating system + winsys backend.
     float normX;                // X coordinate normalized to 0. 0 - 1.0 range.
     float normY;                // Y coordinate normalized to 0. 0 - 1.0 range.
 };
