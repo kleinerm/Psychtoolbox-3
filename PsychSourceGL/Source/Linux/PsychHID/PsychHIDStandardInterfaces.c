@@ -532,7 +532,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                 // Process it:
 
                 // printf("Event type %d received\n", cookie->evtype);
-                if (cookie->evtype == XI_RawButtonPress || cookie->evtype == XI_RawButtonRelease) {
+                if (cookie->evtype == XI_RawButtonPress || cookie->evtype == XI_RawButtonRelease || cookie->evtype == XI_RawMotion) {
                     // Raw device event for mice and similar devices:
                     rawevent = (XIRawEvent*) cookie->data;
                     event = NULL;
@@ -680,17 +680,16 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                         evt.timestamp = tnow;
                         evt.rawEventCode = index + 1;
 
-                        // Also provide (x,y) relative position of the pointing device at time of event:
-                        evt.valuators[0] = (event) ? event->event_x : 0;
-                        evt.valuators[1] = (event) ? event->event_y : 0;
-                        evt.numValuators += (event) ? 2 : 0;
-
-                        evt.X = evt.valuators[0];
-                        evt.Y = evt.valuators[1];
-
+                        // Also provide (x,y) position of the pointing device at time of event:
+                        // Note: For raw events no such absolute position info is available.
                         if (event) {
+                            evt.X = event->event_x;
+                            evt.Y = event->event_y;
                             evt.normX = evt.X / screen_width;
                             evt.normY = evt.Y / screen_height;
+                        }
+                        else {
+                            evt.X = evt.Y = evt.normX = evt.normY = 0;
                         }
 
                         PsychHIDAddEventToEventBuffer(i, &evt);
@@ -706,7 +705,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                     PsychLockMutex(&KbQueueMutex);
 
                     if ((i < ndevices) && valid && psychHIDKbQueueActive[i] && (psychHIDKbQueueNumValuators[i] > 0)) {
-                        // Handling of motion events / valuator change events. These only go into the event buffer,
+                        // Handling of motion events / valuator change events / touch events. These only go into the event buffer,
                         // not legacy KbQueue arrays, as those don't make sense here:
                         numValuators = psychHIDKbQueueNumValuators[i];
 
@@ -716,44 +715,69 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 
                         // Mouse/Touchpad/Trackpad/Trackpoint/Trackball/Joystick/Pointing device
                         // change of position or axis state:
-                        if ((cookie->evtype == XI_Motion) && (numValuators >= 2)) {
+                        if ((cookie->evtype == XI_Motion || cookie->evtype == XI_RawMotion) && (numValuators >= 2)) {
                             // Type is a pointer or axis motion event:
                             evt.type = 1;
 
                             // Motion event:
                             evt.status |= (1 << 1);
 
-                            // Store window relative position in first two valuators:
-                            evt.valuators[0] = event->event_x;
-                            evt.valuators[1] = event->event_y;
-                            evt.numValuators += 2;
-
-                            evt.X = evt.valuators[0];
-                            evt.Y = evt.valuators[1];
-
-                            evt.normX = evt.X / screen_width;
-                            evt.normY = evt.Y / screen_height;
+                            // Store absolute position:
+                            // Note: For raw events no such absolute position info is available.
+                            if (event) {
+                                evt.X = event->event_x;
+                                evt.Y = event->event_y;
+                                evt.normX = evt.X / screen_width;
+                                evt.normY = evt.Y / screen_height;
+                            }
+                            else {
+                                evt.X = evt.Y = evt.normX = evt.normY = 0;
+                            }
 
                             // More than 2 standard valuators for (x,y) position or deflection?
-                            if (numValuators > 2) {
-                                // Store up to numValuators valuator values:
-                                double *valuator = event->valuators.values;
-                                for (j = 0; (j < event->valuators.mask_len * 8) && (2 + j < numValuators); j++) {
-                                    evt.numValuators++;
-                                    // Updated valuator value?
-                                    if (XIMaskIsSet(event->valuators.mask, j)) {
-                                        // Yes: Assign.
-                                        evt.valuators[2 + j] = (float) *valuator;
-                                        valuator++;
+                            if (numValuators >= 2) {
+                                if (event) {
+                                    // Store up to numValuators valuator values:
+                                    double *valuator = event->valuators.values;
+                                    for (j = 0; (j < event->valuators.mask_len * 8) && (j < numValuators); j++) {
+                                        evt.numValuators++;
+                                        // Updated valuator value?
+                                        if (XIMaskIsSet(event->valuators.mask, j)) {
+                                            // Yes: Assign.
+                                            evt.valuators[j] = (float) *valuator;
+                                            valuator++;
+                                        }
+                                        else {
+                                            // No: Assign old value from last pass:
+                                            evt.valuators[j] = (float) psychHIDKbQueueOldEvent[i].valuators[j];
+                                        }
                                     }
-                                    else {
-                                        // No: Assign old value from last pass:
-                                        evt.valuators[2 + j] = (float) psychHIDKbQueueOldEvent[i].valuators[2 + j];
+                                }
+                                else {
+                                    // Raw motion event:
+                                    // Store up to numValuators raw values:
+                                    double *raw_values = rawevent->raw_values;
+                                    for (j = 0; (j < rawevent->valuators.mask_len * 8) && (j < numValuators); j++) {
+                                        evt.numValuators++;
+                                        // Updated valuator value?
+                                        if (XIMaskIsSet(rawevent->valuators.mask, j)) {
+                                            // Yes: Assign.
+                                            evt.valuators[j] = (float) *raw_values;
+                                            raw_values++;
+                                        }
+                                        else {
+                                            // No: Assign old value from last pass:
+                                            evt.valuators[j] = (float) psychHIDKbQueueOldEvent[i].valuators[j];
+                                        }
                                     }
+
+                                    // Derive somewhat X, Y values from first two valuators:
+                                    evt.X = evt.valuators[0];
+                                    evt.Y = evt.valuators[1];
                                 }
 
                                 // Keep track of last event for above valuator updating:
-                                memcpy(&psychHIDKbQueueOldEvent[i], &evt, sizeof(psychHIDKbQueueOldEvent[i]));
+                                memcpy(&psychHIDKbQueueOldEvent[i], &evt, sizeof(evt));
                             }
                         }
 
@@ -1280,8 +1304,9 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     XISetMask(mask, XI_RawButtonRelease);
 
     // Report motion events on pointing devices (mouse, trackpad etc.) if requested:
+    // Queue flags +4 select for raw motion events, which don't go through pointer acceleration and other preprocessing:
     if ((numValuators >= 2) && (info[deviceIndex].use == XIMasterPointer || info[deviceIndex].use == XISlavePointer || info[deviceIndex].use == XIFloatingSlave))
-        XISetMask(mask, XI_Motion);
+        XISetMask(mask, (psychHIDKbQueueFlags[deviceIndex] & 0x4) ? XI_RawMotion : XI_Motion);
 
     // XInput version 2.2+ supported, and this device (Multi-)touch enabled?
     if ((numValuators >= 4) && (PsychHIDIsTouchDevice(deviceIndex, NULL) >= 0)) {

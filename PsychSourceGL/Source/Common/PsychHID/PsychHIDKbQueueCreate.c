@@ -97,6 +97,7 @@ static char synopsisString[] =
 "'flags' Optional flags to alter operation of the queue. Defaults to zero for default behavior.\n"
 "+1 = Always label synthetic key repeat events as invalid - iow. suppress them. Supported on Linux only.\n"
 "+2 = Never label synthetic key repeat events as invalid - iow. accept them. Supported on Linux only.\n"
+"+4 = Try to get raw valuator state, avoiding things like pointer acceleration. Supported on Linux only.\n"
 "\n";
 
 static char seeAlsoString[] = "KbQueueStart, KbQueueStop, KbQueueCheck, KbQueueFlush, KbQueueRelease";

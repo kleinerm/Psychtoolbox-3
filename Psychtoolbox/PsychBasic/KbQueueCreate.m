@@ -1,5 +1,5 @@
-function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots)
-% KbQueueCreate([deviceNumber][, keyList][, numValuators=0][, numSlots=10000])
+function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags)
+% KbQueueCreate([deviceNumber][, keyList][, numValuators=0][, numSlots=10000][, flags=0])
 %
 % The routines KbQueueCreate, KbQueueStart, KbQueueStop, KbQueueCheck
 %  KbQueueWait, KbQueueFlush and KbQueueRelease provide replacements for
@@ -168,7 +168,9 @@ if isempty(macosxrecent)
   LoadPsychHID;
 end
 
-if nargin == 4
+if nargin == 5
+  PsychHID('KbQueueCreate', deviceNumber, keyList, numValuators, numSlots, flags);
+elseif nargin == 4
   PsychHID('KbQueueCreate', deviceNumber, keyList, numValuators, numSlots);
 elseif nargin == 3
   PsychHID('KbQueueCreate', deviceNumber, keyList, numValuators);
