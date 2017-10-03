@@ -197,6 +197,38 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
     return;
 }
 
+// Return -1 if not a touch device. Return >= 0 for touch device.
+// Returns 0 for "unknown number of touch points - device didn't tell us".
+// Otherwise returns > 0 for number of maximally supported touch points.
+// *type is 0 for dependent touch devices like trackpads, 1 for real touch screens.
+int PsychHIDIsTouchDevice(int deviceIndex, int* type)
+{
+    int j, count = 0, num_touches = 0;
+    XIDeviceInfo *dev = &info[deviceIndex];
+
+    if (type)
+        *type = -1;
+
+    // XInput 2.2+ supported? Otherwise no touch device support.
+    if (minor >= 2) {
+        for (j = 0; j < dev->num_classes; j++) {
+            XIAnyClassInfo *class = dev->classes[j];
+            XITouchClassInfo *t = (XITouchClassInfo*) class;
+
+            if (class->type != XITouchClass)
+                continue;
+
+            count++;
+            num_touches += t->num_touches;
+
+            if (type)
+                *type = (t->mode == XIDirectTouch) ? 1 : 0;
+        }
+    }
+
+    return((count > 0) ? num_touches : -1);
+}
+
 PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
 {
     const char *deviceFieldNames[]={"usagePageValue", "usageValue", "usageName", "index", "transport", "vendorID", "productID", "version",
@@ -958,38 +990,6 @@ void* KbQueueWorkerThreadMain(void* dummy)
 
     // Return and terminate:
     return(NULL);
-}
-
-// Return -1 if not a touch device. Return >= 0 for touch device.
-// Returns 0 for "unknown number of touch points - device didn't tell us".
-// Otherwise returns > 0 for number of maximally supported touch points.
-// *type is 0 for dependent touch devices like trackpads, 1 for real touch screens.
-int PsychHIDIsTouchDevice(int deviceIndex, int* type)
-{
-    int j, count = 0, num_touches = 0;
-    XIDeviceInfo *dev = &info[deviceIndex];
-
-    if (type)
-        *type = -1;
-
-    // XInput 2.2+ supported? Otherwise no touch device support.
-    if (minor >= 2) {
-        for (j = 0; j < dev->num_classes; j++) {
-            XIAnyClassInfo *class = dev->classes[j];
-            XITouchClassInfo *t = (XITouchClassInfo*) class;
-
-            if (class->type != XITouchClass)
-                continue;
-
-            count++;
-            num_touches += t->num_touches;
-
-            if (type)
-                *type = (t->mode == XIDirectTouch) ? 1 : 0;
-        }
-    }
-
-    return((count > 0) ? num_touches : -1);
 }
 
 int PsychHIDGetDefaultKbQueueDevice(void)
