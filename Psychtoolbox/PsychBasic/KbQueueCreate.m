@@ -35,21 +35,28 @@ function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags)
 % It is acceptable to call KbQueueCreate at any time (e.g., to switch to a new
 %  device or to change the list of queued keys) without calling KbQueueRelease.
 %
-%  KbQueueCreate([deviceNumber][, keyList][, numValuators=0][, numSlots=10000])
+%  KbQueueCreate([deviceNumber][, keyList][, numValuators=0][, numSlots=10000][, flags=0])
 %      Creates the queue for the specified (or default) device number
 %      If the device number is less than zero, the default device is used.
+%
 %      'keyList' is an optional 256-length vector of doubles (not logicals)
 %      with each element corresponding to a particular key (use KbName
 %      to map between keys and their positions). If the double value
 %      corresponding to a particular key is zero, events for that key
 %      are not added to the queue and will not be reported.
+%
 %      'numValuators' is an optional maximum number of additional values to report.
 %      It defaults to zero. For values greater than zero, if the selected type
 %      of input device supports this, and if the operating system supports this,
 %      additional info will be recorded. For pointing devices like mice, the mouse
 %      position may be reported, for joysticks the state of their various axis, etc.
+%      For mouse/joystick/pointing device position reporting numValuators must be
+%      at least 2. On touch devices, a value of 2 treats them like a mouse, a value
+%      >= 4 treats them as touchscreen. However, for touch devices there are separate
+%      functions like TouchQueueCreate, TouchEventGet etc. for convenient handling.
 %      See "help KbEventGet" for how to retrieve potential additionally recorded
 %      information.
+%
 %      'numSlots' defines how many events the event buffer can store. If a script
 %      does not periodically remove events via KbEventGet() or KbEventFlush(), the
 %      buffer will fill up, and once 'numSlots' elements are stored, it will stop
@@ -57,6 +64,10 @@ function KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags)
 %      too little if you use 'numValuators' > 0 to store dynamic (motion) data like
 %      mouse movements or touchscreen input, which can be generated at rates of
 %      multiple hundred events per second of data collection.
+%
+%      'flags' defines special modes of operation for the queue. These are OS
+%      specific, see "PsychHID KbQueueCreate?" for an up to date list of supported
+%      flags. In general, you don't need these.
 %
 %      No events are delivered to the queue until KbQueueStart or 
 %      KbQueueWait is called.
