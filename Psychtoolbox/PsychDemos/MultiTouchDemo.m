@@ -41,7 +41,6 @@ function MultiTouchDemo(dev)
     return;
   else
     info = GetTouchDeviceInfo(dev);
-    valInfos = info.valuatorInfos;
     disp(info);
   end
 
@@ -83,34 +82,34 @@ function MultiTouchDemo(dev)
           % Select it as a immediately released/dying blob:
           blobcol{id}.mul = 0.999;
           blobcol{id}.col = rand(3, 1);
-          blobcol{id}.x = evt.mappedX;
-          blobcol{id}.y = evt.mappedY;
+          blobcol{id}.x = evt.MappedX;
+          blobcol{id}.y = evt.MappedY;
         end
 
         if evt.Type == 2
           % New touch point -> New blob!
           blobcol{id}.col = rand(3, 1);
           blobcol{id}.mul = 1.0;
-          blobcol{id}.x = evt.mappedX;
-          blobcol{id}.y = evt.mappedY;
+          blobcol{id}.x = evt.MappedX;
+          blobcol{id}.y = evt.MappedY;
           blobcol{id}.t = evt.Time;
           blobcol{id}.dt = 0;
         end
 
         if evt.Type == 3
           % Moving touch point -> Moving blob!
-          blobcol{id}.x = evt.mappedX;
-          blobcol{id}.y = evt.mappedY;
+          blobcol{id}.x = evt.MappedX;
+          blobcol{id}.y = evt.MappedY;
           blobcol{id}.dt = (evt.Time - blobcol{id}.t) * 1000;
           blobcol{id}.t = evt.Time;
-           disp(GetTouchValuators(evt.Valuators, valInfos));
+           disp(GetTouchValuators(evt, info));
         end
 
         if evt.Type == 4
           % Touch released - finger taken off the screen -> Dying blob!
           blobcol{id}.mul = 0.999;
-          blobcol{id}.x = evt.mappedX;
-          blobcol{id}.y = evt.mappedY;
+          blobcol{id}.x = evt.MappedX;
+          blobcol{id}.y = evt.MappedY;
         end
 
         if evt.Type == 5
@@ -125,7 +124,7 @@ function MultiTouchDemo(dev)
       for i=1:length(blobcol)
         if ~isempty(blobcol{i}) && blobcol{i}.mul > 0.1
           % Draw it: .mul defines size of the blob:
-          Screen('DrawDots', w, [blobcol{i}.x ; blobcol{i}.y], blobcol{i}.mul * baseSize, blobcol{i}.col);
+          Screen('DrawDots', w, [blobcol{i}.x ; blobcol{i}.y], blobcol{i}.mul * baseSize, blobcol{i}.col, [], 1, 1);
 
           if blobcol{i}.mul < 1
             % An orphaned blob with no finger touching anymore, so slowly fade it out:

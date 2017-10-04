@@ -1,24 +1,25 @@
-function info =GetTouchValuators(valuators, valuatorInfos)
-% info = GetTouchValuators(valuators, valuatorInfos)
+function event = GetTouchValuators(event, deviceInfo)
+% event = GetTouchValuators(event, deviceInfo)
 %
-% Return 'info' a struct with info about the specified touch input device
-% 'valuators', using mapping info 'valuatorInfos'.
+% Return 'event', an augmented version of the input 'event', ie. event extended
+% with info about additional semantic meaning of the specified touch input event,
+% using device specific semantic mapping info provided in 'deviceInfo'.
 %
 % Typical use:
 %
-% 1. Get 'valuatorinfos' at script startup:
-%    info = GetTouchDeviceInfo(deviceIndex);
-%    valuatorInfos = info.valuatorInfos;
+% 1. Get 'deviceInfo' at script startup:
+%    deviceInfo = GetTouchDeviceInfo(deviceIndex);
 %
 % 2. For each retrieved touch event evt = TouchEventGet(...):
-%    info = GetTouchValuators(evt.Valuators, valuatorInfos)
+%    evt = GetTouchValuators(evt, deviceInfo)
 %
-% Which valuators are available on a given operating system + device combo
-% is variable, but the returned info struct potentially has the following fields:
+% Which information is available on a given operating system/display system and
+% device combo is variable, but the returned event struct potentially has the
+% following additional fields:
 %
-% .X = Raw device x position of touch.
+% .RawX = Raw device x position of touch.
 %
-% .Y = Raw device y position of touch.
+% .RawY = Raw device y position of touch.
 %
 % .ToolX = Raw device x position of approaching tool, if detectable.
 %
@@ -39,8 +40,8 @@ function info =GetTouchValuators(valuators, valuatorInfos)
 %
 % .WidthMajor and .WidthMinor are major/minor width of an ellipse approximating
 %  the complete object approaching the screen. The ratio TouchMajor / WidthMajor
-%  and TouchMinor / WidthMinor can be used to approximate how close/trong a touch
-%  in the absence of .Pressure or .Distance information.
+%  and TouchMinor / WidthMinor can be used to approximate how close/strong a touch
+%  is, in the absence of .Pressure or .Distance information.
 %
 % .Orientation = If the touch contact area isn't circular and the hardware can
 %                detect the orientation of a touch area, then this stores orientation
@@ -56,58 +57,62 @@ function info =GetTouchValuators(valuators, valuatorInfos)
 % HISTORY
 % 03-Oct-2017 mk  Wrote it.
 
-if nargin < 1 || isempty(valuators)
-    error('Required valuators missing.');
+if nargin < 1 || isempty(event) || ~ismember(event.Type, [2,3,4])
+    error('Required touch event missing, or event is not a standard touch event.');
 end
 
-if nargin < 2 || isempty(valuatorInfos)
-    error('Required valuatorInfos missing.');
+if nargin < 2 || isempty(deviceInfo)
+    error('Required deviceInfo missing.');
 end
+
+% Extract what we need atm.:
+valuators = event.Valuators;
+valuatorInfos = deviceInfo.valuatorInfos;
 
 for i=1:length(valuatorInfos)
     label = valuatorInfos(i).label;
     if strcmpi(label, 'Abs MT Position X')
-        info.X = valuators(i);
+        event.RawX = valuators(i);
     end
 
     if strcmpi(label, 'Abs MT Position Y')
-        info.Y = valuators(i);
+        event.RawY = valuators(i);
     end
 
     if strcmpi(label, 'Abs MT Touch Pressure')
-        info.Pressure = valuators(i) / valuatorInfos(i).max;
+        event.Pressure = valuators(i) / valuatorInfos(i).max;
     end
 
     if strcmpi(label, 'Abs MT Touch Distance')
-        info.Distance = valuators(i) / valuatorInfos(i).max;
+        event.Distance = valuators(i) / valuatorInfos(i).max;
     end
 
     if strcmpi(label, 'Abs MT Touch Major')
-        info.TouchMajor = valuators(i);
+        event.TouchMajor = valuators(i);
     end
 
     if strcmpi(label, 'Abs MT Touch Minor')
-        info.TouchMinor = valuators(i);
+        event.TouchMinor = valuators(i);
     end
 
     if strcmpi(label, 'Abs MT Width Major')
-        info.WidthMajor = valuators(i);
+        event.WidthMajor = valuators(i);
     end
 
     if strcmpi(label, 'Abs MT Width Minor')
-        info.WidthMinor = valuators(i);
+        event.WidthMinor = valuators(i);
     end
 
     if strcmpi(label, 'Abs MT Orientation')
         % Signed value, where .max corresponds to 90 degrees clock-wise:
-        info.Orientation = valuators(i) / valuatorInfos(i).max * 90;
+        event.Orientation = valuators(i) / valuatorInfos(i).max * 90;
     end
 
     if strcmpi(label, 'Abs MT Tool X')
-        info.ToolX = valuators(i);
+        event.ToolX = valuators(i);
     end
 
     if strcmpi(label, 'Abs MT Tool Y')
-        info.ToolY = valuators(i);
+        event.ToolY = valuators(i);
     end
 end

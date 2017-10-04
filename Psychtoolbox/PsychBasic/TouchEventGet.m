@@ -58,8 +58,8 @@ function [event, nremaining] = TouchEventGet(deviceIndex, windowHandle, maxWaitT
 % 'NormX' = Normalized x-position in range 0 - 1. Constant 0 if unavailable.
 % 'NormY' = Normalized y-position in range 0 - 1. Constant 0 if unavailable.
 %
-% 'mappedX' = x-position relative to provided onscreen window with 'windowHandle'.
-% 'mappedY' = y-position relative to provided onscreen window with 'windowHandle'.
+% 'MappedX' = x-position relative to provided onscreen window with 'windowHandle'.
+% 'MappedY' = y-position relative to provided onscreen window with 'windowHandle'.
 %
 % 'Time' = The GetSecs time when the event was received.
 %
@@ -122,8 +122,8 @@ if ~isempty(event)
   else
     % Normal event, map also to window relative coordinates:
     winRect = Screen('GlobalRect', windowHandle);
-    event.mappedX = event.X - winRect(1);
-    event.mappedY = event.Y - winRect(2);
+    event.MappedX = event.X - winRect(1);
+    event.MappedY = event.Y - winRect(2);
   end
 end
 
