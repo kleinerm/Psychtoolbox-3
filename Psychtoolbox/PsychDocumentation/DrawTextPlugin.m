@@ -63,8 +63,14 @@
 % On MS-Windows with Matlab you will need to install the GStreamer multi-
 % media framework - see "help GStreamer" for installation instructions -
 % otherwise Psychtoolbox will use the old lower quality GDI text renderer
-% instead. If your version of Matlab bundles an outdated libfreetype you may
-% need to get rid of that as well, just as on OSX (see above).
+% instead.
+%
+% If your version of Matlab bundles an outdated libfreetype.dll, as may be
+% the case with at least R2015a and later, you may need to get rid of that as
+% well, just as on OSX (see above). The file to delete or rename would likely
+% be found in (e.g., for R2015b):
+% C:\Program Files\MATLAB\R2015b\bin\win64\ under a name like libfreetype.dll,
+% or a similar name containing "freetype".
 %
 % More background info about Psychtoolbox's standard text renderer:
 % =================================================================
