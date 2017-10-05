@@ -25,9 +25,20 @@
 %    the helper function GetTouchValuators().
 %
 % See the help for the functions mentioned above for more details. The demo
-% MultiTouchDemo.m demonstrates most of this functionality. You can measure the
-% latency and timing accuracy with KeyboardLatencyTest(), selecting a modality
-% setting of 10 and using a soundcard + microphone.
+% MultiTouchDemo.m demonstrates most of this functionality.
+%
+% MultiTouchMinimalDemo.m shows a more basic demo of how to get the essentials.
+%
+% You can measure the latency and timing accuracy with KeyboardLatencyTest(),
+% selecting a modality setting of 10 and using a soundcard + microphone.
+% The latency of touch screens varies greatly across vendors and models.
+% For reference, the ELAN touchscreen built into the flat-panel of a tested
+% RazerBlade 2016 gaming laptop had a latency as low as 16 msecs for reporting
+% touches, with a low standard deviation of 2 msecs, but the touchpad in the
+% same laptop had a latency of over 115 msecs!
+%
+% A tested Apple Magic touchpad fared at about 50 msecs, an Apple MacBookPro
+% mouse touchpad at about 25 msecs with over 4 msecs standard deviation.
 %
 % While touchscreens should just work as expected, touchpads are not designed
 % for "touchscreen-like" touch input. If you want to get them to act as mini-
