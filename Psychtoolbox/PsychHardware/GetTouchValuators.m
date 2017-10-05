@@ -25,6 +25,9 @@ function event = GetTouchValuators(event, deviceInfo)
 %
 % .ToolY = Raw device y position of approaching tool, if detectable.
 %
+% .ToolType = Type of tool used on the surface. There are numbers for finger,
+%             palm, and different type of styluses.
+%
 % .Pressure = Pressure which the touch applies to the touch device surface,
 %             normalized to 0.0 - 1.0 range.
 %
@@ -114,5 +117,9 @@ for i=1:length(valuatorInfos)
 
     if strcmpi(label, 'Abs MT Tool Y')
         event.ToolY = valuators(i);
+    end
+
+    if strcmpi(label, 'Abs MT Tool Type')
+        event.ToolType = valuators(i);
     end
 end
