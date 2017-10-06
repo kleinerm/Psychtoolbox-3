@@ -8,19 +8,17 @@ function varargout = PsychPowerMate(cmd, varargin)
 % Ubuntu 14.04.2 LTS or later, Debian-8 or later, or other similar modern
 % systems with version 2.9.0 or later of the "evdev" X11 input driver.
 %
-% Support on Apple OSX and Microsoft Windows is much more limited. Expect worse
-% reliability, higher cpu load, higher latencies, less accurate timing. While
-% on Linux, the current driver can internally record up to 53 full knob rotations
-% without losing information, the Windows variant can at most record 5 rotations,
-% and the OSX driver will probably not even manage to record one full rotation.
-% To avoid loss of position data, you will need to call PsychPowerMate('Get')
-% frequently on OSX and Windows, even if you do not need the information at that
-% moment.
+% Support on Apple OSX and Microsoft Windows is much more limited. Expect
+% worse reliability, higher cpu load, higher latencies, less accurate
+% timing. While on Linux, the current driver can internally record up to
+% 104 full knob rotations by default, or an unlimited number with suitable
+% options set, without losing information, the Windows variant can at most
+% record 5 rotations, and the OSX driver will probably not even manage to
+% record one full rotation. To avoid loss of position data, you will need
+% to call PsychPowerMate('Get') frequently on OSX and Windows, even if you
+% do not need the information at that moment.
 %
 % On Windows, setting LED brightness does not work.
-%
-% The current driver can only address one PowerMate, as it does not have
-% proper device selection code in place at the moment.
 %
 % Linux setup:
 % ============
@@ -69,7 +67,13 @@ function varargout = PsychPowerMate(cmd, varargin)
 % can't distinguish them. The 'deviceIds' you get back from this function are
 % therefore only guaranteed to be valid during a given session. Unplugging and
 % replugging PowerMates may change the ids assigned to them, based on operating
-% system specific criteria.
+% system specific criteria. On MS-Windows the deviceIds don't change even
+% if you plug the PowerMate into a different USB port, so this function may
+% be useless for device selection and you may have to figure out something
+% specific to your computer hardware setup. On Linux you can assign fixed
+% ids to fixed USB ports. See the Technical note at the end of this help
+% text for how to do it. On OSX the deviceIds seem to be associated with
+% fixed USB ports, with numbers at least persistent during a session.
 %
 %
 % handle = PsychPowerMate('Open' [, deviceId][, historySize=10000])
@@ -177,7 +181,7 @@ function varargout = PsychPowerMate(cmd, varargin)
 
 % History:
 % 08-Apr-2016  mk  Written.
-% 05-Oct-2017  mk  Add release flag to 'WaitButton' to wait for button release.
+% 06-Oct-2017  mk  Add release flag to 'WaitButton' to wait for button release.
 %                  Add 'untilTime' to 'WaitButton' and 'WaitRotate' to allow a
 %                  wait with timeout.
 %                  Simplify WaitXXX functions to use same code pathes on all OS,
@@ -220,7 +224,7 @@ if strcmpi(cmd, 'List')
     devId = [];
     for i=1:length(devinfos)
       if (devinfos(i).vendorID == 1917) && (devinfos(i).productID == 1040)
-        devId(end+1) = devinfos(i).locationID;
+        devId(end+1) = devinfos(i).locationID; %#ok<AGROW>
       end
     end
     varargout{1} = devId;
