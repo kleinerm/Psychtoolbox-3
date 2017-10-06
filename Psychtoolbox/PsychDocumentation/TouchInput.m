@@ -34,8 +34,8 @@
 % The latency of touch screens varies greatly across vendors and models.
 % For reference, the ELAN touchscreen built into the flat-panel of a tested
 % RazerBlade 2016 gaming laptop had a latency as low as 16 msecs for reporting
-% touches, with a low standard deviation of 2 msecs, but the touchpad in the
-% same laptop had a latency of over 115 msecs!
+% touches, with a low standard deviation of 2 msecs, but the Synaptics TM2438-005
+% touchpad in the same laptop had a latency of about 130 msecs [stddev ~4 msecs].
 %
 % A tested Apple Magic touchpad fared at about 50 msecs, an Apple MacBookPro
 % mouse touchpad at about 25 msecs with over 4 msecs standard deviation.

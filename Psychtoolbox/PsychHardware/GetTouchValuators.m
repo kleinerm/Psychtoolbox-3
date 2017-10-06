@@ -82,11 +82,11 @@ for i=1:length(valuatorInfos)
         event.RawY = valuators(i);
     end
 
-    if strcmpi(label, 'Abs MT Touch Pressure')
+    if strcmpi(label, 'Abs MT Pressure')
         event.Pressure = valuators(i) / valuatorInfos(i).max;
     end
 
-    if strcmpi(label, 'Abs MT Touch Distance')
+    if strcmpi(label, 'Abs MT Distance')
         event.Distance = valuators(i) / valuatorInfos(i).max;
     end
 
