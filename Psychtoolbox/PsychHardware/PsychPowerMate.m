@@ -296,7 +296,7 @@ if strcmpi(cmd, 'Open')
     % Search for 1st Griffin PowerMate or specified one via 'deviceId':
     for i=1:length(devinfos)
       if (devinfos(i).vendorID == 1917) && (devinfos(i).productID == 1040) && ...
-         (isempty(deviceId) || (devinfos{i}.locationID == deviceId))
+         (isempty(deviceId) || (devinfos(i).locationID == deviceId))
         devId = devinfos(i).index;
         break;
       end
