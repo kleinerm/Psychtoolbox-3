@@ -2,6 +2,7 @@ function MultiTouchDemo(dev, verbose)
 % MultiTouchDemo([dev]) - A advanced demo for multi-touch touchscreens.
 %
 % Run it. Pressing any key will stop it.
+%
 % Touch the screen and watch the nice colorful happy blobs
 % sprinkle to life :)
 %
@@ -27,6 +28,8 @@ function MultiTouchDemo(dev, verbose)
 %
 % This demo currently only works on Linux + X11 display system,
 % not on Linux + Wayland, not on other operating systems.
+%
+% For background info on capabilities and setup see "help TouchInput".
 %
 
 % History:

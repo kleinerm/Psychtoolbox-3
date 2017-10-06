@@ -48,5 +48,27 @@
 % found in the directory /usr/share/X11/xorg.conf.d/ on many systems. After
 % modifying the system this way and logging out and logging in again, you
 % should have a touchpad that no longer works for controlling a mouse pointer,
-% but can work as a minimalistic touchscreen replacement.
+% but can work as a minimalistic touchscreen replacement. Alternatively read on
+% for a way to override the default settings.
+%
+% On systems which use the xserver-xorg-input-libinput driver for touch input, the
+% amount of information provided about each touch point is somewhat limited, at least
+% as of the state of Ubuntu 17.10. If you want maximally detailed information about
+% touch input, you should instead install the xserver-xorg-input-evdev driver and then
+% override the system default input configuration to use the evdev input driver
+% for touchscreens. You can do this easily by copying the file ...
+%
+% Psychtoolbox/PsychHardware/99-evdev-touchscreen.conf
+%
+% ... into the folder /etc/X11/xorg.conf.d/ and then logout and login again. This
+% would activate evdev for maximum detail in touch input reporting, e.g., to provide
+% info about the shape, size and orientation of a touch point, the type of touchpoint
+% (finger, palm, some digitizer pen or tool), the distance of the tool from the touch
+% surface, or the pressure exerted onto the touch surface by a tool or finger.
+%
+% This sample configuration file also contains a commented out section that allows
+% to disable the synaptics driver for touchpads and instead also use evdev for them,
+% to allow their (ab)use as mini touchscreens, while disabling their regular touchpad
+% functionality. All you'd have to do is comment that section in again, logout and
+% login once.
 %
