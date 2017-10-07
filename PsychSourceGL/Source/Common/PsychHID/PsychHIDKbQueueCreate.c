@@ -1,104 +1,145 @@
 /*
-	PsychtoolboxGL/Source/Common/PsychHID/PsychHIDKbQueueCreate.c		
-  
-	PROJECTS: 
-	
-		PsychHID only.
-  
-	PLATFORMS:  
-	
-		All.  
-  
-	AUTHORS:
-	
-		rwoods@ucla.edu		rpw 
-        mario.kleiner@tuebingen.mpg.de      mk
-      
-	HISTORY:
-		8/19/07  rpw		Created.
-		8/23/07  rpw        Added PsychHIDQueueFlush to documentation
-		12/17/09 rpw		Added support for keypads
-  
-	NOTES:
-	
-		The routines PsychHIDKbQueueCreate, PsychHIDKbQueueStart, PsychHIDKbQueueCheck, PsychHIDKbQueueStop
-		and PsychHIDKbQueueRelease comprise a replacement for PsychHIDKbCheck, providing the following
-		advantages:
-		
-			1) Brief key presses that would be missed by PsychHIDKbCheck are reliably detected
-			2) The times of key presses are recorded more accurately
-			3) Key releases are also recorded
-		
-		It is acceptable to call PsychHIDKbQueueCreate at any time (e.g., to switch to a new device) without
-		calling PsychKbQueueRelease.
-		
-		PsychHIDKbQueueCreate:
-			Creates the queue for the specified (or default) device number
-			No events are delivered to the queue until PsychHIDKbQueueStart is called
-			Can be called again at any time
-			
-		PsychHIDKbQueueStart:
-			Starts delivering keyboard or keypad events from the specified device to the queue
-			
-		PsychHIDKbQueueStop:
-			Stops delivery of new keyboard or keypad events from the specified device to the queue.
-			Data regarding events already queued is not cleared and can be recovered by PsychHIDKbQueueCheck
-			
-		PsychHIDKbQueueCheck:
-			Obtains data about keypresses on the specified device since the most recent call to
-			this routine or to PsychHIDKbQueueStart
-			
-			Clears all currently scored events (unscored events may still be in the queue)
-			
-		PsychHIDKbQueueFlush:
-			Flushes unscored events from the queue and zeros all previously scored events
-			
-		PsychHIDKbQueueRelease:
-			Releases queue-associated resources; once called, PsychHIDKbQueueCreate must be invoked
-			before using any of the other routines
-			
-			This routine is called automatically at clean-up and can be omitted at the potential expense of
-			keeping memory allocated unnecesarily
-				
-
-		---
-
-*/
+ *        PsychtoolboxGL/Source/Common/PsychHID/PsychHIDKbQueueCreate.c
+ *
+ *        PROJECTS:
+ *
+ *                PsychHID only.
+ *
+ *        PLATFORMS:
+ *
+ *                All.
+ *
+ *        AUTHORS:
+ *
+ *                rwoods@ucla.edu               rpw
+ *                mario.kleiner.de@gmail.com    mk
+ *
+ *        HISTORY:
+ *
+ *                8/19/07  rpw        Created.
+ *                8/23/07  rpw        Added PsychHIDQueueFlush to documentation
+ *                12/17/09 rpw        Added support for keypads
+ *
+ *        NOTES:
+ *
+ *                The routines PsychHIDKbQueueCreate, PsychHIDKbQueueStart, PsychHIDKbQueueCheck, PsychHIDKbQueueStop
+ *                and PsychHIDKbQueueRelease comprise a replacement for PsychHIDKbCheck, providing the following
+ *                advantages:
+ *
+ *                        1) Brief key presses that would be missed by PsychHIDKbCheck are reliably detected
+ *                        2) The times of key presses are recorded more accurately
+ *                        3) Key releases are also recorded
+ *
+ *                It is acceptable to call PsychHIDKbQueueCreate at any time (e.g., to switch to a new device) without
+ *                calling PsychKbQueueRelease.
+ *
+ *                PsychHIDKbQueueCreate:
+ *                        Creates the queue for the specified (or default) device number
+ *                        No events are delivered to the queue until PsychHIDKbQueueStart is called
+ *                        Can be called again at any time
+ *
+ *                PsychHIDKbQueueStart:
+ *                        Starts delivering keyboard or keypad events from the specified device to the queue
+ *
+ *                PsychHIDKbQueueStop:
+ *                        Stops delivery of new keyboard or keypad events from the specified device to the queue.
+ *                        Data regarding events already queued is not cleared and can be recovered by PsychHIDKbQueueCheck
+ *
+ *                PsychHIDKbQueueCheck:
+ *                        Obtains data about keypresses on the specified device since the most recent call to
+ *                        this routine or to PsychHIDKbQueueStart
+ *
+ *                        Clears all currently scored events (unscored events may still be in the queue)
+ *
+ *                PsychHIDKbQueueFlush:
+ *                        Flushes unscored events from the queue and zeros all previously scored events
+ *
+ *                PsychHIDKbQueueRelease:
+ *                        Releases queue-associated resources; once called, PsychHIDKbQueueCreate must be invoked
+ *                        before using any of the other routines
+ *
+ *                        This routine is called automatically at clean-up and can be omitted at the potential expense of
+ *                        keeping memory allocated unnecesarily
+ *
+ *
+ *                ---
+ *
+ */
 
 #include "PsychHID.h"
 
-static char useString[]= "PsychHID('KbQueueCreate', [deviceNumber], [keyFlags])";
-static char synopsisString[] = 
-        "Creates a queue for events generated by an input device (keyboard, keypad, mouse, ...).\n"
-        "By default the default keyboard device (as defined by an operating system specific heuristic) is "
-        "used. If no keyboard is found, the first keypad device is used, followed by other "
-        "devices, e.g., mice.  Optionally, the deviceNumber of any keyboard or HID device may be specified.\n"
-        "On MS-Windows it is not possible to enumerate different keyboards and mice separately. "
-        "Therefore the 'deviceNumber' argument is mostly useless for keyboards and mice. Usually you can "
-        "only check the system keyboard or mouse.\n";
+static char useString[]= "PsychHID('KbQueueCreate', [deviceNumber][, keyFlags=all][, numValuators=0][, numSlots=10000][, flags=0])";
+//                                                   1               2               3                 4                 5
+static char synopsisString[] =
+"Creates a queue for events generated by an input device (keyboard, keypad, mouse, ...).\n"
+"By default the default keyboard device (as defined by an operating system specific heuristic) is "
+"used. If no keyboard is found, the first keypad device is used, followed by other "
+"devices, e.g., mice.  Optionally, the 'deviceNumber' of any keyboard or HID device may be specified.\n"
+"On MS-Windows it is not possible to enumerate different keyboards and mice separately. "
+"Therefore the 'deviceNumber' argument is mostly useless for keyboards and mice. Usually you can "
+"only check the system keyboard or mouse.\n"
+"The optional 'keyFlags' argument is a vector of key/button codes to record. If supplied, then only "
+"the provided keys or buttons are recorded, others are ignored. By default, all available keys and "
+"buttons are recorded.\n"
+"The 'numValuators' argument only applies to input devices with axis or other non-button inputs. "
+"If set to a non-zero value, then up to 'numValuators' additional values are recorded from the selected "
+"input device. On a mouse, the first two such channels could record mouse (x,y) position. A joystick could "
+"record (x,y) deflection or changes of other sliders, levers or knobs. A touchscreen could report (x,y) "
+"touch position, touch pressure or other touch properties etc. Note that support for these properties is "
+"operating system specific, on some systems you may not get any additional information for 'numValuators' "
+"settings > 0.\n"
+"The 'numSlots' argument defines the maximum capacity of the event buffer. Once 'numSlots' events have "
+"been queued without the users script removing events, event recording will stop and buffer full "
+"warnings will be printed. This defaults to 10000 events if omitted, which is plenty for simple collection "
+"of key/button press/release events, but might be tight for long running trials if mouse movements, joystick "
+"movements, or touch screen input is collected, ie. continuous input that might generate hundreds of events "
+"per second.\n"
+"'flags' Optional flags to alter operation of the queue. Defaults to zero for default behavior.\n"
+"+1 = Always label synthetic key repeat events as invalid - iow. suppress them. Supported on Linux only.\n"
+"+2 = Never label synthetic key repeat events as invalid - iow. accept them. Supported on Linux only.\n"
+"+4 = Try to get raw valuator state, avoiding things like pointer acceleration. Supported on Linux only.\n"
+"\n";
 
 static char seeAlsoString[] = "KbQueueStart, KbQueueStop, KbQueueCheck, KbQueueFlush, KbQueueRelease";
 
-PsychError PSYCHHIDKbQueueCreate(void) 
+PsychError PSYCHHIDKbQueueCreate(void)
 {
-	int deviceIndex = -1;
-	int numScankeys = 0;
-	int* scanKeys = NULL;
-	int rc;
-	
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    int deviceIndex = -1;
+    int numScankeys = 0;
+    int* scanKeys = NULL;
+    int numValuators = 0;
+    int numSlots = 10000;
+    int flags = 0;
+    int rc;
 
-	PsychErrorExit(PsychCapNumInputArgs(2)); // Optionally specifies the deviceNumber of the keyboard or keypad to scan and an array of keyCode indicators.
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none);};
 
-	// Get optional deviceIndex:
-	PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
+    PsychErrorExit(PsychCapNumInputArgs(5));
 
-	// Get optional scanKeys vector:
-	PsychAllocInIntegerListArg(2, FALSE, &numScankeys, &scanKeys);
+    // Get optional deviceIndex:
+    PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
 
-	// Perform actual, OS-dependent init and return its status code:
-	rc = PsychHIDOSKbQueueCreate(deviceIndex, numScankeys, scanKeys);
+    // Get optional scanKeys vector:
+    PsychAllocInIntegerListArg(2, FALSE, &numScankeys, &scanKeys);
 
-	return(rc);
+    // Get optional numValuators:
+    PsychCopyInIntegerArg(3, FALSE, &numValuators);
+    if (numValuators < 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid number of 'numValuators' provided. Must be at least 0.");
+
+    // Get optional numSlots:
+    PsychCopyInIntegerArg(4, FALSE, &numSlots);
+    if (numSlots < 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid number of 'numSlots' provided. Must be at least 1.");
+
+    // Get optional flags:
+    PsychCopyInIntegerArg(5, FALSE, &flags);
+    if (flags < 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'flags' provided. Must be at least 0.");
+
+    // Perform actual, OS-dependent init and return its status code:
+    rc = PsychHIDOSKbQueueCreate(deviceIndex, numScankeys, scanKeys, numValuators, numSlots, (unsigned int) flags);
+
+    return(rc);
 }

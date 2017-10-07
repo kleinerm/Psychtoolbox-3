@@ -19,7 +19,7 @@
 
 static Display *dpy = NULL;
 static Display *thread_dpy = NULL;
-static int xi_opcode, event, error;
+static int xi_opcode, event, error, major, minor;
 static XIDeviceInfo *info = NULL;
 static int ndevices = 0;
 static int masterDevice = -1;
@@ -30,6 +30,9 @@ static double* psychHIDKbQueueFirstRelease[PSYCH_HID_MAX_DEVICES];
 static double* psychHIDKbQueueLastPress[PSYCH_HID_MAX_DEVICES];
 static double* psychHIDKbQueueLastRelease[PSYCH_HID_MAX_DEVICES];
 static int*    psychHIDKbQueueScanKeys[PSYCH_HID_MAX_DEVICES];
+static int     psychHIDKbQueueNumValuators[PSYCH_HID_MAX_DEVICES];
+static unsigned int psychHIDKbQueueFlags[PSYCH_HID_MAX_DEVICES];
+static PsychHIDEventRecord psychHIDKbQueueOldEvent[PSYCH_HID_MAX_DEVICES];
 static psych_bool psychHIDKbQueueActive[PSYCH_HID_MAX_DEVICES];
 static psych_mutex KbQueueMutex;
 static psych_condition KbQueueCondition;
@@ -46,7 +49,6 @@ static XDevice* GetXDevice(int deviceIndex)
 
 void PsychHIDInitializeHIDStandardInterfaces(void)
 {
-    int major, minor;
     int rc, i;
 
     // Init x_dev array:
@@ -59,6 +61,9 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     memset(&psychHIDKbQueueLastRelease[0], 0, sizeof(psychHIDKbQueueLastRelease));
     memset(&psychHIDKbQueueActive[0], 0, sizeof(psychHIDKbQueueActive));
     memset(&psychHIDKbQueueScanKeys[0], 0, sizeof(psychHIDKbQueueScanKeys));
+    memset(&psychHIDKbQueueNumValuators[0], 0, sizeof(psychHIDKbQueueNumValuators));
+    memset(&psychHIDKbQueueOldEvent[0], 0, sizeof(psychHIDKbQueueOldEvent));
+    memset(&psychHIDKbQueueFlags[0], 0, sizeof(psychHIDKbQueueFlags));
 
     // We must initialize XLib for multithreading-safe operations / access on first
     // call if usercode explicitely requests this via environment variable PSYCH_XINITTHREADS.
@@ -86,9 +91,9 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
         goto out;
     }
 
-    // XInput V2 supported?
+    // XInput V2.2 supported?
     major = 2;
-    minor = 0;
+    minor = 2;
     rc = XIQueryVersion(dpy, &major, &minor);
     if (rc == BadRequest) {
         printf("PsychHID: ERROR: No XI2 support. Server supports version %d.%d only.\n", major, minor);
@@ -97,8 +102,6 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
         printf("PsychHID: ERROR: Internal Error! This is a bug in Xlib.\n");
         goto out;
     }
-
-    // printf("PsychHID: INFO: XI2 supported. Server provides version %d.%d.\n", major, minor);
 
     // Open our own 2nd private X-Display connection for HID handling. This one is for the
     // async KbQueue processing thread:
@@ -113,9 +116,9 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
         goto out;
     }
 
-    // XInput V2 supported?
+    // XInput V2.2 supported?
     major = 2;
-    minor = 0;
+    minor = 2;
     rc = XIQueryVersion(thread_dpy, &major, &minor);
     if (rc == BadRequest) {
         printf("PsychHID: ERROR: No XI2 support. Server supports version %d.%d only.\n", major, minor);
@@ -194,16 +197,48 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
     return;
 }
 
+// Return -1 if not a touch device. Return >= 0 for touch device.
+// Returns 0 for "unknown number of touch points - device didn't tell us".
+// Otherwise returns > 0 for number of maximally supported touch points.
+// *type is 0 for dependent touch devices like trackpads, 1 for real touch screens.
+int PsychHIDIsTouchDevice(int deviceIndex, int* type)
+{
+    int j, count = 0, num_touches = 0;
+    XIDeviceInfo *dev = &info[deviceIndex];
+
+    if (type)
+        *type = -1;
+
+    // XInput 2.2+ supported? Otherwise no touch device support.
+    if (minor >= 2) {
+        for (j = 0; j < dev->num_classes; j++) {
+            XIAnyClassInfo *class = dev->classes[j];
+            XITouchClassInfo *t = (XITouchClassInfo*) class;
+
+            if (class->type != XITouchClass)
+                continue;
+
+            count++;
+            num_touches += t->num_touches;
+
+            if (type)
+                *type = (t->mode == XIDirectTouch) ? 1 : 0;
+        }
+    }
+
+    return((count > 0) ? num_touches : -1);
+}
+
 PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
 {
     const char *deviceFieldNames[]={"usagePageValue", "usageValue", "usageName", "index", "transport", "vendorID", "productID", "version",
                                     "manufacturer", "product", "serialNumber", "locationID", "interfaceID", "totalElements", "features", "inputs",
-                                    "outputs", "collections", "axes", "buttons", "hats", "sliders", "dials", "wheels"};
-    int numDeviceStructElements, numDeviceStructFieldNames=24, deviceIndex;
+                                    "outputs", "collections", "axes", "buttons", "hats", "sliders", "dials", "wheels", "touchDeviceType", "maxTouchpoints"};
+    int numDeviceStructElements, numDeviceStructFieldNames=26, deviceIndex;
     PsychGenericScriptType *deviceStruct;
     XIDeviceInfo *dev;
     int i, j;
-    int numKeys, numAxis;
+    int numKeys, numAxis, touchType;
     char *type = "";
 
     // Preparse: Count matching devices for deviceClass
@@ -279,6 +314,9 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
         PsychSetStructArrayDoubleElement("sliders",  deviceIndex,  (double) 0, deviceStruct);
         PsychSetStructArrayDoubleElement("dials",  deviceIndex,  (double) 0, deviceStruct);
         PsychSetStructArrayDoubleElement("wheels",  deviceIndex,  (double) 0, deviceStruct);
+        PsychSetStructArrayDoubleElement("maxTouchpoints",  deviceIndex, (double) PsychHIDIsTouchDevice(i, NULL), deviceStruct);
+        PsychHIDIsTouchDevice(i, &touchType);
+        PsychSetStructArrayDoubleElement("touchDeviceType",  deviceIndex, (double) touchType, deviceStruct);
 
         deviceIndex++;
     }
@@ -491,7 +529,8 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
     XIRawEvent* rawevent;
     psych_bool valid;
     double tnow;
-    int i, index, deviceid;
+    int i, j, index, deviceid, numValuators;
+    unsigned int screen_width, screen_height;
     char asciiChar;
 
     while (1) {
@@ -510,13 +549,6 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
         // Take timestamp:
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
 
-        if (FALSE) {
-            if (KbQueue_xevent.type == KeyPress) {
-                printf("KeyPress core event: key %i = %i\n", (int) ((XKeyEvent*) (&KbQueue_xevent))->keycode, (int) ((XKeyEvent*) (&KbQueue_xevent))->state);
-                fflush(NULL);
-            }
-        }
-
         // Clear ringbuffer event:
         memset(&evt, 0 , sizeof(evt));
 
@@ -527,31 +559,65 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 
         // Is this an event we're interested in?
         if ((cookie->type == GenericEvent) && (cookie->extension == xi_opcode)) {
-
             // Yes. Process it:
             if (XGetEventData(thread_dpy, cookie)) {
                 // Process it:
 
                 // printf("Event type %d received\n", cookie->evtype);
-                if (cookie->evtype == XI_RawButtonPress || cookie->evtype == XI_RawButtonRelease) {
+                if (cookie->evtype == XI_RawButtonPress || cookie->evtype == XI_RawButtonRelease || cookie->evtype == XI_RawMotion) {
                     // Raw device event for mice and similar devices:
                     rawevent = (XIRawEvent*) cookie->data;
                     event = NULL;
-                    valid = TRUE; // Always true for raw devices like mice etc. Checking for following would suppress scroll events (mouse wheel, PowerMate knob etc.): !(rawevent->flags & XIKeyRepeat);
+                    valid = TRUE; // Always true for raw devices like mice etc., unless queue flag 1 is set, see below.
                     index = rawevent->detail;
                     deviceid = rawevent->deviceid;
                 }
                 else {
                     // Regular device event:
+                    Window rootRet;
+                    unsigned int depth_return, border_width_return;
+                    int x, y;
+
                     event = (XIDeviceEvent*) cookie->data;
                     rawevent = NULL;
                     valid = !(event->flags & XIKeyRepeat);
                     index = event->detail;
                     deviceid = event->deviceid;
+
+                    // Get width x height of associated root window, aka screen size for touch coordinate remapping:
+                    XGetGeometry(thread_dpy, event->root, &rootRet, &x, &y, &screen_width, &screen_height, &border_width_return, &depth_return);
+                }
+
+                if (event && (cookie->evtype != XI_TouchOwnership)) {
+                    // Process device button state:
+                    for (j = 0; (j < event->buttons.mask_len * 8) && (j < 32); j++) {
+                        // j'th device button pressed?
+                        if (XIMaskIsSet(event->buttons.mask, j)) {
+                            // Yes: Set status to "pressed" as at least one device button is pressed:
+                            // Note this gets overriden for some event types below, like touch and
+                            // keyboard. It only really affects mouse/gamepad/joystick movements.
+                            evt.status |= (1 << 0);
+
+                            // Mark button pressed:
+                            evt.buttonStates |= (1 << j);
+                        }
+                    }
                 }
 
                 // Map Xinput device id to PTB 'deviceIndex' aka the proper keyboard queue:
                 for (i = 0; i < ndevices; i++) if (deviceid == info[i].deviceid) break;
+
+                // Special handling for synthetic key repeat flags required?
+                if ((i < ndevices) && (psychHIDKbQueueFlags[i] & 0x3)) {
+                    // Yes: Filter out key repeat on raw events (from pointer devices) as well?
+                    // This will suppress scroll events (mouse wheel, PowerMate knob etc.):
+                    if (rawevent && (psychHIDKbQueueFlags[i] & 0x1))
+                        valid = !(rawevent->flags & XIKeyRepeat);
+
+                    // Always accept key repeats:
+                    if (psychHIDKbQueueFlags[i] & 0x2)
+                        valid = TRUE;
+                }
 
                 // We're only interested in key press and release events, and only in
                 // real ones, not XServer generated synthetic key auto-repeat events.
@@ -645,6 +711,19 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                         // Update event buffer:
                         evt.timestamp = tnow;
                         evt.rawEventCode = index + 1;
+
+                        // Also provide (x,y) position of the pointing device at time of event:
+                        // Note: For raw events no such absolute position info is available.
+                        if (event) {
+                            evt.X = event->event_x;
+                            evt.Y = event->event_y;
+                            evt.normX = evt.X / screen_width;
+                            evt.normY = evt.Y / screen_height;
+                        }
+                        else {
+                            evt.X = evt.Y = evt.normX = evt.normY = 0;
+                        }
+
                         PsychHIDAddEventToEventBuffer(i, &evt);
 
                         // Tell waiting userspace (under KbQueueMutex protection for better scheduling) something interesting has changed:
@@ -652,6 +731,216 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                     }
 
                     // Done with shared data access:
+                    PsychUnlockMutex(&KbQueueMutex);
+                }
+                else {
+                    PsychLockMutex(&KbQueueMutex);
+
+                    if ((i < ndevices) && valid && psychHIDKbQueueActive[i] && (psychHIDKbQueueNumValuators[i] > 0)) {
+                        // Handling of motion events / valuator change events / touch events. These only go into the event buffer,
+                        // not legacy KbQueue arrays, as those don't make sense here:
+                        numValuators = psychHIDKbQueueNumValuators[i];
+
+                        evt.cookedEventCode = -1;
+                        evt.timestamp = tnow;
+                        evt.rawEventCode = 0;
+
+                        // Mouse/Touchpad/Trackpad/Trackpoint/Trackball/Joystick/Pointing device
+                        // change of position or axis state:
+                        if ((cookie->evtype == XI_Motion || cookie->evtype == XI_RawMotion) && (numValuators >= 2)) {
+                            // Type is a pointer or axis motion event:
+                            evt.type = 1;
+
+                            // Motion event:
+                            evt.status |= (1 << 1);
+
+                            // Store absolute position:
+                            // Note: For raw events no such absolute position info is available.
+                            if (event) {
+                                evt.X = event->event_x;
+                                evt.Y = event->event_y;
+                                evt.normX = evt.X / screen_width;
+                                evt.normY = evt.Y / screen_height;
+                            }
+                            else {
+                                evt.X = evt.Y = evt.normX = evt.normY = 0;
+                            }
+
+                            // More than 2 standard valuators for (x,y) position or deflection?
+                            if (numValuators >= 2) {
+                                if (event) {
+                                    // Store up to numValuators valuator values:
+                                    double *valuator = event->valuators.values;
+                                    for (j = 0; (j < event->valuators.mask_len * 8) && (j < numValuators); j++) {
+                                        evt.numValuators++;
+                                        // Updated valuator value?
+                                        if (XIMaskIsSet(event->valuators.mask, j)) {
+                                            // Yes: Assign.
+                                            evt.valuators[j] = (float) *valuator;
+                                            valuator++;
+                                        }
+                                        else {
+                                            // No: Assign old value from last pass:
+                                            evt.valuators[j] = (float) psychHIDKbQueueOldEvent[i].valuators[j];
+                                        }
+                                    }
+                                }
+                                else {
+                                    // Raw motion event:
+                                    // Store up to numValuators raw values:
+                                    double *raw_values = rawevent->raw_values;
+                                    for (j = 0; (j < rawevent->valuators.mask_len * 8) && (j < numValuators); j++) {
+                                        evt.numValuators++;
+                                        // Updated valuator value?
+                                        if (XIMaskIsSet(rawevent->valuators.mask, j)) {
+                                            // Yes: Assign.
+                                            evt.valuators[j] = (float) *raw_values;
+                                            raw_values++;
+                                        }
+                                        else {
+                                            // No: Assign old value from last pass:
+                                            evt.valuators[j] = (float) psychHIDKbQueueOldEvent[i].valuators[j];
+                                        }
+                                    }
+
+                                    // Derive somewhat X, Y values from first two valuators:
+                                    evt.X = evt.valuators[0];
+                                    evt.Y = evt.valuators[1];
+                                }
+
+                                // Keep track of last event for above valuator updating:
+                                memcpy(&psychHIDKbQueueOldEvent[i], &evt, sizeof(evt));
+                            }
+                        }
+
+                        if ((cookie->evtype == XI_TouchBegin || cookie->evtype == XI_TouchEnd || cookie->evtype == XI_TouchUpdate || cookie->evtype == XI_TouchOwnership) &&
+                            numValuators >= 4) {
+                            XIDeviceInfo *dev = &info[i];
+
+                            // Fetch most recent touch record in the series for this touch point:
+                            // oldevt == NULL if none yet exists, or none exists anymore due to some buffer wraparound:
+                            PsychHIDEventRecord *oldevt = PsychHIDLastTouchEventFromEventBuffer(i, event->detail);
+
+                            // Touch point id, 32-Bit integer - unique until 32 bit wraparound ;) :
+                            evt.rawEventCode = event->detail;
+
+                            // Everything of interest is in the valuators:
+                            if (cookie->evtype != XI_TouchOwnership) {
+                                // Store up to numValuators valuator values:
+                                double *valuator = event->valuators.values;
+                                for (j = 0; (j < event->valuators.mask_len * 8) && (j < numValuators); j++) {
+                                    evt.numValuators++;
+
+                                    // Updated valuator value?
+                                    if (XIMaskIsSet(event->valuators.mask, j)) {
+                                        // Yes: Assign.
+                                        evt.valuators[j] = (float) *valuator;
+                                        valuator++;
+                                    }
+                                    else {
+                                        // No: Assign old value from last pass:
+                                        evt.valuators[j] = (float) ((oldevt) ? oldevt->valuators[j] : 0.0);
+                                    }
+                                }
+                            }
+
+                            // Normalize x and y positions to 0.0 - 1.0 range (at least for absolute touch devices).
+                            // Also remap to X-Screen space:
+                            for (j = 0; j < dev->num_classes; j++) {
+                                XIAnyClassInfo *class = dev->classes[j];
+                                XIValuatorClassInfo *v = (XIValuatorClassInfo*) class;
+                                double r;
+
+                                if (class->type != XIValuatorClass)
+                                    continue;
+
+                                r = v->max - v->min;
+                                if (r > 0) {
+                                    if (v->number == 0)
+                                        evt.normX = (float) ((evt.valuators[0] - v->min) / r);
+
+                                    if (v->number == 1)
+                                        evt.normY = (float) ((evt.valuators[1] - v->min) / r);
+                                }
+
+                                // Remap to X-Screen / RootWindow width x height:
+                                evt.X = evt.normX * screen_width;
+                                evt.Y = evt.normY * screen_height;
+                            }
+
+                            switch (cookie->evtype) {
+                                case XI_TouchBegin:
+                                    // Touch begins - Finger pressed, integrity bit cleared:
+                                    evt.status = 1;
+                                    evt.type = 2;
+                                    break;
+
+                                case XI_TouchUpdate:
+                                    // Finger motion event, with finger pressed onto the touch surface:
+                                    evt.status |= 1 + 2;
+                                    evt.type = 3;
+
+                                    // If we get signalled that this is the end of the physical touch sequence,
+                                    // but somebody else has a grab on it and hasn't decided to accept/reject
+                                    // yet, then we know we've seen the full touch sequence. We may or may not
+                                    // get a XI_TouchOwnership event before the XI_TouchEnd, but we know we are
+                                    // good, so simply set the integrity bit:
+                                    //
+                                    // See http://who-t.blogspot.de/2012/01/multitouch-in-x-touch-grab-handling.html
+                                    if (event->flags & XITouchPendingEnd) {
+                                        // Set integrity bit for this touch point:
+                                        evt.status |= (1 << 31);
+                                    }
+                                    break;
+
+                                case XI_TouchEnd:
+                                    // Touch ends - Finger released and no more motion:
+                                    evt.status &= ~(1 + 2);
+                                    evt.type = 4;
+
+                                    // By this time we must have the integrity bit set, or we lost data.
+                                    if (!oldevt || !(oldevt->status & (1 << 31))) {
+                                        // Nope, we lost touch data. Did we already send a fail event for this touch queue?
+                                        // If not, then do it now via the magic 0xffffffff touch point with type 5 for sequence abort.
+                                        if (!PsychHIDLastTouchEventFromEventBuffer(i, 0xffffffff)) {
+                                            // Inject touch end event now ...
+                                            PsychHIDAddEventToEventBuffer(i, &evt);
+
+                                            // Then let the code below inject it again, but with type 5 for fail,
+                                            // and magic id 0xffffffff:
+                                            evt.type = 5;
+                                            evt.rawEventCode = 0xffffffff;
+                                        }
+                                    }
+
+                                    break;
+
+                                case XI_TouchOwnership:
+                                    // Ownership marker: We are the sole owner of this sequence, so got all the data
+                                    // untampered :) - Set integrity bit for this touch point in last event for it:
+                                    if (oldevt)
+                                        oldevt->status |= (1 << 31);
+
+                                    break;
+                            }
+
+                            // Propagate positive integrity bit from preceeding event for this touch point:
+                            if (oldevt && (oldevt->status & (1 << 31)))
+                                evt.status |= (1 << 31);
+
+                            // End of touch handling.
+                        }
+
+                        // Add anything but touch ownership events:
+                        if (cookie->evtype != XI_TouchOwnership) {
+                            // Update event buffer:
+                            PsychHIDAddEventToEventBuffer(i, &evt);
+
+                            // Tell waiting userspace (under KbQueueMutex protection for better scheduling) something interesting has changed:
+                            PsychSignalCondition(&KbQueueCondition);
+                        }
+                    }
+
                     PsychUnlockMutex(&KbQueueMutex);
                 }
 
@@ -756,10 +1045,9 @@ int PsychHIDGetDefaultKbQueueDevice(void)
     PsychErrorExitMsg(PsychError_user, "Could not find any useable keyboard device!");
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags)
 {
     XIDeviceInfo* dev = NULL;
-    // int numKeys, j;
 
     // Valid number of keys?
     if (scanKeys && (numScankeys != 256)) {
@@ -776,8 +1064,8 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 
     // Do we finally have a valid keyboard?
     dev = &info[deviceIndex];
-    if ((dev->use == XIMasterKeyboard) || (dev->use == XIMasterPointer)) {
-        PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. Master keyboards or master pointers cannot be handled by this function.");
+    if (dev->use == XIMasterKeyboard) {
+        PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. Master keyboards can not be handled by this function.");
     }
 
     // Keyboard queue for this deviceIndex already created?
@@ -792,6 +1080,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     psychHIDKbQueueLastPress[deviceIndex]    = calloc(256, sizeof(double));
     psychHIDKbQueueLastRelease[deviceIndex]  = calloc(256, sizeof(double));
     psychHIDKbQueueScanKeys[deviceIndex]     = calloc(256, sizeof(int));
+    memset(&psychHIDKbQueueOldEvent[deviceIndex], 0, sizeof(psychHIDKbQueueOldEvent[deviceIndex]));
 
     // Assign scanKeys vector, if any:
     if (scanKeys) {
@@ -802,8 +1091,14 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
         memset(psychHIDKbQueueScanKeys[deviceIndex], 1, 256 * sizeof(int));
     }
 
+    // Store how many valuators we should return at most for this device:
+    psychHIDKbQueueNumValuators[deviceIndex] = numValuators;
+
+    // Store queue specific flags:
+    psychHIDKbQueueFlags[deviceIndex] = flags;
+
     // Create event buffer:
-    if (!PsychHIDCreateEventBuffer(deviceIndex)) {
+    if (!PsychHIDCreateEventBuffer(deviceIndex, numValuators, numSlots)) {
         PsychHIDOSKbQueueRelease(deviceIndex);
         PsychErrorExitMsg(PsychError_system, "Failed to create keyboard queue due to out of memory condition.");
     }
@@ -955,6 +1250,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 {
     psych_bool queueActive;
     int i;
+    int numValuators;
 
     if (deviceIndex < 0) {
         deviceIndex = PsychHIDGetDefaultKbQueueDevice();
@@ -992,6 +1288,8 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     memset(psychHIDKbQueueLastPress[deviceIndex]    , 0, (256 * sizeof(double)));
     memset(psychHIDKbQueueLastRelease[deviceIndex]  , 0, (256 * sizeof(double)));
 
+    numValuators = psychHIDKbQueueNumValuators[deviceIndex];
+
     // Setup event mask, so events from our associated xinput device
     // get enqueued in our event queue:
     XIEventMask emask;
@@ -1005,7 +1303,18 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     XISetMask(mask, XI_RawButtonPress);
     XISetMask(mask, XI_RawButtonRelease);
 
-    // XISetMask(mask, XI_Motion);
+    // Report motion events on pointing devices (mouse, trackpad etc.) if requested:
+    // Queue flags +4 select for raw motion events, which don't go through pointer acceleration and other preprocessing:
+    if ((numValuators >= 2) && (info[deviceIndex].use == XIMasterPointer || info[deviceIndex].use == XISlavePointer || info[deviceIndex].use == XIFloatingSlave))
+        XISetMask(mask, (psychHIDKbQueueFlags[deviceIndex] & 0x4) ? XI_RawMotion : XI_Motion);
+
+    // XInput version 2.2+ supported, and this device (Multi-)touch enabled?
+    if ((numValuators >= 4) && (PsychHIDIsTouchDevice(deviceIndex, NULL) >= 0)) {
+        XISetMask(mask, XI_TouchBegin);
+        XISetMask(mask, XI_TouchUpdate);
+        XISetMask(mask, XI_TouchEnd);
+        XISetMask(mask, XI_TouchOwnership);
+    }
 
     emask.deviceid = info[deviceIndex].deviceid;
     emask.mask_len = sizeof(mask);
@@ -1176,7 +1485,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     }
 
     // Create keyboard queue with proper mask:
-    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0]);
+    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0], 0, 0, 0);
     PsychHIDOSKbQueueStart(deviceIndex);
 
     PsychLockMutex(&KbQueueMutex);

@@ -40,7 +40,10 @@ PsychError SCREENConfigureDisplay(void)
                     "Optionally sets new settings for that output.\n"
                     "Possible values for subfunction parameter 'setting':\n"
                     "'Brightness': Return or set brightness of an attached display device. Many displays and systems don't support this function. "
-                    " brightness values are in the range 0.0 to 1.0 from darkest to brightest. Returns old brightness setting.\n"
+                    " To find out if your system supports brightness queries and setting, call this subfunction without specifying a brightness. "
+                    " The function will either return a >= brightness value, or -1 if the system doesn't support brightness control. "
+                    " If you try to set brightness on a system that doesn't support it, the function will abort with an error. "
+                    " Brightness values are in the range 0.0 to 1.0 from darkest to brightest. Returns old brightness setting.\n"
                     "'NumberOutputs': Return number of active separate display outputs for given screen 'screenNumber'.\n"
                     "'Capture': Capture output 'outputId' of a screen 'screenNumber' for exclusive use by Psychtoolbox.\n"
                     "'Release': Release output 'outputId' of a screen 'screenNumber' from exclusive use by Psychtoolbox.\n"
@@ -122,7 +125,16 @@ PsychError SCREENConfigureDisplay(void)
 
         // Return current brightness value:
         err = IODisplayGetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), &brightness);
-        if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported on this system.");
+        if (err != kIOReturnSuccess) {
+            // Failed. This means "unsupported". Return -1 for "not supported" if this was just a query,
+            // but fail if code tried to set a new value. This way a failure to set a brightness level
+            // won't go unnoticed, but code can query first if setting/getting brightness is supported
+            // before it trusts results:
+            if (PsychIsArgPresent(PsychArgIn, 4))
+                PsychErrorExitMsg(PsychError_user, "Failed to query and set current display brightness from system. Unsupported on this system.");
+            else
+                brightness = -1;
+        }
         PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) brightness);
 
         // Optionally set new brightness value:
@@ -152,6 +164,7 @@ PsychError SCREENConfigureDisplay(void)
         CGDirectDisplayID dpy;
         int screen;
         double nbrightness;
+        XRRScreenResources *resources = NULL;
 
         // Map screenNumber and outputIdx to dpy, rootwindow and RandR output:
         PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
@@ -161,19 +174,22 @@ PsychError SCREENConfigureDisplay(void)
         backlight_legacy = XInternAtom(dpy, "BACKLIGHT", True);
         PsychUnlockDisplay();
 
-        if (backlight_new == None && backlight_legacy == None) {
-            PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. System does not support brightness query and setting.");
-        }
+        if (backlight_new == None && backlight_legacy == None)
+            goto brightness_unsupported;
 
         screen = PsychGetXScreenIdForScreen(screenNumber);
 
         PsychLockDisplay();
         Window root = RootWindow(dpy, screen);
-        XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
+        resources = XRRGetScreenResources(dpy, root);
         PsychUnlockDisplay();
 
-        if (resources == NULL) PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Feature not supported.");
-        if (outputId < 0 || outputId >= resources->noutput) PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
+        if (resources == NULL)
+            goto brightness_unsupported;
+
+        if (outputId < 0 || outputId >= resources->noutput)
+            PsychErrorExitMsg(PsychError_user, "Invalid video output specified!");
+
         RROutput output = resources->outputs[outputId];
 
         // Query current brightness of output, if possible. Bail otherwise:
@@ -194,14 +210,14 @@ PsychError SCREENConfigureDisplay(void)
             backlight = backlight_legacy;
             if (!backlight || XRRGetOutputProperty(dpy, output, backlight, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) {
                 PsychUnlockDisplay();
-                PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
+                goto brightness_unsupported;
             }
         }
 
         if (actual_type != XA_INTEGER || nitems != 1 || actual_format != 32) {
             XFree(prop);
             PsychUnlockDisplay();
-            PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
+            goto brightness_unsupported;
         } else {
             value = *((long *) prop);
             XFree(prop);
@@ -240,7 +256,7 @@ PsychError SCREENConfigureDisplay(void)
         } else {
             if (info) XFree(info);
             PsychUnlockDisplay();
-            PsychErrorExitMsg(PsychError_user, "Failed to query current display brightness from system. Unsupported feature?");
+            goto brightness_unsupported;
         }
 
         XRRFreeScreenResources(resources);
@@ -250,8 +266,25 @@ PsychError SCREENConfigureDisplay(void)
         #endif
 
         #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is not implemented on MS-Windows.");
+        goto brightness_unsupported;
         #endif
+
+        return(PsychError_none);
+
+        brightness_unsupported:
+            #if PSYCH_SYSTEM == PSYCH_LINUX
+            if (resources)
+                XRRFreeScreenResources(resources);
+            #endif
+
+            // Failed. This means "unsupported". Return -1 for "not supported" if this was just a query,
+            // but fail if code tried to set a new value. This way a failure to set a brightness level
+            // won't go unnoticed, but code can query first if setting/getting brightness is supported
+            // before it trusts results:
+            if (PsychIsArgPresent(PsychArgIn, 4))
+                PsychErrorExitMsg(PsychError_user, "Failed to query and set current display brightness from system. Unsupported on this system.");
+            else
+                PsychCopyOutDoubleArg(1, kPsychArgOptional, -1);
 
         return(PsychError_none);
     }

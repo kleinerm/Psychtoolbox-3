@@ -17,7 +17,7 @@ function [mouseIndices, productNames, allInfo] = GetMouseIndices(typeOnly, produ
 % 'masterPointer' will only return indices of so called "master pointer"
 % devices. These correspond to visible mouse cursors. 'slavePointer' will
 % only return indices of slave pointer devices. If you want to use keyboard
-% query functions like KbCheck, KbQueueCheck etc. to get mouse button presses,
+% query functions like KbCheck, KbWait etc. to get mouse button presses,
 % then you can only use slave pointer devices, ie., select between mice that
 % are returned by setting 'typeOnly' as 'slavePointer'.
 %
@@ -51,6 +51,7 @@ function [mouseIndices, productNames, allInfo] = GetMouseIndices(typeOnly, produ
 % 12/17/09  rpw   Added see also for GetKeypadIndices
 % 08/27/15  mk    Add 'slavePointer' support.
 % 15-Aug-2017 mk  Add filtering by productName, serialNumber, locationID.
+% 29-Sep-2017 mk  No masterPointer constraint no longer applies to KbQueues.
 
 mouseIndices=[];
 productNames=cell(0);
