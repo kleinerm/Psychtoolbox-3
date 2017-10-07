@@ -63,6 +63,14 @@ function KeyboardLatencyTest(triggerlevel, modality, submode, portString)
 % Setting 'submode' to 1 will optimize for use with FTDI serial-USB
 % converters.
 %
+% A 'modality' of 10 will measure timing of touch input devices like
+% touchscreens or touchpads. 'portString' allows to select a specific
+% touch input device as enumerated via GetTouchDeviceIndices(). By default
+% the first detected touchscreen or touchpad is used. Note that on some
+% operating systems you must hit the touchscreen or touchpad inside the
+% displayed onscreen window, as those systems will not register touches
+% outside the onscreen window.
+%
 %
 % The optional 'portString' argument can be set to define the serial port
 % to connect to for response devices that are connected via serial port.
@@ -176,11 +184,34 @@ else
     end
 end
 
-if IsWayland
+if IsWayland || modality == 10
     % We need a onscreen window to collect key input on Wayland:
-    w = Screen('OpenWindow', 0, [255 255 0], [0 0 300 300]);
+    w = Screen('OpenWindow', 0, [255 255 0], [0 0 500 500]);
     DrawFormattedText(w, 'Type in this window', 'center', 'center', [0 0 255]);
     Screen('Flip', w);
+end
+
+if modality == 10
+    dev = portString;
+    % If no user-specified 'dev' was given, try to auto-select:
+    if isempty(dev)
+        % Get first touchscreen:
+        dev = min(GetTouchDeviceIndices([], 1));
+    end
+
+    if isempty(dev)
+        % Get first touchpad:
+        dev = min(GetTouchDeviceIndices([], 0));
+    end
+
+    if isempty(dev) || ~ismember(dev, GetTouchDeviceIndices)
+        fprintf('No touch input device found, or invalid dev given. Bye.\n');
+        sca;
+        return;
+    end
+
+    TouchQueueCreate(w, dev);
+    TouchQueueStart(dev);
 end
 
 fprintf('hard enough so the microphone can pick up the noise.\n');
@@ -318,11 +349,24 @@ for trial = 1:10
 
             % Decode:
             tKeypress = evt.time;
-            
+
+        case 10
+            % Flush touch event queue:
+            TouchEventFlush(dev);
+
+            fprintf('From now on... ');
+
+            % Wait for touch for up to 10 seconds:
+            evt = [];
+            while isempty(evt) || evt.Type ~= 2
+                evt = TouchEventGet(dev, w, 10);
+            end
+            tKeypress = evt.Time;
+
         otherwise
             error('Unknown "modality" specified.');
     end
-    
+
     % Wait in a polling loop until some sound event of sufficient loudness
     % is captured:
     level = 0;    
@@ -368,8 +412,8 @@ for trial = 1:10
     dt = (tKeypress - tOnset)*1000;
     fprintf('---> Input delay time is %f milliseconds.\n', dt);
         
-    % Valid measurement? Must be between 0 and 100 msecs to be considered:
-    if (dt > -100) && (dt < 100)
+    % Valid measurement? Must be between 0 and 300 msecs to be considered:
+    if (dt > -100) && (dt < 300)
         tdelay = [tdelay dt]; %#ok<AGROW>
     end
     
@@ -380,6 +424,11 @@ for trial = 1:10
     
     % Next trial after 2 seconds:
     WaitSecs(2);
+end
+
+if modality == 10
+    TouchQueueStop(dev);
+    TouchQueueRelease(dev);
 end
 
 % Close the audio device:

@@ -86,6 +86,13 @@
 % resistance of your system against potential hacker/virus/trojan horses attacks
 % and other security threats.
 %
+% If you are a user of OSX 10.13 "High Sierra" or later, the iToys company put up
+% some additional obstacles on top of all the awfulness of macOS. Read these
+% instructions if you get the error message "System policy prevents loading the kernel extension."
+% from "kextload", or it fails for some other reason:
+%
+% https://developer.apple.com/library/content/technotes/tn2459/_index.html
+%
 % How to upgrade with a more recent version, bundled with a new version of Psychtoolbox:
 % --------------------------------------------------------------------------------------
 %
