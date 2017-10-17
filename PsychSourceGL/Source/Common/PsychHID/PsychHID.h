@@ -1,37 +1,23 @@
 /*
-PsychToolbox3/Source/Common/PsychHID/PsychHID.h
+    PsychToolbox3/Source/Common/PsychHID/PsychHID.h
 
-PROJECTS: PsychHID
+    PROJECTS: PsychHID
 
-PLATFORMS:  All
+    PLATFORMS:  All
 
-AUTHORS:
+    AUTHORS:
 
-Allen.Ingling@nyu.edu             awi
-mario.kleiner@tuebingen.mpg.de    mk
+        Allen.Ingling@nyu.edu               awi
+        mario.kleiner.de@gmail.com          mk
 
-HISTORY:
-    4/29/03  awi        Created.
-    3/15/05  dgp        Added Get/SetReport
-    3/15/05  dgp        Added missing prototypes from PsychHIDHelpers.c to make compiler happy.
-    4/3/05   dgp        Added prototype for PsychHIDReceiveReportsCleanup.
-    8/23/07  rpw        Added prototypes for PsychHIDKbTriggerWait and PsychHIDKbQueue suite.
-    12/17/09 rpw        Added prototype for PsychHIDGetDeviceListByUsages.
+    HISTORY:
 
-TO DO:
-
-    DONE    1- Emulate KbCheck
-            2- Add Queues
-    DONE    3- Have structure returned b GetCollections include list of constituent elements
-            4- Try outputs, such as force feedback joysticks
-            5- Accept structs as input args as alternative to  device, element or collection indices.
-            6- Report vendor-specific usages.
-            7- Return logical arrays
-            8- Maintain an internal queue beyond the 50-elements stored by the kernel
-            9- KbCheck could read any device with elements of type button.
-
-
-
+        4/29/03  awi        Created.
+        3/15/05  dgp        Added Get/SetReport
+        3/15/05  dgp        Added missing prototypes from PsychHIDHelpers.c to make compiler happy.
+        4/3/05   dgp        Added prototype for PsychHIDReceiveReportsCleanup.
+        8/23/07  rpw        Added prototypes for PsychHIDKbTriggerWait and PsychHIDKbQueue suite.
+        12/17/09 rpw        Added prototype for PsychHIDGetDeviceListByUsages.
 */
 
 //begin include once
@@ -44,6 +30,14 @@ TO DO:
 
 #define MAXREPORTSIZE 8192      // Maximum size of a single HID input report in bytes. Hard limit. Usercode can set lower per-device limits.
 #define MAXDEVICEINDEXS 64      // Maximum number of simultaneously open HID devices.
+
+// Define constants for use by PsychHID files.
+#define PSYCH_HID_MAX_DEVICES                               256
+#define PSYCH_HID_MAX_DEVICE_ELEMENT_TYPE_NAME_LENGTH       256
+#define PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH      256
+#define PSYCH_HID_MAX_DEVICE_ELEMENTS                       1024
+#define PSYCH_HID_MAX_GENERIC_USB_DEVICES                   64
+#define PSYCH_HID_MAX_VALUATORS                             20
 
 // OS/X specific includes:
 #if PSYCH_SYSTEM == PSYCH_OSX
@@ -135,9 +129,17 @@ pRecDevice   HIDGetNextDevice(pRecDevice pDevice);
 // Struct for storing keyboard(-like) events in KbQueue event buffer:
 struct PsychHIDEventRecord_Struct {
     double timestamp;           // GetSecs timestamp of when event happened.
+    unsigned int type;          // Event / Device type. 0 = Standard key/button event.
     unsigned int status;        // Status: Bit zero = press(1) or release(0) of key/button?
+    unsigned int buttonStates;  // State of the first 32 device buttons, if any.
     int rawEventCode;           // Raw button/key code as returned by KbCheck, KbQueueCheck et al.
     int cookedEventCode;        // Translated key code, e.g., GetChar() style. May be same as rawEventCode
+    int numValuators;           // Number of actual valuator values in this event.
+    float valuators[PSYCH_HID_MAX_VALUATORS];
+    float X;                    // X coordinate in native display space of operating system + winsys backend.
+    float Y;                    // Y coordinate in native display space of operating system + winsys backend.
+    float normX;                // X coordinate normalized to 0. 0 - 1.0 range.
+    float normY;                // Y coordinate normalized to 0. 0 - 1.0 range.
 };
 
 typedef struct PsychHIDEventRecord_Struct PsychHIDEventRecord;
@@ -171,13 +173,6 @@ struct PsychUSBDeviceRecord_Struct {
 };
 
 typedef struct PsychUSBDeviceRecord_Struct PsychUSBDeviceRecord;
-
-// Define constants for use by PsychHID files.
-#define PSYCH_HID_MAX_DEVICES                               256
-#define PSYCH_HID_MAX_DEVICE_ELEMENT_TYPE_NAME_LENGTH       256
-#define PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH      256
-#define PSYCH_HID_MAX_DEVICE_ELEMENTS                       1024
-#define PSYCH_HID_MAX_GENERIC_USB_DEVICES                   64
 
 // Function prototypes for module subfunctions.
 PsychError MODULEVersion(void);                         // MODULEVersion.c
@@ -274,7 +269,7 @@ extern "C" {
     PsychError  PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, double* max, double* val, char* axisLabel);
     int         PsychHIDGetDefaultKbQueueDevice(void);
 
-    PsychError  PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys);
+    PsychError  PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags);
     void        PsychHIDOSKbQueueRelease(int deviceIndex);
     void        PsychHIDOSKbQueueStop(int deviceIndex);
     void        PsychHIDOSKbQueueStart(int deviceIndex);
@@ -283,11 +278,12 @@ extern "C" {
     void        PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys);
 
     // Helpers for KbQueue event buffer: OS independent, but need C-linkage:
-    psych_bool  PsychHIDCreateEventBuffer(int deviceIndex);
+    psych_bool  PsychHIDCreateEventBuffer(int deviceIndex, int numValuators, int numSlots);
     psych_bool  PsychHIDDeleteEventBuffer(int deviceIndex);
     psych_bool  PsychHIDFlushEventBuffer(int deviceIndex);
     unsigned int PsychHIDAvailEventBuffer(int deviceIndex, unsigned int flags);
     int         PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double maxWaitTimeSecs);
+    PsychHIDEventRecord* PsychHIDLastTouchEventFromEventBuffer(int deviceIndex, int touchID);
     int         PsychHIDAddEventToEventBuffer(int deviceIndex, PsychHIDEventRecord* evt);
 
 #ifdef __cplusplus

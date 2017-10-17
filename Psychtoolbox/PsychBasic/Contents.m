@@ -63,6 +63,13 @@
 %     SetMouse             - Set mouse position.
 %     ShowCursor           - Show the cursor, and set cursor type.
 %     Snd                  - Play sounds.
+%     TouchEventAvail      - Return count of available (queued) touch events in a touch queue.
+%     TouchEventFlush      - Delete all queued events from a touch queue.
+%     TouchEventGet        - Retrieve oldest touch event from a touch queue.
+%     TouchQueueCreate     - Create an event queue for reception of touch input.
+%     TouchQueueRelease    - Release an event queue for touch input, once no longer needed.
+%     TouchQueueStart      - Start touch recording on a touch queue.
+%     TouchQueueStop       - Stop touch recording on a touch queue.
 %     VideoRefreshFromMeasurement - Alternative calibration procedure to find exact video refresh interval.
 %     WaitSecs             - Wait specified time.
 %     WaitTicks            - Wait specified number of 60.15 Hz ticks.

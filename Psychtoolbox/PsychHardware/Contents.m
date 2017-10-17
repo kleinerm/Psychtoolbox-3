@@ -30,6 +30,9 @@
 % GetGamepadIndices   - All: Get indices of gampads in PsychHID device list.
 % GetKeyboardIndices  - All: Get indices of keyboards in PsychHID device list.
 % GetMouseIndices     - All: Get indices of mice in the PsychHID device list.
+% GetTouchDeviceIndices -All: Get indices of touch devices (touchscreens, touchpads etc.) in the PsychHID device list.
+% GetTouchDeviceInfo  - All: Get information about a specified touch device.
+% GetTouchValuators   - All: Extract meaningful information from a set of touch valuators.
 % GetNTP              - All: Query time from NTP server.
 % OptiCAL             - All: Interface to the CRS OptiCAL luminance meter device.
 % PsychGPURasterizerOffsets - All: Test GPU drivers for spatial misplacement of content.

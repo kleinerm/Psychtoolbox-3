@@ -41,7 +41,6 @@ if (exist('ObjectToHandleCalOrCalStruct','file'))
     gammaTable      = calStructOBJ.get('gammaTable');
     rawGammaTable   = calStructOBJ.get('rawGammaTable');
     OBJStyle = true;
-    DescribeMonCal(calStructOBJ);
 else
     S               = cal.S_device;
     P_device        = cal.P_device;

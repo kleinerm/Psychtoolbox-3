@@ -947,7 +947,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if (multidisplay) {
             printf("\n\nPTB-INFO: You are using a multi-display setup (%i active displays):\n", totaldisplaycount);
             printf("PTB-INFO: Please read 'help MultiDisplaySetups' for specific information on the Do's, Dont's,\n");
-            printf("PTB-INFO: and possible causes of trouble and how to diagnose and resolve them.");
+            printf("PTB-INFO: and possible causes of trouble and how to diagnose and resolve them.\n\n");
         }
     }
 #endif
@@ -4083,7 +4083,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                             printf("PTB-INFO: Will use OS-Builtin timestamping mechanism solely for further timestamping.\n");
                         }
                         else if ((PSYCH_SYSTEM == PSYCH_OSX) && (vbltimestampmode == 1)) {
-                            printf("PTB-ERROR: As this is MacOS/X, i'll switch to a (potentially slightly less accurate) mechanism based on vertical blank interrupts...\n");
+                            printf("PTB-ERROR: As this is macOS, i'll switch to a likely equally broken mechanism based on CoreVideo timestamps. But hope dies last...\n");
                         }
                         else {
                             printf("PTB-ERROR: Timestamps returned by Flip will be correct, but less robust and accurate than they would be with working beamposition queries.\n");
@@ -4191,20 +4191,21 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                         // the buffers swap as soon as swappable and requested, instead of only within VBL:
                         printf("PTB-ERROR: Synchronization of stimulus onset (buffer swap) to the vertical blank interval VBL is not working properly.\n");
                         printf("PTB-ERROR: Please run the script PerceptualVBLSyncTest to check this. With non-working sync to VBL, all stimulus timing\n");
-                        printf("PTB-ERROR: becomes quite futile. Also read 'help SyncTrouble' !\n");
+                        printf("PTB-ERROR: becomes quite futile. Equally likely and serious is lack of sync between swap completion and PTB. Read 'help SyncTrouble'!\n");
                         printf("PTB-ERROR: For the remainder of this session, i've switched to kernel based timestamping as a backup method for the\n");
                         printf("PTB-ERROR: less likely case that beamposition timestamping in your system is broken. However, this method seems to\n");
-                        printf("PTB-ERROR: confirm the hypothesis of broken sync of stimulus onset to VBL.\n\n");
+                        printf("PTB-ERROR: confirm the hypothesis of broken sync of stimulus onset to VBL, or of swap completion signalling to swap completion.\n\n");
                     }
                     else {
                         // VBL IRQ timestamping doesn't support VBL sync failure, so it might be a problem with beamposition timestamping...
                         printf("PTB-ERROR: Something may be broken in your systems beamposition timestamping. Read 'help SyncTrouble' !\n\n");
                         printf("PTB-ERROR: For the remainder of this session, i've switched to kernel based timestamping as a backup method.\n");
-                        printf("PTB-ERROR: This method is slightly less accurate and higher overhead but should be similarly robust.\n");
+                        printf("PTB-ERROR: On Linux, this method is slightly less accurate and higher overhead but should be similarly robust,\n");
+                        printf("PTB-ERROR: On macOS, this method is usually also badly broken and unreliable, but hope dies last...\n");
                         printf("PTB-ERROR: A less likely cause could be that Synchronization of stimulus onset (buffer swap) to the\n");
-                        printf("PTB-ERROR: vertical blank interval VBL is not working properly.\n");
-                        printf("PTB-ERROR: Please run the script PerceptualVBLSyncTest to check this. With non-working sync to VBL, all stimulus timing\n");
-                        printf("PTB-ERROR: becomes quite futile.\n");
+                        printf("PTB-ERROR: vertical blank interval VBL, or of PTB to swap completion, is not working properly.\n");
+                        printf("PTB-ERROR: Please run the script PerceptualVBLSyncTest to check this. With any of these problems,\n");
+                        printf("PTB-ERROR: all stimulus timing is futile. Also run OSXCompositorIdiocyTest on macOS. \n");
                     }
                 }
 
@@ -4237,12 +4238,12 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                     if (verbosity > -1) {
                         printf("PTB-ERROR: I have enabled additional cross checking between beamposition based and kernel-level based timestamping.\n");
                         printf("PTB-ERROR: This should allow to get a better idea of what's going wrong if successive invocations of Screen('Flip');\n");
-                        printf("PTB-ERROR: fail to deliver proper timestamps as well. It may even fix the problem if the culprit would be a bug in \n");
-                        printf("PTB-ERROR: beamposition based high precision timestamping. We will see...\n\n");
+                        printf("PTB-ERROR: fail to deliver proper timestamps as well. It may even fix the problem if the unlikely culprit would be\n");
+                        printf("PTB-ERROR: a bug in beamposition based high precision timestamping. We will see...\n\n");
                         printf("PTB-ERROR: An equally likely cause would be that Synchronization of stimulus onset (buffer swap) to the\n");
-                        printf("PTB-ERROR: vertical blank interval VBL is not working properly.\n");
+                        printf("PTB-ERROR: vertical blank interval VBL, or of swap completion to completion signalling is not working properly.\n");
                         printf("PTB-ERROR: Please run the script PerceptualVBLSyncTest to check this. With non-working sync to VBL, all stimulus timing\n");
-                        printf("PTB-ERROR: becomes quite futile. Also read 'help SyncTrouble' !\n");
+                        printf("PTB-ERROR: is futile. Also run OSXCompositorIdiocyTest on macOS. Also read 'help SyncTrouble' !\n");
                     }
                 }
                 else {
@@ -4255,13 +4256,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                     vbltimestampmode = -1;
 
                     if (verbosity > -1) {
-                        printf("PTB-ERROR: This error can be due to either of the following causes (No way to discriminate):\n");
-                        printf("PTB-ERROR: Either something is broken in your systems beamposition timestamping. I've disabled high precision\n");
-                        printf("PTB-ERROR: timestamping for now. Returned timestamps will be less robust and accurate, but if that was the culprit it should be fixed.\n\n");
-                        printf("PTB-ERROR: An equally likely cause would be that Synchronization of stimulus onset (buffer swap) to the\n");
-                        printf("PTB-ERROR: vertical blank interval VBL is not working properly.\n");
+                        printf("PTB-ERROR: This error can be due to either of the following causes:\n");
+                        printf("PTB-ERROR: Very unlikely: Something is broken in your systems beamposition timestamping. I've disabled high precision\n");
+                        printf("PTB-ERROR: timestamping for now. Returned timestamps will be less robust and accurate.\n\n");
+                        printf("PTB-ERROR: The most likely cause would be that Synchronization of stimulus onset (buffer swap) to the\n");
+                        printf("PTB-ERROR: vertical blank interval VBL is not working properly, or swap completion signalling to PTB is broken.\n");
                         printf("PTB-ERROR: Please run the script PerceptualVBLSyncTest to check this. With non-working sync to VBL, all stimulus timing\n");
-                        printf("PTB-ERROR: becomes quite futile. Also read 'help SyncTrouble' !\n");
+                        printf("PTB-ERROR: is futile. Also run OSXCompositorIdiocyTest on macOS. Also read 'help SyncTrouble' !\n");
                     }
                 }
             }
@@ -4299,13 +4300,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                     if (verbosity > -1) {
                         printf("\n\nPTB-ERROR: Screen('Flip'); kernel-level timestamping computed bogus values!!!\n");
                         printf("PTB-ERROR: vbltimestampquery_retrycount = %i, preflip_vbltimestamp=postflip= %f, time_at_swaprequest= %f\n", (int) vbltimestampquery_retrycount, preflip_vbltimestamp, time_at_swaprequest);
-                        printf("PTB-ERROR: This error can be due to either of the following causes (No simple way to discriminate):\n");
+                        printf("PTB-ERROR: This error can be due to either of the following causes:\n");
                         printf("PTB-ERROR: Either something is broken in your systems VBL-IRQ timestamping. I've disabled high precision\n");
                         printf("PTB-ERROR: timestamping for now. Returned timestamps will be less robust and accurate, but at least ok, if that was the culprit.\n\n");
-                        printf("PTB-ERROR: An equally likely cause would be that Synchronization of stimulus onset (buffer swap) to the\n");
-                        printf("PTB-ERROR: vertical blank interval VBL is not working properly.\n");
+                        printf("PTB-ERROR: The by far most likely cause would be that Synchronization of stimulus onset (buffer swap) to the\n");
+                        printf("PTB-ERROR: vertical blank interval VBL or of swap completion to completion signalling is not working properly.\n");
                         printf("PTB-ERROR: Please run the script PerceptualVBLSyncTest to check this. With non-working sync to VBL, all stimulus timing\n");
-                        printf("PTB-ERROR: becomes quite futile. Also read 'help SyncTrouble' !\n\n\n");
+                        printf("PTB-ERROR: is futile. Also run OSXCompositorIdiocyTest on macOS. Also read 'help SyncTrouble' !\n\n\n");
                     }
 
                     PsychPrefStateSet_VBLTimestampingMode(-1);
@@ -4907,15 +4908,29 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             free(samples);
             samples = NULL;
 
-            // Summary of pageflip only makes sense if !useOpenML, so actual accounting was done:
-            if (!useOpenML && (PsychIsGPUPageflipUsed(windowRecord) >= 0)) {
-                printf("PTB-DEBUG: %i out of %i samples confirm use of GPU pageflipping for the swap.\n", pflip_count, i);
-                if (pflip_count >= i - 1) printf("PTB-DEBUG: --> Good, one neccessary condition for defined visual timing is satisfied.\n");
-            }
-
             printf("PTB-DEBUG: End of calibration data for this run...\n\n");
         }
 
+        // Summary of pageflip only makes sense if !useOpenML, so actual accounting was done:
+        if (!useOpenML && (PsychIsGPUPageflipUsed(windowRecord) >= 0)) {
+            if (PsychPrefStateGet_Verbosity() > 4)
+                printf("PTB-DEBUG: %i out of %i samples confirm use of GPU pageflipping for the swap during refresh calibration.\n", pflip_count, i);
+
+            // Good result?
+            if (pflip_count >= i - 1) {
+                if (PsychPrefStateGet_Verbosity() > 4)
+                    printf("PTB-DEBUG: --> Good, one neccessary condition for defined visual timing is satisfied.\n");
+            }
+            else if (PsychPrefStateGet_Verbosity() > 1) {
+                // No reliable pageflipping or pageflipping at all. This is pretty much game over for reliable
+                // visual timing or timestamping:
+                printf("PTB-WARNING: Pageflipping wasn't used %s during refresh calibration. Visual presentation timing on your system\n",
+                       (pflip_count > 0) ? "consistently" : "at all");
+                printf("PTB-WARNING: is broken on your system and all followup tests and workarounds will likely fail as well.\n");
+                printf("PTB-WARNING: On a Apple macOS system you probably don't need to even bother asking anybody for help. Just\n");
+                printf("PTB-WARNING: upgrade to Linux if you care about trustworthy visual timing and stimulation.\n\n");
+            }
+        }
     } // End of IFI measurement code.
     else {
         // No measurements taken...
