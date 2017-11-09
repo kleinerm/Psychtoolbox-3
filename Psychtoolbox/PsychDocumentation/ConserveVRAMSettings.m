@@ -8,7 +8,7 @@
 % You define the requested workaround by setting the parameter 'mode' to a
 % sum of the following values:
 %
-% Allowerd summands (flags) for 'mode' and their effect:
+% Allowed summands (flags) for 'mode' and their effect:
 %
 % 1 == kPsychDisableAUXBuffers: A setting of 1 asks Psychtoolbox to not
 % allocate any OpenGL AUXiliary buffers when opening a new onscreen window.
@@ -83,12 +83,12 @@
 %
 % 128 == kPsychEnforceForegroundWindow: Request application of the Windows
 % GDI calls SetForegroundWindow() and SetFocus() on each created onscreen
-% window on MS-Windows. This may improve reliabilty of onscreen windows
+% window on MS-Windows. This may improve reliability of onscreen windows
 % staying in front of all other windows, but is incompatible with the use
 % of GetChar, CharAvail and ListenChar, so it must be requested with this
 % flag. These calls are unfortunately absolutely crucial on MS-Vista and
 % later operating systems to guarantee artifact free (tear-free) and timing
-% accuratestimulus onset and robust and accurate stimulus onset
+% accurate stimulus onset and robust and accurate stimulus onset
 % timestamping. Therefore they are automatically applied to all fullscreen
 % windows on Windows Vista and later operating systems. See the option
 % kPsychPreventForegroundWindow to forcefully disable/prevent use of these
@@ -148,7 +148,7 @@
 % Tell PTB on Mac OS/X to always use the Cocoa/NSOpenGL API for OpenGL
 % system setup, even if the requested onscreen window is a fullscreen
 % window. Normally PTB would use the CGL API for fullscreen windows for
-% higher efficiency. This setting is automatically implicitely applied if
+% higher efficiency. This setting is automatically implicitly applied if
 % PTB is running on OSX version 10.8 "Mountain Lion" or later, to work
 % around various hilarious graphics driver bugs.
 %
@@ -193,21 +193,16 @@
 % It has no function anymore under OSX as of Psychtoolbox 3.0.12.
 %
 %
-% 131072 (= 2^17) == kPsychDisableAeroDWM 
+% 131072 (= 2^17) == kPsychDisableAeroDWM [Deprecated]
 % Disable the Aero DWM desktop composition manager on Windows Vista and
-% later. By default, Psychtoolbox will try to keep the WDM running,
-% actually enforce use of it, as this provides better timing behaviour. If
-% you find otherwise on your setup or have special needs, specify this flag
-% to force the DWM off.
+% later. By default, Psychtoolbox will do this anyway for fullscreen windows,
+% as this provides better timing behaviour, so this flag is pretty pointless
+% now. On Windows-8 and later, the DWM can not be disabled anymore anyway.
 %
 %
-% 262144 (= 2^18) == kPsychPreventForegroundWindow
+% 262144 (= 2^18) == kPsychPreventForegroundWindow [Deprecated]
 % Prevent calls to the Windows GDI functions SetForegroundWindow() and
 % SetFocus() on each created fullscreen onscreen window on MS-Windows.
-% These calls would prevent proper use of GetChar(), but are needed on
-% MS-Vista and later for proper visual stimulus onset timing. With this
-% flag you can make a conscious decision between proper stimulus display
-% and use of GetChar.
 %
 %
 % 524288 (= 2^19) == kPsychDisableOpenMLScheduling
@@ -287,16 +282,18 @@
 % As of Psychtoolbox 3.0.12, this does nothing anymore.
 %
 % This was mostly for internal testing and benchmarking of Psychtoolbox. As
-% of April 2013 and MacOSX 10.8 "Mountain Lion", our own implementation is
-% superior to Apple's broken implementation, so we default to use of our
-% own implementation whenever possible. The OSX native implementation is
+% of April 2013 and MacOSX 10.8 "Mountain Lion", our own implementation was
+% superior to Apple's broken implementation, so we defaulted to use of our
+% own implementation whenever possible. The OSX native implementation was
 % only supported on NVidia gpu's anymore, scheduled for removal in a future
 % OSX version (marked as deprecated in Apple developer documentation!),
 % always slightly broken and more noisy, imprecise and higher overhead than
 % our own implementation. At least on OSX 10.8 with GeForce-600 gpu's, the
-% OSX implementation is completely broken for anything but analog VGA CRT
+% OSX implementation was completely broken for anything but analog VGA CRT
 % displays, ie., it delivers bogus results for any kind of internal or
-% external digital lcd flat panel!
+% external digital lcd flat panel! Since OSX 10.10, Apple removed their
+% support completely, so current PTB can only use the PsychtoolboxKernelDriver
+% method anyway.
 %
 %
 % 2^27 == kPsychForceOpenMLTSWorkaround
