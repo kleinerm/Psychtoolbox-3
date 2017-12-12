@@ -10,8 +10,12 @@ function [xGridMinutes,yGridMinutes,psf] = OtfToPsf(xSfGridCyclesDeg,ySfGridCycl
 %    The input spatial frequencies should be specified in matlab's grid
 %    matrix format and sf for x and y should be specified over the same
 %    spatialfrequency extent and with the same number of evenly spaced
-%    samples. Position (0,0) should be at location floor(n/2)+1 in each
-%    dimension.
+%    samples. Spatial frequency (0,0) should be at location floor(n/2)+1 in
+%    each dimension.  The PSF is returned with position (0,0) at location
+%    floor(n/2)+1 in each dimension.  This is the form we mostly want to
+%    look at and use.  
+%
+%    If you want spatial frequency in the upper right, apply 
 %
 %    Positions are returned using the same conventions.
 %

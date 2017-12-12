@@ -10,9 +10,20 @@ function [xSfGridCyclesDeg,ySfGridCyclesDeg,otf] = PsfToOtf(xGridMinutes,yGridMi
 %    The input positions should be specified in matlab's grid matrix format
 %    and x and y should be specified over the same spatial extent and with
 %    the same number of evenly spaced samples. Position (0,0) should be at
-%    location floor(n/2)+1 in each dimension.
+%    location floor(n/2)+1 in each dimension.  The OTF is returned with
+%    spatial frequency (0,0) at location floor(n/2)+1 in each dimension.
 %
 %    Spatial frequencies are returned using the same conventions.
+%
+%    If you want the spatial frequency representation to have frequency
+%    (0,0) in the upper right, as seems to be the more standard Matlab
+%    convention, apply ifftshift to the returned value.  That is
+%       otfUpperRight = ifftshift(otf);
+%    And then if you want to put it back in the form for passing to our
+%    OtfToPsf routine, apply fftshift:
+%       otf = fftshift(otfUpperRight);
+%    The isetbio code (isetbio.org) thinks about OTFs in the upper right
+%    format, which is one place where you'd want to know this convention.
 %
 %    No normalization is performed.  If the phase of the OTF are very small
 %    (less than 1e-10) the routine assumes that the input psf was spatially
