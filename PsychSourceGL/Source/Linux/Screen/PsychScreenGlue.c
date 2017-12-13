@@ -667,12 +667,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 fflush(NULL);
             }
 
-            ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);
-            // Mapping MMIO for write access is a nono on Intel with latest kernels, so retry a readonly mapping. Actually
-            // read only is fine for anything but AMD, as we don't benefit from write access on other vendors gpus:
-            if ((ret == EAGAIN) && (fDeviceType != kPsychRadeon)) {
-                ret = pci_device_map_range(gpu, region->base_addr, region->size, 0, (void**) &gfx_cntl_mem);
-            }
+            // Read only is fine for anything but AMD, as we don't benefit from write access on other vendors gpus:
+            // Note: MMIO access doesn't work anymore on Intel igp's since quite a while - at least Linux 4.4+.
+            ret = pci_device_map_range(gpu, region->base_addr, region->size, (fDeviceType == kPsychRadeon) ? PCI_DEV_MAP_FLAG_WRITABLE : 0, (void**) &gfx_cntl_mem);
         }
         else {
             // Unsupported GPU type:
@@ -683,9 +680,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         if (ret || (NULL == gfx_cntl_mem)) {
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-INFO: Failed to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
-                printf("PTB-INFO: Beamposition timestamping and other special functions disabled.\n");
-                printf("PTB-INFO: You need to run Matlab/Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
-                printf("PTB-INFO: However, if you are using the free graphics drivers, there usually isn't a need for this.\n");
+                printf("PTB-INFO: Beamposition timestamping on NVidia and AMD gpu's, and other special functions on AMD gpu's, disabled.\n");
+                printf("PTB-INFO: You need to run the setup script PsychLinuxConfiguration once, followed by a reboot, for this to work.\n");
+                printf("PTB-INFO: If you are using the open-source graphics drivers, then this failure usually doesn't matter for typical use.\n");
                 fflush(NULL);
             }
 
