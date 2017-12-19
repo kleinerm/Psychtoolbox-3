@@ -1,5 +1,5 @@
 function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, useDPixx, triggerLevel)
-% PsychPortAudioTimingTest([exactstart=1][, deviceid=-1][, latbias=0][, waitframes=1][, useDPixx=0][, triggerLevel=0.01])
+% PsychPortAudioTimingTest([exactstart=1][, deviceid=-1][, latbias=0][, waitframes][, useDPixx=0][, triggerLevel=0.01])
 %
 % Test script for sound onset timing reliability and sound onset
 % latency of the PsychPortAudio sound driver.
@@ -30,9 +30,7 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, use
 %                Unit is seconds. Defaults to zero.
 %
 % 'waitframes' = Time to wait (in video refresh intervals) before emitting beep + flash.
-%                Defaults to a value of 1, may need to be set higher for
-%                high latency sound hardware (where absolute latency > 1
-%                video refresh duration).
+%                Defaults to a typically safe value if omitted.
 %
 % 'useDPixx'   = 1 -- Use DataPixx device to automatically measure the true
 %                     audio onset time wrt. to visual stimulus onset.
