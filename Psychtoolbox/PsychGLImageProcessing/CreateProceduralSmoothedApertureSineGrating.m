@@ -1,5 +1,5 @@
-function [gratingid, gratingrect] = CreateProceduralSineSmoothedApertureGrating(windowPtr, width, height, backgroundColorOffset, radius, contrastPreMultiplicator, sigma, useAlpha, method)
-% [gratingid, gratingrect] = CreateProceduralSineSmoothedApertureGrating(windowPtr, width, height [, backgroundColorOffset =(0,0,0,0)] [, radius=inf][, contrastPreMultiplicator=1])
+function [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(windowPtr, width, height, backgroundColorOffset, radius, contrastPreMultiplicator, sigma, useAlpha, method)
+% [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(windowPtr, width, height [, backgroundColorOffset =(0,0,0,0)] [, radius=inf][, contrastPreMultiplicator=1])
 %
 % Creates a procedural texture that allows to draw sine grating stimulus patches
 % with a smoothed aperture in a very fast and efficient manner on modern 
