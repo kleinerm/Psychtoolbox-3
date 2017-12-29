@@ -25,7 +25,7 @@ screenid = max(Screen('Screens'));
 
 % Open a window 
 PsychImaging('PrepareConfiguration');
-win = PsychImaging('OpenWindow', screenid, [.5 .5 .5]);
+win = PsychImaging('OpenWindow', screenid, 0.5);
 
 % Initial stimulus params for the grating:
 res = 600;

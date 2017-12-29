@@ -25,7 +25,8 @@ screenid = max(Screen('Screens'));
 
 % Open a window 
 PsychImaging('PrepareConfiguration');
-win = PsychImaging('OpenWindow', screenid, 0.5, [0 0 1000 1000]);
+win = PsychImaging('OpenWindow', screenid, 0.5);
+
 % Enable alpha-blending
 Screen('BlendFunction', win, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
 
