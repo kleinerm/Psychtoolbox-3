@@ -1,5 +1,5 @@
-function [discid, discrect] = CreateProceduralSmoothDisc(windowPtr, width, height, backgroundColorOffset, radius, sigma, useAlpha, method)
-% [discid, discrect] = CreateProceduralSmoothDisc(windowPtr, width, height 
+function [discid, discrect] = CreateProceduralSmoothedDisc(windowPtr, width, height, backgroundColorOffset, radius, sigma, useAlpha, method)
+% [discid, discrect] = CreateProceduralSmoothedDisc(windowPtr, width, height 
 % [, backgroundColorOffset =(0,0,0,0)] [, radius=inf] [, sigma=11] [,useAlpha=1] [,method=1])
 %
 % Creates a procedural texture that allows to draw smoothed discs
@@ -19,11 +19,11 @@ function [discid, discrect] = CreateProceduralSmoothDisc(windowPtr, width, heigh
 % 'radius' If specified, a circular aperture of
 % 'radius' pixels is applied to the grating. By default, aperture == width.
 %
-% 'sigma' smoothing value in pixels
+% 'sigma' edge smoothing value in pixels
 %
 % 'useAlpha' whether to use colour (0) or alpha (1) for smoothing channel
 %
-% 'method' whether to use cosine (0) or smoothstep (1) functions
+% 'method' whether to use cosine (0) or smoothstep (1) smoothing function
 %
 % The function returns a procedural texture handle that you can
 % pass to the Screen('DrawTexture(s)', windowPtr, id, ...) functions
@@ -43,35 +43,35 @@ global GL;
 AssertGLSL;
 
 if nargin < 3 || isempty(windowPtr) || isempty(width) || isempty(height)
-	error('You must provide "windowPtr", "width" and "height"!');
+    error('You must provide "windowPtr", "width" and "height"!');
 end
 
 if nargin < 4 || isempty(backgroundColorOffset)
-	backgroundColorOffset = [0 0 0 0];
+    backgroundColorOffset = [0 0 0 0];
 else
-	if length(backgroundColorOffset) < 4
-		error('The "backgroundColorOffset" must be a 4 component RGBA vector [red green blue alpha]!');
-	end
+    if length(backgroundColorOffset) < 4
+        error('The "backgroundColorOffset" must be a 4 component RGBA vector [red green blue alpha]!');
+    end
 end
 
 if nargin < 5 || isempty(radius)
-	radius = width;
+    radius = width;
 end
 
 if nargin < 6 || isempty(sigma)
-	sigma = 11.0;
+    sigma = 11.0;
 end
 
 if nargin < 7 || isempty(useAlpha)
-	useAlpha = 1.0;
+    useAlpha = 1.0;
 end
 
 if nargin < 8 || isempty(method)
-	method = 1.0;
+    method = 1.0;
 end
 
 % Load shader with circular aperture and smoothing support:
-discShader = LoadGLSLProgramFromFiles('SmoothDisc', debuglevel);
+discShader = LoadGLSLProgramFromFiles('SmoothedDiscShader', debuglevel);
 
 % Setup shader:
 glUseProgram(discShader);
@@ -82,14 +82,14 @@ glUniform2f(glGetUniformLocation(discShader, 'Center'), width/2, height/2);
 glUniform4f(glGetUniformLocation(discShader, 'Offset'), backgroundColorOffset(1),backgroundColorOffset(2),backgroundColorOffset(3),backgroundColorOffset(4));
 
 if ~isinf(radius)
-	% Set radius of circular aperture:
-	glUniform1f(glGetUniformLocation(discShader, 'Radius'), radius);
-	% Apply sigma:
-	glUniform1f(glGetUniformLocation(discShader, 'Sigma'), sigma);
-	% Apply useAlpha:
-	glUniform1f(glGetUniformLocation(discShader, 'useAlpha'), useAlpha);
-	% Apply method:
-	glUniform1f(glGetUniformLocation(discShader, 'Method'), method);
+    % Set radius of circular aperture:
+    glUniform1f(glGetUniformLocation(discShader, 'Radius'), radius);
+    % Apply sigma:
+    glUniform1f(glGetUniformLocation(discShader, 'Sigma'), sigma);
+    % Apply useAlpha:
+    glUniform1f(glGetUniformLocation(discShader, 'useAlpha'), useAlpha);
+    % Apply method:
+    glUniform1f(glGetUniformLocation(discShader, 'Method'), method);
 end
 
 glUseProgram(0);

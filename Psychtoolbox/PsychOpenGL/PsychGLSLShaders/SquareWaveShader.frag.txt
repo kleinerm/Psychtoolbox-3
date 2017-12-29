@@ -1,8 +1,8 @@
 /*
- * File: squareWaveShader.frag.txt
+ * File: SquareWaveShader.frag.txt
  * Shader for drawing of basic parameterized square wave grating patches.
  *
- * (c) 2007 by Mario Kleiner, licensed under GPL.
+ * Copyright 2011, Ian Andolina <http://github.com/iandol>, licenced under the MIT Licence
  *
  */
 
@@ -14,16 +14,16 @@ varying float FreqTwoPi;
 
 void main()
 {
-	/* Query current output texel position: */
-	float pos = gl_TexCoord[0].x;
+    /* Query current output texel position: */
+    float pos = gl_TexCoord[0].x;
 
-	/* Evaluate sine grating at requested position, frequency and phase: */
-	float sv = sin(pos * FreqTwoPi + Phase);
-	sv = smoothstep(-0.2, 0.2, sv) * 2.0 - 1.0;
-	
-	/* Multiply/Modulate base color and alpha with calculated sine            */
-	/* values, add some constant color/alpha Offset, assign as final fragment */
-	/* output color: */
-	gl_FragColor = (baseColor * sv) + Offset;
-   gl_FragColor.a = sv;
+    /* Evaluate sine grating at requested position, frequency and phase: */
+    float sv = sin(pos * FreqTwoPi + Phase);
+    sv = smoothstep(-0.2, 0.2, sv) * 2.0 - 1.0;
+    
+    /* Multiply/Modulate base color and alpha with calculated sine            */
+    /* values, add some constant color/alpha Offset, assign as final fragment */
+    /* output color: */
+    gl_FragColor = (baseColor * sv) + Offset;
+    gl_FragColor.a = sv;
 }

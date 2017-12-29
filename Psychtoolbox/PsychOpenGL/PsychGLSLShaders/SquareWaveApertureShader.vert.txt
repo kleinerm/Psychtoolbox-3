@@ -1,5 +1,5 @@
 /*
- * File: squareWaveShader.vert.txt
+ * File: SquareWaveApertureShader.vert.txt
  * Shader for drawing of basic parameterized squarewave grating patches.
  *
  * This is the vertex shader. It takes the attributes (parameters)
@@ -10,7 +10,7 @@
  * results of computations and other attributes as 'varying' parameters
  * to the fragment shader.
  *
- * (c) 2007 by Mario Kleiner, licensed under GPL.
+ * Copyright 2011, Ian Andolina <http://github.com/iandol>, licenced under the MIT Licence
  * 
  */
 
