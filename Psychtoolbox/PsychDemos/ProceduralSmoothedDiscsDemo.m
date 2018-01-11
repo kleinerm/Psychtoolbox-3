@@ -59,8 +59,8 @@ smoothMethod = true;
 
 % Build a procedural disc 
 disctexture = CreateProceduralSmoothedDisc(win, virtualSize, ...
-    virtualSize, [0 0 0 0], radius, sigma, ...
-    useAlpha, smoothMethod);
+                virtualSize, [0 0 0 0], radius, sigma, ...
+                useAlpha, smoothMethod);
 
 % Preallocate array with destination rectangles:
 texrect = Screen('Rect', disctexture);
@@ -86,13 +86,13 @@ tstart = vbl;
 
 % Animation loop: Run until any keypress:
 while GetSecs < tstart + 10
-	count = count + 1;
+    count = count + 1;
     % Step one: Batch-Draw all gabor patches at the positions and
     % orientations and with the stimulus parameters 'mypars',
     % computed during last loop iteration:
     Screen('DrawTextures', win, disctexture, [], dstRects,...
-        rotAngles, [], [], colours, [], []);
-    
+            rotAngles, [], [], colours, [], []);
+
     % Mark drawing ops as finished, so the GPU can do its drawing job while
     % we can compute updated parameters for next animation frame. This
     % command is not strictly needed, but it may give a slight additional
@@ -102,7 +102,7 @@ while GetSecs < tstart + 10
     % your system and code, but it only seldomly hurts.
     % performance...
     Screen('DrawingFinished', win);
-    
+
     % Compute updated positions and orientations for next frame. This code
     % is vectorized, but could be probably optimized even more. Indeed,
     % these few lines of Matlab code are the main speed-bottleneck for this
