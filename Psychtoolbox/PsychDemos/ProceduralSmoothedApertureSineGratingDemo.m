@@ -62,22 +62,22 @@ count = 0;
 
 % Animation loop
 while GetSecs < tstart + 5
-	count = count + 1;
-	% update values:
-	phase = phase + 5;
+    count = count + 1;
+    % update values:
+    phase = phase + 5;
 
-	% Draw the grating:
-	Screen('DrawTexture', win, sinetex, [], [], tilt, [], [], [], [], [], [phase, freq, contrast, 0]);
+    % Draw the grating:
+    Screen('DrawTexture', win, sinetex, [], [], tilt, [], [], [], [], [], [phase, freq, contrast, 0]);
 
-	if benchmark > 0
-		% Go as fast as you can without any sync to retrace and without
-		% clearing the backbuffer -- we want to measure gabor drawing speed,
-		% not how fast the display is going etc.
-		Screen('Flip', win, 0, 2, 2);
-	else
-		% Go at normal refresh rate for good looking gabors:
-		Screen('Flip', win);
-	end
+    if benchmark > 0
+        % Go as fast as you can without any sync to retrace and without
+        % clearing the backbuffer -- we want to measure gabor drawing speed,
+        % not how fast the display is going etc.
+        Screen('Flip', win, 0, 2, 2);
+    else
+        % Go at normal refresh rate for good looking gabors:
+        Screen('Flip', win);
+    end
 end
 
 % A final synced flip, so we can be sure all drawing is finished when we
