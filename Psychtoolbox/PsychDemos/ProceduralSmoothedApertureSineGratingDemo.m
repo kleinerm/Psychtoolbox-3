@@ -11,7 +11,7 @@ function ProceduralSmoothedApertureSineGratingDemo(benchmark)
 
 % Default to mode 0 - Just a nice demo.
 if nargin < 1
-	benchmark = 0;
+    benchmark = 0;
 end
 
 % Setup defaults and unit color range:
@@ -48,7 +48,7 @@ smoothMethod = 1;
 
 % Build a procedural gabor texture for a grating with a RGB color offset of 0.5 -- a 50% gray.
 sinetex = CreateProceduralSmoothedApertureSineGrating(win, virtualSize, virtualSize,...
-	[.5 .5 .5 0], radius, [], sigma, useAlpha, smoothMethod);
+          [.5 .5 .5 0], radius, [], sigma, useAlpha, smoothMethod);
 
 % Draw the grating once, just to make sure the gfx-hardware is ready for the
 % benchmark run below and doesn't do one time setup work inside the
