@@ -1,8 +1,9 @@
-function [gratingid, gratingrect] = CreateProceduralSineGrating(windowPtr, width, height, backgroundColorOffset, radius, contrastPreMultiplicator)
-% [gratingid, gratingrect] = CreateProceduralSineGrating(windowPtr, width, height [, backgroundColorOffset =(0,0,0,0)] [, radius=inf][, contrastPreMultiplicator=1])
+function [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(windowPtr, width, height, backgroundColorOffset, radius, contrastPreMultiplicator, sigma, useAlpha, method)
+% [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(windowPtr, width, height [, backgroundColorOffset =(0,0,0,0)] [, radius=inf][, contrastPreMultiplicator=1])
 %
 % Creates a procedural texture that allows to draw sine grating stimulus patches
-% in a very fast and efficient manner on modern graphics hardware.
+% with a smoothed aperture in a very fast and efficient manner on modern 
+% graphics hardware.
 %
 % 'windowPtr' A handle to the onscreen window.
 % 'width' x 'height' The maximum size (in pixels) of the grating. More
@@ -25,6 +26,11 @@ function [gratingid, gratingrect] = CreateProceduralSineGrating(windowPtr, width
 % value will correspond to what practitioners of the field usually
 % understand to be the contrast value of a grating.
 %
+% 'sigma' edge smoothing value in pixels
+%
+% 'useAlpha' whether to use colour (0) or alpha (1) for smoothing channel
+%
+% 'method' whether to use cosine (0) or smoothstep(1) smoothing function
 %
 % The function returns a procedural texture handle 'gratingid' that you can
 % pass to the Screen('DrawTexture(s)', windowPtr, gratingid, ...) functions
@@ -55,9 +61,7 @@ function [gratingid, gratingrect] = CreateProceduralSineGrating(windowPtr, width
 %
 
 % History:
-% 11/25/2007 Written. (MK)
-% 08/09/2010 Add support for optional circular aperture. (MK)
-% 09/03/2010 Add 'contrastPreMultiplicator' as suggested by Xiangrui Li (MK).
+% 06/06/2011 Modified from PTB function (Ian Andolina).
 
 debuglevel = 1;
 
@@ -89,12 +93,24 @@ if nargin < 6 || isempty(contrastPreMultiplicator)
     contrastPreMultiplicator = 1.0;
 end
 
+if nargin < 7 || isempty(sigma)
+    sigma = 0.0;
+end
+
+if nargin < 8 || isempty(useAlpha)
+    useAlpha = 0.0;
+end
+
+if nargin < 9 || isempty(method)
+    method = 0.0;
+end
+
 if isinf(radius)
     % Load standard grating shader:
     gratingShader = LoadGLSLProgramFromFiles('BasicSineGratingShader', debuglevel);
 else
-    % Load grating shader with circular aperture support:
-    gratingShader = LoadGLSLProgramFromFiles({'BasicSineGratingShader.vert.txt', 'ApertureSineGratingShader.frag.txt'}, debuglevel);
+    % Load grating shader with circular aperture and smoothing support:
+    gratingShader = LoadGLSLProgramFromFiles('SineGratingSmoothedApertureShader', debuglevel);
 end
 
 % Setup shader:
@@ -108,6 +124,12 @@ glUniform4f(glGetUniformLocation(gratingShader, 'Offset'), backgroundColorOffset
 if ~isinf(radius)
     % Set radius of circular aperture:
     glUniform1f(glGetUniformLocation(gratingShader, 'Radius'), radius);
+    % Apply sigma:
+    glUniform1f(glGetUniformLocation(gratingShader, 'Sigma'), sigma);
+    % Apply useAlpha:
+    glUniform1f(glGetUniformLocation(gratingShader, 'useAlpha'), useAlpha);
+    % Apply method:
+    glUniform1f(glGetUniformLocation(gratingShader, 'Method'), method);
 end
 
 % Apply contrast premultiplier:
