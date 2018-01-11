@@ -1,5 +1,5 @@
 /*
- * File: SineGratingSmoothedAperture.vert.txt
+ * File: SineGratingSmoothedApertureShader.vert.txt
  * Shader for drawing of basic parameterized smoothed edge sine grating patches.
  *
  * This is the vertex shader. It takes the attributes (parameters)
