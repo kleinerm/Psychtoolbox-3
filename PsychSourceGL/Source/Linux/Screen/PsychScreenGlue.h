@@ -103,6 +103,9 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm
 void PsychOSDefineX11Cursor(int screenNumber, int deviceId, Cursor cursor);
 void PsychOSDefineWaylandCursor(int screenNumber, int deviceId, const char* cursorName);
 
+// Is X-Screen primary gpu driver the modesetting ddx?
+psych_bool PsychOSX11ScreenUsesModesettingDDX(int screenId);
+
 // Return identifying information about GPU for a given screen screenNumber:
 psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads);
 

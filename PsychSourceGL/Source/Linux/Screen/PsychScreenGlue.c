@@ -63,6 +63,7 @@ extern int mesaversion[3];
 int xr_event, xr_error;
 psych_bool has_xrandr_1_2 = FALSE;
 psych_bool has_xrandr_1_3 = FALSE;
+psych_bool has_xrandr_1_4 = FALSE;
 
 /* Following structures are needed by our ATI/AMD/NVIDIA beamposition query implementation: */
 /* Location and format of the relevant hardware registers of the ATI R500/R600 chips
@@ -874,6 +875,7 @@ static psych_bool           displayLockSettingsFlags[kPsychMaxPossibleDisplays];
 static int                  displayX11Screens[kPsychMaxPossibleDisplays];
 static XRRScreenResources*  displayX11ScreenResources[kPsychMaxPossibleDisplays];
 static Atom                 displayX11ScreenCompositionAtom[kPsychMaxPossibleDisplays];
+static psych_bool           displayX11ScreenUsesModesettingDDX[kPsychMaxPossibleDisplays];
 
 // XInput-2 extension data per display:
 static int                  xi_opcode = 0, xi_event = 0, xi_error = 0;
@@ -1058,12 +1060,14 @@ void InitializePsychDisplayGlue(void)
         displayBeampositionHealthy[i]=TRUE;
         displayX11ScreenResources[i] = NULL;
         displayX11ScreenCompositionAtom[i] = None;
+        displayX11ScreenUsesModesettingDDX[i] = FALSE;
         xinput_ndevices[i]=0;
         xinput_info[i]=NULL;
     }
 
     has_xrandr_1_2 = FALSE;
     has_xrandr_1_3 = FALSE;
+    has_xrandr_1_4 = FALSE;
 
     // Set Mesa version to undefined:
     mesaversion[0] = mesaversion[1] = mesaversion[2] = 0;
@@ -1141,6 +1145,12 @@ XIDeviceInfo* PsychGetInputDevicesForScreen(int screenNumber, int* nDevices)
     return(xinput_info[screenNumber]);
 }
 
+// X-Screen primary gpu driver is modesetting ddx?
+psych_bool PsychOSX11ScreenUsesModesettingDDX(int screenId)
+{
+    return(displayX11ScreenUsesModesettingDDX[screenId]);
+}
+
 // Wayland native builds do have their own screen glue for the X11 specific bits:
 #ifndef PTB_USE_WAYLAND
 
@@ -1214,6 +1224,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     int o, isPrimary, crtcid, crtccount;
     int primaryOutput = -1, primaryCRTC = -1, primaryCRTCIdx = -1;
     int crtcs[100];
+    XRRProviderResources *providerResources;
 
     // Preinit to "undefined":
     displayX11ScreenResources[idx] = NULL;
@@ -1228,6 +1239,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     // Detect version of XRandR:
     if (major > 1 || (major == 1 && minor >= 2)) has_xrandr_1_2 = TRUE;
     if (major > 1 || (major == 1 && minor >= 3)) has_xrandr_1_3 = TRUE;
+    if (major > 1 || (major == 1 && minor >= 4)) has_xrandr_1_4 = TRUE;
 
     // Select screen configuration notify events to get delivered to us:
     Window root = RootWindow(dpy, displayX11Screens[idx]);
@@ -1361,8 +1373,22 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     PsychSetScreenToHead(idx, primaryCRTC, 0);
     PsychSetScreenToCrtcId(idx, primaryCRTCIdx, 0);
 
+    // Check the name of the primary RandR provider for this X-Screen, to find out
+    // if it is the modesetting-ddx:
+    if (has_xrandr_1_4) {
+        providerResources = XRRGetProviderResources(dpy, root);
+        if (providerResources->nproviders > 0) {
+            XRRProviderInfo *info = XRRGetProviderInfo(dpy, res, providerResources->providers[0]);
+            if (!strcmp(info->name, "modesetting"))
+                displayX11ScreenUsesModesettingDDX[idx] = TRUE;
+        }
+
+        XRRFreeProviderResources(providerResources);
+    }
+
     if (PsychPrefStateGet_Verbosity() > 3) {
-        printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
+        printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i. Modesetting-ddx=%i.\n",
+               DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx, displayX11ScreenUsesModesettingDDX[idx]);
     }
 
     return;
