@@ -495,8 +495,8 @@ while 1
         objobject{meshcount}.quadfaces = QuadFaces(:, 1:f4num);  %#ok<AGROW>
     end;
     objobject{meshcount}.vertices = Vertices(:, 1:vnum);  %#ok<AGROW>
-    objobject{meshcount}.normals = Normals(:, 1:vnum);  %#ok<AGROW>
-    objobject{meshcount}.texcoords = Texcoords(:, 1:vnum);  %#ok<AGROW>
+    objobject{meshcount}.normals = Normals(:, 1:vnnum);  %#ok<AGROW>
+    objobject{meshcount}.texcoords = Texcoords(:, 1:vtnum);  %#ok<AGROW>
     objobject{meshcount}.subMeshName = subMeshName;  %#ok<AGROW>
     objobject{meshcount}.mtllib = mtllib;  %#ok<AGROW>
     objobject{meshcount}.usemtl = usemtlstack;  %#ok<AGROW>
