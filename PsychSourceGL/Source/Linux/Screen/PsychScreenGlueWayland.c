@@ -1971,14 +1971,13 @@ void PsychGetScreenRect(int screenNumber, double *rect)
 }
 
 /*
-    This is a place holder for a function which uncovers the number of dacbits.  To be filled in at a later date.
-
+    This is a place holder for a function which uncovers the number of dacbits.
     There seems to be no way to uncover the dacbits programatically.
-    For now we just use pessimistic 8 bits to avoid false precision.
+    For now we just use pessimistic 0 bits to avoid false precision.
  */
 int PsychGetDacBitsFromDisplay(int screenNumber)
 {
-    return(8);
+    return(0);
 }
 
 //Set display parameters

@@ -947,23 +947,13 @@ PsychColorModeType PsychGetScreenMode(int screenNumber)
 }
 
 /*
-    This is a place holder for a function which uncovers the number of dacbits.  To be filled in at a later date.
-    If you know that your card supports >8 then you can fill that in the PsychtPreferences and the psychtoolbox
-    will act accordingly.
-
-    There seems to be no way to uncover the dacbits programatically.  According to apple CoreGraphics
-    sends a 16-bit word and the driver throws out whatever it chooses not to use.
-
-    For now we just use 8 to avoid false precision.
-
-    If we can uncover the video card model then  we can implement a table lookup of video card model to number of dacbits.
+    This is a place holder for a function which uncovers the number of dacbits.
+    For now we just use 0 to avoid false precision.
  */
 int PsychGetDacBitsFromDisplay(int screenNumber)
 {
-    return(8);
+    return(0);
 }
-
-
 
 /*
  PsychGetVideoSettings()

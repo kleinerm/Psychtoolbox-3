@@ -660,10 +660,25 @@ PsychColorModeType PsychGetScreenMode(int screenNumber)
     PsychGetDacBitsFromDisplay()
 
     Return output resolution of video DAC in bits per color component.
-    We return a safe default of 8 bpc if we can't query the real value.
+    We return a safe default of 0 bpc, as the info returned by OSX is
+    usually completely bogus and not related to what actually reaches
+    the display.
 */
 int PsychGetDacBitsFromDisplay(int screenNumber)
 {
+    return(0);
+
+    /*
+     * This stuff never returned trustworthy values, as the OS only reports
+     * the bit-width of gamma table entries (if it reports anything non-bogus
+     * at all), but not what effectively ends up at the output connectors.
+     *
+     * Also, Apple deprecated the required functions long ago, so this would
+     * fail soon anyway. Just left for documentation in case i find any use
+     * for it for debugging issues...
+     */
+
+    /*
     CGDirectDisplayID    displayID;
     CFMutableDictionaryRef properties;
     CFNumberRef cfGammaWidth;
@@ -690,6 +705,7 @@ int PsychGetDacBitsFromDisplay(int screenNumber)
         if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query resolution of video DAC for screen %i! Will return safe default of 8 bits.\n", screenNumber);
         return(8);
     }
+    */
 }
 
 /*
@@ -706,7 +722,6 @@ void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
     PsychGetScreenDepth(screenNumber, &(settings->depth));
     settings->mode=PsychGetColorModeFromDepthStruct(&(settings->depth));
     settings->nominalFrameRate=PsychGetNominalFramerate(screenNumber);
-    // settings->dacbits=PsychGetDacBitsFromDisplay(screenNumber);
 }
 
 //Set display parameters
