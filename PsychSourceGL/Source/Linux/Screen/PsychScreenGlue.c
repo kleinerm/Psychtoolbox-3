@@ -101,7 +101,7 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-/* Mappings up to date for September 2017 (last update e-mail patch / commit 2017-06-19). Would need updates for any commit after September 2017 */
+/* Mappings up to date for December 2017 (last update e-mail patch / commit 2017-06-19). Would need updates for any commit after December 2017 */
 
 static psych_bool isDCE12(int screenId)
 {
@@ -158,6 +158,11 @@ static psych_bool isDCE11(int screenId)
     if ((fPCIDeviceId & 0xFFFF) == 0x98E4) isDCE11 = true;
 
     if (isDCE112(screenId)) isDCE11 = true;
+
+    // That all DCE12 can be treated as DCE11 for our purpose is so far an
+    // unproven assumption, but let's see where it leads us - hopefully not to
+    // awful bug reports.
+    if (isDCE12(screenId)) isDCE11 = true;
 
     return(isDCE11);
 }
@@ -726,8 +731,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         }
 
         if (fDeviceType == kPsychRadeon) {
-            // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60), DCE-8 (80), DCE-10 (100), DCE-11 (110) for now.
-            fCardType = isDCE11(screenId) ? 110 : isDCE10(screenId) ? 100 : isDCE8(screenId) ? 80 : (isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : (isDCE3(screenId) ? 30 : 10))));
+            // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60), DCE-8 (80), DCE-10 (100), DCE-11 (110) ... for now.
+            fCardType = isDCE12(screenId) ? 120 : isDCE11(screenId) ? 110 : isDCE10(screenId) ? 100 : isDCE8(screenId) ? 80 : (isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : (isDCE3(screenId) ? 30 : 10))));
 
             // Setup for DCE-4/5/6/8:
             if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId) || isDCE8(screenId)) {
@@ -754,9 +759,10 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 if (isDCE81(screenId)) fNumDisplayHeads = 4;
             }
 
-            // Setup for DCE-10/11:
-            if (isDCE10(screenId) || isDCE11(screenId)) {
-                // DCE-10/11 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
+            // Setup for DCE-10/11/12:
+            if (isDCE10(screenId) || isDCE11(screenId) || isDCE12(screenId)) {
+                // TODO: Not verified for DCE-12, purely speculation!
+                // DCE-10/11/12 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
                 // but the offsets for the different CRTC blocks are different wrt. to pre DCE-10. Therefore
                 // need to initialize the offsets differently. Also, some of these parts seem to support up
                 // to 7 display engines instead of the old limit of 6 engines:
@@ -779,6 +785,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 
                 // DCE-11.2 has 6 display controllers:
                 if (isDCE112(screenId)) fNumDisplayHeads = 6;
+
+                // DCE-12 has 6 display controllers:
+                if (isDCE12(screenId)) fNumDisplayHeads = 6;
             }
 
             if (PsychPrefStateGet_Verbosity() > 2) {
