@@ -43,17 +43,23 @@ end
 % X video driver from it. We do this by opening a little invisble
 % onscreen window, then querying its window info to get the type
 % of primary display gpu used:
-fprintf('Detecting type of graphics card (GPU) and driver to use...\n');
+fprintf('Detecting type of primary display graphics card (GPU) and driver to use...\n');
 oldVerbosity = Screen('Preference', 'Verbosity', 1);
 oldSyncTests = Screen('Preference', 'SkipSyncTests', 2);
 
 try
   win = Screen('OpenWindow', 0, 0, [0 0 32 32]);
   winfo = Screen('GetWindowInfo', win);
+  modesettingddxactive = Screen('GetWindowInfo', win, 8);
   Screen('CloseAll');
 
   xdriver = DetectDDX(winfo);
-  fprintf('Will use the xf86-video-%s DDX video driver.\n', xdriver);
+  fprintf('Primary display gpu type: %s\n', xdriver);
+  if ~modesettingddxactive
+    fprintf('Uses the xf86-video-%s DDX video driver.\n', xdriver);
+  else
+    fprintf('Uses the xf86-video-modesetting DDX video driver.\n');
+  end
 
   % Step 2: Enumerate all available video outputs on all X-Screens:
   outputs = [];
@@ -279,12 +285,14 @@ try
         fprintf('This is a new video driver, which works with all open-source display drivers.\n');
         fprintf('It is shown to be rather efficient, but not as feature rich and well tested as other drivers yet.\n');
         fprintf('If you are not sure what to select, answer n for no as a safe choice.\n');
-        if multixscreen
+        if multixscreen && ~modesettingddxactive
           fprintf('CAUTION: When setting up a multi-x-screen setup with modesetting, you must do this in two separate\n');
           fprintf('CAUTION: steps. First run this script followed by XOrgConfSelector to select modesetting in a\n');
           fprintf('CAUTION: single x-screen setup, then logout and login again. Then run XOrgConfCreator again, selecting\n');
           fprintf('CAUTION: a multi-x-screen setup with the modesetting driver selected again. If you do not follow this\n');
-          fprintf('CAUTION: order you may end up with a dysfunctional graphical user interface!\n');
+          fprintf('CAUTION: order you would end up with a dysfunctional graphical user interface!\n');
+          fprintf('CAUTION: If you answer ''yes'' below, i will modify your choice, so you can safely execute\n');
+          fprintf('CAUTION: the first step of this procedure, so no worries...\n');
         end
         usemodesetting = '';
         while isempty(usemodesetting) || ~ismember(usemodesetting, ['y', 'n', 'd'])
@@ -297,6 +305,14 @@ try
           modesetting = 'y';
         end
       end
+    end
+
+    % Map a "Don't care" about modesetting to choice of modesetting if multi-x-screen set up
+    % while modesetting is already active. We'd do this anyway below in an override, but doing
+    % it early allows to skip all those redundant questions below:
+    if (modesetting == 'd') && (multixscreen > 0) && modesettingddxactive
+      xdriver = 'modesetting';
+      modesetting = 'y';
     end
 
     if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
@@ -388,7 +404,7 @@ try
        (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro'))
       fprintf('\n\nDo you want to setup a 30 bpp framebuffer for 10 bpc precision per color channel?\n');
       if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
-        fprintf('This will need the very latest drivers, so a very recent (or even future?) late 2017, or even 2018 Linux distribution.\n');
+        fprintf('This will need the very latest drivers, so a 2018 Linux distribution, probably at least Ubuntu 18.04 LTS or later.\n');
       end
 
       if multigpu
@@ -464,6 +480,25 @@ if strcmp(xdriver, 'nvidia')
   fprintf('configuration file! You may want to abort here via pressing CTRL+C and use\n');
   fprintf('NVIDIAs GUI setup tool instead as a more fool proof and safe option.\n');
   fprintf('------------------------ CAUTION -----------------------------------------\n\n');
+end
+
+% Multi X-Screen ZaphodHeads setup defined while modesetting-ddx was active? In that case,
+% the determined ZaphodHead output names are only valid for use with the modesetting-ddx.
+% Therefore, if user chose "(d)on't care" wrt. modesetting-ddx, select it, so user is not
+% left with a dysfunctional multi x-screen setup:
+if (multixscreen > 0) && (modesetting ~= 'y') && modesettingddxactive
+  modesetting = 'y';
+  xdriver = 'modesetting';
+  dri3 = 'd'; % modesetting defaults to DRI3, which is what we want, so 'd'ont care does the job.
+  fprintf('Override: Selecting modesetting-ddx driver for this multi X-Screen configuration, as\n');
+  fprintf('Override: the modesetting-ddx is currently active while creating this config.\n');
+elseif (multixscreen > 0) && (modesetting == 'y') && ~modesettingddxactive
+  multixscreen = 0;
+  fprintf('Override: Ignoring request for multi X-Screen configuration, as modesetting-ddx\n');
+  fprintf('Override: is requested, but was not active while creating this config. This would\n');
+  fprintf('Override: create an invalid configuration. Generating a single-x-screen modesetting\n');
+  fprintf('Override: config now. Please repeat the multi-x-screen + modesetting setup after logging\n');
+  fprintf('Override: out and in again with this new configuration selected.\n');
 end
 
 % Define filename of output file:
