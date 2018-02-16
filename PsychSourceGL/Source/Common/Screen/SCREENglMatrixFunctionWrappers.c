@@ -185,6 +185,20 @@ PsychError SCREENBeginOpenGL(void)
             // Perform setup work for stereo drawbuffers in fixed function mode:
             PsychSwitchFixedFunctionStereoDrawbuffer(windowRecord);
         }
+
+        // OpenGL 3.1+ core-profile context requested for userspace rendering?
+        // If so, we need to discard some OpenGL errors caused by our switching
+        // logic above not being adapted to core profiles:
+        if (PsychPrefStateGet_3DGfx() & 4) {
+            // Reset all error state for this userspace context:
+            while (glGetError()!=GL_NO_ERROR) {};
+            // Note this whole core profile stuff is a big hack atm. If it works,
+            // it may only work by some luck, rather than design. E.g., moglcore
+            // does its own glewInit() which may or may not get confused when
+            // confronted with a mix of legacy and core contexts, and other stuff
+            // like GLUT that isn't core OpenGL ready at all. Anyway, was easy enough
+            // to add this for some tinkering, so no harm done...
+        }
     }
     else {
         // Userspace shares context with PTB. Let's disable possibly bound GLSL shaders:
