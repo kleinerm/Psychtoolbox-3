@@ -464,22 +464,14 @@ end
 
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
-   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n'])
+   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia')
 
   % All settings are for a single X-Screen setup with auto-detected outputs
-  % and all driver settings on default. There isn't any need or purpose for
-  % a xorg.conf file, so we are done.
+  % and all driver settings on default and not on a NVidia proprietary driver.
+  % There isn't any need or purpose for a xorg.conf file, so we are done.
   fprintf('With the settings you requested, there is no need for a xorg.conf file at all,\n');
   fprintf('so i will not create one and we are done. Bye!\n\n');
   return;
-end
-
-if strcmp(xdriver, 'nvidia')
-  fprintf('\n\nCAUTION! You are using the proprietary NVIDIA graphics driver. This script\n');
-  fprintf('is not well suited to deal with that driver and may well write an invalid\n');
-  fprintf('configuration file! You may want to abort here via pressing CTRL+C and use\n');
-  fprintf('NVIDIAs GUI setup tool instead as a more fool proof and safe option.\n');
-  fprintf('------------------------ CAUTION -----------------------------------------\n\n');
 end
 
 % Multi X-Screen ZaphodHeads setup defined while modesetting-ddx was active? In that case,
@@ -598,6 +590,13 @@ else
       if depth30bpp == 'y'
         fprintf(fid, '  DefaultDepth  30\n');
       end
+
+      % On NVidia ddx, tell the driver to also expose HMD's, e.g.,
+      % for use with our OpenHMD VR driver, instead of hiding them:
+      if strcmp(xdriver, 'nvidia')
+        fprintf(fid, '  Option "AllowHMD"         "yes"\n');
+      end
+
       fprintf(fid, 'EndSection\n\n');
     end
   else
@@ -615,6 +614,13 @@ else
       if depth30bpp == 'y'
         fprintf(fid, '  DefaultDepth  30\n');
       end
+
+      % On NVidia ddx, tell the driver to also expose HMD's, e.g.,
+      % for use with our OpenHMD VR driver, instead of hiding them:
+      if strcmp(xdriver, 'nvidia')
+        fprintf(fid, '  Option "AllowHMD"         "yes"\n');
+      end
+
       fprintf(fid, 'EndSection\n\n');
     end
   end
