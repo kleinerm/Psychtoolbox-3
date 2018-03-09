@@ -272,12 +272,14 @@ try
 
     % Which X-Server version is in use?
     [rc, text] = system('xdpyinfo | grep ''X.Org version''');
+    if rc == 0
+      xversion = sscanf (text, 'X.Org version: %d.%d.%d');
+    end
     if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting') && ...
        (~multigpu || (~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'ati')))
       % HybridGraphics Intel + NVidia/AMD needs intel-ddx, modesetting won't work. Ditto for AMD + AMD.
       % XOrg 1.18.0 or later? xf86-video-modesetting is only good enough for our purposes on 1.18 and later.
       % Also must be a Mesa version safe for use with DRI3/Present:
-      xversion = sscanf (text, 'X.Org version: %d.%d.%d');
       if (xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 18)) && ...
          ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0)
         % Yes: The xf86-video-modesetting driver is an option that supports DRI3/Present well.
@@ -399,12 +401,16 @@ try
       atinotiling = 'd';
     end
 
-    % Does the driver + gpu combo support 30 bpp, 10 bpc framebuffers natively, and user has not chosen 12 bpc mode yet?
+    % Does the driver + gpu combo support depth 30, 10 bpc framebuffers natively, and user has not chosen 12 bpc mode yet?
+    % As of March 2018, the latest intel-ddx and nouveau-ddx, as well as amdgpu-pro ddx and nvidia proprietary ddx do support
+    % 30 bit on modern X-Servers. The amdgpu-ddx and modesetting-ddx support depth 30 with X-Server 1.20 and later versions.
     if (atinotiling ~= 'y') && ...
-       (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro'))
-      fprintf('\n\nDo you want to setup a 30 bpp framebuffer for 10 bpc precision per color channel?\n');
-      if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
-        fprintf('This will need the very latest drivers, so a 2018 Linux distribution, probably at least Ubuntu 18.04 LTS or later.\n');
+       (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro') || ...
+        strcmp(xdriver, 'ati') || ((xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 20)) && (strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu'))))
+      fprintf('\n\nDo you want to setup a 30 bit framebuffer for 10 bpc precision per color channel?\n');
+      if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'ati') || strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu')
+        fprintf('This will need the very latest drivers, so a year 2018 or later Linux distribution, e.g., at least Ubuntu 18.04 LTS,\n');
+        fprintf('with Mesa 18.0 or later for Intel and AMD gpus, and Mesa 18.1 or later for NVidia gpus.\n');
       end
 
       if multigpu
@@ -412,14 +418,22 @@ try
       end
 
       fprintf('If your desktop GUI fails to work, or Psychtoolbox gives lots of timing or page-flip related warnings,\n');
-      fprintf('then you know your system and hardware is not ready yet for this 30 bpp mode. On AMD hardware from 2007 or later\n');
-      fprintf('this will always work without the need to set it up here though at least for PsychImaging native 10 bit\n');
+      fprintf('then you know your system and hardware is not ready yet for this depth 30 mode. On AMD hardware from 2007 or later\n');
+      fprintf('depth 30 will always work even without the need to set it up here, at least for PsychImaging native 10 bit\n');
       fprintf('framebuffer tasks, albeit at potentially slightly lower performance. AMD gpus have special support in PTB in this sense.\n');
       fprintf('Also note that not all gpus can output true 10 bpc on all types of video outputs. Check carefully with a photometer etc.!\n');
 
       depth30bpp = '';
       while isempty(depth30bpp) || ~ismember(depth30bpp, ['y', 'n', 'd'])
         depth30bpp = input('Use a 30 bpp, 10 bpc framebuffer [y for yes, n for no, d for don''t care]? ', 's');
+      end
+
+      % Depth 30 on multi-x-screen setup requested?
+      if depth30bpp == 'y' && multixscreen
+        depth30bpp = '';
+        while isempty(depth30bpp) || isempty(str2num(depth30bpp)) || ~isnumeric(str2num(depth30bpp))
+          depth30bpp = input('Enter a space-separated list of screen numbers for which 30 bit color depth should be used: ', 's');
+        end
       end
     else
       depth30bpp = 'd';
@@ -587,7 +601,7 @@ else
         fprintf(fid, '  Monitor       "%s"\n', scanout.name);
       end
 
-      if depth30bpp == 'y'
+      if depth30bpp == 'y' || ismember(num2str(i), depth30bpp)
         fprintf(fid, '  DefaultDepth  30\n');
       end
 
@@ -611,7 +625,7 @@ else
       fprintf(fid, '  Identifier    "Screen%i"\n', 0);
       fprintf(fid, '  Device        "Card%i"\n', 0);
 
-      if depth30bpp == 'y'
+      if depth30bpp == 'y' || depth30bpp == '0'
         fprintf(fid, '  DefaultDepth  30\n');
       end
 
