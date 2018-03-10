@@ -49,6 +49,10 @@ function q=QuestRecompute(q, plotIt)
 %                trials to reduce memory fragmentation problems.
 % 03/10/12   mk  Optionally plot psychometric function for debugging.
 %                Also some Matlab M-Lint warning cleanup.
+% 03/10/18  dgp  Enhanced to allow for monotonically DECREASING
+%                psychometric function. Formerly we assumed it was 
+%                monotonically INCREASING. Now it can be either. This new
+%                feature has not been extensively tested.
 
 % Copyright (c) 1996-2004 Denis Pelli
 if nargin < 1
@@ -92,8 +96,8 @@ if plotIt > 0
     plot(q.x2, q.p2);
 end
 
-if q.p2(1)>=q.pThreshold || q.p2(end)<=q.pThreshold
-	error(sprintf('psychometric function range [%.2f %.2f] omits %.2f threshold',q.p2(1),q.p2(end),q.pThreshold))
+if min(q.p2([1 end]))>q.pThreshold || max(q.p2([1 end]))<q.pThreshold
+	error(sprintf('psychometric function range [%.2f %.2f] omits %.2f threshold',min(q.p2),max(q.p2),q.pThreshold))
 end
 if any(~isfinite(q.p2))
 	error('psychometric function p2 is not finite')
@@ -119,9 +123,8 @@ if ~isfield(q,'intensity') || ~isfield(q,'response')
     % fragmentation that would be caused by growing the arrays one element
     % per trial. Fragmentation has been shown to cause severe out-of-memory
     % problems if one runs many interleaved quests. 10000 trials require/
-    % waste about 157 kB of memory, which is basically nothing for todays
-    % computers and likely sufficient for even the most tortorous experiment
-    % sessions.
+    % waste about 157 kB of memory, which is basically nothing for today's
+    % computers and likely suffices for even the most tortuous experiment.
     q.trialCount = 0;
     q.intensity=zeros(1,10000);
     q.response=zeros(1,10000);
@@ -135,7 +138,7 @@ end
 % For 2-interval forced choice, if pL=0.5 and pH=1 then best quantileOrder=0.60
 % We write x*log(x+eps) in place of x*log(x) to get zero instead of NaN when x is zero.
 pL=q.p2(1);
-pH=q.p2(size(q.p2,2));
+pH=q.p2(end);
 pE=pH*log(pH+eps)-pL*log(pL+eps)+(1-pH+eps)*log(1-pH+eps)-(1-pL+eps)*log(1-pL+eps);
 pE=1/(1+exp(pE/(pL-pH)));
 q.quantileOrder=(pE-pL)/(pH-pL);
@@ -146,7 +149,7 @@ end
 % recompute the pdf from the historical record of trials
 for k=1:q.trialCount
 	inten=max(-1e10,min(1e10,q.intensity(k))); % make intensity finite
-	ii=size(q.pdf,2)+q.i-round((inten-q.tGuess)/q.grain);
+	ii=length(q.pdf)+q.i-round((inten-q.tGuess)/q.grain);
 	if ii(1)<1
 		ii=ii+1-ii(1);
 	end
