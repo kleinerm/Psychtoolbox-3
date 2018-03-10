@@ -18,8 +18,9 @@ function response=QuestSimulate(q,tTest,tActual,plotIt)
 % 3/1/97 dgp restrict intensity parameter to range of x2.
 % 3/1/97 dgp updated to use Matlab 5 structs.
 % 4/12/99 dgp dropped support for Matlab 4.
+% 2/24/2018 dgp Allow psychometric function to be monotonically decreasing.
 
-% Copyright (c) 1996-2004 Denis Pelli
+% Copyright (c) 1996-2018 Denis Pelli
 
 if nargin < 3
 	error('Usage: response=QuestSimulate(q,tTest,tActual[,plotIt])')
@@ -27,7 +28,9 @@ end
 if length(q)>1
 	error('can''t deal with q being a vector')
 end
-t=min(max(tTest-tActual,q.x2(1)),q.x2(end));
+x2min=min(q.x2([1 end]));
+x2max=max(q.x2([1 end]));
+t=min(max(tTest-tActual,x2min),x2max);
 response=interp1(q.x2,q.p2,t) > rand(1);
 
 % Visualize if requested:
@@ -35,7 +38,7 @@ if (nargin >= 4) && (plotIt > 0)
     tc = t;
     col = {'*r', '*g'};
     
-    t = min(max(q.intensity(1:q.trialCount) - tActual, q.x2(1)), q.x2(end));
+    t = min(max(q.intensity(1:q.trialCount) - tActual, x2min), x2max);
     
     if plotIt == 2
         positive = find(q.response(1:q.trialCount) > 0);
