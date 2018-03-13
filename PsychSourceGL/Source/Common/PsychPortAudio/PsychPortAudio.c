@@ -1177,8 +1177,10 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
             }
         }
 
-        // Have scratch buffers ready. Clear output intermix buffer:
-        memset(outputBuffer, 0, (size_t) (dev->batchsize * outchannels * sizeof(float)));
+        if (NULL != outputBuffer) {
+            // Have scratch buffers ready. Clear output intermix buffer:
+            memset(outputBuffer, 0, (size_t) (dev->batchsize * outchannels * sizeof(float)));
+        }
 
         // Iterate over all slave device callbacks: Or at least until all registered slaves are handled.
         numSlavesHandled = 0;
