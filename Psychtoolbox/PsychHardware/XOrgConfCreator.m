@@ -620,7 +620,7 @@ else
     % values for the gpu driving that single X-Screen.
     WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, primehacks, [], [], []);
 
-    if depth30bpp == 'y'
+    if depth30bpp == 'y' || strcmp(xdriver, 'nvidia')
       fprintf(fid, 'Section "Screen"\n');
       fprintf(fid, '  Identifier    "Screen%i"\n', 0);
       fprintf(fid, '  Device        "Card%i"\n', 0);
