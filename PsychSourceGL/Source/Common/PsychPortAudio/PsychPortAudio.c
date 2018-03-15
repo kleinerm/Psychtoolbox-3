@@ -212,14 +212,16 @@ psych_mutex    bufferListmutex;            // Mutex lock for the audio bufferLis
 PsychPABuffer*  bufferList;                // Pointer to start of audio bufferList.
 int    bufferListCount;                    // Number of slots allocated in bufferList.
 
-// Return the first unused handle
-unsigned int nextHandle() {
-    for (int i = 0; i < MAX_PSYCH_AUDIO_DEVS; i++) {
-        if (NULL == audiodevices[i].stream) {
-            return i;
-        }
+// Return the first unused/closed device handle:
+unsigned int PsychPANextHandle(void)
+{
+    int i;
+    for (i = 0; i < MAX_PSYCH_AUDIO_DEVS; i++) {
+        if (NULL == audiodevices[i].stream)
+            break;
     }
-    return MAX_PSYCH_AUDIO_DEVS+1;
+
+    return(i);
 }
 
 // Scan all schedules of all active and open audio devices to check if
@@ -2037,7 +2039,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
     PaStreamFlags sflags;
     PaError err;
     PaStream *stream = NULL;
-    unsigned int id = nextHandle();
 
     #if PSYCH_SYSTEM == PSYCH_OSX
     paMacCoreStreamInfo hostapisettings;
@@ -2051,6 +2052,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     int                  outputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
     int                  inputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
     #endif
+    unsigned int id = PsychPANextHandle();
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -2636,7 +2638,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
     int  m, n, p;
     double* mychannelmap;
     int modeExceptions = 0;
-    unsigned int id = nextHandle();
+    unsigned int id = PsychPANextHandle();
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
