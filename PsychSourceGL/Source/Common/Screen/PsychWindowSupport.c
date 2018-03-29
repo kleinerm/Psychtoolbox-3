@@ -82,6 +82,7 @@ NVSTUSB_INVERT_EYES_PROC Nvstusb_invert_eyes_proc = NULL;
 static void* nvstusb_plugin = NULL;
 static struct nvstusb_context* nvstusb_goggles = NULL;
 #endif
+static double nvsttriggerdelay = 0;
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 #include "ptbstartlogo.h"
@@ -2166,6 +2167,10 @@ void PsychSetupShutterGoggles(PsychWindowRecordType *windowRecord, psych_bool do
                 Nvstusb_get_keys_proc = dlsym(nvstusb_plugin, "nvstusb_get_keys");
                 Nvstusb_invert_eyes_proc = dlsym(nvstusb_plugin, "nvstusb_invert_eyes");
 
+                nvsttriggerdelay = 0;
+                if (getenv("PTB_NVISION3D_DELAY"))
+                    nvsttriggerdelay = atof(getenv("PTB_NVISION3D_DELAY"));
+
                 // Successfully linked?
                 if (!Nvstusb_init_proc || !Nvstusb_deinit_proc || !Nvstusb_set_rate_proc || !Nvstusb_swap_proc || !Nvstusb_get_keys_proc || !Nvstusb_invert_eyes_proc) {
                     if (PsychPrefStateGet_Verbosity() > 2)
@@ -2269,15 +2274,30 @@ void PsychSetupShutterGoggles(PsychWindowRecordType *windowRecord, psych_bool do
 void PsychTriggerShutterGoggles(PsychWindowRecordType *windowRecord, int viewid)
 {
     static int oldviewid = -1;
+    double dT;
+
+    // Delay trigger emission if requested:
+    if (nvsttriggerdelay > 0) {
+        PsychWaitUntilSeconds(windowRecord->time_at_last_vbl + nvsttriggerdelay);
+        // Delayed triggering only makes sense if we want to trigger for the other
+        // eye - the one that will present at next refresh, not the one that is
+        // currently presenting. Therefore switch left-right eye trigger:
+        viewid = 1 - viewid;
+    }
+
+    PsychGetAdjustedPrecisionTimerSeconds(&dT);
+    dT = 1000 * (dT - windowRecord->time_at_last_vbl);
 
     #ifdef PTB_USE_NVSTUSB
         // Emit shutter trigger if frameSeqStereoActive and NVideo NVision driver active:
         if (nvstusb_plugin && nvstusb_goggles && (windowRecord->stereomode == kPsychFrameSequentialStereo)) {
             Nvstusb_swap_proc(nvstusb_goggles, ((viewid == 0) ? nvstusb_left : nvstusb_right), NULL);
-            if (PsychPrefStateGet_Verbosity() > 9) printf("PTB-DEBUG: PsychTriggerShutterGoggles: Triggering for viewid %i.\n", viewid);
+            if ((PsychPrefStateGet_Verbosity() > 9) || (nvsttriggerdelay < 0))
+                printf("PTB-DEBUG: PsychTriggerShutterGoggles: Triggering for viewid %i, dT since vblank in msecs: %f\n", viewid, dT);
         }
         else {
-            if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychTriggerShutterGoggles: No-Op call for viewid %i.\n", viewid);
+            if ((PsychPrefStateGet_Verbosity() > 9) || (nvsttriggerdelay < 0))
+                printf("PTB-DEBUG: PsychTriggerShutterGoggles: No-Op call for viewid %i, dT since vblank in msecs: %f\n", viewid, dT);
         }
     #endif
 

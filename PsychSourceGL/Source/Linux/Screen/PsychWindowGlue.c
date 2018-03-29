@@ -1847,8 +1847,8 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
             // 'ust' + 1 video refresh duration:
             PsychWaitUntilSeconds(PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) + windowRecord->VideoRefreshInterval - 0.001);
         } else {
-            // Yes: Swap completion can happen almost any time now. Sleep for a millisecond, then repoll:
-            PsychYieldIntervalSeconds(0.001);
+            // Yes: Swap completion can happen almost any time now. Sleep a bit, then repoll:
+            PsychYieldIntervalSeconds(0.0001);
         }
 
         // Repoll for swap completion...
