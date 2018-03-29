@@ -2091,6 +2091,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
         PsychErrorExitMsg(PsychError_user, "Invalid mode for regular- or master-audio device provided: Outside valid range or invalid combination of flags.");
     }
 
+    if (!(mode & (kPortAudioCapture | kPortAudioPlayBack)))
+        PsychErrorExitMsg(PsychError_user, "Invalid mode for regular- or master-audio device provided: mode must contain at least playback (1), capture (2) or full-duplex (3).");
+
     // Request optional latency class:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &latencyclass);
     if (latencyclass < 0 || latencyclass > 4) PsychErrorExitMsg(PsychError_user, "Invalid reqlatencyclass provided. Valid values are 0 to 4.");
