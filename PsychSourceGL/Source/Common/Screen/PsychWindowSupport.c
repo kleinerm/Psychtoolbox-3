@@ -6629,7 +6629,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
         // Prime renderoffload only works with proper timing and quality if DRI3/Present
         // is used for our onscreen window:
-        if (!(windowRecord->specialflags & kPsychIsDRI3Window) && (PsychPrefStateGet_Verbosity() > 1)) {
+        if ((windowRecord->specialflags & kPsychIsX11Window) && !(windowRecord->specialflags & kPsychIsDRI3Window) && (PsychPrefStateGet_Verbosity() > 1)) {
             printf("PTB-WARNING: Hybrid graphics DRI PRIME muxless render offload requires the use of DRI3/Present for rendering,\n");
             printf("PTB-WARNING: but this is not enabled on your setup. Use XOrgConfCreator to setup your system accordingly.\n");
             printf("PTB-WARNING: Without this, your visual stimulation will suffer severe timing and display artifacts.\n\n");
