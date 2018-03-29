@@ -150,29 +150,42 @@ int PsychCountOpenWindows(PsychWindowType winType)
 }
 
 /*
- *        PsychIsLastWindow()
- *
- *        Is this the last open onscreen window for this screen ?
- *        SCREENClose needs to know this so that it can release the screen
+ * PsychIsLastOnscreenWindow() - Is this the last open onscreen window?
  */
 psych_bool PsychIsLastOnscreenWindow(PsychWindowRecordType *windowRecord)
 {
+    if (!PsychIsOnscreenWindow(windowRecord))
+        return(FALSE);
+
+    if (PsychCountOpenWindows(kPsychDoubleBufferOnscreen) + PsychCountOpenWindows(kPsychSingleBufferOnscreen) > 1)
+        return(FALSE);
+    else
+        return(TRUE);
+}
+
+/*
+ *        PsychIsLastOnscreenWindowOnScreen()
+ *
+ *        Is this the last open onscreen window for the associated screen?
+ */
+psych_bool PsychIsLastOnscreenWindowOnScreen(PsychWindowRecordType *windowRecord)
+{
     int i;
 
-    if(!PsychIsOnscreenWindow(windowRecord))
+    if (!PsychIsOnscreenWindow(windowRecord))
         return(FALSE);
-    for(i=PSYCH_FIRST_WINDOW;i<=PSYCH_LAST_WINDOW;i++){
-        if(windowRecordArrayWINBANK[i]){
-            if(windowRecordArrayWINBANK[i]->screenNumber == windowRecord->screenNumber  &&
-                windowRecordArrayWINBANK[i]->windowIndex != windowRecord->windowIndex    &&
-                (windowRecordArrayWINBANK[i]->windowType == kPsychSingleBufferOnscreen ||
-                windowRecordArrayWINBANK[i]->windowType == kPsychDoubleBufferOnscreen))
+
+    for(i = PSYCH_FIRST_WINDOW; i <= PSYCH_LAST_WINDOW; i++) {
+        if (windowRecordArrayWINBANK[i]) {
+            if (windowRecordArrayWINBANK[i]->screenNumber == windowRecord->screenNumber &&
+                windowRecordArrayWINBANK[i]->windowIndex != windowRecord->windowIndex &&
+                PsychIsOnscreenWindow(windowRecordArrayWINBANK[i]))
                 return(FALSE);
         }
     }
+
     return(TRUE);
 }
-
 
 /*
  *        Allocate and return an empty window record
