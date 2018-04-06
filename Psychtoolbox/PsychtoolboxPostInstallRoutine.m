@@ -712,7 +712,6 @@ fprintf('\nEnjoy!\n\n');
 fprintf('Press RETURN or ENTER to confirm you read and understood the above message.\n');
 pause;
 fprintf('\n\n');
-PTBSurvey;
 
 % Clear out everything:
 if IsWin
