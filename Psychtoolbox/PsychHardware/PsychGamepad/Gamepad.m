@@ -33,12 +33,23 @@ function result = Gamepad(arg1, arg2, arg3)
 % Gamepad uses the Screen() mex file and its mouse query functions.
 % On Linux, gamepads and joysticks are treated as a special type of
 % mouse/pointing device with multiple extra axes and buttons. If your
-% GamePad is not recognized, you may need to install the joystick driver,
-% e.g., via "sudo apt-get install xserver-xorg-input-joystick" on a Debian/
-% Ubuntu system, "sudo apt-get install xserver-xorg-input-joystick-lts-utopic"
-% on some Ubuntu 14.04.2 LTS variants, or "sudo apt-get install xserver-xorg-input-joystick-lts-vivid"
-% on some Ubuntu 14.04.3 LTS variants, or xf86-input-joystick on systems still
-% using xf86. You may also wish to install a custom joystick configuration file
+% GamePad is not recognized, you may need to install the optional joystick driver.
+% This driver has different names, depending on the version of the distribution
+% you are using, or more specifically on the version of X-Server installed. You
+% can find the X-Server version via "xdpyinfo | grep version" in a terminal:
+%
+% Ubuntu 16.04 LTS original installs or upgrades, ie. without the optional HWE
+% hardware enablement stack installed, will come with X-Server version 1.18, so
+% this should work:
+%
+% "sudo apt-get install xserver-xorg-input-joystick"
+%
+% If your X-Server is of version 1.19 or later, because the HWE is installed, you
+% will need this instead:
+%
+% "sudo apt-get install xserver-xorg-input-joystick-hwe-16.04".
+%
+% You may also wish to install a custom joystick configuration file
 % to customize the mapping  and behaviour of buttons and axis, and if the
 % Joystick also operates as a mouse or not.
 %

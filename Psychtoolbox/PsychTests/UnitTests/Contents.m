@@ -88,7 +88,6 @@
 % PsychBasic/PsychPortAudio.m
 % PsychBasic/PsychWatchDog.m
 % PsychBasic/PsychtoolboxDate.m
-% PsychBasic/PsychtoolboxRegistration.m
 % PsychBasic/PsychtoolboxVersion.m
 % PsychBasic/RestrictKeysForKbCheck.m
 % PsychBasic/Screen.m

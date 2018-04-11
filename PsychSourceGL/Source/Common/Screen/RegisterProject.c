@@ -305,7 +305,9 @@ PsychError PsychModuleInit(void)
     PsychSetModuleAuthorByInitials("cb");
 
     InitializeSynopsis();
-    InitWindowBank();
+    if (PsychError_none != InitWindowBank())
+        printf("PTB-CRITICAL: ERROR: Out of memory when trying to allocate windowBank! Expect complete failure soon!!\n");
+
     PsychMovieInit();
     PsychVideoCaptureInit();
     PsychMovieWritingInit();

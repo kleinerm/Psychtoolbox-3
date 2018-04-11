@@ -351,7 +351,7 @@ try
         [keyIsDown,secs,keyCode] = KbCheck;
         % if spacebar was pressed stop display
         if keyCode(stopkey)
-            EyeLink('Message', 'Key pressed')
+            Eyelink('Message', 'Key pressed')
             break;
         end
         

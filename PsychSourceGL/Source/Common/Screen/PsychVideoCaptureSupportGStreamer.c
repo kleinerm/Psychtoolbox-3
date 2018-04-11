@@ -789,7 +789,15 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 }
 
 // GstDeviceMonitor, GstDeviceProvider and GstDevice require GStreamer-1.4.0 or later.
-#if GST_CHECK_VERSION(1,4,0)
+// We don't use this on Linux though as of beginning of 2018, because we still want to
+// keep Ubuntu 14.04 LTS supported atm., which does not provide GStreamer 1.4+, so
+// trying to run Screen mex file built on a 1.4+ system (like 16.04 LTS) would cause
+// load-time linker failure on 14.04. This is no functional loss, as the only video source
+// under Linux currently supported by GstDeviceProvider/GstDeviceMonitor is the v4l2src,
+// but that source is perfectly handled by our code without the need for GstDeviceMonitor.
+// GstDeviceMonitor is more beneficial on MS-Windows and possibly macOS, where it can make
+// a positive impact on the reliability of video device enumeration.
+#if GST_CHECK_VERSION(1,4,0) && (PSYCH_SYSTEM != PSYCH_LINUX)
 
 static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, const char* srcname,
                                 int classIndex, const char* className, const char* devHandlePropName, unsigned int flags)
@@ -992,8 +1000,12 @@ static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
 
 #else
     // Dummy typedef, so we don't need to sprinkle ifdefs everywhere:
+    #ifndef GST_TYPE_DEVICE
     typedef GstElement GstDevice;
+    #endif
+    #ifndef GST_TYPE_DEVICE_PROVIDER
     typedef GstElement GstDeviceProvider;
+    #endif
     static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void) {};
 
 //#warning Building against GStreamer version older than 1.4.0 - No device monitor support! Consider upgrading!
@@ -1025,7 +1037,7 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
     sprintf(class_str, "%s", className);
 
     // Does this source support device enumeration of supported capture devices?
-    #if GST_CHECK_VERSION(1,4,0)
+    #if GST_CHECK_VERSION(1,4,0) && (PSYCH_SYSTEM != PSYCH_LINUX)
     if ((provider = gst_device_provider_factory_get_by_name((const gchar*) providername)) && GST_IS_DEVICE_PROVIDER(provider)) {
         if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Has a GStreamer device provider - Good, using it.\n");
         devlist = gst_device_provider_get_devices(GST_DEVICE_PROVIDER(provider));
@@ -1367,7 +1379,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
                     // Default to - "no create support":
                     *videocaptureplugin = NULL;
 
-                    #if GST_CHECK_VERSION(1,4,0)
+                    #if GST_CHECK_VERSION(1,4,0) && (PSYCH_SYSTEM != PSYCH_LINUX)
                     // Caller wants us to create associated video capture plugin if possible:
                     if (devices[i].gstdevice) {
                         // Have one. Create and assign associated plugin:

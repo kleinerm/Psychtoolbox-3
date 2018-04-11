@@ -109,14 +109,14 @@ end
 
 %Screen(window,'WindowToFront');       % asg commented out
 
-[oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor);
+[oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor, [], 1);
 Screen('Flip', window, 0, dontClear);      % asg added
 
 if strcmp(replyFun,'GetChar')
     FlushEvents('keyDown');
     i=1;
     reply(i)=GetChar(0,1);  % get the 1st typed character (with no timing info. and ascii codes only)
-    [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor); % put coverted ascii code letter on screen
+    [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor, [], 1); % put coverted ascii code letter on screen
     Screen('Flip', window, 0, dontClear);   % flip it to the screen
     i=2;
     reply(i)=GetChar(0,1);  % get the 2nd typed character (with no timing info. and ascii codes only)
@@ -124,11 +124,11 @@ if strcmp(replyFun,'GetChar')
     while reply(i)==8  % backspace/delete was typed
         i=1;
         Screen('FillRect', window, bgColor);
-        [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor); % redraw text with no response letters
+        [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor, [], 1); % redraw text with no response letters
         Screen('Flip', window, 0, dontClear);   % flip it to the screen
         reply(i)=GetChar(0,1);  % get the next typed character (with no timing info. and ascii codes only)
         if reply(i)~=8
-            [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor);
+            [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor, [], 1);
             Screen('Flip', window, 0, dontClear);
             i=2;
             reply(i)=GetChar(0,1);
@@ -136,7 +136,7 @@ if strcmp(replyFun,'GetChar')
     end;
 
     while ~eq(reply(i),10)  && ~eq(reply(i),13) % until they hit RETURN
-        [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),newX(i-1),newY(i-1),textColor); % put coverted ascii code letter on screen
+        [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),newX(i-1),newY(i-1),textColor, [], 1); % put coverted ascii code letter on screen
         Screen('Flip', window, 0, dontClear);   % flip it to the screen
         i=i+1;
         reply(i)=GetChar(0,1);  % get the next character (with no timing info. and ascii codes only)
@@ -145,19 +145,19 @@ if strcmp(replyFun,'GetChar')
             if i<2  % can't backspace too far!
                 i=1;
                 Screen('FillRect', window, bgColor);
-                [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor);% redraw text with no response letters
+                [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor, [], 1);% redraw text with no response letters
                 Screen('Flip', window, 0, dontClear);   % flip it to the screen
                 reply(i)=GetChar(0,1);
                 if reply(i)~=8
-                    [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor);
+                    [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor, [], 1);
                     Screen('Flip', window, 0, dontClear);
                     i=2;
                     reply(i)=GetChar(0,1);
                 end;
             elseif i>1
                 Screen('FillRect', window, bgColor);
-                [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor);
-                [newX(i-1), newY(i-1)]=Screen(window,'DrawText',char(reply(1:i-1)), oldX, oldY, textColor); % put old letters on screen
+                [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor, [], 1);
+                [newX(i-1), newY(i-1)]=Screen(window,'DrawText',char(reply(1:i-1)), oldX, oldY, textColor, [], 1); % put old letters on screen
                 Screen('Flip', window, 0, dontClear);   % flip it to the screen
                 reply(i)=GetChar(0,1);  % get the next character (with no timing info. and ascii codes only)
             end;

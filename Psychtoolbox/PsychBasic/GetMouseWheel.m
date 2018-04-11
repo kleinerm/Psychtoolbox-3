@@ -35,6 +35,7 @@ function wheelDelta = GetMouseWheel(mouseIndex)
 % 05/31/08  mk  Initial implementation.
 % 05/14/12  mk  Tweaks for more mice.
 % 02/21/17  mk  Support Linux by wrapping around GetMouse() valuator functionality.
+% 11/22/17  mk  Fix potential OSX bug. Untested on OSX so far.
 
 % Cache the detected index of the first "real" wheel mouse to allow for lower
 % execution times:
@@ -129,10 +130,7 @@ while ~isempty(rep)
         case 255,
             wheelDelta = wheelDelta - 1;
     end
-    [rep, err] = PsychHID('GetReport', mouseIndex, 1, 0, 4);
-    if err.n
-        fprintf('GetMouseWheel: GetReport error 0x%s. %s: %s\n', hexstr(err.n), err.name, err.description);
-    end
+    rep = PsychHID('GetReport', mouseIndex, 1, 0, 10);
 end
 
 return;

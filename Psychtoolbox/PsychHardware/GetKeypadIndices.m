@@ -34,6 +34,7 @@ function [keypadIndices, productNames, allInfos] = GetKeypadIndices(product, ser
 % HISTORY
 % 17-Dec-2009 rpw Wrote it.
 % 15-Aug-2017 mk  Add filtering by productName, serialNumber, locationID.
+% 10-Apr-2018 mk  Filter out devices with locationID zero on broken macOS.
 
 if nargin < 1
     product = [];
@@ -73,6 +74,11 @@ for i =1:length(d);
         end
 
         if ~isempty(locationID) && (d(i).locationID ~= locationID)
+            continue;
+        end
+
+        % Protect against macOS brain-damage: Filter out the touchbar gadget.
+        if IsOSX && d(i).locationID == 0
             continue;
         end
 

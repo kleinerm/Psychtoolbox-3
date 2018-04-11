@@ -93,7 +93,7 @@ function [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height, 
 % does.
 %
 % Wikipedia's definition (better readable): http://en.wikipedia.org/wiki/Gabor_filter
-% See http://tech.groups.yahoo.com/group/psychtoolbox/message/9174 for
+% See http://groups.yahoo.com/group/psychtoolbox/message/9174 for
 % Psychtoolbox forum message 9174 with an in-dephs discussion of this
 % function.
 %

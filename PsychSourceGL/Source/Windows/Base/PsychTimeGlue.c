@@ -65,7 +65,7 @@ static double           backwardTimeJumpTolerance;
 static double           forwardTimeJumpTolerance;
 static unsigned int     failureHandlingModes;
 
-static DWORD_PTR        cpuMask;
+static DWORD_PTR        cpuMask, minAffinityCore;
 
 static int              verbosity = 0;
 
@@ -282,6 +282,7 @@ int PsychOSIsMSWin10(void)
 void PsychInitTimeGlue(void)
 {
     LARGE_INTEGER    counterFreq;
+    DWORD_PTR ProcessAffinityMask, SystemAffinityMask;
 
     // Initialize our timeglue mutex:
 
@@ -356,10 +357,23 @@ void PsychInitTimeGlue(void)
     // Warn user about use of low-precision timer by default:
     if (failureHandlingModes & 16) printf("PTB-INFO: Selecting low-precision system clock for this session. Watch out for timing trouble!\n");
 
-    // Setup thread scheduling cpu mask so that thread(s) get locked to cpu
-    // core zero by default on WinXP and earlier, but not locked to any specific
-    // cores on Win-Vista and later:
-    cpuMask = (DWORD_PTR) (PsychIsMSVista() ? INT64_MAX : 0x1);
+    // Setup thread scheduling cpu mask so that thread(s) get locked to first
+    // available cpu core 'minAffinityCore' by default on WinXP and earlier, but
+    // not locked to any specific cores on Win-Vista and later, except if timing
+    // trouble is detected later during runtime:
+    minAffinityCore = 0x1;
+    // GetProcessAffinityMask() should return the mask of allowed processors for this process:
+    if (!GetProcessAffinityMask(GetCurrentProcess(), &ProcessAffinityMask, &SystemAffinityMask)) {
+        printf("PTB-WARNING: GetProcessAffinityMask() failed. Using fallback value INT64_MAX and hope for the best.\n");
+        // As fallback, assume all cores are fair game, and core 0 is the core to lock to in case of trouble:
+        ProcessAffinityMask = INT64_MAX;
+    }
+    else {
+        // Find first available core in mask to lock to in case of need:
+        while (!(minAffinityCore & ProcessAffinityMask))
+            minAffinityCore = minAffinityCore << 1;
+    }
+    cpuMask = (DWORD_PTR) (PsychIsMSVista() ? ProcessAffinityMask : minAffinityCore);
 
     // Allow override with environment variable:
     if (getenv("PSYCH_CPU_MASK")) {
@@ -515,10 +529,12 @@ psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
     // Different curCpuMask and new cpuMask or curCpuMask unknown.
     // Need to do a real transition:
     if ((oldCpuMask = SetThreadAffinityMask(GetCurrentThread(), cpuMask)) == 0) {
-        // Binding failed! Output warning on first failed invocation...
-        if (!schedulingtrouble) {
+        // Binding failed! Output warning on first failed invocation, but only if
+        // we were really trying to lock to a single core to fix problems. Otherwise
+        // the failure should be without any real consequences, so don't scare the user:
+        if (!schedulingtrouble && (cpuMask == minAffinityCore)) {
             schedulingtrouble = TRUE;
-            printf("PTBCRITICAL -ERROR: PsychTimeGlue - Win32 syscall SetThreadAffinityMask() failed!!! Timing could be inaccurate.\n");
+            printf("PTBCRITICAL -ERROR: PsychTimeGlue - Win32 syscall SetThreadAffinityMask(%x) failed!!! Timing could be inaccurate.\n", cpuMask);
             printf("PTBCRITICAL -ERROR: Time measurement may be highly unreliable - or even false!!!\n");
             printf("PTBCRITICAL -ERROR: FIX YOUR SYSTEM! In its current state its not useable for conduction of studies!!!\n");
             printf("PTBCRITICAL -ERROR: Check the FAQ section of the Psychtoolbox Wiki for more information.\n");
@@ -936,15 +952,15 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 
                 // Has this fault occured while thread was not locked to cpu core zero and
                 // are we asked to try the lock-to-core-zero workaround first?
-                if ((failureHandlingModes & 0x2) && (cpuMask != 0x1)) {
+                if ((failureHandlingModes & 0x2) && (cpuMask != minAffinityCore)) {
                     if (failureHandlingModes & 0x1) {
                         // More info for user at first detection of trouble:
-                        printf("PTB-CRITICAL WARNING! Trying to resolve the issue by locking processing threads to processor core zero.\n");
+                        printf("PTB-CRITICAL WARNING! Trying to resolve the issue by locking processing threads to one single processor core.\n");
                         printf("PTB-CRITICAL WARNING! This may help working around the system bug, but it will degrade overall timing performance.\n");
                     }
 
-                    // Set cpuMask to lock to first processor core (core zero):
-                    cpuMask = (DWORD_PTR) 0x1;
+                    // Set cpuMask to lock to first viable processor core:
+                    cpuMask = minAffinityCore;
 
                     // Make sure other PTB modules notice this as well:
                     _putenv_s("PSYCH_CPU_MASK", "1");

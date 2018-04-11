@@ -1,0 +1,61 @@
+/*
+ * File: SineGratingSmoothedApertureShader.frag.txt 
+ * Shader for drawing of basic parameterized smooth edge sine grating patches.
+ * Applies a circular aperture of radius 'Radius', smoothed by 'Sigma'.
+ *
+ * Copyright 2011, Ian Andolina <http://github.com/iandol>, licenced under the MIT Licence
+ *
+ */
+
+const float halfpi = 0.5 * 3.141592654;
+
+uniform float Radius;
+uniform float Sigma;
+uniform float useAlpha;
+uniform float Method;
+uniform vec2  Center;
+
+uniform vec4 Offset;
+
+float Dist;
+float Mod = 1.0;
+
+varying vec4  baseColor;
+varying float Phase;
+varying float FreqTwoPi;
+
+void main()
+{
+    /* Query current output texel position: */
+    vec2 pos = gl_TexCoord[0].xy;
+
+    /* find our distance from center */
+    Dist = distance(pos, Center);
+
+    /* If distance to center (aka radius of pixel) > Radius, discard this pixel: */
+    if (Dist > Radius) discard;
+
+    /* Calculate a smoothing modifier using our distance from radius and a Sigma */
+    if (Method < 1.0) {
+        Mod = ((Sigma - (Radius - Dist)) / Sigma);
+        Mod = clamp(Mod, 0.0, 1.0);
+        Mod = cos(Mod * halfpi);
+    }
+    else {
+        Mod = smoothstep(Radius,(Radius-Sigma),Dist);
+    }
+
+    /* Evaluate sine grating at requested position, frequency and phase: */
+    float sv = sin(pos.x * FreqTwoPi + Phase);
+
+    /* Multiply/Modulate base color and alpha with calculated sine          */
+    /* values, add some constant color/alpha Offset, assign as final fragment */
+    /* output color: */
+    if (useAlpha < 1.0) {
+        gl_FragColor = (baseColor * (sv * Mod)) + Offset;
+    }
+    else {
+        gl_FragColor = (baseColor * sv) + Offset;
+        gl_FragColor.a = Mod;
+    }
+}

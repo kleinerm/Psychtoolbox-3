@@ -82,6 +82,7 @@ NVSTUSB_INVERT_EYES_PROC Nvstusb_invert_eyes_proc = NULL;
 static void* nvstusb_plugin = NULL;
 static struct nvstusb_context* nvstusb_goggles = NULL;
 #endif
+static double nvsttriggerdelay = 0;
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 #include "ptbstartlogo.h"
@@ -534,12 +535,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 !PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
                 (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff) || (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24)) {
                 printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but i can't provide this for you, because\n", (*windowRecord)->depth, (*windowRecord)->depth / 3);
-                if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
-                    printf("PTB-ERROR: Linux low-level MMIO access by Psychtoolbox is disabled or not permitted on your system in this session.\n");
-                    printf("PTB-ERROR: On Linux you must either configure your system by executing the script 'PsychLinuxConfiguration' once,\n");
-                    printf("PTB-ERROR: or start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n\n");
-                }
-                else if ((gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff)) {
+                if ((gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff)) {
                     printf("PTB-ERROR: this functionality is not supported on your model of graphics card. Only AMD/ATI GPU's of the\n");
                     printf("PTB-ERROR: Radeon X1000 series, and Radeon HD-2000 series and later models, and corresponding FireGL/FirePro\n");
                     printf("PTB-ERROR: cards are supported. This covers basically all AMD graphics cards since about the year 2007.\n");
@@ -547,6 +543,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                     printf("PTB-ERROR: for 10 bpc framebuffer support by specifying a 'DefaultDepth' setting of 30 bit in the xorg.conf file.\n");
                     printf("PTB-ERROR: The latest Intel graphics cards may be able to achieve 10 bpc with 'DefaultDepth' 30 setting if your\n");
                     printf("PTB-ERROR: graphics driver is recent enough, however this hasn't been actively tested on Intel cards so far.\n\n");
+                }
+                else if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
+                    printf("PTB-ERROR: Linux low-level MMIO access by Psychtoolbox is disabled or not permitted on your system in this session.\n");
+                    printf("PTB-ERROR: On Linux you must either configure your system by executing the script 'PsychLinuxConfiguration' once,\n");
+                    printf("PTB-ERROR: or start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n\n");
                 }
                 else if (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24) {
                     printf("PTB-ERROR: your display is not set to 24 bit 'DefaultDepth' color depth, but to %i bit color depth in xorg.conf.\n\n",
@@ -639,7 +640,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Floating point precision framebuffer enabled.\n");
         }
         else {
-            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Fixed point precision integer framebuffer enabled.\n");
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Fixed point precision integer framebuffer enabled.\n");
         }
 
         // Query and show bpc for all channels:
@@ -2166,6 +2167,10 @@ void PsychSetupShutterGoggles(PsychWindowRecordType *windowRecord, psych_bool do
                 Nvstusb_get_keys_proc = dlsym(nvstusb_plugin, "nvstusb_get_keys");
                 Nvstusb_invert_eyes_proc = dlsym(nvstusb_plugin, "nvstusb_invert_eyes");
 
+                nvsttriggerdelay = 0;
+                if (getenv("PTB_NVISION3D_DELAY"))
+                    nvsttriggerdelay = atof(getenv("PTB_NVISION3D_DELAY"));
+
                 // Successfully linked?
                 if (!Nvstusb_init_proc || !Nvstusb_deinit_proc || !Nvstusb_set_rate_proc || !Nvstusb_swap_proc || !Nvstusb_get_keys_proc || !Nvstusb_invert_eyes_proc) {
                     if (PsychPrefStateGet_Verbosity() > 2)
@@ -2269,15 +2274,30 @@ void PsychSetupShutterGoggles(PsychWindowRecordType *windowRecord, psych_bool do
 void PsychTriggerShutterGoggles(PsychWindowRecordType *windowRecord, int viewid)
 {
     static int oldviewid = -1;
+    double dT;
+
+    // Delay trigger emission if requested:
+    if (nvsttriggerdelay > 0) {
+        PsychWaitUntilSeconds(windowRecord->time_at_last_vbl + nvsttriggerdelay);
+        // Delayed triggering only makes sense if we want to trigger for the other
+        // eye - the one that will present at next refresh, not the one that is
+        // currently presenting. Therefore switch left-right eye trigger:
+        viewid = 1 - viewid;
+    }
+
+    PsychGetAdjustedPrecisionTimerSeconds(&dT);
+    dT = 1000 * (dT - windowRecord->time_at_last_vbl);
 
     #ifdef PTB_USE_NVSTUSB
         // Emit shutter trigger if frameSeqStereoActive and NVideo NVision driver active:
         if (nvstusb_plugin && nvstusb_goggles && (windowRecord->stereomode == kPsychFrameSequentialStereo)) {
             Nvstusb_swap_proc(nvstusb_goggles, ((viewid == 0) ? nvstusb_left : nvstusb_right), NULL);
-            if (PsychPrefStateGet_Verbosity() > 9) printf("PTB-DEBUG: PsychTriggerShutterGoggles: Triggering for viewid %i.\n", viewid);
+            if ((PsychPrefStateGet_Verbosity() > 9) || (nvsttriggerdelay < 0))
+                printf("PTB-DEBUG: PsychTriggerShutterGoggles: Triggering for viewid %i, dT since vblank in msecs: %f\n", viewid, dT);
         }
         else {
-            if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychTriggerShutterGoggles: No-Op call for viewid %i.\n", viewid);
+            if ((PsychPrefStateGet_Verbosity() > 9) || (nvsttriggerdelay < 0))
+                printf("PTB-DEBUG: PsychTriggerShutterGoggles: No-Op call for viewid %i, dT since vblank in msecs: %f\n", viewid, dT);
         }
     #endif
 
@@ -6629,7 +6649,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 
         // Prime renderoffload only works with proper timing and quality if DRI3/Present
         // is used for our onscreen window:
-        if (!(windowRecord->specialflags & kPsychIsDRI3Window) && (PsychPrefStateGet_Verbosity() > 1)) {
+        if ((windowRecord->specialflags & kPsychIsX11Window) && !(windowRecord->specialflags & kPsychIsDRI3Window) && (PsychPrefStateGet_Verbosity() > 1)) {
             printf("PTB-WARNING: Hybrid graphics DRI PRIME muxless render offload requires the use of DRI3/Present for rendering,\n");
             printf("PTB-WARNING: but this is not enabled on your setup. Use XOrgConfCreator to setup your system accordingly.\n");
             printf("PTB-WARNING: Without this, your visual stimulation will suffer severe timing and display artifacts.\n\n");

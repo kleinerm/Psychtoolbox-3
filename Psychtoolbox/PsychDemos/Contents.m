@@ -85,6 +85,9 @@
 %    ProceduralGaborDemo     - Demo for fast drawing of Gabors via procedural textures.
 %    ProceduralGarboriumDemo - Same as GarboriumDemo, just with procedural gabor drawing.
 %    ProceduralNoiseDemo     - Demo for fast drawing of noise patches via procedural texturing.
+%    ProceduralSquareWaveDemo - Demo for fast drawing of square wave grating.
+%    ProceduralSmoothedApertureSineGratingDemo - Demo for fast drawing of smoothed aperture sine grating.
+%    ProceduralSmoothedDiscsDemo - Demo for fast drawing of smoothed aperture discs.
 %    PsychRTBoxDemo          - Demonstrates basic use of the RTBox reaction time button response box.
 %    RaspberryPiGPIODemo     - Show basic use of GPIO's on a RaspberryPi running Raspian GNU/Linux.
 %    ReceivingTriggerFromSerialPortDemo - Template for asynchronous trigger collection and timestamping from serial port.

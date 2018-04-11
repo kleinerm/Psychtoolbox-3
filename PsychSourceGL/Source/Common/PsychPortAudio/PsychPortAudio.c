@@ -212,6 +212,18 @@ psych_mutex    bufferListmutex;            // Mutex lock for the audio bufferLis
 PsychPABuffer*  bufferList;                // Pointer to start of audio bufferList.
 int    bufferListCount;                    // Number of slots allocated in bufferList.
 
+// Return the first unused/closed device handle:
+unsigned int PsychPANextHandle(void)
+{
+    int i;
+    for (i = 0; i < MAX_PSYCH_AUDIO_DEVS; i++) {
+        if (NULL == audiodevices[i].stream)
+            break;
+    }
+
+    return(i);
+}
+
 // Scan all schedules of all active and open audio devices to check if
 // given audiobuffer is referenced. Invalidate reference, if so:
 // The special handle == -1 invalidates all references except the ones to special buffer zero.
@@ -1177,8 +1189,10 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
             }
         }
 
-        // Have scratch buffers ready. Clear output intermix buffer:
-        memset(outputBuffer, 0, (size_t) (dev->batchsize * outchannels * sizeof(float)));
+        if (NULL != outputBuffer) {
+            // Have scratch buffers ready. Clear output intermix buffer:
+            memset(outputBuffer, 0, (size_t) (dev->batchsize * outchannels * sizeof(float)));
+        }
 
         // Iterate over all slave device callbacks: Or at least until all registered slaves are handled.
         numSlavesHandled = 0;
@@ -1713,6 +1727,9 @@ void PsychPACloseStream(int id)
         PsychPADestroySignal(&(audiodevices[id]));
 
         // One device less:
+        if (verbosity > 4) {
+            printf("PTB-INFO: Closing handle %i.\n", id);
+        }
         audiodevicecount--;
     }
 
@@ -2035,6 +2052,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     int                  outputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
     int                  inputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
     #endif
+    unsigned int id = PsychPANextHandle();
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -2044,7 +2062,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(1));     // The maximum number of outputs
 
-    if (audiodevicecount >= MAX_PSYCH_AUDIO_DEVS) PsychErrorExitMsg(PsychError_user, "Maximum number of simultaneously open audio devices reached.");
+    if (id >= MAX_PSYCH_AUDIO_DEVS) PsychErrorExitMsg(PsychError_user, "Maximum number of simultaneously open audio devices reached.");
 
     freq = 0;
     buffersize = 0;
@@ -2072,6 +2090,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
     if (mode < 1 || mode > 15 || mode & kPortAudioIsAMModulator || mode & kPortAudioIsAMModulatorForSlave || mode & kPortAudioIsOutputCapture || ((mode & kPortAudioMonitoring) && ((mode & kPortAudioFullDuplex) != kPortAudioFullDuplex))) {
         PsychErrorExitMsg(PsychError_user, "Invalid mode for regular- or master-audio device provided: Outside valid range or invalid combination of flags.");
     }
+
+    if (!(mode & (kPortAudioCapture | kPortAudioPlayBack)))
+        PsychErrorExitMsg(PsychError_user, "Invalid mode for regular- or master-audio device provided: mode must contain at least playback (1), capture (2) or full-duplex (3).");
 
     // Request optional latency class:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &latencyclass);
@@ -2244,7 +2265,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                 outhostapisettings.channelSelectors = (int*) &outputmappings[0];
                 for (i=0; i<mynrchannels[0]; i++) outputmappings[i] = (int) mychannelmap[i * m];
                 if (verbosity > 3) {
-                    printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", audiodevicecount);
+                    printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", id);
                     for (i=0; i<mynrchannels[0]; i++) printf("%i --> %i : ", i+1, outputmappings[i]);
                     printf("\n\n");
                 }
@@ -2261,7 +2282,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                 // Index into first row of one-row matrix or 2nd row of two-row matrix:
                 for (i=0; i<mynrchannels[1]; i++) inputmappings[i] = (int) mychannelmap[(i * m) + (m-1)];
                 if (verbosity > 3) {
-                    printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound capture from audio stream %i :\n", audiodevicecount);
+                    printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound capture from audio stream %i :\n", id);
                     for (i=0; i<mynrchannels[1]; i++) printf("%i --> %i : ", i+1, inputmappings[i]);
                     printf("\n\n");
                 }
@@ -2430,7 +2451,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                             buffersize,                                                     /* Requested buffer size. */
                             sflags,                                                         /* Define special stream property flags. */
                             paCallback,                                                     /* Our processing callback. */
-                            &audiodevices[audiodevicecount]);                               /* Our own device info structure */
+                            &audiodevices[id]);                               /* Our own device info structure */
 
     if (err != paNoError || stream == NULL) {
         printf("PTB-ERROR: Failed to open audio device %i. PortAudio reports this error: %s \n", deviceid, Pa_GetErrorText(err));
@@ -2446,78 +2467,78 @@ PsychError PSYCHPORTAUDIOOpen(void)
     }
 
     // Setup our final device structure:
-    audiodevices[audiodevicecount].opmode = mode;
-    audiodevices[audiodevicecount].runMode = 1; // Keep engine running by default. Minimal extra cpu-load for significant reduction in startup latency.
-    audiodevices[audiodevicecount].stream = stream;
-    audiodevices[audiodevicecount].streaminfo = Pa_GetStreamInfo(stream);
-    audiodevices[audiodevicecount].hostAPI = Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type;
-    audiodevices[audiodevicecount].startTime = 0.0;
-    audiodevices[audiodevicecount].reqStartTime = 0.0;
-    audiodevices[audiodevicecount].reqStopTime = DBL_MAX;
-    audiodevices[audiodevicecount].estStopTime = 0;
-    audiodevices[audiodevicecount].currentTime = 0;
-    audiodevices[audiodevicecount].state = 0;
-    audiodevices[audiodevicecount].reqstate = 255;
-    audiodevices[audiodevicecount].repeatCount = 1;
-    audiodevices[audiodevicecount].outputbuffer = NULL;
-    audiodevices[audiodevicecount].outputbuffersize = 0;
-    audiodevices[audiodevicecount].inputbuffer = NULL;
-    audiodevices[audiodevicecount].inputbuffersize = 0;
-    audiodevices[audiodevicecount].outchannels = mynrchannels[0];
-    audiodevices[audiodevicecount].inchannels = mynrchannels[1];
-    audiodevices[audiodevicecount].latencyBias = 0.0;
-    audiodevices[audiodevicecount].schedule = NULL;
-    audiodevices[audiodevicecount].schedule_size = 0;
-    audiodevices[audiodevicecount].schedule_pos = 0;
-    audiodevices[audiodevicecount].schedule_writepos = 0;
-    audiodevices[audiodevicecount].outdeviceidx = (audiodevices[audiodevicecount].opmode & kPortAudioPlayBack) ? outputParameters.device : -1;
-    audiodevices[audiodevicecount].indeviceidx  = (audiodevices[audiodevicecount].opmode & kPortAudioCapture)  ? inputParameters.device  : -1;
-    audiodevices[audiodevicecount].outputmappings = NULL;
-    audiodevices[audiodevicecount].inputmappings = NULL;
-    audiodevices[audiodevicecount].slaveCount = 0;
-    audiodevices[audiodevicecount].slaves = NULL;
-    audiodevices[audiodevicecount].pamaster = -1;
-    audiodevices[audiodevicecount].modulatorSlave = -1;
-    audiodevices[audiodevicecount].slaveOutBuffer = NULL;
-    audiodevices[audiodevicecount].slaveGainBuffer = NULL;
-    audiodevices[audiodevicecount].slaveInBuffer = NULL;
-    audiodevices[audiodevicecount].outChannelVolumes = NULL;
-    audiodevices[audiodevicecount].masterVolume = 1.0;
-    audiodevices[audiodevicecount].playposition = 0;
-    audiodevices[audiodevicecount].totalplaycount = 0;
+    audiodevices[id].opmode = mode;
+    audiodevices[id].runMode = 1; // Keep engine running by default. Minimal extra cpu-load for significant reduction in startup latency.
+    audiodevices[id].stream = stream;
+    audiodevices[id].streaminfo = Pa_GetStreamInfo(stream);
+    audiodevices[id].hostAPI = Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type;
+    audiodevices[id].startTime = 0.0;
+    audiodevices[id].reqStartTime = 0.0;
+    audiodevices[id].reqStopTime = DBL_MAX;
+    audiodevices[id].estStopTime = 0;
+    audiodevices[id].currentTime = 0;
+    audiodevices[id].state = 0;
+    audiodevices[id].reqstate = 255;
+    audiodevices[id].repeatCount = 1;
+    audiodevices[id].outputbuffer = NULL;
+    audiodevices[id].outputbuffersize = 0;
+    audiodevices[id].inputbuffer = NULL;
+    audiodevices[id].inputbuffersize = 0;
+    audiodevices[id].outchannels = mynrchannels[0];
+    audiodevices[id].inchannels = mynrchannels[1];
+    audiodevices[id].latencyBias = 0.0;
+    audiodevices[id].schedule = NULL;
+    audiodevices[id].schedule_size = 0;
+    audiodevices[id].schedule_pos = 0;
+    audiodevices[id].schedule_writepos = 0;
+    audiodevices[id].outdeviceidx = (audiodevices[id].opmode & kPortAudioPlayBack) ? outputParameters.device : -1;
+    audiodevices[id].indeviceidx  = (audiodevices[id].opmode & kPortAudioCapture)  ? inputParameters.device  : -1;
+    audiodevices[id].outputmappings = NULL;
+    audiodevices[id].inputmappings = NULL;
+    audiodevices[id].slaveCount = 0;
+    audiodevices[id].slaves = NULL;
+    audiodevices[id].pamaster = -1;
+    audiodevices[id].modulatorSlave = -1;
+    audiodevices[id].slaveOutBuffer = NULL;
+    audiodevices[id].slaveGainBuffer = NULL;
+    audiodevices[id].slaveInBuffer = NULL;
+    audiodevices[id].outChannelVolumes = NULL;
+    audiodevices[id].masterVolume = 1.0;
+    audiodevices[id].playposition = 0;
+    audiodevices[id].totalplaycount = 0;
 
     // If this is a master, create a slave device list and init it to "empty":
     if (mode & kPortAudioIsMaster) {
-        audiodevices[audiodevicecount].slaves = (int*) malloc(sizeof(int) * MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE);
-        if (NULL == audiodevices[audiodevicecount].slaves) PsychErrorExitMsg(PsychError_outofMemory, "Insufficient memory during slave devicelist creation!");
-        for (i=0; i < MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE; i++) audiodevices[audiodevicecount].slaves[i] = -1;
+        audiodevices[id].slaves = (int*) malloc(sizeof(int) * MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE);
+        if (NULL == audiodevices[id].slaves) PsychErrorExitMsg(PsychError_outofMemory, "Insufficient memory during slave devicelist creation!");
+        for (i=0; i < MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE; i++) audiodevices[id].slaves[i] = -1;
 
         if (mode & kPortAudioPlayBack) {
             // Allocate a dummy outputbuffer with one sampleframe:
-            audiodevices[audiodevicecount].outputbuffersize = sizeof(float) * audiodevices[audiodevicecount].outchannels * 1;
-            audiodevices[audiodevicecount].outputbuffer = (float*) malloc((size_t) audiodevices[audiodevicecount].outputbuffersize);
-            if (audiodevices[audiodevicecount].outputbuffer==NULL) PsychErrorExitMsg(PsychError_outofMemory, "Out of system memory when trying to allocate audio buffer.");
+            audiodevices[id].outputbuffersize = sizeof(float) * audiodevices[id].outchannels * 1;
+            audiodevices[id].outputbuffer = (float*) malloc((size_t) audiodevices[id].outputbuffersize);
+            if (audiodevices[id].outputbuffer==NULL) PsychErrorExitMsg(PsychError_outofMemory, "Out of system memory when trying to allocate audio buffer.");
         }
 
         if (mode & kPortAudioCapture) {
             // Allocate a dummy inputbuffer with one sampleframe:
-            audiodevices[audiodevicecount].inputbuffersize = sizeof(float) * audiodevices[audiodevicecount].inchannels * 1;
-            audiodevices[audiodevicecount].inputbuffer = (float*) calloc(1, (size_t) audiodevices[audiodevicecount].inputbuffersize);
-            if (audiodevices[audiodevicecount].inputbuffer == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Free system memory exhausted when trying to allocate audio recording buffer!");
+            audiodevices[id].inputbuffersize = sizeof(float) * audiodevices[id].inchannels * 1;
+            audiodevices[id].inputbuffer = (float*) calloc(1, (size_t) audiodevices[id].inputbuffersize);
+            if (audiodevices[id].inputbuffer == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Free system memory exhausted when trying to allocate audio recording buffer!");
         }
     }
 
     // If we use locking, we need to initialize the per-device mutex:
-    if (uselocking && PsychInitMutex(&(audiodevices[audiodevicecount].mutex))) {
-        printf("PsychPortAudio: CRITICAL! Failed to initialize Mutex object for pahandle %i! Prepare for trouble!\n", audiodevicecount);
+    if (uselocking && PsychInitMutex(&(audiodevices[id].mutex))) {
+        printf("PsychPortAudio: CRITICAL! Failed to initialize Mutex object for pahandle %i! Prepare for trouble!\n", id);
         PsychErrorExitMsg(PsychError_system, "Audio device mutex creation failed!");
     }
 
     // If we use locking, this will create & init the associated event variable:
-    PsychPACreateSignal(&(audiodevices[audiodevicecount]));
+    PsychPACreateSignal(&(audiodevices[id]));
 
     // Register the stream finished callback:
-    Pa_SetStreamFinishedCallback(audiodevices[audiodevicecount].stream, PAStreamFinishedCallback);
+    Pa_SetStreamFinishedCallback(audiodevices[id].stream, PAStreamFinishedCallback);
 
     #if PSYCH_SYSTEM == PSYCH_OSX
     // Query low-level audio driver of the CoreAudio HAL for hardware latency:
@@ -2527,30 +2548,30 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // precision, he should simply download the free HALLab from Apple's Website or Developer
     // tools, run it once, read the displayed constant and set it manually at PortAudio startup.
 
-    // PaMacCoreStream* corestream = (PaMacCoreStream*) audiodevices[audiodevicecount].stream;
-    // audiodevices[audiodevicecount].latencyBias =
+    // PaMacCoreStream* corestream = (PaMacCoreStream*) audiodevices[id].stream;
+    // audiodevices[id].latencyBias =
     #endif
 
     if (verbosity > 3) {
-        printf("PTB-INFO: New audio device %i with handle %i opened as PortAudio stream:\n", deviceid, audiodevicecount);
+        printf("PTB-INFO: New audio device %i with handle %i opened as PortAudio stream:\n", deviceid, id);
 
-        if (audiodevices[audiodevicecount].opmode & kPortAudioPlayBack) {
-            printf("PTB-INFO: For %i channels Playback: Audio subsystem is %s, Audio device name is ", (int) audiodevices[audiodevicecount].outchannels, Pa_GetHostApiInfo(outputDevInfo->hostApi)->name);
+        if (audiodevices[id].opmode & kPortAudioPlayBack) {
+            printf("PTB-INFO: For %i channels Playback: Audio subsystem is %s, Audio device name is ", (int) audiodevices[id].outchannels, Pa_GetHostApiInfo(outputDevInfo->hostApi)->name);
             printf("%s\n", outputDevInfo->name);
         }
 
-        if (audiodevices[audiodevicecount].opmode & kPortAudioCapture) {
-            printf("PTB-INFO: For %i channels Capture: Audio subsystem is %s, Audio device name is ", (int) audiodevices[audiodevicecount].inchannels, Pa_GetHostApiInfo(inputDevInfo->hostApi)->name);
+        if (audiodevices[id].opmode & kPortAudioCapture) {
+            printf("PTB-INFO: For %i channels Capture: Audio subsystem is %s, Audio device name is ", (int) audiodevices[id].inchannels, Pa_GetHostApiInfo(inputDevInfo->hostApi)->name);
             printf("%s\n", inputDevInfo->name);
         }
 
         printf("PTB-INFO: Real samplerate %f Hz. Input latency %f msecs, Output latency %f msecs.\n",
-               audiodevices[audiodevicecount].streaminfo->sampleRate, audiodevices[audiodevicecount].streaminfo->inputLatency * 1000.0,
-               audiodevices[audiodevicecount].streaminfo->outputLatency * 1000.0);
+               audiodevices[id].streaminfo->sampleRate, audiodevices[id].streaminfo->inputLatency * 1000.0,
+               audiodevices[id].streaminfo->outputLatency * 1000.0);
     }
 
     // Return device handle:
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) audiodevicecount);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) id);
 
     // One more audio device...
     audiodevicecount++;
@@ -2620,6 +2641,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
     int  m, n, p;
     double* mychannelmap;
     int modeExceptions = 0;
+    unsigned int id = PsychPANextHandle();
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -2629,7 +2651,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
     PsychErrorExit(PsychRequireNumInputArgs(1)); // The required number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(1));     // The maximum number of outputs
 
-    if (audiodevicecount >= MAX_PSYCH_AUDIO_DEVS) PsychErrorExitMsg(PsychError_user, "Maximum number of simultaneously open audio devices exceeded. You need to close some before you can open new ones.");
+    if (id >= MAX_PSYCH_AUDIO_DEVS) PsychErrorExitMsg(PsychError_user, "Maximum number of simultaneously open audio devices exceeded. You need to close some before you can open new ones.");
 
     // Make sure PortAudio is online:
     PsychPortAudioInitialize();
@@ -2733,8 +2755,8 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
     if ((mode & kPortAudioMonitoring) && (mynrchannels[0] != mynrchannels[1])) PsychErrorExitMsg(PsychError_user, "Fast monitoring/feedback mode selected, but number of capture and playback channels differs! They must be the same for this mode!");
 
     // Get optional channel map:
-    audiodevices[audiodevicecount].outputmappings = NULL;
-    audiodevices[audiodevicecount].inputmappings = NULL;
+    audiodevices[id].outputmappings = NULL;
+    audiodevices[id].inputmappings = NULL;
     mychannelmap = NULL;
     PsychAllocInDoubleMatArg(4, kPsychArgOptional, &m, &n, &p, &mychannelmap);
 
@@ -2747,62 +2769,62 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
         // Basic check ok. Build mapping structure:
         if (mode & kPortAudioPlayBack) {
             // Assign playback mappings:
-            audiodevices[audiodevicecount].outputmappings = malloc(sizeof(int) * mynrchannels[0]);
-            for (i = 0; i < mynrchannels[0]; i++) audiodevices[audiodevicecount].outputmappings[i] = (int) mychannelmap[i * m] - 1;
+            audiodevices[id].outputmappings = malloc(sizeof(int) * mynrchannels[0]);
+            for (i = 0; i < mynrchannels[0]; i++) audiodevices[id].outputmappings[i] = (int) mychannelmap[i * m] - 1;
 
             if (verbosity > 4) {
-                printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound output to audio stream %i:\n", audiodevicecount);
-                for (i=0; i < mynrchannels[0]; i++) printf("%i --> %i : ", i+1, audiodevices[audiodevicecount].outputmappings[i] + 1);
+                printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound output to audio stream %i:\n", id);
+                for (i=0; i < mynrchannels[0]; i++) printf("%i --> %i : ", i+1, audiodevices[id].outputmappings[i] + 1);
                 printf("\n\n");
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[0]; i++) if (audiodevices[audiodevicecount].outputmappings[i] < 0 || audiodevices[audiodevicecount].outputmappings[i] >= audiodevices[pamaster].outchannels) {
-                printf("PTB-ERROR: Slot %i of output channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[audiodevicecount].outputmappings[i] + 1, audiodevices[pamaster].outchannels);
-                free(audiodevices[audiodevicecount].outputmappings);
-                audiodevices[audiodevicecount].outputmappings = NULL;
+            for (i = 0; i < mynrchannels[0]; i++) if (audiodevices[id].outputmappings[i] < 0 || audiodevices[id].outputmappings[i] >= audiodevices[pamaster].outchannels) {
+                printf("PTB-ERROR: Slot %i of output channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].outputmappings[i] + 1, audiodevices[pamaster].outchannels);
+                free(audiodevices[id].outputmappings);
+                audiodevices[id].outputmappings = NULL;
                 PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
             }
         }
 
         if ((mode & kPortAudioCapture) && !(mode & kPortAudioIsOutputCapture)) {
             // Assign Capture mappings:
-            audiodevices[audiodevicecount].inputmappings = malloc(sizeof(int) * mynrchannels[1]);
+            audiodevices[id].inputmappings = malloc(sizeof(int) * mynrchannels[1]);
             // Index into first row of one-row matrix or 2nd row of two-row matrix:
-            for (i = 0; i < mynrchannels[1]; i++) audiodevices[audiodevicecount].inputmappings[i] = (int) mychannelmap[(i * m) + (m-1)] - 1;
+            for (i = 0; i < mynrchannels[1]; i++) audiodevices[id].inputmappings[i] = (int) mychannelmap[(i * m) + (m-1)] - 1;
 
             if (verbosity > 4) {
-                printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound capture from audio stream %i:\n", audiodevicecount);
-                for (i=0; i < mynrchannels[1]; i++) printf("%i --> %i : ", i+1, audiodevices[audiodevicecount].inputmappings[i] + 1);
+                printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound capture from audio stream %i:\n", id);
+                for (i=0; i < mynrchannels[1]; i++) printf("%i --> %i : ", i+1, audiodevices[id].inputmappings[i] + 1);
                 printf("\n\n");
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[1]; i++) if (audiodevices[audiodevicecount].inputmappings[i] < 0 || audiodevices[audiodevicecount].inputmappings[i] >= audiodevices[pamaster].inchannels) {
-                printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[audiodevicecount].inputmappings[i] + 1, audiodevices[pamaster].inchannels);
-                free(audiodevices[audiodevicecount].inputmappings);
-                audiodevices[audiodevicecount].inputmappings = NULL;
+            for (i = 0; i < mynrchannels[1]; i++) if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].inchannels) {
+                printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, audiodevices[pamaster].inchannels);
+                free(audiodevices[id].inputmappings);
+                audiodevices[id].inputmappings = NULL;
                 PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
             }
         }
 
         if (mode & kPortAudioIsOutputCapture) {
             // Assign Output Capture mappings:
-            audiodevices[audiodevicecount].inputmappings = malloc(sizeof(int) * mynrchannels[1]);
+            audiodevices[id].inputmappings = malloc(sizeof(int) * mynrchannels[1]);
             // Index into first row of one-row matrix or 2nd row of two-row matrix:
-            for (i = 0; i < mynrchannels[1]; i++) audiodevices[audiodevicecount].inputmappings[i] = (int) mychannelmap[(i * m) + (m-1)] - 1;
+            for (i = 0; i < mynrchannels[1]; i++) audiodevices[id].inputmappings[i] = (int) mychannelmap[(i * m) + (m-1)] - 1;
 
             if (verbosity > 4) {
-                printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound capture from audio output stream %i:\n", audiodevicecount);
-                for (i=0; i < mynrchannels[1]; i++) printf("%i --> %i : ", i+1, audiodevices[audiodevicecount].inputmappings[i] + 1);
+                printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound capture from audio output stream %i:\n", id);
+                for (i=0; i < mynrchannels[1]; i++) printf("%i --> %i : ", i+1, audiodevices[id].inputmappings[i] + 1);
                 printf("\n\n");
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[1]; i++) if (audiodevices[audiodevicecount].inputmappings[i] < 0 || audiodevices[audiodevicecount].inputmappings[i] >= audiodevices[pamaster].outchannels) {
-                printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[audiodevicecount].inputmappings[i] + 1, audiodevices[pamaster].outchannels);
-                free(audiodevices[audiodevicecount].inputmappings);
-                audiodevices[audiodevicecount].inputmappings = NULL;
+            for (i = 0; i < mynrchannels[1]; i++) if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].outchannels) {
+                printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, audiodevices[pamaster].outchannels);
+                free(audiodevices[id].inputmappings);
+                audiodevices[id].inputmappings = NULL;
                 PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
             }
         }
@@ -2812,25 +2834,25 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
         // No channelmap provided: Assign one that identity-maps all master device channels:
         if (mode & kPortAudioPlayBack) {
             // Assign playback mappings:
-            audiodevices[audiodevicecount].outputmappings = malloc(sizeof(int) * mynrchannels[0]);
-            for (i = 0; i < mynrchannels[0]; i++) audiodevices[audiodevicecount].outputmappings[i] = i;
+            audiodevices[id].outputmappings = malloc(sizeof(int) * mynrchannels[0]);
+            for (i = 0; i < mynrchannels[0]; i++) audiodevices[id].outputmappings[i] = i;
 
             if (verbosity > 4) {
-                printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound output to audio stream %i:\n", audiodevicecount);
-                for (i=0; i < mynrchannels[0]; i++) printf("%i --> %i : ", i+1, audiodevices[audiodevicecount].outputmappings[i]+1);
+                printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound output to audio stream %i:\n", id);
+                for (i=0; i < mynrchannels[0]; i++) printf("%i --> %i : ", i+1, audiodevices[id].outputmappings[i]+1);
                 printf("\n\n");
             }
         }
 
         if (mode & kPortAudioCapture) {
             // Assign Capture mappings:
-            audiodevices[audiodevicecount].inputmappings = malloc(sizeof(int) * mynrchannels[1]);
+            audiodevices[id].inputmappings = malloc(sizeof(int) * mynrchannels[1]);
             // Index into first row of one-row matrix or 2nd row of two-row matrix:
-            for (i = 0; i < mynrchannels[1]; i++) audiodevices[audiodevicecount].inputmappings[i] = i;
+            for (i = 0; i < mynrchannels[1]; i++) audiodevices[id].inputmappings[i] = i;
 
             if (verbosity > 4) {
-                printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound capture from audio stream %i:\n", audiodevicecount);
-                for (i=0; i < mynrchannels[1]; i++) printf("%i --> %i : ", i+1, audiodevices[audiodevicecount].inputmappings[i]+1);
+                printf("PTB-INFO: Will use the following logical slave-channel -> master-channel mappings for sound capture from audio stream %i:\n", id);
+                for (i=0; i < mynrchannels[1]; i++) printf("%i --> %i : ", i+1, audiodevices[id].inputmappings[i]+1);
                 printf("\n\n");
             }
         }
@@ -2838,61 +2860,61 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
 
     // Setup our final device structure. Mostly settings from the master device, with
     // a few settings specific to the slave:
-    audiodevices[audiodevicecount].opmode = mode;
-    audiodevices[audiodevicecount].runMode = 1;
-    audiodevices[audiodevicecount].stream = audiodevices[pamaster].stream;
-    audiodevices[audiodevicecount].streaminfo = Pa_GetStreamInfo(audiodevices[pamaster].stream);
-    audiodevices[audiodevicecount].hostAPI = audiodevices[pamaster].hostAPI;
-    audiodevices[audiodevicecount].startTime = 0.0;
-    audiodevices[audiodevicecount].reqStartTime = 0.0;
-    audiodevices[audiodevicecount].reqStopTime = DBL_MAX;
-    audiodevices[audiodevicecount].estStopTime = 0;
-    audiodevices[audiodevicecount].currentTime = 0;
-    audiodevices[audiodevicecount].state = 0;
-    audiodevices[audiodevicecount].reqstate = 255;
-    audiodevices[audiodevicecount].repeatCount = 1;
-    audiodevices[audiodevicecount].outputbuffer = NULL;
-    audiodevices[audiodevicecount].outputbuffersize = 0;
-    audiodevices[audiodevicecount].inputbuffer = NULL;
-    audiodevices[audiodevicecount].inputbuffersize = 0;
-    audiodevices[audiodevicecount].outchannels = mynrchannels[0];
-    audiodevices[audiodevicecount].inchannels = mynrchannels[1];
-    audiodevices[audiodevicecount].latencyBias = 0.0;
-    audiodevices[audiodevicecount].schedule = NULL;
-    audiodevices[audiodevicecount].schedule_size = 0;
-    audiodevices[audiodevicecount].schedule_pos = 0;
-    audiodevices[audiodevicecount].schedule_writepos = 0;
-    audiodevices[audiodevicecount].outdeviceidx = audiodevices[pamaster].outdeviceidx;
-    audiodevices[audiodevicecount].indeviceidx  = audiodevices[pamaster].indeviceidx;
-    audiodevices[audiodevicecount].slaveCount = 0;
-    audiodevices[audiodevicecount].slaves = NULL;
-    audiodevices[audiodevicecount].pamaster = -1;
-    audiodevices[audiodevicecount].modulatorSlave = -1;
-    audiodevices[audiodevicecount].slaveOutBuffer = NULL;
-    audiodevices[audiodevicecount].slaveGainBuffer = NULL;
-    audiodevices[audiodevicecount].slaveInBuffer = NULL;
-    audiodevices[audiodevicecount].masterVolume = 1.0;
-    audiodevices[audiodevicecount].playposition = 0;
-    audiodevices[audiodevicecount].totalplaycount = 0;
+    audiodevices[id].opmode = mode;
+    audiodevices[id].runMode = 1;
+    audiodevices[id].stream = audiodevices[pamaster].stream;
+    audiodevices[id].streaminfo = Pa_GetStreamInfo(audiodevices[pamaster].stream);
+    audiodevices[id].hostAPI = audiodevices[pamaster].hostAPI;
+    audiodevices[id].startTime = 0.0;
+    audiodevices[id].reqStartTime = 0.0;
+    audiodevices[id].reqStopTime = DBL_MAX;
+    audiodevices[id].estStopTime = 0;
+    audiodevices[id].currentTime = 0;
+    audiodevices[id].state = 0;
+    audiodevices[id].reqstate = 255;
+    audiodevices[id].repeatCount = 1;
+    audiodevices[id].outputbuffer = NULL;
+    audiodevices[id].outputbuffersize = 0;
+    audiodevices[id].inputbuffer = NULL;
+    audiodevices[id].inputbuffersize = 0;
+    audiodevices[id].outchannels = mynrchannels[0];
+    audiodevices[id].inchannels = mynrchannels[1];
+    audiodevices[id].latencyBias = 0.0;
+    audiodevices[id].schedule = NULL;
+    audiodevices[id].schedule_size = 0;
+    audiodevices[id].schedule_pos = 0;
+    audiodevices[id].schedule_writepos = 0;
+    audiodevices[id].outdeviceidx = audiodevices[pamaster].outdeviceidx;
+    audiodevices[id].indeviceidx  = audiodevices[pamaster].indeviceidx;
+    audiodevices[id].slaveCount = 0;
+    audiodevices[id].slaves = NULL;
+    audiodevices[id].pamaster = -1;
+    audiodevices[id].modulatorSlave = -1;
+    audiodevices[id].slaveOutBuffer = NULL;
+    audiodevices[id].slaveGainBuffer = NULL;
+    audiodevices[id].slaveInBuffer = NULL;
+    audiodevices[id].masterVolume = 1.0;
+    audiodevices[id].playposition = 0;
+    audiodevices[id].totalplaycount = 0;
 
     // Setup per-channel output volumes for slave: Each channel starts with a 1.0 setting, ie., max volume:
-    if (audiodevices[audiodevicecount].outchannels > 0) {
-        audiodevices[audiodevicecount].outChannelVolumes = (float*) malloc(sizeof(float) * (size_t) audiodevices[audiodevicecount].outchannels);
-        if (audiodevices[audiodevicecount].outChannelVolumes == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Memory exhausted during audio volume vector allocation.");
-        for (i = 0; i < audiodevices[audiodevicecount].outchannels; i++) audiodevices[audiodevicecount].outChannelVolumes[i] = 1.0;
+    if (audiodevices[id].outchannels > 0) {
+        audiodevices[id].outChannelVolumes = (float*) malloc(sizeof(float) * (size_t) audiodevices[id].outchannels);
+        if (audiodevices[id].outChannelVolumes == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Memory exhausted during audio volume vector allocation.");
+        for (i = 0; i < audiodevices[id].outchannels; i++) audiodevices[id].outChannelVolumes[i] = 1.0;
     }
     else {
-        audiodevices[audiodevicecount].outChannelVolumes = NULL;
+        audiodevices[id].outChannelVolumes = NULL;
     }
 
     // If we use locking, we need to initialize the per-device mutex:
-    if (uselocking && PsychInitMutex(&(audiodevices[audiodevicecount].mutex))) {
-        printf("PsychPortAudio: CRITICAL! Failed to initialize Mutex object for pahandle %i! Prepare for trouble!\n", audiodevicecount);
+    if (uselocking && PsychInitMutex(&(audiodevices[id].mutex))) {
+        printf("PsychPortAudio: CRITICAL! Failed to initialize Mutex object for pahandle %i! Prepare for trouble!\n", id);
         PsychErrorExitMsg(PsychError_system, "Audio device mutex creation failed!");
     }
 
     // If we use locking, this will create & init the associated event variable:
-    PsychPACreateSignal(&(audiodevices[audiodevicecount]));
+    PsychPACreateSignal(&(audiodevices[id]));
 
     // Assign parent:
     paparent = pamaster;
@@ -2914,42 +2936,42 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
     for (i=0; (i < MAX_PSYCH_AUDIO_SLAVES_PER_DEVICE) && (audiodevices[pamaster].slaves[i] > -1); i++);
 
     // Attach us to master:
-    audiodevices[pamaster].slaves[i] = audiodevicecount;
+    audiodevices[pamaster].slaves[i] = id;
     audiodevices[pamaster].slaveCount++;
 
     // Attach master to us:
-    audiodevices[audiodevicecount].pamaster = pamaster;
+    audiodevices[id].pamaster = pamaster;
 
     // If we are a modulator for another slave then attach us as modulator to that slave.
     // No need to mutex-lock the slave, as that protection is already implied by the masters mutex:
-    if (mode & kPortAudioIsAMModulatorForSlave) audiodevices[paparent].modulatorSlave = audiodevicecount;
+    if (mode & kPortAudioIsAMModulatorForSlave) audiodevices[paparent].modulatorSlave = id;
 
     // Attached :-)
     PsychPAUnlockDeviceMutex(&audiodevices[pamaster]);
 
     if (verbosity > 4) {
-        printf("PTB-INFO: New virtual audio slave device with handle %i opened and attached to parent device handle %i [master %i].\n", audiodevicecount, paparent, pamaster);
+        printf("PTB-INFO: New virtual audio slave device with handle %i opened and attached to parent device handle %i [master %i].\n", id, paparent, pamaster);
 
-        if (audiodevices[audiodevicecount].opmode & kPortAudioIsAMModulator) {
-            printf("PTB-INFO: For %i channels amplitude modulation.\n", audiodevices[audiodevicecount].outchannels);
+        if (audiodevices[id].opmode & kPortAudioIsAMModulator) {
+            printf("PTB-INFO: For %i channels amplitude modulation.\n", audiodevices[id].outchannels);
         }
-        else if (audiodevices[audiodevicecount].opmode & kPortAudioPlayBack) {
-            printf("PTB-INFO: For %i channels playback.\n", audiodevices[audiodevicecount].outchannels);
+        else if (audiodevices[id].opmode & kPortAudioPlayBack) {
+            printf("PTB-INFO: For %i channels playback.\n", audiodevices[id].outchannels);
         }
 
-        if (audiodevices[audiodevicecount].opmode & kPortAudioIsOutputCapture) {
-            printf("PTB-INFO: For %i channels capture of master output mix.\n", audiodevices[audiodevicecount].inchannels);
-        } else if (audiodevices[audiodevicecount].opmode & kPortAudioCapture) {
-            printf("PTB-INFO: For %i channels capture.\n", audiodevices[audiodevicecount].inchannels);
+        if (audiodevices[id].opmode & kPortAudioIsOutputCapture) {
+            printf("PTB-INFO: For %i channels capture of master output mix.\n", audiodevices[id].inchannels);
+        } else if (audiodevices[id].opmode & kPortAudioCapture) {
+            printf("PTB-INFO: For %i channels capture.\n", audiodevices[id].inchannels);
         }
 
         printf("PTB-INFO: Real samplerate %f Hz. Input latency %f msecs, Output latency %f msecs.\n",
-               audiodevices[audiodevicecount].streaminfo->sampleRate, audiodevices[audiodevicecount].streaminfo->inputLatency * 1000.0,
-               audiodevices[audiodevicecount].streaminfo->outputLatency * 1000.0);
+               audiodevices[id].streaminfo->sampleRate, audiodevices[id].streaminfo->inputLatency * 1000.0,
+               audiodevices[id].streaminfo->outputLatency * 1000.0);
     }
 
     // Return device handle:
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) audiodevicecount);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) id);
 
     // One more audio device...
     audiodevicecount++;
