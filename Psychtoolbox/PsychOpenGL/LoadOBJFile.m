@@ -342,7 +342,8 @@ while 1
                 
                 SrcTexCoords = Texcoords;
                 Texcoords = zeros(size(SrcTexCoords, 1), vnum);
-                
+                vtnum = vnum;
+
                 % Remap/rebuild for each of the f4num faces:
                 for i=1:f4num
                     Texcoords(:, F4(1,i)) = SrcTexCoords(:, F4(5,i));
@@ -373,7 +374,8 @@ while 1
                 
                 SrcNormals = Normals;
                 Normals = zeros(size(SrcNormals, 1), vnum);
-                
+                vnnum = vnum;
+
                 % Remap/rebuild for each of the f4num faces:
                 for i=1:f4num
                     Normals(:, F4(1,i)) = SrcNormals(:, F4(9,i));
@@ -433,7 +435,8 @@ while 1
                 
                 SrcTexCoords = Texcoords;
                 Texcoords = zeros(size(SrcTexCoords, 1), vnum);
-                
+                vtnum = vnum;
+
                 % Remap/rebuild for each of the f3num faces:
                 for i=1:f3num
                     Texcoords(:, Faces(1,i)) = SrcTexCoords(:, Faces(4,i));
@@ -463,7 +466,8 @@ while 1
                 
                 SrcNormals = Normals;
                 Normals = zeros(size(SrcNormals, 1), vnum);
-                
+                vnnum = vnum;
+
                 % Remap/rebuild for each of the f3num faces:
                 for i=1:f3num
                     Normals(:, Faces(1,i)) = SrcNormals(:, Faces(7,i));
@@ -495,8 +499,8 @@ while 1
         objobject{meshcount}.quadfaces = QuadFaces(:, 1:f4num);  %#ok<AGROW>
     end;
     objobject{meshcount}.vertices = Vertices(:, 1:vnum);  %#ok<AGROW>
-    objobject{meshcount}.normals = Normals(:, 1:vnum);  %#ok<AGROW>
-    objobject{meshcount}.texcoords = Texcoords(:, 1:vnum);  %#ok<AGROW>
+    objobject{meshcount}.normals = Normals(:, 1:vnnum);  %#ok<AGROW>
+    objobject{meshcount}.texcoords = Texcoords(:, 1:vtnum);  %#ok<AGROW>
     objobject{meshcount}.subMeshName = subMeshName;  %#ok<AGROW>
     objobject{meshcount}.mtllib = mtllib;  %#ok<AGROW>
     objobject{meshcount}.usemtl = usemtlstack;  %#ok<AGROW>

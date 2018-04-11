@@ -43,17 +43,23 @@ end
 % X video driver from it. We do this by opening a little invisble
 % onscreen window, then querying its window info to get the type
 % of primary display gpu used:
-fprintf('Detecting type of graphics card (GPU) and driver to use...\n');
+fprintf('Detecting type of primary display graphics card (GPU) and driver to use...\n');
 oldVerbosity = Screen('Preference', 'Verbosity', 1);
 oldSyncTests = Screen('Preference', 'SkipSyncTests', 2);
 
 try
   win = Screen('OpenWindow', 0, 0, [0 0 32 32]);
   winfo = Screen('GetWindowInfo', win);
+  modesettingddxactive = Screen('GetWindowInfo', win, 8);
   Screen('CloseAll');
 
   xdriver = DetectDDX(winfo);
-  fprintf('Will use the xf86-video-%s DDX video driver.\n', xdriver);
+  fprintf('Primary display gpu type: %s\n', xdriver);
+  if ~modesettingddxactive
+    fprintf('Uses the xf86-video-%s DDX video driver.\n', xdriver);
+  else
+    fprintf('Uses the xf86-video-modesetting DDX video driver.\n');
+  end
 
   % Step 2: Enumerate all available video outputs on all X-Screens:
   outputs = [];
@@ -266,12 +272,14 @@ try
 
     % Which X-Server version is in use?
     [rc, text] = system('xdpyinfo | grep ''X.Org version''');
+    if rc == 0
+      xversion = sscanf (text, 'X.Org version: %d.%d.%d');
+    end
     if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting') && ...
        (~multigpu || (~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'ati')))
       % HybridGraphics Intel + NVidia/AMD needs intel-ddx, modesetting won't work. Ditto for AMD + AMD.
       % XOrg 1.18.0 or later? xf86-video-modesetting is only good enough for our purposes on 1.18 and later.
       % Also must be a Mesa version safe for use with DRI3/Present:
-      xversion = sscanf (text, 'X.Org version: %d.%d.%d');
       if (xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 18)) && ...
          ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0)
         % Yes: The xf86-video-modesetting driver is an option that supports DRI3/Present well.
@@ -279,12 +287,14 @@ try
         fprintf('This is a new video driver, which works with all open-source display drivers.\n');
         fprintf('It is shown to be rather efficient, but not as feature rich and well tested as other drivers yet.\n');
         fprintf('If you are not sure what to select, answer n for no as a safe choice.\n');
-        if multixscreen
+        if multixscreen && ~modesettingddxactive
           fprintf('CAUTION: When setting up a multi-x-screen setup with modesetting, you must do this in two separate\n');
           fprintf('CAUTION: steps. First run this script followed by XOrgConfSelector to select modesetting in a\n');
           fprintf('CAUTION: single x-screen setup, then logout and login again. Then run XOrgConfCreator again, selecting\n');
           fprintf('CAUTION: a multi-x-screen setup with the modesetting driver selected again. If you do not follow this\n');
-          fprintf('CAUTION: order you may end up with a dysfunctional graphical user interface!\n');
+          fprintf('CAUTION: order you would end up with a dysfunctional graphical user interface!\n');
+          fprintf('CAUTION: If you answer ''yes'' below, i will modify your choice, so you can safely execute\n');
+          fprintf('CAUTION: the first step of this procedure, so no worries...\n');
         end
         usemodesetting = '';
         while isempty(usemodesetting) || ~ismember(usemodesetting, ['y', 'n', 'd'])
@@ -297,6 +307,14 @@ try
           modesetting = 'y';
         end
       end
+    end
+
+    % Map a "Don't care" about modesetting to choice of modesetting if multi-x-screen set up
+    % while modesetting is already active. We'd do this anyway below in an override, but doing
+    % it early allows to skip all those redundant questions below:
+    if (modesetting == 'd') && (multixscreen > 0) && modesettingddxactive
+      xdriver = 'modesetting';
+      modesetting = 'y';
     end
 
     if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
@@ -383,12 +401,16 @@ try
       atinotiling = 'd';
     end
 
-    % Does the driver + gpu combo support 30 bpp, 10 bpc framebuffers natively, and user has not chosen 12 bpc mode yet?
+    % Does the driver + gpu combo support depth 30, 10 bpc framebuffers natively, and user has not chosen 12 bpc mode yet?
+    % As of March 2018, the latest intel-ddx and nouveau-ddx, as well as amdgpu-pro ddx and nvidia proprietary ddx do support
+    % 30 bit on modern X-Servers. The amdgpu-ddx and modesetting-ddx support depth 30 with X-Server 1.20 and later versions.
     if (atinotiling ~= 'y') && ...
-       (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro'))
-      fprintf('\n\nDo you want to setup a 30 bpp framebuffer for 10 bpc precision per color channel?\n');
-      if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
-        fprintf('This will need the very latest drivers, so a very recent (or even future?) late 2017, or even 2018 Linux distribution.\n');
+       (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro') || ...
+        strcmp(xdriver, 'ati') || ((xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 20)) && (strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu'))))
+      fprintf('\n\nDo you want to setup a 30 bit framebuffer for 10 bpc precision per color channel?\n');
+      if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'ati') || strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu')
+        fprintf('This will need the very latest drivers, so a year 2018 or later Linux distribution, e.g., at least Ubuntu 18.04 LTS,\n');
+        fprintf('with Mesa 18.0 or later for Intel and AMD gpus, and Mesa 18.1 or later for NVidia gpus.\n');
       end
 
       if multigpu
@@ -396,14 +418,22 @@ try
       end
 
       fprintf('If your desktop GUI fails to work, or Psychtoolbox gives lots of timing or page-flip related warnings,\n');
-      fprintf('then you know your system and hardware is not ready yet for this 30 bpp mode. On AMD hardware from 2007 or later\n');
-      fprintf('this will always work without the need to set it up here though at least for PsychImaging native 10 bit\n');
+      fprintf('then you know your system and hardware is not ready yet for this depth 30 mode. On AMD hardware from 2007 or later\n');
+      fprintf('depth 30 will always work even without the need to set it up here, at least for PsychImaging native 10 bit\n');
       fprintf('framebuffer tasks, albeit at potentially slightly lower performance. AMD gpus have special support in PTB in this sense.\n');
       fprintf('Also note that not all gpus can output true 10 bpc on all types of video outputs. Check carefully with a photometer etc.!\n');
 
       depth30bpp = '';
       while isempty(depth30bpp) || ~ismember(depth30bpp, ['y', 'n', 'd'])
         depth30bpp = input('Use a 30 bpp, 10 bpc framebuffer [y for yes, n for no, d for don''t care]? ', 's');
+      end
+
+      % Depth 30 on multi-x-screen setup requested?
+      if depth30bpp == 'y' && multixscreen
+        depth30bpp = '';
+        while isempty(depth30bpp) || isempty(str2num(depth30bpp)) || ~isnumeric(str2num(depth30bpp))
+          depth30bpp = input('Enter a space-separated list of screen numbers for which 30 bit color depth should be used: ', 's');
+        end
       end
     else
       depth30bpp = 'd';
@@ -448,22 +478,33 @@ end
 
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
-   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n'])
+   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia')
 
   % All settings are for a single X-Screen setup with auto-detected outputs
-  % and all driver settings on default. There isn't any need or purpose for
-  % a xorg.conf file, so we are done.
+  % and all driver settings on default and not on a NVidia proprietary driver.
+  % There isn't any need or purpose for a xorg.conf file, so we are done.
   fprintf('With the settings you requested, there is no need for a xorg.conf file at all,\n');
   fprintf('so i will not create one and we are done. Bye!\n\n');
   return;
 end
 
-if strcmp(xdriver, 'nvidia')
-  fprintf('\n\nCAUTION! You are using the proprietary NVIDIA graphics driver. This script\n');
-  fprintf('is not well suited to deal with that driver and may well write an invalid\n');
-  fprintf('configuration file! You may want to abort here via pressing CTRL+C and use\n');
-  fprintf('NVIDIAs GUI setup tool instead as a more fool proof and safe option.\n');
-  fprintf('------------------------ CAUTION -----------------------------------------\n\n');
+% Multi X-Screen ZaphodHeads setup defined while modesetting-ddx was active? In that case,
+% the determined ZaphodHead output names are only valid for use with the modesetting-ddx.
+% Therefore, if user chose "(d)on't care" wrt. modesetting-ddx, select it, so user is not
+% left with a dysfunctional multi x-screen setup:
+if (multixscreen > 0) && (modesetting ~= 'y') && modesettingddxactive
+  modesetting = 'y';
+  xdriver = 'modesetting';
+  dri3 = 'd'; % modesetting defaults to DRI3, which is what we want, so 'd'ont care does the job.
+  fprintf('Override: Selecting modesetting-ddx driver for this multi X-Screen configuration, as\n');
+  fprintf('Override: the modesetting-ddx is currently active while creating this config.\n');
+elseif (multixscreen > 0) && (modesetting == 'y') && ~modesettingddxactive
+  multixscreen = 0;
+  fprintf('Override: Ignoring request for multi X-Screen configuration, as modesetting-ddx\n');
+  fprintf('Override: is requested, but was not active while creating this config. This would\n');
+  fprintf('Override: create an invalid configuration. Generating a single-x-screen modesetting\n');
+  fprintf('Override: config now. Please repeat the multi-x-screen + modesetting setup after logging\n');
+  fprintf('Override: out and in again with this new configuration selected.\n');
 end
 
 % Define filename of output file:
@@ -560,9 +601,16 @@ else
         fprintf(fid, '  Monitor       "%s"\n', scanout.name);
       end
 
-      if depth30bpp == 'y'
+      if depth30bpp == 'y' || ismember(num2str(i), depth30bpp)
         fprintf(fid, '  DefaultDepth  30\n');
       end
+
+      % On NVidia ddx, tell the driver to also expose HMD's, e.g.,
+      % for use with our OpenHMD VR driver, instead of hiding them:
+      if strcmp(xdriver, 'nvidia')
+        fprintf(fid, '  Option "AllowHMD"         "yes"\n');
+      end
+
       fprintf(fid, 'EndSection\n\n');
     end
   else
@@ -572,14 +620,21 @@ else
     % values for the gpu driving that single X-Screen.
     WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, primehacks, [], [], []);
 
-    if depth30bpp == 'y'
+    if depth30bpp == 'y' || strcmp(xdriver, 'nvidia')
       fprintf(fid, 'Section "Screen"\n');
       fprintf(fid, '  Identifier    "Screen%i"\n', 0);
       fprintf(fid, '  Device        "Card%i"\n', 0);
 
-      if depth30bpp == 'y'
+      if depth30bpp == 'y' || depth30bpp == '0'
         fprintf(fid, '  DefaultDepth  30\n');
       end
+
+      % On NVidia ddx, tell the driver to also expose HMD's, e.g.,
+      % for use with our OpenHMD VR driver, instead of hiding them:
+      if strcmp(xdriver, 'nvidia')
+        fprintf(fid, '  Option "AllowHMD"         "yes"\n');
+      end
+
       fprintf(fid, 'EndSection\n\n');
     end
   end

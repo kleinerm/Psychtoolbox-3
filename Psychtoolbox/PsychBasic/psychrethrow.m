@@ -10,7 +10,9 @@ function psychrethrow(msg)
 % If your Matlab lacks a rethrow-function, this function
 % will try to emulate the real rethrow function.
 
-if exist('rethrow', 'builtin')==5
+if isa(msg, 'MException')
+  msg.rethrow
+elseif exist('rethrow', 'builtin') == 5
   % Call builtin implementation:
   builtin('rethrow', msg);
 else

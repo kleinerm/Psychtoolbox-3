@@ -15,12 +15,10 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % Currently the routine performs the following tasks:
 %
 % 1. Clean up the Matlab/Octave path to Psychtoolbox: Remove unneeded .svn subfolders.
-% 2. Contact the Psychtoolbox server to perform online registration of this
-%    working copy of Psychtoolbox.
-% 3. Add the PsychJava subfolder to the static Matlab class-path if neccessary.
+% 2. Add the PsychJava subfolder to the static Matlab class-path if neccessary.
 %    This enables the Java-based GetChar support on Matlab.
-% 4. Add the PsychStartup.m routine to Matlab's startup.m file on Windows.
-% 5. Perform post-installation checks and basic troubleshooting.
+% 3. Add the PsychStartup.m routine to Matlab's startup.m file on Windows.
+% 4. Perform post-installation checks and basic troubleshooting.
 
 %
 % History:
@@ -72,6 +70,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 12/26/2016 No support for OSX 10.10 anymore. No support for Octave-4.0 on non-Linux,
 %            support 64-Bit Octave 4.2 on Windows and OSX instead. (MK)
 % 01/03/2017 Fix Matlab incompatibility with __octave_config_info__. (MK)
+% 04/07/2018 Remove PsychtoolboxRegistration for now. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -537,7 +536,7 @@ if IsWin && ~IsOctave
         end
         fprintf('ERROR: You must execute that installer as an administrator user. Exit Matlab before the installation, then restart it.\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
-        fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox; PsychtoolboxRegistration(%i, ''%s'');\n\n', isUpdate, flavor);
+        fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox;\n\n');
         fprintf('ERROR: This will avoid a full download of Psychtoolbox over the internet and just finish the setup.\n');
         
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
@@ -621,27 +620,18 @@ try
         PsychGPUControl('FullScreenWindowDisablesCompositor', 1);
     end
 
-    % Try to execute online registration routine: This should be fail-safe in case
-    % of no network connection.
-    fprintf('\n\n');
-    PsychtoolboxRegistration(isUpdate, flavor);
-    fprintf('\n\n\n');
-
     % Tell user we're successfully done:
     fprintf('\nDone with post-installation. Psychtoolbox is ready for use.\n\n\n');
 
 catch
     fprintf('\n\n');
-    fprintf('Screen() or online registration failed to work for some reason:\n\n');
+    fprintf('Screen() failed to work for some reason:\n\n');
     fprintf('Check the troubleshooting instructions on our Wiki (Download section \n');
     fprintf('and FAQ section, maybe also the Bugs section).\n\n');
     fprintf('Once you manage to fix the problem (simply type ''AssertOpenGL'' to verify\n');
     fprintf('that stuff works now), you do not need to run the installation routine again,\n');
     fprintf('but can start working immediately.\n\n');
-    fprintf('However, we kindly ask you to execute the following command after everything works,\n');
-    fprintf('so your copy gets registered by us for statistical purpose:\n\n');
-    fprintf('PsychtoolboxRegistration(%i, ''%s'');\n\n', isUpdate, flavor);
-    fprintf('Thanks! Press RETURN or ENTER to confirm you read and understood the above message.\n');
+    fprintf('Press RETURN or ENTER to confirm you read and understood the above message.\n');
     pause;
     fprintf('\n\n');
 end
@@ -712,7 +702,6 @@ fprintf('\nEnjoy!\n\n');
 fprintf('Press RETURN or ENTER to confirm you read and understood the above message.\n');
 pause;
 fprintf('\n\n');
-PTBSurvey;
 
 % Clear out everything:
 if IsWin

@@ -34,8 +34,9 @@ function [keyboardIndices, productNames, allInfos]= GetKeyboardIndices(product, 
 
 
 % HISTORY
-% 7/6/03    awi     Wrote it.
-% 12/8/09    mk     Add matching logic for selection of subsets of devices.
+% 7/6/03      awi Wrote it.
+% 12/8/09     mk  Add matching logic for selection of subsets of devices.
+% 10-Apr-2018 mk  Filter out devices with locationID zero on broken macOS.
 
 if nargin < 1
     product = [];
@@ -78,6 +79,11 @@ for i =1:length(d);
         end
 
         if ~isempty(locationID) && (d(i).locationID ~= locationID)
+            continue;
+        end
+
+        % Protect against macOS brain-damage: Filter out the touchbar gadget.
+        if IsOSX && d(i).locationID == 0
             continue;
         end
 

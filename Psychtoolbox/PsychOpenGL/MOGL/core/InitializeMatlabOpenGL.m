@@ -57,6 +57,11 @@ function varargout = InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitch
 %
 %    -> This flag is needed to make the glAccum() command work.
 %
+%    + 4 == Request an OpenGL core profile context of version 3.1 or later.
+%    This is highly experimental and not thoroughly tested or guaranteed to
+%    work properly. Obviously your rendering code would need to avoid any kind
+%    of legacy OpenGL 1/2 features which are deprecated/removed from OpenGL 3.1+,
+%    or you will hit all kind of OpenGL error conditions.
 %
 %
 % The initial OS/X PowerPC version of the 'OpenGL for Matlab' low level
@@ -73,6 +78,7 @@ function varargout = InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitch
 % History:
 % 02/16/06 mk Written - Based on glmGetconst from Richard F. Murray.
 % 03/27/11 mk Update info about license - New MIT license.
+% 02/15/18 mk Add specialFlags +4 for OpenGL 3.1+ core profile contexts.
 
 global GL;
 

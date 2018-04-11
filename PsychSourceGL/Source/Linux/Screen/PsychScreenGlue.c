@@ -63,6 +63,7 @@ extern int mesaversion[3];
 int xr_event, xr_error;
 psych_bool has_xrandr_1_2 = FALSE;
 psych_bool has_xrandr_1_3 = FALSE;
+psych_bool has_xrandr_1_4 = FALSE;
 
 /* Following structures are needed by our ATI/AMD/NVIDIA beamposition query implementation: */
 /* Location and format of the relevant hardware registers of the ATI R500/R600 chips
@@ -101,7 +102,7 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-/* Mappings up to date for September 2017 (last update e-mail patch / commit 2017-06-19). Would need updates for any commit after September 2017 */
+/* Mappings up to date for December 2017 (last update e-mail patch / commit 2017-06-19). Would need updates for any commit after December 2017 */
 
 static psych_bool isDCE12(int screenId)
 {
@@ -158,6 +159,11 @@ static psych_bool isDCE11(int screenId)
     if ((fPCIDeviceId & 0xFFFF) == 0x98E4) isDCE11 = true;
 
     if (isDCE112(screenId)) isDCE11 = true;
+
+    // That all DCE12 can be treated as DCE11 for our purpose is so far an
+    // unproven assumption, but let's see where it leads us - hopefully not to
+    // awful bug reports.
+    if (isDCE12(screenId)) isDCE11 = true;
 
     return(isDCE11);
 }
@@ -667,12 +673,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 fflush(NULL);
             }
 
-            ret = pci_device_map_range(gpu, region->base_addr, region->size, PCI_DEV_MAP_FLAG_WRITABLE, (void**) &gfx_cntl_mem);
-            // Mapping MMIO for write access is a nono on Intel with latest kernels, so retry a readonly mapping. Actually
-            // read only is fine for anything but AMD, as we don't benefit from write access on other vendors gpus:
-            if ((ret == EAGAIN) && (fDeviceType != kPsychRadeon)) {
-                ret = pci_device_map_range(gpu, region->base_addr, region->size, 0, (void**) &gfx_cntl_mem);
-            }
+            // Read only is fine for anything but AMD, as we don't benefit from write access on other vendors gpus:
+            // Note: MMIO access doesn't work anymore on Intel igp's since quite a while - at least Linux 4.4+.
+            ret = pci_device_map_range(gpu, region->base_addr, region->size, (fDeviceType == kPsychRadeon) ? PCI_DEV_MAP_FLAG_WRITABLE : 0, (void**) &gfx_cntl_mem);
         }
         else {
             // Unsupported GPU type:
@@ -683,9 +686,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         if (ret || (NULL == gfx_cntl_mem)) {
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-INFO: Failed to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
-                printf("PTB-INFO: Beamposition timestamping and other special functions disabled.\n");
-                printf("PTB-INFO: You need to run Matlab/Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
-                printf("PTB-INFO: However, if you are using the free graphics drivers, there usually isn't a need for this.\n");
+                printf("PTB-INFO: Beamposition timestamping on NVidia and AMD gpu's, and other special functions on AMD gpu's, disabled.\n");
+                printf("PTB-INFO: You need to run the setup script PsychLinuxConfiguration once, followed by a reboot, for this to work.\n");
+                printf("PTB-INFO: If you are using the open-source graphics drivers, then this failure usually doesn't matter for typical use.\n");
                 fflush(NULL);
             }
 
@@ -729,8 +732,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         }
 
         if (fDeviceType == kPsychRadeon) {
-            // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60), DCE-8 (80), DCE-10 (100), DCE-11 (110) for now.
-            fCardType = isDCE11(screenId) ? 110 : isDCE10(screenId) ? 100 : isDCE8(screenId) ? 80 : (isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : (isDCE3(screenId) ? 30 : 10))));
+            // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60), DCE-8 (80), DCE-10 (100), DCE-11 (110) ... for now.
+            fCardType = isDCE12(screenId) ? 120 : isDCE11(screenId) ? 110 : isDCE10(screenId) ? 100 : isDCE8(screenId) ? 80 : (isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : (isDCE3(screenId) ? 30 : 10))));
 
             // Setup for DCE-4/5/6/8:
             if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId) || isDCE8(screenId)) {
@@ -757,9 +760,10 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                 if (isDCE81(screenId)) fNumDisplayHeads = 4;
             }
 
-            // Setup for DCE-10/11:
-            if (isDCE10(screenId) || isDCE11(screenId)) {
-                // DCE-10/11 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
+            // Setup for DCE-10/11/12:
+            if (isDCE10(screenId) || isDCE11(screenId) || isDCE12(screenId)) {
+                // TODO: Not verified for DCE-12, purely speculation!
+                // DCE-10/11/12 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
                 // but the offsets for the different CRTC blocks are different wrt. to pre DCE-10. Therefore
                 // need to initialize the offsets differently. Also, some of these parts seem to support up
                 // to 7 display engines instead of the old limit of 6 engines:
@@ -782,6 +786,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 
                 // DCE-11.2 has 6 display controllers:
                 if (isDCE112(screenId)) fNumDisplayHeads = 6;
+
+                // DCE-12 has 6 display controllers:
+                if (isDCE12(screenId)) fNumDisplayHeads = 6;
             }
 
             if (PsychPrefStateGet_Verbosity() > 2) {
@@ -868,6 +875,7 @@ static psych_bool           displayLockSettingsFlags[kPsychMaxPossibleDisplays];
 static int                  displayX11Screens[kPsychMaxPossibleDisplays];
 static XRRScreenResources*  displayX11ScreenResources[kPsychMaxPossibleDisplays];
 static Atom                 displayX11ScreenCompositionAtom[kPsychMaxPossibleDisplays];
+static psych_bool           displayX11ScreenUsesModesettingDDX[kPsychMaxPossibleDisplays];
 
 // XInput-2 extension data per display:
 static int                  xi_opcode = 0, xi_event = 0, xi_error = 0;
@@ -1052,12 +1060,14 @@ void InitializePsychDisplayGlue(void)
         displayBeampositionHealthy[i]=TRUE;
         displayX11ScreenResources[i] = NULL;
         displayX11ScreenCompositionAtom[i] = None;
+        displayX11ScreenUsesModesettingDDX[i] = FALSE;
         xinput_ndevices[i]=0;
         xinput_info[i]=NULL;
     }
 
     has_xrandr_1_2 = FALSE;
     has_xrandr_1_3 = FALSE;
+    has_xrandr_1_4 = FALSE;
 
     // Set Mesa version to undefined:
     mesaversion[0] = mesaversion[1] = mesaversion[2] = 0;
@@ -1135,6 +1145,12 @@ XIDeviceInfo* PsychGetInputDevicesForScreen(int screenNumber, int* nDevices)
     return(xinput_info[screenNumber]);
 }
 
+// X-Screen primary gpu driver is modesetting ddx?
+psych_bool PsychOSX11ScreenUsesModesettingDDX(int screenId)
+{
+    return(displayX11ScreenUsesModesettingDDX[screenId]);
+}
+
 // Wayland native builds do have their own screen glue for the X11 specific bits:
 #ifndef PTB_USE_WAYLAND
 
@@ -1208,6 +1224,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     int o, isPrimary, crtcid, crtccount;
     int primaryOutput = -1, primaryCRTC = -1, primaryCRTCIdx = -1;
     int crtcs[100];
+    XRRProviderResources *providerResources;
 
     // Preinit to "undefined":
     displayX11ScreenResources[idx] = NULL;
@@ -1222,6 +1239,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     // Detect version of XRandR:
     if (major > 1 || (major == 1 && minor >= 2)) has_xrandr_1_2 = TRUE;
     if (major > 1 || (major == 1 && minor >= 3)) has_xrandr_1_3 = TRUE;
+    if (major > 1 || (major == 1 && minor >= 4)) has_xrandr_1_4 = TRUE;
 
     // Select screen configuration notify events to get delivered to us:
     Window root = RootWindow(dpy, displayX11Screens[idx]);
@@ -1355,8 +1373,22 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     PsychSetScreenToHead(idx, primaryCRTC, 0);
     PsychSetScreenToCrtcId(idx, primaryCRTCIdx, 0);
 
+    // Check the name of the primary RandR provider for this X-Screen, to find out
+    // if it is the modesetting-ddx:
+    if (has_xrandr_1_4) {
+        providerResources = XRRGetProviderResources(dpy, root);
+        if (providerResources->nproviders > 0) {
+            XRRProviderInfo *info = XRRGetProviderInfo(dpy, res, providerResources->providers[0]);
+            if (!strcmp(info->name, "modesetting"))
+                displayX11ScreenUsesModesettingDDX[idx] = TRUE;
+        }
+
+        XRRFreeProviderResources(providerResources);
+    }
+
     if (PsychPrefStateGet_Verbosity() > 3) {
-        printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i.\n", DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx);
+        printf("PTB-INFO: Display '%s' : X-Screen %i : Assigning primary output as %i with RandR-CRTC %i and GPU-CRTC %i. Modesetting-ddx=%i.\n",
+               DisplayString(dpy), displayX11Screens[idx], primaryOutput, primaryCRTC, primaryCRTCIdx, displayX11ScreenUsesModesettingDDX[idx]);
     }
 
     return;
@@ -2238,22 +2270,15 @@ void PsychGetScreenRect(int screenNumber, double *rect)
 }
 
 /*
-    This is a place holder for a function which uncovers the number of dacbits.  To be filled in at a later date.
-    If you know that your card supports >8 then you can fill that in the PsychtPreferences and the psychtoolbox
-    will act accordingly.
+    This is a place holder for a function which uncovers the number of dacbits.
 
-    There seems to be no way to uncover the dacbits programatically.  According to apple CoreGraphics
-    sends a 16-bit word and the driver throws out whatever it chooses not to use.
-
-    For now we just use 8 to avoid false precision.
-
-    If we can uncover the video card model then  we can implement a table lookup of video card model to number of dacbits.
+    For now we just use 0 to avoid false precision.
 */
 int PsychGetDacBitsFromDisplay(int screenNumber)
 {
     (void) screenNumber;
 
-    return(8);
+    return(0);
 }
 
 //Set display parameters

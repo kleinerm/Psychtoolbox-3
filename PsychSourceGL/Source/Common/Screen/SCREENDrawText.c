@@ -1814,7 +1814,10 @@ const char* PsychGetUnicodeTextConversionLocale(void)
 
 // POSIX systems Linux and OS/X:
 #include <locale.h>
+// On GLIBC systems, xlocale.h's stuff is available as part of locale.h:
+#if !defined(__GLIBC__)
 #include <xlocale.h>
+#endif
 
 static locale_t    drawtext_locale = NULL;
 static char        drawtext_localestring[256] = { 0 };

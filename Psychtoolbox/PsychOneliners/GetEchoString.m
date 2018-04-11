@@ -14,6 +14,8 @@ function [string,terminatorChar] = GetEchoString(windowPtr, msg, x, y, textColor
 % color for text. By default, the background is transparent. If a non-empty
 % 'bgColor' is specified it will be used. The current alpha blending
 % setting will affect the appearance of the text if 'bgColor' is specified!
+% Please note that if 'bgColor' is not specified, this means mistyped text
+% can't be visually deleted/undone by use of the backspace key.
 %
 % If the optional flag 'useKbCheck' is set to 1 then KbCheck is used - with
 % potential optional additional 'KbCheck args...' for getting the string
@@ -24,7 +26,13 @@ function [string,terminatorChar] = GetEchoString(windowPtr, msg, x, y, textColor
 % reliably on configurations where GetChar may fail, e.g., on MS-Vista and
 % Windows-7.
 %
-% See also: GetNumber, GetString, GetEchoNumber
+% If 'useKbCheck' == 1, then 'deviceIndex' optionally allows to select the
+% deviceIndex of the keyboard to use, and 'untilTime' allows to specify a
+% response deadline. If the user doesn't press ENTER until 'untilTime', the
+% function will time out and return with a empty 'string' as result. Further
+% optional arguments will be passed on to the function GetKbChar().
+%
+% See also: GetNumber, GetString, GetEchoNumber, GetKbChar
 %
 
 % 2/4/97    dhb       Wrote GetEchoNumber.
@@ -45,6 +53,7 @@ function [string,terminatorChar] = GetEchoString(windowPtr, msg, x, y, textColor
 %                     erase relevant portions of the displayed text string.
 % 02/10/16  mk        Adapt 'TextAlphaBlending' setup for cross-platform FTGL plugin.
 % 02/15/16  dgp       Accept ESC for termination, return terminatorChar.
+% 02/02/18  mk  Improve help text again.
 
 if nargin < 7
     useKbCheck = [];

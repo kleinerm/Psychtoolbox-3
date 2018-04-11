@@ -520,6 +520,7 @@ psych_bool              IsScreenNumberUnaffiliated(PsychNumdexType numdex);
 PsychError              FindWindowRecord(PsychWindowIndexType windowIndex, PsychWindowRecordType **windowRecord);
 PsychError              FindScreenRecord(int screenNumber, PsychScreenRecordType **screenRecord);
 psych_bool              PsychIsLastOnscreenWindow(PsychWindowRecordType *windowRecord);
+psych_bool              PsychIsLastOnscreenWindowOnScreen(PsychWindowRecordType *windowRecord);
 void                    PsychCreateVolatileWindowRecordPointerList(int *numWindows, PsychWindowRecordType ***pointerList);
 void                    PsychDestroyVolatileWindowRecordPointerList(PsychWindowRecordType **pointerList);
 void                    PsychAssignParentWindow(PsychWindowRecordType *childWin, PsychWindowRecordType *parentWin);

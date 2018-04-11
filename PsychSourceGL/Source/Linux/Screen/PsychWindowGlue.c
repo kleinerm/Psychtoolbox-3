@@ -438,6 +438,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     glXGetVisualFromFBConfig = (PFNGLXGETVISUALFROMFBCONFIGPROC) glXGetProcAddressARB((const GLubyte *) "glXGetVisualFromFBConfig");
     glXCreateWindow = (PFNGLXCREATEWINDOWPROC) glXGetProcAddressARB((const GLubyte *) "glXCreateWindow");
     glXCreateNewContext = (PFNGLXCREATENEWCONTEXTPROC) glXGetProcAddressARB((const GLubyte *) "glXCreateNewContext");
+    glXCreateContextAttribsARB = (PFNGLXCREATECONTEXTATTRIBSARBPROC) glXGetProcAddressARB((const GLubyte *) "glXCreateContextAttribsARB");
     glXDestroyWindow = (PFNGLXDESTROYWINDOWPROC) glXGetProcAddressARB((const GLubyte *) "glXDestroyWindow");
     glXSelectEvent = (PFNGLXSELECTEVENTPROC) glXGetProcAddressARB((const GLubyte *) "glXSelectEvent");
     glXGetSelectedEvent = (PFNGLXGETSELECTEDEVENTPROC) glXGetProcAddressARB((const GLubyte *) "glXGetSelectedEvent");
@@ -966,7 +967,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
         // Create rendering context with identical visual and display as main context, share all heavyweight ressources with it:
         if (fbconfig) {
-            windowRecord->targetSpecific.glusercontextObject = glXCreateNewContext(dpy, fbconfig[0], GLX_RGBA_TYPE, windowRecord->targetSpecific.contextObject, True);
+            // Does usercode want to use OpenGL 3.1+ core profile?
+            if ((PsychPrefStateGet_3DGfx() & 4) && glXCreateContextAttribsARB) {
+                // Yes: Request GL 3.1. This will give us 3.1 with or without GL_compatibility or not,
+                // or any later core profile if the driver + hw supports it:
+                int ctx_attrib_list[] = { GLX_CONTEXT_MAJOR_VERSION_ARB, 3, GLX_CONTEXT_MINOR_VERSION_ARB, 1, None };
+                windowRecord->targetSpecific.glusercontextObject = glXCreateContextAttribsARB(dpy, fbconfig[0], windowRecord->targetSpecific.contextObject, True, ctx_attrib_list);
+            }
+            else
+                windowRecord->targetSpecific.glusercontextObject = glXCreateNewContext(dpy, fbconfig[0], GLX_RGBA_TYPE, windowRecord->targetSpecific.contextObject, True);
         } else {
             windowRecord->targetSpecific.glusercontextObject = glXCreateContext(dpy, visinfo, windowRecord->targetSpecific.contextObject, True);
         }
@@ -1838,8 +1847,8 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
             // 'ust' + 1 video refresh duration:
             PsychWaitUntilSeconds(PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) + windowRecord->VideoRefreshInterval - 0.001);
         } else {
-            // Yes: Swap completion can happen almost any time now. Sleep for a millisecond, then repoll:
-            PsychYieldIntervalSeconds(0.001);
+            // Yes: Swap completion can happen almost any time now. Sleep a bit, then repoll:
+            PsychYieldIntervalSeconds(0.0001);
         }
 
         // Repoll for swap completion...
