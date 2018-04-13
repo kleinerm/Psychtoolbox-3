@@ -15,6 +15,12 @@ function [shader configstring] = EXPCreateStatic2DConvolutionShader(kernel, nrin
 % directly and use the returned 'shader' as argument to Screen('DrawTexture')
 % or Screen('MakeTexture') as 'textureShader' argument.
 %
+% If you call this function directly, the generated shader may only work with
+% the onscreen window that is active at the time you call the function. To make
+% sure that the shader works with the onscreen window 'win' of your choice, call
+% Screen('GetWindowInfo', win); first, to activate the window 'win'.
+%
+%
 % Parameters:
 %
 % 'kernel' is a simple 2D m-by-n matrix of floating point numbers with m and
@@ -72,7 +78,7 @@ persistent initialized;
 
 if nargin < 1
     error('CreateStatic2DConvolutionShader: No kernel provided!');
-end;
+end
 
 if isempty(kernel)
     error('CreateStatic2DConvolutionShader: No kernel provided!');
@@ -85,7 +91,7 @@ kernelh = size(kernel,2);
 % We only want odd sized kernels of at least 3x3, e.g., 3x3, 5x5, 7x7, ...
 if kernelw < 1 || kernelh < 1 || mod(kernelw,2)~=1 || mod(kernelh,2)~=1
     error('CreateStatic2DConvolutionShader: Only odd-sized kernels of at least size 3x3 supported!');
-end;
+end
 
 if nargin < 2 || isempty(nrinputchannels)
     % Default to RGB channels as separate input channels:
@@ -100,7 +106,7 @@ end
 if nargin < 4 || isempty(debug);
     % No debug mode provided: Disable debug output by default:
     debug = 0;
-end;
+end
 
 if nargin < 5 || isempty(shadertype)
     % No explicit shadertype provided. We use some guess-o-matic here, that
@@ -262,7 +268,7 @@ if shadertype == 2
         glShaderSource(shandle, src, debug);
     else
         glShaderSource(shandle, src);
-    end;
+    end
 
     % This would abort if the shader would be invalid:
     glCompileShader(shandle);
@@ -382,7 +388,7 @@ if shadertype < 2
         glShaderSource(shandle, src, debug);
     else
         glShaderSource(shandle, src);
-    end;
+    end
 
     % This would abort if the shader would be invalid:
     glCompileShader(shandle);
@@ -422,7 +428,7 @@ if err
     fprintf('Error creating static 2D convolution shader! The GL returned: ');
     gluErrorString(err);
     shader = 0;
-end;
+end
 
 % Shader should be ready for use.
 return;

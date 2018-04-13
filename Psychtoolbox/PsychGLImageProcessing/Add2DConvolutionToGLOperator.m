@@ -58,6 +58,9 @@ if nargin < 2 || isempty(kernel) || ndims(kernel)~=2
     error('You must provide a 2D ''kernel'' matrix as 2nd argument!');
 end
 
+% Switch to gloperators OpenGL context:
+Screen('GetWindowInfo', gloperator);
+
 % Transpose kernel to make sure we follow the strict definition of
 % convolution and stay compatible with Matlab/Octave:
 kernel = transpose(kernel);
@@ -69,7 +72,7 @@ kernelh = size(kernel,2);
 % We only want odd sized kernels of at least 1x1, e.g., 3x3, 5x5, 7x7, ...
 if kernelw < 1 || kernelh < 1 || mod(kernelw,2)~=1 || mod(kernelh,2)~=1
     error('Your kernel must be odd-sized and at least of size 1x1!');
-end;
+end
 
 if nargin < 4 || isempty(nrinputchannels)
     % Default to RGB channels as separate input channels:
@@ -84,7 +87,7 @@ end
 if nargin < 6 || isempty(debug);
     % No debug mode provided: Disable debug output by default:
     debug = 0;
-end;
+end
 
 if nargin < 7
     shadertype = [];

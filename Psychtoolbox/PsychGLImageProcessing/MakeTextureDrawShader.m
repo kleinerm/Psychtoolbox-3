@@ -49,9 +49,6 @@ function glsl = MakeTextureDrawShader(windowPtr, shadertype, backgroundColorOffs
 % Global GL struct: Will be initialized in the LoadGLSLProgramFromFiles below:
 global GL; %#ok<NUSED>
 
-% Make sure we have support for shaders, abort otherwise:
-AssertGLSL;
-
 if nargin < 2
     error('You must provide the "windowPtr" and "shadertype" arguments!');
 end
@@ -70,6 +67,9 @@ end
 
 % This dummy-call just makes sure the context of the proper window 'windowPtr' is bound:
 Screen('GetWindowInfo', windowPtr);
+
+% Make sure we have support for shaders, abort otherwise:
+AssertGLSL;
 
 switch shadertype
     case {'SeparateAlphaChannel'}
