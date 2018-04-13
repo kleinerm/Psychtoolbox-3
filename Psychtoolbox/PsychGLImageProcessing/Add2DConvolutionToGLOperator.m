@@ -60,6 +60,7 @@ end
 
 % Switch to gloperators OpenGL context:
 Screen('GetWindowInfo', gloperator);
+while glGetError(); end;
 
 % Transpose kernel to make sure we follow the strict definition of
 % convolution and stay compatible with Matlab/Octave:
