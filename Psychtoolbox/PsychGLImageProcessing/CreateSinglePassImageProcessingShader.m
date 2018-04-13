@@ -66,6 +66,9 @@ if nargin < 2 || isempty(shaderType)
     error('Required "shaderType" argument missing!');
 end
 
+% Switch to gloperators OpenGL context:
+Screen('GetWindowInfo', windowPtr);
+
 % Detect texture background by color key and mask it out by discarding such
 % texels:
 if strcmpi(shaderType, 'BackgroundMaskOut')

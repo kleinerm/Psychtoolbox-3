@@ -65,7 +65,7 @@ kernelh = size(kernel1,2);
 % We only want odd sized kernels of at least 1x1, e.g., 3x3, 5x5, 7x7, ...
 if kernelw < 1 || kernelh < 1 || mod(kernelw,2)~=1 || mod(kernelh,2)~=1
     error('Your kernel1 must be odd-sized and at least of size 1x1!');
-end;
+end
 
 if nargin < 3 || isempty(kernel2) || ndims(kernel2)~=2
     error('You must provide a 1D ''kernel2'' matrix as 3rd argument!');
@@ -78,7 +78,7 @@ kernelh = size(kernel2,2);
 % We only want odd sized kernels of at least 1x1, e.g., 3x3, 5x5, 7x7, ...
 if kernelw < 1 || kernelh < 1 || mod(kernelw,2)~=1 || mod(kernelh,2)~=1
     error('Your kernel2 must be odd-sized and at least of size 1x1!');
-end;
+end
 
 if nargin < 5 || isempty(nrinputchannels)
     % Default to RGB channels as separate input channels:
@@ -93,7 +93,7 @@ end
 if nargin < 7 || isempty(debug);
     % No debug mode provided: Disable debug output by default:
     debug = 0;
-end;
+end
 
 if nargin < 8
     shadertype = [];
@@ -102,6 +102,9 @@ end
 if nargin < 4 || isempty(opname)
     opname = sprintf('2D separable convolution kernel pair: w x h = %i by %i, nrin=%i, nrout=%i.', kernelw, kernelh, nrinputchannels, nroutchannels);
 end
+
+% Switch to gloperators OpenGL context:
+Screen('GetWindowInfo', gloperator);
 
 % Input parsing done. Call helper routine for creation of shaders and
 % optional lookup textures:

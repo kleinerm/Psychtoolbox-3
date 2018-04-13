@@ -71,6 +71,9 @@ if nargin < 4 || isempty(showCalibOutput)
     showCalibOutput = 0;
 end
 
+% Switch to gloperators OpenGL context:
+Screen('GetWindowInfo', gloperator);
+
 % Make sure gloperator is enabled for imaging operations:
 Screen('HookFunction', gloperator, 'ImagingMode', mor(kPsychNeedFastBackingStore, Screen('HookFunction', gloperator, 'ImagingMode')));
 

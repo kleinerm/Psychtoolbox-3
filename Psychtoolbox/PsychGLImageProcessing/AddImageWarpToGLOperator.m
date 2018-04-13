@@ -15,6 +15,9 @@ if nargin < 1 || isempty(gloperator) || Screen('WindowKind', gloperator)~=4
     error('You must provide the handle of a valid GL imaging operator ''gloperator''!');
 end
 
+% Switch to gloperators OpenGL context:
+Screen('GetWindowInfo', gloperator);
+
 % Make sure gloperator is enabled for imaging operations:
 Screen('HookFunction', gloperator, 'ImagingMode', mor(kPsychNeedFastBackingStore, Screen('HookFunction', gloperator, 'ImagingMode')));
 

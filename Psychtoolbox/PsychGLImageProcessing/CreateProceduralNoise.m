@@ -77,9 +77,6 @@ debuglevel = 1;
 % below:
 global GL;
 
-% Make sure we have support for shaders, abort otherwise:
-AssertGLSL;
-
 if nargin < 3 || isempty(windowPtr) || isempty(width) || isempty(height)
     error('You must provide "windowPtr", "width" and "height"!');
 end
@@ -95,6 +92,12 @@ else
         error('The "backgroundColorOffset" must be a 4 component RGBA vector [red green blue alpha]!');
     end
 end
+
+% Switch to windowPtr OpenGL context:
+Screen('GetWindowInfo', windowPtr);
+
+% Make sure we have support for shaders, abort otherwise:
+AssertGLSL;
 
 noiseShader = [];
 
