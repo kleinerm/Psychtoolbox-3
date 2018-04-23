@@ -262,12 +262,12 @@ int _kbhit(void) {
 
         // New opmode established:
         current_mode = listenchar_enabled;
-        }
+    }
 
     // Query number of pending characters in stdin stream:
     ioctl(fileno(stdin), FIONREAD, &bytesWaiting);
     return(bytesWaiting);
-        }
+}
 
 #else
 // _kbhit() is part of MS-Windows CRT standard runtime library. We just
@@ -294,8 +294,6 @@ void ConsoleInputHelper(int ccode)
             fflush(stdininject);
         }
 
-        // if (ccode == 3) printf("PsychHID-INFO: Inline x-mit of code 3 [ctrl+c] suppressed.\n");
-
         // Done.
         return;
     }
@@ -303,8 +301,8 @@ void ConsoleInputHelper(int ccode)
     // Negatice ccode -- A command code:
     switch (ccode) {
     case  -1:   // KeyboardQueue-Thread reports detection of CTRL+C interrupt keys:
-        // We are on the kbqueue thread, not the main interpreter thread.
-        printf("\nPsychHID-INFO: CTRL+C DETECTED! Trying to reenable keyboard input to console. [%p]\n\n", stdininject);
+        // We are on the kbqueue thread, not the main interpreter thread, so printf
+        // would be dangerous, at least on recent Matlab versions.
 
         // If console based ListenChar() is enabled at all, ie., ListenChar(1)
         // or ListenChar(2) are active by use of the KeyboardQueue thread,
