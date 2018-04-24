@@ -29,14 +29,14 @@ screenid = max(Screen('Screens'));
 % floating point framebuffer via imaging pipeline on it, if this is possible
 % on your hardware while alpha-blending is enabled. Otherwise use a 16bpc
 % precision framebuffer together with alpha-blending. We need alpha-blending
-% here to implement the nice superposition of overlapping gabors. The demo will
+% here to implement the nice superposition of overlapping of discs. The demo will
 % abort if your graphics hardware is not capable of any of this.
 PsychImaging('PrepareConfiguration');
 PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
 [win, winRect] = PsychImaging('OpenWindow', screenid, 0.5);
 
 % Retrieve size of window in pixels, need it later to make sure that our
-% moving gabors don't move out of the visible screen area:
+% moving discs don't move out of the visible screen area:
 [w, h] = RectSize(winRect);
 
 % Query frame duration: We use it later on to time 'Flips' properly for an
@@ -52,7 +52,7 @@ virtualSize = 128;
 radius = virtualSize / 2;
 % smoothing sigma in pixel
 sigma = 33;
-% use alpha channel for smoothing?
+% use alpha channel for smoothing edge of disc?
 useAlpha = true;
 % smoothing method: cosine (0) or smoothstep (1)
 smoothMethod = true;
@@ -79,19 +79,24 @@ rotAngles = rand(1, ndiscs) * 360;
 % create random colours for discs
 colours = rand(ndiscs,3)';
 
+% the disc parameters can be dynamically changed at draw time
+% (currently only per disc alpha in the first position, but we need to pass a vec4)
+discParamaters = repmat([0, 0, 0, 0]', 1, ndiscs);
+myAlphas = rand(1,ndiscs);
+discParamaters(1,:) = myAlphas;
+
 % Initially sync us to VBL at start of animation loop.
 count = 0;
 vbl = Screen('Flip', win);
 tstart = vbl;
 
 % Animation loop: Run until any keypress:
-while GetSecs < tstart + 10
-    count = count + 1;
-    % Step one: Batch-Draw all gabor patches at the positions and
-    % orientations and with the stimulus parameters 'mypars',
-    % computed during last loop iteration:
+while ~KbCheck
+    % Step one: Batch-Draw all discs at the positions (dstRects) and
+    % orientations (rotAngles) and colors (colours) 
+	% and with the stimulus parameters 'discParameters'
     Screen('DrawTextures', win, disctexture, [], dstRects,...
-            rotAngles, [], [], colours, [], []);
+            rotAngles, [], [], colours, [], [], discParamaters);
 
     % Mark drawing ops as finished, so the GPU can do its drawing job while
     % we can compute updated parameters for next animation frame. This
@@ -103,15 +108,15 @@ while GetSecs < tstart + 10
     % performance...
     Screen('DrawingFinished', win);
 
-    % Compute updated positions and orientations for next frame. This code
+    % Compute updated per disc alpha values and positions for next frame. This code
     % is vectorized, but could be probably optimized even more. Indeed,
     % these few lines of Matlab code are the main speed-bottleneck for this
     % demos animation loop on modern graphics hardware, not the actual drawing
     % of the stimulus. The demo as written here is CPU bound - limited in
     % speed by the speed of your main processor.
-
-    % Compute new random orientation for each patch in next frame:
-    rotAngles = rotAngles + 1 * randn(1, ndiscs);
+	
+	% compute a new per disc alpha
+	discParamaters(1,:) = (1+sin(myAlphas*100-200 + count*0.1))/2;
 
     % Compute centers of all patches, then shift them in new direction of
     % motion 'rotAngles', use the mod() operator to make sure they don't
@@ -137,6 +142,8 @@ while GetSecs < tstart + 10
     % meaningful report of missed deadlines at the end of the script. Not
     % important for this demo, but here just in case you didn't know ;-)
     vbl = Screen('Flip', win, vbl + 0.5 * ifi);
+	
+	 count = count + 1;
 end
 
 % A final synced flip, so we can be sure all drawing is finished when we

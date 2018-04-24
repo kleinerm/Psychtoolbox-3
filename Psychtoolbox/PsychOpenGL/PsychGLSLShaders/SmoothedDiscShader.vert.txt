@@ -20,6 +20,7 @@ attribute vec4 auxParameters0;
 
 /* Information passed to the fragment shader: Attributes and precalculated per patch constants: */
 varying vec4 baseColor;
+varying float discAlpha;
 
 void main()
 {
@@ -31,4 +32,7 @@ void main()
     
     /* Premultiply the wanted Contrast to the color: */
     baseColor = modulateColor;
+
+    /* The total alpha value passed from DrawTextures */
+    discAlpha = auxParameters0[0];
 }

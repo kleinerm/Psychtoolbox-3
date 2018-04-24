@@ -18,6 +18,7 @@ float Dist;
 float Mod;
 
 varying vec4 baseColor;
+varying float discAlpha;
 
 void main()
 {
@@ -48,6 +49,6 @@ void main()
     }
     else {
         gl_FragColor.rgb = baseColor.rgb;
-        gl_FragColor.a = Mod;
+        gl_FragColor.a = baseColor.a*Mod*discAlpha;
     }
 }
