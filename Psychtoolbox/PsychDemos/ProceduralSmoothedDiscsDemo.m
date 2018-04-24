@@ -7,6 +7,7 @@ function ProceduralSmoothedDiscsDemo(ndiscs)
 
 % History:
 % 12/12/2017 modified from ProceduralGarboriumDemo (Ian Andolina)
+% 24/04/2018 add per-disc alpha parameter to demo (Junxiang Luo & Ian Andolina)
 
 % Setup defaults and unit color range:
 PsychDefaultSetup(2);
