@@ -117,7 +117,10 @@ while ~KbCheck
     % speed by the speed of your main processor.
 	
 	% compute a new per disc alpha
-	discParamaters(1,:) = (1+sin(myAlphas*100-200 + count*0.1))/2;
+	discParamaters(1,:) = (1+sin(myAlphas*100-200 + count*0.05))/2;
+	
+	% change the direction slightly
+	rotAngles = rotAngles + 5 * randn(1, ndiscs);  
 
     % Compute centers of all patches, then shift them in new direction of
     % motion 'rotAngles', use the mod() operator to make sure they don't
