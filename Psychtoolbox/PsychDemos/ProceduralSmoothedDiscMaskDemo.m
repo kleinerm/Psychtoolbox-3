@@ -1,13 +1,13 @@
 function ProceduralSmoothedDiscMaskDemo(ndiscs)
-% ProceduralSmoothedDiscMaskDemo([ndiscs=700]) -- An aquarium full of discs!
+% ProceduralSmoothedDiscMaskDemo([ndiscs=700]) -- An aquarium full of discs 
+% within a centered mask!
 %
 % This demo shows how to use the Screen('DrawTextures') command to draw a
 % large number of similar images quickly - in this case, smooth edged
-% discs.
+% discs masked by another smoothed disc.
 
 % History:
-% 12/12/2017 modified from ProceduralGarboriumDemo (Ian Andolina)
-% 24/04/2018 add per-disc alpha parameter to demo (Junxiang Luo & Ian Andolina)
+% 25/04/2018 created (Junxiang Luo)
 
 % Setup defaults and unit color range:
 PsychDefaultSetup(2);
