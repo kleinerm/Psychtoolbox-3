@@ -48,13 +48,16 @@ if exist(filename, 'file')
 
     if alsorenameit
         % Rename the following libraries in image: We rename from .so.2 to .so,
-        % to make these mex files built on/against Octave-3 compatible with
+        % etc. to make these mex files built on/against Octave-3/4 compatible with
         % at least Octave-3 and Octave-4. This works because while the
         % liboctinterp's so-name/version has changed, the api/abi of
         % Octave-4's C-Mex interface has not changed. Or so we hope until proven
         % wrong...
-        if str2num(version ()(1)) == 4
-            % Octave 4.x - liboctinterp.so.3:
+        if str2num(version ()(1)) == 4 && str2num(version ()(3)) == 2
+            % Octave 4.2 - liboctinterp.so.4:
+            image = renameLibrary(image, 'liboctinterp.so.4', 'liboctinterp.so');
+        elseif str2num(version ()(1)) == 4 && str2num(version ()(3)) == 0
+            % Octave 4.0 - liboctinterp.so.3:
             image = renameLibrary(image, 'liboctinterp.so.3', 'liboctinterp.so');
         else
             % Octave 3.8.x, maybe earlier Octave 3.x.y as well - liboctinterp.so.2:
