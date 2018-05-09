@@ -385,7 +385,7 @@ void PsychKNInit(void) {
 	// Build depths gamma table:
 	for (i=0; i<2048; i++) {
 		v = (float) i/2048.0f;
-		v = powf(v, 3.0f)* 6.0f;
+		v = (float) (pow(v, 3.0) * 6.0);
 		t_gamma[i] = (unsigned short) (v*6*256);
 	}
 }
