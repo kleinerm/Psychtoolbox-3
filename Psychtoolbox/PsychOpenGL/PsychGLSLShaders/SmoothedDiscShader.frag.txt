@@ -18,7 +18,6 @@ float Dist;
 float Mod;
 
 varying vec4 baseColor;
-varying float discAlpha;
 
 void main()
 {
@@ -28,8 +27,11 @@ void main()
     /* find our distance from center */
     Dist = distance(pos, Center);
 
-    /* If distance to center (aka radius of pixel) > Radius, discard this pixel: */
-    /*if (Dist > Radius) discard;*/
+    /* If distance to center (aka radius of pixel) > Radius, discard this pixel */
+    /* and only do this if we do not invert the alpha mask (Method == 2.0)
+    if (Method < 2.0) {
+        if (Dist > Radius) discard;
+    end
 
     /* Calculate a smoothing modifier using our distance from radius and a Sigma */
     if (Method < 1.0) {
@@ -54,6 +56,6 @@ void main()
     }
     else {
         gl_FragColor.rgb = baseColor.rgb;
-        gl_FragColor.a = baseColor.a*Mod*discAlpha;
+        gl_FragColor.a = baseColor.a * Mod;
     }
 }
