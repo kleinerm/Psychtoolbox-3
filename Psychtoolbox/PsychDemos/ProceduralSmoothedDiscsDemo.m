@@ -59,9 +59,8 @@ useAlpha = true;
 smoothMethod = 1;
 
 % Build a procedural disc
-disctexture = CreateProceduralSmoothedDisc(win, virtualSize, ...
-    virtualSize, [0 0 0 0], radius, sigma, ...
-    useAlpha, smoothMethod);
+disctexture = CreateProceduralSmoothedDisc(win, virtualSize, virtualSize, [0 0 0 0], radius, sigma, ...
+                                           useAlpha, smoothMethod);
 
 % Preallocate array with destination rectangles:
 texrect = Screen('Rect', disctexture);
@@ -91,9 +90,8 @@ while ~KbCheck
     % Step one: Batch-Draw all discs at the positions (dstRects) and
     % orientations (rotAngles) and colors (colours)
     % and with the stimulus parameters 'discParameters'
-    Screen('DrawTextures', win, disctexture, [], dstRects,...
-        rotAngles, [], [], colours, [], []);
-    
+    Screen('DrawTextures', win, disctexture, [], dstRects, rotAngles, [], [], colours);
+
     % Mark drawing ops as finished, so the GPU can do its drawing job while
     % we can compute updated parameters for next animation frame. This
     % command is not strictly needed, but it may give a slight additional
@@ -103,20 +101,20 @@ while ~KbCheck
     % your system and code, but it only seldomly hurts.
     % performance...
     Screen('DrawingFinished', win);
-    
+
     % Compute updated per disc alpha values and positions for next frame. This code
     % is vectorized, but could be probably optimized even more. Indeed,
     % these few lines of Matlab code are the main speed-bottleneck for this
     % demos animation loop on modern graphics hardware, not the actual drawing
     % of the stimulus. The demo as written here is CPU bound - limited in
     % speed by the speed of your main processor.
-    
+
     % compute a new per disc alpha
     colours(4,:) = (1+sin(myAlphas*100-200 + count*0.05))/2;
-    
+
     % change the direction slightly
     rotAngles = rotAngles + 10 * randn(1, ndiscs);
-    
+
     % Compute centers of all patches, then shift them in new direction of
     % motion 'rotAngles', use the mod() operator to make sure they don't
     % leave the window display area. Its important to use RectCenterd and
@@ -128,11 +126,11 @@ while ~KbCheck
     [x, y] = RectCenterd(dstRects);
     x = mod(x + 3.33 * cos(rotAngles/360*2*pi), width);
     y = mod(y - 3.33 * sin(rotAngles/360*2*pi), height);
-    
+
     % Recompute dstRects destination rectangles for each patch, given the
     % 'per gabor' scale and new center location (x,y):
     dstRects = CenterRectOnPointd(inrect .* repmat(scale,4,1), x, y);
-    
+
     % Done. Flip one video refresh after the last 'Flip', ie. try to
     % update the display every video refresh cycle if you can.
     % This is the same as Screen('Flip', win);
@@ -141,7 +139,7 @@ while ~KbCheck
     % meaningful report of missed deadlines at the end of the script. Not
     % important for this demo, but here just in case you didn't know ;-)
     vbl = Screen('Flip', win, vbl + 0.5 * ifi);
-    
+
     count = count + 1;
 end
 

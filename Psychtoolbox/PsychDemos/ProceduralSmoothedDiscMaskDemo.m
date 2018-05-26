@@ -85,24 +85,24 @@ while ~KbCheck
     %[, destinationRect(s)] [, rotationAngle(s)] [, filterMode(s)] [, globalAlpha(s)]
     %[, modulateColor(s)] [, textureShader] [, specialFlags] [, auxParameters]);
     Screen('DrawTextures', win, dotstex, [], dotDstRects, rotAngles, [], [], colours, [], []);
-    
+
     if maskFlag
         Screen('DrawTextures', win, masktex, [], maskDstRects, [], [], 1, [0, 0, 0, 1]', [], []);
     end
-    
+
     Screen('DrawingFinished', win);
-    
+
     rotAngles = rotAngles + 5 * randn(1, ndiscs);
     colours(4,:) = (1+sin(myAlphas*100-200 + count*0.05))/2;
-    
+
     [x, y] = RectCenterd(dotDstRects);
     x = mod(x + 0.5 * cos(rotAngles/360*2*pi), width);
     y = mod(y - 0.5 * sin(rotAngles/360*2*pi), height);
-    
+
     dotDstRects = CenterRectOnPointd(inrect .* repmat(scale,4,1), x, y);
-    
+
     Screen('Flip', win);
-    
+
     count = count + 1;
 end
 
