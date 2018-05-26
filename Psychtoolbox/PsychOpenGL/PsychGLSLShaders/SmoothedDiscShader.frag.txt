@@ -31,7 +31,7 @@ void main()
     /* and only do this if we do not invert the alpha mask (Method == 2.0)
     if (Method < 2.0) {
         if (Dist > Radius) discard;
-    end
+    }
 
     /* Calculate a smoothing modifier using our distance from radius and a Sigma */
     if (Method < 1.0) {
