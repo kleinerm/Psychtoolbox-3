@@ -16,7 +16,6 @@
 
 /* Attributes passed from Screen(): See the ProceduralShadingAPI.m file for infos: */
 attribute vec4 modulateColor;
-attribute vec4 auxParameters0;
 
 /* Information passed to the fragment shader: Attributes and precalculated per patch constants: */
 varying vec4 baseColor;

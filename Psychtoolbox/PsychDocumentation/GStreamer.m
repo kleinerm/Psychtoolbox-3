@@ -9,8 +9,9 @@
 % working GStreamer installation on your system (with the exception of video
 % capture from firewire DCAM/IIDC machine vision cameras on Linux and OSX).
 %
-% You will need at least version 1.0 of GStreamer, but we recommend to
-% use the latest available stable release of the version 1 series.
+% You will need at least version 1.2 of GStreamer on Linux and version 1.4
+% on Windows or OSX, but we recommend to use the latest available stable
+% release of the version 1 series.
 %
 % Installation instructions:
 %
