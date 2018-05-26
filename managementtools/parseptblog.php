@@ -1,33 +1,23 @@
 <?php
-// parseptblog.php -- PHP parser for Psychtoolbox online registration log.
+// parseptblog.php -- PHP parser for final Psychtoolbox registration log.
 //
-// Description: 
-//
-// This PHP script parses the Psychtoolbox online registration log,
+// This PHP script parses the final Psychtoolbox registration log,
 // counts number of installations and other interesting numbers and
-// outputs its results as HTML formatted text.
-//
-// It is supposed to be called from the Psychtoolbox Wiki to provide
-// online statistics about PTB's real world use.
-//
-// Installation:
+// for historical reasons outputs its results as HTML formatted text.
 //
 // 1. Change the $filename string to the full path and filename of the
-//    Psychtoolbox online registration log file.
+//    registration log file.
 //
-// 2. Copy this file into the "actions" subfolder of the Wiki installation.
+// 2. Run it like this: php parseptblog.php > statistics.html
 //
-// 3. Embed the following line of code into the appropriate Wiki page:
-//    {{parseptblog}}
-//
-// 4. Done.
-//
+// 3. Look at the statistics.html file with a web browser.
 //
 // History:
 // 10/20/2006 Written. (MK)
 // 11/03/2006 * Made more robust against corrupted lines in logfile.
 //            * More detailled stats: Show distribution of Macintoshes.
 //            * Improved HTML output formatting.
+// 20/05/2018 * Rewritten to parse the fully anonymized final log.
 
 // Debug flag: If set to 1, outputs diagnostic output as well.
 $debugmode = 0;
@@ -35,7 +25,6 @@ $debugmode = 0;
 date_default_timezone_set('UTC');
 
 // Default filename for registration log file:
-//$filename = "/Users/colorweb/ptbregistrationlog";
 $filename = "./ptbregistrationlog";
 if (file_exists($filename)===FALSE) {
    print "<br />The file $filename does not exist!<br />";
@@ -47,6 +36,8 @@ $lines = file ($filename);
 
 // Reset our counters:
 $transactioncount = 0;
+$discardedcount = 0;
+$downloaddiscardedcount = 0;
 $totalcount = 0;
 $updatecount = 0;
 $betacount = 0;
@@ -60,6 +51,8 @@ $ptb309count = 0;
 $ptb3010count = 0;
 $ptb3011oldgscount = 0;
 $ptb3011count = 0;
+$ptb3012count = 0;
+$ptb3013count = 0;
 $osxcount = 0;
 $wincount = 0;
 $linuxcount = 0;
@@ -77,6 +70,8 @@ $mountainlioncount = 0;
 $maverickscount = 0;
 $yosemitecount = 0;
 $elcapitancount = 0;
+$sierracount = 0;
+$highsierracount = 0;
 
 $winunknowncount = 0;
 $win2kcount = 0;
@@ -117,6 +112,10 @@ $matv84count = 0;
 $matv85count = 0;
 $matv86count = 0;
 $matv90count = 0;
+$matv91count = 0;
+$matv92count = 0;
+$matv93count = 0;
+$matv94count = 0;
 
 $octavelinuxcount = 0;
 $octaveosxcount   = 0;
@@ -141,10 +140,10 @@ foreach($lines as $fl){
   // A new line has begun:
   $linescount++;
 
-  // Check if input line contains a <MACID> --> Start of new transaction.
-  $ls = strpos($fl, '<MACID>');
+  // Check if input line contains a <ID> --> Start of new transaction.
+  $ls = strpos($fl, '<ID>');
   if ($ls !== FALSE) {
-    // <MACID> detected: Is this valid?
+    // <ID> detected: Is this valid?
     if ($intransaction === 1) {
       // Invalid line! Tried to start a new transaction while old one still active
       // this must be a corrupted record in the logfile:
@@ -178,35 +177,46 @@ foreach($lines as $fl){
   }
   else {
     // One transaction line finished. Do the stats.
+    $ls = strpos($ofl, '<DATE>');
+    $le = strpos($ofl, '</DATE>');
+    $curdate = substr($ofl, $ls, $le - $ls);
 
-    // This counts as one valid transaction:
-    $transactioncount++;
+    if (1 || strpos($curdate, '2011') || strpos($curdate, '2012') || strpos($curdate, '2013') || strpos($curdate, '2014') || strpos($curdate, '2015') || strpos($curdate, '2016') || strpos($curdate, '2017') || strpos($curdate, '2018')) {
+    //if (strpos($curdate, '2015') || strpos($curdate, '2016') || strpos($curdate, '2017') || strpos($curdate, '2018')) {
+    //if (strpos($curdate, '2016') || strpos($curdate, '2017') || strpos($curdate, '2018')) {
+    //if (strpos($curdate, '2017') || strpos($curdate, '2018')) {
+    //if (strpos($curdate, '2018')) {
 
-    // Extract MACID as globally unique identifier of this user:
-    $ls = strpos($ofl, '<MACID>');
-    $le = strpos($ofl, '</MACID>');            
-    $macid = substr($ofl, $ls, $le - $ls + 1);
+        // This counts as one valid transaction:
+        $transactioncount++;
 
-    // Create an entry in the array of ids, using macid as key:
-    $uniqueptbs[$macid]=$ofl;
+        // Extract ID as globally unique identifier of this machine:
+        $ls = strpos($ofl, '<ID>');
+        $le = strpos($ofl, '</ID>');
+        $uid = substr($ofl, $ls, $le - $ls + 1);
 
-    // Is this the very first entry?
-    if ($transactioncount===1) {
-      // Retrieve its date:
-      $ls = strpos($ofl, '<DATE>');
-      $le = strpos($ofl, '</DATE>');
-      $firstdate = substr($ofl, $ls, $le - $ls);
+        // Create an entry in the array of ids, using uid as key:
+        $uniqueptbs[$uid]=$ofl;
+
+        // Invalid id and therefore discounted?
+        if (strpos($uid, '<ID>0<') === 0) {
+            $discardedcount++;
+            if (strpos($ofl, '<ISUPDATE>0')) {
+                $downloaddiscardedcount++;
+            }
+        }
+
     }
 
     // Reset to empty line:
     $ofl = '';
 
     // Transaction finished:
-    $intransaction=0;    
+    $intransaction=0;
   }
 }
 
-// Done with parsing the log file: Do the stats on all users.
+// Done with parsing the log file: Do the stats on all machines.
 foreach($uniqueptbs as $ofl) {
   $ls = strpos($ofl, '<DATE>');
   $le = strpos($ofl, '</DATE>');
@@ -224,6 +234,17 @@ foreach($uniqueptbs as $ofl) {
   $iswin    = 0;
   $isosx    = 0;
 
+  // Restrict to date range of certain years:
+  if (1 || strpos($curdate, '2010') || strpos($curdate, '2011') || strpos($curdate, '2012') || strpos($curdate, '2013') || strpos($curdate, '2014') || strpos($curdate, '2015') || strpos($curdate, '2016') || strpos($curdate, '2017') || strpos($curdate, '2018')) {
+//  if (strpos($curdate, '2011') || strpos($curdate, '2012') || strpos($curdate, '2013') || strpos($curdate, '2014') || strpos($curdate, '2015') || strpos($curdate, '2016') || strpos($curdate, '2017') || strpos($curdate, '2018')) {
+//  if (strpos($curdate, '2015') || strpos($curdate, '2016') || strpos($curdate, '2017') || strpos($curdate, '2018')) {
+//  if (strpos($curdate, '2016') || strpos($curdate, '2017') || strpos($curdate, '2018')) {
+  }
+  else {
+    $ofl = '';
+    $totalcount--;
+  }
+
   // Now count by category:
 
   // Flavor:
@@ -240,6 +261,8 @@ foreach($uniqueptbs as $ofl) {
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.10</FLAVOR>')) { $assigned++ ; $ptb3010count++; }
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.11-PreWinGStreamerSDK</FLAVOR>')) { $assigned++ ; $ptb3011oldgscount++; }
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.11</FLAVOR>')) { $assigned++ ; $ptb3011count++; }
+  if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.12</FLAVOR>')) { $assigned++ ; $ptb3012count++; }
+  if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.13</FLAVOR>')) { $assigned++ ; $ptb3013count++; }
 
   if (strpos($ofl, '<ENVIRONMENT>Matlab')) {
     $ismatlab = 1;
@@ -271,6 +294,10 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '<ENVVERSION>8.5')) { $matv85count++; }
     if (strpos($ofl, '<ENVVERSION>8.6')) { $matv86count++; }
     if (strpos($ofl, '<ENVVERSION>9.0')) { $matv90count++; }
+    if (strpos($ofl, '<ENVVERSION>9.1')) { $matv91count++; }
+    if (strpos($ofl, '<ENVVERSION>9.2')) { $matv92count++; }
+    if (strpos($ofl, '<ENVVERSION>9.3')) { $matv93count++; }
+    if (strpos($ofl, '<ENVVERSION>9.4')) { $matv94count++; }
   }
 
   if (strpos($ofl, '<ENVIRONMENT>Octave')) {
@@ -306,7 +333,7 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, 'Version 6.3 (Build') || strpos($ofl, 'NT-6.3')) { $win81count++; $iswin = 2; }
     if (strpos($ofl, 'Version 10.0 (Build') || strpos($ofl, 'NT-10.')) { $win10count++; $iswin = 2; }
 
-    if (($iswin < 2) && ($debugmode > 0)) print "LOGPARSER-WARNING: UNASSIGNED WINDOWS - MACID: $ofl <br />";
+    if (($iswin < 2) && ($debugmode > 0)) print "LOGPARSER-WARNING: UNASSIGNED WINDOWS - ID: $ofl <br />";
 
     if ($ismatlab > 0) {
         // Which Matlab release class on Windows?
@@ -344,6 +371,8 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, '10.9.')) { $maverickscount++; }
     if (strpos($ofl, '10.10.')) { $yosemitecount++; }
     if (strpos($ofl, '10.11.')) { $elcapitancount++; }
+    if (strpos($ofl, '10.12.')) { $sierracount++; }
+    if (strpos($ofl, '10.13.')) { $highsierracount++; }
 
     if (strpos($ofl, '<CPUARCH>ppc')) {
       // It is a PowerPC Macintosh:
@@ -376,24 +405,25 @@ foreach($uniqueptbs as $ofl) {
   }
 
   if (strpos($ofl, '<ISUPDATE>1')) {
-    if (strpos($curdate, '20') || strpos($curdate, '2010') || strpos($curdate, '2011') || strpos($curdate, '2012') || strpos($curdate, '2013') || strpos($curdate, '2014') || strpos($curdate, '2015') || strpos($curdate, '2016') || strpos($curdate, '2017')) {
+    if (strpos($curdate, '20') || strpos($curdate, '2010') || strpos($curdate, '2011') || strpos($curdate, '2012') || strpos($curdate, '2013') || strpos($curdate, '2014') || strpos($curdate, '2015') || strpos($curdate, '2016') || strpos($curdate, '2017') || strpos($curdate, '2018')) {
       $updatecount++;
     }
   }
 
-  if ($assigned < 2 && $debugmode > 0) print "LOGPARSER-WARNING: UNASSIGNED MACID: $ofl <br />";
-  if ($assigned > 2 && $debugmode > 0) print "LOGPARSER-WARNING: DOUBLE-ASSIGNED MACID: $ofl <br />";
+  if ($assigned < 2 && $debugmode > 0) print "LOGPARSER-WARNING: UNASSIGNED ID: $ofl <br />";
+  if ($assigned > 2 && $debugmode > 0) print "LOGPARSER-WARNING: DOUBLE-ASSIGNED ID: $ofl <br />";
 }
 
 
 // Output the statistics as HTML formatted code: This is fed into the WikkaWikki engine:
 print "<h3>";
-print "<br /><br />Registered Psychtoolbox-3 installations as of " . date ("F d Y H:i:s.", filemtime($filename)) . "<br />";
+print "<br /><br />Final count of registered Psychtoolbox-3 installations at " . date ("F d Y H:i:s.", filemtime($filename)) . "<br />";
 print "<pre><br />";
 print "Total number of downloads + updates     : $transactioncount<br />";
-//print "Earliest registration was at            : $firstdate<br />";
 
 print "<br />";
+print "Not counted downloads due to invalid id : $downloaddiscardedcount<br />";
+print "Not counted in total due to invalid id  : $discardedcount<br />";
 print "Total number of unique installations    : $totalcount<br />";
 print "Number of PTB's updated at least once   : $updatecount<br />";
 
@@ -408,6 +438,8 @@ print "Psychtoolbox-3.0.9            : $ptb309count<br />";
 print "Psychtoolbox-3.0.10           : $ptb3010count<br />";
 print "Psychtoolbox-3.0.11-PreWinGst : $ptb3011oldgscount<br />";
 print "Psychtoolbox-3.0.11           : $ptb3011count<br />";
+print "Psychtoolbox-3.0.12           : $ptb3012count<br />";
+print "Psychtoolbox-3.0.13           : $ptb3013count<br />";
 print "Unclassified                  : $unknowncount<br />";
 
 print "<br />Estimated breakdown by host operating system (*):<br /><br />";
@@ -435,6 +467,8 @@ print "10.8  - Mountain Lion         : $mountainlioncount<br />";
 print "10.9  - Mavericks             : $maverickscount<br />";
 print "10.10 - Yosemite              : $yosemitecount<br />";
 print "10.11 - El Capitan            : $elcapitancount<br />";
+print "10.12 - Sierra                : $sierracount<br />";
+print "10.13 - High Sierra           : $highsierracount<br />";
 
 print "<br />For MS-Windows - Breakdown by Windows version:<br /><br />";
 print "Windows additional preVistas : $winunknowncount<br />";
@@ -481,6 +515,10 @@ print "Matlab 8.4   (R2014b)        : $matv84count<br />";
 print "Matlab 8.5   (R2015a)        : $matv85count<br />";
 print "Matlab 8.6   (R2015b)        : $matv86count<br />";
 print "Matlab 9.0   (R2016a)        : $matv90count<br />";
+print "Matlab 9.1   (R2016b)        : $matv91count<br />";
+print "Matlab 9.2   (R2017a)        : $matv92count<br />";
+print "Matlab 9.3   (R2017b)        : $matv93count<br />";
+print "Matlab 9.4   (R2018a)        : $matv94count<br />";
 
 print "<br />Number of GNU/Octave V3+ installations by system:<br /><br />";
 printf('Octave on OS/X               : %8d (%7.3f%% of all OS/X installs) <br />', $octaveosxcount, 100 * $octaveosxcount / $osxcount);
