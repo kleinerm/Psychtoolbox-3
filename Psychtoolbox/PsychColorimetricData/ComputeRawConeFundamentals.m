@@ -118,7 +118,7 @@ end
 %
 % The logic here is a little hairy, because the way that we used to
 % adjust lens and mac density was additive, but Asano et al. (2016) do
-% it in a multipilcative fashion, so we need a flag to keep track of what
+% it in a multiplicative fashion, so we need a flag to keep track of what
 % we're going to do with the numbers down below.
 if (~isfield(params,'extraLens'))
     params.extraLens = 0;
