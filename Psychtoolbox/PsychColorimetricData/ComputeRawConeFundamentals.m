@@ -227,6 +227,7 @@ elseif (size(absorbance,1) == 1 && params.DORODS)
 else
     error('Unexpected number of photopigment lambda max values passed');
 end
+adjIndDiffParams.absorptance = absorptance;
 
 %% Put together pre-receptor and receptor parts
 for i = 1:size(absorptance,1)
