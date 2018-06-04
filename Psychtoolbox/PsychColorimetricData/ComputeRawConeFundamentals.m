@@ -12,8 +12,8 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 %
 % The routine also returns two types of quantal sensitivity functions.  The
 % first gives the probability that a photon will be absorbed.  These are
-% returned in variable T_quantalAbsorptionsNormalized adn
-% T_quantalAbsoprions, with the first being normalized. The second is the
+% returned in variable T_quantalAbsorptionsNormalized and
+% T_quantalAbsorptions, with the first being normalized. The second is the
 % probability that the photon will cause a photopigment isomerization. This
 % is returned in T_quantalIsomerizations.
 %
