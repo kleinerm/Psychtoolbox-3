@@ -86,6 +86,7 @@ function [T_quantalAbsorptionsNormalized,T_quantalAbsorptions,T_quantalIsomeriza
 % 8/10/13  dhb  Expand comments.  Return unscaled quantal efficiencies too.
 % 2/26/16  dhb, ms  Add in Asano et al. (2016) individual observer adjustments
 % 3/30/17  ms   Added output argument returning adjusted ind differences
+% 6/4/18   ms   Included absorbance spectrum into adjusted ind diff output arg
 
 % Handle bad value
 index = find(params.axialDensity <= 0.0001);
@@ -184,6 +185,7 @@ if (~isempty(params.indDiffParams.lambdaMaxShift))
     
     absorbance = ShiftPhotopigmentAbsorbance(staticParams.S,absorbance,params.indDiffParams.lambdaMaxShift,params.indDiffParams.shiftType);
 end
+adjIndDiffParams.absorbance = absorbance;
 
 % Compute absorptance
 %
