@@ -274,6 +274,8 @@ try
     [rc, text] = system('xdpyinfo | grep ''X.Org version''');
     if rc == 0
       xversion = sscanf (text, 'X.Org version: %d.%d.%d');
+    else
+      xversion = [0, 0, 0];
     end
     if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting') && ...
        (~multigpu || (~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'ati')))
