@@ -24,49 +24,51 @@ function svnpath = GetSubversionPath
 % 10/28/13 Add IsLinux where we try out various possible UNIX paths.
 %          Maria Olkkonen reports that doing so makes this work properly
 %          on her linux system.  (DHB)
+% 06/11/18 Change search order for svn executable to account for preferred location
+%          on macOS, as provided by XCode command line tools. (MK)
 
 % Check for alternative install location of Subversion:
 if IsWin
-	% Search for Windows executable in Matlabs path:
-	svnpath = which('svn.exe');
+  % Search for Windows executable in Matlabs path:
+  svnpath = which('svn.exe');
 else
-	% Search for Unix executable in Matlabs path:
-	svnpath = which('svn.');
+  % Search for Unix executable in Matlabs path:
+  svnpath = which('svn.');
 end
 
 % Found one?
 if ~isempty(svnpath)
-	% Extract basepath and use it:
-	svnpath=[fileparts(svnpath) filesep];
+  % Extract basepath and use it:
+  svnpath=[fileparts(svnpath) filesep];
 else
-	% Could not find svn executable in Matlabs path. Check the default
-	% install location on OS-X and abort if it isn't there. On M$-Win we
-	% simply have to hope that it is in some system dependent search path.
+  % Could not find svn executable in Matlabs path. Check the default
+  % install location on OS-X and abort if it isn't there. On M$-Win we
+  % simply have to hope that it is in some system dependent search path.
 
-	% Currently, we only know how to check this for Mac OSX and Linux.
-	if (IsOSX || IsLinux)
-		svnpath = '';
-		     
-		if isempty(svnpath) && exist('/opt/subversion/bin/svn', 'file')
-			svnpath = '/opt/subversion/bin/';
-        end
-        
-		if isempty(svnpath) && exist('/usr/bin/svn','file')
-			svnpath='/usr/bin/';
-		end
+  % Currently, we only know how to check this for Mac OSX and Linux.
+  if (IsOSX || IsLinux)
+    svnpath = '';
 
-		if isempty(svnpath) && exist('/usr/local/bin/svn','file')
-			svnpath='/usr/local/bin/';
-		end
+    if isempty(svnpath) && exist('/usr/bin/svn','file')
+      svnpath='/usr/bin/';
+    end
 
-		if isempty(svnpath) && exist('/bin/svn','file')
-			svnpath='/bin/';
-		end
+    if isempty(svnpath) && exist('/usr/local/bin/svn','file')
+      svnpath='/usr/local/bin/';
+    end
 
-		if isempty(svnpath) && exist('/opt/local/bin/svn', 'file')
-			svnpath = '/opt/local/bin/';
-		end
-	end
+    if isempty(svnpath) && exist('/bin/svn','file')
+      svnpath='/bin/';
+    end
+
+    if isempty(svnpath) && exist('/opt/local/bin/svn', 'file')
+      svnpath = '/opt/local/bin/';
+    end
+
+    if isempty(svnpath) && exist('/opt/subversion/bin/svn', 'file')
+      svnpath = '/opt/subversion/bin/';
+    end
+  end
 end
 
 return;
