@@ -2493,8 +2493,8 @@ end
 % Is a Bits+ / Bits# specific video display mode requested? Or
 % explicit use of a Bits# device?
 floc = [ find(mystrcmp(reqs, 'EnableBits++Bits++Output')) ];
-floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Mono++Output')) ; find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')) ];
-floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Color++Output')) ; find(mystrcmp(reqs, 'UseBits#')) ];
+floc = [floc(:) ; find(mystrcmp(reqs, 'EnableBits++Mono++Output')) ; find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')) ];
+floc = [floc(:) ; find(mystrcmp(reqs, 'EnableBits++Color++Output')) ; find(mystrcmp(reqs, 'UseBits#')) ];
 if ~isempty(floc)
     % Explicit use of Bits# requested? Or only implicit by video mode?
     floc = find(mystrcmp(reqs, 'UseBits#'));
