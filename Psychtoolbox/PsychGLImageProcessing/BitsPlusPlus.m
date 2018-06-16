@@ -78,6 +78,17 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % them again, you have to respecify codes via the BitsPlusPlus('DIOCommand',...);
 %
 %
+% Manage treatment of one or two connected CRS devices:
+%
+% BitsPlusPlus('SetDualDevices', mode);
+% If 'mode' is set to 0, which is the default, assume one CRS device is connected.
+%
+% If 'mode' is set to 1, then assume two CRS devices, e.g., 2 Display++ or
+% Bits# devices are connected for dual-display stereo/binocular stimulation and
+% adapt accordingly. Apply the same CLUT in Bits++ and Mono++ display mode
+% to both connected display devices in stereomodes 4, 5 and 10.
+%
+%
 %
 %
 % Open a full-screen window on the Bits++ display as with
@@ -382,6 +393,9 @@ persistent validated;
 % Type of box: 0 = Bits+, 1 = Datapixx:
 persistent targetdevicetype;
 
+% Single output device (=0), or dual devices (=1), e.g., for dual-display:
+persistent dualdevices;
+
 % Name strings:
 persistent devname;
 persistent drivername;
@@ -450,6 +464,7 @@ if isempty(validated)
     tlockXOffset = 0;
     OverlayWindows = [];
     targetdevicetype = 0;
+    dualdevices = 0;
     drivername = 'BitsPlusPlus';
     devname = 'Bits+';
     bplusname = 'Bits++';
@@ -580,6 +595,17 @@ if strcmpi(cmd, 'SetTargetDeviceType')
             error('Unknown targetdevicetype assigned in call to "SetTargetDeviceType"!');
     end
     
+    return;
+end
+
+if strcmpi(cmd, 'SetDualDevices')
+    if nargin < 2
+        error('dualdevices parameter missing!');
+    end
+
+    % Assign dualdevices flag to internal persistent variable:
+    dualdevices = arg;
+
     return;
 end
 
@@ -1087,18 +1113,31 @@ if strcmpi(cmd, 'OpenWindowBits++')
     
     Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 
-    if ~isempty(stereomode) && ismember(stereomode, [1, 11])
-        % This is only needed on quad-buffered stereo contexts for Bits+.
-        % Enable CLUT updates via T-Lock on right stereo buffer as well:
+    if ~isempty(stereomode) && ismember(stereomode, [1, 4, 5, 10, 11])
+        % Enable CLUT updates on right stereo buffer as well:
 
-        if targetdevicetype == 0
+        % CRS devices, frame-sequential stereo or native quad-buffered OpenGL stereo,
+        % or dual-window stereo (mostly for OSX dual-display):
+        if targetdevicetype == 0 && ismember(stereomode, [1, 10, 11])
             Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
         end
-        
-        if targetdevicetype == 1
+
+        % Dual CRS devices, dual-display stereo on Linux or Windows:
+        if targetdevicetype == 0 && ismember(stereomode, [4, 5]) && dualdevices == 1
+            % Here one PTB window drives both video outputs (split-window style) and
+            % thereby both connected CRS devices. In order to set a CLUT on both of
+            % these devices, we need to blit the Clut T-Lock into the right half of
+            % our window as well. However, we use the LeftFinalizerBlitChain for this,
+            % as the RightFinalizerBlitChain is not operational in stereomode 4 and 5:
+            offsetstring = sprintf('xPosition=%i', vix + Screen('WindowSize', win, 1) / 2);
+            Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
+        end
+
+        % VPixx devices, frame-sequential stereo or native quad-buffered OpenGL stereo:
+        if targetdevicetype == 1 && ismember(stereomode, [1, 11])
             Screen('HookFunction', win, 'PrependMFunction', 'RightFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
         end
-        
+
         Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
     end
 
@@ -1574,15 +1613,28 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
 
         Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 
-        if ~isempty(stereomode) && ismember(stereomode, [1, 11])
-            % This is only needed on quad-buffered stereo contexts for Bits+.
-            % Enable CLUT updates via T-Lock on right stereo buffer as well:
+        if ~isempty(stereomode) && ismember(stereomode, [1, 4, 5, 10, 11])
+            % Enable CLUT updates on right stereo buffer as well:
 
-            if targetdevicetype == 0
+            % CRS devices, frame-sequential stereo or native quad-buffered OpenGL stereo,
+            % or dual-window stereo (mostly for OSX dual-display):
+            if targetdevicetype == 0 && ismember(stereomode, [1, 10, 11])
                 Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
             end
 
-            if targetdevicetype == 1
+            % Dual CRS devices, dual-display stereo on Linux or Windows:
+            if targetdevicetype == 0 && ismember(stereomode, [4, 5]) && dualdevices == 1
+                % Here one PTB window drives both video outputs (split-window style) and
+                % thereby both connected CRS devices. In order to set a CLUT on both of
+                % these devices, we need to blit the Clut T-Lock into the right half of
+                % our window as well. However, we use the LeftFinalizerBlitChain for this,
+                % as the RightFinalizerBlitChain is not operational in stereomode 4 and 5:
+                offsetstring = sprintf('xPosition=%i', vix + Screen('WindowSize', win, 1) / 2);
+                Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
+            end
+
+            % VPixx devices, frame-sequential stereo or native quad-buffered OpenGL stereo:
+            if targetdevicetype == 1 && ismember(stereomode, [1, 11])
                 Screen('HookFunction', win, 'PrependMFunction', 'RightFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
             end
 
@@ -1918,10 +1970,10 @@ end
 % Helper function for setup of finalizer blit chains in all modes. Sets up
 % callback into our file for T-Lock drawing etc...
 function displist = SetupDIOFinalizer(win, stereomode)
-    
+
     % Generate unique display list handle for later use:
     displist = glGenLists(1);
-    
+
     % Now enable finalizer hook chains and load them with the special Bits++
     % command for T-Lock based Bits++ DIO updates:
     Screen('HookFunction', win, 'PrependMFunction', 'LeftFinalizerBlitChain', 'Render T-Lock DIO data callback', 'BitsPlusPlus(1);');
