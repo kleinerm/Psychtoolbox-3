@@ -280,32 +280,49 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % serial port on the system. This driver will communicate with the Bits#
 % by establishing a serial port connection to the device via that serial
 % port. Presence of a Bits# can be signalled by either calling the BitsPlusPlus('OpenBits#')
-% function, passing a serial port device spec 'portSpec', or just by calling
+% function and passing a serial port device spec 'portSpec', or just by calling
 % BitsPlusPlus('OpenBits#') without any parameters. In the latter case, the
 % driver will check for the existence of a configuration file named...
-% [PsychtoolboxConfigDir 'BitsSharpConfig.txt'] . Presence of the file means
+% [PsychtoolboxConfigDir 'BitsSharpConfig.txt']. Presence of the file means
 % to use a Bits# device, absence means to treat any device as a Bits+ device.
 % Presence of a serial port device file name in the first line of that text
 % configuration file will use the serial port device with that name for
 % communication, otherwise the driver will try to auto-detect the proper
-% serial port for communication.
+% serial port for communication. If you have multiple such devices, you can add
+% multiple lines with serial port names to the configuration file, and then select
+% a given device by specifying a index into the file as 'portSpec'. portSpec=1
+% would use line 1 of the file for finding the device, portSpec=2 would use line 2
+% etc.
 %
 %
-% rc = BitsPlusPlus('OpenBits#' [, portSpec]);
-% -- Open a serial port control connection to a connected Bits# device.
+% [handle, portHandle] = BitsPlusPlus('OpenBits#' [, portSpec]);
+% -- Open a serial port control connection to a connected Bits# device, return
+% a non-zero 'handle' to it on success, or the value zero if no such device exists
+% or could not be opened. On successfull open, a low-level 'portHandle' is returned
+% as well, which allows access to the serial port control connection via IOPort for
+% people who really know what they are doing.
+%
+% Note: The current implementation only allows to connect to one device at a time,
+% therefore use of the returned 'handle' is not very useful at the moment.
+%
 % The 'portSpec' parameter is optional and defines the name of the serial
-% port(-device file) to use for the connection. If omitted, the name will
-% be taken from a configuration file, or auto-detected. This function must
-% be called before use of any Bits# specific functions, otherwise they'll turn
-% into  no-ops or failures. This function can be called multiple times. It will
-% only open the connection on first call. Successive calls will do nothing but
-% increment a reference count of clients to the device.
+% port(-device file) or index of the CRS device to use for the connection.
+% If omitted, the name will be taken from a configuration file, or auto-detected.
+% If specified as a string, the string defines the serial port device file. If
+% specified as a numeric index, it selects the line within the configuration file
+% from which the portname string will be taken, ie. index 1 = 1st line, 2 = 2nd line...
+%
+% This function must be called before use of any Bits# specific functions, otherwise
+% they'll turn into no-ops or failures. This function can be called multiple times for
+% a given device. It will only open the connection on first call. Successive calls will
+% do nothing but increment a reference count of clients to the device.
 %
 %
-% rc = BitsPlusPlus('Close');
-% -- Decrement reference count to a Bits# device, close the serial connection
-% to it once the count drops to zero, ie., as soon as nobody is using the
-% connection anymore.
+% rc = BitsPlusPlus('Close' [, handle]);
+% -- Decrement reference count to a Bits# device 'handle', close the serial
+% connection to it once the count drops to zero, ie., as soon as nobody is using
+% the connection anymore. If 'handle' is omitted, the 'Close' call is executed for
+% each currently open device.
 %
 %
 % rc = BitsPlusPlus('ResetOnWindowClose');
@@ -383,7 +400,10 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 %            Now possible due to ability for Screen() to assign imaging pipeline variables
 %            to callers workspace. This requires Octave 3.8+ or Matlab R2012a, which is our
 %            supported minimum requirement for Psychtoolbox 3.0.14.
-
+%
+% 17.06.2018 Add support for dual-display setups with two Bits+/Bits#/Display++
+%            Add support for returning device handles, port handles, and specifying
+%            devices by number in BitsSharpConfig file. (MK)
 global GL;
 
 % Flag for validation: If not set to one, then this routine will check if
@@ -612,11 +632,13 @@ end
 if strcmpi(cmd, 'OpenBits#')
     % Try to open connection to a Bits# device. Return true if successfull,
     % false otherwise - which would likely imply a Bits+ instead of Bits#.
-    
+    winRect = [];
+
     if ~isempty(bitsSharpPort)
         % Already open. Do nothing but return and report success:
         win = 1;
-                
+        winRect = bitsSharpPort;
+
         % Increment reference count:
         refCount = refCount + 1;
 
@@ -626,8 +648,8 @@ if strcmpi(cmd, 'OpenBits#')
     % Explicit serial port name for connection to device provided?
     if nargin > 1 && ~isempty(arg)
         bitsSharpPortname = arg;
-        if ~ischar(bitsSharpPortname)
-            error('Provided Bits# serial port name is not a valid namestring!');
+        if ~ischar(bitsSharpPortname) && (~isnumeric(bitsSharpPortname) || ~isscalar(bitsSharpPortname))
+            error('Provided Bits# serial port name is not a valid namestring or device index!');
         end
     else
         % No portname given:
@@ -635,10 +657,10 @@ if strcmpi(cmd, 'OpenBits#')
     end
 
     % Have a portname?
-    if isempty(bitsSharpPortname)
+    if isempty(bitsSharpPortname) || isnumeric(bitsSharpPortname)
         % No: Find out if a Bits# configuration file exists. Otherwise we assume
         % that usercode does not want to connect to a Bits# but user probably uses
-        % an older - connectionless - Bits+ and turn ourselves into a no-op:
+        % an older - connectionless - Bits+, and therefore turn ourselves into a no-op:
         configfile = [PsychtoolboxConfigDir 'BitsSharpConfig.txt'];
         if ~exist(configfile, 'file')
             % No config file -> No Bits#. We no-op and return "no such device":
@@ -651,8 +673,16 @@ if strcmpi(cmd, 'OpenBits#')
         end
 
         % File exists -> We want to access a Bits#. Parse file for a port name string:
+        if isempty(bitsSharpPortname)
+            bitsSharpPortname = 1;
+        end
+
+        fileContentsWrapped = [];
         fid = fopen(configfile);
-        fileContentsWrapped = fgets(fid);
+        % Get specified line:
+        for lineidx=1:bitsSharpPortname
+            fileContentsWrapped = fgets(fid);
+        end
         fclose(fid);
 
         % Port spec available?
@@ -685,7 +715,7 @@ if strcmpi(cmd, 'OpenBits#')
         [bitsSharpPort, errmsg] = IOPort('OpenSerialPort', bitsSharpPortname);
         IOPort('Verbosity', oldverblevel);
     catch %#ok<*CTCH>
-        error('Failed to establish a connection to the Bits# via serial port. The error message was: %s', errmsg);
+        error('Failed to establish a connection to the Bits# via serial port.');
     end
 
     % Success?
@@ -730,6 +760,9 @@ if strcmpi(cmd, 'OpenBits#')
     % Report success:
     win = 1;
 
+    % Return IOPort handle as well:
+    winRect = bitsSharpPort;
+
     return;
 end
 
@@ -770,7 +803,16 @@ end
 
 if strcmpi(cmd, 'ResetOnWindowClose')
     % Called from Screen() at onscreen window close time, or manually from usercode:
-    
+
+    % Explicit device handle specified?
+    if nargin >= 1 && ~isempty(arg)
+        % Yes. Currently we only accept the handle 1, as we can not do
+        % multi-device yet. Just validate for future correctness:
+        if arg ~= 1 || isempty(bitsSharpPort)
+            error('BitsPlusPlus: Close: Invalid ''handle'' specified. No such device open.');
+        end
+    end
+
     % Connection to Bits# established?
     if ~isempty(bitsSharpPort)
         % Yes. Switch back to Bits++ display mode, which provides a reasonably
@@ -794,6 +836,15 @@ end
 
 if strcmpi(cmd, 'Close')
     % Connection to Bits# established?
+
+    % Explicit device handle specified?
+    if nargin >= 1 && ~isempty(arg)
+        % Yes. Currently we only accept the handle 1, as we can not do
+        % multi-device yet. Just validate for future correctness:
+        if arg ~= 1 || isempty(bitsSharpPort)
+            error('BitsPlusPlus: Close: Invalid ''handle'' specified. No such device open.');
+        end
+    end
 
     % More than one client (this calling client) holding a reference to Bits# ?
     if refCount > 1
@@ -824,7 +875,6 @@ if strcmpi(cmd, 'Close')
 end
 
 if strcmpi(cmd, 'SwitchToBits++')
-    
     % Connection to Bits# established?
     if ~isempty(bitsSharpPort)
         % Yes. Switch back to Bits++ display mode, which provides a reasonably
