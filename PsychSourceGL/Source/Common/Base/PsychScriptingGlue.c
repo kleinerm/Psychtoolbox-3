@@ -68,23 +68,9 @@
  *
  */
 
-// We have to use #ifdef PTBOCTAVE here, because PSYCH_LANGUAGE is not yet defined.
-// Definition will happen a few lines downwards in Psych.h, but we can't reorder code
-// here :(
-#ifdef PTBOCTAVE
-// I dont know why, but it is *absolutely critical* that octave/oct.h is included
-// before *any* other header file, esp. Psych.h, otherwise the C++ compiler f%%2!s up
-// completely!
-#include <octave/oct.h>
-#include <octave/parse.h>
-#include <octave/ov-struct.h>
-#include <octave/ov-cell.h>
-#endif
-
 // During inclusion of Psych.h, we define the special flag PTBINSCRIPTINGGLUE. This
 // will cause some of the system headers in Psych.h not to be included during build
-// of PsychScriptingGlue.cc - They are not needed for this and they conflict with
-// GNU/Octave header files!
+// of PsychScriptingGlue.c:
 #define PTBINSCRIPTINGGLUE 1
 #include "Psych.h"
 #undef PTBINSCRIPTINGGLUE
@@ -935,10 +921,6 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
                 nameFirstGLUE[recLevel] = TRUE;
                 (*(fArg[0]))();
             } else { //when we receive a first argument  wich is a string and it is  not recognized as a function name then call the default function
-                /*
-                 *                        else
-                 *                PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state E)");
-                 */
                 baseFunction = PsychGetProjectFunction(NULL);
                 if (baseFunction != NULL) {
                     baseFunctionInvoked[recLevel]=TRUE;
@@ -1742,105 +1724,6 @@ PsychError PsychMatchDescriptors(void)
 }
 
 
-PsychError PsychMatchDescriptorsOld(void)
-{
-    PsychArgDescriptorType *specified, *received;
-
-    PsychGetArgDescriptor(&specified, &received);
-
-    //check for various bogus conditions resulting only from Psychtoolbox bugs and issue an internal error
-    if (specified->position != received->position)
-        PsychErrorExit(PsychError_internal);
-    if (specified->direction != received->direction)
-        PsychErrorExit(PsychError_internal);
-
-    switch(specified->direction) {
-        case PsychArgOut:
-            switch(specified->isRequired) {
-                case kPsychArgRequired:
-                    switch(received->isThere) {
-                        case kPsychArgPresent:
-                            goto exitOk;                    //both the argument is present and the return variable is named within the calling environment.
-                        case kPsychArgFixed:
-                            goto exitOk;                    //the argument is present but a return variable is not named within the calling environment. In MATLAB this can only be the 1st return argument.
-                        case kPsychArgAbsent:
-                            return(PsychError_invalidArg_absent);    //neither a return argument is present nor a return variable is named within the calling environment.
-                    }
-                case kPsychArgOptional:
-                case kPsychArgAnything:
-                    switch(received->isThere) {
-                        case kPsychArgPresent:
-                            goto exitOk;
-                        case kPsychArgFixed:
-                            goto exitOk;
-                        case kPsychArgAbsent:
-                            goto exitOk;
-                    }
-            }
-            break;
-
-        case PsychArgIn:
-            switch(specified->isRequired) {
-                case kPsychArgRequired:
-                    switch(received->isThere) {
-                        case kPsychArgPresent:
-                            break;                        //we still need to comppare the actual type and size to specifications.
-                        case kPsychArgFixed:
-                            PsychErrorExitMsg(PsychError_internal,"The input argument descriptor specifies a fixed argument, this property is unallowed for inputs.");
-                        case kPsychArgAbsent:
-                            return(PsychError_invalidArg_absent);
-                    }
-                    break;
-                case kPsychArgOptional:
-                case kPsychArgAnything:
-                    switch(received->isThere) {
-                        case kPsychArgPresent:
-                            break;                        //we still need to comppare the actual type and size to specifications.
-                        case kPsychArgFixed:
-                            PsychErrorExitMsg(PsychError_internal,"The input argument descriptor secifies a fixed argument, this property is unallowed for inputs.");
-                        case kPsychArgAbsent:
-                            goto exitOk;                //we do NOT need to compare the actual type and size to specifications.
-                    }
-                    break;
-            }
-
-            //if we get to here we are assured that both an input argument was specified and there is one there. In this block we compare they type and size of
-            //specified and provide arguments.  For output arguments we skip over this block because those are not assigned types by the calling environment.
-            if (!(specified->type & received->type))
-                return(PsychError_invalidArg_type);
-
-            if (received->mDimMin != received->mDimMax || received->nDimMin != received->nDimMax ||  received->pDimMin != received->pDimMax)
-                PsychErrorExit(PsychError_internal);    //unnecessary mandate
-
-            if (received->mDimMin < specified->mDimMin)
-                return(PsychError_invalidArg_size);
-
-            if (received->nDimMin < specified->nDimMin)
-                return(PsychError_invalidArg_size);
-
-            if (received->pDimMin < specified->pDimMin)
-                return(PsychError_invalidArg_size);
-
-            if (specified->mDimMax != kPsychUnboundedArraySize && received->mDimMax > specified->mDimMax)
-                return(PsychError_invalidArg_size);
-
-            if (specified->nDimMax != kPsychUnboundedArraySize && received->nDimMax > specified->nDimMax)
-                return(PsychError_invalidArg_size);
-
-            if (specified->pDimMax != kPsychUnboundedArraySize && received->pDimMax > specified->pDimMax)
-                return(PsychError_invalidArg_size);
-
-            if (received->numDims > 3)  //we don't allow matrices with more than 3 dimensions.
-                return(PsychError_invalidArg_size);
-            break;
-    }
-
-    exitOk:
-    return(PsychError_none);
-}
-
-
-
 //local function definitions for ScriptingGlue.c
 //___________________________________________________________________________________________
 
@@ -1982,7 +1865,7 @@ size_t PsychGetArgP(int position)
 
 
 /*
- *    PyschCheckInputArgType()
+ *    PsychCheckInputArgType()
  *
  *    Check that the input argument at the specifid position matches at least one of the types passed in the argType
  *    argument. If the argument violates the proscription exit with an error.  Otherwise return a psych_bool indicating
@@ -2042,54 +1925,6 @@ psych_bool PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequire
     }
     return(putOut);
 }
-
-
-/*
- *    PsychAllocOutDoubleArg_2()
- *
- *    usage:
- *    psych_bool PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequired, double **value)
- *    psych_bool PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequired, double **value, PsychGenericScriptType **nativeDouble)
- *
- *    PsychAllocOutDoubleArg_2() is an experimental enhanced version of PsychAllocOutDoubleArg which will accept the kPsychNoArgReturn
- *    constant in the position argument and then return via the optional 4th input a pointer to a native scripting type which holds the
- *    double.
- *
- *    Having a reference to the native type allows us to embed doubles withing cell arrays and structs and to pass doubles as arguments to functions
- *    called within MATLAB from a mex file.
- *
- *    PsychAllocOutDoubleArg_2() should be backwards compatible with PsychAllocOutDoubleArg and could supplant that function.
- *
- */
-/*
- * psych_bool PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequired, double **value, ...)
- * {
- *    mxArray **mxpp;
- *        va_list ap;
- *
- *        if (position != kPsychNoArgReturn) {
- *            PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
- *            PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double, isRequired, 1,1,1,1,0,0);
- *            PsychErrorExit(PsychMatchDescriptors());
- *            mxpp = PsychGetOutArgMxPtr(position);
- *            if (mxpp == NULL) {  //Here we allocated memory even if the return argument is not present.  Controversial.
- *value= (double *)mxMalloc(sizeof(double));
- *                    return(FALSE);
- *            }
- *            else{
- *mxpp = mxCreateDoubleMatrix3D(1,1,0);
- *value = mxGetPrPtr(*mxpp);
- *                    return(TRUE);
- *            }
- *        } else {
- *            va_start(ap, value);
- *(mxArray**)ap=mxCreateDoubleMatrix3D(1,1,0);
- *value = mxGetPrPtr(*(mxArray**)ap);
- *            va_end(ap);
- *            return(TRUE);
- *        }
- * }
- */
 
 psych_bool PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequired, double **value)
 {
@@ -2198,9 +2033,8 @@ psych_bool PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequir
 }
 
 
-/*
+/*    CURRENTLY UNUSED
  *    PsychAllocOutBooleanArg()
- */
 psych_bool PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType **value)
 {
     mxArray         **mxpp;
@@ -2221,6 +2055,7 @@ psych_bool PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequi
     }
     return(putOut);
 }
+*/
 
 
 /*
@@ -2398,7 +2233,7 @@ psych_bool PsychCopyOutCharArg(int position, PsychArgRequirementType isRequired,
 
 
 
-/*functions which input arguments.
+/*functions with input arguments.
  * ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
  * ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
  */
@@ -2971,14 +2806,13 @@ double PsychGetNanValue(void)
     return(mxGetNaN());
 }
 
-/* PsychAllocInCharFromNativeArg()
+/* UNUSED: PsychAllocInCharFromNativeArg()
  *
  * Given a pointer to a native PsychGenericScriptType datatype which represents character
  * strings in the runtime's native encoding, try to extract a standard char-string of it and
  * return it in the referenced char *str. Return TRUE on success, FALSE on failure, e.g., because
  * the nativeCharElement didn't contain a parseable string.
  *
- */
 psych_bool PsychAllocInCharFromNativeArg(PsychGenericScriptType *nativeCharElement, char **str)
 {
     mxArray         *mxPtr;
@@ -2995,6 +2829,7 @@ psych_bool PsychAllocInCharFromNativeArg(PsychGenericScriptType *nativeCharEleme
     if (status!=0) return(FALSE);
     return(TRUE);
 }
+*/
 
 /* PsychRuntimeGetPsychtoolboxRoot()
  *

@@ -88,7 +88,7 @@ psych_bool PsychAllocOutStructArray(int position,
 }
 
 
-/*
+/*  FONTS on OSX only.
     PsychAssignOutStructArray()
     Accept a pointer to a struct array and Assign the struct array to be the designated return variable.
 */

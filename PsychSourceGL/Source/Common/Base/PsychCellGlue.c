@@ -18,43 +18,7 @@
 #include "Psych.h"
 
 /*
- *    PsychAllocInCellVector()
- */
-psych_bool PsychAllocInNativeCellVector(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **cellVector)
-{
-    PsychError matchError;
-    psych_bool acceptArg;
-
-    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_cellArray, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 1);
-    matchError = PsychMatchDescriptors();
-    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
-    if (acceptArg)
-        *cellVector = PsychGetInArgMxPtr(position);
-    return(acceptArg);
-}
-
-
-/*
- *    PsychAllocInNativeString()
- */
-psych_bool PsychAllocInNativeString(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **nativeString)
-{
-    PsychError matchError;
-    psych_bool acceptArg;
-
-    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_char, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 1);
-    matchError = PsychMatchDescriptors();
-    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
-    if (acceptArg)
-        *nativeString = PsychGetInArgMxPtr(position);
-    return(acceptArg);
-}
-
-
-/*
- *    PsychAllocOutCellArray()
+ *    PsychAllocOutCellVector()
  *
  *    -If argument is optional we allocate the structure even if the argument is not present.  If this behavior bothers you,
  *    then check within your code for the presense of a return argument before creating the struct array.  We
@@ -128,10 +92,9 @@ void PsychSetCellVectorStringElement(int index,
 
 
 /*
- *    PsychSetCellArrayDoubleElement()
+ *    PsychSetCellVectorDoubleElement() - UNUSED
  *
  *    Note: The variable "index" is zero-indexed.
- */
 void PsychSetCellVectorDoubleElement(int index,
                                      double value,
                                      PsychGenericScriptType *cellVector)
@@ -155,11 +118,11 @@ void PsychSetCellVectorDoubleElement(int index,
     mxSetCell(cellVector, (mwIndex) index, mxFieldValue);
     if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
 }
+ */
 
 
 /*
- *    PsychSetStructArrayNativeElement()
- */
+ *    PsychSetCellVectorNativeElement() - UNUSED
 void PsychSetCellVectorNativeElement(int index,
                                      PsychGenericScriptType *pNativeElement,
                                      PsychGenericScriptType *cellVector)
@@ -179,29 +142,40 @@ void PsychSetCellVectorNativeElement(int index,
     //do stuff
     mxSetCell(cellVector, (mwIndex) index, pNativeElement);
 }
+*/
 
 
 /*
- *    PsychConvertNativeCellArrayToNativeString()
- *
- *    Accept a native cell array and convert it to a native string by using the  Psychtoolbox script
- *    Psychtoolbox/PsychOneliners/CatStr.m
- *
- *    PsychConvertNativeCellArrayToNativeString() is derived from parts of Denis Pelli's Rush.c from the OS 9 Psychtoolbox
- *
- */
-void PsychConvertNativeCellArrayToNativeString(const PsychGenericScriptType **nativeCellArray, PsychGenericScriptType **nativeString)
+ *    PsychAllocInNativeCellVector() - UNUSED
+psych_bool PsychAllocInNativeCellVector(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **cellVector)
 {
-    int                         error, numOutputs, numInputs;
-    PsychGenericScriptType      **inputs;
-    PsychGenericScriptType      *outputs[1];
+    PsychError matchError;
+    psych_bool acceptArg;
 
-    numInputs = 1;
-    numOutputs = 1;
-    outputs[0] = NULL;
-    inputs = (PsychGenericScriptType**) nativeCellArray;
-    error = mexCallMATLAB(numOutputs, outputs, numInputs, inputs, "CatStr");     // Psychtoolbox:PsychOneliners:CatStr.m
-    if (error)
-        PsychErrorExitMsg(PsychError_internal, "Failed to convert a cell array to string");
-    *nativeString = outputs[0];
+    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_cellArray, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 1);
+    matchError = PsychMatchDescriptors();
+    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
+    if (acceptArg)
+        *cellVector = PsychGetInArgMxPtr(position);
+    return(acceptArg);
 }
+*/
+
+
+/*
+ *    PsychAllocInNativeString() - UNUSED
+psych_bool PsychAllocInNativeString(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **nativeString)
+{
+    PsychError matchError;
+    psych_bool acceptArg;
+
+    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_char, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 1);
+    matchError = PsychMatchDescriptors();
+    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
+    if (acceptArg)
+        *nativeString = PsychGetInArgMxPtr(position);
+    return(acceptArg);
+}
+*/
