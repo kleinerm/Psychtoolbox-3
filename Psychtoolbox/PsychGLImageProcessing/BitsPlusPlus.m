@@ -805,7 +805,7 @@ if strcmpi(cmd, 'ResetOnWindowClose')
     % Called from Screen() at onscreen window close time, or manually from usercode:
 
     % Explicit device handle specified?
-    if nargin >= 1 && ~isempty(arg)
+    if nargin >= 2 && ~isempty(arg)
         % Yes. Currently we only accept the handle 1, as we can not do
         % multi-device yet. Just validate for future correctness:
         if arg ~= 1 || isempty(bitsSharpPort)
@@ -838,7 +838,7 @@ if strcmpi(cmd, 'Close')
     % Connection to Bits# established?
 
     % Explicit device handle specified?
-    if nargin >= 1 && ~isempty(arg)
+    if nargin >= 2 && ~isempty(arg)
         % Yes. Currently we only accept the handle 1, as we can not do
         % multi-device yet. Just validate for future correctness:
         if arg ~= 1 || isempty(bitsSharpPort)
