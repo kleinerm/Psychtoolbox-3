@@ -143,8 +143,11 @@ PsychError PsychSetSpecifiedArgDescriptor(  int position,
 psych_bool PsychAcceptInputArgumentDecider(PsychArgRequirementType isRequired, PsychError matchError);
 psych_bool PsychAcceptOutputArgumentDecider(PsychArgRequirementType isRequired, PsychError matchError);
 PsychError PsychMatchDescriptors(void);
+
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
 mxArray **PsychGetOutArgMxPtr(int position);
 const mxArray *PsychGetInArgMxPtr(int position);
+#endif
 
 //end include once
 #endif
