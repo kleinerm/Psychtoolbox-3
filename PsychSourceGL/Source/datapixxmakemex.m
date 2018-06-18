@@ -70,6 +70,7 @@ function datapixxmakemex()
     S = [S ' ' PTBDIR 'PsychSourceGL/Source/Common/Base/PsychStructGlue.c'];
     S = [S ' ' PTBDIR 'PsychSourceGL/Source/Common/Base/PsychVersioning.c'];
     S = [S ' ' PTBDIR 'PsychSourceGL/Source/Common/Base/PsychScriptingGlue.c'];
+    S = [S ' ' PTBDIR 'PsychSourceGL/Source/Common/Base/PsychScriptingGlueMatlab.c'];
     S = [S ' ' PTBDIR 'PsychSourceGL/Source/Common/Base/MODULEVersion.c'];
 
     if (IsOSX)

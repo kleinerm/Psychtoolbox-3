@@ -144,6 +144,8 @@ psych_bool PsychAcceptInputArgumentDecider(PsychArgRequirementType isRequired, P
 psych_bool PsychAcceptOutputArgumentDecider(PsychArgRequirementType isRequired, PsychError matchError);
 PsychError PsychMatchDescriptors(void);
 
+void PsychCheckSizeLimits(psych_int64 m, psych_int64 n, psych_int64 p);
+
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 mxArray **PsychGetOutArgMxPtr(int position);
 const mxArray *PsychGetInArgMxPtr(int position);
