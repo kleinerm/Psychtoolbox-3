@@ -1223,7 +1223,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     int major, minor;
     int o, isPrimary, crtcid, crtccount;
     int primaryOutput = -1, primaryCRTC = -1, primaryCRTCIdx = -1;
-    int crtcs[100];
+    int crtcs[100] = { 0 };
     XRRProviderResources *providerResources;
 
     // Preinit to "undefined":
