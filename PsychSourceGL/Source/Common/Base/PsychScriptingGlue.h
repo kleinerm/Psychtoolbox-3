@@ -127,8 +127,8 @@ psych_bool PsychAreSubfunctionsEnabled(void);
 psych_bool PsychCheckInputArgType(int position, PsychArgRequirementType isRequired, PsychArgFormatType argType);
 
 
-//for the benefit of PsychStructGlue and PsychCellGlue.  Don't use these unless you are writing more glue libraries. 
-//They should probably be moved to a separate header file.
+// For the benefit of PsychStructGlue and PsychCellGlue. Don't use these unless you are writing more glue libraries. 
+// They should probably be moved to a separate header file.
 PsychError PsychSetReceivedArgDescriptor(int argNum, psych_bool allow64BitSizes, PsychArgDirectionType direction);
 PsychError PsychSetSpecifiedArgDescriptor(  int position,
                                             PsychArgDirectionType direction,
