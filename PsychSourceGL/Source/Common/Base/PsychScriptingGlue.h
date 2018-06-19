@@ -146,9 +146,15 @@ PsychError PsychMatchDescriptors(void);
 
 void PsychCheckSizeLimits(psych_int64 m, psych_int64 n, psych_int64 p);
 
+// Low-level accessors to input/output parameters from the runtime:
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 mxArray **PsychGetOutArgMxPtr(int position);
 const mxArray *PsychGetInArgMxPtr(int position);
+#endif
+
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+PyObject **PsychGetOutArgPyPtr(int position);
+const PyObject *PsychGetInArgPyPtr(int position);
 #endif
 
 //end include once

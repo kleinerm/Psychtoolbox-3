@@ -27,11 +27,31 @@
 // Define this to 1 if you want lots of debug-output for the Octave-Scripting glue.
 #define DEBUG_PTBPYTHONGLUE 1
 
-// Special hacks to allow Psychtoolbox to build for GNU-OCTAVE:
-#if PSYCH_LANGUAGE == PSYCH_OCTAVE
+// Special hacks to allow Psychtoolbox to build on Python, stubbing out Mex Api replacements.
 
 #include <string.h>
 #include <setjmp.h>
+
+/*
+typedef enum
+{
+    PsychArgType_unclassified = 0,
+    PsychArgType_cellArray,
+    PsychArgType_structArray,
+    PsychArgType_boolean,
+    PsychArgType_char,
+    PsychArgType_double,
+    PsychArgType_single,
+    PsychArgType_int8,
+    PsychArgType_uint8,
+    PsychArgType_int16,
+    PsychArgType_uint16,
+    PsychArgType_int32,
+    PsychArgType_uint32,
+    PsychArgType_int64,
+    PsychArgType_uint64,
+}
+*/
 
 // This jump-buffer stores CPU- and stackstate at the position
 // where our octFunction() dispatcher actually starts executing
@@ -44,11 +64,12 @@ jmp_buf jmpbuffer;
 // sets Octave error state and longjmp's to the cleanup routine
 // at the end of our octFunction dispatcher...
 void mexErrMsgTxt(const char* s) {
+    /* TODO FIXME
     if (s && strlen(s)>0) {
         error("%s: %s", mexFunctionName,s);
     }
     else error("");
-
+    */
     // Use the jump-buffer to unwind the stack...
     longjmp(jmpbuffer, 1);
 }
@@ -58,8 +79,8 @@ void mexPrintf(const char* fmt, ...)
 {
     va_list args;
     va_start (args, fmt);
-    octave_vformat(octave_diary, fmt, args);
-    octave_vformat(octave_stdout, fmt, args);
+    vfprintf(stderr, fmt, args);
+    vfprintf(stdout, fmt, args);
     va_end(args);
 }
 
@@ -78,35 +99,121 @@ void mxFree(void* p)
     PsychFreeTemp(p);
 }
 
-int mexCallMATLAB(const int nargout, mxArray* argout[],
-                  const int nargin, const mxArray* argin[],
+int mexCallMATLAB(const int nargout, PyObject* argout[],
+                  const int nargin, const PyObject* argin[],
                   const char* fname)
 {
+    /* TODO FIXME */
     PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: Internal call to mexCallMATLAB(), which is not yet implemented on GNU/Octave port!");
 }
 
 double mxGetNaN(void)
 {
-    return(lo_ieee_nan_value());
+    /* TODO FIXME Stop-gap? Better solution in Python? */
+    return(nan(""));
 }
 
-mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int realorcomplex)
+int mxIsLogical(const PyObject* a)
 {
-    mxArray* retval;
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsCell(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsStruct(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsNumeric(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsChar(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsSingle(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsDouble(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsUint8(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsUint16(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsUint32(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsInt8(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsInt16(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+int mxIsInt32(const PyObject* a)
+{
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+    return(0);
+}
+
+PyObject* mxCreateNumericArray(int numDims, ptbSize dimArray[], PsychArgFormatType arraytype)
+{
+    PyObject* retval;
     int rows, cols, layers;
-    if (numDims>3) PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxCreateNumericArray: Tried to create matrix with more than 3 dimensions!");
+
+    if (numDims > 3) PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxCreateNumericArray: Tried to create matrix with more than 3 dimensions!");
     rows = dimArray[0];
-    cols = (numDims>1) ? dimArray[1] : 1;
-    layers = (numDims>2) ? dimArray[2] : 1;
+    cols = (numDims > 1) ? dimArray[1] : 1;
+    layers = (numDims > 2) ? dimArray[2] : 1;
+
+    // TODO FIXME stopgap! Allocate our PyObject-Struct:
+    retval = (PyObject*) PsychMallocTemp(sizeof(PyObject));
+
+/* TODO FIXME
     dim_vector mydims((numDims>2) ? dim_vector(rows, cols, layers) : dim_vector(rows, cols));
 
-    // Allocate our mxArray-Struct:
-    retval = (mxArray*) PsychMallocTemp(sizeof(mxArray));
+    // Allocate our PyObject-Struct:
+    retval = (PyObject*) PsychMallocTemp(sizeof(PyObject));
 
     // Create corresponding octave_value object for requested type and size of matrix.
-    // Retrieve raw pointer to contained data and store it in our mxArray struct as well...
+    // Retrieve raw pointer to contained data and store it in our PyObject struct as well...
 
-    if (arraytype==mxUINT8_CLASS) {
+    if (arraytype==PsychArgType_uint8) {
         if (DEBUG_PTBPYTHONGLUE) printf("NEW UINT8 MATRIX: %i,%i,%i\n", rows, cols, layers); fflush(NULL);
         // Create empty uint8ND-Array of type mxREAL...
         uint8NDArray m(mydims);
@@ -122,7 +229,7 @@ mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int re
         // At this point we can safely destroy Matrix m, as the new
         // octave_object holds a reference to its representation.
     }
-    else if (arraytype==mxDOUBLE_CLASS && rows*cols*layers > 1) {
+    else if (arraytype==PsychArgType_double && rows*cols*layers > 1) {
         if (DEBUG_PTBPYTHONGLUE) printf("NEW DOUBLE MATRIX: %i,%i,%i\n", rows, cols, layers); fflush(NULL);
         // Create empty ND-Array of type mxREAL...
         NDArray m(mydims);
@@ -138,20 +245,20 @@ mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int re
         // At this point we can safely destroy Matrix m, as the new
         // octave_object holds a reference to its representation.
     }
-    else if (arraytype==mxDOUBLE_CLASS && rows*cols*layers == 1) {
+    else if (arraytype==PsychArgType_double && rows*cols*layers == 1) {
         if (DEBUG_PTBPYTHONGLUE) printf("NEW SCALAR:\n"); fflush(NULL);
         // This is a scalar value:
         retval->o = (void*) new octave_value(0.0);
         double* dp = (double*) PsychMallocTemp(sizeof(double));
         retval->d = (void*) dp;
     }
-    else if (arraytype==mxDOUBLE_CLASS && rows*cols*layers == 0) {
+    else if (arraytype==PsychArgType_double && rows*cols*layers == 0) {
         // Special case: Empty matrix.
         if (DEBUG_PTBPYTHONGLUE) printf("NEW EMPTY DOUBLE MATRIX:\n"); fflush(NULL);
         retval->o = (void*) new octave_value(Matrix(0,0));
         retval->d = NULL;
     }
-    else if (arraytype==mxLOGICAL_CLASS) {
+    else if (arraytype==PsychArgType_boolean) {
         if (DEBUG_PTBPYTHONGLUE) printf("NEW BOOLMATRIX: %i, %i\n", rows, cols, layers); fflush(NULL);
         // Create empty double-matrix of type mxREAL...
         if (layers>1) PsychErrorExitMsg(PsychError_internal, "In mxCreateNumericArray: Tried to allocate a 3D psych_bool matrix!?! Unsupported.");
@@ -171,112 +278,132 @@ mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int re
     else {
         PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxCreateNumericArray: Unknown matrix type requested!");
     }
-
+*/
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
     return(retval);
 }
 
-mxArray* mxCreateDoubleMatrix(int rows, int cols, int realorcomplex)
+PyObject* mxCreateDoubleMatrix(int rows, int cols)
 {
     int dims[2];
     dims[0]=rows;
     dims[1]=cols;
-    return(mxCreateNumericArray(2, dims, mxDOUBLE_CLASS, mxREAL));
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(NULL);
+/* TODO FIXME
+    return(mxCreateNumericArray(2, dims, PsychArgType_double));
+*/
 }
 
-mxArray* mxCreateLogicalMatrix(int rows, int cols)
+PyObject* mxCreateLogicalMatrix(int rows, int cols)
 {
-    int dims[2];
+    ptbSize dims[2];
     dims[0]=rows;
     dims[1]=cols;
-    return(mxCreateNumericArray(2, dims, mxLOGICAL_CLASS, mxREAL));
+    return(mxCreateNumericArray(2, dims, PsychArgType_boolean));
 }
 
-mxArray* mxCreateString(const char* instring)
+PyObject* mxCreateString(const char* instring)
 {
-    mxArray* retval;
+    PyObject* retval;
 
-    // Allocate our mxArray-Struct:
-    retval = (mxArray*) PsychMallocTemp(sizeof(mxArray));
-
+    // Allocate our PyObject-Struct:
+    retval = (PyObject*) PsychMallocTemp(sizeof(PyObject));
+/* TODO FIXME
     retval->d = NULL;
     retval->o = (void*) new octave_value(instring);
+*/
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(NULL);
     return(retval);
 }
 
-void* mxGetData(const mxArray* arrayPtr)
+void* mxGetData(const PyObject* arrayPtr)
 {
-    return(arrayPtr->d);
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(NULL);
+/* TODO FIXME    return(arrayPtr->d); */
 }
 
-double mxGetScalar(const mxArray* arrayPtr)
+double mxGetScalar(const PyObject* arrayPtr)
 {
-    return((double) (mxGetPr(arrayPtr)[0]));
+        fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(0);
+
+/* TODO FIXME    return((double) (mxGetPr(arrayPtr)[0])); */
 }
 
-double* mxGetPr(const mxArray* arrayPtr)
+double* mxGetPr(const PyObject* arrayPtr)
 {
-    return((double*) mxGetData(arrayPtr));
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(NULL);
+/* TODO FIXME    return(arrayPtr->d); */
 }
 
-psych_bool* mxGetLogicals(const mxArray* arrayPtr)
+psych_bool* mxGetLogicals(const PyObject* arrayPtr)
 {
-    return((psych_bool*) mxGetData(arrayPtr));
-}
-#define GETOCTPTR(x) ((octave_value*) (x)->o)
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(NULL);
+/* TODO FIXME    return(arrayPtr->d); */
 
-int mxGetM(const mxArray* arrayPtr)
-{
-    return(GETOCTPTR(arrayPtr)->rows());
+/*    return((psych_bool*) mxGetData(arrayPtr)); */
 }
 
-int mxGetN(const mxArray* arrayPtr)
+int mxGetM(const PyObject* arrayPtr)
 {
-    return(GETOCTPTR(arrayPtr)->columns());
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(0);
 }
 
-int mxGetNumberOfDimensions(const mxArray* arrayPtr)
+int mxGetN(const PyObject* arrayPtr)
 {
-    return(GETOCTPTR(arrayPtr)->ndims());
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(0);
 }
 
-int* mxGetDimensions(const mxArray* arrayPtr)
+int mxGetNumberOfDimensions(const PyObject* arrayPtr)
 {
-    dim_vector vdim = GETOCTPTR(arrayPtr)->dims();
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(0);
+}
+
+int* mxGetDimensions(const PyObject* arrayPtr)
+{
     int* dims = (int*) PsychMallocTemp(3*sizeof(int));
+/*
     dims[0] = vdim(0);
     dims[1] = vdim(1);
     if (GETOCTPTR(arrayPtr)->ndims()>2) dims[2] = vdim(2); else dims[2]=1;
+*/
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(0);
     return(dims);
 }
 
-int mxGetString(const mxArray* arrayPtr, char* outstring, int outstringsize)
+int mxGetString(const PyObject* arrayPtr, char* outstring, int outstringsize)
 {
-    if (!mxIsChar(arrayPtr)) PsychErrorExitMsg(PsychError_internal, "FATAL Error: Tried to convert a non-string into a string!");
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(0);
+/* TODO FIXME   if (!mxIsChar(arrayPtr)) PsychErrorExitMsg(PsychError_internal, "FATAL Error: Tried to convert a non-string into a string!");
     return(((snprintf(outstring, outstringsize, "%s", GETOCTPTR(arrayPtr)->string_value().c_str()))>=0) ? 0 : 1);
+*/
 }
 
-void mxDestroyArray(mxArray *arrayPtr)
+void mxDestroyArray(PyObject *arrayPtr)
 {
-    // Destroy a mxArray:
+    // Destroy a PyObject:
     if (arrayPtr == NULL) return;
 
     // We only need to destroy the octave_value object referenced by arrayPtr,
     // because possible data buffers referenced by the ->d field and the
-    // mxArray struct itself are allocted via PsychMallocTemp() anyway, so
+    // PyObject struct itself are allocted via PsychMallocTemp() anyway, so
     // they get automatically released when exiting our octFile...
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
+/* TODO FIXME
     octave_value* ov = (octave_value*) arrayPtr->o;
     if (ov) delete(ov);
     arrayPtr->o = NULL;
+*/
     return;
 }
 
-mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const char** fieldNames)
+PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, const char** fieldNames)
 {
-    mxArray* retval;
+    PyObject* retval;
 
     if (numDims>2 || numDims<1) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateStructArray: Anything else than 1D or 2D Struct-Arrays is not supported!");
     if (numFields<1) PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxCreateStructArray: numFields < 1 ?!?");
-
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(NULL);
+/*
     // Our dimension vector:
     dim_vector mydims((numDims>1) ? dim_vector(ArrayDims[0], ArrayDims[1]) : dim_vector(ArrayDims[0]));
 
@@ -296,8 +423,8 @@ mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const c
     // Assign all remaining key->Cell pairs...
     for (int i=1; i<numFields; i++) mymap.assign(std::string(fieldNames[i]), myCell);
 
-    // Build our mxArray wrapper:
-    retval = (mxArray*) PsychMallocTemp(sizeof(mxArray));
+    // Build our PyObject wrapper:
+    retval = (PyObject*) PsychMallocTemp(sizeof(PyObject));
 
     // Fill it: Assign our map.
     octave_value* ovp = new octave_value(mymap);
@@ -305,10 +432,12 @@ mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const c
     retval->d = NULL;
 
     return(retval);
+*/
 }
 
-int mxGetFieldNumber(const mxArray* structArray, const char* fieldName)
+int mxGetFieldNumber(const PyObject* structArray, const char* fieldName)
 {
+/*
     if (!mxIsStruct(structArray)) {
         PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxGetFieldNumber: Tried to manipulate something other than a struct-Array!");
     }
@@ -320,17 +449,17 @@ int mxGetFieldNumber(const mxArray* structArray, const char* fieldName)
     // Find idx of key.
     std::string mykey(fieldName);
     for (int i=0; i<om.length(); i++) if (mykey == om.keys()(i)) return(i);
-
+*/
     // No such key :(
     return(-1);
 }
 
-void mxSetField(mxArray* pStructOuter, int index, const char* fieldName, mxArray* pStructInner)
+void mxSetField(PyObject* pStructOuter, int index, const char* fieldName, PyObject* pStructInner)
 {
+/*
     if (!mxIsStruct(pStructOuter)) {
         PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxSetField: Tried to manipulate something other than a struct-Array!");
     }
-
     // Retrieve map:
     octave_value* ov = (octave_value*) pStructOuter->o;
     Octave_map om = ov->map_value();
@@ -347,17 +476,18 @@ void mxSetField(mxArray* pStructOuter, int index, const char* fieldName, mxArray
 
     // Reassign our map:
     *ov = octave_value(om);
+*/
 }
 
-mxArray* mxCreateCellArray(int numDims, int* ArrayDims)
+PyObject* mxCreateCellArray(int numDims, ptbSize* ArrayDims)
 {
-    mxArray* retval;
+    PyObject* retval;
 
-    // Allocate our mxArray-Struct:
-    retval = (mxArray*) PsychMallocTemp(sizeof(mxArray));
+    // Allocate our PyObject-Struct:
+    retval = (PyObject*) PsychMallocTemp(sizeof(PyObject));
 
-    if (numDims>2) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateCellArray: 3D Cell Arrays are not supported yet on GNU/Octave build!");
-
+    if (numDims > 2) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateCellArray: 3D Cell Arrays are not supported yet on GNU/Octave build!");
+/*
     // Create dimension vector:
     dim_vector mydims((numDims>1) ? dim_vector(ArrayDims[0], ArrayDims[1]) : dim_vector(ArrayDims[0]));
 
@@ -365,17 +495,17 @@ mxArray* mxCreateCellArray(int numDims, int* ArrayDims)
     Cell myCell(mydims);
     retval->o = (void*) new octave_value(myCell);
     retval->d = NULL;
-
+*/
     // Done.
     return(retval);
 }
 
-void mxSetCell(PsychGenericScriptType *cellVector, int index, mxArray* mxFieldValue)
+void mxSetCell(PsychGenericScriptType *cellVector, ptbIndex index, PyObject* mxFieldValue)
 {
-    if (!mxIsCell((mxArray*) cellVector)) {
+    if (!mxIsCell(cellVector)) {
         PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxSetCell: Tried to manipulate something other than a cell-vector!");
     }
-
+/*
     // Get a local (shallow) copy of the current real cellVector:
     octave_value* cv = (octave_value*) cellVector->o;
     Cell mycell = cv->cell_value();
@@ -391,86 +521,21 @@ void mxSetCell(PsychGenericScriptType *cellVector, int index, mxArray* mxFieldVa
 
     // Assign modified vector:
     *cv = mycell;
-
+*/
     return;
 }
 
-void mxSetLogical(mxArray* dummy)
+
+void mxSetLogical(PyObject* dummy)
 {
     // This is a no-op on Octave build, because it is not needed anywhere...
     return;
 }
 
-int mxIsLogical(const mxArray* a)
-{
-    return(GETOCTPTR(a)->is_bool_type());
-}
-
-int mxIsCell(const mxArray* a)
-{
-    return(GETOCTPTR(a)->is_cell());
-}
-
-int mxIsStruct(const mxArray* a)
-{
-    return(GETOCTPTR(a)->is_map());
-}
-
-int mxIsNumeric(const mxArray* a)
-{
-    return(GETOCTPTR(a)->is_numeric_type());
-}
-
-int mxIsChar(const mxArray* a)
-{
-    return(GETOCTPTR(a)->is_char_matrix() || GETOCTPTR(a)->is_string());
-}
-
-int mxIsDouble(const mxArray* a)
-{
-    return(GETOCTPTR(a)->is_real_type());
-}
-
-int mxIsUint8(const mxArray* a)
-{
-    if (DEBUG_PTBPYTHONGLUE) printf("BYTESIZE %i NUMEL %i --> mxIsUint8 = %s\n", GETOCTPTR(a)->byte_size(), GETOCTPTR(a)->numel(),
-        ((mxIsNumeric(a) && (GETOCTPTR(a)->byte_size() / GETOCTPTR(a)->numel() == 1))) ? "TRUE":"FALSE");
-
-    return((mxIsNumeric(a) && (GETOCTPTR(a)->byte_size() / GETOCTPTR(a)->numel() == 1)) ? TRUE : FALSE);
-}
-
-int mxIsUint16(const mxArray* a)
-{
-    return((mxIsNumeric(a) && (GETOCTPTR(a)->byte_size() / GETOCTPTR(a)->numel() == 2)) ? TRUE : FALSE);
-}
-
-int mxIsUint32(const mxArray* a)
-{
-    return((mxIsNumeric(a) && (GETOCTPTR(a)->byte_size() / GETOCTPTR(a)->numel() == 4)) ? TRUE : FALSE);
-}
-
-int mxIsInt8(const mxArray* a)
-{
-    return(mxIsUint8(a));
-}
-
-int mxIsInt16(const mxArray* a)
-{
-    return(mxIsUint16(a));
-}
-
-int mxIsInt32(const mxArray* a)
-{
-    return(mxIsUint32(a));
-}
-
-#endif
 
 ////Static functions local to ScriptingGluePython.c.
 // _____________________________________________________________________________________
-void InitializeSynopsis(char *synopsis[],int maxStrings);
 
-#define MAX_SYNOPSIS 100
 #define MAX_CMD_NAME_LENGTH 100
 
 //Static variables local to ScriptingGluePython.c.  The convention is to append a abbreviation in all
@@ -496,29 +561,28 @@ static psych_bool baseFunctionInvoked[MAX_RECURSIONLEVEL];
 static int nlhsGLUE[MAX_RECURSIONLEVEL];  // Number of requested return arguments.
 static int nrhsGLUE[MAX_RECURSIONLEVEL];  // Number of provided call arguments.
 
-static mxArray **plhsGLUE[MAX_RECURSIONLEVEL];       // A pointer to the plhs array passed to the MexFunction entry point
-static CONSTmxArray **prhsGLUE[MAX_RECURSIONLEVEL]; // A pointer to the prhs array passed to the MexFunction entry point
+static PyObject **plhsGLUE[MAX_RECURSIONLEVEL];       // A pointer to the plhs array passed to the MexFunction entry point
+static const PyObject **prhsGLUE[MAX_RECURSIONLEVEL]; // A pointer to the prhs array passed to the MexFunction entry point
 
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
 #define MAX_OUTPUT_ARGS 100
 #define MAX_INPUT_ARGS 100
-static mxArray* plhsGLUE[recLevel][MAX_OUTPUT_ARGS]; // An array of pointers to the octave return arguments.
-static mxArray* prhsGLUE[recLevel][MAX_INPUT_ARGS];  // An array of pointers to the octave call arguments.
+static PyObject* plhsGLUE[recLevel][MAX_OUTPUT_ARGS]; // An array of pointers to the octave return arguments.
+static PyObject* prhsGLUE[recLevel][MAX_INPUT_ARGS];  // An array of pointers to the octave call arguments.
 extern const char *mexFunctionName; // This gets initialized by Octave wrapper to contain our function name.
 #endif
 
-static psych_bool subfunctionsEnabledGLUE = FALSE;
 static void PsychExitGlue(void);
 
 //local function declarations
-static psych_bool PsychIsEmptyMat(CONSTmxArray *mat);
-static psych_bool PsychIsDefaultMat(CONSTmxArray *mat);
-static mwSize mxGetP(const mxArray *array_ptr);
-static mwSize mxGetNOnly(const mxArray *arrayPtr);
-static mxArray *mxCreateDoubleMatrix3D(psych_int64 m, psych_int64 n, psych_int64 p);
+static psych_bool PsychIsEmptyMat(const PyObject *mat);
+static psych_bool PsychIsDefaultMat(const PyObject *mat);
+static ptbSize mxGetP(const PyObject *array_ptr);
+static ptbSize mxGetNOnly(const PyObject *arrayPtr);
+static PyObject *mxCreateDoubleMatrix3D(psych_int64 m, psych_int64 n, psych_int64 p);
 
 //declarations for functions exported from code module
-EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[]);
+EXP void mexFunction(int nlhs, PyObject *plhs[], int nrhs, const PyObject *prhs[]);
 
 // firstTime: This flag defines if this is the first invocation of the module
 // since it was (re-)loaded:
@@ -571,13 +635,14 @@ void PsychExitRecursion(void)
  *        Modules should now register in subfunction mode to support the build-in 'version' command.
  *
  */
-EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[])
+EXP void mexFunction(int nlhs, PyObject *plhs[], int nrhs, const PyObject *prhs[])
 {
+/*
     psych_bool          isArgThere[2], isArgEmptyMat[2], isArgText[2], isArgFunction[2];
     PsychFunctionPtr    fArg[2], baseFunction;
     char                argString[2][MAX_CMD_NAME_LENGTH];
     int                 i;
-    const mxArray*      tmparg = NULL; // mxArray is mxArray under MATLAB but #defined to octave_value on OCTAVE build.
+    const PyObject*      tmparg = NULL; // PyObject is PyObject under MATLAB but #defined to octave_value on OCTAVE build.
 
     #if PSYCH_LANGUAGE == PSYCH_OCTAVE
     psych_bool errorcondition = FALSE;
@@ -690,8 +755,8 @@ EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[])
             // lots of new()/delete() calls on each invocation of the OCT-Function --> possible
             // slow-down over time, could be confused with memory leaks???
             for (int i=0; i<nrhs && i<MAX_INPUT_ARGS; i++) {
-                // Create and assign our mxArray-Struct:
-                prhsGLUE[recLevel][i] = (mxArray*) PsychMallocTemp(sizeof(mxArray));
+                // Create and assign our PyObject-Struct:
+                prhsGLUE[recLevel][i] = (PyObject*) PsychMallocTemp(sizeof(PyObject));
 
                 // Extract data-pointer to each prhs(i) octave_value and store a type-casted version
                 // which is optimal for us.
@@ -960,7 +1025,7 @@ EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[])
             delete(((octave_value*)(plhsGLUE[recLevel][i]->o)));
 
             // We don't need to free() the PsychMallocTemp()'ed object pointed to
-            // by the d-Ptr, nor do we need to free the mxArray-Struct. This is done
+            // by the d-Ptr, nor do we need to free the PyObject-Struct. This is done
             // below in PsychFreeAllTempMemory(). Just NULL-out the array slot:
             plhsGLUE[recLevel][i]=NULL;
         }
@@ -998,6 +1063,7 @@ EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[])
     #else
     PsychExitRecursion();
     #endif
+*/
 }
 
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
@@ -1044,12 +1110,12 @@ void PsychExitGlue(void)
 
 
 /*
- *    Return the mxArray pointer to the specified position.  Note that we have some special rules for
- *    for numbering the positions:
+ *    Return the PyObject pointer to the specified position. Note that we have some special rules for
+ *    numbering the positions:
  *
  *    0 - This is always the command string or NULL if the project does not register a
  *        dispatch function and does accept subcommands.  If the function does accept sub
- *        commands, in Matlab those may be passed in either the first or second position, but
+ *        commands, those may be passed in either the first or second position, but
  *        PsychGetArgPtr() will always return the command as the 0th.
  *
  *    1 - This is the first argument among the arguments which are not the subfunction name itself.
@@ -1060,26 +1126,25 @@ void PsychExitGlue(void)
  *
  *    TO DO:
  *
- *
  *    2 - this function should be used by the one which gets the function name.
  *
  *
  *    Arguments are numbered 0..n.
  *
- *        -The 0th argument is a pointer to the mxArray holding
- *        the subfunction name string if we are in subfunction mode.
+ *        - The 0th argument is a pointer to the PyObject holding
+ *          the subfunction name string if we are in subfunction mode.
  *
- *        -The 0th argument is undefined if not in subfunction mode.
+ *        - The 0th argument is undefined if not in subfunction mode.
  *
- *        -The 1st argument is the argument of the 1st and 2nd which is not
- *        the subfunction name if in subfunction mode.
+ *        - The 1st argument is the argument of the 1st and 2nd which is not
+ *          the subfunction name if in subfunction mode.
  *
- *        -The 1st argument is the first argument if not in subfunction mode.
+ *        - The 1st argument is the first argument if not in subfunction mode.
  *
- *        -The 2nd-nth arguments are always the 2nd-nth arguments.
+ *        - The 2nd-nth arguments are always the 2nd-nth arguments.
  */
-//we return NULL if a postion without an arg is specified.
-const mxArray *PsychGetInArgMxPtr(int position)
+//we return NULL if a position without an arg is specified.
+const PyObject *PsychGetInArgPyPtr(int position)
 {
     if (PsychAreSubfunctionsEnabled() && !baseFunctionInvoked[recLevel]) { //when in subfunction mode
         if (position < nrhsGLUE[recLevel]) { //an argument was passed in the correct position.
@@ -1106,7 +1171,7 @@ const mxArray *PsychGetInArgMxPtr(int position)
 }
 
 
-mxArray **PsychGetOutArgMxPtr(int position)
+PyObject **PsychGetOutArgPyPtr(int position)
 {
     if (position==1 || (position>0 && position<=nlhsGLUE[recLevel])) { //an ouput argument was supplied at the specified location
         return(&(plhsGLUE[recLevel][position-1]));
@@ -1125,7 +1190,7 @@ mxArray **PsychGetOutArgMxPtr(int position)
  * most. In reality the limit is much lower, this is an upper bound.
  *
  * 64 bit builds may or may not allow bigger limits, depending if
- * the runtime (Matlab or Octave) supports a 64 bit mwSize type. Even
+ * the Python runtime supports a 64 bit ptbSize type. Even
  * then there are some limits imposed by available system memory and
  * processor architecture specific limits, e.g., many cpu's only
  * truly support 48 bit of memory, not the true 64 bit.
@@ -1133,11 +1198,11 @@ mxArray **PsychGetOutArgMxPtr(int position)
  */
 void PsychCheckSizeLimits(psych_int64 m, psych_int64 n, psych_int64 p)
 {
-    // No problem if mwSize has capacity to contain size_t:
-    if (sizeof(mwSize) >= sizeof(size_t)) return;
+    // No problem if ptbSize has capacity to contain size_t:
+    if (sizeof(ptbSize) >= sizeof(size_t)) return;
 
-    // Mismatch: mwSize too small to contain size_t. This means
-    // mwSize is only defined as a 32-bit int on a system where
+    // Mismatch: ptbSize too small to contain size_t. This means
+    // ptbSize is only defined as a 32-bit int on a system where
     // size_t is a 64 bit unsigned int. As long as the provided
     // size_t values are smaller than 2^31 we're good and don't
     // screw up when downcasting. Otherwis we'd overflow and
@@ -1167,15 +1232,15 @@ void PsychCheckSizeLimits(psych_int64 m, psych_int64 n, psych_int64 p)
  *
  *    The abstracted Psychtoolbox API supports matrices with up to 3 dimensions.
  */
-static mwSize mxGetP(const mxArray *arrayPtr)
+static ptbSize mxGetP(const PyObject *arrayPtr)
 {
-    const mwSize *dimArray;
+    const ptbSize *dimArray;
 
     if (mxGetNumberOfDimensions(arrayPtr) < 3) {
         return(1);
     }
 
-    dimArray = (const mwSize*) mxGetDimensions(arrayPtr);
+    dimArray = (const ptbSize*) mxGetDimensions(arrayPtr);
     return dimArray[2];
 }
 
@@ -1187,11 +1252,11 @@ static mwSize mxGetP(const mxArray *arrayPtr)
  *
  *    The abstracted Psychtoolbox API supports matrices with up to 3 dimensions.
  */
-static mwSize mxGetNOnly(const mxArray *arrayPtr)
+static ptbSize mxGetNOnly(const PyObject *arrayPtr)
 {
-    const mwSize *dimArray;
+    const ptbSize *dimArray;
 
-    dimArray = (const mwSize*) mxGetDimensions(arrayPtr);
+    dimArray = (const ptbSize*) mxGetDimensions(arrayPtr);
     return dimArray[1];
 }
 
@@ -1203,20 +1268,20 @@ static mwSize mxGetNOnly(const mxArray *arrayPtr)
  *
  *    Requirements are that m>0, n>0, p>=0.
  */
-mxArray *mxCreateDoubleMatrix3D(psych_int64 m, psych_int64 n, psych_int64 p)
+PyObject *mxCreateDoubleMatrix3D(psych_int64 m, psych_int64 n, psych_int64 p)
 {
     int numDims;
-    mwSize dimArray[3];
+    ptbSize dimArray[3];
 
     if (m==0 || n==0 ) {
         dimArray[0]=0;dimArray[1]=0;dimArray[2]=0;    //this prevents a 0x1 or 1x0 empty matrix, we want 0x0 for empty matrices.
     } else {
         PsychCheckSizeLimits(m,n,p);
-        dimArray[0] = (mwSize) m; dimArray[1] = (mwSize) n; dimArray[2] = (mwSize) p;
+        dimArray[0] = (ptbSize) m; dimArray[1] = (ptbSize) n; dimArray[2] = (ptbSize) p;
     }
     numDims= (p==0 || p==1) ? 2 : 3;
 
-    return mxCreateNumericArray(numDims, (mwSize*) dimArray, mxDOUBLE_CLASS, mxREAL);
+    return mxCreateNumericArray(numDims, (ptbSize*) dimArray, PsychArgType_double);
 }
 
 
@@ -1227,20 +1292,20 @@ mxArray *mxCreateDoubleMatrix3D(psych_int64 m, psych_int64 n, psych_int64 p)
  *
  *    Requirements are that m>0, n>0, p>=0.
  */
-mxArray *mxCreateFloatMatrix3D(size_t m, size_t n, size_t p)
+PyObject *mxCreateFloatMatrix3D(size_t m, size_t n, size_t p)
 {
     int numDims;
-    mwSize dimArray[3];
+    ptbSize dimArray[3];
 
     if (m==0 || n==0 ) {
         dimArray[0]=0;dimArray[1]=0;dimArray[2]=0;    //this prevents a 0x1 or 1x0 empty matrix, we want 0x0 for empty matrices.
     } else {
         PsychCheckSizeLimits(m,n,p);
-        dimArray[0] = (mwSize) m; dimArray[1] = (mwSize) n; dimArray[2] = (mwSize) p;
+        dimArray[0] = (ptbSize) m; dimArray[1] = (ptbSize) n; dimArray[2] = (ptbSize) p;
     }
     numDims= (p==0 || p==1) ? 2 : 3;
 
-    return mxCreateNumericArray(numDims, (mwSize*) dimArray, mxSINGLE_CLASS, mxREAL);
+    return mxCreateNumericArray(numDims, (ptbSize*) dimArray, PsychArgType_single);
 }
 
 
@@ -1251,20 +1316,20 @@ mxArray *mxCreateFloatMatrix3D(size_t m, size_t n, size_t p)
  *
  *    Requirements are that m>0, n>0, p>=0.
  */
-mxArray *mxCreateNativeBooleanMatrix3D(size_t m, size_t n, size_t p)
+PyObject *mxCreateNativeBooleanMatrix3D(size_t m, size_t n, size_t p)
 {
     int         numDims;
-    mwSize      dimArray[3];
-    mxArray     *newArray;
+    ptbSize      dimArray[3];
+    PyObject     *newArray;
 
     if (m==0 || n==0 ) {
         dimArray[0]=0;dimArray[1]=0;dimArray[2]=0;    //this prevents a 0x1 or 1x0 empty matrix, we want 0x0 for empty matrices.
     } else {
         PsychCheckSizeLimits(m,n,p);
-        dimArray[0] = (mwSize) m; dimArray[1] = (mwSize) n; dimArray[2] = (mwSize) p;
+        dimArray[0] = (ptbSize) m; dimArray[1] = (ptbSize) n; dimArray[2] = (ptbSize) p;
     }
     numDims = (p==0 || p==1) ? 2 : 3;
-    newArray = mxCreateNumericArray(numDims, (mwSize*) dimArray, mxLOGICAL_CLASS, mxREAL);
+    newArray = mxCreateNumericArray(numDims, (ptbSize*) dimArray, PsychArgType_boolean);
 
     return(newArray);
 }
@@ -1275,19 +1340,19 @@ mxArray *mxCreateNativeBooleanMatrix3D(size_t m, size_t n, size_t p)
  *
  *    Requirements are that m>0, n>0, p>=0.
  */
-mxArray *mxCreateByteMatrix3D(size_t m, size_t n, size_t p)
+PyObject *mxCreateByteMatrix3D(size_t m, size_t n, size_t p)
 {
     int numDims;
-    mwSize dimArray[3];
+    ptbSize dimArray[3];
 
     if (m==0 || n==0 ) {
         dimArray[0]=0;dimArray[1]=0;dimArray[2]=0; //this prevents a 0x1 or 1x0 empty matrix, we want 0x0 for empty matrices.
     } else {
         PsychCheckSizeLimits(m,n,p);
-        dimArray[0] = (mwSize) m; dimArray[1] = (mwSize) n; dimArray[2] = (mwSize) p;
+        dimArray[0] = (ptbSize) m; dimArray[1] = (ptbSize) n; dimArray[2] = (ptbSize) p;
     }
     numDims= (p==0 || p==1) ? 2 : 3;
-    return mxCreateNumericArray(numDims, (mwSize*) dimArray, mxUINT8_CLASS, mxREAL);
+    return mxCreateNumericArray(numDims, (ptbSize*) dimArray, PsychArgType_uint8);
 }
 
 
@@ -1296,24 +1361,20 @@ mxArray *mxCreateByteMatrix3D(size_t m, size_t n, size_t p)
  */
 void PsychErrMsgTxt(char *s)
 {
-    // If this is the Matlab version then we try to close onscreen windows here.
-    // The Octave version has a different implementation of this facility...
-    #if PSYCH_LANGUAGE == PSYCH_MATLAB
-        // Is this the Screen() module?
-        if (strcmp(PsychGetModuleName(), "Screen")==0) {
-            // Yes. We directly call our close and cleanup routine:
-            #ifdef PTBMODULE_Screen
-                ScreenCloseAllWindows();
-            #endif
-        } else {
-            // Nope. This is a Psychtoolbox MEX file other than Screen.
-            // We can't call directly, but we can call the 'sca' command
-            // from Matlab:
-            PsychRuntimeEvaluateString("Screen('CloseAll');");
-        }
+    // Is this the Screen() module?
+    if (strcmp(PsychGetModuleName(), "Screen")==0) {
+        // Yes. We directly call our close and cleanup routine:
+        #ifdef PTBMODULE_Screen
+            ScreenCloseAllWindows();
+        #endif
+    } else {
+        // Nope. This is a Psychtoolbox MEX file other than Screen.
+        // We can't call directly, but we can call the 'sca' command
+        // from Matlab:
+        PsychRuntimeEvaluateString("Screen('CloseAll');");
+    }
 
-        PsychExitRecursion();
-    #endif
+    PsychExitRecursion();
 
     // Call the Matlab- or Octave error printing and error handling facilities:
     mexErrMsgTxt((s && (strlen(s) > 0)) ? s : "See error message printed above.");
@@ -1321,36 +1382,36 @@ void PsychErrMsgTxt(char *s)
 
 
 /*
- *    classify the mxArray element format using Pyschtoolbox argument type names
+ *    classify the PyObject element format using Pyschtoolbox argument type names
  *
  */
-static PsychArgFormatType PsychGetTypeFromMxPtr(const mxArray *mxPtr)
+static PsychArgFormatType PsychGetTypeFromPyPtr(const PyObject *ppyPtr)
 {
     PsychArgFormatType format;
 
-    if (PsychIsDefaultMat(mxPtr))
+    if (PsychIsDefaultMat(ppyPtr))
         format = PsychArgType_default;
-    else if (mxIsUint8(mxPtr))
+    else if (mxIsUint8(ppyPtr))
         format = PsychArgType_uint8;
-    else if (mxIsUint16(mxPtr))
+    else if (mxIsUint16(ppyPtr))
         format = PsychArgType_uint16;
-    else if (mxIsUint32(mxPtr))
+    else if (mxIsUint32(ppyPtr))
         format = PsychArgType_uint32;
-    else if (mxIsInt8(mxPtr))
+    else if (mxIsInt8(ppyPtr))
         format = PsychArgType_int8;
-    else if (mxIsInt16(mxPtr))
+    else if (mxIsInt16(ppyPtr))
         format = PsychArgType_int16;
-    else if (mxIsInt32(mxPtr))
+    else if (mxIsInt32(ppyPtr))
         format = PsychArgType_int32;
-    else if (mxIsDouble(mxPtr))
+    else if (mxIsDouble(ppyPtr))
         format = PsychArgType_double;
-    else if (mxIsSingle(mxPtr))
+    else if (mxIsSingle(ppyPtr))
         format = PsychArgType_single;
-    else if (mxIsChar(mxPtr))
+    else if (mxIsChar(ppyPtr))
         format = PsychArgType_char;
-    else if (mxIsCell(mxPtr))
+    else if (mxIsCell(ppyPtr))
         format = PsychArgType_cellArray;
-    else if (mxIsLogical(mxPtr))
+    else if (mxIsLogical(ppyPtr))
         // This is tricky because MATLAB abstracts "logicals" conditionally on platform.
         // Depending on OS, MATLAB implements booleans with either 8-bit or 64-bit values.
         format = PsychArgType_boolean;
@@ -1372,30 +1433,30 @@ PsychError PsychSetReceivedArgDescriptor(int argNum, psych_bool allow64BitSizes,
 {
     PsychArgDescriptorType  d;
     int                     numNamedOutputs, numOutputs;
-    const mxArray           *mxPtr;
+    const PyObject          *ppyPtr;
 
     d.position = argNum;
     d.direction = direction;
     if (direction == PsychArgIn) {
-        mxPtr = PsychGetInArgMxPtr(argNum);
-        d.isThere = (mxPtr && !PsychIsDefaultMat(mxPtr)) ? kPsychArgPresent : kPsychArgAbsent;
+        ppyPtr = PsychGetInArgPyPtr(argNum);
+        d.isThere = (ppyPtr && !PsychIsDefaultMat(ppyPtr)) ? kPsychArgPresent : kPsychArgAbsent;
         if (d.isThere == kPsychArgPresent) { //the argument is there so fill in the rest of the description
-            d.numDims = (int) mxGetNumberOfDimensions(mxPtr);
+            d.numDims = (int) mxGetNumberOfDimensions(ppyPtr);
 
             // If the calling function doesn't allow 64 bit sized input argument dimensions, then we check if
             // the input has a size within the positive signed integer range, i.e., at most INT_MAX elements
             // per dimension. Functions which can handle bigger inputs need to declare this explicitely by
             // setting allow64BitSizes == TRUE:
-            if ((!allow64BitSizes) && ((mxGetM(mxPtr) >= INT_MAX) || (mxGetNOnly(mxPtr) >= INT_MAX) || (mxGetP(mxPtr) >= INT_MAX))) {
+            if ((!allow64BitSizes) && ((mxGetM(ppyPtr) >= INT_MAX) || (mxGetNOnly(ppyPtr) >= INT_MAX) || (mxGetP(ppyPtr) >= INT_MAX))) {
                 printf("PTB-ERROR: %i. input argument exceeds allowable maximum size of 2^31 - 1 elements\n", argNum);
                 printf("PTB-ERROR: in at least one dimension. Psychtoolbox can't handle such huge matrices or vectors.\n");
                 PsychErrorExitMsg(PsychError_user, "Input argument exceeds maximum supported count of 2^31 - 1 elements!");
             }
 
-            d.mDimMin = d.mDimMax = (psych_int64) mxGetM(mxPtr);
-            d.nDimMin = d.nDimMax = (psych_int64) mxGetNOnly(mxPtr);
-            d.pDimMin = d.pDimMax = (psych_int64) mxGetP(mxPtr);
-            d.type = PsychGetTypeFromMxPtr(mxPtr);
+            d.mDimMin = d.mDimMax = (psych_int64) mxGetM(ppyPtr);
+            d.nDimMin = d.nDimMax = (psych_int64) mxGetNOnly(ppyPtr);
+            d.pDimMin = d.pDimMax = (psych_int64) mxGetP(ppyPtr);
+            d.type = PsychGetTypeFromPyPtr(ppyPtr);
         }
     }
     else { //(direction == PsychArgOut)
@@ -1418,12 +1479,12 @@ PsychError PsychSetReceivedArgDescriptor(int argNum, psych_bool allow64BitSizes,
 //___________________________________________________________________________________________
 
 
-psych_bool PsychIsDefaultMat(CONSTmxArray *mat)
+psych_bool PsychIsDefaultMat(const PyObject *mat)
 {
     return (PsychIsEmptyMat(mat) && !mxIsChar(mat));
 }
 
-psych_bool PsychIsEmptyMat(CONSTmxArray *mat)
+psych_bool PsychIsEmptyMat(const PyObject *mat)
 {
     return(mxGetM(mat)==0 || mxGetN(mat)==0);
 }
@@ -1478,7 +1539,7 @@ psych_bool PsychIsArgPresent(PsychArgDirectionType direction, int position)
         return((psych_bool)(PsychGetNumOutputArgs()>=position));
     } else {
         if ((numArgs=PsychGetNumInputArgs())>=position)
-            return(!(PsychIsDefaultMat(PsychGetInArgMxPtr(position)))); //check if its default
+            return(!(PsychIsDefaultMat(PsychGetInArgPyPtr(position)))); //check if its default
         else
             return(FALSE);
     }
@@ -1490,7 +1551,7 @@ PsychArgFormatType PsychGetArgType(int position) //this is for inputs because ou
     if (!(PsychIsArgReallyPresent(PsychArgIn, position)))
         return(PsychArgType_none);
 
-    return(PsychGetTypeFromMxPtr(PsychGetInArgMxPtr(position)));
+    return(PsychGetTypeFromPyPtr(PsychGetInArgPyPtr(position)));
 }
 
 
@@ -1498,7 +1559,7 @@ size_t PsychGetArgM(int position)
 {
     if (!(PsychIsArgPresent(PsychArgIn, position)))
         PsychErrorExitMsg(PsychError_invalidArgRef,NULL);
-    return( mxGetM(PsychGetInArgMxPtr(position)));
+    return( mxGetM(PsychGetInArgPyPtr(position)));
 }
 
 
@@ -1506,7 +1567,7 @@ size_t PsychGetArgN(int position)
 {
     if (!(PsychIsArgPresent(PsychArgIn, position)))
         PsychErrorExitMsg(PsychError_invalidArgRef,NULL);
-    return( mxGetNOnly(PsychGetInArgMxPtr(position)));
+    return( mxGetNOnly(PsychGetInArgPyPtr(position)));
 }
 
 
@@ -1514,7 +1575,7 @@ size_t PsychGetArgP(int position)
 {
     if (!(PsychIsArgPresent(PsychArgIn, position)))
         PsychErrorExitMsg(PsychError_invalidArgRef,NULL);
-    return( mxGetP(PsychGetInArgMxPtr(position)));
+    return( mxGetP(PsychGetInArgPyPtr(position)));
 }
 
 
@@ -1543,7 +1604,7 @@ size_t PsychGetArgP(int position)
 
 psych_bool PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequired, double value)
 {
-    mxArray         **mxpp;
+    PyObject         **mxpp;
     PsychError      matchError;
     psych_bool      putOut;
 
@@ -1552,8 +1613,8 @@ psych_bool PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequire
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
-        (*mxpp) = mxCreateDoubleMatrix(1,1,mxREAL);
+        mxpp = PsychGetOutArgPyPtr(position);
+        (*mxpp) = mxCreateDoubleMatrix(1, 1);
         mxGetPr((*mxpp))[0] = value;
     }
     return(putOut);
@@ -1561,7 +1622,7 @@ psych_bool PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequire
 
 psych_bool PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequired, double **value)
 {
-    mxArray         **mxpp;
+    PyObject         **mxpp;
     PsychError      matchError;
     psych_bool      putOut;
 
@@ -1570,11 +1631,11 @@ psych_bool PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequir
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
         *mxpp = mxCreateDoubleMatrix3D(1,1,0);
         *value = mxGetPr(*mxpp);
     } else {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
         *value= (double *)mxMalloc(sizeof(double));
     }
     return(putOut);
@@ -1593,7 +1654,7 @@ psych_bool PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequir
  */
 psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, double **array)
 {
-    mxArray         **mxpp;
+    PyObject         **mxpp;
     PsychError      matchError;
     psych_bool      putOut;
 
@@ -1602,7 +1663,7 @@ psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isReq
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
         *mxpp = mxCreateDoubleMatrix3D(m,n,p);
         *array = mxGetPr(*mxpp);
     }else
@@ -1626,7 +1687,7 @@ psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isReq
  */
 psych_bool PsychAllocOutFloatMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, float **array)
 {
-    mxArray         **mxpp;
+    PyObject         **mxpp;
     PsychError      matchError;
     psych_bool      putOut;
 
@@ -1635,7 +1696,7 @@ psych_bool PsychAllocOutFloatMatArg(int position, PsychArgRequirementType isRequ
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
         *mxpp = mxCreateFloatMatrix3D((size_t) m, (size_t) n, (size_t) p);
         *array = (float*) mxGetData(*mxpp);
     }else
@@ -1649,7 +1710,7 @@ psych_bool PsychAllocOutFloatMatArg(int position, PsychArgRequirementType isRequ
  */
 psych_bool PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType value)
 {
-    mxArray         **mxpp;
+    PyObject         **mxpp;
     PsychError      matchError;
     psych_bool      putOut;
 
@@ -1658,7 +1719,7 @@ psych_bool PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequir
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
         (*mxpp) = mxCreateLogicalMatrix(1,1);
         mxGetLogicals((*mxpp))[0] = value;
     }
@@ -1670,7 +1731,7 @@ psych_bool PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequir
  *    PsychAllocOutBooleanArg()
 psych_bool PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType **value)
 {
-    mxArray         **mxpp;
+    PyObject         **mxpp;
     PsychError      matchError;
     psych_bool      putOut;
 
@@ -1679,11 +1740,11 @@ psych_bool PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequi
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
         (*mxpp) = mxCreateLogicalMatrix(1,1);
         *value = mxGetLogicals((*mxpp));
     } else {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
         *value= (PsychNativeBooleanType *)mxMalloc(sizeof(PsychNativeBooleanType));
     }
     return(putOut);
@@ -1703,7 +1764,7 @@ psych_bool PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequi
  */
 psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, PsychNativeBooleanType **array)
 {
-    mxArray         **mxpp;
+    PyObject         **mxpp;
     PsychError      matchError;
     psych_bool      putOut;
 
@@ -1712,7 +1773,7 @@ psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRe
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
         *mxpp = mxCreateNativeBooleanMatrix3D((size_t) m, (size_t) n, (size_t) p);
         *array = (PsychNativeBooleanType *)mxGetLogicals(*mxpp);
     } else {
@@ -1729,7 +1790,7 @@ psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRe
  */
 psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, psych_uint8 **array)
 {
-    mxArray         **mxpp;
+    PyObject         **mxpp;
     PsychError      matchError;
     psych_bool      putOut;
 
@@ -1738,7 +1799,7 @@ psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
         *mxpp = mxCreateByteMatrix3D((size_t) m, (size_t) n, (size_t) p);
         *array = (psych_uint8 *)mxGetData(*mxpp);
     } else {
@@ -1755,10 +1816,10 @@ psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType
  */
 psych_bool PsychAllocOutUnsignedInt16MatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, psych_uint16 **array)
 {
-    mxArray         **mxpp;
+    PyObject         **mxpp;
     PsychError      matchError;
     psych_bool      putOut;
-    mwSize          dimArray[3];
+    ptbSize          dimArray[3];
     int             numDims;
 
     // Compute output array dimensions:
@@ -1766,7 +1827,7 @@ psych_bool PsychAllocOutUnsignedInt16MatArg(int position, PsychArgRequirementTyp
         dimArray[0] = 0; dimArray[1] = 0; dimArray[2] = 0;  //this prevents a 0x1 or 1x0 empty matrix, we want 0x0 for empty matrices.
     } else {
         PsychCheckSizeLimits(m,n,p);
-        dimArray[0] = (mwSize) m; dimArray[1] = (mwSize) n; dimArray[2] = (mwSize) p;
+        dimArray[0] = (ptbSize) m; dimArray[1] = (ptbSize) n; dimArray[2] = (ptbSize) p;
     }
     numDims = (p == 0 || p == 1) ? 2 : 3;
 
@@ -1775,8 +1836,8 @@ psych_bool PsychAllocOutUnsignedInt16MatArg(int position, PsychArgRequirementTyp
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
-        *mxpp = mxCreateNumericArray(numDims, (mwSize*) dimArray, mxUINT16_CLASS, mxREAL);
+        mxpp = PsychGetOutArgPyPtr(position);
+        *mxpp = mxCreateNumericArray(numDims, (ptbSize*) dimArray, PsychArgType_uint16);
         *array = (psych_uint16 *)mxGetData(*mxpp);
     } else {
         *array= (psych_uint16 *) mxMalloc(sizeof(psych_uint16) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
@@ -1787,7 +1848,7 @@ psych_bool PsychAllocOutUnsignedInt16MatArg(int position, PsychArgRequirementTyp
 
 psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, double *fromArray)
 {
-    mxArray     **mxpp;
+    PyObject     **mxpp;
     double      *toArray;
     PsychError  matchError;
     psych_bool  putOut;
@@ -1797,7 +1858,7 @@ psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequ
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
         *mxpp = mxCreateDoubleMatrix3D(m,n,p);
         toArray = mxGetPr(*mxpp);
         //copy the input array to the output array now
@@ -1809,11 +1870,11 @@ psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequ
 
 psych_bool PsychCopyOutUnsignedInt16MatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, psych_uint16 *fromArray)
 {
-    mxArray         **mxpp;
+    PyObject         **mxpp;
     psych_uint16    *toArray;
     PsychError      matchError;
     psych_bool      putOut;
-    mwSize          dimArray[3];
+    ptbSize          dimArray[3];
     int             numDims;
 
     // Compute output array dimensions:
@@ -1821,7 +1882,7 @@ psych_bool PsychCopyOutUnsignedInt16MatArg(int position, PsychArgRequirementType
         dimArray[0] = 0; dimArray[1] = 0; dimArray[2] = 0;    //this prevents a 0x1 or 1x0 empty matrix, we want 0x0 for empty matrices.
     } else {
         PsychCheckSizeLimits(m,n,p);
-        dimArray[0] = (mwSize) m; dimArray[1] = (mwSize) n; dimArray[2] = (mwSize) p;
+        dimArray[0] = (ptbSize) m; dimArray[1] = (ptbSize) n; dimArray[2] = (ptbSize) p;
     }
     numDims = (p == 0 || p == 1) ? 2 : 3;
 
@@ -1830,8 +1891,8 @@ psych_bool PsychCopyOutUnsignedInt16MatArg(int position, PsychArgRequirementType
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
-        *mxpp = mxCreateNumericArray(numDims, (mwSize*) dimArray, mxUINT16_CLASS, mxREAL);
+        mxpp = PsychGetOutArgPyPtr(position);
+        *mxpp = mxCreateNumericArray(numDims, (ptbSize*) dimArray, PsychArgType_uint16);
         toArray = (psych_uint16*) mxGetData(*mxpp);
 
         //copy the input array to the output array now
@@ -1849,7 +1910,7 @@ psych_bool PsychCopyOutUnsignedInt16MatArg(int position, PsychArgRequirementType
  */
 psych_bool PsychCopyOutCharArg(int position, PsychArgRequirementType isRequired, const char *str)
 {
-    mxArray     **mxpp;
+    PyObject     **mxpp;
     PsychError  matchError;
     psych_bool  putOut;
 
@@ -1858,7 +1919,7 @@ psych_bool PsychCopyOutCharArg(int position, PsychArgRequirementType isRequired,
     matchError=PsychMatchDescriptors();
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
         *mxpp = mxCreateString(str);
     }
     return(putOut);
@@ -1885,7 +1946,7 @@ psych_bool PsychCopyOutCharArg(int position, PsychArgRequirementType isRequired,
 // TO DO: Needs to be updated for kPsychArgAnything
 psych_bool PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, double **array)
 {
-    const mxArray   *mxPtr;
+    const PyObject   *ppyPtr;
     PsychError      matchError;
     psych_bool      acceptArg;
 
@@ -1894,11 +1955,11 @@ psych_bool PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequ
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr = PsychGetInArgMxPtr(position);
-        *m = (int) mxGetM(mxPtr);
-        *n = (int) mxGetNOnly(mxPtr);
-        *p = (int) mxGetP(mxPtr);
-        *array=mxGetPr(mxPtr);
+        ppyPtr = PsychGetInArgPyPtr(position);
+        *m = (int) mxGetM(ppyPtr);
+        *n = (int) mxGetNOnly(ppyPtr);
+        *p = (int) mxGetP(ppyPtr);
+        *array=mxGetPr(ppyPtr);
     }
     return(acceptArg);
 }
@@ -1907,7 +1968,7 @@ psych_bool PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequ
 /* Alloc-in double matrix, but allow for 64-bit dimension specs. */
 psych_bool PsychAllocInDoubleMatArg64(int position, PsychArgRequirementType isRequired, psych_int64 *m, psych_int64 *n, psych_int64 *p, double **array)
 {
-    const mxArray     *mxPtr;
+    const PyObject     *ppyPtr;
     PsychError        matchError;
     psych_bool        acceptArg;
 
@@ -1916,11 +1977,11 @@ psych_bool PsychAllocInDoubleMatArg64(int position, PsychArgRequirementType isRe
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr = PsychGetInArgMxPtr(position);
-        *m = (psych_int64) mxGetM(mxPtr);
-        *n = (psych_int64) mxGetNOnly(mxPtr);
-        *p = (psych_int64) mxGetP(mxPtr);
-        *array=mxGetPr(mxPtr);
+        ppyPtr = PsychGetInArgPyPtr(position);
+        *m = (psych_int64) mxGetM(ppyPtr);
+        *n = (psych_int64) mxGetNOnly(ppyPtr);
+        *p = (psych_int64) mxGetP(ppyPtr);
+        *array=mxGetPr(ppyPtr);
     }
     return(acceptArg);
 }
@@ -1966,7 +2027,7 @@ psych_bool PsychAllocInFloatMatArg(int position, PsychArgRequirementType isRequi
  */
 psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isRequired, psych_int64 *m, psych_int64 *n, psych_int64 *p, float **array)
 {
-    const mxArray   *mxPtr;
+    const PyObject   *ppyPtr;
     PsychError      matchError;
     psych_bool      acceptArg;
     double*         arrayD;
@@ -1989,13 +2050,13 @@ psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isReq
         matchError=PsychMatchDescriptors();
         acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
         if (acceptArg) {
-            mxPtr = PsychGetInArgMxPtr(position);
-            *m = (psych_int64) mxGetM(mxPtr);
-            *n = (psych_int64) mxGetNOnly(mxPtr);
-            *p = (psych_int64) mxGetP(mxPtr);
+            ppyPtr = PsychGetInArgPyPtr(position);
+            *m = (psych_int64) mxGetM(ppyPtr);
+            *n = (psych_int64) mxGetNOnly(ppyPtr);
+            *p = (psych_int64) mxGetP(ppyPtr);
 
             // Get a double pointer to the double input data matrix:
-            arrayD = (double*) mxGetData(mxPtr);
+            arrayD = (double*) mxGetData(ppyPtr);
 
             // Allocate temporary float input matrix. It will get deallocated
             // automatically at return to runtime:
@@ -2012,11 +2073,11 @@ psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isReq
     // Regular path: Matching float (aka single()) matrix/vector provided:
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr = PsychGetInArgMxPtr(position);
-        *m = (psych_int64) mxGetM(mxPtr);
-        *n = (psych_int64) mxGetNOnly(mxPtr);
-        *p = (psych_int64) mxGetP(mxPtr);
-        *array = (float*) mxGetData(mxPtr);
+        ppyPtr = PsychGetInArgPyPtr(position);
+        *m = (psych_int64) mxGetM(ppyPtr);
+        *n = (psych_int64) mxGetNOnly(ppyPtr);
+        *p = (psych_int64) mxGetP(ppyPtr);
+        *array = (float*) mxGetData(ppyPtr);
     }
     return(acceptArg);
 }
@@ -2064,7 +2125,7 @@ psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRe
  */
 psych_bool PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, unsigned char **array)
 {
-    const mxArray     *mxPtr;
+    const PyObject     *ppyPtr;
     PsychError        matchError;
     psych_bool        acceptArg;
 
@@ -2073,11 +2134,11 @@ psych_bool PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType 
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr = PsychGetInArgMxPtr(position);
-        *m = (int) mxGetM(mxPtr);
-        *n = (int) mxGetNOnly(mxPtr);
-        *p = (int) mxGetP(mxPtr);
-        *array=(unsigned char *)mxGetData(mxPtr);
+        ppyPtr = PsychGetInArgPyPtr(position);
+        *m = (int) mxGetM(ppyPtr);
+        *n = (int) mxGetNOnly(ppyPtr);
+        *p = (int) mxGetP(ppyPtr);
+        *array=(unsigned char *)mxGetData(ppyPtr);
     }
     return(acceptArg);
 }
@@ -2099,7 +2160,7 @@ psych_bool PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType 
 // TO DO: Needs to be updated for kPsychArgAnything
 psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired, double *value)
 {
-    const mxArray   *mxPtr;
+    const PyObject   *ppyPtr;
     PsychError      matchError;
     psych_bool      acceptArg;
 
@@ -2109,8 +2170,8 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
 
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr = PsychGetInArgMxPtr(position);
-        *value=mxGetPr(mxPtr)[0];
+        ppyPtr = PsychGetInArgPyPtr(position);
+        *value=mxGetPr(ppyPtr)[0];
     }
 
     return(acceptArg);
@@ -2126,7 +2187,7 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
  */
 psych_bool PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequired, int *value)
 {
-    const mxArray     *mxPtr;
+    const PyObject     *ppyPtr;
     double            tempDouble;
     PsychError        matchError;
     psych_bool        acceptArg;
@@ -2136,8 +2197,8 @@ psych_bool PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequir
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr = PsychGetInArgMxPtr(position);
-        tempDouble=mxGetPr(mxPtr)[0];
+        ppyPtr = PsychGetInArgPyPtr(position);
+        tempDouble=mxGetPr(ppyPtr)[0];
         if (!PsychIsIntegerInDouble(&tempDouble))
             PsychErrorExit(PsychError_invalidIntegerArg);
         *value=(int)tempDouble;
@@ -2148,7 +2209,7 @@ psych_bool PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequir
 
 psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequired, psych_int64 *value)
 {
-    const mxArray     *mxPtr;
+    const PyObject     *ppyPtr;
     double            tempDouble;
     PsychError        matchError;
     psych_bool        acceptArg;
@@ -2158,8 +2219,8 @@ psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequ
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr = PsychGetInArgMxPtr(position);
-        tempDouble=mxGetPr(mxPtr)[0];
+        ppyPtr = PsychGetInArgPyPtr(position);
+        tempDouble=mxGetPr(ppyPtr)[0];
         if (!PsychIsInteger64InDouble(&tempDouble))
             PsychErrorExit(PsychError_invalidIntegerArg);
         *value= (psych_int64) tempDouble;
@@ -2174,7 +2235,7 @@ psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequ
  */
 psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequired, double **value)
 {
-    const mxArray     *mxPtr;
+    const PyObject     *ppyPtr;
     PsychError        matchError;
     psych_bool        acceptArg;
 
@@ -2183,8 +2244,8 @@ psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequire
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr = PsychGetInArgMxPtr(position);
-        *value=mxGetPr(mxPtr);
+        ppyPtr = PsychGetInArgPyPtr(position);
+        *value=mxGetPr(ppyPtr);
     }
     return(acceptArg);
 }
@@ -2207,7 +2268,7 @@ psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequire
  */
 psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired, char **str)
 {
-    const mxArray   *mxPtr;
+    const PyObject   *ppyPtr;
     int             status;
     psych_uint64    strLen;
     PsychError      matchError;
@@ -2218,11 +2279,12 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr  = PsychGetInArgMxPtr(position);
-        strLen = ((psych_uint64) mxGetM(mxPtr) * (psych_uint64) mxGetNOnly(mxPtr) * (psych_uint64) sizeof(mxChar)) + 1;
+        ppyPtr  = PsychGetInArgPyPtr(position);
+        /* TODO FIXME check char size */
+        strLen = ((psych_uint64) mxGetM(ppyPtr) * (psych_uint64) mxGetNOnly(ppyPtr) * (psych_uint64) sizeof(char)) + 1;
         if (strLen >= INT_MAX) PsychErrorExitMsg(PsychError_user, "Tried to pass in a string with more than 2^31 - 1 characters. Unsupported!");
         *str   = (char *) PsychCallocTemp((size_t) strLen, sizeof(char));
-        status = mxGetString(mxPtr, *str, (mwSize) strLen);
+        status = mxGetString(ppyPtr, *str, (ptbSize) strLen);
         if (status!=0)
             PsychErrorExitMsg(PsychError_internal, "mxGetString failed to get the string");
     }
@@ -2250,7 +2312,7 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
  */
 psych_bool PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired, psych_bool **argVal)
 {
-    const mxArray     *mxPtr;
+    const PyObject     *ppyPtr;
     PsychError        matchError;
     psych_bool        acceptArg;
 
@@ -2265,14 +2327,14 @@ psych_bool PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired
         //or logical type.  Restricting to logical type would be a nuisance in the MATLAB environment and does not solve the problem because on some platforms MATLAB
         //uses for logicals 64-bit doubles and on others 8-bit booleans (check your MATLAB mex/mx header files).
         *argVal = (psych_bool *)mxMalloc(sizeof(psych_bool));
-        mxPtr = PsychGetInArgMxPtr(position);
-        if (mxIsLogical(mxPtr)) {
-            if (mxGetLogicals(mxPtr)[0])
+        ppyPtr = PsychGetInArgPyPtr(position);
+        if (mxIsLogical(ppyPtr)) {
+            if (mxGetLogicals(ppyPtr)[0])
                 **argVal=(psych_bool)1;
             else
                 **argVal=(psych_bool)0;
         } else {
-            if (mxGetScalar(mxPtr))
+            if (mxGetScalar(ppyPtr))
                 **argVal=(psych_bool)1;
             else
                 **argVal=(psych_bool)0;
@@ -2284,7 +2346,7 @@ psych_bool PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired
 
 psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRequired, int *numElements, psych_bool **argVal)
 {
-    const mxArray     *mxPtr;
+    const PyObject     *ppyPtr;
     PsychError        matchError;
     psych_bool        acceptArg;
     int               i;
@@ -2300,14 +2362,14 @@ psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRe
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr = PsychGetInArgMxPtr(position);
-        if ((psych_uint64) mxGetM(mxPtr) * (psych_uint64) mxGetN(mxPtr) >= INT_MAX) {
+        ppyPtr = PsychGetInArgPyPtr(position);
+        if ((psych_uint64) mxGetM(ppyPtr) * (psych_uint64) mxGetN(ppyPtr) >= INT_MAX) {
             printf("PTB-ERROR: %i th input argument has more than 2^31 - 1 elements! This is not supported.\n", position);
             *numElements = 0;
             return(FALSE);
         }
 
-        *numElements = (int) (mxGetM(mxPtr) * mxGetN(mxPtr));
+        *numElements = (int) (mxGetM(ppyPtr) * mxGetN(ppyPtr));
 
         //unlike other PsychAllocIn* functions, here we allocate new memory and copy the input to it rather than simply returning a pointer into the received array.
         //That's because we want the booleans returned to the caller by PsychAllocInFlagArgVector() to alwyas be 8-bit booleans, yet we accept as flags either 64-bit double, char,
@@ -2315,13 +2377,13 @@ psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRe
         //uses for logicals 64-bit doubles and on others 8-bit booleans (check your MATLAB mex/mx header files).
         *argVal = (psych_bool *)mxMalloc(sizeof(psych_bool) * ((size_t) *numElements));
         for (i=0; i< *numElements;i++) {
-            if (mxIsLogical(mxPtr)) {
-                if (mxGetLogicals(mxPtr)[i])
+            if (mxIsLogical(ppyPtr)) {
+                if (mxGetLogicals(ppyPtr)[i])
                     (*argVal)[i]=(psych_bool)1;
                 else
                     (*argVal)[i]=(psych_bool)0;
             } else {
-                if (mxGetPr(mxPtr)[i])
+                if (mxGetPr(ppyPtr)[i])
                     (*argVal)[i]=(psych_bool)1;
                 else
                     (*argVal)[i]=(psych_bool)0;
@@ -2337,7 +2399,7 @@ psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRe
  */
 psych_bool PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, psych_bool *argVal)
 {
-    const mxArray     *mxPtr;
+    const PyObject     *ppyPtr;
     PsychError        matchError;
     psych_bool        acceptArg;
 
@@ -2347,14 +2409,14 @@ psych_bool PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, 
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr = PsychGetInArgMxPtr(position);
-        if (mxIsLogical(mxPtr)) {
-            if (mxGetLogicals(mxPtr)[0])
+        ppyPtr = PsychGetInArgPyPtr(position);
+        if (mxIsLogical(ppyPtr)) {
+            if (mxGetLogicals(ppyPtr)[0])
                 *argVal=(psych_bool)1;
             else
                 *argVal=(psych_bool)0;
         } else {
-            if (mxGetScalar(mxPtr))
+            if (mxGetScalar(ppyPtr))
                 *argVal=(psych_bool)1;
             else
                 *argVal=(psych_bool)0;
@@ -2412,17 +2474,17 @@ double PsychGetNanValue(void)
  *
 psych_bool PsychAllocInCharFromNativeArg(PsychGenericScriptType *nativeCharElement, char **str)
 {
-    mxArray         *mxPtr;
+    PyObject         *ppyPtr;
     int             status;
     psych_uint64    strLen;
 
     *str = NULL;
-    mxPtr  = (mxArray*) nativeCharElement;
-    strLen = ((psych_uint64) mxGetM(mxPtr) * (psych_uint64) mxGetNOnly(mxPtr) * (psych_uint64) sizeof(mxChar)) + 1;
+    ppyPtr  = (PyObject*) nativeCharElement;
+    strLen = ((psych_uint64) mxGetM(ppyPtr) * (psych_uint64) mxGetNOnly(ppyPtr) * (psych_uint64) sizeof(mxChar)) + 1;
     if (strLen >= INT_MAX) PsychErrorExitMsg(PsychError_user, "Tried to pass in a string with more than 2^31 - 1 characters. Unsupported!");
 
     *str   = (char *) PsychCallocTemp((size_t) strLen, sizeof(char));
-    status = mxGetString(mxPtr, *str, (mwSize) strLen);
+    status = mxGetString(ppyPtr, *str, (ptbSize) strLen);
     if (status!=0) return(FALSE);
     return(TRUE);
 }
@@ -2447,8 +2509,8 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
     static char         psychtoolboxRootPath[FILENAME_MAX+1];
     static char         psychtoolboxConfigPath[FILENAME_MAX+1];
     char*               myPathvarChar = NULL;
-    mxArray             *plhs[1]; // Capture the runtime result of PsychtoolboxRoot/ConfigDir
-
+    PyObject             *plhs[1]; // Capture the runtime result of PsychtoolboxRoot/ConfigDir
+/*
     if (firstTime) {
         // Reset firstTime flag:
         firstTime = FALSE;
@@ -2457,7 +2519,6 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
         psychtoolboxRootPath[0] = 0;
         psychtoolboxConfigPath[0] = 0;
 
-        mexSetTrapFlag(1); // Tell Octave/MATLAB that we'll handle exceptions
         // We could have used mexCallMATLABWithTrap below, but Octave doesn't support it.
         // Unfortunately, MATLAB plans to deprecate mexSetTrapFlag in lieu of *WithTrap, so
         // we'll need to patch Octave or make some sort of wrapper function in here.
@@ -2487,10 +2548,8 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
             }
         }
         mxDestroyArray(plhs[0]);
-
-        mexSetTrapFlag(0); // Tell the runtime that we'll no longer handle exceptions
     }
-
+*/
     // Return whatever we've got:
     return((getConfigDir) ? &psychtoolboxConfigPath[0] : &psychtoolboxRootPath[0]);
 }
@@ -2502,7 +2561,7 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
  */
 psych_bool PsychCopyInPointerArg(int position, PsychArgRequirementType isRequired, void **ptr)
 {
-    const mxArray     *mxPtr;
+    const PyObject     *ppyPtr;
     PsychError        matchError;
     psych_bool        acceptArg;
     psych_bool        is64Bit;
@@ -2516,12 +2575,12 @@ psych_bool PsychCopyInPointerArg(int position, PsychArgRequirementType isRequire
 
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        mxPtr = PsychGetInArgMxPtr(position);
+        ppyPtr = PsychGetInArgPyPtr(position);
 
         if (is64Bit) {
-            *ptr = (void*) (size_t) (((psych_uint64*) mxGetData(mxPtr))[0]);
+            *ptr = (void*) (size_t) (((psych_uint64*) mxGetData(ppyPtr))[0]);
         } else {
-            *ptr = (void*) (size_t) (((psych_uint32*) mxGetData(mxPtr))[0]);
+            *ptr = (void*) (size_t) (((psych_uint32*) mxGetData(ppyPtr))[0]);
         }
     }
 
@@ -2535,11 +2594,11 @@ psych_bool PsychCopyInPointerArg(int position, PsychArgRequirementType isRequire
  */
 psych_bool PsychCopyOutPointerArg(int position, PsychArgRequirementType isRequired, void* ptr)
 {
-    mxArray         **mxpp;
+    PyObject         **mxpp;
     PsychError      matchError;
     psych_bool      putOut;
     psych_bool      is64Bit;
-    mwSize          dimArray[2];
+    ptbSize          dimArray[2];
     int             numDims = 2;
 
     dimArray[0] = dimArray[1] = 1;
@@ -2553,13 +2612,13 @@ psych_bool PsychCopyOutPointerArg(int position, PsychArgRequirementType isRequir
 
     putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
+        mxpp = PsychGetOutArgPyPtr(position);
 
         if (is64Bit) {
-            *mxpp = mxCreateNumericArray(numDims, (mwSize*) dimArray, mxUINT64_CLASS, mxREAL);
+            *mxpp = mxCreateNumericArray(numDims, (ptbSize*) dimArray, PsychArgType_uint64);
             ((psych_uint64*) mxGetData(*mxpp))[0] = (psych_uint64) ((size_t) ptr);
         } else {
-            *mxpp = mxCreateNumericArray(numDims, (mwSize*) dimArray, mxUINT32_CLASS, mxREAL);
+            *mxpp = mxCreateNumericArray(numDims, (ptbSize*) dimArray, PsychArgType_uint32);
             ((psych_uint32*) mxGetData(*mxpp))[0] = (psych_uint32) ((size_t) ptr);
         }
     }
@@ -2691,11 +2750,345 @@ int PsychRuntimeEvaluateString(const char* cmdstring)
     #if PSYCH_LANGUAGE == PSYCH_MATLAB
         return(mexEvalString(cmdstring));
     #else
-        int parse_status;
-        // Call Octaves evalstring-parser:
-        eval_string(std::string(cmdstring), (bool) TRUE, parse_status);
-        return(parse_status);
+        PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimeEvaluateString() not yet supported for this runtime system!");
     #endif
 }
 
-//end of Matlab & Octave only stuff.
+// functions for outputting structs
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+    PsychAllocOutStructArray()
+
+    -If argument is optional we allocate the structure even if the argument is not present.  If this bothers you,
+    then check within the subfunction for the presense of a return argument before creating the struct array.  We
+    allocate space regardeless of whether the argument is present because this is consistant with other "PsychAllocOut*"
+    functions which behave this way because in some situations subfunctions might derive returned results from values
+    stored in an optional argument.
+
+    -If position is -1 then don't attempt to return the created structure to the calling environment.  Instead just
+    allocate the structure and return it in pStruct.  This is how to create a structure which is embeded within another
+    structure using PsychSetStructArrayStructArray().  Note that we use -1 as the flag and not NULL because NULL is 0 and
+    0 is reserved for future use as a reference to the subfunction name, of if none then the function name.
+*/
+psych_bool PsychAllocOutStructArray(int position, 
+                                    PsychArgRequirementType isRequired, 
+                                    int numElements,
+                                    int numFields, 
+                                    const char **fieldNames,  
+                                    PsychGenericScriptType **pStruct)
+{
+    PyObject **mxArrayOut;
+    ptbSize structArrayNumDims = 2;
+    ptbSize structArrayDims[2];
+    PsychError matchError;
+    psych_bool putOut;
+
+    structArrayDims[0] = 1;
+    structArrayDims[1] = numElements;
+
+    if (position != kPsychNoArgReturn) {  //Return the result to both the C caller and the scripting environment.
+        PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
+        PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_structArray, isRequired, 1,1,numElements,numElements,0,0);
+        *pStruct = mxCreateStructArray(structArrayNumDims, structArrayDims, numFields, fieldNames);
+        matchError = PsychMatchDescriptors();
+        putOut = PsychAcceptOutputArgumentDecider(isRequired, matchError);
+        if (putOut) {
+            mxArrayOut = PsychGetOutArgPyPtr(position);
+            *mxArrayOut = *pStruct;
+        }
+        return(putOut);
+    } else{ //Return the result only to the C caller.  Ignore "required".    
+        *pStruct = mxCreateStructArray(structArrayNumDims, structArrayDims, numFields, fieldNames);
+        return(TRUE);
+    }
+}
+
+
+/*  FONTS on OSX only.
+    PsychAssignOutStructArray()
+    Accept a pointer to a struct array and Assign the struct array to be the designated return variable.
+*/
+psych_bool PsychAssignOutStructArray( int position,
+                                      PsychArgRequirementType isRequired,
+                                      PsychGenericScriptType *pStruct)
+{
+    PyObject **mxArrayOut;
+    PsychError matchError;
+    psych_bool putOut;
+
+    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_structArray, isRequired, 1,1,0,kPsychUnboundedArraySize,0,0);
+    matchError = PsychMatchDescriptors();
+    putOut = PsychAcceptOutputArgumentDecider(isRequired, matchError);
+    if (putOut) {
+        mxArrayOut = PsychGetOutArgPyPtr(position);
+        *mxArrayOut = pStruct;
+    }
+    return(putOut);
+}
+
+// functions for filling in struct elements by type 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+    PsychSetStructArrayStringElement()
+    The variable "index", the index of the element within the struct array, is zero-indexed.
+*/
+void PsychSetStructArrayStringElement(const char *fieldName,
+                                      int index,
+                                      char *text,
+                                      PsychGenericScriptType *pStruct)
+{
+    int fieldNumber;
+    size_t numElements;
+    psych_bool isStruct;
+    PyObject *mxFieldValue;
+    char errmsg[256];
+
+    //check for bogus arguments
+    numElements = mxGetM(pStruct) * mxGetN(pStruct);
+    if ((size_t) index >= numElements)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+
+    fieldNumber = mxGetFieldNumber(pStruct, fieldName);
+    if (fieldNumber == -1) {
+        sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+
+    isStruct = mxIsStruct(pStruct);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
+
+    //do stuff
+    mxFieldValue = mxCreateString(text);
+    mxSetField(pStruct, (ptbIndex) index, fieldName, mxFieldValue);
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
+}
+
+
+/*
+    PsychSetStructArrayDoubleElement()
+    Note: The variable "index" is zero-indexed.
+*/
+void PsychSetStructArrayDoubleElement(const char *fieldName,
+                                      int index,
+                                      double value,
+                                      PsychGenericScriptType *pStruct)
+{
+    int fieldNumber;
+    size_t numElements;
+    psych_bool isStruct;
+    PyObject *mxFieldValue;
+    char errmsg[256];
+
+    //check for bogus arguments
+    numElements = mxGetM(pStruct) * mxGetN(pStruct);
+    if ((size_t) index >= numElements)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+
+    fieldNumber = mxGetFieldNumber(pStruct, fieldName);
+    if (fieldNumber == -1) {
+        sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+
+    isStruct = mxIsStruct(pStruct);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
+
+    //do stuff
+    mxFieldValue = mxCreateDoubleMatrix(1, 1);
+    mxGetPr(mxFieldValue)[0] = value;
+    mxSetField(pStruct, (ptbIndex) index, fieldName, mxFieldValue);
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
+}
+
+
+/*
+    PsychSetStructArrayBooleanElement()
+
+    Note: The variable "index" is zero-indexed.
+*/
+void PsychSetStructArrayBooleanElement( const char *fieldName,
+                                        int index,
+                                        psych_bool state,
+                                        PsychGenericScriptType *pStruct)
+{
+    int fieldNumber;
+    size_t numElements;
+    psych_bool isStruct;
+    PyObject *mxFieldValue;
+    char errmsg[256];
+
+    //check for bogus arguments
+    numElements = mxGetM(pStruct) * mxGetN(pStruct);
+    if ((size_t) index >= numElements)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+
+    fieldNumber = mxGetFieldNumber(pStruct, fieldName);
+    if (fieldNumber == -1) {
+        sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+
+    isStruct = mxIsStruct(pStruct);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
+
+    //do stuff
+    mxFieldValue = mxCreateLogicalMatrix(1, 1);
+    mxGetLogicals(mxFieldValue)[0] = state;
+    mxSetField(pStruct, (ptbIndex) index, fieldName, mxFieldValue);
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
+}
+
+
+/*
+    PsychSetStructArrayStructElement()
+*/
+void PsychSetStructArrayStructElement(const char *fieldName,
+                                      int index,
+                                      PsychGenericScriptType *pStructInner,
+                                      PsychGenericScriptType *pStructOuter)
+{
+    int fieldNumber;
+    size_t numElements;
+    psych_bool isStruct;
+    char errmsg[256];
+
+    //check for bogus arguments
+    numElements = mxGetM(pStructOuter) * mxGetN(pStructOuter);
+    if ((size_t) index >= numElements)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+
+    fieldNumber = mxGetFieldNumber(pStructOuter, fieldName);
+    if (fieldNumber == -1) {
+        sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+
+    isStruct = mxIsStruct(pStructInner);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a struct field to a non-existent structure.");
+
+    isStruct = mxIsStruct(pStructOuter);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
+
+    //do stuff
+    mxSetField(pStructOuter, (ptbIndex) index, fieldName, pStructInner); 
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(pStructInner);
+}
+
+
+/*
+    PsychSetStructArrayNativeElement()
+ */
+void PsychSetStructArrayNativeElement(const char *fieldName,
+                                      int index,
+                                      PsychGenericScriptType *pNativeElement,
+                                      PsychGenericScriptType *pStructArray)
+{
+    int fieldNumber;
+    size_t numElements;
+    psych_bool isStruct;
+    char errmsg[256];
+
+    //check for bogus arguments
+    numElements = mxGetM(pStructArray) * mxGetN(pStructArray);
+    if ((size_t) index >= numElements)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+
+    fieldNumber = mxGetFieldNumber(pStructArray, fieldName);
+    if (fieldNumber == -1) {
+        sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+
+    isStruct = mxIsStruct(pStructArray);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
+
+    //do stuff
+    mxSetField(pStructArray, (ptbIndex) index, fieldName, pNativeElement);
+}
+
+
+/*
+ *    PsychAllocOutCellVector()
+ *
+ *    -If argument is optional we allocate the structure even if the argument is not present.  If this behavior bothers you,
+ *    then check within your code for the presense of a return argument before creating the struct array.  We
+ *    allocate space regardeless of whether the argument is present because this is consistant with other "PsychAllocOut*"
+ *    functions which behave this way because in some situations subfunctions might derive returned results from values
+ *    stored in an optional argument.
+ *
+ *    -If position is -1 then don't attempt to return the created structure to the calling environment.  Instead just
+ *    allocate the structure and return it in pStruct.  This is how to create a structure which is embeded within another
+ *    structure using PsychSetStructArrayStructArray().  Note that we use -1 as the flag and not NULL because NULL is 0 and
+ *    0 is reserved for future use as a reference to the subfunction name, of if none then the function name.
+ */
+psych_bool PsychAllocOutCellVector(int position,
+                                   PsychArgRequirementType isRequired,
+                                   int numElements,
+                                   PsychGenericScriptType **pCell)
+{
+    PyObject **mxArrayOut;
+    ptbSize cellArrayNumDims = 2;
+    ptbSize cellArrayDims[2];
+    PsychError matchError;
+    psych_bool putOut;
+
+    cellArrayDims[0] = 1;
+    cellArrayDims[1] = numElements;
+
+    if (position != kPsychNoArgReturn) {  //Return the result to both the C caller and the scripting environment.
+        PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
+        PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_cellArray, isRequired, 1,1,numElements,numElements,0,0);
+        *pCell = mxCreateCellArray(cellArrayNumDims, cellArrayDims);
+        mxArrayOut = PsychGetOutArgPyPtr(position);
+        matchError = PsychMatchDescriptors();
+        putOut = PsychAcceptOutputArgumentDecider(isRequired, matchError);
+        if (putOut)
+            *mxArrayOut=*pCell;
+        return(putOut);
+    } else { //Return the result only to the C caller, not to the calling environment.  Ignore "required".
+        *pCell = mxCreateCellArray(cellArrayNumDims, cellArrayDims);
+        return(TRUE);
+    }
+}
+
+
+/*
+ *    PsychSetCellVectorStringElement()
+ *
+ *    The variable "index", the index of the element within the struct array, is zero-indexed.
+ */
+void PsychSetCellVectorStringElement(int index,
+                                     const char *text,
+                                     PsychGenericScriptType *cellVector)
+{
+    size_t numElements;
+    psych_bool isCell;
+    PyObject *mxFieldValue;
+
+    //check for bogus arguments
+    numElements = mxGetM(cellVector) * mxGetN(cellVector);
+    if ((size_t) index >= numElements)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell array field at an out-of-bounds index");
+
+    isCell = mxIsCell(cellVector);
+    if (!isCell)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell within a non-existent cell array.");
+
+    //do stuff
+    mxFieldValue = mxCreateString(text);
+    mxSetCell(cellVector, (ptbIndex) index, mxFieldValue);
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
+}
+
+// End of Python only stuff.
