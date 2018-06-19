@@ -182,6 +182,8 @@ typedef unsigned char        psych_bool;
 #if PSYCH_LANGUAGE == PSYCH_PYTHON
     #define PsychGenericScriptType PyObject
     typedef unsigned int PsychNativeBooleanType;     // TODO FIXME
+    typedef size_t ptbSize;     // TODO FIXME mwSize replacement - size of array dimensions.
+    typedef size_t ptbIndex;    // TODO FIXME mwIndex replacement.
 #endif
 
 #define EXP
