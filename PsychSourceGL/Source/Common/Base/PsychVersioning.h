@@ -70,6 +70,9 @@
 #endif
 #endif
 
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+// Binary plugin for Python:
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME                "Python" PTB_ARCHITECTURE
 #endif
 
 char *PsychGetBuildDate(void);
