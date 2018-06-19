@@ -41,6 +41,11 @@ typedef __CHAR16_TYPE__ char16_t;
     #include "mex.h"
 #endif
 
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+    // Include File with Python API definitions:
+    #include <Python.h>
+#endif
+
 // Platform independent include for glew: This is a catch-all
 // for all OpenGL definitions and functions, currently up to
 // OpenGL 4.5 + latest extensions beyond that:
