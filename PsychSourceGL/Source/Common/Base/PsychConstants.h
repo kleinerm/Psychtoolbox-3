@@ -179,6 +179,11 @@ typedef unsigned char        psych_bool;
     typedef mxLogical PsychNativeBooleanType;
 #endif
 
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+    #define PsychGenericScriptType PyObject
+    typedef unsigned int PsychNativeBooleanType;     // TODO FIXME
+#endif
+
 #define EXP
 #ifndef APIENTRY
 #define APIENTRY
