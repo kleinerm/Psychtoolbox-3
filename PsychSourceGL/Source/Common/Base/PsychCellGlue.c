@@ -17,6 +17,8 @@
 
 #include "Psych.h"
 
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
+
 /*
  *    PsychAllocOutCellVector()
  *
@@ -179,3 +181,7 @@ psych_bool PsychAllocInNativeString(int position, PsychArgRequirementType isRequ
     return(acceptArg);
 }
 */
+
+#else
+    #error Must not include this for non-Matlab glue!
+#endif
