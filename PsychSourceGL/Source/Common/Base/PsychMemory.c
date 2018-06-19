@@ -149,7 +149,6 @@ void *PsychMallocTemp(size_t n)
 void PsychFreeTemp(void* ptr)
 {
     void* ptrbackup = ptr;
-    size_t* psize = NULL;
     size_t* next = PsychTempMemHead;
     size_t* prevptr = NULL;
 
@@ -206,7 +205,6 @@ void PsychFreeTemp(void* ptr)
 void PsychFreeAllTempMemory(void)
 {
     size_t* p = NULL;
-    size_t* psize = NULL;
     size_t* next = PsychTempMemHead;
 
     // Walk our whole buffer list and release all buffers on it:
@@ -237,8 +235,7 @@ void PsychFreeAllTempMemory(void)
         // the jumpbuffer context for our error-routines. Could lead to
         // infinite recursion!!!
         printf("PTB-CRITICAL BUG: Inconsistency detected in temporary memory allocator!\n");
-        printf("PTB-CRITICAL BUG: totalTempMemAllocated = %i after PsychFreeAllTempMemory()!!!!\n",
-        totalTempMemAllocated);
+        printf("PTB-CRITICAL BUG: totalTempMemAllocated = %li after PsychFreeAllTempMemory()!!!!\n", totalTempMemAllocated);
         fflush(NULL);
 
         // Reset to defined state.
