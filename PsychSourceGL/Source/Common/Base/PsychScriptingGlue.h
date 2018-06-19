@@ -155,6 +155,7 @@ const mxArray *PsychGetInArgMxPtr(int position);
 #if PSYCH_LANGUAGE == PSYCH_PYTHON
 PyObject **PsychGetOutArgPyPtr(int position);
 const PyObject *PsychGetInArgPyPtr(int position);
+PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args);
 #endif
 
 //end include once

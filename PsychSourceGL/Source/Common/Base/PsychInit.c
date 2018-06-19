@@ -30,6 +30,20 @@
 
 #include "Psych.h"
 
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+
+static PyMethodDef GlobalPythonMethodsTable[] = {
+    {"do", PsychScriptingGluePythonDispatch, METH_VARARGS, "Make it so! Energize! Execute!"},
+    {NULL, NULL, 0, NULL}
+};
+
+void PsychPythonInit(const char* modulename)
+{
+    (void) Py_InitModule(modulename, GlobalPythonMethodsTable);
+}
+
+#endif
+
 PsychError PsychInit(void)
 {
     // Assign distinctive name to master thread:

@@ -30,9 +30,9 @@
 
 #include "Psych.h"
 
+void PsychPythonInit(const char* modulename);
 PsychError PsychInit(void);
 PsychError PsychExit(void);
-
 
 //end include once
 #endif

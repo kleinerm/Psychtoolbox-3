@@ -47,3 +47,13 @@ PsychError PsychModuleInit(void)
 
     return(PsychError_none);
 }
+
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+
+PyMODINIT_FUNC
+initGetSecs(void)
+{
+    PsychPythonInit("GetSecs");
+}
+
+#endif

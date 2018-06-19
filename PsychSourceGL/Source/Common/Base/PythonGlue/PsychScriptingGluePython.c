@@ -569,7 +569,6 @@ static const PyObject **prhsGLUE[MAX_RECURSIONLEVEL]; // A pointer to the prhs a
 #define MAX_INPUT_ARGS 100
 static PyObject* plhsGLUE[recLevel][MAX_OUTPUT_ARGS]; // An array of pointers to the octave return arguments.
 static PyObject* prhsGLUE[recLevel][MAX_INPUT_ARGS];  // An array of pointers to the octave call arguments.
-extern const char *mexFunctionName; // This gets initialized by Octave wrapper to contain our function name.
 #endif
 
 static void PsychExitGlue(void);
@@ -588,10 +587,8 @@ EXP void mexFunction(int nlhs, PyObject *plhs[], int nrhs, const PyObject *prhs[
 // since it was (re-)loaded:
 static psych_bool firstTime = TRUE;
 
-#if PSYCH_LANGUAGE == PSYCH_OCTAVE
-PsychError PsychExitOctaveGlue(void);
+PsychError PsychExitPythonGlue(void);
 static psych_bool jettisoned = FALSE;
-#endif
 
 void ScreenCloseAllWindows(void);
 
@@ -634,9 +631,13 @@ void PsychExitRecursion(void)
  *
  *        Modules should now register in subfunction mode to support the build-in 'version' command.
  *
+ * EXP void mexFunction(int nlhs, PyObject *plhs[], int nrhs, const PyObject *prhs[])
+ *
  */
-EXP void mexFunction(int nlhs, PyObject *plhs[], int nrhs, const PyObject *prhs[])
+PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
 {
+    const char* name;
+
 /*
     psych_bool          isArgThere[2], isArgEmptyMat[2], isArgText[2], isArgFunction[2];
     PsychFunctionPtr    fArg[2], baseFunction;
@@ -675,44 +676,25 @@ EXP void mexFunction(int nlhs, PyObject *plhs[], int nrhs, const PyObject *prhs[
         goto octFunctionCleanup;
     }
     #endif
-
+*/
     // Initialization
     if (firstTime) {
         // Reset call recursion level to startup default:
         recLevel = -1;
-        psych_recursion_debug = FALSE;
+        psych_recursion_debug = TRUE;
 
         if (getenv("PSYCH_RECURSION_DEBUG")) psych_recursion_debug = TRUE;
 
         //call the Psychtoolbox init function, which inits the Psychtoolbox and calls the project init.
         PsychInit();
 
-        //register the exit function, which calls PsychProjectExit() to clean up for the project then
-        //calls whatever to clean up for all of Psych.h layer.
+        // Hard to believe, but apparently true: Python-2 does not allow unloading extension modules!
+        // So we register a subfunction "JettisonModuleHelper" that allows to trigger a manual module
+        // shutdown, although not an unload.
+        PsychRegister("JettisonModuleHelper",  &PsychExitPythonGlue);
 
-        // Under Matlab we use the mexAtExit() Mex-API function to register our PsychExitGlue() routine.
-        // Whenever Matlab wants to flush our module (to reload it, or in response to Matlab-Shutdown,
-        // 'clear MODULENAME', 'clear mex' or 'clear all' command) it first calls our PsychExitGlue(),
-        // then unloads the module from memory...
-        mexAtExit(&PsychExitGlue);
-
-        #if PSYCH_LANGUAGE == PSYCH_OCTAVE
-        // Octave (as of Version 2.1.73) does not seem to support a way to register such a
-        // cleanup handler, so we use the following trick: We tell octave to lock our OCT file
-        // into memory, so it can not be clear'ed out of memory by Octave with the standard clear
-        // command. Then we register a new Module subfunction 'JettisonModuleHelper': If this
-        // subcommand is called, it will call our PsychExitGlue() cleanup routine, then unlock
-        // ourselves from memory, now that it is safe to flush us. We provide special scripts
-        // clearall.m, clearoct.m, clearmex.m and clearMODULENAME.m that do what clear all,
-        // clear mex and clear MODULENAME would do on Matlab, by simply calling the
-        // MODULENAME('JettisonModuleHelper'); function, followed by a clear MODULENAME; command.
-        // --> User has same functionality with nearly same syntax and should be safe on Octave
-        // as well.
-        PsychRegister("JettisonModuleHelper",  &PsychExitOctaveGlue);
-
-        // Lock ourselves into Octaves runtime environment so we can't get clear'ed out easily:
-        mlock(std::string(mexFunctionName));
-        #endif
+        // Lock ourselves into Python-2 runtime environment so we can't get clear'ed out easily:
+        // FIXME No such thing as locking in Python-2?
 
         // Register hidden helper function: This one dumps all registered subfunctions of
         // a module into a struct array of text strings. Needed by our automatic documentation
@@ -734,6 +716,15 @@ EXP void mexFunction(int nlhs, PyObject *plhs[], int nrhs, const PyObject *prhs[
 
     if (psych_recursion_debug) printf("PTB-DEBUG: Module %s entering recursive call level %i.\n", PsychGetModuleName(), recLevel);
 
+    if (!PyTuple_Check(args))
+        PsychErrMsgTxt("FAIL FAIL FAIL!\n");
+
+    if (!PyArg_ParseTuple(args, "s", &name))
+        return NULL;
+
+    printf("DISPATCHING: Hello %s!\n", name);
+
+/*
     // Store away call arguments for use by language-neutral accessor functions in ScriptingGluePython.c
     nlhsGLUE[recLevel] = nlhs;
     nrhsGLUE[recLevel] = nrhs;
@@ -1064,17 +1055,20 @@ EXP void mexFunction(int nlhs, PyObject *plhs[], int nrhs, const PyObject *prhs[
     PsychExitRecursion();
     #endif
 */
+
+    PsychExitRecursion();
+
+    Py_RETURN_NONE;
 }
 
-#if PSYCH_LANGUAGE == PSYCH_OCTAVE
 
-/*      Call PsychExitGlue(), followed by unlocking the module:
- *    - Needed to safely remove modules on GNU/Octave.
+/*  Call PsychExitGlue(), followed by unlocking the module:
+ *  Needed to safely remove modules in Python 2.
  */
-PsychError PsychExitOctaveGlue(void)
+PsychError PsychExitPythonGlue(void)
 {
     // Debug output:
-    if (DEBUG_PTBPYTHONGLUE) printf("PTB-INFO: Jettisoning submodule %s ...\n", mexFunctionName); fflush(NULL);
+    if (DEBUG_PTBPYTHONGLUE) printf("PTB-INFO: Jettisoning submodule %s ...\n", PsychGetModuleName());
 
     // Call our regular exit routines to clean up and release all ressources:
     PsychExitGlue();
@@ -1084,14 +1078,12 @@ PsychError PsychExitOctaveGlue(void)
     // reloading it will be prevented.
     jettisoned = TRUE;
 
-    // Unlock ourselves from Octaves runtime environment so we can get clear'ed out:
-    munlock(std::string(mexFunctionName));
+    // Unlock ourselves from Python runtime environment so we can get clear'ed out:
+    // FIXME No such thing in Python 2?
 
     // Done. Return control to Octave - It will now remove us from its process-space - RIP.
     return(PsychError_none);
 }
-
-#endif
 
 
 /*
@@ -2750,7 +2742,7 @@ int PsychRuntimeEvaluateString(const char* cmdstring)
     #if PSYCH_LANGUAGE == PSYCH_MATLAB
         return(mexEvalString(cmdstring));
     #else
-        PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimeEvaluateString() not yet supported for this runtime system!");
+        printf("Function PsychRuntimeEvaluateString() not yet supported for this runtime system!\n");
     #endif
 }
 
