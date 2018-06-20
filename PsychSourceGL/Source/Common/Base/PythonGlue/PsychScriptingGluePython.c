@@ -139,8 +139,7 @@ int mxIsNumeric(const PyObject* a)
 
 int mxIsChar(const PyObject* a)
 {
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
-    return(0);
+    return(PyString_Check(a));
 }
 
 int mxIsSingle(const PyObject* a)
@@ -372,10 +371,10 @@ int* mxGetDimensions(const PyObject* arrayPtr)
 
 int mxGetString(const PyObject* arrayPtr, char* outstring, int outstringsize)
 {
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(0);
-/* TODO FIXME   if (!mxIsChar(arrayPtr)) PsychErrorExitMsg(PsychError_internal, "FATAL Error: Tried to convert a non-string into a string!");
-    return(((snprintf(outstring, outstringsize, "%s", GETOCTPTR(arrayPtr)->string_value().c_str()))>=0) ? 0 : 1);
-*/
+    if (!mxIsChar(arrayPtr))
+        PsychErrorExitMsg(PsychError_internal, "FATAL Error: Tried to convert a non-string into a string!");
+
+    return(((snprintf(outstring, outstringsize, "%s", PyString_AsString(arrayPtr))) >= 0) ? 0 : 1);
 }
 
 void mxDestroyArray(PyObject *arrayPtr)
@@ -552,6 +551,8 @@ void mxSetLogical(PyObject* dummy)
 // regular exit from mexFunction(). On error abort or modules reload it needs
 // to get reset to initial -1 state:
 #define MAX_RECURSIONLEVEL 5
+#define MAX_INPUT_ARGS 100
+
 static int recLevel = -1;
 static psych_bool psych_recursion_debug = FALSE;
 
@@ -562,7 +563,8 @@ static int nlhsGLUE[MAX_RECURSIONLEVEL];  // Number of requested return argument
 static int nrhsGLUE[MAX_RECURSIONLEVEL];  // Number of provided call arguments.
 
 static PyObject **plhsGLUE[MAX_RECURSIONLEVEL];       // A pointer to the plhs array passed to the MexFunction entry point
-static const PyObject **prhsGLUE[MAX_RECURSIONLEVEL]; // A pointer to the prhs array passed to the MexFunction entry point
+static const PyObject *prhsGLUE[MAX_RECURSIONLEVEL][MAX_INPUT_ARGS];  // An array of pointers to the Python call arguments.
+//static const PyObject **prhsGLUE[MAX_RECURSIONLEVEL]; // A pointer to the prhs array passed to the MexFunction entry point
 
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
 #define MAX_OUTPUT_ARGS 100
@@ -607,7 +609,7 @@ void PsychExitRecursion(void)
 
 /*
  *
- *    Main entry point for Matlab and Octave. Serves as a dispatch and handles
+ *    Main entry point for Python runtime. Serves as a dispatch and handles
  *    first time initialization.
  *
  *    EXP is a macro defined within Psychtoolbox source to be nothing
@@ -636,30 +638,29 @@ void PsychExitRecursion(void)
  */
 PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
 {
-    const char* name;
-
-/*
+    const char*         name;
     psych_bool          isArgThere[2], isArgEmptyMat[2], isArgText[2], isArgFunction[2];
     PsychFunctionPtr    fArg[2], baseFunction;
     char                argString[2][MAX_CMD_NAME_LENGTH];
     int                 i;
-    const PyObject*      tmparg = NULL; // PyObject is PyObject under MATLAB but #defined to octave_value on OCTAVE build.
+    psych_bool          errorcondition = FALSE;
+    const PyObject*     tmparg = NULL; // PyObject is PyObject under MATLAB but #defined to octave_value on OCTAVE build.
+    int                 nrhs = PyTuple_Size(args);
+    const PyObject*     prhs = args;
+    int                 nlhs = 0;
+    PyObject*           plhs = NULL;
 
-    #if PSYCH_LANGUAGE == PSYCH_OCTAVE
-    psych_bool errorcondition = FALSE;
     // plhs is our octave_value_list of return values:
-    octave_value tmpval;      // Temporary, needed in parser below...
-    octave_value_list plhs;   // Our list of left-hand-side return values...
-    int nrhs = prhs.length();
+    //octave_value tmpval;      // Temporary, needed in parser below...
+    //octave_value_list plhs;   // Our list of left-hand-side return values...
+
 
     // Child protection: Is someone trying to call us after we've shut down already?
     if (jettisoned) {
         // Yep! Stupido...
-        error("%s: Tried to call the module after it has been jettisoned!!! You need to do a 'clear %s;' now. Bug in Psychtoolbox?!?",
-              mexFunctionName, mexFunctionName);
-        return(plhs);
+        printf("%s: Tried to call the module after it has been jettisoned!!! No op!\n", PsychGetModuleName());
+        return (NULL);
     }
-    #endif
 
     #if PSYCH_LANGUAGE == PSYCH_OCTAVE
     // Save CPU-state and stack at this position in 'jmpbuffer'. If any further code
@@ -676,7 +677,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         goto octFunctionCleanup;
     }
     #endif
-*/
+
     // Initialization
     if (firstTime) {
         // Reset call recursion level to startup default:
@@ -716,21 +717,25 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
 
     if (psych_recursion_debug) printf("PTB-DEBUG: Module %s entering recursive call level %i.\n", PsychGetModuleName(), recLevel);
 
-    if (!PyTuple_Check(args))
-        PsychErrMsgTxt("FAIL FAIL FAIL!\n");
+    if (!PyTuple_Check(args)) {
+        printf("FAIL FAIL FAIL!\n");
+        return(NULL);
+    }
 
-    if (!PyArg_ParseTuple(args, "s", &name))
-        return NULL;
+    printf("nrhs: %i\n", nrhs);
 
-    printf("DISPATCHING: Hello %s!\n", name);
+    nrhsGLUE[recLevel] = nrhs;
 
-/*
+    for (i = 0; i < nrhs; i++) {
+        prhsGLUE[recLevel][i] = PyTuple_GetItem(args, i);
+
+        if (PyString_Check(prhsGLUE[recLevel][i])) printf("%i: %s\n", i, PyString_AsString(prhsGLUE[recLevel][i]));
+    }
+
     // Store away call arguments for use by language-neutral accessor functions in ScriptingGluePython.c
     nlhsGLUE[recLevel] = nlhs;
-    nrhsGLUE[recLevel] = nrhs;
     plhsGLUE[recLevel] = plhs;
-    prhsGLUE[recLevel] = prhs;
-
+/*
     #if PSYCH_LANGUAGE == PSYCH_OCTAVE
 
             // NULL-init our pointer array of call value pointers prhsGLUE[recLevel]:
@@ -835,43 +840,39 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             nrhsGLUE[recLevel] = nrhs;
             nlhsGLUE[recLevel] = nlhs;
     #endif
+*/
+    baseFunctionInvoked[recLevel] = FALSE;
 
-    baseFunctionInvoked[recLevel]=FALSE;
-
-    //if no subfunctions have been registered by the project then just invoke the project base function
-    //if one of those has been registered.
+    // If no subfunctions have been registered by the project then just invoke the project base function
+    // If one of those has been registered.
     if (!PsychAreSubfunctionsEnabled()) {
         baseFunction = PsychGetProjectFunction(NULL);
         if (baseFunction != NULL) {
-            baseFunctionInvoked[recLevel]=TRUE;
+            baseFunctionInvoked[recLevel] = TRUE;
             (*baseFunction)();  //invoke the unnamed function
         } else
             PrintfExit("Project base function invoked but no base function registered");
-    } else { //subfunctions are enabled so pull out the function name string and invoke it.
-        //assess the nature of first and second arguments for finding the name of the sub function.
+    } else { // Subfunctions are enabled so pull out the function name string and invoke it.
+        // Assess the nature of first and second arguments for finding the name of the sub function.
         for (i = 0; i < 2; i++) {
-            isArgThere[i] = (nrhs>i) && (prhsGLUE[recLevel][i]);
-            if (isArgThere[i]) tmparg = prhs[i]; else tmparg = NULL;
-
-            #if PSYCH_LANGUAGE == PSYCH_OCTAVE
+            isArgThere[i] = (nrhs > i) && (prhsGLUE[recLevel][i]);
             if (isArgThere[i]) { tmparg = prhsGLUE[recLevel][i]; } else { tmparg = NULL; }
-            #endif
-
-            isArgEmptyMat[i] = isArgThere[i] ? mxGetM(tmparg)==0 || mxGetN(tmparg)==0 : FALSE;
+ 
+            isArgEmptyMat[i] = isArgThere[i] ? tmparg == NULL || mxGetM(tmparg) == 0 || mxGetN(tmparg) == 0 : FALSE;
             isArgText[i] = isArgThere[i] ? mxIsChar(tmparg) : FALSE;
             if (isArgText[i]) {
-                mxGetString(tmparg,argString[i],sizeof(argString[i]));
+                mxGetString(tmparg, argString[i], sizeof(argString[i]));
                 // Only consider 2nd arg as subfunction if 1st arg isn't already a subfunction:
                 if ((i == 0) || (!isArgFunction[0])) {
-                    fArg[i]=PsychGetProjectFunction(argString[i]);
+                    fArg[i] = PsychGetProjectFunction(argString[i]);
                 }
                 else fArg[i] = NULL; // 1st arg is subfunction, so 2nd arg can't be as well.
             }
             isArgFunction[i] = isArgText[i] ? fArg[i] != NULL : FALSE;
         }
 
-        //figure out which of the two arguments might be the function name and either invoke it or exit with error
-        //if we can't find one.
+        // Figure out which of the two arguments might be the function name and either invoke it or exit with error
+        // if we can't find one.
         if (!isArgThere[0] && !isArgThere[1]) { //no arguments passed so execute the base function
             baseFunction = PsychGetProjectFunction(NULL);
             if (baseFunction != NULL) {
@@ -883,7 +884,6 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         // (!isArgThere[0] && isArgEmptyMat[1]) --disallowed
         // (!isArgThere[0] && isArgText[1])     --disallowed
         // (!isArgThere[0] && !isArgText[1]     --disallowed except in case of !isArgThere[0] caught above.
-
         else if (isArgEmptyMat[0] && !isArgThere[1])
             PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state A)");
         else if (isArgEmptyMat[0] && isArgEmptyMat[1])
@@ -980,7 +980,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
 
     // If we reach this point of execution under Matlab, then we're successfully done.
 
-    #if PSYCH_LANGUAGE == PSYCH_OCTAVE
+#if PSYCH_LANGUAGE == PSYCH_OCTAVE
     // If we reach this point of execution under Octave, then we're done, possibly due to
     // error abort. Let's first do the memory management cleanup work necessary on Octave.
     // This is either done due to successfull execution or via jump to octFunctionCleanup:
@@ -1051,12 +1051,9 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
     // Return our octave_value_list of returned values in any case and yield control
     // back to Octave:
     return(plhs);
-    #else
+#else
     PsychExitRecursion();
-    #endif
-*/
-
-    PsychExitRecursion();
+#endif
 
     Py_RETURN_NONE;
 }
@@ -1165,7 +1162,7 @@ const PyObject *PsychGetInArgPyPtr(int position)
 
 PyObject **PsychGetOutArgPyPtr(int position)
 {
-    if (position==1 || (position>0 && position<=nlhsGLUE[recLevel])) { //an ouput argument was supplied at the specified location
+    if (position == 1 || (position > 0 && position <= nlhsGLUE[recLevel])) { //an ouput argument was supplied at the specified location
         return(&(plhsGLUE[recLevel][position-1]));
     } else
         return(NULL);
@@ -1614,21 +1611,24 @@ psych_bool PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequire
 
 psych_bool PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequired, double **value)
 {
-    PyObject         **mxpp;
+    PyObject        **mxpp;
     PsychError      matchError;
     psych_bool      putOut;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
     PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double, isRequired, 1,1,1,1,0,0);
-    matchError=PsychMatchDescriptors();
-    putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
+    matchError = PsychMatchDescriptors();
+    putOut = PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
         mxpp = PsychGetOutArgPyPtr(position);
+        printf("I: mxpp %p\n", mxpp);
         *mxpp = mxCreateDoubleMatrix3D(1,1,0);
+        printf("II: mxpp %p\n", *mxpp);
         *value = mxGetPr(*mxpp);
+        printf("III: value %p\n", *value);
     } else {
         mxpp = PsychGetOutArgPyPtr(position);
-        *value= (double *)mxMalloc(sizeof(double));
+        *value= (double *) mxMalloc(sizeof(double));
     }
     return(putOut);
 }
@@ -2179,7 +2179,7 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
  */
 psych_bool PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequired, int *value)
 {
-    const PyObject     *ppyPtr;
+    const PyObject    *ppyPtr;
     double            tempDouble;
     PsychError        matchError;
     psych_bool        acceptArg;
@@ -2260,7 +2260,7 @@ psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequire
  */
 psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired, char **str)
 {
-    const PyObject   *ppyPtr;
+    const PyObject  *ppyPtr;
     int             status;
     psych_uint64    strLen;
     PsychError      matchError;
@@ -2271,13 +2271,14 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr  = PsychGetInArgPyPtr(position);
-        /* TODO FIXME check char size */
-        strLen = ((psych_uint64) mxGetM(ppyPtr) * (psych_uint64) mxGetNOnly(ppyPtr) * (psych_uint64) sizeof(char)) + 1;
-        if (strLen >= INT_MAX) PsychErrorExitMsg(PsychError_user, "Tried to pass in a string with more than 2^31 - 1 characters. Unsupported!");
-        *str   = (char *) PsychCallocTemp((size_t) strLen, sizeof(char));
+        ppyPtr = PsychGetInArgPyPtr(position);
+        strLen = (psych_uint64) PyString_Size(ppyPtr) + 1;
+        if (strLen >= INT_MAX)
+            PsychErrorExitMsg(PsychError_user, "Tried to pass in a string with more than 2^31 - 1 characters. Unsupported!");
+
+        *str = (char *) PsychCallocTemp((size_t) strLen, sizeof(char));
         status = mxGetString(ppyPtr, *str, (ptbSize) strLen);
-        if (status!=0)
+        if (status != 0)
             PsychErrorExitMsg(PsychError_internal, "mxGetString failed to get the string");
     }
     return(acceptArg);
