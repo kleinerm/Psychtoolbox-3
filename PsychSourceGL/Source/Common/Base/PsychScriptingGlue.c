@@ -348,15 +348,6 @@ PsychError PsychRequireNumInputArgs(int minInputs)
 }
 
 
-PsychError PsychCapNumOutputArgs(int maxNamedOutputs)
-{
-    if (PsychGetNumNamedOutputArgs() > maxNamedOutputs)
-        return(PsychError_extraOutputArg);
-    else
-        return(PsychError_none);
-}
-
-
 /*
  *    The argument is present if anything was supplied, including the default matrix
  */

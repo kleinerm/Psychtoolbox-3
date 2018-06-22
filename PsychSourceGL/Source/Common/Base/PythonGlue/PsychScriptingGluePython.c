@@ -1505,15 +1505,38 @@ int PsychGetNumInputArgs(void)
 }
 
 
+// Careful! Here's a catch: I don't know of a straightforward way to actually
+// find out how many return arguments (output args) the calling Python runtime
+// expects from us. Apparently that's already a major problem in the Python
+// language itself for native Python scripting code.
 int PsychGetNumOutputArgs(void)
 {
-    return(nlhsGLUE[recLevel]==0 ? 1 : nlhsGLUE[recLevel]);
+    return((nlhsGLUE[recLevel] <= 0) ? ((nlhsGLUE[recLevel] == 0) ? 1 : MAX_OUTPUT_ARGS) : nlhsGLUE[recLevel]);
 }
 
 
 int PsychGetNumNamedOutputArgs(void)
 {
     return(nlhsGLUE[recLevel]);
+}
+
+
+PsychError PsychCapNumOutputArgs(int maxNamedOutputs)
+{
+    // Number of output args already known?
+    if ((PsychGetNumNamedOutputArgs() < 0) && (maxNamedOutputs < MAX_OUTPUT_ARGS)) {
+        // No. We use the maxNamedOutputs passed in here as the clue to what the
+        // correct value is, given that at least the Python 2 api may be incapable
+        // of easily telling us this magic value:
+        // TODO FIXME Don't use this as hint, always detect true number at function exit, always succeed: nlhsGLUE[recLevel] = maxNamedOutputs;
+        return(PsychError_none);
+    }
+
+    // Maximum number of expected outputs known, so enforce them:
+    if (PsychGetNumNamedOutputArgs() > maxNamedOutputs)
+        return(PsychError_extraOutputArg);
+    else
+        return(PsychError_none);
 }
 
 

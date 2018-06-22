@@ -800,6 +800,15 @@ int PsychGetNumNamedOutputArgs(void)
 }
 
 
+PsychError PsychCapNumOutputArgs(int maxNamedOutputs)
+{
+    if (PsychGetNumNamedOutputArgs() > maxNamedOutputs)
+        return(PsychError_extraOutputArg);
+    else
+        return(PsychError_none);
+}
+
+
 /*
  *    The argument is not present if a default m*n=0 matrix was supplied, '' or []
  */
