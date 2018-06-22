@@ -193,7 +193,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     // Either alloc out the arguments, or redirect to
     // internal dummy variables. This to avoid mxMalloc() call overhead
     // inside the PsychAllocOutXXX() routines:
-    nout = PsychGetNumNamedOutputArgs();
+    nout = PsychGetNumOutputArgs();
 
     // keyDown flag:
     if (nout >= 1) {
