@@ -124,8 +124,7 @@ int mxIsCell(const PyObject* a)
 
 int mxIsStruct(const PyObject* a)
 {
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
-    return(0);
+    return(PyDict_Check(a));
 }
 
 int mxIsNumeric(const PyObject* a)
@@ -377,85 +376,64 @@ void mxDestroyArray(PyObject *arrayPtr)
 
 PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, const char** fieldNames)
 {
-    PyObject* retval;
+    int i, j;
+    PyObject* retval = NULL;
 
-    if (numDims>2 || numDims<1) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateStructArray: Anything else than 1D or 2D Struct-Arrays is not supported!");
-    if (numFields<1) PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxCreateStructArray: numFields < 1 ?!?");
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(NULL);
-/*
-    // Our dimension vector:
-    dim_vector mydims((numDims>1) ? dim_vector(ArrayDims[0], ArrayDims[1]) : dim_vector(ArrayDims[0]));
+    if (numDims != 1)
+        PsychErrorExitMsg(PsychError_unimplemented, "Error: mxCreateStructArray: Anything else than 1D Struct-Array is not supported!");
 
-    // Create cell array of requested dimensionality and size as template. This
-    // will be cloned numFields - times to create one such array per field.
-    class Cell myCell(mydims);
+    if (numFields < 1)
+        PsychErrorExitMsg(PsychError_internal, "Error: mxCreateStructArray: numFields < 1 ?!?");
 
-    // Create an Octave_map(): A Octave_map is an associative map that associates keys (namestrings)
-    // with values (which are Cell-Arrays). For each named field in our struct array, we insert a
-    // key->value pair into the Octave_map. The key is the field name, the value is a copy of our
-    // cell array 'myCell', where myCell has the requested dimensions.
-    // Lookup or assignment will work as follows: The fieldName is used as search-key to lookup the
-    // cell array associated with that key. The fieldIndex is then used to index into that cell array
-    // and get or set the octave_value object which encodes the value of that field at that index...
-    Octave_map mymap(std::string(fieldNames[0]), myCell);  // Assign first key in constructor.
+    /*
+    retval = PyTuple_New((Py_ssize_t) ArrayDims[0]);
 
-    // Assign all remaining key->Cell pairs...
-    for (int i=1; i<numFields; i++) mymap.assign(std::string(fieldNames[i]), myCell);
-
-    // Build our PyObject wrapper:
-    retval = (PyObject*) PsychMallocTemp(sizeof(PyObject));
-
-    // Fill it: Assign our map.
-    octave_value* ovp = new octave_value(mymap);
-    retval->o = (void*) ovp;
-    retval->d = NULL;
-
-    return(retval);
-*/
-}
-
-int mxGetFieldNumber(const PyObject* structArray, const char* fieldName)
-{
-/*
-    if (!mxIsStruct(structArray)) {
-        PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxGetFieldNumber: Tried to manipulate something other than a struct-Array!");
+    // Create one dictionary for each slot in the tuple:
+    for (i = 0; i < ArrayDims[0]; i++) {
+        PyObject* slotdict = PyDict_New();
+        for (j = 0; j < numFields; j++) {
+        }
     }
 
-    // Retrieve map:
-    octave_value* ov = (octave_value*) structArray->o;
-    Octave_map om = ov->map_value();
+    */
 
-    // Find idx of key.
-    std::string mykey(fieldName);
-    for (int i=0; i<om.length(); i++) if (mykey == om.keys()(i)) return(i);
-*/
+    retval = PyDict_New();
+    for (j = 0; j < numFields; j++) {
+        PyObject* slotArray = PyList_New((Py_ssize_t) ArrayDims[0]);
+        PyDict_SetItemString(retval, fieldNames[j], slotArray);
+    }
+
+    return(retval);
+}
+
+int mxIsField(const PyObject* structArray, const char* fieldName)
+{
+    if (!mxIsStruct(structArray))
+        PsychErrorExitMsg(PsychError_internal, "Error: mxIsField: Tried to manipulate something other than a struct-Array!");
+
+    // Ok, cheating. If the fieldName exists, we always returns a field number of 1,
+    // otherwise we return -1, so this function can only check if a fieldName is valid.
+    // But then, that's all that this function is used for inside our implementation,
+    // so we should be fine:
+    if (NULL != PyDict_GetItemString(structArray, fieldName))
+        return(1);
+
     // No such key :(
     return(-1);
 }
 
 void mxSetField(PyObject* pStructOuter, int index, const char* fieldName, PyObject* pStructInner)
 {
-/*
-    if (!mxIsStruct(pStructOuter)) {
-        PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxSetField: Tried to manipulate something other than a struct-Array!");
-    }
-    // Retrieve map:
-    octave_value* ov = (octave_value*) pStructOuter->o;
-    Octave_map om = ov->map_value();
+    PyObject* array;
 
-    // Retrieve object:
-    octave_value* iv = (octave_value*) pStructInner->o;
-    if (iv->is_real_type() && iv->is_scalar_type()) {
-        // Our special case. Do the extra work...
-        *iv=octave_value(*((double*) pStructInner->d));
-    }
+    if (!mxIsStruct(pStructOuter))
+        PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Tried to manipulate something other than a struct-Array!");
 
-    // Assign our object:
-    om.contents(std::string(fieldName))(index) = *iv;
+    array = PyDict_GetItemString(pStructOuter, fieldName);
+    if (index >= PyList_Size(array))
+        PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Index exceeds size of struct-Array!");
 
-    // Reassign our map:
-    *ov = octave_value(om);
-*/
+    PyList_SetItem(array, index, pStructInner);
 }
 
 /* UNUSED, but here for reference */
@@ -634,7 +612,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
     if (firstTime) {
         // Reset call recursion level to startup default:
         recLevel = -1;
-        psych_recursion_debug = TRUE;
+        psych_recursion_debug = FALSE;
 
         if (getenv("PSYCH_RECURSION_DEBUG")) psych_recursion_debug = TRUE;
 
@@ -674,15 +652,10 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         return(NULL);
     }
 
-    printf("nrhs: %i\n", nrhs);
-
     nrhsGLUE[recLevel] = nrhs;
 
-    for (i = 0; i < nrhs; i++) {
+    for (i = 0; i < nrhs; i++)
         prhsGLUE[recLevel][i] = PyTuple_GetItem(args, i);
-
-        if (PyString_Check(prhsGLUE[recLevel][i])) printf("%i: %s\n", i, PyString_AsString(prhsGLUE[recLevel][i]));
-    }
 
     // Set number of output arguments to "unknown" == -1, as we don't know yet:
     nlhsGLUE[recLevel] = -1;
@@ -2812,26 +2785,30 @@ psych_bool PsychAllocOutStructArray(int position,
                                     PsychGenericScriptType **pStruct)
 {
     PyObject **mxArrayOut;
-    ptbSize structArrayNumDims = 2;
-    ptbSize structArrayDims[2];
+    ptbSize structArrayNumDims = 1;
+    ptbSize structArrayDims[1];
     PsychError matchError;
     psych_bool putOut;
 
-    structArrayDims[0] = 1;
-    structArrayDims[1] = numElements;
+    structArrayDims[0] = numElements;
 
-    if (position != kPsychNoArgReturn) {  //Return the result to both the C caller and the scripting environment.
+    if (position != kPsychNoArgReturn) {
+        // Return the result to both the C caller and the scripting environment.
         PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
-        PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_structArray, isRequired, 1,1,numElements,numElements,0,0);
-        *pStruct = mxCreateStructArray(structArrayNumDims, structArrayDims, numFields, fieldNames);
+        PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_structArray, isRequired, 1, 1, numElements, numElements, 0, 0);
         matchError = PsychMatchDescriptors();
         putOut = PsychAcceptOutputArgumentDecider(isRequired, matchError);
+
+        *pStruct = mxCreateStructArray(structArrayNumDims, structArrayDims, numFields, fieldNames);
+
         if (putOut) {
             mxArrayOut = PsychGetOutArgPyPtr(position);
             *mxArrayOut = *pStruct;
         }
+
         return(putOut);
-    } else{ //Return the result only to the C caller.  Ignore "required".    
+    } else{
+        // Return the result only to the C caller. Ignore "required".
         *pStruct = mxCreateStructArray(structArrayNumDims, structArrayDims, numFields, fieldNames);
         return(TRUE);
     }
@@ -2851,7 +2828,7 @@ psych_bool PsychAssignOutStructArray( int position,
     psych_bool putOut;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_structArray, isRequired, 1,1,0,kPsychUnboundedArraySize,0,0);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_structArray, isRequired, 1, 1, 0, kPsychUnboundedArraySize, 0, 0);
     matchError = PsychMatchDescriptors();
     putOut = PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
@@ -2866,7 +2843,7 @@ psych_bool PsychAssignOutStructArray( int position,
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
-    PsychSetStructArrayStringElement() TODO FIXME
+    PsychSetStructArrayStringElement()
     The variable "index", the index of the element within the struct array, is zero-indexed.
 */
 void PsychSetStructArrayStringElement(const char *fieldName,
@@ -2880,30 +2857,23 @@ void PsychSetStructArrayStringElement(const char *fieldName,
     PyObject *mxFieldValue;
     char errmsg[256];
 
-    //check for bogus arguments
-    numElements = mxGetM(pStruct) * mxGetN(pStruct);
-    if ((size_t) index >= numElements)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+    isStruct = mxIsStruct(pStruct);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
 
-    fieldNumber = mxGetFieldNumber(pStruct, fieldName);
+    fieldNumber = mxIsField(pStruct, fieldName);
     if (fieldNumber == -1) {
         sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
         PsychErrorExitMsg(PsychError_internal, errmsg);
     }
 
-    isStruct = mxIsStruct(pStruct);
-    if (!isStruct)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
-
-    //do stuff
     mxFieldValue = mxCreateString(text);
     mxSetField(pStruct, (ptbIndex) index, fieldName, mxFieldValue);
-    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
 }
 
 
 /*
-    PsychSetStructArrayDoubleElement() TODO FIXME
+    PsychSetStructArrayDoubleElement()
     Note: The variable "index" is zero-indexed.
 */
 void PsychSetStructArrayDoubleElement(const char *fieldName,
@@ -2917,32 +2887,24 @@ void PsychSetStructArrayDoubleElement(const char *fieldName,
     PyObject *mxFieldValue;
     char errmsg[256];
 
-    //check for bogus arguments
-    numElements = mxGetM(pStruct) * mxGetN(pStruct);
-    if ((size_t) index >= numElements)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+    isStruct = mxIsStruct(pStruct);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
 
-    fieldNumber = mxGetFieldNumber(pStruct, fieldName);
+    fieldNumber = mxIsField(pStruct, fieldName);
     if (fieldNumber == -1) {
         sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
         PsychErrorExitMsg(PsychError_internal, errmsg);
     }
 
-    isStruct = mxIsStruct(pStruct);
-    if (!isStruct)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
-
-    //do stuff
-    mxFieldValue = mxCreateDoubleMatrix(1, 1);
-    mxGetPr(mxFieldValue)[0] = value;
+    mxFieldValue = PyFloat_FromDouble(value);
     mxSetField(pStruct, (ptbIndex) index, fieldName, mxFieldValue);
-    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
 }
 
 
 /*
     PsychSetStructArrayBooleanElement()
-TODO FIXME
+
     Note: The variable "index" is zero-indexed.
 */
 void PsychSetStructArrayBooleanElement( const char *fieldName,
@@ -2956,31 +2918,23 @@ void PsychSetStructArrayBooleanElement( const char *fieldName,
     PyObject *mxFieldValue;
     char errmsg[256];
 
-    //check for bogus arguments
-    numElements = mxGetM(pStruct) * mxGetN(pStruct);
-    if ((size_t) index >= numElements)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+    isStruct = mxIsStruct(pStruct);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
 
-    fieldNumber = mxGetFieldNumber(pStruct, fieldName);
+    fieldNumber = mxIsField(pStruct, fieldName);
     if (fieldNumber == -1) {
         sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
         PsychErrorExitMsg(PsychError_internal, errmsg);
     }
 
-    isStruct = mxIsStruct(pStruct);
-    if (!isStruct)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
-
-    //do stuff
-    mxFieldValue = mxCreateLogicalMatrix(1, 1);
-    mxGetLogicals(mxFieldValue)[0] = state;
+    mxFieldValue = PyBool_FromLong((long) state);
     mxSetField(pStruct, (ptbIndex) index, fieldName, mxFieldValue);
-    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
 }
 
 
 /*
-    PsychSetStructArrayStructElement() TODO FIXME
+    PsychSetStructArrayStructElement()
 */
 void PsychSetStructArrayStructElement(const char *fieldName,
                                       int index,
@@ -2992,61 +2946,33 @@ void PsychSetStructArrayStructElement(const char *fieldName,
     psych_bool isStruct;
     char errmsg[256];
 
-    //check for bogus arguments
-    numElements = mxGetM(pStructOuter) * mxGetN(pStructOuter);
-    if ((size_t) index >= numElements)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
-
-    fieldNumber = mxGetFieldNumber(pStructOuter, fieldName);
-    if (fieldNumber == -1) {
-        sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
-        PsychErrorExitMsg(PsychError_internal, errmsg);
-    }
+    isStruct = mxIsStruct(pStructOuter);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
 
     isStruct = mxIsStruct(pStructInner);
     if (!isStruct)
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a struct field to a non-existent structure.");
 
-    isStruct = mxIsStruct(pStructOuter);
-    if (!isStruct)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
+    fieldNumber = mxIsField(pStructOuter, fieldName);
+    if (fieldNumber == -1) {
+        sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
 
-    //do stuff
     mxSetField(pStructOuter, (ptbIndex) index, fieldName, pStructInner); 
-    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(pStructInner);
 }
 
 
 /*
-    PsychSetStructArrayNativeElement() TODO FIXME
+    PsychSetStructArrayNativeElement()
  */
 void PsychSetStructArrayNativeElement(const char *fieldName,
                                       int index,
                                       PsychGenericScriptType *pNativeElement,
                                       PsychGenericScriptType *pStructArray)
 {
-    int fieldNumber;
-    size_t numElements;
-    psych_bool isStruct;
-    char errmsg[256];
-
-    //check for bogus arguments
-    numElements = mxGetM(pStructArray) * mxGetN(pStructArray);
-    if ((size_t) index >= numElements)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
-
-    fieldNumber = mxGetFieldNumber(pStructArray, fieldName);
-    if (fieldNumber == -1) {
-        sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
-        PsychErrorExitMsg(PsychError_internal, errmsg);
-    }
-
-    isStruct = mxIsStruct(pStructArray);
-    if (!isStruct)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
-
-    //do stuff
-    mxSetField(pStructArray, (ptbIndex) index, fieldName, pNativeElement);
+    PsychSetStructArrayStructElement(fieldName, index, pNativeElement, pStructArray);
 }
 
 
