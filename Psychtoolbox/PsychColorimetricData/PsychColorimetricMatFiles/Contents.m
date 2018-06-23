@@ -74,6 +74,11 @@
 %   spd_CIEA            - Spectral power distribtion for CIE illuminant A.
 %   spd_CIEC            - Spectral power distribution for CIE illuminant C.
 %   spd_D65             - Spectral power distribution for CIE illuminant D65.
+%   spd_houser          - 401 normalised illuminant spectral power distributions from:
+%                           Review of measures for light-source color rendition and considerations for a two-measure system for characterizing color rendition
+%                           Kevin W. Houser, Minchen Wei, Aurélien David, Michael R. Krames, and Xiangyou Sharon Shen
+%                           Optics Express, Vol. 21, Issue 8, pp. 10393-10411 (2013)
+%                           http://dx.doi.org/10.1364/OE.21.010393 
 %   spd_flourescent     - Spectral power distribution for some flourescent lamp.
 %   spd_incanCC         - Spectral power distributions for Macbeth color checker patches under some incandescent lamp.
 %   spd_phillybright    - Direct bright sunlight measured through window and off of a piece of white paper towel
