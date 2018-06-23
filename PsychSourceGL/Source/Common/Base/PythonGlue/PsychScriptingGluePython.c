@@ -119,8 +119,7 @@ int mxIsLogical(const PyObject* a)
 
 int mxIsCell(const PyObject* a)
 {
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
-    return(0);
+    return(PyTuple_Check(a));
 }
 
 int mxIsStruct(const PyObject* a)
@@ -459,49 +458,32 @@ void mxSetField(PyObject* pStructOuter, int index, const char* fieldName, PyObje
 */
 }
 
+/* UNUSED, but here for reference */
 PyObject* mxCreateCellArray(int numDims, ptbSize* ArrayDims)
 {
     PyObject* retval;
 
+    if (numDims > 1)
+        PsychErrorExitMsg(PsychError_unimplemented, "Error: mxCreateCellArray: 2D Cell Arrays are not supported on Python build!");
+
     // Allocate our PyObject-Struct:
-    retval = (PyObject*) PsychMallocTemp(sizeof(PyObject));
+    retval = PyTuple_New((Py_ssize_t) ArrayDims[0]);
 
-    if (numDims > 2) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateCellArray: 3D Cell Arrays are not supported yet on GNU/Octave build!");
-/*
-    // Create dimension vector:
-    dim_vector mydims((numDims>1) ? dim_vector(ArrayDims[0], ArrayDims[1]) : dim_vector(ArrayDims[0]));
-
-    // Create Cell object:
-    Cell myCell(mydims);
-    retval->o = (void*) new octave_value(myCell);
-    retval->d = NULL;
-*/
     // Done.
     return(retval);
 }
 
+/* UNUSED, but here for reference */
 void mxSetCell(PsychGenericScriptType *cellVector, ptbIndex index, PyObject* mxFieldValue)
 {
-    if (!mxIsCell(cellVector)) {
-        PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxSetCell: Tried to manipulate something other than a cell-vector!");
-    }
-/*
-    // Get a local (shallow) copy of the current real cellVector:
-    octave_value* cv = (octave_value*) cellVector->o;
-    Cell mycell = cv->cell_value();
+    if (!mxIsCell(cellVector))
+        PsychErrorExitMsg(PsychError_internal, "Error: mxSetCell: Tried to manipulate something other than a cell-vector!");
 
-    // Assign new mxFieldValue:
-    octave_value* ov = (octave_value*) mxFieldValue->o;
-    if (ov->is_real_type() && ov->is_scalar_type()) {
-        // Our special case. Do the extra work...
-        *ov=octave_value(*((double*) mxFieldValue->d));
-    }
+    if (index >= PyTuple_Size(cellVector))
+        PsychErrorExitMsg(PsychError_internal, "Error: mxSetCell: index tried to index beyond lenght of cell-vector!");
 
-    mycell(index)=*ov;
+    PyTuple_SetItem(cellVector, index, mxFieldValue);
 
-    // Assign modified vector:
-    *cv = mycell;
-*/
     return;
 }
 
@@ -3069,7 +3051,7 @@ void PsychSetStructArrayNativeElement(const char *fieldName,
 
 
 /*
- *    PsychAllocOutCellVector() TODO FIXME
+ *    PsychAllocOutCellVector()
  *
  *    -If argument is optional we allocate the structure even if the argument is not present.  If this behavior bothers you,
  *    then check within your code for the presense of a return argument before creating the struct array.  We
@@ -3087,34 +3069,35 @@ psych_bool PsychAllocOutCellVector(int position,
                                    int numElements,
                                    PsychGenericScriptType **pCell)
 {
-    PyObject **mxArrayOut;
-    ptbSize cellArrayNumDims = 2;
-    ptbSize cellArrayDims[2];
+    PyObject   **mxArrayOut;
     PsychError matchError;
     psych_bool putOut;
 
-    cellArrayDims[0] = 1;
-    cellArrayDims[1] = numElements;
-
-    if (position != kPsychNoArgReturn) {  //Return the result to both the C caller and the scripting environment.
+    if (position != kPsychNoArgReturn) {
+        // Return the result to both the C caller and the scripting environment:
         PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
-        PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_cellArray, isRequired, 1,1,numElements,numElements,0,0);
-        *pCell = mxCreateCellArray(cellArrayNumDims, cellArrayDims);
-        mxArrayOut = PsychGetOutArgPyPtr(position);
+        PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_cellArray, isRequired, 1, 1, numElements, numElements, 0, 0);
         matchError = PsychMatchDescriptors();
         putOut = PsychAcceptOutputArgumentDecider(isRequired, matchError);
-        if (putOut)
-            *mxArrayOut=*pCell;
+
+        *pCell = PyTuple_New((Py_ssize_t) numElements);
+
+        if (putOut) {
+            mxArrayOut = PsychGetOutArgPyPtr(position);
+            *mxArrayOut = *pCell;
+        }
+
         return(putOut);
-    } else { //Return the result only to the C caller, not to the calling environment.  Ignore "required".
-        *pCell = mxCreateCellArray(cellArrayNumDims, cellArrayDims);
+    } else {
+        // Return the result only to the C caller, not to the calling environment. Ignore "required":
+        *pCell = PyTuple_New((Py_ssize_t) numElements);
         return(TRUE);
     }
 }
 
 
 /*
- *    PsychSetCellVectorStringElement() TODO FIXME
+ *    PsychSetCellVectorStringElement()
  *
  *    The variable "index", the index of the element within the struct array, is zero-indexed.
  */
@@ -3122,23 +3105,17 @@ void PsychSetCellVectorStringElement(int index,
                                      const char *text,
                                      PsychGenericScriptType *cellVector)
 {
-    size_t numElements;
-    psych_bool isCell;
     PyObject *mxFieldValue;
 
-    //check for bogus arguments
-    numElements = mxGetM(cellVector) * mxGetN(cellVector);
-    if ((size_t) index >= numElements)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell array field at an out-of-bounds index");
-
-    isCell = mxIsCell(cellVector);
-    if (!isCell)
+    // Check for bogus arguments
+    if (!PyTuple_Check(cellVector))
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell within a non-existent cell array.");
 
-    //do stuff
+    if ((size_t) index >= PyTuple_Size(cellVector))
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell array field at an out-of-bounds index");
+
     mxFieldValue = mxCreateString(text);
-    mxSetCell(cellVector, (ptbIndex) index, mxFieldValue);
-    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
+    PyTuple_SetItem(cellVector, index, mxFieldValue);
 }
 
 // End of Python only stuff.
