@@ -301,7 +301,7 @@ void* mxGetData(const PyObject* arrayPtr)
 /* TODO FIXME    return(arrayPtr->d); */
 }
 
-double mxGetScalar(const PyObject* arrayPtr)
+double mxGetScalar(PyObject* arrayPtr)
 {
     return((double) PyFloat_AsDouble(arrayPtr));
 }
@@ -348,7 +348,7 @@ ptbSize* mxGetDimensions(const PyObject* arrayPtr)
     return(dims);
 }
 
-int mxGetString(const PyObject* arrayPtr, char* outstring, int outstringsize)
+int mxGetString(PyObject* arrayPtr, char* outstring, int outstringsize)
 {
     if (!mxIsChar(arrayPtr))
         PsychErrorExitMsg(PsychError_internal, "FATAL Error: Tried to convert a non-string into a string!");
@@ -406,7 +406,7 @@ PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, co
     return(retval);
 }
 
-int mxIsField(const PyObject* structArray, const char* fieldName)
+int mxIsField(PyObject* structArray, const char* fieldName)
 {
     if (!mxIsStruct(structArray))
         PsychErrorExitMsg(PsychError_internal, "Error: mxIsField: Tried to manipulate something other than a struct-Array!");
@@ -505,7 +505,7 @@ static int nlhsGLUE[MAX_RECURSIONLEVEL];  // Number of requested return argument
 static int nrhsGLUE[MAX_RECURSIONLEVEL];  // Number of provided call arguments.
 
 static PyObject* plhsGLUE[MAX_RECURSIONLEVEL][MAX_OUTPUT_ARGS];         // An array of pointers to the Python return arguments.
-static const PyObject *prhsGLUE[MAX_RECURSIONLEVEL][MAX_INPUT_ARGS];    // An array of pointers to the Python call arguments.
+static PyObject *prhsGLUE[MAX_RECURSIONLEVEL][MAX_INPUT_ARGS];    // An array of pointers to the Python call arguments.
 
 static void PsychExitGlue(void);
 
@@ -568,22 +568,14 @@ void PsychExitRecursion(void)
  */
 PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
 {
-    const char*         name;
     psych_bool          isArgThere[2], isArgEmptyMat[2], isArgText[2], isArgFunction[2];
     PsychFunctionPtr    fArg[2], baseFunction;
     char                argString[2][MAX_CMD_NAME_LENGTH];
     int                 i;
     psych_bool          errorcondition = FALSE;
-    const PyObject*     tmparg = NULL; // PyObject is PyObject under MATLAB but #defined to octave_value on OCTAVE build.
+    PyObject*           tmparg = NULL; // PyObject is PyObject under MATLAB but #defined to octave_value on OCTAVE build.
     int                 nrhs = PyTuple_Size(args);
-    const PyObject*     prhs = args;
-    int                 nlhs = 0;
     PyObject*           plhs = NULL;
-
-    // plhs is our octave_value_list of return values:
-    //octave_value tmpval;      // Temporary, needed in parser below...
-    //octave_value_list plhs;   // Our list of left-hand-side return values...
-
 
     // Child protection: Is someone trying to call us after we've shut down already?
     if (jettisoned) {
@@ -1127,7 +1119,6 @@ void PsychExitGlue(void)
  *
  *        - The 2nd-nth arguments are always the 2nd-nth arguments.
  */
-//we return NULL if a position without an arg is specified.
 const PyObject *PsychGetInArgPyPtr(int position)
 {
     if (PsychAreSubfunctionsEnabled() && !baseFunctionInvoked[recLevel]) { //when in subfunction mode
@@ -1230,7 +1221,7 @@ static ptbSize mxGetP(const PyObject *arrayPtr)
     }
 
     dimArray = (const ptbSize*) mxGetDimensions(arrayPtr);
-    printf("P %i\n", dimArray[2]);
+    printf("P %li\n", dimArray[2]);
 
     return dimArray[2];
 }
@@ -1248,7 +1239,7 @@ static ptbSize mxGetNOnly(const PyObject *arrayPtr)
     const ptbSize *dimArray;
 
     dimArray = (const ptbSize*) mxGetDimensions(arrayPtr);
-    printf("NOnly %i\n", dimArray[1]);
+    printf("NOnly %li\n", dimArray[1]);
     return dimArray[1];
 }
 
@@ -1430,7 +1421,7 @@ PsychError PsychSetReceivedArgDescriptor(int argNum, psych_bool allow64BitSizes,
     d.position = argNum;
     d.direction = direction;
     if (direction == PsychArgIn) {
-        ppyPtr = PsychGetInArgPyPtr(argNum);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(argNum);
         d.isThere = (ppyPtr && !PsychIsDefaultMat(ppyPtr)) ? kPsychArgPresent : kPsychArgAbsent;
         if (d.isThere == kPsychArgPresent) { //the argument is there so fill in the rest of the description
             d.numDims = (int) mxGetNumberOfDimensions(ppyPtr);
@@ -1549,7 +1540,7 @@ psych_bool PsychIsArgPresent(PsychArgDirectionType direction, int position)
         return((psych_bool)(PsychGetNumOutputArgs()>=position));
     } else {
         if ((numArgs=PsychGetNumInputArgs())>=position)
-            return(!(PsychIsDefaultMat(PsychGetInArgPyPtr(position)))); //check if its default
+            return(!(PsychIsDefaultMat((PyObject*) PsychGetInArgPyPtr(position)))); //check if its default
         else
             return(FALSE);
     }
@@ -1561,7 +1552,7 @@ PsychArgFormatType PsychGetArgType(int position) //this is for inputs because ou
     if (!(PsychIsArgReallyPresent(PsychArgIn, position)))
         return(PsychArgType_none);
 
-    return(PsychGetTypeFromPyPtr(PsychGetInArgPyPtr(position)));
+    return(PsychGetTypeFromPyPtr((PyObject*) PsychGetInArgPyPtr(position)));
 }
 
 
@@ -1569,7 +1560,7 @@ size_t PsychGetArgM(int position)
 {
     if (!(PsychIsArgPresent(PsychArgIn, position)))
         PsychErrorExitMsg(PsychError_invalidArgRef,NULL);
-    return( mxGetM(PsychGetInArgPyPtr(position)));
+    return( mxGetM((PyObject*) PsychGetInArgPyPtr(position)));
 }
 
 
@@ -1577,7 +1568,7 @@ size_t PsychGetArgN(int position)
 {
     if (!(PsychIsArgPresent(PsychArgIn, position)))
         PsychErrorExitMsg(PsychError_invalidArgRef,NULL);
-    return( mxGetNOnly(PsychGetInArgPyPtr(position)));
+    return( mxGetNOnly((PyObject*) PsychGetInArgPyPtr(position)));
 }
 
 
@@ -1585,7 +1576,7 @@ size_t PsychGetArgP(int position)
 {
     if (!(PsychIsArgPresent(PsychArgIn, position)))
         PsychErrorExitMsg(PsychError_invalidArgRef,NULL);
-    return( mxGetP(PsychGetInArgPyPtr(position)));
+    return( mxGetP((PyObject*) PsychGetInArgPyPtr(position)));
 }
 
 
@@ -1970,7 +1961,7 @@ psych_bool PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequ
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         *m = (int) mxGetM(ppyPtr);
         *n = (int) mxGetNOnly(ppyPtr);
         *p = (int) mxGetP(ppyPtr);
@@ -1992,7 +1983,7 @@ psych_bool PsychAllocInDoubleMatArg64(int position, PsychArgRequirementType isRe
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         *m = (psych_int64) mxGetM(ppyPtr);
         *n = (psych_int64) mxGetNOnly(ppyPtr);
         *p = (psych_int64) mxGetP(ppyPtr);
@@ -2065,7 +2056,7 @@ psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isReq
         matchError=PsychMatchDescriptors();
         acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
         if (acceptArg) {
-            ppyPtr = PsychGetInArgPyPtr(position);
+            ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
             *m = (psych_int64) mxGetM(ppyPtr);
             *n = (psych_int64) mxGetNOnly(ppyPtr);
             *p = (psych_int64) mxGetP(ppyPtr);
@@ -2088,7 +2079,7 @@ psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isReq
     // Regular path: Matching float (aka single()) matrix/vector provided:
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         *m = (psych_int64) mxGetM(ppyPtr);
         *n = (psych_int64) mxGetNOnly(ppyPtr);
         *p = (psych_int64) mxGetP(ppyPtr);
@@ -2149,7 +2140,7 @@ psych_bool PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType 
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         *m = (int) mxGetM(ppyPtr);
         *n = (int) mxGetNOnly(ppyPtr);
         *p = (int) mxGetP(ppyPtr);
@@ -2174,7 +2165,7 @@ psych_bool PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType 
  */
 psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired, double *value)
 {
-    const PyObject  *ppyPtr;
+    PyObject        *ppyPtr;
     PsychError      matchError;
     psych_bool      acceptArg;
 
@@ -2184,7 +2175,7 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
 
     acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         *value = PyFloat_AsDouble(ppyPtr);
 
         if (PyErr_Occurred())
@@ -2204,17 +2195,17 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
  */
 psych_bool PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequired, int *value)
 {
-    const PyObject    *ppyPtr;
-    double            tempDouble;
-    PsychError        matchError;
-    psych_bool        acceptArg;
+    PyObject        *ppyPtr;
+    double          tempDouble;
+    PsychError      matchError;
+    psych_bool      acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double | PsychArgType_int32, isRequired, 1,1,1,1,1,1);
     matchError = PsychMatchDescriptors();
     acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
 
         if (PyLong_Check(ppyPtr)) {
             *value = (int) PyLong_AsLong(ppyPtr);
@@ -2235,17 +2226,17 @@ psych_bool PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequir
 
 psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequired, psych_int64 *value)
 {
-    const PyObject    *ppyPtr;
-    double            tempDouble;
-    PsychError        matchError;
-    psych_bool        acceptArg;
+    PyObject        *ppyPtr;
+    double          tempDouble;
+    PsychError      matchError;
+    psych_bool      acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,1,1,1,1,1);
     matchError = PsychMatchDescriptors();
     acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
 
         if (PyLong_Check(ppyPtr)) {
             *value = (psych_int64) PyLong_AsLongLong(ppyPtr);
@@ -2270,7 +2261,7 @@ psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequ
  */
 psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequired, double **value)
 {
-    const PyObject     *ppyPtr;
+    PyObject          *ppyPtr;
     PsychError        matchError;
     psych_bool        acceptArg;
 
@@ -2279,7 +2270,7 @@ psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequire
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         *value=mxGetPr(ppyPtr);
     }
     return(acceptArg);
@@ -2303,7 +2294,7 @@ psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequire
  */
 psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired, char **str)
 {
-    const PyObject  *ppyPtr;
+    PyObject        *ppyPtr;
     int             status;
     psych_uint64    strLen;
     PsychError      matchError;
@@ -2314,7 +2305,7 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         strLen = (psych_uint64) PyString_Size(ppyPtr) + 1;
         if (strLen >= INT_MAX)
             PsychErrorExitMsg(PsychError_user, "Tried to pass in a string with more than 2^31 - 1 characters. Unsupported!");
@@ -2348,9 +2339,9 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
  */
 psych_bool PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired, psych_bool **argVal)
 {
-    const PyObject     *ppyPtr;
-    PsychError        matchError;
-    psych_bool        acceptArg;
+    PyObject        *ppyPtr;
+    PsychError      matchError;
+    psych_bool      acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double|PsychArgType_char|PsychArgType_uint8|PsychArgType_boolean),
@@ -2363,7 +2354,7 @@ psych_bool PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired
         //or logical type.  Restricting to logical type would be a nuisance in the MATLAB environment and does not solve the problem because on some platforms MATLAB
         //uses for logicals 64-bit doubles and on others 8-bit booleans (check your MATLAB mex/mx header files).
         *argVal = (psych_bool *)mxMalloc(sizeof(psych_bool));
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         if (mxIsLogical(ppyPtr)) {
             if (mxGetLogicals(ppyPtr)[0])
                 **argVal=(psych_bool)1;
@@ -2382,10 +2373,10 @@ psych_bool PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired
 /* TODO FIXME */
 psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRequired, int *numElements, psych_bool **argVal)
 {
-    const PyObject     *ppyPtr;
-    PsychError        matchError;
-    psych_bool        acceptArg;
-    int               i;
+    PyObject       *ppyPtr;
+    PsychError     matchError;
+    psych_bool     acceptArg;
+    int            i;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
     // MK: Disabled. Doesn't work without conversion of mxGetData into many subcases...
@@ -2398,7 +2389,7 @@ psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRe
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         if ((psych_uint64) mxGetM(ppyPtr) * (psych_uint64) mxGetN(ppyPtr) >= INT_MAX) {
             printf("PTB-ERROR: %i th input argument has more than 2^31 - 1 elements! This is not supported.\n", position);
             *numElements = 0;
@@ -2435,9 +2426,9 @@ psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRe
  */
 psych_bool PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, psych_bool *argVal)
 {
-    const PyObject     *ppyPtr;
-    PsychError        matchError;
-    psych_bool        acceptArg;
+    PyObject        *ppyPtr;
+    PsychError      matchError;
+    psych_bool      acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double|PsychArgType_char|PsychArgType_uint8|PsychArgType_boolean),
@@ -2445,7 +2436,7 @@ psych_bool PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, 
     matchError = PsychMatchDescriptors();
     acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         if (mxIsLogical(ppyPtr)) {
             if (ppyPtr == Py_True)
                 *argVal = (psych_bool) 1;
@@ -2595,16 +2586,16 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
 /* PsychCopyInPointerArg() - Copy in a void* memory pointer. */
 psych_bool PsychCopyInPointerArg(int position, PsychArgRequirementType isRequired, void **ptr)
 {
-    const PyObject    *ppyPtr;
-    PsychError        matchError;
-    psych_bool        acceptArg;
+    PyObject        *ppyPtr;
+    PsychError      matchError;
+    psych_bool      acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_unclassified, isRequired, 1,1,1,1,1,1);
     matchError = PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        ppyPtr = PsychGetInArgPyPtr(position);
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         *ptr = (void*) PyLong_AsVoidPtr(ppyPtr);
     }
 
@@ -2784,11 +2775,11 @@ psych_bool PsychAllocOutStructArray(int position,
                                     const char **fieldNames,  
                                     PsychGenericScriptType **pStruct)
 {
-    PyObject **mxArrayOut;
-    ptbSize structArrayNumDims = 1;
-    ptbSize structArrayDims[1];
-    PsychError matchError;
-    psych_bool putOut;
+    PyObject        **mxArrayOut;
+    ptbSize         structArrayNumDims = 1;
+    ptbSize         structArrayDims[1];
+    PsychError      matchError;
+    psych_bool      putOut;
 
     structArrayDims[0] = numElements;
 
@@ -2823,9 +2814,9 @@ psych_bool PsychAssignOutStructArray( int position,
                                       PsychArgRequirementType isRequired,
                                       PsychGenericScriptType *pStruct)
 {
-    PyObject **mxArrayOut;
-    PsychError matchError;
-    psych_bool putOut;
+    PyObject        **mxArrayOut;
+    PsychError      matchError;
+    psych_bool      putOut;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
     PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_structArray, isRequired, 1, 1, 0, kPsychUnboundedArraySize, 0, 0);
@@ -2851,11 +2842,11 @@ void PsychSetStructArrayStringElement(const char *fieldName,
                                       char *text,
                                       PsychGenericScriptType *pStruct)
 {
-    int fieldNumber;
-    size_t numElements;
-    psych_bool isStruct;
-    PyObject *mxFieldValue;
-    char errmsg[256];
+    int         fieldNumber;
+    size_t      numElements;
+    psych_bool  isStruct;
+    PyObject    *mxFieldValue;
+    char        errmsg[256];
 
     isStruct = mxIsStruct(pStruct);
     if (!isStruct)
@@ -2881,11 +2872,11 @@ void PsychSetStructArrayDoubleElement(const char *fieldName,
                                       double value,
                                       PsychGenericScriptType *pStruct)
 {
-    int fieldNumber;
-    size_t numElements;
-    psych_bool isStruct;
-    PyObject *mxFieldValue;
-    char errmsg[256];
+    int         fieldNumber;
+    size_t      numElements;
+    psych_bool  isStruct;
+    PyObject    *mxFieldValue;
+    char        errmsg[256];
 
     isStruct = mxIsStruct(pStruct);
     if (!isStruct)
@@ -2912,11 +2903,11 @@ void PsychSetStructArrayBooleanElement( const char *fieldName,
                                         psych_bool state,
                                         PsychGenericScriptType *pStruct)
 {
-    int fieldNumber;
-    size_t numElements;
-    psych_bool isStruct;
-    PyObject *mxFieldValue;
-    char errmsg[256];
+    int         fieldNumber;
+    size_t      numElements;
+    psych_bool  isStruct;
+    PyObject    *mxFieldValue;
+    char        errmsg[256];
 
     isStruct = mxIsStruct(pStruct);
     if (!isStruct)
@@ -2941,10 +2932,10 @@ void PsychSetStructArrayStructElement(const char *fieldName,
                                       PsychGenericScriptType *pStructInner,
                                       PsychGenericScriptType *pStructOuter)
 {
-    int fieldNumber;
-    size_t numElements;
-    psych_bool isStruct;
-    char errmsg[256];
+    int         fieldNumber;
+    size_t      numElements;
+    psych_bool  isStruct;
+    char        errmsg[256];
 
     isStruct = mxIsStruct(pStructOuter);
     if (!isStruct)
@@ -2995,9 +2986,9 @@ psych_bool PsychAllocOutCellVector(int position,
                                    int numElements,
                                    PsychGenericScriptType **pCell)
 {
-    PyObject   **mxArrayOut;
-    PsychError matchError;
-    psych_bool putOut;
+    PyObject    **mxArrayOut;
+    PsychError  matchError;
+    psych_bool  putOut;
 
     if (position != kPsychNoArgReturn) {
         // Return the result to both the C caller and the scripting environment:
