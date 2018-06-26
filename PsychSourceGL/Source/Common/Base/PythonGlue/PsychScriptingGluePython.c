@@ -24,6 +24,10 @@
 #include "Psych.h"
 #undef PTBINSCRIPTINGGLUE
 
+// Import NumPy array handling functions:
+#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+#include <numpy/arrayobject.h>
+
 // Define this to 1 if you want lots of debug-output for the Octave-Scripting glue.
 #define DEBUG_PTBPYTHONGLUE 1
 
@@ -524,6 +528,17 @@ static psych_bool jettisoned = FALSE;
 
 void ScreenCloseAllWindows(void);
 
+// Is this awful, or what? Hackery needed to handle NumPy for Python 3 vs 2:
+#if PY_MAJOR_VERSION >= 3
+int
+#else
+void
+#endif
+init_numpy(void)
+{
+    import_array();
+}
+
 void PsychExitRecursion(void)
 {
     if (recLevel < 0) {
@@ -607,6 +622,9 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         psych_recursion_debug = FALSE;
 
         if (getenv("PSYCH_RECURSION_DEBUG")) psych_recursion_debug = TRUE;
+
+        // Initialize NumPy array extension for use in *this compilation unit* only:
+        init_numpy();
 
         //call the Psychtoolbox init function, which inits the Psychtoolbox and calls the project init.
         PsychInit();
