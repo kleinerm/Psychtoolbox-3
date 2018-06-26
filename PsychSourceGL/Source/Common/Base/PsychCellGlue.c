@@ -182,6 +182,4 @@ psych_bool PsychAllocInNativeString(int position, PsychArgRequirementType isRequ
 }
 */
 
-#else
-    #error Must not include this for non-Matlab glue!
 #endif

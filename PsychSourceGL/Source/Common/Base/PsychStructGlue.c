@@ -301,6 +301,4 @@ void PsychSetStructArrayNativeElement(const char *fieldName,
     mxSetField(pStructArray, (mwIndex) index, fieldName, pNativeElement);
 }
 
-#else
-    #error Must not include this for non-Matlab glue!
 #endif
