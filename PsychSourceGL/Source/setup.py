@@ -77,6 +77,17 @@ WaitSecs = Extension(name,
                      libraries = base_libs
                     )
 
+# PsychPortAudio module: High precision, high reliability, multi-channel, multi-card audio i/o.
+name = 'PsychPortAudio';
+PsychPortAudio = Extension(name,
+                           extra_compile_args = base_compile_args,
+                           define_macros = [('PTBMODULE_' + name, None)] + base_macros,
+                           include_dirs = ['Common/' + name] + baseincludes_common + baseincludes_os,
+                           sources = basefiles_common + basefiles_os + get_sourcefiles('./Common/' + name),
+                           libraries = base_libs + ['asound'],
+                           extra_objects = ['/usr/local/lib/libportaudio.a']
+                          )
+
 # Screen modules: All the visuals. Note all the unusual include_dirs, and other special includes,
 #                 libs, macros etc.
 name = 'Screen';
@@ -90,5 +101,5 @@ Screen = Extension(name,
 
 setup (name = 'Psychtoolbox4Python',
         version = '0.1',
-        description = 'This is a demo package',
-        ext_modules = [GetSecs, WaitSecs])
+        description = 'This is the prototype of a port of Psychtoolbox-3 mex files to Python extensions.',
+        ext_modules = [GetSecs, WaitSecs, PsychPortAudio])
