@@ -1413,8 +1413,6 @@ static PsychArgFormatType PsychGetTypeFromPyPtr(const PyObject *ppyPtr)
     else if (mxIsCell(ppyPtr))
         format = PsychArgType_cellArray;
     else if (mxIsLogical(ppyPtr))
-        // This is tricky because MATLAB abstracts "logicals" conditionally on platform.
-        // Depending on OS, MATLAB implements booleans with either 8-bit or 64-bit values.
         format = PsychArgType_boolean;
     else
         format = PsychArgType_unclassified;
@@ -2188,7 +2186,7 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
     psych_bool      acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,1,1,1,1,1);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double | PsychArgType_int32, isRequired, 1,1,1,1,1,1);
     matchError = PsychMatchDescriptors();
 
     acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
@@ -2205,8 +2203,8 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
 
 
 /*
- *    Like PsychCopyInDoubleArg() with the additional restriction that the passed value not have a fractoinal componenet
- *    and that the it fit within thebounds of a C integer
+ *    Like PsychCopyInDoubleArg() with the additional restriction that the passed value must
+ *    not have a fractional component and that it fits within the bounds of a C integer.
  *
  *    We could also accept matlab native integer types by specifying a conjunction of those as the third argument
  *    in the PsychSetSpecifiedArgDescriptor() call, but why bother ?
