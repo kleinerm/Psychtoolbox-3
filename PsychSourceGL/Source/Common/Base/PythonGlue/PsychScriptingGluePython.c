@@ -138,7 +138,7 @@ int mxIsNumeric(const PyObject* a)
 
 int mxIsChar(const PyObject* a)
 {
-    return(PyString_Check(a));
+    return(PyString_Check(a)); // || PyArray_ISSTRING(a));
 }
 
 int mxIsSingle(const PyObject* a)
@@ -148,7 +148,8 @@ int mxIsSingle(const PyObject* a)
 
 int mxIsDouble(const PyObject* a)
 {
-    return(PyFloat_Check(a));
+    return(PyArray_ISFLOAT(a));
+    //return(PyFloat_Check(a));
 }
 
 int mxIsUint8(const PyObject* a)
@@ -178,7 +179,8 @@ int mxIsInt16(const PyObject* a)
 
 int mxIsInt32(const PyObject* a)
 {
-    return(PyLong_Check(a) || PyInt_Check(a));
+    return(PyArray_ISINTEGER(a));
+    //return(PyLong_Check(a) || PyInt_Check(a));
 }
 
 PyObject* mxCreateNumericArray(int numDims, ptbSize dimArray[], PsychArgFormatType arraytype)
@@ -324,19 +326,31 @@ psych_bool* mxGetLogicals(const PyObject* arrayPtr)
 /*    return((psych_bool*) mxGetData(arrayPtr)); */
 }
 
+ptbSize mxGetNumberOfDimensions(const PyObject* arrayPtr)
+{
+    if (!PyArray_Check(arrayPtr))
+        return(0);
+
+    fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_NDIM(arrayPtr));
+    return((ptbSize) PyArray_NDIM(arrayPtr));
+}
+
 ptbSize mxGetM(const PyObject* arrayPtr)
 {
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(1);
+    if (mxGetNumberOfDimensions(arrayPtr) < 1)
+        return(1);
+
+    fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 0));
+    return((ptbSize) PyArray_DIM(arrayPtr, 0));
 }
 
 ptbSize mxGetN(const PyObject* arrayPtr)
 {
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(1);
-}
+    if (mxGetNumberOfDimensions(arrayPtr) < 2)
+        return(1);
 
-ptbSize mxGetNumberOfDimensions(const PyObject* arrayPtr)
-{
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(1);
+    fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 1));
+    return((ptbSize) PyArray_DIM(arrayPtr, 1));
 }
 
 ptbSize* mxGetDimensions(const PyObject* arrayPtr)
@@ -357,7 +371,15 @@ int mxGetString(PyObject* arrayPtr, char* outstring, int outstringsize)
     if (!mxIsChar(arrayPtr))
         PsychErrorExitMsg(PsychError_internal, "FATAL Error: Tried to convert a non-string into a string!");
 
-    return(((snprintf(outstring, outstringsize, "%s", PyString_AsString(arrayPtr))) >= 0) ? 0 : 1);
+//     if (PyArray_ISSTRING(arrayPtr)) {
+//         int rc;
+//         PyObject* myString = PyArray_ToString(arrayPtr, NPY_ANYORDER);
+//         rc = (snprintf(outstring, outstringsize, "%s", PyString_AsString(myString)) >= 0) ? 0 : 1;
+//         Py_XDECREF(myString);
+//         return(rc);
+//     }
+//     else
+        return(((snprintf(outstring, outstringsize, "%s", PyString_AsString(arrayPtr))) >= 0) ? 0 : 1);
 }
 
 void mxDestroyArray(PyObject *arrayPtr)
@@ -663,9 +685,15 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
     }
 
     nrhsGLUE[recLevel] = nrhs;
-
-    for (i = 0; i < nrhs; i++)
-        prhsGLUE[recLevel][i] = PyTuple_GetItem(args, i);
+    for (i = 0; i < nrhs; i++) {
+        tmparg = PyTuple_GetItem(args, i);
+        // Empty args and strings are special cases - handled directly the Python way.
+        // Everything else goes through NumPy C-Interfaces:
+        if ((tmparg == Py_None) || mxIsChar(tmparg))
+            prhsGLUE[recLevel][i] = tmparg;
+        else
+            prhsGLUE[recLevel][i] = PyArray_FROM_OF(tmparg, NPY_ARRAY_IN_FARRAY);
+    }
 
     // Set number of output arguments to "unknown" == -1, as we don't know yet:
     nlhsGLUE[recLevel] = -1;
@@ -804,6 +832,10 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             isArgText[i] = isArgThere[i] ? mxIsChar(tmparg) : FALSE;
             if (isArgText[i]) {
                 mxGetString(tmparg, argString[i], sizeof(argString[i]));
+                // Empty subfunction command strings map to "empty matrix", for Mex/Matlab/Octave compatibility:
+                if (strlen(argString[i]) == 0)
+                    isArgEmptyMat[i] = TRUE;
+
                 // Only consider 2nd arg as subfunction if 1st arg isn't already a subfunction:
                 if ((i == 0) || (!isArgFunction[0])) {
                     fArg[i] = PsychGetProjectFunction(argString[i]);
@@ -823,13 +855,12 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             } else
                 PrintfExit("Project base function invoked but no base function registered");
         }
-        // (!isArgThere[0] && isArgEmptyMat[1]) --disallowed
-        // (!isArgThere[0] && isArgText[1])     --disallowed
-        // (!isArgThere[0] && !isArgText[1]     --disallowed except in case of !isArgThere[0] caught above.
-        else if (isArgEmptyMat[0] && !isArgThere[1])
+        else if (isArgEmptyMat[0] && !isArgThere[1]) {
             PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state A)");
-        else if (isArgEmptyMat[0] && isArgEmptyMat[1])
+        }
+        else if (isArgEmptyMat[0] && isArgEmptyMat[1]) {
             PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state B)");
+        }
         else if (isArgEmptyMat[0] && isArgText[1]) {
             if (isArgFunction[1]) {
                 nameFirstGLUE[recLevel] = FALSE;
@@ -838,8 +869,9 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             else
                 PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state C)");
         }
-        else if (isArgEmptyMat[0] && !isArgText[1])
+        else if (isArgEmptyMat[0] && !isArgText[1]) {
             PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state D)");
+        }
         else if (isArgText[0] && !isArgThere[1]) {
             if (isArgFunction[0]) {
                 nameFirstGLUE[recLevel] = TRUE;
@@ -899,10 +931,10 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             } else
                 PrintfExit("Project base function invoked but no base function registered");
         }
-        else if (!isArgText[0] && isArgEmptyMat[1])
+        else if (!isArgText[0] && isArgEmptyMat[1]) {
             PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state I)");
-        else if (!isArgText[0] && isArgText[1])
-        {
+        }
+        else if (!isArgText[0] && isArgText[1]) {
             if (isArgFunction[1]) {
                 nameFirstGLUE[recLevel] = FALSE;
                 (*(fArg[1]))();
@@ -1026,7 +1058,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
                 if (PyTuple_SetItem(plhs, (Py_ssize_t) i, plhsGLUE[recLevel][i]))
                     printf("PTB-CRITICAL: Could not insert return argument for slot %i of output tuple!\n", i);
 
-                // NULL-out the array slot, so only the output plhs tuple has a reference to
+                // NULL-out the array slot, only the output plhs tuple has a reference to
                 // the output PyObject argument in slot i:
                 plhsGLUE[recLevel][i] = NULL;
             }
@@ -1053,6 +1085,14 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
     PsychExitRecursion();
 
 PythonFunctionCleanup:
+
+    // Release references to NumPy PyArrays:
+    for (i = 0; i < nrhs; i++) {
+        if (PyArray_Check(prhsGLUE[recLevel+1][i]))
+            Py_XDECREF(prhsGLUE[recLevel+1][i]);
+
+        prhsGLUE[recLevel+1][i] = NULL;
+    }
 
     // Release all memory allocated via PsychMallocTemp():
     PsychFreeAllTempMemory();
@@ -1231,17 +1271,13 @@ void PsychCheckSizeLimits(psych_int64 m, psych_int64 n, psych_int64 p)
  */
 static ptbSize mxGetP(const PyObject *arrayPtr)
 {
-    const ptbSize *dimArray;
-
     if (mxGetNumberOfDimensions(arrayPtr) < 3) {
         printf("P %i\n", 1);
         return(1);
     }
 
-    dimArray = (const ptbSize*) mxGetDimensions(arrayPtr);
-    printf("P %li\n", dimArray[2]);
-
-    return dimArray[2];
+    fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 2));
+    return((ptbSize) PyArray_DIM(arrayPtr, 2));
 }
 
 
@@ -1254,11 +1290,7 @@ static ptbSize mxGetP(const PyObject *arrayPtr)
  */
 static ptbSize mxGetNOnly(const PyObject *arrayPtr)
 {
-    const ptbSize *dimArray;
-
-    dimArray = (const ptbSize*) mxGetDimensions(arrayPtr);
-    printf("NOnly %li\n", dimArray[1]);
-    return dimArray[1];
+    return(mxGetN(arrayPtr));
 }
 
 
@@ -1390,8 +1422,13 @@ static PsychArgFormatType PsychGetTypeFromPyPtr(const PyObject *ppyPtr)
 {
     PsychArgFormatType format;
 
+    // First check for "empty" default argument:
     if (PsychIsDefaultMat(ppyPtr))
         format = PsychArgType_default;
+    // then for string, as we use Python strings here, not NumPy array strings.
+    else if (mxIsChar(ppyPtr))
+        format = PsychArgType_char;
+    // then everything else, safely assuming it is a NumPy array object:
     else if (mxIsUint8(ppyPtr))
         format = PsychArgType_uint8;
     else if (mxIsUint16(ppyPtr))
@@ -1408,8 +1445,6 @@ static PsychArgFormatType PsychGetTypeFromPyPtr(const PyObject *ppyPtr)
         format = PsychArgType_double;
     else if (mxIsSingle(ppyPtr))
         format = PsychArgType_single;
-    else if (mxIsChar(ppyPtr))
-        format = PsychArgType_char;
     else if (mxIsCell(ppyPtr))
         format = PsychArgType_cellArray;
     else if (mxIsLogical(ppyPtr))
@@ -1480,7 +1515,8 @@ PsychError PsychSetReceivedArgDescriptor(int argNum, psych_bool allow64BitSizes,
 
 psych_bool PsychIsDefaultMat(const PyObject *mat)
 {
-    return (mat == Py_None);
+    return ((mat == Py_None) ||
+            (PyArray_Check(mat) && ((PyArray_SIZE(mat) == 0) || (PyArray_IsZeroDim(mat) && !PyArray_CheckScalar(mat)))));
 }
 
 
@@ -1973,7 +2009,7 @@ psych_bool PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequ
     psych_bool      acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,-1,1,-1,0,-1);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1, -1, 1, -1, 0, -1);
     matchError=PsychMatchDescriptors();
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
