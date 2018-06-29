@@ -1673,30 +1673,8 @@ psych_bool PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequir
     return(putOut);
 }
 
-
-/*    CURRENTLY UNUSED
- *    PsychAllocOutBooleanArg()
-psych_bool PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType **value)
-{
-    PyObject         **mxpp;
-    PsychError      matchError;
-    psych_bool      putOut;
-
-    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_boolean, isRequired, 1,1,1,1,0,0);
-    matchError=PsychMatchDescriptors();
-    putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
-    if (putOut) {
-        mxpp = PsychGetOutArgPyPtr(position);
-        (*mxpp) = mxCreateLogicalMatrix(1,1);
-        *value = mxGetLogicals((*mxpp));
-    } else {
-        mxpp = PsychGetOutArgPyPtr(position);
-        *value= (PsychNativeBooleanType *)mxMalloc(sizeof(PsychNativeBooleanType));
-    }
     return(putOut);
 }
-*/
 
 
 /*

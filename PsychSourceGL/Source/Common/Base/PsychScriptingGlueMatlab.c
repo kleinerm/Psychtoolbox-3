@@ -1008,31 +1008,6 @@ psych_bool PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequir
 }
 
 
-/*    CURRENTLY UNUSED
- *    PsychAllocOutBooleanArg()
-psych_bool PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType **value)
-{
-    mxArray         **mxpp;
-    PsychError      matchError;
-    psych_bool      putOut;
-
-    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgOut);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_boolean, isRequired, 1,1,1,1,0,0);
-    matchError=PsychMatchDescriptors();
-    putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
-    if (putOut) {
-        mxpp = PsychGetOutArgMxPtr(position);
-        (*mxpp) = mxCreateLogicalMatrix(1,1);
-        *value = mxGetLogicals((*mxpp));
-    } else {
-        mxpp = PsychGetOutArgMxPtr(position);
-        *value= (PsychNativeBooleanType *)mxMalloc(sizeof(PsychNativeBooleanType));
-    }
-    return(putOut);
-}
-*/
-
-
 /*
  *    PsychAllocOutBooleanMatArg()
  *
