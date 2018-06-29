@@ -947,79 +947,6 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
 
     // If we reach this point of execution under Matlab, then we're successfully done.
 
-#if 0
-    // If we reach this point of execution under Octave, then we're done, possibly due to
-    // error abort. Let's first do the memory management cleanup work necessary on Octave.
-    // This is either done due to successfull execution or via jump to PythonFunctionCleanup:
-    // in case of error-abort:
-    PythonFunctionCleanup:
-
-    // Release our own prhsGLUE[recLevel] array...
-    // Release memory for scalar types is done by PsychFreeAllTempMemory();
-    for (int i = 0; i < nrhs && i < MAX_INPUT_ARGS; i++) {
-        if (prhsGLUE[recLevel][i]) {
-            delete(((octave_value*)(prhsGLUE[recLevel][i]->o)));
-            prhsGLUE[recLevel][i]=NULL;
-        }
-    }
-
-    // "Copy" our octave-value's into the output array: If nlhs should be
-    // zero (Octave-Script does not expect any return arguments), but our
-    // subfunction has assigned a return argument in slot 0 anyway, then
-    // we return that argument and release our own temp-memory. This
-    // provides Matlab-semantic, where unsolicited return arguments are
-    // printed anyway as content of the "ans" variable.
-    for (i = 0; (i == 0 && plhsGLUE[recLevel][0] != NULL) || (i < nlhs && i < MAX_OUTPUT_ARGS); i++) {
-        if (plhsGLUE[recLevel][i]) {
-            plhs(i) = *((octave_value*)(plhsGLUE[recLevel][i]->o));
-            if (plhs(i).is_scalar_type()) {
-                // Special case: Scalar. Need to override with our double-ptrs value:
-                double* svalue = (double*) plhsGLUE[recLevel][i]->d;
-                plhs(i) = octave_value((double) *svalue);
-            }
-
-            // Delete our own octave_value object. All relevant data has been
-            // copied via "copy-on-write" into plhs(i) already:
-            delete(((octave_value*)(plhsGLUE[recLevel][i]->o)));
-
-            // We don't need to free() the PsychMallocTemp()'ed object pointed to
-            // by the d-Ptr, nor do we need to free the PyObject-Struct. This is done
-            // below in PsychFreeAllTempMemory(). Just NULL-out the array slot:
-            plhsGLUE[recLevel][i]=NULL;
-        }
-    }
-
-    // Release all memory allocated via PsychMallocTemp():
-    PsychFreeAllTempMemory();
-
-    // Is this a successfull return?
-    if (errorcondition) {
-        // Nope - Error return, either due to some PTB detected error or due to
-        // the user pressing the CTRL+C key combo. Try to call PTB's
-        // Screen('CloseAll') command to close the display, at least if this is
-        // the Screen module.
-
-        // Is this the Screen() module?
-        if (strcmp(PsychGetModuleName(), "Screen")==0) {
-            // Yes. We directly call our close and cleanup routine:
-            #ifdef PTBMODULE_Screen
-            ScreenCloseAllWindows();
-            #endif
-        } else {
-            // Nope. This is a Psychtoolbox OCT file other than Screen.
-            // We can't call directly, but we can call the 'sca' command
-            // from Octave:
-            PsychRuntimeEvaluateString("Screen('CloseAll');");
-        }
-    }
-
-    PsychExitRecursion();
-
-    // Return our octave_value_list of returned values in any case and yield control
-    // back to Octave:
-    return(plhs);
-#else
-
     // Find the true number of arguments to return in the return tuple:
     if (nlhsGLUE[recLevel] < 0) {
         for (i = 0; i < MAX_OUTPUT_ARGS; i++) {
@@ -1036,8 +963,6 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             printf("PTB-CRITICAL: Failed to create output arg return tuple!!\n");
             return(NULL);
         }
-
-        printf("PTB-DEBUG: Output arg tuple with %i elements created.\n", nlhsGLUE[recLevel]);
 
         // "Copy" our return values into the output tuple: If nlhs should be
         // zero (Python-Script does not expect any return arguments), but our
@@ -1092,7 +1017,6 @@ PythonFunctionCleanup:
 
     // Done with this call recursion level:
     PsychExitRecursion();
-#endif
 
     // Return PyObject tuple with all return arguments:
     return(plhs);
