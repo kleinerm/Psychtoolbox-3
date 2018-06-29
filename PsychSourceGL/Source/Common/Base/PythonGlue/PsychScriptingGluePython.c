@@ -1390,7 +1390,7 @@ PyObject *mxCreateByteMatrix3D(size_t m, size_t n, size_t p)
 void PsychErrMsgTxt(char *s)
 {
     // Is this the Screen() module?
-    if (strcmp(PsychGetModuleName(), "Screen")==0) {
+    if (strcmp(PsychGetModuleName(), "Screen") == 0) {
         // Yes. We directly call our close and cleanup routine:
         #ifdef PTBMODULE_Screen
             ScreenCloseAllWindows();
@@ -1399,7 +1399,7 @@ void PsychErrMsgTxt(char *s)
         // Nope. This is a Psychtoolbox MEX file other than Screen.
         // We can't call directly, but we can call the 'sca' command
         // from Matlab:
-        PsychRuntimeEvaluateString("Screen('CloseAll');");
+        PsychRuntimeEvaluateString("Screen.do('CloseAll');");
     }
 
     // Call the Matlab- or Octave error printing and error handling facilities:
@@ -2781,18 +2781,14 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
 
 /* PsychRuntimeEvaluateString() TODO FIXME
  *
- * Simple function evaluation by scripting environment via feval() style functions.
+ * Simple function evaluation by the Python scripting environment.
  * This asks the runtime environment to execute/evaluate the given string 'cmdstring',
  * passing no return arguments back, except an error code.
  *
  */
 int PsychRuntimeEvaluateString(const char* cmdstring)
 {
-    #if PSYCH_LANGUAGE == PSYCH_MATLAB
-        return(mexEvalString(cmdstring));
-    #else
-        printf("Function PsychRuntimeEvaluateString() not yet supported for this runtime system!\n");
-    #endif
+        return(PyRun_SimpleString(cmdstring));
 }
 
 // functions for outputting structs
