@@ -556,13 +556,13 @@ void PALogger(const char* msg)
 //       This is used to reschedule start of playback for a following slot at a later time.
 int PsychPAProcessSchedule(PsychPADevice* dev, psych_int64 *playposition, float** ret_playoutbuffer, psych_int64* ret_outsbsize, psych_int64* ret_outsboffset, double* ret_repeatCount, psych_int64* ret_playpositionlimit)
 {
-    psych_int64   loopStartFrame, loopEndFrame;
-    psych_int64  outsbsize, outsboffset;
-    psych_int64  outchannels = dev->outchannels;
-    unsigned int  slotid, cmd;
+    psych_int64     loopStartFrame, loopEndFrame;
+    psych_int64     outsbsize, outsboffset;
+    psych_int64     outchannels = dev->outchannels;
+    unsigned int    slotid, cmd;
     double          repeatCount;
-    double          reqTime;
-    psych_int64  playpositionlimit;
+    double          reqTime = 0;
+    psych_int64     playpositionlimit;
 
     // NULL-Schedule?
     if (dev->schedule == NULL) {
@@ -1860,14 +1860,18 @@ PsychError PsychPortAudioExit(void)
 
         // Restart suspended PulseAudio server if it was suspended by us:
         if (pulseaudio_isSuspended) {
+            int rc = 0;
+
             // Call external "pactl" utility via shell to ask
             // the server to resume all sinks and sources.
             // These calls should fail silently if either the
             // pactl utility isn't installed or no sound
             // server is running:
-            if (verbosity > 4) printf("PTB-INFO: Trying to resume potentially suspended PulseAudio server.\n");
-            (void) system("pactl suspend-sink 0");
-            (void) system("pactl suspend-source 0");
+            if (verbosity > 4) printf("PTB-INFO: Trying to resume potentially suspended PulseAudio server... ");
+            rc += system("pactl suspend-sink 0");
+            rc += system("pactl suspend-source 0");
+            if (verbosity > 4) printf("... status %i\n", rc);
+
             pulseaudio_isSuspended = FALSE;
         }
     }
@@ -1889,15 +1893,19 @@ void PsychPortAudioInitialize(void)
         // server can't interfere with device enumeration as done during
         // PortAudio init. This is a Linux only thing...
         if (pulseaudio_autosuspend && (PSYCH_SYSTEM == PSYCH_LINUX)) {
+            int rc = 0;
+
             // Call external "pactl" utility via runtime to ask
             // the server to suspend all sinks and sources,
             // hopefully releasing the underlying low-level audio
             // devices for use by use. These calls should fail silently
             // if either the pactl utility isn't installed or no sound
             // server is running:
-            if (verbosity > 4) printf("PTB-INFO: Trying to suspend potentially running PulseAudio server.\n");
-            (void) system("pactl suspend-sink 1");
-            (void) system("pactl suspend-source 1");
+            if (verbosity > 4) printf("PTB-INFO: Trying to suspend potentially running PulseAudio server... ");
+            rc += system("pactl suspend-sink 1");
+            rc += system("pactl suspend-source 1");
+            if (verbosity > 4) printf("... status %i\n", rc);
+
             pulseaudio_isSuspended = TRUE;
         }
 
@@ -2133,6 +2141,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                 // Selected output default device seems to be a HDMI or DisplayPort output
                 // of a graphics card. Try to find a better default choice.
                 paHostAPI = outputDevInfo->hostApi;
+                referenceDevInfo = NULL; // Make compiler happy.
                 for (deviceid = 0; deviceid < (int) Pa_GetDeviceCount(); deviceid++) {
                     referenceDevInfo = Pa_GetDeviceInfo(deviceid);
                     if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
@@ -2231,6 +2240,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     }
     else {
         // More than 2 channel counts provided? Impossible.
+        mynrchannels[0] = mynrchannels[1] = 0; // Make compiler happy.
         PsychErrorExitMsg(PsychError_user, "You specified a list with more than two 'channels' entries? Can only be max 2 for playback- and capture.");
     }
 
@@ -2846,6 +2856,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
     }
     else {
         // More than 2 channel counts provided? Impossible.
+        mynrchannels[0] = mynrchannels[1] = 0; // Make compiler happy.
         PsychErrorExitMsg(PsychError_user, "You specified a list with more than two 'channels' entries? Can only be max 2 for playback- and capture.");
     }
 
@@ -2877,12 +2888,13 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[0]; i++) if (audiodevices[id].outputmappings[i] < 0 || audiodevices[id].outputmappings[i] >= audiodevices[pamaster].outchannels) {
-                printf("PTB-ERROR: Slot %i of output channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].outputmappings[i] + 1, audiodevices[pamaster].outchannels);
-                free(audiodevices[id].outputmappings);
-                audiodevices[id].outputmappings = NULL;
-                PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
-            }
+            for (i = 0; i < mynrchannels[0]; i++)
+                if (audiodevices[id].outputmappings[i] < 0 || audiodevices[id].outputmappings[i] >= audiodevices[pamaster].outchannels) {
+                    printf("PTB-ERROR: Slot %i of output channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].outputmappings[i] + 1, (int)  audiodevices[pamaster].outchannels);
+                    free(audiodevices[id].outputmappings);
+                    audiodevices[id].outputmappings = NULL;
+                    PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
+                }
         }
 
         if ((mode & kPortAudioCapture) && !(mode & kPortAudioIsOutputCapture)) {
@@ -2898,12 +2910,13 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[1]; i++) if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].inchannels) {
-                printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, audiodevices[pamaster].inchannels);
-                free(audiodevices[id].inputmappings);
-                audiodevices[id].inputmappings = NULL;
-                PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
-            }
+            for (i = 0; i < mynrchannels[1]; i++)
+                if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].inchannels) {
+                    printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, (int) audiodevices[pamaster].inchannels);
+                    free(audiodevices[id].inputmappings);
+                    audiodevices[id].inputmappings = NULL;
+                    PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
+                }
         }
 
         if (mode & kPortAudioIsOutputCapture) {
@@ -2919,12 +2932,13 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[1]; i++) if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].outchannels) {
-                printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, audiodevices[pamaster].outchannels);
-                free(audiodevices[id].inputmappings);
-                audiodevices[id].inputmappings = NULL;
-                PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
-            }
+            for (i = 0; i < mynrchannels[1]; i++)
+                if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].outchannels) {
+                    printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, (int)  audiodevices[pamaster].outchannels);
+                    free(audiodevices[id].inputmappings);
+                    audiodevices[id].inputmappings = NULL;
+                    PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
+                }
         }
 
     }
@@ -3051,16 +3065,16 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
         printf("PTB-INFO: New virtual audio slave device with handle %i opened and attached to parent device handle %i [master %i].\n", id, paparent, pamaster);
 
         if (audiodevices[id].opmode & kPortAudioIsAMModulator) {
-            printf("PTB-INFO: For %i channels amplitude modulation.\n", audiodevices[id].outchannels);
+            printf("PTB-INFO: For %i channels amplitude modulation.\n", (int) audiodevices[id].outchannels);
         }
         else if (audiodevices[id].opmode & kPortAudioPlayBack) {
-            printf("PTB-INFO: For %i channels playback.\n", audiodevices[id].outchannels);
+            printf("PTB-INFO: For %i channels playback.\n", (int) audiodevices[id].outchannels);
         }
 
         if (audiodevices[id].opmode & kPortAudioIsOutputCapture) {
-            printf("PTB-INFO: For %i channels capture of master output mix.\n", audiodevices[id].inchannels);
+            printf("PTB-INFO: For %i channels capture of master output mix.\n", (int) audiodevices[id].inchannels);
         } else if (audiodevices[id].opmode & kPortAudioCapture) {
-            printf("PTB-INFO: For %i channels capture.\n", audiodevices[id].inchannels);
+            printf("PTB-INFO: For %i channels capture.\n", (int) audiodevices[id].inchannels);
         }
 
         printf("PTB-INFO: Real samplerate %f Hz. Input latency %f msecs, Output latency %f msecs.\n",
@@ -3460,8 +3474,8 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 
     static char seeAlsoString[] = "Open FillBuffer GetStatus ";
 
-    PsychPABuffer* buffer;
-    PsychPABuffer* inbuffer;
+    PsychPABuffer* buffer = NULL;
+    PsychPABuffer* inbuffer = NULL;
 
     psych_int64 inchannels, insamples, p;
     size_t buffersize, outbuffersize;
@@ -3500,7 +3514,8 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 
         // Validate matching output channel count:
         if (buffer->outchannels != audiodevices[pahandle].outchannels) {
-            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n", buffer->outchannels, bufferhandle, audiodevices[pahandle].outchannels);
+            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n",
+                   (int) buffer->outchannels, bufferhandle, (int) audiodevices[pahandle].outchannels);
             PsychErrorExitMsg(PsychError_user, "Target audio buffer 'bufferHandle' has an audio channel count that doesn't match channels of audio device!");
         }
     }
@@ -3694,7 +3709,7 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
 
     PsychPABuffer* buffer;
     psych_int64 inchannels, insamples, p;
-    size_t buffersize, outbuffersize;
+    size_t buffersize;
     double*    indata = NULL;
     float* indatafloat = NULL;
     float*  outdata = NULL;
@@ -3741,7 +3756,6 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
     // Deref bufferHandle:
     buffer = PsychPAGetAudioBuffer(bufferhandle);
     outdata = buffer->outputbuffer;
-    outbuffersize = (size_t) buffer->outputbuffersize;
     buffersize = sizeof(float) * (size_t) inchannels * (size_t) insamples;
 
     if (indata) {
@@ -5620,7 +5634,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 
         // Validate matching output channel count:
         if (buffer->outchannels != audiodevices[pahandle].outchannels) {
-            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n", buffer->outchannels, bufferHandle, audiodevices[pahandle].outchannels);
+            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n", (int) buffer->outchannels, bufferHandle, (int) audiodevices[pahandle].outchannels);
             PsychErrorExitMsg(PsychError_user, "Referenced audio buffer 'bufferHandle' has an audio channel count that doesn't match channels of audio device!");
         }
     }
@@ -5907,7 +5921,9 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
             PaError rcp;
             // Plugin supports the API, so at least we can safely call it without crashing.
             // Lower the fail level to rc = 2, can't fail because of our deficiencies anymore:
-            if (verbosity > 4) printf("PsychPortAudio('DirectInputMonitoring'): Calling with padev=%i (%p), enable = %i, in=%i, out=%i, gain=%f, pan=%f.\n", pahandle, audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
+            if (verbosity > 4)
+                printf("PsychPortAudio('DirectInputMonitoring'): Calling with padev=%i (%p), enable = %i, in=%i, out=%i, gain=%f, pan=%f.\n", pahandle, audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
+
             rcp = Pa_DirectInputMonitoring(audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
             switch (rcp) {
                 case paNoError:
