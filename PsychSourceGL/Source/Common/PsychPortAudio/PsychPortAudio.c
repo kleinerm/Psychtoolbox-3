@@ -1866,8 +1866,8 @@ PsychError PsychPortAudioExit(void)
             // pactl utility isn't installed or no sound
             // server is running:
             if (verbosity > 4) printf("PTB-INFO: Trying to resume potentially suspended PulseAudio server.\n");
-            PsychRuntimeEvaluateString("system('pactl suspend-sink 0');");
-            PsychRuntimeEvaluateString("system('pactl suspend-source 0');");
+            (void) system("pactl suspend-sink 0");
+            (void) system("pactl suspend-source 0");
             pulseaudio_isSuspended = FALSE;
         }
     }
@@ -1896,8 +1896,8 @@ void PsychPortAudioInitialize(void)
             // if either the pactl utility isn't installed or no sound
             // server is running:
             if (verbosity > 4) printf("PTB-INFO: Trying to suspend potentially running PulseAudio server.\n");
-            PsychRuntimeEvaluateString("system('pactl suspend-sink 1');");
-            PsychRuntimeEvaluateString("system('pactl suspend-source 1');");
+            (void) system("pactl suspend-sink 1");
+            (void) system("pactl suspend-source 1");
             pulseaudio_isSuspended = TRUE;
         }
 
