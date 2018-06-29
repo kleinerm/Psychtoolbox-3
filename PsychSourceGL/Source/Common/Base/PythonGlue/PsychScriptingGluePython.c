@@ -144,7 +144,7 @@ double mxGetNaN(void)
 
 int mxIsLogical(const PyObject* a)
 {
-    return(PyBool_Check(a));
+    return(PyBool_Check(a) || PyArray_ISBOOL((const PyArrayObject*) a));
 }
 
 int mxIsCell(const PyObject* a)
@@ -339,15 +339,12 @@ double* mxGetPr(const PyObject* arrayPtr)
 
 double mxGetScalar(PyObject* arrayPtr)
 {
-    return((double) PyFloat_AsDouble(arrayPtr));
+    return(PyFloat_AsDouble(arrayPtr));
 }
 
 psych_bool* mxGetLogicals(const PyObject* arrayPtr)
 {
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(NULL);
-/* TODO FIXME    return(arrayPtr->d); */
-
-/*    return((psych_bool*) mxGetData(arrayPtr)); */
+    return((psych_bool*) mxGetData(arrayPtr));
 }
 
 ptbSize mxGetNumberOfDimensions(const PyObject* arrayPtr)
@@ -2032,30 +2029,61 @@ psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isReq
  */
 psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRequired, int *numElements, int **array)
 {
-    int         m, n, p, i;
-    double      *doubleMatrix;
-    psych_bool  isThere;
+    int                 m, n, p, i;
+    double              *doubleMatrix;
+    psych_bool          isThere;
+    const PyObject      *ppyPtr;
+    PsychError          matchError;
+    psych_bool          acceptArg;
 
-    isThere = PsychAllocInDoubleMatArg(position, isRequired, &m, &n, &p, &doubleMatrix);
-    if (!isThere)
-        return(FALSE);
+    // Try to get native integer matrix:
+    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_int32, isRequired, 1, -1, 1, -1, 0, -1);
+    matchError = PsychMatchDescriptors();
+    if (matchError == PsychError_invalidArg_type) {
+        // Nope. Try falling back to double matrix and convert to integers:
+        isThere = PsychAllocInDoubleMatArg(position, isRequired, &m, &n, &p, &doubleMatrix);
+        if (!isThere)
+            return(FALSE);
 
-    p = (p == 0) ? 1 : p;
+        p = (p == 0) ? 1 : p;
 
-    if ((psych_uint64) m * (psych_uint64) n * (psych_uint64) p >= INT_MAX) {
-        printf("PTB-ERROR: %i th input argument has more than 2^31 - 1 elements! This is not supported.\n", position);
-        return(FALSE);
+        if ((psych_uint64) m * (psych_uint64) n * (psych_uint64) p >= INT_MAX) {
+            printf("PTB-ERROR: %i th input argument has more than 2^31 - 1 elements! This is not supported.\n", position);
+            return(FALSE);
+        }
+
+        *numElements = m * n * p;
+        *array = (int*) mxMalloc((size_t) * numElements * sizeof(int));
+        for (i = 0; i < *numElements; i++) {
+            if (!PsychIsIntegerInDouble(doubleMatrix + i))
+                PsychErrorExit(PsychError_invalidIntegerArg);
+
+            (*array)[i] = (int) doubleMatrix[i];
+        }
+
+        return(TRUE);
     }
 
-    *numElements = m * n * p;
-    *array = (int*) mxMalloc((size_t) * numElements * sizeof(int));
-    for (i = 0; i < *numElements; i++) {
-        if (!PsychIsIntegerInDouble(doubleMatrix + i))
-            PsychErrorExit(PsychError_invalidIntegerArg);
+    // Maybe got our integer matrix?
+    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
+    if (acceptArg) {
+        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
+        m = (int) mxGetM(ppyPtr);
+        n = (int) mxGetNOnly(ppyPtr);
+        p = (int) mxGetP(ppyPtr);
+        p = (p == 0) ? 1 : p;
 
-        (*array)[i] = (int) doubleMatrix[i];
+        if ((psych_uint64) m * (psych_uint64) n * (psych_uint64) p >= INT_MAX) {
+            printf("PTB-ERROR: %i th input argument has more than 2^31 - 1 elements! This is not supported.\n", position);
+            return(FALSE);
+        }
+
+        *numElements = m * n * p;
+        *array = (int*) mxGetData(ppyPtr);
     }
-    return(TRUE);
+
+    return(acceptArg);
 }
 
 
@@ -2167,7 +2195,7 @@ psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequ
     psych_bool      acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1, 1, 1, 1, 1, 1);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double | PsychArgType_int32 | PsychArgType_uint64, isRequired, 1, 1, 1, 1, 1, 1);
     matchError = PsychMatchDescriptors();
     acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
@@ -2192,22 +2220,20 @@ psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequ
 
 /*
  *    PsychAllocInDoubleArg()
- *      TODO FIXME
  */
 psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequired, double **value)
 {
-    PyObject          *ppyPtr;
-    PsychError        matchError;
-    psych_bool        acceptArg;
+    int             m, n, p;
+    PsychError      matchError;
+    psych_bool      acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1, 1, 1, 1, 1, 1);
     matchError = PsychMatchDescriptors();
     acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
-    if (acceptArg) {
-        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
-        *value = mxGetData(ppyPtr);
-    }
+    if (acceptArg)
+        acceptArg = PsychAllocInDoubleMatArg(position, isRequired, &m, &n, &p, value);
+
     return(acceptArg);
 }
 
@@ -2218,7 +2244,7 @@ psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequire
  *    Reads in a string and sets *str to point to the string.
  *
  *    This function violates the rule for AllocIn fuctions that if the argument is optional and absent we allocate
- *    space.  That turns out to be an unuseful feature anyway, so we should probably get ride of it.
+ *    space. That turns out to be an unuseful feature anyway, so we should probably get ride of it.
  *
  *    The second argument has been modified to passively accept, without error, an argument in the specified position of non-character type.
  *
@@ -2255,7 +2281,7 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
 
 
 /*
- *    Get a psych_bool flag from the specified argument position.  The matlab type can be be psych_bool, uint8, or
+ *    Get a psych_bool flag from the specified argument position. The type can be be psych_bool, uint8, or
  *    char.  If the numerical value is equal to zero or if its empty then the flag is FALSE, otherwise the
  *    flag is TRUE.
  *
@@ -2270,40 +2296,58 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
  *
  *    Note: if we modify PsychGetDoubleArg to accept all types and coerce them, then we could simplify by
  *    calling that instead of doing all of this stuff...
- * TODO FIXME
+ *
  */
 psych_bool PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired, psych_bool **argVal)
+{
+    psych_bool      acceptArg;
+    psych_bool      value;
+
+    acceptArg = PsychCopyInFlagArg(position, isRequired, &value);
+    if (acceptArg) {
+        *argVal = (psych_bool *) mxMalloc(sizeof(psych_bool));
+        **argVal = value;
+    }
+
+    return(acceptArg);
+}
+
+
+/*
+ *    PsychCopyInFlagArg()
+ */
+psych_bool PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, psych_bool *argVal)
 {
     PyObject        *ppyPtr;
     PsychError      matchError;
     psych_bool      acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double|PsychArgType_char|PsychArgType_uint8|PsychArgType_boolean),
-                                   isRequired, 1,1,1,1,kPsychUnusedArrayDimension,kPsychUnusedArrayDimension);
-    matchError=PsychMatchDescriptors();
-    acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double | PsychArgType_int32 | PsychArgType_boolean,
+                                   isRequired, 1, 1, 1, 1, kPsychUnusedArrayDimension, kPsychUnusedArrayDimension);
+    matchError = PsychMatchDescriptors();
+    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
-        //unlike other PsychAllocIn* functions, here we allocate new memory and copy the input to it rather than simply returning a pointer into the received array.
-        //That's because we want the booleans returned to the caller by PsychAllocInFlagArg() to alwyas be 8-bit booleans, yet we accept as flags either 64-bit double, char,
-        //or logical type.  Restricting to logical type would be a nuisance in the MATLAB environment and does not solve the problem because on some platforms MATLAB
-        //uses for logicals 64-bit doubles and on others 8-bit booleans (check your MATLAB mex/mx header files).
-        *argVal = (psych_bool *) mxMalloc(sizeof(psych_bool));
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
-        if (mxIsLogical(ppyPtr)) {
+        if (PyBool_Check(ppyPtr)) {
+            *argVal = (psych_bool) (ppyPtr == Py_True);
+        }
+        else if (PyArray_ISBOOL((const PyArrayObject*) ppyPtr)) {
             if (mxGetLogicals(ppyPtr)[0])
-                **argVal=(psych_bool)1;
+                *argVal = (psych_bool) 1;
             else
-                **argVal=(psych_bool)0;
+                *argVal = (psych_bool) 0;
         } else {
             if (mxGetScalar(ppyPtr))
-                **argVal=(psych_bool)1;
+                *argVal = (psych_bool) 1;
             else
-                **argVal=(psych_bool)0;
+                *argVal = (psych_bool) 0;
         }
     }
-    return(acceptArg);    //the argument was not present (and optional).
+
+    return(acceptArg);
 }
+
 
 /* TODO FIXME */
 psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRequired, int *numElements, psych_bool **argVal)
@@ -2350,39 +2394,6 @@ psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRe
 }
 
 
-/*
- *    PsychCopyInFlagArg()
- */
-psych_bool PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, psych_bool *argVal)
-{
-    PyObject        *ppyPtr;
-    PsychError      matchError;
-    psych_bool      acceptArg;
-
-    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double|PsychArgType_char|PsychArgType_uint8|PsychArgType_boolean),
-                                   isRequired, 1,1,1,1,kPsychUnusedArrayDimension,kPsychUnusedArrayDimension);
-    matchError = PsychMatchDescriptors();
-    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
-    if (acceptArg) {
-        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
-        if (mxIsLogical(ppyPtr)) {
-            if (ppyPtr == Py_True)
-                *argVal = (psych_bool) 1;
-            else
-                *argVal = (psych_bool) 0;
-        } else {
-            if (mxGetScalar(ppyPtr))
-                *argVal = (psych_bool) 1;
-            else
-                *argVal = (psych_bool) 0;
-        }
-    }
-
-    return(acceptArg);
-}
-
-
 psych_bool PsychCopyOutFlagArg(int position, PsychArgRequirementType isRequired, psych_bool argVal)
 {
     return(PsychCopyOutDoubleArg(position, isRequired, (double) argVal));
@@ -2403,7 +2414,7 @@ psych_bool PsychCopyOutFlagArg(int position, PsychArgRequirementType isRequired,
  *
  *    If (*cArray != NULL) we copy m*n*p elements from cArray into the native matrix, otherwise not.
  *    In any case, *cArray will point to the C array of doubles enclosed by the native type in the end.
- * TODO FIXME
+ *
  */
 void PsychAllocateNativeDoubleMat(psych_int64 m, psych_int64 n, psych_int64 p, double **cArray, PsychGenericScriptType **nativeElement)
 {
@@ -2413,7 +2424,7 @@ void PsychAllocateNativeDoubleMat(psych_int64 m, psych_int64 n, psych_int64 p, d
     *nativeElement = mxCreateDoubleMatrix3D(m,n,p);
     cArrayTemp = mxGetData(*nativeElement);
     if (*cArray != NULL) memcpy(cArrayTemp, *cArray, sizeof(double) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
-    *cArray=cArrayTemp;
+    *cArray = cArrayTemp;
 }
 
 
