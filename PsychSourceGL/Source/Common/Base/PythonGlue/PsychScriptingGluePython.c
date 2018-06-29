@@ -164,7 +164,7 @@ int mxIsNumeric(const PyObject* a)
 
 int mxIsChar(const PyObject* a)
 {
-    return(PyString_Check(a)); // || PyArray_ISSTRING(a));
+    return(PyString_Check(a)); // || PyArray_ISSTRING((const PyArrayObject*) a));
 }
 
 int mxIsSingle(const PyObject* a)
@@ -174,7 +174,7 @@ int mxIsSingle(const PyObject* a)
 
 int mxIsDouble(const PyObject* a)
 {
-    return(PyArray_ISFLOAT(a));
+    return(PyArray_ISFLOAT((const PyArrayObject*) a));
     //return(PyFloat_Check(a));
 }
 
@@ -205,21 +205,21 @@ int mxIsInt16(const PyObject* a)
 
 int mxIsInt32(const PyObject* a)
 {
-    return(PyArray_ISINTEGER(a));
+    return(PyArray_ISINTEGER((const PyArrayObject*) a));
     //return(PyLong_Check(a) || PyInt_Check(a));
 }
 
 PyObject* mxCreateNumericArray(int numDims, ptbSize dimArray[], PsychArgFormatType arraytype)
 {
     PyObject* retval;
-    int rows, cols, layers;
-
-    if (numDims > 3)
-        PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxCreateNumericArray: Tried to create matrix with more than 3 dimensions!");
-
-    rows = dimArray[0];
-    cols = (numDims > 1) ? dimArray[1] : 1;
-    layers = (numDims > 2) ? dimArray[2] : 1;
+//     int rows, cols, layers;
+// 
+//     if (numDims > 3)
+//         PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxCreateNumericArray: Tried to create matrix with more than 3 dimensions!");
+// 
+//     rows = dimArray[0];
+//     cols = (numDims > 1) ? dimArray[1] : 1;
+//     layers = (numDims > 2) ? dimArray[2] : 1;
 
     // TODO FIXME stopgap! Allocate our PyObject-Struct:
     retval = (PyObject*) PsychMallocTemp(sizeof(PyObject));
@@ -305,9 +305,9 @@ PyObject* mxCreateNumericArray(int numDims, ptbSize dimArray[], PsychArgFormatTy
 
 PyObject* mxCreateDoubleMatrix(int rows, int cols)
 {
-    int dims[2];
-    dims[0]=rows;
-    dims[1]=cols;
+//     int dims[2];
+//     dims[0]=rows;
+//     dims[1]=cols;
     fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(NULL);
 /* TODO FIXME
     return(mxCreateNumericArray(2, dims, PsychArgType_double));
@@ -329,12 +329,12 @@ PyObject* mxCreateString(const char* instring)
 
 void* mxGetData(const PyObject* arrayPtr)
 {
-    return(PyArray_DATA(arrayPtr));
+    return(PyArray_DATA((PyArrayObject*)  arrayPtr));
 }
 
 double* mxGetPr(const PyObject* arrayPtr)
 {
-    return(PyArray_DATA(arrayPtr));
+    return(PyArray_DATA((PyArrayObject*)  arrayPtr));
 }
 
 double mxGetScalar(PyObject* arrayPtr)
@@ -355,8 +355,8 @@ ptbSize mxGetNumberOfDimensions(const PyObject* arrayPtr)
     if (!PyArray_Check(arrayPtr))
         return(0);
 
-    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_NDIM(arrayPtr));
-    return((ptbSize) PyArray_NDIM(arrayPtr));
+    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_NDIM((const PyArrayObject*)  arrayPtr));
+    return((ptbSize) PyArray_NDIM((const PyArrayObject*) arrayPtr));
 }
 
 ptbSize mxGetM(const PyObject* arrayPtr)
@@ -364,8 +364,8 @@ ptbSize mxGetM(const PyObject* arrayPtr)
     if (mxGetNumberOfDimensions(arrayPtr) < 1)
         return(1);
 
-    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 0));
-    return((ptbSize) PyArray_DIM(arrayPtr, 0));
+    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM((const PyArrayObject*)  arrayPtr, 0));
+    return((ptbSize) PyArray_DIM((const PyArrayObject*)  arrayPtr, 0));
 }
 
 ptbSize mxGetN(const PyObject* arrayPtr)
@@ -373,8 +373,8 @@ ptbSize mxGetN(const PyObject* arrayPtr)
     if (mxGetNumberOfDimensions(arrayPtr) < 2)
         return(1);
 
-    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 1));
-    return((ptbSize) PyArray_DIM(arrayPtr, 1));
+    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM((const PyArrayObject*)  arrayPtr, 1));
+    return((ptbSize) PyArray_DIM((const PyArrayObject*)  arrayPtr, 1));
 }
 
 /*
@@ -401,8 +401,8 @@ static ptbSize mxGetP(const PyObject *arrayPtr)
         return(1);
     }
 
-    //fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 2));
-    return((ptbSize) PyArray_DIM(arrayPtr, 2));
+    //fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM((const PyArrayObject*)  arrayPtr, 2));
+    return((ptbSize) PyArray_DIM((const PyArrayObject*)  arrayPtr, 2));
 }
 
 int mxGetString(PyObject* arrayPtr, char* outstring, int outstringsize)
@@ -410,15 +410,15 @@ int mxGetString(PyObject* arrayPtr, char* outstring, int outstringsize)
     if (!mxIsChar(arrayPtr))
         PsychErrorExitMsg(PsychError_internal, "FATAL Error: Tried to convert a non-string into a string!");
 
-//     if (PyArray_ISSTRING(arrayPtr)) {
+//     if (PyArray_ISSTRING((const PyArrayObject*)  arrayPtr)) {
 //         int rc;
-//         PyObject* myString = PyArray_ToString(arrayPtr, NPY_ANYORDER);
+//         PyObject* myString = PyArray_ToString((const PyArrayObject*)  arrayPtr, NPY_ANYORDER);
 //         rc = (snprintf(outstring, outstringsize, "%s", PyString_AsString(myString)) >= 0) ? 0 : 1;
 //         Py_XDECREF(myString);
 //         return(rc);
 //     }
 //     else
-        return(((snprintf(outstring, outstringsize, "%s", PyString_AsString(arrayPtr))) >= 0) ? 0 : 1);
+    return(((snprintf(outstring, outstringsize, "%s", PyString_AsString(arrayPtr))) >= 0) ? 0 : 1);
 }
 
 void mxDestroyArray(PyObject *arrayPtr)
@@ -441,7 +441,7 @@ void mxDestroyArray(PyObject *arrayPtr)
 
 PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, const char** fieldNames)
 {
-    int i, j;
+    int j;
     PyObject* retval = NULL;
 
     if (numDims != 1)
@@ -1408,7 +1408,7 @@ PsychError PsychSetReceivedArgDescriptor(int argNum, psych_bool allow64BitSizes,
 psych_bool PsychIsDefaultMat(const PyObject *mat)
 {
     return ((mat == Py_None) ||
-            (PyArray_Check(mat) && ((PyArray_SIZE(mat) == 0) || (PyArray_IsZeroDim(mat) && !PyArray_CheckScalar(mat)))));
+            (PyArray_Check(mat) && ((PyArray_SIZE((PyArrayObject*) mat) == 0) || (PyArray_IsZeroDim(mat) && !PyArray_CheckScalar(mat)))));
 }
 
 
@@ -2447,7 +2447,7 @@ psych_bool PsychAllocInCharFromNativeArg(PsychGenericScriptType *nativeCharEleme
 }
 */
 
-/* PsychRuntimeGetPsychtoolboxRoot()
+/* PsychRuntimeGetPsychtoolboxRoot() TODO FIXME
  *
  * Try to retrieve filesystem path to Psychtoolbox root folder (the result from PsychtoolboxRoot() in Matlab/Octave)
  * or users configuration folder (the result from PsychtoolboxConfigDir() in Matlab/Octave) from runtime. The result,
@@ -2462,12 +2462,13 @@ psych_bool PsychAllocInCharFromNativeArg(PsychGenericScriptType *nativeCharEleme
  */
 const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
 {
-    static psych_bool   firstTime = TRUE;
     static char         psychtoolboxRootPath[FILENAME_MAX+1];
     static char         psychtoolboxConfigPath[FILENAME_MAX+1];
+/*
+    static psych_bool   firstTime = TRUE;
     char*               myPathvarChar = NULL;
     PyObject             *plhs[1]; // Capture the runtime result of PsychtoolboxRoot/ConfigDir
-/*
+
     if (firstTime) {
         // Reset firstTime flag:
         firstTime = FALSE;
@@ -2593,6 +2594,7 @@ int PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGe
         return(mexPutVariable(workspace, variable, pcontent));
     #else
         PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimePutVariable() not yet supported for this runtime system!");
+        return(0);
     #endif
 }
 
@@ -2626,6 +2628,7 @@ psych_bool PsychRuntimeGetVariable(const char* workspace, const char* variable, 
         return((*pcontent) ? TRUE : FALSE);
     #else
         PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimeGetVariable() not yet supported for this runtime system!");
+        return(FALSE);
     #endif
 }
 
@@ -2660,6 +2663,7 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
         return((*pcontent) ? TRUE : FALSE);
     #else
         PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimeGetVariablePtr() not yet supported for this runtime system!");
+        return(FALSE);
     #endif
 }
 
@@ -2672,7 +2676,7 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
  */
 int PsychRuntimeEvaluateString(const char* cmdstring)
 {
-        return(PyRun_SimpleString(cmdstring));
+    return(PyRun_SimpleString(cmdstring));
 }
 
 // functions for outputting structs
@@ -2768,7 +2772,6 @@ void PsychSetStructArrayStringElement(const char *fieldName,
                                       PsychGenericScriptType *pStruct)
 {
     int         fieldNumber;
-    size_t      numElements;
     psych_bool  isStruct;
     PyObject    *mxFieldValue;
     char        errmsg[256];
@@ -2798,7 +2801,6 @@ void PsychSetStructArrayDoubleElement(const char *fieldName,
                                       PsychGenericScriptType *pStruct)
 {
     int         fieldNumber;
-    size_t      numElements;
     psych_bool  isStruct;
     PyObject    *mxFieldValue;
     char        errmsg[256];
@@ -2829,7 +2831,6 @@ void PsychSetStructArrayBooleanElement( const char *fieldName,
                                         PsychGenericScriptType *pStruct)
 {
     int         fieldNumber;
-    size_t      numElements;
     psych_bool  isStruct;
     PyObject    *mxFieldValue;
     char        errmsg[256];
@@ -2858,7 +2859,6 @@ void PsychSetStructArrayStructElement(const char *fieldName,
                                       PsychGenericScriptType *pStructOuter)
 {
     int         fieldNumber;
-    size_t      numElements;
     psych_bool  isStruct;
     char        errmsg[256];
 
