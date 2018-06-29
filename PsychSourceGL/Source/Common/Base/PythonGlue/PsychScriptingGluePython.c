@@ -136,14 +136,6 @@ void mxFree(void* p)
     PsychFreeTemp(p);
 }
 
-int mexCallMATLAB(const int nargout, PyObject* argout[],
-                  const int nargin, const PyObject* argin[],
-                  const char* fname)
-{
-    /* TODO FIXME */
-    PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: Internal call to mexCallMATLAB(), which is not yet implemented on GNU/Octave port!");
-}
-
 double mxGetNaN(void)
 {
     /* TODO FIXME Stop-gap? Better solution in Python? */
@@ -1569,7 +1561,7 @@ psych_bool PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequire
         mxpp = PsychGetOutArgPyPtr(position);
         *mxpp = PyFloat_FromDouble(value);
         // *mxpp = mxCreateDoubleMatrix(1, 1);
-        // mxGetPr(*mxpp)[0] = value;
+        // mxGetData(*mxpp)[0] = value;
     }
     return(putOut);
 }
@@ -1589,7 +1581,7 @@ psych_bool PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequir
         printf("I: mxpp %p\n", mxpp);
         *mxpp = mxCreateDoubleMatrix3D(1,1,0);
         printf("II: mxpp %p\n", *mxpp);
-        *value = mxGetPr(*mxpp);
+        *value = mxGetData(*mxpp);
         printf("III: value %p\n", *value);
     } else {
         mxpp = PsychGetOutArgPyPtr(position);
@@ -1622,7 +1614,7 @@ psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isReq
     if (putOut) {
         mxpp = PsychGetOutArgPyPtr(position);
         *mxpp = mxCreateDoubleMatrix3D(m,n,p);
-        *array = mxGetPr(*mxpp);
+        *array = mxGetData(*mxpp);
     }else
         *array= (double *) mxMalloc(sizeof(double) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
     return(putOut);
@@ -1818,7 +1810,7 @@ psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequ
     if (putOut) {
         mxpp = PsychGetOutArgPyPtr(position);
         *mxpp = mxCreateDoubleMatrix3D(m,n,p);
-        toArray = mxGetPr(*mxpp);
+        toArray = mxGetData(*mxpp);
         //copy the input array to the output array now
         memcpy(toArray, fromArray, sizeof(double) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
     }
@@ -1928,7 +1920,7 @@ psych_bool PsychAllocInDoubleMatArg64(int position, PsychArgRequirementType isRe
         *m = (psych_int64) mxGetM(ppyPtr);
         *n = (psych_int64) mxGetNOnly(ppyPtr);
         *p = (psych_int64) mxGetP(ppyPtr);
-        *array = mxGetPr(ppyPtr);
+        *array = mxGetData(ppyPtr);
     }
     return(acceptArg);
 }
@@ -2214,7 +2206,7 @@ psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequire
     acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
-        *value = mxGetPr(ppyPtr);
+        *value = mxGetData(ppyPtr);
     }
     return(acceptArg);
 }
@@ -2322,15 +2314,10 @@ psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRe
     int            i;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    // MK: Disabled. Doesn't work without conversion of mxGetData into many subcases...
-    // PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double | PsychArgType_char | PsychArgType_uint8 | PsychArgType_boolean),
-    //               isRequired, 1, kPsychUnboundedArraySize, 1, kPsychUnboundedArraySize, kPsychUnusedArrayDimension, kPsychUnusedArrayDimension);
-
-    // Ok. Let's see if anybody ever complains about this...
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double | PsychArgType_boolean),
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType) (PsychArgType_double | PsychArgType_boolean),
                                    isRequired, 1, kPsychUnboundedArraySize, 1, kPsychUnboundedArraySize, kPsychUnusedArrayDimension, kPsychUnusedArrayDimension);
-    matchError=PsychMatchDescriptors();
-    acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+    matchError = PsychMatchDescriptors();
+    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         if ((psych_uint64) mxGetM(ppyPtr) * (psych_uint64) mxGetN(ppyPtr) >= INT_MAX) {
@@ -2341,22 +2328,21 @@ psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRe
 
         *numElements = (int) (mxGetM(ppyPtr) * mxGetN(ppyPtr));
 
-        //unlike other PsychAllocIn* functions, here we allocate new memory and copy the input to it rather than simply returning a pointer into the received array.
-        //That's because we want the booleans returned to the caller by PsychAllocInFlagArgVector() to alwyas be 8-bit booleans, yet we accept as flags either 64-bit double, char,
-        //or logical type.  Restricting to logical type would be a nuisance in the MATLAB environment and does not solve the problem because on some platforms MATLAB
-        //uses for logicals 64-bit doubles and on others 8-bit booleans (check your MATLAB mex/mx header files).
-        *argVal = (psych_bool *)mxMalloc(sizeof(psych_bool) * ((size_t) *numElements));
-        for (i=0; i< *numElements;i++) {
+        // Unlike other PsychAllocIn* functions, here we allocate new memory and copy the input to it rather than simply returning a pointer into the received array.
+        // That's because we want the booleans returned to the caller by PsychAllocInFlagArgVector() to alwyas be psych_bool's, yet we accept as flags either 64-bit
+        // doubles or native logical/boolean type.
+        *argVal = (psych_bool*) mxMalloc(sizeof(psych_bool) * ((size_t) *numElements));
+        for (i = 0; i < *numElements; i++) {
             if (mxIsLogical(ppyPtr)) {
                 if (mxGetLogicals(ppyPtr)[i])
-                    (*argVal)[i]=(psych_bool)1;
+                    (*argVal)[i] = (psych_bool) 1;
                 else
-                    (*argVal)[i]=(psych_bool)0;
+                    (*argVal)[i] = (psych_bool) 0;
             } else {
-                if (mxGetPr(ppyPtr)[i])
-                    (*argVal)[i]=(psych_bool)1;
+                if (((double*) mxGetData(ppyPtr))[i])
+                    (*argVal)[i] = (psych_bool) 1;
                 else
-                    (*argVal)[i]=(psych_bool)0;
+                    (*argVal)[i] = (psych_bool) 0;
             }
         }
     }
@@ -2425,7 +2411,7 @@ void PsychAllocateNativeDoubleMat(psych_int64 m, psych_int64 n, psych_int64 p, d
 
     PsychCheckSizeLimits(m, n, p);
     *nativeElement = mxCreateDoubleMatrix3D(m,n,p);
-    cArrayTemp = mxGetPr(*nativeElement);
+    cArrayTemp = mxGetData(*nativeElement);
     if (*cArray != NULL) memcpy(cArrayTemp, *cArray, sizeof(double) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
     *cArray=cArrayTemp;
 }
