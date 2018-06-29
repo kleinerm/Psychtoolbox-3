@@ -337,19 +337,17 @@ PyObject* mxCreateString(const char* instring)
 
 void* mxGetData(const PyObject* arrayPtr)
 {
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(NULL);
-/* TODO FIXME    return(arrayPtr->d); */
+    return(PyArray_DATA(arrayPtr));
+}
+
+double* mxGetPr(const PyObject* arrayPtr)
+{
+    return(PyArray_DATA(arrayPtr));
 }
 
 double mxGetScalar(PyObject* arrayPtr)
 {
     return((double) PyFloat_AsDouble(arrayPtr));
-}
-
-double* mxGetPr(const PyObject* arrayPtr)
-{
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__); return(NULL);
-/* TODO FIXME    return(arrayPtr->d); */
 }
 
 psych_bool* mxGetLogicals(const PyObject* arrayPtr)
@@ -365,7 +363,7 @@ ptbSize mxGetNumberOfDimensions(const PyObject* arrayPtr)
     if (!PyArray_Check(arrayPtr))
         return(0);
 
-    fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_NDIM(arrayPtr));
+    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_NDIM(arrayPtr));
     return((ptbSize) PyArray_NDIM(arrayPtr));
 }
 
@@ -374,7 +372,7 @@ ptbSize mxGetM(const PyObject* arrayPtr)
     if (mxGetNumberOfDimensions(arrayPtr) < 1)
         return(1);
 
-    fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 0));
+    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 0));
     return((ptbSize) PyArray_DIM(arrayPtr, 0));
 }
 
@@ -383,21 +381,36 @@ ptbSize mxGetN(const PyObject* arrayPtr)
     if (mxGetNumberOfDimensions(arrayPtr) < 2)
         return(1);
 
-    fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 1));
+    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 1));
     return((ptbSize) PyArray_DIM(arrayPtr, 1));
 }
 
-ptbSize* mxGetDimensions(const PyObject* arrayPtr)
-{
-    ptbSize* dims = (ptbSize*) PsychMallocTemp(3 * sizeof(ptbSize));
-    dims[0]=dims[1]=dims[2]=1;
 /*
-    dims[0] = vdim(0);
-    dims[1] = vdim(1);
-    if (GETOCTPTR(arrayPtr)->ndims()>2) dims[2] = vdim(2); else dims[2]=1;
-*/
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
-    return(dims);
+ *    Get the 2nd array dimension.
+ *
+ *    The Mex API's mxGetN is sometimes undersirable because it returns the product of all dimensions above 1.  Our mxGetNOnly only returns N, for when you need that.
+ *
+ *    The abstracted Psychtoolbox API supports matrices with up to 3 dimensions.
+ */
+static ptbSize mxGetNOnly(const PyObject *arrayPtr)
+{
+    return(mxGetN(arrayPtr));
+}
+
+/*
+ *    Get the third array dimension which we call "P".  mxGetP should act just like mxGetM and mxGetN.
+ *
+ *    The abstracted Psychtoolbox API supports matrices with up to 3 dimensions.
+ */
+static ptbSize mxGetP(const PyObject *arrayPtr)
+{
+    if (mxGetNumberOfDimensions(arrayPtr) < 3) {
+        //printf("P %i\n", 1);
+        return(1);
+    }
+
+    //fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 2));
+    return((ptbSize) PyArray_DIM(arrayPtr, 2));
 }
 
 int mxGetString(PyObject* arrayPtr, char* outstring, int outstringsize)
@@ -1184,36 +1197,6 @@ void PsychCheckSizeLimits(psych_int64 m, psych_int64 n, psych_int64 p)
 
 
 /*
- *    Get the third array dimension which we call "P".  mxGetP should act just like mxGetM and mxGetN.
- *
- *    The abstracted Psychtoolbox API supports matrices with up to 3 dimensions.
- */
-static ptbSize mxGetP(const PyObject *arrayPtr)
-{
-    if (mxGetNumberOfDimensions(arrayPtr) < 3) {
-        printf("P %i\n", 1);
-        return(1);
-    }
-
-    fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM(arrayPtr, 2));
-    return((ptbSize) PyArray_DIM(arrayPtr, 2));
-}
-
-
-/*
- *    Get the 2nd array dimension.
- *
- *    The Mex API's mxGetN is sometimes undersirable because it returns the product of all dimensions above 1.  Our mxGetNOnly only returns N, for when you need that.
- *
- *    The abstracted Psychtoolbox API supports matrices with up to 3 dimensions.
- */
-static ptbSize mxGetNOnly(const PyObject *arrayPtr)
-{
-    return(mxGetN(arrayPtr));
-}
-
-
-/*
  *    mxCreateDoubleMatrix3D()
  *
  *    Create a 2D or 3D matrix of doubles.
@@ -1918,45 +1901,34 @@ psych_bool PsychCopyOutCharArg(int position, PsychArgRequirementType isRequired,
  *    2)input argument present:             set *array to the input matrix, *m, *n, and *p to its dimensions, return TRUE.
  *
  */
-// TO DO: Needs to be updated for kPsychArgAnything
 psych_bool PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, double **array)
 {
-    const PyObject   *ppyPtr;
-    PsychError      matchError;
-    psych_bool      acceptArg;
-
-    PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1, -1, 1, -1, 0, -1);
-    matchError=PsychMatchDescriptors();
-    acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
-    if (acceptArg) {
-        ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
-        *m = (int) mxGetM(ppyPtr);
-        *n = (int) mxGetNOnly(ppyPtr);
-        *p = (int) mxGetP(ppyPtr);
-        *array=mxGetPr(ppyPtr);
-    }
-    return(acceptArg);
+    psych_int64 mb, nb, pb;
+    psych_bool rc = PsychAllocInDoubleMatArg64(position, isRequired, &mb, &nb, &pb, array);
+    *m = (int) mb;
+    *n = (int) nb;
+    *p = (int) pb;
+    return(rc);
 }
 
 
 /* Alloc-in double matrix, but allow for 64-bit dimension specs. */
 psych_bool PsychAllocInDoubleMatArg64(int position, PsychArgRequirementType isRequired, psych_int64 *m, psych_int64 *n, psych_int64 *p, double **array)
 {
-    const PyObject     *ppyPtr;
+    const PyObject    *ppyPtr;
     PsychError        matchError;
     psych_bool        acceptArg;
 
     PsychSetReceivedArgDescriptor(position, TRUE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,-1,1,-1,0,-1);
-    matchError=PsychMatchDescriptors();
-    acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1, -1, 1, -1, 0, -1);
+    matchError = PsychMatchDescriptors();
+    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         *m = (psych_int64) mxGetM(ppyPtr);
         *n = (psych_int64) mxGetNOnly(ppyPtr);
         *p = (psych_int64) mxGetP(ppyPtr);
-        *array=mxGetPr(ppyPtr);
+        *array = mxGetPr(ppyPtr);
     }
     return(acceptArg);
 }
@@ -2002,7 +1974,7 @@ psych_bool PsychAllocInFloatMatArg(int position, PsychArgRequirementType isRequi
  */
 psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isRequired, psych_int64 *m, psych_int64 *n, psych_int64 *p, float **array)
 {
-    const PyObject   *ppyPtr;
+    const PyObject  *ppyPtr;
     PsychError      matchError;
     psych_bool      acceptArg;
     double*         arrayD;
@@ -2010,8 +1982,8 @@ psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isReq
     psych_int64     i;
 
     PsychSetReceivedArgDescriptor(position, TRUE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_single, isRequired, 1,-1,1,-1,0,-1);
-    matchError=PsychMatchDescriptors();
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_single, isRequired, 1, -1, 1, -1, 0, -1);
+    matchError = PsychMatchDescriptors();
 
     // Argument provided, but not of required float type?
     if (matchError == PsychError_invalidArg_type) {
@@ -2021,9 +1993,9 @@ psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isReq
         // OpenGL-ES rendering code, but should accept double input from usercode
         // so usercode doesn not need to be specifically ported for OpenGL-ES platforms.
         // Performance may suffer somwehat though...
-        PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,-1,1,-1,0,-1);
-        matchError=PsychMatchDescriptors();
-        acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+        PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1, -1, 1, -1, 0, -1);
+        matchError = PsychMatchDescriptors();
+        acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
         if (acceptArg) {
             ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
             *m = (psych_int64) mxGetM(ppyPtr);
@@ -2046,7 +2018,7 @@ psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isReq
     }
 
     // Regular path: Matching float (aka single()) matrix/vector provided:
-    acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         *m = (psych_int64) mxGetM(ppyPtr);
@@ -2072,10 +2044,11 @@ psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRe
     double      *doubleMatrix;
     psych_bool  isThere;
 
-    isThere=PsychAllocInDoubleMatArg(position, isRequired, &m, &n, &p, &doubleMatrix);
+    isThere = PsychAllocInDoubleMatArg(position, isRequired, &m, &n, &p, &doubleMatrix);
     if (!isThere)
         return(FALSE);
-    p= (p==0) ? 1 : p;
+
+    p = (p == 0) ? 1 : p;
 
     if ((psych_uint64) m * (psych_uint64) n * (psych_uint64) p >= INT_MAX) {
         printf("PTB-ERROR: %i th input argument has more than 2^31 - 1 elements! This is not supported.\n", position);
@@ -2083,10 +2056,11 @@ psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRe
     }
 
     *numElements = m * n * p;
-    *array = (int*) mxMalloc((size_t) *numElements * sizeof(int));
-    for (i=0; i < *numElements; i++) {
-        if (!PsychIsIntegerInDouble(doubleMatrix+i))
+    *array = (int*) mxMalloc((size_t) * numElements * sizeof(int));
+    for (i = 0; i < *numElements; i++) {
+        if (!PsychIsIntegerInDouble(doubleMatrix + i))
             PsychErrorExit(PsychError_invalidIntegerArg);
+
         (*array)[i] = (int) doubleMatrix[i];
     }
     return(TRUE);
@@ -2100,20 +2074,20 @@ psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRe
  */
 psych_bool PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, unsigned char **array)
 {
-    const PyObject     *ppyPtr;
+    const PyObject    *ppyPtr;
     PsychError        matchError;
     psych_bool        acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_uint8, isRequired, 1,-1,1,-1,0,-1);
-    matchError=PsychMatchDescriptors();
-    acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_uint8, isRequired, 1, -1, 1, -1, 0, -1);
+    matchError = PsychMatchDescriptors();
+    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         *m = (int) mxGetM(ppyPtr);
         *n = (int) mxGetNOnly(ppyPtr);
         *p = (int) mxGetP(ppyPtr);
-        *array=(unsigned char *)mxGetData(ppyPtr);
+        *array = (unsigned char *) mxGetData(ppyPtr);
     }
     return(acceptArg);
 }
@@ -2162,7 +2136,7 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
  *    We could also accept matlab native integer types by specifying a conjunction of those as the third argument
  *    in the PsychSetSpecifiedArgDescriptor() call, but why bother ?
  */
-psych_bool PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequired, int *value)
+psych_bool PsychCopyInIntegerArg(int position, PsychArgRequirementType isRequired, int *value)
 {
     PyObject        *ppyPtr;
     double          tempDouble;
@@ -2201,7 +2175,7 @@ psych_bool PsychCopyInIntegerArg64(int position,  PsychArgRequirementType isRequ
     psych_bool      acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,1,1,1,1,1);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1, 1, 1, 1, 1, 1);
     matchError = PsychMatchDescriptors();
     acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
@@ -2235,12 +2209,12 @@ psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequire
     psych_bool        acceptArg;
 
     PsychSetReceivedArgDescriptor(position, FALSE, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,1,1,1,1,1);
-    matchError=PsychMatchDescriptors();
-    acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1, 1, 1, 1, 1, 1);
+    matchError = PsychMatchDescriptors();
+    acceptArg = PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
-        *value=mxGetPr(ppyPtr);
+        *value = mxGetPr(ppyPtr);
     }
     return(acceptArg);
 }
@@ -2322,7 +2296,7 @@ psych_bool PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired
         //That's because we want the booleans returned to the caller by PsychAllocInFlagArg() to alwyas be 8-bit booleans, yet we accept as flags either 64-bit double, char,
         //or logical type.  Restricting to logical type would be a nuisance in the MATLAB environment and does not solve the problem because on some platforms MATLAB
         //uses for logicals 64-bit doubles and on others 8-bit booleans (check your MATLAB mex/mx header files).
-        *argVal = (psych_bool *)mxMalloc(sizeof(psych_bool));
+        *argVal = (psych_bool *) mxMalloc(sizeof(psych_bool));
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         if (mxIsLogical(ppyPtr)) {
             if (mxGetLogicals(ppyPtr)[0])
