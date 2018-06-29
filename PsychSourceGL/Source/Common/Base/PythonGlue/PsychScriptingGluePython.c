@@ -57,11 +57,45 @@ typedef enum
 }
 */
 
+////Static functions local to ScriptingGluePython.c.
+// _____________________________________________________________________________________
+
+#define MAX_CMD_NAME_LENGTH 100
+
+//Static variables local to ScriptingGluePython.c.  The convention is to append a abbreviation in all
+//caps of the C file name to the variable name.
+
+// nameFirstGLUE, baseFunctionInvoked, nlhsGLUE, nrhsGLUE, plhsGLUE, prhsGLUE
+// are state which has to be maintained for each invocation of a mex module.
+// If a modules calls itself recursively, this state has to be maintained for
+// each recursive call level. We implement a little homemade stack for those
+// variables. Maximum stack depth and therefore maximum recursion level for
+// reentrant recursive calls is MAX_RECURSIONLEVEL. The variable recLevel
+// keeps track of the current call recursion level and acts as a "stack pointer".
+// It gets incremented by each entry to mexFunction() and decremented by each
+// regular exit from mexFunction(). On error abort or modules reload it needs
+// to get reset to initial -1 state:
+#define MAX_RECURSIONLEVEL 5
+#define MAX_INPUT_ARGS 100
+#define MAX_OUTPUT_ARGS 100
+
+static psych_bool nameFirstGLUE[MAX_RECURSIONLEVEL];
+static psych_bool baseFunctionInvoked[MAX_RECURSIONLEVEL];
+
+static int nlhsGLUE[MAX_RECURSIONLEVEL];  // Number of requested return arguments.
+static int nrhsGLUE[MAX_RECURSIONLEVEL];  // Number of provided call arguments.
+
+static PyObject* plhsGLUE[MAX_RECURSIONLEVEL][MAX_OUTPUT_ARGS];         // An array of pointers to the Python return arguments.
+static PyObject *prhsGLUE[MAX_RECURSIONLEVEL][MAX_INPUT_ARGS];    // An array of pointers to the Python call arguments.
+
+static int recLevel = -1;
+static psych_bool psych_recursion_debug = FALSE;
+
 // This jump-buffer stores CPU- and stackstate at the position
 // where our octFunction() dispatcher actually starts executing
 // the functions or subfunctions code. That is the point where
 // a PsychErrorExit() or PsychErrorExitMsg() will return control...
-jmp_buf jmpbuffer;
+jmp_buf jmpbuffer[MAX_RECURSIONLEVEL];
 
 // Error exit handler: Replacement for Matlabs MEX-handler:
 // Prints the error-string with Octaves error printing facilities,
@@ -74,7 +108,7 @@ void mexErrMsgTxt(const char* s) {
         printf("%s:%s\n", PsychGetModuleName(), PsychGetFunctionName());
 
     // Use the jump-buffer to unwind the stack...
-    longjmp(jmpbuffer, 1);
+    longjmp(jmpbuffer[recLevel], 1);
 }
 
 // Interface to Octave's printf...
@@ -498,41 +532,6 @@ void mxSetLogical(PyObject* dummy)
     return;
 }
 
-
-////Static functions local to ScriptingGluePython.c.
-// _____________________________________________________________________________________
-
-#define MAX_CMD_NAME_LENGTH 100
-
-//Static variables local to ScriptingGluePython.c.  The convention is to append a abbreviation in all
-//caps of the C file name to the variable name.
-
-// nameFirstGLUE, baseFunctionInvoked, nlhsGLUE, nrhsGLUE, plhsGLUE, prhsGLUE
-// are state which has to be maintained for each invocation of a mex module.
-// If a modules calls itself recursively, this state has to be maintained for
-// each recursive call level. We implement a little homemade stack for those
-// variables. Maximum stack depth and therefore maximum recursion level for
-// reentrant recursive calls is MAX_RECURSIONLEVEL. The variable recLevel
-// keeps track of the current call recursion level and acts as a "stack pointer".
-// It gets incremented by each entry to mexFunction() and decremented by each
-// regular exit from mexFunction(). On error abort or modules reload it needs
-// to get reset to initial -1 state:
-#define MAX_RECURSIONLEVEL 5
-#define MAX_INPUT_ARGS 100
-#define MAX_OUTPUT_ARGS 100
-
-static int recLevel = -1;
-static psych_bool psych_recursion_debug = FALSE;
-
-static psych_bool nameFirstGLUE[MAX_RECURSIONLEVEL];
-static psych_bool baseFunctionInvoked[MAX_RECURSIONLEVEL];
-
-static int nlhsGLUE[MAX_RECURSIONLEVEL];  // Number of requested return arguments.
-static int nrhsGLUE[MAX_RECURSIONLEVEL];  // Number of provided call arguments.
-
-static PyObject* plhsGLUE[MAX_RECURSIONLEVEL][MAX_OUTPUT_ARGS];         // An array of pointers to the Python return arguments.
-static PyObject *prhsGLUE[MAX_RECURSIONLEVEL][MAX_INPUT_ARGS];    // An array of pointers to the Python call arguments.
-
 static void PsychExitGlue(void);
 
 //local function declarations
@@ -600,19 +599,21 @@ void PsychExitRecursion(void)
  *
  *        Modules should now register in subfunction mode to support the build-in 'version' command.
  *
- * EXP void mexFunction(int nlhs, PyObject *plhs[], int nrhs, const PyObject *prhs[])
- *
  */
 PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
 {
     psych_bool          isArgThere[2], isArgEmptyMat[2], isArgText[2], isArgFunction[2];
     PsychFunctionPtr    fArg[2], baseFunction;
     char                argString[2][MAX_CMD_NAME_LENGTH];
-    int                 i;
-    psych_bool          errorcondition = FALSE;
-    PyObject*           tmparg = NULL; // PyObject is PyObject under MATLAB but #defined to octave_value on OCTAVE build.
-    int                 nrhs = PyTuple_Size(args);
+    PyObject*           tmparg = NULL;
     PyObject*           plhs = NULL;
+    int                 i;
+    int                 nrhs = PyTuple_Size(args);
+
+    if (!PyTuple_Check(args)) {
+        printf("FAIL FAIL FAIL!\n");
+        return(NULL);
+    }
 
     // Child protection: Is someone trying to call us after we've shut down already?
     if (jettisoned) {
@@ -620,22 +621,6 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         printf("%s: Tried to call the module after it has been jettisoned!!! No op!\n", PsychGetModuleName());
         return (NULL);
     }
-
-    #if 1
-    // Save CPU-state and stack at this position in 'jmpbuffer'. If any further code
-    // calls an error-exit function like PsychErrorExit() or PsychErrorExitMsg() then
-    // the corresponding longjmp() call in our mexErrMsgTxt() implementation (see top of file)
-    // will unwind the stack and restore stack-state and CPU state to the saved values in
-    // jmpbuffer --> We will end up at this setjmp() call again, with a cleaned up stack and
-    // CPU state, but setjmp will return a non-zero error code, signaling the abnormal abortion.
-    if (setjmp(jmpbuffer) != 0) {
-        // PsychErrorExit() or friends called! The CPU and stack are restored to a sane state.
-        // Call our cleanup-routine to release memory that is PsychMallocTemp()'ed and to other
-        // error-handling...
-        errorcondition = TRUE;
-        goto PythonFunctionCleanup;
-    }
-    #endif
 
     // Initialization
     if (firstTime) {
@@ -674,14 +659,22 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         printf("PTB-CRITICAL: Maximum recursion level %i for recursive calls into module '%s' exceeded!\n", recLevel, PsychGetModuleName());
         printf("PTB-CRITICAL: Aborting call sequence. Check code for recursion bugs!\n");
         recLevel--;
-        PsychErrorExitMsg(PsychError_internal, "Module call recursion limit exceeded");
+        return(NULL);
     }
 
     if (psych_recursion_debug) printf("PTB-DEBUG: Module %s entering recursive call level %i.\n", PsychGetModuleName(), recLevel);
 
-    if (!PyTuple_Check(args)) {
-        printf("FAIL FAIL FAIL!\n");
-        return(NULL);
+    // Save CPU-state and stack at this position in 'jmpbuffer'. If any further code
+    // calls an error-exit function like PsychErrorExit() or PsychErrorExitMsg() then
+    // the corresponding longjmp() call in our mexErrMsgTxt() implementation (see top of file)
+    // will unwind the stack and restore stack-state and CPU state to the saved values in
+    // jmpbuffer --> We will end up at this setjmp() call again, with a cleaned up stack and
+    // CPU state, but setjmp will return a non-zero error code, signaling the abnormal abortion.
+    if (setjmp(jmpbuffer[recLevel]) != 0) {
+        // PsychErrorExit() or friends called! The CPU and stack are restored to a sane state.
+        // Call our cleanup-routine to release memory that is PsychMallocTemp()'ed and to other
+        // error-handling...
+        goto PythonFunctionCleanup;
     }
 
     nrhsGLUE[recLevel] = nrhs;
@@ -1082,21 +1075,23 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         plhs = Py_None;
     }
 
-    PsychExitRecursion();
-
 PythonFunctionCleanup:
+    // The following code is executed both at end of normal execution, and also
+    // during an error return. It has to do the common cleanup work:
 
     // Release references to NumPy PyArrays:
     for (i = 0; i < nrhs; i++) {
-        if (PyArray_Check(prhsGLUE[recLevel+1][i]))
-            Py_XDECREF(prhsGLUE[recLevel+1][i]);
+        if (PyArray_Check(prhsGLUE[recLevel][i]))
+            Py_XDECREF(prhsGLUE[recLevel][i]);
 
-        prhsGLUE[recLevel+1][i] = NULL;
+        prhsGLUE[recLevel][i] = NULL;
     }
 
     // Release all memory allocated via PsychMallocTemp():
     PsychFreeAllTempMemory();
 
+    // Done with this call recursion level:
+    PsychExitRecursion();
 #endif
 
     // Return PyObject tuple with all return arguments:
@@ -1406,8 +1401,6 @@ void PsychErrMsgTxt(char *s)
         // from Matlab:
         PsychRuntimeEvaluateString("Screen('CloseAll');");
     }
-
-    PsychExitRecursion();
 
     // Call the Matlab- or Octave error printing and error handling facilities:
     mexErrMsgTxt((s && (strlen(s) > 0)) ? s : "See error message printed above.");
