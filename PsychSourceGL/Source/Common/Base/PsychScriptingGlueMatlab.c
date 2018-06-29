@@ -1745,30 +1745,6 @@ double PsychGetNanValue(void)
     return(mxGetNaN());
 }
 
-/* UNUSED: PsychAllocInCharFromNativeArg()
- *
- * Given a pointer to a native PsychGenericScriptType datatype which represents character
- * strings in the runtime's native encoding, try to extract a standard char-string of it and
- * return it in the referenced char *str. Return TRUE on success, FALSE on failure, e.g., because
- * the nativeCharElement didn't contain a parseable string.
- *
-psych_bool PsychAllocInCharFromNativeArg(PsychGenericScriptType *nativeCharElement, char **str)
-{
-    mxArray         *mxPtr;
-    int             status;
-    psych_uint64    strLen;
-
-    *str = NULL;
-    mxPtr  = (mxArray*) nativeCharElement;
-    strLen = ((psych_uint64) mxGetM(mxPtr) * (psych_uint64) mxGetNOnly(mxPtr) * (psych_uint64) sizeof(mxChar)) + 1;
-    if (strLen >= INT_MAX) PsychErrorExitMsg(PsychError_user, "Tried to pass in a string with more than 2^31 - 1 characters. Unsupported!");
-
-    *str   = (char *) PsychCallocTemp((size_t) strLen, sizeof(char));
-    status = mxGetString(mxPtr, *str, (mwSize) strLen);
-    if (status!=0) return(FALSE);
-    return(TRUE);
-}
-*/
 
 /* PsychRuntimeGetPsychtoolboxRoot()
  *

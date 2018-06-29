@@ -2422,30 +2422,6 @@ double PsychGetNanValue(void)
     return(mxGetNaN());
 }
 
-/* UNUSED: PsychAllocInCharFromNativeArg()
- *
- * Given a pointer to a native PsychGenericScriptType datatype which represents character
- * strings in the runtime's native encoding, try to extract a standard char-string of it and
- * return it in the referenced char *str. Return TRUE on success, FALSE on failure, e.g., because
- * the nativeCharElement didn't contain a parseable string.
- *
-psych_bool PsychAllocInCharFromNativeArg(PsychGenericScriptType *nativeCharElement, char **str)
-{
-    PyObject         *ppyPtr;
-    int             status;
-    psych_uint64    strLen;
-
-    *str = NULL;
-    ppyPtr  = (PyObject*) nativeCharElement;
-    strLen = ((psych_uint64) mxGetM(ppyPtr) * (psych_uint64) mxGetNOnly(ppyPtr) * (psych_uint64) sizeof(mxChar)) + 1;
-    if (strLen >= INT_MAX) PsychErrorExitMsg(PsychError_user, "Tried to pass in a string with more than 2^31 - 1 characters. Unsupported!");
-
-    *str   = (char *) PsychCallocTemp((size_t) strLen, sizeof(char));
-    status = mxGetString(ppyPtr, *str, (ptbSize) strLen);
-    if (status!=0) return(FALSE);
-    return(TRUE);
-}
-*/
 
 /* PsychRuntimeGetPsychtoolboxRoot() TODO FIXME
  *
@@ -2684,7 +2660,7 @@ int PsychRuntimeEvaluateString(const char* cmdstring)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /*
-    PsychAllocOutStructArray() TODO FIXME
+    PsychAllocOutStructArray()
 
     -If argument is optional we allocate the structure even if the argument is not present.  If this bothers you,
     then check within the subfunction for the presense of a return argument before creating the struct array.  We
@@ -2701,7 +2677,7 @@ psych_bool PsychAllocOutStructArray(int position,
                                     PsychArgRequirementType isRequired, 
                                     int numElements,
                                     int numFields, 
-                                    const char **fieldNames,  
+                                    const char **fieldNames,
                                     PsychGenericScriptType **pStruct)
 {
     PyObject        **mxArrayOut;
@@ -2735,13 +2711,15 @@ psych_bool PsychAllocOutStructArray(int position,
 }
 
 
-/*  FONTS on OSX only.
-    PsychAssignOutStructArray() TODO FIXME
-    Accept a pointer to a struct array and Assign the struct array to be the designated return variable.
-*/
-psych_bool PsychAssignOutStructArray( int position,
-                                      PsychArgRequirementType isRequired,
-                                      PsychGenericScriptType *pStruct)
+/*
+    PsychAssignOutStructArray()
+
+    Accept a pointer to a struct array and assign the struct array to be the
+    designated return variable.
+ */
+psych_bool PsychAssignOutStructArray(int position,
+                                     PsychArgRequirementType isRequired,
+                                     PsychGenericScriptType *pStruct)
 {
     PyObject        **mxArrayOut;
     PsychError      matchError;
@@ -2755,6 +2733,7 @@ psych_bool PsychAssignOutStructArray( int position,
         mxArrayOut = PsychGetOutArgPyPtr(position);
         *mxArrayOut = pStruct;
     }
+
     return(putOut);
 }
 

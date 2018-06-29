@@ -106,7 +106,6 @@ psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType
 //for strings
 psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired, char **str);
 psych_bool PsychCopyOutCharArg(int position, PsychArgRequirementType isRequired, const char *str);
-psych_bool PsychAllocInCharFromNativeArg(PsychGenericScriptType *nativeCharElement, char **str);
 
 //query and govern argumuments.  Use these sparingly, usually you can let the "PsychAlloc*" and "PsychCopy*" functions above will do the work for you.  
 int PsychGetNumInputArgs(void);
