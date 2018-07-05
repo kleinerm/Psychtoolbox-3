@@ -70,6 +70,10 @@ static PyObject *prhsGLUE[MAX_RECURSIONLEVEL][MAX_INPUT_ARGS];    // An array of
 static int recLevel = -1;
 static psych_bool psych_recursion_debug = FALSE;
 
+// Set to TRUE to get Octave/Matlab/Mex style behaviour of array-of-structs,
+// even if that may be less efficient computationally and memory-wise:
+static psych_bool python_structArray_is_structArray = TRUE;
+
 // This jump-buffer stores CPU- and stackstate at the position
 // where our octFunction() dispatcher actually starts executing
 // the functions or subfunctions code. That is the point where
@@ -133,7 +137,10 @@ int mxIsCell(const PyObject* a)
 
 int mxIsStruct(const PyObject* a)
 {
-    return(PyDict_Check(a));
+    if (python_structArray_is_structArray)
+        return(PyList_Check(a) && (PyList_Size((PyObject*) a) > 0) && PyDict_Check(PyList_GetItem((PyObject*) a, 0)));
+    else
+        return(PyDict_Check(a));
 }
 
 int mxIsNumeric(const PyObject* a)
@@ -393,7 +400,7 @@ void mxDestroyArray(PyObject *arrayPtr)
 
 PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, const char** fieldNames)
 {
-    int j;
+    ptbSize n;
     PyObject* retval = NULL;
 
     if (numDims != 1)
@@ -402,22 +409,53 @@ PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, co
     if (numFields < 1)
         PsychErrorExitMsg(PsychError_internal, "Error: mxCreateStructArray: numFields < 1 ?!?");
 
-    /*
-    retval = PyTuple_New((Py_ssize_t) ArrayDims[0]);
+    n = ArrayDims[0];
 
-    // Create one dictionary for each slot in the tuple:
-    for (i = 0; i < ArrayDims[0]; i++) {
-        PyObject* slotdict = PyDict_New();
-        for (j = 0; j < numFields; j++) {
+    if (n < 0)
+        PsychErrorExitMsg(PsychError_internal, "Error: mxCreateStructArray: Negative number of array elements requested?!?");
+
+    // Two implementations, switchable depending on python_structArray_is_structArray true or false.
+    // True == Behave as Matlab/Octave/Mex: Return an array of structs. Elegant/Easy to use for the
+    //         calling Python script, more complex, likely more compute intense and memory consuming
+    //         for us and the runtime as a whole.
+    //
+    // False == Return a struct of arrays: Easy for us, and compute/memory efficient for all, but
+    //          somewhat awkward to use for the Python script.
+    if (python_structArray_is_structArray) {
+        ptbSize i;
+        int j;
+
+        // Create a list of objects - the struct array - with each object being a
+        // dictionary that contains fieldNames as keys, and PyObjects as the actual
+        // values -- iow. a single "array of structs":
+
+        // Create to-be-returned list that makes up the struct array:
+        retval = PyList_New((Py_ssize_t) n);
+
+        // Create one dictionary for each slot:
+        for (i = 0; i < n; i++) {
+            PyObject* slotdict = PyDict_New();
+            PyList_SetItem(retval, i, slotdict);
+
+            // Create all fields for all fieldNames for this slots dictionary:
+            for (j = 0; j < numFields; j++) {
+                // Init value with Py_None:
+                Py_INCREF(Py_None);
+                if (PyDict_SetItemString(slotdict, fieldNames[j], Py_None))
+                    PsychErrorExitMsg(PsychError_internal, "Error: mxCreateStructArray: Failed to init struct-Array slot with item!");
+            }
         }
     }
+    else {
+        // Create and return a dictionary, where the fieldNames are the keys and each
+        // keyed entry is a list of PyObject's. Iow. a single "structure of arrays":
+        int j;
 
-    */
-
-    retval = PyDict_New();
-    for (j = 0; j < numFields; j++) {
-        PyObject* slotArray = PyList_New((Py_ssize_t) ArrayDims[0]);
-        PyDict_SetItemString(retval, fieldNames[j], slotArray);
+        retval = PyDict_New();
+        for (j = 0; j < numFields; j++) {
+            PyObject* slotArray = PyList_New((Py_ssize_t) n);
+            PyDict_SetItemString(retval, fieldNames[j], slotArray);
+        }
     }
 
     return(retval);
@@ -432,8 +470,14 @@ int mxIsField(PyObject* structArray, const char* fieldName)
     // otherwise we return -1, so this function can only check if a fieldName is valid.
     // But then, that's all that this function is used for inside our implementation,
     // so we should be fine:
-    if (NULL != PyDict_GetItemString(structArray, fieldName))
-        return(1);
+    if (python_structArray_is_structArray) {
+        if (NULL != PyDict_GetItemString(PyList_GetItem(structArray, 0), fieldName))
+            return(1);
+    }
+    else {
+        if (NULL != PyDict_GetItemString(structArray, fieldName))
+            return(1);
+    }
 
     // No such key :(
     return(-1);
@@ -441,16 +485,44 @@ int mxIsField(PyObject* structArray, const char* fieldName)
 
 void mxSetField(PyObject* pStructOuter, int index, const char* fieldName, PyObject* pStructInner)
 {
-    PyObject* array;
-
     if (!mxIsStruct(pStructOuter))
         PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Tried to manipulate something other than a struct-Array!");
 
-    array = PyDict_GetItemString(pStructOuter, fieldName);
-    if (index >= PyList_Size(array))
-        PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Index exceeds size of struct-Array!");
+    if (python_structArray_is_structArray) {
+        PyObject *arraySlot;
 
-    PyList_SetItem(array, index, pStructInner);
+        if (index >= PyList_Size(pStructOuter))
+            PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Index exceeds size of struct-Array!");
+
+        // Get dictionary for slot 'index':
+        arraySlot = PyList_GetItem(pStructOuter, index);
+
+        // Assign pStructInner as new value of field fieldName in slot index:
+        // This will drop the refcount of the previous value in that slot+field,
+        // and increase the refcount of pStructInner by one, iow. it doesn't steal
+        // a reference, but get our own one:
+        PyDict_SetItemString(arraySlot, fieldName, pStructInner);
+
+        // Drop the refcount of pStructInner, to counteract PyDict_SetItemString()'s
+        // bump. Effectively this means our mxSetField() function steals the reference
+        // to pStructInner from our caller. In general mxSetField() is only called by
+        // the PsychSetStructArrayXXXXXElement() functions, and these generate a new
+        // reference to whatever they assign, so now the reference in this slot+field is
+        // the only existing one, and pStructInner will get deleted, once pStructOuter
+        // has fulfilled its purpose inside the Python script and goes out of scope/gets
+        // deleted there:
+        Py_XDECREF(pStructInner);
+    }
+    else {
+        PyObject* array;
+
+        array = PyDict_GetItemString(pStructOuter, fieldName);
+
+        if (index >= PyList_Size(array))
+            PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Index exceeds size of struct-Array!");
+
+        PyList_SetItem(array, index, pStructInner);
+    }
 }
 
 /* UNUSED, but here for reference */
