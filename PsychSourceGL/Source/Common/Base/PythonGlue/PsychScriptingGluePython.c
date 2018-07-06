@@ -138,7 +138,8 @@ int mxIsCell(const PyObject* a)
 int mxIsStruct(const PyObject* a)
 {
     if (python_structArray_is_structArray)
-        return(PyList_Check(a) && (PyList_Size((PyObject*) a) > 0) && PyDict_Check(PyList_GetItem((PyObject*) a, 0)));
+        return((PyList_Check(a) && (PyList_Size((PyObject*) a) > 0) && PyDict_Check(PyList_GetItem((PyObject*) a, 0))) ||
+               PyDict_Check(a));
     else
         return(PyDict_Check(a));
 }
@@ -429,13 +430,14 @@ PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, co
         // dictionary that contains fieldNames as keys, and PyObjects as the actual
         // values -- iow. a single "array of structs":
 
-        // Create to-be-returned list that makes up the struct array:
-        retval = PyList_New((Py_ssize_t) n);
+        // Create to-be-returned list that makes up the struct array, except if n == 1,
+        // in which case we don't return a list (~ array), but just the single dict (~ struct):
+        if (n != 1)
+            retval = PyList_New((Py_ssize_t) n);
 
         // Create one dictionary for each slot:
         for (i = 0; i < n; i++) {
             PyObject* slotdict = PyDict_New();
-            PyList_SetItem(retval, i, slotdict);
 
             // Create all fields for all fieldNames for this slots dictionary:
             for (j = 0; j < numFields; j++) {
@@ -444,6 +446,13 @@ PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, co
                 if (PyDict_SetItemString(slotdict, fieldNames[j], Py_None))
                     PsychErrorExitMsg(PsychError_internal, "Error: mxCreateStructArray: Failed to init struct-Array slot with item!");
             }
+
+            // For n > 1, assign to i'th slot of returned list retval.
+            // For n == 1, directly return our one and only slotdict as retval:
+            if (n > 1)
+                PyList_SetItem(retval, i, slotdict);
+            else
+                retval = slotdict;
         }
     }
     else {
@@ -469,8 +478,11 @@ int mxIsField(PyObject* structArray, const char* fieldName)
     // Ok, cheating. If the fieldName exists, we always returns a field number of 1,
     // otherwise we return -1, so this function can only check if a fieldName is valid.
     // But then, that's all that this function is used for inside our implementation,
-    // so we should be fine:
-    if (python_structArray_is_structArray) {
+    // so we should be fine.
+
+    // Different code-path for single element structArray aka a dict, vs. multi-element
+    // structArray aka list of dicts:
+    if (python_structArray_is_structArray && !PyDict_Check(structArray)) {
         if (NULL != PyDict_GetItemString(PyList_GetItem(structArray, 0), fieldName))
             return(1);
     }
@@ -491,11 +503,19 @@ void mxSetField(PyObject* pStructOuter, int index, const char* fieldName, PyObje
     if (python_structArray_is_structArray) {
         PyObject *arraySlot;
 
-        if (index >= PyList_Size(pStructOuter))
-            PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Index exceeds size of struct-Array!");
+        // Different code-path for single element structArray aka a dict, vs. multi-element
+        // structArray aka list of dicts:
+        if (PyList_Check(pStructOuter)) {
+            if (index >= PyList_Size(pStructOuter))
+                PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Index exceeds size of struct-Array!");
 
-        // Get dictionary for slot 'index':
-        arraySlot = PyList_GetItem(pStructOuter, index);
+            // Get dictionary for slot 'index':
+            arraySlot = PyList_GetItem(pStructOuter, index);
+        }
+        else {
+            // Single-slot array: pStructOuter is already the single struct aka dict:
+            arraySlot = pStructOuter;
+        }
 
         // Assign pStructInner as new value of field fieldName in slot index:
         // This will drop the refcount of the previous value in that slot+field,
