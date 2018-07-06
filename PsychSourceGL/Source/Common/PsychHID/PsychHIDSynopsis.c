@@ -18,8 +18,6 @@
 
 #include "PsychHID.h"
 
-void InitializeSynopsis(void); // I added this prototype to make the compiler happy. dgp.
-
 #define MAX_SYNOPSIS_STRINGS 500
 
 // declare variables local to this file.
