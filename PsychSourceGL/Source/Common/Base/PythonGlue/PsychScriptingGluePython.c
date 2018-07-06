@@ -2539,39 +2539,9 @@ int PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGe
         return(0);
     #endif
 }
+    // Get a borrowed reference to the dicts with global and local variables for the calling frame:
 
-
-/* PsychRuntimeGetVariable() TODO FIXME
- *
- * Copy a given native variable of type PsychGenericScriptType, as a new variable from a specified workspace.
- *
- * 'workspace'    Namestring of workspace: "base" copy from base workspace. "caller" copy from calling functions workspace,
- *                'global' get global variable with given name.
- *
- *                CAUTION:    Matlab and Octave show different behaviour when using the "caller" workspace! It is strongly
- *                            recommended to avoid the "caller" workspace to avoid ugly compatibility bugs!!
- *
- * 'variable'    Name of the variable to get a copy of.
- *
- * 'pcontent'    Pointer to a PsychGenericScriptType* where the location of the new variables content should be stored.
- *                The pointed to pointer will be set to NULL on failure.
- *
- * Returns TRUE on success, FALSE on failure.
- */
-psych_bool PsychRuntimeGetVariable(const char* workspace, const char* variable, PsychGenericScriptType** pcontent)
-{
-    // Init to empty default:
-    *pcontent = NULL;
-
-    #if PSYCH_LANGUAGE == PSYCH_MATLAB
-        *pcontent = mexGetVariable(workspace, variable);
-
-        // Return true on success, false on failure:
-        return((*pcontent) ? TRUE : FALSE);
-    #else
-        PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimeGetVariable() not yet supported for this runtime system!");
-        return(FALSE);
-    #endif
+    return(1);
 }
 
 

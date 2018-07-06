@@ -47,9 +47,6 @@ int PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGe
 // Get read-only variable in native PsychGenericScriptType from workspace of runtime:
 psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variable, PsychGenericScriptType** pcontent);
 
-// Get copy of variable in native PsychGenericScriptType from workspace of runtime:
-psych_bool PsychRuntimeGetVariable(const char* workspace, const char* variable, PsychGenericScriptType** pcontent);
-
 // Try to retrieve filesystem path to Psychtoolbox root or per user configfolder (the result from PsychtoolboxRoot() in Matlab/Octave) from runtime:
 const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir);
 

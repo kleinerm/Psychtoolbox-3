@@ -1866,33 +1866,34 @@ psych_bool PsychCopyOutPointerArg(int position, PsychArgRequirementType isRequir
  * Copy a given native variable of type PsychGenericScriptType, e.g., as created by PsychAllocateNativeDoubleMat()
  * in case of a double matrix, as a new variable into a specified workspace.
  *
- * 'workspace'    Namestring of workspace: "base" copy to base workspace. "caller" copy into calling functions workspace,
- *                'global' create new global variable with given name.
+ * 'workspace'  Namestring of workspace: "base" copy to base workspace. "caller" copy into calling functions workspace,
+ *              "global" create new global variable with given name.
  *
- *                CAUTION:    Matlab and Octave show different behaviour when using the "caller" workspace! It is strongly
- *                            recommended to avoid the "caller" workspace to avoid ugly compatibility bugs!!
+ *              CAUTION: Some non-Octave/Matlab scripting environments may only handle "global" and "caller" atm.,
+ *                       "base" is treated like "caller", so better avoid "base" for maximum portability.
+ *                       In fact, the safest choice may be to use "caller".
  *
- * 'variable'    Name of the new variable.
+ * 'variable'   Name of the new variable.
  *
- * 'pcontent'    The actual content that should be copied into the variable.
+ * 'pcontent'   The actual content that should be copied into the variable.
  *
  *
  * Example: You want to create a double matrix with (m,n,p) rows/cols/layers as a variable 'myvar' in the base
  *          workspace and initialize it with content from the double array mycontent:
  *
  *          PsychGenericScriptType* newvar = NULL;
- *            double* newvarcontent = mycontent; // mycontent is double* onto existing data.
+ *          double* newvarcontent = mycontent; // mycontent is double* onto existing data.
  *          PsychAllocateNativeDoubleMat(m, n, p, &newvarcontent, &newvar);
- *            At this point, newvar contains the content of 'mycontent' and 'newvarcontent' points to
- *            the copy. You could alter mycontent now without affecting the content of newvarcontent or newvar.
+ *          At this point, newvar contains the content of 'mycontent' and 'newvarcontent' points to
+ *          the copy. You could alter mycontent now without affecting the content of newvarcontent or newvar.
  *
- *            Create the corresponding variable in the base workspace:
- *            PsychRuntimePutVariable("base", "myvar", newvar);
+ *          Create the corresponding variable in the base workspace:
+ *          PsychRuntimePutVariable("base", "myvar", newvar);
  *
  *          The calling M-File etc. can access the content newvarcontent under the variable name 'myvar'.
  *
- *            As usual, the double matrix newvarcontent will be auto-destroyed when returning to the runtime,
- *            but the variable 'myvar' will remain valid until it goes out of scope.
+ *          As usual, the double matrix newvarcontent will be auto-destroyed when returning to the runtime,
+ *          but the variable 'myvar' will remain valid until it goes out of scope.
  *
  * Returns zero on success, non-zero on failure.
  */
@@ -1902,47 +1903,22 @@ int PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGe
 }
 
 
-/* PsychRuntimeGetVariable()
- *
- * Copy a given native variable of type PsychGenericScriptType, as a new variable from a specified workspace.
- *
- * 'workspace'    Namestring of workspace: "base" copy from base workspace. "caller" copy from calling functions workspace,
- *                'global' get global variable with given name.
- *
- *                CAUTION:    Matlab and Octave show different behaviour when using the "caller" workspace! It is strongly
- *                            recommended to avoid the "caller" workspace to avoid ugly compatibility bugs!!
- *
- * 'variable'    Name of the variable to get a copy of.
- *
- * 'pcontent'    Pointer to a PsychGenericScriptType* where the location of the new variables content should be stored.
- *                The pointed to pointer will be set to NULL on failure.
- *
- * Returns TRUE on success, FALSE on failure.
- */
-psych_bool PsychRuntimeGetVariable(const char* workspace, const char* variable, PsychGenericScriptType** pcontent)
-{
-    *pcontent = mexGetVariable(workspace, variable);
-
-    // Return true on success, false on failure:
-    return((*pcontent) ? TRUE : FALSE);
-}
-
-
 /* PsychRuntimeGetVariablePtr()
  *
  * Retrieve a *read-only* pointer to a given native variable of type PsychGenericScriptType in the specified workspace.
  * The variable is not copied, just referenced, so you *must not modify/write to the location* only perform read access!
  *
- * 'workspace'    Namestring of workspace: "base" get from base workspace. "caller" get from calling functions workspace,
- *                'global' get global variable with given name.
+ * 'workspace'  Namestring of workspace: "base" get from base workspace. "caller" get from calling functions workspace,
+ *              "global" get global variable with given name.
  *
- *                CAUTION:    Matlab and Octave show different behaviour when using the "caller" workspace! It is strongly
- *                            recommended to avoid the "caller" workspace to avoid ugly compatibility bugs!!
+ *              CAUTION: Some non-Octave/Matlab scripting environments may only handle "global" and "caller" atm.,
+ *                       "base" is treated like "caller", so better avoid "base" for maximum portability.
+ *                       In fact, the safest choice may be to use "caller".
  *
- * 'variable'    Name of the variable to get a reference.
+ * 'variable'   Name of the variable to get a reference.
  *
- * 'pcontent'    Pointer to a PsychGenericScriptType* where the location of the variables content should be stored.
- *                The pointed to pointer will be set to NULL on failure.
+ * 'pcontent'   Pointer to a PsychGenericScriptType* where the location of the variables content should be stored.
+ *              The pointed to pointer will be set to NULL on failure.
  *
  * Returns TRUE on success, FALSE on failure.
  */
