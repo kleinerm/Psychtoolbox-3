@@ -2495,71 +2495,85 @@ psych_bool PsychCopyOutPointerArg(int position, PsychArgRequirementType isRequir
 }
 
 
-/* PsychRuntimePutVariable() TODO FIXME
+/* PsychRuntimePutVariable()
  *
  * Copy a given native variable of type PsychGenericScriptType, e.g., as created by PsychAllocateNativeDoubleMat()
  * in case of a double matrix, as a new variable into a specified workspace.
  *
- * 'workspace'    Namestring of workspace: "base" copy to base workspace. "caller" copy into calling functions workspace,
- *                'global' create new global variable with given name.
+ * 'workspace'   Namestring of workspace: "base" assign to base workspace. "caller" assign to calling functions workspace,
+ *               "global" assign to global variable with given name.
  *
- *                CAUTION:    Matlab and Octave show different behaviour when using the "caller" workspace! It is strongly
- *                            recommended to avoid the "caller" workspace to avoid ugly compatibility bugs!!
+ *               CAUTION: * Python only handles "global" and "caller" atm., "base" is treated like "caller".
+ *
+ *                        * The calling Python *code* can only directly access "global" variables created via PsychRuntimePutVariable().
+ *                          It can access "caller" local variables only via the dict accessor locals()['variable'], and the locals() may
+ *                          be behaviour not to be relied on, according to some docs, as it is an implementation detail subject to change.
+ *
+ *                          The reason for this weirdness is that Python code is compiled into bytecode at function load time, and the
+ *                          set of available local variable names is fixed at compile time, so dynamically injected "caller" variables from
+ *                          us would be invisible to the compiled bytecode.
+ *
+ *                        * Python code executed from *within* our module via PsychRuntimeEvaluateString() can access both
+ *                          "caller" local, and "global" global variables though, due to the way we implement PsychRuntimeEvaluateString().
+ *
+ *                        * In fact, the safest choice may be to use "caller" for calling Python code from *within* our module.
  *
  * 'variable'    Name of the new variable.
  *
  * 'pcontent'    The actual content that should be copied into the variable.
  *
  *
- * Example: You want to create a double matrix with (m,n,p) rows/cols/layers as a variable 'myvar' in the base
+ * Example: You want to create a double matrix with (m,n,p) rows/cols/layers as a variable 'myvar' in the global
  *          workspace and initialize it with content from the double array mycontent:
  *
  *          PsychGenericScriptType* newvar = NULL;
- *            double* newvarcontent = mycontent; // mycontent is double* onto existing data.
+ *          double* newvarcontent = mycontent; // mycontent is double* onto existing data.
  *          PsychAllocateNativeDoubleMat(m, n, p, &newvarcontent, &newvar);
- *            At this point, newvar contains the content of 'mycontent' and 'newvarcontent' points to
- *            the copy. You could alter mycontent now without affecting the content of newvarcontent or newvar.
+ *          At this point, newvar contains the content of 'mycontent' and 'newvarcontent' points to
+ *          the copy. You could alter mycontent now without affecting the content of newvarcontent or newvar.
  *
- *            Create the corresponding variable in the base workspace:
- *            PsychRuntimePutVariable("base", "myvar", newvar);
+ *          Create the corresponding variable 'myvar' in the global workspace:
+ *          PsychRuntimePutVariable("global", "myvar", newvar);
  *
  *          The calling M-File etc. can access the content newvarcontent under the variable name 'myvar'.
  *
- *            As usual, the double matrix newvarcontent will be auto-destroyed when returning to the runtime,
- *            but the variable 'myvar' will remain valid until it goes out of scope.
+ *          As usual, the double matrix newvarcontent will be auto-destroyed when returning to the runtime,
+ *          but the variable 'myvar' will remain valid until it goes out of scope.
  *
  * Returns zero on success, non-zero on failure.
  */
 int PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGenericScriptType* pcontent)
 {
-    #if PSYCH_LANGUAGE == PSYCH_MATLAB
-        return(mexPutVariable(workspace, variable, pcontent));
-    #else
-        PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimePutVariable() not yet supported for this runtime system!");
-        return(0);
-    #endif
-}
     // Get a borrowed reference to the dicts with global and local variables for the calling frame:
+    PyObject *dict = strcmp(workspace, "global") ? PyEval_GetLocals() : PyEval_GetGlobals();
+    if (dict && PyDict_Check(dict)) {
+        // Try to add our new or updated variable, which will increment its refcount:
+        if (0 == PyDict_SetItemString(dict, variable, pcontent)) {
+            // Drop the reference, so the function behaves like stealing a reference:
+            Py_XDECREF(pcontent);
+            return(0);
+        }
+    }
 
     return(1);
 }
 
 
-/* PsychRuntimeGetVariablePtr() TODO FIXME
+/* PsychRuntimeGetVariablePtr()
  *
  * Retrieve a *read-only* pointer to a given native variable of type PsychGenericScriptType in the specified workspace.
  * The variable is not copied, just referenced, so you *must not modify/write to the location* only perform read access!
  *
- * 'workspace'    Namestring of workspace: "base" get from base workspace. "caller" get from calling functions workspace,
- *                'global' get global variable with given name.
+ * 'workspace'   Namestring of workspace: "base" get from base workspace. "caller" get from calling functions workspace,
+ *               "global" get global variable with given name.
  *
- *                CAUTION:    Matlab and Octave show different behaviour when using the "caller" workspace! It is strongly
- *                            recommended to avoid the "caller" workspace to avoid ugly compatibility bugs!!
+ *               CAUTION: Python only handles "global" and "caller" atm., "base" is treated like "caller".
+ *                        In fact, the safest choice may be to use "caller".
  *
  * 'variable'    Name of the variable to get a reference.
  *
  * 'pcontent'    Pointer to a PsychGenericScriptType* where the location of the variables content should be stored.
- *                The pointed to pointer will be set to NULL on failure.
+ *               The pointed-to pointer will be set to NULL on failure.
  *
  * Returns TRUE on success, FALSE on failure.
  */
@@ -2568,15 +2582,15 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
     // Init to empty default:
     *pcontent = NULL;
 
-    #if PSYCH_LANGUAGE == PSYCH_MATLAB
-        *pcontent = (PsychGenericScriptType*) mexGetVariablePtr(workspace, variable);
+    // Get a borrowed reference to the dicts with global and local variables for the calling frame:
+    PyObject *dict = strcmp(workspace, "global") ? PyEval_GetLocals() : PyEval_GetGlobals();
+    if (dict && PyDict_Check(dict)) {
+        // Get borrowed reference to variable:
+        *pcontent = (PsychGenericScriptType*) PyDict_GetItemString(dict, variable);
+    }
 
-        // Return true on success, false on failure:
-        return((*pcontent) ? TRUE : FALSE);
-    #else
-        PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimeGetVariablePtr() not yet supported for this runtime system!");
-        return(FALSE);
-    #endif
+    // Return true on success, false on failure:
+    return((*pcontent) ? TRUE : FALSE);
 }
 
 /* PsychRuntimeEvaluateString() TODO FIXME
@@ -2588,7 +2602,18 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
  */
 int PsychRuntimeEvaluateString(const char* cmdstring)
 {
-    return(PyRun_SimpleString(cmdstring));
+    PyObject* res;
+    res = PyRun_String(cmdstring, Py_file_input, PyEval_GetGlobals(), PyEval_GetLocals());
+    if (res) {
+        // Success! We don't have a use for the res'ults object yet, so just unref it:
+        Py_XDECREF(res);
+        return(0);
+    }
+
+    // Failed:
+    return(-1);
+
+    // Works only without access to global/local variables: return(PyRun_SimpleString(cmdstring));
 }
 
 // functions for outputting structs
