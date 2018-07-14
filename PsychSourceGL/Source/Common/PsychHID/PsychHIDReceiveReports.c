@@ -104,13 +104,6 @@
 
 #include "PsychHID.h"
 
-// MK TODO FIXME: Question to former self: Why the hell does this exist?
-void mexMakeMemoryPersistent(void *ptr);
-#ifndef PTBOCTAVE
-void mxFree(void *ptr);
-void *mxCalloc(size_t n, size_t size);
-#endif
-
 // internal prototypes
 PsychError ReceiveReportsStop(int deviceIndex);  // function is below.
 void CountReports(char *string);
