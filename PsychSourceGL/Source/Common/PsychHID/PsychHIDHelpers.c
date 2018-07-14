@@ -164,7 +164,6 @@ void PsychHIDCloseAllUSBDevices(void)
 */
 PsychError PsychHIDCleanup(void)
 {
-    long error;
     pRecDevice curdev = NULL;
 
     // Disable online help system:
@@ -175,7 +174,7 @@ PsychError PsychHIDCleanup(void)
     ConsoleInputHelper(-10);
 
     // Shutdown USB-HID report low-level functions, e.g., for DAQ toolbox on OS/X:
-    error = PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
+    PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
 
     // Shutdown os specific interfaces and routines:
     PsychHIDShutdownHIDStandardInterfaces();
