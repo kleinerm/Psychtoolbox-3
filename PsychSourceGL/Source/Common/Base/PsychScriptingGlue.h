@@ -151,7 +151,9 @@ const mxArray *PsychGetInArgMxPtr(int position);
 #endif
 
 #if PSYCH_LANGUAGE == PSYCH_PYTHON
-PyObject **PsychGetOutArgPyPtr(int position);
+double mxGetScalar(const PyObject* arrayPtr);
+PyObject* mxGetField(const PyObject* structArray, int index, const char* fieldName);
+PyObject** PsychGetOutArgPyPtr(int position);
 const PyObject *PsychGetInArgPyPtr(int position);
 PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args);
 #endif

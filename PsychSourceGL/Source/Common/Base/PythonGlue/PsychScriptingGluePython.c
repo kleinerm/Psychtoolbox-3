@@ -470,6 +470,27 @@ PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, co
     return(retval);
 }
 
+PyObject* mxGetField(const PyObject* structArray, int index, const char* fieldName)
+{
+    if (!mxIsStruct(structArray))
+        PsychErrorExitMsg(PsychError_internal, "Error: mxGetField: Tried to manipulate something other than a struct-Array!");
+
+    // Different code-path for single element structArray aka a dict, vs. multi-element
+    // structArray aka list of dicts:
+    if (python_structArray_is_structArray && !PyDict_Check(structArray)) {
+        if (index >= PyList_Size((PyObject*) structArray))
+            PsychErrorExitMsg(PsychError_internal, "Error: mxGetField: Index exceeds size of struct-Array!");
+
+        return(PyDict_GetItemString(PyList_GetItem((PyObject*) structArray, index), fieldName));
+    }
+    else {
+        if (index != 0)
+            PsychErrorExitMsg(PsychError_internal, "Error: mxGetField: Index exceeds size of struct-Array!");
+
+        return(PyDict_GetItemString((PyObject*) structArray, fieldName));
+    }
+}
+
 int mxIsField(PyObject* structArray, const char* fieldName)
 {
     if (!mxIsStruct(structArray))
@@ -479,19 +500,10 @@ int mxIsField(PyObject* structArray, const char* fieldName)
     // otherwise we return -1, so this function can only check if a fieldName is valid.
     // But then, that's all that this function is used for inside our implementation,
     // so we should be fine.
+    if (mxGetField(structArray, 0, fieldName))
+        return(1);
 
-    // Different code-path for single element structArray aka a dict, vs. multi-element
-    // structArray aka list of dicts:
-    if (python_structArray_is_structArray && !PyDict_Check(structArray)) {
-        if (NULL != PyDict_GetItemString(PyList_GetItem(structArray, 0), fieldName))
-            return(1);
-    }
-    else {
-        if (NULL != PyDict_GetItemString(structArray, fieldName))
-            return(1);
-    }
-
-    // No such key :(
+    // No such field :(
     return(-1);
 }
 
