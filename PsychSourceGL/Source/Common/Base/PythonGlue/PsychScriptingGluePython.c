@@ -2866,7 +2866,21 @@ void PsychSetStructArrayNativeElement(const char *fieldName,
                                       PsychGenericScriptType *pNativeElement,
                                       PsychGenericScriptType *pStructArray)
 {
-    PsychSetStructArrayStructElement(fieldName, index, pNativeElement, pStructArray);
+    int         fieldNumber;
+    psych_bool  isStruct;
+    char        errmsg[256];
+
+    isStruct = mxIsStruct(pStructArray);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
+
+    fieldNumber = mxIsField(pStructArray, fieldName);
+    if (fieldNumber == -1) {
+        sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+
+    mxSetField(pStructArray, (ptbIndex) index, fieldName, pNativeElement);
 }
 
 
