@@ -320,6 +320,8 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
 
         deviceIndex++;
     }
+
+    return(PsychError_none);
 }
 
 PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
@@ -337,7 +339,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     // state. This will give us whatever X has setup as default keyboard:
     if (deviceIndex == INT_MAX) {
         // Request current keyboard state of default keyboard from X-Server:
-        XQueryKeymap(dpy, keys_return);
+        XQueryKeymap(dpy, (char*) keys_return);
     } else if (deviceIndex < 0 || deviceIndex >= ndevices) {
         PsychErrorExitMsg(PsychError_user, "Invalid keyboard deviceIndex specified. No such device!");
     } else if (info[deviceIndex].use == XIMasterKeyboard) {
@@ -351,7 +353,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
         if (!XIGetClientPointer(dpy, None, &j) || (j != info[deviceIndex].attachment)) XISetClientPointer(dpy, None, info[deviceIndex].attachment);
 
         // Request current keyboard state from X-Server:
-        XQueryKeymap(dpy, keys_return);
+        XQueryKeymap(dpy, (char*) keys_return);
 
         // Reset master pointer/keyboard assignment to pre-query state:
         if ((j > 0) && (j != info[deviceIndex].attachment)) XISetClientPointer(dpy, None, j);
@@ -440,8 +442,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, double* max, double* val, char* axisLabel)
 {
     XIDeviceInfo *dev = NULL;
-    XIAnyClassInfo *classes;
-    int i, j, dummy1, nclasses;
+    int i, j, dummy1;
 
     dev = XIQueryDevice(dpy, info[deviceIndex].deviceid, &dummy1);
 
@@ -1043,6 +1044,9 @@ int PsychHIDGetDefaultKbQueueDevice(void)
 
     // Nothing found? If so, abort:
     PsychErrorExitMsg(PsychError_user, "Could not find any useable keyboard device!");
+
+    // Make compiler happy:
+    return(-1);
 }
 
 PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags)
@@ -1165,8 +1169,6 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
 {
     psych_bool queueActive;
     int i;
-
-    XIDeviceInfo* dev = NULL;
 
     if (deviceIndex < 0) {
         deviceIndex = PsychHIDGetDefaultKbQueueDevice();
