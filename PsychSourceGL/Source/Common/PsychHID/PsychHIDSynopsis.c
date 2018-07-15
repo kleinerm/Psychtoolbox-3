@@ -35,13 +35,15 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "\n\nSupport for generic USB-HID devices:\n\n";
     synopsis[i++] = "numberOfDevices=PsychHID('NumDevices')";
-    synopsis[i++] = "numberOfElements=PsychHID('NumElements',deviceNumber)";
-    synopsis[i++] = "numberOfCollections=PsychHID('NumCollections',deviceNumber)";
     synopsis[i++] = "devices=PsychHID('Devices' [, deviceClass])";
+    #if PSYCH_SYSTEM == PSYCH_OSX
+    synopsis[i++] = "numberOfElements=PsychHID('NumElements',deviceNumber)";
     synopsis[i++] = "elements=PsychHID('Elements',deviceNumber)";
+    synopsis[i++] = "numberOfCollections=PsychHID('NumCollections',deviceNumber)";
     synopsis[i++] = "collections=PsychHID('Collections',deviceNumber)";
-    synopsis[i++] = "elementState=PsychHID('RawState',deviceNumber,elementNumber)";
     synopsis[i++] = "elementState=PsychHID('CalibratedState',deviceNumber,elementNumber)";
+    #endif
+    synopsis[i++] = "elementState=PsychHID('RawState',deviceNumber,elementNumber)";
     synopsis[i++] = "[keyIsDown,secs,keyCode]=PsychHID('KbCheck' [, deviceNumber][, scanList])";
     synopsis[i++] = "[report,err]=PsychHID('GetReport',deviceNumber,reportType,reportID,reportBytes)";
     synopsis[i++] = "err=PsychHID('SetReport',deviceNumber,reportType,reportID,report)";
