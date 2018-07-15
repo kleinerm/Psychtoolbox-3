@@ -452,6 +452,12 @@ mxArray **PsychGetOutArgMxPtr(int position)
 }
 
 
+const PsychGenericScriptType *PsychGetInArgPtr(int position)
+{
+    return((const PsychGenericScriptType*) PsychGetInArgMxPtr(position));
+}
+
+
 /* PsychCheckSizeLimits(size_t m, size_t n, size_t p)
  *
  * Makes sure matrix/vector dimensions stay within the limits imposed
@@ -1712,6 +1718,29 @@ void PsychAllocateNativeDoubleMat(psych_int64 m, psych_int64 n, psych_int64 p, d
     cArrayTemp = mxGetPr(*nativeElement);
     if (*cArray != NULL) memcpy(cArrayTemp, *cArray, sizeof(double) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
     *cArray=cArrayTemp;
+}
+
+
+/*
+ *    PsychAllocateNativeUnsignedByteMat()
+ *
+ *    Create an opaque native byte matrix.   Return both
+ *        - Its handle,  which is specified when nesting the native matrix nesting withing other native types.
+ *        - A handle to the C array of psych_uint8's enclosed by the native type.
+ *
+ *    If (*cArray != NULL) we copy m*n*p elements from cArray into the native matrix, otherwise not.
+ *    In any case, *cArray will point to the C array of psych_uint8's enclosed by the native type in the end.
+ *
+ */
+void PsychAllocateNativeUnsignedByteMat(psych_int64 m, psych_int64 n, psych_int64 p, psych_uint8 **cArray, PsychGenericScriptType **nativeElement)
+{
+    psych_uint8 *cArrayTemp;
+
+    PsychCheckSizeLimits(m, n, p);
+    *nativeElement = mxCreateByteMatrix3D(m,n,p);
+    cArrayTemp = mxGetData(*nativeElement);
+    if (*cArray != NULL) memcpy(cArrayTemp, *cArray, sizeof(psych_uint8) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
+    *cArray = cArrayTemp;
 }
 
 

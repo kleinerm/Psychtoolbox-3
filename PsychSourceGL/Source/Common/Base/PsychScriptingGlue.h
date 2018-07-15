@@ -73,9 +73,10 @@ psych_bool PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequire
 psych_bool PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequired, double **value);
 psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, double **array);
 psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, double *fromArray);
-    //PsychAllocateNativeDoubleMat is for use with cell arrays and structs.  The right way to do this is to use the normal function for returning 
-    //doubles, detect if the position is -1, and if so accept the optional "nativeElement" value.
+// PsychAllocateNativeXXXMat() is for use with cell arrays and structs. The right way to do this is to use the normal function for returning
+// values, detect if the position is -1, and if so accept the optional "nativeElement" value.
 void PsychAllocateNativeDoubleMat(psych_int64 m, psych_int64 n, psych_int64 p, double **cArray, PsychGenericScriptType **nativeElement);
+void PsychAllocateNativeUnsignedByteMat(psych_int64 m, psych_int64 n, psych_int64 p, psych_uint8 **cArray, PsychGenericScriptType **nativeElement);
 
 // for unsigned 16 bit integer:
 psych_bool PsychCopyOutUnsignedInt16MatArg(int position, PsychArgRequirementType isRequired, psych_int64 m, psych_int64 n, psych_int64 p, psych_uint16 *fromArray);
@@ -142,6 +143,8 @@ PsychError PsychMatchDescriptors(void);
 void PsychCheckSizeLimits(psych_int64 m, psych_int64 n, psych_int64 p);
 
 // Low-level accessors to input/output parameters from the runtime:
+const PsychGenericScriptType *PsychGetInArgPtr(int position);
+
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 mxArray **PsychGetOutArgMxPtr(int position);
 const mxArray *PsychGetInArgMxPtr(int position);

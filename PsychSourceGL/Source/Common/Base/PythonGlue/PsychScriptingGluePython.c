@@ -298,9 +298,9 @@ double* mxGetPr(const PyObject* arrayPtr)
     return(PyArray_DATA((PyArrayObject*)  arrayPtr));
 }
 
-double mxGetScalar(PyObject* arrayPtr)
+double mxGetScalar(const PyObject* arrayPtr)
 {
-    return(PyFloat_AsDouble(arrayPtr));
+    return(PyFloat_AsDouble((PyObject*) arrayPtr));
 }
 
 PsychNativeBooleanType* mxGetLogicals(const PyObject* arrayPtr)
@@ -1079,6 +1079,12 @@ PyObject **PsychGetOutArgPyPtr(int position)
 }
 
 
+const PsychGenericScriptType *PsychGetInArgPtr(int position)
+{
+    return((const PsychGenericScriptType*) PsychGetInArgPyPtr(position));
+}
+
+
 /* PsychCheckSizeLimits(size_t m, size_t n, size_t p)
  *
  * Makes sure matrix/vector dimensions stay within the limits imposed
@@ -1521,11 +1527,8 @@ psych_bool PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequir
     putOut = PsychAcceptOutputArgumentDecider(isRequired, matchError);
     if (putOut) {
         mxpp = PsychGetOutArgPyPtr(position);
-        printf("I: mxpp %p\n", mxpp);
         *mxpp = mxCreateDoubleMatrix3D(1, 1, 0);
-        printf("II: mxpp %p\n", *mxpp);
         *value = mxGetData(*mxpp);
-        printf("III: value %p\n", *value);
     } else {
         *value = (double *) mxMalloc(sizeof(double));
     }
@@ -2363,7 +2366,7 @@ psych_bool PsychCopyOutFlagArg(int position, PsychArgRequirementType isRequired,
 /*
  *    PsychAllocateNativeDoubleMat()
  *
- *    Create an opaque native matrix.   Return both
+ *    Create an opaque native double matrix.   Return both
  *        - Its handle,  which is specified when nesting the native matrix nesting withing other native types.
  *        - A handle to the C array of doubles enclosed by the native type.
  *
@@ -2379,6 +2382,29 @@ void PsychAllocateNativeDoubleMat(psych_int64 m, psych_int64 n, psych_int64 p, d
     *nativeElement = mxCreateDoubleMatrix3D(m,n,p);
     cArrayTemp = mxGetData(*nativeElement);
     if (*cArray != NULL) memcpy(cArrayTemp, *cArray, sizeof(double) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
+    *cArray = cArrayTemp;
+}
+
+
+/*
+ *    PsychAllocateNativeUnsignedByteMat()
+ *
+ *    Create an opaque native byte matrix.   Return both
+ *        - Its handle,  which is specified when nesting the native matrix nesting withing other native types.
+ *        - A handle to the C array of psych_uint8's enclosed by the native type.
+ *
+ *    If (*cArray != NULL) we copy m*n*p elements from cArray into the native matrix, otherwise not.
+ *    In any case, *cArray will point to the C array of psych_uint8's enclosed by the native type in the end.
+ *
+ */
+void PsychAllocateNativeUnsignedByteMat(psych_int64 m, psych_int64 n, psych_int64 p, psych_uint8 **cArray, PsychGenericScriptType **nativeElement)
+{
+    psych_uint8 *cArrayTemp;
+
+    PsychCheckSizeLimits(m, n, p);
+    *nativeElement = mxCreateByteMatrix3D(m,n,p);
+    cArrayTemp = mxGetData(*nativeElement);
+    if (*cArray != NULL) memcpy(cArrayTemp, *cArray, sizeof(psych_uint8) * (size_t) m * (size_t) n * (size_t) maxInt(1,p));
     *cArray = cArrayTemp;
 }
 
@@ -2625,7 +2651,7 @@ int PsychRuntimeEvaluateString(const char* cmdstring)
 
     -If argument is optional we allocate the structure even if the argument is not present.  If this bothers you,
     then check within the subfunction for the presense of a return argument before creating the struct array.  We
-    allocate space regardeless of whether the argument is present because this is consistant with other "PsychAllocOut*"
+    allocate space regardless of whether the argument is present because this is consistant with other "PsychAllocOut*"
     functions which behave this way because in some situations subfunctions might derive returned results from values
     stored in an optional argument.
 
