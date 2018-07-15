@@ -44,16 +44,19 @@ baseincludes_linux = ['Linux/Base'];
 print 'Platform reported as: ' + platform.system();
 if platform.system() == 'Linux':
     print 'Building for Linux...\n';
+    osname = 'Linux';
     basefiles_os = basefiles_linux;
     baseincludes_os = baseincludes_linux;
 
 if platform.system() == 'Windows':
     print 'Building for Windows...\n';
+    osname = 'Windows';
     basefiles_os = basefiles_windows;
     baseincludes_os = baseincludes_windows;
 
 if platform.system() == 'Darwin':
     print 'Building for macOS...\n';
+    osname = 'OSX';
     basefiles_os = basefiles_osx;
     baseincludes_os = baseincludes_osx;
 
@@ -88,18 +91,19 @@ PsychPortAudio = Extension(name,
                            extra_objects = ['/usr/local/lib/libportaudio.a']
                           )
 
-# Screen modules: All the visuals. Note all the unusual include_dirs, and other special includes,
-#                 libs, macros etc.
-name = 'Screen';
-Screen = Extension(name,
-                   extra_compile_args = base_compile_args,
-                   define_macros = [('PTBMODULE_' + name, None)] + base_macros + [('_GNU_SOURCE', None), ('GLEW_STATIC', None)], # , ('PTB_USE_GSTREAMER', None), ('PTBVIDEOCAPTURE_LIBDC', None), ('PTB_USE_NVSTUSB', None)
-                   include_dirs = baseincludes_common + baseincludes_os + ['Linux/' + name],
-                   sources = basefiles_common + basefiles_os + get_sourcefiles('./Common/' + name),
-                   libraries = base_libs
-                  )
+# PsychHID module: Note all the unusual include_dirs, and other special includes,
+#                  sources, libs etc.
+name = 'PsychHID';
+PsychHID = Extension(name,
+                     extra_compile_args = base_compile_args,
+                     define_macros = [('PTBMODULE_' + name, None)] + base_macros,
+                     include_dirs = ['Common/' + name] + baseincludes_common + baseincludes_os + ['Linux/' + name] + ['/usr/include/libusb-1.0'],
+                     sources = basefiles_common + basefiles_os + get_sourcefiles('./Common/' + name) + get_sourcefiles('./' + osname + '/' + name),
+                     libraries = base_libs + ['dl', 'usb-1.0', 'X11', 'Xi', 'util']
+                    )
 
 setup (name = 'Psychtoolbox4Python',
         version = '0.1',
         description = 'This is the prototype of a port of Psychtoolbox-3 mex files to Python extensions.',
-        ext_modules = [GetSecs, WaitSecs, PsychPortAudio])
+        ext_modules = [GetSecs, WaitSecs, PsychPortAudio, PsychHID]
+      )
