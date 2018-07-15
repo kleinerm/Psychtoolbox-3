@@ -44,10 +44,13 @@ PsychError GiveMeReports(int deviceIndex,int reportBytes); // PsychHIDReceiveRep
 
 PsychError PSYCHHIDGiveMeReports(void)
 {
+    PsychGenericScriptType *outErr;
+    const char *fieldNames[] = {"n", "name", "description"};
+
+    char *name = "", *description = "";
     long error = 0;
     int deviceIndex;
     int reportBytes = 1024;
-    mxArray **outErr;
 
     PsychPushHelp(useString,synopsisString,seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
@@ -60,26 +63,15 @@ PsychError PSYCHHIDGiveMeReports(void)
 
     PsychHIDVerifyInit();
 
-    // reports
+    // Returns 1st return argument 'reports':
     error = GiveMeReports(deviceIndex,reportBytes); // PsychHIDReceiveReports.c
 
-    // err
-    outErr = PsychGetOutArgMxPtr(2); // outErr==NULL if optional argument is absent.
-    if (outErr!=NULL) {
-        const char *fieldNames[] = {"n", "name", "description"};
-        mxArray *fieldValue;
-        char *name = "", *description = "";
-
-        PsychHIDErrors(NULL, error,&name,&description); // Get error name and description, if available.
-        *outErr=mxCreateStructMatrix(1,1,3,fieldNames);
-        fieldValue=mxCreateString(name);
-        mxSetField(*outErr,0,"name",fieldValue);
-        fieldValue=mxCreateString(description);
-        mxSetField(*outErr,0,"description",fieldValue);
-        fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-        *mxGetPr(fieldValue)=(double)error;
-        mxSetField(*outErr,0,"n",fieldValue);
-    }
+    // Return 2nd return argument 'err' struct:
+    PsychHIDErrors(NULL, error, &name, &description);
+    PsychAllocOutStructArray(2, kPsychArgOptional, 1, 3, fieldNames, &outErr);
+    PsychSetStructArrayStringElement("name", 0, name, outErr);
+    PsychSetStructArrayStringElement("description", 0, description, outErr);
+    PsychSetStructArrayDoubleElement("n", 0, (double) error, outErr);
 
     return(PsychError_none);
 }

@@ -605,6 +605,8 @@ void PsychHIDAllocateReports(int deviceIndex)
     // Reports for device already allocated? Do so if not:
     if (!reportsHaveBeenAllocated[deviceIndex]) {
         // Initial set up. Allocate free reports.
+        if (optionsMaxReports < 1)
+            optionsMaxReports = 1;
 
         // Allocate common buffer to store linked list of all
         // ReportStruct's, tightly packed:
@@ -630,6 +632,7 @@ void PsychHIDAllocateReports(int deviceIndex)
 
         // Setup pointer mappings to create the linked-list in the memory buffers:
         freeReportsPtr[deviceIndex] = allocatedReports[deviceIndex];
+        r = &(allocatedReports[deviceIndex][0]);
         for(i = 0; i < optionsMaxReports; i++) {
             // Setup linked-list pointers for linked list of ReportStruct's
             // insie the allocatedReports[deviceIndex] buffer:
@@ -690,56 +693,58 @@ void CountReports(char *string)
 // are defined solely in this file. The linked lists of reports are unknown outside of this file.
 PsychError GiveMeReports(int deviceIndex,int reportBytes)
 {
-    mwSize dims[]={1,1};
-    mxArray **outReports;
-    ReportStruct *r,*rTail;
-    const char *fieldNames[]={"report", "device", "time"};
-    mxArray *fieldValue;
-    unsigned char *reportBuffer;
-    int i,n;
+    PsychGenericScriptType *outReports;
+    const char *fieldNames[] = {"report", "device", "time"};
+    ReportStruct *r, *rTail = NULL;
+    PsychGenericScriptType *fieldValue;
+    unsigned char *reportBuffer = NULL;
+    int i, n;
     unsigned int j;
-    long error=0;
+    long error = 0;
     double now;
 
     CountReports("GiveMeReports beginning.");
 
-    outReports=PsychGetOutArgMxPtr(1);
-    r=deviceReportsPtr[deviceIndex];
-    n=0;
-    while(r!=NULL){
+    r = deviceReportsPtr[deviceIndex];
+    n = 0;
+    while (r != NULL) {
         n++;
-        rTail=r;
-        r=r->next;
+        rTail = r;
+        r = r->next;
     }
-    *outReports=mxCreateStructMatrix(1,n,3,fieldNames);
-    r=deviceReportsPtr[deviceIndex];
+
+    PsychAllocOutStructArray(1, kPsychArgRequired, n, 3, fieldNames, &outReports);
+    r = deviceReportsPtr[deviceIndex];
     PsychGetPrecisionTimerSeconds(&now);
-    for(i=n-1;i>=0;i--){
-        // assert(r!=NULL);
-        if(r->error)error=r->error;
-        dims[0]=1;
+
+    for (i = n-1; i >= 0; i--) {
+        if (r->error)
+            error = r->error;
+
         //printf("%2d: r->bytes %2d, reportBytes %4d, -%4.1f s\n",i,(int)r->bytes,(int)reportBytes, now-r->time);
-        if(r->bytes> (unsigned int) reportBytes)r->bytes=reportBytes;
-        dims[1]=r->bytes;
-        fieldValue=mxCreateNumericArray(2,(void *)dims,mxUINT8_CLASS,mxREAL);
-        reportBuffer=(void *)mxGetData(fieldValue);
-        for(j=0;j<r->bytes;j++)reportBuffer[j]=r->report[j];
-        if(fieldValue==NULL)PrintfExit("Couldn't allocate report array.");
-        mxSetField(*outReports,i,"report",fieldValue);
-        fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-        *mxGetPr(fieldValue)=(double)r->deviceIndex;
-        mxSetField(*outReports,i,"device",fieldValue);
-        fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-        *mxGetPr(fieldValue)=r->time;
-        mxSetField(*outReports,i,"time",fieldValue);
-        r=r->next;
+        if (r->bytes > (unsigned int) reportBytes)
+            r->bytes = reportBytes;
+
+        // Note: Can do reportBuffer = NULL and then manual copy with for(j...), or could do auto-copy
+        // via internal memcpy in PsychAllocateNativeUnsignedByteMat(): reportBuffer = &(r->report[0]);
+        reportBuffer = NULL;
+        PsychAllocateNativeUnsignedByteMat(1, r->bytes, 1, (psych_uint8**) &reportBuffer, &fieldValue);
+        for(j = 0; j < r->bytes; j++)
+            reportBuffer[j] = r->report[j];
+
+        PsychSetStructArrayNativeElement("report", i, fieldValue, outReports);
+        PsychSetStructArrayDoubleElement("device", i, (double) r->deviceIndex, outReports);
+        PsychSetStructArrayDoubleElement("time", i, r->time, outReports);
+        r = r->next;
     }
-    if(deviceReportsPtr[deviceIndex]!=NULL){
+
+    if (deviceReportsPtr[deviceIndex] != NULL && rTail) {
         // transfer all these now-obsolete reports to the free list
-        rTail->next=freeReportsPtr[deviceIndex];
-        freeReportsPtr[deviceIndex]=deviceReportsPtr[deviceIndex];
-        deviceReportsPtr[deviceIndex]=NULL;
+        rTail->next = freeReportsPtr[deviceIndex];
+        freeReportsPtr[deviceIndex] = deviceReportsPtr[deviceIndex];
+        deviceReportsPtr[deviceIndex] = NULL;
     }
+
     CountReports("GiveMeReports end.");
     return error;
 }
@@ -827,20 +832,19 @@ static char seeAlsoString[] = "SetReport, ReceiveReportsStop, GiveMeReports";
 
 PsychError PSYCHHIDReceiveReports(void)
 {
-    long error = 0;
     int deviceIndex;
-    mxArray **mxErrPtr;
-    const mxArray *mxOptions,*mx;
+    long error = 0;
+    const PsychGenericScriptType *mxOptions, *mx;
 
-    PsychPushHelp(useString,synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(2));
 
     PsychCopyInIntegerArg(1, TRUE, &deviceIndex);
-    if(deviceIndex < 0 || deviceIndex >= MAXDEVICEINDEXS)
-        PrintfExit("Sorry. Can't cope with deviceNumber %d (more than %d). Please tell denis.pelli@nyu.edu", deviceIndex, (int) MAXDEVICEINDEXS-1);
+    if (deviceIndex < 0 || deviceIndex >= MAXDEVICEINDEXS)
+        PrintfExit("Sorry. Can't cope with deviceNumber %d (more than %d). Please tell denis.pelli@nyu.edu", deviceIndex, (int) MAXDEVICEINDEXS - 1);
 
     /*
      *    "\"options.print\" =1 (default 0) enables diagnostic printing of a summary of each report when our callback routine receives it. "
@@ -848,42 +852,54 @@ PsychError PSYCHHIDReceiveReports(void)
      *    "\"options.maxReports\" (default 10000) allocate space for at least this many reports, shared among all devices. "
      *    "\"options.maxReportSize\" (default 65) allocate this many bytes per report. "
      */
-    //optionsPrintReportSummary=0;    // options.print
-    //optionsPrintCrashers=0;        // options.printCrashers
-    //optionsMaxReports=10000;        // options.maxReports
-    //optionsMaxReportSize=65;        // options.maxReportSize
-    //optionsSecs=0.010;            // options.secs
+    // optionsPrintReportSummary = 0;   // options.print
+    // optionsPrintCrashers = 0;        // options.printCrashers
+    // optionsMaxReports = 10000;       // options.maxReports
+    // optionsMaxReportSize = 65;       // options.maxReportSize
+    // optionsSecs = 0.010;             // options.secs
 
-    mxOptions=PsychGetInArgMxPtr(2);
-    if(mxOptions!=NULL){
-        mx=mxGetField(mxOptions,0,"print");
-        if(mx!=NULL)optionsPrintReportSummary=(psych_bool)mxGetScalar(mx);
-        mx=mxGetField(mxOptions,0,"printCrashers");
-        if(mx!=NULL)optionsPrintCrashers=(psych_bool)mxGetScalar(mx);
-        mx=mxGetField(mxOptions,0,"secs");
-        if(mx!=NULL)optionsSecs=mxGetScalar(mx);
-        mx=mxGetField(mxOptions,0,"consistencyChecks");
-        if(mx!=NULL)optionsConsistencyChecks=(psych_bool)mxGetScalar(mx);
+    mxOptions = PsychGetInArgPtr(2);
+    if (mxOptions != NULL) {
+        if (PsychGetArgType(2) != PsychArgType_structArray)
+            PsychErrorExitMsg(PsychError_user, "PsychHID ReceiveReports: 'options' arg is not a struct, as required.");
+
+        mx = mxGetField(mxOptions, 0, "print");
+        if (mx != NULL)
+            optionsPrintReportSummary = (psych_bool) mxGetScalar(mx);
+
+        mx = mxGetField(mxOptions, 0, "printCrashers");
+        if (mx != NULL)
+            optionsPrintCrashers = (psych_bool) mxGetScalar(mx);
+
+        mx = mxGetField(mxOptions, 0, "secs");
+        if (mx != NULL) optionsSecs = mxGetScalar(mx);
+
+        mx = mxGetField(mxOptions, 0, "consistencyChecks");
+        if (mx != NULL) optionsConsistencyChecks = (psych_bool) mxGetScalar(mx);
 
         // Changing maxReports or maxReportSize triggers a reallocation of
         // buffer memory:
-        mx=mxGetField(mxOptions,0,"maxReports");
-        if(mx!=NULL) {
+        mx = mxGetField(mxOptions, 0, "maxReports");
+        if (mx != NULL) {
             oneShotRealloc = TRUE;
             optionsMaxReports = (int) mxGetScalar(mx);
         }
 
-        mx=mxGetField(mxOptions,0,"maxReportSize");
-        if(mx!=NULL) {
+        mx = mxGetField(mxOptions, 0, "maxReportSize");
+        if (mx != NULL) {
             oneShotRealloc = TRUE;
             optionsMaxReportSize = (int) mxGetScalar(mx);
         }
     }
 
     // Sanity check:
-    if(optionsMaxReports < 1) PsychErrorExitMsg(PsychError_user, "PsychHID ReceiveReports: Sorry, requested maxReports count must be at least 1!");
-    if(optionsMaxReportSize < 1) PsychErrorExitMsg(PsychError_user, "PsychHID ReceiveReports: Sorry, requested maxReportSize must be at least 1 byte!");
-    if(optionsMaxReportSize > MAXREPORTSIZE) {
+    if (optionsMaxReports < 1)
+        PsychErrorExitMsg(PsychError_user, "PsychHID ReceiveReports: Sorry, requested maxReports count must be at least 1!");
+
+    if (optionsMaxReportSize < 1)
+        PsychErrorExitMsg(PsychError_user, "PsychHID ReceiveReports: Sorry, requested maxReportSize must be at least 1 byte!");
+
+    if (optionsMaxReportSize > MAXREPORTSIZE) {
         printf("PsychHID ReceiveReports: Sorry, requested maximum report size %d bytes exceeds built-in maximum of %d bytes.\n", optionsMaxReportSize, (int) MAXREPORTSIZE);
         PsychErrorExitMsg(PsychError_user, "Invalid option.maxReportSize provided!");
     }
@@ -891,25 +907,18 @@ PsychError PSYCHHIDReceiveReports(void)
     // Start reception of reports: This will also allocate memory for the reports
     // on first invocation for this deviceIndex:
     error = ReceiveReports(deviceIndex);
+    {
+        PsychGenericScriptType *outErr;
+        char *name = "", *description = "";
+        const char *fieldNames[] = {"n", "name", "description"};
 
-    mxErrPtr=PsychGetOutArgMxPtr(1);
-    if(mxErrPtr!=NULL){
-        const char *fieldNames[]={"n", "name", "description"};
-        char *name="",*description="";
-        mxArray *fieldValue;
+        PsychHIDErrors(NULL, error, &name, &description); // Get error name and description, if available.
 
-        PsychHIDErrors(NULL, error,&name,&description); // Get error name and description, if available.
-        *mxErrPtr=mxCreateStructMatrix(1,1,3,fieldNames);
-        fieldValue=mxCreateString(name);
-        if(fieldValue==NULL)PrintfExit("PSYCHHIDReceiveReports: Couldn't allocate \"err\".");
-        mxSetField(*mxErrPtr,0,"name",fieldValue);
-        fieldValue=mxCreateString(description);
-        if(fieldValue==NULL)PrintfExit("PSYCHHIDReceiveReports: Couldn't allocate \"err\".");
-        mxSetField(*mxErrPtr,0,"description",fieldValue);
-        fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-        if(fieldValue==NULL)PrintfExit("PSYCHHIDReceiveReports: Couldn't allocate \"err\".");
-        *mxGetPr(fieldValue)=(double)error;
-        mxSetField(*mxErrPtr,0,"n",fieldValue);
+        PsychAllocOutStructArray(1, kPsychArgOptional, 1, 3, fieldNames, &outErr);
+        PsychSetStructArrayDoubleElement("n", 0, (double) error, outErr);
+        PsychSetStructArrayStringElement("name", 0, name, outErr);
+        PsychSetStructArrayStringElement("description", 0, description, outErr);
     }
+
     return(PsychError_none);
 }

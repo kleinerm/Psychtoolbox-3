@@ -17,7 +17,8 @@
 
 #include "PsychHID.h"
 
-static char useString[] = "err=PsychHID('SetReport',deviceNumber,reportType,reportID,report)";
+static char useString[] = "err = PsychHID('SetReport', deviceNumber, reportType, reportID, report)";
+//                         1                           1             2           3         4
 static char synopsisString[] =
     "Send a report to the connected USB HID device.\n"
     "\"deviceNumber\" specifies which device.\n"
@@ -26,8 +27,12 @@ static char synopsisString[] =
     "If you provide a non-zero reportID, the first byte of your \"report\" will be overwritten with this reportID. You have to "
     "take this into account, ie., leave a leading byte of space for the reportID to avoid corrupting your actual report data. "
     "If reportID is zero, then your \"report\" will be sent as-is, without any special treatment of the first byte.\n"
-    "\"report\" must be an array of char or integer (8-, 16-, or 32-bit, signed or unsigned) holding "
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    "\"report\" must be an array of char or integer (8-, 16-, 32-, or 64-bit, signed or unsigned) holding "
     "the correct total number of bytes.\n"
+    #else
+    "\"report\" must be an array of bytes (= unsigned 8 bit integers) holding the correct total number of bytes.\n"
+    #endif
     "The returned value \"err.n\" is zero upon success and a nonzero error code upon failure, "
     "as spelled out by \"err.name\" and \"err.description\".\n";
 
@@ -44,10 +49,9 @@ PsychError PSYCHHIDSetReport(void)
 {
     static unsigned char scratchBuffer[MAXREPORTSIZE+1];
 
+    PsychGenericScriptType *outErr;
     const char *fieldNames[] = {"n", "name", "description"};
     char *name = "", *description = "";
-    mxArray *fieldValue;
-
     long error;
     pRecDevice device;
     int deviceIndex;
@@ -55,8 +59,6 @@ PsychError PSYCHHIDSetReport(void)
     int reportID;
     unsigned char *reportBuffer;
     int reportSize;
-    const mxArray *report;
-    mxArray **outErr;
     int i;
 
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -64,32 +66,46 @@ PsychError PSYCHHIDSetReport(void)
 
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(4));
-
-    outErr = PsychGetOutArgMxPtr(1);
+    PsychErrorExit(PsychRequireNumInputArgs(4));
 
     PsychCopyInIntegerArg(1, TRUE, &deviceIndex);
     PsychCopyInIntegerArg(2, TRUE, &reportType);
     PsychCopyInIntegerArg(3, TRUE, &reportID);
 
-    report = PsychGetInArgMxPtr(4);
-    reportBuffer = (void *)mxGetData(report);
-
-    switch (mxGetClassID(report)) {
-        case mxCHAR_CLASS:
-        case mxINT8_CLASS:
-        case mxUINT8_CLASS:
-        case mxINT16_CLASS:
-        case mxUINT16_CLASS:
-        case mxINT32_CLASS:
-        case mxUINT32_CLASS:
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
+    // For sake of backwards compatibility, keep the needlessly large scope of acceptable input data types:
+    switch (PsychGetArgType(4)) {
+        case PsychArgType_char:
+        case PsychArgType_uint8:
+        case PsychArgType_uint16:
+        case PsychArgType_uint32:
+        case PsychArgType_uint64:
+        case PsychArgType_int8:
+        case PsychArgType_int16:
+        case PsychArgType_int32:
+        case PsychArgType_int64:
             break;
 
         default:
-            PrintfExit("\"report\" array must be char or integer (8-, 16-, or 32-bit).");
+            PrintfExit("\"report\" array must be char or (unsigned)integer (8-, 16-, 32-, or 64-bit).");
             break;
     }
 
-    reportSize = mxGetElementSize(report)*mxGetNumberOfElements(report);
+    {
+        const mxArray *report = PsychGetInArgMxPtr(4);
+        reportBuffer = mxGetData(report);
+        reportSize = mxGetElementSize(report) * mxGetNumberOfElements(report);
+    }
+#else
+    {
+        // Use less insane approach for non-Octave/Matlab: Just a byte array, the only meaningful
+        // thing to send in HID reports anyway:
+        int m, n, p;
+        PsychAllocInUnsignedByteMatArg(4, kPsychArgRequired, &m, &n, &p, &reportBuffer);
+        reportSize = m * n * p;
+    }
+#endif
+
     if (reportSize > MAXREPORTSIZE)
         PsychErrorExitMsg(PsychError_user, "Tried to send a HID report which exceeds the maximum allowable size! Aborted.");
 
@@ -167,17 +183,10 @@ PsychError PSYCHHIDSetReport(void)
     #endif
     }
 
-    *outErr = mxCreateStructMatrix(1, 1, 3, fieldNames);
-    fieldValue = mxCreateString(name);
-    if (fieldValue == NULL)PrintfExit("Couldn't allocate \"err\".");
-    mxSetField(*outErr, 0, "name", fieldValue);
-    fieldValue = mxCreateString(description);
-    if (fieldValue == NULL)PrintfExit("Couldn't allocate \"err\".");
-    mxSetField(*outErr, 0, "description", fieldValue);
-    fieldValue = mxCreateDoubleMatrix(1, 1, mxREAL);
-    if (fieldValue == NULL)PrintfExit("Couldn't allocate \"err\".");
-    *mxGetPr(fieldValue) = (double)error;
-    mxSetField(*outErr, 0, "n", fieldValue);
+    PsychAllocOutStructArray(1, kPsychArgOptional, 1, 3, fieldNames, &outErr);
+    PsychSetStructArrayStringElement("name", 0, name, outErr);
+    PsychSetStructArrayStringElement("description", 0, description, outErr);
+    PsychSetStructArrayDoubleElement("n", 0, (double) error, outErr);
 
     return(PsychError_none);
 }

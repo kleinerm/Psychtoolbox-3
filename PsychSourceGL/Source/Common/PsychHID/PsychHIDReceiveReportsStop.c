@@ -17,7 +17,7 @@
 
 #include "PsychHID.h"
 
-static char useString[] = "err=PsychHID('ReceiveReportsStop',deviceNumber)";
+static char useString[] = "err = PsychHID('ReceiveReportsStop', deviceNumber)";
 static char synopsisString[] =
     "Stop receiving and saving reports from the specified USB HID device.\n"
     "Calling ReceiveReports enables callbacks (forever) for the incoming reports from that device; "
@@ -32,9 +32,11 @@ static char seeAlsoString[] = "SetReport, ReceiveReports, GiveMeReports";
 
 PsychError PSYCHHIDReceiveReportsStop(void)
 {
+    PsychGenericScriptType *outErr;
+    const char *fieldNames[] = {"n", "name", "description"};
+    char *name = "", *description = "";
     long error = 0;
     int deviceIndex;
-    mxArray **outErr;
 
     PsychPushHelp(useString,synopsisString,seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
@@ -42,29 +44,15 @@ PsychError PSYCHHIDReceiveReportsStop(void)
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(1));
 
-    PsychCopyInIntegerArg(1,TRUE,&deviceIndex);
+    PsychCopyInIntegerArg(1, TRUE, &deviceIndex);
 
     error = ReceiveReportsStop(deviceIndex);
+    PsychHIDErrors(NULL, error, &name, &description);
 
-    outErr = PsychGetOutArgMxPtr(1);
-    if (outErr != NULL) {
-        char *name="",*description="";
-        const char *fieldNames[]={"n", "name", "description"};
-        mxArray *fieldValue;
-
-        PsychHIDErrors(NULL, error,&name,&description); // Get error name and description, if available.
-        *outErr=mxCreateStructMatrix(1,1,3,fieldNames);
-        fieldValue=mxCreateString(name);
-        if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
-        mxSetField(*outErr,0,"name",fieldValue);
-        fieldValue=mxCreateString(description);
-        if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
-        mxSetField(*outErr,0,"description",fieldValue);
-        fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-        if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
-        *mxGetPr(fieldValue)=(double)error;
-        mxSetField(*outErr,0,"n",fieldValue);
-    }
+    PsychAllocOutStructArray(1, kPsychArgOptional, 1, 3, fieldNames, &outErr);
+    PsychSetStructArrayStringElement("name", 0, name, outErr);
+    PsychSetStructArrayStringElement("description", 0, description, outErr);
+    PsychSetStructArrayDoubleElement("n", 0, (double) error, outErr);
 
     return(PsychError_none);
 }

@@ -63,7 +63,7 @@
 extern hid_device* last_hid_device;
 #endif
 
-static char useString[] = "[report,err] = PsychHID('GetReport',deviceNumber,reportType,reportID,reportBytes)";
+static char useString[] = "[report, err] = PsychHID('GetReport', deviceNumber, reportType, reportID, reportBytes)";
 static char synopsisString[] =
     "Get a report from the connected USB HID device.\n"
     "\"deviceNumber\" specifies which device. \"reportType\" is 1=input, 3=feature (0 to just echo arguments).\n"
@@ -88,12 +88,11 @@ PsychError PSYCHHIDGetReport(void)
     int deviceIndex;
     pRecDevice device;
     int reportType; // 1=input, 2=output, 3=feature
+    unsigned char scratchBuffer[MAXREPORTSIZE];
     unsigned char *reportBuffer;
     psych_uint32 reportBytes = 0;
     unsigned int reportBufferSize = 0;
     int reportID = 0;
-    mwSize dims[] = {1, 1};
-    mxArray **outReport,**outErr;
     char *name = "", *description = "", string[256];
     psych_bool reportAvailable;
     double reportTime;
@@ -112,16 +111,11 @@ PsychError PSYCHHIDGetReport(void)
     if (reportBufferSize < 1)
         PsychErrorExitMsg(PsychError_user, "Size of receive buffer 'reportBytes' must be at least 1!");
 
-    outReport = PsychGetOutArgMxPtr(1);
-    outErr = PsychGetOutArgMxPtr(2); // outErr==NULL if optional argument is absent.
-    dims[0] = 1;
-    dims[1] = reportBufferSize;
-    *outReport = mxCreateNumericArray(2,(void *)dims,mxUINT8_CLASS,mxREAL);
-    if (*outReport == NULL)
-        PrintfExit("Couldn't allocate report array.");
-    reportBuffer = (void *) mxGetData(*outReport);
-    if (reportBuffer == NULL)
-        PrintfExit("Couldn't allocate report buffer.");
+    if (reportBufferSize > MAXREPORTSIZE) {
+        printf("PsychHID:GetReport: Sorry, requested maximum 'reportBytes' %d bytes exceeds built-in maximum of %d bytes.\n", reportBufferSize, (int) MAXREPORTSIZE);
+        PsychErrorExitMsg(PsychError_user, "Invalid reportBufferSize provided!");
+    }
+
     reportBytes = reportBufferSize;
 
     PsychHIDVerifyInit();
@@ -147,7 +141,7 @@ PsychError PSYCHHIDGetReport(void)
                 PrintfExit("PsychHID:GetReport: No interface for device.\n");
 
             // Apple defines constants for the reportType with values (0,1,2) that are one less that those specified by USB (1,2,3).
-            error = (*interface)->getReport(interface, reportType-1, reportID, reportBuffer, &reportBytes, -1, nil, nil, nil);
+            error = (*interface)->getReport(interface, reportType-1, reportID, scratchBuffer, &reportBytes, -1, nil, nil, nil);
             if (error == 0) {
                 reportAvailable = 1;
             } else {
@@ -159,7 +153,7 @@ PsychError PSYCHHIDGetReport(void)
         else {
             // Input report: Using setInterruptReportHandlerCallback and CFRunLoopRunInMode
             error = ReceiveReports(deviceIndex);
-            if (!error) error = GiveMeReport(deviceIndex,&reportAvailable,reportBuffer,&reportBytes,&reportTime);
+            if (!error) error = GiveMeReport(deviceIndex,&reportAvailable,scratchBuffer,&reportBytes,&reportTime);
         }
         #else
         if (reportType == 3) {
@@ -167,11 +161,11 @@ PsychError PSYCHHIDGetReport(void)
             device = PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);
 
             // 1st byte always contains reportID:
-            reportBuffer[0] = (unsigned char) reportID;
+            scratchBuffer[0] = (unsigned char) reportID;
 
             // Get it: error == -1 would mean error, otherwise it is number of bytes retrieved.
             last_hid_device = (hid_device*) device->interface;
-            error = hid_get_feature_report((hid_device*) device->interface, reportBuffer, (size_t) reportBytes);
+            error = hid_get_feature_report((hid_device*) device->interface, scratchBuffer, (size_t) reportBytes);
             if (error >= 0) {
                 reportBytes = error;
                 error = 0;
@@ -185,19 +179,16 @@ PsychError PSYCHHIDGetReport(void)
         else {
             // Regular Input reports:
             error=ReceiveReports(deviceIndex);
-            if (!error) error = GiveMeReport(deviceIndex,&reportAvailable,reportBuffer,&reportBytes,&reportTime);
+            if (!error) error = GiveMeReport(deviceIndex,&reportAvailable,scratchBuffer,&reportBytes,&reportTime);
         }
         #endif
     }
-
-    if(outReport==NULL)
-        PrintfExit("Output argument is required."); // I think MATLAB always provides this.
 
     if (error == 0 && reportBytes > reportBufferSize) {
         error = 2;
         name = "Warning";
         description = string;
-        sprintf(description,"GetReport overflow. Expected %ld but received %ld bytes.",(long)reportBufferSize,(long)reportBytes);
+        sprintf(description, "GetReport overflow. Expected %ld but received %ld bytes.", (long) reportBufferSize, (long) reportBytes);
     }
 
     if (error == 0 && reportBytes < reportBufferSize) {
@@ -207,37 +198,26 @@ PsychError PSYCHHIDGetReport(void)
 
         name = "Warning";
         description = string;
-        sprintf(description,"GetReport expected %ld but received %ld bytes.",(long)reportBufferSize,(long)reportBytes);
-        mxSetN(*outReport,reportBytes);
+        sprintf(description, "GetReport expected %ld but received %ld bytes.", (long) reportBufferSize, (long) reportBytes);
+        reportBufferSize = reportBytes;
     }
 
-    if (outErr != NULL) {
+    PsychAllocOutUnsignedByteMatArg(1, kPsychArgRequired, 1, reportBufferSize, 1, (psych_uint8**) &reportBuffer);
+    memcpy(reportBuffer, scratchBuffer, reportBufferSize);
+
+    {
+        PsychGenericScriptType *outErr;
         const char *fieldNames[] = {"n", "name", "description", "reportLength", "reportTime"};
-        mxArray *fieldValue;
 
         if ((error != 2) && (error != 3))
-            PsychHIDErrors(NULL, error,&name,&description); // Get error name and description, if available.
+            PsychHIDErrors(NULL, error, &name, &description); // Get error name and description, if available.
 
-        *outErr=mxCreateStructMatrix(1,1,5,fieldNames);
-        fieldValue=mxCreateString(name);
-        if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
-        mxSetField(*outErr,0,"name",fieldValue);
-        fieldValue=mxCreateString(description);
-        if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
-        mxSetField(*outErr,0,"description",fieldValue);
-        fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-        if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
-        *mxGetPr(fieldValue)=(double)error;
-        mxSetField(*outErr,0,"n",fieldValue);
-        fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-        if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
-        if(reportAvailable)*mxGetPr(fieldValue)=(double)reportBytes;
-        else *mxGetPr(fieldValue)=-1.0;
-        mxSetField(*outErr,0,"reportLength",fieldValue);
-        fieldValue=mxCreateDoubleMatrix(1,1,mxREAL);
-        if(fieldValue==NULL)PrintfExit("Couldn't allocate \"err\".");
-        *mxGetPr(fieldValue)=reportTime;
-        mxSetField(*outErr,0,"reportTime",fieldValue);
+        PsychAllocOutStructArray(2, kPsychArgOptional, 1, 5, fieldNames, &outErr);
+        PsychSetStructArrayDoubleElement("n", 0, (double) error, outErr);
+        PsychSetStructArrayStringElement("name", 0, name, outErr);
+        PsychSetStructArrayStringElement("description", 0, description, outErr);
+        PsychSetStructArrayDoubleElement("reportLength", 0, (double) ((reportAvailable) ? reportBytes : -1.0), outErr);
+        PsychSetStructArrayDoubleElement("reportTime", 0, reportTime, outErr);
     }
 
     return(PsychError_none);
