@@ -741,9 +741,9 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
     nrhsGLUE[recLevel] = nrhs;
     for (i = 0; i < nrhs; i++) {
         tmparg = PyTuple_GetItem(args, i);
-        // Empty args and strings are special cases - handled directly the Python way.
+        // Empty args, strings and structs are special - handled directly the Python way.
         // Everything else goes through NumPy C-Interfaces:
-        if ((tmparg == Py_None) || mxIsChar(tmparg))
+        if ((tmparg == Py_None) || mxIsChar(tmparg) || mxIsStruct(tmparg))
             prhsGLUE[recLevel][i] = tmparg;
         else
             prhsGLUE[recLevel][i] = PyArray_FROM_OF(tmparg, NPY_ARRAY_IN_FARRAY);
@@ -1279,6 +1279,9 @@ static PsychArgFormatType PsychGetTypeFromPyPtr(const PyObject *ppyPtr)
     // then for string, as we use Python strings here, not NumPy array strings.
     else if (mxIsChar(ppyPtr))
         format = PsychArgType_char;
+    // then for struct, as we use Python structs here, not NumPy array strings.
+    else if (mxIsStruct(ppyPtr))
+        format = PsychArgType_structArray;
     // then everything else, safely assuming it is a NumPy array object:
     else if (mxIsUint8(ppyPtr))
         format = PsychArgType_uint8;
