@@ -82,13 +82,3 @@ PsychError PsychModuleInit(void)
 
     return(PsychError_none);
 }
-
-#if PSYCH_LANGUAGE == PSYCH_PYTHON
-
-PyMODINIT_FUNC
-initPsychHID(void)
-{
-    PsychPythonInit("PsychHID");
-}
-
-#endif

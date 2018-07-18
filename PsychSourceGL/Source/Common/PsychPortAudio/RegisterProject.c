@@ -73,13 +73,3 @@ PsychError PsychModuleInit(void)
     // Startup finished.
     return(PsychError_none);
 }
-
-#if PSYCH_LANGUAGE == PSYCH_PYTHON
-
-PyMODINIT_FUNC
-initPsychPortAudio(void)
-{
-    PsychPythonInit("PsychPortAudio");
-}
-
-#endif

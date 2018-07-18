@@ -48,13 +48,3 @@ PsychError PsychModuleInit(void)
 
     return(PsychError_none);
 }
-
-#if PSYCH_LANGUAGE == PSYCH_PYTHON
-
-PyMODINIT_FUNC
-initWaitSecs(void)
-{
-    PsychPythonInit("WaitSecs");
-}
-
-#endif
