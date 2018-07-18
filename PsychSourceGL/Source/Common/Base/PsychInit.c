@@ -32,16 +32,53 @@
 
 #if PSYCH_LANGUAGE == PSYCH_PYTHON
 
+#define PPYINIT(...) _PPYINIT(__VA_ARGS__)
+#define _PPYNAME(n) #n
+#define PPYNAME(...) _PPYNAME(__VA_ARGS__)
+
 static PyMethodDef GlobalPythonMethodsTable[] = {
     {"do", PsychScriptingGluePythonDispatch, METH_VARARGS, "Make it so! Energize! Execute!"},
     {NULL, NULL, 0, NULL}
 };
 
-void PsychPythonInit(const char* modulename)
+// Python 2 init code -- Python 2.6+ is required for PTB modules:
+#if PY_MAJOR_VERSION < 3
+#define _PPYINIT(n) PyMODINIT_FUNC init ## n(void)
+
+// This is the entry point - module init function, called at module import:
+// PTBMODULENAME is -DPTBMODULENAME myname defined by the build script to the
+// name of the module, e.g., GetSecs.
+PPYINIT(PTBMODULENAME)
 {
-    (void) Py_InitModule(modulename, GlobalPythonMethodsTable);
+    (void) Py_InitModule(PPYNAME(PTBMODULENAME), GlobalPythonMethodsTable);
+}
+// End of Python 2.x specific init code
+#endif
+
+// Python 3 init code:
+#if PY_MAJOR_VERSION >= 3
+#define _PPYINIT(n) PyMODINIT_FUNC PyInit_ ## n(void)
+
+static struct PyModuleDef module_definition = {
+    PyModuleDef_HEAD_INIT,                      // Base instance.
+    PPYNAME(PTBMODULENAME),                     // Module name.
+    "A Psychtoolbox module for Python 3",       // Help text.
+    -1,                                         // -1 = No sub-interpreter support: https://docs.python.org/3/c-api/module.html#c.PyModuleDef
+    GlobalPythonMethodsTable                    // Function dispatch table.
+};
+
+// This is the entry point - module init function, called at module import:
+// PTBMODULENAME is -DPTBMODULENAME myname defined by the build script to the
+// name of the module, e.g., GetSecs.
+PPYINIT(PTBMODULENAME)
+{
+    return(PyModule_Create(&module_definition));
 }
 
+// End of Python 3.x specific init code
+#endif
+
+// End of Python init code.
 #endif
 
 PsychError PsychInit(void)
