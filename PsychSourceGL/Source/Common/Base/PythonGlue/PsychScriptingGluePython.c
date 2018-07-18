@@ -151,7 +151,7 @@ int mxIsNumeric(const PyObject* a)
 
 int mxIsChar(const PyObject* a)
 {
-    return(PyString_Check(a));
+    return(PyUnicode_Check(a) || PyBytes_Check(a));
 }
 
 int mxIsSingle(const PyObject* a)
@@ -285,7 +285,7 @@ PyObject* mxCreateLogicalMatrix(ptbSize rows, ptbSize cols)
 
 PyObject* mxCreateString(const char* instring)
 {
-    return(PyString_FromString(instring));
+    return(PyUnicode_FromString(instring));
 }
 
 void* mxGetData(const PyObject* arrayPtr)
@@ -370,15 +370,29 @@ int mxGetString(PyObject* arrayPtr, char* outstring, int outstringsize)
     if (!mxIsChar(arrayPtr))
         PsychErrorExitMsg(PsychError_internal, "FATAL Error: Tried to convert a non-string into a string!");
 
-//     if (PyArray_ISSTRING((const PyArrayObject*)  arrayPtr)) {
-//         int rc;
-//         PyObject* myString = PyArray_ToString((const PyArrayObject*)  arrayPtr, NPY_ANYORDER);
-//         rc = (snprintf(outstring, outstringsize, "%s", PyString_AsString(myString)) >= 0) ? 0 : 1;
-//         Py_XDECREF(myString);
-//         return(rc);
-//     }
-//     else
-    return(((snprintf(outstring, outstringsize, "%s", PyString_AsString(arrayPtr))) >= 0) ? 0 : 1);
+    #if PY_MAJOR_VERSION < 3
+        // Python 2: Gives a new reference to a unicode object. Converts bytes -> unicode as needed:
+        arrayPtr = PyObject_Unicode(arrayPtr);
+    #else
+        // Python 3: No PyObject_Unicode(), distinguish unicode input vs. bytes 8-bit legacy string input:
+        if (PyUnicode_Check(arrayPtr))
+            // Provide it as Latin1 8-bit "bytes" string from unicode, giving a new reference:
+            arrayPtr = PyUnicode_AsLatin1String(arrayPtr);
+        else
+            // Is already a 8-bit "bytes" string. Increment refcount, to counteract decref below:
+            Py_INCREF(arrayPtr);
+    #endif
+
+    // Got a 8-bit "bytes" string?
+    if (arrayPtr) {
+        // Extract as const char* C-style string - copy to return char array:
+        int rc = ((snprintf(outstring, outstringsize, "%s", PyBytes_AsString(arrayPtr))) >= 0) ? 0 : 1;
+
+        Py_DECREF(arrayPtr);
+        return(rc);
+    }
+    else
+        return(1);
 }
 
 void mxDestroyArray(PyObject *arrayPtr)
@@ -2240,7 +2254,11 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
     acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
-        strLen = (psych_uint64) PyString_Size(ppyPtr) + 1;
+        if (PyUnicode_Check(ppyPtr))
+            strLen = (psych_uint64) PyUnicode_GetSize(ppyPtr) + 1;
+        else
+            strLen = (psych_uint64) PyBytes_Size(ppyPtr) + 1;
+
         if (strLen >= INT_MAX)
             PsychErrorExitMsg(PsychError_user, "Tried to pass in a string with more than 2^31 - 1 characters. Unsupported!");
 
