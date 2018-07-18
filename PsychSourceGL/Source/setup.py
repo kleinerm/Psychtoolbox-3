@@ -41,21 +41,21 @@ basefiles_linux = get_sourcefiles('./Linux/Base/');
 baseincludes_linux = ['Linux/Base'];
 
 # OS detection and file selection for the different OS specific backends:
-print 'Platform reported as: ' + platform.system();
+print('Platform reported as: %s\n' % platform.system());
 if platform.system() == 'Linux':
-    print 'Building for Linux...\n';
+    print('Building for Linux...\n');
     osname = 'Linux';
     basefiles_os = basefiles_linux;
     baseincludes_os = baseincludes_linux;
 
 if platform.system() == 'Windows':
-    print 'Building for Windows...\n';
+    print('Building for Windows...\n');
     osname = 'Windows';
     basefiles_os = basefiles_windows;
     baseincludes_os = baseincludes_windows;
 
 if platform.system() == 'Darwin':
-    print 'Building for macOS...\n';
+    print('Building for macOS...\n');
     osname = 'OSX';
     basefiles_os = basefiles_osx;
     baseincludes_os = baseincludes_osx;
