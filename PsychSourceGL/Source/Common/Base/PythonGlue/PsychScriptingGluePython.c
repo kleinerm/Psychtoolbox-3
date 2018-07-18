@@ -626,14 +626,17 @@ void ScreenCloseAllWindows(void);
 
 // Is this awful, or what? Hackery needed to handle NumPy for Python 3 vs 2:
 #if PY_MAJOR_VERSION >= 3
-int
+void* init_numpy(void)
+{
+    import_array();
+    return(NULL);
+}
 #else
-void
-#endif
-init_numpy(void)
+void init_numpy(void)
 {
     import_array();
 }
+#endif
 
 void PsychExitRecursion(void)
 {
@@ -706,7 +709,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         if (getenv("PSYCH_RECURSION_DEBUG")) psych_recursion_debug = TRUE;
 
         // Initialize NumPy array extension for use in *this compilation unit* only:
-        init_numpy();
+        (void) init_numpy();
 
         //call the Psychtoolbox init function, which inits the Psychtoolbox and calls the project init.
         PsychInit();
