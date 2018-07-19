@@ -28,8 +28,8 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
-// Define this to 1 if you want lots of debug-output for the Octave-Scripting glue.
-#define DEBUG_PTBPYTHONGLUE 1
+// Define this to 1 if you want lots of debug-output for the Python-Scripting glue.
+#define DEBUG_PTBPYTHONGLUE 0
 
 // Special hacks to allow Psychtoolbox to build on Python, stubbing out Mex Api replacements.
 
@@ -603,11 +603,9 @@ void mxSetCell(PsychGenericScriptType *cellVector, ptbIndex index, PyObject* mxF
 
 void mxSetLogical(PyObject* dummy)
 {
-    // This is a no-op on Octave build, because it is not needed anywhere...
+    // This is a no-op, because it is not needed anywhere...
     return;
 }
-
-static void PsychExitGlue(void);
 
 //local function declarations
 static psych_bool PsychIsDefaultMat(const PyObject *mat);
@@ -620,8 +618,6 @@ static PyObject *mxCreateDoubleMatrix3D(psych_int64 m, psych_int64 n, psych_int6
 static psych_bool firstTime = TRUE;
 
 PsychError PsychExitPythonGlue(void);
-static psych_bool jettisoned = FALSE;
-
 void ScreenCloseAllWindows(void);
 
 // Is this awful, or what? Hackery needed to handle NumPy for Python 3 vs 2:
@@ -693,13 +689,6 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         return(NULL);
     }
 
-    // Child protection: Is someone trying to call us after we've shut down already?
-    if (jettisoned) {
-        // Yep! Stupido...
-        printf("%s: Tried to call the module after it has been jettisoned!!! No op!\n", PsychGetModuleName());
-        return (NULL);
-    }
-
     // Initialization
     if (firstTime) {
         // Reset call recursion level to startup default:
@@ -714,13 +703,11 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         //call the Psychtoolbox init function, which inits the Psychtoolbox and calls the project init.
         PsychInit();
 
-        // Hard to believe, but apparently true: Python-2 does not allow unloading extension modules!
-        // So we register a subfunction "JettisonModuleHelper" that allows to trigger a manual module
-        // shutdown, although not an unload.
-        PsychRegister("JettisonModuleHelper",  &PsychExitPythonGlue);
-
-        // Lock ourselves into Python-2 runtime environment so we can't get clear'ed out easily:
-        // FIXME No such thing as locking in Python-2?
+        // Hard to believe, but apparently true: Python does not allow unloading extension modules!
+        // As a workaround, we register a subfunction "Shutdown" that allows to trigger a manual module
+        // shutdown, although not a true unload. At least this might allow module state resets if done
+        // carefully:
+        PsychRegister("Shutdown",  &PsychExitPythonGlue);
 
         // Register hidden helper function: This one dumps all registered subfunctions of
         // a module into a struct array of text strings. Needed by our automatic documentation
@@ -995,42 +982,23 @@ PythonFunctionCleanup:
 }
 
 
-/*  Call PsychExitGlue(), followed by unlocking the module:
- *  Needed to safely remove modules in Python 2.
+/*  Call PsychExitGlue():
+ *  Needed to safely reset modules in Python.
  */
 PsychError PsychExitPythonGlue(void)
 {
     // Debug output:
-    if (DEBUG_PTBPYTHONGLUE) printf("PTB-INFO: Jettisoning submodule %s ...\n", PsychGetModuleName());
+    if (DEBUG_PTBPYTHONGLUE)
+        printf("PTB-INFO: Jettisoning submodule %s ...\n", PsychGetModuleName());
+
+    // Mark ourselves as not yet initialized:
+    firstTime = TRUE;
 
     // Call our regular exit routines to clean up and release all ressources:
-    PsychExitGlue();
+    PsychErrorExitMsg(PsychExit(), NULL);
 
-    // Mark ourselves (via global variable "jettisoned") as shut-down. Any
-    // further invocations of the module without previously clear'ing and
-    // reloading it will be prevented.
-    jettisoned = TRUE;
-
-    // Unlock ourselves from Python runtime environment so we can get clear'ed out:
-    // FIXME No such thing in Python 2?
-
-    // Done. Return control to Octave - It will now remove us from its process-space - RIP.
+    // Done. Return control to Python:
     return(PsychError_none);
-}
-
-
-/*
- *    Just call the abstracted PsychExit function.  This might seem dumb, but its necessary to
- *    isolate the scripting language dependent stuff from the rest of the toolbox.
- *
- */
-void PsychExitGlue(void)
-{
-    // Perform platform independent shutdown:
-    PsychErrorExitMsg(PsychExit(),NULL);
-
-    // And we are dead. Now the runtime will flush us from process memory.
-    // No further invocation will happen until reload.
 }
 
 

@@ -59,12 +59,37 @@ PPYINIT(PTBMODULENAME)
 #if PY_MAJOR_VERSION >= 3
 #define _PPYINIT(n) PyMODINIT_FUNC PyInit_ ## n(void)
 
+// Defined in PsychScriptingGluePython.c
+PsychError PsychExitPythonGlue(void);
+
+/* PythonModuleCleanup() - Call Python specific cleanup function.
+ *
+ * This cleanup function is only called on Python 3, and as far as i
+ * understand only at interpreter shutdown time, ie. when calling quit()
+ * or pressing CTRL+D. reload()ing of extension modules seems to be not
+ * possible in Python 2 and 3, as described in PEP 0498:
+ * https://www.python.org/dev/peps/pep-0489/#id29
+ *
+ * For this reason, this function is of limited value, but implemented
+ * anyway for completeness and future reference.
+ *
+ */
+void PythonModuleCleanup(void* userptr)
+{
+    (void) userptr;
+    (void) PsychExitPythonGlue();
+}
+
 static struct PyModuleDef module_definition = {
     PyModuleDef_HEAD_INIT,                      // Base instance.
     PPYNAME(PTBMODULENAME),                     // Module name.
     "A Psychtoolbox module for Python 3",       // Help text.
     -1,                                         // -1 = No sub-interpreter support: https://docs.python.org/3/c-api/module.html#c.PyModuleDef
-    GlobalPythonMethodsTable                    // Function dispatch table.
+    GlobalPythonMethodsTable,                   // Function dispatch table.
+    NULL,                                       // m_slots
+    NULL,                                       // m_traverse
+    NULL,                                       // m_clear
+    PythonModuleCleanup                         // m_free = PythonModuleCleanup, cleanup at module destruction.
 };
 
 // This is the entry point - module init function, called at module import:
@@ -91,10 +116,10 @@ PsychError PsychInit(void)
     InitPsychAuthorList();
     PsychInitTimeGlue();
 
-    //Registration of the Psychtoolbox exit function is
-    //done in ScriptingGlue.cpp because how that is done is
-    //specific to the scripting environment. Note that registration
-    //of the project exit function is done within the project init.
+    // Registration of the Psychtoolbox exit function is
+    // done in PsychScriptingGlueXXX.c because how that is done is
+    // specific to the scripting environment. Note that registration
+    // of the project exit function is done within the project init.
 
     //then call call the project init.
     PsychModuleInit();
@@ -103,19 +128,22 @@ PsychError PsychInit(void)
 }
 
 /* PsychExit is the function invoked last before the module is
-   purged.  It is abstracted to be unspecific to the scripting
-   language.  The language-specific versions are named PsychExitGlue()
-   and they are found in SciptingGlue.cpp
+   purged. It is abstracted to be unspecific to the scripting
+   language. The XXX language-specific versions are named
+   PsychExitGlue() and they are found in PsychScriptingXXX.c
  */
 PsychError PsychExit(void)
 {
     PsychFunctionPtr projectExit;
 
     projectExit = PsychGetProjectExitFunction();
-    if(projectExit != NULL) (*projectExit)();
+    if (projectExit != NULL) (*projectExit)();
 
     // Put whatever cleanup of the Psychtoolbox is required here.
     PsychExitTimeGlue();
+
+    // Reset / Clear function and module name registry:
+    PsychResetRegistry();
 
     return(PsychError_none);
 }
