@@ -37,7 +37,7 @@
 #define PPYNAME(...) _PPYNAME(__VA_ARGS__)
 
 static PyMethodDef GlobalPythonMethodsTable[] = {
-    {"do", PsychScriptingGluePythonDispatch, METH_VARARGS, "Make it so! Energize! Execute!"},
+    {PPYNAME(PTBMODULENAME), PsychScriptingGluePythonDispatch, METH_VARARGS, "Make it so! Energize! Execute!"},
     {NULL, NULL, 0, NULL}
 };
 
