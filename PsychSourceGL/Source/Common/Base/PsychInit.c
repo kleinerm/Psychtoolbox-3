@@ -31,13 +31,12 @@
 #include "Psych.h"
 
 #if PSYCH_LANGUAGE == PSYCH_PYTHON
-
 #define PPYINIT(...) _PPYINIT(__VA_ARGS__)
 #define _PPYNAME(n) #n
 #define PPYNAME(...) _PPYNAME(__VA_ARGS__)
 
 static PyMethodDef GlobalPythonMethodsTable[] = {
-    {PPYNAME(PTBMODULENAME), PsychScriptingGluePythonDispatch, METH_VARARGS, "Make it so! Energize! Execute!"},
+    {PPYNAME(PTBMODULENAME), PsychScriptingGluePythonDispatch, METH_VARARGS, NULL},
     {NULL, NULL, 0, NULL}
 };
 
@@ -50,6 +49,10 @@ static PyMethodDef GlobalPythonMethodsTable[] = {
 // name of the module, e.g., GetSecs.
 PPYINIT(PTBMODULENAME)
 {
+    // Add a help string with module synopsis to 1st function - our main dispatch function:
+    GlobalPythonMethodsTable[0].ml_doc = PsychBuildSynopsisString(PPYNAME(PTBMODULENAME));
+
+    // Initialize module:
     (void) Py_InitModule(PPYNAME(PTBMODULENAME), GlobalPythonMethodsTable);
 }
 // End of Python 2.x specific init code
@@ -81,15 +84,17 @@ void PythonModuleCleanup(void* userptr)
 }
 
 static struct PyModuleDef module_definition = {
-    PyModuleDef_HEAD_INIT,                      // Base instance.
-    PPYNAME(PTBMODULENAME),                     // Module name.
-    "A Psychtoolbox module for Python 3",       // Help text.
-    -1,                                         // -1 = No sub-interpreter support: https://docs.python.org/3/c-api/module.html#c.PyModuleDef
-    GlobalPythonMethodsTable,                   // Function dispatch table.
-    NULL,                                       // m_slots
-    NULL,                                       // m_traverse
-    NULL,                                       // m_clear
-    PythonModuleCleanup                         // m_free = PythonModuleCleanup, cleanup at module destruction.
+    PyModuleDef_HEAD_INIT,                                                      // Base instance.
+    PPYNAME(PTBMODULENAME),                                                     // Module name.
+    "The " PPYNAME(PTBMODULENAME) " Psychtoolbox module for Python 3.\n"        // Help text.
+    "Copyright (c) 2018 Mario Kleiner. All rights reserved.\n"
+    "PUBLIC USE WITHOUT PERMISSION BY THE AUTHOR IS PROHIBITED!",
+    -1,                                                                         // -1 = No sub-interpreter support: https://docs.python.org/3/c-api/module.html#c.PyModuleDef
+    GlobalPythonMethodsTable,                                                   // Function dispatch table, shared with Python 2.
+    NULL,                                                                       // m_slots
+    NULL,                                                                       // m_traverse
+    NULL,                                                                       // m_clear
+    PythonModuleCleanup                                                         // m_free = PythonModuleCleanup, cleanup at module destruction.
 };
 
 // This is the entry point - module init function, called at module import:
@@ -97,6 +102,10 @@ static struct PyModuleDef module_definition = {
 // name of the module, e.g., GetSecs.
 PPYINIT(PTBMODULENAME)
 {
+    // Add a help string with module synopsis to 1st function - our main dispatch function:
+    GlobalPythonMethodsTable[0].ml_doc = PsychBuildSynopsisString(PPYNAME(PTBMODULENAME));
+
+    // Initialize module:
     return(PyModule_Create(&module_definition));
 }
 
@@ -121,7 +130,7 @@ PsychError PsychInit(void)
     // specific to the scripting environment. Note that registration
     // of the project exit function is done within the project init.
 
-    //then call call the project init.
+    // Then call the project init.
     PsychModuleInit();
 
     return(PsychError_none);

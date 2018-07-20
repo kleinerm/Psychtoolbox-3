@@ -700,7 +700,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         // Initialize NumPy array extension for use in *this compilation unit* only:
         (void) init_numpy();
 
-        //call the Psychtoolbox init function, which inits the Psychtoolbox and calls the project init.
+        // Call the Psychtoolbox init function, which inits the Psychtoolbox and calls the project init.
         PsychInit();
 
         // Hard to believe, but apparently true: Python does not allow unloading extension modules!
