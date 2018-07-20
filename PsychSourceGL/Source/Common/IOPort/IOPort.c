@@ -42,7 +42,7 @@ static unsigned int portRecordCount = 0;
 static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
 // Initialize usage info -- function overview:
-void InitializeSynopsis(void)
+const char** InitializeSynopsis(void)
 {
     int i=0;
     const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
@@ -70,6 +70,8 @@ void InitializeSynopsis(void)
     if (i > MAX_SYNOPSIS_STRINGS) {
         PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
     }
+
+    return(synopsisSYNOPSIS);
 }
 
 PsychError IOPORTVerbosity(void)

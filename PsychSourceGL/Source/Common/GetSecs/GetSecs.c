@@ -28,6 +28,19 @@
 
 #include "GetSecs.h"
 
+#define MAX_SYNOPSIS_STRINGS 500
+static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
+
+const char** InitializeSynopsis(void)
+{
+    int i = 0;
+    const char **synopsis = synopsisSYNOPSIS;
+    synopsis[i++] = "[GetSecsTime, WallTime, syncErrorSecs] = GetSecs('AllClocks' [, maxError=0.000020]);";
+    synopsis[i++] = NULL;
+
+    return(synopsisSYNOPSIS);
+}
+
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 #include <sys/time.h>
 #endif

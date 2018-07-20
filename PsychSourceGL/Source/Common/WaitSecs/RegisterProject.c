@@ -43,8 +43,8 @@ PsychError PsychModuleInit(void)
     PsychSetModuleAuthorByInitials("awi");
     PsychSetModuleAuthorByInitials("mk");
 
-    //register synopsis and named subfunctions.
-    //InitializeSynopsis();
+    // Register synopsis and named subfunctions.
+    InitializeSynopsis();
 
     return(PsychError_none);
 }

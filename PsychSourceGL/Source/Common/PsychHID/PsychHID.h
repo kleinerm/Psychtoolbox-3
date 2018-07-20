@@ -240,7 +240,7 @@ void        HIDGetUsageName(const long valueUsagePage, const long valueUsage, ch
 HIDElementTypeMask HIDConvertElementTypeToMask(const long type);
 #endif
 
-void                    InitializeSynopsis(void);
+const char**            InitializeSynopsis(void);
 PsychError              PsychDisplayPsychHIDSynopsis(void);
 int                     PsychHIDErrors(void* device, int error, char **namePtr, char **descriptionPtr);
 void                    PsychInitializePsychHID(void); // PsychHIDHelpers.c
