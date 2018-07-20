@@ -103,7 +103,9 @@ PsychHID = Extension(name,
                     )
 
 setup (name = 'Psychtoolbox4Python',
-        version = '0.1',
-        description = 'This is the prototype of a port of Psychtoolbox-3 mex files to Python extensions.',
-        ext_modules = [GetSecs, WaitSecs, PsychPortAudio, PsychHID]
+       version = '0.1',
+       description = 'This is the prototype of a port of Psychtoolbox-3 mex files to Python extensions.',
+       package_dir = {'' : '../../Psychtoolbox/PsychPython'},
+       py_modules = ['psychtoolboxclassic'],
+       ext_modules = [GetSecs, WaitSecs, PsychPortAudio, PsychHID]
       )
