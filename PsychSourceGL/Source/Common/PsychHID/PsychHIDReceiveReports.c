@@ -914,7 +914,7 @@ PsychError PSYCHHIDReceiveReports(void)
 
         PsychHIDErrors(NULL, error, &name, &description); // Get error name and description, if available.
 
-        PsychAllocOutStructArray(1, kPsychArgOptional, 1, 3, fieldNames, &outErr);
+        PsychAllocOutStructArray(1, kPsychArgOptional, -1, 3, fieldNames, &outErr);
         PsychSetStructArrayDoubleElement("n", 0, (double) error, outErr);
         PsychSetStructArrayStringElement("name", 0, name, outErr);
         PsychSetStructArrayStringElement("description", 0, description, outErr);

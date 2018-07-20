@@ -68,7 +68,7 @@ PsychError PSYCHHIDGiveMeReports(void)
 
     // Return 2nd return argument 'err' struct:
     PsychHIDErrors(NULL, error, &name, &description);
-    PsychAllocOutStructArray(2, kPsychArgOptional, 1, 3, fieldNames, &outErr);
+    PsychAllocOutStructArray(2, kPsychArgOptional, -1, 3, fieldNames, &outErr);
     PsychSetStructArrayStringElement("name", 0, name, outErr);
     PsychSetStructArrayStringElement("description", 0, description, outErr);
     PsychSetStructArrayDoubleElement("n", 0, (double) error, outErr);

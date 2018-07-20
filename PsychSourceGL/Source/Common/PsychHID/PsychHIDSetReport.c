@@ -183,7 +183,7 @@ PsychError PSYCHHIDSetReport(void)
     #endif
     }
 
-    PsychAllocOutStructArray(1, kPsychArgOptional, 1, 3, fieldNames, &outErr);
+    PsychAllocOutStructArray(1, kPsychArgOptional, -1, 3, fieldNames, &outErr);
     PsychSetStructArrayStringElement("name", 0, name, outErr);
     PsychSetStructArrayStringElement("description", 0, description, outErr);
     PsychSetStructArrayDoubleElement("n", 0, (double) error, outErr);

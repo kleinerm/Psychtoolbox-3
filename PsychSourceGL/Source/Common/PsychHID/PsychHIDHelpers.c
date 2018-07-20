@@ -406,7 +406,7 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
         switch (evt.type) {
             case 0: // Press/Release
             case 1: // Motion/Valuator change
-                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 12, FieldNames, &retevent);
+                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, -1, 12, FieldNames, &retevent);
                 break;
 
             case 2: // Touch begin
@@ -415,7 +415,7 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
             case 5: // Touch sequence compromised marker. If this one shows up - with magic touch point
                     // id 0xffffffff btw., then the user script knows the sequence was cut short / aborted
                     // by some higher priority consumer, e.g., some global gesture recognizer.
-                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, 1, 12, FieldNames, &retevent);
+                PsychAllocOutStructArray(outArgIndex, kPsychArgOptional, -1, 12, FieldNames, &retevent);
                 break;
 
             default:

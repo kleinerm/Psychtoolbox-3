@@ -4775,7 +4775,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
     if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
 
-    PsychAllocOutStructArray(1, kPsychArgOptional, 1, 23, FieldNames, &status);
+    PsychAllocOutStructArray(1, kPsychArgOptional, -1, 23, FieldNames, &status);
 
     // Ok, in a perfect world we should hold the device mutex while querying all the device state.
     // However, we don't: This reduces lock contention at the price of a small chance that the

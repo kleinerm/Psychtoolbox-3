@@ -212,7 +212,7 @@ PsychError PSYCHHIDGetReport(void)
         if ((error != 2) && (error != 3))
             PsychHIDErrors(NULL, error, &name, &description); // Get error name and description, if available.
 
-        PsychAllocOutStructArray(2, kPsychArgOptional, 1, 5, fieldNames, &outErr);
+        PsychAllocOutStructArray(2, kPsychArgOptional, -1, 5, fieldNames, &outErr);
         PsychSetStructArrayDoubleElement("n", 0, (double) error, outErr);
         PsychSetStructArrayStringElement("name", 0, name, outErr);
         PsychSetStructArrayStringElement("description", 0, description, outErr);

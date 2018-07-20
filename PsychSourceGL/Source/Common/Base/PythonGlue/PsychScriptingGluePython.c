@@ -503,7 +503,7 @@ void mxDestroyArray(PyObject *arrayPtr)
 
 PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, const char** fieldNames)
 {
-    ptbSize n;
+    int n;
     PyObject* retval = NULL;
 
     if (numDims != 1)
@@ -512,9 +512,9 @@ PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, co
     if (numFields < 1)
         PsychErrorExitMsg(PsychError_internal, "Error: mxCreateStructArray: numFields < 1 ?!?");
 
-    n = ArrayDims[0];
+    n = (int) ArrayDims[0];
 
-    if (n < 0)
+    if (n < -1)
         PsychErrorExitMsg(PsychError_internal, "Error: mxCreateStructArray: Negative number of array elements requested?!?");
 
     // Two implementations, switchable depending on python_structArray_is_structArray true or false.
@@ -525,20 +525,19 @@ PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, co
     // False == Return a struct of arrays: Easy for us, and compute/memory efficient for all, but
     //          somewhat awkward to use for the Python script.
     if (python_structArray_is_structArray) {
-        ptbSize i;
-        int j;
+        int i, j;
 
         // Create a list of objects - the struct array - with each object being a
         // dictionary that contains fieldNames as keys, and PyObjects as the actual
         // values -- iow. a single "array of structs":
 
-        // Create to-be-returned list that makes up the struct array, except if n == 1,
+        // Create to-be-returned list that makes up the struct array, except if n == -1,
         // in which case we don't return a list (~ array), but just the single dict (~ struct):
-        if (n != 1)
+        if (n != -1)
             retval = PyList_New((Py_ssize_t) n);
 
         // Create one dictionary for each slot:
-        for (i = 0; i < n; i++) {
+        for (i = 0; i < abs(n); i++) {
             PyObject* slotdict = PyDict_New();
 
             // Create all fields for all fieldNames for this slots dictionary:
@@ -549,9 +548,9 @@ PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, co
                     PsychErrorExitMsg(PsychError_internal, "Error: mxCreateStructArray: Failed to init struct-Array slot with item!");
             }
 
-            // For n > 1, assign to i'th slot of returned list retval.
-            // For n == 1, directly return our one and only slotdict as retval:
-            if (n > 1)
+            // For n >=  0, assign to i'th slot of returned list retval.
+            // For n == -1, directly return our one and only slotdict as retval:
+            if (n > -1)
                 PyList_SetItem(retval, i, slotdict);
             else
                 retval = slotdict;
@@ -564,7 +563,7 @@ PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, co
 
         retval = PyDict_New();
         for (j = 0; j < numFields; j++) {
-            PyObject* slotArray = PyList_New((Py_ssize_t) n);
+            PyObject* slotArray = PyList_New((Py_ssize_t) ((n >= 0) ? n : 1));
             PyDict_SetItemString(retval, fieldNames[j], slotArray);
         }
     }
@@ -2751,6 +2750,9 @@ int PsychRuntimeEvaluateString(const char* cmdstring)
     allocate the structure and return it in pStruct.  This is how to create a structure which is embeded within another
     structure using PsychSetStructArrayStructArray().  Note that we use -1 as the flag and not NULL because NULL is 0 and
     0 is reserved for future use as a reference to the subfunction name, of if none then the function name.
+
+    The special value numElements == -1 means to return a single struct, instead of a struct array.
+
 */
 psych_bool PsychAllocOutStructArray(int position, 
                                     PsychArgRequirementType isRequired, 
@@ -2766,6 +2768,9 @@ psych_bool PsychAllocOutStructArray(int position,
     psych_bool      putOut;
 
     structArrayDims[0] = numElements;
+
+    // Handle special case numElements == -1 which is ~ == 1 for validation:
+    numElements = abs(numElements);
 
     if (position != kPsychNoArgReturn) {
         // Return the result to both the C caller and the scripting environment.
