@@ -24,6 +24,8 @@
 #include "Psych.h"
 #undef PTBINSCRIPTINGGLUE
 
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+
 // Import NumPy array handling functions:
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
@@ -73,6 +75,92 @@ static psych_bool psych_recursion_debug = FALSE;
 // Set to TRUE to get Octave/Matlab/Mex style behaviour of array-of-structs,
 // even if that may be less efficient computationally and memory-wise:
 static psych_bool python_structArray_is_structArray = TRUE;
+
+// MODULE INITIALIZATION FOR PYTHON:
+// =================================
+
+#define PPYINIT(...) _PPYINIT(__VA_ARGS__)
+#define _PPYNAME(n) #n
+#define PPYNAME(...) _PPYNAME(__VA_ARGS__)
+
+static PyMethodDef GlobalPythonMethodsTable[] = {
+    {PPYNAME(PTBMODULENAME), PsychScriptingGluePythonDispatch, METH_VARARGS, NULL},
+    {NULL, NULL, 0, NULL}
+};
+
+// Python 2 init code -- Python 2.6+ is required for PTB modules:
+#if PY_MAJOR_VERSION < 3
+#define _PPYINIT(n) PyMODINIT_FUNC init ## n(void)
+
+// This is the entry point - module init function, called at module import:
+// PTBMODULENAME is -DPTBMODULENAME myname defined by the build script to the
+// name of the module, e.g., GetSecs.
+PPYINIT(PTBMODULENAME)
+{
+    // Add a help string with module synopsis to 1st function - our main dispatch function:
+    GlobalPythonMethodsTable[0].ml_doc = PsychBuildSynopsisString(PPYNAME(PTBMODULENAME));
+
+    // Initialize module:
+    (void) Py_InitModule(PPYNAME(PTBMODULENAME), GlobalPythonMethodsTable);
+}
+// End of Python 2.x specific init code
+#endif
+
+// Python 3 init code:
+#if PY_MAJOR_VERSION >= 3
+#define _PPYINIT(n) PyMODINIT_FUNC PyInit_ ## n(void)
+
+// Defined in PsychScriptingGluePython.c
+PsychError PsychExitPythonGlue(void);
+
+/* PythonModuleCleanup() - Call Python specific cleanup function.
+ *
+ * This cleanup function is only called on Python 3, and as far as i
+ * understand only at interpreter shutdown time, ie. when calling quit()
+ * or pressing CTRL+D. reload()ing of extension modules seems to be not
+ * possible in Python 2 and 3, as described in PEP 0498:
+ * https://www.python.org/dev/peps/pep-0489/#id29
+ *
+ * For this reason, this function is of limited value, but implemented
+ * anyway for completeness and future reference.
+ *
+ */
+void PythonModuleCleanup(void* userptr)
+{
+    (void) userptr;
+    (void) PsychExitPythonGlue();
+}
+
+static struct PyModuleDef module_definition = {
+    PyModuleDef_HEAD_INIT,                                                      // Base instance.
+    PPYNAME(PTBMODULENAME),                                                     // Module name.
+    "The " PPYNAME(PTBMODULENAME) " Psychtoolbox module for Python 3.\n"        // Help text.
+    "Copyright (c) 2018 Mario Kleiner. All rights reserved.\n"
+    "PUBLIC USE WITHOUT PERMISSION BY THE AUTHOR IS PROHIBITED!",
+    -1,                                                                         // -1 = No sub-interpreter support: https://docs.python.org/3/c-api/module.html#c.PyModuleDef
+    GlobalPythonMethodsTable,                                                   // Function dispatch table, shared with Python 2.
+    NULL,                                                                       // m_slots
+    NULL,                                                                       // m_traverse
+    NULL,                                                                       // m_clear
+    PythonModuleCleanup                                                         // m_free = PythonModuleCleanup, cleanup at module destruction.
+};
+
+// This is the entry point - module init function, called at module import:
+// PTBMODULENAME is -DPTBMODULENAME myname defined by the build script to the
+// name of the module, e.g., GetSecs.
+PPYINIT(PTBMODULENAME)
+{
+    // Add a help string with module synopsis to 1st function - our main dispatch function:
+    GlobalPythonMethodsTable[0].ml_doc = PsychBuildSynopsisString(PPYNAME(PTBMODULENAME));
+
+    // Initialize module:
+    return(PyModule_Create(&module_definition));
+}
+
+// End of Python 3.x specific init code
+#endif
+
+// END OF MODULE INITIALIZATION FOR PYTHON:
 
 // This jump-buffer stores CPU- and stackstate at the position
 // where our octFunction() dispatcher actually starts executing
@@ -2945,3 +3033,4 @@ void PsychSetCellVectorStringElement(int index,
 }
 
 // End of Python only stuff.
+#endif
