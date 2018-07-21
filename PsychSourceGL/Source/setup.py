@@ -131,10 +131,20 @@ PsychHID = Extension(name,
                      libraries = base_libs + psychhid_libs
                     )
 
+# IOPort module:
+name = 'IOPort';
+IOPort = Extension(name,
+                   extra_compile_args = base_compile_args,
+                   define_macros = get_basemacros(name, osname),
+                   include_dirs = get_baseincludedirs(name, osname),
+                   sources = get_basesources(name, osname),
+                   libraries = base_libs
+                  )
+
 setup (name = 'Psychtoolbox4Python',
        version = '0.1',
        description = 'This is the prototype of a port of Psychtoolbox-3 mex files to Python extensions.',
        package_dir = {'' : '../../Psychtoolbox/PsychPython'},
        py_modules = ['psychtoolboxclassic', 'ppatest', 'hidtest'],
-       ext_modules = [GetSecs, WaitSecs, PsychPortAudio, PsychHID]
+       ext_modules = [GetSecs, WaitSecs, PsychPortAudio, PsychHID, IOPort]
       )
