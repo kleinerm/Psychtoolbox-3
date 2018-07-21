@@ -21,52 +21,82 @@ def get_sourcefiles(path):
 
     return(sources);
 
+def get_basemacros(name, osname):
+    return([('PTBMODULE_' + name, None), ('PTBMODULENAME', name)] + base_macros);
 
-# No "no reproducible builds" warning:
-base_compile_args = ['-Wno-date-time'];
+def get_baseincludedirs(name, osname):
+    return(['Common/' + name] + baseincludes_common + [osname + '/Base'] + [osname + '/' + name]);
+
+def get_basesources(name, osname):
+    extrafiles = [];
+    if os.access('./' + osname + '/' + name, os.F_OK):
+         extrafiles = get_sourcefiles('./' + osname + '/' + name);
+
+    return(basefiles_common + get_sourcefiles('./' + osname + '/Base/') + get_sourcefiles('./Common/' + name) + extrafiles);
 
 # Treating some special cases like Octave seems to be the right thing to do,
 # PSYCH_LANGUAGE setting is self-explanatory:
 base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON')];
 
-# All libraries to link to all modules:
-base_libs = ['c', 'rt'];
-
 # Common infrastructure and the scripting glue module for interfacing with the Python runtime:
 basefiles_common = get_sourcefiles('./Common/Base') + ['Common/Base/PythonGlue/PsychScriptingGluePython.c'];
 baseincludes_common = ['Common/Base', 'Common/Screen'];
 
-# Linux specific backend code:
-basefiles_linux = get_sourcefiles('./Linux/Base/');
-baseincludes_linux = ['Linux/Base'];
-
 # OS detection and file selection for the different OS specific backends:
 print('Platform reported as: %s\n' % platform.system());
 if platform.system() == 'Linux':
+    # Linux specific backend code:
     print('Building for Linux...\n');
     osname = 'Linux';
-    basefiles_os = basefiles_linux;
-    baseincludes_os = baseincludes_linux;
+    # All libraries to link to all modules:
+    base_libs = ['c', 'rt'];
+    # No "no reproducible builds" warning:
+    base_compile_args = ['-Wno-date-time'];
+    # Extra OS specific libs for PsychPortAudio:
+    audio_libs = ['asound'];
+    audio_objects = ['/usr/local/lib/libportaudio.a'];
+    # libusb includes:
+    usb_includes = ['/usr/include/libusb-1.0'];
+    # Extra OS specific libs for PsychHID:
+    psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util'];
 
 if platform.system() == 'Windows':
     print('Building for Windows...\n');
     osname = 'Windows';
-    basefiles_os = basefiles_windows;
-    baseincludes_os = baseincludes_windows;
+    # FIXME All libraries to link to all modules:
+    base_libs = ['c', 'rt'];
+    # FIXME: No "no reproducible builds" warning:
+    base_compile_args = ['-Wno-date-time'];
+    # Extra OS specific libs for PsychPortAudio:
+    audio_libs = ['FIXME'];
+    audio_objects = ['/usr/local/lib/libportaudio.a'];
+    # FIXME libusb includes:
+    usb_includes = ['/usr/include/libusb-1.0']
+    # FIXME Extra OS specific libs for PsychHID:
+    psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util'];
 
 if platform.system() == 'Darwin':
     print('Building for macOS...\n');
     osname = 'OSX';
-    basefiles_os = basefiles_osx;
-    baseincludes_os = baseincludes_osx;
+    # FIXME All libraries to link to all modules:
+    base_libs = ['c', 'rt'];
+    # FIXME: No "no reproducible builds" warning:
+    base_compile_args = ['-Wno-date-time'];
+    # Extra OS specific libs for PsychPortAudio:
+    audio_libs = ['FIXME'];
+    audio_objects = ['/usr/local/lib/libportaudio.a'];
+    # FIXME libusb includes:
+    usb_includes = ['/usr/include/libusb-1.0']
+    # FIXME Extra OS specific libs for PsychHID:
+    psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util'];
 
 # GetSecs module: Clock queries.
 name = 'GetSecs';
 GetSecs = Extension(name,
                     extra_compile_args = base_compile_args,
-                    define_macros = [('PTBMODULE_' + name, None), ('PTBMODULENAME', name)] + base_macros,
-                    include_dirs = ['Common/' + name] + baseincludes_common + baseincludes_os,
-                    sources = basefiles_common + basefiles_os + get_sourcefiles('./Common/' + name),
+                    define_macros = get_basemacros(name, osname),
+                    include_dirs = get_baseincludedirs(name, osname),
+                    sources = get_basesources(name, osname),
                     libraries = base_libs
                    )
 
@@ -74,9 +104,9 @@ GetSecs = Extension(name,
 name = 'WaitSecs';
 WaitSecs = Extension(name,
                      extra_compile_args = base_compile_args,
-                     define_macros = [('PTBMODULE_' + name, None), ('PTBMODULENAME', name)] + base_macros,
-                     include_dirs = ['Common/' + name] + baseincludes_common + baseincludes_os,
-                     sources = basefiles_common + basefiles_os + get_sourcefiles('./Common/' + name),
+                     define_macros = get_basemacros(name, osname),
+                     include_dirs = get_baseincludedirs(name, osname),
+                     sources = get_basesources(name, osname),
                      libraries = base_libs
                     )
 
@@ -84,28 +114,27 @@ WaitSecs = Extension(name,
 name = 'PsychPortAudio';
 PsychPortAudio = Extension(name,
                            extra_compile_args = base_compile_args,
-                           define_macros = [('PTBMODULE_' + name, None), ('PTBMODULENAME', name)] + base_macros,
-                           include_dirs = ['Common/' + name] + baseincludes_common + baseincludes_os,
-                           sources = basefiles_common + basefiles_os + get_sourcefiles('./Common/' + name),
-                           libraries = base_libs + ['asound'],
-                           extra_objects = ['/usr/local/lib/libportaudio.a']
+                           define_macros = get_basemacros(name, osname),
+                           include_dirs = get_baseincludedirs(name, osname),
+                           sources = get_basesources(name, osname),
+                           libraries = base_libs + audio_libs,
+                           extra_objects = audio_objects
                           )
 
-# PsychHID module: Note all the unusual include_dirs, and other special includes,
-#                  sources, libs etc.
+# PsychHID module: Note the extra include_dirs and libraries:
 name = 'PsychHID';
 PsychHID = Extension(name,
                      extra_compile_args = base_compile_args,
-                     define_macros = [('PTBMODULE_' + name, None), ('PTBMODULENAME', name)] + base_macros,
-                     include_dirs = ['Common/' + name] + baseincludes_common + baseincludes_os + ['Linux/' + name] + ['/usr/include/libusb-1.0'],
-                     sources = basefiles_common + basefiles_os + get_sourcefiles('./Common/' + name) + get_sourcefiles('./' + osname + '/' + name),
-                     libraries = base_libs + ['dl', 'usb-1.0', 'X11', 'Xi', 'util']
+                     define_macros = get_basemacros(name, osname),
+                     include_dirs = get_baseincludedirs(name, osname) + usb_includes,
+                     sources = get_basesources(name, osname),
+                     libraries = base_libs + psychhid_libs
                     )
 
 setup (name = 'Psychtoolbox4Python',
        version = '0.1',
        description = 'This is the prototype of a port of Psychtoolbox-3 mex files to Python extensions.',
        package_dir = {'' : '../../Psychtoolbox/PsychPython'},
-       py_modules = ['psychtoolboxclassic'],
+       py_modules = ['psychtoolboxclassic', 'ppatest', 'hidtest'],
        ext_modules = [GetSecs, WaitSecs, PsychPortAudio, PsychHID]
       )
