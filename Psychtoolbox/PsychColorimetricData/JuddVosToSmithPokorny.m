@@ -7,6 +7,12 @@ function [T_cones_sp,S_cones_sp,T_cones_sp_unnormalized,M_juddVosToConesSp] = Ju
 % The returned fundamentals are normalized to a peak of 1, to match
 % longtime conventions within PTB. Unnormalized versions are also returned.
 %
+% The normalized versions have now been stored in PTB data file T_cones_sp,
+% with the original PTB versions saved in T_cones_sp_orig.
+%
+% See notes on cvrl.org about slight discrepancies between various
+% tabulations of the Smith-Pokorny fundamentals.
+%
 % Thanks to Danny Garside for pointing out that we should have tabulated
 % functions that extend beyond 400-700 nm.
 %
