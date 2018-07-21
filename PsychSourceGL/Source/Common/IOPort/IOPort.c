@@ -164,8 +164,6 @@ PsychPortIORecord* PsychGetPortIORecord(int handle)
 PsychError PsychCloseIOPort(int handle)
 {
     PsychPortIORecord* portRecord;
-    char errmsg[1000];
-    errmsg[0] = 0;
 
     // Retrieve and assign open port for handle: Will check for invalid handles and closed ports...
     portRecord = PsychGetPortIORecord(handle);
@@ -511,7 +509,6 @@ PsychError IOPORTConfigureSerialPort(void)
 
     static char seeAlsoString[] = "'OpenSerialPort'";
     char* configString = NULL;
-    PsychSerialDeviceRecord* device = NULL;
     int handle;
 
     // Setup online help:
