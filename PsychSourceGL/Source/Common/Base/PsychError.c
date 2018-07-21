@@ -285,6 +285,11 @@ void PsychErrorExitC(PsychError error,
     int i, numTypes;
     const char *typeStrings[PsychArgType_NUMTYPES];
 
+    // This function must be implemented by the scripting glue and allows to
+    // process the error in some frontend specific way, e.g., set exception
+    // state, or simply ignore it:
+    PsychProcessErrorInScripting(error, extraErrorString ? extraErrorString : errorStringsERROR[error]);
+
     //if the error is type none then just return
     if(error==PsychError_none)
         return;
@@ -313,7 +318,7 @@ void PsychErrorExitC(PsychError error,
         //and returned values in static variables.  If attempts to set or retrieve an
         //argument resulted in an error value PsychError_invalidArg_*, then we can retrieve that info
         //about the specified and desired argument to generate a detailed error message.
-        if(error == PsychError_invalidArg_absent || error == PsychError_invalidArg_extra || error == PsychError_invalidArg_absent || error == PsychError_invalidArg_size){
+        if(error == PsychError_invalidArg_absent || error == PsychError_invalidArg_extra || error == PsychError_invalidArg_type || error == PsychError_invalidArg_size){
             PsychGetArgDescriptor(&specified, &received);
             if(specified != NULL && received != NULL){  //why would these be null ?
                 //for specified

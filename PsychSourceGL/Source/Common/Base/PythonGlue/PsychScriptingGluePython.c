@@ -1315,6 +1315,98 @@ PyObject *mxCreateByteMatrix3D(size_t m, size_t n, size_t p)
 }
 
 
+static PyObject* PyExc[PsychError_last + 1] = { 0 };
+
+/*
+ * Python implementation of Python specific error handling.
+ * Set proper Python exception state.
+ */
+void PsychProcessErrorInScripting(PsychError error, const char* message)
+{
+    PyObject *exception;
+
+    if (PyExc[PsychError_invalidArg_absent] == NULL) {
+        PyExc[PsychError_none] =                                 NULL;
+
+        PyExc[PsychError_invalidArg_absent] =                    PyExc_SyntaxError;
+        PyExc[PsychError_invalidArg_extra] =                     PyExc_SyntaxError;
+        PyExc[PsychError_invalidArg_type] =                      PyExc_TypeError;
+        PyExc[PsychError_invalidArg_size] =                      PyExc_ValueError;
+
+        PyExc[PsychError_extraInputArg] =                        PyExc_SyntaxError;
+        PyExc[PsychError_missingInputArg] =                      PyExc_SyntaxError;
+        PyExc[PsychError_extraOutputArg] =                       PyExc_SyntaxError;
+        PyExc[PsychError_missingOutputArg] =                     PyExc_SyntaxError;
+
+        PyExc[PsychError_toomanyWin] =                           PyExc_MemoryError;
+        PyExc[PsychError_outofMemory] =                          PyExc_MemoryError;
+        PyExc[PsychError_scumberNotWindex] =                     PyExc_ValueError;
+        PyExc[PsychError_windexNotScumber] =                     PyExc_ValueError;
+        PyExc[PsychError_invalidWindex] =                        PyExc_IndexError;
+        PyExc[PsychError_invalidIntegerArg] =                    PyExc_ValueError;
+        PyExc[PsychError_invalidScumber] =                       PyExc_IndexError;
+        PyExc[PsychError_invalidNumdex] =                        PyExc_IndexError;
+        PyExc[PsychError_invalidColorArg] =                      PyExc_ValueError;
+        PyExc[PsychError_invalidDepthArg] =                      PyExc_ValueError;
+        PyExc[PsychError_invalidRectArg] =                       PyExc_ValueError;
+        PyExc[PsychError_invalidNumberBuffersArg] =              PyExc_ValueError;
+        PyExc[PsychError_nullWinRecPntr] =                       PyExc_RuntimeError;
+        PyExc[PsychError_registerLimit] =                        PyExc_MemoryError;
+        PyExc[PsychError_registered] =                           PyExc_RuntimeError;
+        PyExc[PsychError_longString] =                           PyExc_ValueError;
+        PyExc[PsychError_longStringPassed] =                     PyExc_ValueError;
+        PyExc[PsychError_unimplemented] =                        PyExc_NotImplementedError;
+        PyExc[PsychError_internal] =                             PyExc_RuntimeError;
+        PyExc[PsychError_invalidArgRef] =                        PyExc_ValueError;
+        PyExc[PsychError_OpenGL] =                               PyExc_EnvironmentError;
+        PyExc[PsychError_system] =                               PyExc_EnvironmentError;
+        PyExc[PsychError_InvalidWindowRecord] =                  PyExc_ValueError;
+        PyExc[PsychError_unsupportedVideoMode] =                 PyExc_ValueError;
+        PyExc[PsychError_user] =                                 PyExc_Exception;
+        PyExc[PsychError_unrecognizedPreferenceName] =           PyExc_NameError;
+        PyExc[PsychError_unsupportedOS9Preference] =             PyExc_NameError;
+        PyExc[PsychError_inputMatrixIllegalDimensionSize] =      PyExc_ValueError;
+        PyExc[PsychError_stringOverrun] =                        PyExc_BufferError;
+        PyExc[PsychErorr_argumentValueOutOfRange] =              PyExc_ValueError;
+    };
+
+    // No error? Clear exception/error state:
+    if (error == PsychError_none) {
+        PyErr_Clear();
+        return;
+    }
+
+    // Trust that the Python C-API or our own code has already set
+    // a proper exception and error state if any error state is set:
+    if (PyErr_Occurred())
+        return;
+
+    if (error == PsychError_system) {
+        if (errno) {
+            PyErr_SetFromErrno(PyExc_OSError);
+            errno = 0;
+            return;
+        }
+        else {
+            #if PSYCH_SYSTEM == PSYCH_WINDOWS
+                PyErr_SetFromWindowsErr(0);
+                return;
+            #endif
+        }
+        // Otherwise fall through to generic handling...
+    }
+
+    // Map to half-way suitable exception type and return with or without
+    // additional error message:
+    exception = PyExc[error];
+    if (message != NULL)
+        PyErr_SetString(exception, message);
+    else
+        PyErr_SetNone(exception);
+
+    return;
+}
+
 /*
  *    Print string s and return return control to the calling environment.
  */

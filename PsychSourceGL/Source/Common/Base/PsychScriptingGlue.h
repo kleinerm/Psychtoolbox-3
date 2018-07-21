@@ -118,6 +118,7 @@ size_t PsychGetArgM(int position);
 size_t PsychGetArgN(int position);
 size_t PsychGetArgP(int position);
 void PsychErrMsgTxt(char *s);
+void PsychProcessErrorInScripting(PsychError error, const char* message);
 void PsychEnableSubfunctions(void);
 psych_bool PsychAreSubfunctionsEnabled(void);
 psych_bool PsychCheckInputArgType(int position, PsychArgRequirementType isRequired, PsychArgFormatType argType);

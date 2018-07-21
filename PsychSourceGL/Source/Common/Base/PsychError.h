@@ -128,7 +128,8 @@ typedef enum
     PsychError_unsupportedOS9Preference,
     PsychError_inputMatrixIllegalDimensionSize,
     PsychError_stringOverrun,
-    PsychErorr_argumentValueOutOfRange
+    PsychErorr_argumentValueOutOfRange,
+    PsychError_last
 } PsychError;
 //This should be "PsychErrorType", not "PsychError"
 

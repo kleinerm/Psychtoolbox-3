@@ -128,6 +128,15 @@ static psych_bool firstTime = TRUE;
 
 void ScreenCloseAllWindows(void);
 
+// No-Op implementation of Mex specific error handling:
+void PsychProcessErrorInScripting(PsychError error, const char* message)
+{
+    (void) error;
+    (void) message;
+
+    return;
+}
+
 void PsychExitRecursion(void)
 {
     if (recLevel < 0) {
