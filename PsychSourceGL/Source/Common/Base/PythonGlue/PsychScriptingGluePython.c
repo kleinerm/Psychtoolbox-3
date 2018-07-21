@@ -71,10 +71,7 @@ static PyObject *prhsGLUE[MAX_RECURSIONLEVEL][MAX_INPUT_ARGS];    // An array of
 
 static int recLevel = -1;
 static psych_bool psych_recursion_debug = FALSE;
-
-// Set to TRUE to get Octave/Matlab/Mex style behaviour of array-of-structs,
-// even if that may be less efficient computationally and memory-wise:
-static psych_bool python_structArray_is_structArray = TRUE;
+static int psych_refcount_debug = 0;
 
 // MODULE INITIALIZATION FOR PYTHON:
 // =================================
@@ -583,44 +580,60 @@ int mxIsField(PyObject* structArray, const char* fieldName)
     return(-1);
 }
 
+// The mxSetField() function unconditionally steals the reference to
+// pStructInner from our caller. In general mxSetField() is only called by
+// the PsychSetStructArrayXXXXXElement() functions, and these generate a new
+// reference to whatever they assign, so now the reference in this slot+field is
+// the only existing one, and pStructInner will get deleted, once pStructOuter
+// has fulfilled its purpose inside the Python script and goes out of scope/gets
+// deleted there:
 void mxSetField(PyObject* pStructOuter, int index, const char* fieldName, PyObject* pStructInner)
 {
-    if (!mxIsStruct(pStructOuter))
-        PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Tried to manipulate something other than a struct-Array!");
+    if (psych_refcount_debug && pStructInner)
+        printf("PTB-DEBUG: In mxSetField: refcount of external object %p at enter is %li. %s\n",
+               pStructInner, PyArray_REFCOUNT(pStructInner),
+               (PyArray_REFCOUNT(pStructInner) > 1) ? "MIGHT leak if caller does not take care." : "");
 
-    if (python_structArray_is_structArray) {
-        PyObject *arraySlot;
-
-        // Different code-path for single element structArray aka a dict, vs. multi-element
-        // structArray aka list of dicts:
-        if (PyList_Check(pStructOuter)) {
-            if (index >= PyList_Size(pStructOuter))
-                PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Index exceeds size of struct-Array!");
-
-            // Get dictionary for slot 'index':
-            arraySlot = PyList_GetItem(pStructOuter, index);
-        }
-        else {
-            // Single-slot array: pStructOuter is already the single struct aka dict:
-            arraySlot = pStructOuter;
-        }
-
-        // Assign pStructInner as new value of field fieldName in slot index:
-        // This will drop the refcount of the previous value in that slot+field,
-        // and increase the refcount of pStructInner by one, iow. it doesn't steal
-        // a reference, but get our own one:
-        PyDict_SetItemString(arraySlot, fieldName, pStructInner);
-
-        // Drop the refcount of pStructInner, to counteract PyDict_SetItemString()'s
-        // bump. Effectively this means our mxSetField() function steals the reference
-        // to pStructInner from our caller. In general mxSetField() is only called by
-        // the PsychSetStructArrayXXXXXElement() functions, and these generate a new
-        // reference to whatever they assign, so now the reference in this slot+field is
-        // the only existing one, and pStructInner will get deleted, once pStructOuter
-        // has fulfilled its purpose inside the Python script and goes out of scope/gets
-        // deleted there:
+    if (!mxIsStruct(pStructOuter)) {
         Py_XDECREF(pStructInner);
+        PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Tried to manipulate something other than a struct-Array!");
     }
+
+    PyObject *arraySlot;
+
+    // Different code-path for single element structArray aka a dict, vs. multi-element
+    // structArray aka list of dicts:
+    if (PyList_Check(pStructOuter)) {
+        if (index >= PyList_Size(pStructOuter)) {
+            Py_XDECREF(pStructInner);
+            PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: Index exceeds size of struct-Array!");
+        }
+
+        // Get dictionary for slot 'index':
+        arraySlot = PyList_GetItem(pStructOuter, index);
+    }
+    else {
+        // Single-slot array: pStructOuter is already the single struct aka dict:
+        arraySlot = pStructOuter;
+    }
+
+    // Assign pStructInner as new value of field fieldName in slot index:
+    // This will drop the refcount of the previous value in that slot+field,
+    // and increase the refcount of pStructInner by one, iow. it doesn't steal
+    // a reference, but get our own one:
+    if (PyDict_SetItemString(arraySlot, fieldName, pStructInner)) {
+        Py_XDECREF(pStructInner);
+        PsychErrorExitMsg(PsychError_internal, "Error: mxSetField: PyDict_SetItemString() failed!");
+    }
+
+    // The mxSetField() function unconditionally steals the reference to
+    // pStructInner from our caller. In general mxSetField() is only called by
+    // the PsychSetStructArrayXXXXXElement() functions, and these generate a new
+    // reference to whatever they assign, so now the reference in this slot+field is
+    // the only existing one, and pStructInner will get deleted, once pStructOuter
+    // has fulfilled its purpose inside the Python script and goes out of scope/gets
+    // deleted there:
+    Py_XDECREF(pStructInner);
 }
 
 /* UNUSED, but here for reference */
@@ -746,8 +759,10 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         // Reset call recursion level to startup default:
         recLevel = -1;
         psych_recursion_debug = FALSE;
+        psych_refcount_debug = 0;
 
         if (getenv("PSYCH_RECURSION_DEBUG")) psych_recursion_debug = TRUE;
+        if (getenv("PSYCH_REFCOUNT_DEBUG")) psych_refcount_debug = atoi(getenv("PSYCH_REFCOUNT_DEBUG"));
 
         // Initialize NumPy array extension for use in *this compilation unit* only:
         (void) init_numpy();
@@ -956,7 +971,15 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         }
     } //close else
 
-    // If we reach this point of execution under Matlab, then we're successfully done.
+    // If we reach this point of execution, then we're successfully done with function execution
+    // and just need to return return arguments and clean up:
+    if (psych_refcount_debug) {
+        for (i = 0; i < MAX_OUTPUT_ARGS; i++) {
+            if (plhsGLUE[recLevel][i] && (PyArray_REFCOUNT(plhsGLUE[recLevel][i]) >= psych_refcount_debug))
+                printf("PTB-DEBUG: At non-error exit of PsychScriptingGluePythonDispatch: Refcount of plhsGLUE[recLevel %i][arg %i] = %li.\n",
+                       recLevel, i, PyArray_REFCOUNT(plhsGLUE[recLevel][i]));
+        }
+    }
 
     // Find the true number of arguments to return in the return tuple:
     if (nlhsGLUE[recLevel] < 0) {
@@ -1015,12 +1038,25 @@ PythonFunctionCleanup:
     // The following code is executed both at end of normal execution, and also
     // during an error return. It has to do the common cleanup work:
 
-    // Release references to NumPy PyArrays:
+    // Release references to NumPy PyArrays, as the PyObject -> PyArray code always
+    // returns a new reference which we should get rid off, now that we don't need
+    // it anymore:
     for (i = 0; i < nrhs; i++) {
         if (PyArray_Check(prhsGLUE[recLevel][i]))
             Py_XDECREF(prhsGLUE[recLevel][i]);
 
         prhsGLUE[recLevel][i] = NULL;
+    }
+
+    // Release "orphaned" output arguments that haven't been returned to the interpreter,
+    // e.g., because of a PythonFunctionCleanup - error return:
+    for (i = 0; i < MAX_OUTPUT_ARGS; i++) {
+        if (psych_refcount_debug && plhsGLUE[recLevel][i] && (PyArray_REFCOUNT(plhsGLUE[recLevel][i]) >= psych_refcount_debug))
+            printf("PTB-DEBUG: Orphaned output argument at cleanup: Refcount of plhsGLUE[recLevel %i][arg %i] = %li --> unref --> %li.\n",
+                   recLevel, i, PyArray_REFCOUNT(plhsGLUE[recLevel][i]), PyArray_REFCOUNT(plhsGLUE[recLevel][i]) - 1);
+
+        Py_XDECREF(plhsGLUE[recLevel][i]);
+        plhsGLUE[recLevel][i] = NULL;
     }
 
     // Release all memory allocated via PsychMallocTemp():
@@ -2632,22 +2668,32 @@ psych_bool PsychCopyOutPointerArg(int position, PsychArgRequirementType isRequir
  *          As usual, the double matrix newvarcontent will be auto-destroyed when returning to the runtime,
  *          but the variable 'myvar' will remain valid until it goes out of scope.
  *
+ *          This function steals a reference to pcontent, regardless of success or failure.
+ *
  * Returns zero on success, non-zero on failure.
  */
 int PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGenericScriptType* pcontent)
 {
+    int rc = 1;
+
     // Get a borrowed reference to the dicts with global and local variables for the calling frame:
     PyObject *dict = strcmp(workspace, "global") ? PyEval_GetLocals() : PyEval_GetGlobals();
     if (dict && PyDict_Check(dict)) {
         // Try to add our new or updated variable, which will increment its refcount:
-        if (0 == PyDict_SetItemString(dict, variable, pcontent)) {
-            // Drop the reference, so the function behaves like stealing a reference:
-            Py_XDECREF(pcontent);
-            return(0);
-        }
+        rc = PyDict_SetItemString(dict, variable, pcontent);
     }
 
-    return(1);
+    if (psych_refcount_debug && pcontent)
+        printf("PTB-DEBUG: In mxSetField: refcount of external object %p at enter is %li. %s\n",
+               pcontent, PyArray_REFCOUNT(pcontent),
+               (PyArray_REFCOUNT(pcontent) > 1) ? "MIGHT leak if caller does not take care." : "");
+
+    // Drop one reference, so the function steals a reference to pcontent and the
+    // calling client is no longer responsible for managing it, regardless of success
+    // or failure:
+    Py_XDECREF(pcontent);
+
+    return(rc);
 }
 
 
@@ -2788,6 +2834,8 @@ psych_bool PsychAssignOutStructArray(int position,
     PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_structArray, isRequired, 1, 1, 0, kPsychUnboundedArraySize, 0, 0);
     matchError = PsychMatchDescriptors();
     putOut = PsychAcceptOutputArgumentDecider(isRequired, matchError);
+    // putOut is always true in Python implementation, so no leakage, as interpreter will own
+    // the only reference:
     if (putOut) {
         mxArrayOut = PsychGetOutArgPyPtr(position);
         *mxArrayOut = pStruct;
@@ -2825,6 +2873,8 @@ void PsychSetStructArrayStringElement(const char *fieldName,
     }
 
     mxFieldValue = mxCreateString(text);
+
+    // mxSetField steals the only reference to mxFieldValue, so we are done with it:
     mxSetField(pStruct, (ptbIndex) index, fieldName, mxFieldValue);
 }
 
@@ -2854,6 +2904,8 @@ void PsychSetStructArrayDoubleElement(const char *fieldName,
     }
 
     mxFieldValue = PyFloat_FromDouble(value);
+
+    // mxSetField steals the only reference to mxFieldValue, so we are done with it:
     mxSetField(pStruct, (ptbIndex) index, fieldName, mxFieldValue);
 }
 
@@ -2863,10 +2915,10 @@ void PsychSetStructArrayDoubleElement(const char *fieldName,
 
     Note: The variable "index" is zero-indexed.
 */
-void PsychSetStructArrayBooleanElement( const char *fieldName,
-                                        int index,
-                                        psych_bool state,
-                                        PsychGenericScriptType *pStruct)
+void PsychSetStructArrayBooleanElement(const char *fieldName,
+                                       int index,
+                                       psych_bool state,
+                                       PsychGenericScriptType *pStruct)
 {
     int         fieldNumber;
     psych_bool  isStruct;
@@ -2884,13 +2936,22 @@ void PsychSetStructArrayBooleanElement( const char *fieldName,
     }
 
     mxFieldValue = PyBool_FromLong((long) state);
+
+    // mxSetField steals the only reference to mxFieldValue, so we are done with it:
     mxSetField(pStruct, (ptbIndex) index, fieldName, mxFieldValue);
 }
 
 
 /*
-    PsychSetStructArrayStructElement()
-*/
+ * PsychSetStructArrayStructElement()
+ *
+ * Assign a struct(-array) another struct(-array)'s field.
+ *
+ * Irrespective of success or failure, this steals the reference to pStructInner, so caller
+ * does not have to take care of releasing pStructInner and should not touch it anymore after
+ * calling this function, unless it aquired an own extra reference beforehand.
+ *
+ */
 void PsychSetStructArrayStructElement(const char *fieldName,
                                       int index,
                                       PsychGenericScriptType *pStructInner,
@@ -2901,25 +2962,39 @@ void PsychSetStructArrayStructElement(const char *fieldName,
     char        errmsg[256];
 
     isStruct = mxIsStruct(pStructOuter);
-    if (!isStruct)
+    if (!isStruct) {
+        Py_XDECREF(pStructInner);
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
+    }
 
     isStruct = mxIsStruct(pStructInner);
-    if (!isStruct)
+    if (!isStruct) {
+        Py_XDECREF(pStructInner);
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a struct field to a non-existent structure.");
+    }
 
     fieldNumber = mxIsField(pStructOuter, fieldName);
     if (fieldNumber == -1) {
+        Py_XDECREF(pStructInner);
         sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
         PsychErrorExitMsg(PsychError_internal, errmsg);
     }
 
+    // mxSetField steals the reference to pStructInner, so we are done with it:
     mxSetField(pStructOuter, (ptbIndex) index, fieldName, pStructInner); 
 }
 
 
 /*
-    PsychSetStructArrayNativeElement()
+ * PsychSetStructArrayNativeElement()
+ *
+ * Assign a native element like a matrix (PsychAllocateNativeDoubleMat/PsychAllocateNativeUnsignedByteMat)
+ * to a struct(-array) field.
+ *
+ * Irrespective of success or failure, this steals the reference to pNativeElement, so caller
+ * does not have to take care of releasing pNativeElement and should not touch it anymore after
+ * calling this function, unless it aquired an own extra reference beforehand.
+ *
  */
 void PsychSetStructArrayNativeElement(const char *fieldName,
                                       int index,
@@ -2931,15 +3006,19 @@ void PsychSetStructArrayNativeElement(const char *fieldName,
     char        errmsg[256];
 
     isStruct = mxIsStruct(pStructArray);
-    if (!isStruct)
+    if (!isStruct) {
+        Py_XDECREF(pNativeElement);
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
+    }
 
     fieldNumber = mxIsField(pStructArray, fieldName);
     if (fieldNumber == -1) {
+        Py_XDECREF(pNativeElement);
         sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
         PsychErrorExitMsg(PsychError_internal, errmsg);
     }
 
+    // mxSetField steals the reference to pNativeElement, so we are done with it:
     mxSetField(pStructArray, (ptbIndex) index, fieldName, pNativeElement);
 }
 
@@ -2976,6 +3055,8 @@ psych_bool PsychAllocOutCellVector(int position,
 
         *pCell = PyTuple_New((Py_ssize_t) numElements);
 
+        // putOut is always TRUE under Python, so no leakage, as interpreter will own
+        // the only reference:
         if (putOut) {
             mxArrayOut = PsychGetOutArgPyPtr(position);
             *mxArrayOut = *pCell;
@@ -2984,6 +3065,8 @@ psych_bool PsychAllocOutCellVector(int position,
         return(putOut);
     } else {
         // Return the result only to the C caller, not to the calling environment. Ignore "required":
+        // CAUTION: Could leak if caller doesn't assign it to an output-assignment, e.g., return arg
+        // or struct(array):
         *pCell = PyTuple_New((Py_ssize_t) numElements);
         return(TRUE);
     }
@@ -3008,6 +3091,9 @@ void PsychSetCellVectorStringElement(int index,
     if ((size_t) index >= PyTuple_Size(cellVector))
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell array field at an out-of-bounds index");
 
+    // mxFieldValue refcount is 1, PyTuple_SetItem below steals the reference, so
+    // now the cellVector (=interpreter on eventual successfull out-assignment) owns the only
+    // reference and we don't leak.
     mxFieldValue = mxCreateString(text);
     PyTuple_SetItem(cellVector, index, mxFieldValue);
 }
