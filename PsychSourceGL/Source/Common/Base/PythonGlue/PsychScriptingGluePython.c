@@ -1319,6 +1319,8 @@ PyObject *mxCreateByteMatrix3D(size_t m, size_t n, size_t p)
  */
 void PsychErrMsgTxt(char *s)
 {
+    PsychGenericScriptType *pcontent = NULL;
+
     // Is this the Screen() module?
     if (strcmp(PsychGetModuleName(), "Screen") == 0) {
         // Yes. We directly call our close and cleanup routine:
@@ -1326,10 +1328,18 @@ void PsychErrMsgTxt(char *s)
             ScreenCloseAllWindows();
         #endif
     } else {
-        // Nope. This is a Psychtoolbox MEX file other than Screen.
-        // We can't call directly, but we can call the 'sca' command
-        // from Matlab:
-        PsychRuntimeEvaluateString("Screen.do('CloseAll');");
+        // Nope. This is a module other than Screen. Try to call Screen('Close')
+        // via scripting environemnt:
+        if (PsychRuntimeGetVariablePtr("global", "Screen", &pcontent)) {
+            // Is it a function wrapper? Then call it Octave-style:
+            if (!strcmp(PyEval_GetFuncName(pcontent), "Screen") && !strcmp(PyEval_GetFuncDesc(pcontent), "()"))
+                PsychRuntimeEvaluateString("Screen('CloseAll');");
+            else // Nope. Is it a module? Then call it module-style:
+                if (!strcmp(PyEval_GetFuncName(pcontent), "module"))
+                    PsychRuntimeEvaluateString("Screen.Screen('CloseAll');");
+                else
+                    printf("PsychErrMsgTxt: Failed to call Screen('CloseAll') - Weird signature, not the Screen module?!?\n");
+        }
     }
 
     // Call the Matlab- or Octave error printing and error handling facilities:
