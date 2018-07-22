@@ -67,8 +67,9 @@ static psych_bool use_C_memory_layout[MAX_RECURSIONLEVEL];
 static int nlhsGLUE[MAX_RECURSIONLEVEL];  // Number of requested return arguments.
 static int nrhsGLUE[MAX_RECURSIONLEVEL];  // Number of provided call arguments.
 
-static PyObject* plhsGLUE[MAX_RECURSIONLEVEL][MAX_OUTPUT_ARGS];         // An array of pointers to the Python return arguments.
-static PyObject *prhsGLUE[MAX_RECURSIONLEVEL][MAX_INPUT_ARGS];    // An array of pointers to the Python call arguments.
+static PyObject* plhsGLUE[MAX_RECURSIONLEVEL][MAX_OUTPUT_ARGS];             // An array of pointers to the Python return arguments.
+static PyObject* prhsGLUE[MAX_RECURSIONLEVEL][MAX_INPUT_ARGS];              // An array of pointers to the Python call arguments.
+static psych_bool prhsNeedsConversion[MAX_RECURSIONLEVEL][MAX_INPUT_ARGS];  // prhsGLUE needs one-time conversion to NumPy array?
 
 static int recLevel = -1;
 static psych_bool psych_recursion_debug = FALSE;
@@ -345,8 +346,9 @@ PyObject* mxCreateNumericArray(int numDims, ptbSize dimArray[], PsychArgFormatTy
 {
     int typenum = PsychGetNumTypeFromArgType(arraytype);
 
-    // Create empty/uninitialized array in (1) Fortran contiguous style:
-    return(PyArray_EMPTY(numDims, (npy_intp*) dimArray, typenum, 1));
+    // Create empty/uninitialized array in (0) C contiguous style if use_C_memory_layout,
+    // else create in (1) Fortran contiguous style:
+    return(PyArray_EMPTY(numDims, (npy_intp*) dimArray, typenum, (use_C_memory_layout[recLevel]) ? 0 : 1));
 }
 
 PyObject* mxCreateDoubleMatrix(ptbSize rows, ptbSize cols)
@@ -856,12 +858,29 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
     nrhsGLUE[recLevel] = nrhs;
     for (i = 0; i < nrhs; i++) {
         tmparg = PyTuple_GetItem(args, i);
+        prhsGLUE[recLevel][i] = tmparg;
+
         // Empty args, strings and structs are special - handled directly the Python way.
         // Everything else goes through NumPy C-Interfaces:
-        if ((tmparg == Py_None) || mxIsChar(tmparg) || mxIsStruct(tmparg))
-            prhsGLUE[recLevel][i] = tmparg;
-        else
-            prhsGLUE[recLevel][i] = PyArray_FROM_OF(tmparg, NPY_ARRAY_IN_FARRAY);
+        if ((tmparg == NULL) || (tmparg == Py_None) || mxIsChar(tmparg) || mxIsStruct(tmparg)) {
+            // This object is already in our desired format:
+            prhsNeedsConversion[recLevel][i] = FALSE;
+        }
+        else {
+            // This object needs to get converted into a NumPy array of a suitable format for us.
+            // We will do that on first access by client via PsychGetInArgPyPtr(). We can't convert
+            // here, as we don't know yet if we need to convert into C-Memory layout or Fortran layout,
+            // so just note down the need for lazy conversion on first "true" access:
+            prhsNeedsConversion[recLevel][i] = TRUE;
+
+            // Bump refcount if the input object is already a NumPy array, as our PythonFunctionCleanup
+            // would decref it on normal exit or error exit. If it isn't a NumPy array yet, then no
+            // need to bump, as a lazy conversion later on first access will turn it into a NumPy
+            // array and then do the bumping. Or the argument may never get evaluated, so it would stay
+            // a non NumPy array and don't need the bump/unbump treatment:
+            if (PyArray_Check(prhsGLUE[recLevel][i]))
+                Py_INCREF(prhsGLUE[recLevel][i]);
+        }
     }
 
     // Set number of output arguments to "unknown" == -1, as we don't know yet:
@@ -1145,6 +1164,66 @@ PsychError PsychExitPythonGlue(void)
 }
 
 
+// PsychPyArgGet() helper for PsychGetInArgPyPtr() aka PsychGetInArgPtr():
+// Does lazy, on-demand, one-time conversion of numeric data types to
+// corresponding NumPy array data types of a suitable memory layout for
+// our purpose. Adjusts reference counts of old/new instance of input arg
+// accordingly and updates prhsGLUE cached copy. Does Fortran -> C conversion
+// as needed.
+static PyObject* PsychPyArgGet(int position)
+{
+    PyObject *ret = prhsGLUE[recLevel][position];
+
+    if (psych_refcount_debug && (PyArray_REFCOUNT(prhsGLUE[recLevel][position]) >= psych_refcount_debug))
+        printf("PTB-DEBUG:%s:PsychPyArgGet: Before convert: Refcount of prhsGLUE[recLevel %i][arg %i] = %li.\n",
+               PsychGetFunctionName(), recLevel, position, PyArray_REFCOUNT(prhsGLUE[recLevel][position]));
+
+    // Does this input argument need conversion to a NumPy array of suitable format?
+    if (prhsNeedsConversion[recLevel][position]) {
+        // Yes: Reset "needs conversion" flag and do the one-time conversion:
+        prhsNeedsConversion[recLevel][position] = FALSE;
+
+        // Convert it, either into C memory layout or Fortran memory layout. This
+        // gives us a *new* reference to a NumPy array in *any* case, even if it was
+        // an identity assignment because in-ret was already a suitable NumPy
+        // array - in that case the refcount of original prhsGLUE got bumped by one.
+        ret = PyArray_FROM_OF(ret, ((use_C_memory_layout[recLevel]) ? NPY_ARRAY_IN_ARRAY : NPY_ARRAY_IN_FARRAY));
+
+        // If prhsGLUE was already a NumPy array, then its refcount got bumped in
+        // the initial assignment code in PsychScriptingGluePythonDispatch(), so
+        // need to undo the bump here, now that we have a new 'ret' reference,
+        // before we assign a potentially new ret as the new prhsGLUE:
+        if (PyArray_Check(prhsGLUE[recLevel][position]))
+            Py_DECREF(prhsGLUE[recLevel][position]);
+
+        if (DEBUG_PTBPYTHONGLUE || psych_refcount_debug)
+            printf("PTB-DEBUG:%s:PsychPyArgGet: Arg %i: Conversion to NumPy array of %s triggered [refcount now %li]: %s\n",
+                   PsychGetFunctionName(),
+                   position, use_C_memory_layout[recLevel] ? "C layout" : "Fortran layout", PyArray_REFCOUNT(ret),
+                   (ret == prhsGLUE[recLevel][position]) ? "No-Op passthrough." : "New object.");
+
+        // Now that the new ret is a NumPy array in the wanted final format,
+        // assign it, so we do not need to repeat the conversion on future access:
+        prhsGLUE[recLevel][position] = ret;
+
+        // At the end of this ballet, if this was a no-op conversion, then the
+        // reference count of prhsGLUE should be unchanged. If it was a real
+        // conversion, then only the Python interpreter should hold references
+        // original prhsGLUE input argument aka the 'args' input tuple argument
+        // to the PsychScriptingGluePythonDispatch(), and our new updated prhsGLUE,
+        // aka ret is a new refcount == 1 NumPy array of suitable format and memory
+        // layout, which we can now use and will dispose of in PythonFunctionCleanup
+        // by dropping its refcount by one to zero.
+    }
+
+    if (psych_refcount_debug && (PyArray_REFCOUNT(prhsGLUE[recLevel][position]) >= psych_refcount_debug))
+        printf("PTB-DEBUG:%s:PsychPyArgGet: After  convert: Refcount of prhsGLUE[recLevel %i][arg %i] = %li.\n",
+                PsychGetFunctionName(), recLevel, position, PyArray_REFCOUNT(prhsGLUE[recLevel][position]));
+
+    return(ret);
+}
+
+
 /*
  *    Return the PyObject pointer to the specified position. Note that we have some special rules for
  *    numbering the positions:
@@ -1185,21 +1264,21 @@ const PyObject *PsychGetInArgPyPtr(int position)
         if (position < nrhsGLUE[recLevel]) { //an argument was passed in the correct position.
             if (position == 0) { //caller wants the function name argument.
                 if (nameFirstGLUE[recLevel])
-                    return(prhsGLUE[recLevel][0]);
+                    return(PsychPyArgGet(0));
                 else
-                    return(prhsGLUE[recLevel][1]);
+                    return(PsychPyArgGet(1));
             } else if (position == 1) { //they want the "first" argument.
                 if (nameFirstGLUE[recLevel])
-                    return(prhsGLUE[recLevel][1]);
+                    return(PsychPyArgGet(1));
                 else
-                    return(prhsGLUE[recLevel][0]);
+                    return(PsychPyArgGet(0));
             } else
-                return(prhsGLUE[recLevel][position]);
+                return(PsychPyArgGet(position));
         } else
             return(NULL);
     } else { //when not in subfunction mode and the base function is not invoked.
         if (position <= nrhsGLUE[recLevel])
-            return(prhsGLUE[recLevel][position-1]);
+            return(PsychPyArgGet(position-1));
         else
             return(NULL);
     }
@@ -1604,6 +1683,7 @@ PsychError PsychSetReceivedArgDescriptor(int argNum, psych_bool allow64BitSizes,
 psych_bool PsychIsDefaultMat(const PyObject *mat)
 {
     return ((mat == Py_None) ||
+            (PyList_Check(mat) && (PyList_Size((PyObject *) mat) == 0)) ||
             (PyArray_Check(mat) && ((PyArray_SIZE((PyArrayObject*) mat) == 0) || (PyArray_IsZeroDim(mat) && !PyArray_CheckScalar(mat)))));
 }
 
