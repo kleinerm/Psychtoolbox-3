@@ -836,7 +836,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             baseFunctionInvoked[recLevel] = TRUE;
             (*baseFunction)();  //invoke the unnamed function
         } else
-            PrintfExit("Project base function invoked but no base function registered");
+            PsychErrorExitMsg(PsychError_unimplemented, "Project base function invoked but no base function registered");
     } else { // Subfunctions are enabled so pull out the function name string and invoke it.
         // Assess the nature of first and second arguments for finding the name of the sub function.
         for (i = 0; i < 2; i++) {
@@ -850,7 +850,9 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             isArgEmptyMat[i] = isArgThere[i] ? PsychIsDefaultMat(tmparg) : FALSE;
             isArgText[i] = isArgThere[i] ? mxIsChar(tmparg) : FALSE;
             if (isArgText[i]) {
-                mxGetString(tmparg, argString[i], sizeof(argString[i]));
+                if (mxGetString(tmparg, argString[i], sizeof(argString[i])))
+                    PsychErrorExitMsg(PsychError_user, "Invalid subcommand argument passed in. Not a command name!");
+
                 // Empty subfunction command strings map to "empty matrix", for Mex/Matlab/Octave compatibility:
                 if (strlen(argString[i]) == 0)
                     isArgEmptyMat[i] = TRUE;
@@ -872,13 +874,13 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
                 baseFunctionInvoked[recLevel]=TRUE;
                 (*baseFunction)();
             } else
-                PrintfExit("Project base function invoked but no base function registered");
+                PsychErrorExitMsg(PsychError_unimplemented, "Project base function invoked but no base function registered");
         }
         else if (isArgEmptyMat[0] && !isArgThere[1]) {
-            PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state A)");
+            PsychErrorExitMsg(PsychError_user, "Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state A)");
         }
         else if (isArgEmptyMat[0] && isArgEmptyMat[1]) {
-            PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state B)");
+            PsychErrorExitMsg(PsychError_user, "Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state B)");
         }
         else if (isArgEmptyMat[0] && isArgText[1]) {
             if (isArgFunction[1]) {
@@ -886,10 +888,10 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
                 (*(fArg[1]))();
             }
             else
-                PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state C)");
+                PsychErrorExitMsg(PsychError_user, "Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state C)");
         }
         else if (isArgEmptyMat[0] && !isArgText[1]) {
-            PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state D)");
+            PsychErrorExitMsg(PsychError_user, "Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state D)");
         }
         else if (isArgText[0] && !isArgThere[1]) {
             if (isArgFunction[0]) {
@@ -901,7 +903,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
                     baseFunctionInvoked[recLevel]=TRUE;
                     (*baseFunction)();
                 } else
-                    PrintfExit("Project base function invoked but no base function registered");
+                    PsychErrorExitMsg(PsychError_unimplemented, "Project base function invoked but no base function registered");
             }
         }
         else if (isArgText[0] && isArgEmptyMat[1]) {
@@ -910,7 +912,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
                 (*(fArg[0]))();
             }
             else
-                PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state F)");
+                PsychErrorExitMsg(PsychError_user, "Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state F)");
         }
         else if (isArgText[0] && isArgText[1]) {
             if (isArgFunction[0] && !isArgFunction[1]) { //the first argument is the function name
@@ -928,10 +930,10 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
                     baseFunctionInvoked[recLevel]=TRUE;
                     (*baseFunction)();
                 } else
-                    PrintfExit("Project base function invoked but no base function registered");
+                    PsychErrorExitMsg(PsychError_unimplemented, "Project base function invoked but no base function registered");
             }
             else if (isArgFunction[0] && isArgFunction[1]) //both arguments are function names
-                PrintfExit("Passed two function names");
+                PsychErrorExitMsg(PsychError_user, "Passed two function names");
         }
         else if (isArgText[0] && !isArgText[1]) {
             if (isArgFunction[0]) {
@@ -939,7 +941,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
                 (*(fArg[0]))();
             }
             else
-                PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state H)");
+                PsychErrorExitMsg(PsychError_user, "Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state H)");
         }
         else if (!isArgText[0] && !isArgThere[1]) {  //this was modified for MODULEVersion with WaitSecs.
             //PrintfExit("Invalid command (error state H)");
@@ -948,17 +950,17 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
                 baseFunctionInvoked[recLevel]=TRUE;
                 (*baseFunction)();  //invoke the unnamed function
             } else
-                PrintfExit("Project base function invoked but no base function registered");
+                PsychErrorExitMsg(PsychError_unimplemented, "Project base function invoked but no base function registered");
         }
         else if (!isArgText[0] && isArgEmptyMat[1]) {
-            PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state I)");
+            PsychErrorExitMsg(PsychError_user, "Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state I)");
         }
         else if (!isArgText[0] && isArgText[1]) {
             if (isArgFunction[1]) {
                 nameFirstGLUE[recLevel] = FALSE;
                 (*(fArg[1]))();
             } else
-                PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state J)");
+                PsychErrorExitMsg(PsychError_user, "Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state J)");
         }
         else if (!isArgText[0] && !isArgText[1]) {  //this was modified for Priority.
             //PrintfExit("Invalid command (error state K)");
@@ -967,7 +969,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
                 baseFunctionInvoked[recLevel]=TRUE;
                 (*baseFunction)();  //invoke the unnamed function
             } else
-                PrintfExit("Project base function invoked but no base function registered");
+                PsychErrorExitMsg(PsychError_unimplemented, "Project base function invoked but no base function registered");
         }
     } //close else
 
@@ -993,10 +995,8 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
     if (nlhsGLUE[recLevel] > 1) {
         // Create an output tuple of suitable size:
         plhs = PyTuple_New((Py_ssize_t) nlhsGLUE[recLevel]);
-        if (NULL == plhs) {
-            printf("PTB-CRITICAL: Failed to create output arg return tuple!!\n");
-            return(NULL);
-        }
+        if (NULL == plhs)
+            PsychErrorExitMsg(PsychError_internal, "PTB-CRITICAL: Failed to create output arg return tuple!!\n");
 
         // "Copy" our return values into the output tuple: If nlhs should be
         // zero (Python-Script does not expect any return arguments), but our
@@ -1007,8 +1007,10 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
         for (i = 0; (i == 0 && plhsGLUE[recLevel][0] != NULL) || (i < nlhsGLUE[recLevel]); i++) {
             if (plhsGLUE[recLevel][i]) {
                 // Assign return argument to proper slot of tuple:
-                if (PyTuple_SetItem(plhs, (Py_ssize_t) i, plhsGLUE[recLevel][i]))
+                if (PyTuple_SetItem(plhs, (Py_ssize_t) i, plhsGLUE[recLevel][i])) {
                     printf("PTB-CRITICAL: Could not insert return argument for slot %i of output tuple!\n", i);
+                    PsychErrorExitMsg(PsychError_internal, "PTB-CRITICAL: PyTuple_SetItem() failed.\n");
+                }
 
                 // NULL-out the array slot, only the output plhs tuple has a reference to
                 // the output PyObject argument in slot i:
@@ -1016,10 +1018,13 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             }
             else {
                 printf("PTB-DEBUG: Return argument for slot %i of output tuple not defined!\n", i);
+
                 // Ref and assign empty return argument to proper slot of tuple:
                 Py_INCREF(Py_None);
-                if (PyTuple_SetItem(plhs, (Py_ssize_t) i, Py_None))
+                if (PyTuple_SetItem(plhs, (Py_ssize_t) i, Py_None)) {
                     printf("PTB-CRITICAL: Could not insert return argument for slot %i of output tuple!\n", i);
+                    PsychErrorExitMsg(PsychError_internal, "PTB-CRITICAL: PyTuple_SetItem() failed.\n");
+                }
             }
         }
     }
