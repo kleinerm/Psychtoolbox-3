@@ -150,6 +150,37 @@ void PsychExitRecursion(void)
     recLevel--;
 }
 
+
+/*     PsychUseCMemoryLayoutIfOptimal() - Opt in to data exchange memory layout optimizations.
+ *
+ *     Tell scripting glue to use/assume a C programming language memory layout for exchanging
+ *     multi-dimensional (== 2D, 3D, n-D) matrices with the scripting environment if that layout
+ *     promises higher efficiency and performance in data exchange. This is an opt-in, requesting
+ *     C-layout if 'tryEnableCMemoryLayout' = TRUE, otherwise standard Fortran layout is assumed.
+ *     The default is Fortran layout if this function does not get called, and it resets to Fortran
+ *     layout at each return of control to the calling scripting environment. Iow. it is a per-
+ *     module subfunction-call opt-in.
+ *     The function returns TRUE if C memory layout is engaged, otherwise FALSE is returned.
+ *     The caller may have to adjust its own data processing according to the returned value,
+ *     unless the function is called with tryEnableCMemoryLayout = FALSE or not called at all, in
+ *     which case Fortran layout is the thing.
+ *
+ *     tryEnableCMemoryLayout = FALSE (default) Fortran classic style, TRUE = C-style.
+ *
+ *     Returns: TRUE if C-style is to be used, FALSE (default) if Fortran classic is to be used.
+ *
+ */
+psych_bool PsychUseCMemoryLayoutIfOptimal(psych_bool tryEnableCMemoryLayout)
+{
+    // Mex API based environemnts, ie., Octave and Matlab, use Fortran memory layout for
+    // their n-D matrices and arrays, ergo classic style is most optimal. Therefore we
+    // never opt-in to C-style, as that would be counterproductive:
+    (void) tryEnableCMemoryLayout;
+
+    return(FALSE);
+}
+
+
 /*
  *
  *    Main entry point for Matlab and Octave. Serves as a dispatch and handles

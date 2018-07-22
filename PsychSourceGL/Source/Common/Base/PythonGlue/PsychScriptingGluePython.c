@@ -62,6 +62,7 @@
 
 static psych_bool nameFirstGLUE[MAX_RECURSIONLEVEL];
 static psych_bool baseFunctionInvoked[MAX_RECURSIONLEVEL];
+static psych_bool use_C_memory_layout[MAX_RECURSIONLEVEL];
 
 static int nlhsGLUE[MAX_RECURSIONLEVEL];  // Number of requested return arguments.
 static int nrhsGLUE[MAX_RECURSIONLEVEL];  // Number of provided call arguments.
@@ -712,6 +713,46 @@ void PsychExitRecursion(void)
     recLevel--;
 }
 
+
+/*     PsychUseCMemoryLayoutIfOptimal() - Opt in to data exchange memory layout optimizations.
+ *
+ *     Tell scripting glue to use/assume a C programming language memory layout for exchanging
+ *     multi-dimensional (== 2D, 3D, n-D) matrices with the scripting environment if that layout
+ *     promises higher efficiency and performance in data exchange. This is an opt-in, requesting
+ *     C-layout if 'tryEnableCMemoryLayout' = TRUE, otherwise standard Fortran layout is assumed.
+ *     The default is Fortran layout if this function does not get called, and it resets to Fortran
+ *     layout at each return of control to the calling scripting environment. Iow. it is a per-
+ *     module subfunction-call opt-in.
+ *     The function returns TRUE if C memory layout is engaged, otherwise FALSE is returned.
+ *     The caller may have to adjust its own data processing according to the returned value,
+ *     unless the function is called with tryEnableCMemoryLayout = FALSE or not called at all, in
+ *     which case Fortran layout is the thing.
+ *
+ *     tryEnableCMemoryLayout = FALSE (default) Fortran classic style, TRUE = C-style.
+ *
+ *     Returns: TRUE if C-style is to be used, FALSE (default) if Fortran classic is to be used.
+ *
+ */
+psych_bool PsychUseCMemoryLayoutIfOptimal(psych_bool tryEnableCMemoryLayout)
+{
+    // Python - more specifically NumPy - uses C programming language memory layout for
+    // its n-D matrices and arrays. Using Fortran classic style requires memory layout
+    // conversion when exchanging >= 2D data with Python/NumPy, which can increase
+    // required memory bandwith, memory consumption, lead to cache trashing and therefore
+    // reduced performance in input/output argument passing. Skipping that is beneficial
+    // at least for large n-D arrays, so we always choose C-memory layout if caller does
+    // opt-in to allow us to do it:
+    use_C_memory_layout[recLevel] = tryEnableCMemoryLayout;
+
+    if (DEBUG_PTBPYTHONGLUE)
+        printf("PTB-DEBUG:%s:%s: %s C-Memory layout for NumPy based data exchange.\n",
+               PsychGetModuleName(), PsychGetFunctionName(),
+               (tryEnableCMemoryLayout) ? "Enabling" : "Disabling");
+
+    return(tryEnableCMemoryLayout);
+}
+
+
 /*
  *
  *    Main entry point for Python runtime. Serves as a dispatch and handles
@@ -795,6 +836,9 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
     }
 
     if (psych_recursion_debug) printf("PTB-DEBUG: Module %s entering recursive call level %i.\n", PsychGetModuleName(), recLevel);
+
+    // Default to not using C memory layout, but classic (backwards compatible) Fortran layout:
+    use_C_memory_layout[recLevel] = FALSE;
 
     // Save CPU-state and stack at this position in 'jmpbuffer'. If any further code
     // calls an error-exit function like PsychErrorExit() or PsychErrorExitMsg() then
@@ -1069,6 +1113,9 @@ PythonFunctionCleanup:
 
     // Release all memory allocated via PsychMallocTemp():
     PsychFreeAllTempMemory();
+
+    // Reset to not using C memory layout, but classic (backwards compatible) Fortran layout:
+    use_C_memory_layout[recLevel] = FALSE;
 
     // Done with this call recursion level:
     PsychExitRecursion();

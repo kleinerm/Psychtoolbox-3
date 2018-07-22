@@ -50,6 +50,19 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
 // Try to retrieve filesystem path to Psychtoolbox root or per user configfolder (the result from PsychtoolboxRoot() in Matlab/Octave) from runtime:
 const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir);
 
+// Tell scripting glue to use/assume a C programming language memory layout for exchanging
+// multi-dimensional (== 2D, 3D, n-D) matrices with the scripting environment if that layout
+// promises higher efficiency and performance in data exchange. This is an opt-in, requesting
+// C-layout if 'tryEnableCMemoryLayout' = TRUE, otherwise standard Fortran layout is assumed.
+// The default is Fortran layout if this function does not get called, and it resets to Fortran
+// layout at each return of control to the calling scripting environment. Iow. it is a per-
+// module subfunction-call opt-in.
+// The function returns TRUE if C memory layout is engaged, otherwise FALSE is returned.
+// The caller may have to adjust its own data processing according to the returned value,
+// unless the function is called with tryEnableCMemoryLayout = FALSE or not called at all, in
+// which case Fortran layout is the thing.
+psych_bool PsychUseCMemoryLayoutIfOptimal(psych_bool tryEnableCMemoryLayout);
+
 //for memory pointers (void*):
 psych_bool PsychCopyInPointerArg(int position, PsychArgRequirementType isRequired, void **ptr);
 psych_bool PsychCopyOutPointerArg(int position, PsychArgRequirementType isRequired, void* ptr);
