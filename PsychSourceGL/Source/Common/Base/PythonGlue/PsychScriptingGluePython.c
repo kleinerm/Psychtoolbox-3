@@ -836,7 +836,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             baseFunctionInvoked[recLevel] = TRUE;
             (*baseFunction)();  //invoke the unnamed function
         } else
-            PsychErrorExitMsg(PsychError_unimplemented, "Project base function invoked but no base function registered");
+            PsychErrorExitMsg(PsychError_internal, "Project base function invoked but no base function registered");
     } else { // Subfunctions are enabled so pull out the function name string and invoke it.
         // Assess the nature of first and second arguments for finding the name of the sub function.
         for (i = 0; i < 2; i++) {
@@ -897,11 +897,14 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
             if (isArgFunction[0]) {
                 nameFirstGLUE[recLevel] = TRUE;
                 (*(fArg[0]))();
-            } else { //when we receive a first argument  wich is a string and it is  not recognized as a function name then call the default function
+            } else {
+                // When we receive a first argument  which is a string and it is not recognized as a function name then call the default function
+                // first to hopefully print a synopsis on a subfunctions-enabled module, then abort with "Unknown subfunction name".
                 baseFunction = PsychGetProjectFunction(NULL);
                 if (baseFunction != NULL) {
                     baseFunctionInvoked[recLevel]=TRUE;
                     (*baseFunction)();
+                    PsychErrorExitMsg(PsychError_user, "Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state E)");
                 } else
                     PsychErrorExitMsg(PsychError_unimplemented, "Project base function invoked but no base function registered");
             }
