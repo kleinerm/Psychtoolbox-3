@@ -10,6 +10,7 @@
 
 from psychtoolboxclassic import *
 from math import *
+import numpy as np
 
 def printstatus(pahandle):
     info = PsychPortAudio('GetStatus', pahandle);
@@ -37,9 +38,6 @@ def run():
     # m'th row == m'th channel, n'th column = n'th sample frame:
     stereowav = [a, a];
 
-    hiddevs = PsychHID('Devices');
-    print(hiddevs)
-
     PsychPortAudio('Verbosity', 5);
 
     # Open audio device: Default audio device, default opmode (playback), default
@@ -50,7 +48,13 @@ def run():
     PsychPortAudio('Volume', pahandle, 0.5);
 
     # Fill in audio matrix for playback:
+    stereowav = np.array(stereowav);
+    #stereowav = np.transpose(stereowav);
+
+    t1 = GetSecs();
     PsychPortAudio('FillBuffer', pahandle, stereowav);
+    t2 = GetSecs();
+    print('Duration', (1000 * (t2-t1)), ' msecs.');
 
     # Start playback for one repetition (1), 5 seconds from now, wait for sound onset:
     PsychPortAudio('Start', pahandle, 1, GetSecs() + 1, 1)
@@ -73,8 +77,12 @@ def run():
     # m'th row == m'th channel, n'th column = n'th sample frame:
     stereowav2 = [a, a];
 
-    b1 = PsychPortAudio('CreateBuffer', pahandle, stereowav2);
-    PsychPortAudio('FillBuffer', pahandle, b1);
+    stereowav2 = np.array(stereowav2);
+    #stereowav2 = np.transpose(stereowav2);
+
+    #b1 = PsychPortAudio('CreateBuffer', pahandle, stereowav2);
+    #PsychPortAudio('FillBuffer', pahandle, b1);
+    PsychPortAudio('FillBuffer', pahandle, stereowav2);
     PsychPortAudio('Start', pahandle, 1, GetSecs() + 1, 1)
     [startTime, endPositionSecs, xruns, estStopTime] = PsychPortAudio('Stop', pahandle, 1)
     print('StartTime', startTime, 'secs. Stop time', estStopTime, 'secs.\n');
@@ -103,6 +111,7 @@ def run():
 
     # Fill in audio matrix for playback:
     PsychPortAudio('FillBuffer', pahandle, audiodata);
+    #PsychPortAudio('FillBuffer', pahandle, np.transpose(audiodata));
 
     # Start playback for one repetition (1), 5 seconds from now, wait for sound onset:
     PsychPortAudio('Start', pahandle, 1, GetSecs() + 1, 1)
