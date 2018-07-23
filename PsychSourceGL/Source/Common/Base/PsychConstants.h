@@ -30,7 +30,7 @@
 
 // For pthread_setname_np() definition and various other needs:
 #ifndef _GNU_SOURCE
-#define _GNU_SOURCE
+#define _GNU_SOURCE 1
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
