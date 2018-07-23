@@ -6,6 +6,7 @@
 from distutils.core import setup, Extension # Build system.
 import os, fnmatch                          # Directory traversal, file list building.
 import platform                             # OS detection.
+import numpy                                # To get include dir on macOS.
 
 def get_sourcefiles(path):
     sources = [];
@@ -40,7 +41,7 @@ base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON')];
 
 # Common infrastructure and the scripting glue module for interfacing with the Python runtime:
 basefiles_common = get_sourcefiles('./Common/Base') + ['Common/Base/PythonGlue/PsychScriptingGluePython.c'];
-baseincludes_common = ['Common/Base', 'Common/Screen'];
+baseincludes_common = [numpy.get_include(), 'Common/Base', 'Common/Screen'];
 
 # OS detection and file selection for the different OS specific backends:
 print('Platform reported as: %s\n' % platform.system());
