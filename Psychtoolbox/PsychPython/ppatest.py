@@ -90,7 +90,7 @@ def run():
     # Close sound device:
     PsychPortAudio('Close', pahandle);
 
-    pahandle = PsychPortAudio('Open', [], 2, 0, Fs, 1);
+    pahandle = PsychPortAudio('Open', [], 2, 0, Fs, 2);
 
     # Preallocate an internal audio recording  buffer with a capacity of 10 seconds:
     PsychPortAudio('GetAudioData', pahandle, 10);
@@ -105,7 +105,7 @@ def run():
 
     PsychPortAudio('Close', pahandle);
 
-    pahandle = PsychPortAudio('Open', [], [], [], Fs, 1);
+    pahandle = PsychPortAudio('Open', [], [], [], Fs, 2);
 
     PsychPortAudio('Volume', pahandle, 1);
 
