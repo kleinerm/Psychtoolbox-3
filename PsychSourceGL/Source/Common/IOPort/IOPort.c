@@ -668,7 +668,9 @@ PsychError IOPORTWrite(void)
         break;
 
         default:
+            n = 0;
             PsychErrorExitMsg(PsychError_user, "Invalid type for 'data' vector: Must be an uint8 or char vector.");
+            return(PsychError_invalidArg_type);
     }
 
     // Get optional blocking flag: Defaults to one -- blocking.

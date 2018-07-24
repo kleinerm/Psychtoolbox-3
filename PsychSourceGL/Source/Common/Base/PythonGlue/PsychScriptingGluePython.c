@@ -660,7 +660,7 @@ void mxSetCell(PsychGenericScriptType *cellVector, ptbIndex index, PyObject* mxF
     if (!mxIsCell(cellVector))
         PsychErrorExitMsg(PsychError_internal, "Error: mxSetCell: Tried to manipulate something other than a cell-vector!");
 
-    if (index >= PyTuple_Size(cellVector))
+    if (index >= (ptbIndex) PyTuple_Size(cellVector))
         PsychErrorExitMsg(PsychError_internal, "Error: mxSetCell: index tried to index beyond lenght of cell-vector!");
 
     PyTuple_SetItem(cellVector, index, mxFieldValue);
@@ -3315,7 +3315,7 @@ void PsychSetCellVectorStringElement(int index,
     if (!PyTuple_Check(cellVector))
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell within a non-existent cell array.");
 
-    if ((size_t) index >= PyTuple_Size(cellVector))
+    if ((ptbIndex) index >= (ptbIndex) PyTuple_Size(cellVector))
         PsychErrorExitMsg(PsychError_internal, "Attempt to set a cell array field at an out-of-bounds index");
 
     // mxFieldValue refcount is 1, PyTuple_SetItem below steals the reference, so
