@@ -59,7 +59,9 @@ if platform.system() == 'Linux':
     # libusb includes:
     usb_includes = ['/usr/include/libusb-1.0'];
     # Extra OS specific libs for PsychHID:
+    psychhid_includes = usb_includes;
     psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util'];
+    psychhid_extra_objects = [];
 
 if platform.system() == 'Windows':
     print('Building for Windows...\n');
@@ -74,22 +76,57 @@ if platform.system() == 'Windows':
     # FIXME libusb includes:
     usb_includes = ['/usr/include/libusb-1.0']
     # FIXME Extra OS specific libs for PsychHID:
+    psychhid_includes = usb_includes;
     psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util'];
+    psychhid_extra_objects = [];
 
 if platform.system() == 'Darwin':
     print('Building for macOS...\n');
     osname = 'OSX';
-    # FIXME All libraries to link to all modules:
-    base_libs = ['c', 'rt'];
-    # FIXME: No "no reproducible builds" warning:
-    base_compile_args = ['-Wno-date-time'];
+    # These should go to extra_link_args in Extension() below, but apparently distutils
+    # always appends the extra_link_args at the end of the linker command line, which is
+    # wrong for -framework's, as they must be stated *before* the .o object files which
+    # want to use functions from them. A solution to this problem doesn't exist in distutils
+    # almost two decades after the debut of Mac OSX, because hey, take your time!
+    #
+    # The hack is to set the LDFLAGS environment variable to what we need, as LDFLAGS
+    # apparently gets prepended to the linker invocation arguments, so -framework statements
+    # precede the .o'bjects they should apply to and the linker is happy again.
+    #
+    # Downside is that now we have to pass the union of *all* -framework switches ever
+    # used for *any* extension module, as os.environ can't be changed during the build
+    # sequencing for a distribution package.
+    #
+    # Is this awful? Absolutely! And i thought the Octave/Matlab build process on macOS
+    # sucked big time, but apparently somebody in Pythonland shouted "Hold my beer!" :(
+    # Hopefully some new info about this issue will prove me wrong, and there is a sane
+    # and elegant solution, but this is the best i could find after hours of Googling and
+    # trying.
+    #
+    # The following would be the full list of frameworks, but apparently including -framework Carbon
+    # is enough. Maybe a catch-all including all other frameworks?
+    #
+    # -framework Carbon -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework AudioToolbox -framework AudioUnit
+    # -framework ApplicationServices -framework OpenGL -framework CoreVideo -framework IOKit -framework SystemConfiguration
+    # -framework CoreText -framework Cocoa
+    #
+    os.environ['LDFLAGS'] = '-framework Carbon -framework CoreAudio'
+    base_libs = [];
+
+    # No "no reproducible builds" warning:
+    base_compile_args = ['-Wno-date-time', '-mmacosx-version-min=10.11'];
+
     # Extra OS specific libs for PsychPortAudio:
-    audio_libs = ['FIXME'];
-    audio_objects = ['/usr/local/lib/libportaudio.a'];
-    # FIXME libusb includes:
-    usb_includes = ['/usr/include/libusb-1.0']
-    # FIXME Extra OS specific libs for PsychHID:
-    psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util'];
+    audio_libs = [];
+    # Include our statically linked on-steroids version of PortAudio:
+    audio_objects = ['../Cohorts/PortAudio/libportaudio_osx_64.a'];
+
+    # Include Apples open-source HID Utilities for all things USB-HID device handling:
+    psychhid_includes = ['../Cohorts/HID_Utilities_64Bit/', '../Cohorts/HID_Utilities_64Bit/IOHIDManager'];
+    psychhid_libs = [];
+    # Extra objects for PsychHID - statically linked HID utilities:
+    psychhid_extra_objects = ['../Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a'];
+
 
 # GetSecs module: Clock queries.
 name = 'GetSecs';
@@ -98,7 +135,7 @@ GetSecs = Extension(name,
                     define_macros = get_basemacros(name, osname),
                     include_dirs = get_baseincludedirs(name, osname),
                     sources = get_basesources(name, osname),
-                    libraries = base_libs
+                    libraries = base_libs,
                    )
 
 # WaitSecs module: Timed waits.
@@ -127,9 +164,10 @@ name = 'PsychHID';
 PsychHID = Extension(name,
                      extra_compile_args = base_compile_args,
                      define_macros = get_basemacros(name, osname),
-                     include_dirs = get_baseincludedirs(name, osname) + usb_includes,
+                     include_dirs = get_baseincludedirs(name, osname) + psychhid_includes,
                      sources = get_basesources(name, osname),
-                     libraries = base_libs + psychhid_libs
+                     libraries = base_libs + psychhid_libs,
+                     extra_objects = psychhid_extra_objects
                     )
 
 # IOPort module:
@@ -147,5 +185,5 @@ setup (name = 'Psychtoolbox4Python',
        description = 'This is the prototype of a port of Psychtoolbox-3 mex files to Python extensions.',
        package_dir = {'' : '../../Psychtoolbox/PsychPython'},
        py_modules = ['psychtoolboxclassic', 'ppatest', 'hidtest'],
-       ext_modules = [GetSecs, WaitSecs, PsychPortAudio, PsychHID, IOPort]
+       ext_modules = [WaitSecs, GetSecs, IOPort, PsychHID, PsychPortAudio]
       )
