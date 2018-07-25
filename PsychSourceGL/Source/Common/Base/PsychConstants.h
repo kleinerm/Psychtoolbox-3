@@ -57,6 +57,13 @@
     #define printf mexPrintf
 #endif
 
+#if PSYCH_LANGUAGE == PSYCH_PYTHON
+    #undef printf
+    #define printf PySys_WriteStdout
+    #undef fprintf
+    #define fprintf(fdignore, ...) PySys_WriteStderr(__VA_ARGS__)
+#endif
+
 //platform dependent macro defines
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
     // Define snprintf as _snprintf to take Microsoft brain-damage into account:
