@@ -6,6 +6,7 @@
 from distutils.core import setup, Extension # Build system.
 import os, fnmatch                          # Directory traversal, file list building.
 import platform                             # OS detection.
+import sys                                  # cpu arch detection.
 import numpy                                # To get include dir on macOS.
 
 def get_sourcefiles(path):
@@ -43,6 +44,8 @@ base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON')];
 basefiles_common = get_sourcefiles('./Common/Base') + ['Common/Base/PythonGlue/PsychScriptingGluePython.c'];
 baseincludes_common = [numpy.get_include(), 'Common/Base', 'Common/Screen'];
 
+is_64bits = sys.maxsize > 2**32;
+
 # OS detection and file selection for the different OS specific backends:
 print('Platform reported as: %s\n' % platform.system());
 if platform.system() == 'Linux':
@@ -55,7 +58,12 @@ if platform.system() == 'Linux':
     base_compile_args = ['-Wno-date-time'];
     # Extra OS specific libs for PsychPortAudio:
     audio_libs = ['asound'];
-    audio_objects = ['/usr/local/lib/libportaudio.a'];
+
+    if is_64bits == True:
+        audio_objects = ['../Cohorts/PortAudio/libportaudio64Linux.a'];
+    else:
+        audio_objects = ['../Cohorts/PortAudio/libportaudio32Linux.a'];
+
     # libusb includes:
     usb_includes = ['/usr/include/libusb-1.0'];
     # Extra OS specific libs for PsychHID:
