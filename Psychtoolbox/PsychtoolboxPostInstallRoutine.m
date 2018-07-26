@@ -693,11 +693,6 @@ fprintf('Please also familiarize yourself with the demos contained in the PsychD
 fprintf('and its subfolders. They show best practices for many common tasks and are generally\n');
 fprintf('well documented.\n');
 fprintf('\n\n');
-fprintf('If you find this software useful then please consider donating some money \n');
-fprintf('to support its ongoing maintenance and development. See: \n');
-fprintf('\n');
-fprintf('http://psychtoolbox.org/donations \n');
-fprintf('\n');
 fprintf('\nEnjoy!\n\n');
 fprintf('Press RETURN or ENTER to confirm you read and understood the above message.\n');
 pause;
