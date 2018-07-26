@@ -11,7 +11,7 @@
 #
 
 # Import all PTB modules already ported to Python extensions modules:
-import WaitSecs, GetSecs, PsychPortAudio, PsychHID
+import WaitSecs, GetSecs, PsychPortAudio, PsychHID, IOPort
 
 # Extract their "main" function, which is named just like the module,
 # and assign its function handle to a variable named just like the module.
@@ -22,3 +22,4 @@ WaitSecs = getattr(WaitSecs, 'WaitSecs');
 GetSecs = getattr(GetSecs, 'GetSecs');
 PsychPortAudio = getattr(PsychPortAudio, 'PsychPortAudio');
 PsychHID = getattr(PsychHID, 'PsychHID');
+IOPort = getattr(IOPort, 'IOPort');
