@@ -400,7 +400,6 @@ ptbSize mxGetNumberOfDimensions(const PyObject* arrayPtr)
     if (!PyArray_Check(arrayPtr))
         return(0);
 
-    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_NDIM((const PyArrayObject*)  arrayPtr));
     return((ptbSize) PyArray_NDIM((const PyArrayObject*) arrayPtr));
 }
 
@@ -409,7 +408,6 @@ ptbSize mxGetM(const PyObject* arrayPtr)
     if (mxGetNumberOfDimensions(arrayPtr) < 1)
         return(1);
 
-    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM((const PyArrayObject*)  arrayPtr, 0));
     return((ptbSize) PyArray_DIM((const PyArrayObject*)  arrayPtr, 0));
 }
 
@@ -418,7 +416,6 @@ ptbSize mxGetN(const PyObject* arrayPtr)
     if (mxGetNumberOfDimensions(arrayPtr) < 2)
         return(1);
 
-    // fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM((const PyArrayObject*)  arrayPtr, 1));
     return((ptbSize) PyArray_DIM((const PyArrayObject*)  arrayPtr, 1));
 }
 
@@ -446,7 +443,6 @@ static ptbSize mxGetP(const PyObject *arrayPtr)
         return(1);
     }
 
-    //fprintf(stderr, "%s: %i\n", __PRETTY_FUNCTION__, PyArray_DIM((const PyArrayObject*)  arrayPtr, 2));
     return((ptbSize) PyArray_DIM((const PyArrayObject*)  arrayPtr, 2));
 }
 
@@ -485,17 +481,9 @@ void mxDestroyArray(PyObject *arrayPtr)
     // Destroy a PyObject:
     if (arrayPtr == NULL) return;
 
-    // We only need to destroy the octave_value object referenced by arrayPtr,
-    // because possible data buffers referenced by the ->d field and the
-    // PyObject struct itself are allocted via PsychMallocTemp() anyway, so
-    // they get automatically released when exiting our octFile...
-    fprintf(stderr, "WARN WARN UNIMPLEMENTED: %s\n", __PRETTY_FUNCTION__);
-/* TODO FIXME
-    octave_value* ov = (octave_value*) arrayPtr->o;
-    if (ov) delete(ov);
-    arrayPtr->o = NULL;
-*/
-    return;
+    fprintf(stderr, "WARN WARN UNIMPLEMENTED: mxDestroyArray()\n");
+
+	return;
 }
 
 PyObject* mxCreateStructArray(int numDims, ptbSize* ArrayDims, int numFields, const char** fieldNames)
