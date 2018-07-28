@@ -43,7 +43,7 @@ def run():
     # Open audio device: Default audio device, default opmode (playback), default
     # latency/timing-precision (low-latency, high precision), sample rate Fs,
     # stereo (2) channel output:
-    pahandle = PsychPortAudio('Open', [], [], [], Fs, 2);
+    pahandle = PsychPortAudio('Open', [], [], [0], Fs, 2);
 
     PsychPortAudio('Volume', pahandle, 0.5);
 
@@ -105,7 +105,7 @@ def run():
 
     PsychPortAudio('Close', pahandle);
 
-    pahandle = PsychPortAudio('Open', [], [], [], Fs, 2);
+    pahandle = PsychPortAudio('Open', [], [], [0], Fs, 2);
 
     PsychPortAudio('Volume', pahandle, 1);
 
