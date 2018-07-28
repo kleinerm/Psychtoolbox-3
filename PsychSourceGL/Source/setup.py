@@ -11,9 +11,10 @@ import numpy                                # To get include dir on macOS.
 
 def get_sourcefiles(path):
     sources = [];
-    pattern = '*.c';
+    pattern1 = '*.c';
+    pattern2 = '*.cpp';
     for filename in os.listdir(path):
-        if fnmatch.fnmatch(filename, pattern):
+        if fnmatch.fnmatch(filename, pattern1) or fnmatch.fnmatch(filename, pattern2):
             sources += [os.path.join(path,filename)];
 
     # Fancy schmanzi, not needed atm. for recursive dir traversal:
@@ -57,6 +58,8 @@ if platform.system() == 'Linux':
     # No "no reproducible builds" warning:
     base_compile_args = ['-Wno-date-time'];
     # Extra OS specific libs for PsychPortAudio:
+    audio_libdirs = [];
+    audio_extralinkargs = [];
     audio_libs = ['asound'];
 
     if is_64bits == True:
@@ -66,26 +69,32 @@ if platform.system() == 'Linux':
 
     # libusb includes:
     usb_includes = ['/usr/include/libusb-1.0'];
+
     # Extra OS specific libs for PsychHID:
     psychhid_includes = usb_includes;
+    psychhid_libdirs = [];
     psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util'];
     psychhid_extra_objects = [];
 
 if platform.system() == 'Windows':
     print('Building for Windows...\n');
     osname = 'Windows';
-    # FIXME All libraries to link to all modules:
-    base_libs = ['c', 'rt'];
-    # FIXME: No "no reproducible builds" warning:
-    base_compile_args = ['-Wno-date-time'];
+    base_libs = ['kernel32', 'user32', 'winmm'];
+    base_compile_args = [];
+
     # Extra OS specific libs for PsychPortAudio:
-    audio_libs = ['FIXME'];
-    audio_objects = ['/usr/local/lib/libportaudio.a'];
-    # FIXME libusb includes:
-    usb_includes = ['/usr/include/libusb-1.0']
-    # FIXME Extra OS specific libs for PsychHID:
+    audio_libdirs = ['../Cohorts/PortAudio'];
+    audio_extralinkargs = ['/DELAYLOAD:portaudio_x64.dll'];
+    audio_libs = ['delayimp', 'portaudio_x64'];
+    audio_objects = [];
+
+    # libusb includes:
+    usb_includes = ['../Cohorts/libusb1-win32/include/libusb-1.0']
+
+    # Extra OS specific libs for PsychHID:
     psychhid_includes = usb_includes;
-    psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util'];
+    psychhid_libdirs = ['../Cohorts/libusb1-win32/MS64/dll'];
+    psychhid_libs = ['dinput8', 'libusb-1.0', 'setupapi'];  
     psychhid_extra_objects = [];
 
 if platform.system() == 'Darwin':
@@ -125,12 +134,15 @@ if platform.system() == 'Darwin':
     base_compile_args = ['-Wno-date-time', '-mmacosx-version-min=10.11'];
 
     # Extra OS specific libs for PsychPortAudio:
+    audio_libdirs = [];
+    audio_extralinkargs = [];
     audio_libs = [];
     # Include our statically linked on-steroids version of PortAudio:
     audio_objects = ['../Cohorts/PortAudio/libportaudio_osx_64.a'];
 
     # Include Apples open-source HID Utilities for all things USB-HID device handling:
     psychhid_includes = ['../Cohorts/HID_Utilities_64Bit/', '../Cohorts/HID_Utilities_64Bit/IOHIDManager'];
+    psychhid_libdirs = [];
     psychhid_libs = [];
     # Extra objects for PsychHID - statically linked HID utilities:
     psychhid_extra_objects = ['../Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a'];
@@ -163,7 +175,9 @@ PsychPortAudio = Extension(name,
                            define_macros = get_basemacros(name, osname),
                            include_dirs = get_baseincludedirs(name, osname),
                            sources = get_basesources(name, osname),
+                           library_dirs = audio_libdirs,
                            libraries = base_libs + audio_libs,
+                           extra_link_args = audio_extralinkargs,
                            extra_objects = audio_objects
                           )
 
@@ -174,6 +188,7 @@ PsychHID = Extension(name,
                      define_macros = get_basemacros(name, osname),
                      include_dirs = get_baseincludedirs(name, osname) + psychhid_includes,
                      sources = get_basesources(name, osname),
+                     library_dirs = psychhid_libdirs,
                      libraries = base_libs + psychhid_libs,
                      extra_objects = psychhid_extra_objects
                     )
