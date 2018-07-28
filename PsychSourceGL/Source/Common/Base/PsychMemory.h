@@ -43,7 +43,7 @@ void *PsychMallocTemp(size_t n);
 // PsychFreeTemp frees memory allocated with PsychM(C)allocTemp().
 // This is not strictly needed as our memory manager will free
 // the memory anyway when returning control to Matlab/Octave et al.
-void PsychFreeTemp(void* ptr);
+void PsychFreeTemp(void* inptr);
 
 // Master cleanup routine: Frees all allocated memory.
 void PsychFreeAllTempMemory(void);
