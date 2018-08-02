@@ -56,7 +56,7 @@ Example to, Clone the wiki, than extract files from PsychBasic,
 than push changes back onto wiki:
 
   cd ~/git
-  git clone https://github.com/Psychtoolbox-3/Psychtoolbox-3.wiki.git
+  git clone https://github.com/Psychtoolbox-3/psychtoolbox-3.github.com.git
   cd /path/to/psychtoolbox
   PTB-wikify-into-files.py -m -o ~/Psychtoolbox-3.wiki/ PsychBasic/*.m
 
@@ -70,16 +70,15 @@ ALternatively recursively add all files in the directory:
 
 Example script that outputs entire PTB tree:
 cd /path/to/Psychtoolbox
-../managementtools/PTB-wikify-into-files.py -m -o /Users/ales/git/Psychtoolbox-3-aleslab-fork.wiki *.m;
+../managementtools/PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/documentation/ *.m;
 #Exclude PsychOpenGL because it has 2700+ files and overloads github wiki.
 for name in `find * -maxdepth 0 -type d -not -name PsychOpenGL`;
 do
-../managementtools/PTB-wikify-into-files.py -rm -o /Users/ales/git/Psychtoolbox-3-aleslab-fork.wiki $name;
+../managementtools/PTB-wikify-into-files.py -rm -o ~/git/psychtoolbox-3.github.com/documentation/ $name;
 done
 #Just extract documentation from the base PsychOpenGL folder
-../managementtools/PTB-wikify-into-files.py -m -o /Users/ales/git/Psychtoolbox-3-aleslab-fork.wiki PsychOpenGL/*.m*;
+../managementtools/PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/documentation/ PsychOpenGL/*.m*;
 
- for name in `find * -maxdepth 0 -type d -not -name PsychOpenGL`; do  ../managementtools/PTB-wikify-into-files.py -o /Users/ales/git/Psychtoolbox-3-aleslab-fork.wiki -rm $name; done
 IMPORTANT!!:
   Always change your working directory to the root of the
   tree before running the script, e.g.,
@@ -130,6 +129,43 @@ _fulldiff = 0
 # This version writes files instead of directly posting onto website.
 # global mech
 # mech = mechanicalsoup.Browser()
+
+#Format a string for making a link in different markdown dialects
+#formatLinkText(label,link)
+#formatLinkText(labelAndLink)
+def formatLinkText(*args):
+
+    if len(args)==1:
+        label=args[0]
+        link=args[0]
+    elif len(args)==2:
+        label=args[0]
+        link=args[1]
+
+
+    if outputFormat == "markdown":
+        formattedText = "["+label + "](" + link + ")"
+    elif outputFormat == "mediawiki":
+        formattedText = "[["+link+"|"+label+"]]"
+
+    return formattedText
+
+#Function to split a path into each different directory.
+def splitall(path):
+    allparts = []
+    while 1:
+        parts = os.path.split(path)
+        if parts[0] == path:  # sentinel for absolute paths
+            allparts.insert(0, parts[0])
+            break
+        elif parts[1] == path: # sentinel for relative paths
+            allparts.insert(0, parts[1])
+            break
+        else:
+            path = parts[0]
+            allparts.insert(0, parts[1])
+    return allparts
+
 
 def parse(filename):
     '''Parse helpful initial comment block from .m-file'''
@@ -216,6 +252,7 @@ def beackern(mkstring):
             + r'\blog10nw\b|' \
             + r'\bPreference\b)'
 
+
     if outputFormat == "markdown":
         mkstring = re.sub(match,r'[\1](\1)',mkstring)
     elif outputFormat == "mediawiki":
@@ -296,8 +333,18 @@ def writeFiles(outputDir,files):
             cattext = '{{category}}'
 
         # load and build the text for the page
-        headline = "# [[" + funcname + "]]\n"
-        breadcrumb = "## [[" + re.sub("/","]] &#8250; [[", path) + "]]\n\n"
+
+        headline = "# " + formatLinkText(funcname)+ "\n"
+
+
+        breadcrumb = "## "
+        dirnames = splitall(path)
+
+        for dirname in dirnames:
+            breadcrumb = breadcrumb + formatLinkText(dirname)
+
+        breadcrumb = breadcrumb + "\n\n"
+
 
         # read the .m-file and strip all the crap
         docstring = parse(name)
@@ -319,7 +366,8 @@ def writeFiles(outputDir,files):
                     </div>
                     """% tuple([os.path.join(path,basename)]*3)
 
-        text =  breadcrumb \
+        text =  headline \
+                + breadcrumb \
                 + body \
                 + '\n\n\n' \
                 + textwrap.dedent(pathlinks) \
@@ -446,15 +494,18 @@ def mexhelpextract(outputDir,mexnames):
             headline = '# ['+mexname+'(\''+subFuncName+'\')](' \
                         + mexname + '-' + subFuncName + ') ' + '\n'
 
-            breadcrumb = "## [[Psychtoolbox]] &#8250; [[" \
-                                + mexname + "]].{mex*,dll} subfunction\n\n"
+            breadcrumb = "## " + formatLinkText('Psychtoolbox','Pyschtoolbox') + "&#8250;"  \
+                                + formatLinkText(mexname) + ".{mex*} subfunction\n\n"
 
             # scrub the text for main text only
             body = beackern(help)
 
             if subFuncName == '__main__':
                 usage = formatUsage(usage,mexname,subfunctions)
-                headline = "# [[" + mexname + "]]\n"
+                headline = "# " + formatLinkText(mexname,mexname) + "\n"
+                breadcrumb = "## " + formatLinkText('Psychtoolbox','Pyschtoolbox') + "&#8250;"  \
+                                    + formatLinkText(mexname) + "\n\n"
+
             # docstring = '' \
             #         + '%%(matlab;Usage)' \
             #         + usage \
@@ -467,7 +518,6 @@ def mexhelpextract(outputDir,mexnames):
                     + body \
                     + '\n\n'
 
-            print(seealso)
             if seealso:
 
                 #Add links for any word using UpperCamelCase: e.g. PsychHID
