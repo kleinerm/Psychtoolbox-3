@@ -165,11 +165,13 @@ const mxArray *PsychGetInArgMxPtr(int position);
 #endif
 
 #if PSYCH_LANGUAGE == PSYCH_PYTHON
+int mxGetString(PyObject* arrayPtr, char* outstring, int outstringsize);
 double mxGetScalar(const PyObject* arrayPtr);
 PyObject* mxGetField(const PyObject* structArray, int index, const char* fieldName);
 PyObject** PsychGetOutArgPyPtr(int position);
 const PyObject *PsychGetInArgPyPtr(int position);
 PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args);
+const char* PsychGetPyModuleFilename(void);
 #endif
 
 //end include once

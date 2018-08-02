@@ -91,7 +91,7 @@ const char* PsychBuildSynopsisString(const char* modulename)
     // Assemble the moduleHelpString out of synopsisSYNOPSIS, suitable for
     // Python module help:
     for (i = 0; synopsisSYNOPSIS[i] != NULL; i++)
-        n+= strlen(synopsisSYNOPSIS[i]) + 2;
+        n+= (int) strlen(synopsisSYNOPSIS[i]) + 2;
 
     moduleHelpString = calloc(1, n + 2 * strlen(modulename) + 512);
     if (PSYCH_LANGUAGE == PSYCH_PYTHON) {

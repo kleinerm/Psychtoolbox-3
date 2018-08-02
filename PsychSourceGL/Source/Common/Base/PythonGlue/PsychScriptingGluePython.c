@@ -75,6 +75,12 @@ static int recLevel = -1;
 static psych_bool psych_recursion_debug = FALSE;
 static int psych_refcount_debug = 0;
 
+// Our own module object:
+static PyObject *module = NULL;
+
+// Full filesystem path/name to the library (DLL/dylib/libso) that defines this module:
+static char modulefilename[FILENAME_MAX];
+
 // MODULE INITIALIZATION FOR PYTHON:
 // =================================
 
@@ -96,11 +102,13 @@ static PyMethodDef GlobalPythonMethodsTable[] = {
 // name of the module, e.g., GetSecs.
 PPYINIT(PTBMODULENAME)
 {
+    modulefilename[0] = 0;
+
     // Add a help string with module synopsis to 1st function - our main dispatch function:
     GlobalPythonMethodsTable[0].ml_doc = PsychBuildSynopsisString(PPYNAME(PTBMODULENAME));
 
     // Initialize module:
-    (void) Py_InitModule(PPYNAME(PTBMODULENAME), GlobalPythonMethodsTable);
+    module = Py_InitModule(PPYNAME(PTBMODULENAME), GlobalPythonMethodsTable);
 }
 // End of Python 2.x specific init code
 #endif
@@ -149,17 +157,41 @@ static struct PyModuleDef module_definition = {
 // name of the module, e.g., GetSecs.
 PPYINIT(PTBMODULENAME)
 {
+    modulefilename[0] = 0;
+
     // Add a help string with module synopsis to 1st function - our main dispatch function:
     GlobalPythonMethodsTable[0].ml_doc = PsychBuildSynopsisString(PPYNAME(PTBMODULENAME));
 
     // Initialize module:
-    return(PyModule_Create(&module_definition));
+    module = PyModule_Create(&module_definition);
+    return(module);
 }
 
 // End of Python 3.x specific init code
 #endif
 
 // END OF MODULE INITIALIZATION FOR PYTHON:
+
+// Return filename of the module definition file - the shared library:
+const char* PsychGetPyModuleFilename(void)
+{
+    // Get full filesystem path/name of the module definition file, ie. the library:
+    if (module && !modulefilename[0]) {
+        #if PY_MAJOR_VERSION >= 3
+            PyObject *fname = PyModule_GetFilenameObject(module);
+        #else
+            PyObject *fname = NULL;
+        #endif
+
+        if (fname)
+            mxGetString(fname, modulefilename, sizeof(modulefilename) - 1);
+        else
+            sprintf(modulefilename, "%s", PyModule_GetFilename(module));
+        Py_XDECREF(fname);
+    }
+
+    return(&modulefilename[0]);
+}
 
 // This jump-buffer stores CPU- and stackstate at the position
 // where our octFunction() dispatcher actually starts executing
@@ -778,7 +810,7 @@ PyObject* PsychScriptingGluePythonDispatch(PyObject* self, PyObject* args)
     PyObject*           tmparg = NULL;
     PyObject*           plhs = NULL;
     int                 i;
-    int                 nrhs = PyTuple_Size(args);
+    int                 nrhs = (int) PyTuple_Size(args);
 
     if (!PyTuple_Check(args)) {
         printf("FAIL FAIL FAIL!\n");
