@@ -30,6 +30,12 @@
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
 
+// Can not use NPY_TITLE_KEY macro if compat limited api is selected.
+// However, i have no clue what we'd use it for, so there...
+#ifdef Py_LIMITED_API
+#undef NPY_TITLE_KEY
+#endif
+
 // Define this to 1 if you want lots of debug-output for the Python-Scripting glue.
 #define DEBUG_PTBPYTHONGLUE 0
 
@@ -2978,15 +2984,19 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
     return((*pcontent) ? TRUE : FALSE);
 }
 
-/* PsychRuntimeEvaluateString() TODO FIXME
+/* PsychRuntimeEvaluateString()
  *
  * Simple function evaluation by the Python scripting environment.
  * This asks the runtime environment to execute/evaluate the given string 'cmdstring',
  * passing no return arguments back, except an error code.
  *
+ * CAUTION: If Py_LIMITED_API is used for being able to build one set of modules
+ *          for all Python 3.2+ versions, then this function will not work / be
+ *          unavailable!
  */
 int PsychRuntimeEvaluateString(const char* cmdstring)
 {
+#ifndef Py_LIMITED_API
     PyObject* res;
     res = PyRun_String(cmdstring, Py_file_input, PyEval_GetGlobals(), PyEval_GetLocals());
     if (res) {
@@ -2994,11 +3004,11 @@ int PsychRuntimeEvaluateString(const char* cmdstring)
         Py_XDECREF(res);
         return(0);
     }
-
+#else
+	printf("PTB-WARNING: Module tried to call PsychRuntimeEvaluateString(%s),\nwhich is *unsupported* in Py_LIMITED_API mode!!!\n", cmdstring);
+#endif
     // Failed:
     return(-1);
-
-    // Works only without access to global/local variables: return(PyRun_SimpleString(cmdstring));
 }
 
 // functions for outputting structs
