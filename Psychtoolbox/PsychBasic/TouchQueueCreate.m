@@ -78,8 +78,9 @@ dev = allInfo{idx};
 
 if isempty(numValuators)
   if IsLinux
-    % On Linux/X11 this is stored in axes:
-    numValuators = dev.axes;
+    % On Linux/X11 this is stored in axes, but we need at least numValuators of
+    % 4, as otherwise touch input support won't get enabled by PsychHID():
+    numValuators = max(dev.axes, 4);
   else
     % On MS-Windows, 5 would be a good guess:
     numValuators = 5;
