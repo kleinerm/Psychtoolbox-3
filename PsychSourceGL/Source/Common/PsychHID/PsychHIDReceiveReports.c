@@ -725,8 +725,6 @@ PsychError GiveMeReports(int deviceIndex,int reportBytes)
         if (r->bytes > (unsigned int) reportBytes)
             r->bytes = reportBytes;
 
-        // Note: Can do reportBuffer = NULL and then manual copy with for(j...), or could do auto-copy
-        // via internal memcpy in PsychAllocateNativeUnsignedByteMat(): reportBuffer = &(r->report[0]);
         reportBuffer = NULL;
         PsychAllocateNativeUnsignedByteMat(1, r->bytes, 1, (psych_uint8**) &reportBuffer, &fieldValue);
         for(j = 0; j < r->bytes; j++)
