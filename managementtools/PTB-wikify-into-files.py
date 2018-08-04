@@ -70,14 +70,14 @@ ALternatively recursively add all files in the directory:
 
 Example script that outputs entire PTB tree:
 cd /path/to/Psychtoolbox
-../managementtools/PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/documentation/ *.m;
+../managementtools/PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/docs/ *.m;
 #Exclude PsychOpenGL because it has 2700+ files and overloads github wiki.
 for name in `find * -maxdepth 0 -type d -not -name PsychOpenGL`;
 do
-../managementtools/PTB-wikify-into-files.py -rm -o ~/git/psychtoolbox-3.github.com/documentation/ $name;
+../managementtools/PTB-wikify-into-files.py -rm -o ~/git/psychtoolbox-3.github.com/docs/ $name;
 done
 #Just extract documentation from the base PsychOpenGL folder
-../managementtools/PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/documentation/ PsychOpenGL/*.m*;
+../managementtools/PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/docs/ PsychOpenGL/*.m*;
 
 IMPORTANT!!:
   Always change your working directory to the root of the
@@ -311,18 +311,28 @@ def writeFiles(outputDir,files):
 
         cattext = ''
 
-        mexname = os.path.join(absPath,funcname+_mexext)
+        mexname = os.path.join(os.path.split(absPath)[0],funcname+_mexext)
 
+        mexSuccess = True
         if not os.path.exists(name) or not ext=='.m':
             if _mexmode and ext == _mexext:
-                mexhelpextract(outputDir,[funcname])
-            elif _debug: print('skipping ' + name)
-            continue
+                mexSuccess = mexhelpextract(outputDir,[funcname])
 
-        #If mexmode is on and mex file exists skip .m file
-        if _mexmode and ext=='.m' and os.path.exists(mexname):
+            if mexSuccess:
+                continue
+            else:
+                name = os.path.join(head,funcname + '.m')
+                if os.path.exists(name):
+                    print('No help in mexfile. Trying m file: ' + name )
+                else:
+                    print('Skipping because cannot find help in mex or mfile for: ' + os.path.join(head, basename))
+                    continue
+
+        #If mexmode is on and mex file exists skip the .m file
+        if mexSuccess and (_mexmode and os.path.exists(mexname)):
             print('Mex file exists. skipping m file: ' + name )
             continue
+
 
         if basename=='Contents.m' or basename=='contents.m':
             funcname = category
@@ -337,11 +347,11 @@ def writeFiles(outputDir,files):
         headline = "# " + formatLinkText(funcname)+ "\n"
 
 
-        breadcrumb = "## "
+        breadcrumb = "##### "
         dirnames = splitall(path)
 
         for dirname in dirnames:
-            breadcrumb = breadcrumb + formatLinkText(dirname)
+            breadcrumb = breadcrumb + ">" + formatLinkText(dirname)
 
         breadcrumb = breadcrumb + "\n\n"
 
@@ -442,6 +452,8 @@ def formatUsage(usage,mexname,subfunctions):
 
 def mexhelpextract(outputDir,mexnames):
     #print 'processing mex files: ' + mexnames.__repr__()
+    mexHelpSuccess = True
+
     for mexname in mexnames:
         # First build help text for mex.
 
@@ -466,6 +478,7 @@ def mexhelpextract(outputDir,mexnames):
 
         if not os.path.isfile(mexDumpName):
             print("skipping " + mexname + " (no output)")
+            mexHelpSuccess = False
             continue
 
         # Parse the mex dumped file using the following format:
@@ -494,7 +507,7 @@ def mexhelpextract(outputDir,mexnames):
             headline = '# ['+mexname+'(\''+subFuncName+'\')](' \
                         + mexname + '-' + subFuncName + ') ' + '\n'
 
-            breadcrumb = "## " + formatLinkText('Psychtoolbox','Pyschtoolbox') + "&#8250;"  \
+            breadcrumb = "##### " + formatLinkText('Psychtoolbox','Psychtoolbox') + ">"  \
                                 + formatLinkText(mexname) + ".{mex*} subfunction\n\n"
 
             # scrub the text for main text only
@@ -503,7 +516,7 @@ def mexhelpextract(outputDir,mexnames):
             if subFuncName == '__main__':
                 usage = formatUsage(usage,mexname,subfunctions)
                 headline = "# " + formatLinkText(mexname,mexname) + "\n"
-                breadcrumb = "## " + formatLinkText('Psychtoolbox','Pyschtoolbox') + "&#8250;"  \
+                breadcrumb = "##### " + formatLinkText('Psychtoolbox','Psychtoolbox') + ">"  \
                                     + formatLinkText(mexname) + "\n\n"
 
             # docstring = '' \
@@ -537,9 +550,9 @@ def mexhelpextract(outputDir,mexnames):
 
                 docstring = docstring + '###See also:\n' + seealso
 
-            text =  headline \
-                    + breadcrumb \
-                    + docstring
+            text = headline  \
+                + breadcrumb \
+                + docstring
 
 
             if outputFormat == "markdown":
@@ -547,14 +560,16 @@ def mexhelpextract(outputDir,mexnames):
             elif outputFormat == "mediawiki":
                 suffix = '.wiki'
 
-            wikiFileName = os.path.join(outputDir,mexname + '-' + subFuncName + suffix)
+            outputFilename = os.path.join(outputDir,mexname + '-' + subFuncName + suffix)
             if subFuncName == '__main__':
-                wikiFileName = os.path.join(outputDir,mexname + suffix)
+                outputFilename = os.path.join(outputDir,mexname + suffix)
 
-            print("writing file " + wikiFileName)
+            print("writing mex help to file: " + outputFilename)
 
-            f = open(wikiFileName,"w+")
+            f = open(outputFilename,"w+")
             f.write(text)
+
+    return mexHelpSuccess
 
 def recursivewalk(outputDir,rootfolder):
     '''traverse the root directory and post all .m-files'''
@@ -619,19 +634,7 @@ def main(argv):
             try
                 subfunctions=eval([mexname '(''DescribeModulefunctionshelper'')']);
             catch
-                return;
-            end
-
-            try
-                if isempty(subfunctions)
-                    return;
-                end
-
-                if ~iscell(subfunctions)
-                    return;
-                end
-            catch
-                return;
+                subfunctions = [];
             end
 
             fid = fopen(fullfile(tmpdir,mexname),'wt');
@@ -648,15 +651,18 @@ def main(argv):
                 fprintf(fid,'[key:help]\\n%s\\n',helpText);
                 fprintf(fid,'[key:seealso]\\n');
 
-                for i=1:size(subfunctions,2)
-                    fprintf(fid,'[section:%s]\\n',subfunctions{i});
-                    docs = eval([mexname '(''DescribeModulefunctionshelper'',1,subfunctions{i})']);
-                    fprintf(fid,'[key:usage]:%s\\n',docs{1});
-                    fprintf(fid,'[key:help]\\n%s\\n',docs{2});
-                    fprintf(fid,'[key:seealso]\\n%s\\n',docs{3});
+                if iscell(subfunctions) && ~isempty(subfunctions)
+                    for i=1:size(subfunctions,2)
+                        fprintf(fid,'[section:%s]\\n',subfunctions{i});
+                        docs = eval([mexname '(''DescribeModulefunctionshelper'',1,subfunctions{i})']);
+                        fprintf(fid,'[key:usage]:%s\\n',docs{1});
+                        fprintf(fid,'[key:help]\\n%s\\n',docs{2});
+                        fprintf(fid,'[key:seealso]\\n%s\\n',docs{3});
+                    end
                 end
             catch
-                % Nothing to do.
+                fclose(fid);
+                return;
             end
 
             fclose(fid);
