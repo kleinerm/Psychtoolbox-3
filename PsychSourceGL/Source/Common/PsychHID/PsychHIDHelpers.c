@@ -436,6 +436,7 @@ int PsychHIDReturnEventFromEventBuffer(int deviceIndex, int outArgIndex, double 
         PsychSetStructArrayDoubleElement("NormY",        0, (double) evt.normY,                       retevent);
 
         // Copy out all valuators (including redundant (X,Y) again:
+        v = NULL;
         PsychAllocateNativeDoubleMat(1, evt.numValuators, 1, &v, &outMat);
         for (j = 0; j < evt.numValuators; j++)
             *(v++) = (double) evt.valuators[j];
