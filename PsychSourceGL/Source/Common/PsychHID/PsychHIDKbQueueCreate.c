@@ -98,6 +98,7 @@ static char synopsisString[] =
 "+1 = Always label synthetic key repeat events as invalid - iow. suppress them. Supported on Linux only.\n"
 "+2 = Never label synthetic key repeat events as invalid - iow. accept them. Supported on Linux only.\n"
 "+4 = Try to get raw valuator state, avoiding things like pointer acceleration. Supported on Linux only.\n"
+"+8 = Try to grab the input device for exclusive use by us. Supported on Linux for touchscreens only atm.\n"
 "\n";
 
 static char seeAlsoString[] = "KbQueueStart, KbQueueStop, KbQueueCheck, KbQueueFlush, KbQueueRelease";

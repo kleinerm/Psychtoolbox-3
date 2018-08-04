@@ -1143,11 +1143,21 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
 }
 
 // Helper: Set same event mask for all root windows of all x-screens for a server:
-static void MultiXISelectEvents(XIEventMask *pemask)
+static void MultiXISelectEvents(XIEventMask *pemask, int deviceIndex)
 {
+    Status rc;
     int i;
-    for (i = 0; i < ScreenCount(thread_dpy); i++)
+
+    for (i = 0; i < ScreenCount(thread_dpy); i++) {
         XISelectEvents(thread_dpy, RootWindow(thread_dpy, i), pemask, 1);
+
+        // Grab a touch device for our exclusive use if requested by 0x8 special flag:
+        if ((psychHIDKbQueueFlags[deviceIndex] & 0x8) && XIMaskIsSet(pemask->mask, XI_TouchBegin)) {
+            if (Success != (rc = XIGrabDevice(thread_dpy, pemask->deviceid, RootWindow(thread_dpy, i), CurrentTime, None, XIGrabModeAsync, XIGrabModeAsync, True, pemask)))
+                printf("PsychHID-WARNING: KbQueueStart: Failed to grab touch input device %i with xinput device id %i: %s.\n", deviceIndex, pemask->deviceid,
+                       (rc == AlreadyGrabbed || rc == GrabFrozen) ? "Already grabbed by another application" : (rc == GrabNotViewable) ? "Root window not viewable" : "Unknown error");
+        }
+    }
 }
 
 void PsychHIDOSKbQueueStop(int deviceIndex)
@@ -1189,7 +1199,7 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
     emask.deviceid = info[deviceIndex].deviceid;
     emask.mask_len = sizeof(mask);
     emask.mask = mask;
-    MultiXISelectEvents(&emask);
+    MultiXISelectEvents(&emask, deviceIndex);
     XFlush(thread_dpy);
 
     // Mark queue logically stopped:
@@ -1233,6 +1243,11 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
     XSendEvent(event.display, event.window, TRUE, KeyReleaseMask, (XEvent *) &event);
     XFlush(thread_dpy);
     // printf("DEBUG: DONE.\n"); fflush(NULL);
+
+    // Release touch input device if it was grabbed:
+    if ((psychHIDKbQueueNumValuators[deviceIndex] >= 4) && (PsychHIDIsTouchDevice(deviceIndex, NULL) >= 0) &&
+        (psychHIDKbQueueFlags[deviceIndex] & 0x8))
+        XIUngrabDevice(thread_dpy, info[deviceIndex].deviceid, CurrentTime);
 
     // Done.
     PsychUnlockMutex(&KbQueueMutex);
@@ -1319,7 +1334,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     emask.deviceid = info[deviceIndex].deviceid;
     emask.mask_len = sizeof(mask);
     emask.mask = mask;
-    MultiXISelectEvents(&emask);
+    MultiXISelectEvents(&emask, deviceIndex);
     XFlush(thread_dpy);
 
     // Mark this queue as logically started:

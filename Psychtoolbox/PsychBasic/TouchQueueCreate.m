@@ -1,5 +1,5 @@
-function TouchQueueCreate(win, deviceNumber, numSlots, numValuators, keyList)
-% TouchQueueCreate(windowHandle, deviceNumber [, numSlots=100000][, numValuators=auto][, keyList=all])
+function TouchQueueCreate(win, deviceNumber, numSlots, numValuators, keyList, flags)
+% TouchQueueCreate(windowHandle, deviceNumber [, numSlots=100000][, numValuators=auto][, keyList=all][, flags=0])
 %
 % Create a touch queue for receiving touch input from touch input devices
 % like touchscreens, tablets, touch surfaces, or touchpads.
@@ -21,6 +21,11 @@ function TouchQueueCreate(win, deviceNumber, numSlots, numValuators, keyList)
 % physical buttons (or maybe virtual buttons?) from the device, this provides
 % the list of buttons to accept. See KbQeueCreate for explanation. By default
 % all buttons are accepted.
+%
+% 'flags' If flags is set to 8 then TouchQueueCreate tries to get exclusive
+% access to the touch input device, to avoid or reduce interference by other
+% potentially running touch enabled applications. This is only supported on
+% Linux/X11 at the moment and may or may not help - the court is still out on this.
 %
 % Once a queue is created its touch data collection can be started via
 % TouchQueueStart(), stopped via TouchQueueStop(), cleared via TouchQueueFlush(),
@@ -67,6 +72,10 @@ else
   end
 end
 
+if nargin < 6
+  flags = [];
+end
+
 [touchIndices, productNames, allInfo] = GetTouchDeviceIndices;
 if ~ismember(deviceNumber, touchIndices)
   error('deviceNumber does not refer to a touch input device.');
@@ -88,6 +97,6 @@ if isempty(numValuators)
 end
 
 % Ok, and now we just call KbQeueCreate, which we wrap here atm.:
-KbQueueCreate(deviceNumber, keyList, numValuators, numSlots);
+KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags);
 
 return;
