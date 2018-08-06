@@ -77,14 +77,14 @@ nrchannels = 2;
 
 % Does a function for resampling exist?
 if exist('resample') %#ok<EXIST>
-    % Yes: Select a target sampling rate of 44100 Hz, resample if
+    % Yes: Select a target sampling rate of 48000 Hz, resample if
     % neccessary:
-    freq = 44100;
+    freq = 48000;
     doresample = 1;
 else
     % No. We will choose the frequency of the wav file with the highest
     % frequency for actual playback. Wav files with deviating frequencies
-    % will play too fast or too slow, b'cause we can't resample:
+    % will play too fast or too slow, because we can't resample:
     % Init freq:
     freq = 0;
     doresample = 0;
