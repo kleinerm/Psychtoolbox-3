@@ -3,8 +3,8 @@
 # they are utilized here.
 #
 # Plays a beep tone, then another beep tone, then records sound for 10 seconds,
-# then plays it back until the end or a key is pressed.
-# The test will be subjec to change without notice, it is throwaway wip code.
+# then plays it back until the end, or until a key is pressed.
+# The test will be subjec to change without notice, it is throwaway test code.
 #
 # (c) 2018 Mario Kleiner - Licensed under MIT license.
 
@@ -44,17 +44,25 @@ def run():
     # latency/timing-precision (low-latency, high precision), sample rate Fs,
     # stereo (2) channel output:
     pahandle = PsychPortAudio('Open', [], [], [0], Fs, 2);
-
     PsychPortAudio('Volume', pahandle, 0.5);
 
-    # Fill in audio matrix for playback:
-    stereowav = np.array(stereowav);
-    #stereowav = np.transpose(stereowav);
+    # Fill in audio matrix for playback: columns = audio channels, rows = samples
+    # Do it step-by-step for performance testing:
+    stereowav = np.array(stereowav, order='f');
+    # print('Type', type(stereowav), 'Shape', stereowav.shape, 'Datatype', stereowav.dtype, 'Order', stereowav.flags);
+    stereowav = np.transpose(stereowav);
+    # float32 is a tad faster than the default float64:
+    stereowav = stereowav.astype('float32');
+
+    # stereowav = np.zeros([10000,2], dtype='f')
+
+    print('Type', type(stereowav), 'Shape', stereowav.shape, 'Datatype', stereowav.dtype, 'Order', stereowav.flags);
 
     t1 = GetSecs();
     PsychPortAudio('FillBuffer', pahandle, stereowav);
     t2 = GetSecs();
-    print('Duration', (1000 * (t2-t1)), ' msecs.');
+    d1 = (1000 * (t2-t1));
+    print('FillBuffer Duration', d1, ' msecs.');
 
     # Start playback for one repetition (1), 5 seconds from now, wait for sound onset:
     PsychPortAudio('Start', pahandle, 1, GetSecs() + 1, 1)
@@ -76,20 +84,28 @@ def run():
     # Replicated into two rows - One row for each stereo-channel, ie.
     # m'th row == m'th channel, n'th column = n'th sample frame:
     stereowav2 = [a, a];
+    stereowav2 = np.transpose(stereowav2);
+    stereowav2 = stereowav2.astype('float32');
 
-    stereowav2 = np.array(stereowav2);
-    #stereowav2 = np.transpose(stereowav2);
+    t1 = GetSecs();
+    b1 = PsychPortAudio('CreateBuffer', pahandle, stereowav2);
+    t2 = GetSecs();
+    d2 = (1000 * (t2-t1));
+    print('CreateBuffer Duration', d2, ' msecs.');
+    t1 = GetSecs();
+    PsychPortAudio('FillBuffer', pahandle, b1);
+    t2 = GetSecs();
+    print('FillBuffer Duration', (1000 * (t2-t1)), ' msecs.');
+    print('d2 / d1 = ', d2 / d1);
 
-    #b1 = PsychPortAudio('CreateBuffer', pahandle, stereowav2);
-    #PsychPortAudio('FillBuffer', pahandle, b1);
-    PsychPortAudio('FillBuffer', pahandle, stereowav2);
     PsychPortAudio('Start', pahandle, 1, GetSecs() + 1, 1)
-    [startTime, endPositionSecs, xruns, estStopTime] = PsychPortAudio('Stop', pahandle, 1)
+    [startTime, endPositionSecs, xruns, estStopTime] = PsychPortAudio('Stop', pahandle, 1);
     print('StartTime', startTime, 'secs. Stop time', estStopTime, 'secs.\n');
 
     # Close sound device:
     PsychPortAudio('Close', pahandle);
 
+    # 2nd test: Audio capture:
     pahandle = PsychPortAudio('Open', [], 2, 0, Fs, 2);
 
     # Preallocate an internal audio recording  buffer with a capacity of 10 seconds:
@@ -100,7 +116,7 @@ def run():
     # i.e. record until recording is manually stopped.
     PsychPortAudio('Start', pahandle, 0, 0, 1);
 
-    [audiodata, a, b, c] = PsychPortAudio('GetAudioData', pahandle, None, 9.9, None, 0);
+    [audiodata, a, b, c] = PsychPortAudio('GetAudioData', pahandle, None, 9.9, None);
     print('Type', type(audiodata), 'Shape', audiodata.shape, 'Datatype', audiodata.dtype);
 
     PsychPortAudio('Close', pahandle);
@@ -111,7 +127,6 @@ def run():
 
     # Fill in audio matrix for playback:
     PsychPortAudio('FillBuffer', pahandle, audiodata);
-    #PsychPortAudio('FillBuffer', pahandle, np.transpose(audiodata));
 
     # Start playback for one repetition (1), 5 seconds from now, wait for sound onset:
     PsychPortAudio('Start', pahandle, 1, GetSecs() + 1, 1)
