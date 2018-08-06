@@ -11,6 +11,7 @@
 from psychtoolboxclassic import *
 from math import *
 import numpy as np
+from soundfile import SoundFile
 
 def printstatus(pahandle):
     info = PsychPortAudio('GetStatus', pahandle);
@@ -46,15 +47,22 @@ def run():
     pahandle = PsychPortAudio('Open', [], [], [0], Fs, 2);
     PsychPortAudio('Volume', pahandle, 0.5);
 
-    # Fill in audio matrix for playback: columns = audio channels, rows = samples
-    # Do it step-by-step for performance testing:
-    stereowav = np.array(stereowav, order='f');
-    # print('Type', type(stereowav), 'Shape', stereowav.shape, 'Datatype', stereowav.dtype, 'Order', stereowav.flags);
-    stereowav = np.transpose(stereowav);
-    # float32 is a tad faster than the default float64:
-    stereowav = stereowav.astype('float32');
-
-    # stereowav = np.zeros([10000,2], dtype='f')
+    if True:
+        # Fill in audio matrix for playback: columns = audio channels, rows = samples
+        # Do it step-by-step for performance testing:
+        stereowav = np.array(stereowav, order='f');
+        # print('Type', type(stereowav), 'Shape', stereowav.shape, 'Datatype', stereowav.dtype, 'Order', stereowav.flags);
+        stereowav = np.transpose(stereowav);
+        # float32 is a tad faster than the default float64:
+        stereowav = stereowav.astype('float32');
+        # stereowav = np.zeros([10000,2], dtype='f')
+    else:
+        # Make it less boring:
+        fname = '/home/kleinerm/Music/test.wav';
+        myfile = SoundFile(fname);
+        stereowav = myfile.read(dtype='float32', always_2d=True);
+        #stereowav = myfile.read();
+        myfile.close();
 
     print('Type', type(stereowav), 'Shape', stereowav.shape, 'Datatype', stereowav.dtype, 'Order', stereowav.flags);
 
