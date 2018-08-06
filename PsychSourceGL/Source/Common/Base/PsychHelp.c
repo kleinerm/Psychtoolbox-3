@@ -64,7 +64,28 @@ void PsychGiveHelp(void)
 
     // No, standard path: Print to console of runtime system:
     printf("\nUsage:\n\n%s\n",functionUseHELP);
-    if (functionSynopsisHELP != NULL) printf("\n%s\n", BreakLines(functionSynopsisHELP, 80));
+
+    if (functionSynopsisHELP != NULL) {
+        // Underwhelmingly, Python does not allow to printf() more than 1000 characters per
+        // string, and our functionSynopsisHELP can be much longer. Manually break it up in
+        // substrings and printf() one line per printf() invocation, assuming no single
+        // line will exceed 1000 chars:
+        char *tok = NULL;
+        char *str = strdup(functionSynopsisHELP);
+        str = BreakLines(str, 80);
+        tok = strtok(str, "\n");
+
+        if (tok)
+            printf("\n");
+
+        while (tok) {
+            printf("%s\n", tok);
+            tok = strtok(NULL, "\n");
+        }
+
+        free(str);
+    }
+
     if (functionSeeAlsoHELP  != NULL) printf("\nSee also: %s\n", BreakLines(functionSeeAlsoHELP, 80));
 }
 
