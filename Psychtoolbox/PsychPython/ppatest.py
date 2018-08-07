@@ -11,7 +11,7 @@
 from psychtoolboxclassic import *
 from math import *
 import numpy as np
-from soundfile import SoundFile
+#from soundfile import SoundFile
 
 def printstatus(pahandle):
     info = PsychPortAudio('GetStatus', pahandle);
