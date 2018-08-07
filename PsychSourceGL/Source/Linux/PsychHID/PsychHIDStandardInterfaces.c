@@ -1149,13 +1149,14 @@ static void MultiXISelectEvents(XIEventMask *pemask, int deviceIndex)
     int i;
 
     for (i = 0; i < ScreenCount(thread_dpy); i++) {
-        XISelectEvents(thread_dpy, RootWindow(thread_dpy, i), pemask, 1);
-
         // Grab a touch device for our exclusive use if requested by 0x8 special flag:
         if ((psychHIDKbQueueFlags[deviceIndex] & 0x8) && XIMaskIsSet(pemask->mask, XI_TouchBegin)) {
             if (Success != (rc = XIGrabDevice(thread_dpy, pemask->deviceid, RootWindow(thread_dpy, i), CurrentTime, None, XIGrabModeAsync, XIGrabModeAsync, True, pemask)))
                 printf("PsychHID-WARNING: KbQueueStart: Failed to grab touch input device %i with xinput device id %i: %s.\n", deviceIndex, pemask->deviceid,
                        (rc == AlreadyGrabbed || rc == GrabFrozen) ? "Already grabbed by another application" : (rc == GrabNotViewable) ? "Root window not viewable" : "Unknown error");
+        }
+        else {
+            XISelectEvents(thread_dpy, RootWindow(thread_dpy, i), pemask, 1);
         }
     }
 }
