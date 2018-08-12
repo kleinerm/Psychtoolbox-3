@@ -3743,7 +3743,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // for Prime-Synced outputSrc -> outputSink setups, as that would add 1 frame extra lag. by preventing
         // us from subitting a swaprequest 1 frame ahead to compensate for the 1 frame lag of Prime sync.
         if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (!osspecific_asyncflip_scheduled) && (windowRecord->hybridGraphics < 2) &&
-            !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) &&
+            !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) && !(PsychPrefStateGet_ConserveVRAM() & kPsychSkipOutOfVblankWait) &&
             ((time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002) || ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0)))) {
             // Less than 2 msecs passed since last bufferswap, although swap in sync with retrace requested.
             // Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
