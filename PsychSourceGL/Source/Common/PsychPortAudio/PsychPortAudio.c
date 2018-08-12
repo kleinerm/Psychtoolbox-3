@@ -2041,7 +2041,13 @@ PsychError PSYCHPORTAUDIOOpen(void)
     PaStream *stream = NULL;
 
     #if PSYCH_SYSTEM == PSYCH_OSX
+    #ifdef paMacCoreChangeDeviceParameters
+    // New style since at least 19.6.0:
+    PaMacCoreStreamInfo hostapisettings;
+    #else
+    // Old style:
     paMacCoreStreamInfo hostapisettings;
+    #endif
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -2402,11 +2408,21 @@ PsychError PSYCHPORTAUDIOOpen(void)
     #if PSYCH_SYSTEM == PSYCH_OSX
     // Apply OS/X CoreAudio specific optimizations:
     if (latencyclass > 1) {
+        #ifdef paMacCoreChangeDeviceParameters
+        // New style since at least 19.6.0:
+        unsigned long flags = paMacCoreChangeDeviceParameters;
+        if (latencyclass > 3) flags|= paMacCoreFailIfConversionRequired;
+        PaMacCore_SetupStreamInfo( &hostapisettings, flags);
+        outputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &hostapisettings;
+        inputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &hostapisettings;
+        #else
+        // Old style:
         unsigned long flags = paMacCore_ChangeDeviceParameters;
         if (latencyclass > 3) flags|= paMacCore_FailIfConversionRequired;
         paSetupMacCoreStreamInfo( &hostapisettings, flags);
         outputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
         inputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
+        #endif
     }
     #endif
 
@@ -2539,18 +2555,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     // Register the stream finished callback:
     Pa_SetStreamFinishedCallback(audiodevices[id].stream, PAStreamFinishedCallback);
-
-    #if PSYCH_SYSTEM == PSYCH_OSX
-    // Query low-level audio driver of the CoreAudio HAL for hardware latency:
-    // Hmm, maybe not. Don't know if it is worth the hazzle... This is a constant that
-    // doesn't change throughout the lifetime of a machine, and it only makes up for about
-    // 0.3 msecs on a typical setup. Maybe if a user really needs that 0.3 msecs extra
-    // precision, he should simply download the free HALLab from Apple's Website or Developer
-    // tools, run it once, read the displayed constant and set it manually at PortAudio startup.
-
-    // PaMacCoreStream* corestream = (PaMacCoreStream*) audiodevices[id].stream;
-    // audiodevices[id].latencyBias =
-    #endif
 
     if (verbosity > 3) {
         printf("PTB-INFO: New audio device %i with handle %i opened as PortAudio stream:\n", deviceid, id);
@@ -5794,8 +5798,8 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
     // Default result code is "totally unsupported by our driver":
     rc = 3;
 
-    // Feature currently only supported on MS-Windows and OS/X ...
-    #if PSYCH_SYSTEM != PSYCH_LINUX
+    // Feature currently only supported on MS-Windows and OS/X and only with our custom build / extended Portaudio variant, not upstream:
+    #if (PSYCH_SYSTEM != PSYCH_LINUX) && !defined(paMacCoreChangeDeviceParameters)
     // MS-Windows: Is the device in question opened as an ASIO device? If not, then game over. Otherwise we know
     // we're using the ASIO enabled portaudio_x86.dll which may support this feature on this hardware.
     // OS/X CoreAudio: Same logic applies...

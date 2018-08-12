@@ -106,7 +106,7 @@ end
 if mode==3
     % Depends: PortAudio
     % Build PsychPortAudio:
-    mex -g -v --output ../Projects/MacOSX/build/PsychPortAudio  -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework AudioToolbox -framework AudioUnit,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychPortAudio  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychPortAudio/*.c" ../Cohorts/PortAudio/libportaudio_osx_64.a
+    mex -g -v --output ../Projects/MacOSX/build/PsychPortAudio  -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework AudioToolbox -framework AudioUnit,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.12.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychPortAudio  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychPortAudio/*.c" ../Cohorts/PortAudio/libportaudio_osx_64.a % /usr/local/lib/libportaudio.a
     osxsetoctaverpath('PsychPortAudio');
     unix(['mv ../Projects/MacOSX/build/PsychPortAudio.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
 end
