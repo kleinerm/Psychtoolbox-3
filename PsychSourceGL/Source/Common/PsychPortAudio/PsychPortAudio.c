@@ -532,7 +532,7 @@ void PAStreamFinishedCallback(void *userData)
 /* Logger callback function to output PortAudio debug messages at 'verbosity' > 5. */
 void PALogger(const char* msg)
 {
-    if (verbosity > 5) printf("PTB-DEBUG: PortAudio says: %s", msg);
+    if (verbosity > 5) printf("PTB-DEBUG: PortAudio says: %s\n", msg);
     return;
 }
 
@@ -5681,9 +5681,15 @@ PsychError PSYCHPORTAUDIOSetOpMode(void)
 PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
 {
     static char useString[] = "result = PsychPortAudio('DirectInputMonitoring', pahandle, enable [, inputChannel = -1][, outputChannel = 0][, gainLevel = 0.0][, stereoPan = 0.5]);";
-    //                                                                            1          2            3                     4                      5                     6
+    //                                                                          1         2         3                    4                    5                  6
     static char synopsisString[] =
-    "Change the current settings for the \"direct input monitoring\" feature on device 'pahandle'.\n"
+    "Change the current settings for the \"direct input monitoring\" feature on device 'pahandle'.\n\n"
+    #if (PSYCH_SYSTEM == PSYCH_OSX) && !defined(paMacCoreChangeDeviceParameters)
+    "Note: The current PsychPortAudio driver supports direct input monitoring only on MacOSX with some pro-sound hardware, "
+    "but not with the builtin sound chip. Also this feature is completely untested by the developer so far.\n\n"
+    #else
+    "Note: This function is not actually functional in this PsychPortAudio driver build. It is only here for backwards compatibility.\n\n"
+    #endif
     "The device must be open for this setting to take effect. Changed settings may or may not "
     "persist across closing and opening the device, this is hardware dependent and not to be relied on.\n"
     "So-called \"Zero latency direct input monitoring\" is a hardware feature of some modern "
@@ -5702,15 +5708,13 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
     "If omitted or set to -1, all input channels settings will be modified, or at least tried to be modified.\n"
     "The optional 'outputChannel' specifies the index of the base-channel of a channel stereo-pair to which the 'inputChannel' "
     "should be routed. It must be an even number like 0, 2, 4, .... If omitted, channel 0, i.e., the first output channel "
-    "stereo pair will be used. This at least on ASIO soundcards under MS-Windows.\n"
+    "stereo pair will be used.\n"
     "The optional 'gainLevel' defines the desired amplifier gain for the routed signal. The value should be negative for "
     "signal attenuation (i.e., negative gain) and positive for amplification (i.e., positive gain). "
     "As specification of gains is not standardized across operating systems, the numbers you'll have to pass in for a desired "
     "effect will vary across operating systems and audio hardware. However, the default setting of zero tries to set a neutral "
-    "gain of zero decibel - the signal is passed through without change in intensity. On MS-Windows with ASIO soundcards, values "
-    "between 0.0 and 1.0 will select gains between 0 and 12 dB. Values between 0.0 and -1.0 will select negative gains between "
-    "0 and -infinity dB, ie., full attenuation. The setting may get completely ignored or only approximately implemented by given "
-    "hardware. Double-check your results!\n"
+    "gain of zero decibel - the signal is passed through without change in intensity. The setting may get completely ignored or "
+    "only approximately implemented by given hardware. Double-check your results!\n"
     "The optional 'stereoPan' parameter allows to select panning between the two output channels of a selected stereo output "
     "channel pair if the hardware allows that. Range 0.0 - 1.0 selects between left-channel and right channel, with the default "
     "of 0.5 selecting a centered output with equal distribution to both channels.\n\n"
@@ -5718,17 +5722,11 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
     "out successfully. A value of zero means success. A value of 1 means some error, e.g., invalid parameters specified. A value of "
     "2 means that your combinatin of operating system, sound system, soundcard device driver and soundcard hardware does not support "
     "direct input monitoring, at least not for the given configuration. A setting of 3 means that your PortAudio driver plugin does "
-    "not support the feature - You may need to update your plugin from the Psychtoolbox Wiki.\n\n"
-    "The current PsychPortAudio driver supports direct input monitoring on MacOS/X with certain sound hardware (but not the builtin sound) "
-    "and on Microsoft Windows systems with ASIO-2.0 capable sound "
-    "hardware, and only if the latest portaudio_x86.dll ASIO plugin is installed from our Wiki. Even then, only a subset of ASIO-2 "
-    "hardware may support this feature and only a subset of these may support all parameters. According to vendor documentation, some "
-    "soundcards from Creative Labs and many of RME's cards do support this feature.\n"
+    "not support the feature."
     "\n";
 
     static char seeAlsoString[] = "Open GetDeviceSettings ";
 
-    PaError rcp;
     int pahandle = -1;
     int enable, inputChannel, outputChannel, rc;
     double gain, stereoPan;
@@ -5740,7 +5738,7 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
 
     PsychErrorExit(PsychCapNumInputArgs(6));     // The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs
-    PsychErrorExit(PsychCapNumOutputArgs(1));     // The maximum number of outputs
+    PsychErrorExit(PsychCapNumOutputArgs(1));    // The maximum number of outputs
 
     // Make sure PortAudio is online:
     PsychPortAudioInitialize();
@@ -5785,15 +5783,12 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
     // Default result code is "totally unsupported by our driver":
     rc = 3;
 
-    // Feature currently only supported on MS-Windows and OS/X and only with our custom build / extended Portaudio variant, not upstream:
-    #if (PSYCH_SYSTEM != PSYCH_LINUX) && !defined(paMacCoreChangeDeviceParameters)
-    // MS-Windows: Is the device in question opened as an ASIO device? If not, then game over. Otherwise we know
-    // we're using the ASIO enabled portaudio_x86.dll which may support this feature on this hardware.
-    // OS/X CoreAudio: Same logic applies...
-    if ((audiodevices[pahandle].hostAPI == paASIO) || (audiodevices[pahandle].hostAPI == paCoreAudio)) {
-        // ASIO / CoreAudio device opened as such via ASIO capable Portaudio plugin. Is the plugin recent enough
-        // to support the directmonitoring interface?
+    // Feature currently only supported on OS/X with our custom build / extended Portaudio variant, not with Portaudio upstream:
+    #if (PSYCH_SYSTEM == PSYCH_OSX) && !defined(paMacCoreChangeDeviceParameters)
+    if (audiodevices[pahandle].hostAPI == paCoreAudio) {
+        // CoreAudio device: Is the Portaudio plugin recent enough to support our custom directmonitoring interface?
         if (strstr(Pa_GetVersionText(), "WITH-DIM")) {
+            PaError rcp;
             // Plugin supports the API, so at least we can safely call it without crashing.
             // Lower the fail level to rc = 2, can't fail because of our deficiencies anymore:
             if (verbosity > 4) printf("PsychPortAudio('DirectInputMonitoring'): Calling with padev=%i (%p), enable = %i, in=%i, out=%i, gain=%f, pan=%f.\n", pahandle, audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
@@ -5837,15 +5832,15 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
             }
         }
         else {
-            if (verbosity > 1 && (audiodevices[pahandle].hostAPI == paASIO)) printf("PsychPortAudio('DirectInputMonitoring'): Your portaudio_x86.dll plugin is too old to support this feature! Download a more recent one from the Psychtoolbox Wiki!\n");
-            if (verbosity > 1 && (audiodevices[pahandle].hostAPI == paCoreAudio)) printf("PsychPortAudio('DirectInputMonitoring'): Your installed portaudio.0.0.19.dylib plugin is too old to support this feature! Reinstall the latest one from the Psychtoolbox/PsychSound/ subfolder!\n");
+            if (verbosity > 1 && (audiodevices[pahandle].hostAPI == paCoreAudio))
+                printf("PsychPortAudio('DirectInputMonitoring'): Your Portaudio plugin is too old to support this feature!\n");
         }
     }
     else {
-        if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not supported on this sound hardware.\n");
+        if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not supported on this system.\n");
     }
     #else
-    // Linux:
+    // Non MacOSX:
     if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not yet supported on your operating system.\n");
     #endif
 
