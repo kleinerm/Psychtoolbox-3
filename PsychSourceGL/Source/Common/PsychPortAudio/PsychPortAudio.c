@@ -2000,7 +2000,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     "recording are requested and 'channels' equals 2, ie, two playback channels and two capture channels. If you'd "
     "specify 'selectchannels' as [0, 6 ; 12, 14], then playback would happen to device channels zero and six, "
     "sound would be captured from device channels 12 and 14. Please note that channel selection is currently "
-    "only supported on MS-Windows with ASIO sound cards. The parameter is silently ignored for non-ASIO operation.\n\n"
+    "only supported on some sound cards. The parameter is silently ignored on non-capable hardware.\n\n"
     "'specialFlags' Optional flags: Default to zero, can be or'ed or added together with the following flags/settings:\n"
     "1 = Never prime output stream. By default the output stream is primed. Don't bother if you don't know what this means.\n"
     "2 = Always clamp audio data to the valid -1.0 to 1.0 range. Clamping is enabled by default.\n"
@@ -2285,7 +2285,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
         }
         else {
             // Non ASIO device: No ASIO support --> No channel mapping support.
-            if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this is not an ASIO enabled sound device.\n");
+            if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this setup does not support it.\n");
         }
         #else
         // Non MS-Windows system: No No channel mapping support yet.
