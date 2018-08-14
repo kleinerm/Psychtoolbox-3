@@ -2038,7 +2038,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     #endif
     #endif
 
-    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    #ifdef PA_ASIO_H
     // Additional data structures for setup of logical -> device channel
     // mappings on ASIO multi-channel hardware:
     PaAsioStreamInfo  inhostapisettings;
@@ -2245,7 +2245,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
         }
 
         // Basic check ok. Build ASIO host specific mapping structure:
-        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        #ifdef PA_ASIO_H
         // Check for ASIO: This only works for ASIO host API...
         if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paASIO) {
             // MS-Windows and connected to an ASIO device. Good. Try to assign channel mapping:
@@ -2287,10 +2287,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
             // Non ASIO device: No ASIO support --> No channel mapping support.
             if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this is not an ASIO enabled sound device.\n");
         }
-
         #else
-        // Non MS-Windows system: No ASIO support --> No channel mapping support.
-        if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this is not MS-Windows running on an ASIO enabled sound device.\n");
+        // Non MS-Windows system: No No channel mapping support yet.
+        if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this build does not support channel mapping.\n");
         #endif
     }
 
