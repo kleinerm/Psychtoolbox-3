@@ -44,6 +44,9 @@
 typedef void (*PaUtilLogCallback ) (const char *log);
 void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
 
+// Forward define of prototype of our own custom new PortAudio extension function for Zero latency direct input monitoring:
+PaError Pa_DirectInputMonitoring(PaStream *stream, int enable, int inputChannel, int outputChannel, double gain, double pan);
+
 #define MAX_SYNOPSIS_STRINGS 50
 
 //declare variables local to this file.
@@ -5855,7 +5858,7 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
         }
     }
     else {
-        if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not supported on this non ASIO sound hardware.\n");
+        if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not supported on this sound hardware.\n");
     }
     #else
     // Linux:
