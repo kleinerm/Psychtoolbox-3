@@ -807,20 +807,6 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         // reads a few device struct variables which are all guaranteed to remain constant while the
         // engine is running.
 
-        #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        // Super ugly hack for the most broken system in existence: Force
-        // the audio thread to cpu core 1, hope that repeated redundant
-        // calls don't create scheduling overhead or excessive other overhead.
-        // The explanation for this can be found in Source/Windows/Base/PsychTimeGlue.c
-        //
-        // Update: We leave the decision to the time glue if we should lock to core zero,
-        // or some other usercode defined subset of cores, or all cores. PsychAutoLockThreadToCores()
-        // Update: No longer needed, as the job is done implicitely by the call to
-        // PsychGetAdjustedPrecisionTimerSeconds(&now);
-        //
-        // DISABLED: PsychAutoLockThreadToCores(NULL);
-        #endif
-
         // Retrieve current system time:
         PsychGetAdjustedPrecisionTimerSeconds(&now);
 
@@ -1804,11 +1790,10 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
     // Try ASIO first. It's supposed to be the lowest latency API on soundcards that suppport it.
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paASIO))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
-    // Then WDM kernel streaming (Win2000, XP, maybe Vista). This is the best working free builtin
-    // replacement for the proprietary ASIO interface.
-    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWDMKS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
-    // Then Vistas new WASAPI, which is supposed to replace WDMKS, but is still early alpha quality in PortAudio:
+    // Then Vistas new WASAPI, which is supposed to be usable since around Windows-7 and pretty good since Windows-10:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWASAPI))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+    // Then WDM kernel streaming Win2000 and later. This is the best builtin sound system we get on pre Windows-7:
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWDMKS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
     // Then DirectSound: Bad, but not a complete disaster if the sound card has DS native drivers:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paDirectSound))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
     // Then Windows MME, a complete disaster, but better than silence...?!?
