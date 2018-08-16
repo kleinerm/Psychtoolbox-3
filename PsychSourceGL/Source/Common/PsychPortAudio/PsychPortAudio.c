@@ -35,7 +35,7 @@
 #include "pa_mac_core.h"
 #endif
 
-#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#ifdef PTB_USE_ASIO
 #include "pa_asio.h"
 #endif
 
@@ -868,7 +868,6 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
             captureStartTime = (double) timeInfo->inputBufferAdcTime;
         }
         else {
-            // ASIO or unknown. ASIO needs to be checked, which category is correct.
             // Not yet verified how these other audio APIs behave. Play safe
             // and perform timebase remapping: This also needs our special fixed
             // PortAudio version where currentTime actually has a value:
@@ -1746,7 +1745,9 @@ void InitializeSynopsis(void)
     synopsis[i++] = "oldOpMode = PsychPortAudio('SetOpMode', pahandle [, opModeOverride]);";
     synopsis[i++] = "oldbias = PsychPortAudio('LatencyBias', pahandle [,biasSecs]);";
     synopsis[i++] = "[oldMasterVolume, oldChannelVolumes] = PsychPortAudio('Volume', pahandle [, masterVolume][, channelVolumes]);";
+    #if (PSYCH_SYSTEM == PSYCH_OSX) && !defined(paMacCoreChangeDeviceParameters)
     synopsis[i++] = "enable = PsychPortAudio('DirectInputMonitoring', pahandle, enable [, inputChannel = -1][, outputChannel = 0][, gainLevel = 0.0][, stereoPan = 0.5]);";
+    #endif
     synopsis[i++] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0][, startIndex=Append]);";
     synopsis[i++] = "bufferhandle = PsychPortAudio('CreateBuffer' [, pahandle], bufferdata);";
     synopsis[i++] = "PsychPortAudio('DeleteBuffer'[, bufferhandle] [, waitmode]);";
@@ -1788,8 +1789,10 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    // Try ASIO first. It's supposed to be the lowest latency API on soundcards that suppport it.
+    #ifdef PTB_USE_ASIO
+    // Try ASIO first. It's supposed to be the lowest latency Windows API on soundcards that suppport it.
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paASIO))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+    #endif
     // Then Vistas new WASAPI, which is supposed to be usable since around Windows-7 and pretty good since Windows-10:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWASAPI))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
     // Then WDM kernel streaming Win2000 and later. This is the best builtin sound system we get on pre Windows-7:
@@ -1987,7 +1990,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     "and some risk of overloading, which would cause audio dropouts. 'suggestedLatency' optional requested latency in "
     "seconds. PortAudio selects internal operating parameters depending on sampleRate, suggestedLatency and buffersize "
     "as well as device internal properties to optimize for low latency output. Best left alone, only here as manual "
-    "override in case all the auto-tuning cleverness fails.\n "
+    "override in case all the auto-tuning cleverness fails.\n"
     "'selectchannels' optional matrix with mappings of logical channels to device channels: If you only want to use "
     "a subset of the channels present on your sound card, e.g., only 2 playback channels on a 16 channel soundcard, "
     "then you'd set the 'channels' argument to 2. The 'selectchannels' argument allows you to select, e.g.,  which "
@@ -2000,7 +2003,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     "recording are requested and 'channels' equals 2, ie, two playback channels and two capture channels. If you'd "
     "specify 'selectchannels' as [0, 6 ; 12, 14], then playback would happen to device channels zero and six, "
     "sound would be captured from device channels 12 and 14. Please note that channel selection is currently "
-    "only supported on some sound cards. The parameter is silently ignored on non-capable hardware.\n\n"
+    "only supported on some sound cards. The parameter is silently ignored on non-capable hardware or driver software.\n\n"
     "'specialFlags' Optional flags: Default to zero, can be or'ed or added together with the following flags/settings:\n"
     "1 = Never prime output stream. By default the output stream is primed. Don't bother if you don't know what this means.\n"
     "2 = Always clamp audio data to the valid -1.0 to 1.0 range. Clamping is enabled by default.\n"
@@ -2014,6 +2017,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     static char seeAlsoString[] = "Close GetDeviceSettings ";
 
+    int outputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
+    int inputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
     int freq, buffersize, latencyclass, mode, deviceid, i, numel, specialFlags;
     int* nrchannels;
     int  mynrchannels[2];
@@ -2029,23 +2034,20 @@ PsychError PSYCHPORTAUDIOOpen(void)
     PaStream *stream = NULL;
 
     #if PSYCH_SYSTEM == PSYCH_OSX
-    #ifdef paMacCoreChangeDeviceParameters
-    // New style since at least 19.6.0:
-    PaMacCoreStreamInfo hostapisettings;
-    #else
-    // Old style:
-    paMacCoreStreamInfo hostapisettings;
-    #endif
+        #ifdef paMacCoreChangeDeviceParameters
+            // New style since at least 19.6.0:
+            PaMacCoreStreamInfo hostapisettings;
+        #else
+            // Old style:
+            paMacCoreStreamInfo hostapisettings;
+        #endif
     #endif
 
     #ifdef PA_ASIO_H
-    // Additional data structures for setup of logical -> device channel
-    // mappings on ASIO multi-channel hardware:
-    PaAsioStreamInfo  inhostapisettings;
-    PaAsioStreamInfo  outhostapisettings;
-    int                  outputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
-    int                  inputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
+        PaAsioStreamInfo inasioapisettings;
+        PaAsioStreamInfo outasioapisettings;
     #endif
+
     unsigned int id = PsychPANextHandle();
 
     // Setup online help:
@@ -2244,19 +2246,20 @@ PsychError PSYCHPORTAUDIOOpen(void)
             PsychErrorExitMsg(PsychError_user, "Invalid size of 'selectchannels' matrix argument: Must be a one- or two row by max(channels) column matrix!");
         }
 
-        // Basic check ok. Build ASIO host specific mapping structure:
         #ifdef PA_ASIO_H
-        // Check for ASIO: This only works for ASIO host API...
         if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paASIO) {
-            // MS-Windows and connected to an ASIO device. Good. Try to assign channel mapping:
+            // Additional data structures for setup of logical -> device channel
+            // mappings on ASIO multi-channel hardware:
+
+            // MS-Windows and connected to an ASIO device. Try to assign channel mapping:
             if (mode & kPortAudioPlayBack) {
                 // Playback mappings:
-                outputParameters.hostApiSpecificStreamInfo = (PaAsioStreamInfo*) &outhostapisettings;
-                outhostapisettings.size = sizeof(PaAsioStreamInfo);
-                outhostapisettings.hostApiType = paASIO;
-                outhostapisettings.version = 1;
-                outhostapisettings.flags = paAsioUseChannelSelectors;
-                outhostapisettings.channelSelectors = (int*) &outputmappings[0];
+                outputParameters.hostApiSpecificStreamInfo = (PaAsioStreamInfo*) &outasioapisettings;
+                outasioapisettings.size = sizeof(PaAsioStreamInfo);
+                outasioapisettings.hostApiType = paASIO;
+                outasioapisettings.version = 1;
+                outasioapisettings.flags = paAsioUseChannelSelectors;
+                outasioapisettings.channelSelectors = (int*) &outputmappings[0];
                 for (i=0; i<mynrchannels[0]; i++) outputmappings[i] = (int) mychannelmap[i * m];
                 if (verbosity > 3) {
                     printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", id);
@@ -2267,12 +2270,12 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
             if (mode & kPortAudioCapture) {
                 // Capture mappings:
-                inputParameters.hostApiSpecificStreamInfo = (PaAsioStreamInfo*) &inhostapisettings;
-                inhostapisettings.size = sizeof(PaAsioStreamInfo);
-                inhostapisettings.hostApiType = paASIO;
-                inhostapisettings.version = 1;
-                inhostapisettings.flags = paAsioUseChannelSelectors;
-                inhostapisettings.channelSelectors = (int*) &inputmappings[0];
+                inputParameters.hostApiSpecificStreamInfo = (PaAsioStreamInfo*) &inasioapisettings;
+                inasioapisettings.size = sizeof(PaAsioStreamInfo);
+                inasioapisettings.hostApiType = paASIO;
+                inasioapisettings.version = 1;
+                inasioapisettings.flags = paAsioUseChannelSelectors;
+                inasioapisettings.channelSelectors = (int*) &inputmappings[0];
                 // Index into first row of one-row matrix or 2nd row of two-row matrix:
                 for (i=0; i<mynrchannels[1]; i++) inputmappings[i] = (int) mychannelmap[(i * m) + (m-1)];
                 if (verbosity > 3) {
@@ -2283,14 +2286,10 @@ PsychError PSYCHPORTAUDIOOpen(void)
             }
             // Mappings setup up. The PortAudio library will sanity check this further against device constraints...
         }
-        else {
-            // Non ASIO device: No ASIO support --> No channel mapping support.
-            if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this setup does not support it.\n");
-        }
-        #else
-        // Non MS-Windows system: No No channel mapping support yet.
-        if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this build does not support channel mapping.\n");
+        else
         #endif
+            // Backend without channel mapping support.
+            if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this audio backend does not support it.\n");
     }
 
     // Copy in optional specialFlags:
@@ -2319,8 +2318,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
                 buffersize = 64; // Lowest setting that is safe on a fast MacBook-Pro.
             }
             else {
-                // ASIO/ALSA/others: Leave it unspecified to get optimal selection by lower level driver:
-                // Esp. on Windows/ASIO and with Linux/ALSA, basically any choice other than paFramesPerBufferUnspecified
+                // Others: Leave it unspecified to get optimal selection by lower level driver:
+                // Especially on Windows and Linux, basically any choice other than paFramesPerBufferUnspecified
                 // will just lead to trouble and less optimal results, as the sound subsystems are very good at
                 // choosing this parameter optimally if allowed, but have a hard job to cope with any user-enforced choices.
                 buffersize = paFramesPerBufferUnspecified;
@@ -2361,6 +2360,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
             lowlatency = 0.04;    // Choose some half-way safe tradeoff: 40 msecs.
             break;
 
+        #ifdef PTB_USE_ASIO
         case paASIO:
             // ASIO: A value of zero would set safe (and high latency!) defaults. Too small values get
             // clamped to a safe minimum by the driver, so we select a very small positive value, say
@@ -2368,6 +2368,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
             // we play a bit safer and go for 5 msecs:
             lowlatency = (latencyclass >= 2) ? 0.001 : 0.005;
             break;
+        #endif
 
         case paALSA:
             // For ALSA we choose 10 msecs by default, lowering to 5 msecs if exp. requested. Experience
@@ -4925,17 +4926,26 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
     "'deviceIndex'.\n\n"
     "Each struct contains information about its associated PortAudio device. The optional "
     "parameter 'devicetype' can be used to enumerate only devices of a specific class: \n"
+    #ifdef PTB_USE_ASIO
     "1=Windows/DirectSound, 2=Windows/MME, 3=Windows/ASIO, 11=Windows/WDMKS, 13=Windows/WASAPI, "
+    #else
+    "1=Windows/DirectSound, 2=Windows/MME, 11=Windows/WDMKS, 13=Windows/WASAPI, "
+    #endif
     "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, 5=MacOSX/CoreAudio.\n\n"
     "On OS/X you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
     "On Linux you may have the choice between ALSA, JACK and OSS. ALSA or JACK provide very low "
     "latencies and very good timing, OSS is an older system which is less capable but not very "
-    "widespread in use anymore. On MS-Windows you'll have the ''choice'' between up to 5 different "
-    "audio subsystems: If you buy an expensive sound card with ASIO drivers, pick that API for low "
-    "latency, it should give you comparable performance to OS/X or Linux. 2nd best choice "
-    "would be WASAPI (on Windows-Vista) or WDMKS (on Windows-2000/XP) for ok latency on good days. DirectSound is the next "
-    "worst choice if you have hardware with DirectSound support. If everything else fails, you'll be left "
-    "with MME, a premium example of system misdesign successfully sold to paying customers.";
+    "widespread in use anymore. On MS-Windows you'll have the choice between up to 5 different "
+    "audio subsystems:\n"
+    #ifdef PTB_USE_ASIO
+    "- If you buy a sound card with ASIO drivers, then you can pick that API for low latency. It "
+    "should give you comparable performance to OS/X or Linux.\n"
+    #endif
+    "WASAPI (on Windows-Vista and later), or WDMKS (on Windows-2000/XP) should provide ok latency.\n"
+    "DirectSound is the next worst choice if you have hardware with DirectSound support.\n"
+    "If everything else fails, you'll be left with MME, a completely unusable API for precise or "
+    "low latency timing.\n"
+    "\n";
 
     static char seeAlsoString[] = "Open GetDeviceSettings ";
     PsychGenericScriptType     *devices;
@@ -5685,10 +5695,10 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
     static char synopsisString[] =
     "Change the current settings for the \"direct input monitoring\" feature on device 'pahandle'.\n\n"
     #if (PSYCH_SYSTEM == PSYCH_OSX) && !defined(paMacCoreChangeDeviceParameters)
-    "Note: The current PsychPortAudio driver supports direct input monitoring only on MacOSX with some pro-sound hardware, "
+    "NOTE: The current PsychPortAudio driver supports direct input monitoring only on MacOSX with some pro-sound hardware, "
     "but not with the builtin sound chip. Also this feature is completely untested by the developer so far.\n\n"
     #else
-    "Note: This function is not actually functional in this PsychPortAudio driver build. It is only here for backwards compatibility.\n\n"
+    "NOTE: This function is not actually functional in this PsychPortAudio driver build. It is only here for backwards compatibility.\n\n"
     #endif
     "The device must be open for this setting to take effect. Changed settings may or may not "
     "persist across closing and opening the device, this is hardware dependent and not to be relied on.\n"
@@ -5720,7 +5730,7 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
     "of 0.5 selecting a centered output with equal distribution to both channels.\n\n"
     "In the optional return argument 'result' the function returns a status code to report if the requested change could be carried "
     "out successfully. A value of zero means success. A value of 1 means some error, e.g., invalid parameters specified. A value of "
-    "2 means that your combinatin of operating system, sound system, soundcard device driver and soundcard hardware does not support "
+    "2 means that your combination of operating system, sound system, soundcard device driver and soundcard hardware does not support "
     "direct input monitoring, at least not for the given configuration. A setting of 3 means that your PortAudio driver plugin does "
     "not support the feature."
     "\n";
