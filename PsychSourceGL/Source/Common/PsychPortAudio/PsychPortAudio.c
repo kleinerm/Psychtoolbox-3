@@ -2283,9 +2283,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
         #ifdef PA_ASIO_H
         if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paASIO) {
-            // Additional data structures for setup of logical -> device channel
-            // mappings on ASIO multi-channel hardware:
-
             // MS-Windows and connected to an ASIO device. Try to assign channel mapping:
             if (mode & kPortAudioPlayBack) {
                 // Playback mappings:
