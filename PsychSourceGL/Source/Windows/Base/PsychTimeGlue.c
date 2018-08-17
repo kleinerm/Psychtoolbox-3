@@ -250,7 +250,7 @@ int PsychOSIsMSWin8(void)
 /* Returns TRUE on Microsoft Windows 10 and later, FALSE otherwise: */
 int PsychOSIsMSWin10(void)
 {
-    #ifdef PTBMODULE_Screen
+    #if defined(PTBMODULE_Screen) || defined(PTBMODULE_PsychPortAudio)
     HKEY hkey;
     // Init flag to -1 aka unknown:
     static int isWin10 = -1;
@@ -271,9 +271,9 @@ int PsychOSIsMSWin10(void)
     // Return flag:
     return(isWin10);
     #else
-    // Only Screen() is currently allowed to call this function, because any mex file which needs this function must link against advapi32.lib, which Screen
-    // does, but most other mex files don't. Warn and return false -- non Windows-10 -- as safe result.
-    printf("PTB-WARNING: Called PsychOSIsMSWin10() from something else than PTBMODULE_Screen! This won't work. Modify source code to make it work if needed!\n");
+    // Only Screen() ans PsychPortAudio() is currently allowed to call this function, because any mex file which needs this function must link against advapi32.lib,
+    // those do, but most other mex files don't. Warn and return false -- non Windows-10 -- as safe result.
+    printf("PTB-WARNING: Called PsychOSIsMSWin10() from something else than PTBMODULE_Screen or PTBMODULE_PsychPortAudio! This won't work. Modify source code to make it work if needed!\n");
     return(0);
     #endif
 }

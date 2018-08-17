@@ -39,6 +39,10 @@
 #include "pa_asio.h"
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#include "pa_win_wasapi.h"
+#endif
+
 // Need to define these as they aren't defined in portaudio.h
 // for some mysterious reason:
 typedef void (*PaUtilLogCallback ) (const char *log);
@@ -1972,7 +1976,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     "help for subfunction 'OpenSlave' for more info.\n"
     "'reqlatencyclass' Allows to select how aggressive PsychPortAudio should be about minimizing sound latency "
     "and getting good deterministic timing, i.e. how to trade off latency vs. system load and playing nicely "
-    "with other sound applications on the system. Level 0 means: Don't care about latency, this mode works always "
+    "with other sound applications on the system. Level 0 means: Don't care about latency or timing precision. This mode works always "
     "and with all settings, plays nicely with other sound applications. Level 1 (the default) means: Try to get "
     "the lowest latency that is possible under the constraint of reliable playback, freedom of choice for all parameters and "
     "interoperability with other applications. Level 2 means: Take full control over the audio device, even if this "
@@ -2046,6 +2050,11 @@ PsychError PSYCHPORTAUDIOOpen(void)
     #ifdef PA_ASIO_H
         PaAsioStreamInfo inasioapisettings;
         PaAsioStreamInfo outasioapisettings;
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        PaWasapiStreamInfo inwasapiapisettings;
+        PaWasapiStreamInfo outwasapiapisettings;
     #endif
 
     unsigned int id = PsychPANextHandle();
@@ -2237,6 +2246,32 @@ PsychError PSYCHPORTAUDIOOpen(void)
     PsychCopyInDoubleArg(7, kPsychArgOptional, &suggestedLatency);
     if (suggestedLatency!=-1 && (suggestedLatency < 0.0 || suggestedLatency > 1.0)) PsychErrorExitMsg(PsychError_user, "Invalid suggestedLatency provided. Valid values are 0.0 to 1.0 seconds.");
 
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paWASAPI) {
+        inputParameters.hostApiSpecificStreamInfo = (PaWasapiStreamInfo*) &inwasapiapisettings;
+        outputParameters.hostApiSpecificStreamInfo = (PaWasapiStreamInfo*) &outwasapiapisettings;
+
+        // Init wasapi stream settings struct to vanilla defaults:
+        memset(&inwasapiapisettings, 0, sizeof(inwasapiapisettings));
+        memset(&outwasapiapisettings, 0, sizeof(outwasapiapisettings));
+        inwasapiapisettings.size = sizeof(PaWasapiStreamInfo);
+        outwasapiapisettings.size = sizeof(PaWasapiStreamInfo);
+        inwasapiapisettings.hostApiType = paWASAPI;
+        outwasapiapisettings.hostApiType = paWASAPI;
+        inwasapiapisettings.version = 1;
+        outwasapiapisettings.version = 1;
+
+        // Default, but set for clarity - We don't use a special category like voice chat, media, movies etc.:
+        inwasapiapisettings.streamCategory = eAudioCategoryOther;
+        outwasapiapisettings.streamCategory = eAudioCategoryOther;
+
+        // Disable digital signal processing (equalizers, bass boost, automatic gain control, 3d spatialisation and such)
+        // by default on Windows 8.1 and later - unsupported on Windows 8 and earlier:
+        inwasapiapisettings.streamOption = eStreamOptionRaw;
+        outwasapiapisettings.streamOption = eStreamOptionRaw;
+    }
+    #endif
+
     // Get optional channel map:
     mychannelmap = NULL;
     PsychAllocInDoubleMatArg(8, kPsychArgOptional, &m, &n, &p, &mychannelmap);
@@ -2288,6 +2323,53 @@ PsychError PSYCHPORTAUDIOOpen(void)
         }
         else
         #endif
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type != paASIO) {
+            // Compute and apply channelmap:
+            if (mode & kPortAudioPlayBack) {
+                PaWinWaveFormatChannelMask channelMask = (PaWinWaveFormatChannelMask) 0;
+                for (i = 0; i < mynrchannels[0]; i++)
+                    channelMask |= (PaWinWaveFormatChannelMask) (1 << ((int) mychannelmap[i * m]));
+
+                if (verbosity > 3) {
+                    printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", id);
+                    for (i = 0; i < mynrchannels[0]; i++)
+                        printf("%i --> %i : ", i + 1, (int) mychannelmap[i * m]);
+                    printf("\n\n");
+                }
+
+                switch (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type) {
+                    case paWASAPI:
+                        outwasapiapisettings.flags |= paWinWasapiUseChannelMask;
+                        outwasapiapisettings.channelMask = channelMask;
+                        break;
+
+                    /* TODO:
+                    case paWDMKS:
+                        outwasapiapisettings.flags |= ;
+                        outwasapiapisettings.channelMask = channelMask;
+                        break;
+
+                    case paDirectSound:
+                        outwasapiapisettings.flags |= ;
+                        outwasapiapisettings.channelMask = channelMask;
+                        break;
+
+                    case paMME:
+                        outwasapiapisettings.flags |= ;
+                        outwasapiapisettings.channelMask = channelMask;
+                        break;
+                    */
+                }
+            }
+
+            // Windows api's can't do channel mapping on the capture side, i think?
+            if ((mode & kPortAudioCapture) && (verbosity > 3)) {
+                printf("PTB-INFO: Audio capture enabled, but 'selectchannels' mapping for audio capture is ignored on this hardware + driver combo.\n");
+            }
+        }
+        else
+        #endif
             // Backend without channel mapping support.
             if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this audio backend does not support it.\n");
     }
@@ -2297,7 +2379,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     // Set channel count:
     outputParameters.channelCount = mynrchannels[0];    // Number of output channels.
-    inputParameters.channelCount = mynrchannels[1];        // Number of input channels.
+    inputParameters.channelCount = mynrchannels[1];     // Number of input channels.
 
     // Fix sample format to float for now...
     outputParameters.sampleFormat = paFloat32;
@@ -2411,6 +2493,32 @@ PsychError PSYCHPORTAUDIOOpen(void)
         outputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
         inputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
         #endif
+    }
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paWASAPI) {
+        if (latencyclass > 1) {
+            inwasapiapisettings.flags |= paWinWasapiExclusive;
+            outwasapiapisettings.flags |= paWinWasapiExclusive;
+        }
+
+        if (latencyclass > 2) {
+            // Windows 10 or later?
+            if (PsychOSIsMSWin10()) {
+                // Force audio engine into using the optimal sample format for us:
+                // This is only supported on Windows-10 and later.
+                inwasapiapisettings.streamOption = eStreamOptionMatchFormat;
+                outwasapiapisettings.streamOption = eStreamOptionMatchFormat;
+            }
+            else if (latencyclass > 3) {
+                // At least class 4, which means to fail if settings can't be applied,
+                // and this is a pre-Windows 10 system, where the settings are unsupported,
+                // so fail loudly:
+                printf("PTB-ERROR: Desired ultralow-latency audio parameters for device %i unsupported by operating system, as this would require Windows-10 or later.\n", deviceid);
+                PsychErrorExitMsg(PsychError_system, "Failed to open PortAudio audio device due to unsupported reqlatencyclass 4 on operating system older than Windows 10.");
+            }
+        }
     }
     #endif
 
