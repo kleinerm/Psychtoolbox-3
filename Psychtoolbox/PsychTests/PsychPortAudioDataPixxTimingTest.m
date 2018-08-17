@@ -256,7 +256,7 @@ for i=1:nTrials
     tPortAudio(i) = status.StartTime; %#ok<AGROW>
     tDataPixx(i)  = tStartBox + measuredAudioDelta; %#ok<AGROW>
     
-    fprintf('Buffersize %i, xruns = %i, playpos = %6.6f secs.\n', status.BufferSize, status.XRuns, status.PositionSecs);
+    fprintf('Buffersize %i, xruns = %i, playpos = %6.6f secs, delay = %6.1f msecs\n', status.BufferSize, status.XRuns, status.PositionSecs, 1000 * measuredAudioDelta);
 
     if 0
         figure;

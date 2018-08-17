@@ -266,6 +266,8 @@ KbStrokeWait;
 
 % Realtime scheduling: Can be used if otherwise timing is not good enough.
 % Priority(MaxPriority(win));
+avdelay = [];
+tserror = [];
 
 % Ten measurement trials:
 for i=1:10
@@ -329,7 +331,8 @@ for i=1:10
     fprintf('Buffersize %i, xruns = %i, playpos = %6.6f secs.\n', status.BufferSize, status.XRuns, status.PositionSecs);
     fprintf('Screen    expects visual onset at %6.6f secs.\n', visual_onset);
     fprintf('PortAudio expects audio onset  at %6.6f secs.\n', audio_onset);
-    fprintf('Expected audio-visual delay    is %6.6f msecs.\n', (audio_onset - visual_onset)*1000.0);
+    fprintf('Expected audio-visual delay is therefore %6.6f msecs.\n', (audio_onset - visual_onset)*1000.0);
+    avdelay(end+1) = (audio_onset - visual_onset)*1000.0;
 
     if useDPixx
         % 'visonset1' is the GetSecs() time of start of capture on
@@ -346,6 +349,10 @@ for i=1:10
         fprintf('DPixx: Expected audio onset delta is %6.6f secs.\n', expectedAudioDelta);
         fprintf('DPixx: Measured audio onset delta is %6.6f secs.\n', measuredAudioDelta);
         fprintf('DPixx: PsychPortAudio measured onset error is therefore %6.6f msecs.\n', 1000 * (measuredAudioDelta - expectedAudioDelta));
+        if ~isempty(measuredAudioDelta)
+            tserror(end+1) = 1000 * (measuredAudioDelta - expectedAudioDelta);
+        end
+
         if useDPixx > 1
             figure;
             plot(audiodata);
@@ -373,6 +380,11 @@ end
 
 PsychPortAudio('Close');
 Screen('CloseAll');
+
+fprintf('\n\nSummary:\n');
+fprintf('AV Error: %f msecs.\n', avdelay);
+fprintf('TS Error: %f msecs.\n', tserror);
+fprintf('\n\n');
 
 % Done. Bye.
 return;
