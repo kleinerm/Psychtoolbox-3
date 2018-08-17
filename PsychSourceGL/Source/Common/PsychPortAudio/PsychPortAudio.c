@@ -2335,6 +2335,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                     printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", id);
                     for (i = 0; i < mynrchannels[0]; i++)
                         printf("%i --> %i : ", i + 1, (int) mychannelmap[i * m]);
+
                     printf("\n\n");
                 }
 
