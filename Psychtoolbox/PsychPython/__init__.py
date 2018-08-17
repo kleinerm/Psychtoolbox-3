@@ -1,17 +1,17 @@
-# psychtoolboxclassic
+# __init__.py
 #
 # Import Psychtoolbox-3 "mex files" for use in Python and make them available
 # under the same names and syntax as people are used to from Octave and Matlab.
 #
 # Usage in Python script/module:
 #
-#           from psychtoolboxclassic import *
+#           from Psychtoolbox4Python import *
 #
 # Copyright (c) 2018 Mario Kleiner. All rights reserved.
 #
 
-# Import all PTB modules already ported to Python extensions modules:
-import WaitSecs, GetSecs, PsychPortAudio, PsychHID, IOPort
+# Import all PTB modules already ported to Python extension modules:
+from . import WaitSecs, GetSecs, PsychPortAudio, PsychHID, IOPort
 
 # Extract their "main" function, which is named just like the module,
 # and assign its function handle to a variable named just like the module.

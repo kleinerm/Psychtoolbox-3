@@ -11,7 +11,7 @@
 #
 # (c) 2018 Mario Kleiner - Licensed under MIT license.
 
-from psychtoolboxclassic import *
+from Psychtoolbox4Python import *
 
 def run():
 
