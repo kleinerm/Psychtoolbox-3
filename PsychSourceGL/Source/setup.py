@@ -88,7 +88,7 @@ if platform.system() == 'Windows':
 
     # Extra OS specific libs for PsychPortAudio:
     audio_libdirs = ['../Cohorts/PortAudio'];
-    audio_extralinkargs = ['/DELAYLOAD:portaudio_x64.dll'];
+    audio_extralinkargs = []; # No runtime delay loading atm. No benefit with current packaging method: ['/DELAYLOAD:portaudio_x64.dll'];
     audio_libs = ['delayimp', 'portaudio_x64'];
     audio_objects = [];
 
@@ -210,7 +210,9 @@ IOPort = Extension(name,
 setup (name = 'Psychtoolbox4Python',
        version = '0.1',
        description = 'This is the prototype of a port of Psychtoolbox-3 mex files to Python extensions.',
-       package_dir = {'' : '../../Psychtoolbox/PsychPython'},
-       py_modules = ['psychtoolboxclassic', 'ppatest', 'hidtest'],
+       packages = ['Psychtoolbox4Python'],
+       package_dir = {'Psychtoolbox4Python' : '../../Psychtoolbox/PsychPython'},
+       package_data = {'Psychtoolbox4Python' : ['portaudio_x64.dll', 'libusb-1.0.dll']},
+       ext_package= 'Psychtoolbox4Python',
        ext_modules = [WaitSecs, GetSecs, IOPort, PsychHID, PsychPortAudio]
       )
