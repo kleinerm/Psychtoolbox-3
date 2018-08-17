@@ -83,7 +83,7 @@ if platform.system() == 'Linux':
 if platform.system() == 'Windows':
     print('Building for Windows...\n');
     osname = 'Windows';
-    base_libs = ['kernel32', 'user32', 'winmm'];
+    base_libs = ['kernel32', 'user32', 'advapi32', 'winmm'];
     base_compile_args = [];
 
     # Extra OS specific libs for PsychPortAudio:
