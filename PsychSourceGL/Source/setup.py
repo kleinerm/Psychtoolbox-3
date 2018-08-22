@@ -1,6 +1,6 @@
 # setup.py -- Build-Script for building Psychtoolbox-3 "mex" files as Python extensions.
 #
-# (c) 2018 Mario Kleiner - All rights reserved.
+# (c) 2018 Mario Kleiner - Licensed under MIT license.
 #
 
 from distutils.core import setup, Extension # Build system.
@@ -80,6 +80,9 @@ if platform.system() == 'Linux':
     psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util'];
     psychhid_extra_objects = [];
 
+    # Extra files needed, e.g., libraries:
+    extra_files = {};
+
 if platform.system() == 'Windows':
     print('Building for Windows...\n');
     osname = 'Windows';
@@ -100,6 +103,10 @@ if platform.system() == 'Windows':
     psychhid_libdirs = ['../Cohorts/libusb1-win32/MS64/dll'];
     psychhid_libs = ['dinput8', 'libusb-1.0', 'setupapi'];  
     psychhid_extra_objects = [];
+
+    # Extra files needed, e.g., libraries.
+    # The 64-Bit portaudio dll for PsychPortAudio and libusb1 dll for PsychHID:
+    extra_files = {'Psychtoolbox4Python' : ['portaudio_x64.dll', 'libusb-1.0.dll']};
 
 if platform.system() == 'Darwin':
     print('Building for macOS...\n');
@@ -151,6 +158,8 @@ if platform.system() == 'Darwin':
     # Extra objects for PsychHID - statically linked HID utilities:
     psychhid_extra_objects = ['../Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a'];
 
+    # Extra files needed, e.g., libraries:
+    extra_files = {};
 
 # GetSecs module: Clock queries.
 name = 'GetSecs';
@@ -209,10 +218,10 @@ IOPort = Extension(name,
 
 setup (name = 'Psychtoolbox4Python',
        version = '0.1',
-       description = 'This is the prototype of a port of Psychtoolbox-3 mex files to Python extensions.',
+       description = 'Psychtoolbox-3 mex files ported to CPython extension modules.',
        packages = ['Psychtoolbox4Python'],
        package_dir = {'Psychtoolbox4Python' : '../../Psychtoolbox/PsychPython'},
-       package_data = {'Psychtoolbox4Python' : ['portaudio_x64.dll', 'libusb-1.0.dll']},
+       package_data = extra_files,
        ext_package= 'Psychtoolbox4Python',
        ext_modules = [WaitSecs, GetSecs, IOPort, PsychHID, PsychPortAudio]
       )
