@@ -274,7 +274,7 @@ PsychError SCREENGetWindowInfo(void)
             if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: GetWindowInfo: Call to CGSGetDebugOptions() failed!\n");
         }
 
-        PsychAllocOutStructArray(1, FALSE, 1, CoreGraphicsFieldCount, CoreGraphicsFieldNames, &s);
+        PsychAllocOutStructArray(1, FALSE, -1, CoreGraphicsFieldCount, CoreGraphicsFieldNames, &s);
         PsychSetStructArrayDoubleElement("CGSFps", 0   , cgsFPS, s);
         PsychSetStructArrayDoubleElement("CGSValue1", 0, val1, s);
         PsychSetStructArrayDoubleElement("CGSValue2", 0, val2, s);
@@ -433,7 +433,7 @@ PsychError SCREENGetWindowInfo(void)
         if (infoType != 7) PsychSetDrawingTarget(windowRecord);
 
         // Return all information:
-        PsychAllocOutStructArray(1, FALSE, 1, fieldCount, FieldNames, &s);
+        PsychAllocOutStructArray(1, FALSE, -1, fieldCount, FieldNames, &s);
 
         // Rasterbeam position:
         PsychSetStructArrayDoubleElement("Beamposition", 0, beamposition, s);

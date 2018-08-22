@@ -90,7 +90,7 @@ PsychError ScreenExitFunction(void);            // ScreenExit.c
 PsychError PsychDisplayScreenSynopsis(void);    // ScreenSynopsis.c
 
 //internal screen functions
-void InitializeSynopsis();                      //ScreenExit.c
+const char** InitializeSynopsis(void);
 void ScreenCloseAllWindows();                   //SCREENCloseAll.c
 
 //PsychGLGlue.c

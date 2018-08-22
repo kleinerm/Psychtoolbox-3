@@ -36,6 +36,8 @@
 
 #include "Psych.h"
 
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
+
 // functions for outputting structs
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -53,6 +55,9 @@
     allocate the structure and return it in pStruct.  This is how to create a structure which is embeded within another
     structure using PsychSetStructArrayStructArray().  Note that we use -1 as the flag and not NULL because NULL is 0 and
     0 is reserved for future use as a reference to the subfunction name, of if none then the function name.
+
+    The special value numElements == -1 means to return a single struct, instead of a struct array.
+
 */
 psych_bool PsychAllocOutStructArray(int position, 
                                     PsychArgRequirementType isRequired, 
@@ -66,6 +71,12 @@ psych_bool PsychAllocOutStructArray(int position,
     mwSize structArrayDims[2];
     PsychError matchError;
     psych_bool putOut;
+
+    // -1 is special and means "a single struct", which is the same as a 1-element
+    // struct array in Octave/Matlab. This -1 special case is needed for other scripting
+    // environments that don't have mex api semantics:
+    if (numElements == -1)
+        numElements = 1;
 
     structArrayDims[0] = 1;
     structArrayDims[1] = numElements;
@@ -298,3 +309,5 @@ void PsychSetStructArrayNativeElement(const char *fieldName,
     //do stuff
     mxSetField(pStructArray, (mwIndex) index, fieldName, pNativeElement);
 }
+
+#endif

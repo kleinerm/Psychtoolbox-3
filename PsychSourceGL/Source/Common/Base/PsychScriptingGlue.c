@@ -82,7 +82,6 @@ void InitializeSynopsis(char *synopsis[],int maxStrings);
 //caps of the C file name to the variable name.
 
 static psych_bool subfunctionsEnabledGLUE = FALSE;
-static void PsychExitGlue(void);
 
 // Forward declaration for GNU/Linux compile:
 #ifdef __cplusplus
@@ -90,21 +89,6 @@ static void PsychExitGlue(void);
 #else
     void ScreenCloseAllWindows(void);
 #endif
-
-/*
- *    Just call the abstracted PsychExit function.  This might seem dumb, but its necessary to
- *    isolate the scripting language dependent stuff from the rest of the toolbox.
- *
- */
-void PsychExitGlue(void)
-{
-    // Perform platform independent shutdown:
-    PsychErrorExitMsg(PsychExit(),NULL);
-
-    // And we are dead. Now the runtime will flush us from process memory.
-    // No further invocation will happen until reload.
-}
-
 
 /*
  *  functions for enabling and testing subfunction mode
@@ -359,15 +343,6 @@ PsychError PsychRequireNumInputArgs(int minInputs)
 {
     if (PsychGetNumInputArgs() < minInputs)
         return(PsychError_missingInputArg);
-    else
-        return(PsychError_none);
-}
-
-
-PsychError PsychCapNumOutputArgs(int maxNamedOutputs)
-{
-    if (PsychGetNumNamedOutputArgs() > maxNamedOutputs)
-        return(PsychError_extraOutputArg);
     else
         return(PsychError_none);
 }

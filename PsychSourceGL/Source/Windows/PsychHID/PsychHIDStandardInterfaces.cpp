@@ -121,22 +121,30 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     // open a DirectInput-8 interface, so the OS can apply backwards compatibility fixes
     // specific to the way our mex file DLL was built. For this we need the name of the
     // mex file, which is dependent on Octave vs. Matlab and 32-Bit vs. 64-Bit:
-    #ifndef PTBOCTAVE3MEX
-        // Matlab: 64-Bit or 32-Bit mex file?
-        #if defined(__LP64__) || defined(_M_IA64) || defined(_WIN64)
-            // 64-Bit:
-            modulehandle = GetModuleHandle("PsychHID.mexw64");
-        #else
-            // 32-Bit:
-            modulehandle = GetModuleHandle("PsychHID.mexw32");
-        #endif
-    #else
-        // Octave: Same mex file file-extension for 32/64-Bit:
-        modulehandle = GetModuleHandle("PsychHID.mex");
-    #endif
+	#if PSYCH_LANGUAGE == PSYCH_MATLAB
+		#ifndef PTBOCTAVE3MEX
+			// Matlab: 64-Bit or 32-Bit mex file?
+			#if defined(__LP64__) || defined(_M_IA64) || defined(_WIN64)
+				// 64-Bit:
+				modulehandle = GetModuleHandle("PsychHID.mexw64");
+			#else
+				// 32-Bit:
+				modulehandle = GetModuleHandle("PsychHID.mexw32");
+			#endif
+		#else
+			// Octave: Same mex file file-extension for 32/64-Bit:
+			modulehandle = GetModuleHandle("PsychHID.mex");
+		#endif
+	#endif
+
+	#if PSYCH_LANGUAGE == PSYCH_PYTHON
+	{
+		modulehandle = GetModuleHandle(PsychGetPyModuleFilename());
+	}
+	#endif
 
     // If this doesn't work, try with application module handle as fallback. This works usually on
-    // Windows XP/Vista/7, but may fail catastrophically on Windows-8 and later:
+    // Windows XP/Vista/7/8/10:
     if (NULL == modulehandle) {
         printf("PsychHID-WARNING: Could not get module handle to PsychHID mex file. Did you rename it? Please don't do that!\n");
         printf("PsychHID-WARNING: Will try application module handle as fallback. This may end badly, e.g., with a crash. Cross your fingers!\n");

@@ -52,8 +52,6 @@ void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
 PaError Pa_DirectInputMonitoring(PaStream *stream, int enable, int inputChannel, int outputChannel, double gain, double pan);
 
 #define MAX_SYNOPSIS_STRINGS 50
-
-//declare variables local to this file.
 static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
 #define kPortAudioPlayBack   1
@@ -556,13 +554,13 @@ void PALogger(const char* msg)
 //       This is used to reschedule start of playback for a following slot at a later time.
 int PsychPAProcessSchedule(PsychPADevice* dev, psych_int64 *playposition, float** ret_playoutbuffer, psych_int64* ret_outsbsize, psych_int64* ret_outsboffset, double* ret_repeatCount, psych_int64* ret_playpositionlimit)
 {
-    psych_int64   loopStartFrame, loopEndFrame;
-    psych_int64  outsbsize, outsboffset;
-    psych_int64  outchannels = dev->outchannels;
-    unsigned int  slotid, cmd;
+    psych_int64     loopStartFrame, loopEndFrame;
+    psych_int64     outsbsize, outsboffset;
+    psych_int64     outchannels = dev->outchannels;
+    unsigned int    slotid, cmd;
     double          repeatCount;
-    double          reqTime;
-    psych_int64  playpositionlimit;
+    double          reqTime = 0;
+    psych_int64     playpositionlimit;
 
     // NULL-Schedule?
     if (dev->schedule == NULL) {
@@ -1728,7 +1726,7 @@ void PsychPACloseStream(int id)
     return;
 }
 
-void InitializeSynopsis(void)
+const char** InitializeSynopsis(void)
 {
     int i=0;
     const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
@@ -1760,7 +1758,11 @@ void InitializeSynopsis(void)
     synopsis[i++] = "startTime = PsychPortAudio('Start', pahandle [, repetitions=1] [, when=0] [, waitForStart=0] [, stopTime=inf] [, resume=0]);";
     synopsis[i++] = "startTime = PsychPortAudio('RescheduleStart', pahandle, when [, waitForStart=0] [, repetitions] [, stopTime]);";
     synopsis[i++] = "status = PsychPortAudio('GetStatus' pahandle);";
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
     synopsis[i++] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs][, singleType=0]);";
+    #else
+    synopsis[i++] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs][, singleType=1]);";
+    #endif
     synopsis[i++] = "[startTime endPositionSecs xruns estStopTime] = PsychPortAudio('Stop', pahandle [,waitForEndOfPlayback=0] [, blockUntilStopped=1] [, repetitions] [, stopTime]);";
     synopsis[i++] = "PsychPortAudio('UseSchedule', pahandle, enableSchedule [, maxSize = 128]);";
     synopsis[i++] = "[success, freeslots] = PsychPortAudio('AddToSchedule', pahandle [, bufferHandle=0][, repetitions=1][, startSample=0][, endSample=max][, UnitIsSeconds=0][, specialFlags=0]);";
@@ -1769,6 +1771,8 @@ void InitializeSynopsis(void)
     if (i > MAX_SYNOPSIS_STRINGS) {
         PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
     }
+
+    return(synopsisSYNOPSIS);
 }
 
 PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
@@ -1848,7 +1852,7 @@ PsychError PsychPortAudioExit(void)
         if (err) {
             printf("PTB-FATAL-ERROR: PsychPortAudio: Shutdown of PortAudio subsystem failed. Depending on the quality\n");
             printf("PTB-FATAL-ERROR: of your operating system, this may leave the sound system of your machine dead or confused.\n");
-            printf("PTB-FATAL-ERROR: Exit and restart Matlab/Octave. Windows users additionally may want to reboot...\n");
+            printf("PTB-FATAL-ERROR: Exit and restart Matlab/Octave/Python. Windows users additionally may want to reboot...\n");
             printf("PTB-FATAL-ERRRO: PortAudio reported the following error: %s\n\n", Pa_GetErrorText(err));
         }
         else {
@@ -1860,14 +1864,18 @@ PsychError PsychPortAudioExit(void)
 
         // Restart suspended PulseAudio server if it was suspended by us:
         if (pulseaudio_isSuspended) {
+            int rc = 0;
+
             // Call external "pactl" utility via shell to ask
             // the server to resume all sinks and sources.
             // These calls should fail silently if either the
             // pactl utility isn't installed or no sound
             // server is running:
-            if (verbosity > 4) printf("PTB-INFO: Trying to resume potentially suspended PulseAudio server.\n");
-            PsychRuntimeEvaluateString("system('pactl suspend-sink 0');");
-            PsychRuntimeEvaluateString("system('pactl suspend-source 0');");
+            if (verbosity > 4) printf("PTB-INFO: Trying to resume potentially suspended PulseAudio server... ");
+            rc += system("pactl suspend-sink 0");
+            rc += system("pactl suspend-source 0");
+            if (verbosity > 4) printf("... status %i\n", rc);
+
             pulseaudio_isSuspended = FALSE;
         }
     }
@@ -1889,15 +1897,19 @@ void PsychPortAudioInitialize(void)
         // server can't interfere with device enumeration as done during
         // PortAudio init. This is a Linux only thing...
         if (pulseaudio_autosuspend && (PSYCH_SYSTEM == PSYCH_LINUX)) {
+            int rc = 0;
+
             // Call external "pactl" utility via runtime to ask
             // the server to suspend all sinks and sources,
             // hopefully releasing the underlying low-level audio
             // devices for use by use. These calls should fail silently
             // if either the pactl utility isn't installed or no sound
             // server is running:
-            if (verbosity > 4) printf("PTB-INFO: Trying to suspend potentially running PulseAudio server.\n");
-            PsychRuntimeEvaluateString("system('pactl suspend-sink 1');");
-            PsychRuntimeEvaluateString("system('pactl suspend-source 1');");
+            if (verbosity > 4) printf("PTB-INFO: Trying to suspend potentially running PulseAudio server... ");
+            rc += system("pactl suspend-sink 1");
+            rc += system("pactl suspend-source 1");
+            if (verbosity > 4) printf("... status %i\n", rc);
+
             pulseaudio_isSuspended = TRUE;
         }
 
@@ -1965,7 +1977,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     "system. E.g., Windows has about five different sound subsystems. 'mode' Mode of operation. Defaults to "
     "1 == sound playback only. Can be set to 2 == audio capture, or 3 for simultaneous capture and playback of sound. "
     "Note however that mode 3 (full duplex) does not work reliably on all sound hardware. On some hardware this mode "
-    "may crash Matlab! There is also a special monitoring mode == 7, which only works for full duplex devices "
+    "may crash hard! There is also a special monitoring mode == 7, which only works for full duplex devices "
     "when using the same number of input- and outputchannels. This mode allows direct feedback of captured sounds "
     "back to the speakers with minimal latency and without involvement of your script at all, however no sound "
     "can be captured during this time and your code mostly doesn't have any control over timing etc. \n"
@@ -2133,6 +2145,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                 // Selected output default device seems to be a HDMI or DisplayPort output
                 // of a graphics card. Try to find a better default choice.
                 paHostAPI = outputDevInfo->hostApi;
+                referenceDevInfo = NULL; // Make compiler happy.
                 for (deviceid = 0; deviceid < (int) Pa_GetDeviceCount(); deviceid++) {
                     referenceDevInfo = Pa_GetDeviceInfo(deviceid);
                     if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
@@ -2231,6 +2244,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     }
     else {
         // More than 2 channel counts provided? Impossible.
+        mynrchannels[0] = mynrchannels[1] = 0; // Make compiler happy.
         PsychErrorExitMsg(PsychError_user, "You specified a list with more than two 'channels' entries? Can only be max 2 for playback- and capture.");
     }
 
@@ -2283,9 +2297,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
         #ifdef PA_ASIO_H
         if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paASIO) {
-            // Additional data structures for setup of logical -> device channel
-            // mappings on ASIO multi-channel hardware:
-
             // MS-Windows and connected to an ASIO device. Try to assign channel mapping:
             if (mode & kPortAudioPlayBack) {
                 // Playback mappings:
@@ -2335,6 +2346,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                     printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", id);
                     for (i = 0; i < mynrchannels[0]; i++)
                         printf("%i --> %i : ", i + 1, (int) mychannelmap[i * m]);
+
                     printf("\n\n");
                 }
 
@@ -2848,6 +2860,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
     }
     else {
         // More than 2 channel counts provided? Impossible.
+        mynrchannels[0] = mynrchannels[1] = 0; // Make compiler happy.
         PsychErrorExitMsg(PsychError_user, "You specified a list with more than two 'channels' entries? Can only be max 2 for playback- and capture.");
     }
 
@@ -2879,12 +2892,13 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[0]; i++) if (audiodevices[id].outputmappings[i] < 0 || audiodevices[id].outputmappings[i] >= audiodevices[pamaster].outchannels) {
-                printf("PTB-ERROR: Slot %i of output channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].outputmappings[i] + 1, audiodevices[pamaster].outchannels);
-                free(audiodevices[id].outputmappings);
-                audiodevices[id].outputmappings = NULL;
-                PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
-            }
+            for (i = 0; i < mynrchannels[0]; i++)
+                if (audiodevices[id].outputmappings[i] < 0 || audiodevices[id].outputmappings[i] >= audiodevices[pamaster].outchannels) {
+                    printf("PTB-ERROR: Slot %i of output channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].outputmappings[i] + 1, (int)  audiodevices[pamaster].outchannels);
+                    free(audiodevices[id].outputmappings);
+                    audiodevices[id].outputmappings = NULL;
+                    PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
+                }
         }
 
         if ((mode & kPortAudioCapture) && !(mode & kPortAudioIsOutputCapture)) {
@@ -2900,12 +2914,13 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[1]; i++) if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].inchannels) {
-                printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, audiodevices[pamaster].inchannels);
-                free(audiodevices[id].inputmappings);
-                audiodevices[id].inputmappings = NULL;
-                PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
-            }
+            for (i = 0; i < mynrchannels[1]; i++)
+                if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].inchannels) {
+                    printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, (int) audiodevices[pamaster].inchannels);
+                    free(audiodevices[id].inputmappings);
+                    audiodevices[id].inputmappings = NULL;
+                    PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
+                }
         }
 
         if (mode & kPortAudioIsOutputCapture) {
@@ -2921,12 +2936,13 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
             }
 
             // Revalidate:
-            for (i = 0; i < mynrchannels[1]; i++) if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].outchannels) {
-                printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, audiodevices[pamaster].outchannels);
-                free(audiodevices[id].inputmappings);
-                audiodevices[id].inputmappings = NULL;
-                PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
-            }
+            for (i = 0; i < mynrchannels[1]; i++)
+                if (audiodevices[id].inputmappings[i] < 0 || audiodevices[id].inputmappings[i] >= audiodevices[pamaster].outchannels) {
+                    printf("PTB-ERROR: Slot %i of capture channel selection list contains invalid master device channel id %i [Valid between 1 and %i]!\n", i+1, audiodevices[id].inputmappings[i] + 1, (int)  audiodevices[pamaster].outchannels);
+                    free(audiodevices[id].inputmappings);
+                    audiodevices[id].inputmappings = NULL;
+                    PsychErrorExitMsg(PsychError_user, "Invalid items in 'selectchannels' matrix argument!");
+                }
         }
 
     }
@@ -3053,16 +3069,16 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
         printf("PTB-INFO: New virtual audio slave device with handle %i opened and attached to parent device handle %i [master %i].\n", id, paparent, pamaster);
 
         if (audiodevices[id].opmode & kPortAudioIsAMModulator) {
-            printf("PTB-INFO: For %i channels amplitude modulation.\n", audiodevices[id].outchannels);
+            printf("PTB-INFO: For %i channels amplitude modulation.\n", (int) audiodevices[id].outchannels);
         }
         else if (audiodevices[id].opmode & kPortAudioPlayBack) {
-            printf("PTB-INFO: For %i channels playback.\n", audiodevices[id].outchannels);
+            printf("PTB-INFO: For %i channels playback.\n", (int) audiodevices[id].outchannels);
         }
 
         if (audiodevices[id].opmode & kPortAudioIsOutputCapture) {
-            printf("PTB-INFO: For %i channels capture of master output mix.\n", audiodevices[id].inchannels);
+            printf("PTB-INFO: For %i channels capture of master output mix.\n", (int) audiodevices[id].inchannels);
         } else if (audiodevices[id].opmode & kPortAudioCapture) {
-            printf("PTB-INFO: For %i channels capture.\n", audiodevices[id].inchannels);
+            printf("PTB-INFO: For %i channels capture.\n", (int) audiodevices[id].inchannels);
         }
 
         printf("PTB-INFO: Real samplerate %f Hz. Input latency %f msecs, Output latency %f msecs.\n",
@@ -3124,18 +3140,24 @@ PsychError PSYCHPORTAUDIOClose(void)
 PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 {
     static char useString[] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0][, startIndex=Append]);";
-    //                            1           2                     3                                                   1         2               3                    4
+    //                          1          2                     3                                                 1         2             3                    4
     static char synopsisString[] =
     "Fill audio data playback buffer of a PortAudio audio device. 'pahandle' is the handle of the device "
-    "whose buffer is to be filled. 'bufferdata' is usually a matrix with audio data in double() or single() format. Each "
-    "row of the matrix specifies one sound channel, each column one sample for each channel. Only floating point "
-    "values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
+    "whose buffer is to be filled.\n"
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    "'bufferdata' is usually a matrix with audio data in double() or single() format. "
+    "Each row of the matrix specifies one sound channel, each column one sample for each channel. "
+    #else
+    "'bufferdata' is usually a NumPy 2D matrix with audio data in (ideally) float32 format, or also float64 format. "
+    "Each column of the matrix specifies one sound channel, each row one sample for each channel. "
+    #endif
+    "Only floating point values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
     "intentionally a very restricted interface. For lowest latency and best timing we want you to provide audio "
-    "data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
+    "data exactly at the optimal format and sample rate, so the driver can save computation time and latency for "
     "expensive sample rate conversion, sample format conversion, and bounds checking/clipping.\n"
     "Instead of a matrix, you can also pass in the bufferhandle of an audio buffer as 'bufferdata'. This buffer "
     "must have been created beforehand via PsychPortAudio('CreateBuffer', ...). Its content must satisfy the "
-    "same constraints as in case of passing a Matlab matrix. The content will be copied from the given buffer "
+    "same constraints as in case of passing a matrix. The content will be copied from the given buffer "
     "to the standard audio buffer, so it is safe to delete that source buffer if you want.\n"
     "'streamingrefill' optional: If set to 1, ask the driver to refill the buffer immediately while playback "
     "is active. You can think of this as appending the audio data to the audio data already present in the buffer. "
@@ -3180,6 +3202,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
     double currentTime, etaSecs;
     psych_int64 startIndex = 0;
     double tBehind = 0.0;
+    psych_bool c_layout = PsychUseCMemoryLayoutIfOptimal(TRUE);
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3187,7 +3210,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 
     PsychErrorExit(PsychCapNumInputArgs(4));     // The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs
-    PsychErrorExit(PsychCapNumOutputArgs(3));     // The maximum number of outputs
+    PsychErrorExit(PsychCapNumOutputArgs(3));    // The maximum number of outputs
 
     // Make sure PortAudio is online:
     PsychPortAudioInitialize();
@@ -3204,25 +3227,37 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
         // Assign properties:
         inchannels = inbuffer->outchannels;
         insamples  = inbuffer->outputbuffersize / sizeof(float) / inchannels;
-        p = 1;
         indatafloat = inbuffer->outputbuffer;
     }
     else {
-        // Regular double matrix with sound data from runtime:
+        // Regular double matrix with sound data from runtime?
         if (!PsychAllocInDoubleMatArg64(2, kPsychArgAnything, &inchannels, &insamples, &p, &indata)) {
-            // Or regular float matrix instead:
+            // Or regular float matrix instead?
             PsychAllocInFloatMatArg64(2, kPsychArgRequired, &inchannels, &insamples, &p, &indatafloat);
             userfloat = TRUE;
+        }
+
+        if (p != 1)
+            PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
+
+        // Swap inchannels <-> insamples to take transposed 2D matrix of C vs. Fortran layout into account:
+        if (c_layout) {
+            p = inchannels;
+            inchannels = insamples;
+            insamples = p;
         }
     }
 
     if (inchannels != audiodevices[pahandle].outchannels) {
-        printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i rows.\n", pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels);
-        PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
+        printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i %s.\n",
+               pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels, (c_layout) ? "columns" : "rows");
+        if (c_layout)
+            PsychErrorExitMsg(PsychError_user, "Number of columns of audio data matrix doesn't match number of output channels of selected audio device.\n");
+        else
+            PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
     }
 
     if (insamples < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 sample in your audio buffer!");
-    if (p!=1) PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
 
     // Get optional streaming refill flag:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &streamingrefill);
@@ -3438,16 +3473,23 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
     static char useString[] = "PsychPortAudio('RefillBuffer', pahandle [, bufferhandle=0], bufferdata [, startIndex=0]);";
     static char synopsisString[] =
     "Refill part of an audio data playback buffer of a PortAudio audio device. 'pahandle' is the handle of the device "
-    "whose buffer is to be filled. 'bufferhandle' is the handle of the buffer: Use a handle of zero for the standard "
-    "buffer created and accessed via 'FillBuffer'. 'bufferdata' is a matrix with audio data in double() or single() "
-    "format. Each row of the matrix specifies one sound channel, each column one sample for each channel. Only floating point "
-    "values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
+    "whose buffer is to be filled.\n"
+    "'bufferhandle' is the handle of the buffer: Use a handle of zero for the standard "
+    "buffer created and accessed via 'FillBuffer'.\n"
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    "'bufferdata' is a matrix with audio data in double() or single() format. "
+    "Each row of the matrix specifies one sound channel, each column one sample for each channel. "
+    #else
+    "'bufferdata' is usually a NumPy 2D matrix with audio data in (ideally) float32 format, or also float64 format. "
+    "Each column of the matrix specifies one sound channel, each row one sample for each channel. "
+    #endif
+    "Only floating point values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
     "intentionally a very restricted interface. For lowest latency and best timing we want you to provide audio "
-    "data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
+    "data exactly at the optimal format and sample rate, so the driver can save computation time and latency for "
     "expensive sample rate conversion, sample format conversion, and bounds checking/clipping.\n"
     "Instead of a matrix, you can also pass in the bufferhandle of an audio buffer as 'bufferdata'. This buffer "
     "must have been created beforehand via PsychPortAudio('CreateBuffer', ...). Its content must satisfy the "
-    "same constraints as in case of passing a Matlab matrix. The content will be copied from the given buffer "
+    "same constraints as in case of passing a matrix. The content will be copied from the given buffer "
     "to the standard audio buffer, so it is safe to delete that source buffer if you want.\n"
     "'startIndex' optional: Defines the first sample frame within the buffer where refill should start. "
     "By default, refilling starts at the beginning of the buffer - at sample frame 0. 'startIndex' allows to "
@@ -3462,8 +3504,8 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 
     static char seeAlsoString[] = "Open FillBuffer GetStatus ";
 
-    PsychPABuffer* buffer;
-    PsychPABuffer* inbuffer;
+    PsychPABuffer* buffer = NULL;
+    PsychPABuffer* inbuffer = NULL;
 
     psych_int64 inchannels, insamples, p;
     size_t buffersize, outbuffersize;
@@ -3475,6 +3517,7 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
     int pahandle   = -1;
     int bufferhandle = 0;
     psych_int64 startIndex = 0;
+    psych_bool c_layout = PsychUseCMemoryLayoutIfOptimal(TRUE);
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3502,7 +3545,8 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 
         // Validate matching output channel count:
         if (buffer->outchannels != audiodevices[pahandle].outchannels) {
-            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n", buffer->outchannels, bufferhandle, audiodevices[pahandle].outchannels);
+            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n",
+                   (int) buffer->outchannels, bufferhandle, (int) audiodevices[pahandle].outchannels);
             PsychErrorExitMsg(PsychError_user, "Target audio buffer 'bufferHandle' has an audio channel count that doesn't match channels of audio device!");
         }
     }
@@ -3515,7 +3559,6 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
         // Assign properties:
         inchannels = inbuffer->outchannels;
         insamples = inbuffer->outputbuffersize / sizeof(float) / inchannels;
-        p = 1;
         indatafloat = inbuffer->outputbuffer;
     }
     else {
@@ -3525,15 +3568,28 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
             PsychAllocInFloatMatArg64(3, kPsychArgRequired, &inchannels, &insamples, &p, &indatafloat);
             userfloat = TRUE;
         }
+
+        if (p != 1)
+            PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
+
+        // Swap inchannels <-> insamples to take transposed 2D matrix of C vs. Fortran layout into account:
+        if (c_layout) {
+            p = inchannels;
+            inchannels = insamples;
+            insamples = p;
+        }
     }
 
     if (inchannels != audiodevices[pahandle].outchannels) {
-        printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i rows.\n", pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels);
-        PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
+        printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i %s.\n",
+               pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels, (c_layout) ? "columns" : "rows");
+        if (c_layout)
+            PsychErrorExitMsg(PsychError_user, "Number of columns of audio data matrix doesn't match number of output channels of selected audio device.\n");
+        else
+            PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
     }
 
     if (insamples < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 sample for refill of your audio buffer!");
-    if (p!=1) PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
 
     // Get optional startIndex:
     PsychCopyInIntegerArg64(4, kPsychArgOptional, &startIndex);
@@ -3679,11 +3735,17 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
     static char synopsisString[] =
     "Create a new dynamic audio data playback buffer for a PortAudio audio device and fill it with initial data.\n"
     "Return a 'bufferhandle' to the new buffer. 'pahandle' is the optional handle of the device "
-    "whose buffer is to be filled. 'bufferdata' is a matrix with audio data in double() or single() "
-    "format. Each row of the matrix specifies one sound channel, each column one sample for each channel. Only floating point "
-    "values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
+    "whose buffer is to be filled.\n"
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    "'bufferdata' is a matrix with audio data in double() or single() format. "
+    "Each row of the matrix specifies one sound channel, each column one sample for each channel. "
+    #else
+    "'bufferdata' is usually a NumPy 2D matrix with audio data in (ideally) float32 format, or also float64 format. "
+    "Each column of the matrix specifies one sound channel, each row one sample for each channel. "
+    #endif
+    "Only floating point values are supported. Samples need to be in range -1.0 to +1.0, with 0.0 for silence. This is "
     "intentionally a very restricted interface. For lowest latency and best timing we want you to provide audio "
-    "data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
+    "data exactly at the optimal format and sample rate, so the driver can save computation time and latency for "
     "expensive sample rate conversion, sample format conversion, and bounds checking/clipping.\n\n"
     "You can refill the buffer anytime via the PsychPortAudio('RefillBuffer') call.\n"
     "You can delete the buffer via the PsychPortAudio('DeleteBuffer') call, once it is not used anymore. \n"
@@ -3696,12 +3758,13 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
 
     PsychPABuffer* buffer;
     psych_int64 inchannels, insamples, p;
-    size_t buffersize, outbuffersize;
+    size_t buffersize;
     double*    indata = NULL;
     float* indatafloat = NULL;
     float*  outdata = NULL;
     int pahandle   = -1;
     int bufferhandle = 0;
+    psych_bool c_layout = PsychUseCMemoryLayoutIfOptimal(TRUE);
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3720,6 +3783,16 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
         PsychAllocInFloatMatArg64(2, kPsychArgRequired, &inchannels, &insamples, &p, &indatafloat);
     }
 
+    if (p != 1)
+        PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
+
+    // Swap inchannels <-> insamples to take transposed 2D matrix of C vs. Fortran layout into account:
+    if (c_layout) {
+        p = inchannels;
+        inchannels = insamples;
+        insamples = p;
+    }
+
     // If the optional pahandle is provided...
     if (PsychCopyInIntegerArg(1, kPsychArgOptional, &pahandle)) {
         // ...then we use it to validate the configuration of the datamatrix for the new
@@ -3728,14 +3801,17 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
         if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio playback, so this call doesn't make sense.");
 
         if (inchannels != audiodevices[pahandle].outchannels) {
-            printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i rows.\n", pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels);
-            PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
+            printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i %s.\n",
+                pahandle, (int) audiodevices[pahandle].outchannels, (int) inchannels, (c_layout) ? "columns" : "rows");
+            if (c_layout)
+                PsychErrorExitMsg(PsychError_user, "Number of columns of audio data matrix doesn't match number of output channels of selected audio device.\n");
+            else
+                PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
         }
     }
 
-    if (inchannels < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 row for creation of at least one audio channel in your audio buffer!");
+    if (inchannels < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least a vector for creation of at least one audio channel in your audio buffer!");
     if (insamples < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 sample for creation of your audio buffer!");
-    if (p!=1) PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
 
     // Create buffer and assign bufferhandle:
     bufferhandle = PsychPACreateAudioBuffer(inchannels, insamples);
@@ -3743,7 +3819,6 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
     // Deref bufferHandle:
     buffer = PsychPAGetAudioBuffer(bufferhandle);
     outdata = buffer->outputbuffer;
-    outbuffersize = (size_t) buffer->outputbuffersize;
     buffersize = sizeof(float) * (size_t) inchannels * (size_t) insamples;
 
     if (indata) {
@@ -3771,19 +3846,29 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void)
  */
 PsychError PSYCHPORTAUDIOGetAudioData(void)
 {
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
     static char useString[] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs][, singleType=0]);";
+    #else
+    static char useString[] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs][, singleType=1]);";
+    #endif
     static char synopsisString[] =
     "Retrieve captured audio data from a audio device. 'pahandle' is the handle of the device "
-    "whose data is to be retrieved. 'audiodata' is a matrix with audio data in floating point format. Each "
-    "row of the matrix returns one sound channel, each column one sample for each channel. "
+    "whose data is to be retrieved.\n"
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
+    "'audiodata' is a matrix with audio data in floating point format. "
+    "Each row of the matrix returns one sound channel, each column one sample for each channel. "
+    #else
+    "'audiodata' is a NumPy 2D matrix with audio data in float32 floating point format by default. "
+    "Each column of the matrix returns one sound channel, each row one sample for each channel. "
+    #endif
     "Returned samples are in range -1.0 to +1.0, with 0.0 for silence. This is "
     "intentionally a very restricted interface. For lowest latency and best timing we want you to accept audio "
-    "data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
+    "data exactly at the optimal format and sample rate, so the driver can save computation time and latency for "
     "expensive sample rate conversion, sample format conversion, and bounds checking/clipping.\n"
     "You must call this function once before start of capture operations to allocate an internal buffer "
     "that stores captured audio data inbetween your periodic calls. Provide 'amountToAllocateSecs' as "
     "requested buffersize in seconds. After start of capture you must call this function periodically "
-    "at least every 'amountToAllocateSecs' seconds to drain the internal buffer into your Matlab/Octave "
+    "at least every 'amountToAllocateSecs' seconds to drain the internal buffer into your "
     "matrix 'audiodata'. If you fail to call the function frequently enough, sound data will get lost!\n"
     "'minimumAmountToReturnSecs' optional minimum amount of recorded data to return at each call. The "
     "driver will only return control to your script when it was able to collect at least that amount "
@@ -3795,10 +3880,16 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
     "If you provide both, 'minimumAmountToReturnSecs' and 'maximumAmountToReturnSecs' and set them to equal "
     "values (but significantly lower than the 'amountToAllocateSecs' buffersize!!) then you'll always "
     "get an 'audiodata' matrix back that is of a fixed size. This may be convenient for postprocessing "
-    "in Matlab. It may also reduce or avoid Matlab memory fragmentation...\n"
+    "in the scripting language. It may also reduce or avoid memory fragmentation...\n"
+    #if PSYCH_LANGUAGE == PSYCH_MATLAB
     "'singleType' if set to 1 will return a sound data matrix of single() type instead of double() type. "
     "By default, double() type is returned. single() type matrices only consume half as much memory as "
-    "double() type matrices, without any loss of audio precision.\n"
+    "double() type matrices, without loss of audio precision for up to 24-Bit ADC hardware.\n"
+    #else
+    "'singleType' if set to 1 will return a sound data matrix of float32 type instead of float64 type. "
+    "By default, float32 type is returned, as float32 matrices only consume half as much memory as "
+    "float64 matrices, usually without loss of audio precision for up to 24-Bit ADC hardware.\n"
+    #endif
     "\n"
     "\nOptional return arguments other than 'audiodata':\n\n"
     "'absrecposition' is the absolute position (in samples) of the first column in the returned data matrix, "
@@ -3826,10 +3917,11 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
     double*    indata = NULL;
     float*  indatafloat = NULL;
     int pahandle   = -1;
-    int singleType = 0;
     double allocsize;
     double minSecs, maxSecs, minSamples;
     int overrun = 0;
+    int singleType = (PSYCH_LANGUAGE == PSYCH_MATLAB) ? 0 : 1;
+    psych_bool c_layout = PsychUseCMemoryLayoutIfOptimal(TRUE);
 
     // Setup online help:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3994,11 +4086,17 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 
     if (singleType & 1) {
         // Allocate output float matrix with matching number of channels and samples:
-        PsychAllocOutFloatMatArg(1, FALSE, audiodevices[pahandle].inchannels, insamples / audiodevices[pahandle].inchannels, 1, &indatafloat);
+        if (c_layout)
+            PsychAllocOutFloatMatArg(1, FALSE, insamples / audiodevices[pahandle].inchannels, audiodevices[pahandle].inchannels, 1, &indatafloat);
+        else
+            PsychAllocOutFloatMatArg(1, FALSE, audiodevices[pahandle].inchannels, insamples / audiodevices[pahandle].inchannels, 1, &indatafloat);
     }
     else {
         // Allocate output double matrix with matching number of channels and samples:
-        PsychAllocOutDoubleMatArg(1, FALSE, audiodevices[pahandle].inchannels, insamples / audiodevices[pahandle].inchannels, 1, &indata);
+        if (c_layout)
+            PsychAllocOutDoubleMatArg(1, FALSE, insamples / audiodevices[pahandle].inchannels, audiodevices[pahandle].inchannels, 1, &indata);
+        else
+            PsychAllocOutDoubleMatArg(1, FALSE, audiodevices[pahandle].inchannels, insamples / audiodevices[pahandle].inchannels, 1, &indata);
     }
 
     // Copy out absolute sample read position of first sample in buffer:
@@ -4763,7 +4861,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
     if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
 
-    PsychAllocOutStructArray(1, kPsychArgOptional, 1, 23, FieldNames, &status);
+    PsychAllocOutStructArray(1, kPsychArgOptional, -1, 23, FieldNames, &status);
 
     // Ok, in a perfect world we should hold the device mutex while querying all the device state.
     // However, we don't: This reduces lock contention at the price of a small chance that the
@@ -5622,7 +5720,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 
         // Validate matching output channel count:
         if (buffer->outchannels != audiodevices[pahandle].outchannels) {
-            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n", buffer->outchannels, bufferHandle, audiodevices[pahandle].outchannels);
+            printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n", (int) buffer->outchannels, bufferHandle, (int) audiodevices[pahandle].outchannels);
             PsychErrorExitMsg(PsychError_user, "Referenced audio buffer 'bufferHandle' has an audio channel count that doesn't match channels of audio device!");
         }
     }
@@ -5909,7 +6007,9 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
             PaError rcp;
             // Plugin supports the API, so at least we can safely call it without crashing.
             // Lower the fail level to rc = 2, can't fail because of our deficiencies anymore:
-            if (verbosity > 4) printf("PsychPortAudio('DirectInputMonitoring'): Calling with padev=%i (%p), enable = %i, in=%i, out=%i, gain=%f, pan=%f.\n", pahandle, audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
+            if (verbosity > 4)
+                printf("PsychPortAudio('DirectInputMonitoring'): Calling with padev=%i (%p), enable = %i, in=%i, out=%i, gain=%f, pan=%f.\n", pahandle, audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
+
             rcp = Pa_DirectInputMonitoring(audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
             switch (rcp) {
                 case paNoError:
