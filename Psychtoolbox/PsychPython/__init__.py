@@ -7,7 +7,7 @@
 #
 #           from Psychtoolbox4Python import *
 #
-# Copyright (c) 2018 Mario Kleiner. All rights reserved.
+# Copyright (c) 2018 Mario Kleiner. Licensed under MIT license.
 #
 
 # Import all PTB modules already ported to Python extension modules:
