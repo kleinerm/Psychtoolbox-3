@@ -209,10 +209,10 @@ const char* PsychGetPyModuleFilename(void)
 // a PsychErrorExit() or PsychErrorExitMsg() will return control...
 jmp_buf jmpbuffer[MAX_RECURSIONLEVEL];
 
-// Error exit handler: Replacement for Matlabs MEX-handler:
-// Prints the error-string with Octaves error printing facilities,
-// sets Octave error state and longjmp's to the cleanup routine
-// at the end of our octFunction dispatcher...
+// Error exit handler:
+// Prints the error-string with CPythons printing facilities, and then longjmp's
+// to the cleanup routine at the end of our PsychScriptingGluePythonDispatch()
+// dispatcher.
 void mexErrMsgTxt(const char* s) {
     if (s && strlen(s) > 0)
         printf("%s:%s: %s\n", PsychGetModuleName(), PsychGetFunctionName(), s);
@@ -223,7 +223,7 @@ void mexErrMsgTxt(const char* s) {
     longjmp(jmpbuffer[recLevel], 1);
 }
 
-// Interface to Octave's printf...
+// Interface to printf... TODO Used anywhere?
 void mexPrintf(const char* fmt, ...)
 {
     va_list args;
@@ -1369,12 +1369,12 @@ void PsychCheckSizeLimits(psych_int64 m, psych_int64 n, psych_int64 p)
     printf("PTB-ERROR: exceeds the maximum supported size of 2^31 - 1 elements.\n");
     if (sizeof(size_t) == 4) {
         printf("PTB-ERROR: This is a limitation of all 32 bit versions of Psychtoolbox.\n");
-        printf("PTB-ERROR: You'd need to use a Psychtoolbox for 64-bit Matlab or 64-bit Octave\n");
-        printf("PTB-ERROR: on a 64-bit operating system to get rid of this limit.\n");
+        printf("PTB-ERROR: You'd need to use a Psychtoolbox for 64-bit Python on a 64-Bit\n");
+        printf("PTB-ERROR: operating system to get rid of this limit.\n");
     }
     else {
-        printf("PTB-ERROR: This is a limitation of your version of Octave or Matlab.\n");
-        printf("PTB-ERROR: You'd need to use a Psychtoolbox for 64-bit Matlab or 64-bit Octave\n");
+        printf("PTB-ERROR: This is a limitation of your version of Python.\n");
+        printf("PTB-ERROR: You'd need to use a Psychtoolbox for 64-bit Python\n");
         printf("PTB-ERROR: on a 64-bit operating system to get rid of this limit.\n");
     }
     PsychErrorExitMsg(PsychError_user, "One of the dimensions of a returned matrix or vector exceeds 2^31-1 elements. This is not supported on your setup!");
@@ -1599,7 +1599,7 @@ void PsychErrMsgTxt(char *s)
         }
     }
 
-    // Call the Matlab- or Octave error printing and error handling facilities:
+    // Call the error printing and error handling facilities:
     mexErrMsgTxt((s && (strlen(s) > 0)) ? s : "See error message printed above.");
 }
 
@@ -1718,7 +1718,7 @@ psych_bool PsychIsDefaultMat(const PyObject *mat)
 }
 
 
-//functions for project access to module call arguments (MATLAB)
+//functions for project access to module call arguments
 //___________________________________________________________________________________________
 
 
@@ -1848,7 +1848,7 @@ size_t PsychGetArgP(int position)
  * argument in the case where memory which holds a return argument serves other purposes.
  *
  * -All dynamic memory provided by these functions is volatile, that is, it is lost when the mex module exits and
- * returns control to the Matlab environemnt.  To make it non volatile, call Psych??? on it.
+ * returns control to the scripting environemnt.  To make it non volatile, call Psych??? on it.
  *
  * ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
  */
@@ -1927,7 +1927,7 @@ psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isReq
  * PsychAllocOutFloatMatArg()
  *
  * This function allocates out a matrix of single precision floating point type,
- * that is C data type 32-bit float or Matlab/Octave data type single().
+ * that is C data type 32-bit float.
  *
  * A)return argument mandatory:
  *    1)return argument not present:         exit with an error.
@@ -2225,7 +2225,7 @@ psych_bool PsychAllocInFloatMatArg(int position, PsychArgRequirementType isRequi
 /*
  *
  * Alloc-In a single precision floating point matrix, i.e. a matrix of
- * C data type 32 bit float, aka Matlab/Octave data type single().
+ * C data type 32 bit float.
  * This function allows to alloc in matrices with more than 2^32 elements
  * per matrix dimension on 64 bit systems. Therefore the returned size
  * descriptors must be psych_int64 variables, not int variables or bad things
@@ -2309,7 +2309,7 @@ psych_bool PsychAllocInFloatMatArg64(int position, PsychArgRequirementType isReq
 /*
  *    PsychAllocInIntegerListArg()
  *
- *    In a scriptiong language such as MATLAB where numbers are almost always stored as doubles, this function is useful to check
+ *    In a scriptiong language such as Python where numbers are almost always stored as doubles, this function is useful to check
  *    that the value input is an integer value stored within a double type.
  *
  *    Otherwise it just here to imitate the version written for other scripting languages.
@@ -2466,8 +2466,6 @@ psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired
  *    Like PsychCopyInDoubleArg() with the additional restriction that the passed value must
  *    not have a fractional component and that it fits within the bounds of a C integer.
  *
- *    We could also accept matlab native integer types by specifying a conjunction of those as the third argument
- *    in the PsychSetSpecifiedArgDescriptor() call, but why bother ?
  */
 psych_bool PsychCopyInIntegerArg(int position, PsychArgRequirementType isRequired, int *value)
 {
