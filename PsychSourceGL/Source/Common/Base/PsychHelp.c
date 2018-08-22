@@ -116,8 +116,7 @@ const char* PsychBuildSynopsisString(const char* modulename)
 
     moduleHelpString = calloc(1, n + 2 * strlen(modulename) + 512);
     if (PSYCH_LANGUAGE == PSYCH_PYTHON) {
-        strcat(moduleHelpString, "Copyright (c) 2018 Mario Kleiner. All rights reserved.\n");
-        strcat(moduleHelpString, "PUBLIC USE WITHOUT PERMISSION BY THE AUTHOR IS PROHIBITED!\n\n");
+        strcat(moduleHelpString, "Copyright (c) 2018 Mario Kleiner. Licensed under MIT license.\n\n");
     }
 
     strcat(moduleHelpString, "For detailed help on a subfunction SUBFUNCTIONNAME, type " );

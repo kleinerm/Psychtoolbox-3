@@ -1,5 +1,5 @@
 /*
- * PsychSourceGL/Source/Common/Base/PsychScriptingGluePython.c
+ * PsychSourceGL/Source/Common/Base/PythonGlue/PsychScriptingGluePython.c
  *
  * AUTHORS:
  *
@@ -8,12 +8,36 @@
  * PLATFORMS: All -- Glue layer for CPython runtime environment.
  *
  * HISTORY:
+ *
  * 19-June-2018     mk  Derived from PsychScriptingGlueMatlab.c
  *
  * DESCRIPTION:
  *
- * ScriptingGluePython defines abstracted functions to pass values
- * between the calling Python environment and the PsychToolbox.
+ * PsychScriptingGluePython defines abstracted functions to pass values
+ * between the calling Python environment and the PsychToolbox CPython modules.
+ *
+ * Copyright (c) 2018 Mario Kleiner.
+ *
+ * MIT license:
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a
+ * copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to permit
+ * persons to whom the Software is furnished to do so, subject to the
+ * following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+ * OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
+ * NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+ * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+ * OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+ * USE OR OTHER DEALINGS IN THE SOFTWARE.
  *
  */
 
@@ -152,8 +176,7 @@ static struct PyModuleDef module_definition = {
     PyModuleDef_HEAD_INIT,                                                      // Base instance.
     PPYNAME(PTBMODULENAME),                                                     // Module name.
     "The " PPYNAME(PTBMODULENAME) " Psychtoolbox module for Python 3.\n"        // Help text.
-    "Copyright (c) 2018 Mario Kleiner. All rights reserved.\n"
-    "PUBLIC USE WITHOUT PERMISSION BY THE AUTHOR IS PROHIBITED!",
+    "Copyright (c) 2018 Mario Kleiner. Licensed under the MIT license.",
     -1,                                                                         // -1 = No sub-interpreter support: https://docs.python.org/3/c-api/module.html#c.PyModuleDef
     GlobalPythonMethodsTable,                                                   // Function dispatch table, shared with Python 2.
     NULL,                                                                       // m_slots
