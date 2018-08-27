@@ -1943,28 +1943,39 @@ psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSe
     PsychLockDisplay();
 
     XRRScreenSize *scs = XRRSizes(dpy, PsychGetXScreenIdForScreen(setting->screenNumber), &nsizes);
-    for (i = 0; i < nsizes; i++) {
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Testing against mode of resolution w x h = %i x %i with refresh rates: ", scs[i].width, scs[i].height);
+    for (i = 0; (i < nsizes) && (size_index == -1); i++) {
+        if (PsychPrefStateGet_Verbosity() > 4)
+            printf("PTB-INFO: Testing against mode of resolution w x h = %i x %i with refresh rates: ", scs[i].width, scs[i].height);
+
         if ((width == scs[i].width) && (height == scs[i].height)) {
             short *rates = XRRRates(dpy, PsychGetXScreenIdForScreen(setting->screenNumber), i, &nrates);
             for (j = 0; j < nrates; j++) {
-                if (PsychPrefStateGet_Verbosity() > 3) printf("%i ", (int) rates[j]);
+                if (PsychPrefStateGet_Verbosity() > 4)
+                    printf("%i ", (int) rates[j]);
+
                 if (rates[j] == (short) fps) {
                     // Our requested size x fps combo is supported:
                     size_index = i;
-                    if (PsychPrefStateGet_Verbosity() > 3) printf("--> Got it! Mode id %i. ", size_index);
+                    if (PsychPrefStateGet_Verbosity() > 3)
+                        printf("\nPTB-INFO: Got it! Mode id %i.\n", size_index);
+
+                    break;
                 }
             }
         }
-        if (PsychPrefStateGet_Verbosity() > 3) printf("\n");
+        if (PsychPrefStateGet_Verbosity() > 4) printf("\n");
     }
 
     PsychUnlockDisplay();
 
-    if ((nsizes == 0 || nrates == 0) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Getting or setting display video modes unsupported on this graphics driver despite advertised RandR v1.2 support.\n");
+    if ((nsizes == 0) && (PsychPrefStateGet_Verbosity() > 1))
+        printf("PTB-WARNING: Getting or setting display video modes unsupported on this graphics driver despite advertised RandR v1.2 support.\n");
 
     // Found valid settings?
-    if (size_index == -1) return(FALSE);
+    if (size_index == -1) {
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: No matching video mode found.\n");
+        return(FALSE);
+    }
 
     *cgMode = size_index;
     return(TRUE);
