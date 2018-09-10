@@ -95,13 +95,13 @@
 % We recommend XServer version 1.19.3 or later, and Mesa version 13 or later, and
 % Linux 4.10 or later, as this combination provides best performance and ease of
 % setup for all supported types of hybrid graphics laptops. Users of Ubuntu Linux
-% can simply install Ubuntu 16.04.3 LTS (or Ubuntu 17.04 and later) from fresh
-% installation media, or upgrade to 16.04.3 LTS from earlier Ubuntu releases and then
+% can simply install Ubuntu 16.04.4 LTS (or Ubuntu 18.04-LTS and later) from fresh
+% installation media, or upgrade to 16.04.4 LTS from earlier Ubuntu releases and then
 % install the new hardware enablement stack (HWE) via ...
 %
 % sudo apt install --install-recommends linux-lowlatency-hwe-16.04 xserver-xorg-hwe-16.04
 %
-% ... if it isn't already automatically installed after an upgrade to 16.04.3 LTS.
+% ... if it isn't already automatically installed after an upgrade to 16.04.4 LTS.
 %
 % The following sections describe the current level and quality of support for different
 % types of hybrid graphics laptops, and required configuration steps, assuming you have
@@ -127,6 +127,7 @@
 %   a NVidia proprietary driver of at least version 375.66. If you can't select a recent
 %   enough driver of at least version 375.66, you need to enable the proprietary graphics
 %   driver ppa to get a convenient update to NVidia driver version 375.66 or later versions.
+%   Also, you must use a X-Server of the 1.19.x series, the v1.20 servers are not yet supported.
 %   Follow the following steps to get Optimus set up:
 %
 %   1. Install the proprietary graphics drivers ppa by typing in a terminal:

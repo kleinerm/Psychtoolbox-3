@@ -306,6 +306,8 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 06/01/16 mk  32-Bit Octave-4 support for MS-Windows removed.
 % 11/16/16 mk  Don't bail if a specific 'flavor' is requested, otherwise people
 %              can not actually download older PTB versions with this downloader.
+% 06/11/18 mk  Change search order for svn executable to account for preferred location
+%              on macOS, as provided by XCode command line tools.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -519,10 +521,6 @@ else
     if IsOSX
         svnpath = '';
 
-        if isempty(svnpath) && exist('/opt/subversion/bin/svn', 'file')
-            svnpath = '/opt/subversion/bin/';
-        end
-
         if isempty(svnpath) && exist('/usr/bin/svn','file')
             svnpath='/usr/bin/';
         end
@@ -537,6 +535,10 @@ else
 
         if isempty(svnpath) && exist('/opt/local/bin/svn', 'file')
             svnpath = '/opt/local/bin/';
+        end
+
+        if isempty(svnpath) && exist('/opt/subversion/bin/svn', 'file')
+            svnpath = '/opt/subversion/bin/';
         end
 
         if isempty(svnpath)
