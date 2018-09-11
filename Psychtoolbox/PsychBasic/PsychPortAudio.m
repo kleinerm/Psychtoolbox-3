@@ -1,10 +1,10 @@
 function varargout = PsychPortAudio(varargin)
 % PsychPortAudio - High precision sound driver for Psychtoolbox-3.
 %
-% PsychPortAudio is a special sounddriver for PTB-3. It is a replacement
+% PsychPortAudio is a special sound driver for PTB-3. It is a replacement
 % for all other Matlab based sound drivers and PTB's old SND() function.
 %
-% PsychPortAudio provides the following features:
+% PsychPortAudio provides the following features (*):
 %
 % - Allows instant start of sound playback with a very low onset latency
 %   compared to other sound drivers (on well working hardware).
@@ -35,6 +35,15 @@ function varargout = PsychPortAudio(varargin)
 % - Reliable (compared to Matlabs sound facilities).
 %
 % - Efficient, causes only very low cpu load.
+%
+% (*) Some of this functionality needs a special, proprietary, ASIO enabled
+% portaudio runtime DLL on Microsoft Windows, as well as suitable ASIO capable
+% audio hardware. See "help InitializePsychSound" for more details about how to
+% get such a DLL and hardware. Due to potential license restrictions we do not
+% bundle such a DLL with the Psychtoolbox distribution itself.
+%
+% Disclaimer: "ASIO is a trademark and software of Steinberg Media
+% Technologies GmbH."
 %
 % See the "help InitializePsychSound" for more info on low-latency
 % configurations. See "help BasicSoundOutputDemo" for a very basic demo of

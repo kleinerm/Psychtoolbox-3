@@ -15,6 +15,8 @@ function BasicSoundOutputDemo(repetitions, wavfilename)
 % onset and < 10 msecs latency are possible on Linux, OSX and on some specially
 % configured MS-Windows ASIO sound card setups.
 %
+% Disclaimer: "ASIO is a trademark and software of Steinberg Media
+% Technologies GmbH."
 %
 % Optional arguments:
 %

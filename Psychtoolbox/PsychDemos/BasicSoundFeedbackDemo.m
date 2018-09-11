@@ -23,6 +23,9 @@ function BasicSoundFeedbackDemo(reqlatency, duplex)
 % sound hardware. IntelMacs are happy with half-duplex mode, some PowerMacs
 % may need full-duplex mode.
 %
+% Disclaimer: "ASIO is a trademark and software of Steinberg Media
+% Technologies GmbH."
+%
 %
 % If you need low-latency, make sure to read "help InitializePsychSound"
 % carefully or contact the forum.

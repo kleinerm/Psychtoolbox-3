@@ -220,8 +220,6 @@ fprintf('measurements discarded. At the end the mean input device latency\n');
 fprintf('and standard deviation will be printed.\n\n');
 fprintf('Caution: Only works well with high-quality sound cards and proper\n');
 fprintf('adjustment of the "triggerlevel" parameter in a silent room.\n');
-fprintf('E.g. should work pretty ok on OS/X and Linux, but will require a\n');
-fprintf('ASIO capable sound card and driver on Windows.\n');
 fprintf('These numbers are only rough estimates, more meant to illustrate\n');
 fprintf('input latencies than to provide hard dependable measurements!!!\n\n');
 fprintf('Press a key to continue...\n');

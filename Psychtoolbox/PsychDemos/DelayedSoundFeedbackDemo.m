@@ -39,6 +39,9 @@ function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency)
 % soundchips on Intel based Macintosh computers. On Linux, performance
 % varies depending on the card at use.
 %
+% Disclaimer: "ASIO is a trademark and software of Steinberg Media
+% Technologies GmbH."
+%
 % 'freq' = Sampling frequency (Hz). Defaults to 48000 Hz as this rate is
 % most commonly supported on most sound hardware. The maximum achievable
 % value depends on your specific soundcard. IntelMac's built in soundchips
