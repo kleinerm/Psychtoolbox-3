@@ -12,6 +12,9 @@ function SimpleVoiceTriggerDemo(triggerlevel)
 % it will need special ASIO capable sound hardware on MS-Windows for
 % accurate timing! See "help InitializePsychSound" for details.
 %
+% Disclaimer: "ASIO is a trademark and software of Steinberg Media
+% Technologies GmbH."
+%
 % In any case you *must* verify correct timing of your sound hardware with
 % some external measurement equipment, e.g., in conjunction with the
 % PsychPortAudioTimingTest script (or the AudioFeedbackLatencyTest for a
