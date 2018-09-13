@@ -1,5 +1,5 @@
 function [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(windowPtr, width, height, backgroundColorOffset, radius, contrastPreMultiplicator, sigma, useAlpha, method)
-% [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(windowPtr, width, height [, backgroundColorOffset =(0,0,0,0)] [, radius=inf][, contrastPreMultiplicator=1])
+% [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(windowPtr, width, height [, backgroundColorOffset =(0,0,0,0)] [, radius=inf] [, contrastPreMultiplicator=1] [, sigma=0] [, useAlpha=0] [, method=0])
 %
 % Creates a procedural texture that allows to draw sine grating stimulus patches
 % with a smoothed aperture in a very fast and efficient manner on modern 
@@ -26,11 +26,13 @@ function [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(
 % value will correspond to what practitioners of the field usually
 % understand to be the contrast value of a grating.
 %
-% 'sigma' edge smoothing value in pixels
+% 'sigma' Optional. Edge smoothing value in pixels. Defaults to 0.
 %
-% 'useAlpha' whether to use colour (0) or alpha (1) for smoothing channel
+% 'useAlpha' Optional, defaults to 0. Whether to use colour (0) or alpha (1)
+%  for smoothing channel. Defaults to 0 (color).
 %
-% 'method' whether to use cosine (0) or smoothstep(1) smoothing function
+% 'method' Optional. Whether to use cosine (0) or smoothstep(1) smoothing 
+%  function. Defaults to 0 (cosine).
 %
 % The function returns a procedural texture handle 'gratingid' that you can
 % pass to the Screen('DrawTexture(s)', windowPtr, gratingid, ...) functions
