@@ -28,7 +28,7 @@ function [gratingid, gratingrect] = CreateProceduralSmoothedApertureSineGrating(
 %
 % 'sigma' Optional. Edge smoothing value in pixels. Defaults to 0.
 %
-% 'useAlpha' Optional, defaults to 0. Whether to use colour (0) or alpha (1)
+% 'useAlpha' Optional, defaults to 0. Whether to use color (0) or alpha (1)
 %  for smoothing channel. Defaults to 0 (color).
 %
 % 'method' Optional. Whether to use cosine (0) or smoothstep(1) smoothing 
