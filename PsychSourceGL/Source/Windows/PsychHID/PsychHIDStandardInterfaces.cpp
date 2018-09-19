@@ -511,7 +511,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     // Keyboard queue for this deviceIndex already exists?
     if (NULL == psychHIDKbQueueFirstPress[deviceIndex]) {
         // No. Create one which accepts all keys:
-        PsychHIDOSKbQueueCreate(deviceIndex, 0, NULL, 0, 0, 0);
+        PsychHIDOSKbQueueCreate(deviceIndex, 0, NULL, 0, 0, 0, 0);
     }
 
     // Keyboard queue for this device active? If not, we need
@@ -847,9 +847,11 @@ void* KbQueueWorkerThreadMain(void* dummy)
     return(NULL);
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, unsigned int windowHandle)
 {
     dinfo* dev = NULL;
+
+    (void) windowHandle;
 
     // Valid number of keys?
     if (scanKeys && (numScankeys != 256)) {
@@ -1288,7 +1290,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     }
 
     // Create keyboard queue with proper mask:
-    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0], 0, 0, 0);
+    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0], 0, 0, 0, 0);
     PsychHIDOSKbQueueStart(deviceIndex);
 
     PsychLockMutex(&KbQueueMutex);

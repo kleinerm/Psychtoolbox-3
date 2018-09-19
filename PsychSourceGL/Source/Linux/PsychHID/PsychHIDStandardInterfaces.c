@@ -33,6 +33,7 @@ static int*    psychHIDKbQueueScanKeys[PSYCH_HID_MAX_DEVICES];
 static int     psychHIDKbQueueNumValuators[PSYCH_HID_MAX_DEVICES];
 static unsigned int psychHIDKbQueueFlags[PSYCH_HID_MAX_DEVICES];
 static PsychHIDEventRecord psychHIDKbQueueOldEvent[PSYCH_HID_MAX_DEVICES];
+static Window  psychHIDKbQueueXWindow[PSYCH_HID_MAX_DEVICES];
 static psych_bool psychHIDKbQueueActive[PSYCH_HID_MAX_DEVICES];
 static psych_mutex KbQueueMutex;
 static psych_condition KbQueueCondition;
@@ -64,6 +65,7 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     memset(&psychHIDKbQueueNumValuators[0], 0, sizeof(psychHIDKbQueueNumValuators));
     memset(&psychHIDKbQueueOldEvent[0], 0, sizeof(psychHIDKbQueueOldEvent));
     memset(&psychHIDKbQueueFlags[0], 0, sizeof(psychHIDKbQueueFlags));
+    memset(&psychHIDKbQueueXWindow[0], 0, sizeof(psychHIDKbQueueXWindow));
 
     // We must initialize XLib for multithreading-safe operations / access on first
     // call if usercode explicitely requests this via environment variable PSYCH_XINITTHREADS.
@@ -1049,7 +1051,7 @@ int PsychHIDGetDefaultKbQueueDevice(void)
     return(-1);
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, unsigned int windowHandle)
 {
     XIDeviceInfo* dev = NULL;
 
@@ -1101,6 +1103,9 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     // Store queue specific flags:
     psychHIDKbQueueFlags[deviceIndex] = flags;
 
+    // Store associated X-Window handle, or zero for unspecified:
+    psychHIDKbQueueXWindow[deviceIndex] = windowHandle;
+
     // Create event buffer:
     if (!PsychHIDCreateEventBuffer(deviceIndex, numValuators, numSlots)) {
         PsychHIDOSKbQueueRelease(deviceIndex);
@@ -1146,23 +1151,41 @@ void PsychHIDOSKbQueueRelease(int deviceIndex)
     return;
 }
 
-// Helper: Set same event mask for all root windows of all x-screens for a server:
-static void MultiXISelectEvents(XIEventMask *pemask, int deviceIndex)
+static void SingleXSelectEvents(XIEventMask *pemask, int deviceIndex, Window xwindow)
 {
     Status rc;
+
+    // Grab a touch device for our exclusive use if requested by 0x8 special flag:
+    if ((psychHIDKbQueueFlags[deviceIndex] & 0x8) && XIMaskIsSet(pemask->mask, XI_TouchBegin)) {
+        if (Success != (rc = XIGrabDevice(thread_dpy, pemask->deviceid, xwindow, CurrentTime, None, XIGrabModeAsync, XIGrabModeAsync, True, pemask)))
+            printf("PsychHID-WARNING: KbQueueStart: Failed to grab touch input device %i with xinput device id %i for window %i: %s.\n",
+                   deviceIndex, pemask->deviceid, (int) xwindow,
+                   (rc == AlreadyGrabbed || rc == GrabFrozen) ? "Already grabbed by another application" :
+                   (rc == GrabNotViewable) ? "Window not viewable" : "Unknown error");
+    }
+    else {
+        // No exclusive grab:
+        XISelectEvents(thread_dpy, xwindow, pemask, 1);
+    }
+}
+
+// Helper: Set same event mask for all root windows of all x-screens for a server:
+static void MultiXISelectEvents(XIEventMask *pemask, int deviceIndex, Window xwindow)
+{
     int i;
 
-    for (i = 0; i < ScreenCount(thread_dpy); i++) {
-        // Grab a touch device for our exclusive use if requested by 0x8 special flag:
-        if ((psychHIDKbQueueFlags[deviceIndex] & 0x8) && XIMaskIsSet(pemask->mask, XI_TouchBegin)) {
-            if (Success != (rc = XIGrabDevice(thread_dpy, pemask->deviceid, RootWindow(thread_dpy, i), CurrentTime, None, XIGrabModeAsync, XIGrabModeAsync, True, pemask)))
-                printf("PsychHID-WARNING: KbQueueStart: Failed to grab touch input device %i with xinput device id %i: %s.\n", deviceIndex, pemask->deviceid,
-                       (rc == AlreadyGrabbed || rc == GrabFrozen) ? "Already grabbed by another application" : (rc == GrabNotViewable) ? "Root window not viewable" : "Unknown error");
-        }
-        else {
-            XISelectEvents(thread_dpy, RootWindow(thread_dpy, i), pemask, 1);
-        }
+    // xwindow zero ==> Apply to all X-Screens:
+    if (xwindow == (Window) 0) {
+        for (i = 0; i < ScreenCount(thread_dpy); i++)
+            SingleXSelectEvents(pemask, deviceIndex, RootWindow(thread_dpy, i));
     }
+    else if (xwindow <= (Window) ScreenCount(thread_dpy)) {
+        // xwindow = [1 ; X-Screencount] ==> Apply to xwindow'th X-Screen:
+        SingleXSelectEvents(pemask, deviceIndex, RootWindow(thread_dpy, ((int) xwindow) - 1));
+    }
+    else
+        // Apply to specified xwindow handle:
+        SingleXSelectEvents(pemask, deviceIndex, xwindow);
 }
 
 void PsychHIDOSKbQueueStop(int deviceIndex)
@@ -1202,7 +1225,7 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
     emask.deviceid = info[deviceIndex].deviceid;
     emask.mask_len = sizeof(mask);
     emask.mask = mask;
-    MultiXISelectEvents(&emask, deviceIndex);
+    MultiXISelectEvents(&emask, deviceIndex, psychHIDKbQueueXWindow[deviceIndex]);
     XFlush(thread_dpy);
 
     // Mark queue logically stopped:
@@ -1337,7 +1360,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     emask.deviceid = info[deviceIndex].deviceid;
     emask.mask_len = sizeof(mask);
     emask.mask = mask;
-    MultiXISelectEvents(&emask, deviceIndex);
+    MultiXISelectEvents(&emask, deviceIndex, psychHIDKbQueueXWindow[deviceIndex]);
     XFlush(thread_dpy);
 
     // Mark this queue as logically started:
@@ -1503,7 +1526,7 @@ void PsychHIDOSKbTriggerWait(int deviceIndex, int numScankeys, int* scanKeys)
     }
 
     // Create keyboard queue with proper mask:
-    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0], 0, 0, 0);
+    PsychHIDOSKbQueueCreate(deviceIndex, 256, &keyMask[0], 0, 0, 0, 0);
     PsychHIDOSKbQueueStart(deviceIndex);
 
     PsychLockMutex(&KbQueueMutex);

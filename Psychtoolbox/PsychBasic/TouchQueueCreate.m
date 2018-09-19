@@ -97,6 +97,6 @@ if isempty(numValuators)
 end
 
 % Ok, and now we just call KbQeueCreate, which we wrap here atm.:
-KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags);
+KbQueueCreate(deviceNumber, keyList, numValuators, numSlots, flags, win);
 
 return;

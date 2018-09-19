@@ -50,7 +50,7 @@ const char** InitializeSynopsis(void)
     synopsis[i++] = "err=PsychHID('ReceiveReportsStop',deviceNumber)";
 
     synopsis[i++] = "\n\nQueue based keyboard queries: See 'help KbQueueCreate' for explanations:\n\n";
-    synopsis[i++] = "PsychHID('KbQueueCreate', [deviceNumber][, keyFlags=all][, numValuators=0][, numSlots=10000][, flags=0])";
+    synopsis[i++] = "PsychHID('KbQueueCreate', [deviceNumber][, keyFlags=all][, numValuators=0][, numSlots=10000][, flags=0][, windowHandle=0])";
     synopsis[i++] = "PsychHID('KbQueueRelease' [, deviceIndex])";
     synopsis[i++] = "[navail] = PsychHID('KbQueueFlush' [, deviceIndex][, flushType=1])";
     synopsis[i++] = "PsychHID('KbQueueStart' [, deviceIndex])";

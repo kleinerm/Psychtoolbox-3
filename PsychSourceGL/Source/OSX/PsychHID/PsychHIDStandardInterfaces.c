@@ -901,7 +901,7 @@ PsychError PsychHIDOSKbElementAdd(IOHIDElementRef element, IOHIDQueueRef queue, 
     return(PsychError_none);
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, unsigned int windowHandle)
 {
     pRecDevice deviceRecord;
     psych_bool verbose = getenv("PSYCHHID_TELLME") != NULL;
@@ -910,6 +910,8 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     CFDataRef uchr = (CFDataRef) ((currentKeyboard) ? TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData) : NULL);
     keyboardLayout = (const UCKeyboardLayout*) ((uchr) ? CFDataGetBytePtr(uchr) : NULL);
     kbdType = LMGetKbdType();
+
+    (void) windowHandle;
 
     // Valid number of keys?
     if (scanKeys && (numScankeys != 256)) {
