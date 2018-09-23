@@ -567,7 +567,8 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                 // Process it:
 
                 // printf("Event type %d received\n", cookie->evtype);
-                if (cookie->evtype == XI_RawButtonPress || cookie->evtype == XI_RawButtonRelease || cookie->evtype == XI_RawMotion) {
+                if (cookie->evtype == XI_RawButtonPress || cookie->evtype == XI_RawButtonRelease || cookie->evtype == XI_RawMotion ||
+                    cookie->evtype == XI_RawTouchBegin || cookie->evtype == XI_RawTouchEnd || cookie->evtype == XI_RawTouchUpdate) {
                     // Raw device event for mice and similar devices:
                     rawevent = (XIRawEvent*) cookie->data;
                     event = NULL;
@@ -816,33 +817,54 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                             }
                         }
 
-                        if ((cookie->evtype == XI_TouchBegin || cookie->evtype == XI_TouchEnd || cookie->evtype == XI_TouchUpdate || cookie->evtype == XI_TouchOwnership) &&
-                            numValuators >= 4) {
+                        if ((cookie->evtype == XI_TouchBegin || cookie->evtype == XI_TouchEnd || cookie->evtype == XI_TouchUpdate || cookie->evtype == XI_TouchOwnership ||
+                             cookie->evtype == XI_RawTouchBegin || cookie->evtype == XI_RawTouchEnd || cookie->evtype == XI_RawTouchUpdate) && (numValuators >= 4)) {
                             XIDeviceInfo *dev = &info[i];
+
+                            // Touch point id, 32-Bit integer - unique until 32 bit wraparound ;) :
+                            evt.rawEventCode = (event) ? event->detail : rawevent->detail;
 
                             // Fetch most recent touch record in the series for this touch point:
                             // oldevt == NULL if none yet exists, or none exists anymore due to some buffer wraparound:
-                            PsychHIDEventRecord *oldevt = PsychHIDLastTouchEventFromEventBuffer(i, event->detail);
-
-                            // Touch point id, 32-Bit integer - unique until 32 bit wraparound ;) :
-                            evt.rawEventCode = event->detail;
+                            PsychHIDEventRecord *oldevt = PsychHIDLastTouchEventFromEventBuffer(i, evt.rawEventCode);
 
                             // Everything of interest is in the valuators:
                             if (cookie->evtype != XI_TouchOwnership) {
                                 // Store up to numValuators valuator values:
-                                double *valuator = event->valuators.values;
-                                for (j = 0; (j < event->valuators.mask_len * 8) && (j < numValuators); j++) {
-                                    evt.numValuators++;
+                                if (event) {
+                                    double *valuator = event->valuators.values;
+                                    for (j = 0; (j < event->valuators.mask_len * 8) && (j < numValuators); j++) {
+                                        evt.numValuators++;
 
-                                    // Updated valuator value?
-                                    if (XIMaskIsSet(event->valuators.mask, j)) {
-                                        // Yes: Assign.
-                                        evt.valuators[j] = (float) *valuator;
-                                        valuator++;
+                                        // Updated valuator value?
+                                        if (XIMaskIsSet(event->valuators.mask, j)) {
+                                            // Yes: Assign.
+                                            evt.valuators[j] = (float) *valuator;
+                                            valuator++;
+                                        }
+                                        else {
+                                            // No: Assign old value from last pass:
+                                            evt.valuators[j] = (float) ((oldevt) ? oldevt->valuators[j] : 0.0);
+                                        }
                                     }
-                                    else {
-                                        // No: Assign old value from last pass:
-                                        evt.valuators[j] = (float) ((oldevt) ? oldevt->valuators[j] : 0.0);
+                                }
+                                else {
+                                    double *valuator = rawevent->raw_values;
+                                    for (j = 0; (j < rawevent->valuators.mask_len * 8) && (j < numValuators); j++) {
+                                        evt.numValuators++;
+
+                                        // Updated valuator value?
+                                        if (XIMaskIsSet(rawevent->valuators.mask, j)) {
+                                            // Yes: Assign.
+                                            // printf("%i: Valuator[%i]: %f\n", evt.rawEventCode, j, *valuator);
+                                            evt.valuators[j] = (float) *valuator;
+                                            valuator++;
+                                        }
+                                        else {
+                                            // No: Assign old value from last pass:
+                                            // printf("%i: Valuator[%i]: Gap\n", evt.rawEventCode, j);
+                                            evt.valuators[j] = (float) ((oldevt) ? oldevt->valuators[j] : 0.0);
+                                        }
                                     }
                                 }
                             }
@@ -873,12 +895,14 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 
                             switch (cookie->evtype) {
                                 case XI_TouchBegin:
+                                case XI_RawTouchBegin:
                                     // Touch begins - Finger pressed, integrity bit cleared:
                                     evt.status = 1;
                                     evt.type = 2;
                                     break;
 
                                 case XI_TouchUpdate:
+                                case XI_RawTouchUpdate:
                                     // Finger motion event, with finger pressed onto the touch surface:
                                     evt.status |= 1 + 2;
                                     evt.type = 3;
@@ -890,13 +914,15 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                                     // good, so simply set the integrity bit:
                                     //
                                     // See http://who-t.blogspot.de/2012/01/multitouch-in-x-touch-grab-handling.html
-                                    if (event->flags & XITouchPendingEnd) {
+                                    if ((event && event->flags & XITouchPendingEnd) || (rawevent && rawevent->flags & XITouchPendingEnd)) {
                                         // Set integrity bit for this touch point:
                                         evt.status |= (1 << 31);
+                                        // printf("TouchPendingEnd!!\n");
                                     }
                                     break;
 
                                 case XI_TouchEnd:
+                                case XI_RawTouchEnd:
                                     // Touch ends - Finger released and no more motion:
                                     evt.status &= ~(1 + 2);
                                     evt.type = 4;
@@ -933,6 +959,8 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                                     // untampered :) - Set integrity bit for this touch point in last event for it:
                                     if (oldevt)
                                         oldevt->status |= (1 << 31);
+
+                                    // printf("%i: XI_TouchOwnership!! %p\n", evt.rawEventCode, oldevt);
 
                                     break;
                             }
@@ -1166,7 +1194,7 @@ static void SingleXSelectEvents(XIEventMask *pemask, int deviceIndex, Window xwi
     Status rc;
 
     // Grab a touch device for our exclusive use if requested by 0x8 special flag:
-    if ((psychHIDKbQueueFlags[deviceIndex] & 0x8) && XIMaskIsSet(pemask->mask, XI_TouchBegin)) {
+    if ((psychHIDKbQueueFlags[deviceIndex] & 0x8) && (XIMaskIsSet(pemask->mask, XI_TouchBegin) || XIMaskIsSet(pemask->mask, XI_RawTouchBegin))) {
         if (Success != (rc = XIGrabDevice(thread_dpy, pemask->deviceid, xwindow, CurrentTime, None, XIGrabModeAsync, XIGrabModeAsync, True, pemask)))
             printf("PsychHID-WARNING: KbQueueStart: Failed to grab touch input device %i with xinput device id %i for window %i: %s.\n",
                    deviceIndex, pemask->deviceid, (int) xwindow,
@@ -1361,9 +1389,30 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 
     // XInput version 2.2+ supported, and this device (Multi-)touch enabled?
     if ((numValuators >= 4) && (PsychHIDIsTouchDevice(deviceIndex, NULL) >= 0)) {
-        XISetMask(mask, XI_TouchBegin);
-        XISetMask(mask, XI_TouchUpdate);
-        XISetMask(mask, XI_TouchEnd);
+        // Due to what i suppose are X-Server bugs in touch-handling, normal touch
+        // events don't work well at all on multi-X-Screen setups! The first (primary)
+        // touch gets totally misscaled and wraps around -- some screwup in coordinate
+        // transformations or state handling. This as of at least X-Server 1.19.6.
+        //
+        // Work around this: For single X-Screen setups, use regular touch events.
+        // For multi X-Screen setups, use raw touch events instead, which behave more
+        // reasonable, but have their own share of bugs -- easier managable bugs though...
+        if (ScreenCount(thread_dpy) == 1) {
+            // Single X-Screen: Regular touch events:
+            XISetMask(mask, XI_TouchBegin);
+            XISetMask(mask, XI_TouchUpdate);
+            XISetMask(mask, XI_TouchEnd);
+        }
+        else {
+            // Multi X-Screen: Raw events:
+            XISetMask(mask, XI_RawTouchBegin);
+            XISetMask(mask, XI_RawTouchUpdate);
+            XISetMask(mask, XI_RawTouchEnd);
+        }
+
+        // Always request this, although it only seems to work for regular events,
+        // and our touch sequence loss reporting is currently disabled due to its
+        // own share of flaws...
         XISetMask(mask, XI_TouchOwnership);
     }
 
