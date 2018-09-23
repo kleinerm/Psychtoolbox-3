@@ -854,7 +854,22 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                                         evt.numValuators++;
 
                                         // Updated valuator value?
-                                        if (XIMaskIsSet(rawevent->valuators.mask, j)) {
+                                        // TODO: Workaround for what might be a X-Server bug as of 1.19.6.
+                                        // XIMaskIsSet() reports true also for axis/valuators that don't have
+                                        // actual updated values! The corresponding *valuator value is always
+                                        // zero if the axis didn't update in this event!
+                                        // Work around this by only updating for non-zero *valuator values.
+                                        // Use cached value from previous touch point update otherwise.
+                                        // Downside is obviously that we can't report any zero values for a valuator.
+                                        //
+                                        // This is fine for (x,y) axis, as a user hitting exactly x==0 or y==0
+                                        // ie., the left/upper touchscreen edges, is unlikely. We might get away with it
+                                        // as well for pressure or area valuators, as they only become zero if
+                                        // a touch ends. Valuators for touch orientation or such, where 0 degrees is
+                                        // a valid reported angle, will not work properly though. This needs some fix
+                                        // in the upstream X-Server, but for the moment this is the best we can do:
+                                        // Disabled: if (XIMaskIsSet(rawevent->valuators.mask, j)) {
+                                        if (XIMaskIsSet(rawevent->valuators.mask, j) && *valuator) {
                                             // Yes: Assign.
                                             // printf("%i: Valuator[%i]: %f\n", evt.rawEventCode, j, *valuator);
                                             evt.valuators[j] = (float) *valuator;
