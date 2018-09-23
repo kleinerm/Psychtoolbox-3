@@ -902,7 +902,17 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                                     evt.type = 4;
 
                                     // By this time we must have the integrity bit set, or we lost data.
-                                    if (!oldevt || !(oldevt->status & (1 << 31))) {
+                                    // TODO: No actually! This produces lots of false positives for multi-touch sequences,
+                                    // because usually only the 1st (primary) touch in a sequence will receive the XI_TouchOwnership event
+                                    // and so gets the integrity bit set on its touch id. The same is true for XITouchPendingEnd marking
+                                    // on only one XI_TouchUpdate event for one touchpoint of a sequence. If multi-touches other than those
+                                    // marked ones are released and ended, then this will signal a false positive touch sequence data loss.
+                                    // Additionally, if raw touch events are used, we don't seem to receive XI_TouchOwnership events at all.
+                                    //
+                                    // We either need to do without sequence loss detection or completely rethink the approach.
+                                    // Leave it here for now, but disable loss reporting:
+                                    //if (!oldevt || !(oldevt->status & (1 << 31))) {
+                                    if (FALSE) {
                                         // Nope, we lost touch data. Did we already send a fail event for this touch queue?
                                         // If not, then do it now via the magic 0xffffffff touch point with type 5 for sequence abort.
                                         if (!PsychHIDLastTouchEventFromEventBuffer(i, 0xffffffff)) {
