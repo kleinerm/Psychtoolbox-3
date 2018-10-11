@@ -397,7 +397,7 @@ if IsOctave
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
             % On Linux everything >= 3.8 is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 3.8 or 4.0 series for use with Psychtoolbox.\n');
+            fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0 or 4.2 series for use with Psychtoolbox.\n');
         else
             % On Windows/OSX we only care about 4.4 atm:
             fprintf('WARNING: using the latest stable version of the Octave 4.4.x series for use with Psychtoolbox.\n');
@@ -413,14 +413,14 @@ if IsOctave
         % Need to copy the Octave runtime libraries somewhere our mex files can find them. The only low-maintenance
         % way of dealing with this mess of custom library pathes per octave version, revision and packaging format.
         % Preferred location is the folder with our mex files - found by rpath = @loader_path
-        if ~copyfile([GetOctlibDir filesep 'liboctinterp.5.dylib'], [rdir filesep], 'f') || ...
-           ~copyfile([GetOctlibDir filesep 'liboctave.5.dylib'], [rdir filesep], 'f')
+        if ~copyfile([GetOctlibDir filesep 'liboctinterp.6.dylib'], [rdir filesep], 'f') || ...
+           ~copyfile([GetOctlibDir filesep 'liboctave.6.dylib'], [rdir filesep], 'f')
             % Copy into our mex files folder failed. A second location where the linker will search is the
             % $HOME/lib directory of the current user, so try that as target location:
             tdir = PsychHomeDir('lib');
             fprintf('\n\nFailed to copy Octave runtime libraries to mex file folder [%s].\nRetrying in users private lib dir: %s ...\n', rdir, tdir);
-            if ~copyfile([GetOctlibDir filesep 'liboctinterp.5.dylib'], tdir, 'f') || ...
-               ~copyfile([GetOctlibDir filesep 'liboctave.5.dylib'], tdir, 'f')
+            if ~copyfile([GetOctlibDir filesep 'liboctinterp.6.dylib'], tdir, 'f') || ...
+               ~copyfile([GetOctlibDir filesep 'liboctave.6.dylib'], tdir, 'f')
                 fprintf('\nFailed to copy runtime libs to [%s] as well :(.\n', tdir);
                 fprintf('Our mex files will likely not work this way. Maybe the directories lack file write permissions?\n');
                 fprintf('\n\n\nA last workaround would be to restart octave from a terminal via this line:\n\nexport DYLD_LIBRARY_PATH=%s ; octave\n\n\n', GetOctlibDir);
