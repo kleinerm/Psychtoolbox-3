@@ -46,6 +46,12 @@ typedef __CHAR16_TYPE__ char16_t;
     #include <Python.h>
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+// Shut up the OpenGL related deprecation warnings on Apples trainwreck
+// before including glew.h:
+#define GL_SILENCE_DEPRECATION
+#endif
+
 // Platform independent include for glew: This is a catch-all
 // for all OpenGL definitions and functions, currently up to
 // OpenGL 4.5 + latest extensions beyond that:
