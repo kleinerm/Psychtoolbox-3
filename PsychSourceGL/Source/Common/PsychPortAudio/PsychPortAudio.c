@@ -2451,7 +2451,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
             break;
 
         case paDirectSound:    // DirectSound defaults to 120 msecs, which is way too much! It doesn't accept 0.0 msecs.
-            lowlatency = 0.04;    // Choose some half-way safe tradeoff: 40 msecs.
+            lowlatency = 0.05;    // Choose some half-way safe tradeoff: 50 msecs.
             break;
 
         #ifdef PTB_USE_ASIO
