@@ -2260,6 +2260,25 @@ PsychError PSYCHPORTAUDIOOpen(void)
     PsychCopyInDoubleArg(7, kPsychArgOptional, &suggestedLatency);
     if (suggestedLatency!=-1 && (suggestedLatency < 0.0 || suggestedLatency > 1.0)) PsychErrorExitMsg(PsychError_user, "Invalid suggestedLatency provided. Valid values are 0.0 to 1.0 seconds.");
 
+    #if PSYCH_SYSTEM == PSYCH_OSX
+        // Apply OS/X CoreAudio specific optimizations:
+        #ifdef paMacCoreChangeDeviceParameters
+            // New style since at least 19.6.0:
+            unsigned long flags = (latencyclass > 1) ? paMacCoreChangeDeviceParameters : 0;
+            if (latencyclass > 3) flags|= paMacCoreFailIfConversionRequired;
+            PaMacCore_SetupStreamInfo( &hostapisettings, flags);
+            outputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &hostapisettings;
+            inputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &hostapisettings;
+        #else
+            // Old style:
+            unsigned long flags = (latencyclass > 1) ? paMacCore_ChangeDeviceParameters : 0;
+            if (latencyclass > 3) flags|= paMacCore_FailIfConversionRequired;
+            paSetupMacCoreStreamInfo( &hostapisettings, flags);
+            outputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
+            inputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
+        #endif
+    #endif
+
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
     if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paWASAPI) {
         inputParameters.hostApiSpecificStreamInfo = (PaWasapiStreamInfo*) &inwasapiapisettings;
@@ -2399,26 +2418,37 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     // Setup buffersize:
     if (buffersize == 0) {
-        // No specific buffersize requested:
-        if (latencyclass < 3) {
-            // At levels < 3, the frames per buffer is derived from
-            // the requested latency in seconds. Portaudio will never
-            // choose a value smaller than 64 frames per buffer or smaller
-            // than what the device suggests as minimum safe value.
-            buffersize = paFramesPerBufferUnspecified;
-        }
-        else {
-            if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paCoreAudio) {
-                buffersize = 64; // Lowest setting that is safe on a fast MacBook-Pro.
+        // No specific buffersize requested: Leave it unspecified to get optimal selection by lower level driver.
+        // Especially on Windows and Linux, basically any choice other than paFramesPerBufferUnspecified
+        // will just lead to trouble and less optimal results, as the sound subsystems are very good at
+        // choosing this parameter optimally if allowed, but have a hard job to cope with any user-enforced choices.
+        buffersize = paFramesPerBufferUnspecified;
+    }
+    else {
+        // Extra buffersize validation possible on OSX with upstream portaudio:
+        #if (PSYCH_SYSTEM == PSYCH_OSX) && defined(paMacCoreChangeDeviceParameters)
+        long minBufferSizeFrames, maxBufferSizeFrames;
+        if (paNoError == PaMacCore_GetBufferSizeRange(outputDevInfo ? outputParameters.device : inputParameters.device,
+                                                      &minBufferSizeFrames, &maxBufferSizeFrames)) {
+            if (verbosity > 3)
+                printf("PTB-INFO: Allowable host audiobuffersize range is %i to %i sample frames.\n",
+                       (int) minBufferSizeFrames, (int) maxBufferSizeFrames);
+
+            if ((long) buffersize < minBufferSizeFrames) {
+                if (verbosity > 2)
+                    printf("PTB-WARNING: Requested buffersize %i samples is lower than allowed minimum %i. Clamping to minimum.\n",
+                           buffersize, (int) minBufferSizeFrames);
+                buffersize = (int) minBufferSizeFrames;
             }
-            else {
-                // Others: Leave it unspecified to get optimal selection by lower level driver:
-                // Especially on Windows and Linux, basically any choice other than paFramesPerBufferUnspecified
-                // will just lead to trouble and less optimal results, as the sound subsystems are very good at
-                // choosing this parameter optimally if allowed, but have a hard job to cope with any user-enforced choices.
-                buffersize = paFramesPerBufferUnspecified;
+
+            if ((long) buffersize > maxBufferSizeFrames) {
+                if (verbosity > 2)
+                    printf("PTB-WARNING: Requested buffersize %i samples is higher than allowed maximum %i. Clamping to maximum.\n",
+                           buffersize, (int) maxBufferSizeFrames);
+                buffersize = (int) maxBufferSizeFrames;
             }
         }
+        #endif
     }
 
     // Now we have auto-selected buffersize or user provided override...
@@ -2486,27 +2516,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
         outputParameters.suggestedLatency = suggestedLatency;
         inputParameters.suggestedLatency  = suggestedLatency;
     }
-
-    #if PSYCH_SYSTEM == PSYCH_OSX
-    // Apply OS/X CoreAudio specific optimizations:
-    if (latencyclass > 1) {
-        #ifdef paMacCoreChangeDeviceParameters
-        // New style since at least 19.6.0:
-        unsigned long flags = paMacCoreChangeDeviceParameters;
-        if (latencyclass > 3) flags|= paMacCoreFailIfConversionRequired;
-        PaMacCore_SetupStreamInfo( &hostapisettings, flags);
-        outputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &hostapisettings;
-        inputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &hostapisettings;
-        #else
-        // Old style:
-        unsigned long flags = paMacCore_ChangeDeviceParameters;
-        if (latencyclass > 3) flags|= paMacCore_FailIfConversionRequired;
-        paSetupMacCoreStreamInfo( &hostapisettings, flags);
-        outputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
-        inputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
-        #endif
-    }
-    #endif
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
     if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paWASAPI) {
@@ -6058,8 +6067,8 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
         if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not supported on this system.\n");
     }
     #else
-    // Non MacOSX:
-    if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not yet supported on your operating system.\n");
+    // Standard upstream Portaudio:
+    if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not supported on your operating system.\n");
     #endif
 
     // Return success status:
