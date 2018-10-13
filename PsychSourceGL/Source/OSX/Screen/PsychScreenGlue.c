@@ -68,6 +68,9 @@ static CGDirectDisplayID    displayOnlineCGIDs[kPsychMaxPossibleDisplays];
 static int                  numKernelDrivers = 0;
 static io_connect_t         displayConnectHandles[kPsychMaxPossibleDisplays];
 
+// Is the global cursor hidden atm.?
+static psych_bool cursorHidden = FALSE;
+
 //file local functions
 void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
@@ -108,6 +111,8 @@ void InitializePsychDisplayGlue(void)
         displayOverlayedCGSettingsValid[i]=FALSE;
         displayConnectHandles[i]=0;
     }
+
+    cursorHidden = FALSE;
 
     #ifdef PTBOCTAVE3MEX
         // Restrict the latest idiotic hack to Octave on OSX 10.11+
@@ -162,6 +167,8 @@ void PsychCleanupDisplayGlue(void)
         displayOriginalCGSettingsValid[i] = FALSE;
         displayOverlayedCGSettingsValid[i] = FALSE;
     }
+
+    cursorHidden = FALSE;
 
     // Release font database:
     PsychFreeFontList();
@@ -850,10 +857,15 @@ void PsychHideCursor(int screenNumber, int deviceIdx)
     CGDisplayErr        error;
     CGDirectDisplayID   cgDisplayID;
 
+    if (cursorHidden)
+        return;
+
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
     error=CGDisplayHideCursor(cgDisplayID);
     if (error)
         PsychErrorExit(PsychError_internal);
+
+    cursorHidden = TRUE;
 }
 
 void PsychShowCursor(int screenNumber, int deviceIdx)
@@ -861,10 +873,15 @@ void PsychShowCursor(int screenNumber, int deviceIdx)
     CGDisplayErr        error;
     CGDirectDisplayID   cgDisplayID;
 
+    if (!cursorHidden)
+        return;
+
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
     error=CGDisplayShowCursor(cgDisplayID);
     if(error)
         PsychErrorExit(PsychError_internal);
+
+    cursorHidden = FALSE;
 }
 
 void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)
