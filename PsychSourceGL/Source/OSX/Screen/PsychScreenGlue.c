@@ -422,11 +422,10 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
         // Yes, this should not ever happen on a sane operating system, but this is
         // OSX, so it does. Observed on a 2010 MacBookPro with OSX 10.7.5 on a external
         // panel. Output a warning and fake entries for the most common pixel sizes:
-        PsychAddValueToDepthStruct(16, depths);
-        PsychAddValueToDepthStruct(32, depths);
+        PsychAddValueToDepthStruct(24, depths);
         if (PsychPrefStateGet_Verbosity() > 1) {
             printf("PTB-WARNING: Broken MacOS/X detected. It misreports (== omits some) available video modes and thereby returns empty display depths due to matching failure.\n");
-            printf("PTB-WARNING: Will try to workaround this by creating a fake list of available display depths of 16 bpp and 32 bpp. Expect potential trouble further on...\n");
+            printf("PTB-WARNING: Will try to workaround this by creating a fake list of one available display depth of 24 bpp. Expect potential trouble further on...\n");
         }
     }
 }
