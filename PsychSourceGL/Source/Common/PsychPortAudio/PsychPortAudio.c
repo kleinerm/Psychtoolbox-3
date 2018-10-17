@@ -2052,7 +2052,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
     #if PSYCH_SYSTEM == PSYCH_OSX
         #ifdef paMacCoreChangeDeviceParameters
             // New style since at least 19.6.0:
-            PaMacCoreStreamInfo hostapisettings;
+            PaMacCoreStreamInfo outhostapisettings, inhostapisettings;
+            SInt32 CoreAudioOutChannelMap[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
+            SInt32 CoreAudioInChannelMap[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
         #else
             // Old style:
             paMacCoreStreamInfo hostapisettings;
@@ -2266,9 +2268,10 @@ PsychError PSYCHPORTAUDIOOpen(void)
             // New style since at least 19.6.0:
             unsigned long flags = (latencyclass > 1) ? paMacCoreChangeDeviceParameters : 0;
             if (latencyclass > 3) flags|= paMacCoreFailIfConversionRequired;
-            PaMacCore_SetupStreamInfo( &hostapisettings, flags);
-            outputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &hostapisettings;
-            inputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &hostapisettings;
+            PaMacCore_SetupStreamInfo( &outhostapisettings, flags);
+            PaMacCore_SetupStreamInfo( &inhostapisettings, flags);
+            outputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &outhostapisettings;
+            inputParameters.hostApiSpecificStreamInfo = (PaMacCoreStreamInfo*) &inhostapisettings;
         #else
             // Old style:
             unsigned long flags = (latencyclass > 1) ? paMacCore_ChangeDeviceParameters : 0;
@@ -2401,6 +2404,75 @@ PsychError PSYCHPORTAUDIOOpen(void)
         }
         else
         #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX && defined(paMacCoreChangeDeviceParameters)
+            if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paCoreAudio) {
+                // macOS CoreAudio. Try to assign channel mapping:
+                if (mode & kPortAudioPlayBack) {
+                    // Playback mappings:
+                    for (i = 0; i < outputDevInfo->maxOutputChannels && i < MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE; i++)
+                        CoreAudioOutChannelMap[i] = -1;
+
+                    for (i = 0; i < mynrchannels[0]; i++) {
+                        if (((int) mychannelmap[i * m] >= outputDevInfo->maxOutputChannels) || ((int) mychannelmap[i * m] < 0) ||
+                            ((int) mychannelmap[i * m] >= MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE)) {
+                            if (verbosity > 0)
+                                printf("PTB-ERROR: Invalid output channel mapping %i -> %i. Output device only has %i channels.\n",
+                                       i+1, (int) mychannelmap[i * m], outputDevInfo->maxOutputChannels);
+                            PsychErrorExitMsg(PsychError_user, "Invalid 'selectchannels' matrix argument for output mapping.");
+                        }
+
+                        CoreAudioOutChannelMap[(int) mychannelmap[i * m]] = i;
+                    }
+
+                    if (verbosity > 3) {
+                        printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", id);
+                        for (i = 0; i < mynrchannels[0]; i++)
+                            printf("%i --> %i : ", i+1, (int) mychannelmap[i * m]);
+                        printf("\n\n");
+                    }
+
+                    PaMacCore_SetupChannelMap(&outhostapisettings,
+                                              (const SInt32 * const) CoreAudioOutChannelMap,
+                                              (unsigned long) outputDevInfo->maxOutputChannels);
+                }
+
+                if (mode & kPortAudioCapture) {
+                    // Capture mappings:
+                    for (i = 0; i < mynrchannels[1]; i++)
+                        CoreAudioInChannelMap[i] = -1;
+
+                    // Index into first row of one-row matrix or 2nd row of two-row matrix:
+                    for (i = 0; i < mynrchannels[1]; i++) {
+                        // Input channels are mapped differently in CoreAudio from output channels. Target channel on our
+                        // side is array slot, source device channel is assigned value:
+                        if (((int) mychannelmap[(i * m) + (m - 1)] < 0) ||
+                            ((int) mychannelmap[(i * m) + (m - 1)] >= inputDevInfo->maxInputChannels )) {
+                            if (verbosity > 0)
+                                printf("PTB-ERROR: Invalid input channel mapping %i <- %i. Input device only has %i channels.\n",
+                                       i+1, (int) mychannelmap[(i * m) + (m - 1)], inputDevInfo->maxInputChannels);
+                            PsychErrorExitMsg(PsychError_user, "Invalid 'selectchannels' matrix argument for input mapping.");
+                        }
+
+                        CoreAudioInChannelMap[i] = (int) mychannelmap[(i * m) + (m - 1)];
+                    }
+
+                    if (verbosity > 3) {
+                        printf("PTB-INFO: Will try to use the following logical channel <- device channel mappings for sound capture from audio stream %i :\n", id);
+                        for (i = 0; i < mynrchannels[1]; i++)
+                            printf("%i <-- %i : ", i+1, (int) mychannelmap[(i * m) + (m - 1)]);
+                        printf("\n\n");
+                    }
+
+                    PaMacCore_SetupChannelMap(&inhostapisettings,
+                                              (const SInt32 * const) CoreAudioInChannelMap,
+                                              (unsigned long) mynrchannels[1]);
+                }
+                // Mappings setup up. The PortAudio library will sanity check this further against device constraints...
+            }
+            else
+        #endif
+
             // Backend without channel mapping support.
             if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this audio backend does not support it.\n");
     }
