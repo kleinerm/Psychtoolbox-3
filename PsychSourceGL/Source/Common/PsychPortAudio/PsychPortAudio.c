@@ -2745,6 +2745,12 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // Register the stream finished callback:
     Pa_SetStreamFinishedCallback(audiodevices[id].stream, PAStreamFinishedCallback);
 
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+        // Enable realtime scheduling for the portaudio audio processing thread on ALSA:
+        if (audiodevices[id].hostAPI == paALSA)
+            PaAlsa_EnableRealtimeScheduling(audiodevices[id].stream, 1);
+    #endif
+
     if (verbosity > 3) {
         printf("PTB-INFO: New audio device %i with handle %i opened as PortAudio stream:\n", deviceid, id);
 
