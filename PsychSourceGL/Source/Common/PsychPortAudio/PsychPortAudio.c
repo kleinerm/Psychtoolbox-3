@@ -2636,6 +2636,13 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // specialFlags 16: Never dither audio data:
     if (specialFlags & 16) sflags |= paDitherOff;
 
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+        // On ALSA in aggressive low-latency mode, reduce number of periods (aka device buffers) to 2 for double-buffering.
+        // The default in Portaudio is 4 periods, so that's what we use in non-aggressive mode
+        if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paALSA)
+            PaAlsa_SetNumPeriods((latencyclass > 2) ? 2 : 4);
+    #endif
+
     // Check if the requested sample format and settings are likely supported by Audio API:
     err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
     if (err != paNoError && err != paDeviceUnavailable) {
