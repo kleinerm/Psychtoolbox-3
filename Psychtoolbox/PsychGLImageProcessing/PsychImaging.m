@@ -4941,6 +4941,10 @@ end
 % framebuffer, but keeps it clamped to 0 - 1 range, unless a previous
 % 'ColorRange' call changed this. Why? To accomodate OpenGL hw without
 % clamp extension:
+if ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
+    applyAlsoToMakeTexture = 1;
+end
+
 if ~needsUnitUnclampedColorRange && ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
     Screen('ColorRange', win, 1, [], 1);
     applyAlsoToMakeTexture = 1;
