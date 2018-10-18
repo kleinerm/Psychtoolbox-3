@@ -43,6 +43,10 @@
 #include "pa_win_wasapi.h"
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+#include "pa_linux_alsa.h"
+#endif
+
 // Need to define these as they aren't defined in portaudio.h
 // for some mysterious reason:
 typedef void (*PaUtilLogCallback ) (const char *log);
