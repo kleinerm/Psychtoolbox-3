@@ -1208,8 +1208,8 @@ static void SingleXSelectEvents(XIEventMask *pemask, int deviceIndex, Window xwi
 {
     Status rc;
 
-    // Grab a touch device for our exclusive use if requested by 0x8 special flag:
-    if ((psychHIDKbQueueFlags[deviceIndex] & 0x8) && (XIMaskIsSet(pemask->mask, XI_TouchBegin) || XIMaskIsSet(pemask->mask, XI_RawTouchBegin))) {
+    // Always grab a touch device for our exclusive use:
+    if (XIMaskIsSet(pemask->mask, XI_TouchBegin) || XIMaskIsSet(pemask->mask, XI_RawTouchBegin)) {
         if (Success != (rc = XIGrabDevice(thread_dpy, pemask->deviceid, xwindow, CurrentTime, None, XIGrabModeAsync, XIGrabModeAsync, True, pemask)))
             printf("PsychHID-WARNING: KbQueueStart: Failed to grab touch input device %i with xinput device id %i for window %i: %s.\n",
                    deviceIndex, pemask->deviceid, (int) xwindow,
@@ -1217,7 +1217,7 @@ static void SingleXSelectEvents(XIEventMask *pemask, int deviceIndex, Window xwi
                    (rc == GrabNotViewable) ? "Window not viewable" : "Unknown error");
     }
     else {
-        // No exclusive grab:
+        // No touch device -> No exclusive grab:
         XISelectEvents(thread_dpy, xwindow, pemask, 1);
     }
 }
@@ -1323,9 +1323,8 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
     XFlush(thread_dpy);
     // printf("DEBUG: DONE.\n"); fflush(NULL);
 
-    // Release touch input device if it was grabbed:
-    if ((psychHIDKbQueueNumValuators[deviceIndex] >= 4) && (PsychHIDIsTouchDevice(deviceIndex, NULL) >= 0) &&
-        (psychHIDKbQueueFlags[deviceIndex] & 0x8))
+    // Release grabbed touch input device:
+    if ((psychHIDKbQueueNumValuators[deviceIndex] >= 4) && (PsychHIDIsTouchDevice(deviceIndex, NULL) >= 0))
         XIUngrabDevice(thread_dpy, info[deviceIndex].deviceid, CurrentTime);
 
     // Done.

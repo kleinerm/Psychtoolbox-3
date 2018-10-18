@@ -22,10 +22,7 @@ function TouchQueueCreate(win, deviceNumber, numSlots, numValuators, keyList, fl
 % the list of buttons to accept. See KbQeueCreate for explanation. By default
 % all buttons are accepted.
 %
-% 'flags' If flags is set to 8 then TouchQueueCreate tries to get exclusive
-% access to the touch input device, to avoid or reduce interference by other
-% potentially running touch enabled applications. This is only supported on
-% Linux/X11 at the moment and may or may not help - the court is still out on this.
+% 'flags' Optional flags. This defaults to 0 and is so far unused for touch input.
 %
 % Once a queue is created its touch data collection can be started via
 % TouchQueueStart(), stopped via TouchQueueStop(), cleared via TouchQueueFlush(),
@@ -40,7 +37,7 @@ if ~IsLinux
   error('This function is currently only supported on Linux/X11');
 end
 
-if nargin < 1 || isempty(win)
+if nargin < 1 || isempty(win) || Screen('WindowKind', win) ~= 1
   error('Required windowHandle missing.');
 end
 
