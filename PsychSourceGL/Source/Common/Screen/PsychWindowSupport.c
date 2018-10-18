@@ -7069,6 +7069,22 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         windowRecord->gfxcaps |= kPsychGfxCapSmoothPrimitives;
     }
 
+    {
+        // Check the rounding behavior if floating point color values are written to a
+        // fixed point integer framebuffer - truncate or round to nearest integer?
+        GLubyte testpixel;
+
+        glClearColor(0.5, 0.5, 0.5, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glReadPixels(0, 0, 1, 1, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*) &testpixel);
+        if (testpixel == 128)
+            windowRecord->gfxcaps |= kPsychGfxCapFloatToIntRound;
+
+        if (verbose)
+            printf("Float color value 0.5 -> fixed point reads back as %i ==> %s.\n",
+                   (int) testpixel, (windowRecord->gfxcaps & kPsychGfxCapFloatToIntRound) ? "Rounds" : "Truncates");
+    }
+
     // Allow usercode to override our pessimistic view of vertex color precision:
     if (PsychPrefStateGet_ConserveVRAM() & kPsychAssumeGfxCapVCGood) {
         if (verbose) printf("Assuming hardware can process vertex colors at full 32bpc float precision, as requested by usercode via ConserveVRAMSetting kPsychAssumeGfxCapVCGood.\n");

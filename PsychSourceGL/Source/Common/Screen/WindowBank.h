@@ -94,6 +94,7 @@
 #define kPsychGfxCapSupportsBufferAge       (1 << 19)    // Hw supports EXT_buffer_age extension.
 #define kPsychGfxCapFBOScaledResolveBlit    (1 << 20)    // Hw supports simultaneous multisample resolve and rescaling in one framebuffer blit.
 #define kPsychGfxCapSmoothPrimitives        (1 << 21)    // Hw supports GL_POINT_SMOOTH, LINE smooth etc.
+#define kPsychGfxCapFloatToIntRound         (1 << 22)    // Hw, when converting float colors to fixed point colors, rounds to nearest instead of truncating.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
