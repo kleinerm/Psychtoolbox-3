@@ -2150,13 +2150,17 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
         // Make sure we don't choose a default audio output device which is likely to
         // send its output to nirvana. If this is the case, try to find a better alternative.
-        // Currently black listed are HDMI and DisplayPort video outputs of graphics cards
-        // with sound output over video. Is this a good idea? I don't know, time will tell...
+        // Currently blacklisted are HDMI and DisplayPort video outputs of graphics cards
+        // with sound output over video.
+        // Additionally we blacklist the "default", "sysdefault" and "pulse" devices if
+        // we operate under Linux + ALSA and the Pulseaudio sound server got suspended, as
+        // those devices most likely output their sound over Pulseaudio, which would end in
+        // a hang if PulseAudio is suspended:
         if ((mode & kPortAudioPlayBack) || (mode & kPortAudioMonitoring)) {
             outputDevInfo = Pa_GetDeviceInfo(outputParameters.device);
             if (outputDevInfo && (Pa_GetDeviceCount() > 1) &&
-                (strstr(outputDevInfo->name, "HDMI") || strstr(outputDevInfo->name, "hdmi") ||
-                 strstr(outputDevInfo->name, "isplay"))) {
+                (strstr(outputDevInfo->name, "HDMI") || strstr(outputDevInfo->name, "hdmi") || strstr(outputDevInfo->name, "isplay") ||
+                 ((outputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(outputDevInfo->name, "default") || strstr(outputDevInfo->name, "pulse"))))) {
                 // Selected output default device seems to be a HDMI or DisplayPort output
                 // of a graphics card. Try to find a better default choice.
                 paHostAPI = outputDevInfo->hostApi;
@@ -2165,8 +2169,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
                     referenceDevInfo = Pa_GetDeviceInfo(deviceid);
                     if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
                         (referenceDevInfo->maxOutputChannels < 1) ||
-                        (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") ||
-                        strstr(referenceDevInfo->name, "isplay"))) {
+                        (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") || strstr(referenceDevInfo->name, "isplay") ||
+                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
                         // Unsuitable.
                         continue;
                     }
@@ -2178,17 +2182,66 @@ PsychError PSYCHPORTAUDIOOpen(void)
                 // Found something better? Otherwise we stick to the original choice.
                 if (deviceid < Pa_GetDeviceCount()) {
                     // Yes.
-                    if (verbosity > 2) printf("PTB-INFO: Choosing deviceIndex %i [%s] as default audio device.\n", deviceid, referenceDevInfo->name);
+                    if (verbosity > 2) printf("PTB-INFO: Choosing deviceIndex %i [%s] as default output audio device.\n", deviceid, referenceDevInfo->name);
                     outputParameters.device = (PaDeviceIndex) deviceid;
                 }
                 else {
                     // No, warn user about possible silence:
                     if (verbosity > 2) {
                         printf("PTB-INFO: Chosen default audio device with deviceIndex %i seems to be a HDMI or DisplayPort\n", (int) outputParameters.device);
-                        printf("PTB-INFO: video output of your graphics card [Name = %s].\n", outputDevInfo->name);
+                        printf("PTB-INFO: video output of your graphics card [Name = %s], or not a true hardware device.\n", outputDevInfo->name);
                         printf("PTB-INFO: Tried to find an alternative default output device but couldn't find a suitable one.\n");
-                        printf("PTB-INFO: If you don't hear any sound, then that is likely the reason - sound playing out to a\n");
-                        printf("PTB-INFO: connected display device without any speakers. See 'PsychPortAudio GetDevices?' for available devices.\n");
+                        printf("PTB-INFO: If you don't hear any sound, or the software appears to be hanging, then that is likely\n");
+                        printf("PTB-INFO: the reason - sound playing out to a connected display device without any speakers.\n");
+                        printf("PTB-INFO: See 'PsychPortAudio GetDevices?' for available devices.\n");
+                    }
+                }
+
+                // Reset our temporaries:
+                referenceDevInfo = NULL;
+                deviceid = -1;
+            }
+        }
+
+        // Same filterig applies to capture devices...
+        if (mode & kPortAudioCapture) {
+            inputDevInfo = Pa_GetDeviceInfo(inputParameters.device);
+            if (inputDevInfo && (Pa_GetDeviceCount() > 1) &&
+                (strstr(inputDevInfo->name, "HDMI") || strstr(inputDevInfo->name, "hdmi") || strstr(inputDevInfo->name, "isplay") ||
+                 ((inputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(inputDevInfo->name, "default") || strstr(inputDevInfo->name, "pulse"))))) {
+                // Selected input default device seems to be a HDMI or DisplayPort output
+                // of a graphics card. Try to find a better default choice.
+                paHostAPI = inputDevInfo->hostApi;
+                referenceDevInfo = NULL; // Make compiler happy.
+                for (deviceid = 0; deviceid < (int) Pa_GetDeviceCount(); deviceid++) {
+                    referenceDevInfo = Pa_GetDeviceInfo(deviceid);
+                    if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
+                        (referenceDevInfo->maxOutputChannels < 1) ||
+                        (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") || strstr(referenceDevInfo->name, "isplay") ||
+                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
+                        // Unsuitable.
+                        continue;
+                    }
+
+                    // Found it:
+                    break;
+                }
+
+                // Found something better? Otherwise we stick to the original choice.
+                if (deviceid < Pa_GetDeviceCount()) {
+                    // Yes.
+                    if (verbosity > 2) printf("PTB-INFO: Choosing deviceIndex %i [%s] as default input audio device.\n", deviceid, referenceDevInfo->name);
+                    inputParameters.device = (PaDeviceIndex) deviceid;
+                }
+                else {
+                    // No, warn user about possible silence:
+                    if (verbosity > 2) {
+                        printf("PTB-INFO: Chosen default audio device with deviceIndex %i seems to be a HDMI or DisplayPort\n", (int) inputParameters.device);
+                        printf("PTB-INFO: video output of your graphics card [Name = %s], or not a true hardware device.\n", inputDevInfo->name);
+                        printf("PTB-INFO: Tried to find an alternative default input device but couldn't find a suitable one.\n");
+                        printf("PTB-INFO: If you record any sound, or the software appears to be hanging, then that is likely\n");
+                        printf("PTB-INFO: the reason - capturing from a connected display device without any microphone.\n");
+                        printf("PTB-INFO: See 'PsychPortAudio GetDevices?' for available devices.\n");
                     }
                 }
 
