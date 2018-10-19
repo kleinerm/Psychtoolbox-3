@@ -1659,6 +1659,7 @@ const char* PsychSupportStatus(void)
 
     if (isSupported == -1) {
         // First call: Do the query!
+        char codename[15];
 
         // Query info about Windows version:
         memset(&osvi, 0, sizeof(OSVERSIONINFO));
@@ -1674,6 +1675,28 @@ const char* PsychSupportStatus(void)
             osvi.dwMinorVersion = 0;
         }
 
+        // Map version code to marketing product name:
+        if (osvi.dwMajorVersion == 4)
+            sprintf(codename, "NT");
+        else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 0)
+            sprintf(codename, "2000");
+        else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 1)
+            sprintf(codename, "XP");
+        else if (osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2)
+            sprintf(codename, "Server 2003");
+        else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 0)
+            sprintf(codename, "Vista");
+        else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 1)
+            sprintf(codename, "7");
+        else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 2)
+            sprintf(codename, "8");
+        else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 3)
+            sprintf(codename, "8.1");
+        else if (osvi.dwMajorVersion == 10 && osvi.dwMinorVersion == 0)
+            sprintf(codename, "10");
+        else
+            sprintf(codename, "");
+
         // It is a Vista or later if major version is equal to 6 or higher:
         // 6.0  = Vista, 6.1 = Windows-7, 6.2 = Windows-8, 6.3 = Windows-8.1, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
         // 10.0 = Windows-10
@@ -1681,10 +1704,10 @@ const char* PsychSupportStatus(void)
 
         if (isSupported) {
             // Windows-10 is fully supported, earlier Windows only partially:
-            sprintf(statusString, "Windows version %i.%i %s.", osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMajorVersion == 10) ? "supported and tested to some limited degree" : "partially supported, but no longer tested at all");
+            sprintf(statusString, "Windows %s (Version %i.%i) %s.", codename, osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMajorVersion == 10) ? "supported and tested to some limited degree" : "partially supported, but no longer tested at all");
         }
         else {
-            sprintf(statusString, "Windows version %i.%i is not supported.", osvi.dwMajorVersion, osvi.dwMinorVersion);
+            sprintf(statusString, "Windows %s (Version %i.%i) is not supported.", codename, osvi.dwMajorVersion, osvi.dwMinorVersion);
         }
     }
 
