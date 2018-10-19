@@ -52,6 +52,15 @@
 typedef void (*PaUtilLogCallback ) (const char *log);
 void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+// Dummy implementation, as many libportaudio.so implementations seem to lack this function :(:
+void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
+{
+    (void) cb;
+    return;
+}
+#endif
+
 // Forward define of prototype of our own custom new PortAudio extension function for Zero latency direct input monitoring:
 PaError Pa_DirectInputMonitoring(PaStream *stream, int enable, int inputChannel, int outputChannel, double gain, double pan);
 
