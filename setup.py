@@ -4,7 +4,7 @@
 #
 
 from distutils.core import setup, Extension # Build system.
-import os, fnmatch                          # Directory traversal, file list building.
+import os, fnmatch, shutil                  # Directory traversal, file list building.
 import platform                             # OS detection.
 import sys                                  # cpu arch detection.
 import numpy                                # To get include dir on macOS.
@@ -109,6 +109,12 @@ if platform.system() == 'Windows':
     # Extra files needed, e.g., libraries.
     # The 64-Bit portaudio dll for PsychPortAudio and libusb1 dll for PsychHID:
     extra_files = {'psychtoolbox' : ['portaudio_x64.dll', 'libusb-1.0.dll']};
+
+    # These extra files must be in the PsychPython folder that defines our
+    # 'psychtoolbox' package. Copy them temporarily from their actual locations
+    # in Psychtoolbox to that folder:
+    shutil.copy('Psychtoolbox/PsychSound/portaudio_x64.dll', 'PsychPython/');
+    shutil.copy('Psychtoolbox/PsychContributed/libusb-1.0.dll', 'PsychPython/');
 
 if platform.system() == 'Darwin':
     print('Building for macOS...\n');
@@ -230,3 +236,9 @@ setup (name = 'psychtoolbox',
        ext_package= 'psychtoolbox',
        ext_modules = [WaitSecs, GetSecs, IOPort, PsychHID, PsychPortAudio]
       )
+
+if platform.system() == 'Windows':
+    # Get rid of the now no longer needed copies of dll's inside PsychPython,
+    # now that setup() has already copied them into the distribution.
+    os.remove('PsychPython/portaudio_x64.dll');
+    os.remove('PsychPython/libusb-1.0.dll');
