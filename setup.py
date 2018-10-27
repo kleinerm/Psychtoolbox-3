@@ -28,14 +28,14 @@ def get_basemacros(name, osname):
     return([('PTBMODULE_' + name, None), ('PTBMODULENAME', name)] + base_macros);
 
 def get_baseincludedirs(name, osname):
-    return(['Common/' + name] + baseincludes_common + [osname + '/Base'] + [osname + '/' + name]);
+    return(['PsychSourceGL/Source/Common/' + name] + baseincludes_common + ['PsychSourceGL/Source/' + osname + '/Base'] + ['PsychSourceGL/Source/' + osname + '/' + name]);
 
 def get_basesources(name, osname):
     extrafiles = [];
-    if os.access('./' + osname + '/' + name, os.F_OK):
-         extrafiles = get_sourcefiles('./' + osname + '/' + name);
+    if os.access('./PsychSourceGL/Source/' + osname + '/' + name, os.F_OK):
+         extrafiles = get_sourcefiles('./PsychSourceGL/Source/' + osname + '/' + name);
 
-    return(basefiles_common + get_sourcefiles('./' + osname + '/Base/') + get_sourcefiles('./Common/' + name) + extrafiles);
+    return(basefiles_common + get_sourcefiles('./PsychSourceGL/Source/' + osname + '/Base/') + get_sourcefiles('./PsychSourceGL/Source/Common/' + name) + extrafiles);
 
 # Treating some special cases like Octave seems to be the right thing to do,
 # PSYCH_LANGUAGE setting is self-explanatory:
@@ -46,8 +46,8 @@ base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON')];
 #base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON'), ('Py_LIMITED_API', None)];
 
 # Common infrastructure and the scripting glue module for interfacing with the Python runtime:
-basefiles_common = get_sourcefiles('./Common/Base') + ['Common/Base/PythonGlue/PsychScriptingGluePython.c'];
-baseincludes_common = [numpy.get_include(), 'Common/Base', 'Common/Screen'];
+basefiles_common = get_sourcefiles('./PsychSourceGL/Source/Common/Base') + ['PsychSourceGL/Source/Common/Base/PythonGlue/PsychScriptingGluePython.c'];
+baseincludes_common = [numpy.get_include(), 'PsychSourceGL/Source/Common/Base', 'PsychSourceGL/Source/Common/Screen'];
 
 is_64bits = sys.maxsize > 2**32;
 
@@ -68,9 +68,9 @@ if platform.system() == 'Linux':
 
     # Static linking for audio_objects aka libportaudio.a no longer used as of v3.0.15:
     #if is_64bits == True:
-    #    audio_objects = ['../Cohorts/PortAudio/libportaudio64Linux.a'];
+    #    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio64Linux.a'];
     #else:
-    #    audio_objects = ['../Cohorts/PortAudio/libportaudio32Linux.a'];
+    #    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio32Linux.a'];
     audio_objects = [];
 
     # libusb includes:
@@ -92,17 +92,17 @@ if platform.system() == 'Windows':
     base_compile_args = [];
 
     # Extra OS specific libs for PsychPortAudio:
-    audio_libdirs = ['../Cohorts/PortAudio'];
+    audio_libdirs = ['PsychSourceGL/Cohorts/PortAudio'];
     audio_extralinkargs = []; # No runtime delay loading atm. No benefit with current packaging method: ['/DELAYLOAD:portaudio_x64.dll'];
     audio_libs = ['delayimp', 'portaudio_x64'];
     audio_objects = [];
 
     # libusb includes:
-    usb_includes = ['../Cohorts/libusb1-win32/include/libusb-1.0']
+    usb_includes = ['PsychSourceGL/Cohorts/libusb1-win32/include/libusb-1.0']
 
     # Extra OS specific libs for PsychHID:
     psychhid_includes = usb_includes;
-    psychhid_libdirs = ['../Cohorts/libusb1-win32/MS64/dll'];
+    psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS64/dll'];
     psychhid_libs = ['dinput8', 'libusb-1.0', 'setupapi'];  
     psychhid_extra_objects = [];
 
@@ -151,14 +151,14 @@ if platform.system() == 'Darwin':
     audio_extralinkargs = [];
     audio_libs = [];
     # Include our statically linked on-steroids version of PortAudio:
-    audio_objects = ['../Cohorts/PortAudio/libportaudio_osx_64.a'];
+    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio_osx_64.a'];
 
     # Include Apples open-source HID Utilities for all things USB-HID device handling:
-    psychhid_includes = ['../Cohorts/HID_Utilities_64Bit/', '../Cohorts/HID_Utilities_64Bit/IOHIDManager'];
+    psychhid_includes = ['PsychSourceGL/Cohorts/HID_Utilities_64Bit/', 'PsychSourceGL/Cohorts/HID_Utilities_64Bit/IOHIDManager'];
     psychhid_libdirs = [];
     psychhid_libs = [];
     # Extra objects for PsychHID - statically linked HID utilities:
-    psychhid_extra_objects = ['../Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a'];
+    psychhid_extra_objects = ['PsychSourceGL/Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a'];
 
     # Extra files needed, e.g., libraries:
     extra_files = {};
@@ -222,7 +222,7 @@ setup (name = 'Psychtoolbox4Python',
        version = '0.1',
        description = 'Psychtoolbox-3 mex files ported to CPython extension modules.',
        packages = ['Psychtoolbox4Python'],
-       package_dir = {'Psychtoolbox4Python' : '../../PsychPython'},
+       package_dir = {'Psychtoolbox4Python' : 'PsychPython'},
        package_data = extra_files,
        ext_package= 'Psychtoolbox4Python',
        ext_modules = [WaitSecs, GetSecs, IOPort, PsychHID, PsychPortAudio]
