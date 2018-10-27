@@ -2046,8 +2046,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     static char seeAlsoString[] = "Close GetDeviceSettings ";
 
-    int outputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
-    int inputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
     int freq, buffersize, latencyclass, mode, deviceid, i, numel, specialFlags;
     int* nrchannels;
     int  mynrchannels[2];
@@ -2075,6 +2073,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
     #endif
 
     #ifdef PA_ASIO_H
+        int outputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
+        int inputmappings[MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE];
         PaAsioStreamInfo inasioapisettings;
         PaAsioStreamInfo outasioapisettings;
     #endif
