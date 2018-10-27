@@ -64,12 +64,14 @@ if platform.system() == 'Linux':
     # Extra OS specific libs for PsychPortAudio:
     audio_libdirs = [];
     audio_extralinkargs = [];
-    audio_libs = ['asound'];
+    audio_libs = ['portaudio', 'asound']; # Note: libasound not really needed for dynamic link of libportaudio.so.
 
-    if is_64bits == True:
-        audio_objects = ['../Cohorts/PortAudio/libportaudio64Linux.a'];
-    else:
-        audio_objects = ['../Cohorts/PortAudio/libportaudio32Linux.a'];
+    # Static linking for audio_objects aka libportaudio.a no longer used as of v3.0.15:
+    #if is_64bits == True:
+    #    audio_objects = ['../Cohorts/PortAudio/libportaudio64Linux.a'];
+    #else:
+    #    audio_objects = ['../Cohorts/PortAudio/libportaudio32Linux.a'];
+    audio_objects = [];
 
     # libusb includes:
     usb_includes = ['/usr/include/libusb-1.0'];
