@@ -5,7 +5,7 @@
 #
 # Usage in Python script/module:
 #
-#           from Psychtoolbox4Python import *
+#           from psychtoolbox import *
 #
 # Copyright (c) 2018 Mario Kleiner. Licensed under MIT license.
 #

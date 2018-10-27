@@ -108,7 +108,7 @@ if platform.system() == 'Windows':
 
     # Extra files needed, e.g., libraries.
     # The 64-Bit portaudio dll for PsychPortAudio and libusb1 dll for PsychHID:
-    extra_files = {'Psychtoolbox4Python' : ['portaudio_x64.dll', 'libusb-1.0.dll']};
+    extra_files = {'psychtoolbox' : ['portaudio_x64.dll', 'libusb-1.0.dll']};
 
 if platform.system() == 'Darwin':
     print('Building for macOS...\n');
@@ -218,12 +218,15 @@ IOPort = Extension(name,
                    libraries = base_libs
                   )
 
-setup (name = 'Psychtoolbox4Python',
-       version = '0.1',
-       description = 'Psychtoolbox-3 mex files ported to CPython extension modules.',
-       packages = ['Psychtoolbox4Python'],
-       package_dir = {'Psychtoolbox4Python' : 'PsychPython'},
+setup (name = 'psychtoolbox',
+       version = '3.0.15',
+       description = 'Pieces of Psychtoolbox-3 ported to CPython.',
+       author = 'Mario Kleiner',
+       author_email = 'mario.kleiner.de@gmail.com',
+       url = 'http://psychtoolbox.org',
+       packages = ['psychtoolbox'],
+       package_dir = {'psychtoolbox' : 'PsychPython'},
        package_data = extra_files,
-       ext_package= 'Psychtoolbox4Python',
+       ext_package= 'psychtoolbox',
        ext_modules = [WaitSecs, GetSecs, IOPort, PsychHID, PsychPortAudio]
       )

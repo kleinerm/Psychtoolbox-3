@@ -8,7 +8,7 @@
 #
 # (c) 2018 Mario Kleiner - Licensed under MIT license.
 
-from Psychtoolbox4Python import *
+from psychtoolbox import *
 from math import *
 import numpy as np
 #from soundfile import SoundFile
