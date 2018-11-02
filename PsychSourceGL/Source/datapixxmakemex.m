@@ -48,6 +48,15 @@ function datapixxmakemex()
         S = [S ' -I' PTBDIR 'PsychSourceGL/Source/Linux/Base'];
         S = [S ' -I' PTBDIR 'PsychSourceGL/Source/Linux/Screen'];
     elseif (IsWin)
+        if ~IsOctave
+            % Include this folder only on Matlab (or other MSVC builds). It contains a stdint.h file
+            % previously located in the src/ folder directly. This stdint.h file lacks definitions of
+            % int32_t, int64_t et al., but overrides Octave's / MinGW's stdint.h files which do define
+            % those needed data types! Strangely this override was never a problem on Octave 4.2.x and
+            % earlier. Apparently the type defines came from an alternate source, but i could not track
+            % it down in multiple hours, so screw this - a hack it is :(
+            S = [S ' -I' VPIXXDIR 'VPixx_Software_Tools/libusb_win32/libusb-win32-src-0.1.12.2/src/include'];
+        end
         S = [S ' -I' VPIXXDIR 'VPixx_Software_Tools/libusb_win32/libusb-win32-src-0.1.12.2/src'];
         S = [S ' -I' PTBDIR 'PsychSourceGL/Source/Windows/Base'];
         S = [S ' -I' PTBDIR 'PsychSourceGL/Source/Windows/Screen'];
