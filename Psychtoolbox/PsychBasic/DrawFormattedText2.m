@@ -4,7 +4,7 @@ function [nx, ny, textbounds, cache, wordbounds] = DrawFormattedText2(varargin)
 % [nx, ny, textbounds, cache, wordbounds] = DrawFormattedText2(cache, key-value pairs)
 % 
 % When called with a string, the following key-value pairs are understood:
-% win [, sx][, sy][, xalign][, yalign][, xlayout][, color][, wrapat][, transform][, vSpacing][, righttoleft][, winRect][, resetStyle][, cacheOnly]
+% win [, sx][, sy][, xalign][, yalign][, xlayout][, baseColor][, wrapat][, transform][, vSpacing][, righttoleft][, winRect][, resetStyle][, cacheOnly]
 % Those enclosed in square braces are optional.
 % 
 % When called with a cache struct, the following optional key-value pair
@@ -1352,6 +1352,8 @@ else
     % Keep current text color if none provided:
     if isempty(opt.baseColor)
         opt.baseColor = Screen('TextColor', opt.win);
+    else
+        opt.baseColor = opt.baseColor(:).'; % ensure row vector
     end
     
     % No text wrapping by default:
