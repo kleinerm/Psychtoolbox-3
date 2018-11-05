@@ -45,6 +45,89 @@
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 #include "pa_linux_alsa.h"
+
+// Pseudo-Defines of Portaudio internal structs, mimicking the memory layout
+// of the true Portaudio internal structs just enough so that we can cast a PaStream*
+// into a PaAlsaStream*, then access a stream-internal variable of the buffer-processor
+// and fudge with it in the most hackish and puke inducing way to work around a bug
+// present in the audio-capture only mode setup code (ie. no playback) inside the ALSA
+// backend since 24th May 2009! This over 9 years old bug causes massive distortion if
+// one only uses audio-capture, but no playback or full-duplex mode.
+//
+// A clean way of fixing this will be to get a fix into upstream, but we need to support
+// all the existing libportaudio implementations in all Linux distributions from 2009 to
+// 2019. The only option for shipping distros therefore would be to go back to static
+// linking against our own bug-fixed variant of libportaudio, but i haven't spent the
+// better part of a week to get us to finally be able to drop our own private libportaudio
+// builds, just to reintroduce them now! Therefore ugly hack it is...
+
+typedef enum {
+    paUtilFixedHostBufferSize,
+    paUtilBoundedHostBufferSize,
+    paUtilUnknownHostBufferSize,
+    paUtilVariableHostBufferSizePartialUsageAllowed
+} PaUtilHostBufferSizeMode;
+
+typedef struct {
+    unsigned long framesPerUserBuffer;
+    unsigned long framesPerHostBuffer;
+
+    PaUtilHostBufferSizeMode hostBufferSizeMode;
+    int useNonAdaptingProcess;
+    int userOutputSampleFormatIsEqualToHost;
+    int userInputSampleFormatIsEqualToHost;
+    unsigned long framesPerTempBuffer;
+
+    unsigned int inputChannelCount;
+    unsigned int bytesPerHostInputSample;
+    unsigned int bytesPerUserInputSample;
+    int userInputIsInterleaved;
+    // More stuff follows in real data struct...
+} PseudoBufferProcessor;
+
+typedef struct {
+    double samplingPeriod;
+    double measurementStartTime;
+    double averageLoad;
+} PseudoCpuLoadMeasurer;
+
+#define PA_STREAM_MAGIC (0x18273645)
+
+typedef struct PseudoStreamRepresentation {
+    unsigned long magic;    /**< set to PA_STREAM_MAGIC */
+    struct PseudoStreamRepresentation *nextOpenStream; /**< field used by multi-api code */
+    void *streamInterface;
+    void *streamCallback;
+    void *streamFinishedCallback;
+    void *userData;
+    PaStreamInfo streamInfo;
+} PseudoStreamRepresentation;
+
+typedef struct PseudoStreamRepresentationExt {
+    unsigned long magic;    /**< set to PA_STREAM_MAGIC */
+    struct PseudoStreamRepresentationExt *nextOpenStream; /**< field used by multi-api code */
+    void *streamInterface;
+    void *streamCallback;
+    void *streamFinishedCallback;
+    void *userData;
+    PaStreamInfo streamInfo;
+    PaHostApiTypeId hostApiType;
+} PseudoStreamRepresentationExt;
+
+typedef struct PseudoAlsaStream {
+    PseudoStreamRepresentation streamRepresentation;
+    PseudoCpuLoadMeasurer cpuLoadMeasurer;
+    PseudoBufferProcessor bufferProcessor;
+    // More stuff follows in real data struct...
+} PseudoAlsaStream;
+
+typedef struct PseudoAlsaStreamExt {
+    PseudoStreamRepresentationExt streamRepresentation;
+    PseudoCpuLoadMeasurer cpuLoadMeasurer;
+    PseudoBufferProcessor bufferProcessor;
+    // More stuff follows in real data struct...
+} PseudoAlsaStreamExt;
+
 #endif
 
 // Need to define these as they aren't defined in portaudio.h
@@ -2820,8 +2903,70 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     #if PSYCH_SYSTEM == PSYCH_LINUX
         // Enable realtime scheduling for the portaudio audio processing thread on ALSA:
-        if (audiodevices[id].hostAPI == paALSA)
+        if (audiodevices[id].hostAPI == paALSA) {
             PaAlsa_EnableRealtimeScheduling(audiodevices[id].stream, 1);
+
+            // Is a hack-fix needed for a bug present in all versions of libportaudio
+            // earlier than 19.7? The bug triggers in pure half-duplex audio capture
+            // mode (== no playback requested) and consists of erroneously switching
+            // the hostBufferSizeMode of the PaBufferProcessor for capture streams from
+            // paUtilFixedHostBufferSize to paUtilBoundedHostBufferSize, causing
+            // misconversion of captured audio somewhere in the bufferProcessor.
+            //
+            // The offending (buggy) if () conditional is at the end of the function
+            // PaAlsaStream_DetermineFramesPerBuffer() inside pa_linux_alsa.c. It looks
+            // like this: if( !self->playback.canMmap || !accurate ) ..., when it should look
+            // like this: if((!self->playback.canMmap && self->playback.pcm) || !accurate ) ...
+            // in order to prevent the invalid !self->playback.canMmap check, which always
+            // evaluates to "true" if playback is not actually used in pure capture mode.
+            //
+            // We can't prevent the mis-setting of hostBufferSizeMode to paUtilBoundedHostBufferSize,
+            // but we can reset it to the correct paUtilFixedHostBufferSize after Pa_OpenStream()
+            // and before actual start of capture operations, by hacking ourselves into the internal
+            // data structure of the PaBufferProcessor associated with the audio stream.
+            //
+            // We don't apply the fix if usercode specified a buffersize other than
+            // the default paFramesPerBufferUnspecified -- in such a case, switching
+            // to a different hostBufferSizeMode may be required...
+            if (((mode & kPortAudioFullDuplex) == kPortAudioCapture) &&
+                (buffersize == paFramesPerBufferUnspecified) &&
+                (Pa_GetVersion() < paMakeVersionNumber(19,6,1))) {
+                PseudoBufferProcessor* bp;
+
+                // Cast PaStream* into ALSA backend specific AlsaStream*, using the pseudo-
+                // datastructures defined to mimick PortAudio 19.6.0 an earliers true internal
+                // structures:
+                PseudoAlsaStreamExt* myalsaext = (PseudoAlsaStreamExt*) audiodevices[id].stream;
+                if ((myalsaext->streamRepresentation.magic == PA_STREAM_MAGIC) &&
+                    (myalsaext->streamRepresentation.hostApiType == paALSA)) {
+                    bp = &myalsaext->bufferProcessor;
+                    if (verbosity > 5)
+                        printf("PTB-DEBUG: Probed PaAlsaStream struct is from patched portaudio with portmixer.patch (Ubuntu style).\n");
+                }
+                else {
+                    PseudoAlsaStream* myalsa = (PseudoAlsaStream*) audiodevices[id].stream;
+                    if (myalsa->streamRepresentation.magic == PA_STREAM_MAGIC) {
+                        bp = &myalsa->bufferProcessor;
+                        if (verbosity > 5)
+                            printf("PTB-DEBUG: Probed PaAlsaStream struct is from vanilla upstream portaudio.\n");
+                    }
+                    else {
+                        bp = NULL;
+                        if (verbosity > 1)
+                            printf("PTB-WARNING: Probing PaAlsaStream struct failed! Can't apply half-duplex capture bug workaround for Portaudio v19.6.0!\n");
+                    }
+                }
+
+                // Additional sanity check if we got the casting right, and if our fix-hack is applicable:
+                if (bp && (bp->hostBufferSizeMode == paUtilBoundedHostBufferSize)) {
+                    // Reset to sane mode:
+                    bp->hostBufferSizeMode = paUtilFixedHostBufferSize;
+
+                    if (verbosity > 3)
+                        printf("PTB-INFO: Applying paUtilFixedHostBufferSize workaround for pure half-duplex capture mode.\n");
+                }
+            }
+        }
     #endif
 
     if (verbosity > 3) {
