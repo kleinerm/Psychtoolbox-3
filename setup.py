@@ -58,20 +58,20 @@ if platform.system() == 'Linux':
     print('Building for Linux...\n');
     osname = 'Linux';
     # All libraries to link to all modules:
-    base_libs = ['c', 'rt'];
+    base_libs = ['c', 'rt', 'dl'];
     # No "no reproducible builds" warning:
     base_compile_args = ['-Wno-date-time'];
     # Extra OS specific libs for PsychPortAudio:
     audio_libdirs = [];
     audio_extralinkargs = [];
-    audio_libs = ['portaudio', 'asound']; # Note: libasound not really needed for dynamic link of libportaudio.so.
+    audio_libs = ['portaudio', 'asound'];
+    audio_objects = [];
 
     # Static linking for audio_objects aka libportaudio.a no longer used as of v3.0.15:
     #if is_64bits == True:
     #    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio64Linux.a'];
     #else:
     #    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio32Linux.a'];
-    audio_objects = [];
 
     # libusb includes:
     usb_includes = ['/usr/include/libusb-1.0'];

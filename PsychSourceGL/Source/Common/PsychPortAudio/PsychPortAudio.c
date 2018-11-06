@@ -45,6 +45,15 @@
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 #include "pa_linux_alsa.h"
+#include <alsa/asoundlib.h>
+#include <dlfcn.h>
+
+void (*myjack_set_error_function)(void(*)(const char *)) = NULL;
+
+// Dummy error handler to swallow pointless ALSA debug/warning/errr messages, if handler is attached:
+static void ALSAErrorHandler(const char *file, int line, const char *function, int err, const char *fmt, ...)
+{
+}
 
 // Pseudo-Defines of Portaudio internal structs, mimicking the memory layout
 // of the true Portaudio internal structs just enough so that we can cast a PaStream*
@@ -136,10 +145,17 @@ typedef void (*PaUtilLogCallback ) (const char *log);
 void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
-// Dummy implementation, as many libportaudio.so implementations seem to lack this function :(:
+void (*myPaUtil_SetDebugPrintFunction)(PaUtilLogCallback  cb) = NULL;
+
+// Wrapper implementation, as many libportaudio.so implementations seem to lack this function :(:
 void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
 {
-    (void) cb;
+    // Try to get function dynamically:
+    myPaUtil_SetDebugPrintFunction = dlsym(RTLD_NEXT, "PaUtil_SetDebugPrintFunction");
+
+    if (myPaUtil_SetDebugPrintFunction)
+        myPaUtil_SetDebugPrintFunction(cb);
+
     return;
 }
 #endif
@@ -1958,6 +1974,15 @@ PsychError PsychPortAudioExit(void)
         // Detach our callback function for low-level debug output:
         PaUtil_SetDebugPrintFunction(NULL);
 
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+            // Disable ALSA error handler:
+            snd_lib_error_set_handler(NULL);
+            if (myjack_set_error_function) {
+                myjack_set_error_function(NULL);
+                myjack_set_error_function = NULL;
+            }
+        #endif
+
         // Restart suspended PulseAudio server if it was suspended by us:
         if (pulseaudio_isSuspended) {
             int rc = 0;
@@ -2024,6 +2049,27 @@ void PsychPortAudioInitialize(void)
         // Setup callback function for low-level debug output:
         PaUtil_SetDebugPrintFunction(PALogger);
 
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+            // Set an error handler for ALSA debug output/errors to stop the spewage of utterly
+            // pointless ALSA warning messages to stderr. At verbosity <= 5 we sent ALSA chatter
+            // to a dummy error handler. At levels > 5 we disable our error handler, so ALSA
+            // chatter goes to stderr. The same is true for the JACK backend, which does only
+            // set its own error callback if it makes it through initialization in Pa_Initialize().
+            // During the attempt to connect to the Jack server, it doesn't set its own callback,
+            // so all error output during jack_client_open() spills into our stderr console -
+            // and considerable pointless spillage there is :( -- Try to set our own override
+            // just for the time during Pa_Initialize() -- it will get overriden, but at least
+            // prevent the ugly spillage during startup:
+            myjack_set_error_function = dlsym(RTLD_DEFAULT, "jack_set_error_function");
+            if (myjack_set_error_function)
+                myjack_set_error_function(PALogger);
+
+            if (verbosity <= 5)
+                snd_lib_error_set_handler(ALSAErrorHandler);
+            else
+                snd_lib_error_set_handler(NULL);
+        #endif
+
         if ((err=Pa_Initialize())!=paNoError) {
             printf("PTB-ERROR: Portaudio initialization failed with following port audio error: %s \n", Pa_GetErrorText(err));
             PaUtil_SetDebugPrintFunction(NULL);
@@ -2031,7 +2077,7 @@ void PsychPortAudioInitialize(void)
         }
         else {
             if(verbosity>2) {
-                printf("PTB-INFO: Using specially modified PortAudio engine, based on offical version: %s\n", Pa_GetVersionText());
+                printf("PTB-INFO: Using modified %s\n", Pa_GetVersionText());
             }
         }
 
@@ -2795,11 +2841,17 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // Check if the requested sample format and settings are likely supported by Audio API:
     err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
     if (err != paNoError && err != paDeviceUnavailable) {
-        printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device. PortAudio reports this error: %s \n", deviceid, Pa_GetErrorText(err));
-        printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel allocation, or audio sample format.\n");
+        printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device: %s \n", deviceid, Pa_GetErrorText(err));
+        if (err == paInvalidSampleRate)
+            printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
+        else if (err == paInvalidChannelCount)
+            printf("PTB-ERROR: Seems the requested number of audio channels is not supported by this combo of hardware and sound driver.\n");
+        else
+            printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel count/allocation, or audio sample format.\n");
+
         if (PSYCH_SYSTEM == PSYCH_LINUX)
             printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
-        PsychErrorExitMsg(PsychError_system, "Failed to open PortAudio audio device due to unsupported combination of audio parameters.");
+        PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters.");
     }
 
     // Try to create & open stream:
@@ -2962,7 +3014,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                     // Reset to sane mode:
                     bp->hostBufferSizeMode = paUtilFixedHostBufferSize;
 
-                    if (verbosity > 3)
+                    if (verbosity > 4)
                         printf("PTB-INFO: Applying paUtilFixedHostBufferSize workaround for pure half-duplex capture mode.\n");
                 }
             }
@@ -5237,7 +5289,20 @@ PsychError PSYCHPORTAUDIOVerbosity(void)
     PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) verbosity);
 
     // Set new level, if one was provided:
-    if (level > -1) verbosity = level;
+    if (level > -1) {
+        verbosity = level;
+
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+            // Set an error handler for ALSA debug output/errors to stop the spewage of utterly
+            // pointless ALSA warning messages to stderr. At verbosity <= 5 we sent ALSA chatter
+            // to a dummy error handler. At levels > 5 we disable our error handler, so ALSA
+            // chatter goes to stderr...
+            if (verbosity <= 5)
+                snd_lib_error_set_handler(ALSAErrorHandler);
+            else
+                snd_lib_error_set_handler(NULL);
+        #endif
+    }
 
     return(PsychError_none);
 }
