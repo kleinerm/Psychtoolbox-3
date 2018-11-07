@@ -2175,7 +2175,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     static char seeAlsoString[] = "Close GetDeviceSettings ";
 
-    int freq, buffersize, latencyclass, mode, deviceid, i, numel, specialFlags;
+    int buffersize, latencyclass, mode, deviceid, i, numel, specialFlags;
+    double freq;
     int* nrchannels;
     int  mynrchannels[2];
     int  m, n, p;
@@ -2412,8 +2413,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
     }
 
     // Request optional frequency:
-    PsychCopyInIntegerArg(4, kPsychArgOptional, &freq);
-    if (freq < 0 || freq > 200000) PsychErrorExitMsg(PsychError_user, "Invalid frequency provided. Valid values are 0 to 200000 Hz.");
+    PsychCopyInDoubleArg(4, kPsychArgOptional, &freq);
+    if (freq < 0) PsychErrorExitMsg(PsychError_user, "Invalid frequency provided. Must be greater than 0 Hz, or 0 for auto-select.");
 
     // Request optional number of channels:
     numel = 0; nrchannels = NULL;
@@ -2725,7 +2726,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
         // No specific frequency requested:
         if (latencyclass < 3) {
             // At levels < 3, we select the device specific default.
-            freq = (int) referenceDevInfo->defaultSampleRate;
+            freq = referenceDevInfo->defaultSampleRate;
         }
         else {
             freq = 96000; // Go really high...
