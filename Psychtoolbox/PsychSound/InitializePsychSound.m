@@ -12,17 +12,18 @@ function InitializePsychSound(reallyneedlowlatency)
 % the lowest possible latency and highest timing precision after this
 % initialization.
 %
-% On Microsoft Windows, things are more complicated and painful as always:
+% On Microsoft Windows, things are a bit more complicated:
 %
 % PsychPortAudio on Windows supports three different Windows sound systems,
-% MME, DirectSound and ASIO. Only ASIO is suitable for research grade
+% MME, WDM/KS and WASAPI. Only WDM/KS and WASAPI are suitable for research grade
 % auditory stimulation with support for multi-channel sound cards and for
 % high-precision and low-latency sound timing and time-stamping. If you
 % want reliable timing and time-stamping with latencies and accuracy better
-% than 500 msecs, you *must* have a decent ASIO sound card with proper
-% vendor supplied ASIO drivers installed in your computer. A regular card,
-% for example built-in sound chips of your computer, will not suffice and
-% we will not guarantee any reasonable timing precision at all!
+% than 500 msecs, you *must* use one of these. By default in low latency mode,
+% WASAPI is used on Windows Vista and later, whereas WDM/KS would be used on
+% older Windows versions. WDM/KS is completely untested so far, and WASAPI has
+% only been tested on Windows 7 and Windows 10. For best results, use of Windows 10
+% is recommended.
 %
 % Disclaimer: "ASIO is a trademark and software of Steinberg Media
 % Technologies GmbH."
@@ -34,37 +35,13 @@ function InitializePsychSound(reallyneedlowlatency)
 % what license requirements you have to obey to use it.
 %
 % The Windows MME (MultiMediaExtensions) sound system has typical latencies
-% and inaccuracies in excess of 500 msecs, and the slightly better
-% DirectSound sound system still has a typical latency of over 30
-% milliseconds. Both systems are known to be buggy and unreliable wrt.
-% timing on many systems.
+% and inaccuracies in excess of 500 msecs. WASAPI can achieve latencies as low
+% as 10 msecs on onboard sound chips on Windows-10, and maybe Windows 8.1. On
+% Windows 7 latencies around 20 msecs are possible.
 %
-% The ASIO sound system provided by professional class sound cards usually
-% has excellent timing precision and latencies below 15 msecs, often as low
-% as 5 msecs for pro hardware. If you need really low latency or high
-% precision sound on Windows, ASIO is what you must use: Some (usually more
-% expensive) professional class sound cards ship with ASIO enabled sound
-% drivers, or at least there's such a driver available from the support
-% area of the website of your sound card vendor.
-%
-% For cards without native ASIO drivers, there's the free ASIO4ALL driver,
-% downloadable from http://asio4all.com, which may or may not work well on
-% your specific sound card - The driver emulates the ASIO interface on top
-% of the WDM-KS (Windows Driver Model Kernel Streaming) API from Microsoft,
-% so the quality depends on the underlying WDM driver. For research grade
-% use, please do yourself a favor and invest in a real ASIO card.
-%
-% If you manage to get such an ASIO enabled sound driver working on your
-% sound hardware, and your ASIO enabled driver and sound card are of
-% sufficiently high quality, you can enjoy latencies as low as 5 msecs and
-% a sound onset accuracy with a standard deviation from the mean of less
-% than 0.1 milliseconds on MS-Windows - We measured around 20 microseconds
-% on some setups, e.g., the M-Audio Delta 1010-LT soundcard under
-% Windows-XP SP2.
-%
-% Using OS/X or Linux will usually get you comparably good or better
-% results with most standard sound hardware, due to the technically
-% superior sound systems of these operating systems.
+% Using OSX or Linux will usually get you at least as good, or usually better,
+% results with most standard sound hardware, due to the technically superior
+% sound systems of these operating systems.
 %
 
 % History:
