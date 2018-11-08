@@ -211,10 +211,12 @@ for i=1:nTrials
     if exactstart
         % Schedule start of audio at exactly 'waitTime' seconds ahead:
         PsychPortAudio('Start', pahandle, 1, GetSecs + waitTime, 0);
+        desired = waitTime;
     else
         % No test of scheduling, but of absolute latency: Start audio
         % playback immediately:
         PsychPortAudio('Start', pahandle, 1, 0, 0);
+        desired = 0;
     end
 
     if 0
@@ -241,7 +243,7 @@ for i=1:nTrials
     tPortAudio(i) = status.StartTime; %#ok<AGROW>
     tDataPixx(i)  = tStartBox + measuredAudioDelta; %#ok<AGROW>
 
-    fprintf('Buffersize %i, xruns = %i, playpos = %6.6f secs, measured audio onset error = %6.1f msecs\n', status.BufferSize, status.XRuns, status.PositionSecs, 1000 * measuredAudioDelta);
+    fprintf('Buffersize %i, xruns = %i, playpos = %6.6f secs, measured audio onset delay = %6.1f msecs vs. desired %6.1f\n', status.BufferSize, status.XRuns, status.PositionSecs, 1000 * measuredAudioDelta, 1000 * desired);
 
     if 0
         figure;
