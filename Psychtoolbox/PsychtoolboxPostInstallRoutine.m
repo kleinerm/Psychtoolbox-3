@@ -693,10 +693,11 @@ fprintf('source code, please type "help UseTheSource" for specific download inst
 fprintf('BEGINNERS READ THIS:\n');
 fprintf('--------------------\n\n');
 fprintf('If you are new to the Psychtoolbox, you might try this: \nhelp Psychtoolbox\n\n');
-fprintf('Psychtoolbox website:\n');
+fprintf('Psychtoolbox website, which also links to a tutorial for basic use cases:\n');
 fprintf('web http://www.psychtoolbox.org -browser\n');
 fprintf('\n');
 fprintf('Please make sure that you have a look at the PDF file Psychtoolbox3-Slides.pdf\n');
+fprintf('and also the more detailed ECVP 2013 tutorial slides PTBTutorial-ECVP2013.pdf\n');
 fprintf('in the Psychtoolbox/PsychDocumentation subfolder for an overview of differences\n');
 fprintf('between Psychtoolbox-2 and Psychtoolbox-3 and proper use of basic features. That\n');
 fprintf('folder contains various additional helpful information for use of Psychtoolbox.\n\n');
