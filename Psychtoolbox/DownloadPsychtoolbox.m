@@ -14,6 +14,9 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % matlab-psychtoolbox-3 instead from http://neuro.debian.net - This is more
 % convenient and will provide you with automatic updates.
 %
+% CAUTION: Psychtoolbox 3.0.14 will not work anymore with OSX versions
+% earlier than 10.11 "El Capitan".
+%
 % CAUTION: Psychtoolbox 3.0.13 will not work anymore with 32-Bit Octave-4
 % on MS-Windows, or with OSX versions earlier than 10.10 "Yosemite".
 % Psychtoolbox will likely work with versions of Microsoft Windows older
