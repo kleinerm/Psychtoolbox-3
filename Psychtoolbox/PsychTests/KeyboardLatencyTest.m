@@ -231,15 +231,18 @@ InitializePsychSound(1);
 
 % Open the default audio device [], with mode 2 (== Only audio capture),
 % and a required latencyclass of two 2 == low-latency mode, as well as
-% a frequency of 44100 Hz and 2 sound channels for stereo capture. We also
+% a default frequency and 2 sound channels for stereo capture. We also
 % set the required latency to a pretty high 20 msecs. Why? Because we don't
 % actually need low-latency here, we only need low-latency mode of
 % operation so we get maximum timing precision -- Therefore we request
 % low-latency mode, but loosen our requirement to 20 msecs.
 %
 % This returns a handle to the audio device:
-freq = 44100;
-pahandle = PsychPortAudio('Open', [], 2, 2, freq, 2, [], 0.02);
+pahandle = PsychPortAudio('Open', [], 2, 2, [], 2, [], 0.02);
+
+% Get what freq'uency we are actually using:
+s = PsychPortAudio('GetStatus', pahandle);
+freq = s.SampleRate;
 
 fprintf('\nPress a key to start the measurement...\n');
 KbStrokeWait;

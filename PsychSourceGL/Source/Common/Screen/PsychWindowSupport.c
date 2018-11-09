@@ -1699,15 +1699,6 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             }
             sync_disaster = true;
         }
-
-        // Another check for proper VBL syncing: We only accept monitor refresh intervals between 20 Hz and 250 Hz.
-        // Lower- / higher values probably indicate sync-trouble...
-        if (ifi_estimate < 0.004 || ifi_estimate > 0.050) {
-            if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("\nWARNING: Measured monitor refresh interval indicates a display refresh of less than 20 Hz or more than 250 Hz?!?\nThis indicates massive problems with VBL sync.\n");
-            }
-            sync_disaster = true;
-        }
     } // End of synctests part II.
 
     // This is a "last resort" fallback: If user requests to *skip* all sync-tests and calibration routines
@@ -3752,7 +3743,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // for Prime-Synced outputSrc -> outputSink setups, as that would add 1 frame extra lag. by preventing
         // us from subitting a swaprequest 1 frame ahead to compensate for the 1 frame lag of Prime sync.
         if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (!osspecific_asyncflip_scheduled) && (windowRecord->hybridGraphics < 2) &&
-            !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) &&
+            !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) && !(PsychPrefStateGet_ConserveVRAM() & kPsychSkipOutOfVblankWait) &&
             ((time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002) || ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0)))) {
             // Less than 2 msecs passed since last bufferswap, although swap in sync with retrace requested.
             // Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
@@ -4812,7 +4803,9 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // in this case tdur will be >> 1 monitor refresh for next iteration. Both samples
                 // will be rejected, so they don't skew the estimate.
                 // But if tdur < 0.004 for multiple consecutive frames, this indicates that
-                // synchronization fails completely and we are just "falling through" glFinish().
+                // synchronization fails completely and we are just "falling through" glFinish(),
+                // unless we are running on a ultra-high video refresh rate display with > 250 Hz refresh,
+                // then all bets are off and we skip this check at the moment.
                 // A fallthroughcount>=10 will therefore abort the measurment-loop and invalidate
                 // the whole result - indicating VBL sync trouble...
                 // We need this additional check, because without it, we could get 1 valid sample with
@@ -4820,7 +4813,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // The 10 ms value is a valid value corresponding to 100 Hz refresh and by coincidence its
                 // the "standard-timeslicing quantum" of the MacOS-X scheduler... ...Wonderful world of
                 // operating system design and unintended side-effects for poor psychologists... ;-)
-                fallthroughcount = (tdur < 0.004) ? fallthroughcount+1 : 0;
+                fallthroughcount = ((tdur < 0.004) && (intervalHint > 0.004 || intervalHint <= 0)) ? fallthroughcount+1 : 0;
 
                 // Shorten our measured time sample by the delay introduced by a potentially running
                 // and interfering compositor, so we discount that confound. Needed, e.g., for Windows DWM
@@ -4829,14 +4822,11 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
                 // We accept the measurement as valid if either no intervalHint is available as reference or
                 // we are in an interval between +/-20% of the hint.
-                // We also check if interval corresponds to a measured refresh between 20 Hz and 250 Hz. Other
-                // values are considered impossible and are therefore rejected...
                 // If we are in OpenGL native stereo display mode, aka temporally interleaved flip-frame stereo,
                 // then we also accept samples that are in a +/-20% rnage around twice the intervalHint. This is,
                 // because in OpenGL stereo mode, some hardware doubles the flip-interval: It only flips every 2nd
                 // video refresh, so a doubled flip interval is a legal valid result.
-                if ((tdur >= 0.004 && tdur <= 0.050) &&
-                    ((intervalHint<=0) || (intervalHint>0 &&
+                if (((intervalHint<=0) || (intervalHint>0 &&
                     (((tdur > 0.8 * intervalHint) && (tdur < 1.2 * intervalHint)) ||
                     (((windowRecord->stereomode==kPsychOpenGLStereo) || (windowRecord->multiSample > 0) || windowRecord->hybridGraphics) &&
                      (tdur > 0.8 * 2 * intervalHint) && (tdur < 1.2 * 2 * intervalHint))
@@ -4850,48 +4840,28 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                     tavgsq = tavgsq + (tdur * tdur);
                     n=windowRecord->nrIFISamples;
                     tstddev = (n>1) ? sqrt( ( tavgsq - ( tavg * tavg / n ) ) / (n-1) ) : 10000.0f;
-
-                    // Update reference timestamp:
-                    told = tnew;
-
-                    // Pause for 2 msecs after a valid sample was taken. This to guarantee we're out
-                    // of the VBL period of the successfull swap.
-                    PsychWaitIntervalSeconds(0.002);
-                }
-                else {
-                    // Rejected sample: Better invalidate told as well:
-                    //told = -1;
-                    // MK: Ok, i have no clue why above told = -1 is wrong, but doing it makes OS/X 10.4.10 much
-                    // more prone to sync failures, whereas not doing it makes it more reliable. Doesn't make
-                    // sense, but we are better off reverting to the old strategy...
-                    // Update: I think i know why. Some (buggy!) drivers, e.g., the ATI Radeon X1600 driver on
-                    // OS/X 10.4.10, do not limit the number of bufferswaps to 1 per refresh cycle as mandated
-                    // by the spec, but they allow as many bufferswaps as you want, as long as all of them happen
-                    // inside the VBL period! Basically the swap-trigger seems to be level-triggered instead of
-                    // edge-triggered. This leads to a ratio of 2 invalid samples followed by 1 valid sample.
-                    // If we'd reset our told at each invalid sample, we would need over 3 times the amount of
-                    // samples for a useable calibration --> No go. Now we wait for 2 msecs after each successfull
-                    // sample (see above), so the VBL period will be over before we manage to try to swap again.
-
-                    // Reinitialize told to tnew, otherwise errors can accumulate:
-                    told = tnew;
-
-                    // Pause for 2 msecs after a valid sample was taken. This to guarantee we're out
-                    // of the VBL period of the successfull swap.
-                    PsychWaitIntervalSeconds(0.002);
                 }
 
                 // Store current sample in samplebuffer if requested:
                 if (samples && i < maxlogsamples) samples[i] = tdur;
             }
-            else {
-                // (Re-)initialize reference timestamp:
-                told = tnew;
 
-                // Pause for 2 msecs after a first sample was taken. This to guarantee we're out
-                // of the VBL period of the successfull swap.
-                PsychWaitIntervalSeconds(0.002);
-            }
+            // Update reference timestamp:
+            told = tnew;
+            
+            // Some (buggy!) drivers, e.g., the ATI Radeon X1600 driver on
+            // OS/X 10.4.10, do not limit the number of bufferswaps to 1 per refresh cycle as mandated
+            // by the spec, but they allow as many bufferswaps as you want, as long as all of them happen
+            // inside the VBL period! Basically the swap-trigger seems to be level-triggered instead of
+            // edge-triggered. This leads to a ratio of 2 invalid samples followed by 1 valid sample.
+            // If we'd reset our told at each invalid sample, we would need over 3 times the amount of
+            // samples for a useable calibration --> No go. Now we wait for 1 msecs after each sample,
+            // so the VBL period will be over before we manage to try to swap again.
+            //
+            // Pause for 1 msec after a sample was taken. This to guarantee we're out
+            // of the VBL period of the successfull swap. Skip for ultra-high refresh rate displays:
+            if (intervalHint > 0.004 || intervalHint <= 0)
+                PsychWaitIntervalSeconds(0.001);
         } // Next measurement loop iteration...
 
         // Switch back to old scheduling after timing tests:
@@ -7097,6 +7067,22 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         (strstr((char*) glGetString(GL_VENDOR), "ATI") && strstr((char*) glGetString(GL_VERSION), "Compatibility Profile") && !strncmp((char*) glGetString(GL_VERSION), "4.", 2))) {
         if (verbose) printf("Assuming hardware supports native OpenGL primitive smoothing (points, lines).\n");
         windowRecord->gfxcaps |= kPsychGfxCapSmoothPrimitives;
+    }
+
+    {
+        // Check the rounding behavior if floating point color values are written to a
+        // fixed point integer framebuffer - truncate or round to nearest integer?
+        GLubyte testpixel;
+
+        glClearColor(0.5, 0.5, 0.5, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glReadPixels(0, 0, 1, 1, GL_RED, GL_UNSIGNED_BYTE, (GLvoid*) &testpixel);
+        if (testpixel == 128)
+            windowRecord->gfxcaps |= kPsychGfxCapFloatToIntRound;
+
+        if (verbose)
+            printf("Float color value 0.5 -> fixed point reads back as %i ==> %s.\n",
+                   (int) testpixel, (windowRecord->gfxcaps & kPsychGfxCapFloatToIntRound) ? "Rounds" : "Truncates");
     }
 
     // Allow usercode to override our pessimistic view of vertex color precision:

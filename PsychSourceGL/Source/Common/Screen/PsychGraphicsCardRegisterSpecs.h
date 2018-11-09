@@ -340,6 +340,9 @@
 #       define NI_REGAMMA_PROG_B                       4
 #       define NI_OVL_REGAMMA_MODE(x)                  (((x) & 0x7) << 4)
 
+#define NI_REGAMMA_LUT_INDEX                               0x6a84
+#define NI_REGAMMA_LUT_DATA                                0x6a88
+
 /* "Volcanic Islands" DCE10/11 display controller offsets used for crtc/cur/lut/grph/viewport/etc. */
 /* These are from amdgpu's vid.h defines. Multiply by 4 as we expect byte offsets, but vid.h defines
  * dword (= 4 bytes) aligned offsets. */
