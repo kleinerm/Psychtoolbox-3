@@ -90,6 +90,7 @@ unsigned int  fDeviceType = 0;
 unsigned int  fCardType = 0;
 unsigned int  fPCIDeviceId = 0;
 unsigned int  fNumDisplayHeads = 0;
+psych_bool    amdgpuUsesDisplayCore = FALSE;
 
 // Minimum allowed physical crtc id for assignment to X-Screens. Used
 // for the (x-screen, output) -> physical crtc id mapping heuristic
@@ -102,7 +103,7 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-/* Mappings up to date for December 2017 (last update e-mail patch / commit 2017-06-19). Would need updates for any commit after December 2017 */
+/* Mappings up to date for June 2018 (last update e-mail patch / commit 2018-05-18). Would need updates for any commit after June 2018 */
 
 static psych_bool isDCE12(int screenId)
 {
@@ -114,6 +115,15 @@ static psych_bool isDCE12(int screenId)
     // VEGA10: 0x6860 - 0x687F
     if ((fPCIDeviceId & 0xFFF0) == 0x6860) isDCE12 = true;
     if ((fPCIDeviceId & 0xFFF0) == 0x6870) isDCE12 = true;
+
+    // VEGA12: 0x69A0 - 0x69AF
+    if ((fPCIDeviceId & 0xFFF0) == 0x69A0) isDCE12 = true;
+
+    // VEGAM: 0x6940 - 0x694F
+    if ((fPCIDeviceId & 0xFFF0) == 0x6940) isDCE12 = true;
+
+    // VEGA20: 0x66A0 - 0x66AF
+    if ((fPCIDeviceId & 0xFFF0) == 0x66A0) isDCE12 = true;
 
     // RAVEN: 0x15DD so far:
     if ((fPCIDeviceId & 0xFFFF) == 0x15DD) isDCE12 = true;
@@ -487,6 +497,7 @@ void PsychScreenUnmapDeviceMemory(void)
         gfx_length = 0;
         gpu = NULL;
         numKernelDrivers = 0;
+        amdgpuUsesDisplayCore = FALSE;
     }
 
     // Shutdown PCI access library, release all resources:
@@ -523,6 +534,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
     }
 
     // Start with default setting: No low-level access possible.
+    amdgpuUsesDisplayCore = FALSE;
     gfx_cntl_mem = NULL;
     gfx_length = 0;
     gpu = NULL;
@@ -1053,7 +1065,7 @@ void InitializePsychDisplayGlue(void)
     int i;
 
     //init the display settings flags.
-    for(i=0;i<kPsychMaxPossibleDisplays;i++){
+    for(i = 0; i < kPsychMaxPossibleDisplays; i++) {
         displayLockSettingsFlags[i]=FALSE;
         displayOriginalCGSettingsValid[i]=FALSE;
         displayCursorHidden[i]=FALSE;
@@ -1223,7 +1235,7 @@ static void GetRandRScreenConfig(CGDirectDisplayID dpy, int idx)
     int major, minor;
     int o, isPrimary, crtcid, crtccount;
     int primaryOutput = -1, primaryCRTC = -1, primaryCRTCIdx = -1;
-    int crtcs[100];
+    int crtcs[100] = { 0 };
     XRRProviderResources *providerResources;
 
     // Preinit to "undefined":
@@ -1931,28 +1943,39 @@ psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSe
     PsychLockDisplay();
 
     XRRScreenSize *scs = XRRSizes(dpy, PsychGetXScreenIdForScreen(setting->screenNumber), &nsizes);
-    for (i = 0; i < nsizes; i++) {
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Testing against mode of resolution w x h = %i x %i with refresh rates: ", scs[i].width, scs[i].height);
+    for (i = 0; (i < nsizes) && (size_index == -1); i++) {
+        if (PsychPrefStateGet_Verbosity() > 4)
+            printf("PTB-INFO: Testing against mode of resolution w x h = %i x %i with refresh rates: ", scs[i].width, scs[i].height);
+
         if ((width == scs[i].width) && (height == scs[i].height)) {
             short *rates = XRRRates(dpy, PsychGetXScreenIdForScreen(setting->screenNumber), i, &nrates);
             for (j = 0; j < nrates; j++) {
-                if (PsychPrefStateGet_Verbosity() > 3) printf("%i ", (int) rates[j]);
+                if (PsychPrefStateGet_Verbosity() > 4)
+                    printf("%i ", (int) rates[j]);
+
                 if (rates[j] == (short) fps) {
                     // Our requested size x fps combo is supported:
                     size_index = i;
-                    if (PsychPrefStateGet_Verbosity() > 3) printf("--> Got it! Mode id %i. ", size_index);
+                    if (PsychPrefStateGet_Verbosity() > 3)
+                        printf("\nPTB-INFO: Got it! Mode id %i.\n", size_index);
+
+                    break;
                 }
             }
         }
-        if (PsychPrefStateGet_Verbosity() > 3) printf("\n");
+        if (PsychPrefStateGet_Verbosity() > 4) printf("\n");
     }
 
     PsychUnlockDisplay();
 
-    if ((nsizes == 0 || nrates == 0) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Getting or setting display video modes unsupported on this graphics driver despite advertised RandR v1.2 support.\n");
+    if ((nsizes == 0) && (PsychPrefStateGet_Verbosity() > 1))
+        printf("PTB-WARNING: Getting or setting display video modes unsupported on this graphics driver despite advertised RandR v1.2 support.\n");
 
     // Found valid settings?
-    if (size_index == -1) return(FALSE);
+    if (size_index == -1) {
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: No matching video mode found.\n");
+        return(FALSE);
+    }
 
     *cgMode = size_index;
     return(TRUE);
@@ -3814,9 +3837,45 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             }
 
             offset = crtcoff[headId];
-            WriteRegister(EVERGREEN_DC_LUT_RW_MODE + offset, 0);
-            WriteRegister(EVERGREEN_DC_LUT_RW_INDEX + offset, 0);
-            reg = EVERGREEN_DC_LUT_30_COLOR + offset;
+
+            // Skip disabled display engines: Just return "don't know" 0xffffffff:
+            if (ReadRegister(EVERGREEN_CRTC_CONTROL + offset) & (0x1 << 16) == 0) {
+               if (PsychPrefStateGet_Verbosity() > 3)
+                  printf("PsychOSKDGetLUTState(): Skipping headId %d as it is disabled.\n", headId);
+
+               return(0xffffffff);
+            }
+
+            // If even only one of the display engines does use a NI_GRPH_REGAMMA_MODE other than NI_REGAMMA_BYPASS,
+            // then this indicates that an amdgpu-kms driver with the new AMD DC "DisplayCore" is in use. Our startup
+            // default is amdgpuUsesDisplayCore == FALSE, but we switch to TRUE as soon as we find this hint of DC:
+            amdgpuUsesDisplayCore |= ((ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7) != NI_REGAMMA_BYPASS) ? TRUE : FALSE;
+            if (amdgpuUsesDisplayCore) {
+               if (PsychPrefStateGet_Verbosity() > 3)
+                  printf("PsychOSKDGetLUTState(): headId %d uses DC and REGAMMA_LUT [%i].\n",
+                         headId, ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7);
+            }
+
+            if (!amdgpuUsesDisplayCore) {
+               // Classic code path for radeon-kms and amdgpu-kms without DC/DAL.
+               // Uses 256-slot 10 bit wide standard LUT:
+               if ((ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf) != 0) {
+                  if (PsychPrefStateGet_Verbosity() > 3)
+                     printf("PsychOSKDGetLUTState(): Skipping headId %d as LUT not in 256-slot mode [%i].\n",
+                           headId, ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf);
+
+                  return(0xffffffff);
+               }
+
+               WriteRegister(EVERGREEN_DC_LUT_RW_MODE + offset, 0);
+               WriteRegister(EVERGREEN_DC_LUT_RW_INDEX + offset, 0);
+               reg = EVERGREEN_DC_LUT_30_COLOR + offset;
+            }
+            else {
+               // New amdgpu-kms with DC/DAL. Uses REGAMMA_LUT:
+               WriteRegister(NI_REGAMMA_LUT_INDEX + offset, 0);
+               reg = NI_REGAMMA_LUT_DATA + offset;
+            }
 
             // Find out if there are non-zero black offsets:
             bo = 0x0;
@@ -3853,26 +3912,67 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
 
         if (debug) if (PsychPrefStateGet_Verbosity() > 3) printf("PsychOSKDOffsets: Black %d : White %d.\n", bo, wo);
 
-        for (i = 0; i < 256; i++) {
-            // Read 32 bit value of this slot, mask out upper 2 bits,
-            // so the least significant 30 bits are left, as these
-            // contain the 3 * 10 bits for the 10 bit R,G,B channels:
-            v = ReadRegister(reg) & (0xffffffff >> 2);
+        if (amdgpuUsesDisplayCore) {
+            // DC in use: REGAMMA_LUT's are used, with some custom floating point
+            // piece-wise-linear encoding of the LUT of style redbase, redslope,
+            // greenbase, greenslope, bluebase, blueslope, ie. 6 values per input
+            // LUT slot to define one line segment, and then at least 160 segments,
+            // for a total of at least 160 * 6 = 960 values. Some early DC versions
+            // used even more segments.
+            // Trying to decode the values into something meaningful is pretty
+            // hopeless, given the complexity of the hw programming and approximation
+            // algorithms used to fit the pwl segments to the gamma lut input curve,
+            // and given that these algorithms are still subject to change.
+            // Testing if we have an identity lut, or creating one is therefore a
+            // no-go. What we still can do is test for an all-zero LUT, as that still
+            // maps to all-zeros in the hw lut's. Iow. our trick for finding the
+            // output -> display engine mappings should still work, but checking for
+            // passthrough lut's, or setting them ourselves is not workable in the future.
+            // For reference: Function "static void program_pwl()" in
+            // linux/drivers/gpu/drm/amd/display/dc/dce/dce_transform.c is our main actor,
+            // as of Linux 4.18.
 
-            // All zero as they should be for a all-zero LUT?
-            if (v > 0) isZero = 0;
+            // Under DC our assumption is that if regamma lut is bypassed, then we get our desirable
+            // identity mapping, even though we can not actually set the regamma lut to identity, but
+            // bypass obviously means that doesn't matter. However, there are other things that can
+            // mess with us, so this may not be the last word on the matter... ... to be verified.
+            isIdentity = ((ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7) == NI_REGAMMA_BYPASS) ? TRUE : FALSE;
 
-            // Compare with expected value in slot i for a perfect 10 bit identity LUT
-            // intended for a 8 bit output encoder, i.e., 2 least significant bits
-            // zero to avoid dithering and similar stuff:
-            r = i << 2;
-            m = (r << 20) | (r << 10) | (r << 0);
+            // Probe for all-zeros LUT:
+            for (i = 0; i < 960; i++) {
+                // Read 32 bit value of this slot, keep 19 LSB's, as these encode
+                // lut value in some custom AMD float format:
+                v = ReadRegister(reg) & 0x7ffff;
 
-            // Mismatch? Not a perfect identity LUT:
-            if (v != m) isIdentity = 0;
+                // All zero as they should be for a all-zero LUT?
+                if (v > 0) isZero = 0;
 
-            if (PsychPrefStateGet_Verbosity() > 4) {
-                printf("%d:%d,%d,%d\n", i, (v >> 20) & 0x3ff, (v >> 10) & 0x3ff, (v >> 0) & 0x3ff);
+                if (PsychPrefStateGet_Verbosity() > 4) {
+                    printf("%d: %x\n", i, v);
+                }
+            }
+        } else {
+            for (i = 0; i < 256; i++) {
+                // Read 32 bit value of this slot, mask out upper 2 bits,
+                // so the least significant 30 bits are left, as these
+                // contain the 3 * 10 bits for the 10 bit R,G,B channels:
+                v = ReadRegister(reg) & (0xffffffff >> 2);
+
+                // All zero as they should be for a all-zero LUT?
+                if (v > 0) isZero = 0;
+
+                // Compare with expected value in slot i for a perfect 10 bit identity LUT
+                // intended for a 8 bit output encoder, i.e., 2 least significant bits
+                // zero to avoid dithering and similar stuff:
+                r = i << 2;
+                m = (r << 20) | (r << 10) | (r << 0);
+
+                // Mismatch? Not a perfect identity LUT:
+                if (v != m) isIdentity = 0;
+
+                if (PsychPrefStateGet_Verbosity() > 4) {
+                    printf("%d:%d,%d,%d\n", i, (v >> 20) & 0x3ff, (v >> 10) & 0x3ff, (v >> 0) & 0x3ff);
+                }
             }
         }
 

@@ -750,12 +750,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             if ((Success == glXGetFBConfigAttrib(dpy, fbconfig[i], GLX_BUFFER_SIZE, &buffdepth)) && (buffdepth >= 32) &&
                 (visinfo = glXGetVisualFromFBConfig(dpy, fbconfig[i])) && (visinfo->depth >= 30)) {
                 fbconfig[0] = fbconfig[i];
-		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Choosing GLX framebuffer config %i for transparent window.\n", i);
-		break;
-	    }
-	    else if (PsychPrefStateGet_Verbosity() > 4) {
-		printf("PTB-INFO: Trying GLX framebuffer config %i for transparent window: Depths %i bpp.\n", i, buffdepth);
-	    }
+                if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Choosing GLX framebuffer config %i for transparent window.\n", i);
+                break;
+            }
+            else if (PsychPrefStateGet_Verbosity() > 4) {
+                printf("PTB-INFO: Trying GLX framebuffer config %i for transparent window: Depths %i bpp.\n", i, buffdepth);
+            }
         }
     }
 
@@ -2826,7 +2826,7 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
                                    sce->ust, sce->msc, sce->sbc, (sce->event_type == GLX_FLIP_COMPLETE_INTEL) ? "PAGEFLIP" : (sce->event_type == GLX_COPY_COMPLETE_INTEL) ? "BLIT" : "EXCHANGE");
                         }
 
-                        PsychAllocOutStructArray(aux1, FALSE, 1, fieldCount, FieldNames, &s);
+                        PsychAllocOutStructArray(aux1, FALSE, -1, fieldCount, FieldNames, &s);
                         PsychSetStructArrayDoubleElement("OnsetTime", 0, PsychOSMonotonicToRefTime(((double) sce->ust) / PsychGetKernelTimebaseFrequencyHz()), s);
                         PsychSetStructArrayDoubleElement("OnsetVBLCount", 0, (double) sce->msc, s);
                         PsychSetStructArrayDoubleElement("SwapbuffersCount", 0, (double) sce->sbc, s);

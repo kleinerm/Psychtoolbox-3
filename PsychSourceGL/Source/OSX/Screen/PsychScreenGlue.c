@@ -68,6 +68,9 @@ static CGDirectDisplayID    displayOnlineCGIDs[kPsychMaxPossibleDisplays];
 static int                  numKernelDrivers = 0;
 static io_connect_t         displayConnectHandles[kPsychMaxPossibleDisplays];
 
+// Is the global cursor hidden atm.?
+static psych_bool cursorHidden = FALSE;
+
 //file local functions
 void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
@@ -108,6 +111,8 @@ void InitializePsychDisplayGlue(void)
         displayOverlayedCGSettingsValid[i]=FALSE;
         displayConnectHandles[i]=0;
     }
+
+    cursorHidden = FALSE;
 
     #ifdef PTBOCTAVE3MEX
         // Restrict the latest idiotic hack to Octave on OSX 10.11+
@@ -162,6 +167,8 @@ void PsychCleanupDisplayGlue(void)
         displayOriginalCGSettingsValid[i] = FALSE;
         displayOverlayedCGSettingsValid[i] = FALSE;
     }
+
+    cursorHidden = FALSE;
 
     // Release font database:
     PsychFreeFontList();
@@ -415,11 +422,10 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
         // Yes, this should not ever happen on a sane operating system, but this is
         // OSX, so it does. Observed on a 2010 MacBookPro with OSX 10.7.5 on a external
         // panel. Output a warning and fake entries for the most common pixel sizes:
-        PsychAddValueToDepthStruct(16, depths);
-        PsychAddValueToDepthStruct(32, depths);
+        PsychAddValueToDepthStruct(24, depths);
         if (PsychPrefStateGet_Verbosity() > 1) {
             printf("PTB-WARNING: Broken MacOS/X detected. It misreports (== omits some) available video modes and thereby returns empty display depths due to matching failure.\n");
-            printf("PTB-WARNING: Will try to workaround this by creating a fake list of available display depths of 16 bpp and 32 bpp. Expect potential trouble further on...\n");
+            printf("PTB-WARNING: Will try to workaround this by creating a fake list of one available display depth of 24 bpp. Expect potential trouble further on...\n");
         }
     }
 }
@@ -850,10 +856,15 @@ void PsychHideCursor(int screenNumber, int deviceIdx)
     CGDisplayErr        error;
     CGDirectDisplayID   cgDisplayID;
 
+    if (cursorHidden)
+        return;
+
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
     error=CGDisplayHideCursor(cgDisplayID);
     if (error)
         PsychErrorExit(PsychError_internal);
+
+    cursorHidden = TRUE;
 }
 
 void PsychShowCursor(int screenNumber, int deviceIdx)
@@ -861,10 +872,15 @@ void PsychShowCursor(int screenNumber, int deviceIdx)
     CGDisplayErr        error;
     CGDirectDisplayID   cgDisplayID;
 
+    if (!cursorHidden)
+        return;
+
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
     error=CGDisplayShowCursor(cgDisplayID);
     if(error)
         PsychErrorExit(PsychError_internal);
+
+    cursorHidden = FALSE;
 }
 
 void PsychPositionCursor(int screenNumber, int x, int y, int deviceIdx)

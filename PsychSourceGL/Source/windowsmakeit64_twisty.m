@@ -57,8 +57,9 @@ if onoctave == 0
 
     if what == 2
         % Build PsychPortAudio
+        % If PsychPortAudio should support the proprietary ASIO sound backend, then add a: -DPTB_USE_ASIO
         clear PsychPortAudio
-        mex -v -outdir ..\Projects\Windows\build -output PsychPortAudio -DPTBMODULE_PsychPortAudio -largeArrayDims -L..\Cohorts\PortAudio -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio_x64 LINKFLAGS="$LINKFLAGS /DELAYLOAD:portaudio_x64.dll"
+        mex -v -outdir ..\Projects\Windows\build -output PsychPortAudio -DPTBMODULE_PsychPortAudio -largeArrayDims -L..\Cohorts\PortAudio -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib advapi32.lib winmm.lib delayimp.lib -lportaudio_x64 LINKFLAGS="$LINKFLAGS /DELAYLOAD:portaudio_x64.dll"
         movefile(['..\Projects\Windows\build\PsychPortAudio.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
@@ -145,17 +146,19 @@ else
 
     if what == 2
         % Build PsychPortAudio.mex
+        % If PsychPortAudio should support the proprietary ASIO sound backend, then add a: -DPTB_USE_ASIO
+        %
         % This needs a libportaudio_x86 compatible with mingw32 gcc. The way we do this
         % is by taking the libportaudio_x86.dll from the PsychSound folder and copying
         % it into the PsychSourceGL/Cohorts/PortAudio/MinGW32 folder, but with the file extension
         % changed from .dll to .lib, ie. libportaudio_x86.lib - Weird but true, this makes
         % mingws linker accept the file as input. Same procedure for libportaudio_x64.dll to
-        % libportaudio_x64.lib into targetfolder MinGW64.
+        % libportaudio_x64.lib into targetfolder MinGW64 for 64-Bit builds.
         clear PsychPortAudio
         if Is64Bit
-            mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW64 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio_x64
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW64 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib advapi32.lib winmm.lib delayimp.lib -lportaudio_x64
         else
-            mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW32 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib winmm.lib delayimp.lib -lportaudio_x86
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychPortAudio.mex -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX -L..\Cohorts\PortAudio\MinGW32 -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib advapi32.lib winmm.lib delayimp.lib -lportaudio_x86
         end
         movefile(['..\Projects\Windows\build\PsychPortAudio.' mexext], target);
     end

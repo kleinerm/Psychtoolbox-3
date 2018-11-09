@@ -2493,8 +2493,8 @@ end
 % Is a Bits+ / Bits# specific video display mode requested? Or
 % explicit use of a Bits# device?
 floc = [ find(mystrcmp(reqs, 'EnableBits++Bits++Output')) ];
-floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Mono++Output')) ; find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')) ];
-floc = [floc ; find(mystrcmp(reqs, 'EnableBits++Color++Output')) ; find(mystrcmp(reqs, 'UseBits#')) ];
+floc = [floc(:) ; find(mystrcmp(reqs, 'EnableBits++Mono++Output')) ; find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')) ];
+floc = [floc(:) ; find(mystrcmp(reqs, 'EnableBits++Color++Output')) ; find(mystrcmp(reqs, 'UseBits#')) ];
 if ~isempty(floc)
     % Explicit use of Bits# requested? Or only implicit by video mode?
     floc = find(mystrcmp(reqs, 'UseBits#'));
@@ -4941,6 +4941,10 @@ end
 % framebuffer, but keeps it clamped to 0 - 1 range, unless a previous
 % 'ColorRange' call changed this. Why? To accomodate OpenGL hw without
 % clamp extension:
+if ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
+    applyAlsoToMakeTexture = 1;
+end
+
 if ~needsUnitUnclampedColorRange && ~isempty(psych_default_colormode) && (psych_default_colormode >= 1)
     Screen('ColorRange', win, 1, [], 1);
     applyAlsoToMakeTexture = 1;
