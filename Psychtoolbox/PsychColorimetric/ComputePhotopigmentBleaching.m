@@ -25,8 +25,8 @@ function [fractionBleached] = ComputePhotopigmentBleaching(intensity,receptortyp
 % for L cones and 110 isomerizations/cone-sec for M cones.  Take the weighted average value
 % of (2*L + 1*M) = 128 and multiply by (10.^4.3) to get a half-bleach constant in
 % isomerizations/cone-sec of  2.55e+06 (6.4 log10 isomerizations/cone-sec).
-% [Computations done 6/2/14 using IsomerizationsInEyeDemo and setting the fundamentals to 'CIE10deg' and wavelength to 560 nm
-% by hand in the code.  These are for the 'Boynton' source.]
+% [Computations done 6/2/14 using IsomerizationsInEyeDemo and setting the fundamentals to 'CIE10deg'
+% and wavelength to 560 nm by hand in the code.  These are for the 'Boynton' source.]
 %
 % [ASIDE: I used 10 deg fundamentals because I figure that Rushton's measurements are based
 % on a fairly large field.  Because the macular pigment absorbs a fair amount of light, 
