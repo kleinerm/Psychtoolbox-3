@@ -38,7 +38,7 @@ PsychError PsychOculusVR1ShutDown(void);
 PsychError PSYCHOCULUSVR1Verbosity(void);
 PsychError PSYCHOCULUSVR1Open(void);
 PsychError PSYCHOCULUSVR1Close(void);
-PsychError PSYCHOCULUSVR1GetHSWState(void);
+PsychError PSYCHOCULUSVR1SetHUDState(void);
 PsychError PSYCHOCULUSVR1Start(void);
 PsychError PSYCHOCULUSVR1Stop(void);
 PsychError PSYCHOCULUSVR1GetCount(void);

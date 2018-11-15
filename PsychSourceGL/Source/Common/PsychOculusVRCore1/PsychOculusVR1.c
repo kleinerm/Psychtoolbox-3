@@ -92,7 +92,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "numHMDs = PsychOculusVRCore1('GetCount');";
     synopsis[i++] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz] = PsychOculusVRCore1('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOculusVRCore1('Close' [, oculusPtr]);";
-    synopsis[i++] = "showHSW = PsychOculusVRCore1('GetHSWState', oculusPtr [, dismiss]);";
+    synopsis[i++] = "PsychOculusVRCore1('SetHUDState', oculusPtr , mode);";
     synopsis[i++] = "oldPersistence = PsychOculusVRCore1('SetLowPersistence', oculusPtr [, lowPersistence]);";
     synopsis[i++] = "oldDynamicPrediction = PsychOculusVRCore1('SetDynamicPrediction', oculusPtr [, dynamicPrediction]);";
     synopsis[i++] = "PsychOculusVRCore1('Start', oculusPtr);";
@@ -2085,31 +2085,34 @@ PsychError PSYCHOCULUSVR1GetEyePose(void)
     return(PsychError_none);
 }
 
-PsychError PSYCHOCULUSVR1GetHSWState(void)
+PsychError PSYCHOCULUSVR1SetHUDState(void)
 {
-    static char useString[] = "showHSW = PsychOculusVRCore1('GetHSWState', oculusPtr [, dismiss]);";
-    //                         1                                          1            2
+    static char useString[] = "PsychOculusVRCore1('SetHUDState', oculusPtr , mode);";
+    //                                                           1           2
     static char synopsisString[] =
-    "Return if health and safety warnings popup should be displayed for Oculus device 'oculusPtr'.\n"
-    "'showHSW' is 1 if the popup should be displayed at the moment, 0 otherwise.\n"
-    "You can set the optional parameter 'dismiss' to 1 to tell the runtime that the user "
-    "dismissed the health and safety warning popup.\n"
-    "Display of these warnings is mandated by the Oculus VR terms of the license.\n";
+    "Set mode of operation for the performance HUD for Oculus device 'oculusPtr'.\n"
+    "'mode' can be one of the following settings:\n"
+    "0 = Head up display HUD off ie. invisible.\n"
+    "1 = HUD shows performance summary.\n"
+    "2 = HUD shows latency timing.\n"
+    "3 = HUD shows application render timing.\n"
+    "4 = HUD shows VR compositor render timing.\n"
+    "5 = HUD shows Version information of different components.\n"
+    "6 = HUD shows Asynchronous time warp (ASW) stats.\n"
+    "Higher numbers may do something useful in the future.\n";
 
     static char seeAlsoString[] = "";
-// TODOREMOVE MOST OF IT.
-    int handle, dismiss;
+    int handle, mode;
     PsychOculusDevice *oculus;
-//    ovrHSWDisplayState hasWarningState;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumOutputArgs(0));
     PsychErrorExit(PsychCapNumInputArgs(2));
-    PsychErrorExit(PsychRequireNumInputArgs(1));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
 
     // Make sure driver is initialized:
     PsychOculusVRCheckInit(FALSE);
@@ -2118,15 +2121,14 @@ PsychError PSYCHOCULUSVR1GetHSWState(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
 
-    // Get optional 'dismiss' flag:
-    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &dismiss) && dismiss) {
-        // Tell runtime the user accepted and dismissed the HSD display:
-  //      ovrHmd_DismissHSWDisplay(oculus->hmd);
-    }
+    // Get the new performance HUD mode:
+    PsychCopyInIntegerArg(2, kPsychArgRequired, &mode);
+    if (mode < 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid performance HUD mode passed. Must be >= 0.");
 
-//    ovrHmd_GetHSWDisplayState(oculus->hmd, &hasWarningState);
-//    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (hasWarningState.Displayed) ? 1 : 0);
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, 0);
+    // Apply new mode:
+    ovr_SetInt(oculus->hmd, OVR_PERF_HUD_MODE, mode);
+
     return(PsychError_none);
 }
 

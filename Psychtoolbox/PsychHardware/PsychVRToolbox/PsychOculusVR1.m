@@ -315,6 +315,22 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % runtime 1.0 enforces display of the Health and Safety Warning at the beginning
 % of each VR session.
 %
+%
+% PsychOculusVR1('SetHUDState', hmd, mode);
+% - Set mode of operation for the builtin head up display (HUD) for performance
+% information. The HUD is automatically displayed and updated by the VR compositor
+% if enabled, and can be in one of the following selectable 'mode's:
+%
+% 0 = Head up display HUD off ie. invisible.
+% 1 = HUD shows performance summary.
+% 2 = HUD shows latency timing.
+% 3 = HUD shows application render timing.
+% 4 = HUD shows VR compositor render timing.
+% 5 = HUD shows Version information of different components.
+% 6 = HUD shows Asynchronous time warp (ASW) stats.
+% Higher numbers may do something useful in the future.
+%
+%
 % [bufferSize, imagingFlags, stereoMode] = PsychOculusVR1('GetClientRenderingParameters', hmd);
 % - Retrieve recommended size in pixels 'bufferSize' = [width, height] of the client
 % renderbuffer for each eye for rendering to the HMD. Returns parameters
@@ -744,6 +760,23 @@ if strcmpi(cmd, 'SetHSWDisplayDismiss')
   return;
 end
 
+if strcmpi(cmd, 'SetHUDState')
+  myhmd = varargin{1};
+
+  if ~PsychOculusVR1('IsOpen', myhmd)
+    error('PsychOculusVR1:SetHUDState: Specified handle does not correspond to an open HMD!');
+  end
+
+  % Method of dismissing HSW display:
+  if length(varargin) < 2 || isempty(varargin{2})
+    error('PsychOculusVR1:SetHUDState: Required mode argument missing!');
+  end
+
+  PsychOculusVRCore1('SetHUDState', myhmd.handle, varargin{2});
+
+  return;
+end
+
 % Open a HMD:
 if strcmpi(cmd, 'Open')
   [handle, modelName, panelXRes, panelYRes, panelHz] = PsychOculusVRCore1('Open', varargin{:});
@@ -952,6 +985,14 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   if isempty(strfind(basicRequirements, 'DebugDisplay'))
     % No. Set to be created onscreen window to be invisible:
     oldShieldingLevel = Screen('Preference', 'WindowShieldingLevel', -1);
+  end
+
+  % HUD display requested?
+  if ~isempty(strfind(basicRequirements, 'HUD='))
+    % Yes. Set it:
+    hudmodestring = basicRequirements(strfind(basicRequirements, 'HUD='):end);
+    mode = sscanf(hudmodestring, 'HUD=%i');
+    PsychOculusVR1('SetHUDState', myhmd, mode);
   end
 
   return;
