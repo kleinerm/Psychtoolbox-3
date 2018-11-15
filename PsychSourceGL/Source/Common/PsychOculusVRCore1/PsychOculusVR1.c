@@ -7,12 +7,12 @@
  *
  * mario.kleiner.de@gmail.com   mk
  *
- * PLATFORMS:   All which are supported by the Oculus SDK/Runtime V 1.11+
+ * PLATFORMS:   All which are supported by the Oculus SDK/Runtime V 1.16+
  *
  * DESCRIPTION:
  *
  * A Psychtoolbox driver for the Oculus VR virtual reality
- * head sets, using the OculusVR 1.11 SDK and runtime and later.
+ * head sets, using the OculusVR 1.16 SDK and runtime and later.
  *
  */
 
@@ -82,7 +82,7 @@ void InitializeSynopsis(void)
     const char **synopsis = synopsisSYNOPSIS;
 
     synopsis[i++] = "PsychOculusVRCore1 - A Psychtoolbox driver for Oculus VR hardware.\n";
-    synopsis[i++] = "This driver allows to control devices supported by the Oculus runtime V1.11 and higher.\n";
+    synopsis[i++] = "This driver allows to control devices supported by the Oculus runtime V1.16 and higher.\n";
     synopsis[i++] = "The PsychOculusVRCore1 driver is licensed to you under the terms of the MIT license.";
     synopsis[i++] = "See 'help License.txt' in the Psychtoolbox root folder for more details.\n";
     synopsis[i++] = "\n";
@@ -202,7 +202,7 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
         ovr_IdentifyClient(clientName);
 
         // Poll for existence of a HMD (detection timeout = 0 msecs == poll only).
-        // The 1.11 SDK still seems to be unable to enumerate more than 1 HMD,
+        // The 1.16 SDK still seems to be unable to enumerate more than 1 HMD,
         // so we still can't count how many there are:
         dresult = ovr_Detect(0);
         available_devices = (dresult.IsOculusHMDConnected) ? 1 : 0;
@@ -2592,7 +2592,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
                 tVBL = tStimOnset - 0.5 * oculus->frameDuration;
                 PsychSetStructArrayDoubleElement("VBlankTime", i, tVBL, frameT);
 
-                // Queue ahead for application. Citation from the v 1.11 SDK docs:
+                // Queue ahead for application. Citation from the v 1.16 SDK docs:
                 // "Amount of queue-ahead in seconds provided to the app based on performance and overlap of CPU & GPU utilization
                 // A value of 0.0 would mean the CPU & GPU workload is being completed in 1 frame's worth of time, while
                 // 11 ms (on the CV1) of queue ahead would indicate that the app's CPU workload for the next frame is
