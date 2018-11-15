@@ -514,6 +514,11 @@ if cmd == 1
 
   if hmd{handle}.doTimestamp
     % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
+    if ~isempty(frameTiming)
+      foo = max(frameTiming.VBlankTime)
+    else
+      foo = 'nodata'
+    end
     Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(1).VBlankTime, frameTiming(1).StimulusOnsetTime);
     %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
   else
@@ -526,7 +531,7 @@ if cmd == 1
   %fprintf('Present %f ms, Get/Set %f ms, Mirror %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3), 1000 * (t5 - t4));
   %disp(frameTiming(1));
   % dT = 1e3 * (frameTiming(1).HMDTime - frameTiming(1).StimulusOnsetTime)
-
+  frameTiming = [];
   return;
 end
 
