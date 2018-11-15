@@ -55,7 +55,7 @@ typedef struct PsychOculusDevice {
     ovrFovPort          ofov[2];
     ovrEyeRenderDesc    eyeRenderDesc[2];
     uint32_t            frameIndex;
-    uint32_t            commitFrameIndex;
+    int                 commitFrameIndex;
     int                 needSubmit;
     ovrPosef            outEyePoses[2];
     double              frameDuration;
@@ -178,7 +178,6 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
 {
     char clientName[40 * 10];
     ovrResult result;
-    ovrHmdDesc hmdDesc;
     ovrInitParams iparms;
     memset(&iparms, 0, sizeof(iparms));
     iparms.Flags = ovrInit_RequestVersion | ovrInit_Debug; // Use debug libraries. TODO: Remove for final release!
@@ -1123,7 +1122,6 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     ovrTrackingState state;
     ovrVector3f HmdToEyeOffset[2];
     ovrTrackerPose trackerPose;
-    ovrTrackerDesc trackerDesc;
     ovrSessionStatus sessionStatus;
 
     // All sub functions should have these two lines
@@ -1699,7 +1697,7 @@ PsychError PSYCHOCULUSVR1GetNextTextureHandle(void)
     "to which the next VR frame should be rendered. Returns -1 if busy.\n";
     static char seeAlsoString[] = "CreateRenderTextureChain";
 
-    int handle, eyeIndex, out_Index;
+    int handle, eyeIndex;
     unsigned int texObjectHandle;
     PsychOculusDevice *oculus;
 
@@ -1962,7 +1960,6 @@ PsychError PSYCHOCULUSVR1GetTrackersState(void)
     int handle, trackerCount, i;
     PsychOculusDevice *oculus;
     int StatusFlags = 0;
-    ovrTrackingState state;
     ovrTrackerPose trackerPose;
     ovrTrackerDesc trackerDesc;
 
@@ -2188,7 +2185,7 @@ PsychError PSYCHOCULUSVR1EndFrameRender(void)
     static char seeAlsoString[] = "StartRender PresentFrame";
 
     int handle;
-    double targetPresentTime, tNow;
+    double targetPresentTime;
     PsychOculusDevice *oculus;
 
     // All sub functions should have these two lines
@@ -2482,13 +2479,12 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
                                 "RecentSensorSampleTime", "StimulusOnsetTime", "VBlankTime", "AppQueueAheadTime" };
     const int FieldCount = 9;
 
-    int handle, i, rc;
+    int handle, rc;
     int doTimestamp = 0;
     int referenceFrameIndex = -1;
     double tNow, tHMD, tStimOnset, tVBL, tPredictedOnset;
     double tWhen;
     PsychOculusDevice *oculus;
-    ovrPerfStats perfStats;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
