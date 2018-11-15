@@ -408,12 +408,8 @@ if strcmpi(cmd, 'PrepareRender')
   if length(varargin) >= 4 && ~isempty(varargin{4})
     targetTime = varargin{4};
   else
-    % Default: Provide predicted value for the midpoint of the next video
-    % refresh cycle - assuming we hit the flip deadline for the next video
-    % frame, so that point in time will be exactly in the middle of both
-    % eyes:
-    winfo = Screen('GetWindowInfo', hmd{myhmd.handle}.win);
-    targetTime = winfo.LastVBLTime + 1.5 * hmd{myhmd.handle}.videoRefreshDuration;
+    % Default: Provide predicted value for the midpoint of the next video frame:
+    targetTime = [];
   end
 
   % Mark start of a new frame render cycle for the runtime and get the data
@@ -480,7 +476,7 @@ if strcmpi(cmd, 'GetEyePose')
   end
 
   % Get target time for predicted camera poses, head poses etc.:
-  % NOTE: Currently not used, as Oculus SDK 0.5 does not support passing
+  % NOTE: Currently not used, as Oculus SDK v1 does not support passing
   % targetTime into the underlying SDK function for 'GetEyePose'. The
   % Oculus runtime predicts something meaningful internally.
   %
@@ -491,22 +487,21 @@ if strcmpi(cmd, 'GetEyePose')
   %    % refresh cycle - assuming we hit the flip deadline for the next video
   %    % frame, so that point in time will be exactly in the middle of both
   %    % eyes:
-  %    winfo = Screen('GetWindowInfo', hmd{myhmd.handle}.win);
-  %    targetTime = winfo.LastVBLTime + 1.5 * hmd{myhmd.handle}.videoRefreshDuration;
+  %    targetTime = [];
   %  end
 
   % Get eye pose for this renderPass, or more exactly the headPose from which this
   % renderPass eyePose will get computed:
-  [result.headPose, result.eyeIndex] = PsychOculusVRCore1('GetEyePose', myhmd.handle, renderPass);
+  [result.eyePose, result.eyeIndex] = PsychOculusVRCore1('GetEyePose', myhmd.handle, renderPass);
 
   % Convert head pose vector to 4x4 OpenGL right handed reference frame matrix:
-  result.localHeadPoseMatrix = eyePoseToCameraMatrix(result.headPose);
+  result.localEyePoseMatrix = eyePoseToCameraMatrix(result.eyePose);
 
   % Premultiply usercode provided global transformation matrix:
-  result.globalHeadPoseMatrix = userTransformMatrix * result.localHeadPoseMatrix;
+  result.globalEyePoseMatrix = userTransformMatrix * result.localEyePoseMatrix;
 
   % Compute per-eye global pose matrix for this eyeIndex:
-  result.cameraView = result.globalHeadPoseMatrix * hmd{myhmd.handle}.eyeShiftMatrix{result.eyeIndex + 1};
+  result.cameraView = result.globalEyePoseMatrix;
 
   % Compute inverse matrix, useable as OpenGL GL_MODELVIEW matrix for rendering:
   result.modelView = inv(result.cameraView);
