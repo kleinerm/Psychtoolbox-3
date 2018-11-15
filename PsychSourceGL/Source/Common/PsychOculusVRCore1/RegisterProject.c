@@ -53,8 +53,8 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("TrackingOriginType", &PSYCHOCULUSVR1TrackingOriginType));
     PsychErrorExit(PsychRegister("GetPerformanceStats", &PSYCHOCULUSVR1GetPerformanceStats));
     PsychErrorExit(PsychRegister("HapticPulse", &PSYCHOCULUSVR1HapticPulse));
-    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
-    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
+    PsychErrorExit(PsychRegister("FloatsProperty", &PSYCHOCULUSVR1FloatsProperty));
+    PsychErrorExit(PsychRegister("StringProperty", &PSYCHOCULUSVR1StringProperty));
     //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
     //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
     //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));

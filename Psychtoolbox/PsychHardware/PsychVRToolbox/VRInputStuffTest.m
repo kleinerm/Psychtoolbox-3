@@ -16,6 +16,19 @@ hmd = PsychVRHMD('AutoSetupHMD');
 [win, rect] = PsychImaging('OpenWindow', screenid);
 ifi = Screen('GetFlipInterval', win);
 
+clc;
+if 1
+    fprintf('Properties of our subject:\n\n');
+    fprintf('Player height: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_PLAYER_HEIGHT));
+    fprintf('Player eye height: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_EYE_HEIGHT));
+    fprintf('Player neck-to-eye: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_NECK_TO_EYE_DISTANCE));
+    fprintf('Player eye-to-nose: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_EYE_TO_NOSE_DISTANCE));
+    fprintf('User name: %s\n', PsychOculusVR1('StringProperty', hmd, OVR.KEY_USER, 'Hans'));
+    fprintf('Player name: %s\n', PsychOculusVR1('StringProperty', hmd, OVR.KEY_NAME, 'Mueller'));
+    fprintf('Player gender: %s\n', PsychOculusVR1('StringProperty', hmd, OVR.KEY_GENDER, OVR.KEY_DEFAULT_GENDER));
+end
+
+fprintf('\n\nConnected controllers:\n\n');
 controllerTypes = PsychVRHMD('GetConnectedControllers', hmd);
 if bitand(controllerTypes, OVR.ControllerType_Remote)
     fprintf('Remote control connected.\n');
@@ -29,11 +42,12 @@ end
 if bitand(controllerTypes, OVR.ControllerType_RTouch)
     fprintf('Right hand controller connected.\n');
 end
-fprintf('\n\n');
+fprintf('\n\nVR area boundaries (if configured):\n\n');
 
 [isVisible, playboundsxyz, outerboundsxyz] = PsychVRHMD('VRAreaBoundary', hmd)
 
-pause(4);
+fprintf('\n\nPress any key to continue.\n');
+KbStrokeWait(-1);
 pulseEnd = 0;
 
 while ~KbCheck
@@ -42,6 +56,7 @@ while ~KbCheck
     % Query and display all input state:
     istate = PsychVRHMD('GetInputState', hmd, OVR.ControllerType_Active);
     clc;
+    fprintf('Press BACK button on remote control or other controllers, or any key, to finish.\n\n');
     disp(istate);
 
     if istate.Buttons(OVR.Button_A)

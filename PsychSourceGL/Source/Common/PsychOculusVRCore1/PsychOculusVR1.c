@@ -112,6 +112,8 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOculusVRCore1('StartRender', oculusPtr);";
     synopsis[i++] = "[eyePose, eyeIndex] = PsychOculusVRCore1('GetEyePose', oculusPtr, renderPass);";
     synopsis[i++] = "[adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOculusVRCore1('GetPerformanceStats', oculusPtr);";
+    synopsis[i++] = "oldValues = PsychOculusVRCore1('FloatsProperty', oculusPtr, propertyName [, newValues]);";
+    synopsis[i++] = "oldString = PsychOculusVRCore1('StringProperty', oculusPtr, propertyName [, defaultString][, newString]);";
     synopsis[i++] = "\n";
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:\n";
     synopsis[i++] = "\n";
@@ -2935,6 +2937,141 @@ PsychError PSYCHOCULUSVR1HapticPulse(void)
             if (verbosity > 0)
                 printf("PsychOculusVRCore1-ERROR: ovr_SetControllerVibration() failed to stop vibration: %s\n", errorInfo.ErrorString);
             PsychErrorExitMsg(PsychError_system, "Failed to stop haptic feedback pulse.");
+        }
+    }
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVR1FloatsProperty(void)
+{
+    static char useString[] = "oldValues = PsychOculusVRCore1('FloatsProperty', oculusPtr, propertyName [, newValues]);";
+    //                         1                                                1          2               3
+    static char synopsisString[] =
+        "Return or set a floating point value property associated with Oculus device 'oculusPtr'.\n\n"
+        "'propertyName' String with name of the float property to set/get. See OVR.KEY_XXX constants.\n\n"
+        "'newValues' Optional vector with new floating point values to assign.\n\n"
+        "Returns a vector 'oldValues' with the current (or old) floating point values associated with the property.\n";
+    static char seeAlsoString[] = "";
+
+    int handle, i, m, n, p, count;
+    PsychOculusDevice *oculus;
+    char *propertyName;
+    float fvalues[100];
+    double *values;
+    psych_bool isscalar = FALSE;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(3));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Property name string:
+    PsychAllocInCharArg(2, kPsychArgRequired, &propertyName);
+    if (strlen(propertyName) == 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid, empty 'propertyName' provided.");
+
+    // Get current / old values in fvalues, and their count in count, at most 100 elements:
+    count = ovr_GetFloatArray(oculus->hmd, (const char*) propertyName, fvalues, 100);
+    if (count == 0) {
+        // Retry with float property:
+        fvalues[0] = ovr_GetFloat(oculus->hmd, (const char*) propertyName, FLT_MAX);
+        if (fvalues[0] != FLT_MAX) {
+            count = 1;
+            isscalar = TRUE;
+        }
+    }
+
+    // Copy them out to userspace:
+    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, count, 1, &values);
+    for (i = 0; i < count; i++)
+        *(values++) = (double) fvalues[i];
+
+    // Optional new values provided?
+    if (PsychAllocInDoubleMatArg(3, kPsychArgOptional, &m, &n, &p, &values)) {
+        n = m * n * p;
+        if (n > 100)
+            PsychErrorExitMsg(PsychError_user, "Too many 'newValues' provided for property. Can not take more than 100.");
+
+        if ((count > 0) && (n != count) && (verbosity > 1))
+            printf("PsychOculusVRCore1-WARNING: 'FloatsProperty' '%s' had %i values, but now trying to assign different number %i. Possible problem?\n",
+                   propertyName, count, n);
+
+        for (i = 0; i < n; i++)
+            fvalues[i] = (float) values[i];
+
+        if (!ovr_SetFloatArray(oculus->hmd, (const char*) propertyName, fvalues, n) &&
+            (!isscalar || !ovr_SetFloat(oculus->hmd, (const char*) propertyName, fvalues[0]))) {
+            if (verbosity > 0)
+                printf("PsychOculusVRCore1-ERROR: 'FloatsProperty' '%s' can not accept new values, as it is read-only!\n", propertyName);
+            PsychErrorExitMsg(PsychError_user, "Tried to set new values for a read-only property");
+        }
+    }
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVR1StringProperty(void)
+{
+    static char useString[] = "oldString = PsychOculusVRCore1('StringProperty', oculusPtr, propertyName [, defaultString][, newString]);";
+    //                         1                                                1          2               3                4
+    static char synopsisString[] =
+        "Return or set a string property associated with Oculus device 'oculusPtr'.\n\n"
+        "'propertyName' String with name of the string property to set/get. See OVR.KEY_XXX constants.\n\n"
+        "'defaultString' A string to return if string 'propertyName' is not defined yet.\n\n"
+        "'newString' Optional new text string to assign.\n\n"
+        "Returns a string 'oldString' with the current (or old, or 'defaultString') string associated with the property.\n";
+    static char seeAlsoString[] = "";
+
+    int handle;
+    PsychOculusDevice *oculus;
+    char *propertyName, *defaultVal;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(4));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Property name string:
+    PsychAllocInCharArg(2, kPsychArgRequired, &propertyName);
+    if (strlen(propertyName) == 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid, empty 'propertyName' provided.");
+
+    // Optional default string:
+    if (!PsychAllocInCharArg(3, kPsychArgOptional, &defaultVal))
+        defaultVal = NULL;
+
+    // Return current / old string:
+    PsychCopyOutCharArg(1, kPsychArgOptional, ovr_GetString(oculus->hmd, (const char*) propertyName, (const char*) defaultVal));
+
+    // Optional new values provided?
+    if (PsychAllocInCharArg(4, kPsychArgOptional, &defaultVal)) {
+        if (!ovr_SetString(oculus->hmd, (const char*) propertyName, (const char*) defaultVal)) {
+            if (verbosity > 0)
+                printf("PsychOculusVRCore1-ERROR: 'StringProperty' '%s' can not accept new value '%s', as it is read-only!\n", propertyName, defaultVal);
+            PsychErrorExitMsg(PsychError_user, "Tried to set new values for a read-only string property");
         }
     }
 

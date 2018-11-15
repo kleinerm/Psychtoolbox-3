@@ -456,6 +456,31 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % - Set basic level of quality vs. required GPU performance.
 %
 %
+% oldValues = PsychOculusVR1('FloatsProperty', hmd, property [, newValues]);
+% - Get current values 'oldValues' and optionally set new values 'newValues'
+% for a floating point array property with name 'property' on 'hmd'.
+%
+% 'property' name strings are defined under OVR.KEY_XXX. As of SDK version 1.11,
+% the following floats properties exist:
+% OVR.KEY_PLAYER_HEIGHT = [Height] of subject in meters.
+% OVR.KEY_EYE_HEIGHT = [Height] of eyes of subject above ground in meters.
+% OVR.KEY_NECK_TO_EYE_DISTANCE = [horizontal, vertical] neck to eye distance in meters.
+% OVR.KEY_EYE_TO_NOSE_DISTANCE = [horizontal, vertical] eye to nose distance in meters.
+%
+%
+% oldString = PsychOculusVR1('StringProperty', hmd, property [, defaultString][, newString]);
+% - Get current string 'oldString' and optionally set new string 'newString'
+% for a string property with name 'property' on 'hmd'. If the property does not
+% exist yet or does not have a string value assigned, optionally return 'defaultString'.
+%
+% 'property' name strings are defined under OVR.KEY_XXX. As of SDK version 1.11,
+% the following string properties exist:
+% OVR.KEY_USER = User name.
+% OVR.KEY_NAME = Name.
+% OVR.KEY_GENDER = Gender 'Male', 'Female', or 'Unknown'.
+% OVR.KEY_DEFAULT_GENDER = 'Unknown'.
+%
+%
 % oldSetting = PsychOculusVR1('SetFastResponse', hmd [, enable]);
 % - Return old setting for 'FastResponse' mode in 'oldSetting',
 % optionally disable or enable the mode via specifying the 'enable'
@@ -976,6 +1001,26 @@ if strcmpi(cmd, 'VRAreaBoundary')
   return;
 end
 
+if strcmpi(cmd, 'FloatsProperty')
+  myhmd = varargin{1};
+  if ~PsychOculusVR1('IsOpen', myhmd)
+    error('FloatsProperty: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  varargout{1} = PsychOculusVRCore1('FloatsProperty', myhmd.handle, varargin{2:end});
+  return;
+end
+
+if strcmpi(cmd, 'StringProperty')
+  myhmd = varargin{1};
+  if ~PsychOculusVR1('IsOpen', myhmd)
+    error('StringProperty: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  varargout{1} = PsychOculusVRCore1('StringProperty', myhmd.handle, varargin{2:end});
+  return;
+end
+
 if strcmpi(cmd, 'RecenterTrackingOrigin')
   myhmd = varargin{1};
   if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
@@ -1233,6 +1278,15 @@ if strcmpi(cmd, 'Open')
     OVR.TrackedDevice_Object3    = hex2dec('0080');
 
     OVR.TrackedDevice_All        = hex2dec('FFFF');
+
+    OVR.KEY_USER = 'User';
+    OVR.KEY_NAME = 'Name';
+    OVR.KEY_GENDER = 'Gender';
+    OVR.KEY_DEFAULT_GENDER = 'Unknown';
+    OVR.KEY_PLAYER_HEIGHT = 'PlayerHeight';
+    OVR.KEY_EYE_HEIGHT = 'EyeHeight';
+    OVR.KEY_NECK_TO_EYE_DISTANCE = 'NeckEyeDistance';
+    OVR.KEY_EYE_TO_NOSE_DISTANCE = 'EyeToNoseDist';
 
     newhmd.OVR = OVR;
     evalin('caller','global OVR');
