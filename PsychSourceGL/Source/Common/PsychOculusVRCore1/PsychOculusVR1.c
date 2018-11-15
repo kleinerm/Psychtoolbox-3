@@ -25,6 +25,7 @@
 
 // Includes from Oculus SDK 1:
 #include "OVR_CAPI.h"
+#include "Extras/OVR_CAPI_Util.h"
 
 // Number of maximum simultaneously open VR devices:
 #define MAX_PSYCH_OCULUS_DEVS 10
@@ -35,16 +36,17 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
 // Our device record:
 typedef struct PsychOculusDevice {
-    ovrHmd hmd;
+    ovrSession hmd;
+    ovrHmdDesc hmdDesc;
     psych_bool isTracking;
     ovrSizei texSize[2];
     ovrFovPort ofov[2];
     ovrEyeRenderDesc eyeRenderDesc[2];
-    ovrDistortionMesh eyeDistortionMesh[2];
+//TODOREMOVE    ovrDistortionMesh eyeDistortionMesh[2];
     ovrVector2f UVScaleOffset[2][2];
     ovrMatrix4f timeWarpMatrices[2];
     ovrPosef headPose[2];
-    ovrFrameTiming frameTiming;
+//TODO    ovrFrameTiming frameTiming;
     uint32_t frameIndex;
     ovrPosef outEyePoses[2];
     unsigned char rgbColorOut[3];
@@ -135,8 +137,10 @@ PsychOculusDevice* PsychGetOculus(int handle, psych_bool dontfail)
     return(&(oculusdevices[handle-1]));
 }
 
-static void PsychOculusLogCB(int level, const char* message)
+static void OVR_CDECL PsychOculusLogCB(uintptr_t userData, int level, const char* message)
 {
+    (void) userData;
+
     if ((level == ovrLogLevel_Error && verbosity > 0) ||
         (level == ovrLogLevel_Info && verbosity > 2)  ||
         (level == ovrLogLevel_Debug && verbosity > 4)) {
@@ -146,10 +150,13 @@ static void PsychOculusLogCB(int level, const char* message)
 
 void PsychOculusVRCheckInit(psych_bool dontfail)
 {
+    ovrHmdDesc hmdDesc;
     ovrInitParams iparms;
     memset(&iparms, 0, sizeof(iparms));
-    iparms.Flags = ovrInit_ForceNoDebug;
+    iparms.Flags = ovrInit_Debug; // Use debug libraries. TODO: Remove for final release!
     iparms.LogCallback = PsychOculusLogCB;
+    iparms.UserData = 0;  // Userdata pointer, currently NULL.
+    iparms.ConnectionTimeoutMS = 0; // Default timeout.
 
     // Already initialized? No op then.
     if (initialized) return;
@@ -158,12 +165,16 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
     if (ovr_Initialize(&iparms)) {
         if (verbosity >= 3) printf("PsychOculusVRCore1-INFO: Oculus VR runtime version '%s' initialized.\n", ovr_GetVersionString());
 
-        // Get count of available devices:
-        available_devices = ovrHmd_Detect();
-        if (available_devices < 0) {
-            available_devices = 0;
+        ovrDetectResult result = ovr_Detect(0);
+        available_devices = (result.IsOculusHMDConnected) ? 1 : 0;
+        if (!result.IsOculusServiceRunning) {
+            available_devices = -1;
             if (verbosity >= 2) printf("PsychOculusVRCore1-WARNING: Could not connect to Oculus VR server process yet. Did you forget to start it?\n");
         }
+
+        // Get count of available devices:
+        hmdDesc = ovr_GetHmdDesc(NULL);
+        available_devices = (hmdDesc.Type != ovrHmd_None) ? 11 : 0;
 
         if (verbosity >= 3) printf("PsychOculusVRCore1-INFO: At startup there are %i Oculus HMDs available.\n", available_devices);
         initialized = TRUE;
@@ -179,14 +190,14 @@ void PsychOculusStop(int handle)
     PsychOculusDevice* oculus;
     oculus = PsychGetOculus(handle, TRUE);
     if (NULL == oculus || !oculus->isTracking) return;
-
+/* TODO
     // Request stop of tracking:
     if (!ovrHmd_ConfigureTracking(oculus->hmd, 0, 0)) {
         if (verbosity >= 0) printf("PsychOculusVRCore1-ERROR: Failed to stop tracking on device with handle %i [%s].\n", handle, ovrHmd_GetLastError(oculus->hmd));
         PsychErrorExitMsg(PsychError_system, "Stop of Oculus HMD tracking failed for reason given above.");
     }
     else if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Tracking stopped on device with handle %i.\n", handle);
-
+*/
     oculus->isTracking = FALSE;
 
     return;
@@ -202,16 +213,16 @@ void PsychOculusClose(int handle)
     PsychOculusStop(handle);
 
     // Release distortion meshes, if any:
-    if (oculus->eyeDistortionMesh[0].pVertexData) {
+/*    if (oculus->eyeDistortionMesh[0].pVertexData) {
         ovrHmd_DestroyDistortionMesh(&(oculus->eyeDistortionMesh[0]));
     }
 
     if (oculus->eyeDistortionMesh[1].pVertexData) {
         ovrHmd_DestroyDistortionMesh(&(oculus->eyeDistortionMesh[1]));
     }
-
+*/
     // Close the HMD:
-    ovrHmd_Destroy(oculus->hmd);
+    ovr_Destroy(oculus->hmd);
     oculus->hmd = NULL;
     if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Closed Oculus HMD with handle %i.\n", handle);
 
@@ -287,13 +298,15 @@ PsychError PSYCHOCULUSVR1GetCount(void)
     PsychErrorExit(PsychCapNumInputArgs(0));
 
     // Make sure driver is initialized:
+    // TODO Init not needed on 1.0 RT!
     PsychOculusVRCheckInit(TRUE);
     if (!initialized) {
         available_devices = -1;
     }
     else {
-        available_devices = ovrHmd_Detect();
-        if (available_devices < 0) {
+        ovrDetectResult result = ovr_Detect(0);
+        available_devices = (result.IsOculusHMDConnected) ? 1 : 0;
+        if (!result.IsOculusServiceRunning) {
             available_devices = -1;
             if (verbosity >= 2) printf("PsychOculusVRCore1-WARNING: Could not connect to Oculus VR server process yet. Did you forget to start it?\n");
         }
@@ -319,6 +332,7 @@ PsychError PSYCHOCULUSVR1Open(void)
 
     static char seeAlsoString[] = "GetCount Close";
 
+    ovrDetectResult result;
     PsychOculusDevice* oculus;
     int deviceIndex = 0;
     int handle = 0;
@@ -343,11 +357,12 @@ PsychError PSYCHOCULUSVR1Open(void)
     PsychCopyInIntegerArg(1, kPsychArgOptional, &deviceIndex);
 
     // Don't support anything than a single "default" OculusVR Rift yet - A limitation of the current SDK:
-    if (deviceIndex < -1) PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Must be greater or equal to zero!");
+    if (deviceIndex < 0) PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Must be greater or equal to zero!");
 
-    available_devices = ovrHmd_Detect();
-    if (available_devices < 0) {
-        available_devices = 0;
+    result = ovr_Detect(0);
+    available_devices = (result.IsOculusHMDConnected) ? 1 : 0;
+    if (!result.IsOculusServiceRunning) {
+        available_devices = -1;
         if (verbosity >= 2) printf("PsychOculusVRCore1-WARNING: Could not connect to Oculus VR server process yet. Did you forget to start it?\n");
     }
 
@@ -364,13 +379,14 @@ PsychError PSYCHOCULUSVR1Open(void)
     // Try to open real or emulated HMD with deviceIndex:
     if (deviceIndex >= 0) {
         // The real thing:
-        oculusdevices[handle].hmd = ovrHmd_Create(deviceIndex);
-        if (NULL == oculusdevices[handle].hmd) {
+        ovrGraphicsLuid Luid;
+        ovrResult rc = ovr_Create((ovrSession*) &(oculusdevices[handle].hmd), (ovrGraphicsLuid*) &Luid);
+        if (!rc || (NULL == oculusdevices[handle].hmd)) {
             if (verbosity >= 0) {
                 printf("PsychOculusVRCore1-ERROR: Failed to connect to Oculus Rift with deviceIndex %i. This could mean that the device\n", deviceIndex);
                 printf("PsychOculusVRCore1-ERROR: is already in use by another application or driver.\n");
             }
-            PsychErrorExitMsg(PsychError_user, "Could not connect to Rift device with given 'deviceIndex'! [ovrHmd_Create() failed]");
+            PsychErrorExitMsg(PsychError_user, "Could not connect to Rift device with given 'deviceIndex'! [ovr_Create() failed]");
         }
         else if (verbosity >= 3) {
             printf("PsychOculusVRCore1-INFO: Opened Oculus Rift with deviceIndex %i as handle %i.\n", deviceIndex, handle + 1);
@@ -378,23 +394,23 @@ PsychError PSYCHOCULUSVR1Open(void)
     }
     else {
         // Emulated: Simulate a Rift DK2.
-        oculusdevices[handle].hmd = ovrHmd_CreateDebug(ovrHmd_DK2);
+        // TODO REMOVE oculusdevices[handle].hmd = ovrHmd_CreateDebug(ovrHmd_DK2);
         if (verbosity >= 3) printf("PsychOculusVRCore1-INFO: Opened an emulated Oculus Rift DK2 as handle %i.\n", handle + 1);
     }
 
     // Query current enabled caps:
-    oldCaps = ovrHmd_GetEnabledCaps(oculus->hmd);
+    oculus->hmdDesc = ovr_GetHmdDesc(oculus->hmd);
+    oldCaps = oculus->hmdDesc.AvailableHmdCaps;
 
     // Stats for nerds:
     if (verbosity >= 3) {
         printf("PsychOculusVRCore1-INFO: Product: %s - Manufacturer: %s - SerialNo: %s [VID: 0x%x PID: 0x%x]\n",
-               oculus->hmd->ProductName, oculus->hmd->Manufacturer, oculus->hmd->SerialNumber, (int) oculus->hmd->VendorId, (int) oculus->hmd->ProductId);
-        printf("PsychOculusVRCore1-INFO: Firmware version: %i.%i\n", (int) oculus->hmd->FirmwareMajor, (int) oculus->hmd->FirmwareMinor);
-        printf("PsychOculusVRCore1-INFO: CameraFrustumHFovInRadians: %f - CameraFrustumVFovInRadians: %f\n", oculus->hmd->CameraFrustumHFovInRadians, oculus->hmd->CameraFrustumVFovInRadians);
-        printf("PsychOculusVRCore1-INFO: CameraFrustumNearZInMeters: %f - CameraFrustumFarZInMeters:  %f\n", oculus->hmd->CameraFrustumNearZInMeters, oculus->hmd->CameraFrustumFarZInMeters);
-        printf("PsychOculusVRCore1-INFO: Panel size in pixels w x h = %i x %i [WindowPos %i x %i]\n", oculus->hmd->Resolution.w, oculus->hmd->Resolution.h, oculus->hmd->WindowsPos.x, oculus->hmd->WindowsPos.y);
-        printf("PsychOculusVRCore1-INFO: DisplayDeviceName: %s\n", oculus->hmd->DisplayDeviceName);
-        printf("PsychOculusVRCore1-INFO: Caps: LowPersistence=%i : DynamicPrediction=%i\n", (oldCaps & ovrHmdCap_LowPersistence) ? 1 : 0, (oldCaps & ovrHmdCap_DynamicPrediction) ? 1 : 0);
+               oculus->hmdDesc.ProductName, oculus->hmdDesc.Manufacturer, oculus->hmdDesc.SerialNumber, (int) oculus->hmdDesc.VendorId, (int) oculus->hmdDesc.ProductId);
+        printf("PsychOculusVRCore1-INFO: Firmware version: %i.%i\n", (int) oculus->hmdDesc.FirmwareMajor, (int) oculus->hmdDesc.FirmwareMinor);
+        //TODO printf("PsychOculusVRCore1-INFO: CameraFrustumHFovInRadians: %f - CameraFrustumVFovInRadians: %f\n", oculus->hmdDesc.CameraFrustumHFovInRadians, oculus->hmdDesc.CameraFrustumVFovInRadians);
+        //TODO printf("PsychOculusVRCore1-INFO: CameraFrustumNearZInMeters: %f - CameraFrustumFarZInMeters:  %f\n", oculus->hmd->CameraFrustumNearZInMeters, oculus->hmd->CameraFrustumFarZInMeters);
+        printf("PsychOculusVRCore1-INFO: Panel size in pixels w x h = %i x %i - Refresh rate = %f fps\n", oculus->hmdDesc.Resolution.w, oculus->hmdDesc.Resolution.h, oculus->hmdDesc.DisplayRefreshRate);
+        printf("PsychOculusVRCore1-INFO: Caps: Debug device=%i\n", (oldCaps & ovrHmdCap_DebugDevice) ? 1 : 0);
         printf("PsychOculusVRCore1-INFO: ----------------------------------------------------------------------------------\n");
     }
 
@@ -405,7 +421,7 @@ PsychError PSYCHOCULUSVR1Open(void)
     PsychCopyOutDoubleArg(1, kPsychArgOptional, handle + 1);
 
     // Return product name:
-    PsychCopyOutCharArg(2, kPsychArgOptional, (const char*) oculus->hmd->ProductName);
+    PsychCopyOutCharArg(2, kPsychArgOptional, (const char*) oculus->hmdDesc.ProductName);
 
     return(PsychError_none);
 }
@@ -442,7 +458,7 @@ PsychError PSYCHOCULUSVR1Close(void)
     }
     else {
         // No handle provided: Close all devices, shutdown driver.
-        PsychOculusVRShutDown();
+        PsychOculusVR1ShutDown();
     }
 
     return(PsychError_none);
@@ -477,7 +493,7 @@ PsychError PSYCHOCULUSVR1SetDynamicPrediction(void)
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
-
+/* TODO REMOVE
     // Query current enabled caps:
     oldCaps = ovrHmd_GetEnabledCaps(oculus->hmd);
     PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (oldCaps & ovrHmdCap_DynamicPrediction) ? 1 : 0);
@@ -487,7 +503,7 @@ PsychError PSYCHOCULUSVR1SetDynamicPrediction(void)
         oldCaps &= ~ovrHmdCap_DynamicPrediction;
         ovrHmd_SetEnabledCaps(oculus->hmd, oldCaps | ((dynamicPrediction > 0) ? ovrHmdCap_DynamicPrediction : 0));
     }
-
+*/
     return(PsychError_none);
 }
 
@@ -524,7 +540,7 @@ PsychError PSYCHOCULUSVR1SetLowPersistence(void)
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
-
+/* TODO REMOVE
     // Query current enabled caps:
     oldCaps = ovrHmd_GetEnabledCaps(oculus->hmd);
     PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (oldCaps & ovrHmdCap_LowPersistence) ? 1 : 0);
@@ -534,7 +550,7 @@ PsychError PSYCHOCULUSVR1SetLowPersistence(void)
         oldCaps &= ~ovrHmdCap_LowPersistence;
         ovrHmd_SetEnabledCaps(oculus->hmd, oldCaps | ((lowPersistence > 0) ? ovrHmdCap_LowPersistence : 0));
     }
-
+*/
     return(PsychError_none);
 }
 
@@ -568,7 +584,7 @@ PsychError PSYCHOCULUSVR1Start(void)
         if (verbosity >= 0) printf("PsychOculusVRCore1-ERROR: Tried to start tracking on device %i, but tracking is already started.\n", handle);
         PsychErrorExitMsg(PsychError_user, "Tried to start tracking on HMD, but tracking already active.");
     }
-
+/* TODO REMOVE
     // Request start of tracking for retrieval of head orientation and position, with drift correction, e.g., via magnetometer.
     // Do not fail if retrieval of any of this information isn't supported by the given hardware, ie., the required set of caps is empty == 0.
     // Rift DK1 only had orientation tracking, with magnetometer based drift correction. Rift DK2 also has vision based position tracking and
@@ -578,9 +594,9 @@ PsychError PSYCHOCULUSVR1Start(void)
         PsychErrorExitMsg(PsychError_system, "Start of Oculus HMD tracking failed for reason given above.");
     }
     else if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Tracking started on device with handle %i.\n", handle);
-
+*/
     oculus->frameIndex = 0;
-    ovrHmd_ResetFrameTiming(oculus->hmd, oculus->frameIndex);
+//    ovrHmd_ResetFrameTiming(oculus->hmd, oculus->frameIndex);
 
     oculus->isTracking = TRUE;
 
@@ -678,13 +694,14 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
 
     PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime);
 
-    // Get current tracking status info at time 0 ie., current measurements:
-    state = ovrHmd_GetTrackingState(oculus->hmd, predictionTime);
+    // Get current tracking status info at time predictionTime. Mark this point
+    // as time from which motion to photon latency is measured (latencymarker = TRUE):
+    state = ovr_GetTrackingState(oculus->hmd, predictionTime, TRUE);
 
     // Print out tracking status:
     if (verbosity >= 4) {
         printf("PsychOculusVRCore1-INFO: Tracking state predicted for device %i at time %f.\n", handle, predictionTime);
-        printf("PsychOculusVRCore1-INFO: LastCameraFrameCounter = %i : Time %f : Status %i\n", state.LastCameraFrameCounter, state.HeadPose.TimeInSeconds, state.StatusFlags);
+        printf("PsychOculusVRCore1-INFO: Time %f : Status %i\n", state.HeadPose.TimeInSeconds, state.StatusFlags);
         printf("PsychOculusVRCore1-INFO: HeadPose: Position    [x,y,z]   = [%f, %f, %f]\n", state.HeadPose.ThePose.Position.x, state.HeadPose.ThePose.Position.y, state.HeadPose.ThePose.Position.z);
         printf("PsychOculusVRCore1-INFO: HeadPose: Orientation [x,y,z,w] = [%f, %f, %f, %f]\n", state.HeadPose.ThePose.Orientation.x, state.HeadPose.ThePose.Orientation.y, state.HeadPose.ThePose.Orientation.z, state.HeadPose.ThePose.Orientation.w);
     }
@@ -739,6 +756,7 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     v[2] = state.HeadPose.AngularAcceleration.z;
     PsychSetStructArrayNativeElement("HeadAngularAcceleration", 0, outMat, status);
 
+/* TODOREMOVE
     // Camera pose:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
@@ -797,7 +815,9 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
 
     // IMU readout time:
     PsychSetStructArrayDoubleElement("IMUReadoutTime", 0, (double) state.RawSensorData.TimeInSeconds, status);
+*/
 
+/* TODO
     // Camera frustum HFov and VFov in radians:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
@@ -811,7 +831,7 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     v[0] = oculus->hmd->CameraFrustumNearZInMeters;
     v[1] = oculus->hmd->CameraFrustumFarZInMeters;
     PsychSetStructArrayNativeElement("CameraFrustumNearFarZInMeters", 0, outMat, status);
-
+*/
     return(PsychError_none);
 }
 
@@ -872,7 +892,7 @@ PsychError PSYCHOCULUSVR1GetFovTextureSize(void)
     }
     else {
         // None specified: Ask the runtime for good defaults.
-        oculus->ofov[eyeIndex] = oculus->hmd->DefaultEyeFov[eyeIndex];
+        oculus->ofov[eyeIndex] = oculus->hmdDesc.DefaultEyeFov[eyeIndex];
     }
 
     // Get optional pixelsPerDisplay parameter:
@@ -881,7 +901,7 @@ PsychError PSYCHOCULUSVR1GetFovTextureSize(void)
     if (pixelsPerDisplay <= 0.0) PsychErrorExitMsg(PsychError_user, "Invalid 'pixelsPerDisplay' specified. Must be greater than zero.");
 
     // Ask the api for optimal texture size, aka the size of the client draw buffer:
-    oculus->texSize[eyeIndex] = ovrHmd_GetFovTextureSize(oculus->hmd, (ovrEyeType) eyeIndex, oculus->ofov[eyeIndex], (float) pixelsPerDisplay);
+    oculus->texSize[eyeIndex] = ovr_GetFovTextureSize(oculus->hmd, (ovrEyeType) eyeIndex, oculus->ofov[eyeIndex], (float) pixelsPerDisplay);
 
     // Return recommended width and height of drawBuffer:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, oculus->texSize[eyeIndex].w);
@@ -922,7 +942,7 @@ PsychError PSYCHOCULUSVR1GetUndistortionParameters(void)
     "the Oculus developers manual for explanation of the format.\n"
     "[uvScaleX, uvScaleY, uvOffsetX, uvOffsetY] Scaling factors and offsets for texture coordinates in normalized device coordinates.\n";
     static char seeAlsoString[] = "GetFovTextureSize";
-
+/*
     int handle, eyeIndex;
     PsychOculusDevice *oculus;
     int n, m, p, i;
@@ -1089,7 +1109,7 @@ PsychError PSYCHOCULUSVR1GetUndistortionParameters(void)
     // EyeToSourceUVOffset:
     PsychCopyOutDoubleArg(16, kPsychArgOptional, oculus->UVScaleOffset[eyeIndex][1].x);
     PsychCopyOutDoubleArg(17, kPsychArgOptional, oculus->UVScaleOffset[eyeIndex][1].y);
-
+*/
     return(PsychError_none);
 }
 
@@ -1135,7 +1155,7 @@ PsychError PSYCHOCULUSVR1GetEyeTimewarpMatrices(void)
     waitForTimewarpPoint = 0;
     PsychCopyInIntegerArg(3, kPsychArgOptional, &waitForTimewarpPoint);
     if (waitForTimewarpPoint < 0 || waitForTimewarpPoint > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'waitForTimewarpPoint' specified. Must be 0 or 1.");
-
+/* TODOREMOVE
     if (waitForTimewarpPoint) {
         // Wait till time-warp point to reduce latency.
         tNow = ovr_GetTimeInSeconds();
@@ -1161,7 +1181,7 @@ PsychError PSYCHOCULUSVR1GetEyeTimewarpMatrices(void)
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
             *(endMatrix++) = (double) oculus->timeWarpMatrices[1].M[j][i];
-
+*/
     return(PsychError_none);
 }
 
@@ -1211,14 +1231,14 @@ PsychError PSYCHOCULUSVR1GetStaticRenderParameters(void)
     PsychCopyInDoubleArg(3, kPsychArgOptional, &clip_far);
 
     // Return left projection matrix as return argument 1:
-    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[0].Fov, (float) clip_near, (float) clip_far, ovrProjection_RightHanded | ovrProjection_ClipRangeOpenGL);
+    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[0].Fov, (float) clip_near, (float) clip_far, ovrProjection_ClipRangeOpenGL);
     PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 4, 4, 1, &outM);
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
             *(outM++) = (double) M.M[j][i];
 
     // Return right projection matrix as return argument 2:
-    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[1].Fov, (float) clip_near, (float) clip_far, ovrProjection_RightHanded | ovrProjection_ClipRangeOpenGL);
+    M = ovrMatrix4f_Projection(oculus->eyeRenderDesc[1].Fov, (float) clip_near, (float) clip_far, ovrProjection_ClipRangeOpenGL);
     PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 4, 4, 1, &outM);
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
@@ -1274,7 +1294,7 @@ PsychError PSYCHOCULUSVR1StartRender(void)
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
-
+/*
     // Mark beginning of frame rendering. This takes timstamps and stuff:
     oculus->frameTiming = ovrHmd_BeginFrameTiming(oculus->hmd, oculus->frameIndex);
 
@@ -1325,7 +1345,7 @@ PsychError PSYCHOCULUSVR1StartRender(void)
     outM[4] = oculus->frameTiming.ScanoutMidpointSeconds;
     outM[5] = oculus->frameTiming.EyeScanoutSeconds[0];
     outM[6] = oculus->frameTiming.EyeScanoutSeconds[1];
-
+*/
     return(PsychError_none);
 }
 
@@ -1361,7 +1381,7 @@ PsychError PSYCHOCULUSVR1EndFrameTiming(void)
     // Tell runtime that the last rendered frame was just presented onscreen,
     // aka OpenGL bufferswap completed:
     // Note: This also runs processing for the DK2 latency tester.
-    ovrHmd_EndFrameTiming(oculus->hmd);
+// TODO    ovrHmd_EndFrameTiming(oculus->hmd);
     oculus->frameIndex++;
 
     return(PsychError_none);
@@ -1390,6 +1410,7 @@ PsychError PSYCHOCULUSVR1GetEyePose(void)
 
     int handle, renderPass;
     PsychOculusDevice *oculus;
+    ovrVector3f HmdToEyeOffset[2];
     ovrEyeType eye;
     double *outM;
 
@@ -1414,8 +1435,10 @@ PsychError PSYCHOCULUSVR1GetEyePose(void)
     if (renderPass < 0 || renderPass > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'renderPass' specified. Must be 0 or 1 for first or second pass.");
 
     // Get eye pose:
-    eye = oculus->hmd->EyeRenderOrder[renderPass];
-    oculus->headPose[eye] = ovrHmd_GetHmdPosePerEye(oculus->hmd, eye);
+    eye = renderPass; // oculus->hmd->EyeRenderOrder[renderPass];
+    HmdToEyeOffset[0] = oculus->eyeRenderDesc[0].HmdToEyeOffset;
+    HmdToEyeOffset[1] = oculus->eyeRenderDesc[1].HmdToEyeOffset;
+    ovr_GetEyePoses(oculus->hmd, 0, FALSE, HmdToEyeOffset, oculus->headPose, NULL);
 
     // Eye pose as raw data:
     PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 7, 1, &outM);
@@ -1449,10 +1472,10 @@ PsychError PSYCHOCULUSVR1GetHSWState(void)
     "Display of these warnings is mandated by the Oculus VR terms of the license.\n";
 
     static char seeAlsoString[] = "";
-
+// TODOREMOVE MOST OF IT.
     int handle, dismiss;
     PsychOculusDevice *oculus;
-    ovrHSWDisplayState hasWarningState;
+//    ovrHSWDisplayState hasWarningState;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -1473,19 +1496,19 @@ PsychError PSYCHOCULUSVR1GetHSWState(void)
     // Get optional 'dismiss' flag:
     if (PsychCopyInIntegerArg(2, kPsychArgOptional, &dismiss) && dismiss) {
         // Tell runtime the user accepted and dismissed the HSD display:
-        ovrHmd_DismissHSWDisplay(oculus->hmd);
+  //      ovrHmd_DismissHSWDisplay(oculus->hmd);
     }
 
-    ovrHmd_GetHSWDisplayState(oculus->hmd, &hasWarningState);
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (hasWarningState.Displayed) ? 1 : 0);
-
+//    ovrHmd_GetHSWDisplayState(oculus->hmd, &hasWarningState);
+//    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (hasWarningState.Displayed) ? 1 : 0);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, 0);
     return(PsychError_none);
 }
 
 PsychError PSYCHOCULUSVR1LatencyTester(void)
 {
     static char useString[] = "result = PsychOculusVRCore1('LatencyTester', oculusPtr, cmd);";
-    //                          1                                          1          2
+    //                         1                                            1          2
     static char synopsisString[] =
     "Drive or query latency tester for Oculus Rift DK2 device 'oculusPtr'.\n"
     "'cmd' is the command code:\n"
@@ -1525,7 +1548,7 @@ PsychError PSYCHOCULUSVR1LatencyTester(void)
 
     // Get cmd code:
     PsychCopyInIntegerArg(2, kPsychArgRequired, &cmd);
-
+/* TODO REMOVE or REWRITE TOTALLY?
     if (cmd == 0) {
         // Get next latency test marker pixel color, update the runtimes internal
         // target match color with it, return color to us for our client rendering:
@@ -1567,6 +1590,6 @@ PsychError PSYCHOCULUSVR1LatencyTester(void)
             PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 0, 0, 1, &outM);
         }
     }
-
+*/
     return(PsychError_none);
 }
