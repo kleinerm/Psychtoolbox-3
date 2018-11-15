@@ -361,6 +361,10 @@ if cmd == 1
   % are ready for submission to the VR compositor:
   [oldL, oldR] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
 
+  % Disable presentation in onscreen window and associated throttling and standard Flip timestamping:
+  Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+  Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs);
+
   return;
 end
 
