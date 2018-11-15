@@ -1752,7 +1752,8 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
             printf("PRESENT[%i]: Last %f, Next %f, dT = %f msecs\n", commitTextures, oculus->lastPresentExecTime, tPredictedOnset, 1000 * (tPredictedOnset - oculus->lastPresentExecTime));
 
         // Submit frame to compositor for display at earliest possible time:
-        if (OVR_FAILURE(ovr_SubmitFrame(oculus->hmd, oculus->frameIndex, NULL, layers, 1))) {
+        result = ovr_SubmitFrame(oculus->hmd, oculus->frameIndex, NULL, layers, 1);
+        if (OVR_FAILURE(result)) {
             success = FALSE;
             ovr_GetLastErrorInfo(&errorInfo);
             if (verbosity > 0)
@@ -1772,6 +1773,13 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
                 oculus->needSubmit--;
         }
 
+        if (result == ovrSuccess_NotVisible) {
+            // Submitted frame does not display - a no-op submit:
+            if (verbosity > 1)
+                printf("PsychOculusVRCore1:WARNING: Frame %i not presented to HMD. HMD removed from subjects head? [Time %f]\n",
+                       oculus->frameIndex, tPredictedOnset);
+        }
+
         // Update the lastPresentExecTime timestamp:
         oculus->lastPresentExecTime = tPredictedOnset;
 
@@ -1788,11 +1796,6 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
                     ovr_GetLastErrorInfo(&errorInfo);
                     if (verbosity > 0)
                         printf("PsychOculusVRCore1-ERROR: ovr_GetPerfStats() failed: %s\n", errorInfo.ErrorString);
-                }
-                else if (result == ovrSuccess_NotVisible) {
-                    // Submitted frame does not display - a no-op submit:
-                    if (verbosity > 1)
-                        printf("PsychOculusVRCore1:WARNING: Frame %i not presented to HMD. Lost HMD to other app?\n", oculus->frameIndex);
                 }
                 else if ((verbosity > 3) && (oculus->perfStats.FrameStatsCount > 0)) {
                     printf("PsychOculusVRCore1: DEBUG: Oldest AppFrameIndex %i vs. commitFrameIndex %i\n",
