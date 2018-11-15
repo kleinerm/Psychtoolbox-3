@@ -1738,9 +1738,6 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
 
         // Mark the need for a ovr_SubmitFrame() call before we can commit textures again:
         oculus->needSubmit++;
-
-        // Record frameIndex at which new visual content was committed:
-        oculus->commitFrameIndex = oculus->frameIndex;
     }
 
     // printf("PresentExecute-2 %i - %f\n", commitTextures, ovr_GetTimeInSeconds());
@@ -1785,6 +1782,14 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
                 printf("PsychOculusVRCore1-ERROR: ovr_SubmitFrame() failed: %s\n", errorInfo.ErrorString);
         }
         else {
+            // Update onset time again after successful submit:
+            tPredictedOnset = ovr_GetPredictedDisplayTime(oculus->hmd, oculus->frameIndex);
+
+            // Record frameIndex at which new visual content will be committed:
+            if (oculus->perfStats.FrameStatsCount > 0) {
+                oculus->commitFrameIndex = oculus->perfStats.FrameStats[0].AppFrameIndex + 1;
+            }
+
             oculus->frameIndex++;
             if (oculus->needSubmit > 0)
                 oculus->needSubmit--;
@@ -1798,7 +1803,7 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
             double tDeadline;
 
             // Retrieve performance stats, mostly for our timestamping:
-            tDeadline = ovr_GetTimeInSeconds() + 0.005;
+            tDeadline = ovr_GetTimeInSeconds() + 0.050;
             do {
                 PsychYieldIntervalSeconds(0.001);
                 if (OVR_FAILURE(ovr_GetPerfStats(oculus->hmd, &oculus->perfStats))) {
@@ -1806,8 +1811,13 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
                     if (verbosity > 0)
                         printf("PsychOculusVRCore1-ERROR: ovr_GetPerfStats() failed: %s\n", errorInfo.ErrorString);
                 }
+                else if ((verbosity > 3) && (oculus->perfStats.FrameStatsCount > 0)) {
+                    printf("PsychOculusVRCore1: DEBUG: Oldest AppFrameIndex %i vs. commitFrameIndex %i\n",
+                           oculus->perfStats.FrameStats[oculus->perfStats.FrameStatsCount-1].AppFrameIndex,
+                           oculus->commitFrameIndex);
+                }
             } while ((oculus->frameIndex > 0) && (ovr_GetTimeInSeconds() < tDeadline) &&
-                     ((oculus->perfStats.FrameStatsCount < 1) || FALSE /* (oculus->perfStats.FrameStats[1].AppFrameIndex < oculus->commitFrameIndex) */));
+                     ((oculus->perfStats.FrameStatsCount < 1) || (oculus->perfStats.FrameStats[oculus->perfStats.FrameStatsCount-1].AppFrameIndex < oculus->commitFrameIndex)));
 
             if (verbosity > 3) {
                 printf("\nPsychOculusVRCore1: [%f msecs headroom] DEBUG: FrameStatsCount=%i, AnyFrameStatsDropped=%i\n",
@@ -2015,6 +2025,11 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
                         // Failed: Log it in a hopefully not too unsafe way:
                         printf("PsychOculusVRCore1-ERROR: Waitcondition II on presentedSignal trigger failed  [%s].\n", strerror(rc));
                     }
+                }
+                else {
+                    // Not multi-threaded. If we ain't got no result yet, we won't
+                    // get any in the future:
+                    break;
                 }
             }
         }
