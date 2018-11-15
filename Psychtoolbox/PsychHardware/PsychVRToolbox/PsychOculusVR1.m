@@ -938,7 +938,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % frame submission to the VR compositor:
 
   % Left eye / mono chain:
-  [width, height] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight);
+  [width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight);
 
   % Create 2nd chain for right eye in stereo mode:
   if winfo.StereoMode > 0
@@ -946,7 +946,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       sca;
       error('Invalid Screen() StereoMode in use for OculusVR HMD! Must be 12 or 0.');
     end
-    [width, height] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight);
+    [width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight);
   end
 
   % Query currently bound finalizedFBO backing textures, to keep them around as
@@ -966,24 +966,40 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     hmd{handle}.oldglRightTex = [];
   end
 
-  % Attach our first own backing textures provided by the textures swap chains
-  % of the OculusVR compositor:
+  % Get and clear all backing textures from the VR compositor:
+  clearvalues = ones(4, texwidth, texheight, 'single');
+  for i=1:numTextures
+    % Get backing textures provided by the textures swap chains of the OculusVR compositor
+    % and clear them to black color by zero-filling:
+    texLeft = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 0);
+    glBindTexture(textarget, texLeft);
+    glTexSubImage2D(textarget, 0, 0, 0, texwidth, texheight, GL.RGBA, GL.FLOAT, clearvalues);
+
+    if winfo.StereoMode > 0
+      texRight = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 1);
+      glBindTexture(textarget, texRight);
+      glTexSubImage2D(textarget, 0, 0, 0, texwidth, texheight, GL.RGBA, GL.FLOAT, clearvalues);
+    else
+      texRight = [];
+    end
+    glBindTexture(textarget, 0);
+
+    % Execute VR Present: Submit just unbound textures, start render/warp/presentation
+    % on HMD at next possible point in time:
+    PsychOculusVRCore1('EndFrameTiming', hmd{handle}.handle);
+  end
+  clear clearvalues;
+
+  % Get first textures for actual use in PTB's imaging pipeline:
   texLeft = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 0);
-  if winfo.StereoMode > 0
+  if hmd{handle}.StereoMode > 0
       texRight = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 1);
   else
       texRight = [];
   end
+
+  % Assign them to Screen():
   Screen('Hookfunction', win, 'SetDisplayBufferTextures', '', texLeft, texRight);
-
-  % Switch to clear color black and do a clear by double flip:
-  Screen('FillRect', win, 0);
-
-  % Play more stupid tricks to get intermediate (bounce buffer FBOs) buffers cleared to black:
-%  Screen('HookFunction', win, 'AppendBuiltin', procchain, 'Builtin:IdentityBlit', '');
-%  Screen('Flip', win);
-%  Screen('Flip', win);
-%  Screen('HookFunction', win, 'Remove', procchain, slot);
 
   % Go back to user requested clear color, now that all our buffers
   % are cleared to black:
