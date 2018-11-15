@@ -43,6 +43,7 @@ typedef struct PsychOculusDevice {
     ovrSession          hmd;
     ovrHmdDesc          hmdDesc;
     ovrTextureSwapChain textureSwapChain[2];
+    int                 textureSwapChainLength;
     ovrMirrorTexture    mirrorTexture;
     psych_bool          isStereo;
     int                 textureWidth;
@@ -54,6 +55,7 @@ typedef struct PsychOculusDevice {
     ovrMatrix4f         timeWarpMatrices[2];
     ovrPosef            headPose;
     uint32_t            frameIndex;
+    int                 needSubmit;
     ovrPosef            outEyePoses[2];
     double              frameDuration;
     double              sensorSampleTime;
@@ -71,6 +73,9 @@ static unsigned int devicecount = 0;
 static int verbosity = 3;
 static psych_bool initialized = FALSE;
 static ovrErrorInfo errorInfo;
+
+static void* PresenterThreadMain(void* psychOculusDeviceToCast);
+static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTextures, psych_bool onlyCommit);
 
 void InitializeSynopsis(void)
 {
@@ -210,6 +215,7 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
 
 void PsychOculusStop(int handle)
 {
+    int rc;
     PsychOculusDevice* oculus;
     oculus = PsychGetOculus(handle, TRUE);
     if (NULL == oculus || !oculus->isTracking) return;
@@ -232,6 +238,18 @@ void PsychOculusStop(int handle)
     memset(oculus->outEyePoses, 0, 2 * sizeof(oculus->outEyePoses[0]));
     oculus->outEyePoses[0].Orientation.w = 1;
     oculus->outEyePoses[1].Orientation.w = 1;
+
+    // Need to start presenterThread if this is the first Present operation:
+    if (oculus->presenterThread == (psych_thread) NULL) {
+        // Create and startup thread:
+        if ((rc = PsychCreateThread(&(oculus->presenterThread), NULL, PresenterThreadMain, (void*) oculus))) {
+            PsychUnlockMutex(&(oculus->presenterLock));
+            oculus->presenterThread = (psych_thread) NULL;
+            printf("PsychOculusVRCore1-ERROR: Could not create internal presenterThread  [%s].\n", strerror(rc));
+            PsychErrorExitMsg(PsychError_system, "Insufficient system resources for thread creation as part of VR compositor init!");
+        }
+    }
+
     PsychUnlockMutex(&(oculus->presenterLock));
 
     return;
@@ -243,9 +261,6 @@ void PsychOculusClose(int handle)
     PsychOculusDevice* oculus;
     oculus = PsychGetOculus(handle, TRUE);
     if (NULL == oculus) return;
-
-    // Stop device:
-    PsychOculusStop(handle);
 
     // presenterThread shutdown: Ask thread to terminate, wait for thread termination, cleanup and release the thread:
     PsychLockMutex(&(oculus->presenterLock));
@@ -262,6 +277,9 @@ void PsychOculusClose(int handle)
     // Ok, thread is dead. Mark it as such:
     oculus->presenterThread = (psych_thread) NULL;
     oculus->closing = FALSE;
+
+    // PresentExecute() a last time on the main thread:
+    PresentExecute(oculus, FALSE, FALSE);
 
     // Destroy/Release texture swap chain to compositor:
     if (oculus->textureSwapChain[0]) {
@@ -647,7 +665,7 @@ PsychError PSYCHOCULUSVR1SetLowPersistence(void)
 PsychError PSYCHOCULUSVR1Start(void)
 {
     static char useString[] = "PsychOculusVRCore1('Start', oculusPtr);";
-    //                                                1
+    //                                                     1
     static char synopsisString[] =
         "Start head orientation and position tracking operation on Oculus device 'oculusPtr'.\n\n";
     static char seeAlsoString[] = "Stop";
@@ -687,11 +705,23 @@ PsychError PSYCHOCULUSVR1Start(void)
     else if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Tracking started on device with handle %i.\n", handle);
 */
 
+    // presenterThread shutdown: Ask thread to terminate, wait for thread termination, cleanup and release the thread:
     PsychLockMutex(&(oculus->presenterLock));
-    oculus->frameIndex = 0;
-//    ovrHmd_ResetFrameTiming(oculus->hmd, oculus->frameIndex);
-    oculus->isTracking = TRUE;
+    oculus->closing = TRUE;
     PsychUnlockMutex(&(oculus->presenterLock));
+
+    if (oculus->presenterThread != (psych_thread) NULL) {
+        if (verbosity > 5)
+            printf("PTB-DEBUG: Waiting (join()ing) for helper thread of HMD %p to finish up. If this doesn't happen quickly, you'll have to kill Octave...\n", oculus);
+
+        PsychDeleteThread(&(oculus->presenterThread));
+    }
+
+    // Ok, thread is dead. Mark it as such:
+    oculus->presenterThread = (psych_thread) NULL;
+    oculus->closing = FALSE;
+    oculus->isTracking = TRUE;
+//    ovrHmd_ResetFrameTiming(oculus->hmd, oculus->frameIndex);
 
     // Tracking is running.
     return(PsychError_none);
@@ -1122,6 +1152,7 @@ PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
     }
 
     ovr_GetTextureSwapChainLength(oculus->hmd, oculus->textureSwapChain[eyeIndex], &out_Length);
+    oculus->textureSwapChainLength = out_Length;
 
     if (verbosity > 3)
         printf("PsychOculusVRCore1-INFO: Allocated texture swap chain has %i buffers.\n", out_Length);
@@ -1153,7 +1184,7 @@ PsychError PSYCHOCULUSVR1GetNextTextureHandle(void)
     "to which the next VR frame should be rendered. Returns -1 if busy.\n";
     static char seeAlsoString[] = "CreateRenderTextureChain";
 
-    int handle, eyeIndex;
+    int handle, eyeIndex, out_Index;
     unsigned int texObjectHandle;
     PsychOculusDevice *oculus;
 
@@ -1183,6 +1214,17 @@ PsychError PSYCHOCULUSVR1GetNextTextureHandle(void)
 
     // Get next free/non-busy buffer for this eyes texture swap chain:
     PsychLockMutex(&(oculus->presenterLock));
+    /*
+    if (OVR_FAILURE(ovr_GetTextureSwapChainCurrentIndex(oculus->hmd, oculus->textureSwapChain[eyeIndex], &out_Index))) {
+        ovr_GetLastErrorInfo(&errorInfo);
+        if (verbosity > 0) printf("PsychOculusVRCore1-ERROR: eye %i ovr_GetTextureSwapChainCurrentIndex failed: %s\n", eyeIndex, errorInfo.ErrorString);
+        PsychUnlockMutex(&(oculus->presenterLock));
+        PsychErrorExitMsg(PsychError_system, "Failed to retrieve next OpenGL texture from swap chain.");
+    }
+    else if (verbosity > 2)
+        printf("PsychOculusVRCore1-DEBUG: eye %i - swapchain index %i\n", eyeIndex, out_Index);
+    */
+
     if (OVR_FAILURE(ovr_GetTextureSwapChainBufferGL(oculus->hmd, oculus->textureSwapChain[eyeIndex], -1, &texObjectHandle))) {
         ovr_GetLastErrorInfo(&errorInfo);
         if (verbosity > 0) printf("PsychOculusVRCore1-ERROR: eye %i ovr_GetTextureSwapChainBufferGL failed: %s\n", eyeIndex, errorInfo.ErrorString);
@@ -1630,16 +1672,6 @@ PsychError PSYCHOCULUSVR1EndFrameRender(void)
     // Get expected presentation time for the frame that just finished rendering:
     PsychCopyInDoubleArg(2, kPsychArgRequired, &targetPresentTime);
 
-    // If the expected time is already in the past then we missed and
-    // expect a present 1 msec in the future at the earliest:
-    PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-    if ((tNow > targetPresentTime) && (targetPresentTime > 0.0)) {
-        if (verbosity > 1) printf("PsychOculusVRCore1: WARNING: 'Flip' target 'when' time already exceeded by %f msecs! Timing trouble?\n",
-                                  1000 * (tNow - targetPresentTime));
-
-        targetPresentTime = tNow + (verbosity > 1) ? 0.002 : 0.001;
-    }
-
     // Update the expected present timestamp to the predicted one:
     PsychLockMutex(&(oculus->presenterLock));
     oculus->scheduledPresentExecTime = targetPresentTime;
@@ -1652,16 +1684,28 @@ PsychError PSYCHOCULUSVR1EndFrameRender(void)
 // Must be called with the presenterLock locked!
 // Called by idle presenterThread to keep VR compositor timeout handling from kicking in,
 // and directly from PSYCHOCULUSVR1PresentFrame when userspace wants to present new content.
-static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTextures)
+static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTextures, psych_bool inInit)
 {
     int eyeIndex;
     psych_bool success = TRUE;
-    double tPredictedOnset;
+    double tPredictedOnset = 0;
     ovrLayerEyeFov layer0;
     const ovrLayerHeader *layers[1] = { &layer0.Header };
 
+    // printf("PresentExecute-1 %i = %f\n", commitTextures, ovr_GetTimeInSeconds());
+
     // Is this a present with updated visual content - called from "userspace" runtime?
     if (commitTextures) {
+        // Free capacity in swapchains?
+        while ((oculus->needSubmit >= oculus->textureSwapChainLength - 1) &&
+               (!oculus->isTracking) && (oculus->presenterThread != (psych_thread) NULL)) {
+            // No, and the presenterThread is running and should make free space soon.
+            // Wait for it to do its job:
+            PsychUnlockMutex(&(oculus->presenterLock));
+            PsychYieldIntervalSeconds(0.001);
+            PsychUnlockMutex(&(oculus->presenterLock));
+        }
+
         // Commit current target textures to chain:
         for (eyeIndex = 0; eyeIndex < ((oculus->isStereo) ? 2 : 1); eyeIndex++) {
             if (OVR_FAILURE(ovr_CommitTextureSwapChain(oculus->hmd, oculus->textureSwapChain[eyeIndex]))) {
@@ -1675,54 +1719,70 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
         // If HMD tracking is disabled then set sensorSampleTime to "now" - reasonable:
         if (!oculus->isTracking)
             oculus->sensorSampleTime = ovr_GetTimeInSeconds();
+
+        if (!success)
+            goto present_fail;
+
+        // Mark the need for a ovr_SubmitFrame() call before we can commit textures again:
+        oculus->needSubmit++;
     }
 
-    // Setup layer headers:
-    layer0.Header.Type = ovrLayerType_EyeFov;
-    layer0.Header.Flags = ovrLayerFlag_HighQuality | ovrLayerFlag_TextureOriginAtBottomLeft;
+    // printf("PresentExecute-2 %i - %f\n", commitTextures, ovr_GetTimeInSeconds());
 
-    // Use head locked layer if head tracking is disabled, so our frames stay in a fixed
-    // position wrt. the HMD - the HMD simply acts as a strapped on mono- or stereo monitor:
-    layer0.Header.Flags |= ((!oculus->isTracking) ? ovrLayerFlag_HeadLocked : 0);
+    // Always submit updated textures when called from presenter thread. If called
+    // from usercode 'PresentFrame' only submit if the usercode is in full charge,
+    // ie. HMD head tracking is active and driving render timing in a fast closed loop:
+    if (inInit || !commitTextures || oculus->isTracking || (oculus->presenterThread == (psych_thread) NULL)) {
+        // Setup layer headers:
+        layer0.Header.Type = ovrLayerType_EyeFov;
+        layer0.Header.Flags = ovrLayerFlag_HighQuality | ovrLayerFlag_TextureOriginAtBottomLeft;
 
-    layer0.ColorTexture[0] = oculus->textureSwapChain[0];
-    layer0.ColorTexture[1] = (oculus->isStereo) ? oculus->textureSwapChain[1] : NULL;
-    layer0.Viewport[0].Pos.x = 0;
-    layer0.Viewport[0].Pos.y = 0;
-    layer0.Viewport[0].Size.w = oculus->textureWidth;
-    layer0.Viewport[0].Size.h = oculus->textureHeight;
-    layer0.Viewport[1].Pos.x = 0;
-    layer0.Viewport[1].Pos.y = 0;
-    layer0.Viewport[1].Size.w = oculus->textureWidth;
-    layer0.Viewport[1].Size.h = oculus->textureHeight;
-    layer0.Fov[0] = oculus->ofov[0];
-    layer0.Fov[1] = oculus->ofov[1];
-    layer0.RenderPose[0] = oculus->outEyePoses[0];
-    layer0.RenderPose[1] = oculus->outEyePoses[1];
-    layer0.SensorSampleTime = oculus->sensorSampleTime;
+        // Use head locked layer if head tracking is disabled, so our frames stay in a fixed
+        // position wrt. the HMD - the HMD simply acts as a strapped on mono- or stereo monitor:
+        layer0.Header.Flags |= ((!oculus->isTracking) ? ovrLayerFlag_HeadLocked : 0);
 
-    // Wait until lastPresentExecTime, which is the predicted display time
-    // of the previously submitted frame, ie. the midpoint of its scanout
-    // cycle. No point to submit faster than video refresh rate for us.
-    PsychWaitUntilSeconds(oculus->lastPresentExecTime - oculus->frameDuration / 2);
+        layer0.ColorTexture[0] = oculus->textureSwapChain[0];
+        layer0.ColorTexture[1] = (oculus->isStereo) ? oculus->textureSwapChain[1] : NULL;
+        layer0.Viewport[0].Pos.x = 0;
+        layer0.Viewport[0].Pos.y = 0;
+        layer0.Viewport[0].Size.w = oculus->textureWidth;
+        layer0.Viewport[0].Size.h = oculus->textureHeight;
+        layer0.Viewport[1].Pos.x = 0;
+        layer0.Viewport[1].Pos.y = 0;
+        layer0.Viewport[1].Size.w = oculus->textureWidth;
+        layer0.Viewport[1].Size.h = oculus->textureHeight;
+        layer0.Fov[0] = oculus->ofov[0];
+        layer0.Fov[1] = oculus->ofov[1];
+        layer0.RenderPose[0] = oculus->outEyePoses[0];
+        layer0.RenderPose[1] = oculus->outEyePoses[1];
+        layer0.SensorSampleTime = oculus->sensorSampleTime;
 
-    tPredictedOnset = ovr_GetPredictedDisplayTime(oculus->hmd, oculus->frameIndex);
-    //printf("PRESENT[%i]: Last %f, Next %f, dT = %f msecs\n", commitTextures, oculus->lastPresentExecTime, tPredictedOnset, 1000 * (tPredictedOnset - oculus->lastPresentExecTime));
+        tPredictedOnset = ovr_GetPredictedDisplayTime(oculus->hmd, oculus->frameIndex);
+        if (verbosity > 3)
+            printf("PRESENT[%i]: Last %f, Next %f, dT = %f msecs\n", commitTextures, oculus->lastPresentExecTime, tPredictedOnset, 1000 * (tPredictedOnset - oculus->lastPresentExecTime));
 
-    // Submit frame to compositor for display at earliest possible time:
-    if (OVR_FAILURE(ovr_SubmitFrame(oculus->hmd, oculus->frameIndex, NULL, layers, 1))) {
-        success = FALSE;
-        ovr_GetLastErrorInfo(&errorInfo);
-        if (verbosity > 0)
-            printf("PsychOculusVRCore1-ERROR: ovr_SubmitFrame() failed: %s\n", errorInfo.ErrorString);
+        // Submit frame to compositor for display at earliest possible time:
+        if (OVR_FAILURE(ovr_SubmitFrame(oculus->hmd, oculus->frameIndex, NULL, layers, 1))) {
+            success = FALSE;
+            ovr_GetLastErrorInfo(&errorInfo);
+            if (verbosity > 0)
+                printf("PsychOculusVRCore1-ERROR: ovr_SubmitFrame() failed: %s\n", errorInfo.ErrorString);
+        }
+        else {
+            oculus->frameIndex++;
+            if (oculus->needSubmit > 0)
+                oculus->needSubmit--;
+        }
+
+        // Update the lastPresentExecTime timestamp:
+        oculus->lastPresentExecTime = tPredictedOnset;
+
+        // printf("PresentExecute-3 %i - %f\n", commitTextures, ovr_GetTimeInSeconds());
     }
-    else {
-        oculus->frameIndex++;
-    }
 
-    // Update the lastPresentExecTime timestamp:
-    // PsychGetAdjustedPrecisionTimerSeconds(&(oculus->lastPresentExecTime));
-    oculus->lastPresentExecTime = tPredictedOnset;
+    // printf("PresentExecute-4 %i - %f\n", commitTextures, ovr_GetTimeInSeconds());
+
+present_fail:
 
     return(success ? tPredictedOnset : -1);
 }
@@ -1730,17 +1790,22 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
 static void* PresenterThreadMain(void* psychOculusDeviceToCast)
 {
     int rc;
-    double tNow, presentDeadline, headRoom;
-    // Get a handle to our oculus device struct:
     PsychOculusDevice* oculus = (PsychOculusDevice*) psychOculusDeviceToCast;
-    double frameDuration = 1.0 / (double) oculus->hmdDesc.DisplayRefreshRate;
 
     // Assign a name to ourselves, for debugging:
     PsychSetThreadName("PsychOculusVR1PresenterThread");
 
+    // XXX useless attempt to fix the 3rd texture failed problem:
+    /*
+    PsychLockMutex(&(oculus->presenterLock));
+    PresentExecute(oculus, TRUE, TRUE);
+    PresentExecute(oculus, TRUE, TRUE);
+    PresentExecute(oculus, TRUE, TRUE);
+    PsychUnlockMutex(&(oculus->presenterLock));
+    */
+
     // VR compositor timeout prevention loop: Repeats infinitely, well, not infinitely,
     // but until we receive a shutdown request and terminate ourselves...
-
     while (TRUE) {
         // Try to lock, block until available if not available:
         if ((rc = PsychLockMutex(&(oculus->presenterLock)))) {
@@ -1757,102 +1822,26 @@ static void* PresenterThreadMain(void* psychOculusDeviceToCast)
             break;
         }
 
-        // VR tracking mode?
-        if (oculus->isTracking) {
-            // HMD in tracking mode: In this case we should do nothing, as in tracking mode
-            // the userspace script is supposed to run in a tight loop of the form
-            // GetHeadPose -> process & render next frame according to tracked pose -> Present
-            // to get minimal "motion to photon" latency, so the user doesn't get motion sick,
-            // disoriented, bumps into stuff etc.
-            // Therefore we don't do anything, so the VR compositors timeout and safety
-            // mechanisms trigger if the script isn't responding properly.
-            PsychUnlockMutex(&(oculus->presenterLock));
-
-            // Sleep for a frame duration:
-            PsychYieldIntervalSeconds(frameDuration);
-
-            // And process again:
-            continue;
-        }
-
         // Non-tracked presentation mode for pure monoscopic or stereoscopic presentation
         // without use of head tracking - The HMD is just used as a strapped on stereo or
         // mono monitor, not in a closed-loop setup. Subject will just sit on a chair and
         // likely not move the head much at all. Here we expect that usercode may pass
         // target presentation times 'when' into the Screen('Flip', window, when, ...);
         // command to ask for stimulus presentation in the (potentially far) future, ie.,
-        // more than a compositor timeout duration into the future. We want to prevent the
-        // compositor timeout mechanisms and safeties to trigger, as that would disrupt the
-        // experiment.
+        // more than a HMD video refresh duration into the future. We want to prevent the
+        // compositor timeout mechanisms and performance optimizations like Asynchronous space
+        // warp (ASW) to trigger, as that would totally disrupt the intended experiment timing.
         //
-        // Our purpose is to prevent timeouts by executing ovr_SubmitFrame() calls as needed,
-        // with the old/current frame content in the swapchains, before the timeout is reached.
-        // Do this as often as needed, but no more often than needed!
-
-        // Get latest possible point in time when we have to PresentExecute() to prevent timeout:
-        // It is the time of last PresentExecute() + timeout - safety margin for scheduler delay:
-        presentDeadline = oculus->lastPresentExecTime + oculus->VRtimeoutSecs - ((PSYCH_SYSTEM == PSYCH_WINDOWS) ? 0.005 : 0.001);
-
-        // Get current time:
-        PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-
-        // presentDeadline still at least one frame in the future?
-        headRoom = presentDeadline - tNow;
-        if (headRoom > frameDuration) {
-            PsychUnlockMutex(&(oculus->presenterLock));
-
-            // Sleep until one frame duration to deadline:
-            PsychYieldIntervalSeconds(headRoom - frameDuration);
-
-            // Resample state:
-            continue;
-        }
-
-        // Only about 1 frame duration away from deadline. Does the usercode provide any info
-        // about when it wants to present 'Flip' on its own with new rendered content?
-        if (oculus->scheduledPresentExecTime != -DBL_MAX) {
-            // Yes! If a PresentExecute is promised by usercode for the next possible
-            // compositor cycle then we will get a present of new content in time from
-            // master thread and do not need to do anything to prevent timeout:
-            if (oculus->scheduledPresentExecTime == 0) {
-                oculus->scheduledPresentExecTime = -DBL_MAX;
-
-                PsychUnlockMutex(&(oculus->presenterLock));
-
-                // Sleep until deadline + 1 msec, then recheck the situation to
-                // see if master thread did its job:
-                PsychYieldIntervalSeconds(headRoom + 0.001);
-
-                continue;
-            }
-
-            // Ok, got a specific scheduledPresentExecTime. If it is located after
-            // the timeout deadline then we must do a present of old content on our
-            // own to prevent compositor timeout handling from kicking in. Otherwise
-            // we can leave it to the master thread:
-            if (oculus->scheduledPresentExecTime < presentDeadline) {
-                oculus->scheduledPresentExecTime = -DBL_MAX;
-                PsychUnlockMutex(&(oculus->presenterLock));
-
-                // Sleep until deadline + 1 msec, then recheck the situation to
-                // see if master thread did its job:
-                PsychYieldIntervalSeconds(headRoom + 0.001);
-
-                continue;
-            }
-        }
-
-        // If we made it to this point then we are very close to or even slightly past
-        // the deadline and must do an idle present of old frame content to prevent
-        // compositor timeout handling:
-        if ((PresentExecute(oculus, FALSE) < 0) && verbosity > 0) {
+        // Our purpose is to prevent timeouts by executing ovr_SubmitFrame() at least once per
+        // HMD refresh interval / compositor duty cycle, with the old/current frame content in
+        // the swapchains.
+        if ((PresentExecute(oculus, FALSE, FALSE) < 0) && verbosity > 0) {
             fprintf(stderr, "PsychOculusVRCore1-ERROR: In PresenterThreadMain(): PresentExecute() for timeout prevention failed!\n");
         }
 
+        // Unlock and sleep for a frameDuration:
         PsychUnlockMutex(&(oculus->presenterLock));
-
-        // Sleep for a frame duration:
-        PsychYieldIntervalSeconds(frameDuration);
+        PsychYieldIntervalSeconds(oculus->frameDuration);
 
         // Next dispatch loop iteration...
     }
@@ -1931,22 +1920,12 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     // Execute the present operation with the presenterThread locked out.
     // Invalidate any scheduledPresentExecTime after such a Present:
     PsychLockMutex(&(oculus->presenterLock));
-    tPredictedOnset = PresentExecute(oculus, TRUE);
+    tPredictedOnset = PresentExecute(oculus, TRUE, FALSE);
     oculus->scheduledPresentExecTime = -DBL_MAX;
     PsychUnlockMutex(&(oculus->presenterLock));
 
-    if (tPredictedOnset < 0)
-        PsychErrorExitMsg(PsychError_system, "Failed to present new frames to VR compositor.");
-
-    // Need to start presenterThread if this is the first Present operation:
-    if (oculus->presenterThread == (psych_thread) NULL) {
-        // Create and startup thread:
-        if ((rc = PsychCreateThread(&(oculus->presenterThread), NULL, PresenterThreadMain, (void*) oculus))) {
-            oculus->presenterThread = (psych_thread) NULL;
-            printf("PsychOculusVRCore1-ERROR: Could not create internal presenterThread  [%s].\n", strerror(rc));
-            PsychErrorExitMsg(PsychError_system, "Insufficient system resources for thread creation as part of VR compositor init!");
-        }
-    }
+    if ((tPredictedOnset < 0) && (verbosity > 0))
+        printf("PsychOculusVRCore1-ERROR: Failed to present new frames to VR compositor.\n");
 
     if (doTimestamp) {
         // Retrieve performance stats, mostly for our timestamping:
