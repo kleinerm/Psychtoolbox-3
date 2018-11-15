@@ -84,11 +84,11 @@ void InitializeSynopsis(void)
     const char **synopsis = synopsisSYNOPSIS;
 
     synopsis[i++] = "PsychOculusVRCore1 - A Psychtoolbox driver for Oculus VR hardware.\n";
-    synopsis[i++] = "This driver allows to control devices supported by the Oculus runtime V1.0 and higher.\n";
+    synopsis[i++] = "This driver allows to control devices supported by the Oculus runtime V1.11 and higher.\n";
     synopsis[i++] = "The PsychOculusVRCore1 driver is licensed to you under the terms of the MIT license.";
     synopsis[i++] = "See 'help License.txt' in the Psychtoolbox root folder for more details.\n";
     synopsis[i++] = "\n";
-    synopsis[i++] = "The driver requires the Oculus VR runtime version 1.0 or later to work.\n";
+    synopsis[i++] = "The driver requires the Oculus VR runtime version 1.11 or later versions to work.\n";
     synopsis[i++] = "\n";
     synopsis[i++] = "Usage:";
     synopsis[i++] = "\n";
@@ -106,9 +106,11 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychOculusVRCore1('Stop', oculusPtr);";
     synopsis[i++] = "[state, touch] = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=nextFrame]);";
     synopsis[i++] = "input = PsychOculusVRCore1('GetInputState', oculusPtr, controllerType);";
+    synopsis[i++] = "pulseEndTime = PsychOculusVRCore1('HapticPulse', oculusPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
     synopsis[i++] = "[projL, projR] = PsychOculusVRCore1('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOculusVRCore1('StartRender', oculusPtr);";
     synopsis[i++] = "[eyePose, eyeIndex] = PsychOculusVRCore1('GetEyePose', oculusPtr, renderPass);";
+    synopsis[i++] = "[adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOculusVRCore1('GetPerformanceStats', oculusPtr);";
     synopsis[i++] = "\n";
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:\n";
     synopsis[i++] = "\n";
@@ -120,7 +122,6 @@ void InitializeSynopsis(void)
     synopsis[i++] = "trackers = PsychOculusVRCore1('GetTrackersState', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore1('EndFrameRender', oculusPtr, targetPresentTime);";
     synopsis[i++] = "[frameTiming, tPredictedOnset, referenceFrameIndex] = PsychOculusVRCore1('PresentFrame', oculusPtr [, doTimestamp=0][, when=0]);";
-    synopsis[i++] = "[adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOculusVRCore1('GetPerformanceStats', oculusPtr);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
 
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -2676,6 +2677,105 @@ PsychError PSYCHOCULUSVR1GetPerformanceStats(void)
         PsychSetStructArrayDoubleElement("AswActivatedToggleCount", i, oculus->perfStats.FrameStats[i].AswActivatedToggleCount, frameT);
         PsychSetStructArrayDoubleElement("AswPresentedFrameCount", i, oculus->perfStats.FrameStats[i].AswPresentedFrameCount, frameT);
         PsychSetStructArrayDoubleElement("AswFailedFrameCount", i, oculus->perfStats.FrameStats[i].AswFailedFrameCount, frameT);
+    }
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVR1HapticPulse(void)
+{
+    static char useString[] = "pulseEndTime = PsychOculusVRCore1('HapticPulse', oculusPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
+    //                         1                                                1          2                 3               4           5
+    static char synopsisString[] =
+    "Execute a haptic feedback pulse on controller 'controllerType' associated with Oculus device 'oculusPtr'.\n\n"
+    "'duration' is the duration of the pulse in seconds. If omitted, the function returns immediately and "
+    "the maximum duration of 2.5 seconds is used, unless you call the function again with 'freq' = 0, to cancel the "
+    "currently active pulse. Otherwise, if a 'duration' is specified, the function executes for the specified duration, "
+    "and may block execution of your script for that time span on some controller types, returning the absolute "
+    "time when the pulse is expected to end.\n\n"
+    "'freq' Frequency of the vibration in normalized 0.0 - 1.0 range. Currently only values 0, 0.5 and 1.0 "
+    "will be used. 0 = Disable ongoing pulse immediately. Values other than 0, 0.5, or 1 will be clamped to the nearest value.\n\n"
+    "'amplitude' Normalized amplitude in range 0.0 - 1.0\n\n"
+    "The return argument 'pulseEndTime' contains the absolute time in seconds when the pulse is expected "
+    "to end, as estimated at the time of calling the function. The precision and accuracy of pulse timing "
+    "is not known.\n"
+
+    static char seeAlsoString[] = "";
+    int handle, controllerType;
+    PsychOculusDevice *oculus;
+    double duration, freq, amplitude, pulseEndTime;
+    ovrResult result;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(5));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Get the new performance HUD mode:
+    PsychCopyInIntegerArg(2, kPsychArgRequired, &controllerType);
+
+    // Duration:
+    duration = 2.5;
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &duration);
+    if (duration < 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid negative 'duration' in seconds specified. Must be positive.");
+
+    if ((duration > 2.5) && (verbosity > 1))
+        printf("PsychOculusVRCore1-WARNING: 'HapticsPulse' of %f seconds duration requested, but currently duration is limited to a maximum of 2.5 seconds. Clamping...\n",
+                duration);
+
+    if (duration > 2.5)
+        duration = 2.5;
+
+    freq = 1.0;
+    PsychCopyInDoubleArg(4, kPsychArgOptional, &freq);
+    if (freq < 0.0 || freq > 1.0)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'freq' frequency specified. Must be in range [0.0 ; 1.0].");
+
+    amplitude = 1.0;
+    PsychCopyInDoubleArg(5, kPsychArgOptional, &amplitude);
+    if (amplitude < 0.0 || amplitude > 1.0)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'amplitude' specified. Must be in range [0.0 ; 1.0].");
+
+    // Execute pulse:
+    result = ovr_SetControllerVibration(oculus->hmd, (ovrControllerType) controllerType, (float) freq, (float) amplitude);
+    if (OVR_FAILURE(result)) {
+        ovr_GetLastErrorInfo(&errorInfo);
+        if (verbosity > 0)
+            printf("PsychOculusVRCore1-ERROR: ovr_SetControllerVibration() failed: %s\n", errorInfo.ErrorString);
+        PsychErrorExitMsg(PsychError_system, "Failed to initiate haptic feedback pulse.");
+    }
+
+    if ((result == ovrSuccess_DeviceUnavailable) && (verbosity > 1))
+        printf("PsychOculusVRCore1-WARNING: 'HapticsPulse' will go nowhere, as suitable controller of type %i is not connected.\n", controllerType);
+
+    // Predict "off" time:
+    PsychGetAdjustedPrecisionTimerSeconds(&pulseEndTime);
+    pulseEndTime += duration;
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, pulseEndTime);
+
+    // Pulse of predefined duration requested?
+    if ((freq != 0) && (duration < 2.5)) {
+        // Yes. Wait until expected end time, then stop the pulse:
+        PsychWaitUntilSeconds(pulseEndTime);
+        result = ovr_SetControllerVibration(oculus->hmd, (ovrControllerType) controllerType, (float) 0, (float) 0);
+        if (OVR_FAILURE(result)) {
+            ovr_GetLastErrorInfo(&errorInfo);
+            if (verbosity > 0)
+                printf("PsychOculusVRCore1-ERROR: ovr_SetControllerVibration() failed to stop vibration: %s\n", errorInfo.ErrorString);
+            PsychErrorExitMsg(PsychError_system, "Failed to stop haptic feedback pulse.");
+        }
     }
 
     return(PsychError_none);

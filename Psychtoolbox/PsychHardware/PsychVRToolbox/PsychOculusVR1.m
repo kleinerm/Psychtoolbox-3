@@ -197,6 +197,20 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % 'ThumbstickRaw' = 'Thumbstick' raw date without deadzone or filtering applied.
 %
 %
+% pulseEndTime = PsychOculusVR1('HapticPulse', hmd, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);
+% - Trigger a haptic feedback pulse, some controller vibration, on the specified 'controllerType'
+% associated with the specified 'hmd'. 'duration' is pulse duration in seconds, by default a maximum
+% of 2.5 seconds is executed. 'freq' is normalized frequency in range 0.0 - 1.0. A value of 0 will
+% disable an ongoing pulse. As of Oculus runtime version 1.11, only freq values 0.5 and 1.0 are
+% reproduced. Other freq values will be clamped/quantized to those values. 'amplitude' is the
+% amplitude of the vibration in normalized 0.0 - 1.0 range.
+%
+% 'pulseEndTime' returns the expected stop time of vibration in seconds, given the parameters.
+% Currently the function will return immediately for a 'duration' of 2.5 seconds, and the pulse
+% will end after 2.5 seconds. Smaller 'duration' values will block the execution of the function
+% until the 'duration' has passed on some types of controllers.
+%
+%
 % state = PsychOculusVR1('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
 % - Mark the start of the rendering cycle for a new 3D rendered stereoframe.
 % Return a struct 'state' which contains various useful bits of information
@@ -876,6 +890,22 @@ if strcmpi(cmd, 'GetInputState')
   end
 
   varargout{1} = PsychOculusVRCore1('GetInputState', myhmd.handle, double(varargin{2}));
+
+  return;
+end
+
+if strcmpi(cmd, 'HapticPulse')
+  % Get and validate handle - fast path open coded:
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOculusVR1:HapticPulse: Specified handle does not correspond to an open HMD!');
+  end
+
+  if length(varargin) < 2 || isempty(varargin{2})
+    error('PsychOculusVR1:HapticPulse: Required ''controllerType'' argument missing.');
+  end
+
+  varargout{1} = PsychOculusVRCore1('HapticPulse', myhmd.handle, double(varargin{2}), varargin{3:end});
 
   return;
 end

@@ -59,6 +59,7 @@ PsychError PSYCHOCULUSVR1VRAreaBoundary(void);
 PsychError PSYCHOCULUSVR1RecenterTrackingOrigin(void);
 PsychError PSYCHOCULUSVR1TrackingOriginType(void);
 PsychError PSYCHOCULUSVR1GetPerformanceStats(void);
+PsychError PSYCHOCULUSVR1HapticPulse(void);
 
 #ifdef  __cplusplus
 }

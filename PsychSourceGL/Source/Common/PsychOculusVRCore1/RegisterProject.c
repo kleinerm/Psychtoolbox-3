@@ -50,11 +50,21 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("RecenterTrackingOrigin", &PSYCHOCULUSVR1RecenterTrackingOrigin));
     PsychErrorExit(PsychRegister("TrackingOriginType", &PSYCHOCULUSVR1TrackingOriginType));
     PsychErrorExit(PsychRegister("GetPerformanceStats", &PSYCHOCULUSVR1GetPerformanceStats));
+    PsychErrorExit(PsychRegister("HapticPulse", &PSYCHOCULUSVR1HapticPulse));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
+    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
 
     PsychErrorExit(PsychRegister("CreateRenderTextureChain", &PSYCHOCULUSVR1CreateRenderTextureChain));
     PsychErrorExit(PsychRegister("GetNextTextureHandle", &PSYCHOCULUSVR1GetNextTextureHandle));
     PsychErrorExit(PsychRegister("CreateMirrorTexture", &PSYCHOCULUSVR1CreateMirrorTexture));
-    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
 
     // Report the version
     PsychErrorExit(PsychRegister("Version", &MODULEVersion));
