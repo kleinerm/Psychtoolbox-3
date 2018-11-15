@@ -25,10 +25,10 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % the HMD is closed. Returns the 'hmd' handle of the HMD on success.
 %
 % By default, the first detected HMD will be used and if no VR HMD
-% is connected, it will open an emulated/simulated one for basic
-% testing and debugging. You can override this default choice of
-% HMD by specifying the optional 'deviceIndex' parameter to choose
-% a specific HMD.
+% is connected, it will return an empty [] hmd handle. You can override
+% this default choice of HMD by specifying the optional 'deviceIndex'
+% parameter to choose a specific HMD. However, only one HMD per machine is
+% supported, so the 'deviceIndex' will probably be only useful in the future.
 %
 % More optional parameters: 'basicTask' what kind of task should be implemented.
 % The default is 'Tracked3DVR', which means to setup for stereoscopic 3D
@@ -40,27 +40,11 @@ function varargout = PsychOculusVR1(cmd, varargin)
 %
 % 'basicRequirements' defines basic requirements for the task. Currently
 % defined are the following strings which can be combined into a single
-% 'basicRequirements' string: 'LowPersistence' = Try to keep exposure
-% time of visual images on the retina low if possible, ie., try to approximate
-% a pulse-type display instead of a hold-type display if possible. This has
-% no effect on the Rift DK1. On the Rift DK2 it will enable low persistence
-% scanning of the OLED display panel, to light up each pixel only a fraction
-% of a video refresh cycle duration.
-%
-% 'FastResponse' = Try to switch images with minimal delay and fast
-% pixel switching time. This will enable OLED panel overdrive processing
-% on the Oculus Rift DK1 and DK2. OLED panel overdrive processing is a
-% relatively expensive post processing step.
-%
+% 'basicRequirements' string:
 % 'TimingSupport' = Support some hardware specific means of timestamping
 % or latency measurements. On the Rift DK1 this does nothing. On the DK2
 % it enables dynamic prediction and timing measurements with the Rifts internal
 % latency tester.
-%
-% 'TimeWarp' = Enable per eye image 2D timewarping via prediction of eye
-% poses at scanout time. This mostly only makes sense for head-tracked 3D
-% rendering. Depending on 'basicQuality' a more cheap or more expensive
-% procedure is used.
 %
 % 'basicQuality' defines the basic tradeoff between quality and required
 % computational power. A setting of 0 gives lowest quality, but with the
@@ -95,6 +79,7 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % - Retrieve a struct 'info' with information about the HMD 'hmd'.
 % The returned info struct contains at least the following standardized
 % fields with information:
+%
 % handle = Driver internal handle for the specific HMD.
 % driver = Function handle to the actual driver for the HMD, e.g., @PsychOculusVR1.
 % type   = Defines the type/vendor of the device, e.g., 'Oculus'.
@@ -265,31 +250,28 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % oldSetting = PsychOculusVR1('SetFastResponse', hmd [, enable]);
 % - Return old setting for 'FastResponse' mode in 'oldSetting',
 % optionally disable or enable the mode via specifying the 'enable'
-% parameter as 0 or greater than zero. Please note that if you want to
-% use 'FastResponse', you must request and thereby enable it at the
-% beginning of a session, as the driver must do some neccessary setup
-% prep work at startup of the HMD. Once it was initially enabled, you
-% can switch the setting at runtime with this function.
+% parameter as 0 or greater than zero.
 %
-% Currently implemented are an algorithmic overdrive mode if 'enable'
-% is set to 1, and two lookup table (LUT) based modes for 'enable'
-% settings of 2 or 3, each selecting a slightly different lookup table.
+% Deprecated: This function does nothing. It just exists for (backwards)
+% compatibility with the old Oculus driver and PsychVRHMD.
 %
 %
 % oldSetting = PsychOculusVR1('SetTimeWarp', hmd [, enable]);
 % - Return old setting for 'TimeWarp' mode in 'oldSetting',
 % optionally enable or disable the mode via specifying the 'enable'
-% parameter as 1 or 0. Please note that if you want to use 'TimeWarp',
-% you must request and thereby enable it at the beginning of a session, as
-% the driver must do some neccessary setup prep work at startup of the HMD.
-% Once it was initially enabled, you can switch the setting at runtime with
-% this function.
+% parameter as 1 or 0.
+%
+% Deprecated: This function does nothing. It just exists for (backwards)
+% compatibility with the old Oculus driver and PsychVRHMD.
 %
 %
 % oldSetting = PsychOculusVR1('SetLowPersistence', hmd [, enable]);
 % - Return old setting for 'LowPersistence' mode in 'oldSetting',
 % optionally enable or disable the mode via specifying the 'enable'
 % parameter as 1 or 0.
+%
+% Deprecated: This function does nothing. It just exists for (backwards)
+% compatibility with the old Oculus driver and PsychVRHMD.
 %
 %
 % oldSettings = PsychOculusVR1('PanelOverdriveParameters', hmd [, newparams]);
@@ -310,15 +292,10 @@ function varargout = PsychOculusVR1(cmd, varargin)
 %
 % PsychOculusVR1('SetHSWDisplayDismiss', hmd [, dismissTypes=1+2+4]);
 % - Set how the user can dismiss the "Health and safety warning display".
-% 'dismissTypes' can be -1 to disable the HSWD, or a value >= 0 to show
-% the HSWD until a timeout and or until the user dismisses the HSWD.
-% The following flags can be added to define type of dismissal:
-%
-% +0 = Display until timeout, if any. Will wait forever if there isn't any timeout!
-% +1 = Dismiss via keyboard keypress.
-% +2 = Dismiss via mouse click or mousepad tap.
-% +4 = Dismiss via a tap to the HMD (detected via accelerometer).
-%
+% Deprecated: This function does nothing. It just exists for (backwards)
+% compatibility with the old Oculus driver and PsychVRHMD. The current OculusVR
+% runtime 1.0 enforces display of the Health and Safety Warning at the beginning
+% of each VR session.
 %
 % [bufferSize, imagingFlags, stereoMode] = PsychOculusVR1('GetClientRenderingParameters', hmd);
 % - Retrieve recommended size in pixels 'bufferSize' = [width, height] of the client
@@ -335,6 +312,8 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % HMD 'hmd' is connected. 'scanout' is a struct returned by the Screen
 % function Screen('ConfigureDisplay', 'Scanout', screenid, outputid);
 % This allows probing video outputs to find the one which feeds the HMD.
+% Deprecated: This function does nothing. It just exists for (backwards)
+% compatibility with the old Oculus driver and PsychVRHMD.
 %
 %
 % [headToEyeShiftv, headToEyeShiftMatrix] = PsychOculusVR1('GetEyeShiftVector', hmd, eye);
@@ -348,9 +327,6 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % matrix is also returned in 'headToEyeShiftMatrix' for convenience.
 %
 %
-
-% History:
-% 07-Sep-2015  mk   Written.
 
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
@@ -779,52 +755,6 @@ if strcmpi(cmd, 'SetFastResponse')
   return;
 end
 
-if strcmpi(cmd, 'PanelOverdriveParameters')
-  warning('PanelOverdriveParameters called - IMPLEMENT!!');
-
-  myhmd = varargin{1};
-  if ~PsychOculusVR1('IsOpen', myhmd)
-    error('PanelOverdriveParameters: Passed in handle does not refer to a valid and open HMD.');
-  end
-  handle = myhmd.handle;
-
-  % PanelOverdriveParameters determines the parameters of GPU accelerated panel overdrive
-  % on the Rift DK1/DK2. Return old setting:
-  varargout{1} = [hmd{handle}.overdriveUpScale, hmd{handle}.overdriveDownScale, hmd{handle}.overdriveGammaCorrect];
-
-  % New setting requested?
-  if (length(varargin) >= 2) && ~isempty(varargin{2})
-    % Set new overdrive parameters for shaders:
-    newparams = varargin{2};
-    if length(newparams) ~= 3
-      error('PanelOverdriveParameters: Invalid new overdrive parameters. Not a 3-component vector [upscale, downscale, gamma].');
-    end
-
-    hmd{handle}.overdriveUpScale = newparams(1);
-    hmd{handle}.overdriveDownScale = newparams(2);
-    hmd{handle}.overdriveGammaCorrect = newparams(3);
-
-    if hmd{handle}.useOverdrive > 1
-      % LUT based overdrive - signal to the shader via value > 1000:
-      overdriveUpScale = 10000;
-    else
-      % Algorithmic overdrive:
-      overdriveUpScale = hmd{handle}.overdriveUpScale;
-    end
-
-    overdriveDownScale = hmd{handle}.overdriveDownScale;
-    overdriveGammaCorrect = hmd{handle}.overdriveGammaCorrect;
-
-%    glUseProgram(hmd{handle}.shaderLeft(1));
-%    glUniform3f(glGetUniformLocation(hmd{handle}.shaderLeft(1), 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
-%    glUseProgram(hmd{handle}.shaderRight(1));
-%    glUniform3f(glGetUniformLocation(hmd{handle}.shaderRight(1), 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
-%    glUseProgram(0);
-  end
-
-  return;
-end
-
 if strcmpi(cmd, 'SetTimeWarp')
   myhmd = varargin{1};
   if ~PsychOculusVR1('IsOpen', myhmd)
@@ -990,7 +920,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Create texture swap chains to provide textures to be used for frame submission
   % to the VR compositor:
-  [width, height] = PsychOculusVRCore1('CreateRenderTextureChain', hmd, hmd{handle}.inputWidth, hmd{handle}.inputHeight);
+  [width, height] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, hmd{handle}.inputWidth, hmd{handle}.inputHeight);
 
   % CONTINUE HERE!
   % Switch to clear color black and do a clear by double flip:
@@ -1030,100 +960,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
 
     Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
-  end
-
-  % Need HSW display?
-  if (hmd{handle}.hswdismiss >= 0) && isempty(getenv('PSYCH_OCULUS_HSWSKIP'))
-    if IsWin
-      % Windows doesn't distinguish keyboards, so don't query "all"
-      % keyboards. This gives the same effect as on Linux/OSX, but avoids
-      % use of PsychHID and potential "libusb not installed" warnings:
-      kbddev = [];
-    else
-      kbddev = -1;
-    end
-
-    if bitand(hmd{myhmd.handle}.hswdismiss, 1)
-      KbReleaseWait(kbddev);
-    end
-
-    dismiss = 0;
-    if PsychOculusVRCore1('GetHSWState', handle)
-      % Yes: Display HSW text:
-      hswtext = ['HEALTH & SAFETY WARNING\n\n' ...
-                'Read and follow all warnings\n' ...
-                'and instructions included with\n' ...
-                'the Headset before use. Headset\n' ...
-                'should be calibrated for each user.\n' ...
-                'Not for use by children under 13.\n' ...
-                'Stop use if you experience any\n' ...
-                'discomfort or health reactions.\n\n' ...
-                'More: www.oculus.com/warnings\n\n' ...
-                'To acknowledge:\n'];
-
-      if bitand(hmd{myhmd.handle}.hswdismiss, 1)
-        hswtext = [hswtext 'Press a key\n'];
-      end
-
-      if bitand(hmd{myhmd.handle}.hswdismiss, 2)
-        hswtext = [hswtext 'Click any mouse button\n'];
-      end
-
-      if bitand(hmd{myhmd.handle}.hswdismiss, 4)
-        hswtext = [hswtext 'Slightly tap the headset'];
-      end
-
-      oldTextSize = Screen('TextSize', win, 16);
-      Screen('SelectStereoDrawBuffer', win, 1);
-      DrawFormattedText(win, hswtext, 'center', 'center', [0 255 0]);
-      Screen('SelectStereoDrawBuffer', win, 0);
-      DrawFormattedText(win, hswtext, 'center', 'center', [0 255 0]);
-      Screen('TextSize', win, oldTextSize);
-      Screen('Flip', win, [], 1);
-
-      % Allow dismiss via tap to the HMD?
-      if bitand(hmd{myhmd.handle}.hswdismiss, 4)
-        % Enable tracking so we can allow user to dismiss HSW via a
-        % slight tap to the HMD - accelerometers will do their thing:
-        PsychOculusVRCore1('Start', handle);
-      end
-
-      % Wait for dismiss via keypress, mouse button click or HMD tap:
-      while PsychOculusVRCore1('GetHSWState', handle, dismiss)
-        % Allow dismiss via keypress?
-        if bitand(hmd{myhmd.handle}.hswdismiss, 1) && KbCheck(kbddev)
-          dismiss = 1;
-        end
-
-        % Allow dismiss via mouse click?
-        if bitand(hmd{myhmd.handle}.hswdismiss, 2)
-          [dummy1, dummy2, buttons] = GetMouse; %#ok<ASGLU>
-          if any(buttons)
-            dismiss = 1;
-            while any(buttons)
-              [dummy1, dummy2, buttons] = GetMouse; %#ok<ASGLU>
-            end
-          end
-        end
-
-        % Need to idle flip here to drive timewarp rendering in
-        % case some stuff is enabled:
-        Screen('Flip', win, [], 1);
-      end
-
-      if bitand(hmd{myhmd.handle}.hswdismiss, 1)
-        KbReleaseWait(kbddev);
-      end
-
-      if bitand(hmd{myhmd.handle}.hswdismiss, 4)
-        % Stop tracking for tap detection:
-        PsychOculusVRCore1('Stop', handle);
-        WaitSecs(1);
-      end
-
-      % Clear HSW text:
-      Screen('Flip', win);
-    end
   end
 
   if ~isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR'))
