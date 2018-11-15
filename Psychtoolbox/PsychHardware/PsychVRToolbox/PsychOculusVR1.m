@@ -412,12 +412,12 @@ if cmd == 0
     % - Ask to disable vsync of the OpenGL bufferswap for display of the mirror texture
     %   in the onscreen window. We don't want to get swap-throttled to the refresh rate
     %   of the operator desktop GUI display.
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipVsyncForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipVsyncForFlipOnce + kPsychSkipTimestampingForFlipOnce);
   else
     % No debug output from VR compositor wanted. Skip the OpenGL bufferswap for the
     % onscreen window completely, ergo also skip timestamping and allow timestamp
     % injection from us instead:
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
   end
 
   t3 = GetSecs;
@@ -440,10 +440,11 @@ end
 % inject present completion timestamps:
 if cmd == 1
   handle = varargin{1};
+  tWhen = varargin{2};
 
   t1 = GetSecs;
 
-  [frameTiming, predictedOnset] = PsychOculusVRCore1('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp);
+  [frameTiming, predictedOnset] = PsychOculusVRCore1('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp, tWhen);
 
   t2 = GetSecs;
 
@@ -506,7 +507,8 @@ if cmd == 1
     %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
   else
     % Use made up values for timestamps of 'Flip':
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs, GetSecs);
+    %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs, GetSecs);
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
   end
   t5 = GetSecs;
 
@@ -826,7 +828,8 @@ if strcmpi(cmd, 'Open')
   newhmd.basicRequirements = '';
 
   % High precision (and potentially high overhead) timestamping by default:
-  newhmd.timestampHighPrecision = 1;
+  % TODO FIXME Use low precision timestamping to avoid one cause of hangs atm.
+  newhmd.timestampHighPrecision = 0;
 
   % Store in internal array:
   hmd{handle} = newhmd;
@@ -1124,6 +1127,13 @@ if strcmpi(cmd, 'GetEyeShiftVector')
   return;
 end
 
+if strcmpi(cmd, 'Start') || strcmpi(cmd, 'Stop')
+    % Make sure the 'Start' and 'Stop' commands, which are mandatory to support
+    % for backwards compatibility (see PsychVRHMD), do absolutely nothing in this
+    % driver.
+    return;
+end
+
 if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Must have global GL constants:
   if isempty(GL)
@@ -1315,7 +1325,18 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % will happen, iow. at t >= tWhen for Screen('Flip', win, tWhen);
   % It is supposed to block until image presentation on the HMD has happened, and to
   % inject proper Present timestamps for 'Flip':
-  cmdString = sprintf('PsychOculusVR1(1, %i);', handle);
+  % TODO FIXME: Nope, change of strategy: We set the kPsychSkipWaitForFlipOnce flag in
+  % 'EndFrameRender', so PreSwapbuffersOperations does not wait until tWhen, but executes
+  % immediately. We pass in the tWhen timestamp to this fast-path callback, which will pass
+  % it on to 'PresentFrame', and then it is the job of the PsychOculusVRCore1 drivers thread
+  % to wait until the right moment to submit the new frame to the VR compositor. This allows
+  % to use a single-threaded presentation model, where the single thread busy-waits until the
+  % right point in time. We retain the ability to 'Flip' as fast as possible for closed-loop
+  % tracked VR presentation, and the ability to do timed open-loop presentation with 'tWhen'
+  % target times, and avoid all the multi-threading misery the Oculus runtime brings to us.
+  % Downside is the inability to avoid the sandclock warning if usercode truly does not execute
+  % any Flip's for more than a second, but this has to do as a stepping stone for now:
+  cmdString = sprintf('PsychOculusVR1(1, %i, IMAGINGPIPE_FLIPTWHEN);', handle);
   Screen('Hookfunction', win, 'AppendMFunction', 'PreSwapbuffersOperations', 'OculusVR Present Operation', cmdString);
   Screen('Hookfunction', win, 'Enable', 'PreSwapbuffersOperations');
 

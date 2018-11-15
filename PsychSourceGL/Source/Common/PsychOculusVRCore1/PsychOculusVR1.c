@@ -38,6 +38,7 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // Our device record:
 typedef struct PsychOculusDevice {
     psych_bool          closing;
+    psych_bool          multiThreaded;
     psych_thread        presenterThread;
     psych_mutex         presenterLock;
     psych_condition     presentedSignal;
@@ -96,7 +97,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "\n";
     synopsis[i++] = "oldVerbosity = PsychOculusVRCore1('Verbosity' [, verbosity]);";
     synopsis[i++] = "numHMDs = PsychOculusVRCore1('GetCount');";
-    synopsis[i++] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz] = PsychOculusVRCore1('Open' [, deviceIndex=0]);";
+    synopsis[i++] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz] = PsychOculusVRCore1('Open' [, deviceIndex=0][, multiThreaded=0]);";
     synopsis[i++] = "PsychOculusVRCore1('Close' [, oculusPtr]);";
     synopsis[i++] = "PsychOculusVRCore1('SetHUDState', oculusPtr , mode);";
     synopsis[i++] = "[isVisible] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
@@ -117,7 +118,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz] = PsychOculusVRCore1('GetUndistortionParameters', oculusPtr, eye [, inputWidth][, inputHeight][, fov]);";
     synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore1('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
     synopsis[i++] = "PsychOculusVRCore1('EndFrameRender', oculusPtr, targetPresentTime);";
-    synopsis[i++] = "[frameTiming, tPredictedOnset] = PsychOculusVRCore1('PresentFrame', oculusPtr [, doTimestamp=0]);";
+    synopsis[i++] = "[frameTiming, tPredictedOnset] = PsychOculusVRCore1('PresentFrame', oculusPtr [, doTimestamp=0][, when=0]);";
     synopsis[i++] = "result = PsychOculusVRCore1('LatencyTester', oculusPtr, cmd);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
 
@@ -246,7 +247,7 @@ void PsychOculusStop(int handle)
     oculus->outEyePoses[1].Orientation.w = 1;
 
     // Need to start presenterThread if this is the first Present operation:
-    if (oculus->presenterThread == (psych_thread) NULL) {
+    if ((oculus->multiThreaded) && (oculus->presenterThread == (psych_thread) NULL)) {
         // Create and startup thread:
         if ((rc = PsychCreateThread(&(oculus->presenterThread), NULL, PresenterThreadMain, (void*) oculus))) {
             PsychUnlockMutex(&(oculus->presenterLock));
@@ -405,14 +406,16 @@ PsychError PSYCHOCULUSVR1GetCount(void)
 
 PsychError PSYCHOCULUSVR1Open(void)
 {
-    static char useString[] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz] = PsychOculusVRCore1('Open' [, deviceIndex=0]);";
-    //                          1          2          3            4            5                                         1
+    static char useString[] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz] = PsychOculusVRCore1('Open' [, deviceIndex=0][, multiThreaded=0]);";
+    //                          1          2          3            4            5                                         1                2
     static char synopsisString[] =
         "Open connection to Oculus VR HMD, return a 'oculusPtr' handle to it.\n\n"
         "The call tries to open the HMD with index 'deviceIndex', or the "
         "first detected HMD, if 'deviceIndex' is omitted. Please note that currently "
         "only one single HMD is supported, so this "
         "'deviceIndex' is redundant at the moment, given that zero is the only valid value.\n"
+        "'multiThreaded' if provided as non-zero value, will use an asynchronous presenter thread "
+        "to improve stimulus scheduling. Highly experimental: Does not work in many cases!\n"
         "The returned handle can be passed to the other subfunctions to operate the device.\n"
         "A second return argument 'modelName' returns the model name string of the Oculus device.\n"
         "'resolutionX' and 'resolutionY' return the HMD display panels horizontal and vertical resolution.\n"
@@ -424,6 +427,7 @@ PsychError PSYCHOCULUSVR1Open(void)
     PsychOculusDevice* oculus;
     int deviceIndex = 0;
     int handle = 0;
+    int multiThreaded = 0;
     int rc;
     unsigned int oldCaps;
 
@@ -433,7 +437,7 @@ PsychError PSYCHOCULUSVR1Open(void)
 
     // Check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(5));
-    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
 
     // Make sure driver is initialized:
     PsychOculusVRCheckInit(FALSE);
@@ -449,6 +453,10 @@ PsychError PSYCHOCULUSVR1Open(void)
     if (deviceIndex < 0)
         PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Must be greater or equal to zero!");
 
+    // Get optional multiThreaded arg:
+    PsychCopyInIntegerArg(2, kPsychArgOptional, &multiThreaded);
+    if ((multiThreaded != 0) && (multiThreaded != 1))
+        PsychErrorExitMsg(PsychError_user, "Invalid 'multiThreaded' flag provided. Must be 0 or 1!");
 
     result = ovr_Detect(0);
     available_devices = (result.IsOculusHMDConnected) ? 1 : 0;
@@ -516,6 +524,9 @@ PsychError PSYCHOCULUSVR1Open(void)
 
     // Assume the timeout for the compositor thinking we are unresponsive is 40 HMD frame durations:
     oculus->VRtimeoutSecs = 2 * oculus->frameDuration;
+
+    // Assign multi-threading mode:
+    oculus->multiThreaded = (psych_bool) multiThreaded;
 
     // Initialize the mutex lock:
     if ((rc = PsychInitMutex(&(oculus->presenterLock)))) {
@@ -1890,8 +1901,8 @@ static void* PresenterThreadMain(void* psychOculusDeviceToCast)
 
 PsychError PSYCHOCULUSVR1PresentFrame(void)
 {
-    static char useString[] = "[frameTiming, tPredictedOnset] = PsychOculusVRCore1('PresentFrame', oculusPtr [, doTimestamp=0]);";
-    //                          1            2                                                     1            2
+    static char useString[] = "[frameTiming, tPredictedOnset] = PsychOculusVRCore1('PresentFrame', oculusPtr [, doTimestamp=0][, when=0]);";
+    //                          1            2                                                     1            2                3
     static char synopsisString[] =
     "Present last rendered frame to Oculus HMD device 'oculusPtr'.\n\n"
     "This will commit the current set of 2D textures with new rendered content "
@@ -1904,6 +1915,8 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     "timing for this presentation cycle.\n\n"
     "'doTimestamp' If set to 1, perform timestamping of stimulus onset on the HMD, "
     "or at least try to estimate such onset time. If set to 0, do nothing timestamping-wise.\n\n"
+    "'when' If provided, defines the target presentation time, as provided by Screen('Flip', win, when); "
+    "a value of zero, or omission, means to present as soon as possible.\n\n"
     "'frameTiming' is an array of structs, where each struct contains presentation "
     "timing and performance info for one presented frame, with the most recently "
     "presented frame in frameTiming(1), older ones at higher indices if the script "
@@ -1933,6 +1946,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     int handle, i, rc;
     int doTimestamp = 0;
     double tNow, tHMD, tStimOnset, tVBL, tPredictedOnset;
+    double tWhen;
     PsychOculusDevice *oculus;
     ovrPerfStats perfStats;
 
@@ -1942,7 +1956,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
 
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(2));
-    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
@@ -1955,15 +1969,35 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     // Get optional timestamping flag:
     PsychCopyInIntegerArg(2, kPsychArgOptional, &doTimestamp);
 
+    // Get optional presentation target time:
+    tWhen = 0;
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &tWhen);
+
+    // Single-threaded operation, all done on this thread?
+    if (!oculus->multiThreaded) {
+        // Yes. Go into a check -> submit -> check loop until target time is
+        // exceeded, then present an updated frame:
+        while ((tPredictedOnset = ovr_GetPredictedDisplayTime(oculus->hmd, oculus->frameIndex)) < tWhen + oculus->frameDuration / 2) {
+            if (verbosity > 4)
+                printf("PsychOculusVRCore1:PresentFrame-DEBUG: In busy-present-wait loop: pred %f < %f tWhen\n",
+                       tPredictedOnset, tWhen);
+            PresentExecute(oculus, FALSE, FALSE);
+        }
+    }
+
     // Execute the present operation with the presenterThread locked out.
     // Invalidate any scheduledPresentExecTime after such a Present:
     PsychLockMutex(&(oculus->presenterLock));
+    oculus->scheduledPresentExecTime = tWhen;
     tPredictedOnset = PresentExecute(oculus, TRUE, FALSE);
     oculus->scheduledPresentExecTime = -DBL_MAX;
     PsychUnlockMutex(&(oculus->presenterLock));
 
     if ((tPredictedOnset < 0) && (verbosity > 0))
         printf("PsychOculusVRCore1-ERROR: Failed to present new frames to VR compositor.\n");
+
+    PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+    tHMD = ovr_GetTimeInSeconds();
 
     if (doTimestamp) {
         int i;
@@ -2027,11 +2061,11 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
         }
 
         PsychUnlockMutex(&(oculus->presenterLock));
-
-        // Copy out predicted onset time for the just emitted frame:
-        tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * oculus->frameDuration;
-        PsychCopyOutDoubleArg(2, kPsychArgOptional, tPredictedOnset);
     }
+
+    // Copy out predicted onset time for the just emitted frame:
+    tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * oculus->frameDuration;
+    PsychCopyOutDoubleArg(2, kPsychArgOptional, tPredictedOnset);
 
     return(PsychError_none);
 }
