@@ -365,6 +365,10 @@ if cmd == 0
 
   t1 = GetSecs;
 
+  % At this point, the FBO of the right eye texture in stereomode or mono texture
+  % in mono mode is bound. Detach its color attachment texture:
+  glFramebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, 0, 0);
+
   % Submit/Commit just unbound textures to texture swap-chains:
   PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle, varargin{2});
   t2 = GetSecs;
@@ -388,7 +392,8 @@ if cmd == 0
 
   t3 = GetSecs;
 
-  %fprintf('EndFrameRender: %f ms, SetNext/Flags %f ms ... ', 1000 * (t2 - t1), 1000 * (t3 - t2));
+  %fprintf('EndFrameRender: %f ms, SetNext/Flags %f ms ... \n', 1000 * (t2 - t1), 1000 * (t3 - t2));
+  hmd{handle}.doTimestamp = 0;
 
   return;
 end
@@ -401,15 +406,14 @@ if cmd == 1
 
   t1 = GetSecs;
 
-  % Unbind finalizedFBO's, thereby unbind textures:
-  glBindFramebufferEXT(GL.FRAMEBUFFER_EXT, 0);
+  frameTiming = PsychOculusVRCore1('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp);
 
-  frameTiming = PsychOculusVRCore1('PresentFrame', hmd{handle}.handle);
-
-  % XXX FIXME TODO We get an invalid operation OpenGL error during exec of
-  % 'PresentFrame' ie., from within the Oculus VR compositor, which however
-  % seems to have no negative consequence for presentation? Investigate!!
-  glGetError;
+  % NOTE: Without the following glFinish(), we get an invalid operation
+  % OpenGL error during exec of 'PresentFrame' from within the Oculus VR
+  % runtime, which however seems to have no negative consequence for
+  % presentation?! This may be a bug in the OculusVR runtime at least as
+  % of version 1.11:
+  glFinish;
 
   t2 = GetSecs;
 
@@ -459,8 +463,13 @@ if cmd == 1
   end
   t4 = GetSecs;
 
-  % Disable presentation in onscreen window and associated throttling and standard Flip timestamping:
-  Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(1).VBlankTime, frameTiming(1).StimulusOnsetTime);
+  if hmd{handle}.doTimestamp
+    % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(1).VBlankTime, frameTiming(1).StimulusOnsetTime);
+  else
+    % Use made up values for timestamps of 'Flip':
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs, GetSecs);
+  end
   t5 = GetSecs;
 
   %fprintf('Present %f ms, Get/Set %f ms, Mirror %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3), 1000 * (t5 - t4));
@@ -1119,7 +1128,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Execute VR Present: Submit just unbound textures, start render/warp/presentation
     % on HMD at next possible point in time:
     PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle, 0);
-    PsychOculusVRCore1('PresentFrame', hmd{handle}.handle);
+    PsychOculusVRCore1('PresentFrame', hmd{handle}.handle, 0);
   end
   clear clearvalues;
 
@@ -1158,12 +1167,17 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % the implicit 'DrawingFinished':
   cmdString = sprintf('PsychOculusVR1(0, %i, IMAGINGPIPE_FLIPTWHEN);', handle);
   if winfo.StereoMode > 0
-    % In stereo mode, use right finalizer chain, as it executes last:
-    Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'OculusVR Commit Operation', cmdString);
+    % In stereo mode we also need to detach the left eye texture as commit prep:
+    detachCmd = 'glFramebufferTexture2D(36160, 36064, 3553, 0, 0);';
+    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'OculusVR left texture detach Operation', detachCmd);
+    Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
+
+    % In stereo mode, use right finalizer chain for right texture detach and both textures commit, as it executes last:
+    Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'OculusVR Stereo commit Operation', cmdString);
     Screen('Hookfunction', win, 'Enable', 'RightFinalizerBlitChain');
   else
-    % In mono mode, use left finalizer chain, as it executes only - and therefore last:
-    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'OculusVR Commit Operation', cmdString);
+    % In mono mode, use left finalizer chain for texture detach and commit, as it executes only - and therefore last:
+    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'OculusVR Mono commit Operation', cmdString);
     Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
   end
 
