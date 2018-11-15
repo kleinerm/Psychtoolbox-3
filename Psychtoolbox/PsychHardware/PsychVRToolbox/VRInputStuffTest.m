@@ -13,11 +13,19 @@ screenid = max(Screen('Screens'));
 PsychImaging('PrepareConfiguration');
 
 hmd = PsychVRHMD('AutoSetupHMD');
+if isempty(hmd)
+    fprintf('No VR HMDs connected. Game over!\n');
+    return;
+end
+
+PsychDebugWindowConfiguration;
 [win, rect] = PsychImaging('OpenWindow', screenid);
 ifi = Screen('GetFlipInterval', win);
+hmdinfo = PsychVRHMD('GetInfo', hmd);
 
 clc;
-if 1
+
+if strcmpi(hmdinfo.subtype, 'Oculus-1')
     fprintf('Properties of our subject:\n\n');
     fprintf('Player height: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_PLAYER_HEIGHT));
     fprintf('Player eye height: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_EYE_HEIGHT));
@@ -26,23 +34,28 @@ if 1
     fprintf('User name: %s\n', PsychOculusVR1('StringProperty', hmd, OVR.KEY_USER, 'Hans'));
     fprintf('Player name: %s\n', PsychOculusVR1('StringProperty', hmd, OVR.KEY_NAME, 'Mueller'));
     fprintf('Player gender: %s\n', PsychOculusVR1('StringProperty', hmd, OVR.KEY_GENDER, OVR.KEY_DEFAULT_GENDER));
+    fprintf('\n\n');
 end
 
-fprintf('\n\nConnected controllers:\n\n');
-controllerTypes = PsychVRHMD('GetConnectedControllers', hmd);
-if bitand(controllerTypes, OVR.ControllerType_Remote)
-    fprintf('Remote control connected.\n');
+if hmdinfo.VRControllersSupported
+    fprintf('\n\nConnected controllers:\n\n');
+    controllerTypes = PsychVRHMD('Controllers', hmd);
+    if bitand(controllerTypes, OVR.ControllerType_Remote)
+        fprintf('Remote control connected.\n');
+    end
+    if bitand(controllerTypes, OVR.ControllerType_XBox)
+        fprintf('XBox controller connected.\n');
+    end
+    if bitand(controllerTypes, OVR.ControllerType_LTouch)
+        fprintf('Left hand controller connected.\n');
+    end
+    if bitand(controllerTypes, OVR.ControllerType_RTouch)
+        fprintf('Right hand controller connected.\n');
+    end
+    fprintf('\n\n');
 end
-if bitand(controllerTypes, OVR.ControllerType_XBox)
-    fprintf('XBox controller connected.\n');
-end
-if bitand(controllerTypes, OVR.ControllerType_LTouch)
-    fprintf('Left hand controller connected.\n');
-end
-if bitand(controllerTypes, OVR.ControllerType_RTouch)
-    fprintf('Right hand controller connected.\n');
-end
-fprintf('\n\nVR area boundaries (if configured):\n\n');
+
+fprintf('VR area boundaries (if configured):\n\n');
 
 [isVisible, playboundsxyz, outerboundsxyz] = PsychVRHMD('VRAreaBoundary', hmd)
 
@@ -50,13 +63,13 @@ fprintf('\n\nPress any key to continue.\n');
 KbStrokeWait(-1);
 pulseEnd = 0;
 
-while ~KbCheck
+while 1
     WaitSecs('YieldSecs', 0.1);
 
     % Query and display all input state:
     istate = PsychVRHMD('GetInputState', hmd, OVR.ControllerType_Active);
     clc;
-    fprintf('Press BACK button on remote control or other controllers, or any key, to finish.\n\n');
+    fprintf('Press BACK button on remote control or other controllers, or backspace key, to finish.\n\n');
     disp(istate);
 
     if istate.Buttons(OVR.Button_A)
@@ -139,14 +152,15 @@ while ~KbCheck
         fprintf('Button_Private ');
     end
 
-    if istate.Buttons(OVR.Button_Back)
+    [~, ~, keycode] = KbCheck(-1);
+    if istate.Buttons(OVR.Button_Back) || keycode(KbName('BackSpace'))
         break;
     end
 
     fprintf('\n');
 
     % Oculus VR 1.11+ controlled VR setup?
-    if 1
+    if strcmpi(hmdinfo.subtype, 'Oculus-1')
         % Get info about collisions of tracked devices with the VR play area boundaries:
         [isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOculusVR1('TestVRBoundary', hmd, OVR.TrackedDevice_All, 0);
         if isTriggering
