@@ -1198,6 +1198,7 @@ if strcmpi(cmd, 'Open')
   newhmd.handle = handle;
   newhmd.driver = @PsychOculusVR1;
   newhmd.type   = 'Oculus';
+  newhmd.subtype = 'Oculus-1';
   newhmd.open = 1;
   newhmd.modelName = modelName;
   newhmd.separateEyePosesSupported = 0;
@@ -1205,6 +1206,7 @@ if strcmpi(cmd, 'Open')
   newhmd.panelYRes = panelYRes;
   newhmd.videoRefreshDuration = 1 / panelHz;
   newhmd.controllerTypes = controllerTypes;
+  newhmd.VRControllersSupported = 1;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
