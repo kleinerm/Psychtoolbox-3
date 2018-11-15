@@ -1122,7 +1122,7 @@ if strcmpi(cmd, 'Open')
   return;
 end
 
-if strmcpi(cmd, 'GetConnectedControllers')
+if strcmpi(cmd, 'GetConnectedControllers')
   myhmd = varargin{1};
   if ~PsychOculusVR1('IsOpen', myhmd)
     error('GetConnectedControllers: Passed in handle does not refer to a valid and open HMD.');
