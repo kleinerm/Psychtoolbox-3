@@ -49,6 +49,16 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % By default, no such debug output is produced and the Psychtoolbox onscreen
 % window is not actually displayed on the desktop.
 %
+% 'Float16Display' = Request rendering, compositing and display in 16 bpc float
+% format. This will ask Psychtoolbox to render and post-process stimuli in 16 bpc
+% linear floating point format, and allocate 16 bpc half-float textures as final
+% renderbuffers to be sent to the VR compositor. If the VR compositor takes advantage
+% of the high source image precision is at the discretion of the compositor and HMD.
+% By default, if this request is omitted, processing and display in sRGB format is
+% requested from Psychtoolbox and the compositor, ie., a roughly gamma 2.2 8 bpc
+% format is used, which is optimized for the gamma response curve of at least the Oculus
+% Rift CV1 display.
+%
 % 'TimingSupport' = Support some hardware specific means of timestamping
 % or latency measurements. On the Rift DK1 this does nothing. On the DK2
 % it enables dynamic prediction and timing measurements with the Rifts internal
@@ -940,9 +950,14 @@ if strcmpi(cmd, 'GetClientRenderingParameters')
   % textures to be used as externally injected color buffer backing textures:
   imagingMode = mor(kPsychNeedFastBackingStore, kPsychNeedFinalizedFBOSinks, kPsychUseExternalSinkTextures);
 
-  % TODO FIXME: Support MSAA multisample resolve in the VR compositor instead of
-  % PTB imaging pipeline for higher efficiency? Possible with current 1.11 runtime?
-  % imagingMode = mor(imagingMode, kPsychSinkIsMSAACapable);
+  % Usercode wants a 16 bpc half-float rendering pipeline?
+  if ~isempty(strfind(hmd{myhmd.handle}.basicRequirements, 'Float16Display'))
+    % Request a 16 bpc float framebuffer from Psychtoolbox:
+    imagingMode = mor(imagingMode, kPsychNeed16BPCFloat);
+  else
+    % Standard RGBA8 images: Use sRGB format for rendering/blending/compositing/display:
+    imagingMode = mor(imagingMode, kPsychEnableSRGBRendering);
+  end
 
   if ~strcmpi(hmd{myhmd.handle}.basicTask, 'Monoscopic')
     % We must use stereomode 12, so we get separate draw buffers for left and
@@ -1038,9 +1053,16 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Create texture swap chains to provide textures to be used for
   % frame submission to the VR compositor:
+  if ~isempty(strfind(hmd{myhmd.handle}.basicRequirements, 'Float16Display'))
+    % Linear RGBA16F half-float textures as target framebuffers:
+    floatFlag = 1;
+  else
+    % sRGB RGBA8 textures as target framebuffers:
+    floatFlag = 0;
+  end
 
   % Left eye / mono chain:
-  [width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight);
+  [width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, floatFlag);
 
   % Create 2nd chain for right eye in stereo mode:
   if winfo.StereoMode > 0
@@ -1048,13 +1070,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       sca;
       error('Invalid Screen() StereoMode in use for OculusVR HMD! Must be 12 or 0.');
     end
-    [width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight);
+    [width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, floatFlag);
   end
 
   % Query currently bound finalizedFBO backing textures, to keep them around as
   % backups for restoration when closing down the session:
   [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight] = Screen('Hookfunction', win, 'GetDisplayBufferTextures');
-  if (textarget ~= GL.TEXTURE_2D) || (texformat ~= GL.RGBA8) || (texmultisample ~= 0)
+  if (textarget ~= GL.TEXTURE_2D) || (texformat ~= GL.RGBA8 && texformat ~= GL.RGBA16F) || (texmultisample ~= 0)
     sca;
     error('Invalid Screen() backing textures required. Non-matching texture target, format or multisample setting.');
   end
