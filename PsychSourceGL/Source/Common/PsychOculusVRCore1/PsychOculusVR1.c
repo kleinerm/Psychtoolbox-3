@@ -40,6 +40,7 @@ typedef struct PsychOculusDevice {
     ovrSession          hmd;
     ovrHmdDesc          hmdDesc;
     ovrTextureSwapChain textureSwapChain[2];
+    ovrMirrorTexture    mirrorTexture;
     psych_bool          isStereo;
     int                 textureWidth;
     int                 textureHeight;
@@ -99,6 +100,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[width, height, fovPort] = PsychOculusVRCore1('GetFovTextureSize', oculusPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
     synopsis[i++] = "[width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', oculusPtr, eye, width, height);";
     synopsis[i++] = "texObjectHandle = PsychOculusVRCore1('GetNextTextureHandle', oculusPtr, eye);";
+    synopsis[i++] = "texObjectHandle = PsychOculusVRCore1('CreateMirrorTexture', oculusPtr, width, height);";
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz] = PsychOculusVRCore1('GetUndistortionParameters', oculusPtr, eye [, inputWidth][, inputHeight][, fov]);";
     synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore1('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
     synopsis[i++] = "PsychOculusVRCore1('EndFrameTiming', oculusPtr);";
@@ -233,16 +235,6 @@ void PsychOculusClose(int handle)
     // Stop device:
     PsychOculusStop(handle);
 
-    // Release distortion meshes, if any:
-/*    if (oculus->eyeDistortionMesh[0].pVertexData) {
-        ovrHmd_DestroyDistortionMesh(&(oculus->eyeDistortionMesh[0]));
-    }
-
-    if (oculus->eyeDistortionMesh[1].pVertexData) {
-        ovrHmd_DestroyDistortionMesh(&(oculus->eyeDistortionMesh[1]));
-    }
-*/
-
     // Destroy/Release texture swap chain to compositor:
     if (oculus->textureSwapChain[0]) {
         ovr_DestroyTextureSwapChain(oculus->hmd, oculus->textureSwapChain[0]);
@@ -252,6 +244,12 @@ void PsychOculusClose(int handle)
     if (oculus->isStereo && oculus->textureSwapChain[1]) {
         ovr_DestroyTextureSwapChain(oculus->hmd, oculus->textureSwapChain[1]);
         oculus->textureSwapChain[1] = NULL;
+    }
+
+    // Destroy mirror texture if any:
+    if (oculus->mirrorTexture) {
+        ovr_DestroyMirrorTexture(oculus->hmd, oculus->mirrorTexture);
+        oculus->mirrorTexture = NULL;
     }
 
     // Close the HMD:
@@ -1126,7 +1124,81 @@ PsychError PSYCHOCULUSVR1GetNextTextureHandle(void)
         PsychErrorExitMsg(PsychError_system, "Failed to retrieve next OpenGL texture from swap chain.");
     }
 
-    // Return recommended width and height of drawBuffer:
+    // Return texture object handle:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) texObjectHandle);
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVR1CreateMirrorTexture(void)
+{
+    static char useString[] = "texObjectHandle = PsychOculusVRCore1('CreateMirrorTexture', oculusPtr, width, height);";
+    //                         1                                                           1          2      3
+    static char synopsisString[] =
+    "Create mirror texture for Oculus device 'oculusPtr'.\n"
+    "A mirror texture is a auto-updating texture which receives the same image content "
+    "which is sent to the HMD for display. It can be used for displaying a debug image "
+    "on the regular windowing system, ie., inside a regular Psychtoolbox onscreen window.\n"
+    "'width' and 'height' are the width x height of the texture into which "
+    "the VR compositor will render the output image which is also sent to the HMD.\n"
+    "'texObjectHandle' returns the OpenGL texture handle for accessing the mirror texture.\n";
+    static char seeAlsoString[] = "";
+
+    int handle;
+    int width, height;
+    unsigned int texObjectHandle;
+    PsychOculusDevice *oculus;
+    ovrMirrorTextureDesc mirrorDesc;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(3));
+    PsychErrorExit(PsychRequireNumInputArgs(3));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Get texture dimensions:
+    PsychCopyInIntegerArg(2, kPsychArgRequired, &width);
+    if (width < 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid width, smaller than 1 texel!");
+
+    PsychCopyInIntegerArg(3, kPsychArgRequired, &height);
+    if (height < 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid height, smaller than 1 texel!");
+
+    if (oculus->mirrorTexture)
+        PsychErrorExitMsg(PsychError_user, "Tried to create already created mirror texture.");
+
+    // Build OpenGL texture chain descriptor:
+    memset(&mirrorDesc, 0, sizeof(mirrorDesc));
+    mirrorDesc.Format = OVR_FORMAT_R8G8B8A8_UNORM_SRGB;
+    mirrorDesc.MiscFlags = ovrTextureMisc_None;
+    mirrorDesc.Width = width;
+    mirrorDesc.Height = height;
+
+    // Create texture swap chain:
+    if (OVR_FAILURE(ovr_CreateMirrorTextureGL(oculus->hmd, &mirrorDesc, &oculus->mirrorTexture))) {
+        ovr_GetLastErrorInfo(&errorInfo);
+        if (verbosity > 0) printf("PsychOculusVRCore1-ERROR: ovr_CreateMirrorTextureGL failed: %s\n", errorInfo.ErrorString);
+        PsychErrorExitMsg(PsychError_system, "Failed to create mirror texture for VR compositor.");
+    }
+
+    if (OVR_FAILURE(ovr_GetMirrorTextureBufferGL(oculus->hmd, oculus->mirrorTexture, &texObjectHandle))) {
+        ovr_GetLastErrorInfo(&errorInfo);
+        if (verbosity > 0) printf("PsychOculusVRCore1-ERROR: ovr_GetMirrorTextureBufferGL failed: %s\n", errorInfo.ErrorString);
+        PsychErrorExitMsg(PsychError_system, "Failed to get OpenGL texture handle of mirror texture for VR compositor.");
+    }
+
+    // Return texture object handle:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) texObjectHandle);
 
     return(PsychError_none);

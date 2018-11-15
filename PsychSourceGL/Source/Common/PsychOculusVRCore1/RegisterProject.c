@@ -50,6 +50,7 @@ PsychError PsychModuleInit(void)
 
     PsychErrorExit(PsychRegister("CreateRenderTextureChain", &PSYCHOCULUSVR1CreateRenderTextureChain));
     PsychErrorExit(PsychRegister("GetNextTextureHandle", &PSYCHOCULUSVR1GetNextTextureHandle));
+    PsychErrorExit(PsychRegister("CreateMirrorTexture", &PSYCHOCULUSVR1CreateMirrorTexture));
     //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
 
     // Report the version
