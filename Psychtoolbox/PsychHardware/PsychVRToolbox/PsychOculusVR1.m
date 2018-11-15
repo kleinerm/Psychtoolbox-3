@@ -143,6 +143,28 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % installed.
 %
 %
+% [isVisible, playAreaBounds, OuterAreaBounds] = PsychOculusVR1('VRAreaBoundary', hmd [, requestVisible]);
+% - Request visualization of the VR play area boundary for 'hmd' and returns its
+% current extents.
+%
+% 'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't
+% request showing the markers.
+% The driver can not prevent the boundaries to be visualized if some external
+% setting asks for their visibility. It can cancel its own request for visibility
+% though via 'requestVisible' setting 0.
+%
+% Returns in 'isVisible' the current visibility status of the VR area boundaries.
+%
+% 'playAreaBounds' is a 3-by-n matrix defining the play area boundaries. Each
+% column represents the [x;y;z] coordinates of one 3D definition point. Connecting
+% successive points by line segments defines the boundary, as projected onto the
+% floor. Points are listed in clock-wise direction. An empty return argument means
+% that the play area is so far undefined.
+%
+% 'OuterAreaBounds' defines the outer area boundaries in the same way as
+% 'playAreaBounds'.
+%
+%
 % input = PsychOculusVR1('GetInputState', hmd, controllerType);
 % - Get input state of controller 'controllerType' associated with HMD 'hmd'.
 %
@@ -855,6 +877,16 @@ if strcmpi(cmd, 'GetInputState')
 
   varargout{1} = PsychOculusVRCore1('GetInputState', myhmd.handle, double(varargin{2}));
 
+  return;
+end
+
+if strcmpi(cmd, 'VRAreaBoundary')
+  myhmd = varargin{1};
+  if ~PsychOculusVR1('IsOpen', myhmd)
+    error('VRAreaBoundary: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  [varargout{1}, varargout{2}, varargout{3}] = PsychOculusVRCore1('VRAreaBoundary', myhmd.handle, varargin{2:end});
   return;
 end
 

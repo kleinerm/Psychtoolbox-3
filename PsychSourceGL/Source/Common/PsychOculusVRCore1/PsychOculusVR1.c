@@ -99,7 +99,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz, controllerTypes] = PsychOculusVRCore1('Open' [, deviceIndex=0][, multiThreaded=0]);";
     synopsis[i++] = "PsychOculusVRCore1('Close' [, oculusPtr]);";
     synopsis[i++] = "PsychOculusVRCore1('SetHUDState', oculusPtr , mode);";
-    synopsis[i++] = "[isVisible] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
+    synopsis[i++] = "[isVisible, playboundsxyz, outerboundsxyz] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
     synopsis[i++] = "success = PsychOculusVRCore1('RecenterTrackingOrigin', oculusPtr);";
     synopsis[i++] = "oldType = PsychOculusVRCore1('TrackingOriginType', oculusPtr [, newType]);";
     synopsis[i++] = "PsychOculusVRCore1('Start', oculusPtr);";
@@ -721,26 +721,34 @@ PsychError PSYCHOCULUSVR1TrackingOriginType(void)
 
 PsychError PSYCHOCULUSVR1VRAreaBoundary(void)
 {
-    static char useString[] = "[isVisible] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
-    //                                                                 1            2
+    static char useString[] = "[isVisible, playboundsxyz, outerboundsxyz] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
+    //                          1          2              3                                                      1            2
     static char synopsisString[] =
-        "Request visualization of the VR play area boundary for Oculus device 'oculusPtr'.\n"
-        "'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't request the markers.\n"
+        "Request visualization of the VR play area boundary for Oculus device 'oculusPtr' and returns its current extents.\n\n"
+        "'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't request showing the markers.\n"
         "The driver can not prevent the boundaries to be visualized if some external setting asks for "
         "their visibility. It can cancel its own request for visibility though via 'requestVisible' setting 0.\n\n"
-        "Returns 'isVisible' the current visibility status of the VR area boundaries.\n";
+        "Returns in 'isVisible' the current visibility status of the VR area boundaries.\n\n"
+        "'playboundsxyz' is a 3-by-n matrix defining the play area boundaries. Each column represents "
+        "the [x;y;z] coordinates of one 3D definition point. Connecting successive points by line segments "
+        "defines the boundary, as projected onto the floor. Points are listed in clock-wise direction. "
+        "An empty return argument means that the play area is so far undefined.\n\n"
+        "'outerboundsxyz' defines the outer area boundaries in the same way as 'playboundsxyz'.\n";
     static char seeAlsoString[] = "";
 
     int handle, requestVisible;
     ovrBool isVisible;
     PsychOculusDevice *oculus;
+    int outFloorPointsCount, i;
+    ovrVector3f *outFloorPoints;
+    double *xyz;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -760,7 +768,43 @@ PsychError PSYCHOCULUSVR1VRAreaBoundary(void)
     // Copy out current visibility status:
     if (OVR_FAILURE(ovr_GetBoundaryVisible(oculus->hmd, &isVisible)) && (verbosity > 0))
         printf("PsychOculusVRCore1-ERROR:VRAreaBoundary: Could not query VR area boundary visibility status! Results is undefined.\n");
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) isVisible);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) ((isVisible) ? 1 : 0));
+
+    // Copy out play area boundaries: A matrix of 2D points which define the boundary
+    // in clock-wise order at floor height:
+    if (OVR_FAILURE(ovr_GetBoundaryGeometry(oculus->hmd, ovrBoundary_PlayArea, (ovrVector3f*) NULL, &outFloorPointsCount))) {
+        PsychErrorExitMsg(PsychError_system, "Failed to get VR boundary area I.");
+    }
+
+    outFloorPoints = (ovrVector3f*) PsychMallocTemp(outFloorPointsCount * sizeof(ovrVector3f));
+    if (OVR_FAILURE(ovr_GetBoundaryGeometry(oculus->hmd, ovrBoundary_PlayArea, outFloorPoints, &outFloorPointsCount))) {
+        PsychErrorExitMsg(PsychError_system, "Failed to get VR boundary area II.");
+    }
+
+    PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 3, outFloorPointsCount, 1, &xyz);
+    for (i = 0 ; i < outFloorPointsCount; i++) {
+        *(xyz++) = (double) outFloorPoints[i].x;
+        *(xyz++) = (double) outFloorPoints[i].y;
+        *(xyz++) = (double) outFloorPoints[i].z;
+    }
+
+    // Copy out outer area boundaries: A matrix of 3D points which define the boundary
+    // in clock-wise order at floor height:
+    if (OVR_FAILURE(ovr_GetBoundaryGeometry(oculus->hmd, ovrBoundary_Outer, (ovrVector3f*) NULL, &outFloorPointsCount))) {
+        PsychErrorExitMsg(PsychError_system, "Failed to get VR boundary area III.");
+    }
+
+    outFloorPoints = (ovrVector3f*) PsychMallocTemp(outFloorPointsCount * sizeof(ovrVector3f));
+    if (OVR_FAILURE(ovr_GetBoundaryGeometry(oculus->hmd, ovrBoundary_Outer , outFloorPoints, &outFloorPointsCount))) {
+        PsychErrorExitMsg(PsychError_system, "Failed to get VR boundary area IV.");
+    }
+
+    PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 3, outFloorPointsCount, 1, &xyz);
+    for (i = 0 ; i < outFloorPointsCount; i++) {
+        *(xyz++) = (double) outFloorPoints[i].x;
+        *(xyz++) = (double) outFloorPoints[i].y;
+        *(xyz++) = (double) outFloorPoints[i].z;
+    }
 
     return(PsychError_none);
 }
