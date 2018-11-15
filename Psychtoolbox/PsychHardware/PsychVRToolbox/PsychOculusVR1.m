@@ -921,13 +921,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz] = PsychOculusVRCore1('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
   hmd{handle}.viewportLeft = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterLeft = [ptx, pty];
-  hmd{handle}.HmdToEyeViewOffsetLeft = -1 * [hsx, hsy, hsz];
+  hmd{handle}.HmdToEyeViewOffsetLeft = [hsx, hsy, hsz];
 
   % Query parameters for right eye view:
   [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz] = PsychOculusVRCore1('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
   hmd{handle}.viewportRight = [vx, vy, vw, vh];
   hmd{handle}.PixelsPerTanAngleAtCenterRight = [ptx, pty];
-  hmd{handle}.HmdToEyeViewOffsetRight = -1 * [hsx, hsy, hsz];
+  hmd{handle}.HmdToEyeViewOffsetRight = [hsx, hsy, hsz];
 
   % Convert head to eye shift vectors into 4x4 matrices, as we'll need
   % them frequently:
