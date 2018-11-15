@@ -246,15 +246,17 @@ void PsychOculusClose(int handle)
     // Stop device:
     PsychOculusStop(handle);
 
-    if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Waiting (join()ing) for helper thread of window %p to finish up. If this doesn't happen quickly, you'll have to kill Matlab/Octave...\n", windowRecord);
-
     // presenterThread shutdown: Ask thread to terminate, wait for thread termination, cleanup and release the thread:
     PsychLockMutex(&(oculus->presenterLock));
     oculus->closing = TRUE;
     PsychUnlockMutex(&(oculus->presenterLock));
 
-    if (oculus->presenterThread != (psych_thread) NULL)
+    if (oculus->presenterThread != (psych_thread) NULL) {
+        if (verbosity > 5)
+            printf("PTB-DEBUG: Waiting (join()ing) for helper thread of HMD %p to finish up. If this doesn't happen quickly, you'll have to kill Octave...\n", oculus);
+
         PsychDeleteThread(&(oculus->presenterThread));
+    }
 
     // Ok, thread is dead. Mark it as such:
     oculus->presenterThread = (psych_thread) NULL;
@@ -1627,7 +1629,7 @@ PsychError PSYCHOCULUSVR1EndFrameRender(void)
     // If the expected time is already in the past then we missed and
     // expect a present 1 msec in the future at the earliest:
     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-    if (tNow > targetPresentTime) {
+    if ((tNow > targetPresentTime) && (targetPresentTime > 0.0)) {
         if (verbosity > 1) printf("PsychOculusVRCore1: WARNING: 'Flip' target 'when' time already exceeded by %f msecs! Timing trouble?\n",
                                   1000 * (tNow - targetPresentTime));
 
@@ -1646,10 +1648,11 @@ PsychError PSYCHOCULUSVR1EndFrameRender(void)
 // Must be called with the presenterLock locked!
 // Called by idle presenterThread to keep VR compositor timeout handling from kicking in,
 // and directly from PSYCHOCULUSVR1PresentFrame when userspace wants to present new content.
-static psych_bool PresentExecute(PsychOculusDevice *oculus, psych_bool commitTextures)
+static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTextures)
 {
     int eyeIndex;
     psych_bool success = TRUE;
+    double tPredictedOnset;
     ovrLayerEyeFov layer0;
     const ovrLayerHeader *layers[1] = { &layer0.Header };
 
@@ -1707,13 +1710,13 @@ static psych_bool PresentExecute(PsychOculusDevice *oculus, psych_bool commitTex
     // Update the lastPresentExecTime timestamp:
     PsychGetAdjustedPrecisionTimerSeconds(&(oculus->lastPresentExecTime));
 
-    return(success);
+    return(success ? tPredictedOnset : -1);
 }
 
 static void* PresenterThreadMain(void* psychOculusDeviceToCast)
 {
     int rc;
-    double tNow, presentDeadline;
+    double tNow, presentDeadline, headRoom;
     // Get a handle to our oculus device struct:
     PsychOculusDevice* oculus = (PsychOculusDevice*) psychOculusDeviceToCast;
     double frameDuration = 1.0 / (double) oculus->hmdDesc.DisplayRefreshRate;
@@ -1829,7 +1832,7 @@ static void* PresenterThreadMain(void* psychOculusDeviceToCast)
         // If we made it to this point then we are very close to or even slightly past
         // the deadline and must do an idle present of old frame content to prevent
         // compositor timeout handling:
-        if (!PresentExecute(oculus, FALSE) && verbosity > 0) {
+        if ((PresentExecute(oculus, FALSE) < 0) && verbosity > 0) {
             fprintf(stderr, "PsychOculusVRCore1-ERROR: In PresenterThreadMain(): PresentExecute() for timeout prevention failed!\n");
         }
 
@@ -1886,7 +1889,6 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     const int FieldCount = 9;
 
     int handle, i, rc;
-    psych_bool success;
     double tNow, tHMD, tStimOnset, tVBL, tDeadline, tPredictedOnset;
     PsychOculusDevice *oculus;
     ovrPerfStats perfStats;
@@ -1910,11 +1912,11 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     // Execute the present operation with the presenterThread locked out.
     // Invalidate any scheduledPresentExecTime after such a Present:
     PsychLockMutex(&(oculus->presenterLock));
-    success = PresentExecute(oculus, TRUE);
+    tPredictedOnset = PresentExecute(oculus, TRUE);
     oculus->scheduledPresentExecTime = -DBL_MAX;
     PsychUnlockMutex(&(oculus->presenterLock));
 
-    if (!success)
+    if (tPredictedOnset < 0)
         PsychErrorExitMsg(PsychError_system, "Failed to present new frames to VR compositor.");
 
     // Need to start presenterThread if this is the first Present operation:
