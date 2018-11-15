@@ -55,6 +55,7 @@ typedef struct PsychOculusDevice {
     ovrPosef            headPose;
     uint32_t            frameIndex;
     ovrPosef            outEyePoses[2];
+    double              frameDuration;
     double              sensorSampleTime;
     double              lastPresentExecTime;
     double              scheduledPresentExecTime;
@@ -484,8 +485,11 @@ PsychError PSYCHOCULUSVR1Open(void)
     oculus->outEyePoses[0].Orientation.w = 1;
     oculus->outEyePoses[1].Orientation.w = 1;
 
-    // Assume the timeout for the compositor thinking we are unresponsive is 10 HMD frame durations:
-    oculus->VRtimeoutSecs = 10 * (1.0 / (double) oculus->hmdDesc.DisplayRefreshRate);
+    // Store video frame duration on the HMD:
+    oculus->frameDuration = 1.0 / (double) oculus->hmdDesc.DisplayRefreshRate;
+
+    // Assume the timeout for the compositor thinking we are unresponsive is 40 HMD frame durations:
+    oculus->VRtimeoutSecs = 2 * oculus->frameDuration;
 
     // Initialize the mutex lock:
     if ((rc = PsychInitMutex(&(oculus->presenterLock)))) {
@@ -788,7 +792,7 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     // Get optional target time for predicted tracking state. Default to the
     // predicted state for the predicted mid-point of the next video frame:
     if (!PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime))
-        predictionTime = ovr_GetPredictedDisplayTime(oculus->hmd, 0);
+        predictionTime = ovr_GetPredictedDisplayTime(oculus->hmd, oculus->frameIndex);
 
     // Get current tracking status info at time predictionTime. Mark this point
     // as time from which motion to photon latency is measured (latencymarker = TRUE):
@@ -1697,18 +1701,28 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
     layer0.RenderPose[1] = oculus->outEyePoses[1];
     layer0.SensorSampleTime = oculus->sensorSampleTime;
 
-    tPredictedOnset = ovr_GetPredictedDisplayTime(oculus->hmd, 0);
+    // Wait until lastPresentExecTime, which is the predicted display time
+    // of the previously submitted frame, ie. the midpoint of its scanout
+    // cycle. No point to submit faster than video refresh rate for us.
+    PsychWaitUntilSeconds(oculus->lastPresentExecTime - oculus->frameDuration / 2);
+
+    tPredictedOnset = ovr_GetPredictedDisplayTime(oculus->hmd, oculus->frameIndex);
+    //printf("PRESENT[%i]: Last %f, Next %f, dT = %f msecs\n", commitTextures, oculus->lastPresentExecTime, tPredictedOnset, 1000 * (tPredictedOnset - oculus->lastPresentExecTime));
 
     // Submit frame to compositor for display at earliest possible time:
-    if (OVR_FAILURE(ovr_SubmitFrame(oculus->hmd, 0, NULL, layers, 1))) {
+    if (OVR_FAILURE(ovr_SubmitFrame(oculus->hmd, oculus->frameIndex, NULL, layers, 1))) {
         success = FALSE;
         ovr_GetLastErrorInfo(&errorInfo);
         if (verbosity > 0)
             printf("PsychOculusVRCore1-ERROR: ovr_SubmitFrame() failed: %s\n", errorInfo.ErrorString);
     }
+    else {
+        oculus->frameIndex++;
+    }
 
     // Update the lastPresentExecTime timestamp:
-    PsychGetAdjustedPrecisionTimerSeconds(&(oculus->lastPresentExecTime));
+    // PsychGetAdjustedPrecisionTimerSeconds(&(oculus->lastPresentExecTime));
+    oculus->lastPresentExecTime = tPredictedOnset;
 
     return(success ? tPredictedOnset : -1);
 }
@@ -1733,7 +1747,6 @@ static void* PresenterThreadMain(void* psychOculusDeviceToCast)
             // This could potentially kill the runtime, as we're printing from outside the main interpreter thread.
             // Use fprintf() instead of the overloaded printf() (aka mexPrintf()) in the hope that we don't
             // wreak havoc -- maybe it goes to the system log, which should be safer...
-            PsychUnlockMutex(&(oculus->presenterLock));
             fprintf(stderr, "PsychOculusVRCore1-ERROR: In PresenterThreadMain(): First mutex_lock in init failed  [%s].\n", strerror(rc));
             return(NULL);
         }
@@ -1988,7 +2001,10 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
             }
         }
 
-    oculus->frameIndex++;
+        // Copy out predicted onset time for the just emitted frame:
+        tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * oculus->frameDuration;
+        PsychCopyOutDoubleArg(2, kPsychArgOptional, tPredictedOnset);
+    }
 
     return(PsychError_none);
 }
