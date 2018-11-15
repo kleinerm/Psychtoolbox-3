@@ -877,14 +877,21 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
         "'HeadAngularAcceleration' = Head angular acceleration [rax,ray,raz] in radians/sec^2.\n"
         "'CalibratedOrigin' = The pose of the world coordinate system origin during last calibration. "
         "Units and format are like 'HeadPose' ie. a vector [x,y,z,rx,ry,rz,rw].\n"
+        "\n"
+        "Touch controller position and orientation:\n\n"
+        "'LeftHandStatus' and 'RightHandStatus' describe tracking status flags for the left hand and right hand "
+        "controller: +1 = Hand orientation tracked. +2 = Hand position tracked.\n"
+        "'LeftHandPose' = Position and orientation of left hand, in usual [x,y,z,rx,ry,rz,rw] vector form as with 'HeadPose'.\n"
+        "'RightHandPose' = Position and orientation of left hand, in usual [x,y,z,rx,ry,rz,rw] vector form as with 'HeadPose'.\n"
         "\n";
 
     static char seeAlsoString[] = "Start Stop GetTrackersState";
 
     PsychGenericScriptType *status;
     const char *FieldNames[] = {"Time", "Status", "SessionState", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed", "HeadLinearAcceleration",
-                                "HeadAngularAcceleration", "CalibratedOrigin"};
-    const int FieldCount = 9;
+                                "HeadAngularAcceleration", "CalibratedOrigin", "LeftHandStatus", "RightHandStatus",
+                                /* "LeftHandPose", "RightHandPose" */};
+    const int FieldCount = 11;
     PsychGenericScriptType *outMat;
     double *v;
     int handle, trackerCount, i;
@@ -1032,6 +1039,14 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     v[5] = state.CalibratedOrigin.Orientation.z;
     v[6] = state.CalibratedOrigin.Orientation.w;
     PsychSetStructArrayNativeElement("CalibratedOrigin", 0, outMat, status);
+
+    // Left hand / touch controller:
+    StatusFlags = state.HandStatusFlags[ovrHand_Left] & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked);
+    PsychSetStructArrayDoubleElement("LeftHandStatus", 0, StatusFlags, status);
+
+    // Right hand / touch controller:
+    StatusFlags = state.HandStatusFlags[ovrHand_Right] & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked);
+    PsychSetStructArrayDoubleElement("RightHandStatus", 0, StatusFlags, status);
 
     return(PsychError_none);
 }
