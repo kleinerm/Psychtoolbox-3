@@ -365,26 +365,9 @@ if cmd == 0
 
   t1 = GetSecs;
 
-  % Unbind finalizedFBO's, thereby unbind textures:
-  glBindFramebufferEXT(GL.FRAMEBUFFER_EXT, 0);
-
   % Submit/Commit just unbound textures to texture swap-chains:
-  PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle);
+  PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle, varargin{2});
   t2 = GetSecs;
-
-  % Get fresh set of backing textures for next Screen() post-flip drawing/render
-  % cycle from the OculusVR texture swap chains:
-  texLeft = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 0);
-  if hmd{handle}.StereoMode > 0
-    texRight = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 1);
-  else
-    texRight = [];
-  end
-  t3 = GetSecs;
-
-  % Attach them as new backing textures, detach the previously bound ones, so they
-  % are ready for submission to the VR compositor:
-  [oldL, oldR] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
 
   % Define parameters for the ongoing Psychtoolbox onscreen window flip operation:
   if hmd{handle}.mirrorTexture > 0
@@ -403,9 +386,9 @@ if cmd == 0
     Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
   end
 
-  t4 = GetSecs;
+  t3 = GetSecs;
 
-  %fprintf('Commit: %f ms, GetNext %f ms, SetNext/Flags %f ms ... ', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
+  %fprintf('EndFrameRender: %f ms, SetNext/Flags %f ms ... ', 1000 * (t2 - t1), 1000 * (t3 - t2));
 
   return;
 end
@@ -417,8 +400,33 @@ if cmd == 1
   handle = varargin{1};
 
   t1 = GetSecs;
+
+  % Unbind finalizedFBO's, thereby unbind textures:
+  glBindFramebufferEXT(GL.FRAMEBUFFER_EXT, 0);
+
   frameTiming = PsychOculusVRCore1('PresentFrame', hmd{handle}.handle);
+
+  % XXX FIXME TODO We get an invalid operation OpenGL error during exec of
+  % 'PresentFrame' ie., from within the Oculus VR compositor, which however
+  % seems to have no negative consequence for presentation? Investigate!!
+  glGetError;
+
   t2 = GetSecs;
+
+  % Get fresh set of backing textures for next Screen() post-flip drawing/render
+  % cycle from the OculusVR texture swap chains:
+  texLeft = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 0);
+  if hmd{handle}.StereoMode > 0
+    texRight = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 1);
+  else
+    texRight = [];
+  end
+
+  % Attach them as new backing textures, detach the previously bound ones, so they
+  % are ready for submission to the VR compositor:
+  [oldL, oldR] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+
+  t3 = GetSecs;
 
   % Debug output from mirror texture requested?
   mirrorTex = hmd{handle}.mirrorTexture;
@@ -449,13 +457,13 @@ if cmd == 1
     glPopMatrix;
     glMatrixMode(GL.MODELVIEW);
   end
-  t3 = GetSecs;
+  t4 = GetSecs;
 
   % Disable presentation in onscreen window and associated throttling and standard Flip timestamping:
   Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(1).VBlankTime, frameTiming(1).StimulusOnsetTime);
-  t4 = GetSecs;
+  t5 = GetSecs;
 
-  %fprintf('Present %f ms, Mirror %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
+  %fprintf('Present %f ms, Get/Set %f ms, Mirror %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3), 1000 * (t5 - t4));
   % disp(frameTiming(1));
   % dT = 1e3 * (frameTiming(1).HMDTime - frameTiming(1).StimulusOnsetTime)
 
@@ -1110,7 +1118,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     % Execute VR Present: Submit just unbound textures, start render/warp/presentation
     % on HMD at next possible point in time:
-    PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle);
+    PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle, 0);
     PsychOculusVRCore1('PresentFrame', hmd{handle}.handle);
   end
   clear clearvalues;
@@ -1148,7 +1156,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % them to the VR-Compositors texture swap-chain(s), then setting up new target textures
   % as buffers for next cycle. This happens at the end of preflip operations, as part of
   % the implicit 'DrawingFinished':
-  cmdString = sprintf('PsychOculusVR1(0, %i);', handle);
+  cmdString = sprintf('PsychOculusVR1(0, %i, IMAGINGPIPE_FLIPTWHEN);', handle);
   if winfo.StereoMode > 0
     % In stereo mode, use right finalizer chain, as it executes last:
     Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'OculusVR Commit Operation', cmdString);
