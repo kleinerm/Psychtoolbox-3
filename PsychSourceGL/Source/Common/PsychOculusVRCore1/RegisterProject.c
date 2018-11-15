@@ -40,7 +40,8 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("GetEyeTimewarpMatrices", &PSYCHOCULUSVR1GetEyeTimewarpMatrices));
     PsychErrorExit(PsychRegister("StartRender", &PSYCHOCULUSVR1StartRender));
     PsychErrorExit(PsychRegister("GetStaticRenderParameters", &PSYCHOCULUSVR1GetStaticRenderParameters));
-    PsychErrorExit(PsychRegister("EndFrameTiming", &PSYCHOCULUSVR1EndFrameTiming));
+    PsychErrorExit(PsychRegister("EndFrameRender", &PSYCHOCULUSVR1EndFrameRender));
+    PsychErrorExit(PsychRegister("PresentFrame", &PSYCHOCULUSVR1PresentFrame));
     PsychErrorExit(PsychRegister("Verbosity", &PSYCHOCULUSVR1Verbosity));
     PsychErrorExit(PsychRegister("GetEyePose", &PSYCHOCULUSVR1GetEyePose));
     PsychErrorExit(PsychRegister("GetHSWState", &PSYCHOCULUSVR1GetHSWState));

@@ -103,7 +103,8 @@ void InitializeSynopsis(void)
     synopsis[i++] = "texObjectHandle = PsychOculusVRCore1('CreateMirrorTexture', oculusPtr, width, height);";
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz] = PsychOculusVRCore1('GetUndistortionParameters', oculusPtr, eye [, inputWidth][, inputHeight][, fov]);";
     synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore1('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
-    synopsis[i++] = "PsychOculusVRCore1('EndFrameTiming', oculusPtr);";
+    synopsis[i++] = "PsychOculusVRCore1('EndFrameRender', oculusPtr);";
+    synopsis[i++] = "frameTiming = PsychOculusVRCore1('PresentFrame', oculusPtr);";
     synopsis[i++] = "result = PsychOculusVRCore1('LatencyTester', oculusPtr, cmd);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
 
@@ -1444,7 +1445,7 @@ PsychError PSYCHOCULUSVR1StartRender(void)
     "[6] = EyeScanoutSeconds[0]\n"
     "[7] = EyeScanoutSeconds[1]\n"
     "\n";
-    static char seeAlsoString[] = "GetEyePose EndFrameTiming";
+    static char seeAlsoString[] = "GetEyePose EndFrameRender";
 
     int handle;
     PsychOculusDevice *oculus;
@@ -1522,20 +1523,22 @@ PsychError PSYCHOCULUSVR1StartRender(void)
     return(PsychError_none);
 }
 
-PsychError PSYCHOCULUSVR1EndFrameTiming(void)
+PsychError PSYCHOCULUSVR1EndFrameRender(void)
 {
-    static char useString[] = "PsychOculusVRCore1('EndFrameTiming', oculusPtr);";
+    static char useString[] = "PsychOculusVRCore1('EndFrameRender', oculusPtr);";
     //                                                              1
     static char synopsisString[] =
-    "Mark end of a new 3D head tracked render and presentation cycle for Oculus device 'oculusPtr'.\n"
-    "You usually won't call this function yourself, but Screen('Flip') will call it automatically for you "
-    "at the appropriate moment.\n";
-    static char seeAlsoString[] = "StartRender";
+    "Mark end of a render cycle for Oculus HMD device 'oculusPtr'.\n\n"
+    "This will commit the current set of 2D textures with new rendered content "
+    "to the texture swapchains, for consumption by the VR runtime/compositor. "
+    "The swapchains will advance, providing new unused image textures as new "
+    "render targets for the next rendering cycle.\n\n"
+    "You usually won't call this function yourself, but Screen('Flip') will "
+    "call it automatically for you at the appropriate moment.\n";
+    static char seeAlsoString[] = "StartRender PresentFrame";
 
     int handle, eyeIndex;
     PsychOculusDevice *oculus;
-    ovrLayerEyeFov layer0;
-    const ovrLayerHeader *layers[1] = { &layer0.Header };
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -1563,6 +1566,43 @@ PsychError PSYCHOCULUSVR1EndFrameTiming(void)
         }
     }
 
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVR1PresentFrame(void)
+{
+    static char useString[] = "frameTiming = PsychOculusVRCore1('PresentFrame', oculusPtr);";
+    //                         1                                                1
+    static char synopsisString[] =
+    "Present last rendered frame to Oculus HMD device 'oculusPtr'.\n\n"
+    "Returns a struct 'frameTiming' with information about the presentation "
+    "timing for this presentation cycle.\n\n"
+    "You usually won't call this function yourself, but Screen('Flip') "
+    "will call it automatically for you at the appropriate moment.\n";
+    static char seeAlsoString[] = "EndFrameRender";
+
+    int handle;
+    PsychOculusDevice *oculus;
+    ovrLayerEyeFov layer0;
+    const ovrLayerHeader *layers[1] = { &layer0.Header };
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    //check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(0));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Setup layer headers:
     layer0.Header.Type = ovrLayerType_EyeFov;
     layer0.Header.Flags = ovrLayerFlag_HighQuality | ovrLayerFlag_TextureOriginAtBottomLeft;
 
@@ -1784,7 +1824,7 @@ PsychError PSYCHOCULUSVR1LatencyTester(void)
             // Seems so:
             if (ovrHmd_GetFloatArray(oculus->hmd, "DK2Latency", latencies, 5) == 5) {
                 if (verbosity > 3) {
-                    printf("PsychOculusVRCore1-EndFrameTiming: Latency test result is: %f : %f : %f : %f : %f\n",
+                    printf("PsychOculusVRCore1-EndFrameRender: Latency test result is: %f : %f : %f : %f : %f\n",
                            latencies[0] * 1000.0, latencies[1] * 1000.0, latencies[2] * 1000.0, latencies[3] * 1000.0,
                            latencies[4] * 1000.0);
                 }
