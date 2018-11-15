@@ -455,7 +455,7 @@ if cmd == 1
 
   t1 = GetSecs;
 
-  [frameTiming, predictedOnset] = PsychOculusVRCore1('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp, tWhen);
+  [frameTiming, predictedOnset, refFrameIndex] = PsychOculusVRCore1('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp, tWhen);
 
   t2 = GetSecs;
 
@@ -514,13 +514,12 @@ if cmd == 1
 
   if hmd{handle}.doTimestamp
     % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
-    if ~isempty(frameTiming)
-      foo = max(frameTiming.VBlankTime)
+    if refFrameIndex > 0
+      Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(refFrameIndex).VBlankTime, frameTiming(refFrameIndex).StimulusOnsetTime);
     else
-      foo = 'nodata'
+      fprintf('Warning: No proper timestamp, faking it with predictedOnset.\n\n');
+      Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
     end
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(1).VBlankTime, frameTiming(1).StimulusOnsetTime);
-    %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
   else
     % Use made up values for timestamps of 'Flip':
     %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs, GetSecs);
