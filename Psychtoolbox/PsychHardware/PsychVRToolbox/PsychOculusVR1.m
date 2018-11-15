@@ -349,33 +349,66 @@ if nargin < 1 || isempty(cmd)
   return;
 end
 
-% Fast-Path function 'Present' - Presents new frames to Compositor:
-if cmd == 1
+% Fast-Path function 'EndFrameRender' - Queues new frames to Compositor:
+if cmd == 0
   handle = varargin{1};
 
-  % Execute VR Present: Submit just unbound textures, start render/warp/presentation
-  % on HMD at next possible point in time:
   t1 = GetSecs;
+
+  % Unbind finalizedFBO's, thereby unbind textures:
+  glBindFramebufferEXT(GL.FRAMEBUFFER_EXT, 0);
+
+  % Submit/Commit just unbound textures to texture swap-chains:
   PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle);
   t2 = GetSecs;
 
-  % Get next set of backing textures for next Screen() post-flip drawing/render cycle
-  % from the OculusVR texture swap chains:
+  % Get fresh set of backing textures for next Screen() post-flip drawing/render
+  % cycle from the OculusVR texture swap chains:
   texLeft = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 0);
   if hmd{handle}.StereoMode > 0
-      texRight = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 1);
+    texRight = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 1);
   else
-      texRight = [];
+    texRight = [];
   end
   t3 = GetSecs;
 
   % Attach them as new backing textures, detach the previously bound ones, so they
   % are ready for submission to the VR compositor:
   [oldL, oldR] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+
+  % Define parameters for the ongoing Psychtoolbox onscreen window flip operation:
+  if hmd{handle}.mirrorTexture > 0
+    % Debug output of compositor mirror texture into PTB onscreen window requested.
+    % - Ask to skip flip's regular OpenGL swap completion timestamping, but instead
+    %   to accept future injected timestamps from us.
+    %
+    % - Ask to disable vsync of the OpenGL bufferswap for display of the mirror texture
+    %   in the onscreen window. We don't want to get swap-throttled to the refresh rate
+    %   of the operator desktop GUI display.
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipVsyncForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+  else
+    % No debug output from VR compositor wanted. Skip the OpenGL bufferswap for the
+    % onscreen window completely, ergo also skip timestamping and allow timestamp
+    % injection from us instead:
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+  end
+
   t4 = GetSecs;
 
+  fprintf('Commit: %f ms, GetNext %f ms, SetNext/Flags %f ms ... ', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
+
+  return;
+end
+
+% Fast-Path function 'PresentFrame' - Present frame to VR compositor,
+% wait for present completion, render debug mirror texture if needed,
+% inject present completion timestamps:
+if cmd == 1
+  handle = varargin{1};
+
+  t1 = GetSecs;
   PsychOculusVRCore1('PresentFrame', hmd{handle}.handle);
-  t5 = GetSecs;
+  t2 = GetSecs;
 
   % Debug output from mirror texture requested?
   mirrorTex = hmd{handle}.mirrorTexture;
@@ -405,20 +438,19 @@ if cmd == 1
     glBindTexture(GL.TEXTURE_2D, 0);
     glPopMatrix;
     glMatrixMode(GL.MODELVIEW);
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipVsyncForFlipOnce + kPsychSkipTimestampingForFlipOnce);
-  else
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
   end
-  t6 = GetSecs;
+  t3 = GetSecs;
 
   % Disable presentation in onscreen window and associated throttling and standard Flip timestamping:
   Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs);
-  t7 = GetSecs;
+  t4 = GetSecs;
 
-  fprintf('Commit: %f ms, GetNext %f ms, SetNext %f ms, Present %f ms, Mirror %f ms, SetRes %f ms\n', ...
-          1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3), 1000 * (t5 - t4), 1000 * (t6 - t5), 1000 * (t7 - t6));
+  fprintf('Present %f ms, Mirror %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
+
   return;
 end
+
+
 
 % Fast-Path function 'Cleanup' - Cleans up before onscreen window close/GL shutdown:
 if cmd == 2
@@ -1087,9 +1119,28 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     hmd{handle}.mirrorTexture = 0;
   end
 
-  % Need to call the PsychOculusVR1(1) callback at each Screen('Flip') to get the
-  % imaging pipeline post-processed final output frames for left/right eye and submit
-  % them to the VR-Compositor for presentation on the HMD:
+  % Need to call the PsychOculusVR1(0) callback at each Screen('Flip') to get the
+  % imaging pipelines post-processed final output frames for left/right eye and commit
+  % them to the VR-Compositors texture swap-chain(s), then setting up new target textures
+  % as buffers for next cycle. This happens at the end of preflip operations, as part of
+  % the implicit 'DrawingFinished':
+  cmdString = sprintf('PsychOculusVR1(0, %i);', handle);
+  if winfo.StereoMode > 0
+    % In stereo mode, use right finalizer chain, as it executes last:
+    Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'OculusVR Commit Operation', cmdString);
+    Screen('Hookfunction', win, 'Enable', 'RightFinalizerBlitChain');
+  else
+    % In mono mode, use left finalizer chain, as it executes only - and therefore last:
+    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'OculusVR Commit Operation', cmdString);
+    Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
+  end
+
+  % Need to call the PsychOculusVR1(1) callback at each Screen('Flip') to submit the
+  % output frames to the VR-Compositor for presentation on the HMD asap. This gets
+  % called immediately before an OpenGL bufferswap (if any) + timestamping + validation
+  % will happen, iow. at t >= tWhen for Screen('Flip', win, tWhen);
+  % It is supposed to block until image presentation on the HMD has happened, and to
+  % inject proper Present timestamps for 'Flip':
   cmdString = sprintf('PsychOculusVR1(1, %i);', handle);
   Screen('Hookfunction', win, 'AppendMFunction', 'PreSwapbuffersOperations', 'OculusVR Present Operation', cmdString);
   Screen('Hookfunction', win, 'Enable', 'PreSwapbuffersOperations');
