@@ -25,6 +25,7 @@
 
 // Includes from Oculus SDK 1:
 #include "OVR_CAPI.h"
+#include "OVR_CAPI_GL.h"
 #include "Extras/OVR_CAPI_Util.h"
 
 // Number of maximum simultaneously open VR devices:
@@ -38,6 +39,9 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 typedef struct PsychOculusDevice {
     ovrSession hmd;
     ovrHmdDesc hmdDesc;
+    ovrTextureSwapChain textureSwapChain;
+    int        textureWidth;
+    int        textureHeight;
     psych_bool isTracking;
     ovrSizei texSize[2];
     ovrFovPort ofov[2];
@@ -58,6 +62,7 @@ static int available_devices = 0;
 static unsigned int devicecount = 0;
 static int verbosity = 3;
 static psych_bool initialized = FALSE;
+static ovrErrorInfo errorInfo;
 
 void InitializeSynopsis(void)
 {
@@ -92,6 +97,8 @@ void InitializeSynopsis(void)
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:\n";
     synopsis[i++] = "\n";
     synopsis[i++] = "[width, height, fovPort] = PsychOculusVRCore1('GetFovTextureSize', oculusPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
+    synopsis[i++] = "[width, height] = PsychOculusVRCore1('CreateRenderTextureChain', oculusPtr, width, height);";
+    synopsis[i++] = "texObjectHandle = PsychOculusVRCore1('GetNextTextureHandle', oculusPtr);";
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz, meshVertices, meshIndices, uvScaleX, uvScaleY, uvOffsetX, uvOffsetY] = PsychOculusVRCore1('GetUndistortionParameters', oculusPtr, eye [, inputWidth][, inputHeight][, fov]);";
     synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore1('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
     synopsis[i++] = "PsychOculusVRCore1('EndFrameTiming', oculusPtr);";
@@ -227,6 +234,13 @@ void PsychOculusClose(int handle)
         ovrHmd_DestroyDistortionMesh(&(oculus->eyeDistortionMesh[1]));
     }
 */
+
+    // Destroy/Release texture swap chain to compositor:
+    if (oculus->textureSwapChain) {
+        ovr_DestroyTextureSwapChain(oculus->hmd, oculus->textureSwapChain);
+        oculus->textureSwapChain = NULL;
+    }
+
     // Close the HMD:
     ovr_Destroy(oculus->hmd);
     oculus->hmd = NULL;
@@ -669,11 +683,11 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     const int FieldCount = 17;
     PsychGenericScriptType *outMat;
     double *v;
-
     int handle;
     double predictionTime = 0.0;
     PsychOculusDevice *oculus;
     ovrTrackingState state;
+    ovrVector3f HmdToEyeOffset[2];
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -695,6 +709,10 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     // Get current tracking status info at time predictionTime. Mark this point
     // as time from which motion to photon latency is measured (latencymarker = TRUE):
     state = ovr_GetTrackingState(oculus->hmd, predictionTime, TRUE);
+
+    HmdToEyeOffset[0] = oculus->eyeRenderDesc[0].HmdToEyeOffset;
+    HmdToEyeOffset[1] = oculus->eyeRenderDesc[1].HmdToEyeOffset;
+    ovr_CalcEyePoses(state.HeadPose.ThePose, HmdToEyeOffset, oculus->outEyePoses);
 
     // Print out tracking status:
     if (verbosity >= 4) {
@@ -910,6 +928,129 @@ PsychError PSYCHOCULUSVR1GetFovTextureSize(void)
     outFov[1] = rad2deg(atan(oculus->ofov[eyeIndex].RightTan));
     outFov[2] = rad2deg(atan(oculus->ofov[eyeIndex].UpTan));
     outFov[3] = rad2deg(atan(oculus->ofov[eyeIndex].DownTan));
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
+{
+    static char useString[] = "[width, height] = PsychOculusVRCore1('CreateRenderTextureChain', oculusPtr, width, height);";
+    //                          1      2                                                        1          2      3
+    static char synopsisString[] =
+    "Create texture present chains for Oculus device 'oculusPtr'.\n"
+    "'width' and 'height' are the total width and height of the combined left/right eye "
+    "texture into which Psychtoolbox Screen() image processing pipeline will render the "
+    "final output stereopair for submission to the VR compositor."
+    "\n"
+    "Return values are 'width' for selected width of output texture in pixels and "
+    "'height' for height of output texture in pixels.\n";
+    static char seeAlsoString[] = "";
+
+    int handle;
+    int width, height;
+    PsychOculusDevice *oculus;
+    ovrTextureSwapChainDesc chainDesc;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(3));
+    PsychErrorExit(PsychRequireNumInputArgs(3));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    PsychCopyInIntegerArg(2, kPsychArgRequired, &width);
+    if (width < 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid width, smaller than 1 texel!");
+
+    PsychCopyInIntegerArg(3, kPsychArgRequired, &height);
+    if (height < 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid height, smaller than 1 texel!");
+
+    // Build OpenGL texture chain descriptor:
+    memset(&chainDesc, 0, sizeof(chainDesc));
+    chainDesc.Type = ovrTexture_2D;
+    chainDesc.Format = OVR_FORMAT_R8G8B8A8_UNORM; // TODO OVR_FORMAT_R8G8B8A8_UNORM_SRGB
+    chainDesc.ArraySize = 1;
+    chainDesc.MipLevels = 1;
+    chainDesc.SampleCount = 1;
+    chainDesc.StaticImage = ovrFalse;
+    chainDesc.MiscFlags = ovrTextureMisc_None;
+    chainDesc.BindFlags = ovrTextureBind_None;
+    chainDesc.Width = width;
+    chainDesc.Height = height;
+
+    // Create texture swap chain:
+    if (OVR_FAILURE(ovr_CreateTextureSwapChainGL(oculus->hmd, &chainDesc, &oculus->textureSwapChain))) {
+        ovr_GetLastErrorInfo(&errorInfo);
+        if (verbosity > 0) printf("PsychOculusVRCore1-ERROR: ovr_CreateTextureSwapChainGL failed: %s\n", errorInfo.ErrorString);
+        PsychErrorExitMsg(PsychError_system, "Failed to create texture swap chain for VR compositor.");
+    }
+
+    if (verbosity > 3) {
+        int out_Length;
+        ovr_GetTextureSwapChainLength(oculus->hmd, oculus->textureSwapChain, &out_Length);
+        printf("PsychOculusVRCore1-INFO: Allocated texture swap chain has %i buffers.\n", out_Length);
+    }
+
+    // Assign total texture buffer width/height for the frame submission later on:
+    oculus->textureWidth = chainDesc.Width;
+    oculus->textureHeight = chainDesc.Height;
+
+    // Return recommended width and height of drawBuffer:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, chainDesc.Width);
+    PsychCopyOutDoubleArg(2, kPsychArgOptional, chainDesc.Height);
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVR1GetNextTextureHandle(void)
+{
+    static char useString[] = "texObjectHandle = PsychOculusVRCore1('GetNextTextureHandle', oculusPtr);";
+    //                         1                                                            1
+    static char synopsisString[] =
+    "Retrieve OpenGL texture object handle for next target texture for Oculus device 'oculusPtr'.\n"
+    "Returns a GL_TEXTURE2D texture object name/handle in 'texObjectHandle' for the texture "
+    "to which the next VR frame should be rendered. Returns -1 if busy.\n";
+    static char seeAlsoString[] = "";
+
+    int handle;
+    unsigned int texObjectHandle;
+    PsychOculusDevice *oculus;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Create texture swap chain:
+    if (OVR_FAILURE(ovr_GetTextureSwapChainBufferGL(oculus->hmd, oculus->textureSwapChain, -1, &texObjectHandle))) {
+        ovr_GetLastErrorInfo(&errorInfo);
+        if (verbosity > 0) printf("PsychOculusVRCore1-ERROR: ovr_GetTextureSwapChainBufferGL failed: %s\n", errorInfo.ErrorString);
+        PsychErrorExitMsg(PsychError_system, "Failed to retrieve next OpenGL texture from swap chain.");
+    }
+
+    // Return recommended width and height of drawBuffer:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) texObjectHandle);
 
     return(PsychError_none);
 }
@@ -1350,7 +1491,7 @@ PsychError PSYCHOCULUSVR1StartRender(void)
 PsychError PSYCHOCULUSVR1EndFrameTiming(void)
 {
     static char useString[] = "PsychOculusVRCore1('EndFrameTiming', oculusPtr);";
-    //                                                             1
+    //                                                              1
     static char synopsisString[] =
     "Mark end of a new 3D head tracked render and presentation cycle for Oculus device 'oculusPtr'.\n"
     "You usually won't call this function yourself, but Screen('Flip') will call it automatically for you "
@@ -1359,6 +1500,8 @@ PsychError PSYCHOCULUSVR1EndFrameTiming(void)
 
     int handle;
     PsychOculusDevice *oculus;
+    ovrLayerEyeFov layer0;
+    const ovrLayerHeader *layers[1] = { &layer0.Header };
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -1376,10 +1519,40 @@ PsychError PSYCHOCULUSVR1EndFrameTiming(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
 
-    // Tell runtime that the last rendered frame was just presented onscreen,
-    // aka OpenGL bufferswap completed:
-    // Note: This also runs processing for the DK2 latency tester.
-// TODO    ovrHmd_EndFrameTiming(oculus->hmd);
+    // Commit current target texture to chain:
+    if (OVR_FAILURE(ovr_CommitTextureSwapChain(oculus->hmd, oculus->textureSwapChain))) {
+        ovr_GetLastErrorInfo(&errorInfo);
+        if (verbosity > 0)
+            printf("PsychOculusVRCore1-ERROR: ovr_CommitTextureSwapChain() failed: %s\n", errorInfo.ErrorString);
+        PsychErrorExitMsg(PsychError_system, "Failed to commit finished OpenGL texture to swap chain.");
+    }
+
+    layer0.Header.Type = ovrLayerType_EyeFov;
+    layer0.Header.Flags = ovrLayerFlag_HeadLocked | ovrLayerFlag_HighQuality | ovrLayerFlag_TextureOriginAtBottomLeft;
+    layer0.ColorTexture[0] = oculus->textureSwapChain;
+    layer0.ColorTexture[1] = NULL;
+    layer0.Viewport[0].Pos.x = 0;
+    layer0.Viewport[0].Pos.y = 0;
+    layer0.Viewport[0].Size.w = oculus->textureWidth / 2;
+    layer0.Viewport[0].Size.h = oculus->textureHeight;
+    layer0.Viewport[1].Pos.x = oculus->textureWidth / 2 - 1;
+    layer0.Viewport[1].Pos.y = 0;
+    layer0.Viewport[1].Size.w = oculus->textureWidth / 2;
+    layer0.Viewport[1].Size.h = oculus->textureHeight;
+    layer0.Fov[0] = oculus->ofov[0];
+    layer0.Fov[1] = oculus->ofov[1];
+    layer0.RenderPose[0] = oculus->outEyePoses[0];
+    layer0.RenderPose[1] = oculus->outEyePoses[1];
+    layer0.SensorSampleTime = ovr_GetTimeInSeconds(); // TODO Replace with headtracker sampling time.
+
+    // Submit frame to compositor for display at earliest possible time:
+    if (OVR_FAILURE(ovr_SubmitFrame(oculus->hmd, 0, NULL, layers, 1))) {
+        ovr_GetLastErrorInfo(&errorInfo);
+        if (verbosity > 0)
+            printf("PsychOculusVRCore1-ERROR: ovr_CommitTextureSwapChain() failed: %s\n", errorInfo.ErrorString);
+        PsychErrorExitMsg(PsychError_system, "Failed to commit finished OpenGL texture to swap chain.");
+    }
+
     oculus->frameIndex++;
 
     return(PsychError_none);

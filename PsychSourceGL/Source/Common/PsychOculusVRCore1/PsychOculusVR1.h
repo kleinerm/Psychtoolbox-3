@@ -44,6 +44,8 @@ PsychError PSYCHOCULUSVR1Stop(void);
 PsychError PSYCHOCULUSVR1GetCount(void);
 PsychError PSYCHOCULUSVR1GetTrackingState(void);
 PsychError PSYCHOCULUSVR1GetFovTextureSize(void);
+PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void);
+PsychError PSYCHOCULUSVR1GetNextTextureHandle(void);
 PsychError PSYCHOCULUSVR1GetUndistortionParameters(void);
 PsychError PSYCHOCULUSVR1GetStaticRenderParameters(void);
 PsychError PSYCHOCULUSVR1GetEyeTimewarpMatrices(void);
