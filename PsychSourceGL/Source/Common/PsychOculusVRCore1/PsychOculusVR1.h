@@ -56,6 +56,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void);
 PsychError PSYCHOCULUSVR1GetEyePose(void);
 PsychError PSYCHOCULUSVR1VRAreaBoundary(void);
 PsychError PSYCHOCULUSVR1RecenterTrackingOrigin(void);
+PsychError PSYCHOCULUSVR1TrackingOriginType(void);
 PsychError PSYCHOCULUSVR1GetPerformanceStats(void);
 
 #ifdef  __cplusplus

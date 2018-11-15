@@ -283,6 +283,18 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % be auto-triggered during a call to 'PrepareRender'.
 %
 %
+% oldType = PsychOculusVR1('TrackingOriginType', hmd [, newType]);
+% - Specify the type of tracking origin for Oculus device 'oculusPtr'.
+% This returns the current type of tracking origin in 'oldType'.
+% Optionally you can specify a new tracking origin type as 'newType'.
+% Type must be either:
+% 0 = Origin is at eye height (HMD height).
+% 1 = Origin is at floor height.
+% The eye height or floor height gets defined by the system during
+% calls to 'RecenterTrackingOrigin' and during sensor calibration in
+% the Oculus GUI application.
+%
+%
 % [adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOculusVR1('GetPerformanceStats', hmd);
 % - Return global and per-frame performance statistics for the given 'hmd'.
 %
@@ -749,6 +761,17 @@ if strcmpi(cmd, 'RecenterTrackingOrigin')
   end
 
   varargout{1} = PsychOculusVRCore1('RecenterTrackingOrigin', myhmd.handle);
+
+  return;
+end
+
+if strcmpi(cmd, 'TrackingOriginType')
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOculusVR1:TrackingOriginType: Specified handle does not correspond to an open HMD!');
+  end
+
+  varargout{1} = PsychOculusVRCore1('TrackingOriginType', myhmd.handle, varargin{2:end});
 
   return;
 end

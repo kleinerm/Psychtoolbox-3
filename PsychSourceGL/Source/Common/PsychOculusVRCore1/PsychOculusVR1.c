@@ -101,6 +101,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychOculusVRCore1('SetHUDState', oculusPtr , mode);";
     synopsis[i++] = "[isVisible] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
     synopsis[i++] = "success = PsychOculusVRCore1('RecenterTrackingOrigin', oculusPtr);";
+    synopsis[i++] = "oldType = PsychOculusVRCore1('TrackingOriginType', oculusPtr [, newType]);";
     synopsis[i++] = "PsychOculusVRCore1('Start', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore1('Stop', oculusPtr);";
     synopsis[i++] = "state = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=nextFrame]);";
@@ -611,7 +612,7 @@ PsychError PSYCHOCULUSVR1RecenterTrackingOrigin(void)
         "Returns 1 on success, 0 on failure.\n"
         "A reason for failure can be that the HMD is not roughly level, but "
         "instead is facing upward or downward, which is not allowed.\n";
-    static char seeAlsoString[] = "";
+    static char seeAlsoString[] = "GetTrackersState TrackingOriginType";
 
     int handle;
     PsychOculusDevice *oculus;
@@ -646,6 +647,67 @@ PsychError PSYCHOCULUSVR1RecenterTrackingOrigin(void)
         PsychCopyOutDoubleArg(1, kPsychArgOptional, 1);
 
         ovr_ClearShouldRecenterFlag(oculus->hmd);
+    }
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVR1TrackingOriginType(void)
+{
+    static char useString[] = "oldType = PsychOculusVRCore1('TrackingOriginType', oculusPtr [, newType]);";
+    //                         1                                                  1            2
+    static char synopsisString[] =
+        "Specify the type of tracking origin for Oculus device 'oculusPtr'.\n\n"
+        "This returns the current type of tracking origin in 'oldType'.\n\n"
+        "Optionally you can specify a new tracking origin type as 'newType'. "
+        "Type must be either:\n\n"
+        "0 = Origin is at eye height (HMD height).\n"
+        "1 = Origin is at floor height.\n\n"
+        "The eye height or floor height gets defined by the system during "
+        "calls to 'RecenterTrackingOrigin' and during sensor calibration in "
+        "the Oculus GUI application.\n";
+    static char seeAlsoString[] = "RecenterTrackingOrigin GetTrackersState";
+
+    int handle;
+    int originType;
+    PsychOculusDevice *oculus;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Query and return old setting:
+    originType = (int) ovr_GetTrackingOriginType(oculus->hmd);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) originType);
+
+    // New origin type provided?
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &originType)) {
+        if (originType < 0 || originType > 1)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'newType' for tracking origin type specified. Must be 0 or 1.");
+
+        if (OVR_FAILURE(ovr_SetTrackingOriginType(oculus->hmd, (ovrTrackingOrigin) originType))) {
+            if (verbosity > 0) {
+                ovr_GetLastErrorInfo(&errorInfo);
+                printf("PsychOculusVRCore1-ERROR: Setting new tracking origin type failed! %s\n", errorInfo.ErrorString);
+            }
+            PsychErrorExitMsg(PsychError_user, "Setting new tracking origin type failed.");
+        }
+        else {
+            if (verbosity > 3)
+                printf("PsychOculusVRCore1-INFO: Set new tracking origin type for HMD to %i.\n", originType);
+        }
     }
 
     return(PsychError_none);
