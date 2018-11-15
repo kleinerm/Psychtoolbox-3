@@ -165,16 +165,15 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
     if (ovr_Initialize(&iparms)) {
         if (verbosity >= 3) printf("PsychOculusVRCore1-INFO: Oculus VR runtime version '%s' initialized.\n", ovr_GetVersionString());
 
+        // Poll for existence of a HMD (detection timeout = 0 msecs == poll only).
+        // The 1.11 SDK still seems to be unable to enumerate more than 1 HMD,
+        // so we still can't count how many there are:
         ovrDetectResult result = ovr_Detect(0);
         available_devices = (result.IsOculusHMDConnected) ? 1 : 0;
         if (!result.IsOculusServiceRunning) {
             available_devices = -1;
             if (verbosity >= 2) printf("PsychOculusVRCore1-WARNING: Could not connect to Oculus VR server process yet. Did you forget to start it?\n");
         }
-
-        // Get count of available devices:
-        hmdDesc = ovr_GetHmdDesc(NULL);
-        available_devices = (hmdDesc.Type != ovrHmd_None) ? 11 : 0;
 
         if (verbosity >= 3) printf("PsychOculusVRCore1-INFO: At startup there are %i Oculus HMDs available.\n", available_devices);
         initialized = TRUE;
@@ -297,19 +296,11 @@ PsychError PSYCHOCULUSVR1GetCount(void)
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(0));
 
-    // Make sure driver is initialized:
-    // TODO Init not needed on 1.0 RT!
-    PsychOculusVRCheckInit(TRUE);
-    if (!initialized) {
+    ovrDetectResult result = ovr_Detect(0);
+    available_devices = (result.IsOculusHMDConnected) ? 1 : 0;
+    if (!result.IsOculusServiceRunning) {
         available_devices = -1;
-    }
-    else {
-        ovrDetectResult result = ovr_Detect(0);
-        available_devices = (result.IsOculusHMDConnected) ? 1 : 0;
-        if (!result.IsOculusServiceRunning) {
-            available_devices = -1;
-            if (verbosity >= 2) printf("PsychOculusVRCore1-WARNING: Could not connect to Oculus VR server process yet. Did you forget to start it?\n");
-        }
+        if (verbosity >= 2) printf("PsychOculusVRCore1-WARNING: Could not connect to Oculus VR server process yet. Did you forget to start it?\n");
     }
 
     PsychCopyOutDoubleArg(1, kPsychArgOptional, available_devices);
