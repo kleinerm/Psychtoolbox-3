@@ -340,23 +340,42 @@ if nargin < 1 || isempty(cmd)
   return;
 end
 
-% Fast-Path function 'TimeWarp'. Prepares 2D eye timewarp:
+% Fast-Path function 'Present' - Presents new frames to Compositor:
 if cmd == 1
   handle = varargin{1};
+
+  % Execute VR Present: Submit just unbound textures, start render/warp/presentation
+  % on HMD at next possible point in time:
+  PsychOculusVRCore1('EndFrameTiming', hmd{handle}.handle);
+
+  % Get next set of backing textures for next Screen() post-flip drawing/render cycle
+  % from the OculusVR texture swap chains:
+  texLeft = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 0);
+  if hmd{handle}.StereoMode > 0
+      texRight = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 1);
+  else
+      texRight = [];
+  end
+
+  % Attach them as new backing textures, detach the previously bound ones, so they
+  % are ready for submission to the VR compositor:
+  [oldL, oldR] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+
+  state = PsychOculusVRCore1('GetTrackingState', hmd{handle}.handle);
+
+  % Ready for Screen internal Flip completion, timestamping etc.:
+  %fprintf('PRESENT %f\n', GetSecs);
   return;
 end
 
+% Fast-Path function 'Cleanup' - Cleans up before onscreen window close/GL shutdown:
 if cmd == 2
   handle = varargin{1};
-  latencyColor = PsychOculusVRCore1('LatencyTester', handle, 0);
-  if ~isempty(latencyColor)
-    glColor3ubv(latencyColor);
-    glPointSize(4);
-    glBegin(GL.POINTS);
-    glVertex2i(1,1);
-    glEnd;
-    glPointSize(1);
-  end
+
+  % Reattach old backing textures, so onscreen window can get properly destroyed:
+  Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex);
+  hmd{handle}.oldglLeftTex = [];
+  hmd{handle}.oldglRightTex = [];
 
   return;
 end
@@ -882,6 +901,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Onscreen window handle:
   win = varargin{2};
+  winfo = Screen('GetWindowInfo', win);
+  hmd{handle}.StereoMode = winfo.StereoMode;
 
   % Keep track of window handle of associated onscreen window:
   hmd{handle}.win = win;
@@ -918,15 +939,50 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetRight';
   hmd{handle}.eyeShiftMatrix{2} = EyeT;
 
-  % Create texture swap chains to provide textures to be used for frame submission
-  % to the VR compositor:
-  [width, height] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, hmd{handle}.inputWidth, hmd{handle}.inputHeight);
+  % Create texture swap chains to provide textures to be used for
+  % frame submission to the VR compositor:
 
-  % CONTINUE HERE!
+  % Left eye / mono chain:
+  [width, height] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight);
+
+  % Create 2nd chain for right eye in stereo mode:
+  if winfo.StereoMode > 0
+    if winfo.StereoMode ~=12
+      sca;
+      error('Invalid Screen() StereoMode in use for OculusVR HMD! Must be 12 or 0.');
+    end
+    [width, height] = PsychOculusVRCore1('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight);
+  end
+
+  % Query currently bound finalizedFBO backing textures, to keep them around as
+  % backups for restoration when closing down the session:
+  [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight] = Screen('Hookfunction', win, 'GetDisplayBufferTextures');
+  if (textarget ~= GL.TEXTURE_2D) || (texformat ~= GL.RGBA8) || (texmultisample ~= 0)
+    sca;
+    error('Invalid Screen() backing textures required. Non-matching texture target, format or multisample setting.');
+  end
+
+  if (texwidth ~= width) || (texheight ~= height)
+    sca;
+    error('Invalid Screen() backing textures required. Non-matching width x height.');
+  end
+
+  if hmd{handle}.oldglRightTex == 0
+    hmd{handle}.oldglRightTex = [];
+  end
+
+  % Attach our first own backing textures provided by the textures swap chains
+  % of the OculusVR compositor:
+  texLeft = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 0);
+  if winfo.StereoMode > 0
+      texRight = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 1);
+  else
+      texRight = [];
+  end
+  Screen('Hookfunction', win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+
   % Switch to clear color black and do a clear by double flip:
   Screen('FillRect', win, 0);
-  Screen('Flip', win);
-  Screen('Flip', win);
 
   % Play more stupid tricks to get intermediate (bounce buffer FBOs) buffers cleared to black:
 %  Screen('HookFunction', win, 'AppendBuiltin', procchain, 'Builtin:IdentityBlit', '');
@@ -938,15 +994,17 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % are cleared to black:
   Screen('FillRect', win, clearcolor);
 
-  % Need to call the PsychOculusVR1(1) callback to do needed setup work:
-%  posstring = sprintf('InsertAt%iMFunction', slot);
-%  cmdString = sprintf('PsychOculusVR1(1, %i);', handle);
-%  Screen('Hookfunction', win, posstring, procchain, 'OculusVRTimeWarpSetup', cmdString);
+  % Need to call the PsychOculusVR1(1) callback at each Screen('Flip') to get the
+  % imaging pipeline post-processed final output frames for left/right eye and submit
+  % them to the VR-Compositor for presentation on the HMD:
+  cmdString = sprintf('PsychOculusVR1(1, %i);', handle);
+  Screen('Hookfunction', win, 'AppendMFunction', 'PreSwapbuffersOperations', 'OculusVR Present Operation', cmdString);
+  Screen('Hookfunction', win, 'Enable', 'PreSwapbuffersOperations');
 
-  % Need to call the end frame marker function of the Oculus runtime:
-  cmdString = sprintf('PsychOculusVRCore1(''EndFrameTiming'', %i);', handle);
-%  Screen('Hookfunction', win, 'PrependMFunction', 'ScreenFlipImpliedOperations', 'OculusVRPostPresentCallback', cmdString);
-%  Screen('Hookfunction', win, 'Enable', 'ScreenFlipImpliedOperations');
+  % Attach shutdown procedure on onscreen window close:
+  cmdString = sprintf('PsychOculusVR1(2, %i);', handle);
+  Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPreGLShutdown', 'OculusVR cleanup', cmdString);
+  Screen('Hookfunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
 
   % Does usercode request auto-closing the HMD or driver when the onscreen window is closed?
   if hmd{handle}.autoclose > 0
@@ -956,9 +1014,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychOculusVR1 driver.', 'PsychOculusVR1(''Close'');');
     else
       % Only close this HMD:
-      Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychOculusVR1 driver.', sprintf('PsychOculusVR1(''Close'', %i);', handle));
+      Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychOculusVR1 driver.', sprintf('PsychOculusVR1(''Close'', %i);', handle));
     end
-
     Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
   end
 
