@@ -172,6 +172,7 @@ static void OVR_CDECL PsychOculusLogCB(uintptr_t userData, int level, const char
 
 void PsychOculusVRCheckInit(psych_bool dontfail)
 {
+    char clientName[40 * 10];
     ovrResult result;
     ovrHmdDesc hmdDesc;
     ovrInitParams iparms;
@@ -189,6 +190,10 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
     result = ovr_Initialize(&iparms);
     if (OVR_SUCCESS(result)) {
         if (verbosity >= 3) printf("PsychOculusVRCore1-INFO: Oculus VR runtime (version '%s') initialized.\n", ovr_GetVersionString());
+
+        // Setup a unique identifying name for us:
+        sprintf(clientName, "EngineName: PsychOculusVR1\nEngineVersion: %s\nEnginePluginName: Date %s\n", PsychGetVersionString(), PsychGetBuildDate());
+        ovr_IdentifyClient(clientName);
 
         // Poll for existence of a HMD (detection timeout = 0 msecs == poll only).
         // The 1.11 SDK still seems to be unable to enumerate more than 1 HMD,
@@ -692,21 +697,13 @@ PsychError PSYCHOCULUSVR1Start(void)
     oculus = PsychGetOculus(handle, FALSE);
 
     if (oculus->isTracking) {
-        if (verbosity >= 0) printf("PsychOculusVRCore1-ERROR: Tried to start tracking on device %i, but tracking is already started.\n", handle);
+        if (verbosity >= 0)
+            printf("PsychOculusVRCore1-ERROR: Tried to start tracking on device %i, but tracking is already started.\n", handle);
         PsychErrorExitMsg(PsychError_user, "Tried to start tracking on HMD, but tracking already active.");
     }
 
-/* TODO REMOVE
-    // Request start of tracking for retrieval of head orientation and position, with drift correction, e.g., via magnetometer.
-    // Do not fail if retrieval of any of this information isn't supported by the given hardware, ie., the required set of caps is empty == 0.
-    // Rift DK1 only had orientation tracking, with magnetometer based drift correction. Rift DK2 also has vision based position tracking and
-    // drift correction. The software emulated Rift has none of these and just returns a "static" head. This will start tracking:
-    if (!ovrHmd_ConfigureTracking(oculus->hmd, ovrTrackingCap_Orientation | ovrTrackingCap_MagYawCorrection | ovrTrackingCap_Position, 0)) {
-        if (verbosity >= 0) printf("PsychOculusVRCore1-ERROR: Failed to start tracking on device with handle %i [%s].\n", handle, ovrHmd_GetLastError(oculus->hmd));
-        PsychErrorExitMsg(PsychError_system, "Start of Oculus HMD tracking failed for reason given above.");
-    }
-    else if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Tracking started on device with handle %i.\n", handle);
-*/
+    if (verbosity >= 4)
+        printf("PsychOculusVRCore1-INFO: Tracking started on device with handle %i.\n", handle);
 
     // presenterThread shutdown: Ask thread to terminate, wait for thread termination, cleanup and release the thread:
     PsychLockMutex(&(oculus->presenterLock));
@@ -724,7 +721,6 @@ PsychError PSYCHOCULUSVR1Start(void)
     oculus->presenterThread = (psych_thread) NULL;
     oculus->closing = FALSE;
     oculus->isTracking = TRUE;
-//    ovrHmd_ResetFrameTiming(oculus->hmd, oculus->frameIndex);
 
     // Tracking is running.
     return(PsychError_none);
