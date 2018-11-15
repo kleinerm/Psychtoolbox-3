@@ -730,7 +730,6 @@ if strcmpi(cmd, 'Close')
 end
 
 if strcmpi(cmd, 'IsHMDOutput')
-  % TODO FIXME Fix or REMOVE?
   myhmd = varargin{1}; %#ok<NASGU>
   scanout = varargin{2};
   warning('IsHMDOutput called - IMPLEMENT!!');
@@ -744,19 +743,12 @@ if strcmpi(cmd, 'IsHMDOutput')
 end
 
 if strcmpi(cmd, 'SetBasicQuality')
-  % TODO FIXME Fix or REMOVE?
-  warning('SetBasicQuality called - IMPLEMENT!!');
   myhmd = varargin{1};
   handle = myhmd.handle;
   basicQuality = varargin{2};
   basicQuality = min(max(basicQuality, 0), 1);
   hmd{handle}.basicQuality = basicQuality;
 
-  if ~isempty(strfind(hmd{handle}.basicRequirements, 'LowPersistence'))
-%    PsychOculusVRCore1('SetLowPersistence', handle, 1);
-  else
-%    PsychOculusVRCore1('SetLowPersistence', handle, 0);
-  end
   % TODO FIXME: Any special handling for TimingSupport or Tracked3DVR ?
   if ~isempty(strfind(hmd{handle}.basicRequirements, 'TimingSupport')) || ...
      ~isempty(strfind(hmd{handle}.basicTask, 'Tracked3DVR'))
@@ -846,20 +838,15 @@ if strcmpi(cmd, 'SetTimeWarp')
 end
 
 if strcmpi(cmd, 'SetLowPersistence')
-  warning('SetLowPersistence called - IMPLEMENT!!');
-
   myhmd = varargin{1};
   if ~PsychOculusVR1('IsOpen', myhmd)
     error('SetLowPersistence: Passed in handle does not refer to a valid and open HMD.');
   end
 
-  % SetLowPersistence determines use low persistence mode on the Rift DK2. Return old setting:
-  varargout{1} = 1; %PsychOculusVRCore1('SetLowPersistence', myhmd.handle);
-
-  % New setting requested?
-  if (length(varargin) >= 2) && ~isempty(varargin{2})
-    %PsychOculusVRCore1('SetLowPersistence', myhmd.handle, varargin{2});
-  end
+  % SetLowPersistence determined use of low persistence mode on the Rift DK2 with
+  % the v0.5 SDK. We don't have control over this on the v1.0 runtime anymore.
+  % Return constant old setting "Always low persistence":
+  varargout{1} = 1;
 
   return;
 end
@@ -947,7 +934,6 @@ if strcmpi(cmd, 'GetEyeShiftVector')
 end
 
 if strcmpi(cmd, 'PerformPostWindowOpenSetup')
-
   % Must have global GL constants:
   if isempty(GL)
     varargout{1} = 0;
