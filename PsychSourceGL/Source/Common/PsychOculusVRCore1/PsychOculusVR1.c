@@ -51,6 +51,7 @@ typedef struct PsychOculusDevice {
     ovrPosef            headPose;
     uint32_t            frameIndex;
     ovrPosef            outEyePoses[2];
+    double              sensorSampleTime;
     unsigned char       rgbColorOut[3];
     psych_bool          latencyTestActive;
     //TODO    ovrFrameTiming frameTiming;
@@ -727,6 +728,7 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     // Get current tracking status info at time predictionTime. Mark this point
     // as time from which motion to photon latency is measured (latencymarker = TRUE):
     state = ovr_GetTrackingState(oculus->hmd, predictionTime, TRUE);
+    oculus->sensorSampleTime = ovr_GetTimeInSeconds();
 
     // Translate to per eye position and orientation:
     HmdToEyeOffset[0] = oculus->eyeRenderDesc[0].HmdToEyeOffset;
@@ -1482,7 +1484,7 @@ PsychError PSYCHOCULUSVR1EndFrameTiming(void)
     layer0.Fov[1] = oculus->ofov[1];
     layer0.RenderPose[0] = oculus->outEyePoses[0];
     layer0.RenderPose[1] = oculus->outEyePoses[1];
-    layer0.SensorSampleTime = ovr_GetTimeInSeconds(); // TODO Replace with headtracker sampling time.
+    layer0.SensorSampleTime = oculus->sensorSampleTime;
 
     // Submit frame to compositor for display at earliest possible time:
     if (OVR_FAILURE(ovr_SubmitFrame(oculus->hmd, 0, NULL, layers, 1))) {
@@ -1545,10 +1547,10 @@ PsychError PSYCHOCULUSVR1GetEyePose(void)
     if (renderPass < 0 || renderPass > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'renderPass' specified. Must be 0 or 1 for first or second pass.");
 
     // Get eye pose:
-    eye = renderPass; // oculus->hmd->EyeRenderOrder[renderPass];
+    eye = renderPass;
     HmdToEyeOffset[0] = oculus->eyeRenderDesc[0].HmdToEyeOffset;
     HmdToEyeOffset[1] = oculus->eyeRenderDesc[1].HmdToEyeOffset;
-    ovr_GetEyePoses(oculus->hmd, 0, FALSE, HmdToEyeOffset, oculus->outEyePoses, NULL);
+    ovr_GetEyePoses(oculus->hmd, 0, FALSE, HmdToEyeOffset, oculus->outEyePoses, &oculus->sensorSampleTime);
 
     // Eye pose as raw data:
     PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 7, 1, &outM);
