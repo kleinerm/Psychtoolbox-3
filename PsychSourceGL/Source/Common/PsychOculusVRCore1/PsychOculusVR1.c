@@ -40,6 +40,7 @@ typedef struct PsychOculusDevice {
     psych_bool          closing;
     psych_thread        presenterThread;
     psych_mutex         presenterLock;
+    psych_condition     presentedSignal;
     ovrSession          hmd;
     ovrHmdDesc          hmdDesc;
     ovrTextureSwapChain textureSwapChain[2];
@@ -55,6 +56,7 @@ typedef struct PsychOculusDevice {
     ovrMatrix4f         timeWarpMatrices[2];
     ovrPosef            headPose;
     uint32_t            frameIndex;
+    uint32_t            commitFrameIndex;
     int                 needSubmit;
     ovrPosef            outEyePoses[2];
     double              frameDuration;
@@ -62,8 +64,7 @@ typedef struct PsychOculusDevice {
     double              lastPresentExecTime;
     double              scheduledPresentExecTime;
     double              VRtimeoutSecs;
-    unsigned char       rgbColorOut[3];
-    psych_bool          latencyTestActive;
+    ovrPerfStats        perfStats;
     //TODO    ovrFrameTiming frameTiming;
 } PsychOculusDevice;
 
@@ -312,6 +313,11 @@ void PsychOculusClose(int handle)
         printf("PsychOculusVRCore1-WARNING: This will cause resource leakage. Maybe you should better exit and restart Octave?");
     }
 
+    if ((rc=PsychDestroyCondition(&(oculus->presentedSignal)))) {
+        printf("PsychOculusVRCore1-WARNING: In PsychOculusClose(): Could not destroy presentedSignal condition variable [%s].\n", strerror(rc));
+        printf("PsychOculusVRCore1-WARNING: This will cause resource leakage. Maybe you should better exit and restart Octave?");
+    }
+
     if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Closed Oculus HMD with handle %i.\n", handle);
 
     // Done with this device:
@@ -518,6 +524,11 @@ PsychError PSYCHOCULUSVR1Open(void)
     if ((rc = PsychInitMutex(&(oculus->presenterLock)))) {
         printf("PsychOculusVRCore1-ERROR: Could not create internal presenterLock mutex lock [%s].\n", strerror(rc));
         PsychErrorExitMsg(PsychError_system, "Insufficient system resources for mutex creation as part of HMD open operation!");
+    }
+
+    if ((rc = PsychInitCondition(&(oculus->presentedSignal), NULL))) {
+        printf("PsychOculusVRCore1-ERROR: Could not create internal presentedSignal condition variable [%s].\n", strerror(rc));
+        PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for condition variable creation as part of HMD open operation!");
     }
 
     // Reset performance statistics for this session:
@@ -1684,7 +1695,7 @@ PsychError PSYCHOCULUSVR1EndFrameRender(void)
 // and directly from PSYCHOCULUSVR1PresentFrame when userspace wants to present new content.
 static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTextures, psych_bool inInit)
 {
-    int eyeIndex;
+    int eyeIndex, rc;
     psych_bool success = TRUE;
     double tPredictedOnset = 0;
     ovrLayerEyeFov layer0;
@@ -1697,11 +1708,11 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
         // Free capacity in swapchains?
         while ((oculus->needSubmit >= oculus->textureSwapChainLength - 1) &&
                (!oculus->isTracking) && (oculus->presenterThread != (psych_thread) NULL)) {
-            // No, and the presenterThread is running and should make free space soon.
-            // Wait for it to do its job:
-            PsychUnlockMutex(&(oculus->presenterLock));
-            PsychYieldIntervalSeconds(0.001);
-            PsychUnlockMutex(&(oculus->presenterLock));
+            // No, and the presenterThread is running and should make free space soon. Wait for it to do its job:
+            if ((rc = PsychWaitCondition(&(oculus->presentedSignal), &(oculus->presenterLock)))) {
+                // Failed: Log it in a hopefully not too unsafe way:
+                printf("PsychOculusVRCore1-ERROR: Waitcondition on presentedSignal trigger failed  [%s].\n", strerror(rc));
+            }
         }
 
         // Commit current target textures to chain:
@@ -1723,6 +1734,9 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
 
         // Mark the need for a ovr_SubmitFrame() call before we can commit textures again:
         oculus->needSubmit++;
+
+        // Record frameIndex at which new visual content was committed:
+        oculus->commitFrameIndex = oculus->frameIndex;
     }
 
     // printf("PresentExecute-2 %i - %f\n", commitTextures, ovr_GetTimeInSeconds());
@@ -1776,6 +1790,35 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
         oculus->lastPresentExecTime = tPredictedOnset;
 
         // printf("PresentExecute-3 %i - %f\n", commitTextures, ovr_GetTimeInSeconds());
+        if (success) {
+            double tDeadline;
+
+            // Retrieve performance stats, mostly for our timestamping:
+            tDeadline = ovr_GetTimeInSeconds() + 0.005;
+            do {
+                PsychYieldIntervalSeconds(0.001);
+                if (OVR_FAILURE(ovr_GetPerfStats(oculus->hmd, &oculus->perfStats))) {
+                    ovr_GetLastErrorInfo(&errorInfo);
+                    if (verbosity > 0)
+                        printf("PsychOculusVRCore1-ERROR: ovr_GetPerfStats() failed: %s\n", errorInfo.ErrorString);
+                }
+            } while ((oculus->frameIndex > 0) && (ovr_GetTimeInSeconds() < tDeadline) &&
+                     ((oculus->perfStats.FrameStatsCount < 1) || FALSE /* (oculus->perfStats.FrameStats[1].AppFrameIndex < oculus->commitFrameIndex) */));
+
+            if (verbosity > 3) {
+                printf("\nPsychOculusVRCore1: [%f msecs headroom] DEBUG: FrameStatsCount=%i, AnyFrameStatsDropped=%i\n",
+                       1000 * (tDeadline - ovr_GetTimeInSeconds()), oculus->perfStats.FrameStatsCount,
+                       (int) oculus->perfStats.AnyFrameStatsDropped);
+            }
+
+            // Are we running on the presenterThread?
+            if (!commitTextures && oculus->perfStats.FrameStatsCount) {
+                // Yes. Signal end of a new submitFrame -> timestamping cycle to main-thread:
+                if ((rc = PsychSignalCondition(&(oculus->presentedSignal)))) {
+                    printf("PsychOculusVRCore1-ERROR: PsychSignalCondition() trigger operation failed  [%s].\n", strerror(rc));
+                }
+            }
+        }
     }
 
     // printf("PresentExecute-4 %i - %f\n", commitTextures, ovr_GetTimeInSeconds());
@@ -1892,7 +1935,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
 
     int handle, i, rc;
     int doTimestamp = 0;
-    double tNow, tHMD, tStimOnset, tVBL, tDeadline, tPredictedOnset;
+    double tNow, tHMD, tStimOnset, tVBL, tPredictedOnset;
     PsychOculusDevice *oculus;
     ovrPerfStats perfStats;
 
@@ -1926,57 +1969,67 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
         printf("PsychOculusVRCore1-ERROR: Failed to present new frames to VR compositor.\n");
 
     if (doTimestamp) {
-        // Retrieve performance stats, mostly for our timestamping:
-        tDeadline = ovr_GetTimeInSeconds() + 0.005;
-        do {
-            if (OVR_FAILURE(ovr_GetPerfStats(oculus->hmd, &perfStats))) {
-                ovr_GetLastErrorInfo(&errorInfo);
-                if (verbosity > 0)
-                    printf("PsychOculusVRCore1-ERROR: ovr_GetPerfStats() failed: %s\n", errorInfo.ErrorString);
-                PsychErrorExitMsg(PsychError_system, "Failed to get performance and timing info from VR compositor.");
-            }
-        } while ((oculus->frameIndex > 0) && (perfStats.FrameStatsCount < 1) && (ovr_GetTimeInSeconds() < tDeadline));
+        int i;
+        uint32_t timestampedFrameIndex = 0;
 
-        if (verbosity > 3) {
-            printf("\nPsychOculusVRCore1: DEBUG: FrameStatsCount=%i, AnyFrameStatsDropped=%i\n", perfStats.FrameStatsCount,
-                   (int) perfStats.AnyFrameStatsDropped);
+        PsychLockMutex(&(oculus->presenterLock));
+        while (timestampedFrameIndex == 0) {
+            for (i = oculus->perfStats.FrameStatsCount - 1; i >= 0; i--) {
+                if (oculus->perfStats.FrameStats[i].AppFrameIndex >= oculus->commitFrameIndex) {
+                    timestampedFrameIndex = oculus->perfStats.FrameStats[i].AppFrameIndex;
+                    break;
+                }
+            }
+
+            if (timestampedFrameIndex == 0) {
+                if (oculus->presenterThread != (psych_thread) NULL) {
+                    // Multi-Threaded: Wait efficiently for signalling of new frame submitted by presenter thread:
+                    if ((rc = PsychWaitCondition(&(oculus->presentedSignal), &(oculus->presenterLock)))) {
+                        // Failed: Log it in a hopefully not too unsafe way:
+                        printf("PsychOculusVRCore1-ERROR: Waitcondition II on presentedSignal trigger failed  [%s].\n", strerror(rc));
+                    }
+                }
+            }
         }
 
-        if (perfStats.FrameStatsCount > 0) {
-            PsychAllocOutStructArray(1, kPsychArgOptional, perfStats.FrameStatsCount, FieldCount, FieldNames, &frameT);
-            for (i = 0; i < perfStats.FrameStatsCount; i++) {
+        if (oculus->perfStats.FrameStatsCount > 0) {
+            int j;
+            PsychAllocOutStructArray(1, kPsychArgOptional, oculus->perfStats.FrameStatsCount - i, FieldCount, FieldNames, &frameT);
+            for (j = 0; i < oculus->perfStats.FrameStatsCount; i++, j++) {
                 // HMD Vsync counter:
-                PsychSetStructArrayDoubleElement("HmdVsyncIndex", i, perfStats.FrameStats[i].HmdVsyncIndex, frameT);
+                PsychSetStructArrayDoubleElement("HmdVsyncIndex", j, oculus->perfStats.FrameStats[i].HmdVsyncIndex, frameT);
 
                 // Our sbc counter:
-                PsychSetStructArrayDoubleElement("AppFrameIndex", i, perfStats.FrameStats[i].AppFrameIndex, frameT);
+                PsychSetStructArrayDoubleElement("AppFrameIndex", j, oculus->perfStats.FrameStats[i].AppFrameIndex, frameT);
 
                 // Clock-Sync PTB timebase vs. Oculus timebase:
                 PsychGetAdjustedPrecisionTimerSeconds(&tNow);
                 tHMD = ovr_GetTimeInSeconds();
-                PsychSetStructArrayDoubleElement("HMDTime", i, tHMD, frameT);
-                PsychSetStructArrayDoubleElement("GetSecsTime", i, tNow, frameT);
+                PsychSetStructArrayDoubleElement("HMDTime", j, tHMD, frameT);
+                PsychSetStructArrayDoubleElement("GetSecsTime", j, tNow, frameT);
 
                 // Time between oculus->sensorSampleTime and visual onset (video frame midpoint of scanout):
-                PsychSetStructArrayDoubleElement("AppMotionToPhotonLatency", i, perfStats.FrameStats[i].AppMotionToPhotonLatency, frameT);
-                PsychSetStructArrayDoubleElement("RecentSensorSampleTime", i, oculus->sensorSampleTime, frameT);
+                PsychSetStructArrayDoubleElement("AppMotionToPhotonLatency", j, oculus->perfStats.FrameStats[i].AppMotionToPhotonLatency, frameT);
+                PsychSetStructArrayDoubleElement("RecentSensorSampleTime", j, oculus->sensorSampleTime, frameT);
 
                 // Compute absolute stimulus onset (mid-point), remap to PTB GetSecs time:
-                tStimOnset = (tNow - tHMD)  + oculus->sensorSampleTime + perfStats.FrameStats[i].AppMotionToPhotonLatency;
-                PsychSetStructArrayDoubleElement("StimulusOnsetTime", i, tStimOnset, frameT);
+                tStimOnset = (tNow - tHMD)  + oculus->sensorSampleTime + oculus->perfStats.FrameStats[i].AppMotionToPhotonLatency;
+                PsychSetStructArrayDoubleElement("StimulusOnsetTime", j, tStimOnset, frameT);
 
                 // Compute virtual start of VBLANK time as stimulus onset - half a HMD video refresh duration:
-                tVBL = tStimOnset - 0.5 * (1.0 / oculus->hmdDesc.DisplayRefreshRate);
-                PsychSetStructArrayDoubleElement("VBlankTime", i, tVBL, frameT);
+                tVBL = tStimOnset - 0.5 * oculus->frameDuration;
+                PsychSetStructArrayDoubleElement("VBlankTime", j, tVBL, frameT);
 
                 // Queue ahead for application. Citation from the v 1.11 SDK docs:
                 // "Amount of queue-ahead in seconds provided to the app based on performance and overlap of CPU & GPU utilization
                 // A value of 0.0 would mean the CPU & GPU workload is being completed in 1 frame's worth of time, while
                 // 11 ms (on the CV1) of queue ahead would indicate that the app's CPU workload for the next frame is
                 // overlapping the app's GPU workload for the current frame."
-                PsychSetStructArrayDoubleElement("AppQueueAheadTime", i, perfStats.FrameStats[i].AppQueueAheadTime, frameT);
+                PsychSetStructArrayDoubleElement("AppQueueAheadTime", j, oculus->perfStats.FrameStats[i].AppQueueAheadTime, frameT);
             }
         }
+
+        PsychUnlockMutex(&(oculus->presenterLock));
 
         // Copy out predicted onset time for the just emitted frame:
         tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * oculus->frameDuration;
