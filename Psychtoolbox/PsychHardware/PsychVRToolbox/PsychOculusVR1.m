@@ -367,70 +367,6 @@ end
 % Fast-Path function 'TimeWarp'. Prepares 2D eye timewarp:
 if cmd == 1
   handle = varargin{1};
-
-  if hmd{handle}.useOverdrive > 0
-    % Find next output texture and bind it as 2nd rendertarget to the output fbo.
-    % It will capture a copy of the rendered output frame, with geometry correction,
-    % color aberration correction and vignette correction applied, but without the
-    % overdrive processing. That copy will be used as reference for the next frame,
-    % to compute per-pixel overdrive values:
-    currentOverdriveTex = mod(hmd{handle}.lastOverdriveTex + 1, 2);
-    glFramebufferTexture2D(GL.FRAMEBUFFER_EXT, GL.COLOR_ATTACHMENT1, GL.TEXTURE_RECTANGLE_EXT, hmd{handle}.overdriveTex(currentOverdriveTex + 1), 0);
-    glDrawBuffers(2, [GL.COLOR_ATTACHMENT0, GL.COLOR_ATTACHMENT1]);
-
-    % Bind lastOverdriveTex from previous presentation cycle as old image
-    % to texture unit. It will be used for overdrive computation for this
-    % frame rendercycle:
-    glActiveTextureARB(GL.TEXTURE2);
-    glBindTexture(GL.TEXTURE_RECTANGLE_EXT, hmd{handle}.overdriveTex(hmd{handle}.lastOverdriveTex + 1));
-
-    % LUT based panel overdrive?
-    if hmd{handle}.useOverdrive > 1
-      % Bind overdrive lookup table texture to unit3 for LUT based overdrive:
-      % The LUT encodes all transitions from each of the 256 possible start
-      % values to each of the possible 256 end values, for each of the 3 color
-      % channels, as a 256x256x4 RGBA8 texture with alpha channel unused. The
-      % shader can directly use the optimal overdrive color at lut(startpix, endpix, colorchannel):
-      glActiveTextureARB(GL.TEXTURE3);
-      glBindTexture(GL.TEXTURE_RECTANGLE_EXT, hmd{handle}.overdriveLut(hmd{handle}.useOverdrive - 1));
-    end
-
-    % Back to standard texture unit 0:
-    glActiveTextureARB(GL.TEXTURE0);
-
-    % Prepare next rendercycle already: Swap the textures.
-    hmd{handle}.lastOverdriveTex = currentOverdriveTex;
-  end
-
-  if hmd{handle}.useTimeWarp
-    if hmd{handle}.useTimeWarp > 1
-      % Wait for warp point, then query warp matrices. We assume the warp point is
-      % 3 msecs before the target vblank and use our own high precision estimation of
-      % the warp point, as well as our own high precision wait. Oculus SDK v0.5 doesn't
-      % implement warp point calculation properly itself, therefore "do it yourself":
-      winfo = Screen('GetWindowInfo', hmd{handle}.win, 7);
-      warpPointSecs = winfo.LastVBLTime + hmd{handle}.videoRefreshDuration - 0.003;
-      WaitSecs('UntilTime', warpPointSecs);
-    end
-
-    % Get the matrices:
-    [hmd{handle}.eyeRotStartMatrixLeft, hmd{handle}.eyeRotEndMatrixLeft] = PsychOculusVRCore1('GetEyeTimewarpMatrices', handle, 0, 0);
-    [hmd{handle}.eyeRotStartMatrixRight, hmd{handle}.eyeRotEndMatrixRight] = PsychOculusVRCore1('GetEyeTimewarpMatrices', handle, 1, 0);
-
-    % Setup left shaders warp matrices:
-    glUseProgram(hmd{handle}.shaderLeft(1));
-    glUniformMatrix4fv(hmd{handle}.shaderLeft(2), 1, 1, hmd{handle}.eyeRotStartMatrixLeft);
-    glUniformMatrix4fv(hmd{handle}.shaderLeft(3), 1, 1, hmd{handle}.eyeRotEndMatrixLeft);
-
-    % Setup right shaders warp matrices:
-    glUseProgram(hmd{handle}.shaderRight(1));
-    glUniformMatrix4fv(hmd{handle}.shaderRight(2), 1, 1, hmd{handle}.eyeRotStartMatrixRight);
-    glUniformMatrix4fv(hmd{handle}.shaderRight(3), 1, 1, hmd{handle}.eyeRotEndMatrixRight);
-
-    % Ready for warp:
-    glUseProgram(0);
-  end
-
   return;
 end
 
@@ -722,31 +658,6 @@ if strcmpi(cmd, 'Open')
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
 
-  % Default to no use of timewarp: TODO Remove?
-  newhmd.useTimeWarp = 0;
-  newhmd.readyForWarp = 0;
-
-  % Default to no use of pixel luminance overdrive: TODO Remove?
-  newhmd.useOverdrive = 0;
-  newhmd.lastOverdriveTex = -1;
-
-  % Assign default overdrive contrast scale factors for rising
-  % (UpScale) and falling (DownScale) pixel color component
-  % intensities wrt. previous rendered frame:
-  newhmd.overdriveUpScale   = 0.10;
-  newhmd.overdriveDownScale = 0.05;
-
-  % Perform a gamma / degamma pass on color values for a
-  % gamma correction of 2.2 (hard-coded in the shader) by
-  % default.
-  %
-  % Overdrive is optimized to operate in gamma space. As
-  % we normally render and process in linear space, we
-  % need to convert linear -> gamma -> Overdrive -> linear.
-  % A setting of 0 for overdriveGammaCorrect would disable
-  % gamma->degamma and operate purely linear:
-  newhmd.overdriveGammaCorrect = 1;
-
   % By default allow user to dismiss HSW display via key press,
   % mouse click, or HMD tap:
   newhmd.hswdismiss = 1 + 2 + 4;
@@ -841,91 +752,32 @@ if strcmpi(cmd, 'SetBasicQuality')
   basicQuality = min(max(basicQuality, 0), 1);
   hmd{handle}.basicQuality = basicQuality;
 
-  if ~isempty(strfind(hmd{handle}.basicRequirements, 'FastResponse'))
-    hmd{handle}.useOverdrive = 1;
-  else
-    % Overdrive off by default because expensive:
-    hmd{handle}.useOverdrive = 0;
-  end
-
-  if ~isempty(strfind(hmd{handle}.basicRequirements, 'TimeWarp'))
-    if basicQuality >= 0.5
-      hmd{handle}.useTimeWarp = 2;
-    else
-      hmd{handle}.useTimeWarp = 1;
-    end
-  else
-    % TimeWarp is off by default:
-    hmd{handle}.useTimeWarp = 0;
-  end
-
   if ~isempty(strfind(hmd{handle}.basicRequirements, 'LowPersistence'))
 %    PsychOculusVRCore1('SetLowPersistence', handle, 1);
   else
 %    PsychOculusVRCore1('SetLowPersistence', handle, 0);
   end
-
-  % Dynamic prediction enables the DK2 latency tester, advanced head tracking
-  % prediction and eye timewarping:
+  % TODO FIXME: Any special handling for TimingSupport or Tracked3DVR ?
   if ~isempty(strfind(hmd{handle}.basicRequirements, 'TimingSupport')) || ...
-     hmd{handle}.useTimeWarp || ~isempty(strfind(hmd{handle}.basicTask, 'Tracked3DVR'))
-%    PsychOculusVRCore1('SetDynamicPrediction', handle, 1);
+     ~isempty(strfind(hmd{handle}.basicTask, 'Tracked3DVR'))
+    %    PsychOculusVRCore1('SetDynamicPrediction', handle, 1);
   else
-%    PsychOculusVRCore1('SetDynamicPrediction', handle, 0);
+    %    PsychOculusVRCore1('SetDynamicPrediction', handle, 0);
   end
 
   return;
 end
 
 if strcmpi(cmd, 'SetFastResponse')
-  % TODO FIXME or REMOVE?
-  warning('SetFastResponse called - IMPLEMENT!!');
-
   myhmd = varargin{1};
   if ~PsychOculusVR1('IsOpen', myhmd)
     error('SetFastResponse: Passed in handle does not refer to a valid and open HMD.');
   end
   handle = myhmd.handle;
 
-  % FastResponse determines use of GPU accelerated panel overdrive
-  % on the Rift DK1/DK2. Return old setting:
-  varargout{1} = hmd{handle}.useOverdrive;
-
-  % New setting requested?
-  if (length(varargin) >= 2) && ~isempty(varargin{2})
-    % Check if an enable is requested, and if so, if the neccessary prep work
-    % has been done during AutoSetupHMD / SetupRenderingParameters  etc. at
-    % startup:
-    if (varargin{2} > 0)  && (hmd{handle}.lastOverdriveTex < 0)
-      error('SetFastResponse: Tried to enable fast response mode, but feature has not been requested during initial HMD setup, as required.');
-    end
-
-    % All good. Can select the new overdrive mode between 0 and 3:
-    hmd{handle}.useOverdrive = max(0, min(varargin{2}, 3));
-
-    % Set new overdrive parameters for shaders:
-    if hmd{handle}.useOverdrive > 0
-      if hmd{handle}.useOverdrive > 1
-        % LUT based overdrive - signal to the shader via value > 1000:
-        overdriveUpScale = 10000;
-      else
-        % Algorithmic overdrive:
-        overdriveUpScale = hmd{handle}.overdriveUpScale;
-      end
-      overdriveDownScale = hmd{handle}.overdriveDownScale;
-      overdriveGammaCorrect = hmd{handle}.overdriveGammaCorrect;
-    else
-      overdriveUpScale = 0;
-      overdriveDownScale = 0;
-      overdriveGammaCorrect = 0;
-    end
-
-%    glUseProgram(hmd{handle}.shaderLeft(1));
-%    glUniform3f(glGetUniformLocation(hmd{handle}.shaderLeft(1), 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
-%    glUseProgram(hmd{handle}.shaderRight(1));
-%    glUniform3f(glGetUniformLocation(hmd{handle}.shaderRight(1), 'OverdriveScales'), overdriveUpScale, overdriveDownScale, overdriveGammaCorrect);
-%    glUseProgram(0);
-  end
+  % FastResponse has no meaningful implementation on the OculusVR 1.0 runtime,
+  % so just return a constant old value of 1 for "fast response always enabled":
+  varargout{1} = 1;
 
   return;
 end
@@ -977,50 +829,18 @@ if strcmpi(cmd, 'PanelOverdriveParameters')
 end
 
 if strcmpi(cmd, 'SetTimeWarp')
-  warning('SetTimeWarp called - IMPLEMENT!!');
-
   myhmd = varargin{1};
   if ~PsychOculusVR1('IsOpen', myhmd)
     error('SetTimeWarp: Passed in handle does not refer to a valid and open HMD.');
   end
 
-  % SetTimeWarp determines use of GPU accelerated 2D texture sampling
-  % warp on the Rift DK1/DK2. Return old setting:
-  varargout{1} = hmd{myhmd.handle}.useTimeWarp;
+  % SetTimeWarp determined use of GPU accelerated 2D texture sampling
+  % warp on the Rift DK1/DK2 with old v0.5 SDK. On the 1.0 SDK we no
+  % longer have any programmatic control over timewarping,so leave this
+  % in place as dummy.
 
-  % New setting requested?
-  if (length(varargin) >= 2) && ~isempty(varargin{2})
-    % Check if an enable is requested, and if so, if the neccessary prep work
-    % has been done during AutoSetupHMD / SetupRenderingParameters  etc. at
-    % startup:
-    if (varargin{2} > 0)  && ~hmd{myhmd.handle}.readyForWarp
-      error('SetTimeWarp: Tried to enable eye timewarp mode, but feature has not been requested during initial HMD setup, as required.');
-    end
-
-    % TimeWarp transition from enabled to disabled?
-    if (varargin{2} <= 0) && (hmd{myhmd.handle}.useTimeWarp > 0)
-      % Need to reset shaders matrices to identity matrices:
-      handle = myhmd.handle;
-
-      % Setup left shaders warp matrices:
-%      glUseProgram(hmd{handle}.shaderLeft(1));
-      hmd{handle}.eyeRotStartMatrixLeft = diag([1 1 1 1]);
-      hmd{handle}.eyeRotEndMatrixLeft   = diag([1 1 1 1]);
-%      glUniformMatrix4fv(hmd{handle}.shaderLeft(2), 1, 1, hmd{handle}.eyeRotStartMatrixLeft);
-%      glUniformMatrix4fv(hmd{handle}.shaderLeft(3), 1, 1, hmd{handle}.eyeRotEndMatrixLeft);
-%
-%      % Setup right shaders warp matrices:
-%      glUseProgram(hmd{handle}.shaderRight(1));
-      hmd{handle}.eyeRotStartMatrixRight = diag([1 1 1 1]);
-      hmd{handle}.eyeRotEndMatrixRight   = diag([1 1 1 1]);
-%      glUniformMatrix4fv(hmd{handle}.shaderRight(2), 1, 1, hmd{handle}.eyeRotStartMatrixRight);
-%      glUniformMatrix4fv(hmd{handle}.shaderRight(3), 1, 1, hmd{handle}.eyeRotEndMatrixRight);
-%      glUseProgram(0);
-    end
-
-    % All good. Can select the new timeWarp mode:
-    hmd{myhmd.handle}.useTimeWarp = varargin{2};
-  end
+  % Return constant old setting of "TimeWarp always on":
+  varargout{1} = 1;
 
   return;
 end
@@ -1148,16 +968,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Need to know user selected clearcolor:
   clearcolor = varargin{3};
 
-  % Also keep track of video refresh duration of the HMD:
-  % TODO FIXME
-  hmd{handle}.videoRefreshDuration = Screen('Framerate', win);
-  if hmd{handle}.videoRefreshDuration == 0
-    % Unlikely to ever hit this situation, but if we would, just
-    % default to the Rift DK-2's default video refresh rate of 75 Hz:
-    hmd{handle}.videoRefreshDuration = 75;
-  end
-  hmd{handle}.videoRefreshDuration = 1 / hmd{handle}.videoRefreshDuration;
-
   % Compute effective size of per-eye input buffer for undistortion render.
   % The input buffers for undistortion are the finalizedDrawbufferFBO's.
   % This means [inputWidth, inputHeight] == [rbwidth, rbheight].
@@ -1174,10 +984,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 %  hmd{handle}.uvScaleLeft = uvScale;
 %  hmd{handle}.uvOffsetLeft = uvOffset;
 
-  % Init warp matrices to identity, until we get something better from live tracking:
-  hmd{handle}.eyeRotStartMatrixLeft = diag([1 1 1 1]);
-  hmd{handle}.eyeRotEndMatrixLeft   = diag([1 1 1 1]);
-
   % Query parameters for right eye view:
 %  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore1('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
 %  hmd{handle}.viewportRight = [vx, vy, vw, vh];
@@ -1187,10 +993,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 %  hmd{handle}.meshIndicesRight = meshIR;
 %  hmd{handle}.uvScaleRight = uvScale;
 %  hmd{handle}.uvOffsetRight = uvOffset;
-
-  % Init warp matrices to identity, until we get something better from live tracking:
-  hmd{handle}.eyeRotStartMatrixRight = diag([1 1 1 1]);
-  hmd{handle}.eyeRotEndMatrixRight   = diag([1 1 1 1]);
 
   % Convert head to eye shift vectors into 4x4 matrices, as we'll need
   % them frequently:
@@ -1221,36 +1023,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Go back to user requested clear color, now that all our buffers
   % are cleared to black:
   Screen('FillRect', win, clearcolor);
-
-  % TODO REMOVE
-  if hmd{handle}.useOverdrive
-    % Overdrive enabled: Assign overdrive contrast scale factors for
-    % rising (UpScale) and falling (DownScale) pixel color component
-    % intensities wrt. previous rendered frame:
-    if hmd{handle}.useOverdrive > 1
-      % LUT based overdrive - signal to the shader via value > 1000:
-      overdriveUpScale = 10000;
-    else
-      % Algorithmic overdrive:
-      overdriveUpScale = hmd{handle}.overdriveUpScale;
-    end
-
-    overdriveDownScale = hmd{handle}.overdriveDownScale;
-
-    % Perform a gamma / degamma pass on color values for a
-    % gamma correction of 2.2 (hard-coded in the shader).
-    % Overdrive is optimized to operate in gamma space. As
-    % we normally render and process in linear space, we
-    % need to convert linear -> gamma -> Overdrive -> linear.
-    % A setting of 0 for overdriveGammaCorrect would disable
-    % gamma->degamma and operate purely linear:
-    overdriveGammaCorrect = hmd{handle}.overdriveGammaCorrect;
-  else
-    % Overdrive disabled:
-    overdriveUpScale = 0;
-    overdriveDownScale = 0;
-    overdriveGammaCorrect = 0;
-  end
 
   % Need to call the PsychOculusVR1(1) callback to do needed setup work:
 %  posstring = sprintf('InsertAt%iMFunction', slot);
