@@ -41,6 +41,14 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % 'basicRequirements' defines basic requirements for the task. Currently
 % defined are the following strings which can be combined into a single
 % 'basicRequirements' string:
+%
+% 'DebugDisplay' = Show the output which is displayed on the HMD inside the
+% Psychtoolbox onscreen window as well. This will have a negative impact on
+% performance, latency and timing of the HMD visual presentation, so should only
+% be used for debugging, as it may cause a seriously degraded VR experience.
+% By default, no such debug output is produced and the Psychtoolbox onscreen
+% window is not actually displayed on the desktop.
+%
 % 'TimingSupport' = Support some hardware specific means of timestamping
 % or latency measurements. On the Rift DK1 this does nothing. On the DK2
 % it enables dynamic prediction and timing measurements with the Rifts internal
@@ -331,6 +339,7 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
 
+persistent oldShieldingLevel;
 persistent hmd;
 
 if nargin < 1 || isempty(cmd)
@@ -361,8 +370,40 @@ if cmd == 1
   % are ready for submission to the VR compositor:
   [oldL, oldR] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
 
+  % Debug output from mirror texture requested?
+  mirrorTex = hmd{handle}.mirrorTexture;
+  if mirrorTex > 0
+    % Yes. Render into onscreen windows viewport:
+    width = hmd{handle}.mirrorWidth;
+    height = hmd{handle}.mirrorHeight;
+    glViewport(0, 0, width, height);
+    glMatrixMode(GL.PROJECTION);
+    glPushMatrix;
+    glLoadIdentity;
+    gluOrtho2D(0, width, 0, height);
+    glBindTexture(GL.TEXTURE_2D, mirrorTex);
+    glEnable(GL.TEXTURE_2D);
+    glBegin(GL.QUADS);
+    glColor4f(1,1,1,1);
+    glTexCoord2f(0,1);
+    glVertex2i(0,0);
+    glTexCoord2f(1,1);
+    glVertex2i(width,0);
+    glTexCoord2f(1,0);
+    glVertex2i(width,height);
+    glTexCoord2f(0,0);
+    glVertex2i(0,height);
+    glEnd();
+    glDisable(GL.TEXTURE_2D);
+    glBindTexture(GL.TEXTURE_2D, 0);
+    glPopMatrix;
+    glMatrixMode(GL.MODELVIEW);
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipVsyncForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+  else
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+  end
+
   % Disable presentation in onscreen window and associated throttling and standard Flip timestamping:
-  Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
   Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs);
 
   return;
@@ -835,6 +876,12 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
   [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fov] = PsychOculusVRCore1('GetFovTextureSize', myhmd.handle, 1, varargin{5:end});
 
+  % Debug display of HMD output into onscreen window requested?
+  if isempty(strfind(basicRequirements, 'DebugDisplay'))
+    % No. Set to be created onscreen window to be invisible:
+    oldShieldingLevel = Screen('Preference', 'WindowShieldingLevel', -1);
+  end
+
   return;
 end
 
@@ -901,6 +948,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Keep track of window handle of associated onscreen window:
   hmd{handle}.win = win;
+
+  % Restore shielding level for new windows after "our" onscreen window is now open:
+  if ~isempty(oldShieldingLevel)
+    Screen('Preference', 'WindowShieldingLevel', oldShieldingLevel);
+    oldShieldingLevel = [];
+  end
 
   % Need to know user selected clearcolor:
   clearcolor = varargin{3};
@@ -1004,6 +1057,19 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Go back to user requested clear color, now that all our buffers
   % are cleared to black:
   Screen('FillRect', win, clearcolor);
+
+  % Store true size of onscreen window as mirrorWidth x mirrorHeight:
+  winGRect = Screen('GlobalRect', win);
+  hmd{handle}.mirrorWidth = RectWidth(winGRect);
+  hmd{handle}.mirrorHeight = RectHeight(winGRect);
+
+  % Debug display of HMD output into onscreen window requested?
+  if ~isempty(strfind(hmd{handle}.basicRequirements, 'DebugDisplay'))
+    % Yes. Create OpenGL mirror texture which receives VR compositor images:
+    hmd{handle}.mirrorTexture = PsychOculusVRCore1('CreateMirrorTexture', hmd{handle}.handle, hmd{handle}.panelXRes, hmd{handle}.panelYRes);
+  else
+    hmd{handle}.mirrorTexture = 0;
+  end
 
   % Need to call the PsychOculusVR1(1) callback at each Screen('Flip') to get the
   % imaging pipeline post-processed final output frames for left/right eye and submit
