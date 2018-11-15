@@ -48,7 +48,7 @@ typedef struct PsychOculusDevice {
     ovrFovPort          ofov[2];
     ovrEyeRenderDesc    eyeRenderDesc[2];
     ovrMatrix4f         timeWarpMatrices[2];
-    ovrPosef            headPose[2];
+    ovrPosef            headPose;
     uint32_t            frameIndex;
     ovrPosef            outEyePoses[2];
     unsigned char       rgbColorOut[3];
@@ -88,7 +88,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "oldDynamicPrediction = PsychOculusVRCore1('SetDynamicPrediction', oculusPtr [, dynamicPrediction]);";
     synopsis[i++] = "PsychOculusVRCore1('Start', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore1('Stop', oculusPtr);";
-    synopsis[i++] = "state = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=0]);";
+    synopsis[i++] = "state = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=nextFrame]);";
     synopsis[i++] = "[projL, projR] = PsychOculusVRCore1('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOculusVRCore1('StartRender', oculusPtr);";
     synopsis[i++] = "[eyePose, eyeIndex] = PsychOculusVRCore1('GetEyePose', oculusPtr, renderPass);";
@@ -659,13 +659,15 @@ PsychError PSYCHOCULUSVR1Stop(void)
 
 PsychError PSYCHOCULUSVR1GetTrackingState(void)
 {
-    static char useString[] = "state = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=0]);";
-    //                         1                                             2            3
+    static char useString[] = "state = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=nextFrame]);";
+    //                         1                                              2            3
     static char synopsisString[] =
         "Return current state of head position and orientation tracking for Oculus device 'oculusPtr'.\n"
         "Head position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
-        "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or set "
-        "to zero, then no prediction is performed and the current state based on latest measurements is returned.\n\n"
+        "based on the latest measurements from the tracking hardware. If 'predictionTime' is set to zero, "
+        "then no prediction is performed and the current state based on latest measurements is returned.\n"
+        "If 'predictionTime' is omitted, then the prediction is performed for the mid-point of the next "
+        "possible video frame of the HMD, ie. the most likely presentation time for rendered images.\n\n"
         "'state' is a struct with fields reporting the following values:\n"
         "'Time' = Time in seconds of predicted tracking state.\n"
         "'Status' = Tracking status flags. +1 = Head orientation tracked, +2 = Head position tracked, +4 = Camera pose tracked "
@@ -697,7 +699,7 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     PsychGenericScriptType *outMat;
     double *v;
     int handle;
-    double predictionTime = 0.0;
+    double predictionTime;
     PsychOculusDevice *oculus;
     ovrTrackingState state;
     ovrVector3f HmdToEyeOffset[2];
@@ -717,12 +719,16 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
 
-    PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime);
+    // Get optional target time for predicted tracking state. Default to the
+    // predicted state for the predicted mid-point of the next video frame:
+    if (!PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime))
+        predictionTime = ovr_GetPredictedDisplayTime(oculus->hmd, 0);
 
     // Get current tracking status info at time predictionTime. Mark this point
     // as time from which motion to photon latency is measured (latencymarker = TRUE):
     state = ovr_GetTrackingState(oculus->hmd, predictionTime, TRUE);
 
+    // Translate to per eye position and orientation:
     HmdToEyeOffset[0] = oculus->eyeRenderDesc[0].HmdToEyeOffset;
     HmdToEyeOffset[1] = oculus->eyeRenderDesc[1].HmdToEyeOffset;
     ovr_CalcEyePoses(state.HeadPose.ThePose, HmdToEyeOffset, oculus->outEyePoses);
@@ -1219,7 +1225,7 @@ PsychError PSYCHOCULUSVR1GetEyeTimewarpMatrices(void)
     "'waitForTimewarpPoint' If set to 1, stall execution of calling thread until next time warp point is reached. Defaults to zero.\n"
     "Return values are 4x4 'eyeRotStartMatrix' and 'eyeRotEndMatrix' for given eye.\n";
     static char seeAlsoString[] = "";
-
+//TODO REMOVE
     int handle, eyeIndex, waitForTimewarpPoint;
     PsychOculusDevice *oculus;
     ovrEyeType eye;
@@ -1251,33 +1257,7 @@ PsychError PSYCHOCULUSVR1GetEyeTimewarpMatrices(void)
     waitForTimewarpPoint = 0;
     PsychCopyInIntegerArg(3, kPsychArgOptional, &waitForTimewarpPoint);
     if (waitForTimewarpPoint < 0 || waitForTimewarpPoint > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'waitForTimewarpPoint' specified. Must be 0 or 1.");
-/* TODOREMOVE
-    if (waitForTimewarpPoint) {
-        // Wait till time-warp point to reduce latency.
-        tNow = ovr_GetTimeInSeconds();
-        if (verbosity > 3)
-            printf("PsychOculusVRCore1-INFO: Waiting for %f msecs until next TimewarpPointSeconds %f.\n", 1000.0 * (oculus->frameTiming.TimewarpPointSeconds - tNow), oculus->frameTiming.TimewarpPointSeconds);
 
-        ovr_WaitTillTime(oculus->frameTiming.TimewarpPointSeconds);
-    }
-
-    eye = oculus->hmd->EyeRenderOrder[eyeIndex];
-    oculus->headPose[eye] = ovrHmd_GetHmdPosePerEye(oculus->hmd, eye);
-
-    ovrHmd_GetEyeTimewarpMatrices(oculus->hmd, (ovrEyeType) eyeIndex,
-                                  oculus->headPose[eyeIndex],
-                                  oculus->timeWarpMatrices);
-
-    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 4, 4, 1, &startMatrix);
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-            *(startMatrix++) = (double) oculus->timeWarpMatrices[0].M[j][i];
-
-    PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 4, 4, 1, &endMatrix);
-    for (i = 0; i < 4; i++)
-        for (j = 0; j < 4; j++)
-            *(endMatrix++) = (double) oculus->timeWarpMatrices[1].M[j][i];
-*/
     return(PsychError_none);
 }
 
@@ -1568,21 +1548,21 @@ PsychError PSYCHOCULUSVR1GetEyePose(void)
     eye = renderPass; // oculus->hmd->EyeRenderOrder[renderPass];
     HmdToEyeOffset[0] = oculus->eyeRenderDesc[0].HmdToEyeOffset;
     HmdToEyeOffset[1] = oculus->eyeRenderDesc[1].HmdToEyeOffset;
-    ovr_GetEyePoses(oculus->hmd, 0, FALSE, HmdToEyeOffset, oculus->headPose, NULL);
+    ovr_GetEyePoses(oculus->hmd, 0, FALSE, HmdToEyeOffset, oculus->outEyePoses, NULL);
 
     // Eye pose as raw data:
     PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 7, 1, &outM);
 
     // Position (x,y,z):
-    outM[0] = oculus->headPose[eye].Position.x;
-    outM[1] = oculus->headPose[eye].Position.y;
-    outM[2] = oculus->headPose[eye].Position.z;
+    outM[0] = oculus->outEyePoses[eye].Position.x;
+    outM[1] = oculus->outEyePoses[eye].Position.y;
+    outM[2] = oculus->outEyePoses[eye].Position.z;
 
     // Orientation as a quaternion (x,y,z,w):
-    outM[3] = oculus->headPose[eye].Orientation.x;
-    outM[4] = oculus->headPose[eye].Orientation.y;
-    outM[5] = oculus->headPose[eye].Orientation.z;
-    outM[6] = oculus->headPose[eye].Orientation.w;
+    outM[3] = oculus->outEyePoses[eye].Orientation.x;
+    outM[4] = oculus->outEyePoses[eye].Orientation.y;
+    outM[5] = oculus->outEyePoses[eye].Orientation.z;
+    outM[6] = oculus->outEyePoses[eye].Orientation.w;
 
     // Copy out preferred eye render order for info:
     PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) eye);
