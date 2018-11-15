@@ -206,7 +206,7 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % amplitude of the vibration in normalized 0.0 - 1.0 range.
 %
 % 'pulseEndTime' returns the expected stop time of vibration in seconds, given the parameters.
-% Currently the function will return immediately for a 'duration' of 2.5 seconds, and the pulse
+% Currently the function will return immediately for a (default) 'duration' of 2.5 seconds, and the pulse
 % will end after 2.5 seconds. Smaller 'duration' values will block the execution of the function
 % until the 'duration' has passed on some types of controllers.
 %

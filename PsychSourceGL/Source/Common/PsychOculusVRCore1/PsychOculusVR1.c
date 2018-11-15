@@ -2690,15 +2690,15 @@ PsychError PSYCHOCULUSVR1HapticPulse(void)
     "Execute a haptic feedback pulse on controller 'controllerType' associated with Oculus device 'oculusPtr'.\n\n"
     "'duration' is the duration of the pulse in seconds. If omitted, the function returns immediately and "
     "the maximum duration of 2.5 seconds is used, unless you call the function again with 'freq' = 0, to cancel the "
-    "currently active pulse. Otherwise, if a 'duration' is specified, the function executes for the specified duration, "
-    "and may block execution of your script for that time span on some controller types, returning the absolute "
-    "time when the pulse is expected to end.\n\n"
+    "currently active pulse. Otherwise, if a 'duration' other than 2.5 seconds is specified, the function executes "
+    "for the specified duration, and may block execution of your script for that time span on some controller types, "
+    "returning the absolute time when the pulse is expected to end.\n\n"
     "'freq' Frequency of the vibration in normalized 0.0 - 1.0 range. Currently only values 0, 0.5 and 1.0 "
     "will be used. 0 = Disable ongoing pulse immediately. Values other than 0, 0.5, or 1 will be clamped to the nearest value.\n\n"
     "'amplitude' Normalized amplitude in range 0.0 - 1.0\n\n"
     "The return argument 'pulseEndTime' contains the absolute time in seconds when the pulse is expected "
     "to end, as estimated at the time of calling the function. The precision and accuracy of pulse timing "
-    "is not known.\n"
+    "is not known.\n";
 
     static char seeAlsoString[] = "";
     int handle, controllerType;
@@ -2732,7 +2732,7 @@ PsychError PSYCHOCULUSVR1HapticPulse(void)
         PsychErrorExitMsg(PsychError_user, "Invalid negative 'duration' in seconds specified. Must be positive.");
 
     if ((duration > 2.5) && (verbosity > 1))
-        printf("PsychOculusVRCore1-WARNING: 'HapticsPulse' of %f seconds duration requested, but currently duration is limited to a maximum of 2.5 seconds. Clamping...\n",
+        printf("PsychOculusVRCore1-WARNING: 'HapticPulse' of %f seconds duration requested, but currently duration is limited to a maximum of 2.5 seconds. Clamping...\n",
                 duration);
 
     if (duration > 2.5)
@@ -2758,7 +2758,11 @@ PsychError PSYCHOCULUSVR1HapticPulse(void)
     }
 
     if ((result == ovrSuccess_DeviceUnavailable) && (verbosity > 1))
-        printf("PsychOculusVRCore1-WARNING: 'HapticsPulse' will go nowhere, as suitable controller of type %i is not connected.\n", controllerType);
+        printf("PsychOculusVRCore1-WARNING: 'HapticPulse' will go nowhere, as suitable controller of type %i is not connected.\n", controllerType);
+
+    if ((result == ovrSuccess) && (verbosity > 3))
+        printf("PsychOculusVRCore1-INFO: 'HapticPulse' of duration %f secs, freq %f, amplitude %f for controller of type %i started.\n",
+               duration, freq, amplitude, controllerType);
 
     // Predict "off" time:
     PsychGetAdjustedPrecisionTimerSeconds(&pulseEndTime);
