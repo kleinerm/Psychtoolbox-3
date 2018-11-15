@@ -1134,13 +1134,25 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
         "or released (0). The ovrButton_XXX constants map button names to vector indices (like KbName() "
         "does for KbCheck()).\n"
         "'Touches' = Vector with touch values as described by the ovrTouch_XXX constants. Works like 'Buttons'.\n"
+        "'Trigger'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered and with dead-zone.\n"
+        "'TriggerNoDeadzone'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered.\n"
+        "'TriggerRaw'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, raw values unfiltered.\n"
+        "'Grip'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered and with dead-zone.\n"
+        "'GripNoDeadzone'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered.\n"
+        "'GripRaw'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, raw values unfiltered.\n"
+        "'Thumbstick' = 2x2 matrix: Column 1 contains left thumbsticks [x;y] axis values, column 2 contains "
+        "right sticks [x;y] axis values. Values are in range -1 to +1, filtered and with deadzone applied.\n"
+        "'ThumbstickNoDeadzone' = Like 'Thumbstick', filtered, but without a deadzone applied.\n"
+        "'ThumbstickRaw' = 'Thumbstick' raw date without deadzone or filtering applied.\n"
         "\n";
 
     static char seeAlsoString[] = "Start Stop GetTrackedState GetTrackersState";
 
     PsychGenericScriptType *status;
-    const char *FieldNames[] = { "Time", "Buttons", "Touches" };
-    const int FieldCount = 3;
+    const char *FieldNames[] = { "Time", "Buttons", "Touches", "Trigger", "Grip", "TriggerNoDeadzone",
+                                 "GripNoDeadzone", "TriggerRaw", "GripRaw", "Thumbstick",
+                                 "ThumbstickNoDeadzone", "ThumbstickRaw" };
+    const int FieldCount = 12;
 
     PsychGenericScriptType *outMat;
     double *v;
@@ -1195,6 +1207,75 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
     for (i = 0; i < 32; i++)
         v[i] = (state.Touches & (1 << i)) ? 1 : 0;
     PsychSetStructArrayNativeElement("Touches", 0, outMat, status);
+
+    // Trigger left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = state.IndexTrigger[0];
+    v[1] = state.IndexTrigger[1];
+    PsychSetStructArrayNativeElement("Trigger", 0, outMat, status);
+
+    // Grip left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = state.HandTrigger[0];
+    v[1] = state.HandTrigger[1];
+    PsychSetStructArrayNativeElement("Grip", 0, outMat, status);
+
+    // TriggerNoDeadzone left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = state.IndexTriggerNoDeadzone[0];
+    v[1] = state.IndexTriggerNoDeadzone[1];
+    PsychSetStructArrayNativeElement("TriggerNoDeadzone", 0, outMat, status);
+
+    // GripNoDeadzone left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = state.HandTriggerNoDeadzone[0];
+    v[1] = state.HandTriggerNoDeadzone[1];
+    PsychSetStructArrayNativeElement("GripNoDeadzone", 0, outMat, status);
+
+    // TriggerRaw left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = state.IndexTriggerRaw[0];
+    v[1] = state.IndexTriggerRaw[1];
+    PsychSetStructArrayNativeElement("TriggerRaw", 0, outMat, status);
+
+    // GripRaw left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = state.HandTriggerRaw[0];
+    v[1] = state.HandTriggerRaw[1];
+    PsychSetStructArrayNativeElement("GripRaw", 0, outMat, status);
+
+    // Thumbstick: column 1 = left hand, column 2 = right hand. row 1 = x, row 2= y:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(2, 2, 1, &v, &outMat);
+    v[0] = state.Thumbstick[0].x;
+    v[1] = state.Thumbstick[0].y;
+    v[2] = state.Thumbstick[1].x;
+    v[3] = state.Thumbstick[1].y;
+    PsychSetStructArrayNativeElement("Thumbstick", 0, outMat, status);
+
+    // ThumbstickNoDeadzone:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(2, 2, 1, &v, &outMat);
+    v[0] = state.ThumbstickNoDeadzone[0].x;
+    v[1] = state.ThumbstickNoDeadzone[0].y;
+    v[2] = state.ThumbstickNoDeadzone[1].x;
+    v[3] = state.ThumbstickNoDeadzone[1].y;
+    PsychSetStructArrayNativeElement("ThumbstickNoDeadzone", 0, outMat, status);
+
+    // ThumbstickRaw:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(2, 2, 1, &v, &outMat);
+    v[0] = state.ThumbstickRaw[0].x;
+    v[1] = state.ThumbstickRaw[0].y;
+    v[2] = state.ThumbstickRaw[1].x;
+    v[3] = state.ThumbstickRaw[1].y;
+    PsychSetStructArrayNativeElement("ThumbstickRaw", 0, outMat, status);
 
     return(PsychError_none);
 }

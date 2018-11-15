@@ -138,13 +138,29 @@ function varargout = PsychOculusVR1(cmd, varargin)
 %
 % input = PsychOculusVR1('GetInputState', hmd, controllerType);
 % - Get input state of controller 'controllerType' associated with HMD 'hmd'.
+%
 % 'input' is a struct with fields describing the state of buttons and other input
 % elements of the specified 'controllerType'. It has the following fields:
+%
 % 'Time' Time of last input state change of controller.
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector
 % reports pressed (1) or released (0) state of a specific button.
+%
 % 'Touches' Like 'Buttons' but for touch buttons.
+%
+% 'Trigger'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered and with dead-zone.
+% 'TriggerNoDeadzone'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered.
+% 'TriggerRaw'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, raw values unfiltered.
+% 'Grip'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered and with dead-zone.
+% 'GripNoDeadzone'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered.
+% 'GripRaw'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, raw values unfiltered.
+%
+% 'Thumbstick' = 2x2 matrix: Column 1 contains left thumbsticks [x;y] axis values, column 2 contains
+%  right sticks [x;y] axis values. Values are in range -1 to +1, filtered and with deadzone applied.
+% 'ThumbstickNoDeadzone' = Like 'Thumbstick', filtered, but without a deadzone applied.
+% 'ThumbstickRaw' = 'Thumbstick' raw date without deadzone or filtering applied.
+%
 %
 % state = PsychOculusVR1('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
 % - Mark the start of the rendering cycle for a new 3D rendered stereoframe.
