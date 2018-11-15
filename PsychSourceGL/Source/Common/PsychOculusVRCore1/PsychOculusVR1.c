@@ -100,7 +100,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychOculusVRCore1('Close' [, oculusPtr]);";
     synopsis[i++] = "PsychOculusVRCore1('SetHUDState', oculusPtr , mode);";
     synopsis[i++] = "[isVisible] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
-    synopsis[i++] = "oldDynamicPrediction = PsychOculusVRCore1('SetDynamicPrediction', oculusPtr [, dynamicPrediction]);";
+    synopsis[i++] = "success = PsychOculusVRCore1('RecenterTrackingOrigin', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore1('Start', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore1('Stop', oculusPtr);";
     synopsis[i++] = "state = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=nextFrame]);";
@@ -601,19 +601,20 @@ PsychError PSYCHOCULUSVR1Close(void)
     return(PsychError_none);
 }
 
-PsychError PSYCHOCULUSVR1SetDynamicPrediction(void)
+PsychError PSYCHOCULUSVR1RecenterTrackingOrigin(void)
 {
-    static char useString[] = "oldDynamicPrediction = PsychOculusVRCore1('SetDynamicPrediction', oculusPtr [, dynamicPrediction]);";
-    //                                                                                          1            2
+    static char useString[] = "success = PsychOculusVRCore1('RecenterTrackingOrigin', oculusPtr);";
+    //                         1                                                      1
     static char synopsisString[] =
-        "Enable or disable dynamic prediction mode on Oculus device 'oculusPtr'.\n"
-        "'dynamicPrediction' 1 = Enable dynamic prediction, 0 = Disable dynamic prediction.\n"
-        "Returns previous 'dynamic prediction ' setting.\n";
+        "Recenter the tracking origin for Oculus device 'oculusPtr'.\n"
+        "This uses the current pose of the HMD to redefine the tracking origin.\n"
+        "Returns 1 on success, 0 on failure.\n"
+        "A reason for failure can be that the HMD is not roughly level, but "
+        "instead is facing upward or downward, which is not allowed.\n";
     static char seeAlsoString[] = "";
 
-    int handle, dynamicPrediction;
+    int handle;
     PsychOculusDevice *oculus;
-    unsigned int oldCaps;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -621,7 +622,7 @@ PsychError PSYCHOCULUSVR1SetDynamicPrediction(void)
 
     // Check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(1));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
@@ -630,17 +631,23 @@ PsychError PSYCHOCULUSVR1SetDynamicPrediction(void)
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
-/* TODO REMOVE
-    // Query current enabled caps:
-    oldCaps = ovrHmd_GetEnabledCaps(oculus->hmd);
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (oldCaps & ovrHmdCap_DynamicPrediction) ? 1 : 0);
 
-    // Set new enabled HMD caps:
-    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &dynamicPrediction)) {
-        oldCaps &= ~ovrHmdCap_DynamicPrediction;
-        ovrHmd_SetEnabledCaps(oculus->hmd, oldCaps | ((dynamicPrediction > 0) ? ovrHmdCap_DynamicPrediction : 0));
+    if (OVR_FAILURE(ovr_RecenterTrackingOrigin(oculus->hmd))) {
+        if (verbosity > 0) {
+            ovr_GetLastErrorInfo(&errorInfo);
+            printf("PsychOculusVRCore1-ERROR: Recentering the tracking origin failed! %s\n", errorInfo.ErrorString);
+        }
+        PsychCopyOutDoubleArg(1, kPsychArgOptional, 0);
     }
-*/
+    else {
+        if (verbosity > 2) {
+            printf("PsychOculusVRCore1-INFO: Recentered the tracking origin for HMD.\n");
+        }
+        PsychCopyOutDoubleArg(1, kPsychArgOptional, 1);
+
+        ovr_ClearShouldRecenterFlag(oculus->hmd);
+    }
+
     return(PsychError_none);
 }
 

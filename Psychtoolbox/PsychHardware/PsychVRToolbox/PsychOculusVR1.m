@@ -274,6 +274,15 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % for 'hmd'.
 %
 %
+% success = PsychOculusVR1('RecenterTrackingOrigin', hmd);
+% - Recenter the tracking origin for the 'hmd', based on its current position and
+% orientation. Returns 'success' = 1 on success, 0 on failure to recenter. One
+% reason for failure could be that the HMD wasn't roughly level, but instead was
+% facing upward or downward, which is not allowed. This function also gets automatically
+% triggered if the Oculus GUI or other user input requests a recenter. Recenter would then
+% be auto-triggered during a call to 'PrepareRender'.
+%
+%
 % [adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOculusVR1('GetPerformanceStats', hmd);
 % - Return global and per-frame performance statistics for the given 'hmd'.
 %
@@ -328,6 +337,9 @@ function varargout = PsychOculusVR1(cmd, varargin)
 %
 %
 % oldSettings = PsychOculusVR1('PanelOverdriveParameters', hmd [, newparams]);
+% Deprecated: This function does nothing. It just exists for (backwards)
+% compatibility with the old Oculus driver and PsychVRHMD.
+%
 % - Return old settings for panel overdrive mode in 'oldSettings',
 % optionally set new settings in 'newparams'. This changes the operating
 % parameters of OLED panel overdrive on the Rift DK-2 if 'FastResponse'
@@ -622,6 +634,14 @@ if strcmpi(cmd, 'PrepareRender')
     error('OculusVR runtime reports loss of hardware (disconnected?) or serious malfunction. Forcing abort of this session.');
   end
 
+  % Check if UX wants us to recenter the tracking origin:
+  if bitand(state.SessionState, 32)
+    % User wants us to recenter the tracking origin, so do it. Retry until it succeeds:
+    while ~PsychOculusVRCore1('RecenterTrackingOrigin', myhmd.handle)
+        WaitSecs('YieldSecs', 0.25);
+    end
+  end
+
   % As a bonus we return the raw eye pose vectors, given that we have them anyway:
   result.rawEyePose7{1} = eyePose{1};
   result.rawEyePose7{2} = eyePose{2};
@@ -718,6 +738,17 @@ if strcmpi(cmd, 'GetTrackersState')
   end
 
   varargout{1} = PsychOculusVRCore1('GetTrackersState', myhmd.handle);
+
+  return;
+end
+
+if strcmpi(cmd, 'RecenterTrackingOrigin')
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOculusVR1:RecenterTrackingOrigin: Specified handle does not correspond to an open HMD!');
+  end
+
+  varargout{1} = PsychOculusVRCore1('RecenterTrackingOrigin', myhmd.handle);
 
   return;
 end
