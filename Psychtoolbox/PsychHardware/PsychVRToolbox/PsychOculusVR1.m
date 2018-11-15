@@ -254,6 +254,11 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % the camera transformation matrix.
 %
 %
+% trackers = PsychOculusVR1('GetTrackersState', hmd);
+% - Return a struct array with infos about all connected tracking cameras/sensors
+% for 'hmd'.
+%
+%
 % PsychOculusVR1('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
 % - Query the HMD 'hmd' for its properties and setup internal rendering
 % parameters in preparation for opening an onscreen window with PsychImaging
@@ -675,6 +680,17 @@ if strcmpi(cmd, 'GetEyePose')
   result.modelView = inv(result.cameraView);
 
   varargout{1} = result;
+
+  return;
+end
+
+if strcmpi(cmd, 'GetTrackersState')
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOculusVR1:GetTrackersState: Specified handle does not correspond to an open HMD!');
+  end
+
+  varargout{1} = PsychOculusVRCore1('GetTrackersState', myhmd.handle);
 
   return;
 end

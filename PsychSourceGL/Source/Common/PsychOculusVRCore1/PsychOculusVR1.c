@@ -54,7 +54,6 @@ typedef struct PsychOculusDevice {
     ovrSizei            texSize[2];
     ovrFovPort          ofov[2];
     ovrEyeRenderDesc    eyeRenderDesc[2];
-    ovrMatrix4f         timeWarpMatrices[2];
     ovrPosef            headPose;
     uint32_t            frameIndex;
     uint32_t            commitFrameIndex;
@@ -116,7 +115,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "texObjectHandle = PsychOculusVRCore1('GetNextTextureHandle', oculusPtr, eye);";
     synopsis[i++] = "texObjectHandle = PsychOculusVRCore1('CreateMirrorTexture', oculusPtr, width, height);";
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz] = PsychOculusVRCore1('GetUndistortionParameters', oculusPtr, eye [, inputWidth][, inputHeight][, fov]);";
-    synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore1('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
+    synopsis[i++] = "trackers = PsychOculusVRCore1('GetTrackersState', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore1('EndFrameRender', oculusPtr, targetPresentTime);";
     synopsis[i++] = "[frameTiming, tPredictedOnset, referenceFrameIndex] = PsychOculusVRCore1('PresentFrame', oculusPtr [, doTimestamp=0][, when=0]);";
     synopsis[i++] = "result = PsychOculusVRCore1('LatencyTester', oculusPtr, cmd);";
@@ -803,7 +802,7 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
         "Units and format are like 'HeadPose' ie. a vector [x,y,z,rx,ry,rz,rw].\n"
         "\n";
 
-    static char seeAlsoString[] = "Start Stop";
+    static char seeAlsoString[] = "Start Stop GetTrackersState";
 
     PsychGenericScriptType *status;
     const char *FieldNames[] = {"Time", "Status", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed", "HeadLinearAcceleration",
@@ -1387,32 +1386,45 @@ PsychError PSYCHOCULUSVR1GetUndistortionParameters(void)
     return(PsychError_none);
 }
 
-PsychError PSYCHOCULUSVR1GetEyeTimewarpMatrices(void)
+PsychError PSYCHOCULUSVR1GetTrackersState(void)
 {
-    static char useString[] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore1('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
-    //                          1                  2                                                              1          2      3
+    static char useString[] = "trackers = PsychOculusVRCore1('GetTrackersState', oculusPtr);";
+    //                         1                                                 1
     static char synopsisString[] =
-    "Return eye warp rotation matrices for timewarped undistortion for Oculus device 'oculusPtr'.\n"
-    "'eye' which eye to provide the data: 0 = Left, 1 = Right.\n"
-    "'waitForTimewarpPoint' If set to 1, stall execution of calling thread until next time warp point is reached. Defaults to zero.\n"
-    "Return values are 4x4 'eyeRotStartMatrix' and 'eyeRotEndMatrix' for given eye.\n";
-    static char seeAlsoString[] = "";
-//TODO REMOVE
-    int handle, eyeIndex, waitForTimewarpPoint;
+    "Return info about all connected trackers for Oculus device 'oculusPtr'.\n\n"
+    "'trackers' is an array of structs, with one struct for each connected tracker camera. "
+    "Each struct contains the following fields, describing static and dynamic properties "
+    "of the corresponding tracking camera:\n\n"
+    "'Status': Sum of +4 = The tracking camera has a valid pose, +32 = The camera is present and online.\n"
+    "'CameraPose' as vector with position [tx,ty,tz] in meters and orientation quaternion [rx,ry,rz,rw] in radians, "
+    "concatenated together as [tx,ty,tz,rx,ry,rz,rw].\n"
+    "'LeveledCameraPose' Like 'CameraPose', but aligned to the gravity vector of the world.\n"
+    "'CameraFrustumHVFov' Horizontal and vertical field of view of the tracking camera in radians.\n"
+    "'CameraFrustumNearFarZInMeters' Near and far limit of the camera view frustum in meters.\n"
+    "\n";
+    static char seeAlsoString[] = "GetTrackingState";
+
+    PsychGenericScriptType *status;
+    const char *FieldNames[] = {"Status", "CameraPose", "LeveledCameraPose", "CameraFrustumHVFov", "CameraFrustumNearFarZInMeters"};
+    const int FieldCount = 5;
+    PsychGenericScriptType *outMat;
+    double *v;
+
+    int handle, trackerCount, i;
     PsychOculusDevice *oculus;
-    ovrEyeType eye;
-    double tNow;
-    int i, j;
-    double *startMatrix, *endMatrix;
+    int StatusFlags = 0;
+    ovrTrackingState state;
+    ovrTrackerPose trackerPose;
+    ovrTrackerDesc trackerDesc;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-    //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(2));
-    PsychErrorExit(PsychCapNumInputArgs(3));
-    PsychErrorExit(PsychRequireNumInputArgs(2));
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
     PsychOculusVRCheckInit(FALSE);
@@ -1421,14 +1433,60 @@ PsychError PSYCHOCULUSVR1GetEyeTimewarpMatrices(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
 
-    // Get eye index - left = 0, right = 1:
-    PsychCopyInIntegerArg(2, kPsychArgRequired, &eyeIndex);
-    if (eyeIndex < 0 || eyeIndex > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0 or 1 for left- or right eye.");
+    // Number of available tracker cameras:
+    trackerCount = ovr_GetTrackerCount(oculus->hmd);
 
-    // Get waitForTimewarpPoint:
-    waitForTimewarpPoint = 0;
-    PsychCopyInIntegerArg(3, kPsychArgOptional, &waitForTimewarpPoint);
-    if (waitForTimewarpPoint < 0 || waitForTimewarpPoint > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'waitForTimewarpPoint' specified. Must be 0 or 1.");
+    PsychAllocOutStructArray(1, kPsychArgOptional, trackerCount, FieldCount, FieldNames, &status);
+
+    for (i = 0; i < trackerCount; i++) {
+        trackerPose = ovr_GetTrackerPose(oculus->hmd, (unsigned int) i);
+        StatusFlags = trackerPose.TrackerFlags & (ovrTracker_Connected | ovrTracker_PoseTracked);
+
+        // Return head and general tracking status flags:
+        PsychSetStructArrayDoubleElement("Status", i, StatusFlags, status);
+
+        // Camera pose:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+        v[0] = trackerPose.Pose.Position.x;
+        v[1] = trackerPose.Pose.Position.y;
+        v[2] = trackerPose.Pose.Position.z;
+
+        v[3] = trackerPose.Pose.Orientation.x;
+        v[4] = trackerPose.Pose.Orientation.y;
+        v[5] = trackerPose.Pose.Orientation.z;
+        v[6] = trackerPose.Pose.Orientation.w;
+        PsychSetStructArrayNativeElement("CameraPose", i, outMat, status);
+
+        // Camera leveled pose:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+        v[0] = trackerPose.LeveledPose.Position.x;
+        v[1] = trackerPose.LeveledPose.Position.y;
+        v[2] = trackerPose.LeveledPose.Position.z;
+
+        v[3] = trackerPose.LeveledPose.Orientation.x;
+        v[4] = trackerPose.LeveledPose.Orientation.y;
+        v[5] = trackerPose.LeveledPose.Orientation.z;
+        v[6] = trackerPose.LeveledPose.Orientation.w;
+        PsychSetStructArrayNativeElement("LeveledCameraPose", i, outMat, status);
+
+        trackerDesc = ovr_GetTrackerDesc(oculus->hmd, (unsigned int) i);
+
+        // Camera frustum HFov and VFov in radians:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+        v[0] = trackerDesc.FrustumHFovInRadians;
+        v[1] = trackerDesc.FrustumVFovInRadians;
+        PsychSetStructArrayNativeElement("CameraFrustumHVFov", i, outMat, status);
+
+        // Camera frustum near and far clip plane in meters:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+        v[0] = trackerDesc.FrustumNearZInMeters;
+        v[1] = trackerDesc.FrustumFarZInMeters;
+        PsychSetStructArrayNativeElement("CameraFrustumNearFarZInMeters", i, outMat, status);
+    }
 
     return(PsychError_none);
 }
