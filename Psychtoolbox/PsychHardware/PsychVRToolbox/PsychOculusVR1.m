@@ -409,7 +409,14 @@ if cmd == 0
   t3 = GetSecs;
 
   %fprintf('EndFrameRender: %f ms, SetNext/Flags %f ms ... \n', 1000 * (t2 - t1), 1000 * (t3 - t2));
-  hmd{handle}.doTimestamp = 0;
+
+  % If usercode requests a dontsync flag > 0 in Screen('Flip', window, when, dontclear, dontsync)
+  % then switch to low precision/reliability timestamping, otherwise use timestampHighPrecision setting:
+  if (varargin{3} > 0)
+    hmd{handle}.doTimestamp = 0;
+  else
+    hmd{handle}.doTimestamp = hmd{handle}.timestampHighPrecision;
+  end
 
   return;
 end
@@ -481,8 +488,8 @@ if cmd == 1
 
   if hmd{handle}.doTimestamp
     % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
-    %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(1).VBlankTime, frameTiming(1).StimulusOnsetTime);
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(1).VBlankTime, frameTiming(1).StimulusOnsetTime);
+    %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
   else
     % Use made up values for timestamps of 'Flip':
     Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs, GetSecs);
@@ -804,6 +811,9 @@ if strcmpi(cmd, 'Open')
   newhmd.basicTask = '';
   newhmd.basicRequirements = '';
 
+  % High precision (and potentially high overhead) timestamping by default:
+  newhmd.timestampHighPrecision = 1;
+
   % Store in internal array:
   hmd{handle} = newhmd;
 
@@ -994,6 +1004,12 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     hudmodestring = basicRequirements(strfind(basicRequirements, 'HUD='):end);
     mode = sscanf(hudmodestring, 'HUD=%i');
     PsychOculusVR1('SetHUDState', myhmd, mode);
+  end
+
+  % Use low precision timestamps if usercode requests them, because they can be
+  % computed with much lower overhead:
+  if ~isempty(strfind(basicRequirements, 'FastLowPrecisionTimestamps'))
+    hmd{myhmd.handle}.timestampHighPrecision = 0;
   end
 
   return;
@@ -1217,7 +1233,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % them to the VR-Compositors texture swap-chain(s), then setting up new target textures
   % as buffers for next cycle. This happens at the end of preflip operations, as part of
   % the implicit 'DrawingFinished':
-  cmdString = sprintf('PsychOculusVR1(0, %i, IMAGINGPIPE_FLIPTWHEN);', handle);
+  cmdString = sprintf('PsychOculusVR1(0, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', handle);
   if winfo.StereoMode > 0
     % In stereo mode we also need to detach the left eye texture as commit prep:
     %detachCmd = 'glFramebufferTexture2D(36160, 36064, 3553, 0, 0);';
