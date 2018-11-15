@@ -99,9 +99,16 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % - Returns 1 if 'hmd' corresponds to an open HMD, 0 otherwise.
 %
 %
-% PsychOculusVR1('Close' [, hmd])
+% PsychOculusVR1('Close' [, hmd]);
 % - Close provided HMD device 'hmd'. If no 'hmd' handle is provided,
 % all HMDs will be closed and the driver will be shutdown.
+%
+%
+% PsychOculusVR1('GetConnectedControllers', hmd);
+% - Return a bitmask of all connected controllers: Can be the bitand
+% of the OVR.ControllerType_XXX flags described in 'GetInputState'.
+% This does not detect if controllers are hot-plugged or unplugged after
+% the HMD was opened. Iow. only probed at 'Open'.
 %
 %
 % info = PsychOculusVR1('GetInfo', hmd);
@@ -139,15 +146,21 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % input = PsychOculusVR1('GetInputState', hmd, controllerType);
 % - Get input state of controller 'controllerType' associated with HMD 'hmd'.
 %
-% 'input' is a struct with fields describing the state of buttons and other input
-% elements of the specified 'controllerType'. It has the following fields:
+% 'controllerType' can be one of OVR.ControllerType_LTouch, OVR.ControllerType_RTouch,
+% OVR.ControllerType_Touch, OVR.ControllerType_Remote, OVR.ControllerType_XBox, or
+% OVR.ControllerType_Active for selecting whatever controller is currently active.
+%
+% Return argument 'input' is a struct with fields describing the state of buttons and
+% other input elements of the specified 'controllerType'. It has the following fields:
 %
 % 'Time' Time of last input state change of controller.
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector
-% reports pressed (1) or released (0) state of a specific button.
+% reports pressed (1) or released (0) state of a specific button. Use the OVR.Button_XXX
+% constants to map buttons to positions.
 %
-% 'Touches' Like 'Buttons' but for touch buttons.
+% 'Touches' Like 'Buttons' but for touch buttons. Use the OVR.Touch_XXX constants to map
+% touch points to positions.
 %
 % 'Trigger'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered and with dead-zone.
 % 'TriggerNoDeadzone'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered.
@@ -487,6 +500,7 @@ function varargout = PsychOculusVR1(cmd, varargin)
 
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
+global OVR;
 
 persistent oldShieldingLevel;
 persistent hmd;
@@ -1016,7 +1030,7 @@ end
 
 % Open a HMD:
 if strcmpi(cmd, 'Open')
-  [handle, modelName, panelXRes, panelYRes, panelHz] = PsychOculusVRCore1('Open', varargin{:});
+  [handle, modelName, panelXRes, panelYRes, panelHz, controllerTypes] = PsychOculusVRCore1('Open', varargin{:});
 
   newhmd.handle = handle;
   newhmd.driver = @PsychOculusVR1;
@@ -1027,6 +1041,7 @@ if strcmpi(cmd, 'Open')
   newhmd.panelXRes = panelXRes;
   newhmd.panelYRes = panelYRes;
   newhmd.videoRefreshDuration = 1 / panelHz;
+  newhmd.controllerTypes = controllerTypes;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
@@ -1040,6 +1055,59 @@ if strcmpi(cmd, 'Open')
   newhmd.basicTask = '';
   newhmd.basicRequirements = '';
 
+  if isempty(OVR)
+    % Define global OVR.XXX constants:
+    OVR.ControllerType_LTouch = hex2dec('0001');
+    OVR.ControllerType_RTouch = hex2dec('0002');
+    OVR.ControllerType_Touch = OVR.ControllerType_LTouch + OVR.ControllerType_RTouch;
+    OVR.ControllerType_Remote = hex2dec('0004');
+    OVR.ControllerType_XBox = hex2dec('0010');
+    OVR.ControllerType_Active = hex2dec('ffffffff');
+
+    OVR.Button_A = 1 + log2(hex2dec('00000001'));
+    OVR.Button_B = 1 + log2(hex2dec('00000002'));
+    OVR.Button_RThumb = 1 + log2(hex2dec('00000004'));
+    OVR.Button_RShoulder = 1 + log2(hex2dec('00000008'));
+    OVR.Button_X = 1 + log2(hex2dec('00000100'));
+    OVR.Button_Y = 1 + log2(hex2dec('00000200'));
+    OVR.Button_LThumb = 1 + log2(hex2dec('00000400'));
+    OVR.Button_LShoulder = 1 + log2(hex2dec('00000800'));
+    OVR.Button_Up = 1 + log2(hex2dec('00010000'));
+    OVR.Button_Down = 1 + log2(hex2dec('00020000'));
+    OVR.Button_Left = 1 + log2(hex2dec('00040000'));
+    OVR.Button_Right = 1 + log2(hex2dec('00080000'));
+    OVR.Button_Enter = 1 + log2(hex2dec('00100000'));
+    OVR.Button_Back = 1 + log2(hex2dec('00200000'));
+    OVR.Button_VolUp = 1 + log2(hex2dec('00400000'));
+    OVR.Button_VolDown = 1 + log2(hex2dec('00800000'));
+    OVR.Button_Home = 1 + log2(hex2dec('01000000'));
+    OVR.Button_Private = [OVR.Button_VolUp, OVR.Button_VolDown, OVR.Button_Home];
+    OVR.Button_RMask = [OVR.Button_A, OVR.Button_B, OVR.Button_RThumb, OVR.Button_RShoulder];
+    OVR.Button_LMask = [OVR.Button_X, OVR.Button_Y, OVR.Button_LThumb, OVR.Button_LShoulder, OVR.Button_Enter];
+
+    OVR.Touch_A = OVR.Button_A;
+    OVR.Touch_B = OVR.Button_B;
+    OVR.Touch_RThumb = OVR.Button_RThumb;
+    OVR.Touch_RThumbRest = 1 + log2(hex2dec('00000008'));
+    OVR.Touch_RIndexTrigger = 1 + log2(hex2dec('00000010'));
+    OVR.Touch_RButtonMask = [OVR.Touch_A, OVR.Touch_B, OVR.Touch_RThumb, OVR.Touch_RThumbRest, OVR.Touch_RIndexTrigger];
+    OVR.Touch_X = OVR.Button_X;
+    OVR.Touch_Y = OVR.Button_Y;
+    OVR.Touch_LThumb = OVR.Button_LThumb;
+    OVR.Touch_LThumbRest = 1 + log2(hex2dec('00000800'));
+    OVR.Touch_LIndexTrigger = 1 + log2(hex2dec('00001000'));
+    OVR.Touch_LButtonMask = [OVR.Touch_X, OVR.Touch_Y, OVR.Touch_LThumb, OVR.Touch_LThumbRest, OVR.Touch_LIndexTrigger];
+    OVR.Touch_RIndexPointing = 1 + log2(hex2dec('00000020'));
+    OVR.Touch_RThumbUp = 1 + log2(hex2dec('00000040'));
+    OVR.Touch_LIndexPointing = 1 + log2(hex2dec('00002000'));
+    OVR.Touch_LThumbUp = 1 + log2(hex2dec('00004000'));
+    OVR.Touch_RPoseMask =  [OVR.Touch_RIndexPointing, OVR.Touch_RThumbUp];
+    OVR.Touch_LPoseMask = [OVR.Touch_LIndexPointing, OVR.Touch_LThumbUp];
+
+    newhmd.OVR = OVR;
+    evalin('caller','global OVR');
+  end
+
   % High precision (and potentially high overhead) timestamping by default:
   % TODO FIXME Use low precision timestamping to avoid one cause of hangs atm.
   newhmd.timestampHighPrecision = 0;
@@ -1051,6 +1119,16 @@ if strcmpi(cmd, 'Open')
   varargout{1} = newhmd;
   varargout{2} = modelName;
 
+  return;
+end
+
+if strmcpi(cmd, 'GetConnectedControllers')
+  myhmd = varargin{1};
+  if ~PsychOculusVR1('IsOpen', myhmd)
+    error('GetConnectedControllers: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  varargout{1} = myhmd.controllerTypes;
   return;
 end
 

@@ -96,7 +96,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "\n";
     synopsis[i++] = "oldVerbosity = PsychOculusVRCore1('Verbosity' [, verbosity]);";
     synopsis[i++] = "numHMDs = PsychOculusVRCore1('GetCount');";
-    synopsis[i++] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz] = PsychOculusVRCore1('Open' [, deviceIndex=0][, multiThreaded=0]);";
+    synopsis[i++] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz, controllerTypes] = PsychOculusVRCore1('Open' [, deviceIndex=0][, multiThreaded=0]);";
     synopsis[i++] = "PsychOculusVRCore1('Close' [, oculusPtr]);";
     synopsis[i++] = "PsychOculusVRCore1('SetHUDState', oculusPtr , mode);";
     synopsis[i++] = "[isVisible] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
@@ -407,8 +407,8 @@ PsychError PSYCHOCULUSVR1GetCount(void)
 
 PsychError PSYCHOCULUSVR1Open(void)
 {
-    static char useString[] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz] = PsychOculusVRCore1('Open' [, deviceIndex=0][, multiThreaded=0]);";
-    //                          1          2          3            4            5                                         1                2
+    static char useString[] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz, controllerTypes]] = PsychOculusVRCore1('Open' [, deviceIndex=0][, multiThreaded=0]);";
+    //                          1          2          3            4            5          6                                                1                2
     static char synopsisString[] =
         "Open connection to Oculus VR HMD, return a 'oculusPtr' handle to it.\n\n"
         "The call tries to open the HMD with index 'deviceIndex', or the "
@@ -420,7 +420,9 @@ PsychError PSYCHOCULUSVR1Open(void)
         "The returned handle can be passed to the other subfunctions to operate the device.\n"
         "A second return argument 'modelName' returns the model name string of the Oculus device.\n"
         "'resolutionX' and 'resolutionY' return the HMD display panels horizontal and vertical resolution.\n"
-        "'refreshHz' is the nominal refresh rate of the display in Hz.\n";
+        "'refreshHz' is the nominal refresh rate of the display in Hz.\n"
+        "'controllerTypes' A bit mask of OVR.ControllerType_XXX flags describing the currently "
+        "connected input controllers.\n";
 
     static char seeAlsoString[] = "GetCount Close";
 
@@ -437,7 +439,7 @@ PsychError PSYCHOCULUSVR1Open(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(5));
+    PsychErrorExit(PsychCapNumOutputArgs(6));
     PsychErrorExit(PsychCapNumInputArgs(2));
 
     // Make sure driver is initialized:
@@ -561,6 +563,9 @@ PsychError PSYCHOCULUSVR1Open(void)
 
     // Panel refresh rate:
     PsychCopyOutDoubleArg(5, kPsychArgOptional, oculus->hmdDesc.DisplayRefreshRate);
+
+    // Connected controllers:
+    PsychCopyOutDoubleArg(6, kPsychArgOptional, (double) ovr_GetConnectedControllerTypes(oculus->hmd));
 
     return(PsychError_none);
 }
@@ -1122,18 +1127,18 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
     static char synopsisString[] =
         "Return current state of input device 'controllerType' associated with Oculus device 'oculusPtr'.\n\n"
         "'controllerType' can be one of the follwing values:\n"
-        "1  = Left touch controller (Left tracked hand)\n"
-        "2  = Right touch controller (Right tracked hand)\n"
-        "4  = Oculus remote control.\n"
-        "16 = XBox controller.\n"
-        "intmax('uint32') = Whatever controller is connected and active.\n"
+        "OVR.ControllerType_LTouch = Left touch controller (Left tracked hand).\n"
+        "OVR.ControllerType_RTouch = Right touch controller (Right tracked hand).\n"
+        "OVR.ControllerType_Remote = Oculus remote control.\n"
+        "OVR.ControllerType_XBox = XBox controller.\n"
+        "OVR.ControllerType_Active = Whatever controller is connected and active.\n"
         "\n"
         "'input' is a struct with fields reporting the following status values of the controller:\n"
         "'Time' = Time in seconds when controller state was last updated.\n"
         "'Buttons' = Vector with each positions value corresponding to a specifc button being pressed (1) "
-        "or released (0). The ovrButton_XXX constants map button names to vector indices (like KbName() "
+        "or released (0). The OVR.Button_XXX constants map button names to vector indices (like KbName() "
         "does for KbCheck()).\n"
-        "'Touches' = Vector with touch values as described by the ovrTouch_XXX constants. Works like 'Buttons'.\n"
+        "'Touches' = Vector with touch values as described by the OVR.Touch_XXX constants. Works like 'Buttons'.\n"
         "'Trigger'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered and with dead-zone.\n"
         "'TriggerNoDeadzone'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered.\n"
         "'TriggerRaw'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, raw values unfiltered.\n"
