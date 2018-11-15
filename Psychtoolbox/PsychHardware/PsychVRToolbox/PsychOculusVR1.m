@@ -787,7 +787,7 @@ if strcmpi(cmd, 'Open')
   newhmd.type   = 'Oculus';
   newhmd.open = 1;
   newhmd.modelName = modelName;
-  newhmd.separateEyePosesSupported = 1; % TODO FIXME Makes still sense?
+  newhmd.separateEyePosesSupported = 0;
   newhmd.panelXRes = panelXRes;
   newhmd.panelYRes = panelYRes;
   newhmd.videoRefreshDuration = 1 / panelHz;
