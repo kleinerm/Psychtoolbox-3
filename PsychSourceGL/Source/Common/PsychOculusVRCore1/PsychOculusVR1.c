@@ -150,10 +150,12 @@ static void OVR_CDECL PsychOculusLogCB(uintptr_t userData, int level, const char
 
 void PsychOculusVRCheckInit(psych_bool dontfail)
 {
+    ovrResult result;
     ovrHmdDesc hmdDesc;
     ovrInitParams iparms;
     memset(&iparms, 0, sizeof(iparms));
-    iparms.Flags = ovrInit_Debug; // Use debug libraries. TODO: Remove for final release!
+    iparms.Flags = ovrInit_RequestVersion | ovrInit_Debug; // Use debug libraries. TODO: Remove for final release!
+    iparms.RequestedMinorVersion = OVR_MINOR_VERSION;
     iparms.LogCallback = PsychOculusLogCB;
     iparms.UserData = 0;  // Userdata pointer, currently NULL.
     iparms.ConnectionTimeoutMS = 0; // Default timeout.
@@ -162,8 +164,9 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
     if (initialized) return;
 
     // Initialize Oculus VR runtime with default parameters:
-    if (ovr_Initialize(&iparms)) {
-        if (verbosity >= 3) printf("PsychOculusVRCore1-INFO: Oculus VR runtime version '%s' initialized.\n", ovr_GetVersionString());
+    result = ovr_Initialize(&iparms);
+    if (OVR_SUCCESS(result)) {
+        if (verbosity >= 3) printf("PsychOculusVRCore1-INFO: Oculus VR runtime (version '%s') initialized.\n", ovr_GetVersionString());
 
         // Poll for existence of a HMD (detection timeout = 0 msecs == poll only).
         // The 1.11 SDK still seems to be unable to enumerate more than 1 HMD,
@@ -179,8 +182,12 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
         initialized = TRUE;
     }
     else {
-        if (!dontfail)
+        if (!dontfail) {
+            //ovrErrorInfo errorInfo;
+            //ovr_GetLastErrorInfo(&errorInfo);
+            printf("PsychOculusVRCore1-ERROR: ovr_Initialize failed: %i\n", result); //errorInfo.ErrorString);
             PsychErrorExitMsg(PsychError_system, "PsychOculusVRCore1-ERROR: Initialization of VR runtime failed. Driver disabled!");
+        }
     }
 }
 
@@ -371,8 +378,8 @@ PsychError PSYCHOCULUSVR1Open(void)
     if (deviceIndex >= 0) {
         // The real thing:
         ovrGraphicsLuid Luid;
-        ovrResult rc = ovr_Create((ovrSession*) &(oculusdevices[handle].hmd), (ovrGraphicsLuid*) &Luid);
-        if (!rc || (NULL == oculusdevices[handle].hmd)) {
+        ovrResult rc = ovr_Create(&(oculusdevices[handle].hmd), &Luid);
+        if (OVR_FAILURE(rc) || (NULL == oculusdevices[handle].hmd)) {
             if (verbosity >= 0) {
                 printf("PsychOculusVRCore1-ERROR: Failed to connect to Oculus Rift with deviceIndex %i. This could mean that the device\n", deviceIndex);
                 printf("PsychOculusVRCore1-ERROR: is already in use by another application or driver.\n");
