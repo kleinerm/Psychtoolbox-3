@@ -395,7 +395,7 @@ if cmd == 0
 
   t4 = GetSecs;
 
-  fprintf('Commit: %f ms, GetNext %f ms, SetNext/Flags %f ms ... ', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
+  %fprintf('Commit: %f ms, GetNext %f ms, SetNext/Flags %f ms ... ', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
 
   return;
 end
@@ -407,7 +407,7 @@ if cmd == 1
   handle = varargin{1};
 
   t1 = GetSecs;
-  PsychOculusVRCore1('PresentFrame', hmd{handle}.handle);
+  frameTiming = PsychOculusVRCore1('PresentFrame', hmd{handle}.handle);
   t2 = GetSecs;
 
   % Debug output from mirror texture requested?
@@ -442,10 +442,12 @@ if cmd == 1
   t3 = GetSecs;
 
   % Disable presentation in onscreen window and associated throttling and standard Flip timestamping:
-  Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs);
+  Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(1).VBlankTime, frameTiming(1).StimulusOnsetTime);
   t4 = GetSecs;
 
-  fprintf('Present %f ms, Mirror %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
+  %fprintf('Present %f ms, Mirror %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
+  % disp(frameTiming(1));
+  % dT = 1e3 * (frameTiming(1).HMDTime - frameTiming(1).StimulusOnsetTime)
 
   return;
 end
