@@ -118,6 +118,16 @@ if onoctave == 0
         mex -v -outdir ..\Projects\Windows\build -output PsychOculusVRCore -DPTBMODULE_PsychOculusVRCore -largeArrayDims -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib ..\..\..\OculusSDKWin\LibOVR\Lib\Windows\x64\Release\VS2010\LibOVR.lib
         movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
+
+    if what == 13
+        % Build PsychOculusVRCore1 for 64-Bit Matlab:
+        % Needs the Oculus VR SDK v1.11 or later installed side-by-side to the Psychtoolbox-3
+        % folder, so that it shares the same parent folder as Psychtoolbox-3,
+        % and the SDK must be renamed from OculusSDK to OculusSDK1Win.
+        mex -v -outdir ..\Projects\Windows\build -output PsychOculusVRCore1 -DPTBMODULE_PsychOculusVRCore1 -largeArrayDims -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I..\..\..\OculusSDK1Win\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore1 Common\PsychOculusVRCore1\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib ..\..\..\OculusSDK1Win\LibOVR\Lib\Windows\x64\Release\VS2010\LibOVR.lib
+        movefile(['..\Projects\Windows\build\PsychOculusVRCore1.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+    end
+
 else
     % Octave-4 build:
     if Is64Bit
@@ -310,6 +320,25 @@ else
             mexoctave -g -v --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT32_0_5
         end
         movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], target);
+    end
+
+    if what == 13
+        % Build PsychOculusVRCore1 for 64-Bit Octave-4.4.1 or later:
+        % Needs the Oculus VR SDK v1.11 or later installed side-by-side to the Psychtoolbox-3
+        % folder, so that it shares the same parent folder as Psychtoolbox-3,
+        % and the SDK must be renamed from OculusSDK to OculusSDK1Win.
+        try
+            % We copy the installed Oculus v1.11+ runtime DLL from
+            % C:\Program Files\Oculus\Support\oculus-runtime\LibOVRRT64_1.dll into the
+            % SDK folder and abuse that as import library for our mex file. Weird, but
+            % true - this works on Octave-4.4.1 64-Bit under Windows:
+            copyfile('C:\Program Files\Oculus\Support\oculus-runtime\LibOVRRT64_1.dll', '..\..\..\OculusSDK1Win\LibOVR\Lib\Windows\Win32\Release\VS2010\');
+            mexoctave -g -v --output ..\Projects\Windows\build\PsychOculusVRCore1.mex -DPTBMODULE_PsychOculusVRCore1 -DPTBOCTAVE3MEX -I..\..\..\OculusSDK1Win\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore1 Common\PsychOculusVRCore1\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDK1Win\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT64_1
+            movefile(['..\Projects\Windows\build\PsychOculusVRCore1.' mexext], target);
+        catch %#ok<*CTCH>
+            % Empty. We just want to make sure the delete() call below is executed
+            % in both success and failure case.
+        end
     end
 
     % Remove stale object files:
