@@ -1702,6 +1702,7 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
     int eyeIndex, rc;
     psych_bool success = TRUE;
     double tPredictedOnset = 0;
+    ovrResult result;
     ovrLayerEyeFov layer0;
     const ovrLayerHeader *layers[1] = { &layer0.Header };
 
@@ -1806,10 +1807,16 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
             tDeadline = ovr_GetTimeInSeconds() + 0.005;
             do {
                 PsychYieldIntervalSeconds(0.001);
-                if (OVR_FAILURE(ovr_GetPerfStats(oculus->hmd, &oculus->perfStats))) {
+                result = ovr_GetPerfStats(oculus->hmd, &oculus->perfStats);
+                if (OVR_FAILURE(result)) {
                     ovr_GetLastErrorInfo(&errorInfo);
                     if (verbosity > 0)
                         printf("PsychOculusVRCore1-ERROR: ovr_GetPerfStats() failed: %s\n", errorInfo.ErrorString);
+                }
+                else if (result == ovrSuccess_NotVisible) {
+                    // Submitted frame does not display - a no-op submit:
+                    if (verbosity > 1)
+                        printf("PsychOculusVRCore1:WARNING: Frame %i not presented to HMD. Lost HMD to other app?\n", oculus->frameIndex);
                 }
                 else if ((verbosity > 3) && (oculus->perfStats.FrameStatsCount > 0)) {
                     printf("PsychOculusVRCore1: DEBUG: Oldest AppFrameIndex %i vs. commitFrameIndex %i\n",
