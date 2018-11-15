@@ -1059,7 +1059,7 @@ if strcmpi(cmd, 'Supported')
   % installation, so it can be used to open connections to real HMDs,
   % or at least to emulate a HMD for simple debugging purposes:
   try
-    if exist('PsychOculusVRCore1', 'file') && PsychOculusVRCore1('GetCount') >= 0
+    if IsWin(1) && exist('PsychOculusVRCore1', 'file') && PsychOculusVRCore1('GetCount') >= 0
       varargout{1} = 1;
     else
       varargout{1} = 0;
