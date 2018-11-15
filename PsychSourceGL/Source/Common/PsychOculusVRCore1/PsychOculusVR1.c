@@ -410,9 +410,9 @@ PsychError PSYCHOCULUSVR1Open(void)
     static char synopsisString[] =
         "Open connection to Oculus VR HMD, return a 'oculusPtr' handle to it.\n\n"
         "The call tries to open the HMD with index 'deviceIndex', or the "
-        "first detected HMD, if 'deviceIndex' is omitted. You can pass in a 'deviceIndex' "
-        "of -1 to open an emulated HMD. It doesn't provide any sensor input, but allows "
-        "some basic testing and debugging of VR software nonetheless.\n"
+        "first detected HMD, if 'deviceIndex' is omitted. Please note that currently "
+        "only one single HMD is supported, so this "
+        "'deviceIndex' is redundant at the moment, given that zero is the only valid value.\n"
         "The returned handle can be passed to the other subfunctions to operate the device.\n"
         "A second return argument 'modelName' returns the model name string of the Oculus device.\n"
         "'resolutionX' and 'resolutionY' return the HMD display panels horizontal and vertical resolution.\n"
@@ -446,7 +446,9 @@ PsychError PSYCHOCULUSVR1Open(void)
     PsychCopyInIntegerArg(1, kPsychArgOptional, &deviceIndex);
 
     // Don't support anything than a single "default" OculusVR Rift yet - A limitation of the current SDK:
-    if (deviceIndex < 0) PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Must be greater or equal to zero!");
+    if (deviceIndex < 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Must be greater or equal to zero!");
+
 
     result = ovr_Detect(0);
     available_devices = (result.IsOculusHMDConnected) ? 1 : 0;
@@ -455,7 +457,7 @@ PsychError PSYCHOCULUSVR1Open(void)
         if (verbosity >= 2) printf("PsychOculusVRCore1-WARNING: Could not connect to Oculus VR server process yet. Did you forget to start it?\n");
     }
 
-    if ((deviceIndex >= 0) && (deviceIndex >= available_devices)) {
+    if (deviceIndex >= available_devices) {
         if (verbosity >= 0) printf("PsychOculusVRCore1-ERROR: Invalid deviceIndex %i >= number of available HMDs %i.\n", deviceIndex, available_devices);
         PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' provided. Not enough HMDs available!");
     }
@@ -480,11 +482,6 @@ PsychError PSYCHOCULUSVR1Open(void)
         else if (verbosity >= 3) {
             printf("PsychOculusVRCore1-INFO: Opened Oculus Rift with deviceIndex %i as handle %i.\n", deviceIndex, handle + 1);
         }
-    }
-    else {
-        // Emulated: Simulate a Rift DK2.
-        // TODO REMOVE oculusdevices[handle].hmd = ovrHmd_CreateDebug(ovrHmd_DK2);
-        if (verbosity >= 3) printf("PsychOculusVRCore1-INFO: Opened an emulated Oculus Rift DK2 as handle %i.\n", handle + 1);
     }
 
     // Query current enabled caps:
