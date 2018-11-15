@@ -792,7 +792,15 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
         "+2 = Head position tracked,\n"
         "+4 = At least one active tracking camera has a valid pose for absolute tracking,\n"
         "+32 = At least one tracking camera is connected and online,\n"
-// TODO        "+128 = HMD display is connected and available.\n\n"
+        "+128 = HMD display is connected, available and actually on users head, displaying our content.\n\n"
+        "'SessionState' = VR session status flags, added together:\n"
+        "+1  = Our rendering goes to the HMD, ie. we have control over it. If the Oculus store app would "
+        "be in control, or if the Health and Safety warning would display, this flag would be missing.\n"
+        "+2  = HMD is present and active.\n"
+        "+4  = HMD is strapped onto users head. A Rift CV1 would switch off/blank if not on the head.\n"
+        "+8  = DisplayLost condition! Some hardware/software malfunction, need to completely quit to recover.\n"
+        "+16 = ShouldQuit The user interface asks us to voluntarily terminate this session.\n"
+        "+32 = ShouldRecenter = The user interface asks us to recenter/recalibrate our tracking origin.\n\n"
         "'HeadPose' = Head position [x, y, z] in meters and rotation as quaternion [rx, ry, rz, rw], all as a vector [x,y,z,rx,ry,rz,rw].\n"
         "'HeadLinearSpeed' = Head linear velocity [vx,vy,vz] in meters/sec.\n"
         "'HeadAngularSpeed' = Head angular velocity [rx,ry,rz] in radians/sec.\n"
@@ -805,10 +813,9 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     static char seeAlsoString[] = "Start Stop GetTrackersState";
 
     PsychGenericScriptType *status;
-    const char *FieldNames[] = {"Time", "Status", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed", "HeadLinearAcceleration",
-                                "HeadAngularAcceleration", "CalibratedOrigin"
-                                };
-    const int FieldCount = 8;
+    const char *FieldNames[] = {"Time", "Status", "SessionState", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed", "HeadLinearAcceleration",
+                                "HeadAngularAcceleration", "CalibratedOrigin"};
+    const int FieldCount = 9;
     PsychGenericScriptType *outMat;
     double *v;
     int handle, trackerCount, i;
@@ -819,6 +826,7 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     ovrVector3f HmdToEyeOffset[2];
     ovrTrackerPose trackerPose;
     ovrTrackerDesc trackerDesc;
+    ovrSessionStatus sessionStatus;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -834,6 +842,12 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
 
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
+
+    if (OVR_FAILURE(ovr_GetSessionStatus(oculus->hmd, &sessionStatus))) {
+        ovr_GetLastErrorInfo(&errorInfo);
+        if (verbosity > 0) printf("PsychOculusVRCore1-ERROR: ovr_GetSessionStatus failed: %s\n", errorInfo.ErrorString);
+        PsychErrorExitMsg(PsychError_system, "Failed to get current session status from VR compositor.");
+    }
 
     PsychLockMutex(&(oculus->presenterLock));
 
@@ -867,6 +881,10 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
 
     StatusFlags = state.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked);
 
+    // HMD present, connected and online and on users head, displaying us?
+    if (sessionStatus.HmdPresent && sessionStatus.IsVisible && sessionStatus.HmdMounted)
+        StatusFlags |= 128;
+
     // At least one tracker connected?
     trackerCount = ovr_GetTrackerCount(oculus->hmd);
     for (i = 0; i < trackerCount; i++) {
@@ -876,6 +894,17 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
 
     // Return head and general tracking status flags:
     PsychSetStructArrayDoubleElement("Status", 0, StatusFlags, status);
+
+    // Return sesstion status flags:
+    StatusFlags = 0;
+    if (sessionStatus.IsVisible) StatusFlags |= 1;
+    if (sessionStatus.HmdPresent) StatusFlags |= 2;
+    if (sessionStatus.HmdMounted) StatusFlags |= 4;
+    if (sessionStatus.DisplayLost) StatusFlags |= 8;
+    if (sessionStatus.ShouldQuit) StatusFlags |= 16;
+    if (sessionStatus.ShouldRecenter) StatusFlags |= 32;
+
+    PsychSetStructArrayDoubleElement("SessionState", 0, StatusFlags, status);
 
     // Head pose:
     v = NULL;
