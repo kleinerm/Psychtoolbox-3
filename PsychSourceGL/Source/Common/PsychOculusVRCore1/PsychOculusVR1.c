@@ -104,7 +104,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz] = PsychOculusVRCore1('GetUndistortionParameters', oculusPtr, eye [, inputWidth][, inputHeight][, fov]);";
     synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore1('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
     synopsis[i++] = "PsychOculusVRCore1('EndFrameRender', oculusPtr);";
-    synopsis[i++] = "frameTiming = PsychOculusVRCore1('PresentFrame', oculusPtr);";
+    synopsis[i++] = "[frameTiming, tPredictedOnset] = PsychOculusVRCore1('PresentFrame', oculusPtr);";
     synopsis[i++] = "result = PsychOculusVRCore1('LatencyTester', oculusPtr, cmd);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
 
@@ -1578,8 +1578,8 @@ PsychError PSYCHOCULUSVR1EndFrameRender(void)
 
 PsychError PSYCHOCULUSVR1PresentFrame(void)
 {
-    static char useString[] = "frameTiming = PsychOculusVRCore1('PresentFrame', oculusPtr);";
-    //                         1                                                1
+    static char useString[] = "[frameTiming, tPredictedOnset] = PsychOculusVRCore1('PresentFrame', oculusPtr);";
+    //                          1            2                                                     1
     static char synopsisString[] =
     "Present last rendered frame to Oculus HMD device 'oculusPtr'.\n\n"
     "Returns a 'frameTiming' with information about the presentation "
@@ -1602,7 +1602,8 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     "VBlankTime: Screen('Flip') vblTime equivalent.\n"
     "AppQueueAheadTime: How much ahead the application has to queue a frame for presentation. In some sense "
     "a measure of compositor lag. 0 msecs = No lag, presenting at next VBLANK boundary. 1 refresh duration = "
-    "1 frame lag, etc.\n"
+    "1 frame lag, etc.\n\n"
+    "'tPredictedOnset' Predicted onset time for the just submitted frame, according to compositor.\n"
     "\n\n";
     static char seeAlsoString[] = "EndFrameRender";
 
@@ -1612,7 +1613,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     const int FieldCount = 9;
 
     int handle, i;
-    double tNow, tHMD, tStimOnset, tVBL, tDeadline;
+    double tNow, tHMD, tStimOnset, tVBL, tDeadline, tPredictedOnset;
     PsychOculusDevice *oculus;
     ovrLayerEyeFov layer0;
     const ovrLayerHeader *layers[1] = { &layer0.Header };
@@ -1623,7 +1624,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumOutputArgs(2));
     PsychErrorExit(PsychCapNumInputArgs(1));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -1662,6 +1663,8 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     layer0.RenderPose[1] = oculus->outEyePoses[1];
     layer0.SensorSampleTime = oculus->sensorSampleTime;
 
+    tPredictedOnset = ovr_GetPredictedDisplayTime(oculus->hmd, 0);
+
     // Submit frame to compositor for display at earliest possible time:
     if (OVR_FAILURE(ovr_SubmitFrame(oculus->hmd, 0, NULL, layers, 1))) {
         ovr_GetLastErrorInfo(&errorInfo);
@@ -1671,7 +1674,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     }
 
     // Retrieve performance stats, mostly for our timestamping:
-    tDeadline = ovr_GetTimeInSeconds() + 0.5;
+    tDeadline = ovr_GetTimeInSeconds() + 0.005;
     do {
         if (OVR_FAILURE(ovr_GetPerfStats(oculus->hmd, &perfStats))) {
             ovr_GetLastErrorInfo(&errorInfo);
@@ -1679,7 +1682,6 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
                 printf("PsychOculusVRCore1-ERROR: ovr_GetPerfStats() failed: %s\n", errorInfo.ErrorString);
             PsychErrorExitMsg(PsychError_system, "Failed to get performance and timing info from VR compositor.");
         }
-
     } while ((oculus->frameIndex > 0) && (perfStats.FrameStatsCount < 1) && (ovr_GetTimeInSeconds() < tDeadline));
 
     if (verbosity > 3) {
@@ -1722,6 +1724,10 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
             PsychSetStructArrayDoubleElement("AppQueueAheadTime", i, perfStats.FrameStats[i].AppQueueAheadTime, frameT);
         }
     }
+
+    // Copy out predicted onset time for the just emitted frame:
+    tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * (1.0 / oculus->hmdDesc.DisplayRefreshRate);
+    PsychCopyOutDoubleArg(2, kPsychArgOptional, tPredictedOnset);
 
     oculus->frameIndex++;
 
