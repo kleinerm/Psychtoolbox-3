@@ -54,7 +54,6 @@ typedef struct PsychOculusDevice {
     ovrSizei            texSize[2];
     ovrFovPort          ofov[2];
     ovrEyeRenderDesc    eyeRenderDesc[2];
-//    ovrPosef            headPose;
     uint32_t            frameIndex;
     uint32_t            commitFrameIndex;
     int                 needSubmit;
@@ -65,7 +64,6 @@ typedef struct PsychOculusDevice {
     double              scheduledPresentExecTime;
     double              VRtimeoutSecs;
     ovrPerfStats        perfStats;
-    //TODO    ovrFrameTiming frameTiming;
 } PsychOculusDevice;
 
 PsychOculusDevice oculusdevices[MAX_PSYCH_OCULUS_DEVS];
@@ -87,11 +85,10 @@ void InitializeSynopsis(void)
     synopsis[i++] = "This driver allows to control devices supported by the Oculus runtime V1.11 and higher.\n";
     synopsis[i++] = "The PsychOculusVRCore1 driver is licensed to you under the terms of the MIT license.";
     synopsis[i++] = "See 'help License.txt' in the Psychtoolbox root folder for more details.\n";
-    synopsis[i++] = "The driver requires the Oculus VR runtime version 1.11 or later versions to work.\n";
     synopsis[i++] = "\n";
     synopsis[i++] = "Usage:";
     synopsis[i++] = "\n";
-    synopsis[i++] = "Functions used by regular user scripts:\n";
+    synopsis[i++] = "Functions used by regular user scripts (mostly indirectly via PsychVRHMD() or PsychOculusVR1()):\n";
     synopsis[i++] = "\n";
     synopsis[i++] = "oldVerbosity = PsychOculusVRCore1('Verbosity' [, verbosity]);";
     synopsis[i++] = "numHMDs = PsychOculusVRCore1('GetCount');";
@@ -191,7 +188,8 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
     iparms.ConnectionTimeoutMS = 0; // Default timeout.
 
     // Already initialized? No op then.
-    if (initialized) return;
+    if (initialized)
+        return;
 
     // Initialize Oculus VR runtime with default parameters:
     result = ovr_Initialize(&iparms);
@@ -217,9 +215,7 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
     }
     else {
         if (!dontfail) {
-            //ovrErrorInfo errorInfo;
-            //ovr_GetLastErrorInfo(&errorInfo);
-            printf("PsychOculusVRCore1-ERROR: ovr_Initialize failed: %i\n", result); //errorInfo.ErrorString);
+            printf("PsychOculusVRCore1-ERROR: ovr_Initialize failed: %i\n", result);
             PsychErrorExitMsg(PsychError_system, "PsychOculusVRCore1-ERROR: Initialization of VR runtime failed. Driver disabled!");
         }
     }
@@ -532,7 +528,7 @@ PsychError PSYCHOCULUSVR1Open(void)
     // Store video frame duration on the HMD:
     oculus->frameDuration = 1.0 / (double) oculus->hmdDesc.DisplayRefreshRate;
 
-    // Assume the timeout for the compositor thinking we are unresponsive is 40 HMD frame durations:
+    // Assume the timeout for the compositor thinking we are unresponsive is 2 HMD frame durations:
     oculus->VRtimeoutSecs = 2 * oculus->frameDuration;
 
     // Assign multi-threading mode:
@@ -2387,15 +2383,6 @@ static void* PresenterThreadMain(void* psychOculusDeviceToCast)
 
     // Assign a name to ourselves, for debugging:
     PsychSetThreadName("PsychOculusVR1PresenterThread");
-
-    // XXX useless attempt to fix the 3rd texture failed problem:
-    /*
-    PsychLockMutex(&(oculus->presenterLock));
-    PresentExecute(oculus, TRUE, TRUE);
-    PresentExecute(oculus, TRUE, TRUE);
-    PresentExecute(oculus, TRUE, TRUE);
-    PsychUnlockMutex(&(oculus->presenterLock));
-    */
 
     // VR compositor timeout prevention loop: Repeats infinitely, well, not infinitely,
     // but until we receive a shutdown request and terminate ourselves...
