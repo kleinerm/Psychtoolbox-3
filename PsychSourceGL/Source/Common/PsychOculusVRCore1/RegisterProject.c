@@ -47,7 +47,7 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("SetHUDState", &PSYCHOCULUSVR1SetHUDState));
     PsychErrorExit(PsychRegister("VRAreaBoundary", &PSYCHOCULUSVR1VRAreaBoundary));
     PsychErrorExit(PsychRegister("SetDynamicPrediction", &PSYCHOCULUSVR1SetDynamicPrediction));
-    PsychErrorExit(PsychRegister("LatencyTester", &PSYCHOCULUSVR1LatencyTester));
+    PsychErrorExit(PsychRegister("GetPerformanceStats", &PSYCHOCULUSVR1GetPerformanceStats));
 
     PsychErrorExit(PsychRegister("CreateRenderTextureChain", &PSYCHOCULUSVR1CreateRenderTextureChain));
     PsychErrorExit(PsychRegister("GetNextTextureHandle", &PSYCHOCULUSVR1GetNextTextureHandle));

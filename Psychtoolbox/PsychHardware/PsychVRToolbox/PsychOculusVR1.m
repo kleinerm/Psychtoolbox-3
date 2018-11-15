@@ -259,6 +259,10 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % for 'hmd'.
 %
 %
+% [adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOculusVR1('GetPerformanceStats', hmd);
+% - Return global and per-frame performance statistics for the given 'hmd'.
+%
+%
 % PsychOculusVR1('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
 % - Query the HMD 'hmd' for its properties and setup internal rendering
 % parameters in preparation for opening an onscreen window with PsychImaging
@@ -691,6 +695,17 @@ if strcmpi(cmd, 'GetTrackersState')
   end
 
   varargout{1} = PsychOculusVRCore1('GetTrackersState', myhmd.handle);
+
+  return;
+end
+
+if strcmpi(cmd, 'GetPerformanceStats')
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOculusVR1:GetPerformanceStats: Specified handle does not correspond to an open HMD!');
+  end
+
+  [varargout{1}, varargout{2}, varargout{3}, varargout{4}] = PsychOculusVRCore1('GetPerformanceStats', myhmd.handle);
 
   return;
 end

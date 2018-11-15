@@ -118,7 +118,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "trackers = PsychOculusVRCore1('GetTrackersState', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore1('EndFrameRender', oculusPtr, targetPresentTime);";
     synopsis[i++] = "[frameTiming, tPredictedOnset, referenceFrameIndex] = PsychOculusVRCore1('PresentFrame', oculusPtr [, doTimestamp=0][, when=0]);";
-    synopsis[i++] = "result = PsychOculusVRCore1('LatencyTester', oculusPtr, cmd);";
+    synopsis[i++] = "[adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOculusVRCore1('GetPerformanceStats', oculusPtr);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
 
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -2200,39 +2200,57 @@ PsychError PSYCHOCULUSVR1SetHUDState(void)
     return(PsychError_none);
 }
 
-PsychError PSYCHOCULUSVR1LatencyTester(void)
+PsychError PSYCHOCULUSVR1GetPerformanceStats(void)
 {
-    static char useString[] = "result = PsychOculusVRCore1('LatencyTester', oculusPtr, cmd);";
-    //                         1                                            1          2
+    static char useString[] = "[adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOculusVRCore1('GetPerformanceStats', oculusPtr);";
+    //                          1                            2           3                     4                                                           1
     static char synopsisString[] =
-    "Drive or query latency tester for Oculus Rift DK2 device 'oculusPtr'.\n"
-    "'cmd' is the command code:\n"
-    "0 = Get next test draw color from 0 - 255 as [r,g,b] vector.\n"
-    "1 = Get most recent latency test results in seconds as a 5 component vector 'latency':\n"
-    "latency[1] = LatencyRender:     (seconds) Last time between render IMU sample and scanout.\n"
-    "latency[2] = LatencyTimewarp:   (seconds) Last time between timewarp IMU sample and scanout.\n"
-    "latency[3] = LatencyPostPresent (seconds) Average time between Vsync and scanout.\n"
-    "latency[4] = ErrorRender        (seconds) Last error in render predicted scanout time.\n"
-    "latency[5] = ErrorTimewarp      (seconds) Last error in timewarp predicted scanout time.\n"
-    "\n"
-    "If 'cmd' can't get executed, then an empty result [] is returned.\n"
-    "\n";
+    "Query performance statistics for HMD device 'oculusPtr'.\n\n"
+    "Return values:\n\n"
+    "'adaptiveGpuPerformanceScale' is an edge-filtered value that a caller can use to adjust "
+    "the graphics quality of the application to keep the GPU utilization in check. The value "
+    "is calculated as:\n\n"
+    "   (desired_GPU_utilization / current_GPU_utilization)\n\n"
+    "As such, when this value is 1.0, the GPU is doing the right amount of work for the app. "
+    "Lower values mean the app needs to pull back on the GPU utilization.\n"
+    "If the app is going to directly drive render-target resolution using this value, then "
+    "be sure to take the square-root of the value before scaling the resolution with it. "
+    "Changing render target resolutions however is one of the many things an app can do "
+    "increase or decrease the amount of GPU utilization.\n"
+    "Since AdaptiveGpuPerformanceScale is edge-filtered and does not change rapidly "
+    "(i.e. reports non-1.0 values once every couple of seconds) the app can make the "
+    "necessary adjustments and then keep watching the value to see if it has been satisfied.\n\n"
+    "'aswIsAvailable' If 1 then Asynchronous Space Warp (ASW) is supported on your system, 0 if not.\n\n"
+    "'anyFrameStatsDropped' If 1 then the 'frameStats' struct array does not contain complete per frame "
+    "performance statistics, because you did not call this function frequently enough. In general, calling "
+    "at the native video refresh rate of the HMD is required for best results.\n\n"
+    "'frameStats' is a struct array with recorded performance statistics, going some frames backwards in time.\n"
+    "The number of frames this goes back is implementation dependent. Array slot 1 contains the stats of the "
+    "most recent frame, slot 2 the 2nd oldest etc. Each struct contains many fields with info about the frame "
+    "presentation latency, cpu and gpu utilization, VR compositor performance, ASW state and performance etc. Consult Oculus "
+    "SDK online documentation to learn about the meaning of the fields.\n";
 
     static char seeAlsoString[] = "";
 
-    int handle, cmd;
-    float latencies[5];
+    PsychGenericScriptType *frameT;
+    const char *FieldNames[] = {"HmdVsyncIndex", "AppFrameIndex", "AppDroppedFrameCount", "AppMotionToPhotonLatency", "AppQueueAheadTime", "AppCpuElapsedTime",
+                                "AppGpuElapsedTime", "CompositorFrameIndex", "CompositorDroppedFrameCount", "CompositorLatency",
+                                "CompositorCpuElapsedTime", "CompositorGpuElapsedTime", "CompositorCpuStartToGpuEndElapsedTime",
+                                "CompositorGpuEndToVsyncElapsedTime", "AswIsActive", "AswActivatedToggleCount",
+                                "AswPresentedFrameCount", "AswFailedFrameCount" };
+    const int FieldCount = 18;
+
+    int handle, i;
     PsychOculusDevice *oculus;
-    double *outM;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(2));
-    PsychErrorExit(PsychRequireNumInputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(4));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
     PsychOculusVRCheckInit(FALSE);
@@ -2241,50 +2259,33 @@ PsychError PSYCHOCULUSVR1LatencyTester(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
 
-    // Get cmd code:
-    PsychCopyInIntegerArg(2, kPsychArgRequired, &cmd);
-/* TODO REMOVE or REWRITE TOTALLY?
-    if (cmd == 0) {
-        // Get next latency test marker pixel color, update the runtimes internal
-        // target match color with it, return color to us for our client rendering:
-        // Return required clear color for latency test quad if latencytest is enabled, empty otherwise:
-        if (ovrHmd_GetLatencyTest2DrawColor(oculus->hmd, &(oculus->rgbColorOut[0]))) {
-            PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 3, 1, &outM);
-            outM[0] = (double) oculus->rgbColorOut[0];
-            outM[1] = (double) oculus->rgbColorOut[1];
-            outM[2] = (double) oculus->rgbColorOut[2];
-            oculus->latencyTestActive = TRUE;
-        }
-        else {
-            PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 0, 0, 1, &outM);
-            oculus->latencyTestActive = FALSE;
-        }
+    // Global parameters:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) oculus->perfStats.AdaptiveGpuPerformanceScale);
+    PsychCopyOutDoubleArg(3, kPsychArgOptional, (double) oculus->perfStats.AnyFrameStatsDropped);
+    PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) oculus->perfStats.AswIsAvailable);
+
+    // Struct array with per frame perfStats for the last couple of frames:
+    PsychAllocOutStructArray(2, kPsychArgOptional, oculus->perfStats.FrameStatsCount, FieldCount, FieldNames, &frameT);
+    for (i = 0; i < oculus->perfStats.FrameStatsCount; i++) {
+        PsychSetStructArrayDoubleElement("HmdVsyncIndex", i, oculus->perfStats.FrameStats[i].HmdVsyncIndex, frameT);
+        PsychSetStructArrayDoubleElement("AppFrameIndex", i, oculus->perfStats.FrameStats[i].AppFrameIndex, frameT);
+        PsychSetStructArrayDoubleElement("AppDroppedFrameCount", i, oculus->perfStats.FrameStats[i].AppDroppedFrameCount, frameT);
+        PsychSetStructArrayDoubleElement("AppMotionToPhotonLatency", i, oculus->perfStats.FrameStats[i].AppMotionToPhotonLatency, frameT);
+        PsychSetStructArrayDoubleElement("AppQueueAheadTime", i, oculus->perfStats.FrameStats[i].AppQueueAheadTime, frameT);
+        PsychSetStructArrayDoubleElement("AppCpuElapsedTime", i, oculus->perfStats.FrameStats[i].AppCpuElapsedTime, frameT);
+        PsychSetStructArrayDoubleElement("AppGpuElapsedTime", i, oculus->perfStats.FrameStats[i].AppGpuElapsedTime, frameT);
+        PsychSetStructArrayDoubleElement("CompositorFrameIndex", i, oculus->perfStats.FrameStats[i].CompositorFrameIndex, frameT);
+        PsychSetStructArrayDoubleElement("CompositorDroppedFrameCount", i, oculus->perfStats.FrameStats[i].CompositorDroppedFrameCount, frameT);
+        PsychSetStructArrayDoubleElement("CompositorLatency", i, oculus->perfStats.FrameStats[i].CompositorLatency, frameT);
+        PsychSetStructArrayDoubleElement("CompositorCpuElapsedTime", i, oculus->perfStats.FrameStats[i].CompositorCpuElapsedTime, frameT);
+        PsychSetStructArrayDoubleElement("CompositorGpuElapsedTime", i, oculus->perfStats.FrameStats[i].CompositorGpuElapsedTime, frameT);
+        PsychSetStructArrayDoubleElement("CompositorCpuStartToGpuEndElapsedTime", i, oculus->perfStats.FrameStats[i].CompositorCpuStartToGpuEndElapsedTime, frameT);
+        PsychSetStructArrayDoubleElement("CompositorGpuEndToVsyncElapsedTime", i, oculus->perfStats.FrameStats[i].CompositorGpuEndToVsyncElapsedTime, frameT);
+        PsychSetStructArrayDoubleElement("AswIsActive", i, oculus->perfStats.FrameStats[i].AswIsActive, frameT);
+        PsychSetStructArrayDoubleElement("AswActivatedToggleCount", i, oculus->perfStats.FrameStats[i].AswActivatedToggleCount, frameT);
+        PsychSetStructArrayDoubleElement("AswPresentedFrameCount", i, oculus->perfStats.FrameStats[i].AswPresentedFrameCount, frameT);
+        PsychSetStructArrayDoubleElement("AswFailedFrameCount", i, oculus->perfStats.FrameStats[i].AswFailedFrameCount, frameT);
     }
 
-    if (cmd == 1) {
-        // Shall we do processing for the latency tester and return results?
-        if (oculus->latencyTestActive) {
-            // Seems so:
-            if (ovrHmd_GetFloatArray(oculus->hmd, "DK2Latency", latencies, 5) == 5) {
-                if (verbosity > 3) {
-                    printf("PsychOculusVRCore1-EndFrameRender: Latency test result is: %f : %f : %f : %f : %f\n",
-                           latencies[0] * 1000.0, latencies[1] * 1000.0, latencies[2] * 1000.0, latencies[3] * 1000.0,
-                           latencies[4] * 1000.0);
-                }
-
-                // Return results:
-                PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 5, 1, &outM);
-                outM[0] = (double) latencies[0];
-                outM[1] = (double) latencies[1];
-                outM[2] = (double) latencies[2];
-                outM[3] = (double) latencies[3];
-                outM[4] = (double) latencies[4];
-            }
-        }
-        else {
-            PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 0, 0, 1, &outM);
-        }
-    }
-*/
     return(PsychError_none);
 }

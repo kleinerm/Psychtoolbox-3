@@ -56,7 +56,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void);
 PsychError PSYCHOCULUSVR1GetEyePose(void);
 PsychError PSYCHOCULUSVR1VRAreaBoundary(void);
 PsychError PSYCHOCULUSVR1SetDynamicPrediction(void);
-PsychError PSYCHOCULUSVR1LatencyTester(void);
+PsychError PSYCHOCULUSVR1GetPerformanceStats(void);
 
 #ifdef  __cplusplus
 }
