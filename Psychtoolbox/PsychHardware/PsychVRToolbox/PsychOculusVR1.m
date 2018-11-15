@@ -206,6 +206,35 @@ function varargout = PsychOculusVR1(cmd, varargin)
 %      returned in state.globalHeadPoseMatrix - this is the basis for computing
 %      the camera transformation matrices.
 %
+% +2 = Return matrices for tracked left and right hands of user, ie. of tracked positions
+%      and orientations of left and right Oculus touch controllers, if any.
+%
+%      state.handStatus(1) = Tracking status of left hand: 0 = Untracked, 1 = Orientation
+%                            tracked, 2 = Position tracked, 3 = Orientation and position
+%                            tracked. If handStatus is == 0 then all the following information
+%                            is invalid and can not be used in any meaningful way.
+%      state.handStatus(2) = Tracking status of right hand.
+%
+%      state.handPose(1) = Left hand pose as [tx,ty,tz,rx,ry,rz,rw] vector with position
+%                          in meters in [tx,ty,tz] and orientation in radians as a quaternion
+%                          in [rx,ry,rz,rw].
+%      state.handPose(2) = Same for right hand pose.
+%
+%      state.localHandPoseMatrix{1} = 4x4 OpenGL right handed reference frame matrix with
+%                                     hand position and orientation encoded to define a
+%                                     proper GL_MODELVIEW transform for rendering stuff
+%                                     "into"/"relative to" the oriented left hand.
+%      state.localHandPoseMatrix{2} = Ditto for the right hand.
+%
+%      state.globalHandPoseMatrix{1} = userTransformMatrix * state.localHandPoseMatrix{1};
+%                                      Left hand pose transformed by passed in userTransformMatrix.
+%      state.globalHandPoseMatrix{2} = Ditto for the right hand.
+%
+%      state.globalHandPoseInverseMatrix{1} = Inverse of globalHandPoseMatrix{1} for collision
+%                                             testing/grasping of virtual objects relative to
+%                                             hand pose of left hand.
+%      state.globalHandPoseInverseMatrix{2} = Ditto for right hand.
+
 % More flags to follow...
 %
 %
@@ -633,7 +662,7 @@ if strcmpi(cmd, 'PrepareRender')
   [eyePose{1}, eyePose{2}] = PsychOculusVRCore1('StartRender', myhmd.handle);
 
   % Get predicted head pose, tracking state and hand poses (if supported) for targetTime:
-  state = PsychOculusVRCore1('GetTrackingState', myhmd.handle, targetTime);
+  [state, touch] = PsychOculusVRCore1('GetTrackingState', myhmd.handle, targetTime);
   myhmd.state = state;
 
   % Always return basic tracking status:
@@ -679,6 +708,30 @@ if strcmpi(cmd, 'PrepareRender')
     % Compute inverse matrices, useable as OpenGL GL_MODELVIEW matrices for rendering:
     result.modelView{1} = inv(result.cameraView{1});
     result.modelView{2} = inv(result.cameraView{2});
+  end
+
+  % Want matrices with tracked position and orientation of touch controllers ~ users hands?
+  if bitand(reqmask, 2)
+    % Yes: We need tracked + predicted hand pose, so we can apply the user
+    % transform, and then per-eye transforms:
+
+    % Oculus 1.x SDK/runtime supports exactly 2 tracked touch controllers atm. to track users hands:
+    for i=1:2
+      result.handStatus(i) = touch(i).Status;
+
+      % Bonus feature: HandPoses as 7 component translation + orientation quaternion vectors:
+      result.handPose{i} = touch(i).HandPose;
+
+      % Convert hand pose vector to 4x4 OpenGL right handed reference frame matrix:
+      result.localHandPoseMatrix{i} = eyePoseToCameraMatrix(touch(i).HandPose);
+
+      % Premultiply usercode provided global transformation matrix:
+      result.globalHandPoseMatrix{i} = userTransformMatrix * result.localHandPoseMatrix{i};
+
+      % Compute inverse matrix, maybe useable for collision testing / virtual grasping of virtual bjects:
+      % Provides a transform that maps absolute geometry into geometry as "seen" from the pov of the hand.
+      result.globalHandPoseInverseMatrix{i} = inv(result.globalHandPoseMatrix{i});
+    end
   end
 
   varargout{1} = result;

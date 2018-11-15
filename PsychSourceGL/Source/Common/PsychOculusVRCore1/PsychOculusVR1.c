@@ -54,7 +54,7 @@ typedef struct PsychOculusDevice {
     ovrSizei            texSize[2];
     ovrFovPort          ofov[2];
     ovrEyeRenderDesc    eyeRenderDesc[2];
-    ovrPosef            headPose;
+//    ovrPosef            headPose;
     uint32_t            frameIndex;
     uint32_t            commitFrameIndex;
     int                 needSubmit;
@@ -104,7 +104,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "oldType = PsychOculusVRCore1('TrackingOriginType', oculusPtr [, newType]);";
     synopsis[i++] = "PsychOculusVRCore1('Start', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore1('Stop', oculusPtr);";
-    synopsis[i++] = "state = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=nextFrame]);";
+    synopsis[i++] = "[state, touch] = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=nextFrame]);";
     synopsis[i++] = "[projL, projR] = PsychOculusVRCore1('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOculusVRCore1('StartRender', oculusPtr);";
     synopsis[i++] = "[eyePose, eyeIndex] = PsychOculusVRCore1('GetEyePose', oculusPtr, renderPass);";
@@ -845,8 +845,8 @@ PsychError PSYCHOCULUSVR1Stop(void)
 
 PsychError PSYCHOCULUSVR1GetTrackingState(void)
 {
-    static char useString[] = "state = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=nextFrame]);";
-    //                         1                                              2            3
+    static char useString[] = "[state, touch] = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=nextFrame]);";
+    //                          1      2                                               1            2
     static char synopsisString[] =
         "Return current state of head position and orientation tracking for Oculus device 'oculusPtr'.\n"
         "Head position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
@@ -879,19 +879,33 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
         "Units and format are like 'HeadPose' ie. a vector [x,y,z,rx,ry,rz,rw].\n"
         "\n"
         "Touch controller position and orientation:\n\n"
-        "'LeftHandStatus' and 'RightHandStatus' describe tracking status flags for the left hand and right hand "
-        "controller: +1 = Hand orientation tracked. +2 = Hand position tracked.\n"
-        "'LeftHandPose' = Position and orientation of left hand, in usual [x,y,z,rx,ry,rz,rw] vector form as with 'HeadPose'.\n"
-        "'RightHandPose' = Position and orientation of left hand, in usual [x,y,z,rx,ry,rz,rw] vector form as with 'HeadPose'.\n"
+        "The return argument 'touch' is a struct array with 2 structs. touch(1) contains info about "
+        "the tracking state and tracked pose of the left hand (= left touch controller) of the user, "
+        "touch(2) contains info about the right hand (= right touch controller) of the user.\n"
+        "The structs have very similar structure to the head (= HMD) tracking data returned by 'state':\n\n"
+        "'Time' = Time in seconds of returned hand/controller tracking state.\n"
+        "'Status' = Tracking status flags:\n"
+        "0  = No tracking info for hand/controller, ie. no Oculus touch sensor connected.\n"
+        "+1 = Hand orientation tracked,\n"
+        "+2 = Hand position tracked,\n"
+        "'HandPose' = Position and orientation of the hand, in usual [x,y,z,rx,ry,rz,rw] vector form as with 'HeadPose'.\n"
+        "'HandLinearSpeed' = Hand linear velocity [vx,vy,vz] in meters/sec.\n"
+        "'HandAngularSpeed' = Hand angular velocity [rx,ry,rz] in radians/sec.\n"
+        "'HandLinearAcceleration' = Hand linear acceleration [ax,ay,az] in meters/sec^2.\n"
+        "'HandAngularAcceleration' = Hand angular acceleration [rax,ray,raz] in radians/sec^2.\n"
         "\n";
 
     static char seeAlsoString[] = "Start Stop GetTrackersState";
 
     PsychGenericScriptType *status;
-    const char *FieldNames[] = {"Time", "Status", "SessionState", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed", "HeadLinearAcceleration",
-                                "HeadAngularAcceleration", "CalibratedOrigin", "LeftHandStatus", "RightHandStatus",
-                                /* "LeftHandPose", "RightHandPose" */};
-    const int FieldCount = 11;
+    const char *FieldNames1[] = {"Time", "Status", "SessionState", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed",
+                                 "HeadLinearAcceleration", "HeadAngularAcceleration", "CalibratedOrigin"};
+    const int FieldCount1 = 9;
+
+    const char *FieldNames2[] = {"Time", "Status", "HandPose", "HandLinearSpeed", "HandAngularSpeed",
+                                 "HandLinearAcceleration", "HandAngularAcceleration"};
+    const int FieldCount2 = 7;
+
     PsychGenericScriptType *outMat;
     double *v;
     int handle, trackerCount, i;
@@ -909,7 +923,7 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumOutputArgs(2));
     PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -951,7 +965,7 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
         printf("PsychOculusVRCore1-INFO: HeadPose: Orientation [x,y,z,w] = [%f, %f, %f, %f]\n", state.HeadPose.ThePose.Orientation.x, state.HeadPose.ThePose.Orientation.y, state.HeadPose.ThePose.Orientation.z, state.HeadPose.ThePose.Orientation.w);
     }
 
-    PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &status);
+    PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount1, FieldNames1, &status);
 
     PsychSetStructArrayDoubleElement("Time", 0, state.HeadPose.TimeInSeconds, status);
 
@@ -1040,14 +1054,63 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     v[6] = state.CalibratedOrigin.Orientation.w;
     PsychSetStructArrayNativeElement("CalibratedOrigin", 0, outMat, status);
 
-    // Left hand / touch controller:
-    StatusFlags = state.HandStatusFlags[ovrHand_Left] & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked);
-    PsychSetStructArrayDoubleElement("LeftHandStatus", 0, StatusFlags, status);
+    // Now the tracking info from the Oculus touch controllers 0 and 1 for left
+    // and right hand, in a separate struct array:
+    PsychAllocOutStructArray(2, kPsychArgOptional, 2, FieldCount2, FieldNames2, &status);
 
-    // Right hand / touch controller:
-    StatusFlags = state.HandStatusFlags[ovrHand_Right] & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked);
-    PsychSetStructArrayDoubleElement("RightHandStatus", 0, StatusFlags, status);
+    for (i = 0; i < 2; i++) {
+        // Timestamp for when this tracking info is valid:
+        PsychSetStructArrayDoubleElement("Time", i, state.HandPoses[i].TimeInSeconds, status);
 
+        // Hand / touch controller tracking state:
+        StatusFlags = state.HandStatusFlags[i] & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked);
+        PsychSetStructArrayDoubleElement("Status", i, StatusFlags, status);
+
+        // Hand pose:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+        v[0] = state.HandPoses[i].ThePose.Position.x;
+        v[1] = state.HandPoses[i].ThePose.Position.y;
+        v[2] = state.HandPoses[i].ThePose.Position.z;
+
+        v[3] = state.HandPoses[i].ThePose.Orientation.x;
+        v[4] = state.HandPoses[i].ThePose.Orientation.y;
+        v[5] = state.HandPoses[i].ThePose.Orientation.z;
+        v[6] = state.HandPoses[i].ThePose.Orientation.w;
+        PsychSetStructArrayNativeElement("HandPose", i, outMat, status);
+
+        // Linear velocity:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+        v[0] = state.HandPoses[i].LinearVelocity.x;
+        v[1] = state.HandPoses[i].LinearVelocity.y;
+        v[2] = state.HandPoses[i].LinearVelocity.z;
+        PsychSetStructArrayNativeElement("HandLinearSpeed", i, outMat, status);
+
+        // Angular velocity:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+        v[0] = state.HandPoses[i].AngularVelocity.x;
+        v[1] = state.HandPoses[i].AngularVelocity.y;
+        v[2] = state.HandPoses[i].AngularVelocity.z;
+        PsychSetStructArrayNativeElement("HandAngularSpeed", i, outMat, status);
+
+        // Linear acceleration:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+        v[0] = state.HandPoses[i].LinearAcceleration.x;
+        v[1] = state.HandPoses[i].LinearAcceleration.y;
+        v[2] = state.HandPoses[i].LinearAcceleration.z;
+        PsychSetStructArrayNativeElement("HandLinearAcceleration", i, outMat, status);
+
+        // Angular acceleration:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+        v[0] = state.HandPoses[i].AngularAcceleration.x;
+        v[1] = state.HandPoses[i].AngularAcceleration.y;
+        v[2] = state.HandPoses[i].AngularAcceleration.z;
+        PsychSetStructArrayNativeElement("HandAngularAcceleration", i, outMat, status);
+    }
     return(PsychError_none);
 }
 
