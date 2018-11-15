@@ -383,7 +383,7 @@ if cmd == 0
 
   % At this point, the FBO of the right eye texture in stereomode or mono texture
   % in mono mode is bound. Detach its color attachment texture:
-  glFramebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, 0, 0);
+  %glFramebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, 0, 0);
 
   % Submit/Commit just unbound textures to texture swap-chains:
   PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle, varargin{2});
@@ -422,14 +422,7 @@ if cmd == 1
 
   t1 = GetSecs;
 
-  frameTiming = PsychOculusVRCore1('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp);
-
-  % NOTE: Without the following glFinish(), we get an invalid operation
-  % OpenGL error during exec of 'PresentFrame' from within the Oculus VR
-  % runtime, which however seems to have no negative consequence for
-  % presentation?! This may be a bug in the OculusVR runtime at least as
-  % of version 1.11:
-  glFinish;
+  [frameTiming, predictedOnset] = PsychOculusVRCore1('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp);
 
   t2 = GetSecs;
 
@@ -441,6 +434,13 @@ if cmd == 1
   else
     texRight = [];
   end
+
+  % XXX NOTE: Without the following glFinish(), we get an invalid operation
+  % OpenGL error during exec of 'PresentFrame' from within the Oculus VR
+  % runtime, which however seems to have no negative consequence for
+  % presentation?! This may be a bug in the OculusVR runtime at least as
+  % of version 1.11:
+  % glFinish;
 
   % Attach them as new backing textures, detach the previously bound ones, so they
   % are ready for submission to the VR compositor:
@@ -481,7 +481,8 @@ if cmd == 1
 
   if hmd{handle}.doTimestamp
     % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(1).VBlankTime, frameTiming(1).StimulusOnsetTime);
+    %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', frameTiming(1).VBlankTime, frameTiming(1).StimulusOnsetTime);
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
   else
     % Use made up values for timestamps of 'Flip':
     Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs, GetSecs);
@@ -489,7 +490,7 @@ if cmd == 1
   t5 = GetSecs;
 
   %fprintf('Present %f ms, Get/Set %f ms, Mirror %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3), 1000 * (t5 - t4));
-  % disp(frameTiming(1));
+  %disp(frameTiming(1));
   % dT = 1e3 * (frameTiming(1).HMDTime - frameTiming(1).StimulusOnsetTime)
 
   return;
@@ -1169,10 +1170,20 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Execute VR Present: Submit just unbound textures, start render/warp/presentation
     % on HMD at next possible point in time:
     PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle, 0);
-    PsychOculusVRCore1('PresentFrame', hmd{handle}.handle, 0);
+    PsychOculusVRCore1('PresentFrame', hmd{handle}.handle);
   end
   clear clearvalues;
 
+  if ~isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR'))
+    % 3D head tracked VR rendering task: Start tracking as a convenience:
+    PsychOculusVRCore1('Start', handle);
+  else
+    % No 3D head tracked closed-loop mode: Kick off the presenter thread via
+    % this 'Start' -> 'Stop' sequence:
+    PsychOculusVRCore1('Start', handle);
+    PsychOculusVRCore1('Stop', handle);
+  end
+  Screen('GetWindowInfo', win);
   % Get first textures for actual use in PTB's imaging pipeline:
   texLeft = PsychOculusVRCore1('GetNextTextureHandle', hmd{handle}.handle, 0);
   if hmd{handle}.StereoMode > 0
@@ -1209,9 +1220,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   cmdString = sprintf('PsychOculusVR1(0, %i, IMAGINGPIPE_FLIPTWHEN);', handle);
   if winfo.StereoMode > 0
     % In stereo mode we also need to detach the left eye texture as commit prep:
-    detachCmd = 'glFramebufferTexture2D(36160, 36064, 3553, 0, 0);';
-    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'OculusVR left texture detach Operation', detachCmd);
-    Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
+    %detachCmd = 'glFramebufferTexture2D(36160, 36064, 3553, 0, 0);';
+    %Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'OculusVR left texture detach Operation', detachCmd);
+    %Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
 
     % In stereo mode, use right finalizer chain for right texture detach and both textures commit, as it executes last:
     Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'OculusVR Stereo commit Operation', cmdString);
@@ -1242,17 +1253,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Attach a window close callback for Device teardown at window close time:
     if hmd{handle}.autoclose == 2
       % Shutdown driver completely:
-      Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychOculusVR1 driver.', 'PsychOculusVR1(''Close'');');
+      Screen('Hookfunction', win, 'AppendMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown window callback into PsychOculusVR1 driver.', 'PsychOculusVR1(''Close'');');
     else
       % Only close this HMD:
-      Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Shutdown window callback into PsychOculusVR1 driver.', sprintf('PsychOculusVR1(''Close'', %i);', handle));
+      Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown window callback into PsychOculusVR1 driver.', sprintf('PsychOculusVR1(''Close'', %i);', handle));
     end
-    Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
-  end
-
-  if ~isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR'))
-    % 3D head tracked VR rendering task: Start tracking as a convenience:
-    PsychOculusVRCore1('Start', handle);
+    Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
   end
 
   % Return success result code 1:
