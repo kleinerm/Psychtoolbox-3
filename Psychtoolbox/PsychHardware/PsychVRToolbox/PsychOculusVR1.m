@@ -178,7 +178,24 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % OVR.TrackedDevice_Object0 - OVR.TrackedDevice_Object3 = Tracked objects 0 - 3.
 % OVR.TrackedDevice_All = All connected tracked devices.
 %
+% 'boundaryType' 0 = Play area, 1 = Outer boundary.
+%
+% Return values:
 % 'isTriggering' 1 if collision is imminent, 0 otherwise.
+% 'closestDistance' Distance to closest point on boundary.
+% 'closestPointxyz' [x;y;z] 3D position of closest point on the boundary.
+% 'surfaceNormal' [nx;ny;nz] 3D surface normal of closest point.
+%
+%
+% [isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOculusVR1('TestVRBoundaryPoint', oculusPtr, pointxyz, boundaryType);
+% - Return if a 3D point 'pointxyz' is colliding with VR area boundaries of 'boundaryType'
+% on device 'hmd'. This needs the boundaries set up properly, in order to provide meaningful
+% results.
+%
+% 'pointxyz' = [x,y,z] 3D point position vector.
+% 'boundaryType' 0 = Play area, 1 = Outer boundary.
+%
+% 'isTriggering' 1 if 'pointxyz' is colliding / close, 0 otherwise.
 % 'closestDistance' Distance to closest point on boundary.
 % 'closestPointxyz' [x;y;z] 3D position of closest point on the boundary.
 % 'surfaceNormal' [nx;ny;nz] 3D surface normal of closest point.
@@ -936,6 +953,16 @@ if strcmpi(cmd, 'TestVRBoundary')
   end
 
   [varargout{1}, varargout{2}, varargout{3}, varargout{4}] = PsychOculusVRCore1('TestVRBoundary', myhmd.handle, varargin{2:end});
+  return;
+end
+
+if strcmpi(cmd, 'TestVRBoundaryPoint')
+  myhmd = varargin{1};
+  if ~PsychOculusVR1('IsOpen', myhmd)
+    error('TestVRBoundaryPoint: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  [varargout{1}, varargout{2}, varargout{3}, varargout{4}] = PsychOculusVRCore1('TestVRBoundaryPoint', myhmd.handle, varargin{2:end});
   return;
 end
 

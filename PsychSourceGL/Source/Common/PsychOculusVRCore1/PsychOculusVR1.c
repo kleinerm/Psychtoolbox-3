@@ -100,6 +100,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychOculusVRCore1('SetHUDState', oculusPtr , mode);";
     synopsis[i++] = "[isVisible, playboundsxyz, outerboundsxyz] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
     synopsis[i++] = "[isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOculusVRCore1('TestVRBoundary', oculusPtr, trackedDeviceType, boundaryType);";
+    synopsis[i++] = "[isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOculusVRCore1('TestVRBoundaryPoint', oculusPtr, pointxyz, boundaryType);";
     synopsis[i++] = "success = PsychOculusVRCore1('RecenterTrackingOrigin', oculusPtr);";
     synopsis[i++] = "oldType = PsychOculusVRCore1('TrackingOriginType', oculusPtr [, newType]);";
     synopsis[i++] = "PsychOculusVRCore1('Start', oculusPtr);";
@@ -735,7 +736,7 @@ PsychError PSYCHOCULUSVR1VRAreaBoundary(void)
         "defines the boundary, as projected onto the floor. Points are listed in clock-wise direction. "
         "An empty return argument means that the play area is so far undefined.\n\n"
         "'outerboundsxyz' defines the outer area boundaries in the same way as 'playboundsxyz'.\n";
-    static char seeAlsoString[] = "TestVRBoundary";
+    static char seeAlsoString[] = "TestVRBoundary TestVRBoundaryPoint";
 
     int handle, requestVisible;
     ovrBool isVisible;
@@ -825,12 +826,11 @@ PsychError PSYCHOCULUSVR1TestVRBoundary(void)
         "'closestPointxyz' [x;y;z] coordinates of the closest point on the VR area boundary.\n"
         "'surfaceNormal' [nx;ny;nz] surface normal of the VR area boundary surface at 'closestPointxyz'.\n\n"
         "Note that the guardian system must be set up properly for this function to return meaningful results.\n";
-    static char seeAlsoString[] = "VRAreaBoundary";
+    static char seeAlsoString[] = "VRAreaBoundary TestVRBoundaryPoint";
 
     int handle, trackedDeviceType, boundaryType;
     PsychOculusDevice *oculus;
     ovrBoundaryTestResult outTestResult;
-    ovrVector3f point, normal;
     double *xyz;
 
     // All sub functions should have these two lines
@@ -862,6 +862,87 @@ PsychError PSYCHOCULUSVR1TestVRBoundary(void)
                     (boundaryType == 1) ? ovrBoundary_Outer : ovrBoundary_PlayArea,
                     &outTestResult))) {
         PsychErrorExitMsg(PsychError_system, "ovr_TestBoundary() failed.");
+    }
+
+    // Collision detected?
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) ((outTestResult.IsTriggering) ? 1 : 0));
+
+    // Distance to closest point - the one that triggers:
+    PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) outTestResult.ClosestDistance);
+
+    // 3D closest point:
+    PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 3, 1, 1, &xyz);
+    *(xyz++) = (double) outTestResult.ClosestPoint.x;
+    *(xyz++) = (double) outTestResult.ClosestPoint.y;
+    *(xyz++) = (double) outTestResult.ClosestPoint.z;
+
+    // 3D surface normal (nx,ny,nz) of closest point:
+    PsychAllocOutDoubleMatArg(4, kPsychArgOptional, 3, 1, 1, &xyz);
+    *(xyz++) = (double) outTestResult.ClosestPointNormal.x;
+    *(xyz++) = (double) outTestResult.ClosestPointNormal.y;
+    *(xyz++) = (double) outTestResult.ClosestPointNormal.z;
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVR1TestVRBoundaryPoint(void)
+{
+    static char useString[] = "[isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOculusVRCore1('TestVRBoundaryPoint', oculusPtr, pointxyz, boundaryType);";
+    //                          1             2                3                4                                                          1          2         3
+    static char synopsisString[] =
+        "Return if a 3D point is colliding with VR area boundaries associated with Oculus device 'oculusPtr'.\n\n"
+        "'pointxyz' [x,y,z] vector defining the 3D point position to test against the boundaries.\n\n"
+        "'boundaryType' Type of VR area boundary to test against: 0 = Play area, 1 = Outer area.\n\n"
+        "Return values, assuming the specified area is defined:\n"
+        "'isTriggering' The boundary is triggered, ie. the guardian system would show boundaries for given 'pointxyz'.\n"
+        "'closestDistance' Closest distance of point to specified VR area boundary.\n"
+        "'closestPointxyz' [x;y;z] coordinates of the closest point on the VR area boundary.\n"
+        "'surfaceNormal' [nx;ny;nz] surface normal of the VR area boundary surface at 'closestPointxyz'.\n\n"
+        "Note that the guardian system must be set up properly for this function to return meaningful results.\n";
+    static char seeAlsoString[] = "VRAreaBoundary TestVRBoundary";
+
+    int handle, boundaryType;
+    PsychOculusDevice *oculus;
+    ovrBoundaryTestResult outTestResult;
+    ovrVector3f point;
+    int m, n, p;
+    double *xyz;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(4));
+    PsychErrorExit(PsychCapNumInputArgs(3));
+    PsychErrorExit(PsychRequireNumInputArgs(3));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Test point:
+    PsychAllocInDoubleMatArg(2, kPsychArgRequired, &m, &n, &p, &xyz);
+    if (m * n * p != 3)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'pointxyz' provided. Must be a 3D vector [x,y,z].");
+
+    point.x = (float) *(xyz++);
+    point.y = (float) *(xyz++);
+    point.z = (float) *(xyz++);
+
+    // Type of boundary:
+    PsychCopyInIntegerArg(3, kPsychArgRequired, &boundaryType);
+    if (boundaryType < 0 || boundaryType > 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'boundaryType' provided. Must be 0 or 1.");
+
+    // Check for collision:
+    if (OVR_FAILURE(ovr_TestBoundaryPoint(oculus->hmd, (const ovrVector3f*) &point,
+                    (boundaryType == 1) ? ovrBoundary_Outer : ovrBoundary_PlayArea,
+                    &outTestResult))) {
+        PsychErrorExitMsg(PsychError_system, "ovr_TestBoundaryPoint() failed.");
     }
 
     // Collision detected?

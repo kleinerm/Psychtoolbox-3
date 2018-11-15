@@ -138,6 +138,14 @@ while ~KbCheck
             fprintf('VR collision: closestDistance %f m, point [%f,%f,%f], normal [%f,%f,%f]\n', closestDistance, closestPointxyz(1), closestPointxyz(2), ...
                     closestPointxyz(3), surfaceNormal(1), surfaceNormal(2), surfaceNormal(3));
         end
+
+        % Get info about collision of test point with the VR play area boundaries:
+        mypoint = [1, 2, 3];
+        [isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOculusVR1('TestVRBoundaryPoint', hmd, mypoint, 0);
+        if isTriggering
+            fprintf('VR mypoint collision: closestDistance %f m, point [%f,%f,%f], normal [%f,%f,%f]\n', closestDistance, closestPointxyz(1), closestPointxyz(2), ...
+                    closestPointxyz(3), surfaceNormal(1), surfaceNormal(2), surfaceNormal(3));
+        end
     end
 
     if istate.Buttons(OVR.Button_A)

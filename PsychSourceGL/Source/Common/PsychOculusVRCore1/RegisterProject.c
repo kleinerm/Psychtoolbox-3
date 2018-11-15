@@ -48,11 +48,11 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("SetHUDState", &PSYCHOCULUSVR1SetHUDState));
     PsychErrorExit(PsychRegister("VRAreaBoundary", &PSYCHOCULUSVR1VRAreaBoundary));
     PsychErrorExit(PsychRegister("TestVRBoundary", &PSYCHOCULUSVR1TestVRBoundary));
+    PsychErrorExit(PsychRegister("TestVRBoundaryPoint", &PSYCHOCULUSVR1TestVRBoundaryPoint));
     PsychErrorExit(PsychRegister("RecenterTrackingOrigin", &PSYCHOCULUSVR1RecenterTrackingOrigin));
     PsychErrorExit(PsychRegister("TrackingOriginType", &PSYCHOCULUSVR1TrackingOriginType));
     PsychErrorExit(PsychRegister("GetPerformanceStats", &PSYCHOCULUSVR1GetPerformanceStats));
     PsychErrorExit(PsychRegister("HapticPulse", &PSYCHOCULUSVR1HapticPulse));
-    //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
     //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
     //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
     //PsychErrorExit(PsychRegister("", &PSYCHOCULUSVR1));
