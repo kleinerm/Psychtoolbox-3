@@ -165,6 +165,25 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % 'playAreaBounds'.
 %
 %
+% [isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOculusVR1('TestVRBoundary', oculusPtr, trackedDeviceType, boundaryType);
+% - Return if a tracked device of type 'trackedDeviceType' and associated with 'hmd' is
+% colliding with VR area boundaries of 'boundaryType'. This needs the requested devices
+% to be online, and the boundaries set up properly, in order to provide meaningful results.
+%
+% 'trackedDeviceType' is a bit-mask (sum) of the following possible constants:
+% OVR.TrackedDevice_HMD = The HMD headset itself,
+% OVR.TrackedDevice_LTouch = Left touch controller / left hand.
+% OVR.TrackedDevice_RTouch = Right touch controller / right hand.
+% OVR.TrackedDevice_Touch = Any/Both of left and right touch controllers.
+% OVR.TrackedDevice_Object0 - OVR.TrackedDevice_Object3 = Tracked objects 0 - 3.
+% OVR.TrackedDevice_All = All connected tracked devices.
+%
+% 'isTriggering' 1 if collision is imminent, 0 otherwise.
+% 'closestDistance' Distance to closest point on boundary.
+% 'closestPointxyz' [x;y;z] 3D position of closest point on the boundary.
+% 'surfaceNormal' [nx;ny;nz] 3D surface normal of closest point.
+%
+%
 % input = PsychOculusVR1('GetInputState', hmd, controllerType);
 % - Get input state of controller 'controllerType' associated with HMD 'hmd'.
 %
@@ -910,6 +929,16 @@ if strcmpi(cmd, 'HapticPulse')
   return;
 end
 
+if strcmpi(cmd, 'TestVRBoundary')
+  myhmd = varargin{1};
+  if ~PsychOculusVR1('IsOpen', myhmd)
+    error('TestVRBoundary: Passed in handle does not refer to a valid and open HMD.');
+  end
+
+  [varargout{1}, varargout{2}, varargout{3}, varargout{4}] = PsychOculusVRCore1('TestVRBoundary', myhmd.handle, varargin{2:end});
+  return;
+end
+
 if strcmpi(cmd, 'VRAreaBoundary')
   myhmd = varargin{1};
   if ~PsychOculusVR1('IsOpen', myhmd)
@@ -1165,6 +1194,18 @@ if strcmpi(cmd, 'Open')
     OVR.Touch_LThumbUp = 1 + log2(hex2dec('00004000'));
     OVR.Touch_RPoseMask =  [OVR.Touch_RIndexPointing, OVR.Touch_RThumbUp];
     OVR.Touch_LPoseMask = [OVR.Touch_LIndexPointing, OVR.Touch_LThumbUp];
+
+    OVR.TrackedDevice_HMD        = hex2dec('0001');
+    OVR.TrackedDevice_LTouch     = hex2dec('0002');
+    OVR.TrackedDevice_RTouch     = hex2dec('0004');
+    OVR.TrackedDevice_Touch      = OVR.TrackedDevice_LTouch + OVR.TrackedDevice_RTouch;
+
+    OVR.TrackedDevice_Object0    = hex2dec('0010');
+    OVR.TrackedDevice_Object1    = hex2dec('0020');
+    OVR.TrackedDevice_Object2    = hex2dec('0040');
+    OVR.TrackedDevice_Object3    = hex2dec('0080');
+
+    OVR.TrackedDevice_All        = hex2dec('FFFF');
 
     newhmd.OVR = OVR;
     evalin('caller','global OVR');

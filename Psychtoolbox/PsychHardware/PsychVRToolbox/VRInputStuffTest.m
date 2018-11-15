@@ -130,6 +130,16 @@ while ~KbCheck
 
     fprintf('\n');
 
+    % Oculus VR 1.11+ controlled VR setup?
+    if 1
+        % Get info about collisions of tracked devices with the VR play area boundaries:
+        [isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOculusVR1('TestVRBoundary', hmd, OVR.TrackedDevice_All, 0);
+        if isTriggering
+            fprintf('VR collision: closestDistance %f m, point [%f,%f,%f], normal [%f,%f,%f]\n', closestDistance, closestPointxyz(1), closestPointxyz(2), ...
+                    closestPointxyz(3), surfaceNormal(1), surfaceNormal(2), surfaceNormal(3));
+        end
+    end
+
     if istate.Buttons(OVR.Button_A)
         if GetSecs < pulseEnd
             % Pressed A before end of previously initiated pulse. Abort current pulse:

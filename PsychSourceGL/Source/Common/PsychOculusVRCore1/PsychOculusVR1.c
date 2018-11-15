@@ -30,7 +30,7 @@
 
 // Number of maximum simultaneously open VR devices:
 #define MAX_PSYCH_OCULUS_DEVS 10
-#define MAX_SYNOPSIS_STRINGS 40
+#define MAX_SYNOPSIS_STRINGS 50
 
 //declare variables local to this file.
 static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
@@ -87,7 +87,6 @@ void InitializeSynopsis(void)
     synopsis[i++] = "This driver allows to control devices supported by the Oculus runtime V1.11 and higher.\n";
     synopsis[i++] = "The PsychOculusVRCore1 driver is licensed to you under the terms of the MIT license.";
     synopsis[i++] = "See 'help License.txt' in the Psychtoolbox root folder for more details.\n";
-    synopsis[i++] = "\n";
     synopsis[i++] = "The driver requires the Oculus VR runtime version 1.11 or later versions to work.\n";
     synopsis[i++] = "\n";
     synopsis[i++] = "Usage:";
@@ -100,6 +99,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychOculusVRCore1('Close' [, oculusPtr]);";
     synopsis[i++] = "PsychOculusVRCore1('SetHUDState', oculusPtr , mode);";
     synopsis[i++] = "[isVisible, playboundsxyz, outerboundsxyz] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
+    synopsis[i++] = "[isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOculusVRCore1('TestVRBoundary', oculusPtr, trackedDeviceType, boundaryType);";
     synopsis[i++] = "success = PsychOculusVRCore1('RecenterTrackingOrigin', oculusPtr);";
     synopsis[i++] = "oldType = PsychOculusVRCore1('TrackingOriginType', oculusPtr [, newType]);";
     synopsis[i++] = "PsychOculusVRCore1('Start', oculusPtr);";
@@ -735,7 +735,7 @@ PsychError PSYCHOCULUSVR1VRAreaBoundary(void)
         "defines the boundary, as projected onto the floor. Points are listed in clock-wise direction. "
         "An empty return argument means that the play area is so far undefined.\n\n"
         "'outerboundsxyz' defines the outer area boundaries in the same way as 'playboundsxyz'.\n";
-    static char seeAlsoString[] = "";
+    static char seeAlsoString[] = "TestVRBoundary";
 
     int handle, requestVisible;
     ovrBool isVisible;
@@ -806,6 +806,81 @@ PsychError PSYCHOCULUSVR1VRAreaBoundary(void)
         *(xyz++) = (double) outFloorPoints[i].y;
         *(xyz++) = (double) outFloorPoints[i].z;
     }
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVR1TestVRBoundary(void)
+{
+    static char useString[] = "[isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOculusVRCore1('TestVRBoundary', oculusPtr, trackedDeviceType, boundaryType);";
+    //                          1             2                3                4                                                     1          2                  3
+    static char synopsisString[] =
+        "Return if a tracked device associated with Oculus device 'oculusPtr' is colliding with VR area boundaries.\n\n"
+        "'trackedDeviceType' Bitmask of tracked devices to check for collision. See OVR.TrackedDeviceType_XXX constants.\n\n"
+        "'boundaryType' Type of VR area boundary to test against: 0 = Play area, 1 = Outer area.\n\n"
+        "Return values, assuming the specified device and areas are active and/or defined:\n"
+        "'isTriggering' The boundary is triggered, ie. the guardian system shows boundaries to the subject, "
+        "because one of the tracked devices is close enough to a VR area boundary.\n"
+        "'closestDistance' Closest distance to specified VR area boundary.\n"
+        "'closestPointxyz' [x;y;z] coordinates of the closest point on the VR area boundary.\n"
+        "'surfaceNormal' [nx;ny;nz] surface normal of the VR area boundary surface at 'closestPointxyz'.\n\n"
+        "Note that the guardian system must be set up properly for this function to return meaningful results.\n";
+    static char seeAlsoString[] = "VRAreaBoundary";
+
+    int handle, trackedDeviceType, boundaryType;
+    PsychOculusDevice *oculus;
+    ovrBoundaryTestResult outTestResult;
+    ovrVector3f point, normal;
+    double *xyz;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(4));
+    PsychErrorExit(PsychCapNumInputArgs(3));
+    PsychErrorExit(PsychRequireNumInputArgs(3));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Type of device:
+    PsychCopyInIntegerArg(2, kPsychArgRequired, &trackedDeviceType);
+
+    // Type of boundary:
+    PsychCopyInIntegerArg(3, kPsychArgRequired, &boundaryType);
+    if (boundaryType < 0 || boundaryType > 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'boundaryType' provided. Must be 0 or 1.");
+
+    // Check for collision:
+    if (OVR_FAILURE(ovr_TestBoundary(oculus->hmd, (ovrTrackedDeviceType) trackedDeviceType,
+                    (boundaryType == 1) ? ovrBoundary_Outer : ovrBoundary_PlayArea,
+                    &outTestResult))) {
+        PsychErrorExitMsg(PsychError_system, "ovr_TestBoundary() failed.");
+    }
+
+    // Collision detected?
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) ((outTestResult.IsTriggering) ? 1 : 0));
+
+    // Distance to closest point - the one that triggers:
+    PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) outTestResult.ClosestDistance);
+
+    // 3D closest point:
+    PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 3, 1, 1, &xyz);
+    *(xyz++) = (double) outTestResult.ClosestPoint.x;
+    *(xyz++) = (double) outTestResult.ClosestPoint.y;
+    *(xyz++) = (double) outTestResult.ClosestPoint.z;
+
+    // 3D surface normal (nx,ny,nz) of closest point:
+    PsychAllocOutDoubleMatArg(4, kPsychArgOptional, 3, 1, 1, &xyz);
+    *(xyz++) = (double) outTestResult.ClosestPointNormal.x;
+    *(xyz++) = (double) outTestResult.ClosestPointNormal.y;
+    *(xyz++) = (double) outTestResult.ClosestPointNormal.z;
 
     return(PsychError_none);
 }
