@@ -97,7 +97,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:\n";
     synopsis[i++] = "\n";
     synopsis[i++] = "[width, height, fovPort] = PsychOculusVRCore1('GetFovTextureSize', oculusPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
-    synopsis[i++] = "[width, height] = PsychOculusVRCore1('CreateRenderTextureChain', oculusPtr, eye, width, height);";
+    synopsis[i++] = "[width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', oculusPtr, eye, width, height);";
     synopsis[i++] = "texObjectHandle = PsychOculusVRCore1('GetNextTextureHandle', oculusPtr, eye);";
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz] = PsychOculusVRCore1('GetUndistortionParameters', oculusPtr, eye [, inputWidth][, inputHeight][, fov]);";
     synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore1('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
@@ -975,8 +975,8 @@ PsychError PSYCHOCULUSVR1GetFovTextureSize(void)
 
 PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
 {
-    static char useString[] = "[width, height] = PsychOculusVRCore1('CreateRenderTextureChain', oculusPtr, eye, width, height);";
-    //                          1      2                                                        1          2    3      4
+    static char useString[] = "[width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', oculusPtr, eye, width, height);";
+    //                          1      2       3                                                             1          2    3      4
     static char synopsisString[] =
     "Create texture present chains for Oculus device 'oculusPtr'.\n"
     "'eye' Eye for which chain should get created: 0 = Left/Mono, 1 = Right.\n"
@@ -988,13 +988,14 @@ PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
     "'width' and 'height' are the width x height of the texture into which Psychtoolbox "
     "Screen() image processing pipeline will render the output image of an eye for submission "
     "to the VR compositor. Left and right eye must use identical 'width' and 'height'.\n"
+    "'numTextures' returns the total number of compositor textures in the swap chain.\n"
     "\n"
     "Return values are 'width' for selected width of output texture in pixels and "
     "'height' for height of output texture in pixels.\n";
     static char seeAlsoString[] = "GetNextTextureHandle";
 
     int handle, eyeIndex;
-    int width, height;
+    int width, height, out_Length;
     PsychOculusDevice *oculus;
     ovrTextureSwapChainDesc chainDesc;
 
@@ -1003,7 +1004,7 @@ PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(4));
     PsychErrorExit(PsychRequireNumInputArgs(4));
 
@@ -1060,11 +1061,10 @@ PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
         oculus->isStereo = TRUE;
     }
 
-    if (verbosity > 3) {
-        int out_Length;
-        ovr_GetTextureSwapChainLength(oculus->hmd, oculus->textureSwapChain[eyeIndex], &out_Length);
+    ovr_GetTextureSwapChainLength(oculus->hmd, oculus->textureSwapChain[eyeIndex], &out_Length);
+
+    if (verbosity > 3)
         printf("PsychOculusVRCore1-INFO: Allocated texture swap chain has %i buffers.\n", out_Length);
-    }
 
     // Assign total texture buffer width/height for the frame submission later on:
     oculus->textureWidth = chainDesc.Width;
@@ -1073,6 +1073,9 @@ PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
     // Return recommended width and height of drawBuffer:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, chainDesc.Width);
     PsychCopyOutDoubleArg(2, kPsychArgOptional, chainDesc.Height);
+
+    // Return number of textures in swap chain:
+    PsychCopyOutDoubleArg(3, kPsychArgOptional, out_Length);
 
     return(PsychError_none);
 }
