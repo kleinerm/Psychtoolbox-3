@@ -35,6 +35,7 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("Stop", &PSYCHOCULUSVR1Stop));
     PsychErrorExit(PsychRegister("GetCount", &PSYCHOCULUSVR1GetCount));
     PsychErrorExit(PsychRegister("GetTrackingState", &PSYCHOCULUSVR1GetTrackingState));
+    PsychErrorExit(PsychRegister("GetInputState", &PSYCHOCULUSVR1GetInputState));
     PsychErrorExit(PsychRegister("GetFovTextureSize", &PSYCHOCULUSVR1GetFovTextureSize));
     PsychErrorExit(PsychRegister("GetUndistortionParameters", &PSYCHOCULUSVR1GetUndistortionParameters));
     PsychErrorExit(PsychRegister("GetTrackersState", &PSYCHOCULUSVR1GetTrackersState));

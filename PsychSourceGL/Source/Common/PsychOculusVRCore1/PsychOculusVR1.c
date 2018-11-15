@@ -105,6 +105,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychOculusVRCore1('Start', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore1('Stop', oculusPtr);";
     synopsis[i++] = "[state, touch] = PsychOculusVRCore1('GetTrackingState', oculusPtr [, predictionTime=nextFrame]);";
+    synopsis[i++] = "input = PsychOculusVRCore1('GetInputState', oculusPtr, controllerType);";
     synopsis[i++] = "[projL, projR] = PsychOculusVRCore1('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOculusVRCore1('StartRender', oculusPtr);";
     synopsis[i++] = "[eyePose, eyeIndex] = PsychOculusVRCore1('GetEyePose', oculusPtr, renderPass);";
@@ -895,7 +896,7 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
         "'HandAngularAcceleration' = Hand angular acceleration [rax,ray,raz] in radians/sec^2.\n"
         "\n";
 
-    static char seeAlsoString[] = "Start Stop GetTrackersState";
+    static char seeAlsoString[] = "Start Stop GetTrackersState GetInputState";
 
     PsychGenericScriptType *status;
     const char *FieldNames1[] = {"Time", "Status", "SessionState", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed",
@@ -1111,6 +1112,90 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
         v[2] = state.HandPoses[i].AngularAcceleration.z;
         PsychSetStructArrayNativeElement("HandAngularAcceleration", i, outMat, status);
     }
+    return(PsychError_none);
+}
+
+PsychError PSYCHOCULUSVR1GetInputState(void)
+{
+    static char useString[] = "input = PsychOculusVRCore1('GetInputState', oculusPtr, controllerType);";
+    //                         1                                           1          2
+    static char synopsisString[] =
+        "Return current state of input device 'controllerType' associated with Oculus device 'oculusPtr'.\n\n"
+        "'controllerType' can be one of the follwing values:\n"
+        "1  = Left touch controller (Left tracked hand)\n"
+        "2  = Right touch controller (Right tracked hand)\n"
+        "4  = Oculus remote control.\n"
+        "16 = XBox controller.\n"
+        "intmax('uint32') = Whatever controller is connected and active.\n"
+        "\n"
+        "'input' is a struct with fields reporting the following status values of the controller:\n"
+        "'Time' = Time in seconds when controller state was last updated.\n"
+        "'Buttons' = Vector with each positions value corresponding to a specifc button being pressed (1) "
+        "or released (0). The ovrButton_XXX constants map button names to vector indices (like KbName() "
+        "does for KbCheck()).\n"
+        "'Touches' = Vector with touch values as described by the ovrTouch_XXX constants. Works like 'Buttons'.\n"
+        "\n";
+
+    static char seeAlsoString[] = "Start Stop GetTrackedState GetTrackersState";
+
+    PsychGenericScriptType *status;
+    const char *FieldNames[] = { "Time", "Buttons", "Touches" };
+    const int FieldCount = 3;
+
+    PsychGenericScriptType *outMat;
+    double *v;
+    int handle, controllerType, i;
+    double controllerTypeD;
+    PsychOculusDevice *oculus;
+    ovrInputState state;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+
+    // Make sure driver is initialized:
+    PsychOculusVRCheckInit(FALSE);
+
+    // Device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    oculus = PsychGetOculus(handle, FALSE);
+
+    // Controller type:
+    PsychCopyInDoubleArg(2, kPsychArgRequired, &controllerTypeD);
+    controllerType = (unsigned int) controllerTypeD;
+
+    if (OVR_FAILURE(ovr_GetInputState(oculus->hmd, (ovrControllerType) (unsigned int) controllerType, &state))) {
+        ovr_GetLastErrorInfo(&errorInfo);
+        if (verbosity > 0)
+            printf("PsychOculusVRCore1-ERROR: ovr_GetInputState() for controller 0x%lx failed: %s\n",
+                   (unsigned long) controllerType, errorInfo.ErrorString);
+        PsychErrorExitMsg(PsychError_system, "Failed to get some controller input status.");
+    }
+
+    PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &status);
+
+    // Controller update time:
+    PsychSetStructArrayDoubleElement("Time", 0, state.TimeInSeconds, status);
+
+    // Button states:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 32, 1, &v, &outMat);
+    for (i = 0; i < 32; i++)
+        v[i] = (state.Buttons & (1 << i)) ? 1 : 0;
+    PsychSetStructArrayNativeElement("Buttons", 0, outMat, status);
+
+    // Touch states:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 32, 1, &v, &outMat);
+    for (i = 0; i < 32; i++)
+        v[i] = (state.Touches & (1 << i)) ? 1 : 0;
+    PsychSetStructArrayNativeElement("Touches", 0, outMat, status);
+
     return(PsychError_none);
 }
 
@@ -1951,7 +2036,7 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
 
         if (result == ovrSuccess_NotVisible) {
             // Submitted frame does not display - a no-op submit:
-            if (verbosity > 1)
+            if (verbosity > 3)
                 printf("PsychOculusVRCore1:WARNING: Frame %i not presented to HMD. HMD removed from subjects head? [Time %f]\n",
                        oculus->frameIndex, tPredictedOnset);
         }

@@ -136,6 +136,16 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % installed.
 %
 %
+% input = PsychOculusVR1('GetInputState', hmd, controllerType);
+% - Get input state of controller 'controllerType' associated with HMD 'hmd'.
+% 'input' is a struct with fields describing the state of buttons and other input
+% elements of the specified 'controllerType'. It has the following fields:
+% 'Time' Time of last input state change of controller.
+% 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
+% vector returned by KbCheck() for regular keyboards. Each position in the vector
+% reports pressed (1) or released (0) state of a specific button.
+% 'Touches' Like 'Buttons' but for touch buttons.
+%
 % state = PsychOculusVR1('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
 % - Mark the start of the rendering cycle for a new 3D rendered stereoframe.
 % Return a struct 'state' which contains various useful bits of information
@@ -803,6 +813,22 @@ if strcmpi(cmd, 'GetTrackersState')
   end
 
   varargout{1} = PsychOculusVRCore1('GetTrackersState', myhmd.handle);
+
+  return;
+end
+
+if strcmpi(cmd, 'GetInputState')
+  % Get and validate handle - fast path open coded:
+  myhmd = varargin{1};
+  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
+    error('PsychOculusVR1:GetInputState: Specified handle does not correspond to an open HMD!');
+  end
+
+  if length(varargin) < 2 || isempty(varargin{2})
+    error('PsychOculusVR1:GetInputState: Required ''controllerType'' argument missing.');
+  end
+
+  varargout{1} = PsychOculusVRCore1('GetInputState', myhmd.handle, double(varargin{2}));
 
   return;
 end

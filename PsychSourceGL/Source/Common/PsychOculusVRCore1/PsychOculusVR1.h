@@ -43,6 +43,7 @@ PsychError PSYCHOCULUSVR1Start(void);
 PsychError PSYCHOCULUSVR1Stop(void);
 PsychError PSYCHOCULUSVR1GetCount(void);
 PsychError PSYCHOCULUSVR1GetTrackingState(void);
+PsychError PSYCHOCULUSVR1GetInputState(void);
 PsychError PSYCHOCULUSVR1GetFovTextureSize(void);
 PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void);
 PsychError PSYCHOCULUSVR1GetNextTextureHandle(void);
