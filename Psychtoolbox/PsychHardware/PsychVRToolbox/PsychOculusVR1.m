@@ -960,39 +960,32 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   clearcolor = varargin{3};
 
   % Compute effective size of per-eye input buffer for undistortion render.
-  % The input buffers for undistortion are the finalizedDrawbufferFBO's.
+  % The input buffers for undistortion are the finalizedDrawbufferFBO's, ie.
+  % the final output buffers of Psychtoolbox imaging pipeline.
   % This means [inputWidth, inputHeight] == [rbwidth, rbheight].
   hmd{handle}.inputWidth = hmd{handle}.rbwidth;
   hmd{handle}.inputHeight = hmd{handle}.rbheight;
 
   % Query undistortion parameters for left eye view:
-%  TODO [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVL, meshIL, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore1('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
-%  hmd{handle}.viewportLeft = [vx, vy, vw, vh];
-%  hmd{handle}.PixelsPerTanAngleAtCenterLeft = [ptx, pty];
-%  hmd{handle}.HmdToEyeViewOffsetLeft = -1 * [hsx, hsy, hsz];
-%  hmd{handle}.meshVerticesLeft = meshVL;
-%  hmd{handle}.meshIndicesLeft = meshIL;
-%  hmd{handle}.uvScaleLeft = uvScale;
-%  hmd{handle}.uvOffsetLeft = uvOffset;
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz] = PsychOculusVRCore1('GetUndistortionParameters', handle, 0, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
+  hmd{handle}.viewportLeft = [vx, vy, vw, vh];
+  hmd{handle}.PixelsPerTanAngleAtCenterLeft = [ptx, pty];
+  hmd{handle}.HmdToEyeViewOffsetLeft = -1 * [hsx, hsy, hsz];
 
   % Query parameters for right eye view:
-%  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz, meshVR, meshIR, uvScale(1), uvScale(2), uvOffset(1), uvOffset(2)] = PsychOculusVRCore1('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
-%  hmd{handle}.viewportRight = [vx, vy, vw, vh];
-%  hmd{handle}.PixelsPerTanAngleAtCenterRight = [ptx, pty];
-%  hmd{handle}.HmdToEyeViewOffsetRight = -1 * [hsx, hsy, hsz];
-%  hmd{handle}.meshVerticesRight = meshVR;
-%  hmd{handle}.meshIndicesRight = meshIR;
-%  hmd{handle}.uvScaleRight = uvScale;
-%  hmd{handle}.uvOffsetRight = uvOffset;
+  [hmd{handle}.rbwidth, hmd{handle}.rbheight, vx, vy, vw, vh, ptx, pty, hsx, hsy, hsz] = PsychOculusVRCore1('GetUndistortionParameters', handle, 1, hmd{handle}.inputWidth, hmd{handle}.inputHeight, hmd{handle}.fov);
+  hmd{handle}.viewportRight = [vx, vy, vw, vh];
+  hmd{handle}.PixelsPerTanAngleAtCenterRight = [ptx, pty];
+  hmd{handle}.HmdToEyeViewOffsetRight = -1 * [hsx, hsy, hsz];
 
   % Convert head to eye shift vectors into 4x4 matrices, as we'll need
   % them frequently:
   EyeT = diag([1 1 1 1]);
-%  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetLeft';
+  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetLeft';
   hmd{handle}.eyeShiftMatrix{1} = EyeT;
 
   EyeT = diag([1 1 1 1]);
-%  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetRight';
+  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetRight';
   hmd{handle}.eyeShiftMatrix{2} = EyeT;
 
   % Create texture swap chains to provide textures to be used for frame submission
