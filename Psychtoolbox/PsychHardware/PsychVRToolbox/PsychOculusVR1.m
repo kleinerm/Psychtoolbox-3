@@ -36,7 +36,12 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % in some kind of 3D virtual world. This is the default if omitted. The task
 % 'Stereoscopic' sets up for display of stereoscopic stimuli, but without
 % head tracking. 'Monoscopic' sets up for display of monocular stimuli, ie.
-% the HMD is just used as a special kind of standard display monitor.
+% the HMD is just used as a special kind of standard display monitor. In 'Monoscopic'
+% and 'Stereoscopic' mode, both eyes will be presented with an identical field of view,
+% to make sure pure 2D drawing works, without the need for setup of special per-eye
+% projection transformations. In 'Tracked3DVR' mode, each eye will have a different
+% field of view, optimized to maximize the viewable area while still avoiding occlusion
+% artifacts due to the nose of the wearer of the HMD.
 %
 % 'basicRequirements' defines basic requirements for the task. Currently
 % defined are the following strings which can be combined into a single
@@ -58,6 +63,12 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % requested from Psychtoolbox and the compositor, ie., a roughly gamma 2.2 8 bpc
 % format is used, which is optimized for the gamma response curve of at least the Oculus
 % Rift CV1 display.
+%
+% 'PerEyeFOV' = Request use of per eye individual and asymmetric fields of view even
+% when the 'basicTask' was selected to be 'Monoscopic' or 'Stereoscopic'. This allows
+% for wider field of view in these tasks, but requires the usercode to adapt to these
+% different and asymmetric fields of view for each eye, e.g., by selecting proper 3D
+% projection matrices for each eye.
 %
 % 'TimingSupport' = Support some hardware specific means of timestamping
 % or latency measurements. On the Rift DK1 this does nothing. On the DK2
@@ -1008,6 +1019,35 @@ if strcmpi(cmd, 'SetupRenderingParameters')
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
   [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovR] = PsychOculusVRCore1('GetFovTextureSize', myhmd.handle, 1, varargin{5:end});
+
+  % If the basic task is not a 3D VR rendering one (with or without HMD tracking),
+  % and the special requirement 'PerEyeFOV' is not set, then assume usercode wants
+  % to do pure 2D rendering (monocular, or stereoscopic), e.g., with the Screen()
+  % 2D drawing commands, and doesn't set up per-eye projection and modelview matrices.
+  % In this case we must use a field of view that is identical for both eyes, and
+  % both vertically and horizontally symmetric, ie. no special treatment of the nose
+  % facing field of view! Why? Because standard 2D mono/stereo drawing code doesn't
+  % know about/can't use per eye view projection matrices, which are needed for proper
+  % results for asymmetric per-eye FOV. It would cause weird shifts in display on the
+  % HMD. This effect is almost imperceptible/negligible on the Rift DK1/DK2, but very
+  % disturbing on the Rift CV1.
+  if isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR')) && ...
+     isempty(strfind(hmd{myhmd.handle}.basicTask, '3DVR')) && ...
+     isempty(strfind(hmd{myhmd.handle}.basicRequirements, 'PerEyeFOV'))
+    % Need identical, symmetric FOV for both eyes. Build one that has the same
+    % vertical FOV as proposed by the runtime, but horizontally uses the minimal
+    % left/right FOV extension of both per-eye FOV's, so we get a symmetric FOV
+    % identical for both eyes, guaranteed to lie within the view cone not occluded
+    % by the nose of the user.
+    fov(1) = min(hmd{myhmd.handle}.fovL(1), hmd{myhmd.handle}.fovR(1));
+    fov(2) = min(hmd{myhmd.handle}.fovL(2), hmd{myhmd.handle}.fovR(2));
+    fov(3) = min(hmd{myhmd.handle}.fovL(3), hmd{myhmd.handle}.fovR(3));
+    fov(4) = min(hmd{myhmd.handle}.fovL(4), hmd{myhmd.handle}.fovR(4));
+
+    % Recompute parameters based on override fov:
+    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovL] = PsychOculusVRCore1('GetFovTextureSize', myhmd.handle, 0, fov, varargin{6:end});
+    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovR] = PsychOculusVRCore1('GetFovTextureSize', myhmd.handle, 1, fov, varargin{6:end});
+  end
 
   % Debug display of HMD output into onscreen window requested?
   if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel)
