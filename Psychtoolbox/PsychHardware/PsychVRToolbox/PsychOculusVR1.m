@@ -732,7 +732,12 @@ end
 if strcmpi(cmd, 'IsHMDOutput')
   myhmd = varargin{1}; %#ok<NASGU>
   scanout = varargin{2};
-  warning('IsHMDOutput called - IMPLEMENT!!');
+
+  % This does not make much sense on the OculusVR 1.0 version, as that runtime
+  % only supports direct output mode, ie. an output completely separate from the
+  % regular desktop and windowing system display space. But lets leave the legacy
+  % code for the DK2 in place.
+
   % Is this a Rift DK2 panel?
   if (scanout.width == 1080) && (scanout.height == 1920)
     varargout{1} = 1;
