@@ -225,11 +225,6 @@ function varargout = PsychOculusVR1(cmd, varargin)
 %                            is invalid and can not be used in any meaningful way.
 %      state.handStatus(2) = Tracking status of right hand.
 %
-%      state.handPose(1) = Left hand pose as [tx,ty,tz,rx,ry,rz,rw] vector with position
-%                          in meters in [tx,ty,tz] and orientation in radians as a quaternion
-%                          in [rx,ry,rz,rw].
-%      state.handPose(2) = Same for right hand pose.
-%
 %      state.localHandPoseMatrix{1} = 4x4 OpenGL right handed reference frame matrix with
 %                                     hand position and orientation encoded to define a
 %                                     proper GL_MODELVIEW transform for rendering stuff
@@ -244,7 +239,7 @@ function varargout = PsychOculusVR1(cmd, varargin)
 %                                             testing/grasping of virtual objects relative to
 %                                             hand pose of left hand.
 %      state.globalHandPoseInverseMatrix{2} = Ditto for right hand.
-
+%
 % More flags to follow...
 %
 %
