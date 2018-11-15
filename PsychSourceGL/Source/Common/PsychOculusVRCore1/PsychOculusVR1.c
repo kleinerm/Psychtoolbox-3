@@ -501,10 +501,14 @@ PsychError PSYCHOCULUSVR1Open(void)
         printf("PsychOculusVRCore1-INFO: Product: %s - Manufacturer: %s - SerialNo: %s [VID: 0x%x PID: 0x%x]\n",
                oculus->hmdDesc.ProductName, oculus->hmdDesc.Manufacturer, oculus->hmdDesc.SerialNumber, (int) oculus->hmdDesc.VendorId, (int) oculus->hmdDesc.ProductId);
         printf("PsychOculusVRCore1-INFO: Firmware version: %i.%i\n", (int) oculus->hmdDesc.FirmwareMajor, (int) oculus->hmdDesc.FirmwareMinor);
-        //TODO printf("PsychOculusVRCore1-INFO: CameraFrustumHFovInRadians: %f - CameraFrustumVFovInRadians: %f\n", oculus->hmdDesc.CameraFrustumHFovInRadians, oculus->hmdDesc.CameraFrustumVFovInRadians);
         //TODO printf("PsychOculusVRCore1-INFO: CameraFrustumNearZInMeters: %f - CameraFrustumFarZInMeters:  %f\n", oculus->hmd->CameraFrustumNearZInMeters, oculus->hmd->CameraFrustumFarZInMeters);
         printf("PsychOculusVRCore1-INFO: Panel size in pixels w x h = %i x %i - Refresh rate = %f fps\n", oculus->hmdDesc.Resolution.w, oculus->hmdDesc.Resolution.h, oculus->hmdDesc.DisplayRefreshRate);
         printf("PsychOculusVRCore1-INFO: Caps: Debug device=%i\n", (oldCaps & ovrHmdCap_DebugDevice) ? 1 : 0);
+        printf("PsychOculusVRCore1-INFO: Fields of view (Fov): [left, right, up, down] in degrees follow:\n");
+        printf("PsychOculusVRCore1-INFO: Max Left eye Fov:     [%f, %f, %f, %f]\n", rad2deg(oculus->hmdDesc.MaxEyeFov[0].LeftTan), rad2deg(oculus->hmdDesc.MaxEyeFov[0].RightTan), rad2deg(oculus->hmdDesc.MaxEyeFov[0].UpTan), rad2deg(oculus->hmdDesc.MaxEyeFov[0].DownTan));
+        printf("PsychOculusVRCore1-INFO: Max Right eye Fov:    [%f, %f, %f, %f]\n", rad2deg(oculus->hmdDesc.MaxEyeFov[1].LeftTan), rad2deg(oculus->hmdDesc.MaxEyeFov[1].RightTan), rad2deg(oculus->hmdDesc.MaxEyeFov[1].UpTan), rad2deg(oculus->hmdDesc.MaxEyeFov[1].DownTan));
+        printf("PsychOculusVRCore1-INFO: Def Left eye Fov:     [%f, %f, %f, %f]\n", rad2deg(oculus->hmdDesc.DefaultEyeFov[0].LeftTan), rad2deg(oculus->hmdDesc.DefaultEyeFov[0].RightTan), rad2deg(oculus->hmdDesc.DefaultEyeFov[0].UpTan), rad2deg(oculus->hmdDesc.DefaultEyeFov[0].DownTan));
+        printf("PsychOculusVRCore1-INFO: Def Right eye Fov:    [%f, %f, %f, %f]\n", rad2deg(oculus->hmdDesc.DefaultEyeFov[1].LeftTan), rad2deg(oculus->hmdDesc.DefaultEyeFov[1].RightTan), rad2deg(oculus->hmdDesc.DefaultEyeFov[1].UpTan), rad2deg(oculus->hmdDesc.DefaultEyeFov[1].DownTan));
         printf("PsychOculusVRCore1-INFO: ----------------------------------------------------------------------------------\n");
     }
 
@@ -1410,14 +1414,6 @@ PsychError PSYCHOCULUSVR1GetUndistortionParameters(void)
 
     // Get eye render description for this eye:
     oculus->eyeRenderDesc[eyeIndex] = ovr_GetRenderDesc(oculus->hmd, (ovrEyeType) eyeIndex, oculus->ofov[eyeIndex]);
-
-    // Override viewport size with the provided input texture size, as ovr_GetRenderDesc() makes the
-    // assumption that we render to a half-width viewport of the input renderbuffer, when we actually
-    // use 2 separate input renderbuffers of appropriate size:
-    oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Pos.x = 0;
-    oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Pos.y = 0;
-    oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.w = oculus->texSize[eyeIndex].w;
-    oculus->eyeRenderDesc[eyeIndex].DistortedViewport.Size.h = oculus->texSize[eyeIndex].h;
 
     if (verbosity > 3) {
         printf("PsychOculusVRCore1-INFO: For HMD %i, eye %i - RenderDescription:\n", handle, eyeIndex);
