@@ -955,6 +955,10 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     oldShieldingLevel = [];
   end
 
+  % Set override window parameters with pixel size (color depth) and refresh
+  % interval in seconds as provided by the VR runtime:
+  Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, hmd{handle}.videoRefreshDuration);
+
   % Need to know user selected clearcolor:
   clearcolor = varargin{3};
 
