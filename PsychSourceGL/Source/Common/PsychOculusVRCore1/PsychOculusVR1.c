@@ -110,7 +110,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz] = PsychOculusVRCore1('GetUndistortionParameters', oculusPtr, eye [, inputWidth][, inputHeight][, fov]);";
     synopsis[i++] = "[eyeRotStartMatrix, eyeRotEndMatrix] = PsychOculusVRCore1('GetEyeTimewarpMatrices', oculusPtr, eye [, waitForTimewarpPoint=0]);";
     synopsis[i++] = "PsychOculusVRCore1('EndFrameRender', oculusPtr, targetPresentTime);";
-    synopsis[i++] = "[frameTiming, tPredictedOnset] = PsychOculusVRCore1('PresentFrame', oculusPtr);";
+    synopsis[i++] = "[frameTiming, tPredictedOnset] = PsychOculusVRCore1('PresentFrame', oculusPtr [, doTimestamp=0]);";
     synopsis[i++] = "result = PsychOculusVRCore1('LatencyTester', oculusPtr, cmd);";
     synopsis[i++] = NULL;  //this tells PsychOculusVRDisplaySynopsis where to stop
 
@@ -1850,8 +1850,8 @@ static void* PresenterThreadMain(void* psychOculusDeviceToCast)
 
 PsychError PSYCHOCULUSVR1PresentFrame(void)
 {
-    static char useString[] = "[frameTiming, tPredictedOnset] = PsychOculusVRCore1('PresentFrame', oculusPtr);";
-    //                          1            2                                                     1
+    static char useString[] = "[frameTiming, tPredictedOnset] = PsychOculusVRCore1('PresentFrame', oculusPtr [, doTimestamp=0]);";
+    //                          1            2                                                     1            2
     static char synopsisString[] =
     "Present last rendered frame to Oculus HMD device 'oculusPtr'.\n\n"
     "This will commit the current set of 2D textures with new rendered content "
@@ -1862,6 +1862,8 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     "will call it automatically for you at the appropriate moment.\n\n"
     "Returns a 'frameTiming' struct with information about the presentation "
     "timing for this presentation cycle.\n\n"
+    "'doTimestamp' If set to 1, perform timestamping of stimulus onset on the HMD, "
+    "or at least try to estimate such onset time. If set to 0, do nothing timestamping-wise.\n\n"
     "'frameTiming' is an array of structs, where each struct contains presentation "
     "timing and performance info for one presented frame, with the most recently "
     "presented frame in frameTiming(1), older ones at higher indices if the script "
@@ -1889,6 +1891,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     const int FieldCount = 9;
 
     int handle, i, rc;
+    int doTimestamp = 0;
     double tNow, tHMD, tStimOnset, tVBL, tDeadline, tPredictedOnset;
     PsychOculusDevice *oculus;
     ovrPerfStats perfStats;
@@ -1899,7 +1902,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
 
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(2));
-    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
@@ -1908,6 +1911,9 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
+
+    // Get optional timestamping flag:
+    PsychCopyInIntegerArg(2, kPsychArgOptional, &doTimestamp);
 
     // Execute the present operation with the presenterThread locked out.
     // Invalidate any scheduledPresentExecTime after such a Present:
@@ -1929,61 +1935,58 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
         }
     }
 
-    // Retrieve performance stats, mostly for our timestamping:
-    tDeadline = ovr_GetTimeInSeconds() + 0.005;
-    do {
-        if (OVR_FAILURE(ovr_GetPerfStats(oculus->hmd, &perfStats))) {
-            ovr_GetLastErrorInfo(&errorInfo);
-            if (verbosity > 0)
-                printf("PsychOculusVRCore1-ERROR: ovr_GetPerfStats() failed: %s\n", errorInfo.ErrorString);
-            PsychErrorExitMsg(PsychError_system, "Failed to get performance and timing info from VR compositor.");
+    if (doTimestamp) {
+        // Retrieve performance stats, mostly for our timestamping:
+        tDeadline = ovr_GetTimeInSeconds() + 0.005;
+        do {
+            if (OVR_FAILURE(ovr_GetPerfStats(oculus->hmd, &perfStats))) {
+                ovr_GetLastErrorInfo(&errorInfo);
+                if (verbosity > 0)
+                    printf("PsychOculusVRCore1-ERROR: ovr_GetPerfStats() failed: %s\n", errorInfo.ErrorString);
+                PsychErrorExitMsg(PsychError_system, "Failed to get performance and timing info from VR compositor.");
+            }
+        } while ((oculus->frameIndex > 0) && (perfStats.FrameStatsCount < 1) && (ovr_GetTimeInSeconds() < tDeadline));
+
+        if (verbosity > 3) {
+            printf("\nPsychOculusVRCore1: DEBUG: FrameStatsCount=%i, AnyFrameStatsDropped=%i\n", perfStats.FrameStatsCount,
+                   (int) perfStats.AnyFrameStatsDropped);
         }
-    } while ((oculus->frameIndex > 0) && (perfStats.FrameStatsCount < 1) && (ovr_GetTimeInSeconds() < tDeadline));
 
-    if (verbosity > 3) {
-        printf("\nPsychOculusVRCore1: DEBUG: FrameStatsCount=%i, AnyFrameStatsDropped=%i\n", perfStats.FrameStatsCount,
-               (int) perfStats.AnyFrameStatsDropped);
-    }
+        if (perfStats.FrameStatsCount > 0) {
+            PsychAllocOutStructArray(1, kPsychArgOptional, perfStats.FrameStatsCount, FieldCount, FieldNames, &frameT);
+            for (i = 0; i < perfStats.FrameStatsCount; i++) {
+                // HMD Vsync counter:
+                PsychSetStructArrayDoubleElement("HmdVsyncIndex", i, perfStats.FrameStats[i].HmdVsyncIndex, frameT);
 
-    if (perfStats.FrameStatsCount > 0) {
-        PsychAllocOutStructArray(1, kPsychArgOptional, perfStats.FrameStatsCount, FieldCount, FieldNames, &frameT);
-        for (i = 0; i < perfStats.FrameStatsCount; i++) {
-            // HMD Vsync counter:
-            PsychSetStructArrayDoubleElement("HmdVsyncIndex", i, perfStats.FrameStats[i].HmdVsyncIndex, frameT);
+                // Our sbc counter:
+                PsychSetStructArrayDoubleElement("AppFrameIndex", i, perfStats.FrameStats[i].AppFrameIndex, frameT);
 
-            // Our sbc counter:
-            PsychSetStructArrayDoubleElement("AppFrameIndex", i, perfStats.FrameStats[i].AppFrameIndex, frameT);
+                // Clock-Sync PTB timebase vs. Oculus timebase:
+                PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+                tHMD = ovr_GetTimeInSeconds();
+                PsychSetStructArrayDoubleElement("HMDTime", i, tHMD, frameT);
+                PsychSetStructArrayDoubleElement("GetSecsTime", i, tNow, frameT);
 
-            // Clock-Sync PTB timebase vs. Oculus timebase:
-            PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-            tHMD = ovr_GetTimeInSeconds();
-            PsychSetStructArrayDoubleElement("HMDTime", i, tHMD, frameT);
-            PsychSetStructArrayDoubleElement("GetSecsTime", i, tNow, frameT);
+                // Time between oculus->sensorSampleTime and visual onset (video frame midpoint of scanout):
+                PsychSetStructArrayDoubleElement("AppMotionToPhotonLatency", i, perfStats.FrameStats[i].AppMotionToPhotonLatency, frameT);
+                PsychSetStructArrayDoubleElement("RecentSensorSampleTime", i, oculus->sensorSampleTime, frameT);
 
-            // Time between oculus->sensorSampleTime and visual onset (video frame midpoint of scanout):
-            PsychSetStructArrayDoubleElement("AppMotionToPhotonLatency", i, perfStats.FrameStats[i].AppMotionToPhotonLatency, frameT);
-            PsychSetStructArrayDoubleElement("RecentSensorSampleTime", i, oculus->sensorSampleTime, frameT);
+                // Compute absolute stimulus onset (mid-point), remap to PTB GetSecs time:
+                tStimOnset = (tNow - tHMD)  + oculus->sensorSampleTime + perfStats.FrameStats[i].AppMotionToPhotonLatency;
+                PsychSetStructArrayDoubleElement("StimulusOnsetTime", i, tStimOnset, frameT);
 
-            // Compute absolute stimulus onset (mid-point), remap to PTB GetSecs time:
-            tStimOnset = (tNow - tHMD)  + oculus->sensorSampleTime + perfStats.FrameStats[i].AppMotionToPhotonLatency;
-            PsychSetStructArrayDoubleElement("StimulusOnsetTime", i, tStimOnset, frameT);
+                // Compute virtual start of VBLANK time as stimulus onset - half a HMD video refresh duration:
+                tVBL = tStimOnset - 0.5 * (1.0 / oculus->hmdDesc.DisplayRefreshRate);
+                PsychSetStructArrayDoubleElement("VBlankTime", i, tVBL, frameT);
 
-            // Compute virtual start of VBLANK time as stimulus onset - half a HMD video refresh duration:
-            tVBL = tStimOnset - 0.5 * (1.0 / oculus->hmdDesc.DisplayRefreshRate);
-            PsychSetStructArrayDoubleElement("VBlankTime", i, tVBL, frameT);
-
-            // Queue ahead for application. Citation from the v 1.11 SDK docs:
-            // "Amount of queue-ahead in seconds provided to the app based on performance and overlap of CPU & GPU utilization
-            // A value of 0.0 would mean the CPU & GPU workload is being completed in 1 frame's worth of time, while
-            // 11 ms (on the CV1) of queue ahead would indicate that the app's CPU workload for the next frame is
-            // overlapping the app's GPU workload for the current frame."
-            PsychSetStructArrayDoubleElement("AppQueueAheadTime", i, perfStats.FrameStats[i].AppQueueAheadTime, frameT);
+                // Queue ahead for application. Citation from the v 1.11 SDK docs:
+                // "Amount of queue-ahead in seconds provided to the app based on performance and overlap of CPU & GPU utilization
+                // A value of 0.0 would mean the CPU & GPU workload is being completed in 1 frame's worth of time, while
+                // 11 ms (on the CV1) of queue ahead would indicate that the app's CPU workload for the next frame is
+                // overlapping the app's GPU workload for the current frame."
+                PsychSetStructArrayDoubleElement("AppQueueAheadTime", i, perfStats.FrameStats[i].AppQueueAheadTime, frameT);
+            }
         }
-    }
-
-    // Copy out predicted onset time for the just emitted frame:
-    tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * (1.0 / oculus->hmdDesc.DisplayRefreshRate);
-    PsychCopyOutDoubleArg(2, kPsychArgOptional, tPredictedOnset);
 
     oculus->frameIndex++;
 
