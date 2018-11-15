@@ -203,15 +203,23 @@ void PsychOculusStop(int handle)
     PsychOculusDevice* oculus;
     oculus = PsychGetOculus(handle, TRUE);
     if (NULL == oculus || !oculus->isTracking) return;
-/* TODO
-    // Request stop of tracking:
-    if (!ovrHmd_ConfigureTracking(oculus->hmd, 0, 0)) {
-        if (verbosity >= 0) printf("PsychOculusVRCore1-ERROR: Failed to stop tracking on device with handle %i [%s].\n", handle, ovrHmd_GetLastError(oculus->hmd));
-        PsychErrorExitMsg(PsychError_system, "Stop of Oculus HMD tracking failed for reason given above.");
-    }
-    else if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Tracking stopped on device with handle %i.\n", handle);
-*/
+
+    if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Tracking stopped on device with handle %i.\n", handle);
+
+    // Mark tracking as stopped:
     oculus->isTracking = FALSE;
+
+    // Initialize eye poses to an identity mapping, where both eyes
+    // just stare straight ahead from the origin. All values need to
+    // be zero - provided by memset zero init below - except
+    // for the w component of the Orientation quaternion.
+    // This provides proper head-locking of frames submitted to the VR
+    // compositor if rendering without head tracking is in use, e.g., for
+    // standard 2D stereo rendering, movie playback etc., or for (ab)use
+    // of the HMD as a "strapped onto the head" mono- or stereo-monitor:
+    memset(oculus->outEyePoses, 0, 2 * sizeof(oculus->outEyePoses[0]));
+    oculus->outEyePoses[0].Orientation.w = 1;
+    oculus->outEyePoses[1].Orientation.w = 1;
 
     return;
 }
@@ -433,6 +441,17 @@ PsychError PSYCHOCULUSVR1Open(void)
         printf("PsychOculusVRCore1-INFO: ----------------------------------------------------------------------------------\n");
     }
 
+    // Initialize eye poses to an identity mapping, where both eyes
+    // just stare straight ahead from the origin. All values need to
+    // be zero - provided by zero init of the oculus struct - except
+    // for the w component of the Orientation quaternion.
+    // This provides proper head-locking of frames submitted to the VR
+    // compositor if rendering without head tracking is in use, e.g., for
+    // standard 2D stereo rendering, movie playback etc., or for (ab)use
+    // of the HMD as a "strapped onto the head" mono- or stereo-monitor:
+    oculus->outEyePoses[0].Orientation.w = 1;
+    oculus->outEyePoses[1].Orientation.w = 1;
+
     // Increment count of open devices:
     devicecount++;
 
@@ -610,6 +629,7 @@ PsychError PSYCHOCULUSVR1Start(void)
         if (verbosity >= 0) printf("PsychOculusVRCore1-ERROR: Tried to start tracking on device %i, but tracking is already started.\n", handle);
         PsychErrorExitMsg(PsychError_user, "Tried to start tracking on HMD, but tracking already active.");
     }
+
 /* TODO REMOVE
     // Request start of tracking for retrieval of head orientation and position, with drift correction, e.g., via magnetometer.
     // Do not fail if retrieval of any of this information isn't supported by the given hardware, ie., the required set of caps is empty == 0.
@@ -1470,6 +1490,11 @@ PsychError PSYCHOCULUSVR1EndFrameTiming(void)
 
     layer0.Header.Type = ovrLayerType_EyeFov;
     layer0.Header.Flags = ovrLayerFlag_HighQuality | ovrLayerFlag_TextureOriginAtBottomLeft;
+
+    // Use head locked layer if head tracking is disabled, so our frames stay in a fixed
+    // position wrt. the HMD - the HMD simply acts as a strapped on mono- or stereo monitor:
+    layer0.Header.Flags |= ((!oculus->isTracking) ? ovrLayerFlag_HeadLocked : 0);
+
     layer0.ColorTexture[0] = oculus->textureSwapChain[0];
     layer0.ColorTexture[1] = (oculus->isStereo) ? oculus->textureSwapChain[1] : NULL;
     layer0.Viewport[0].Pos.x = 0;

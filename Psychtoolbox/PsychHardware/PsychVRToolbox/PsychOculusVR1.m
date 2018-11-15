@@ -361,10 +361,6 @@ if cmd == 1
   % are ready for submission to the VR compositor:
   [oldL, oldR] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
 
-  state = PsychOculusVRCore1('GetTrackingState', hmd{handle}.handle);
-
-  % Ready for Screen internal Flip completion, timestamping etc.:
-  %fprintf('PRESENT %f\n', GetSecs);
   return;
 end
 
