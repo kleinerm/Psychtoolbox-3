@@ -341,6 +341,20 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % pipeline.
 %
 %
+% needPanelFitter = PsychOculusVR1('GetPanelFitterParameters', hmd);
+% - 'needPanelFitter' is 1 if a custom panel fitter tasks is needed, and 'bufferSize'
+% from the PsychVRHMD('GetClientRenderingParameters', hmd); defines the size of the
+% clientRect for the onscreen window. 'needPanelFitter' is 0 if no panel fitter is
+% needed.
+%
+%
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% - Compute special override parameters for given input/output arguments, as needed
+% for a specific HMD. Take other preparatory steps as needed, immediately before the
+% Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
+% with the user provided hmd, screenid, winRect etc.
+%
+%
 % isOutput = PsychOculusVR1('IsHMDOutput', hmd, scanout);
 % - Returns 1 (true) if 'scanout' describes the video output to which the
 % HMD 'hmd' is connected. 'scanout' is a struct returned by the Screen
@@ -1047,6 +1061,52 @@ if strcmpi(cmd, 'GetClientRenderingParameters')
 
   varargout{2} = imagingMode;
   varargout{3} = stereoMode;
+  return;
+end
+
+if strcmpi(cmd, 'GetPanelFitterParameters')
+  % We don't need custom PanelFitter task for the v1.0+ Oculus SDK/Runtime:
+  varargout{1} = 0;
+  return;
+end
+
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+if strcmpi(cmd, 'OpenWindowSetup')
+  myhmd = varargin{1};
+  screenid = varargin{2};
+  winRect = varargin{3};
+  ovrfbOverrideRect = varargin{4};
+  ovrSpecialFlags = varargin{5};
+
+  % The current design iteration requires the PTB parent onscreen windows
+  % effective backbuffer (from the pov of the imaging pipeline) to have the
+  % same size (width x height) as the renderbuffer for one eye, so enforce
+  % that constraint by setting ovrfbOverrideRect accordingly.
+
+  % Get required output buffer size:
+  clientRes = myhmd.driver('GetClientRenderingParameters', myhmd);
+
+  % Set as fbOverrideRect for window:
+  ovrfbOverrideRect = [0, 0, clientRes(1), clientRes(2)];
+
+  fprintf('PsychOculusVR1-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with VR-HMD direct output mode.\n', ...
+          clientRes(1), clientRes(2));
+
+  % As the onscreen window is not used for displaying on the HMD, but
+  % either not at all, or just for debug output, make it a regular GUI
+  % window, managed by the window manager, so user can easily get it out
+  % of the way:
+  ovrSpecialFlags = mor(ovrSpecialFlags, kPsychGUIWindow + kPsychGUIWindowWMPositioned);
+
+  % Skip all visual timing sync tests and calibrations, as display timing
+  % of the onscreen window doesn't matter, only the timing on the HMD direct
+  % output matters - and that can't be measured by our standard procedures:
+  Screen('Preference', 'SkipSyncTests', 2);
+
+  varargout{1} = winRect;
+  varargout{2} = ovrfbOverrideRect;
+  varargout{3} = ovrSpecialFlags;
+
   return;
 end
 
