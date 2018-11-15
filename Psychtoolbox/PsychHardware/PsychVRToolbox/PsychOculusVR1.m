@@ -582,10 +582,13 @@ if strcmpi(cmd, 'PrepareRender')
 
   % Mark start of a new frame render cycle for the runtime and get the data
   % predicted for next scanout time:
-  [eyePose{1}, eyePose{2}, tracked] = PsychOculusVRCore1('StartRender', myhmd.handle);
+  [eyePose{1}, eyePose{2}] = PsychOculusVRCore1('StartRender', myhmd.handle);
+
+  % Get predicted head pose, tracking state and hand poses (if supported) for targetTime:
+  state = PsychOculusVRCore1('GetTrackingState', myhmd.handle, targetTime);
 
   % Always return basic tracking status:
-  result.tracked = tracked;
+  result.tracked = state.Status;
 
   % As a bonus we return the raw eye pose vectors, given that we have them anyway:
   result.rawEyePose7{1} = eyePose{1};
@@ -593,11 +596,8 @@ if strcmpi(cmd, 'PrepareRender')
 
   % Want matrices which take a usercode supplied global transformation into account?
   if bitand(reqmask, 1)
-    % Yes: We need tracked + predicted head pose, so we can apply the user transform,
-    % and then per-eye transforms:
-
-    % Get predicted head pose for targetTime:
-    state = PsychOculusVRCore1('GetTrackingState', myhmd.handle, targetTime);
+    % Yes: We need tracked + predicted head pose, so we can apply the user
+    % transform, and then per-eye transforms:
 
     % Bonus feature: HeadPose as 7 component translation + orientation quaternion vector:
     result.headPose = state.HeadPose;

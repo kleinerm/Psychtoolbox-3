@@ -7,12 +7,12 @@
  *
  * mario.kleiner.de@gmail.com   mk
  *
- * PLATFORMS:   All.
+ * PLATFORMS:   All which are supported by the Oculus SDK/Runtime V 1.11+
  *
  * DESCRIPTION:
  *
  * A Psychtoolbox driver for the Oculus VR virtual reality
- * head sets, using the OculusVR 1.0 SDK and runtime and later.
+ * head sets, using the OculusVR 1.11 SDK and runtime and later.
  *
  */
 
@@ -501,7 +501,6 @@ PsychError PSYCHOCULUSVR1Open(void)
         printf("PsychOculusVRCore1-INFO: Product: %s - Manufacturer: %s - SerialNo: %s [VID: 0x%x PID: 0x%x]\n",
                oculus->hmdDesc.ProductName, oculus->hmdDesc.Manufacturer, oculus->hmdDesc.SerialNumber, (int) oculus->hmdDesc.VendorId, (int) oculus->hmdDesc.ProductId);
         printf("PsychOculusVRCore1-INFO: Firmware version: %i.%i\n", (int) oculus->hmdDesc.FirmwareMajor, (int) oculus->hmdDesc.FirmwareMinor);
-        //TODO printf("PsychOculusVRCore1-INFO: CameraFrustumNearZInMeters: %f - CameraFrustumFarZInMeters:  %f\n", oculus->hmd->CameraFrustumNearZInMeters, oculus->hmd->CameraFrustumFarZInMeters);
         printf("PsychOculusVRCore1-INFO: Panel size in pixels w x h = %i x %i - Refresh rate = %f fps\n", oculus->hmdDesc.Resolution.w, oculus->hmdDesc.Resolution.h, oculus->hmdDesc.DisplayRefreshRate);
         printf("PsychOculusVRCore1-INFO: Caps: Debug device=%i\n", (oldCaps & ovrHmdCap_DebugDevice) ? 1 : 0);
         printf("PsychOculusVRCore1-INFO: Fields of view (Fov): [left, right, up, down] in degrees follow:\n");
@@ -786,42 +785,41 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
         "based on the latest measurements from the tracking hardware. If 'predictionTime' is set to zero, "
         "then no prediction is performed and the current state based on latest measurements is returned.\n"
         "If 'predictionTime' is omitted, then the prediction is performed for the mid-point of the next "
-        "possible video frame of the HMD, ie. the most likely presentation time for rendered images.\n\n"
+        "possible video frame of the HMD, ie. the most likely presentation time for immediately rendered images.\n\n"
         "'state' is a struct with fields reporting the following values:\n"
-        "'Time' = Time in seconds of predicted tracking state.\n"
-        "'Status' = Tracking status flags. +1 = Head orientation tracked, +2 = Head position tracked, +4 = Camera pose tracked "
-        "+32 = Position tracking hardware connected, +128 = HMD display is connected and available.\n"
+        "'Time' = Time in seconds of returned tracking state.\n"
+        "'Status' = Tracking status flags:\n"
+        "+1 = Head orientation tracked,\n"
+        "+2 = Head position tracked,\n"
+        "+4 = At least one active tracking camera has a valid pose for absolute tracking,\n"
+        "+32 = At least one tracking camera is connected and online,\n"
+// TODO        "+128 = HMD display is connected and available.\n\n"
         "'HeadPose' = Head position [x, y, z] in meters and rotation as quaternion [rx, ry, rz, rw], all as a vector [x,y,z,rx,ry,rz,rw].\n"
-        "'HeadLinearSpeed' = Linear velocity [vx,vy,vz] in meters/sec.\n"
-        "'HeadAngularSpeed' = Angular velocity [rx,ry,rz] in radians/sec.\n"
-        "'HeadLinearAcceleration' = Linear acceleration [ax,ay,az] in meters/sec^2.\n"
-        "'HeadAngularAcceleration' = Angular acceleration [rax,ray,raz] in radians/sec^2.\n"
-        "'CameraPose' as vector with position and orientation quaternion, like 'HeadPose'.\n"
-        "'LeveledCameraPose' Like 'CameraPose' but aligned to the gravity vector of the world.\n"
-        "'CameraFrustumHVFov' Horizontal and vertical field of view of the tracking camera in radians.\n"
-        "'CameraFrustumNearFarZInMeters' Near and far limit of the camera view frustum in meters.\n"
-        "'LastCameraFrameCounter' Last camera framecounter value of tracking camera.\n"
-        "'RawSensorAcceleration' = Raw measured accelerometer reading in m/sec^2.\n"
-        "'RawSensorGyroRate' = Raw gyrometer reading in rad/s.\n"
-        "'RawMagnetometer' = Raw magnetic field in gauss.\n"
-        "'SensorTemperature' = Sensor temperature in degrees Celsius.\n"
-        "'IMUReadoutTime' = Readout time of the last IMU sample in seconds.\n"
+        "'HeadLinearSpeed' = Head linear velocity [vx,vy,vz] in meters/sec.\n"
+        "'HeadAngularSpeed' = Head angular velocity [rx,ry,rz] in radians/sec.\n"
+        "'HeadLinearAcceleration' = Head linear acceleration [ax,ay,az] in meters/sec^2.\n"
+        "'HeadAngularAcceleration' = Head angular acceleration [rax,ray,raz] in radians/sec^2.\n"
+        "'CalibratedOrigin' = The pose of the world coordinate system origin during last calibration. "
+        "Units and format are like 'HeadPose' ie. a vector [x,y,z,rx,ry,rz,rw].\n"
         "\n";
 
     static char seeAlsoString[] = "Start Stop";
 
     PsychGenericScriptType *status;
-    const char *FieldNames[] = {"Time", "Status", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed", "HeadLinearAcceleration", "HeadAngularAcceleration",
-                                "CameraPose", "LeveledCameraPose", "LastCameraFrameCounter", "RawSensorAcceleration", "RawSensorGyroRate", "RawMagnetometer",
-                                "SensorTemperature", "IMUReadoutTime", "CameraFrustumHVFov", "CameraFrustumNearFarZInMeters"};
-    const int FieldCount = 17;
+    const char *FieldNames[] = {"Time", "Status", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed", "HeadLinearAcceleration",
+                                "HeadAngularAcceleration", "CalibratedOrigin"
+                                };
+    const int FieldCount = 8;
     PsychGenericScriptType *outMat;
     double *v;
-    int handle;
+    int handle, trackerCount, i;
     double predictionTime;
+    int StatusFlags = 0;
     PsychOculusDevice *oculus;
     ovrTrackingState state;
     ovrVector3f HmdToEyeOffset[2];
+    ovrTrackerPose trackerPose;
+    ovrTrackerDesc trackerDesc;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -867,7 +865,18 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &status);
 
     PsychSetStructArrayDoubleElement("Time", 0, state.HeadPose.TimeInSeconds, status);
-    PsychSetStructArrayDoubleElement("Status", 0, state.StatusFlags, status);
+
+    StatusFlags = state.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked);
+
+    // At least one tracker connected?
+    trackerCount = ovr_GetTrackerCount(oculus->hmd);
+    for (i = 0; i < trackerCount; i++) {
+        trackerPose = ovr_GetTrackerPose(oculus->hmd, i);
+        StatusFlags |= trackerPose.TrackerFlags & (ovrTracker_Connected | ovrTracker_PoseTracked);
+    }
+
+    // Return head and general tracking status flags:
+    PsychSetStructArrayDoubleElement("Status", 0, StatusFlags, status);
 
     // Head pose:
     v = NULL;
@@ -914,82 +923,19 @@ PsychError PSYCHOCULUSVR1GetTrackingState(void)
     v[2] = state.HeadPose.AngularAcceleration.z;
     PsychSetStructArrayNativeElement("HeadAngularAcceleration", 0, outMat, status);
 
-/* TODOREMOVE
-    // Camera pose:
+    // CalibratedOrigin:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-    v[0] = state.CameraPose.Position.x;
-    v[1] = state.CameraPose.Position.y;
-    v[2] = state.CameraPose.Position.z;
+    v[0] = state.CalibratedOrigin.Position.x;
+    v[1] = state.CalibratedOrigin.Position.y;
+    v[2] = state.CalibratedOrigin.Position.z;
 
-    v[3] = state.CameraPose.Orientation.x;
-    v[4] = state.CameraPose.Orientation.y;
-    v[5] = state.CameraPose.Orientation.z;
-    v[6] = state.CameraPose.Orientation.w;
-    PsychSetStructArrayNativeElement("CameraPose", 0, outMat, status);
+    v[3] = state.CalibratedOrigin.Orientation.x;
+    v[4] = state.CalibratedOrigin.Orientation.y;
+    v[5] = state.CalibratedOrigin.Orientation.z;
+    v[6] = state.CalibratedOrigin.Orientation.w;
+    PsychSetStructArrayNativeElement("CalibratedOrigin", 0, outMat, status);
 
-    // Camera leveled pose:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-    v[0] = state.LeveledCameraPose.Position.x;
-    v[1] = state.LeveledCameraPose.Position.y;
-    v[2] = state.LeveledCameraPose.Position.z;
-
-    v[3] = state.LeveledCameraPose.Orientation.x;
-    v[4] = state.LeveledCameraPose.Orientation.y;
-    v[5] = state.LeveledCameraPose.Orientation.z;
-    v[6] = state.LeveledCameraPose.Orientation.w;
-    PsychSetStructArrayNativeElement("LeveledCameraPose", 0, outMat, status);
-
-    // LastCameraFrameCounter:
-    PsychSetStructArrayDoubleElement("LastCameraFrameCounter", 0, (double) state.LastCameraFrameCounter, status);
-
-    // RawSensorAcceleration:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.RawSensorData.Accelerometer.x;
-    v[1] = state.RawSensorData.Accelerometer.y;
-    v[2] = state.RawSensorData.Accelerometer.z;
-    PsychSetStructArrayNativeElement("RawSensorAcceleration", 0, outMat, status);
-
-    // RawSensorGyroRate:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.RawSensorData.Gyro.x;
-    v[1] = state.RawSensorData.Gyro.y;
-    v[2] = state.RawSensorData.Gyro.z;
-    PsychSetStructArrayNativeElement("RawSensorGyroRate", 0, outMat, status);
-
-    // RawMagnetometer:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.RawSensorData.Magnetometer.x;
-    v[1] = state.RawSensorData.Magnetometer.y;
-    v[2] = state.RawSensorData.Magnetometer.z;
-    PsychSetStructArrayNativeElement("RawMagnetometer", 0, outMat, status);
-
-    // SensorTemperature:
-    PsychSetStructArrayDoubleElement("SensorTemperature", 0, (double) state.RawSensorData.Temperature, status);
-
-    // IMU readout time:
-    PsychSetStructArrayDoubleElement("IMUReadoutTime", 0, (double) state.RawSensorData.TimeInSeconds, status);
-*/
-
-/* TODO
-    // Camera frustum HFov and VFov in radians:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
-    v[0] = oculus->hmd->CameraFrustumHFovInRadians;
-    v[1] = oculus->hmd->CameraFrustumVFovInRadians;
-    PsychSetStructArrayNativeElement("CameraFrustumHVFov", 0, outMat, status);
-
-    // Camera frustum near and far clip plane in meters:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
-    v[0] = oculus->hmd->CameraFrustumNearZInMeters;
-    v[1] = oculus->hmd->CameraFrustumFarZInMeters;
-    PsychSetStructArrayNativeElement("CameraFrustumNearFarZInMeters", 0, outMat, status);
-*/
     return(PsychError_none);
 }
 
@@ -1490,7 +1436,7 @@ PsychError PSYCHOCULUSVR1GetEyeTimewarpMatrices(void)
 PsychError PSYCHOCULUSVR1GetStaticRenderParameters(void)
 {
     static char useString[] = "[projL, projR] = PsychOculusVRCore1('GetStaticRenderParameters', oculusPtr [, clipNear=0.01][, clipFar=10000.0]);";
-    //                          1      2                                                       1            2                3
+    //                          1      2                                                        1            2                3
     static char synopsisString[] =
     "Retrieve static rendering parameters for Oculus device 'oculusPtr' at current settings.\n"
     "'clipNear' Optional near clipping plane for OpenGL. Defaults to 0.01.\n"
@@ -1552,33 +1498,20 @@ PsychError PSYCHOCULUSVR1GetStaticRenderParameters(void)
 
 PsychError PSYCHOCULUSVR1StartRender(void)
 {
-    static char useString[] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOculusVRCore1('StartRender', oculusPtr);";
-    //                          1         2         3        4                                               1
+    static char useString[] = "[eyePoseL, eyePoseR] = PsychOculusVRCore1('StartRender', oculusPtr);";
+    //                          1         2                                             1
     static char synopsisString[] =
     "Mark start of a new 3D head tracked render cycle for Oculus device 'oculusPtr'.\n"
     "Return values are the vectors which define the two eye cameras positions and orientations "
     "for the left eye and right eye 'eyePoseL' and 'eyePoseR'. The vectors are of form "
     "[tx, ty, tz, rx, ry, rz, rw] - A 3 component 3D position followed by a 4 component rotation "
     "quaternion.\n"
-    "'tracked' Tracking status flags: 0 = Head not tracked at the moment. 1 = Head orientation tracked. "
-    "2 = Head position tracked (DK2 and later). 3 = Head position and orientation tracked (DK2 and later). "
-    "4 = Camera pose tracked, 7 = 1+2+4 = Camera pose and Head position and orientation tracked.\n"
-    "\n"
-    "'frameTiming' Vector with predicted timing information for this frame with following elements:\n"
-    "[1] = DeltaSeconds since last frame.\n"
-    "[2] = ThisFrameSeconds start of scanout of this frame.\n"
-    "[3] = TimewarpPointSeconds\n"
-    "[4] = NextFrameSeconds\n"
-    "[5] = ScanoutMidpointSeconds\n"
-    "[6] = EyeScanoutSeconds[0]\n"
-    "[7] = EyeScanoutSeconds[1]\n"
     "\n";
-    static char seeAlsoString[] = "GetEyePose EndFrameRender";
+    static char seeAlsoString[] = "GetEyePose GetTrackingState EndFrameRender";
 
     int handle;
     PsychOculusDevice *oculus;
-    ovrTrackingState os;
-    ovrVector3f hmdToEyeViewOffset[2];
+    ovrVector3f HmdToEyeOffset[2];
     double *outM;
 
     // All sub functions should have these two lines
@@ -1586,7 +1519,7 @@ PsychError PSYCHOCULUSVR1StartRender(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(6));
+    PsychErrorExit(PsychCapNumOutputArgs(2));
     PsychErrorExit(PsychCapNumInputArgs(1));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -1596,15 +1529,14 @@ PsychError PSYCHOCULUSVR1StartRender(void)
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
-/*
-    // Mark beginning of frame rendering. This takes timstamps and stuff:
-    oculus->frameTiming = ovrHmd_BeginFrameTiming(oculus->hmd, oculus->frameIndex);
 
     // Get current eye poses for both eyes:
-    hmdToEyeViewOffset[0] = oculus->eyeRenderDesc[0].HmdToEyeViewOffset;
-    hmdToEyeViewOffset[1] = oculus->eyeRenderDesc[1].HmdToEyeViewOffset;
-    ovrHmd_GetEyePoses(oculus->hmd, oculus->frameIndex, hmdToEyeViewOffset,
-                       oculus->outEyePoses, &os);
+    HmdToEyeOffset[0] = oculus->eyeRenderDesc[0].HmdToEyeOffset;
+    HmdToEyeOffset[1] = oculus->eyeRenderDesc[1].HmdToEyeOffset;
+
+    PsychLockMutex(&(oculus->presenterLock));
+    ovr_GetEyePoses(oculus->hmd, 0, FALSE, HmdToEyeOffset, oculus->outEyePoses, &oculus->sensorSampleTime);
+    PsychUnlockMutex(&(oculus->presenterLock));
 
     // Left eye pose as raw data:
     PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 7, 1, &outM);
@@ -1634,20 +1566,6 @@ PsychError PSYCHOCULUSVR1StartRender(void)
     outM[5] = oculus->outEyePoses[1].Orientation.z;
     outM[6] = oculus->outEyePoses[1].Orientation.w;
 
-    // Report tracking state of head orientation, head position and camera pose:
-    PsychCopyOutDoubleArg(3, kPsychArgOptional, (double)
-                          (os.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked | ovrStatus_CameraPoseTracked)));
-
-    // Report frame timing info:
-    PsychAllocOutDoubleMatArg(4, kPsychArgOptional, 1, 7, 1, &outM);
-    outM[0] = oculus->frameTiming.DeltaSeconds;
-    outM[1] = oculus->frameTiming.ThisFrameSeconds;
-    outM[2] = oculus->frameTiming.TimewarpPointSeconds;
-    outM[3] = oculus->frameTiming.NextFrameSeconds;
-    outM[4] = oculus->frameTiming.ScanoutMidpointSeconds;
-    outM[5] = oculus->frameTiming.EyeScanoutSeconds[0];
-    outM[6] = oculus->frameTiming.EyeScanoutSeconds[1];
-*/
     return(PsychError_none);
 }
 
@@ -2099,7 +2017,7 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
 PsychError PSYCHOCULUSVR1GetEyePose(void)
 {
     static char useString[] = "[eyePose, eyeIndex] = PsychOculusVRCore1('GetEyePose', oculusPtr, renderPass);";
-    //                          1        2                                           1          2
+    //                          1        2                                            1          2
     static char synopsisString[] =
     "Return current predicted pose vector for an eye for Oculus device 'oculusPtr'.\n"
     "'renderPass' is the view render pass for which to provide the data: 0 = First pass, 1 = Second pass.\n"
