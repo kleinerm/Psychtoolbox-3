@@ -355,7 +355,9 @@ if cmd == 1
 
   % Execute VR Present: Submit just unbound textures, start render/warp/presentation
   % on HMD at next possible point in time:
-  PsychOculusVRCore1('EndFrameTiming', hmd{handle}.handle);
+  t1 = GetSecs;
+  PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle);
+  t2 = GetSecs;
 
   % Get next set of backing textures for next Screen() post-flip drawing/render cycle
   % from the OculusVR texture swap chains:
@@ -365,10 +367,15 @@ if cmd == 1
   else
       texRight = [];
   end
+  t3 = GetSecs;
 
   % Attach them as new backing textures, detach the previously bound ones, so they
   % are ready for submission to the VR compositor:
   [oldL, oldR] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+  t4 = GetSecs;
+
+  PsychOculusVRCore1('PresentFrame', hmd{handle}.handle);
+  t5 = GetSecs;
 
   % Debug output from mirror texture requested?
   mirrorTex = hmd{handle}.mirrorTexture;
@@ -402,10 +409,14 @@ if cmd == 1
   else
     Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
   end
+  t6 = GetSecs;
 
   % Disable presentation in onscreen window and associated throttling and standard Flip timestamping:
   Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs);
+  t7 = GetSecs;
 
+  fprintf('Commit: %f ms, GetNext %f ms, SetNext %f ms, Present %f ms, Mirror %f ms, SetRes %f ms\n', ...
+          1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3), 1000 * (t5 - t4), 1000 * (t6 - t5), 1000 * (t7 - t6));
   return;
 end
 
@@ -1043,7 +1054,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     % Execute VR Present: Submit just unbound textures, start render/warp/presentation
     % on HMD at next possible point in time:
-    PsychOculusVRCore1('EndFrameTiming', hmd{handle}.handle);
+    PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle);
+    PsychOculusVRCore1('PresentFrame', hmd{handle}.handle);
   end
   clear clearvalues;
 
