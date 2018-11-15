@@ -104,7 +104,7 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % all HMDs will be closed and the driver will be shutdown.
 %
 %
-% PsychOculusVR1('GetConnectedControllers', hmd);
+% PsychOculusVR1('Controllers', hmd);
 % - Return a bitmask of all connected controllers: Can be the bitand
 % of the OVR.ControllerType_XXX flags described in 'GetInputState'.
 % This does not detect if controllers are hot-plugged or unplugged after
@@ -1308,10 +1308,10 @@ if strcmpi(cmd, 'Open')
   return;
 end
 
-if strcmpi(cmd, 'GetConnectedControllers')
+if strcmpi(cmd, 'Controllers')
   myhmd = varargin{1};
   if ~PsychOculusVR1('IsOpen', myhmd)
-    error('GetConnectedControllers: Passed in handle does not refer to a valid and open HMD.');
+    error('Controllers: Passed in handle does not refer to a valid and open HMD.');
   end
 
   varargout{1} = myhmd.controllerTypes;
