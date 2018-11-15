@@ -54,7 +54,7 @@ PsychError PSYCHOCULUSVR1StartRender(void);
 PsychError PSYCHOCULUSVR1EndFrameRender(void);
 PsychError PSYCHOCULUSVR1PresentFrame(void);
 PsychError PSYCHOCULUSVR1GetEyePose(void);
-PsychError PSYCHOCULUSVR1SetLowPersistence(void);
+PsychError PSYCHOCULUSVR1VRAreaBoundary(void);
 PsychError PSYCHOCULUSVR1SetDynamicPrediction(void);
 PsychError PSYCHOCULUSVR1LatencyTester(void);
 

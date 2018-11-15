@@ -98,7 +98,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz] = PsychOculusVRCore1('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOculusVRCore1('Close' [, oculusPtr]);";
     synopsis[i++] = "PsychOculusVRCore1('SetHUDState', oculusPtr , mode);";
-    synopsis[i++] = "oldPersistence = PsychOculusVRCore1('SetLowPersistence', oculusPtr [, lowPersistence]);";
+    synopsis[i++] = "[isVisible] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
     synopsis[i++] = "oldDynamicPrediction = PsychOculusVRCore1('SetDynamicPrediction', oculusPtr [, dynamicPrediction]);";
     synopsis[i++] = "PsychOculusVRCore1('Start', oculusPtr);";
     synopsis[i++] = "PsychOculusVRCore1('Stop', oculusPtr);";
@@ -623,23 +623,21 @@ PsychError PSYCHOCULUSVR1SetDynamicPrediction(void)
     return(PsychError_none);
 }
 
-PsychError PSYCHOCULUSVR1SetLowPersistence(void)
+PsychError PSYCHOCULUSVR1VRAreaBoundary(void)
 {
-    static char useString[] = "oldPersistence = PsychOculusVRCore1('SetLowPersistence', oculusPtr [, lowPersistence]);";
-    //                                                                                 1            2
+    static char useString[] = "[isVisible] = PsychOculusVRCore1('VRAreaBoundary', oculusPtr [, requestVisible]);";
+    //                                                                 1            2
     static char synopsisString[] =
-        "Enable or disable low persistence mode on display panel of Oculus device 'oculusPtr'.\n"
-        "'lowPersistence' 1 = Enable low persistence, 0 = Disable low persistence.\n"
-        "In low persistence mode, the pixels will only light up for a fraction of a video "
-        "refresh duration, thereby reducing motion blur due to smooth pursuit eye movements "
-        "or other shuttering effects. Brightness of the display will be reduced though, and "
-        "flicker sensitive people may perceive more flicker.\n"
-        "Returns previous 'oldPersistence' setting.\n";
+        "Request visualization of the VR play area boundary for Oculus device 'oculusPtr'.\n"
+        "'requestVisible' 1 = Request showing the boundary area markers, 0 = Don't request the markers.\n"
+        "The driver can not prevent the boundaries to be visualized if some external setting asks for "
+        "their visibility. It can cancel its own request for visibility though via 'requestVisible' setting 0.\n\n"
+        "Returns 'isVisible' the current visibility status of the VR area boundaries.\n";
     static char seeAlsoString[] = "";
 
-    int handle, lowPersistence;
+    int handle, requestVisible;
+    ovrBool isVisible;
     PsychOculusDevice *oculus;
-    unsigned int oldCaps;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -656,17 +654,18 @@ PsychError PSYCHOCULUSVR1SetLowPersistence(void)
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     oculus = PsychGetOculus(handle, FALSE);
-/* TODO REMOVE
-    // Query current enabled caps:
-    oldCaps = ovrHmd_GetEnabledCaps(oculus->hmd);
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (oldCaps & ovrHmdCap_LowPersistence) ? 1 : 0);
 
-    // Set new enabled HMD caps:
-    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &lowPersistence)) {
-        oldCaps &= ~ovrHmdCap_LowPersistence;
-        ovrHmd_SetEnabledCaps(oculus->hmd, oldCaps | ((lowPersistence > 0) ? ovrHmdCap_LowPersistence : 0));
+    // Get optional 'requestVisible' flag:
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &requestVisible)) {
+        if (OVR_FAILURE(ovr_RequestBoundaryVisible(oculus->hmd, (requestVisible) ? TRUE : FALSE)))
+            PsychErrorExitMsg(PsychError_system, "Failed to set request for visibility of VR boundary area.");
     }
-*/
+
+    // Copy out current visibility status:
+    if (OVR_FAILURE(ovr_GetBoundaryVisible(oculus->hmd, &isVisible)) && (verbosity > 0))
+        printf("PsychOculusVRCore1-ERROR:VRAreaBoundary: Could not query VR area boundary visibility status! Results is undefined.\n");
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) isVisible);
+
     return(PsychError_none);
 }
 
