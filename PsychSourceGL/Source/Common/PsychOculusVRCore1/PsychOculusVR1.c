@@ -194,6 +194,8 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
     // Initialize Oculus VR runtime with default parameters:
     result = ovr_Initialize(&iparms);
     if (OVR_SUCCESS(result)) {
+        ovrDetectResult dresult;
+
         if (verbosity >= 3) printf("PsychOculusVRCore1-INFO: Oculus VR runtime (version '%s') initialized.\n", ovr_GetVersionString());
 
         // Setup a unique identifying name for us:
@@ -203,9 +205,9 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
         // Poll for existence of a HMD (detection timeout = 0 msecs == poll only).
         // The 1.11 SDK still seems to be unable to enumerate more than 1 HMD,
         // so we still can't count how many there are:
-        ovrDetectResult result = ovr_Detect(0);
-        available_devices = (result.IsOculusHMDConnected) ? 1 : 0;
-        if (!result.IsOculusServiceRunning) {
+        dresult = ovr_Detect(0);
+        available_devices = (dresult.IsOculusHMDConnected) ? 1 : 0;
+        if (!dresult.IsOculusServiceRunning) {
             available_devices = -1;
             if (verbosity >= 2) printf("PsychOculusVRCore1-WARNING: Could not connect to Oculus VR server process yet. Did you forget to start it?\n");
         }
@@ -384,6 +386,7 @@ PsychError PSYCHOCULUSVR1GetCount(void)
     static char synopsisString[] =  "Returns count of currently connected HMDs.\n"
                                     "Returns -1 if the runtime or server couldn't get initialized.\n";
     static char seeAlsoString[] = "Open";
+    ovrDetectResult dresult;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -393,9 +396,9 @@ PsychError PSYCHOCULUSVR1GetCount(void)
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(0));
 
-    ovrDetectResult result = ovr_Detect(0);
-    available_devices = (result.IsOculusHMDConnected) ? 1 : 0;
-    if (!result.IsOculusServiceRunning) {
+    dresult = ovr_Detect(0);
+    available_devices = (dresult.IsOculusHMDConnected) ? 1 : 0;
+    if (!dresult.IsOculusServiceRunning) {
         available_devices = -1;
         if (verbosity >= 2) printf("PsychOculusVRCore1-WARNING: Could not connect to Oculus VR server process yet. Did you forget to start it?\n");
     }
