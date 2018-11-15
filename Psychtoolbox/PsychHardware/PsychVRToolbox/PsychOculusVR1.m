@@ -1207,6 +1207,8 @@ if strcmpi(cmd, 'Open')
   newhmd.videoRefreshDuration = 1 / panelHz;
   newhmd.controllerTypes = controllerTypes;
   newhmd.VRControllersSupported = 1;
+  newhmd.handTrackingSupported = 1;
+  newhmd.hapticFeedbackSupported = 1;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
