@@ -82,7 +82,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "\n";
     synopsis[i++] = "oldVerbosity = PsychOculusVRCore1('Verbosity' [, verbosity]);";
     synopsis[i++] = "numHMDs = PsychOculusVRCore1('GetCount');";
-    synopsis[i++] = "[oculusPtr, modelName] = PsychOculusVRCore1('Open' [, deviceIndex=0]);";
+    synopsis[i++] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz] = PsychOculusVRCore1('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOculusVRCore1('Close' [, oculusPtr]);";
     synopsis[i++] = "showHSW = PsychOculusVRCore1('GetHSWState', oculusPtr [, dismiss]);";
     synopsis[i++] = "oldPersistence = PsychOculusVRCore1('SetLowPersistence', oculusPtr [, lowPersistence]);";
@@ -331,8 +331,8 @@ PsychError PSYCHOCULUSVR1GetCount(void)
 
 PsychError PSYCHOCULUSVR1Open(void)
 {
-    static char useString[] = "[oculusPtr, modelName] = PsychOculusVRCore1('Open' [, deviceIndex=0]);";
-    //                          1          2                                        1
+    static char useString[] = "[oculusPtr, modelName, resolutionX, resolutionY, refreshHz] = PsychOculusVRCore1('Open' [, deviceIndex=0]);";
+    //                          1          2          3            4            5                                         1
     static char synopsisString[] =
         "Open connection to Oculus VR HMD, return a 'oculusPtr' handle to it.\n\n"
         "The call tries to open the HMD with index 'deviceIndex', or the "
@@ -340,7 +340,9 @@ PsychError PSYCHOCULUSVR1Open(void)
         "of -1 to open an emulated HMD. It doesn't provide any sensor input, but allows "
         "some basic testing and debugging of VR software nonetheless.\n"
         "The returned handle can be passed to the other subfunctions to operate the device.\n"
-        "A second return argument 'modelName' returns the model name string of the Oculus device.\n";
+        "A second return argument 'modelName' returns the model name string of the Oculus device.\n"
+        "'resolutionX' and 'resolutionY' return the HMD display panels horizontal and vertical resolution.\n"
+        "'refreshHz' is the nominal refresh rate of the display in Hz.\n";
 
     static char seeAlsoString[] = "GetCount Close";
 
@@ -355,7 +357,7 @@ PsychError PSYCHOCULUSVR1Open(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(5));
     PsychErrorExit(PsychCapNumInputArgs(1));
 
     // Make sure driver is initialized:
@@ -434,6 +436,13 @@ PsychError PSYCHOCULUSVR1Open(void)
 
     // Return product name:
     PsychCopyOutCharArg(2, kPsychArgOptional, (const char*) oculus->hmdDesc.ProductName);
+
+    // Horizontal and vertical panel resolution:
+    PsychCopyOutDoubleArg(3, kPsychArgOptional, oculus->hmdDesc.Resolution.w);
+    PsychCopyOutDoubleArg(4, kPsychArgOptional, oculus->hmdDesc.Resolution.h);
+
+    // Panel refresh rate:
+    PsychCopyOutDoubleArg(5, kPsychArgOptional, oculus->hmdDesc.DisplayRefreshRate);
 
     return(PsychError_none);
 }
