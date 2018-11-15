@@ -44,9 +44,91 @@ while ~KbCheck
     clc;
     disp(istate);
 
+    if istate.Buttons(OVR.Button_A)
+        fprintf('Button_A ');
+    end
+
+    if istate.Buttons(OVR.Button_B)
+        fprintf('Button_B ');
+    end
+
+    if istate.Buttons(OVR.Button_X)
+        fprintf('Button_X ');
+    end
+
+    if istate.Buttons(OVR.Button_Y)
+        fprintf('Button_Y ');
+    end
+
+    if istate.Buttons(OVR.Button_RThumb)
+        fprintf('Button_RThumb ');
+    end
+
+    if istate.Buttons(OVR.Button_RShoulder)
+        fprintf('Button_RShoulder ');
+    end
+
+    if istate.Buttons(OVR.Button_LThumb)
+        fprintf('Button_LThumb ');
+    end
+
+    if istate.Buttons(OVR.Button_LShoulder)
+        fprintf('Button_LShoulder ');
+    end
+
+    if istate.Buttons(OVR.Button_Up)
+        fprintf('Button_Up ');
+    end
+
+    if istate.Buttons(OVR.Button_Down)
+        fprintf('Button_Down ');
+    end
+
+    if istate.Buttons(OVR.Button_Left)
+        fprintf('Button_Left ');
+    end
+
+    if istate.Buttons(OVR.Button_Right)
+        fprintf('Button_Right ');
+    end
+
+    if istate.Buttons(OVR.Button_Enter)
+        fprintf('Button_Enter ');
+    end
+
+    if istate.Buttons(OVR.Button_Back)
+        fprintf('Button_Back ');
+    end
+
+    if istate.Buttons(OVR.Button_VolUp)
+        fprintf('Button_VolUp ');
+    end
+
+    if istate.Buttons(OVR.Button_VolDown)
+        fprintf('Button_VolDown ');
+    end
+
+    if istate.Buttons(OVR.Button_Home)
+        fprintf('Button_Home ');
+    end
+
+    if any(istate.Buttons(OVR.Button_RMask))
+        fprintf('Button_RMask ');
+    end
+
+    if any(istate.Buttons(OVR.Button_LMask))
+        fprintf('Button_LMask ');
+    end
+
+    if any(istate.Buttons(OVR.Button_Private))
+        fprintf('Button_Private ');
+    end
+
     if istate.Buttons(OVR.Button_Back)
         break;
     end
+
+    fprintf('\n');
 
     if istate.Buttons(OVR.Button_A)
         if GetSecs < pulseEnd
