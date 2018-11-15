@@ -98,7 +98,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:\n";
     synopsis[i++] = "\n";
     synopsis[i++] = "[width, height, fovPort] = PsychOculusVRCore1('GetFovTextureSize', oculusPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
-    synopsis[i++] = "[width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', oculusPtr, eye, width, height);";
+    synopsis[i++] = "[width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', oculusPtr, eye, width, height, floatFormat);";
     synopsis[i++] = "texObjectHandle = PsychOculusVRCore1('GetNextTextureHandle', oculusPtr, eye);";
     synopsis[i++] = "texObjectHandle = PsychOculusVRCore1('CreateMirrorTexture', oculusPtr, width, height);";
     synopsis[i++] = "[width, height, viewPx, viewPy, viewPw, viewPh, pptax, pptay, hmdShiftx, hmdShifty, hmdShiftz] = PsychOculusVRCore1('GetUndistortionParameters', oculusPtr, eye [, inputWidth][, inputHeight][, fov]);";
@@ -974,19 +974,21 @@ PsychError PSYCHOCULUSVR1GetFovTextureSize(void)
 
 PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
 {
-    static char useString[] = "[width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', oculusPtr, eye, width, height);";
-    //                          1      2       3                                                             1          2    3      4
+    static char useString[] = "[width, height, numTextures] = PsychOculusVRCore1('CreateRenderTextureChain', oculusPtr, eye, width, height, floatFormat);";
+    //                          1      2       3                                                             1          2    3      4       5
     static char synopsisString[] =
-    "Create texture present chains for Oculus device 'oculusPtr'.\n"
+    "Create texture present chains for Oculus device 'oculusPtr'.\n\n"
     "'eye' Eye for which chain should get created: 0 = Left/Mono, 1 = Right.\n"
     "If only a chain for eye = 0 is created then the driver operates in monoscopic "
     "presentation mode for use with Screen() stereomode 0, showing the same mono image to both "
     "eyes. If a 2nd chain for eye = 1 is created then the driver switches to stereoscopic "
     "presentation mode for use with Screen() stereomode 12, presenting separate images to the left "
-    "and right eye.\n"
+    "and right eye.\n\n"
     "'width' and 'height' are the width x height of the texture into which Psychtoolbox "
     "Screen() image processing pipeline will render the output image of an eye for submission "
-    "to the VR compositor. Left and right eye must use identical 'width' and 'height'.\n"
+    "to the VR compositor. Left and right eye must use identical 'width' and 'height'.\n\n"
+    "'floatFormat' Texture format: 0 = RGBA8 sRGB format for sRGB rendering and output. 1 = 16 bpc "
+    "half-float RGBA16F in linear format.\n\n"
     "'numTextures' returns the total number of compositor textures in the swap chain.\n"
     "\n"
     "Return values are 'width' for selected width of output texture in pixels and "
@@ -994,7 +996,7 @@ PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
     static char seeAlsoString[] = "GetNextTextureHandle";
 
     int handle, eyeIndex;
-    int width, height, out_Length;
+    int width, height, out_Length, floatFormat;
     PsychOculusDevice *oculus;
     ovrTextureSwapChainDesc chainDesc;
 
@@ -1004,8 +1006,8 @@ PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
 
     // Check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(3));
-    PsychErrorExit(PsychCapNumInputArgs(4));
-    PsychErrorExit(PsychRequireNumInputArgs(4));
+    PsychErrorExit(PsychCapNumInputArgs(5));
+    PsychErrorExit(PsychRequireNumInputArgs(5));
 
     // Make sure driver is initialized:
     PsychOculusVRCheckInit(FALSE);
@@ -1028,6 +1030,11 @@ PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
     if (height < 1)
         PsychErrorExitMsg(PsychError_user, "Invalid height, smaller than 1 texel!");
 
+    // Get texture format: 0 = sRGB RGBA8, 1 = linear RGBA16F half-float:
+    PsychCopyInIntegerArg(5, kPsychArgRequired, &floatFormat);
+    if (floatFormat < 0 || floatFormat > 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid floatFormat flag provided. Must be 0 or 1.");
+
     if (oculus->textureSwapChain[eyeIndex])
         PsychErrorExitMsg(PsychError_user, "Tried to create already created texture swap chain for given eye.");
 
@@ -1037,7 +1044,7 @@ PsychError PSYCHOCULUSVR1CreateRenderTextureChain(void)
     // Build OpenGL texture chain descriptor:
     memset(&chainDesc, 0, sizeof(chainDesc));
     chainDesc.Type = ovrTexture_2D;
-    chainDesc.Format = OVR_FORMAT_R8G8B8A8_UNORM; // TODO OVR_FORMAT_R8G8B8A8_UNORM_SRGB
+    chainDesc.Format = (floatFormat == 1) ? OVR_FORMAT_R16G16B16A16_FLOAT : OVR_FORMAT_R8G8B8A8_UNORM_SRGB;
     chainDesc.ArraySize = 1;
     chainDesc.MipLevels = 1;
     chainDesc.SampleCount = 1;
