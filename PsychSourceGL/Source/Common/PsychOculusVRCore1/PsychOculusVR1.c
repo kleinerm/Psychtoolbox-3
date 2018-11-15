@@ -515,6 +515,9 @@ PsychError PSYCHOCULUSVR1Open(void)
         PsychErrorExitMsg(PsychError_system, "Insufficient system resources for mutex creation as part of HMD open operation!");
     }
 
+    // Reset performance statistics for this session:
+    ovr_ResetPerfStats(oculus->hmd);
+
     // Increment count of open devices:
     devicecount++;
 
