@@ -1790,7 +1790,6 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
             // Retrieve performance stats, mostly for our timestamping:
             tDeadline = ovr_GetTimeInSeconds() + 0.005;
             do {
-                PsychYieldIntervalSeconds(0.001);
                 result = ovr_GetPerfStats(oculus->hmd, &oculus->perfStats);
                 if (OVR_FAILURE(result)) {
                     ovr_GetLastErrorInfo(&errorInfo);
@@ -1802,6 +1801,9 @@ static double PresentExecute(PsychOculusDevice *oculus, psych_bool commitTexture
                            oculus->perfStats.FrameStats[oculus->perfStats.FrameStatsCount-1].AppFrameIndex,
                            oculus->commitFrameIndex);
                 }
+
+                if (oculus->perfStats.FrameStatsCount < 1)
+                    PsychYieldIntervalSeconds(0.001);
             } while ((oculus->frameIndex > 0) && (ovr_GetTimeInSeconds() < tDeadline) &&
                      ((oculus->perfStats.FrameStatsCount < 1) || (oculus->perfStats.FrameStats[oculus->perfStats.FrameStatsCount-1].AppFrameIndex < oculus->commitFrameIndex)));
 
