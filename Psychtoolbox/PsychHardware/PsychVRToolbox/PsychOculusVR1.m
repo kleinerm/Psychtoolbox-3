@@ -707,7 +707,7 @@ end
 
 % Open a HMD:
 if strcmpi(cmd, 'Open')
-  [handle, modelName] = PsychOculusVRCore1('Open', varargin{:});
+  [handle, modelName, panelXRes, panelYRes, panelHz] = PsychOculusVRCore1('Open', varargin{:});
 
   newhmd.handle = handle;
   newhmd.driver = @PsychOculusVR1;
@@ -715,6 +715,9 @@ if strcmpi(cmd, 'Open')
   newhmd.open = 1;
   newhmd.modelName = modelName;
   newhmd.separateEyePosesSupported = 1; % TODO FIXME Makes still sense?
+  newhmd.panelXRes = panelXRes;
+  newhmd.panelYRes = panelYRes;
+  newhmd.videoRefreshDuration = 1 / panelHz;
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
