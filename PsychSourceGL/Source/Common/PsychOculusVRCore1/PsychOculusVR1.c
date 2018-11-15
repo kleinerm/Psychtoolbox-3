@@ -1487,7 +1487,7 @@ PsychError PSYCHOCULUSVR1EndFrameTiming(void)
     }
 
     layer0.Header.Type = ovrLayerType_EyeFov;
-    layer0.Header.Flags = ovrLayerFlag_HeadLocked | ovrLayerFlag_HighQuality | ovrLayerFlag_TextureOriginAtBottomLeft;
+    layer0.Header.Flags = ovrLayerFlag_HighQuality | ovrLayerFlag_TextureOriginAtBottomLeft;
     layer0.ColorTexture[0] = oculus->textureSwapChain[0];
     layer0.ColorTexture[1] = (oculus->isStereo) ? oculus->textureSwapChain[1] : NULL;
     layer0.Viewport[0].Pos.x = 0;
