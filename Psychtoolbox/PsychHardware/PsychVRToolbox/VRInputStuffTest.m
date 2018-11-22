@@ -31,8 +31,12 @@ if strcmpi(hmdinfo.subtype, 'Oculus-1')
     fprintf('Player eye height: %f\n', PsychOculusVR1('FloatProperty', hmd, OVR.KEY_EYE_HEIGHT));
     fprintf('Player neck-to-eye: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_NECK_TO_EYE_DISTANCE));
     fprintf('Player eye-to-nose: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_EYE_TO_NOSE_DISTANCE));
+    % Suppress error output during username query, as these properties are often undefined and
+    % would spill pointless error messages:
+    oldverbosity = PsychOculusVR1('Verbosity', 0);
     fprintf('User name: %s\n', PsychOculusVR1('StringProperty', hmd, OVR.KEY_USER, 'Hans'));
     fprintf('Player name: %s\n', PsychOculusVR1('StringProperty', hmd, OVR.KEY_NAME, 'Mueller'));
+    PsychOculusVR1('Verbosity', oldverbosity);
     fprintf('Player gender: %s\n', PsychOculusVR1('StringProperty', hmd, OVR.KEY_GENDER, OVR.KEY_DEFAULT_GENDER));
     fprintf('\n\n');
 end
