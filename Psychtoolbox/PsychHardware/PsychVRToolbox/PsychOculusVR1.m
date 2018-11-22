@@ -1,5 +1,5 @@
 function varargout = PsychOculusVR1(cmd, varargin)
-% PsychOculusVR1 - A high level driver for Oculus VR hardware using the Version 1.11+ runtime.
+% PsychOculusVR1 - A high level driver for Oculus VR hardware using the Version 1.16+ runtime.
 %
 % Note: If you want to write VR code that is portable across
 % VR headsets of different vendors, then use the PsychVRHMD()
@@ -249,6 +249,9 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % disable an ongoing pulse. As of Oculus runtime version 1.11, only freq values 0.5 and 1.0 are
 % reproduced. Other freq values will be clamped/quantized to those values. 'amplitude' is the
 % amplitude of the vibration in normalized 0.0 - 1.0 range.
+%
+% NOTE: As of November 2018, Oculus SDK 1.16, runtime 1.32, this works very unreliably, and
+% often not at all at least with the tested XBox controller!
 %
 % 'pulseEndTime' returns the expected stop time of vibration in seconds, given the parameters.
 % Currently the function will return immediately for a (default) 'duration' of 2.5 seconds, and the pulse
