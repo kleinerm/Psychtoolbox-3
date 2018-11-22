@@ -2603,6 +2603,10 @@ PsychError PSYCHOCULUSVR1PresentFrame(void)
 
         PsychUnlockMutex(&(oculus->presenterLock));
     }
+    else {
+        // Return empty 'frameTiming' info struct array, so our calling scripting environment does not bomb out:
+        PsychAllocOutStructArray(1, kPsychArgOptional, 0, FieldCount, FieldNames, &frameT);
+    }
 
     // Copy out predicted onset time for the just emitted frame:
     tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * oculus->frameDuration;
