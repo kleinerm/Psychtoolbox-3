@@ -3038,7 +3038,7 @@ PsychError PSYCHOCULUSVR1FloatProperty(void)
         "Returns a scalar 'oldValue' with the current (or old) floating point value associated with the property.\n";
     static char seeAlsoString[] = "";
 
-    int handle, i, m, n, p, count;
+    int handle;
     PsychOculusDevice *oculus;
     char *propertyName;
     float fvalue;
