@@ -1764,7 +1764,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Execute VR Present: Submit just unbound textures, start render/warp/presentation
     % on HMD at next possible point in time:
     PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle, 0);
-    PsychOculusVRCore1('PresentFrame', hmd{handle}.handle);
+    PsychOculusVRCore1('PresentFrame', hmd{handle}.handle, 0, -1);
   end
   clear clearvalues;
 
