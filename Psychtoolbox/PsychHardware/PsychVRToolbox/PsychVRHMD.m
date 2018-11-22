@@ -209,8 +209,8 @@ function varargout = PsychVRHMD(cmd, varargin)
 % hmdinfo = PsychVRHMD('GetInfo') returns hmdinfo.VRControllersSupported == 0, then
 % only a minimally useful 'input' state is returned, which is based on emulating or
 % faking input from real controllers, so this function will be of limited use. Specifically,
-% on emulated controllers, only the input.Time and input.Buttons fields are returned, all
-% other fields are missing.
+% on emulated controllers, only the input.Valid, input.Time and input.Buttons
+% fields are returned, all other fields are missing.
 %
 % 'controllerType' can be one of OVR.ControllerType_LTouch, OVR.ControllerType_RTouch,
 % OVR.ControllerType_Touch, OVR.ControllerType_Remote, OVR.ControllerType_XBox, or
@@ -219,6 +219,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % Return argument 'input' is a struct with fields describing the state of buttons and
 % other input elements of the specified 'controllerType'. It has the following fields:
 %
+% 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
 % 'Time' Time of last input state change of controller.
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector

@@ -174,7 +174,7 @@ function varargout = PsychOculusVR(cmd, varargin)
 % As this driver does not actually support special VR controllers, only a minimally
 % useful 'input' state is returned for compatibility with other drivers, which is
 % based on emulating or faking input from real controllers, so this function will be
-% of limited use. Specifically, only the input.Time and input.Buttons fields are
+% of limited use. Specifically, only the input.Valid, input.Time and input.Buttons fields are
 % returned, all other fields are missing. input.Buttons maps defined OVR.Button_XXX
 % fields to similar or corresponding buttons on the regular keyboard.
 %
@@ -185,6 +185,7 @@ function varargout = PsychOculusVR(cmd, varargin)
 % Return argument 'input' is a struct with fields describing the state of buttons and
 % other input elements of the specified 'controllerType'. It has the following fields:
 %
+% 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
 % 'Time' Time of last input state change of controller.
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector
@@ -783,6 +784,8 @@ if strcmpi(cmd, 'GetInputState')
   if length(varargin) < 2 || isempty(varargin{2})
     error('PsychOculusVR:GetInputState: Required ''controllerType'' argument missing.');
   end
+
+  rc.Valid = 1;
 
   [anykey, rc.Time, keyCodes] = KbCheck(-1);
   rc.Buttons = zeros(1, 32);

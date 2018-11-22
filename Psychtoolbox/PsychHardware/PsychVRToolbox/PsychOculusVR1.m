@@ -219,6 +219,7 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % Return argument 'input' is a struct with fields describing the state of buttons and
 % other input elements of the specified 'controllerType'. It has the following fields:
 %
+% 'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.
 % 'Time' Time of last input state change of controller.
 % 'Buttons' Vector with button state on the controller, similar to the 'keyCode'
 % vector returned by KbCheck() for regular keyboards. Each position in the vector

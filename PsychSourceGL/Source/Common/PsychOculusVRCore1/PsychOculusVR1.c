@@ -1335,6 +1335,7 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
         "OVR.ControllerType_Active = Whatever controller is connected and active.\n"
         "\n"
         "'input' is a struct with fields reporting the following status values of the controller:\n"
+        "'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.\n"
         "'Time' = Time in seconds when controller state was last updated.\n"
         "'Buttons' = Vector with each positions value corresponding to a specifc button being pressed (1) "
         "or released (0). The OVR.Button_XXX constants map button names to vector indices (like KbName() "
@@ -1355,10 +1356,10 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
     static char seeAlsoString[] = "Start Stop GetTrackedState GetTrackersState";
 
     PsychGenericScriptType *status;
-    const char *FieldNames[] = { "Time", "Buttons", "Touches", "Trigger", "Grip", "TriggerNoDeadzone",
+    const char *FieldNames[] = { "Valid", "Time", "Buttons", "Touches", "Trigger", "Grip", "TriggerNoDeadzone",
                                  "GripNoDeadzone", "TriggerRaw", "GripRaw", "Thumbstick",
                                  "ThumbstickNoDeadzone", "ThumbstickRaw" };
-    const int FieldCount = 12;
+    const int FieldCount = 13;
 
     PsychGenericScriptType *outMat;
     double *v;
@@ -1366,6 +1367,7 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
     double controllerTypeD;
     PsychOculusDevice *oculus;
     ovrInputState state;
+    ovrSessionStatus sessionStatus;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -1387,15 +1389,35 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
     PsychCopyInDoubleArg(2, kPsychArgRequired, &controllerTypeD);
     controllerType = (unsigned int) controllerTypeD;
 
-    if (OVR_FAILURE(ovr_GetInputState(oculus->hmd, (ovrControllerType) (unsigned int) controllerType, &state))) {
+    PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &status);
+
+    // Check session status if we have VR input focus:
+    if (OVR_FAILURE(ovr_GetSessionStatus(oculus->hmd, &sessionStatus))) {
         ovr_GetLastErrorInfo(&errorInfo);
-        if (verbosity > 0)
-            printf("PsychOculusVRCore1-ERROR: ovr_GetInputState() for controller 0x%lx failed: %s\n",
-                   (unsigned long) controllerType, errorInfo.ErrorString);
-        PsychErrorExitMsg(PsychError_system, "Failed to get some controller input status.");
+        if (verbosity > 0) printf("PsychOculusVRCore1-ERROR: ovr_GetSessionStatus failed: %s\n", errorInfo.ErrorString);
+        PsychErrorExitMsg(PsychError_system, "Failed to get current session status from VR compositor.");
     }
 
-    PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &status);
+    if (sessionStatus.IsVisible) {
+        // Have VR input focus, try to get input state:
+        if (OVR_FAILURE(ovr_GetInputState(oculus->hmd, (ovrControllerType) (unsigned int) controllerType, &state))) {
+            ovr_GetLastErrorInfo(&errorInfo);
+            if (verbosity > 0)
+                printf("PsychOculusVRCore1-ERROR: ovr_GetInputState() for controller 0x%lx failed: %s\n",
+                       (unsigned long) controllerType, errorInfo.ErrorString);
+            PsychErrorExitMsg(PsychError_system, "Failed to get some controller input status.");
+        }
+
+        // Mark as valid:
+        PsychSetStructArrayDoubleElement("Valid", 0, 1, status);
+    }
+    else {
+        // No VR input focus -> No valid input -> Mark as invalid:
+        PsychSetStructArrayDoubleElement("Valid", 0, 0, status);
+
+        // Fail gracefully, by returning an all-zero input struct:
+        memset(&state, 0, sizeof(state));
+    }
 
     // Controller update time:
     PsychSetStructArrayDoubleElement("Time", 0, state.TimeInSeconds, status);

@@ -69,10 +69,17 @@ pulseEnd = 0;
 
 while 1
     WaitSecs('YieldSecs', 0.1);
+    clc;
 
     % Query and display all input state:
     istate = PsychVRHMD('GetInputState', hmd, OVR.ControllerType_Active);
-    clc;
+    
+    if ~istate.Valid
+        fprintf('No VR controller input available, possibly due to VR input focus loss.\n');
+        fprintf('Make sure our application has input focus and possibly that the HMD is on the users head.\n');
+        continue;
+    end
+  
     fprintf('Press BACK button on remote control or other controllers, or backspace key, to finish.\n\n');
     disp(istate);
 
