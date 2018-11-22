@@ -1229,6 +1229,10 @@ if strcmpi(cmd, 'Open')
     OVR.ControllerType_Touch = OVR.ControllerType_LTouch + OVR.ControllerType_RTouch;
     OVR.ControllerType_Remote = hex2dec('0004');
     OVR.ControllerType_XBox = hex2dec('0010');
+    OVR.ControllerType_Object0 = hex2dec('0100');
+    OVR.ControllerType_Object1 = hex2dec('0200');
+    OVR.ControllerType_Object2 = hex2dec('0400');
+    OVR.ControllerType_Object3 = hex2dec('0800');
     OVR.ControllerType_Active = hex2dec('ffffffff');
 
     OVR.Button_A = 1 + log2(hex2dec('00000001'));
