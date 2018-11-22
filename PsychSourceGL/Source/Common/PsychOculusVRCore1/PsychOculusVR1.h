@@ -63,6 +63,7 @@ PsychError PSYCHOCULUSVR1TrackingOriginType(void);
 PsychError PSYCHOCULUSVR1GetPerformanceStats(void);
 PsychError PSYCHOCULUSVR1HapticPulse(void);
 PsychError PSYCHOCULUSVR1FloatsProperty(void);
+PsychError PSYCHOCULUSVR1FloatProperty(void);
 PsychError PSYCHOCULUSVR1StringProperty(void);
 
 #ifdef  __cplusplus

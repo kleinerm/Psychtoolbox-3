@@ -27,8 +27,8 @@ clc;
 
 if strcmpi(hmdinfo.subtype, 'Oculus-1')
     fprintf('Properties of our subject:\n\n');
-    fprintf('Player height: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_PLAYER_HEIGHT));
-    fprintf('Player eye height: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_EYE_HEIGHT));
+    fprintf('Player height: %f\n', PsychOculusVR1('FloatProperty', hmd, OVR.KEY_PLAYER_HEIGHT));
+    fprintf('Player eye height: %f\n', PsychOculusVR1('FloatProperty', hmd, OVR.KEY_EYE_HEIGHT));
     fprintf('Player neck-to-eye: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_NECK_TO_EYE_DISTANCE));
     fprintf('Player eye-to-nose: %f\n', PsychOculusVR1('FloatsProperty', hmd, OVR.KEY_EYE_TO_NOSE_DISTANCE));
     fprintf('User name: %s\n', PsychOculusVR1('StringProperty', hmd, OVR.KEY_USER, 'Hans'));
