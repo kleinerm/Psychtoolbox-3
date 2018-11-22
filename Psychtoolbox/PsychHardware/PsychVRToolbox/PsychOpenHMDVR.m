@@ -41,6 +41,14 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 %
 % Usage:
 %
+% oldverbosity = PsychOpenHMDVR('Verbosity' [, newverbosity]);
+% - Get/Set level of verbosity for driver status messages, warning messages,
+% error messages etc. 'newverbosity' is the optional new verbosity level,
+% 'oldverbosity' is the currently set verbosity level - ie. before changing
+% it.  Valid settings are: 0 = Silent, 1 = Errors only, 2 = Warnings, 3 = Info,
+% 4 = Debug.
+%
+%
 % hmd = PsychOpenHMDVR('AutoSetupHMD' [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, deviceIndex]);
 % - Open a OpenHMD supported HMD, set it up with good default rendering and
 % display parameters and generate a PsychImaging('AddTask', ...)

@@ -10,14 +10,6 @@ function varargout = PsychVRHMD(cmd, varargin)
 %
 % Usage:
 %
-% oldverbosity = PsychVRHMD('Verbosity' [, newverbosity]);
-% - Get/Set level of verbosity for driver status messages, warning messages,
-% error messages etc. 'newverbosity' is the optional new verbosity level,
-% 'oldverbosity' is the currently set verbosity level - ie. before changing
-% it.  Valid settings are: 0 = Silent, 1 = Errors only, 2 = Warnings, 3 = Info,
-% 4 = Debug.
-%
-%
 % hmd = PsychVRHMD('AutoSetupHMD' [, basicTask][, basicRequirements][, basicQuality][, vendor][, deviceIndex]);
 % - Automatically detect the first connected HMD, set it up with reasonable
 % default parameters, and return a device handle 'hmd' to it. If the system
