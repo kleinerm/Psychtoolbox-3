@@ -1363,7 +1363,8 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
 
     PsychGenericScriptType *outMat;
     double *v;
-    int handle, controllerType, i;
+    int handle, i;
+    unsigned long controllerType;
     double controllerTypeD;
     PsychOculusDevice *oculus;
     ovrInputState state;
@@ -1387,7 +1388,7 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
 
     // Controller type:
     PsychCopyInDoubleArg(2, kPsychArgRequired, &controllerTypeD);
-    controllerType = (unsigned int) controllerTypeD;
+    controllerType = (unsigned long) controllerTypeD;
 
     PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &status);
 
@@ -1400,11 +1401,11 @@ PsychError PSYCHOCULUSVR1GetInputState(void)
 
     if (sessionStatus.IsVisible) {
         // Have VR input focus, try to get input state:
-        if (OVR_FAILURE(ovr_GetInputState(oculus->hmd, (ovrControllerType) (unsigned int) controllerType, &state))) {
+        if (OVR_FAILURE(ovr_GetInputState(oculus->hmd, (ovrControllerType) controllerType, &state))) {
             ovr_GetLastErrorInfo(&errorInfo);
             if (verbosity > 0)
-                printf("PsychOculusVRCore1-ERROR: ovr_GetInputState() for controller 0x%lx failed: %s\n",
-                       (unsigned long) controllerType, errorInfo.ErrorString);
+                printf("PsychOculusVRCore1-ERROR: ovr_GetInputState() for controller %f 0x%lx failed: %s\n",
+                       controllerTypeD, controllerType, errorInfo.ErrorString);
             PsychErrorExitMsg(PsychError_system, "Failed to get some controller input status.");
         }
 
