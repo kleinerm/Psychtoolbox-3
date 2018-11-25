@@ -1,6 +1,9 @@
 function varargout = PsychOculusVR(cmd, varargin)
 % PsychOculusVR - A high level driver for Oculus VR hardware.
 %
+% Oculus VR's trademarks, e.g., Oculus, Oculus Rift, etc. are registered trademarks
+% owned by Oculus VR, LLC.
+%
 % Note: If you want to write VR code that is portable across
 % VR headsets of different vendors, then use the PsychVRHMD()
 % driver instead of this driver. The PsychVRHMD driver will use

@@ -1,6 +1,17 @@
 function varargout = PsychOculusVR1(cmd, varargin)
 % PsychOculusVR1 - A high level driver for Oculus VR hardware using the Version 1.16+ runtime.
 %
+% Copyright (c) 2018 Mario Kleiner. Licensed under the MIT license.
+% The underlying PsychOculusVRCore1 mex driver uses the Oculus SDK, which is
+% “Copyright © Facebook Technologies, LLC and its affiliates. All rights reserved.”
+% A copy of the Oculus SDK license, its terms of use and thereby redistribution
+% terms for the PsychOculusVRCore1 mex file can be found in the PsychtoolboxRoot()
+% folder under:
+% Psychtoolbox/PsychHardware/PsychVRToolbox/LICENSE_OculusSDK1.txt
+%
+% Oculus VR's trademarks, e.g., Oculus, Oculus Rift, etc. are registered trademarks
+% owned by Oculus VR, LLC.
+%
 % Note: If you want to write VR code that is portable across
 % VR headsets of different vendors, then use the PsychVRHMD()
 % driver instead of this driver. The PsychVRHMD driver will use
@@ -611,6 +622,7 @@ function varargout = PsychOculusVR1(cmd, varargin)
 global GL;
 global OVR;
 
+persistent firsttime;
 persistent oldShieldingLevel;
 persistent hmd;
 
@@ -1205,6 +1217,17 @@ end
 
 % Open a HMD:
 if strcmpi(cmd, 'Open')
+  if isempty(firsttime)
+    firsttime = 1;
+    fprintf('Copyright (c) 2018 Mario Kleiner. Licensed under the MIT license.\n');
+    fprintf('The underlying PsychOculusVRCore1 mex driver uses the Oculus SDK, which is\n');
+    fprintf('“Copyright © Facebook Technologies, LLC and its affiliates. All rights reserved.”\n');
+    fprintf('A copy of the Oculus SDK license, its terms of use and thereby redistribution\n');
+    fprintf('terms for the PsychOculusVRCore1 mex file can be found in the PsychtoolboxRoot()\n');
+    fprintf('folder under:\n');
+    fprintf('Psychtoolbox/PsychHardware/PsychVRToolbox/LICENSE_OculusSDK1.txt\n\n\n');
+  end
+
   [handle, modelName, panelXRes, panelYRes, panelHz, controllerTypes] = PsychOculusVRCore1('Open', varargin{:});
 
   newhmd.handle = handle;
