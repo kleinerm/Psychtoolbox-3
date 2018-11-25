@@ -784,6 +784,11 @@ end
 if err
     fprintf('Sorry, the download command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n',result);
+    if IsOSX
+        fprintf('If the error output above contains the text ''SSL handshake failed: SSL error: tlsv1 alert protocol version''\n');
+        fprintf('then your svn command line client is too old. Get a more recent one, e.g., from XCode developer tools, or the\n');
+        fprintf('HomeBrew package manager or such.\n');
+    end
     fprintf('The download failure might be due to temporary network or server problems. You may want to try again in a\n');
     fprintf('few minutes. It could also be that the subversion client was not (properly) installed. On Microsoft\n');
     fprintf('Windows you will need to exit and restart Matlab or Octave after installation of the Subversion client. If that\n');

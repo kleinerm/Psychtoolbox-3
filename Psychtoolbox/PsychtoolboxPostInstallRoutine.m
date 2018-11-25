@@ -4,8 +4,9 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % Psychtoolbox post installation routine. You should not call this
 % function directly! This routine is called by DownloadPsychtoolbox,
 % or UpdatePsychtoolbox after a successfull download/update of
-% Psychtoolbox. The routine performs tasks that are common to
-% downloads and updates, so they can share their code/implementation.
+% Psychtoolbox, or by SetupPsychtoolbox after an in-place installtion.
+% The routine performs tasks that are common to downloads and updates,
+% so they can share their code/implementation.
 %
 % As PsychtoolboxPostInstallRoutine itself is downloaded or updated,
 % it can contain code specific to each Psychtoolbox revision/release
@@ -17,8 +18,9 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 1. Clean up the Matlab/Octave path to Psychtoolbox: Remove unneeded .svn subfolders.
 % 2. Add the PsychJava subfolder to the static Matlab class-path if neccessary.
 %    This enables the Java-based GetChar support on Matlab.
-% 3. Add the PsychStartup.m routine to Matlab's startup.m file on Windows.
-% 4. Perform post-installation checks and basic troubleshooting.
+% 3. Add the PsychStartup.m routine to Matlab's and Octave's startup.m file on Windows.
+% 4. Set the proper pathes to Psychtoolbox and its mex files.
+% 4. Perform post-installation checks, configuration and basic troubleshooting.
 
 %
 % History:
@@ -696,8 +698,8 @@ fprintf('If you are new to the Psychtoolbox, you might try this: \nhelp Psychtoo
 fprintf('Psychtoolbox website, which also links to a tutorial for basic use cases:\n');
 fprintf('web http://www.psychtoolbox.org -browser\n');
 fprintf('\n');
-fprintf('Please make sure that you have a look at the PDF file Psychtoolbox3-Slides.pdf\n');
-fprintf('and also the more detailed ECVP 2013 tutorial slides PTBTutorial-ECVP2013.pdf\n');
+fprintf('Please make sure that you have a look at the detailed ECVP 2013 tutorial slides\n');
+fprintf('in the PDF file PTBTutorial-ECVP2013.pdf\n');
 fprintf('in the Psychtoolbox/PsychDocumentation subfolder for an overview of differences\n');
 fprintf('between Psychtoolbox-2 and Psychtoolbox-3 and proper use of basic features. That\n');
 fprintf('folder contains various additional helpful information for use of Psychtoolbox.\n\n');
