@@ -3,7 +3,8 @@
 # (c) 2018 Mario Kleiner - Licensed under MIT license.
 #
 
-from distutils.core import setup, Extension # Build system.
+# from distutils.core import setup, Extension # Build system.
+from setuptools import setup, Extension
 import os, fnmatch, shutil                  # Directory traversal, file list building.
 import platform                             # OS detection.
 import sys                                  # cpu arch detection.
