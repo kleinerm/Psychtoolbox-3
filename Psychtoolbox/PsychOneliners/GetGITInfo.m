@@ -23,6 +23,9 @@ function gitInfo = GetGITInfo(directory)
 %
 % 7/11/13  dhb  Wrote it based on GetSVNInfo
 % 7/12/13  dhb  More info, based on Ben Heasly's version of this in RenderToolbox3.
+% 12/2/18  dhb  Add --no-pager to the git branch call, based on email from
+%               Henryk Blasniski who says this will work better across platforms.
+%               The change did not break anything obvious on my machine.
 
 tempFile = 'GetGITInfo_gitTemp.log';
 
@@ -85,7 +88,7 @@ end
 
 % get remote branches
 cd(directory);
-[status, result] = system([gitPath 'git branch -r']);
+[status, result] = system([gitPath 'git --no-pager branch -r']);
 cd(curDir);
 if status == 0
     gitInfo.RemoteBranch = getStringLines(result);
