@@ -626,13 +626,14 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
         // Just need to check if GPU low-level access is supported:
         if (!PsychOSIsKernelDriverAvailable(screenId)) return(FALSE);
 
-        // We only support AMD Radeon/Fire GPU's, nothing else:
-        if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, &fNumDisplayHeads) || (gpuMaintype != kPsychRadeon)) {
+        // We only support AMD Radeon/Fire GPU's and Intel IGPs, nothing else:
+        if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, &fNumDisplayHeads) ||
+            (gpuMaintype != kPsychRadeon && gpuMaintype != kPsychIntelIGP)) {
             return(FALSE);
         }
 
         // Driver is online: Read the registers, but only for primary crtc in a multi-crtc config:
-        if  (gpuMinortype < 40) {
+        if  ((gpuMaintype == kPsychRadeon) && (gpuMinortype < 40)) {
             // Pre DCE-4: AVIVO class display hardware:
             *primarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
             *secondarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
@@ -641,7 +642,7 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
             *updatePending = (updateStatus & RADEON_SURFACE_UPDATE_PENDING) ? TRUE : FALSE;
         }
 
-        if  (gpuMinortype >= 40) {
+        if  ((gpuMaintype == kPsychRadeon) && (gpuMinortype >= 40)) {
             // DCE-4 or later display hardware:
             if (headid < 0 || headid > fNumDisplayHeads - 1) {
                 if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: PsychGetCurrentGPUSurfaceAddresses(): Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, fNumDisplayHeads - 1);
@@ -658,8 +659,33 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
             *updatePending = (updateStatus & EVERGREEN_GRPH_SURFACE_UPDATE_PENDING) ? TRUE : FALSE;
         }
 
+        if (gpuMaintype == kPsychIntelIGP) {
+            // Intel IGP:
+
+            // No secondary surface atm., but (ab)use to store the latched next requested surface address for reg doublebuffering:
+            *secondarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, 0x7019C + (headid * 0x1000), NULL);;
+
+            // Get primarySurface address from plane base address live register, ie. the true current value from last completed flip:
+            *primarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, 0x701AC + (headid * 0x1000), NULL);
+
+            // primarySurface encodes current scanout buffer address - live, whereas secondarySurface encodes pre-doublebuffered
+            // address for a flip. If both are identical then no flip is pending. If they differ then obviously the wanted
+            // address has not yet been latched into the live register and a pageflip is programmed/pending but not yet
+            // completed - iow. updatePending:
+            *updatePending = *primarySurface != *secondarySurface;
+            updateStatus = -1;
+        }
+
         if (PsychPrefStateGet_Verbosity() > 14) {
-            printf("PTB-DEBUG: Screen %i: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i\n", screenId, PsychScreenToCrtcId(screenId, 0), *primarySurface, *secondarySurface, updateStatus);
+            double tNow;
+            PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+
+            if (gpuMaintype == kPsychIntelIGP)
+                printf("PTB-DEBUG: %6lf : Screen %i: Head %i: currentSurface=%p <-- requestedSurface=%p : updatePending=%i\n",
+                       tNow, screenId, PsychScreenToCrtcId(screenId, 0), *primarySurface, *secondarySurface, (int) *updatePending);
+            else
+                printf("PTB-DEBUG: %6lf : Screen %i: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i\n",
+                       tNow, screenId, PsychScreenToCrtcId(screenId, 0), *primarySurface, *secondarySurface, updateStatus);
         }
 
         // Success:

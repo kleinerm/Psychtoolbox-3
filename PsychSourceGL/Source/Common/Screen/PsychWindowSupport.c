@@ -4905,11 +4905,13 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             else if (PsychPrefStateGet_Verbosity() > 1) {
                 // No reliable pageflipping or pageflipping at all. This is pretty much game over for reliable
                 // visual timing or timestamping:
-                printf("PTB-WARNING: Pageflipping wasn't used %s during refresh calibration. Visual presentation timing on your system\n",
-                       (pflip_count > 0) ? "consistently" : "at all");
-                printf("PTB-WARNING: is broken on your system and all followup tests and workarounds will likely fail as well.\n");
-                printf("PTB-WARNING: On a Apple macOS system you probably don't need to even bother asking anybody for help. Just\n");
-                printf("PTB-WARNING: upgrade to Linux if you care about trustworthy visual timing and stimulation.\n\n");
+                printf("PTB-WARNING: Pageflipping wasn't used %s during refresh calibration [%i of %i].\n",
+                       (pflip_count > 0) ? "consistently" : "at all", pflip_count, i);
+                printf("PTB-WARNING: Visual presentation timing is broken on your system and all followup tests and workarounds will likely fail.\n");
+                if (PSYCH_SYSTEM == PSYCH_OSX) {
+                    printf("PTB-WARNING: On this Apple macOS system you probably don't need to even bother asking anybody for help.\n");
+                    printf("PTB-WARNING: Just upgrade to Linux if you care about trustworthy visual timing and stimulation.\n\n");
+                }
             }
         }
     } // End of IFI measurement code.
