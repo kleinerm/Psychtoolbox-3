@@ -520,39 +520,56 @@ void PsychCocoaSetThemeCursor(int inCursor)
 }
 
 // Variable to hold current reference for App-Nap activities:
-static id activity = nil;
+static NSObject *activity = NULL;
 
 void PsychCocoaPreventAppNap(psych_bool preventAppNap)
 {
     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Activity state of AppNap is: %s.\n", (activity == nil) ? "No activities" : "Activities selected by PTB");
 
+    // Allocate auto release pool:
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // Initialize the Cocoa application object, connect to CoreGraphics-Server:
+    // Can be called many times, as redundant calls are ignored.
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        NSApplicationLoad();
+    });
+
     // Check if AppNap stuff is supported on this OS, ie., 10.9+. No-Op if unsupported:
     if (!([[NSProcessInfo processInfo] respondsToSelector:@selector(beginActivityWithOptions:reason:)])) {
-        return;
+        goto outappnapstuff;
     }
 
-    if ((activity == nil) && preventAppNap) {
+    if ((activity == NULL) && preventAppNap) {
         // Prevent display from sleeping/powering down, prevent system from sleeping, prevent sudden termination for any reason:
         NSActivityOptions options = NSActivityIdleDisplaySleepDisabled | NSActivityIdleSystemSleepDisabled | NSActivitySuddenTerminationDisabled | NSActivityAutomaticTerminationDisabled;
         // Mark as user initiated state and request highest i/o and timing precision:
         options |= NSActivityUserInitiated | NSActivityLatencyCritical;
 
         activity = [[NSProcessInfo processInfo] beginActivityWithOptions:options reason:@"Psychtoolbox does not want to nap, it has need for speed!"];
+        [activity retain];
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Running on OSX 10.9+ - Enabling protection against AppNap and other evils.\n");
-        return;
+        goto outappnapstuff;
     }
 
     if (!preventAppNap) {
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Reenabling AppNap et al. ... ");
-        if (activity != nil) {
-            if (PsychPrefStateGet_Verbosity() > 3) printf("Make it so!\n");
+        if (activity != NULL) {
+            if (PsychPrefStateGet_Verbosity() > 3) printf("Make it so! %p - Retain %i\n", activity, (int) [activity retainCount]);
             [[NSProcessInfo processInfo] endActivity:activity];
+            [activity release];
+            activity = NULL;
         }
         else {
             if (PsychPrefStateGet_Verbosity() > 3) printf("but already enabled! Noop.\n");
         }
-        return;
     }
+
+outappnapstuff:
+    // Drain the pool:
+    [pool drain];
+
+    return;
 }
 
 void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel)
@@ -565,6 +582,12 @@ void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel)
 
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // Initialize the Cocoa application object, connect to CoreGraphics-Server:
+    // Can be called many times, as redundant calls are ignored.
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        NSApplicationLoad();
+    });
 
     // Version query supported? Only on OSX 10.9 (inofficially, non-public api), 10.10 (public api):
     if ([[NSProcessInfo processInfo] respondsToSelector:@selector(operatingSystemVersion)]) {
