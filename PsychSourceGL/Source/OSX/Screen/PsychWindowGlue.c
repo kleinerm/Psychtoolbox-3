@@ -248,6 +248,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     int                             windowLevel;
     long                            scw, sch;
     void*                           cocoaWindow = NULL;
+    psych_bool                      useCGL = FALSE;
 
     // Map screen number to physical display handle cgDisplayID:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
@@ -277,22 +278,30 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
     if (PsychMatchRect(screenrect, windowRecord->rect)) windowRecord->specialflags |= kPsychIsFullscreenWindow;
 
-    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 3)) {
-        printf("PTB-INFO: Always using Cocoa for fullscreen windows to work around graphics driver bugs in OSX.\n");
-        printf("PTB-INFO: Presentation timing precision is not yet known for this configuration on most machines. Check your results.\n");
+    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) &&
+        !(PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows))
+        useCGL = TRUE;
+
+    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && !useCGL && (PsychPrefStateGet_Verbosity() > 3)) {
+        printf("PTB-INFO: Using Cocoa for fullscreen windows to work around graphics driver bugs in OSX.\n");
+        printf("PTB-INFO: Presentation timing precision is likely disastrous on most machines. Check your results.\n");
     }
 
     // Display for fullscreen window not captured? Timing precision is unclear in this mode. In theory the compositor should disable
     // itself for fullscreen windows on modern OSX versions. If it really does that, who knows?
     if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows)) {
+        useCGL = FALSE;
+
         // Force a window rectangle that matches the global screen rectangle for that windows screen:
         PsychCopyRect(windowRecord->rect, screenrect);
 
         // Warn user about what's going on:
-        if (PsychPrefStateGet_Verbosity()>1) printf("PTB-INFO: No display capture / compositor lockout for fullscreen window. Timing precision is unknown.\n");
+        if (PsychPrefStateGet_Verbosity() > 1)
+            printf("PTB-INFO: Using Cocoa + No display capture / compositor lockout for fullscreen window. Timing will be disastrous.\n");
     }
 
     if ((windowRecord->specialflags & kPsychGUIWindow) && (PsychPrefStateGet_Verbosity() > 3)) {
+        useCGL = FALSE;
         printf("PTB-INFO: Onscreen window is configured as regular GUI window.\n");
     }
 
@@ -300,14 +309,17 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         printf("PTB-WARNING: Onscreen window is displayed on a display with display mirroring enabled. This will likely ruin visual timing.\n");
     }
 
+    if (windowLevel < 2000)
+        useCGL = FALSE;
+
     // Create onscreen Cocoa window of requested position and size:
-    if (PsychCocoaCreateWindow(windowRecord, windowLevel, &cocoaWindow)) {
+    if (!useCGL && PsychCocoaCreateWindow(windowRecord, windowLevel, &cocoaWindow)) {
         printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Cocoa onscreen window\n\n");
         return(FALSE);
     }
 
     // Transparent window requested?
-    if ((windowLevel >= 1000) && (windowLevel < 2000)) {
+    if (!useCGL && (windowLevel >= 1000) && (windowLevel < 2000)) {
         // Setup of global window alpha value for transparency. This is premultiplied to
         // the individual per-pixel alpha values if transparency is enabled by Cocoa code.
         //
@@ -316,24 +328,28 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
 
     // Show it! Unless a windowLevel of -1 requests hiding the window:
-    if (windowLevel != -1) PsychCocoaShowWindow(cocoaWindow);
+    if (!useCGL && (windowLevel != -1))
+        PsychCocoaShowWindow(cocoaWindow);
 
     // If usercode wants a black startup screen then we add a pause of 0.5 seconds here
     // before proceeding. This will avoid a white flash at window open time, which might
     // be something the user wanted to avoid. Why does this help or is needed at all?
     // Nobody knows, but this is Apples ridiculous toy OS, so why even ask such questions?
+    // FIXME
     if (PsychPrefStateGet_VisualDebugLevel() < 4)
         PsychYieldIntervalSeconds(0.5);
 
     // Level zero means: Place behind all other windows:
-    if (windowLevel == 0) PsychCocoaSendBehind(cocoaWindow);
+    if (!useCGL && (windowLevel == 0))
+        PsychCocoaSendBehind(cocoaWindow);
 
     // Levels 1 to 999 define window levels for the group of the window.
     // A level of -2 would leave this to the system:
-    if (windowLevel > 0 && windowLevel < 1000) PsychCocoaSetWindowLevel(cocoaWindow, windowLevel);
+    if (windowLevel > 0 && windowLevel < 1000)
+        PsychCocoaSetWindowLevel(cocoaWindow, windowLevel);
 
     // Is the target display captured for a fullscreen window?
-    if (PsychIsScreenCaptured(screenSettings->screenNumber)) {
+    if (!useCGL && PsychIsScreenCaptured(screenSettings->screenNumber)) {
         // Yes. Make sure our window is above the shielding window level:
         PsychCocoaSetWindowLevel(cocoaWindow, (int) CGShieldingWindowLevel());
     }
@@ -430,10 +446,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // Possible to request use of the Apple floating point software renderer:
     if (conserveVRAM & kPsychUseSoftwareRenderer) {
-        #ifndef kCGLRendererGenericFloatID
-        #define kCGLRendererGenericFloatID    0x00020400
-        #endif
-
         attribs[attribcount++]=AGL_RENDERER_ID;
         attribs[attribcount++]=kCGLRendererGenericFloatID;
     }
@@ -470,7 +482,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // If stereo display output is requested with OpenGL native stereo, request a stereo-enabled rendering context.
     // This is deprecated since 10.11 El Capitan, and in fact does no longer work - OpenGL quad buffered stereo is
     // dead on 10.11 on all tested GPU's from Intel, NVidia, AMD.
-    if(stereomode==kPsychOpenGLStereo) {
+    if( stereomode==kPsychOpenGLStereo) {
         attribs[attribcount++] = kCGLPFAStereo;
     }
 
@@ -536,27 +548,43 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Try choosing a matching display configuration again and create the window and rendering context:
     // If one of these two fails, then the installed gfx hardware is not good enough to satisfy our
     // requirements, or we have massive ressource shortage in the system. -> Screwed up anyway, so we abort.
-    if (windowRecord->targetSpecific.pixelFormatObject == NULL) error = CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+    if (windowRecord->targetSpecific.pixelFormatObject == NULL)
+        error = CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+
     if (error) {
         printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]: Reason unknown. There could be insufficient video memory or a driver malfunction. Giving up.\n\n", CGLErrorString(error));
         return(FALSE);
     }
 
-    // Create an OpenGL rendering context with the selected pixelformat: Share its ressources with 'slaveWindow's context, if slaveWindow is non-NULL.
-    // If slaveWindow is non-NULL here, then slaveWindow is typically another onscreen window. Therefore this establishes OpenGL resource sharing across
-    // different onscreen windows in a session, e.g., for multi-display operation:
-    error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL),
-                           &(windowRecord->targetSpecific.contextObject));
+    // Create an OpenGL rendering context with the selected pixelformat: Share its ressources with 'slaveWindow's context,
+    // if slaveWindow is non-NULL. If slaveWindow is non-NULL here, then slaveWindow is typically another onscreen window.
+    // Therefore this establishes OpenGL resource sharing across different onscreen windows in a session, e.g., for multi-display
+    // operation:
+    error = CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject,
+                             ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL),
+                             &(windowRecord->targetSpecific.contextObject));
     if (error) {
         printf("\nPTB-ERROR[ContextCreation failed: %s]: Could not create master OpenGL context for new onscreen window. Insufficient video memory?\n\n", CGLErrorString(error));
         return(FALSE);
     }
 
     // Enable the OpenGL rendering context associated with our window:
-    error=CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
+    error = CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
     if (error) {
         printf("\nPTB-ERROR[SetCurrentContext failed: %s]: Insufficient video memory\n\n", CGLErrorString(error));
         return(FALSE);
+    }
+
+    // Use of good ol' CGL for fullscreen windows requested? If so, use CGLSetFullScreenOnDisplay(), because although
+    // it was deprecated by the ass-hats since 10.7, as of 10.14 Mojave it seems to be the least fucked up way of getting
+    // pictures on the screen with bearable timing reliability and precision.
+    if (useCGL) {
+        error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.contextObject, displayMask);
+        if (error) {
+            printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay failed: %s]. Main Screen() context\n\n", CGLErrorString(error));
+            CGLSetCurrentContext(NULL);
+            return(FALSE);
+        }
     }
 
     // NULL-out the AGL context field, just for safety...
@@ -567,15 +595,17 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     glerr = glewInit();
     if (GLEW_OK != glerr) {
         /* Problem: glewInit failed, something is seriously wrong. */
-        printf("\nPTB-ERROR[GLEW init failed: %s]: Please report this to the forum. Will try to continue, but may crash soon!\n\n", glewGetErrorString(glerr));
-        fflush(NULL);
+        printf("\nPTB-ERROR[GLEW init failed: %s]: Please report this to the forum. Will try to continue, but may crash soon!\n\n",
+               glewGetErrorString(glerr));
     }
     else {
-        if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
+        if (PsychPrefStateGet_Verbosity()>3)
+            printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
     }
 
     // Enable multisampling if it was requested:
-    if (windowRecord->multiSample > 0) glEnable(GL_MULTISAMPLE);
+    if (windowRecord->multiSample > 0)
+        glEnable(GL_MULTISAMPLE);
 
     // External 3D graphics support enabled?
     if (PsychPrefStateGet_3DGfx()) {
@@ -583,20 +613,43 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // OpenGL code to provide optimal state-isolation. The context shares all
         // heavyweight ressources likes textures, FBOs, VBOs, PBOs, shader, display lists and
         // starts off as an identical copy of PTB's context as of here.
-        error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glusercontextObject));
+        error = CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject,
+                                 &(windowRecord->targetSpecific.glusercontextObject));
         if (error) {
-            printf("\nPTB-ERROR[UserContextCreation failed: %s]: Creating a private OpenGL context for userspace OpenGL failed.\n\n", CGLErrorString(error));
+            printf("\nPTB-ERROR[UserContextCreation failed: %s]: Creating a private OpenGL context for userspace OpenGL failed.\n\n",
+                   CGLErrorString(error));
+            CGLSetCurrentContext(NULL);
             return(FALSE);
+        }
+
+        if (useCGL) {
+            error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glusercontextObject, displayMask);
+            if (error) {
+                printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay failed: %s]. User GL rendering context\n\n", CGLErrorString(error));
+                CGLSetCurrentContext(NULL);
+                return(FALSE);
+            }
         }
     }
 
     // Create glswapcontextObject - An OpenGL context for exclusive use by parallel background threads,
     // e.g., our thread for async flip operations and self-made frame-sequential stereo:
-    error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glswapcontextObject));
+    error = CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject,
+                             &(windowRecord->targetSpecific.glswapcontextObject));
     if (error) {
-        printf("\nPTB-ERROR[SwapContextCreation failed: %s]: Creating a private OpenGL context for async-bufferswaps failed.\n\n", CGLErrorString(error));
+        printf("\nPTB-ERROR[SwapContextCreation failed: %s]: Creating a private OpenGL context for async-bufferswaps failed.\n\n",
+               CGLErrorString(error));
         CGLSetCurrentContext(NULL);
         return(FALSE);
+    }
+
+    if (useCGL) {
+        error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glswapcontextObject, displayMask);
+        if (error) {
+            printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay failed: %s]. Background thread swapcontext\n\n", CGLErrorString(error));
+            CGLSetCurrentContext(NULL);
+            return(FALSE);
+        }
     }
 
     // Store Cocoa onscreen window handle:
@@ -604,7 +657,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // Objective-C setup path, using Cocoa + NSOpenGLContext wrapped around already
     // existing and setup CGLContext:
-    if (PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(cocoaWindow, windowRecord)) {
+    if (!useCGL && PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(cocoaWindow, windowRecord)) {
         printf("\nPTB-ERROR[Cocoa OpenGL setup failed]: Setup failed for unknown reasons.\n\n");
         PsychCocoaDisposeWindow(windowRecord);
         return(FALSE);
@@ -733,7 +786,16 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     // Destroy pixelformat object:
     CGLDestroyPixelFormat(windowRecord->targetSpecific.pixelFormatObject);
 
-    // Destroy rendering context:
+    // Detach rendering contexts from fullscreen framebuffer in CGL fs mode:
+    if (!windowRecord->targetSpecific.windowHandle) {
+        CGLClearDrawable(windowRecord->targetSpecific.contextObject);
+        if (windowRecord->targetSpecific.glusercontextObject)
+            CGLClearDrawable(windowRecord->targetSpecific.glusercontextObject);
+        if (windowRecord->targetSpecific.glswapcontextObject)
+            CGLClearDrawable(windowRecord->targetSpecific.glswapcontextObject);
+    }
+
+    // Destroy rendering contexts:
     CGLReleaseContext(windowRecord->targetSpecific.contextObject);
     if (windowRecord->targetSpecific.glusercontextObject) CGLReleaseContext(windowRecord->targetSpecific.glusercontextObject);
     if (windowRecord->targetSpecific.glswapcontextObject) CGLReleaseContext(windowRecord->targetSpecific.glswapcontextObject);
@@ -764,7 +826,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     screenRefCount[windowRecord->screenNumber]--;
 
     // Destroy Cocoa onscreen window, if any:
-    if (windowRecord->targetSpecific.windowHandle) PsychCocoaDisposeWindow(windowRecord);
+    if (windowRecord->targetSpecific.windowHandle)
+        PsychCocoaDisposeWindow(windowRecord);
+
     windowRecord->targetSpecific.windowHandle = NULL;
 
     if (PsychIsLastOnscreenWindow(windowRecord))
@@ -847,7 +911,8 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     PsychExecuteBufferSwapPrefix(windowRecord);
 
     // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
-    if ((cglerr = CGLFlushDrawable((oldStyle || PsychIsMasterThread()) ? windowRecord->targetSpecific.contextObject : windowRecord->targetSpecific.glswapcontextObject))) {
+    if ((cglerr = CGLFlushDrawable((oldStyle || PsychIsMasterThread()) ? windowRecord->targetSpecific.contextObject :
+                                   windowRecord->targetSpecific.glswapcontextObject))) {
         // Failed! This is an internal OpenGL/CGL error. We can't do anything about it, just report it:
         printf("PTB-ERROR: Doublebuffer-Swap failed (probably during 'Flip')! Internal OpenGL subsystem/driver error: %s. System misconfigured or driver/operating system bug?!?\n", CGLErrorString(cglerr));
     }
