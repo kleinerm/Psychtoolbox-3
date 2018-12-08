@@ -26,6 +26,7 @@ function gitInfo = GetGITInfo(directory)
 % 12/2/18  dhb  Add --no-pager to the git branch call, based on email from
 %               Henryk Blasniski who says this will work better across platforms.
 %               The change did not break anything obvious on my machine.
+% 12/8/18  dhb  Same edit, line 99
 
 tempFile = 'GetGITInfo_gitTemp.log';
 
@@ -96,7 +97,7 @@ end
 
 % get local branches
 cd(directory);
-[status, result] = system([gitPath 'git branch']);
+[status, result] = system([gitPath 'git --no-pager branch']);
 cd(curDir);
 if status == 0
     gitInfo.LocalBranch = getStringLines(result);
