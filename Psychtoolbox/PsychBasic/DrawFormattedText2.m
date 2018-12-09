@@ -1264,7 +1264,7 @@ function [opt,qCalledWithCache] = parseInputs(varargs,nOutArg)
 
 if isempty(varargs) || isempty(varargs{1})
     % Empty text string -> Nothing to do.
-    opt                 = struct();
+    opt                 = [];
     qCalledWithCache    = false;
     return;
 elseif isstruct(varargs{1})
