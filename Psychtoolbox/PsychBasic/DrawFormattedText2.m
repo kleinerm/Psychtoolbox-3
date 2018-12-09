@@ -347,7 +347,11 @@ end
 [tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,char(tstring),baseColor,resetStyle);
 % check we still have anything to render after formatting tags removed
 if isempty(tstring)
-    % Empty text string -> Nothing to do.
+    % Empty text string -> Nothing to do, but assign dummy values:
+    [nx, ny]    = Screen('DrawText', win, '');
+    textbounds  = [nx, ny, nx, ny];
+    wordbounds  = textbounds;
+    cache       = [];
     return;
 end
 
@@ -1039,6 +1043,12 @@ codes.style(toStrip) = [];
 codes.color(toStrip) = [];
 codes.font (toStrip) = [];
 codes.size (toStrip) = [];
+
+if isempty(tstring)
+    % strong was only formatting commands, nothing to draw, ignore
+    [fmtCombs,fmts,switches,previous] = deal([]);
+    return;
+end
 
 % process colors, hex->dec
 for p=1:length(tables.color)
