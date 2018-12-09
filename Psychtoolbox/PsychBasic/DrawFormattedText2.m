@@ -344,7 +344,7 @@ end
 
 % string can contain HTML-like formatting commands. Parse them and turn
 % them into formatting indicators, then remove them from the string to draw
-[tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,tstring,baseColor,resetStyle);
+[tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,char(tstring),baseColor,resetStyle);
 % check we still have anything to render after formatting tags removed
 if isempty(tstring)
     % Empty text string -> Nothing to do.
