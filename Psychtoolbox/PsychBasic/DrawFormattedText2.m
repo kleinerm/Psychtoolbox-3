@@ -271,8 +271,9 @@ padthresh = ptb_drawformattedtext2_padthresh;
 
 assert(Screen('Preference','TextRenderer') == 1, 'DrawFormattedText2 only works with the FTGL based text drawing plugin, but this plugin is not selected activated with Screen(''Preference'',''TextRenderer'',1), or did not load correctly. See help DrawTextPlugin for more information.');
 
-% Optional per-word bounding boxes requested?
-if (nargout >= 5) && (~IsOctave || isargout(5))
+% Optional per-word bounding boxes requested or should generate them
+% because cache requested?
+if (nargout >= 4) && (~IsOctave || isargout(4) || isargout(5))
     dowordbounds = 1;
 else
     dowordbounds = 0;
@@ -287,12 +288,17 @@ if isempty(opt)
 elseif qCalledWithCache
     cache = opt.cache;
     if isfield(cache,'tex')
-        [nx, ny, wordbounds] = deal([]);
+        [nx, ny, wordbounds] = deal(cache.nx,cache.ny,cache.wordbounds);
         DoDrawTexture(opt.win,cache.tex.number,cache.bbox,cache.transform);
         if isempty(cache.transform)
             textbounds = cache.bbox;
         else
+            % transform BBox and wordbounds to reflect transforms applied by
+            % DoDrawSetup
             textbounds = transformBBox(cache.bbox,cache.transform);
+            for b=1:size(wordbounds,1)
+                wordbounds(b,:)  = transformBBox2(wordbounds(b,:), cache.transform, cache.bbox);
+            end
         end
     else
         [nx, ny, textbounds, wordbounds] = DoDraw(opt.win,...
@@ -309,7 +315,7 @@ elseif qCalledWithCache
             cache.previous,...
             cache.righttoleft,...
             cache.transform,...
-            dowordbounds);
+            cache.wordbounds);
     end
     % done
     return;
@@ -603,17 +609,28 @@ for p=1:numlines
         py(:) = -min(ssBaseLineOff(1,qSubStr));
     end
 end
+% determine word (actually segment) bounds
+qNotEmpty   = sWidth>0 & sum(abs(ssBaseLineOff),1);
+wordboundsbase  = zeros(sum(qNotEmpty),4);
+wordboundsbase(:,1) = floor(px(qNotEmpty)+lWidthOffLine(2,qNotEmpty));
+wordboundsbase(:,2) = floor(py(qNotEmpty)+ssBaseLineOff(1,qNotEmpty));
+wordboundsbase(:,3) = ceil( px(qNotEmpty)+lWidthOffLine(2,qNotEmpty)+lWidthOffLine(1,qNotEmpty));
+wordboundsbase(:,4) = ceil( py(qNotEmpty)+ssBaseLineOff(2,qNotEmpty));
 
 % check if we're doing drawing via a texture. If so, we need a texture the
 % size of the bounding box, and we need to keep (px,py) w.r.t the bounding
 % box, not w.r.t. the screen
 qDrawToTexture  = nargout >= 3 && cacheMode==1;
 
-% now we have positions in the bbox, add bbox position to place them in the
-% right place on the screen
+% now we have positions and wordbounds w.r.t. the bbox, add bbox position
+% to place them in the right place on the screen
 if ~qDrawToTexture
     px = px+bbox(1);
     py = py+bbox(2);
+    wordboundsbase(:,1) = wordboundsbase(:,1)+bbox(1);
+    wordboundsbase(:,2) = wordboundsbase(:,2)+bbox(2);
+    wordboundsbase(:,3) = wordboundsbase(:,3)+bbox(1);
+    wordboundsbase(:,4) = wordboundsbase(:,4)+bbox(2);
 end
 
 
@@ -623,10 +640,13 @@ if qDrawToTexture
     drawRect = transformBBox(bbox,transform);
     [tex.number,tex.rect] = Screen('OpenOffscreenWindow', win, [0 0 0 0], [0 0 RectWidth(drawRect) RectHeight(drawRect)]);
     ResetTextSetup(tex.number,previous,true);
-    [nx, ny, ~, wordbounds] = DoDraw(tex.number,disableClip,px,py,tex.rect,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,dowordbounds);
+    [nx, ny, ~, wordbounds] = DoDraw(tex.number,disableClip,px,py,tex.rect,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,wordboundsbase);
     nx = nx+bbox(1);
     ny = ny+bbox(2);
-    % TODO transform wordbounds
+    wordbounds(:,1) = wordbounds(:,1)+bbox(1);
+    wordbounds(:,2) = wordbounds(:,2)+bbox(2);
+    wordbounds(:,3) = wordbounds(:,3)+bbox(1);
+    wordbounds(:,4) = wordbounds(:,4)+bbox(2);
     textbounds = drawRect;
 end
 if ~cacheOnly
@@ -634,15 +654,19 @@ if ~cacheOnly
     if qDrawToTexture
         DoDrawTexture(win,tex.number,drawRect,[]);
     else
-        [nx, ny, textbounds, wordbounds] = DoDraw(win,disableClip,px,py,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,dowordbounds);
+        [nx, ny, textbounds, wordbounds] = DoDraw(win,disableClip,px,py,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,wordboundsbase);
     end
 elseif cacheMode~=1
-    % don't do any drawing to screen
-    [nx,ny,wordbounds] = deal([]);
+    % don't do any drawing to screen, nor to texture
+    [nx,ny] = deal([]);
     % the bbox in the cache is untranslated (we need to know the original
     % after all when drawing). Output transformed one here for user's info,
     % so they know what'll appear on screen eventually.
     textbounds = transformBBox(bbox,transform);
+    wordbounds = wordboundsbase;
+    for b=1:size(wordbounds,1)
+        wordbounds(b,:)  = transformBBox2(wordbounds(b,:), transform, bbox);
+    end
 end
 if nargout>3
     % make cache
@@ -651,7 +675,10 @@ if nargout>3
     if cacheMode==1
         cache.tex       = tex;
         cache.bbox      = drawRect;
-        cache.transform = [];       % no need to reapply transforms as they are already "hardcoded" into the texture. But user can add new ones
+        cache.transform = [];           % no need to reapply transforms as they are already "hardcoded" into the texture. But user can add new ones
+        cache.nx        = nx;
+        cache.ny        = ny;
+        cache.wordbounds = wordbounds;  % store transformed wordbounds as they're "hardcoded" into the texture
     else
         cache.px = px;
         cache.py = py;
@@ -666,6 +693,7 @@ if nargout>3
         cache.previous = previous;
         cache.righttoleft = righttoleft;
         cache.transform = transform;
+        cache.wordbounds = wordboundsbase;
     end
 end
 end
@@ -763,15 +791,18 @@ Screen('DrawTexture',win,texNum,[],texDrawRect);
 DoDrawCleanup(win, previouswin, IsOpenGLRendering, transform);
 end
 
-function [nx, ny, bbox, wordbounds] = DoDraw(win,disableClip,sx,sy,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,dowordbounds)
+function [nx, ny, bbox, wordbounds] = DoDraw(win,disableClip,sx,sy,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,wordboundsbase)
 
-wordbounds = [];
-[nx,ny] = deal(nan);
-refbox = bbox;
+[nx,ny]     = deal(nan);
+wordbounds  = wordboundsbase;
 
 [previouswin, IsOpenGLRendering] = DoDrawSetup(win, transform, bbox);
 if ~isempty(transform)
-    % transform BBox to reflect transforms applied by DoDrawSetup
+    % transform BBox and wordbounds to reflect transforms applied by
+    % DoDrawSetup
+    for b=1:size(wordbounds,1)
+        wordbounds(b,:)  = transformBBox2(wordbounds(b,:), transform, bbox);
+    end
     bbox = transformBBox(bbox,transform);
 end
 
@@ -806,11 +837,6 @@ for p=1:length(subStrings)
         % yPositionIsBaseline==true at least). Basically behaves like
         % printf or fprintf formatting.
         [nx,ny] = Screen('DrawText', win, curstring, xp, yp,[],[],1, righttoleft);
-        if dowordbounds && ~all(isspace(curstring))
-            % Need to return per-word bounding boxes:
-            [~, wordbound] = Screen('TextBounds', win, curstring, xp, yp, 1, righttoleft);
-            wordbounds(end+1, :) = transformBBox2(wordbound, transform, refbox);
-        end
 
         % for debug, draw bounding box and baseline
         % [~,sbbox,~,xAdv] = Screen('TextBounds', win, curstring, xp, yp, 1, righttoleft);
@@ -825,10 +851,6 @@ end
 ResetTextSetup(win,previous,false);
 
 DoDrawCleanup(win, previouswin, IsOpenGLRendering, transform);
-
-if dowordbounds && isempty(wordbounds)
-    wordbounds = bbox;
-end
 
 end
 
@@ -1448,6 +1470,12 @@ if qCalledWithCache
             opt.cache.px = opt.cache.px + off(1);
             opt.cache.py = opt.cache.py + off(2);
         end
+        % apply offsets to word bounding boxes too
+        off = bbox-opt.cache.bbox;
+        opt.cache.wordbounds(:,1) = opt.cache.wordbounds(:,1)+off(1);
+        opt.cache.wordbounds(:,2) = opt.cache.wordbounds(:,2)+off(2);
+        opt.cache.wordbounds(:,3) = opt.cache.wordbounds(:,3)+off(1);
+        opt.cache.wordbounds(:,4) = opt.cache.wordbounds(:,4)+off(2);
         opt.cache.bbox = bbox;
     end
     % overwrite winRect in cache if set by user
