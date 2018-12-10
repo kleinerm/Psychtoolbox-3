@@ -1172,7 +1172,7 @@ switch yalign
         yoff = -bHeight;
 end
 
-bbox = OffsetRect(bbox,sx+xoff,sy+yoff);
+bbox = OffsetRect(bbox,round(sx+xoff),round(sy+yoff));
 end
 
 function bbox = transformBBox(bbox,transform)
