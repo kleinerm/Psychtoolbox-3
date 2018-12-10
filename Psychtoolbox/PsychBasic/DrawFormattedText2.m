@@ -439,6 +439,7 @@ lWidth          = zeros(1,numlines);
 lWidthOff       = zeros(2,numlines);
 lBaseLineSkip   = zeros(1,numlines);
 lBaseLineOff    = zeros(2,numlines);
+lWidthOffLine   = zeros(3,length(subStrings));
 sWidth          = zeros(1,length(subStrings));
 px              = zeros(1,length(subStrings));
 py              = zeros(1,length(subStrings));
@@ -456,7 +457,6 @@ for p=1:numlines
     
     % to get line width and height, get textbounds of each string and add
     % them together
-    lWidthOffLine = zeros(3,length(qSubStr));
     for q=find(qSubStr)
         % do format change if needed
         if any(switches(:,q))
