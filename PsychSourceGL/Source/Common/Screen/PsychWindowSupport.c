@@ -274,7 +274,7 @@ void PsychRebindARBExtensionsToCore(void)
         Contains experimental support for flipping multiple displays synchronously, e.g., for dual display stereo setups.
 
 */
-psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, int specialFlags)
+psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, psych_int64 specialFlags)
 {
     PsychRectType dummyrect;
     double splashMinDurationSecs = 0;
@@ -3527,6 +3527,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
     // Don't use absolute vbl or (divisor,remainder) constraint by default:
     targetSwapFlags = 0;
+
+    // Request flip at exactly tWhen if fine-grained onset scheduling is requested for this window,
+    // subject to the required hardware + OS support:
+    if (windowRecord->specialflags & kPsychUseFineGrainedOnset)
+        targetSwapFlags |= 4;
 
     // Swap at a specific video field (even or odd) requested, e.g., to select the target field
     // in a frame-sequential stereo presentations setup and thereby the specific eye for stimulus
