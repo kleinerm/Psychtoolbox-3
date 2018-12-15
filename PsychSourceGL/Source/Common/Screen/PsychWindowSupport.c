@@ -4373,7 +4373,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // Consistency check: Swap can't complete before it was scheduled: Have a fudge
             // value of 1 msec to account for roundoff errors:
             if ((PsychPrefStateGet_SkipSyncTests() < 2) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) &&
-		((osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) ||
+                ((osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) ||
                 (!osspecific_asyncflip_scheduled && (tSwapComplete < time_at_swaprequest - 0.001)))) {
                 if (verbosity > 0) {
                     printf("PTB-ERROR: OpenML timestamping reports that flip completed before it was scheduled [Scheduled no earlier than %f secs, completed at %f secs]!\n",
@@ -4438,8 +4438,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // Store optional VBL-IRQ timestamp as well:
         windowRecord->postflip_vbltimestamp = postflip_vbltimestamp;
 
-        // Store optional OS-Builtin swap timestamp as well:
-        windowRecord->osbuiltin_swaptime = tSwapComplete;
+        // Store OS-Builtin swap timestamp as well, or stimulus onset time from beampos
+        // timestamping, if OS-Builtin timestamp not available:
+        windowRecord->osbuiltin_swaptime = (tSwapComplete > 0) ? tSwapComplete : *time_at_onset;
     }
     else {
         // syncing to vbl is disabled, time_at_vbl becomes meaningless, so we set it to a
@@ -4449,7 +4450,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         *miss_estimate = 0;
         *beamPosAtFlip = -1;  // Ditto for beam position...
 
-        // Was internal timstamping suppressed?
+        // Was internal timestamping suppressed?
         if (windowRecord->specialflags & kPsychSkipTimestampingForFlipOnce) {
             // Latch potential values injected via Screen Hookfunction 'SetOneshotFlipResults':
             time_at_vbl = windowRecord->time_at_last_vbl;
