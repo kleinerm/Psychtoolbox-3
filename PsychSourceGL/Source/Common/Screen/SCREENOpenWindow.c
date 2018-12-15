@@ -761,11 +761,10 @@ PsychError SCREENOpenWindow(void)
     // Make sure no OpenGL errors happened up to this point:
     PsychTestForGLErrors();
 
-    // If we are in logo-startup mode (former blue-screen mode) and double-buffering
-    // is enabled, then do an initial bufferswap & clear, so the display starts in
+    // If double-buffered, do an initial bufferswap & clear, so the display starts in
     // the user selected background color instead of staying at the blue screen or
     // logo display until the Matlab script first calls 'Flip'.
-    if (((PsychPrefStateGet_VisualDebugLevel()>=4) || (windowRecord->stereomode > 0)) && numWindowBuffers>=2) {
+    if (numWindowBuffers >= 2) {
         // Do three immediate bufferswaps by an internal call to Screen('Flip'). This will also
         // take care of clearing the backbuffer in preparation of first userspace drawing
         // commands and such. We need up-to 3 calls to clear triple-buffered setups from framebuffer junk.
