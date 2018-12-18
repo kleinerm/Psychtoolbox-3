@@ -3839,11 +3839,31 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             offset = crtcoff[headId];
 
             // Skip disabled display engines: Just return "don't know" 0xffffffff:
-            if (ReadRegister(EVERGREEN_CRTC_CONTROL + offset) & (0x1 << 16) == 0) {
-               if (PsychPrefStateGet_Verbosity() > 3)
-                  printf("PsychOSKDGetLUTState(): Skipping headId %d as it is disabled.\n", headId);
+            // Probe for crtc master disable, inactive or no memory read requests active. Note: Often not effective...
+            v = ReadRegister(EVERGREEN_CRTC_CONTROL + offset);
+            if ((v & (EVERGREEN_CRTC_MASTER_EN | (0x1 << 16)) == 0) || (v & EVERGREEN_CRTC_DISP_READ_REQUEST_DISABLE)) {
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PsychOSKDGetLUTState(): Skipping headId %d as it is disabled [EVERGREEN_CRTC_CONTROL]\n", headId);
 
-               return(0xffffffff);
+                return(0xffffffff);
+            }
+
+            // Probe for crtc blanked. Note: Often not effective...
+            v = ReadRegister(EVERGREEN_CRTC_BLANK_CONTROL + offset);
+            if (v & EVERGREEN_CRTC_BLANK_DATA_EN) {
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PsychOSKDGetLUTState(): Skipping headId %d as it is disabled [EVERGREEN_CRTC_BLANK_CONTROL].\n", headId);
+
+                return(0xffffffff);
+            }
+
+            // Probe for graphics enable off:
+            v = ReadRegister(EVERGREEN_GRPH_ENABLE + offset);
+            if (v == 0) {
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PsychOSKDGetLUTState(): Skipping headId %d as it is disabled [EVERGREEN_GRPH_ENABLE].\n", headId);
+
+                return(0xffffffff);
             }
 
             // If even only one of the display engines does use a NI_GRPH_REGAMMA_MODE other than NI_REGAMMA_BYPASS,
@@ -3851,30 +3871,35 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             // default is amdgpuUsesDisplayCore == FALSE, but we switch to TRUE as soon as we find this hint of DC:
             amdgpuUsesDisplayCore |= ((ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7) != NI_REGAMMA_BYPASS) ? TRUE : FALSE;
             if (amdgpuUsesDisplayCore) {
-               if (PsychPrefStateGet_Verbosity() > 3)
-                  printf("PsychOSKDGetLUTState(): headId %d uses DC and REGAMMA_LUT [%i].\n",
-                         headId, ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7);
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PsychOSKDGetLUTState(): headId %d [Offset 0x%x] uses DC and REGAMMA_LUT [%i].\n",
+                            headId, offset, ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7);
+            }
+            else {
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PsychOSKDGetLUTState(): headId %d [Offset 0x%x] uses old modesetting with REGAMMA_LUT [%i].\n",
+                            headId, offset, ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7);
             }
 
             if (!amdgpuUsesDisplayCore) {
-               // Classic code path for radeon-kms and amdgpu-kms without DC/DAL.
-               // Uses 256-slot 10 bit wide standard LUT:
-               if ((ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf) != 0) {
-                  if (PsychPrefStateGet_Verbosity() > 3)
-                     printf("PsychOSKDGetLUTState(): Skipping headId %d as LUT not in 256-slot mode [%i].\n",
-                           headId, ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf);
+                // Classic code path for radeon-kms and amdgpu-kms without DC/DAL.
+                // Uses 256-slot 10 bit wide standard LUT:
+                if ((ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf) != 0) {
+                    if (PsychPrefStateGet_Verbosity() > 3)
+                        printf("PsychOSKDGetLUTState(): Skipping headId %d as LUT not in 256-slot mode [%i].\n",
+                                headId, ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf);
 
-                  return(0xffffffff);
-               }
+                    return(0xffffffff);
+                }
 
-               WriteRegister(EVERGREEN_DC_LUT_RW_MODE + offset, 0);
-               WriteRegister(EVERGREEN_DC_LUT_RW_INDEX + offset, 0);
-               reg = EVERGREEN_DC_LUT_30_COLOR + offset;
+                WriteRegister(EVERGREEN_DC_LUT_RW_MODE + offset, 0);
+                WriteRegister(EVERGREEN_DC_LUT_RW_INDEX + offset, 0);
+                reg = EVERGREEN_DC_LUT_30_COLOR + offset;
             }
             else {
-               // New amdgpu-kms with DC/DAL. Uses REGAMMA_LUT:
-               WriteRegister(NI_REGAMMA_LUT_INDEX + offset, 0);
-               reg = NI_REGAMMA_LUT_DATA + offset;
+                // New amdgpu-kms with DC/DAL. Uses REGAMMA_LUT:
+                WriteRegister(NI_REGAMMA_LUT_INDEX + offset, 0);
+                reg = NI_REGAMMA_LUT_DATA + offset;
             }
 
             // Find out if there are non-zero black offsets:

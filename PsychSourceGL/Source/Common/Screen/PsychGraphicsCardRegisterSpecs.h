@@ -242,6 +242,7 @@
 #define EVERGREEN_DC_LUT_WHITE_OFFSET_RED               0x6a18
 #define EVERGREEN_DC_LUT_10BIT_BYPASS                   0x6808
 #define EVERGREEN_GRPH_CONTROL                          0x6804
+#define EVERGREEN_GRPH_ENABLE                           0x6800
 
 /* display controller offsets used for crtc/cur/lut/grph/viewport/etc. */
 #define EVERGREEN_CRTC0_REGISTER_OFFSET                 (0x6df0 - 0x6df0)
@@ -257,6 +258,8 @@
 #define EVERGREEN_CRTC_CONTROL                          0x6e70
 #       define EVERGREEN_CRTC_MASTER_EN                 (1 << 0)
 #       define EVERGREEN_CRTC_DISP_READ_REQUEST_DISABLE (1 << 24)
+#define EVERGREEN_CRTC_BLANK_CONTROL                    0x6e74
+#       define EVERGREEN_CRTC_BLANK_DATA_EN             (1 << 8)
 #define EVERGREEN_CRTC_STATUS                           0x6e8c
 #define EVERGREEN_CRTC_STATUS_POSITION                  0x6e90
 #define EVERGREEN_CRTC_UPDATE_LOCK                      0x6ed4
