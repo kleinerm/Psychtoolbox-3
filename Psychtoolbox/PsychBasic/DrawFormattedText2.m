@@ -470,7 +470,7 @@ for p=1:numlines
             DoFormatChange(win,switches(:,q),fmt);
         end
         if isempty(subStrings{q})
-            [~,bbox]        = Screen('TextBounds', win,           'x',0,0,1,righttoleft);
+            [~,bbox,h]      = Screen('TextBounds', win,           'x',0,0,1,righttoleft);
             xAdv = 0;
         else
             [~,bbox,h,xAdv] = Screen('TextBounds', win, subStrings{q},0,0,1,righttoleft);
