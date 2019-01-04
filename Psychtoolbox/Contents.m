@@ -41,7 +41,7 @@
 % web site also has advice about getting help, the Psychtoolbox forum, and
 % the latest information about bugs and new releases:
 %
-% web http://psychtoolbox.org/; % triple-click me & hit enter
+% http://psychtoolbox.org/
 %
 % Peter Scarfe has written a large set of nice and beginner friendly
 % Psychtoolbox tutorial scripts.
@@ -55,10 +55,6 @@
 % Kleiner M, Brainard D, Pelli D, 2007, "What's new in Psychtoolbox-3?"
 % Perception 36 ECVP Abstract Supplement.
 %
-% If you find this software useful then please consider donating some money
-% to support its ongoing maintenance and development. See:
-%
-% http://psychtoolbox.org/donations
 %
 %
 % Folders and their contents:
