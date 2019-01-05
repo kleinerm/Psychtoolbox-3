@@ -6575,11 +6575,25 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     psych_bool vc4 = FALSE;
     GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
     GLboolean nativeStereo = FALSE;
+    int mesaversion[3];
+    const char* mesaver = NULL;
 
     gpuMaintype = kPsychUnknown;
     gpuModel = 0xFFFFFFFF;
     gpuMinortype = 0;
     PsychGetGPUSpecs(windowRecord->screenNumber, &gpuMaintype, &gpuMinortype, &gpuModel, NULL);
+
+    // Try to detect if we are running on top of Mesa OpenGL, and which version:
+    mesaver = strstr((const char*) glGetString(GL_VERSION), "Mesa");
+    if (mesaver && (3 == sscanf(mesaver, "Mesa %i.%i.%i", &mesaversion[0], &mesaversion[1], &mesaversion[2]))) {
+        if (verbose)
+            printf("PTB-DEBUG: Running on Mesa version %i.%i.%i\n", mesaversion[0], mesaversion[1], mesaversion[2]);
+    }
+    else {
+        mesaversion[0] = mesaversion[1] = mesaversion[2] = 0;
+        if (verbose)
+            printf("PTB-DEBUG: Not running on Mesa graphics library.\n");
+    }
 
     // Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
     // so use at most 7 letters!
@@ -7006,6 +7020,28 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                     windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
                     windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
                     windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;
+                }
+
+                // Running on Linux + Mesa OpenGL driving an AMD R600 gpu or later, and thereby possibly a
+                // AMD GCN gpu controlled by the Mesa Gallium radeonsi gfx-driver? If so then we need a workaround
+                // for a radeonsi bug present in Mesa versions 18.1, 18.2, and early versions of Mesa 18.3.x.
+                // The bug is fixed upstream for Mesa 19+ and for Mesa 18.3.2+, so the workaround is used for
+                // Mesa 18.1.0 - Mesa 18.3.1.
+                //
+                // The bug is that 1 component 1D or 2 component 2D vertex attributes submitted via VBO's or VAO's,
+                // e.g., via glTexCoordPointer() or similar will not get transmitted to GLSL vertex shaders properly
+                // iff user data type GL_DOUBLE is used. E.g., glTexCoordPointer(1, GL_DOUBLE, ...) will result in
+                // reception of corrupted gl_MultiTexCoordX.x values. This can be avoided by using GL_FLOAT as input
+                // data type, e.g., glTexCoordPointer(1, GL_FLOAT, ...) or using the experimental NIR shader backend
+                // (setenv R600_DEBUG=nir). Set the specialflags flag kPsychNeedVBODouble12Workaround to signal this
+                // bug. Atm. only Screen('DrawDots') needs to work around the bug if smooth/round point rendering or
+                // shader based rendering is requested (dot_type > 0) and different point sizes are used for individual
+                // dots.
+                if ((PSYCH_SYSTEM == PSYCH_LINUX) && strstr(windowRecord->gpuCoreId, "R600") &&
+                    (mesaversion[0] == 18) && (mesaversion[1] > 0) && ((mesaversion[1] < 3) || (mesaversion[2] < 2))) {
+                    if (verbose)
+                        printf("Potential AMD GCN gpu on Linux with potentially buggy Mesa Gallium radeonsi driver. Enabling 'DrawDots' workaround.\n");
+                    windowRecord->specialflags |= kPsychNeedVBODouble12Workaround;
                 }
             }
         }

@@ -374,6 +374,16 @@ PsychError SCREENDrawDots(void)
                 }
             }
 
+            // Do we need the GL_FLOAT data glTexCoordPointer(1, ...) workaround?
+            // See explanation in PsychWindowSupport.c: PsychDetectAndAssignGfxCapabilities():
+            if (windowRecord->specialflags & kPsychNeedVBODouble12Workaround) {
+                // Yes: Convert double size buffer to a float sizef buffer and then
+                // submit that as GL_FLOAT:
+                sizef = (float*) PsychMallocTemp(nrpoints * sizeof(float));
+                for (i = 0; i < nrpoints; i++)
+                    sizef[i] = (float) size[i];
+            }
+
             // Sizes are fine, setup texunit 2:
             glClientActiveTexture(GL_TEXTURE2);
             glEnableClientState(GL_TEXTURE_COORD_ARRAY);
@@ -395,7 +405,7 @@ PsychError SCREENDrawDots(void)
     else {
         // Different size for each dot provided and we can't use our shader based implementation:
         // We have to do One GL - call per dot:
-        for (i=0; i<nrpoints; i++) {
+        for (i = 0; i < nrpoints; i++) {
             if (!lenient && ((sizef && (sizef[i] > pointsizerange[1] || sizef[i] < pointsizerange[0])) ||
                 (!sizef && (size[i] > pointsizerange[1] || size[i] < pointsizerange[0])))) {
                 printf("PTB-ERROR: You requested a point size of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
@@ -404,7 +414,7 @@ PsychError SCREENDrawDots(void)
             }
 
             // Setup point size for this point:
-            if (!usePointSizeArray) glPointSize((sizef) ? sizef[i] : (float) size[i]);
+            glPointSize((sizef) ? sizef[i] : (float) size[i]);
 
             // Render point:
             glDrawArrays(GL_POINTS, i, 1);
