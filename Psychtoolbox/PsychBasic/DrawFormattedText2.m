@@ -326,12 +326,9 @@ end
     deal(opt.tstring,opt.win,opt.sx,opt.sy,opt.xalign,opt.yalign,opt.xlayout,opt.baseColor,opt.wrapat,opt.transform,opt.vSpacing,opt.righttoleft,opt.winRect,opt.resetStyle,opt.cacheOnly,opt.cacheMode);
 
 
-% Store data class of input string for later use in re-cast ops:
-stringclass = class(tstring);
-
 % Need different encoding for returnChar that matches class of input
 % tstring:
-returnChar = cast(10,stringclass);
+returnChar = cast(10,class(tstring));
 
 % Convert all conventional linefeeds into C-style newlines.
 % But if '\n' is already encoded as a char(10) as in Octave, then
@@ -350,7 +347,7 @@ end
 
 % string can contain HTML-like formatting commands. Parse them and turn
 % them into formatting indicators, then remove them from the string to draw
-[tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,char(tstring),baseColor,resetStyle);
+[tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,tstring,baseColor,resetStyle);
 % check we still have anything to render after formatting tags removed
 if isempty(tstring)
     % Empty text string -> Nothing to do, but assign dummy values:
@@ -371,11 +368,6 @@ if wrapat > 0
     % that is wrapped around column 'wrapat'
     tstring = WrapString(tstring, wrapat);
 end
-
-% Cast curstring back to the class of the original input string, to
-% make sure special unicode encoding (e.g., double()'s) does not
-% get lost for actual drawing:
-tstring = cast(tstring, stringclass);
 
 % now, split text into segments, either when there is a carriage return or
 % when the format changes
@@ -866,6 +858,10 @@ function [tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,tstring,s
 % - <font=name>         To switch to a new font
 % - <size=number>       To switch to a new font size
 
+% get string type, store original as octave can't deal with string values outside uint8 range
+tstringOri  = tstring;
+tstring     = char(tstring);
+
 % get colorrange of window, to interpret colors
 cr = Screen('ColorRange',win);
 
@@ -1060,11 +1056,14 @@ end
 % add escape slashes from any escaped tags. also when double slashed,
 % we should remove one
 toStrip = [toStrip regexp(tstring,'(?i)/<(i|b|u|color|font|size)','start')];
-tstring    (toStrip) = [];
+tstringOri (toStrip) = [];
 codes.style(toStrip) = [];
 codes.color(toStrip) = [];
 codes.font (toStrip) = [];
 codes.size (toStrip) = [];
+
+% replace tstring with tstringOri again in case input was outside char range, so Octave can handle this all just fine..
+tstring = tstringOri;
 
 if isempty(tstring)
     % strong was only formatting commands, nothing to draw, ignore
