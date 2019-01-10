@@ -3881,7 +3881,9 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
                             headId, offset, ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7);
             }
 
-            if (!amdgpuUsesDisplayCore) {
+            // Always use the classic mode path even on amdgpuUsesDisplayCore ie. DC, as it turned
+            // out we can't read the pwl lut registers.
+            if (TRUE) { // Used to be: !amdgpuUsesDisplayCore) {
                 // Classic code path for radeon-kms and amdgpu-kms without DC/DAL.
                 // Uses 256-slot 10 bit wide standard LUT:
                 if ((ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf) != 0) {
@@ -3898,6 +3900,8 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             }
             else {
                 // New amdgpu-kms with DC/DAL. Uses REGAMMA_LUT:
+                // NOTE: This else branch currently disabled.
+                WriteRegister(0x6A8C + offset, 0);
                 WriteRegister(NI_REGAMMA_LUT_INDEX + offset, 0);
                 reg = NI_REGAMMA_LUT_DATA + offset;
             }
@@ -3948,7 +3952,7 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             // hopeless, given the complexity of the hw programming and approximation
             // algorithms used to fit the pwl segments to the gamma lut input curve,
             // and given that these algorithms are still subject to change.
-            // Testing if we have an identity lut, or creating one is therefore a
+            // Testing if we have an identity lut, or creating one, is therefore a
             // no-go. What we still can do is test for an all-zero LUT, as that still
             // maps to all-zeros in the hw lut's. Iow. our trick for finding the
             // output -> display engine mappings should still work, but checking for
@@ -3963,6 +3967,7 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             // mess with us, so this may not be the last word on the matter... ... to be verified.
             isIdentity = ((ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7) == NI_REGAMMA_BYPASS) ? TRUE : FALSE;
 
+            /* This doesn't work, because the hw doesn't give us correct readings from the pwl lut!
             // Probe for all-zeros LUT:
             for (i = 0; i < 960; i++) {
                 // Read 32 bit value of this slot, keep 19 LSB's, as these encode
@@ -3974,6 +3979,27 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
 
                 if (PsychPrefStateGet_Verbosity() > 4) {
                     printf("%d: %x\n", i, v);
+                }
+            }
+            */
+
+            // Use a slight variant of the classic path in the else-branch. Read the
+            // 256 slot lut registers and just check for all-zero vs. not-all-zero to
+            // do the detection, as the 256 legacy lut seems to get mirrored by the hw
+            // from the new pwl lut. isIdentity detection is done the new way though,
+            // as the lut values we read can't be meaningfully interpreted beyond the
+            // "is it all zeros?" check:
+            for (i = 0; i < 256; i++) {
+                // Read 32 bit value of this slot, mask out upper 2 bits,
+                // so the least significant 30 bits are left, as these
+                // contain the 3 * 10 bits for the 10 bit R,G,B channels:
+                v = ReadRegister(reg) & (0xffffffff >> 2);
+
+                // All zero as they should be for a all-zero LUT?
+                if (v > 0) isZero = 0;
+
+                if (PsychPrefStateGet_Verbosity() > 4) {
+                    printf("%d:%d,%d,%d\n", i, (v >> 20) & 0x3ff, (v >> 10) & 0x3ff, (v >> 0) & 0x3ff);
                 }
             }
         } else {
