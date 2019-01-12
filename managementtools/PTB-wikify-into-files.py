@@ -450,16 +450,26 @@ def mexhelpextract(outputDir,mexnames):
              os.path.splitext(os.path.basename(_mexscript))[0], \
              mexname, \
              _tmpdir)
-        cmd = 'matlab -nojvm -nodisplay -r "%s" > /dev/null' % matlabcmd
-        # and execute matlab w/ the temporary script we wrote earlier
+        # and execute Octave or Matlab w/ the temporary script we wrote earlier
         try:
-            print('running MATLAB for %s in %s' % (mexname,_tmpdir))
+            # Try Octave first:
+            cmd = 'octave --no-history --no-window-system --silent --no-gui --eval "%s" > /dev/null' % matlabcmd
+            print('running OCTAVE for %s in %s' % (mexname,_tmpdir))
             p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT, close_fds=True)
             stderr = p.communicate()[1]
             if stderr: print(stderr)
         except:
-            print('could not dump help for %s into %s.' % (mexname,_tmpdir))
+            # Failed: Try Matlab:
+            try:
+                cmd = 'matlab -nojvm -nodisplay -r "%s" > /dev/null' % matlabcmd
+                print('running MATLAB for %s in %s' % (mexname,_tmpdir))
+                p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT, close_fds=True)
+                stderr = p.communicate()[1]
+                if stderr: print(stderr)
+            except:
+                print('could not dump help for %s into %s.' % (mexname,_tmpdir))
 
         mexDumpName = os.path.join(_tmpdir,mexname);
 
@@ -634,7 +644,7 @@ def main(argv):
                 %first extract help for main function, including subfunction list
                 fprintf(fid,'[section:__main__]\\n');
                 synopsisText = evalc([mexname ';']);
-                helpText     = help(mexname);
+                helpText     = help([mexname '.m']);
                 fprintf(fid,'[key:usage]\\n%s\\n',synopsisText);
                 fprintf(fid,'[key:help]\\n%s\\n',helpText);
                 fprintf(fid,'[key:seealso]\\n');
