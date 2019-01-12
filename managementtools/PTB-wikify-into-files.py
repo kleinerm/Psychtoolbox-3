@@ -27,20 +27,20 @@ Usage: PTB-wikify-into-files.py [options] ([m-files]|[directory])
 Options:
  -h, --help
  -o [dir], --output-dir     Output directory to write files into.
- -f [format], --format    Output file format, can be either markdown, or mediawiki
- -r,  --recursive         recursive mode: use only with a single directory
- -m,  --mexmode           mex mode: also look for .mexmaci files and post their
+ -f [format], --format      Output file format, can be either markdown (default), or mediawiki
+ -r, --recursive            Recursive mode: use only with a single directory
+ -m, --mexmode              Mex mode: also look for .mexmaci files and post their
                             help strings by calling MATLAB and running them
                             In recursive mode both M and Mex files are posted.
                             (edit the source to change _mexext into one of
-                             .mexglx, .mexmaci, or .dll)
- -v                       be verbose (massive text output)
+                            .mexglx, .mexmaci, or .dll)
+ -v                         be verbose (massive text output)
                             this prints out:
                               - which files were skipped
                               - a diff of the text before submission
 
 
-This script is designed to work with a GitHub wiki.  GitHub exposes its wiki as
+This script is designed to work with a GitHub wiki. GitHub exposes its wiki as
 git repository with each page corresponding to a file.  This script will write
 out all files into a directory that can be pushed into the wiki repository to
 update the wiki.
@@ -57,18 +57,20 @@ than push changes back onto wiki:
 
   cd ~/git
   git clone https://github.com/Psychtoolbox-3/psychtoolbox-3.github.com.git
-  cd /path/to/psychtoolbox
-  PTB-wikify-into-files.py -m -o ~/Psychtoolbox-3.wiki/ PsychBasic/*.m
+  cd /path/to/Psychtoolbox
+  PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/docs/ PsychBasic/*.m
 
   cd ~/git/Psychtoolbox-3.wiki
   git add -A
   git commit -m "Update Message"
   git push
 
-ALternatively recursively add all files in the directory:
-  PTB-wikify-into-files.py -r -m -o ~/git/Psychtoolbox-3.wiki/ PsychBasic/
+Alternatively recursively add all files in the directory:
+
+  PTB-wikify-into-files.py -r -m -o ~/git/psychtoolbox-3.github.com/docs/ PsychBasic/
 
 Example script that outputs entire PTB tree:
+
 cd /path/to/Psychtoolbox
 ../managementtools/PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/docs/ *.m;
 #Exclude PsychOpenGL because it has 2700+ files and overloads github wiki.
@@ -91,23 +93,9 @@ IMPORTANT!!:
 
 import sys, os, re, subprocess
 import getopt
-
-#from urllib2 import HTTPError
-
-#import mechanize
-#assert mechanize.__version__ >= (0, 0, 6, "a")
-
 import textwrap
 
-#from  BeautifulSoup import BeautifulSoup, Tag, NavigableString
-
-#mechanical soup is the python3 update for mechanize and beautifulsoup
-#import mechanicalsoup
-
-#baseurl = "http://docs.psychtoolbox.org/wikka.php?wakka="
 outputdir = "./"
-username = "DocBot"
-password = ""
 _recursive = 0
 _mexmode = 0
 outputFormat = "markdown"
@@ -127,12 +115,8 @@ _debug = 0
 _fulldiff = 0
 
 # This version writes files instead of directly posting onto website.
-# global mech
-# mech = mechanicalsoup.Browser()
 
 #Format a string for making a link in different markdown dialects
-#formatLinkText(label,link)
-#formatLinkText(labelAndLink)
 def formatLinkText(*args):
 
     if len(args)==1:
@@ -583,12 +567,6 @@ def recursivewalk(outputDir,rootfolder):
         mfiles = [os.path.join(root,f) for f in files \
                 if f.endswith(('.m','.M',_mexext))]
         writeFiles(outputDir,mfiles)
-
-        # # mex files are processed via matlab
-        # if _mexmode:
-        #     mexnames = [os.path.splitext(f)[0] for f in files \
-        #             if f[-len(_mexext):].lower() == _mexext]
-        #     mexhelpextract(mexnames)
 
     print("Exiting: Done with this tree.")
     sys.exit(0)
