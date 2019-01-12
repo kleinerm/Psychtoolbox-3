@@ -34,6 +34,10 @@ Options:
                             In recursive mode both M and Mex files are posted.
                             (edit the source to change _mexext into one of
                             .mexglx, .mexmaci, or .dll)
+ -g, --opengl               Do generate documentation for PsychOpenGL folder as well.
+                            By default, docs for glXXX() functions in PsychOpenGL/MOGL/
+                            are not generated, as there are too many of them for the
+                            GitHub Wiki to handle them.
  -v                         be verbose (massive text output)
                             this prints out:
                               - which files were skipped
@@ -65,6 +69,11 @@ than push changes back onto wiki:
   git commit -m "Update Message"
   git push
 
+Typical invocation to update the docs:
+
+cd /path/to/Psychtoolbox
+../managementtools/PTB-wikify-into-files.py -r -m -o ~/git/psychtoolbox-3.github.com/docs/ ./;
+
 Alternatively recursively add all files in the directory:
 
   PTB-wikify-into-files.py -r -m -o ~/git/psychtoolbox-3.github.com/docs/ PsychBasic/
@@ -73,13 +82,6 @@ Example script that outputs entire PTB tree:
 
 cd /path/to/Psychtoolbox
 ../managementtools/PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/docs/ *.m;
-#Exclude PsychOpenGL because it has 2700+ files and overloads github wiki.
-for name in `find * -maxdepth 0 -type d -not -name PsychOpenGL`;
-do
-../managementtools/PTB-wikify-into-files.py -rm -o ~/git/psychtoolbox-3.github.com/docs/ $name;
-done
-#Just extract documentation from the base PsychOpenGL folder
-../managementtools/PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/docs/ PsychOpenGL/*.m*;
 
 IMPORTANT!!:
   Always change your working directory to the root of the
@@ -98,6 +100,7 @@ import textwrap
 outputdir = "./"
 _recursive = 0
 _mexmode = 0
+_ignoreOpenGL = 1
 outputFormat = "markdown"
 
 from sys import platform
@@ -561,6 +564,10 @@ def recursivewalk(outputDir,rootfolder):
 
         if re.search(os.sep+'\.svn|'+os.sep+'private',root):
                 continue
+
+        if _ignoreOpenGL and re.search(os.sep+'MOGL',root):
+                continue
+
         print('Entering folder ' + root)
 
         # .m-files are processed with postsinglefiles
@@ -577,8 +584,8 @@ def usage():
 def main(argv):
 
     try:
-        opts, args = getopt.getopt(argv, "h:o:f:rmv", \
-            ["help", "output-dir=", "format=", "recursive","mexmode"])
+        opts, args = getopt.getopt(argv, "o:f:hrmvg", \
+            ["help", "output-dir=", "format=", "opengl", "recursive", "mexmode"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -600,6 +607,9 @@ def main(argv):
         elif opt in ("-r", "--recursive"):
             global _recursive
             _recursive = 1
+        elif opt in ("-g", "--opengl"):
+            global _ignoreOpenGL
+            _ignoreOpenGL = 0
         elif opt in ("-m", "--mexmode"):
             import tempfile
             global _mexmode, _mexext, _tmpdir, _mexscript
