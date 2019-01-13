@@ -177,12 +177,12 @@ def parse(filename):
     # strip first two chars: '% '
     return textwrap.dedent(''.join([l[1:] for l in docstring]))
 
-def beackern(mkstring):
+def beackern(mkstring, doLinks):
     '''Regex cleaning of PTB docstrings'''
     # expand tabs to four spaces
     mkstring = mkstring.expandtabs(4)
     # Enclose text markup characters with: ""
-#    mkstring = re.sub(r'(\+\+|(--){2}\b|==|\'\'|@@|[^:]//|>>|<<|##)',r'""\1""',mkstring)
+    #mkstring = re.sub(r'(\+\+|(--){2}\b|==|\'\'|@@|[^:]//|>>|<<|##)',r'""\1""',mkstring)
     # escape markdown characters with \
     mkstring = re.sub(r'(#|\*|_|>)',r'\\\1',mkstring)
 
@@ -217,6 +217,7 @@ def beackern(mkstring):
             + r'\bOSName\b|' \
             + r'\bPriority\b|' \
             + r'\bPsychometric\b|' \
+            + r'\bQuest\b|' \
             + r'\bRandi\b|' \
             + r'\bRanint\b|' \
             + r'\bReplace\b|' \
@@ -243,28 +244,25 @@ def beackern(mkstring):
             + r'\blog10nw\b|' \
             + r'\bPreference\b)'
 
+    if doLinks:
+        if outputFormat == "markdown":
+            mkstring = re.sub(match,r'[\1](\1)',mkstring)
+        elif outputFormat == "mediawiki":
+            mkstring = re.sub(match,r'[[\1|\1]]',mkstring)
 
-    if outputFormat == "markdown":
-        mkstring = re.sub(match,r'[\1](\1)',mkstring)
-    elif outputFormat == "mediawiki":
-        mkstring = re.sub(match,r'[[\1|\1]]',mkstring)
+        #Add links for any word using UpperCamelCase: e.g. PsychHID
+        #BUT does NOT match any string stating wiht ' e.g. 'OpenWindow'
+        #Because we don't want subfunctions/strings to trigger page links
+        #WARNING:
+        #This is a pretty crazy regex to .  Cobled together from lots of
+        #web searches and tests.  Probably not very robust but gets most of the job done.
+        UpperCamelMatch = r'(?<!\')(?:\(|\b)[A-Z]([A-Z0-9]*[a-z][a-z0-9]*[A-Z]|[a-z0-9]*[A-Z][A-Z0-9]*[a-z])[A-Za-z0-9]*(?:\)|\b)(?!\')'
+        #r'(?<!\')[A-Z]([A-Z0-9]*[a-z][a-z0-9]*[A-Z]|[a-z0-9]*[A-Z][A-Z0-9]*[a-z])[A-Za-z0-9]*'
 
-
-    #Add links for any word using UpperCamelCase: e.g. PsychHID
-    #BUT does NOT match any string stating wiht ' e.g. 'OpenWindow'
-    #Because we don't want subfunctions/strings to trigger page links
-    #WARNING:
-    #This is a pretty crazy regex to .  Cobled together from lots of
-    #web searches and tests.  Probably not very robust but gets most of the job done.
-    UpperCamelMatch = r'(?<!\')(?:\(|\b)[A-Z]([A-Z0-9]*[a-z][a-z0-9]*[A-Z]|[a-z0-9]*[A-Z][A-Z0-9]*[a-z])[A-Za-z0-9]*(?:\)|\b)(?!\')'
-    #r'(?<!\')[A-Z]([A-Z0-9]*[a-z][a-z0-9]*[A-Z]|[a-z0-9]*[A-Z][A-Z0-9]*[a-z])[A-Za-z0-9]*'
-
-    if outputFormat == "markdown":
-        mkstring = re.sub(UpperCamelMatch,r'[\g<0>](\g<0>)',mkstring)
-    elif outputFormat == "mediawiki":
-        mkstring = re.sub(UpperCamelMatch,r'[[\g<0>|\g<0>]]',mkstring)
-
-
+        if outputFormat == "markdown":
+            mkstring = re.sub(UpperCamelMatch,r'[\g<0>](\g<0>)',mkstring)
+        elif outputFormat == "mediawiki":
+            mkstring = re.sub(UpperCamelMatch,r'[[\g<0>|\g<0>]]',mkstring)
 
     # purge useless help lines
     mkstring = re.sub(r'(?m)^.*triple-click me & hit enter.*$\n','',mkstring)
@@ -352,9 +350,9 @@ def writeFiles(outputDir,files):
 
         # scrub the text real good, to get us some nice wiki formatting
         if docstring:
-            body = beackern(docstring)
+            body = beackern(docstring, 1)
         else:
-            body = 'Adrian, this function is not yet documented.\n\n\n MissingDocs'
+            body = 'This function is not yet documented.\n\n\n MissingDocs'
 
         pathlinks = """
                     <div class="code_header" style="text-align:right;">
@@ -511,14 +509,16 @@ def mexhelpextract(outputDir,mexnames):
             breadcrumb = "##### " + formatLinkText('Psychtoolbox','Psychtoolbox') + ">"  \
                                 + formatLinkText(mexname) + ".{mex*} subfunction\n\n"
 
-            # scrub the text for main text only
-            body = beackern(help)
-
             if subFuncName == '__main__':
                 usage = formatUsage(usage,mexname,subfunctions)
                 headline = "# " + formatLinkText(mexname,mexname) + "\n"
                 breadcrumb = "##### " + formatLinkText('Psychtoolbox','Psychtoolbox') + ">"  \
                                     + formatLinkText(mexname) + "\n\n"
+                # Scrub the text for main help text of mex file only - without keyword substitution for main function help:
+                body = beackern(help, 0)
+            else:
+                # Scrub the text for main help text of subfunction only - with keyword substitution:
+                body = beackern(help, 1)
 
             # docstring = '' \
             #         + '%%(matlab;Usage)' \
