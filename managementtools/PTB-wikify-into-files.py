@@ -74,6 +74,10 @@ Typical invocation to update the docs:
 cd /path/to/Psychtoolbox
 ../managementtools/PTB-wikify-into-files.py -r -m -o ~/git/psychtoolbox-3.github.com/docs/ ./;
 
+For kleinerm:
+
+../managementtools/PTB-wikify-into-files.py -r -m -o ~/projects/OpenGLPsychtoolbox/psychtoolbox-3.github.com/docs/ ./
+
 Alternatively recursively add all files in the directory:
 
   PTB-wikify-into-files.py -r -m -o ~/git/psychtoolbox-3.github.com/docs/ PsychBasic/
@@ -641,7 +645,7 @@ def main(argv):
             end
 
             try
-                %first extract help for main function, including subfunction list
+                % First extract help for main function, including subfunction list
                 fprintf(fid,'[section:__main__]\\n');
                 synopsisText = evalc([mexname ';']);
                 helpText     = help([mexname '.m']);
@@ -653,7 +657,7 @@ def main(argv):
                     for i=1:size(subfunctions,2)
                         fprintf(fid,'[section:%s]\\n',subfunctions{i});
                         docs = eval([mexname '(''DescribeModulefunctionshelper'',1,subfunctions{i})']);
-                        fprintf(fid,'[key:usage]:%s\\n',docs{1});
+                        fprintf(fid,'[key:usage]:\\n%s\\n',docs{1});
                         fprintf(fid,'[key:help]\\n%s\\n',docs{2});
                         fprintf(fid,'[key:seealso]\\n%s\\n',docs{3});
                     end
