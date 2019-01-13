@@ -17,21 +17,21 @@
 % brackets when you actually call the function. For example, "help Snd"
 % will tell you this:
 %
-%      err = Snd(command,[sig],[rate])
+% err = Snd(command,[sig],[rate])
 %
 % meaning that the "command" argument is required and the "sig" and "rate"
 % arguments are optional. A typical call to Snd looks like this:
 %
-%      Snd('Play', mysoundsignal)
+% Snd('Play', mysoundsignal)
 %
 % The most important and generally useful functions, especially Screen, are
 % in PsychBasic. The PsychDemos will show you how to do useful things in
 % Matlab with the Psychtoolbox. Try these:
 %
-%      help PsychDemos       % Triple-click me & hit enter.
-%      help PsychBasic
-%      help Screen
-%      Screen OpenWindow?
+% help PsychDemos
+% help PsychBasic
+% help Screen
+% Screen OpenWindow?
 %
 % The folder PsychDocumentation contains bits of documentation about
 % technical implementation details, how to solve specific tasks and how to
@@ -86,6 +86,7 @@
 % PsychRadiometric       - Radiometric/photometric calculations and conversions.
 % PsychRects             - Manipulate rectangles for drawing.
 % PsychSignal            - Signal processing and math routines.
+% PsychSound             - Sound input and output routines.
 % PsychStairCase         - Adaptive staircase procedure.
 % PsychTests             - Evaluate performance of software and hardware.
 % PsychVideoCapture      - Functions for realtime video capture.
