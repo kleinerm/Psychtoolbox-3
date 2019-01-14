@@ -103,14 +103,14 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-/* Mappings up to date for June 2018 (last update e-mail patch / commit 2018-05-18). Would need updates for any commit after June 2018 */
+/* Mappings up to date for January 2019 (last update e-mail patch / commit 2018-12-21). Would need updates for any commit after December 2018 */
 
 static psych_bool isDCE12(int screenId)
 {
     psych_bool isDCE12 = false;
     (void) screenId;
 
-    // VEGA10 is DCE12:
+    // VEGA is DCE12:
 
     // VEGA10: 0x6860 - 0x687F
     if ((fPCIDeviceId & 0xFFF0) == 0x6860) isDCE12 = true;
@@ -125,8 +125,8 @@ static psych_bool isDCE12(int screenId)
     // VEGA20: 0x66A0 - 0x66AF
     if ((fPCIDeviceId & 0xFFF0) == 0x66A0) isDCE12 = true;
 
-    // RAVEN: 0x15DD so far:
-    if ((fPCIDeviceId & 0xFFFF) == 0x15DD) isDCE12 = true;
+    // RAVEN: 0x15DD so far: RAVEN is not DCE, but a new type DCN-1.0!
+    // if ((fPCIDeviceId & 0xFFFF) == 0x15DD) isDCE12 = true;
 
     return(isDCE12);
 }
@@ -138,9 +138,10 @@ static psych_bool isDCE112(int screenId)
 
     // POLARIS10/11/12 are DCE11.2:
 
-    // POLARIS10: 0x67C0 - 0x67DF
+    // POLARIS10: 0x67C0 - 0x67DF and 0x6FDF
     if ((fPCIDeviceId & 0xFFF0) == 0x67C0) isDCE112 = true;
     if ((fPCIDeviceId & 0xFFF0) == 0x67D0) isDCE112 = true;
+    if ((fPCIDeviceId & 0xFFFF) == 0x6FDF) isDCE112 = true;
 
     // POLARIS11: 0x67E0 - 0x67FF
     if ((fPCIDeviceId & 0xFFF0) == 0x67E0) isDCE112 = true;
