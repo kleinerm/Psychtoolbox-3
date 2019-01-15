@@ -25,6 +25,12 @@ static char synopsisString[] =
 "provided, or in a new texture (if 'targetTexture' is not provided). Use the data in the optional 'sourceTexture2' as well if "
 "provided. This could be, e.g., a lookup table or a 2nd image for stereo processing. Return a handle 'transtexid' to the "
 "processed texture.\n"
+"If 'targetTexture' was provided and suitable then the returned 'transtexid' will be identical to 'targetTexture'. For maximum "
+"efficiency in iterative processing, you should hand the 'transtexid' from a previous call to Screen('TransformTexture') back "
+"into a successive call as 'targetTexture', so the same container can be recycled. At first invocation you could hand in an "
+"empty [] 'targetTexture' to leave optimal choice of the format to the function. If you want to hand your self-made 'targetTexture' "
+"then using a handle created via Screen('OpenOffscreenWindow') will be slightly more efficient than using a handle created via "
+"Screen('MakeTexture').\n"
 "The image processing operation is defined in the processing hook chain 'UserDefinedBlit' of the proxy object 'transformProxyPtr'.\n"
 "'specialFlags' optional flags to alter operation of this function: kPsychAssumeTextureNormalized - Assume source texture(s) are "
 "already in a normalized upright orientation. This can speed up processing, but it can lead to wrong results if the textures "
@@ -65,7 +71,7 @@ PsychError SCREENTransformTexture(void)
 
     // Get the window structure for the proxy object.
     PsychAllocInWindowRecordArg(2, TRUE, &proxyRecord);
-    if (proxyRecord->windowType!=kPsychProxyWindow)
+    if (proxyRecord->windowType != kPsychProxyWindow)
         PsychErrorExitMsg(PsychError_user, "'transformProxyPtr' argument must be a handle to a proxy object.");
 
     // Test if optional specialFlags are provided:
@@ -164,6 +170,10 @@ PsychError SCREENTransformTexture(void)
     if (sourceRecord2)
         PsychCreateShadowFBOForTexture(sourceRecord2, FALSE, -1);
 
+    // Make sure the target texture is upright/normalized:
+    if (!(specialFlags & 1))
+        PsychNormalizeTextureOrientation(targetRecord);
+
     // Make sure our target texture has a full-blown FBO attached as a rendertarget.
     // As our proxy object defines the image processing ops, it also defines the
     // required imagingMode properties for the target texture:
@@ -188,11 +198,14 @@ PsychError SCREENTransformTexture(void)
         PsychCopyRect(proxyRecord->rect, targetRecord->rect);
         PsychCopyRect(proxyRecord->clientrect, targetRecord->rect);
 
+        // Build FBO for bounce-buffering. This will always be upright/normalized,
+        // so no need to normalize "texture orientation" for proxyRecord bounce buffers:
         PsychCreateShadowFBOForTexture(proxyRecord, TRUE, proxyRecord->imagingMode);
     }
 
     // Make sure we don't have VRAM memory feedback loops:
-    if (sourceRecord->textureNumber == targetRecord->textureNumber)
+    if ((sourceRecord->textureNumber == targetRecord->textureNumber) ||
+        (sourceRecord2 && (sourceRecord2->textureNumber == targetRecord->textureNumber)))
         PsychErrorExitMsg(PsychError_user, "Source texture and target texture must be different!");
 
     // Apply image processing operation: Use ressources and OpenGL context of proxyRecord, run user defined blit chain,
