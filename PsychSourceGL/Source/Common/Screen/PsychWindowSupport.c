@@ -5976,6 +5976,16 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                 if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
             }
 
+            // Safeguard us against being called with windowRecord unsuitable as drawing target, e.g., kPsychProxyWindow type:
+            if (windowRecord && !(PsychIsOnscreenWindow(windowRecord) || PsychIsOffscreenWindow(windowRecord))) {
+                if (PsychPrefStateGet_Verbosity() > 1)
+                    printf("PTB-WARNING: PsychSetDrawingTarget() called with non-drawingtarget windowRecord[%i:%p], type %i! No-Op.\n",
+                           windowRecord->windowIndex, windowRecord, windowRecord->windowType);
+
+                recursionLevel--;
+                return;
+            }
+
             // Special safe-guards for setting a new drawingtarget during active async flip operations needed?
             if (windowRecord && (asyncFlipOpsActive > 0)) {
                 // Yes. At least one async flip in progress and want to bind windowRecord.
