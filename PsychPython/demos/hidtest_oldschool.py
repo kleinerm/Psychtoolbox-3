@@ -55,3 +55,5 @@ def run():
     print(errs);
     print('\n\nReports:\n\n');
     print(rep);
+
+run()

@@ -28,6 +28,19 @@ def num_devices():
 def devices(device_class=None):
     return PsychHID('Devices', device_class)
 
+def get_keyboard_devices(name=''):
+    kbDevices = []
+    kbNames = []
+    kbInds = []
+    for ii, dev in enumerate(devices()):
+        if 'Keyboard' in dev['usageName'] and name in dev['product']:
+            kbInds.append(ii)
+            kbNames.append(dev['usageName'])
+            kbDevices.append(Keyboard(ii))
+    return kbInds, kbNames, kbDevices
+
+
+
 
 class Device:
     def __init__(self, device_number):
@@ -81,8 +94,9 @@ class Device:
 
 
 class Keyboard():
-    def __init__(self, device_number=None):
+    def __init__(self, device_number=None, buffer_size=10000):
         self.device_number = device_number
+        self._create_queue(buffer_size)
 
     def check(self, scan_list=None):
         return PsychHID('KbCheck', self.device_id, scan_list)
@@ -126,3 +140,9 @@ class Keyboard():
 
     def trigger_wait(self, keys):
         secs=PsychHID('KbTriggerWait', keys, self.device_number)
+
+    def start_trapping(self):
+        PsychHID('Keyboardhelper', -12)
+
+    def stop_trapping(self):
+        PsychHID('Keyboardhelper', -10)

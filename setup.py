@@ -4,7 +4,7 @@
 #
 
 # from distutils.core import setup, Extension # Build system.
-from setuptools import setup, Extension
+from setuptools import setup, Extension, find_packages
 import os, fnmatch, shutil                  # Directory traversal, file list building.
 import platform                             # OS detection.
 import sys                                  # cpu arch detection.
@@ -151,7 +151,7 @@ if platform.system() == 'Darwin':
     base_libs = [];
 
     # No "no reproducible builds" warning:
-    base_compile_args = ['-Wno-date-time', '-mmacosx-version-min=10.11'];
+    base_compile_args = ['-Wno-date-time', '-mmacosx-version-min=10.6'];
 
     # Extra OS specific libs for PsychPortAudio:
     audio_libdirs = [];
@@ -201,7 +201,7 @@ PsychPortAudio = Extension(name,
                            libraries = base_libs + audio_libs,
                            extra_link_args = audio_extralinkargs,
                            extra_objects = audio_objects
-                          )
+                           )
 
 # PsychHID module: Note the extra include_dirs and libraries:
 name = 'PsychHID';
@@ -231,8 +231,9 @@ setup (name = 'psychtoolbox',
        author = 'Mario Kleiner',
        author_email = 'mario.kleiner.de@gmail.com',
        url = 'http://psychtoolbox.org',
-       packages = ['psychtoolbox'],
-       package_dir = {'psychtoolbox' : 'PsychPython'},
+       packages = ['psychtoolbox', 'psychtoolbox.demos'],
+       package_dir = {'psychtoolbox' : 'PsychPython',
+                      'psychtoolbox.demos' : 'PsychPython/demos'},
        package_data = extra_files,
        ext_package= 'psychtoolbox',
        ext_modules = [WaitSecs, GetSecs, IOPort, PsychHID, PsychPortAudio]
