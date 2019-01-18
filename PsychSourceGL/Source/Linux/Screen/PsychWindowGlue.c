@@ -70,6 +70,9 @@ static PsychRectType barrierRects[PSYCH_MAX_POINTER_BARRIERS] = { 0 };
 static PsychWindowRecordType* barrierParentWindows[PSYCH_MAX_POINTER_BARRIERS] = { 0 };
 static int pointerBarrierCount = 0;
 
+// Backup for old screen saver settings before disable:
+static int oldscreensaver[4];
+
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
  *    PsychRealtimePriority(true) enables realtime-scheduling (like Priority(>0) would do in Matlab).
  *    PsychRealtimePriority(false) restores scheduling to the state before last invocation of PsychRealtimePriority(true),
@@ -1269,6 +1272,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         int dummy;
 
         // First window. Disable future use of screensaver:
+        XGetScreenSaver(dpy, &oldscreensaver[0], &oldscreensaver[1], &oldscreensaver[2], &oldscreensaver[3]);
         XSetScreenSaver(dpy, 0, 0, DefaultBlanking, DefaultExposures);
         // If the screensaver is currently running, forcefully shut it down:
         XForceScreenSaver(dpy, ScreenSaverReset);
@@ -1504,10 +1508,12 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 
         // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
         // Set screensaver to previous settings, potentially enabling it:
-        XSetScreenSaver(dpy, -1, 0, DefaultBlanking, DefaultExposures);
+        XSetScreenSaver(dpy, oldscreensaver[0], oldscreensaver[1], oldscreensaver[2], oldscreensaver[3]);
 
         // And just for safety, do it via DPMS enable as well:
         if (DPMSQueryExtension(dpy, &dummy, &dummy)) DPMSEnable(dpy);
+
+        XSync(dpy, 0);
 
         // Unmap/release possibly mapped device memory: Defined in PsychScreenGlue.c
         PsychScreenUnmapDeviceMemory();
