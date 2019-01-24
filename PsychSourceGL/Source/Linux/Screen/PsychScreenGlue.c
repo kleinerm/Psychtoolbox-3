@@ -3882,11 +3882,15 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
                             headId, offset, ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7);
             }
 
-            // Always use the classic mode path on DCE-8, even on amdgpuUsesDisplayCore ie. DC,
-            // as it turned out we can't read the pwl lut registers on at least DCE-8. Testing
-            // on DCE-11 shows that the new code path (else-branch) is needed.
-            // The jury is out on DCE-10, but for the moment we assume it is like DCE-11 unless disproven.
-            if (!amdgpuUsesDisplayCore || !(isDCE10(screenId) || isDCE11(screenId))) {
+            // Use the classic code-path if DisplayCore is not used, or if regamma control is not
+            // set to user-defined (value 3 or 4), as in those cases, the pwl lut won't be used.
+            // Before Linux 4.17, AMD DC didn't allow user-controlled regamma and set a fixed SRGB
+            // mode (value 1). Since 4.17, atomic color management is supported, and seems to result
+            // in use of mode 3 == user defined.
+            // Evidence: New code-path in else-branch is needed on POLARIS11 + Linux 4.20 and 5.0, but
+            // does not work on same POLARIS11 with Linux 4.15, where the regamma mode is 1 (SRGB fixed)
+            // instead of 3 (user programmable). Let's hope this is the final word on this...
+            if (!amdgpuUsesDisplayCore || ((ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7) < 3)) {
                 // Classic code path for radeon-kms and amdgpu-kms without DC/DAL.
                 // Uses 256-slot 10 bit wide standard LUT:
                 if ((ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf) != 0) {
@@ -3902,7 +3906,7 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
                 reg = EVERGREEN_DC_LUT_30_COLOR + offset;
             }
             else {
-                // New amdgpu-kms with DC/DAL on DCE-11, and maybe DCE-10. Uses REGAMMA_LUT:
+                // New amdgpu-kms with DC/DAL on Linux 4.17+. Uses REGAMMA_LUT:
                 WriteRegister(0x6A8C + offset, 0);
                 WriteRegister(NI_REGAMMA_LUT_INDEX + offset, 0);
                 reg = NI_REGAMMA_LUT_DATA + offset;
