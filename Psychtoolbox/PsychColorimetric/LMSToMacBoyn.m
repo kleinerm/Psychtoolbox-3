@@ -17,9 +17,13 @@ function ls = LMSToMacBoyn(LMS,T_cones,T_lum)
 % as if it were computed with respect to an S cone fundamentals with a max
 % of 1.
 %
+% The scaling of S cones was introduced in Janurary 2019 and is not
+% backwards compatible if the passed fundamentals had S cones scaled to a
+% max other than 1.
+%
 % 10/30/97  dhb  Wrote it.
 % 7/9/02    dhb  T_cones_sp -> T_cones on line 20.  Thanks to Eiji Kimura.
-% 1/23/18   dhb  Scale S cone value to make it as if fundamental had a max
+% 1/23/19   dhb  Scale S cone value to make it as if fundamental had a max
 %                of 1. This shouldn't break old code because this would
 %                typically be called with fundamentals normalized to a max
 %                of 1, since that's how most PTB data are provided. Thanks
