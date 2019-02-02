@@ -67,20 +67,26 @@ function ls = LMSToMacBoyn(LMS,T_cones,T_lum)
     plot(lsSpectrumLocus(1,:)',lsSpectrumLocus(2,:)','r','LineWidth',3);
     plot(lsEEWhite(1),lsEEWhite(2),'bs','MarkerFaceColor','b','MarkerSize',12);
     xlim([0.4 1]); ylim([0,1]);
-    xlabel('l chromaticity'); ylabel('s chromaticity')
+    xlabel('l chromaticity'); ylabel('s chromaticity');
     title('CIE 170-2:2015 Figure 8.2');
 %}
 %{
     % Demonstrate invariance of ls after scaling of cones and luminance, when
     load T_cones_ss2
     load T_CIE_Y2
-    T_CIE_Y2 = 1.8*T_CIE_Y2;
     lsSpectrumLocus = LMSToMacBoyn(T_cones_ss2,T_cones_ss2,T_CIE_Y2); 
-    T_cones_ss2(1,:) = 3*T_cones_ss2(1,:);
-    T_cones_ss2(3,:) = 0.05*T_cones_ss2(3,:);
-    lsSpectrumLocusScaled = LMSToMacBoyn(T_cones_ss2,T_cones_ss2,T_CIE_Y2); 
+    T_CIE_Y2_scaled = 1.8*T_CIE_Y2;
+    T_cones_ss2_scaled = T_cones_ss2;
+    T_cones_ss2_scaled(1,:) = 3*T_cones_ss2(1,:);
+    T_cones_ss2_scaled(3,:) = 0.05*T_cones_ss2(3,:);
+    lsSpectrumLocusScaled = LMSToMacBoyn(T_cones_ss2_scaled,T_cones_ss2_scaled,T_CIE_Y2_scaled); 
     diff = max(abs(lsSpectrumLocus(:)-lsSpectrumLocusScaled(:)));
     fprintf('Difference in spectrum locus chromaticity after scaling is %0.5f (should be small)\n',diff);
+    figure; hold on;
+    plot(lsSpectrumLocus(1,:)',lsSpectrumLocus(2,:)','r','LineWidth',3);
+    plot(lsSpectrumLocusScaled(1,:)',lsSpectrumLocusScaled(2,:)','g','LineWidth',2);
+    xlim([0.4 1]); ylim([0,1]);
+    xlabel('l chromaticity'); ylabel('s chromaticity');
 %}
 
 % Scale LMS so that L+M = luminance and S cone value corresponds to a
