@@ -3,7 +3,7 @@ function ls = LMSToMacBoyn(LMS,T_cones,T_lum)
 %
 % Compute MacLeod-Boynton chromaticity from cone exciation coordinates.
 % This is L/Lum and S/Lum, with appropriate normalization as described
-% below.
+% below. Recommended usage yields MB chromacities according to CIE 170-2:2015.
 %
 % ** Recommended Usage: Compute LMS with respect to some specified T_cones,
 % and pass both T_cones as well as the cooresponding T_lum (the photopic
