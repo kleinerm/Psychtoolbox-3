@@ -103,7 +103,7 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-/* Mappings up to date for January 2019 (last update e-mail patch / commit 2018-12-21). Would need updates for any commit after December 2018 */
+/* Mappings up to date for January 2019 (last update e-mail patch / commit 2018-12-21). Would need updates for any commit after January 2019 */
 
 static psych_bool isDCE12(int screenId)
 {
@@ -171,9 +171,9 @@ static psych_bool isDCE11(int screenId)
 
     if (isDCE112(screenId)) isDCE11 = true;
 
-    // That all DCE12 can be treated as DCE11 for our purpose is so far an
-    // unproven assumption, but let's see where it leads us - hopefully not to
-    // awful bug reports.
+    // DCE12 can be treated as DCE11 for our purpose, as only the DCE-12 ip offset
+    // has changed, not the register locations inside the block. We correct for the
+    // offset in the setup code via dce_ip_offset.
     if (isDCE12(screenId)) isDCE11 = true;
 
     return(isDCE11);
@@ -775,21 +775,50 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 
             // Setup for DCE-10/11/12:
             if (isDCE10(screenId) || isDCE11(screenId) || isDCE12(screenId)) {
-                // TODO: Not verified for DCE-12, purely speculation!
+                unsigned int dce_ip_offset;
+
                 // DCE-10/11/12 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
                 // but the offsets for the different CRTC blocks are different wrt. to pre DCE-10. Therefore
-                // need to initialize the offsets differently. Also, some of these parts seem to support up
-                // to 7 display engines instead of the old limit of 6 engines:
+                // need to initialize the offsets differently. Additionally, starting with DCE-12, the base
+                // address of the DCE IP block inside the MMIO range has changed, compared to older DCE versions.
+                // We use an additive offset dce_ip_offset to correct for the shift in IP block position.
                 gfx_lowlimit = 0;
 
+                // DCE-12.0 or later display engine?
+                if (isDCE12(screenId)) {
+                    // From the kernel file drivers/gpu/drm/amd/include/vega10_ip_offset.h, #define of
+                    // DCE_BASE, DCE_BASE.instance[0].segment[reg##_BASE_IDX] with segment index 2 for
+                    // registers we care about,ie. DCE_BASE.instance[0].segment[2] = 0x000034C0;
+                    // (Reference: https://elixir.bootlin.com/linux/v5.0-rc4/source/drivers/gpu/drm/amd/include/vega10_ip_offset.h#L48)
+                    //
+                    // The base address of the DCE IP block has shifted in DCE-12 vs. older DCE's. Was implicitly
+                    // 4-Bytes * 0x00002013, is now 4-Bytes * 0x000034C0, so the offset is the difference:
+                    dce_ip_offset = (0x000034C0 - 0x00002013) * 4;
+
+                    // Note that there is nothing preventing different DCE-12.x generations from having
+                    // different DCE IP offsets, so dce_ip_offset would need to be defined by sub-gen!
+                    // It just happens that so far we got lucky and as of February 2019, all DCE-12 ip
+                    // of DCE12.0 and DCE12.1 seems to have the same offset.
+                    // However, new Raven gpu's have a substantially redesigned display engine, called
+                    // DCN, with potentially very different register layout and programming / operation /
+                    // capabilites, requiring a big code rewrite in our support code. I think this won't
+                    // happen, so DCE-12 might be the end of the road for our custom hacks.
+                }
+                else {
+                    // Older than DCE-12. Implicit offset is 0x00002013 * 4 Bytes, but as we encode a delta to
+                    // the implicit offset of pre DCE-12 in dce_ip_offset, the delta of < DCE-12 to itself is
+                    // obviously 0x0:
+                    dce_ip_offset = 0x0;
+                }
+
                 // Offset of crtc blocks of Volcanic Islands DCE-10/11 gpu's for each of the possible crtc's:
-                crtcoff[0] = DCE10_CRTC0_REGISTER_OFFSET;
-                crtcoff[1] = DCE10_CRTC1_REGISTER_OFFSET;
-                crtcoff[2] = DCE10_CRTC2_REGISTER_OFFSET;
-                crtcoff[3] = DCE10_CRTC3_REGISTER_OFFSET;
-                crtcoff[4] = DCE10_CRTC4_REGISTER_OFFSET;
-                crtcoff[5] = DCE10_CRTC5_REGISTER_OFFSET;
-                crtcoff[6] = DCE10_CRTC6_REGISTER_OFFSET;
+                crtcoff[0] = DCE10_CRTC0_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[1] = DCE10_CRTC1_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[2] = DCE10_CRTC2_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[3] = DCE10_CRTC3_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[4] = DCE10_CRTC4_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[5] = DCE10_CRTC5_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[6] = DCE10_CRTC6_REGISTER_OFFSET + dce_ip_offset;
 
                 // DCE-10 has 6 display controllers:
                 if (isDCE10(screenId)) fNumDisplayHeads = 6;
