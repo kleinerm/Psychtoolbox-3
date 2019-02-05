@@ -425,6 +425,28 @@ static psych_bool isDCE3(int screenId)
     return(isDCE3);
 }
 
+// DCE1/2 aka AVIVO is the earliest display hardware we support with
+// our low-level trickery. Older hw uses the legacy display engines
+// and is not supported at all by our mmio code:
+static psych_bool isDCE1(int screenId)
+{
+    psych_bool isDCE1 = false;
+
+    (void) screenId;
+
+    if ((fPCIDeviceId & 0xFF00) == 0x7100) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFF00) == 0x7200) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFF00) == 0x7900) isDCE1 = true;
+
+    if ((fPCIDeviceId & 0xFF00) == 0x9400) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFF00) == 0x9500) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9610) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9610) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9710) isDCE1 = true;
+
+    return(isDCE1);
+}
+
 // Helper routine: Read a single 32 bit unsigned int hardware register at
 // offset 'offset' and return its value:
 static unsigned int ReadRegister(unsigned long offset)
@@ -653,10 +675,24 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         }
 
         if (gpu->vendor_id == PCI_VENDOR_ID_ATI || gpu->vendor_id == PCI_VENDOR_ID_AMD) {
-            // BAR 2 is MMIO on old AMD gpus, BAR 5 is MMIO on DCE-8/10/11/... "Sea Islands" gpus and later models:
-            region = &gpu->regions[(isDCE8(screenId) || isDCE10(screenId)) ? 5 : 2];
+            // On Radeons we distinguish between Avivo / DCE-1/2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60), DCE-8 (80), DCE-10 (100), DCE-11 (110), DCE-12 (120).
+            // A values of 0 is assigned for pre DCE-1/AVIVO hardware, which we don't support at all for MMIO mapping tricks:
+            fCardType = isDCE12(screenId) ? 120 : isDCE11(screenId) ? 110 : isDCE10(screenId) ? 100 : isDCE8(screenId) ? 80 : (isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 :
+                        (isDCE3(screenId) ? 30 : isDCE1(screenId) ? 10 : 0))));
+
             fDeviceType = kPsychRadeon;
             fNumDisplayHeads = 2;
+
+            // Supported DCE1+ ?
+            if (fCardType > 0) {
+                // BAR 2 is MMIO on old AMD gpus, BAR 5 is MMIO on DCE-8/10/11/... "Sea Islands" gpus and later models:
+                region = &gpu->regions[(isDCE8(screenId) || isDCE10(screenId)) ? 5 : 2];
+            }
+            else {
+                region = NULL;
+                if (PsychPrefStateGet_Verbosity() > 1)
+                    printf("PTB-INFO: Unsupported AMD gpu detected. No low-level access, because the gpu is too new or too old. [pciid = 0x%x]\n", fPCIDeviceId);
+            }
         }
 
         if (gpu->vendor_id == PCI_VENDOR_ID_INTEL) {
@@ -700,9 +736,11 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-INFO: Failed to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
                 printf("PTB-INFO: Beamposition timestamping on NVidia and AMD gpu's, and other special functions on AMD gpu's, disabled.\n");
-                printf("PTB-INFO: You need to run the setup script PsychLinuxConfiguration once, followed by a reboot, for this to work.\n");
-                printf("PTB-INFO: If you are using the open-source graphics drivers, then this failure usually doesn't matter for typical use.\n");
-                fflush(NULL);
+                if (fDeviceType != kPsychRadeon || fCardType > 0) {
+                    printf("PTB-INFO: You need to run the setup script PsychLinuxConfiguration once, followed by a reboot, for this to work.\n");
+                    printf("PTB-INFO: Additionally, on machines with EFI firmware, EFI secure boot must be disabled, or kernel lockdown lifted.\n");
+                }
+                printf("PTB-INFO: If you are using the open-source graphics drivers, then this usually doesn't matter for typical use.\n");
             }
 
             // Failed:
@@ -745,9 +783,6 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         }
 
         if (fDeviceType == kPsychRadeon) {
-            // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60), DCE-8 (80), DCE-10 (100), DCE-11 (110) ... for now.
-            fCardType = isDCE12(screenId) ? 120 : isDCE11(screenId) ? 110 : isDCE10(screenId) ? 100 : isDCE8(screenId) ? 80 : (isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : (isDCE3(screenId) ? 30 : 10))));
-
             // Setup for DCE-4/5/6/8:
             if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId) || isDCE8(screenId)) {
                 gfx_lowlimit = 0;
