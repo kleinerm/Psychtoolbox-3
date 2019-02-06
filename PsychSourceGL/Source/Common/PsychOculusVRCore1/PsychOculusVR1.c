@@ -103,9 +103,9 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "PsychOculusVRCore1 - A Psychtoolbox driver for Oculus VR hardware.\n";
     synopsis[i++] = "This driver allows to control devices supported by the Oculus runtime V1.16 and higher.\n";
-    synopsis[i++] = "Copyright (c) 2018 Mario Kleiner.\n";
+    synopsis[i++] = "Copyright (c) 2018, 2019 Mario Kleiner.\n";
     synopsis[i++] = "The PsychOculusVRCore1 driver is licensed to you under the terms of the MIT license, with the following restriction:\n";
-    synopsis[i++] = "Uses the Oculus SDK which is “Copyright © Facebook Technologies, LLC and its affiliates. All rights reserved.\n”
+    synopsis[i++] = "Uses the Oculus SDK which is Copyright � Facebook Technologies, LLC and its affiliates. All rights reserved.\n";
     synopsis[i++] = "See 'help License.txt' in the Psychtoolbox root folder for more details.\n";
     synopsis[i++] = "\n";
     synopsis[i++] = "Usage:";
