@@ -112,11 +112,6 @@ static psych_bool inGLUserspace = FALSE;
 // avoid needless state changes:
 static PsychWindowRecordType* currentRendertarget = NULL;
 
-// The handle of the masterthread - The Matlab/Octave/PTB main interpreter thread: This
-// is initialized when opening the first onscreen window. Its used in PsychSetDrawingTarget()
-// to discriminate between the masterthread and the worker threads for async flip operations:
-static psych_threadid    masterthread = (psych_threadid) 0;
-
 // Count of currently async-flipping onscreen windows:
 static unsigned int    asyncFlipOpsActive = 0;
 
@@ -133,11 +128,6 @@ unsigned int PsychGetNrAsyncFlipsActive(void)
 unsigned int PsychGetNrFrameSeqStereoWindowsActive(void)
 {
     return(frameSeqStereoActive);
-}
-
-psych_bool PsychIsMasterThread(void)
-{
-    return(PsychIsCurrentThreadEqualToId(masterthread));
 }
 
 static void PsychDrawSplash(PsychWindowRecordType* windowRecord)
@@ -348,12 +338,6 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             printf("PTB-INFO: limited support and possibly significant bugs hidden in it! Use with great caution and avoid if you can!\n");
             printf("PTB-INFO: Currently implemented: Screen('OpenOffscreenWindow'), Screen('CopyWindow') and Screen('WaitBlanking')\n");
         }
-
-        // Assign unique id of this thread (the Matlab/Octave main interpreter thread)
-        // as masterthread. This masterthread is the only one allowed to execute complex
-        // OpenGL code, therefore some routines check for that, e.g., PsychSetDrawingTarget().
-        // This is part of the async flip mechanism:
-        masterthread = PsychGetThreadId();
     }
 
     // Add all passed-in specialFlags to windows specialflags:
