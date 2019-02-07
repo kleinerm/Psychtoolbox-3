@@ -637,9 +637,9 @@ catch
     if IsWin && IsOctave
         fprintf('You may need to delete (or rename) the following DLL files in your Octave-4.4.1 installations\n');
         fprintf('bin folder to make this work, then restart Octave:\n');
-        fprintf('C:\Octave\4.4.1\bin\libglib-2.0.0.dll\n');
-        fprintf('C:\Octave\4.4.1\bin\libgmodule-2.0.0.dll\n');
-        fprintf('C:\Octave\4.4.1\bin\opengl32.dll\n');
+        fprintf('C:\\Octave\\4.4.1\\bin\\libglib-2.0.0.dll\n');
+        fprintf('C:\\Octave\\4.4.1\\bin\\libgmodule-2.0.0.dll\n');
+        fprintf('C:\\Octave\\4.4.1\\bin\\opengl32.dll\n');
         fprintf('\n');
     end
     fprintf('Once you manage to fix the problem (simply type ''AssertOpenGL'' to verify\n');

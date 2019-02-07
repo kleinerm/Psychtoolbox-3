@@ -112,11 +112,6 @@ static psych_bool inGLUserspace = FALSE;
 // avoid needless state changes:
 static PsychWindowRecordType* currentRendertarget = NULL;
 
-// The handle of the masterthread - The Matlab/Octave/PTB main interpreter thread: This
-// is initialized when opening the first onscreen window. Its used in PsychSetDrawingTarget()
-// to discriminate between the masterthread and the worker threads for async flip operations:
-static psych_threadid    masterthread = (psych_threadid) 0;
-
 // Count of currently async-flipping onscreen windows:
 static unsigned int    asyncFlipOpsActive = 0;
 
@@ -133,11 +128,6 @@ unsigned int PsychGetNrAsyncFlipsActive(void)
 unsigned int PsychGetNrFrameSeqStereoWindowsActive(void)
 {
     return(frameSeqStereoActive);
-}
-
-psych_bool PsychIsMasterThread(void)
-{
-    return(PsychIsCurrentThreadEqualToId(masterthread));
 }
 
 static void PsychDrawSplash(PsychWindowRecordType* windowRecord)
@@ -274,7 +264,7 @@ void PsychRebindARBExtensionsToCore(void)
         Contains experimental support for flipping multiple displays synchronously, e.g., for dual display stereo setups.
 
 */
-psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, int specialFlags)
+psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, psych_int64 specialFlags)
 {
     PsychRectType dummyrect;
     double splashMinDurationSecs = 0;
@@ -348,12 +338,6 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             printf("PTB-INFO: limited support and possibly significant bugs hidden in it! Use with great caution and avoid if you can!\n");
             printf("PTB-INFO: Currently implemented: Screen('OpenOffscreenWindow'), Screen('CopyWindow') and Screen('WaitBlanking')\n");
         }
-
-        // Assign unique id of this thread (the Matlab/Octave main interpreter thread)
-        // as masterthread. This masterthread is the only one allowed to execute complex
-        // OpenGL code, therefore some routines check for that, e.g., PsychSetDrawingTarget().
-        // This is part of the async flip mechanism:
-        masterthread = PsychGetThreadId();
     }
 
     // Add all passed-in specialFlags to windows specialflags:
@@ -3528,6 +3512,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // Don't use absolute vbl or (divisor,remainder) constraint by default:
     targetSwapFlags = 0;
 
+    // Request flip at exactly tWhen if fine-grained onset scheduling is requested for this window,
+    // subject to the required hardware + OS support:
+    if (windowRecord->specialflags & kPsychUseFineGrainedOnset)
+        targetSwapFlags |= 4;
+
     // Swap at a specific video field (even or odd) requested, e.g., to select the target field
     // in a frame-sequential stereo presentations setup and thereby the specific eye for stimulus
     // onset?
@@ -4373,7 +4362,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // Consistency check: Swap can't complete before it was scheduled: Have a fudge
             // value of 1 msec to account for roundoff errors:
             if ((PsychPrefStateGet_SkipSyncTests() < 2) && !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce) &&
-		((osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) ||
+                ((osspecific_asyncflip_scheduled && (tSwapComplete < tprescheduleswap - 0.001)) ||
                 (!osspecific_asyncflip_scheduled && (tSwapComplete < time_at_swaprequest - 0.001)))) {
                 if (verbosity > 0) {
                     printf("PTB-ERROR: OpenML timestamping reports that flip completed before it was scheduled [Scheduled no earlier than %f secs, completed at %f secs]!\n",
@@ -4438,8 +4427,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // Store optional VBL-IRQ timestamp as well:
         windowRecord->postflip_vbltimestamp = postflip_vbltimestamp;
 
-        // Store optional OS-Builtin swap timestamp as well:
-        windowRecord->osbuiltin_swaptime = tSwapComplete;
+        // Store OS-Builtin swap timestamp as well, or stimulus onset time from beampos
+        // timestamping, if OS-Builtin timestamp not available:
+        windowRecord->osbuiltin_swaptime = (tSwapComplete > 0) ? tSwapComplete : *time_at_onset;
     }
     else {
         // syncing to vbl is disabled, time_at_vbl becomes meaningless, so we set it to a
@@ -4449,7 +4439,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         *miss_estimate = 0;
         *beamPosAtFlip = -1;  // Ditto for beam position...
 
-        // Was internal timstamping suppressed?
+        // Was internal timestamping suppressed?
         if (windowRecord->specialflags & kPsychSkipTimestampingForFlipOnce) {
             // Latch potential values injected via Screen Hookfunction 'SetOneshotFlipResults':
             time_at_vbl = windowRecord->time_at_last_vbl;
@@ -5970,6 +5960,16 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                 if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
             }
 
+            // Safeguard us against being called with windowRecord unsuitable as drawing target, e.g., kPsychProxyWindow type:
+            if (windowRecord && !(PsychIsOnscreenWindow(windowRecord) || PsychIsOffscreenWindow(windowRecord))) {
+                if (PsychPrefStateGet_Verbosity() > 1)
+                    printf("PTB-WARNING: PsychSetDrawingTarget() called with non-drawingtarget windowRecord[%i:%p], type %i! No-Op.\n",
+                           windowRecord->windowIndex, windowRecord, windowRecord->windowType);
+
+                recursionLevel--;
+                return;
+            }
+
             // Special safe-guards for setting a new drawingtarget during active async flip operations needed?
             if (windowRecord && (asyncFlipOpsActive > 0)) {
                 // Yes. At least one async flip in progress and want to bind windowRecord.
@@ -6569,11 +6569,25 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     psych_bool vc4 = FALSE;
     GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
     GLboolean nativeStereo = FALSE;
+    int mesaversion[3];
+    const char* mesaver = NULL;
 
     gpuMaintype = kPsychUnknown;
     gpuModel = 0xFFFFFFFF;
     gpuMinortype = 0;
     PsychGetGPUSpecs(windowRecord->screenNumber, &gpuMaintype, &gpuMinortype, &gpuModel, NULL);
+
+    // Try to detect if we are running on top of Mesa OpenGL, and which version:
+    mesaver = strstr((const char*) glGetString(GL_VERSION), "Mesa");
+    if (mesaver && (3 == sscanf(mesaver, "Mesa %i.%i.%i", &mesaversion[0], &mesaversion[1], &mesaversion[2]))) {
+        if (verbose)
+            printf("PTB-DEBUG: Running on Mesa version %i.%i.%i\n", mesaversion[0], mesaversion[1], mesaversion[2]);
+    }
+    else {
+        mesaversion[0] = mesaversion[1] = mesaversion[2] = 0;
+        if (verbose)
+            printf("PTB-DEBUG: Not running on Mesa graphics library.\n");
+    }
 
     // Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
     // so use at most 7 letters!
@@ -7000,6 +7014,28 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
                     windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
                     windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
                     windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;
+                }
+
+                // Running on Linux + Mesa OpenGL driving an AMD R600 gpu or later, and thereby possibly a
+                // AMD GCN gpu controlled by the Mesa Gallium radeonsi gfx-driver? If so then we need a workaround
+                // for a radeonsi bug present in Mesa versions 18.1, 18.2, and early versions of Mesa 18.3.x.
+                // The bug is fixed upstream for Mesa 19+ and for Mesa 18.3.2+, so the workaround is used for
+                // Mesa 18.1.0 - Mesa 18.3.1.
+                //
+                // The bug is that 1 component 1D or 2 component 2D vertex attributes submitted via VBO's or VAO's,
+                // e.g., via glTexCoordPointer() or similar will not get transmitted to GLSL vertex shaders properly
+                // iff user data type GL_DOUBLE is used. E.g., glTexCoordPointer(1, GL_DOUBLE, ...) will result in
+                // reception of corrupted gl_MultiTexCoordX.x values. This can be avoided by using GL_FLOAT as input
+                // data type, e.g., glTexCoordPointer(1, GL_FLOAT, ...) or using the experimental NIR shader backend
+                // (setenv R600_DEBUG=nir). Set the specialflags flag kPsychNeedVBODouble12Workaround to signal this
+                // bug. Atm. only Screen('DrawDots') needs to work around the bug if smooth/round point rendering or
+                // shader based rendering is requested (dot_type > 0) and different point sizes are used for individual
+                // dots.
+                if ((PSYCH_SYSTEM == PSYCH_LINUX) && strstr(windowRecord->gpuCoreId, "R600") &&
+                    (mesaversion[0] == 18) && (mesaversion[1] > 0) && ((mesaversion[1] < 3) || (mesaversion[2] < 2))) {
+                    if (verbose)
+                        printf("Potential AMD GCN gpu on Linux with potentially buggy Mesa Gallium radeonsi driver. Enabling 'DrawDots' workaround.\n");
+                    windowRecord->specialflags |= kPsychNeedVBODouble12Workaround;
                 }
             }
         }

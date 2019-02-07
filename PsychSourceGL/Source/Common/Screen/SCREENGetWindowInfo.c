@@ -431,7 +431,15 @@ PsychError SCREENGetWindowInfo(void)
         // our windowRecord as a drawingtarget is an expected side-effect of
         // this function. Quite a bit of PTB M-Functions and usercode rely on
         // this. Exception is infoType 7 which asks to omit this call:
-        if (infoType != 7) PsychSetDrawingTarget(windowRecord);
+        if (infoType != 7) {
+            // Only set as drawing target if it can act as a drawing target ie. onscreen/offscreen/texture.
+            // Proxywindows like GLOperators() are derived from windows but can't be used as drawing target,
+            // so only set their OpenGL context:
+            if (PsychIsOnscreenWindow(windowRecord) || PsychIsOffscreenWindow(windowRecord))
+                PsychSetDrawingTarget(windowRecord);
+            else
+                PsychSetGLContext(windowRecord);
+        }
 
         // Return all information:
         PsychAllocOutStructArray(1, FALSE, -1, fieldCount, FieldNames, &s);
