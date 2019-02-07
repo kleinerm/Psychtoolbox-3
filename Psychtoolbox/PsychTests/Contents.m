@@ -31,7 +31,6 @@
 %   CopyWindowTest                  - Test CopyWindow functionality.
 %   DaqTest                         - Test PsychHID and routines to control the  USB-1208FS digital acquistion device.
 %   DrawingStuffTest                - FrameRect, DrawLine, FillPoly, FramePoly.
-%   EventAvailTest                  - Test EventAvail
 %   FillPolyTest                    - Test drawing concave polygons.
 %   FitConeFundamentalsTest         - Test/explore fitting CIE cone fundamentals with absorbance obtained from nomograms.
 %   FitWeibullTAFCTest              - Fit a Weibull to 2AFC data.
