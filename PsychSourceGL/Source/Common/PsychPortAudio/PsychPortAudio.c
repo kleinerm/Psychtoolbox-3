@@ -2736,20 +2736,23 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // Now we have auto-selected frequency or user provided override...
 
     // Set requested latency: In class 0 we choose device recommendation for dropout-free operation, in
-    // all higher (lowlat) classes we request zero latency. PortAudio will
+    // all higher (lowlat) classes we request zero or low latency. PortAudio will
     // clamp this request to something safe internally.
     switch (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type) {
-        case paCoreAudio:    // CoreAudio driver will automatically clamp to safe minimum. Around 0.7 msecs.
-        case paWDMKS:        // dto. for Windows kernel streaming.
+        case paCoreAudio:    // CoreAudio is sometimes broken and causes sound dropouts at low latencies on 10.14 Mojave.
+            lowlatency = (latencyclass > 1) ? 0.0 : 0.010;    // Go easy on it and only ask for 10 msecs latency at default
+            break;                                            // latency class, otherwise for minimum, as in the past.
+        case paWASAPI:       // WASAPI will automatically clamp to safe minimum.
+        case paWDMKS:        // dto. for WDMKS Windows kernel streaming.
             lowlatency = 0.0;
             break;
 
-        case paMME:        // No such a thing as low latency, but easy to kill the machine with too low settings!
-            lowlatency = 0.1; // Play safe, request 100 msecs. Otherwise terrible things may happen!
+        case paMME:             // No such a thing as low latency, but easy to kill the machine with too low settings!
+            lowlatency = 0.1;   // Play safe, request 100 msecs. Otherwise terrible things may happen!
             break;
 
-        case paDirectSound:    // DirectSound defaults to 120 msecs, which is way too much! It doesn't accept 0.0 msecs.
-            lowlatency = 0.05;    // Choose some half-way safe tradeoff: 50 msecs.
+        case paDirectSound:     // DirectSound defaults to 120 msecs, which is way too much! It doesn't accept 0.0 msecs.
+            lowlatency = 0.05;  // Choose some half-way safe tradeoff: 50 msecs.
             break;
 
         #ifdef PTB_USE_ASIO
@@ -2765,7 +2768,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
         case paALSA:
             // For ALSA we choose 10 msecs by default, lowering to 5 msecs if exp. requested. Experience
             // shows that the effective latency will be only a fraction of this, so we are good.
-            // Otoh going too low could cause dropouts on the tested MacbookPro 2nd generation...
+            // Otoh going too low could cause dropouts on the tested 2006 MacbookPro 2nd generation...
             // This will need more lab testing and tweaking - and the user can override anyway...
             lowlatency = (latencyclass > 2) ? 0.005 : 0.010;
             break;
@@ -2778,6 +2781,11 @@ PsychError PSYCHPORTAUDIOOpen(void)
         // None provided: Choose default based on latency mode:
         outputParameters.suggestedLatency = (latencyclass == 0 && outputDevInfo) ? outputDevInfo->defaultHighOutputLatency : lowlatency;
         inputParameters.suggestedLatency  = (latencyclass == 0 && inputDevInfo) ? inputDevInfo->defaultHighInputLatency : lowlatency;
+
+        // Make sure that requested high or default output latency on Apples trainwreck is never lower than 10 msecs.
+        // Especially on macOS 10.14 this seems to be neccessary for crackle-free playback: (Forum message #23422)
+        if ((latencyclass <= 1) && (PSYCH_SYSTEM == PSYCH_OSX) && (outputParameters.suggestedLatency < 0.010))
+            outputParameters.suggestedLatency = 0.010;
     }
     else {
         // Override provided: Use it.

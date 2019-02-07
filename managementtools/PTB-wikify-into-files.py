@@ -27,20 +27,24 @@ Usage: PTB-wikify-into-files.py [options] ([m-files]|[directory])
 Options:
  -h, --help
  -o [dir], --output-dir     Output directory to write files into.
- -f [format], --format    Output file format, can be either markdown, or mediawiki
- -r,  --recursive         recursive mode: use only with a single directory
- -m,  --mexmode           mex mode: also look for .mexmaci files and post their
+ -f [format], --format      Output file format, can be either markdown (default), or mediawiki
+ -r, --recursive            Recursive mode: use only with a single directory
+ -m, --mexmode              Mex mode: also look for .mexmaci files and post their
                             help strings by calling MATLAB and running them
                             In recursive mode both M and Mex files are posted.
                             (edit the source to change _mexext into one of
-                             .mexglx, .mexmaci, or .dll)
- -v                       be verbose (massive text output)
+                            .mexglx, .mexmaci, or .dll)
+ -g, --opengl               Do generate documentation for PsychOpenGL folder as well.
+                            By default, docs for glXXX() functions in PsychOpenGL/MOGL/
+                            are not generated, as there are too many of them for the
+                            GitHub Wiki to handle them.
+ -v                         be verbose (massive text output)
                             this prints out:
                               - which files were skipped
                               - a diff of the text before submission
 
 
-This script is designed to work with a GitHub wiki.  GitHub exposes its wiki as
+This script is designed to work with a GitHub wiki. GitHub exposes its wiki as
 git repository with each page corresponding to a file.  This script will write
 out all files into a directory that can be pushed into the wiki repository to
 update the wiki.
@@ -57,27 +61,31 @@ than push changes back onto wiki:
 
   cd ~/git
   git clone https://github.com/Psychtoolbox-3/psychtoolbox-3.github.com.git
-  cd /path/to/psychtoolbox
-  PTB-wikify-into-files.py -m -o ~/Psychtoolbox-3.wiki/ PsychBasic/*.m
+  cd /path/to/Psychtoolbox
+  PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/docs/ PsychBasic/*.m
 
   cd ~/git/Psychtoolbox-3.wiki
   git add -A
   git commit -m "Update Message"
   git push
 
-ALternatively recursively add all files in the directory:
-  PTB-wikify-into-files.py -r -m -o ~/git/Psychtoolbox-3.wiki/ PsychBasic/
+Typical invocation to update the docs:
+
+cd /path/to/Psychtoolbox
+../managementtools/PTB-wikify-into-files.py -r -m -o ~/git/psychtoolbox-3.github.com/docs/ ./;
+
+For kleinerm:
+
+../managementtools/PTB-wikify-into-files.py -r -m -o ~/projects/OpenGLPsychtoolbox/psychtoolbox-3.github.com/docs/ ./
+
+Alternatively recursively add all files in the directory:
+
+  PTB-wikify-into-files.py -r -m -o ~/git/psychtoolbox-3.github.com/docs/ PsychBasic/
 
 Example script that outputs entire PTB tree:
+
 cd /path/to/Psychtoolbox
 ../managementtools/PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/docs/ *.m;
-#Exclude PsychOpenGL because it has 2700+ files and overloads github wiki.
-for name in `find * -maxdepth 0 -type d -not -name PsychOpenGL`;
-do
-../managementtools/PTB-wikify-into-files.py -rm -o ~/git/psychtoolbox-3.github.com/docs/ $name;
-done
-#Just extract documentation from the base PsychOpenGL folder
-../managementtools/PTB-wikify-into-files.py -m -o ~/git/psychtoolbox-3.github.com/docs/ PsychOpenGL/*.m*;
 
 IMPORTANT!!:
   Always change your working directory to the root of the
@@ -91,25 +99,12 @@ IMPORTANT!!:
 
 import sys, os, re, subprocess
 import getopt
-
-#from urllib2 import HTTPError
-
-#import mechanize
-#assert mechanize.__version__ >= (0, 0, 6, "a")
-
 import textwrap
 
-#from  BeautifulSoup import BeautifulSoup, Tag, NavigableString
-
-#mechanical soup is the python3 update for mechanize and beautifulsoup
-#import mechanicalsoup
-
-#baseurl = "http://docs.psychtoolbox.org/wikka.php?wakka="
 outputdir = "./"
-username = "DocBot"
-password = ""
 _recursive = 0
 _mexmode = 0
+_ignoreOpenGL = 1
 outputFormat = "markdown"
 
 from sys import platform
@@ -127,12 +122,8 @@ _debug = 0
 _fulldiff = 0
 
 # This version writes files instead of directly posting onto website.
-# global mech
-# mech = mechanicalsoup.Browser()
 
 #Format a string for making a link in different markdown dialects
-#formatLinkText(label,link)
-#formatLinkText(labelAndLink)
 def formatLinkText(*args):
 
     if len(args)==1:
@@ -186,12 +177,12 @@ def parse(filename):
     # strip first two chars: '% '
     return textwrap.dedent(''.join([l[1:] for l in docstring]))
 
-def beackern(mkstring):
+def beackern(mkstring, doLinks):
     '''Regex cleaning of PTB docstrings'''
     # expand tabs to four spaces
     mkstring = mkstring.expandtabs(4)
     # Enclose text markup characters with: ""
-#    mkstring = re.sub(r'(\+\+|(--){2}\b|==|\'\'|@@|[^:]//|>>|<<|##)',r'""\1""',mkstring)
+    #mkstring = re.sub(r'(\+\+|(--){2}\b|==|\'\'|@@|[^:]//|>>|<<|##)',r'""\1""',mkstring)
     # escape markdown characters with \
     mkstring = re.sub(r'(#|\*|_|>)',r'\\\1',mkstring)
 
@@ -226,6 +217,7 @@ def beackern(mkstring):
             + r'\bOSName\b|' \
             + r'\bPriority\b|' \
             + r'\bPsychometric\b|' \
+            + r'\bQuest\b|' \
             + r'\bRandi\b|' \
             + r'\bRanint\b|' \
             + r'\bReplace\b|' \
@@ -252,28 +244,25 @@ def beackern(mkstring):
             + r'\blog10nw\b|' \
             + r'\bPreference\b)'
 
+    if doLinks:
+        if outputFormat == "markdown":
+            mkstring = re.sub(match,r'[\1](\1)',mkstring)
+        elif outputFormat == "mediawiki":
+            mkstring = re.sub(match,r'[[\1|\1]]',mkstring)
 
-    if outputFormat == "markdown":
-        mkstring = re.sub(match,r'[\1](\1)',mkstring)
-    elif outputFormat == "mediawiki":
-        mkstring = re.sub(match,r'[[\1|\1]]',mkstring)
+        #Add links for any word using UpperCamelCase: e.g. PsychHID
+        #BUT does NOT match any string stating wiht ' e.g. 'OpenWindow'
+        #Because we don't want subfunctions/strings to trigger page links
+        #WARNING:
+        #This is a pretty crazy regex to .  Cobled together from lots of
+        #web searches and tests.  Probably not very robust but gets most of the job done.
+        UpperCamelMatch = r'(?<!\')(?:\(|\b)[A-Z]([A-Z0-9]*[a-z][a-z0-9]*[A-Z]|[a-z0-9]*[A-Z][A-Z0-9]*[a-z])[A-Za-z0-9]*(?:\)|\b)(?!\')'
+        #r'(?<!\')[A-Z]([A-Z0-9]*[a-z][a-z0-9]*[A-Z]|[a-z0-9]*[A-Z][A-Z0-9]*[a-z])[A-Za-z0-9]*'
 
-
-    #Add links for any word using UpperCamelCase: e.g. PsychHID
-    #BUT does NOT match any string stating wiht ' e.g. 'OpenWindow'
-    #Because we don't want subfunctions/strings to trigger page links
-    #WARNING:
-    #This is a pretty crazy regex to .  Cobled together from lots of
-    #web searches and tests.  Probably not very robust but gets most of the job done.
-    UpperCamelMatch = r'(?<!\')(?:\(|\b)[A-Z]([A-Z0-9]*[a-z][a-z0-9]*[A-Z]|[a-z0-9]*[A-Z][A-Z0-9]*[a-z])[A-Za-z0-9]*(?:\)|\b)(?!\')'
-    #r'(?<!\')[A-Z]([A-Z0-9]*[a-z][a-z0-9]*[A-Z]|[a-z0-9]*[A-Z][A-Z0-9]*[a-z])[A-Za-z0-9]*'
-
-    if outputFormat == "markdown":
-        mkstring = re.sub(UpperCamelMatch,r'[\g<0>](\g<0>)',mkstring)
-    elif outputFormat == "mediawiki":
-        mkstring = re.sub(UpperCamelMatch,r'[[\g<0>|\g<0>]]',mkstring)
-
-
+        if outputFormat == "markdown":
+            mkstring = re.sub(UpperCamelMatch,r'[\g<0>](\g<0>)',mkstring)
+        elif outputFormat == "mediawiki":
+            mkstring = re.sub(UpperCamelMatch,r'[[\g<0>|\g<0>]]',mkstring)
 
     # purge useless help lines
     mkstring = re.sub(r'(?m)^.*triple-click me & hit enter.*$\n','',mkstring)
@@ -361,9 +350,9 @@ def writeFiles(outputDir,files):
 
         # scrub the text real good, to get us some nice wiki formatting
         if docstring:
-            body = beackern(docstring)
+            body = beackern(docstring, 1)
         else:
-            body = 'Adrian, this function is not yet documented.\n\n\n MissingDocs'
+            body = 'This function is not yet documented.\n\n\n MissingDocs'
 
         pathlinks = """
                     <div class="code_header" style="text-align:right;">
@@ -463,16 +452,26 @@ def mexhelpextract(outputDir,mexnames):
              os.path.splitext(os.path.basename(_mexscript))[0], \
              mexname, \
              _tmpdir)
-        cmd = 'matlab -nojvm -nodisplay -r "%s" > /dev/null' % matlabcmd
-        # and execute matlab w/ the temporary script we wrote earlier
+        # and execute Octave or Matlab w/ the temporary script we wrote earlier
         try:
-            print('running MATLAB for %s in %s' % (mexname,_tmpdir))
+            # Try Octave first:
+            cmd = 'octave --no-history --no-window-system --silent --no-gui --eval "%s" > /dev/null' % matlabcmd
+            print('running OCTAVE for %s in %s' % (mexname,_tmpdir))
             p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT, close_fds=True)
             stderr = p.communicate()[1]
             if stderr: print(stderr)
         except:
-            print('could not dump help for %s into %s.' % (mexname,_tmpdir))
+            # Failed: Try Matlab:
+            try:
+                cmd = 'matlab -nojvm -nodisplay -r "%s" > /dev/null' % matlabcmd
+                print('running MATLAB for %s in %s' % (mexname,_tmpdir))
+                p = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT, close_fds=True)
+                stderr = p.communicate()[1]
+                if stderr: print(stderr)
+            except:
+                print('could not dump help for %s into %s.' % (mexname,_tmpdir))
 
         mexDumpName = os.path.join(_tmpdir,mexname);
 
@@ -510,14 +509,16 @@ def mexhelpextract(outputDir,mexnames):
             breadcrumb = "##### " + formatLinkText('Psychtoolbox','Psychtoolbox') + ">"  \
                                 + formatLinkText(mexname) + ".{mex*} subfunction\n\n"
 
-            # scrub the text for main text only
-            body = beackern(help)
-
             if subFuncName == '__main__':
                 usage = formatUsage(usage,mexname,subfunctions)
                 headline = "# " + formatLinkText(mexname,mexname) + "\n"
                 breadcrumb = "##### " + formatLinkText('Psychtoolbox','Psychtoolbox') + ">"  \
                                     + formatLinkText(mexname) + "\n\n"
+                # Scrub the text for main help text of mex file only - without keyword substitution for main function help:
+                body = beackern(help, 0)
+            else:
+                # Scrub the text for main help text of subfunction only - with keyword substitution:
+                body = beackern(help, 1)
 
             # docstring = '' \
             #         + '%%(matlab;Usage)' \
@@ -577,18 +578,16 @@ def recursivewalk(outputDir,rootfolder):
 
         if re.search(os.sep+'\.svn|'+os.sep+'private',root):
                 continue
+
+        if _ignoreOpenGL and re.search(os.sep+'MOGL',root):
+                continue
+
         print('Entering folder ' + root)
 
         # .m-files are processed with postsinglefiles
         mfiles = [os.path.join(root,f) for f in files \
                 if f.endswith(('.m','.M',_mexext))]
         writeFiles(outputDir,mfiles)
-
-        # # mex files are processed via matlab
-        # if _mexmode:
-        #     mexnames = [os.path.splitext(f)[0] for f in files \
-        #             if f[-len(_mexext):].lower() == _mexext]
-        #     mexhelpextract(mexnames)
 
     print("Exiting: Done with this tree.")
     sys.exit(0)
@@ -599,8 +598,8 @@ def usage():
 def main(argv):
 
     try:
-        opts, args = getopt.getopt(argv, "h:o:f:rmv", \
-            ["help", "output-dir=", "format=", "recursive","mexmode"])
+        opts, args = getopt.getopt(argv, "o:f:hrmvg", \
+            ["help", "output-dir=", "format=", "opengl", "recursive", "mexmode"])
     except getopt.GetoptError:
         usage()
         sys.exit(2)
@@ -622,6 +621,9 @@ def main(argv):
         elif opt in ("-r", "--recursive"):
             global _recursive
             _recursive = 1
+        elif opt in ("-g", "--opengl"):
+            global _ignoreOpenGL
+            _ignoreOpenGL = 0
         elif opt in ("-m", "--mexmode"):
             import tempfile
             global _mexmode, _mexext, _tmpdir, _mexscript
@@ -643,10 +645,10 @@ def main(argv):
             end
 
             try
-                %first extract help for main function, including subfunction list
+                % First extract help for main function, including subfunction list
                 fprintf(fid,'[section:__main__]\\n');
                 synopsisText = evalc([mexname ';']);
-                helpText     = help(mexname);
+                helpText     = help([mexname '.m']);
                 fprintf(fid,'[key:usage]\\n%s\\n',synopsisText);
                 fprintf(fid,'[key:help]\\n%s\\n',helpText);
                 fprintf(fid,'[key:seealso]\\n');
@@ -655,7 +657,7 @@ def main(argv):
                     for i=1:size(subfunctions,2)
                         fprintf(fid,'[section:%s]\\n',subfunctions{i});
                         docs = eval([mexname '(''DescribeModulefunctionshelper'',1,subfunctions{i})']);
-                        fprintf(fid,'[key:usage]:%s\\n',docs{1});
+                        fprintf(fid,'[key:usage]:\\n%s\\n',docs{1});
                         fprintf(fid,'[key:help]\\n%s\\n',docs{2});
                         fprintf(fid,'[key:seealso]\\n%s\\n',docs{3});
                     end
