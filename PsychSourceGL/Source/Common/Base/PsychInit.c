@@ -35,6 +35,9 @@ PsychError PsychInit(void)
     // Assign distinctive name to master thread:
     PsychSetThreadName("PTB mainthread");
 
+    // Record thread id of master thread:
+    PsychInitMasterThreadId();
+
     // First init Psychtoolbox libraries:
     InitPsychError();
     InitPsychAuthorList();

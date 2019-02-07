@@ -1005,6 +1005,26 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
     return(PsychOSKDGetBeamposition(screenNumber));
 }
 
+// DCE1/2 aka AVIVO is the earliest display hardware we support with
+// our low-level trickery. Older hw uses the legacy display engines
+// and is not supported at all by our mmio code:
+static psych_bool isDCE1(int fPCIDeviceId)
+{
+    psych_bool isDCE1 = FALSE;
+
+    if ((fPCIDeviceId & 0xFF00) == 0x7100) isDCE1 = TRUE;
+    if ((fPCIDeviceId & 0xFF00) == 0x7200) isDCE1 = TRUE;
+    if ((fPCIDeviceId & 0xFF00) == 0x7900) isDCE1 = TRUE;
+
+    if ((fPCIDeviceId & 0xFF00) == 0x9400) isDCE1 = TRUE;
+    if ((fPCIDeviceId & 0xFF00) == 0x9500) isDCE1 = TRUE;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9610) isDCE1 = TRUE;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9610) isDCE1 = TRUE;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9710) isDCE1 = TRUE;
+
+    return(isDCE1);
+}
+
 // Try to attach to kernel level ptb support driver and setup everything, if it works:
 void InitPsychtoolboxKernelDriverInterface(void)
 {
@@ -1113,9 +1133,16 @@ void InitPsychtoolboxKernelDriverInterface(void)
             // regs are accessed simultaneously! As we can't serialize our MMIO reads with the
             // kms-driver, using our MMIO code on Intel is unsafe. Horrible crashes are reported
             // against Haswell on the freedesktop bug tracker for this issue.
-            if ((fDeviceType[numKernelDrivers] == kPsychIntelIGP) && !getenv("PSYCH_ALLOW_DANGEROUS")) {
+            //
+            // Also skip AMD gpu's older than DCE 1 aka AVIVO, or unknown AMD models, as our logic doesn't support them.
+            // Also for now skip AMD gpu's of DCE12 type, as we can't handle them yet.
+            if (((fDeviceType[numKernelDrivers] == kPsychIntelIGP) && !getenv("PSYCH_ALLOW_DANGEROUS")) ||
+                ((fDeviceType[numKernelDrivers] == kPsychRadeon) && (fCardType[numKernelDrivers] < 30 || fCardType[numKernelDrivers] >= 120) && !isDCE1(fPCIDeviceId[numKernelDrivers]))) {
                 if (PsychPrefStateGet_Verbosity() > 2) {
-                    printf("PTB-INFO: Disconnecting from kernel driver instance #%i for detected Intel GPU for safety reasons. setenv('PSYCH_ALLOW_DANGEROUS', '1') to override.\n", numKernelDrivers);
+                    if (fDeviceType[numKernelDrivers] == kPsychIntelIGP)
+                        printf("PTB-INFO: Disconnecting from kernel driver instance #%i for detected Intel GPU for safety reasons. setenv('PSYCH_ALLOW_DANGEROUS', '1') to override.\n", numKernelDrivers);
+                    else
+                        printf("PTB-INFO: Disconnecting from kernel driver instance #%i because detected AMD GPU is not supported. [PCI Id: 0x%x]\n", numKernelDrivers, fPCIDeviceId[numKernelDrivers]);
                 }
 
                 displayConnectHandles[numKernelDrivers] = IO_OBJECT_NULL;
@@ -1140,7 +1167,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
 
                 connect = IO_OBJECT_NULL;
 
-                // Closed connection to Intel-instance of the driver. Skip to beginning of
+                // Closed connection to Intel/AMD-instance of the driver. Skip to beginning of
                 // enumeration loop to see if we get some alternative, e.g., discrete GPU:
                 continue;
             }

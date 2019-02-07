@@ -9,8 +9,7 @@ function InitializePsychSound(reallyneedlowlatency)
 % latency.
 %
 % On MacOS/X and GNU/Linux, the PsychPortAudio driver will just work with
-% the lowest possible latency and highest timing precision after this
-% initialization.
+% low latency and highest timing precision after this initialization.
 %
 % On Microsoft Windows, things are a bit more complicated:
 %
@@ -25,17 +24,11 @@ function InitializePsychSound(reallyneedlowlatency)
 % only been tested on Windows 7 and Windows 10. For best results, use of Windows 10
 % is recommended.
 %
-% Disclaimer: "ASIO is a trademark and software of Steinberg Media
-% Technologies GmbH."
-%
-% Our current driver does not support ASIO, as ASIO is a proprietary technology
-% that requires special potentially highly restrictive and cumbersome licensing.
-%
 % The Windows MME (MultiMediaExtensions) sound system has typical latencies
-% and inaccuracies in excess of 500 msecs. WASAPI can achieve latencies as low
-% as 10 msecs on onboard sound chips on Windows-10, and maybe even Windows 8.1.
+% and inaccuracies as high as 500 msecs. WASAPI can achieve latencies as low
+% as 10 msecs with onboard sound chips on Windows-10, and maybe even on Windows 8.1.
 % On Windows 7 latencies around 20 msecs are possible. Timing should be generally
-% accurate to millsecond level with WASAPI.
+% accurate to millisecond level with WASAPI.
 %
 % Using OSX or Linux will usually get you at least as good, or usually better,
 % results with most standard sound hardware, due to the technically superior

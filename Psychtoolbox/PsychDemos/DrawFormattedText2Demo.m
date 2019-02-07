@@ -138,6 +138,12 @@ try
     [~,~,bbox,cache]=DrawFormattedText2(t,'win',w,'sx','center','xalign','center','sy','center','baseColor',0,'cacheOnly',true);
     % scroll over screen in 5 seconds
     frate = Screen('FrameRate',screenNumber);
+    if frate == 0
+        % Deal with Apples trainwreck not reporting framerate on Mac
+        % builtin displays, but zero:
+        frate = 60;
+    end
+
     textHeight = RectHeight(bbox);
     step = textHeight/frate/5;
     

@@ -103,14 +103,14 @@ static int    numKernelDrivers = 0;
 // Internal helper function prototype:
 void PsychInitNonX11(void);
 
-/* Mappings up to date for June 2018 (last update e-mail patch / commit 2018-05-18). Would need updates for any commit after June 2018 */
+/* Mappings up to date for January 2019 (last update e-mail patch / commit 2018-12-21). Would need updates for any commit after January 2019 */
 
 static psych_bool isDCE12(int screenId)
 {
     psych_bool isDCE12 = false;
     (void) screenId;
 
-    // VEGA10 is DCE12:
+    // VEGA is DCE12:
 
     // VEGA10: 0x6860 - 0x687F
     if ((fPCIDeviceId & 0xFFF0) == 0x6860) isDCE12 = true;
@@ -125,8 +125,8 @@ static psych_bool isDCE12(int screenId)
     // VEGA20: 0x66A0 - 0x66AF
     if ((fPCIDeviceId & 0xFFF0) == 0x66A0) isDCE12 = true;
 
-    // RAVEN: 0x15DD so far:
-    if ((fPCIDeviceId & 0xFFFF) == 0x15DD) isDCE12 = true;
+    // RAVEN: 0x15DD so far: RAVEN is not DCE, but a new type DCN-1.0!
+    // if ((fPCIDeviceId & 0xFFFF) == 0x15DD) isDCE12 = true;
 
     return(isDCE12);
 }
@@ -138,9 +138,10 @@ static psych_bool isDCE112(int screenId)
 
     // POLARIS10/11/12 are DCE11.2:
 
-    // POLARIS10: 0x67C0 - 0x67DF
+    // POLARIS10: 0x67C0 - 0x67DF and 0x6FDF
     if ((fPCIDeviceId & 0xFFF0) == 0x67C0) isDCE112 = true;
     if ((fPCIDeviceId & 0xFFF0) == 0x67D0) isDCE112 = true;
+    if ((fPCIDeviceId & 0xFFFF) == 0x6FDF) isDCE112 = true;
 
     // POLARIS11: 0x67E0 - 0x67FF
     if ((fPCIDeviceId & 0xFFF0) == 0x67E0) isDCE112 = true;
@@ -170,9 +171,9 @@ static psych_bool isDCE11(int screenId)
 
     if (isDCE112(screenId)) isDCE11 = true;
 
-    // That all DCE12 can be treated as DCE11 for our purpose is so far an
-    // unproven assumption, but let's see where it leads us - hopefully not to
-    // awful bug reports.
+    // DCE12 can be treated as DCE11 for our purpose, as only the DCE-12 ip offset
+    // has changed, not the register locations inside the block. We correct for the
+    // offset in the setup code via dce_ip_offset.
     if (isDCE12(screenId)) isDCE11 = true;
 
     return(isDCE11);
@@ -424,6 +425,28 @@ static psych_bool isDCE3(int screenId)
     return(isDCE3);
 }
 
+// DCE1/2 aka AVIVO is the earliest display hardware we support with
+// our low-level trickery. Older hw uses the legacy display engines
+// and is not supported at all by our mmio code:
+static psych_bool isDCE1(int screenId)
+{
+    psych_bool isDCE1 = false;
+
+    (void) screenId;
+
+    if ((fPCIDeviceId & 0xFF00) == 0x7100) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFF00) == 0x7200) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFF00) == 0x7900) isDCE1 = true;
+
+    if ((fPCIDeviceId & 0xFF00) == 0x9400) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFF00) == 0x9500) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9610) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9610) isDCE1 = true;
+    if ((fPCIDeviceId & 0xFFF0) == 0x9710) isDCE1 = true;
+
+    return(isDCE1);
+}
+
 // Helper routine: Read a single 32 bit unsigned int hardware register at
 // offset 'offset' and return its value:
 static unsigned int ReadRegister(unsigned long offset)
@@ -652,10 +675,24 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         }
 
         if (gpu->vendor_id == PCI_VENDOR_ID_ATI || gpu->vendor_id == PCI_VENDOR_ID_AMD) {
-            // BAR 2 is MMIO on old AMD gpus, BAR 5 is MMIO on DCE-8/10/11/... "Sea Islands" gpus and later models:
-            region = &gpu->regions[(isDCE8(screenId) || isDCE10(screenId)) ? 5 : 2];
+            // On Radeons we distinguish between Avivo / DCE-1/2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60), DCE-8 (80), DCE-10 (100), DCE-11 (110), DCE-12 (120).
+            // A values of 0 is assigned for pre DCE-1/AVIVO hardware, which we don't support at all for MMIO mapping tricks:
+            fCardType = isDCE12(screenId) ? 120 : isDCE11(screenId) ? 110 : isDCE10(screenId) ? 100 : isDCE8(screenId) ? 80 : (isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 :
+                        (isDCE3(screenId) ? 30 : isDCE1(screenId) ? 10 : 0))));
+
             fDeviceType = kPsychRadeon;
             fNumDisplayHeads = 2;
+
+            // Supported DCE1+ ?
+            if (fCardType > 0) {
+                // BAR 2 is MMIO on old AMD gpus, BAR 5 is MMIO on DCE-8/10/11/... "Sea Islands" gpus and later models:
+                region = &gpu->regions[(isDCE8(screenId) || isDCE10(screenId)) ? 5 : 2];
+            }
+            else {
+                region = NULL;
+                if (PsychPrefStateGet_Verbosity() > 1)
+                    printf("PTB-INFO: Unsupported AMD gpu detected. No low-level access, because the gpu is too new or too old. [pciid = 0x%x]\n", fPCIDeviceId);
+            }
         }
 
         if (gpu->vendor_id == PCI_VENDOR_ID_INTEL) {
@@ -699,9 +736,11 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-INFO: Failed to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
                 printf("PTB-INFO: Beamposition timestamping on NVidia and AMD gpu's, and other special functions on AMD gpu's, disabled.\n");
-                printf("PTB-INFO: You need to run the setup script PsychLinuxConfiguration once, followed by a reboot, for this to work.\n");
-                printf("PTB-INFO: If you are using the open-source graphics drivers, then this failure usually doesn't matter for typical use.\n");
-                fflush(NULL);
+                if (fDeviceType != kPsychRadeon || fCardType > 0) {
+                    printf("PTB-INFO: You need to run the setup script PsychLinuxConfiguration once, followed by a reboot, for this to work.\n");
+                    printf("PTB-INFO: Additionally, on machines with EFI firmware, EFI secure boot must be disabled, or kernel lockdown lifted.\n");
+                }
+                printf("PTB-INFO: If you are using the open-source graphics drivers, then this usually doesn't matter for typical use.\n");
             }
 
             // Failed:
@@ -744,9 +783,6 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         }
 
         if (fDeviceType == kPsychRadeon) {
-            // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60), DCE-8 (80), DCE-10 (100), DCE-11 (110) ... for now.
-            fCardType = isDCE12(screenId) ? 120 : isDCE11(screenId) ? 110 : isDCE10(screenId) ? 100 : isDCE8(screenId) ? 80 : (isDCE6(screenId) ? 60 : (isDCE5(screenId) ? 50 : (isDCE4(screenId) ? 40 : (isDCE3(screenId) ? 30 : 10))));
-
             // Setup for DCE-4/5/6/8:
             if (isDCE4(screenId) || isDCE5(screenId) || isDCE6(screenId) || isDCE8(screenId)) {
                 gfx_lowlimit = 0;
@@ -774,21 +810,50 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 
             // Setup for DCE-10/11/12:
             if (isDCE10(screenId) || isDCE11(screenId) || isDCE12(screenId)) {
-                // TODO: Not verified for DCE-12, purely speculation!
+                unsigned int dce_ip_offset;
+
                 // DCE-10/11/12 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
                 // but the offsets for the different CRTC blocks are different wrt. to pre DCE-10. Therefore
-                // need to initialize the offsets differently. Also, some of these parts seem to support up
-                // to 7 display engines instead of the old limit of 6 engines:
+                // need to initialize the offsets differently. Additionally, starting with DCE-12, the base
+                // address of the DCE IP block inside the MMIO range has changed, compared to older DCE versions.
+                // We use an additive offset dce_ip_offset to correct for the shift in IP block position.
                 gfx_lowlimit = 0;
 
+                // DCE-12.0 or later display engine?
+                if (isDCE12(screenId)) {
+                    // From the kernel file drivers/gpu/drm/amd/include/vega10_ip_offset.h, #define of
+                    // DCE_BASE, DCE_BASE.instance[0].segment[reg##_BASE_IDX] with segment index 2 for
+                    // registers we care about,ie. DCE_BASE.instance[0].segment[2] = 0x000034C0;
+                    // (Reference: https://elixir.bootlin.com/linux/v5.0-rc4/source/drivers/gpu/drm/amd/include/vega10_ip_offset.h#L48)
+                    //
+                    // The base address of the DCE IP block has shifted in DCE-12 vs. older DCE's. Was implicitly
+                    // 4-Bytes * 0x00002013, is now 4-Bytes * 0x000034C0, so the offset is the difference:
+                    dce_ip_offset = (0x000034C0 - 0x00002013) * 4;
+
+                    // Note that there is nothing preventing different DCE-12.x generations from having
+                    // different DCE IP offsets, so dce_ip_offset would need to be defined by sub-gen!
+                    // It just happens that so far we got lucky and as of February 2019, all DCE-12 ip
+                    // of DCE12.0 and DCE12.1 seems to have the same offset.
+                    // However, new Raven gpu's have a substantially redesigned display engine, called
+                    // DCN, with potentially very different register layout and programming / operation /
+                    // capabilites, requiring a big code rewrite in our support code. I think this won't
+                    // happen, so DCE-12 might be the end of the road for our custom hacks.
+                }
+                else {
+                    // Older than DCE-12. Implicit offset is 0x00002013 * 4 Bytes, but as we encode a delta to
+                    // the implicit offset of pre DCE-12 in dce_ip_offset, the delta of < DCE-12 to itself is
+                    // obviously 0x0:
+                    dce_ip_offset = 0x0;
+                }
+
                 // Offset of crtc blocks of Volcanic Islands DCE-10/11 gpu's for each of the possible crtc's:
-                crtcoff[0] = DCE10_CRTC0_REGISTER_OFFSET;
-                crtcoff[1] = DCE10_CRTC1_REGISTER_OFFSET;
-                crtcoff[2] = DCE10_CRTC2_REGISTER_OFFSET;
-                crtcoff[3] = DCE10_CRTC3_REGISTER_OFFSET;
-                crtcoff[4] = DCE10_CRTC4_REGISTER_OFFSET;
-                crtcoff[5] = DCE10_CRTC5_REGISTER_OFFSET;
-                crtcoff[6] = DCE10_CRTC6_REGISTER_OFFSET;
+                crtcoff[0] = DCE10_CRTC0_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[1] = DCE10_CRTC1_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[2] = DCE10_CRTC2_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[3] = DCE10_CRTC3_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[4] = DCE10_CRTC4_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[5] = DCE10_CRTC5_REGISTER_OFFSET + dce_ip_offset;
+                crtcoff[6] = DCE10_CRTC6_REGISTER_OFFSET + dce_ip_offset;
 
                 // DCE-10 has 6 display controllers:
                 if (isDCE10(screenId)) fNumDisplayHeads = 6;
@@ -3839,11 +3904,31 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             offset = crtcoff[headId];
 
             // Skip disabled display engines: Just return "don't know" 0xffffffff:
-            if (ReadRegister(EVERGREEN_CRTC_CONTROL + offset) & (0x1 << 16) == 0) {
-               if (PsychPrefStateGet_Verbosity() > 3)
-                  printf("PsychOSKDGetLUTState(): Skipping headId %d as it is disabled.\n", headId);
+            // Probe for crtc master disable, inactive or no memory read requests active. Note: Often not effective...
+            v = ReadRegister(EVERGREEN_CRTC_CONTROL + offset);
+            if ((v & (EVERGREEN_CRTC_MASTER_EN | (0x1 << 16)) == 0) || (v & EVERGREEN_CRTC_DISP_READ_REQUEST_DISABLE)) {
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PsychOSKDGetLUTState(): Skipping headId %d as it is disabled [EVERGREEN_CRTC_CONTROL]\n", headId);
 
-               return(0xffffffff);
+                return(0xffffffff);
+            }
+
+            // Probe for crtc blanked. Note: Often not effective...
+            v = ReadRegister(EVERGREEN_CRTC_BLANK_CONTROL + offset);
+            if (v & EVERGREEN_CRTC_BLANK_DATA_EN) {
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PsychOSKDGetLUTState(): Skipping headId %d as it is disabled [EVERGREEN_CRTC_BLANK_CONTROL].\n", headId);
+
+                return(0xffffffff);
+            }
+
+            // Probe for graphics enable off:
+            v = ReadRegister(EVERGREEN_GRPH_ENABLE + offset);
+            if (v == 0) {
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PsychOSKDGetLUTState(): Skipping headId %d as it is disabled [EVERGREEN_GRPH_ENABLE].\n", headId);
+
+                return(0xffffffff);
             }
 
             // If even only one of the display engines does use a NI_GRPH_REGAMMA_MODE other than NI_REGAMMA_BYPASS,
@@ -3851,30 +3936,44 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             // default is amdgpuUsesDisplayCore == FALSE, but we switch to TRUE as soon as we find this hint of DC:
             amdgpuUsesDisplayCore |= ((ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7) != NI_REGAMMA_BYPASS) ? TRUE : FALSE;
             if (amdgpuUsesDisplayCore) {
-               if (PsychPrefStateGet_Verbosity() > 3)
-                  printf("PsychOSKDGetLUTState(): headId %d uses DC and REGAMMA_LUT [%i].\n",
-                         headId, ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7);
-            }
-
-            if (!amdgpuUsesDisplayCore) {
-               // Classic code path for radeon-kms and amdgpu-kms without DC/DAL.
-               // Uses 256-slot 10 bit wide standard LUT:
-               if ((ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf) != 0) {
-                  if (PsychPrefStateGet_Verbosity() > 3)
-                     printf("PsychOSKDGetLUTState(): Skipping headId %d as LUT not in 256-slot mode [%i].\n",
-                           headId, ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf);
-
-                  return(0xffffffff);
-               }
-
-               WriteRegister(EVERGREEN_DC_LUT_RW_MODE + offset, 0);
-               WriteRegister(EVERGREEN_DC_LUT_RW_INDEX + offset, 0);
-               reg = EVERGREEN_DC_LUT_30_COLOR + offset;
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PsychOSKDGetLUTState(): headId %d [Offset 0x%x] uses DC and REGAMMA_LUT [%i].\n",
+                            headId, offset, ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7);
             }
             else {
-               // New amdgpu-kms with DC/DAL. Uses REGAMMA_LUT:
-               WriteRegister(NI_REGAMMA_LUT_INDEX + offset, 0);
-               reg = NI_REGAMMA_LUT_DATA + offset;
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PsychOSKDGetLUTState(): headId %d [Offset 0x%x] uses old modesetting with REGAMMA_LUT [%i].\n",
+                            headId, offset, ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7);
+            }
+
+            // Use the classic code-path if DisplayCore is not used, or if regamma control is not
+            // set to user-defined (value 3 or 4), as in those cases, the pwl lut won't be used.
+            // Before Linux 4.17, AMD DC didn't allow user-controlled regamma and set a fixed SRGB
+            // mode (value 1). Since 4.17, atomic color management is supported, and seems to result
+            // in use of mode 3 == user defined.
+            // Evidence: New code-path in else-branch is needed on POLARIS11 + Linux 4.20 and 5.0, but
+            // does not work on same POLARIS11 with Linux 4.15, where the regamma mode is 1 (SRGB fixed)
+            // instead of 3 (user programmable). Let's hope this is the final word on this...
+            if (!amdgpuUsesDisplayCore || ((ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7) < 3)) {
+                // Classic code path for radeon-kms and amdgpu-kms without DC/DAL.
+                // Uses 256-slot 10 bit wide standard LUT:
+                if ((ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf) != 0) {
+                    if (PsychPrefStateGet_Verbosity() > 3)
+                        printf("PsychOSKDGetLUTState(): Skipping headId %d as LUT not in 256-slot mode [%i].\n",
+                                headId, ReadRegister(EVERGREEN_DC_LUT_CONTROL + offset) & 0xf);
+
+                    return(0xffffffff);
+                }
+
+                WriteRegister(EVERGREEN_DC_LUT_RW_MODE + offset, 0);
+                WriteRegister(EVERGREEN_DC_LUT_RW_INDEX + offset, 0);
+                reg = EVERGREEN_DC_LUT_30_COLOR + offset;
+            }
+            else {
+                // New amdgpu-kms with DC/DAL on Linux 4.17+. Uses REGAMMA_LUT:
+                WriteRegister(0x6A8C + offset, 0);
+                WriteRegister(NI_REGAMMA_LUT_INDEX + offset, 0);
+                reg = NI_REGAMMA_LUT_DATA + offset;
             }
 
             // Find out if there are non-zero black offsets:
@@ -3923,7 +4022,7 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             // hopeless, given the complexity of the hw programming and approximation
             // algorithms used to fit the pwl segments to the gamma lut input curve,
             // and given that these algorithms are still subject to change.
-            // Testing if we have an identity lut, or creating one is therefore a
+            // Testing if we have an identity lut, or creating one, is therefore a
             // no-go. What we still can do is test for an all-zero LUT, as that still
             // maps to all-zeros in the hw lut's. Iow. our trick for finding the
             // output -> display engine mappings should still work, but checking for
@@ -3938,6 +4037,7 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             // mess with us, so this may not be the last word on the matter... ... to be verified.
             isIdentity = ((ReadRegister(NI_REGAMMA_CONTROL + offset) & 0x7) == NI_REGAMMA_BYPASS) ? TRUE : FALSE;
 
+            /* This doesn't work, because the hw doesn't give us correct readings from the pwl lut!
             // Probe for all-zeros LUT:
             for (i = 0; i < 960; i++) {
                 // Read 32 bit value of this slot, keep 19 LSB's, as these encode
@@ -3949,6 +4049,27 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
 
                 if (PsychPrefStateGet_Verbosity() > 4) {
                     printf("%d: %x\n", i, v);
+                }
+            }
+            */
+
+            // Use a slight variant of the classic path in the else-branch. Read the
+            // 256 slot lut registers and just check for all-zero vs. not-all-zero to
+            // do the detection, as the 256 legacy lut seems to get mirrored by the hw
+            // from the new pwl lut. isIdentity detection is done the new way though,
+            // as the lut values we read can't be meaningfully interpreted beyond the
+            // "is it all zeros?" check:
+            for (i = 0; i < 256; i++) {
+                // Read 32 bit value of this slot, mask out upper 2 bits,
+                // so the least significant 30 bits are left, as these
+                // contain the 3 * 10 bits for the 10 bit R,G,B channels:
+                v = ReadRegister(reg) & (0xffffffff >> 2);
+
+                // All zero as they should be for a all-zero LUT?
+                if (v > 0) isZero = 0;
+
+                if (PsychPrefStateGet_Verbosity() > 4) {
+                    printf("%d:%d,%d,%d\n", i, (v >> 20) & 0x3ff, (v >> 10) & 0x3ff, (v >> 0) & 0x3ff);
                 }
             }
         } else {
