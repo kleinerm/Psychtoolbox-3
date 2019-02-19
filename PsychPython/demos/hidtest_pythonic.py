@@ -14,24 +14,29 @@
 from psychtoolbox import hid
 import psychtoolbox as ptb
 
-# print("Devices:", hid.devices())
+print("Devices:")
 for dev in hid.devices():
-    print(dev['usagePageValue'], dev['usageValue'], dev['usageName'], dev['product'])
+    print("  %(index)s: %(product)s "
+          "usagePageValue=%(usagePageValue)s, usageValue=%(usageValue)s"
+          % dev)
 
-kbInds, kbNames, kbDevices = hid.get_keyboard_devices()
-print(kbInds, kbNames)
+print("Keyboards:")
+kbIDs, kbNames, kbDevices = hid.get_keyboard_indices()
+for dev in kbDevices:
+    print("  %(index)s: %(product)s" % dev)
 
 def run():
 
+    dev = kbDevices[0]
     # KbQueueTest
     ptb.WaitSecs('YieldSecs', 1)
     keys = [1] * 256
-    keyboard = hid.Keyboard(kbInds[0])
+    keyboard = hid.Keyboard(dev['index'])
 
-    # keyboard.queue_create(num_slots=10000)  # not really needed
+    # keyboard.queue_create(num_slots=10000)  # done implicitly but can redo
 
-    # keyboard.start_trapping()
-    # ptb.PsychHID('Keyboardhelper', -12)  # stops keys going to stdout
+    # keyboard.start_trapping() # stops keys going to stdout
+    # ptb.PsychHID('Keyboardhelper', -12)
 
     keyboard.queue_start()
     ptb.WaitSecs('YieldSecs', 5)

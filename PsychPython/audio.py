@@ -10,7 +10,7 @@ e.g.::
 becomes::
 
     from psychtooolbox import portaudio
-    stream = portaudio.Stream('Open', [], [], [0], Fs, 2)
+    stream = portaudio.Stream([], [], [0], Fs, 2)
     stream.fill_buffer(stereowav)
     stream.start()
 
@@ -92,6 +92,16 @@ class Stream():
 
     def start(self, repetitions=1, when=0, wait_for_start=0,
               stop_time=None, resume=0):
+        """Start the stream for a given number of repetitions, potentially with
+        a delayed start.
+
+        :param repetitions:
+        :param when:
+        :param wait_for_start:
+        :param stop_time:
+        :param resume:
+        :return:
+        """
         start_time = PsychPortAudio('Start', self.handle, repetitions, when,
                                    wait_for_start, stop_time, resume)
         return start_time
@@ -120,19 +130,43 @@ class Stream():
             else:
                 raise err
 
+    def setVolume(self, masterVolume=None, channelVolumes=None):
+        """As well as being able to use the volume_master and volume_channels
+        attributes, you can use this function to set both master and channel
+        volumes at the same time"""
+        PsychPortAudio('Volume', self.handle, masterVolume, channelVolumes)
 
     @property
     def status(self):
+        """The status of this portaudio stream"""
         return PsychPortAudio('GetStatus', self.handle)
 
     @property
     def volume(self):
-        """A property allowing you to get or set the stream's volume"""
-        return PsychPortAudio('Volume', self.handle)
+        """A property allowing you to get/set the stream's master volume
+
+        see also:
+            volume_channels
+        """
+        return PsychPortAudio('Volume', self.handle)[0]
 
     @volume.setter
-    def volume(self, masterVolume=None, channelVolumes=None):
-        PsychPortAudio('Volume', self.handle, masterVolume, channelVolumes)
+    def volume(self, volume):
+        PsychPortAudio('Volume', self.handle, volume, None)
+
+    @property
+    def volume_channels(self):
+        """A property allowing you to get/set the volume independently in each
+        channel
+
+        see also:
+            volume_master
+        """
+        return PsychPortAudio('Volume', self.handle)[1]
+
+    @volume_channels.setter
+    def volume_channels(self, volumes):
+        PsychPortAudio('Volume', self.handle, None, volumes)
 
     @property
     def run_mode(self):
@@ -145,6 +179,7 @@ class Stream():
 
     @property
     def latency_bias(self):
+        """A property to get/set the stream's latency bias"""
         return PsychPortAudio('LatencyBias', self.handle)
 
     @latency_bias.setter
@@ -153,6 +188,7 @@ class Stream():
 
     @property
     def op_mode(self):
+        """Equivalent to PsychPortAudio('SetOpMode', op_mode)"""
         return PsychPortAudio('SetOpMode', self.handle)
 
     @op_mode.setter
