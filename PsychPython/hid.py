@@ -18,28 +18,54 @@ PsychHID('CloseUSBDevice' [, usbHandle])
 outData = PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength, inData)
 
 """
+import sys
 from . import PsychHID
 
 
 def num_devices():
+    """Returns the number of connected HID devices"""
     return PsychHID('NumDevices')
 
 
 def devices(device_class=None):
+    """Returns a list of devices of a given class
+
+    :param device_class: integer
+    :return: list of devices
+    """
     return PsychHID('Devices', device_class)
 
-def get_keyboard_devices(name=''):
-    kbDevices = []
-    kbNames = []
-    kbInds = []
+
+def get_keyboard_indices(name='', serial_number=''):
+    """This is the equivalent of PTB GetKeyboardIndices function
+
+    :param name: string (optional)
+        name to match
+    :param serial_number: string  (optional)
+        serial number to match
+    :return: (keyboardIndices, productNames, allInfos)
+    """
+    keyboardIndices = [];
+    productNames = [];
+    allInfos = [];
+    if sys.platform != 'darwin':
+        devs = devices(device_class=4)  # on win/linux this is just keyboards
+    else:
+        devs = devices()
     for ii, dev in enumerate(devices()):
+        # filter out non-matches
+        if dev['usagePageValue'] != 1 or dev['usageValue'] != 6:
+            continue  # wrong spec - doesn't look like a keyboard
+        if name and not (dev['product'].contains(name)):
+            continue
+        if serial_number != dev['serialNumber']:
+            continue  # doesn't match the serial number
+        # we've got a match so store the data
         if 'Keyboard' in dev['usageName'] and name in dev['product']:
-            kbInds.append(ii)
-            kbNames.append(dev['usageName'])
-            kbDevices.append(Keyboard(ii))
-    return kbInds, kbNames, kbDevices
-
-
+            keyboardIndices.append(dev['index'])
+            productNames.append(dev['product'])
+            allInfos.append(dev)
+    return keyboardIndices, productNames, allInfos
 
 
 class Device:
@@ -95,10 +121,21 @@ class Device:
 
 class Keyboard():
     def __init__(self, device_number=None, buffer_size=10000):
+        """A Keyboard object is like a Device() with key-specific functions
+
+        :param device_number: float or int
+
+            Can be found from
+
+        :param buffer_size: float or int
+
+            Determines how many key events (up and down) are stored
+        """
         self.device_number = device_number
         self._create_queue(buffer_size)
 
     def check(self, scan_list=None):
+        """Checks for events """
         return PsychHID('KbCheck', self.device_id, scan_list)
 
     def _create_queue(self, num_slots=10000, flags=0, win_handle=0):
@@ -125,21 +162,22 @@ class Keyboard():
     def queue_check(self):
         """Returns key events from the buffer
         :param self:
-        :return: [keyIsDown, firstKeyPressTimes, firstKeyReleaseTimes, lastKeyPressTimes,
-         lastKeyReleaseTimes]
+        :return: (keyIsDown,
+            firstKeyPressTimes, firstKeyReleaseTimes,
+            lastKeyPressTimes, lastKeyReleaseTimes)
         """
         return PsychHID('KbQueueCheck', self.device_number)
 
     def queue_get_event(self, max_wait_secs=0):
         """
 
-        :param max_wait_secs:
-        :return: [event, navail]
+        :param max_wait_secs: float
+        :return: (event, navail)
         """
         return PsychHID('KbQueueGetEvent', self.device_number, max_wait_secs)
 
     def trigger_wait(self, keys):
-        secs=PsychHID('KbTriggerWait', keys, self.device_number)
+        secs = PsychHID('KbTriggerWait', keys, self.device_number)
 
     def start_trapping(self):
         PsychHID('Keyboardhelper', -12)

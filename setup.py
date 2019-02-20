@@ -107,7 +107,7 @@ if platform.system() == 'Windows':
         psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS64/dll'];
     else:
         psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS32/dll'];
-    psychhid_libs = ['dinput8', 'libusb-1.0', 'setupapi'];  
+    psychhid_libs = ['dinput8', 'libusb-1.0', 'setupapi'];
     psychhid_extra_objects = [];
 
     # Extra files needed, e.g., libraries.
@@ -154,7 +154,7 @@ if platform.system() == 'Darwin':
     base_libs = [];
 
     # No "no reproducible builds" warning:
-    base_compile_args = ['-Wno-date-time', '-mmacosx-version-min=10.6'];
+    base_compile_args = ['-Wno-date-time', '-mmacosx-version-min=10.9'];
 
     # Extra OS specific libs for PsychPortAudio:
     audio_libdirs = [];
@@ -246,7 +246,7 @@ setup (name = 'psychtoolbox',
        package_dir = {'psychtoolbox' : 'PsychPython',
                       'psychtoolbox.demos' : 'PsychPython/demos'},
        package_data = extra_files,
-       ext_package= 'psychtoolbox',
+       ext_package = 'psychtoolbox',
        ext_modules = ext_modules,
       )
 
