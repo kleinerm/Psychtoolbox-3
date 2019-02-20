@@ -10,6 +10,8 @@ import platform                             # OS detection.
 import sys                                  # cpu arch detection.
 import numpy                                # To get include dir on macOS.
 
+is_64bits = sys.maxsize > 2**32
+
 def get_sourcefiles(path):
     sources = [];
     pattern1 = '*.c';
@@ -49,8 +51,6 @@ base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON')];
 # Common infrastructure and the scripting glue module for interfacing with the Python runtime:
 basefiles_common = get_sourcefiles('./PsychSourceGL/Source/Common/Base') + ['PsychSourceGL/Source/Common/Base/PythonGlue/PsychScriptingGluePython.c'];
 baseincludes_common = [numpy.get_include(), 'PsychSourceGL/Source/Common/Base', 'PsychSourceGL/Source/Common/Screen'];
-
-is_64bits = sys.maxsize > 2**32;
 
 # OS detection and file selection for the different OS specific backends:
 print('Platform reported as: %s\n' % platform.system());
@@ -103,7 +103,10 @@ if platform.system() == 'Windows':
 
     # Extra OS specific libs for PsychHID:
     psychhid_includes = usb_includes;
-    psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS64/dll'];
+    if is_64bits:
+        psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS64/dll'];
+    else:
+        psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS32/dll'];
     psychhid_libs = ['dinput8', 'libusb-1.0', 'setupapi'];  
     psychhid_extra_objects = [];
 
@@ -170,6 +173,7 @@ if platform.system() == 'Darwin':
     # Extra files needed, e.g., libraries:
     extra_files = {};
 
+ext_modules = []
 # GetSecs module: Clock queries.
 name = 'GetSecs';
 GetSecs = Extension(name,
@@ -179,6 +183,7 @@ GetSecs = Extension(name,
                     sources = get_basesources(name, osname),
                     libraries = base_libs,
                    )
+ext_modules.append(GetSecs)
 
 # WaitSecs module: Timed waits.
 name = 'WaitSecs';
@@ -189,19 +194,23 @@ WaitSecs = Extension(name,
                      sources = get_basesources(name, osname),
                      libraries = base_libs
                     )
+ext_modules.append(WaitSecs)
 
 # PsychPortAudio module: High precision, high reliability, multi-channel, multi-card audio i/o.
-name = 'PsychPortAudio';
-PsychPortAudio = Extension(name,
-                           extra_compile_args = base_compile_args,
-                           define_macros = get_basemacros(name, osname),
-                           include_dirs = get_baseincludedirs(name, osname),
-                           sources = get_basesources(name, osname),
-                           library_dirs = audio_libdirs,
-                           libraries = base_libs + audio_libs,
-                           extra_link_args = audio_extralinkargs,
-                           extra_objects = audio_objects
-                           )
+if is_64bits:
+    # this won't compile on 32bit windows. Mac and linux are 64 bit anyway
+    name = 'PsychPortAudio';
+    PsychPortAudio = Extension(name,
+                               extra_compile_args = base_compile_args,
+                               define_macros = get_basemacros(name, osname),
+                               include_dirs = get_baseincludedirs(name, osname),
+                               sources = get_basesources(name, osname),
+                               library_dirs = audio_libdirs,
+                               libraries = base_libs + audio_libs,
+                               extra_link_args = audio_extralinkargs,
+                               extra_objects = audio_objects
+                               )
+    ext_modules.append(PsychPortAudio)
 
 # PsychHID module: Note the extra include_dirs and libraries:
 name = 'PsychHID';
@@ -214,6 +223,7 @@ PsychHID = Extension(name,
                      libraries = base_libs + psychhid_libs,
                      extra_objects = psychhid_extra_objects
                     )
+ext_modules.append(PsychHID)
 
 # IOPort module:
 name = 'IOPort';
@@ -224,6 +234,7 @@ IOPort = Extension(name,
                    sources = get_basesources(name, osname),
                    libraries = base_libs
                   )
+ext_modules.append(IOPort)
 
 setup (name = 'psychtoolbox',
        version = '3.0.15',
@@ -236,7 +247,7 @@ setup (name = 'psychtoolbox',
                       'psychtoolbox.demos' : 'PsychPython/demos'},
        package_data = extra_files,
        ext_package= 'psychtoolbox',
-       ext_modules = [WaitSecs, GetSecs, IOPort, PsychHID, PsychPortAudio]
+       ext_modules = ext_modules,
       )
 
 if platform.system() == 'Windows':
