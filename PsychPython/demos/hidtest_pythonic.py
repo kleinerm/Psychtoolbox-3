@@ -35,19 +35,17 @@ def run():
 
     # keyboard.queue_create(num_slots=10000)  # done implicitly but can redo
 
-    # keyboard.start_trapping() # stops keys going to stdout
-    # ptb.PsychHID('Keyboardhelper', -12)
+    # keyboard.start_trapping() # stops keys going to stdout but sketchy!
 
     keyboard.queue_start()
-    ptb.WaitSecs('YieldSecs', 5)
+    t0 = ptb.GetSecs()
+    while ptb.GetSecs() < t0+5:
+        if keyboard.flush():
+            evt = keyboard.queue_get_event()
+            print(evt)
     keyboard.queue_stop()
 
-    # keyboard.stop_trapping()
-    # ptb.PsychHID('Keyboardhelper', -10)  # restarts keys going to stdout
-
-    while keyboard.flush():
-        evt = keyboard.queue_get_event()
-        print(evt)
+    # keyboard.stop_trapping()  # restarts keys going to stdout
 
 
 # if this was run as a script (not an import) then call run()
