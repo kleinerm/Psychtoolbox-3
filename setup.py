@@ -118,7 +118,7 @@ if platform.system() == 'Windows':
     # 'psychtoolbox' package. Copy them temporarily from their actual locations
     # in Psychtoolbox to that folder:
     shutil.copy('Psychtoolbox/PsychSound/portaudio_x64.dll', 'PsychPython/');
-    shutil.copy('Psychtoolbox/PsychContributed/libusb-1.0.dll', 'PsychPython/');
+    shutil.copy('PsychSourceGL/Cohorts/libusb1-win32/MS64/dll/libusb-1.0.dll', 'PsychPython/');
 
 if platform.system() == 'Darwin':
     print('Building for macOS...\n');
