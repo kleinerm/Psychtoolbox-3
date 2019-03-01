@@ -45,9 +45,9 @@ def get_keyboard_indices(name='', serial_number=''):
         serial number to match
     :return: (keyboardIndices, productNames, allInfos)
     """
-    keyboardIndices = [];
-    productNames = [];
-    allInfos = [];
+    keyboardIndices = []
+    productNames = []
+    allInfos = []
     if sys.platform != 'darwin':
         devs = devices(device_class=4)  # on win/linux this is just keyboards
     else:
