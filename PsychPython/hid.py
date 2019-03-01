@@ -54,17 +54,19 @@ def get_keyboard_indices(name='', serial_number=''):
         devs = devices()
     for ii, dev in enumerate(devices()):
         # filter out non-matches
+        # print("{}: {}, {}, {}".format(
+        #     dev['product'], dev['usageValue'], dev['usagePageValue'], dev['serialNumber']))
         if dev['usagePageValue'] != 1 or dev['usageValue'] != 6:
             continue  # wrong spec - doesn't look like a keyboard
         if name and not (dev['product'].contains(name)):
             continue
-        if serial_number != dev['serialNumber']:
+        if serial_number and not (dev['serialNumber'].contains(serial_number)):
             continue  # doesn't match the serial number
         # we've got a match so store the data
-        if 'Keyboard' in dev['usageName'] and name in dev['product']:
-            keyboardIndices.append(dev['index'])
-            productNames.append(dev['product'])
-            allInfos.append(dev)
+        # for mac we could also check if 'Keyboard' in dev['usageName'] but not win32
+        keyboardIndices.append(dev['index'])
+        productNames.append(dev['product'])
+        allInfos.append(dev)
     return keyboardIndices, productNames, allInfos
 
 
