@@ -236,7 +236,7 @@ IOPort = Extension(name,
 ext_modules.append(IOPort)
 
 setup (name = 'psychtoolbox',
-       version = '3.0.15',
+       version = '3.0.15a1',
        description = 'Pieces of Psychtoolbox-3 ported to CPython.',
        author = 'Mario Kleiner',
        author_email = 'mario.kleiner.de@gmail.com',
