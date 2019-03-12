@@ -1,11 +1,9 @@
-# ppatest.py - Basic test of PsychPortAudio for Python
-# Also tests WaitSecs, GetSecs, and PsychHID basics, as
-# they are utilized here.
 #
-# Plays a beep tone, then another beep tone, then records sound for 10 seconds,
-# then plays it back until the end, or until a key is pressed.
-# The test will be subjec to change without notice, it is throwaway test code.
-#
+# RIGHT NOW THIS IS A WORK IN PROGRESS. ALTHOUGH THE PsychPortAudio LIB HAS BEEN
+# TESTED BY MARIO, this additional wrapper is under development. Use with extreme
+# caution only for development purposes right now.
+
+
 # (c) 2018 Mario Kleiner - Licensed under MIT license.
 
 from psychtoolbox import audio, hid

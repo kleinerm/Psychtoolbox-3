@@ -13,116 +13,115 @@ import numpy                                # To get include dir on macOS.
 is_64bits = sys.maxsize > 2**32
 
 def get_sourcefiles(path):
-    sources = [];
-    pattern1 = '*.c';
-    pattern2 = '*.cpp';
+    sources = []
+    pattern1 = '*.c'
+    pattern2 = '*.cpp'
     for filename in os.listdir(path):
         if fnmatch.fnmatch(filename, pattern1) or fnmatch.fnmatch(filename, pattern2):
-            sources += [os.path.join(path,filename)];
+            sources += [os.path.join(path,filename)]
 
     # Fancy schmanzi, not needed atm. for recursive dir traversal:
     #    for root, dirs, files in os.walk(path):
     #        for filename in files:
-    #            sources += [os.path.join(root,filename)];
+    #            sources += [os.path.join(root,filename)]
 
-    return(sources);
+    return(sources)
 
 def get_basemacros(name, osname):
-    return([('PTBMODULE_' + name, None), ('PTBMODULENAME', name)] + base_macros);
+    return([('PTBMODULE_' + name, None), ('PTBMODULENAME', name)] + base_macros)
 
 def get_baseincludedirs(name, osname):
-    return(['PsychSourceGL/Source/Common/' + name] + baseincludes_common + ['PsychSourceGL/Source/' + osname + '/Base'] + ['PsychSourceGL/Source/' + osname + '/' + name]);
+    return(['PsychSourceGL/Source/Common/' + name] + baseincludes_common + ['PsychSourceGL/Source/' + osname + '/Base'] + ['PsychSourceGL/Source/' + osname + '/' + name])
 
 def get_basesources(name, osname):
-    extrafiles = [];
+    extrafiles = []
     if os.access('./PsychSourceGL/Source/' + osname + '/' + name, os.F_OK):
-         extrafiles = get_sourcefiles('./PsychSourceGL/Source/' + osname + '/' + name);
+         extrafiles = get_sourcefiles('./PsychSourceGL/Source/' + osname + '/' + name)
 
-    return(basefiles_common + get_sourcefiles('./PsychSourceGL/Source/' + osname + '/Base/') + get_sourcefiles('./PsychSourceGL/Source/Common/' + name) + extrafiles);
+    return(basefiles_common + get_sourcefiles('./PsychSourceGL/Source/' + osname + '/Base/') + get_sourcefiles('./PsychSourceGL/Source/Common/' + name) + extrafiles)
 
 # Treating some special cases like Octave seems to be the right thing to do,
 # PSYCH_LANGUAGE setting is self-explanatory:
-base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON')];
+base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON')]
 # Disabled: This would enable Py_LIMITED_API, to allow to build one set of modules for all versions of
 # Python >= 3.2. The downside is loss of important functionality [PsychRuntimeEvaluateString()) does not work!].
 # Also, we have build failure on at least Ubuntu 18.04 LTS with Python 3.6, so it is a no-go on Linux for now!
-#base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON'), ('Py_LIMITED_API', None)];
+#base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON'), ('Py_LIMITED_API', None)]
 
 # Common infrastructure and the scripting glue module for interfacing with the Python runtime:
-basefiles_common = get_sourcefiles('./PsychSourceGL/Source/Common/Base') + ['PsychSourceGL/Source/Common/Base/PythonGlue/PsychScriptingGluePython.c'];
-baseincludes_common = [numpy.get_include(), 'PsychSourceGL/Source/Common/Base', 'PsychSourceGL/Source/Common/Screen'];
+basefiles_common = get_sourcefiles('./PsychSourceGL/Source/Common/Base') + ['PsychSourceGL/Source/Common/Base/PythonGlue/PsychScriptingGluePython.c']
+baseincludes_common = [numpy.get_include(), 'PsychSourceGL/Source/Common/Base', 'PsychSourceGL/Source/Common/Screen']
 
 # OS detection and file selection for the different OS specific backends:
-print('Platform reported as: %s\n' % platform.system());
+print('Platform reported as: %s\n' % platform.system())
 if platform.system() == 'Linux':
     # Linux specific backend code:
-    print('Building for Linux...\n');
-    osname = 'Linux';
+    print('Building for Linux...\n')
+    osname = 'Linux'
     # All libraries to link to all modules:
-    base_libs = ['c', 'rt', 'dl'];
+    base_libs = ['c', 'rt', 'dl']
     # No "no reproducible builds" warning:
-    base_compile_args = ['-Wno-date-time'];
+    base_compile_args = ['-Wno-date-time']
     # Extra OS specific libs for PsychPortAudio:
-    audio_libdirs = [];
-    audio_extralinkargs = [];
-    audio_libs = ['portaudio', 'asound'];
-    audio_objects = [];
+    audio_libdirs = []
+    audio_extralinkargs = []
+    audio_libs = ['portaudio', 'asound']
+    audio_objects = []
 
     # Static linking for audio_objects aka libportaudio.a no longer used as of v3.0.15:
     #if is_64bits == True:
-    #    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio64Linux.a'];
+    #    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio64Linux.a']
     #else:
-    #    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio32Linux.a'];
-
-    # libusb includes:
-    usb_includes = ['/usr/include/libusb-1.0'];
+    #    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio32Linux.a']
 
     # Extra OS specific libs for PsychHID:
-    psychhid_includes = usb_includes;
-    psychhid_libdirs = [];
-    psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util'];
-    psychhid_extra_objects = [];
+    psychhid_includes = ['/usr/include/libusb-1.0']
+    psychhid_libdirs = []
+    psychhid_libs = ['dl', 'usb-1.0', 'X11', 'Xi', 'util']
+    psychhid_extra_objects = []
 
     # Extra files needed, e.g., libraries:
-    extra_files = {};
+    extra_files = {}
 
 if platform.system() == 'Windows':
-    print('Building for Windows...\n');
-    osname = 'Windows';
-    base_libs = ['kernel32', 'user32', 'advapi32', 'winmm'];
-    base_compile_args = [];
-
-    # Extra OS specific libs for PsychPortAudio:
-    audio_libdirs = ['PsychSourceGL/Cohorts/PortAudio'];
-    audio_extralinkargs = []; # No runtime delay loading atm. No benefit with current packaging method: ['/DELAYLOAD:portaudio_x64.dll'];
-    audio_libs = ['delayimp', 'portaudio_x64'];
-    audio_objects = [];
+    print('Building for Windows...\n')
+    osname = 'Windows'
+    base_libs = ['kernel32', 'user32', 'advapi32', 'winmm']
+    base_compile_args = []
 
     # libusb includes:
-    usb_includes = ['PsychSourceGL/Cohorts/libusb1-win32/include/libusb-1.0']
+    psychhid_includes = ['PsychSourceGL/Cohorts/libusb1-win32/include/libusb-1.0']
 
-    # Extra OS specific libs for PsychHID:
-    psychhid_includes = usb_includes;
     if is_64bits:
-        psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS64/dll'];
+        # 64bit supports PsychPortAudio
+        psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS64/dll']
+        # and copy the files to the folder
+        shutil.copy('PsychSourceGL/Cohorts/libusb1-win32/MS64/dll/libusb-1.0.dll',
+                    'PsychPython/')
+        shutil.copy('Psychtoolbox/PsychSound/portaudio_x64.dll',
+                    'PsychPython/')
+        # list them so they get packaged
+        extra_files = {'psychtoolbox': ['portaudio_x64.dll', 'libusb-1.0.dll']}
+
+        # Extra OS specific libs for PsychPortAudio:
+        audio_libdirs = ['PsychSourceGL/Cohorts/PortAudio']
+        audio_extralinkargs = [] # No runtime delay loading atm. No benefit with current packaging method: ['/DELAYLOAD:portaudio_x64.dll']
+        audio_libs = ['delayimp', 'portaudio_x64']
+        audio_objects = []
     else:
-        psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS32/dll'];
-    psychhid_libs = ['dinput8', 'libusb-1.0', 'setupapi'];
-    psychhid_extra_objects = [];
+        # for win32 we use a different libusb dll and the portaudio dll is not supported
+        psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS32/dll']
+        shutil.copy('PsychSourceGL/Cohorts/libusb1-win32/MS32/dll/libusb-1.0.dll',
+                    'PsychPython/')
+        # list them so they get packaged
+        extra_files = {'psychtoolbox': ['libusb-1.0.dll']}
 
-    # Extra files needed, e.g., libraries.
-    # The 64-Bit portaudio dll for PsychPortAudio and libusb1 dll for PsychHID:
-    extra_files = {'psychtoolbox' : ['portaudio_x64.dll', 'libusb-1.0.dll']};
-
-    # These extra files must be in the PsychPython folder that defines our
-    # 'psychtoolbox' package. Copy them temporarily from their actual locations
-    # in Psychtoolbox to that folder:
-    shutil.copy('Psychtoolbox/PsychSound/portaudio_x64.dll', 'PsychPython/');
-    shutil.copy('PsychSourceGL/Cohorts/libusb1-win32/MS64/dll/libusb-1.0.dll', 'PsychPython/');
+    psychhid_libs = ['dinput8', 'libusb-1.0', 'setupapi']
+    psychhid_extra_objects = []
 
 if platform.system() == 'Darwin':
-    print('Building for macOS...\n');
-    osname = 'OSX';
+    print('Building for macOS...\n')
+    osname = 'OSX'
     # These should go to extra_link_args in Extension() below, but apparently distutils
     # always appends the extra_link_args at the end of the linker command line, which is
     # wrong for -framework's, as they must be stated *before* the .o object files which
@@ -151,31 +150,31 @@ if platform.system() == 'Darwin':
     # -framework CoreText -framework Cocoa
     #
     os.environ['LDFLAGS'] = '-framework Carbon -framework CoreAudio'
-    base_libs = [];
+    base_libs = []
 
     # No "no reproducible builds" warning:
-    base_compile_args = ['-Wno-date-time', '-mmacosx-version-min=10.9'];
+    base_compile_args = ['-Wno-date-time', '-mmacosx-version-min=10.9']
 
     # Extra OS specific libs for PsychPortAudio:
-    audio_libdirs = [];
-    audio_extralinkargs = [];
-    audio_libs = [];
+    audio_libdirs = []
+    audio_extralinkargs = []
+    audio_libs = []
     # Include our statically linked on-steroids version of PortAudio:
-    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio_osx_64.a'];
+    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio_osx_64.a']
 
     # Include Apples open-source HID Utilities for all things USB-HID device handling:
-    psychhid_includes = ['PsychSourceGL/Cohorts/HID_Utilities_64Bit/', 'PsychSourceGL/Cohorts/HID_Utilities_64Bit/IOHIDManager'];
-    psychhid_libdirs = [];
-    psychhid_libs = [];
+    psychhid_includes = ['PsychSourceGL/Cohorts/HID_Utilities_64Bit/', 'PsychSourceGL/Cohorts/HID_Utilities_64Bit/IOHIDManager']
+    psychhid_libdirs = []
+    psychhid_libs = []
     # Extra objects for PsychHID - statically linked HID utilities:
-    psychhid_extra_objects = ['PsychSourceGL/Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a'];
+    psychhid_extra_objects = ['PsychSourceGL/Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a']
 
     # Extra files needed, e.g., libraries:
-    extra_files = {};
+    extra_files = {}
 
 ext_modules = []
 # GetSecs module: Clock queries.
-name = 'GetSecs';
+name = 'GetSecs'
 GetSecs = Extension(name,
                     extra_compile_args = base_compile_args,
                     define_macros = get_basemacros(name, osname),
@@ -186,20 +185,20 @@ GetSecs = Extension(name,
 ext_modules.append(GetSecs)
 
 # WaitSecs module: Timed waits.
-name = 'WaitSecs';
+name = 'WaitSecs'
 WaitSecs = Extension(name,
                      extra_compile_args = base_compile_args,
                      define_macros = get_basemacros(name, osname),
                      include_dirs = get_baseincludedirs(name, osname),
                      sources = get_basesources(name, osname),
                      libraries = base_libs
-                    )
+                     )
 ext_modules.append(WaitSecs)
 
 # PsychPortAudio module: High precision, high reliability, multi-channel, multi-card audio i/o.
 if is_64bits:
     # this won't compile on 32bit windows. Mac and linux are 64 bit anyway
-    name = 'PsychPortAudio';
+    name = 'PsychPortAudio'
     PsychPortAudio = Extension(name,
                                extra_compile_args = base_compile_args,
                                define_macros = get_basemacros(name, osname),
@@ -213,7 +212,7 @@ if is_64bits:
     ext_modules.append(PsychPortAudio)
 
 # PsychHID module: Note the extra include_dirs and libraries:
-name = 'PsychHID';
+name = 'PsychHID'
 PsychHID = Extension(name,
                      extra_compile_args = base_compile_args,
                      define_macros = get_basemacros(name, osname),
@@ -226,7 +225,7 @@ PsychHID = Extension(name,
 ext_modules.append(PsychHID)
 
 # IOPort module:
-name = 'IOPort';
+name = 'IOPort'
 IOPort = Extension(name,
                    extra_compile_args = base_compile_args,
                    define_macros = get_basemacros(name, osname),
@@ -253,5 +252,6 @@ setup (name = 'psychtoolbox',
 if platform.system() == 'Windows':
     # Get rid of the now no longer needed copies of dll's inside PsychPython,
     # now that setup() has already copied them into the distribution.
-    os.remove('PsychPython/portaudio_x64.dll');
-    os.remove('PsychPython/libusb-1.0.dll');
+    if os.path.exists('PsychPython/portaudio_x64.dll'):
+        os.remove('PsychPython/portaudio_x64.dll')
+    os.remove('PsychPython/libusb-1.0.dll')

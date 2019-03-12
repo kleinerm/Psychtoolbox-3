@@ -1,5 +1,10 @@
 """Converts Psychtoolbox formatted functions into prettier python-styling
 
+RIGHT NOW THIS IS A WORK IN PROGRESS. ALTHOUGH THE PsychPortAudio LIB HAS BEEN
+TESTED BY MARIO, this additional wrapper is under development. Use with extreme
+caution only for development purposes right now.
+
+
 e.g.::
 
     from psychtooolbox import PsychPortAudio
