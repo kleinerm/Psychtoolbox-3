@@ -11,6 +11,7 @@ import sys                                  # cpu arch detection.
 import numpy                                # To get include dir on macOS.
 
 is_64bits = sys.maxsize > 2**32
+version = '3.0.15dev2'
 
 def get_sourcefiles(path):
     sources = []
@@ -236,7 +237,7 @@ IOPort = Extension(name,
 ext_modules.append(IOPort)
 
 setup (name = 'psychtoolbox',
-       version = '3.0.15a1',
+       version = version,
        description = 'Pieces of Psychtoolbox-3 ported to CPython.',
        author = 'Mario Kleiner',
        author_email = 'mario.kleiner.de@gmail.com',
