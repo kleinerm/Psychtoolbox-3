@@ -53,7 +53,7 @@
 #endif
 
 #ifdef PTB_USE_WAFFLE
-#include <waffle.h>
+#include <waffle-1/waffle.h>
 #endif
 
 // Include specifications of the GPU registers:
