@@ -88,6 +88,9 @@
 %                       -   Measurements made with PR-650, power in Watts/[m2-sr-wlband].
 %   spd_xenonArc        - Spectral power distribution for some xenon arc lamp.
 %   spd_xenonFlash      - Spectral power distribuiton for some xenon flash tube.
+%   sur_krinov          - Krinov reflectance measurements. Also has a labels variable.
+%                       -   These were typed in by Larry Maloney long ago
+%                       -   and put into PTB format by Danny Garside.
 %   sur_nickerson       - The Nickerson measurements of the Munsell papers.
 %   sur_macbeth         - Reflectance of Macbeth color checker (not accurate, needs updating).
 %   sur_vrhel           - Reflectances measured by Vrhel.
