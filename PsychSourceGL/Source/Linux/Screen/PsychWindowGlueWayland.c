@@ -44,8 +44,7 @@
 
 #include "Screen.h"
 
-#include <waffle.h>
-#include <waffle_wayland.h>
+#include <waffle-1/waffle_wayland.h>
 
 // Number of currently open onscreen windows:
 static int open_windowcount = 0;
