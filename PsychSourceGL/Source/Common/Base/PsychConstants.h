@@ -54,7 +54,15 @@
 
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
     #undef printf
+    #ifdef PTBOCTAVE3MEX
+    // Octave can mexPrintf from secondary threads:
     #define printf mexPrintf
+    #else
+    // Recent R2018'ish Matlab can't mexPrintf from secondary threads, so
+    // only mexPrintf when called from master thread, otherwise no-op:
+    // TODO: Implement proper async logging so this stuff doesn't go to nirvana.
+    #define printf(...) if (PsychIsMasterThread()) mexPrintf(__VA_ARGS__)
+    #endif
 #endif
 
 #if PSYCH_LANGUAGE == PSYCH_PYTHON

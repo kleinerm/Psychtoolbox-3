@@ -1110,13 +1110,17 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %
 % * 'AddOffsetToImage' Add a constant color- or intensity offset to the
-%   drawn image, prior to all following image processing and post
-%   processing operations:
-%   Outimage(x,y) = Inimage(x,y) + Offset. If the framebuffer is in a color
-%   display mode, the same offset will be added to all three color
-%   channels.
+%   drawn image, possibly also multiply with a gain, prior to all following
+%   image processing and post-processing operations:
 %
-%   Usage: PsychImaging('AddTask', whichView, 'AddOffsetToImage', Offset);
+%   Outimage(x,y) = (Inimage(x,y) + preOffset) * gain + Offset.
+%
+%   If the framebuffer is in a color display mode, the same offset will be added
+%   to all three color channels.
+%
+%   Usage: PsychImaging('AddTask', whichView, 'AddOffsetToImage', Offset [, gain=1][, preOffset=0]);
+%   'gain' and 'preOffset' are optional, 'Offset' is required.
+%
 %   Example: PsychImaging('AddTask', 'AllViews', 'AddOffsetToImage', 0.5);
 %
 %

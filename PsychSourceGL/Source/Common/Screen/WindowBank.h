@@ -162,7 +162,7 @@
 #define kPsychSkipTimestampingForFlipOnce   (1 << 28) // 'specialflags': Perform next flip on this window without waiting for swap completion + timestamping + timing correctness checks.
 #define kPsychSkipSwapForFlipOnce           (1 << 29) // 'specialflags': Perform next flip on this window without actually performing the OpenGL bufferswap, iow. don't present to the onscreen window.
 #define kPsychSkipWaitForFlipOnce           (1 << 30) // 'specialflags': Perform next flip on this window without waiting until the 'when' target time for the flip.
-#define kPsychUseFineGrainedOnset           (1 << 31) // 'specialflags': Schedule flips not on a fixed refresh interval, but use some scheduling with finer time granularity if possible.
+#define kPsychUseFineGrainedOnset           (1ULL << 31) // 'specialflags': Schedule flips not on a fixed refresh interval, but use some scheduling with finer time granularity if possible.
 #define kPsychNeedVBODouble12Workaround     (1ULL << 32) // 'specialflags': Gfx driver bug makes < 2 component vertex attribute buffers problematic if GL_DOUBLE is used for submission.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
