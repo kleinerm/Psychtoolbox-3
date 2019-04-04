@@ -95,8 +95,8 @@
 % We recommend XServer version 1.19.3 or later, and Mesa version 13 or later, and
 % Linux 4.10 or later, as this combination provides best performance and ease of
 % setup for all supported types of hybrid graphics laptops. Users of Ubuntu Linux
-% can simply install Ubuntu 16.04.4 LTS (or Ubuntu 18.04-LTS and later) from fresh
-% installation media, or upgrade to 16.04.4 LTS from earlier Ubuntu releases and then
+% can simply install Ubuntu 16.04.6 LTS (or Ubuntu 18.04-LTS and later) from fresh
+% installation media, or upgrade to 16.04.6 LTS from earlier Ubuntu releases and then
 % install the new hardware enablement stack (HWE) via ...
 %
 % sudo apt install --install-recommends linux-lowlatency-hwe-16.04 xserver-xorg-hwe-16.04
@@ -224,10 +224,7 @@
 % * Laptops with dual AMD gpus AMD iGPU + AMD dGPU ("AMD Enduro" models):
 %
 %   Muxless won't work with any current official solution, so you can only use the
-%   AMD iGPU [1]. A "dirty hack" solution exists from Mario Kleiner for old AMD laptops,
-%   but it is not released, and not clear if releasing this hack would be a good idea.
-%   Check the PTB website for updates or contact the user forum if you have questions wrt.
-%   this solution.
+%   AMD iGPU [1].
 %
 %
 % For those combinations that should work (Intel iGPU + NVidia/AMD dGPU "Optimus/Enduro"),
