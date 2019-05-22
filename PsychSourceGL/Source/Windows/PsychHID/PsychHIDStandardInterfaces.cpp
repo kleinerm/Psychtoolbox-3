@@ -40,8 +40,8 @@ typedef struct dinfo {
     psych_uint16 usagePage;
     psych_uint16 usageValue;
     psych_uint32 dwDevType;
-    TCHAR tszInstanceName[MAX_PATH];
-    TCHAR tszProductName[MAX_PATH];
+    TCHAR tszInstanceName[MAX_PATH + 1]; // + 1 TCHAR for guaranteed 0-termination
+    TCHAR tszProductName[MAX_PATH + 1];  // even in case of buggy drivers.
 } dinfo;
 
 static dinfo info[PSYCH_HID_MAX_DEVICES];
@@ -78,6 +78,9 @@ BOOL keyboardEnumCallback(LPCDIDEVICEINSTANCE lpddi, LPVOID pvRef)
 {
     // Useless assignment to make compiler happy:
     pvRef = NULL;
+
+    // Start with a clean slate:
+    memset(&info[ndevices], 0, sizeof(info[0]));
 
     // Copy relevant info into our own info array:
     info[ndevices].guidInstance = lpddi->guidInstance;
