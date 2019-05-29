@@ -81,6 +81,7 @@ typedef __CHAR16_TYPE__ char16_t;
     #include <unistd.h>
     #include <stdarg.h>
     #include <pthread.h>
+    #include <dlfcn.h>
 
     #ifndef _POSIX_THREAD_PRIO_INHERIT
     #error This build system does not support pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT); Fix your build system!

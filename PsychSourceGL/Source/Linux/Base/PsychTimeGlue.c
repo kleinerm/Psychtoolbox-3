@@ -728,3 +728,119 @@ const char* PsychSupportStatus(void)
     sprintf(statusString, "Linux %s Supported.", unameresult.release);
     return(statusString);
 }
+
+/* Test if module needs to call XInitThreads() itself during startup:
+ *
+ * verbose: 0 = Shut up, 1/2 = Important messages only, 3 = Info messages, 4 = Debug output.
+ *
+ * Returns:
+ *
+ * 0 if XInitThreads() call is not needed, or not safe to perform.
+ * 1 if call is needed and safe, or is enforced by user-code in any case.
+ *
+ */
+int PsychOSNeedXInitThreads(int verbose)
+{
+    const char* name = PsychGetModuleName();
+    psych_bool needed, safe;
+    void** x_lock = NULL;
+    void** errfun1 = NULL;
+    void** errfun2 = NULL;
+
+    // Detect if the libX11 XLib master lock named _Xglobal_lock exists, and
+    // if it has a non-NULL value. If so, that means the hosting application has
+    // called XInitThreads() during startup, as required for safe multi-threading.
+    // If not, then that important call was omitted and our use of multi-threading
+    // or possibly of libX11 concurrently with a GUI based hosting app at all is
+    // potentially unsafe and deserves a workaround or a warning to the user:
+    x_lock = dlsym(RTLD_DEFAULT, "_Xglobal_lock");
+    needed = x_lock == NULL || *x_lock == NULL;
+
+    // Try to figure out if the host process already called XLib functions. Calls to
+    // XSetErrorHandler() early during use of XLib, or to XOpenDisplay() to establish
+    // a connection to the X-Server, would init the XLib global _XErrorFunction to a
+    // non-NULL value - either the app specific error handler or the XLib default error
+    // handler. Iow. _XErrorFunction would be non-NULL. The same is true wrt. to the
+    // fatal error handler function XSetIOErrorHandler() for _XIOErrorFunction.
+    // In these cases, we are too late as it would be dangerous to call XInitThreads()
+    // ourselves after the host process did anything with XLib before us without
+    // calling XInitThreads() itself as first step.
+    errfun1 = dlsym(RTLD_DEFAULT, "_XErrorFunction");
+    errfun2 = dlsym(RTLD_DEFAULT, "_XIOErrorFunction");
+    safe = !((errfun1 == NULL || *errfun1 != NULL) || (errfun2 == NULL || *errfun2 != NULL));
+
+    if (verbose >= 4) {
+        printf("%s-DEBUG: libX11 global threading lock _Xglobal_lock[%p] = %p\n", name, x_lock, x_lock ? *x_lock : NULL);
+        printf("%s-DEBUG: _XErrorFunction[%p] = %p\n", name, errfun1, errfun1 ? *errfun1 : NULL);
+        printf("%s-DEBUG: _XIOErrorFunction[%p] = %p\n", name, errfun2, errfun2 ? *errfun2 : NULL);
+        printf("%s-DEBUG: XInitThreads() is considered: needed = %i, safe = %i\n", name, (int) needed, (int) safe);
+    }
+
+    // Call XInitThreads() due to usercode's request / override?
+    if (getenv("PSYCH_XINITTHREADS")) {
+        if (verbose >= 3)
+            printf("%s-INFO: Calling XInitThreads() on usercode's request, as environment variable PSYCH_XINITTHREADS is set.\n", name);
+
+        return(1);
+    }
+
+    if (needed) {
+        // Safe multi-threading not initialized by host process :( - Safe to work around this?
+        if (!safe) {
+            // Game over: Host process did XLib stuff already, e.g., to startup its GUI. Nothing
+            // we can do but warn the user and ask him to fix the host application.
+            if (verbose > 0) {
+                printf("%s-WARNING: Seems like the libX11 library was *not* initialized for thread-safe mode,\n", name);
+                printf("%s-WARNING: because the application host process omitted a required call to\n", name);
+                printf("%s-WARNING: XInitThreads() during its startup, as required for safe operation!\n", name);
+                printf("%s-WARNING: Unfortunately the application host process already used XLib for\n", name);
+                printf("%s-WARNING: something, e.g., for starting up its GUI, so i can not safely work\n", name);
+                printf("%s-WARNING: around this problem! Use of multi-threading in %s() might cause\n", name, name);
+                printf("%s-WARNING: malfunctions or even a hard application crash!\n", name);
+                printf("%s-WARNING: Please fix the application to call XInitThreads() *before* calling\n", name);
+                printf("%s-WARNING: any other libX11 X-Lib functions, or not to call X-Lib at all before using this module.\n", name);
+                printf("%s-WARNING: You could force me to call XInitThreads() by setting the environment\n", name);
+                printf("%s-WARNING: variable PSYCH_XINITTHREADS to any non-empty value as a workaround, if\n", name);
+                printf("%s-WARNING: you like living on the edge, at your own risk though!\n", name);
+                printf("%s-WARNING: I will continue, but may malfunction or crash at some point!\n", name);
+
+                #if (PSYCH_LANGUAGE == PSYCH_MATLAB) && defined(PTBOCTAVE3MEX)
+                    printf("%s-INFO: If you are running this under the application \"octave-cli\", then relaunch\n", name);
+                    printf("%s-INFO: octave-cli with the --no-window-system switch: octave-cli --no-window-system\n", name);
+                    printf("%s-INFO: or simply launch octave in the common way as: octave\n", name);
+                    printf("%s-INFO: Calling octave instead of octave-cli should always work.\n", name);
+                #else
+                    #if (PSYCH_LANGUAGE == PSYCH_PYTHON)
+                        printf("%s-INFO: If you are using PsychoPy, simply upgrade to version 3.1.3 or later.\n", name);
+                        printf("%s-INFO: Otherwise, you can generally fix Python scripts/apps by adding the following\n", name);
+                        printf("%s-INFO: snippet early enough at the beginning of script execution under X11:\n", name);
+                        printf("%s-INFO: import ctypes\n", name);
+                        printf("%s-INFO: xlib = ctypes.cdll.LoadLibrary(\"libX11.so\")\n", name);
+                        printf("%s-INFO: xlib.XInitThreads()\n", name);
+                        printf("\n");
+                    #else
+                        printf("%s-INFO: It is probably best to ask the Psychtoolbox user forum for guidance.\n", name);
+                    #endif
+                #endif
+            }
+        }
+        else {
+            if (verbose >= 3) {
+                // Seems the host process didn't use XLib at all yet. So we are its first user and
+                // therefore should be able to call XInitThreads() safely -- knock on wood...
+                printf("%s-INFO: libX11 library not yet set up for thread-safe operation by host application, as required.\n", name);
+                printf("%s-INFO: Now calling XInitThreads() myself, to fix this problem in a likely safe way.\n", name);
+            }
+        }
+
+        // Request call to XInitThreads() if it is considered a safe workaround:
+        return((int) safe);
+    }
+    else {
+        // All seems to be good, no need for us to do anything:
+        if (verbose >= 4)
+            printf("%s-DEBUG: No need for me to call XInitThreads().\n", name);
+
+        return(0);
+    }
+}

@@ -72,5 +72,9 @@ const char* PsychSupportStatus(void);
 // Linux specific: CLOCK_MONOTONIC time in seconds -- Usually the system uptime:
 double PsychOSGetLinuxMonotonicTime(void);
 double PsychOSMonotonicToRefTime(double monotonicTime);
+
+// Test if module needs to call XInitThreads() itself during startup:
+int PsychOSNeedXInitThreads(int verbose);
+
 //end include once
 #endif
