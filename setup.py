@@ -69,12 +69,6 @@ if platform.system() == 'Linux':
     audio_libs = ['portaudio', 'asound']
     audio_objects = []
 
-    # Static linking for audio_objects aka libportaudio.a no longer used as of v3.0.15:
-    #if is_64bits == True:
-    #    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio64Linux.a']
-    #else:
-    #    audio_objects = ['PsychSourceGL/Cohorts/PortAudio/libportaudio32Linux.a']
-
     # Extra OS specific libs for PsychHID:
     psychhid_includes = ['/usr/include/libusb-1.0']
     psychhid_libdirs = []
@@ -153,7 +147,11 @@ if platform.system() == 'Darwin':
     os.environ['LDFLAGS'] = '-framework Carbon -framework CoreAudio'
     base_libs = []
 
-    # No "no reproducible builds" warning:
+    # No "no reproducible builds" warning. macOS minimum version 10.9 selected by Jon Peirce.
+    # May work for current modules, but is completely untested and unsupported by Psychtoolbox
+    # upstream as of v3.0.15+, which only allows 10.11 as minimum version for Psychtoolbox mex
+    # files and only tests with 10.13. Also note that already 10.11 is unsupported by Apple and
+    # therefore a security risk.
     base_compile_args = ['-Wno-date-time', '-mmacosx-version-min=10.9']
 
     # Extra OS specific libs for PsychPortAudio:
@@ -197,8 +195,8 @@ WaitSecs = Extension(name,
 ext_modules.append(WaitSecs)
 
 # PsychPortAudio module: High precision, high reliability, multi-channel, multi-card audio i/o.
-if is_64bits:
-    # this won't compile on 32bit windows. Mac and linux are 64 bit anyway
+if is_64bits or platform.system() == 'Linux':
+    # This won't compile on 32bit windows or macOS. Linux also has 32 Bit non-Intel variants, e.g., RaspberryPi
     name = 'PsychPortAudio'
     PsychPortAudio = Extension(name,
                                extra_compile_args = base_compile_args,
