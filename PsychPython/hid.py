@@ -48,7 +48,10 @@ def get_keyboard_indices(name='', serial_number=''):
     keyboardIndices = []
     productNames = []
     allInfos = []
-    devs = devices()
+    if sys.platform != 'darwin':
+        devs = devices(device_class=4)  # on win/linux this is just keyboards
+    else:
+        devs = devices()
     for ii, dev in enumerate(devs):
         # filter out non-matches
         # print("{}: {}, {}, {}".format(
