@@ -23,6 +23,8 @@ liboctave.*
 liboctinterp.*
 PsychPython/__pycache__/
 PsychPython/*.pyc
+dist/
+psychtoolbox.egg-info/
 Psychtoolbox/PsychTests/TimingtestResults/*
 managementtools/ptbregistration*
 *.ipch
