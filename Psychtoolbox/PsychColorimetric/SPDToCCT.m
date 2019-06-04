@@ -59,7 +59,6 @@ SPD_XYZ = T_xyz1931*SPD;
 SPD_uv = XYZTouv(SPD_XYZ,'Compute1960');
 
 %% Calculate look ups
-S = [380,5,81];
 range = 1000:10000;
 lookup_uv = zeros(2,length(range));
 for i=1:length(range)
