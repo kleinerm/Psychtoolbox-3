@@ -119,9 +119,6 @@ static psych_bool isDCE12(int screenId)
     // VEGA12: 0x69A0 - 0x69AF
     if ((fPCIDeviceId & 0xFFF0) == 0x69A0) isDCE12 = true;
 
-    // VEGAM: 0x6940 - 0x694F
-    if ((fPCIDeviceId & 0xFFF0) == 0x6940) isDCE12 = true;
-
     // VEGA20: 0x66A0 - 0x66AF
     if ((fPCIDeviceId & 0xFFF0) == 0x66A0) isDCE12 = true;
 
@@ -136,7 +133,7 @@ static psych_bool isDCE112(int screenId)
     psych_bool isDCE112 = false;
     (void) screenId;
 
-    // POLARIS10/11/12 are DCE11.2:
+    // POLARIS10/11/12 are DCE11.2. So is, oddly, VEGAM:
 
     // POLARIS10: 0x67C0 - 0x67DF and 0x6FDF
     if ((fPCIDeviceId & 0xFFF0) == 0x67C0) isDCE112 = true;
@@ -150,6 +147,9 @@ static psych_bool isDCE112(int screenId)
     // POLARIS12: 0x6980 - 0x699F
     if ((fPCIDeviceId & 0xFFF0) == 0x6980) isDCE112 = true;
     if ((fPCIDeviceId & 0xFFF0) == 0x6990) isDCE112 = true;
+
+    // VEGAM: 0x6940 - 0x694F
+    if ((fPCIDeviceId & 0xFFF0) == 0x6940) isDCE112 = true;
 
     return(isDCE112);
 }
