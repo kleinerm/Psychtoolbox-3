@@ -40,6 +40,8 @@ static psych_condition KbQueueCondition;
 static psych_bool  KbQueueThreadTerminate;
 static psych_thread KbQueueThread;
 static XEvent KbQueue_xevent;
+static XIM x_inputMethod = NULL;
+static XIC x_inputContext = NULL;
 
 static XDevice* GetXDevice(int deviceIndex)
 {
@@ -170,6 +172,17 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
         if (psychHIDKbQueueFirstPress[i]) {
             PsychHIDOSKbQueueRelease(i);
         }
+    }
+
+    // Delete input method and context if any was in use:
+    if (x_inputContext) {
+        XDestroyIC(x_inputContext);
+        x_inputContext = NULL;
+    }
+
+    if (x_inputMethod) {
+        XCloseIM(x_inputMethod);
+        x_inputMethod = NULL;
     }
 
     // Release keyboard queue mutex:
@@ -527,6 +540,8 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
     int i, j, index, deviceid, numValuators;
     unsigned int screen_width, screen_height;
     char asciiChar;
+    wchar_t wideChar;
+    Status status_return;
 
     while (1) {
         XGenericEventCookie *cookie = &KbQueue_xevent.xcookie;
@@ -656,8 +671,14 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                         key.keycode      = index;
                         key.state        = event->mods.effective;
 
-                        if (1 == XLookupString(((XKeyEvent*) (&key)), &asciiChar, 1, NULL, NULL)) {
-                            // Mapped: Assign it.
+                        if (x_inputContext &&
+                            (1 == XwcLookupString(x_inputContext, &key, &wideChar, 1, NULL, &status_return)) &&
+                            (status_return == XLookupChars || status_return == XLookupBoth)) {
+                            // Mapped to wide character according to current keyboard layout:
+                            evt.cookedEventCode = (int) wideChar;
+                        }
+                        else if (1 == XLookupString((XKeyEvent*) &key, &asciiChar, 1, NULL, NULL)) {
+                            // Mapped to ISO Latin-1 or ASCII CTRL char: Assign it.
                             evt.cookedEventCode = (int) asciiChar;
                         }
                         else {
@@ -1150,6 +1171,37 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
 
     // Store associated X-Window handle, or zero for unspecified:
     psychHIDKbQueueXWindow[deviceIndex] = windowHandle;
+
+    if (x_inputMethod == NULL) {
+        // Create an input method and context in the currently set locale
+        // for use in translation to the currently set keyboard layout. This
+        // is used for the event.CookedKey of returned keyboard queue events.
+
+        // Try to use env setting for locale modifiers:
+        XSetLocaleModifiers("");
+        x_inputMethod = XOpenIM(thread_dpy, NULL, NULL, NULL);
+        if (!x_inputMethod) {
+            // Fallback to internal settings:
+            XSetLocaleModifiers("@im=none");
+            x_inputMethod = XOpenIM(thread_dpy, NULL, NULL, NULL);
+        }
+
+        if (!x_inputMethod) {
+            printf("PsychHID-WARNING: Failed to setup international keyboard handling due to failed input method creation.\n");
+        }
+        else {
+            x_inputContext = XCreateIC(x_inputMethod, XNInputStyle, XIMPreeditNone | XIMStatusNone, NULL);
+            if (!x_inputContext) {
+                printf("PsychHID-WARNING: Failed to setup international keyboard handling due to failed input context creation.\n");
+            }
+            else {
+                XSetICFocus(x_inputContext);
+            }
+        }
+
+        if (!x_inputContext)
+            printf("PsychHID-WARNING: Only US keyboard layouts will be mapped properly due to this failure for GetChar() et al.\n");
+    }
 
     // Create event buffer:
     if (!PsychHIDCreateEventBuffer(deviceIndex, numValuators, numSlots)) {
