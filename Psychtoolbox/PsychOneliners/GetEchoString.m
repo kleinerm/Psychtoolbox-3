@@ -53,7 +53,9 @@ function [string,terminatorChar] = GetEchoString(windowPtr, msg, x, y, textColor
 %                     erase relevant portions of the displayed text string.
 % 02/10/16  mk        Adapt 'TextAlphaBlending' setup for cross-platform FTGL plugin.
 % 02/15/16  dgp       Accept ESC for termination, return terminatorChar.
-% 02/02/18  mk  Improve help text again.
+% 02/02/18  mk        Improve help text again.
+% 6/20/19   mk        Make sort of compatible with unicode strings. Problem that Octave
+%                     can not store UCS-4 char() remains.
 
 if nargin < 7
     useKbCheck = [];
@@ -90,7 +92,7 @@ string = '';
 output = [msg, ' ', string];
 
 % Write the initial message:
-Screen('DrawText', windowPtr, output, x, y, textColor, bgColor);
+Screen('DrawText', windowPtr, double(output), x, y, textColor, bgColor);
 Screen('Flip', windowPtr, 0, 1);
 
 while true
@@ -117,7 +119,7 @@ while true
                 % Redraw text string, but with textColor == bgColor, so
                 % that the old string gets completely erased:
                 oldTextColor = Screen('TextColor', windowPtr);
-                Screen('DrawText', windowPtr, output, x, y, bgColor, bgColor);
+                Screen('DrawText', windowPtr, double(output), x, y, bgColor, bgColor);
                 Screen('TextColor', windowPtr, oldTextColor);
 
                 % Remove last character from string:
@@ -128,7 +130,7 @@ while true
     end
 
     output = [msg, ' ', string];
-    Screen('DrawText', windowPtr, output, x, y, textColor, bgColor);
+    Screen('DrawText', windowPtr, double(output), x, y, textColor, bgColor);
     Screen('Flip', windowPtr, 0, 1);
 end
 
