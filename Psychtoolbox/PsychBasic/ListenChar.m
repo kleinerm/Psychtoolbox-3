@@ -107,6 +107,7 @@ function ListenChar(listenFlag)
 %                friends.
 % 05/31/09 mk    Add support for Octave and Matlab in noJVM mode.
 % 01/31/16 mk    Add support for listenFlag -1 for only blocking input.
+% 06/20/19 mk    Try to protect against KDE focus stealing nastyness via kbqueues.
 
 global OSX_JAVA_GETCHAR;
 persistent keyboard_blocked;
@@ -169,7 +170,11 @@ if psychusejava('desktop')
     % fallback path below, as Java based GetChar() is only useful to
     % suppress character output to the Matlab command window, aka clutter
     % prevention, not for actually recording key strokes.
-    if ~IsWinVista
+    % If we are running on Linux with the KDE desktop GUI, we also need to
+    % use non-Java fallbacks for keystroke recording, as KDE's window manager
+    % has the nasty habit of removing keyboard input focus from the Matlab window,
+    % as soon as the onscreen window opens, so Java based GetChar doesn't get input.
+    if ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
         return;
     end
 
