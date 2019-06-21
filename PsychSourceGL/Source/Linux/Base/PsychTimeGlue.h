@@ -75,5 +75,8 @@ double PsychOSMonotonicToRefTime(double monotonicTime);
 // Test if module needs to call XInitThreads() itself during startup:
 int PsychOSNeedXInitThreads(int verbose);
 
+// Enable OS optimizations for realtime / high performance via Feral's game-mode daemon:
+void PsychOSSetGameMode(psych_bool enable, int verbosity);
+
 //end include once
 #endif

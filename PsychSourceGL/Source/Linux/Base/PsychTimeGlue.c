@@ -196,6 +196,9 @@ void PsychInitTimeGlue(void)
 /* Called at module shutdown/jettison time: */
 void PsychExitTimeGlue(void)
 {
+    // Disable game-mode optimizations if any are active:
+    PsychOSSetGameMode(FALSE, 3);
+
     return;
 }
 
@@ -837,5 +840,74 @@ int PsychOSNeedXInitThreads(int verbose)
             printf("%s-DEBUG: No need for me to call XInitThreads().\n", name);
 
         return(0);
+    }
+}
+
+void PsychOSSetGameMode(psych_bool enable, int verbosity)
+{
+    int rc;
+    static psych_bool gameModeOn = FALSE;
+    static psych_bool oneTimeWarningDone = FALSE;
+    int status = gamemode_query_status();
+
+    if (verbosity > 3) {
+        printf("PTB-INFO: Gamemode optimizations %s requested. Current/Old status: %s\n",
+               enable ? "enable" : "disable", (status > 0) ? "Active" : (status == -1) ? "Query failure" : "Disabled");
+    }
+
+    // Enable requested and we don't yet hold a enable reference (2)?
+    if (enable && (status != 2)) {
+        // Request to optimize the OS for enhanced realtime and high-performance by use of
+        // Ferals game-mode daemon. This will do nothing if the game-mode package is not
+        // installed and configured on the host machine. Otherwise the game mode daemon
+        // will change cpu governor settings to push cpu's into high performance mode,
+        // request io priority for us, switch supported gpu's into high performance mode,
+        // disable screen savers etc.:
+        rc = gamemode_request_start();
+        if (rc != 0) {
+            // Request failed:
+
+            // dlopen() failure for libgamemode.so? That's most likely because the Feral gamemode package
+            // is not installed on the host os.
+            if (strstr(gamemode_error_string(), "dlopen")) {
+                // Assume package not installed. Give a one-time info about this and how to install it:
+                if (!oneTimeWarningDone && verbosity > 2) {
+                    oneTimeWarningDone = TRUE;
+
+                    printf("PTB-INFO: Failed to request additional performance tuning from operating system.\n");
+                    printf("PTB-INFO: This is because the optional \"FeralInteractive gamemode\" package is not installed\n");
+                    printf("PTB-INFO: and set up yet. If you want to have these extra optimizations, then read\n");
+                    printf("PTB-INFO: the setup instructions in \"help LinuxGameMode\".\n");
+                    if (verbosity > 3)
+                        printf("PTB-INFO: Reason given: %s.", gamemode_error_string());
+                    printf("\n");
+                }
+            }
+            else {
+                // Some other error. Report it:
+                if (verbosity > 1) {
+                    printf("PTB-WARNING: Failed to start gamemode optimizations: %s.\n", gamemode_error_string());
+                    printf("PTB-WARNING: Maybe you need to reinstall the gamemode package? See \"help LinuxGameMode\"\n");
+                }
+            }
+        }
+        else {
+            gameModeOn = TRUE;
+        }
+    }   // If disable requested and we hold a reference (2), or query failed (-1) but local tracking says we hold a reference:
+    else if (!enable && (status == 2 || (status == -1 && gameModeOn))) {
+        // Request shutdown of game mode: Drop our enable reference.
+        rc = gamemode_request_end();
+        if ((rc != 0) && (verbosity > 2)) {
+            printf("PTB-INFO: Failed to shutdown gamemode optimizations [%s].\n", gamemode_error_string());
+        }
+
+        if (rc == 0)
+            gameModeOn = FALSE;
+    }
+
+    if (verbosity > 3) {
+        status = gamemode_query_status();
+        printf("PTB-INFO: New status: %s\n", (status > 0) ? "Active" : (status == -1) ? "Query failure" : "Disabled");
     }
 }

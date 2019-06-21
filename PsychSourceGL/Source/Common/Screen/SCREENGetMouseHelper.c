@@ -1071,6 +1071,9 @@ PsychError SCREENGetMouseHelper(void)
                             errno=0;
                         }
                     }
+
+                    // Enable potential game-mode optimizations at realtime priority:
+                    PsychOSSetGameMode(TRUE, PsychPrefStateGet_Verbosity());
                 }
                 else {
                     // Standard scheduling and no memory locking:
@@ -1089,6 +1092,9 @@ PsychError SCREENGetMouseHelper(void)
 
                     munlockall();
                     errno=0;
+
+                    // Disable potential game-mode optimizations at normal priority:
+                    PsychOSSetGameMode(FALSE, PsychPrefStateGet_Verbosity());
                 }
                 // End of setup of new Priority...
             }

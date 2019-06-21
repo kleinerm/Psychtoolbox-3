@@ -104,3 +104,11 @@
 %                              some basic usage instructions and two M-File
 %                              demos, contributed by Andrew Wilson.
 %
+% gpuclockctrl                 A version of gpuclockctrl compiled for 64-Bit Linux on Intel.
+%                              This should be part of FeralInteractive's gamemode package,
+%                              but was missing at least in the v1.3.1 ppa, so we deliver
+%                              our own copy as a stop-gap measure until the Ubuntu ppa's
+%                              are fixed. Gets auto-installed by PsychLinuxConfiguration if
+%                              appropriate. Works at least on Ubuntu 18.04-LTS and 19.04,
+%                              with NVidia and AMD graphics.
+%
