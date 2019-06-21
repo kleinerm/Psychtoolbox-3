@@ -1,26 +1,25 @@
 /*
-
-  	PsychToolbox3/Source/Linux/Base/PsychTimeGlue.h
-
-	AUTHORS:
-
-  	mario.kleiner@tuebingen.mpg.de		mk
-
-	PLATFORMS: Linux Only
-
-
-  	PROJECTS:
-
-  	HISTORY:
-
-  	2/20/06	mk		Wrote it.
-	1/03/09	mk		Add generic Mutex locking support as service to ptb modules.
-
-  	DESCRIPTION:
-
-	TO DO:
-
-*/
+ *    PsychToolbox3/Source/Linux/Base/PsychTimeGlue.c
+ *
+ *    AUTHORS:
+ *
+ *    mario.kleiner.de@gmail.com              mk
+ *
+ *    PLATFORMS: GNU/Linux Only
+ *
+ *    PROJECTS: All
+ *
+ *    HISTORY:
+ *
+ *    2/20/06       mk        Wrote it. Derived from Windows version.
+ *    1/03/09       mk        Add generic Mutex locking support as service to ptb modules. Add PsychYieldIntervalSeconds().
+ *
+ *    DESCRIPTION:
+ *
+ *    Functions for querying system time and for waiting for either a
+ *    specified amount of time or until a specified point in time.
+ *    Also returns timer ticks and resolution of timers.
+ */
 
 //begin include once
 #ifndef PSYCH_IS_INCLUDED_PsychTimeGlue
