@@ -45,9 +45,12 @@ try
     DrawFormattedText2('top\ncenter','win',w,'sx','center','sy',scrY-150,'xalign','center','yalign','bottom','xlayout','center');
     DrawFormattedText2('top\nleft<color=ff0000>1','win',w,'sx',scrX-150,'sy',scrY-150,'xalign','right','yalign','bottom','xlayout','right');
     DrawFormattedText2('top\nleft<color=0.,1.,0.>2','win',w,'sx',scrX-150,'sy',scrY-150,'xalign', 'left','yalign','bottom');
-    DrawFormattedText2('center\n<b>inside','win',w,'sx','center','sy','center','xalign','center','yalign','center','xlayout','center','winRect',rect);
+    % the below call sets a new basecolor, which is a state that should
+    % leak out, setting default color from that call onward
+    DrawFormattedText2('center\n<b>inside','win',w,'sx','center','sy','center','xalign','center','yalign','center','xlayout','center','winRect',rect,'baseColor',[0 255 0]);
     DrawFormattedText2('bottom\n<i>left' ,'win',w,'sx',scrX-150,'sy',scrY+150,'xalign','right','yalign','top','xlayout','right');
-    DrawFormattedText2('bottom\n<u>right','win',w,'sx',scrX+150,'sy',scrY+150,'xalign', 'left','yalign','top');
+    % next call resets base color to black
+    DrawFormattedText2('bottom\n<u>right','win',w,'sx',scrX+150,'sy',scrY+150,'xalign', 'left','yalign','top','baseColor',0);
 
     Screen('Flip',w);
     KbStrokeWait;
