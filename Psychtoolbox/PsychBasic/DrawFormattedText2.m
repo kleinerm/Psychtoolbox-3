@@ -99,7 +99,7 @@ function [nx, ny, textbounds, cache, wordbounds] = DrawFormattedText2(varargin)
 % bounding box. Justification options are currently not supported.
 %
 % 'baseColor' is the color in which the text will be drawn (until changed
-% by a <color> format call. This is also the color that will remain active
+% by a <color> format call). This is also the color that will remain active
 % after invocation of this function.
 %
 % 'wrapat', if provided, will automatically break text strings longer than
@@ -1092,7 +1092,7 @@ codes.size (toStrip) = [];
 tstring = tstringOri;
 
 if isempty(tstring)
-    % strong was only formatting commands, nothing to draw, ignore
+    % string was only formatting commands, nothing to draw, ignore
     [fmtCombs,fmts,switches,previous] = deal([]);
     return;
 end
@@ -1131,10 +1131,9 @@ end
 c = [codes.style; codes.color; codes.font; codes.size];
 % where do changes occur?
 switches = logical(diff([[previous.style; 1; 1; previous.size] c],[],2));
-% if user-provided baseColor, make sure it is applied!
-if ~isnumeric(startColor)
-    switches(2,1) = true;
-end
+% make sure color is always applied, may have been changed under our feet
+% if drawn later, or may have been provided as baseColor by user
+switches(2,1) = true;
 % get unique formats and where each of these formats is to be applied
 % the below is equivalent to:
 % [format,~,fmtCombs] = unique(c.','rows');
