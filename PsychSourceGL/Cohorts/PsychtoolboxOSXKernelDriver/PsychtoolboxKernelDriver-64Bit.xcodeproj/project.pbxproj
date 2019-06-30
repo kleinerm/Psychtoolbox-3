@@ -14,8 +14,6 @@
 			);
 			dependencies = (
 				BF9257E90C039F6C00D7A82A /* PBXTargetDependency */,
-				BF9257EB0C039F6C00D7A82A /* PBXTargetDependency */,
-				BF9257ED0C039F6C00D7A82A /* PBXTargetDependency */,
 			);
 			name = "Build All";
 			productName = "Build All";
@@ -28,16 +26,6 @@
 		BF9258000C039FC200D7A82A /* PsychtoolboxKernelDriver.h in Headers */ = {isa = PBXBuildFile; fileRef = BF9257FC0C039FC200D7A82A /* PsychtoolboxKernelDriver.h */; };
 		BF9258010C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BF9257FD0C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.cpp */; };
 		BF9258020C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.h in Headers */ = {isa = PBXBuildFile; fileRef = BF9257FE0C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.h */; };
-		BF9258060C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c in Sources */ = {isa = PBXBuildFile; fileRef = BF9258030C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c */; };
-		BF9258070C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c in Sources */ = {isa = PBXBuildFile; fileRef = BF9258050C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c */; };
-		BF9258080C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c in Sources */ = {isa = PBXBuildFile; fileRef = BF9258030C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c */; };
-		BF9258090C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c in Sources */ = {isa = PBXBuildFile; fileRef = BF9258050C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c */; };
-		BF92580D0C03A02C00D7A82A /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580A0C03A02C00D7A82A /* ApplicationServices.framework */; };
-		BF92580E0C03A02C00D7A82A /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580B0C03A02C00D7A82A /* CoreFoundation.framework */; };
-		BF92580F0C03A02C00D7A82A /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580C0C03A02C00D7A82A /* IOKit.framework */; };
-		BF9258100C03A02C00D7A82A /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580A0C03A02C00D7A82A /* ApplicationServices.framework */; };
-		BF9258110C03A02C00D7A82A /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580B0C03A02C00D7A82A /* CoreFoundation.framework */; };
-		BF9258120C03A02C00D7A82A /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF92580C0C03A02C00D7A82A /* IOKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,20 +36,6 @@
 			remoteGlobalIDString = 32D94FC30562CBF700B6AF17;
 			remoteInfo = SimpleUserClient;
 		};
-		BF9257EA0C039F6C00D7A82A /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = BF9257DF0C039F3300D7A82A;
-			remoteInfo = SimpleUserClientTool;
-		};
-		BF9257EC0C039F6C00D7A82A /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 089C1669FE841209C02AAC07 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = BF9257E40C039F4E00D7A82A;
-			remoteInfo = SimpleUserClientTool_ppc;
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
@@ -69,8 +43,6 @@
 		32D94FD00562CBF700B6AF17 /* PsychtoolboxKernelDriver.kext */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PsychtoolboxKernelDriver.kext; sourceTree = BUILT_PRODUCTS_DIR; };
 		83066A9C0D39B19D0009C12B /* PsychGraphicsCardRegisterSpecs.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = PsychGraphicsCardRegisterSpecs.h; sourceTree = SOURCE_ROOT; };
 		8DA8362C06AD9B9200E5AC22 /* Kernel.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Kernel.framework; path = /System/Library/Frameworks/Kernel.framework; sourceTree = "<absolute>"; };
-		BF9257E00C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = PsychtoolboxKernelDriverUserClientTool; sourceTree = BUILT_PRODUCTS_DIR; };
-		BF9257E50C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = PsychtoolboxKernelDriverUserClientTool_ppc; sourceTree = BUILT_PRODUCTS_DIR; };
 		BF9257EE0C039FA200D7A82A /* PsychUserKernelShared.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PsychUserKernelShared.h; sourceTree = "<group>"; };
 		BF9257FB0C039FC200D7A82A /* PsychtoolboxKernelDriver.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PsychtoolboxKernelDriver.cpp; sourceTree = "<group>"; };
 		BF9257FC0C039FC200D7A82A /* PsychtoolboxKernelDriver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PsychtoolboxKernelDriver.h; sourceTree = "<group>"; };
@@ -89,26 +61,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		BF9257DE0C039F3300D7A82A /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				BF92580D0C03A02C00D7A82A /* ApplicationServices.framework in Frameworks */,
-				BF92580E0C03A02C00D7A82A /* CoreFoundation.framework in Frameworks */,
-				BF92580F0C03A02C00D7A82A /* IOKit.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		BF9257E30C039F4E00D7A82A /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				BF9258100C03A02C00D7A82A /* ApplicationServices.framework in Frameworks */,
-				BF9258110C03A02C00D7A82A /* CoreFoundation.framework in Frameworks */,
-				BF9258120C03A02C00D7A82A /* IOKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -138,8 +90,6 @@
 			isa = PBXGroup;
 			children = (
 				32D94FD00562CBF700B6AF17 /* PsychtoolboxKernelDriver.kext */,
-				BF9257E00C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */,
-				BF9257E50C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -223,45 +173,13 @@
 			productReference = 32D94FD00562CBF700B6AF17 /* PsychtoolboxKernelDriver.kext */;
 			productType = "com.apple.product-type.kernel-extension.iokit";
 		};
-		BF9257DF0C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = BF9257F00C039FA200D7A82A /* Build configuration list for PBXNativeTarget "PsychtoolboxKernelDriverUserClientTool" */;
-			buildPhases = (
-				BF9257DD0C039F3300D7A82A /* Sources */,
-				BF9257DE0C039F3300D7A82A /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = PsychtoolboxKernelDriverUserClientTool;
-			productName = SimpleUserClientTool;
-			productReference = BF9257E00C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */;
-			productType = "com.apple.product-type.tool";
-		};
-		BF9257E40C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = BF9257F30C039FA200D7A82A /* Build configuration list for PBXNativeTarget "PsychtoolboxKernelDriverUserClientTool_ppc" */;
-			buildPhases = (
-				BF9257E20C039F4E00D7A82A /* Sources */,
-				BF9257E30C039F4E00D7A82A /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = PsychtoolboxKernelDriverUserClientTool_ppc;
-			productName = SimpleUserClientTool_ppc;
-			productReference = BF9257E50C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */;
-			productType = "com.apple.product-type.tool";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
 		089C1669FE841209C02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0700;
+				LastUpgradeCheck = 1010;
 				TargetAttributes = {
 					32D94FC30562CBF700B6AF17 = {
 						DevelopmentTeam = FYTNS7QUDF;
@@ -281,8 +199,6 @@
 			targets = (
 				BF9257E70C039F6200D7A82A /* Build All */,
 				32D94FC30562CBF700B6AF17 /* PsychtoolboxKernelDriverUserClient */,
-				BF9257DF0C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */,
-				BF9257E40C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */,
 			);
 		};
 /* End PBXProject section */
@@ -317,24 +233,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		BF9257DD0C039F3300D7A82A /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				BF9258060C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c in Sources */,
-				BF9258070C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		BF9257E20C039F4E00D7A82A /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				BF9258080C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c in Sources */,
-				BF9258090C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -343,24 +241,15 @@
 			target = 32D94FC30562CBF700B6AF17 /* PsychtoolboxKernelDriverUserClient */;
 			targetProxy = BF9257E80C039F6C00D7A82A /* PBXContainerItemProxy */;
 		};
-		BF9257EB0C039F6C00D7A82A /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = BF9257DF0C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */;
-			targetProxy = BF9257EA0C039F6C00D7A82A /* PBXContainerItemProxy */;
-		};
-		BF9257ED0C039F6C00D7A82A /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = BF9257E40C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */;
-			targetProxy = BF9257EC0C039F6C00D7A82A /* PBXContainerItemProxy */;
-		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		1DEB91DA08733DB10010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Mac Developer";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1.0.0d1;
@@ -370,9 +259,8 @@
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_PREPROCESS = YES;
 				INFOPLIST_PREPROCESSOR_DEFINITIONS = "$(GCC_PREPROCESSOR_DEFINITIONS)";
-				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Extensions";
 				MODULE_NAME = PsychtoolboxKernelDriver;
-				MODULE_VERSION = 1.1;
+				MODULE_VERSION = 1.2;
 				PRODUCT_NAME = PsychtoolboxKernelDriver;
 				PROVISIONING_PROFILE = "";
 				WRAPPER_EXTENSION = kext;
@@ -383,9 +271,11 @@
 		1DEB91DB08733DB10010E9CD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Mac Developer";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Mac Developer";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				COMBINE_HIDPI_IMAGES = YES;
+				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1.0.0d1;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_MODEL_TUNING = G5;
@@ -393,11 +283,10 @@
 				GCC_VERSION_ppc = 3.3;
 				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_PREPROCESS = YES;
-				INSTALL_PATH = "$(SYSTEM_LIBRARY_DIR)/Extensions";
 				MACOSX_DEPLOYMENT_TARGET_i386 = 10.4;
 				MACOSX_DEPLOYMENT_TARGET_ppc = 10.2;
 				MODULE_NAME = PsychtoolboxKernelDriver;
-				MODULE_VERSION = 1.1;
+				MODULE_VERSION = 1.2;
 				PRODUCT_NAME = PsychtoolboxKernelDriver;
 				PROVISIONING_PROFILE = "";
 				SDKROOT_i386 = /Developer/SDKs/MacOSX10.4u.sdk;
@@ -410,13 +299,36 @@
 		1DEB91DE08733DB10010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "Mac Developer: Mario Kleiner (75VYGGG8D7)";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1";
 				GCC_VERSION_i386 = 4.2.1;
 				GCC_VERSION_ppc = 3.3;
 				GCC_VERSION_x64 = 4.2;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				MACOSX_DEPLOYMENT_TARGET_i386 = 10.4;
@@ -433,11 +345,34 @@
 		1DEB91DF08733DB10010E9CD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "Mac Developer: Mario Kleiner (75VYGGG8D7)";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_VERSION_i386 = 4.2.1;
 				GCC_VERSION_ppc = 3.3;
 				GCC_VERSION_x64 = 4.2;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				MACOSX_DEPLOYMENT_TARGET_i386 = 10.4;
@@ -449,59 +384,10 @@
 			};
 			name = Release;
 		};
-		BF9257F10C039FA200D7A82A /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_MODEL_TUNING = G5;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				INSTALL_PATH = "$(HOME)/bin";
-				PRODUCT_NAME = PsychtoolboxKernelDriverUserClientTool;
-			};
-			name = Debug;
-		};
-		BF9257F20C039FA200D7A82A /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COPY_PHASE_STRIP = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = "$(HOME)/bin";
-				PRODUCT_NAME = PsychtoolboxKernelDriverUserClientTool;
-				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.4u.sdk";
-			};
-			name = Release;
-		};
-		BF9257F40C039FA200D7A82A /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_MODEL_TUNING = G5;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				INSTALL_PATH = "$(HOME)/bin";
-				PRODUCT_NAME = PsychtoolboxKernelDriverUserClientTool_ppc;
-			};
-			name = Debug;
-		};
-		BF9257F50C039FA200D7A82A /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COPY_PHASE_STRIP = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = "$(HOME)/bin";
-				PRODUCT_NAME = PsychtoolboxKernelDriverUserClientTool_ppc;
-				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.4u.sdk";
-			};
-			name = Release;
-		};
 		BF9257F70C039FA200D7A82A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COPY_PHASE_STRIP = NO;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
@@ -513,6 +399,7 @@
 		BF9257F80C039FA200D7A82A /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = YES;
 				COPY_PHASE_STRIP = YES;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				PRODUCT_NAME = "Build All";
@@ -537,24 +424,6 @@
 			buildConfigurations = (
 				1DEB91DE08733DB10010E9CD /* Debug */,
 				1DEB91DF08733DB10010E9CD /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
-		BF9257F00C039FA200D7A82A /* Build configuration list for PBXNativeTarget "PsychtoolboxKernelDriverUserClientTool" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				BF9257F10C039FA200D7A82A /* Debug */,
-				BF9257F20C039FA200D7A82A /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
-		BF9257F30C039FA200D7A82A /* Build configuration list for PBXNativeTarget "PsychtoolboxKernelDriverUserClientTool_ppc" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				BF9257F40C039FA200D7A82A /* Debug */,
-				BF9257F50C039FA200D7A82A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
