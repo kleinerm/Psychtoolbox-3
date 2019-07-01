@@ -13,6 +13,9 @@
 import sys
 is_64bits = sys.maxsize > 2**32
 
+with open('./VERSION', 'r') as f:
+    __version__ = f.read().strip()
+
 # Import all PTB modules already ported to Python extension modules:
 # Extract their "main" function, which is named just like the module,
 # and assign its function handle to a variable named just like the module.

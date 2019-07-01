@@ -11,7 +11,10 @@ import sys                                  # cpu arch detection.
 import numpy                                # To get include dir on macOS.
 
 is_64bits = sys.maxsize > 2**32
-version = '3.0.15a2'
+
+# unified version number, read from simple text file
+with open('PsychPython/VERSION', 'r') as f:
+    version = f.read().strip()
 
 def get_sourcefiles(path):
     sources = []
