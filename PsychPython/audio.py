@@ -85,14 +85,17 @@ def tune_engine(yield_interval, mutex_enable, lock_to_core1,
 
 
 class Stream():
-    def __init__(self, deviceid, mode, reqlatencyclass, freq, channels,
-                 buffersize=None, suggested_latency=None, selectchannels=None,
+    def __init__(self, device_id=[], mode=[], latency_class=[0],
+                 freq=48000, channels=2,
+                 buffer_size=[], suggested_latency=[], select_channels=[],
                  flags=0):
-        self.handle = PsychPortAudio('Open', deviceid, mode,
-                                     reqlatencyclass,
-                                     freq, channels, buffersize,
-                                     suggested_latency, selectchannels,
+        # PsychPortAudio('Open', [], [], [0], Fs, 2);
+        self.handle = PsychPortAudio('Open', device_id, mode,
+                                     latency_class,
+                                     freq, channels, buffer_size,
+                                     suggested_latency, select_channels,
                                      flags)
+        self._closed=False
         atexit.register(self.close)
 
     def start(self, repetitions=1, when=0, wait_for_start=0,
@@ -126,8 +129,11 @@ class Stream():
 
     def close(self):
         """Close the current stream"""
+        if self._closed: # if we're already closed don't try again
+            return
         try:
             PsychPortAudio('Close', self.handle)
+            self._closed = True
         except Exception as err:
             if "Invalid audio device handle" in str(err):
                 # this most likely means the stream is closed already
@@ -144,6 +150,8 @@ class Stream():
     @property
     def status(self):
         """The status of this portaudio stream"""
+        if self._closed:
+            return -1
         return PsychPortAudio('GetStatus', self.handle)
 
     @property
