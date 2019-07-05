@@ -787,6 +787,18 @@ int PsychOSNeedXInitThreads(int verbose)
         if (!safe) {
             // Game over: Host process did XLib stuff already, e.g., to startup its GUI. Nothing
             // we can do but warn the user and ask him to fix the host application.
+
+            // Awful but neccessary hack: If we are running under Octave then suppress all warnings :/
+            // Turns out Octave 4.0 doesn't call XInitThreads - or more accurately, QT-4 which is used to
+            // implement Octave's GUI, doesn't. Only QT-5 based Octave 4.2 and later does the right thing.
+            // Unfortunately Ubuntu 16.04-LTS ships with Octave 4.0 and we probably shouldn't drop support
+            // for 16.04-LTS just yet -- its end of life is only in April 2021. Screen() does implement its
+            // own locking around X-Lib and PsychHID never made trouble, so technically we should and have
+            // been fine all the years. No need to scare the user of Ubuntu 16.04 LTS without these warnings.
+            #if (PSYCH_LANGUAGE == PSYCH_MATLAB) && defined(PTBOCTAVE3MEX)
+                verbose = 0;
+            #endif
+
             if (verbose > 0) {
                 printf("%s-WARNING: Seems like the libX11 library was *not* initialized for thread-safe mode,\n", name);
                 printf("%s-WARNING: because the application host process omitted a required call to\n", name);
