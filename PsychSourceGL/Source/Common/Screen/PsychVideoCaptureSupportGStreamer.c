@@ -1300,7 +1300,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     }
 
     // Try IIDC-1394 Cameras:
-    PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "camera-number", "", 1);
+    PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "unit", "", 1);
 
     // Try GeniCam-Cameras via aravis plugin:
     PsychGSEnumerateVideoSourceType("aravissrc", 8, "GeniCam-Aravis", "camera-name", "", 0);
