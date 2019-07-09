@@ -4674,15 +4674,17 @@ if ~isempty(floc)
         % degamma and other colorspace conversions disabled / bypassed:
         needsIdentityCLUT = 1;
     else
-        % Everything else: Windows OS or OSX, or AMD FireGL/FirePro without override, or a
-        % NVidia or Intel GPU.
-
-        % We request an identity gamma table to be loaded into the GPU. The
-        % RAMDAC's and DisplayPort devices et al. are 10 bit anyway to our
-        % knowledge, so it doesn't matter if we do shader-based gamma correction
-        % internally, or if the GPU does it. We do it shader-based for consistency
-        % with the AMD path above.
-        needsIdentityCLUT = 1;
+        % Everything else: Windows OS or OSX, or AMD FireGL/FirePro without override,
+        % or AMD with amdgpu DisplayCore, or any NVidia or Intel GPU.
+        % Do not request an identity lut. Modern Intel, NVidia and AMD gpu's have
+        % hw LUT's with an output width of potentially more than 10 bpc, so we
+        % can potentially benefit from a higher precision gamma correction via
+        % hw lut. E.g., Intel Icelake has up to 16 bit output precision lut's,
+        % NVidia up to 14 bit, AMD greater than 10 bit.
+        % Going through our identity lut setup code could even load a "identity lut"
+        % that truncates output precision to 8 bit, e.g., on Linux + Intel gpu's,
+        % as our LoadIdentityClut() function is optimized/targeted at 8 bpc passthrough.
+        needsIdentityCLUT = 0;
     end
 
     % Extract optional first parameter - This should be the 'disableDithering' flag:
