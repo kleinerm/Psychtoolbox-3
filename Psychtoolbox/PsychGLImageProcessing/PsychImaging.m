@@ -851,6 +851,23 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer' [, disableDithering=0][, bpc]);
 %
 %
+% * 'EnableNative16BitFloatingPointFramebuffer' Enable support for output of
+%   stimuli with up to 16 bit floating point precision per color channel on
+%   graphics hardware and displays that support native 16 bpc floating point
+%   framebuffers. Please note that the effective linear output precision of a
+%   16 bit non-linear floating point framebuffer in the normalized range 0.0 - 1.0
+%   (the "typical" output range for SDR standard dynamic range displays) is only
+%   about 11 bits ~ 2048 levels of red, green, blue intensity. Also note that
+%   actual display hardware will usually only resolve this at about 10 bpc, or
+%   maybe simulated 11 bpc via dithering techniques. As of July 2019, only NVidia
+%   graphics cards of the GeForce 1000 "Pascal" series or later under Windows-10
+%   seem to support this mode. At least one combo of GeForce 1060 + 8 bit panel was
+%   shown via photometer to reproduce about 11 bpc luminance via spatial dithering.
+%   Your mileage may vary.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
+%
+%
 % * 'EnableBrightSideHDROutput' Enable the high-performance driver for
 %   BrightSide Technologies High dynamic range display device for 16 bit
 %   per color channel output precision. See "help BrightSideHDR" for
@@ -1615,6 +1632,10 @@ if strcmpi(cmd, 'OpenWindow')
         % Request a pixelsize of 48 bpp to enable native up to RGB16-16-16
         % framebuffer support.
         pixelSize = 48;
+    elseif ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFloatingPointFramebuffer')))
+        % Request a pixelsize of 64 bpp to enable native RGBA16F floating point
+        % framebuffer support.
+        pixelSize = 64;
     else
         % Ignore pixelSize:
         pixelSize = [];
@@ -3147,6 +3168,25 @@ if ~isempty(find(mystrcmp(reqs, 'FinalFormatting')))
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
 end
 
+% Native 16 bit per color component RGBA16F floating point framebuffer requested?
+if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFloatingPointFramebuffer')))
+    % Yes. Pipeline active?
+    if bitand(imagingMode, kPsychNeedFastBackingStore)
+        % Native 16 bpc float doesn't need imaging pipeline by itself, but if the
+        % pipeline is enabled then it needs to provide sufficient >= 16 bpc float
+        % precision throughout the pipeline. Make sure we request that.
+
+        % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
+        % been explicitely requested: In principle, a 16 bpc FBO would be
+        % sufficient for a native 16 bpc float framebuffer...
+        if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
+            imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+        end
+
+        % Not needed, as it is default: ptb_outputformatter_icmAware = 0;
+    end
+end
+
 % Support for fast offscreen windows (aka FBO backed offscreen windows)
 % needed?
 if ~isempty(find(mystrcmp(reqs, 'UseFastOffscreenWindows')))
@@ -4199,6 +4239,13 @@ if ~isempty(find(mystrcmp(reqs, 'NormalizedHighresColorRange')))
     end
 end
 % --- End of setup for unclamped, high precision 0-1 range colors ---
+
+% --- Native 16 bit per color component RGBA16F floating point framebuffer requested? ---
+if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFloatingPointFramebuffer')))
+    % Use unit color range, without clamping, but in high-precision mode:
+    needsUnitUnclampedColorRange = 1;
+end
+% --- End of Native 16 bit per color component RGBA16F floating point framebuffer setup ---
 
 % --- Setup stereo crosstalk reduction ---
 floc = find(mystrcmp(reqs, 'StereoCrosstalkReduction'));
