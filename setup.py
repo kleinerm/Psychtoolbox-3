@@ -233,6 +233,7 @@ setup (name = 'psychtoolbox',
        packages = ['psychtoolbox'],
        package_dir = {'psychtoolbox' : 'PsychPython'},
        package_data = extra_files,
+       include_package_data=True,  # Include files listed in MANIFEST.in
        ext_package= 'psychtoolbox',
        ext_modules = [WaitSecs, GetSecs, IOPort, PsychHID, PsychPortAudio]
       )
