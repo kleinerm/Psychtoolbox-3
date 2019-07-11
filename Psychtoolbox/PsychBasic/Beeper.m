@@ -7,6 +7,10 @@ function Beeper(frequency, fVolume, durationSec);
 % fVolume - normalized to range of 0 - 1.  Default is 0.4;  
 % Warning:  1 is the maximum volume and is often very loud!
 %
+% NOTE: Beeper() uses Snd() internally. If you want to use Beeper() - and therefore
+% Snd() in parallel with PsychPortAudio, read the notes in "help Snd" about pahandle
+% sharing!
+%
 % Funny name is because Matlab 6 contains a built-in function called "beep".
 %
 % 2006-02-15 - cburns
