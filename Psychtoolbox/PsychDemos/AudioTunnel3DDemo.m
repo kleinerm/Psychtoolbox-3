@@ -34,9 +34,6 @@ alGetString(alGetError)
 
 % Try to load some impressive sound...
 sounddir = [PsychtoolboxRoot 'PsychDemos/SoundFiles/'];
-%sounddir = '/Library/Application Support/GarageBand/Instrument Library/Sampler/Sampler Files/String Ensemble/';
-%sounddir = '/Library/Application Support/GarageBand/Instrument Library/Sampler/Sampler Files/Grand Piano/';
-
 soundfiles = dir([sounddir '*.wav']);
 
 % Velocity of listener: Walks straight down the z-axis:

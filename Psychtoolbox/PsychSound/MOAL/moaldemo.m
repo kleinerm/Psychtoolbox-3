@@ -1,8 +1,6 @@
 function moaldemo
-% moaldemo - Minimalistic demo on how to use OpenAL for
-% 3D audio output in Matlab. This is mostly trash code
-% for initial testing and development. Better demos will
-% follow soon.
+% moaldemo - Minimalistic demo on how to use OpenAL for 3D audio output.
+% See AudioTunnel3DDemo or AudioTunnel3DDemo2 for more complex examples.
 
 % Establish key mapping: ESCape aborts, Space toggles between auto-
 % movement of sound source or user mouse controlled movement:
@@ -20,37 +18,9 @@ buffers = alGenBuffers(1);
 % Query for errors:
 alGetString(alGetError)
 
-% Create sound data:
-
-% Start of with 10 seconds of 44.1 Khz random noise as a fallback:
+% Create sound data: 10 seconds of 44.1 Khz random noise:
 mynoise = randn(1, 44100 * 10);
 freq = 44100;
-
-% Try to load some impressive sound...
-if IsOSX
-   try
-      %mynoise = psychwavread('/Users/kleinerm/Music/iTunes/iTunes Music/Unknown Artist/Unknown Album/sound_bubbles.wav');
-      freq = 44100;
-      mynoise = psychwavread('/Users/kleinerm/Documents/One.wav');
-   catch
-      % Load Matlabs demo sound matrix if everything else fails..
-      load handel;
-      freq = 8000;
-      mynoise = y;
-   end
-end
-
-if IsWin
-   try
-      mynoise = psychwavread('C:\WINNT\MEDIA\Windows-Anmeldeklang.wav');
-      freq = 16384;
-   catch
-      % Load Matlabs demo sound matrix if everything else fails..
-      load handel;
-      freq = 8000;
-      mynoise = y;
-   end
-end
 
 % Convert to 16 bit signed integer format, map range from -1.0 ; 1.0 to -32768 ; 32768.
 % This is one of two sound formats accepted by OpenAL, the other being unsigned 8 bit
