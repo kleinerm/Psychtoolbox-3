@@ -258,10 +258,15 @@ try
     answer = input('Do you want to configure special/advanced settings? [y/n] ', 's');
   end
 
+  % Don't allow choice of UXA on intel anymore. It is an only lightly maintained
+  % backend with no active development and missing features wrt. SNA, e.g., no
+  % 10 bpc gamma lut's and therefore no > 8 bpc output. There's only downsides
+  % to it without any upsides atm.:
+  useuxa = 'd';
+
   if answer == 'n'
     % Nope. Just use the "don't care" settings:
     triplebuffer = 'd';
-    useuxa = 'd';
     dri3 = 'd';
     modesetting = 'd';
     depth30bpp = 'd';
@@ -346,20 +351,6 @@ try
       end
     else
       triplebuffer = 'd';
-    end
-
-    % Allow use of UXA only for non Prime renderoffload, as UXA isn't tested with it so far.
-    if strcmp(xdriver, 'intel') && ~multigpu
-      fprintf('\n\nShould the alternative Intel display acceleration backend "uxa" be used instead of\n');
-      fprintf('the default "sna" backend? Usually "sna" is a fine choice, but this allows you\n');
-      fprintf('to choose the alternative backend as a backup plan, if you suspect "sna" causing any\n');
-      fprintf('problems. If unsure, just answer "n" for no, it is almost always the correct answer.\n\n');
-      useuxa = '';
-      while isempty(useuxa) || ~ismember(useuxa, ['y', 'n', 'd'])
-        useuxa = input('Use Intel UXA acceleration [y for yes, n for no, d for don''t care]? ', 's');
-      end
-    else
-      useuxa = 'd';
     end
 
     % Is the use of DRI3/Present safely possible with this combo of Mesa and X-Server?
