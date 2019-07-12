@@ -33,16 +33,6 @@ def run():
     ############## 1st test: play some tones ###########################
     ####################################################################
 
-    # Length of audio vector - 1 secs of playback:
-    n_samples = 1 * Fs
-
-    # Build sinewave:
-    a = np.sin(np.linspace(0, 2 * pi * f * n_samples, n_samples))
-
-    # Replicated into two rows - One row for each stereo-channel, ie.
-    # m'th row == m'th channel, n'th column = n'th sample frame:
-    stereowav = [a, a]
-
     audio.verbosity(5)
 
     # Open audio device: Default audio device, default opmode (playback), default
@@ -52,15 +42,13 @@ def run():
     stream.volume = 0.5  # PsychPortAudio('Volume', pahandle, 0.5)
 
     if True:
-        # Fill in audio matrix for playback: columns = audio channels, rows = samples
-        # Do it step-by-step for performance testing:
-        stereowav = np.array(stereowav, order='f')
-        # print('Type', type(stereowav), 'Shape', stereowav.shape, 'Datatype',
-        #       stereowav.dtype, 'Order', stereowav.flags);
-        stereowav = np.transpose(stereowav)
-        # float32 is a tad faster than the default float64:
-        stereowav = stereowav.astype('float32')
-        # stereowav = np.zeros([10000,2], dtype='f')
+        # Length of audio vector - 1 secs of playback:
+        n_samples = 1 * Fs
+        # Build sinewave:
+        a = np.sin(np.linspace(0, 2 * pi * f * n_samples, n_samples))
+        # Replicated into two rows - One row for each stereo-channel, ie.
+        # m'th row == m'th channel, n'th column = n'th sample frame:
+        stereowav = np.array([a, a], order='f').transpose().astype('float32')
     else:
         # Make it less boring:
         fname = '/home/kleinerm/Music/test.wav'
@@ -95,17 +83,10 @@ def run():
     print('StartTime', startTime, 'secs. Stop time', estStopTime, 'secs.\n');
 
     # as before but 1.5*note_freq
-    a = np.sin(np.linspace(0, 2 * pi * f * 1.5 * n_samples, n_samples))
-
+    a = np.sin(np.linspace(0, 2 * pi * f*1.5 * n_samples, n_samples))
     # Replicated into two rows - One row for each stereo-channel, ie.
     # m'th row == m'th channel, n'th column = n'th sample frame:
-    stereowav = [a, a]
-
-    # Replicated into two rows - One row for each stereo-channel, ie.
-    # m'th row == m'th channel, n'th column = n'th sample frame:
-    stereowav2 = [a, a]
-    stereowav2 = np.transpose(stereowav2)
-    stereowav2 = stereowav2.astype('float32')
+    stereowav2 = np.array([a, a], order='f').transpose().astype('float32')
 
     t1 = GetSecs()
 

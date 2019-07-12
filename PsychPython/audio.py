@@ -266,7 +266,8 @@ class Slave(Stream):
     with mode=8
     """
     def __init__(self, stream, mode=[1], data=None,
-                 channels=None, select_channels=None
+                 channels=None, select_channels=None,
+                 volume=None,
                  ):
         """
 
@@ -282,7 +283,8 @@ class Slave(Stream):
         self.handle = PsychPortAudio('OpenSlave',
                                      stream, mode, channels, select_channels)
         atexit.register(self.close)
-
+        if volume is not None:
+            PsychPortAudio('Volume', self.handle, volume)
         if data is not None:
             self.fill_buffer(data)
 
