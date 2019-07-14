@@ -11,12 +11,11 @@ function value = alGetSourcef( sid, param )
 % ---allocate---
 % ---protected---
 
-if nargin~=2,
+if nargin~=2
     error('invalid number of arguments');
 end
 
-value = single(0);
-
+value = single([0,0]);
 moalcore( 'alGetSourcef', sid, param, value );
-
+value = value(1);
 return

@@ -11,12 +11,11 @@ function value = alGetSourcei( sid, param )
 % ---allocate---
 % ---protected---
 
-if nargin~=2,
+if nargin~=2
     error('invalid number of arguments');
 end
 
-value = int32(0);
-
+value = int32([0,0]);
 moalcore( 'alGetSourcei', sid, param, value );
-
+value = value(1);
 return
