@@ -9,13 +9,15 @@ function values = alGetBufferiv( bid, param )
 % 28-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
+% ---skip---
 
-if nargin~=2,
+if nargin~=2
     error('invalid number of arguments');
 end
 
-values = int32(0);
-
+values = int32(repmat(intmax,[ 32 1 ]));
 moalcore( 'alGetBufferiv', bid, param, values );
+values = values(find(values~=intmax));
 
 return

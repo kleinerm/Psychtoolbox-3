@@ -9,15 +9,18 @@ function [ value1, value2, value3 ] = alGetListener3f( param )
 % 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
-if nargin~=1,
+if nargin~=1
     error('invalid number of arguments');
 end
 
-value1 = single(0);
-value2 = single(0);
-value3 = single(0);
-
+value1 = single([0,0]);
+value2 = single([0,0]);
+value3 = single([0,0]);
 moalcore( 'alGetListener3f', param, value1, value2, value3 );
+value1 = value1(1);
+value2 = value2(1);
+value3 = value3(1);
 
 return

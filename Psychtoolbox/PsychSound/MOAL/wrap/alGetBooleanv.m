@@ -9,13 +9,15 @@ function data = alGetBooleanv( param )
 % 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
+% ---skip---
 
-if nargin~=1,
+if nargin~=1
     error('invalid number of arguments');
 end
 
-data = uint8(0);
-
+data = uint8([0,0]);
 moalcore( 'alGetBooleanv', param, data );
+data = data(1);
 
 return
