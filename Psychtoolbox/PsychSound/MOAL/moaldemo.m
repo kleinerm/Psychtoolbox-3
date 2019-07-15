@@ -87,8 +87,8 @@ while 1
     [xm ym button]=GetMouse;
     if 1 || any(button) 
        % x,y mouse pos selects sound source position in space:
-       x=(xm-700)/400
-       z=(ym-500)/400
+       x=(xm-700)/400;
+       z=(ym-500)/400;
     end
     
     if ~manual
@@ -97,14 +97,14 @@ while 1
        z=-sin(t)*3;
        x=cos(t)*3;
     end
-    g=1;
+    g=2;
     % Select 3D position of source in space:
-    alSource3f(source, AL.POSITION, g*x, g*z, -1.0);
-%    alSource3f(source, AL.POSITION, g*x, 0, g*z);
+%    alSource3f(source, AL.POSITION, g*x, g*z, -1.0);
+    alSource3f(source, AL.POSITION, g*x, 0, g*z);
     
     % Query current playback position in seconds since start of buffer:
     tref = (GetSecs - tstart);
-    taud = alGetSourcef(source, AL.SAMPLE_OFFSET)/16384;
+    taud = alGetSourcef(source, AL.SAMPLE_OFFSET)/freq;
     %fprintf('Delta: %f %f %f\n', tref - taud, tref, taud);
     
     % Pause for 10 milliseconds in order to yield the cpu to other processes:
@@ -117,8 +117,8 @@ alSourceStop(source);
 % Wait a bit:
 WaitSecs(0.1);
 
-% Unqueue sound buffer:
-alSourceUnqueueBuffers(source, 1, buffers);
+% Remove sound buffer:
+alSourcei(source, AL.BUFFER, 0);
 
 % Wait a bit:
 WaitSecs(0.1);
