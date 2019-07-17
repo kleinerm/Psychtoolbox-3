@@ -815,22 +815,27 @@ int PsychOSNeedXInitThreads(int verbose)
                 printf("%s-WARNING: I will continue, but may malfunction or crash at some point!\n", name);
 
                 #if (PSYCH_LANGUAGE == PSYCH_MATLAB) && defined(PTBOCTAVE3MEX)
-                printf("%s-INFO: If you are running this under the application \"octave-cli\", then relaunch\n", name);
-                printf("%s-INFO: octave-cli with the --no-window-system switch: octave-cli --no-window-system\n", name);
-                printf("%s-INFO: or simply launch octave in the common way as: octave\n", name);
-                printf("%s-INFO: Calling octave instead of octave-cli should always work.\n", name);
+                    printf("%s-INFO: If you are running this under the application \"octave-cli\", then relaunch\n", name);
+                    printf("%s-INFO: octave-cli with the --no-window-system switch: octave-cli --no-window-system\n", name);
+                    printf("%s-INFO: or simply launch octave in the common way as: octave\n", name);
+                    printf("%s-INFO: Calling octave instead of octave-cli should always work.\n", name);
                 #else
-                #if (PSYCH_LANGUAGE == PSYCH_PYTHON)
-                printf("%s-INFO: If you are using PsychoPy, simply upgrade to version 3.1.3 or later.\n", name);
-                printf("%s-INFO: Otherwise, you can generally fix Python scripts/apps by adding the following\n", name);
-                printf("%s-INFO: snippet early enough at the beginning of script execution under X11:\n", name);
-                printf("%s-INFO: import ctypes\n", name);
-                printf("%s-INFO: xlib = ctypes.cdll.LoadLibrary(\"libX11.so\")\n", name);
-                printf("%s-INFO: xlib.XInitThreads()\n", name);
-                printf("\n");
-                #else
-                printf("%s-INFO: It is probably best to ask the Psychtoolbox user forum for guidance.\n", name);
-                #endif
+                    #if (PSYCH_LANGUAGE == PSYCH_MATLAB) && !defined(PTBOCTAVE3MEX)
+                        printf("%s-INFO: Upgrading to Matlab R2013b should fix this problem.\n", name);
+                        printf("%s-INFO: Starting as matlab -nodisplay in command line mode should also work.\n", name);
+                    #else
+                        #if (PSYCH_LANGUAGE == PSYCH_PYTHON)
+                            printf("%s-INFO: If you are using PsychoPy, simply upgrade to version 3.1.3 or later.\n", name);
+                            printf("%s-INFO: Otherwise, you can generally fix Python scripts/apps by adding the following\n", name);
+                            printf("%s-INFO: snippet early enough at the beginning of script execution under X11:\n", name);
+                            printf("%s-INFO: import ctypes\n", name);
+                            printf("%s-INFO: xlib = ctypes.cdll.LoadLibrary(\"libX11.so\")\n", name);
+                            printf("%s-INFO: xlib.XInitThreads()\n", name);
+                            printf("\n");
+                        #else
+                            printf("%s-INFO: It is probably best to ask the Psychtoolbox user forum for guidance.\n", name);
+                        #endif
+                    #endif
                 #endif
             }
         }
