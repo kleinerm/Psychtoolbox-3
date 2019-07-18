@@ -64,7 +64,8 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % 'Native16BitFloat' - Enable native 16 bit floating point (~11 bit linear)
 % framebuffer support on suitable operating systems and graphics cards.
 % As of July 2019 only NVidia GeForce 1000 and later under Windows-10 is known
-% to support this. Will likely fail on any other OS + GPU combo.
+% to support this. macOS emulates it in software with bad timing and performance,
+% and varying success.
 %
 % 'VideoSwitcher' - Enable the Xiangrui Li et al. VideoSwitcher, a special
 % type of video attenuator (see "help PsychVideoSwitcher") in standard

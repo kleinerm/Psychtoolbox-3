@@ -861,8 +861,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   actual display hardware will usually only resolve this at about 10 bpc, or
 %   maybe simulated 11 bpc via dithering techniques. As of July 2019, only NVidia
 %   graphics cards of the GeForce 1000 "Pascal" series or later under Windows-10
-%   seem to support this mode. At least one combo of GeForce 1060 + 8 bit panel was
-%   shown via photometer to reproduce about 11 bpc luminance via spatial dithering.
+%   seem to support this mode properly. At least one combo of GeForce 1060 + 8 bit
+%   panel was shown via photometer to reproduce about 11 bpc luminance via spatial
+%   dithering. macOS does support this mode with what seems to be mostly software
+%   rendering on most machines, ie. with very low performance and even worse timing.
 %   Your mileage may vary.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
