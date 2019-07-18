@@ -288,7 +288,7 @@ static char synopsisString[] =
     "\"valuators\" If the input device has more than two axis (x and y position), e.g., in the case of a touch input device "
     "or digitizer tablet, this will be a vector of double values, returning the values of those axis. Return values could "
     "be, e.g., distance to surface, pen pressure, touch area, or pen orientation on a pen input device or touchscreen.\n"
-    "On Windows the first two valuators currently return physical mouse cursor position PhysicalX and PhysicalY.\n"
+    "On Windows with Matlab the first two valuators currently return physical mouse cursor position PhysicalX and PhysicalY.\n"
     "On OSX the first two valuators currently return relative mouse delta movement deltaX and deltaY.\n";
 
 static char seeAlsoString[] = "";
@@ -448,8 +448,12 @@ PsychError SCREENGetMouseHelper(void)
         }
 
         // Return optional valuator values: On Windows we use two valuators to return
-        // the physical (x,y) mouse cursor position [Needs Vista or later]:
-        GetPhysicalCursorPos(&point);
+        // the physical (x,y) mouse cursor position [Needs Vista or later]. We can't use
+        // this on Octave atm. as MinGW does not support GetPhysicalCursorPos, so just fall
+        // back to GetCursorPos() result. Ugly ugly...:
+        #ifndef PTBOCTAVE3MEX
+            GetPhysicalCursorPos(&point);
+        #endif
         myvaluators[0] = (double) point.x;
         myvaluators[1] = (double) point.y;
         PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) 2, (int) 1, &myvaluators[0]);
