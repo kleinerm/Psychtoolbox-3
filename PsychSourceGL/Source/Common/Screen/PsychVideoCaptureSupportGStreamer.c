@@ -797,7 +797,7 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 // but that source is perfectly handled by our code without the need for GstDeviceMonitor.
 // GstDeviceMonitor is more beneficial on MS-Windows and possibly macOS, where it can make
 // a positive impact on the reliability of video device enumeration.
-#if GST_CHECK_VERSION(1,4,0) && (PSYCH_SYSTEM != PSYCH_LINUX)
+#if GST_CHECK_VERSION(1,4,0)
 
 static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, const char* srcname,
                                 int classIndex, const char* className, const char* devHandlePropName, unsigned int flags)
@@ -1037,7 +1037,7 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
     sprintf(class_str, "%s", className);
 
     // Does this source support device enumeration of supported capture devices?
-    #if GST_CHECK_VERSION(1,4,0) && (PSYCH_SYSTEM != PSYCH_LINUX)
+    #if GST_CHECK_VERSION(1,4,0)
     if ((provider = gst_device_provider_factory_get_by_name((const gchar*) providername)) && GST_IS_DEVICE_PROVIDER(provider)) {
         if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Has a GStreamer device provider - Good, using it.\n");
         devlist = gst_device_provider_get_devices(GST_DEVICE_PROVIDER(provider));
@@ -1379,7 +1379,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
                     // Default to - "no create support":
                     *videocaptureplugin = NULL;
 
-                    #if GST_CHECK_VERSION(1,4,0) && (PSYCH_SYSTEM != PSYCH_LINUX)
+                    #if GST_CHECK_VERSION(1,4,0)
                     // Caller wants us to create associated video capture plugin if possible:
                     if (devices[i].gstdevice) {
                         // Have one. Create and assign associated plugin:
