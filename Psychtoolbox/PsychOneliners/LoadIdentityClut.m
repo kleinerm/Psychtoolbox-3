@@ -73,7 +73,11 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip, lutType, disableD
 %                identity lut setup, which can only deal with discrete lut's, not
 %                pwl lut's or such.
 % 07/10/17   MR  Added gfxhwtype=5 for AMD graphics cards under Windows (see also 
-%                the new variable 'ditherApiVer'). 
+%                the new variable 'ditherApiVer').
+% 06/13/19   mk  Use gfxhwtype=0 on modern AMD DCE-10+ / DCN gpu's in the Linux
+%                fallback path. It's the right choice for Linux 5.3+ with DC, and
+%                especially crucial on DCN APUs if we really want to do without
+%                dedicated low-level setup code for these new GPU gen's.
 
 global ptb_original_gfx_cluts;
 
@@ -112,7 +116,7 @@ winfo = Screen('GetWindowInfo', windowPtr);
 oldClut = Screen('ReadNormalizedGammaTable', windowPtr);
 
 if disableDithering && IsWin
-    fprintf('LoadIdentityClut: Info: Trying to disable digital display dithering.\n');
+    fprintf('LoadIdentityClut: Trying to disable digital display dithering.\n');
     % Try to use PsychGPUControl() method to disable display dithering
     % globally on all connected GPUs and displays. We only use this
     % on MS-Windows and it only works with AMD/ATI GPU's,
@@ -152,6 +156,7 @@ if ~IsWin
     % passthrough lut, as provided by our low-level setup code. A roughly linear lut will do to
     % keep color/gamma calibration behaving as expected for 10 bpc display.
     if strcmp(winfo.DisplayCoreId, 'AMD')
+      % This btw. is identical to gfxhwtype 0 aka LUT type 0 below:
       Screen('LoadNormalizedGammaTable', windowPtr, (linspace(0, 1, 256)' * ones(1, 3)), 0);
       WaitSecs('YieldSecs', 0.25);
     end
@@ -173,7 +178,7 @@ end
 if ismember(passthroughrc, [1, 2])
     % Success. How well did we do?
     if passthroughrc == 2
-        fprintf('LoadIdentityClut: Info: Used GPU low-level setup code to configure (hopefully) perfect identity pixel passthrough.\n');
+        fprintf('LoadIdentityClut: Used GPU low-level setup code to configure (hopefully) perfect identity pixel passthrough.\n');
     else
         fprintf('LoadIdentityClut: Warning: Used GPU low-level setup code to configure a perfect identity gamma table, but failed at\n');
         fprintf('LoadIdentityClut: Warning: configuring rest of color conversion hardware. This may or may not work.\n');
@@ -183,12 +188,14 @@ else
     if passthroughrc == 0
         fprintf('LoadIdentityClut: Warning: GPU low-level setup code for pixel passthrough failed for some reason! Using fallback...\n');
     elseif IsOSX || IsLinux
-        fprintf('LoadIdentityClut: Info: Could not use GPU low-level setup for setup of pixel passthrough. Will use fallback method.\n');
+        fprintf('LoadIdentityClut: Could not use GPU low-level setup for pixel passthrough. Will use fallback.\n');
         % AMD GPU, aka GPU core of format 'R100', 'R500', ... starting with a 'R'?
         if ~isempty(strfind(winfo.DisplayCoreId, 'AMD'))
             % Some advice for AMD users on Linux and OSX:
-            fprintf('LoadIdentityClut: Info: On your AMD/ATI GPU, you may get this working by loading the PsychtoolboxKernelDriver\n');
-            fprintf('LoadIdentityClut: Info: on OS/X or using a Linux system properly setup with PsychLinuxConfiguration.\n');
+            if ~IsLinux || (winfo.GPUMinorType ~= -1)
+                fprintf('LoadIdentityClut: On your AMD/ATI GPU, you may get this working by loading the PsychtoolboxKernelDriver\n');
+                fprintf('LoadIdentityClut: on OS/X or using a Linux system properly setup with PsychLinuxConfiguration.\n');
+            end
 
             % On AMD try to use PsychGPUControl to force dithering off. This
             % will only work on Catalyst, and has the side effect of disabling
@@ -228,7 +235,7 @@ else
             % Single scalar id code given to select among our hard-coded LUT's
             % below:
             gfxhwtype = lutconfig;
-            fprintf('Applying the gamma lookup table of type %i, as specified in the following configuration file:\n%s\n', gfxhwtype, lpath);
+            fprintf('LoadIdentityClut: Applying the gamma lookup table of type %i, as specified in the following configuration file:\n%s\n', gfxhwtype, lpath);
         else
             % Full blown LUT given:
             lut = lutconfig;
@@ -236,7 +243,7 @@ else
                 sca;
                 error('LoadIdentityClut: Loaded data from config file is not a valid LUT! Not a numeric matrix or less than 1 row, or not 3 columns!');
             end
-            fprintf('Applying the gamma lookup table for identity mapping from the following configuration file:\n%s\n', lpath);
+            fprintf('LoadIdentityClut: Applying the gamma lookup table for identity mapping from the following configuration file:\n%s\n', lpath);
             gfxhwtype = -1;
         end
 
@@ -250,6 +257,10 @@ else
         if IsOSX
             % Which OS/X version?
             osxversion = sscanf(compinfo.system, '%*s %*s %i.%i.%i');
+        end
+
+        if IsLinux
+            linuxversion = sscanf(compinfo.system, '%*s %i.%i.%i');
         end
 
         % We derive type of hardware and thereby our strategy from the vendor name:
@@ -327,7 +338,21 @@ else
                         gfxhwtype = 0;
                     end
                 elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'AMD')))
-                    if ~isempty(strfind(winfo.GPUCoreId, 'R600'))
+                    % AMD GPU with DCE 10+ display engine or with a DCN display engine?
+                    % If so, this will use AMD DisplayCore by default and starting with Linux 4.17
+                    % and later kernels will require a type 0 lut for a chance of working at all:
+                    if (winfo.GPUMinorType == -1 || winfo.GPUMinorType >= 100) && ...
+                        ((linuxversion(1) == 4 && linuxversion(2) >= 17) || (linuxversion(1) >= 5))
+                        fprintf('LoadIdentityClut: AMD GPU on Linux 4.17+ with AMD DisplayCore detected. Using type-0 LUT.\n');
+                        gfxhwtype = 0;
+
+                        % Linux kernel older than 5.3? As of June 2019 has buggy identity LUT handling,
+                        % so recommend a kernel upgrade to 5.3+ to make this work:
+                        if (linuxversion(1) < 5) || (linuxversion(1) == 5 && linuxversion(2) < 3)
+                            fprintf('LoadIdentityClut: Your Linux kernel %i.%i may be too old for proper identity pixel passthrough.\n', linuxversion(1), linuxversion(2));
+                            fprintf('LoadIdentityClut: I recommend upgrading to at least Linux 5.3 to get identity passthrough fixed.\n');
+                        end
+                    elseif ~isempty(strfind(winfo.GPUCoreId, 'R600'))
                         % At least the Radeon R9 380 Tonga Pro with DCE10 display engine under Linux with DRI2 Mesa needs type 3
                         % LUT's. Let's assume for the moment this is true for all such R600+ cores, ie., all Radeon HD series cards.
                         fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later on Linux DRI2/DRI3 detected. Using type-3 LUT.\n');

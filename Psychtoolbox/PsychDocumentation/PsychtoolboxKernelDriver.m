@@ -1,11 +1,13 @@
 % PsychtoolboxKernelDriver - A low level support driver for Apple OS-X
 %
 % The PsychtoolboxKernelDriver (PKD) is a MacOS-X kernel extension (a
-% kext). It currently should fully work with AMD/ATI Radeon graphics cards
-% of the X1000 series, as well as the HD2000 series up to the most recent
-% AMD graphics cards, iow. anything released since around the year 2006.
+% kext). It currently should somewhat work with AMD/ATI Radeon graphics cards
+% of the X1000 series, as well as the HD2000 series up to the AMD RX 400 "Polaris"
+% graphics cards. Some recent Polaris gpu's and all Vega gpu's and later models
+% are unsupported at the moment.
+%
 % On NVidia cards, only beamposition queries for high precision timestamping
-% are supported. Intel graphics chips are not supported.
+% are supported. Intel graphics chips are mostly not supported.
 %
 % The driver needs to be manually installed by a user with administrator
 % privileges and provides a few special services to PTB-3, ie., PTB's
@@ -26,7 +28,7 @@
 % to allow for high quality tear-free binocular and stereo stimulation of
 % subjects. This is only supported on AMD/ATI graphics cards.
 %
-% * Use of 10 bit per color component framebuffers: The driver enables two
+% * Use of 10 bit per color component framebuffers: The driver enabled two
 % extra bits of color output precision per color channel on your card,
 % allowing for 1 billion shades of different colors instead of the 16.8
 % million colors available without the driver. This was only supported on
@@ -38,7 +40,8 @@
 % graphics driver and operating system bugs when the graphics card is used
 % with high color/luminance precision display devices like the CRS Bits+ or
 % Bits# boxes, or the VPixx Inc. DataPixx and ViewPixx devices, and similar
-% equipment. This is only supported on AMD/ATI graphics hardware.
+% equipment. This is only supported on AMD/ATI graphics hardware and may not
+% work anymore on latest AMD gpu's or macOS versions -- unknown.
 %
 % The driver only works with one single graphics card at a time. On a
 % single-gpu system it will just work. On a MacBookPro hybrid-graphics
@@ -57,10 +60,8 @@
 % didn't show any such problems, it could happen on some future OSX systems.
 % That is why this driver is considered a permanently experimental feature.
 %
-% How to install (one time setup):
-% --------------------------------
-%
-% OSX versions older than 10.11 "El Capitan" are no longer supported.
+% How to install (one time setup) - on OSX 10.11 "El Capitan" and later only:
+% ---------------------------------------------------------------------------
 %
 % Install the PsychtoolboxKernelDriver64Bit.kext.zip, as exemplified here.
 %
@@ -92,6 +93,24 @@
 % from "kextload", or it fails for some other reason:
 %
 % https://developer.apple.com/library/content/technotes/tn2459/_index.html
+%
+% If you are using macOS 10.14 "Mojave", the driver will not load at all unless
+% you disable SIP. Apple put additional obstacles in our way, because Apple!
+%
+% If you use some of the latest and most overprized Apple computers with some
+% models of "AMD Radeon Pro" 500 series RX gpu's and Psychtoolbox doesn't recognize
+% your graphics card, you may need to install this updated driver instead:
+%
+% /PathToPsychtoolbox/Psychtoolbox/PsychHardware/PsychtoolboxKernelDriverUpTodDate_Unsigned.kext.zip
+%
+% This driver is not yet cryptographically signed or attestated by us, so macOS may
+% throw extra obstacles into your way, e.g., not loading the driver automatically at
+% system boot, requiring you to do it manually with a kextload or kexttool command
+% from a terminal window. Disable SIP and other than that, good luck!
+%
+% Another limitation on Apples latest "masterpieces" is that auto-detection of screen
+% to video output mappings may not work reliably on multi-display setups. Read how
+% to work around this in "help DisplayOutputMappings".
 %
 % How to upgrade with a more recent version, bundled with a new version of Psychtoolbox:
 % --------------------------------------------------------------------------------------

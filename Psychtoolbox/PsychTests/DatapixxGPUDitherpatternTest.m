@@ -61,15 +61,16 @@ for i = 0:255
   Screen('Flip', w);
   if bitssharp
     WaitSecs('YieldSecs', 3 * Screen('GetFlipInterval', w));
-    % Readback 2nd topmost scanline from Bits# :
-    pixels = BitsPlusPlus('GetVideoLine', 256, 2);
+    % Readback the two topmost scanlines from Bits# :
+    pixels = BitsPlusPlus('GetVideoLine', 256, 1);
+    pixels = [pixels, BitsPlusPlus('GetVideoLine', 256, 2)];
   else
     Datapixx('RegWrRdVideoSync');
     Datapixx('RegWrRdVideoSync');
     Datapixx('RegWrRdVideoSync');
     pixels = Datapixx('GetVideoLine');
   end
-  pixels = pixels(1,1:10);
+  pixels = pixels(1,[1:10, floor(length(pixels)/2):floor(length(pixels)/2)+9]);
   fprintf('Ref %i: ', i);
   fprintf('%i ', pixels);
   if (range(pixels) ~= 0) || (pixels(1,1) ~= i)

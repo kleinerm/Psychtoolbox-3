@@ -46,27 +46,17 @@ function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat, untilTime)
 % -> waitForAllKeysReleased -> Return [secs, keyCode] of the key press.
 %
 %
-% OSX and Linux: __________________________________________________________
+% OSX and Linux: _______________________________________________________________
 %
 % KbWait uses the PsychHID function, a general purpose function for
 % reading from the Human Interface Device (HID) class of USB devices.
 %
-% KbWait tests the first USB-HID keyboard device by default. Optionally
-% you can pass in a 'deviceNumber' to test a different keyboard if multiple
-% keyboards are connected to your machine.  If deviceNumber is -1, all
-% keyboard devices will be checked.  If deviceNumber is -2, all keypad
-% devices (if any) will be checked. If deviceNumber is -3, all keyboard and
-% keypad devices will be checked. The device numbers to be checked are
-% determined only on the first call to the function.  If these numbers
-% change, the function can be reset using "clear KbWait".
-%
-% As a little bonus, KbWait can also query other HID human input devices
-% which have keys or buttons as if they were keyboards. If you pass in the
-% deviceIndex of a mouse (GetMouseIndices will provide with them), it will
-% treat mouse button state as keyboard state. Similar behaviour usually
-% works with Joysticks, Gamepads and other input controllers.
-%
-% _________________________________________________________________________
+% KbWait tests a keyboard device by default, which is chosen by an operating
+% system dependent heuristic and usually makes a reasonable choice. For better
+% control over the keyboard input device, you can pass in a 'deviceNumber' to
+% test a different keyboard if multiple keyboards are connected to your machine.
+% See the "help KbCheck" for KbCheck for the meaning of the 'deviceNumber'.
+% ______________________________________________________________________________
 %
 % See also: KbCheck, KbStrokeWait, KbPressWait, KbReleaseWait, GetChar, CharAvail, KbDemo.
 

@@ -244,9 +244,9 @@ try
                     % then display full lines...
                     textYPosition=startingYPosition;
                     for i=1:lineBufferIndex
-                        Screen('DrawText', screenWindow(1), lineBuffer{i}, 100, textYPosition);
+                        Screen('DrawText', screenWindow(1), double(lineBuffer{i}), 100, textYPosition);
                         if  textHeight==0
-                            textRect= Screen('TextBounds', screenWindow(1), lineBuffer{i});
+                            textRect= Screen('TextBounds', screenWindow(1), double(lineBuffer{i}));
                             textHeight= RectHeight(textRect);
                         end
                         textYPosition= floor(textYPosition + textHeight + 0.2 * textHeight);
@@ -254,7 +254,7 @@ try
                     % then display remainder lines.
                     if length(charBuffer) > 0;
                         %textYPosition= floor(startingYPosition + (i+1) * (textHeight + 0.2 * textHeight));
-                        Screen('DrawText', screenWindow(1), charBuffer, 100, textYPosition);
+                        Screen('DrawText', screenWindow(1), double(charBuffer), 100, textYPosition);
                     end
                     Screen('Flip',  screenWindow(1));
                 end

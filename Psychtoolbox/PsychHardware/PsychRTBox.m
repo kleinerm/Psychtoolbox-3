@@ -620,6 +620,9 @@ function varargout = PsychRTBox(varargin)
 % 01/06/2012 Bugfix for Firmware versions >= 4.1. Did not receive events
 %            due to wrong acknowledgement handling. (MK)
 %
+% 06/15/2019 Add device detection for virtual RTBox which is emulated by
+%            CRS Bits#. Also add 'Lenient' to IOPort Open to deal with
+%            inability of Bits# to open port in low-latency mode. (MK)
 
 % Global variables: Need to be persistent across driver invocation and
 % shared with internal subfunctions:
@@ -2863,9 +2866,9 @@ function openRTBox(deviceID, handle)
         else
             % Enumerate all available USB-Serial ports as candidates for box:
             if IsOSX
-                candidateports=dir('/dev/cu.usbserial*');
+                candidateports = [dir('/dev/cu.usbserial*') ; dir('/dev/cu.usbmodem*')];
             else
-                candidateports=dir('/dev/ttyUSB*');
+                candidateports = [dir('/dev/ttyUSB*') ; dir('/dev/ttyACM*')];
             end
 
             for i=1:length(candidateports)
@@ -2921,7 +2924,7 @@ function openRTBox(deviceID, handle)
             % unless Octave/Matlab is run as sudo root, which is not generally recommended! Our
             % psychtoolbox.rules udev rules file though will set the hw timer to 1 msec nonetheless,
             % so ReceiveLatency on Linux neither helps nor hurts.
-            [s errmsg]=IOPort('OpenSerialPort', port, 'BaudRate=115200 ReceiveTimeout=1.0 PollLatency=0.0001 ReceiveLatency=0.0001 ');
+            [s errmsg]=IOPort('OpenSerialPort', port, 'Lenient BaudRate=115200 ReceiveTimeout=1.0 PollLatency=0.0001 ReceiveLatency=0.0001 ');
 
             % Worked?
             if s>=0

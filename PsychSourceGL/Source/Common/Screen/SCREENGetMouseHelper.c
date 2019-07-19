@@ -288,6 +288,7 @@ static char synopsisString[] =
     "\"valuators\" If the input device has more than two axis (x and y position), e.g., in the case of a touch input device "
     "or digitizer tablet, this will be a vector of double values, returning the values of those axis. Return values could "
     "be, e.g., distance to surface, pen pressure, touch area, or pen orientation on a pen input device or touchscreen.\n"
+    "On Windows with Matlab the first two valuators currently return physical mouse cursor position PhysicalX and PhysicalY.\n"
     "On OSX the first two valuators currently return relative mouse delta movement deltaX and deltaY.\n";
 
 static char seeAlsoString[] = "";
@@ -407,6 +408,7 @@ PsychError SCREENGetMouseHelper(void)
     double* buttonArray;
     double numButtons, timestamp;
     PsychNativeBooleanType* buttonStates;
+    double myvaluators[2];
     POINT   point;
     HANDLE  currentProcess;
     DWORD   oldPriority = NORMAL_PRIORITY_CLASS;
@@ -445,10 +447,42 @@ PsychError SCREENGetMouseHelper(void)
             PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) 1);
         }
 
-        // Return optional valuator values: Unimplemented on Windows. Just return an empty matrix.
-        // The &timestamp is just a dummy assignment without any meaning.
-        PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) 0, (int) 1, &timestamp);
-        PsychCopyOutDoubleMatArg(6, kPsychArgOptional, (int) 1, (int) 0, (int) 1, buttonArray);
+        // Return optional valuator values: On Windows we use two valuators to return
+        // the physical (x,y) mouse cursor position [Needs Vista or later]. We can't use
+        // this on Octave atm. as MinGW does not support GetPhysicalCursorPos, so just fall
+        // back to GetCursorPos() result. Ugly ugly...:
+        #ifndef PTBOCTAVE3MEX
+            GetPhysicalCursorPos(&point);
+        #endif
+        myvaluators[0] = (double) point.x;
+        myvaluators[1] = (double) point.y;
+        PsychCopyOutDoubleMatArg(5, kPsychArgOptional, (int) 1, (int) 2, (int) 1, &myvaluators[0]);
+
+        // Return optional valuator info struct array as argument 6:
+        if (PsychIsArgPresent(PsychArgOut, 6)) {
+            // Usercode wants valuator info structs:
+            PsychAllocOutStructArray(6, TRUE, 2, numValuatorStructFieldNames, valuatorInfo, &valuatorStruct);
+
+            // Valuator 0: Encodes DeltaX - relative X motion, aka mouse deltaX:
+            PsychSetStructArrayStringElement("label", 0, "PhysicalX", valuatorStruct);
+
+            // Other fields are meaningless or undefined on OSX, so set to 0 default:
+            PsychSetStructArrayDoubleElement("min", 0, (double) 0, valuatorStruct);
+            PsychSetStructArrayDoubleElement("max", 0, (double) 0, valuatorStruct);
+            PsychSetStructArrayDoubleElement("resolution", 0, (double) 0, valuatorStruct);
+            PsychSetStructArrayDoubleElement("mode", 0, (double) 0, valuatorStruct);
+            PsychSetStructArrayDoubleElement("sourceID", 0, (double) 0, valuatorStruct);
+
+            // Valuator 1: Encodes DeltaY - relative Y motion, aka mouse deltaY:
+            PsychSetStructArrayStringElement("label", 1, "PhysicalY", valuatorStruct);
+
+            // Other fields are meaningless or undefined on OSX, so set to 0 default:
+            PsychSetStructArrayDoubleElement("min", 1, (double) 0, valuatorStruct);
+            PsychSetStructArrayDoubleElement("max", 1, (double) 0, valuatorStruct);
+            PsychSetStructArrayDoubleElement("resolution", 1, (double) 0, valuatorStruct);
+            PsychSetStructArrayDoubleElement("mode", 1, (double) 0, valuatorStruct);
+            PsychSetStructArrayDoubleElement("sourceID", 1, (double) 0, valuatorStruct);
+        }
     }
     else {
         // 'KeyboardHelper' mode: We implement either KbCheck() or KbWait() via X11.
@@ -1071,6 +1105,9 @@ PsychError SCREENGetMouseHelper(void)
                             errno=0;
                         }
                     }
+
+                    // Enable potential game-mode optimizations at realtime priority:
+                    PsychOSSetGameMode(TRUE, PsychPrefStateGet_Verbosity());
                 }
                 else {
                     // Standard scheduling and no memory locking:
@@ -1089,6 +1126,9 @@ PsychError SCREENGetMouseHelper(void)
 
                     munlockall();
                     errno=0;
+
+                    // Disable potential game-mode optimizations at normal priority:
+                    PsychOSSetGameMode(FALSE, PsychPrefStateGet_Verbosity());
                 }
                 // End of setup of new Priority...
             }

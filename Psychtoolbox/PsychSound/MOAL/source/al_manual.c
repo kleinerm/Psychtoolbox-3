@@ -67,13 +67,28 @@ void alc_getstring( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     plhs[0]=mxCreateString((const char *)alcGetString(alcGetContextsDevice(alcGetCurrentContext()), (ALenum)mxGetScalar(prhs[0])));
 }
 
+void alc_getintegerv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+    alcGetIntegerv(alcGetContextsDevice(alcGetCurrentContext()), (ALenum) mxGetScalar(prhs[0]),
+                   (ALCsizei) mxGetScalar(prhs[1]), (ALCint*) mxGetData(prhs[2]));
+}
+
+void alc_getenumvalue( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+    if (NULL == alcGetEnumValue) mogl_glunsupported("alcGetEnumValue");
+    plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
+    *mxGetPr(plhs[0])=(double)alcGetEnumValue(alcGetContextsDevice(alcGetCurrentContext()), (const ALchar*)mxGetData(prhs[0]));
+}
+
 // command map:  moalcore string commands and functions that handle them
 // *** it's important that this list be kept in alphabetical order, 
 //     and that gl_manual_map_count be updated
 //     for each new entry ***
-int gl_manual_map_count=4;
+int gl_manual_map_count=6;
 cmdhandler gl_manual_map[] = {
 { "alGetString",                    al_getstring                        },
 { "alcASASetListener",              alc_ASASetListener                  },
 { "alcASASetSource",                alc_ASASetSource                    },
+{ "alcGetEnumValue",                alc_getenumvalue                    },
+{ "alcGetIntegerv",                 alc_getintegerv                     },
 { "alcGetString",                   alc_getstring                       }};

@@ -43,10 +43,11 @@ function ListenChar(listenFlag)
 %
 % Some of the restrictions and caveats:
 %
-% 1. Works very well with Matlab and its Java based GUI enabled on Linux
-% and MacOSX, as well as on WindowsXP and earlier versions of Windows.
+% 1. Works very well with Matlab and its Java based GUI enabled on Linux (on
+% desktop GUI's other than KDE) and macOS, as well as on WindowsXP and earlier
+% versions of Windows.
 %
-% 2. When used on Windows Vista or later (Vista, Windows-7, Windows-8, ...)
+% 2. When used on Windows Vista or later (Vista, Windows-7, ..., Windows-10)
 % with Matlab's Java GUI, you cannot use any KbQueue functions at the same
 % time, ie., KbQueueCreate/Start/Stop/Check/Wait as well as KbWaitTrigger,
 % KbEventFlush, KbEventAvail, and KbEventGet are off limits after any call
@@ -83,6 +84,11 @@ function ListenChar(listenFlag)
 % or respond to press of CTRL+C, for the default keyboard device. It will
 % ignore other connected keyboards.
 %
+% Another limitation in cases 2 and 3 is that international keyboards with non-US
+% layout and non-ASCII/Latin-1 characters may need special treatment and Octave
+% may have some trouble processing such characters. See "help KbEventGet" for a
+% detailed explanation.
+%
 % Basically: Mixing GetChar et al. and modern KbQueue functions is usually
 % not advisable, or if needed, great care must be taken to sidestep all the
 % mentioned limitations. Also the KbQueue functions usually have better
@@ -107,6 +113,7 @@ function ListenChar(listenFlag)
 %                friends.
 % 05/31/09 mk    Add support for Octave and Matlab in noJVM mode.
 % 01/31/16 mk    Add support for listenFlag -1 for only blocking input.
+% 06/20/19 mk    Try to protect against KDE focus stealing nastyness via kbqueues.
 
 global OSX_JAVA_GETCHAR;
 persistent keyboard_blocked;
@@ -169,7 +176,11 @@ if psychusejava('desktop')
     % fallback path below, as Java based GetChar() is only useful to
     % suppress character output to the Matlab command window, aka clutter
     % prevention, not for actually recording key strokes.
-    if ~IsWinVista
+    % If we are running on Linux with the KDE desktop GUI, we also need to
+    % use non-Java fallbacks for keystroke recording, as KDE's window manager
+    % has the nasty habit of removing keyboard input focus from the Matlab window,
+    % as soon as the onscreen window opens, so Java based GetChar doesn't get input.
+    if ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
         return;
     end
 

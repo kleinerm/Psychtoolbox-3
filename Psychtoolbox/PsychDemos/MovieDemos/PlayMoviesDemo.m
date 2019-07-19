@@ -181,11 +181,6 @@ try
         moviefiles(end+1).name = 'http://video.ted.com/talk/podcast/2013/None/ElonMusk_2013.mp4';
         moviefiles(end).url = 'http://www.ted.com/talks/elon_musk_the_mind_behind_tesla_spacex_solarcity.html';
         moviefiles(end).credits = 'At TED Elon Musk talks with Chris Anderson about electrical cars, space-flight and solar power';
-
-        % FOSDEM 2012 talk about Linux's next generation graphics display server "Wayland":
-        moviefiles(end+1).name = 'http://video.fosdem.org/2012/maintracks/k.1.105/Wayland.webm';
-        moviefiles(end).url = 'http://video.fosdem.org/2012';
-        moviefiles(end).credits = 'FOSDEM 2012 talk about Linux''s next generation graphics display server "Wayland"';
         
         % Count all movies in our playlist:
         moviecount = size(moviefiles,2);

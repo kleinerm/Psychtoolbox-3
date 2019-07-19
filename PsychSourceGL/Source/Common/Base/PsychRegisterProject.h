@@ -21,7 +21,7 @@
 #include "Psych.h"
 
 #define PSYCH_MAX_FUNCTION_NAME_LENGTH 64
-#define PSYCH_MAX_FUNCTIONS 256
+#define PSYCH_MAX_FUNCTIONS 512
 
 typedef struct
 {

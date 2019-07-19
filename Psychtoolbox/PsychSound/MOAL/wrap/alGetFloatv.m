@@ -9,13 +9,15 @@ function data = alGetFloatv( param )
 % 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
+% ---skip---
 
 if nargin~=1,
     error('invalid number of arguments');
 end
 
-data = single(0);
-
+data = single(NaN(6,1));
 moalcore( 'alGetFloatv', param, data );
+data = data(find(~isnan(data))); %#ok<FNDSB>
 
 return

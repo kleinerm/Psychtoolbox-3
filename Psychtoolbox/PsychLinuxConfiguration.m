@@ -75,7 +75,10 @@ function usedAnswers = PsychLinuxConfiguration(answers)
 % 04.09.2016   mk  Optionally install a /etc/modprobe.d/amddeepcolor-psychtoolbox.conf
 %                  file to switch radeon-kms / amdgpu-kms into deep color mode for
 %                  driving suitable HDMI/DP > 8 bpc displays.
-
+% 23.06.2019   mk  Optionally install a /etc/gamemode.ini for an optionally installed
+%                  FeralInteractive gamemode package, to switch supported gpu's into
+%                  high-performance mode for Priority() > 0, and do possible other PTB
+%                  specific optimizations beyond the default optims of the gamemode package.
 rerun = 0;
 updateinitramfs = 0;
 
@@ -84,10 +87,10 @@ if ~IsLinux
 end
 
 if nargin < 1 || isempty(answers)
-  answers = '??????';
+  answers = '???????';
 else
-  if ~ischar(answers) || length(answers) ~= 6
-    error('Provided input argument ''answers'' must be a 6 character string with characters y, n or ?');
+  if ~ischar(answers) || length(answers) ~= 7
+    error('Provided input argument ''answers'' must be a 7 character string with characters y, n or ?');
   end
 end
 
@@ -113,6 +116,7 @@ fprintf('timestamping. You will be able to access this hardware without the need
 fprintf('Matlab or Octave as sudo root user.\n\n');
 
 answer = '';
+needinstall = 0;
 
 % Check if udev psychtoolbox.rules file exists:
 if ~exist('/etc/udev/rules.d/psychtoolbox.rules', 'file')
@@ -181,6 +185,7 @@ end
 % Check if psychtoolbox modules blacklist file exists:
 fprintf('\n\n');
 answer = '';
+needinstall = 0;
 if ~exist('/etc/modprobe.d/blacklist-psychtoolbox.conf', 'file')
   % No: Needs to be installed.
   needinstall = 1;
@@ -236,6 +241,7 @@ end
 % Check if psychtoolbox AMD kms modules config file exists:
 fprintf('\n\n');
 answer = '';
+needinstall = 0;
 if ~exist('/etc/modprobe.d/amddeepcolor-psychtoolbox.conf', 'file')
   % No: Needs to be installed.
   needinstall = 1;
@@ -536,6 +542,125 @@ if addgroup
         system('sudo mkdir /etc/X11/xorg.conf.d');
         system('sudo chown :psychtoolbox /etc/X11/xorg.conf.d');
         system('sudo chmod g+rwxs /etc/X11/xorg.conf.d');
+      end
+    end
+  end
+end
+
+% Check if psychtoolbox gamemode.ini file exists:
+fprintf('\n\n');
+answer = '';
+needinstall = 0;
+if ~exist('/etc/gamemode.ini', 'file') && ~exist('/usr/share/gamemode/gamemode.ini', 'file') && ...
+   ~exist([getenv('XDG_CONFIG_HOME') '/gamemode.ini'], 'file') && ...
+   ~exist([getenv('HOME') '/.config/gamemode.ini'], 'file')
+  % No: Needs to be installed.
+  needinstall = 1;
+  fprintf('The gamemode.ini file customized for Psychtoolbox is not installed on your system.\n');
+  fprintf('You need this file if you install(ed) the optional \"FeralInteractive gamemode\"\n');
+  fprintf('package to further optimize your system for realtime and high performance during\n');
+  fprintf('Priority(>0) operation *and* you want the gamemode package to also switch supported\n');
+  fprintf('graphics cards into high performance mode for an extra boost in graphics performance,\n');
+  fprintf('at the cost of higher power consumption and heat production. PLEASE NOTE that in case\n');
+  fprintf('of faulty or sub-standard cooling of your graphics card or computer, there is a SMALL\n');
+  fprintf('RISK OF HARDWARE DAMAGE DUE TO OVERHEATING if you say yes to this question.\n\n');
+  fprintf('ANY DAMAGE TO HARDWARE INCURRED DUE TO THIS FEATURE IS YOUR RESPONSIBILITY AND YOURS ALONE!\n\n');
+  fprintf('Say no to the question if you don''t want extra graphics performance optimizations,\n');
+  fprintf('don''t want to take the SMALL RISK OF OVERHEATING, or do already have your own customized\n');
+  fprintf('gamemode.ini file installed in a location other than /etc/gamemode.ini.\n\n')
+
+  if ismember(answers(7), 'yn')
+    answer = answers(7);
+  else
+    answer = input('Should i install it? [y/n] : ', 's');
+    answers(7) = answer;
+  end
+else
+  % Yes. File already exists in one location. Is it our location?
+  if exist('/etc/gamemode.ini', 'file')
+    fprintf('The gamemode.ini file is already installed on your system at the location expected by Psychtoolbox.\n');
+
+    % Compare its modification date with the one in PTB:
+    r = dir([PsychtoolboxRoot '/PsychBasic/gamemode.ini']);
+    i = dir('/etc/gamemode.ini');
+
+    if r.datenum > i.datenum
+      needinstall = 2;
+      fprintf('However, it seems to be outdated. I have a more recent version with me. This is the difference\n');
+      fprintf('between the installed version and my version:\n');
+      system(['diff /etc/gamemode.ini ' PsychtoolboxRoot '/PsychBasic/gamemode.ini']);
+      fprintf('\n');
+      if ismember(answers(7), 'yn')
+        answer = answers(7);
+      else
+        answer = input('Should i update/replace it with my version? [y/n] : ', 's');
+        answers(7) = answer;
+      end
+    end
+  else
+    % Some 3rd party file exists in different location:
+    fprintf('A 3rd party gamemode.ini file is already installed on your system. Not touching it.\n');
+  end
+end
+
+if needinstall && answer == 'y'
+  if IsOctave && IsGUI
+    rerun = 1;
+    fprintf('Oops, we are running under Octave in GUI mode. This will not work!\n');
+    fprintf('But not to worry. Just run Octave from a terminal window later once without\n');
+    fprintf('GUI, e.g., via executing: octave --no-gui\n');
+    fprintf('Then run the PsychLinuxConfiguration command again to make things work.\n');
+  else
+    % Actually check if the gamemode package is installed on the system, by
+    % checking if gamemoded is there:
+    [r, msg] = system('which gamemoded');
+    if r ~= 0
+      % Seems to be missing. Propose installing it:
+      fprintf('I could not find the gamemoded executable in the path. This probably means\n');
+      fprintf('that the gamemode package is not installed yet?\n');
+      fprintf('If this is an Ubuntu system of version 18.04-LTS or later, you can try\n');
+      fprintf('to install the package from a *untrusted* 3rd party PPA repository\n');
+      fprintf('for your system. See \"help LinuxGameMode\" on how to do that.\n');
+      fprintf('Skipping the setup of gamemode.ini for now. Rerun PsychLinuxConfiguration\n');
+      fprintf('after you have installed the gamemode package.\n');
+      fprintf('Press a key to confirm you read above message.\n');
+      pause;
+    else
+      % gamemoded installed. Is the gpuclockctl executable installed as well?
+      fprintf('I will now copy my most recent gamemode.ini file to your system. Please enter\n');
+      fprintf('your system administrator password. You will not see any feedback.\n');
+      drawnow;
+      cmd = sprintf('sudo cp %s/PsychBasic/gamemode.ini /etc/gamemode.ini', PsychtoolboxRoot);
+      [rc, msg] = system(cmd);
+      if rc == 0
+        % Sucess: kill a potentially running gamemoded, so it will get restarted as needed and
+        % reread our updated or new gamemode.ini config file:
+        system('killall gamemoded');
+        fprintf('Success! Changes should apply at next use of the Priority() command, but the latest after a logout/login or reboot.\n');
+      else
+        fprintf('Failed! The error message was: %s\n', msg);
+      end
+
+      if ~exist('/usr/lib/x86_64-linux-gnu/gpuclockctl', 'file') && exist('/usr/lib/x86_64-linux-gnu/cpugovctl', 'file')
+        % gpuclockctl seems to be missing in the expected location while its sibling cpugovctl exists?
+        % This suggests dealing with a buggy gamemode package that is missing gpuclockctl for some weird reason,
+        % e.g., the v1.3.1 package from https://launchpad.net/~samoilov-lex/+archive/ubuntu/gamemode.
+        %
+        % Propose to the user to fix the missing file from our own copy (built on 19.04, but works on 18.04 LTS):
+        fprintf('The gamemode package seems to be installed, but missing the following required file:\n');
+        fprintf('/usr/lib/x86_64-linux-gnu/gpuclockctl\n\n');
+        fprintf('I have a copy of this file with me that works on at least Ubuntu 19.04 and Ubuntu 18.04 LTS\n');
+        fprintf('with gamemode PPA version 1.3.1.\n');
+        answer = input('Should i update/replace the missing file with my version? [y/n] : ', 's');
+        if answer == 'y'
+          cmd = sprintf('sudo cp %s/PsychContributed/gpuclockctl /usr/lib/x86_64-linux-gnu/gpuclockctl', PsychtoolboxRoot);
+          [rc, msg] = system(cmd);
+          if rc == 0
+            fprintf('Success! GPU performance optimizations at Priority() > 0 should now hopefully work.\n');
+          else
+            fprintf('Failed! Giving up. You may need to fix this yourself. The error message was:\n%s\n', msg);
+          end
+        end
       end
     end
   end

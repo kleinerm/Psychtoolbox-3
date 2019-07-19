@@ -9,13 +9,14 @@ function value = alGetBufferf( bid, param )
 % 28-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
-if nargin~=2,
+if nargin~=2
     error('invalid number of arguments');
 end
 
-value = single(0);
-
+value = single([0,0]);
 moalcore( 'alGetBufferf', bid, param, value );
+value = value(1);
 
 return

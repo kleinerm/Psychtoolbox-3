@@ -26,11 +26,28 @@ function err = Snd(command,signal,rate,sampleSize)
 % implementations of Matlab. There are many bugs, latency- and timing
 % problems associated with the use of Snd.
 %
-% GNU/OCTAVE: If you don't use the PsychPortAudio based Snd() functin, then
+% GNU/OCTAVE: If you don't use the PsychPortAudio based Snd() function, then
 % you must install the optional octave "audio" package from Octave-Forge,
 % as of Octave 3.0.5, otherwise the required sound() function won't be
 % available and this function will fail!
 %
+% Audio device sharing for interop with PsychPortAudio:
+% -----------------------------------------------------
+%
+% If you want to use PsychPortAudio and Snd() simultaneously (or one of the
+% functions that indirectly use Snd(), e.g., Beeper() for simple beep tones,
+% or Eyelink's auditory feedback during tracker setup and recalibration, which
+% in turn uses Beeper() and thereby Snd(), then try this:
+%
+% 1. Open a suitable PsychPortAudio audio device, possibly also a slave audio
+%    device and get a pahandle to it, e.g., pahandle = PsychPortAudio('Open',...);
+%
+% 2. Now open Snd(), passing in this device handle for use as Snd() output device:
+%    Snd('Open', pahandle);
+%
+% 3. Proceed as usual, e.g., Snd('Play', ...) or Beeper(...), etc. Snd() will
+%    use the pahandle audio device for playback, and pahandle can also be used
+%    by PsychPortAudio calls directly for precisely controlled sound.
 %
 % Supported functions:
 % --------------------
@@ -53,8 +70,9 @@ function err = Snd(command,signal,rate,sampleSize)
 %
 % Snd('Open') opens the channel, which stays open until you call
 % Snd('Close'). Snd('Play',...) automatically opens the channel if it isn't
-% already open. In reality 'Open' does nothing in the current
-% implementation and is silently ignored .
+% already open. You can use Snd('Open', pahandle); to share an existing
+% PsychPortAudio audio device handle 'pahandle' with Snd() for optimal
+% interoperation. See instructions above.
 %
 % Snd('Close') immediately stops all sound and closes the channel.
 %
@@ -142,17 +160,49 @@ function err = Snd(command,signal,rate,sampleSize)
 %               make Snd('Open'); Snd('Close'); sequences work to avoid problems
 %               like in PTB forum message #19284 on Linux or Windows.
 % 1/19/16    mk Make more robust against failing InitializePsychSound. Fallback to sound().
+% 7/11/19    mk Allow sharing pahandle with external code / piggyback onto existing pahandle
+%               via Snd('Open', pahandle);
 
 persistent ptb_snd_oldstyle;
+persistent ptb_snd_injected;
 persistent pahandle;
 
 persistent endTime;
 if isempty(endTime)
     endTime = 0;
+    ptb_snd_injected = 0;
 end
 
 % Default return value:
 err = 0;
+
+if nargin == 0
+    error('Wrong number of arguments: see Snd.');
+end
+
+% Snd('Open', pahandle) called to inject a pahandle of an already open
+% PsychPortAudio device for sharing? If so, we piggyback onto pahandle
+% for our audio playback:
+if strcmpi(command,'Open') && nargin == 2
+    % Close previous PsychPortAudio handle if it was not injected into us:
+    if ~isempty(pahandle) && pahandle ~= signal && ~ptb_snd_injected
+        PsychPortAudio('Close', pahandle);
+    end
+
+    % Assign 2nd argument as new pahandle:
+    pahandle = signal;
+
+    % Obviously we are not in old style mode here:
+    ptb_snd_oldstyle = 0;
+
+    % Mark this pahandle as injected -- should not be closed by us ever:
+    ptb_snd_injected = 1;
+
+    endTime = 0;
+
+    fprintf('Snd(): Using PsychPortAudio via handle %i until you call Snd(''Close'');\n', pahandle);
+    return;
+end
 
 % Already defined if we shall use the new-style or old-style
 % implementation?
@@ -181,10 +231,6 @@ if isempty(ptb_snd_oldstyle)
             ptb_snd_oldstyle = 1;
         end
     end
-end
-
-if nargin == 0
-    error('Wrong number of arguments: see Snd.');
 end
 
 % Don't use PsychPortAudio backend if already a PPA device open on Linux or
@@ -275,10 +321,17 @@ if strcmpi(command,'Play')
             props = PsychPortAudio('GetStatus', pahandle);
             if ~isempty(rate) && (abs(props.SampleRate - rate) > 1.0)
                 % Device sampleRate not within tolerance of 1 Hz to
-                % requested samplingrate. Close it, so it can get reopened
-                % with proper rate:
-                PsychPortAudio('Close', pahandle);
-                pahandle = [];
+                % requested samplingrate.
+                if ~ptb_snd_injected
+                    % Close it, so it can get reopened with proper rate:
+                    PsychPortAudio('Close', pahandle);
+                    pahandle = [];
+                else
+                    % Should change samplerate, but can not, as this is a shared
+                    % pahandle:
+                    fprintf('Snd(): Shared PsychPortAudio handle. Can not change sample rate from current %f Hz to %f Hz as requested!\n', ...
+                            props.SampleRate, rate);
+                end
             end
         end
 
@@ -298,8 +351,12 @@ if strcmpi(command,'Play')
             if ~IsOSX
                 fprintf('Snd(): PsychPortAudio will be blocked for use by your own code until you call Snd(''Close'');\n');
                 fprintf('Snd(): If you want to use PsychPortAudio and Snd in the same session, make sure to open your\n');
-                fprintf('Snd(): stimulation sound device via calls to PsychPortAudio(''Open'', ...); *before* the first\n');
-                fprintf('Snd(): call to Snd() or any function that might use Snd(), e.g., Beeper() and the Eyelink functions.\n\n');
+                fprintf('Snd(): stimulation sound device via calls to, e.g., pahandle = PsychPortAudio(''Open'', ...);\n');
+                fprintf('Snd(): *before* the first call to Snd() or any function that might use Snd(), e.g., Beeper()\n');
+                fprintf('Snd(): or the Eyelink functions with auditory feedback. Call Snd(''Open'', pahandle) next, to\n');
+                fprintf('Snd(): share that pahandle audio device with Snd(), Beeper() et al. for optimal collaboration.\n');
+                fprintf('Snd(): Consider using PsychPortAudio(''OpenSlave'', ...); on a master device and pass that slave\n');
+                fprintf('Snd(): handle to Snd(''Open'', ...) if you want to allow Snd() to operate fully independently.\n\n');
             end
         end
 
@@ -355,9 +412,13 @@ elseif strcmpi(command,'Quiet') || strcmpi(command,'Close')
 
         % Close command?
         if strcmpi(command,'Close')
-            % Close it:
-            PsychPortAudio('Close', pahandle);
+            if ~ptb_snd_injected
+                % Close it:
+                PsychPortAudio('Close', pahandle);
+            end
+
             pahandle = [];
+            ptb_snd_injected = 0;
         end
     else
         if ~IsOctave
@@ -381,10 +442,9 @@ elseif strcmpi(command,'DefaultRate')
             % No: Fake it - Use the most common sampling rate:
             err = 44100;
         else
-            % Yes: Query its default sampling rate:
+            % Yes: Query its current sampling rate:
             s = PsychPortAudio('GetStatus', pahandle);
-            di = PsychPortAudio('GetDevices', [], s.OutDeviceIndex);
-            err = di.DefaultSampleRate;
+            err = s.SampleRate;
         end
     end
 

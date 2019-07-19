@@ -61,6 +61,12 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % drivers. If you can do with 10 bpc or 11 bpc, 'Native10Bit' or 'Native11Bit' are
 % much easier to use and setup and provide higher performance.
 %
+% 'Native16BitFloat' - Enable native 16 bit floating point (~11 bit linear)
+% framebuffer support on suitable operating systems and graphics cards.
+% As of July 2019 only NVidia GeForce 1000 and later under Windows-10 is known
+% to support this. macOS emulates it in software with bad timing and performance,
+% and varying success.
+%
 % 'VideoSwitcher' - Enable the Xiangrui Li et al. VideoSwitcher, a special
 % type of video attenuator (see "help PsychVideoSwitcher") in standard
 % "simple" mode.
@@ -150,6 +156,7 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % 18.03.2013 Cleaned up, changed contrast of gratings to sensible 0.25 (MK).
 % 26.06.2014 Also show off Native11Bits framebuffers on AMD (MK).
 % 17.09.2014 Also show off Native16Bits framebuffers on AMD (MK).
+% 10.07.2019 Also show off Native16BitFloat framebuffers (MK).
 
 KbName('UnifyKeyNames');
 UpArrow = KbName('UpArrow');
@@ -291,6 +298,12 @@ try
             % Enable AMD GPU's up to 16 bit framebuffer under certain conditions
             % (see help for this file):
             PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer');
+            overlay = 0;
+
+        case {'Native16BitFloat'}
+            % Enable native 16 bit floating point framebuffer under certain conditions
+            % currently only known to work on NVidia GeForce 1000 and later on Windows-10:
+            PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
             overlay = 0;
 
         case {'BrightSide'}

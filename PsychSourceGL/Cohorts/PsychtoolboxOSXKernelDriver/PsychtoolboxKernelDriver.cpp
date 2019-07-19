@@ -7,6 +7,7 @@
                     it doesn't change that drivers functionality, nor does it interact with that driver.
 
                     The driver currently works on AMD/ATI Radeon graphics cards of the X1000, HD2000 and later.
+                    It doesn't work on AMD Vega and later gpu's with DCE-12 or later display engine or DCN engines.
                     It may work on older ATI cards, but that is not tested or supported.
 
                     The driver also supports rasterposition queries on the majority of NVidia GPU's, but no
@@ -42,7 +43,7 @@
     Copyrights and license:
 
                     This drivers copyright:
-                    Copyright © 2008-2015 Mario Kleiner.
+                    Copyright © 2008-2019 Mario Kleiner.
 
                     This driver contains code for radeon DCE-4 and AVIVO which are derived from the free software radeon kms
                     driver for Linux (radeon_display.c, radeon_regs.h). The Radeon kms driver has the following copyright:
@@ -94,7 +95,7 @@ OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 
 /* Mappings up to date for January 2019 (last update e-mail patch / commit 2018-12-21). Would need updates for any commit after January 2019 */
 
-/* Is a given ATI/AMD GPU a DCE11 type ASIC, i.e., with the new display engine? */
+/* Is a given ATI/AMD GPU a DCE12 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE12(void)
 {
     bool isDCE12 = false;
@@ -108,24 +109,18 @@ bool PsychtoolboxKernelDriver::isDCE12(void)
     // VEGA12: 0x69A0 - 0x69AF
     if ((fPCIDeviceId & 0xFFF0) == 0x69A0) isDCE12 = true;
 
-    // VEGAM: 0x6940 - 0x694F
-    if ((fPCIDeviceId & 0xFFF0) == 0x6940) isDCE12 = true;
-
     // VEGA20: 0x66A0 - 0x66AF
     if ((fPCIDeviceId & 0xFFF0) == 0x66A0) isDCE12 = true;
-
-    // RAVEN: 0x15DD so far: RAVEN is not DCE, but a new type DCN-1.0!
-    // if ((fPCIDeviceId & 0xFFFF) == 0x15DD) isDCE12 = true;
 
     return(isDCE12);
 }
 
-/* Is a given ATI/AMD GPU a DCE11 type ASIC, i.e., with the new display engine? */
+/* Is a given ATI/AMD GPU a DCE11.2 type ASIC, i.e., with the new display engine? */
 bool PsychtoolboxKernelDriver::isDCE112(void)
 {
     bool isDCE112 = false;
 
-    // POLARIS10/11 are DCE11.2:
+    // POLARIS10/11/12 are DCE11.2. So is, oddly, VegaM:
 
     // POLARIS10: 0x67C0 - 0x67DF and 0x6FDF
     if ((fPCIDeviceId & 0xFFF0) == 0x67C0) isDCE112 = true;
@@ -139,6 +134,9 @@ bool PsychtoolboxKernelDriver::isDCE112(void)
     // POLARIS12: 0x6980 - 0x699F
     if ((fPCIDeviceId & 0xFFF0) == 0x6980) isDCE112 = true;
     if ((fPCIDeviceId & 0xFFF0) == 0x6990) isDCE112 = true;
+
+    // VEGAM: 0x6940 - 0x694F
+    if ((fPCIDeviceId & 0xFFF0) == 0x6940) isDCE112 = true;
 
     return(isDCE112);
 }
@@ -157,11 +155,6 @@ bool PsychtoolboxKernelDriver::isDCE11(void)
     if ((fPCIDeviceId & 0xFFFF) == 0x98E4) isDCE11 = true;
 
     if (isDCE112()) isDCE11 = true;
-
-    // That all DCE12 can be treated as DCE11 for our purpose is so far an
-    // unproven assumption, but let's see where it leads us - hopefully not to
-    // awful bug reports.
-    if (isDCE12()) isDCE11 = true;
 
     return(isDCE11);
 }
@@ -450,7 +443,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
         if (PCI_VENDOR_ID_ATI == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have ATI's vendor id.\n", getName());
         if (PCI_VENDOR_ID_AMD == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have AMD's vendor id.\n", getName());
 
-        IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE12() ? "DCE-12" : isDCE11() ? "DCE-11" : isDCE10() ? "DCE-10" : isDCE8() ? "DCE-8" : isDCE6() ? "DCE-6" : (isDCE5() ? "DCE-5" : (isDCE4() ? "DCE-4" : (isDCE3() ? "DCE-3" : "AVIVO"))));
+        IOLog("%s: This is a GPU with %s display engine.\n", getName(), isDCE12() ? "DCE-12" : isDCE112() ? "DCE-11.2" : isDCE11() ? "DCE-11" : isDCE10() ? "DCE-10" : isDCE8() ? "DCE-8" : isDCE6() ? "DCE-6" : (isDCE5() ? "DCE-5" : (isDCE4() ? "DCE-4" : (isDCE3() ? "DCE-3" : "AVIVO"))));
 
         // Setup for DCE-4/5/6/8:
         if (isDCE4() || isDCE5() || isDCE6() || isDCE8()) {
@@ -473,7 +466,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
         // Setup for DCE-10/11:
         if (isDCE10() || isDCE11() || isDCE12()) {
-            // DCE-10/11/12 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
+            // DCE-10/11 of the "Volcanic Islands" gpu family uses (mostly) the same register specs,
             // but the offsets for the different CRTC blocks are different wrt. to pre DCE-10. Therefore
             // need to initialize the offsets differently. Also, some of these parts seem to support up
             // to 7 display engines instead of the old limit of 6 engines:
@@ -499,6 +492,9 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
             // DCE-12 has 6 display controllers:
             if (isDCE12()) fNumDisplayHeads = 6;
+
+            if (isDCE12())
+                IOLog("%s: WARNING: AMD DCE-12 Vega family GPU's are *not* supported by this driver yet. Disabling!\n", getName());
         }
     }
 
@@ -788,8 +784,8 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
     // We should be ready...
     IOLog("\n");
-    IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.12 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
-    IOLog("%s: This driver is copyright 2008 - 2017 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
+    IOLog("%s: Psychtoolbox-3 kernel-level support driver V1.2 (Revision %d) for ATI/AMD/NVidia/Intel GPU's ready for use!\n", getName(), PTBKDRevision);
+    IOLog("%s: This driver is copyright 2008 - 2019 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
     IOLog("%s: The driver is licensed to you under the MIT free and open-source software license.\n", getName());
     IOLog("%s: See the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
     IOLog("%s: The driver contains bits of code derived from the free software nouveau and radeon kms drivers on Linux.\n", getName());
@@ -919,7 +915,7 @@ IOService* PsychtoolboxKernelDriver::probe(IOService* provider, SInt32* score)
 // inactive and any further requests from the user process should be returned with an error.
 bool PsychtoolboxKernelDriver::willTerminate(IOService* provider, IOOptionBits options)
 {
-    if (false) IOLog("%s::willTerminate()\n", getName());
+    if (/* DISABLES CODE */ (false)) IOLog("%s::willTerminate()\n", getName());
     return super::willTerminate(provider, options);
 }
 
@@ -930,7 +926,7 @@ bool PsychtoolboxKernelDriver::willTerminate(IOService* provider, IOOptionBits o
 // that a provider has been terminated, sent after recursing up the stack, in leaf-to-root order.
 bool PsychtoolboxKernelDriver::didTerminate(IOService* provider, IOOptionBits options, bool* defer)
 {
-    if (false) IOLog("%s::didTerminate()\n", getName());
+    if (/* DISABLES CODE */ (false)) IOLog("%s::didTerminate()\n", getName());
     return super::didTerminate(provider, options, defer);
 }
 
@@ -941,7 +937,7 @@ bool PsychtoolboxKernelDriver::didTerminate(IOService* provider, IOOptionBits op
 bool PsychtoolboxKernelDriver::terminate(IOOptionBits options)
 {
     bool    success;
-    if (false) IOLog("%s::terminate()\n", getName());
+    if (/* DISABLES CODE */ (false)) IOLog("%s::terminate()\n", getName());
     success = super::terminate(options);
     return success;
 }
@@ -952,7 +948,7 @@ bool PsychtoolboxKernelDriver::terminate(IOOptionBits options)
 bool PsychtoolboxKernelDriver::finalize(IOOptionBits options)
 {
     bool    success;
-    if (false) IOLog("%s::finalize()\n", getName());
+    if (/* DISABLES CODE */ (false)) IOLog("%s::finalize()\n", getName());
     success = super::finalize(options);
     return success;
 }
@@ -1572,8 +1568,8 @@ void PsychtoolboxKernelDriver::GetGPUInfo(UInt32 *inOutArgs)
     // Default to "don't know".
     inOutArgs[2] = 0;
 
-    // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) or DCE-8 (80), DCE-10 (100) or DCE-11 (110), DCE-12 (120) for now.
-    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE12() ? 120 : isDCE11() ? 110 : isDCE10() ? 100 : isDCE8() ? 80 : (isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : (isDCE3() ? 30 : 10))));
+    // On Radeons we distinguish between Avivo / DCE-2 (10), DCE-3 (30), or DCE-4 style (40) or DCE-5 (50) or DCE-6 (60) or DCE-8 (80), DCE-10 (100) or DCE-11 (110), DCE-11.2 (112) and DCE-12 (120) for now.
+    if (fDeviceType == kPsychRadeon) inOutArgs[2] = isDCE12() ? 120 : isDCE112() ? 112 : isDCE11() ? 110 : isDCE10() ? 100 : isDCE8() ? 80 : (isDCE6() ? 60 : (isDCE5() ? 50 : (isDCE4() ? 40 : (isDCE3() ? 30 : 10))));
 
     // On NVidia's we distinguish between chip family, e.g., 0x40 for the NV-40 family.
     if (fDeviceType == kPsychGeForce) inOutArgs[2] = fCardType;

@@ -11,12 +11,11 @@ function sources = alGenSources( n )
 % ---allocate---
 % ---protected---
 
-if nargin~=1,
+if nargin~=1
     error('invalid number of arguments');
 end
 
-sources = uint32(zeros(n,1));
-
+sources = uint32(zeros(n+1,1));
 moalcore( 'alGenSources', n, sources );
-
+sources = sources(1:end-1);
 return

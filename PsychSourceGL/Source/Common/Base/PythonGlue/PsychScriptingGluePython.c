@@ -435,7 +435,76 @@ PyObject* mxCreateLogicalMatrix(ptbSize rows, ptbSize cols)
 
 PyObject* mxCreateString(const char* instring)
 {
-    return(PyUnicode_FromString(instring));
+    PyObject* ret;
+
+    if (!instring)
+        return(PyUnicode_FromString("NULL"));
+
+    // Try decoding from UTF-8:
+    ret = PyUnicode_FromString(instring);
+    PyErr_Clear();
+
+    // On Windows, some low-level ANSI api's, e.g., input device enumeration in
+    // PsychHID, return strings encoded in Windows codepage CP_ACP, the system
+    // active code page. See the following Microsoft documentation for details:
+    //
+    // https://docs.microsoft.com/en-us/windows/desktop/Intl/conventions-for-function-prototypes
+    //
+    // PyUnicode_DecodeMBCS() decodes such multibyte character strings encoded in
+    // the CP_ACP current system code page into Unicode. Therefore this is our
+    // 1st fallback if UTF-8 decoding fails on Windows:
+    // Thanks to Hiroyuki Sogo for finding this solution!
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    if (!ret) {
+        ret = PyUnicode_DecodeMBCS(instring, strlen(instring), NULL);
+        PyErr_Clear();
+    }
+    #endif
+
+    if (!ret) {
+        #if PY_MAJOR_VERSION < 3
+        // Fallback to standard C string decoding:
+        ret = PyString_FromString(instring);
+        #else
+        // Try decoding assuming current system locale setting:
+        ret = PyUnicode_DecodeLocale(instring, "surrogateescape");
+        PyErr_Clear();
+
+        // Retry with strict error handler, because of backwards incompatible
+        // change in Python 3.6 -> 3.7 (sigh):
+        if (!ret) {
+            ret = PyUnicode_DecodeLocale(instring, "strict");
+            PyErr_Clear();
+        }
+
+        // Retry with Python startup locale. There were backwards incompatible
+        // changes in Python 3.0 -> 3.2 -> 3.6, often only on Windows (sigh):
+        if (!ret) {
+            ret = PyUnicode_DecodeFSDefault(instring);
+            PyErr_Clear();
+        }
+        #endif
+    }
+
+    if (!ret) {
+        // Final attempt: Decode as Latin-1, corresponding to the first 256
+        // Unicode codepoints. According to CPython source, this can essentially
+        // only fail on system out-of-memory, and either returns a Latin-1
+        // string if instring was Latin-1, or it will return whatever it is
+        // crammed into Latin-1, ie. Byte values in range 0-255. Good enough for
+        // debugging by calling script:
+        ret = PyUnicode_DecodeLatin1(instring, strlen(instring), NULL);
+        PyErr_Clear();
+    }
+
+    // Better than crashing:
+    if (!ret)
+        ret = PyUnicode_FromString("WARNING: INVALID UNDECODABLE STRING!");
+
+    // Clear potential Unicode exceptions set by above:
+    PyErr_Clear();
+
+    return(ret);
 }
 
 void* mxGetData(const PyObject* arrayPtr)

@@ -70,8 +70,11 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % KbCheck uses the PsychHID function, a general purpose function for
 % reading from the Human Interface Device (HID) class of USB devices.
 %
-% KbCheck queries the first USB-HID keyboard device by default. Optionally,
-% when multiple keyboards are attached to your machine, you can pass in a
+% KbCheck tests a keyboard device by default, which is chosen by an operating
+% system dependent heuristic and it usually makes a reasonable choice. For better
+% control over the keyboard input device, you can pass in a 'deviceNumber' to
+% test a different keyboard if multiple keyboards are connected to your machine.
+%
 % 'deviceNumber':  When 'deviceNumber' is -1, KbCheck will query all
 % keyboard devices and return their "merged state" - The 'keyCode' vector
 % will represent the state of all keys of all keyboards, and the
@@ -85,8 +88,8 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % device numbers of all attached keyboards, or keyboards matching specific
 % criteria, and the function GetKeypadIndices() allows the same for keypads.
 %
-% On MS-Windows 2000 and earlier, KbCheck can address individual keyboards.
-% On Windows-XP and later, it can't.
+% On Microsoft Windows, KbCheck can not address different keyboard devices, so
+% selection by 'deviceNumber' only really works on Linux and macOS.
 %
 % To save time, PsychHID and KbCheck enumerate the devices and count keyboards
 % only once, and cache the answer. If you add or remove a keyboard during a
@@ -104,7 +107,9 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % which have keys or buttons as if they were keyboards. If you pass in the
 % deviceIndex of a mouse (GetMouseIndices will provide with them), it will
 % report mouse button state as keyboard state. Similar behaviour usually
-% works with Joysticks, Gamepads and other input controllers.
+% works with Joysticks, Gamepads and other input controllers. On MS-Windows,
+% KbCheck can't distinguish/address multiple mice separately though. That only
+% works on Linux and macOS.
 % _________________________________________________________________________
 % 
 % See also: FlushEvents, KbName, KbDemo, KbWait, GetChar, CharAvail.

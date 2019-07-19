@@ -134,15 +134,20 @@ private:
     // Is a given ATI/AMD GPU a DCE6.4 type ASIC, i.e., with the new display engine?
     bool isDCE64(void);
 
-    // Is a given ATI/AMD GPU a DCE8 type ASIC, i.e., with the new display engine?
+    // Is a given ATI/AMD GPU a DCE8 type Sea Islands ASIC, i.e., with the new display engine?
     bool isDCE8(void);
 
-    // Is a given ATI/AMD GPU a DCE10 type ASIC, i.e., with the new display engine?
+    // Is a given ATI/AMD GPU a DCE10 type Volcanic Islands ASIC, i.e., with the new display engine?
     bool isDCE10(void);
     
-    // Is a given ATI/AMD GPU a DCE11 type ASIC, i.e., with the new display engine?
+    // Is a given ATI/AMD GPU a DCE11 type Polaris / VegaM ASIC, i.e., with the new display engine?
     bool isDCE11(void);
-    
+
+    bool isDCE112(void);
+
+    // Is a given ATI/AMD GPU a DCE12 type Vega ASIC, i.e., with the new display engine?
+    bool isDCE12(void);
+
 public:
     // IOService methods
     virtual bool init(OSDictionary* dictionary = 0);

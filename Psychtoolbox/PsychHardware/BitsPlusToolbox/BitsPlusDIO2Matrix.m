@@ -22,6 +22,7 @@ function encodedDIOdata = BitsPlusDIO2Matrix(mask, data, command)
 % 12/10/2007 Written, derived from BitsPlusDIO2Texture. (MK)
 % 06/02/2008 Fix handling of LSB of 'mask': bitand(mask,255) was missing,
 %            which would cause wrong result if mask > 255. (MK)
+% 06/17/2019 Accept up to 16 bits of 'data', not just 10 bits, for Bits# trigger out. (MK)
 
 if nargin ~= 3
     error('Usage: encodedDIOdata = BitsPlusDIO2Matrix(mask, data, command)');
@@ -51,7 +52,7 @@ encodedDIOdata(1,12,1) = uint8(7);                    % address
 
 % vectorised
 encodedDIOdata(1,14:2:508,3) = uint8(bitand(data, 255));
-encodedDIOdata(1,14:2:508,2) = uint8(bitshift(bitand(data, 768), -8));
+encodedDIOdata(1,14:2:508,2) = uint8(bitshift(bitand(data, hex2dec ('ff00')), -8));
 encodedDIOdata(1,14:2:508,1) = uint8(8:255);
 
 return;

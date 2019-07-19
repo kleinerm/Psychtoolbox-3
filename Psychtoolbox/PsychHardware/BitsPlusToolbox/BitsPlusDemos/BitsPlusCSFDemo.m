@@ -35,6 +35,9 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % A 'method' of 7 tries to utilize the native up to 16 bpc framebuffers of recent
 % AMD hardware.
 %
+% A 'method' of 8 tries to utilize the native 16 bpc float framebuffers of recent
+% hardware.
+%
 % The optional 'gamma' parameter allows to select the initial gamma value
 % of your display to correct for. This can be changed interactively later
 % on.
@@ -74,6 +77,7 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % 14.12.2009 Extended for DataPixx. (MK)
 % 26.06.2014 Also show off Native11Bits framebuffers on AMD (MK).
 % 17.09.2014 Also show off Native16Bits framebuffers on AMD (MK).
+% 10.07.2019 Also show off Native16BitFloat framebuffers (MK).
 
 global screenShot;
 
@@ -168,6 +172,10 @@ end
 
 if method == 7
     PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer');
+end
+
+if method == 8
+    PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
 end
 
 % Want to have simple power-law gamma correction of stims: We choose the

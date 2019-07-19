@@ -729,6 +729,8 @@ static PsychArgFormatType PsychGetTypeFromMxPtr(const mxArray *mxPtr)
         format = PsychArgType_char;
     else if (mxIsCell(mxPtr))
         format = PsychArgType_cellArray;
+    else if (mxIsStruct(mxPtr))
+        format = PsychArgType_structArray;
     else if (mxIsLogical(mxPtr))
         // This is tricky because MATLAB abstracts "logicals" conditionally on platform.
         // Depending on OS, MATLAB implements booleans with either 8-bit or 64-bit values.
