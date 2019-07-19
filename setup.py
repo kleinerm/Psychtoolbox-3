@@ -259,6 +259,7 @@ setup (name = 'psychtoolbox',
        package_data = extra_files,
        ext_package = 'psychtoolbox',
        ext_modules = ext_modules,
+       include_package_data=True,  # Include files listed in MANIFEST.in
       )
 
 if platform.system() == 'Windows':
