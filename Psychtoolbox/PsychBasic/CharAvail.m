@@ -46,6 +46,7 @@ function [avail, numChars] = CharAvail
 %
 % 05/31/09 mk   Add support for Octave and Matlab in noJVM mode.
 % 10/22/12 mk   Remove support for legacy Matlab R11 GetCharNoJVM.dll.
+% 06/20/19 mk   Try to protect against KDE focus stealing nastyness via kbqueues.
 
 global OSX_JAVA_GETCHAR;
 persistent isjavadesktop;
@@ -56,7 +57,8 @@ if isempty(isjavadesktop)
 end
 
 % Is this Matlab? Is the JVM running? Isn't this Windows Vista or later?
-if psychusejava('desktop') && ~IsWinVista
+% Isn't the Linux KDE GUI active?
+if psychusejava('desktop') && ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
     % Make sure that the GetCharJava class is loaded and registered with
     % the java focus manager.
     if isempty(OSX_JAVA_GETCHAR)

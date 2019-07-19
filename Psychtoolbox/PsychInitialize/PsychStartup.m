@@ -32,6 +32,10 @@ try
         % use of GStreamer based functions would fail due to unresolved
         % link dependencies:
 
+        % Must omit GStreamer runtime path on Octave in CLI mode, to avoid
+        % build trouble due to lib clashes between Octave and GStreamer:
+        useGStreamer = ~IsOctave || ~any(strfind(cell2mat (argv'), '--no-gui'));
+
         % Find path to SDK-Root folder: Should be defined in env variable
         % by installer:
         if Is64Bit
@@ -104,18 +108,19 @@ try
         else
             sdkroot = [sdkroot 'bin'];
 
-            fprintf('\nPsychStartup: Adding path of installed GStreamer runtime to library path. [%s]\n', sdkroot);
-
             % Get current path:
             path = getenv('PATH');
 
-            if ~IsOctave || IsGUI
+            if useGStreamer
                 % Matlab, or Octave in GUI mode: Prepend sdkroot to path:
                 newpath = [sdkroot ';' path];
+                fprintf('\nPsychStartup: Adding path of installed GStreamer runtime to library path. [%s]\n', sdkroot);
             else
                 % Octave CLI: Do not add GStreamer runtime, so we can build
                 % our mex files without interference of GStreamer's libstdc++.6.dll:
                 newpath = path;
+                fprintf('\nPsychStartup: Use of GStreamer disabled for Octave CLI session.');
+                fprintf('\nPsychStartup: Screen() mex file will not work.\n');
             end
 
             % For Octave-4.2 on Windows, also need to prepend path to portaudio dll

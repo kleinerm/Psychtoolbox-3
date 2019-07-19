@@ -10,16 +10,24 @@
 # Copyright (c) 2018 Mario Kleiner. Licensed under MIT license.
 #
 
-# Import all PTB modules already ported to Python extension modules:
-from . import WaitSecs, GetSecs, PsychPortAudio, PsychHID, IOPort
+from _version import __version__
+import sys
+is_64bits = sys.maxsize > 2**32
 
+
+
+
+# Import all PTB modules already ported to Python extension modules:
 # Extract their "main" function, which is named just like the module,
 # and assign its function handle to a variable named just like the module.
 # This will cause the function handles to shadow the original module, so
 # now the module can be called with (almost) identical syntax as one is
 # used to from Octave or Matlab:
-WaitSecs = getattr(WaitSecs, 'WaitSecs');
-GetSecs = getattr(GetSecs, 'GetSecs');
-PsychPortAudio = getattr(PsychPortAudio, 'PsychPortAudio');
-PsychHID = getattr(PsychHID, 'PsychHID');
-IOPort = getattr(IOPort, 'IOPort');
+from .WaitSecs import WaitSecs
+from .GetSecs import GetSecs
+from .PsychHID import PsychHID
+from .IOPort import IOPort
+if is_64bits:
+    from .PsychPortAudio import PsychPortAudio
+else:
+    PsychPortAudio = None

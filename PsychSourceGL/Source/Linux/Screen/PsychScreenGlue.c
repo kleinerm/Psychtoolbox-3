@@ -119,9 +119,6 @@ static psych_bool isDCE12(int screenId)
     // VEGA12: 0x69A0 - 0x69AF
     if ((fPCIDeviceId & 0xFFF0) == 0x69A0) isDCE12 = true;
 
-    // VEGAM: 0x6940 - 0x694F
-    if ((fPCIDeviceId & 0xFFF0) == 0x6940) isDCE12 = true;
-
     // VEGA20: 0x66A0 - 0x66AF
     if ((fPCIDeviceId & 0xFFF0) == 0x66A0) isDCE12 = true;
 
@@ -136,7 +133,7 @@ static psych_bool isDCE112(int screenId)
     psych_bool isDCE112 = false;
     (void) screenId;
 
-    // POLARIS10/11/12 are DCE11.2:
+    // POLARIS10/11/12 are DCE11.2. So is, oddly, VEGAM:
 
     // POLARIS10: 0x67C0 - 0x67DF and 0x6FDF
     if ((fPCIDeviceId & 0xFFF0) == 0x67C0) isDCE112 = true;
@@ -150,6 +147,9 @@ static psych_bool isDCE112(int screenId)
     // POLARIS12: 0x6980 - 0x699F
     if ((fPCIDeviceId & 0xFFF0) == 0x6980) isDCE112 = true;
     if ((fPCIDeviceId & 0xFFF0) == 0x6990) isDCE112 = true;
+
+    // VEGAM: 0x6940 - 0x694F
+    if ((fPCIDeviceId & 0xFFF0) == 0x6940) isDCE112 = true;
 
     return(isDCE112);
 }
@@ -1155,19 +1155,21 @@ void InitializePsychDisplayGlue(void)
     if (firstTime) {
         firstTime = FALSE;
 
-        // We must initialize XLib for multithreading-safe operations / access on first
-        // call if usercode explicitely requests this via environment variable PSYCH_XINITTHREADS.
-        //
-        // We can only do this as opt-in, as XInitThreads() must be called as very first
-        // XLib function after process startup or bad things will happen! We don't have control
-        // over this wrt. Matlab or Octave (especially future Octave 3.7+ with its QT based GUI),
-        // so we implemented our own locking in Screen() and don't need it in PsychHID, as PsychHID's
-        // x-connection is exclusively used by PsychHID's Xinput processing thread. However, there
-        // may be some cases when our own locking is insufficient, due to deficiencies in the
-        // DRI2 XOrg FOSS Mesa graphics driver stack, so some users may want to opt-into use
-        // XLib's threading protection as a work-around if they can guarantee Octave or Matlab
-        // hasn't called any XLib calls already during its running session:
-        if (getenv("PSYCH_XINITTHREADS")) XInitThreads();
+        #ifndef PTB_USE_WAYLAND
+        // If the X11 windowing system is used in this session, then we must initialize XLib for
+        // multithreading-safe operations / access on first call if ...
+        // - Usercode explicitely requests this via environment variable PSYCH_XINITTHREADS,
+        // - Or if our host process hasn't done proper setup itself and it is safe for us to do it.
+        // We can only do this if PsychOSNeedXInitThreads() deems it needed and safe, as XInitThreads()
+        // must be called as very first XLib function after process startup or bad things may happen!
+        // Testing shows that Matlab always calls XInitThreads() itself properly, and octave as well,
+        // if called as "octave" and not "octave-cli". "octave-cli --no-window-system allows us to
+        // work around this, but octave-cli is seldomly (ever?) used for use with Psychtoolbox.
+        // In practice this is mostly to work around unsuitable Python runtimes/host applications
+        // atm., should Screen() get ported to Python:
+        if ((getenv("DISPLAY") || getenv("PSYCHTOOLBOX_DISPLAYS")) && PsychOSNeedXInitThreads(PsychPrefStateGet_Verbosity()))
+            XInitThreads();
+        #endif
     }
 
     //init the list of Core Graphics display IDs.

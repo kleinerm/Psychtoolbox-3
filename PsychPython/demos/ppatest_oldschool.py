@@ -152,3 +152,6 @@ def run():
 
     # Close sound device:
     PsychPortAudio('Close', pahandle);
+
+if __name__ == '__main__':
+    run()

@@ -311,6 +311,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 %              can not actually download older PTB versions with this downloader.
 % 06/11/18 mk  Change search order for svn executable to account for preferred location
 %              on macOS, as provided by XCode command line tools.
+% 06/01/19 mk  Give automated hint about updated svn client under Matlab.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -368,6 +369,7 @@ end
 IsWin = ~isempty(strfind(computer, 'PCWIN')) || ~isempty(strfind(computer, '-w64-mingw32'));
 IsOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
 IsLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
+IsOctave = isempty (ver('matlab'));
 
 if ~IsWin && ~IsOSX && ~IsLinux
     os = computer;
@@ -774,22 +776,36 @@ fprintf('%s\n',checkoutcommand);
 fprintf('Downloading. It''s nearly 100 MB, which can take many minutes. \nAlas there may be no output to this window to indicate progress until the download is complete. \nPlease be patient ...\n');
 fprintf('If you see some message asking something like "accept certificate (p)ermanently, (t)emporarily? etc."\n');
 fprintf('then please press the p key on your keyboard, possibly followed by pressing the ENTER key.\n\n');
-if IsOSX || IsLinux
-    [err]=system(checkoutcommand);
-    result = 'For reason, see output above.';
+
+if IsOctave
+    % Octave's system() command (and its dos() and unix() wrappers around system())
+    % does not print any live output from the checkoutcommand if return of the 'result'
+    % string is requested. We want some live feedback, so users get some feeling of
+    % download progress and don't get confused if the thing is just sitting there for
+    % minutes without giving feedback. Therefore don't request 'result':
+    err = system(checkoutcommand);
+    result = 'For reasons and troubleshooting, read the output above and all followup messages!';
 else
-    [err,result]=dos(checkoutcommand, '-echo');
+    % Matlab's system() command can provide live feedback from 'checkoutcommand'
+    % during svn checkout and return the same output in 'result' at the end, so
+    % we can get 'result' for parsing:
+    [err, result] = system(checkoutcommand, '-echo');
 end
 
 if err
-    fprintf('Sorry, the download command "CHECKOUT" failed with error code %d: \n',err);
-    fprintf('%s\n',result);
-    if IsOSX
+    fprintf('Sorry, the download command "CHECKOUT" failed with error code %d:\n', err);
+    fprintf('%s\n', result);
+
+    if IsOctave
         fprintf('If the error output above contains the text ''SSL handshake failed: SSL error: tlsv1 alert protocol version''\n');
-        fprintf('then your svn command line client is too old. Get a more recent one, e.g., from XCode developer tools, or the\n');
-        fprintf('HomeBrew package manager or such.\n');
+        fprintf('then your svn command line client is too old. Install a more recent Subversion command line client.\n');
+    else
+        if ~isempty(strfind(result, 'tlsv1 alert protocol version'))
+            fprintf('Seems your svn command line client is too old. Install a more recent Subversion command line client.\n');
+            error('Download failed. Subversion client too old.');
+        end
     end
-    fprintf('The download failure might be due to temporary network or server problems. You may want to try again in a\n');
+    fprintf('The download failure might also be due to temporary network or server problems. You may want to try again in a\n');
     fprintf('few minutes. It could also be that the subversion client was not (properly) installed. On Microsoft\n');
     fprintf('Windows you will need to exit and restart Matlab or Octave after installation of the Subversion client. If that\n');
     fprintf('does not help, you will need to reboot your machine before proceeding.\n');

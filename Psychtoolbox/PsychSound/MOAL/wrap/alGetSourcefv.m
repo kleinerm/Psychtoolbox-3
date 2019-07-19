@@ -9,13 +9,15 @@ function values = alGetSourcefv( sid, param )
 % 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
+% ---skip---
 
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-values = single(0);
-
+values = single(NaN(6,1));
 moalcore( 'alGetSourcefv', sid, param, values );
+values = values(find(~isnan(values))); %#ok<FNDSB>
 
 return

@@ -81,6 +81,7 @@ typedef __CHAR16_TYPE__ char16_t;
     #include <unistd.h>
     #include <stdarg.h>
     #include <pthread.h>
+    #include <dlfcn.h>
 
     #ifndef _POSIX_THREAD_PRIO_INHERIT
     #error This build system does not support pthread_mutexattr_setprotocol(&attr, PTHREAD_PRIO_INHERIT); Fix your build system!
@@ -88,18 +89,19 @@ typedef __CHAR16_TYPE__ char16_t;
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-	// Need to define #define _WIN32_WINNT as >= 0x0400 so we can use TryEnterCriticalSection() call for PsychTryLockMutex() implementation.
-    // We set WINVER and _WIN32_WINNT to 0x0500, which requires Windows 2000 or later as target system:
+    // Need to define #define _WIN32_WINNT as >= 0x0400 so we can use TryEnterCriticalSection() call for PsychTryLockMutex() implementation.
+    // For Windows Vista+ only features like GetPhysicalCursorPos() we need >= 0x600.
+    // We set WINVER and _WIN32_WINNT to 0x0600, which requires Windows Vista or later as target system:
     // Ok, actually we don't. When building on a modern build system like the new Win-7 build
-    // system -- or pretty much against any SDK since WindowsXP -- the MSVC compiler / platform SDK
-    // already defines WINVER et al. to 0x0500 or later, e.g., to Win-7 on the Win-7 system.
-    // That means we'd only need these defines on pre-WinXP build systems, which we no longer
-    // support. We now just have to be careful to not use post-WinXP functionality.
+    // system the MSVC compiler / platform SDK should already define WINVER et al. to 0x0600 or later,
+    // e.g., to Win-7 on the Win-7 system.
+    // That means we'd only need these defines on pre-Win7 build systems, which we no longer
+    // support. We now just have to be careful to not use post-Win7 functionality.
     // We comment these defines out and trust the platform SDK / compiler,
     // but leave them here for quick WinXP backwards compatibility testing.
     #if 0
-        #define _WIN32_WINNT 0x0500
-        #define WINVER       0x0500
+        #define _WIN32_WINNT 0x0600
+        #define WINVER       0x0600
     #endif // Conditional enable.
 
     // Master include for windows header file:

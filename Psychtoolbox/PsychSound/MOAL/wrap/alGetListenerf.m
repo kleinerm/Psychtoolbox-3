@@ -9,13 +9,14 @@ function value = alGetListenerf( param )
 % 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
-if nargin~=1,
+if nargin~=1
     error('invalid number of arguments');
 end
 
-value = single(0);
-
+value = single([0,0]);
 moalcore( 'alGetListenerf', param, value );
+value = value(1);
 
 return

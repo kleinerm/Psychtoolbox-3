@@ -28,7 +28,8 @@
 
 #define __STDC_LIMIT_MACROS 1
 
-// For pthread_setname_np() definition and various other needs:
+// For pthread_setname_np() definition and various other needs, e.g.,
+// dlsym() RTLD_DEFAULT definition:
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE 1
 #endif

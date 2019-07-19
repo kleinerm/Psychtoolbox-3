@@ -292,7 +292,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     int skip_synctests;
     int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
     int conserveVRAM = PsychPrefStateGet_ConserveVRAM();
-    GLboolean isFloatBuffer;
+    GLboolean isFloatBuffer = FALSE;
     GLint bpc;
     double maxStddev, maxDeviation, maxDuration;    // Sync thresholds and settings...
     int minSamples;
@@ -617,9 +617,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     if (((((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33) || ((*windowRecord)->depth == 48)) && !((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) ||
         ((*windowRecord)->depth == 32) || ((*windowRecord)->depth == 64) || ((*windowRecord)->depth == 128)) {
 
-        // Floating point framebuffer active? GL_RGBA_FLOAT_MODE_ARB would be a viable alternative?
+        // Floating point framebuffer active?
         isFloatBuffer = FALSE;
-        glGetBooleanv(GL_COLOR_FLOAT_APPLE, &isFloatBuffer);
+        glGetBooleanv(GL_RGBA_FLOAT_MODE_ARB, &isFloatBuffer);
         if (isFloatBuffer) {
             if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Floating point precision framebuffer enabled.\n");
         }
@@ -674,7 +674,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
         // Make sure user usercode got what it wanted: Warn if it didn't get what it wanted. 32 bpp is an exception, as
         // it is used by old crufty ptb scripts, but not to request a > 8 bpc fb, so omit 32 bpp.
-        if ((bpc * 3 < (*windowRecord)->depth) && ((*windowRecord)->depth != 32) && (PsychPrefStateGet_Verbosity() > 1)) {
+        if (!isFloatBuffer && (bpc * 3 < (*windowRecord)->depth) && ((*windowRecord)->depth != 32) && (PsychPrefStateGet_Verbosity() > 1)) {
             printf("PTB-WARNING: Real color resolution of the GPU framebuffer of %i bits per RGB component is *lower* than the desired %i bits, at a requested pixelsize of %i bpp!\n",
                    bpc, (*windowRecord)->depth / 3, (*windowRecord)->depth);
         }

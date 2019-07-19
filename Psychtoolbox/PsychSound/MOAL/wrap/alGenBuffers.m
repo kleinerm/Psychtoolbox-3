@@ -11,12 +11,11 @@ function buffers = alGenBuffers( n )
 % ---allocate---
 % ---protected---
 
-if nargin~=1,
+if nargin~=1
     error('invalid number of arguments');
 end
 
-buffers = uint32(zeros(n,1));
-
+buffers = uint32(zeros(1,n+1));
 moalcore( 'alGenBuffers', n, buffers );
-
+buffers = buffers(1:end-1);
 return

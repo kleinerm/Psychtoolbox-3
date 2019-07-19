@@ -29,14 +29,16 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 % 'valuators' is a vector with one double value per axis on Linux. On OSX the
 % first two entries will return info about relative mouse movement (deltaX,
 % deltaY) since last query, as reported by the OS with unknown reliability in
-% unknown units, but probably pixels - use with caution! On MS-Windows, valuator
-% is an empty matrix.
+% unknown units, but probably pixels - use with caution! On MS-Windows, the first
+% two entries will return info about "physical" mouse cursor position (PhysicalX,
+% PhysicalY), as reported by the OS Win32 api function GetPhysicalCursorPos()
+% with unknown reliability in unknown units, so use caution!
 %
 % The optional 'valinfo' struct array contains one struct per valuator.
 % The struct contains fields with info about a valuator, e.g., minimum
-% and maximum value, resolution and a label. This is only supported on Linux.
-% On other systems it is an empty matrix, except on OSX where it reports
-% marginally useful info.
+% and maximum value, resolution and a label. This is only fully supported on
+% Linux. On Windows and OSX it reports marginally useful info, e.g., the 'label'
+% with some info about the content of the corresponding valuator.
 %
 %
 % % Test if any mouse button is pressed. 
@@ -152,6 +154,7 @@ function [x,y,buttons,focus,valuators,valinfo] = GetMouse(windowPtrOrScreenNumbe
 % 01/08/15 mk   Add initial Wayland support.
 % 07/20/15 mk   Add support for valuators/valuatorinfo on OSX.
 % 02/25/17 mk   Fix window relative coordinates for Linux on multi-X-screen or Wayland.
+% 07/16/19 mk   Add support for valuators/valuatorinfo on MS-Windows.
 
 % We Cache the value of numMouseButtons between calls to GetMouse, so we
 % can skip the *very time-consuming* detection code on successive calls.
@@ -210,7 +213,7 @@ if doNoOp
 end
 
 % Read the mouse position and  buttons:
-if (nargout >= 6) && ~IsWin
+if nargout >= 6
     % Get optional valinfo:
     [globalX, globalY, rawButtons, focus, valuators, valinfo] = Screen('GetMouseHelper', numMouseButtons, windowPtrOrScreenNumber, mouseDev);
 else

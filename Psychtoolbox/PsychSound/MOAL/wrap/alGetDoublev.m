@@ -9,13 +9,15 @@ function data = alGetDoublev( param )
 % 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
+% ---skip---
 
 if nargin~=1,
     error('invalid number of arguments');
 end
 
-data = double(0);
-
+data = double(NaN(6,1));
 moalcore( 'alGetDoublev', param, data );
+data = data(find(~isnan(data))); %#ok<FNDSB>
 
 return

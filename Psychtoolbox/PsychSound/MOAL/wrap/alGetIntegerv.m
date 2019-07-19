@@ -9,13 +9,15 @@ function data = alGetIntegerv( param )
 % 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
+% ---skip---
 
-if nargin~=1,
+if nargin~=1
     error('invalid number of arguments');
 end
 
-data = int32(0);
-
+data = int32(repmat(intmax,[ 32 1 ]));
 moalcore( 'alGetIntegerv', param, data );
+data = data(find(data~=intmax));
 
 return

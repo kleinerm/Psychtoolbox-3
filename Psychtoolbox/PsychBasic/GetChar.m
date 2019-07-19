@@ -87,7 +87,7 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % ---> If precise timing of the keypress is important, use KbCheck or
 % KbWait or KbQueueXXX functions or KbEventGet for consistent results!
 %
-% OS X / Windows-XP / Linux with Matlab and Java enabled: _________________
+% OS X / Windows-XP / Linux (non-KDE desktop GUI) with Matlab and Java enabled:
 %
 % JAVA PATH: The GetChar implementation for Matlab is based on Java.
 % Therefore, the Psychtoolbox subfolder PsychJava must be added to Matlabs
@@ -122,50 +122,51 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % See also: ListenChar, CharAvail, FlushEvents, GetCharTest, KbCheck,
 % KbWait
 
-% 5/7/96  dgp	Wrote this help file.
-% 1/22/97 dhb	Added comment and pointer to TIMER routines.
-% 3/6/97  dhb	References to KbWait, KbCheck.
-% 7/23/97 dgp	It's a character not a keypress.
-% 8/2/97  dgp	Explain difference between key and character. See KbCheck.
-% 2/7/98  dgp	Streamlined. Eliminated call to GetKey, since it's now GetChar.mex.
-% 3/24/98 dgp	Explain backgrounding and meta keys. Don't mention obsolete GetKey and KbHit.
-% 3/15/99 xmz	Put in some comment for Windows version.
-% 3/19/99 dgp	Update explanation of backgrounding. 
-% 3/28/99 dgp	Show how to turn off backgrounding. 
-% 8/19/00 dgp	Cosmetic. 
-% 4/23/02 dgp   Fixed GetChar.mex to always quit on command-period.
-% 4/27/02 dgp	Added optional second return argument.
-% 6/1/02  dgp	Mention Tick0Secs.
-% 9/21/02 dgp   Added address field to "when", using C code donated by Tom Busey.
-% 7/12/04 awi   ****** OS X-specific fork from the OS 9 version *******
+% 5/7/96  dgp Wrote this help file.
+% 1/22/97 dhb Added comment and pointer to TIMER routines.
+% 3/6/97  dhb References to KbWait, KbCheck.
+% 7/23/97 dgp It's a character not a keypress.
+% 8/2/97  dgp Explain difference between key and character. See KbCheck.
+% 2/7/98  dgp Streamlined. Eliminated call to GetKey, since it's now GetChar.mex.
+% 3/24/98 dgp Explain backgrounding and meta keys. Don't mention obsolete GetKey and KbHit.
+% 3/15/99 xmz Put in some comment for Windows version.
+% 3/19/99 dgp Update explanation of backgrounding. 
+% 3/28/99 dgp Show how to turn off backgrounding. 
+% 8/19/00 dgp Cosmetic. 
+% 4/23/02 dgp Fixed GetChar.mex to always quit on command-period.
+% 4/27/02 dgp Added optional second return argument.
+% 6/1/02  dgp Mention Tick0Secs.
+% 9/21/02 dgp Added address field to "when", using C code donated by Tom Busey.
+% 7/12/04 awi ****** OS X-specific fork from the OS 9 version *******
 %                   Expanded on explantion in the first paragraph about when
 %                   GetChar waits, when it returns immediatly, what
 %                   it ignores.  Retains OS 9-specific comments.    
-% 1/27/04 awi   Issue an error when calling GetChar and suggest KbWait. 
-% 1/19/05 awi   Implemented GetChar on OS X.  Added AssertMex for OS 9 and OS X conditional block.
-% 7/20/05 awi   Wrote OS X documentation section.
-% 2/2/06  awi   Tested to see if this works when the MATLAB text editing
-%               window is minimized. It does not.
-% 2/22/06 awi  Commented out Cocoa wrapper and wrote Java wrapper.
-% 3/28/06 awi  Detect buffer overflow.
-%              Handle new double value from .getChar(), was char type.
-%              Changed "char" return value to "ch" to avoid name conflict with
-%               built-in MATLAB function "char" 
-% 6/15/06 awi  Added a second return argument.
-%              Updated built-in help for the Java implementation.
-% 6/15/06 awi  Added break on CTRL-C
-%              Added TO DO section and item to detect genuine KeyDown
-%              events.
-% 6/20/06 awi  Use AddPsychJavaPath instead of AssertGetCharJava.
-% 8/16/06 cgb  Now using the new GetChar system which taps straight into
-%              the java keypress dispatcher.
-% 9/18/06  mk  GetChar now works on all Matlabs (OS-X, Windows) in JVM
-%              mode. In -nojvm mode on Windows, it falls back to the old
-%              Windows DLL ...
+% 1/27/04 awi Issue an error when calling GetChar and suggest KbWait. 
+% 1/19/05 awi Implemented GetChar on OS X.  Added AssertMex for OS 9 and OS X conditional block.
+% 7/20/05 awi Wrote OS X documentation section.
+% 2/2/06  awi Tested to see if this works when the MATLAB text editing
+%             window is minimized. It does not.
+% 2/22/06 awi Commented out Cocoa wrapper and wrote Java wrapper.
+% 3/28/06 awi Detect buffer overflow.
+%             Handle new double value from .getChar(), was char type.
+%             Changed "char" return value to "ch" to avoid name conflict with
+%             built-in MATLAB function "char" 
+% 6/15/06 awi Added a second return argument.
+%             Updated built-in help for the Java implementation.
+% 6/15/06 awi Added break on CTRL-C
+%             Added TO DO section and item to detect genuine KeyDown
+%             events.
+% 6/20/06 awi Use AddPsychJavaPath instead of AssertGetCharJava.
+% 8/16/06 cgb Now using the new GetChar system which taps straight into
+%             the java keypress dispatcher.
+% 9/18/06  mk GetChar now works on all Matlabs (OS-X, Windows) in JVM
+%             mode. In -nojvm mode on Windows, it falls back to the old
+%             Windows DLL ...
 %
-% 05/31/09 mk  Add support for Octave and Matlab in noJVM mode.
-% 10/22/12 mk  Remove support for legacy Matlab R11 GetCharNoJVM.dll.
-% 10/22/12 mk  Add support for KbQueue-Based implementation.
+% 05/31/09 mk Add support for Octave and Matlab in noJVM mode.
+% 10/22/12 mk Remove support for legacy Matlab R11 GetCharNoJVM.dll.
+% 10/22/12 mk Add support for KbQueue-Based implementation.
+% 06/20/19 mk Try to protect against KDE focus stealing nastyness via kbqueues.
 
 % NOTES:
 %
@@ -192,8 +193,8 @@ elseif nargin == 1
     getRawCode = 0;
 end
 
-% Is this Matlab? Is the JVM running? Isn't this Windows Vista or later?
-if psychusejava('desktop') && ~IsWinVista
+% Is this Matlab? Is the JVM running? Isn't this Windows Vista or later? Isn't the Linux KDE GUI active?
+if psychusejava('desktop') && ~IsWinVista && isempty(getenv('KDE_FULL_SESSION'))
     % Java virtual machine and AWT and Desktop are running. Use our Java based
     % GetChar.
 

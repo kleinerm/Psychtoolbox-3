@@ -9,13 +9,15 @@ function values = alGetListeneriv( param )
 % 27-Mar-2011 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
+% ---skip---
 
-if nargin~=1,
+if nargin~=1
     error('invalid number of arguments');
 end
 
-values = int32(0);
-
+values = int32(repmat(intmax,[ 32 1 ]));
 moalcore( 'alGetListeneriv', param, values );
+values = values(find(values~=intmax));
 
 return

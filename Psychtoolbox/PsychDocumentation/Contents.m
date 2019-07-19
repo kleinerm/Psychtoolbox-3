@@ -21,6 +21,8 @@
 % HybridGraphics         - The state of hybrid graphics laptop support and
 %                          how to use them with proper timing.
 %
+% LinuxGameMode          - How to setup Linux performance optimizations via "GameMode".
+%
 % Oculus_Health_and_Safety_Warnings.pdf - Info about how to use the Oculus
 %                          VR virtual reality headsets safely.
 %

@@ -1300,7 +1300,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
     }
 
     // Try IIDC-1394 Cameras:
-    PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "camera-number", "", 1);
+    PsychGSEnumerateVideoSourceType("dc1394src", 7, "1394-IIDC", "unit", "", 1);
 
     // Try GeniCam-Cameras via aravis plugin:
     PsychGSEnumerateVideoSourceType("aravissrc", 8, "GeniCam-Aravis", "camera-name", "", 0);
@@ -2835,7 +2835,8 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
 
             // If no "AudioSource=" was provided then configure for appsrc feeding
             // from Screen('AddAudioBufferToMovie') into movie:
-            if (strlen(audiosrc) == 0) sprintf(audiosrc, "appsrc name=ptbaudioappsrc format=3 do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"audio/x-raw, format=F32LE, channels=(int)%i, rate=(int)%i\" ! audioresample ! audioconvert ! queue", nrAudioChannels, audioFreq);
+            if (strlen(audiosrc) == 0)
+                sprintf(audiosrc, "appsrc name=ptbaudioappsrc format=3 do-timestamp=0 stream-type=0 max-bytes=0 block=1 is-live=0 emit-signals=0 ! capsfilter caps=\"audio/x-raw, format=F32LE, layout=interleaved, channels=(int)%i, rate=(int)%i\" ! audioresample ! audioconvert ! queue", nrAudioChannels, audioFreq);
 
             // We add bits to feed from 'audiosrc' into 'audiocodec' into the common muxer of video and audio stream:
             sprintf(outCodecName, " %s ! ptbvideomuxer0. %s ! %s ! ptbvideomuxer0. %s name=ptbvideomuxer0 ", videocodec, audiosrc, audiocodec, muxer);

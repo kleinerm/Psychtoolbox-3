@@ -63,6 +63,7 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % 10/28/15 mk  32-Bit Octave-4 support for MS-Windows reestablished.
 % 04/01/16 mk  64-Bit Octave-4 support for MS-Windows established.
 % 06/01/16 mk  32-Bit Octave-4 support for MS-Windows removed.
+% 06/01/19 mk  Give automated hint about updated svn client under Matlab.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -146,6 +147,7 @@ end
 IsWin = ~isempty(strfind(computer, 'PCWIN')) || ~isempty(strfind(computer, '-w64-mingw32'));
 IsOSX = ~isempty(strfind(computer, 'MAC')) || ~isempty(strfind(computer, 'apple-darwin'));
 IsLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(strfind(computer, 'linux-gnu'));
+IsOctave = isempty (ver('matlab'));
 
 if ~IsWin && ~IsOSX && ~IsLinux
     os = computer;
@@ -184,18 +186,35 @@ fprintf('About to update your working copy of the OpenGL-based Psychtoolbox-3.\n
 updatecommand=[svnpath 'svn update '  targetRevision ' ' strcat('"',targetdirectory,'"') ];
 fprintf('Will execute the following update command:\n');
 fprintf('%s\n', updatecommand);
-if IsOSX || IsLinux
-    err=system(updatecommand);
-    result = 'For reason, see output above.';
+
+if IsOctave
+    % Octave's system() command (and its dos() and unix() wrappers around system())
+    % does not print any live output from the checkoutcommand if return of the 'result'
+    % string is requested. We want some live feedback, so users get some feeling of
+    % download progress and don't get confused if the thing is just sitting there for
+    % minutes without giving feedback. Therefore don't request 'result':
+    err = system(updatecommand);
+    result = 'For reasons and troubleshooting, read the output above and all followup messages!';
 else
-    % MK: TODO: Check if this is still needed on >= R2007a on Windows?
-    % I think it was only for R11 on Windows.
-    [err, result]=dos(updatecommand, '-echo');
+    % Matlab's system() command can provide live feedback from 'checkoutcommand'
+    % during svn checkout and return the same output in 'result' at the end, so
+    % we can get 'result' for parsing:
+    [err, result] = system(updatecommand, '-echo');
 end
 
 if err
-    fprintf('Sorry. The update command failed:\n');
+    fprintf('Sorry. The update command failed with error code %d:\n', err);
     fprintf('%s\n', result);
+
+    if IsOctave
+        fprintf('If the error output above contains the text ''SSL handshake failed: SSL error: tlsv1 alert protocol version''\n');
+        fprintf('then your svn command line client is too old. Install a more recent Subversion command line client.\n');
+    else
+        if ~isempty(strfind(result, 'tlsv1 alert protocol version'))
+            fprintf('Seems your svn command line client is too old. Install a more recent Subversion command line client.\n');
+        end
+    end
+
     error('Update failed.');
 end
 fprintf('Success!\n\n');
