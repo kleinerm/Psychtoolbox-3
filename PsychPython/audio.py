@@ -85,14 +85,21 @@ def tune_engine(yield_interval, mutex_enable, lock_to_core1,
 
 
 class Stream():
-    def __init__(self, deviceid, mode, reqlatencyclass, freq, channels,
-                 buffersize=None, suggested_latency=None, selectchannels=None,
+    """
+    Creates a Psychtoolbox Stream with the given settings.
+    See also http://psychtoolbox.org/docs/PsychPortAudio-Open
+    """
+    def __init__(self, device_id=[], mode=[], latency_class=[0],
+                 freq=48000, channels=2,
+                 buffer_size=[], suggested_latency=[], select_channels=[],
                  flags=0):
-        self.handle = PsychPortAudio('Open', deviceid, mode,
-                                     reqlatencyclass,
-                                     freq, channels, buffersize,
-                                     suggested_latency, selectchannels,
+        # PsychPortAudio('Open', [], [], [0], Fs, 2);
+        self.handle = PsychPortAudio('Open', device_id, mode,
+                                     latency_class,
+                                     freq, channels, buffer_size,
+                                     suggested_latency, select_channels,
                                      flags)
+        self._closed=False
         atexit.register(self.close)
 
     def start(self, repetitions=1, when=0, wait_for_start=0,
@@ -126,8 +133,11 @@ class Stream():
 
     def close(self):
         """Close the current stream"""
+        if self._closed: # if we're already closed don't try again
+            return
         try:
             PsychPortAudio('Close', self.handle)
+            self._closed = True
         except Exception as err:
             if "Invalid audio device handle" in str(err):
                 # this most likely means the stream is closed already
@@ -144,6 +154,8 @@ class Stream():
     @property
     def status(self):
         """The status of this portaudio stream"""
+        if self._closed:
+            return -1
         return PsychPortAudio('GetStatus', self.handle)
 
     @property
@@ -225,6 +237,9 @@ class Stream():
 
 
 class Buffer():
+    """A buffer allows us to pre-fill a Stream or a Slave with data ready
+    to be played. It can be created and filled in a single operation or can
+    be created and then filled in two steps."""
     def __init__(self, stream, data=None):
         self.stream = stream
         if data is None:
@@ -235,5 +250,41 @@ class Buffer():
                                          data)
 
     def fill_buffer(self, data, streaming=0, startIndex='append'):
+        """Fill a buffer that has already been created"""
         return PsychPortAudio('FillBuffer', self.stream.handle,
                               data, streaming, startIndex)
+
+
+
+class Slave(Stream):
+    """In PsychPortAudio, a slave is a virtual stream, that has the same
+    properties as Stream but multiple Slaves can be combined in a single
+    Stream. In this sense slaves are like tracks that can have their own
+    buffers and present a sound each that will be mixed by PsychPortAudio.
+
+    Note that the master Stream set up for the Slave must have been created
+    with mode=8
+    """
+    def __init__(self, stream, mode=[1], data=None,
+                 channels=None, select_channels=None,
+                 volume=None,
+                 ):
+        """
+
+        Parameters
+        ----------
+        stream
+        mode
+        data
+        channels
+        select_channels
+        """
+        self._closed=False
+        self.handle = PsychPortAudio('OpenSlave',
+                                     stream, mode, channels, select_channels)
+        atexit.register(self.close)
+        if volume is not None:
+            PsychPortAudio('Volume', self.handle, volume)
+        if data is not None:
+            self.fill_buffer(data)
+

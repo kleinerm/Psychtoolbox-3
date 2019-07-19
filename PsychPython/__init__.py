@@ -10,8 +10,12 @@
 # Copyright (c) 2018 Mario Kleiner. Licensed under MIT license.
 #
 
+from _version import __version__
 import sys
 is_64bits = sys.maxsize > 2**32
+
+
+
 
 # Import all PTB modules already ported to Python extension modules:
 # Extract their "main" function, which is named just like the module,

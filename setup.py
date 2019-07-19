@@ -11,7 +11,20 @@ import sys                                  # cpu arch detection.
 import numpy                                # To get include dir on macOS.
 
 is_64bits = sys.maxsize > 2**32
-version = '3.0.15a2'
+
+# unified version number, read from simple text file
+def get_version():
+    import re
+    VERSIONFILE="PsychPython/_version.py"
+    verstrline = open(VERSIONFILE, "rt").read()
+    VSRE = r"^__version__ = ['\"]([^'\"]*)['\"]"
+    mo = re.search(VSRE, verstrline, re.M)
+    if mo:
+        verstr = mo.group(1)
+    else:
+        raise RuntimeError("Unable to find version string in %s." % (VERSIONFILE,))
+    return verstr
+version = get_version()
 
 def get_sourcefiles(path):
     sources = []
