@@ -451,26 +451,14 @@ int PsychEyelinkCallRuntime(int cmd, int x, int y, char* msg)
 		inputs[1] = NULL;
 	}
 	
-	// Call the runtime environment, on Matlab with the trap flag set, so control
-	// returns to us on error, instead of returning to Matlab runtime system. Eyelink
-	// runtime system doesn't like losing control and would crash otherwise!
-	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-		mexSetTrapFlag(1);
-	#endif
-	
 	// Call the runtime environment:
-	if ((retc = mexCallMATLAB((cmd == 2) ? 1 : 0, outputs, (inputs[1]) ? 2 : 1, inputs, eyelinkDisplayCallbackFunc)) > 0) {
+	if ((retc = Psych_mexCallMATLAB((cmd == 2) ? 1 : 0, outputs, (inputs[1]) ? 2 : 1, inputs, eyelinkDisplayCallbackFunc)) > 0) {
 		printf("EYELINK: WARNING! PsychEyelinkCallRuntime() Failed to call eyelink runtime callback function %s [rc = %i]!\n", eyelinkDisplayCallbackFunc, retc);
 		printf("EYELINK: WARNING! Make sure that function is on your Matlab/Octave path and properly initialized.\n");
 		printf("EYELINK: WARNING! May also be an error during execution of that function. Type ple at command prompt for error messages.\n");
 		printf("EYELINK: WARNING! Auto-Disabling all callbacks to the runtime environment for safety reasons.\n");
 		eyelinkDisplayCallbackFunc[0] = 0;
 	}
-
-	// Reset error handling to default on Matlab:
-	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-		mexSetTrapFlag(0);
-	#endif
 
 	// Release our matrix again:
 	mxDestroyArray(inputs[0]);
@@ -1129,18 +1117,8 @@ void getMouseState(CrossHairInfo *chi, int *rx, int *ry, int *rstate)
 	callargs    = mxGetPr(inputs[0]);
 	
 	callargs[0] = 16; // 16 == Command code for mouse button event	
-
-	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-		mexSetTrapFlag(1);
-	#endif
 	
-	mexCallMATLAB(1, outputs, 1, inputs, eyelinkDisplayCallbackFunc);
-
-	
-	// Reset error handling to default on Matlab:
-	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-		mexSetTrapFlag(0);
-	#endif
+	Psych_mexCallMATLAB(1, outputs, 1, inputs, eyelinkDisplayCallbackFunc);
 	
 	outputargs = mxGetData(outputs[0]);
 	for (i=0;i<7;i++){
@@ -1340,14 +1318,7 @@ static void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT
 			callargs[2] = eyewidth;
 			callargs[3] = eyeheight;
 
-			// Call the runtime environment, on Matlab with the trap flag set, so control
-			// returns to us on error, instead of returning to Matlab runtime system. Eyelink
-			// runtime system doesn't like losing control and would crash otherwise!
-			#if PSYCH_LANGUAGE == PSYCH_MATLAB
-				mexSetTrapFlag(1);
-			#endif
-			
-			rc = mexCallMATLAB(0, outputs, 1, inputs, eyelinkDisplayCallbackFunc);
+			rc = Psych_mexCallMATLAB(0, outputs, 1, inputs, eyelinkDisplayCallbackFunc);
 			if(rc) {
 				printf("EYELINK: WARNING! Failed to call eyelink camera image display callback function %s [rc=%i]!\n", eyelinkDisplayCallbackFunc, rc);
 				printf("EYELINK: WARNING! Make sure that function is on your Matlab/Octave path and properly initialized.\n");
@@ -1355,11 +1326,6 @@ static void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT
 				printf("EYELINK: WARNING! Auto-Disabling all callbacks to the runtime environment for safety reasons.\n");
 				eyelinkDisplayCallbackFunc[0] = 0;
 			}
-
-			// Reset error handling to default on Matlab:
-			#if PSYCH_LANGUAGE == PSYCH_MATLAB
-				mexSetTrapFlag(0);
-			#endif
 
 			// Release our matrix again:
 			mxDestroyArray(inputs[0]);

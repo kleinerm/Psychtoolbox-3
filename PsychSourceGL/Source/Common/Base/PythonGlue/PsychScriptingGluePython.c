@@ -2880,7 +2880,7 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
 /*
     static psych_bool   firstTime = TRUE;
     char*               myPathvarChar = NULL;
-    PyObject             *plhs[1]; // Capture the runtime result of PsychtoolboxRoot/ConfigDir
+    PyObject            *plhs[1]; // Capture the runtime result of PsychtoolboxRoot/ConfigDir
 
     if (firstTime) {
         // Reset firstTime flag:
@@ -2890,15 +2890,9 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
         psychtoolboxRootPath[0] = 0;
         psychtoolboxConfigPath[0] = 0;
 
-        // We could have used mexCallMATLABWithTrap below, but Octave doesn't support it.
-        // Unfortunately, MATLAB plans to deprecate mexSetTrapFlag in lieu of *WithTrap, so
-        // we'll need to patch Octave or make some sort of wrapper function in here.
-
         // Call into runtime to get the path to the root folder: This will return 0 on success.
-        // A non-zero return value probably means that the script wasn't in the path. When that
-        // happens, there will be an error in the command window, but control stays with the mex
-        // file (thanks to mexSetTrapFlag(1) above) and it'll continue to run.
-        if (0 == mexCallMATLAB(1, plhs, 0, NULL, "PsychtoolboxRoot")) {
+        // A non-zero return value probably means that the script wasn't in the path.
+        if (0 == Psych_mexCallMATLAB(1, plhs, 0, NULL, "PsychtoolboxRoot")) {
             myPathvarChar = mxArrayToString(plhs[0]);
             if (myPathvarChar) {
                 strncpy(psychtoolboxRootPath, myPathvarChar, FILENAME_MAX);
@@ -2911,7 +2905,7 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
         // or an empty string signalling failure to get the path.
 
         // Same game again for PsychtoolboxConfigDir:
-        if (0 == mexCallMATLAB(1, plhs, 0, NULL, "PsychtoolboxConfigDir")) {
+        if (0 == Psych_mexCallMATLAB(1, plhs, 0, NULL, "PsychtoolboxConfigDir")) {
             myPathvarChar = mxArrayToString(plhs[0]);
             if (myPathvarChar) {
                 strncpy(psychtoolboxConfigPath, myPathvarChar, FILENAME_MAX);
