@@ -102,7 +102,7 @@ if mode == 11
     curdir = pwd;
     cd('../../Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/')
     try
-        mex -O -g -v CFLAGS='$CFLAGS -fPIC -fexceptions -pthread' -largeArrayDims pnet.c
+        mex -O -g -v CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -largeArrayDims pnet.c
     catch
     end
     unix(['mv ./pnet.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
