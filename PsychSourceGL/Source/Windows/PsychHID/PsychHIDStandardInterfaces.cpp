@@ -52,6 +52,9 @@ static  double* psychHIDKbQueueFirstRelease[PSYCH_HID_MAX_DEVICES];
 static  double* psychHIDKbQueueLastPress[PSYCH_HID_MAX_DEVICES];
 static  double* psychHIDKbQueueLastRelease[PSYCH_HID_MAX_DEVICES];
 static  int*    psychHIDKbQueueScanKeys[PSYCH_HID_MAX_DEVICES];
+static  int     psychHIDKbQueueNumValuators[PSYCH_HID_MAX_DEVICES];
+static  unsigned int psychHIDKbQueueFlags[PSYCH_HID_MAX_DEVICES];
+static  PsychHIDEventRecord psychHIDKbQueueOldEvent[PSYCH_HID_MAX_DEVICES];
 static  psych_bool psychHIDKbQueueActive[PSYCH_HID_MAX_DEVICES];
 static  psych_mutex KbQueueMutex;
 static  psych_condition KbQueueCondition;
@@ -119,6 +122,9 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     memset(&psychHIDKbQueueLastRelease[0], 0, sizeof(psychHIDKbQueueLastRelease));
     memset(&psychHIDKbQueueActive[0], 0, sizeof(psychHIDKbQueueActive));
     memset(&psychHIDKbQueueScanKeys[0], 0, sizeof(psychHIDKbQueueScanKeys));
+    memset(&psychHIDKbQueueNumValuators[0], 0, sizeof(psychHIDKbQueueNumValuators));
+    memset(&psychHIDKbQueueOldEvent[0], 0, sizeof(psychHIDKbQueueOldEvent));
+    memset(&psychHIDKbQueueFlags[0], 0, sizeof(psychHIDKbQueueFlags));
 
     // We need the module instance handle of ourselves, ie., the PsychHID mex file to
     // open a DirectInput-8 interface, so the OS can apply backwards compatibility fixes
@@ -648,6 +654,12 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
     WORD asciiValue[2];
     UCHAR keyboardState[256];
     int nChar;
+    int numValuators;
+    unsigned int screen_width, screen_height;
+    POINT point;
+
+    screen_width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    screen_height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
     while (1) {
         // Single pass or multi-pass?
@@ -673,6 +685,9 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
             if (!psychHIDKbQueueActive[i])
                 continue;
 
+            // Clamp numValuators to the max 3 axis a mouse can have for now:
+            numValuators = psychHIDKbQueueNumValuators[i] <= 3 ? psychHIDKbQueueNumValuators[i] : 3;
+
             // Check this device:
             kb = GetXDevice(i);
 
@@ -695,6 +710,7 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 
                 // Init character code to "unmapped": It will stay like that for anything but real keyboards:
                 evt.cookedEventCode = -1;
+                evt.type = 0;
 
                 // Map to key code and key state:
                 keycode = event.dwOfs & 0xff;
@@ -754,10 +770,91 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 
                     case DI8DEVTYPE_MOUSE:
                     case DI8DEVTYPE_SCREENPOINTER:
-                        // Button event? Otherwise skip it.
-                        if (keycode < 3 * sizeof(LONG)) continue;
+                        // Button event?
+                        if (keycode < 3 * sizeof(LONG)) {
+                            // No, some mouse axis update info. Does usercode want this returned?
+                            if ((numValuators >= 2) && (keycode < numValuators * sizeof(LONG))) {
+                                // Yes. Map to proper valuator and inject:
 
-                        // Correct for buttons offset in data structure DIMOUSESTATE2:
+                                // Type is a pointer or axis motion event:
+                                evt.type = 1;
+
+                                // Motion event:
+                                evt.status |= (1 << 1);
+
+                                // Store absolute cursor position: This can be inaccurate if we
+                                // can't operate and fetch events at device update frequency, ie.
+                                // there's lag - and thereby positional skew - between the true
+                                // but unknown cursor position at event creation time (by OS) and
+                                // our event dequeue time, when we sample current cursor position.
+                                // Linux provides true cursor pos, so Linux is more accurate under
+                                // load:
+                                GetCursorPos(&point);
+                                evt.X = (float) point.x;
+                                evt.Y = (float) point.y;
+
+                                // Provide cursor position also in normalized desktop coordinates:
+                                evt.normX = evt.X / screen_width;
+                                evt.normY = evt.Y / screen_height;
+
+                                // We always report all supported valuators:
+                                evt.numValuators = numValuators;
+
+                                // Raw or cooked reporting?
+                                if (psychHIDKbQueueFlags[i] & 0x4) {
+                                    // Raw motion reporting requested. On our Linux/X11 implementation,
+                                    // raw mode reports mouse movement deltas (dx,dy) without pointer
+                                    // acceleration/ballistics etc. applied. On Windows, the OS events
+                                    // always report the same data (deltas without pointer acceleration),
+                                    // so for close compatibility we simply leave all not-updated values
+                                    // at zero, and directly copy the one updated/reported value. However,
+                                    // while the behaviour matches Linux "in spirit", the units of motion
+                                    // can be very different.
+                                    evt.valuators[keycode / sizeof(LONG)] = (float) ((int) event.dwData);
+                                }
+                                else {
+                                    // "Cooked" motion reporting requested. On Linux/X11 this gives
+                                    // absolute axis values, with a device dependent zero-point and
+                                    // resolution, e.g., internally accumulating mouse movement deltas
+                                    // in case of a mouse. Our Windows implementation tries to match
+                                    // the behaviour "in spirit". We accumulate the OS reported deltas
+                                    // ourselves. Our zero-point is defined as mouse position when the
+                                    // keyboard queue was started, ie. it is reset to (0,0,0) then.
+                                    //
+                                    // One crucial difference though: Linux applies pointer acceleration
+                                    // and ballistics to cooked motion data. Our Windows implementation
+                                    // does *not* do this, given it is just an emulation without access
+                                    // to required OS data. It reports in device units, not desktop pixel
+                                    // units!
+                                    evt.valuators[0] = psychHIDKbQueueOldEvent[i].valuators[0];
+                                    evt.valuators[1] = psychHIDKbQueueOldEvent[i].valuators[1];
+                                    evt.valuators[2] = psychHIDKbQueueOldEvent[i].valuators[2];
+                                    evt.valuators[keycode / sizeof(LONG)] += (float) ((int) event.dwData);
+                                }
+
+                                // Update event buffer:
+                                evt.cookedEventCode = -1;
+                                evt.timestamp = tnow;
+                                evt.rawEventCode = 0;
+
+                                PsychHIDAddEventToEventBuffer(i, &evt);
+
+                                // Keep track of last event for above valuator updating:
+                                memcpy(&psychHIDKbQueueOldEvent[i], &evt, sizeof(evt));
+
+                                // Tell waiting userspace (under KbQueueMutex protection for better scheduling) something interesting has changed:
+                                PsychSignalCondition(&KbQueueCondition);
+
+                                // Done with this one:
+                                continue;
+                            }
+                            else {
+                                // No. Skip this event:
+                                continue;
+                            }
+                        }
+
+                        // Button event: Correct for buttons offset in data structure DIMOUSESTATE2:
                         keycode -= 3 * sizeof(LONG);
                     break;
 
@@ -869,9 +966,6 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
         PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
     }
 
-    if (numValuators > 0)
-        PsychErrorExitMsg(PsychError_unimplemented, "Valuators are not supported yet on MS-Windows.");
-
     // Do we finally have a valid keyboard?
     dev = &info[deviceIndex];
 
@@ -896,6 +990,12 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
         // None provided. Enable all keys by default:
         memset(psychHIDKbQueueScanKeys[deviceIndex], 1, 256 * sizeof(int));
     }
+
+    // Store how many valuators we should return at most for this device:
+    psychHIDKbQueueNumValuators[deviceIndex] = numValuators;
+
+    // Store queue specific flags:
+    psychHIDKbQueueFlags[deviceIndex] = flags;
 
     // Create event buffer:
     if (!PsychHIDCreateEventBuffer(deviceIndex, numValuators, numSlots)) {
@@ -1059,6 +1159,7 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     memset(psychHIDKbQueueFirstRelease[deviceIndex] , 0, (256 * sizeof(double)));
     memset(psychHIDKbQueueLastPress[deviceIndex]    , 0, (256 * sizeof(double)));
     memset(psychHIDKbQueueLastRelease[deviceIndex]  , 0, (256 * sizeof(double)));
+    memset(&psychHIDKbQueueOldEvent[deviceIndex], 0, sizeof(psychHIDKbQueueOldEvent[deviceIndex]));
 
     // Setup event mask, so events from our associated xinput device get enqueued in our event queue:
     kb = GetXDevice(deviceIndex);
