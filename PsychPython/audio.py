@@ -53,7 +53,7 @@ def verbosity(level=None):
 
     If no level is provided the current level of verbosity is returned.
     If a new level is provided the old level setting is returned"""
-    oldlevel = PsychPortAudio('Verbosity', level)
+    return PsychPortAudio('Verbosity', level)
 
 
 def get_open_device_count():
@@ -99,6 +99,7 @@ class Stream():
                                      freq, channels, buffer_size,
                                      suggested_latency, select_channels,
                                      flags)
+        self.buffer=None
         self._closed=False
         atexit.register(self.close)
 
@@ -226,11 +227,14 @@ class Stream():
                               secs_allocate, min_secs, max_secs,
                               single_type)
 
-    def fill_buffer(self, data):
+    def fill_buffer(self, data, start_index='append'):
         """Create a new buffer and fill with audio data to be played when
         stream starts"""
-        buffer = Buffer(stream=self, data=data)
-        return buffer
+        if self.buffer:
+            self.buffer.fill_buffer(data=data, start_index=start_index)
+        else:
+            self.buffer = Buffer(stream=self, data=data)
+        return self.buffer
 
     def __del__(self):
         self.close()
@@ -249,10 +253,10 @@ class Buffer():
             self.handle = PsychPortAudio('FillBuffer', self.stream.handle,
                                          data)
 
-    def fill_buffer(self, data, streaming=0, startIndex='append'):
+    def fill_buffer(self, data, streaming=0, start_index='Append'):
         """Fill a buffer that has already been created"""
         return PsychPortAudio('FillBuffer', self.stream.handle,
-                              data, streaming, startIndex)
+                              data, streaming, start_index)
 
 
 
@@ -280,6 +284,7 @@ class Slave(Stream):
         select_channels
         """
         self._closed=False
+        self.buffer = None
         self.handle = PsychPortAudio('OpenSlave',
                                      stream, mode, channels, select_channels)
         atexit.register(self.close)
