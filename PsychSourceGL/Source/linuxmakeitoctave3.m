@@ -86,14 +86,14 @@ end
 
 if mode==1
     % Build GetSecs.mex:
-    mex -v -g --output ../Projects/Linux/build/GetSecs.mex -Wno-date-time -DPTBMODULE_GetSecs -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/GetSecs -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/GetSecs/*.c -lc -lrt 
+    mex -v -g --output ../Projects/Linux/build/GetSecs.mex -Wno-date-time -DPTBMODULE_GetSecs -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/GetSecs -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/GetSecs/*.c -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/GetSecs.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'GetSecs.mex']);
 end
 
 if mode==2
     % Build WaitSecs.mex:
-    mex -v -g --output ../Projects/Linux/build/WaitSecs.mex -Wno-date-time -DPTBMODULE_WaitSecs -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/WaitSecs -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/WaitSecs/*.c -lc -lrt 
+    mex -v -g --output ../Projects/Linux/build/WaitSecs.mex -Wno-date-time -DPTBMODULE_WaitSecs -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/WaitSecs -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/WaitSecs/*.c -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/WaitSecs.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'WaitSecs.mex']);
 end
@@ -107,14 +107,14 @@ end
 
 if mode==4
     % Build Eyelink.mex:
-    mex -v -g --output ../Projects/Linux/build/Eyelink.mex -Wno-date-time -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/Eyelink/*.c -leyelink_core -lc -lrt
+    mex -v -g --output ../Projects/Linux/build/Eyelink.mex -Wno-date-time -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/Eyelink/*.c -leyelink_core -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/Eyelink.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'Eyelink.mex']);
 end
 
 if mode==5
     % Build IOPort.mex:
-    mex -v -g --output ../Projects/Linux/build/IOPort.mex -Wno-date-time -DPTBMODULE_IOPort -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/IOPort -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/IOPort/*.c -lc -lrt
+    mex -v -g --output ../Projects/Linux/build/IOPort.mex -Wno-date-time -DPTBMODULE_IOPort -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/IOPort -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/IOPort/*.c -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/IOPort.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'IOPort.mex']);
 end
@@ -151,7 +151,7 @@ if mode==7
     % Build PsychKinectCore.mex:
     % Official build method: mex -v -g --output ../Projects/Linux/build/PsychKinectCore.mex -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/include/libfreenect -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
     % Test build against libfreenect-0.5 from GitHub repo:
-    mex -v -g --output ../Projects/Linux/build/PsychKinectCore.mex -Wno-date-time -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/local/include/libfreenect -L/usr/local/lib/ -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -lfreenect -lusb-1.0
+    mex -v -g --output ../Projects/Linux/build/PsychKinectCore.mex -Wno-date-time -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -I/usr/local/include/libfreenect -L/usr/local/lib/ -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychKinect/*.c -lc -lrt -ldl -lfreenect -lusb-1.0
     unix(['cp ../Projects/Linux/build/PsychKinectCore.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychKinectCore.mex']);
 end
@@ -179,7 +179,7 @@ end
 
 if mode == 10
     % Build PsychCV
-    mex -v -g --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include  Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a -lglut
+    mex -v -g --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include  Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt -ldl /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a -lglut
     unix(['cp ../Projects/Linux/build/PsychCV.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychCV.mex']);
 end
@@ -211,10 +211,10 @@ if mode==12
         if 0
             % C++ compile hack:
             copyfile('Common/PsychOculusVRCore/PsychOculusVR.c', 'Common/PsychOculusVRCore/PsychOculusVR.cc');
-            mex -v -g --output ../Projects/Linux/build/PsychOculusVRCore.mex -Wno-date-time -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.cc Common/PsychOculusVRCore/RegisterProject.c -lc -lrt /usr/local/lib/libOVR.a
+            mex -v -g --output ../Projects/Linux/build/PsychOculusVRCore.mex -Wno-date-time -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.cc Common/PsychOculusVRCore/RegisterProject.c -lc -lrt -ldl /usr/local/lib/libOVR.a
         else
             % Pure C compile:
-            mex -v -g --output ../Projects/Linux/build/PsychOculusVRCore.mex -Wno-date-time -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.c -lc -lrt /usr/local/lib/libOVR.a
+            mex -v -g --output ../Projects/Linux/build/PsychOculusVRCore.mex -Wno-date-time -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.c -lc -lrt -ldl /usr/local/lib/libOVR.a
         end
     catch
         disp(psychlasterror);
@@ -245,7 +245,7 @@ end
 if mode==14
     % Build PsychOpenHMDVRCore.mex:
     try
-        mex -v -g --output ../Projects/Linux/build/PsychOpenHMDVRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenHMDVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOpenHMDVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOpenHMDVRCore/*.c -lc -lrt -lopenhmd
+        mex -v -g --output ../Projects/Linux/build/PsychOpenHMDVRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenHMDVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOpenHMDVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOpenHMDVRCore/*.c -lc -lrt -ldl -lopenhmd
     catch
         disp(psychlasterror);
     end

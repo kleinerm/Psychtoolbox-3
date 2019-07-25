@@ -33,13 +33,13 @@ end
 
 if mode==1
     % Build GetSecs.mexa64:
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output GetSecs -largeArrayDims -DPTBMODULE_GetSecs -ICommon/Base -ILinux/Base -ICommon/GetSecs -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/GetSecs/*.c" -lc -lrt
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output GetSecs -largeArrayDims -DPTBMODULE_GetSecs -ICommon/Base -ILinux/Base -ICommon/GetSecs -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/GetSecs/*.c" -lc -lrt -ldl
     unix(['mv ../Projects/Linux/build/GetSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 if mode==2
     % Build WaitSecs.mexa64:
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output WaitSecs -largeArrayDims -DPTBMODULE_WaitSecs -ICommon/Base -ILinux/Base -ICommon/WaitSecs -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/WaitSecs/*.c" -lc -lrt 
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output WaitSecs -largeArrayDims -DPTBMODULE_WaitSecs -ICommon/Base -ILinux/Base -ICommon/WaitSecs -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/WaitSecs/*.c" -lc -lrt -ldl
     unix(['mv ../Projects/Linux/build/WaitSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
@@ -51,13 +51,13 @@ end
 
 if mode==4
     % Build Eyelink.mexa64:
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output Eyelink -largeArrayDims -DPTBMODULE_Eyelink -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c" -leyelink_core -lc -lrt
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output Eyelink -largeArrayDims -DPTBMODULE_Eyelink -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c" -leyelink_core -lc -lrt -ldl
     unix(['mv ../Projects/Linux/build/Eyelink.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 if mode==5
     % Build IOPort.mexa64:
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output IOPort -largeArrayDims -DPTBMODULE_IOPort -ICommon/Base -ILinux/Base -ICommon/IOPort -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/IOPort/*.c" -lc -lrt
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output IOPort -largeArrayDims -DPTBMODULE_IOPort -ICommon/Base -ILinux/Base -ICommon/IOPort -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/IOPort/*.c" -lc -lrt -ldl
     unix(['mv ../Projects/Linux/build/IOPort.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
@@ -75,7 +75,7 @@ end
 
 if mode==7
     % Build PsychKinectCore.mexa64:
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output PsychKinectCore -largeArrayDims -DPTBMODULE_PsychKinectCore -I/usr/include/libusb-1.0 -I/usr/local/include/libfreenect -L/usr/local/lib -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -lc -lrt -lfreenect -lusb-1.0
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output PsychKinectCore -largeArrayDims -DPTBMODULE_PsychKinectCore -I/usr/include/libusb-1.0 -I/usr/local/include/libfreenect -L/usr/local/lib -ICommon/Base -ILinux/Base -ICommon/PsychKinect -ICommon/Screen  "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -lc -lrt -ldl -lfreenect -lusb-1.0
     unix(['mv ../Projects/Linux/build/PsychKinectCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
@@ -102,7 +102,7 @@ if mode == 11
     curdir = pwd;
     cd('../../Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/')
     try
-        mex -O -g -v CFLAGS='$CFLAGS -fPIC -fexceptions -pthread' -largeArrayDims pnet.c
+        mex -O -g -v CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -largeArrayDims pnet.c
     catch
     end
     unix(['mv ./pnet.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
@@ -112,7 +112,7 @@ end
 if mode==12
     % Build PsychOculusVRCore.mexa64:
     try
-        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output PsychOculusVRCore -largeArrayDims -D_GNU_SOURCE -DPTBMODULE_PsychOculusVRCore -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychOculusVRCore/*.c" -lc -lrt /usr/local/lib/libOVR.a -ldl
+        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output PsychOculusVRCore -largeArrayDims -D_GNU_SOURCE -DPTBMODULE_PsychOculusVRCore -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychOculusVRCore/*.c" -lc -lrt -ldl /usr/local/lib/libOVR.a
     catch
         disp(psychlasterror);
     end
@@ -122,7 +122,7 @@ end
 if mode==14
     % Build PsychOpenHMDVRCore.mex:
     try
-        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output PsychOpenHMDVRCore -largeArrayDims -D_GNU_SOURCE -DPTBMODULE_PsychOpenHMDVRCore -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOpenHMDVRCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychOpenHMDVRCore/*.c" -lc -lrt -lopenhmd
+        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -v -outdir ../Projects/Linux/build/ -output PsychOpenHMDVRCore -largeArrayDims -D_GNU_SOURCE -DPTBMODULE_PsychOpenHMDVRCore -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOpenHMDVRCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychOpenHMDVRCore/*.c" -lc -lrt -ldl -lopenhmd
     catch
         disp(psychlasterror);
     end
