@@ -109,6 +109,8 @@ function datapixxmakemex()
         S = [S ' ' PTBDIR 'PsychSourceGL/Source/Linux/Base/PsychTimeGlue.c'];
         S = [S ' -lc'];     % Because Mario says so
         S = [S ' -lrt'];    % for clock_getres() and other clock_*()
+        S = [S ' -ldl'];    % for dlsym() etc. use in PsychTimeGlue.c.
+
         if (IsOctave)
             if (Is64Bit)
                 S = [S ' --output ' VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux64/Datapixx.mex'];
