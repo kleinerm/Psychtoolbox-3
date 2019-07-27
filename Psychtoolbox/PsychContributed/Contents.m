@@ -62,18 +62,7 @@
 %                              subfolder after you have downloaded the full
 %                              ptb source (help UseTheSource).
 %
-% simplepsychtoolboxsetup.sh   Configure OS X priority.  Call from Unix shell, not MATLAB.
-%
-% macid.exe                    Microsoft Windows command line utility for retrieving the MAC
-%                              ethernet address of the primary network
-%                              adapter. This free software GPL utility is
-%                              downloaded from www.mirkes.de Windows batch
-%                              tools. Author: Markus Stephany
-%                              URL:
-%                              http://www.mirkes.de/en/freeware/batch.php
-%
-% macidpascalsource/           This folder contains the Delphi-7 Pascal source code
-%                              of macid.exe, as required by macid's GPL license.
+% simplepsychtoolboxsetup.sh   Configure OS X priority. DO NOT USE ANYMORE!
 %
 % ple                          Prints useful debugging output, including a stack trace in case
 %                              a script exits via rethrow() or psychrethrow(). See help ple for
