@@ -73,6 +73,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 %            support 64-Bit Octave 4.2 on Windows and OSX instead. (MK)
 % 01/03/2017 Fix Matlab incompatibility with __octave_config_info__. (MK)
 % 04/07/2018 Remove PsychtoolboxRegistration for now. (MK)
+% 07/27/2019 64-Bit Octave 5.1.0 support for Windows and OSX, no Octave-4 support anymore. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -171,9 +172,9 @@ if (IsOSX || IsWin) && ~Is64Bit
 end
 
 if IsLinux && ~Is64Bit && IsOctave && ~IsARM
-    fprintf('Psychtoolbox 3.0.15 no longer provides mex files for 32-Bit Octave for Intel on Linux.\n');
+    fprintf('Psychtoolbox 3.0.15 and later no longer provide mex files for 32-Bit Octave for Intel on Linux.\n');
     fprintf('The only exception is 32-Bit Octave for Linux on ARM processors like the RaspberryPi.\n');
-    fprintf('Not to worry though, you can get a supported Psychtoolbox 3.0.15 for 32-Bit Octave\n');
+    fprintf('Not to worry though, you can get a supported Psychtoolbox 3.0.15+ for 32-Bit Octave\n');
     fprintf('on Linux from the NeuroDebian project if you run Debian GNU/Linux or a Ubuntu flavor.\n');
     fprintf('Go to this link for installation instructions:\n');
     fprintf('http://neuro.debian.net/pkgs/octave-psychtoolbox-3.html#pkg-octave-psychtoolbox-3\n\n');
@@ -325,6 +326,10 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4OSXFiles64']);
         end
 
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5OSXFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5OSXFiles64']);
+        end
+
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles']);
         end
@@ -335,6 +340,10 @@ if IsOctave
 
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles64'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles64']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5WindowsFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5WindowsFiles64']);
         end
 
         % Encode prefix and Octave major version of proper folder:
@@ -395,16 +404,17 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if (~IsLinux && (octavemajorv ~= 4 || octaveminorv ~= 4 || octavepatchv ~= 1)) || ...
-        (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8)))
+    if (~IsLinux && (octavemajorv ~= 5 || octaveminorv ~= 1 || octavepatchv ~= 0)) || ...
+        (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8) || (octavemajorv == 4 && octaveminorv > 2) || (octavemajorv > 4) ))
         fprintf('\n\n=================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
-            % On Linux everything >= 3.8 is fine:
+            % On Linux everything from 3.8 to 4.2 is fine:
             fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0 or 4.2 series for use with Psychtoolbox.\n');
+            fprintf('WARNING: You can get Psychtoolbox for more recent versions of Octave, e.g., for v4.4 or v5.1, from NeuroDebian.\n');
         else
-            % On Windows/OSX we only care about 4.4.1 atm:
-            fprintf('WARNING: using the latest Octave 4.4.1 series for use with Psychtoolbox.\n');
+            % On Windows/OSX we only care about 5.1.0 atm:
+            fprintf('WARNING: only using Octave 5.1.0 with Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
@@ -417,14 +427,14 @@ if IsOctave
         % Need to copy the Octave runtime libraries somewhere our mex files can find them. The only low-maintenance
         % way of dealing with this mess of custom library pathes per octave version, revision and packaging format.
         % Preferred location is the folder with our mex files - found by rpath = @loader_path
-        if ~copyfile([GetOctlibDir filesep 'liboctinterp.6.dylib'], [rdir filesep], 'f') || ...
-           ~copyfile([GetOctlibDir filesep 'liboctave.6.dylib'], [rdir filesep], 'f')
+        if ~copyfile([GetOctlibDir filesep 'liboctinterp.7.dylib'], [rdir filesep], 'f') || ...
+           ~copyfile([GetOctlibDir filesep 'liboctave.7.dylib'], [rdir filesep], 'f')
             % Copy into our mex files folder failed. A second location where the linker will search is the
             % $HOME/lib directory of the current user, so try that as target location:
             tdir = PsychHomeDir('lib');
             fprintf('\n\nFailed to copy Octave runtime libraries to mex file folder [%s].\nRetrying in users private lib dir: %s ...\n', rdir, tdir);
-            if ~copyfile([GetOctlibDir filesep 'liboctinterp.6.dylib'], tdir, 'f') || ...
-               ~copyfile([GetOctlibDir filesep 'liboctave.6.dylib'], tdir, 'f')
+            if ~copyfile([GetOctlibDir filesep 'liboctinterp.7.dylib'], tdir, 'f') || ...
+               ~copyfile([GetOctlibDir filesep 'liboctave.7.dylib'], tdir, 'f')
                 fprintf('\nFailed to copy runtime libs to [%s] as well :(.\n', tdir);
                 fprintf('Our mex files will likely not work this way. Maybe the directories lack file write permissions?\n');
                 fprintf('\n\n\nA last workaround would be to restart octave from a terminal via this line:\n\nexport DYLD_LIBRARY_PATH=%s ; octave\n\n\n', GetOctlibDir);
