@@ -84,8 +84,14 @@
 %                              a helper routine for ReadHDR - the recommended function for user
 %                              scripts.
 %
-% vcredist_x64.exe             Microsoft Visual C++ 2010 runtime 64-Bit
+% vcredist_x64_2015-2019.exe   Microsoft Visual C++ 2015-2019 runtime 64-Bit
 %                              redistributable installer. You must use this
+%                              to install the Visual C runtime if you want
+%                              to use the Psychtoolbox for 64-Bit Matlab on
+%                              Microsoft Windows.
+%
+% vcredist_x64_2010.exe        Microsoft Visual C++ 2010 runtime 64-Bit
+%                              redistributable installer. You may need this
 %                              to install the Visual C runtime if you want
 %                              to use the Psychtoolbox for 64-Bit Matlab on
 %                              Microsoft Windows.

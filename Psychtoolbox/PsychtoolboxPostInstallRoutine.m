@@ -528,16 +528,12 @@ if IsWin && ~IsOctave
         % Try if WaitSecs MEX file works...
         WaitSecs('YieldSecs', 0.1)
     catch
-        % Failed! Either screwed setup of path or missing VC++ 2010 runtime libraries.
-        fprintf('ERROR: Most likely cause: The Microsoft Visual C++ 2010 runtime libraries\n');
+        % Failed! Either screwed setup of path or missing VC++ 2019 runtime libraries.
+        fprintf('ERROR: Most likely cause: The Microsoft Visual C++ 2019 runtime libraries\n');
         fprintf('ERROR: are missing on your system.\n\n');
-        if IsWin(1)
-            % Need 64-Bit runtime:
-            fprintf('ERROR: Execute the installer file vcredist_x64.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
-        else
-            % Need 32-Bit runtime:
-            fprintf('ERROR: Execute the installer file vcredist_x86.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
-        end
+        % Need 64-Bit runtime:
+        fprintf('ERROR: Execute the installer file vcredist_x64_2015-2019.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
+        fprintf('ERROR: Maybe also execute the installer file vcredist_x64_2010.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
         fprintf('ERROR: You must execute that installer as an administrator user. Exit Matlab before the installation, then restart it.\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox;\n\n');
