@@ -128,7 +128,7 @@ void InitPsychAuthorList(void)
         "Kleiner",
         "mk",
         "mario.kleiner.de@gmail.com",
-        "http://www.kyb.mpg.de/~kleinerm"
+        "https://github.com/kleinerm"
     );
     PsychAddAuthor(
         // Port to OS-X on Intel-Macs, and misc stuff:
