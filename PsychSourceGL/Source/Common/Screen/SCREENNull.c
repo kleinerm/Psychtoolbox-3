@@ -92,61 +92,24 @@ PsychError SCREENNull(void)
 		return(PsychError_none);
 	#endif
 
-        #if PSYCH_SYSTEM != PSYCH_WINDOWS
-        {
-            unsigned int headid = PsychScreenToCrtcId(0, 0);
-            unsigned int lutreg, ctlreg, value, status;
+    #if PSYCH_SYSTEM != PSYCH_WINDOWS
+    {
+        unsigned int headid = PsychScreenToCrtcId(0, 0);
+        unsigned int lutreg, ctlreg, value, status;
 
-            lutreg = EVERGREEN_DC_LUT_10BIT_BYPASS + crtcoff[headid];
-            ctlreg = EVERGREEN_GRPH_CONTROL + crtcoff[headid];
+        lutreg = EVERGREEN_DC_LUT_10BIT_BYPASS + crtcoff[headid];
+        ctlreg = EVERGREEN_GRPH_CONTROL + crtcoff[headid];
 
-            value = PsychOSKDReadRegister(0, lutreg, &status);
-            if (status)
-                printf("PTB-ERROR: LUTReg read failed.\n");
-            else
-                printf("PTB-ERROR: LUTBypassReg = %x.\n", value);
-
-            value = PsychOSKDReadRegister(0, ctlreg, &status);
-            if (status)
-                printf("PTB-ERROR: GRPHCONReg read failed.\n");
-            else
-                printf("PTB-ERROR: GRPHCONReg = %x.\n", value);
-
-            #define mmFMT_BIT_DEPTH_CONTROL 0x1BF2
-            lutreg = (4 * mmFMT_BIT_DEPTH_CONTROL) + crtcoff[headid];
-            value = PsychOSKDReadRegister(0, lutreg, &status);
-            if (status)
-                printf("PTB-ERROR: mmFMT_BIT_DEPTH_CONTROL read failed.\n");
-            else
-                printf("PTB-ERROR: mmFMT_BIT_DEPTH_CONTROL = %x.\n", value);
-
-            #define mmFMT_CLAMP_CNTL 0x1BF9
-            lutreg = (4 * mmFMT_CLAMP_CNTL) + crtcoff[headid];
-            value = PsychOSKDReadRegister(0, lutreg, &status);
-            if (status)
-                printf("PTB-ERROR: mmFMT_CLAMP_CNTL read failed.\n");
-            else
-                printf("PTB-ERROR: mmFMT_CLAMP_CNTL = %x.\n", value);
-
-            #define mmFMT_CONTROL 0x1BEE
-            lutreg = (4 * mmFMT_CONTROL) + crtcoff[headid];
-            value = PsychOSKDReadRegister(0, lutreg, &status);
-            if (status)
-                printf("PTB-ERROR: mmFMT_CONTROL read failed.\n");
-            else
-                printf("PTB-ERROR: mmFMT_CONTROL = %x.\n", value);
-
-            #define mmFMT_DYNAMIC_EXP_CNTL 0x1BED
-            lutreg = (4 * mmFMT_DYNAMIC_EXP_CNTL) + crtcoff[headid];
-            value = PsychOSKDReadRegister(0, lutreg, &status);
-            if (status)
-                printf("PTB-ERROR: mmFMT_DYNAMIC_EXP_CNTL read failed.\n");
-            else
-                printf("PTB-ERROR: mmFMT_DYNAMIC_EXP_CNTL = %x.\n", value);
+        value = PsychOSKDReadRegister(0, lutreg, &status);
+        if (status) {
+            printf("PTB-ERROR: LUTReg read failed.\n");
+        } else {
+            printf("PTB-ERROR: LUTBypassReg = %x.\n", value);
         }
+    }
 
-        return(PsychError_none);
-        #endif
+    return(PsychError_none);
+    #endif
 
 #if 0
 // ----------- Linux DRI2/Radeon-KMS Scanline-Timestamping prototype for R500 core.

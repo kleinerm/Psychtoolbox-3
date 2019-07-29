@@ -1139,10 +1139,11 @@ void InitPsychtoolboxKernelDriverInterface(void)
             if (((fDeviceType[numKernelDrivers] == kPsychIntelIGP) && !getenv("PSYCH_ALLOW_DANGEROUS")) ||
                 ((fDeviceType[numKernelDrivers] == kPsychRadeon) && (fCardType[numKernelDrivers] < 30 || fCardType[numKernelDrivers] >= 120) && !isDCE1(fPCIDeviceId[numKernelDrivers]))) {
                 if (PsychPrefStateGet_Verbosity() > 2) {
-                    if (fDeviceType[numKernelDrivers] == kPsychIntelIGP)
+                    if (fDeviceType[numKernelDrivers] == kPsychIntelIGP) {
                         printf("PTB-INFO: Disconnecting from kernel driver instance #%i for detected Intel GPU for safety reasons. setenv('PSYCH_ALLOW_DANGEROUS', '1') to override.\n", numKernelDrivers);
-                    else
+                    } else {
                         printf("PTB-INFO: Disconnecting from kernel driver instance #%i because detected AMD GPU is not supported. [PCI Id: 0x%x]\n", numKernelDrivers, fPCIDeviceId[numKernelDrivers]);
+                    }
                 }
 
                 displayConnectHandles[numKernelDrivers] = IO_OBJECT_NULL;

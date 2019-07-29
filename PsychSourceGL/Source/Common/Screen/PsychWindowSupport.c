@@ -1493,11 +1493,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         }
         else {
             if ((PsychPrefStateGet_VBLTimestampingMode()==4) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)) {
-                if ((*windowRecord)->hybridGraphics == 3 || (*windowRecord)->hybridGraphics == 4)
+                if ((*windowRecord)->hybridGraphics == 3 || (*windowRecord)->hybridGraphics == 4) {
                     printf("PTB-INFO: Will try to use PRIME custom modesetting-ddx protocol for accurate Flip timestamping.\n");
-                else
+                } else {
                     printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n",
                            ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->winsysType != WAFFLE_PLATFORM_WAYLAND)) ? "OpenML sync control support" : "method");
+                }
             }
             else if ((PsychPrefStateGet_VBLTimestampingMode()==1 || PsychPrefStateGet_VBLTimestampingMode()==3) &&
                      (PSYCH_SYSTEM == PSYCH_OSX || ((PSYCH_SYSTEM == PSYCH_LINUX) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)))) {
