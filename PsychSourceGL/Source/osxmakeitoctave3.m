@@ -74,6 +74,9 @@ if mode==0
     -weak_library /usr/local/lib/libdc1394.dylib \
     -framework CoreServices -framework CoreFoundation -framework ApplicationServices -framework CoreAudio -framework OpenGL -framework CoreVideo \
     -framework IOKit -framework SystemConfiguration -framework Carbon -framework CoreText \
+    -framework CoreDisplay -F /System/Library/PrivateFrameworks -framework DisplayServices \
+    -U CoreDisplay_Display_SetUserBrightness -U CoreDisplay_Display_GetUserBrightness \
+    -U DisplayServicesCanChangeBrightness -U DisplayServicesBrightnessChanged \
     -framework Cocoa,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" ...
     -I/usr/include -I/usr/local/include -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/gstreamer-1.0 ...
     -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/libxml2 -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/glib-2.0 ...

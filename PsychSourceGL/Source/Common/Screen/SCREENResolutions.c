@@ -28,6 +28,64 @@
 #if PSYCH_SYSTEM == PSYCH_OSX
 // Need these includes to make setting display brightness work:
 #include <IOKit/graphics/IOGraphicsLib.h>
+# include <ApplicationServices/ApplicationServices.h>
+
+/*
+    The code for using System private interfaces (SPI's) for getting/setting display
+    brightness on Apple's trainwreck operating system was adapted from the code of
+    Nicholas Riley at https://github.com/nriley/brightness which is licensed under
+    the following BSD-2 clause license (Thank you!):
+
+    Copyright (c) 2014-2019, Nicholas Riley
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without modification,
+    are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice, this
+    list of conditions and the following disclaimer.
+
+    * Redistributions in binary form must reproduce the above copyright notice, this
+    list of conditions and the following disclaimer in the documentation and/or
+    other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+    DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+    ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+     LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+    ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+/* As of macOS 10.12.4, brightness set by public IOKit API is
+ overridden by CoreDisplay's brightness (to support Night Shift). In
+ addition, using CoreDisplay to get brightness supports additional
+ display types, e.g. the 2015 iMac's internal display.
+ The below functions in CoreDisplay seem to work to adjust the
+ "user" brightness (like dragging the slider in System Preferences
+ or using function keys).  The symbols below are listed in the .tbd
+ file in CoreDisplay.framework so it is at least more "public" than
+ a symbol in a private framework, though there are no public headers
+ distributed for this framework. */
+extern double CoreDisplay_Display_GetUserBrightness(CGDirectDisplayID id) __attribute__((weak_import));
+extern void CoreDisplay_Display_SetUserBrightness(CGDirectDisplayID id, double brightness) __attribute__((weak_import));
+
+/*  Some issues with the above CoreDisplay functions include:
+     - There's no way to tell if setting the brightness was successful
+     - There's no way to tell if a brightness of 1 means that the
+     brightness is actually 1, or if there's no adjustable brightness
+     - Brightness changes aren't reflected in System Preferences
+     immediately
+     Fixing these means using the private DisplayServices.framework.  Be
+     even more careful about these.
+ */
+extern _Bool DisplayServicesCanChangeBrightness(CGDirectDisplayID id) __attribute__((weak_import));
+extern void DisplayServicesBrightnessChanged(CGDirectDisplayID id, double brightness) __attribute__((weak_import));
+
 #endif
 
 const char *FieldNames[]={"width", "height", "pixelSize", "hz"};
@@ -123,17 +181,36 @@ PsychError SCREENConfigureDisplay(void)
         PsychGetCGDisplayIDFromScreenNumber(&displayID, outputId);
         io_service_t service = CGDisplayIOServicePort(displayID);
 
-        // Return current brightness value:
-        err = IODisplayGetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), &brightness);
-        if (err != kIOReturnSuccess) {
-            // Failed. This means "unsupported". Return -1 for "not supported" if this was just a query,
-            // but fail if code tried to set a new value. This way a failure to set a brightness level
-            // won't go unnoticed, but code can query first if setting/getting brightness is supported
-            // before it trusts results:
-            if (PsychIsArgPresent(PsychArgIn, 4))
-                PsychErrorExitMsg(PsychError_user, "Failed to query and set current display brightness from system. Unsupported on this system.");
-            else
-                brightness = -1;
+        // Return current brightness value: Prefer SPI (System private interface) for this,
+        // as it isn't as fucked up as Apple's public implementation:
+        if (CoreDisplay_Display_GetUserBrightness != NULL) {
+            // Query possible and meaningful?
+            if ((DisplayServicesCanChangeBrightness != NULL) && !DisplayServicesCanChangeBrightness(displayID)) {
+                // Nope. This means "unsupported". Return -1 for "not supported" if this was just a query,
+                // but fail if code tried to set a new value. This way a failure to set a brightness level
+                // won't go unnoticed, but code can query first if setting/getting brightness is supported
+                // before it trusts results:
+                if (PsychIsArgPresent(PsychArgIn, 4))
+                    PsychErrorExitMsg(PsychError_user, "Failed to query and set current display brightness from system via SPI. Unsupported on this system.");
+                else
+                    brightness = -1;
+            }
+
+            // Supported. Query it:
+            brightness = CoreDisplay_Display_GetUserBrightness(displayID);
+        }
+        else {
+            err = IODisplayGetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), &brightness);
+            if (err != kIOReturnSuccess) {
+                // Failed. This means "unsupported". Return -1 for "not supported" if this was just a query,
+                // but fail if code tried to set a new value. This way a failure to set a brightness level
+                // won't go unnoticed, but code can query first if setting/getting brightness is supported
+                // before it trusts results:
+                if (PsychIsArgPresent(PsychArgIn, 4))
+                    PsychErrorExitMsg(PsychError_user, "Failed to query and set current display brightness from system. Unsupported on this system.");
+                else
+                    brightness = -1;
+            }
         }
         PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) brightness);
 
@@ -143,9 +220,24 @@ PsychError SCREENConfigureDisplay(void)
             if (nbrightness < 0.0) nbrightness = 0.0;
             if (nbrightness > 1.0) nbrightness = 1.0;
 
-            // Set it:
-            err = IODisplaySetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), (float) nbrightness);
-            if (err != kIOReturnSuccess) PsychErrorExitMsg(PsychError_user, "Failed to set new display brightness. Unsupported on this system?");
+            // Set it: Prefer SPI (System private interface) for this, as it isn't as fucked up as Apple's public implementation:
+            if (CoreDisplay_Display_SetUserBrightness != NULL) {
+                // Can brightness be changed on this system?
+                if ((DisplayServicesCanChangeBrightness != NULL) && !DisplayServicesCanChangeBrightness(displayID))
+                    PsychErrorExitMsg(PsychError_user, "Failed to set new display brightness via SPI. Unsupported on this system?");
+
+                // Set it:
+                CoreDisplay_Display_SetUserBrightness(displayID, nbrightness);
+
+                // Notify UI:
+                if (DisplayServicesBrightnessChanged != NULL)
+                    DisplayServicesBrightnessChanged(displayID, nbrightness);
+            }
+            else {
+                err = IODisplaySetFloatParameter(service, kNilOptions, CFSTR(kIODisplayBrightnessKey), (float) nbrightness);
+                if (err != kIOReturnSuccess)
+                    PsychErrorExitMsg(PsychError_user, "Failed to set new display brightness. Unsupported on this system?");
+            }
         }
         #endif
 
