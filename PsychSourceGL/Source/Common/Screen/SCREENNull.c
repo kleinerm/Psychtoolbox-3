@@ -55,11 +55,6 @@ PsychError SCREENNull(void)
 //#define RADEON_R500_GEN_INT_STATUS 0x204
 
   PsychWindowRecordType *windowRecord;
-	double tempValue;
-	double *array;
-	int i, m,n, p, numInArgs;
-	char *str;
-	PsychArgFormatType format;
 	const char defaultString[] = "I am the default string\n";
 
 	//all sub functions should have these two lines
@@ -112,6 +107,12 @@ PsychError SCREENNull(void)
     #endif
 
 #if 0
+    double tempValue;
+	double *array;
+	int i, m,n, p, numInArgs;
+	char *str;
+	PsychArgFormatType format;
+
 // ----------- Linux DRI2/Radeon-KMS Scanline-Timestamping prototype for R500 core.
 
 	#define RADEON_D1CRTC_STATUS_POSITION  0x60a0
