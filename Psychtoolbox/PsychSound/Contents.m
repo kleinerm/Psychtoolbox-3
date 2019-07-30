@@ -83,13 +83,10 @@
 % is the price you'll have to pay for using Matlab, but our abstraction
 % layer is very thin, so most applications won't be really affected.
 %
-% Some OpenAL functions are not yet implemented in the toolbox, because
+% Some OpenAL extension functions are not yet implemented in the toolbox, because
 % these functions can't get automatically generated, so their wrappers need
-% to be coded manually. Our goal is to provide full support for the
-% OpenAL-API but finalizing all functions may take some time. Mostly some
-% of the query-functions - functions that don't set OpenAL state or execute
-% some operation, but query the current settings of OpenAL, are missing.
-% Also, some of the more exotic OpenAL extensions are not yet supported.
+% to be coded manually. Our goal is to provide sufficient support for the
+% OpenAL-API, but finalizing all functions may take some time.
 %
 % Apart from these limitations that will get removed in the future, there
 % are limitations imposed by your operating system and sound hardware.
@@ -120,9 +117,16 @@
 %
 % http://www.openal.org
 %
+% A FOSS open-source software implementation of OpenAL, which is typically used
+% on GNU/Linux, and which has many advanced features implemented as extensions,
+% e.g., pretty flexible HRTF based sound rendering, can be found at:
+%
+% https://openal-soft.org
+%
 % Googling for OpenAL is also a option.
 %
 % Enjoy!
 
 % History:
 % 7.02.2007 -- created (MK)
+% 15.7.2019 -- updated (MK)

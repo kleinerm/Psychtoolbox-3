@@ -787,6 +787,18 @@ int PsychOSNeedXInitThreads(int verbose)
         if (!safe) {
             // Game over: Host process did XLib stuff already, e.g., to startup its GUI. Nothing
             // we can do but warn the user and ask him to fix the host application.
+
+            // Awful but neccessary hack: If we are running under Octave then suppress all warnings :/
+            // Turns out Octave 4.0 doesn't call XInitThreads - or more accurately, QT-4 which is used to
+            // implement Octave's GUI, doesn't. Only QT-5 based Octave 4.2 and later does the right thing.
+            // Unfortunately Ubuntu 16.04-LTS ships with Octave 4.0 and we probably shouldn't drop support
+            // for 16.04-LTS just yet -- its end of life is only in April 2021. Screen() does implement its
+            // own locking around X-Lib and PsychHID never made trouble, so technically we should and have
+            // been fine all the years. No need to scare the user of Ubuntu 16.04 LTS without these warnings.
+            #if (PSYCH_LANGUAGE == PSYCH_MATLAB) && defined(PTBOCTAVE3MEX)
+                verbose = 0;
+            #endif
+
             if (verbose > 0) {
                 printf("%s-WARNING: Seems like the libX11 library was *not* initialized for thread-safe mode,\n", name);
                 printf("%s-WARNING: because the application host process omitted a required call to\n", name);
@@ -803,22 +815,27 @@ int PsychOSNeedXInitThreads(int verbose)
                 printf("%s-WARNING: I will continue, but may malfunction or crash at some point!\n", name);
 
                 #if (PSYCH_LANGUAGE == PSYCH_MATLAB) && defined(PTBOCTAVE3MEX)
-                printf("%s-INFO: If you are running this under the application \"octave-cli\", then relaunch\n", name);
-                printf("%s-INFO: octave-cli with the --no-window-system switch: octave-cli --no-window-system\n", name);
-                printf("%s-INFO: or simply launch octave in the common way as: octave\n", name);
-                printf("%s-INFO: Calling octave instead of octave-cli should always work.\n", name);
+                    printf("%s-INFO: If you are running this under the application \"octave-cli\", then relaunch\n", name);
+                    printf("%s-INFO: octave-cli with the --no-window-system switch: octave-cli --no-window-system\n", name);
+                    printf("%s-INFO: or simply launch octave in the common way as: octave\n", name);
+                    printf("%s-INFO: Calling octave instead of octave-cli should always work.\n", name);
                 #else
-                #if (PSYCH_LANGUAGE == PSYCH_PYTHON)
-                printf("%s-INFO: If you are using PsychoPy, simply upgrade to version 3.1.3 or later.\n", name);
-                printf("%s-INFO: Otherwise, you can generally fix Python scripts/apps by adding the following\n", name);
-                printf("%s-INFO: snippet early enough at the beginning of script execution under X11:\n", name);
-                printf("%s-INFO: import ctypes\n", name);
-                printf("%s-INFO: xlib = ctypes.cdll.LoadLibrary(\"libX11.so\")\n", name);
-                printf("%s-INFO: xlib.XInitThreads()\n", name);
-                printf("\n");
-                #else
-                printf("%s-INFO: It is probably best to ask the Psychtoolbox user forum for guidance.\n", name);
-                #endif
+                    #if (PSYCH_LANGUAGE == PSYCH_MATLAB) && !defined(PTBOCTAVE3MEX)
+                        printf("%s-INFO: Upgrading to Matlab R2013b should fix this problem.\n", name);
+                        printf("%s-INFO: Starting as matlab -nodisplay in command line mode should also work.\n", name);
+                    #else
+                        #if (PSYCH_LANGUAGE == PSYCH_PYTHON)
+                            printf("%s-INFO: If you are using PsychoPy, simply upgrade to version 3.1.3 or later.\n", name);
+                            printf("%s-INFO: Otherwise, you can generally fix Python scripts/apps by adding the following\n", name);
+                            printf("%s-INFO: snippet early enough at the beginning of script execution under X11:\n", name);
+                            printf("%s-INFO: import ctypes\n", name);
+                            printf("%s-INFO: xlib = ctypes.cdll.LoadLibrary(\"libX11.so\")\n", name);
+                            printf("%s-INFO: xlib.XInitThreads()\n", name);
+                            printf("\n");
+                        #else
+                            printf("%s-INFO: It is probably best to ask the Psychtoolbox user forum for guidance.\n", name);
+                        #endif
+                    #endif
                 #endif
             }
         }

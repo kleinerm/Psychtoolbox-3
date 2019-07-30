@@ -1,22 +1,31 @@
 function result=EyelinkDoTrackerSetup(el, sendkey)
-
 % USAGE: result=EyelinkDoTrackerSetup(el [, sendkey])
 %
-%		el: Eyelink default values
-%		sendkey: set to go directly into a particular mode
-% 				'v', start validation
-% 				'c', start calibration
-% 				'd', start driftcorrection
-% 				13, or el.ENTER_KEY, show 'eye' setup image
+% el: Eyelink default values
+%
+% sendkey:  set to go directly into a particular mode
+%           sendkey is optional and ignored if el.callback is defined for
+%           callback based tracker setup.
+%
+%           'v', start validation
+%           'c', start calibration
+%           'd', start driftcorrection
+%           13, or el.ENTER_KEY, show 'eye' setup image
+%
+% Note that EyelinkDoTrackerSetup() internally uses Beeper() and Snd() to play
+% auditory feedback tones if el.targetbeep=1 or el.feedbackbeep=1 and the
+% el.callback function is set to the default PsychEyelinkDispatchCallback().
+% If you want to use PsychPortAudio in a script that also calls EyelinkDoTrackerSetup,
+% then read "help Snd" for instructions on how to provide proper interoperation
+% between PsychPortAudio and the feedback sounds created by Eyelink.
 
 %
-% 02-06-01	fwc removed use of global el, as suggest by John Palmer.
-%				el is now passed as a variable, we also initialize Tracker state bit
-%				and Eyelink key values in 'initeyelinkdefaults.m'
-% 15-10-02	fwc	added sendkey variable that allows to go directly into a particular mode
-% 22-06-06	fwc OSX-ed
-% 15-06-10	fwc added code for new callback version
-
+% 02-06-01  fwc removed use of global el, as suggest by John Palmer.
+%               el is now passed as a variable, we also initialize Tracker state bit
+%               and Eyelink key values in 'initeyelinkdefaults.m'
+% 15-10-02  fwc added sendkey variable that allows to go directly into a particular mode
+% 22-06-06  fwc OSX-ed
+% 15-06-10  fwc added code for new callback version
 
 result=-1;
 if nargin < 1

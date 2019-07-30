@@ -258,10 +258,15 @@ try
     answer = input('Do you want to configure special/advanced settings? [y/n] ', 's');
   end
 
+  % Don't allow choice of UXA on intel anymore. It is an only lightly maintained
+  % backend with no active development and missing features wrt. SNA, e.g., no
+  % 10 bpc gamma lut's and therefore no > 8 bpc output. There's only downsides
+  % to it without any upsides atm.:
+  useuxa = 'd';
+
   if answer == 'n'
     % Nope. Just use the "don't care" settings:
     triplebuffer = 'd';
-    useuxa = 'd';
     dri3 = 'd';
     modesetting = 'd';
     depth30bpp = 'd';
@@ -277,8 +282,75 @@ try
     else
       xversion = [0, 0, 0];
     end
+
+    % AMD "Sea Islands" gpu with DCE-8 display engine, running under classic ati-ddx?
+    if strcmp(xdriver, 'ati') && (winfo.GPUMinorType >= 80 && winfo.GPUMinorType < 100)
+      % Up to 12 bpc in theory, if we encode into a 16 bpc framebuffer, using our PTB
+      % special framebuffer encoding hack, which needs a linear, non-tiled framebuffer.
+      % Ask if user wants to trade performance for increased color precision:
+      fprintf('\n\nDo you want to allow use of an up to 12 bpc precision per color channel framebuffer?\n');
+      fprintf('This only works on Sea Islands AMD gpus like yours, and only with some displays and video\n');
+      fprintf('outputs. It also causes substantial reduction in graphics performance, and only works with\n');
+      fprintf('some desktop GUI environments, e.g., GNOME-3. This function is highly experimental and may\n');
+      fprintf('not work at all on your setup, so use a photometer to verify actual precision carefully!\n');
+      fprintf('Answer no here if a 10 bpc / 30 bpp framebuffer is sufficient for your needs.\n');
+      atinotiling = '';
+      while isempty(atinotiling) || ~ismember(atinotiling, ['y', 'n', 'd'])
+        atinotiling = input('Use a slower linear framebuffer to allow for up to 12 bpc color depth [y for yes, n for no, d for don''t care]? ', 's');
+      end
+    else
+      atinotiling = 'd';
+    end
+
+    % Does the driver + gpu combo support depth 30, 10 bpc framebuffers natively, and user has not chosen 12 bpc mode yet?
+    % As of March 2018, the latest intel-ddx and nouveau-ddx, as well as amdgpu-pro ddx and nvidia proprietary ddx do support
+    % 30 bit on modern X-Servers. The amdgpu-ddx and modesetting-ddx support depth 30 with X-Server 1.20 and later versions.
+    if (atinotiling ~= 'y') && ...
+       (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro') || ...
+        strcmp(xdriver, 'ati') || ((xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 20)) && (strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu'))))
+      fprintf('\n\nDo you want to setup a 30 bit framebuffer for 10 bpc precision per color channel?\n');
+      if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'ati') || strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu')
+        fprintf('This will need the very latest drivers, so a year 2018 or later Linux distribution, e.g., at least Ubuntu 18.04 LTS,\n');
+        fprintf('with Mesa 18.0 or later for Intel and AMD gpus, and Mesa 18.1 or later for NVidia gpus.\n');
+      end
+
+      if multigpu
+        fprintf('It may or may not work on hybrid-graphics laptops. Such configurations are so far untested.\n');
+      end
+
+      fprintf('If your desktop GUI fails to work, or Psychtoolbox gives lots of timing or page-flip related warnings,\n');
+      fprintf('then you know your system and hardware is not ready yet for this depth 30 mode. On AMD hardware from 2007 or later\n');
+      fprintf('depth 30 will always work even without the need to set it up here, at least for PsychImaging native 10 bit\n');
+      fprintf('framebuffer tasks, albeit at potentially slightly lower performance. AMD gpus have special support in PTB in this sense.\n');
+      fprintf('Also note that not all gpus can output true 10 bpc on all types of video outputs. Check carefully with a photometer etc.!\n');
+
+      depth30bpp = '';
+      while isempty(depth30bpp) || ~ismember(depth30bpp, ['y', 'n', 'd'])
+        depth30bpp = input('Use a 30 bpp, 10 bpc framebuffer [y for yes, n for no, d for don''t care]? ', 's');
+      end
+
+      % Depth 30 on Intel gfx requested?
+      if depth30bpp == 'y' && strcmp(xdriver, 'intel')
+        % This won't currently (July 2019, X-Server 1.20) work with modesetting ddx, as that driver only supports
+        % 256 slot 8 bpc in -> 8 bpc out gamma lut's, so doesn't pass 10 bpc from fb to display. Actively request
+        % no use of modesetting ddx:
+        modesetting = 'n';
+      end
+
+      % Depth 30 on multi-x-screen setup requested?
+      if depth30bpp == 'y' && multixscreen
+        depth30bpp = '';
+        while isempty(depth30bpp) || isempty(str2num(depth30bpp)) || ~isnumeric(str2num(depth30bpp))
+          depth30bpp = input('Enter a space-separated list of screen numbers for which 30 bit color depth should be used: ', 's');
+        end
+      end
+    else
+      depth30bpp = 'd';
+    end
+
     if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting') && ...
-       (~multigpu || (~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'ati')))
+       (~multigpu || (~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'ati'))) && ...
+       (depth30bpp ~= 'y' || ~strcmp(xdriver, 'intel')) % As of July 2019, on Intel gfx only intel-ddx can do depth30bpp, not modesetting.
       % HybridGraphics Intel + NVidia/AMD needs intel-ddx, modesetting won't work. Ditto for AMD + AMD.
       % XOrg 1.18.0 or later? xf86-video-modesetting is only good enough for our purposes on 1.18 and later.
       % Also must be a Mesa version safe for use with DRI3/Present:
@@ -348,20 +420,6 @@ try
       triplebuffer = 'd';
     end
 
-    % Allow use of UXA only for non Prime renderoffload, as UXA isn't tested with it so far.
-    if strcmp(xdriver, 'intel') && ~multigpu
-      fprintf('\n\nShould the alternative Intel display acceleration backend "uxa" be used instead of\n');
-      fprintf('the default "sna" backend? Usually "sna" is a fine choice, but this allows you\n');
-      fprintf('to choose the alternative backend as a backup plan, if you suspect "sna" causing any\n');
-      fprintf('problems. If unsure, just answer "n" for no, it is almost always the correct answer.\n\n');
-      useuxa = '';
-      while isempty(useuxa) || ~ismember(useuxa, ['y', 'n', 'd'])
-        useuxa = input('Use Intel UXA acceleration [y for yes, n for no, d for don''t care]? ', 's');
-      end
-    else
-      useuxa = 'd';
-    end
-
     % Is the use of DRI3/Present safely possible with this combo of Mesa and X-Server?
     if ~strcmp(xdriver, 'modesetting') && ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0)
       % Yes. Propose it:
@@ -382,63 +440,6 @@ try
       end
     else
       dri3 = 'd';
-    end
-
-    % AMD "Sea Islands" gpu with DCE-8 display engine, running under classic ati-ddx?
-    if strcmp(xdriver, 'ati') && (winfo.GPUMinorType >= 80 && winfo.GPUMinorType < 100)
-      % Up to 12 bpc in theory, if we encode into a 16 bpc framebuffer, using our PTB
-      % special framebuffer encoding hack, which needs a linear, non-tiled framebuffer.
-      % Ask if user wants to trade performance for increased color precision:
-      fprintf('\n\nDo you want to allow use of an up to 12 bpc precision per color channel framebuffer?\n');
-      fprintf('This only works on Sea Islands AMD gpus like yours, and only with some displays and video\n');
-      fprintf('outputs. It also causes substantial reduction in graphics performance, and only works with\n');
-      fprintf('some desktop GUI environments, e.g., GNOME-3. This function is highly experimental and may\n');
-      fprintf('not work at all on your setup, so use a photometer to verify actual precision carefully!\n');
-      fprintf('Answer no here if a 10 bpc / 30 bpp framebuffer is sufficient for your needs.\n');
-      atinotiling = '';
-      while isempty(atinotiling) || ~ismember(atinotiling, ['y', 'n', 'd'])
-        atinotiling = input('Use a slower linear framebuffer to allow for up to 12 bpc color depth [y for yes, n for no, d for don''t care]? ', 's');
-      end
-    else
-      atinotiling = 'd';
-    end
-
-    % Does the driver + gpu combo support depth 30, 10 bpc framebuffers natively, and user has not chosen 12 bpc mode yet?
-    % As of March 2018, the latest intel-ddx and nouveau-ddx, as well as amdgpu-pro ddx and nvidia proprietary ddx do support
-    % 30 bit on modern X-Servers. The amdgpu-ddx and modesetting-ddx support depth 30 with X-Server 1.20 and later versions.
-    if (atinotiling ~= 'y') && ...
-       (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro') || ...
-        strcmp(xdriver, 'ati') || ((xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 20)) && (strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu'))))
-      fprintf('\n\nDo you want to setup a 30 bit framebuffer for 10 bpc precision per color channel?\n');
-      if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'ati') || strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu')
-        fprintf('This will need the very latest drivers, so a year 2018 or later Linux distribution, e.g., at least Ubuntu 18.04 LTS,\n');
-        fprintf('with Mesa 18.0 or later for Intel and AMD gpus, and Mesa 18.1 or later for NVidia gpus.\n');
-      end
-
-      if multigpu
-        fprintf('It may or may not work on hybrid-graphics laptops. Such configurations are so far untested.\n');
-      end
-
-      fprintf('If your desktop GUI fails to work, or Psychtoolbox gives lots of timing or page-flip related warnings,\n');
-      fprintf('then you know your system and hardware is not ready yet for this depth 30 mode. On AMD hardware from 2007 or later\n');
-      fprintf('depth 30 will always work even without the need to set it up here, at least for PsychImaging native 10 bit\n');
-      fprintf('framebuffer tasks, albeit at potentially slightly lower performance. AMD gpus have special support in PTB in this sense.\n');
-      fprintf('Also note that not all gpus can output true 10 bpc on all types of video outputs. Check carefully with a photometer etc.!\n');
-
-      depth30bpp = '';
-      while isempty(depth30bpp) || ~ismember(depth30bpp, ['y', 'n', 'd'])
-        depth30bpp = input('Use a 30 bpp, 10 bpc framebuffer [y for yes, n for no, d for don''t care]? ', 's');
-      end
-
-      % Depth 30 on multi-x-screen setup requested?
-      if depth30bpp == 'y' && multixscreen
-        depth30bpp = '';
-        while isempty(depth30bpp) || isempty(str2num(depth30bpp)) || ~isnumeric(str2num(depth30bpp))
-          depth30bpp = input('Enter a space-separated list of screen numbers for which 30 bit color depth should be used: ', 's');
-        end
-      end
-    else
-      depth30bpp = 'd';
     end
 
     % End of advanced configuration.
@@ -494,7 +495,19 @@ end
 % the determined ZaphodHead output names are only valid for use with the modesetting-ddx.
 % Therefore, if user chose "(d)on't care" wrt. modesetting-ddx, select it, so user is not
 % left with a dysfunctional multi x-screen setup:
-if (multixscreen > 0) && (modesetting ~= 'y') && modesettingddxactive
+if (multixscreen > 0) && (modesetting == 'n') && modesettingddxactive && strcmp(xdriver, 'intel')
+  % User wants depth30bpp and no modesetting, e.g., because Intel-gfx doesn't provide depth 30
+  % under modesetting, but user also wants multi-X-screen and the modesetting ddx is currently
+  % active. We have to switch to non-modesetting intel-ddx driver to get depth 30 working,
+  % but this means we can't switch to multi-x-screen at the same time. Sacrifice multi-x-screen
+  % for this two-setup setup process:
+  multixscreen = 0;
+  fprintf('Override: Ignoring request for multi X-Screen configuration, as modesetting-ddx\n');
+  fprintf('Override: is currently active while creating this config but must *not* be used for\n');
+  fprintf('Override: requested color depth 30 bit. Generating a single-x-screen intel-ddx\n');
+  fprintf('Override: config now. Please repeat the multi-x-screen + intel-ddx setup after logging\n');
+  fprintf('Override: out and in again with this new configuration selected.\n');
+elseif (multixscreen > 0) && (modesetting ~= 'y') && modesettingddxactive
   modesetting = 'y';
   xdriver = 'modesetting';
   dri3 = 'd'; % modesetting defaults to DRI3, which is what we want, so 'd'ont care does the job.

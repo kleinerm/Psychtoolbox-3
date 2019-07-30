@@ -87,7 +87,7 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % ---> If precise timing of the keypress is important, use KbCheck or
 % KbWait or KbQueueXXX functions or KbEventGet for consistent results!
 %
-% OS X / Windows-XP / Linux with Matlab and Java enabled: _________________
+% OS X / Windows-XP / Linux (non-KDE desktop GUI) with Matlab and Java enabled:
 %
 % JAVA PATH: The GetChar implementation for Matlab is based on Java.
 % Therefore, the Psychtoolbox subfolder PsychJava must be added to Matlabs

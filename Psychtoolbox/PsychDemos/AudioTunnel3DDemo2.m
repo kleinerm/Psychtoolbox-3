@@ -157,8 +157,8 @@ end
 alSourceStopv(length(sources), sources);
 
 for i=1:nsources
-    % Unqueue sound buffer:
-    alSourceUnqueueBuffers(sources(i), 1, buffers(i));
+    % Remove sound buffer:
+    alSourcei(sources(i), AL.BUFFER, 0);
 end
 
 % Wait a bit:

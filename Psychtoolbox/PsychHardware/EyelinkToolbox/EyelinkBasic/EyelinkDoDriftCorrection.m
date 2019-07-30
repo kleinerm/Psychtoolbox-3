@@ -1,9 +1,19 @@
 function success=EyelinkDoDriftCorrection(el, x, y, draw, allowsetup)
+% success=EyelinkDoDriftCorrection(el [, x][, y][, draw][, allowsetup])
+%
+% DO PRE-TRIAL DRIFT CORRECTION
+% We repeat if ESC key pressed to do setup.
+% Setup might also have erased any pre-drawn graphics.
+%
+% Note that EyelinkDoDriftCorrection() internally uses Beeper() and Snd() to play
+% auditory feedback tones if el.targetbeep=1 or el.feedbackbeep=1 and the
+% el.callback function is set to the default PsychEyelinkDispatchCallback().
+% If you want to use PsychPortAudio in a script that also calls EyelinkDoDriftCorrection,
+% then read "help Snd" for instructions on how to provide proper interoperation
+% between PsychPortAudio and the feedback sounds created by Eyelink.
+%
 
 success=1;
-% DO PRE-TRIAL DRIFT CORRECTION */
-% We repeat if ESC key pressed to do setup. */
-% Setup might also have erased any pre-drawn graphics. */
 
 % if no x and y are supplied, set x,y to center coordinates
 if ~exist('x', 'var') || isempty(x) || ~exist('y', 'var') || isempty(y)
