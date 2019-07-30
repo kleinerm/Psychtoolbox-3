@@ -64,6 +64,9 @@ def get_devices(device_type=None, device_index=None):
     """Get a list of devices on the current system, optionally of certain types
 
     :param device_type:
+        Can be used to enumerate devices only of a given type: 1=Windows/DirectSound,
+        2=Windows/MME, 11=Windows/WDMKS, 13=Windows/WASAPI, 8=Linux/ALSA,
+        7=Linux/OSS, 12=Linux/JACK, 5=MacOSX/CoreAudio.
     :param device_index:
     :return:
     """
@@ -94,6 +97,7 @@ class Stream():
                  buffer_size=[], suggested_latency=[], select_channels=[],
                  flags=0):
         # PsychPortAudio('Open', [], [], [0], Fs, 2);
+        self._closed = True
         self.handle = PsychPortAudio('Open', device_id, mode,
                                      latency_class,
                                      freq, channels, buffer_size,
