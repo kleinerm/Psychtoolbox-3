@@ -55,8 +55,17 @@
 % e.g., crashing in SimpleMovieDemo and other demos that use GStreamer, unless
 % they are used without the Graphical user interface and without Java. That means
 % you need to start Matlab with the -nojvm command line switch, ie. matlab.exe -nojvm.
-% See also: https://github.com/Psychtoolbox-3/Psychtoolbox-3/wiki/FAQ#how-to-resolve-gstreamer-problems
+% See also:
 %
+% <https://github.com/Psychtoolbox-3/Psychtoolbox-3/wiki/FAQ#how-to-resolve-gstreamer-problems>
+%
+% NOTE: If GStreamer complains about not being able to find some plugins,
+% e.g., the video playback doesn't work because there is a GStreamer
+% configuration problem, then it can help to delete the GStreamer plugin
+% registry to force a rebuild of that database. Under Windows-10, if your
+% login user name is Bob, you would probably have to delete the file:
+%
+% 'C:\Users\Bob\AppData\Local\Microsoft\Windows\INetCache\gstreamer-1.0\registry.x86_64.bin'
 %
 % Download and install the latest 64-Bit ("x86_64") GStreamer runtimes from:
 %
