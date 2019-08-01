@@ -258,7 +258,9 @@ void PsychGSCheckInit(const char* engineName)
                 if (FALSE) {
                 #else
                 // Non-Octave (Matlab) specific code, where delay loading works:
-                if ((NULL == LoadLibrary("libgstreamer-1.0-0.dll")) || (NULL == LoadLibrary("libgstapp-1.0-0.dll"))) {
+                // First check for the dll names from the MSVC runtimes, then for the older MinGW runtime names:
+                if (((NULL == LoadLibrary("gstreamer-1.0-0.dll")) || (NULL == LoadLibrary("gstapp-1.0-0.dll"))) &&
+                    ((NULL == LoadLibrary("libgstreamer-1.0-0.dll")) || (NULL == LoadLibrary("libgstapp-1.0-0.dll")))) {
                 #endif
             #endif
             #if PSYCH_SYSTEM == PSYCH_OSX
