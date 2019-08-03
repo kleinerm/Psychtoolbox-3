@@ -1966,6 +1966,14 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
     // Windows Vista DWM available, supported and enabled?
     dwmtiming.cbSize = sizeof(dwmtiming);
 
+    // Ok, this shit is badly broken on at least Windows-10 again, because
+    // now PsychDwmGetCompositionTimingInfo returns info even in fullscreen
+    // mode when the DWM unredirects!! Needless to say, the results are
+    // complete bullshit and cause malfunctions, subtle but bad ones, e.g.,
+    // in PsychPortAudioTimingTest.m or anything that relied on PredictVisualOnsetForTime.m
+    // I give up for the time being, DWM control and queries are just an utter
+    // trainwreck on anything beyond Windows-7 and even there not great at all...
+    #if 0
     if (PsychOSIsDWMEnabled(0) && (NULL != PsychDwmGetCompositionTimingInfo) &&
         ((rc = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0)) {
         // Yes. Supported, enabled, and we got timing info from it. Extract:
@@ -1988,6 +1996,7 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
             printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo(%i) failed with rc = %x, GetLastError() = %i\n", dwmtiming.cbSize, rc, GetLastError());
         }
     }
+    #endif
 
     // DWM unsupported, unavailable, disabled or failed to query if we reach this point.
     // Let's try if we have more luck with OpenML support...
