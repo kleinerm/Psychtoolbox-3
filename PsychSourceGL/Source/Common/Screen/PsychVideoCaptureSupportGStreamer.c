@@ -214,7 +214,12 @@ void PsychGSCheckInit(const char* engineName)
                 // Octave-4 on Windows specific code. Delay loading of the main dependencies
                 // does not work, because Octave-4 always resolves dependencies of mex files
                 // immediately and fails if it can not do that.
-                //
+
+                // Following hack was only needed on the Octave-4 series with MinGW built GStreamer
+                // before version 1.16.0.
+                // It is no longer needed with PTB 3.0.16 which uses Octave-5.1.0 and the MSVC build
+                // of GStreamer 1.16.0 or later versions.
+                #if 0 && defined(PTB_USE_GSTREAMER)
                 // However we need a Octave-4.0.0 specific hack here to prevent failure of runtime
                 // loading of some GStreamer plugins, e.g., for movie playback. Octave-4 comes
                 // with its own version of libbz2, needed by GraphicsMagick for some image format.
@@ -253,6 +258,7 @@ void PsychGSCheckInit(const char* engineName)
                         printf("PTB-DEBUG: Loaded '%s' from GStreamer runtime directory to override Octave's incompatible DLL.\n", gst_libbz2_path);
                     }
                 }
+                #endif
 
                 // We don't fail in the Octave specific startup path:
                 if (FALSE) {
