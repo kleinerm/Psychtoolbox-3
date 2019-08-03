@@ -48,7 +48,14 @@ int PrintfExit(const char *format,...)
     int i;
 
     va_start(args,format);
-    i = vsnprintf(s, MAX_PRINTFEXIT_LEN - 1, format, args);
+    // Octave build of Screen.mex on Windows with MSVC GStreamer?
+    #if (PSYCH_SYSTEM == PSYCH_WINDOWS) && defined(PTBOCTAVE3MEX)&& defined(PTB_USE_GSTREAMER)
+        // Yes: Hack around incompatibilities relating to vsnprintf() in MinGW + GStreamer MSVC SDK:
+        i = vsprintf(s, format, args);
+    #else
+        // No: All good.
+        i = vsnprintf(s, MAX_PRINTFEXIT_LEN - 1, format, args);
+    #endif
     va_end(args);
     if(i + 1 > MAX_PRINTFEXIT_LEN)
         printf("PTB-ERROR: Buffer overrun in PrintfExit\n");
