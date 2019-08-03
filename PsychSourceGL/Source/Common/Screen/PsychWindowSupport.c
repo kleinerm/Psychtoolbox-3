@@ -7149,7 +7149,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             printf("PTB-INFO: tests and calibrations so you can at least get your scripts running for demo purposes. Other\n");
             printf("PTB-INFO: presentation modalities and various Psychtoolbox functions will only work with limited functionality\n");
             printf("PTB-INFO: and precision. Only use this for demos and simple tests, not for real experiment sessions!\n\n");
-
+            #if (PSYCH_SYSTEM == PSYCH_WINDOWS) && defined(PTBOCTAVE3MEX)
+            printf("PTB-INFO: Another reason for lack of hardware OpenGL could be that GNU/Octave's own opengl32.dll library\n");
+            printf("PTB-INFO: has not been deleted or renamed by you, so it is enforcing software rendering.\n");
+            printf("PTB-INFO: You have to delete or rename that file and restart Octave for this to work.\n");
+            printf("PTB-INFO: E.g., on Octave-5.1.0, the file to delete or rename would be likely this:\n");
+            printf("PTB-INFO: C:\\Octave\\Octave-5.1.0.0\\mingw64\\bin\\opengl32.dll\n\n");            
+            #endif
             // Disable all sync tests and display timing calibrations, unless usercode already did something similar:
             if (PsychPrefStateGet_SkipSyncTests() < 1) PsychPrefStateSet_SkipSyncTests(2);
             // Disable strict OpenGL error checking, so we don't abort for minor OpenGL errors and
