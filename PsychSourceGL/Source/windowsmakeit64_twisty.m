@@ -117,8 +117,22 @@ if onoctave == 0
         clear PsychOculusVRCore
         % Needs the Oculus VR SDK v 0.5.01 installed in side-by-side to
         % the Psychtoolbox-3 folder, ie., in the same parent directory, and
-        % renamed from OculusSDK to OculusSDKWin:
-        mex -v -outdir ..\Projects\Windows\build -output PsychOculusVRCore -DPTBMODULE_PsychOculusVRCore -largeArrayDims -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib ..\..\..\OculusSDKWin\LibOVR\Lib\Windows\x64\Release\VS2010\LibOVR.lib
+        % renamed from OculusSDK to OculusSDKWin.
+        %
+        % For building with R2019a and MSVC 2019 we had to hack the OVR_CAPI.h
+        % file to #define OVR_ALIGN(n) as nothing. Hopefully this still
+        % works, as i don't have a Rift DK2 around for testing atm., and my
+        % Windows 10 box refuses installation of the full runtime drive
+        % anyway.
+        %
+        % For the Matlab build, we compile the OVR_CAPIshim.c shim file and
+        % other helper C files from the SDK directly into our mex file,
+        % instead of statically linking against LibOVR.lib, as that .lib
+        % import file only works with up to MSVC 2013, but not with our
+        % MSVC 2019 build system for R2019a. The shim will locate and
+        % runtime-link against the libOVRRT_64_0_5.dll of the installed
+        % Oculus VR runtime during initialization:
+        mex -v -outdir ..\Projects\Windows\build -output PsychOculusVRCore -DPTBMODULE_PsychOculusVRCore -largeArrayDims -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c ..\..\..\OculusSDKWin\LibOVR\Src\*.c ..\..\..\OculusSDKWin\LibOVR\Src\*.cpp kernel32.lib user32.lib winmm.lib
         movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
