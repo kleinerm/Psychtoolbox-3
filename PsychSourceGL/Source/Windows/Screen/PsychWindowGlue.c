@@ -637,7 +637,7 @@ psych_bool ChangeScreenResolution (int screenNumber, int width, int height, int 
     dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
 
     if (PsychPrefStateGet_Verbosity() > 4) {
-        printf("PTB-DEBUG: Switching display for screen %i to fullscreen mode with resolution %i x %i with bpc = %i @ %i Hz.\n", screenNumber, (int) dmScreenSettings.dmPelsWidth, (int) dmScreenSettings.dmPelsHeight, (int) dmScreenSettings.dmBitsPerPel, (int) dmScreenSettings.dmDisplayFrequency);
+        printf("PTB-DEBUG: Switching display for screen %i to fullscreen mode with resolution %i x %i with bpp = %i @ %i Hz.\n", screenNumber, (int) dmScreenSettings.dmPelsWidth, (int) dmScreenSettings.dmPelsHeight, (int) dmScreenSettings.dmBitsPerPel, (int) dmScreenSettings.dmDisplayFrequency);
     }
 
     #ifndef DISP_CHANGE_BADDUALVIEW
