@@ -5126,6 +5126,9 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 
         // Copy out estimated stopTime:
         PsychCopyOutDoubleArg(4, kPsychArgOptional, audiodevices[pahandle].estStopTime);
+
+        // We now have an estimate of real sound offset in estStopTime, wait until then:
+        PsychWaitUntilSeconds(audiodevices[pahandle].estStopTime);
     }
     else {
         // No block until stopped. That means we won't have meaningful return arguments available.
