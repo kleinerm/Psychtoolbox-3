@@ -15,11 +15,16 @@ function datapixxmakemex()
         DELCMD = 'rm ';
     elseif (IsWin)
         VPIXXDIR = 'T:/projects/';
+        VPIXXDIR = 'C:/Users/kleinerm/Documents/GitHub/';
         CPYCMD = 'copy ';
         DELCMD = 'del ';
     end
 
-    PTBDIR = [VPIXXDIR 'OpenGLPsychtoolbox/Psychtoolbox-3/'];
+    if ~IsWin
+        PTBDIR = [VPIXXDIR 'OpenGLPsychtoolbox/Psychtoolbox-3/'];
+    else
+        PTBDIR = [VPIXXDIR '/Psychtoolbox-3/'];
+    end
 
     % Start constructing mex command
     S = 'mex -v';   % -v for verbose output
