@@ -404,7 +404,7 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if (~IsLinux && (octavemajorv ~= 5 || octaveminorv ~= 1 || octavepatchv ~= 0)) || ...
+    if (~IsLinux && (octavemajorv ~= 5 || octaveminorv ~= 1)) || ...
         (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8) || (octavemajorv == 4 && octaveminorv > 2) || (octavemajorv > 4) ))
         fprintf('\n\n=================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
@@ -413,8 +413,8 @@ if IsOctave
             fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0 or 4.2 series for use with Psychtoolbox.\n');
             fprintf('WARNING: You can get Psychtoolbox for more recent versions of Octave, e.g., for v4.4 or v5.1, from NeuroDebian.\n');
         else
-            % On Windows/OSX we only care about 5.1.0 atm:
-            fprintf('WARNING: only using Octave 5.1.0 with Psychtoolbox.\n');
+            % On Windows/OSX we only care about 5.1 atm:
+            fprintf('WARNING: only using Octave 5.1 with Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
@@ -574,10 +574,9 @@ try
         fprintf('\n');
         fprintf('For Screen() and OpenGL support:\n\n');
         fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
-        fprintf('* GStreamer multimedia framework: At least version 1.0.0 of the core runtime and the gstreamer-base plugins.\n');
+        fprintf('* GStreamer multimedia framework: At least version 1.4.0 of the core runtime and the gstreamer-base plugins.\n');
         fprintf('  For optimal performance use the latest available versions.\n');
-        fprintf('  A simple way to get GStreamer at least on Ubuntu Linux is to install the "rhythmbox" or\n');
-        fprintf('  "totem" multimedia-players. You may need to install additional packages to play back all\n');
+        fprintf('  You may need to install additional packages to play back all\n');
         fprintf('  common audio- and video file formats. See "help GStreamer".\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
         fprintf('* libdc1394 Firewire video capture library.\n');
@@ -600,26 +599,6 @@ try
         fprintf('If you receive an installation failure soon, then please read the output of\n');
         fprintf('"help GStreamer" first and follow the installation instructions for GStreamer\n');
         fprintf('on Linux. Psychtoolbox''s Screen() command will not work without GStreamer!\n\n');
-
-        % Additional setup instructions for embedded/mobile devices with ARM cpu required?
-        % No point anymore. Not needed for RaspberryPi, and our Nexus-7
-        % support is essentially dead...
-        if 0 && IsARM
-            fprintf('Additionally, as this is a device with ARM processor, the helper library\n');
-            fprintf('libwaffle-1.so needs to be installed in a system library folder for Screen\n');
-            fprintf('to work. You can find a copy of the library in the PsychContributed/ArmArch/\n');
-            fprintf('subfolder of your Psychtoolbox main folder. Rename it to libwaffle-1.so.0 during\n');
-            fprintf('the copy.\n');
-            fprintf('Another requirement, at least as of April 2013 and Ubuntu 13.04 for the Nexus-7,\n');
-            fprintf('is that you must start octave from the command line, or via some script, like this:\n');
-            fprintf('LD_PRELOAD=/usr/lib/libGLESv1_CM.so octave\n');
-            fprintf('This is a workaround for a small bug in octave for Nexus-7, which would cause Screen()\n');
-            fprintf('to crash shortly after opening an onscreen window.\n\n');
-            fprintf('\n');
-            fprintf('If you run PTB on the Nexus7 make sure you do not use the "Unity" desktop since\n');
-            fprintf('this might lead to unforeseen problems. Use a desktop without 3D desktop compositor instead.\n');
-            fprintf('E.g. install and use XFCE (sudo apt-get install xfce4).\n');
-        end
     end
 
     % Check Screen:
@@ -638,16 +617,14 @@ try
 catch
     fprintf('\n\n');
     fprintf('Screen() failed to work for some reason:\n\n');
+    if IsWin
+      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.16.0\n');
+      fprintf('or a later version. Screen() will not work with earlier versions, without GStreamer,\n');
+      fprintf('or with the MinGW variants of the GStreamer runtime!\n');
+      fprintf('Read ''help GStreamer'' for more info.\n\n');
+    end
     fprintf('Check the troubleshooting instructions on our Wiki (Download section \n');
     fprintf('and FAQ section, maybe also the Bugs section).\n\n');
-    if IsWin && IsOctave
-        fprintf('You may need to delete (or rename) the following DLL files in your Octave-4.4.1 installations\n');
-        fprintf('bin folder to make this work, then restart Octave:\n');
-        fprintf('C:\\Octave\\4.4.1\\bin\\libglib-2.0.0.dll\n');
-        fprintf('C:\\Octave\\4.4.1\\bin\\libgmodule-2.0.0.dll\n');
-        fprintf('C:\\Octave\\4.4.1\\bin\\opengl32.dll\n');
-        fprintf('\n');
-    end
     fprintf('Once you manage to fix the problem (simply type ''AssertOpenGL'' to verify\n');
     fprintf('that stuff works now), you do not need to run the installation routine again,\n');
     fprintf('but can start working immediately.\n\n');
