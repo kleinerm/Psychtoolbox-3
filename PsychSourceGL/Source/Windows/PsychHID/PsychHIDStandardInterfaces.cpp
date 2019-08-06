@@ -1060,8 +1060,9 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
 
     // Keyboard queue for this deviceIndex already exists?
     if (NULL == psychHIDKbQueueFirstPress[deviceIndex]) {
-        // No. Nothing to do then.
-        return;
+        // No. Bad bad...
+        printf("PsychHID-ERROR: Tried to stop processing on non-existent keyboard queue for deviceIndex %i! Call KbQueueCreate first!\n", deviceIndex);
+        PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No queue for that device yet!");
     }
 
     // Keyboard queue already stopped?
