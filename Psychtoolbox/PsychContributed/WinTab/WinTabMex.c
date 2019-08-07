@@ -25,7 +25,7 @@
  *
  * ------------------------------------------------------------------------------
  *
- *    WinTabMex.c is Copyright (C) 2008 - 2017 Mario Kleiner
+ *    WinTabMex.c is Copyright (C) 2008 - 2019 Mario Kleiner
  *    with contributions       (C) 2013 by Jason Friedman
  *
  *    It is licensed to you under the MIT free and open source software license:
@@ -55,6 +55,7 @@
 #include <windows.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 /* WinTab includes: */
 #include <wintab.h>
@@ -225,7 +226,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     if(nrhs<1) {
         mexPrintf("WinTabMex: A simple MEX file for driving touch tablets which are\n");
         mexPrintf("compatible with the WinTAB API on Microsoft Windows.\n\n");
-        mexPrintf("(C) 2008-2013 by Mario Kleiner and Jason Friedman -- Licensed to you under MIT license.\n");
+        mexPrintf("(C) 2008-2019 by Mario Kleiner and Jason Friedman -- Licensed to you under MIT license.\n");
         mexPrintf("This file is part of Psychtoolbox-3 but should also work independently.\n");
         mexPrintf("\n");
         mexPrintf("Usage:\n\n");

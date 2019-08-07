@@ -11,7 +11,7 @@
  * mex -v ShowHideWinTaskbarMex.c user32.lib
  *
  * If you want to compile on Octave, do this:
- * mex -v ShowHideWinTaskbarMex.c user32.lib -DPTBOCTAVE3MEX
+ * mex -v ShowHideWinTaskbarMex.c -luser32 -DPTBOCTAVE3MEX
  */
 
 /* Windows includes: */

@@ -180,6 +180,12 @@ const char* PsychOSDisplayDPITrouble(unsigned int screenNumber)
     // Get DPI of the monitor for this screen, or 0 if DPI unknown on Windows-8 and earlier:
     unsigned int monitorDPI = PsychOSGetMonitorDPI(displayDevicehMonitor[screenNumber]);
 
+    if (PsychPrefStateGet_Verbosity() > 4) {
+        printf("PTB-DEBUG: MS-Vista+ %i, DWM enabled %i, screen %i, primary %i, monitorDPI %i, primaryDPI %i\n",
+               PsychIsMSVista(), PsychOSIsDWMEnabled(screenNumber), screenNumber, primaryDisplayScreen,
+               monitorDPI & 0xffff, primaryDPI & 0xffff);
+    }
+
     // No trouble expected on pre-Vista systems due to lack of DWM, or on later systems
     // if the DWM is disabled for sure. Also if the DWM is disabled then the DPI situation
     // can't cause timing trouble and we are done.
@@ -215,7 +221,7 @@ const char* PsychOSDisplayDPITrouble(unsigned int screenNumber)
     // any non-zero value other than the DPI density of the primary display (global DPI) means trouble:
     if (process_dpi_awareness == PROCESS_SYSTEM_DPI_AWARE) {
         // Display DPI matches primary display DPI so all should be good?
-        if (monitorDPI == primaryDPI) return(NULL);
+        if ((monitorDPI == primaryDPI) && (primaryDPI != 0)) return(NULL);
 
         if (monitorDPI == 0) {
             // No result for this specific display to compare against primaryDPI.
@@ -315,7 +321,7 @@ void InitializePsychDisplayGlue(void)
             break;
 
             case PROCESS_SYSTEM_DPI_AWARE:
-                if (PsychGetNumDisplays() > 1) {
+                if ((PsychGetNumDisplays() > 1) || (PsychPrefStateGet_Verbosity() > 3)) {
                     printf("PTB-INFO: Your version of %s is global system DPI aware. On Windows-8 or later, fullscreen onscreen windows will only work \n", PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME);
                     printf("PTB-INFO: properly timing-wise when displayed on displays with the same pixel density as your systems primary display monitor.\n");
                     printf("PTB-INFO: For your multi-display setup the stimulus display monitor must have a DPI of (%i, %i), matching that of\n", primaryDPI >> 16, primaryDPI & 0xffff);
@@ -526,6 +532,7 @@ void InitCGDisplayIDList(void)
     // Now call M$-Windows monitor enumeration routine. It will call our callback-function
     // MonitorEnumProc() for each detected display device...
     EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
+    displayDevicehMonitor[0] = displayDevicehMonitor[1];
 
     // Only one additional display found?
     if (numDisplays <=2) {

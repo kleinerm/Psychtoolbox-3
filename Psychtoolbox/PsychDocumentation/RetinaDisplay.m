@@ -39,8 +39,8 @@
 % or at least not displaying on your stimulus monitor, as such applications
 % would trigger use of the DWM and thereby cause stimulus timing problems.
 %
-% Additionally, on Windows 8 you must make sure that the stimulation
-% display is the designated "primary display", so Windows 8 DPI settings,
+% Additionally, on Windows 8 and later you must make sure that the
+% stimulation display is the designated "primary display", so DPI settings,
 % which always apply to the primary display, thereby apply to your stimulus
 % display. Applications displayed on other than the primary display will be
 % subject to DWM scaling if those other displays do not have the same DPI

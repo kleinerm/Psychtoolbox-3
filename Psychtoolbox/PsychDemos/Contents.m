@@ -68,6 +68,7 @@
 %    LineStippleDemo         - Draw dotted and dashed lines.
 %    MandelbrotDemo          - Visualize the Mandelbrot fractal set by use
 %                              of a GLSL procedural texture.
+%    MouseMotionRecordingDemo - Record mouse motion via KbQueues.
 %    MouseTraceDemo          - Track mouse around screen and draw contour.
 %    MouseTraceDemo2         - More efficient tracking of mouse around screen drawing contour.
 %    MouseTraceDemo3         - Like MouseTraceDemo2, but faster, and for multiple mice.

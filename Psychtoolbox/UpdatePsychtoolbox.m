@@ -100,7 +100,7 @@ end
 % Check if this is 32-Bit Octave-4 on Windows, which we don't support at all:
 if isempty(strfind(computer, 'x86_64')) && ~isempty(strfind(computer, 'mingw32'))
     fprintf('Psychtoolbox 3.0.13 and later do no longer work with 32-Bit GNU/Octave-4 on MS-Windows.\n');
-    fprintf('You need to use 64-Bit Octave-4 if you want to use Psychtoolbox with Octave on Windows.\n');
+    fprintf('You need to use 64-Bit Octave-5.1.0 if you want to use Psychtoolbox with Octave on Windows.\n');
     fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.12'', does support 32-Bit Octave-4 on Windows.\n');
     error('Tried to setup on 32-Bit Octave, which is no longer supported on Windows.');
 end

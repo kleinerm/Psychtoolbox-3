@@ -4,7 +4,7 @@ function PsychStartup
 % This performs setup of Matlab or Octave at session startup for
 % Psychtoolbox.
 %
-% On MS-Windows, it currently detects if the GStreamer 1.4+ runtime is
+% On MS-Windows, it currently detects if the GStreamer 1.16+ runtime is
 % installed, as this is required for Screen() multi-media functions to
 % work. It performs GStreamer setup, or outputs a warning if the runtime is
 % missing.
@@ -21,6 +21,7 @@ function PsychStartup
 % 17.10.2015  mk  Add warning about complete failure of Screen() for Octave on Windows.
 % 30.10.2015  mk  Setenv PSYCH_GSTREAMER_SDK_ROOT to help GStreamer on Octave-4 for Windows.
 % 14.01.2016  mk  Make detection more robust, delete dead code for GStreamer 0.10.
+% 07.08.2019  mk  Update for Psychtoolbox 3.0.16 - GStreamer 1.16+ MSVC needed.
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
@@ -28,7 +29,7 @@ try
     % Setup for MS-Windows:
     if IsWin
         % Need to assign a proper install location for the
-        % www.gstreamer.net GStreamer-1.4.0+ runtime libraries, otherwise
+        % www.gstreamer.net GStreamer-1.16.0+ MSVC runtime libraries, otherwise
         % use of GStreamer based functions would fail due to unresolved
         % link dependencies:
 
@@ -39,11 +40,11 @@ try
         % Find path to SDK-Root folder: Should be defined in env variable
         % by installer:
         if Is64Bit
-            % Use 64-Bit GStreamer runtime for 64-Bit Matlab on Windows:
+            % Use 64-Bit GStreamer runtime for 64-Bit Matlab/Octave on Windows:
             sdkroot = getenv('GSTREAMER_1_0_ROOT_X86_64');
             suffix = 'x86_64\';
         else
-            % Use 32-Bit GStreamer runtime atm. for 32-Bit Octave-4 on Windows:
+            % Use 32-Bit GStreamer runtime atm. for 32-Bit Octave-4.0 on Windows:
             sdkroot = getenv('GSTREAMER_1_0_ROOT_X86');
             suffix = 'x86\';
         end
@@ -54,16 +55,16 @@ try
             else
                 fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86 is undefined.\n');
             end
-            fprintf('PsychStartup: Either GStreamer-1.4 is not installed at all, or if it is installed then something\n');
+            fprintf('PsychStartup: Either GStreamer-1.16 MSVC is not installed at all, or if it is installed then something\n');
             fprintf('PsychStartup: is botched. Trying various common locations for the GStreamer runtime to keep going.\n');
         else
             if ~exist(sdkroot, 'dir')
                 % Env variable points to non-existent SDK dir. How peculiar?
                 % Invalidate invalid sdkroot, so fallback code can run:
                 if Is64Bit
-                    fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86_64 points to non-existent SDK folder?!?\n');
+                    fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86_64 points to non-existent folder?!?\n');
                 else
-                    fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86 points to non-existent SDK folder?!?\n');
+                    fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86 points to non-existent folder?!?\n');
                 end
 
                 fprintf('PsychStartup: The missing or inaccessible path to GStreamer is: %s\n', sdkroot);
@@ -95,9 +96,10 @@ try
 
         if isempty(sdkroot) || ~exist(sdkroot, 'dir')
             fprintf('\nPsychStartup: Path to GStreamer runtime is undefined! This probably means that\n');
-            fprintf('PsychStartup: the 64-Bit GStreamer 1.x runtime from www.gstreamer.net is not installed.\n');
+            fprintf('PsychStartup: the 64-Bit GStreamer 1.16+ MSVC runtime from www.gstreamer.net is not installed.\n');
 
-            if IsOctave
+            % PTB 3.0.16 - GStreamer always needed, also on Matlab.
+            if 1 || IsOctave
                 fprintf('PsychStartup: The Psychtoolbox Screen() function will not work at all until you fix\n');
             else
                 fprintf('PsychStartup: The Psychtoolbox Screen() multimedia functions and the new ''DrawText''\n');
@@ -123,7 +125,7 @@ try
                 fprintf('\nPsychStartup: Screen() mex file will not work.\n');
             end
 
-            % For Octave-4.2 on Windows, also need to prepend path to portaudio dll
+            % For Octave-5.1 on Windows, also need to prepend path to portaudio dll
             % to library path, otherwise PsychPortAudio won't load:
             driverloadpath = [PsychtoolboxRoot 'PsychSound'];
             newpath = [driverloadpath ';' newpath];

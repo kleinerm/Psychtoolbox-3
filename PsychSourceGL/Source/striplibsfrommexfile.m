@@ -33,7 +33,7 @@ if exist(filename, 'file')
         error('ERROR! MEX file %s could not be read [%s]! Can''t strip it!\n', filename, msg);
     end
     image = uint8(fread(fd));
- 
+
     % Strip all following libraries from image:
     image = stripLibrary(image, 'libreadline');
     image = stripLibrary(image, 'libncurses');
@@ -52,8 +52,16 @@ if exist(filename, 'file')
         % at least Octave-3 and Octave-4. This works because while the
         % liboctinterp's so-name/version has changed, the api/abi of
         % Octave-4's C-Mex interface has not changed. Or so we hope until proven
-        % wrong...
-        if str2num(version ()(1)) == 4 && str2num(version ()(3)) == 2
+        % wrong... -- Well, there was an ABI change between v4.2 and v4.4, in that
+        % mwSize was redefined from unsigned long (uint32_t) to size_t, so on 64-Bit
+        % architectures mwSize is no longer 32 bits, but 64 bits! As we pass values
+        % around via mwSize*, this ends badly if one tries to use a mex file built
+        % for < 4.4 with a >= 4.4 Octave and vice versa. But other than that, the
+        % general principle still holds.
+        if str2num(version ()(1)) == 4 && str2num(version ()(3)) == 4
+            % Octave 4.4.1 - liboctinterp.so.6:
+            image = renameLibrary(image, 'liboctinterp.so.6', 'liboctinterp.so');
+        elseif str2num(version ()(1)) == 4 && str2num(version ()(3)) == 2
             % Octave 4.2 - liboctinterp.so.4:
             image = renameLibrary(image, 'liboctinterp.so.4', 'liboctinterp.so');
         elseif str2num(version ()(1)) == 4 && str2num(version ()(3)) == 0
@@ -70,7 +78,7 @@ if exist(filename, 'file')
     if ~testrun
         fwrite(fd, image);
     end
-    
+
     if (fclose(fd) ~= 0)
         error('ERROR! MEX file %s could not be closed [%s]! Can''t strip it!\n', filename, ferror(fd));
     end
@@ -92,7 +100,7 @@ function image = stripLibrary(image, library)
         % Iterate over all occurences, kill each of them:
         for cStart = pStart
             % Kill occurence at cStart:
-            
+
             if dodebug
                 disp(char(image(cStart:cStart + 20)))
             end
@@ -113,11 +121,11 @@ function image = stripLibrary(image, library)
             end
         end
     end
-    
+
     if ~isa(image, 'uint8')
         error('After strip op, image is no longer of uint8 class as required! Stripping failed!!');
     end
-    
+
 return
 
 function image = renameLibrary(image, oldlibrary, newlibrary)
