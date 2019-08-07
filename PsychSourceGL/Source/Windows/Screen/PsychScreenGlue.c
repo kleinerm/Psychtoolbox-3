@@ -532,6 +532,7 @@ void InitCGDisplayIDList(void)
     // Now call M$-Windows monitor enumeration routine. It will call our callback-function
     // MonitorEnumProc() for each detected display device...
     EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
+    displayDevicehMonitor[0] = displayDevicehMonitor[1];
 
     // Only one additional display found?
     if (numDisplays <=2) {
