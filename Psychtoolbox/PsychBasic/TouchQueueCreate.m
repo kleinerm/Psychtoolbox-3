@@ -25,7 +25,7 @@ function TouchQueueCreate(win, deviceNumber, numSlots, numValuators, keyList, fl
 % 'flags' Optional flags. This defaults to 0 and is so far unused for touch input.
 %
 % Once a queue is created its touch data collection can be started via
-% TouchQueueStart(), stopped via TouchQueueStop(), cleared via TouchQueueFlush(),
+% TouchQueueStart(), stopped via TouchQueueStop(), cleared via TouchEventFlush(),
 % asked for current number of pending events via TouchEventAvail() and events
 % can be fetched via TouchEventGet().
 %

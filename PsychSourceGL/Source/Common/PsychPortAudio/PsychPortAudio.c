@@ -2851,12 +2851,13 @@ PsychError PSYCHPORTAUDIOOpen(void)
     err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
     if (err != paNoError && err != paDeviceUnavailable) {
         printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device: %s \n", deviceid, Pa_GetErrorText(err));
-        if (err == paInvalidSampleRate)
+        if (err == paInvalidSampleRate) {
             printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
-        else if (err == paInvalidChannelCount)
+        } else if (err == paInvalidChannelCount) {
             printf("PTB-ERROR: Seems the requested number of audio channels is not supported by this combo of hardware and sound driver.\n");
-        else
+        } else {
             printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel count/allocation, or audio sample format.\n");
+        }
 
         if (PSYCH_SYSTEM == PSYCH_LINUX)
             printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
@@ -5126,6 +5127,9 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 
         // Copy out estimated stopTime:
         PsychCopyOutDoubleArg(4, kPsychArgOptional, audiodevices[pahandle].estStopTime);
+
+        // We now have an estimate of real sound offset in estStopTime, wait until then:
+        PsychWaitUntilSeconds(audiodevices[pahandle].estStopTime);
     }
     else {
         // No block until stopped. That means we won't have meaningful return arguments available.

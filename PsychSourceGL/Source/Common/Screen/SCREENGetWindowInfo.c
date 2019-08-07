@@ -514,7 +514,8 @@ PsychError SCREENGetWindowInfo(void)
         // Misc. window parameters:
         PsychSetStructArrayDoubleElement("StereoMode", 0, windowRecord->stereomode, s);
         PsychSetStructArrayDoubleElement("ImagingMode", 0, windowRecord->imagingMode, s);
-        PsychSetStructArrayDoubleElement("SpecialFlags", 0, windowRecord->specialflags, s);
+        // FIXME: Caution: specialflags is 64 bits, but double can only return about 53 low-bits correctly. 
+        PsychSetStructArrayDoubleElement("SpecialFlags", 0, (double) windowRecord->specialflags, s);
         PsychSetStructArrayDoubleElement("IsFullscreen", 0, (windowRecord->specialflags & kPsychIsFullscreenWindow) ? 1 : 0, s);
         PsychSetStructArrayDoubleElement("MultiSampling", 0, windowRecord->multiSample, s);
         PsychSetStructArrayDoubleElement("MissedDeadlines", 0, windowRecord->nr_missed_deadlines, s);

@@ -41,6 +41,7 @@ function callStack = AssertMex(varargin)
 % 5/28/12    mk     Update: 64-Bit OSX and Linux supported, but OSX PowerPC
 %                   and Matlab < V7.4 (aka R2007a) no longer supported.
 % 23-Feb-2019 mk    Make more robust in case of wrong path order.
+% 07-Aug-2019 mk    Update for new MSVC 2019 build system on Windows-10 / Win 10 SDK.
 
 persistent okNames mexExtensions;
 
@@ -80,15 +81,16 @@ if IsOctave
                 fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles' oext]);
             end
             if IsOSX
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles' oext]);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles' oext]);
             end
             if IsWindows
-                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave4WindowsFiles' oext]);
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave5WindowsFiles' oext]);
             end
         else
             % Correct file with correct extension, still load failure:
             % Check for supported Octave version:
-            fprintf('Your version of Octave (%s) might be incompatible with Psychtoolbox: We support Octave 4.0.0 or later.\n', version);
+            fprintf('Your version of Octave (%s) might be incompatible with Psychtoolbox: We support Octave 4.0.0 or later\n', version);
+            fprintf('on Linux, Octave 5.1 on Windows and macOS.\n', version);
 
             fprintf('Another reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
             fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');
@@ -175,13 +177,13 @@ if isempty(inputNames) || ismember(computer, inputNames)
 
         if IsWin
             fprintf('On Microsoft Windows with supported Matlab versions (>= V7.4) it could also be that\n');
-            fprintf('the required Visual C++ 2010 runtime libraries are missing on your system.\n');
+            fprintf('the required Visual C++ 2015-2019 runtime libraries are missing on your system.\n');
             fprintf('The Psychtoolbox/PsychContributed/ subfolder contains installer files for them, which\n');
-            fprintf('you can execute after quitting Matlab. The name of the file is ');
+            fprintf('you can execute after quitting Matlab. The name of the file is:\n');
             if IsWin(1)
-                fprintf('vcredist_x64.exe\n');
+                fprintf('vcredist_x64_2015-2019.exe and maybe also vcredist_x64_2010.exe.\n');
             else
-                fprintf('vcredist_x86.exe\n');
+                fprintf('unknown - no longer ships with this version of Psychtoolbox.\n');
             end
         end
     end

@@ -20,12 +20,6 @@ function SimpleMovieDemo(moviename, windowrect)
 % Check if Psychtoolbox is properly installed:
 AssertOpenGL;
 
-if IsWin && ~IsOctave && psychusejava('jvm')
-    fprintf('Running on Matlab for Microsoft Windows, with JVM enabled!\n');
-    fprintf('This may crash. See ''help GStreamer'' for problem and workaround.\n');
-    warning('Running on Matlab for Microsoft Windows, with JVM enabled!');
-end
-
 if nargin < 1 || isempty(moviename)
     % No moviename given: Use our default movie:
     moviename = [ PsychtoolboxRoot 'PsychDemos/MovieDemos/DualDiscs.mov' ];

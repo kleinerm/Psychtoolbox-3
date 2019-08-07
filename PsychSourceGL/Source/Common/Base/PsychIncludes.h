@@ -143,21 +143,7 @@ typedef __CHAR16_TYPE__ char16_t;
 #endif
 
 // C standard library headers:
-
-// We can't include stdint.h on Windows if we build against the
-// MSCRT Windows common C Runtime instead of the MSVC 2010 runtime:
-#if PSYCH_SYSTEM != PSYCH_WINDOWS
 #include <stdint.h>
-#else
-// Add defines which would be part of stdint.h on Windows:
-#ifndef INT64_MAX
-#define INT64_MAX	0x7fffffffffffffff
-#endif
-#ifndef INT32_MAX
-#define INT32_MAX	0x7fffffff
-#endif
-#endif
-
 #include <math.h>
 #include <stdio.h>
 #include <limits.h>

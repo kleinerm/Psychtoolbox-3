@@ -1,7 +1,7 @@
 function AssertOpenGL
 % AssertOpenGL
 %
-% Break and issue an eror message if the installed Psychtoolbox is not
+% Break and issue an error message if the installed Psychtoolbox is not
 % based on OpenGL or Screen() is not working properly.
 % To date there are four versions of the Psychtoolbox, each based on a
 % different graphics library:
@@ -64,6 +64,8 @@ function AssertOpenGL
 % 09/05/12  mk      Disable shortcircuit operator warning.
 % 05/13/13  mk      Reenable short-circuit-operator warnings for Octave, as
 %                   they shouldn't be needed anymore with our fixed M-Files.
+% 08/07/19  mk      Update for 3.0.16 release: GStreamer 1.4+ on Linux, on Windows
+%                   GStreamer 1.16+ MSVC build is mandatory on Octave *and* Matlab.
 
 % Ok, we sneak this in here, because we don't know a better place for it:
 % Disable this workaround for now. All M-Files presumably have been fixed,
@@ -103,45 +105,61 @@ catch %#ok<*CTCH>
    fprintf('that either Screen is totally dysfunctional, or you are trying to run your script on\n');
    fprintf('a system without Psychtoolbox-3 properly installed - or not installed at all.\n\n');
 
-   if IsWin && IsOctave
-      le = psychlasterror;
-      if ~isempty(strfind(le.message, 'library or dependents')) && ~isempty(strfind(le.message, 'Screen.mex'))
-         % Likely the required GStreamer runtimes aren't installed yet!
-         fprintf('The most likely cause, based on the fact you are running on Octave under Windows\n');
-         fprintf('and given this error message: %s\n', le.message);
-         fprintf('is that the required GStreamer runtime libraries are not yet installed on your system.\n\n');
-         fprintf('Please type ''help GStreamer'' and read the installation instructions carefully.\n');
-         fprintf('After this one-time setup, the Screen command should work properly.\n\n');
-         fprintf('If this has been ruled out as a reason for failure, the following could be the case:\n\n');
-      end
+    %   if IsWin
+    %      le = psychlasterror;
+    %      if ~isempty(strfind(le.message, 'library or dependents')) && ~isempty(strfind(le.message, 'Screen.mex'))
+    %         % Likely the required GStreamer 1.16+ MSVC runtimes aren't installed yet!
+    %         fprintf('The most likely cause, based on the fact you are running on Octave under Windows\n');
+    %         fprintf('and given this error message: %s\n', le.message);
+    %         fprintf('is that the required GStreamer runtime libraries are not yet installed on your system.\n\n');
+    %         fprintf('Please type ''help GStreamer'' and read the installation instructions carefully.\n');
+    %         fprintf('After this one-time setup, the Screen command should work properly.\n\n');
+    %         fprintf('If this has been ruled out as a reason for failure, the following could be the case:\n\n');
+    %      end
+    %   end
+
+   if IsWin
+      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.16.0\n');
+      fprintf('or a later version. Screen() will not work with earlier versions, without GStreamer,\n');
+      fprintf('or with the MinGW variants of the GStreamer runtime!\n');
+      fprintf('Read ''help GStreamer'' for more info.\n\n');
    end
-   
+
    if IsLinux
-       fprintf('\n');
-       fprintf('The Psychtoolbox on GNU/Linux needs the following 3rd party libraries\n');
-       fprintf('in order to function correctly. If you get "Invalid MEX file errors",\n');
-       fprintf('or similar fatal error messages, check if these are installed on your\n');
-       fprintf('system and if they are missing, install them via your system specific\n');
-       fprintf('software management tools:\n');
-       fprintf('\n');
-       fprintf('For Screen() and OpenGL support:\n');
-       fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical providers.\n');
-       fprintf('* GStreamer multimedia framework: At least version 0.10.24 of the core runtime and the gstreamer-base plugins.\n');
-       fprintf('  A simple way to get GStreamer at least on Ubuntu Linux is to install the "rhythmbox" or\n');
-       fprintf('  "totem" multimedia-players. You may need to install additional packages to play back all\n');
-       fprintf('  common audio- and video file formats.\n');
-       fprintf('* libusb-1.0 USB low-level access library.\n');
-       fprintf('* libdc1394 Firewire video capture library.\n');
-       fprintf('* libraw1394 Firewire low-level access library.\n');
-       fprintf('\n\n');
-       fprintf('For PsychKinect():\n');
-       fprintf('* libusb-1.0 USB low-level access library.\n');
-       fprintf('* libfreenect: Kinect driver library.\n');
-       fprintf('\n');
-       fprintf('For Eyelink():\n');
-       fprintf('* The Eyelink core libraries from the SR-Research download website.\n');
-       fprintf('\n');
-       fprintf('\n');
+        fprintf('\n');
+        fprintf('The Psychtoolbox on GNU/Linux needs the following 3rd party libraries\n');
+        fprintf('in order to function correctly. If you get "Invalid MEX file errors",\n');
+        fprintf('or similar fatal error messages, check if these are installed on your\n');
+        fprintf('system and if they are missing, install them via your system specific\n');
+        fprintf('software management tools:\n');
+        fprintf('\n');
+        fprintf('For Screen() and OpenGL support:\n\n');
+        fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
+        fprintf('* GStreamer multimedia framework: At least version 1.4.0 of the core runtime and the gstreamer-base plugins.\n');
+        fprintf('  For optimal performance use the latest available versions.\n');
+        fprintf('  You may need to install additional packages to play back all\n');
+        fprintf('  common audio- and video file formats. See "help GStreamer".\n');
+        fprintf('* libusb-1.0 USB low-level access library.\n');
+        fprintf('* libdc1394 Firewire video capture library.\n');
+        fprintf('* libraw1394 Firewire low-level access library.\n');
+        fprintf('\n\n');
+        fprintf('For PsychKinect() (See "help InstallKinect"):\n\n');
+        fprintf('* libusb-1.0 USB low-level access library.\n');
+        fprintf('* libfreenect-0.5: Kinect driver library version 0.5 or later.\n');
+        fprintf('\n');
+        fprintf('For PsychHID() support:\n\n');
+        fprintf('* libusb-1.0 USB low-level access library.\n');
+        fprintf('\n\n');
+        fprintf('For PsychPortAudio() support:\n\n');
+        fprintf('* libportaudio.so.2 Portaudio sound library.\n');
+        fprintf('\n\n');
+        fprintf('For Eyelink():\n\n');
+        fprintf('* The Eyelink core libraries from the SR-Research download website.\n');
+        fprintf('\n');
+        fprintf('\n');
+        fprintf('If you receive an installation failure soon, then please read the output of\n');
+        fprintf('"help GStreamer" first and follow the installation instructions for GStreamer\n');
+        fprintf('on Linux. Psychtoolbox''s Screen() command will not work without GStreamer!\n\n');
 
        if ~IsOctave
            s = psychlasterror;
@@ -158,9 +176,6 @@ catch %#ok<*CTCH>
                fprintf('  This way, the linker can''t find Matlabs broken libz anymore and will use the system\n');
                fprintf('  libz and everything will be fine.\n');
                fprintf('\n');
-               fprintf('Good luck! Our most heartfelt thanks go to the Mathworks, the unmatched champions in high quality software design.\n');
-               fprintf('(Yes, the statement about Mathworks quality of workmanship is meant sarcastic, in case there is any doubt.)\n\n');
-
                error('Matlab bug -- Outdated/Defective libz installed. Follow above workarounds.');
            end
        end

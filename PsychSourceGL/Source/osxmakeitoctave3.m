@@ -1,14 +1,14 @@
 function osxmakeitoctave3(mode)
 % This is the MacOSX version of makeit: It is meant for building PTB for
-% 64-Bit Octave-4.4 on OSX 10.13.6 High Sierra or later, using the 10.14 SDK.
+% 64-Bit Octave-5.1 on OSX 10.13.6 High Sierra or later, using the 10.14 SDK.
 %
 % This build routine also encodes octave runtime library paths for octave
-% version 4.4 into all mex files. The point of this is to make sure mex files
-% don't fail to load due to libraries like liboctinterp.6.dylib not being
+% version 5.1 into all mex files. The point of this is to make sure mex files
+% don't fail to load due to libraries like liboctinterp.7.dylib not being
 % found. This is a stop-gap measure: It would be much better to modify
 % octave upstream to encode a -rpath = $OCTAVE_LIBS in the octave
 % executable and libraries themselves, and to add a
-% @rpath/liboctinterp.6.dylib etc. to the mkoctfile build function.
+% @rpath/liboctinterp.7.dylib etc. to the mkoctfile build function.
 %
 % This rpath encoding is done by the helper function osxsetoctaverpath().
 
@@ -74,6 +74,10 @@ if mode==0
     -weak_library /usr/local/lib/libdc1394.dylib \
     -framework CoreServices -framework CoreFoundation -framework ApplicationServices -framework CoreAudio -framework OpenGL -framework CoreVideo \
     -framework IOKit -framework SystemConfiguration -framework Carbon -framework CoreText \
+    -framework CoreDisplay -F /System/Library/PrivateFrameworks -framework DisplayServices \
+    -U CoreDisplay_Display_SetUserBrightness -U CoreDisplay_Display_GetUserBrightness \
+    -U DisplayServicesCanChangeBrightness -U DisplayServicesBrightnessChanged \
+    -U CoreDisplay_Display_SetAutoBrightnessIsEnabled \
     -framework Cocoa,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" ...
     -I/usr/include -I/usr/local/include -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/gstreamer-1.0 ...
     -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/libxml2 -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/glib-2.0 ...
@@ -86,21 +90,21 @@ if mode==0
     movefile('./OSX/Screen/PsychCocoaGlue.m', './OSX/Screen/PsychCocoaGlue.c');
 
     osxsetoctaverpath('Screen');
-    unix(['mv ../Projects/MacOSX/build/Screen.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/Screen.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 if mode==1
     % Build GetSecs:
     mex -g -v --output ../Projects/MacOSX/build/GetSecs  -DPTBMODULE_GetSecs -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/GetSecs "OSX/Base/*.c" "Common/Base/*.c" "Common/GetSecs/*.c"
     osxsetoctaverpath('GetSecs');
-    unix(['mv ../Projects/MacOSX/build/GetSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/GetSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 if mode==2
     % Build WaitSecs:
     mex -g -v --output ../Projects/MacOSX/build/WaitSecs  -DPTBMODULE_WaitSecs -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/WaitSecs  "OSX/Base/*.c" "Common/Base/*.c" "Common/WaitSecs/*.c"
     osxsetoctaverpath('WaitSecs');
-    unix(['mv ../Projects/MacOSX/build/WaitSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/WaitSecs.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 if mode==3
@@ -108,7 +112,7 @@ if mode==3
     % Build PsychPortAudio:
     mex -g -v --output ../Projects/MacOSX/build/PsychPortAudio  -DPTBMODULE_PsychPortAudio -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework AudioToolbox -framework AudioUnit,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychPortAudio  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychPortAudio/*.c" ../Cohorts/PortAudio/libportaudio_osx_64.a % /usr/local/lib/libportaudio.a
     osxsetoctaverpath('PsychPortAudio');
-    unix(['mv ../Projects/MacOSX/build/PsychPortAudio.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/PsychPortAudio.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 if mode==4
@@ -116,14 +120,14 @@ if mode==4
     % Build Eyelink:
     mex -g -v --output ../Projects/MacOSX/build/Eyelink  -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework eyelink_core,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/local/include -ICommon/Base -IOSX/Base -ICommon/Eyelink  "OSX/Base/*.c" "Common/Base/*.c" "Common/Eyelink/*.c"
     osxsetoctaverpath('Eyelink');
-    unix(['mv ../Projects/MacOSX/build/Eyelink.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/Eyelink.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 if mode==5
     % Build IOPort:
     mex -g -v --output ../Projects/MacOSX/build/IOPort  -DPTBMODULE_IOPort -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include  -ICommon/Base -IOSX/Base -ICommon/IOPort  "OSX/Base/*.c" "Common/Base/*.c" "Common/IOPort/*.c"
     osxsetoctaverpath('IOPort');
-    unix(['mv ../Projects/MacOSX/build/IOPort.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/IOPort.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 if mode==6
@@ -135,7 +139,7 @@ if mode==6
     catch %#ok<*CTCH>
     end
     osxsetoctaverpath('moglcore', './');
-    unix(['mv moglcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv moglcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
     cd(curdir);
 end
 
@@ -144,7 +148,7 @@ if mode==7
     % Build PsychKinectCore:
     mex -g -v --output ../Projects/MacOSX/build/PsychKinectCore  -DPTBMODULE_PsychKinectCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include -I/usr/local/include/libusb-1.0 -I/usr/local/include/libfreenect -ICommon/Base -IOSX/Base -ICommon/PsychKinect  "OSX/Base/*.c" "Common/Base/*.c" "Common/PsychKinect/*.c" -L/usr/local/lib -lfreenect -lusb-1.0
     osxsetoctaverpath('PsychKinectCore');
-    unix(['mv ../Projects/MacOSX/build/PsychKinectCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/PsychKinectCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 if mode==8
@@ -152,7 +156,7 @@ if mode==8
     % Dynamic link:   mex -g -v --output ../Projects/MacOSX/build/PsychHID  -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework Carbon -framework CoreAudio -framework IOKit,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager  "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" -L../Cohorts/HID_Utilities_64Bit/build/Release -lHID_Utilities
     mex -g -v --output ../Projects/MacOSX/build/PsychHID  -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/PsychHID -IOSX/PsychHID -I../Cohorts/HID_Utilities_64Bit/ -I../Cohorts/HID_Utilities_64Bit/IOHIDManager  "Common/PsychHID/*.c" "OSX/PsychHID/*.c" "OSX/Base/*.c" "Common/Base/*.c" ../Cohorts/HID_Utilities_64Bit/build/Release/libHID_Utilities64.a
     osxsetoctaverpath('PsychHID');
-    unix(['mv ../Projects/MacOSX/build/PsychHID.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/PsychHID.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 if mode==9
@@ -164,7 +168,7 @@ if mode==9
     catch
     end
     osxsetoctaverpath('moalcore', './');
-    unix(['mv ./moalcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ./moalcore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 
     cd(curdir);
 end
@@ -173,7 +177,7 @@ if mode==10
     % Build FontInfo:
     mex -g -v --output ../Projects/MacOSX/build/FontInfo  -DPTBMODULE_FontInfo -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/Base -ICommon/Fonts -IOSX/Base -IOSX/Fonts  "Common/Base/*.c" "OSX/Base/*.c" "OSX/Fonts/*.c"
     osxsetoctaverpath('FontInfo');
-    unix(['mv ../Projects/MacOSX/build/FontInfo.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/FontInfo.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 if mode==11
@@ -184,24 +188,24 @@ if mode==11
     % MachAbsoluteTimeClockFrequency
     mex -g -v --output ../Projects/MacOSX/build/MachAbsoluteTimeClockFrequency  -DPTBMODULE_MachAbsoluteTimeClockFrequency -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/Base -IOSX/Base -ICommon/MachAbsoluteTimeClockFrequency  "OSX/Base/*.c" "Common/Base/*.c" "Common/MachAbsoluteTimeClockFrequency/*.c"
     osxsetoctaverpath('MachAbsoluteTimeClockFrequency');
-    unix(['mv ../Projects/MacOSX/build/MachAbsoluteTimeClockFrequency.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/MachAbsoluteTimeClockFrequency.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 
     % MachGetPriorityMex
     mex -g -v --output ../Projects/MacOSX/build/MachGetPriorityMex -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/MachPriorityMex "Common/MachPriorityMex/MachPriorityCommonMex.c" "Common/MachPriorityMex/MachGetPriorityMex.c"
     osxsetoctaverpath('MachGetPriorityMex');
-    unix(['mv ../Projects/MacOSX/build/MachGetPriorityMex.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/MachGetPriorityMex.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 
     % MachSetPriorityMex
     mex -g -v --output ../Projects/MacOSX/build/MachSetPriorityMex -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/MachPriorityMex "Common/MachPriorityMex/MachPriorityCommonMex.c" "Common/MachPriorityMex/MachSetPriorityMex.c"
     osxsetoctaverpath('MachSetPriorityMex');
-    unix(['mv ../Projects/MacOSX/build/MachSetPriorityMex.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/MachSetPriorityMex.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 if mode==12
     % Build Gestalt:
     mex -g -v --output ../Projects/MacOSX/build/Gestalt  -DPTBMODULE_Gestalt -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework CoreServices -framework CoreFoundation -framework CoreAudio,-syslibroot,'/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk' -mmacosx-version-min='10.11'" -I/usr/include -ICommon/Base -IOSX/Base -IOSX/Gestalt -IOSX/OS9ToolboxFragments  "OSX/Base/*.c" "Common/Base/*.c" "OSX/Gestalt/*.c"
     osxsetoctaverpath('Gestalt');
-    unix(['mv ../Projects/MacOSX/build/Gestalt.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/Gestalt.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 if mode==13
@@ -211,7 +215,7 @@ if mode==13
     try
         mex -g -v --output ./pnet pnet.c "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names"
         osxsetoctaverpath('pnet', './');
-        unix(['mv ./pnet.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+        unix(['mv ./pnet.' mexext ' ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
     catch
     end
     cd(curdir);
@@ -227,7 +231,7 @@ if mode==14
     end
 
     osxsetoctaverpath('PsychOculusVRCore');
-    unix(['mv ../Projects/MacOSX/build/PsychOculusVRCore.mex ' PsychtoolboxRoot 'PsychBasic/Octave4OSXFiles64/']);
+    unix(['mv ../Projects/MacOSX/build/PsychOculusVRCore.mex ' PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/']);
 end
 
 delete('./*.o');
