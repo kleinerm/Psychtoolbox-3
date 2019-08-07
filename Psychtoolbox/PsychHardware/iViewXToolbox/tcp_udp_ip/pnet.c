@@ -37,11 +37,11 @@
  *  Notes for Unix implementation
  *  Compile this with:
  *
- *  mex -g -v -largeArrayDims pnet.c
+ *  mex -g -v -largeArrayDims -DMEX_DOUBLE_HANDLE pnet.c
  *
  *  On Linux + gcc 4.6+ + Matlab use:
  *
- *  mex -O -g -v CFLAGS='$CFLAGS -fPIC -fexceptions' -largeArrayDims pnet.c
+ *  mex -O -g -v CFLAGS='$CFLAGS -fPIC -fexceptions' -largeArrayDims -DMEX_DOUBLE_HANDLE pnet.c
  *
  *  Notes for Windows implementation
  *
@@ -49,7 +49,7 @@
  *  mex -O pnet.c {MATLAB_INSTALL_DIR}\sys\lcc\lib\wsock32.lib -DWIN32
  *
  *  When using Visual C++, compile this with:
- *  mex -O pnet.c ws2_32.lib winmm.lib -DWIN32 -largeArrayDims
+ *  mex -O pnet.c ws2_32.lib winmm.lib -DWIN32 -largeArrayDims -DMEX_DOUBLE_HANDLE
  *
  *
  *  == Main Authour ==           == Windows support ==      == Earlie/Basic UDP support ==
