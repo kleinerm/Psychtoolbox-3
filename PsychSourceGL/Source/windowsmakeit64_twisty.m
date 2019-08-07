@@ -46,15 +46,15 @@ if onoctave == 0
         % variant for 64-Bit Windows, or a later version of GStreamer. Use
         % this for verbose linker output: /VERBOSE:LIB
         clear Screen
-        % Does not work with GStreamer 1.16.0 MSVC SDK yet due to glib-2.0.0 incompatibility with delay loading: mex -v -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTB_USE_GSTREAMER -DGLEW_STATIC -LC:\gstreamer\1.0\x86_64\lib -IC:\gstreamer\1.0\x86_64\include -IC:\gstreamer\1.0\x86_64\include\gstreamer-1.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\x86_64\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 LINKFLAGS="$LINKFLAGS /DELAYLOAD:gobject-2.0-0.dll /DELAYLOAD:glib-2.0-0.dll /DELAYLOAD:gstreamer-1.0-0.dll /DELAYLOAD:gstapp-1.0-0.dll /DELAYLOAD:gstvideo-1.0-0.dll /DELAYLOAD:gstpbutils-1.0-0.dll"
-        mex -v -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTB_USE_GSTREAMER -DGLEW_STATIC -LC:\gstreamer\1.0\x86_64\lib -IC:\gstreamer\1.0\x86_64\include -IC:\gstreamer\1.0\x86_64\include\gstreamer-1.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\x86_64\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 LINKFLAGS="$LINKFLAGS /DELAYLOAD:gobject-2.0-0.dll /DELAYLOAD:gstreamer-1.0-0.dll /DELAYLOAD:gstapp-1.0-0.dll /DELAYLOAD:gstvideo-1.0-0.dll /DELAYLOAD:gstpbutils-1.0-0.dll"
+        % Does not work with GStreamer 1.16.0 MSVC SDK yet due to glib-2.0.0 incompatibility with delay loading: mex -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTB_USE_GSTREAMER -DGLEW_STATIC -LC:\gstreamer\1.0\x86_64\lib -IC:\gstreamer\1.0\x86_64\include -IC:\gstreamer\1.0\x86_64\include\gstreamer-1.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\x86_64\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 LINKFLAGS="$LINKFLAGS /DELAYLOAD:gobject-2.0-0.dll /DELAYLOAD:glib-2.0-0.dll /DELAYLOAD:gstreamer-1.0-0.dll /DELAYLOAD:gstapp-1.0-0.dll /DELAYLOAD:gstvideo-1.0-0.dll /DELAYLOAD:gstpbutils-1.0-0.dll"
+        mex -outdir ..\Projects\Windows\build -output Screen -DPTBMODULE_Screen -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTB_USE_GSTREAMER -DGLEW_STATIC -LC:\gstreamer\1.0\x86_64\lib -IC:\gstreamer\1.0\x86_64\include -IC:\gstreamer\1.0\x86_64\include\gstreamer-1.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0 -IC:\gstreamer\1.0\x86_64\include\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\glib-2.0\include -IC:\gstreamer\1.0\x86_64\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\x86_64\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 LINKFLAGS="$LINKFLAGS /DELAYLOAD:gobject-2.0-0.dll /DELAYLOAD:gstreamer-1.0-0.dll /DELAYLOAD:gstapp-1.0-0.dll /DELAYLOAD:gstvideo-1.0-0.dll /DELAYLOAD:gstpbutils-1.0-0.dll"
         movefile(['..\Projects\Windows\build\Screen.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
     if what == 1
         % Build WaitSecs
         clear WaitSecs
-        mex -v -outdir ..\Projects\Windows\build -output WaitSecs -DPTBMODULE_WaitSecs -largeArrayDims -DMEX_DOUBLE_HANDLE  -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\WaitSecs -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\WaitSecs\*.c kernel32.lib user32.lib winmm.lib
+        mex -outdir ..\Projects\Windows\build -output WaitSecs -DPTBMODULE_WaitSecs -largeArrayDims -DMEX_DOUBLE_HANDLE  -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\WaitSecs -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\WaitSecs\*.c kernel32.lib user32.lib winmm.lib
         movefile(['..\Projects\Windows\build\WaitSecs.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
@@ -62,21 +62,21 @@ if onoctave == 0
         % Build PsychPortAudio
         % If PsychPortAudio should support the proprietary ASIO sound backend, then add a: -DPTB_USE_ASIO
         clear PsychPortAudio
-        mex -v -outdir ..\Projects\Windows\build -output PsychPortAudio -DPTBMODULE_PsychPortAudio -largeArrayDims -DMEX_DOUBLE_HANDLE -L..\Cohorts\PortAudio -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib advapi32.lib winmm.lib delayimp.lib -lportaudio_x64 LINKFLAGS="$LINKFLAGS /DELAYLOAD:portaudio_x64.dll"
+        mex -outdir ..\Projects\Windows\build -output PsychPortAudio -DPTBMODULE_PsychPortAudio -largeArrayDims -DMEX_DOUBLE_HANDLE -L..\Cohorts\PortAudio -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c kernel32.lib user32.lib advapi32.lib winmm.lib delayimp.lib -lportaudio_x64 LINKFLAGS="$LINKFLAGS /DELAYLOAD:portaudio_x64.dll"
         movefile(['..\Projects\Windows\build\PsychPortAudio.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
     if what == 3
         % Build GetSecs
         clear GetSecs
-        mex -v -outdir ..\Projects\Windows\build -output GetSecs -DPTBMODULE_GetSecs -largeArrayDims -DMEX_DOUBLE_HANDLE  -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\GetSecs -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\GetSecs\*.c kernel32.lib user32.lib winmm.lib
+        mex -outdir ..\Projects\Windows\build -output GetSecs -DPTBMODULE_GetSecs -largeArrayDims -DMEX_DOUBLE_HANDLE  -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\GetSecs -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\GetSecs\*.c kernel32.lib user32.lib winmm.lib
         movefile(['..\Projects\Windows\build\GetSecs.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
     if what == 4
         % Build IOPort
         clear IOPort
-        mex -v -outdir ..\Projects\Windows\build -output IOPort -DPTBMODULE_IOPort -largeArrayDims -DMEX_DOUBLE_HANDLE  -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\IOPort -IWindows\Base -IWindows\IOPort Windows\Base\*.c Common\Base\*.c Common\IOPort\*.c Windows\IOPort\*.c kernel32.lib user32.lib winmm.lib
+        mex -outdir ..\Projects\Windows\build -output IOPort -DPTBMODULE_IOPort -largeArrayDims -DMEX_DOUBLE_HANDLE  -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\IOPort -IWindows\Base -IWindows\IOPort Windows\Base\*.c Common\Base\*.c Common\IOPort\*.c Windows\IOPort\*.c kernel32.lib user32.lib winmm.lib
         movefile(['..\Projects\Windows\build\IOPort.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
@@ -87,28 +87,28 @@ if onoctave == 0
         % new license. Distribution of compiled mex files for octave would
         % be possible, but see below...
         % clear PsychCV
-        % mex -v -outdir ..\Projects\Windows\build -output PsychCV -DPTBMODULE_PsychCV -largeArrayDims -DMEX_DOUBLE_HANDLE  -ID:\install\QuickTimeSDK\CIncludes -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\PsychCV -IWindows\Base -I..\Cohorts\ARToolkit\include Windows\Base\*.c Common\Base\*.c Common\PsychCV\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib libARvideo.lib libARgsub.lib libARgsub_lite.lib libARgsubUtil.lib libARMulti.lib libAR.lib
+        % mex -outdir ..\Projects\Windows\build -output PsychCV -DPTBMODULE_PsychCV -largeArrayDims -DMEX_DOUBLE_HANDLE  -ID:\install\QuickTimeSDK\CIncludes -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -ICommon\PsychCV -IWindows\Base -I..\Cohorts\ARToolkit\include Windows\Base\*.c Common\Base\*.c Common\PsychCV\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib libARvideo.lib libARgsub.lib libARgsub_lite.lib libARgsubUtil.lib libARMulti.lib libAR.lib
         % movefile(['..\Projects\Windows\build\PsychCV.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
     if what == 7
         % Build Eyelink:
         clear Eyelink
-        mex -v -outdir ..\Projects\Windows\build -output Eyelink -DPTBMODULE_Eyelink -largeArrayDims -DMEX_DOUBLE_HANDLE -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I"C:\Program Files (x86)\SR Research\EyeLink\Includes\eyelink" -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib "C:\Program Files (x86)\SR Research\EyeLink\libs\x64\eyelink_core64.lib" "C:\Program Files (x86)\SR Research\EyeLink\libs\x64\eyelink_w32_comp64.lib"
+        mex -outdir ..\Projects\Windows\build -output Eyelink -DPTBMODULE_Eyelink -largeArrayDims -DMEX_DOUBLE_HANDLE -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I"C:\Program Files (x86)\SR Research\EyeLink\Includes\eyelink" -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib "C:\Program Files (x86)\SR Research\EyeLink\libs\x64\eyelink_core64.lib" "C:\Program Files (x86)\SR Research\EyeLink\libs\x64\eyelink_w32_comp64.lib"
         movefile(['..\Projects\Windows\build\Eyelink.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
     if what == 8
         % Build PsychKinectCore:
         clear PsychKinectCore
-        mex -v -outdir ..\Projects\Windows\build -output PsychKinectCore -DPTBMODULE_PsychKinectCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWIN32 -L..\Cohorts\Kinect-v16-withsource\libusb\lib\msvc_x64 -I..\Cohorts\Kinect-v16-withsource -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib -lusb
+        mex -outdir ..\Projects\Windows\build -output PsychKinectCore -DPTBMODULE_PsychKinectCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWIN32 -L..\Cohorts\Kinect-v16-withsource\libusb\lib\msvc_x64 -I..\Cohorts\Kinect-v16-withsource -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -ICommon\Base -IWindows\Base -ICommon\PsychKinect Windows\Base\*.c Common\Base\*.c Common\PsychKinect\*.c ..\Cohorts\Kinect-v16-withsource\*.cpp kernel32.lib user32.lib winmm.lib -lusb
         movefile(['..\Projects\Windows\build\PsychKinectCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
     if what == 9
         % Build PsychHID:
         clear PsychHID % make sure not in use
-        mex -v -outdir ..\Projects\Windows\build -output PsychHID -DPTBMODULE_PsychHID -largeArrayDims -DMEX_DOUBLE_HANDLE -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -L..\Cohorts\libusb1-win32\MS64\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.cpp Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c -ldinput8 kernel32.lib user32.lib winmm.lib -lusb-1.0 setupapi.lib
+        mex -outdir ..\Projects\Windows\build -output PsychHID -DPTBMODULE_PsychHID -largeArrayDims -DMEX_DOUBLE_HANDLE -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -L..\Cohorts\libusb1-win32\MS64\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.cpp Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c -ldinput8 kernel32.lib user32.lib winmm.lib -lusb-1.0 setupapi.lib
         movefile(['..\Projects\Windows\build\PsychHID.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
@@ -132,7 +132,7 @@ if onoctave == 0
         % MSVC 2019 build system for R2019a. The shim will locate and
         % runtime-link against the libOVRRT_64_0_5.dll of the installed
         % Oculus VR runtime during initialization:
-        mex -v -outdir ..\Projects\Windows\build -output PsychOculusVRCore -DPTBMODULE_PsychOculusVRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c ..\..\..\OculusSDKWin\LibOVR\Src\*.c ..\..\..\OculusSDKWin\LibOVR\Src\*.cpp kernel32.lib user32.lib winmm.lib
+        mex -outdir ..\Projects\Windows\build -output PsychOculusVRCore -DPTBMODULE_PsychOculusVRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c ..\..\..\OculusSDKWin\LibOVR\Src\*.c ..\..\..\OculusSDKWin\LibOVR\Src\*.cpp kernel32.lib user32.lib winmm.lib
         movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
@@ -143,7 +143,7 @@ if onoctave == 0
         % and the SDK must be renamed from OculusSDK to OculusSDK1Win.
         % CAUTION: Need exactly v1.16 SDK, no earlier or later versions, due to
         % backwards incompatible API changes in v1.17+
-        mex -v -outdir ..\Projects\Windows\build -output PsychOculusVRCore1 -DPTBMODULE_PsychOculusVRCore1 -largeArrayDims -DMEX_DOUBLE_HANDLE -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I..\..\..\OculusSDK1Win\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore1 Common\PsychOculusVRCore1\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib ..\..\..\OculusSDK1Win\LibOVR\Lib\Windows\x64\Release\VS2015\LibOVR.lib
+        mex -outdir ..\Projects\Windows\build -output PsychOculusVRCore1 -DPTBMODULE_PsychOculusVRCore1 -largeArrayDims -DMEX_DOUBLE_HANDLE -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -I..\..\..\OculusSDK1Win\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore1 Common\PsychOculusVRCore1\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib ..\..\..\OculusSDK1Win\LibOVR\Lib\Windows\x64\Release\VS2015\LibOVR.lib
         movefile(['..\Projects\Windows\build\PsychOculusVRCore1.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
