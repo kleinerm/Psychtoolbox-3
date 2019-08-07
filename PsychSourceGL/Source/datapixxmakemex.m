@@ -32,6 +32,9 @@ function datapixxmakemex()
 
     if IsOctave
         S = [S ' -DPTBOCTAVE3MEX'];
+    else
+        % Build it backwards compatible with Matlab releases before R2014b:
+        S = [S ' -largeArrayDims -DMEX_DOUBLE_HANDLE'];
     end
 
     if IsLinux && ~IsOctave
