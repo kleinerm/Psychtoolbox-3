@@ -529,7 +529,7 @@ PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, 
 // background keyboard queue processing thread. Alternatively it
 // can be called synchronously from KbQueueCheck with a setting of FALSE
 // to iterate over all available events and process them instantaneously:
-void KbQueueProcessEvents(psych_bool blockingSinglepass)
+static void KbQueueProcessEvents(void)
 {
     PsychHIDEventRecord evt;
     XKeyPressedEvent key;
@@ -543,18 +543,11 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
     wchar_t wideChar;
     Status status_return;
 
-    while (1) {
+    {
         XGenericEventCookie *cookie = &KbQueue_xevent.xcookie;
 
-        // Single pass or multi-pass?
-        if (blockingSinglepass) {
-            // Wait until at least one event available and dequeue it:
-            XNextEvent(thread_dpy, &KbQueue_xevent);
-        } else {
-            // Check if event available, dequeue it, if so. Abort
-            // processing if no new event available, aka queue empty:
-            if (!XCheckTypedEvent(thread_dpy, GenericEvent, &KbQueue_xevent)) break;
-        }
+        // Wait until at least one event available and dequeue it:
+        XNextEvent(thread_dpy, &KbQueue_xevent);
 
         // Take timestamp:
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
@@ -1017,9 +1010,6 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
                 XFreeEventData(thread_dpy, cookie);
             }
         }
-
-        // Done if we were only supposed to handle one event, which we did:
-        if (blockingSinglepass) break;
     }
 
     return;
@@ -1049,7 +1039,7 @@ void* KbQueueWorkerThreadMain(void* dummy)
         PsychUnlockMutex(&KbQueueMutex);
 
         // Perform X-Event processing until no more events are pending:
-        KbQueueProcessEvents(TRUE);
+        KbQueueProcessEvents();
     }
 
     // Done. Unlock the mutex:
@@ -1302,8 +1292,9 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
 
     // Keyboard queue for this deviceIndex already exists?
     if (NULL == psychHIDKbQueueFirstPress[deviceIndex]) {
-        // No. Nothing to do then.
-        return;
+        // No. Bad bad...
+        printf("PsychHID-ERROR: Tried to stop processing on non-existent keyboard queue for deviceIndex %i! Call KbQueueCreate first!\n", deviceIndex);
+        PsychErrorExitMsg(PsychError_user, "Invalid keyboard 'deviceIndex' specified. No queue for that device yet!");
     }
 
     // Keyboard queue already stopped?
@@ -1418,6 +1409,23 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     }
 
     PsychLockMutex(&KbQueueMutex);
+
+    // No other queues running yet? Then we need to create a clean slate for the
+    // to be freshly (re-)started X event processing:
+    if (!queueActive) {
+        // Note: This tries to address a potential race condition that could happen during a
+        // previous PsychHIDOSKbQueueStop() cycle, when the X-Server would enqueue new X-Events
+        // while we are already in shutdown, so the KbQueueThread would terminate before it can
+        // dequeue and discard those fresh events in the X event queue. User action / input,
+        // KbQueueProcessEvents() execution and call of KbQueueStop by user script would have
+        // to happen in just the right order within a small (< 1 msecs?) time window for this
+        // spillover to happen, but it is not impossible. This will hopefully help against the
+        // spillover problem reported in forum message #23899 when using a touch screen.
+        //
+        // Drain our X event queue from possible stale events from previous runs of keyboard queues:
+        while (XCheckTypedEvent(thread_dpy, GenericEvent, &KbQueue_xevent))
+            PsychYieldIntervalSeconds(0.001);
+    }
 
     // Clear out current state for this queue:
     memset(psychHIDKbQueueFirstPress[deviceIndex]   , 0, (256 * sizeof(double)));

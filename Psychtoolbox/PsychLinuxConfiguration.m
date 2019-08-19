@@ -659,6 +659,10 @@ if needinstall && answer == 'y'
             fprintf('Success! GPU performance optimizations at Priority() > 0 should now hopefully work.\n');
           else
             fprintf('Failed! Giving up. You may need to fix this yourself. The error message was:\n%s\n', msg);
+            fprintf('If the file is missing, e.g., from a NeuroDebian/Debian/Ubuntu package, you can\n');
+            fprintf('get a copy from the following download link, to put it into the PsychContributed\n');
+            fprintf('subfolder, then rerun PsychLinuxConfiguration:\n');
+            fprintf('https://github.com/Psychtoolbox-3/Psychtoolbox-3/raw/master/Psychtoolbox/PsychContributed/gpuclockctl\n\n');
           end
         end
       end

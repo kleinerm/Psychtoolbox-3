@@ -1788,6 +1788,28 @@ double PsychGetNanValue(void)
 }
 
 
+int Psych_mexCallMATLAB(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[], const char *functionName)
+{
+    int rc;
+
+    #ifdef PTBOCTAVE3MEX
+        // Octave does not yet support mexCallMATLABWithTrap(), so do it old school:
+        mexSetTrapFlag(1); // Tell Octave that we'll handle exceptions.
+        rc = mexCallMATLAB(nlhs, plhs, nrhs, prhs, functionName);
+        mexSetTrapFlag(0); // Tell Octave that we'll no longer handle exceptions.
+    #else
+        // mexCallMATLABWithTrap is like the above sequence for Octave, but it
+        // returns a NULL pointer instead of 0 on success, and a pointer to a
+        // MException object instead of non-0 on failure. We don't parse the
+        // content of the MException object yet, just provide compatible behaviour.
+        // mexCallMATLABWithTrap is supported by Matlab since release R2008b, so fine for us:
+        rc = (NULL == mexCallMATLABWithTrap(nlhs, plhs, nrhs, prhs, functionName)) ? 0 : 1;
+    #endif
+
+    return(rc);
+}
+
+
 /* PsychRuntimeGetPsychtoolboxRoot()
  *
  * Try to retrieve filesystem path to Psychtoolbox root folder (the result from PsychtoolboxRoot() in Matlab/Octave)
@@ -1817,16 +1839,11 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
         psychtoolboxRootPath[0] = 0;
         psychtoolboxConfigPath[0] = 0;
 
-        mexSetTrapFlag(1); // Tell Octave/MATLAB that we'll handle exceptions
-        // We could have used mexCallMATLABWithTrap below, but Octave doesn't support it.
-        // Unfortunately, MATLAB plans to deprecate mexSetTrapFlag in lieu of *WithTrap, so
-        // we'll need to patch Octave or make some sort of wrapper function in here.
-
         // Call into runtime to get the path to the root folder: This will return 0 on success.
         // A non-zero return value probably means that the script wasn't in the path. When that
-        // happens, there will be an error in the command window, but control stays with the mex
-        // file (thanks to mexSetTrapFlag(1) above) and it'll continue to run.
-        if (0 == mexCallMATLAB(1, plhs, 0, NULL, "PsychtoolboxRoot")) {
+        // happens, there will be an error in the command window, but control stays with us
+        // we'll continue to run.
+        if (0 == Psych_mexCallMATLAB(1, plhs, 0, NULL, "PsychtoolboxRoot")) {
             myPathvarChar = mxArrayToString(plhs[0]);
             if (myPathvarChar) {
                 strncpy(psychtoolboxRootPath, myPathvarChar, FILENAME_MAX);
@@ -1839,7 +1856,7 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
         // or an empty string signalling failure to get the path.
 
         // Same game again for PsychtoolboxConfigDir:
-        if (0 == mexCallMATLAB(1, plhs, 0, NULL, "PsychtoolboxConfigDir")) {
+        if (0 == Psych_mexCallMATLAB(1, plhs, 0, NULL, "PsychtoolboxConfigDir")) {
             myPathvarChar = mxArrayToString(plhs[0]);
             if (myPathvarChar) {
                 strncpy(psychtoolboxConfigPath, myPathvarChar, FILENAME_MAX);
@@ -1847,8 +1864,6 @@ const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
             }
         }
         mxDestroyArray(plhs[0]);
-
-        mexSetTrapFlag(0); // Tell the runtime that we'll no longer handle exceptions
     }
 
     // Return whatever we've got:

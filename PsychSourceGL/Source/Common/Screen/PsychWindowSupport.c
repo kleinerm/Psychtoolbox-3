@@ -327,7 +327,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     if ((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW) {
         if(PsychPrefStateGet_Verbosity()>2) {
             printf("\n\nPTB-INFO: This is Psychtoolbox-3 for %s, under %s (Version %i.%i.%i - Build date: %s).\n", PSYCHTOOLBOX_OS_NAME, PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME, PsychGetMajorVersionNumber(), PsychGetMinorVersionNumber(), PsychGetPointVersionNumber(), PsychGetBuildDate());
-            printf("PTB-INFO: Support status on this operating system release: %s\n", PsychSupportStatus());
+            printf("PTB-INFO: OS support status: %s\n", PsychSupportStatus());
             printf("PTB-INFO: Type 'PsychtoolboxVersion' for more detailed version information.\n");
             printf("PTB-INFO: Most parts of the Psychtoolbox distribution are licensed to you under terms of the MIT License, with\n");
             printf("PTB-INFO: some restrictions. See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n\n");
@@ -1493,11 +1493,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         }
         else {
             if ((PsychPrefStateGet_VBLTimestampingMode()==4) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)) {
-                if ((*windowRecord)->hybridGraphics == 3 || (*windowRecord)->hybridGraphics == 4)
+                if ((*windowRecord)->hybridGraphics == 3 || (*windowRecord)->hybridGraphics == 4) {
                     printf("PTB-INFO: Will try to use PRIME custom modesetting-ddx protocol for accurate Flip timestamping.\n");
-                else
+                } else {
                     printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n",
                            ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->winsysType != WAFFLE_PLATFORM_WAYLAND)) ? "OpenML sync control support" : "method");
+                }
             }
             else if ((PsychPrefStateGet_VBLTimestampingMode()==1 || PsychPrefStateGet_VBLTimestampingMode()==3) &&
                      (PSYCH_SYSTEM == PSYCH_OSX || ((PSYCH_SYSTEM == PSYCH_LINUX) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)))) {
@@ -7148,7 +7149,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             printf("PTB-INFO: tests and calibrations so you can at least get your scripts running for demo purposes. Other\n");
             printf("PTB-INFO: presentation modalities and various Psychtoolbox functions will only work with limited functionality\n");
             printf("PTB-INFO: and precision. Only use this for demos and simple tests, not for real experiment sessions!\n\n");
-
+            #if (PSYCH_SYSTEM == PSYCH_WINDOWS) && defined(PTBOCTAVE3MEX)
+            printf("PTB-INFO: Another reason for lack of hardware OpenGL could be that GNU/Octave's own opengl32.dll library\n");
+            printf("PTB-INFO: has not been deleted or renamed by you, so it is enforcing software rendering.\n");
+            printf("PTB-INFO: You have to delete or rename that file and restart Octave for this to work.\n");
+            printf("PTB-INFO: E.g., on Octave-5.1.0, the file to delete or rename would be likely this:\n");
+            printf("PTB-INFO: C:\\Octave\\Octave-5.1.0.0\\mingw64\\bin\\opengl32.dll\n\n");            
+            #endif
             // Disable all sync tests and display timing calibrations, unless usercode already did something similar:
             if (PsychPrefStateGet_SkipSyncTests() < 1) PsychPrefStateSet_SkipSyncTests(2);
             // Disable strict OpenGL error checking, so we don't abort for minor OpenGL errors and

@@ -214,7 +214,12 @@ void PsychGSCheckInit(const char* engineName)
                 // Octave-4 on Windows specific code. Delay loading of the main dependencies
                 // does not work, because Octave-4 always resolves dependencies of mex files
                 // immediately and fails if it can not do that.
-                //
+
+                // Following hack was only needed on the Octave-4 series with MinGW built GStreamer
+                // before version 1.16.0.
+                // It is no longer needed with PTB 3.0.16 which uses Octave-5.1.0 and the MSVC build
+                // of GStreamer 1.16.0 or later versions.
+                #if 0 && defined(PTB_USE_GSTREAMER)
                 // However we need a Octave-4.0.0 specific hack here to prevent failure of runtime
                 // loading of some GStreamer plugins, e.g., for movie playback. Octave-4 comes
                 // with its own version of libbz2, needed by GraphicsMagick for some image format.
@@ -253,12 +258,15 @@ void PsychGSCheckInit(const char* engineName)
                         printf("PTB-DEBUG: Loaded '%s' from GStreamer runtime directory to override Octave's incompatible DLL.\n", gst_libbz2_path);
                     }
                 }
+                #endif
 
                 // We don't fail in the Octave specific startup path:
                 if (FALSE) {
                 #else
                 // Non-Octave (Matlab) specific code, where delay loading works:
-                if ((NULL == LoadLibrary("libgstreamer-1.0-0.dll")) || (NULL == LoadLibrary("libgstapp-1.0-0.dll"))) {
+                // First check for the dll names from the MSVC runtimes, then for the older MinGW runtime names:
+                if (((NULL == LoadLibrary("gstreamer-1.0-0.dll")) || (NULL == LoadLibrary("gstapp-1.0-0.dll"))) &&
+                    ((NULL == LoadLibrary("libgstreamer-1.0-0.dll")) || (NULL == LoadLibrary("libgstapp-1.0-0.dll")))) {
                 #endif
             #endif
             #if PSYCH_SYSTEM == PSYCH_OSX
@@ -797,7 +805,7 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 // but that source is perfectly handled by our code without the need for GstDeviceMonitor.
 // GstDeviceMonitor is more beneficial on MS-Windows and possibly macOS, where it can make
 // a positive impact on the reliability of video device enumeration.
-#if GST_CHECK_VERSION(1,4,0) && (PSYCH_SYSTEM != PSYCH_LINUX)
+#if GST_CHECK_VERSION(1,4,0)
 
 static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, const char* srcname,
                                 int classIndex, const char* className, const char* devHandlePropName, unsigned int flags)
@@ -1037,7 +1045,7 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
     sprintf(class_str, "%s", className);
 
     // Does this source support device enumeration of supported capture devices?
-    #if GST_CHECK_VERSION(1,4,0) && (PSYCH_SYSTEM != PSYCH_LINUX)
+    #if GST_CHECK_VERSION(1,4,0)
     if ((provider = gst_device_provider_factory_get_by_name((const gchar*) providername)) && GST_IS_DEVICE_PROVIDER(provider)) {
         if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Has a GStreamer device provider - Good, using it.\n");
         devlist = gst_device_provider_get_devices(GST_DEVICE_PROVIDER(provider));
@@ -1379,7 +1387,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
                     // Default to - "no create support":
                     *videocaptureplugin = NULL;
 
-                    #if GST_CHECK_VERSION(1,4,0) && (PSYCH_SYSTEM != PSYCH_LINUX)
+                    #if GST_CHECK_VERSION(1,4,0)
                     // Caller wants us to create associated video capture plugin if possible:
                     if (devices[i].gstdevice) {
                         // Have one. Create and assign associated plugin:

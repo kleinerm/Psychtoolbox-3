@@ -35,6 +35,12 @@
 //typedefs
 typedef double  *PsychFlagListType;
 
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
+// Wrapper around mexCallMATLAB() or mexCallMATLABWithTrap() that makes sure exceptions are properly trapped,
+// so we can handle them instead of being interrupted by the runtime environment:
+int Psych_mexCallMATLAB(int nlhs, mxArray *plhs[], int nrhs, mxArray *prhs[], const char *functionName);
+#endif
+
 //NaN
 double PsychGetNanValue(void);
 

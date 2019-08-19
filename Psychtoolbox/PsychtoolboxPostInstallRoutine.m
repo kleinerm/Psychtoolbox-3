@@ -73,6 +73,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 %            support 64-Bit Octave 4.2 on Windows and OSX instead. (MK)
 % 01/03/2017 Fix Matlab incompatibility with __octave_config_info__. (MK)
 % 04/07/2018 Remove PsychtoolboxRegistration for now. (MK)
+% 07/27/2019 64-Bit Octave 5.1.0 support for Windows and OSX, no Octave-4 support anymore. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -171,9 +172,9 @@ if (IsOSX || IsWin) && ~Is64Bit
 end
 
 if IsLinux && ~Is64Bit && IsOctave && ~IsARM
-    fprintf('Psychtoolbox 3.0.15 no longer provides mex files for 32-Bit Octave for Intel on Linux.\n');
+    fprintf('Psychtoolbox 3.0.15 and later no longer provide mex files for 32-Bit Octave for Intel on Linux.\n');
     fprintf('The only exception is 32-Bit Octave for Linux on ARM processors like the RaspberryPi.\n');
-    fprintf('Not to worry though, you can get a supported Psychtoolbox 3.0.15 for 32-Bit Octave\n');
+    fprintf('Not to worry though, you can get a supported Psychtoolbox 3.0.15+ for 32-Bit Octave\n');
     fprintf('on Linux from the NeuroDebian project if you run Debian GNU/Linux or a Ubuntu flavor.\n');
     fprintf('Go to this link for installation instructions:\n');
     fprintf('http://neuro.debian.net/pkgs/octave-psychtoolbox-3.html#pkg-octave-psychtoolbox-3\n\n');
@@ -325,6 +326,10 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4OSXFiles64']);
         end
 
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5OSXFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5OSXFiles64']);
+        end
+
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles']);
         end
@@ -335,6 +340,10 @@ if IsOctave
 
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles64'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave4WindowsFiles64']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5WindowsFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5WindowsFiles64']);
         end
 
         % Encode prefix and Octave major version of proper folder:
@@ -395,16 +404,17 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if (~IsLinux && (octavemajorv ~= 4 || octaveminorv ~= 4 || octavepatchv ~= 1)) || ...
-        (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8)))
+    if (~IsLinux && (octavemajorv ~= 5 || octaveminorv ~= 1)) || ...
+        (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8) || (octavemajorv == 4 && octaveminorv > 2) || (octavemajorv > 4) ))
         fprintf('\n\n=================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
-            % On Linux everything >= 3.8 is fine:
+            % On Linux everything from 3.8 to 4.2 is fine:
             fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0 or 4.2 series for use with Psychtoolbox.\n');
+            fprintf('WARNING: You can get Psychtoolbox for more recent versions of Octave, e.g., for v4.4 or v5.1, from NeuroDebian.\n');
         else
-            % On Windows/OSX we only care about 4.4.1 atm:
-            fprintf('WARNING: using the latest Octave 4.4.1 series for use with Psychtoolbox.\n');
+            % On Windows/OSX we only care about 5.1 atm:
+            fprintf('WARNING: only using Octave 5.1 with Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
@@ -417,14 +427,14 @@ if IsOctave
         % Need to copy the Octave runtime libraries somewhere our mex files can find them. The only low-maintenance
         % way of dealing with this mess of custom library pathes per octave version, revision and packaging format.
         % Preferred location is the folder with our mex files - found by rpath = @loader_path
-        if ~copyfile([GetOctlibDir filesep 'liboctinterp.6.dylib'], [rdir filesep], 'f') || ...
-           ~copyfile([GetOctlibDir filesep 'liboctave.6.dylib'], [rdir filesep], 'f')
+        if ~copyfile([GetOctlibDir filesep 'liboctinterp.7.dylib'], [rdir filesep], 'f') || ...
+           ~copyfile([GetOctlibDir filesep 'liboctave.7.dylib'], [rdir filesep], 'f')
             % Copy into our mex files folder failed. A second location where the linker will search is the
             % $HOME/lib directory of the current user, so try that as target location:
             tdir = PsychHomeDir('lib');
             fprintf('\n\nFailed to copy Octave runtime libraries to mex file folder [%s].\nRetrying in users private lib dir: %s ...\n', rdir, tdir);
-            if ~copyfile([GetOctlibDir filesep 'liboctinterp.6.dylib'], tdir, 'f') || ...
-               ~copyfile([GetOctlibDir filesep 'liboctave.6.dylib'], tdir, 'f')
+            if ~copyfile([GetOctlibDir filesep 'liboctinterp.7.dylib'], tdir, 'f') || ...
+               ~copyfile([GetOctlibDir filesep 'liboctave.7.dylib'], tdir, 'f')
                 fprintf('\nFailed to copy runtime libs to [%s] as well :(.\n', tdir);
                 fprintf('Our mex files will likely not work this way. Maybe the directories lack file write permissions?\n');
                 fprintf('\n\n\nA last workaround would be to restart octave from a terminal via this line:\n\nexport DYLD_LIBRARY_PATH=%s ; octave\n\n\n', GetOctlibDir);
@@ -528,16 +538,12 @@ if IsWin && ~IsOctave
         % Try if WaitSecs MEX file works...
         WaitSecs('YieldSecs', 0.1)
     catch
-        % Failed! Either screwed setup of path or missing VC++ 2010 runtime libraries.
-        fprintf('ERROR: Most likely cause: The Microsoft Visual C++ 2010 runtime libraries\n');
+        % Failed! Either screwed setup of path or missing VC++ 2019 runtime libraries.
+        fprintf('ERROR: Most likely cause: The Microsoft Visual C++ 2019 runtime libraries\n');
         fprintf('ERROR: are missing on your system.\n\n');
-        if IsWin(1)
-            % Need 64-Bit runtime:
-            fprintf('ERROR: Execute the installer file vcredist_x64.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
-        else
-            % Need 32-Bit runtime:
-            fprintf('ERROR: Execute the installer file vcredist_x86.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
-        end
+        % Need 64-Bit runtime:
+        fprintf('ERROR: Execute the installer file vcredist_x64_2015-2019.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
+        fprintf('ERROR: Maybe also execute the installer file vcredist_x64_2010.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
         fprintf('ERROR: You must execute that installer as an administrator user. Exit Matlab before the installation, then restart it.\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox;\n\n');
@@ -568,10 +574,9 @@ try
         fprintf('\n');
         fprintf('For Screen() and OpenGL support:\n\n');
         fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
-        fprintf('* GStreamer multimedia framework: At least version 1.0.0 of the core runtime and the gstreamer-base plugins.\n');
+        fprintf('* GStreamer multimedia framework: At least version 1.4.0 of the core runtime and the gstreamer-base plugins.\n');
         fprintf('  For optimal performance use the latest available versions.\n');
-        fprintf('  A simple way to get GStreamer at least on Ubuntu Linux is to install the "rhythmbox" or\n');
-        fprintf('  "totem" multimedia-players. You may need to install additional packages to play back all\n');
+        fprintf('  You may need to install additional packages to play back all\n');
         fprintf('  common audio- and video file formats. See "help GStreamer".\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
         fprintf('* libdc1394 Firewire video capture library.\n');
@@ -594,26 +599,6 @@ try
         fprintf('If you receive an installation failure soon, then please read the output of\n');
         fprintf('"help GStreamer" first and follow the installation instructions for GStreamer\n');
         fprintf('on Linux. Psychtoolbox''s Screen() command will not work without GStreamer!\n\n');
-
-        % Additional setup instructions for embedded/mobile devices with ARM cpu required?
-        % No point anymore. Not needed for RaspberryPi, and our Nexus-7
-        % support is essentially dead...
-        if 0 && IsARM
-            fprintf('Additionally, as this is a device with ARM processor, the helper library\n');
-            fprintf('libwaffle-1.so needs to be installed in a system library folder for Screen\n');
-            fprintf('to work. You can find a copy of the library in the PsychContributed/ArmArch/\n');
-            fprintf('subfolder of your Psychtoolbox main folder. Rename it to libwaffle-1.so.0 during\n');
-            fprintf('the copy.\n');
-            fprintf('Another requirement, at least as of April 2013 and Ubuntu 13.04 for the Nexus-7,\n');
-            fprintf('is that you must start octave from the command line, or via some script, like this:\n');
-            fprintf('LD_PRELOAD=/usr/lib/libGLESv1_CM.so octave\n');
-            fprintf('This is a workaround for a small bug in octave for Nexus-7, which would cause Screen()\n');
-            fprintf('to crash shortly after opening an onscreen window.\n\n');
-            fprintf('\n');
-            fprintf('If you run PTB on the Nexus7 make sure you do not use the "Unity" desktop since\n');
-            fprintf('this might lead to unforeseen problems. Use a desktop without 3D desktop compositor instead.\n');
-            fprintf('E.g. install and use XFCE (sudo apt-get install xfce4).\n');
-        end
     end
 
     % Check Screen:
@@ -632,16 +617,14 @@ try
 catch
     fprintf('\n\n');
     fprintf('Screen() failed to work for some reason:\n\n');
+    if IsWin
+      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.16.0\n');
+      fprintf('or a later version. Screen() will not work with earlier versions, without GStreamer,\n');
+      fprintf('or with the MinGW variants of the GStreamer runtime!\n');
+      fprintf('Read ''help GStreamer'' for more info.\n\n');
+    end
     fprintf('Check the troubleshooting instructions on our Wiki (Download section \n');
     fprintf('and FAQ section, maybe also the Bugs section).\n\n');
-    if IsWin && IsOctave
-        fprintf('You may need to delete (or rename) the following DLL files in your Octave-4.4.1 installations\n');
-        fprintf('bin folder to make this work, then restart Octave:\n');
-        fprintf('C:\\Octave\\4.4.1\\bin\\libglib-2.0.0.dll\n');
-        fprintf('C:\\Octave\\4.4.1\\bin\\libgmodule-2.0.0.dll\n');
-        fprintf('C:\\Octave\\4.4.1\\bin\\opengl32.dll\n');
-        fprintf('\n');
-    end
     fprintf('Once you manage to fix the problem (simply type ''AssertOpenGL'' to verify\n');
     fprintf('that stuff works now), you do not need to run the installation routine again,\n');
     fprintf('but can start working immediately.\n\n');

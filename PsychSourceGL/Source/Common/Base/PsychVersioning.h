@@ -4,7 +4,7 @@
     AUTHORS:
 
         Allen.Ingling@nyu.edu		  awi
-        mario.kleiner at tuebingen.mpg.de mk
+        mario.kleiner.de@gmail.com        mk
 
     PLATFORMS:
 
@@ -21,7 +21,7 @@
 
 */
 
-//begin include once 
+//begin include once
 #ifndef PSYCH_IS_INCLUDED_PsychVersioning
 #define PSYCH_IS_INCLUDED_PsychVersioning
 
@@ -30,11 +30,11 @@
 //these are all constants defined only for reporting versioning.  They are returned by Module('Version')
 #define PSYCHTOOLBOX_MAJOR_VERSION              3
 #define PSYCHTOOLBOX_MINOR_VERSION              0
-#define PSYCHTOOLBOX_POINT_VERSION              15
-//If you fork my source please change this name.  - awi 
+#define PSYCHTOOLBOX_POINT_VERSION              16
+//If you fork my source please change this name.  - awi
 #define PSYCHTOOLBOX_PROJECT_NAME               "OpenGL Psychtoolbox"
 #if PSYCH_SYSTEM == PSYCH_OSX
-//Placeholder for the OS X version at build time. 
+//Placeholder for the OS X version at build time.
 #define PSYCHTOOLBOX_OS_NAME                    "Apple OS X"
 #endif
 #if PSYCH_SYSTEM == PSYCH_WINDOWS

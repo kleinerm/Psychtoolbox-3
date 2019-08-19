@@ -55,12 +55,6 @@ function PlayMoviesDemo(moviename, backgroundMaskOut, tolerance, pixelFormat, ma
 % 08/03/12  mk  Add 'maxThreads' parameter.
 % 06/17/13  mk  Add new (c)ool movies, remove Apple PRopaganda videos, cleanup.
 
-if IsWin && ~IsOctave && psychusejava('jvm')
-    fprintf('Running on Matlab for Microsoft Windows, with JVM enabled!\n');
-    fprintf('This may crash. See ''help GStreamer'' for problem and workaround.\n');
-    warning('Running on Matlab for Microsoft Windows, with JVM enabled!');
-end
-
 theanswer = [];
 
 if (nargin < 1) || isempty(moviename)

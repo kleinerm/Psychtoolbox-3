@@ -86,13 +86,13 @@ oalconstpath = [PsychtoolboxRoot 'PsychSound/MOAL/core/oalconst.mat'];
 % C-Style compatible load requested?
 if openal_c_style > 0
    % Load all constants, also the C-Style ones, e.g., AL_WHATEVER
-   evalin('caller',['load ' oalconstpath]);    
+   evalin('caller',['load ''' oalconstpath '''']);    
 else
    % Load only the AL. ALC. versions, e.g., AL.WHATEVER
    % This is less convenient as one needs to replace AL_ by AL. in
    % all scripts, but it doesn't clutter the Matlab workspace...
-   evalin('caller',['load ' oalconstpath ' AL ALC']);      
-end;
+   evalin('caller',['load ''' oalconstpath ''' AL ALC']);      
+end
 
 % On Windows, we need to preload moalcore into Matlab while the working
 % directory is set to Psychtoolbox/PsychOpenAL/MOAL/core , so the Windows
