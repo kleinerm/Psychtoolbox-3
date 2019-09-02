@@ -13,6 +13,7 @@ function BackupCluts(screenIds)
 
 % History:
 % 28.09.2010   mk   Written.
+% 02.09.2019   ia   Fix screen 0 on windows causing an error.
 
 % Store backup copies of clut's for later restoration by RestoreCluts():
 global ptb_original_gfx_cluts;
@@ -31,6 +32,7 @@ end
 if isempty(screenIds)
     screenIds = Screen('Screens');
 end
+screenIds(screenIds==0) = []; % remove screens with 0 index
 
 for screenid = screenIds
     % Do we have already a backed up original clut for 'screenid'?
