@@ -32,7 +32,7 @@ end
 if isempty(screenIds)
     screenIds = Screen('Screens');
 end
-if IsWin && length(screenIds > 1) %we have more than one screen 
+if IsWin && length(screenIds) > 1 %we have more than one screen on windows
     screenIds(screenIds==0) = []; % remove screens with 0 index
 end
 
