@@ -32,7 +32,9 @@ end
 if isempty(screenIds)
     screenIds = Screen('Screens');
 end
-screenIds(screenIds==0) = []; % remove screens with 0 index
+if length(screenIds > 1) %we have more than one screen 
+    screenIds(screenIds==0) = []; % remove screens with 0 index
+end
 
 for screenid = screenIds
     % Do we have already a backed up original clut for 'screenid'?
