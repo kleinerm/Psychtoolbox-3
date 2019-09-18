@@ -3692,8 +3692,8 @@ int PsychOSKDGetBeamposition(int screenId)
                 // scanout position. Offset between crtc's is 0x2000. We only use the lower 16 bits and
                 // ignore horizontal scanout position for now:
                 beampos = (int) (ReadRegister((headId == 0) ? 0x600868 : 0x600868 + 0x2000) & 0xFFFF);
-            } else {
-                // NV-50 (GeForce-8) and later, also 4-CRTC NV-E0 and later:
+            } else if ((fCardType > 0x0) && (fCardType < 0x140)) {
+                // NV-50 (GeForce-8) up to and including Pascal:
 
                 // Lower 16 bits are vertical scanout position (scanline), upper 16 bits are vblank counter.
                 // Offset between crtc's is 0x800, we're only interested in scanline, not vblank counter:
@@ -3707,6 +3707,26 @@ int PsychOSKDGetBeamposition(int screenId)
                     unsigned int foo;
                     while (newcount <= oldcount) {
                         foo = ReadRegister(0x616340 + (0x800 * headId));
+                        newcount = (int) ((foo >> 16) & 0xFFFF);
+                        beampos = (int) (foo & 0xFFFF);
+                    }
+                    printf("VBLIncrement %i -> %i at scanline %i\n", oldcount, newcount, beampos);
+                }
+            } else {
+                // NV-140 Volta, NV-160 Turing and later:
+
+                // Lower 16 bits are vertical scanout position (scanline), upper 16 bits are vblank counter.
+                // Offset between crtc's is 0x800, we're only interested in scanline, not vblank counter:
+                beampos = (int) (ReadRegister(0x616330 + (0x800 * headId)) & 0xFFFF);
+                if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: Head %i, HW-Vblankcount: %i\n", headId, (int) ((ReadRegister(0x616330 + (0x800 * headId)) >> 16) & 0xFFFF));
+
+                if (FALSE && firstTime) {
+                    firstTime = FALSE;
+                    int newcount = -1;
+                    int oldcount = (int) ((ReadRegister(0x616330 + (0x800 * headId)) >> 16) & 0xFFFF);
+                    unsigned int foo;
+                    while (newcount <= oldcount) {
+                        foo = ReadRegister(0x616330 + (0x800 * headId));
                         newcount = (int) ((foo >> 16) & 0xFFFF);
                         beampos = (int) (foo & 0xFFFF);
                     }
