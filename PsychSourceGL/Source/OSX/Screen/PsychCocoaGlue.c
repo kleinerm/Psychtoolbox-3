@@ -77,7 +77,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     }
     else {
         // Pure non-GUI visual stimulus window:
-        windowStyle = NSBorderlessWindowMask;
+        windowStyle = NSBorderlessWindowMask | NSWindowStyleMaskFullScreen;
     }
 
     if ([NSThread isMainThread])
@@ -415,6 +415,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
         masterContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.contextObject];
         [masterContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
         [masterContext setView:[cocoaWindow contentView]];
+        // Doesn't work on the trainwreck - hang: [masterContext setFullScreen];
         [masterContext makeCurrentContext];
 
         // Ditto for potential gl userspace rendering context:
@@ -422,6 +423,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
             gluserContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.glusercontextObject];
             [gluserContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
             [gluserContext setView:[cocoaWindow contentView]];
+            // Doesn't work on the trainwreck - hang: [gluserContext setFullScreen];
         }
 
         // Ditto for potential glswapcontext for async flips and frame sequential stereo:
@@ -429,6 +431,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
             glswapContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.glswapcontextObject];
             [glswapContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
             [glswapContext setView:[cocoaWindow contentView]];
+            // Doesn't work on the trainwreck - hang: [glswapContext setFullScreen];
         }
 
         // Assign contexts for use in window close sequence later on:

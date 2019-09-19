@@ -247,6 +247,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     int                             i;
     int                             windowLevel;
     long                            scw, sch;
+    GLint                           backbufferSize[2];
+    long                            nativeSize[2];
     void*                           cocoaWindow = NULL;
     psych_bool                      useCGL = FALSE;
 
@@ -360,6 +362,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Store vblank startline aka true height of physical display screen in pixels:
     PsychGetScreenPixelSize(screenSettings->screenNumber, &scw, &sch);
     windowRecord->VBL_Startline = (int) sch;
+
+    // Query native display pixel resolution - important for Retina displays:
+    PsychGetScreenPixelSize(screenSettings->screenNumber, &nativeSize[0], &nativeSize[1]);
 
     // Define pixelformat attributes for OpenGL contexts:
 
@@ -579,6 +584,32 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // it was deprecated by the ass-hats since 10.7, as of 10.14 Mojave it seems to be the least fucked up way of getting
     // pictures on the screen with bearable timing reliability and precision.
     if (useCGL) {
+        // Enable use of custom backbuffer size for display surface:
+        error = CGLEnable(windowRecord->targetSpecific.contextObject, kCGLCESurfaceBackingSize);
+        if (error) {
+            printf("\nPTB-ERROR[CGLEnable failed: %s]. Main Screen() context\n\n", CGLErrorString(error));
+        }
+
+        // Set to native display size in pixels for Retina display handling:
+        backbufferSize[0] = (GLint) nativeSize[0];
+        backbufferSize[1] = (GLint) nativeSize[1];
+
+        // Update:
+        error = CGLSetParameter(windowRecord->targetSpecific.contextObject, kCGLCPSurfaceBackingSize, (const GLint*) backbufferSize);
+        if (error) {
+            printf("\nPTB-ERROR[CGLSetParameter failed: %s]. Main Screen() context\n\n", CGLErrorString(error));
+        }
+
+        // Query current settings:
+        error = CGLGetParameter(windowRecord->targetSpecific.contextObject, kCGLCPSurfaceBackingSize, backbufferSize);
+        if (error) {
+            printf("\nPTB-ERROR[CGLGetParameter failed: %s]. Main Screen() context\n\n", CGLErrorString(error));
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 2)
+            printf("PTB-INFO: Current backbuffersize %i x %i versus display native size %i x %i.\n",
+                   backbufferSize[0], backbufferSize[1], (int) nativeSize[0], (int) nativeSize[1]);
+
         error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.contextObject, displayMask);
         if (error) {
             printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay failed: %s]. Main Screen() context\n\n", CGLErrorString(error));
@@ -623,6 +654,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         }
 
         if (useCGL) {
+            CGLEnable(windowRecord->targetSpecific.glusercontextObject, kCGLCESurfaceBackingSize);
+            CGLSetParameter(windowRecord->targetSpecific.glusercontextObject, kCGLCPSurfaceBackingSize, (const GLint*) backbufferSize);
+
             error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glusercontextObject, displayMask);
             if (error) {
                 printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay failed: %s]. User GL rendering context\n\n", CGLErrorString(error));
@@ -644,6 +678,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
 
     if (useCGL) {
+        CGLEnable(windowRecord->targetSpecific.glswapcontextObject, kCGLCESurfaceBackingSize);
+        CGLSetParameter(windowRecord->targetSpecific.glswapcontextObject, kCGLCPSurfaceBackingSize, (const GLint*) backbufferSize);
+
         error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glswapcontextObject, displayMask);
         if (error) {
             printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay failed: %s]. Background thread swapcontext\n\n", CGLErrorString(error));
