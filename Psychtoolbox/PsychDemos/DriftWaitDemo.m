@@ -130,12 +130,7 @@ try
     Screen('DrawText', w, 'Measuring monitor refresh interval... This can take up to 20 seconds...', 10, 10, 255);
     Screen('Flip', w);
 
-    % NEW: Perform extra calibration pass to estimate monitor refresh
-    % interval. We want at least 100 valid samples, requiring standard
-    % deviation of the measurements below 50 microseconds, but timing out
-    % after 20 seconds if we can't get that level of accuracy:
-    [ ifi nvalid stddev ]= Screen('GetFlipInterval', w, 100, 0.00005, 20);
-    fprintf('Measured refresh interval, as reported by "GetFlipInterval" is %2.5f ms. (nsamples = %i, stddev = %2.5f ms)\n', ifi*1000, nvalid, stddev*1000);
+    ifi = Screen('GetFlipInterval', w);
 
     % Perform initial Flip to sync us to the VBL and for getting an initial
     % VBL-Timestamp for our "WaitBlanking" emulation:
