@@ -35,6 +35,10 @@ function BlurredVideoCaptureDemo(filtertype, kwidth, deviceIndex)
 AssertOpenGL;
 screen=max(Screen('Screens'));
 
+if IsOctave
+  pkg load image;
+end
+
 if nargin < 1 || isempty(filtertype)
     filtertype = 1;
 end
