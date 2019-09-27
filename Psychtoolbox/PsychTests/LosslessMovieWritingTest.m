@@ -166,7 +166,7 @@ moviefile = [pwd filesep 'Testmovie.avi'];
 movie = Screen('CreateMovie', win, moviefile, msize, nsize, 1, codec, nrchannels, bpc);
 
 % Add 3 frames with our test image texture:
-for i=1:3
+for i=1:10
     Screen('AddFrameToMovie', tex);
 end
 

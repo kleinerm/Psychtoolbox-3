@@ -1,22 +1,14 @@
-function ImagingVideoCaptureDemo(filtertype, kwidth)
+function ImagingVideoCaptureDemo
 
 AssertOpenGL;
-screen=max(Screen('Screens'));
-
-if nargin < 1
-    filtertype = 1;
-end
-
-if nargin < 2
-    kwidth=11;
-end;
+screen = max(Screen('Screens'));
 
 try
     %Screen('Preference', 'Verbosity', 10);
     % Prepare pipeline for configuration. This marks the start of a list of
     % requirements/tasks to be met/executed in the pipeline:
     PsychImaging('PrepareConfiguration');
-    
+
     % Ask pipeline to horizontally flip/mirror the output image, so user
     % doesn't get confused by orientation of its mirror image ;-)
     PsychImaging('AddTask', 'AllViews', 'FlipHorizontal');
@@ -39,10 +31,10 @@ try
 
     % Set mouse cursor shape to a cross-hair:
     ShowCursor('CrossHair');
-    
+
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
-        
+
     % Setup shader for image blurring:
     blurshader = LoadGLSLProgramFromFiles('ParametricBoxBlurShader', 1);
     glUseProgram(blurshader);
@@ -50,7 +42,7 @@ try
     glUniform1i(glGetUniformLocation(blurshader, 'FilterMap'), 1);
     glUseProgram(0);
     bluroperator = CreateGLOperator(win, [], blurshader, 'Parametric box blur operator.');
-    
+
     grabber = Screen('OpenVideoCapture', win, 0);
 
     blurmaptex = Screen('OpenOffscreenWindow', win, 0, [0 0 640 480]);
@@ -108,4 +100,4 @@ try
 catch
    sca;
    psychrethrow(psychlasterror);
-end;
+end

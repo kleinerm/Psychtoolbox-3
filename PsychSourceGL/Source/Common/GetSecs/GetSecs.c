@@ -35,7 +35,7 @@ const char** InitializeSynopsis(void)
 {
     int i = 0;
     const char **synopsis = synopsisSYNOPSIS;
-    synopsis[i++] = "[GetSecsTime, WallTime, syncErrorSecs] = GetSecs('AllClocks' [, maxError=0.000020]);";
+    synopsis[i++] = "[GetSecsTime, WallTime, syncErrorSecs, MonotonicTime] = GetSecs('AllClocks' [, maxError=0.000020]);";
     synopsis[i++] = NULL;
 
     return(synopsisSYNOPSIS);
@@ -109,8 +109,8 @@ PsychError GETSECSGetSecs(void)
 
 PsychError GETSECSAllClocks(void)
 {
-    static char useString[] = "[GetSecsTime, WallTime, syncErrorSecs] = GetSecs('AllClocks' [, maxError=0.000020]);";
-    //                          1            2         3                                       1
+    static char useString[] = "[GetSecsTime, WallTime, syncErrorSecs, MonotonicTime] = GetSecs('AllClocks' [, maxError=0.000020]);";
+    //                          1            2         3              4                                       1
     static char synopsisString[] =
     "Return current time in seconds according to all supported clocks.\n\n"
     "'GetSecsTime' is the usual GetSecs() clock, as returned by GetSecs(), in the timebase "
@@ -125,6 +125,9 @@ PsychError GETSECSAllClocks(void)
     "elapsed seconds since 1. January 1601 00:00:00 UTC via the GetSystemTimeAsFileTime() function.\n\n"
     "'syncErrorSecs' How tightly together did the returned clock times get queried? A measure of "
     "confidence as to how much all returned times actually denote the same point in physical time.\n\n"
+    "'MonotonicTime' is system monotonic timebase, not subject to administrator or NTP time adjustments, "
+    "with a zero point at operating system boot time. Identical to 'GetSecsTime' on Windows and macOS, "
+    "identical to Posix clock CLOCK_MONOTONIC on GNU/Linux.\n\n"
     "The input argument 'maxError' allows to set an allowable upper bound to 'syncErrorSecs'. The "
     "default value is 20 microseconds. The function will try up to 10 times to get a result no worse "
     "than 'maxError', and output a warning if it doesn't manage, e.g., due to some severely "
@@ -135,14 +138,14 @@ PsychError GETSECSAllClocks(void)
     int maxRetries = 10;
     double getSecsClock, getSecsClock2;
     double maxError = 20 * 1e-6;                // Default to 20 usecs max clock mapping error.
-    double wallClock;
+    double wallClock, tMonotonic;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(3));
+    PsychErrorExit(PsychCapNumOutputArgs(4));
     PsychErrorExit(PsychCapNumInputArgs(1));
 
     PsychCopyInDoubleArg(1, FALSE, &maxError);
@@ -155,6 +158,13 @@ PsychError GETSECSAllClocks(void)
     do {
         PsychGetAdjustedPrecisionTimerSeconds(&getSecsClock);
         wallClock = PsychGetWallClockSeconds();
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+            // Monotonic time has its own query in Linux for CLOCK_MONOTONIC:
+            tMonotonic = PsychOSGetLinuxMonotonicTime();
+        #else
+            // Monotonic time is == standard GetSecs time on Windows and macOS:
+            tMonotonic = getSecsClock;
+        #endif
         PsychGetAdjustedPrecisionTimerSeconds(&getSecsClock2);
     } while ((maxRetries-- > 0) && (getSecsClock2 - getSecsClock > maxError));
 
@@ -180,6 +190,10 @@ PsychError GETSECSAllClocks(void)
 
     // Return arg3 = Confidence interval for sync between clock queries:
     PsychCopyOutDoubleArg(3, FALSE, getSecsClock2 - getSecsClock);
+
+    // Return arg 4 is monotonic clock, system specific, with a zero point usually
+    // at OS boot, not subject to time adjustments by administrator or NTP:
+    PsychCopyOutDoubleArg(4, FALSE, tMonotonic);
 
     return(PsychError_none);
 }

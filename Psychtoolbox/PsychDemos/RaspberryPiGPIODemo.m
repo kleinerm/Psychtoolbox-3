@@ -44,6 +44,11 @@ function RaspberryPiGPIODemo
 % 26-Jun-2016 mk  Written.
 % 22-Jul-2016 mk  Clarify pin numbering more, reference https://pinout.xyz
 
+if ~IsARM || ~exist('RPiGPIOMex', 'file')
+  fprintf('This demo only works on the RaspberryPi. Bye.\n');
+  return;
+end
+
 % Get Pi revision. We only handle > 1 at the moment:
 revision = RPiGPIOMex
 
