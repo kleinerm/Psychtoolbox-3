@@ -52,6 +52,10 @@ function NewFastFilteredNoiseDemo(filtertype, rectSize, kwidth, scale, syncToVBL
 % Abort script if it isn't executed on Psychtoolbox-3:
 AssertOpenGL;
 
+if IsOctave
+    pkg load image;
+end
+
 % Assign default values for all unspecified input parameters:
 numRects = 1;
 
