@@ -207,7 +207,7 @@ if err
     fprintf('%s\n', result);
     
     if IsOSX && err == 69
-        fprintf('If the error output suggests running a command, this should be typed into Terminal.app\n')
+        fprintf('If the error output suggests running a command, this should be typed into Terminal.app found in Applications/Utilities\n')
     end
 
     if IsOctave
