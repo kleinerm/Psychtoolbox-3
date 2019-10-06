@@ -585,7 +585,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // pictures on the screen with bearable timing reliability and precision.
     if (useCGL) {
         // Enable use of custom backbuffer size for display surface:
-        error = CGLEnable(windowRecord->targetSpecific.contextObject, kCGLCESurfaceBackingSize);
+        //error = CGLEnable(windowRecord->targetSpecific.contextObject, kCGLCESurfaceBackingSize);
         if (error) {
             printf("\nPTB-ERROR[CGLEnable failed: %s]. Main Screen() context\n\n", CGLErrorString(error));
         }
@@ -606,7 +606,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             printf("\nPTB-ERROR[CGLGetParameter failed: %s]. Main Screen() context\n\n", CGLErrorString(error));
         }
 
-        if (PsychPrefStateGet_Verbosity() > 2)
+        if (PsychPrefStateGet_Verbosity() > 2 && FALSE)
             printf("PTB-INFO: Current backbuffersize %i x %i versus display native size %i x %i.\n",
                    backbufferSize[0], backbufferSize[1], (int) nativeSize[0], (int) nativeSize[1]);
 
@@ -654,7 +654,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         }
 
         if (useCGL) {
-            CGLEnable(windowRecord->targetSpecific.glusercontextObject, kCGLCESurfaceBackingSize);
+            //CGLEnable(windowRecord->targetSpecific.glusercontextObject, kCGLCESurfaceBackingSize);
             CGLSetParameter(windowRecord->targetSpecific.glusercontextObject, kCGLCPSurfaceBackingSize, (const GLint*) backbufferSize);
 
             error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glusercontextObject, displayMask);
@@ -678,7 +678,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
 
     if (useCGL) {
-        CGLEnable(windowRecord->targetSpecific.glswapcontextObject, kCGLCESurfaceBackingSize);
+        //CGLEnable(windowRecord->targetSpecific.glswapcontextObject, kCGLCESurfaceBackingSize);
         CGLSetParameter(windowRecord->targetSpecific.glswapcontextObject, kCGLCPSurfaceBackingSize, (const GLint*) backbufferSize);
 
         error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.glswapcontextObject, displayMask);
