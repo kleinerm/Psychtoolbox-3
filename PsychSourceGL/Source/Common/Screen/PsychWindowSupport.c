@@ -615,7 +615,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     PsychRebindARBExtensionsToCore();
 
     if (((((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33) || ((*windowRecord)->depth == 48)) && !((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) ||
-        ((*windowRecord)->depth == 32) || ((*windowRecord)->depth == 64) || ((*windowRecord)->depth == 128)) {
+        ((*windowRecord)->depth == 24) || ((*windowRecord)->depth == 32) || ((*windowRecord)->depth == 64) || ((*windowRecord)->depth == 128)) {
 
         // Floating point framebuffer active?
         isFloatBuffer = FALSE;
