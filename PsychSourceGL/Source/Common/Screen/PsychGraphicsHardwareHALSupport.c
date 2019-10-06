@@ -618,6 +618,7 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
     #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
         int gpuMaintype, gpuMinortype, fNumDisplayHeads;
         unsigned int updateStatus;
+        unsigned int value = 0;
 
         // If we are called, we know that 'windowRecord' is an onscreen window.
         int screenId = windowRecord->screenNumber;
@@ -635,11 +636,14 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
         // Driver is online: Read the registers, but only for primary crtc in a multi-crtc config:
         if  ((gpuMaintype == kPsychRadeon) && (gpuMinortype < 40)) {
             // Pre DCE-4: AVIVO class display hardware:
-            *primarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
-            *secondarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
-            updateStatus = PsychOSKDReadRegister(screenId, (PsychScreenToCrtcId(screenId, 0) < 1) ? RADEON_D1GRPH_UPDATE : RADEON_D2GRPH_UPDATE, NULL);
+            *primarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, (headid < 1) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
+            *secondarySurface = (psych_uint64) PsychOSKDReadRegister(screenId, (headid < 1) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
+            updateStatus = PsychOSKDReadRegister(screenId, (headid < 1) ? RADEON_D1GRPH_UPDATE : RADEON_D2GRPH_UPDATE, NULL);
 
             *updatePending = (updateStatus & RADEON_SURFACE_UPDATE_PENDING) ? TRUE : FALSE;
+
+            // Get display engine framebuffer scanout format:
+            value = PsychOSKDReadRegister(screenId, (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL, NULL);
         }
 
         if  ((gpuMaintype == kPsychRadeon) && (gpuMinortype >= 40)) {
@@ -657,6 +661,9 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
             updateStatus =      PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_UPDATE + crtcoff[headid], NULL);
 
             *updatePending = (updateStatus & EVERGREEN_GRPH_SURFACE_UPDATE_PENDING) ? TRUE : FALSE;
+
+            // Get display engine framebuffer scanout format:
+            value = PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_CONTROL + crtcoff[headid], NULL);
         }
 
         if (gpuMaintype == kPsychIntelIGP) {
@@ -680,12 +687,47 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
             double tNow;
             PsychGetAdjustedPrecisionTimerSeconds(&tNow);
 
-            if (gpuMaintype == kPsychIntelIGP)
+            if (gpuMaintype == kPsychIntelIGP) {
+                // Intel:
                 printf("PTB-DEBUG: %6lf : Screen %i: Head %i: currentSurface=%p <-- requestedSurface=%p : updatePending=%i\n",
-                       tNow, screenId, PsychScreenToCrtcId(screenId, 0), *primarySurface, *secondarySurface, (int) *updatePending);
-            else
-                printf("PTB-DEBUG: %6lf : Screen %i: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i\n",
-                       tNow, screenId, PsychScreenToCrtcId(screenId, 0), *primarySurface, *secondarySurface, updateStatus);
+                       tNow, screenId, headid, *primarySurface, *secondarySurface, (int) *updatePending);
+            } else {
+                // AMD:
+                printf("PTB-DEBUG: %6lf : Screen %i: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i",
+                       tNow, screenId, headid, *primarySurface, *secondarySurface, updateStatus);
+                if (PsychPrefStateGet_Verbosity() > 15) {
+                    // Decode display engine scanout format aka format of the system fb / needed for page-flipping:
+                    // (cfe. drivers/gpu/drm/amd/amdgpu/si_enums.h)
+                    printf(" : raw=0x%08x : bppcode=%i : formatcode=%i -> ", value, value & 0x3, (value >> 8) & 0x7);
+                    if ((value & 0x3) == 3) {
+                        // Some 64 bpp - 16 bpc format: 16 bpc fixed point or half-float.
+                        printf("16 bpc fb");
+                        value = 16;
+                    } else {
+                        // Some 32 bpp format (Assume code 2, ignore 16 bpp [1] / 8 bpp [0], because it's not the 90s anymore):
+                        value = (value >> 8) & 0x7;
+                        if (value == 0) {
+                            printf("8 bpc ARGB8888 fb");
+                            value = 8;
+                        } else if (value < 6) {
+                            printf("10 bpc [prob. ARGB2101010] fb");
+                            value = 10;
+                        } else {
+                            printf("~11 bpc [prob. RGB111110/BGR101111] fb");
+                            value = 11;
+                        }
+                    }
+
+                    // If the OpenGL backbuffer/frontbuffer format is mismatched to the system scanout buffer format,
+                    // then the compositor will likely have to kick in for format conversion in a way that at least
+                    // will screw up stimulus timing/timestamping on primitive OS'es like Apple macOS or Windows,
+                    // whereas on Linux it depends on the compositor implementation. E.g., Waylands Weston should not
+                    // cause timing trouble with the current implementation as tested in 2018.
+                    if (windowRecord->bpc != value)
+                        printf(" ==> Mismatch OpenGL fb %i vs. system fb %i ==> Compositor takeover will be likely!", windowRecord->bpc, value);
+                }
+                printf("\n");
+            }
         }
 
         // Success:
