@@ -60,6 +60,7 @@ static CGDisplayModeRef     displayOriginalCGSettings[kPsychMaxPossibleDisplays]
 static psych_bool           displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
 static CGDisplayModeRef     displayOverlayedCGSettings[kPsychMaxPossibleDisplays];      //these track settings overlayed with 'Resolutions'.
 static psych_bool           displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
+static int                  displayOriginalLowLevelCGSModeId[kPsychMaxPossibleDisplays];
 static CGDisplayCount       numDisplays, numPhysicalDisplays;
 static CGDirectDisplayID    displayCGIDs[kPsychMaxPossibleDisplays];
 static CGDirectDisplayID    displayOnlineCGIDs[kPsychMaxPossibleDisplays];
@@ -84,6 +85,259 @@ int PsychOSKDGetBeamposition(int screenId);
 void PsychDisplayReconfigurationCallBack (CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo);
 static void PsychOSKDGetGPUInfo(io_connect_t connect, int slot);
 unsigned int PsychOSKDGetRevision(io_connect_t connect);
+
+// The following helper code is a slightly adapted version of the code from https://github.com/lunixbochs/meta/tree/master/utils/retina
+// That code is Copyright (c) 2013 Ryan Hileman and provided to us and others under the MIT license. Thanks!
+
+// Apple macOS CoreGraphicsServer (CGS) private video mode info data structure:
+typedef struct {
+    uint32_t mode;      // mode id
+    uint32_t flags;     // mode flags
+    uint32_t width;     // pixel width
+    uint32_t height;    // pixel height
+    uint32_t depth;     // framebuffer depth format code: 4 = ARGB8888 ~ 8 bpc, 8 = ARGB2101010 ~ 10 bpc
+    uint32_t dc2[42];   // Unknown
+    uint16_t dc3;       // Unknown
+    uint16_t freq;      // Encoded video refresh rate
+    uint32_t dc4[4];    // Unknown
+    float scale;        // Retina scaling factor
+
+    // These are ours, not part of CGS mode struct:
+    char name[32];
+    int skip;
+} display_mode_t;
+
+// Apple macOS CGS private api. Subject to backwards incompatible and breaking change without any notice or warning!
+// Work as of macOS 10.12.6 and hopefully later versions.
+#define MODE_SIZE (sizeof(display_mode_t) - sizeof(char) * 32 - sizeof(int))
+void CGSGetCurrentDisplayMode(CGDirectDisplayID display, int *mode);
+void CGSConfigureDisplayMode(CGDisplayConfigRef config, CGDirectDisplayID display, int mode);
+void CGSGetNumberOfDisplayModes(CGDirectDisplayID display, int *count);
+void CGSGetDisplayModeDescriptionOfLength(CGDirectDisplayID display, int index, display_mode_t *mode, int length);
+
+// Helper code from lunixbochs utility.
+
+// sorts for highest effective resolution modes first
+static int sort_modes(const void *a, const void *b) {
+    const display_mode_t *da = a, *db = b;
+    if (strlen(da->name) < strlen(db->name) || da->scale > db->scale) return 1;
+    if (strlen(da->name) > strlen(db->name) || da->scale < db->scale) return -1;
+    return strcmp(da->name, db->name) * -1;
+}
+
+// grab all the modes and attach a name string
+static void get_all_modes(CGDirectDisplayID display, display_mode_t **retModes, int *count) {
+    CGSGetNumberOfDisplayModes(display, count);
+    if (! *count || !retModes) return;
+    display_mode_t *modes = malloc(sizeof(display_mode_t) * *count);
+    for (int i = 0; i < *count; i++) {
+        CGSGetDisplayModeDescriptionOfLength(display, i, modes+i, MODE_SIZE);
+        display_mode_t *mode = &modes[i];
+        if (mode->scale > 1) {
+            snprintf(mode->name, 32, "%dx%d@%.0f@bpp=%d", mode->width, mode->height, mode->scale, mode->depth);
+        } else {
+            snprintf(mode->name, 32, "%dx%d@bpp=%d", mode->width, mode->height, mode->depth);
+        }
+    }
+    qsort(modes, *count, sizeof(display_mode_t), sort_modes);
+    *retModes = modes;
+}
+
+// get the current mode for a display
+static int get_display_mode(CGDirectDisplayID display) {
+    int mode;
+    CGSGetCurrentDisplayMode(display, &mode);
+    return mode;
+}
+
+// set the current mode for a display
+static void set_display_mode(CGDirectDisplayID display, int mode) {
+    CGDisplayConfigRef config;
+    CGBeginDisplayConfiguration(&config);
+    CGSConfigureDisplayMode(config, display, mode);
+    CGCompleteDisplayConfiguration(config, kCGConfigurePermanently);
+}
+
+static void print_display(CGDirectDisplayID display, int num) {
+    display_mode_t *modes;
+    int count;
+    get_all_modes(display, &modes, &count);
+
+    int current_mode_num = get_display_mode(display);
+    display_mode_t *current_mode;
+    for (int i = 0; i < count; i++) {
+        if (modes[i].mode == current_mode_num) {
+            current_mode = &modes[i];
+        }
+    }
+
+    printf("Display [%d]", num);
+    if (current_mode != NULL) {
+        printf(" (now: %s)\n", current_mode->name);
+    } else {
+        printf("\n");
+    }
+    printf("  Allowed modes:\n  ");
+    for (int i = 0; i < count; i++) modes[i].skip = 0;
+    for (int i = 0; i < count; i++) {
+        display_mode_t *a = &modes[i], *b;
+        if (a->skip) continue;
+        a->skip = 1;
+        // pad to column * scale (in case a resolution isn't available unscaled?)
+        for (int s = 1; s < a->scale; s++)
+            printf("%21s", "");
+        printf("%21s", a->name);
+        // print scaled equivalents in the same row
+        for (int j = 0; j < count; j++) {
+            b = &modes[j];
+            if (a == b || b->skip) continue;
+            if (a->width * a->scale == b->width * b->scale &&
+                a->height * a->scale == b->height * b->scale) {
+                printf("%21s", b->name);
+                b->skip = 1;
+            }
+        }
+        printf("\n  ");
+    }
+    printf("\n");
+
+    free(modes);
+}
+
+// End of lunixbochs code. Start of our code using that code:
+
+/* PsychOSFixupFramebufferFormatForTiming()
+ *
+ * Call this to try to put the system framebuffer aka scanout buffer into a scanout format that
+ * is compatible with good, precise, trustworthy timing (aka compositor bypass) for an onscreen
+ * fullscreen window with a OpenGL framebuffer depth of targetBpc bits per color channel.
+ *
+ * screenNumber - Target screen.
+ * targetBpc - bpc of onscreen window.
+ * enable - TRUE = Enable fix, FALSE = Disable fix.
+ *
+ * Returns TRUE on success (setup successfull or not needed) and FALSE on failure.
+ * A TRUE return does not guarantee that it worked, just that this code "thinks" it worked.
+ */
+psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool enable, int targetBpc)
+{
+    display_mode_t *modes = NULL;
+    display_mode_t *current_mode = NULL;
+    display_mode_t target_mode = { 0 };
+    int i, count = 0;
+    int current_mode_num, target_mode_num;
+    int verbosity = PsychPrefStateGet_Verbosity();
+
+    if (screenNumber < 0 || screenNumber >= numDisplays)
+        PsychErrorExit(PsychError_invalidScumber);
+
+    // Get all supported CGS modes:
+    get_all_modes(displayCGIDs[screenNumber], &modes, &count);
+
+    // Get id of current active mode:
+    current_mode_num = get_display_mode(displayCGIDs[screenNumber]);
+
+    // Get properties / description of current lower level mode:
+    for (i = 0; i < count; i++) {
+        if (modes[i].mode == current_mode_num) {
+            current_mode = &modes[i];
+            break;
+        }
+    }
+
+    if (!current_mode) {
+        if (verbosity > 0)
+            printf("PTB-ERROR:PsychOSFixupFramebufferFormatForTiming: Can not find current video mode! Aborted.\n");
+        return(FALSE);
+    }
+
+    if (enable) {
+        // Enable of fix requested:
+
+        // Fix already enabled from previous call? Should not happen:
+        if (displayOriginalLowLevelCGSModeId[screenNumber] != -1) {
+            if (verbosity > 0)
+                printf("PTB-ERROR:PsychOSFixupFramebufferFormatForTiming: Called on screenId %i with fix enable request while fix is already enabled [modeId %i]! Bug?!? No-Op!\n", screenNumber, displayOriginalLowLevelCGSModeId[screenNumber]);
+            return(FALSE);
+        }
+
+        if (targetBpc != 8) {
+            if (verbosity > 1)
+                printf("PTB-WARNING:PsychOSFixupFramebufferFormatForTiming: Called with unsupported targetBpc %i != 8. No-Op. Timing will suck!\n", targetBpc);
+            return(FALSE);
+        }
+
+        // We can do something for a target bpc = 8 by switching to a 8 bpc, 32 bpp, ARGB8888 framebuffer.
+
+        // Is the fb already in 32 bpp, 8 bpc ARGB8888 format?
+        if (current_mode->depth == 4) {
+            if (verbosity > 3)
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i already in 8 bpc ARGB8888 mode - Nothing to do.\n",
+                       screenNumber);
+            return(TRUE);
+        } else {
+            if (verbosity > 3)
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i in framebuffer format mode %d != 4 - Trying to switch to 4.\n", screenNumber, current_mode->depth);
+        }
+
+        // Nope. Try to find a mode that matches the current one in all aspects, except it is fb format 8 bpc aka code 4:
+        target_mode = *current_mode;
+        target_mode.depth = 4;
+        target_mode_num = -1;
+
+        for (i = 0; i < count; i++) {
+            target_mode.mode = modes[i].mode;
+
+            // memcmp method is more thorough, but doesn't work yet, so keep it for future endeavours:
+            if (!memcmp(&(modes[i]), &target_mode, sizeof(target_mode))) {
+                target_mode_num = target_mode.mode;
+                break;
+            }
+
+            // This more lenient matching on the most critical properties width, height, hz, retina scaling, depth currently works ok:
+            if (modes[i].width == target_mode.width && modes[i].height == target_mode.height && modes[i].freq == target_mode.freq &&
+                modes[i].depth == target_mode.depth && modes[i].scale == target_mode.scale) {
+                target_mode_num = target_mode.mode;
+                break;
+            }
+        }
+
+        // Success?
+        if (target_mode_num == -1) {
+            if (verbosity > 1)
+                printf("PTB-WARNING:PsychOSFixupFramebufferFormatForTiming: Couldn't find alt-mode with targetBpc %i. No-Op. Timing will suck!\n",
+                       targetBpc);
+            return(FALSE);
+        }
+
+        // Got one. Set it, so we get everything identical, except now at fb format 8 bpc ARGB8888:
+        set_display_mode(displayCGIDs[screenNumber], target_mode_num);
+
+        // Store previous original / reference mode as backup if we want to switch back:
+        displayOriginalLowLevelCGSModeId[screenNumber] = current_mode_num;
+    }
+    else {
+        // Disable of fix requested:
+
+        // Fix already disabled from previous call?
+        if (displayOriginalLowLevelCGSModeId[screenNumber] == -1) {
+            if (verbosity > 3)
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: Called on screenId %i with fix disable request while fix is already disabled. No-Op.\n", screenNumber);
+            return(TRUE);
+        }
+
+        // Restore original mode:
+        if (verbosity > 3)
+            printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i in framebuffer fixup format mode. Trying to revert to system setting.\n", screenNumber);
+
+        // Got one. Set it, so we get everything identical, except now at fb format 8 bpc ARGB8888:
+        set_display_mode(displayCGIDs[screenNumber], displayOriginalLowLevelCGSModeId[screenNumber]);
+        displayOriginalLowLevelCGSModeId[screenNumber] = -1;
+    }
+
+    // Switch presumably successfully completed:
+    return(TRUE);
+}
 
 kern_return_t CallKDSimpleMethod(io_connect_t connect, uint32_t index)
 {
@@ -110,6 +364,7 @@ void InitializePsychDisplayGlue(void)
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
         displayConnectHandles[i]=0;
+        displayOriginalLowLevelCGSModeId[i]=-1;
     }
 
     cursorHidden = FALSE;
@@ -166,6 +421,7 @@ void PsychCleanupDisplayGlue(void)
         if (displayOverlayedCGSettingsValid[i]) CGDisplayModeRelease(displayOverlayedCGSettings[i]);
         displayOriginalCGSettingsValid[i] = FALSE;
         displayOverlayedCGSettingsValid[i] = FALSE;
+        displayOriginalLowLevelCGSModeId[i] = -1;
     }
 
     cursorHidden = FALSE;
@@ -299,6 +555,12 @@ void PsychCaptureScreen(int screenNumber)
     error = CGDisplayCapture(displayCGIDs[screenNumber]);
     if (error) PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
 
+    // Fixup framebuffer format for proper visual presentation timing in fullscreen mode:
+    if (PsychPrefStateGet_Verbosity() > 3)
+        print_display(displayCGIDs[screenNumber], screenNumber);
+
+    PsychOSFixupFramebufferFormatForTiming(screenNumber, TRUE, 8);
+
     PsychLockScreenSettings(screenNumber);
 
     return;
@@ -312,6 +574,12 @@ void PsychReleaseScreen(int screenNumber)
     CGDisplayErr  error;
 
     if (screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
+
+    // Disable fixup of framebuffer format for proper visual presentation timing in fullscreen mode:
+    if (PsychPrefStateGet_Verbosity() > 3)
+        print_display(displayCGIDs[screenNumber], screenNumber);
+
+    PsychOSFixupFramebufferFormatForTiming(screenNumber, FALSE, 8);
 
     error = CGDisplayRelease(displayCGIDs[screenNumber]);
     if (error) PsychErrorExitMsg(PsychError_internal, "Unable to release display");
@@ -1231,7 +1499,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
         activeGPU = 1 - activeGPU;
         OSMemoryBarrier();
         if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Switching to kernel driver instance #%i in hybrid graphics system, assuming i am attached to discrete non-Intel GPU.", activeGPU);
+            printf("PTB-INFO: Switching to kernel driver instance #%i in hybrid graphics system, assuming i am attached to discrete non-Intel GPU.\n", activeGPU);
         }
 
         // PsychOSKDGetBeamposition() has a way of recovering from a wrong choice here.
