@@ -92,7 +92,9 @@ function [rc,rcExt] = PsychGPUControl(cmd, varargin)
 % 26.04.2016  mk  Add 'EnableCompizMultiDisplayWorkaround' for multi-display setups.
 % 10.07.2017  MR  Add 'rcExt' for returning the dithering API version used by ATIRadeonperf_Windows.
 %                 Suppress the output of ATIRadeonperf_Windows as long as there are no errors.
-
+% 08.10.2019  mk  Workaround dither enable <-> disable confusion bug on AMD Windows for at least
+%                 dither api version 1 in the underlying ATIRadeonperf_Windows. Tested to fix
+%                 identity LUT problems on Windows-10 with AMD Raven.
 
 if nargin < 1
   error('Subfunction command argument missing!');
@@ -112,6 +114,20 @@ if strcmpi(cmd, 'SetDitheringEnabled')
   % Command code 1 means: Control ditherstate, according to 2nd arg 0 or 1 == disable, enable.
   cmdpostfix = sprintf(' 1 %i', enable);
   [rc, rcExt] = executeRadeoncmd(cmdpostfix);
+
+  if IsWin && rc == 0 && ~isempty(rcExt) && rcExt == 1
+    % A dither en/disable was successfully executed on a Windows AMD driver with
+    % dither api version 1. Due to a bug in the current ATIRadeonperf_Windows.exe
+    % however, at least calls on this api version 1 have the en/disable flag
+    % switched! enable = 1 maps to DISABLE, whereas enable = 0 maps to ENABLE,
+    % so our caller gets the exact opposite of what was desired!
+    % This at least for PTB 3.0.15 and 3.0.16 as of 8th October 2019.
+    %
+    % Fix this by calling the dither setup again with switched enable argument:
+    cmdpostfix = sprintf(' 1 %i', 1 - enable);
+    [rc, rcExt] = executeRadeoncmd(cmdpostfix);
+  end
+
   return;
 end
 
