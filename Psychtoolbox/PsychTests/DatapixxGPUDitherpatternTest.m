@@ -33,6 +33,8 @@ end
 
 screenid = max(Screen('Screens'));
 
+oldsynclevel = Screen('Preference', 'SkipSynctests', 1);
+
 if fullscreen
   rect = [];
 else
@@ -98,5 +100,7 @@ if trouble > 0
 else
   fprintf('\n\nALL GOOD :)\n');
 end
+
+Screen('Preference', 'SkipSynctests', oldsynclevel);
 
 return;
