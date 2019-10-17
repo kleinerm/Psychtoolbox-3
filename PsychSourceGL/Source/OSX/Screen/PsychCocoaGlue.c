@@ -80,10 +80,11 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         windowStyle = NSBorderlessWindowMask | NSWindowStyleMaskFullScreen;
     }
 
-    if ([NSThread isMainThread])
+    if ([NSThread isMainThread]) {
         printf("On MAIN THREAD\n");
-    else
+    } else {
         printf("On other Thread\n");
+    }
 
     dispatch_sync(dispatch_get_main_queue(), ^{
         cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:windowStyle    backing:NSBackingStoreBuffered defer:YES];
@@ -152,6 +153,8 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
 
         // Tell Cocoa/NSOpenGL to render to Retina displays at native resolution:
         [[cocoaWindow contentView] setWantsBestResolutionOpenGLSurface:YES];
+
+        [cocoaWindow setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
     });
 
     PsychMakeRect(windowRecord->globalrect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
@@ -417,6 +420,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
         [masterContext setView:[cocoaWindow contentView]];
         // Doesn't work on the trainwreck - hang: [masterContext setFullScreen];
         [masterContext makeCurrentContext];
+        [masterContext update];
 
         // Ditto for potential gl userspace rendering context:
         if (windowRecord->targetSpecific.glusercontextObject) {
@@ -424,6 +428,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
             [gluserContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
             [gluserContext setView:[cocoaWindow contentView]];
             // Doesn't work on the trainwreck - hang: [gluserContext setFullScreen];
+            [gluserContext update];
         }
 
         // Ditto for potential glswapcontext for async flips and frame sequential stereo:
@@ -432,6 +437,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
             [glswapContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
             [glswapContext setView:[cocoaWindow contentView]];
             // Doesn't work on the trainwreck - hang: [glswapContext setFullScreen];
+            [glswapContext update];
         }
 
         // Assign contexts for use in window close sequence later on:
