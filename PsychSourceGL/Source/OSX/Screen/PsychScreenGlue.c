@@ -134,9 +134,9 @@ static void get_all_modes(CGDirectDisplayID display, display_mode_t **retModes, 
         CGSGetDisplayModeDescriptionOfLength(display, i, modes+i, MODE_SIZE);
         display_mode_t *mode = &modes[i];
         if (mode->scale > 1) {
-            snprintf(mode->name, 32, "%dx%d@%.0f@bpp=%d", mode->width, mode->height, mode->scale, mode->depth);
+            snprintf(mode->name, 32, "%dx%d@%.0f@d=%d@%iHz", mode->width, mode->height, mode->scale, mode->depth, (int) mode->freq);
         } else {
-            snprintf(mode->name, 32, "%dx%d@bpp=%d", mode->width, mode->height, mode->depth);
+            snprintf(mode->name, 32, "%dx%d@d=%d@%iHz", mode->width, mode->height, mode->depth, (int) mode->freq);
         }
     }
     qsort(modes, *count, sizeof(display_mode_t), sort_modes);
@@ -158,20 +158,27 @@ static void set_display_mode(CGDirectDisplayID display, int mode) {
     CGCompleteDisplayConfiguration(config, kCGConfigurePermanently);
 }
 
-static void print_display(CGDirectDisplayID display, int num) {
+static void print_display(CGDirectDisplayID display, int num, int targetDepthCode) {
     display_mode_t *modes;
     int count;
     get_all_modes(display, &modes, &count);
 
     int current_mode_num = get_display_mode(display);
     display_mode_t *current_mode;
+
+    printf("Display screen [%d]:\n", num);
+
     for (int i = 0; i < count; i++) {
         if (modes[i].mode == current_mode_num) {
             current_mode = &modes[i];
         }
+
+        // Optimal on builtin or Retina style display, ie. unscaled, native resolution at suitable color format?
+        if (modes[i].flags & (1 << 25) && modes[i].scale == 1 && modes[i].depth == targetDepthCode)
+            printf("\n\nOptimal for timing: %dx%d@%.0f@d=%d@%iHz\n\n",
+                   modes[i].width, modes[i].height, modes[i].scale, modes[i].depth, (int) modes[i].freq);
     }
 
-    printf("Display [%d]", num);
     if (current_mode != NULL) {
         printf(" (now: %s)\n", current_mode->name);
     } else {
@@ -185,15 +192,15 @@ static void print_display(CGDirectDisplayID display, int num) {
         a->skip = 1;
         // pad to column * scale (in case a resolution isn't available unscaled?)
         for (int s = 1; s < a->scale; s++)
-            printf("%21s", "");
-        printf("%21s", a->name);
+            printf("%25s", "");
+        printf("%25s", a->name);
         // print scaled equivalents in the same row
         for (int j = 0; j < count; j++) {
             b = &modes[j];
             if (a == b || b->skip) continue;
             if (a->width * a->scale == b->width * b->scale &&
                 a->height * a->scale == b->height * b->scale) {
-                printf("%21s", b->name);
+                printf("%25s", b->name);
                 b->skip = 1;
             }
         }
@@ -223,13 +230,34 @@ psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool e
 {
     display_mode_t *modes = NULL;
     display_mode_t *current_mode = NULL;
-    display_mode_t target_mode = { 0 };
+    display_mode_t *optimal_mode = NULL;
     int i, count = 0;
     int current_mode_num, target_mode_num;
+    int targetDepthCode;
     int verbosity = PsychPrefStateGet_Verbosity();
+
+    // Map targetBpc to OSX framebuffer scanout depth code:
+    switch (targetBpc) {
+        case 8: // 8 bpc = ARGB8888:
+            targetDepthCode = 4;
+            break;
+
+        case 10: // 10 bpc = ARGB2101010:
+            // This is unsupported as of macOS 10.14.6 Mojave on at least
+            // AMD Polaris. But let's implement support here just in case.
+            // Specifically: One can't create OpenGL backbuffers with 10 bpc!
+            targetDepthCode = 8;
+            break;
+
+        default: // Unsupported targetBpc for native scanout:
+            targetDepthCode = -1;
+    }
 
     if (screenNumber < 0 || screenNumber >= numDisplays)
         PsychErrorExit(PsychError_invalidScumber);
+
+    if (verbosity > 4)
+        print_display(displayCGIDs[screenNumber], screenNumber, targetDepthCode);
 
     // Get all supported CGS modes:
     get_all_modes(displayCGIDs[screenNumber], &modes, &count);
@@ -247,8 +275,20 @@ psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool e
 
     if (!current_mode) {
         if (verbosity > 0)
-            printf("PTB-ERROR:PsychOSFixupFramebufferFormatForTiming: Can not find current video mode! Aborted.\n");
+            printf("PTB-ERROR:PsychOSFixupFramebufferFormatForTiming: Can not find current video mode on screenId %i! Aborted.\n",
+                   screenNumber);
+        free(modes);
         return(FALSE);
+    }
+
+    for (i = 0; i < count; i++) {
+        if ((modes[i].flags & (1 << 25)) && (modes[i].scale == 1) && (modes[i].depth == targetDepthCode) &&
+            (modes[i].freq == current_mode->freq)) {
+            optimal_mode = &modes[i];
+            if (verbosity > 3)
+                printf("PTB-DEBUG: Optimal mode for timing on screenId %i at %i bpc: %dx%d@%.0f@d=%d@%iHz\n", screenNumber, targetBpc,
+                   optimal_mode->width, optimal_mode->height, optimal_mode->scale, optimal_mode->depth, (int) optimal_mode->freq);
+        }
     }
 
     if (enable) {
@@ -258,55 +298,72 @@ psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool e
         if (displayOriginalLowLevelCGSModeId[screenNumber] != -1) {
             if (verbosity > 0)
                 printf("PTB-ERROR:PsychOSFixupFramebufferFormatForTiming: Called on screenId %i with fix enable request while fix is already enabled [modeId %i]! Bug?!? No-Op!\n", screenNumber, displayOriginalLowLevelCGSModeId[screenNumber]);
+            free(modes);
             return(FALSE);
         }
 
-        if (targetBpc != 8) {
+        // Supported depth?
+        if (targetDepthCode == -1) {
             if (verbosity > 1)
-                printf("PTB-WARNING:PsychOSFixupFramebufferFormatForTiming: Called with unsupported targetBpc %i != 8. No-Op. Timing will suck!\n", targetBpc);
+                printf("PTB-WARNING:PsychOSFixupFramebufferFormatForTiming: screenId %i unsupported targetBpc %i. No-Op. Timing will suck!\n",
+                       screenNumber, targetBpc);
+            free(modes);
             return(FALSE);
         }
 
-        // We can do something for a target bpc = 8 by switching to a 8 bpc, 32 bpp, ARGB8888 framebuffer.
-
-        // Is the fb already in 32 bpp, 8 bpc ARGB8888 format?
-        if (current_mode->depth == 4) {
+        // We can do something for this targetBpc aka depth code targetDepthCode.
+        // Is the fb already in targetDepthCode format and native resolution for a Retina panel or similar?
+        if ((current_mode == optimal_mode) || (!optimal_mode && (current_mode->depth == targetDepthCode))) {
+            // Yes. Nothing to do:
             if (verbosity > 3)
-                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i already in 8 bpc ARGB8888 mode - Nothing to do.\n",
-                       screenNumber);
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i already in suitable mode for %i bpc - Nothing to do.\n",
+                       screenNumber, targetBpc);
+            free(modes);
             return(TRUE);
-        } else {
-            if (verbosity > 3)
-                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i in framebuffer format mode %d != 4 - Trying to switch to 4.\n", screenNumber, current_mode->depth);
         }
 
-        // Nope. Try to find a mode that matches the current one in all aspects, except it is fb format 8 bpc aka code 4:
-        target_mode = *current_mode;
-        target_mode.depth = 4;
-        target_mode_num = -1;
+        // Need to switch mode to something more suitable:
+        if (optimal_mode) {
+            // There exists an optimal mode for the display, e.g., the native unscaled resolution
+            // of a Retina display or other builtin display, with suitable color format. Use it:
+            target_mode_num = optimal_mode->mode;
 
-        for (i = 0; i < count; i++) {
-            target_mode.mode = modes[i].mode;
-
-            // memcmp method is more thorough, but doesn't work yet, so keep it for future endeavours:
-            if (!memcmp(&(modes[i]), &target_mode, sizeof(target_mode))) {
-                target_mode_num = target_mode.mode;
-                break;
+            if (verbosity > 3)
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: Switching screenId %i to optimal native mode %ix%i@%iHz.\n",
+                       screenNumber, optimal_mode->width, optimal_mode->height, (int) optimal_mode->freq);
+        }
+        else {
+            // Nope. Try to find a mode that matches the current one in all aspects, except its fb format being targetDepthCode:
+            if (verbosity > 3) {
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i in unsuitable format %i != %i for %i bpc.\n",
+                       screenNumber, current_mode->depth, targetDepthCode, targetBpc);
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: Trying to switch to suitable mode with format %i.\n",
+                       targetDepthCode);
             }
 
-            // This more lenient matching on the most critical properties width, height, hz, retina scaling, depth currently works ok:
-            if (modes[i].width == target_mode.width && modes[i].height == target_mode.height && modes[i].freq == target_mode.freq &&
-                modes[i].depth == target_mode.depth && modes[i].scale == target_mode.scale) {
-                target_mode_num = target_mode.mode;
-                break;
+            target_mode_num = -1;
+            for (i = 0; i < count; i++) {
+                // Find suitable mode matching current modes width, height and hz, while not being Retina scaled and of the proper format:
+                if (modes[i].width == current_mode->width * current_mode->scale &&
+                    modes[i].height == current_mode->height * current_mode->scale &&
+                    modes[i].freq == current_mode->freq &&
+                    modes[i].depth == targetDepthCode && modes[i].scale == 1) {
+                    target_mode_num = modes[i].mode;
+                    if (verbosity > 3)
+                        printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: Switching to suitable mode %ix%i@%iHz.\n",
+                               modes[i].width, modes[i].height, (int) modes[i].freq);
+
+                    break;
+                }
             }
         }
 
         // Success?
         if (target_mode_num == -1) {
             if (verbosity > 1)
-                printf("PTB-WARNING:PsychOSFixupFramebufferFormatForTiming: Couldn't find alt-mode with targetBpc %i. No-Op. Timing will suck!\n",
-                       targetBpc);
+                printf("PTB-WARNING:PsychOSFixupFramebufferFormatForTiming: On screenId %i no suitable mode with targetBpc %i. No-Op. Timing will suck!\n",
+                       screenNumber, targetBpc);
+            free(modes);
             return(FALSE);
         }
 
@@ -323,17 +380,25 @@ psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool e
         if (displayOriginalLowLevelCGSModeId[screenNumber] == -1) {
             if (verbosity > 3)
                 printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: Called on screenId %i with fix disable request while fix is already disabled. No-Op.\n", screenNumber);
+            free(modes);
             return(TRUE);
         }
 
         // Restore original mode:
         if (verbosity > 3)
-            printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i in framebuffer fixup format mode. Trying to revert to system setting.\n", screenNumber);
+            printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i in framebuffer format fixup mode. Reverting to system setting.\n", screenNumber);
 
         // Got one. Set it, so we get everything identical, except now at fb format 8 bpc ARGB8888:
         set_display_mode(displayCGIDs[screenNumber], displayOriginalLowLevelCGSModeId[screenNumber]);
         displayOriginalLowLevelCGSModeId[screenNumber] = -1;
     }
+
+    free(modes);
+
+    // A mode switch can take up to 3 seconds, so pause here to give the display server et al.
+    // some time to finish the switch and settle, or we might not get pageflipping on the first
+    // swaps after the mode switch, or a WindowServer hang + crash if we are unlucky after mode reset:
+    PsychWaitIntervalSeconds(3);
 
     // Switch presumably successfully completed:
     return(TRUE);
@@ -555,12 +620,6 @@ void PsychCaptureScreen(int screenNumber)
     error = CGDisplayCapture(displayCGIDs[screenNumber]);
     if (error) PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
 
-    // Fixup framebuffer format for proper visual presentation timing in fullscreen mode:
-    if (PsychPrefStateGet_Verbosity() > 3)
-        print_display(displayCGIDs[screenNumber], screenNumber);
-
-    PsychOSFixupFramebufferFormatForTiming(screenNumber, TRUE, 8);
-
     PsychLockScreenSettings(screenNumber);
 
     return;
@@ -575,14 +634,15 @@ void PsychReleaseScreen(int screenNumber)
 
     if (screenNumber >= numDisplays) PsychErrorExit(PsychError_invalidScumber);
 
-    // Disable fixup of framebuffer format for proper visual presentation timing in fullscreen mode:
-    if (PsychPrefStateGet_Verbosity() > 3)
-        print_display(displayCGIDs[screenNumber], screenNumber);
-
-    PsychOSFixupFramebufferFormatForTiming(screenNumber, FALSE, 8);
-
     error = CGDisplayRelease(displayCGIDs[screenNumber]);
     if (error) PsychErrorExitMsg(PsychError_internal, "Unable to release display");
+
+    // Disable fixup of framebuffer format for proper visual presentation timing in fullscreen exclusive mode:
+    // Note: We must call this after CGDisplayRelease() or the WindowServer may crash with SIGABORT at least on
+    // macOS 10.14.6 Mojave. A breach of symmetry wrt. the enabling call, but not a big deal, as the function
+    // does not need onscreen windowRecord specific info or an OpenGL context for the disable sequence. Also it
+    // no-ops silently whenever a disable is not needed.
+    PsychOSFixupFramebufferFormatForTiming(screenNumber, FALSE, 0);
 
     PsychUnlockScreenSettings(screenNumber);
 
