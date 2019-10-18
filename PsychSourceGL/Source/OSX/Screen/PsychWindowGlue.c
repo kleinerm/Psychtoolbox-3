@@ -361,6 +361,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     windowRecord->targetSpecific.windowHandle = cocoaWindow;
 
     // Store vblank startline aka true height of physical display screen in pixels:
+    // This makes sense for the Cocoa path, but needs override below in the CGL path.
     PsychGetScreenPixelSize(screenSettings->screenNumber, &scw, &sch);
     windowRecord->VBL_Startline = (int) sch;
 
@@ -610,10 +611,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             printf("\nPTB-ERROR[CGLGetParameter failed: %s]. Main Screen() context\n\n", CGLErrorString(error));
         }
 
-        if (PsychPrefStateGet_Verbosity() > 2 && FALSE)
-            printf("PTB-INFO: Current backbuffersize %i x %i versus display native size %i x %i.\n",
-                   backbufferSize[0], backbufferSize[1], (int) nativeSize[0], (int) nativeSize[1]);
-
         // Fixup framebuffer format and resolution for proper visual presentation timing in CGL fullscreen exclusive mode:
         if (PsychPrefStateGet_SkipSyncTests() < 2)
             PsychOSFixupFramebufferFormatForTiming(screenSettings->screenNumber, TRUE, bpc);
@@ -621,8 +618,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Requery native display pixel resolution - important for Retina displays if fixup happened:
         PsychGetScreenPixelSize(screenSettings->screenNumber, &nativeSize[0], &nativeSize[1]);
 
+        if (PsychPrefStateGet_Verbosity() > 4)
+            printf("PTB-INFO: Current backbuffersize %i x %i versus display native size %i x %i.\n",
+                   backbufferSize[0], backbufferSize[1], (int) nativeSize[0], (int) nativeSize[1]);
+
         // Assign it for fullscreen onscreen window as actual backbuffer size:
         PsychMakeRect(windowRecord->rect, 0, 0, nativeSize[0], nativeSize[1]);
+        windowRecord->VBL_Startline = (int) nativeSize[1];
 
         // Switch to actual fullscreen mode on the display:
         error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.contextObject, displayMask);
