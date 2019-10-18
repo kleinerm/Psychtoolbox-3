@@ -251,6 +251,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     long                            nativeSize[2];
     void*                           cocoaWindow = NULL;
     psych_bool                      useCGL = FALSE;
+    GLint                           bpc;
 
     // Map screen number to physical display handle cgDisplayID:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
@@ -580,6 +581,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         return(FALSE);
     }
 
+    // May need actual OpenGL backbuffer bpc:
+    glGetIntegerv(GL_RED_BITS, &bpc);
+
     // Use of good ol' CGL for fullscreen windows requested? If so, use CGLSetFullScreenOnDisplay(), because although
     // it was deprecated by the ass-hats since 10.7, as of 10.14 Mojave it seems to be the least fucked up way of getting
     // pictures on the screen with bearable timing reliability and precision.
@@ -610,6 +614,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             printf("PTB-INFO: Current backbuffersize %i x %i versus display native size %i x %i.\n",
                    backbufferSize[0], backbufferSize[1], (int) nativeSize[0], (int) nativeSize[1]);
 
+        // Fixup framebuffer format and resolution for proper visual presentation timing in CGL fullscreen exclusive mode:
+        if (PsychPrefStateGet_SkipSyncTests() < 2)
+            PsychOSFixupFramebufferFormatForTiming(screenSettings->screenNumber, TRUE, bpc);
+
+        // Switch to actual fullscreen mode on the display:
         error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.contextObject, displayMask);
         if (error) {
             printf("\nPTB-ERROR[CGLSetFullScreenOnDisplay failed: %s]. Main Screen() context\n\n", CGLErrorString(error));
