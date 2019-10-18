@@ -618,6 +618,12 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         if (PsychPrefStateGet_SkipSyncTests() < 2)
             PsychOSFixupFramebufferFormatForTiming(screenSettings->screenNumber, TRUE, bpc);
 
+        // Requery native display pixel resolution - important for Retina displays if fixup happened:
+        PsychGetScreenPixelSize(screenSettings->screenNumber, &nativeSize[0], &nativeSize[1]);
+
+        // Assign it for fullscreen onscreen window as actual backbuffer size:
+        PsychMakeRect(windowRecord->rect, 0, 0, nativeSize[0], nativeSize[1]);
+
         // Switch to actual fullscreen mode on the display:
         error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.contextObject, displayMask);
         if (error) {
