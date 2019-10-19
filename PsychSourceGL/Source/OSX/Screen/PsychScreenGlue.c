@@ -1589,9 +1589,6 @@ void InitPsychtoolboxKernelDriverInterface(void)
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Will try to use GPU number %i for low-level access during this session, as requested by usercode.\n", activeGPU);
     }
 
-    // Perform auto-detection of screen to head mappings:
-    PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads[activeGPU]);
-
 error_abort:
 
     // Release the io_iterator_t now that we're done with it.

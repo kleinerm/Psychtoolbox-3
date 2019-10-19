@@ -246,6 +246,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     PsychRectType                   screenrect;
     int                             i;
     int                             windowLevel;
+    int                             numDisplayHeads;
     long                            scw, sch;
     GLint                           backbufferSize[2];
     long                            nativeSize[2];
@@ -795,6 +796,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // Retain reference of this window to its screen:
     screenRefCount[screenSettings->screenNumber]++;
+
+    // Perform auto-detection of screen to head mappings for kernel driver, if kernel driver
+    // works on active gpu. Need to do this late, after 1st OpenGL context was created, as that
+    // triggers powerup for the actually used render/display gpu. Doing it earlier could lead
+    // to accessing a powered down gpu, which ends in a hard system crash on some Macs with
+    // AMD gpu's, e.g. the MBP 2017 with Intel + AMD Polaris gpu combo:
+    if (PsychGetGPUSpecs(screenSettings->screenNumber, NULL, NULL, NULL, &numDisplayHeads))
+        PsychAutoDetectScreenToHeadMappings(numDisplayHeads);
 
     // Done.
     return(TRUE);
