@@ -1125,6 +1125,13 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
             continue;
         }
 
+        // Older kernel drivers do not support PsychOSKDGetLUTState() on modern AMD gpu + macOS combos, so bail early:
+        if ((PSYCH_SYSTEM == PSYCH_OSX) && (PsychOSKDGetLUTState(screenId, 0, 0) == 0xffffffff)) {
+            if (PsychPrefStateGet_Verbosity() > 3)
+                printf("PTB-INFO: Autodetection of screen->head mapping unsupported for this gpu + kernel driver combo.\n");
+            break;
+        }
+
         // Yes. Perform detection sequence:
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Trying to detect screenId to display head mapping for screenid %i ...\n", screenId);
 
@@ -1148,7 +1155,7 @@ void PsychAutoDetectScreenToHeadMappings(int maxHeads)
 
             // Check all display heads to find the null table:
             for (headId = 0; headId < maxHeads; headId++) {
-                if (PsychOSKDGetLUTState(screenId, headId, 0) == 1) {
+                if (PsychOSKDGetLUTState(screenId, headId, (PsychPrefStateGet_Verbosity() > 4) ? 1 : 0) == 1) {
                     // Got it. Store mapping:
                     displayScreensToCrtcIds[screenId][outputId] = headId;
 

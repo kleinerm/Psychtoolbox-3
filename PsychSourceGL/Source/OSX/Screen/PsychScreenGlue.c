@@ -68,6 +68,7 @@ static CGDirectDisplayID    displayOnlineCGIDs[kPsychMaxPossibleDisplays];
 // List of service connect handles for connecting to the kernel support driver (if any):
 static int                  numKernelDrivers = 0;
 static io_connect_t         displayConnectHandles[kPsychMaxPossibleDisplays];
+static int                  kernelDriverRevision[kPsychMaxPossibleDisplays];
 
 // Is the global cursor hidden atm.?
 static psych_bool cursorHidden = FALSE;
@@ -429,6 +430,7 @@ void InitializePsychDisplayGlue(void)
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
         displayConnectHandles[i]=0;
+        kernelDriverRevision[i]=-1;
         displayOriginalLowLevelCGSModeId[i]=-1;
     }
 
@@ -1353,6 +1355,18 @@ static psych_bool isDCE1(int fPCIDeviceId)
     return(isDCE1);
 }
 
+static psych_bool isAMDModernDCELUTSupported(void)
+{
+    // LUT and dither setting handling, ie. color management in general, has changed for modern AMD gpu's
+    // on at least macOS 10.12 Sierra and later. Current PsychtoolboxKernelDriver is not equipped to deal
+    // with this, so report such gpu's as unsupported wrt. color related functions. We know DCE-11 is dead,
+    // but we don't know at which DCE version the trouble starts. Atm. let's just assume DCE-11:
+    if ((fDeviceType[activeGPU] == kPsychRadeon) && (fCardType[activeGPU] >= 110) && (kernelDriverRevision[activeGPU] < 1000))
+        return(false);
+
+    return(true);
+}
+
 // Try to attach to kernel level ptb support driver and setup everything, if it works:
 void InitPsychtoolboxKernelDriverInterface(void)
 {
@@ -1452,6 +1466,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
 
             // Store the connect handle for this instance:
             displayConnectHandles[numKernelDrivers] = connect;
+            kernelDriverRevision[numKernelDrivers] = revision;
 
             // Query and assign GPU info:
             PsychOSKDGetGPUInfo(connect, numKernelDrivers);
@@ -1907,6 +1922,10 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
         return;
     }
 
+    // Works with current AMD gpu + PsychtoolboxKernelDriver revision?
+    if (!isAMDModernDCELUTSupported())
+        return;
+
     // Set command code for dither control:
     syncCommand.command = kPsychKDSetDitherMode;
 
@@ -1981,6 +2000,10 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int head, unsigned int 
     io_connect_t connect;
     if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) return(0xffffffff);
 
+    // Works with current AMD gpu + PsychtoolboxKernelDriver revision?
+    if (!isAMDModernDCELUTSupported())
+        return(0xffffffff);
+
     // Set command code for LUT check:
     syncCommand.command = kPsychKDGetLUTState;
     syncCommand.inOutArgs[0] = head;
@@ -2006,6 +2029,10 @@ unsigned int PsychOSKDLoadIdentityLUT(int screenId, unsigned int head)
     // Check availability of connection:
     io_connect_t connect;
     if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) return(0);
+
+    // Works with current AMD gpu + PsychtoolboxKernelDriver revision?
+    if (!isAMDModernDCELUTSupported())
+        return(0);
 
     // Set command code for identity LUT load:
     syncCommand.command = kPsychKDSetIdentityLUT;
