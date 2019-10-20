@@ -77,7 +77,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     }
     else {
         // Pure non-GUI visual stimulus window:
-        windowStyle = NSBorderlessWindowMask | NSWindowStyleMaskFullScreen;
+        windowStyle = NSBorderlessWindowMask;
     }
 
     if ([NSThread isMainThread]) {
@@ -154,7 +154,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         // Tell Cocoa/NSOpenGL to render to Retina displays at native resolution:
         [[cocoaWindow contentView] setWantsBestResolutionOpenGLSurface:YES];
 
-        [cocoaWindow setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
+        //[cocoaWindow setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
     });
 
     PsychMakeRect(windowRecord->globalrect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
