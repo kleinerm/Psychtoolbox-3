@@ -77,6 +77,7 @@ int                     PsychOSIsDWMEnabled(int screenNumber);
 
 // OSX only:
 psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool enable, int targetBpc);
+psych_bool PsychOSGetPanelOverrideSize(int screenNumber, int* width, int* height);
 
 // Return identifying information about GPU for a given screen screenNumber:
 psych_bool PsychGetGPUSpecs(int screenNumber, int* gpuMaintype, int* gpuMinortype, int* pciDeviceId, int* numDisplayHeads);

@@ -619,13 +619,32 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Requery native display pixel resolution - important for Retina displays if fixup happened:
         PsychGetScreenPixelSize(screenSettings->screenNumber, &nativeSize[0], &nativeSize[1]);
 
-        if (PsychPrefStateGet_Verbosity() > 4)
-            printf("PTB-INFO: Current backbuffersize %i x %i versus display native size %i x %i.\n",
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: Current backbuffer scaling src size %i x %i versus estimated display native / actual backbuffer size %i x %i.\n",
                    backbufferSize[0], backbufferSize[1], (int) nativeSize[0], (int) nativeSize[1]);
 
         // Assign it for fullscreen onscreen window as actual backbuffer size:
         PsychMakeRect(windowRecord->rect, 0, 0, nativeSize[0], nativeSize[1]);
+
+        // Set VBL_Startline to be the same as height of actual backbuffer, as a first approximation,
+        // which should work on variable resolution (e.g., analog VGA CRT) and fixed resolution displays
+        // (e.g., Apple MacBook/MacBookAir/MacBookPro builtin panels and some external panels/projectors)
+        // and on displays/projectors with a set of supported resolutions, e.g., external displays with
+        // panel scaler:
         windowRecord->VBL_Startline = (int) nativeSize[1];
+
+        // Some Apple builtin flat panels, e.g., the internal panels of the Apple iMac's (at least the late 2014 Retina iMac)
+        // are subject to Apple typical brain-damage: For them, macOS pretends them to be not of fixed native resolution,
+        // but to accept various types of fixed resolutions, because Apple. These presumably use the gpu builtin hw scaler to
+        // rescale the offered and selected front-end resolution backbuffer image to the actual supported fixed native panel
+        // resolution, ergo the gpu frontend and backend resolutions are mismatched, causing trouble for beamposition timestamping.
+        // We deal with this by using a builtin hard-coded lookup table that maps macModel+panelModel to the known native panel
+        // resolution. This requires ongoing manual maintenance for future models of Macs, but seems to be the least painful and
+        // awful solution going forward, selected out of a collection of painful and awful solutions. Thanks Apple!
+        if (PsychOSGetPanelOverrideSize(screenSettings->screenNumber, NULL, &(windowRecord->VBL_Startline)) &&
+            (PsychPrefStateGet_Verbosity() > 3))
+            printf("PTB-INFO: Overriding VBL startline for screen %i to %i scanlines from internal lookup table.\n",
+                   screenSettings->screenNumber, windowRecord->VBL_Startline);
 
         // Switch to actual fullscreen mode on the display:
         error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.contextObject, displayMask);

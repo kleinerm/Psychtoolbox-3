@@ -44,6 +44,10 @@
 // Include for mouse cursor control via Cocoa:
 #include "PsychCocoaGlue.h"
 
+// Include for sysctl():
+#include <sys/types.h>
+#include <sys/sysctl.h>
+
 // Defined in PsychGraphicsHardwareHALSupport.c, but accessed and initialized here:
 extern unsigned int crtcoff[kPsychMaxPossibleCrtcs];
 
@@ -951,8 +955,8 @@ void PsychGetDisplaySize(int screenNumber, int *width, int *height)
     CGSize physSize;
     if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetDisplaySize() is out of range");
     physSize = CGDisplayScreenSize(displayCGIDs[screenNumber]);
-    *width = (int) physSize.width;
-    *height = (int) physSize.height;
+    if (width) *width = (int) physSize.width;
+    if (height) *height = (int) physSize.height;
 }
 
 void PsychGetGlobalScreenRect(int screenNumber, double *rect)
@@ -1042,6 +1046,123 @@ int PsychGetDacBitsFromDisplay(int screenNumber)
         return(8);
     }
     */
+}
+
+struct macModel {
+    char name[16];
+    int  panelWidth;
+    int  panelHeight;
+    int  panelWidthMM;
+} macModels[] = {
+    { "iMacPro1,1", 5120, 2880, 0 },
+    { "iMac15,1", 5120, 2880, 0 },
+    { "iMac17,1", 5120, 2880, 0 },
+    { "iMac18,3", 5120, 2880, 0 },
+    { "iMac19,1", 5120, 2880, 0 },
+    { "iMac16,2", 4096, 2304, 0 },
+    { "iMac18,2", 4096, 2304, 0 },
+    { "iMac19,2", 4096, 2304, 0 },
+    { "iMac11,1", 2560, 1440, 0 },
+    { "iMac11,3", 2560, 1440, 0 },
+    { "iMac12,2", 2560, 1440, 0 },
+    { "iMac13,2", 2560, 1440, 0 },
+    { "iMac14,2", 2560, 1440, 0 },
+    { "iMac10,1", 2560, 1440, 690 },
+    { "iMac10,1", 1920, 1080, 550 },
+    { "iMac11,2", 1920, 1080, 0 },
+    { "iMac12,1", 1920, 1080, 0 },
+    { "iMac13,1", 1920, 1080, 0 },
+    { "iMac14,1", 1920, 1080, 0 },
+    { "iMac14,4", 1920, 1080, 0 },
+    { "iMac16,1", 1920, 1080, 0 },
+    { "iMac18,1", 1920, 1080, 0 },
+    { "iMac7,1" , 1920, 1200, 610 },
+    { "iMac8,1" , 1920, 1200, 610 },
+    { "iMac9,1" , 1920, 1200, 610 },
+    { "iMac6,1" , 1920, 1200, 610 },
+    { "iMac7,1" , 1680, 1050, 510 },
+    { "iMac8,1" , 1680, 1050, 510 },
+    { "iMac9,1" , 1680, 1050, 510 },
+    { "iMac5,1" , 1680, 1050, 510 },
+    { "iMac4,1" , 1680, 1050, 510 },
+    { "iMac5,1" , 1440,  900, 430 },
+    { "iMac5,2" , 1440,  900, 430 },
+    { "iMac4,2" , 1440,  900, 430 },
+    { "iMac4,1" , 1440,  900, 430 },
+    { "", 0, 0 }
+};
+
+/* PsychOSGetPanelOverrideSize()
+ *
+ * Lookup native resolution of a known display for given screenNumber from
+ * internal database, and optionally return pixel width and pixel height.
+ *
+ * Returns TRUE on successful lookup, FALSE if display model unknown. In that case,
+ * target variable locations width and height will not be modified/overriden.
+ */
+psych_bool PsychOSGetPanelOverrideSize(int screenNumber, int* width, int* height)
+{
+    CGDirectDisplayID displayID;
+    uint32_t displayUnit, displayVendorId, displayModelId;
+    int i, mib[2];
+    char modelStr[256];
+    size_t modelStrSize = sizeof(modelStr);
+    int panelWidthMM;
+
+    // Get Modelname of Mac in modelStr:
+    mib[0] = CTL_HW;
+    mib[1] = HW_MODEL;
+    if (sysctl(mib, 2, modelStr, &modelStrSize, NULL, 0) != 0) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: PsychOSGetPanelOverrideSize: Failed to query Mac model name - sysctl failed with: %s. Skipped\n",
+                   strerror(errno));
+        return(FALSE);
+    }
+
+    // Get display specs:
+    PsychGetCGDisplayIDFromScreenNumber(&displayID, screenNumber);
+    displayUnit = CGDisplayUnitNumber(displayID);
+    displayVendorId = CGDisplayVendorNumber(displayID);
+    displayModelId = CGDisplayModelNumber(displayID);
+    PsychGetDisplaySize(screenNumber, &panelWidthMM, NULL);
+
+    if (PsychPrefStateGet_Verbosity() > 4)
+        printf("PTB-INFO: Screen %i - Display unit 0x%x, vendorId 0x%x, modelId 0x%x, width %i mm.\n",
+               screenNumber, displayUnit, displayVendorId, displayModelId, panelWidthMM);
+
+    // Builtin display, ie., iMac, MacBook, MacBookPro, macBookAir?
+    if (CGDisplayIsBuiltin(displayID)) {
+        // Yes. In that case the Modelname of the Mac directly specifies the
+        // display model and its specs, so look it up:
+        if (PsychPrefStateGet_Verbosity() > 4)
+            printf("PTB-INFO: Screen %i - Apple %s builtin display of width %i mm detected. Searching for database match...\n",
+                   screenNumber, modelStr, panelWidthMM);
+
+        // Search for matching Mac model, disambiguate by matching panel width in mm as well, if needed:
+        for (i = 0; macModels[i].name[0] != 0; i++) {
+            if (!strcmp((const char*) &(macModels[i].name), modelStr) &&
+                (!macModels[i].panelWidthMM || (macModels[i].panelWidthMM == panelWidthMM))) {
+                // Hit:
+                if (width) *width = macModels[i].panelWidth;
+                if (height) *height = macModels[i].panelHeight;
+
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PTB-INFO: Screen %i - Apple %s builtin display (%i mm): %i x %i pixels native resolution from internal LUT.\n",
+                           screenNumber, modelStr, panelWidthMM, macModels[i].panelWidth, macModels[i].panelHeight);
+
+                return(TRUE);
+            }
+        }
+
+        // No luck. Do not override for this model:
+        return(FALSE);
+    }
+
+    // Nope, external display.
+    // Database / LUT implementation for this tbd...
+
+    // Nothing found in internal database:
+    return(FALSE);
 }
 
 /*
