@@ -907,7 +907,12 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     psych_bool verbose = getenv("PSYCHHID_TELLME") != NULL;
     // Initialize keyboardLayout and kbdType, used by the keyboard queue thread for mapping keycodes to cooked characters:
     TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
-    CFDataRef uchr = (CFDataRef) ((currentKeyboard) ? TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData) : NULL);
+    __block CFDataRef uchr = NULL;
+
+    // Since the macOS 10.15 Catalina trainwreck, TISGetInputSourceProperty() must execute on the main thread, or crash, because Apple bs!
+    if (currentKeyboard)
+        dispatch_sync(dispatch_get_main_queue(), ^{ uchr = (CFDataRef) TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData); });
+
     keyboardLayout = (const UCKeyboardLayout*) ((uchr) ? CFDataGetBytePtr(uchr) : NULL);
     kbdType = LMGetKbdType();
 
