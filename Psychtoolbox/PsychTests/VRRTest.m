@@ -31,12 +31,12 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, screenNumber)
 %
 % 'maxFlipDelta' Maximum frame duration in seconds. 0.2 secs = 200 msecs by default.
 %
-% 'hwmeasurement' Use external measurement hardware to get timing ground-truth.
+% 'hwmeasurement' Use external measurement hardware to get timing ground-truth:
+%
 % 0 = Off [Default]
-% 1 = VPixx DataPixx or similar
-% 2 = PsychRTBox pulse input port. Works with RTBox, but also with emulated RTBox
-%     of the CRS Bits#. Takes TTL pulse input from external device, e.g., from a
-%     photometer with flash detection -> trigger output, or the VideoSwitcher.
+% 1 = VPixx DataPixx or similar VPixx device.
+% 2 = VideoSwitcher + RTBox TTL pulse input port. Works with RTBox, but also with
+%     emulated RTBox of the CRS Bits#. Takes TTL pulse input from the VideoSwitcher.
 %     Selecting this will execute a enable/disable sequence for the VideoSwitcher
 %     at start and end of a measurement session.
 % 3 = CRS Bits# via a loopback cable from trigger out to trigger in BNC port.
@@ -44,6 +44,8 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, screenNumber)
 %     a rather deficient (mis)design. This works as long as low framerate compensation
 %     does not get triggered, otherwise the reference timestamps from the CRS hardware
 %     will be completely useless and bogus trash!
+% 4 = Like 2 -- RtBox pulse input, but for use with a ColorCal2 or photo-diode that
+%     sends a TTL pulse to the RtBox / Bits# BNC trigger input instead of VideoSwitcher.
 %
 % 'screenNumber' Number of X-Screen to test on. Maximum X-Screen by default.
 %
@@ -104,7 +106,7 @@ Screen('Preference','ConserveVRAM', 524288);
 try
     % Standard settings and key mappings. ESCape key aborts early, before
     % n samples are done:
-    PsychDefaultSetup(1);
+    PsychDefaultSetup(2);
     RestrictKeysForKbCheck(KbName('ESCAPE'));
 
     % Max X-Screen selected by default:
@@ -116,9 +118,6 @@ try
     oldverbo = Screen('Preference','Verbosity', 5);
     Screen('FrameRate', screenNumber);
     Screen('Preference','Verbosity', oldverbo);
-
-    % Query height of screen for our simple animation:
-    [~, screenheight] = Screen('Windowsize', screenNumber);
 
     % Prepare window configuration for this script:
     PsychImaging('PrepareConfiguration')
@@ -146,7 +145,7 @@ try
     % Get window info struct about onscreen fullscreen window:
     winfo = Screen('GetWindowInfo', w);
 
-    if hwmeasurement == 2 || hwmeasurement == 3
+    if hwmeasurement == 2 || hwmeasurement == 3 || hwmeasurement == 4
         IOPort('CloseAll');
         rtbox = PsychRTBox('Open');
         rtboxport = PsychRTBox('BoxInfo', rtbox);
@@ -183,9 +182,9 @@ try
     dpixxdelay=ts;
     td=ts;
     so=ts;
-    tSecondary = ts;
     sodpixx = ts;
     boxTime = ts;
+    valids = false(1,n);
 
     % Perform some initial Flip to get us in sync with vblank:
     % tvbl is the timestamp (system gettimeofday time in seconds)
@@ -193,6 +192,9 @@ try
     tvbl = Screen('Flip', w);
     tStart = tvbl;
     tdeadline = tvbl;
+
+    % How much to subsample hw measurements to not overload non-VPixx ts methods:
+    hwstepping = 4;
 
     % minFlipDelta == minimum frame duration in seconds == measured max fps:
     minFlipDelta = ifi;
@@ -246,21 +248,36 @@ try
         td(i) = delay;
 
         if hwmeasurement == 1
-            % Ask for a Datapixx onset timestamp for next 'Flip':
+            % VPixx device: Ask for a Datapixx onset timestamp for next 'Flip':
             PsychDataPixx('LogOnsetTimestamps', 1);
+            valids(i) = 1;
         end
 
-        if (hwmeasurement == 2 || hwmeasurement == 3) && i == 1
+        if (hwmeasurement == 2 || hwmeasurement == 3 || hwmeasurement == 4) && i == 1
             PsychRTBox('Start', rtbox, 0);
         end
 
-        if hwmeasurement == 2 || hwmeasurement == 3
+        if hwmeasurement == 2 || hwmeasurement == 3 || hwmeasurement == 4
             %PsychRTBox('EngageTRTrigger', rtbox);
         end
 
-        if hwmeasurement == 2
-            % Draw green bar at top of screen:
-            Screen('FillRect', w, [0 255 0], [0 0 width 5]);
+        if hwmeasurement == 2 && mod(i, hwstepping) == 0
+            % VideoSwitcher + RtBox: Draw green bar at top of screen to trigger VideoSwitcher:
+            Screen('FillRect', w, [0 1 0], [0 0 width 5]);
+            valids(i) = 1;
+        end
+
+        if hwmeasurement == 3 && mod(i, hwstepping) == 0
+            % Bits# T-Lock loopback: TODO -- Only every 2nd frame, like others...
+            valids(i) = 1;
+        end
+
+        if hwmeasurement == 4 && mod(i, hwstepping) == 0
+            % Photosensor + RtBox: Draw white rectangle at top of screen to trigger photo sensor / ColorCal2 etc.:
+            yshift = height / 5 * 0;
+            Screen('FillRect', w, 1, [0 yshift width yshift+height/5]);
+            Screen('DrawText', w, sprintf('+ %d msecs_______', round((yshift+height/5/2) / height * ifi * 1000)), width - 300, yshift+height/5/2);
+            valids(i) = 1;
         end
 
         % Request flip/OpenGL glXSwapBuffers at time tdeadline.
@@ -282,15 +299,15 @@ try
         % fprintf('pflip completed - flip ts = %f msecs.\n', 1000 * (winfo.RawSwapTimeOfFlip - tvbl));
 
         % Draw some simple stim for next frame of animation: A rectangle that moves over the screen.
-        pos = mod(i, screenheight);
-        Screen('FillRect', w, [255 0 255], [pos+20 pos+20 pos+400 pos+400]);
+        pos = mod(i, width-100);
+        Screen('FillRect', w, [1 0 1], [pos height-100 pos+100 height]);
 
         % Give user a chance to abort the test anytime by pressing ESC key:
         if KbCheck
             break;
         end
 
-        if hwmeasurement == 2 || hwmeasurement == 3
+        if hwmeasurement == 2 || hwmeasurement == 3 || hwmeasurement == 4
             %[nw, tpost] = IOPort('Write', rtboxport, 'f', 1);
         end
 
@@ -301,16 +318,27 @@ try
         sodpixx = PsychDataPixx('BoxsecsToGetsecs', boxTime);
     end
 
-    if hwmeasurement == 2 || hwmeasurement == 3
+    if hwmeasurement == 2 || hwmeasurement == 3 || hwmeasurement == 4
         Screen('Flip', w);
         Screen('Flip', w);
         WaitSecs(0.5);
         PsychRTBox('Stop', rtbox);
-        [tmpsecs, evt, rtboxsecs] = PsychRTBox('GetSecs', rtbox);
+        [~, evt, rtinboxsecs] = PsychRTBox('GetSecs', rtbox);
         dpixxdelay = so; % Fake a zero delay for RTBox.
-        boxTime(1:length(rtboxsecs)) = rtboxsecs;
+
+        % Filter out "almost duplicates" closer than 1 ifi together:
+        rtboxsecs = rtinboxsecs(1);
+        for kk=2:length(rtinboxsecs)
+            if rtinboxsecs(kk) - rtinboxsecs(kk-1) > (hwstepping - 0.15) * ifi
+                rtboxsecs(end+1) = rtinboxsecs(kk);
+            end
+        end
+
+        fprintf('Raw hw samples %i vs. filtered samples %i.\n', length(rtinboxsecs), length(rtboxsecs));
+
+        boxTime = rtboxsecs;
         % Calibrated remapping of rtboxsecs to GetSecs secs in sodpixx:
-        sodpixx(1:length(tmpsecs)) = PsychRTBox('BoxsecsToGetsecs', rtbox, rtboxsecs);
+        sodpixx = PsychRTBox('BoxsecsToGetsecs', rtbox, rtboxsecs);
 
         if hwmeasurement ~= 3
             PsychRTBox('Close', rtbox);
@@ -337,6 +365,8 @@ try
 
     % Restrict to actual number of collected samples:
     n = i;
+
+    % These data is available for all n flips/trials:
     ts = ts(1:n);
     so = so(1:n);
     flipfin = flipfin(1:n);
@@ -344,9 +374,9 @@ try
     beampos = beampos(1:n);
     td = td(1:n);
     dpixxdelay = dpixxdelay(1:n);
-    tSecondary = tSecondary(1:n);
-    sodpixx = sodpixx(1:n);
-    boxTime = boxTime(1:n);
+
+    %sodpixx = sodpixx(valids);
+    %boxTime = boxTime(valids);
 
     % Plot all our measurement results:
 
@@ -436,25 +466,30 @@ try
         figure;
         grid on;
 
-        if length(sodpixx) ~= length(so)
-            cutoffn = min(length(sodpixx), length(so));
-            fprintf('Warning: Missing data %i vs. %i, only using first %i.\n', length(sodpixx), length(so), cutoffn);
+        % sov is the subset of so samples for which we have valid hw measurements:
+        sov = so(valids);
+
+        if length(sodpixx) ~= length(sov)
+            cutoffn = min(length(sodpixx), length(sov));
+            fprintf('Warning: Missing data %i vs. %i, only using first %i.\n', length(sodpixx), length(sov), cutoffn);
             sodpixx = sodpixx(1:cutoffn);
-            so = so(1:cutoffn);
+            sov = sov(1:cutoffn);
         end
 
-        plot((so - sodpixx) * 1000);
+        plot((sov - sodpixx) * 1000);
         title('Time delta in msecs onset according to Flip - onset according to measurement hw:');
-        fprintf('Average discrepancy between Flip timestamping and hardware is %f msecs, stddev = %f msecs.\n', mean((so - sodpixx) * 1000), std((so - sodpixx) * 1000));
+        fprintf('Average discrepancy between Flip timestamping and hardware is %f msecs, stddev = %f msecs, Median %f msecs.\n', ...
+                mean((sov - sodpixx) * 1000), std((sov - sodpixx) * 1000), median((sov - sodpixx) * 1000));
 
-        if (length(dpixxdelay) == length(so)) && any(dpixxdelay - so)
+        % Hw timestamping delay only valid/meaningfull for DataPixx hwmeasurement == 1, otherwise skip:
+        if (length(dpixxdelay) == length(sov)) && any(dpixxdelay - sov)
             figure;
-            plot((dpixxdelay - so) * 1000);
+            plot((dpixxdelay - sov) * 1000);
             title('Time delta between stimulus onset and return of hardware timestamping in milliseconds:');
         end
 
-        if hwmeasurement == 2
-            sodpixx = sodpixx(1:min(find(sodpixx == 0))-1);
+        if hwmeasurement == 2 || hwmeasurement == 4
+            %sodpixx = sodpixx(1:min(find(sodpixx == 0))-1);
             figure;
             grid on;
             plot(1000 * diff(sodpixx));
