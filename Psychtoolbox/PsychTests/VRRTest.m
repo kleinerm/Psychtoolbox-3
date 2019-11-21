@@ -138,7 +138,7 @@ try
     end
 
     % Open double-buffered fullscreen (kms-pageflipped) window with black background:
-    w = PsychImaging('OpenWindow', screenNumber, 0);
+    w = PsychImaging('OpenWindow', screenNumber, 0, [], [], [], [], [], [], kPsychUseFineGrainedOnset);
     HideCursor(w);
     [width, height] = Screen('Windowsize', w);
 
@@ -242,7 +242,8 @@ try
         % for average scheduling delay Flip -> Mesa -> X-Server -> kms driver:
         %tdeadline = tvbl + delay - (1.863093)/ 1000; % Polaris 11 machine
         %tdeadline = tvbl + delay - (1.853770)/ 1000; % Bob / Sea Islands machine
-        tdeadline = tvbl + delay - (1.6909) / 1000;  % Raven / DCN-1 machine
+        %tdeadline = tvbl + delay - (1.6909) / 1000;  % Raven / DCN-1 machine
+        tdeadline = tvbl + delay - (0.881429) / 1000; % NVidia G-Sync test setup.
 
         % Store requested delay for i'th trial in td:
         td(i) = delay;
