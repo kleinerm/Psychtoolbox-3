@@ -2691,3 +2691,12 @@ psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bo
     // No-Op return:
     return(TRUE);
 }
+
+psych_bool PsychVRRActive(PsychWindowRecordType *windowRecord)
+{
+    (void) windowRecord;
+
+    // Nope, VRR inactive or unsupported:
+    return(FALSE);
+}
+

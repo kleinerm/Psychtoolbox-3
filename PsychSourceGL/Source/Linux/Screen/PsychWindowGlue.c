@@ -3393,6 +3393,39 @@ psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bo
     return(TRUE);
 }
 
+/* PsychVRRActive()
+ *
+ * Report back, if the current windowRecord is corresponding to a onscreen window that
+ * is presented using Variable Refresh Rate technology for stimulus presentation with fine-grained
+ * timing, e.g., AMD FreeSync, NVidia G-Sync, Displayport adaptive sync, or HDMI VRR.
+ *
+ * Returns TRUE if VRR likely active, FALSE otherwise.
+ */
+psych_bool PsychVRRActive(PsychWindowRecordType *windowRecord)
+{
+    // Not in VRR mode if VRR mode not enabled by user-script via kPsychUseFineGrainedOnset or if
+    // this isn't a non-transparent, opaque, decorationless, top-level, unoccluded, unredirected fullscreen window:
+    if (!(windowRecord->specialflags & kPsychUseFineGrainedOnset) || !(windowRecord->specialflags & kPsychIsFullscreenWindow) ||
+        (PsychPrefStateGet_WindowShieldingLevel() < 2000))
+        return(FALSE);
+
+    // Basics for VRR are covered.
+
+    // Is this a G-Sync capable and configured NVidia gpu? We assume that if the setup
+    // is capable of G-Sync in principle, then GSync is enabled, given user-script requested
+    // that. We can not actually detect if G-Sync is active or disabled by user settings in
+    // xorg.conf or nvidia control center GUI, so go with most reasonable assumption:
+    if (windowRecord->gfxcaps & kPsychGfxCapGSync)
+        return(TRUE);
+
+    // Is this a VRR capable (HDMI VRR / DP adaptive sync / FreeSync) gpu, e.g., from AMD or Intel?
+    // TODO...
+
+    // Nope, VRR inactive or unsupported:
+    return(FALSE);
+}
+
 /* End of classic X11/GLX backend: */
 #endif
 #endif
+

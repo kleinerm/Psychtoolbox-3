@@ -3162,9 +3162,11 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
         // Or is this a NVidia GPU? In the latter case we always use the workaround,
         // because many NVidia GPU's (especially pre NV-50 hardware) need this in many
         // setups. It helps if needed, and doesn't hurt if not needed - burns at most
-        // 25 insignificant microseconds of time.
+        // 25 insignificant microseconds of time. However, we do not apply this workaround
+        // automatically on NVidia Kepler or later gpu's, because it would interfere with
+        // our G-Sync support:
         if ((PsychPrefStateGet_ConserveVRAM() & kPsychUseBeampositionQueryWorkaround) ||
-            (fDeviceType == kPsychGeForce)) {
+-           ((fDeviceType == kPsychGeForce) && (PsychGetNVidiaGPUType(NULL) < 0x0E0))) {
             // Yes: Avoid queries that return zero -- If query result is zero, retry
             // until it becomes non-zero: Some hardware may needs this to resolve...
             // We use a timeout of 100 msecs though to prevent hangs if we try to

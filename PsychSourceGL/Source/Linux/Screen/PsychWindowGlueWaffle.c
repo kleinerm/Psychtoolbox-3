@@ -2508,6 +2508,14 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     return(targetTime);
 }
 
+psych_bool PsychVRRActive(PsychWindowRecordType *windowRecord)
+{
+    (void) windowRecord;
+
+    // Nope, VRR inactive or unsupported:
+    return(FALSE);
+}
+
 /* End of PTB_USE_WAFFLE */
 #endif
 /* End of !PTB_USE_WAYLAND */

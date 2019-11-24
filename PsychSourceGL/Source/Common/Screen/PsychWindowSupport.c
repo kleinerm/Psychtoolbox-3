@@ -1175,7 +1175,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             // value at two measurements 2 ms apart...
             i=(int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber);
             PsychWaitIntervalSeconds(0.002);
-            if ((((int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber)) == i) || (i < -1)) {
+            if (((((int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber)) == i) || (i < -1)) &&
+                !PsychVRRActive(*windowRecord)) {
                 // PsychGetDisplayBeamPosition returns the same value at two different points in time?!?
                 // That's impossible on anything else than a high-precision 500 Hz display!
                 // --> PsychGetDisplayBeamPosition is not working correctly for some reason.
@@ -1202,6 +1203,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 double told, tnew;
                 for (i = 0; i < 50; i++) {
                     // Take beam position samples from current monitor refresh interval:
+
+                    // In a VRR/FreeSync/G-Sync/DP-Adaptive sync setup, beampositions will behave
+                    // extremely weird if no flip is pending during measurement, so make sure one is pending:
+                    if (PsychVRRActive(*windowRecord))
+                        PsychOSFlipWindowBuffers(*windowRecord);
+
                     maxline = -1;
                     // We spin-wait until retrace and record our highest measurement:
                     while ((bp = (int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber)) >= maxline) {
@@ -1745,7 +1752,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // Check for mismatch between measured ifi from beamposition and from VBLSync method.
     // This would indicate that the beam position is reported from a different display device
     // than the one we are VBL syncing to. -> Trouble!
-    if ((ifi_beamestimate < 0.8 * ifi_estimate || ifi_beamestimate > 1.2 * ifi_estimate) && (ifi_beamestimate > 0)) {
+    // This condition may not hold on a G-Sync/FreeSync setup, so skip fail in that case.
+    if ((ifi_beamestimate < 0.8 * ifi_estimate || ifi_beamestimate > 1.2 * ifi_estimate) && (ifi_beamestimate > 0) &&
+        !PsychVRRActive(*windowRecord)) {
         if (!sync_trouble && PsychPrefStateGet_Verbosity()>1)
             printf("\nWARNING: Mismatch between measured monitor refresh intervals! This indicates problems with rasterbeam position queries.\n");
         sync_trouble = true;
@@ -3515,7 +3524,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
     // Request flip at exactly tWhen if fine-grained onset scheduling is requested for this window,
     // subject to the required hardware + OS support:
-    if (windowRecord->specialflags & kPsychUseFineGrainedOnset)
+    if (PsychVRRActive(windowRecord))
         targetSwapFlags |= 4;
 
     // Swap at a specific video field (even or odd) requested, e.g., to select the target field
@@ -4120,6 +4129,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             *time_at_onset = time_at_vbl + onset_time_togo;
             // Now we correct our time_at_vbl by this correction value:
             time_at_vbl = time_at_vbl - vbl_time_elapsed;
+
+            // time_at_vbl is not computable on a VRR setup, so override it with the next best surrogate, the time_at_onset:
+            if (PsychVRRActive(windowRecord)) {
+                time_at_vbl = *time_at_onset;
+            }
         }
         else {
             // Beamposition queries unavailable!
@@ -6853,6 +6867,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         }
     }
 
+    // Check if this is a NVidia GPU with (currently required) proprietary driver and G-Sync support (ie. non-Optimus configuration, Kepler or later):
+    if ((gpuMaintype == kPsychGeForce) && (gpuMinortype >= 0x0E0) && nvidia && !(windowRecord->hybridGraphics) && strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
+        windowRecord->gfxcaps |= kPsychGfxCapGSync;
+        if (verbose)
+            printf("PTB-DEBUG: NVidia GPU with G-Sync support detected. VRR requested by usercode? %s\n", (windowRecord->specialflags & kPsychUseFineGrainedOnset) ? "Yes" : "No");
+    }
+
     while (glGetError());
     glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxtexsize);
     glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS_EXT, &maxcolattachments);
@@ -7450,3 +7471,4 @@ void PsychLockedTouchFramebufferIfNeeded(PsychWindowRecordType *windowRecord)
         #endif
     }
 }
+

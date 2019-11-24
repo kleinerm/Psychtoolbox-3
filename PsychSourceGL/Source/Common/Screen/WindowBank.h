@@ -95,6 +95,7 @@
 #define kPsychGfxCapFBOScaledResolveBlit    (1 << 20)    // Hw supports simultaneous multisample resolve and rescaling in one framebuffer blit.
 #define kPsychGfxCapSmoothPrimitives        (1 << 21)    // Hw supports GL_POINT_SMOOTH, LINE smooth etc.
 #define kPsychGfxCapFloatToIntRound         (1 << 22)    // Hw, when converting float colors to fixed point colors, rounds to nearest instead of truncating.
+#define kPsychGfxCapGSync                   (1 << 23)    // Hw is a NVidia gpu with G-Sync support.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
