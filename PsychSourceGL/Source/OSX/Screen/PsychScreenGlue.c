@@ -113,7 +113,7 @@ typedef struct {
 } display_mode_t;
 
 // Apple macOS CGS private api. Subject to backwards incompatible and breaking change without any notice or warning!
-// Work as of macOS 10.12.6 and hopefully later versions.
+// Work as of macOS 10.11, 10.12, 10.13, 10.14, 10.15 and hopefully later versions.
 #define MODE_SIZE (sizeof(display_mode_t) - sizeof(char) * 32 - sizeof(int))
 void CGSGetCurrentDisplayMode(CGDirectDisplayID display, int *mode);
 void CGSConfigureDisplayMode(CGDisplayConfigRef config, CGDirectDisplayID display, int mode);
@@ -171,7 +171,7 @@ static void print_display(CGDirectDisplayID display, int num, int targetDepthCod
     int current_mode_num = get_display_mode(display);
     display_mode_t *current_mode;
 
-    printf("Display screen [%d]:\n", num);
+    printf("PTB-DEBUG: Display screen [%d]:\n", num);
 
     for (int i = 0; i < count; i++) {
         if (modes[i].mode == current_mode_num) {
@@ -180,16 +180,16 @@ static void print_display(CGDirectDisplayID display, int num, int targetDepthCod
 
         // Optimal on builtin or Retina style display, ie. unscaled, native resolution at suitable color format?
         if (modes[i].flags & (1 << 25) && modes[i].scale == 1 && modes[i].depth == targetDepthCode)
-            printf("\n\nOptimal for timing: %dx%d@%.0f@d=%d@%iHz\n\n",
+            printf("\n\nPTB-DEBUG: Optimal for timing: %dx%d@%.0f@d=%d@%iHz\n\n",
                    modes[i].width, modes[i].height, modes[i].scale, modes[i].depth, (int) modes[i].freq);
     }
 
     if (current_mode != NULL) {
-        printf(" (now: %s)\n", current_mode->name);
+        printf("PTB-DEBUG: (now: %s)\n", current_mode->name);
     } else {
         printf("\n");
     }
-    printf("  Allowed modes:\n  ");
+    printf("PTB-DEBUG: Allowed modes:\n  ");
     for (int i = 0; i < count; i++) modes[i].skip = 0;
     for (int i = 0; i < count; i++) {
         display_mode_t *a = &modes[i], *b;

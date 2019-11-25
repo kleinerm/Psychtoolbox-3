@@ -80,19 +80,19 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         windowStyle = NSBorderlessWindowMask;
     }
 
-    if ([NSThread isMainThread]) {
-        printf("On MAIN THREAD\n");
-    } else {
-        printf("On other Thread\n");
-    }
+    // Currently we use dispatch_sync() unconditionally, but must only use it iff this code does not
+    // execute on the main application thread! Warn about the hazard, should it happpen. Note this hazard
+    // currently can only happen on Octave if it is launched as "octave-cli" - only then it is single-threaded
+    // and we'd run on the main thread. Nobody uses it like that, so fixing this is therefore a low priority TODO atm.
+    if (PsychPrefStateGet_Verbosity() > 4)
+        printf("PTB-DEBUG: PsychCocoaCreateWindow(): On %s thread.\n", ([NSThread isMainThread]) ? "MAIN APPLICATION" : "other");
 
     dispatch_sync(dispatch_get_main_queue(), ^{
         cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:windowStyle    backing:NSBackingStoreBuffered defer:YES];
     });
 
-    printf("Back from dispatch_sync()\n");
     if (cocoaWindow == nil) {
-        printf("PTB-ERROR:PsychCocoaCreateWindow(): Could not create Cocoa-Window!\n");
+        printf("PTB-ERROR: PsychCocoaCreateWindow(): Could not create Cocoa-Window!\n");
         // Return failure:
         return(PsychError_system);
     }

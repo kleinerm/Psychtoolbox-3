@@ -329,7 +329,8 @@ PsychError SCREENOpenWindow(void)
         if ((nativewidth > frontendwidth) || (nativeheight > frontendheight)) {
             // Yes: Native backend resolution in pixels is higher than exposed
             // frontend resolution in points. --> HiDPI / Retina display in use.
-            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Retina display. Enabling panel fitter for scaled Retina compatibility mode.\n");
+            if (PsychPrefStateGet_Verbosity() > 2)
+                printf("PTB-INFO: Retina display. Enabling panel fitter for scaled Retina compatibility mode.\n");
 
             if (!EmulateOldPTB) {
                 // Enable panel fitter by setting a clientRect the size and resolution
@@ -343,7 +344,9 @@ PsychError SCREENOpenWindow(void)
                 imagingmode |= kPsychNeedFastBackingStore;
                 imagingmode |= kPsychNeedGPUPanelFitter;
             }
-            else printf("PTB-WARNING: Sorry, Retina displays are not supported in OS-9 PTB emulation mode. Results will likely be not what you wanted.\n");
+            else {
+                printf("PTB-WARNING: Sorry, Retina displays are not supported in OS-9 PTB emulation mode. Results will likely be wrong.\n");
+            }
         }
     }
 
