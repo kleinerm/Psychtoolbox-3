@@ -613,8 +613,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         }
 
         // Fixup framebuffer format and resolution for proper visual presentation timing in CGL fullscreen exclusive mode:
-        if (PsychPrefStateGet_SkipSyncTests() < 2)
-            PsychOSFixupFramebufferFormatForTiming(screenSettings->screenNumber, TRUE, bpc);
+        PsychOSFixupFramebufferFormatForTiming(screenSettings->screenNumber, TRUE, bpc);
 
         // Requery native display pixel resolution - important for Retina displays if fixup happened:
         PsychGetScreenPixelSize(screenSettings->screenNumber, &nativeSize[0], &nativeSize[1]);
@@ -645,6 +644,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             (PsychPrefStateGet_Verbosity() > 3))
             printf("PTB-INFO: Overriding VBL startline for screen %i to %i scanlines from internal lookup table.\n",
                    screenSettings->screenNumber, windowRecord->VBL_Startline);
+
+        // Assign screen global rect as globalrect of window:
+        PsychCopyRect(windowRecord->globalrect, screenrect);
 
         // Switch to actual fullscreen mode on the display:
         error = CGLSetFullScreenOnDisplay(windowRecord->targetSpecific.contextObject, displayMask);

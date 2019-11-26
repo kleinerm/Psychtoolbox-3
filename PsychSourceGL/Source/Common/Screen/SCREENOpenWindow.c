@@ -23,6 +23,10 @@
 
 #include "Screen.h"
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+double PsychCocoaGetBackingStoreScaleFactor(void* window);
+#endif
+
 // Pointer to master onscreen window during setup phase of stereomode 10 (Dual-window stereo):
 static PsychWindowRecordType* sharedContextWindow = NULL;
 
@@ -136,6 +140,9 @@ PsychError SCREENOpenWindow(void)
     PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
     if(screenNumber==-1)
         PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen.");
+
+    PsychGetScreenPixelSize(screenNumber, &nativewidth, &nativeheight);
+    PsychGetScreenSize(screenNumber, &frontendwidth, &frontendheight);
 
     /*
     The depth checking is ugly because of this stupid depth structure stuff.
@@ -322,8 +329,6 @@ PsychError SCREENOpenWindow(void)
         // This creates compatible behaviour to Apple OSX default behaviour and to
         // old Psychtoolbox 3.0.11. If we are on a non-Retina standard display, then
         // we leave the panel fitter disabled by default:
-        PsychGetScreenPixelSize(screenNumber, &nativewidth, &nativeheight);
-        PsychGetScreenSize(screenNumber, &frontendwidth, &frontendheight);
 
         // Frontend and Backend resolution different?
         if ((nativewidth > frontendwidth) || (nativeheight > frontendheight)) {
@@ -819,6 +824,51 @@ PsychError SCREENOpenWindow(void)
     // Reset flipcounter and missed flip deadline counter to zero:
     windowRecord->flipCount = 0;
     windowRecord->nr_missed_deadlines = 0;
+
+    // Setup HiDPI/Retina remapping scaling factors for use by Screen('GetMouseHelper') and RemapMouse.m et al.:
+    // Only needed on macOS atm.
+    windowRecord->internalMouseMultFactor = 1.0;
+    windowRecord->externalMouseMultFactor = 1.0;
+
+    #if PSYCH_SYSTEM == PSYCH_OSX
+        // Cocoa or CGL?
+        if (windowRecord->targetSpecific.windowHandle) {
+            // Cocoa:
+            double isf = PsychCocoaGetBackingStoreScaleFactor(windowRecord->targetSpecific.windowHandle);
+
+            if (PsychPrefStateGet_Verbosity() > 3)
+                printf("PTB-INFO: Cocoa + Retina scaling. Scaling factor is %fx.\n", isf);
+
+            if (windowRecord->imagingMode & kPsychNeedGPUPanelFitter) {
+                // Cocoa + Panelfitter enabled:
+                windowRecord->internalMouseMultFactor = 1.0;
+                windowRecord->externalMouseMultFactor = isf;
+            }
+            else {
+                // Cocoa with Panelfitter off:
+                windowRecord->internalMouseMultFactor = isf;
+                windowRecord->externalMouseMultFactor = 1.0;
+            }
+        }
+        else {
+            // CGL:
+            if (windowRecord->imagingMode & kPsychNeedGPUPanelFitter) {
+                // CGL with Panelfitter enabled:
+                double autoscale = (double) nativewidth / (double) frontendwidth;
+
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PTB-INFO: CGL + Retina scaling. Auto scale factor is %fx.\n", autoscale);
+
+                windowRecord->internalMouseMultFactor = 1 / autoscale;
+                windowRecord->externalMouseMultFactor = autoscale;
+            }
+            else {
+                // CGL with Panelfitter off:
+                windowRecord->internalMouseMultFactor = 1.0;
+                windowRecord->externalMouseMultFactor = 1.0;
+            }
+        }
+    #endif
 
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);

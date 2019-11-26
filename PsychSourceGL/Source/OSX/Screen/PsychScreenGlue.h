@@ -38,6 +38,7 @@
 void                    InitializePsychDisplayGlue(void);
 void                    PsychCleanupDisplayGlue(void);
 void                    PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber);
+int                     PsychGetScreenNumberFromCGDisplayID(CGDirectDisplayID displayID);
 void                    PsychCaptureScreen(int screenNumber);
 void                    PsychReleaseScreen(int screenNumber);
 psych_bool              PsychIsScreenCaptured(int screenNumber);

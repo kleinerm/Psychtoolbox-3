@@ -302,10 +302,10 @@ PsychError SCREENGetMouseHelper(void)
     PsychGenericScriptType *valuatorStruct = NULL;
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-    Point   mouseXY;
     UInt32  buttonState;
     double  *buttonArray;
     int     numButtons, i;
+    int     screenNumber;
     psych_bool  doButtonArray;
     PsychWindowRecordType   *windowRecord;
     int32_t deltaX, deltaY;
@@ -347,19 +347,59 @@ PsychError SCREENGetMouseHelper(void)
     // Get cursor position:
     HIPoint outPoint;
     HIGetMousePosition(kHICoordSpaceScreenPixel, NULL, &outPoint);
+
+    windowRecord = NULL;
+
+    // Onscreen window handle provided?
+    if (PsychIsWindowIndexArg(2)) {
+        // Yes: Get its windowRecord:
+        PsychAllocInWindowRecordArg(2, TRUE, &windowRecord);
+        if (!PsychIsOnscreenWindow(windowRecord)) {
+            PsychErrorExitMsg(PsychError_user, "Provided window handle isn't an onscreen window, as required.");
+        }
+        screenNumber = windowRecord->screenNumber;
+    }
+    else if (PsychIsScreenNumberArg(2)) {
+        PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+        PsychFindScreenWindowFromScreenNumber(screenNumber, &windowRecord);
+    }
+    else {
+        // Find screen containing given outPoint:
+        CGDirectDisplayID displayID;
+        uint32_t matchingDisplayCount = 0;
+
+        screenNumber = -1;
+        CGGetDisplaysWithPoint((CGPoint) outPoint, 1, &displayID, &matchingDisplayCount);
+
+        // Found a display?
+        if (matchingDisplayCount) {
+            screenNumber = PsychGetScreenNumberFromCGDisplayID(displayID);
+        }
+
+        // Find window for screen:
+        if (screenNumber >= 0)
+            PsychFindScreenWindowFromScreenNumber(screenNumber, &windowRecord);
+    }
+
+    if (windowRecord) {
+        // Remap outPoint as needed for this windowRecord:
+        if (PsychPrefStateGet_Verbosity() > 10)
+            printf("PTB-DEBUG: GetMouseHelper: Position (%f, %f) on screen %i, windowRecord %p -->", outPoint.x, outPoint.y, screenNumber, windowRecord);
+
+        outPoint.x *= windowRecord->internalMouseMultFactor;
+        outPoint.y *= windowRecord->internalMouseMultFactor;
+
+        if (PsychPrefStateGet_Verbosity() > 10)
+            printf(" * %f = (%f, %f)\n", windowRecord->internalMouseMultFactor, outPoint.x, outPoint.y);
+    }
+
     PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) outPoint.x);
     PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) outPoint.y);
 
     // Return optional keyboard input focus status:
     if (numButtons > 0) {
         // Window provided?
-        if (PsychIsWindowIndexArg(2)) {
-            // Yes: Check if it has focus.
-            PsychAllocInWindowRecordArg(2, TRUE, &windowRecord);
-            if (!PsychIsOnscreenWindow(windowRecord)) {
-                PsychErrorExitMsg(PsychError_user, "Provided window handle isn't an onscreen window, as required.");
-            }
-
+        if (windowRecord) {
             PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (PsychCocoaGetUserFocusWindow() == windowRecord->targetSpecific.windowHandle) ? 1 : 0);
         } else {
             // No. Just always return "has focus":

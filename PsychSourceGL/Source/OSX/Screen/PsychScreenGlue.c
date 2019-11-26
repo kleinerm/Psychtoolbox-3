@@ -588,6 +588,17 @@ void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int scree
     return;
 }
 
+int PsychGetScreenNumberFromCGDisplayID(CGDirectDisplayID displayID)
+{
+    int screenNumber;
+
+    for (screenNumber = 0; screenNumber < numDisplays; screenNumber++)
+        if (displayCGIDs[screenNumber] == displayID)
+            return(screenNumber);
+
+    return(-1);
+}
+
 /*  About locking display settings:
 
     SCREENOpenWindow and SCREENOpenOffscreenWindow  set the lock when opening  windows and
