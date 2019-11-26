@@ -43,7 +43,9 @@ try
 
     screens=Screen('Screens');
     screenNumber=max(screens);
-    [w, rect] = Screen('OpenWindow', screenNumber, 0);
+    PsychImaging('PrepareConfiguration');
+    %PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+    [w, rect] = PsychImaging('OpenWindow', screenNumber, 0);
 
     % Enable alpha blending with proper blend-function. We need it
     % for drawing of smoothed points:

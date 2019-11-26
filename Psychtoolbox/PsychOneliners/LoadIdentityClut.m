@@ -320,8 +320,13 @@ else
                     ~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'on AMD'))))
                 % AMD/ATI card:
 
-                % A good default at least on OS/X is type 1:
+                % For historical reasons lost in time, start off with type 1:
                 gfxhwtype = 1;
+
+                if IsOSX
+                    % A good default on macOS seems to be type 0:
+                    gfxhwtype = 0;
+                end
 
                 if IsWin && ~isempty(strfind(winfo.GPUCoreId, 'R600'))
                     % At least the Radeon HD 3470 under Windows Vista and Linux needs type 0
