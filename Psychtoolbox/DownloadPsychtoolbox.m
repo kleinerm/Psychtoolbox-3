@@ -795,6 +795,10 @@ end
 if err
     fprintf('Sorry, the download command "CHECKOUT" failed with error code %d:\n', err);
     fprintf('%s\n', result);
+    
+    if IsOSX && err == 69
+        fprintf('If the error output suggests running a command, this should be typed into Terminal.app found in Applications/Utilities\n')
+    end
 
     if IsOctave
         fprintf('If the error output above contains the text ''SSL handshake failed: SSL error: tlsv1 alert protocol version''\n');

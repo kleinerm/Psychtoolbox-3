@@ -25,7 +25,7 @@ function PsychJavaSwingCleanup
 %                  window after close.
 
 % OSX 10.14 Mojave or later?
-if IsOSX
+if 0 % IsOSX
     c = Screen('Computer');
     v = sscanf(c.system, 'Mac OS %i.%i.%i');
     if v(1) == 10 && v(2) >= 14

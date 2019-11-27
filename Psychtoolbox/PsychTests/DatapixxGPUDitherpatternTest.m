@@ -33,6 +33,8 @@ end
 
 screenid = max(Screen('Screens'));
 
+oldsynclevel = Screen('Preference', 'SkipSynctests', 1);
+
 if fullscreen
   rect = [];
 else
@@ -50,11 +52,18 @@ end
 
 w = Screen('Openwindow', screenid, 0, rect);
 LoadIdentityClut(w);
+%lut = Screen('Readnormalizedgammatable', screenid);
+%foo1 = isequal(lut(:,1), lut(:,2))
+%foo2 = isequal(lut(:,1), lut(:,3))
+%close all;
+%plot(lut);
 
 even = zeros(1,256);
 odd  = even;
 trouble = 0;
 fprintf('\n\n\n\n');
+
+KbReleaseWait(-1);
 
 for i = 0:255
   Screen('FillRect', w, i);
@@ -63,23 +72,33 @@ for i = 0:255
     WaitSecs('YieldSecs', 3 * Screen('GetFlipInterval', w));
     % Readback the two topmost scanlines from Bits# :
     pixels = BitsPlusPlus('GetVideoLine', 256, 1);
-    pixels = [pixels, BitsPlusPlus('GetVideoLine', 256, 2)];
+    pixels = [pixels, BitsPlusPlus('GetVideoLine', 256, 2)]; %#ok<AGROW>
   else
     Datapixx('RegWrRdVideoSync');
     Datapixx('RegWrRdVideoSync');
     Datapixx('RegWrRdVideoSync');
     pixels = Datapixx('GetVideoLine');
   end
-  pixels = pixels(1,[1:10, floor(length(pixels)/2):floor(length(pixels)/2)+9]);
-  fprintf('Ref %i: ', i);
-  fprintf('%i ', pixels);
-  if (range(pixels) ~= 0) || (pixels(1,1) ~= i)
+  
+  fprintf('Ref %i: RGB ', i);
+  fprintf('%i ', pixels(:,[1:10, floor(length(pixels)/2):floor(length(pixels)/2)+9]));
+  if any(range(pixels) ~= 0) || (pixels(1,1) ~= i)
     fprintf(' --> TROUBLE!');
     trouble = trouble + 1;
+    if (pixels(1,1) ~= i)
+        fprintf(' WRONG VALUE');
+    else
+        fprintf(' DITHERING OR CROSS CHANNEL/CROSS ROW MISMATCH:\n');
+        disp(pixels(:,[1:10, floor(length(pixels)/2):floor(length(pixels)/2)+9]));
+    end
   end
   fprintf('\n');
-  even(i+1) = pixels(1,1);
+  even(i+1) = pixels(1, 1);
   odd(i+1) = pixels(1, 2);
+
+  if KbCheck(-1)
+      break;
+  end
 end
 
 if bitssharp
@@ -95,8 +114,12 @@ if trouble > 0
   fprintf('\n\nFAILURE! Many wrong pixels detected! Trouble for %i separate levels!!!\n', trouble);
   close all;
   plot(0:255, even, 'r', 0:255, odd, 'g');
+elseif i < 255
+  fprintf('\n\nEARLY USER ABORT BEFORE ALL 255 SAMPLES taken - INCONCLUSIVE!)\n');  
 else
   fprintf('\n\nALL GOOD :)\n');
 end
+
+Screen('Preference', 'SkipSynctests', oldsynclevel);
 
 return;

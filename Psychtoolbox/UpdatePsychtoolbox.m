@@ -64,6 +64,9 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % 04/01/16 mk  64-Bit Octave-4 support for MS-Windows established.
 % 06/01/16 mk  32-Bit Octave-4 support for MS-Windows removed.
 % 06/01/19 mk  Give automated hint about updated svn client under Matlab.
+% 10/31/19 dgp Allows UpdatePsychtoolbox to run without Psychtoolbox in path. 
+
+addpath(fullfile(fileparts(mfilename('fullpath')),'PsychOneliners'));
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -205,6 +208,10 @@ end
 if err
     fprintf('Sorry. The update command failed with error code %d:\n', err);
     fprintf('%s\n', result);
+    
+    if IsOSX && err == 69
+        fprintf('If the error output suggests running a command, this should be typed into Terminal.app found in Applications/Utilities\n')
+    end
 
     if IsOctave
         fprintf('If the error output above contains the text ''SSL handshake failed: SSL error: tlsv1 alert protocol version''\n');

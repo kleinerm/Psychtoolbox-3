@@ -486,6 +486,9 @@ typedef struct _PsychWindowRecordType_{
 
     double*                     proj;                               // Override projection matrices (4x4x[1or2]) or NULL for default projection.
 
+    double                      internalMouseMultFactor;            // Used by GetMouse et al to rescale mouse position on HiDPI displays.
+    double                      externalMouseMultFactor;            // Used by external mouse mapping to rescale mouse position on HiDPI displays.
+
     // Used only when this structure holds a window:
     // CAUTION FIXME TODO: Due to some pretty ugly circular include dependencies in the #include chain of
     // PTB, this field can not be used in files that #define PSYCH_DONT_INCLUDE_TEXTATTRIBUTES_IN_WINDOWRECORD,
