@@ -723,7 +723,7 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
                     // will screw up stimulus timing/timestamping on primitive OS'es like Apple macOS or Windows,
                     // whereas on Linux it depends on the compositor implementation. E.g., Waylands Weston should not
                     // cause timing trouble with the current implementation as tested in 2018.
-                    if (windowRecord->bpc != value)
+                    if (windowRecord->bpc != (int) value)
                         printf(" ==> Mismatch OpenGL fb %i vs. system fb %i ==> Compositor takeover will be likely!", windowRecord->bpc, value);
                 }
                 printf("\n");
