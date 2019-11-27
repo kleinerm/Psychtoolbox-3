@@ -64,6 +64,9 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % 04/01/16 mk  64-Bit Octave-4 support for MS-Windows established.
 % 06/01/16 mk  32-Bit Octave-4 support for MS-Windows removed.
 % 06/01/19 mk  Give automated hint about updated svn client under Matlab.
+% 10/31/19 dgp Allows UpdatePsychtoolbox to run without Psychtoolbox in path. 
+
+addpath(fullfile(fileparts(mfilename('fullpath')),'PsychOneliners'));
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
