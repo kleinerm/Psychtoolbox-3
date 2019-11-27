@@ -148,6 +148,7 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber, unusedUnti
 % 08/13/16 mk Add safeguard for PTB running under "Windows subsystem for Linux".
 % 11/01/16 mk Fix safeguard for PTB running under "Windows subsystem for Linux".
 % 1-Feb-17 mk Add workaround to also check master keyboard on Linux for deviceIndex -1.
+% 2-Oct-19 mk Deal with Apples TouchBar gimmick to get ESC and Fn keys. Slight perf op.
 
 % ptb_kbcheck_disabledKeys is a vector of keyboard scancodes. It allows
 % to define keys which should never be reported as 'down', i.e. disabled
@@ -167,7 +168,7 @@ persistent oldSecs;
 % Cache operating system type to speed up the code below:
 persistent macosx;
 % ...and all keyboard indices as well:
-persistent kbs kps;
+persistent kbs kps touchBar;
 persistent keyboardsdetected;
 % ...and if we are allowed to use PsychHID:
 persistent allowPsychHID;
@@ -175,6 +176,18 @@ persistent allowPsychHID;
 if isempty(macosx)
     % First time invocation: Query and cache type of OS:
     macosx = IsOSX;
+
+    % Detect deviceIndex of TouchBar Gimmick on some of the iToys, so
+    % we may get access to the ESCape key and function keys:
+    if macosx
+        d = PsychHID('Devices');
+        for i =1:length(d)
+            if d(i).usagePageValue == 1 && d(i).usageValue == 6 && d(i).locationID == 0
+                touchBar = d(i).index;
+                break;
+            end
+        end
+    end
 
     % Set initial oldSecs to minus infinity: No such query before...
     oldSecs = -inf;
@@ -211,12 +224,12 @@ if nargin < 1
 end
 
 if allowPsychHID && (~IsWin || (IsWin && ~isempty(deviceNumber)))
-    if ~isempty(deviceNumber)
+    if ~isempty(deviceNumber) || ~isempty(touchBar)
         % All attached keyboards already detected?
         if isempty(keyboardsdetected)
             % No. Do it now:
             % Query indices of all attached keyboards, in case we need'em:
-            kbs = GetKeyboardIndices;
+            kbs = [GetKeyboardIndices touchBar];
             if IsLinux
                 % Workaround: On some Linux machines some keyboards don't
                 % show up as dedicated slave keyboards. Try to query master
@@ -231,7 +244,10 @@ if allowPsychHID && (~IsWin || (IsWin && ~isempty(deviceNumber)))
         end
 
         % Select keyboard(s):
-        if deviceNumber==-1
+        if deviceNumber>=0
+            % Query a specific keyboard device number:
+            keyt = deviceNumber;
+        elseif deviceNumber==-1
             % Query all attached keyboards:
             keyt = kbs;
         elseif deviceNumber==-2
@@ -240,9 +256,10 @@ if allowPsychHID && (~IsWin || (IsWin && ~isempty(deviceNumber)))
         elseif deviceNumber==-3
             % Query all attached keyboards and keypads:
             keyt = [kbs kps];
+        elseif isempty(deviceNumber)
+            keyt = [PsychHID('Devices', -1) touchBar];
         else
-            % Query a specific keyboard device number:
-            keyt = deviceNumber;
+            error('Invalid deviceNumber provided. Must be empty or >= -3.');
         end
 
         if ~isempty(keyt)

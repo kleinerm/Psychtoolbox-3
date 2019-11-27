@@ -46,6 +46,8 @@ global GL;
         error('Required minimum 3 parameters missing!');
     end
 
+    KbReleaseWait(-1);
+
     if deviceType == 0
         % Open our own connection to Datapixx:
         devName = 'PsychDataPixx';
@@ -283,7 +285,7 @@ global GL;
             Screen('LoadNormalizedGammaTable', win, curlut);
 
             % Tried too long, too hard?
-            if failcount > 255
+            if failcount > 255 || KbCheck(-1)
                 % Running with non-zero rasterizer offset?
                 if xoffset ~= 0
                     % Hmm. Could be a cascade of bugs. Reset xoffset to
@@ -306,15 +308,21 @@ global GL;
                     % Wait until at least next vsync:
                     WaitSecs('YieldSecs', 1 * Screen('GetFlipInterval', win));
   
-                    % Encore une fois...
-                    continue;
+                    if ~KbCheck(-1)
+                        % Encore une fois...
+                        continue;
+                    end
                 end
 
                 % Ok, this can't be. Restore gamma table and give up:
                 Screen('LoadNormalizedGammaTable', win, oldlut);
 
+                if KbCheck(-1)
+                    fprintf('%s: USER ABORT VIA KEYPRESS.\n');
+                end
+
                 % Fail:
-                fprintf('%s: ERROR: Did not reach a stable result after 256 tweak iterations.\n', devName);
+                fprintf('%s: ERROR: Did not reach a stable result after %i tweak iterations.\n', devName, failcount);
                 fprintf('%s: ERROR: This is hopeless, something is seriously wrong with your GPU. I give up!\n', devName);
                 fprintf('%s: ERROR: One possible reason could be that (spatio-)temporal dithering is enabled for your\n', devName);
                 fprintf('%s: ERROR: display due to some graphics driver bug, which prevents me from converging\n', devName);

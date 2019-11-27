@@ -44,6 +44,10 @@
 // Include for mouse cursor control via Cocoa:
 #include "PsychCocoaGlue.h"
 
+// Include for sysctl():
+#include <sys/types.h>
+#include <sys/sysctl.h>
+
 // Defined in PsychGraphicsHardwareHALSupport.c, but accessed and initialized here:
 extern unsigned int crtcoff[kPsychMaxPossibleCrtcs];
 
@@ -60,6 +64,7 @@ static CGDisplayModeRef     displayOriginalCGSettings[kPsychMaxPossibleDisplays]
 static psych_bool           displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
 static CGDisplayModeRef     displayOverlayedCGSettings[kPsychMaxPossibleDisplays];      //these track settings overlayed with 'Resolutions'.
 static psych_bool           displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
+static int                  displayOriginalLowLevelCGSModeId[kPsychMaxPossibleDisplays];
 static CGDisplayCount       numDisplays, numPhysicalDisplays;
 static CGDirectDisplayID    displayCGIDs[kPsychMaxPossibleDisplays];
 static CGDirectDisplayID    displayOnlineCGIDs[kPsychMaxPossibleDisplays];
@@ -67,6 +72,7 @@ static CGDirectDisplayID    displayOnlineCGIDs[kPsychMaxPossibleDisplays];
 // List of service connect handles for connecting to the kernel support driver (if any):
 static int                  numKernelDrivers = 0;
 static io_connect_t         displayConnectHandles[kPsychMaxPossibleDisplays];
+static int                  kernelDriverRevision[kPsychMaxPossibleDisplays];
 
 // Is the global cursor hidden atm.?
 static psych_bool cursorHidden = FALSE;
@@ -84,6 +90,324 @@ int PsychOSKDGetBeamposition(int screenId);
 void PsychDisplayReconfigurationCallBack (CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo);
 static void PsychOSKDGetGPUInfo(io_connect_t connect, int slot);
 unsigned int PsychOSKDGetRevision(io_connect_t connect);
+
+// The following helper code is a slightly adapted version of the code from https://github.com/lunixbochs/meta/tree/master/utils/retina
+// That code is Copyright (c) 2013 Ryan Hileman and provided to us and others under the MIT license. Thanks!
+
+// Apple macOS CoreGraphicsServer (CGS) private video mode info data structure:
+typedef struct {
+    uint32_t mode;      // mode id
+    uint32_t flags;     // mode flags
+    uint32_t width;     // pixel width
+    uint32_t height;    // pixel height
+    uint32_t depth;     // framebuffer depth format code: 4 = ARGB8888 ~ 8 bpc, 8 = ARGB2101010 ~ 10 bpc
+    uint32_t dc2[42];   // Unknown
+    uint16_t dc3;       // Unknown
+    uint16_t freq;      // Encoded video refresh rate
+    uint32_t dc4[4];    // Unknown
+    float scale;        // Retina scaling factor
+
+    // These are ours, not part of CGS mode struct:
+    char name[32];
+    int skip;
+} display_mode_t;
+
+// Apple macOS CGS private api. Subject to backwards incompatible and breaking change without any notice or warning!
+// Work as of macOS 10.11, 10.12, 10.13, 10.14, 10.15 and hopefully later versions.
+#define MODE_SIZE (sizeof(display_mode_t) - sizeof(char) * 32 - sizeof(int))
+void CGSGetCurrentDisplayMode(CGDirectDisplayID display, int *mode);
+void CGSConfigureDisplayMode(CGDisplayConfigRef config, CGDirectDisplayID display, int mode);
+void CGSGetNumberOfDisplayModes(CGDirectDisplayID display, int *count);
+void CGSGetDisplayModeDescriptionOfLength(CGDirectDisplayID display, int index, display_mode_t *mode, int length);
+
+// Helper code from lunixbochs utility.
+
+// sorts for highest effective resolution modes first
+static int sort_modes(const void *a, const void *b) {
+    const display_mode_t *da = a, *db = b;
+    if (strlen(da->name) < strlen(db->name) || da->scale > db->scale) return 1;
+    if (strlen(da->name) > strlen(db->name) || da->scale < db->scale) return -1;
+    return strcmp(da->name, db->name) * -1;
+}
+
+// grab all the modes and attach a name string
+static void get_all_modes(CGDirectDisplayID display, display_mode_t **retModes, int *count) {
+    CGSGetNumberOfDisplayModes(display, count);
+    if (! *count || !retModes) return;
+    display_mode_t *modes = malloc(sizeof(display_mode_t) * *count);
+    for (int i = 0; i < *count; i++) {
+        CGSGetDisplayModeDescriptionOfLength(display, i, modes+i, MODE_SIZE);
+        display_mode_t *mode = &modes[i];
+        if (mode->scale > 1) {
+            snprintf(mode->name, 32, "%dx%d@%.0f@d=%d@%iHz", mode->width, mode->height, mode->scale, mode->depth, (int) mode->freq);
+        } else {
+            snprintf(mode->name, 32, "%dx%d@d=%d@%iHz", mode->width, mode->height, mode->depth, (int) mode->freq);
+        }
+    }
+    qsort(modes, *count, sizeof(display_mode_t), sort_modes);
+    *retModes = modes;
+}
+
+// get the current mode for a display
+static int get_display_mode(CGDirectDisplayID display) {
+    int mode;
+    CGSGetCurrentDisplayMode(display, &mode);
+    return mode;
+}
+
+// set the current mode for a display
+static void set_display_mode(CGDirectDisplayID display, int mode) {
+    CGDisplayConfigRef config;
+    CGBeginDisplayConfiguration(&config);
+    CGSConfigureDisplayMode(config, display, mode);
+    CGCompleteDisplayConfiguration(config, kCGConfigurePermanently);
+}
+
+static void print_display(CGDirectDisplayID display, int num, int targetDepthCode) {
+    display_mode_t *modes;
+    int count;
+    get_all_modes(display, &modes, &count);
+
+    int current_mode_num = get_display_mode(display);
+    display_mode_t *current_mode;
+
+    printf("PTB-DEBUG: Display screen [%d]:\n", num);
+
+    for (int i = 0; i < count; i++) {
+        if (modes[i].mode == current_mode_num) {
+            current_mode = &modes[i];
+        }
+
+        // Optimal on builtin or Retina style display, ie. unscaled, native resolution at suitable color format?
+        if (modes[i].flags & (1 << 25) && modes[i].scale == 1 && modes[i].depth == targetDepthCode)
+            printf("\n\nPTB-DEBUG: Optimal for timing: %dx%d@%.0f@d=%d@%iHz\n\n",
+                   modes[i].width, modes[i].height, modes[i].scale, modes[i].depth, (int) modes[i].freq);
+    }
+
+    if (current_mode != NULL) {
+        printf("PTB-DEBUG: (now: %s)\n", current_mode->name);
+    } else {
+        printf("\n");
+    }
+    printf("PTB-DEBUG: Allowed modes:\n  ");
+    for (int i = 0; i < count; i++) modes[i].skip = 0;
+    for (int i = 0; i < count; i++) {
+        display_mode_t *a = &modes[i], *b;
+        if (a->skip) continue;
+        a->skip = 1;
+        // pad to column * scale (in case a resolution isn't available unscaled?)
+        for (int s = 1; s < a->scale; s++)
+            printf("%25s", "");
+        printf("%25s", a->name);
+        // print scaled equivalents in the same row
+        for (int j = 0; j < count; j++) {
+            b = &modes[j];
+            if (a == b || b->skip) continue;
+            if (a->width * a->scale == b->width * b->scale &&
+                a->height * a->scale == b->height * b->scale) {
+                printf("%25s", b->name);
+                b->skip = 1;
+            }
+        }
+        printf("\n  ");
+    }
+    printf("\n");
+
+    free(modes);
+}
+
+// End of lunixbochs code. Start of our code using that code:
+
+/* PsychOSFixupFramebufferFormatForTiming()
+ *
+ * Call this to try to put the system framebuffer aka scanout buffer into a scanout format that
+ * is compatible with good, precise, trustworthy timing (aka compositor bypass) for an onscreen
+ * fullscreen window with a OpenGL framebuffer depth of targetBpc bits per color channel.
+ *
+ * screenNumber - Target screen.
+ * targetBpc - bpc of onscreen window.
+ * enable - TRUE = Enable fix, FALSE = Disable fix.
+ *
+ * Returns TRUE on success (setup successfull or not needed) and FALSE on failure.
+ * A TRUE return does not guarantee that it worked, just that this code "thinks" it worked.
+ */
+psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool enable, int targetBpc)
+{
+    display_mode_t *modes = NULL;
+    display_mode_t *current_mode = NULL;
+    display_mode_t *optimal_mode = NULL;
+    int i, count = 0;
+    int current_mode_num, target_mode_num;
+    int targetDepthCode;
+    int verbosity = PsychPrefStateGet_Verbosity();
+
+    // Map targetBpc to OSX framebuffer scanout depth code:
+    switch (targetBpc) {
+        case 8: // 8 bpc = ARGB8888:
+            targetDepthCode = 4;
+            break;
+
+        case 10: // 10 bpc = ARGB2101010:
+            // This is unsupported as of macOS 10.14.6 Mojave on at least
+            // AMD Polaris. But let's implement support here just in case.
+            // Specifically: One can't create OpenGL backbuffers with 10 bpc!
+            targetDepthCode = 8;
+            break;
+
+        default: // Unsupported targetBpc for native scanout:
+            targetDepthCode = -1;
+    }
+
+    if (screenNumber < 0 || screenNumber >= numDisplays)
+        PsychErrorExit(PsychError_invalidScumber);
+
+    if (verbosity > 4)
+        print_display(displayCGIDs[screenNumber], screenNumber, targetDepthCode);
+
+    // Get all supported CGS modes:
+    get_all_modes(displayCGIDs[screenNumber], &modes, &count);
+
+    // Get id of current active mode:
+    current_mode_num = get_display_mode(displayCGIDs[screenNumber]);
+
+    // Get properties / description of current lower level mode:
+    for (i = 0; i < count; i++) {
+        if (modes[i].mode == current_mode_num) {
+            current_mode = &modes[i];
+            break;
+        }
+    }
+
+    if (!current_mode) {
+        if (verbosity > 0)
+            printf("PTB-ERROR:PsychOSFixupFramebufferFormatForTiming: Can not find current video mode on screenId %i! Aborted.\n",
+                   screenNumber);
+        free(modes);
+        return(FALSE);
+    }
+
+    for (i = 0; i < count; i++) {
+        if ((modes[i].flags & (1 << 25)) && (modes[i].scale == 1) && (modes[i].depth == targetDepthCode) &&
+            (modes[i].freq == current_mode->freq)) {
+            optimal_mode = &modes[i];
+            if (verbosity > 3)
+                printf("PTB-DEBUG: Optimal mode for timing on screenId %i at %i bpc: %dx%d@%.0f@d=%d@%iHz\n", screenNumber, targetBpc,
+                   optimal_mode->width, optimal_mode->height, optimal_mode->scale, optimal_mode->depth, (int) optimal_mode->freq);
+        }
+    }
+
+    if (enable) {
+        // Enable of fix requested:
+
+        // Fix already enabled from previous call? Should not happen:
+        if (displayOriginalLowLevelCGSModeId[screenNumber] != -1) {
+            if (verbosity > 0)
+                printf("PTB-ERROR:PsychOSFixupFramebufferFormatForTiming: Called on screenId %i with fix enable request while fix is already enabled [modeId %i]! Bug?!? No-Op!\n", screenNumber, displayOriginalLowLevelCGSModeId[screenNumber]);
+            free(modes);
+            return(FALSE);
+        }
+
+        // Supported depth?
+        if (targetDepthCode == -1) {
+            if (verbosity > 1)
+                printf("PTB-WARNING:PsychOSFixupFramebufferFormatForTiming: screenId %i unsupported targetBpc %i. No-Op. Timing will suck!\n",
+                       screenNumber, targetBpc);
+            free(modes);
+            return(FALSE);
+        }
+
+        // We can do something for this targetBpc aka depth code targetDepthCode.
+        // Is the fb already in targetDepthCode format and native resolution for a Retina panel or similar?
+        if ((current_mode == optimal_mode) || (!optimal_mode && (current_mode->depth == targetDepthCode))) {
+            // Yes. Nothing to do:
+            if (verbosity > 3)
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i already in suitable mode for %i bpc - Nothing to do.\n",
+                       screenNumber, targetBpc);
+            free(modes);
+            return(TRUE);
+        }
+
+        // Need to switch mode to something more suitable:
+        if (optimal_mode) {
+            // There exists an optimal mode for the display, e.g., the native unscaled resolution
+            // of a Retina display or other builtin display, with suitable color format. Use it:
+            target_mode_num = optimal_mode->mode;
+
+            if (verbosity > 3)
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: Switching screenId %i to optimal native mode %ix%i@%iHz.\n",
+                       screenNumber, optimal_mode->width, optimal_mode->height, (int) optimal_mode->freq);
+        }
+        else {
+            // Nope. Try to find a mode that matches the current one in all aspects, except its fb format being targetDepthCode:
+            if (verbosity > 3) {
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i in unsuitable format %i != %i for %i bpc.\n",
+                       screenNumber, current_mode->depth, targetDepthCode, targetBpc);
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: Trying to switch to suitable mode with format %i.\n",
+                       targetDepthCode);
+            }
+
+            target_mode_num = -1;
+            for (i = 0; i < count; i++) {
+                // Find suitable mode matching current modes width, height and hz, while not being Retina scaled and of the proper format:
+                if (modes[i].width == current_mode->width * current_mode->scale &&
+                    modes[i].height == current_mode->height * current_mode->scale &&
+                    modes[i].freq == current_mode->freq &&
+                    modes[i].depth == targetDepthCode && modes[i].scale == 1) {
+                    target_mode_num = modes[i].mode;
+                    if (verbosity > 3)
+                        printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: Switching to suitable mode %ix%i@%iHz.\n",
+                               modes[i].width, modes[i].height, (int) modes[i].freq);
+
+                    break;
+                }
+            }
+        }
+
+        // Success?
+        if (target_mode_num == -1) {
+            if (verbosity > 1)
+                printf("PTB-WARNING:PsychOSFixupFramebufferFormatForTiming: On screenId %i no suitable mode with targetBpc %i. No-Op. Timing will suck!\n",
+                       screenNumber, targetBpc);
+            free(modes);
+            return(FALSE);
+        }
+
+        // Got one. Set it, so we get everything identical, except now at fb format 8 bpc ARGB8888:
+        set_display_mode(displayCGIDs[screenNumber], target_mode_num);
+
+        // Store previous original / reference mode as backup if we want to switch back:
+        displayOriginalLowLevelCGSModeId[screenNumber] = current_mode_num;
+    }
+    else {
+        // Disable of fix requested:
+
+        // Fix already disabled from previous call?
+        if (displayOriginalLowLevelCGSModeId[screenNumber] == -1) {
+            if (verbosity > 3)
+                printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: Called on screenId %i with fix disable request while fix is already disabled. No-Op.\n", screenNumber);
+            free(modes);
+            return(TRUE);
+        }
+
+        // Restore original mode:
+        if (verbosity > 3)
+            printf("PTB-DEBUG:PsychOSFixupFramebufferFormatForTiming: screenId %i in framebuffer format fixup mode. Reverting to system setting.\n", screenNumber);
+
+        // Got one. Set it, so we get everything identical, except now at fb format 8 bpc ARGB8888:
+        set_display_mode(displayCGIDs[screenNumber], displayOriginalLowLevelCGSModeId[screenNumber]);
+        displayOriginalLowLevelCGSModeId[screenNumber] = -1;
+    }
+
+    free(modes);
+
+    // A mode switch can take up to 3 seconds, so pause here to give the display server et al.
+    // some time to finish the switch and settle, or we might not get pageflipping on the first
+    // swaps after the mode switch, or a WindowServer hang + crash if we are unlucky after mode reset:
+    PsychWaitIntervalSeconds(3);
+
+    // Switch presumably successfully completed:
+    return(TRUE);
+}
 
 kern_return_t CallKDSimpleMethod(io_connect_t connect, uint32_t index)
 {
@@ -110,6 +434,8 @@ void InitializePsychDisplayGlue(void)
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
         displayConnectHandles[i]=0;
+        kernelDriverRevision[i]=-1;
+        displayOriginalLowLevelCGSModeId[i]=-1;
     }
 
     cursorHidden = FALSE;
@@ -166,6 +492,7 @@ void PsychCleanupDisplayGlue(void)
         if (displayOverlayedCGSettingsValid[i]) CGDisplayModeRelease(displayOverlayedCGSettings[i]);
         displayOriginalCGSettingsValid[i] = FALSE;
         displayOverlayedCGSettingsValid[i] = FALSE;
+        displayOriginalLowLevelCGSModeId[i] = -1;
     }
 
     cursorHidden = FALSE;
@@ -261,6 +588,17 @@ void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int scree
     return;
 }
 
+int PsychGetScreenNumberFromCGDisplayID(CGDirectDisplayID displayID)
+{
+    int screenNumber;
+
+    for (screenNumber = 0; screenNumber < numDisplays; screenNumber++)
+        if (displayCGIDs[screenNumber] == displayID)
+            return(screenNumber);
+
+    return(-1);
+}
+
 /*  About locking display settings:
 
     SCREENOpenWindow and SCREENOpenOffscreenWindow  set the lock when opening  windows and
@@ -315,6 +653,13 @@ void PsychReleaseScreen(int screenNumber)
 
     error = CGDisplayRelease(displayCGIDs[screenNumber]);
     if (error) PsychErrorExitMsg(PsychError_internal, "Unable to release display");
+
+    // Disable fixup of framebuffer format for proper visual presentation timing in fullscreen exclusive mode:
+    // Note: We must call this after CGDisplayRelease() or the WindowServer may crash with SIGABORT at least on
+    // macOS 10.14.6 Mojave. A breach of symmetry wrt. the enabling call, but not a big deal, as the function
+    // does not need onscreen windowRecord specific info or an OpenGL context for the disable sequence. Also it
+    // no-ops silently whenever a disable is not needed.
+    PsychOSFixupFramebufferFormatForTiming(screenNumber, FALSE, 0);
 
     PsychUnlockScreenSettings(screenNumber);
 
@@ -621,8 +966,8 @@ void PsychGetDisplaySize(int screenNumber, int *width, int *height)
     CGSize physSize;
     if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetDisplaySize() is out of range");
     physSize = CGDisplayScreenSize(displayCGIDs[screenNumber]);
-    *width = (int) physSize.width;
-    *height = (int) physSize.height;
+    if (width) *width = (int) physSize.width;
+    if (height) *height = (int) physSize.height;
 }
 
 void PsychGetGlobalScreenRect(int screenNumber, double *rect)
@@ -712,6 +1057,123 @@ int PsychGetDacBitsFromDisplay(int screenNumber)
         return(8);
     }
     */
+}
+
+struct macModel {
+    char name[16];
+    int  panelWidth;
+    int  panelHeight;
+    int  panelWidthMM;
+} macModels[] = {
+    { "iMacPro1,1", 5120, 2880, 0 },
+    { "iMac15,1", 5120, 2880, 0 },
+    { "iMac17,1", 5120, 2880, 0 },
+    { "iMac18,3", 5120, 2880, 0 },
+    { "iMac19,1", 5120, 2880, 0 },
+    { "iMac16,2", 4096, 2304, 0 },
+    { "iMac18,2", 4096, 2304, 0 },
+    { "iMac19,2", 4096, 2304, 0 },
+    { "iMac11,1", 2560, 1440, 0 },
+    { "iMac11,3", 2560, 1440, 0 },
+    { "iMac12,2", 2560, 1440, 0 },
+    { "iMac13,2", 2560, 1440, 0 },
+    { "iMac14,2", 2560, 1440, 0 },
+    { "iMac10,1", 2560, 1440, 690 },
+    { "iMac10,1", 1920, 1080, 550 },
+    { "iMac11,2", 1920, 1080, 0 },
+    { "iMac12,1", 1920, 1080, 0 },
+    { "iMac13,1", 1920, 1080, 0 },
+    { "iMac14,1", 1920, 1080, 0 },
+    { "iMac14,4", 1920, 1080, 0 },
+    { "iMac16,1", 1920, 1080, 0 },
+    { "iMac18,1", 1920, 1080, 0 },
+    { "iMac7,1" , 1920, 1200, 610 },
+    { "iMac8,1" , 1920, 1200, 610 },
+    { "iMac9,1" , 1920, 1200, 610 },
+    { "iMac6,1" , 1920, 1200, 610 },
+    { "iMac7,1" , 1680, 1050, 510 },
+    { "iMac8,1" , 1680, 1050, 510 },
+    { "iMac9,1" , 1680, 1050, 510 },
+    { "iMac5,1" , 1680, 1050, 510 },
+    { "iMac4,1" , 1680, 1050, 510 },
+    { "iMac5,1" , 1440,  900, 430 },
+    { "iMac5,2" , 1440,  900, 430 },
+    { "iMac4,2" , 1440,  900, 430 },
+    { "iMac4,1" , 1440,  900, 430 },
+    { "", 0, 0 }
+};
+
+/* PsychOSGetPanelOverrideSize()
+ *
+ * Lookup native resolution of a known display for given screenNumber from
+ * internal database, and optionally return pixel width and pixel height.
+ *
+ * Returns TRUE on successful lookup, FALSE if display model unknown. In that case,
+ * target variable locations width and height will not be modified/overriden.
+ */
+psych_bool PsychOSGetPanelOverrideSize(int screenNumber, int* width, int* height)
+{
+    CGDirectDisplayID displayID;
+    uint32_t displayUnit, displayVendorId, displayModelId;
+    int i, mib[2];
+    char modelStr[256];
+    size_t modelStrSize = sizeof(modelStr);
+    int panelWidthMM;
+
+    // Get Modelname of Mac in modelStr:
+    mib[0] = CTL_HW;
+    mib[1] = HW_MODEL;
+    if (sysctl(mib, 2, modelStr, &modelStrSize, NULL, 0) != 0) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: PsychOSGetPanelOverrideSize: Failed to query Mac model name - sysctl failed with: %s. Skipped\n",
+                   strerror(errno));
+        return(FALSE);
+    }
+
+    // Get display specs:
+    PsychGetCGDisplayIDFromScreenNumber(&displayID, screenNumber);
+    displayUnit = CGDisplayUnitNumber(displayID);
+    displayVendorId = CGDisplayVendorNumber(displayID);
+    displayModelId = CGDisplayModelNumber(displayID);
+    PsychGetDisplaySize(screenNumber, &panelWidthMM, NULL);
+
+    if (PsychPrefStateGet_Verbosity() > 4)
+        printf("PTB-INFO: Screen %i - Display unit 0x%x, vendorId 0x%x, modelId 0x%x, width %i mm.\n",
+               screenNumber, displayUnit, displayVendorId, displayModelId, panelWidthMM);
+
+    // Builtin display, ie., iMac, MacBook, MacBookPro, macBookAir?
+    if (CGDisplayIsBuiltin(displayID)) {
+        // Yes. In that case the Modelname of the Mac directly specifies the
+        // display model and its specs, so look it up:
+        if (PsychPrefStateGet_Verbosity() > 4)
+            printf("PTB-INFO: Screen %i - Apple %s builtin display of width %i mm detected. Searching for database match...\n",
+                   screenNumber, modelStr, panelWidthMM);
+
+        // Search for matching Mac model, disambiguate by matching panel width in mm as well, if needed:
+        for (i = 0; macModels[i].name[0] != 0; i++) {
+            if (!strcmp((const char*) &(macModels[i].name), modelStr) &&
+                (!macModels[i].panelWidthMM || (macModels[i].panelWidthMM == panelWidthMM))) {
+                // Hit:
+                if (width) *width = macModels[i].panelWidth;
+                if (height) *height = macModels[i].panelHeight;
+
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PTB-INFO: Screen %i - Apple %s builtin display (%i mm): %i x %i pixels native resolution from internal LUT.\n",
+                           screenNumber, modelStr, panelWidthMM, macModels[i].panelWidth, macModels[i].panelHeight);
+
+                return(TRUE);
+            }
+        }
+
+        // No luck. Do not override for this model:
+        return(FALSE);
+    }
+
+    // Nope, external display.
+    // Database / LUT implementation for this tbd...
+
+    // Nothing found in internal database:
+    return(FALSE);
 }
 
 /*
@@ -1025,6 +1487,18 @@ static psych_bool isDCE1(int fPCIDeviceId)
     return(isDCE1);
 }
 
+static psych_bool isAMDModernDCELUTSupported(void)
+{
+    // LUT and dither setting handling, ie. color management in general, has changed for modern AMD gpu's
+    // on at least macOS 10.12 Sierra and later. Current PsychtoolboxKernelDriver is not equipped to deal
+    // with this, so report such gpu's as unsupported wrt. color related functions. We know DCE-11 is dead,
+    // but we don't know at which DCE version the trouble starts. Atm. let's just assume DCE-11:
+    if ((fDeviceType[activeGPU] == kPsychRadeon) && (fCardType[activeGPU] >= 110) && (kernelDriverRevision[activeGPU] < 1000))
+        return(false);
+
+    return(true);
+}
+
 // Try to attach to kernel level ptb support driver and setup everything, if it works:
 void InitPsychtoolboxKernelDriverInterface(void)
 {
@@ -1124,6 +1598,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
 
             // Store the connect handle for this instance:
             displayConnectHandles[numKernelDrivers] = connect;
+            kernelDriverRevision[numKernelDrivers] = revision;
 
             // Query and assign GPU info:
             PsychOSKDGetGPUInfo(connect, numKernelDrivers);
@@ -1231,7 +1706,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
         activeGPU = 1 - activeGPU;
         OSMemoryBarrier();
         if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Switching to kernel driver instance #%i in hybrid graphics system, assuming i am attached to discrete non-Intel GPU.", activeGPU);
+            printf("PTB-INFO: Switching to kernel driver instance #%i in hybrid graphics system, assuming i am attached to discrete non-Intel GPU.\n", activeGPU);
         }
 
         // PsychOSKDGetBeamposition() has a way of recovering from a wrong choice here.
@@ -1260,9 +1735,6 @@ void InitPsychtoolboxKernelDriverInterface(void)
         activeGPU = atoi(getenv("PSYCH_USE_GPUIDX"));
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Will try to use GPU number %i for low-level access during this session, as requested by usercode.\n", activeGPU);
     }
-
-    // Perform auto-detection of screen to head mappings:
-    PsychAutoDetectScreenToHeadMappings(fNumDisplayHeads[activeGPU]);
 
 error_abort:
 
@@ -1582,6 +2054,10 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
         return;
     }
 
+    // Works with current AMD gpu + PsychtoolboxKernelDriver revision?
+    if (!isAMDModernDCELUTSupported())
+        return;
+
     // Set command code for dither control:
     syncCommand.command = kPsychKDSetDitherMode;
 
@@ -1656,6 +2132,10 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int head, unsigned int 
     io_connect_t connect;
     if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) return(0xffffffff);
 
+    // Works with current AMD gpu + PsychtoolboxKernelDriver revision?
+    if (!isAMDModernDCELUTSupported())
+        return(0xffffffff);
+
     // Set command code for LUT check:
     syncCommand.command = kPsychKDGetLUTState;
     syncCommand.inOutArgs[0] = head;
@@ -1681,6 +2161,10 @@ unsigned int PsychOSKDLoadIdentityLUT(int screenId, unsigned int head)
     // Check availability of connection:
     io_connect_t connect;
     if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) return(0);
+
+    // Works with current AMD gpu + PsychtoolboxKernelDriver revision?
+    if (!isAMDModernDCELUTSupported())
+        return(0);
 
     // Set command code for identity LUT load:
     syncCommand.command = kPsychKDSetIdentityLUT;

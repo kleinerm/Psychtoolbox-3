@@ -615,7 +615,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     PsychRebindARBExtensionsToCore();
 
     if (((((*windowRecord)->depth == 30) || ((*windowRecord)->depth == 33) || ((*windowRecord)->depth == 48)) && !((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) ||
-        ((*windowRecord)->depth == 32) || ((*windowRecord)->depth == 64) || ((*windowRecord)->depth == 128)) {
+        ((*windowRecord)->depth == 24) || ((*windowRecord)->depth == 32) || ((*windowRecord)->depth == 64) || ((*windowRecord)->depth == 128)) {
 
         // Floating point framebuffer active?
         isFloatBuffer = FALSE;
@@ -4905,11 +4905,13 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             else if (PsychPrefStateGet_Verbosity() > 1) {
                 // No reliable pageflipping or pageflipping at all. This is pretty much game over for reliable
                 // visual timing or timestamping:
-                printf("PTB-WARNING: Pageflipping wasn't used %s during refresh calibration. Visual presentation timing on your system\n",
-                       (pflip_count > 0) ? "consistently" : "at all");
-                printf("PTB-WARNING: is broken on your system and all followup tests and workarounds will likely fail as well.\n");
-                printf("PTB-WARNING: On a Apple macOS system you probably don't need to even bother asking anybody for help. Just\n");
-                printf("PTB-WARNING: upgrade to Linux if you care about trustworthy visual timing and stimulation.\n\n");
+                printf("PTB-WARNING: Pageflipping wasn't used %s during refresh calibration [%i of %i].\n",
+                       (pflip_count > 0) ? "consistently" : "at all", pflip_count, i);
+                printf("PTB-WARNING: Visual presentation timing is broken on your system and all followup tests and workarounds will likely fail.\n");
+                if (PSYCH_SYSTEM == PSYCH_OSX) {
+                    printf("PTB-WARNING: On this Apple macOS system you probably don't need to even bother asking anybody for help.\n");
+                    printf("PTB-WARNING: Just upgrade to Linux if you care about trustworthy visual timing and stimulation.\n\n");
+                }
             }
         }
     } // End of IFI measurement code.
@@ -6590,6 +6592,18 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             printf("PTB-DEBUG: Not running on Mesa graphics library.\n");
     }
 
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+    // Try to query renderer gpu vendor from Mesa if supported:
+    if (glxewIsSupported("GLX_MESA_query_renderer") && (glXQueryCurrentRendererIntegerMESA != NULL) &&
+        glXQueryCurrentRendererIntegerMESA(GLX_RENDERER_VENDOR_ID_MESA, &rendergpuVendor) && (rendergpuVendor != 0xFFFFFFFF)) {
+        if (verbose)
+            printf("PTB-DEBUG: Vendor Id of render gpu - rendergpuVendor 0x%x.\n", rendergpuVendor);
+    }
+    else {
+        rendergpuVendor = 0;
+    }
+    #endif
+
     // Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
     // so use at most 7 letters!
     memset(&(windowRecord->gpuCoreId[0]), 0, 8);
@@ -6598,11 +6612,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100");
     }
 
-    if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau") || strstr((char*) glGetString(GL_VENDOR), "nouveau")) {
+    if (strstr((char*) glGetString(GL_VENDOR), "NVIDIA") || strstr((char*) glGetString(GL_RENDERER), "nouveau") || strstr((char*) glGetString(GL_VENDOR), "nouveau") ||
+        (rendergpuVendor == PCI_VENDOR_ID_NVIDIA)) {
         nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10");
     }
 
-    if (strstr((char*) glGetString(GL_VENDOR), "INTEL") || strstr((char*) glGetString(GL_VENDOR), "Intel") || strstr((char*) glGetString(GL_RENDERER), "Intel")) {
+    if (strstr((char*) glGetString(GL_VENDOR), "INTEL") || strstr((char*) glGetString(GL_VENDOR), "Intel") || strstr((char*) glGetString(GL_RENDERER), "Intel") ||
+        (rendergpuVendor == PCI_VENDOR_ID_INTEL)) {
         intel = TRUE; sprintf(windowRecord->gpuCoreId, "Intel");
     }
 
@@ -6611,7 +6627,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     }
 
     // Detection code for Linux DRI driver stack with ATI GPU:
-    if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI")) {
+    if (strstr((char*) glGetString(GL_VENDOR), "Advanced Micro Devices") || strstr((char*) glGetString(GL_RENDERER), "ATI") || strstr((char*) glGetString(GL_RENDERER), "Radeon") ||
+        (rendergpuVendor == PCI_VENDOR_ID_AMD) || (rendergpuVendor == PCI_VENDOR_ID_ATI)) {
         ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100");
     }
 
@@ -6622,14 +6639,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // Is this a hybrid graphics dual-gpu laptop which uses DRI PRIME for muxless render offload?
     #if PSYCH_SYSTEM == PSYCH_LINUX
     if ((getenv("DRI_PRIME") && ((const char*) getenv("DRI_PRIME"))[0] != '0') ||
-        (glxewIsSupported("GLX_MESA_query_renderer") && (glXQueryCurrentRendererIntegerMESA != NULL) &&
-        glXQueryCurrentRendererIntegerMESA(GLX_RENDERER_VENDOR_ID_MESA, &rendergpuVendor) && (rendergpuVendor != 0xFFFFFFFF) && (gpuMaintype != kPsychUnknown) &&
+        (rendergpuVendor && (rendergpuVendor != 0xFFFFFFFF) && (gpuMaintype != kPsychUnknown) &&
         glXQueryCurrentRendererIntegerMESA(GLX_RENDERER_DEVICE_ID_MESA, &rendergpuModel) && (rendergpuModel != 0xFFFFFFFF) && (gpuModel != (int) 0xFFFFFFFF) &&
         (((int) rendergpuModel != gpuModel) || (gpuMaintype == kPsychIntelIGP && rendergpuVendor != PCI_VENDOR_ID_INTEL) ||
         (gpuMaintype == kPsychGeForce && rendergpuVendor != PCI_VENDOR_ID_NVIDIA) ||
         (gpuMaintype == kPsychRadeon && rendergpuVendor != PCI_VENDOR_ID_AMD && rendergpuVendor != PCI_VENDOR_ID_ATI)))) {
         windowRecord->hybridGraphics = 1;
-        if (verbose) printf("PTB-DEBUG: Prime indicators: rendergpuVendor %x, rendergpuModel %x, displaygpuModel %x displaygpuType %x.\n", rendergpuVendor, rendergpuModel, gpuModel, gpuMaintype);
+        if (verbose) printf("PTB-DEBUG: Prime indicators: rendergpuVendor 0x%x, rendergpuModel 0x%x, displaygpuModel 0x%x displaygpuType 0x%x.\n", rendergpuVendor, rendergpuModel, gpuModel, gpuMaintype);
         if (PsychPrefStateGet_Verbosity() >= 3) printf("PTB-INFO: Hybrid graphics setup with DRI PRIME muxless render offload detected.\n");
 
         // Prime renderoffload only works with proper timing and quality if DRI3/Present

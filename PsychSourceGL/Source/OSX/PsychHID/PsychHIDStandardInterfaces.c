@@ -167,6 +167,7 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     double *timeValueOutput, *isKeyDownOutput, *keyArrayOutput;
     double dummyKeyDown;
     double dummykeyArrayOutput[256];
+    psych_bool visited[256] = { 0 };
     uint32_t usage, usagePage;
     int nout, value;
 
@@ -226,7 +227,11 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
     // secure password entry field active in another process, i.e., EnableSecureEventInput() active.
     if (PsychHIDWarnInputDisabled("PsychHID('KbCheck')")) return(PsychError_none);
 
-    //step through the elements of the device.  Set flags in the return array for down keys.
+    // Step through the elements of the device.  Set flags in the return array for down keys.
+    // Note: Since Apples macOS 10.15 Catalina trainwreck, HIDGetNextDeviceElement() and IOHIDElement_GetValue()
+    //       are about 100x slower than before, because of fucked up implementations of IOHIDDeviceCopyMatchingElements()
+    //       and IOHIDDeviceGetValue(). Now we need to try optimization tricks to minimize calls to these to get exec
+    //       time down from over 90 msecs to about 3.4 msecs. Thanks Apple!
     for (currentElement = HIDGetFirstDeviceElement(deviceRecord, kHIDElementTypeInput | kHIDElementTypeCollection);
          (currentElement != NULL) && (currentElement != lastElement);
          currentElement = HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput | kHIDElementTypeCollection)) {
@@ -235,7 +240,9 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
 
         usage = IOHIDElementGetUsage(currentElement);
         usagePage = IOHIDElementGetUsagePage(currentElement);
-        // printf("PTB-DEBUG: [KbCheck]: ce %p page %d usage: %d isArray: %d\n", currentElement, usagePage, usage, IOHIDElementIsArray(currentElement));
+        if (debuglevel > 0)
+            printf("PTB-DEBUG: [KbCheck]: ce %p page %d usage: %d isArray: %d isCollection: %d\n", currentElement, usagePage, usage,
+                   IOHIDElementIsArray(currentElement), IOHIDElementGetType(currentElement) == kIOHIDElementTypeCollection);
 
         if (IOHIDElementGetType(currentElement) == kIOHIDElementTypeCollection) {
             CFArrayRef children = IOHIDElementGetChildren(currentElement);
@@ -247,28 +254,42 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
                 if (tIOHIDElementRef && ((IOHIDElementGetType(tIOHIDElementRef) == kIOHIDElementTypeInput_Button) ||
                                          (IOHIDElementGetType(tIOHIDElementRef) == kIOHIDElementTypeInput_ScanCodes))) {
                     usage = IOHIDElementGetUsage(tIOHIDElementRef);
-                    if ((usage <= 256) && (usage >= 1) && ( (scanList == NULL) || (scanList[usage - 1] > 0) )) {
+                    if ((usage <= 256) && (usage >= 1) && ( (scanList == NULL) || (scanList[usage - 1] > 0) ) && !visited[usage - 1]) {
                         value = (int) IOHIDElement_GetValue(tIOHIDElementRef, kIOHIDValueScaleTypePhysical);
-                        if (debuglevel > 0) printf("PTB-DEBUG: [KbCheck]: usage: %x value: %d \n", usage, value);
+                        if (debuglevel > 0) printf("PTB-DEBUG: [KbCheck]:A: usage: %x value: %d \n", usage, value);
                         keyArrayOutput[usage - 1] = (value || (int) keyArrayOutput[usage - 1]);
                         *isKeyDownOutput = keyArrayOutput[usage - 1] || *isKeyDownOutput;
+                        visited[usage - 1] = TRUE;
                     }
                 }
             }
 
             // Done with this currentElement, which was a collection of buttons/keys.
-            // Iterate to next currentElement:
-            continue;
+            // Did all elements so far cover and update all the output slots we care about?
+            for (usage = 0; usage < 255; usage++) {
+                if (((scanList == NULL) || (scanList[usage] > 0)) && !visited[usage])
+                    break;
+            }
+
+            // If at least one required output slot has not been visited and updated, then we need
+            // to check further currentElement's, so continue iteration to the next one:
+            if (usage < 255)
+                continue;
+
+            // We visited and updated all output slots already though, so no need to
+            // continue iterating over HID device elements.
+            break;
         }
 
         // Classic path, or 64-Bit path for non-collection elements:
         if (((usagePage == kHIDPage_KeyboardOrKeypad) || (usagePage == kHIDPage_Button)) && (usage <= 256) && (usage >= 1) &&
-            ( (scanList == NULL) || (scanList[usage - 1] > 0) ) ) {
+            ( (scanList == NULL) || (scanList[usage - 1] > 0) ) && !visited[usage - 1]) {
             value = (int) IOHIDElement_GetValue(currentElement, kIOHIDValueScaleTypePhysical);
 
-            if (debuglevel > 0) printf("PTB-DEBUG: [KbCheck]: usage: %x value: %d \n", usage, value);
+            if (debuglevel > 0) printf("PTB-DEBUG: [KbCheck]:B: usage: %x value: %d \n", usage, value);
             keyArrayOutput[usage - 1]=(value || (int) keyArrayOutput[usage - 1]);
             *isKeyDownOutput= keyArrayOutput[usage - 1] || *isKeyDownOutput;
+            visited[usage - 1] = TRUE;
         }
     }
 
@@ -907,7 +928,12 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     psych_bool verbose = getenv("PSYCHHID_TELLME") != NULL;
     // Initialize keyboardLayout and kbdType, used by the keyboard queue thread for mapping keycodes to cooked characters:
     TISInputSourceRef currentKeyboard = TISCopyCurrentKeyboardInputSource();
-    CFDataRef uchr = (CFDataRef) ((currentKeyboard) ? TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData) : NULL);
+    __block CFDataRef uchr = NULL;
+
+    // Since the macOS 10.15 Catalina trainwreck, TISGetInputSourceProperty() must execute on the main thread, or crash, because Apple bs!
+    if (currentKeyboard)
+        dispatch_sync(dispatch_get_main_queue(), ^{ uchr = (CFDataRef) TISGetInputSourceProperty(currentKeyboard, kTISPropertyUnicodeKeyLayoutData); });
+
     keyboardLayout = (const UCKeyboardLayout*) ((uchr) ? CFDataGetBytePtr(uchr) : NULL);
     kbdType = LMGetKbdType();
 

@@ -116,12 +116,15 @@ end
 % Initialize the 'res' result struct with it:
 res = conf;
 
-res.measurementType = input('Measure with (p)hotodiode/BNC-Trigger, (v)ideoswitcher or (d)atapixx? Or don''t measure (n)? ', 's');
+res.measurementType = input('Measure with (p)hotodiode/BNC-Trigger, (v)ideoswitcher+RtBox/Bits#, (b)itwhacker or (d)atapixx? Or don''t measure (n)? ', 's');
 useRTbox = [];
 if strcmpi(res.measurementType, 'p')
     useRTbox = 1;
 end
 if strcmpi(res.measurementType, 'v')
+    useRTbox = 2;
+end
+if strcmpi(res.measurementType, 'b')
     useRTbox = 0;
 end
 if strcmpi(res.measurementType, 'd')
@@ -234,6 +237,11 @@ end
 Screen('Preference', 'VBLTimestampingMode', conf.VBLTimestampingMode);
 fprintf('Enabling VBLTimestampingMode %i.\n', conf.VBLTimestampingMode);
 
+if useRTbox == 2
+    % Switch Videoswitcher into high precision luminance + trigger mode:
+    PsychVideoSwitcher('SwitchMode', res.screenId, 1);
+end
+
 try
     if useRTbox == -1
         % Setup Datapixx mode for timestamping:
@@ -342,7 +350,7 @@ try
     WaitSecs(1);
 
     if useRTbox ~= -1000
-        if useRTbox == 1
+        if useRTbox >= 1
             rtbox = PsychRTBox('Open'); %, 'COM5');
 
             % Query and print all box settings inside the returned struct 'boxinfo':
@@ -409,7 +417,7 @@ try
     WaitSecs(1);
 
     % Flash screen in full intensity white:
-    if useRTbox ~= 0
+    if useRTbox && useRTbox ~= 2
         Screen('FillRect', w, 255);
     else
         Screen('DrawLine', w, [255 255 255], 0, 1, 1000, 1, 5);
@@ -486,7 +494,7 @@ try
 
         if useRTbox ~= -1000
             % Measure real onset time:
-            if useRTbox == 1
+            if useRTbox >= 1
                 % Fetch sample immediately to preserve correspondence:
                 mytstamp = PsychRTBox('BoxSecs', rtbox, 0.002, 0.002, 1);
                 if isempty(mytstamp)
@@ -563,7 +571,7 @@ try
 
         % Flash screen in full intensity white: This code in preparation
         % for next loop iterations Screen('Flip') call:
-        if useRTbox
+        if useRTbox && useRTbox ~= 2
             Screen('FillRect', w, 255);
         else
             Screen('DrawLine', w, [255 255 255], 0, 1, 1000, 1, 5);
@@ -609,7 +617,7 @@ try
     WaitSecs(1);
 
     if useRTbox ~= -1000
-        if useRTbox == 1
+        if useRTbox >= 1
             PsychRTBox('Stop', rtbox);
             PsychRTBox('Clear', rtbox);
 
@@ -628,6 +636,12 @@ try
 
             % Close connection to box:
             PsychRTBox('CloseAll');
+
+            if useRTbox == 2
+                % Switch Videoswitcher into high precision luminance + trigger mode:
+                PsychVideoSwitcher('SwitchMode', res.screenId, 1);
+            end
+
         else
             if useRTbox ~= -1
                 BitwhackerBox('Close', bwh);
@@ -756,7 +770,7 @@ catch
     Priority(0);
 
     if useRTbox ~= -1000
-        if useRTbox == 1
+        if useRTbox >= 1
             if exist('rtbox','var')
                 % Close connection to box:
                 PsychRTBox('CloseAll');

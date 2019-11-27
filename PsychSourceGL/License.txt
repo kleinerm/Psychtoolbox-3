@@ -232,6 +232,11 @@
 % Screen on macOS includes code for display brightness control that was adapted
 % from the BSD-2 licensed work of Nicholas Riley at https://github.com/nriley/brightness
 %
+% Screen on macOS, to work around various awful bugs in Apples trainwreck, includes
+% an adapted version of the code from https://github.com/lunixbochs/meta/tree/master/utils/retina
+% That code is Copyright (c) 2013 Ryan Hileman and provided to us and others under the MIT
+% license. Thanks!
+%
 % PsychCV MEX file        - Individual source files BSD-3 or GPL v2+
 %                           license, see their source code for details.
 %                           Compiled MEX file GPL v2+ license. Various

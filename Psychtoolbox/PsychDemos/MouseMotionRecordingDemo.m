@@ -25,6 +25,7 @@ function MouseMotionRecordingDemo
 
 if IsOSX
   fprintf('Sorry, this demo does not work on macOS.\n');
+  return;
 end
 
 % Wait for all keyboard buttons released:
