@@ -1,4 +1,4 @@
-function DrawChromaticity(type)
+function drawChromaticity(type)
 
 % This function provides a standard method for drawing a chromaticity 
 % diagram with a coloured spectral locus. The colouring is only rough,
@@ -17,7 +17,7 @@ function DrawChromaticity(type)
 % - 'MB10' - as above for 10degree
 
 % Example usage: 
-% DrawChromaticity('1931')
+% drawChromaticity('1931')
 
 % 20190810 Written by DG
 
@@ -97,10 +97,10 @@ elseif strcmp(type,'1964') % CIE 1964 chromaticity space
     xlabel('x_{1964}')
     ylabel('y_{1964}')
 elseif strcmp(type,'Phys2') % CIE 1964 chromaticity space
-    xlabel('x_{F}') % `subscript F denoting “cone-fundamental-based”' (CIE 170-2:2015, p.3)
+    xlabel('x_{F}') % `subscript F denoting ï¿½cone-fundamental-basedï¿½' (CIE 170-2:2015, p.3)
     ylabel('y_{F}')
 elseif strcmp(type,'Phys10') % CIE 1964 chromaticity space
-    xlabel('x_{F,10}') % `subscript F denoting “cone-fundamental-based”' (CIE 170-2:2015, p.3)
+    xlabel('x_{F,10}') % `subscript F denoting ï¿½cone-fundamental-basedï¿½' (CIE 170-2:2015, p.3)
     ylabel('y_{F,10}')
 elseif strcmp(type,'uv') % CIE u' v' (u-prime, v-prime)
     xlabel('u_{1960}')
