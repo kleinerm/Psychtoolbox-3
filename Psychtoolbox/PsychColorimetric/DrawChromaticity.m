@@ -1,6 +1,6 @@
-function drawChromaticity(type)
+function DrawChromaticity(type)
 
-% This function provides a standard method for drawing a chromaticity 
+% This function provides a standard method for drawing a chromaticity
 % diagram with a coloured spectral locus. The colouring is only rough,
 % since monitors will not be able to reproduce spectral colours, but should
 % provide an indication as to the orientation of colourspace.
@@ -16,13 +16,21 @@ function drawChromaticity(type)
 %   based on Stockman/Sharpe fundamentals
 % - 'MB10' - as above for 10degree
 
-% Example usage: 
-% drawChromaticity('1931')
+% Example usage:
+% DrawChromaticity('1931')
 
-% 20190810 Written by DG
+% 10-Aug-2019 dg  Written by DG
+% 28-Nov-2019 mk  Fixup naming of file and function so Octave does not complain
+%                 and online help generator does not choke on it. Also fix Octave
+%                 load path warning.
 
 if ~exist('type','var') % if a type of colourspace is not specified, assume CIE 1931
     type = '1931';
+end
+
+if IsOctave
+    % Suppress Octave warning about the load instruction without path below:
+    warning('off', 'Octave:data-file-in-path', 'local');
 end
 
 %% Calculate sRGB values
@@ -116,7 +124,7 @@ elseif strcmp(type,'MB10') % MacLeod Boynton 10degree
     ylabel('{\its}_{MB,10}')
 end
 
-if any([strcmp(type,'1931'),strcmp(type,'upvp'),strcmp(type,'Phys2'),strcmp(type,'Phys10')]) 
+if any([strcmp(type,'1931'),strcmp(type,'upvp'),strcmp(type,'Phys2'),strcmp(type,'Phys10')])
     axis equal
     axis([0 1 0 1])
 elseif or(strcmp(type,'MB2'),strcmp(type,'MB10'))
