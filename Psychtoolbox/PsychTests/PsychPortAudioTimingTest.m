@@ -119,7 +119,7 @@ end
 reqlatencyclass = 2;
 
 % Requested output frequency, may need adaptation on some audio-hw:
-freq = 48000;       % Must set this. 48 khz most likely to work, as mandated by HDA spec. Common rates: 96khz, 48khz, 44.1khz.
+freq = 44100;       % Must set this. 44.1 khz most likely to work, as shown by experience. Common rates: 96khz, 48khz, 44.1khz.
 buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
 suggestedLatencySecs = [];
 

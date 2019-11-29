@@ -47,7 +47,8 @@ function FlipTimingWithRTBoxPhotoDiodeTest(configFile, targetFolder)
 
 global sd;
 
-AssertOpenGL;
+PsychDefaultSetup(1);
+RestrictKeysForKbCheck(KbName('ESCAPE'));
 
 if (nargin < 1) || isempty(configFile)
     configFile = [ PsychtoolboxRoot 'PsychTests' filesep 'TestConfigurations' filesep 'fliptimingdefaultconfig.mat' ];
@@ -396,6 +397,9 @@ try
         [y, freq ] = psychwavread(wavfilename);
         wavedata = y';
         nrchannels = size(wavedata,1); % Number of rows == number of channels.
+
+        % Override freq to the most commonly supported one, doesn't matter if sound sounds a bit off:
+        freq = 44100;
 
         % Perform basic initialization of the sound driver:
         InitializePsychSound;
