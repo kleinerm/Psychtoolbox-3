@@ -2651,20 +2651,28 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
         targetMSC = msc + ((psych_int64)(floor((tWhen - tMsc) / windowRecord->VideoRefreshInterval) + 1));
         if (windowRecord->vSynced && (targetMSC <= msc)) targetMSC = msc + 1;
 
+        /* DISABLED: This was a neat idea that never worked reliably on any digital display, and sadly
+                     not at all on any tested analog VGA CRT monitor. We don't delete the PsychOSScheduleSoftSyncFlip()
+                     implementation yet, because some of its ideas might be actually useful for VRR soon...
         // Our homegrown "FreeSync" style emulation wanted?
         if ((specialFlags & 0x4) && (windowRecord->specialflags & kPsychUseFineGrainedOnset) && windowRecord->vSynced) {
             // Yes. Check if emulation is possible and do it, if possible:
             rc = PsychOSScheduleSoftSyncFlip(windowRecord, tWhen, targetMSC);
-            PsychUnlockDisplay();
 
             // Successfully executed? Or catastrophic failure? Then we are done.
-            if (rc >= 0 || rc == -4)
+            if (rc >= 0 || rc == -4) {
+                PsychUnlockDisplay();
                 return(rc);
+            }
 
             // Unsupported or impossible. Fall back to standard swap:
             if (PsychPrefStateGet_Verbosity() > 10)
                 printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: SoftSync swap unsupported or impossible atm. Fallback to standard swap.\n");
         }
+        */
+    }
+    else {
+        PsychLockDisplay();
     }
 
     // Clamp targetMSC to a positive non-zero value, unless special case
