@@ -73,6 +73,8 @@ static int pointerBarrierCount = 0;
 // Backup for old screen saver settings before disable:
 static int oldscreensaver[4];
 
+static psych_int64 PsychOSGetPostSwapSBC(PsychWindowRecordType *windowRecord);
+
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
  *    PsychRealtimePriority(true) enables realtime-scheduling (like Priority(>0) would do in Matlab).
  *    PsychRealtimePriority(false) restores scheduling to the state before last invocation of PsychRealtimePriority(true),
@@ -338,7 +340,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     int windowLevel;
     int major, minor;
     psych_bool newstyle_setup = FALSE;
-    int gpuMaintype = 0;
+    int gpuMaintype = 0, gpuMinortype = 0;
     const char* mesaver = NULL;
     psych_bool mesamapi_strdupbug = FALSE;
     int saved_default_screen = 0;
@@ -349,6 +351,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // First opened onscreen window? If so, we try to map GPU MMIO registers
     // to enable beamposition based timestamping and other special goodies:
     if (x11_windowcount == 0) PsychScreenMapRadeonCntlMemory();
+
+    PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL);
 
     // Retrieve windowLevel, an indicator of where non-fullscreen windows should
     // be located wrt. to other windows. 0 = Behind everything else, occluded by
@@ -813,7 +817,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     //
     // UPDATE June-2015: Use old style setup also on KDE with multiple X-Screens, not only multiple outputs
     // on one X-Screen. Otherwise at least the future KDE 5.3 Plasma desktop will do stupid things.
-    PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, NULL, NULL, NULL);
     if (!getenv("PSYCH_NEW_OVERRIDEREDIRECT") &&
         ((PsychPrefStateGet_ConserveVRAM() & kPsychOldStyleOverrideRedirect) ||
         !getenv("KDE_FULL_SESSION") || (PsychScreenToHead(screenSettings->screenNumber, 1) >= 0) ||
@@ -1372,7 +1375,152 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         XRRFreeCrtcInfo(crtc_info);
     }
 
-    PsychUnlockDisplay();
+    // Running on the Mesa OpenGL library? Then we can probe for and setup VRR supported by the
+    // FOSS driver stack:
+    if (mesaversion[0] > 0) {
+        // Check if video output is vrr_capable == true. This would mean the Linux kernel + DRM/KMS
+        // driver combo supports VRR and runs on a GPU that supports VRR and we are displaying on a
+        // display that is VRR capable and enabled:
+        XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
+        Atom vrr_supported_atom = XInternAtom(dpy, "vrr_capable", True);
+        RROutput output = resources->outputs[0];
+        unsigned char *prop = NULL;
+        unsigned long nitems = 0;
+        unsigned long bytes_after;
+        Atom actual_type;
+        int actual_format;
+        int major, minor;
+        psych_bool vrr_supported = FALSE;
+        psych_bool vrr_wanted = windowRecord->specialflags & kPsychUseFineGrainedOnset ? TRUE : FALSE;
+
+        if (vrr_supported_atom &&
+            (XRRGetOutputProperty(dpy, output, vrr_supported_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) &&
+            (actual_type == XA_INTEGER) && (nitems == 1) && (actual_format == 32)) {
+
+            vrr_supported = (*((long *) prop) > 0) ? TRUE : FALSE;
+        }
+
+        if (prop)
+            XFree(prop);
+
+        XRRFreeScreenResources(resources);
+
+        PsychUnlockDisplay();
+
+        PsychOSGetLinuxVersion(&major, &minor, NULL);
+
+        if (vrr_wanted && (!(windowRecord->specialflags & kPsychIsFullscreenWindow) || (PsychPrefStateGet_WindowShieldingLevel() < 2000))) {
+            vrr_wanted = FALSE;
+            vrr_supported = FALSE;
+
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Can not enable Variable Refresh Rate mode for this onscreen window, because\n");
+                printf("PTB-WARNING: the window is not an opaque unoccluded top-level fullscreen window. Only use\n");
+                printf("PTB-WARNING: such unoccluded opaque fullscreen windows for VRR mode. -> 'help VRRSupport'\n");
+            }
+        }
+
+        if (vrr_wanted && !(major > 5 || (major == 5 && minor >= 2))) {
+            // Game over:
+            vrr_wanted = FALSE;
+            vrr_supported = FALSE;
+
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Can not enable Variable Refresh Rate mode for this fullscreen window on this display.\n");
+                printf("PTB-WARNING: Your Linux kernel is too old. You need at least Linux 5.2 for research-grade support\n");
+                printf("PTB-WARNING: on suitable AMD gpus, possibly more modern kernels for other suitable gpus.\n");
+                printf("PTB-WARNING: The more modern kernel, the better. -> 'help VRRSupport'\n");
+            }
+        }
+
+        // VRR wanted, but not supported by hardware or Linux kernel?
+        if (vrr_wanted && !vrr_supported) {
+            // Game over:
+            vrr_wanted = FALSE;
+
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Can not enable Variable Refresh Rate mode for this fullscreen window on this display.\n");
+                if (nitems != 1) {
+                    // vrr_capable property missing - no kms driver support:
+                    printf("PTB-WARNING: Your Linux kernel driver does not support Variable Refresh Rate on your graphics card.\n");
+                    if (gpuMaintype == kPsychRadeon) {
+                        // AMD gpu:
+                        printf("PTB-WARNING: You need an AMD gpu of at least the Sea Islands gpu family (Graphics Core Next 2nd Gen)\n");
+                        printf("PTB-WARNING: controlled by the amdgpu-kms driver in Linux 5.2 or later, with the AMD display core\n");
+                        printf("PTB-WARNING: DC enabled. This is the case for Volcanic Islands gpus (Graphics Core Next 3rd Gen) and later,\n");
+                        printf("PTB-WARNING: but some Sea Islands gpus need you to add the following kernel boot parameters:\n");
+                        printf("PTB-WARNING: radeon.cik_support=0 amdgpu.cik_support=1 amdgpu.dc=1.\n");
+                    }
+                    else {
+                        printf("PTB-WARNING: Upgrade to a sufficiently modern Linux kernel for your graphics card.\n");
+                    }
+                }
+                else {
+                    printf("PTB-WARNING: Either the display or the video cable does not support it. You need a FreeSync or DisplayPort\n");
+                    printf("PTB-WARNING: adaptive sync capable display, connected via Displayport, eDP, or maybe HDMI2.1 VRR.\n");
+                }
+                printf("PTB-WARNING: -> 'help VRRSupport'\n");
+            }
+        }
+
+        // VRR wanted and supported by hw and kernel, but wrong XOrg video driver DDX? The X-Server version
+        // does not matter, but the type and version of the DDX does:
+        if (vrr_wanted && vrr_supported && PsychOSX11ScreenUsesModesettingDDX(screenSettings->screenNumber)) {
+            // modesetting-ddx in use, this currently won't work as of 2019 / X-Server 1.20.5:
+            vrr_wanted = FALSE;
+            vrr_supported = FALSE;
+
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: Can not enable Variable Refresh Rate mode for this fullscreen window on this display.\n");
+                printf("PTB-WARNING: You are using the modesetting-ddx video driver, which prevents this. Switch to the\n");
+                printf("PTB-WARNING: vendor specific driver via use of XOrgConfCreator + XOrgConfSelector. -> 'help VRRSupport'\n");
+            }
+        }
+
+        if (vrr_wanted && vrr_supported) {
+            // Display + video cable + GPU + Linux DRM/KMS + libdrm is VRR capable and enabled.
+            // Ditto for the X-Server and probably the X-Video DDX driver and Mesa.
+            //
+            // Mark window as VRR capable with native Linux FOSS VRR support:
+            windowRecord->gfxcaps |= kPsychGfxCapLinuxVRR;
+        }
+
+        // Yes. Perform VRR enable or disable sequence.
+        unsigned int state;
+        Atom vrr_atom;
+
+        // Running on Mesa 19.0.0 or later with DRI3/Present support for VRR?
+        if (vrr_supported && (mesaversion[0] >= 19)) {
+            // Yes. Perform an OpenGL bufferswap, so Mesa can set up VRR state according to its opinion and
+            // system settings and then we can override it with our own opinion:
+            glClearColor(0, 0, 0, 0);
+            glClear(GL_COLOR_BUFFER_BIT);
+            PsychOSFlipWindowBuffers(windowRecord);
+            PsychOSGetPostSwapSBC(windowRecord);
+        }
+
+        // X11 window properties are set not for en-/disable of VRR, but we do want to let user-script
+        // decide if VRR should be on or off, so override accordingly. Use of VRR requested by user script?
+        if (vrr_wanted && vrr_supported) {
+            // Yes: Set proper X11 window atom to request VRR mode from the driver:
+            state = 1;
+
+            if (PsychPrefStateGet_Verbosity() > 2)
+                printf("PTB-INFO: Enabling VRR Variable Refresh Rate mode for this fullscreen window on Mesa graphics driver.\n");
+        }
+        else {
+            // No: Clear proper X11 window atom to disable VRR mode in the driver:
+            state = 0;
+
+            if (PsychPrefStateGet_Verbosity() > 3)
+                printf("PTB-INFO: Disabling VRR Variable Refresh Rate mode for this fullscreen window on Mesa graphics driver.\n");
+        }
+
+        PsychLockDisplay();
+        vrr_atom = XInternAtom(dpy, "_VARIABLE_REFRESH", False);
+        XChangeProperty(dpy, win, vrr_atom, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &state, 1);
+        PsychUnlockDisplay();
+    }
 
     // Try to enable swap event delivery to us:
     if (PsychOSSwapCompletionLogging(windowRecord, 2, 0) && (PsychPrefStateGet_Verbosity() > 3)) {
@@ -2121,7 +2269,6 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 
     psych_int64 ust, msc, sbc, oldmsc, oldust, finalmsc;
     psych_bool failed = FALSE;
-    struct utsname unameresult;
     char extraversionsignature[512];
     int major = 0, minor = 0, patchlevel = 0, extralevel = 0;
 
@@ -2129,12 +2276,10 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     PsychSetGLContext(windowRecord);
 
     // Check if we are running on a version of Linux 3.13 - 3.15 with broken nouveau-kms pageflip completion events:
-    uname(&unameresult);
-    sscanf(unameresult.release, "%i.%i.%i", &major, &minor, &patchlevel);
+    PsychOSGetLinuxVersion(&major, &minor, &patchlevel);
 
     // We check Linux versions 3.13 to 3.15 for broken kms-pageflip events if we are running on nouveau-kms.
-    // Exceptions are -rc release candidate kernels, so MK can still use rc's built from git/source for patch testing.
-    if ((((major == 3) && ((minor >= 13) && (minor <= 15))) && !strstr(unameresult.release, "-rc")) && strstr((const char *) glGetString(GL_VENDOR), "nouveau")) {
+    if (((major == 3) && ((minor >= 13) && (minor <= 15))) && strstr((const char *) glGetString(GL_VENDOR), "nouveau")) {
         // Potentially faulty nouveau-kms. Check against the known kernel patchlevels when the bug was fixed:
         // We know Linux stable kernels 3.13.11.5+, 3.14.12+ and 3.15.5+ are fixed.
         // As far as Ubuntu distribution kernels go, we know the ones based on 3.13.11.5+ are fine,
@@ -2145,15 +2290,9 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
             windowRecord->specialflags |= kPsychNeedOpenMLTSWorkaround;
         }
 
-        if ((minor == 13) && (patchlevel > 0) && (patchlevel < 11)) {
-            // Not fixed 3.13.1 - 3.13.10 kernel:
+        if ((minor == 13) && (patchlevel > 0) && (patchlevel < 12)) {
+            // Not fixed 3.13.1 - 3.13.11 kernel:
             windowRecord->specialflags |= kPsychNeedOpenMLTSWorkaround;
-        }
-
-        if ((minor == 13) && (patchlevel == 11)) {
-            // 3.13.11.x kernel. What is x? Smaller than 5 means a not fixed < 3.13.11.5 kernel:
-            sscanf(unameresult.release, "%*i.%*i.%*i.%i", &extralevel);
-            if (extralevel < 5) windowRecord->specialflags |= kPsychNeedOpenMLTSWorkaround;
         }
 
         // Finally a special case check for Ubuntu distribution kernels:
@@ -2189,7 +2328,7 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
         // Yes. kms driver on these kernels delivers faulty data inside its kms-pageflip completion events, so although
         // return from glXWaitForSbcOML() can be trusted to mean swap-completion, the msc and ust timestamp are wrong.
         if ((windowRecord->specialflags & kPsychNeedOpenMLTSWorkaround) && (PsychPrefStateGet_Verbosity() >= 3)) {
-            printf("PTB-INFO: Your Linux kernel %s has a slightly faulty nouveau graphics driver. Enabling a workaround.\n", unameresult.release);
+            printf("PTB-INFO: Your Linux kernel has a slightly faulty nouveau graphics driver. Enabling a workaround.\n");
             printf("PTB-INFO: Please upgrade your kernel to the latest stable version as soon as possible to avoid the workaround.\n");
         }
     }
@@ -2296,6 +2435,65 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
         if (PsychPrefStateGet_Verbosity() > 1) {
             printf("PTB-WARNING: Spurious failure of glXGetSyncValuesOML(). Could not perform some correctness tests. Something may be broken in your systems timestamping!\n");
         }
+    }
+
+    // Linux native VRR support enabled?
+    if (PsychVRRActive(windowRecord) && (windowRecord->gfxcaps & kPsychGfxCapLinuxVRR)) {
+        double tFirst, tLast, tNominal, tMeasured;
+        int i, good = 0;
+
+        // Yes, ostensibly. We know usercode requested it and the Linux kernel + gpu/cable/display
+        // hardware supports it, and we requested it from the XOrg display driver. What we don't
+        // know yet is if the XOrg ddx is of a suitable minimum version and if it is enabled in the
+        // xorg.conf. The only way to find out is by looking for telltale signs of it via measurement.
+        //
+        // Execute a bufferswap, then another one back-to-back, but 1.25 nominal video refresh durations
+        // after the 1st one. Wait for swap completion and check timestamps. If VRR is active, we should
+        // see swap completion roughly 1.25 refreshes later. If VRR is inactive/disabled, then we should
+        // see it complete at least 2.0 refresh durations later.
+        tNominal = 1.0 / ((double) PsychGetNominalFramerate(windowRecord->screenNumber));
+
+        if (PsychPrefStateGet_Verbosity() > 9)
+            printf("\nPTB-DEBUG: VRR quick test...\n");
+
+        // Run 10 trials:
+        for (i = 0; i < 10; i++) {
+            glClear(GL_COLOR_BUFFER_BIT);
+            PsychOSFlipWindowBuffers(windowRecord);
+            PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tFirst);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glFinish();
+            PsychWaitUntilSeconds(tFirst + 1.25 * tNominal);
+            PsychOSFlipWindowBuffers(windowRecord);
+            PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tLast);
+            tMeasured = tLast - tFirst;
+            if (tMeasured < 1.9 * tNominal)
+                good++;
+
+            if (PsychPrefStateGet_Verbosity() > 9)
+                printf("PTB-DEBUG: [%i of %i] Msecs: %f vs. %f [nominal %f]\n", good, i + 1, 1000.0 * tMeasured, 1000.0 * 1.9 * tNominal, 1000.0 * tNominal);
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 9)
+            printf("\n");
+
+        // At least 7 out of 10 as expected for VRR?
+        if (good < 7) {
+            // Nope: Mark VRR as unsupported:
+            windowRecord->gfxcaps &= ~kPsychGfxCapLinuxVRR;
+
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: The VRR startup tests failed for this window. Seems Variable Refresh Rate doesn't work or\n");
+                printf("PTB-WARNING: is disabled. This could be due to either the XOrg video driver (DDX) being too old, or due\n");
+                printf("PTB-WARNING: to VRR being disabled in the XOrg config settings. In the latter case, use XOrgConfCreator +\n");
+                printf("PTB-WARNING: XOrgConfSelector + logout + login to enable VRR.\n");
+                printf("PTB-WARNING: In the former case, update your XOrg DDX video driver. For AMD graphics cards you need at\n");
+                printf("PTB-WARNING: least version 19.0 of the xf86-video-amdgpu driver. -> 'help VRRSupport'\n");
+                printf("PTB-WARNING: [%i out of %i successful test trials, at least 7 successful ones needed.]\n\n", good, i);
+            }
+        }
+        else if (PsychPrefStateGet_Verbosity() > 9)
+            printf("PTB-DEBUG: All good.\n");
     }
 
     #else
@@ -2650,6 +2848,13 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
         tMsc = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
         targetMSC = msc + ((psych_int64)(floor((tWhen - tMsc) / windowRecord->VideoRefreshInterval) + 1));
         if (windowRecord->vSynced && (targetMSC <= msc)) targetMSC = msc + 1;
+
+        // If Linux builtin VRR is active atm. then we return the "unsupported" status code -1
+        // to let conventional swap scheduling handle this in the fallback path:
+        if (PsychVRRActive(windowRecord)) {
+            PsychUnlockDisplay();
+            return(-1);
+        }
 
         /* DISABLED: This was a neat idea that never worked reliably on any digital display, and sadly
                      not at all on any tested analog VGA CRT monitor. We don't delete the PsychOSScheduleSoftSyncFlip()
@@ -3427,7 +3632,8 @@ psych_bool PsychVRRActive(PsychWindowRecordType *windowRecord)
         return(TRUE);
 
     // Is this a VRR capable (HDMI VRR / DP adaptive sync / FreeSync) gpu, e.g., from AMD or Intel?
-    // TODO...
+    if (windowRecord->gfxcaps & kPsychGfxCapLinuxVRR)
+        return(TRUE);
 
     // Nope, VRR inactive or unsupported:
     return(FALSE);

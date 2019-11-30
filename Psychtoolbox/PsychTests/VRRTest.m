@@ -98,11 +98,6 @@ if nargin < 5
     screenNumber = [];
 end
 
-% Disable OpenML swap scheduling, as vblank count based scheduling is
-% meaningless in VRR mode. Instead simply wait for target presentation
-% time to be reached, then glXSwapBuffers():
-Screen('Preference','ConserveVRAM', 524288);
-
 try
     % Standard settings and key mappings. ESCape key aborts early, before
     % n samples are done:

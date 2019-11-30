@@ -401,7 +401,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     // Call the OS specific low-level Window & Context setup routine:
     if (!PsychOSOpenOnscreenWindow(screenSettings, (*windowRecord), numBuffers, stereomode, conserveVRAM)) {
-        printf("\nPTB-ERROR[Low-Level setup of window failed]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n");
+        printf("\nPTB-ERROR[Low-Level setup of window failed]:The specified gpu + display + gfx-driver combo may not support some requested feature.\n\n");
         FreeWindowRecordFromPntr(*windowRecord);
         return(FALSE);
     }
@@ -1717,7 +1717,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // want to spoil somebodys study just because s(he) is relying on a non-working sync.
         if (PsychPrefStateGet_Verbosity() > 0) {
             printf("\n\n");
-            printf("----- ! PTB - ERROR: SYNCHRONIZATION FAILURE ! ----\n\n");
+            printf("----- ! PTB - ERROR: SYNCHRONIZATION FAILURE ! -----\n\n");
             printf("One or more internal checks (see Warnings above) indicate that synchronization\n");
             printf("of Psychtoolbox to the vertical retrace (VBL) is not working on your setup.\n\n");
             printf("This will seriously impair proper stimulus presentation and stimulus presentation timing!\n");
@@ -1749,6 +1749,37 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     // Ok, basic syncing to VBL seems to work and we have a valid estimate of monitor refresh interval...
 
+    // VRR requested, but not working?
+    if (((*windowRecord)->specialflags & kPsychUseFineGrainedOnset) && !PsychVRRActive(*windowRecord)) {
+        // We abort, unless in skip_synctests mode. If the usercode requires VRR for this study then it
+        // would screw up the results if we'd run fixed refresh rate instead:
+        if (PsychPrefStateGet_Verbosity() > 0) {
+            printf("\n\n");
+            printf("----- ! PTB - ERROR: VRR FAILURE ! -----\n\n");
+            printf("One or more internal checks (see Warnings above) indicate that Variable Refresh Rate mode (VRR)\n");
+            printf("for fine-grained stimulus onset timing is not working for this onscreen window on your setup.\n\n");
+            printf("This will seriously impair proper stimulus presentation timing!\n");
+            printf("Please read 'help VRRSupport' for information about how to solve the problem.\n");
+            printf("You can force Psychtoolbox to continue, despite the severe problems, by adding the command\n");
+            printf("Screen('Preference', 'SkipSyncTests', 1); at the top of your script, if you really know what you are doing.\n\n\n");
+        }
+
+        // Abort right here if sync tests are enabled:
+        if (!skip_synctests) {
+            // We abort! Close the onscreen window:
+            PsychOSCloseWindow(*windowRecord);
+
+            // Free the windowRecord:
+            FreeWindowRecordFromPntr(*windowRecord);
+
+            // Done. Return failure:
+            return(FALSE);
+        }
+
+        // Flash our visual warning bell at alert-level for 1 second if skipping sync tests is requested:
+        PsychVisualBell((*windowRecord), 1, 2);
+    }
+
     // Check for mismatch between measured ifi from beamposition and from VBLSync method.
     // This would indicate that the beam position is reported from a different display device
     // than the one we are VBL syncing to. -> Trouble!
@@ -1768,7 +1799,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // If OpenML timestamping is available then beamposition queries are not needed anyway, so no reason to make a big fuss...
         if ((PsychPrefStateGet_Verbosity() > 1) && ((PsychPrefStateGet_VBLTimestampingMode() != 4) || ((*windowRecord)->specialflags & kPsychOpenMLDefective))) {
             printf("\n\n");
-            printf("----- ! PTB - WARNING: SYNCHRONIZATION TROUBLE ! ----\n\n");
+            printf("----- ! PTB - WARNING: SYNCHRONIZATION TROUBLE ! -----\n\n");
             printf("One or more internal checks (see Warnings above) indicate that\n");
             printf("queries of rasterbeam position are not properly working for your setup.\n\n");
             printf("Psychtoolbox will work around this by using a different timing algorithm, \n");
@@ -3692,6 +3723,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // Calculate final deadline for deadline-miss detection:
     tshouldflip = tshouldflip + slackfactor * currentflipestimate;
 
+    // In VRR mode, if a specific target time flipwhen is given and > 1 minimum
+    // frame duration away, then set that as tshouldflip + 1 msec slack:
+    if (PsychVRRActive(windowRecord) && (flipwhen > 0) && (flipwhen > tshouldflip))
+        tshouldflip = flipwhen + 0.001;
+
     if (!(windowRecord->specialflags & kPsychSkipSwapForFlipOnce)) {
         // Low level queries to the driver:
         // We query the timestamp and count of the last vertical retrace. This is needed for
@@ -4424,7 +4460,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // creation of the onscreen window from the check, as deadline-miss is expected
         // in that case. We also disable the skipped frame detection if our own home-grown
         // frame-sequential stereo mode is active, as the detector can't work sensibly with it:
-        if ((time_at_vbl > tshouldflip) && (windowRecord->time_at_last_vbl!=0) && (windowRecord->stereomode != kPsychFrameSequentialStereo)) {
+        if ((time_at_vbl > tshouldflip) && (windowRecord->time_at_last_vbl != 0) && (windowRecord->stereomode != kPsychFrameSequentialStereo)) {
             // Deadline missed!
             windowRecord->nr_missed_deadlines = windowRecord->nr_missed_deadlines + 1;
         }
