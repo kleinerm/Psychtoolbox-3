@@ -826,6 +826,17 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     if (PsychGetGPUSpecs(screenSettings->screenNumber, NULL, NULL, NULL, &numDisplayHeads))
         PsychAutoDetectScreenToHeadMappings(numDisplayHeads);
 
+    // VRR handling for all macOS drivers: Newsflash: The "most advanced operating system in the world"
+    // doesn't support VRR at all as of 10.15.1 "Catalina":
+    if (windowRecord->vrrMode) {
+        if (PsychPrefStateGet_Verbosity() > 1)
+            printf("PTB-WARNING: Unsupported VRR mode %i requested. macOS does not support VRR *at all*!\n", windowRecord->vrrMode);
+
+        // Pass through as simple mode, because our caller needs to know if VRR was requested
+        // to be enabled - this then triggers proper error handling in caller:
+        windowRecord->vrrMode = 2;
+    }
+
     // Done.
     return(TRUE);
 }

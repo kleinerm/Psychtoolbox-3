@@ -161,6 +161,11 @@ try
     % Get window info struct about onscreen fullscreen window:
     winfo = Screen('GetWindowInfo', w);
 
+    fprintf('Actual chosen VRR mode: %i\n', winfo.VRRMode);
+    if winfo.VRRMode == 0
+        fprintf('WARNING: VRR unsupported on this hardware + software combo! Fixed refresh is used!!!\n');
+    end
+
     % In hwmeasurement 0 mode - no measurement - display a texture with testImage,
     % as a means to check for visual artifacts of flicker:
     if hwmeasurement == 0

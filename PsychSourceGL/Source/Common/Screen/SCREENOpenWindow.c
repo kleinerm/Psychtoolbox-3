@@ -315,9 +315,6 @@ PsychError SCREENOpenWindow(void)
         if (vrrMode < 0 || vrrMode > 2)
             PsychErrorExitMsg(PsychError_user, "Invalid 'vrrParams' provided. Scalar or 1st vector component must be a mode of 0, 1 or 2.");
 
-        if (vrrMode == 1 || vrrMode == 2)
-            specialflags |= kPsychUseFineGrainedOnset;
-
         // Get optional vmin, vmax duration parameters, corresponding to the displays maximum and minimum refresh rate in VRR mode:
         vrrMinDuration  = (n >= 2) ? vrrParams[1] : 0;
         if (vrrMinDuration < 0)
@@ -336,7 +333,7 @@ PsychError SCREENOpenWindow(void)
         if (vrrMaxDuration < 0)
             PsychErrorExitMsg(PsychError_user, "Invalid 'vrrParams' provided. 3rd vector component must be vrrMaxDuration in seconds. 0 for unknown/auto-detect, or > 0 seconds.");
 
-        if (vrrMinDuration != 0 && vrrMaxDuration != 0 && vrrMaxDuration < vrrMinDuration)
+        if (vrrMaxDuration != 0 && vrrMaxDuration < vrrMinDuration)
             PsychErrorExitMsg(PsychError_user, "Invalid 'vrrParams' provided. vrrMinDuration must be 0 or smaller than vrrMaxDuration. 0 for unknown/auto-detect, or > 0 seconds.");
     }
     else {
@@ -499,7 +496,7 @@ PsychError SCREENOpenWindow(void)
     // is enabled without multisampling support, as we do all the multisampling stuff ourselves
     // within the imaging pipeline with multisampled drawbuffer FBO's...
     didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, ((imagingmode==0 || imagingmode==kPsychNeedFastOffscreenWindows) ? multiSample : 0),
-                                          sharedContextWindow, specialflags);
+                                          sharedContextWindow, specialflags, vrrMode, vrrMinDuration, vrrMaxDuration);
     if (!didWindowOpen) {
         if (!dontCaptureScreen) {
             PsychRestoreScreenSettings(screenNumber);

@@ -1375,6 +1375,37 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         XRRFreeCrtcInfo(crtc_info);
     }
 
+    // VRR handling for all Linux X11/GLX drivers, ie. currently Mesa/FOSS/Linux VRR and G-Sync:
+    // Mode selection: 0 (off) stays 0 (off), 1 (auto) maps to 2 (simple), and 2 (simple) stays 2 (simple):
+    switch (windowRecord->vrrMode) {
+        case 0: // Disable VRR:
+            windowRecord->vrrMode = 0;
+            break;
+
+        case 1: // Automatic selection of optimal supported method for this setup. Currently simply mode 2:
+            windowRecord->vrrMode = 2;
+            break;
+
+        case 2: // Classic / Legacy / Dumb VRR - Just swapbuffers when asked to:
+            windowRecord->vrrMode = 2;
+            break;
+
+        default:
+            windowRecord->vrrMode = 0;
+            if (PsychPrefStateGet_Verbosity() > 1)
+                printf("PTB-WARNING: Unsupported VRR mode %i requested. Disabling VRR.\n", windowRecord->vrrMode);
+    }
+
+    // Use vrrMinDuration "as is". Either userspace provided, or reasonable default of
+    // video refresh duration of current video mode, which defines the lowest duration
+    // currently doable on the current VRR hardware implementations:
+    windowRecord->vrrMinDuration = windowRecord->vrrMinDuration;
+
+    // vrrMaxDuration: If provided by userspace, use it "as is". If not provided, our
+    // best guess is 33.3333 msecs corresponding to a minimum refresh rate of 30 Hz,
+    // which seems to be what NVidia G-Sync displays and better FreeSync displays can do:
+    windowRecord->vrrMaxDuration = windowRecord->vrrMaxDuration ? windowRecord->vrrMaxDuration : 1.0 / 30.0;
+
     // Running on the Mesa OpenGL library? Then we can probe for and setup VRR supported by the
     // FOSS driver stack:
     if (mesaversion[0] > 0) {
@@ -1391,7 +1422,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         int actual_format;
         int major, minor;
         psych_bool vrr_supported = FALSE;
-        psych_bool vrr_wanted = windowRecord->specialflags & kPsychUseFineGrainedOnset ? TRUE : FALSE;
+        psych_bool vrr_wanted = (windowRecord->vrrMode > 0) ? TRUE : FALSE;
 
         if (vrr_supported_atom &&
             (XRRGetOutputProperty(dpy, output, vrr_supported_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) &&
@@ -2438,7 +2469,7 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     }
 
     // Linux native VRR support enabled?
-    if (PsychVRRActive(windowRecord) && (windowRecord->gfxcaps & kPsychGfxCapLinuxVRR)) {
+    if (PsychVRRActive(windowRecord) && ((windowRecord->gfxcaps & kPsychGfxCapLinuxVRR) || (windowRecord->gfxcaps & kPsychGfxCapGSync))) {
         double tFirst, tLast, tNominal, tMeasured;
         int i, good = 0;
 
@@ -2481,6 +2512,7 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
         if (good < 7) {
             // Nope: Mark VRR as unsupported:
             windowRecord->gfxcaps &= ~kPsychGfxCapLinuxVRR;
+            windowRecord->gfxcaps &= ~kPsychGfxCapGSync;
 
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-WARNING: The VRR startup tests failed for this window. Seems Variable Refresh Rate doesn't work or\n");
@@ -2554,7 +2586,7 @@ static psych_int64 PsychOSScheduleSoftSyncFlip(PsychWindowRecordType *windowReco
     // kms-pageflipping for this to work. Also check if the low-level access support is
     // available, which will be needed:
     if (!((windowRecord->specialflags & kPsychIsFullscreenWindow) &&
-        (windowRecord->specialflags & kPsychUseFineGrainedOnset) && windowRecord->vSynced &&
+        (windowRecord->vrrMode > 0) && windowRecord->vSynced &&
         (PsychPrefStateGet_WindowShieldingLevel() == 2000) &&
         PsychOSIsKernelDriverAvailable(screenId)))
         return(-1);
@@ -2770,7 +2802,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
         // For our own "FreeSync" style flip implementation, we need to make sure
         // that the backbuffer is fully finished rendering and swap ready before
         // we go through the whole procedure:
-        if ((specialFlags & 0x4) && (windowRecord->specialflags & kPsychUseFineGrainedOnset))
+        if ((specialFlags & 0x4) && (windowRecord->vrrMode > 0))
             // "FreeSync" style: Wait for render-completion aka swap ready:
             glFinish();
         else
@@ -2860,7 +2892,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
                      not at all on any tested analog VGA CRT monitor. We don't delete the PsychOSScheduleSoftSyncFlip()
                      implementation yet, because some of its ideas might be actually useful for VRR soon...
         // Our homegrown "FreeSync" style emulation wanted?
-        if ((specialFlags & 0x4) && (windowRecord->specialflags & kPsychUseFineGrainedOnset) && windowRecord->vSynced) {
+        if ((specialFlags & 0x4) && (windowRecord->vrrMode > 0) && windowRecord->vSynced) {
             // Yes. Check if emulation is possible and do it, if possible:
             rc = PsychOSScheduleSoftSyncFlip(windowRecord, tWhen, targetMSC);
 
@@ -3616,9 +3648,9 @@ psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bo
  */
 psych_bool PsychVRRActive(PsychWindowRecordType *windowRecord)
 {
-    // Not in VRR mode if VRR mode not enabled by user-script via kPsychUseFineGrainedOnset or if
+    // Not in VRR mode if VRR mode not enabled by user-script via windowRecord->vrrMode > 0 or if
     // this isn't a non-transparent, opaque, decorationless, top-level, unoccluded, unredirected fullscreen window:
-    if (!(windowRecord->specialflags & kPsychUseFineGrainedOnset) || !(windowRecord->specialflags & kPsychIsFullscreenWindow) ||
+    if (!(windowRecord->vrrMode) || !(windowRecord->specialflags & kPsychIsFullscreenWindow) ||
         (PsychPrefStateGet_WindowShieldingLevel() < 2000))
         return(FALSE);
 

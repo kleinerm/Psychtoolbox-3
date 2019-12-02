@@ -264,7 +264,7 @@ void PsychRebindARBExtensionsToCore(void)
         Contains experimental support for flipping multiple displays synchronously, e.g., for dual display stereo setups.
 
 */
-psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, psych_int64 specialFlags)
+psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, psych_int64 specialFlags, int vrrMode, double vrrMinDuration, double vrrMaxDuration)
 {
     PsychRectType dummyrect;
     double splashMinDurationSecs = 0;
@@ -342,6 +342,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     // Add all passed-in specialFlags to windows specialflags:
     (*windowRecord)->specialflags |= specialFlags;
+
+    // Add all passed-in VRR parameters to windowRecord:
+    (*windowRecord)->vrrMode = vrrMode;
+    (*windowRecord)->vrrMinDuration = vrrMinDuration;
+    (*windowRecord)->vrrMaxDuration = vrrMaxDuration;
 
     // Assign the passed windowrect 'rect' to the new window:
     PsychCopyRect((*windowRecord)->rect, rect);
@@ -1524,6 +1529,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
         if (ifi_nominal > 0) printf("PTB-INFO: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
         printf("PTB-INFO: Small deviations between reported values are normal and no reason to worry.\n");
+        if (PsychVRRActive(*windowRecord)) printf("PTB-INFO: Enabling Variable refresh rate VRR mode, using method %i.\n", (*windowRecord)->vrrMode);
 
         if ((*windowRecord)->stereomode==kPsychOpenGLStereo) printf("PTB-INFO: Stereo display via OpenGL built-in frame-sequential stereo requested.\n");
         if ((*windowRecord)->stereomode==kPsychCompressedTLBRStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=LeftEye, Bot.=RightEye).\n");
@@ -1750,7 +1756,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // Ok, basic syncing to VBL seems to work and we have a valid estimate of monitor refresh interval...
 
     // VRR requested, but not working?
-    if (((*windowRecord)->specialflags & kPsychUseFineGrainedOnset) && !PsychVRRActive(*windowRecord)) {
+    if (((*windowRecord)->vrrMode) && !PsychVRRActive(*windowRecord)) {
         // We abort, unless in skip_synctests mode. If the usercode requires VRR for this study then it
         // would screw up the results if we'd run fixed refresh rate instead:
         if (PsychPrefStateGet_Verbosity() > 0) {
@@ -1765,7 +1771,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         }
 
         // Abort right here if sync tests are enabled:
-        if (!skip_synctests) {
+        if (skip_synctests < 2) {
             // We abort! Close the onscreen window:
             PsychOSCloseWindow(*windowRecord);
 
@@ -1775,6 +1781,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             // Done. Return failure:
             return(FALSE);
         }
+
+        // User wants us to continue despite VRR failure. Mark VRR as disabled:
+        (*windowRecord)->vrrMode = 0;
 
         // Flash our visual warning bell at alert-level for 1 second if skipping sync tests is requested:
         PsychVisualBell((*windowRecord), 1, 2);
@@ -6907,7 +6916,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     if ((gpuMaintype == kPsychGeForce) && (gpuMinortype >= 0x0E0) && nvidia && !(windowRecord->hybridGraphics) && strstr((char*) glGetString(GL_VENDOR), "NVIDIA")) {
         windowRecord->gfxcaps |= kPsychGfxCapGSync;
         if (verbose)
-            printf("PTB-DEBUG: NVidia GPU with G-Sync support detected. VRR requested by usercode? %s\n", (windowRecord->specialflags & kPsychUseFineGrainedOnset) ? "Yes" : "No");
+            printf("PTB-DEBUG: NVidia GPU with G-Sync support detected. VRR requested by usercode? %s\n", (windowRecord->vrrMode) ? "Yes" : "No");
     }
 
     while (glGetError());
