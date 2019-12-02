@@ -1,13 +1,11 @@
-function VRRTest(test, n, maxFlipDelta, hwmeasurement, screenNumber)
-% VRRTest([test='sine'][, n=2000][, maxFlipDelta=0.2][, hwmeasurement=0][, screenNumber=max])
+function VRRTest(test, n, maxFlipDelta, hwmeasurement, testImage, screenNumber)
+% VRRTest([test='sine'][, n=2000][, maxFlipDelta=0.2][, hwmeasurement=0][, testImage][, screenNumber=max])
 %
-% Test accuracy of VRR aka "FreeSync" aka "Adaptive Sync" mode on Linux 5.2.
+% Test accuracy of VRR stimulation with variable timing, aka "FreeSync",
+% "DisplayPort Adaptive Sync", "HDMI VRR" or "G-Sync".
 %
-% CAUTION: This script is highly experimental, subject to change in the near
-%          future!
-%
-% The test exercises VRR on a system with Linux 5.2+, Mesa 19.0+, latest
-% amdgpu-ddx on a FreeSync capable AMD gpu and display combo.
+% The test exercises VRR on a suitable system, see "help VRRSupport" for setup
+% instructions.
 %
 % It submits OpenGL bufferswaps / flips of varying 'delay' between successive
 % flips and measures and plots how well the hw can follow the requested timing.
@@ -17,10 +15,11 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, screenNumber)
 % All parameters are optional.
 %
 % The 'test' parameter selects the test pattern:
-% 'sine' Sine wave, smoothly changing. Exceeds VRR range to test low framerate
-% compensation (lfc). 'sine' is the default pattern if parameter is omitted.
 %
+% 'sine' Sine wave, smoothly changing. Exceeds VRR range to test low framerate
+%        compensation (lfc). 'sine' is the default pattern if parameter is omitted.
 % 'random' Randomized from flip to flip, within VRR range.
+% 'maxrandom' Randomized from flip to flip, extending outside VRR range.
 % 'upsweep' linear increasing duration.
 % 'downsweep' linear decreasing duration.
 % 'upstep' Stepwise increasing duration every 60 flips.
@@ -33,7 +32,8 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, screenNumber)
 %
 % 'hwmeasurement' Use external measurement hardware to get timing ground-truth:
 %
-% 0 = Off [Default]
+% 0 = Off [Default]. This display a static 'testImage' to allow to check how much
+%     the VRR display flickers under different stimulation timing regimes.
 % 1 = VPixx DataPixx or similar VPixx device.
 % 2 = VideoSwitcher + RTBox TTL pulse input port. Works with RTBox, but also with
 %     emulated RTBox of the CRS Bits#. Takes TTL pulse input from the VideoSwitcher.
@@ -46,6 +46,13 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, screenNumber)
 %     will be completely useless and bogus trash!
 % 4 = Like 2 -- RtBox pulse input, but for use with a ColorCal2 or photo-diode that
 %     sends a TTL pulse to the RtBox / Bits# BNC trigger input instead of VideoSwitcher.
+%
+% 'testImage' Either the name of an image file, or a numeric m x n or m x n x 3
+% matric with color values. The image read from the image file, or given image
+% matrix, will be displayed covering the full window in hwmeasurement == 0 mode.
+% If the parameter is omitted, one of Psychtoolbox default demo images will be
+% displayed. The purpose of this static image display is to test how much the
+% display device flickers under different VRR stimulation timings.
 %
 % 'screenNumber' Number of X-Screen to test on. Maximum X-Screen by default.
 %
@@ -60,7 +67,7 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, screenNumber)
 %
 % Preliminary results with a patch-set targeted at Linux 5.2:
 %
-% Testing on an upcoming Linux 5.2 kernel showed good behaviour on tested AMD
+% Testing on a Linux 5.3 kernel showed good behaviour on tested AMD
 % DCE-8 (Sea Islands), DCE-11 (Polaris) and DCN-1 (Raven) gpu's within the VRR
 % range of the monitor. Also pretty good behaviour on DCN-1 for flip rates below
 % the minimum VRR rate by use of low framerate compensation. lfc performance was
@@ -71,7 +78,7 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, screenNumber)
 %
 
 % History:
-% ??-Jan-2019  mk  Written.
+% 01-Dec-2019  mk  Written.
 
 % Sine-Wave pattern by default:
 if nargin < 1 || isempty(test)
@@ -93,9 +100,21 @@ if nargin < 4 || isempty(hwmeasurement)
     hwmeasurement = 0;
 end
 
+if nargin < 5 || isempty(testImage)
+    % Use default demo images, if no special image was provided.
+    testImage = [ PsychtoolboxRoot 'PsychDemos' filesep 'konijntjes1024x768.jpg'];
+end
+
 % Use X-Screen with highest number by default:
-if nargin < 5
+if nargin < 6
     screenNumber = [];
+end
+
+if ischar(testImage)
+    % Read image from image file and extend it with 200 lines of neutral gray:
+    testImage = double(imread(testImage)) / 255;
+elseif ~isnumeric(testImage)
+    error('testImage must be the name of an image file or a color matrix.');
 end
 
 try
@@ -116,6 +135,7 @@ try
 
     % Prepare window configuration for this script:
     PsychImaging('PrepareConfiguration')
+
     if hwmeasurement == 1
         % Use DataPixx hardware for external timestamping to get ground-truth
         % about true display timing for correctness tests.
@@ -134,12 +154,18 @@ try
 
     % Open double-buffered fullscreen (kms-pageflipped) window with black background and
     % request automatically selected VRR mode for fine-grained visuas stimulus onset (1):
-    w = PsychImaging('OpenWindow', screenNumber, 0, [], [], [], [], [], [], [], [], [], 1);
+    [w, rect] = PsychImaging('OpenWindow', screenNumber, 0, [], [], [], [], [], [], [], [], [], 1);
     HideCursor(w);
     [width, height] = Screen('Windowsize', w);
 
     % Get window info struct about onscreen fullscreen window:
     winfo = Screen('GetWindowInfo', w);
+
+    % In hwmeasurement 0 mode - no measurement - display a texture with testImage,
+    % as a means to check for visual artifacts of flicker:
+    if hwmeasurement == 0
+        tex = Screen('MakeTexture', w, testImage);
+    end
 
     if hwmeasurement == 2 || hwmeasurement == 3 || hwmeasurement == 4
         IOPort('CloseAll');
@@ -216,6 +242,9 @@ try
             case {'random', 'rand'}
                 % Randomized within VRR range:
                 delay = minFlipDelta + (1 / minVRR - minFlipDelta) * rand();
+            case {'maxrandom', 'maxrand'}
+                % Randomized beyond VRR range:
+                delay = minFlipDelta + durRange * rand();
             case {'upsweep'}
                 % Linear increase of frame duration: Goes below min VRR.
                 delay = minFlipDelta + durRange * i / n;
@@ -238,11 +267,19 @@ try
         % for average scheduling delay Flip -> Mesa -> X-Server -> kms driver:
         %tdeadline = tvbl + delay - (1.863093)/ 1000; % Polaris 11 machine
         %tdeadline = tvbl + delay - (1.853770)/ 1000; % Bob / Sea Islands machine
-        %tdeadline = tvbl + delay - (1.6909) / 1000;  % Raven / DCN-1 machine
-        tdeadline = tvbl + delay - (0.881429) / 1000; % NVidia G-Sync test setup.
+        tdeadline = tvbl + delay - (1.6909) / 1000;  % Raven / DCN-1 machine
+        %tdeadline = tvbl + delay - (0.881429) / 1000; % NVidia G-Sync test setup.
 
         % Store requested delay for i'th trial in td:
         td(i) = delay;
+
+        if hwmeasurement == 0
+            Screen('DrawTexture', w, tex, [], rect);
+        end
+
+        % Draw some simple stim for next frame of animation: A rectangle that moves over the screen.
+        pos = mod(i, width-100);
+        Screen('FillRect', w, [1 0 1], [pos height-100 pos+100 height]);
 
         if hwmeasurement == 1
             % VPixx device: Ask for a Datapixx onset timestamp for next 'Flip':
@@ -294,10 +331,6 @@ try
         ts(i) = tvbl;
 
         % fprintf('pflip completed - flip ts = %f msecs.\n', 1000 * (winfo.RawSwapTimeOfFlip - tvbl));
-
-        % Draw some simple stim for next frame of animation: A rectangle that moves over the screen.
-        pos = mod(i, width-100);
-        Screen('FillRect', w, [1 0 1], [pos height-100 pos+100 height]);
 
         % Give user a chance to abort the test anytime by pressing ESC key:
         if KbCheck
