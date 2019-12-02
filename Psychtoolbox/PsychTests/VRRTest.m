@@ -132,8 +132,9 @@ try
         PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
     end
 
-    % Open double-buffered fullscreen (kms-pageflipped) window with black background:
-    w = PsychImaging('OpenWindow', screenNumber, 0, [], [], [], [], [], [], kPsychUseFineGrainedOnset);
+    % Open double-buffered fullscreen (kms-pageflipped) window with black background and
+    % request automatically selected VRR mode for fine-grained visuas stimulus onset (1):
+    w = PsychImaging('OpenWindow', screenNumber, 0, [], [], [], [], [], [], [], [], [], 1);
     HideCursor(w);
     [width, height] = Screen('Windowsize', w);
 
