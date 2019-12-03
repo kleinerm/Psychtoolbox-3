@@ -72,17 +72,18 @@
 %   ResolutionTest                  - Use Screen Resolutions to print table of display resolutions.
 %   RodFundamentalTest              - Test the PTB routines generate a good rod fundamental.
 %   ScreenTest                      - Thorough test of hardware/software performance.
-%   SimpleTimingTest                - 
-%   StandaloneTimingTest            - Test for timing glitch outside of MATLAB process. 
+%   SimpleTimingTest                -
+%   StandaloneTimingTest            - Test for timing glitch outside of MATLAB process.
 %   StructsFileTest                 - Test routines for reading and writing struct arrays to text files.
 %   SyncedCLUTUpdateTest            - Visual test of clut write synching to vertical retrace.
 %   TextBoundsTest                  - Test Screen('TestBounds')
 %   TextBugTest                     - Look for interference between
 %   TextFontTest                    - Test setting the text font.
 %   TextInitBugTest                 - Test for failure of 'DrawText' default font.
-%   TextInOffscreenWindowTest       - Compare text rendered into onscreen and offscreen windows. 
-%   TextureChannelsTest             - Test assignment of matrix layers to RGBA texture channels
+%   TextInOffscreenWindowTest       - Compare text rendered into onscreen and offscreen windows.
+%   TextureChannelsTest             - Test assignment of matrix layers to RGBA texture channels.
 %   TextureTest                     - Exercise Screen('DrawTexture').
 %   TrolandTest                     - Colorimetric conversions.
 %   VBLSyncTest                     - Tests syncing of PTB-OSX to the vertical retrace.
+%   VRRTest                         - Test support of your setup for Variable refresh rate mode.
 %   WavelengthSamplingTest          - Test conversion between representations of wavelength sampling information.

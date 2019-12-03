@@ -160,8 +160,10 @@ try
     end
 
     % Open double-buffered fullscreen (kms-pageflipped) window with black background and
-    % request automatically selected VRR mode for fine-grained visuas stimulus onset (1):
-    [w, rect] = PsychImaging('OpenWindow', screenNumber, 0, [], [], [], [], [], [], [], [], [], 1);
+    % request automatically selected VRR mode for fine-grained visual stimulus onset:
+    PsychImaging('AddTask', 'General', 'UseFineGrainedTiming');
+
+    [w, rect] = PsychImaging('OpenWindow', screenNumber, 0);
     HideCursor(w);
     [width, height] = Screen('Windowsize', w);
 
