@@ -1869,6 +1869,9 @@ dwmdontcare:
                 printf("PTB-WARNING: Unsupported VRR mode %i requested. Disabling VRR.\n", windowRecord->vrrMode);
     }
 
+    if (windowRecord->vrrMode && (PsychPrefStateGet_Verbosity() > 1))
+        printf("PTB-WARNING: Unsupported VRR mode %i requested. Psychtoolbox for MS-Windows does not support VRR.\n", windowRecord->vrrMode);
+
     // Use vrrMinDuration "as is". Either userspace provided, or reasonable default of
     // video refresh duration of current video mode, which defines the lowest duration
     // currently doable on the current VRR hardware implementations:

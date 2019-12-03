@@ -1767,7 +1767,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             printf("This will seriously impair proper stimulus presentation timing!\n");
             printf("Please read 'help VRRSupport' for information about how to solve the problem.\n");
             printf("You can force Psychtoolbox to continue, despite the severe problems, by adding the command\n");
-            printf("Screen('Preference', 'SkipSyncTests', 1); at the top of your script, if you really know what you are doing.\n\n\n");
+            printf("Screen('Preference', 'SkipSyncTests', 2); at the top of your script, if you really know what you are doing.\n\n\n");
         }
 
         // Abort right here if sync tests are enabled:
