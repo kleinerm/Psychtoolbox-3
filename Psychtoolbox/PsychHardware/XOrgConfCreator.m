@@ -853,9 +853,18 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
   multigpu = 0;
 
   % Does this machine have multiple gpu's, e.g., hybrid graphics laptop?
-  if ~exist('/dev/dri/card1','file')
+  if IsOctave && ~exist('/dev/dri/card1','file')
     % Nope:
     return;
+  end
+
+  % Multi-gpu check for Matlab, because Matlab exist() can not check device files:
+  if ~IsOctave
+    [rc, ~] = system('stat /dev/dri/card1');
+    if rc == 1
+      % Nope:
+      return;
+    end
   end
 
   % Yes, likely a hybrid graphics laptop:
