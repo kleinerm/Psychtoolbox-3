@@ -1,5 +1,5 @@
-function VRRTest(test, n, maxFlipDelta, hwmeasurement, testImage, screenNumber)
-% VRRTest([test='sine'][, n=2000][, maxFlipDelta=0.2][, hwmeasurement=0][, testImage][, screenNumber=max])
+function VRRTest(test, n, maxFlipDelta, hwmeasurement, testImage, saveplots, screenNumber)
+% VRRTest([test='sine'][, n=2000][, maxFlipDelta=0.2][, hwmeasurement=0][, testImage][, saveplots=0][, screenNumber=max])
 %
 % Test accuracy of VRR stimulation with variable timing, aka "FreeSync",
 % "DisplayPort Adaptive Sync", "HDMI VRR" or "G-Sync".
@@ -54,6 +54,9 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, testImage, screenNumber)
 % displayed. The purpose of this static image display is to test how much the
 % display device flickers under different VRR stimulation timings.
 %
+% 'saveplots' Should plots with results be saved to filesystem? Defaults to
+% 0 for 'No', 1 = 'Yes'.
+%
 % 'screenNumber' Number of X-Screen to test on. Maximum X-Screen by default.
 %
 % You can abort the test earlier by pressing the ESC key.
@@ -105,8 +108,12 @@ if nargin < 5 || isempty(testImage)
     testImage = [ PsychtoolboxRoot 'PsychDemos' filesep 'konijntjes1024x768.jpg'];
 end
 
-% Use X-Screen with highest number by default:
-if nargin < 6
+if nargin < 6 || isempty(saveplots)
+    saveplots = 0;
+end
+
+% Use screen with highest number by default:
+if nargin < 7
     screenNumber = [];
 end
 
@@ -444,10 +451,12 @@ try
     grid on;
     hold off;
 
-    % Save the plot as PDF file into current working directory:
-    fname = sprintf('VRRTestResult_%s.pdf', test);
-    print(fname, '-dpdf');
-    fprintf('Plot saved to working directory as %s\n', fname);
+    if saveplots
+        % Save the plot as PDF file into current working directory:
+        fname = sprintf('VRRTestResult_%s.pdf', test);
+        print(fname, '-dpdf');
+        fprintf('Plot saved to working directory as %s\n', fname);
+    end
 
     figure;
     hist(deltaT - td, 100);
