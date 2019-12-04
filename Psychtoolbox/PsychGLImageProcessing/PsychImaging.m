@@ -158,6 +158,37 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
 %
 %
+% * 'UseFineGrainedTiming' Ask for use of fine-grained stimulus onset timing.
+%   Ask Screen('Flip', window, when) to try to show the new visual stimulus
+%   close to (= ideally exactly at) target time 'when', instead of showing the
+%   stimulus at the next video refresh frame boundary with time t >= 'when', ie.
+%   try to schedule stimuli with better timing granularity than what is given by
+%   the multiples of a video refresh cycle duration of the connected display.
+%
+%   This uses a technique known as "Variable Refresh Rate" or shorthand "VRR" if
+%   your operating system and display driver and graphics card and cable and
+%   display device supports it at the current system configuration. Otherwise,
+%   PsychImaging('OpenWindow', ...) will fail if this task can't be achieved.
+%
+%   For a list of requirements with respect to graphics cards, display devices,
+%   operating systems, drivers and general system configuration to make this work,
+%   read "help VRRSupport". This will also tell you about limitations and caveats
+%   wrt. this task.
+%
+%   There may be different methods of implementing such fine-grained timing.
+%   The optional 'method' parameter allows you to select a specific method.
+%   Using the keyword 'Auto' or omitting the 'method' parameter ([]) will leave
+%   the choice of optimal method to Screen(). Currently only the method 'Simple'
+%   is implemented, but this may change with future versions of Psychtoolbox.
+%
+%   The optional parameter 'vrrMinRefreshHz' allows to specify the lowest video
+%   refresh rate that your display can reliably run at. If the parameter is
+%   omitted, Screen() will try to auto-detect this display property, or failing
+%   that, it will use a reasonable default.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UseFineGrainedTiming' [, method='Auto'][, vrrMinRefreshHz]);
+%
+%
 % * 'UseSubpixelDrive' Ask to take advantage of the so-called "Subpixel Drive"
 %   mode of certain monochromatic medical imaging displays like, e.g., the
 %   "Eizo RadiForce GS-521". This monitor essentially has a RGB panel with
@@ -1722,6 +1753,50 @@ if strcmpi(cmd, 'OpenWindow')
         fitRefRect = fbOverrideRect;
     end
 
+    % VRR handling:
+    ovrvrrParams = [];
+    if ~isempty(find(mystrcmp(reqs, 'UseFineGrainedTiming'))) %#ok<*EFIND>
+        % Yes. Extract parameters:
+        floc = find(mystrcmp(reqs, 'UseFineGrainedTiming'));
+        if length(floc) > 1
+            error('PsychImaging: Multiple definitions of task "UseFineGrainedTiming"! There can be only one.');
+        end
+
+        [row cols] = ind2sub(size(reqs), floc); %#ok<NASGU>
+        vrrMode = reqs{row, 3};
+
+        if isempty(vrrMode) || strcmpi(vrrMode, 'Auto')
+            vrrMode = 1;
+        elseif strcmpi(vrrMode, 'Simple')
+            vrrMode = 2;
+        else
+            error('PsychImaging: For task "UseFineGrainedTiming" invalid method argument specified. Must be ''Auto'' or ''Simple''.');
+        end
+
+        vrrMinRefreshHz = reqs{row, 4};
+        if isempty(vrrMinRefreshHz)
+            vrrMinRefreshHz = 0;
+        elseif ~isnumeric(vrrMinRefreshHz) || ~isscalar(vrrMinRefreshHz) || vrrMinRefreshHz < 0
+            error('PsychImaging: For task "UseFineGrainedTiming" invalid "vrrMinRefreshHz" argument specified.');
+        else
+            % Map to maximum frame duration:
+            if vrrMinRefreshHz > 0
+              vrrMinRefreshHz = 1 / vrrMinRefreshHz;
+            else
+              vrrMinRefreshHz = 0;
+            end
+        end
+
+        % Build ovrvrrParams:
+        ovrvrrParams = [vrrMode, 0, vrrMinRefreshHz];
+    end
+
+    if nargin < 13 || isempty(varargin{12})
+        vrrParams = ovrvrrParams;
+    else
+        vrrParams = varargin{12};
+    end
+
     if ~isempty(find(mystrcmp(reqs, 'UseDisplayRotation'))) %#ok<*EFIND>
         % Yes. Extract parameters:
         floc = find(mystrcmp(reqs, 'UseDisplayRotation'));
@@ -2041,10 +2116,10 @@ if strcmpi(cmd, 'OpenWindow')
             warning('BrightSide HDR output device selected on a non MS-Windows platform! Unsupported! Will use dummy emulation mode instead!');
         end
 
-        if nargin >= 12
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
+        if nargin >= 13
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams, varargin{13:end});
         else
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams);
         end
     end
 
@@ -2055,10 +2130,10 @@ if strcmpi(cmd, 'OpenWindow')
             error('You specified multiple conflicting output display device drivers! This will not work.');
         end
 
-        if nargin >= 12
-            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
+        if nargin >= 13
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams, varargin{13:end});
         else
-            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams);
         end
     end
 
@@ -2075,10 +2150,10 @@ if strcmpi(cmd, 'OpenWindow')
             bpcom = 'OpenWindowMono++';
         end
 
-        if nargin >= 12
-            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
+        if nargin >= 13
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams, varargin{13:end});
         else
-            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams);
         end
     end
 
@@ -2089,19 +2164,19 @@ if strcmpi(cmd, 'OpenWindow')
             error('You specified multiple conflicting output display device drivers! This will not work.');
         end
 
-        if nargin >= 12
-            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
+        if nargin >= 13
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams, varargin{13:end});
         else
-            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams);
         end
     end
 
     if isempty(win)
         % Standard openwindow path:
-        if nargin >= 12
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, varargin{12:end});
+        if nargin >= 13
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams, varargin{13:end});
         else
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect);
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams);
         end
     end
 

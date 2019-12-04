@@ -44,6 +44,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap);
 void        PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags);
 double      PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration);
+psych_bool  PsychVRRActive(PsychWindowRecordType *windowRecord);
 psych_bool  PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bool constrain, PsychRectType rect);
 
 // Special query function, only defined on Linux/X11:

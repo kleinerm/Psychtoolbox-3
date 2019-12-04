@@ -28,10 +28,10 @@
 
 	TO DO:
 
-		¥ The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same
+		\A5 The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same
 		name by their placement in a directory tree.
 
-		¥ PsychFlushGL() and PsychGLFlush() need to be merged.
+		\A5 PsychFlushGL() and PsychGLFlush() need to be merged.
 
 */
 
@@ -56,6 +56,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap);
 void    PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags);
 double  PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration);
+psych_bool PsychVRRActive(PsychWindowRecordType *windowRecord);
 psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bool constrain, PsychRectType rect);
 //end include once
 #endif

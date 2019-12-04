@@ -928,3 +928,16 @@ void PsychOSSetGameMode(psych_bool enable, int verbosity)
         printf("PTB-INFO: New status: %s\n", (status > 0) ? "Active" : (status == -1) ? "Query failure" : "Disabled");
     }
 }
+
+void PsychOSGetLinuxVersion(int* major, int* minor, int* patchlevel)
+{
+    struct utsname unameresult;
+    int lmajor, lminor, lpatchlevel;
+
+    uname(&unameresult);
+    sscanf(unameresult.release, "%i.%i.%i", &lmajor, &lminor, &lpatchlevel);
+
+    if (major) *major = lmajor;
+    if (minor) *minor = lminor;
+    if (patchlevel) *patchlevel = lpatchlevel;
+}

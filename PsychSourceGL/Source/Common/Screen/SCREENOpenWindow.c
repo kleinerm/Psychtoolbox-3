@@ -31,8 +31,8 @@ double PsychCocoaGetBackingStoreScaleFactor(void* window);
 static PsychWindowRecordType* sharedContextWindow = NULL;
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample][,imagingmode][,specialFlags][,clientRect][,fbOverrideRect]);";
-//                                                               1                         2        3      4           5                 6            7             8             9              10           11
+static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample][,imagingmode][,specialFlags][,clientRect][,fbOverrideRect][,vrrParams=[]]);";
+//                                                               1                         2        3      4           5                 6            7             8             9              10           11               12
 static char synopsisString[] =
     "Open an onscreen window. Specify a screen by a windowPtr or a screenNumber (0 is "
     "the main screen, with menu bar). \"color\" is the clut index (scalar or [r g b] "
@@ -79,14 +79,7 @@ static char synopsisString[] =
     "flags is passed. A currently supported flag is the symbolic constant kPsychGUIWindow. It enables windows "
     "to behave more like regular GUI windows on your system. See 'help kPsychGUIWindow' for more info. The "
     "flag kPsychGUIWindowWMPositioned additionally leaves initial positioning of the GUI window to the window "
-    "manager. The flag kPsychUseFineGrainedOnset asks to use a more fine-grained technique to schedule "
-    "stimulus onset than the classic fixed refresh interval scheduling. This may allow to more often achieve "
-    "a visual stimulus onset exactly at the 'tWhen' onset time asked for in Screen('Flip'), instead of only at "
-    "the closest frame boundary of a fixed duration frame. This needs a suitable operating-system, graphics "
-    "driver and graphics hardware, as well as a special suitable display device that can run at a non-fixed "
-    "refresh rate. On unsuitable system hardware+software configurations the flag may do nothing. This feature "
-    "is currently considered *highly experimental* and may not work reliably or *at all*! It is currently only "
-    "implemented on Linux.\n\n"
+    "manager.\n\n"
     "\"clientRect\" This optional parameter allows to define a size of the onscreen windows drawing area "
     "that is different from the actual size of the windows framebuffer. If set, then the imaging pipeline "
     "is started and a virtual framebuffer of the size of \"clientRect\" is created. Your code will draw "
@@ -99,8 +92,33 @@ static char synopsisString[] =
     "for the purpose of image processing operations with the imaging pipeline. While the true size of the windows "
     "framebuffer is defined by the standard \"rect\" parameter, internal processing will instead use the given "
     "override size. This usually only makes sense in combination with special output devices that live outside the "
-    "regular windowing system of your computer, e.g., special Virtual reality displays.\n"
-    "\n"
+    "regular windowing system of your computer, e.g., special Virtual reality displays.\n\n"
+    "\"vrrParams\" This optional parameter allows to control the method for scheduling visual stimulus onset. "
+    "By default, if the parameter is omitted, or "
+    "set to 0, standard presentation with fixed refresh rate is used. Visual stimuli will present at the start "
+    "of a new video refresh cycle of fixed duration, ie. timing is quantized to multiples of refresh duration.\n"
+    "Non-zero values ask to use a more fine-grained technique to schedule "
+    "stimulus onset, than the classic fixed refresh interval scheduling. This may allow to more often achieve "
+    "a visual stimulus onset exactly at the 'when' onset time asked for in Screen('Flip'), instead of only at "
+    "the closest frame boundary of a fixed duration frame. This needs a suitable operating-system, display "
+    "driver and graphics hardware, as well as a suitable display device that can run at a non-fixed refresh rate. "
+    "On unsuitable system hardware+software configurations selecting a mode other than zero will abort 'OpenWindow'. "
+    "Fine-grained stimulus onset scheduling aka non-zero mode is currently only supported on Linux with some hardware.\n"
+    "Settings other than 0 / default may require passing a vector with parameters instead of just "
+    "a mode selection scalar. E.g., instead of vrrParams = mode, it could be vrrParams = [mode, minDuration, maxDuration] "
+    "with minDuration and maxDuration defining the minimum and maximum duration of a video refresh cycle that the given "
+    "display is capable off in VRR mode, e.g., in situations where this can't be auto-detected reliably by Screen().\n"
+    "If set to 1, Psychtoolbox will auto-select the strategy based on the given setup to provide more fine-grained "
+    "visual stimulus onset timing. See "
+    "'help VRRSupport' for hardware and software requirements and setup instructions for VRR on your system.\n"
+    "If set to 2, Psychtoolbox will use VRR technology in the straightforward naive way, efficient, but of limited "
+    "timing precision and stability: If a 'when' target time is given in Screen('Flip', ...), Screen will "
+    "simply wait until that time and then submit the flip request to hardware. Immediate flips will be submitted "
+    "to hardware immediately. Special constraints of the specific operating system, display driver, graphics card "
+    "or display model are not taken into account, jitter in hardware or software is not compensated for.\n"
+    "Future versions of Screen() may bring additional fine-grained presentation timing modes of higher sophistication "
+    "or with different performance vs precision vs reliability tradeoffs.\n"
+    "\n\n"
     "Opening or closing a window takes about one to three seconds, depending on the type of connected display. "
     "If your system has noisy timing or flaky graphics drivers it might take up to 15 seconds to open a window.\n"
     "COMPATIBILITY TO OS-9 PTB: If you absolutely need to run old code for the old MacOS-9 or Windows "
@@ -125,7 +143,11 @@ PsychError SCREENOpenWindow(void)
     int                     dummy1;
     double                  dummy2, dummy3, dummy4;
     long                    nativewidth, nativeheight, frontendwidth, frontendheight;
-
+    int                     m, n, p;
+    double*                 vrrParams;
+    int                     vrrMode;
+    double                  vrrMinDuration;
+    double                  vrrMaxDuration;
     psych_bool EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
 
     //all sub functions should have these two lines
@@ -133,8 +155,8 @@ PsychError SCREENOpenWindow(void)
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     //cap the number of inputs
-    PsychErrorExit(PsychCapNumInputArgs(11));   //The maximum number of inputs
-    PsychErrorExit(PsychCapNumOutputArgs(2));  //The maximum number of outputs
+    PsychErrorExit(PsychCapNumInputArgs(12));  // The maximum number of inputs
+    PsychErrorExit(PsychCapNumOutputArgs(2));  // The maximum number of outputs
 
     //get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
     PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
@@ -278,8 +300,48 @@ PsychError SCREENOpenWindow(void)
 
     specialflags = 0;
     PsychCopyInIntegerArg64(9,FALSE, &specialflags);
-    if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned | kPsychUseFineGrainedOnset))))
+    if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned))))
         PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
+
+    // Alloc in optional double vector with VRR mode and parameters:
+    vrrParams = NULL;
+    if (PsychAllocInDoubleMatArg(12, FALSE, &m, &n, &p, &vrrParams)) {
+        n = m * n;
+        if (p > 1 || n < 1)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'vrrParams' provided. Must be a scalar or vector of parameters.");
+
+        // Get mode parameter:
+        vrrMode = (int) vrrParams[0];
+        if (vrrMode < 0 || vrrMode > 2)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'vrrParams' provided. Scalar or 1st vector component must be a mode of 0, 1 or 2.");
+
+        // Get optional vmin, vmax duration parameters, corresponding to the displays maximum and minimum refresh rate in VRR mode:
+        vrrMinDuration  = (n >= 2) ? vrrParams[1] : 0;
+        if (vrrMinDuration < 0)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'vrrParams' provided. 2nd vector component must be vrrMinDuration in seconds. 0 for unknown/auto-detect, or > 0 seconds.");
+
+        // If minimum refresh duration not given, set to the one corresponding to the nominal refresh rate of the display:
+        // TODO: Should we do this override already here, or move it to the OS specific backends for more fancy ways of doing it?
+        if (vrrMinDuration == 0) {
+            if (PsychGetNominalFramerate(screenNumber) > 0)
+                vrrMinDuration = 1.0 / PsychGetNominalFramerate(screenNumber);
+            else
+                vrrMinDuration = 1.0 / 60.0; // Fake it, if we can not get it from OS.
+        }
+
+        vrrMaxDuration = (n >= 3) ? vrrParams[2] : 0;
+        if (vrrMaxDuration < 0)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'vrrParams' provided. 3rd vector component must be vrrMaxDuration in seconds. 0 for unknown/auto-detect, or > 0 seconds.");
+
+        if (vrrMaxDuration != 0 && vrrMaxDuration < vrrMinDuration)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'vrrParams' provided. vrrMinDuration must be 0 or smaller than vrrMaxDuration. 0 for unknown/auto-detect, or > 0 seconds.");
+    }
+    else {
+        // Default to VRR et al off:
+        vrrMode = 0;
+        vrrMinDuration = 0.0;
+        vrrMaxDuration = 0.0;
+    }
 
     // Optional clientRect defined? If so, we need to enable our internal panel scaler and
     // the imaging pipeline to actually use the scaler:
@@ -434,7 +496,7 @@ PsychError SCREENOpenWindow(void)
     // is enabled without multisampling support, as we do all the multisampling stuff ourselves
     // within the imaging pipeline with multisampled drawbuffer FBO's...
     didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, ((imagingmode==0 || imagingmode==kPsychNeedFastOffscreenWindows) ? multiSample : 0),
-                                          sharedContextWindow, specialflags);
+                                          sharedContextWindow, specialflags, vrrMode, vrrMinDuration, vrrMaxDuration);
     if (!didWindowOpen) {
         if (!dontCaptureScreen) {
             PsychRestoreScreenSettings(screenNumber);

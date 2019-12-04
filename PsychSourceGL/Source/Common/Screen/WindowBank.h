@@ -95,6 +95,8 @@
 #define kPsychGfxCapFBOScaledResolveBlit    (1 << 20)    // Hw supports simultaneous multisample resolve and rescaling in one framebuffer blit.
 #define kPsychGfxCapSmoothPrimitives        (1 << 21)    // Hw supports GL_POINT_SMOOTH, LINE smooth etc.
 #define kPsychGfxCapFloatToIntRound         (1 << 22)    // Hw, when converting float colors to fixed point colors, rounds to nearest instead of truncating.
+#define kPsychGfxCapGSync                   (1 << 23)    // Hw is a NVidia gpu with G-Sync support.
+#define kPsychGfxCapLinuxVRR                (1 << 24)    // Window attached to a gpu and video output with Linux DRM/KMS VRR support enabled.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
@@ -162,14 +164,13 @@
 #define kPsychSkipTimestampingForFlipOnce   (1 << 28) // 'specialflags': Perform next flip on this window without waiting for swap completion + timestamping + timing correctness checks.
 #define kPsychSkipSwapForFlipOnce           (1 << 29) // 'specialflags': Perform next flip on this window without actually performing the OpenGL bufferswap, iow. don't present to the onscreen window.
 #define kPsychSkipWaitForFlipOnce           (1 << 30) // 'specialflags': Perform next flip on this window without waiting until the 'when' target time for the flip.
-#define kPsychUseFineGrainedOnset           (1ULL << 31) // 'specialflags': Schedule flips not on a fixed refresh interval, but use some scheduling with finer time granularity if possible.
-#define kPsychNeedVBODouble12Workaround     (1ULL << 32) // 'specialflags': Gfx driver bug makes < 2 component vertex attribute buffers problematic if GL_DOUBLE is used for submission.
+#define kPsychNeedVBODouble12Workaround     (1ULL << 31) // 'specialflags': Gfx driver bug makes < 2 component vertex attribute buffers problematic if GL_DOUBLE is used for submission.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,S-2^25. --> Flags of 2^24 as well as 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,2^31,2^32. --> Flags of 2^33 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,2^31. --> Flags of 2^32 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*   PtrPsychHookFunction;
@@ -488,6 +489,10 @@ typedef struct _PsychWindowRecordType_{
 
     double                      internalMouseMultFactor;            // Used by GetMouse et al to rescale mouse position on HiDPI displays.
     double                      externalMouseMultFactor;            // Used by external mouse mapping to rescale mouse position on HiDPI displays.
+
+    int                         vrrMode;                            // Mode of stimulus onset time scheduling: 0 = Fixed rate, > 0 = VRR style.
+    double                      vrrMinDuration;                     // Minimum possible video refresh duration for given associated VRR display.
+    double                      vrrMaxDuration;                     // Maximum possible video refresh duration for given associated VRR display.
 
     // Used only when this structure holds a window:
     // CAUTION FIXME TODO: Due to some pretty ugly circular include dependencies in the #include chain of

@@ -1,7 +1,7 @@
 % Psychtoolbox:PsychOneliners.
-% 
+%
 % help Psychtoolbox % For an overview, triple-click me & hit enter.
-% 
+%
 %   AddStructs              - Merges input structs into one struct.
 %   AddToMatlabPathDynamically - Add a directory tree to the Matlab path at runtime
 %   AltSize                 - ALTSIZE is an extension of SIZE, it supports querying the size of multiple dimensions of a variable in one call.
@@ -60,7 +60,6 @@
 %   KbMapKey                - Checks if any of specified keys is depressed in a vector returned by KbCheck, KbWait etc.
 %   kPsychGUIWindow         - Flag to ask Screen() to create onscreen windows with behaviour similar to normal GUI windows.
 %   kPsychGUIWindowWMPositioned - Flag to ask Screen() to leave onscreen GUI window placement to the window manager.
-%   kPsychUseFineGrainedOnset - Flag to ask Screen() to use fine-grained visual stimulus onset scheduling.
 %   LoadIdentityClut        - Loads the identity CLUT on a specified monitor.
 %   log10nw                 - Compute log base 10 without annoying warnings.
 %   MacModelName            - Mac model name, e.g. 'PowerBook G4 15"'.
