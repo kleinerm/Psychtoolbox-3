@@ -78,5 +78,7 @@ int PsychOSNeedXInitThreads(int verbose);
 // Enable OS optimizations for realtime / high performance via Feral's game-mode daemon:
 void PsychOSSetGameMode(psych_bool enable, int verbosity);
 
+void PsychOSGetLinuxVersion(int* major, int* minor, int* patchlevel);
+
 //end include once
 #endif

@@ -1849,6 +1849,39 @@ dwmdontcare:
         }
     }
 
+    // VRR handling for all MS-Windows drivers:
+    switch (windowRecord->vrrMode) {
+        case 0: // Disable VRR:
+            windowRecord->vrrMode = 0;
+            break;
+
+        case 1: // Automatic selection of optimal supported method for this setup:
+            windowRecord->vrrMode = 2;
+            break;
+
+        case 2: // Classic / Legacy / Dumb VRR - Just swapbuffers when asked to: Not yet supported.
+            windowRecord->vrrMode = 2;
+            break;
+
+        default:
+            windowRecord->vrrMode = 0;
+            if (PsychPrefStateGet_Verbosity() > 1)
+                printf("PTB-WARNING: Unsupported VRR mode %i requested. Disabling VRR.\n", windowRecord->vrrMode);
+    }
+
+    if (windowRecord->vrrMode && (PsychPrefStateGet_Verbosity() > 1))
+        printf("PTB-WARNING: Unsupported VRR mode %i requested. Psychtoolbox for MS-Windows does not support VRR.\n", windowRecord->vrrMode);
+
+    // Use vrrMinDuration "as is". Either userspace provided, or reasonable default of
+    // video refresh duration of current video mode, which defines the lowest duration
+    // currently doable on the current VRR hardware implementations:
+    windowRecord->vrrMinDuration = windowRecord->vrrMinDuration;
+
+    // vrrMaxDuration: If provided by userspace, use it "as is". If not provided, our
+    // best guess is 33.3333 msecs corresponding to a minimum refresh rate of 30 Hz,
+    // which seems to be what NVidia G-Sync displays and better FreeSync displays can do:
+    windowRecord->vrrMaxDuration = windowRecord->vrrMaxDuration ? windowRecord->vrrMaxDuration : 1.0 / 30.0;
+
     // If the DWM is enabled, try to optimize its presentation parameters for our purpose:
     OptimizeDWMParameters(windowRecord);
 
@@ -2691,3 +2724,12 @@ psych_bool PsychOSConstrainPointer(PsychWindowRecordType *windowRecord, psych_bo
     // No-Op return:
     return(TRUE);
 }
+
+psych_bool PsychVRRActive(PsychWindowRecordType *windowRecord)
+{
+    (void) windowRecord;
+
+    // Nope, VRR inactive or unsupported:
+    return(FALSE);
+}
+

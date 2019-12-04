@@ -72,6 +72,7 @@ if IsOctave && exist('graphics_toolkit')
 end
 
 % Wait for release of all keys on keyboard:
+RestrictKeysForKbCheck(KbName('ESCAPE'));
 KbReleaseWait;
 
 % Perform basic initialization of the sound driver:

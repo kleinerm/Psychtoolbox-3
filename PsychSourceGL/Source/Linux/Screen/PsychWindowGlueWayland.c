@@ -1971,6 +1971,14 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     return(targetTime);
 }
 
+psych_bool PsychVRRActive(PsychWindowRecordType *windowRecord)
+{
+    (void) windowRecord;
+
+    // Nope, VRR inactive or unsupported:
+    return(FALSE);
+}
+
 /* PsychOSConstrainPointer()
  *
  * Establish or release pointer confinement to a rectangle, a mouse trap if you want.

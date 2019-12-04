@@ -50,3 +50,6 @@
 %                          timing is determined by the Screen('Flip') command,
 %                          and how PTB tests your setup for proper timing and
 %                          synchronization with vertical retrace.
+%
+% VRRSupport             - How to set up and use variable refresh rate (VRR) displays.
+%

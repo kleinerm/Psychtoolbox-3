@@ -271,6 +271,7 @@ try
     modesetting = 'd';
     depth30bpp = 'd';
     atinotiling = 'd';
+    vrrsupport = 'd';
   else
     % Ask questions for setup of advanced options:
     modesetting = 'd';
@@ -348,8 +349,32 @@ try
       depth30bpp = 'd';
     end
 
+    % Mesa FOSS graphics driver on top of open-source Linux DRM/KMS?
+    if ~isempty(strfind(winfo.GLVersion, 'Mesa'))
+      % Possibly VRR capable Mesa driver + Linux DRM/KMS driver:
+      fprintf('\n\nDo you want to allow use of so called VRR Variable Refresh Rate Mode?\n');
+      fprintf('This is also known as FreeSync or DisplayPort adaptive sync. It allows to control\n');
+      fprintf('visual stimulus onset with more fine-grained timing (see ''help VRRSupport'' for more infos).\n');
+      fprintf('This currently only works on AMD Sea Islands gpus and later and with suitable displays and cables.\n');
+      fprintf('It also needs at least Linux 5.2 for AMD gpus.\n');
+      vrrsupport = '';
+      while isempty(vrrsupport) || ~ismember(vrrsupport, ['y', 'n', 'd'])
+        vrrsupport = input('Allow use of VRR Variable Refresh Rate mode [y for yes, n for no, d for don''t care]? ', 's');
+      end
+    else
+      vrrsupport = 'd';
+    end
+
+    % VRR requested?
+    if vrrsupport == 'y'
+      % This won't currently (December 2019, X-Server 1.20) work with modesetting ddx.
+      % Actively request to not use modesetting ddx:
+      modesetting = 'n';
+    end
+
     if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting') && ...
        (~multigpu || (~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'ati'))) && ...
+       (vrrsupport ~= 'y') && ... % as of December 2019, the modesetting-ddx does not support VRR.
        (depth30bpp ~= 'y' || ~strcmp(xdriver, 'intel')) % As of July 2019, on Intel gfx only intel-ddx can do depth30bpp, not modesetting.
       % HybridGraphics Intel + NVidia/AMD needs intel-ddx, modesetting won't work. Ditto for AMD + AMD.
       % XOrg 1.18.0 or later? xf86-video-modesetting is only good enough for our purposes on 1.18 and later.
@@ -481,7 +506,7 @@ end
 
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
-   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia')
+   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd'
 
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default and not on a NVidia proprietary driver.
@@ -506,6 +531,18 @@ if (multixscreen > 0) && (modesetting == 'n') && modesettingddxactive && strcmp(
   fprintf('Override: is currently active while creating this config but must *not* be used for\n');
   fprintf('Override: requested color depth 30 bit. Generating a single-x-screen intel-ddx\n');
   fprintf('Override: config now. Please repeat the multi-x-screen + intel-ddx setup after logging\n');
+  fprintf('Override: out and in again with this new configuration selected.\n');
+elseif (multixscreen > 0) && (modesetting == 'n') && modesettingddxactive && vrrsupport == 'y'
+  % User wants VRR and no modesetting, because modesetting-ddx doesn't support VRR yet,
+  % but user also wants multi-X-screen and the modesetting ddx is currently active. We
+  % have to switch to non-modesetting ddx driver to get VRR working, but this means we
+  % can't switch to multi-x-screen at the same time. Sacrifice multi-x-screen for this
+  % two-setup setup process:
+  multixscreen = 0;
+  fprintf('Override: Ignoring request for multi X-Screen configuration, as modesetting-ddx\n');
+  fprintf('Override: is currently active while creating this config but must *not* be used for\n');
+  fprintf('Override: requested VRR support. Generating a single-x-screen ddx config now.\n');
+  fprintf('Override: Please repeat the multi-x-screen + non-modesetting-ddx setup after logging\n');
   fprintf('Override: out and in again with this new configuration selected.\n');
 elseif (multixscreen > 0) && (modesetting ~= 'y') && modesettingddxactive
   modesetting = 'y';
@@ -557,7 +594,7 @@ if noautoaddgpu > 0
 end
 
 if multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
-   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n'])
+   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n']) && vrrsupport == 'd'
   % Done writing the file:
   fclose(fid);
 else
@@ -597,7 +634,7 @@ else
     % Create device sections, one for each x-screen aka the driver instance
     % associated with that x-screen:
     for i = 0:screenNumber
-      WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, primehacks, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
+      WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, useuxa, primehacks, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
     end
 
     % One screen section per x-screen, mapping screen i to card i:
@@ -633,7 +670,7 @@ else
 
     % We only need to create a single device section with override Option
     % values for the gpu driving that single X-Screen.
-    WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, primehacks, [], [], []);
+    WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, useuxa, primehacks, [], [], []);
 
     if depth30bpp == 'y' || strcmp(xdriver, 'nvidia')
       fprintf(fid, 'Section "Screen"\n');
@@ -663,7 +700,7 @@ fprintf('file to setup your system, or to switch back to the default setup of yo
 
 end
 
-function WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, primehacks, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
+function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, useuxa, primehacks, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
   fprintf(fid, 'Section "Device"\n');
 
   if isempty(screenNumber)
@@ -697,6 +734,15 @@ function WriteGPUDeviceSection(fid, xdriver, dri3, triplebuffer, useuxa, primeha
       end
       fprintf(fid, '  Option      "SwapLimit" "%s"\n', triplebuffer);
     end
+  end
+
+  if vrrsupport ~= 'd'
+    if vrrsupport == 'y'
+      vrrsupport = 'on';
+    else
+      vrrsupport = 'off';
+    end
+    fprintf(fid, '  Option      "VariableRefresh" "%s"\n', vrrsupport);
   end
 
   if dri3 ~= 'd'
@@ -807,9 +853,18 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
   multigpu = 0;
 
   % Does this machine have multiple gpu's, e.g., hybrid graphics laptop?
-  if ~exist('/dev/dri/card1','file')
+  if IsOctave && ~exist('/dev/dri/card1','file')
     % Nope:
     return;
+  end
+
+  % Multi-gpu check for Matlab, because Matlab exist() can not check device files:
+  if ~IsOctave
+    [rc, ~] = system('stat /dev/dri/card1');
+    if rc == 1
+      % Nope:
+      return;
+    end
   end
 
   % Yes, likely a hybrid graphics laptop:
