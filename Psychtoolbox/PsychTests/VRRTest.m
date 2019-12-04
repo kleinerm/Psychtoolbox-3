@@ -5,7 +5,7 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, testImage, saveplots, scr
 % "DisplayPort Adaptive Sync", "HDMI VRR" or "G-Sync".
 %
 % The test exercises VRR on a suitable system, see "help VRRSupport" for setup
-% instructions.
+% instructions, general info and caveats.
 %
 % It submits OpenGL bufferswaps / flips of varying 'delay' between successive
 % flips and measures and plots how well the hw can follow the requested timing.
@@ -16,36 +16,51 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, testImage, saveplots, scr
 %
 % The 'test' parameter selects the test pattern:
 %
-% 'sine' Sine wave, smoothly changing. Exceeds VRR range to test low framerate
-%        compensation (lfc). 'sine' is the default pattern if parameter is omitted.
-% 'random' Randomized from flip to flip, within VRR range.
+% 'sine'      Sine wave, smoothly changing. Exceeds VRR range to test low framerate
+%             compensation (lfc). 'sine' is the default pattern if parameter is omitted.
+%
+% 'random'    Randomized from flip to flip, within VRR range.
+%
 % 'maxrandom' Randomized from flip to flip, extending outside VRR range.
-% 'upsweep' linear increasing duration.
-% 'downsweep' linear decreasing duration.
-% 'upstep' Stepwise increasing duration every 60 flips.
-% 'downstep' Stepwise decreasing duration every 60 flips.
-% 'const' Run at some constant frame duration.
+%
+% 'upsweep'   Linear increasing duration.
+%
+% 'downsweep' Linear decreasing duration.
+%
+% 'upstep'    Stepwise increasing duration every 60 flips.
+%
+% 'downstep'  Stepwise decreasing duration every 60 flips.
+%
+% 'const'     Run at some constant frame duration.
+%
 %
 % 'n' Number of flips / trials to run. 2000 by default.
 %
+%
 % 'maxFlipDelta' Maximum frame duration in seconds. 0.2 secs = 200 msecs by default.
+%
 %
 % 'hwmeasurement' Use external measurement hardware to get timing ground-truth:
 %
 % 0 = Off [Default]. This display a static 'testImage' to allow to check how much
 %     the VRR display flickers under different stimulation timing regimes.
+%
 % 1 = VPixx DataPixx or similar VPixx device.
+%
 % 2 = VideoSwitcher + RTBox TTL pulse input port. Works with RTBox, but also with
 %     emulated RTBox of the CRS Bits#. Takes TTL pulse input from the VideoSwitcher.
 %     Selecting this will execute a enable/disable sequence for the VideoSwitcher
 %     at start and end of a measurement session.
+%
 % 3 = CRS Bits# via a loopback cable from trigger out to trigger in BNC port.
 %     Careful: Uses T-Lock for signalling/triggering at stimulus onset and therefore
 %     a rather deficient (mis)design. This works as long as low framerate compensation
 %     does not get triggered, otherwise the reference timestamps from the CRS hardware
 %     will be completely useless and bogus trash!
+%
 % 4 = Like 2 -- RtBox pulse input, but for use with a ColorCal2 or photo-diode that
 %     sends a TTL pulse to the RtBox / Bits# BNC trigger input instead of VideoSwitcher.
+%
 %
 % 'testImage' Either the name of an image file, or a numeric m x n or m x n x 3
 % matric with color values. The image read from the image file, or given image
@@ -54,10 +69,13 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, testImage, saveplots, scr
 % displayed. The purpose of this static image display is to test how much the
 % display device flickers under different VRR stimulation timings.
 %
+%
 % 'saveplots' Should plots with results be saved to filesystem? Defaults to
 % 0 for 'No', 1 = 'Yes'.
 %
-% 'screenNumber' Number of X-Screen to test on. Maximum X-Screen by default.
+%
+% 'screenNumber' Number of screen to test on. Maximum X-Screen by default.
+%
 %
 % You can abort the test earlier by pressing the ESC key.
 %
@@ -170,9 +188,10 @@ try
     % Get window info struct about onscreen fullscreen window:
     winfo = Screen('GetWindowInfo', w);
 
-    fprintf('Actual chosen VRR mode: %i\n', winfo.VRRMode);
+    fprintf('\nActual chosen VRR mode: %i\n', winfo.VRRMode);
     if winfo.VRRMode == 0
-        fprintf('WARNING: VRR unsupported on this hardware + software combo! Fixed refresh is used!!!\n');
+        fprintf('\nWARNING: VRR unsupported on this hardware + software combo! Fixed refresh is used!!!\n');
+        fprintf('WARNING: Read "help VRRSupport" for setup and troubleshooting instructions.\n\n');
     end
 
     % In hwmeasurement 0 mode - no measurement - display a texture with testImage,
@@ -279,9 +298,12 @@ try
         % Compute absolute deadline for next swapbuffers/flip request, relative
         % to previous completed flip, with some constant offset removed to compensate
         % for average scheduling delay Flip -> Mesa -> X-Server -> kms driver:
+        %
+        tdeadline = tvbl + delay - (0.0) / 1000; % Neutral setting.
+        % Optimized for Mario's test setups:
         %tdeadline = tvbl + delay - (1.863093)/ 1000; % Polaris 11 machine
         %tdeadline = tvbl + delay - (1.853770)/ 1000; % Bob / Sea Islands machine
-        tdeadline = tvbl + delay - (1.6909) / 1000;  % Raven / DCN-1 machine
+        %tdeadline = tvbl + delay - (1.6909) / 1000;  % Raven / DCN-1 machine
         %tdeadline = tvbl + delay - (0.881429) / 1000; % NVidia G-Sync test setup.
 
         % Store requested delay for i'th trial in td:
