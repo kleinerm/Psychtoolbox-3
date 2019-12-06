@@ -162,6 +162,10 @@ try
     Screen('FrameRate', screenNumber);
     Screen('Preference','Verbosity', oldverbo);
 
+    % Switch to FIFO realtime-priority and memory locking to reduce timing jitter
+    % and interruptions caused by other applications and the operating system itself:
+    Priority(MaxPriority(screenNumber));
+
     % Prepare window configuration for this script:
     PsychImaging('PrepareConfiguration')
 
@@ -192,7 +196,7 @@ try
     % Get window info struct about onscreen fullscreen window:
     winfo = Screen('GetWindowInfo', w);
 
-    fprintf('\nActual chosen VRR mode: %i\n', winfo.VRRMode);
+    fprintf('\nActual chosen VRR mode: %i, style %i, latency compensation %f msecs.\n', winfo.VRRMode, winfo.VRRStyleHint, 1000 * winfo.VRRLatencyCompensation);
     if winfo.VRRMode == 0
         fprintf('\nWARNING: VRR unsupported on this hardware + software combo! Fixed refresh is used!!!\n');
         fprintf('WARNING: Read "help VRRSupport" for setup and troubleshooting instructions.\n\n');
@@ -232,10 +236,6 @@ try
         % Perform calibration of optimal photo-diode trigger level:
         triggerlevel = PsychPhotodiode('CalibrateTriggerLevel', pdiode, w) %#ok<NASGU,NOPRT>
     end
-
-    % Switch to FIFO realtime-priority and memory locking to reduce timing jitter
-    % and interruptions caused by other applications and the operating system itself:
-    Priority(MaxPriority(w));
 
     % Get minimal frame duration 'ifi' from calibration loop:
     [ifi, nvalid, stddev ] = Screen('GetFlipInterval', w);

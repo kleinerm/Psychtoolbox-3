@@ -113,10 +113,13 @@ static psych_bool inGLUserspace = FALSE;
 static PsychWindowRecordType* currentRendertarget = NULL;
 
 // Count of currently async-flipping onscreen windows:
-static unsigned int    asyncFlipOpsActive = 0;
+static unsigned int asyncFlipOpsActive = 0;
 
 // Count of onscreen windows which have our own threaded frameseq stereo implementation active:
 static unsigned int frameSeqStereoActive = 0;
+
+// Count of onscreen windows which have our own threaded VRR scheduler implementation active:
+static unsigned int vrrSchedulersActive = 0;
 
 // Return count of currently async-flipping onscreen windows:
 unsigned int PsychGetNrAsyncFlipsActive(void)
@@ -128,6 +131,53 @@ unsigned int PsychGetNrAsyncFlipsActive(void)
 unsigned int PsychGetNrFrameSeqStereoWindowsActive(void)
 {
     return(frameSeqStereoActive);
+}
+
+// Return count of currently VRR scheduler threaded onscreen windows:
+unsigned int PsychGetNrVRRSchedulerWindowsActive(void)
+{
+    return(vrrSchedulersActive);
+}
+
+// Internal helper: Measure and compute VBLANK start and end timestamp for current refresh cycle:
+static double PsychGetVblankTimestamps(PsychWindowRecordType *windowRecord, double *vblankStart)
+{
+    int beamPosAtFlip;
+    double vbl_lines_elapsed, onset_lines_togo;
+    double time_at_vbl, vbl_time_elapsed, onset_time_togo;
+    double currentrefreshestimate = windowRecord->VideoRefreshInterval;
+    double vbl_startline = windowRecord->VBL_Startline;
+    double vbl_endline = windowRecord->VBL_Endline;
+
+    // Beamposition queries inoperative/unsupported/broken/disabled?
+    if (vbl_endline == -1)
+        return(-1);
+
+    beamPosAtFlip = PsychGetDisplayBeamPosition(NULL, windowRecord->screenNumber);
+    PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
+
+    if (beamPosAtFlip >= vbl_startline) {
+        vbl_lines_elapsed = beamPosAtFlip - vbl_startline;
+        onset_lines_togo = vbl_endline - beamPosAtFlip + 1;
+    }
+    else {
+        vbl_lines_elapsed = vbl_endline - vbl_startline + 1 + beamPosAtFlip;
+        onset_lines_togo = -1.0 * beamPosAtFlip;
+    }
+
+    // From the elapsed number we calculate the elapsed time since VBL start:
+    vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentrefreshestimate;
+    onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
+
+    // Compute start of vblank -- Only works in non-VRR mode with fixed duration Vblank:
+    if (vblankStart)
+        *vblankStart = time_at_vbl - vbl_time_elapsed;
+
+    // Compute of stimulus-onset, aka time when retrace is finished:
+    time_at_vbl = time_at_vbl + onset_time_togo;
+
+    // Return end of vblank aka start of active scanout:
+    return(time_at_vbl);
 }
 
 static void PsychDrawSplash(PsychWindowRecordType* windowRecord)
@@ -264,7 +314,7 @@ void PsychRebindARBExtensionsToCore(void)
         Contains experimental support for flipping multiple displays synchronously, e.g., for dual display stereo setups.
 
 */
-psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, psych_int64 specialFlags, int vrrMode, double vrrMinDuration, double vrrMaxDuration)
+psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, psych_int64 specialFlags, PsychVRRModeType vrrMode, PsychVRRStyleType vrrStyleHint, double vrrMinDuration, double vrrMaxDuration)
 {
     PsychRectType dummyrect;
     double splashMinDurationSecs = 0;
@@ -345,8 +395,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
     // Add all passed-in VRR parameters to windowRecord:
     (*windowRecord)->vrrMode = vrrMode;
+    (*windowRecord)->vrrStyleHint = vrrStyleHint;
     (*windowRecord)->vrrMinDuration = vrrMinDuration;
     (*windowRecord)->vrrMaxDuration = vrrMaxDuration;
+    (*windowRecord)->vrrLatencyCompensation = 0.0;
 
     // Assign the passed windowrect 'rect' to the new window:
     PsychCopyRect((*windowRecord)->rect, rect);
@@ -1529,7 +1581,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
         if (ifi_nominal > 0) printf("PTB-INFO: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
         printf("PTB-INFO: Small deviations between reported values are normal and no reason to worry.\n");
-        if (PsychVRRActive(*windowRecord)) printf("PTB-INFO: Enabling Variable refresh rate VRR mode, using method %i.\n", (*windowRecord)->vrrMode);
+        if (PsychVRRActive(*windowRecord)) {
+            printf("PTB-INFO: Enabling Variable Refresh Rate VRR mode, using method %i and timing style %i.\n", (*windowRecord)->vrrMode, (*windowRecord)->vrrStyleHint);
+            printf("PTB-INFO: Assuming minimum VRR refresh duration %f msecs, maximum duration %f msecs.\n", 1000 * (*windowRecord)->vrrMinDuration, 1000 * (*windowRecord)->vrrMaxDuration);
+            printf("PTB-INFO: Using initial VRR latency compensation of %f msecs.\n", 1000 * (*windowRecord)->vrrLatencyCompensation);
+        }
 
         if ((*windowRecord)->stereomode==kPsychOpenGLStereo) printf("PTB-INFO: Stereo display via OpenGL built-in frame-sequential stereo requested.\n");
         if ((*windowRecord)->stereomode==kPsychCompressedTLBRStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=LeftEye, Bot.=RightEye).\n");
@@ -1783,7 +1839,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         }
 
         // User wants us to continue despite VRR failure. Mark VRR as disabled:
-        (*windowRecord)->vrrMode = 0;
+        (*windowRecord)->vrrMode = kPsychVRROff;
 
         // Flash our visual warning bell at alert-level for 1 second if skipping sync tests is requested:
         PsychVisualBell((*windowRecord), 1, 2);
@@ -1972,11 +2028,16 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
             PsychSetupShutterGoggles(windowRecord, FALSE);
         }
 
+        // Reduce count of onscreen windows with our own threaded VRR scheduler active:
+        if (windowRecord->vrrMode == kPsychVRROwnScheduled)
+            vrrSchedulersActive--;
+
         // If this was the last onscreen window then we reset the currentRendertarget etc. to pre-Screen load time:
         if (PsychIsLastOnscreenWindow(windowRecord)) {
             currentRendertarget = NULL;
             asyncFlipOpsActive = 0;
             frameSeqStereoActive = 0;
+            vrrSchedulersActive = 0;
         }
 
         // Release dynamically allocated splash image buffer, if any, if this is the last onscreen window to be closed:
@@ -2503,8 +2564,8 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
     psych_bool oldStyle = (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips) ? TRUE : FALSE;
 
     // Get a handle to our info structs: These pointers must not be NULL!!!
-    PsychWindowRecordType*    windowRecord = (PsychWindowRecordType*) windowRecordToCast;
-    PsychFlipInfoStruct*    flipRequest     = windowRecord->flipInfo;
+    PsychWindowRecordType* windowRecord = (PsychWindowRecordType*) windowRecordToCast;
+    PsychFlipInfoStruct* flipRequest = windowRecord->flipInfo;
     psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !(windowRecord->specialflags & kPsychOpenMLDefective));
 
     // Assign a name to ourselves, for debugging:
@@ -2558,8 +2619,8 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
     if (windowRecord->imagingMode & kPsychEnableSRGBRendering)
         glEnable(GL_FRAMEBUFFER_SRGB);
 
-    // We have a special dispatch loop for our home-grown frame-sequential stereo implementation:
-    if (windowRecord->stereomode != kPsychFrameSequentialStereo) {
+    // Is this a true async flip and not something else like stereo or vrr?
+    if ((windowRecord->stereomode != kPsychFrameSequentialStereo) && (windowRecord->vrrMode != kPsychVRROwnScheduled)) {
         // Set our state as "initialized, ready & waiting":
         flipRequest->flipperState = 1;
 
@@ -2667,8 +2728,9 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
             // get triggered again with more work to do:
         }
         // Exit from standard dispatch loop.
-    }
-    else {
+    } // End of standard Async flip code.
+
+    if (windowRecord->stereomode == kPsychFrameSequentialStereo) {
         // Frame-Sequential stereo dispatch loop: Repeats infinitely, processing one flip request or stereo buffer swap per loop iteration.
         // Well, not infinitely, but until we receive a shutdown request and terminate ourselves...
 
@@ -2833,7 +2895,157 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
             // Next dispatch loop iteration...
         }
         // Exit from frame-sequential stereo dispatch loop.
-    }
+    } // End of frame-sequential stereo code.
+
+    if (windowRecord->vrrMode == kPsychVRROwnScheduled) {
+        // Homegrown VRR scheduler dispatch loop: Repeats infinitely, processing one flip request or "prevent lfc kick-in" per loop iteration.
+        // Well, not infinitely, but until we receive a shutdown request and terminate ourselves...
+
+        // Setup view: We set the full backbuffer area of the window.
+        PsychSetupView(windowRecord, TRUE);
+
+        // Set our state as "initialized and ready":
+        flipRequest->flipperState = 6;
+
+        PsychUnlockMutex(&(flipRequest->performFlipLock));
+        needWork = TRUE;
+
+        // Dispatch loop:
+        while (TRUE) {
+            // Do we need a new vrr flip work item? If so, can we get the lock to check it?
+            if (needWork && (PsychTryLockMutex(&(flipRequest->performFlipLock)) == 0)) {
+                // Need new work and got lock.
+
+                // Check if we are supposed to terminate:
+                if (flipRequest->opmode == -1) {
+                    // We shall terminate: We are not waiting on the flipperGoGoGo variable.
+                    // We hold the mutex, so set us to state "terminating with lock held" and exit the loop:
+                    flipRequest->flipperState = 4;
+                    break;
+                }
+
+                // New work available?
+                if (flipRequest->flipperState == 1) {
+                    // Yes: We have work and we have the mutex until we are
+                    // done with the work.
+                    needWork = FALSE;
+
+                    // Set our state to "executing - flip in progress":
+                    flipRequest->flipperState = 2;
+                }
+                else {
+                    // No: Release the lock, so master has a chance to give us new work:
+                    PsychUnlockMutex(&(flipRequest->performFlipLock));
+                }
+            }
+
+            // Update our last vblank end timestamp: On Linux we can query the actual
+            // timestamp at any time iff the open-source graphics drivers are used.
+            // On Linux with NVidia proprietary blob or on Windows and macOS, no such
+            // luck, and especially not in a VRR configuration! On such setups we fall
+            // back to approximation trickery which may or may not work reliable:
+            lastvbl = PsychOSGetVBLTimeAndCount(windowRecord, &vblcount);
+            if (lastvbl < 0)
+                lastvbl = windowRecord->time_at_last_vbl;
+
+            // Are we past the deadline for pending flip work?
+            PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+
+            // For performing a "virtual bufferswap" we need a swaprequest to be pending,
+            // and the flipwhen deadline being reached.
+            if (!needWork && (flipRequest->flipwhen - lastvbl < windowRecord->vrrMaxDuration - windowRecord->vrrLatencyCompensation)) {
+                // Yes: Time to update the backbuffers with our finalizedFBOs and do
+                // properly scheduled/timestamped bufferswaps:
+
+                // Copy our virtual backbuffer finalizedFBO[0] fbo to true backbuffer:
+                PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE,
+                                         &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL,
+                                         &(windowRecord->fboTable[0]), NULL);
+
+                // Execute synchronous flip to make it the frontbuffer: This resets the framebuffer binding to 0 at exit:
+                flipRequest->vbl_timestamp = PsychFlipWindowBuffers(windowRecord, 0, 0, 2, flipRequest->flipwhen - windowRecord->vrrLatencyCompensation,
+                                                                    &(flipRequest->beamPosAtFlip), &(flipRequest->miss_estimate),
+                                                                    &(flipRequest->time_at_flipend), &(flipRequest->time_at_onset));
+
+                // We glFinish() here, to make sure all rendering commands submitted
+                // by our OpenGL context are finished. This means the finalizedFBOs are
+                // "used up" for this redraw cycle and ready for refill by the masterthread:
+                glFinish();
+
+                // Set our state to 3 aka "flip operation finished, ready for new commands":
+                flipRequest->flipperState = 3;
+
+                // Compute swap deadline for onset of 2nd view (right eye):
+                // tnow = flipRequest->flipwhen + windowRecord->VideoRefreshInterval;
+
+                // We can release the lock already to unblock the client code on the masterthread,
+                // as it already has access to all timestamps and status information and can start
+                // rendering into the client framebuffers (drawBufferFBOs) already. It could even
+                // already perform new preflip operations, as we're done with the finalizedFBO:
+                PsychUnlockMutex(&(flipRequest->performFlipLock));
+
+                // Ready to accept new work:
+                needWork = TRUE;
+
+                // Restart at beginning of dispatch while-loop:
+                continue;
+            }
+
+            // Ok, either swap deadline for flip not within reach of current VRR
+            // refresh cycle, or nothing to do from client side. Idle swap handling...
+            if (!needWork) {
+                // Have something to swap, but not within reach of current refresh cycle.
+                // Perform immediate idle flip to move us closer to target time flipwhen,
+                // while keeping lfc or vblank timeout handling from triggering:
+                lastvbl = tnow;
+            }
+            else {
+                // We are idle, no new bufferswap pending. Set a reasonable idle-flip
+                // to keep lfc from triggering:
+
+                // Estimate next vblank deadline: Safety headroom is 0.5 refresh cycles.
+                lastvbl += windowRecord->vrrMinDuration;
+            }
+
+            // Time for a swap request?
+            if (tnow >= lastvbl) {
+                // Copy current frontbuffer to backbuffer for an idle "no-op" swap:
+                glReadBuffer(GL_FRONT);
+                glRasterPos2i(0, PsychGetHeightFromRect(windowRecord->rect));
+                glCopyPixels(0, 0, PsychGetWidthFromRect(windowRecord->rect), PsychGetHeightFromRect(windowRecord->rect), GL_COLOR);
+
+                // Trigger a doublebuffer swap in sync with vblank:
+                PsychOSFlipWindowBuffers(windowRecord);
+
+                // Protect against multi-threading trouble if needed:
+                PsychLockedTouchFramebufferIfNeeded(windowRecord);
+
+                if (PsychPrefStateGet_Verbosity() > 10) {
+                    printf("PTB-DEBUG: VRR Idle-Swap tnow = %f >= deadline = %f  delta = %f  [lastvbl = %f]\n", tnow, lastvbl, tnow - lastvbl, windowRecord->time_at_last_vbl);
+                }
+
+                // Wait for swap completion, so we get an updated vblank time estimate:
+                if (!(useOpenML && (PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &(windowRecord->time_at_last_vbl)) >= 0))) {
+                    // OpenML swap completion timestamping unsupported, disabled, or failed.
+                    // Use our standard trick instead.
+                    PsychWaitPixelSyncToken(windowRecord, FALSE);
+
+                    // Try to get good predicted scanout start timestamp:
+                    windowRecord->time_at_last_vbl = PsychGetVblankTimestamps(windowRecord, NULL);
+
+                    // Fallback to the basics if that fails:
+                    if (windowRecord->time_at_last_vbl < 0)
+                        PsychGetAdjustedPrecisionTimerSeconds(&(windowRecord->time_at_last_vbl));
+                }
+            } else {
+                // Nope. Need to sleep a bit here to kill some time:
+                PsychYieldIntervalSeconds(0.001);
+            }
+
+            // Next dispatch loop iteration...
+        }
+        // Exit from VRR scheduling dispatch loop.
+    } // End of VRR scheduler code.
 
     // Exit path from thread at thread termination...
 
@@ -2932,7 +3144,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
     if (NULL == flipRequest) PsychErrorExitMsg(PsychError_internal, "NULL-Ptr for 'flipRequest' field of windowRecord passed in PsychFlipWindowsIndirect()!!");
 
     // Synchronous flip requested?
-    if ((flipRequest->opmode == 0) && (windowRecord->stereomode != kPsychFrameSequentialStereo)) {
+    if ((flipRequest->opmode == 0) && (windowRecord->stereomode != kPsychFrameSequentialStereo) && (windowRecord->vrrMode != kPsychVRROwnScheduled)) {
         // Yes. Any pending operation in progress?
         if (flipRequest->asyncstate != 0) PsychErrorExitMsg(PsychError_internal, "Tried to invoke synchronous flip while flip still in progress!");
 
@@ -2947,15 +3159,18 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
     }
 
     // Asynchronous flip mode, either request to trigger one or request to finalize one:
-    if ((flipRequest->opmode == 1) || ((flipRequest->opmode == 0) && (windowRecord->stereomode == kPsychFrameSequentialStereo))) {
-        // Async flip start request, or a sync flip turned into an async flip due to kPsychFrameSequentialStereo:
+    if ((flipRequest->opmode == 1) || ((flipRequest->opmode == 0) && ((windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->vrrMode == kPsychVRROwnScheduled)))) {
+        // Async flip start request, or a sync flip turned into an async flip due to kPsychFrameSequentialStereo or VRR with our own scheduler:
         if (flipRequest->asyncstate != 0) PsychErrorExitMsg(PsychError_internal, "Tried to invoke asynchronous flip while flip still in progress!");
 
         // Current multiflip > 0 implementation is not thread-safe, so we don't support this:
         if (flipRequest->multiflip != 0) PsychErrorExitMsg(PsychError_user, "Using a non-zero 'multiflip' flag while starting an asynchronous flip! This is forbidden! Aborted.\n");
 
         if ((flipRequest->opmode == 0) && (PsychPrefStateGet_ConserveVRAM() & kPsychUseOldStyleAsyncFlips)) {
-            PsychErrorExitMsg(PsychError_user, "Tried to use frame-sequential stereo mode while Screen('Preference', 'ConserveVRAM') setting kPsychUseOldStyleAsyncFlips is set! Forbidden!");
+            if (windowRecord->vrrMode == kPsychVRROwnScheduled)
+                PsychErrorExitMsg(PsychError_user, "Tried to use VRR mode while Screen('Preference', 'ConserveVRAM') setting kPsychUseOldStyleAsyncFlips is set! Forbidden!");
+            else
+                PsychErrorExitMsg(PsychError_user, "Tried to use frame-sequential stereo mode while Screen('Preference', 'ConserveVRAM') setting kPsychUseOldStyleAsyncFlips is set! Forbidden!");
         }
 
         // PsychPreflip operations are not thread-safe due to possible callbacks into runtime interpreter thread
@@ -2967,11 +3182,11 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
         windowRecord->PipelineFlushDone = TRUE;
 
         // ... and flush & finish the pipe:
-        if (windowRecord->stereomode == kPsychFrameSequentialStereo) {
-            // In frame sequential mode we need to glFinish() to make sure our
+        if ((windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->vrrMode == kPsychVRROwnScheduled)) {
+            // In frame sequential / VRR scheduling mode we need to glFinish() to make sure our
             // finalizedFBO's are really ready for immediate consumption without
-            // blocking the stereo flipperThread, as that would glitch the left-right
-            // eye alternating and break stereo:
+            // blocking the stereo/vrr flipperThread, as that would glitch the left-right
+            // eye alternating and break stereo or glitch the VRR submission within time constraints:
             glFinish();
         }
         else {
@@ -3009,13 +3224,13 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 
             // Create & Init the two mutexes:
             if ((rc=PsychInitMutex(&(flipRequest->performFlipLock)))) {
-                printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): Could not create performFlipLock mutex lock [%s].\n", strerror(rc));
-                PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for mutex creation as part of async flip setup!");
+                printf("PTB-ERROR: In PsychFlipWindowBuffersIndirect(): Could not create performFlipLock mutex lock [%s].\n", strerror(rc));
+                PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for mutex creation as part of flip threading setup!");
             }
 
             if ((rc=PsychInitCondition(&(flipRequest->flipperGoGoGo), NULL))) {
-                printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): Could not create flipperGoGoGo condition variable [%s].\n", strerror(rc));
-                PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for condition variable creation as part of async flip setup!");
+                printf("PTB-ERROR: In PsychFlipWindowBuffersIndirect(): Could not create flipperGoGoGo condition variable [%s].\n", strerror(rc));
+                PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for condition variable creation as part of flip threading setup!");
             }
 
             // Set initial thread state to "inactive, not initialized at all":
@@ -3030,10 +3245,18 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
                 PsychSetupShutterGoggles(windowRecord, TRUE);
             }
 
+            // Setup for our own VRR scheduler implementation:
+            if (windowRecord->vrrMode == kPsychVRROwnScheduled) {
+                vrrSchedulersActive++;
+
+                if (PsychPrefStateGet_Verbosity() > 2)
+                    printf("PTB-INFO: Switching stimulus onset scheduling to use of our own VRR scheduler.\n");
+            }
+
             // Create and startup thread:
             if ((rc=PsychCreateThread(&(flipRequest->flipperThread), NULL, PsychFlipperThreadMain, (void*) windowRecord))) {
-                printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): Could not create flipper  [%s].\n", strerror(rc));
-                PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for thread creation as part of async flip setup!");
+                printf("PTB-ERROR: In PsychFlipWindowBuffersIndirect(): Could not create flipper  [%s].\n", strerror(rc));
+                PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for thread creation as part of flip threading setup!");
             }
 
             // Additionally try to schedule flipperThread MMCSS: This will lift it roughly into the
@@ -3077,8 +3300,8 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
                 //printf("ENTERING THREADCREATEFINISHED MUTEX: MUTEX_LOCK\n"); fflush(NULL);
 
                 if ((rc=PsychLockMutex(&(flipRequest->performFlipLock)))) {
-                    printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): First mutex_lock in init failed  [%s].\n", strerror(rc));
-                    PsychErrorExitMsg(PsychError_system, "Internal error or deadlock avoided as part of async flip setup!");
+                    printf("PTB-ERROR: In PsychFlipWindowBuffersIndirect(): First mutex_lock in init failed  [%s].\n", strerror(rc));
+                    PsychErrorExitMsg(PsychError_system, "Internal error or deadlock avoided as part of flip threading setup!");
                 }
 
                 //printf("ENTERING THREADCREATEFINISHED MUTEX: MUTEX_LOCKED!\n"); fflush(NULL);
@@ -3092,8 +3315,8 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
                 //printf("ENTERING THREADCREATEFINISHED MUTEX: MUTEX_UNLOCK\n"); fflush(NULL);
 
                 if ((rc=PsychUnlockMutex(&(flipRequest->performFlipLock)))) {
-                    printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): First mutex_unlock in init failed  [%s].\n", strerror(rc));
-                    PsychErrorExitMsg(PsychError_system, "Internal error or deadlock avoided as part of async flip setup!");
+                    printf("PTB-ERROR: In PsychFlipWindowBuffersIndirect(): First mutex_unlock in init failed  [%s].\n", strerror(rc));
+                    PsychErrorExitMsg(PsychError_system, "Internal error or deadlock avoided as part of flip threading setup!");
                 }
 
                 //printf("ENTERING THREADCREATEFINISHED MUTEX: MUTEX_UNLOCKED\n"); fflush(NULL);
@@ -3103,6 +3326,10 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 
                 //printf("ENTERING THREADCREATEFINISHED MUTEX: RETRY\n"); fflush(NULL);
             }
+
+            // On our VRR scheduler, give the VRR machinery some time to stabilize:
+            if (windowRecord->vrrMode == kPsychVRROwnScheduled)
+                PsychYieldIntervalSeconds(2);
 
             // End of first-time init for this windowRecord and its thread.
 
@@ -3124,21 +3351,21 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 
         // Trigger the thread:
         if ((rc=PsychSignalCondition(&(flipRequest->flipperGoGoGo)))) {
-            printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): pthread_cond_signal in trigger operation failed  [%s].\n", strerror(rc));
+            printf("PTB-ERROR: In PsychFlipWindowBuffersIndirect(): pthread_cond_signal in trigger operation failed  [%s].\n", strerror(rc));
             PsychErrorExitMsg(PsychError_internal, "This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
         }
 
         // Release the lock:
         if ((rc=PsychUnlockMutex(&(flipRequest->performFlipLock)))) {
-            printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): mutex_unlock in trigger operation failed  [%s].\n", strerror(rc));
+            printf("PTB-ERROR: In PsychFlipWindowBuffersIndirect(): mutex_unlock in trigger operation failed  [%s].\n", strerror(rc));
             PsychErrorExitMsg(PsychError_internal, "This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
         }
 
-        // Scheduling regular async-flip as opposed to frame-seq stereo flip,
+        // Scheduling regular async-flip as opposed to frame-seq stereo / vrr flip,
         // and EGL windowing backend active? If so we must prevent binding of
         // our masterthread contexts to the EGL backing surface of the window
         // while our async flipper thread has the surface bound:
-        if ((windowRecord->stereomode != kPsychFrameSequentialStereo) && (windowRecord->specialflags & kPsychIsEGLWindow)) {
+        if ((windowRecord->stereomode != kPsychFrameSequentialStereo) && (windowRecord->vrrMode != kPsychVRROwnScheduled) && (windowRecord->specialflags & kPsychIsEGLWindow)) {
             // Yes: Veto all EGL surface binds for this windowRecords regular contexts:
             windowRecord->specialflags |= kPsychSurfacelessContexts;
         }
@@ -3154,10 +3381,10 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
         }
         else {
             // Was a sync flip turned into an async-flip begin for our
-            // frame-sequential stereo implementation. Turn this into
-            // a blocking wait for async-flip end and fall-through, so
-            // we get the effective semantics of a classic sync-flip,
-            // just executed indirectly by the flipperthread:
+            // frame-sequential stereo or VRR scheduler implementation.
+            // Turn this into a blocking wait for async-flip end and
+            // fall-through, so we get the effective semantics of a
+            // classic sync-flip, just executed indirectly by the thread:
             flipRequest->opmode = 2;
         }
     }
@@ -3177,14 +3404,15 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
                 //printf("END: MUTEX_LOCK\n"); fflush(NULL);
 
                 if ((rc=PsychLockMutex(&(flipRequest->performFlipLock)))) {
-                    printf("PTB-ERROR: In Screen('AsyncFlipEnd'): PsychFlipWindowBuffersIndirect(): mutex_lock in wait for finish failed  [%s].\n", strerror(rc));
+                    printf("PTB-ERROR: In PsychFlipWindowBuffersIndirect(): mutex_lock in wait for finish failed  [%s].\n", strerror(rc));
                     PsychErrorExitMsg(PsychError_system, "Internal error or deadlock avoided as part of async flip end!");
                 }
             }
             else {
                 // Polling mode:
                 // Try to lock, return to caller if not available:
-                if (PsychTryLockMutex(&(flipRequest->performFlipLock)) > 0) return(FALSE);
+                if (PsychTryLockMutex(&(flipRequest->performFlipLock)) > 0)
+                    return(FALSE);
             }
 
             // printf("END: MUTEX_LOCKED\n"); fflush(NULL);
@@ -3199,7 +3427,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 
             // Not finished. Unlock:
             if ((rc=PsychUnlockMutex(&(flipRequest->performFlipLock)))) {
-                printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): mutex_unlock in wait/poll for finish failed  [%s].\n", strerror(rc));
+                printf("PTB-ERROR: In PsychFlipWindowBuffersIndirect(): mutex_unlock in wait/poll for finish failed  [%s].\n", strerror(rc));
                 PsychErrorExitMsg(PsychError_system, "Internal error or deadlock avoided as part of async flip end!");
             }
 
@@ -3231,14 +3459,14 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
         // Decrement the asyncFlipOpsActive count:
         asyncFlipOpsActive--;
 
-        if (windowRecord->stereomode == kPsychFrameSequentialStereo) {
-            // Finalize frame-seq stereo flip: run post-flip ops:
+        if ((windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->vrrMode == kPsychVRROwnScheduled)) {
+            // Finalize frame-seq stereo flip or VRR flip: run post-flip ops:
             flipRequest->asyncstate = 0;
             PsychPostFlipOperations(windowRecord, flipRequest->dont_clear);
             flipRequest->asyncstate = 2;
         }
         else {
-            // Finalize regular async-flip (== not frame-sequential stereo ops flip)
+            // Finalize regular async-flip.
 
             // EGL-backed windows need special treatment:
             if (windowRecord->specialflags & kPsychIsEGLWindow) {
@@ -3756,7 +3984,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // if we don't care about this, or if care has been taken already by osspecific_asyncflip_scheduled:
             flipcondition_satisfied = (windowRecord->stereomode == kPsychFrameSequentialStereo) || (windowRecord->targetFlipFieldType == -1) ||
                                         (preflip_vblcount == 0) || (((preflip_vblcount + 1) % 2) == (psych_uint64) windowRecord->targetFlipFieldType) ||
-                                        (osspecific_asyncflip_scheduled && !must_wait) || (windowRecord->specialflags & kPsychSkipWaitForFlipOnce);
+                                        (osspecific_asyncflip_scheduled && !must_wait) || (windowRecord->specialflags & kPsychSkipWaitForFlipOnce) ||
+                                        (windowRecord->vrrMode == kPsychVRROwnScheduled);
             // If in wrong video cycle, we simply sleep a millisecond, then retry...
             if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
         } while (!flipcondition_satisfied);
@@ -4898,7 +5127,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
             // Update reference timestamp:
             told = tnew;
-            
+
             // Some (buggy!) drivers, e.g., the ATI Radeon X1600 driver on
             // OS/X 10.4.10, do not limit the number of bufferswaps to 1 per refresh cycle as mandated
             // by the spec, but they allow as many bufferswaps as you want, as long as all of them happen
@@ -7489,8 +7718,9 @@ void PsychLockedTouchFramebufferIfNeeded(PsychWindowRecordType *windowRecord)
     // a) We are executing on a flipper thread, ie., not the master thread.
     // b) Any async flips ops are active on any window.
     // c) Any framesequential stereo flipping threads are active on any window.
+    // d) Any custom VRR scheduling threads are active on any window.
     if ((windowRecord->specialflags & kPsychNeedPostSwapLockedFlush) &&
-        (!PsychIsMasterThread() || (PsychGetNrAsyncFlipsActive() > 0) || (PsychGetNrFrameSeqStereoWindowsActive() > 0))
+        (!PsychIsMasterThread() || (PsychGetNrAsyncFlipsActive() > 0) || (PsychGetNrFrameSeqStereoWindowsActive() > 0) || (PsychGetNrVRRSchedulerWindowsActive() > 0))
         ) {
         // Workaround needed.
 
@@ -7501,8 +7731,8 @@ void PsychLockedTouchFramebufferIfNeeded(PsychWindowRecordType *windowRecord)
         PsychOSGetSwapCompletionTimestamp(windowRecord, 0, NULL);
 
         if (PsychPrefStateGet_Verbosity() > 15) {
-            printf("PTB-DEBUG: PsychLockedTouchFramebufferIfNeeded()! isMaster = %i   AsyncFlips = %i   StereoWindows = %i\n",
-                PsychIsMasterThread(), PsychGetNrAsyncFlipsActive(), PsychGetNrFrameSeqStereoWindowsActive());
+            printf("PTB-DEBUG: PsychLockedTouchFramebufferIfNeeded()! isMaster = %i   AsyncFlips = %i   StereoWindows = %i   VRRSchedulersActive = %i\n",
+                PsychIsMasterThread(), PsychGetNrAsyncFlipsActive(), PsychGetNrFrameSeqStereoWindowsActive(), PsychGetNrVRRSchedulerWindowsActive());
             fflush(NULL);
         }
 
