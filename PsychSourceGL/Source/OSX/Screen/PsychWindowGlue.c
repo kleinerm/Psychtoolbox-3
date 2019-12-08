@@ -286,11 +286,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         !(PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows))
         useCGL = TRUE;
 
-    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && !useCGL && (PsychPrefStateGet_Verbosity() > 3)) {
-        printf("PTB-INFO: Using Cocoa for fullscreen windows to work around graphics driver bugs in OSX.\n");
-        printf("PTB-INFO: Presentation timing precision is likely disastrous on most machines. Check your results.\n");
-    }
-
     // Display for fullscreen window not captured? Timing precision is unclear in this mode. In theory the compositor should disable
     // itself for fullscreen windows on modern OSX versions. If it really does that, who knows?
     if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows)) {
@@ -315,6 +310,23 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     if (windowLevel < 2000)
         useCGL = FALSE;
+
+    // Apples 10.14 trainwreck can't do better than 8 bpc / depth 24 and maintain compositor bypass, so timing
+    // would suck anyway. Let's give up already and switch to Cocoa, so at least Retina scaling will be ok
+    // at > 8 bpc, better than nothing...
+    if ((windowRecord->depth > 24) && (windowRecord->depth != 32)) {
+        useCGL = FALSE;
+
+        if (PsychPrefStateGet_Verbosity() > 1) {
+            printf("PTB-WARNING: High color precision framebuffer requested, which is incompatible with any precise or trustworthy\n");
+            printf("PTB-WARNING: visual stimulation timing on Apple macOS! Switching to Cocoa fallback path, timing will suck!\n");
+        }
+    }
+
+    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && !useCGL && (PsychPrefStateGet_Verbosity() > 3)) {
+        printf("PTB-INFO: Using Cocoa for fullscreen windows to work around graphics driver bugs or limitations of OSX.\n");
+        printf("PTB-INFO: Presentation timing precision is likely disastrous on most machines. Check your results.\n");
+    }
 
     // Create onscreen Cocoa window of requested position and size:
     if (!useCGL && PsychCocoaCreateWindow(windowRecord, windowLevel, &cocoaWindow)) {
