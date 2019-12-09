@@ -1550,8 +1550,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         PsychLockDisplay();
         vrr_atom = XInternAtom(dpy, "_VARIABLE_REFRESH", False);
         XChangeProperty(dpy, win, vrr_atom, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &state, 1);
-        PsychUnlockDisplay();
     }
+
+    PsychUnlockDisplay();
 
     // Try to enable swap event delivery to us:
     if (PsychOSSwapCompletionLogging(windowRecord, 2, 0) && (PsychPrefStateGet_Verbosity() > 3)) {
