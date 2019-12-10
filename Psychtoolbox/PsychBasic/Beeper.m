@@ -54,6 +54,9 @@ if ischar(frequency)
   end
 end
 
+% Silence any console output of Snd():
+oldverbo = Snd('Verbosity', 0);
+
 sampleRate = Snd('DefaultRate');
 
 nSample = sampleRate*durationSec;
@@ -61,10 +64,23 @@ soundVec = sin(2*pi*frequency*(1:nSample)/sampleRate);
 
 % Scale down the volume
 soundVec = soundVec * fVolume;
-% sound(soundVec);
-try % this part sometimes crashes for unknown reasons. If it happens replace sound with normal beep
-    
+
+try % this part sometimes crashes for unknown reasons. If it happens replace sound with normal beep:
+    % Play:
     Snd('Play', soundVec, sampleRate);
+
+    % Wait for playback done:
+    Snd('Wait');
+
+    % Close sound driver again:
+    Snd('Close');
+
+    % Restore old verbosity:
+    Snd('Verbosity', oldverbo);
 catch
+    % Restore old verbosity:
+    Snd('Verbosity', oldverbo);
+
+    % Primitive beep() fallback:
     beep
 end
