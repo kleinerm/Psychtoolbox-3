@@ -68,6 +68,9 @@ function err = Snd(command,signal,rate,sampleSize)
 % is checked for correctness, but other than that it is ignored. Allowable
 % values are either 8 or 16.
 %
+% oldverbosity = Snd('Verbosity' [, verbosity]);
+% - Query current level of verbosity, optionally set a new 'verbosity' level.
+%
 % Snd('Open') opens the channel, which stays open until you call
 % Snd('Close'). Snd('Play',...) automatically opens the channel if it isn't
 % already open. You can use Snd('Open', pahandle); to share an existing
@@ -106,8 +109,8 @@ function err = Snd(command,signal,rate,sampleSize)
 %
 % Snd('Play',sin(0:10000)); % play 22 KHz/(2*pi)=3.5 kHz tone
 % Snd('Play',[sin(1:20000) zeros(1,10000);zeros(1,10000) sin(1:20000)]); % stereo
-% Snd('Wait');         		% wait until end of all sounds currently in channel
-% Snd('Quiet');        		% stop the sound and flush the queue
+% Snd('Wait');              % wait until end of all sounds currently in channel
+% Snd('Quiet');             % stop the sound and flush the queue
 %
 % For most of the commands, the returned value is zero when successful, and
 % a nonzero error number when Snd fails.
@@ -162,15 +165,18 @@ function err = Snd(command,signal,rate,sampleSize)
 % 1/19/16    mk Make more robust against failing InitializePsychSound. Fallback to sound().
 % 7/11/19    mk Allow sharing pahandle with external code / piggyback onto existing pahandle
 %               via Snd('Open', pahandle);
+% 12/9/19    mk Add 'Verbosity' subcommand to be able to silence Snd() and PsychPortAudio() output.
 
 persistent ptb_snd_oldstyle;
 persistent ptb_snd_injected;
 persistent pahandle;
+persistent verbose;
 
 persistent endTime;
 if isempty(endTime)
     endTime = 0;
     ptb_snd_injected = 0;
+    verbose = 1;
 end
 
 % Default return value:
@@ -178,6 +184,16 @@ err = 0;
 
 if nargin == 0
     error('Wrong number of arguments: see Snd.');
+end
+
+if strcmpi(command, 'Verbosity')
+    if nargin ~= 2
+        error('Snd: Called "Verbosity" without specifying verbosity level.');
+    end
+
+    err = verbose;
+    verbose = signal;
+    return;
 end
 
 % Snd('Open', pahandle) called to inject a pahandle of an already open
@@ -200,7 +216,10 @@ if strcmpi(command,'Open') && nargin == 2
 
     endTime = 0;
 
-    fprintf('Snd(): Using PsychPortAudio via handle %i until you call Snd(''Close'');\n', pahandle);
+    if verbose
+        fprintf('Snd(): Using PsychPortAudio via handle %i until you call Snd(''Close'');\n', pahandle);
+    end
+
     return;
 end
 
@@ -213,12 +232,16 @@ if isempty(ptb_snd_oldstyle)
         % Matlab/Octave sound() function:
         ptb_snd_oldstyle = 1;
 
-        fprintf('Snd(): Using Matlab/Octave sound() function for sound output.\n');
+        if verbose
+            fprintf('Snd(): Using Matlab/Octave sound() function for sound output.\n');
+        end
     else
         % User wants new-style PsychPortAudio variant:
         ptb_snd_oldstyle = 0;
 
-        fprintf('Snd(): Initializing PsychPortAudio driver for sound output.\n');
+        if verbose
+            fprintf('Snd(): Initializing PsychPortAudio driver for sound output.\n');
+        end
 
         % Low-Latency preinit. Not that we'd need it, but doesn't hurt:
         try
@@ -237,9 +260,23 @@ end
 % Windows, as that device will often have exclusive access, so we would
 % fail here:
 if ~(strcmpi(command,'Open') || strcmpi(command,'Quiet') || strcmpi(command,'Close')) && ...
-    isempty(pahandle) && ~ptb_snd_oldstyle && ~IsOSX && (PsychPortAudio('GetOpenDeviceCount') > 0)
-    fprintf('Snd(): PsychPortAudio already in use. Using old sound() fallback instead...\n');
-    ptb_snd_oldstyle = 1;
+    isempty(pahandle) && ~ptb_snd_oldstyle && ~IsOSX
+
+    if ~verbose
+        oldv = PsychPortAudio('Verbosity', 0);
+        odc = PsychPortAudio('GetOpenDeviceCount');
+        PsychPortAudio('Verbosity', oldv);
+    else
+        odc = PsychPortAudio('GetOpenDeviceCount');
+    end
+
+    if odc > 0
+        if verbose
+            fprintf('Snd(): PsychPortAudio already in use. Using old sound() fallback instead...\n');
+        end
+
+        ptb_snd_oldstyle = 1;
+    end
 end
 
 if strcmpi(command,'Play')
@@ -329,8 +366,10 @@ if strcmpi(command,'Play')
                 else
                     % Should change samplerate, but can not, as this is a shared
                     % pahandle:
-                    fprintf('Snd(): Shared PsychPortAudio handle. Can not change sample rate from current %f Hz to %f Hz as requested!\n', ...
-                            props.SampleRate, rate);
+                    if verbose
+                        fprintf('Snd(): Shared PsychPortAudio handle. Can not change sample rate from current %f Hz to %f Hz as requested!\n', ...
+                                props.SampleRate, rate);
+                    end
                 end
             end
         end
@@ -348,7 +387,7 @@ if strcmpi(command,'Play')
             % Restore standard level of verbosity:
             PsychPortAudio('Verbosity', oldverbosity);
 
-            if ~IsOSX
+            if ~IsOSX && verbose
                 fprintf('Snd(): PsychPortAudio will be blocked for use by your own code until you call Snd(''Close'');\n');
                 fprintf('Snd(): If you want to use PsychPortAudio and Snd in the same session, make sure to open your\n');
                 fprintf('Snd(): stimulation sound device via calls to, e.g., pahandle = PsychPortAudio(''Open'', ...);\n');
