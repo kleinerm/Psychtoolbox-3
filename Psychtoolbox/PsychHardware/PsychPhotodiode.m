@@ -115,6 +115,7 @@ if strcmpi(cmd, 'Open')
         hostname = hostname.machineName;
         pdiode.deviceIndex = [];
 
+        % First look for Mario's preferred devices:
         for i = 1:length(devs)
             % Must have at least one input channel:
             if devs(i).NrInputChannels == 0
@@ -123,7 +124,7 @@ if strcmpi(cmd, 'Open')
 
             % On Linux, must be a hardware device, not some virtual device:
             if ~IsLinux || ~isempty(strfind(devs(i).DeviceName, 'hw:'))
-               if IsLinux && strcmp(hostname, 'groovy') && ~isempty(strfind(devs(i).DeviceName, 'HDA Intel'))
+               if isempty(strfind(devs(i).DeviceName, 'C-Media USB Audio Device'))
                    % Mario's MBP 2017 "groovy" is a special case: As of Linux 5.4
                    % we don't have audio capture support for the builtin HDA codec,
                    % despite it enumerating with 2 inputs:
@@ -132,6 +133,29 @@ if strcmpi(cmd, 'Open')
 
                pdiode.deviceIndex = devs(i).DeviceIndex;
                break;
+            end
+        end
+
+        % None of the preferred devices found?
+        if isempty(pdiode.deviceIndex)
+            for i = 1:length(devs)
+                % Must have at least one input channel:
+                if devs(i).NrInputChannels == 0
+                    continue;
+                end
+
+                % On Linux, must be a hardware device, not some virtual device:
+                if ~IsLinux || ~isempty(strfind(devs(i).DeviceName, 'hw:'))
+                   if IsLinux && strcmp(hostname, 'groovy') && ~isempty(strfind(devs(i).DeviceName, 'HDA Intel'))
+                       % Mario's MBP 2017 "groovy" is a special case: As of Linux 5.4
+                       % we don't have audio capture support for the builtin HDA codec,
+                       % despite it enumerating with 2 inputs:
+                       continue
+                   end
+
+                   pdiode.deviceIndex = devs(i).DeviceIndex;
+                   break;
+                end
             end
         end
     end
