@@ -61,6 +61,10 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, testImage, saveplots, scr
 % 4 = Like 2 -- RtBox pulse input, but for use with a ColorCal2 or photo-diode that
 %     sends a TTL pulse to the RtBox / Bits# BNC trigger input instead of VideoSwitcher.
 %
+% 5 = Measure via a supported photo-diode via PsychPhotodiode().
+%
+% 6 = Produce light-flash pattern to drive external photo-diode. Don't record yourself.
+%
 %
 % 'testImage' Either the name of an image file, or a numeric m x n or m x n x 3
 % matric with color values. The image read from the image file, or given image
@@ -221,6 +225,17 @@ try
         BitsPlusPlus('DIOCommand', w, n, 2^15, tLockTriggerData, 0);
     end
 
+    if hwmeasurement == 5
+        % Activate photo-diode timestamping driver:
+        pdiode = PsychPhotodiode('Open');
+
+        % Black calibration:
+        Screen('FillRect', w, 0);
+        Screen('Flip', w);
+        WaitSecs(0.1);
+        PsychPhotodiode('AutoSetTriggerLevel', pdiode, 20);
+    end
+
     % Switch to FIFO realtime-priority and memory locking to reduce timing jitter
     % and interruptions caused by other applications and the operating system itself:
     Priority(MaxPriority(w));
@@ -240,6 +255,7 @@ try
     sodpixx = ts;
     boxTime = ts;
     valids = false(1,n);
+    meascount = 0;
 
     % Perform some initial Flip to get us in sync with vblank:
     % tvbl is the timestamp (system gettimeofday time in seconds)
@@ -342,15 +358,19 @@ try
             valids(i) = 1;
         end
 
-        if hwmeasurement == 4 && mod(i, hwstepping) == 0
+        if (hwmeasurement == 4 || hwmeasurement == 5 || hwmeasurement == 6) && mod(i, hwstepping) == 0
             % Photosensor + RtBox: Draw white rectangle at top of screen to trigger photo sensor / ColorCal2 etc.:
             yshift = height / 5 * 0;
             Screen('FillRect', w, 1, [0 yshift width yshift+height/5]);
             Screen('DrawText', w, sprintf('+ %d msecs_______', round((yshift+height/5/2) / height * ifi * 1000)), width - 300, yshift+height/5/2);
             valids(i) = 1;
+
+            if hwmeasurement == 5
+                diodestart = PsychPhotodiode('Start', pdiode);
+            end
         end
 
-        % Request flip/OpenGL glXSwapBuffers at time tdeadline.
+        % Request flip at time tdeadline.
         % Return the driver reported timestamp when post-flip scanout starts in
         % tvbl and so(i).
         % The rasterbeam-position (scanline) when the measurement was taken is
@@ -361,6 +381,19 @@ try
             % Ask for a Datapixx onset timestamp from last 'Flip':
             [boxTime(i), sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp'); %#ok<ASGLU>
             dpixxdelay(i) = GetSecs;
+        end
+
+        if (hwmeasurement == 5) && valids(i)
+            % Ask for photo-diode onset timestamp from last 'Flip':
+            meascount = meascount + 1;
+            tPhoto = PsychPhotodiode('WaitSignal', pdiode, tdeadline + ifi * 1.5 + 0.010 - diodestart, 1, 1);
+            if ~isempty(tPhoto)
+                sodpixx(meascount) = tPhoto;
+            else
+                sodpixx(meascount) = NaN;
+            end
+
+            boxTime(meascount) = sodpixx(meascount);
         end
 
         % Record timestamp [again - redundant on Linux] for later use:
@@ -376,7 +409,6 @@ try
         if hwmeasurement == 2 || hwmeasurement == 3 || hwmeasurement == 4
             %[nw, tpost] = IOPort('Write', rtboxport, 'f', 1);
         end
-
     end
 
     % calculate clock skew corrected Datapixx onset timestamps
@@ -413,6 +445,10 @@ try
             BitsPlusPlus('Close');
             clear PsychRTBox;
         end
+    end
+
+    if hwmeasurement == 5
+        PsychPhotodiode('Close', pdiode);
     end
 
     % Normal scheduling:
@@ -493,41 +529,6 @@ try
         title('Rasterbeam position when timestamp was taken (in scanlines):');
     end
 
-    % Optionally plot execution/scheduling delay from predicted start of post-flip
-    % scanout and return of control to this script - a measure of general scheduling
-    % delay:
-    if false
-        if isequal(ts, so)
-            % Same info in vbltime and stimulus onset time. Only
-            % do one plot and label it in a less confusing manner:
-            figure;
-            plot((flipfin - so)*1000);
-
-            if IsLinux && (Screen('Preference', 'VBLTimestampingmode') == 4)
-                % Linux mode 4: X11/OpenML or Wayland presentation feedback, "so" is stimulus onset:
-                title('Time delta between stimulus onset and return of Flip in milliseconds:');
-            elseif (IsLinux || IsOSX) && ismember(Screen('Preference', 'VBLTimestampingmode'), [1, 3]) && (winfo.VBLCount > 0)
-                % Linux or OSX, vbl timestamping requested and apparently working. "so" is vblank time:
-                title('Time delta between start of VBL and return of Flip in milliseconds:');
-            else
-                % Windows or other os'es without working high precision timestamping: "so" is raw timestamp:
-                title('Time delta between return from swap completion and return of Flip in milliseconds:');
-            end
-        else
-            % Figure 3 shows difference in ms between finish of Flip and estimated
-            % start of VBL time:
-            figure
-            plot((flipfin - ts)*1000);
-            title('Time delta between start of VBL and return of Flip in milliseconds:');
-
-            % Figure 4 shows difference in ms between finish of Flip and estimated
-            % stimulus-onset:
-            figure
-            plot((flipfin - so)*1000);
-            title('Time delta between stimulus onset and return of Flip in milliseconds:');
-        end
-    end
-
     % If Datapixx hardware measurement was used, plot difference between kernel
     % reported flip times and ground-truth from external measurement hardware:
     if hwmeasurement
@@ -539,7 +540,10 @@ try
 
         if length(sodpixx) ~= length(sov)
             cutoffn = min(length(sodpixx), length(sov));
-            fprintf('Warning: Missing data %i vs. %i, only using first %i.\n', length(sodpixx), length(sov), cutoffn);
+            if hwmeasurement ~= 5
+                fprintf('Warning: Missing data %i vs. %i, only using first %i.\n', length(sodpixx), length(sov), cutoffn);
+            end
+
             sodpixx = sodpixx(1:cutoffn);
             sov = sov(1:cutoffn);
         end
@@ -556,8 +560,7 @@ try
             title('Time delta between stimulus onset and return of hardware timestamping in milliseconds:');
         end
 
-        if hwmeasurement == 2 || hwmeasurement == 4
-            %sodpixx = sodpixx(1:min(find(sodpixx == 0))-1);
+        if hwmeasurement == 2 || hwmeasurement == 4 || hwmeasurement == 5
             figure;
             grid on;
             plot(1000 * diff(sodpixx));
