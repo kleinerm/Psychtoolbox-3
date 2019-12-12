@@ -14,12 +14,9 @@ function varargout = PsychPhotodiode(cmd, handle, varargin)
 % pdiode = PsychPhotodiode('Open' [deviceIndex][, sampleRate][, lrMode]);
 % - Open audio device 'deviceIndex' for recording. Audio sampling will be
 % performed at the given optional 'sampleRate' with the given number of
-% audio input channels 'lrMode' (0 = Mono: Average of left and right
-% channel, 1 = Only left channel, 2 = Only right channel, 3 = Stereo).
+% audio input channels. 'lrMode' (0 = Mono: Sum of left and right channel,
+% 1 = Only left channel, 2 = Only right channel, 3 = Average of channels).
 %
-% NOTE: Currently only lrMode 1 is implemented, iow. lrMode does not yet
-%       have any effect!
-%  
 %
 % PsychPhotodiode('Close', pdiode);
 % - Close audio device.
@@ -35,7 +32,7 @@ function varargout = PsychPhotodiode(cmd, handle, varargin)
 % given number of seconds. By default, the capture will run for 3 seconds.
 %
 %
-% [onsetTimeSecs, audiodata] = PsychPhotodiode('WaitSignal', pdiode [, maxWaitTime=maxDurationSecs][, blocking=1]);
+% [onsetTimeSecs, audiodata, rawaudiodata] = PsychPhotodiode('WaitSignal', pdiode [, maxWaitTime=maxDurationSecs][, blocking=1]);
 % - Wait for stimulus onset, as picked up from a running capture operation.
 % Only call this function after a capture operation has been started via
 % PsychPhotodiode('Start'), or it will error out.
@@ -61,7 +58,10 @@ function varargout = PsychPhotodiode(cmd, handle, varargin)
 % visual stimulus and corresponding light flash picked up by the photo-diode
 % and sent as a voltage spike to the soundcard input.
 %
-% 'audiodata' is the vector or matrix of captured audiodata. 1 row for mono
+% 'audiodata' is the preprocessed row-vector of audiodata, used for
+% actual timestamping.
+%
+% 'rawaudiodata' is the vector or matrix of captured audiodata. 1 row for mono
 % recording, or a 2-row matrix (one row for each audio channel) in stereo
 % recording modes. Each value is an audio signal sample in range [-1 ; 1].
 %
@@ -238,7 +238,7 @@ if strcmpi(cmd, 'Start')
     PsychPortAudio('GetAudioData', pdiode.pa);
 
     % Preallocate an internal audio recording  buffer with a capacity of 10 seconds:
-    PsychPortAudio('GetAudioData', pdiode.pa, maxDurationSecs);
+    PsychPortAudio('GetAudioData', pdiode.pa, maxDurationSecs + 0.001);
 
     if nargout > 0
         % Return GetSecs mapped time as well:
@@ -307,6 +307,7 @@ if strcmpi(cmd, 'CalibrateTriggerLevel')
 
     % Get the data, 3 seconds:
     audiodata = PsychPortAudio('GetAudioData', pdiode.pa, [], 3.0, 3.0);
+    audiodata = PreProcess(pdiode, audiodata);
 
     % Stop capture, drain leftovers:
     PsychPortAudio('Stop', pdiode.pa);
@@ -325,6 +326,7 @@ if strcmpi(cmd, 'CalibrateTriggerLevel')
 
         % Get the data, 3 seconds:
         audiodata = PsychPortAudio('GetAudioData', pdiode.pa, [], 3.0, 3.0);
+        audiodata = PreProcess(pdiode, audiodata);
 
         % Stop capture, drain leftovers:
         PsychPortAudio('Stop', pdiode.pa);
@@ -392,11 +394,13 @@ if strcmpi(cmd, 'WaitSignal')
     % Wait or poll for requested amount of audiodata:
     while 1
         % Retrieve one msec of recorded data:
-        [audiodata, absrecposition, overflow, cstarttime] = PsychPortAudio('GetAudioData', pdiode.pa, [], 0.001);
+        [audiodata, absrecposition, ~, cstarttime] = PsychPortAudio('GetAudioData', pdiode.pa, [], 0.001);
+        varargout{3} = audiodata;
+        audiodata = PreProcess(pdiode, audiodata);
 
         % Compute timestamp in seconds since start of capture of when the
         % triggerLevel was exceeded the first time:
-        triggerTime = min(find(abs(audiodata(1,:)) > triggerLevel));
+        triggerTime = find(abs(audiodata(1,:)) > triggerLevel, 1);
         triggerTime = cstarttime + (absrecposition + triggerTime) / pdiode.samplerate; 
 
         % Signal onset detected? Then we are done:
@@ -436,3 +440,19 @@ if strcmpi(cmd, 'WaitSignal')
 end
 
 error('PsychPhotodiode: Unknown subcommand provided!');
+end
+
+function audiodata = PreProcess(pdiode, audiodata)
+    if size(audiodata, 1) > 1
+        switch pdiode.lrMode
+            case 0
+                audiodata = sum(audiodata);
+            case 1
+                audiodata = audiodata(1,:);
+            case 2
+                audiodata = audiodata(2,:);
+            case 3
+                audiodata = mean(audiodata);
+        end
+    end
+end
