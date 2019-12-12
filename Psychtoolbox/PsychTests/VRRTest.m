@@ -229,11 +229,8 @@ try
         % Activate photo-diode timestamping driver:
         pdiode = PsychPhotodiode('Open');
 
-        % Black calibration:
-        Screen('FillRect', w, 0);
-        Screen('Flip', w);
-        WaitSecs(0.1);
-        PsychPhotodiode('AutoSetTriggerLevel', pdiode, 20);
+        % Perform calibration of optimal photo-diode trigger level:
+        triggerlevel = PsychPhotodiode('CalibrateTriggerLevel', pdiode, w) %#ok<NASGU,NOPRT>
     end
 
     % Switch to FIFO realtime-priority and memory locking to reduce timing jitter
@@ -366,7 +363,7 @@ try
             valids(i) = 1;
 
             if hwmeasurement == 5
-                diodestart = PsychPhotodiode('Start', pdiode);
+                diodestart = PsychPhotodiode('Start', pdiode); %#ok<NASGU>
             end
         end
 
@@ -379,14 +376,14 @@ try
         [tvbl, so(i), flipfin(i), missest(i), beampos(i)] = Screen('Flip', w, tdeadline);
         if hwmeasurement == 1
             % Ask for a Datapixx onset timestamp from last 'Flip':
-            [boxTime(i), sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp'); %#ok<ASGLU>
+            [boxTime(i), sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp');
             dpixxdelay(i) = GetSecs;
         end
 
         if (hwmeasurement == 5) && valids(i)
             % Ask for photo-diode onset timestamp from last 'Flip':
             meascount = meascount + 1;
-            tPhoto = PsychPhotodiode('WaitSignal', pdiode, tdeadline + ifi * 1.5 + 0.010 - diodestart, 1, 1);
+            tPhoto = PsychPhotodiode('WaitSignal', pdiode);
             if ~isempty(tPhoto)
                 sodpixx(meascount) = tPhoto;
             else
