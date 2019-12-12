@@ -179,6 +179,8 @@ recordedaudio = [recordedaudio audiodata];
 % Close the audio device:
 PsychPortAudio('Close', pahandle);
 
+RestrictKeysForKbCheck([]);
+
 % Replay recorded data: Open 'device' for output, push recorded sound
 % data into its output buffer:
 pahandle = PsychPortAudio('Open', device, 1, 0, freq, 2);
