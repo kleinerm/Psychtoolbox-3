@@ -26,7 +26,7 @@
 
 #include "Screen.h"
 
-psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, psych_int64 specialFlags, int vrrMode, double vrrMinDuration, double vrrMaxDuration);
+psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow, psych_int64 specialFlags, PsychVRRModeType vrrMode, PsychVRRStyleType vrrStyleHint, double vrrMinDuration, double vrrMaxDuration);
 void    PsychCloseOnscreenWindow(PsychWindowRecordType *windowRecord);
 void    PsychCloseWindow(PsychWindowRecordType *windowRecord);
 void    PsychFlushGL(PsychWindowRecordType *windowRecord);
@@ -59,6 +59,7 @@ void    PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRend
 int     PsychFindFreeSwapGroupId(int maxGroupId);
 unsigned int PsychGetNrAsyncFlipsActive(void);
 unsigned int PsychGetNrFrameSeqStereoWindowsActive(void);
+unsigned int PsychGetNrVRRSchedulerWindowsActive(void);
 psych_bool PsychIsMasterThread(void);
 void PsychLockedTouchFramebufferIfNeeded(PsychWindowRecordType *windowRecord);
 

@@ -846,7 +846,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
         // Pass through as simple mode, because our caller needs to know if VRR was requested
         // to be enabled - this then triggers proper error handling in caller:
-        windowRecord->vrrMode = 2;
+        windowRecord->vrrMode = kPsychVRRSimple;
     }
 
     // Done.

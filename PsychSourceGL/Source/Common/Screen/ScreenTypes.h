@@ -92,6 +92,17 @@ typedef enum  {
 } PsychStereoDisplayType;
 
 typedef enum {
+    kPsychVRROff =              0,      // VRR disabled.
+    kPsychVRRAuto =             1,      // VRR mode to be auto-selected from one of the modes below this line:
+    kPsychVRRSimple =           2,      // VRR simple scheduling - Standard flip scheduling with call to swapbuffer.
+    kPsychVRROwnScheduled =     3       // VRR scheduling via our own custom scheduler, running on the flipper-thread.
+} PsychVRRModeType;
+
+typedef enum {
+    kPsychVRRStyleNone =            0   // No style hint given. Make as little assumptions about timing characteristics as possible. Try "one size fits all".
+} PsychVRRStyleType;
+
+typedef enum {
     kPsychUnknownColor = 0,
     kPsychRGBColor,             // means PsychRGBColorType
     kPsychRGBAColor,            // means RGBColorType with alpha channel

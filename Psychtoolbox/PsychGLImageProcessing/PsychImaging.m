@@ -178,15 +178,34 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   There may be different methods of implementing such fine-grained timing.
 %   The optional 'method' parameter allows you to select a specific method.
 %   Using the keyword 'Auto' or omitting the 'method' parameter ([]) will leave
-%   the choice of optimal method to Screen(). Currently only the method 'Simple'
-%   is implemented, but this may change with future versions of Psychtoolbox.
+%   the choice of optimal method to Screen(). Currently the methods 'Simple' and
+%   'OwnScheduled' are implemented: 'Simple' follows the most naive approach of VRR,
+%   simply requesting immediate flip, or in case a 'when' time is specified, waiting
+%   until 'when', then requesting a flip. 'OwnScheduled' selects a more sophisticated
+%   scheduling method that tries to take other constraints like minimum and maximum
+%   refresh rate of the display, display system state, and a specified 'styleHint'
+%   for the given visual stimulation paradigm into account, and also tries to
+%   compensate for some of the system timing jitter. This may provide higher
+%   precision or stability in some stimulation scenarios, but may also cause
+%   higher overhead or added latency in other scenarios.
+%
+%   The optional parameter 'styleHint' allows to give some general high level clue
+%   into the nature of the visual stimulation paradigm, as far as presentation
+%   timing is concerned. This allows to tune the scheduling method for VRR for
+%   maximum precision and reliability for a stimulation paradigm of the specified
+%   nature. Omitting the parameter, or setting it to 'None', will ask the algorithm
+%   to make almost no assumptions about the nature of the stimulation, but to choose
+%   some "one size fits all ok'ish" setup, or try to auto-detect how to tune itself for
+%   the running paradigm. The currently supported 'styleHint' settings are:
+%
+%   - 'None' = Make no assumptions, try some "One size fits all hopefully ok'ish" setup.
 %
 %   The optional parameter 'vrrMinRefreshHz' allows to specify the lowest video
 %   refresh rate that your display can reliably run at. If the parameter is
 %   omitted, Screen() will try to auto-detect this display property, or failing
 %   that, it will use a reasonable default.
 %
-%   Usage: PsychImaging('AddTask', 'General', 'UseFineGrainedTiming' [, method='Auto'][, vrrMinRefreshHz]);
+%   Usage: PsychImaging('AddTask', 'General', 'UseFineGrainedTiming' [, method='Auto'][, styleHint='None'][, vrrMinRefreshHz]);
 %
 %
 % * 'UseSubpixelDrive' Ask to take advantage of the so-called "Subpixel Drive"
@@ -1769,11 +1788,23 @@ if strcmpi(cmd, 'OpenWindow')
             vrrMode = 1;
         elseif strcmpi(vrrMode, 'Simple')
             vrrMode = 2;
+        elseif strcmpi(vrrMode, 'OwnScheduled')
+            vrrMode = 3;
         else
-            error('PsychImaging: For task "UseFineGrainedTiming" invalid method argument specified. Must be ''Auto'' or ''Simple''.');
+            error('PsychImaging: For task "UseFineGrainedTiming" invalid method argument specified. Must be ''Auto'', ''Simple'', or ''OwnScheduled''.');
         end
 
-        vrrMinRefreshHz = reqs{row, 4};
+        vrrStyleHint = reqs{row, 4};
+
+        if isempty(vrrStyleHint) || strcmpi(vrrStyleHint, 'None')
+            vrrStyleHint = 0;
+        elseif strcmpi(vrrStyleHint, 'XXX')
+            vrrStyleHint = 1;
+        else
+            error('PsychImaging: For task "UseFineGrainedTiming" invalid styleHint argument specified. Must be ''None''.');
+        end
+
+        vrrMinRefreshHz = reqs{row, 5};
         if isempty(vrrMinRefreshHz)
             vrrMinRefreshHz = 0;
         elseif ~isnumeric(vrrMinRefreshHz) || ~isscalar(vrrMinRefreshHz) || vrrMinRefreshHz < 0
@@ -1788,7 +1819,7 @@ if strcmpi(cmd, 'OpenWindow')
         end
 
         % Build ovrvrrParams:
-        ovrvrrParams = [vrrMode, 0, vrrMinRefreshHz];
+        ovrvrrParams = [vrrMode, vrrStyleHint, 0, vrrMinRefreshHz];
     end
 
     if nargin < 13 || isempty(varargin{12})
