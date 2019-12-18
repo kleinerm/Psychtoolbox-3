@@ -547,10 +547,10 @@ else
         end
 
         if isempty(svnpath)
-            fprintf('The Subversion client "svn" is not in one of its expected\n');
-            fprintf('locations for Mac OSX  on your disk. Please download and\n');
-            fprintf('install the most recent Subversion client from:\n');
-            fprintf('web http://subversion.apache.org/packages.html#osx -browser\n');
+            fprintf('The Subversion client "svn" is not in its expected\n');
+            fprintf('location on your disk. Please download and install the most\n');
+            fprintf('recent Subversion client via typing this into a terminal window:\n');
+            fprintf('xcode-select --install\n');
             fprintf('and then run %s again.\n', mfilename);
             error('Subversion client is missing. Please install it.');
         end

@@ -314,6 +314,10 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFilesARM']);
         end
 
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5LinuxFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5LinuxFiles64']);
+        end
+
         if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles'], 'dir')
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
         end
@@ -354,11 +358,14 @@ if IsOctave
 
         fprintf('Octave major version %i detected. Will prepend the following folder to your Octave path:\n', octavemajorv);
 
-        % Octave-3 and Octave-4 can share the same mex files in the Octave-3
-        % folder on Linux:
-        if ismember(octavemajorv, [3,4]) && IsLinux
+        if ((octavemajorv >= 5) || (octavemajorv == 4 && octaveminorv >= 4)) && IsLinux
+            % Octave-4.4 and Octave-5 can share the same mex files in the Octave-5 folder on Linux:
+            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave5'];
+        elseif ismember(octavemajorv, [3,4]) && IsLinux
+            % Octave-3 and Octave-4.0/4.2 can share the same mex files in the Octave-3 folder on Linux:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave3'];
         else
+            % Everything else (aka other OS'es) goes by Octave major version:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
         end
 
@@ -405,13 +412,13 @@ if IsOctave
     end
 
     if (~IsLinux && (octavemajorv ~= 5 || octaveminorv ~= 1)) || ...
-        (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8) || (octavemajorv == 4 && octaveminorv > 2) || (octavemajorv > 4) ))
+        (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8) || (octavemajorv > 5)))
         fprintf('\n\n=================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
-            % On Linux everything from 3.8 to 4.2 is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0 or 4.2 series for use with Psychtoolbox.\n');
-            fprintf('WARNING: You can get Psychtoolbox for more recent versions of Octave, e.g., for v4.4 or v5.1, from NeuroDebian.\n');
+            % On Linux everything from 3.8 to 5 is fine:
+            fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0, 4.2, 4.4 or 5.1 series for use with Psychtoolbox.\n');
+            fprintf('WARNING: You can get Psychtoolbox for more recent versions of Octave from NeuroDebian.\n');
         else
             % On Windows/OSX we only care about 5.1 atm:
             fprintf('WARNING: only using Octave 5.1 with Psychtoolbox.\n');
@@ -459,13 +466,13 @@ if IsOctave
         % Failed! Either screwed setup of path or missing runtime
         % libraries.
         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
-        if ismember(octavemajorv, [3,4]) && IsLinux
+        if ismember(octavemajorv, [3,4,5]) && IsLinux
             fprintf('ERROR: Make sure to have the ''liboctave-dev'' package installed, otherwise symlinks\n');
             fprintf('ERROR: from liboctinterp.so to the liboctinterp library of your Octave installation\n');
             fprintf('ERROR: might by missing, causing our mex files to fail to load with linker errors.\n');
         end
         fprintf('ERROR: One reason might be that your version %s of Octave is incompatible. We recommend\n', version);
-        fprintf('ERROR: use of the latest stable version of Octave-4 as announced on the www.octave.org website.\n');
+        fprintf('ERROR: use of the latest stable version of Octave-4 or Octave-5 as announced on the www.octave.org website.\n');
         fprintf('ERROR: Another conceivable reason would be missing or incompatible required system libraries on your system.\n\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
@@ -543,7 +550,7 @@ if IsWin && ~IsOctave
         fprintf('ERROR: are missing on your system.\n\n');
         % Need 64-Bit runtime:
         fprintf('ERROR: Execute the installer file vcredist_x64_2015-2019.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
-        fprintf('ERROR: Maybe also execute the installer file vcredist_x64_2010.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
+        %fprintf('ERROR: Maybe also execute the installer file vcredist_x64_2010.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
         fprintf('ERROR: You must execute that installer as an administrator user. Exit Matlab before the installation, then restart it.\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox;\n\n');

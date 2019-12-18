@@ -29,7 +29,16 @@ fprintf('Building plugin type %i ...\n\n', mode);
 
 % Target folder depends if this is a 64 bit or 32 bit runtime:
 if ~isempty(strfind(computer, '_64'))
-    target = 'PsychBasic/Octave3LinuxFiles64/';
+    v = sscanf(version, '%i.%i.%i');
+
+    % Octave 4.4.0 or later?
+    if (v(1) >= 5) || (v(1) == 4 && v(2) >= 4)
+        % Some backwards incompatible mex api changes. Treat it as Octave-5:
+        target = 'PsychBasic/Octave5LinuxFiles64/';
+    else
+        % Good old <= Octave 4.2. Like Octave 3.8 - 4.2:
+        target = 'PsychBasic/Octave3LinuxFiles64/';
+    end
 else
     target = 'PsychBasic/Octave3LinuxFiles/';
 end

@@ -178,9 +178,9 @@ svnpath = GetSubversionPath;
 % Currently, we only know how to check this for Mac OSX.
 if IsOSX && isempty(svnpath)
     fprintf('The Subversion client "svn" is not in its expected\n');
-    fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
-    fprintf('download and install the most recent Subversion client from:\n');
-    fprintf('web http://metissian.com/projects/macosx/subversion/ -browser\n');
+    fprintf('location on your disk. Please download and install the most\n');
+    fprintf('recent Subversion client via typing this into a terminal window:\n');
+    fprintf('xcode-select --install\n');
     fprintf('and then run %s again.\n',mfilename);
     error('Subversion client is missing.');
 end
