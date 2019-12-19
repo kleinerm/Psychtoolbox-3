@@ -147,11 +147,9 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 %
 % P.S. If you get stuck, first check the FAQ section and Download section
 % of our Wiki at http://www.psychtoolbox.org. If that doesn't help, post
-% your question to the forum by email or web:
+% your question to the forum:
 %
-% web mailto:psychtoolbox@yahoogroups.com
-% web http://groups.yahoo.com/group/psychtoolbox/messages/
-% web http://groups.yahoo.com/group/psychtoolbox/post/
+% https://psychtoolbox.discourse.group
 %
 % Please specify your full name and the version of your operating system,
 % MATLAB / OCTAVE, and psychtoolbox.
