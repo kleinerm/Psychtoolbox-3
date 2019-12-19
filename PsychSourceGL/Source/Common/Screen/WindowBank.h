@@ -490,9 +490,11 @@ typedef struct _PsychWindowRecordType_{
     double                      internalMouseMultFactor;            // Used by GetMouse et al to rescale mouse position on HiDPI displays.
     double                      externalMouseMultFactor;            // Used by external mouse mapping to rescale mouse position on HiDPI displays.
 
-    int                         vrrMode;                            // Mode of stimulus onset time scheduling: 0 = Fixed rate, > 0 = VRR style.
-    double                      vrrMinDuration;                     // Minimum possible video refresh duration for given associated VRR display.
-    double                      vrrMaxDuration;                     // Maximum possible video refresh duration for given associated VRR display.
+    PsychVRRModeType            vrrMode;                            // Mode of stimulus onset time scheduling: 0 = Fixed rate, > 0 = VRR style.
+    PsychVRRStyleType           vrrStyleHint;                       // Style hint code for type of VRR stimulation for current onscreen window.
+    double                      vrrMinDuration;                     // Minimum possible video refresh duration (secs) for given associated VRR display.
+    double                      vrrMaxDuration;                     // Maximum possible video refresh duration (secs) for given associated VRR display.
+    double                      vrrLatencyCompensation;             // Amount of time to subtract from requested stimulus onset time for system latency compensation.
 
     // Used only when this structure holds a window:
     // CAUTION FIXME TODO: Due to some pretty ugly circular include dependencies in the #include chain of

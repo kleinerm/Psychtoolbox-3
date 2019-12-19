@@ -708,6 +708,19 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
     // Decide on proper format:
     finalizedFBOFormat = (redbits <= 8) ? GL_RGBA8 : ((windowRecord->gfxcaps & kPsychGfxCapFPFBO32) ? GL_RGBA_FLOAT32_APPLE : GL_RGBA16_SNORM);
 
+    // Use of VRR mode with our own custom scheduler requested?
+    if (windowRecord->vrrMode == kPsychVRROwnScheduled) {
+        // Create one finalizedFBO[0] for the virtual backbuffer that will be blitted into the real backbuffer, then
+        // VRR scheduled for stimulus onset:
+        if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), finalizedFBOFormat, FALSE, winwidth, winheight, 0, 0)) {
+            // Failed!
+            PsychErrorExitMsg(PsychError_system, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for my own VRR scheduler.");
+        }
+
+        windowRecord->finalizedFBO[0] = fbocount;
+        fbocount++;
+    }
+
     if ((windowRecord->stereomode == kPsychDualWindowStereo) || (imagingmode & kPsychNeedDualWindowOutput)) {
         // Dual-window stereo or dual window output is a special case: This window contains the imaging pipeline for
         // both views, but its OpenGL context and framebuffer only represents the left-view channel.
@@ -1232,7 +1245,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
                 }
 
                 if (windowRecord->stereomode > 0) {
-                    // Delete and recreate finalizedFBO[0] with our new backingstore:
+                    // Delete and recreate finalizedFBO[1] with our new backingstore:
                     winwidth = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->width;
                     winheight = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->height;
                     PsychDeleteFBO(windowRecord->fboTable[windowRecord->finalizedFBO[1]]);
@@ -1301,7 +1314,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
                 }
 
                 if (windowRecord->stereomode > 0) {
-                    // Delete and recreate finalizedFBO[0] with our new backingstore:
+                    // Delete and recreate finalizedFBO[1] with our new backingstore:
                     winwidth = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->width;
                     winheight = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->height;
                     format = windowRecord->fboTable[windowRecord->finalizedFBO[1]]->format;

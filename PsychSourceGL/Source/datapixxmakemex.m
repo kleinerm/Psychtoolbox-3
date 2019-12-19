@@ -172,6 +172,7 @@ function datapixxmakemex()
     %   Octave puts object files in same folders as source files, and we have to delete them manually.
     %   Matlab is a bit smarter, putting the object files in the current directory, then immediately cleaning them up.
     if (IsOctave)
+        v = sscanf(version, '%i.%i.%i');
         system(strrep([DELCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/src/*.o'], '/', filesep));
         system(strrep([DELCMD VPIXXDIR 'VPixx_Software_Tools/libdpx/src/*.o'], '/', filesep));
         system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/Common/Base/*.o'], '/', filesep));
@@ -185,8 +186,16 @@ function datapixxmakemex()
             system(strrep([DELCMD VPIXXDIR 'VPixx_Software_Tools/libusb/*.o'], '/', filesep));
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/Linux/Base/*.o'], '/', filesep));
             if (Is64Bit)
-                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux64/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles64'], '/', filesep));
-                striplibsfrommexfile([PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles64/Datapixx.mex']);
+                % Octave 4.4.0 or later?
+                if (v(1) >= 5) || (v(1) == 4 && v(2) >= 4)
+                    % Some backwards incompatible mex api changes. Treat it as Octave-5:
+                    system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux64/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave5LinuxFiles64'], '/', filesep));
+                    striplibsfrommexfile([PTBDIR 'Psychtoolbox/PsychBasic/Octave5LinuxFiles64/Datapixx.mex']);
+                else
+                    % Good old <= Octave 4.2. Like Octave 3.8 - 4.2:
+                    system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux64/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles64'], '/', filesep));
+                    striplibsfrommexfile([PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFiles64/Datapixx.mex']);
+                end
             else
                 if IsARM
                     system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/linux/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave3LinuxFilesARM'], '/', filesep));

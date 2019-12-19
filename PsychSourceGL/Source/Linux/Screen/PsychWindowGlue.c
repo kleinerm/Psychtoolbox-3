@@ -1376,22 +1376,25 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
 
     // VRR handling for all Linux X11/GLX drivers, ie. currently Mesa/FOSS/Linux VRR and G-Sync:
-    // Mode selection: 0 (off) stays 0 (off), 1 (auto) maps to 2 (simple), and 2 (simple) stays 2 (simple):
     switch (windowRecord->vrrMode) {
-        case 0: // Disable VRR:
-            windowRecord->vrrMode = 0;
+        case kPsychVRROff: // Disable VRR:
+            windowRecord->vrrMode = kPsychVRROff;
             break;
 
-        case 1: // Automatic selection of optimal supported method for this setup. Currently simply mode 2:
-            windowRecord->vrrMode = 2;
+        case kPsychVRRAuto: // Automatic selection of optimal supported method for this setup. Currently our own custom scheduler:
+            windowRecord->vrrMode = kPsychVRROwnScheduled;
             break;
 
-        case 2: // Classic / Legacy / Dumb VRR - Just swapbuffers when asked to:
-            windowRecord->vrrMode = 2;
+        case kPsychVRRSimple: // Classic / Legacy / Dumb VRR - Just swapbuffers when asked to:
+            windowRecord->vrrMode = kPsychVRRSimple;
+            break;
+
+        case kPsychVRROwnScheduled: // Our own custom async scheduler:
+            windowRecord->vrrMode = kPsychVRROwnScheduled;
             break;
 
         default:
-            windowRecord->vrrMode = 0;
+            windowRecord->vrrMode = kPsychVRROff;
             if (PsychPrefStateGet_Verbosity() > 1)
                 printf("PTB-WARNING: Unsupported VRR mode %i requested. Disabling VRR.\n", windowRecord->vrrMode);
     }
@@ -1422,7 +1425,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         int actual_format;
         int major, minor;
         psych_bool vrr_supported = FALSE;
-        psych_bool vrr_wanted = (windowRecord->vrrMode > 0) ? TRUE : FALSE;
+        psych_bool vrr_wanted = (windowRecord->vrrMode > kPsychVRROff) ? TRUE : FALSE;
 
         if (vrr_supported_atom &&
             (XRRGetOutputProperty(dpy, output, vrr_supported_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) &&
@@ -1536,7 +1539,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             // Yes: Set proper X11 window atom to request VRR mode from the driver:
             state = 1;
 
-            if (PsychPrefStateGet_Verbosity() > 2)
+            if (PsychPrefStateGet_Verbosity() > 3)
                 printf("PTB-INFO: Enabling VRR Variable Refresh Rate mode for this fullscreen window on Mesa graphics driver.\n");
         }
         else {
@@ -2026,7 +2029,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     //
     // This is the polling loop:
     PsychLockDisplay();
-    while ((windowRecord->vSynced) && ((PsychGetNrAsyncFlipsActive() > 0) || (PsychGetNrFrameSeqStereoWindowsActive() > 0)) &&
+    while ((windowRecord->vSynced) && ((PsychGetNrAsyncFlipsActive() > 0) || (PsychGetNrFrameSeqStereoWindowsActive() > 0) || (PsychGetNrVRRSchedulerWindowsActive() > 0)) &&
         (windowRecord->targetSpecific.privDpy == windowRecord->targetSpecific.deviceContext) &&
         glXGetSyncValuesOML(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle, &ust, &msc, &sbc) &&
         (sbc < windowRecord->target_sbc)) {
@@ -2473,6 +2476,7 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     if (PsychVRRActive(windowRecord) && ((windowRecord->gfxcaps & kPsychGfxCapLinuxVRR) || (windowRecord->gfxcaps & kPsychGfxCapGSync))) {
         double tFirst, tLast, tNominal, tMeasured;
         int i, good = 0;
+        double tError = 0.0;
 
         // Yes, ostensibly. We know usercode requested it and the Linux kernel + gpu/cable/display
         // hardware supports it, and we requested it from the XOrg display driver. What we don't
@@ -2485,11 +2489,13 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
         // see it complete at least 2.0 refresh durations later.
         tNominal = 1.0 / ((double) PsychGetNominalFramerate(windowRecord->screenNumber));
 
-        if (PsychPrefStateGet_Verbosity() > 9)
+        if (PsychPrefStateGet_Verbosity() > 3)
             printf("\nPTB-DEBUG: VRR quick test...\n");
 
-        // Run 10 trials:
-        for (i = 0; i < 10; i++) {
+        PsychRealtimePriority(TRUE);
+
+        // Run 60 trials:
+        for (i = 0; i < 60; i++) {
             glClear(GL_COLOR_BUFFER_BIT);
             PsychOSFlipWindowBuffers(windowRecord);
             PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tFirst);
@@ -2499,18 +2505,27 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
             PsychOSFlipWindowBuffers(windowRecord);
             PsychOSGetSwapCompletionTimestamp(windowRecord, 0, &tLast);
             tMeasured = tLast - tFirst;
-            if (tMeasured < 1.9 * tNominal)
+            if (tMeasured < 1.9 * tNominal) {
                 good++;
+
+                // Initial estimation of vrrLatencyCompensation offset:
+                tError += tMeasured - 1.25 * tNominal;
+            }
 
             if (PsychPrefStateGet_Verbosity() > 9)
                 printf("PTB-DEBUG: [%i of %i] Msecs: %f vs. %f [nominal %f]\n", good, i + 1, 1000.0 * tMeasured, 1000.0 * 1.9 * tNominal, 1000.0 * tNominal);
         }
 
+        PsychRealtimePriority(FALSE);
+
         if (PsychPrefStateGet_Verbosity() > 9)
             printf("\n");
 
-        // At least 7 out of 10 as expected for VRR?
-        if (good < 7) {
+        // Compute initial latency compensation as a simple mean of the measured latencies:
+        windowRecord->vrrLatencyCompensation = (good > 0) ? (tError / (double) good) : 0.0;
+
+        // At least 50 out of 60 as expected for VRR?
+        if (good < 50) {
             // Nope: Mark VRR as unsupported:
             windowRecord->gfxcaps &= ~kPsychGfxCapLinuxVRR;
             windowRecord->gfxcaps &= ~kPsychGfxCapGSync;
@@ -2522,11 +2537,11 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
                 printf("PTB-WARNING: XOrgConfSelector + logout + login to enable VRR.\n");
                 printf("PTB-WARNING: In the former case, update your XOrg DDX video driver. For AMD graphics cards you need at\n");
                 printf("PTB-WARNING: least version 19.0 of the xf86-video-amdgpu driver. -> 'help VRRSupport'\n");
-                printf("PTB-WARNING: [%i out of %i successful test trials, at least 7 successful ones needed.]\n\n", good, i);
+                printf("PTB-WARNING: [%i out of %i successful test trials, at least 50 successful ones needed.]\n\n", good, i);
             }
         }
-        else if (PsychPrefStateGet_Verbosity() > 9)
-            printf("PTB-DEBUG: All good.\n");
+        else if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-DEBUG: VRR all good: Using initial latency compensation of %f msecs.\n", 1000 * windowRecord->vrrLatencyCompensation);
     }
 
     #else
@@ -2587,7 +2602,7 @@ static psych_int64 PsychOSScheduleSoftSyncFlip(PsychWindowRecordType *windowReco
     // kms-pageflipping for this to work. Also check if the low-level access support is
     // available, which will be needed:
     if (!((windowRecord->specialflags & kPsychIsFullscreenWindow) &&
-        (windowRecord->vrrMode > 0) && windowRecord->vSynced &&
+        (windowRecord->vrrMode > kPsychVRROff) && windowRecord->vSynced &&
         (PsychPrefStateGet_WindowShieldingLevel() == 2000) &&
         PsychOSIsKernelDriverAvailable(screenId)))
         return(-1);
@@ -2803,7 +2818,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
         // For our own "FreeSync" style flip implementation, we need to make sure
         // that the backbuffer is fully finished rendering and swap ready before
         // we go through the whole procedure:
-        if ((specialFlags & 0x4) && (windowRecord->vrrMode > 0))
+        if ((specialFlags & 0x4) && (windowRecord->vrrMode > kPsychVRROff))
             // "FreeSync" style: Wait for render-completion aka swap ready:
             glFinish();
         else
@@ -2893,7 +2908,7 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
                      not at all on any tested analog VGA CRT monitor. We don't delete the PsychOSScheduleSoftSyncFlip()
                      implementation yet, because some of its ideas might be actually useful for VRR soon...
         // Our homegrown "FreeSync" style emulation wanted?
-        if ((specialFlags & 0x4) && (windowRecord->vrrMode > 0) && windowRecord->vSynced) {
+        if ((specialFlags & 0x4) && (windowRecord->vrrMode > kPsychVRROff) && windowRecord->vSynced) {
             // Yes. Check if emulation is possible and do it, if possible:
             rc = PsychOSScheduleSoftSyncFlip(windowRecord, tWhen, targetMSC);
 
