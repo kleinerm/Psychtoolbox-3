@@ -31,13 +31,14 @@ def get_sourcefiles(path):
     sources = []
     pattern1 = '*.c'
     pattern2 = '*.cpp'
-    for filename in os.listdir(path):
+    for filename in sorted(os.listdir(path)):
         if fnmatch.fnmatch(filename, pattern1) or fnmatch.fnmatch(filename, pattern2):
             sources += [os.path.join(path,filename)]
 
     # Fancy schmanzi, not needed atm. for recursive dir traversal:
     #    for root, dirs, files in os.walk(path):
-    #        for filename in files:
+    #        dirs.sort()
+    #        for filename in sorted(files):
     #            sources += [os.path.join(root,filename)]
 
     return(sources)
