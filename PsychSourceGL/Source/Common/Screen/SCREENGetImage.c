@@ -357,8 +357,24 @@ PsychError SCREENGetImage(void)
 
                 // Make sure binding gets released at end of routine:
                 viewid = -1;
+            } // No frame-sequential stereo: VRR with our own scheduler active and back buffer requested?
+            else if ((whichBuffer == GL_BACK) && (windowRecord->vrrMode == kPsychVRROwnScheduled)) {
+                // Yes. Our "backbuffer" equivalent is the finalizedFBO[0]:
+                viewid = 0;
+                whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
+                readFromfinalizedFBO = TRUE;
 
-            } // No frame-sequential stereo: Full imaging pipeline active and one of the drawBuffer's requested?
+                // Is the finalizedFBO multisampled? If so, create a temporary MSAA resolve target FBO as
+                // resolveFBO, otherwise set resolveFBO == NULL:
+                resolveFBO = PsychMSAAResolveToTemp(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]);
+                if (!resolveFBO) {
+                    // Directly bind finalizedFBO as framebuffer to read from:
+                    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid);
+                }
+
+                // Make sure binding gets released at end of routine:
+                viewid = -1;
+            } // No frame-sequential stereo or own VRR: Full imaging pipeline active and one of the drawBuffer's requested?
             else if (buffername && (PsychMatch(buffername, "drawBuffer")) && (windowRecord->imagingMode & kPsychNeedFastBackingStore)) {
                 // Activate drawBufferFBO:
                 PsychSetDrawingTarget(windowRecord);

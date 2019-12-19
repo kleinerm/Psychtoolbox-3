@@ -11,9 +11,9 @@ function SpriteDemo
 % sprite image and copy it to the screen for each frame of the animation,
 % specifying the screen location by using the destination rect argument of
 % Screen 'CopyWindow'.
-% 
+%
 % See also MovieDemo.
-% 
+%
 % Thanks to tj <thomasjerde@hotmail.com> for asking how. 
 % web http://groups.yahoo.com/group/psychtoolbox/message/1101 ;
 %
@@ -39,15 +39,14 @@ try
     foregroundColor = WhiteIndex(screenNumber);
     foregroundMinusBackground = abs(foregroundColor - backgroundColor);
 
-    
-	% Screen is able to do a lot of configuration and performance checks on
-	% open, and will print out a fair amount of detailed information when
-	% it does.  These commands supress that checking behavior and just let
+    % Screen is able to do a lot of configuration and performance checks on
+    % open, and will print out a fair amount of detailed information when
+    % it does.  These commands supress that checking behavior and just let
     % the demo go straight into action.  See ScreenTest for an example of
     % how to do detailed checking.
-	oldVisualDebugLevel = Screen('Preference', 'VisualDebugLevel', 3);
+    oldVisualDebugLevel = Screen('Preference', 'VisualDebugLevel', 3);
     oldSupressAllWarnings = Screen('Preference', 'SuppressAllWarnings', 1);
-    
+
     % Open a window and paint the background white
     window = Screen('OpenWindow', screenNumber, foregroundColor);
 
@@ -62,7 +61,7 @@ try
     end
 
     % ------ Bookkeeping Variables ------
-    
+
     spriteRect = [0 0 spriteSize spriteSize]; % The bounding box for our animated sprite
     spriteFrameIndex = 1; % Which frame of the animation should we show?
     buttons = 0; % When the user clicks the mouse, 'buttons' becomes nonzero.
@@ -74,19 +73,19 @@ try
         % We need to redraw the text or else it will disappear after a
         % subsequent call to Screen('Flip').
         Screen('DrawText', window, 'Move the mouse.  Click to exit', 0, 0, backgroundColor);
-        
+
         % Get the location and click state of the mouse.
         previousX = mX;
         previousY = mY;
         [mX, mY, buttons] = GetMouse; 
-        
+
         % Draw the sprite at the new location.
         Screen('DrawTexture', window, spriteFrame(spriteFrameIndex), spriteRect, CenterRectOnPoint(spriteRect, mX, mY));
         % Call Screen('Flip') to update the screen.  Note that calling
         % 'Flip' after we have both erased and redrawn the sprite prevents
         % the sprite from flickering.
         Screen('Flip', window);
-        
+
         % Animate the sprite only when the mouse is moving.
         if (previousX ~= mX) || (previousY ~= mY)
             spriteFrameIndex = spriteFrameIndex + 1;
@@ -98,16 +97,15 @@ try
 
     % Revive the mouse cursor.
     ShowCursor; 
-    
+
     % Close screen
     sca;
-    
+
     % Restore preferences
     Screen('Preference', 'VisualDebugLevel', oldVisualDebugLevel);
     Screen('Preference', 'SuppressAllWarnings', oldSupressAllWarnings);
 
 catch
-    
     % If there is an error in our try block, let's
     % return the user to the familiar MATLAB prompt.
     ShowCursor; 
@@ -115,5 +113,4 @@ catch
     Screen('Preference', 'VisualDebugLevel', oldVisualDebugLevel);
     Screen('Preference', 'SuppressAllWarnings', oldSupressAllWarnings);
     psychrethrow(psychlasterror);
-    
 end

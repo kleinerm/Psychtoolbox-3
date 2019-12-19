@@ -205,7 +205,9 @@ static char synopsisString[] =
     "SwapBarrier: Swap barrier id of the swap barrier to which this windows swap group is assigned. Zero for none.\n"
     "SysWindowHandle: Low-level windowing system specific window handle of the onscreen window. Currently Linux/X11 only: The X-Window handle.\n"
     "ExternalMouseMultFactor: Scaling factor to apply for remapping input coordinates on some systems, e.g., by RemapMouse.m.\n"
-    "VRRMode: Actual selected mode for VRR stimulus onset scheduling (1 = auto maps to actual choice): 0 = Off, 2 = Simple.\n"
+    "VRRMode: Actual selected mode for VRR stimulus onset scheduling (1 = auto maps to actual choice): 0 = Off, 2 = Simple, 3 = OwnScheduled.\n"
+    "VRRStyleHint: Style hint code for the current active VRR stimulation timing style, ie. what is assumed about timing behaviour of the paradigm.\n"
+    "VRRLatencyCompensation: Current estimate of average VRR swapbuffers latency, used for compensating during VRR scheduling in 'OwnScheduled' mode.\n"
     "\n"
     "The following settings are derived from a builtin detection heuristic, which works on most common GPU's:\n\n"
     "GPUCoreId: Symbolic name string that roughly describes the name of the GPU core of the graphics card. This string is arbitrarily\n"
@@ -233,8 +235,9 @@ PsychError SCREENGetWindowInfo(void)
                                 "VBLTimePostFlip", "OSSwapTimestamp", "GPULastFrameRenderTime", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "FlipCount", "StereoDrawBuffer",
                                 "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", "GPUMinorType",
                                 "DisplayCoreId", "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
-                                "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags", "SwapGroup", "SwapBarrier", "SysWindowHandle", "ExternalMouseMultFactor", "VRRMode" };
-    const int fieldCount = 40;
+                                "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags", "SwapGroup", "SwapBarrier", "SysWindowHandle", "ExternalMouseMultFactor", "VRRMode",
+                                "VRRStyleHint", "VRRLatencyCompensation" };
+    const int fieldCount = 42;
     PsychGenericScriptType *s;
 
     PsychWindowRecordType *windowRecord;
@@ -553,6 +556,12 @@ PsychError SCREENGetWindowInfo(void)
 
         // Effectively selected VRR mode - ergo excluding 1 for "automatic", as that one would have mapped to a > 1 mode already:
         PsychSetStructArrayDoubleElement("VRRMode", 0, windowRecord->vrrMode, s);
+
+        // Current assumption about VRR timing style:
+        PsychSetStructArrayDoubleElement("VRRStyleHint", 0, windowRecord->vrrStyleHint, s);
+
+        // Current assumption about VRR system latency:
+        PsychSetStructArrayDoubleElement("VRRLatencyCompensation", 0, windowRecord->vrrLatencyCompensation, s);
 
         // Which basic GPU architecture is this?
         PsychSetStructArrayStringElement("GPUCoreId", 0, windowRecord->gpuCoreId, s);

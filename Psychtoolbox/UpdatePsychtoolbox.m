@@ -65,6 +65,10 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % 06/01/16 mk  32-Bit Octave-4 support for MS-Windows removed.
 % 06/01/19 mk  Give automated hint about updated svn client under Matlab.
 % 10/31/19 dgp Allows UpdatePsychtoolbox to run without Psychtoolbox in path. 
+% 12/18/19 mk  Add "--accept theirs-full" to svn update, so in case of conflicts,
+%              server provided upstream files will just override/overwrite user
+%              modified files. Not super-friendly of us, but may cut down support
+%              overhead.
 
 addpath(fullfile(fileparts(mfilename('fullpath')),'PsychOneliners'));
 
@@ -178,15 +182,15 @@ svnpath = GetSubversionPath;
 % Currently, we only know how to check this for Mac OSX.
 if IsOSX && isempty(svnpath)
     fprintf('The Subversion client "svn" is not in its expected\n');
-    fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
-    fprintf('download and install the most recent Subversion client from:\n');
-    fprintf('web http://metissian.com/projects/macosx/subversion/ -browser\n');
+    fprintf('location on your disk. Please download and install the most\n');
+    fprintf('recent Subversion client via typing this into a terminal window:\n');
+    fprintf('xcode-select --install\n');
     fprintf('and then run %s again.\n',mfilename);
     error('Subversion client is missing.');
 end
 
 fprintf('About to update your working copy of the OpenGL-based Psychtoolbox-3.\n');
-updatecommand=[svnpath 'svn update '  targetRevision ' ' strcat('"',targetdirectory,'"') ];
+updatecommand=[svnpath 'svn update --accept theirs-full '  targetRevision ' ' strcat('"',targetdirectory,'"') ];
 fprintf('Will execute the following update command:\n');
 fprintf('%s\n', updatecommand);
 

@@ -1851,25 +1851,29 @@ dwmdontcare:
 
     // VRR handling for all MS-Windows drivers:
     switch (windowRecord->vrrMode) {
-        case 0: // Disable VRR:
-            windowRecord->vrrMode = 0;
+        case kPsychVRROff: // Disable VRR:
+            windowRecord->vrrMode = kPsychVRROff;
             break;
 
-        case 1: // Automatic selection of optimal supported method for this setup:
-            windowRecord->vrrMode = 2;
+        case kPsychVRRAuto: // Automatic selection of optimal supported method for this setup. Currently our own custom scheduler:
+            windowRecord->vrrMode = kPsychVRROwnScheduled;
             break;
 
-        case 2: // Classic / Legacy / Dumb VRR - Just swapbuffers when asked to: Not yet supported.
-            windowRecord->vrrMode = 2;
+        case kPsychVRRSimple: // Classic / Legacy / Dumb VRR - Just swapbuffers when asked to:
+            windowRecord->vrrMode = kPsychVRRSimple;
+            break;
+
+        case kPsychVRROwnScheduled: // Our own custom async scheduler:
+            windowRecord->vrrMode = kPsychVRROwnScheduled;
             break;
 
         default:
-            windowRecord->vrrMode = 0;
+            windowRecord->vrrMode = kPsychVRROff;
             if (PsychPrefStateGet_Verbosity() > 1)
                 printf("PTB-WARNING: Unsupported VRR mode %i requested. Disabling VRR.\n", windowRecord->vrrMode);
     }
 
-    if (windowRecord->vrrMode && (PsychPrefStateGet_Verbosity() > 1))
+    if ((windowRecord->vrrMode) && (PsychPrefStateGet_Verbosity() > 1))
         printf("PTB-WARNING: Unsupported VRR mode %i requested. Psychtoolbox for MS-Windows does not support VRR.\n", windowRecord->vrrMode);
 
     // Use vrrMinDuration "as is". Either userspace provided, or reasonable default of
