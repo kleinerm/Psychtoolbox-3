@@ -3353,7 +3353,7 @@ int PsychPipelineQueryHookSlot(PsychWindowRecordType *windowRecord, const char* 
 {
     PtrPsychHookFunction hookfunc;
     char myinsertString[100];
-    char mytypeString[100];
+    char mytypeString[80];
     int targetidx, idx;
     int nrassigned = sscanf((*idString), "%i", &targetidx);
     int hookidx=PsychGetHookByName(hookString);
