@@ -1488,6 +1488,7 @@ global psych_gpgpuapi;
 % These flags are global - needed in subfunctions as well (ugly ugly coding):
 global ptb_outputformatter_icmAware;
 global isASideBySideConfig;
+global screenRestoreCmd;
 global maxreqarg;
 
 if isempty(configphase_active)
@@ -2534,6 +2535,7 @@ function [imagingMode, stereoMode, reqs] = FinalizeConfiguration(reqs, userstere
 global ptb_outputformatter_icmAware;
 global psych_gpgpuapi;
 global isASideBySideConfig;
+global screenRestoreCmd;
 global maxreqarg;
 
 % Reset flag to "no":
@@ -3086,6 +3088,31 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
         error('PsychImaging: Native 16 bpc framebuffer requested, but not running on Linux X11. This is unsupported.');
     end
 
+    % We need to disable color tiling for rendering and display on the AMD gpu, as this hack needs a linear
+    % renderbuffer and scanoutbuffer. All suitable AMD gpu's are GCN gpus and therefore use the Mesa radeonsi
+    % gallium OpenGL driver which supports a special debug environment variable setting R600_DEBUG=notiling to
+    % achieve this. However, the variable setting is only picked up by Mesa during driver reinit time, and that
+    % only happens at first use of OpenGL in a session:
+    if isempty(strfind(getenv('R600_DEBUG'), 'notiling')) && isempty(strfind(getenv('AMD_DEBUG'), 'notiling'))
+        % Env setting and Screen reinit needed. This will not work on Matlab, and only sometimes on
+        % Octave, so give customized advise:
+        if IsOctave
+            setenv('R600_DEBUG', 'notiling');
+            fprintf('PsychImaging: Had to set the R600_DEBUG environment variable myself for setup of native 16 bpc framebuffer mode.\n');
+            fprintf('PsychImaging: This may not work if any OpenGL graphics or Screen() was already used in this session. If you see\n');
+            fprintf('PsychImaging: corrupted visual stimuli then abort the script, type ''clear all'' and then retry. If that does not\n');
+            fprintf('PsychImaging: help, then exit Octave and restart it from a terminal via this command:\n');
+            fprintf('PsychImaging: R600_DEBUG=notiling octave\n');
+            fprintf('\n\n');
+        else
+            fprintf('PsychImaging: The R600_DEBUG environment variable is not set to ''notiling'' as needed for native 16 bpc framebuffer\n');
+            fprintf('PsychImaging: mode. To fix this, the variable must be assigned before Matlab is started - or during Matlab startup.\n');
+            fprintf('PsychImaging: If you see corrupted visual stimuli then quit Matlab and restart it from a terminal via this command:\n');
+            fprintf('PsychImaging: R600_DEBUG=notiling matlab\n');
+            fprintf('\n\n');
+        end
+    end
+
     % Get number of attached video outputs (aka scanout engines) and properties
     % of the first output, which acts as a reference for all other outputs, if any:
     numOutputs = Screen('ConfigureDisplay', 'NumberOutputs', screenid);
@@ -3101,7 +3128,7 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
     if (2 * refOutput.width ~= swidth) || (2 * refOutput.height ~= sheight)
         fprintf('PsychImaging: Screen width and height is not twice the width and height of the first video output in native 16 bpc framebuffer mode. Adapting...\n');
         oldres = Screen('Resolution', screenid, 2 * refOutput.width, 2 * refOutput.height, [], [], 2);
-        while 1
+        for i=1:10
             [swidth, sheight] = Screen('WindowSize', screenid, 1);
             if (2 * refOutput.width == swidth) && (2 * refOutput.height == sheight)
                 % Change applied. Carry on!
@@ -3109,6 +3136,16 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
             end
             fprintf('PsychImaging: Screen resize to %i x %i pixels for 16 bpc mode still in progress. Waiting...\n', 2 * refOutput.width, 2 * refOutput.height);
             WaitSecs(1);
+        end
+
+        if i == 10
+            % Restore old screen setting if we changed it:
+            Screen('Resolution', screenid, oldres.width, oldres.height, [], [], 2);
+            fprintf('PsychImaging: Failed to change X-Screen width and height for native 16 bpc framebuffer mode. Likely this is because your\n');
+            fprintf('PsychImaging: desktop GUI environment prevents it. Modern versions of the GNOME desktop and Ubuntu desktop are known to\n');
+            fprintf('PsychImaging: prevent this mode (as tested with Ubuntu 19.10). Try switching to a different desktop GUI to see if that\n');
+            fprintf('PsychImaging: makes it work. E.g., XFCE-4 worked on Ubuntu 19.10, KDE may work.\n');
+            error('PsychImaging: Switch to 16 bpc framebuffer failed, probably due to wrong desktop GUI environment in use. See message above.');
         end
     else
         oldres = [];
@@ -3152,15 +3189,21 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
 
     % If we made it up to here, then the display output configuration and framebuffer size etc.
     % is at least compatible with 16 bpc 64 bpp scanout.
+    if ~isempty(oldres)
+        % Setup command sequence to restore settings after window close. Restore original X-Screen resolution:
+        screenRestoreCmd{screenid+1} = sprintf('Screen(''Resolution'', %i, %i, %i, [], [], 1+2);', screenid, oldres.width, oldres.height);
+    else
+        screenRestoreCmd{screenid+1} = [];
+    end
 
-    % As of September 2014, none of the commercially available gpu's has
-    % a graphics driver which would support 16 bpc / 64 bpp framebuffers.
-    % However, all recent AMD gpu's do support 16 bpc / 64 bpp framebuffers
+    % As of January 2020, none of the commercially available gpu's has a graphics
+    % driver which would support 16 bpc / 64 bpp fixed point linear framebuffers.
+    % However, all recent AMD gpu's do support linear 16 bpc / 64 bpp framebuffers
     % in their scanout hardware, ie., storing 16 bpc formatted framebuffer
     % content and scanning it out. The actual display encoders do limit output
     % precision to way less than 16 bpc though, ie. not the whole display pipeline is
     % 16 bpc. So what we do on Linux with the FOSS AMD graphics drivers on
-    % X11 + radeon-kms is we reprogram the scanout engine (crtc) to treat a
+    % X11 + radeon/amdgpu-kms is we reprogram the scanout engine (crtc) to treat a
     % 32 bpp framebuffer of twice the width and height of the crtc's viewport
     % as a 64 bpp framebuffer of exactly the width and height of the crtc's
     % viewport. From the perspective of Linux and its graphics stack, what we
@@ -3321,6 +3364,7 @@ global psych_default_colormode;
 
 % At least two video outputs scanning out in dual-display side-by-side configuration?
 global isASideBySideConfig;
+global screenRestoreCmd;
 
 if isempty(GL)
     % Perform minimal OpenGL init, so we can call OpenGL commands and use
@@ -4728,9 +4772,9 @@ end
 if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
 
-    % Our special shader-based 10 bpc output formatter is only needed and effective on
-    % Linux with AMD Radeon hardware, or with FireGL/FirePro with override mode bit set.
-    % Our 11 bpc and 16 bpc shader-based output formatters are only effective on Linux.
+    % Our special shader-based 10 bpc output formatter is only applicable on Linux
+    % with AMD Radeon hardware, or with FireGL/FirePro with override mode bit set.
+    % Our 11 bpc and 16 bpc shader-based output formatters are only for Linux + AMD GCN-1.1+.
     % specialFlags setting 1024 signals that our own low-level 10/11/16 bit framebuffer
     % hack on AMD hardware is active, so we also need our own GLSL output formatters.
     % Otherwise setup was (hopefully) done by the regular graphics drivers and we don't
@@ -4749,12 +4793,13 @@ if ~isempty(floc)
                     % message 21600 and predecessors in that thread for reference.
                     encodingBPC = 16;
                 else
-                    % Older engine. Only does 10 bpc, so using this mode is pointless and only good
-                    % for debugging.
+                    % Older engine. Only does a maximum of 10 bpc, so using this mode
+                    % is pointless and only good for debugging.
                     encodingBPC = 10;
                 end
-                fprintf('PsychImaging: EnableNative16BitFramebuffer: True framebuffer bpc is %i. Further output specific limitations may apply, check your results!\n', encodingBPC);
             end
+
+            fprintf('PsychImaging: EnableNative16BitFramebuffer: Framebuffer resolution set to %i bpc. Further video output specific limitations may apply, check your results with a photometer!\n', encodingBPC);
 
             % Load algorithmic 9 bpc - 16 bpc shader for packing 9-16 bpc content into a 64 bpp
             % framebuffer:
@@ -4784,7 +4829,7 @@ if ~isempty(floc)
         glUseProgram(0);
 
         if enableNative16BpcRequested
-              % Setup 16  bpc formatter further:
+              % Setup 16 bpc formatter further:
               pgshadername = 'Native RGBA16161616 framebuffer output formatting shader';
               if isASideBySideConfig
                   % Only scale vertically to cover whole vertical framebuffer height:
@@ -4795,7 +4840,7 @@ if ~isempty(floc)
               end
         elseif enableNative11BpcRequested
               % Use helper routine to build a proper RGBA Lookup texture for
-              % conversion of HDR RGB pixels to ARGB0-11-11-10 pixels.
+              % conversion of RGB pixels to ARGB0-11-11-10 pixels.
               % DCE-8 and later (tested on DCE-8 and DCE-10) need a different
               % format:
               if winfo.GPUMinorType >= 80
@@ -4809,7 +4854,7 @@ if ~isempty(floc)
               pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
         else
               % Use helper routine to build a proper RGBA Lookup texture for
-              % conversion of HDR RGBA pixels to ARGB2101010 pixels:
+              % conversion of RGBA pixels to ARGB2101010 pixels:
               pglutid = PsychHelperCreateARGB2101010RemapCLUT;
               pgshadername = 'Native ARGB2101010 framebuffer output formatting shader';
               pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
@@ -4823,6 +4868,13 @@ if ~isempty(floc)
         Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', pgshadername, pgshader, pgconfig);
         Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
         outputcount = outputcount + 1;
+
+        % For 16 bpc mode, we need to restore original X-Screen size at window close:
+        if enableNative16BpcRequested && ~isempty(screenRestoreCmd) && ~isempty(screenRestoreCmd{Screen('WindowScreenNumber', win)+1})
+            Screen('HookFunction', win, 'PrependMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Cleanup for 16 bpc Linux X11 mode.', screenRestoreCmd{Screen('WindowScreenNumber', win)+1});
+            Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
+            screenRestoreCmd{Screen('WindowScreenNumber', win)+1} = [];
+        end
 
         % AMD framebuffer devices - Identity CLUT not needed, as internal clut is bypassed anyway,
         % but we do it nonetheless, so we can decide about dithering setup and get things like
