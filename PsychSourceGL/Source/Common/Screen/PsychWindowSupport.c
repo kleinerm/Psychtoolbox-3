@@ -1458,37 +1458,68 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // ifi_beamestimate as alternative ifi hint for stabilization. Having an alternative is especially
         // important on OSX which reports ifi_nominal == 0 on builtin flat panels and has often noisy timing,
         // especially since OSX 10.9 Mavericks.
-
-        // We try 3 times a maxDuration seconds max., in case something goes wrong...
-        while(ifi_estimate==0 && retry_count<3) {
-            numSamples = minSamples;      // Require at least minSamples *valid* samples...
-            // Require a std-deviation of maxStddev (default is less than 200 microseconds) on all systems.
-            // If a non-Linux system likely has desktop composition enabled, we are more lenient and allow
-            // up to 5x the maxStddev which would end up with 1 msec at default settings:
-            stddev = (PsychOSIsDWMEnabled(screenSettings->screenNumber) && (PSYCH_SYSTEM != PSYCH_LINUX)) ? (5 * maxStddev) : maxStddev;
-            // If skipping of sync-test is requested, we limit the calibration to 1 sec.
-            maxsecs = (skip_synctests) ? 1 : maxDuration;
-            retry_count++;
-            ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ((ifi_nominal > 0) ? ifi_nominal : ifi_beamestimate), &did_pageflip);
-
-            if((PsychPrefStateGet_Verbosity()>1) && (ifi_estimate==0 && retry_count<3)) {
-                printf("\nWARNING: VBL Calibration run No. %i failed. Retrying...\n", retry_count);
+        //
+        // We skip this flip-based procedure if the special Linux MMIO hack is used to achieve 16 bpc / 64 bpp
+        // framebuffers for 48 bit color depth display on modern AMD GCN gpu's with DCE8+ display engine. The
+        // hack causes such a massive rendering performance hit even on fast gpu's that this test will definitely
+        // fail due to a fps way lower than the video refresh rate of the display, iow. the test would show a false
+        // positive, e.g., a 60 Hz display may only be able to flip at 20 fps at most, possibly even slower. On Linux
+        // we have various other means to check for proper timing, so this test can be skipped with no harm.
+        if (!((*windowRecord)->specialflags & kPsychNative10bpcFBActive) || ((*windowRecord)->depth != 48)) {
+            // Performance degrading hack should not be used?
+            if (((getenv("R600_DEBUG") && strstr(getenv("R600_DEBUG"), "notiling")) || (getenv("AMD_DEBUG") && strstr(getenv("AMD_DEBUG"), "notiling"))) &&
+                (PsychPrefStateGet_Verbosity() > 1)) {
+                // Uh, notiling / linear render-/scanoutbuffers requested, although not needed! This will kill perfomance.
+                // Probably a leftover from using 16 bpc hack. Advise user:
+                printf("\nPTB-WARNING: The environment variables R600_DEBUG or AMD_DEBUG are set to include the keyword 'notiling'. This\n");
+                printf("PTB-WARNING: will cause massive graphics performance degradation and possibly failure of the sync tests. Unless\n");
+                printf("PTB-WARNING: you are doing this for some low-level debugging purpose, it should be avoided. Either remove the keyword\n");
+                printf("PTB-WARNING: from both environment variables and then 'clear all', or if that does not help - or as a simple solution -\n");
+                printf("PTB-WARNING: simply quit and restart Octave or Matlab. Will continue, but may fail the timing tests due to this confound...\n\n");
             }
 
-            // Is this the 2nd failed trial?
-            if ((ifi_estimate==0) && (retry_count == 2)) {
-                // Yes. Before we start the 3rd and final trial, we enable manual syncing of bufferswaps
-                // to retrace by setting the kPsychBusyWaitForVBLBeforeBufferSwapRequest flag for this window.
-                // Our PsychOSFlipWindowBuffers() routine will spin-wait/busy-wait manually for onset of VBL
-                // before emitting the double buffer swaprequest, in the hope that this will fix possible
-                // sync-to-retrace driver bugs/failures and fix our calibration issue. This should allow the
-                // 3rd calibration run to succeed if this is the problem:
-                (*windowRecord)->specialflags |= kPsychBusyWaitForVBLBeforeBufferSwapRequest;
-                if (PsychPrefStateGet_Verbosity() > 1) {
-                    printf("WARNING: Will enable VBL busywait-workaround before trying final VBL Calibration run No. %i.\n", retry_count + 1);
-                    printf("WARNING: This will hopefully work-around graphics driver bugs of the GPU sync-to-retrace mechanism. Cross your fingers!\n");
+            // We try 3 times a maxDuration seconds max., in case something goes wrong...
+            while (ifi_estimate == 0 && retry_count < 3) {
+                numSamples = minSamples;      // Require at least minSamples *valid* samples...
+                // Require a std-deviation of maxStddev (default is less than 200 microseconds) on all systems.
+                // If a non-Linux system likely has desktop composition enabled, we are more lenient and allow
+                // up to 5x the maxStddev which would end up with 1 msec at default settings:
+                stddev = (PsychOSIsDWMEnabled(screenSettings->screenNumber) && (PSYCH_SYSTEM != PSYCH_LINUX)) ? (5 * maxStddev) : maxStddev;
+                // If skipping of sync-test is requested, we limit the calibration to 1 sec.
+                maxsecs = (skip_synctests) ? 1 : maxDuration;
+                retry_count++;
+                ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ((ifi_nominal > 0) ? ifi_nominal : ifi_beamestimate), &did_pageflip);
+
+                if((PsychPrefStateGet_Verbosity()>1) && (ifi_estimate==0 && retry_count<3)) {
+                    printf("\nWARNING: VBL Calibration run No. %i failed. Retrying...\n", retry_count);
+                }
+
+                // Is this the 2nd failed trial?
+                if ((ifi_estimate==0) && (retry_count == 2)) {
+                    // Yes. Before we start the 3rd and final trial, we enable manual syncing of bufferswaps
+                    // to retrace by setting the kPsychBusyWaitForVBLBeforeBufferSwapRequest flag for this window.
+                    // Our PsychOSFlipWindowBuffers() routine will spin-wait/busy-wait manually for onset of VBL
+                    // before emitting the double buffer swaprequest, in the hope that this will fix possible
+                    // sync-to-retrace driver bugs/failures and fix our calibration issue. This should allow the
+                    // 3rd calibration run to succeed if this is the problem:
+                    (*windowRecord)->specialflags |= kPsychBusyWaitForVBLBeforeBufferSwapRequest;
+                    if (PsychPrefStateGet_Verbosity() > 1) {
+                        printf("WARNING: Will enable VBL busywait-workaround before trying final VBL Calibration run No. %i.\n", retry_count + 1);
+                        printf("WARNING: This will hopefully work-around graphics driver bugs of the GPU sync-to-retrace mechanism. Cross your fingers!\n");
+                    }
                 }
             }
+        }
+        else {
+            // 48 bit color depth, 64 bpp, 16 bpc high precision MMIO hack active. Skipped this calibration. Make up some
+            // reasonable values to keep going:
+            ifi_estimate = (ifi_nominal > 0) ? ifi_nominal : ifi_beamestimate;
+            did_pageflip = TRUE;
+            numSamples = minSamples;
+            stddev = 0.0;
+            maxsecs = 0.0;
+            (*windowRecord)->nrIFISamples = numSamples;
+            (*windowRecord)->IFIRunningSum = ifi_estimate * minSamples;
         }
 
         // Compare ifi_estimate from VBL-Sync against beam estimate. If we are in OpenGL native
