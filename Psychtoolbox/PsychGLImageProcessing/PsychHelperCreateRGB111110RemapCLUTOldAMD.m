@@ -130,6 +130,15 @@ hostformat = GL.UNSIGNED_INT_8_8_8_8_REV;
 remapCLUTId = glGenTextures(1);
 glBindTexture(GL.TEXTURE_RECTANGLE_EXT, remapCLUTId);
 glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, GL.RGBA, 2048, 3, 0, GL.BGRA, hostformat, clut);
+
+% Make sure we use nearest neighbour sampling:
+glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
+glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
+
+% And that we clamp to edge:
+glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_WRAP_S, GL.CLAMP);
+glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_WRAP_T, GL.CLAMP);
+
 glBindTexture(GL.TEXTURE_RECTANGLE_EXT, 0);
 
 % Ready.
