@@ -1069,7 +1069,9 @@ int PsychHIDGetDefaultKbQueueDevice(void)
     // keyboards do:
     for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
         dev = &info[deviceIndex];
-        if ((dev->use == XISlaveKeyboard) && strstr(dev->name, "eyboard") && !strstr(dev->name, "XTEST")) return(deviceIndex);
+        if ((dev->use == XISlaveKeyboard) && strstr(dev->name, "eyboard") &&
+            !strstr(dev->name, "XTEST") && !strstr(dev->name, "M720 Triathlon"))
+            return(deviceIndex);
     }
 
     // Blacklist scan: Use whatever comes first and isn't a button in disguise of
