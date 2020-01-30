@@ -2973,7 +2973,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     char            config[1000];
     char            tmpstr[1000];
     char            device_name[1000];
-    char            plugin_name[1000];
+    char            plugin_name[100];
     char            prop_name[1000];
     gchar           *pstring = NULL;
     PsychVideosourceRecordType  *theDevice = NULL;

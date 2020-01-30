@@ -116,6 +116,20 @@ try
             if useGStreamer
                 % Matlab, or Octave in GUI mode: Prepend sdkroot to path:
                 newpath = [sdkroot ';' path];
+
+                % Check if we have the right flavor of GStreamer, the MSVC variant:
+                addpath(sdkroot);
+                if exist('libgstreamer-1.0-0.dll', 'file') && ~exist('gstreamer-1.0-0.dll', 'file')
+                    % Wrong type, the MinGW build instead of the MSVC build!
+                    fprintf('\n\n');
+                    fprintf('PsychStartup: WRONG variant of the GStreamer runtimes installed! This is\n');
+                    fprintf('PsychStartup: the MinGW variant, but Psychtoolbox needs the MSVC variant!\n');
+                    fprintf('PsychStartup: The Psychtoolbox Screen() function will NOT WORK AT ALL until\n');
+                    fprintf('PsychStartup: you fix this! Read ''help GStreamer'' for instructions.\n\n');
+                    warning('WRONG TYPE OF GStreamer packages INSTALLED! WE NEED THE MSVC variant, this is the MINGW variant!');
+                end
+                rmpath(sdkroot);
+
                 fprintf('\nPsychStartup: Adding path of installed GStreamer runtime to library path. [%s]\n', sdkroot);
             else
                 % Octave CLI: Do not add GStreamer runtime, so we can build

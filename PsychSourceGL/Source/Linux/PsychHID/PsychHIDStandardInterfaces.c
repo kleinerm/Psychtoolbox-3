@@ -1051,6 +1051,23 @@ void* KbQueueWorkerThreadMain(void* dummy)
     return(NULL);
 }
 
+psych_bool PsychHIDIsNotSpecialButtonOrXTest(XIDeviceInfo* dev)
+{
+    return(!strstr(dev->name, "XTEST") && !strstr(dev->name, "utton") && !strstr(dev->name, "Bus") &&
+           !strstr(dev->name, "iSight") && !strstr(dev->name, "eceiver") && !strstr(dev->name, "amera"));
+}
+
+psych_bool PsychHIDIsNotMouse(XIDeviceInfo* dev)
+{
+    // Lots of mice that enumerate as keyboards, because they have special "keyboardy" buttons:
+    return(PsychHIDIsNotSpecialButtonOrXTest(dev) && !strstr(dev->name, "Gaming Mouse G502") &&
+           !strstr(dev->name, "M720 Triathlon") && !strstr(dev->name, "MX MASTER 3") &&
+           !strstr(dev->name, "MX ERGO") && !strstr(dev->name, "M585") &&
+           !strstr(dev->name, "MX ANYWHERE 2S") && !strstr(dev->name, "M500") &&
+           !strstr(dev->name, "M720") && !strstr(dev->name, "M510") &&
+           !strstr(dev->name, "M705") && !strstr(dev->name, "TRIATHLON"));
+}
+
 int PsychHIDGetDefaultKbQueueDevice(void)
 {
     int deviceIndex;
@@ -1069,7 +1086,9 @@ int PsychHIDGetDefaultKbQueueDevice(void)
     // keyboards do:
     for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
         dev = &info[deviceIndex];
-        if ((dev->use == XISlaveKeyboard) && strstr(dev->name, "eyboard") && !strstr(dev->name, "XTEST")) return(deviceIndex);
+        if ((dev->use == XISlaveKeyboard) && strstr(dev->name, "eyboard") &&
+            PsychHIDIsNotSpecialButtonOrXTest(dev) && PsychHIDIsNotMouse(dev))
+            return(deviceIndex);
     }
 
     // Blacklist scan: Use whatever comes first and isn't a button in disguise of
@@ -1077,8 +1096,8 @@ int PsychHIDGetDefaultKbQueueDevice(void)
     for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
         dev = &info[deviceIndex];
 
-        if ((dev->use == XISlaveKeyboard) && !strstr(dev->name, "XTEST") && !strstr(dev->name, "utton") && !strstr(dev->name, "Bus") &&
-            !strstr(dev->name, "iSight") && !strstr(dev->name, "eceiver") && !strstr(dev->name, "amera") && !strstr(dev->name, "Gaming Mouse G502")) {
+        if ((dev->use == XISlaveKeyboard) &&
+            PsychHIDIsNotSpecialButtonOrXTest(dev) && PsychHIDIsNotMouse(dev)) {
             return(deviceIndex);
         }
     }
@@ -1087,8 +1106,7 @@ int PsychHIDGetDefaultKbQueueDevice(void)
     for(deviceIndex = 0; deviceIndex < ndevices; deviceIndex++) {
         dev = &info[deviceIndex];
 
-        if ((dev->use == XISlavePointer) && !strstr(dev->name, "XTEST") && !strstr(dev->name, "utton") && !strstr(dev->name, "Bus") &&
-            !strstr(dev->name, "iSight") && !strstr(dev->name, "eceiver") && !strstr(dev->name, "amera")) {
+        if ((dev->use == XISlavePointer) && PsychHIDIsNotSpecialButtonOrXTest(dev)) {
             return(deviceIndex);
         }
     }

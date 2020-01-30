@@ -78,12 +78,17 @@ if nativeBpc < 1
     return;
 end
 
-if nativeBpc > 12
+if nativeBpc == 16
+    warning('CreatePseudoGrayLUT: Our PseudoGray implementation can not handle 16 bpc native framebuffers. Assuming this is actually a 12 bpc one, and proceeding accordingly.');
+    nativeBpc = 12;
+elseif nativeBpc > 12
     warning('CreatePseudoGrayLUT: Our PseudoGray implementation can not handle more than 12 bpc native framebuffers! Aborting...');
     lut = [];
     return;
 end
+
 global foo
+
 % "Boost table" btable maps 4 LSB's to boost values for red, green and blue channel:
 btable = (zeros(3,16));
 % These slots are boosted by one in red channel:

@@ -238,39 +238,51 @@ if needinstall && answer == 'y'
   end
 end
 
-% Check if psychtoolbox AMD kms modules config file exists:
+% Check if psychtoolbox AMD kms modules config file and Mesa deep 10 bpc config exists:
 fprintf('\n\n');
 answer = '';
 needinstall = 0;
-if ~exist('/etc/modprobe.d/amddeepcolor-psychtoolbox.conf', 'file')
+if ~exist('/etc/modprobe.d/amddeepcolor-psychtoolbox.conf', 'file') || ...
+   ~exist('/usr/share/drirc.d/90-psychtoolbox-deepcolor.conf', 'file')
   % No: Needs to be installed.
   needinstall = 1;
-  fprintf('The amd deep color file for Psychtoolbox is not installed on your system.\n');
-  fprintf('This file needs to be installed if you want to use a graphics card from AMD\n');
+
+  if ~exist('/etc/modprobe.d/amddeepcolor-psychtoolbox.conf', 'file')
+    needinstall = 3;
+  end
+
+  fprintf('The deep color config files for Psychtoolbox are not installed on your system.\n');
+  fprintf('These files need to be installed if you want to use high color precision mode\n');
   fprintf('to drive a HDMI or DisplayPort high precision display device with more than\n');
   fprintf('8 bpc color depths, ie. more than 256 levels of red, green and blue color.\n');
-  fprintf('You do not need to install it for pure 8 bpc mode or with other graphics cards.\n');
+  fprintf('You do not need to install it for pure 8 bpc mode.\n');
   if ismember(answers(6), 'yn')
     answer = answers(6);
   else
-    answer = input('Should i install it? [y/n] : ', 's');
+    answer = input('Should i install them? [y/n] : ', 's');
     answers(6) = answer;
   end
 else
   % Yes.
-  fprintf('The amd deep color file for Psychtoolbox is already installed on your system.\n');
+  fprintf('The deep color config files for Psychtoolbox are already installed on your system.\n');
 
   % Compare its modification date with the one in PTB:
   r = dir([PsychtoolboxRoot '/PsychHardware/amddeepcolor-psychtoolbox.conf']);
   i = dir('/etc/modprobe.d/amddeepcolor-psychtoolbox.conf');
+  r2 = dir([PsychtoolboxRoot '/PsychHardware/90-psychtoolbox-deepcolor.conf']);
+  i2 = dir('/usr/share/drirc.d/90-psychtoolbox-deepcolor.conf');
 
-  if r.datenum > i.datenum
+  if (r.datenum > i.datenum) || (r2.datenum > i2.datenum)
     needinstall = 2;
-    fprintf('However, it seems to be outdated. I have a more recent version with me.\n');
+    if (r.datenum > i.datenum)
+      needinstall = 3;
+    end
+
+    fprintf('However, they seem to be outdated. I have more recent versions with me.\n');
     if ismember(answers(6), 'yn')
       answer = answers(6);
     else
-      answer = input('Should i update it? [y/n] : ', 's');
+      answer = input('Should i update them? [y/n] : ', 's');
       answers(6) = answer;
     end
   end
@@ -284,14 +296,24 @@ if needinstall && answer == 'y'
     fprintf('GUI, e.g., via executing: octave --no-gui\n');
     fprintf('Then run the PsychLinuxConfiguration command again to make things work.\n');
   else
-    fprintf('I will copy my most recent amd deep color file to your system. Please enter\n');
+    fprintf('I will copy my most recent deep color config files to your system. Please enter\n');
     fprintf('now your system administrator password. You will not see any feedback.\n');
     drawnow;
-    cmd = sprintf('sudo cp %s/PsychHardware/amddeepcolor-psychtoolbox.conf /etc/modprobe.d/', PsychtoolboxRoot);
+    if needinstall == 3
+      cmd = sprintf('sudo cp %s/PsychHardware/amddeepcolor-psychtoolbox.conf /etc/modprobe.d/', PsychtoolboxRoot);
+      [rc, msg] = system(cmd);
+      if rc == 0
+        updateinitramfs = 1;
+        fprintf('Success! You will need to reboot your machine for this change to take effect.\n');
+      else
+        fprintf('Failed! The error message was: %s\n', msg);
+      end
+    end
+
+    cmd = sprintf('sudo cp %s/PsychHardware/90-psychtoolbox-deepcolor.conf /usr/share/drirc.d/', PsychtoolboxRoot);
     [rc, msg] = system(cmd);
     if rc == 0
-      updateinitramfs = 1;
-      fprintf('Success! You will need to reboot your machine for this change to take effect.\n');
+      fprintf('Success! You will need to logout and login again for this change to take effect.\n');
     else
       fprintf('Failed! The error message was: %s\n', msg);
     end

@@ -1664,7 +1664,7 @@ static void PsychDCEnableBusBroadcast(PsychVidcapRecordType* capdev, psych_bool 
 int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
 {
     char feedbackString[8192];
-    char processingString[8192];
+    char processingString[8000];
     int dropped = 0;
     float framerate = 0;
     dc1394speed_t speed;
