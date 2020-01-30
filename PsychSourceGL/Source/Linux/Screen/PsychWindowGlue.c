@@ -1555,6 +1555,56 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         XChangeProperty(dpy, win, vrr_atom, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &state, 1);
     }
 
+    // Framebuffer color resolution of more than standard 8 bpc requested?
+    if (bpc > 8) {
+        // Yes. Make sure all video outputs on this X-Screen are set up for maximum color output precision.
+        XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
+        Atom max_bpc_atom = XInternAtom(dpy, "max bpc", True);
+        RROutput output;
+        long max_bpc;
+        unsigned char *prop = NULL;
+        unsigned long nitems = 0;
+        unsigned long bytes_after;
+        Atom actual_type;
+        int actual_format;
+
+        // 'max bpc' output / connector property supported in general?
+        if (max_bpc_atom) {
+            // Yes. Check all outputs on this screen:
+            for (i = 0; i < resources->noutput; i++) {
+                output = resources->outputs[i];
+
+                // If the given output doesn't support 'max bpc' property, then skip it:
+                if ((XRRGetOutputProperty(dpy, output, max_bpc_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) || (prop == NULL))
+                    continue;
+
+                // Does it have the proper property, and is current 'max bpc' too low for our precision needs?
+                if ((actual_type == XA_INTEGER) && (nitems == 1) && (actual_format == 32) && ((max_bpc = *((long *) prop)) <= 8)) {
+                    // Output has 'max bpc' but it is too low for our 'bpc' precision needs. Crank it up to its maximum:
+                    XRRPropertyInfo *info = XRRQueryOutputProperty(dpy, output, max_bpc_atom);
+
+                    if (info && (info->range) && (info->num_values == 2)) {
+                        if (PsychPrefStateGet_Verbosity() > 2)
+                            printf("PTB-INFO: Output %i of screen %i has too low max bpc %i <= 8 bpc for high precision mode. Requesting maximum bpc of %i bits.\n", i, scrnum, max_bpc, (int) info->values[1]);
+
+                        max_bpc = info->values[1];
+                        XRRChangeOutputProperty(dpy, output, max_bpc_atom, XA_INTEGER, 32, PropModeReplace, (unsigned char *) &max_bpc, 1);
+                    }
+
+                    if (info)
+                        XFree(info);
+                }
+
+                // Done with this one, free up, go to next one:
+                XFree(prop);
+            }
+
+            XFlush(dpy);
+        }
+
+        XRRFreeScreenResources(resources);
+    }
+
     PsychUnlockDisplay();
 
     // Try to enable swap event delivery to us:

@@ -1844,6 +1844,8 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             // more than highbitthreshold bits faithfully:
             const int highbitthreshold = 11;
             unsigned int w = movieRecordBANK[moviehandle].width;
+            unsigned int h = movieRecordBANK[moviehandle].height;
+            unsigned int i, count;
 
             // 9 - 16 bpc color/luminance resolution:
             out_texture->depth = out_texture->nrchannels * ((movieRecordBANK[moviehandle].bitdepth > highbitthreshold) ? 32 : 16);
@@ -1869,12 +1871,45 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             }
             else {
                 // 4 layer RGBA:
+                psych_uint64 *p;
+                union {
+                    psych_uint64 raw;
+                    psych_uint16 bits[4];
+                } vin, vout;
+
                 out_texture->textureinternalformat = (movieRecordBANK[moviehandle].bitdepth > highbitthreshold) ? GL_RGBA_FLOAT32_APPLE : GL_RGBA_FLOAT16_APPLE;
                 out_texture->textureexternalformat = GL_RGBA;
                 // Override for missing floating point texture support: Try to use 16 bit fixed point signed normalized textures [-1.0 ; 1.0] resolved at 15 bits:
                 if (!(win->gfxcaps & kPsychGfxCapFPTex16)) out_texture->textureinternalformat = GL_RGBA16_SNORM;
                 // Always 8 Byte aligned:
                 out_texture->textureByteAligned = 8;
+
+                // GStreamer delivers 16 bpc 4 channel data in ARGB 64 bpp layout, but
+                // OpenGL needs RGBA 64 bpp layout, so we need to manually swizzle
+                // the components:
+                count = w * h;
+
+                if (movieRecordBANK[moviehandle].imageBuffer == NULL)
+                    movieRecordBANK[moviehandle].imageBuffer = malloc(count * sizeof(psych_uint64));
+
+                p = (void*) movieRecordBANK[moviehandle].imageBuffer;
+
+                memcpy(p, out_texture->textureMemory, count * sizeof(psych_uint64));
+                out_texture->textureMemory = (void*) p;
+
+                for (i = 0; i < count; i++) {
+                    vin.raw = *p;
+
+                    // ARGB -> RGBA
+                    vout.bits[0] = vin.bits[1];
+                    vout.bits[1] = vin.bits[2];
+                    vout.bits[2] = vin.bits[3];
+                    vout.bits[3] = vin.bits[0];
+
+                    *p = vout.raw;
+                    p++;
+                }
+
             }
 
             // External datatype is 16 bit unsigned integer, each color component encoded in a 16 bit value:

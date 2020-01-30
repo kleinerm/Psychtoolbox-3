@@ -375,7 +375,7 @@ try
     if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting') && ...
        (~multigpu || (~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'ati'))) && ...
        (vrrsupport ~= 'y') && ... % as of December 2019, the modesetting-ddx does not support VRR.
-       (depth30bpp ~= 'y' || ~strcmp(xdriver, 'intel')) % As of July 2019, on Intel gfx only intel-ddx can do depth30bpp, not modesetting.
+       (~isempty(intersect(depth30bpp, 'nd')) || ~strcmp(xdriver, 'intel')) % As of July 2019, on Intel gfx only intel-ddx can do depth30bpp, not modesetting.
       % HybridGraphics Intel + NVidia/AMD needs intel-ddx, modesetting won't work. Ditto for AMD + AMD.
       % XOrg 1.18.0 or later? xf86-video-modesetting is only good enough for our purposes on 1.18 and later.
       % Also must be a Mesa version safe for use with DRI3/Present:
@@ -506,7 +506,7 @@ end
 
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
-   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd'
+   ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd'
 
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default and not on a NVidia proprietary driver.
@@ -594,7 +594,7 @@ if noautoaddgpu > 0
 end
 
 if multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
-   ismember(depth30bpp, ['d', 'n']) && ismember(atinotiling, ['d', 'n']) && vrrsupport == 'd'
+   ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && vrrsupport == 'd'
   % Done writing the file:
   fclose(fid);
 else
@@ -653,7 +653,7 @@ else
         fprintf(fid, '  Monitor       "%s"\n', scanout.name);
       end
 
-      if depth30bpp == 'y' || ismember(num2str(i), depth30bpp)
+      if ismember('y', depth30bpp) || ismember(num2str(i), depth30bpp)
         fprintf(fid, '  DefaultDepth  30\n');
       end
 
@@ -672,12 +672,12 @@ else
     % values for the gpu driving that single X-Screen.
     WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, useuxa, primehacks, [], [], []);
 
-    if depth30bpp == 'y' || strcmp(xdriver, 'nvidia')
+    if ismember('y', depth30bpp) || strcmp(xdriver, 'nvidia')
       fprintf(fid, 'Section "Screen"\n');
       fprintf(fid, '  Identifier    "Screen%i"\n', 0);
       fprintf(fid, '  Device        "Card%i"\n', 0);
 
-      if depth30bpp == 'y' || depth30bpp == '0'
+      if ismember('y', depth30bpp) || ismember('0', depth30bpp)
         fprintf(fid, '  DefaultDepth  30\n');
       end
 
