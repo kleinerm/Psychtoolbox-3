@@ -1237,9 +1237,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // come up with at the moment :(
         if (PsychRuntimeEvaluateString("moglcore('LockModule');") > 0) {
             if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: Failed to enable moglcore locking workaround for Mesa OpenGL bug. Trying alternative workaround.\n");
-                printf("PTB-WARNING: Calling 'clear all', 'clear mex', 'clear java', 'clear moglcore' is now unsafe and may crash if you try.\n");
-                printf("PTB-WARNING: You may add setenv('PSYCH_DONT_LOCK_MOGLCORE','1'); to your Octave/Matlab startup script to work around this issue in future sessions.\n");
+                printf("PTB-WARNING: Failed to enable moglcore locking workaround for Mesa OpenGL bug!\n");
+                printf("PTB-WARNING: Calling 'clear all', 'clear mex', 'clear java', 'clear moglcore', 'clear Screen' is now unsafe and may crash if you try.\n");
+                printf("PTB-WARNING: Please upgrade to a Linux distribution with a Mesa library version of at least 10.5.2 to fix this.\n");
             }
             setenv("PSYCH_DONT_LOCK_MOGLCORE", "1", 0);
         }
@@ -1256,12 +1256,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
     else {
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
-    }
-
-    if ((x11_windowcount == 0) && mesamapi_strdupbug && getenv("PSYCH_DONT_LOCK_MOGLCORE") && !getenv("PSYCH_DONT_LOCK_SCREEN")) {
-        // Alternative approach to Mesa bug induced crash: Prevent Screen() from unloading, instead of moglcore:
-        mexLock();
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Workaround: Disabled ability to 'clear Screen', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
     }
 
     // Check for DRI3/Present operation and assign proper special flag to windowRecord if so:
