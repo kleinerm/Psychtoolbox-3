@@ -149,6 +149,7 @@ typedef __CHAR16_TYPE__ char16_t;
 #include <limits.h>
 #include <string.h>
 #include <float.h>
+#include <stdbool.h>
 
 //end include once
 #endif
