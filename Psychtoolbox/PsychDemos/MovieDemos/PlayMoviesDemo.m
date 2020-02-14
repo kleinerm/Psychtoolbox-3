@@ -20,11 +20,11 @@ function PlayMoviesDemo(moviename, backgroundMaskOut, tolerance, pixelFormat, ma
 %
 % If the optional RGB color vector backgroundMaskOut is provided, then
 % color pixels in the video which are equal or close to backgroundMaskOut will be
-% discarded during drawing. E.g., backgroundMaskOut = [255 255 255] would
+% discarded during drawing. E.g., backgroundMaskOut = [1 1 1] would
 % discard all white pixels, backgroundMaskOut = [0 0 0] would discard all
 % black pixels etc. The optional tolerance parameter allows for some
-% lenience, e.g., tolerance = 10 would discard all pixels whose euclidean
-% distance in RGB color space is less than 10 units to the backgroundMaskOut
+% lenience, e.g., tolerance = 0.01 would discard all pixels whose euclidean
+% distance in RGB color space is less than 0.01 units to the backgroundMaskOut
 % color. Background color masking requires a graphics card with fragment
 % shader support and will fail otherwise.
 %
