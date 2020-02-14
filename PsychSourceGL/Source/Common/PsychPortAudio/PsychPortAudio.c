@@ -2346,7 +2346,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                 for (deviceid = 0; deviceid < (int) Pa_GetDeviceCount(); deviceid++) {
                     referenceDevInfo = Pa_GetDeviceInfo(deviceid);
                     if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
-                        (referenceDevInfo->maxOutputChannels < 1) ||
+                        (referenceDevInfo->maxInputChannels < 1) ||
                         (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") || strstr(referenceDevInfo->name, "isplay") ||
                         ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
                         // Unsuitable.
@@ -2369,7 +2369,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                         printf("PTB-INFO: Chosen default audio device with deviceIndex %i seems to be a HDMI or DisplayPort\n", (int) inputParameters.device);
                         printf("PTB-INFO: video output of your graphics card [Name = %s], or not a true hardware device.\n", inputDevInfo->name);
                         printf("PTB-INFO: Tried to find an alternative default input device but couldn't find a suitable one.\n");
-                        printf("PTB-INFO: If you record any sound, or the software appears to be hanging, then that is likely\n");
+                        printf("PTB-INFO: If you dont't record any sound, or the software appears to be hanging, then that is likely\n");
                         printf("PTB-INFO: the reason - capturing from a connected display device without any microphone.\n");
                         printf("PTB-INFO: See 'PsychPortAudio GetDevices?' for available devices.\n");
                     }
