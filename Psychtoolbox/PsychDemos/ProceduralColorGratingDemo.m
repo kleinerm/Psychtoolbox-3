@@ -64,7 +64,7 @@ phase = 0;
 frequency = 0.03;
 % contrast
 contrast = 0.5;
-% sigma < 1 is a sinusoid.
+% sigma < 0 is a sinusoid.
 sigma = -1.0;
 			
 % Preperatory flip

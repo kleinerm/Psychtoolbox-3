@@ -70,9 +70,7 @@ end
 Screen('GetWindowInfo', windowPtr);
 
 % Load shader:
-p = mfilename('fullpath');
-p = [fileparts(p) filesep];
-shader = LoadGLSLProgramFromFiles({[p 'colorgrating.vert'], [p 'colorgrating.frag']}, 1);
+shader = LoadGLSLProgramFromFiles({'colorgrating.vert', 'colorgrating.frag'}, 1);
 
 % Setup shader:
 glUseProgram(shader);
