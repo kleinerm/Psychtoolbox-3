@@ -82,6 +82,7 @@
 %    OldNewRecogExp          - A full old-new recognition experiment.
 %    OpenGL4MatlabDemos      - Subfolder: Demos on how to use MOGL OpenGL functions.
 %    PanelFitterDemo         - Demonstrate use of the builtin panel fitter.
+%    ProceduralColorGratingDemo - Demo for fast drawing of color gratings.
 %    ProceduralGaborDemo     - Demo for fast drawing of Gabors via procedural textures.
 %    ProceduralGarboriumDemo - Same as GarboriumDemo, just with procedural gabor drawing.
 %    ProceduralNoiseDemo     - Demo for fast drawing of noise patches via procedural texturing.
