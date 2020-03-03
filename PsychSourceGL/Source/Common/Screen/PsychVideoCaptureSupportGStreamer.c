@@ -381,14 +381,13 @@ void PsychGSVideoCaptureInit(void)
     // image of former libgobject instance. The result is a nice crash of Matlab or Octave.
     //
     // Try to avoid this by preventing libgobject from ever unloading, once it was loaded
-    // during 1st load of Screen mex. We try to dlopen() the library, and if it gets loaded,
-    // get loaded if it wasn't already loaded during 1st load of Screen, but iff it was
-    // its reference count gets bumped, a handle gets returned - for which we don't care -
+    // during 1st load of Screen mex. We try to dlopen() the library, and thereby
+    // get it loaded if it wasn't already loaded during 1st load of Screen, otherwise
+    // its reference count gets bumped. In any case, a handle gets returned - for which we don't care -
     // and most importantly, it gets tagged NODELETE to prevent it from ever unloading
-    // until regular termination of the Matlab/Octave process. For some reason we have to
-    // specify the absolute path to the library part of GStreamer or the OSX dynamic linker
-    // will load other copies of libgobject in its search path, e.g., if HomeBrew is installed,
-    // and we have a useless zombie copy and the actual GStreamer copy in our address space!
+    // until regular termination of the Matlab/Octave process. For some reason, we have to
+    // specify the absolute path to the library part of GStreamer, or the OSX dynamic linker
+    // will load other copies of libgobject in its search path, e.g., if HomeBrew is installed.
     //
     // So far the theory which seems to work on both Matlab and Octave. Lets hope no other
     // of the dylibs which are part of GStreamer also use g_quark_from_static_string() or
@@ -407,9 +406,16 @@ void PsychGSVideoCaptureInit(void)
     // Matlab and Octave. On Linux i've additionally verified that this is by design of these
     // libraries, not just by some happy accident.
     #if PSYCH_SYSTEM == PSYCH_OSX
-        if ((NULL == dlopen("/Library/Frameworks/GStreamer.framework/Versions/1.0/lib/libgobject-2.0.0.dylib", RTLD_NODELETE)) &&
-            (PsychPrefStateGet_Verbosity() > 3))
-            printf("PTB-DEBUG: libgobject-2.0.0.dylib unavailable, ergo GStreamer not available in this session.\n");
+    if (NULL == dlopen("/Library/Frameworks/GStreamer.framework/Versions/1.0/lib/libgobject-2.0.0.dylib", RTLD_NODELETE)) {
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-DEBUG: GStreamer's libgobject-2.0.0.dylib unavailable, ergo GStreamer not available in this session.\n");
+
+        // So GStreamer is missing, but libglib an libgobject may have been linked at Screen load-time
+        // from other sources, e.g., HomeBrew. This would cause the same problem, ie. crash on Scree reload.
+        // Try to apply the same treatment: Try to load and lock libgobject if it is in any linker path at all.
+        if ((NULL != dlopen("libgobject-2.0.0.dylib", RTLD_NODELETE)) && (PsychPrefStateGet_Verbosity() > 3))
+            printf("PTB-DEBUG: Protecting libgobject-2.0.0.dylib loaded from some other source, to avoid Screen reload crashes.\n");
+    }
     #endif
 
     return;
