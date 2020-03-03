@@ -153,7 +153,7 @@ static double PsychGetVblankTimestamps(PsychWindowRecordType *windowRecord, doub
     if (vbl_endline == -1)
         return(-1);
 
-    beamPosAtFlip = PsychGetDisplayBeamPosition(NULL, windowRecord->screenNumber);
+    beamPosAtFlip = PsychGetDisplayBeamPosition((CGDirectDisplayID) NULL, windowRecord->screenNumber);
     PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
 
     if (beamPosAtFlip >= vbl_startline) {
