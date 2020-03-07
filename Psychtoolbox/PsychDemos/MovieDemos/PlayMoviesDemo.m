@@ -82,6 +82,7 @@ try
     % Open onscreen window with gray background:
     screen = max(Screen('Screens'));
     win = PsychImaging('OpenWindow', screen, [0.5, 0.5, 0.5]);
+    Screen('Blendfunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     shader = [];
     if (nargin > 1) && ~isempty(backgroundMaskOut)
