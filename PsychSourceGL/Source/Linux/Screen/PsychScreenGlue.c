@@ -692,8 +692,8 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
             else {
                 region = NULL;
                 suppress_disclaimer = TRUE;
-                if (PsychPrefStateGet_Verbosity() > 1)
-                    printf("PTB-INFO: Unsupported AMD gpu for low-level access tricks, either a new DCN gpu, or unknown to us [pciid = 0x%x].\n", fPCIDeviceId);
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PTB-INFO: Unsupported AMD gpu for low-level access tricks, either it is a new DCN gpu, or unknown to us [pciid = 0x%x].\n", fPCIDeviceId);
             }
         }
 
