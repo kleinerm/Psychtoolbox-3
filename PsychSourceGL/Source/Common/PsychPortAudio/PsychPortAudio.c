@@ -273,8 +273,7 @@ typedef struct PsychPADevice {
     psych_int64 batchsize;          // Maximum number of frames requested during callback invokation: Estimate of real buffersize.
     double     predictedLatency;    // Latency that PortAudio predicts for current callbackinvocation. We will compensate for that when starting audio.
     double   latencyBias;           // A bias value to add to the value that PortAudio reports for total buffer->Speaker latency.
-    // This value defaults to zero, but can be set up automatically on OS/X or manually on other OSes to compensate
-    // for slight mistakes in PA's estimate.
+                                    // This value defaults to zero.
 
     // Audio schedule related:
     PsychPASchedule* schedule;      // Pointer to start of array with playback schedule, or a NULL pointer if none defined.
@@ -924,9 +923,6 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         // Retrieve current system time:
         PsychGetAdjustedPrecisionTimerSeconds(&now);
 
-        // FIXME: PortAudio stable sets timeInfo->currentTime == 0 --> Breakage!!!
-        // That's why we currently have our own PortAudio version.
-
         #if PSYCH_SYSTEM == PSYCH_LINUX
         if (hA == paALSA) {
             // ALSA on Linux can return timestamps in CLOCK_MONOTONIC time
@@ -961,13 +957,11 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
         if (hA==paCoreAudio || hA==paDirectSound || hA==paMME || hA==paALSA) {
             // On these systems, DAC-time is already returned in the system timebase,
-            // at least with our modified version of PortAudio, so a simple
-            // query will return the onset time of the first sample. Well,
+            // so a simple query will return the onset time of the first sample. Well,
             // looks as if we need to add the device inherent latency, because
             // this describes everything up to the point where DMA transfer is
             // initiated, but not device inherent latency. This additional latency
-            // is added via latencyBias, which is initialized in the Open-Function
-            // via a low-level driver query to CoreAudio:
+            // is added via latencyBias.
             if (dev->opmode & kPortAudioPlayBack) {
                 // Playback enabled: Use DAC time as basis for timing:
                 firstsampleonset = (double) timeInfo->outputBufferDacTime + dev->latencyBias;
@@ -1183,16 +1177,6 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         // We'll update the running estimate until transition from hot standby to active:
         dev->predictedLatency = firstsampleonset - now;
 
-        // Ditto for capture starttime:
-        if (dev->opmode & kPortAudioCapture) {
-            // Store estimated capturetime in captureStartTime. This is only important in
-            // full-duplex mode, redundant in pure half-duplex capture mode.
-            // If we're not a regular input capture device, but a output capture device,
-            // then our effective captureStartTime is the *playback* starttime, as we're
-            // capturing what is fed to the outputs/speakers, not what comes from the inputs!
-            dev->captureStartTime = (dev->opmode & kPortAudioIsOutputCapture) ? firstsampleonset : captureStartTime;
-        }
-
         // Compute difference between requested onset time and presentation time
         // of the first sample of this callbacks returned buffer:
         onsetDelta = dev->reqStartTime - firstsampleonset;
@@ -1237,12 +1221,6 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
                 // dev->startTime now exactly corresponds to onset of first non-silence sample at dev->reqStartTime.
                 // At least if everything works properly.
                 dev->startTime = dev->reqStartTime;
-
-                // Mark us as running:
-                dev->state = 2;
-
-                // Signal state change:
-                PsychPASignalChange(dev);
             }
         }
         else {
@@ -1250,13 +1228,23 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
             // then hurry up! If we are in "capture only" mode, we disregard the 'when'
             // deadline and always start immediately.
             dev->startTime = firstsampleonset;
-
-            // Mark us as running:
-            dev->state = 2;
-
-            // Signal state change:
-            PsychPASignalChange(dev);
         }
+
+        // Ditto for capture starttime:
+        if (dev->opmode & kPortAudioCapture) {
+            // Store estimated capturetime in captureStartTime.
+            //
+            // If we're not a regular input capture device, but a output capture device,
+            // then our effective captureStartTime is the *playback* starttime, as we're
+            // capturing what is fed to the outputs/speakers, not what comes from the inputs!
+            dev->captureStartTime = (dev->opmode & kPortAudioIsOutputCapture) ? dev->startTime : captureStartTime;
+        }
+
+        // Mark us as running:
+        dev->state = 2;
+
+        // Signal state change:
+        PsychPASignalChange(dev);
     }
 
     // Master device implementation. Dispatch into all attached slave device callbacks,
@@ -2346,7 +2334,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                 for (deviceid = 0; deviceid < (int) Pa_GetDeviceCount(); deviceid++) {
                     referenceDevInfo = Pa_GetDeviceInfo(deviceid);
                     if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
-                        (referenceDevInfo->maxOutputChannels < 1) ||
+                        (referenceDevInfo->maxInputChannels < 1) ||
                         (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") || strstr(referenceDevInfo->name, "isplay") ||
                         ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
                         // Unsuitable.
@@ -2369,7 +2357,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                         printf("PTB-INFO: Chosen default audio device with deviceIndex %i seems to be a HDMI or DisplayPort\n", (int) inputParameters.device);
                         printf("PTB-INFO: video output of your graphics card [Name = %s], or not a true hardware device.\n", inputDevInfo->name);
                         printf("PTB-INFO: Tried to find an alternative default input device but couldn't find a suitable one.\n");
-                        printf("PTB-INFO: If you record any sound, or the software appears to be hanging, then that is likely\n");
+                        printf("PTB-INFO: If you dont't record any sound, or the software appears to be hanging, then that is likely\n");
                         printf("PTB-INFO: the reason - capturing from a connected display device without any microphone.\n");
                         printf("PTB-INFO: See 'PsychPortAudio GetDevices?' for available devices.\n");
                     }
@@ -4272,9 +4260,9 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
     "once every second in your trial loop, then allocate a sound buffer of at least 2 seconds for some security "
     "headroom. If you know that the recording time of each recording has an upper bound then you can allocate "
     "an internal buffer of sufficient size and fetch the buffer all at once at the end of a recording.\n"
-    "'ctsstarttime' this is an estimate of the system time (in seconds) when the very first sample of this "
-    "recording was captured by the sound input of your hardware. This is only a rough estimate, not to be "
-    "trusted down to the millisecond level, at least not without former careful calibration of your setup!\n";
+    "'cstarttime' this is an estimate of the system time (in seconds) when the very first sample of this "
+    "recording was captured by the sound input of your hardware. This is only to be "
+    "trusted down to the millisecond level after former careful calibration of your setup!\n";
 
     static char seeAlsoString[] = "Open GetDeviceSettings ";
 
@@ -4500,10 +4488,8 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
     // Copy out overrun flag:
     PsychCopyOutDoubleArg(3, FALSE, (double) overrun);
 
-    // Return capture timestamp in system time of first captured sample in this session. This is a bit problematic:
-    // In full-duplex mode, at least OS/X doesn't return separate timestamps, so we'll provide the playback onset time
-    // instead - the best we can do. In pure capture mode we get a capture timestamp...
-    PsychCopyOutDoubleArg(4, FALSE, (audiodevices[pahandle].captureStartTime > 0) ? audiodevices[pahandle].captureStartTime : audiodevices[pahandle].startTime);
+    // Return capture timestamp in system time of first captured sample in this session:
+    PsychCopyOutDoubleArg(4, FALSE, audiodevices[pahandle].captureStartTime);
 
     // Buffer ready.
     return(PsychError_none);

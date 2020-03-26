@@ -7,7 +7,9 @@ function SetMouse(x,y,windowPtrOrScreenNumber, mouseid, detachFromMouse)
 % origin of the screen if a screen number is supplied, or relative to the
 % origin of a screen on which a supplied onscreen window is displayed.
 % Otherwise it's "global", i.e. relative to the origin of the main screen
-% (Screen 0).
+% (Screen 0). It is advisable to specify an onscreen window handle for
+% proper handling of Retina displays on macOS if you use backwards
+% compatibilty mode.
 %
 % On Linux with X11, the optional 'mouseid' parameter allows to select
 % which of potentially multiple cursors should be repositioned. On OS/X and
@@ -64,6 +66,21 @@ end
 
 if nargin < 5 || isempty(detachFromMouse)
   detachFromMouse = 0;
+end
+
+% OSX handling of Retina displays:
+if IsOSX && (Screen('WindowKind', windowPtrOrScreenNumber) == 1)
+    winfo = Screen('GetWindowInfo', windowPtrOrScreenNumber);
+    if ~winfo.IsFullscreen || (Screen('Preference', 'WindowShieldingLevel') < 2000)
+        % Cocoa - Half the factor is right:
+        isf = winfo.ExternalMouseMultFactor / 2;
+    else
+        % CGL fullscreen:
+        isf = winfo.ExternalMouseMultFactor;
+    end
+
+    x = x * isf;
+    y = y * isf;
 end
 
 Screen('SetMouseHelper', windowPtrOrScreenNumber, round(x), round(y), mouseid, detachFromMouse);
