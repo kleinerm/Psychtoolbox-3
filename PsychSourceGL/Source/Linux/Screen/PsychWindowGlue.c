@@ -1237,9 +1237,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // come up with at the moment :(
         if (PsychRuntimeEvaluateString("moglcore('LockModule');") > 0) {
             if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: Failed to enable moglcore locking workaround for Mesa OpenGL bug. Trying alternative workaround.\n");
-                printf("PTB-WARNING: Calling 'clear all', 'clear mex', 'clear java', 'clear moglcore' is now unsafe and may crash if you try.\n");
-                printf("PTB-WARNING: You may add setenv('PSYCH_DONT_LOCK_MOGLCORE','1'); to your Octave/Matlab startup script to work around this issue in future sessions.\n");
+                printf("PTB-WARNING: Failed to enable moglcore locking workaround for Mesa OpenGL bug!\n");
+                printf("PTB-WARNING: Calling 'clear all', 'clear mex', 'clear java', 'clear moglcore', 'clear Screen' is now unsafe and may crash if you try.\n");
+                printf("PTB-WARNING: Please upgrade to a Linux distribution with a Mesa library version of at least 10.5.2 to fix this.\n");
             }
             setenv("PSYCH_DONT_LOCK_MOGLCORE", "1", 0);
         }
@@ -1256,12 +1256,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
     else {
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
-    }
-
-    if ((x11_windowcount == 0) && mesamapi_strdupbug && getenv("PSYCH_DONT_LOCK_MOGLCORE") && !getenv("PSYCH_DONT_LOCK_SCREEN")) {
-        // Alternative approach to Mesa bug induced crash: Prevent Screen() from unloading, instead of moglcore:
-        mexLock();
-        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Workaround: Disabled ability to 'clear Screen', as a workaround for a Mesa OpenGL bug. Sorry for the inconvenience.\n");
     }
 
     // Check for DRI3/Present operation and assign proper special flag to windowRecord if so:
@@ -1415,9 +1409,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Check if video output is vrr_capable == true. This would mean the Linux kernel + DRM/KMS
         // driver combo supports VRR and runs on a GPU that supports VRR and we are displaying on a
         // display that is VRR capable and enabled:
-        XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
+        RROutput output;
+        const char *output_name = NULL;
         Atom vrr_supported_atom = XInternAtom(dpy, "vrr_capable", True);
-        RROutput output = resources->outputs[0];
         unsigned char *prop = NULL;
         unsigned long nitems = 0;
         unsigned long bytes_after;
@@ -1427,17 +1421,21 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         psych_bool vrr_supported = FALSE;
         psych_bool vrr_wanted = (windowRecord->vrrMode > kPsychVRROff) ? TRUE : FALSE;
 
+        // Find primary output for check in 'output':
+        PsychUnlockDisplay();
+        output_name = PsychOSGetOutputProps(screenSettings->screenNumber, 0, NULL, NULL, (unsigned long *) &output);
+        PsychLockDisplay();
+
         if (vrr_supported_atom &&
             (XRRGetOutputProperty(dpy, output, vrr_supported_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) &&
             (actual_type == XA_INTEGER) && (nitems == 1) && (actual_format == 32)) {
+            // printf("%s : %p %ld %d \n", output_name, prop, *((long *) prop), *((long *) prop) > 0);
 
             vrr_supported = (*((long *) prop) > 0) ? TRUE : FALSE;
         }
 
         if (prop)
             XFree(prop);
-
-        XRRFreeScreenResources(resources);
 
         PsychUnlockDisplay();
 
@@ -1473,7 +1471,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             vrr_wanted = FALSE;
 
             if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: Can not enable Variable Refresh Rate mode for this fullscreen window on this display.\n");
+                printf("PTB-WARNING: Can not enable Variable Refresh Rate mode for this fullscreen window on this display [%s].\n", output_name);
                 if (nitems != 1) {
                     // vrr_capable property missing - no kms driver support:
                     printf("PTB-WARNING: Your Linux kernel driver does not support Variable Refresh Rate on your graphics card.\n");
@@ -1505,7 +1503,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             vrr_supported = FALSE;
 
             if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: Can not enable Variable Refresh Rate mode for this fullscreen window on this display.\n");
+                printf("PTB-WARNING: Can not enable Variable Refresh Rate mode for this fullscreen window on this display [%s].\n", output_name);
                 printf("PTB-WARNING: You are using the modesetting-ddx video driver, which prevents this. Switch to the\n");
                 printf("PTB-WARNING: vendor specific driver via use of XOrgConfCreator + XOrgConfSelector. -> 'help VRRSupport'\n");
             }

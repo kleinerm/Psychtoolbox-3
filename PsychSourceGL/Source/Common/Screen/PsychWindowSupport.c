@@ -153,7 +153,7 @@ static double PsychGetVblankTimestamps(PsychWindowRecordType *windowRecord, doub
     if (vbl_endline == -1)
         return(-1);
 
-    beamPosAtFlip = PsychGetDisplayBeamPosition(NULL, windowRecord->screenNumber);
+    beamPosAtFlip = PsychGetDisplayBeamPosition((CGDirectDisplayID) NULL, windowRecord->screenNumber);
     PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
 
     if (beamPosAtFlip >= vbl_startline) {
@@ -7477,9 +7477,9 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         windowRecord->gfxcaps |= kPsychGfxCapNativeStereo;
     }
 
-    // Running under Chromium OpenGL virtualization or Mesa Software Rasterizer or Mesa's Gallium LLVM rasterizer?
+    // Running under Chromium OpenGL virtualization or some other known software renderer / rasterizer?
     if ((strstr((char*) glGetString(GL_VENDOR), "Humper") && strstr((char*) glGetString(GL_RENDERER), "Chromium")) ||
-        (strstr((char*) glGetString(GL_VENDOR), "VMware") && strstr((char*) glGetString(GL_RENDERER), "llvmpipe")) ||
+        (strstr((char*) glGetString(GL_VENDOR), "VMware")) ||
         (strstr((char*) glGetString(GL_VENDOR), "Mesa") && strstr((char*) glGetString(GL_RENDERER), "Software Rasterizer"))) {
         // Yes: We're very likely running inside a Virtual Machine, e.g., VirtualBox.
         // This does not provide sufficiently accurate display timing for production use of Psychtoolbox.

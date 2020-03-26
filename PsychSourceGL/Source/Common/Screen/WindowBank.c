@@ -493,10 +493,8 @@ PsychError FindScreenRecord(int screenNumber, PsychScreenRecordType **screenReco
  *
  *    Allocates memory for and returns an array holding indices of all open windows.
  *
- *    This is kind of lame.  It iterates over the window list twice.  The window bank stuff needs to be redone anyway.
+ *    This is kind of lame. It iterates over the window list twice.
  *
- *    We don't really have to worry about deallocating this memory because MATLAB will garbage collect it  when
- *    the Psychtoolbox call returns.
  */
 void PsychCreateVolatileWindowRecordPointerList(int *numWindows, PsychWindowRecordType ***pointerList)
 {
@@ -509,7 +507,7 @@ void PsychCreateVolatileWindowRecordPointerList(int *numWindows, PsychWindowReco
             ++(*numWindows);
     }
 
-    tempList=(PsychWindowRecordType **)mxMalloc(sizeof(PsychWindowRecordType *) * *numWindows);
+    tempList=(PsychWindowRecordType **)malloc(sizeof(PsychWindowRecordType *) * *numWindows);
     for(i=PSYCH_FIRST_WINDOW;i<=PSYCH_LAST_WINDOW;i++){
         if(windowRecordArrayWINBANK[i])
             tempList[j++]=windowRecordArrayWINBANK[i];
@@ -523,7 +521,7 @@ void PsychCreateVolatileWindowRecordPointerList(int *numWindows, PsychWindowReco
  */
 void PsychDestroyVolatileWindowRecordPointerList(PsychWindowRecordType **pointerList)
 {
-    mxFree((void *)pointerList);
+    free((void *)pointerList);
 }
 
 /* PsychAssignParentWindow()

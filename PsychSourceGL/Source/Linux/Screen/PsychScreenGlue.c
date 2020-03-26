@@ -539,6 +539,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
     int ret = 0;
     int screenId = 0;
     int currentgpuidx = 0, targetgpuidx = -1;
+    psych_bool suppress_disclaimer = FALSE;
 
     // A bit of a hack for now: Allow user to select which gpu in a multi-gpu
     // system should be used for low-level mmio based features. If the environment
@@ -636,7 +637,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
     // Found matching GPU?
     if (gpu) {
         // Yes!
-        if (PsychPrefStateGet_Verbosity() > 2) {
+        if (PsychPrefStateGet_Verbosity() > 3) {
             printf("PTB-INFO: %s - %s GPU found. Trying to establish low-level access...\n", pci_device_get_vendor_name(gpu), pci_device_get_device_name(gpu));
             fflush(NULL);
         }
@@ -690,8 +691,9 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
             }
             else {
                 region = NULL;
-                if (PsychPrefStateGet_Verbosity() > 1)
-                    printf("PTB-INFO: Unsupported AMD gpu detected. No low-level access, because the gpu is too new or too old. [pciid = 0x%x]\n", fPCIDeviceId);
+                suppress_disclaimer = TRUE;
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("PTB-INFO: Unsupported AMD gpu for low-level access tricks, either it is a new DCN gpu, or unknown to us [pciid = 0x%x].\n", fPCIDeviceId);
             }
         }
 
@@ -733,7 +735,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
         }
 
         if (ret || (NULL == gfx_cntl_mem)) {
-            if (PsychPrefStateGet_Verbosity() > 1) {
+            if (!suppress_disclaimer && (PsychPrefStateGet_Verbosity() > 1)) {
                 printf("PTB-INFO: Failed to map GPU low-level control registers for screenId %i [%s].\n", screenId, strerror(ret));
                 printf("PTB-INFO: Beamposition timestamping on NVidia and AMD gpu's, and other special functions on AMD gpu's, disabled.\n");
                 if (fDeviceType != kPsychRadeon || fCardType > 0) {
