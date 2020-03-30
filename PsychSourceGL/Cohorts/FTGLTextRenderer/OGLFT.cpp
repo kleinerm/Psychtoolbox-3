@@ -3357,7 +3357,12 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
     if ( faces_[0].face_->underline_position > 0 )
       return faces_[0].face_->underline_position / 64.;
     else
-      return -2.;
+    {
+      // No underline info, imitate Pango
+      double yScale = faces_[0].face_->size->metrics.y_scale/65536./64.;
+      double emHeight = faces_[0].face_->units_per_EM * yScale;
+      return -emHeight / 14.0;
+    }
   }
 
   double Texture::underline_thickness ( void ) const
@@ -3365,7 +3370,12 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
     if ( faces_[0].face_->underline_thickness > 0 )
       return faces_[0].face_->underline_thickness / 64.;
     else
-      return 0.;
+    {
+      // No underline info, imitate Pango
+      double yScale = faces_[0].face_->size->metrics.y_scale/65536./64.;
+      double emHeight = faces_[0].face_->units_per_EM * yScale;
+      return emHeight / 14.0;
+    }
   }
 
 #ifndef OGLFT_NO_QT
