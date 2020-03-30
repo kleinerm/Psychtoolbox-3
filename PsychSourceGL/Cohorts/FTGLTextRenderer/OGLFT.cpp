@@ -176,6 +176,8 @@ namespace OGLFT {
     horizontal_justification_ = ORIGIN;
     vertical_justification_ = BASELINE;
 
+    do_draw_underline_ = false;
+
     // By default, strings are rendered in their nominal direction
     string_rotation_ = 0;
 
@@ -1255,6 +1257,17 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
       return faces_[0].face_->size->metrics.y_ppem;
   }
 
+  double Raster::underline_position ( void ) const
+  {
+    /* not implemented */
+    return 0.;
+  }
+  double Raster::underline_thickness ( void ) const
+  {
+    /* not implemented */
+    return 0.;
+  }
+
   BBox Raster::measure ( unsigned char c )
   {
     BBox bbox;
@@ -2057,6 +2070,19 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
       return ( faces_[0].face_->size->metrics.y_ppem * point_size_ * resolution_ ) /
 	( 72. * faces_[0].face_->units_per_EM );
   }
+
+  double Polygonal::underline_position ( void ) const
+  {
+    /* not implemented */
+    return 0.;
+  }
+
+  double Polygonal::underline_thickness ( void ) const
+  {
+    /* not implemented */
+    return 0.;
+  }
+
 
   BBox Polygonal::measure ( unsigned char c )
   {
@@ -3326,6 +3352,22 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
       return faces_[0].face_->size->metrics.y_ppem;
   }
 
+  double Texture::underline_position ( void ) const
+  {
+    if ( faces_[0].face_->underline_position > 0 )
+      return faces_[0].face_->underline_position / 64.;
+    else
+      return -2.;
+  }
+
+  double Texture::underline_thickness ( void ) const
+  {
+    if ( faces_[0].face_->underline_thickness > 0 )
+      return faces_[0].face_->underline_thickness / 64.;
+    else
+      return 0.;
+  }
+
 #ifndef OGLFT_NO_QT
 
   BBox Texture::measure ( const QChar c )
@@ -3401,8 +3443,7 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
 
     texture_info = texture_object->second;
 
-    glBindTexture( GL_TEXTURE_2D, texture_info.texture_name_ );
-
+    
     if ( character_rotation_.active_ ) {
       glPushMatrix();
       glTranslatef( ( texture_info.width_ / 2.f +
@@ -3423,6 +3464,7 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
 		    -rotation_offset_y_, 0.f );
     }
 
+    glBindTexture( GL_TEXTURE_2D, texture_info.texture_name_ );
     glBegin( GL_QUADS );
 
     glTexCoord2i( 0, 0 );
@@ -3441,6 +3483,22 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
 		texture_info.bottom_bearing_ + texture_info.height_ );
     
     glEnd();
+
+    if (do_draw_underline_)
+    {
+        float undPos   = underline_position();
+        float undThicc = underline_thickness();
+	float advance = face->glyph->advance.x/64.f;
+	
+	glBindTexture( GL_TEXTURE_2D, 0);
+	glColor3f(0.f,0.f,0.f);
+        glBegin( GL_QUADS );
+        glVertex2f(0.f, undPos - undThicc);
+        glVertex2f( advance, undPos - undThicc);
+        glVertex2f( advance, undPos);
+        glVertex2f(0.f, undPos);
+	glEnd();
+    }
 
     if ( character_rotation_.active_ ) {
       glPopMatrix();

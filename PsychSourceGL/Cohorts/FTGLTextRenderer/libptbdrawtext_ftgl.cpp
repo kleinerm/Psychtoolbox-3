@@ -404,6 +404,10 @@ int PsychRebuildFont(fontCacheItem* fi)
         // Do not reset GL_MODELVIEW matrix after text drawing, so
         // we can read out the post-draw text cursor position from it:
         fi->faceT->setAdvance(true);
+
+	// set underlining, if requested in style
+	if (_fontStyle & 4)
+            fi->faceT->setDoUnderLine(true);
     }
     else {
         fi->faceM = new OGLFT::MonochromeTexture(fi->ft_face, _fontSize, 72);
@@ -418,6 +422,10 @@ int PsychRebuildFont(fontCacheItem* fi)
         // Do not reset GL_MODELVIEW matrix after text drawing, so
         // we can read out the post-draw text cursor position from it:
         fi->faceM->setAdvance(true);
+
+	// set underlining, if requested in style
+	if (_fontStyle & 4)
+            fi->faceM->setDoUnderLine(true);
     }
 
     // Ready!

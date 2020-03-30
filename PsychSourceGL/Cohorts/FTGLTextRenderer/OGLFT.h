@@ -399,6 +399,8 @@ namespace OGLFT {
     //! character; for whom, we've discovered, only the Y position is relevant.
     GLfloat rotation_offset_y_;
 
+    bool do_draw_underline_;
+
     //! Type of the cache of defined glyph to display list mapping.
     typedef std::map< FT_UInt, GLuint > GlyphDLists;
 
@@ -757,6 +759,23 @@ namespace OGLFT {
      * \return the height (i.e., line spacing) at the current character size.
      */
     virtual double height ( void ) const = 0;
+
+    /*!
+     * \return The position, in font units, of the
+     *                           underline line for this face.  It is the
+     *                           center of the underlining stem.  Only
+     *                           relevant for scalable formats.
+     */
+    virtual double underline_position ( void ) const = 0;
+
+    /*!
+     * \return The thickness, in font units, of the
+     *                           underline for this face.  Only relevant for
+     *                           scalable formats.
+     */
+    virtual double underline_thickness ( void ) const = 0;
+
+    OGLFT_API void setDoUnderLine(bool do_draw_underline) { do_draw_underline_ = do_draw_underline; }
 
     /*!
      * Compute the bounding box info for a character.
@@ -1319,6 +1338,9 @@ namespace OGLFT {
      * \return the height (i.e., line spacing) at the current character size.
      */
     OGLFT_API double height ( void ) const;
+    
+    OGLFT_API double underline_position ( void ) const;
+    OGLFT_API double underline_thickness ( void ) const;
 
     /*!
      * Implement measuring a character in a polygonal face.
@@ -1708,6 +1730,9 @@ namespace OGLFT {
      * \return the height (i.e., line spacing) at the current character size.
      */
     OGLFT_API double height ( void ) const;
+    
+    OGLFT_API double underline_position ( void ) const;
+    OGLFT_API double underline_thickness ( void ) const;
 
     /*!
      * Implement measuring a character in a raster face.
@@ -2055,6 +2080,10 @@ namespace OGLFT {
      * \return the height (i.e., line spacing) at the current character size.
      */
     OGLFT_API double height ( void ) const;
+
+    OGLFT_API double underline_position ( void ) const;
+    OGLFT_API double underline_thickness ( void ) const;
+    
 
     /*!
      * Implement measuring a character in a texture face.
