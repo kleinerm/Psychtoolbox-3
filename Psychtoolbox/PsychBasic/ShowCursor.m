@@ -25,7 +25,7 @@ function oldType = ShowCursor(type, screenid, mouseid)
 % Apart from that names, you can pass integral numbers for type to select
 % further shapes. The mapping of numbers to shapes is operating system
 % dependent, therefore not portable across different platforms. On
-% MS-Windows, you can select between number 0 to 8. On Linux/X11 you can
+% MS-Windows, you can select between number 0 to 13. On Linux/X11 you can
 % select from a wide range of numbers from 0 up to (at least) 152, maybe
 % more, depending on your setup. See the C header file "X11/cursorfont.h"
 % for a mapping of numbers to shapes. Passing invalid numbers can create
@@ -45,6 +45,24 @@ function oldType = ShowCursor(type, screenid, mouseid)
 %   4: I Beam
 %   5: Cross
 %  10: Hand
+%
+% Windows: __________________________________________________________________
+%
+% If provided, the optional "type" argument changes the cursor shape to:
+%   0: Arrow (IDC_ARROW)
+%   1: Crosshair (IDC_CROSS)
+%   2: Hand (IDC_HAND)
+%   3: Four-pointed arrow pointing north, south, east, and west (IDC_SIZEALL)
+%   4: Double-pointed arrow pointing north and south (IDC_SIZENS)
+%   5: Double-pointed arrow pointing west and east (IDC_SIZEWE)
+%   6: Hourglass (IDC_WAIT)
+%   7: Slashed circle (IDC_NO)
+%   8: I-beam (IDC_IBEAM)
+%   9: Double-pointed arrow pointing northeast and southwest (IDC_SIZENESW)
+%  10: Double-pointed arrow pointing northwest and southeast (IDC_SIZENWSE)
+%  11: Standard arrow and small hourglass (IDC_APPSTARTING)
+%  12: Arrow and question mark (IDC_HELP)
+%  13: Vertical arrow (IDC_UPARROW)
 % ___________________________________________________________________________
 
 % 7/23/97  dgp Cosmetic editing.
@@ -60,6 +78,7 @@ function oldType = ShowCursor(type, screenid, mouseid)
 % 08/14/14 dcn Fixed typo and simplified
 % 01/13/15 mk  Update help text to match reality better, esp. OSX.
 % 05/19/15 dcn Adding 'TextCursor' as now supported on all platforms.
+% 03/30/20 dcn Added other standard Windows cursors.
 
 % We default to setup of display screen zero, if no
 % screenid provided. This argument is ignored on
