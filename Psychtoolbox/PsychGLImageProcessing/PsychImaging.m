@@ -1226,11 +1226,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   window to given 2nd screen, ie., to a 2nd output connector (head)
 %   of a dualhead graphics card. This should give the same result as if one
 %   switches the graphics card into "Mirror mode" or "Clone mode" via the
-%   display settings panel of your operating system. Use of the "Mirror
-%   Mode" or "Clone Mode" of your operating system and graphics card is
-%   preferable to use of this command, if that works for you. The OS
-%   builtin facilities are usually faster, more efficient and thereby
-%   more reliable wrt. timing and synchronization!
+%   display settings panel of your operating system.
 %
 %   This function only works for monoscopic displays, ie., it can not be
 %   used simultaneously with any stereo display mode. The reason is that it
@@ -1266,11 +1262,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   if a display splitter (e.g., Matrox Dualhead2Go (TM)) is attached to a
 %   single head of a graphics card. This should give the same result as if one
 %   switches the graphics card into "Mirror mode" or "Clone mode" via the
-%   display settings panel of your operating system. Use of the "Mirror
-%   Mode" or "Clone Mode" of your operating system and graphics card is
-%   preferable to use of this command, if that works for you. The OS
-%   builtin facilities are usually faster, more efficient and thereby
-%   more reliable wrt. timing and synchronization!
+%   display settings panel of your operating system.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'MirrorDisplayToSingleSplitWindow');
 %
