@@ -813,14 +813,14 @@ function xdriver = DetectDDX(winfo)
       % Controlled by the open-source drivers. GPU minor
       % type defines the DCE generation and that in turn
       % usually predicts the x driver well:
-      if winfo.GPUMinorType >= 100
-        % DCE-10 or later, ergo "Volcanic Islands" family or
-        % later -> amdgpu ddx:
+      if winfo.GPUMinorType >= 100 || winfo.GPUMinorType == -1
+        % DCE-10 or later, ergo "Volcanic Islands" family or later. Or a brand-new
+        % DCN class gpu (Ryzen+ APU's, Navi+, ...) or later -> amdgpu ddx:
         fprintf('Recent AMD GPU with open-source driver detected. ');
         xdriver = 'amdgpu';
       else
-        % DCE-8 or earlier, or too new to be supported (DCN-x) -> ati ddx:
-        fprintf('Classic or unknown AMD GPU with open-source driver detected. ');
+        % DCE-8 or earlier => ati ddx:
+        fprintf('Classic AMD GPU with open-source driver detected. ');
         xdriver = 'ati';
       end
     else
