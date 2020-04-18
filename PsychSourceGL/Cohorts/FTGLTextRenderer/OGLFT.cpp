@@ -3463,13 +3463,13 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
 		    rotation_offset_y_, 0.f );
 
       if ( character_rotation_.x_ != 0. )
-	glRotatef( character_rotation_.x_, 1.f, 0.f, 0.f );
+	    glRotatef( character_rotation_.x_, 1.f, 0.f, 0.f );
 
       if ( character_rotation_.y_ != 0. )
-	glRotatef( character_rotation_.y_, 0.f, 1.f, 0.f );
+	    glRotatef( character_rotation_.y_, 0.f, 1.f, 0.f );
 
       if ( character_rotation_.z_ != 0. )
-	glRotatef( character_rotation_.z_, 0.f, 0.f, 1.f );
+	    glRotatef( character_rotation_.z_, 0.f, 0.f, 1.f );
 
       glTranslatef( -( texture_info.width_ / 2.f +
 		      texture_info.left_bearing_ ),
