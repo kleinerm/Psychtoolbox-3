@@ -3425,6 +3425,26 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
     bbox = ft_bbox;
     bbox.advance_ = faces_[f].face_->glyph->advance;
 
+    // If underline is active, adapt bounding box:
+    if (do_draw_underline_)
+    {
+      float undPos = underline_position();
+      float undThicc = underline_thickness();
+
+      // Glyph's decender can be lower than underline, so only set
+      // bbox's y_min to position of underline if underline is below
+      // lowest ink of glyph.
+      if (undPos - undThicc < bbox.y_min_) {
+        bbox.y_min_ = undPos - undThicc;
+      }
+
+      // Ink of character may start after zero or end before advance,
+      // but underline is always strictly from 0 to advance. So adapt
+      // bounding box to reflect that.
+      bbox.x_min_ = 0;
+      bbox.x_max_ = bbox.advance_.dx_;
+    }
+
     return bbox;
   }
 #endif /* OGLFT_NO_QT */
