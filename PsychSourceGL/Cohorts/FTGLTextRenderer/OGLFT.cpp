@@ -3453,6 +3453,8 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
 
     texture_info = texture_object->second;
 
+    glBindTexture(GL_TEXTURE_2D, texture_info.texture_name_);
+
     
     if ( character_rotation_.active_ ) {
       glPushMatrix();
@@ -3474,7 +3476,6 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
 		    -rotation_offset_y_, 0.f );
     }
 
-    glBindTexture( GL_TEXTURE_2D, texture_info.texture_name_ );
     glBegin( GL_QUADS );
 
     glTexCoord2i( 0, 0 );
