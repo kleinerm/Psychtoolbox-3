@@ -3500,7 +3500,7 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
       float undThicc = underline_thickness();
       float advance = face->glyph->advance.x/64.f;
 	
-      glBindTexture( GL_TEXTURE_2D, 0);
+      glDisable(GL_TEXTURE_2D);
       glColor3f(0.f,0.f,0.f);
         glBegin( GL_QUADS );
         glVertex2f(0.f, undPos - undThicc);
@@ -3508,6 +3508,7 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
         glVertex2f( advance, undPos);
         glVertex2f(0.f, undPos);
       glEnd();
+      glEnable(GL_TEXTURE_2D);
     }
 
     if ( character_rotation_.active_ ) {
