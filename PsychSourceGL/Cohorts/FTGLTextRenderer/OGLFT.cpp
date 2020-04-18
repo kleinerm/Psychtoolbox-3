@@ -3502,8 +3502,7 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
       float advance = face->glyph->advance.x/64.f;
 	
       glDisable(GL_TEXTURE_2D);
-      glColor3f(0.f,0.f,0.f);
-        glBegin( GL_QUADS );
+      glBegin( GL_QUADS );
         glVertex2f(0.f, undPos - undThicc);
         glVertex2f( advance, undPos - undThicc);
         glVertex2f( advance, undPos);
