@@ -1,11 +1,3 @@
-% The demo and MinExpEntStair use nested functions internally, something
-% not supported by Octave, so this is a no-go unless somebody rewrites this
-% stuff:
-if IsOctave
-    fprintf('Sorry, this demo does not yet work on GNU/Octave, neither does the MinExpEntStair function used.\n');
-    return;
-end
-
 close all; clear
 
 % stair input
@@ -16,7 +8,7 @@ lapse       = 0.05;             % lapse/mistake rate
 guess       = 0.50;             % guess rate / minimum correct response rate (for detection expt: 1/num_alternative, 0 for discrimination expt)
 
 % general settings
-ntrial  = 40;
+ntrial  = 200;
 qpause  = false;    % pause after every iteration? (press any key to continue)
 qplot   = false;    % plot information about each trial? (this pauses as well, regardless of whether you specified qpause as true)
 
@@ -36,10 +28,11 @@ end
 
 
 % Create staircase instance. If you want to interleave staircases, or
-% otherwise run multiple conditions, create one staircase per condition.
+% otherwise run multiple conditions, create one staircase per condition. Do
+% not copy, as a copy refers to the same instance, not a new staircase.
 % You can store these in a cell-array and of course use different settings
 % for each as needed.
-stair = MinExpEntStair('v2');
+stair = MinExpEntStair();
 % use lookup table to cache pvalues and avoid unnecessary evaluations of
 % psychometric function? Can require lots of memory, especially when
 % stepsize of probeset and meanset is not equal. Call before calling
@@ -47,7 +40,7 @@ stair = MinExpEntStair('v2');
 stair.set_use_lookup_table(true);
 % option: use logistic instead of default cumulative normal. best to call
 % before stair.init
-% stair('set_psychometric_func','logistic');
+% stair.set_psychometric_func('logistic');
 % init stair
 stair.init(probeset,meanset,slopeset,lapse,guess);
 % option: use a subset of all data for choosing the next probe, use
@@ -121,8 +114,8 @@ for ktrial = 1:ntrial
 end % loop over trials
 
 %%% show final results
-%  [mu,sigma] = stair('get_fit');    % get fitted parameters of cumulative Gaussian
-%  DL = sigma*erfinv(.5)*sqrt(2)     % convert sigma (std) to DL (75%-25% point)/2
+% [mu,sigma] = stair.get_fit();     % get fitted parameters of cumulative Gaussian
+% DL = sigma*erfinv(.5)*sqrt(2)     % convert sigma (std) to DL (75%-25% point)/2
 % get DL from staircase directly, NB: the space of the outputted
 % loglikelihood is the mean/slope space as defined atop this script, its
 % not a PSE/DL space
