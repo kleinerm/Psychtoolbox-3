@@ -405,8 +405,8 @@ int PsychRebuildFont(fontCacheItem* fi)
         // we can read out the post-draw text cursor position from it:
         fi->faceT->setAdvance(true);
 
-	// set underlining, if requested in style
-	if (_fontStyle & 4)
+        // Set underlining, if requested in style:
+        if (_fontStyle & 4)
             fi->faceT->setDoUnderLine(true);
     }
     else {
@@ -423,8 +423,8 @@ int PsychRebuildFont(fontCacheItem* fi)
         // we can read out the post-draw text cursor position from it:
         fi->faceM->setAdvance(true);
 
-	// set underlining, if requested in style
-	if (_fontStyle & 4)
+        // Set underlining, if requested in style:
+        if (_fontStyle & 4)
             fi->faceM->setDoUnderLine(true);
     }
 

@@ -3496,18 +3496,18 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
 
     if (do_draw_underline_)
     {
-        float undPos   = underline_position();
-        float undThicc = underline_thickness();
-	float advance = face->glyph->advance.x/64.f;
+      float undPos   = underline_position();
+      float undThicc = underline_thickness();
+      float advance = face->glyph->advance.x/64.f;
 	
-	glBindTexture( GL_TEXTURE_2D, 0);
-	glColor3f(0.f,0.f,0.f);
+      glBindTexture( GL_TEXTURE_2D, 0);
+      glColor3f(0.f,0.f,0.f);
         glBegin( GL_QUADS );
         glVertex2f(0.f, undPos - undThicc);
         glVertex2f( advance, undPos - undThicc);
         glVertex2f( advance, undPos);
         glVertex2f(0.f, undPos);
-	glEnd();
+      glEnd();
     }
 
     if ( character_rotation_.active_ ) {

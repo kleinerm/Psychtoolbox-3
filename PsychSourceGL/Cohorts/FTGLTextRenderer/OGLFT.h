@@ -761,21 +761,20 @@ namespace OGLFT {
     virtual double height ( void ) const = 0;
 
     /*!
-     * \return The position, in font units, of the
-     *                           underline line for this face.  It is the
-     *                           center of the underlining stem.  Only
-     *                           relevant for scalable formats.
+     * \return The position, in font units, of the underline line for this
+     * face. It is the center of the underlining stem.  Only relevant for
+     * scalable formats.
      */
     virtual double underline_position ( void ) const = 0;
 
     /*!
-     * \return The thickness, in font units, of the
-     *                           underline for this face.  Only relevant for
-     *                           scalable formats.
+     * \return The thickness, in font units, of the underline for this face.
+     * Only relevant for scalable formats.
      */
     virtual double underline_thickness ( void ) const = 0;
 
-    OGLFT_API void setDoUnderLine(bool do_draw_underline) { do_draw_underline_ = do_draw_underline; }
+    OGLFT_API void setDoUnderLine(bool do_draw_underline)
+    { do_draw_underline_ = do_draw_underline; }
 
     /*!
      * Compute the bounding box info for a character.
