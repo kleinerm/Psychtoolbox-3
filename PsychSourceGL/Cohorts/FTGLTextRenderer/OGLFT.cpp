@@ -461,6 +461,18 @@ namespace OGLFT {
     }
   }
 
+  // Note: Changing the underline also clears the display list cache.
+
+  void Face::setDoUnderLine( const bool do_draw_underline )
+  {
+    if ( do_draw_underline_ != do_draw_underline ) {
+
+      do_draw_underline_ = do_draw_underline;
+
+      clearCaches();
+    }
+  }
+
   BBox Face::measure ( const char* s )
   {
     BBox bbox;
@@ -3499,8 +3511,8 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
     {
       float undPos   = underline_position();
       float undThicc = underline_thickness();
-      float advance = face->glyph->advance.x/64.f;
-	
+      float advance  = face->glyph->advance.x/64.f;
+
       glDisable(GL_TEXTURE_2D);
       glBegin( GL_QUADS );
         glVertex2f(0.f, undPos - undThicc);

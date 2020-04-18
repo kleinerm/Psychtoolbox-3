@@ -181,7 +181,9 @@ fontCacheItem* getForContext(int contextId)
             // and the real effective fontRealName that libfontconfig actually gave us. Otherwise, as fontRealName
             // is returned to Screen(), we could get into a funny loop which causes false cache misses if the loaded font
             // doesn't match exactly the required one.
-            if ((fi->antiAliasing == _antiAliasing) && (fi->fontStyle == _fontStyle) && (fi->fontSize == _fontSize) &&
+            // NB: we ignore the third bit of fontStyle (4, underline) as that is not a font property but dealt with
+            // separately.
+            if ((fi->antiAliasing == _antiAliasing) && (fi->fontStyle == (_fontStyle & ~4)) && (fi->fontSize == _fontSize) &&
                 ((strcmp(fi->fontName, _fontName) == 0) || (strcmp(fi->fontRealName, _fontName) == 0)) &&
                 (fi->matrix.xx == _matrix.xx && fi->matrix.xy == _matrix.xy && fi->matrix.yx == _matrix.yx && fi->matrix.yy == _matrix.yy &&
                  fi->vector.x == _vector.x && fi->vector.y == _vector.y)) {
@@ -227,7 +229,7 @@ fontCacheItem* getForContext(int contextId)
     // Update tags:
     fi->contextId = contextId;
     fi->antiAliasing = _antiAliasing;
-    fi->fontStyle = _fontStyle;
+    fi->fontStyle = _fontStyle & ~4;    // ignore third bit (4, underline)
     fi->fontSize = _fontSize;
     strcpy(fi->fontName, _fontName);
     fi->matrix = _matrix;
@@ -404,10 +406,6 @@ int PsychRebuildFont(fontCacheItem* fi)
         // Do not reset GL_MODELVIEW matrix after text drawing, so
         // we can read out the post-draw text cursor position from it:
         fi->faceT->setAdvance(true);
-
-        // Set underlining, if requested in style:
-        if (_fontStyle & 4)
-            fi->faceT->setDoUnderLine(true);
     }
     else {
         fi->faceM = new OGLFT::MonochromeTexture(fi->ft_face, _fontSize, 72);
@@ -422,10 +420,6 @@ int PsychRebuildFont(fontCacheItem* fi)
         // Do not reset GL_MODELVIEW matrix after text drawing, so
         // we can read out the post-draw text cursor position from it:
         fi->faceM->setAdvance(true);
-
-        // Set underlining, if requested in style:
-        if (_fontStyle & 4)
-            fi->faceM->setDoUnderLine(true);
     }
 
     // Ready!
@@ -594,6 +588,14 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
         fi->faceM->setForegroundColor( _fgcolor[0], _fgcolor[1], _fgcolor[2], _fgcolor[3]);
     }
 
+    // Enable or disable underlining, depending on requested style:
+    if (fi->faceT) {
+        fi->faceT->setDoUnderLine(!!(_fontStyle & 4));
+    }
+    else if (fi->faceM) {
+        fi->faceM->setDoUnderLine(!!(_fontStyle & 4));
+    }
+
     // Rendering of background quad requested? -- True if background alpha > 0.
     if (_bgcolor[3] > 0) {
         // Yes. Compute bounding box of "to be drawn" text and render a quad in background color:
@@ -656,6 +658,14 @@ int PsychMeasureText(int context, int textLen, double* text, float* xmin, float*
 
     QString uniCodeText = QString(myUniChars, textLen);
     delete [] myUniChars;
+
+    // Enable or disable underlining, depending on requested style:
+    if (fi->faceT) {
+        fi->faceT->setDoUnderLine(!!(_fontStyle & 4));
+    }
+    else if (fi->faceM) {
+        fi->faceM->setDoUnderLine(!!(_fontStyle & 4));
+    }
 
     // Compute its bounding box:
     glPushMatrix();

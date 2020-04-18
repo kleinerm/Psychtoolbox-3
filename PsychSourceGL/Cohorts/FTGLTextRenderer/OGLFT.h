@@ -773,8 +773,11 @@ namespace OGLFT {
      */
     virtual double underline_thickness ( void ) const = 0;
 
-    OGLFT_API void setDoUnderLine(bool do_draw_underline)
-    { do_draw_underline_ = do_draw_underline; }
+    /*!
+     * This sets whether glyphs are drawn with underline or not. Note that
+     * changing the background color invalidates the glyph cache.
+     */
+    void setDoUnderLine(const bool do_draw_underline);
 
     /*!
      * Compute the bounding box info for a character.
