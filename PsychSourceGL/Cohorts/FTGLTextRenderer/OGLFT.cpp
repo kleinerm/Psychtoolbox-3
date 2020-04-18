@@ -3465,9 +3465,8 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
 
     texture_info = texture_object->second;
 
-    glBindTexture(GL_TEXTURE_2D, texture_info.texture_name_);
+    glBindTexture( GL_TEXTURE_2D, texture_info.texture_name_ );
 
-    
     if ( character_rotation_.active_ ) {
       glPushMatrix();
       glTranslatef( ( texture_info.width_ / 2.f +
