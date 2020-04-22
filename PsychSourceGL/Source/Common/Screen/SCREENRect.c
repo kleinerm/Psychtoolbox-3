@@ -22,7 +22,7 @@
 static char useString[] = "rect=Screen('Rect', windowPointerOrScreenNumber [, realFBSize=0]);";
 //                                             1                              2
 static char synopsisString[] =
-    "Get local rect of window or screen. This has its top-left corner always at (0,0) "
+    "Get local rect of window, texture or screen. This has its top-left corner always at (0,0) "
     "and encodes the useable size of the window or screen. E.g., in certain stereo "
     "display modes or other special output modes, the actual useable window area for "
     "stimulus drawing may be much smaller than the real area occupied by the window. "
