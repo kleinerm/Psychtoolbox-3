@@ -405,6 +405,14 @@ try
           xdriver = 'modesetting';
           modesetting = 'y';
         end
+
+        % If the user explicitly does not want modesetting, and there are no forcing circumstances to use or not use it,
+        % (aka modesetting == 'd') and we are actually running on a Intel gpu or nouveau/NVidia, then force modesetting
+        % off. Background: As of Ubuntu 20.04-LTS, the distro will select modesetting-ddx by default for both Intel and
+        % NVidia+nouveau, so we need a config file to opt-out of use of modesetting-ddx, not to opt-in.
+        if (usemodesetting == 'n') && (modesetting == 'd') && (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau'))
+          modesetting = 'n';
+        end
       end
     end
 
