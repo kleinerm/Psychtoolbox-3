@@ -48,7 +48,7 @@ oldVerbosity = Screen('Preference', 'Verbosity', 1);
 oldSyncTests = Screen('Preference', 'SkipSyncTests', 2);
 
 try
-  win = Screen('OpenWindow', 0, 0, [0 0 32 32]);
+  win = Screen('OpenWindow', 0, 0, [0 0 32 32], 24);
   winfo = Screen('GetWindowInfo', win);
   modesettingddxactive = Screen('GetWindowInfo', win, 8);
   Screen('CloseAll');
@@ -184,7 +184,7 @@ try
         if ismember(i, remainingOutputs)
           scanout = outputs{i};
           winRect = OffsetRect([0, 0, 600, 100], scanout.xStart, scanout.yStart);
-          w(i) = Screen('Openwindow', scanout.screenNumber, 0, winRect);
+          w(i) = Screen('Openwindow', scanout.screenNumber, 0, winRect, 24);
           Screen('TextSize', w(i), 48);
           Screen('DrawText', w(i), [num2str(i) ') ' scanout.name], 10, 10, 255);
           Screen('Flip', w(i));
