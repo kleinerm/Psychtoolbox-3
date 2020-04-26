@@ -1,4 +1,4 @@
-function OpenEyesDemo
+function OpenEyesDemo(movieorcamid)
 
 AssertOpenGL;
 
@@ -12,9 +12,15 @@ rightShiftKey = KbName('RightShift');
 spaceKey = KbName('space');
 calibrateKey = KbName('c');
 
+exposure = 0;
+
 oldPressSecs = 0;
 count = 0;
 ListenChar(2);
+
+if nargin < 1 || isempty(movieorcamid)
+    movieorcamid = 0;
+end
 
 try
     winRect = [0 0 800 600];
@@ -25,14 +31,17 @@ try
     win = Screen('OpenWindow', screenid, 0, winRect);
     ShowCursor('CrossHair', screenid);
     
-    oeyes = PsychOpenEyes('OpenTracker', 1, win)
-    oldgain = PsychCamSettings('Gain', oeyes)
-    gain = PsychCamSettings('Gain', oeyes, 174)
+    oeyes = PsychOpenEyes('OpenTracker', movieorcamid, win);
+    if ~ischar(movieorcamid)
+        oldgain = PsychCamSettings('Gain', oeyes)
+        gain = PsychCamSettings('Gain', oeyes, 174)
+    end
+    
     imgtype = 0;
     
     mbuttons = [];
-    while ~any(mbuttons)
-        tex =Screen('GetCapturedImage', win, oeyes, 1);
+    while ~any(mbuttons) && ~ischar(movieorcamid)
+        tex = PsychOpenEyes('GetVideoTexture', oeyes);
         Screen('DrawTexture', win, tex, [], Screen('Rect', tex));
         Screen('Close', tex);
 
@@ -44,7 +53,7 @@ try
     
     while 1
         % Show eye image:
-        tex =Screen('GetCapturedImage', win, oeyes, 1);
+        tex = PsychOpenEyes('GetVideoTexture', oeyes);
         Screen('DrawTexture', win, tex, [], Screen('Rect', tex));
 
         % Flip at next retrace, but don't do anything to buffers, we'll
@@ -100,14 +109,15 @@ try
 
             % First time invocation: Set a few defaults:
             curpar.eccentricity = 1.1;
-            curpar.initialAngleSpread = 360; % This works with visible spectrum imaging.
+            curpar.initialAngleSpread = 36; % This works with visible spectrum imaging.
 %            curpar.initialAngleSpread = 45;
-            curpar.pupilEdgeThresh = 1;
+            curpar.pupilEdgeThresh = 2;
+            curpar.edgeThresh = 16;
             curpar.fanoutAngle1 = 0; %-45;
             curpar.fanoutAngle2 = 180; % 180 + 45;
             curpar.featuresPerRay = 2;
             curpar.specialFlags = +1;
-            curpar.rays = round(curpar.initialAngleSpread * 0.1);
+            curpar.rays = 10; %round(curpar.initialAngleSpread * 0.1);
             curpar.gaussWidth = 3;
             % Commit (possibly changed) parameters to tracker:
             PsychOpenEyes('TrackerParameters', oeyes, curpar.pupilEdgeThresh, curpar.rays, curpar.minCand, curpar.corneaWinSize, curpar.edgeThresh, curpar.gaussWidth, curpar.eccentricity, curpar.initialAngleSpread, curpar.fanoutAngle1, curpar.fanoutAngle2, curpar.featuresPerRay, curpar.specialFlags);
@@ -152,8 +162,10 @@ try
 
             % Query current settings:
             curpar = PsychOpenEyes('TrackerParameters', oeyes)
-            exposure = PsychCamSettings('ExposureTime', oeyes);
-            
+            if ~ischar(movieorcamid)
+                exposure = PsychCamSettings('ExposureTime', oeyes);
+            end
+          
             if keyCode(rightGUI)
                 % Change rays or feature candidate parameters:
                 curpar.rays = curpar.rays + dx;
@@ -162,7 +174,7 @@ try
                 if keyCode(rightShiftKey)
                     % Change cornea search window size:
                     curpar.corneaWinSize = curpar.corneaWinSize + 10*dx;
-                    if dy~=0
+                    if dy~=0 && ~ischar(movieorcamid)  
                         exposure = exposure + dy/10;
                         PsychCamSettings('ExposureTime', oeyes, exposure);
                     end
@@ -248,6 +260,11 @@ try
         % Print out tracking results:
         %disp(eyesample);
 
+        if ischar(movieorcamid)
+            KbWait;
+            WaitSecs(0.2);
+        end
+      
         % Ready for next iteration...
         count = count + 1;
     end
