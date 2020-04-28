@@ -1,24 +1,39 @@
 function [id, rect, shader] = CreateProceduralColorGrating(windowPtr, width, height, ...
-    color1, color2, radius, normalise)
-% [id, rect, shader] = CreateProceduralColorGrating(windowPtr, width, height [, color1=[1 0 0]]  [, color2=[0 1 0]] [, radius=0])
+	color1, color2, radius)
+% [id, rect, shader] = CreateProceduralColorGrating(windowPtr, width,
+% height [, color1=[1 0 0]]  [, color2=[0 1 0]] [, radius=0])
 %
-% A procedural color grating shader that can generate either sinusoidal or square gratings varying between two colors. Initial parameters are color1, color2 and radius. When drawing the shader using Screen('DrawTexture|s'), you can pass additional values:
+% A procedural color grating shader that can generate either sinusoidal or
+% square gratings varying between two colors. Initial parameters are
+% color1, color2 and radius. When drawing the shader using
+% Screen('DrawTexture|s'), you can pass additional values:
 % * baseColor is the base color from which color1 & color2 are mixed.
 % * contrast is the mixing amount from baseColor to color1|2
-% * sigma is a smoothing value, when sigma == -1 a sinusoidal grating is produced. when sigma >= 0 a square wave grating is produced using sigma value of smoothing at the edge. Smoothing for squarewave grating edges can reduce jumping artifacts when squarewave gratings are drifted. Smoothing uses GLSL smoothstep function (hermite interpolation).
-% ====INPUT VALUES
+% * sigma is a smoothing value, when sigma == -1 a sinusoidal grating is
+% produced. when sigma >= 0 a square wave grating is produced using sigma
+% value of smoothing at the edge. Smoothing for squarewave grating edges
+% can reduce jumping artifacts when squarewave gratings are drifted.
+% Smoothing uses GLSL smoothstep function (hermite interpolation).
+%
+% ====INPUT VALUES 
 % width, height = "virtual size" of the GLSL shader.
-% color1 & color2 = two colors for the grating peaks to vary between. When running (see ColorGratingDemo), you can pass baseColor parameter, from which color1 and color2 will be modulated via the contrast parameter. When contrast == 0, then Color1 and color2 are the same as baseColor. As contrast increases each color is mixed with baseColor until at contrast == 1 the grating peaks are color1 and color2 exactly.Color mixing uses OpenGL's mix command. 
-% radius = optional hard-edged circular mask sized in pixels
-% normalise = do we use pow() to correct for a 2.2 gamma?
+% color1 & color2 = two colors for the grating peaks to vary between. When
+% running (see ColorGratingDemo), you can pass baseColor parameter, from
+% which color1 and color2 will be modulated via the contrast parameter.
+% When contrast is 0, then Color1 and color2 are the same as baseColor. As
+% contrast increases each color is mixed with baseColor until at contrast 1 
+% the grating peaks are color1 and color2 exactly. Color mixing uses
+% OpenGL's mix command. 
+% radius = optional hard-edged circular mask sized in pixels.
 %
-% ====RETURN VALUES
-% id = texture pointer
+% ====RETURN VALUES 
+% id = texture pointer 
 % rect = default position rect
-% shader = the GLSL shader, this is useful if you want to use glUniform commands to modify color 1, color2 or radius after texture creation.
+% shader = the GLSL shader, useful if you want to use glUniform commands to
+% modify color 1, color2 or radius after texture creation.
 %
-% History:
-% 06/06/2014 Created by Ian Andolina <http://github.com/iandol>, licenced under the MIT Licence
+% History: 06/06/2014 Created by Ian Andolina <http://github.com/iandol>,
+% licenced under the MIT Licence
 
 global GL;
 
@@ -58,15 +73,12 @@ if nargin < 6 || isempty(radius)
     radius = 0;
 end
 
-if nargin < 7 || isempty(normalise)
-    normalise = 0;
-end
 
 % Switch to windowPtr OpenGL context:
 Screen('GetWindowInfo', windowPtr);
 
 % Load shader:
-shader = LoadGLSLProgramFromFiles({'colorgrating.vert', 'colorgrating.frag'}, 1);
+shader = LoadGLSLProgramFromFiles('colorgrating', 1);
 
 % Setup shader:
 glUseProgram(shader);
@@ -76,7 +88,6 @@ glUniform4f(glGetUniformLocation(shader, 'color2'), color2(1),color2(2),color2(3
 if radius>0
     glUniform1f(glGetUniformLocation(shader, 'radius'), radius); 
 end
-glUniform1f(glGetUniformLocation(shader, 'normalise'), normalise);
 glUseProgram(0);
 
 % Create a purely virtual procedural texture 'id' of size width x height virtual pixels.
@@ -85,3 +96,4 @@ id = Screen('SetOpenGLTexture', windowPtr, [], 0, GL.TEXTURE_RECTANGLE_EXT, widt
 
 % Query and return its bounding rectangle:
 rect = Screen('Rect', id);
+

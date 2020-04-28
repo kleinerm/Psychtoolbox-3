@@ -10,7 +10,6 @@ uniform vec2    center;
 uniform vec4    color1;
 uniform vec4    color2;
 uniform float   radius;
-uniform float   normalise;
 
 varying vec3    baseColor;
 varying float   alpha;
@@ -53,12 +52,8 @@ void main() {
 
     // and then mix the two colors using sv (our position in the grating)
     vec3 colorOut = mix(colorA, colorB, sv);
-
-    // this normalises the color range to a 2.2 gamma
-    if ( normalise > 0.0 ) {
-        colorOut = pow( colorOut, vec3( 1.0/2.2 ) );
-    }
     
     // off to the display, byebye little pixel!
     gl_FragColor = vec4( colorOut, alpha );
 }
+

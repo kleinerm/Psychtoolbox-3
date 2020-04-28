@@ -2,8 +2,22 @@ function ProceduralColorGratingDemo(color1,color2,baseColor)
 % ProceduralColorGratingDemo() -- demo color grating procedural shader
 % stimuli
 %
-% This demo shows how to use procedural color gratings
-
+%
+% This demo shows how to use procedural color gratings. Color gratings 
+% have two color sources, rather than one. They are a useful stimulus
+% class for e.g. understanding opponenet color channels. The standard PTB
+% grating shader cannot generate this class of grating. The procedural
+% shader can generate sinusoidal or square wave gratings, and you can set a
+% radial aperture.
+%
+%
+% Optional Inputs are:
+% color1 -- the first color of the grating, default is red [1 0 0 1]
+% color2 -- the second color of the grating, default is green [0 1 0 1]
+% baseColor -- the base color from which color1 and color2 are blended
+% depending on contrast. Normally this would be set to your background
+% color in PTB; default in this demo is the background color [0.5 0.5 0.5 1].
+%
 % History:
 % 01/03/2020 initial version (Ian Andolina)
 
@@ -47,13 +61,11 @@ Screen('BlendFunction', win, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
 virtualSize = 512;
 % radius of the disc edge
 radius = floor(virtualSize / 2);
-% normalise to a 2.2 gamma (normally you should linearise your monitor!)
-normalise = false;
 
 % Build a procedural texture, we also keep the shader as we will show how to
 % modify it (though not as efficient as using parameters in drawtexture)
-[texture, ~, shader] = CreateProceduralColorGrating(win, virtualSize,...
-    virtualSize, color1, color2, radius, normalise);
+texture = CreateProceduralColorGrating(win, virtualSize, virtualSize,...
+     color1, color2, radius);
 
 % These settings are the parameters passed in directly to DrawTexture
 % angle
@@ -80,8 +92,6 @@ while vbl < tstart + showTime
         angle, [], [], baseColor, [], [],...
         [phase, frequency, contrast, sigma]);
 
-    Screen('DrawingFinished', win);
-
     vbl = Screen('Flip', win, vbl + 0.5 * ifi);
     phase = phase - 15;
 end
@@ -103,18 +113,14 @@ while vbl < tstart + showTime
         angle, [], [], baseColor, [], [],...
         [phase, frequency, contrast, sigma]);
 
-    Screen('DrawingFinished', win);
-
     vbl = Screen('Flip', win, vbl + 0.5 * ifi);
     phase = phase - 15;
 end
 
-%--- now we can change the parameters in the shader to be B-Y grating
-% note this takes ~0.7ms 
-glUseProgram(shader);
-glUniform4f(glGetUniformLocation(shader, 'color1'), 0, 0, 1, 1);
-glUniform4f(glGetUniformLocation(shader, 'color2'), 1, 1, 0, 1);
-glUseProgram(0);
+%--- Lets make a Blue/Yellow colour shader 
+Screen('Close',texture);
+texture = CreateProceduralColorGrating(win, virtualSize,...
+    virtualSize, [0 0 1 1], [1 1 0 1], radius);
 
 % Preperatory flip
 vbl = Screen('Flip', win);
@@ -127,8 +133,6 @@ while vbl < tstart + showTime
     Screen('DrawTexture', win, texture, [], [],...
         angle, [], [], baseColor, [], [],...
         [phase, frequency, contrast, sigma]);
-
-    Screen('DrawingFinished', win);
 
     vbl = Screen('Flip', win, vbl + 0.5 * ifi);
     phase = phase - 15;
@@ -151,8 +155,6 @@ while vbl < tstart + showTime
         angle, [], [], baseColor, [], [],...
         [phase, frequency, contrast, sigma]);
 
-    Screen('DrawingFinished', win);
-
     vbl = Screen('Flip', win, vbl + 0.5 * ifi);
     phase = phase - 15;
 end
@@ -162,3 +164,4 @@ sca;
 
 % Restore old settings for sync-tests:
 Screen('Preference', 'SkipSyncTests', oldSyncLevel);
+
