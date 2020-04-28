@@ -32,8 +32,8 @@ function [id, rect, shader] = CreateProceduralColorGrating(windowPtr, width, hei
 % shader = the GLSL shader, useful if you want to use glUniform commands to
 % modify color 1, color2 or radius after texture creation.
 %
-% History: 06/06/2014 Created by Ian Andolina <http://github.com/iandol>,
-% licenced under the MIT Licence
+% History: 
+% 06/06/2014 Created by Ian Andolina <http://github.com/iandol>, licenced under the MIT Licence
 
 global GL;
 
