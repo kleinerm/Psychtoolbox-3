@@ -1,19 +1,33 @@
 function [dpi, SP]=MeasureDpi(theScreen, CC)
-% dpi=MeasureDpi([theScreen], [CC]);
-% Helps the user to accurately measure the screen's dots per inch. 
+% function [dpi, SP]=MeasureDpi([theScreen], [CC]);
+%
+% Helps the user to accurately measure the screen's dots per inch.
+%
 % INPUT:
-% theScreen -> Screen parameter; 
-% CC-> Creditcard parameter, 1-> Yes. Other-> no
-% 
+%
+% theScreen -> Screen parameter, if the screen is not provided, the
+% maximum value will be used.
+%
+% CC-> Credit Card parameter, it allows you to use a credit card as an
+% object of known size. Otherwise it is recommended to have a ruler have or
+% some other object of known size at hand.
+%
+% 1-> Yes. Other-> No (Size of other object would be asked).
+%
 % OUTPUT:
+%
 % dpi-> Dots per inch.
-% SP -> Screen presets withdrawn from the Monitor drivers(EDID). It will provide
-% you with the physical size Width and Height, the screen resolution, the
-% DotPitch and dpi automatically. Note: This feature has not been tested in
-% Linux or MacOS, and it won't work with old monitors.
+% SP -> Screen presets withdrawn from the Monitor drivers (EDID). 
+% It will provide you with a structure containing the physical size of the
+% screen (width and height) in mm, the screen resolution in pixels, the,
+% DotPitch and dpi automatically. 
+% Note: This feature has not been tested in Linux or MacOS, and it won't
+% work with old monitors.
 %
 % Denis Pelli
-
+%
+% History
+%
 % 5/28/96 dgp Updated to use new GetMouse.
 % 3/20/97 dgp Updated.
 % 4/2/97  dgp FlushEvents.
@@ -31,27 +45,24 @@ function [dpi, SP]=MeasureDpi(theScreen, CC)
 % 9/10/19 mgg Optional output: Withdraw the presets from the screen
 %             inc. the screen size, resolution, dot pitch and distance independent dpi.
 
+st = dbstack; funname = [st.name]; % This provides the name of the calling function, so when throwing an error, the user knows from where.  
 if nargin>2 || nargout>2
-    error([datestr(now),':>> Error wrong call to function, use it as: dpi=MeasureDpi(Screen)', newline, 'or [dpi, SP]=MeasureDpi(Screen, CC)']);
+    error([funname,':>> Error wrong call to function, use it as: dpi=MeasureDpi(Screen)', newline, 'or [dpi, SP]=MeasureDpi([Screen], [CC])']);
 end
-if ~exist(theScreen) || isempty(theScreen)
+if nargin==0 || isempty(theScreen)
     theScreen=max(Screen('Screens')); % Use the second screen, most of the cases.
-    disp([datestr(now),':>> No screen value has been provided so I assume ',...
+    disp([funname,':>> No screen value has been provided so I assume ',...
         'that either you would like to use the secondary screen, or the main one if you only have one...']);
 end
 AssertOpenGL;
-
+[unitInches, units, unit] = EnglishOrSI();
 try
     if nargin>1 && isequal(CC,1) % Using a credit card
-        unitInches=1;
-        units='inches'; % e.g. distance in inches
-        unit='inch';    % e.g. 5 inch object
-        objectInches= 8.56*(1/2.54); % ID-1 format, ISO/IEC 7810 credit card (85.60 × 53.98 mm).
-        [unitInches, units, unit] = EnglishOrSI();
+       objectInches= 8.56*(1/2.54); % ID-1 format, ISO/IEC 7810 credit card (85.60 × 53.98 mm).
+        
     else
         disp('Please find an object of known width to hold against the display.');
-        disp('E.g.  a ruler or an 8.5-inch page.');
-        [unitInches, units, unit] = EnglishOrSI();
+        disp('E.g.  a ruler or an 8.5-inch page.');        
         objectInches=input(sprintf('How wide is your object, in %s? ',units))*unitInches;
         disp('A small correction will be made for your viewing distance and the thickness of');
         disp('the screen''s clear front plate, which separates your object from the screen''s');
@@ -75,7 +86,7 @@ try
     % This might work if you have a modern monitor with reasonable updated
     % drivers.
     [SP.ScreenWidthOS, SP.ScreenHeightOS] = Screen('DisplaySize', theScreen);
-    [SP.Xpixels, SP.Ypixels] = Screen('WindowSize', w);  
+    [SP.Xpixels, SP.Ypixels] = Screen('WindowSize', window);
     SP.DotPitchX= (SP.ScreenWidthOS/SP.Xpixels);
     SP.DotPitchY=(SP.ScreenHeightOS/SP.Ypixels);
     SP.DotPitchDiag= (SP.DotPitchX + SP.DotPitchY) /2;
@@ -100,7 +111,7 @@ try
     textRect(RectRight)=screenRect(RectRight);
     dragText=theText;
     dragTextRect=textRect;
-
+    
     % Animate
     % Track horizontal mouse position to draw a bar of variable width.
     for i=1:length(dragText)
@@ -160,7 +171,7 @@ try
                 dpi=objectPix/objectInches;
                 dpi=dpi*distanceInches/(distanceInches+thicknessInches);
                 clear theText
-                if inches
+                if unitInches==1
                     theText{1}=sprintf('%.0f dots per inch.',dpi);
                 else
                     theText{1}=sprintf('%.0f dots per inch. (%.0f dots/cm.)',dpi,dpi/2.54);
@@ -198,10 +209,11 @@ catch
     psychrethrow(psychlasterror);
 end
 
-function [unitInches, units, unit] = EnglishOrSI()
-% Ask user whether to use the International System of Units or the English
-% / American System(inches).
-inches=input('Do you prefer inches (1) or cm (0)? ');
+    function [unitInches, units, unit] = EnglishOrSI()
+        % Ask user whether to use the International System of Units or the English
+        % / Ameerican System(inches).
+        
+        inches=input('Do you prefer inches (1) or cm (0)? ');
         if inches
             unitInches=1;
             units='inches'; % e.g. distance in inches
@@ -211,3 +223,5 @@ inches=input('Do you prefer inches (1) or cm (0)? ');
             units='cm';
             unit='cm';
         end
+    end
+end
