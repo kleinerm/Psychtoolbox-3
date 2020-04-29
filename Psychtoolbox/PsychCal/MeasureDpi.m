@@ -1,28 +1,30 @@
 function [dpi, SP]=MeasureDpi(theScreen, CC)
-% function [dpi, SP]=MeasureDpi([theScreen], [CC]);
+% [dpi, SP] = MeasureDpi([theScreen=max][, useCreditCard=0]);
 %
-% Helps the user to accurately measure the screen's dots per inch.
+% Helps the user to accurately measure the screen's dots per inch by use of a
+% reference object of known size.
 %
 % INPUT:
 %
-% theScreen -> Screen parameter, if the screen is not provided, the
-% maximum value will be used.
+% 'theScreen' Screen parameter, if the screen is not provided, the
+% screen with maximum index (typically an external display) will be used.
 %
-% CC-> Credit Card parameter, it allows you to use a credit card as an
-% object of known size. Otherwise it is recommended to have a ruler have or
-% some other object of known size at hand.
-%
-% 1-> Yes. Other-> No (Size of other object would be asked).
+% 'useCreditCard' Credit Card parameter, it allows you to use a credit card as
+% an object of known size if set to 1. Otherwise it is recommended to have a
+% ruler or some other object of known size at hand, and the script will ask for
+% the size of that object.
 %
 % OUTPUT:
 %
-% dpi-> Dots per inch.
-% SP -> Screen presets withdrawn from the Monitor drivers (EDID). 
+% 'dpi' Measured dots per inch.
+% 'SP'  Screen properties reported by the display driver (e.g., based on EDID).
 % It will provide you with a structure containing the physical size of the
-% screen (width and height) in mm, the screen resolution in pixels, the,
-% DotPitch and dpi automatically. 
-% Note: This feature has not been tested in Linux or MacOS, and it won't
-% work with old monitors.
+% screen (width and height) in mm, the screen resolution in pixels, the
+% dot pitch and dpi automatically. 
+%
+% Note: 'SP' relies on information from Screen('DisplaySize'). Read the notes
+% in 'Screen DisplaySize?' on potential limitations in reliability or accuracy
+% of this driver reported info.
 %
 % Denis Pelli
 %
@@ -40,7 +42,7 @@ function [dpi, SP]=MeasureDpi(theScreen, CC)
 %             both Mac and Windows
 % 11/6/06 dgp Updated from PTB-2 to PTB-3.
 % 01/31/16 mk Fix some wrong assumptions for PTB-3. Get rid of GetChar.
-% 8/13/19 mgg Mofify to use it with a credit card (common object of a
+% 8/13/19 mgg Modify to use it with a credit card (common object of a
 %             known size).
 % 9/10/19 mgg Optional output: Withdraw the presets from the screen
 %             inc. the screen size, resolution, dot pitch and distance independent dpi.
@@ -58,8 +60,7 @@ AssertOpenGL;
 [unitInches, units, unit] = EnglishOrSI();
 try
     if nargin>1 && isequal(CC,1) % Using a credit card
-       objectInches= 8.56*(1/2.54); % ID-1 format, ISO/IEC 7810 credit card (85.60 × 53.98 mm).
-        
+        objectInches= 8.56*(1/2.54); % ID-1 format, ISO/IEC 7810 credit card (85.60 × 53.98 mm).
     else
         disp('Please find an object of known width to hold against the display.');
         disp('E.g.  a ruler or an 8.5-inch page.');        
@@ -68,6 +69,7 @@ try
         disp('the screen''s clear front plate, which separates your object from the screen''s');
         disp('light emitting surface.');
     end
+
     isLCD = input('Is your display a flat panel, instead of a CRT? [y/n]: ', 's');
     if isLCD == 'y'
         thicknessInches=0.1;
@@ -78,26 +80,27 @@ try
         fprintf('I assume that the display is a CRT, \n');
         fprintf('with a thick (%.1f inch) clear front plate.\n',thicknessInches);
     end
+
     distanceInches=input(sprintf('What is your viewing distance, roughly, in %s? ',units))*unitInches;
     [window,screenRect]=Screen('OpenWindow',theScreen);
     white=WhiteIndex(window);
     black=BlackIndex(window);
     
-    % This might work if you have a modern monitor with reasonable updated
-    % drivers.
+    % This might work if you have a modern monitor with reasonable updated drivers.
     [SP.ScreenWidthOS, SP.ScreenHeightOS] = Screen('DisplaySize', theScreen);
     [SP.Xpixels, SP.Ypixels] = Screen('WindowSize', window);
     SP.DotPitchX= (SP.ScreenWidthOS/SP.Xpixels);
     SP.DotPitchY=(SP.ScreenHeightOS/SP.Ypixels);
     SP.DotPitchDiag= (SP.DotPitchX + SP.DotPitchY) /2;
     SP.dpi=floor((sqrt((SP.Xpixels)^2+(SP.Ypixels)^2))/(sqrt((SP.ScreenWidthOS)^2+(SP.ScreenHeightOS)^2)/25.4));
-    
+
     % Instructions
     if nargin>1 && isequal(CC,1) % Using a credit card
         s=sprintf('Hold your credit card against the display.');
     else
         s=sprintf('Hold your %.1f-%s-wide object against the display.',objectInches/unitInches,unit);
     end
+
     theText={s,'Press, drag, and release the mouse to draw a bar'...
         ,'that matches the width of your object. Use one eye.'};
     Screen('TextFont',window,'Arial');
@@ -111,7 +114,7 @@ try
     textRect(RectRight)=screenRect(RectRight);
     dragText=theText;
     dragTextRect=textRect;
-    
+
     % Animate
     % Track horizontal mouse position to draw a bar of variable width.
     for i=1:length(dragText)
@@ -128,7 +131,7 @@ try
     Screen('Flip',window);
     oldButton=0;
     while 1
-        [x,~,button]=GetMouse;
+        [x,~,button]=GetMouse(window);
         if any(button)
             if ~oldButton
                 origin=x;
@@ -212,7 +215,6 @@ end
     function [unitInches, units, unit] = EnglishOrSI()
         % Ask user whether to use the International System of Units or the English
         % / Ameerican System(inches).
-        
         inches=input('Do you prefer inches (1) or cm (0)? ');
         if inches
             unitInches=1;
