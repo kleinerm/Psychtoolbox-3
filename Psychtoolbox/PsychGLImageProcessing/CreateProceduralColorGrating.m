@@ -4,36 +4,60 @@ function [id, rect, shader] = CreateProceduralColorGrating(windowPtr, width, hei
 % height [, color1=[1 0 0]]  [, color2=[0 1 0]] [, radius=0])
 %
 % A procedural color grating shader that can generate either sinusoidal or
-% square gratings varying between two colors. Initial parameters are
-% color1, color2 and radius. When drawing the shader using
-% Screen('DrawTexture|s'), you can pass additional values:
+% square gratings varying between two colors. 
+%
+%
+% INPUT VALUES:
+%
+% * width, height = "virtual size" of the GLSL shader.
+% * color1 & color2 = two colors for the grating peaks to vary between. When
+%   running (see ColorGratingDemo), you can pass baseColor parameter, from
+%   which color1 and color2 will be modulated via the contrast parameter.
+%   When contrast is 0, then Color1 and color2 are the same as baseColor. As
+%   contrast increases each color is mixed with baseColor until at contrast 1 
+%   the grating peaks are color1 and color2 exactly. Color mixing uses
+%   OpenGL's mix command. 
+% * radius = optional hard-edged circular mask sized in pixels.
+%
+%
+% RETURN VALUES: 
+%
+% * id = texture pointer.
+% * rect = default position rect.
+% * shader = the GLSL shader, useful if you want to use glUniform commands to
+%   modify color 1, color2 or radius after texture creation.
+%
+%
+% DRAWING MODIFIERS:
+%
+% When drawing this shader using Screen('DrawTexture|s'), you can pass
+% additional values:
+%
 % * baseColor is the base color from which color1 & color2 are mixed.
 % * contrast is the mixing amount from baseColor to color1|2
 % * sigma is a smoothing value, when sigma == -1 a sinusoidal grating is
-% produced. when sigma >= 0 a square wave grating is produced using sigma
-% value of smoothing at the edge. Smoothing for squarewave grating edges
-% can reduce jumping artifacts when squarewave gratings are drifted.
-% Smoothing uses GLSL smoothstep function (hermite interpolation).
+%   produced; and when sigma >= 0 a square wave grating is produced using sigma
+%   value of smoothing at the edge. 
 %
-% ====INPUT VALUES 
-% width, height = "virtual size" of the GLSL shader.
-% color1 & color2 = two colors for the grating peaks to vary between. When
-% running (see ColorGratingDemo), you can pass baseColor parameter, from
-% which color1 and color2 will be modulated via the contrast parameter.
-% When contrast is 0, then Color1 and color2 are the same as baseColor. As
-% contrast increases each color is mixed with baseColor until at contrast 1 
-% the grating peaks are color1 and color2 exactly. Color mixing uses
-% OpenGL's mix command. 
-% radius = optional hard-edged circular mask sized in pixels.
 %
-% ====RETURN VALUES 
-% id = texture pointer 
-% rect = default position rect
-% shader = the GLSL shader, useful if you want to use glUniform commands to
-% modify color 1, color2 or radius after texture creation.
+% TEXTURE DETAILS:
+% 
+% Color blending (blending each color to the baseColor, and then blending
+% with each other) uses GLSL mix function; mix performs a linear
+% interpolation between x and y using a to weight between them. The return
+% value is computed as: $x \times (1 - a) + y \times a$. See
+% <http://docs.gl/sl4/mix> for more details.
 %
+% Smoothing uses GLSL smoothstep function that uses hermite interpolation.
+% A small amount of smoothing for squarewave grating edges can reduce
+% jumping artifacts when squarewave gratings are drifted. See
+% <http://docs.gl/sl4/smoothstep> for more details.
+%
+%
+% See also: CreateProceduralSineGrating, CreateProceduralSineSquareGrating
+
 % History: 
-% 06/06/2014 Created by Ian Andolina <http://github.com/iandol>, licenced under the MIT Licence
+% 06/06/2014 ima created by Ian Max Andolina <http://github.com/iandol>, licenced under the MIT Licence
 
 global GL;
 
@@ -73,12 +97,11 @@ if nargin < 6 || isempty(radius)
     radius = 0;
 end
 
-
 % Switch to windowPtr OpenGL context:
 Screen('GetWindowInfo', windowPtr);
 
 % Load shader:
-shader = LoadGLSLProgramFromFiles('colorgrating', 1);
+shader = LoadGLSLProgramFromFiles('ColorGratingShader', 1);
 
 % Setup shader:
 glUseProgram(shader);
