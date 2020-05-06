@@ -1,5 +1,5 @@
 /*
- * File: colorgrating.frag
+ * File: ColorGratingShader.frag.txt
  * Shader for drawing of color gratings.
  *
  * Copyright 2014, Ian Andolina <http://github.com/iandol>, licenced under the MIT Licence
