@@ -1,6 +1,6 @@
 function [oldSetting, status] = AutoBrightness(screenNumber, newSetting)
 % [oldSetting, status] = AutoBrightness([screenNumber=0][, newSetting])
-%
+% OBSOLETE: Use MacDisplaySettings instead. It's faster and more reliable.
 % AUTOBRIGHTNESS Get and set the "Automatically adjust brightness" checkbox
 % on the Mac OS X: System Preferences: Displays panel. The function
 % argument "newSetting" (integer 0 or 1) indicates whether you want to turn
