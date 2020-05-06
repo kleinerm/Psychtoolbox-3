@@ -10,10 +10,10 @@ function [id, rect, shader] = CreateProceduralColorGrating(windowPtr, width, hei
 % INPUT VALUES:
 %
 % * width, height = "virtual size" of the GLSL shader.
-% * color1 & color2 = two colors for the grating peaks to vary between. When
-%   running (see ColorGratingDemo), you can pass baseColor parameter, from
-%   which color1 and color2 will be modulated via the contrast parameter.
-%   When contrast is 0, then Color1 and color2 are the same as baseColor. As
+% * color1, color2 = two colors for the grating peaks to vary between. When
+%   running (see ProceduralColorGratingDemo), you can pass baseColor parameter,
+%   from which color1 and color2 will be modulated via the contrast parameter.
+%   When contrast is 0, then color1 and color2 are the same as baseColor. As
 %   contrast increases each color is mixed with baseColor until at contrast 1 
 %   the grating peaks are color1 and color2 exactly. Color mixing uses
 %   OpenGL's mix command. 
@@ -23,7 +23,7 @@ function [id, rect, shader] = CreateProceduralColorGrating(windowPtr, width, hei
 % RETURN VALUES: 
 %
 % * id = texture pointer.
-% * rect = default position rect.
+% * rect = rect describing the size and shape of the texture.
 % * shader = the GLSL shader, useful if you want to use glUniform commands to
 %   modify color 1, color2 or radius after texture creation.
 %
@@ -33,8 +33,8 @@ function [id, rect, shader] = CreateProceduralColorGrating(windowPtr, width, hei
 % When drawing this shader using Screen('DrawTexture|s'), you can pass
 % additional values:
 %
-% * baseColor is the base color from which color1 & color2 are mixed.
-% * contrast is the mixing amount from baseColor to color1|2
+% * baseColor is the base color from which color1 and color2 are mixed.
+% * contrast is the mixing amount from baseColor to color1 and color2.
 % * sigma is a smoothing value, when sigma == -1 a sinusoidal grating is
 %   produced; and when sigma >= 0 a square wave grating is produced using sigma
 %   value of smoothing at the edge. 
