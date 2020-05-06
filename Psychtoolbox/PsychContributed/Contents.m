@@ -1,11 +1,25 @@
 % Psychtoolbox:PsychContributed
 %
-% Scripts and software contributed by Psychtoolbox users and
+% Scripts and software contributed by Psychtoolbox users, and
 % third-party tools and software that are used in Psychtoolbox. These
 % third-party tools are covered by different licenses which allow distribution
 % with Psychtoolbox, but are not neccessarily free-software or open-source.
 % See the descriptions below or the help files of the functions for
 % exact licensing conditions of individual contributions.
+%
+% NOTE: All the content in the PsychContributed folder is not officially
+% supported or even neccessarily tested at all by the Psychtoolbox developers.
+%
+% It is provided "as is" with no guarantee that it will work on your setup
+% at all, or that it will keep working on your setup, e.g., after operating
+% system upgrades. If something breaks, you are completely on your own!
+%
+% Additionally, code in this folder may be removed at any time for any reason
+% without previous warning, or changed in its functionality or calling syntax
+% in a backwards incompatible way.
+%
+% Use at your own risk!
+%
 %
 % help Psychtoolbox % For an overview, triple-click me & hit enter.
 %
@@ -34,7 +48,9 @@
 %                              Kleiner, so contact him if you have further questions about
 %                              the tools.
 %
-% AutoBrightness               Helper function AutoBrightness allows to control the
+% AutoBrightness               Obsolete: Use MacDisplaySettings() instead.
+%
+%                              Helper function AutoBrightness allows to control the
 %                              setting of the "Automatically adjust brightness" control
 %                              on Apple OSX, ie., it allows to control if display brightness
 %                              should be automatically adjusted based on ambient light, or not.
@@ -48,6 +64,10 @@
 %                               Windows. Type "help PsychKinect" for more
 %                               infos. The PsychSourceGL/Cohorts/Kinect-v16-withsource.zip
 %                               file contains corresponding source code.
+%
+% MacDisplaySettings           Allows temporary override of any macOS user customization
+%                              of the display, to allow calibration and user testing with
+%                              stable display settings.
 %
 % x64/libusb-1.0.dll           This is the 64-Bit windows version of libusb-1.0 for
 %                              64-Bit Matlab from ...
