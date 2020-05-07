@@ -57,6 +57,9 @@ function [seed,whichGen] = ClockRandSeed(seed,whichGen)
 %               Mathworks incompetent or careless software engineering breaks
 %               backward compatibility. At least i don't want this to degrade to
 %               Mathworks or Apples standards if possible.
+% 6-May-20  mk  Take into account that recent rng() implementations can
+%               return 'seed' as a struct consisting of seed and generator
+%               type. Reported and suggested fix by Xiangrui Li, thanks!
 
 if nargin < 2 || isempty(whichGen)
   % Recommended generator on Matlab and Octave is 'twister' for Mersenne-Twister.
@@ -71,6 +74,10 @@ if nargin < 1 || isempty(seed)
     rng('shuffle', whichGen);
     % Retrieve new seed after reinit:
     seed = rng;
+    if isstruct(seed)
+        whichGen = seed.Type;
+        seed = seed.Seed;
+    end
   else
     if IsOctave
       % Octave 'reset' will reinit from system time, or from the
