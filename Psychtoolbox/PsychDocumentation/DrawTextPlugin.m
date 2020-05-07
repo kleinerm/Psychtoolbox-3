@@ -87,6 +87,11 @@
 % name would be "paul", you'd likely need to delete the following file:
 % "C:\Users\paul\AppData\Local\fontconfig\cache"
 %
+% Some users find that the location of the cache file could be also in a different
+% place, e.g., following the above example for user "paul" it could be under:
+% "C:\Users\paul\.cache\fontconfig\" so files in that folder would need to be
+% deleted.
+%
 % More background info about Psychtoolbox's standard text renderer:
 % =================================================================
 %
