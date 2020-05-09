@@ -1,16 +1,18 @@
 function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % [oldSettings,errorMsg] = MacDisplaySettings([screenNumber,][newSettings])
 %
-%% MacDisplaySettings allows you to temporarily override any macOS user
-% customization of the selected display, to allow calibration and user
-% testing with stable display settings. It allows you to peek and poke
-% seven settings in the System Preferences:Displays panel by using the
-% corresponding fields in the oldSettings and newSettings arguments. All
-% the parameters refer only to the screen selected by screenNumber.
-% However, Apple has very limited support for non-Apple displays, so you
-% probably won't have Brightness, True Tone, or Night Shift on your
-% external display unless it's made by Apple. The Color Profile options
-% seems to always be available for all displays.
+%% MacDisplaySettings allows you to peek and poke seven settings in the 
+% System Preferences:Displays panel by using the corresponding fields in
+% its newSettings and oldSettings input-output arguments. This allows you
+% to temporarily override any macOS user customization of the your
+% display, to allow calibration and user testing with stable display
+% settings. (To be clear, we help you handle the macOS built-in System
+% Preferences; we do nothing about the zillion third-party apps that your
+% users might install.)  All the parameters refer only to the screen
+% selected by screenNumber. However, Apple has very limited support for
+% non-Apple displays, so you probably won't have Brightness, True Tone, or
+% Night Shift on your external display unless it's made by Apple. The Color
+% Profile options seems to always be available for all displays.
 %
 %% DISPLAY
 % brightness            the Brightness slider
@@ -112,11 +114,18 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % peeking and poking a Boolean (0 or 1) or a small integer with a known
 % range. Brightness and Profile are more subtle, so MacDisplaySettings
 % always checks by peeking immediately after poking Brightness or Profile
-% (whether by name or by row). A discrepancy will be flagged by a string in
-% errorMsg. Note that you provide a float to Brightness but within the
-% macOS it's quantized to roughly 18-bit precision. The peek of Brightness
-% is considered erroneous only if it differes by more than 0.01 from what
-% we poked.
+% (whether by name or by row). A discrepancy will be flagged by a nonempty
+% string in errorMsg. Note that you provide a float to Brightness but
+% within the macOS it's quantized to roughly 18-bit precision. In my
+% testing on a MacBook and a MacBook Pro, poking random numbers between 0.0
+% and 1.0, the discrepancy between peek and poke is uniformly distributed
+% over the range -5e-6 to +5e-6, provided you wait at least 0.1 s after the
+% latest poke. (When you move the slider, the macOS does a slow fade to the
+% new value.) For MacDisplaySettings's built-in peek-after-poke test,
+% MacDisplaySettings accepts the peek of Brightness if it is within 0.001
+% of what we poked, otherwise it waits 0.1 s and peeks again, and if the
+% second peek is still out of range, then reports the discrepancy in
+% errorMsg.
 %
 %% RELIABLE. MacDisplaySettings is fast (3 s) and reliable, unlike my
 % previous efforts (AutoBrightness.m, Brightness.m, ScreenProfile.m). The
@@ -144,7 +153,7 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % behavior by using row numbers to specify profile and English names to
 % specify nightShiftSchedule.
 %
-%% BUILT-IN DOUBLE CHECKING. The display profile is a lookup table, it 
+%% Your screen's display profile is a video lookup table, it 
 % affects the color and luminance of everything you display. Apple allows
 % programmers to read and write the current color profile, which is in
 % memory, and I think that there are several consumer apps that do that (in
@@ -156,13 +165,14 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % plays safe and first clicks another profile and then clicks on the one
 % you specified, to be sure that it loads fresh from disk.
 %
-%% ERROR REPORTING is aggressive. Out-of-range or unrecognized arguments
+%% ERROR REPORTING is strict. Out-of-range or unrecognized arguments
 % produce fatal errors if detected by MacDisplaySettings.m; when such
 % errors are detected in MacDisplaySettings.applescript they are merely
 % flagged by a message in the optional output argument errorMsg. When
 % throwing a fatal error, if Psychtoolbox is present on the MATLAB path,
-% then MacDisplaySettings closes any open windows (by calling Psychtoolbox
-% "sca"), so the error message won't be hidden behind your window.
+% then MacDisplaySettings first closes any open windows (by calling
+% Psychtoolbox "sca"), so the error message won't be hidden behind your
+% window.
 %
 %% REQUIREMENTS: macOS and MATLAB. (If it detects Psychtoolbox, then it will
 % use the "sca" command to close windows before throwing a fatal error.) In
@@ -239,6 +249,15 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % unrecognized fields in newSettings. Improved error reporting.
 % May 8, 2020. Enhanced to support arbitrary screenNumber, i.e. external
 % monitors. 
+% May 9, 2020. Improved speed by replacing fixed delays in applescript with
+% wait loops. Enhanced the built-in peek of brightness afer poking. Now if
+% the peek differs by more than 0.001, MacDisplaySettings waits 100 ms and
+% tries again, to let the value settle, as the visual effect is a slow
+% fade. Then it reports in errorMsg if the new peek differs by more than
+% 0.001. In limited testing, waiting for a good answer works: the peek-poke
+% difference rarely exceeds +/-5e-6 and never exceeds 0.001. It's my
+% impression that if we always waited 100 ms, then the discrepancy would
+% always be less than +/-5e-6.
 %
 %% ACKNOWLEGEMENTS. Thanks to Mario Kleiner for explaining how macOS
 % "brightness" works. Thanks to nick.peatfield@gmail.com for sharing his
