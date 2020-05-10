@@ -127,14 +127,14 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % second peek is still out of range, then reports the discrepancy in
 % errorMsg.
 %
-%% RELIABLE. MacDisplaySettings is fast (3 s) and reliable, unlike my
+%% RELIABLE. MacDisplaySettings is fast (2 s) and reliable, unlike my
 % previous efforts (AutoBrightness.m, Brightness.m, ScreenProfile.m). The
 % improvement results from discovering, first, that the applescript
 % operations proceed MUCH more quickly while System Preferences is
 % frontmost (so we now bring it to the front), and, second, we now follow
 % the example of pros and have wait loops in the applescript to make sure
 % each object is available before accessing it. Since those enhancements,
-% it now reliably takes 3 s, instead of the long 60 s delays, and
+% it now reliably takes 2 s, instead of the long 60 s delays, and
 % occasional timeout errors, that afflicted the old routines.
 %
 %% INPUT ARGUMENT RANGE. newSettings.brightness has range 0.0 to 1.0;
@@ -249,15 +249,15 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % unrecognized fields in newSettings. Improved error reporting.
 % May 8, 2020. Enhanced to support arbitrary screenNumber, i.e. external
 % monitors. 
-% May 9, 2020. Improved speed by replacing fixed delays in applescript with
-% wait loops. Enhanced the built-in peek of brightness afer poking. Now if
-% the peek differs by more than 0.001, MacDisplaySettings waits 100 ms and
-% tries again, to let the value settle, as the visual effect is a slow
-% fade. Then it reports in errorMsg if the new peek differs by more than
-% 0.001. In limited testing, waiting for a good answer works: the peek-poke
-% difference rarely exceeds +/-5e-6 and never exceeds 0.001. It's my
-% impression that if we always waited 100 ms, then the discrepancy would
-% always be less than +/-5e-6.
+% May 9, 2020. Improved speed (from 3 to 1.6 s) by replacing fixed delays
+% in applescript with wait loops. Enhanced the built-in peek of brightness
+% afer poking. Now if the peek differs by more than 0.001,
+% MacDisplaySettings waits 100 ms and tries again, to let the value settle,
+% as the visual effect is a slow fade. Then it reports in errorMsg if the
+% new peek differs by more than 0.001. In limited testing, waiting for a
+% good answer works: the peek-poke difference rarely exceeds +/-5e-6 and
+% never exceeds 0.001. It's my impression that if we always waited 100 ms,
+% then the discrepancy would always be less than +/-5e-6.
 %
 %% ACKNOWLEGEMENTS. Thanks to Mario Kleiner for explaining how macOS
 % "brightness" works. Thanks to nick.peatfield@gmail.com for sharing his
@@ -473,7 +473,7 @@ try
         num2str(newSettings.showProfilesForThisDisplayOnly) ' '...
         num2str(newSettings.profileRow) ' '...
         '"' newSettings.profile '"'];
-    [failed,oldString]=system(command); % Takes 3 s on MacBook Pro.
+    [failed,oldString]=system(command); % Takes 2 s on MacBook Pro.
     if failed
         CloseWindows
         errorMsg=oldString;
