@@ -37,12 +37,13 @@
 % CountSlotsInGLOperator        - Count number of processing slots in a given GLOperator.
 % CreateDisplayWarp             - Internal helper function for setup of geometric display undistortion.
 % CreateGLOperator              - Create a new GLOperator as container for imaging operations.
+% CreateProceduralColorGrating  - Create a procedural texture for fast drawing of either sinusoidal or square gratings varying between two colors.
 % CreateProceduralGabor         - Create a procedural texture for fast drawing of Gabor patches.
 % CreateProceduralNoise         - Create a procedural texture for fast drawing of random noise patches.
 % CreateProceduralSineGrating   - Create a procedural texture for fast drawing of sine grating patches.
 % CreateProceduralSmoothedApertureSineGrating - Create a procedural texture for fast drawing of smoothed aperture sine grating patches.
-% CreateProceduralSquareWaveGrating - Create a procedural texture for fast drawing of squarewave grating patches.
 % CreateProceduralSmoothedDisc  - Create a procedural texture for fast drawing of smoothed edge discs.
+% CreateProceduralSquareWaveGrating - Create a procedural texture for fast drawing of squarewave grating patches.
 % CreatePseudoGrayLUT           - Create a lookup table for pseudogray conversion - Internal helper function.
 % CreateResolutionPyramid       - Build a mip-map image resolution pyramid for given texture.
 % CreateSinglePassImageProcessingShader - Create a single pass image processing shader for simple but common operations.
