@@ -190,11 +190,11 @@ static void OVR_CDECL PsychOculusLogCB(uintptr_t userData, int level, const char
 {
     (void) userData;
 
-    // Can't print from thread other than main thread at least in
-    // recent Matlab versions like R2018a, so suppress debug logging
-    // when called from separate VR runtime thread:
-    if (!PsychIsMasterThread())
-        return;
+    // Can't print a from thread other than main thread at least in
+    // recent Matlab versions like R2018a, so our printf implementation
+    // will suppress debug logging when it is called from the separate VR
+    // runtime thread. Calls from our main thread will print, as will any
+    // thread if running in Octave.
 
     if ((level == ovrLogLevel_Error && verbosity > 0) ||
         (level == ovrLogLevel_Info && verbosity > 2)  ||

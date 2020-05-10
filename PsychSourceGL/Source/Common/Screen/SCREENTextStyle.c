@@ -30,7 +30,8 @@ static char synopsisString[] =
     "only a subset of these flags is honored. All settings are accepted on all systems, "
     "but some of them are silently ignored on some systems.\n"
     "0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend.\n"
-    "Normal, bold, and italic styles are supported on all systems and renderers.\n"
+    "All styles are supported with the default plugin text renderer on all systems.\n"
+    "Normal, bold, and italic styles are supported on all system specific renderers.\n"
     "Underline is supported on OSX and Windows. Outline is supported on Linux.\n"
     "Condense and Extend are supported on Linux and OSX.\n"
     "You can assign a default font style for new windows via a call to "
@@ -76,7 +77,7 @@ PsychError SCREENTextStyle(void)
 
         #if PSYCH_SYSTEM == PSYCH_OSX
             // Need to update font name and number from changed style on OS/X:
-            foundFont = PsychGetFontRecordFromFontFamilyNameAndFontStyle((char*) windowRecord->textAttributes.textFontName, windowRecord->textAttributes.textStyle, &fontRecord);
+            foundFont = PsychGetFontRecordFromFontFamilyNameAndFontStyle((char*) windowRecord->textAttributes.textFontName, windowRecord->textAttributes.textStyle & ~4, &fontRecord);
             if (foundFont) {
                 strncpy((char*) windowRecord->textAttributes.textFontName, (const char*) fontRecord->fontFMFamilyName, 255);
                 windowRecord->textAttributes.textFontNumber= fontRecord->fontNumber;

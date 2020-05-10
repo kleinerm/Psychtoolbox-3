@@ -31,8 +31,12 @@
 // This is needed for compiling with gcc 4.6+ if -std=gnu99
 // is set, which we need to set for OML_sync_control support
 // and other features. Fixes compile failure on Ubuntu 12.10:
+// NOTE: Does not seem to be needed anymore as of Ubuntu 18.04 at least,
+// but for the moment we just disable it under C++ builds, where it errros.
+#ifndef __cplusplus
 #if defined(__STDC_UTF_16__) && !defined(CHAR16_T) && (PSYCH_SYSTEM == PSYCH_LINUX)
 typedef __CHAR16_TYPE__ char16_t;
+#endif
 #endif
 
 // Includes dependent on runtime environment:

@@ -16,6 +16,7 @@
 %                            ViewPixx, etc.)
 % FindSerialPort      - All: Find port number associated with a particular input string.
 % FORP                - All: Obsolete support for the FiberOpticResponsePad.
+% HoritaTitler        - All: Control the Horita SCT-50 video titler and compatible devices.
 % MeasSpd             - All: Use color meter to measure a spectral power 
 %                            distribution.
 % MeasXYZ             - All: Use color meter to measure XYZ coordinates.

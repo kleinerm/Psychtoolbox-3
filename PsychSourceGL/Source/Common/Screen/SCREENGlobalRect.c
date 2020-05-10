@@ -23,7 +23,7 @@
 static char useString[] = "rect=Screen('GlobalRect', windowPointerOrScreenNumber);";
 //                                                   1
 static char synopsisString[] =
-    "Get global rect of window or screen. This is the real position / rectangular area occupied "
+    "Get global rect of window, texture or screen. This is the real position / rectangular area occupied "
     "by a screen or onscreen window, with respect to the origin (0,0) of the desktop coordinate "
     "system. A secondary display screen will have its top-left corner not at (0,0), but at a "
     "proper offset, depending if mirror mode is on or off, and how your displays are arranged in "

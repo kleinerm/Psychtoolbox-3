@@ -53,7 +53,7 @@ end
 % X-Screens into account?
 % Anyway, SetMouse works, so we reposition the cursor to X-Screen 0 at
 % the end of a session:
-if length(Screen('Screens')) > 1
+if IsLinux && length(Screen('Screens')) > 1
     [x,y] = RectCenter(Screen('Rect', 0));
     SetMouse(x,y,0);
 end

@@ -48,7 +48,7 @@ oldVerbosity = Screen('Preference', 'Verbosity', 1);
 oldSyncTests = Screen('Preference', 'SkipSyncTests', 2);
 
 try
-  win = Screen('OpenWindow', 0, 0, [0 0 32 32]);
+  win = Screen('OpenWindow', 0, 0, [0 0 32 32], 24);
   winfo = Screen('GetWindowInfo', win);
   modesettingddxactive = Screen('GetWindowInfo', win, 8);
   Screen('CloseAll');
@@ -184,7 +184,7 @@ try
         if ismember(i, remainingOutputs)
           scanout = outputs{i};
           winRect = OffsetRect([0, 0, 600, 100], scanout.xStart, scanout.yStart);
-          w(i) = Screen('Openwindow', scanout.screenNumber, 0, winRect);
+          w(i) = Screen('Openwindow', scanout.screenNumber, 0, winRect, 24);
           Screen('TextSize', w(i), 48);
           Screen('DrawText', w(i), [num2str(i) ') ' scanout.name], 10, 10, 255);
           Screen('Flip', w(i));
@@ -404,6 +404,14 @@ try
         if usemodesetting == 'y'
           xdriver = 'modesetting';
           modesetting = 'y';
+        end
+
+        % If the user explicitly does not want modesetting, and there are no forcing circumstances to use or not use it,
+        % (aka modesetting == 'd') and we are actually running on a Intel gpu or nouveau/NVidia, then force modesetting
+        % off. Background: As of Ubuntu 20.04-LTS, the distro will select modesetting-ddx by default for both Intel and
+        % NVidia+nouveau, so we need a config file to opt-out of use of modesetting-ddx, not to opt-in.
+        if (usemodesetting == 'n') && (modesetting == 'd') && (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau'))
+          modesetting = 'n';
         end
       end
     end
@@ -813,14 +821,14 @@ function xdriver = DetectDDX(winfo)
       % Controlled by the open-source drivers. GPU minor
       % type defines the DCE generation and that in turn
       % usually predicts the x driver well:
-      if winfo.GPUMinorType >= 100
-        % DCE-10 or later, ergo "Volcanic Islands" family or
-        % later -> amdgpu ddx:
+      if winfo.GPUMinorType >= 100 || winfo.GPUMinorType == -1
+        % DCE-10 or later, ergo "Volcanic Islands" family or later. Or a brand-new
+        % DCN class gpu (Ryzen+ APU's, Navi+, ...) or later -> amdgpu ddx:
         fprintf('Recent AMD GPU with open-source driver detected. ');
         xdriver = 'amdgpu';
       else
-        % DCE-8 or earlier, or too new to be supported (DCN-x) -> ati ddx:
-        fprintf('Classic or unknown AMD GPU with open-source driver detected. ');
+        % DCE-8 or earlier => ati ddx:
+        fprintf('Classic AMD GPU with open-source driver detected. ');
         xdriver = 'ati';
       end
     else
