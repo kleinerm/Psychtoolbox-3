@@ -2,22 +2,27 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % [oldSettings,errorMsg] = MacDisplaySettings([screenNumber,][newSettings])
 %
 %% MacDisplaySettings allows you to temporarily override any macOS user
-% customization of the display, to allow calibration and user testing with
-% stable display settings. It allows you to peek and poke seven settings in
-% the System Preferences:Displays panel by using the corresponding fields
-% in the oldSettings and newSettings arguments:
+% customization of the selected display, to allow calibration and user
+% testing with stable display settings. It allows you to peek and poke
+% seven settings in the System Preferences:Displays panel by using the
+% corresponding fields in the oldSettings and newSettings arguments. All
+% the parameters refer only to the screen selected by screenNumber.
+% However, Apple has very limited support for non-Apple displays, so you
+% probably won't have Brightness, True Tone, or Night Shift on your
+% external display unless it's made by Apple. The Color Profile options
+% seems to always be available for all displays.
 %
 %% DISPLAY
 % brightness            the Brightness slider
 % automatically         the "Automatically adjust brightness" checkbox
 % trueTone              the "True Tone" checkbox
-%% NIGHT SHIFT
-% nightShiftSchedule    the Night Shift Schedule pop up menu
-% nightShiftManual      the Night Shift Manual checkbox
 %% COLOR
 % showProfilesForThisDisplayOnly	the checkbox
 % profile               name of selection in Color Profile menu
 % profileRow            row # of selection in Color Profile menu
+%% NIGHT SHIFT
+% nightShiftSchedule    the Night Shift Schedule pop up menu
+% nightShiftManual      the Night Shift Manual checkbox
 %
 %% INPUT ARGS. Both arguments are optional: the integer screenNumber
 % and the struct newSettings. You can provide either, neither, or both.
@@ -76,12 +81,12 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % newSettings.profile='Display P3'; % Select Profile by name.
 % newSettings.profileRow=1; % Specify Profile row, and ignore "profile" field.
 %
-% [oldSettings,errorMsg]=MacDisplaySettings(newSettings)
+% [oldSettings,errorMsg]=MacDisplaySettings(screen,newSettings)
 %
-% % Now use the display, ...
-% % and then restore the old settings as you found them.
+% % Now use the display, and then restore the old settings as you found
+% % them. You can omit "screen" if you're working on the main screen (0).
 %
-% MacDisplaySettings(oldSettings);
+% MacDisplaySettings(screen,oldSettings);
 %
 %% PRESERVING THE DISPLAY STATE. Apple invites Macintosh users to adjust 
 % many parameters in the System Preferences Displays panel to customize
@@ -208,8 +213,12 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 %% INSTALLATION. Just put both the MacDisplaySettings.m and
 % MacDisplaySettings.applescript files anywhere in MATLAB's path.
 %
-%% MULTIPLE SCREENS: All my computers have only one screen, so I haven't 
-% had an opportunity to test the screenNumber argument.
+%% MULTIPLE SCREENS: Seems to be working, not yet thoroughly tested. Color 
+% Profiles work for all monitors. Our code gives equal status to all
+% monitors, but Apple severely limits the Display options for external
+% monitors, and often provides them only for Apple monitors. We provide
+% access to all the controls you see in the windows of System Preferences:
+% Displays.
 %
 %% HISTORY
 % June 25, 2017. denis.pelli@nyu.edu wrote "Brightness" for the
@@ -228,6 +237,8 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % outs. Now it reliably takes 3 s.
 % May 7, 2020. Shortened the help text, reducing redundancy. Check for
 % unrecognized fields in newSettings. Improved error reporting.
+% May 8, 2020. Enhanced to support arbitrary screenNumber, i.e. external
+% monitors. 
 %
 %% ACKNOWLEGEMENTS. Thanks to Mario Kleiner for explaining how macOS
 % "brightness" works. Thanks to nick.peatfield@gmail.com for sharing his
@@ -235,6 +246,8 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % for noting that we need to control Night Shift.
 %
 %% SEE ALSO:
+% https://support.apple.com/en-us/HT208909 % True Tone
+% https://support.apple.com/en-us/HT207513 % Night Shift
 % Screen ConfigureDisplay? % In Psychtoolbox
 % http://www.manpagez.com/man/1/osascript/
 % https://developer.apple.com/library/mac/documentation/AppleScript/Conceptual/AppleScriptLangGuide/reference/ASLR_cmds.html
@@ -248,7 +261,7 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % MacDisplaySettings does, because applescript is slow, but the macOS
 % support of Screen.mex Brightness is flakey. When I last tested it, in
 % Fall 2019, brightness changed immediately, but the brightness slider in
-% Screen Preferences: Displays did not move, and sometimes the macOS would
+% Screen Preferences: Displays did not budge, and sometimes the macOS would
 % later revert to the brightness corresponding to the stale slider
 % position.
 useScreenBrightness=false;
@@ -292,9 +305,17 @@ switch nargin
         CloseWindows
         error('At most two arguments are allowed.');
 end
+if exist('Screen','file') && ~ismember(screenNumber,Screen('Screens'))
+    str=sprintf(' %d',Screen('Screens'));
+    error('screenNumber %d is not currently a valid screen number:%s.',screenNumber,str);
+end
 if ~isstruct(newSettings)
     CloseWindows
     error('The newSettings argument must be a struct.');
+end
+if length(newSettings)~=1
+    CloseWindows
+    error('The newSettings argument must be a struct, not an array.');
 end
 if any(~ismember(fieldnames(newSettings),fieldnames(oldSettings)))
     CloseWindows
@@ -304,23 +325,23 @@ if any(~ismember(fieldnames(newSettings),fieldnames(oldSettings)))
 end
 if isfield(newSettings,'brightness') && ...
         ~isempty(newSettings.brightness) && ...
-        (newSettings.brightness<0 || newSettings.brightness>1)
+        (~isfloat(newSettings.brightness) || newSettings.brightness<0 || newSettings.brightness>1)
     CloseWindows
-    error('newSettings.brightness %.1f must be in the range 0.0 to 1.0, or [] to ignore it.',...
+    error('newSettings.brightness %.1f must be float (not logical) in the range 0.0 to 1.0, or [] to ignore it.',...
         newSettings.brightness)
 end
 if isfield(newSettings,'automatically') && ...
         ~isempty(newSettings.automatically) && ...
-        (~ismember(newSettings.automatically,0:1) || ...
-        ~islogical(newSettings.automatically))
+        (~islogical(newSettings.automatically) || ...
+        ~ismember(newSettings.automatically,[true false]))
     CloseWindows
     error('newSettings.automatically %.1f must be true or false, otherwise [] or omitted to ignore it.',...
         newSettings.automatically)
 end
 if isfield(newSettings,'trueTone') && ...
         ~isempty(newSettings.trueTone) && ...
-        (~ismember(newSettings.trueTone,0:1) || ...
-        ~islogical(newSettings.trueTone))
+        (~islogical(newSettings.trueTone) || ...
+        ~ismember(newSettings.trueTone,[true false]))
     CloseWindows
     error('newSettings.trueTone %.1f must be true or false, otherwise [] or omitted to ignore it.',...
         newSettings.trueTone)
@@ -328,21 +349,21 @@ end
 if isfield(newSettings,'nightShiftSchedule') && ~isempty(newSettings.nightShiftSchedule) && ...
         ~ismember(newSettings.nightShiftSchedule,{'Off','Custom','Sunset to Sunrise'})
     CloseWindows
-    error('newSettings.nightShiftSchedule %.1f must be ''Off'',''Custom'', or ''Sunset to Sunrise'', otherwise [] or omitted to ignore it.',...
+    error('newSettings.nightShiftSchedule %s must be ''Off'',''Custom'', or ''Sunset to Sunrise'', otherwise [] or omitted to ignore it.',...
         newSettings.nightShiftSchedule)
 end
 if isfield(newSettings,'nightShiftManual') && ...
         ~isempty(newSettings.nightShiftManual) && ...
-        (~ismember(newSettings.nightShiftManual,0:1) || ...
-        ~islogical(newSettings.nightShiftManual))
+        (~islogical(newSettings.nightShiftManual) || ...
+        ~ismember(newSettings.nightShiftManual,[true false]))
     CloseWindows
     error('newSettings.nightShiftManual %.1f must be true or false, otherwise [] or omitted to ignore it.',...
         newSettings.nightShiftManual)
 end
 if isfield(newSettings,'showProfilesForThisDisplayOnly') && ...
         ~isempty(newSettings.showProfilesForThisDisplayOnly) && ...
-        (~ismember(newSettings.showProfilesForThisDisplayOnly,0:1) || ...
-        ~islogical(newSettings.showProfilesForThisDisplayOnly))
+        (~islogical(newSettings.showProfilesForThisDisplayOnly) || ...
+        ~ismember(newSettings.showProfilesForThisDisplayOnly,[true false]))
     CloseWindows
     error('newSettings.showProfilesForThisDisplayOnly %.1f must be true or false, otherwise [] or omitted to ignore it.',...
         newSettings.showProfilesForThisDisplayOnly)
@@ -381,7 +402,11 @@ try
     % Call MacDisplaySettings.applescript
     scriptPath = which('MacDisplaySettings.applescript');
     command = ['osascript "' scriptPath '"']; % Double quotes cope with spaces in scriptPath.
-    command = [command ' ' num2str(screenNumber)];
+    command = [command ' ' num2str(screenNumber) ' '];
+    globalRect=Screen('GlobalRect',screenNumber);
+    command=sprintf('%s %d %d %d %d ',command,globalRect);
+    % MATLAB indicates missing value by [].
+    % In passing arguments to AppleScript we indicate missing values as -1.
     if ~isfield(newSettings,'brightness') || isempty(newSettings.brightness)
         newSettings.brightness=-1;
     end
