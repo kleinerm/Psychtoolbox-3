@@ -1,13 +1,8 @@
-rem **** Build sequence for libptbdrawtext_ftgl64.dll our Matlab 64-Bit text renderer plugin for Windows ****
-rem **** This is for building the DLL for Matlab only. Requires 64-Bit GStreamer 1.x SDK installed.      ****
+rem **** Build sequence for libptbdrawtext_ftgl64.dll, our 64-Bit text renderer plugin for Windows ****
+rem **** Requires 64-Bit GStreamer 1.16.0+ MSVC SDK and MSVC 2019 Community edition installed.     ****
 
-rem **** Set pathes to the MSVC build tools and Windows 7 SDK ****
-set VSINSTALLDIR=C:\Program Files (x86)\Microsoft Visual Studio 10.0
-set VCINSTALLDIR=%VSINSTALLDIR%\VC
-set LINKERDIR=C:\Program Files\Microsoft SDKs\Windows\v7.1\
-set PATH=%VCINSTALLDIR%\bin\amd64;%VCINSTALLDIR%\bin;%VCINSTALLDIR%\VCPackages;%VSINSTALLDIR%\Common7\IDE;%VSINSTALLDIR%\Common7\Tools;%LINKERDIR%\bin\x64;%LINKERDIR%\bin;%PATH%
-set INCLUDE=%VCINSTALLDIR%\INCLUDE;%LINKERDIR%\include;%LINKERDIR%\include\gl;%VCINSTALLDIR%\ATLMFC\INCLUDE;%INCLUDE%
-set LIB=%VCINSTALLDIR%\LIB\amd64;%LINKERDIR%\LIB\X64;%VCINSTALLDIR%\ATLMFC\LIB\AMD64;%LIB%
+rem **** Set pathes to the MSVC 2019 Community edition build tools and included Windows 10 SDK ****
+call "C:\Program Files (x86)\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvars64.bat"
 
 cl /c /GR /W3 /EHs /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0 /nologo /MD /I"C:\gstreamer\1.0\x86_64\include\freetype2" /I"C:\gstreamer\1.0\x86_64\include" /Foqstringqcharemulation.obj /O2 /Oy- /DNDEBUG -DOGLFT_BUILD qstringqcharemulation.cpp 
 cl /c /GR /W3 /EHs /D_CRT_SECURE_NO_DEPRECATE /D_SCL_SECURE_NO_DEPRECATE /D_SECURE_SCL=0 /nologo /MD /I"C:\gstreamer\1.0\x86_64\include\freetype2" /I"C:\gstreamer\1.0\x86_64\include" /Folibptbdrawtext_ftgl.obj /O2 /Oy- /DNDEBUG -DOGLFT_BUILD libptbdrawtext_ftgl.cpp 

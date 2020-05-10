@@ -26,7 +26,9 @@
 #ifndef PSYCH_IS_INCLUDED_PsychConstants
 #define PSYCH_IS_INCLUDED_PsychConstants
 
+#ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS 1
+#endif
 
 // For pthread_setname_np() definition and various other needs, e.g.,
 // dlsym() RTLD_DEFAULT definition:

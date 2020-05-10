@@ -19,6 +19,7 @@ function rc = PsychOpenEyes(cmd, handle, varargin)
 %
 % PsychOpenEyes('OpenTracker')
 
+global psychopeneyes_ismovie;
 persistent EyeImageMemBuffer;
 persistent EyeOutImageMemBuffer;
 persistent SceneImageMemBuffer;
@@ -68,9 +69,7 @@ if strcmp(cmd, 'GetGazePosition')
     
     % Wait for next captured video frame, then fill the trackers in-memory
     % buffer with the captured data. Do not return a texture:
-    waitflag = 2;
-    specialflag = 4;
-    [eyeTex, cts] = Screen('GetCapturedImage', win, videoptr, waitflag, [], specialflag, EyeImageMemBuffer);
+    [eyeTex, cts] = GetCapturedImage(win, videoptr, EyeImageMemBuffer);
     
     % Ok, the tracker should have the eye image in its internal buffer.
     % Process it:
@@ -168,6 +167,11 @@ if strcmp(cmd, 'GetTrackerTexture');
     return;
 end
 
+if strcmp(cmd, 'GetVideoTexture')
+    rc = GetCapturedImage(win, videoptr);
+    return;
+end
+
 if strcmp(cmd, 'CalibrateMapping')
 
     % This is a 9-Point Grid calibration. Iterate through all nine points,
@@ -203,11 +207,9 @@ if strcmp(cmd, 'CalibrateMapping')
             
             % Wait for next captured video frame, then fill the trackers in-memory
             % buffer with the captured data. Do not return a texture:
-            waitflag = 2;
-            specialflag = 4;
-            [eyeTex, cts] = Screen('GetCapturedImage', win, videoptr, waitflag, [], specialflag, EyeImageMemBuffer);
-            [eyeTex, cts] = Screen('GetCapturedImage', win, videoptr, waitflag, [], specialflag, EyeImageMemBuffer);
-            [eyeTex, cts] = Screen('GetCapturedImage', win, videoptr, waitflag, [], specialflag, EyeImageMemBuffer);
+            [eyeTex, cts] = GetCapturedImage(win, videoptr, EyeImageMemBuffer);
+            [eyeTex, cts] = GetCapturedImage(win, videoptr, EyeImageMemBuffer);
+            [eyeTex, cts] = GetCapturedImage(win, videoptr, EyeImageMemBuffer);
 
             % Ok, the tracker should have the eye image in its internal buffer.
             % Process it:
@@ -271,7 +273,11 @@ if strcmp(cmd, 'OpenTracker')
     % Open a tracker connection, initialize tracker:
     
     % Create a unique handle:
-    handle = 1;
+    if ischar(handle)
+        psychopeneyes_ismovie = 1;
+    else
+        psychopeneyes_ismovie = 0;
+    end
     
     % Do we need to open our own dummy window?
     if nargin < 3 || isempty(varargin{1})
@@ -283,29 +289,37 @@ if strcmp(cmd, 'OpenTracker')
         ownwin = 0;
     end
     
-    % Open the PTB video capture engine:
-    eyeCam = 0;
-    captureEngineType = [];
-    captureRateFPS = 30;
     logfilename = [];
     eyeROI = [];
     eyeChannels = 1;
-    
-    videoptr = Screen('OpenVideoCapture', win, eyeCam, eyeROI, eyeChannels, [], [], [], [], captureEngineType);
 
-    % Start capture engine and grab first frame:
-    fps = Screen('StartVideoCapture', videoptr, captureRateFPS, 1);
-    [eyeTex, starttime]=Screen('GetCapturedImage', win, videoptr, 1);
+    if ~psychopeneyes_ismovie
+        % Open the PTB video capture engine:
+        eyeCam = handle;
+        captureEngineType = [];
+        captureRateFPS = 30;
+        
+        videoptr = Screen('OpenVideoCapture', win, eyeCam, eyeROI, eyeChannels, [], [], [], [], captureEngineType);
+
+        % Start capture engine and grab first frame:
+        fps = Screen('StartVideoCapture', videoptr, captureRateFPS, 1);
+    else
+        [videoptr, ~, fps] = Screen('OpenMovie', win, handle, [], [], [], eyeChannels)
+        Screen('SetMovieTimeIndex', videoptr, 0);
+        handle = 1; % 'OpenEyesInitialize' needs a numeric handle of 1 - which is then ignored for now.
+    end
+
+    [eyeTex, starttime] = GetCapturedImage(win, videoptr);
     
     % Get rectangle, so we know the eye image size for sure:
     eyeROI = Screen('Rect', eyeTex);
-    eyeWidth = RectWidth(eyeROI);
-    eyeHeight = RectHeight(eyeROI);
+    eyeWidth = RectWidth(eyeROI)
+    eyeHeight = RectHeight(eyeROI)
     sceneWidth = [];
     sceneHeight = [];
     
     % Query the real number of image channels we've got:
-    eyeChannels = Screen('PixelSize', eyeTex) / 8;
+    eyeChannels = Screen('PixelSize', eyeTex) / 8
     
     % Release eyeTex:
     Screen('Close', eyeTex);
@@ -320,11 +334,18 @@ if strcmp(cmd, 'OpenTracker')
 end
 
 if strcmp(cmd, 'CloseTracker')
-    
-    % Stop capture engine and release it:
-    droppedframes = Screen('StopVideoCapture', videoptr);
-    Screen('CloseVideoCapture', videoptr);
-    
+    if ~psychopeneyes_ismovie
+        % Stop capture engine and release it:
+        droppedframes = Screen('StopVideoCapture', videoptr);
+        Screen('CloseVideoCapture', videoptr);
+        rc = droppedframes;
+    else
+        % Close movie:
+        myptr = videoptr;
+        Screen('CloseMovie', videoptr);
+        rc = 0;
+    end
+
     % Close window if it was created by us:
     if ownwin
         Screen('Close', win);
@@ -337,9 +358,40 @@ if strcmp(cmd, 'CloseTracker')
     PsychCV('OpenEyesShutdown', handle);
     
     % Done.
-    rc = droppedframes;
-
     return;
 end
 
 error('Invalid/Unknown sub command specified! Read "help PsychOpenEyes" for valid commands.');
+
+function [tex, cts] = GetCapturedImage(win, videoptr, memptr)
+    global psychopeneyes_ismovie;
+
+    if ~psychopeneyes_ismovie
+        % Video capture engine:
+        if nargin >= 3
+            % Wait for next captured video frame, then fill the trackers in-memory
+            % buffer with the captured data. Do not return a texture:
+            waitflag = 2;
+            specialflag = 4;
+            [tex, cts] = Screen('GetCapturedImage', win, videoptr, waitflag, [], specialflag, memptr);
+        else
+            [tex, cts] = Screen('GetCapturedImage', win, videoptr, 1);
+        end
+    else
+        % Movie playback engine:
+        [tex, cts] = Screen('GetMovieImage', win, videoptr, 1);
+
+        if tex < 0
+           tex = [];
+           return;
+        end
+      
+        if nargin >= 3
+            img = transpose(Screen('GetImage', tex, [], [], [], 1));
+
+            PsychCV('CopyMatrixToMemBuffer', img, memptr);
+            Screen('Close', tex);
+            tex = [];
+        end
+    end
+return

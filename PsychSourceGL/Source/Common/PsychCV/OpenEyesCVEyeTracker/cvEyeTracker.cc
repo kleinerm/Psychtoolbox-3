@@ -1277,7 +1277,7 @@ void Close_Logfile()
 
 void Open_Ellipse_Log()
 {
-  static char *ellipse_log_name = "./Ellipse/ellipse_log.txt";
+  const char *ellipse_log_name = "./Ellipse/ellipse_log.txt";
   ellipse_log = fopen(ellipse_log_name,"w+");
 
   if (logfile!=NULL) {

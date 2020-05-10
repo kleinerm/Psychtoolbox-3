@@ -1808,7 +1808,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     if (sync_disaster) {
         // We fail! Continuing would be too dangerous without a working VBL sync. We don't
         // want to spoil somebodys study just because s(he) is relying on a non-working sync.
-        if (PsychPrefStateGet_Verbosity() > 0) {
+        if ((PsychPrefStateGet_Verbosity() > 0) || !skip_synctests) {
             printf("\n\n");
             printf("----- ! PTB - ERROR: SYNCHRONIZATION FAILURE ! -----\n\n");
             printf("One or more internal checks (see Warnings above) indicate that synchronization\n");
