@@ -4148,7 +4148,7 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
                 gluOrtho2D(0, w, h, 0);
             }
             else {
-                glOrthofOES(0, (float) w, (float) h, 0, -1, 1);
+                glOrthof(0, (float) w, (float) h, 0, -1, 1);
             }
 
             // Switch back to modelview matrix, but leave it unaltered:
