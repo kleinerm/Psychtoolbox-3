@@ -12180,31 +12180,31 @@ void gl_blendbarrierkhr( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prh
 
 void gl_cleardepthfoes( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
-	if (NULL == glClearDepthfOES) mogl_glunsupported("glClearDepthfOES");
-	glClearDepthfOES((GLclampf)mxGetScalar(prhs[0]));
+	if (NULL == glClearDepthf) mogl_glunsupported("glClearDepthf");
+	glClearDepthf((GLclampf)mxGetScalar(prhs[0]));
 
 }
 
 void gl_clipplanefoes( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
-	if (NULL == glClipPlanefOES) mogl_glunsupported("glClipPlanefOES");
-	glClipPlanefOES((GLenum)mxGetScalar(prhs[0]),
+	if (NULL == glClipPlanef) mogl_glunsupported("glClipPlanef");
+	glClipPlanef((GLenum)mxGetScalar(prhs[0]),
 		(const GLfloat*)mxGetData(prhs[1]));
 
 }
 
 void gl_depthrangefoes( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
-	if (NULL == glDepthRangefOES) mogl_glunsupported("glDepthRangefOES");
-	glDepthRangefOES((GLclampf)mxGetScalar(prhs[0]),
+	if (NULL == glDepthRangef) mogl_glunsupported("glDepthRangef");
+	glDepthRangef((GLclampf)mxGetScalar(prhs[0]),
 		(GLclampf)mxGetScalar(prhs[1]));
 
 }
 
 void gl_frustumfoes( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
-	if (NULL == glFrustumfOES) mogl_glunsupported("glFrustumfOES");
-	glFrustumfOES((GLfloat)mxGetScalar(prhs[0]),
+	if (NULL == glFrustumf) mogl_glunsupported("glFrustumf");
+	glFrustumf((GLfloat)mxGetScalar(prhs[0]),
 		(GLfloat)mxGetScalar(prhs[1]),
 		(GLfloat)mxGetScalar(prhs[2]),
 		(GLfloat)mxGetScalar(prhs[3]),
@@ -12215,16 +12215,16 @@ void gl_frustumfoes( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] 
 
 void gl_getclipplanefoes( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
-	if (NULL == glGetClipPlanefOES) mogl_glunsupported("glGetClipPlanefOES");
-	glGetClipPlanefOES((GLenum)mxGetScalar(prhs[0]),
+	if (NULL == glGetClipPlanef) mogl_glunsupported("glGetClipPlanef");
+	glGetClipPlanef((GLenum)mxGetScalar(prhs[0]),
 		(GLfloat*)mxGetData(prhs[1]));
 
 }
 
 void gl_orthofoes( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
-	if (NULL == glOrthofOES) mogl_glunsupported("glOrthofOES");
-	glOrthofOES((GLfloat)mxGetScalar(prhs[0]),
+	if (NULL == glOrthof) mogl_glunsupported("glOrthof");
+	glOrthof((GLfloat)mxGetScalar(prhs[0]),
 		(GLfloat)mxGetScalar(prhs[1]),
 		(GLfloat)mxGetScalar(prhs[2]),
 		(GLfloat)mxGetScalar(prhs[3]),
