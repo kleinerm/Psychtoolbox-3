@@ -1,18 +1,24 @@
 function oldType = ShowCursor(type, screenid, mouseid)
-% oldType = ShowCursor([type] [, screenid][, mouseid])
+% oldType = ShowCursor([type][, screenidOrWindow=0][, mouseid])
 %
-% ShowCursor redisplays the mouse pointer after a previous call to
-% HideCursor. If the optional 'type' is specified, it also allows to alter
-% the shape of the cursor. See following sections for details.
+% ShowCursor redisplays the mouse pointer after a previous call to HideCursor.
 %
-% The optional 'mouseid' allows to select which mouse cursor shall
-% be redisplayed or changed in visual appearance. This only makes sense
-% if you have multiple visible mouse cursors and is a Linux only feature.
+% If the optional 'type' is specified, it also allows to alter the shape of the
+% cursor. Note that this function may not have any effect if the cursor location
+% is not on top of an open onscreen window, as cursor visibility or shape may not
+% be under Psychtoolbox control while the cursor interacts with other desktop
+% items.
+%
+% 'screenidOrWindow' allows to specify the screen or onscreen window to which
+% the function should apply. Although optional, it is strongly recommended to
+% provide this parameter for cross-platform compatibility across operating systems.
+%
+% The optional 'mouseid' allows to select which mouse cursor shall be redisplayed
+% or changed in visual appearance. This only makes sense if you have multiple
+% visible mouse cursors, and it is a Linux/X11 only feature.
 %
 % The return value 'oldType' is always zero, as this query mechanism is not
 % supported with PTB-3. Just returned for backwards-compatibility.
-%
-% OSX, WINDOWS, LINUX: ______________________________________________________
 %
 % Cursor shape can be selected. These types are defined by name:
 %
@@ -22,9 +28,9 @@ function oldType = ShowCursor(type, screenid, mouseid)
 % 'SandClock' = Some sort of sand clock/hour-glass (not available on OSX).
 % 'TextCursor' = A text selection/caret placement cursor (AKA I Beam).
 %
-% Apart from that names, you can pass integral numbers for type to select
+% Apart from those names, you can pass integral numbers for 'type' to select
 % further shapes. The mapping of numbers to shapes is operating system
-% dependent, therefore not portable across different platforms. On
+% dependent, and therefore not portable across different platforms. On
 % MS-Windows, you can select between number 0 to 13. On Linux/X11 you can
 % select from a wide range of numbers from 0 up to (at least) 152, maybe
 % more, depending on your setup. See the C header file "X11/cursorfont.h"
@@ -40,15 +46,19 @@ function oldType = ShowCursor(type, screenid, mouseid)
 %
 % OSX: ______________________________________________________________________
 %
-% If provided, the optional "type" argument changes the cursor shape to:
-%   0: Arrow
-%   4: I Beam
-%   5: Cross
-%  10: Hand
+% If provided, an optional numeric 'type' argument changes the cursor shape to:
+%
+%   0: Arrow  = like 'Arrow'
+%   4: I Beam = like 'TextCursor'
+%   5: Cross  = like 'CrossHair'
+%  10: Hand   = like 'Hand'
+%
+% Better use the names for cross platform portability!
 %
 % Windows: __________________________________________________________________
 %
-% If provided, the optional "type" argument changes the cursor shape to:
+% If provided, an optional numeric 'type' argument changes the cursor shape to:
+%
 %   0: Arrow (IDC_ARROW)
 %   1: Crosshair (IDC_CROSS)
 %   2: Hand (IDC_HAND)
