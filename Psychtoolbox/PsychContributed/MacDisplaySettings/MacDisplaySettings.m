@@ -249,15 +249,15 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % unrecognized fields in newSettings. Improved error reporting.
 % May 8, 2020. Enhanced to support arbitrary screenNumber, i.e. external
 % monitors. 
-% May 9, 2020. Improved speed (from 3 to 1.6 s) by replacing fixed delays
-% in applescript with wait loops. Enhanced the built-in peek of brightness
-% afer poking. Now if the peek differs by more than 0.001,
-% MacDisplaySettings waits 100 ms and tries again, to let the value settle,
-% as the visual effect is a slow fade. Then it reports in errorMsg if the
-% new peek differs by more than 0.001. In limited testing, waiting for a
-% good answer works: the peek-poke difference rarely exceeds +/-5e-6 and
-% never exceeds 0.001. It's my impression that if we always waited 100 ms,
-% then the discrepancy would always be less than +/-5e-6.
+% May 9, 2020. Improved speed by replacing fixed delays in applescript with
+% wait loops. Enhanced the built-in peek of brightness afer poking. Now if
+% the peek differs by more than 0.001, MacDisplaySettings waits 100 ms and
+% tries again, to let the value settle, as the visual effect is a slow
+% fade. Then it reports in errorMsg if the new peek differs by more than
+% 0.001. In limited testing, waiting for a good answer works: the peek-poke
+% difference rarely exceeds +/-5e-6 and never exceeds 0.001. It's my
+% impression that if we always waited 100 ms, then the discrepancy would
+% always be less than +/-5e-6.
 %
 %% ACKNOWLEGEMENTS. Thanks to Mario Kleiner for explaining how macOS
 % "brightness" works. Thanks to nick.peatfield@gmail.com for sharing his
