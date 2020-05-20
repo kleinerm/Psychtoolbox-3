@@ -1,7 +1,7 @@
 function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % [oldSettings,errorMsg] = MacDisplaySettings([screenNumber,][newSettings])
 %
-%% MacDisplaySettings allows you to peek and poke seven settings in the 
+%% MacDisplaySettings allows you to peek and poke seven settings in the
 % System Preferences:Displays panel by using the corresponding fields in
 % its newSettings and oldSettings input-output arguments. This allows you
 % to temporarily override any macOS user customization of your
@@ -53,7 +53,7 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % poking, if you got an error (nonempty errorMsg), you might call
 % MacDisplaySettings again to compare the new peek with what you poked.
 %
-%% EXAMPLES. Typical uses of MacDisplaySettings include just typing the 
+%% EXAMPLES. Typical uses of MacDisplaySettings include just typing the
 % function name to learn the current settings:
 %
 % MacDisplaySettings
@@ -90,7 +90,7 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 %
 % MacDisplaySettings(screen,oldSettings);
 %
-%% PRESERVING THE DISPLAY STATE. Apple invites Macintosh users to adjust 
+%% PRESERVING THE DISPLAY STATE. Apple invites Macintosh users to adjust
 % many parameters in the System Preferences Displays panel to customize
 % their display color and brightness including the enabling of dynamic
 % adjustments of all displayed images in response to personal preference,
@@ -108,7 +108,7 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 %
 %% ERROR REPORTING. If everything worked the optional output argument
 % errorMsg is an empty string. Otherwise errorMsg will contain an error
-% message string, just one even if there are mutiple faults. 
+% message string, just one even if there are mutiple faults.
 %
 %% ERROR CHECKING. Most of the controls are straightforward, you are just
 % peeking and poking a Boolean (0 or 1) or a small integer with a known
@@ -134,7 +134,7 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % frontmost (so we now bring it to the front), and, second, we now follow
 % the example of pros and have wait loops in the applescript to make sure
 % each object is available before accessing it. Since those enhancements,
-% it now reliably takes 3 s on MacBook Pro and 8 s on MacBook, instead of
+% it now reliably takes 2 s on MacBook Pro and 8 s on MacBook, instead of
 % the long 60 s delays, and occasional timeout errors, that afflicted the
 % old routines.
 %
@@ -154,7 +154,7 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % behavior by using row numbers to specify profile and English names to
 % specify nightShiftSchedule.
 %
-%% Your screen's display profile is a video lookup table, it 
+%% Your screen's display profile is a video lookup table, it
 % affects the color and luminance of everything you display. Apple allows
 % programmers to read and write the current color profile, which is in
 % memory, and I think that there are several consumer apps that do that (in
@@ -175,7 +175,7 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % Psychtoolbox "sca"), so the error message won't be hidden behind your
 % window.
 %
-%% REQUIREMENTS: macOS and MATLAB. (If it detects Psychtoolbox, then it 
+%% REQUIREMENTS: macOS and MATLAB. (If it detects Psychtoolbox, then it
 % will use the "sca" command to close windows before throwing a fatal
 % error.) In its current form, MacDisplaySettings has only been tested on
 % macOS Mojave (10.14) localized for USA. Earlier versions of this code
@@ -191,11 +191,11 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % screen, including an external monitor, but testing with external monitors
 % has been very limited.
 %
-%% DEVELOPERS. To write Applescript like this, I strongly recommend that 
+%% DEVELOPERS. To write Applescript like this, I strongly recommend that
 % you buy the Script Debugger app from Late Night Software.
-% https://latenightsw.com/ 
+% https://latenightsw.com/
 % and the UI Browser app from UI Browser by PFiddlesoft.
-% https://pfiddlesoft.com/uibrowser/ 
+% https://pfiddlesoft.com/uibrowser/
 % The Script Debugger is a the best Applescript editor and debugger. The UI
 % Browser allows you to discover the user interface targets in System
 % Preferences that your script will read and set. With it you can do in an
@@ -210,7 +210,7 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % admin privileges should then click as requested to provide that
 % permission. This needs to be done only once for each application.
 %
-%% PROFILE ROW NUMBERING. Note that when you look at the list of profiles 
+%% PROFILE ROW NUMBERING. Note that when you look at the list of profiles
 % in System Preferences:Displays:Color there is a line separating the top
 % and bottom sections of the list. Apple assigns a row number to that line,
 % but trying to select that row has no effect and returns an error in
@@ -227,7 +227,7 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 %% INSTALLATION. Just put both the MacDisplaySettings.m and
 % MacDisplaySettings.applescript files anywhere in MATLAB's path.
 %
-%% MULTIPLE SCREENS: Seems to be working, not yet thoroughly tested.  
+%% MULTIPLE SCREENS: Seems to be working, not yet thoroughly tested.
 % Color Profiles work for all monitors and provides access to all the
 % controls you see in the windows of System Preferences: Displays. However,
 % Apple provides fewer Display options for external monitors, especially
@@ -251,13 +251,13 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % May 3, 2020. In the Applescript, I now "activate" System Preferences at
 % the beginning (and reactivate the former app when we exit), and this runs
 % much faster. Formerly, delays of 60 s were common, with occasional time
-% outs. Now it reliably takes 3 s on MacBook Pro and 8 s on MacBook.
+% outs. Now it reliably takes 2 s on MacBook Pro and 8 s on MacBook.
 %
 % May 7, 2020. Shortened the help text, reducing redundancy. Check for
 % unrecognized fields in newSettings. Improved error reporting.
 %
 % May 8, 2020. Enhanced to support arbitrary screenNumber, i.e. external
-% monitors. 
+% monitors.
 %
 % May 9, 2020. Improved speed (by 30%) by replacing fixed delays in
 % applescript with wait loops. Enhanced the built-in peek of brightness
@@ -312,9 +312,9 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % http://www.manpagez.com/man/1/osascript/
 % https://developer.apple.com/library/mac/documentation/AppleScript/Conceptual/AppleScriptLangGuide/reference/ASLR_cmds.html
 % https://discussions.apple.com/thread/6418291
-% ScriptDebugger app from Late Night Software. 
+% ScriptDebugger app from Late Night Software.
 % https://latenightsw.com/
-% UIBrowser app from PFiddlesoft. 
+% UIBrowser app from PFiddlesoft.
 % https://pfiddlesoft.com/uibrowser/
 
 % The Psychtoolbox Screen.mex function sets Brightness more quickly than
@@ -539,13 +539,13 @@ try
         CloseWindows
         error('Applescript failed with error: %s.',oldString);
     end
-%     if streq('-99',oldString(1:3))
-%         CloseWindows
-%         warning(['If you haven''t already, please unlock System '...
-%             'Preferences: Security & Privacy: Privacy and give MATLAB ' ...
-%             'permission for Full Disk Access and Automation.']);
-%         error('Applescript returned error: %s',oldString);
-%     end
+    %     if streq('-99',oldString(1:3))
+    %         CloseWindows
+    %         warning(['If you haven''t already, please unlock System '...
+    %             'Preferences: Security & Privacy: Privacy and give MATLAB ' ...
+    %             'permission for Full Disk Access and Automation.']);
+    %         error('Applescript returned error: %s',oldString);
+    %     end
     [v,count,errMsg,extra]=sscanf(oldString,'%f, %d, %d, %d, %d, %d, %d, %d',7);
     nextIndex=1+extra-1;
     if count<7 || ~isempty(errMsg)
