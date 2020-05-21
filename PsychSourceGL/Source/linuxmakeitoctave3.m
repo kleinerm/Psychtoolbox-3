@@ -265,8 +265,22 @@ if mode==14
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychOpenHMDVRCore.mex']);
 end
 
-% Remove stale object files:
-delete('*.o');
+if mode==15
+    % Build PsychVulkanCore.mex:
+    try
+        mex -v -g --output ../Projects/Linux/build/PsychVulkanCore.mex -Wno-date-time -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -DVK_USE_PLATFORM_DISPLAY_KHR -DVK_USE_PLATFORM_XLIB_XRANDR_EXT -ICommon/Base -ILinux/Base -ICommon/PsychVulkanCore Linux/Base/*.c Common/Base/*.c Common/PsychVulkanCore/*.c -lc -lrt -ldl -lX11 -lvulkan
+    catch
+        disp(psychlasterror);
+    end
+
+    unix(['cp ../Projects/Linux/build/PsychVulkanCore.mex ' PsychtoolboxRoot target]);
+    striplibsfrommexfile([PsychtoolboxRoot target 'PsychVulkanCore.mex']);
+end
+
+if str2num(version()(1)) < 5
+    % Remove stale object files from current dir on Octave 4 and earlier:
+    delete('*.o');
+end
 
 return;
 end
