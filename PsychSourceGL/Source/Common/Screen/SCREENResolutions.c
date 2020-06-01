@@ -143,11 +143,12 @@ PsychError SCREENConfigureDisplay(void)
                     "Readonly properties:\n\n"
                     "* Display size \"displayWidthMM\" x \"displayHeightMM\" in millimeters, as reported by attached display.\n"
                     "* Video output name \"name\".\n"
+                    "* Video output handle \"outputHandle\". On Linux/X11 this is the numeric XID of the associated RandR video output.\n"
                     "\nProviding invalid or incompatible settings will raise an error.\n";
 
     static char seeAlsoString[] = "Screen('Resolutions'), Screen('Resolution');";
 
-    const char *OutputFieldNames[] = { "width", "height", "pixelSize", "hz", "xStart", "yStart", "name", "displayWidthMM", "displayHeightMM" };
+    const char *OutputFieldNames[] = { "width", "height", "pixelSize", "hz", "xStart", "yStart", "name", "outputHandle", "displayWidthMM", "displayHeightMM" };
     char *settingName = NULL;
     int screenNumber, outputId, ditherEnable;
 
@@ -512,7 +513,7 @@ PsychError SCREENConfigureDisplay(void)
     if(outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid display output index provided.");
 
     // Create a structure and populate it.
-    PsychAllocOutStructArray(1, FALSE, -1, 9, OutputFieldNames, &oldResStructArray);
+    PsychAllocOutStructArray(1, FALSE, -1, 10, OutputFieldNames, &oldResStructArray);
 
     // Query current video mode of this output:
     XRRCrtcInfo *crtc_info = NULL;
@@ -536,7 +537,10 @@ PsychError SCREENConfigureDisplay(void)
 
     // Query and return output name, and physical size of display in mm:
     unsigned long mm_width, mm_height;
-    PsychSetStructArrayStringElement("name", 0, (char*) PsychOSGetOutputProps(screenNumber, outputId, &mm_width, &mm_height, NULL), oldResStructArray);
+    RROutput output_xid;
+
+    PsychSetStructArrayStringElement("name", 0, (char*) PsychOSGetOutputProps(screenNumber, outputId, &mm_width, &mm_height, &output_xid), oldResStructArray);
+    PsychSetStructArrayDoubleElement("outputHandle", 0, (double) output_xid, oldResStructArray);
     PsychSetStructArrayDoubleElement("displayWidthMM", 0, mm_width, oldResStructArray);
     PsychSetStructArrayDoubleElement("displayHeightMM", 0, mm_height, oldResStructArray);
 
