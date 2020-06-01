@@ -139,8 +139,17 @@ unsigned int PsychGetNrVRRSchedulerWindowsActive(void)
     return(vrrSchedulersActive);
 }
 
-// Internal helper: Measure and compute VBLANK start and end timestamp for current refresh cycle:
-static double PsychGetVblankTimestamps(PsychWindowRecordType *windowRecord, double *vblankStart)
+/*
+ * Measure and compute VBLANK start and end timestamp for current refresh cycle.
+ *
+ * This uses the beamposition based timestamping to compute vblank start and end
+ * time for the most recent (or still active) vblank.
+ *
+ * Returns -1 on failure / if the feature is unsupported.
+ * Returns start of active scanout (= End time of vblank). If optional vblStartTime
+ * is provided, then returns start time of vblank in the double pointed to by vblStartTime.
+ */
+double PsychGetVblankTimestamps(PsychWindowRecordType *windowRecord, double *vblankStartTime)
 {
     int beamPosAtFlip;
     double vbl_lines_elapsed, onset_lines_togo;
@@ -150,11 +159,15 @@ static double PsychGetVblankTimestamps(PsychWindowRecordType *windowRecord, doub
     double vbl_endline = windowRecord->VBL_Endline;
 
     // Beamposition queries inoperative/unsupported/broken/disabled?
-    if (vbl_endline == -1)
+    if (vbl_endline == -1 || currentrefreshestimate <= 0.0)
         return(-1);
 
     beamPosAtFlip = PsychGetDisplayBeamPosition((CGDirectDisplayID) NULL, windowRecord->screenNumber);
     PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
+
+    // Failed / Unsupported?
+    if (beamPosAtFlip == -1)
+        return(-1);
 
     if (beamPosAtFlip >= vbl_startline) {
         vbl_lines_elapsed = beamPosAtFlip - vbl_startline;
@@ -170,8 +183,8 @@ static double PsychGetVblankTimestamps(PsychWindowRecordType *windowRecord, doub
     onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
 
     // Compute start of vblank -- Only works in non-VRR mode with fixed duration Vblank:
-    if (vblankStart)
-        *vblankStart = time_at_vbl - vbl_time_elapsed;
+    if (vblankStartTime)
+        *vblankStartTime = time_at_vbl - vbl_time_elapsed;
 
     // Compute of stimulus-onset, aka time when retrace is finished:
     time_at_vbl = time_at_vbl + onset_time_togo;
@@ -7777,4 +7790,3 @@ void PsychLockedTouchFramebufferIfNeeded(PsychWindowRecordType *windowRecord)
         #endif
     }
 }
-

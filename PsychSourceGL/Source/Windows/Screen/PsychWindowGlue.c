@@ -1991,7 +1991,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
  */
 double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
-    DWM_TIMING_INFO    dwmtiming;
+    DWM_TIMING_INFO dwmtiming;
     psych_uint64 ust, msc, sbc;
     CGDirectDisplayID displayID;
     HRESULT rc = 0xdeadbeef;
@@ -2039,7 +2039,7 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
     // Let's try if we have more luck with OpenML support...
 
     // Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
-    // if that extension is supported on this setup. As of beginning 2017 i'm not aware of any
+    // if that extension is supported on this setup. As of beginning 2020 i'm not aware of any
     // graphics card that would support this extension, but who knows??
     if ((NULL != wglGetSyncValuesOML) && (wglGetSyncValuesOML((HDC) displayID, (INT64*) &ust, (INT64*) &msc, (INT64*) &sbc))) {
         *vblCount = msc;
@@ -2050,7 +2050,7 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
     else {
         // Unsupported on Windows so far :(
         *vblCount = 0;
-        return(-1);
+        return(PsychGetVblankTimestamps(windowRecord, NULL));
     }
 }
 

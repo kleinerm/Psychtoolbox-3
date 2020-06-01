@@ -1777,11 +1777,11 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
  *    startup of gfx-system for the given screen. Returns a time of -1 and a count of 0 if this
  *    feature is unavailable on the given OS/Hardware configuration.
  */
-double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
+double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
-    unsigned int	vsync_counter = 0;
-    psych_uint64	ust, msc, sbc;
-
+    psych_uint64 ust, msc, sbc;
+    double tActiveStart = -1;
+    unsigned int vsync_counter = 0;
     PsychLockDisplay();
 
     #ifdef GLX_OML_sync_control
@@ -1797,30 +1797,32 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
             return( PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) );
         }
         else {
-            // Last VBL timestamp unavailable:
-            return(-1);
+            // Last VBL timestamp unavailable, fallback on beamposition method:
+            return(PsychGetVblankTimestamps(windowRecord, NULL));
         }
     }
     #else
     #warning GLX_OML_sync_control unsupported! Compile with -std=gnu99 to enable it!
     #endif
 
+    // Retrieve absolute system time of end of current/last vblank, or -1 on failure/unsupported:
+    tActiveStart = PsychGetVblankTimestamps(windowRecord, NULL);
+
     // Do we have SGI video sync extensions?
     if (NULL != glXGetVideoSyncSGI) {
-        // Retrieve absolute count of vbl's since startup:
+        // Retrieve absolute count of vblanks since startup:
         glXGetVideoSyncSGI(&vsync_counter);
         PsychUnlockDisplay();
         *vblCount = (psych_uint64) vsync_counter;
 
-        // Retrieve absolute system time of last retrace, convert into PTB standard time system and return it:
-        // Not yet supported on Linux:
-        return(-1);
+        return(tActiveStart);
     }
     else {
-        // Unsupported :(
+        // Counter query unsupported:
         PsychUnlockDisplay();
         *vblCount = 0;
-        return(-1);
+
+        return(tActiveStart);
     }
 }
 
@@ -2600,39 +2602,6 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     return;
 }
 
-// Internal helper: Measure and compute VBLANK start and end timestamp for current refresh cycle:
-static double GetVblankTimestamps(PsychWindowRecordType *windowRecord, double *activeStart)
-{
-    double vbl_lines_elapsed, onset_lines_togo;
-    double time_at_vbl, vbl_time_elapsed, onset_time_togo;
-    double currentrefreshestimate = windowRecord->VideoRefreshInterval;
-    double vbl_startline = windowRecord->VBL_Startline;
-    double vbl_endline = windowRecord->VBL_Endline;
-    int beamPosAtFlip = PsychGetDisplayBeamPosition(NULL, windowRecord->screenNumber);
-    PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
-
-    if (beamPosAtFlip >= vbl_startline) {
-        vbl_lines_elapsed = beamPosAtFlip - vbl_startline;
-        onset_lines_togo = vbl_endline - beamPosAtFlip + 1;
-    }
-    else {
-        vbl_lines_elapsed = vbl_endline - vbl_startline + 1 + beamPosAtFlip;
-        onset_lines_togo = -1.0 * beamPosAtFlip;
-    }
-
-    // From the elapsed number we calculate the elapsed time since VBL start:
-    vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentrefreshestimate;
-    onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
-
-    // Compute of stimulus-onset, aka time when retrace is finished:
-    *activeStart = time_at_vbl + onset_time_togo;
-
-    // Now we correct our time_at_vbl by this correction value:
-    time_at_vbl = time_at_vbl - vbl_time_elapsed;
-
-    return(time_at_vbl);
-}
-
 static psych_int64 PsychOSScheduleSoftSyncFlip(PsychWindowRecordType *windowRecord, double tWhen, psych_int64 targetMSC)
 {
 #ifdef GLX_OML_sync_control
@@ -2677,7 +2646,7 @@ static psych_int64 PsychOSScheduleSoftSyncFlip(PsychWindowRecordType *windowReco
     // previously flipped stimulus. If we don't have this, e.g., because user
     // requested a non-vsync'ed flip or forced high-precision timestamping off,
     // we don't have a reliable baseline for start of this video refresh cycle:
-    tVblankStart = GetVblankTimestamps(windowRecord, &tActiveStart);
+    tActiveStart = PsychGetVblankTimestamps(windowRecord, &tVblankStart);
     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
     if (PsychPrefStateGet_Verbosity() > 10)
         printf("PTB-DEBUG: Offset %lf msecs.\n", 1000 * (tNow - tVblankStart));
@@ -2697,7 +2666,7 @@ static psych_int64 PsychOSScheduleSoftSyncFlip(PsychWindowRecordType *windowReco
         // Yes. Sleep a refresh cycle, then recheck:
         //printf("TF %f ", (tWhen - tVblankStart) / windowRecord->VideoRefreshInterval);
         PsychWaitUntilSeconds(tVblankStart + windowRecord->VideoRefreshInterval);
-        tVblankStart = GetVblankTimestamps(windowRecord, &tActiveStart);
+        tActiveStart = PsychGetVblankTimestamps(windowRecord, &tVblankStart);
         //printf("Now %f\n", (tWhen - tVblankStart) / windowRecord->VideoRefreshInterval);
     }
 
