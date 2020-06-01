@@ -140,7 +140,7 @@ static char synopsisString[] =
     "change in multiSample setting, ie., the effective number of samples per pixel for a backing texture. This limitation may get relaxed "
     "in future versions of the software if possible and sensible.\n"
     "Parameters and their meaning:\n"
-    "'hookName' Currently ignored, placeholder for future extensions.\n"
+    "'hookname' Currently ignored, placeholder for future extensions.\n"
     "'leftglHandle' OpenGL texture object handle of the left-eye texture in stereoMode 12, or of the mono-texture in mono mode.\n"
     "'rightglHandle' OpenGL texture object handle of the right-eye texture in stereoMode 12, or ignored in mono mode.\n"
     "'glTextureTarget' OpenGL texture target: GL_TEXTURE_2D or GL_TEXTURE_2D_MULTISAMPLE, depending on multisample configuration.\n"
@@ -155,6 +155,24 @@ static char synopsisString[] =
     "This query function works both with internally generated and maintained backing textures and externally injected/maintained ones.\n"
     "For internally generated textures (without flag kPsychUseExternalSinkTextures), the handles should be considered read-only: Binding "
     "the textures for sampling/reading from them is appropriate, modifying them in any way is forbidden.\n"
+    "\n\n"
+    "Screen('HookFunction', windowPtr, 'ImportDisplayBufferInteropMemory' [, hookname][, viewId=0][, interopMemObjectHandle][, allocationSize][, formatSpec][, tilingMode][, memoryOffset][, width][, height]);\n"
+    "CAUTION: EXPERIMENTAL, UNSTABLE API - Subject to backwards incompatible breaking changes without notice!\n"
+    "Replace the current image backing memory for the final output color buffers of the imaging pipeline by externally imported memory.\n"
+    "This only works if imagingMode flag kPsychNeedFinalizedFBOSinks is set or stereoMode 12 is active, which implicitely sets that flag.\n"
+    "This uses the external memory objects OpenGL extension to import external backing memory, e.g., from a Vulkan gpu + driver, and assign "
+    "it as new backing memory oject to the textures which are used to implement the final output color buffers of the pipeline. Iow. it allows "
+    "to render into image buffers of an external agent, e.g., a Vulkan device instance.\n"
+    "Parameters and their meaning:\n"
+    "'hookname' Currently ignored, placeholder for future extensions.\n"
+    "'viewId' Selects the left-eye/mono framebuffer if 0, and the right-eye framebuffer if 1 in a stereoMode 12 configuration.\n"
+    "'interopMemObjectHandle' Operating system specific handle to the interop image backing memory.\n"
+    "'allocationSize' Number of bytes of backing memory for the 'interopMemObjectHandle' to import.\n"
+    "'formatSpec' Type of texture to create: 0 = GL_RGBA8, 1 = GL_RGB10A2, 2 = GL_RGBA16F, 3 = GL_RGBA16.\n"
+    "'tilingMode' Type of tiling to use/assume for rendering: 0 = Linear (non-tiled), 1 = Tiled.\n"
+    "'memoryOffset' Memory offset in bytes into the imported memory object to use.\n"
+    "'width' Width of texture in pixels.\n"
+    "'height' Height of texture in pixels.\n"
     "\n\n"
     "Screen('HookFunction', windowPtr, 'SetOneshotFlipFlags' [, hookname], flipFlags);\n"
     "Assign special flags to be applied one-time during the next execution of Screen('Flip') or Screen('AsyncFlipBegin').\n"
@@ -212,7 +230,7 @@ PsychError SCREENHookFunction(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    PsychErrorExit(PsychCapNumInputArgs(10));
+    PsychErrorExit(PsychCapNumInputArgs(11));
     PsychErrorExit(PsychRequireNumInputArgs(2));
     PsychErrorExit(PsychCapNumOutputArgs(7));
 
@@ -239,12 +257,13 @@ PsychError SCREENHookFunction(void)
     if (strcmp(cmdString, "SetOneshotFlipFlags")==0) cmd=16;
     if (strcmp(cmdString, "SetOneshotFlipResults")==0) cmd=17;
     if (strcmp(cmdString, "SetWindowBackendOverrides")==0) cmd=18;
+    if (strcmp(cmdString, "ImportDisplayBufferInteropMemory")==0) cmd=19;
 
     if (cmd == 0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
     if (whereloc < 0) PsychErrorExitMsg(PsychError_user, "Unknown/Invalid/Unparseable insert location specified to 'HookFunction' 'InsertAtXXX'.");
 
     // Need hook name?
-    if (cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15 && cmd!=16 && cmd!=17 && cmd!=18) {
+    if (cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15 && cmd!=16 && cmd!=17 && cmd!=18 && cmd!=19) {
         // Get it:
         PsychAllocInCharArg(3, kPsychArgRequired, &hookString);
     }
@@ -525,6 +544,29 @@ PsychError SCREENHookFunction(void)
                     windowRecord->proj = (double*) malloc(2 * 16 * sizeof(double));
                     memcpy(windowRecord->proj, dblmat, m * n * p * sizeof(double));
                 }
+            }
+        break;
+
+        case 19: // ImportDisplayBufferInteropMemory
+            // Get old values for textures. Just to check if this operation is supported at all in the current imaging pipeline configuration:
+            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height) && (verbosity > 1))
+                printf("PTB-WARNING: Invalid HookFunction call to ImportDisplayBufferInteropMemory! Not supported with current imagingMode. Trying to carry on - Prepare for trouble!\n");
+
+            {
+                int viewId, allocationSize, formatSpec, tilingMode, memoryOffset;
+                void *interopMemObjectHandle;
+
+                // Get new optional override values and set them:
+                PsychCopyInIntegerArg(4, FALSE, &viewId);
+                PsychCopyInPointerArg(5, FALSE, &interopMemObjectHandle);
+                PsychCopyInIntegerArg(6, FALSE, &allocationSize);
+                PsychCopyInIntegerArg(7, FALSE, &formatSpec);
+                PsychCopyInIntegerArg(8, FALSE, &tilingMode);
+                PsychCopyInIntegerArg(9, FALSE, &memoryOffset);
+                PsychCopyInIntegerArg(10, FALSE, &width);
+                PsychCopyInIntegerArg(11, FALSE, &height);
+                if (!PsychSetPipelineExportTextureInteropMemory(windowRecord, viewId, interopMemObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height) && (verbosity > 1))
+                    printf("PTB-WARNING: HookFunction call to ImportDisplayBufferInteropMemory failed. See above error message for details. Trying to carry on - Prepare for trouble!\n");
             }
         break;
     }

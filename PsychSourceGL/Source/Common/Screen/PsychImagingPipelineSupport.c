@@ -1719,6 +1719,160 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
     return(glsl);
 }
 
+psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *windowRecord, int viewid, void* interopMemObjectHandle, int allocationSize, int formatSpec, int tilingMode, int memoryOffset, int width, int height)
+{
+    int glTextureTarget;
+    int multiSample = windowRecord->multiSample;
+    GLint drawFBO = 0, readFBO = 0;
+    char fbodiag[100];
+    PsychFBO *fbo;
+    GLenum fborc = GL_FRAMEBUFFER_COMPLETE_EXT;
+
+    if (!(windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: No kPsychNeedFinalizedFBOSinks! Skipped.\n");
+        return(FALSE);
+    }
+
+    if (windowRecord->imagingMode & kPsychSinkIsMSAACapable) {
+        if (multiSample == 0) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: Tried to setup MSAA interop texture while onscreen window has MSAA disabled! Skipped.\n");
+            return(FALSE);
+        }
+
+        glTextureTarget = GL_TEXTURE_2D_MULTISAMPLE;
+    }
+    else {
+        if (multiSample > 0) {
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: PsychSetPipelineExportTextureInteropMemory: Using non-MSAA capable interop texture for onscreen window with MSAA.\n");
+        }
+
+        multiSample = 0;
+        glTextureTarget = GL_TEXTURE_2D;
+    }
+
+    if (viewid < 0 || viewid > 1) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: Tried to setup invalid viewid %i [not 0 or 1]! Skipped.\n", viewid);
+        return(FALSE);
+    }
+
+    if (viewid > 0 && !(windowRecord->stereomode & kPsychDualStreamStereo)) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: Tried to setup right eye buffer in a purely monoscopic configuration! Skipped.\n");
+        return(FALSE);
+    }
+
+    // Set OpenGL context of window so we can act on its FBO's:
+    PsychSetGLContext(windowRecord);
+
+    PsychTestForGLErrors();
+
+    // Are all required OpenGL extensions supported?
+    if (!glewIsSupported("GL_EXT_memory_object") || !glewIsSupported("GL_ARB_direct_state_access") ||
+        (!glewIsSupported("GL_EXT_memory_object_fd") && !glewIsSupported("GL_EXT_memory_object_win32"))) {
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: This OpenGL implementation lacks support for some required OpenGL extensions! Skipped.\n");
+        return(FALSE);
+    }
+
+    // Backup current fbo assignments before we mess with them:
+    glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFBO);
+    glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFBO);
+
+    fbo = windowRecord->fboTable[windowRecord->finalizedFBO[viewid]];
+
+    // Create memory object for interop memory import:
+    glCreateMemoryObjectsEXT(1, &fbo->memoryObject);
+
+    PsychTestForGLErrors();
+
+    // Platform specific external memory object import:
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        glImportMemoryWin32HandleEXT(fbo->memoryObject, (GLuint64) allocationSize, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, interopMemObjectHandle);
+    #else
+        glImportMemoryFdEXT(fbo->memoryObject, (GLuint64) allocationSize, GL_HANDLE_TYPE_OPAQUE_FD_EXT, (GLint) ((size_t) interopMemObjectHandle));
+    #endif
+
+    PsychTestForGLErrors();
+
+    // Assign tiling mode for rendering into the memory backed texture:
+    glTextureParameteri(fbo->coltexid, GL_TEXTURE_TILING_EXT, (GLenum) tilingMode);
+
+    PsychTestForGLErrors();
+
+    // Attach new external memory backing to the texture:
+    if (glTextureTarget == GL_TEXTURE_2D_MULTISAMPLE)
+        glTextureStorageMem2DMultisampleEXT(fbo->coltexid, multiSample, (GLenum) formatSpec, width, height, GL_TRUE, fbo->memoryObject, (GLuint64) memoryOffset);
+    else
+        glTextureStorageMem2DEXT(fbo->coltexid, 1, (GLenum) formatSpec, width, height, fbo->memoryObject, (GLuint64) memoryOffset);
+
+    PsychTestForGLErrors();
+
+    // Bind FBO of view:
+    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo->fboid);
+
+    // Check for framebuffer completeness:
+    fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+    if (fborc != GL_FRAMEBUFFER_COMPLETE_EXT) {
+        // Framebuffer incomplete!
+        while(glGetError()) {};
+
+        switch(fborc) {
+            case GL_FRAMEBUFFER_UNSUPPORTED_EXT:
+                sprintf(fbodiag, "Unsupported format");
+                break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT:
+                sprintf(fbodiag, "Framebuffer attachment incomplete.");
+                break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
+                sprintf(fbodiag, "Framebuffer attachment multisample incomplete.");
+                break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT_EXT:
+                sprintf(fbodiag, "Framebuffer attachments missing incomplete.");
+                break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT:
+                sprintf(fbodiag, "Framebuffer dimensions incomplete.");
+                break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_FORMATS_EXT:
+                sprintf(fbodiag, "Framebuffer formats incomplete.");
+                break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER_EXT:
+                sprintf(fbodiag, "Framebuffer drawbuffer incomplete.");
+                break;
+
+            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER_EXT:
+                sprintf(fbodiag, "Framebuffer readbuffer incomplete.");
+                break;
+
+            default:
+                sprintf(fbodiag, "Unknown error: glCheckFramebufferStatusEXT returns error code %i", fborc);
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: Framebuffer viewid=%i incomplete [%s]! Rendering will be broken!\n", viewid, fbodiag);
+    }
+    else {
+        // Success: Assign new values:
+        fbo->textarget = (GLenum) glTextureTarget;
+        fbo->format = (GLenum) formatSpec;
+        fbo->multisample = multiSample;
+        fbo->width = width;
+        fbo->height = height;
+    }
+
+    // Done with framebuffers: Reset drawing target to force rebind before regular drawing.
+    PsychSetDrawingTarget(NULL);
+
+    // Restore old framebuffer assignments:
+    glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, (GLuint) drawFBO);
+    glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, (GLuint) readFBO);
+
+    return(fborc == GL_FRAMEBUFFER_COMPLETE_EXT);
+}
+
 /* PsychSetPipelineExportTexture()
  *
  * Set new OpenGL color renderbuffer attachment backing textures for the PsychFBO's
@@ -2643,6 +2797,11 @@ void PsychDeleteFBO(PsychFBO* fboptr)
             // Color buffer is a renderbuffer:
             glDeleteRenderbuffersEXT(1, &(fboptr->coltexid));
         }
+    }
+
+    // Delete memory object for externally backed color buffer textures:
+    if ((fboptr->memoryObject) && glIsMemoryObjectEXT && glIsMemoryObjectEXT(fboptr->memoryObject)) {
+        glDeleteMemoryObjectsEXT(1, &fboptr->memoryObject);
     }
 
     // Detach and delete depth buffer (and probably stencil buffer) texture, if any:

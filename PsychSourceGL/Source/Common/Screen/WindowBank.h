@@ -195,6 +195,7 @@ typedef struct PsychFBO {
     int                     height;         // Height of FBO.
     int                     multisample;    // Multisampling level of FBO: 0 == No multisampling. > 0 means Multisampled.
     GLenum                  textarget;      // Type of texture target for texture coltexid (GL_TEXTURE_RECTANGLE_EXT or GL_TEXTURE_2D etc.)
+    GLuint                  memoryObject;   // Handle to memory object for external coltexid image backing memory .
 } PsychFBO;
 
 // Typedefs for WindowRecord in WindowBank.h
