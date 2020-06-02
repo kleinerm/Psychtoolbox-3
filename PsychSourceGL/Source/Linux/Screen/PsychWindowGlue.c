@@ -1423,7 +1423,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
         // Find primary output for check in 'output':
         PsychUnlockDisplay();
-        output_name = PsychOSGetOutputProps(screenSettings->screenNumber, 0, NULL, NULL, (unsigned long *) &output);
+        output_name = PsychOSGetOutputProps(screenSettings->screenNumber, 0, FALSE, NULL, NULL, (unsigned long *) &output);
         PsychLockDisplay();
 
         if (vrr_supported_atom &&

@@ -1511,7 +1511,7 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
     return(mode);
 }
 
-const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm_width, unsigned long *mm_height, unsigned long *rrOutputPrimary)
+const char* PsychOSGetOutputProps(int screenId, int outputIdx, psych_bool returnDisabledOutputs, unsigned long *mm_width, unsigned long *mm_height, unsigned long *rrOutputPrimary)
 {
     static char outputName[100];
     int o;
@@ -1534,7 +1534,19 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm
     PsychLockDisplay();
     for (o = 0; o < res->noutput; o++) {
         output_info = XRRGetOutputInfo(displayCGIDs[screenId], res, res->outputs[o]);
-        if (output_info->crtc == crtc) break;
+
+        if (returnDisabledOutputs) {
+            // Special case, return all outputs, even inactive or disconnected ones,
+            // just select the 'outputIdx' output:
+            if (o == outputIdx)
+                break;
+        }
+        else {
+            // Standard case - Only connected and active outputs with proper crtc assigned:
+            if (output_info->crtc == crtc)
+                break;
+        }
+
         XRRFreeOutputInfo(output_info);
     }
     PsychUnlockDisplay();
@@ -2412,9 +2424,10 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
         }
     }
 
+    PsychLockDisplay();
+
     // Matching mode found for modesetting?
     if (modeid < res->nmode) {
-        PsychLockDisplay();
 
         // Assign default panning:
         if (newX < 0) newX = crtc_info->x;
@@ -2462,16 +2475,32 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
 
         // XUngrabServer(dpy);
 
-        // Make sure the screen change gets noticed by XLib:
-        ProcessRandREvents(screenNumber);
-
-        PsychUnlockDisplay();
-
-        return(TRUE);
     } else {
-        XRRFreeCrtcInfo(crtc_info);
-        return(FALSE);
+        // No such matching mode for given specs. Output disable requested?
+        if (newWidth == 0 && newHeight == 0 && newHz == 0) {
+            // Disable output, ie. target crtc:
+            if (PsychPrefStateGet_Verbosity() > 4)
+                printf("PTB-INFO: Disabling crtc %i.\n", outputId);
+
+            XRRSetCrtcConfig(dpy, res, res->crtcs[PsychScreenToHead(screenNumber, outputId)], crtc_info->timestamp,
+                            0, 0, None, RR_Rotate_0, NULL, 0);
+            XRRFreeCrtcInfo(crtc_info);
+        }
+        else {
+            XRRFreeCrtcInfo(crtc_info);
+
+            PsychUnlockDisplay();
+
+            return(FALSE);
+        }
     }
+
+    // Make sure the screen change gets noticed by XLib:
+    ProcessRandREvents(screenNumber);
+
+    PsychUnlockDisplay();
+
+    return(TRUE);
 }
 
 /*

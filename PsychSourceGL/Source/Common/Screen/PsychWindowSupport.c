@@ -7001,7 +7001,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         RROutput output = (RROutput) 0;
 
         // Get XID / RROutput id of primary output for this screen:
-        PsychOSGetOutputProps(windowRecord->screenNumber, 0, NULL, NULL, (unsigned long *) &output);
+        PsychOSGetOutputProps(windowRecord->screenNumber, 0, FALSE, NULL, NULL, (unsigned long *) &output);
 
         // Map screenNumber to dpy, screen, rootwindow and RandR output:
         PsychGetCGDisplayIDFromScreenNumber(&dpy, windowRecord->screenNumber);
