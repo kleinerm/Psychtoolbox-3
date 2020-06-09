@@ -132,7 +132,7 @@ end
 if mode==15
     % Build PsychVulkanCore.mex:
     try
-        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -D_GNU_SOURCE -DPTBMODULE_PsychVulkanCore -DVK_USE_PLATFORM_DISPLAY_KHR -DVK_USE_PLATFORM_XLIB_XRANDR_EXT -ICommon/Base -ILinux/Base -ICommon/PsychVulkanCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychVulkanCore/*.c" -lc -lrt -ldl -lX11 -lvulkan
+        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore -ICommon/Base -ILinux/Base -ICommon/PsychVulkanCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychVulkanCore/*.c" -lc -lrt -ldl -lX11 -lvulkan
     catch
         disp(psychlasterror);
     end
