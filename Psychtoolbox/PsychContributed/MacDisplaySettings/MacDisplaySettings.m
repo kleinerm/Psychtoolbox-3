@@ -201,14 +201,26 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % Preferences that your script will read and set. With it you can do in an
 % hour what would otherwise take days of trial and error.
 %
-%% APPLE SECURITY. If the user has not yet given permission for MATLAB to
-% control the computer (in System Preferences:Security &
-% Privacy:Accessibility), then we give an error alerting the user to grant
-% this permission. The error dialog window will say the application
-% (MATLAB) is "not allowed assistive access." The application needs an
-% administrator's permission to access the System Preferences. A user with
-% admin privileges should then click as requested to provide that
-% permission. This needs to be done only once for each application.
+%% APPLE PRIVACY. Unless MATLAB has the needed user-granted 
+% permissions to control the computer, attempts by MacDisplaySettings to
+% change settings will be blocked by the macOS. The needed permissions
+% include Accessibility, Full Disk Access, and Automation, all in System
+% Preferences: Security & Privacy: Privacy. Here are Apple pages on
+% privacy in general, and accessibility in particular:
+% https://support.apple.com/guide/mac-help/change-privacy-preferences-on-mac-mh32356/mac
+% https://support.apple.com/guide/mac-help/allow-accessibility-apps-to-access-your-mac-mh43185/mac
+% New versions of macOS may demand more permissions. In some cases
+% MacDisplaySettings will detect the missing permission, open the
+% appropriate System Preference panel, and provide an
+% error dialog window asking the user to provide the permission. In other
+% cases MacDisplaySettings merely prints the macOS error message. The
+% granting of permission needs to be done only once for your specific
+% MATLAB app. When you upgrade MATLAB it typically has a new name, and will
+% be treated by macOS as a new app, requiring new granting of permissions.
+% Only users with administator privileges can grant permission. When you
+% grant permission, sometimes the macOS doesn't seem to notice right away,
+% and keeps claiming MATLAB lacks permission. It may help to restart MATLAB
+% or reboot.
 %
 %% PROFILE ROW NUMBERING. Note that when you look at the list of profiles
 % in System Preferences:Displays:Color there is a line separating the top
@@ -537,6 +549,17 @@ try
     [failed,oldString]=system(command); % Takes 2 s on MacBook Pro.
     if failed
         CloseWindows
+        % MATLAB suggests calling "contains" instead of ~isempty(strfind), but,
+        % the last time I checked, Octave does not have the "contains" function,
+        % and we are trying to keep our software Octave-compatible.
+        if ~isempty(strfind(oldString,'assistive access'))
+            % We need sprintf to process the linefeeds.
+            s=sprintf(['If the error below mentions "assistive access", '...
+                'you may need to give your MATLAB permission:\n'...
+            'Choose Apple menu  > System Preferences, click Privacy, click Accessibility, then select the app’s checkbox.\n'...
+            'https://support.apple.com/guide/mac-help/allow-accessibility-apps-to-access-your-mac-mh43185/mac']);
+            warning(s);
+        end
         error('Applescript failed with error: %s.',oldString);
     end
     %     if streq('-99',oldString(1:3))
