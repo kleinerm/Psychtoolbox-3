@@ -45,6 +45,10 @@
 #define VK_USE_PLATFORM_XLIB_XRANDR_EXT
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#define VK_USE_PLATFORM_WIN32_KHR
+#endif
+
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_sdk_platform.h>
 
@@ -151,6 +155,10 @@ typedef struct PsychVulkanWindow {
 #if defined(VK_USE_PLATFORM_XLIB_KHR)
     Display*                            connection;
     Window                              x11PrivateWindow;
+#endif
+
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+    HWND                                win32PrivateWindow;
 #endif
 } PsychVulkanWindow;
 
@@ -989,7 +997,7 @@ VkSurfaceFullScreenExclusiveInfoEXT fullscreenExclusiveInfo = {
 
 void PsychInitFullScreenExlusiveStructs(PsychVulkanWindow* window)
 {
-    fullscreenExclusiveInfoWin32.hmonitor = MonitorFromWindow(window->window, MONITOR_DEFAULTTOPRIMARY);
+    fullscreenExclusiveInfoWin32.hmonitor = MonitorFromWindow(window->win32PrivateWindow, MONITOR_DEFAULTTOPRIMARY);
 }
 #else
 void PsychInitFullScreenExlusiveStructs(PsychVulkanWindow* window) {}
