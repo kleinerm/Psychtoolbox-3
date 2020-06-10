@@ -77,7 +77,7 @@ typedef struct PsychVulkanDevice {
     VkPhysicalDevice                    physicalDevice;
     VkPhysicalDeviceProperties          deviceProps;
     VkPhysicalDeviceIDProperties        physDeviceProps;
-    VkPhysicalDeviceDriverProperties    driverProps;
+    VkPhysicalDeviceDriverPropertiesKHR driverProps;
     psych_bool                          hasHDR;
     psych_bool                          hasTiming;
     uint32_t                            graphicsQueueFamilyIndex;
@@ -175,7 +175,7 @@ static psych_bool initialized = FALSE;
 // Do we require all enumerated gpu's to have a driver with HDR support?
 static psych_bool needHDR = FALSE;
 
-static unsigned int preferredDriver = 0; //VK_DRIVER_ID_MESA_RADV;
+static unsigned int preferredDriver = 0; //VK_DRIVER_ID_MESA_RADV_KHR;
 static psych_bool isSuitableDriver[4];
 
 // Global count and requested instance extensions:
@@ -201,6 +201,7 @@ PFN_vkGetPhysicalDeviceSurfaceCapabilities2KHR fpGetPhysicalDeviceSurfaceCapabil
 // Device extensions: Could be bound by device instead of globally for the instance, to save a smidgen of
 // dispatch overhead from the instance dispatch table to driver-specific entry points. Probably not worth
 // it for our use case though:
+PFN_vkReleaseDisplayEXT fpReleaseDisplayEXT = NULL;
 PFN_vkCreateSwapchainKHR fpCreateSwapchainKHR;
 PFN_vkDestroySwapchainKHR fpDestroySwapchainKHR;
 PFN_vkGetSwapchainImagesKHR fpGetSwapchainImagesKHR = NULL;
@@ -218,7 +219,6 @@ PFN_vkGetMemoryWin32HandleKHR fpGetMemoryWin32HandleKHR;
 PFN_vkGetMemoryFdKHR fpGetMemoryFdKHR;
 PFN_vkGetRandROutputDisplayEXT fpGetRandROutputDisplayEXT = NULL;
 PFN_vkAcquireXlibDisplayEXT fpAcquireXlibDisplayEXT = NULL;
-PFN_vkReleaseDisplayEXT fpReleaseDisplayEXT = NULL;
 #endif
 
 #define GET_INSTANCE_PROC_ADDR(inst, entrypoint)                                                        \
@@ -662,8 +662,8 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                     .pNext = NULL
                 };
 
-                VkPhysicalDeviceDriverProperties driverprops = {
-                    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES,
+                VkPhysicalDeviceDriverPropertiesKHR driverprops = {
+                    .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR,
                     .pNext = &physDeviceProps,
                     .driverID = 0,
                 };
@@ -768,9 +768,9 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                 if (driverprops.driverID > 0) {
                     // We can identify the kind of driver. Let's see if it matches set preferences:
                     switch (driverprops.driverID) {
-                        case VK_DRIVER_ID_AMD_PROPRIETARY:
-                        case VK_DRIVER_ID_AMD_OPEN_SOURCE:
-                        case VK_DRIVER_ID_MESA_RADV:
+                        case VK_DRIVER_ID_AMD_PROPRIETARY_KHR:
+                        case VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR:
+                        case VK_DRIVER_ID_MESA_RADV_KHR:
                             // Driver for an AMD gpu. User choice decides:
                             if (pass == 0) {
                                 // Mark this driver as suitable for the task at hand:
@@ -1580,7 +1580,7 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     // Mesa OpenGL: 4-Byte fields describing PCI bus location in format: domain:bus:device:function.
     // AMD  Vulkan: 4-Byte fields describing PCI bus location in format: bus:device:function:0
     // Therefore we first treat matching against AMD written drivers on Linux to match up the right 4-byte subfields:
-    if ((PSYCH_SYSTEM == PSYCH_LINUX) && (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE || vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY)) {
+    if ((PSYCH_SYSTEM == PSYCH_LINUX) && (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR || vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR)) {
         // Skip first 4 bytes of targetdeviceUUID (PCI bus domain) when matching against AMD Vulkan:
         rc = memcmp(&targetdeviceUUID[4], &vulkan->physDeviceProps.deviceUUID[0], 12) == 0;
     }
@@ -1644,7 +1644,7 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
             //
             // Therefore we only reject Mesa drivers if Mesa version is < 19.3.0.
             if ((PSYCH_SYSTEM == PSYCH_LINUX) &&
-                (vulkan->driverProps.driverID == VK_DRIVER_ID_MESA_RADV || vulkan->driverProps.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA) &&
+                (vulkan->driverProps.driverID == VK_DRIVER_ID_MESA_RADV_KHR || vulkan->driverProps.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR) &&
                 (vulkan->deviceProps.driverVersion < VK_MAKE_VERSION(19, 3, 0))) {
                 // This is a no-go:
                 if (verbosity > 3) {
@@ -1663,7 +1663,7 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
         // we should reject Mesa radv early, so the probe gets more quickly to amdvlk or amdgpu-pro on AMD gpu's. Rejecting anything else early
         // is pointless, as for Intel and NVidia on Linux and all manufacturers on Windows there is only one driver and thereby VkPhysicalDevice
         // per physical gpu, iow. there is no choice to find via probing. Let the probe go fully through and fail later on in the "game-over" case:
-        if (vulkan->driverProps.driverID == VK_DRIVER_ID_MESA_RADV) {
+        if (vulkan->driverProps.driverID == VK_DRIVER_ID_MESA_RADV_KHR) {
             if (verbosity > 3) {
                 printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support required visual stimulus color precision by window %i.\n", vulkan->deviceProps.deviceName, window->index);
             }
