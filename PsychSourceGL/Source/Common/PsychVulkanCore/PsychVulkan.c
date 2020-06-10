@@ -1845,7 +1845,7 @@ psych_bool PsychBeginCommandBuffer(VkCommandBuffer buffer)
 
 psych_bool PsychTransitionImageLayout(VkCommandBuffer cmdBuffer, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
-    VkImageMemoryBarrier barrier = {};
+    VkImageMemoryBarrier barrier = { 0 };
     barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.oldLayout = oldLayout;
     barrier.newLayout = newLayout;
@@ -2634,7 +2634,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         goto openwindow_out1;
     }
 
-    VkSwapchainCreateInfoKHR swapChainCreateInfo = {};
+    VkSwapchainCreateInfoKHR swapChainCreateInfo = { 0 };
     swapChainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapChainCreateInfo.surface = window->surface;
     swapChainCreateInfo.minImageCount = numBuffers;
