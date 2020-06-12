@@ -2662,7 +2662,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             window->interopTextureVkFormat = VK_FORMAT_R8G8B8A8_UNORM;
             break;
 
-        case VK_FORMAT_A8B8G8R8_UNORM_PACK32:       // RGBA8 interop -> RGBA8 swapchain.
+        case VK_FORMAT_R8G8B8A8_UNORM:              // RGBA8 interop -> RGBA8 swapchain.
             window->interopTextureVkFormat = VK_FORMAT_R8G8B8A8_UNORM;
             break;
 
@@ -2683,7 +2683,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             break;
 
         default:
-            printf("PsychVulkanCore-CRITICAL: Unrecognized swapChain format for window %i! Driver bug?!?\n", window->index);
+            printf("PsychVulkanCore-CRITICAL: Unrecognized swapChain format 0x%x for window %i! Driver bug?!?\n", swapChainCreateInfo.imageFormat, window->index);
             goto openwindow_out1;
     }
 
