@@ -131,6 +131,7 @@ typedef struct PsychVulkanWindow {
     int                                 height;
     int                                 numBuffers;
     psych_bool                          isStereo;
+    psych_bool                          isFullscreen;
     int                                 hdrMode;
     VkColorSpaceKHR                     colorspace;
     VkFormat                            format;
@@ -165,6 +166,7 @@ typedef struct PsychVulkanWindow {
 // Connection to our Windowing system:
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
 static HINSTANCE connection;            // Application instance handle.
+static psych_bool windowClassRegistered = FALSE;
 #endif
 
 // Main instance, from which everything else derives:
@@ -475,6 +477,10 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     // Establish a connection to the host windowing system and get a connection handle:
     #if defined(VK_USE_PLATFORM_WIN32_KHR)
     connection = GetModuleHandle(NULL);
+    if (connection == NULL) {
+        printf("PsychVulkanCore-ERROR: Failed to get process module handle! Game over!\n");
+        goto instance_init_out;
+    }
     #endif
 
     // Enumerate and select all required instance extensions:
@@ -974,6 +980,11 @@ PsychError PsychVulkanShutDown(void) {
 
         // Destroy our Windowing system connection:
         #if defined(VK_USE_PLATFORM_WIN32_KHR)
+            if (windowClassRegistered) {
+                UnregisterClass("PTB-Vulkan", connection);
+                windowClassRegistered = FALSE;
+            }
+
             connection = 0;
         #endif
 
@@ -1048,7 +1059,7 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
         .surface = window->surface,
         #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        .pNext = &fullscreenExclusiveInfo,
+        .pNext = (window->isFullscreen) ? &fullscreenExclusiveInfo : NULL,
         #endif
     };
 
@@ -1267,6 +1278,106 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
 
     return(TRUE);
 }
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+psych_bool PsychCreateMSWindowsDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, double refreshHz)
+{
+    VkResult result;
+    psych_bool rc = FALSE;
+
+    window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
+    window->display = (VkDisplayKHR) VK_NULL_HANDLE;
+    window->win32PrivateWindow = NULL;
+
+    if (!windowClassRegistered) {
+        WNDCLASSEX windowClass;
+        windowClass.cbSize = sizeof(WNDCLASSEX);
+        windowClass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+        windowClass.lpfnWndProc = DefWindowProc;
+        windowClass.cbClsExtra = 0;
+        windowClass.cbWndExtra = 0;
+        windowClass.hInstance = connection;
+        windowClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+        windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+        windowClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+        windowClass.lpszMenuName = NULL;
+        windowClass.lpszClassName = "PTB-Vulkan";
+        windowClass.hIconSm = LoadIcon(NULL, IDI_WINLOGO);
+
+        // Register our own window class for our Vulkan windows:
+        if (!RegisterClassEx(&windowClass)) {
+            if (verbosity > 0)
+                printf("PsychVulkanCore-ERROR: For gpu [%s] creating private vulkan window class failed in RegisterClassEx().\n", vulkan->deviceProps.deviceName);
+
+            goto createsurface_out;
+        }
+
+        windowClassRegistered = TRUE;
+    }
+
+    // Windows Vulkan ICD's need their own window, they doen't want to share with OpenGL and
+    // therefore can not present into the standard Psychtoolbox onscreen window:
+    window->win32PrivateWindow = CreateWindowEx(WS_EX_TOPMOST | WS_EX_APPWINDOW,
+                                                "PTB-Vulkan",   // class name
+                                                "PTB-Vulkan",   // app name
+                                                WS_POPUP | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN, // window style
+                                                (int) rect[0],  // x coord
+                                                (int) rect[1],  // y coord
+                                                (unsigned int) (rect[2] - rect[0]), // width
+                                                (unsigned int) (rect[3] - rect[1]), // height
+                                                NULL,           // handle to parent
+                                                NULL,           // handle to menu
+                                                connection,     // hInstance
+                                                NULL);          // no extra parameters
+
+    if (!window->win32PrivateWindow) {
+        if (verbosity > 0)
+            printf("PsychVulkanCore-ERROR: For gpu [%s] creating private vulkan output window for NVidia Vulkan failed in .\n", vulkan->deviceProps.deviceName);
+
+        goto createsurface_out;
+    }
+
+    ShowWindow(window->win32PrivateWindow, SW_SHOW);
+
+    // Setup fullScreenExclusive struct for use by PsychProbeSurfaceProperties()
+    // and vkCreateSwapchainKHR():
+    PsychInitFullScreenExlusiveStructs(window);
+
+    VkWin32SurfaceCreateInfoKHR createInfoWin32 = {
+        .sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR,
+        .pNext = NULL,
+        .flags = 0,
+        .hinstance = connection,
+        .hwnd = window->win32PrivateWindow
+    };
+
+    result = vkCreateWin32SurfaceKHR(vulkanInstance, &createInfoWin32, NULL, &window->surface);
+    if (result != VK_SUCCESS) {
+        if (verbosity > 0)
+            printf("PsychVulkanCore-ERROR: For gpu [%s] creating vulkan output window failed in vkCreateWin32SurfaceKHR: %i\n", vulkan->deviceProps.deviceName, result);
+
+        goto createsurface_out;
+    }
+
+    // Got a windowed window for Vulkan stimulus display.
+    if (verbosity > 3)
+        printf("PsychVulkanCore-INFO: For gpu [%s] created a window display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
+
+    // Mark success:
+    rc = TRUE;
+
+createsurface_out:
+
+    if (!rc && (window->win32PrivateWindow)) {
+        DestroyWindow(window->win32PrivateWindow);
+        window->win32PrivateWindow = NULL;
+    }
+
+    return (rc);
+}
+#endif
+#endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, double refreshHz)
@@ -1571,6 +1682,10 @@ psych_bool PsychCreateDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevic
 {
     #if PSYCH_SYSTEM == PSYCH_LINUX
         return(PsychCreateLinuxDisplaySurface(window, vulkan, isFullscreen, screenId, outputHandle, rect, refreshHz));
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        return(PsychCreateMSWindowsDisplaySurface(window, vulkan, isFullscreen, screenId, outputHandle, rect, refreshHz));
     #endif
 }
 
@@ -1950,6 +2065,8 @@ VkResult PsychGetNextSwapChainTargetBuffer(PsychVulkanWindow* window)
 
             if (verbosity > 1 && result == VK_SUBOPTIMAL_KHR)
                 printf("PsychVulkanCore-WARNING: PsychGetNextSwapChainTargetBuffer(): Swapchain reports status VK_SUBOPTIMAL_KHR. Performance and timing precision may suffer!\n");
+
+        result = VK_SUCCESS;
 
         return(result);
     }
@@ -2469,6 +2586,8 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         }
     }
 
+    window->isFullscreen = isFullscreen;
+
     // Specific gpuIndex requested?
     if (gpuIndex > 0) {
         psych_uint8 allzeros[16] = { 0 };
@@ -2653,7 +2772,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     swapChainCreateInfo.oldSwapchain = VK_NULL_HANDLE;
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    swapChainCreateInfo.pNext = &fullscreenExclusiveInfo;
+    swapChainCreateInfo.pNext = (window->isFullscreen) ? &fullscreenExclusiveInfo : NULL;
     #endif
 
     // Map swapchain format to a compatible OpenGL supported format for interop:
@@ -2694,6 +2813,26 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
         goto openwindow_out1;
     }
+
+    #if defined(VK_USE_PLATFORM_WIN32_KHR)
+        if (isFullscreen) {
+            // Switch swapChain into fullScreenExclusive mode:
+            result = fpAcquireFullScreenExclusiveModeEXT(vulkan->device, window->swapChain);
+            if (result != VK_SUCCESS) {
+                if (verbosity > 0) {
+                    if (result == VK_ERROR_INITIALIZATION_FAILED) 
+                        printf("PsychVulkanCore-ERROR: gpu [%s] Could not switch to fullscreen exclusive mode!\n", vulkan->deviceProps.deviceName);
+                    else
+                        printf("PsychVulkanCore-ERROR: gpu [%s] Error during switch to fullscreen exclusive mode: %i\n", vulkan->deviceProps.deviceName, result);
+                }
+
+                goto openwindow_out1;
+            }
+
+            if (verbosity > 3)
+                printf("PsychVulkanCore-INFO: For gpu [%s] switched to fullscreen exclusive display mode for swapChain [%p] of display window %i\n", vulkan->deviceProps.deviceName, window->swapChain, window->index);
+        }
+    #endif
 
     result = vkGetSwapchainImagesKHR(vulkan->device, window->swapChain, &window->numBuffers, NULL);
     if (result != VK_SUCCESS) {
@@ -2898,6 +3037,13 @@ openwindow_out1:
     }
 #endif
 
+#if defined(VK_USE_PLATFORM_WIN32_KHR)
+    if (window->win32PrivateWindow) {
+        DestroyWindow(window->win32PrivateWindow);
+        window->win32PrivateWindow = NULL;
+    }
+#endif
+
 openwindow_out2:
 
     return (rc);
@@ -2975,6 +3121,13 @@ psych_bool PsychCloseVulkanWindow(PsychVulkanWindow* window)
 
         XCloseDisplay(window->connection);
         window->connection = NULL;
+    }
+    #endif
+
+    #if defined(VK_USE_PLATFORM_WIN32_KHR)
+    if (window->win32PrivateWindow) {
+        DestroyWindow(window->win32PrivateWindow);
+        window->win32PrivateWindow = NULL;
     }
     #endif
 

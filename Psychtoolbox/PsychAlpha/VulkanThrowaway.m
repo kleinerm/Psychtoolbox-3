@@ -8,6 +8,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
     win = varargin{1};
     Screen('Hookfunction', win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
     glFlush;
+    %glFinish;
     return;
   end
 
@@ -41,30 +42,36 @@ colorFormat = 0;
 flags = 0;
 
 gpuIndex = 0
-screenId = 0
+screenId = 1
 isFullscreen = 1
 colorPrecision = 0
 hdrMode = 0
 
-% For NVidia on screen 1 on darlene:
-if screenId == 1
-  PsychTweak ('UseGPUIndex', 0);
-  Screen('Preference','ScreenTohead', screenId, 0, 0)
-  if ~isFullscreen
-    Screen('Preference', 'WindowShieldingLevel', -1);
-  else
-    Screen('Preference', 'WindowShieldingLevel', 2000);
-  end
+if IsLinux
+    Screen('Preference', 'ConserveVRAM', 524288);
+
+    % For NVidia on screen 1 on darlene:
+    if screenId == 1
+      PsychTweak ('UseGPUIndex', 0);
+      Screen('Preference','ScreenTohead', screenId, 0, 0)
+      if ~isFullscreen
+        Screen('Preference', 'WindowShieldingLevel', -1);
+      else
+        Screen('Preference', 'WindowShieldingLevel', 2000);
+      end
+    else
+      Screen('Preference', 'WindowShieldingLevel', 2000);
+    end
 else
-  Screen('Preference', 'WindowShieldingLevel', 2000);
+    Screen('Preference', 'WindowShieldingLevel', 1199);
+    %Screen('Preference', 'WindowShieldingLevel', -1);
 end
 
 PsychDefaultSetup(2);
 %Screen('Preference', 'Verbosity', 10);
 Screen('Preference', 'VBLTimestampingMode', 0);
-Screen('Preference', 'ConserveVRAM', 524288);
 
-InitializeMatlabOpenGL([],[],1);
+InitializeMatlabOpenGL([],[0],1);
 GL.OPTIMAL_TILING_EXT = hex2dec('9584');
 GL.LINEAR_TILING_EXT = hex2dec('9585');
 
@@ -90,8 +97,7 @@ if IsLinux
     end
   end
 else
-  sca;
-  error('Fixup outputHandle!');
+  outputHandle = uint64(0)
 end
 
 Screen('Preference', 'SkipSyncTests', 1);
@@ -100,6 +106,7 @@ PsychImaging('PrepareConfiguration');
 PsychImaging('AddTask', 'AllViews', 'FlipVertical');
 
 fbRect = Screen('Rect', screenId);
+vRect = Screen('GlobalRect', screenId);
 refreshHz = Screen('Framerate', screenId);
 
 if refreshHz == 0
@@ -107,7 +114,22 @@ if refreshHz == 0
   refreshHz = 60;
 end
 
-[win, rect] = PsychImaging('OpenWindow', screenId, 0.5, [], [], [], stereomode, multisample, imagingmode, [], [], fbRect);
+if IsWin
+    %fbRect = [0 0 400 400]
+end
+
+PsychVulkanCore('Verbosity', 4);
+
+% IMPORTANT: On MS-Windows the PsychVulkanCore('GetCount') call MUST happen before
+% PsychImaging('OpenWindow'), so Vulkan init happens before Screen creates
+% its OpenGL contexts. Otherwise - on AMD on MS-Window only - OpenGL
+% contexts get somehow damaged, and any OpenGL call will cause a crash in
+% the AMD OpenGL driver for Windows!!!
+% The same problem does not exist on Linux + AMD/NVidia/Intel or on Windows
+% with NVidia.
+count = PsychVulkanCore('GetCount')
+
+[win, rect] = PsychImaging('OpenWindow', screenId, 0.5, vRect, [], [], stereomode, multisample, imagingmode, [], [], fbRect);
 winfo = Screen('GetWindowInfo', win)
 if IsLinux && ~isFullscreen
   outputHandle = uint64(winfo.SysWindowHandle);
@@ -118,12 +140,9 @@ if ~isempty(winfo.GLDeviceUUID)
 else
   targetUUID = zeros(1, 16, 'uint8');
 end
-
+foo1 = gluErrorString
 % Skip sync tests after 'OpenWindow' so we get the refresh calibration etc. to run:
 Screen('Preference', 'SkipSyncTests', 2);
-
-PsychVulkanCore('Verbosity', 4);
-count = PsychVulkanCore('GetCount')
 
 winHandle = dec2hex(outputHandle)
 
@@ -138,11 +157,11 @@ winHandle = dec2hex(outputHandle)
 %[vwin, width, height, glformat, memorysize, interoptexhandle, interopsemaphore] = PsychVulkanCore('OpenWindow', gpuIndex, isFullscreen, rect, outputHandle, refreshHz, colorSpace, colorFormat, flags)
 
 try
-  if IsLinux && isFullscreen && strcmp(winfo.DisplayCoreId, 'NVidia')
+    if IsLinux && isFullscreen && strcmp(winfo.DisplayCoreId, 'NVidia')
     system(sprintf('xrandr --screen %i --output %s --off ; sleep 1', screenId, output.name));
   end
 
-  vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, fbRect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags)
+  vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, vRect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags)
   [interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vwin)
 catch
   %system('xrandr --output DP-0 --set ''non-desktop'' 0');
@@ -166,6 +185,8 @@ if tilingMode
 else
   tilingMode = GL.LINEAR_TILING_EXT;
 end
+
+foo2 = gluErrorString
 
 Screen('Hookfunction', win, 'ImportDisplayBufferInteropMemory', [], 0, interopObjectHandle, allocationSize, internalFormat, tilingMode, memoryOffset, width, height);
 
