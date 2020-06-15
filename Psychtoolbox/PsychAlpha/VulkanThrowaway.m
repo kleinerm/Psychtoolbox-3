@@ -42,7 +42,17 @@ colorFormat = 0;
 flags = 0;
 
 gpuIndex = 0
+% NVidia can display on outputs not connected to the NVidia gpu, even
+% switch to fullscreen. Can't do HDR on the foreign screen though.
+% AMD on Windows will crash if you try to display (even windowed) on the
+% NVidia's screens, even though the driver claims it can handle that
+% surface.
 screenId = 1
+% NVidia on Windows can do HDR-10 in non-fullscreen mode, AMD can't.
+% Also, AMD currently can't switch to fullscreen on Windows under Octave,
+% only on Matlab. Go figure...
+% NVidia can't do fp16 with HDR10 colorspace, only extended srgb linear!
+% AMD always switches to HDR mode if fp16 selected, even for standard srgb!
 isFullscreen = 1
 colorPrecision = 0
 hdrMode = 0
