@@ -1762,7 +1762,6 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
 
     // Set OpenGL context of window so we can act on its FBO's:
     PsychSetGLContext(windowRecord);
-
     PsychTestForGLErrors();
 
     // Are all required OpenGL extensions supported?
@@ -1780,7 +1779,6 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
 
     // Create memory object for interop memory import:
     glCreateMemoryObjectsEXT(1, &fbo->memoryObject);
-
     PsychTestForGLErrors();
 
     // Platform specific external memory object import:
@@ -1792,12 +1790,29 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
 
     PsychTestForGLErrors();
 
-    // Assign tiling mode for rendering into the memory backed texture:
-    glTextureParameteri(fbo->coltexid, GL_TEXTURE_TILING_EXT, (GLenum) tilingMode);
+    // Unbind fbo, so we can modify it with robustness:
+    glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, 0);
+    glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, 0);
 
+    // Detach its colorbuffer texture:
+    glNamedFramebufferTexture2DEXT(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, glTextureTarget, 0, 0);
     PsychTestForGLErrors();
 
-    // Attach new external memory backing to the texture:
+    // Destroy and recreate texture object, to release all old backing memory
+    // for the texture image. While the AMD and NVidia drivers on Linux and the
+    // AMD driver on Windows don't care about omitting this destroy->recreate
+    // step, the NVidia driver on Windows will *silently* fail OpenGL->Vulkan
+    // interop  if we omit the step! It will only display an all black interop
+    // image on the Vulkan side. (Category: A weekend i'll never get back :/ ):
+    glDeleteTextures(1, &fbo->coltexid);
+    glCreateTextures(GL_TEXTURE_2D, 1, &fbo->coltexid);
+    PsychTestForGLErrors();
+
+    // Assign tiling mode for rendering into the external memory backed texture:
+    glTextureParameteri(fbo->coltexid, GL_TEXTURE_TILING_EXT, (GLenum) tilingMode);
+    PsychTestForGLErrors();
+
+    // Attach new external memory backing to the texture (this will apply tilingMode):
     if (glTextureTarget == GL_TEXTURE_2D_MULTISAMPLE)
         glTextureStorageMem2DMultisampleEXT(fbo->coltexid, multiSample, (GLenum) formatSpec, width, height, GL_TRUE, fbo->memoryObject, (GLuint64) memoryOffset);
     else
@@ -1805,8 +1820,16 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
 
     PsychTestForGLErrors();
 
+    // Set texture filtering to nearest neighbour, for use as a fbo color buffer attachment:
+    glTextureParameteri(fbo->coltexid, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTextureParameteri(fbo->coltexid, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    // Attach it as new colorbuffer backing texture:
+    glNamedFramebufferTexture2DEXT(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, glTextureTarget, fbo->coltexid, 0);
+
     // Bind FBO of view:
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo->fboid);
+    PsychTestForGLErrors();
 
     // Check for framebuffer completeness:
     fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -1869,6 +1892,8 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     // Restore old framebuffer assignments:
     glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, (GLuint) drawFBO);
     glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, (GLuint) readFBO);
+
+    PsychTestForGLErrors();
 
     return(fborc == GL_FRAMEBUFFER_COMPLETE_EXT);
 }
