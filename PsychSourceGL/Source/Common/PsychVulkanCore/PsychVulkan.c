@@ -2221,10 +2221,21 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
     // We also need VK_IMAGE_TILING_LINEAR on NVidia to get host visible memory for host writes.
     // However, VK_IMAGE_TILING_LINEAR does *not* allow rendering into as VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT.
 
+    // Image setup for external interop:
+    VkExternalMemoryImageCreateInfo externalMemImageInfo = {
+        .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+        .pNext = NULL,
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT,
+        #else
+        .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT,
+        #endif
+    };
+
     // Create VkImage object:
     VkImageCreateInfo imageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .pNext = NULL,
+        .pNext = !bringup ? &externalMemImageInfo : NULL,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = window->interopTextureVkFormat,
         .extent = {window->width, window->height, 1},
