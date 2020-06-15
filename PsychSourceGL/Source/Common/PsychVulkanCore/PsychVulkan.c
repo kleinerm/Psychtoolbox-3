@@ -1992,6 +1992,42 @@ psych_bool PsychTransitionImageLayout(VkCommandBuffer cmdBuffer, VkImage image, 
         sourceStage = VK_PIPELINE_STAGE_HOST_BIT;
         destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
     }
+    else if (oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_GENERAL) {
+        // Switch host initialized/written to interop image to optimal source for copy/blit:
+        barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT ;
+        printf("PsychTransitionImageLayout() VK_IMAGE_LAYOUT_PREINITIALIZED -> VK_IMAGE_LAYOUT_GENERAL\n");
+
+        sourceStage = VK_PIPELINE_STAGE_HOST_BIT;
+        destinationStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT; // XXX: Could also use VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT.
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+        // Switch host initialized/written to interop image to optimal source for copy/blit:
+        barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        printf("PsychTransitionImageLayout() VK_IMAGE_LAYOUT_PREINITIALIZED -> VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL\n");
+
+        sourceStage = VK_PIPELINE_STAGE_HOST_BIT;
+        destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+        // Switch host initialized/written to interop image to optimal source for copy/blit:
+        barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        printf("PsychTransitionImageLayout() VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL -> VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL\n");
+
+        sourceStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+        // Switch host initialized/written to interop image to optimal source for copy/blit:
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        printf("PsychTransitionImageLayout() VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL -> VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL\n");
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT ;
+    }
     else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
         // Debug for interop image: Before vkCmdClearColorImage():
         barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
