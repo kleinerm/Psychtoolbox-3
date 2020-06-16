@@ -2513,14 +2513,22 @@ psych_bool PsychRecordCopyCommandBuffer(PsychVulkanWindow* window, int index, ps
         return(FALSE);
     }
 
+    // DISABLED:
     // Do pixel format of interop texture image and target swapchain image match?
-    if (window->format != window->interopTextureVkFormat) {
+    // if (window->format != window->interopTextureVkFormat) {
+    //
+    // Always use vkCmdBlitImage(), because defining dstOffsets the way we do
+    // allows to flip the image vertically (ie. upside-down) during the blit.
+    // This takes the different origin and y-axis direction of OpenGL vs. Vulkan
+    // into account and flips the OpenGL source interop image into the upright
+    // orientation for Vulkan:
+    if (TRUE) {
         // No: Need pixel color format conversion -> blit image:
         VkImageBlit blitRegion = {
             .srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
             .srcOffsets = {{ 0, 0, 0 }, { window->width, window->height, 1 }},
             .dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
-            .dstOffsets = {{ 0, 0, 0 }, { window->width, window->height, 1 }}
+            .dstOffsets = {{ 0, window->height, 0 }, { window->width, 0, 1 }}
         };
 
         vkCmdBlitImage(cmd, window->interopImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, window->swapChainImages[index], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blitRegion, VK_FILTER_NEAREST);
