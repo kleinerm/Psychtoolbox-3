@@ -1795,7 +1795,7 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, 0);
 
     // Detach its colorbuffer texture:
-    glNamedFramebufferTexture2DEXT(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, glTextureTarget, 0, 0);
+    glNamedFramebufferTexture(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, 0, 0);
     PsychTestForGLErrors();
 
     // Destroy and recreate texture object, to release all old backing memory
@@ -1825,7 +1825,7 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     glTextureParameteri(fbo->coltexid, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     // Attach it as new colorbuffer backing texture:
-    glNamedFramebufferTexture2DEXT(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, glTextureTarget, fbo->coltexid, 0);
+    glNamedFramebufferTexture(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, fbo->coltexid, 0);
 
     // Bind FBO of view:
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo->fboid);
