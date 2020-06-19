@@ -113,7 +113,6 @@ end
 Screen('Preference', 'SkipSyncTests', 1);
 
 PsychImaging('PrepareConfiguration');
-PsychImaging('AddTask', 'AllViews', 'FlipVertical');
 
 fbRect = Screen('Rect', screenId);
 vRect = Screen('GlobalRect', screenId);
