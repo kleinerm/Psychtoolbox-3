@@ -1285,6 +1285,22 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
+
+void PsychProcessWindowEvents(PsychVulkanWindow* window)
+{
+    (void) window;
+    MSG msg;
+
+    // Run our message dispatch loop until we've processed all events in the event queue for our Vulkan windows:
+    // We need to do this periodically so Windows is convinced that our window/application is still alive and
+    // responsive. Otherwise it might conclude trouble and replace our Vulkan window by a ghost window which
+    // is effectively dead and useless for OpenGL rendering and Vulkan display:
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
+
 psych_bool PsychCreateMSWindowsDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, double refreshHz)
 {
     VkResult result;
@@ -1344,6 +1360,8 @@ psych_bool PsychCreateMSWindowsDisplaySurface(PsychVulkanWindow* window, PsychVu
 
     ShowWindow(window->win32PrivateWindow, SW_SHOW);
 
+    PsychProcessWindowEvents(window);
+
     // Setup fullScreenExclusive struct for use by PsychProbeSurfaceProperties()
     // and vkCreateSwapchainKHR():
     PsychInitFullScreenExlusiveStructs(window);
@@ -1384,6 +1402,13 @@ createsurface_out:
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
+
+void PsychProcessWindowEvents(PsychVulkanWindow* window)
+{
+    // No op so far:
+    (void) window;
+}
+
 psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, double refreshHz)
 {
     VkResult result;
@@ -1827,6 +1852,9 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     if (!supportsPresent)
         return(FALSE);
 
+    // Some time granted to GUI event dispatch:
+    PsychProcessWindowEvents(window);
+
     // Presenting to the surface is supported. Check supported color spaces, formats, present modes against requirements:
     if (!PsychProbeSurfaceProperties(window, vulkan)) {
         if (verbosity > 0)
@@ -1903,6 +1931,9 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     // TODO FIXME probe for specific colorSpace support.
     // TODO FIXME probe for specific colorFormat support.
     // TODO FIXME probe for specific refreshHz support.
+
+    // Some time granted to GUI event dispatch:
+    PsychProcessWindowEvents(window);
 
     return(TRUE);
 }
@@ -2148,6 +2179,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     VkResult result;
     PsychVulkanDevice* vulkan = window->vulkan;
 
+    // Some time granted to GUI event dispatch:
+    PsychProcessWindowEvents(window);
+
     // Wait for the image acquired semaphore to be signaled to ensure that the
     // swapchain image won't be overwritten with new content from the interop
     // image until the presentation engine has fully released ownership to us,
@@ -2221,6 +2255,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // to  wait for present completion.
     window->frameIndex++;
 
+    // Some time granted to GUI event dispatch:
+    PsychProcessWindowEvents(window);
+
     // Try to acquire next target swapchain buffer. window->currentSwapChainBuffer will
     // contain the index of the proper swapChainImage. This will setup the flipDoneFence
     // to signal Present completion of the present we just sent out:
@@ -2241,6 +2278,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         if (verbosity > 4)
             printf("PsychVulkanCore-DEBUG: PsychPresent(): Present for frameIndex %i completed: tComplete = %f secs.\n", window->frameIndex - 1, window->tPresentComplete);
     }
+
+    // Some time granted to GUI event dispatch:
+    PsychProcessWindowEvents(window);
 
     // Present successfully completed:
     return(TRUE);
@@ -2702,9 +2742,9 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     // Assign vulkan device to this window:
     window->vulkan = vulkan;
 
-    // Have a suitable gpu and surface. Reprobe this combo, so we have all needed properties:
-    if (!PsychProbeSurfaceProperties(window, vulkan))
-        goto openwindow_out1;
+    // XXX Redundant. Have a suitable gpu and surface. Reprobe this combo, so we have all needed properties:
+    //    if (!PsychProbeSurfaceProperties(window, vulkan))
+    //        goto openwindow_out1;
 
     // Create a swapchain for the windows surface:
 
@@ -2873,6 +2913,9 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         goto openwindow_out1;
     }
 
+    // Some time granted to GUI event dispatch:
+    PsychProcessWindowEvents(window);
+
     #if defined(VK_USE_PLATFORM_WIN32_KHR)
         if (isFullscreen) {
             // Switch swapChain into fullScreenExclusive mode:
@@ -3011,6 +3054,9 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         }
     }
 
+    // Some time granted to GUI event dispatch:
+    PsychProcessWindowEvents(window);
+
     // Prep work for first true Present - One-time warmup after creating the swapChain.
     // Try to acquire next target swapchain buffer window->currentSwapChainBuffer will
     // contain the index of the proper swapChainImage:
@@ -3041,6 +3087,9 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     rc = TRUE;
 
     window->isValid = TRUE;
+
+    // Some time granted to GUI event dispatch:
+    PsychProcessWindowEvents(window);
 
     return(TRUE);
 
@@ -3126,6 +3175,9 @@ psych_bool PsychCloseVulkanWindow(PsychVulkanWindow* window)
         window->surfaceFormats = NULL;
         window->surfaceFormatCount = 0;
     }
+
+    // Some time granted to GUI event dispatch:
+    PsychProcessWindowEvents(window);
 
     vkDeviceWaitIdle(window->vulkan->device);
 
