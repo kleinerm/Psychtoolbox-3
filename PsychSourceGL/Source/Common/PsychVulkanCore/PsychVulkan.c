@@ -1320,7 +1320,7 @@ psych_bool PsychCreateMSWindowsDisplaySurface(PsychVulkanWindow* window, PsychVu
         windowClass.hInstance = connection;
         windowClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
         windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
-        windowClass.hbrBackground = (HBRUSH)GetStockObject(WHITE_BRUSH);
+        windowClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
         windowClass.lpszMenuName = NULL;
         windowClass.lpszClassName = "PTB-Vulkan";
         windowClass.hIconSm = LoadIcon(NULL, IDI_WINLOGO);
