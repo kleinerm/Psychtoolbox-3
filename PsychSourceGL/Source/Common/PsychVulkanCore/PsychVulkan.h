@@ -58,6 +58,7 @@ PsychError PsychVulkanShutDown(void);
 
 PsychError PSYCHVULKANVerbosity(void);
 PsychError PSYCHVULKANGetCount(void);
+PsychError PSYCHVULKANGetDevices(void);
 PsychError PSYCHVULKANClose(void);
 PsychError PSYCHVULKANOpenWindow(void);
 PsychError PSYCHVULKANCloseWindow(void);

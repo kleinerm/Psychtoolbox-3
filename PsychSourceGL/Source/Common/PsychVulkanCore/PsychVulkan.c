@@ -263,7 +263,8 @@ void InitializeSynopsis(void)
     synopsis[i++] = "Functions used internally by Psychtoolbox:";
     synopsis[i++] = "";
     synopsis[i++] = "oldVerbosity = PsychVulkanCore('Verbosity' [, verbosity]);";
-    synopsis[i++] = "numDrivers = PsychVulkanCore('GetCount');";
+    synopsis[i++] = "numDevices = PsychVulkanCore('GetCount');";
+    synopsis[i++] = "devices = PsychVulkanCore('GetDevices');";
     synopsis[i++] = "PsychVulkanCore('Close' [, vulkanHandle]);";
     synopsis[i++] = "vulkanWindow = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, rect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);";
     synopsis[i++] = "PsychVulkanCore('CloseWindow' [, vulkanWindow]);";
@@ -1620,6 +1621,7 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
 
         // outputHandle contains the X11 Window handle of the Psychtoolbox onscreen window.
         #if defined(VK_USE_PLATFORM_XLIB_KHR)
+        // NVidia blob needs its own X-Window, it doesn't want to present into the standard Psychtoolbox onscreen window:
         if (vulkan->driverProps.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY) {
             unsigned int windowMapEventCount = 0;
             XSetWindowAttributes attr = { 0 };
@@ -1628,8 +1630,6 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
             attr.border_pixel = 0;      // Border color as well.
             attr.event_mask = StructureNotifyMask; // We're only interested in StructureNotify to wait for Windows to be mapped.
             attr.override_redirect = 0;
-            // NVidia blob needs its own X-Window, it doesn't want to present into the standard Psychtoolbox onscreen window:
-            //            window->x11PrivateWindow = XCreateSimpleWindow(connection, RootWindow(connection, screenId), (int) rect[0], (int) rect[1], (unsigned int) (rect[2] - rect[0]), (unsigned int) (rect[3] - rect[1]), 0, 0, 0);
             window->x11PrivateWindow = XCreateWindow(connection, RootWindow(connection, screenId), (int) rect[0], (int) rect[1],
                                                      (unsigned int) (rect[2] - rect[0]), (unsigned int) (rect[3] - rect[1]), 0,
                                                      CopyFromParent, CopyFromParent, CopyFromParent,
@@ -3305,14 +3305,14 @@ PsychError PSYCHVULKANVerbosity(void)
 
 PsychError PSYCHVULKANGetCount(void)
 {
-    static char useString[] = "numDrivers = PsychVulkanCore('GetCount');";
+    static char useString[] = "numDevices = PsychVulkanCore('GetCount');";
     static char synopsisString[] =
         "Returns count of currently available Vulkan driver + GPU combos.\n";
-    static char seeAlsoString[] = "Open";
+    static char seeAlsoString[] = "GetDevices";
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if( PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(1));
@@ -3321,6 +3321,77 @@ PsychError PSYCHVULKANGetCount(void)
     PsychVulkanCheckInit(FALSE);
 
     PsychCopyOutDoubleArg(1, kPsychArgOptional, physicalGpuCount);
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHVULKANGetDevices(void)
+{
+    static char useString[] = "devices = PsychVulkanCore('GetDevices');";
+    static char synopsisString[] =
+    "Returns an array of structs enumerating all currently available Vulkan driver + GPU combos.\n"
+    "Each struct in the array describes one combination of Vulkan driver and device, with the "
+    "following fields:\n\n"
+    "'deviceIndex' = Index of the device. Can be used in 'OpenWindow' as 'gpuIndex'.\n"
+    "'gpuName' = Name of the Vulkan device / graphics card.\n"
+    "'gpuDriver' = Name of the Vulkan driver associated with the device.\n"
+    "'driverInfo' = Additional info associated with the driver, vendor specific.\n"
+    "'driverVersion' = Major.minor.point version string with the driver version.\n"
+    "'driverVersionRaw' = Raw scalar Vulkan driver version.\n"
+    "'driverId' = Id of the type of Vulkan driver: 1 = AMD proprietary, 2 = AMD open\n"
+    "             source amdvlk, 3 = AMD OSS Mesa radv, 4 = NVidia proprietary,\n"
+    "             5 = Intel proprietary Windows, 6 = Intel OSS Mesa anvil,\n"
+    "             13 = Mesa OSS llvmpipe.\n"
+    "'vendorID' = Vulkan device vendor id. Typically the PCI vendor id.\n"
+    "'deviceID' = Vulkan device id. Typically the PCI device id.\n"
+    "'vulkanVersion' = Major.minor.point version of supported Vulkan api.\n"
+    "'gpuType' = Type of device: 0 = Unknown/Other, 1 = Integrated gpu,\n"
+    "            2 = Discrete gpu, 3 = Virtual gpu, 4 = cpu, ie. software renderer.\n\n"
+    "'supportsHDR' = Does the gpu support driving HDR displays in principle?\n"
+    "                0 = No, 1 = Basic HDR-10.\n"
+    "'supportsTiming' = Does the gpu support high precision/reliability timing\n"
+    "                   extensions. 0 = No, 1 = Yes. If the driver does not support\n"
+    "                   timing extensions, the driver will fall back to hacks.\n"
+    "\n";
+    static char seeAlsoString[] = "GetCount";
+
+    int i;
+    char tmp[64];
+    PsychGenericScriptType *s;
+    const char *fieldNames[] = { "DeviceIndex", "GpuName", "GpuDriver", "DriverInfo", "DriverVersion", "DriverVersionRaw", "DriverId", "VendorId", "DeviceId", "VulkanVersion", "GpuType", "SupportsHDR", "SupportsTiming" };
+    const int fieldCount = 13;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(0));
+
+    PsychVulkanCheckInit(FALSE);
+
+    // Create a structure and populate it.
+    PsychAllocOutStructArray(1, kPsychArgOptional, physicalGpuCount, fieldCount, fieldNames, &s);
+
+    for (i = 0; i < physicalGpuCount; i++) {
+        PsychVulkanDevice* vulkan = PsychGetVulkan(i + 1, FALSE);
+        PsychSetStructArrayDoubleElement("DeviceIndex", i, i, s);
+        PsychSetStructArrayStringElement("GpuName", i, vulkan->deviceProps.deviceName, s);
+        PsychSetStructArrayStringElement("GpuDriver", i, vulkan->driverProps.driverName, s);
+        PsychSetStructArrayStringElement("DriverInfo", i, vulkan->driverProps.driverInfo, s);
+        sprintf(tmp, "%i.%i.%i", VK_VERSION_MAJOR(vulkan->deviceProps.driverVersion), VK_VERSION_MINOR(vulkan->deviceProps.driverVersion), VK_VERSION_PATCH(vulkan->deviceProps.driverVersion));
+        PsychSetStructArrayStringElement("DriverVersion", i, tmp, s);
+        PsychSetStructArrayDoubleElement("DriverVersionRaw", i, vulkan->deviceProps.driverVersion, s);
+        PsychSetStructArrayDoubleElement("DriverId", i, vulkan->driverProps.driverID, s);
+        PsychSetStructArrayDoubleElement("VendorId", i, vulkan->deviceProps.vendorID, s);
+        PsychSetStructArrayDoubleElement("DeviceId", i, vulkan->deviceProps.deviceID, s);
+        sprintf(tmp, "%i.%i.%i", VK_VERSION_MAJOR(vulkan->deviceProps.apiVersion), VK_VERSION_MINOR(vulkan->deviceProps.apiVersion), VK_VERSION_PATCH(vulkan->deviceProps.apiVersion));
+        PsychSetStructArrayStringElement("VulkanVersion", i, tmp, s);
+        PsychSetStructArrayDoubleElement("GpuType", i, vulkan->deviceProps.deviceType, s);
+        PsychSetStructArrayDoubleElement("SupportsHDR", i, vulkan->hasHDR, s);
+        PsychSetStructArrayDoubleElement("SupportsTiming", i, vulkan->hasTiming, s);
+    }
 
     return(PsychError_none);
 }
