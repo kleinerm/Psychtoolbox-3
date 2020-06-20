@@ -117,6 +117,7 @@ typedef struct PsychVulkanWindow {
     psych_bool                          supports_non_vsync;
 
     psych_bool                          local_dimming_supported;
+    unsigned int                        nativeDisplayHDRMetadataValidity;
     VkHdrMetadataEXT                    nativeDisplayHDRMetadata;
     VkHdrMetadataEXT                    currentDisplayHDRMetadata;
 
@@ -268,6 +269,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychVulkanCore('Close' [, vulkanHandle]);";
     synopsis[i++] = "vulkanWindow = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, rect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);";
     synopsis[i++] = "PsychVulkanCore('CloseWindow' [, vulkanWindow]);";
+    synopsis[i++] = "hdr = PsychVulkanCore('GetHDRProperties', vulkanWindow);";
     synopsis[i++] = "[interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vulkanWindowHandle [, eye=0]);";
     synopsis[i++] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=1]);";
     synopsis[i++] = NULL; // Mark end of synopsis.
@@ -1090,6 +1092,21 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
 
     window->local_dimming_supported = nativeHDRCapabilitiesAMD.localDimmingSupport;
     window->surfaceCapabilities = surfaceCapabilities2.surfaceCapabilities;
+
+    // Check validity of queried display HDR properties:
+    {
+        window->nativeDisplayHDRMetadataValidity = 0;
+        psych_uint8* bp = (psych_uint8*) &window->nativeDisplayHDRMetadata;
+
+        for (i = 0; i < sizeof(window->nativeDisplayHDRMetadata); i++) {
+            window->nativeDisplayHDRMetadataValidity += (unsigned int) *(bp++);
+        }
+
+        // Greater 355 sum over struct suggests at least some valid data was returned, so
+        // mark it as valid (==1). Value 355 is what we would get with a content-free all
+        // zero struct, where only the .sType is defined as VK_STRUCTURE_TYPE_HDR_METADATA_EXT:
+        window->nativeDisplayHDRMetadataValidity = (window->nativeDisplayHDRMetadataValidity > 355) ? 1 : 0;
+    }
 
     // Initialize currentDisplayHDRMetadata, ie. what we would set when switching to HDR mode or
     // changing HDR info packets, to the displays nativeDisplayHDRMetadata, as a good startup
@@ -3540,6 +3557,86 @@ PsychError PSYCHVULKANOpenWindow(void)
     windowCount++;
 
     PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) handle);
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHVULKANGetHDRProperties(void)
+{
+    static char useString[] = "hdr = PsychVulkanCore('GetHDRProperties', vulkanWindow);";
+    static char synopsisString[] =
+    "Return HDR properties of Vulkan presentation window 'vulkanWindow'.\n"
+    "'hdr' is a struct with information about the HDR properties and settings "
+    "for the display and window represented by 'vulkanWindow'. The following "
+    "fields are defined:\n"
+    "'Valid' = Are the HDR display properties valid? 0 = No, as no data could be "
+    "queried from the display, 1 = Yes, data has been queried from display and is "
+    "supposed to represent actual display HDR capabilities and properties.\n"
+    "'HDRMode' 0 = None (SDR), 1 = Basic HDR-10 enabled with BT-2020 color "
+    "space, 10 bpc color precision, and ST-2084 PQ Perceptual Quantizer EOTF.\n"
+    "'LocalDimmingControl' 0 = No, 1 = Local dimming control supported.\n"
+    "'MinLuminance' Minimum supported luminance in nits.\n"
+    "'MaxLuminance' Maximum supported peak / burst luminance in nits.\n"
+    "'MaxFrameAverageLightLevel' Maximum sustainable supported luminance in nits.\n"
+    "'MaxContentLightLevel' Maximum desired content light level in nits.\n"
+    "'ColorGamut' A 2-by-4 matrix encoding the 2D chromaticity coordinates of the "
+    "red, green, and blue color primaries in columns 1, 2 and 3, and the white-point "
+    "in column 4.\n"
+    "\n";
+    static char seeAlsoString[] = "OpenWindow";
+
+    int handle;
+    PsychVulkanWindow* window;
+    PsychGenericScriptType *s;
+    PsychGenericScriptType *outMat;
+    double *v;
+    const char *fieldNames[] = { "Valid", "HDRMode", "LocalDimmingControl", "MinLuminance", "MaxLuminance", "MaxFrameAverageLightLevel", "MaxContentLightLevel", "ColorGamut" };
+    const int fieldCount = 8;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments:
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+
+    // Make sure Vulkan api is initialized, fail if not:
+    PsychVulkanCheckInit(FALSE);
+
+    // Get window index, if any:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+
+    // Get the window:
+    window = PsychGetVulkanWindow(handle, FALSE);
+
+    // Create a structure and populate it.
+    PsychAllocOutStructArray(1, kPsychArgOptional, -1, fieldCount, fieldNames, &s);
+
+    PsychSetStructArrayDoubleElement("Valid", 0, window->nativeDisplayHDRMetadataValidity, s);
+    PsychSetStructArrayDoubleElement("HDRMode", 0, window->hdrMode, s);
+    PsychSetStructArrayDoubleElement("LocalDimmingControl", 0, window->local_dimming_supported, s);
+    PsychSetStructArrayDoubleElement("MinLuminance", 0, window->nativeDisplayHDRMetadata.minLuminance, s);
+    PsychSetStructArrayDoubleElement("MaxLuminance", 0, window->nativeDisplayHDRMetadata.maxLuminance, s);
+    PsychSetStructArrayDoubleElement("MaxFrameAverageLightLevel", 0, window->nativeDisplayHDRMetadata.maxFrameAverageLightLevel, s);
+    PsychSetStructArrayDoubleElement("MaxContentLightLevel", 0, window->nativeDisplayHDRMetadata.maxContentLightLevel, s);
+
+    // Create color gamut and white point matrix:
+    PsychAllocateNativeDoubleMat(2, 4, 1, &v, &outMat);
+
+    *(v++) = window->nativeDisplayHDRMetadata.displayPrimaryRed.x;
+    *(v++) = window->nativeDisplayHDRMetadata.displayPrimaryRed.y;
+
+    *(v++) = window->nativeDisplayHDRMetadata.displayPrimaryGreen.x;
+    *(v++) = window->nativeDisplayHDRMetadata.displayPrimaryGreen.y;
+
+    *(v++) = window->nativeDisplayHDRMetadata.displayPrimaryBlue.x;
+    *(v++) = window->nativeDisplayHDRMetadata.displayPrimaryBlue.y;
+
+    *(v++) = window->nativeDisplayHDRMetadata.whitePoint.x;
+    *(v++) = window->nativeDisplayHDRMetadata.whitePoint.y;
+
+    PsychSetStructArrayNativeElement("ColorGamut", 0, outMat, s);
 
     return(PsychError_none);
 }

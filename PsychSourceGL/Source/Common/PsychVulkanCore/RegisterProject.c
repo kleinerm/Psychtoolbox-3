@@ -57,7 +57,7 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("CloseWindow", &PSYCHVULKANCloseWindow));
     PsychErrorExit(PsychRegister("GetInteropHandle", &PSYCHVULKANGetInteropHandle));
     PsychErrorExit(PsychRegister("GetDevices", &PSYCHVULKANGetDevices));
-    //PsychErrorExit(PsychRegister("", &PSYCHVULKAN));
+    PsychErrorExit(PsychRegister("GetHDRProperties", &PSYCHVULKANGetHDRProperties));
     //PsychErrorExit(PsychRegister("", &PSYCHVULKAN));
     //PsychErrorExit(PsychRegister("", &PSYCHVULKAN));
 

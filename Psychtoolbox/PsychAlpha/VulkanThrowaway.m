@@ -162,6 +162,8 @@ catch
   return;
 end
 
+hdrDisplayProperties = PsychVulkanCore('GetHDRProperties', vwin)
+
 switch formatSpec
   case 0
     internalFormat = GL.RGBA8;
