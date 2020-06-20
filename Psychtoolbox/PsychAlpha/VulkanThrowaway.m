@@ -8,7 +8,6 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
     win = varargin{1};
     Screen('Hookfunction', win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
     glFlush;
-    %glFinish;
     return;
   end
 
@@ -32,7 +31,6 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
   if cmd == 2
     vwin = varargin{1};
     PsychVulkanCore('CloseWindow', vwin);
-    %PsychVulkanCore('Close');
     return;
   end
 end
@@ -47,7 +45,7 @@ gpuIndex = 0
 % AMD on Windows will crash if you try to display (even windowed) on the
 % NVidia's screens, even though the driver claims it can handle that
 % surface.
-screenId = 1
+screenId = 0
 % NVidia on Windows can do HDR-10 in non-fullscreen mode, AMD can't.
 % Also, AMD currently can't switch to fullscreen on Windows under Octave,
 % only on Matlab. Go figure...
@@ -55,7 +53,7 @@ screenId = 1
 % AMD always switches to HDR mode if fp16 selected, even for standard srgb!
 isFullscreen = 1
 colorPrecision = 0
-hdrMode = 0
+hdrMode = 1
 
 if IsLinux
     Screen('Preference', 'ConserveVRAM', 524288);
@@ -79,7 +77,15 @@ end
 
 PsychDefaultSetup(2);
 %Screen('Preference', 'Verbosity', 10);
-Screen('Preference', 'VBLTimestampingMode', 0);
+if IsLinux
+    if ~isFullscreen
+        Screen('Preference', 'VBLTimestampingMode', 0);
+    else
+        Screen('Preference', 'VBLTimestampingMode', 4);
+    end
+else
+    Screen('Preference', 'VBLTimestampingMode', 0);
+end
 
 InitializeMatlabOpenGL([],[0],1);
 GL.OPTIMAL_TILING_EXT = hex2dec('9584');
@@ -91,20 +97,9 @@ imagingmode = kPsychNeedFinalizedFBOSinks; % Useless, because we need at least a
 
 if IsLinux
   if isFullscreen
-    if screenId ~= 1 || 1
-      output = Screen('ConfigureDisplay', 'Scanout', screenId, 0)
-    else
-      output.outputHandle = 551
-      output.name = 'HDMI-0';
-    end
-
+    output = Screen('ConfigureDisplay', 'Scanout', screenId, 0)
     outputHandle = uint64(output.outputHandle);
     outputName = output.name
-    if screenId == 1
-      % Only for NVidia on screen 1: Need to disable output, otherwise RandR
-      % leasing and direct display mode won't work with the NVidia blob :/
-      % Screen('ConfigureDisplay', 'Scanout', screenId, 0, 0, 0, 0);
-    end
   end
 else
   outputHandle = uint64(0)
@@ -114,18 +109,8 @@ Screen('Preference', 'SkipSyncTests', 1);
 
 PsychImaging('PrepareConfiguration');
 
-fbRect = Screen('Rect', screenId);
 vRect = Screen('GlobalRect', screenId);
 refreshHz = Screen('Framerate', screenId);
-
-if refreshHz == 0
-  fbRect = [0 0 1024 600];
-  refreshHz = 60;
-end
-
-if IsWin
-    %fbRect = [0 0 400 400]
-end
 
 PsychVulkanCore('Verbosity', 4);
 
@@ -138,7 +123,7 @@ PsychVulkanCore('Verbosity', 4);
 % with NVidia.
 count = PsychVulkanCore('GetCount')
 
-[win, rect] = PsychImaging('OpenWindow', screenId, 0.5, vRect, [], [], stereomode, multisample, imagingmode, [], [], fbRect);
+[win, rect] = PsychImaging('OpenWindow', screenId, 0.5, vRect, [], [], stereomode, multisample, imagingmode, [], [], vRect);
 winfo = Screen('GetWindowInfo', win)
 if IsLinux && ~isFullscreen
   outputHandle = uint64(winfo.SysWindowHandle);
@@ -162,18 +147,19 @@ winHandle = dec2hex(outputHandle)
 %         -> No OpenGL / GLX stuff on Vulkan side!
 %
 % Windows: window rect.
-%
-%[vwin, width, height, glformat, memorysize, interoptexhandle, interopsemaphore] = PsychVulkanCore('OpenWindow', gpuIndex, isFullscreen, rect, outputHandle, refreshHz, colorSpace, colorFormat, flags)
-
 try
-    if IsLinux && isFullscreen && strcmp(winfo.DisplayCoreId, 'NVidia')
+  if IsLinux && isFullscreen && strcmp(winfo.DisplayCoreId, 'NVidia') && ~isempty(strfind(winfo.GLVendor, 'NVIDIA'))
     system(sprintf('xrandr --screen %i --output %s --off ; sleep 1', screenId, output.name));
   end
 
   vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, vRect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags)
   [interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vwin)
 catch
-  %system('xrandr --output DP-0 --set ''non-desktop'' 0');
+  if IsLinux && isFullscreen && strcmp(winfo.DisplayCoreId, 'NVidia') && ~isempty(strfind(winfo.GLVendor, 'NVIDIA'))
+    system(sprintf('xrandr --screen %i --output %s --auto ; sleep 1', screenId, output.name));
+  end
+  sca;
+  return;
 end
 
 switch formatSpec
@@ -216,9 +202,6 @@ KbReleaseWait;
 tVbl = GetSecs;
 tOnset = nan(1,1000);
 
-GL.FRAMEBUFFER_FLIP_Y_MESA = hex2dec('8BBB');
-%glFramebufferParameteri(GL.DRAW_FRAMEBUFFER, GL.FRAMEBUFFER_FLIP_Y_MESA, 1);
-
 while ~KbCheck
   i = i + 1;
   Screen('FillRect', win, 0.5);
@@ -230,7 +213,7 @@ end
 
 Screen('CloseAll');
 
-if IsLinux && isFullscreen && strcmp(winfo.DisplayCoreId, 'NVidia')
+if IsLinux && isFullscreen && strcmp(winfo.DisplayCoreId, 'NVidia') && ~isempty(strfind(winfo.GLVendor, 'NVIDIA'))
   system(sprintf('xrandr --screen %i --output %s --auto', screenId, output.name));
 end
 
