@@ -204,13 +204,17 @@ KbReleaseWait;
 tVbl = GetSecs;
 tOnset = nan(1,1000);
 
-while ~KbCheck
-  i = i + 1;
-  Screen('FillRect', win, 0.5);
-  Screen('DrawText', win, sprintf('Hello %i', i), 100, 100);
-  tWhen = tVbl + 0.0;
-  doTimestamp = [];
-  [tVbl, tOnset(mod(i, length(tOnset)) + 1)] = Screen('Flip', win, tWhen, [], doTimestamp);
+try
+  while ~KbCheck
+    i = i + 1;
+    Screen('FillRect', win, 0.5);
+    Screen('DrawText', win, sprintf('Hello %i', i), 100, 100);
+    tWhen = tVbl + 0.0;
+    doTimestamp = [];
+    hdrMetadata = PsychVulkanCore('HDRMetadata', vwin, 0, maxFrameAverageLightLevel=100, maxContentLightLevel=400, minLuminance=1, maxLuminance=500, hdrDisplayProperties.ColorGamut);
+    [tVbl, tOnset(mod(i, length(tOnset)) + 1)] = Screen('Flip', win, tWhen, [], doTimestamp);
+  end
+catch
 end
 
 Screen('CloseAll');

@@ -119,6 +119,7 @@ typedef struct PsychVulkanWindow {
     psych_bool                          local_dimming_supported;
     unsigned int                        nativeDisplayHDRMetadataValidity;
     VkHdrMetadataEXT                    nativeDisplayHDRMetadata;
+    psych_bool                          currentDisplayHDRMetadataNeedsCommit;
     VkHdrMetadataEXT                    currentDisplayHDRMetadata;
 
     uint32_t                            surfaceFormatCount;
@@ -245,6 +246,7 @@ PFN_vkAcquireXlibDisplayEXT fpAcquireXlibDisplayEXT = NULL;
 }
 
 static void PsychCloseAllVulkanWindows(void);
+static psych_bool PsychSetHDRMetaData(PsychVulkanWindow* window);
 
 void InitializeSynopsis(void)
 {
@@ -271,6 +273,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychVulkanCore('CloseWindow' [, vulkanWindow]);";
     synopsis[i++] = "hdr = PsychVulkanCore('GetHDRProperties', vulkanWindow);";
     synopsis[i++] = "[interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vulkanWindowHandle [, eye=0]);";
+    synopsis[i++] = "oldHdrMetadata = PsychVulkanCore('HDRMetadata', vulkanWindow [, metadataType=0][, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);";
     synopsis[i++] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=1]);";
     synopsis[i++] = NULL; // Mark end of synopsis.
 
@@ -2241,6 +2244,13 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // Wait for target present time:
     PsychWaitUntilSeconds(tWhen);
 
+    // Commit new HDR metadata to the swapChain / display if requested:
+    if (window->hdrMode && window->currentDisplayHDRMetadataNeedsCommit) {
+        window->currentDisplayHDRMetadataNeedsCommit = FALSE;
+
+        PsychSetHDRMetaData(window);
+    }
+
     // Present it asap:
     result = vkQueuePresentKHR(vulkan->graphicsQueue, &present);
     if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
@@ -2652,7 +2662,7 @@ psych_bool PsychSetHDRMetaData(PsychVulkanWindow* window)
 
     if (verbosity > 3) {
         printf("\n");
-        printf("PsychVulkanCore-INFO: Set HDR display properties for window %i:\n", window->index);
+        printf("PsychVulkanCore-INFO: Set HDR display properties for window %i, frameIndex %i:\n", window->index, window->frameIndex);
         printf("PsychVulkanCore-INFO: Display Gamut  R: [%f, %f]\n", window->currentDisplayHDRMetadata.displayPrimaryRed.x, window->currentDisplayHDRMetadata.displayPrimaryRed.y);
         printf("PsychVulkanCore-INFO: Display Gamut  G: [%f, %f]\n", window->currentDisplayHDRMetadata.displayPrimaryGreen.x, window->currentDisplayHDRMetadata.displayPrimaryGreen.y);
         printf("PsychVulkanCore-INFO: Display Gamut  B: [%f, %f]\n", window->currentDisplayHDRMetadata.displayPrimaryBlue.x, window->currentDisplayHDRMetadata.displayPrimaryBlue.y);
@@ -3583,7 +3593,7 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     "red, green, and blue color primaries in columns 1, 2 and 3, and the white-point "
     "in column 4.\n"
     "\n";
-    static char seeAlsoString[] = "OpenWindow";
+    static char seeAlsoString[] = "OpenWindow HDRMetadata";
 
     int handle;
     PsychVulkanWindow* window;
@@ -3637,6 +3647,190 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     *(v++) = window->nativeDisplayHDRMetadata.whitePoint.y;
 
     PsychSetStructArrayNativeElement("ColorGamut", 0, outMat, s);
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHVULKANHDRMetadata(void)
+{
+    static char useString[] = "oldHdrMetadata = PsychVulkanCore('HDRMetadata', vulkanWindow [, metadataType=0][, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);";
+    //                         1                                               1               2                 3                            4                       5               6               7
+    static char synopsisString[] =
+    "Return and/or set HDR metadata for Vulkan presentation window 'vulkanWindow'.\n"
+    "This function returns the currently defined HDR metadata that is sent to the "
+    "HDR display monitor associated with Vulkan window 'vulkanWindow'. It optionally "
+    "allows to define new HDR metadata to send to the monitor, starting with the next "
+    "presented visual stimulus image.\n"
+    "Return argument 'oldHdrMetadata' is a struct with information about the current metadata. "
+    "Optionally you can define new metadata to be sent to the display. If you specify any new "
+    "settings, but omit any values or leave them [] empty, then those values will remain at their "
+    "current / old values.\n"
+    "The following fields in the struct and as new settings are defined:\n"
+    "'MetadataType' Type of metadata to send. Currently only a value of 0 is supported, which "
+    "defines \"Static HDR metadata type 1\", as used and specified by the HDR-10 standard. This "
+    "type of metadata allows for luminance levels between 0 and 10000 nits.\n"
+    "'MaxFrameAverageLightLevel' Maximum frame average light level of the visual content in nits.\n"
+    "'MaxContentLightLevel' Maximum light level of the visual content in nits.\n"
+    "'MinLuminance' Minimum supported luminance of the mastering display in nits.\n"
+    "'MaxLuminance' Maximum supported luminance of the mastering display in nits.\n"
+    "'ColorGamut' A 2-by-4 matrix encoding the 2D chromaticity coordinates of the "
+    "red, green, and blue color primaries in columns 1, 2, and 3, and the location of the white-point "
+    "in column 4. This defines the color space and gamut in which the visual content was produced.\n"
+    "\n";
+    static char seeAlsoString[] = "OpenWindow GetHDRProperties Present";
+
+    int handle;
+    PsychVulkanWindow* window;
+    PsychGenericScriptType *s;
+    PsychGenericScriptType *outMat;
+    double *v;
+    int metadataType;
+    double maxFrameAverageLightLevel = DBL_MAX, maxContentLightLevel = DBL_MAX;
+    double minLuminance = DBL_MAX, maxLuminance = DBL_MAX;
+    double *colorGamut;
+    int m, n, p;
+    const char *fieldNames[] = { "MetadataType", "MinLuminance", "MaxLuminance", "MaxFrameAverageLightLevel", "MaxContentLightLevel", "ColorGamut" };
+    const int fieldCount = 6;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous or too little arguments:
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(7));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
+
+    // Make sure Vulkan api is initialized, fail if not:
+    PsychVulkanCheckInit(FALSE);
+
+    // Get window index, if any:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+
+    // Get the window:
+    window = PsychGetVulkanWindow(handle, FALSE);
+
+    // Userscript wants current / old settings?
+    if (PsychIsArgPresent(PsychArgOut, 1)) {
+        // Create a structure and populate it with the current settings / old settings:
+        PsychAllocOutStructArray(1, kPsychArgOptional, -1, fieldCount, fieldNames, &s);
+
+        // Currently we only support MetadataType 0, ie. "Static HDR Metadata Type 1" as known from HDR-10 standard,
+        // and the only thing current graphics and display drivers generally support afaik as of June 2020:
+        PsychSetStructArrayDoubleElement("MetadataType", 0, 0, s);
+
+        // Mastering display min and max luminance:
+        PsychSetStructArrayDoubleElement("MinLuminance", 0, window->currentDisplayHDRMetadata.minLuminance, s);
+        PsychSetStructArrayDoubleElement("MaxLuminance", 0, window->currentDisplayHDRMetadata.maxLuminance, s);
+
+        // Scene content average and maximum content light level:
+        PsychSetStructArrayDoubleElement("MaxFrameAverageLightLevel", 0, window->currentDisplayHDRMetadata.maxFrameAverageLightLevel, s);
+        PsychSetStructArrayDoubleElement("MaxContentLightLevel", 0, window->currentDisplayHDRMetadata.maxContentLightLevel, s);
+
+        // Create color gamut and white point matrix defining the mastering display color gamut / color space:
+        PsychAllocateNativeDoubleMat(2, 4, 1, &v, &outMat);
+
+        *(v++) = window->currentDisplayHDRMetadata.displayPrimaryRed.x;
+        *(v++) = window->currentDisplayHDRMetadata.displayPrimaryRed.y;
+
+        *(v++) = window->currentDisplayHDRMetadata.displayPrimaryGreen.x;
+        *(v++) = window->currentDisplayHDRMetadata.displayPrimaryGreen.y;
+
+        *(v++) = window->currentDisplayHDRMetadata.displayPrimaryBlue.x;
+        *(v++) = window->currentDisplayHDRMetadata.displayPrimaryBlue.y;
+
+        *(v++) = window->currentDisplayHDRMetadata.whitePoint.x;
+        *(v++) = window->currentDisplayHDRMetadata.whitePoint.y;
+
+        PsychSetStructArrayNativeElement("ColorGamut", 0, outMat, s);
+    }
+
+    // Assign optional new settings from user script:
+    metadataType = 0;
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &metadataType)) {
+        // Validate. Only type 0 allowed/supported atm.:
+        if (metadataType != 0)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR metadataType specified: Valid value is 0 only at the moment.");
+    }
+
+    // Content light levels:
+    if (PsychCopyInDoubleArg(3, kPsychArgOptional, &maxFrameAverageLightLevel)) {
+        if (maxFrameAverageLightLevel < 0 || maxFrameAverageLightLevel > 10000)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR content maxFrameAverageLightLevel specified: Must be between 0 and 10000 nits.");
+
+        window->currentDisplayHDRMetadata.maxFrameAverageLightLevel = (float) maxFrameAverageLightLevel;
+
+        window->currentDisplayHDRMetadataNeedsCommit = TRUE;
+    }
+
+    if (PsychCopyInDoubleArg(4, kPsychArgOptional, &maxContentLightLevel)) {
+        if (maxContentLightLevel < 0 || maxContentLightLevel > 10000)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR content maxContentLightLevel specified: Must be between 0 and 10000 nits.");
+
+        if (maxContentLightLevel < window->currentDisplayHDRMetadata.maxFrameAverageLightLevel)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR content maxContentLightLevel specified: Must be equal or greater than maxFrameAverageLightLevel in nits.");
+
+        window->currentDisplayHDRMetadata.maxContentLightLevel = (float) maxContentLightLevel;
+
+        window->currentDisplayHDRMetadataNeedsCommit = TRUE;
+    }
+
+    // Mastering display supported light levels:
+    if (PsychCopyInDoubleArg(5, kPsychArgOptional, &minLuminance)) {
+        if (minLuminance < 0 || minLuminance > 10000)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR mastering display minLuminance specified: Must be between 0 and 10000 nits.");
+
+        window->currentDisplayHDRMetadata.minLuminance = (float) minLuminance;
+
+        window->currentDisplayHDRMetadataNeedsCommit = TRUE;
+    }
+
+    if (PsychCopyInDoubleArg(6, kPsychArgOptional, &maxLuminance)) {
+        if (maxLuminance < 0 || maxLuminance > 10000)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR mastering display maxLuminance specified: Must be between 0 and 10000 nits.");
+
+        if (maxLuminance <  window->currentDisplayHDRMetadata.minLuminance)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR mastering display maxLuminance specified: Must be equal or greater than minLuminance in nits.");
+
+        window->currentDisplayHDRMetadata.maxLuminance = (float) maxLuminance;
+
+        window->currentDisplayHDRMetadataNeedsCommit = TRUE;
+    }
+
+    // Mastering display / content color space:
+    if (PsychAllocInDoubleMatArg(7, kPsychArgOptional, &m, &n, &p, &colorGamut)) {
+        if (m != 2 || n!= 4 || p > 1)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR colorGamut matrix specified: Must be a 2-by-4 matrix with [red, green, blue, white-point] chromaticity coordinates.");
+
+        // Note: We intentionally do not range-check these chromaticity coordinates against [0.0 ; 1.0], as
+        // there are color spaces with gamut coordinates outside the "physical" range 0 - 1, so values
+        // outside the conventional range are valid albeit "unconventional":
+        window->currentDisplayHDRMetadata.displayPrimaryRed.x = (float) *(colorGamut++);
+        window->currentDisplayHDRMetadata.displayPrimaryRed.y = (float) *(colorGamut++);
+
+        window->currentDisplayHDRMetadata.displayPrimaryGreen.x = (float) *(colorGamut++);
+        window->currentDisplayHDRMetadata.displayPrimaryGreen.y = (float) *(colorGamut++);
+
+        window->currentDisplayHDRMetadata.displayPrimaryBlue.x = (float) *(colorGamut++);
+        window->currentDisplayHDRMetadata.displayPrimaryBlue.y = (float) *(colorGamut++);
+
+        window->currentDisplayHDRMetadata.whitePoint.x = (float) *(colorGamut++);
+        window->currentDisplayHDRMetadata.whitePoint.y = (float) *(colorGamut++);
+
+        window->currentDisplayHDRMetadataNeedsCommit = TRUE;
+    }
+
+    // We do not call the driver to update HDR metadata here, as the semantic says this should be
+    // only happening at Present() time. We only marked the need for an update at proper time in
+    // the assignments above.
+    if (window->currentDisplayHDRMetadataNeedsCommit) {
+        // Some more consistency checks:
+        if ((window->currentDisplayHDRMetadata.maxLuminance <  window->currentDisplayHDRMetadata.minLuminance) && (minLuminance != DBL_MAX))
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR mastering display minLuminance specified: Must be equal or smaller than current maxLuminance in nits.");
+
+        if ((window->currentDisplayHDRMetadata.maxContentLightLevel <  window->currentDisplayHDRMetadata.maxFrameAverageLightLevel) && (maxFrameAverageLightLevel != DBL_MAX))
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR content maxFrameAverageLightLevel specified: Must be equal or smaller than current maxContentLightLevel in nits.");
+    }
 
     return(PsychError_none);
 }
