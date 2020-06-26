@@ -46,7 +46,13 @@
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
+// Define for Vulkan WSI on Windows:
 #define VK_USE_PLATFORM_WIN32_KHR
+
+// Defines and includes for DXGI v1.6 low-level access and HDR output query:
+#define COBJMACROS 1
+#include <initguid.h>
+#include <dxgi1_6.h>
 #endif
 
 #include <vulkan/vulkan.h>
@@ -1020,6 +1026,93 @@ void PsychInitFullScreenExlusiveStructs(PsychVulkanWindow* window)
 {
     fullscreenExclusiveInfoWin32.hmonitor = MonitorFromWindow(window->win32PrivateWindow, MONITOR_DEFAULTTOPRIMARY);
 }
+
+void PsychMSDXGIQueryOutputHDR(PsychVulkanWindow* window, PsychVulkanDevice* vulkan)
+{
+    // Could not query HDR display properties via Vulkan on Windows. Try to
+    // use DXGI v1.6 on Windows-10 instead:
+    IDXGIFactory4 *dxgiFactory = NULL;
+
+    // Try to create DXGI factory:
+    if (S_OK != CreateDXGIFactory2(0, &IID_IDXGIFactory4, (void**) &dxgiFactory)) {
+        if (verbosity > 1)
+            printf("PsychVulkanCore-WARNING: Failed to create a DXGI factory for HDR display properties fallback query!\n");
+    }
+    else {
+        DXGI_ADAPTER_DESC1 desc1;
+        IDXGIAdapter1 *dxgiAdapter = NULL;
+        unsigned int index = 0;
+
+        // Enumerate all DXGI adapters, check for matching one for our Vulkan/OpenGL gpu:
+        while ((S_OK == IDXGIFactory4_EnumAdapters1(dxgiFactory, index, &dxgiAdapter)) && (S_OK == IDXGIAdapter1_GetDesc1(dxgiAdapter, &desc1))) {
+            if (verbosity > 4)
+                printf("PsychVulkanCore-DEBUG: Name of DXGI adapter %i is '%S'.\n", index, (wchar_t*) desc1.Description);
+
+            // LUID valid and match between Vulkan and DXGI?
+            if (vulkan->physDeviceProps.deviceLUIDValid && !memcmp(&desc1.AdapterLuid, &vulkan->physDeviceProps.deviceLUID[0], sizeof(desc1.AdapterLuid)))
+                break;
+
+            // Wrong DXGI gpu, not the same as Vulkan/OpenGL gpu:
+            IDXGIAdapter1_Release(dxgiAdapter);
+            dxgiAdapter = NULL;
+            index++;
+        }
+
+        if (dxgiAdapter) {
+            DXGI_OUTPUT_DESC outDesc;
+            DXGI_OUTPUT_DESC1 outDesc1;
+            IDXGIOutput *dxgiOutput = NULL;
+            index = 0;
+
+            while ((S_OK == IDXGIAdapter1_EnumOutputs(dxgiAdapter, index, &dxgiOutput)) && (S_OK == IDXGIOutput_GetDesc(dxgiOutput, &outDesc))) {
+                if (outDesc.Monitor == fullscreenExclusiveInfoWin32.hmonitor) {
+                    break;
+                }
+
+                IDXGIOutput_Release(dxgiOutput);
+                dxgiOutput = NULL;
+                index++;
+            }
+
+            // Found proper DXGI output? Able to query its HDR properties?
+            if (dxgiOutput) {
+                if (S_OK == IDXGIOutput6_GetDesc1((IDXGIOutput6*) dxgiOutput, &outDesc1)) {
+                    if (verbosity > 4)
+                        printf("PsychVulkanCore-DEBUG: Getting HDR properties via DXGI from output %i '%S':\n", index, outDesc1.DeviceName);
+
+                    window->nativeDisplayHDRMetadata.displayPrimaryRed.x = outDesc1.RedPrimary[0];
+                    window->nativeDisplayHDRMetadata.displayPrimaryRed.y = outDesc1.RedPrimary[1];
+
+                    window->nativeDisplayHDRMetadata.displayPrimaryGreen.x = outDesc1.GreenPrimary[0];
+                    window->nativeDisplayHDRMetadata.displayPrimaryGreen.y = outDesc1.GreenPrimary[1];
+
+                    window->nativeDisplayHDRMetadata.displayPrimaryBlue.x = outDesc1.BluePrimary[0];
+                    window->nativeDisplayHDRMetadata.displayPrimaryBlue.y = outDesc1.BluePrimary[1];
+
+                    window->nativeDisplayHDRMetadata.whitePoint.x = outDesc1.WhitePoint[0];
+                    window->nativeDisplayHDRMetadata.whitePoint.y = outDesc1.WhitePoint[1];
+
+                    window->nativeDisplayHDRMetadata.minLuminance = outDesc1.MinLuminance;
+                    window->nativeDisplayHDRMetadata.maxLuminance = outDesc1.MaxLuminance;
+                    window->nativeDisplayHDRMetadata.maxFrameAverageLightLevel = outDesc1.MaxFullFrameLuminance;
+                    window->nativeDisplayHDRMetadata.maxContentLightLevel = 0.0;
+
+                    // Mark HDR data as valid:
+                    window->nativeDisplayHDRMetadataValidity = 1;
+                }
+
+                IDXGIOutput_Release(dxgiOutput);
+                dxgiOutput = NULL;
+            }
+
+            IDXGIAdapter1_Release(dxgiAdapter);
+            dxgiAdapter = NULL;
+        }
+
+        IDXGIFactory4_Release(dxgiFactory);
+        dxgiFactory = NULL;
+    }
+}
 #else
 void PsychInitFullScreenExlusiveStructs(PsychVulkanWindow* window) {}
 #endif
@@ -1109,6 +1202,14 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         // mark it as valid (==1). Value 355 is what we would get with a content-free all
         // zero struct, where only the .sType is defined as VK_STRUCTURE_TYPE_HDR_METADATA_EXT:
         window->nativeDisplayHDRMetadataValidity = (window->nativeDisplayHDRMetadataValidity > 355) ? 1 : 0;
+
+        // Invalid HDR data? XXX TODO: Check if AMD Vulkan bug on Windows is fixed, otherwise use fallback on Windows?
+        if (!window->nativeDisplayHDRMetadataValidity) {
+            // Try OS specific fallback to get display HDR properties:
+            #if PSYCH_SYSTEM == PSYCH_WINDOWS
+                PsychMSDXGIQueryOutputHDR(window, vulkan);
+            #endif
+        }
     }
 
     // Initialize currentDisplayHDRMetadata, ie. what we would set when switching to HDR mode or
