@@ -1357,7 +1357,7 @@ psych_bool PsychCreateMSWindowsDisplaySurface(PsychVulkanWindow* window, PsychVu
         windowClassRegistered = TRUE;
     }
 
-    // Windows Vulkan ICD's need their own window, they doen't want to share with OpenGL and
+    // Windows Vulkan ICD's need their own window, they don't want to share with OpenGL and
     // therefore can not present into the standard Psychtoolbox onscreen window:
     window->win32PrivateWindow = CreateWindowEx(WS_EX_TOPMOST | WS_EX_APPWINDOW,
                                                 "PTB-Vulkan",   // class name
@@ -2769,10 +2769,6 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     // Assign vulkan device to this window:
     window->vulkan = vulkan;
 
-    // XXX Redundant. Have a suitable gpu and surface. Reprobe this combo, so we have all needed properties:
-    //    if (!PsychProbeSurfaceProperties(window, vulkan))
-    //        goto openwindow_out1;
-
     // Create a swapchain for the windows surface:
 
     // Select size of swapchain in pixels:
@@ -3150,6 +3146,8 @@ openwindow_out1:
     vkDestroySwapchainKHR(vulkan->device, window->swapChain, NULL);
     window->swapChain = (VkSwapchainKHR) VK_NULL_HANDLE;
 
+openwindow_out2:
+
     vkDestroySurfaceKHR(vulkanInstance, window->surface, NULL);
     window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
 
@@ -3178,8 +3176,6 @@ openwindow_out1:
         window->win32PrivateWindow = NULL;
     }
 #endif
-
-openwindow_out2:
 
     return (rc);
 }
