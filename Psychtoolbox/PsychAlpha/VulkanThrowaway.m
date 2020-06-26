@@ -211,7 +211,7 @@ try
     Screen('DrawText', win, sprintf('Hello %i', i), 100, 100);
     tWhen = tVbl + 0.0;
     doTimestamp = [];
-    hdrMetadata = PsychVulkanCore('HDRMetadata', vwin, 0, maxFrameAverageLightLevel=100, maxContentLightLevel=400, minLuminance=1, maxLuminance=500, hdrDisplayProperties.ColorGamut);
+    %hdrMetadata = PsychVulkanCore('HDRMetadata', vwin, 0, 100, 400, 1, 500, hdrDisplayProperties.ColorGamut);
     [tVbl, tOnset(mod(i, length(tOnset)) + 1)] = Screen('Flip', win, tWhen, [], doTimestamp);
   end
 catch
