@@ -35,6 +35,8 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
   end
 end
 
+format long;
+
 colorSpace = 0;
 colorFormat = 0;
 flags = 0;

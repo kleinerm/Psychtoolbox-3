@@ -2977,6 +2977,9 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         goto openwindow_out1;
     }
 
+    // Assign colorspace to window:
+    window->colorspace = colorSpace;
+
     VkSwapchainCreateInfoKHR swapChainCreateInfo = { 0 };
     swapChainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     swapChainCreateInfo.surface = window->surface;
@@ -3501,7 +3504,7 @@ PsychError PSYCHVULKANGetDevices(void)
 
     for (i = 0; i < physicalGpuCount; i++) {
         PsychVulkanDevice* vulkan = PsychGetVulkan(i + 1, FALSE);
-        PsychSetStructArrayDoubleElement("DeviceIndex", i, i, s);
+        PsychSetStructArrayDoubleElement("DeviceIndex", i, i + 1, s);
         PsychSetStructArrayStringElement("GpuName", i, vulkan->deviceProps.deviceName, s);
         PsychSetStructArrayStringElement("GpuDriver", i, vulkan->driverProps.driverName, s);
         PsychSetStructArrayStringElement("DriverInfo", i, vulkan->driverProps.driverInfo, s);
@@ -3690,6 +3693,8 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     "'ColorGamut' A 2-by-4 matrix encoding the 2D chromaticity coordinates of the "
     "red, green, and blue color primaries in columns 1, 2 and 3, and the white-point "
     "in column 4.\n"
+    "'ColorSpace' Vulkan colorspace used for display. See VkColorSpaceKHR spec for reference.\n"
+    "'ColorFormat' Vulkan pixel color format used for display. See VkFormat spec for reference.\n"
     "\n";
     static char seeAlsoString[] = "OpenWindow HDRMetadata";
 
@@ -3698,8 +3703,10 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     PsychGenericScriptType *s;
     PsychGenericScriptType *outMat;
     double *v;
-    const char *fieldNames[] = { "Valid", "HDRMode", "LocalDimmingControl", "MinLuminance", "MaxLuminance", "MaxFrameAverageLightLevel", "MaxContentLightLevel", "ColorGamut" };
-    const int fieldCount = 8;
+    const char *fieldNames[] = { "Valid", "HDRMode", "LocalDimmingControl", "MinLuminance", "MaxLuminance",
+                                 "MaxFrameAverageLightLevel", "MaxContentLightLevel", "ColorGamut",
+                                 "ColorSpace", "ColorFormat" };
+    const int fieldCount = 10;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3728,6 +3735,8 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     PsychSetStructArrayDoubleElement("MaxLuminance", 0, window->nativeDisplayHDRMetadata.maxLuminance, s);
     PsychSetStructArrayDoubleElement("MaxFrameAverageLightLevel", 0, window->nativeDisplayHDRMetadata.maxFrameAverageLightLevel, s);
     PsychSetStructArrayDoubleElement("MaxContentLightLevel", 0, window->nativeDisplayHDRMetadata.maxContentLightLevel, s);
+    PsychSetStructArrayDoubleElement("ColorSpace", 0, window->colorspace, s);
+    PsychSetStructArrayDoubleElement("ColorFormat", 0, window->format, s);
 
     // Create color gamut and white point matrix:
     PsychAllocateNativeDoubleMat(2, 4, 1, &v, &outMat);
