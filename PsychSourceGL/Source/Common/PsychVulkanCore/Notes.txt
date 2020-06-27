@@ -1,0 +1,59 @@
+Some notes about driver bugs encountered:
+
+AMD amdvlk on Linux, as tested with Ubuntu 19.10 and 20.04-LTS:
+
+NO relevant bugs since/as of the release of the 2020-Q2.5 driver in June 2020.
+Now supports HDR-10 with 10 bpc output precision properly in direct display mode.
+
+--> ALL GOOD as of 2020-Q2.5
+
+Before that release there were various serious bugs for which i
+provided bug fixes, and one bug report fixed by AMD themselves:
+
+- Failure of RandR output --> VKDisplayKHR mapping in error handling and on repeat calls.
+- Failure of RandR output leasing --> Bugs in the build process, and other bugs.
+- Failure in DirectDisplayMode to provide any displayable pixel formats!
+- Failure in DirectDisplayMode to provide > 8 bpc formats.
+- Errors in HDR display colorimetry property queries.
+- Failure to allow setting HDR metadata for the display in RandR output leased mode.
+
+Windows-10:
+
+AMD: As of Radeon software release 2020.4.2 (June 2020)
+
+- Failure in HDR display colorimetry property queries. Misreports maxLuminance and
+  maxFALL: maxFALL not reported at all (ie. zero), maxLuminance misreported as what
+  should be maxFALL. Reported to AMD months ago, not fixed.
+
+- In fullscreen exclusive mode, surface properties report maxLayers == 0, which is
+  an impossible value, and leads to validation layers falsely reporting application
+  bugs. Ie. VkSurfaceCapabilities2KHR.surfaceCapabilities.maxImageArrayLayers == 0.
+
+- Switching to fullscreen exclusive mode works with Matlab (compiled with MSVC2019),
+  but not with Octave 5.1 (MinGW64) for unknown reasons.
+
+- Trying to display a VKSurface on any display not attached to the AMD gpu, but to
+  a different gpu (in my case, NVidia GeForce GTX-1650) leads to a amd driver crash,
+  not only in fullscreen exclusive mode, but even in regular windowed mode, when
+  displaying into a Window on the regular Windows-10 desktop, just located on a
+  different gpu's monitor!
+
+- Control of local backlight dimming on a FreeSync-2 HDR certified monitor via
+  VkDisplayNativeHdrSurfaceCapabilitiesAMD does not work, despite the extension
+  reporting that the monitor supports control. Don't know if this is an AMD
+  driver bug, or monitor firmware bug.
+
+NVidia: As of driver version 450, GeForce GTX 1650.
+
+Querying HDR display colorimetry/HDR metadata from within Vulkan via
+fpGetPhysicalDeviceSurfaceCapabilities2KHR() with .pNext chained VK_STRUCTURE_TYPE_HDR_METADATA_EXT
+struct fails. Works on AMD Windows and Linux.
+
+Needed to implement a fallback using MS-Windows 10 DXGI v1.6.
+
+Displaying in HDR-10 windowed mode sometimes gets the display stuck in HDR-10
+permanently, even across system reboots. One needs to manually disable in Windows-10
+display settings.
+
+
+
