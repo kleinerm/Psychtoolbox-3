@@ -30,13 +30,18 @@ AMD: As of Radeon software release 2020.4.2 (June 2020)
   bugs. Ie. VkSurfaceCapabilities2KHR.surfaceCapabilities.maxImageArrayLayers == 0.
 
 - Switching to fullscreen exclusive mode works with Matlab (compiled with MSVC2019),
-  but not with Octave 5.1 (MinGW64) for unknown reasons.
+  but not with Octave 5.1/5.2 (MinGW64) for unknown reasons. VK_ERROR_INITIALIZATION_FAILED.
 
 - Trying to display a VKSurface on any display not attached to the AMD gpu, but to
   a different gpu (in my case, NVidia GeForce GTX-1650) leads to a amd driver crash,
   not only in fullscreen exclusive mode, but even in regular windowed mode, when
   displaying into a Window on the regular Windows-10 desktop, just located on a
   different gpu's monitor!
+
+  Stack Trace (from fault):
+  [  0] 0x00007ffb8f65dc58 C:\WINDOWS\System32\DriverStore\FileRepository\u0355311.inf_amd64_183b8d63847c90cf\B355199\amdvlk64.dll+00121944 vk_icdNegotiateLoaderICDInterfaceVersion+00030360
+  [  1] 0x00007ffbe551c4c0                   C:\WINDOWS\SYSTEM32\vulkan-1.dll+00115904 vkDestroyDescriptorPool+00062320
+  [  2] 0x00007ffbe561c381 C:\Users\Mario Kleiner\Documents\GitHub\Psychtoolbox-3\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\PsychVulkanCore.mexw64+00050049 mexFunction+00023009
 
 - Control of local backlight dimming on a FreeSync-2 HDR certified monitor via
   VkDisplayNativeHdrSurfaceCapabilitiesAMD does not work, despite the extension
@@ -46,14 +51,11 @@ AMD: As of Radeon software release 2020.4.2 (June 2020)
 NVidia: As of driver version 450, GeForce GTX 1650.
 
 Querying HDR display colorimetry/HDR metadata from within Vulkan via
-fpGetPhysicalDeviceSurfaceCapabilities2KHR() with .pNext chained VK_STRUCTURE_TYPE_HDR_METADATA_EXT
-struct fails. Works on AMD Windows and Linux.
+vkGetPhysicalDeviceSurfaceCapabilities2KHR() with .pNext chained VK_STRUCTURE_TYPE_HDR_METADATA_EXT
+struct fails. Works on AMD on both Windows and Linux.
 
 Needed to implement a fallback using MS-Windows 10 DXGI v1.6.
 
 Displaying in HDR-10 windowed mode sometimes gets the display stuck in HDR-10
 permanently, even across system reboots. One needs to manually disable in Windows-10
 display settings.
-
-
-
