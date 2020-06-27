@@ -1203,9 +1203,10 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         // zero struct, where only the .sType is defined as VK_STRUCTURE_TYPE_HDR_METADATA_EXT:
         window->nativeDisplayHDRMetadataValidity = (window->nativeDisplayHDRMetadataValidity > 355) ? 1 : 0;
 
-        // Invalid HDR data? XXX TODO: Check if AMD Vulkan bug on Windows is fixed, otherwise use fallback on Windows?
-        if (!window->nativeDisplayHDRMetadataValidity) {
-            // Try OS specific fallback to get display HDR properties:
+        // Missing HDR data, because Vulkan driver didn't provide any? Or buggy AMD Vulkan proprietary driver on MS-Windows?
+        if (!window->nativeDisplayHDRMetadataValidity ||
+            ((window->nativeDisplayHDRMetadata.maxFrameAverageLightLevel == 0) && (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR))) {
+            // Try OS specific fallback to get (better - less buggy) display HDR properties:
             #if PSYCH_SYSTEM == PSYCH_WINDOWS
                 PsychMSDXGIQueryOutputHDR(window, vulkan);
             #endif
