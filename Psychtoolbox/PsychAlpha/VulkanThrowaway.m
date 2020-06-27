@@ -165,6 +165,10 @@ catch
 end
 
 hdrDisplayProperties = PsychVulkanCore('GetHDRProperties', vwin)
+if hdrDisplayProperties.LocalDimmingControl
+    oldLocalDimming = PsychVulkanCore('HDRLocalDimming', vwin, 1)
+    newLocalDimming = PsychVulkanCore('HDRLocalDimming', vwin)
+end
 
 switch formatSpec
   case 0

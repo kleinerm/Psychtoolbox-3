@@ -123,6 +123,7 @@ typedef struct PsychVulkanWindow {
     psych_bool                          supports_non_vsync;
 
     psych_bool                          local_dimming_supported;
+    unsigned int                        localDimmmingEnable;
     unsigned int                        nativeDisplayHDRMetadataValidity;
     VkHdrMetadataEXT                    nativeDisplayHDRMetadata;
     psych_bool                          currentDisplayHDRMetadataNeedsCommit;
@@ -278,6 +279,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "vulkanWindow = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, rect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);";
     synopsis[i++] = "PsychVulkanCore('CloseWindow' [, vulkanWindow]);";
     synopsis[i++] = "hdr = PsychVulkanCore('GetHDRProperties', vulkanWindow);";
+    synopsis[i++] = "oldlocalDimmmingEnable = PsychVulkanCore('HDRLocalDimming', vulkanWindow [, localDimmmingEnable]);";
     synopsis[i++] = "[interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vulkanWindowHandle [, eye=0]);";
     synopsis[i++] = "oldHdrMetadata = PsychVulkanCore('HDRMetadata', vulkanWindow [, metadataType=0][, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);";
     synopsis[i++] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=1]);";
@@ -3937,6 +3939,71 @@ PsychError PSYCHVULKANHDRMetadata(void)
 
         if ((window->currentDisplayHDRMetadata.maxContentLightLevel <  window->currentDisplayHDRMetadata.maxFrameAverageLightLevel) && (maxFrameAverageLightLevel != DBL_MAX))
             PsychErrorExitMsg(PsychError_user, "Invalid HDR content maxFrameAverageLightLevel specified: Must be equal or smaller than current maxContentLightLevel in nits.");
+    }
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHVULKANHDRLocalDimming(void)
+{
+    static char useString[] = "oldlocalDimmmingEnable = PsychVulkanCore('HDRLocalDimming', vulkanWindow [, localDimmmingEnable]);";
+    //                         1                                                           1               2
+    static char synopsisString[] =
+    "Return and/or set HDR local backlight dimming enable setting for Vulkan presentation window 'vulkanWindow'.\n"
+    "This function returns the currently set HDR local backlight dimming setting for dynamic contrast control on "
+    "the HDR display monitor associated with Vulkan window 'vulkanWindow'.\n"
+    "Return argument 'oldlocalDimmmingEnable' is the current setting.\n"
+    "The optional 'localDimmingEnable' is the new setting to apply. This will only "
+    "work if the display and display driver supports the VK_AMD_display_native_hdr "
+    "Vulkan extension. As of June 2020, only \"AMD FreeSync2 HDR compliant\" "
+    "HDR monitors under Windows-10 with an AMD graphics card in fullscreen mode support this.\n"
+    "The PsychVulkanCore('GetHDRProperties', vulkanWindow) function allows to query if the "
+    "current setup supports this function. Please note that this function will always report "
+    "the selected 'localDimmingEnable' setting made by your code on a nominally supported setup. "
+    "There is no way for our driver to detect if the mode change on the display was accepted, as "
+    "the operating system provides no feedback about this. At least one model of \"compatible\" monitor "
+    "is already known to ignore this setting, unknown if this is an AMD driver bug or monitor firmware "
+    "bug. Tread carefully! Manual control of this setting on the monitor itself may be the safer choice."
+    "\n";
+    static char seeAlsoString[] = "GetHDRProperties";
+
+    int handle;
+    PsychVulkanWindow* window;
+    int localDimmmingEnable;
+
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous or too little arguments:
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+
+    // Make sure Vulkan api is initialized, fail if not:
+    PsychVulkanCheckInit(FALSE);
+
+    // Get window index, if any:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+
+    // Get the window:
+    window = PsychGetVulkanWindow(handle, FALSE);
+
+    // Return current / old setting:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, window->localDimmmingEnable);
+
+    // Assign optional new settings from user script:
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &localDimmmingEnable)) {
+        if ((localDimmmingEnable != 0) && (localDimmmingEnable != 1))
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR localDimmmingEnable specified: Valid values are 0 (Disable) and 1 (Enable).");
+
+        // Supported by display and driver?
+        if (!window->local_dimming_supported)
+            PsychErrorExitMsg(PsychError_user, "Tried to set HDR localDimmmingEnable mode for HDR display, but driver + display does not support this!");
+
+        // vkSetLocalDimmingAMD does not provide a return code with success/failure,
+        // so just assume it succeeded, the best we can do:
+        window->localDimmmingEnable = localDimmmingEnable;
+        fpSetLocalDimmingAMD(window->vulkan->device, window->swapChain, (VkBool32) localDimmmingEnable);
     }
 
     return(PsychError_none);

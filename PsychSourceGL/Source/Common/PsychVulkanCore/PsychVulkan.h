@@ -63,6 +63,7 @@ PsychError PSYCHVULKANClose(void);
 PsychError PSYCHVULKANOpenWindow(void);
 PsychError PSYCHVULKANCloseWindow(void);
 PsychError PSYCHVULKANGetHDRProperties(void);
+PsychError PSYCHVULKANHDRLocalDimming(void);
 PsychError PSYCHVULKANHDRMetadata(void);
 PsychError PSYCHVULKANPresent(void);
 PsychError PSYCHVULKANGetInteropHandle(void);
