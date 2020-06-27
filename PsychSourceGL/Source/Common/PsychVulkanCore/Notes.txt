@@ -48,6 +48,50 @@ AMD: As of Radeon software release 2020.4.2 (June 2020)
   reporting that the monitor supports control. Don't know if this is an AMD
   driver bug, or monitor firmware bug.
 
+- Calling vkCreateInstance() after an OpenGL context was created, instead of before, somehow
+  damages the OpenGL context in a way that causes any OpenGL glXXX() to crash the AMD OpenGL
+  driver. Even trying to unbind an OpenGL context will crash the driver!
+
+  Graphics card 1          : Advanced Micro Devices, Inc. ( 0x1002 ) AMD Radeon(TM) RX Vega 11 Graphics Version 26.20.15029.27017 (2020-5-15)
+  Graphics card 2          : NVIDIA ( 0x10de ) NVIDIA GeForce GTX 1650 Version 26.21.14.4587 (2020-4-3)
+  Java Version             : Java 1.8.0_181-b13 with Oracle Corporation Java HotSpot(TM) 64-Bit Server VM mixed mode
+  MATLAB Architecture      : win64
+  MATLAB Entitlement ID    : 6173418
+  MATLAB Root              : C:\Program Files\MATLAB\R2019a
+  MATLAB Version           : 9.6.0.1150989 (R2019a) Update 4
+  OpenGL                   : hardware
+  Operating System         : Microsoft Windows 10 Home
+  Process ID               : 8920
+  Processor ID             : x86 Family 143 Model 17 Stepping 0, AuthenticAMD
+  Session Key              : 15abeac6-e21d-4516-b749-94940f76e3bd
+  Window System            : Version 10.0 (Build 18363)
+
+Fault Count: 1
+
+
+Abnormal termination:
+Access violation
+
+Register State (from fault):
+  RAX = 000000000035b000  RBX = 00000000043fb100
+  RCX = 000000000000004d  RDX = 0000000000000000
+  RSP = 00000000043faeb0  RBP = 0000000000000001
+  RSI = 0000000000000001  RDI = 00007ffba3b97010
+ 
+   R8 = 0000000000000013   R9 = 0000000000000000
+  R10 = 0000000000000002  R11 = 00000000043fae90
+  R12 = 0000000000000000  R13 = 000000017c98d890
+  R14 = 00000000043fb100  R15 = 00007ffba3ce0e40
+ 
+  RIP = 00007ffb91ecb014  EFL = 00010202
+ 
+   CS = 0033   FS = 0053   GS = 002b
+
+Stack Trace (from fault):
+[  0] 0x00007ffb91ecb014 C:\WINDOWS\System32\DriverStore\FileRepository\u0355311.inf_amd64_183b8d63847c90cf\B355199\atio6axx.dll+17412116 DrvPresentBuffers+06413060
+[  1] 0x00007ffba3b4f30c C:\Users\Mario Kleiner\Documents\GitHub\Psychtoolbox-3\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\moglcore.mexw64+00258828
+
+
 NVidia: As of driver version 450, GeForce GTX 1650.
 
 Querying HDR display colorimetry/HDR metadata from within Vulkan via
