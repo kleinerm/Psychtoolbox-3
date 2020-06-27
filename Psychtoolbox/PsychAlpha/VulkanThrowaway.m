@@ -73,8 +73,8 @@ if IsLinux
       Screen('Preference', 'WindowShieldingLevel', 2000);
     end
 else
-    Screen('Preference', 'WindowShieldingLevel', 1199);
-    %Screen('Preference', 'WindowShieldingLevel', -1);
+    % Default shielding level:
+    Screen('Preference', 'WindowShieldingLevel', 2000);
 end
 
 PsychDefaultSetup(2);
@@ -86,6 +86,7 @@ if IsLinux
         Screen('Preference', 'VBLTimestampingMode', 4);
     end
 else
+    % Default timestamping mode for Windows:
     Screen('Preference', 'VBLTimestampingMode', 0);
 end
 
