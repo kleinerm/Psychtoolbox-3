@@ -1753,7 +1753,7 @@ psych_bool PsychCreateLinuxDisplaySurface(PsychVulkanWindow* window, PsychVulkan
             attr.background_pixel = 0;  // Background color defaults to black.
             attr.border_pixel = 0;      // Border color as well.
             attr.event_mask = StructureNotifyMask; // We're only interested in StructureNotify to wait for Windows to be mapped.
-            attr.override_redirect = 0;
+            attr.override_redirect = 1;
             window->x11PrivateWindow = XCreateWindow(connection, RootWindow(connection, screenId), (int) rect[0], (int) rect[1],
                                                      (unsigned int) (rect[2] - rect[0]), (unsigned int) (rect[3] - rect[1]), 0,
                                                      CopyFromParent, CopyFromParent, CopyFromParent,
