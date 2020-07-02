@@ -62,6 +62,8 @@
 %                                    and initialize the pipeline for many common tasks.
 % PsychVideoSwitcher            - Setup routine for the Xiangru Li et al. "VideoSwitcher" video attenuator device.
 %
+% PsychVulkan                   - Interface with the Vulkan graphics and compute api for special purpose tasks.
+%
 % SetAnaglyphStereoParameters   - Function for runtime tuning of Anaglyph stereo parameters,
 %                                    see ImagingStereoDemo for example of use.
 % SetStereoBlueLineSyncParameters - Change settings for drawing of stereo sync lines in frame-sequential stereo mode.

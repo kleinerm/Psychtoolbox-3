@@ -1361,6 +1361,24 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   correction and vignette correction for a fullscreen window on the HMD.
 %
 %
+% * 'UseVulkanDisplay' Display this onscreen window using a Vulkan-based display
+%   backend. This only works on graphics card + operating system combinations
+%   which support both the OpenGL and Vulkan rendering api's and OpenGL-Vulkan
+%   interop. As of June 2020 this would be modern AMD and NVidia graphics cards
+%   under modern GNU/Linux (Ubuntu 18.04-LTS and later) and Microsoft Windows-10.
+%
+%   At the moment 'UseVulkanDisplay' does not provide any advantages for standard
+%   visual stimulus display tasks, quite the contrary! The current implementation
+%   is *experimental* and may go through backwards incompatible changes which may
+%   break your scripts if you rely on it! Only use if you really know what you are
+%   doing!
+%
+%   Usage:
+%
+%   PsychImaging('AddTask', 'General', 'UseVulkanDisplay' [, outputName TODO REMOVE?]);
+%
+%   Psychtoolbox will try to use XXX TODO
+%
 % * More actions will be supported in the future. If you can think of an
 %   action of common interest not yet supported by this framework, please
 %   file a feature request on our Wiki (Mainpage -> Feature Requests).
@@ -1727,6 +1745,26 @@ if strcmpi(cmd, 'OpenWindow')
     % Compute correct imagingMode - Settings for current configuration and
     % return it:
     [imagingMode, needStereoMode, reqs] = FinalizeConfiguration(reqs, stereomode, screenid);
+
+    floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
+    if ~isempty(floc)
+        [rows cols] = ind2sub(size(reqs), floc(1));
+        row = rows(1);
+
+        % Extract first parameter - This would be the optional video output name:
+        outputName = reqs{row, 3};
+
+        % Compute special OpenWindow overrides for winRect, framebuffer rect, and specialflags, as needed:
+        [winRect, ovrfbOverrideRect, ovrSpecialFlags, outputName] = PsychVulkan('OpenWindowSetup', outputName, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+
+        % Reassign first parameter. Anything non-empty means to use fullscreen/
+        % direct display mode:
+        reqs{row, 3} = outputName;
+
+        % Reset pixelSize to default 8 bpc, as we are handling potential deep color
+        % in the Vulkan backend, not on the Screen onscreen window:
+        pixelSize = [];
+    end
 
     % Override stereomode derived from requirements?
     if needStereoMode ~= -1
@@ -2952,6 +2990,37 @@ if ~isempty(floc)
             end
         end
         reqs = [reqs ; x];
+    end
+end
+
+% Want to use the Vulkan/WSI display backend?
+floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
+if ~isempty(floc)
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+
+    % Check if Vulkan/WSI based display output is supported at all, ie. if a
+    % Vulkan loader library is installed, so PsychVulkanCore can be loaded and
+    % linked, and if at least one Vulkan gpu is available on this system setup.
+    % This will also perform driver init and Vulkan instance init, which is an
+    % important thing to do as the very first thing before opening an onscreen
+    % window (ie. before OpenGL context creation) on AMD + Windows-10, otherwise
+    % the AMD proprietary OpenGL driver might crash due to AMD driver bugs!
+    if ~PsychVulkan('Supported')
+        % Failed/Unsupported.
+        error('PsychImaging: Requested task ''UseVulkanDisplay'', but this system does not support Vulkan at all.');
+    end
+
+    % Add imaging mode flags for handing rendered images to Vulkan:
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedFinalizedFBOSinks);
+
+    if ismember(userstereomode, [1, 11])
+        error('PsychImaging: Requested task ''UseVulkanDisplay'' is incompatible with frame-sequential stereo mode %i.', userstereomode);
+    end
+
+    if ismember(userstereomode, [10])
+        % Remap dual-window stereo to dual-stream stereo:
+        stereoMode = 12;
     end
 end
 
@@ -5165,6 +5234,32 @@ if needsIdentityCLUT
         % Yes: Apply identity LUT setup there as well:
         LoadIdentityClut(slavewin, [], [], disableDithering);
     end
+end
+
+% Special Vulkan display backend in use?
+floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
+if ~isempty(floc)
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+
+    % Extract first parameter - This would be the optional video output name:
+    outputName = reqs{row, 3};
+
+    if ~isempty(outputName)
+        isFullscreen = 1;
+    else
+        isFullscreen = 0;
+    end
+
+    hdrMode = 0;
+    colorPrecision = 0;
+    colorSpace = 0;
+    colorFormat = 0;
+    flags = 0;
+    gpuIndex = 0
+
+    % Perform Vulkan onscreen window creation and setup of Vulkan and OpenGL interop on our side:
+    vwin = PsychVulkan('PerformPostWindowOpenSetup', win, Screen('GlobalRect', win), isFullscreen, outputName, hdrMode, colorPrecision, colorSpace, colorFormat, gpuIndex, flags);
 end
 
 % Is a default colormode specified via psych_default_colormode variable and
