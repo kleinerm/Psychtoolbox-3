@@ -276,12 +276,13 @@ try
         % tests.
         PsychImaging('AddTask', 'General', 'UseDataPixx');
     end
+    PsychImaging('AddTask', 'General', 'UseVulkanDisplay')%, 'DisplayPort-1');
 
     if 0
         w=PsychImaging('OpenWindow',screenNumber, 0,[0 0 1430 900],[],[], stereo);
         Screen('GetFlipInfo', w, 1);
     else
-        w=PsychImaging('OpenWindow',screenNumber, 0,[],[],[], stereo);
+        w=PsychImaging('OpenWindow',screenNumber, 0,[0 0 400 400],[],[], stereo);
     end
     
     % Query effective stereo mode, as Screen() could have changed it behind our
