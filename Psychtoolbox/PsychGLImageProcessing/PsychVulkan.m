@@ -330,12 +330,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         targetUUID = zeros(1, 16, 'uint8');
     end
 
-    if IsWin
-        % Skip sync tests after 'OpenWindow' so we get the refresh calibration etc. to run:
-        % TODO FIXME: Replace with something appropriate!
-        Screen('Preference', 'SkipSyncTests', 2);
-    end
-
     % Is the special fullscreen direct display mode workaround for NVidia blobs on Linux needed?
     needsNvidiaWa = IsLinux && isFullscreen && strcmp(winfo.DisplayCoreId, 'NVidia') && ~isempty(strfind(winfo.GLVendor, 'NVIDIA'));
 
