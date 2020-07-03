@@ -32,7 +32,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         win = varargin{1};
         Screen('Hookfunction', win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
 
-        % glFlush() the OpenGL pipeline. TODO: Switch to use of OpenGL<->Vulkan semaphores instead
+        % glFinish() the OpenGL pipeline. TODO: Switch to use of OpenGL<->Vulkan semaphores instead
         % for theoretically higher efficiency and correctness. In practice, this works on both
         % Linux and Windows-10 with AMD and NVidia, both OSS and proprietary drivers:
         glFinish;
@@ -238,7 +238,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
     return;
 end
 
-% vwin = PsychVulkan('PerformPostWindowOpenSetup', window, windowRect, [[isFullscreen]], outputName, [[hdrMode]], [[colorPrecision]], [[colorSpace]], [[colorFormat]], [[gpuIndex]], [[flags]])
+% vwin = PsychVulkan('PerformPostWindowOpenSetup', window, windowRect, isFullscreen, outputName, hdrMode, colorPrecision, colorSpace, colorFormat, gpuIndex, flags)
 if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Setup operations after Screen's PTB onscreen window is opened, and OpenGL and
     % the imaging pipeline are brought up. Needs to hook up the imaging pipeline to
@@ -284,6 +284,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     winfo = Screen('GetWindowInfo', win);
     screenId = Screen('WindowScreenNumber', win);
     refreshHz = Screen('Framerate', screenId);
+
+    if isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_memory_object')) %#ok<STREMP>
+        flags = mor(flags, 1);
+        noInterop = 1;
+        fprintf('PsychVulkan-Info: OpenGL implementation does not support OpenGL-Vulkan interop! Enabling basic diagnostic mode.\n');
+    else
+        noInterop = 0;
+    end
 
     if IsLinux
         if isFullscreen
@@ -354,8 +362,10 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % Open the Vulkan window:
         vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, windowRect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);
 
-        % Get all required info for OpenGL-Vulkan interop:
-        [interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vwin)
+        if ~noInterop
+            % Get all required info for OpenGL-Vulkan interop:
+            [interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vwin)
+        end
     catch
         % Failed! Reenable RandR output if this was a failed attempt at output leasing on Linux + NVidia:
         if needsNvidiaWa
@@ -395,7 +405,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
 
     % Set it up:
-    Screen('Hookfunction', win, 'ImportDisplayBufferInteropMemory', [], 0, interopObjectHandle, allocationSize, internalFormat, tilingMode, memoryOffset, width, height);
+    if ~noInterop
+        Screen('Hookfunction', win, 'ImportDisplayBufferInteropMemory', [], 0, interopObjectHandle, allocationSize, internalFormat, tilingMode, memoryOffset, width, height);
+    end
 
     vulkan{vwin}.valid = 1;
     vulkan{vwin}.win = win;

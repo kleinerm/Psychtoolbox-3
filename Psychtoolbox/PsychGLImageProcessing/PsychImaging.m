@@ -5256,7 +5256,7 @@ if ~isempty(floc)
     colorSpace = 0;
     colorFormat = 0;
     flags = 0;
-    gpuIndex = 0
+    gpuIndex = 0;
 
     % Perform Vulkan onscreen window creation and setup of Vulkan and OpenGL interop on our side:
     vwin = PsychVulkan('PerformPostWindowOpenSetup', win, Screen('GlobalRect', win), isFullscreen, outputName, hdrMode, colorPrecision, colorSpace, colorFormat, gpuIndex, flags);
