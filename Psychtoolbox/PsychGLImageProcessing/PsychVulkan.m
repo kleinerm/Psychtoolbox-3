@@ -19,6 +19,7 @@ function varargout = PsychVulkan(cmd, varargin)
 % 28-Jul-2020   mk  Written.
 
 global GL;
+persistent verbosity;
 persistent vulkan;
 
 % Fast path dispatch of functions called from within Screen() imaging pipeline
@@ -118,6 +119,11 @@ if strcmpi(cmd, 'Supported')
         else
             varargout{1} = 0;
         end
+
+        if isempty(verbosity)
+            verbosity = 3;
+            PsychVulkanCore('Verbosity', verbosity);
+        end
     catch
         varargout{1} = 0;
     end
@@ -130,7 +136,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
     outputName = varargin{1};
     screenId = varargin{2};
     winRect = varargin{3};
-    ovrfbOverrideRect = varargin{4};
+    ovrfbOverrideRect = varargin{4}; %#ok<NASGU>
     ovrSpecialFlags = varargin{5};
 
     % On Linux X11 one can select a single video output via outputName parameter or winRect:
@@ -211,12 +217,17 @@ if strcmpi(cmd, 'OpenWindowSetup')
                 outputName = [];
             end
         end
+
+        if ~isempty(outputName)
+            fprintf('PsychVulkan-Info: Onscreen window at rect [%i, %i, %i, %i] is aligned with fullscreen exclusive output for screenId %i.\n', ...
+                    winRect(1), winRect(2), winRect(3), winRect(4), screenId);
+        end
     end
 
     % These always have to match:
     ovrfbOverrideRect = winRect;
 
-    % TODO XXX Define ovrSpecialFlags override settings!
+    % TODO XXX Define ovrSpecialFlags override settings?
 
     % Assign modified return args:
     varargout{1} = winRect;
@@ -270,7 +281,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Optional flags, and'ed together: +1 = Diagnostic display only, no interop:
     flags = varargin{10};
 
-    winfo = Screen('GetWindowInfo', win)
+    winfo = Screen('GetWindowInfo', win);
     screenId = Screen('WindowScreenNumber', win);
     refreshHz = Screen('Framerate', screenId);
 
@@ -300,7 +311,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             if isempty(output)
                 sca;
                 error('Failed to open Vulkan window: Could not find suitable fullscreen output.');
-                return;
             end
 
             % On Linux in fullscreen mode, outputHandle encodes the X11 RandR XID
@@ -317,13 +327,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         end
     else
         % On Windows, outputHandle is meaningless atm.:
-        outputHandle = uint64(0)
+        outputHandle = uint64(0);
     end
 
     % Get the UUID of the Vulkan device that is compatible with our associated
     % OpenGL renderer/gpu. Compatible means: Can by used for OpenGL-Vulkan interop:
     if ~isempty(winfo.GLDeviceUUID)
-        targetUUID = winfo.GLDeviceUUID
+        targetUUID = winfo.GLDeviceUUID;
     else
         % None provided, because the OpenGL implementation does not support
         % OpenGL-Vulkan interop. Assign empty id for most basic testing:
@@ -355,7 +365,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % Close all windows:
         sca;
         error('Failed to open Vulkan window.');
-        return;
     end
 
     % We got the open Vulkan window, and the interop info. Setup OpenGL interop:
