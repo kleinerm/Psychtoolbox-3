@@ -34,7 +34,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         % glFlush() the OpenGL pipeline. TODO: Switch to use of OpenGL<->Vulkan semaphores instead
         % for theoretically higher efficiency and correctness. In practice, this works on both
         % Linux and Windows-10 with AMD and NVidia, both OSS and proprietary drivers:
-        glFlush;
+        glFinish;
 
         return;
     end
