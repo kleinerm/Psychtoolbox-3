@@ -2667,7 +2667,7 @@ psych_bool PsychRecordCopyCommandBuffer(PsychVulkanWindow* window, int index, ps
 
     if (noInterop) {
         VkImageSubresourceRange range = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-        VkClearColorValue clearColor = { .float32 = { (index == 0) ? 1.0f : 0.0f, (index == 1) ? 1.0f : 0.0f, (index == 2) ? 1.0f : 0.0f, 1.0f } };
+        VkClearColorValue clearColor = { .float32 = { (index > 1) ? 1.0f : index, (index > 1) ? index - 2 : index, (index > 1) ? 0.0f : index, 1.0f } };
         PsychTransitionImageLayout(cmd, window->interopImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
         vkCmdClearColorImage(cmd, window->interopImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1, &range);
         PsychTransitionImageLayout(cmd, window->interopImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
@@ -3462,24 +3462,24 @@ PsychError PSYCHVULKANGetDevices(void)
     "Returns an array of structs enumerating all currently available Vulkan driver + GPU combos.\n"
     "Each struct in the array describes one combination of Vulkan driver and device, with the "
     "following fields:\n\n"
-    "'deviceIndex' = Index of the device. Can be used in 'OpenWindow' as 'gpuIndex'.\n"
-    "'gpuName' = Name of the Vulkan device / graphics card.\n"
-    "'gpuDriver' = Name of the Vulkan driver associated with the device.\n"
-    "'driverInfo' = Additional info associated with the driver, vendor specific.\n"
-    "'driverVersion' = Major.minor.point version string with the driver version.\n"
-    "'driverVersionRaw' = Raw scalar Vulkan driver version.\n"
-    "'driverId' = Id of the type of Vulkan driver: 1 = AMD proprietary, 2 = AMD open\n"
+    "'DeviceIndex' = Index of the device. Can be used in 'OpenWindow' as 'gpuIndex'.\n"
+    "'GpuName' = Name of the Vulkan device / graphics card.\n"
+    "'GpuDriver' = Name of the Vulkan driver associated with the device.\n"
+    "'DriverInfo' = Additional info associated with the driver, vendor specific.\n"
+    "'DriverVersion' = Major.minor.point version string with the driver version.\n"
+    "'DriverVersionRaw' = Raw scalar Vulkan driver version.\n"
+    "'DriverId' = Id of the type of Vulkan driver: 1 = AMD proprietary, 2 = AMD open\n"
     "             source amdvlk, 3 = AMD OSS Mesa radv, 4 = NVidia proprietary,\n"
     "             5 = Intel proprietary Windows, 6 = Intel OSS Mesa anvil,\n"
     "             13 = Mesa OSS llvmpipe.\n"
-    "'vendorID' = Vulkan device vendor id. Typically the PCI vendor id.\n"
-    "'deviceID' = Vulkan device id. Typically the PCI device id.\n"
-    "'vulkanVersion' = Major.minor.point version of supported Vulkan api.\n"
-    "'gpuType' = Type of device: 0 = Unknown/Other, 1 = Integrated gpu,\n"
+    "'VendorID' = Vulkan device vendor id. Typically the PCI vendor id.\n"
+    "'DeviceID' = Vulkan device id. Typically the PCI device id.\n"
+    "'VulkanVersion' = Major.minor.point version of supported Vulkan api.\n"
+    "'GpuType' = Type of device: 0 = Unknown/Other, 1 = Integrated gpu,\n"
     "            2 = Discrete gpu, 3 = Virtual gpu, 4 = cpu, ie. software renderer.\n\n"
-    "'supportsHDR' = Does the gpu support driving HDR displays in principle?\n"
+    "'SupportsHDR' = Does the gpu support driving HDR displays in principle?\n"
     "                0 = No, 1 = Basic HDR-10.\n"
-    "'supportsTiming' = Does the gpu support high precision/reliability timing\n"
+    "'SupportsTiming' = Does the gpu support high precision/reliability timing\n"
     "                   extensions. 0 = No, 1 = Yes. If the driver does not support\n"
     "                   timing extensions, the driver will fall back to hacks.\n"
     "\n";

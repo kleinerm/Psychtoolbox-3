@@ -288,7 +288,19 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     if isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_memory_object')) %#ok<STREMP>
         flags = mor(flags, 1);
         noInterop = 1;
-        fprintf('PsychVulkan-Info: OpenGL implementation does not support OpenGL-Vulkan interop! Enabling basic diagnostic mode.\n');
+        % If no specific Vulkan gpu was requested, select the first non-AMD/NVidia
+        % gpuIndex (as we know AMD/NVidia can't be it - they fully support interop).
+        % Default to gpuIndex 1 in case this filtering fails to find an elegible gpu:
+        if isempty(gpuIndex) || gpuIndex == 0
+            devs = PsychVulkanCore('GetDevices');
+            gpuIndex = 1;
+            for i=1:length(devs)
+                if ~ismember(devs(i).DriverId, [1, 2, 3, 4])
+                    gpuIndex = devs(i).DeviceIndex;
+                end
+            end
+        end
+        fprintf('PsychVulkan-Info: OpenGL implementation does not support OpenGL-Vulkan interop! Enabling basic diagnostic mode on gpu %i.\n', gpuIndex);
     else
         noInterop = 0;
     end
@@ -362,10 +374,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % Open the Vulkan window:
         vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, windowRect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);
 
-        if ~noInterop
-            % Get all required info for OpenGL-Vulkan interop:
-            [interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vwin)
-        end
+        % Get all required info for OpenGL-Vulkan interop:
+        [interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vwin)
     catch
         % Failed! Reenable RandR output if this was a failed attempt at output leasing on Linux + NVidia:
         if needsNvidiaWa
