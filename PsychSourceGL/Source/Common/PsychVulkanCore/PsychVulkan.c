@@ -85,6 +85,7 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // Our Vulkan device record:
 typedef struct PsychVulkanDevice {
     psych_bool                          isValid;
+    int                                 deviceIndex;
     VkDevice                            device;
     VkQueue                             graphicsQueue;
     VkCommandPool                       commandPool;
@@ -838,6 +839,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
 
                 // Add a record about this GPU's basic properties:
                 vulkan = &(vulkanDevices[physicalGpuCount]);
+                vulkan->deviceIndex = physicalGpuCount + 1;
                 vulkan->physicalDevice = physicalDevices[i];
                 vulkan->deviceProps = pdevprops2.properties;
                 vulkan->physDeviceProps = physDeviceProps;
@@ -3682,6 +3684,7 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     "'hdr' is a struct with information about the HDR properties and settings "
     "for the display and window represented by 'vulkanWindow'. The following "
     "fields are defined:\n"
+    "'GPUIndex' = Index of the Vulkan device used for this window.\n"
     "'Valid' = Are the HDR display properties valid? 0 = No, as no data could be "
     "queried from the display, 1 = Yes, data has been queried from display and is "
     "supposed to represent actual display HDR capabilities and properties.\n"
@@ -3707,8 +3710,8 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     double *v;
     const char *fieldNames[] = { "Valid", "HDRMode", "LocalDimmingControl", "MinLuminance", "MaxLuminance",
                                  "MaxFrameAverageLightLevel", "MaxContentLightLevel", "ColorGamut",
-                                 "ColorSpace", "ColorFormat" };
-    const int fieldCount = 10;
+                                 "ColorSpace", "ColorFormat", "GPUIndex" };
+    const int fieldCount = 11;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3731,6 +3734,7 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     PsychAllocOutStructArray(1, kPsychArgOptional, -1, fieldCount, fieldNames, &s);
 
     PsychSetStructArrayDoubleElement("Valid", 0, window->nativeDisplayHDRMetadataValidity, s);
+    PsychSetStructArrayDoubleElement("GPUIndex", 0, window->vulkan->deviceIndex, s);
     PsychSetStructArrayDoubleElement("HDRMode", 0, window->hdrMode, s);
     PsychSetStructArrayDoubleElement("LocalDimmingControl", 0, window->local_dimming_supported, s);
     PsychSetStructArrayDoubleElement("MinLuminance", 0, window->nativeDisplayHDRMetadata.minLuminance, s);
