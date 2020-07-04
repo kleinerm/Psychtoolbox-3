@@ -90,6 +90,12 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
             system(sprintf('xrandr --screen %i --output %s --auto ; sleep 1', vulkan{win}.screenId, vulkan{win}.outputName));
         end
 
+        % Do we need a complete driver shutdown to work around Mesa < 20.1.2 bugs?
+        if vulkan{win}.needsMesaDDMWa
+            PsychVulkanCore('Close');
+            clear usedOutputs;
+        end
+
         return;
     end
 end % Of fast-path dispatch.
@@ -319,6 +325,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     winfo = Screen('GetWindowInfo', win);
     screenId = Screen('WindowScreenNumber', win);
     refreshHz = Screen('Framerate', screenId);
+    devs = PsychVulkanCore('GetDevices');
 
     if isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_memory_object')) %#ok<STREMP>
         flags = mor(flags, 1);
@@ -327,7 +334,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % gpuIndex (as we know AMD/NVidia can't be it - they fully support interop).
         % Default to gpuIndex 1 in case this filtering fails to find an elegible gpu:
         if isempty(gpuIndex) || gpuIndex == 0
-            devs = PsychVulkanCore('GetDevices');
             gpuIndex = 1;
             for i=1:length(devs)
                 if ~ismember(devs(i).DriverId, [1, 2, 3, 4])
@@ -481,6 +487,23 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     vulkan{win}.outputHandle = outputHandle;
     vulkan{win}.outputName = outputName;
     vulkan{win}.needsNvidiaWa = needsNvidiaWa;
+
+    % Find out which Vulkan device was chosen to drive this window:
+    hdrInfo = PsychVulkanCore('GetHDRProperties', vwin);
+    gpuIndex = hdrInfo.GPUIndex;
+
+    % Mesa opens-source AMD radv or Intel anvil driver of Mesa version < 20.1.2 in use for fullscreen direct display mode?
+    if isFullscreen && ismember(devs(gpuIndex).DriverId, [3, 6]) && (devs(gpuIndex).DriverVersionRaw < bitshift (20, 22) + bitshift (1, 12) + 2)
+        % These pre-20.1.2 drivers have a bug where in direct display mode they won't release the
+        % display unless the complete Vulkan instance is destroyed. Iow. we need a full driver
+        % shutdown:
+        vulkan{win}.needsMesaDDMWa = 1;
+        fprintf('PsychVulkan-WARNING: Need to enable full-driver-shutdown workaround for buggy Mesa Vulkan driver!\n');
+        fprintf('PsychVulkan-WARNING: This may fail badly on multi-window configurations and is a bad hack!\n');
+        fprintf('PsychVulkan-WARNING: Please upgrade to Mesa version 20.1.2 or later to get rid of this hack.\n');
+    else
+        vulkan{win}.needsMesaDDMWa = 0;
+    end
 
     % Interop enabled. Set up callbacks from Screen() imaging pipeline into our driver:
     cmdString = sprintf('PsychVulkan(0, %i);', win);
