@@ -21,6 +21,7 @@ function varargout = PsychVulkan(cmd, varargin)
 global GL;
 persistent verbosity;
 persistent vulkan;
+persistent usedOutputs;
 
 % Fast path dispatch of functions called from within Screen() imaging pipeline
 % processing slots. Numeric 'cmd' codes, placed here for most efficient execution:
@@ -82,6 +83,9 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         win = varargin{1};
         PsychVulkanCore('CloseWindow', vulkan{win}.vwin);
 
+        % Remove windows display output from set of used outputs for windows screenId:
+        usedOutputs{vulkan{win}.screenId + 1} = setdiff(usedOutputs{vulkan{win}.screenId + 1}, vulkan{win}.usedOutput);
+
         if vulkan{win}.needsNvidiaWa
             system(sprintf('xrandr --screen %i --output %s --auto ; sleep 1', vulkan{win}.screenId, vulkan{win}.outputName));
         end
@@ -96,6 +100,10 @@ if nargin < 1 || isempty(cmd)
   fprintf('\n\nAlso available are functions from PsychVulkanCore:\n');
   PsychVulkanCore;
   return;
+end
+
+if isempty(usedOutputs)
+    usedOutputs = cell(length(Screen('Screens')), 1);
 end
 
 if strcmpi(cmd, 'Verbosity')
@@ -145,6 +153,12 @@ if strcmpi(cmd, 'OpenWindowSetup')
             % Try to find the output with the requested name on requested X-Screen screenId:
             output = [];
             for i = 0:Screen('ConfigureDisplay', 'NumberOutputs', screenId)-1
+                % Skip this output i if it is in the set of outputs used on this
+                % screenId in direct display mode already, ie. RandR leased:
+                if ismember(i, usedOutputs{screenId + 1})
+                    continue;
+                end
+
                 output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
                 if strcmp(output.name, outputName)
                     % This output i is the right output.
@@ -161,7 +175,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
             if isempty(output)
                 % No such output with outputName!
                 sca;
-                error('PsychVulkan-Error: Invalid outputName ''%s'' requested for Vulkan fullscreen display. No such output available.', outputName);
+                error('PsychVulkan-Error: Invalid outputName ''%s'' requested for Vulkan fullscreen display. No such output available or output already in fullscreen use.', outputName);
             end
         else
             % No outputName given, 'winRect' provided?
@@ -169,6 +183,12 @@ if strcmpi(cmd, 'OpenWindowSetup')
                 % Yes. Does it match an attached RandR output exactly?
                 output = [];
                 for i = 0:Screen('ConfigureDisplay', 'NumberOutputs', screenId)-1
+                    % Skip this output i if it is in the set of outputs used on this
+                    % screenId in direct display mode already, ie. RandR leased:
+                    if ismember(i, usedOutputs{screenId + 1})
+                        continue;
+                    end
+
                     output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
                     outputRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
                     if isequal(winRect, outputRect)
@@ -192,13 +212,28 @@ if strcmpi(cmd, 'OpenWindowSetup')
                 end
             else
                 % Empty winRect on a Linux X11 screen. Assume fullscreen on primary output for screenId:
-                output = Screen('ConfigureDisplay', 'Scanout', screenId, 0);
+                i = 0;
+
+                % Skip this output i if it is in the set of outputs used on this
+                % screenId in direct display mode already, ie. RandR leased:
+                while ismember(i, usedOutputs{screenId + 1})
+                    % Try next available output on the screenId:
+                    i = i + 1;
+                    if i == Screen('ConfigureDisplay', 'NumberOutputs', screenId)
+                        % No more outputs available - All are already leased in
+                        % direct display mode:
+                        sca;
+                        error('PsychVulkan-Error: Could not find a free output for Vulkan fullscreen display on screen %i. All outputs are already in fullscreen use.', screenId);
+                    end
+                end
+
+                output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
                 outputName = output.name;
 
                 % Update winRect accordingly:
                 winRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
-                fprintf('PsychVulkan-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with primary display output [%s].\n', ...
-                        winRect(1), winRect(2), winRect(3), winRect(4), outputName);
+                fprintf('PsychVulkan-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with display output %i [%s].\n', ...
+                        winRect(1), winRect(2), winRect(3), winRect(4), i, outputName);
             end
         end
     else
@@ -305,15 +340,23 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         noInterop = 0;
     end
 
+    usedOutput = [];
+
     if IsLinux
         if isFullscreen
             if ~isempty(outputName)
                 % Try to find the output with the requested name:
                 output = [];
                 for i = 0:Screen('ConfigureDisplay', 'NumberOutputs', screenId)-1
+                    if ismember(i, usedOutputs{screenId + 1})
+                        continue;
+                    end
+
                     output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
                     if strcmp(output.name, outputName)
                         % This output i is the right output.
+                        usedOutput = i;
+
                         % Position our onscreen window accordingly:
                         winRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
                         fprintf('PsychVulkan-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with display output %i [%s].\n', ...
@@ -325,7 +368,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
                 end
             else
                 % Choose primary output for screenId:
-                output = Screen('ConfigureDisplay', 'Scanout', screenId, 0);
+                if ~ismember(0, usedOutputs{screenId + 1})
+                    usedOutput = 0;
+                    output = Screen('ConfigureDisplay', 'Scanout', screenId, 0);
+                else
+                    output = [];
+                end
             end
 
             if isempty(output)
@@ -348,6 +396,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     else
         % On Windows, outputHandle is meaningless atm.:
         outputHandle = uint64(0);
+        if isFullscreen
+            usedOutput = 0;
+        end
     end
 
     % Get the UUID of the Vulkan device that is compatible with our associated
@@ -446,6 +497,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     % Assign override color depth and refresh interval for display:
     Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, 1 / refreshHz);
+
+    % Mark usedOutput as being used by this window:
+    vulkan{win}.usedOutput = usedOutput;
+
+    % Mark usedOutput as being used on windows screenId:
+    usedOutputs{screenId + 1} = union(usedOutputs{screenId + 1}, usedOutput);
 
     varargout{1} = vwin;
 
