@@ -163,9 +163,14 @@ try
 
    if stereomode~=10
        % Standard case:
-       [win , winRect]=Screen('OpenWindow', screen(1), 0, rect1, [], doublebuffer, stereomode);
+       PsychImaging('PrepareConfiguration');
+       PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+
+       [win , winRect]=PsychImaging('OpenWindow', screen(1), 0, rect1, [], doublebuffer, stereomode);
        if length(screen)>1
-           win2 = Screen('OpenWindow', screen(2), 0, rect2, [], doublebuffer, stereomode);
+           PsychImaging('PrepareConfiguration');
+           PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+           win2 = PsychImaging('OpenWindow', screen(2), 0, rect2, [], doublebuffer, stereomode);
        end
    else
        % Special case for dual-window stereo:
@@ -201,7 +206,7 @@ try
           Screen('FillRect', win2, color, flickerRect);
           Screen('DrawingFinished', win2, 0, 2);
           Screen('DrawingFinished', win, 0, 2);
-          multiflip = 2;
+          multiflip = 0;
       else
           multiflip = 0;
       end
@@ -213,6 +218,7 @@ try
           if vblSync
               % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
               [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip);
+              [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win2, VBLTimestamp + ifi/2, 2, [], multiflip);
           else
               if testdualheadsync == 1
                   Screen('DrawingFinished', win, 0, 1);
