@@ -1423,10 +1423,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
         // Find primary output for check in 'output':
         PsychUnlockDisplay();
-        output_name = PsychOSGetOutputProps(screenSettings->screenNumber, 0, FALSE, NULL, NULL, (unsigned long *) &output);
+        if (vrr_wanted)
+            output_name = PsychOSGetOutputProps(screenSettings->screenNumber, 0, FALSE, NULL, NULL, (unsigned long *) &output);
         PsychLockDisplay();
 
-        if (vrr_supported_atom &&
+        if (vrr_supported_atom && vrr_wanted &&
             (XRRGetOutputProperty(dpy, output, vrr_supported_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) &&
             (actual_type == XA_INTEGER) && (nitems == 1) && (actual_format == 32)) {
             // printf("%s : %p %ld %d \n", output_name, prop, *((long *) prop), *((long *) prop) > 0);
