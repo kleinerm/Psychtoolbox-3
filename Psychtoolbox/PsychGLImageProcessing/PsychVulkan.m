@@ -79,11 +79,11 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         % Vulkan window close operation, closes the Vulkan onscreen window associated with
         % a PTB onscreen window. Called from Screen('Close', win) and Screen('CloseAll') as
         % well as from usual "close window on error" error handling pathes:
-        vwin = varargin{1};
-        PsychVulkanCore('CloseWindow', vwin);
+        win = varargin{1};
+        PsychVulkanCore('CloseWindow', vulkan{win}.vwin);
 
-        if vulkan{vwin}.needsNvidiaWa
-            system(sprintf('xrandr --screen %i --output %s --auto ; sleep 1', vulkan{vwin}.screenId, vulkan{vwin}.outputName));
+        if vulkan{win}.needsNvidiaWa
+            system(sprintf('xrandr --screen %i --output %s --auto ; sleep 1', vulkan{win}.screenId, vulkan{win}.outputName));
         end
 
         return;
@@ -419,17 +419,17 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         Screen('Hookfunction', win, 'ImportDisplayBufferInteropMemory', [], 0, interopObjectHandle, allocationSize, internalFormat, tilingMode, memoryOffset, width, height);
     end
 
-    vulkan{vwin}.valid = 1;
-    vulkan{vwin}.win = win;
-    vulkan{vwin}.vwin = vwin;
-    vulkan{vwin}.width = width;
-    vulkan{vwin}.height = height;
-    vulkan{vwin}.isFullscreen = isFullscreen;
-    vulkan{vwin}.screenId = screenId;
-    vulkan{vwin}.windowRect = windowRect;
-    vulkan{vwin}.outputHandle = outputHandle;
-    vulkan{vwin}.outputName = outputName;
-    vulkan{vwin}.needsNvidiaWa = needsNvidiaWa;
+    vulkan{win}.valid = 1;
+    vulkan{win}.win = win;
+    vulkan{win}.vwin = vwin;
+    vulkan{win}.width = width;
+    vulkan{win}.height = height;
+    vulkan{win}.isFullscreen = isFullscreen;
+    vulkan{win}.screenId = screenId;
+    vulkan{win}.windowRect = windowRect;
+    vulkan{win}.outputHandle = outputHandle;
+    vulkan{win}.outputName = outputName;
+    vulkan{win}.needsNvidiaWa = needsNvidiaWa;
 
     % Interop enabled. Set up callbacks from Screen() imaging pipeline into our driver:
     cmdString = sprintf('PsychVulkan(0, %i);', win);
@@ -440,7 +440,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('Hookfunction', win, 'AppendMFunction', 'PreSwapbuffersOperations', 'Vulkan Present operation', cmdString);
     Screen('Hookfunction', win, 'Enable', 'PreSwapbuffersOperations');
 
-    cmdString = sprintf('PsychVulkan(2, %i);', vwin);
+    cmdString = sprintf('PsychVulkan(2, %i);', win);
     Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Vulkan cleanup', cmdString);
     Screen('Hookfunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
 
