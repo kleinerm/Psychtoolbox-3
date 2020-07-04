@@ -2250,18 +2250,18 @@ VkResult PsychGetNextSwapChainTargetBuffer(PsychVulkanWindow* window)
     // buffers, not for triple-buffered or n-buffered chains with n != 2.
     result = vkResetFences(window->vulkan->device, 1, &window->flipDoneFence);
     if ((result != VK_SUCCESS) && (verbosity > 0))
-        printf("PsychVulkanCore-ERROR: PsychGetNextSwapChainTargetBuffer(): Fence reset failed with error code %i.\n", result);
+        printf("PsychVulkanCore-ERROR: PsychGetNextSwapChainTargetBuffer(%i): Fence reset failed with error code %i.\n", window->index, result);
 
     result = vkAcquireNextImageKHR(window->vulkan->device, window->swapChain, UINT64_MAX, window->imageAcquiredSemaphores[window->frameIndex % window->numBuffers], window->flipDoneFence, &window->currentSwapChainBuffer);
     if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
         // Acquired currentSwapChainBuffer - the index of the next swapchain image
         // to copy the to-be-presented stimulus into, iow. our "backBuffer".
         if ((verbosity > 5) || (verbosity > 1 && result == VK_SUBOPTIMAL_KHR))
-            printf("PsychVulkanCore-DEBUG: PsychGetNextSwapChainTargetBuffer(): frameIndex %i - Next swapChain backBuffer image with index %i acquired.\n",
+            printf("PsychVulkanCore-DEBUG: PsychGetNextSwapChainTargetBuffer(%i): frameIndex %i - Next swapChain backBuffer image with index %i acquired.\n", window->index,
                    window->frameIndex, window->currentSwapChainBuffer);
 
             if (verbosity > 1 && result == VK_SUBOPTIMAL_KHR)
-                printf("PsychVulkanCore-WARNING: PsychGetNextSwapChainTargetBuffer(): Swapchain reports status VK_SUBOPTIMAL_KHR. Performance and timing precision may suffer!\n");
+                printf("PsychVulkanCore-WARNING: PsychGetNextSwapChainTargetBuffer(%i): Swapchain reports status VK_SUBOPTIMAL_KHR. Performance and timing precision may suffer!\n", window->index);
 
         result = VK_SUCCESS;
 
@@ -2270,10 +2270,10 @@ VkResult PsychGetNextSwapChainTargetBuffer(PsychVulkanWindow* window)
 
     if (verbosity > 0) {
         if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-            printf("PsychVulkanCore-ERROR: PsychGetNextSwapChainTargetBuffer(): Swapchain reports status VK_ERROR_OUT_OF_DATE_KHR!\n");
+            printf("PsychVulkanCore-ERROR: PsychGetNextSwapChainTargetBuffer(%i): Swapchain reports status VK_ERROR_OUT_OF_DATE_KHR!\n", window->index);
         }
         else {
-            printf("PsychVulkanCore-ERROR: PsychGetNextSwapChainTargetBuffer(): Swapchain reports error code %i.\n", result);
+            printf("PsychVulkanCore-ERROR: PsychGetNextSwapChainTargetBuffer(%i): Swapchain reports error code %i.\n", window->index, result);
         }
     }
 
@@ -2293,9 +2293,9 @@ psych_bool PsychWaitForPresentCompletion(PsychVulkanWindow* window)
 
     if ((result != VK_SUCCESS) && (verbosity > 0))
         if (result == VK_TIMEOUT)
-            printf("PsychVulkanCore-ERROR: PsychWaitForPresentCompletion(): Fence wait+reset failed - Timeout!\n");
+            printf("PsychVulkanCore-ERROR: PsychWaitForPresentCompletion(%i): Fence wait+reset failed - Timeout!\n", window->index);
         else
-            printf("PsychVulkanCore-ERROR: PsychWaitForPresentCompletion(): Fence wait+reset failed with error code %i.\n", result);
+            printf("PsychVulkanCore-ERROR: PsychWaitForPresentCompletion(%i): Fence wait+reset failed with error code %i.\n", window->index, result);
 
     return (result == VK_SUCCESS ? TRUE : FALSE);
 }
@@ -2330,7 +2330,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     result = vkQueueSubmit(vulkan->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
     if (result != VK_SUCCESS) {
         if (verbosity > 0)
-            printf("PsychVulkanCore-ERROR: PsychPresent(): Interop -> Swapchain copy failed with error code %i.\n", result);
+            printf("PsychVulkanCore-ERROR: PsychPresent(%i): Interop -> Swapchain copy failed with error code %i.\n", window->index, result);
 
         return(FALSE);
     }
@@ -2362,22 +2362,22 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
         // Success! All perfectly good?
         if ((verbosity > 5) || (verbosity > 1 && result == VK_SUBOPTIMAL_KHR))
-            printf("PsychVulkanCore-DEBUG: PsychPresent(): frameIndex %i - swapChain backBuffer image with index %i queued for present.\n",
+            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): frameIndex %i - swapChain backBuffer image with index %i queued for present.\n", window->index,
                    window->frameIndex, window->currentSwapChainBuffer);
 
         // Suboptimal present? This may tear or have reduced performance / increased latency, and also
         // potentially screwed up timing:
         if (verbosity > 1 && result == VK_SUBOPTIMAL_KHR)
-            printf("PsychVulkanCore-WARNING: PsychPresent(): Swapchain reports status VK_SUBOPTIMAL_KHR. Performance and timing precision may suffer!\n");
+            printf("PsychVulkanCore-WARNING: PsychPresent(%i): Swapchain reports status VK_SUBOPTIMAL_KHR. Performance and timing precision may suffer!\n", window->index);
     }
     else {
         // Failed!
         if (verbosity > 0) {
             if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-                printf("PsychVulkanCore-ERROR: PsychPresent(): Failed! Swapchain reports status VK_ERROR_OUT_OF_DATE_KHR!\n");
+                printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed! Swapchain reports status VK_ERROR_OUT_OF_DATE_KHR!\n", window->index);
             }
             else {
-                printf("PsychVulkanCore-ERROR: PsychPresent(): Failed! Swapchain reports error code %i.\n", result);
+                printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed! Swapchain reports error code %i.\n", window->index, result);
             }
         }
 
@@ -2409,7 +2409,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         PsychGetAdjustedPrecisionTimerSeconds(&window->tPresentComplete);
 
         if (verbosity > 4)
-            printf("PsychVulkanCore-DEBUG: PsychPresent(): Present for frameIndex %i completed: tComplete = %f secs.\n", window->frameIndex - 1, window->tPresentComplete);
+            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Present for frameIndex %i completed: tComplete = %f secs.\n", window->index, window->frameIndex - 1, window->tPresentComplete);
     }
 
     // Some time granted to GUI event dispatch:
