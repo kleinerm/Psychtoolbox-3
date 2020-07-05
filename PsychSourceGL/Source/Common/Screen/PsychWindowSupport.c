@@ -4763,6 +4763,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // Store OS-Builtin swap timestamp as well, or stimulus onset time from beampos
         // timestamping, if OS-Builtin timestamp not available:
         windowRecord->osbuiltin_swaptime = (tSwapComplete > 0) ? tSwapComplete : *time_at_onset;
+
+        // Store beamposition at flip completion as well:
+        windowRecord->beamposition_at_flip = *beamPosAtFlip;
     }
     else {
         // syncing to vbl is disabled, time_at_vbl becomes meaningless, so we set it to a
@@ -4778,11 +4781,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             time_at_vbl = windowRecord->time_at_last_vbl;
             *time_at_onset = windowRecord->osbuiltin_swaptime;
             *miss_estimate = windowRecord->postflip_vbltimestamp;
+            *beamPosAtFlip = windowRecord->beamposition_at_flip;
         }
         else {
             // Invalidate timestamps of last vbl:
             windowRecord->time_at_last_vbl = 0;
             windowRecord->osbuiltin_swaptime = 0;
+            windowRecord->beamposition_at_flip = -1;
         }
 
         // These are always reset, as not latchable by usercode:

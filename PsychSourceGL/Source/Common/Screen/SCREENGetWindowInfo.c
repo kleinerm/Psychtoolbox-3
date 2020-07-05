@@ -179,7 +179,7 @@ static char synopsisString[] =
     "for internal use by M-Files belonging to Psychtoolbox itself, e.g., display tests.\n\n"
     "The info struct contains the following fields:\n"
     "----------------------------------------------\n\n"
-    "BeamPosition: Current rasterbeam position of the video scanout cycle.\n"
+    "Beamposition: Current rasterbeam position of the video scanout cycle.\n"
     "LastVBLTimeOfFlip: VBL timestamp of last finished Screen('Flip') operation.\n"
     "TimeAtSwapRequest: Timestamp taken prior to submission of the low-level swap command. Useful for micro-benchmarking.\n"
     "TimePostSwapRequest: Timestamp taken after submission of the low-level swap command. Useful for micro-benchmarking.\n"

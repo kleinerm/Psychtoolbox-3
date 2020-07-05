@@ -400,6 +400,7 @@ typedef struct _PsychWindowRecordType_{
     int                         hybridGraphics;         // "true" on a hybrid graphics laptop that needs special treatment: 1=DRI3/Present renderoffload, 2=Optimus NVidia prop.
     int                         nr_missed_deadlines;    // MK: Counter, incremented by Flip if it detects a missed/skipped frame.
     int                         flipCount;              // Counter of total number of finished flip operations - A swapcounter.
+    int                         beamposition_at_flip;   // Externally injected beamposition correlating to flip completion.
     double                      rawtime_at_swapcompletion; // Raw timestamp of swapcompletion (result without high-precision timestamping).
     double                      time_at_swaprequest;    // Timestamp taken immediately before call to PsychOSFlipWindowBuffers(); - Before swaprequest submission.
     double                      time_post_swaprequest;  // Timestamp taken immediately after call PsychOSFlipWindowBuffers();

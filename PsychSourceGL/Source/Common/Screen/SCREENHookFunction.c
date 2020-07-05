@@ -182,7 +182,7 @@ static char synopsisString[] =
     "operations or the active presentation sequence to modify behaviour of that sequence. The following 'flipFlags' are "
     "currently implemented: kPsychSkipVsyncForFlipOnce, kPsychSkipTimestampingForFlipOnce, kPsychSkipSwapForFlipOnce, kPsychSkipWaitForFlipOnce.\n"
     "\n\n"
-    "Screen('HookFunction', windowPtr, 'SetOneshotFlipResults' [, hookname], VBLTimestamp [, StimulusOnsetTime=VBLTimestamp][, Missed=0]);\n"
+    "Screen('HookFunction', windowPtr, 'SetOneshotFlipResults' [, hookname], VBLTimestamp [, StimulusOnsetTime=VBLTimestamp][, Missed=0][, Beampos=-1]);\n"
     "Assign override timestamp values to return from Screen('Flip') or Screen('AsyncFlipBegin').\n"
     "'hookname' is accepted, but currently ignored. Pass '' or [] for now.\n"
     "The provided timestamps will be applied during return from the next window flip operation and returned as the "
@@ -194,6 +194,7 @@ static char synopsisString[] =
     "'VBLTimestamp' The vbl timestamp of Flip completion, or something semantically equivalent, useful for Flip scheduling.\n"
     "'StimulusOnsetTime' Optional true stimulus onset time. Will be set to VBLTimestamp if omitted. Must be StimulusOnsetTime >= VBLTimestamp.\n"
     "'Missed' The presentation deadline miss estimate aka 'Missed' flag of Screen('Flip'). Defaults to 0 if omitted.\n"
+    "'Beampos' The beamposition at flip completion, as returned in the 'Beampos' return argument of Flip. Defaults to -1 if omitted.\n"
     "\n\n"
     "Screen('HookFunction', windowPtr, 'SetWindowBackendOverrides' [, hookname][, pixelSize][, refreshInterval][, proj]);\n"
     "Assign override values for various window properties, as provided by the backend client instead of the windowing system.\n"
@@ -505,6 +506,10 @@ PsychError SCREENHookFunction(void)
                 // missEstimate of Flip, optional:
                 if (!PsychCopyInDoubleArg(6, FALSE, &windowRecord->postflip_vbltimestamp))
                     windowRecord->postflip_vbltimestamp = 0;
+
+                // beamposition of Flip, optional:
+                if (!PsychCopyInIntegerArg(7, FALSE, &windowRecord->beamposition_at_flip))
+                    windowRecord->beamposition_at_flip = -1;
             }
         break;
 
