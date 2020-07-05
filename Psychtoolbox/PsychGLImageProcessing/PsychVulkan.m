@@ -403,7 +403,15 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % On Windows, outputHandle is meaningless atm.:
         outputHandle = uint64(0);
         if isFullscreen
-            usedOutput = 0;
+            % Mark output 0 (the only possible output for a screenId on
+            % non-Linux/X11) of screenId as used:
+            if ~ismember(0, usedOutputs{screenId + 1})
+                usedOutput = 0;
+            else
+                % Output already used!
+                sca;
+                error('Failed to open Vulkan window: Tried to open fullscreen-exclusive output on screenId %i, but that one is already in use.', screenId);
+            end
         end
     end
 
