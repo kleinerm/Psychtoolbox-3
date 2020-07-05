@@ -218,7 +218,9 @@ try
           if vblSync
               % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
               [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip);
-              [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win2, VBLTimestamp + ifi/2, 2, [], multiflip);
+              if exist('win2', 'var')
+                [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win2, VBLTimestamp + ifi/2, 2, [], multiflip);
+              end
           else
               if testdualheadsync == 1
                   Screen('DrawingFinished', win, 0, 1);
