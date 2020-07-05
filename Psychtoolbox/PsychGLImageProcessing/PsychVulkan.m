@@ -70,8 +70,8 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         vblTime = predictedOnset;
 
         % Inject vblTime and visual stimulus onset time into Screen(), for usual handling
-        % and reporting back to usercode via Screen('Flip'):
-        Screen('Hookfunction', win, 'SetOneshotFlipResults', '', vblTime, predictedOnset);
+        % and reporting back to usercode via Screen('Flip'), also current beamposition:
+        Screen('Hookfunction', win, 'SetOneshotFlipResults', '', vblTime, predictedOnset, [], winfo.Beamposition);
 
         return;
     end
