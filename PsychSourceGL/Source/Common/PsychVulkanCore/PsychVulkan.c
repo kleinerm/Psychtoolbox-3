@@ -1215,6 +1215,33 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
                 PsychMSDXGIQueryOutputHDR(window, vulkan);
             #endif
         }
+
+        // Invalid / Absurd white-point chromaticity coordinates way lower than around 0.3 for D65?
+        if (window->nativeDisplayHDRMetadataValidity &&
+            (window->nativeDisplayHDRMetadata.whitePoint.x < 0.15) && (window->nativeDisplayHDRMetadata.whitePoint.y < 0.15)) {
+            // At least AMD written Linux drivers (ie. amdgpu-pro and amdvlk as of amdvlk 2020-Q2.6 (driverVersion 8388758 aka VK_MAKE_VERSION(2,0,150)))
+            // have broken HDR color gamut reporting again. This time all reported chromaticity coordinates seem to be too small by a factor of 5x.
+            // Work around this by multiplying all coordinates by a factor of 5.0.
+            // TODO: The current check applies the * 5.0 workaround to all driver versions, but INT_MAX should be replaced by a
+            // meaningful version number, once we know in which version it was fixed - or broken in a new exciting different way :/
+            if ((PSYCH_SYSTEM == PSYCH_LINUX) && (vulkan->deviceProps.driverVersion < INT_MAX) &&
+                (vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR || vulkan->driverProps.driverID == VK_DRIVER_ID_AMD_PROPRIETARY_KHR)) {
+                window->nativeDisplayHDRMetadata.displayPrimaryRed.x *= 5.0;
+                window->nativeDisplayHDRMetadata.displayPrimaryRed.y *= 5.0;
+
+                window->nativeDisplayHDRMetadata.displayPrimaryGreen.x *= 5.0;
+                window->nativeDisplayHDRMetadata.displayPrimaryGreen.y *= 5.0;
+
+                window->nativeDisplayHDRMetadata.displayPrimaryBlue.x *= 5.0;
+                window->nativeDisplayHDRMetadata.displayPrimaryBlue.y *= 5.0;
+
+                window->nativeDisplayHDRMetadata.whitePoint.x *= 5.0;
+                window->nativeDisplayHDRMetadata.whitePoint.y *= 5.0;
+
+                if (verbosity > 1)
+                    printf("PsychVulkanCore-WARNING: Buggy AMD Vulkan driver reports wrong (too small) color gamut. Fixing by scaling up with a factor of 5.0x.\n");
+            }
+        }
     }
 
     // Initialize currentDisplayHDRMetadata, ie. what we would set when switching to HDR mode or
