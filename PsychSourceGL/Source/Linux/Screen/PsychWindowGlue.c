@@ -1523,7 +1523,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         Atom vrr_atom;
 
         // Running on Mesa 19.0.0 or later with DRI3/Present support for VRR?
-        if (vrr_supported && (mesaversion[0] >= 19)) {
+        if (mesaversion[0] >= 19) {
             // Yes. Perform an OpenGL bufferswap, so Mesa can set up VRR state according to its opinion and
             // system settings and then we can override it with our own opinion:
             glClearColor(0, 0, 0, 0);
