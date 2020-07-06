@@ -22,6 +22,7 @@ global GL;
 persistent verbosity;
 persistent vulkan;
 persistent usedOutputs;
+persistent outputMappings;
 
 % Fast path dispatch of functions called from within Screen() imaging pipeline
 % processing slots. Numeric 'cmd' codes, placed here for most efficient execution:
@@ -54,6 +55,16 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
             doTimestamp = 0;
         end
 
+        % Assign this windows usedOutput as rank 0 output setting in Screen:
+        % This affects beamposition based Vblank timestamping and Beamposition
+        % in Screen('GetWindowInfo'), so we query scanout position of the correct
+        % display engine for this win'dow:
+        outputIndex = vulkan{win}.usedOutput;
+        screenId = vulkan{win}.screenId;
+        if ~isempty(outputIndex)
+            Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, outputIndex + 1), outputMappings{screenId + 1}(2, outputIndex + 1), 0);
+        end
+
         % Perform a blocking Vulkan Present operation of the rendered interop image
         % to the display of Vulkan window vwin associated with onscreen window win.
         %
@@ -66,6 +77,12 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         % As long as we don't have high precision timestamp support in PsychVulkanCore,
         % use Screen()'s VBLANK timestamps as reasonably accurate and mostly reliable surrogate:
         winfo = Screen('GetWindowInfo', win, 7);
+
+        % Restore rank 0 output setting in Screen:
+        if ~isempty(outputIndex)
+            Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
+        end
+
         predictedOnset = winfo.LastVBLTime;
         vblTime = predictedOnset;
 
@@ -81,13 +98,20 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         % a PTB onscreen window. Called from Screen('Close', win) and Screen('CloseAll') as
         % well as from usual "close window on error" error handling pathes:
         win = varargin{1};
+        screenId = vulkan{win}.screenId;
+
         PsychVulkanCore('CloseWindow', vulkan{win}.vwin);
 
         % Remove windows display output from set of used outputs for windows screenId:
-        usedOutputs{vulkan{win}.screenId + 1} = setdiff(usedOutputs{vulkan{win}.screenId + 1}, vulkan{win}.usedOutput);
+        usedOutputs{screenId + 1} = setdiff(usedOutputs{screenId + 1}, vulkan{win}.usedOutput);
+
+        % Restore rank 0 output setting in Screen:
+        if ~isempty(vulkan{win}.usedOutput)
+            Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
+        end
 
         if vulkan{win}.needsNvidiaWa
-            system(sprintf('xrandr --screen %i --output %s --auto ; sleep 1', vulkan{win}.screenId, vulkan{win}.outputName));
+            system(sprintf('xrandr --screen %i --output %s --auto ; sleep 1', screenId, vulkan{win}.outputName));
         end
 
         % Do we need a complete driver shutdown to work around Mesa < 20.1.2 bugs?
@@ -109,7 +133,14 @@ if nargin < 1 || isempty(cmd)
 end
 
 if isempty(usedOutputs)
+    % Init list of usedOutputs for fullscreen/direct-display mode to empty:
     usedOutputs = cell(length(Screen('Screens')), 1);
+
+    % Store Screen()'s original screenId -> output/display engine mapping:
+    outputMappings = cell(size(usedOutputs));
+    for i = Screen('Screens')
+        outputMappings{i + 1} = Screen('Preference','ScreenToHead', i);
+    end
 end
 
 if strcmpi(cmd, 'Verbosity')
@@ -152,6 +183,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
     winRect = varargin{3};
     ovrfbOverrideRect = varargin{4}; %#ok<NASGU>
     ovrSpecialFlags = varargin{5};
+    outputIndex = [];
 
     % On Linux X11 one can select a single video output via outputName parameter or winRect:
     if IsLinux && ~IsWayland
@@ -169,12 +201,14 @@ if strcmpi(cmd, 'OpenWindowSetup')
                 if strcmp(output.name, outputName)
                     % This output i is the right output.
                     % Position our onscreen window accordingly:
+                    outputIndex = i;
                     winRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
                     fprintf('PsychVulkan-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with display output %i [%s].\n', ...
                             winRect(1), winRect(2), winRect(3), winRect(4), i, outputName);
                     break;
                 else
                     output = [];
+                    outputIndex = [];
                 end
             end
 
@@ -200,12 +234,14 @@ if strcmpi(cmd, 'OpenWindowSetup')
                     if isequal(winRect, outputRect)
                         % This output i is the right output.
                         outputName = output.name;
+                        outputIndex = i;
 
                         fprintf('PsychVulkan-Info: Onscreen window at rect [%i, %i, %i, %i] is aligned with display output %i [%s].\n', ...
                                 winRect(1), winRect(2), winRect(3), winRect(4), i, outputName);
                         break;
                     else
                         output = [];
+                        outputIndex = [];
                     end
                 end
 
@@ -235,6 +271,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
 
                 output = Screen('ConfigureDisplay', 'Scanout', screenId, i);
                 outputName = output.name;
+                outputIndex = i;
 
                 % Update winRect accordingly:
                 winRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
@@ -248,14 +285,17 @@ if strcmpi(cmd, 'OpenWindowSetup')
             % No winRect given: Means fullscreen on a specific monitor, defined by screenId:
             winRect = Screen('GlobalRect', screenId);
             outputName = 1;
+            outputIndex = 0;
         else
             % Non-empty winRect: Fullscreen on monitor defined by screenId?
             if isequal(winRect, Screen('GlobalRect', screenId))
                 % Yes: Fullscreen display:
                 outputName = 1;
+                outputIndex = 0;
             else
                 % No: Windowed non-fullscreen window:
                 outputName = [];
+                outputIndex = [];
             end
         end
 
@@ -263,6 +303,12 @@ if strcmpi(cmd, 'OpenWindowSetup')
             fprintf('PsychVulkan-Info: Onscreen window at rect [%i, %i, %i, %i] is aligned with fullscreen exclusive output for screenId %i.\n', ...
                     winRect(1), winRect(2), winRect(3), winRect(4), screenId);
         end
+    end
+
+    % If a fullscreen output is assigned, then set its crtc and display engine
+    % as rank 0 primary output:
+    if ~isempty(outputIndex)
+        Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, outputIndex + 1), outputMappings{screenId + 1}(2, outputIndex + 1), 0);
     end
 
     % These always have to match:
@@ -326,6 +372,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     screenId = Screen('WindowScreenNumber', win);
     refreshHz = Screen('Framerate', screenId);
     devs = PsychVulkanCore('GetDevices');
+
+    % Restore rank 0 output setting in Screen:
+    Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
 
     if isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_memory_object')) %#ok<STREMP>
         flags = mor(flags, 1);
