@@ -2,10 +2,30 @@ Some notes about driver bugs encountered:
 
 AMD amdvlk on Linux, as tested with Ubuntu 19.10 and 20.04-LTS:
 
-NO relevant bugs since/as of the release of the 2020-Q2.5 driver in June 2020.
+NO relevant bugs since/as of the release of the 2020-Q2.6 driver in July 2020.
 Now supports HDR-10 with 10 bpc output precision properly in direct display mode.
 
---> ALL GOOD as of 2020-Q2.5
+New bugs:
+
+* HDR color gamut parsing is broken AGAIN! Now all chroma coords are too low
+  by a factor 5. Workaround implemented in PsychVulkanCore to multiply by 5x.
+
+* If one switches multiple displays/RandR outputs into direct-display-mode then
+  that works, but when one tries to close them again / release the displays:
+
+  - If each RandR output / VKDisplay is on its own X-Screen all is fine.
+
+  - If the outputs/VKDisplays are on the same X-Screen (multi-display, single X-Screen)
+    then the driver fails to release all but the last/most recently acquired display!
+    All others get stuck at their last image, until one acquires/releases that one
+    display again. Peculiar: Even quitting Octave doesn't release the display!!
+
+* Oh yeah, and while radv does do switching of a direct-display-mode display
+  into the requested mode, amdvlk ignores this and always switches to the
+  highest capability mode! Bad if the highest mode is also flaky due to
+  low link signal quality -- Displays blank out, DP link training fails etc.
+
+--> ALL shoddy but work(around)able as of 2020-Q2.6
 
 Before that release there were various serious bugs for which i
 provided bug fixes, and one bug report fixed by AMD themselves:
@@ -16,6 +36,21 @@ provided bug fixes, and one bug report fixed by AMD themselves:
 - Failure in DirectDisplayMode to provide > 8 bpc formats.
 - Errors in HDR display colorimetry property queries.
 - Failure to allow setting HDR metadata for the display in RandR output leased mode.
+
+Mesa RADV:
+
+Can only handle one direct mode display (driver limitation).
+However if one tries to open a 2nd display on another driver like amdvlk,
+then radv doesn't fail gracefully. While 2nd display on amdvlk works, the
+1st display handled by radv gets stuck and the swapchain reports failure
+to present with some error code.
+
+Tested AMD gpu's for HDR et al:
+
+Discrete Advanced Micro Devices, Inc. [AMD/ATI] - Baffin [Radeon RX 460/560D / Pro 450/455/460/555/555X/560/560X] GPU found.
+AMD Radeon RX graphics (Polaris11). DCE 11.2 Polaris family.
+
+Integrated: AMD Raven Ridge DCN1.
 
 Windows-10:
 
