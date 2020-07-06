@@ -193,7 +193,7 @@ static uint32_t physicalGpuCount = 0;
 PsychVulkanWindow vulkanWindows[MAX_PSYCH_VULKAN_WINDOWS];
 static int windowCount = 0;
 
-static int verbosity = 10;
+static int verbosity = 4;
 static psych_bool initialized = FALSE;
 
 // Do we require all enumerated gpu's to have a driver with HDR support?

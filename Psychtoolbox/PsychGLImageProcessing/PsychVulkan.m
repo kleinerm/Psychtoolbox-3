@@ -141,17 +141,32 @@ if isempty(usedOutputs)
     for i = Screen('Screens')
         outputMappings{i + 1} = Screen('Preference','ScreenToHead', i);
     end
+
+    try
+        if exist('PsychVulkanCore', 'file')
+            verbosity = PsychVulkanCore('Verbosity');
+        else
+            verbosity = 3;
+        end
+    catch
+        lasterror('reset');
+        verbosity = 3;
+    end
 end
 
 if strcmpi(cmd, 'Verbosity')
-    try
+    varargout{1} = verbosity;
+
+    if (length(varargin) > 0) && ~isempty(varargin{1})
+        verbosity = varargin{1};
+
         if exist('PsychVulkanCore', 'file')
-            varargout{1} = PsychVulkanCore('Verbosity', varargin{1});
-        else
-            varargout{1} = 0;
+            try
+                PsychVulkanCore('Verbosity', verbosity);
+            catch
+                lasterror('reset');
+            end
         end
-    catch
-        varargout{1} = 0;
     end
 
     return;
@@ -170,6 +185,7 @@ if strcmpi(cmd, 'Supported')
             PsychVulkanCore('Verbosity', verbosity);
         end
     catch
+        lasterror('reset');
         varargout{1} = 0;
     end
 
