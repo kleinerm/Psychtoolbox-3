@@ -1672,6 +1672,9 @@ if strcmpi(cmd, 'OpenWindow')
     configphase_active = 2; %#ok<NASGU>
 
     screenid = varargin{1};
+    if ~ismember(screenid, Screen('Screens'))
+        error('Invalid screenId provided in ''OpenWindow'' - no such screen %i available.', screenid);
+    end
 
     if nargin < 3 || isempty(varargin{2})
         clearcolor = [];
