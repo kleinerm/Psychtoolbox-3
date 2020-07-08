@@ -1174,6 +1174,8 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         .sType = VK_STRUCTURE_TYPE_DISPLAY_NATIVE_HDR_SURFACE_CAPABILITIES_AMD,
         .localDimmingSupport = VK_FALSE,
         // amdvlk as of 2020-Q2-4 on Linux crashes in windowed mode if we set this non-NULL, because of a driver bug, so be careful to not provoke this:
+        // Note: This has been fixed as of amdvlk 2020-Q2-6, so no crash anymore in windowed mode, but returns some hard-coded values instead of
+        // real monitor data, so enabling it again is currently of little additional value.
         .pNext = ((PSYCH_SYSTEM == PSYCH_WINDOWS) || (window->display != VK_NULL_HANDLE)) ? &window->nativeDisplayHDRMetadata : NULL,
     };
 
