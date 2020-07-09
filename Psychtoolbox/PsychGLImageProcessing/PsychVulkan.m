@@ -505,7 +505,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, windowRect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);
 
         % Get all required info for OpenGL-Vulkan interop:
-        [interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vwin)
+        [interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vwin);
     catch
         % Failed! Reenable RandR output if this was a failed attempt at output leasing on Linux + NVidia:
         if needsNvidiaWa
@@ -523,12 +523,28 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     switch formatSpec
         case 0
             internalFormat = GL.RGBA8;
+            if verbosity >= 3
+                fprintf('PsychVulkan-Info: 8 bpc linear precision framebuffer will be used.\n');
+            end
+
         case 1
             internalFormat = GL.RGB10_A2;
+            if verbosity >= 3
+                fprintf('PsychVulkan-Info: 10 bpc linear precision framebuffer will be used.\n');
+            end
+
         case 2
             internalFormat = GL.RGBA16F;
+            if verbosity >= 3
+                fprintf('PsychVulkan-Info: 16 bpc non-linear half-float precision framebuffer will be used.\n');
+            end
+
         case 3
             internalFormat = GL.RGBA16;
+            if verbosity >= 3
+                fprintf('PsychVulkan-Info: 16 bpc linear precision framebuffer will be used.\n');
+            end
+
         otherwise
             sca;
             error('Unknown formatSpec provided!');
@@ -540,8 +556,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     if tilingMode
         tilingMode = GL.OPTIMAL_TILING_EXT;
+        if verbosity >= 4
+            fprintf('PsychVulkan-Info: Using tiled framebuffer for interop rendering.\n');
+        end
     else
         tilingMode = GL.LINEAR_TILING_EXT;
+        if verbosity >= 4
+            fprintf('PsychVulkan-Info: Using linear framebuffer for interop rendering.\n');
+        end
     end
 
     % Set it up:

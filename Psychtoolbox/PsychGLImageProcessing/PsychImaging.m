@@ -1765,7 +1765,7 @@ if strcmpi(cmd, 'OpenWindow')
         reqs{row, 3} = outputName;
 
         % Reset pixelSize to default 8 bpc, as we are handling potential deep color
-        % in the Vulkan backend, not on the Screen onscreen window:
+        % in the Vulkan backend, not in the OpenGL WSI for the Screen onscreen window:
         pixelSize = [];
     end
 
@@ -3014,6 +3014,9 @@ if ~isempty(floc)
         error('PsychImaging: Requested task ''UseVulkanDisplay'', but this system does not support Vulkan at all.');
     end
 
+    % Mark use of Vulkan:
+    useVulkan = 1;
+
     % Add imaging mode flags for handing rendered images to Vulkan:
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedFinalizedFBOSinks);
 
@@ -3025,6 +3028,8 @@ if ~isempty(floc)
         % Remap dual-window stereo to dual-stream stereo:
         stereoMode = 12;
     end
+else
+    useVulkan = 0;
 end
 
 % Display replication needed?
@@ -3149,9 +3154,11 @@ end
 if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'))) || ...
    ~isempty(find(mystrcmp(reqs, 'EnableNative11BitFramebuffer')))
 
-    % Enable output formatter chain:
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+    if ~useVulkan
+        % Enable output formatter chain:
+        imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+        imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+    end
 
     % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
     % been explicitely requested: In principle, a 16 bpc FBO would be
@@ -3170,8 +3177,20 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'))) || ...
     % ptb_outputformatter_icmAware = 0;
 end
 
-% Request for native 16 bit per color component ARGB16161616 framebuffer?
-if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
+% Request for native 16 bit per color component RGBA16161616 framebuffer under Vulkan?
+if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer'))) && useVulkan
+    % Request 32bpc float FBO unless already a 16 bpc fixed point FBO
+    % has been explicitely requested. 16 bpc fixed point is obviously just
+    % quite sufficient for 16 bpc linear output, 32 bpc float provides 23 bpc
+    % effective linear precision in the meaningful output intensity range, so
+    % leaves some numerical headroom for post processing and roundoff errors:
+    if ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
+        imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+    end
+end
+
+% Request for native 16 bit per color component ARGB16161616 framebuffer under OpenGL (== not Vulkan)?
+if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer'))) && ~useVulkan
     % Enable output formatter chain:
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
@@ -3502,6 +3521,14 @@ ptb_geometry_inverseWarpMap{win}.my = winheight;
 
 if ismember(winfo.StereoMode, [2,3])
     ptb_geometry_inverseWarpMap{win}.gy = 2;
+end
+
+% Determine early if Vulkan display backend is to be used:
+floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
+if ~isempty(floc)
+    useVulkan = 1;
+else
+    useVulkan = 0;
 end
 
 % --- First action in pipe is a horizontal- or vertical flip, if any ---
@@ -4871,8 +4898,11 @@ if ~isempty(floc)
     % specialFlags setting 1024 signals that our own low-level 10/11/16 bit framebuffer
     % hack on AMD hardware is active, so we also need our own GLSL output formatters.
     % Otherwise setup was (hopefully) done by the regular graphics drivers and we don't
-    % need this GLSL output formatter, as system OpenGL takes care of it:
-    if bitand(winfo.SpecialFlags, 1024)
+    % need this GLSL output formatter, as system OpenGL takes care of it.
+    % If the Vulkan display backend is requested then this also does not apply as
+    % the Vulkan/WSI backend must do whatever neccessary to provide the requested
+    % fixed point unorm precision - or we simply fail if it can't:
+    if bitand(winfo.SpecialFlags, 1024) && ~useVulkan
         % AMD/ATI gpu on Linux with our 10/11/16 bit hack. Use our reformatters:
         if enableNative16BpcRequested
             % Extract optional 2nd parameter - This should be the 'encodingBPC' depth:
@@ -4974,13 +5004,13 @@ if ~isempty(floc)
         % degamma and other colorspace conversions disabled / bypassed:
         needsIdentityCLUT = 1;
     else
-        % Everything else: Windows OS or OSX, or AMD FireGL/FirePro without override,
-        % or AMD with amdgpu DisplayCore, or any NVidia or Intel GPU.
+        % Everything else: Windows OS or macOS, or AMD FireGL/FirePro without override,
+        % or AMD with amdgpu DisplayCore, or any NVidia or Intel GPU. Also on Vulkan.
         % Do not request an identity lut. Modern Intel, NVidia and AMD gpu's have
         % hw LUT's with an output width of potentially more than 10 bpc, so we
         % can potentially benefit from a higher precision gamma correction via
         % hw lut. E.g., Intel Icelake has up to 16 bit output precision lut's,
-        % NVidia up to 14 bit, AMD greater than 10 bit.
+        % NVidia up to 14 bit, AMD greater than 10 bit - typically 12 bit.
         % Going through our identity lut setup code could even load a "identity lut"
         % that truncates output precision to 8 bit, e.g., on Linux + Intel gpu's,
         % as our LoadIdentityClut() function is optimized/targeted at 8 bpc passthrough.
@@ -4992,12 +5022,13 @@ if ~isempty(floc)
 
     if isempty(disableDithering)
         % Control of output dithering on digital >= 10 bit panels should be left to
-        % the OS + graphics driver by default. With the OS at the helm, it can configure
+        % the OS + graphics driver by default. For example, the OS can configure
         % the encoders for 10 bpc no-dithering if it detects a truly 10 bpc capable display,
         % based on EDID information. DisplayPort and HDMI provides infos about >= 10 bpc
         % capabilities in their EDID info. If the OS detects a <= 8 bpc digital panel, it
         % can dither so we get pseudo-10bpc, similar to a bit stealing approach or other
-        % perceptual high bit depths tricks:
+        % perceptual high bit depths tricks. The same is true for driving 10 bpc panels with
+        % 12 bpc or more precision, using dithering on the 10 bpc signal:
         disableDithering = 0;
     else
         % User provided disableDithering flag. Valid?
@@ -5254,8 +5285,35 @@ if ~isempty(floc)
         isFullscreen = 0;
     end
 
-    hdrMode = 0;
+    % Default to standard 8 bpc RGBA8 unorm fixed point color precision:
     colorPrecision = 0;
+
+    % 10 bpc linear unorm output framebuffer requested?
+    if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
+        % Request code 1 - RGB10A2 / BGR10A2 format on Vulkan side:
+        colorPrecision = 1;
+    end
+
+    % 11 bpc linear unorm output framebuffer requested? Or 16 bpc float framebuffer?
+    if ~isempty(find(mystrcmp(reqs, 'EnableNative11BitFramebuffer'))) || ...
+       ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFloatingPointFramebuffer')))
+        % Request code 2 - RGBA16F format on Vulkan side:
+        % fp16 request obviously matches exactly RGBA16F / VK_FORMAT_R16G16B16A16_SFLOAT.
+        %
+        % The same format works for RGB11 unorm, because it so happens that inside the 0.0 - 1.0
+        % unsigned normalized (unorm) color value range of RGB11 / EnableNative11BitFramebuffer,
+        % a 16 bit half-float floating point value provides the equivalent of at least 11 bpc
+        % linear precision:
+        colorPrecision = 2;
+    end
+
+    % 16 bpc linear unorm output framebuffer requested?
+    if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
+        % Request code 3 - RGBA16 unorm fixed point format on Vulkan side:
+        colorPrecision = 3;
+    end
+
+    hdrMode = 0;
     colorSpace = 0;
     colorFormat = 0;
     flags = 0;
