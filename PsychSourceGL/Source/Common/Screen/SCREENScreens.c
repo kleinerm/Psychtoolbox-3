@@ -23,6 +23,7 @@
 */
 
 #include "Screen.h"
+#include <ctype.h>
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "screenNumbers=Screen('Screens' [, physicalDisplays]);";
@@ -64,6 +65,7 @@ PsychError SCREENScreens(void)
     double *displayNumList;
     int physicalDisplays = 0;
     int startidx = 0;
+    const char* screens = getenv("PSYCH_REPORTED_SCREENS");
 
     //all sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -90,11 +92,29 @@ PsychError SCREENScreens(void)
         numDisplays = PsychGetNumDisplays();
     }
 
-    // Allocate an output matrix.  Even if argument is not there, we still get the space.
-    PsychAllocOutDoubleMatArg(1, FALSE, 1, numDisplays, 0, &displayNumList);
+    // Override list of Screens to report provided as environment variable?
+    if (!screens || !strlen(screens)) {
+        // No: Allocate an output matrix.  Even if argument is not there, we still get the space.
+        PsychAllocOutDoubleMatArg(1, FALSE, 1, numDisplays, 0, &displayNumList);
 
-    // Fill the return matrix
-    for(i = 0; i < numDisplays; i++) displayNumList[i] = i + startidx;
+        // Fill the return matrix
+        for (i = 0; i < numDisplays; i++)
+            displayNumList[i] = i + startidx;
+    }
+    else {
+        // Yes: Return that list instead for special diagnostic/debugging:
+        numDisplays = strlen(screens);
+        PsychAllocOutDoubleMatArg(1, FALSE, 1, numDisplays, 0, &displayNumList);
+
+        // Fill the return matrix until reaching a non-digit character, ie. a
+        // number other than 0 to 9:
+        for (i = 0; (i < numDisplays) && isdigit(screens[i]); i++)
+            displayNumList[i] = screens[i] - 0x30; // 0x30 is ASCII digit 0
+
+            // Report override condition, but only on presumably first invocation in script, before any windows are open:
+            if ((PsychPrefStateGet_Verbosity() > 2) && (PsychCountOpenWindows(kPsychDoubleBufferOnscreen) == 0))
+                printf("PTB-INFO: Screen('Screens') reports overridden set of screens from getenv('PSYCH_REPORTED_SCREENS').\n");
+    }
 
     return(PsychError_none);
 }
