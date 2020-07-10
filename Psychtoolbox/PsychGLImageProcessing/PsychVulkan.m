@@ -523,24 +523,28 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     switch formatSpec
         case 0
             internalFormat = GL.RGBA8;
+            bpc = 8;
             if verbosity >= 3
                 fprintf('PsychVulkan-Info: 8 bpc linear precision framebuffer will be used.\n');
             end
 
         case 1
             internalFormat = GL.RGB10_A2;
+            bpc = 10;
             if verbosity >= 3
                 fprintf('PsychVulkan-Info: 10 bpc linear precision framebuffer will be used.\n');
             end
 
         case 2
             internalFormat = GL.RGBA16F;
+            bpc = 11;
             if verbosity >= 3
                 fprintf('PsychVulkan-Info: 16 bpc non-linear half-float precision framebuffer will be used.\n');
             end
 
         case 3
             internalFormat = GL.RGBA16;
+            bpc = 16;
             if verbosity >= 3
                 fprintf('PsychVulkan-Info: 16 bpc linear precision framebuffer will be used.\n');
             end
@@ -614,7 +618,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('Hookfunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
 
     % Assign override color depth and refresh interval for display:
-    Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, 1 / refreshHz);
+    Screen('HookFunction', win, 'SetWindowBackendOverrides', [], bpc * 3, 1 / refreshHz);
 
     % Mark usedOutput as being used by this window:
     vulkan{win}.usedOutput = usedOutput;
