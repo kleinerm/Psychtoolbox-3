@@ -2867,8 +2867,10 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             if (verbosity > 0)
                 printf("PsychVulkanCore-ERROR: Creating vulkan output window failed. Selected gpu %i '%s' unsuitable.\n", gpuIndex, vulkan->deviceProps.deviceName);
 
-            goto openwindow_out1;
+            goto openwindow_out2;
         }
+
+        supportsPresent = TRUE;
     }
     else {
         // No. Try to auto-detect the proper gpuIndex / gpu by probing:
@@ -2879,17 +2881,13 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             if (verbosity > 3)
                 printf("PsychVulkanCore-INFO: Does gpu %i [%s] meet our requirements for target surface: %s\n", gpuIndex, vulkan->deviceProps.deviceName, supportsPresent ? "Yes" : "No");
 
-            if (supportsPresent) {
+            if (supportsPresent)
                 break;
-            }
-            else {
-                vulkan = NULL;
-            }
         }
 
-        if (!vulkan) {
+        if (!supportsPresent) {
             if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: Could not find a suitable gpu to present to given window!\n");
+                printf("PsychVulkanCore-ERROR: Could not find any suitable gpu to present to given window with requested settings!\n");
 
             goto openwindow_out2;
         }
@@ -2898,7 +2896,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             printf("PsychVulkanCore-INFO: gpuIndex %i [%s] auto-selected as optimal gpu for presenting to the target surface.\n", gpuIndex, vulkan->deviceProps.deviceName);
     }
 
-    if (!vulkan)
+    if (!supportsPresent)
         goto openwindow_out2;
 
     // Assign vulkan device to this window:
