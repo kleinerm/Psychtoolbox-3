@@ -46,7 +46,7 @@ end
 % Format dispatcher:
 dispatched = 0;
 
-if ~isempty(findstr(imgfilename, '.hdr'))
+if ~isempty(strfind(imgfilename, '.hdr')) %#ok<STREMP>
     % Load a RLE encoded RGBE high dynamic range file:
     dispatched = 1;
     try

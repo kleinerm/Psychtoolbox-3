@@ -18,7 +18,7 @@ fid = fopen(filename,'r');
 
 %read the magic number
 tline = fgetl(fid);
-if length(tline)<3 || tline(1:2) ~= '#?'
+if length(tline) < 3 || ~strcmp(tline(1:2), '#?')
     error('invalid header');
 end
 fileinfo.identifier = tline(3:end);
@@ -31,7 +31,7 @@ while ~isempty(tline)
     if ~isempty(n) % skip stuff I don't understand
         vname = lower(tline(1:n(1)-1));
         vval = tline(n+1:end);
-        fileinfo = setfield(fileinfo,vname,tline(n+1:end));
+        fileinfo = setfield(fileinfo,vname,tline(n+1:end)); %#ok<SFLD>
         fprintf('Variable = %s, Value = %s\n',vname, vval);
     end
     %read the next line
@@ -41,27 +41,27 @@ end
 %set the resolution variables
 tline = fgetl(fid);
 fileinfo.Ysign = tline(1);
-[fileinfo.height,count,errmsg,nextindex] = sscanf(tline(4:end),'%d',1);
+[fileinfo.height,~,~,nextindex] = sscanf(tline(4:end),'%d',1);
 fileinfo.Xsign = tline(nextindex+4);
-[fileinfo.width,count,errmsg,nextindex] = sscanf(tline(nextindex+7:end),'%d',1);
+[fileinfo.width] = sscanf(tline(nextindex+7:end),'%d',1);
 fprintf('resolution: %s\n',tline);
 
 %allocate space for the scan line data
 img = zeros(fileinfo.height, fileinfo.width, 3);
 
 %read the scanline data
-if fileinfo.format == '32-bit_rle_rgbe';
+if strcmp(fileinfo.format, '32-bit_rle_rgbe')
     fprintf('Decoding RLE Data stream\n');
 end
 
 %read the remaining data
-[data, count] = fread(fid,inf,'uint8');
+data = fread(fid,inf,'uint8');
 fclose(fid);
 
 scanline_width = fileinfo.width;
 num_scanlines = fileinfo.height;
 
-if ((scanline_width < 8)|(scanline_width > 32767))
+if ((scanline_width < 8) || (scanline_width > 32767))
     % run length encoding is not allowed so read flat
     img = rgbe2float(reshape(data,fileinfo.width,fileinfo.height,4));
     return;
@@ -92,7 +92,7 @@ for scanline=1:num_scanlines
         while(ptr <= scanline_width)
             if (data(dp) > 128) % a run of the same value
                 count = data(dp)-128;
-                if ((count == 0)|(count-1 > scanline_width - ptr)) 
+                if ((count == 0) || (count-1 > scanline_width - ptr))
                     warning('bad scanline data');
                 end
                 scanline_buffer(ptr:ptr+count-1,i) = data(dp+1);
@@ -101,7 +101,7 @@ for scanline=1:num_scanlines
             else % a non-run
                 count = data(dp);
                 dp = dp+1;
-                if ((count == 0)|(count-1 > scanline_width - ptr)) 
+                if ((count == 0) || (count-1 > scanline_width - ptr))
                     warning('bad scanline data');
                 end
                 scanline_buffer(ptr:ptr+count-1,i) = data(dp:dp+count-1);
@@ -117,7 +117,7 @@ end
 
 % standard conversion from float pixels to rgbe pixels
 % the last dimension is assumed to be color
-function [rgbe] = float2rgbe(rgb) 
+function [rgbe] = float2rgbe(rgb)  %#ok<DEFNU>
 s = size(rgb);
 rgb = reshape(rgb,prod(s)/3,3);
 rgbe = reshape(repmat(uint8(0),[s(1:end-1),4]),prod(s)/3,4);
