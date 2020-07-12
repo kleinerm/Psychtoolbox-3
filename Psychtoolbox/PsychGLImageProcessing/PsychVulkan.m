@@ -16,7 +16,7 @@ function varargout = PsychVulkan(cmd, varargin)
 % TODO XXX
 
 % History:
-% 28-Jul-2020   mk  Written.
+% 28-Jun-2020   mk  Written.
 
 global GL;
 persistent verbosity;
@@ -561,12 +561,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     if tilingMode
         tilingMode = GL.OPTIMAL_TILING_EXT;
         if verbosity >= 4
-            fprintf('PsychVulkan-Info: Using tiled framebuffer for interop rendering.\n');
+            fprintf('PsychVulkan-Info: Using tiled layout framebuffer for interop rendering.\n');
         end
     else
         tilingMode = GL.LINEAR_TILING_EXT;
         if verbosity >= 4
-            fprintf('PsychVulkan-Info: Using linear framebuffer for interop rendering.\n');
+            fprintf('PsychVulkan-Info: Using linear layout framebuffer for interop rendering.\n');
         end
     end
 
@@ -631,7 +631,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     return;
 end
 
-sca;
-error('Invalid command ''%s'' specified. Read ''help PsychVulkan'' for list of valid commands.', cmd);
+% 'cmd' so far not dispatched? Let's assume it is a command
+% meant for PsychVulkanCore:
+if (length(varargin) > 0) && ~isempty(varargin{1}) && isscalar(varargin{1}) && isreal(varargin{1}) && (Screen('WindowKind', varargin{1}) == 1)
+  win = varargin{1};
+  vwin = vulkan{win}.vwin;
+  [ varargout{1:nargout} ] = PsychVulkanCore(cmd, vwin, varargin{2:end});
+else
+  [ varargout{1:nargout} ] = PsychVulkanCore(cmd, varargin{:});
+end
 
 end
