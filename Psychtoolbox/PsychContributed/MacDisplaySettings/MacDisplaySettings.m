@@ -385,7 +385,7 @@ if isempty(newSettings)
 end
 if exist('Screen','file') && ~ismember(screenNumber,Screen('Screens'))
     str=sprintf(' %d',Screen('Screens'));
-    error('screenNumber %d is not currently a valid screen number:%s.',screenNumber,str);
+    error('screenNumber %d is not one of the currently valid screen numbers:%s.',screenNumber,str);
 end
 if ~isstruct(newSettings)
     CloseWindows
@@ -555,9 +555,10 @@ try
         if ~isempty(strfind(oldString,'assistive access'))
             % We need sprintf to process the linefeeds.
             s=sprintf(['If the error below mentions "assistive access", '...
-                'you may need to give your MATLAB permission:\n'...
-            'Choose Apple menu  > System Preferences, click Privacy, click Accessibility, then select the app’s checkbox.\n'...
-            'https://support.apple.com/guide/mac-help/allow-accessibility-apps-to-access-your-mac-mh43185/mac']);
+                'you may need to give MATLAB permission:\n'...
+                'Choose Apple menu  > System Preferences, click Privacy, click Accessibility, unlock the padlock, and add (+) the MATLAB app.\n'...
+                'https://support.apple.com/guide/mac-help/allow-accessibility-apps-to-access-your-mac-mh43185/mac']);
+            fprintf('\n');
             warning(s);
         end
         error('Applescript failed with error: %s.',oldString);
@@ -644,15 +645,18 @@ try
     oldSettings.nightShiftManual=logical(oldSettings.nightShiftManual);
     oldSettings.showProfilesForThisDisplayOnly=logical(oldSettings.showProfilesForThisDisplayOnly);
     if failed || isempty(oldSettings.brightness)
-        warning('Applescript failed. Here follows some diagnostic output.');
+        msg=sprintf('\nApplescript failed. Here follows some diagnostic output:');
+        warning(msg);
         failed
+        screenNumber
         oldString
         oldSettings
         CloseWindows
-        error(['MacDisplaySettings.applescript failed. ' ...
-            'Make sure you have admin privileges, ' ...
-            'and that System Preferences is not tied up in a dialog. ' ...
-            'Brightness applescript error: %s. '],oldString);
+        msg=sprintf(['MacDisplaySettings.applescript failed. ' ...
+            'Make sure you have admin privileges, \n' ...
+            'and that System Preferences is not tied up in a dialog. \n' ...
+            'MacDisplaySettings applescript error: %s. '],oldString);
+        error(msg);
     end
 catch ME
     CloseWindows
@@ -662,9 +666,9 @@ end
 end
 
 function CloseWindows
-if exist('PsychtoolboxVersion','file') && ~isempty(Screen('Windows'))
-    % Close any user windows to make sure that our error message can be
-    % seen.
+if exist('PsychtoolboxVersion','file') && ~any(ismember(Screen('Windows'),0))
+    % Close any user windows on main screen to make sure that our error
+    % message can be seen.
     sca
 end
 end
