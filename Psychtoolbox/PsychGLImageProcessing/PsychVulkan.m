@@ -13,7 +13,16 @@ function varargout = PsychVulkan(cmd, varargin)
 % Commands and their meaning:
 % ---------------------------
 %
-% TODO XXX
+% oldVerbosity = PsychVulkan('Verbosity' [, verbosity]);
+% - Returns and optionally sets level of 'verbosity' for driver debug output.
+%   'verbosity' = New level of verbosity: 0 = Silent, 1 = Errors only, 2 = Warnings,
+%   3 = Info, 4 = Debug, 5 -- ... = Higher debug levels.
+%
+%
+% isSupported = PsychVulkan('Supported');
+% - Returns if use of the Vulkan rendering and display api is in principle supported
+%   on this setup. 1 = Supported, 0 = No driver, hardware or operating system support.
+%
 
 % History:
 % 28-Jun-2020   mk  Written.
@@ -172,6 +181,7 @@ if strcmpi(cmd, 'Verbosity')
     return;
 end
 
+% isSupported = PsychVulkan('Supported');
 if strcmpi(cmd, 'Supported')
     try
         if exist('PsychVulkanCore', 'file') && PsychVulkanCore('GetCount') >= 0
@@ -219,8 +229,12 @@ if strcmpi(cmd, 'OpenWindowSetup')
                     % Position our onscreen window accordingly:
                     outputIndex = i;
                     winRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
-                    fprintf('PsychVulkan-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with display output %i [%s].\n', ...
-                            winRect(1), winRect(2), winRect(3), winRect(4), i, outputName);
+
+                    if verbosity >= 4
+                        fprintf('PsychVulkan-INFO: Positioning onscreen window at rect [%i, %i, %i, %i] to align with display output %i [%s] on screen %i.\n', ...
+                                winRect(1), winRect(2), winRect(3), winRect(4), i, outputName, screenId);
+                    end
+
                     break;
                 else
                     output = [];
@@ -231,7 +245,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
             if isempty(output)
                 % No such output with outputName!
                 sca;
-                error('PsychVulkan-Error: Invalid outputName ''%s'' requested for Vulkan fullscreen display. No such output available or output already in fullscreen use.', outputName);
+                error('PsychVulkan-ERROR: Invalid outputName ''%s'' requested for Vulkan fullscreen display on screen %i. No such output available or output already in fullscreen use.', outputName, screenId);
             end
         else
             % No outputName given, 'winRect' provided?
@@ -251,9 +265,11 @@ if strcmpi(cmd, 'OpenWindowSetup')
                         % This output i is the right output.
                         outputName = output.name;
                         outputIndex = i;
+                        if verbosity >= 4
+                            fprintf('PsychVulkan-INFO: Onscreen window at rect [%i, %i, %i, %i] is aligned with display output %i [%s] of screen %i.\n', ...
+                                    winRect(1), winRect(2), winRect(3), winRect(4), i, outputName, screenId);
+                        end
 
-                        fprintf('PsychVulkan-Info: Onscreen window at rect [%i, %i, %i, %i] is aligned with display output %i [%s].\n', ...
-                                winRect(1), winRect(2), winRect(3), winRect(4), i, outputName);
                         break;
                     else
                         output = [];
@@ -281,7 +297,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
                         % No more outputs available - All are already leased in
                         % direct display mode:
                         sca;
-                        error('PsychVulkan-Error: Could not find a free output for Vulkan fullscreen display on screen %i. All outputs are already in fullscreen use.', screenId);
+                        error('PsychVulkan-ERROR: Could not find a free output for Vulkan fullscreen display on screen %i. All outputs are already in fullscreen use.', screenId);
                     end
                 end
 
@@ -291,8 +307,10 @@ if strcmpi(cmd, 'OpenWindowSetup')
 
                 % Update winRect accordingly:
                 winRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
-                fprintf('PsychVulkan-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with display output %i [%s].\n', ...
-                        winRect(1), winRect(2), winRect(3), winRect(4), i, outputName);
+                if verbosity >= 4
+                    fprintf('PsychVulkan-INFO: Positioning onscreen window at rect [%i, %i, %i, %i] to align with display output %i [%s] of screen %i.\n', ...
+                            winRect(1), winRect(2), winRect(3), winRect(4), i, outputName, screenId);
+                end
             end
         end
     else
@@ -316,8 +334,10 @@ if strcmpi(cmd, 'OpenWindowSetup')
         end
 
         if ~isempty(outputName)
-            fprintf('PsychVulkan-Info: Onscreen window at rect [%i, %i, %i, %i] is aligned with fullscreen exclusive output for screenId %i.\n', ...
-                    winRect(1), winRect(2), winRect(3), winRect(4), screenId);
+            if verbosity >= 3
+                fprintf('PsychVulkan-INFO: Onscreen window at rect [%i, %i, %i, %i] is aligned with fullscreen exclusive output for screenId %i.\n', ...
+                        winRect(1), winRect(2), winRect(3), winRect(4), screenId);
+            end
         end
     end
 
@@ -406,7 +426,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
                 end
             end
         end
-        fprintf('PsychVulkan-Info: OpenGL implementation does not support OpenGL-Vulkan interop! Enabling basic diagnostic mode on gpu %i.\n', gpuIndex);
+        fprintf('PsychVulkan-INFO: OpenGL implementation does not support OpenGL-Vulkan interop! Enabling basic diagnostic mode on gpu %i.\n', gpuIndex);
     else
         noInterop = 0;
     end
@@ -430,8 +450,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
                         % Position our onscreen window accordingly:
                         winRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
-                        fprintf('PsychVulkan-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with display output %i [%s].\n', ...
-                                winRect(1), winRect(2), winRect(3), winRect(4), i, outputName);
+                        if verbosity >= 3
+                            fprintf('PsychVulkan-INFO: Positioning onscreen window at rect [%i, %i, %i, %i] to align with display output %i [%s] of screen %i.\n', ...
+                                    winRect(1), winRect(2), winRect(3), winRect(4), i, outputName, screenId);
+                        end
+
                         break;
                     else
                         output = [];
@@ -525,28 +548,28 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             internalFormat = GL.RGBA8;
             bpc = 8;
             if verbosity >= 3
-                fprintf('PsychVulkan-Info: 8 bpc linear precision framebuffer will be used.\n');
+                fprintf('PsychVulkan-INFO: 8 bpc linear precision framebuffer will be used.\n');
             end
 
         case 1
             internalFormat = GL.RGB10_A2;
             bpc = 10;
             if verbosity >= 3
-                fprintf('PsychVulkan-Info: 10 bpc linear precision framebuffer will be used.\n');
+                fprintf('PsychVulkan-INFO: 10 bpc linear precision framebuffer will be used.\n');
             end
 
         case 2
             internalFormat = GL.RGBA16F;
             bpc = 11;
             if verbosity >= 3
-                fprintf('PsychVulkan-Info: 16 bpc non-linear half-float precision framebuffer will be used.\n');
+                fprintf('PsychVulkan-INFO: 16 bpc non-linear half-float precision framebuffer will be used.\n');
             end
 
         case 3
             internalFormat = GL.RGBA16;
             bpc = 16;
             if verbosity >= 3
-                fprintf('PsychVulkan-Info: 16 bpc linear precision framebuffer will be used.\n');
+                fprintf('PsychVulkan-INFO: 16 bpc linear precision framebuffer will be used.\n');
             end
 
         otherwise
@@ -561,12 +584,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     if tilingMode
         tilingMode = GL.OPTIMAL_TILING_EXT;
         if verbosity >= 4
-            fprintf('PsychVulkan-Info: Using tiled layout framebuffer for interop rendering.\n');
+            fprintf('PsychVulkan-INFO: Using tiled rendering layout framebuffer for interop rendering.\n');
         end
     else
         tilingMode = GL.LINEAR_TILING_EXT;
         if verbosity >= 4
-            fprintf('PsychVulkan-Info: Using linear layout framebuffer for interop rendering.\n');
+            fprintf('PsychVulkan-INFO: Using linear rendering layout framebuffer for interop rendering.\n');
         end
     end
 

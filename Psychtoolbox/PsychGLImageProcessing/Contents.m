@@ -58,6 +58,8 @@
 % MakeTextureDrawShader         - Create GLSL shader for use with Screen('DrawTexture') and Screen('MakeTexture')
 %                                    to apply on-the-fly texture filtering operations during texture draw.
 %
+% PsychHDR                      - Support and control stimulus display to HDR "High dynamic range" displays.
+%
 % PsychImaging                  - Generic setup routine for the imaging pipeline. Allows to setup
 %                                    and initialize the pipeline for many common tasks.
 % PsychVideoSwitcher            - Setup routine for the Xiangru Li et al. "VideoSwitcher" video attenuator device.
