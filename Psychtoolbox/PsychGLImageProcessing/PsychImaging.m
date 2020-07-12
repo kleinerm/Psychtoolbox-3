@@ -1364,7 +1364,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % * 'UseVulkanDisplay' Display this onscreen window using a Vulkan-based display
 %   backend. This only works on graphics card + operating system combinations
 %   which support both the OpenGL and Vulkan rendering api's and OpenGL-Vulkan
-%   interop. As of June 2020 this would be modern AMD and NVidia graphics cards
+%   interop. As of July 2020 this would be modern AMD and NVidia graphics cards
 %   under modern GNU/Linux (Ubuntu 18.04-LTS and later) and Microsoft Windows-10.
 %
 %   At the moment 'UseVulkanDisplay' does not provide any advantages for standard
@@ -1588,27 +1588,9 @@ if strcmpi(cmd, 'AddTask')
         error('Call PsychImaging(''PrepareConfiguration''); first to prepare the configuration phase!');
     end
 
-    % Store requirement in our cell array of requirements. We need to
-    % extend each requirement vector to some number of max elements, so all
-    % rows in the cell array have the same length:
-    x = varargin;
-    if length(x) < maxreqarg
-        for i=length(x)+1:maxreqarg
-            x{i}='';
-        end
-    end
-
-    % First use of 'reqs' array?
-    if isempty(reqs)
-        % Yes: Initialize the array with content of 'x':
-        reqs = x;
-    else
-        % No: Just concatenate new line with requirements 'x' to existing
-        % array 'reqs':
-        reqs = [reqs ; x];
-    end
-
+    reqs = AddTask(reqs, varargin{1:end});
     rc = 0;
+
     return;
 end
 
@@ -1745,8 +1727,7 @@ if strcmpi(cmd, 'OpenWindow')
         stereomode = varargin{6};
     end
 
-    % Compute correct imagingMode - Settings for current configuration and
-    % return it:
+    % Compute correct imagingMode - Settings for current configuration and return it:
     [imagingMode, needStereoMode, reqs] = FinalizeConfiguration(reqs, stereomode, screenid);
 
     floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
@@ -5470,4 +5451,34 @@ return;
 function [w, h] = InterBufferSize(win)
     w = RectWidth(InterBufferRect(win));
     h = RectHeight(InterBufferRect(win));
+return;
+
+function reqs = AddTask(reqs, varargin)
+    global maxreqarg;
+
+    if length(varargin) < 2 || isempty(varargin{1}) || isempty(varargin{2})
+        error('Parameters missing: Need at least "whichChannel" and "whichTask"!');
+    end
+
+    % Variable length input:
+    x = varargin;
+
+    % Store requirement in our cell array of requirements. We need to
+    % extend each requirement vector to some number of max elements, so all
+    % rows in the cell array have the same length:
+    if length(x) < maxreqarg
+        for i=length(x)+1:maxreqarg
+            x{i}='';
+        end
+    end
+
+    % First use of 'reqs' array?
+    if isempty(reqs)
+        % Yes: Initialize the array with content of 'x':
+        reqs = x;
+    else
+        % No: Just concatenate new line with requirements 'x' to existing
+        % array 'reqs':
+        reqs = [reqs ; x];
+    end
 return;
