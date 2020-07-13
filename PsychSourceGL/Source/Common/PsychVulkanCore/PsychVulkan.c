@@ -147,6 +147,7 @@ typedef struct PsychVulkanWindow {
     psych_bool                          isStereo;
     psych_bool                          isFullscreen;
     int                                 hdrMode;
+    int                                 colorPrecision;
     VkColorSpaceKHR                     colorspace;
     VkFormat                            format;
 
@@ -2062,11 +2063,19 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
         // TODO FIXME This is crude and only covers standard sRGB and HDR10 BT2020 color space. Needs better matching.
         switch (colorPrecision) {
             case 1: // 10 bpc fixed point.
+            case 4: // 16 bpc fixed point -> 10 bpc fixed point.
+            case 5: // 16 bpc fixed point -> 16 bpc float fp16 ->10 bpc fixed point.
+            case 6: // 16 bpc float fp16  -> 10 bpc fixed point.
+                // All these are satisfied by a 10 bpc fixed point fallback:
                 supportsPrecision = window->supports_hdr10_rgb10a2 || window->supports_hdr10_bgr10a2 || window->supports_srgb_rgb10a2 || window->supports_srgb_bgr10a2;
                 break;
 
             case 2: // 16 bpc floating point RGBA16F.
                 supportsPrecision = window->supports_hdr10_rgba16f || window->supports_srgb_rgba16f;
+                break;
+
+            case 3: // 16 bpc fixed point:
+                supportsPrecision = PsychIsColorSpaceFormatComboSupported(window, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR, VK_FORMAT_R16G16B16A16_UNORM) || PsychIsColorSpaceFormatComboSupported(window, VK_COLOR_SPACE_HDR10_ST2084_EXT, VK_FORMAT_R16G16B16A16_UNORM);
                 break;
 
             default:
@@ -2075,7 +2084,7 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
 
         if (!supportsPrecision) {
             // Nope:
-            if (verbosity > 3) {
+            if (verbosity > 4) {
                 printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support required precision %i in the %s configuration required by window %i.\n", vulkan->deviceProps.deviceName, colorPrecision, isFullscreen ? "fullscreen" : "windowed", window->index);
             }
 
@@ -2995,6 +3004,58 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                 window->format = VK_FORMAT_R16G16B16A16_UNORM;
             break;
 
+        case 4: // Try all deep-color unorm precisions from highest to lowest: RGBA16 -> RGB10A2:
+        case 5: // Try all deep-color precisions (unorm and fp16) from highest to lowest: RGBA16 -> RGBA16F -> RGB10A2:
+            // First try RGBA16 16 bpc unsigned normalized unorm range 0.0 - 1.0. Up to 16 bit true precision:
+            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_R16G16B16A16_UNORM)) {
+                window->format = VK_FORMAT_R16G16B16A16_UNORM;
+                break;
+            }
+
+            // Case 5, also use fp16?
+            if ((colorPrecision == 5) && (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_R16G16B16A16_SFLOAT))) {
+                window->format = VK_FORMAT_R16G16B16A16_SFLOAT;
+                break;
+            }
+
+            // Fall back to 10 bpc formats:
+
+            // Prefer RGBA ordering if supported, as that matches OpenGL RGB10A2 for most efficient interop:
+            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2B10G10R10_UNORM_PACK32)) {
+                window->format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+                break;
+            }
+
+            // Fall back to BGRA 10 bpc ordering:
+            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2R10G10B10_UNORM_PACK32)) {
+                window->format = VK_FORMAT_A2R10G10B10_UNORM_PACK32; // This is our slightly less efficient fallback.
+                break;
+            }
+
+            break;
+
+        case 6: // Try fp16, then 10 bpc unorm: RGBA16F -> RGB10A2:
+            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_R16G16B16A16_SFLOAT)) {
+                window->format = VK_FORMAT_R16G16B16A16_SFLOAT;
+                break;
+            }
+
+            // Fall back to 10 bpc formats:
+
+            // Prefer RGBA ordering if supported, as that matches OpenGL RGB10A2 for most efficient interop:
+            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2B10G10R10_UNORM_PACK32)) {
+                window->format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+                break;
+            }
+
+            // Fall back to BGRA 10 bpc ordering:
+            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2R10G10B10_UNORM_PACK32)) {
+                window->format = VK_FORMAT_A2R10G10B10_UNORM_PACK32; // This is our slightly less efficient fallback.
+                break;
+            }
+
+            break;
+
         default:
             if (verbosity > 0)
                 printf("PsychVulkanCore-ERROR: Unsupported / Unknown color precision type %i requested!\n", colorPrecision);
@@ -3037,26 +3098,50 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     switch(swapChainCreateInfo.imageFormat) {
         case VK_FORMAT_B8G8R8A8_UNORM:              // RGBA8 interop -> BGRA8 swapchain swizzled.
             window->interopTextureVkFormat = VK_FORMAT_R8G8B8A8_UNORM;
+            window->colorPrecision = 0;
+
+            if (verbosity > 3)
+                printf("PsychVulkanCore-INFO: Using 8 bpc unorm [0; 1] range RGBA8 framebuffer.\n");
             break;
 
         case VK_FORMAT_R8G8B8A8_UNORM:              // RGBA8 interop -> RGBA8 swapchain.
             window->interopTextureVkFormat = VK_FORMAT_R8G8B8A8_UNORM;
+            window->colorPrecision = 0;
+
+            if (verbosity > 3)
+                printf("PsychVulkanCore-INFO: Using 8 bpc unorm [0; 1] range RGBA8 framebuffer.\n");
             break;
 
         case VK_FORMAT_A2R10G10B10_UNORM_PACK32: // BGR10A2 interop -> RGB10A2 swapchain swizzled.
             window->interopTextureVkFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+            window->colorPrecision = 1;
+
+            if (verbosity > 3)
+                printf("PsychVulkanCore-INFO: Using 10 bpc unorm [0; 1] range RGB10A2 framebuffer.\n");
             break;
 
         case VK_FORMAT_A2B10G10R10_UNORM_PACK32: // RGB10A2 interop -> RGB10A2 swapchain.
             window->interopTextureVkFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+            window->colorPrecision = 1;
+
+            if (verbosity > 3)
+                printf("PsychVulkanCore-INFO: Using 10 bpc unorm [0; 1] range RGB10A2 framebuffer.\n");
             break;
 
         case VK_FORMAT_R16G16B16A16_SFLOAT: // RGBA16F interop -> RGBA16F swapchain.
             window->interopTextureVkFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+            window->colorPrecision = 2;
+
+            if (verbosity > 3)
+                printf("PsychVulkanCore-INFO: Using 16 bit (~11 bpc unorm linear precision equivalent) fp16 half-float range RGBA16F framebuffer.\n");
             break;
 
         case VK_FORMAT_R16G16B16A16_UNORM: // RGBA16 interop -> RGBA16 swapchain.
             window->interopTextureVkFormat = VK_FORMAT_R16G16B16A16_UNORM;
+            window->colorPrecision = 3;
+
+            if (verbosity > 3)
+                printf("PsychVulkanCore-INFO: Using 16 bpc unorm [0; 1] range RGBA16 framebuffer.\n");
             break;
 
         default:
@@ -3727,6 +3812,8 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     "in column 4.\n"
     "'ColorSpace' Vulkan colorspace used for display. See VkColorSpaceKHR spec for reference.\n"
     "'ColorFormat' Vulkan pixel color format used for display. See VkFormat spec for reference.\n"
+    "'ColorPrecision' Effective color precision of the Vulkan interop image and Vulkan swapChain: "
+    "0 = GL_RGBA8, 1 = GL_RGB10A2, 2 = GL_RGBA16F, 3 = GL_RGBA16.\n"
     "\n";
     static char seeAlsoString[] = "OpenWindow HDRMetadata";
 
@@ -3737,8 +3824,8 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     double *v;
     const char *fieldNames[] = { "Valid", "HDRMode", "LocalDimmingControl", "MinLuminance", "MaxLuminance",
                                  "MaxFrameAverageLightLevel", "MaxContentLightLevel", "ColorGamut",
-                                 "ColorSpace", "ColorFormat", "GPUIndex" };
-    const int fieldCount = 11;
+                                 "ColorSpace", "ColorFormat", "ColorPrecision", "GPUIndex" };
+    const int fieldCount = 12;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -3770,6 +3857,7 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     PsychSetStructArrayDoubleElement("MaxContentLightLevel", 0, window->nativeDisplayHDRMetadata.maxContentLightLevel, s);
     PsychSetStructArrayDoubleElement("ColorSpace", 0, window->colorspace, s);
     PsychSetStructArrayDoubleElement("ColorFormat", 0, window->format, s);
+    PsychSetStructArrayDoubleElement("ColorPrecision", 0, window->colorPrecision, s);
 
     // Create color gamut and white point matrix:
     PsychAllocateNativeDoubleMat(2, 4, 1, &v, &outMat);
@@ -4137,26 +4225,7 @@ PsychError PSYCHVULKANGetInteropHandle(void)
     PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) window->interopMemorysize);
 
     // Return internal texture format precision specifier for OpenGL texture:
-    switch (window->interopTextureVkFormat) {
-        case VK_FORMAT_R8G8B8A8_UNORM: // 8 bpc RGBA8.
-            PsychCopyOutDoubleArg(3, kPsychArgOptional, 0);
-            break;
-
-        case VK_FORMAT_A2B10G10R10_UNORM_PACK32: // 10 bpc RGB10A2.
-            PsychCopyOutDoubleArg(3, kPsychArgOptional, 1);
-            break;
-
-        case VK_FORMAT_R16G16B16A16_SFLOAT: // 16 bpc RGBA16F half-float fp16.
-            PsychCopyOutDoubleArg(3, kPsychArgOptional, 2);
-            break;
-
-        case VK_FORMAT_R16G16B16A16_UNORM: // 16 bpc RGBA16 fixed point 16 bit unorm.
-            PsychCopyOutDoubleArg(3, kPsychArgOptional, 3);
-            break;
-
-        default:
-            PsychErrorExitMsg(PsychError_internal, "Unrecognized internal interop image format! Driver bug?!?");
-    }
+    PsychCopyOutDoubleArg(3, kPsychArgOptional, (double) window->colorPrecision);
 
     // Return tiling mode:
     PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) window->interopTextureTiled);
