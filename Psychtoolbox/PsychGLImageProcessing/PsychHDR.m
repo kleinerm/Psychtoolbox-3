@@ -228,7 +228,7 @@ if strcmpi(cmd, 'GetVulkanHDRParameters')
     return;
 end
 
-% hdrShader = PsychHDR('PerformPostWindowOpenSetup', win, hdrArguments);
+% [hdrShader, hdrShaderIdString] = PsychHDR('PerformPostWindowOpenSetup', win, hdrArguments, icmShader, icmShaderIdString);
 if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Setup operations after Screen's PTB onscreen window is opened, and OpenGL and
     % the imaging pipeline are brought up, as well as the corresponding Vulkan/WSI
@@ -260,6 +260,10 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % TODO: Potentially adapt type of shader to use or add colorspace conversion
     % if source and target colorspace are different...
 
+    % Get ICM color correction shader and shader name to use / attach to our HDR shader program:
+    icmshader = varargin{3};
+    icmstring = varargin{4};
+
     switch (hdrMode)
         case 1
             % HDR-10: At least 10 bpc color depth, BT-2020/Rec-2020 color space,
@@ -275,7 +279,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             scalefactor = hdrArgs.inputScalefactor;
 
             % Load PQ shader:
-            oetfshader = LoadGLSLProgramFromFiles('HDR10-PQ_Shader');
+            oetfshader = LoadGLSLProgramFromFiles('HDR10-PQ_Shader', [], icmshader);
 
             % Set it up - Assign texture image unit 0 and input values
             % scalefactor:
@@ -284,6 +288,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             glUniform1f(glGetUniformLocation(oetfshader, 'Prescale'), scalefactor);
             glUseProgram(0);
 
+            % Assign shader name: Add name of color correction shader:
+            oetfshaderstring = sprintf('HDR-OETF-PQ-Formatter: %s', icmstring);
+
             % Shader is ready for OETF mapping.
         otherwise
             error('Unknown hdrMode %i - Implementation bug?!?', hdrMode);
@@ -291,6 +298,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     % Return formatting shader to caller:
     varargout{1} = oetfshader;
+    varargout{2} = oetfshaderstring;
 
     return;
 end

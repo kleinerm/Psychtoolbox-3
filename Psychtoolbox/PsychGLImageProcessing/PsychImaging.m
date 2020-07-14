@@ -3524,7 +3524,10 @@ if useHDR
         imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
     end
 
-    % Not needed, as it is default: ptb_outputformatter_icmAware = 0;
+    % Assume that all HDR output formatters are ICM aware, ie. allow/require linking
+    % an ICM shader into them for colorspace conversion, clamping etc., for efficient
+    % single-pass colorspace conversion and HDR OETF mapping:
+    ptb_outputformatter_icmAware = 1;
 end
 
 % Support for fast offscreen windows (aka FBO backed offscreen windows)
@@ -5375,7 +5378,7 @@ if useHDR
     % Perform post OpenWindow setup for HDR stuff, e.g., setting up appropriate
     % HDR post-processing shaders (Optional tone-mapping, gamut-remapping,
     % color-space conversion and clamping. Mandatory OETF mapping, e.g., PQ):
-    hdrShader = PsychHDR('PerformPostWindowOpenSetup', win, hdrArguments);
+    [hdrShader, hdrShaderString] = PsychHDR('PerformPostWindowOpenSetup', win, hdrArguments, icmshader, icmstring);
 
     % If any hdrShader is needed, append it to the final output formatter chain:
     if ~isempty(hdrShader)
@@ -5384,15 +5387,19 @@ if useHDR
             Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
         end
 
-        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'HDR display mode - Output OETF Formatter', hdrShader, '');
+        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', hdrShaderString, hdrShader, '');
         Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
         outputcount = outputcount + 1;
     end
 
-    % Set this color scaling and clamping settings to "off", as the neccessary
-    % setup for a given HDR mode and color space was already done in the
-    % above PsychHDR call:
-    % applyAlsoToMakeTexture = 0;
+    % Make sure that regular double() input images, even if only in the standard
+    % unorm range for creation of 8 bpc RGBA8 textures, do get their input values
+    % used "as is", ie. valid values are 0.0 - 1.0:
+    applyAlsoToMakeTexture = 1;
+
+    % Disable input value scaling and clamping, so color values can be passed through as
+    % arbitrary floating point values, for encoding in Nits, 80Nits, negative values,
+    % chromaticities etc.:
     needsUnitUnclampedColorRange = 1;
 end
 
