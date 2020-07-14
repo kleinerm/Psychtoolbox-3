@@ -96,26 +96,32 @@ function HDRMinimalisticOpenGLDemo
 AssertOpenGL;
 
 % Find the screen to use for display:
-screenid=max(Screen('Screens'));
+screenid = max(Screen('Screens'));
 
 % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
 % mogl OpenGL for Matlab wrapper:
 InitializeMatlabOpenGL;
 
-% Open a double-buffered full-screen window on the main displays screen.
-[win , winRect] = BrightSideHDR('OpenWindow', screenid);
+% Open a double-buffered HDR full-screen window on the main displays screen:
+PsychImaging('PrepareConfiguration');
+PsychImaging('AddTask', 'General', 'EnableHDR');
+[win, winRect] = PsychImaging('OpenWindow', screenid);
+
+% Set HDR metadata to an average scene luminance of 100 nits, and a peak luminance
+% of 1000 nits, keep color gamut etc. at display native gamut etc.:
+PsychHDR('HDRMetadata', win, [], 100, 1000);
+
 % Setup the OpenGL rendering context of the onscreen window for use by
 % OpenGL wrapper. After this command, all following OpenGL commands will
 % draw into the onscreen window 'win':
 Screen('BeginOpenGL', win);
-
-% Disable Vertex color clamping in our MOGL OpenGL context. As the
-% low-level GL call for doing this is currently not supported by MOGL, we
-% use some helper function of the BrightSide driver:
-BrightSideCore(5, 0);
+glClampColorARB(GL.CLAMP_VERTEX_COLOR_ARB, GL.FALSE);
+glClampColorARB(GL.CLAMP_FRAGMENT_COLOR_ARB, GL.FALSE);
+glClampColorARB(GL.CLAMP_READ_COLOR_ARB, GL.FALSE);
 
 % Get the aspect ratio of the screen:
 ar=winRect(4)/winRect(3);
+
 % Setup default drawing color to yellow (R,G,B)=(1000,1000,0). This color only
 % gets used when lighting is disabled - if you comment out the call to
 % glEnable(GL.LIGHTING).

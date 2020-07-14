@@ -38,11 +38,10 @@ function HDRViewer(imfilepattern, dummymode, sf)
 % and Oguz Ahmet Akyuz - Department of Computer Science, University of Central Florida.
 
 % Make sure we run on OpenGL-Psychtoolbox. Abort otherwise.
-PsychDefaultSetup(1);
+PsychDefaultSetup(2);
 
-% Shorten display timing tests - Pretty futile on such a slow device
-% anyway...
-Screen('Preference', 'SkipSyncTests', 1);
+% Shorten display timing tests:
+%Screen('Preference', 'SkipSyncTests', 1);
 
 % Startup with black screen to not hurt our eyes:
 Screen('Preference', 'VisualDebugLevel', 3);
@@ -63,16 +62,27 @@ if nargin < 3
     sf = [];
 end
 
-imfilenames = dir(imfilepattern)
+imfilenames = dir(imfilepattern);
+
+% No HDR files found?
+if (isempty(imfilenames))
+    if ~IsOctave
+        % Matlab has some sample files here:
+        imfilenames = dir([matlabroot filesep 'toolbox/images/imdata/office.hdr']);
+    else
+        % If Matlab is installed on the HDR test machine, it may be here:
+        imfilenames = dir('/home/shared/MATLAB/R2019a/toolbox/images/imdata/office.hdr');
+    end
+end
 
 try
     % Disable keypress output to Matlab window:
     ListenChar(2);
-    
+
     % Find screen to display: We choose the one with the highest number,
     % assuming this is the HDR display:
-    screenid=max(Screen('Screens'));
-    
+    screenid = max(Screen('Screens'));
+
     % Open a standard fullscreen onscreen window, double-buffered with black
     % background color instead of the default white one: win is the window
     % handle for this window. We use the BrightSideHDR() command instead of
@@ -83,7 +93,14 @@ try
         win = BrightSideHDR('DummyOpenWindow', screenid, 0);
     else
         % HDR mode: Setup everything for HDR rendering:
-        win = BrightSideHDR('OpenWindow', screenid, 0);
+        % Open a double-buffered HDR full-screen window on the main displays screen:
+        PsychImaging('PrepareConfiguration');
+        PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
+        %PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'MatrixMultiply4');
+        win = PsychImaging('OpenWindow', screenid, 0);
+
+        %csc = diag([1 80 1 1])
+        %PsychColorCorrection('SetMultMatrix4', win, csc);
     end
 
     winrect = Screen('Rect', win);
@@ -111,30 +128,38 @@ try
     
     while ~abortit
         iteration=iteration + 1;
-        imagename=imfilenames(mod(iteration, size(imfilenames,1))+1).name;
+        imagename = [imfilenames(mod(iteration, size(imfilenames,1))+1).folder filesep imfilenames(mod(iteration, size(imfilenames,1))+1).name];
         
         % Show some status info:
-        DrawFormattedText(win, ['Loading image: ' imagename '...'], 'center', 'center', [0 255 0]);
+        msg = ['Loading image: ' imagename];
+        fprintf([msg, '\n']);
+        DrawFormattedText(win, msg, 'center', 'center', [0 3000 0]);
         Screen('Flip', win);
         
         % Read image into Matlab matrix:
-        img = HDRRead(imagename, 1);
+        img = HDRRead(imagename, 1) * 180;
         if isempty(img)
             continue;
         end
 
         % Set step size for change of scaling factor:
-        sfstep = 3500 / max(max(max(img))) * 0.01;
+        maxlum = max(max(max(img)))
+        meanlum = mean(mean(mean(img)))
+
+        sfstep = 3500 / maxlum * 0.01;
         
         % Scale intensities by some factor. Here we set the default value:
         if isempty(sf)
             if ~dummymode
-                sf = 3500 / max(max(max(img)));
+                sf = 3500 / maxlum
             else
                 sf = 0.005;
             end
         end
+        sf = 1
         
+        PsychHDR('HDRMetadata', win, [], meanlum, maxlum);
+
         % Build a Psychtoolbox 32 bpc float texture from the image array
         % by setting the (optional) 'floatprecision' flag to 2.
         texid = Screen('MakeTexture', win, img, [], 2, 2);
@@ -188,7 +213,7 @@ try
                 quantized = 'Quantized to 8 bpc LDR';
             end
             
-            DrawFormattedText(win, ['Image: ' imagename ' : Zoom=' num2str(rscale) ' : Intensity scaling: ' num2str(sf) ' : ' quantized ], 0, 0, [0 255 0]);
+            DrawFormattedText(win, ['Image: ' imagename ' : Zoom=' num2str(rscale) ' : Intensity scaling: ' num2str(sf) ' : ' quantized ], 0, 30, [0 255 0]);
 
             % Show selected ROI during zoom selection, if any:
             if xright~=-1 && xbottom~=-1 && zoomset==1
