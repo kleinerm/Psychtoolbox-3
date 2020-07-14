@@ -63,6 +63,7 @@ PsychError SCREENScreens(void)
 {
     int i, numDisplays;
     double *displayNumList;
+    static psych_bool firstTime = TRUE;
     int physicalDisplays = 0;
     int startidx = 0;
     const char* screens = getenv("PSYCH_REPORTED_SCREENS");
@@ -111,9 +112,11 @@ PsychError SCREENScreens(void)
         for (i = 0; (i < numDisplays) && isdigit(screens[i]); i++)
             displayNumList[i] = screens[i] - 0x30; // 0x30 is ASCII digit 0
 
-            // Report override condition, but only on presumably first invocation in script, before any windows are open:
-            if ((PsychPrefStateGet_Verbosity() > 2) && (PsychCountOpenWindows(kPsychDoubleBufferOnscreen) == 0))
-                printf("PTB-INFO: Screen('Screens') reports overridden set of screens from getenv('PSYCH_REPORTED_SCREENS').\n");
+        // Report override condition, but only on presumably first invocation in script, before any windows are open:
+        if ((PsychPrefStateGet_Verbosity() > 2) && firstTime) {
+            firstTime = FALSE;
+            printf("PTB-INFO: Screen('Screens') reports overridden set of screens from getenv('PSYCH_REPORTED_SCREENS').\n");
+        }
     }
 
     return(PsychError_none);
