@@ -526,6 +526,15 @@ PsychError SCREENOpenWindow(void)
         sharedContextWindow = NULL;
     }
 
+    // Hack: Use kPsychSkipTimestampingForFlipOnce during PsychOpenOnscreenWindow() as a
+    // temporary proxy for kPsychNeedFinalizedFBOSinks, to let the OpenWindow code know
+    // that the OpenGL window is not actually used for stimulus presentation, but some
+    // external component is used. This to suppress some warnings inside the OS specific
+    // OpenWindow path, which would only apply if our onscreen window would be the real
+    // deal for visual stimulation:
+    if (imagingmode & kPsychNeedFinalizedFBOSinks)
+        specialflags |= kPsychSkipTimestampingForFlipOnce;
+
     // Create the onscreen window and perform initialization of everything except
     // imaging pipeline and a few other special quirks. If sharedContextWindow is non-NULL,
     // the new window will share its OpenGL context ressources with sharedContextWindow.
@@ -548,6 +557,12 @@ PsychError SCREENOpenWindow(void)
         // an error message. The specific error message has been printed in
         // PsychOpenOnscreenWindow() already..
         PsychErrMsgTxt("");
+    }
+
+    // Undo hack from above after successfull PsychOpenOnscreenWindow():
+    if (imagingmode & kPsychNeedFinalizedFBOSinks) {
+        specialflags &= ~kPsychSkipTimestampingForFlipOnce;
+        windowRecord->specialflags &= ~kPsychSkipTimestampingForFlipOnce;
     }
 
     // Sufficient display depth for full alpha-blending and such?
