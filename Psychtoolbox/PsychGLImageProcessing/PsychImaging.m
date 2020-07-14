@@ -5301,14 +5301,16 @@ end
 % --- End of Bits# in use? ---
 
 if useHDR && needsIdentityCLUT
-    % TODO: Do we want identity lut's in HDR, and do we need a different
-    % setup, given that LoadIdentityClut usually means 8 bpc truncated luts?
-    % What about disableDithering?
-    warning('needsIdentityCLUT set in HDR mode! Bug or feature?!?');
+    % We want identity lut's in HDR, but at maximum lut precision, so output
+    % does not get truncated to 8 bpc. Therefore we can't use LoadIdentityClut()
+    %
+    % There we have identity lut setup code in PsychVulkan() to handle this, and
+    % therefore useHDR  && needsIdentityCLUT should never happen:
+    warning('needsIdentityCLUT set in HDR mode! Bug!?!');
 end
 
 % Do we need identity gamma tables / CLUT's loaded into the graphics card?
-if needsIdentityCLUT
+if needsIdentityCLUT && ~useHDR
     % Yes. Use our generic routine which is adaptive to the quirks of
     % specific gfx-cards:
     LoadIdentityClut(win, [], [], disableDithering);

@@ -114,6 +114,8 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         % Remove windows display output from set of used outputs for windows screenId:
         usedOutputs{screenId + 1} = setdiff(usedOutputs{screenId + 1}, vulkan{win}.usedOutput);
 
+        % TODO: Restore gamma lut on individual outputs or screens?
+
         % Restore rank 0 output setting in Screen:
         if ~isempty(vulkan{win}.usedOutput)
             Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
@@ -522,6 +524,32 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % outputs, so we have to shut the output down before opening a Vulkan window:
         if needsNvidiaWa
             system(sprintf('xrandr --screen %i --output %s --off ; sleep 1', screenId, outputName));
+        end
+
+        if hdrMode
+            % We want an identity hardware gamma lut in HDR, but at maximum lut precision,
+            % so output does not get truncated to 8 bpc. Therefore we can't use LoadIdentityClut()
+            % which is aimed at 8 bpc identity pixel passthrough.
+
+            % On Linux X11 we may have to address individual RandR outputs:
+            if IsLinux && ~IsWayland
+                physicalDisplay = usedOutput;
+            else
+                physicalDisplay = [];
+            end
+
+            % Backup old lut for this screen:
+            BackupCluts(screenId);
+
+            % Upload a perfectly linear lut for the given gpu:
+            [~, ~, reallutsize] = Screen('ReadNormalizedGammaTable', win, physicalDisplay);
+            identityLUT = repmat(linspace(0, 1, reallutsize)', 1, 3);
+
+            Screen('LoadNormalizedGammaTable', win, identityLUT, 0, physicalDisplay);
+
+            if verbosity >= 3
+                fprintf('PsychVulkan-INFO: Loaded identity gamma table into output for HDR.\n');
+            end
         end
 
         % Open the Vulkan window:
