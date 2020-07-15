@@ -24,7 +24,55 @@ Standard amdvlk:
 
 -> No 10 bit formats on SDR display.
 
+AMD Vulkan on Windows-10 HDR color formats:
 
+Surface number of supported surface colorspace + pixelformat combinations: 19
+[0] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [0] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[1] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [1] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[2] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [2] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[3] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [3] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[4] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [4] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[5] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [5] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[6] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [6] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[7] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [7] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[8] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - [8] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[9] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - [9] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[10] For colorspace VK_COLOR_SPACE_BT2020_LINEAR_EXT        - [10] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[11] For colorspace VK_COLOR_SPACE_BT2020_LINEAR_EXT        - [11] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[12] For colorspace VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT - [12] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[13] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT         - [13] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[14] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT         - [14] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[15] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT         - [15] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[16] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT         - [16] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[17] For colorspace VK_COLOR_SPACE_DISPLAY_NATIVE_AMD       - [17] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[18] For colorspace VK_COLOR_SPACE_DISPLAY_NATIVE_AMD       - [18] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+
+On SDR display:
+
+Surface number of supported surface colorspace + pixelformat combinations: 8
+[0] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [0] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[1] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [1] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[2] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [2] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[3] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [3] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[4] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [4] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[5] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [5] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[6] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [6] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[7] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [7] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+
+NVIDIA Vulkan on Windows-10 HDR display:
+
+Surface number of supported surface colorspace + pixelformat combinations: 4
+[0] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [0] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[1] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [1] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[2] For colorspace VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT - [2] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[3] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - [3] Swapchain format VK_FORMAT_A2B10G10R10_UNORM_PACK32
+
+
+NVIDIA Vulkan on Windows-10 SDR display:
+
+Surface number of supported surface colorspace + pixelformat combinations: 2
+[0] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [0] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[1] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [1] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
 
 
 
