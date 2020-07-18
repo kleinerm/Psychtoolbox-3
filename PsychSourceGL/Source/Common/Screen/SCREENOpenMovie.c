@@ -22,7 +22,7 @@
 
 #include "Screen.h"
 
-static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1][, movieOptions]);";
+static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio] [hdrStaticMetaData]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1][, movieOptions]);";
 static char synopsisString[] =
         "Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
         "return a handle 'moviePtr' on success.\n"
@@ -35,6 +35,12 @@ static char synopsisString[] =
         "'count' Total number of videoframes in the movie. Determined by counting, so querying 'count' "
         "can significantly increase the execution time of this command.\n"
         "'aspectRatio' Pixel aspect ratio of pixels in the video frames. Typically 1.0 for square pixels.\n"
+        "'hdrStaticMetaData' A struct with HDR static metadata of the movie, if the movie has HDR metadata "
+        "attached and your system supports parsing of HDR metadata. This requires GStreamer version 1.18 "
+        "or later, and note that not all video codecs may support parsing of HDR metadata.\n"
+        "hdrStaticMetaData.Valid is 1 if the movie has HDR metadata, 0 if none is available or parsing "
+        "is not supported by your system. All other returned HDR properties are compatible with (and in the format "
+        "of) the function PsychHDR('HDRMetadata'). Type 'PsychHDR HDRMetadata?' for details.\n"
         "If you want to play multiple movies in succession with lowest possible delay inbetween the movies "
         "then you can ask PTB to load a movie in the background while another movie is still playing: "
         "Call this function with the 'async' flag set to 1. This will initiate the background load operation. "
@@ -170,7 +176,7 @@ PsychError SCREENOpenMovie(void)
 
     PsychErrorExit(PsychCapNumInputArgs(8));            // Max. 8 input args.
     PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
-    PsychErrorExit(PsychCapNumOutputArgs(7));           // Max. 7 output args.
+    PsychErrorExit(PsychCapNumOutputArgs(8));           // Max. 8 output args.
 
     // Get the window record from the window record argument and get info from the window record
     windowRecord = NULL;
@@ -328,6 +334,7 @@ PsychError SCREENOpenMovie(void)
     PsychCopyOutDoubleArg(4, FALSE, (double) width);
     PsychCopyOutDoubleArg(5, FALSE, (double) height);
     PsychCopyOutDoubleArg(7, FALSE, (double) aspectRatio);
+    PsychCopyOutMovieHDRMetaData(moviehandle, 8);
 
     // Ready!
     return(PsychError_none);

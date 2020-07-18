@@ -262,3 +262,16 @@ double PsychSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool inde
     PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
     return(0.0);
 }
+
+/*
+ *  PsychCopyOutMovieHDRMetaData() -- Return a struct with HDR static metadata about this movie to scripting environment.
+ */
+void PsychCopyOutMovieHDRMetaData(int moviehandle, int argPosition)
+{
+    #ifdef PTB_USE_GSTREAMER
+    PsychGSCopyOutMovieHDRMetaData(moviehandle, argPosition);
+    return;
+    #endif
+
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not supported on your configuration.");
+}

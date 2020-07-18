@@ -51,6 +51,19 @@ typedef enum {
 #define PSYCH_MAX_MOVIES 100
 
 typedef struct {
+    psych_bool valid;
+    int type;
+    double displayPrimaryRed[2];
+    double displayPrimaryGreen[2];
+    double displayPrimaryBlue[2];
+    double whitePoint[2];
+    double minLuminance;
+    double maxLuminance;
+    double maxFrameAverageLightLevel;
+    double maxContentLightLevel;
+} PsychMovieHDRMetaData;
+
+typedef struct {
     psych_mutex         mutex;
     psych_condition     condition;
     double              pts;
@@ -81,6 +94,7 @@ typedef struct {
     char                movieLocation[FILENAME_MAX];
     char                movieName[FILENAME_MAX];
     GLuint              cached_texture;
+    PsychMovieHDRMetaData hdrMetaData;
 } PsychMovieRecordType;
 
 static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
@@ -116,6 +130,97 @@ void PsychGSMovieInit(void)
 
 int PsychGSGetMovieCount(void) {
     return(numMovieRecords);
+}
+
+// Does the installed GStreamer SDK include video-hdr.h, because it is for
+// GStreamer 1.17.0+?
+#ifndef __GST_VIDEO_HDR_H__
+// No: Use our own version of that file as a drop-in replacement, so we can
+// build for GStreamer 1.17+ with an older GStreamer SDK:
+#include "video-hdr.h"
+#endif
+
+// Still not there? If so, abort compile.
+#ifndef __GST_VIDEO_HDR_H__
+#error Missing GStreamer 1.18+ video-hdr!
+#endif
+
+// Dynamic function pointer prototypes for functions needed from GStreamer 1.18+ for HDR metadata parsing:
+gboolean (*psych_gst_video_mastering_display_info_from_caps)(GstVideoMasteringDisplayInfo *minfo, const GstCaps *caps) = NULL;
+gboolean (*psych_gst_video_content_light_level_from_caps)(GstVideoContentLightLevel *linfo, const GstCaps *caps) = NULL;
+
+static void PsychParseMovieHDRMetadata(PsychMovieRecordType* movie, const GstCaps* caps)
+{
+    GstVideoMasteringDisplayInfo minfo;
+    GstVideoContentLightLevel linfo;
+    psych_bool hdr_firsttime = TRUE;
+
+    // Zero init HDR metadata:
+    memset(&movie->hdrMetaData, 0, sizeof(movie->hdrMetaData));
+
+    // Need to runtime link the two HDR metadata parsing functions needed, but
+    // only available in GStreamer 1.18+ (or at least GStreamer 1.17+):
+    if (hdr_firsttime) {
+        hdr_firsttime = FALSE;
+
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+            HANDLE gstvideo_handle = GetModuleHandle("gstvideo-1.0-0.dll");
+            psych_gst_video_mastering_display_info_from_caps = GetProcAddress(gstvideo_handle, "gst_video_mastering_display_info_from_caps");
+            psych_gst_video_content_light_level_from_caps = GetProcAddress(gstvideo_handle, "gst_video_content_light_level_from_caps");
+        #else
+            psych_gst_video_mastering_display_info_from_caps = dlsym(RTLD_DEFAULT, "gst_video_mastering_display_info_from_caps");
+            psych_gst_video_content_light_level_from_caps = dlsym(RTLD_DEFAULT, "gst_video_content_light_level_from_caps");            
+        #endif
+    }
+
+    // Are the HDR caps parsing functions supported and bound?
+    if ((NULL == psych_gst_video_mastering_display_info_from_caps) || (NULL == psych_gst_video_content_light_level_from_caps)) {
+        // Nope, we are done here:
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-DEBUG: This GStreamer version does not support HDR metadata parsing.\n");
+
+        return;
+    }
+
+    // Parse mastering display info, ie. color gamut and min/max luminance:
+    if (psych_gst_video_mastering_display_info_from_caps(&minfo, caps)) {
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-DEBUG: HDR mastering display properties assigned.\n");
+
+        movie->hdrMetaData.displayPrimaryRed[0]   = (double) minfo.display_primaries[0].x / 50000.0;
+        movie->hdrMetaData.displayPrimaryRed[1]   = (double) minfo.display_primaries[0].y / 50000.0;
+        movie->hdrMetaData.displayPrimaryGreen[0] = (double) minfo.display_primaries[1].x / 50000.0;
+        movie->hdrMetaData.displayPrimaryGreen[1] = (double) minfo.display_primaries[1].y / 50000.0;
+        movie->hdrMetaData.displayPrimaryBlue[0]  = (double) minfo.display_primaries[2].x / 50000.0;
+        movie->hdrMetaData.displayPrimaryBlue[1]  = (double) minfo.display_primaries[2].y / 50000.0;
+        movie->hdrMetaData.whitePoint[0] = (double) minfo.white_point.x / 50000.0;
+        movie->hdrMetaData.whitePoint[1] = (double) minfo.white_point.y / 50000.0;
+        movie->hdrMetaData.minLuminance = (double) minfo.min_display_mastering_luminance / 10000.0;
+        movie->hdrMetaData.maxLuminance = (double) minfo.max_display_mastering_luminance / 10000.0;
+        movie->hdrMetaData.valid = TRUE;
+
+        // Currently we only support MetadataType 0, ie. "Static HDR Metadata Type 1" as known
+        // from HDR-10 standard, and supported by GStreamer 1.18.0+:
+        movie->hdrMetaData.type = 0;
+    }
+    else {
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-DEBUG: No HDR mastering display info available for movie.\n");
+    }
+
+    // Parse content light levels:
+    if (psych_gst_video_content_light_level_from_caps(&linfo, caps)) {
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-DEBUG: HDR content light level info assigned.\n");
+
+        movie->hdrMetaData.maxFrameAverageLightLevel = (double) linfo.max_frame_average_light_level;
+        movie->hdrMetaData.maxContentLightLevel = (double) linfo.max_content_light_level;
+        movie->hdrMetaData.valid = TRUE;
+    }
+    else {
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-DEBUG: No HDR content light level info available for movie.\n");
+    }
 }
 
 // Forward declaration:
@@ -1133,6 +1238,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             rate1 = 0; rate2 = 1;
             gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
 
+            // Parse HDR static metadata from movie, if supported, and if any:
+            PsychParseMovieHDRMetadata(&movieRecordBANK[slotid], caps);
          } else {
             printf("PTB-DEBUG: No frame info available after preroll.\n");
          }
@@ -2355,6 +2462,57 @@ double PsychGSSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool in
 
     // Return old time value of previous position:
     return(oldtime);
+}
+
+/*
+ *  PsychCopyOutMovieHDRMetaData() -- Return a struct with HDR static metadata about this movie to scripting environment.
+ */
+void PsychGSCopyOutMovieHDRMetaData(int moviehandle, int argPosition)
+{
+    PsychGenericScriptType *s;
+    PsychGenericScriptType *outMat;
+    double *v;
+    const char *fieldNames[] = { "Valid", "MetadataType", "MinLuminance", "MaxLuminance", "MaxFrameAverageLightLevel", "MaxContentLightLevel", "ColorGamut" };
+    const int fieldCount = 7;
+
+    // Userscript wants this info?
+    if (PsychIsArgPresent(PsychArgOut, argPosition)) {
+        PsychMovieHDRMetaData *hdrMetaData = &movieRecordBANK[moviehandle].hdrMetaData;
+
+        // Create a structure and populate it with the movies parsed HDR metadata:
+        PsychAllocOutStructArray(argPosition, kPsychArgOptional, -1, fieldCount, fieldNames, &s);
+
+        // Set validity status:
+        PsychSetStructArrayDoubleElement("Valid", 0, (double) hdrMetaData->valid, s);
+
+        // Type of metadata:
+        PsychSetStructArrayDoubleElement("MetadataType", 0, (double) hdrMetaData->type, s);
+
+        // Mastering display min and max luminance:
+        PsychSetStructArrayDoubleElement("MinLuminance", 0, hdrMetaData->minLuminance, s);
+        PsychSetStructArrayDoubleElement("MaxLuminance", 0, hdrMetaData->maxLuminance, s);
+
+        // Scene content average and maximum content light level:
+        PsychSetStructArrayDoubleElement("MaxFrameAverageLightLevel", 0, hdrMetaData->maxFrameAverageLightLevel, s);
+        PsychSetStructArrayDoubleElement("MaxContentLightLevel", 0, hdrMetaData->maxContentLightLevel, s);
+
+        // Create color gamut and white point matrix defining the mastering display color gamut / color space:
+        PsychAllocateNativeDoubleMat(2, 4, 1, &v, &outMat);
+
+        *(v++) = hdrMetaData->displayPrimaryRed[0];
+        *(v++) = hdrMetaData->displayPrimaryRed[1];
+
+        *(v++) = hdrMetaData->displayPrimaryGreen[0];
+        *(v++) = hdrMetaData->displayPrimaryGreen[1];
+
+        *(v++) = hdrMetaData->displayPrimaryBlue[0];
+        *(v++) = hdrMetaData->displayPrimaryBlue[1];
+
+        *(v++) = hdrMetaData->whitePoint[0];
+        *(v++) = hdrMetaData->whitePoint[1];
+
+        PsychSetStructArrayNativeElement("ColorGamut", 0, outMat, s);
+    }
 }
 
 // #if GST_CHECK_VERSION(1,0,0)
