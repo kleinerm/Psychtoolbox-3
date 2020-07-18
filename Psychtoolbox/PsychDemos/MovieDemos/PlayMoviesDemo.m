@@ -81,6 +81,8 @@ shift=KbName('RightShift');
 try
     % Open onscreen window with gray background:
     screen = max(Screen('Screens'));
+    PsychImaging('PrepareConfiguration');
+    PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
     win = PsychImaging('OpenWindow', screen, [0.5, 0.5, 0.5]);
     Screen('Blendfunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
@@ -214,9 +216,19 @@ try
         Screen('Flip', win);
         
         % Open movie file and retrieve basic info about movie:
-        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat, maxThreads);
+        [movie, movieduration, fps, imgw, imgh, ~, ~, hdrStaticMetaData] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat, maxThreads);
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
-        
+        if hdrStaticMetaData.Valid
+            fprintf('Static HDR metadata is:\n');
+            disp(hdrStaticMetaData);
+            ColorGamut = hdrStaticMetaData.ColorGamut
+            fprintf('\n');
+            upscalefactor = hdrStaticMetaData.MaxFrameAverageLightLevel
+            PsychHDR('HDRMetadata', win, hdrStaticMetaData.MetadataType,  hdrStaticMetaData.MaxFrameAverageLightLevel, hdrStaticMetaData.MaxContentLightLevel, hdrStaticMetaData.MinLuminance, hdrStaticMetaData.MaxLuminance, hdrStaticMetaData.ColorGamut);
+        else
+            upscalefactor = 1;
+        end
+
         i=0;
         
         % Start playback of movie. This will start
@@ -269,7 +281,7 @@ try
                 end
                 
                 % Draw the new texture immediately to screen:
-                Screen('DrawTexture', win, tex, [], [], [], [], [], [], shader);
+                Screen('DrawTexture', win, tex, [], [], [], [], [], [upscalefactor, upscalefactor, upscalefactor], shader);
                 
                 DrawFormattedText(win, ['Movie: ' moviename ], 'center', 20, 0);
                 if coolstuff
