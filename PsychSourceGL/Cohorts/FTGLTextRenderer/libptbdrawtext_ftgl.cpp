@@ -567,7 +567,7 @@ int PsychDrawText(int context, double xStart, double yStart, int textLen, double
     glPushAttrib(GL_ALL_ATTRIB_BITS);
     glPixelStorei( GL_UNPACK_ALIGNMENT, 1);
     glEnable( GL_TEXTURE_2D );
-    glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE );
+    glTexEnvf( GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE );
 
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
