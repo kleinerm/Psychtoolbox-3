@@ -1,5 +1,5 @@
-function PlayMoviesDemo(moviename, backgroundMaskOut, tolerance, pixelFormat, maxThreads)
-% PlayMoviesDemo(moviename [, backgroundMaskOut][, tolerance][, pixelFormat=4][, maxThreads=-1])
+function PlayMoviesDemo(moviename, hdr, backgroundMaskOut, tolerance, pixelFormat, maxThreads)
+% PlayMoviesDemo(moviename [, hdr=0][, backgroundMaskOut][, tolerance][, pixelFormat=4][, maxThreads=-1])
 %
 % This demo accepts a pattern for a valid moviename, e.g.,
 % moviename=`*.mpg`, then it plays all movies in the current working
@@ -17,6 +17,13 @@ function PlayMoviesDemo(moviename, backgroundMaskOut, tolerance, pixelFormat, ma
 % movie and increases/decreases playback rate.
 % The left- right arrow keys jump in 1 seconds steps. SPACE jumps to the
 % next movie in the list. ESC ends the demo.
+%
+% If the optional flag 'hdr' is specified as non-zero, then the demo
+% expects the onscreen window to display on a HDR-10 capable display device
+% and system, and tries to switch to HDR mode. If the operating system+gpu
+% driver+gpu+display combo does not support HDR, the demo will abort with
+% an error. Otherwise it will expect the movies to be HDR-10 encoded and
+% try to display them appropriately.
 %
 % If the optional RGB color vector backgroundMaskOut is provided, then
 % color pixels in the video which are equal or close to backgroundMaskOut will be
@@ -60,10 +67,14 @@ theanswer = [];
 if (nargin < 1) || isempty(moviename)
     moviename = [];
     theanswer = input('Serious or cool? Type s or c [s/c]? ', 's');
-end;
+end
 
 if isempty(moviename)
     moviename = '*.mov';
+end
+
+if nargin < 2 || isempty(hdr)
+    hdr = 0;
 end
 
 % Initialize with unified keynames and normalized colorspace:
@@ -82,25 +93,40 @@ try
     % Open onscreen window with gray background:
     screen = max(Screen('Screens'));
     PsychImaging('PrepareConfiguration');
-    PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
+
+    % Enable HDR display in HDR-10 mode if requested by user:
+    if hdr
+        PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
+    end
+
     win = PsychImaging('OpenWindow', screen, [0.5, 0.5, 0.5]);
     Screen('Blendfunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     shader = [];
-    if (nargin > 1) && ~isempty(backgroundMaskOut)
-        if nargin < 3
+    if (nargin > 2) && ~isempty(backgroundMaskOut)
+        if nargin < 4
             tolerance = [];
         end
         shader = CreateSinglePassImageProcessingShader(win, 'BackgroundMaskOut', backgroundMaskOut, tolerance);
     end
     
     % Use default pixelFormat if none specified:
-    if nargin < 4
-        pixelFormat = [];
-    end
-    
-    % Use default maxThreads if none specified:
     if nargin < 5
+        pixelFormat = [];
+        if hdr
+            % In HDR mode, we request at least 10 bpc color precision for
+            % decoded movie frames / textures:
+            pixelFormat = 10;
+            
+            % Hack hack: Disable HDR post-processing, as HDR-10 movies are
+            % already properly PQ OETF encoded, and in BT2020 color space.
+            % TODO FIXME this must go in the actual release!
+            Screen('HookFunction', win, 'Disable', 'FinalOutputFormattingBlit');
+        end
+    end
+
+    % Use default maxThreads if none specified:
+    if nargin < 6
         maxThreads = [];
     end
     
@@ -115,7 +141,7 @@ try
     % Default preload setting:
     preloadsecs = [];
     
-    if isempty(strfind(moviename, 'http'))
+    if isempty(strfind(moviename, 'http')) %#ok<STREMP>
         % Return full list of movie files from directory+pattern:
         moviefiles=dir(moviename);
         
@@ -221,12 +247,15 @@ try
         if hdrStaticMetaData.Valid
             fprintf('Static HDR metadata is:\n');
             disp(hdrStaticMetaData);
-            ColorGamut = hdrStaticMetaData.ColorGamut
+            ColorGamut = hdrStaticMetaData.ColorGamut %#ok<NOPRT,NASGU>
             fprintf('\n');
-            upscalefactor = hdrStaticMetaData.MaxFrameAverageLightLevel
-            PsychHDR('HDRMetadata', win, hdrStaticMetaData.MetadataType,  hdrStaticMetaData.MaxFrameAverageLightLevel, hdrStaticMetaData.MaxContentLightLevel, hdrStaticMetaData.MinLuminance, hdrStaticMetaData.MaxLuminance, hdrStaticMetaData.ColorGamut);
-        else
-            upscalefactor = 1;
+            if hdr
+                % If HDR mode is enabled and the movie has HDR-10 static
+                % metadata attached, also provide it to the HDR display, in
+                % the hope it will somehow enhance reproduction of the
+                % visual movie content:
+                PsychHDR('HDRMetadata', win, hdrStaticMetaData.MetadataType,  hdrStaticMetaData.MaxFrameAverageLightLevel, hdrStaticMetaData.MaxContentLightLevel, hdrStaticMetaData.MinLuminance, hdrStaticMetaData.MaxLuminance, hdrStaticMetaData.ColorGamut);
+            end
         end
 
         i=0;
@@ -248,13 +277,13 @@ try
                 % Set the abort-demo flag.
                 abortit=2;
                 break;
-            end;
+            end
             
             % Check for skip to next movie:
             if (keyIsDown==1 && keyCode(space))
                 % Exit while-loop: This will load the next movie...
                 break;
-            end;
+            end
             
             % Only perform video image fetch/drawing if playback is active
             % and the movie actually has a video track (imgw and imgh > 0):
@@ -281,7 +310,7 @@ try
                 end
                 
                 % Draw the new texture immediately to screen:
-                Screen('DrawTexture', win, tex, [], [], [], [], [], [upscalefactor, upscalefactor, upscalefactor], shader);
+                Screen('DrawTexture', win, tex, [], [], [], [], [], [], shader);
                 
                 DrawFormattedText(win, ['Movie: ' moviename ], 'center', 20, 0);
                 if coolstuff
@@ -296,19 +325,19 @@ try
                 
                 % Framecounter:
                 i=i+1;
-            end;
+            end
             
             % Further keyboard checks...
             
             if (keyIsDown==1 && keyCode(right))
                 % Advance movietime by one second:
                 Screen('SetMovieTimeIndex', movie, Screen('GetMovieTimeIndex', movie) + 1);
-            end;
+            end
             
             if (keyIsDown==1 && keyCode(left))
                 % Rewind movietime by one second:
                 Screen('SetMovieTimeIndex', movie, Screen('GetMovieTimeIndex', movie) - 1);
-            end;
+            end
             
             if (keyIsDown==1 && keyCode(up))
                 % Increase playback rate by 1 unit.
@@ -317,24 +346,24 @@ try
                 else
                     KbReleaseWait;
                     rate=round(rate+1);
-                end;
+                end
                 Screen('PlayMovie', movie, rate, 1, 1.0);
-            end;
+            end
             
             if (keyIsDown==1 && keyCode(down))
                 % Decrease playback rate by 1 unit.
                 if (keyCode(shift))
                     rate=rate-0.1;
                 else
-                    while KbCheck; WaitSecs(0.01); end;
+                    KbReleaseWait;
                     rate=round(rate-1);
-                end;
+                end
                 Screen('PlayMovie', movie, rate, 1, 1.0);
-            end;
-        end;
+            end
+        end
         
         telapsed = GetSecs - t1;
-        fprintf('Elapsed time %f seconds, for %i frames.\n', telapsed, i);
+        fprintf('Elapsed time %f seconds, for %i frames. Average framerate %f fps.\n', telapsed, i, i / telapsed);
         
         Screen('Flip', win);
         KbReleaseWait;
@@ -344,7 +373,7 @@ try
         
         % Close movie object:
         Screen('CloseMovie', movie);
-    end;
+    end
     
     % Close screens.
     sca;
@@ -354,4 +383,5 @@ try
 catch %#ok<*CTCH>
     % Error handling: Close all windows and movies, release all ressources.
     sca;
+    rethrow(lasterror); %#ok<LERR>
 end
