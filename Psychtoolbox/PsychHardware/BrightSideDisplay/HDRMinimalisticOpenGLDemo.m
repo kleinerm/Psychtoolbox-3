@@ -77,10 +77,6 @@ function HDRMinimalisticOpenGLDemo
 %
 % http://www.opengl.org
 %
-% The OpenGL for Matlab toolbox was developed and contributed under
-% GPL license by Prof. Richard F. Murray, University of York, Canada and
-% ported to M$-Windows and GNU/Linux and tuned by Mario Kleiner.
-%
 % The earth surface JPEG-image is taken from the Linux/KDE application
 % kdeworldclock. kdeworldclock and its components are licensed under
 % GPL. 
@@ -115,9 +111,10 @@ PsychHDR('HDRMetadata', win, [], 100, 1000);
 % OpenGL wrapper. After this command, all following OpenGL commands will
 % draw into the onscreen window 'win':
 Screen('BeginOpenGL', win);
+
+% We need to disable color clamping to [0; 1] range for vertex colors, or our
+% light source intensities will only reach up to 1 nit, which is darkness:
 glClampColorARB(GL.CLAMP_VERTEX_COLOR_ARB, GL.FALSE);
-glClampColorARB(GL.CLAMP_FRAGMENT_COLOR_ARB, GL.FALSE);
-glClampColorARB(GL.CLAMP_READ_COLOR_ARB, GL.FALSE);
 
 % Get the aspect ratio of the screen:
 ar=winRect(4)/winRect(3);
@@ -179,7 +176,6 @@ glLightfv(GL.LIGHT0,GL.POSITION,[ 1 2 3 0 ]);
 glLightfv(GL.LIGHT0,GL.AMBIENT,[ 10 10 10 0 ]);
 glLightfv(GL.LIGHT0,GL.DIFFUSE,[ 100 100 100 0 ]);
 glLightfv(GL.LIGHT0,GL.SPECULAR,[ 1000 1000 1000 0 ]);
-glMaterialfv(GL.FRONT_AND_BACK,GL.SHININESS, 100);
 
 % Cam is located at 3D position (3,3,5), points upright (0,1,0) and fixates
 % at the origin (0,0,0) of the worlds coordinate system:
@@ -213,6 +209,7 @@ glTranslatef(0, 0, +2);
 % to its default of "white":
 glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 0.0 0.600 0.0 1 ]);
 glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ 0.0 0.600 0.0 1 ]);
+glMaterialfv(GL.FRONT_AND_BACK,GL.SHININESS, 100);
 
 % Draw a solid sphere of radius 0.25
 glutSolidSphere(0.25, 100, 100);
