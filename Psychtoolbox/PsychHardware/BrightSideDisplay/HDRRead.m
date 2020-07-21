@@ -1,5 +1,5 @@
-function img = HDRRead(imgfilename, continueOnError, flipit)
-% img = HDRRead(imgfilename[, continueOnError=0][, flipit=0])
+function [img, format] = HDRRead(imgfilename, continueOnError, flipit)
+% [img, format] = HDRRead(imgfilename[, continueOnError=0][, flipit=0])
 % Read a high dynamic range image file and return it as Matlab double
 % matrix, suitable for use with Screen('MakeTexture') and friends.
 %
@@ -17,6 +17,11 @@ function img = HDRRead(imgfilename, continueOnError, flipit)
 % 'flipit' Optional flag: If set to 1, the loaded image is flipped upside
 % down.
 %
+% Returns a double() precision image matrix in 'img', and a id in 'format' which
+% describes the format of the source image file:
+%
+% 'rgbe' == Radiance RGBE format: Color values are in units of radiance.
+%
 % HDRRead is a dispatcher for a collection of reading routines for
 % different HDR image file formats. Currently supported are:
 %
@@ -25,11 +30,12 @@ function img = HDRRead(imgfilename, continueOnError, flipit)
 %
 % The reader routines are contributed code or open source / free software /
 % public domain code downloaded from various locations under different, but
-% GPL compatible licenses. See the help for the respective loaders for
+% MIT compatible licenses. See the help for the respective loaders for
 % copyright and author information.
 
 % History:
-% 12/14/06 Written (MK).
+% 14-Dec-2006   mk Written.
+% 21-Jul-2020   mk Updated for use with Psychtoolbox new HDR support.
 
 if nargin < 1 || isempty(imgfilename)
     error('Missing HDR image filename.');
@@ -50,15 +56,21 @@ if ~isempty(strfind(imgfilename, '.hdr')) %#ok<STREMP>
     % Load a RLE encoded RGBE high dynamic range file:
     dispatched = 1;
     try
-        inimg = read_rle_rgbe(imgfilename);
+        % Does (potentially optimized) hdrread() function exist?
+        if exist('hdrread', 'file')
+            % Use it.
+            inimg = double(hdrread(imgfilename));
+        else
+            % Use our own fallback:
+            inimg = read_rle_rgbe(imgfilename);
+        end
+
         if flipit
             img(:,:,1) = flipud(inimg(:,:,1));
             img(:,:,2) = flipud(inimg(:,:,2));
             img(:,:,3) = flipud(inimg(:,:,3));
         else
-            img(:,:,1) = inimg(:,:,1);
-            img(:,:,2) = inimg(:,:,2);
-            img(:,:,3) = inimg(:,:,3);
+            img = inimg;
         end
     catch
         if continueOnError
@@ -71,6 +83,8 @@ if ~isempty(strfind(imgfilename, '.hdr')) %#ok<STREMP>
             psychrethrow(psychlasterror);
         end
     end
+
+    format = 'rgbe';
 end
 
 if dispatched == 0
