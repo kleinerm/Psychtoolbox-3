@@ -1,159 +1,164 @@
-function SimpleHDRDemo(imfilename, dummymode, sf)
-% SimpleHDRDemo([imfilename][, dummymode][, sf]) -- Load and show a high dynamic range image
-% on the BrightSide Technologies High Dynamic Range display device.
+function SimpleHDRDemo(imfilename)
+% SimpleHDRDemo([imfilename]) - Load and show a high dynamic range (HDR) image
+% on a compatible HDR display setup.
 %
-% 'imfilename' - Filename of the HDR image to load. Will load our standard
-% low-dynamic range 'konijntjes' if 'imfilename' is omitted.
+% Press any key to terminate the demo.
 %
-% 'dummymode' - If set to 1 we only run in emulation mode without use of
-% the HDR device or BrightSide core library.
+% 'imfilename' - Optional filename of the HDR image to load. This will load a
+% standard HDR demo image bundled with Matlab, if omitted, or fall back to some
+% standard (albeit useless for this purpose) SDR image if the default demo image
+% is missing.
 %
-% 'sf' - Scaling factor to apply.
+% See "help PsychHDR" for system requirements and setup instructions for HDR
+% display. Once these are satisfied, converting a standard Psychtoolbox visual
+% stimulation script into a HDR script is straightforward, as shown in this simple
+% demo. Modify your scripts in the following manner:
 %
-% Btw. you can find lot's of nice free HDR images by Googling on the
-% internet!
+% 1. Use (as most minimal setup) the sequence ...
 %
-% Except for buying and installing the display device and control
-% libraries, usage with Psychtoolbox is pretty straightforward. Modify your
-% scripts in the following manner:
+%    PsychImaging('PrepareConfiguration');
+%    PsychImaging('AddTask', 'General', 'EnableHDR');
+%    win = PsychImaging('OpenWindow', screenid);
 %
-% 1. Use BrightSideHDR('OpenWindow', ...) instead of Screen('OpenWindow',
-% ...) -- Will perform all additional display setup work for you.
+%    ... instead of ...
+%
+%    win = Screen('OpenWindow', screenid);
+%
+%    ... to open a fullscreen onscreen window on a HDR capable display device,
+%    which is attached to a HDR capable graphics card.
 %
 % 2. Use HDRRead(imfilename) instead of imread(imfilename) to load HDR
-% image files as Matlab matrices.
+%    image files as Matlab double() precision matrices.
 %
-% 3. Set the 'floatprecision' flag of Screen('MakeTexture', ...) to 1 or 2
-% to enforce creation of HDR textures from your image matrix.
+% 3. Set the optional 'floatprecision' flag of Screen('MakeTexture', ...) to 1 or 2
+%    to enforce creation of floating point precision HDR textures from your image matrix.
 %
-% 4. Optionally you can use the Screen('ColorRange', ...) command to
-% upscale or downscale color values for normal 2D drawing commands. This
-% won't affect drawing of textures.
+% See the section 'EnableHDR' of "help PsychImaging" for more optional parameters
+% to pass to PsychImaging('AddTask', 'General', 'EnableHDR'); for customizing the
+% HDR display mode. See "help PsychHDR" for more helper subfunctions to customize
+% HDR display further at runtime, once the fullscreen onscreen HDR display window
+% has been opened and initially set up by PsychImaging('AddTask', 'General', 'EnableHDR').
 %
-% 5. Optionally you can use fragment shaders to perform on-the-fly image
-% processing when drawing an image, e.g., gamma correction, scaling, color
-% conversion, tone-mapping. See the more advanced demos on how to do this.
-%
+
 % History:
-% Written 2006 by Mario Kleiner - MPI for Biological Cybernetics, Tuebingen, Germany
-% and Oguz Ahmet Akyuz - Department of Computer Science, University of Central Florida.
+%
+% 21-Jul-2020   mk  Written.
 
-% Make sure we run on OpenGL-Psychtoolbox. Abort otherwise.
-PsychDefaultSetup(1);
+% Make sure we run on Psychtoolbox-3. Abort otherwise. Use unified key names for
+% keyboard input across all supported operating systems. Use normalized color range,
+% not the old 0-255 8 bit color convention:
+PsychDefaultSetup(2);
 
-% Run demo in dummy mode?
-if nargin < 2
-    dummymode = 0;
-end
-
-% Name of an image file passed? If so, then load it. Load our default LDR
-% image otherwise.
-if nargin>=1 && ~isempty(imfilename)
-    % Try to read a HDR image file by one of PTB's loaders. This will
-    % return an empty img if format unsupported or unknown.
-    img = HDRRead(imfilename, 1);
-    
-    if isempty(img)
-        % Load a standard low dynamic range file:
-        img = double(imread(imfilename));
-    end
-else
-    % No filename provided. Just load our default low dynamic range image file:
-    img = double(imread([PsychtoolboxRoot '/PsychDemos/konijntjes1024x768.jpg']));
-end
-
-% Scale intensities by some factor. Here we set the default value:
-if nargin < 3 || isempty(sf)
-    if ~dummymode
-        sf = 50;
+% imfilename provided?
+if nargin < 1 || isempty(imfilename)
+    % No: Try some default file:
+    if ~IsOctave
+        % Matlab comes with exactly one HDR sample file in radiance format:
+        imfilename = [matlabroot filesep 'toolbox/images/imdata/office.hdr'];
     else
-        sf = 0.005;
+        % Octave doesn not ship with a HDR sample image, so we fall back to our
+        % SDR image, unless the machine happens to have Matlab installed in a
+        % peculiar location, because it is our development machine:
+        imfilename = ['/home/shared/MATLAB/R2019a/toolbox/images/imdata/office.hdr'];
+        if ~exist(imfilename, 'file')
+            % Nope: Just get good old SDR bunny image:
+            imfilename = [PsychtoolboxRoot '/PsychDemos/konijntjes1024x768.jpg'];
+        end
     end
 end
 
-% Scale image matrix by scalefactor 'sf':
-img=img * sf;
+% Does imfilename exist?
+if ~exist(imfilename, 'file')
+    error('Specified HDR image file does not exist under path %s.', imfilename);
+end
 
-% img is now a height by width by c matrix with up to four (R,G,B,A) channels of our
-% image. Now we use Psychtoolbox to make a HDR texture out of it and show
-% it.
-try
-    % Find screen to display: We choose the one with the highest number,
-    % assuming this is the HDR display:
-    screenid=max(Screen('Screens'));
-    
-    % Open a standard fullscreen onscreen window, double-buffered with black
-    % background color, instead of the default white one: win is the window
-    % handle for this window. We use the BrightSideHDR() command instead of
-    % Screen(). It is a convenience wrapper around Screen, doing all the
-    % additional setup work for the HDR display:
-    if dummymode
-        % Dummy mode: Don't run on real HDR display:
-        win = BrightSideHDR('DummyOpenWindow', screenid, 0);
-    else
-        % HDR mode: Setup everything for HDR rendering:
-        win = BrightSideHDR('OpenWindow', screenid, 0);
-    end
-    
-    % Build a Psychtoolbox 16 bpc half-float texture from the image array
-    % by setting the (optional) 'floatprecision' flag to 1. If you need
-    % even more precision you can provide the value 2 instead of 1,
-    % creating full 32 bpc float textures. These will take up twice the
-    % amount of memory and bandwidth though and they can't be anti-aliased
-    % via bilinear filtering during drawing on current hardware - unless
-    % you are happy with a framerate of 0.5 fps.
-    texid = Screen('MakeTexture', win, img, [], [], 2);
-    
-    rotAngle = 0;
-    framecounter = 0;
-    
-    % Initial Flip to sync us to retrace:
-    vbl = Screen('Flip', win);
-    tstart = vbl;
-    
-    % Animation loop: Show a rotating HDR image, until key press:
-    while ~KbCheck
-        % Clear backbuffer by overdrawing with a black full screen rect:
-        Screen('FillRect', win, 0);
+% Read HDR file. Must be in a file format recognized by HDRRead:
+[img, hdrType] = HDRRead(imfilename);
 
-        % Draw our HDR texture at spec'd rotation angle:
-        Screen('DrawTexture', win, texid, [], [], rotAngle);
+switch hdrType
+    case 'rgbe'
+        % HACK: Multiply by 180.0 as a crude approximation of Radiance units to nits:
+        % This is not strictly correct, but will do to get a nice enough picture for
+        % demo purpose:
+        img = img * 180;
 
-        % Draw some 2D primitives:
-        Screen('FillOval', win, [255 255 0], [500 500 600 600]);
-        
-        % And some text:
-        Screen('TextSize', win, 30);
-        Screen('TextStyle', win , 1);
-        DrawFormattedText(win, 'If it works, it works.\nIf it doesn''t, it doesn''t.\n(Quoc Vuong, 2006)', 'center', 'center', [0 255 0]);
-        
-        % Show updated HDR framebuffer at next vertical retrace:
-        vbl=Screen('Flip', win, vbl);
+    otherwise
+        error('Unknown image format. Do not know how to convert into units of Nits.');
+end
 
-        % Increase rotation angle to make it a bit more interesting...
-        rotAngle = rotAngle + 0.1;
-        
-        % Count our frames...
-        framecounter = framecounter + 1;
-    end
-  
-    % We're done. Print the stats:
-    framecounter
-    duration = vbl - tstart
-    averagefps = framecounter / duration
-    
-    % Release all textures, close all windows, shutdown BrightSide library:
-    Screen('CloseAll');
-    
-    % Well done!
-    fprintf('Bye bye!\n');
-catch
-    % Error handler: If something goes wrong between try and catch, we
-    % close the window and abort.
+% Compute maximum and max mean luminance of the image:
+maxCLL = max(max(max(img)))
+maxFALL = mean(mean(mean(img)))
 
-    % Release all textures, close all windows, shutdown BrightSide library:
-    Screen('CloseAll');
+% Find screen to display on: We choose the one with the highest number,
+% assuming this is the HDR display:
+screenid = max(Screen('Screens'));
 
-    % Rethrow the error, so higher level routines can handle it:
-    psychrethrow(psychlasterror);
-end;
+% Set a cleanup function: If the variable 'canary' goes out of scope due to
+% script termination (error or user abort), call "sca" which will close the display:
+canary = onCleanup(@sca);
+
+% Open a double-buffered fullscreen onscreen window in HDR mode on the HDR
+% display, with black background color. Color values will be specified in
+% units of nits, the display is done according to HDR10 standard, ie.
+% Color space is BT2020, SMPTE ST-2084 PQ encoding is used to drive the
+% display, output color signals have 10 bpc precision.
+PsychImaging('PrepareConfiguration');
+PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
+% Note: This would also work, as above settings are used by default:
+% PsychImaging('AddTask', 'General', 'EnableHDR');
+win = PsychImaging('OpenWindow', screenid, 0);
+
+% Tell the HDR display about maximum frame average light level and maximum
+% content light level of the image:
+PsychHDR('HDRMetadata', win, [], maxFALL, maxCLL);
+
+% Build a Psychtoolbox 16 bpc half-float texture from the image array
+% by setting the (optional) 'floatprecision' flag to 1. If you need
+% even more precision you can provide the value 2 instead of 1,
+% creating full 32 bpc float textures. These will take up twice the
+% amount of memory and bandwidth though:
+texid = Screen('MakeTexture', win, img, [], [], 1);
+
+% Some variable rotation angle for the image, for some simplistic animation:
+rotAngle = 0;
+
+% Some framecounter for stats:
+framecounter = 0;
+
+% Initial Flip to sync us to retrace:
+vbl = Screen('Flip', win);
+tstart = vbl;
+
+% Animation loop: Show a rotating HDR image, until key press:
+while ~KbCheck
+    % Draw our HDR texture at specified rotation angle, centered in the window:
+    Screen('DrawTexture', win, texid, [], [], rotAngle);
+
+    % Draw some 2D filled oval, with a bounding box of [left,top,right,bottom]
+    % = [500 500 600 600], and a color value of [R, G, B] = [300 nits, 300 nits, 0 nits],
+    % ie. a yellow oval with 300 nits:
+    Screen('FillOval', win, [300 300 0], [500 500 600 600]);
+
+    % And some text, 30 pixels high, centered, in a 200 nits green:
+    Screen('TextSize', win, 30);
+    DrawFormattedText(win, 'If it works, it works.\nIf it doesn''t, it doesn''t.\n(Quoc Vuong, 2006)', 'center', 'center', [0 200 0]);
+
+    % Show updated HDR framebuffer at next vertical retrace:
+    vbl = Screen('Flip', win, vbl);
+
+    % Increase rotation angle to make it a bit more interesting:
+    rotAngle = rotAngle + 0.1;
+
+    % Count our frames:
+    framecounter = framecounter + 1;
+end
+
+% We are done. Release all textures, close all windows, shutdown:
+sca;
+
+% Print the stats:
+duration = vbl - tstart;
+averagefps = framecounter / duration;
+fprintf('Displayed %i frames in %f seconds, for an average framerate of %f fps.\n', framecounter, duration, averagefps);
+fprintf('Bye bye!\n');
