@@ -1223,6 +1223,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // Videotrack available?
     if (movieRecordBANK[slotid].nrVideoTracks > 0) {
+        GstVideoInfo vinfo;
+
         // Yes: Query size and framerate of movie:
         peerpad = gst_pad_get_peer(pad);
         caps=gst_pad_get_current_caps(peerpad);
@@ -1237,6 +1239,15 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             gst_structure_get_int(str,"height",&height);
             rate1 = 0; rate2 = 1;
             gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
+
+            // Try to get more detailed info about video:
+            if (gst_video_info_from_caps (&vinfo, caps)) {
+                if (PsychPrefStateGet_Verbosity() > 3) {
+                    printf("PTB-DEBUG: Colorimetry is %s.\n", gst_video_colorimetry_to_string (&vinfo.colorimetry));
+                    printf("PTB-DEBUG: Colormatrix %i, color primaries %i, eotf %i.\n", vinfo.colorimetry.matrix, vinfo.colorimetry.primaries, vinfo.colorimetry.transfer);
+                    printf("PTB-DEBUG: Format %s. Depth %i bpc.\n", vinfo.finfo->name, *vinfo.finfo->depth);
+                }
+            }
 
             // Parse HDR static metadata from movie, if supported, and if any:
             PsychParseMovieHDRMetadata(&movieRecordBANK[slotid], caps);
