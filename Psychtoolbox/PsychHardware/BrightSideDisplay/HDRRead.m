@@ -21,12 +21,17 @@ function [img, format] = HDRRead(imgfilename, continueOnError, flipit)
 % describes the format of the source image file:
 %
 % 'rgbe' == Radiance RGBE format: Color values are in units of radiance.
+% 'openexr' == OpenEXR image format.
 %
 % HDRRead is a dispatcher for a collection of reading routines for
 % different HDR image file formats. Currently supported are:
 %
 % * Run length encoded RGBE format, read via read_rle_rgbe.m, extension is
 % ".hdr". Returns a RGB image.
+%
+% * OpenEXR files, extension is ".exr". This are readable efficiently if
+% the MIT licensed exrread() command from the following package/webpage is
+% installed: https://github.com/skycaptain/openexr-matlab
 %
 % The reader routines are contributed code or open source / free software /
 % public domain code downloaded from various locations under different, but
@@ -64,14 +69,6 @@ if ~isempty(strfind(imgfilename, '.hdr')) %#ok<STREMP>
             % Use our own fallback:
             inimg = read_rle_rgbe(imgfilename);
         end
-
-        if flipit
-            img(:,:,1) = flipud(inimg(:,:,1));
-            img(:,:,2) = flipud(inimg(:,:,2));
-            img(:,:,3) = flipud(inimg(:,:,3));
-        else
-            img = inimg;
-        end
     catch
         if continueOnError
             img = [];
@@ -87,6 +84,34 @@ if ~isempty(strfind(imgfilename, '.hdr')) %#ok<STREMP>
     format = 'rgbe';
 end
 
+if ~isempty(strfind(imgfilename, '.exr')) %#ok<STREMP>
+    % Load an OpenEXR high dynamic range file:
+    dispatched = 1;
+    try
+        % Does (potentially optimized) hdrread() function exist?
+        if exist('exrread', 'file')
+            % Use it.
+            inimg = double(exrread(imgfilename));
+        else
+            % Use our own fallback:
+            % TODO
+            dispatched = 0;
+        end
+    catch
+        if continueOnError
+            img = [];
+            warning(['HDR file ' imgfilename ' failed to load.']);
+            msg = psychlasterror;
+            disp(msg.message);
+            return;
+        else
+            psychrethrow(psychlasterror);
+        end
+    end
+
+    format = 'openexr';
+end
+
 if dispatched == 0
     if ~continueOnError
         error(['HDR file ' imgfilename ' is of unknown type. No loader available.']);
@@ -95,6 +120,14 @@ if dispatched == 0
         warning(['HDR file ' imgfilename ' is of unknown type. No loader available.']);
         return;
     end
+end
+
+if flipit
+    img(:,:,1) = flipud(inimg(:,:,1));
+    img(:,:,2) = flipud(inimg(:,:,2));
+    img(:,:,3) = flipud(inimg(:,:,3));
+else
+    img = inimg;
 end
 
 % Done.
