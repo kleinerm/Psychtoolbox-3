@@ -1,5 +1,5 @@
-function HDRViewer(imfilepattern, sf)
-% HDRViewer([imfilepattern][, dummymode][, scalefactor]) -- Load and show high
+function HDRViewer(imfilepattern, scalefactor)
+% HDRViewer([imfilepattern][, scalefactor]) -- Load and show high
 % dynamic range images on a compatible HDR display setup.
 %
 % See "help PsychHDR" for system requirements and setup instructions for HDR
@@ -56,8 +56,8 @@ if nargin < 1 || isempty(imfilepattern)
     imfilepattern = '*.hdr';
 end
 
-if nargin < 2
-    sf = [];
+if nargin < 2 || isempty(scalefactor)
+    scalefactor = 1;
 end
 
 % Get list of all files matching the pattern:
@@ -104,6 +104,8 @@ try
         iteration = iteration + 1;
         imagename = [imfilenames(mod(iteration, size(imfilenames,1))+1).folder filesep imfilenames(mod(iteration, size(imfilenames,1))+1).name];
 
+        KbReleaseWait;
+
         % Show some status info:
         msg = ['Loading image: ' imagename];
         fprintf([msg, '\n']);
@@ -114,6 +116,10 @@ try
         % return an empty 'img', instead of aborting with an error:
         [img, hdrType] = HDRRead(imagename, 1);
         if isempty(img)
+            if KbCheck
+                break;
+            end
+
             continue;
         end
 
@@ -123,6 +129,10 @@ try
                 % This is not strictly correct, but will do to get a nice enough picture for
                 % demo purpose:
                 img = img * 180;
+
+            case 'openexr'
+                % HACK: Multiply by 1.0:
+                img = img * 1;
 
             otherwise
                 error('Unknown image format. Do not know how to convert into units of Nits.');
@@ -139,7 +149,7 @@ try
         sfstep = hdrProperties.MaxLuminance / maxCLL * 0.01;
 
         % Scale intensities by some factor. Here we set the default value:
-        sf = 1
+        sf = scalefactor;
 
         % Tell the HDR display about maximum frame average light level and maximum
         % content light level of the image:
@@ -209,7 +219,7 @@ try
             end
 
             % Keypress and what key?
-            [pressed secs keycode] = KbCheck;
+            [pressed , ~, keycode] = KbCheck;
             if pressed
                 % Key pressed: Dispatch...
                 if keycode(KbName('space'))
@@ -270,7 +280,7 @@ try
                         else
                             % Pressed while zoomed in: Reset...
                             while buttons(1)
-                                [xm, ym, buttons] = GetMouse(win);
+                                [~, ~, buttons] = GetMouse(win);
                             end
                             zoomset = 0;
                         end
