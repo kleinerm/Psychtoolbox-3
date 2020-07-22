@@ -1375,7 +1375,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   Usage:
 %
-%   PsychImaging('AddTask', 'General', 'UseVulkanDisplay' [, outputName TODO REMOVE?]);
+%   PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
 %
 %   Psychtoolbox will try to use XXX TODO
 %
@@ -1415,7 +1415,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   Proposed future extended syntax - Not implemented yet, subject to change:
 %
-%   PsychImaging('AddTask', 'General', 'EnableHDR' [, unit='Nits'][, hdrMode='Auto'][, inputColorSpace='BT2020'][, EOTF='Auto']);
+%   PsychImaging('AddTask', 'General', 'EnableHDR' [, unit='Nits'][, hdrMode='Auto'][, extraRequirements][, inputColorSpace='BT2020']);
 %
 %
 % * More actions will be supported in the future. If you can think of an
