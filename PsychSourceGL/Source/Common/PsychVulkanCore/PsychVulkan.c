@@ -661,7 +661,10 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     // Enumerate physical devices - actually combos of Vulkan driver + physical device:
     result = vkEnumeratePhysicalDevices(vulkanInstance, &probedCount, NULL);
     if (result != VK_SUCCESS) {
-        printf("PsychVulkanCore-ERROR: Could not enumerate physical Vulkan devices (I): %i\n", result);
+        if (verbosity > 0) {
+            printf("PsychVulkanCore-ERROR: Could not enumerate physical Vulkan devices (I): %i\n", result);
+            printf("PsychVulkanCore-ERROR: Most likely your system does not support Vulkan for your graphics cards.\n");
+        }
         goto instance_init_out;
     }
 
@@ -676,7 +679,8 @@ void PsychVulkanCheckInit(psych_bool dontfail)
         result = vkEnumeratePhysicalDevices(vulkanInstance, &probedCount, physicalDevices);
         if (result != VK_SUCCESS) {
             free(physicalDevices);
-            printf("PsychVulkanCore-ERROR: Could not enumerate physical Vulkan devices (II): %i\n", result);
+            if (verbosity > 0)
+                printf("PsychVulkanCore-ERROR: Could not enumerate physical Vulkan devices (II): %i\n", result);
             goto instance_init_out;
         }
 
@@ -935,6 +939,9 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     return;
 
 instance_init_out:
+
+    deviceExtensionsEnabledCount = 0;
+    instanceExtensionsEnabledCount = 0;
 
     if (!dontfail) {
         PsychErrorExitMsg(PsychError_system, "PsychVulkanCore-ERROR: Initialization of Vulkan API failed. Driver disabled!");
@@ -3566,7 +3573,7 @@ PsychError PSYCHVULKANGetCount(void)
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(0));
 
-    PsychVulkanCheckInit(FALSE);
+    PsychVulkanCheckInit(TRUE);
 
     PsychCopyOutDoubleArg(1, kPsychArgOptional, physicalGpuCount);
 

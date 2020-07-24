@@ -186,7 +186,7 @@ end
 % isSupported = PsychVulkan('Supported');
 if strcmpi(cmd, 'Supported')
     try
-        if exist('PsychVulkanCore', 'file') && PsychVulkanCore('GetCount') >= 0
+        if exist('PsychVulkanCore', 'file') && PsychVulkanCore('GetCount') > 0
             varargout{1} = 1;
         else
             varargout{1} = 0;
