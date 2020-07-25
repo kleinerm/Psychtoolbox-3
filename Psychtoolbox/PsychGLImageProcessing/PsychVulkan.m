@@ -29,6 +29,7 @@ function varargout = PsychVulkan(cmd, varargin)
 
 global GL;
 persistent verbosity;
+persistent supported;
 persistent vulkan;
 persistent usedOutputs;
 persistent outputMappings;
@@ -185,21 +186,26 @@ end
 
 % isSupported = PsychVulkan('Supported');
 if strcmpi(cmd, 'Supported')
-    try
-        if exist('PsychVulkanCore', 'file') && PsychVulkanCore('GetCount') > 0
-            varargout{1} = 1;
-        else
-            varargout{1} = 0;
-        end
+    % Init supported flag via one-time probe:
+    if isempty(supported)
+        try
+            if exist('PsychVulkanCore', 'file') && PsychVulkanCore('GetCount') > 0
+                supported = 1;
+            else
+                supported = 0;
+            end
 
-        if isempty(verbosity)
-            verbosity = 3;
-            PsychVulkanCore('Verbosity', verbosity);
+            if isempty(verbosity)
+                verbosity = 3;
+                PsychVulkanCore('Verbosity', verbosity);
+            end
+        catch
+            lasterror('reset');
+            supported = 0;
         end
-    catch
-        lasterror('reset');
-        varargout{1} = 0;
     end
+
+    varargout{1} = supported;
 
     return;
 end
