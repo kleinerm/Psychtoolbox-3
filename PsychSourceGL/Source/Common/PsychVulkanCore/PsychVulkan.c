@@ -94,6 +94,7 @@ typedef struct PsychVulkanDevice {
     VkPhysicalDeviceIDProperties        physDeviceProps;
     VkPhysicalDeviceDriverPropertiesKHR driverProps;
     psych_bool                          hasHDR;
+    psych_bool                          hasHDRLocalDimming;
     psych_bool                          hasTiming;
     uint32_t                            graphicsQueueFamilyIndex;
     VkPhysicalDeviceMemoryProperties    memoryProperties;
@@ -232,10 +233,10 @@ PFN_vkDestroySwapchainKHR fpDestroySwapchainKHR;
 PFN_vkGetSwapchainImagesKHR fpGetSwapchainImagesKHR = NULL;
 PFN_vkAcquireNextImageKHR fpAcquireNextImageKHR;
 PFN_vkQueuePresentKHR fpQueuePresentKHR;
-PFN_vkGetRefreshCycleDurationGOOGLE fpGetRefreshCycleDurationGOOGLE;
-PFN_vkGetPastPresentationTimingGOOGLE fpGetPastPresentationTimingGOOGLE;
-PFN_vkSetHdrMetadataEXT fpSetHdrMetadataEXT;
-PFN_vkSetLocalDimmingAMD fpSetLocalDimmingAMD;
+PFN_vkGetRefreshCycleDurationGOOGLE fpGetRefreshCycleDurationGOOGLE = NULL;
+PFN_vkGetPastPresentationTimingGOOGLE fpGetPastPresentationTimingGOOGLE = NULL;
+PFN_vkSetHdrMetadataEXT fpSetHdrMetadataEXT = NULL;
+PFN_vkSetLocalDimmingAMD fpSetLocalDimmingAMD = NULL;
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 PFN_vkAcquireFullScreenExclusiveModeEXT fpAcquireFullScreenExclusiveModeEXT;
@@ -396,7 +397,7 @@ static psych_bool addDeviceExtension(VkExtensionProperties* exts, unsigned int e
     return (FALSE);
 }
 
-psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex, psych_bool* hasHDR, psych_bool* hasTiming)
+psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex, psych_bool* hasHDR, psych_bool* hasHDRLocalDimming, psych_bool* hasTiming)
 {
     VkResult result;
     psych_bool rc = FALSE;
@@ -452,14 +453,15 @@ psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex,
         goto deviceExtensions_out;
     }
 
-    if (hasHDR) {
-        // The HDR metadata extension is a must-have if HDR is requested:
-        *hasHDR = addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_EXT_HDR_METADATA_EXTENSION_NAME);
+    // The HDR metadata extension is a must-have if HDR is requested:
+    *hasHDR = addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_EXT_HDR_METADATA_EXTENSION_NAME);
 
-        // The AMD specific extension for native display HDR and local backlight dimming control is optional:
-        if (*hasHDR)
-            addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME);
-    }
+    // The AMD specific extension for native display HDR and local backlight dimming control is optional and only makes
+    // sense if we already have basic HDR support:
+    if (*hasHDR)
+        *hasHDRLocalDimming = addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME);
+    else
+        *hasHDRLocalDimming = FALSE;
 
     if (hasTiming) {
         // The Google display timing extension is a must-have if precise timing is requested:
@@ -648,16 +650,6 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     GET_INSTANCE_PROC_ADDR(vulkanInstance, ReleaseDisplayEXT);
     #endif
 
-    // Basic HDR support:
-    GET_INSTANCE_PROC_ADDR(vulkanInstance, SetHdrMetadataEXT);
-
-    // AMD specific local backlight dimming control suppport on FreeSync2:
-    GET_INSTANCE_PROC_ADDR(vulkanInstance, SetLocalDimmingAMD);
-
-    // Enhanced presentation timing support via VK_GOOGLE_DISPLAY_TIMING extension:
-    GET_INSTANCE_PROC_ADDR(vulkanInstance, GetRefreshCycleDurationGOOGLE);
-    GET_INSTANCE_PROC_ADDR(vulkanInstance, GetPastPresentationTimingGOOGLE);
-
     // Enumerate physical devices - actually combos of Vulkan driver + physical device:
     result = vkEnumeratePhysicalDevices(vulkanInstance, &probedCount, NULL);
     if (result != VK_SUCCESS) {
@@ -688,7 +680,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
             verbosity = (pass == 0) ? 1 : oldVerbosity;
 
             for (i = 0; i < probedCount; i++) {
-                psych_bool hasHDR, hasTiming;
+                psych_bool hasHDR, hasHDRLocalDimming, hasTiming;
 
                 // Get physical device properties:
                 // Note: These daisy-chained structs might be useful in the future:
@@ -771,7 +763,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                 // Check if minimum set of required device extensions is available on this gpu. This will also check if
                 // HDR extensions and timing extensions are available, report back in hasHDR and hasTiming if they are
                 // supported, and enable/request them if they are supported:
-                if (!checkAndRequestDeviceExtensions(physicalDevices, i, &hasHDR, &hasTiming))
+                if (!checkAndRequestDeviceExtensions(physicalDevices, i, &hasHDR, &hasHDRLocalDimming, &hasTiming))
                     continue;
 
                 if (needHDR && !hasHDR) {
@@ -842,6 +834,20 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                 if (pass == 0)
                     printf("IMPLEMENTATION BUG: Reached code in pass 0 which should only be reachable in pass 1 !!!\n");
 
+                // Basic HDR support:
+                if (hasHDR && !fpSetHdrMetadataEXT)
+                    GET_INSTANCE_PROC_ADDR(vulkanInstance, SetHdrMetadataEXT);
+
+                // AMD specific local backlight dimming control suppport on FreeSync2:
+                if (hasHDRLocalDimming && !fpSetLocalDimmingAMD)
+                    GET_INSTANCE_PROC_ADDR(vulkanInstance, SetLocalDimmingAMD);
+
+                // Enhanced presentation timing support via VK_GOOGLE_DISPLAY_TIMING extension:
+                if (hasTiming && (!fpGetRefreshCycleDurationGOOGLE || !fpGetPastPresentationTimingGOOGLE)) {
+                    GET_INSTANCE_PROC_ADDR(vulkanInstance, GetRefreshCycleDurationGOOGLE);
+                    GET_INSTANCE_PROC_ADDR(vulkanInstance, GetPastPresentationTimingGOOGLE);
+                }
+
                 // Add a record about this GPU's basic properties:
                 vulkan = &(vulkanDevices[physicalGpuCount]);
                 vulkan->deviceIndex = physicalGpuCount + 1;
@@ -850,6 +856,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                 vulkan->physDeviceProps = physDeviceProps;
                 vulkan->driverProps = driverprops;
                 vulkan->hasHDR = hasHDR;
+                vulkan->hasHDRLocalDimming = hasHDRLocalDimming;
                 vulkan->hasTiming = hasTiming;
                 vulkan->graphicsQueueFamilyIndex = graphicsQueueFamilyIndex;
 
