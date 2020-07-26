@@ -1,5 +1,5 @@
-function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, colorclut, doGainCorrection)
-% AdditiveBlendingForLinearSuperpositionTutorial([outputdevice='None'] [, overlay=1] [, colorclut=0] [, doGainCorrection=0]);
+function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, colorclut, doGainCorrection, useVulkan)
+% AdditiveBlendingForLinearSuperpositionTutorial([outputdevice='None'][, overlay=1][, colorclut=0][, doGainCorrection=0][, useVulkan=0]);
 %
 % Illustrates use of floating point textures in combination with
 % source-weighted additive alpha blending to create linear superpositions
@@ -123,6 +123,11 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % details of this feature.
 %
 %
+% The fifth optional parameter 'useVulkan' if provided and set to 1, will try
+% to use a Vulkan based display backend, instead of the standard OpenGL based
+% display backend. See "help PsychVulkan" for system requirements and caveats.
+%
+%
 % Please note: Most of these modes only show expected results when the
 % proper devices are attached and calibrated. All modes will work even on
 % standard graphics without special devices, but you'll just see a false
@@ -184,6 +189,9 @@ if nargin < 4 || isempty(doGainCorrection)
     doGainCorrection = 0;
 end
 
+if nargin < 5 || isempty(useVulkan)
+    useVulkan = 0;
+end
 
 try
     % This script calls Psychtoolbox commands available only in OpenGL-based 
@@ -202,6 +210,11 @@ try
     % Open a double-buffered fullscreen window with a gray (intensity =
     % 0.5) background and support for 16- or 32 bpc floating point framebuffers.
     PsychImaging('PrepareConfiguration');
+
+    % Shall Vulkan be used as display backend?
+    if useVulkan
+        PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+    end
 
     lrect = [];
     rrect = [];
