@@ -264,13 +264,26 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     icmshader = varargin{3};
     icmstring = varargin{4};
 
+    % HDR emulation dummy mode requested?
+    if hdrMode == 0 && hdrArgs.dummy
+        % For purpose of setup code in this subfunction, treat it as hdrMode 1:
+        hdrMode = 1;
+    end
+
     switch (hdrMode)
         case 1
             % HDR-10: At least 10 bpc color depth, BT-2020/Rec-2020 color space,
             % SMPTE ST-2084 PQ "Perceptual Quantizer" OETF encoding by us.
 
             if verbosity >= 3
-                fprintf('PsychHDR-INFO: HDR-10 output activated. BT-2020 color space, PQ EOTF. Unit is %s.\n', hdrArgs.inputUnit);
+                if ~hdrArgs.dummy
+                    % The real thing:
+                    fprintf('PsychHDR-INFO: HDR-10 output activated. BT-2020 color space, PQ EOTF. Unit is %s.\n', hdrArgs.inputUnit);
+                else
+                    % Only minimal emulation:
+                    fprintf('PsychHDR-INFO: HDR-10 output EMULATION ON SDR DISPLAY activated. BT-2020 color space, PQ EOTF. Unit is %s.\n', hdrArgs.inputUnit);
+                    fprintf('PsychHDR-INFO: This is only a most bare-bones emulation. VISUAL STIMULI WILL DISPLAY WRONG!\n');
+                end
             end
 
             % Select scalefactor from user framebuffer to shader input:
@@ -326,6 +339,7 @@ function hdrArgs = parseHDRArguments(hdrArguments)
     % hdrArguments{2} = Task 'EnableHDR'
     % hdrArguments{3} = unit of color input values.
     % hdrArguments{4} = hdrMode='Auto' aka 'HDR-10'.
+    % hdrArguments{5} = extraRequirements='' by default.
 
     % Validate inputs:
     if ~strcmpi(hdrArguments{1}, 'General')
@@ -353,7 +367,7 @@ function hdrArgs = parseHDRArguments(hdrArguments)
             error('PsychHDR-ERROR: Invalid input color value unit argument ''%s'' provided for HDR operation.', hdrArguments{3});
     end
 
-    hdrArgs.unit = hdrArguments{3};
+    hdrArgs.unit = hdrArgs.inputUnit;
 
     if isempty(hdrArguments{4})
         hdrArguments{4} = 'Auto';
@@ -370,5 +384,17 @@ function hdrArgs = parseHDRArguments(hdrArguments)
 
         otherwise
             error('PsychHDR-ERROR: Invalid hdrMode ''%s'' provided for HDR operation.', hdrArguments{4});
+    end
+
+    % No dummy HDR mode by default:
+    hdrArgs.dummy = 0;
+
+    % Handle extraRequirements:
+    if ~isempty(hdrArguments{5})
+        if ~isempty(strfind(lower(hdrArguments{5}), 'dummy'))
+            % Dummy mode requested, for minimal emulation on a SDR display:
+            hdrArgs.hdrMode = 0;
+            hdrArgs.dummy = 1;
+        end
     end
 end

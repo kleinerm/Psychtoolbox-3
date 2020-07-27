@@ -1395,7 +1395,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   Usage:
 %
-%   PsychImaging('AddTask', 'General', 'EnableHDR' [, unit='Nits'][, hdrMode='Auto']);
+%   PsychImaging('AddTask', 'General', 'EnableHDR' [, unit='Nits'][, hdrMode='Auto'][, extraRequirements]);
 %
 %   Optional parameters:
 %
@@ -1412,6 +1412,15 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %             transfer function.
 %
 %             -> Currently 'Auto' will select 'HDR-10' as the only supported op-mode.
+%
+%   'extraRequirements' String with various keywords to specify special requirements.
+%                       Default is empty, ie. no extra requirements. Currently supported
+%                       keywords are:
+%
+%                       'Dummy' - Only simulate HDR on a SDR standard dynamic range display.
+%                                 This only performs setup steps and processing possible on
+%                                 a SDR display, to allow for basic script development and
+%                                 testing. Visual results will be obviously wrong!
 %
 %   Proposed future extended syntax - Not implemented yet, subject to change:
 %
