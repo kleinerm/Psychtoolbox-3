@@ -29,6 +29,11 @@
 #include "PsychMovieSupportGStreamer.h"
 #include <gst/gst.h>
 
+// Include for dynamic binding of optional functions (dlsym()), only needed for Unix:
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+#include <dlfcn.h>
+#endif
+
 #if GST_CHECK_VERSION(1,0,0)
 #include <gst/app/gstappsink.h>
 #include <gst/video/video.h>
