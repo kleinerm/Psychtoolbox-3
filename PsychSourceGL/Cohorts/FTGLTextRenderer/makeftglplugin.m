@@ -21,8 +21,8 @@ if IsWin
 end
 
 if IsOSX
-    cmd = 'g++ -g -DHAVE_OPENGL_DIR -I.  -I/usr/X11/include/ -I/usr/X11/include/freetype2/ -L/usr/X11/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl64.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp';
-    %cmd = 'g++ -g -DHAVE_OPENGL_DIR -I.  -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/ -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/freetype2/ -L/Library/Frameworks/GStreamer.framework/Versions/Current/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl64.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp';
+    %cmd = 'g++ -g -DHAVE_OPENGL_DIR -I.  -I/usr/X11/include/ -I/usr/X11/include/freetype2/ -L/usr/X11/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl64.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp';
+    cmd = 'g++ -g -DHAVE_OPENGL_DIR -I.  -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/ -I/Library/Frameworks/GStreamer.framework/Versions/Current/include/freetype2/ -L/Library/Frameworks/GStreamer.framework/Versions/Current/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl64.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp';
     name = 'libptbdrawtext_ftgl64.dylib';
 end
 
