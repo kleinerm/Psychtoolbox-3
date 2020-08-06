@@ -269,6 +269,21 @@ if IsOSX
         fprintf('this will likely fail soon and leave you with a dysfunctional toolbox.\n\n');
         pause;
     end
+
+    % Make sure we have a suitable fontconfig config file so fontconfig can
+    % find the fonts on macOS, even if libfontconfig from GStreamer is
+    % used, instead of from HomeBrew or X11:
+    if ~exist([PsychHomeDir '.fonts.conf'], 'file')
+        [rc, msg] = copyfile([PsychtoolboxRoot 'PsychBasic/macOS_fontconfig.fonts.conf'], [PsychHomeDir '.fonts.conf']);
+        if rc
+            fprintf('FontConfig configuration file for DrawText %s was missing. Successfully installed a suitable file.\n', [PsychHomeDir '.fonts.conf']);
+        else
+            fprintf('ERROR: FontConfig configuration file for DrawText %s was missing, but failed to install a suitable file!\n', [PsychHomeDir '.fonts.conf']);
+            fprintf('ERROR: This may cause the Screen(''DrawText'') function to fail, because it may not find fonts.\n');
+            fprintf('ERROR: Type ''help DrawTextPlugin'' for potential troubleshooting help.\n');
+            fprintf('ERROR: The error message of the failed copyfile command was the following:\n''%s''\n', msg);
+        end
+    end
 end
 
 % Matlab specific setup:
@@ -417,7 +432,7 @@ if IsOctave
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
             % On Linux everything from 3.8 to 5 is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0, 4.2, 4.4 or 5.1 series for use with Psychtoolbox.\n');
+            fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0, 4.2, 4.4, 5.1 or 5.2 series for use with Psychtoolbox.\n');
             fprintf('WARNING: You can get Psychtoolbox for more recent versions of Octave from NeuroDebian.\n');
         else
             % On Windows/OSX we only care about 5.1 atm:
@@ -617,6 +632,30 @@ try
         % so we get the deterministic timing and high performance we want for visual
         % stimulus presentation. The command is a no-op
         PsychGPUControl('FullScreenWindowDisablesCompositor', 1);
+    end
+
+    if ~IsLinux
+        % If this is not Linux, then open an invisible onscreen window and
+        % draw some dummy text with the plugin text renderer, just to
+        % trigger a (re-)build of the fontconfig cache if that should prove
+        % neccessary. Such a rebuild can take many seconds to even minutes
+        % and looks to the user like a hang, so do it here, with proper
+        % warning. We skip this on Linux, as the OS will take care of
+        % proper rebuilds appropriately, so we don't expect to ever run
+        % into this problem:
+        fprintf('Trying to trigger an update of the fontconfig cache if that should prove neccessary.\n');
+        fprintf('This may take a couple of seconds, or sometimes even minutes. Please be patient...\n');
+        drawnow;
+        oldRenderer = Screen('Preference', 'TextRenderer', 1);
+        oldLevel = Screen('Preference', 'WindowShieldingLevel', -1);
+        oldVerbo = Screen('Preference', 'Verbosity', 0);
+        win = Screen('OpenWindow', 0, 0, [0 0 100 100]);
+        Screen('DrawText', win, 'Ola!');
+        Screen('Flip', win);
+        Screen('CloseAll');
+        Screen('Preference', 'TextRenderer', oldRenderer);
+        Screen('Preference', 'WindowShieldingLevel', oldLevel);
+        Screen('Preference', 'Verbosity', oldVerbo);
     end
 
     % Tell user we're successfully done:
