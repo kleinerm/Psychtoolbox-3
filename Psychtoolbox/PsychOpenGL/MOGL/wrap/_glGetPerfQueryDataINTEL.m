@@ -4,9 +4,9 @@ function [ data, bytesWritten ] = glGetPerfQueryDataINTEL( queryHandle, flags, d
 %
 % usage:  [ data, bytesWritten ] = glGetPerfQueryDataINTEL( queryHandle, flags, dataSize )
 %
-% C function:  void glGetPerfQueryDataINTEL(GLuint queryHandle, GLuint flags, GLsizei dataSize, GLvoid* data, GLuint* bytesWritten)
+% C function:  void glGetPerfQueryDataINTEL(GLuint queryHandle, GLuint flags, GLsizei dataSize, void* data, GLuint* bytesWritten)
 
-% 30-Sep-2014 -- created (generated automatically from header files)
+% 08-Aug-2020 -- created (generated automatically from header files)
 
 % ---allocate---
 
