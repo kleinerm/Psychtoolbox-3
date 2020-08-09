@@ -16,6 +16,7 @@
  * Updated by Mario Kleiner at 1st April 2012.
  * Updated by Mario Kleiner at 28. August 2012 up to GL_ARB_texture_storage_multisample
  * Updated by Mario Kleiner at 28. September 2014.
+ * Updated by Mario Kleiner at 8. August 2020.
  *
  */
 
