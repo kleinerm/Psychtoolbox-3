@@ -80,6 +80,7 @@ function varargout = InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitch
 % 03/27/11 mk Update info about license - New MIT license.
 % 02/15/18 mk Add specialFlags +4 for OpenGL 3.1+ core profile contexts.
 % 04/02/19 mk Fix for removal of glmXXX functions.
+% 08/09/20 mk Fix for removal of AGL constants.
 
 global GL;
 
@@ -147,15 +148,16 @@ if opengl_c_style > 0
    % Load all constants, also the C-Style ones, e.g., GL_LIGHTING
    evalin('caller',['load (''' oglconstpath ''');']);
 else
-   % Load only the GL. GLU. and AGL. versions, e.g., GL.LIGHTING
+   % Load only the GL. and GLU. versions, e.g., GL.LIGHTING
    % This is less convenient as one needs to replace GL_ by GL. in
    % all scripts, but it doesn't clutter the Matlab workspace...
-   evalin('caller',['load (''' oglconstpath ''', ''AGL'', ''GL'', ''GLU'');']);
+   evalin('caller',['load (''' oglconstpath ''', ''GL'', ''GLU'');']);
 end
 
-% Assign GL_3D manually - Little hack...
-GL.GL_3D = 1537;
-GL.GL_2D = 1536;
+% Assign GL_3D manually - Little hack, because a struct field can not start
+% with a digit.
+GL.GL_3D = GL.N3D;
+GL.GL_2D = GL.N2D;
 
 % On Windows, we need to preload moglcore into Matlab while the working
 % directory is set to Psychtoolbox/PsychOpenGL/MOGL/core , so the Windows
