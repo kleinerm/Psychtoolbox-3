@@ -174,7 +174,7 @@ static void PsychParseMovieHDRMetadata(PsychMovieRecordType* movie, const GstCap
             psych_gst_video_content_light_level_from_caps = GetProcAddress(gstvideo_handle, "gst_video_content_light_level_from_caps");
         #else
             psych_gst_video_mastering_display_info_from_caps = dlsym(RTLD_DEFAULT, "gst_video_mastering_display_info_from_caps");
-            psych_gst_video_content_light_level_from_caps = dlsym(RTLD_DEFAULT, "gst_video_content_light_level_from_caps");            
+            psych_gst_video_content_light_level_from_caps = dlsym(RTLD_DEFAULT, "gst_video_content_light_level_from_caps");
         #endif
     }
 
@@ -1031,9 +1031,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     g_object_set(G_OBJECT(theMovie), "video-sink", videosink, NULL);
     gst_caps_unref(colorcaps);
 
-    // Get the pad from the final sink for probing width x height of movie frames and nominal framerate of movie:
-    pad = gst_element_get_static_pad(videosink, "sink");
-
     PsychGSProcessMovieContext(&(movieRecordBANK[slotid]), FALSE);
 
     // Attach custom made audio sink?
@@ -1196,9 +1193,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         }
     }
 
-    // NULL out videocodec, we must not unref it, as we didn't aquire or own private ref:
-    videocodec = NULL;
-
     // Query number of available video and audio tracks in movie:
     g_object_get (G_OBJECT(theMovie),
                "n-video", &movieRecordBANK[slotid].nrVideoTracks,
@@ -1230,18 +1224,29 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
     if (movieRecordBANK[slotid].nrVideoTracks > 0) {
         GstVideoInfo vinfo;
 
-        // Yes: Query size and framerate of movie:
-        peerpad = gst_pad_get_peer(pad);
-        caps=gst_pad_get_current_caps(peerpad);
+        if (!videocodec) {
+            // Fallback: Get the pad from the final sink for probing width x height of movie frames and nominal framerate of movie:
+            pad = gst_element_get_static_pad(videosink, "sink");
+            peerpad = gst_pad_get_peer(pad);
+            caps = gst_pad_get_current_caps(peerpad);
+            gst_object_unref(peerpad);
+        } else {
+            // Better: Get the pad/caps from the videocodec, so we get original colorimetry information:
+            pad = gst_element_get_static_pad(videocodec, "src");
+            caps = gst_pad_get_current_caps(pad);
+        }
+
+        // Got valid caps?
         if (caps) {
-            str=gst_caps_get_structure(caps,0);
+            // Yes: Query size and framerate of movie:
+            str = gst_caps_get_structure(caps, 0);
 
             /* Get some data about the frame */
             rate1 = 1; rate2 = 1;
             gst_structure_get_fraction(str, "pixel-aspect-ratio", &rate1, &rate2);
             movieRecordBANK[slotid].aspectRatio = (double) rate1 / (double) rate2;
-            gst_structure_get_int(str,"width",&width);
-            gst_structure_get_int(str,"height",&height);
+            gst_structure_get_int(str,"width", &width);
+            gst_structure_get_int(str,"height", &height);
             rate1 = 0; rate2 = 1;
             gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
 
@@ -1259,6 +1264,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
          } else {
             printf("PTB-DEBUG: No frame info available after preroll.\n");
          }
+
+         // Release the pad:
+         gst_object_unref(pad);
     }
 
     if (strstr(moviename, "v4l2:")) {
@@ -1271,8 +1279,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         if (strstr(moviename, "320")) { width = 320; height = 240; };
     }
 
-    // Release the pad:
-    gst_object_unref(pad);
+    // NULL out videocodec, we must not unref it, as we didn't aquire or own private ref:
+    videocodec = NULL;
 
     // Assign new record in moviebank:
     movieRecordBANK[slotid].theMovie = theMovie;
