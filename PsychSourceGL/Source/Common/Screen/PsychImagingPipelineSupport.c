@@ -3143,7 +3143,7 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
         // For planar textures we need to bind the planar -> interleaved conversion shader:
         if (isplanar) {
             if ((sourceRecord->textureFilterShader == 0) && (PsychPrefStateGet_Verbosity() > 1)) {
-                printf("PTB-WARNING: Failed to normalize texture orientation and format: Conversion shader missing for this special texture!\n");
+                printf("PTB-WARNING: Failed to normalize texture orientation and format: Conversion shader missing for this special planar texture!\n");
             }
 
             PsychSetShader(sourceRecord, -1 * sourceRecord->textureFilterShader);
@@ -5223,9 +5223,12 @@ psych_bool PsychAssignHighPrecisionTextureShaders(PsychWindowRecordType* texture
             }
         }
 
-        // Assign our onscreen windows filtershader to this texture:
-        textureRecord->textureFilterShader = windowRecord->textureFilterShader;
-        textureRecord->textureLookupShader = windowRecord->textureLookupShader;
+        // Assign our onscreen windows filtershader to this texture, unless something else has already assigned
+        // a suitable shader:
+        if (textureRecord->textureFilterShader == 0)
+            textureRecord->textureFilterShader = windowRecord->textureFilterShader;
+        if (textureRecord->textureLookupShader == 0)
+            textureRecord->textureLookupShader = windowRecord->textureLookupShader;
     }
 
     // Done.
