@@ -194,8 +194,11 @@ if strcmpi(cmd, 'GetClientImagingParameters')
     hdrArgs = parseHDRArguments(varargin{1});
 
     % We need the final output formatting imaging pipeline chain to attach our
-    % HDR post-processing shader, at a minimum for OETF mapping, e.g., PQ:
-    hdrImagingModeFlags = kPsychNeedOutputConversion;
+    % HDR post-processing shader, at a minimum for OETF mapping, e.g., PQ. Also
+    % mark the onscreen window as HDR window, so texture precision for 'MakeTexture'
+    % et al. can be adapted, and the movie playback engine can decode/remap video
+    % frames from movies accordingly:
+    hdrImagingModeFlags = mor(kPsychNeedOutputConversion, kPsychNeedHDRWindow);
 
     varargout{1} = hdrImagingModeFlags;
     return;

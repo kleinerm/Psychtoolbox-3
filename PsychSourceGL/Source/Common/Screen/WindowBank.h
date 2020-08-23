@@ -126,6 +126,8 @@
 #define kPsychUseExternalSinkTextures (1 << 21) // finalizedFBO's have backing OpenGL FBO's which use externally created and injected OpenGL textures as color attachment (aka rendertargets).
 #define kPsychSinkIsMSAACapable       (1 << 22) // External sinks for finalizedFBO color buffer textures can process GL_TEXTURE_2D_MULTISAMPLE textures as input, not only GL_TEXTURE_2D textures.
 #define kPsychEnableSRGBRendering     (1 << 23) // Use OpenGL sRGB rendering and blending if the target color framebuffer is in sRGB format.
+#define kPsychNeedHDRWindow           (1 << 24) // Treat this window as HDR display window: Remap color info accordingly whenever dealing with textures, e.g., movie playback, MakeTexture etc.
+// (1 << 25) shared with specialflags as kPsychTripleWidthWindow.
 
 // 'specialflags' fields, partially shared with imagingmode flags:
 #define kPsychUseTextureMatrixForRotation   1       // Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
@@ -168,7 +170,7 @@
 #define kPsychExternalDisplayMethod         (1ULL << 32) // 'specialflags': This window is not used for actual visual stimulation, as some external display mechanism is used, e.g., Vulkan or VR compositor.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,S-2^25. --> Flags of 2^24 as well as 2^26 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25. --> Flags of 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,2^31,2^32. --> Flags of 2^33 and higher are available...

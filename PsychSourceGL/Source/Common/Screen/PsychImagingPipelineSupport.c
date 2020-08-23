@@ -1375,6 +1375,14 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
         }
     }
 
+    // Marked as HDR window? This will use higher texture precision by default, and perform color value / EOTF mapping into HDR range, as appropriate:
+    if (imagingmode & kPsychNeedHDRWindow) {
+        newimagingmode |= kPsychNeedHDRWindow;
+
+        if (PsychPrefStateGet_Verbosity() > 2)
+            printf("PTB-INFO: This is a HDR display window: Applying higher precision and suitable range scaling for textures and movie video frames.\n");
+    }
+
     // Set new final imaging mode and fbocount:
     windowRecord->imagingMode = newimagingmode;
     windowRecord->fboCount = fbocount;
