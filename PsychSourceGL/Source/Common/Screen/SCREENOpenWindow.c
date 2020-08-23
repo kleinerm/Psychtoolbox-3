@@ -79,7 +79,10 @@ static char synopsisString[] =
     "flags is passed. A currently supported flag is the symbolic constant kPsychGUIWindow. It enables windows "
     "to behave more like regular GUI windows on your system. See 'help kPsychGUIWindow' for more info. The "
     "flag kPsychGUIWindowWMPositioned additionally leaves initial positioning of the GUI window to the window "
-    "manager.\n\n"
+    "manager. The flag kPsychExternalDisplayMethod marks this onscreen window as not an actual visual "
+    "stimulation surface, ie. actual visual stimulation is provided by some other external display mechanism, "
+    "e.g., Vulkan or some VR compositor or such. This tells Screen() to suppress certain warnings or checks "
+    "which would be prudent if the window were the primary and critical means of visual stimulation.\n\n"
     "\"clientRect\" This optional parameter allows to define a size of the onscreen windows drawing area "
     "that is different from the actual size of the windows framebuffer. If set, then the imaging pipeline "
     "is started and a virtual framebuffer of the size of \"clientRect\" is created. Your code will draw "
@@ -310,7 +313,7 @@ PsychError SCREENOpenWindow(void)
 
     specialflags = 0;
     PsychCopyInIntegerArg64(9,FALSE, &specialflags);
-    if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned))))
+    if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned | kPsychExternalDisplayMethod))))
         PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
 
     // Alloc in optional double vector with VRR mode and parameters:
@@ -333,13 +336,13 @@ PsychError SCREENOpenWindow(void)
             if (stereomode == kPsychDualWindowStereo)
                 PsychErrorExitMsg(PsychError_user, "Use of VRR mode for fine-grained stimulus presentation timing is incompatible with dual-window stereo presentation on separate screens, as their timing can't be synchronized in VRR mode, as needed for artifact-free dual-display stereo. Choose either VRR or this stereo mode. Aborting.");
 
-            if (imagingmode == kPsychNeedDualWindowOutput)
+            if (imagingmode & kPsychNeedDualWindowOutput)
                 PsychErrorExitMsg(PsychError_user, "Use of VRR mode for fine-grained stimulus presentation timing is incompatible with Screen's own display mirroring or dual-pipe operations on separate screens. Choose either VRR or one of these. Aborting.");
 
             if (stereomode == kPsychDualStreamStereo)
                 PsychErrorExitMsg(PsychError_user, "Use of VRR mode for fine-grained stimulus presentation timing is incompatible with dual-stream stereo presentation on special display devices. Choose either VRR or this stereo mode. Aborting.");
 
-            if (imagingmode == kPsychNeedFinalizedFBOSinks)
+            if (imagingmode & kPsychNeedFinalizedFBOSinks)
                 PsychErrorExitMsg(PsychError_user, "Use of VRR mode for fine-grained stimulus presentation timing is incompatible with use of finalized FBO sinks on special display devices. Choose either VRR or finalized FBO sinks. Aborting.");
         }
 
@@ -526,15 +529,6 @@ PsychError SCREENOpenWindow(void)
         sharedContextWindow = NULL;
     }
 
-    // Hack: Use kPsychSkipTimestampingForFlipOnce during PsychOpenOnscreenWindow() as a
-    // temporary proxy for kPsychNeedFinalizedFBOSinks, to let the OpenWindow code know
-    // that the OpenGL window is not actually used for stimulus presentation, but some
-    // external component is used. This to suppress some warnings inside the OS specific
-    // OpenWindow path, which would only apply if our onscreen window would be the real
-    // deal for visual stimulation:
-    if (imagingmode & kPsychNeedFinalizedFBOSinks)
-        specialflags |= kPsychSkipTimestampingForFlipOnce;
-
     // Create the onscreen window and perform initialization of everything except
     // imaging pipeline and a few other special quirks. If sharedContextWindow is non-NULL,
     // the new window will share its OpenGL context ressources with sharedContextWindow.
@@ -557,12 +551,6 @@ PsychError SCREENOpenWindow(void)
         // an error message. The specific error message has been printed in
         // PsychOpenOnscreenWindow() already..
         PsychErrMsgTxt("");
-    }
-
-    // Undo hack from above after successfull PsychOpenOnscreenWindow():
-    if (imagingmode & kPsychNeedFinalizedFBOSinks) {
-        specialflags &= ~kPsychSkipTimestampingForFlipOnce;
-        windowRecord->specialflags &= ~kPsychSkipTimestampingForFlipOnce;
     }
 
     // Sufficient display depth for full alpha-blending and such?

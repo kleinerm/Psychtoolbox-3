@@ -217,6 +217,10 @@ if strcmpi(cmd, 'OpenWindowSetup')
     winRect = varargin{3};
     ovrfbOverrideRect = varargin{4}; %#ok<NASGU>
     ovrSpecialFlags = varargin{5};
+    if isempty(ovrSpecialFlags)
+        ovrSpecialFlags = 0;
+    end
+
     outputIndex = [];
 
     % On Linux X11 one can select a single video output via outputName parameter or winRect:
@@ -358,7 +362,15 @@ if strcmpi(cmd, 'OpenWindowSetup')
     % These always have to match:
     ovrfbOverrideRect = winRect;
 
-    % TODO XXX Define ovrSpecialFlags override settings?
+    % Set ovrSpecialFlags override settings to mark the onscreen window as not
+    % important for visual stimulation, because the actual window / OpenGL windowing
+    % backend is not used for primary stimulus display. Instead we / Vulkan/WSI is
+    % in charge for proper visual stimulus display to the actual display monitor.
+    % This will cause Screen() to skip certain tests or calibrations and omit certain
+    % warnings, e.g., wrt. timing precision, active desktop compositors etc., as they
+    % don't really apply - or at least not in a way Screen() can deal with, as it is
+    % the Vulkan drivers job to handle that:
+    ovrSpecialFlags = mor(ovrSpecialFlags, kPsychExternalDisplayMethod);
 
     % Assign modified return args:
     varargout{1} = winRect;

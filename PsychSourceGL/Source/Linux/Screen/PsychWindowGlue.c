@@ -1279,8 +1279,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         if (DPMSQueryExtension(dpy, &dummy, &dummy)) DPMSDisable(dpy);
     }
 
-    // Some info for the user regarding non-fullscreen mode and sync problems, unless external consumers are used as signalled by kPsychSkipTimestampingForFlipOnce:
-    if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2) && !(windowRecord->specialflags & kPsychSkipTimestampingForFlipOnce)) {
+    // Some info for the user regarding non-fullscreen mode and sync problems, unless external consumers are used as signalled by kPsychExternalDisplayMethod:
+    if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2) && !(windowRecord->specialflags & kPsychExternalDisplayMethod)) {
         printf("PTB-INFO: Many graphics cards do not support proper timing and timestamping of visual stimulus onset\n");
         printf("PTB-INFO: when running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
         printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 2); .\n");
