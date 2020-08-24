@@ -1,23 +1,26 @@
 function [img, format] = HDRRead(imgfilename, continueOnError, flipit)
-% [img, format] = HDRRead(imgfilename[, continueOnError=0][, flipit=0])
+% [img, format] = HDRRead(imgfilename [, continueOnError=0][, flipit=0])
 % Read a high dynamic range image file and return it as Matlab double
 % matrix, suitable for use with Screen('MakeTexture') and friends.
 %
 % 'imgfilename' - Filename of the HDR image file to load.
+
 % Returns 'img' - A double precision matrix of size h x w x c where h is
 % the height of the input image, w is the width and c is the number of
 % color channels: 1 for luminance images, 2 for luminance images with alpha
 % channel, 3 for true-color RGB images, 4 for RGB images with alpha
-% channel.
+% channel. If 'imgfilename' is not a supported file type or some error happens,
+% then 'img' will be returned as empty [] matrix.
 %
 % 'continueOnError' Optional flag. If set to 1, HDRRead won't abort on
 % error, but simply return an empty img matrix. Useful for probing if a
-% specific file type is supported.
+% specific file type is supported. If set to 0 or omitted, then HDRRead will
+% abort with an error on any problem or unsupported image file types.
 %
 % 'flipit' Optional flag: If set to 1, the loaded image is flipped upside
 % down.
 %
-% Returns a double() precision image matrix in 'img', and a id in 'format' which
+% Returns a double() precision image matrix in 'img', and an id in 'format' which
 % describes the format of the source image file:
 %
 % 'rgbe' == Radiance RGBE format: Color values are in units of radiance.
@@ -26,10 +29,10 @@ function [img, format] = HDRRead(imgfilename, continueOnError, flipit)
 % HDRRead is a dispatcher for a collection of reading routines for
 % different HDR image file formats. Currently supported are:
 %
-% * Run length encoded RGBE format, read via read_rle_rgbe.m, extension is
-% ".hdr". Returns a RGB image.
+% * Run length encoded RGBE format, read via read_rle_rgbe.m or hdrread() if
+%   available. File extension is ".hdr". Returns a RGB image.
 %
-% * OpenEXR files, extension is ".exr". This are readable efficiently if
+% * OpenEXR files, extension is ".exr". These are readable efficiently if
 % the MIT licensed exrread() command from the following package/webpage is
 % installed: https://github.com/skycaptain/openexr-matlab
 %
