@@ -278,7 +278,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "oldVerbosity = PsychVulkanCore('Verbosity' [, verbosity]);";
     synopsis[i++] = "numDevices = PsychVulkanCore('GetCount');";
     synopsis[i++] = "devices = PsychVulkanCore('GetDevices');";
-    synopsis[i++] = "PsychVulkanCore('Close' [, vulkanHandle]);";
+    synopsis[i++] = "PsychVulkanCore('Close');";
     synopsis[i++] = "vulkanWindow = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, rect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);";
     synopsis[i++] = "PsychVulkanCore('CloseWindow' [, vulkanWindow]);";
     synopsis[i++] = "hdr = PsychVulkanCore('GetHDRProperties', vulkanWindow);";
@@ -3701,14 +3701,52 @@ PsychError PSYCHVULKANOpenWindow(void)
     //                         1                                            1         2           3             4         5     6             7        8               9          10          11           12
     static char synopsisString[] =
         "Open a display window on a Vulkan device.\n\n"
-        "'gpuIndex' is the index of the Vulkan gpu that should be used for displaying the window.\n"
-        "'isFullscreen' Open a fullscreen exclusive window if set to 1, a windowed window if set to 0.\n"
-        "'rect' The [left, top, right, bottom] bounding rectangle of the windows client area.\n"
-        "'refreshHz' The desired video refresh rate for fullscreen windows.\n"
-        "'colorSpace' The output color space to assume / select.\n"
-        "'colorFormat' The pixel output color format to use.\n"
-        "'flags' Special mode selection flags.\n"
+        "'gpuIndex' is the index of the Vulkan gpu that should be used for displaying the window. Devices "
+        "are numbered 1 to PsychVulkanCore('GetCount'). A value of zero means to auto-detect the proper "
+        "gpu + driver combo, given all other passed in parameters.\n"
+        "'targetUUID' A 16 byte uint8() vector with the unique device id UUID which identifies the gpu hardware. "
+        "This is needed for OpenGL + Vulkan interoperation, so Screen() can pass images for presentation to this "
+        "driver. The UUID of the OpenGL gpu used by Screen() for rendering and the Vulkan gpu used for presentation "
+        "must match for this to work, hence Screen() needs to provide the proper 'targetUUID' to use here. "
+        "The proper 'targetUUID' can be set as winfo.GLDeviceUUID with winfo queried as winfo = Screen('GetWindowInfo', window) "
+        "for a given Screen onscreen 'window'. The special targetUUID = zeros(1, 16, 'uint8'); can be used to match any gpu.\n"
+        "'isFullscreen' Open a fullscreen exclusive window if set to 1, a windowed window if set to 0. Proper presentation "
+        "timing and timestamping, HDR display and similar is often only possible with fullscreen exclusive mode.\n"
+        "'screenId' The 'screenId' of the presentation monitor or screen, as used in Screen('Openwindow', screenId) ...\n"
+        "'rect' The [left, top, right, bottom] bounding rectangle of the presentation windows client area. Should match "
+        "the rectangle covered of the desktop or screen of a display monitor for fullscreen exclusive mode. Defines the "
+        "window location in windowed mode.\n"
+        "'outputHandle' Handle defining the video output surface to use, in an operating system dependent manner: On MS-Windows "
+        "the parameter is currently ignored. On Linux X11 in windowed mode, it must be the X11 window handle of the window to "
+        "which we want to display (cfe. Screen('GetWindowInfo', ...);. On Linux in X11 fullscreen mode, it must be the RandR "
+        "output XID for the video output to which we want to display in fullscreen mode.\n"
+        "'hdrMode' Which HDR display mode, if any, to set up for: 0 = No HDR mode, SDR display. 1 = HDR-10. This will also "
+        "determine presets for 'colorPrecision', 'colorSpace' and 'colorFormat' depending on selected mode, if those arguments "
+        "are set to auto-select. E.g., hdrMode == 1 for HDR-10 enforces at least 'colorPrecision' 1 for at least 10 bpc output, "
+        "and selects a HDR10 color space with BT2020 color gamut and SMPTE ST-2084 PQ eotf encoding.\n"
+        "'colorPrecision' Required output framebuffer (swapchain) precision. For HDR display modes, will be forced to at least 1 "
+        "for at least 10 bpc precision:\n"
+        "0 = 8 bpc fixed point linear RGBA8, unorm\n"
+        "1 = 10 bpc fixed point linear RGB10A2, unorm\n"
+        "2 = fp16 RGBA16F half-float\n"
+        "3 = 16 bpc fixed point linear RGBA16, unorm\n"
+        "4 = Try all deep-color unorm precisions from highest to lowest: RGBA16 -> RGB10A2\n"
         "\n"
+        "5 = Try all deep-color precisions (unorm and fp16) from highest to lowest: RGBA16 -> RGBA16F -> RGB10A2\n"
+        "6 = Try fp16, then 10 bpc unorm: RGBA16F -> RGB10A2\n"
+        "Values 0 - 3 request the exact precision, and fail window creation if the system does not support them.\n"
+        "Values 4 - 6 request the highest precision, then fall back to lower precisions if the system does not support them, "
+        "and fail if the lowest precision in the sequence is not supported either. E.g., A value of 6 would aim for fp16, for "
+        "more than 10 bpc effective output precision, but fall back to 10 bpc if fp16 is not supported. It would abort though "
+        "if 10 bpc would not be supported either. This is a good choice for HDR display modes with the highest possible "
+        "precision that a given operating system + Vulkan driver + gpu + display cable + display combination supports.\n"
+        "'refreshHz' The desired video refresh rate for fullscreen windows. May have no effect in windowed mode.\n"
+        "'colorSpace' The output color space to assume / select as VkColorSpace id. If zero, then will be set automatically according to 'hdrMode', e.g., "
+        "VK_COLOR_SPACE_SRGB_NONLINEAR_KHR in hdrMode 0, VK_COLOR_SPACE_HDR10_ST2084_EXT in hdrMode 1 (=HDR10).\n"
+        "'colorFormat' NOT USED YET! The pixel output color format to use as VkFormat color format id. If empty, then will be set automatically according to 'colorPrecision' and/or 'hdrMode'.\n"
+        "'flags' Special mode selection flags or'ed together: +1 = Diagnostic display only, no Screen() OpenGL interop, just show an alternating black-white test image. Useful "
+        "for most basic Vulkan testing and driver bringup if the given gpu does not have graphics drivers with OpenGL+Vulkan interop capabilities yet.\n"
+        "\n\n"
         "Returns: The 'vulkanWindow' handle of the Vulkan presentation window.\n";
 
     static char seeAlsoString[] = "CloseWindow";
@@ -4148,12 +4186,15 @@ PsychError PSYCHVULKANHDRLocalDimming(void)
 
 PsychError PSYCHVULKANClose(void)
 {
-    static char useString[] = "PsychVulkanCore('Close' [, vulkanHandle]);";
-    //                                                    1
+    static char useString[] = "PsychVulkanCore('Close');";
+    //
     static char synopsisString[] =
-        "Close Vulkan device 'vulkanHandle'. Do nothing if no such device is open.\n"
-        "If the optional 'vulkanHandle' is omitted, then close all open devices and shutdown the driver, "
-        "ie. perform the same cleanup as if 'clear PsychVulkanCore' would be executed.\n";
+    //    MK: Hide the existence of the 'vulkanDevice' handle, as using it is non-sensical in the currrent
+    //        implementation.
+    //    "Close Vulkan device 'vulkanHandle'. Do nothing if no such device is open.\n"
+    //    "If the optional 'vulkanHandle' is omitted, then close all open devices and shutdown the driver, "
+    "Close all open Vulkan devices and shutdown the driver, "
+    "ie. perform the same cleanup as if 'clear PsychVulkanCore' would be executed.\n";
     static char seeAlsoString[] = "Open";
 
     int handle = -1;
@@ -4276,7 +4317,7 @@ PsychError PSYCHVULKANPresent(void)
         "Screen('Flip', win, tWhen); a value of zero, or omission, means to present as "
         "soon as possible.\n\n"
         "'tPredictedOnset' returns predicted onset time for the just presented frame.\n\n"
-        "'frameIndex' Running index of just presented or queued for presentation frame.\n"
+        "'frameIndex' Running index of just presented (or queued for presentation) frame.\n"
         "\n\n";
     static char seeAlsoString[] = "";
 
