@@ -32,7 +32,7 @@ while ~isempty(tline)
         vname = lower(tline(1:n(1)-1));
         vval = tline(n+1:end);
         fileinfo = setfield(fileinfo,vname,tline(n+1:end)); %#ok<SFLD>
-        fprintf('Variable = %s, Value = %s\n',vname, vval);
+        %fprintf('Variable = %s, Value = %s\n',vname, vval);
     end
     %read the next line
     tline = fgetl(fid);
@@ -44,14 +44,14 @@ fileinfo.Ysign = tline(1);
 [fileinfo.height,~,~,nextindex] = sscanf(tline(4:end),'%d',1);
 fileinfo.Xsign = tline(nextindex+4);
 [fileinfo.width] = sscanf(tline(nextindex+7:end),'%d',1);
-fprintf('resolution: %s\n',tline);
+%fprintf('resolution: %s\n',tline);
 
 %allocate space for the scan line data
 img = zeros(fileinfo.height, fileinfo.width, 3);
 
 %read the scanline data
 if strcmp(fileinfo.format, '32-bit_rle_rgbe')
-    fprintf('Decoding RLE Data stream\n');
+    %fprintf('Decoding RLE Data stream\n');
 end
 
 %read the remaining data
