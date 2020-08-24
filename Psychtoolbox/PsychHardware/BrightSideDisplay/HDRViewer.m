@@ -104,8 +104,6 @@ try
         iteration = iteration + 1;
         imagename = [imfilenames(mod(iteration, size(imfilenames,1))+1).folder filesep imfilenames(mod(iteration, size(imfilenames,1))+1).name];
 
-        KbReleaseWait;
-
         % Show some status info:
         msg = ['Loading image: ' imagename];
         fprintf([msg, '\n']);
@@ -122,11 +120,17 @@ try
                 img = imread(imagename);
                 hdrType = 'sdr';
             catch
-                fprintf('Could not load file %s as either HDR or SDR image file. Skipping...\n', imagename);
+                msg = ['Could not load file ' imagename ' as either HDR or SDR image file. Skipping...'];
+                fprintf([msg, '\n']);
+                DrawFormattedText(win, [msg '\nPress any key to abort viewer in case of endless loops.'], 'center', 'center', [300 0 0]);
+                WaitSecs(1);
+                Screen('Flip', win);
+
                 if KbCheck
                     break;
                 end
 
+                WaitSecs(1);
                 continue;
             end
         end
@@ -149,6 +153,8 @@ try
             otherwise
                 error('Unknown image format. Do not know how to convert into units of Nits.');
         end
+
+        KbReleaseWait;
 
         % Compute maximum and max mean luminance of the image:
         maxCLL = max(max(max(img)));
@@ -175,6 +181,15 @@ try
         % Tell the HDR display about maximum frame average light level and maximum
         % content light level of the image:
         fprintf('Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL);
+        if  maxCLL > 10000
+            fprintf('maxCLL %f exceeds 10000 nits! Rescaling to clamp to 10000 nits.\n', maxCLL);
+            scaledown = 10000 / maxCLL;
+            img = img * scaledown;
+            maxFALL = maxFALL * scaledown;
+            maxCLL = maxCLL * scaledown;
+            fprintf('Clamping: Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL);
+        end
+
         PsychHDR('HDRMetadata', win, [], maxFALL, maxCLL);
 
         % Build a Psychtoolbox 16 bpc half-float texture from the image array
