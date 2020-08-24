@@ -370,7 +370,7 @@ end
 % Psychtoolbox also supports rectangular textures of arbitrary size, so called
 % GL_TEXTURE_RECTANGLE_2D textures. These are normally used for Screen's drawing
 % commands, but they are more difficult to handle in standard OpenGL code...
-mytex = Screen('MakeTexture', win, myimg, [], 1);
+mytex = Screen('MakeTexture', win, myimg, [], 1, 0);
 
 % Retrieve OpenGL handles to the PTB texture. These are needed to use the texture
 % from "normal" OpenGL code:
