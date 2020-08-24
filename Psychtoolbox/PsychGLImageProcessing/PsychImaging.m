@@ -1377,7 +1377,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
 %
-%   Psychtoolbox will try to use XXX TODO
+%   Psychtoolbox will try to display the onscreen window by using a Vulkan driver
+%   with Vulkan/WSI backend, instead of the usual OpenGL windowing system backend.
+%   This may fail if the given system setup does not support this.
 %
 %
 % * 'EnableHDR' Display this onscreen window on a "High dynamic range" (HDR) display.
@@ -1421,10 +1423,6 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %                                 This only performs setup steps and processing possible on
 %                                 a SDR display, to allow for basic script development and
 %                                 testing. Visual results will be obviously wrong!
-%
-%   Proposed future extended syntax - Not implemented yet, subject to change:
-%
-%   PsychImaging('AddTask', 'General', 'EnableHDR' [, unit='Nits'][, hdrMode='Auto'][, extraRequirements][, inputColorSpace='BT2020']);
 %
 %
 % * More actions will be supported in the future. If you can think of an
