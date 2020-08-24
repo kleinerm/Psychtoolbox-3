@@ -116,11 +116,19 @@ try
         % return an empty 'img', instead of aborting with an error:
         [img, hdrType] = HDRRead(imagename, 1);
         if isempty(img)
-            if KbCheck
-                break;
-            end
+            % Not recognized as HDR file. Try if imread() can handle it as
+            % standard SDR image file:
+            try
+                img = imread(imagename);
+                hdrType = 'sdr';
+            catch
+                fprintf('Could not load file %s as either HDR or SDR image file. Skipping...\n', imagename);
+                if KbCheck
+                    break;
+                end
 
-            continue;
+                continue;
+            end
         end
 
         switch hdrType
@@ -134,13 +142,26 @@ try
                 % HACK: Multiply by 1.0:
                 img = img * 1;
 
+            case 'sdr'
+                % Standard - supposedly SDR - file read via imread():
+                img = img * 1;
+
             otherwise
                 error('Unknown image format. Do not know how to convert into units of Nits.');
         end
 
         % Compute maximum and max mean luminance of the image:
-        maxCLL = max(max(max(img)))
-        maxFALL = mean(mean(mean(img)))
+        maxCLL = max(max(max(img)));
+        maxFALL = mean(mean(mean(img)));
+
+        if ~isa(img, 'double')
+            % img is uint8, likely SDR encoded. Convert maxCLL and maxFALL
+            % to double format and scale them so that values 0 - 255 map to
+            % luminance range 0 - 80 nits, as 80 nits is the reference
+            % maximum for SDR range:
+            maxCLL = double(maxCLL) / 255 * 80;
+            maxFALL = double(maxFALL) / 255 * 80;
+        end
 
         % Set step size for change of scaling factor. We get the maximum luminance
         % of our HDR display, relate it to the maximum luminance of the current
@@ -153,11 +174,15 @@ try
 
         % Tell the HDR display about maximum frame average light level and maximum
         % content light level of the image:
+        fprintf('Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL);
         PsychHDR('HDRMetadata', win, [], maxFALL, maxCLL);
 
         % Build a Psychtoolbox 16 bpc half-float texture from the image array
         % by setting the (optional) 'floatprecision' flag to 1.
-        texid = Screen('MakeTexture', win, img, [], [], 1);
+        % texid = Screen('MakeTexture', win, img, [], [], 1);
+        % Or don't, because the 'floatprecision' flag defaults to 1 in HDR
+        % display mode for your convenience:
+        texid = Screen('MakeTexture', win, img);
 
         % Build also a version of the image that is quantized to 8 Bit:
         quantimg = uint8((img / max(max(max(img)))) * 255);

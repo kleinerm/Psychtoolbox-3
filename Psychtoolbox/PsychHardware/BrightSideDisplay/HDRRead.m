@@ -113,6 +113,8 @@ if ~isempty(strfind(imgfilename, '.exr')) %#ok<STREMP>
 end
 
 if dispatched == 0
+    format = [];
+
     if ~continueOnError
         error(['HDR file ' imgfilename ' is of unknown type. No loader available.']);
     else

@@ -59,7 +59,7 @@ if nargin < 1 || isempty(imfilename)
         % Octave doesn not ship with a HDR sample image, so we fall back to our
         % SDR image, unless the machine happens to have Matlab installed in a
         % peculiar location, because it is our development machine:
-        imfilename = ['/home/shared/MATLAB/R2019a/toolbox/images/imdata/office.hdr'];
+        imfilename = '/home/shared/MATLAB/R2019a/toolbox/images/imdata/office.hdr';
         if ~exist(imfilename, 'file')
             % Nope: Just get good old SDR bunny image:
             imfilename = [PsychtoolboxRoot '/PsychDemos/konijntjes1024x768.jpg'];
@@ -87,8 +87,8 @@ switch hdrType
 end
 
 % Compute maximum and max mean luminance of the image:
-maxCLL = max(max(max(img)))
-maxFALL = mean(mean(mean(img)))
+maxCLL = max(max(max(img))) %#ok<NOPRT>
+maxFALL = mean(mean(mean(img))) %#ok<NOPRT>
 
 % Find screen to display on: We choose the one with the highest number,
 % assuming this is the HDR display:
