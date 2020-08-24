@@ -29,15 +29,17 @@
 #include "Screen.h"
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";
-//                                                            1            2              3                          4                5                    6                        7
+static char useString[] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision] [, textureOrientation=0] [, textureShader=0]);";
+//                                                            1            2              3                          4                  5                  6                        7
 static char synopsisString[] =
 "Convert the 2D or 3D matrix 'imageMatrix' into an OpenGL texture and return an index which may be passed to 'DrawTexture' to specify the texture.\n"
 "In the OpenGL Psychtoolbox textures replace offscreen windows for fast drawing of images during animation.\n"
 "The imageMatrix argument may consist of one monochrome plane (Luminance), LA planes, RGB planes, or RGBA planes where "
 "A is alpha, the transparency of a pixel. Alpha values typically range between zero (=fully transparent) and 255 (=fully opaque).\n"
 "The Screen('ColorRange') command affects the range of expected input values in 'imageMatrix' matrices of double precision type, "
-"as does the optional 'floatprecision' flag discussed below.\n"
+"as does the optional 'floatprecision' flag discussed below. If the parent window 'WindowIndex' is a HDR display window, then "
+"by default floating point textures will be created, and uint8 image matrices will be remapped to a suitable subset of the HDR "
+"color range, so they fit in with HDR double images.\n"
 "You need to enable Alpha-Blending via Screen('BlendFunction',...) for the transparency values to have an effect.\n"
 "The argument 'optimizeForDrawAngle' if provided, asks Psychtoolbox to optimize the texture for especially fast "
 "drawing at the specified rotation angle. The default is 0 == Optimize for upright drawing. If 'specialFlags' is set "
@@ -63,18 +65,23 @@ static char synopsisString[] =
 "A 'specialFlags' == 8 will prevent automatic mipmap-generation for GL_TEXTURE_2D textures.\n"
 "A 'specialFlags' == 32 setting will prevent automatic closing of the texture if Screen('Close'); is called. Only "
 "Screen('Close', textureIndex); would close the texture.\n"
-"'floatprecision' defines the precision with which the texture should be stored and processed. Default value is zero, "
-"which asks to store textures with 8 bit per color component precision, a suitable format for standard images read via "
-"imread(). A non-zero value will store the textures color component values as floating point precision numbers, useful "
-"for complex blending operations and calculations on the textures and for processing and display of high dynamic range "
-"image textures, either on a LDR display via tone-mapping, or on a HDR display. If floatprecision is set to 1, the "
-"texture gets stored in half_float format, i.e. 16 bit per color component - Suitable for most display purposes and "
-"fast on recent gfx-hardware. A value of 2 asks for full 32 bit single precision float per color component. Useful for complex "
-"computations and image processing, but can be extremely slow when texture filtering is used on any piece of graphics hardware "
-"manufactured before the year 2007. If a value of 1 is provided, asking for 16 bit floating point textures, but the graphics "
-"hardware does not support this, then PTB tries to allocate a 15 bit precision signed integer texture instead, assuming the "
-"graphics hardware supports that. Such a texture is more precise than the 16 bit floating point texture it replaces, but can "
-"not store values outside the range [-1.0; 1.0]. On OpenGL-ES hardware, a 32 bit floating point texture is selected instead.\n"
+"'floatprecision' defines the precision with which the texture should be stored and processed. If omitted, the default value "
+"in normal display mode is zero, which asks to store textures with 8 bit per color component precision in unsigned normalized "
+"(unorm) color range, a suitable format for standard images read via imread() and displayed on normal display devices. If the "
+"onscreen or parent window 'WindowIndex' is a HDR (High Dynamic Range) window displayed on a HDR capable display device, then "
+"'floatprecision' defaults to 1 instead of 0, to accomodate the need for higher image color precision and the larger value range "
+"in HDR mode. A non-zero value will store the textures color component values as floating point precision numbers, useful "
+"for complex blending operations and calculations on the textures, and for processing and display of high dynamic range "
+"image textures, either on a LDR display via tone-mapping, or on a HDR display. If floatprecision is set to 1 (the default for "
+"a HDR onscreen display window), then the texture gets stored in half-float fp16 format, i.e. 16 bit per color component - "
+"Suitable for most display purposes and fast on current gfx-hardware. A value of 2 asks for full 32 bit single precision float "
+"per color component. Useful for complex computations and image processing, but can be extremely slow when texture filtering is "
+"used on old graphics hardware manufactured before the year 2007. If a value of 1 is provided, asking for 16 bit floating point "
+"textures, but the graphics hardware does not support this, then PTB tries to allocate a 15 bit precision signed integer texture "
+"instead in non-HDR standard mode, assuming the graphics hardware supports that. Such a texture is more precise than the 16 bit "
+"floating point texture it replaces, but can not store values outside the range [-1.0; 1.0]. If the window is a HDR window, then "
+"this function will simply fail if floating point storage is not supported, as floating point storage is crucial for HDR images. "
+"On OpenGL-ES hardware, a 32 bit floating point texture is selected instead.\n"
 "'textureOrientation' This optional argument labels textures with a special orientation. "
 "Normally (value 0) a Matlab matrix is passed in standard Matlab column-major dataformat. This is efficient for drawing of "
 "textures but not for processing them via Screen('TransformTexture'). Therefore textures need to be transformed on demand "
@@ -115,6 +122,7 @@ PsychError SCREENMakeTexture(void)
     psych_bool                  planar_storage = FALSE;
     double                      scaled = 1.0;
     double                      offsetd;
+    double                      uint8tohdrscalef;
 
     // Detect endianity (byte-order) of machine:
     ix=255;
@@ -168,6 +176,11 @@ PsychError SCREENMakeTexture(void)
         //  Do not apply scaling based on colorRange to double input for uint8 textures:
         scaled = 1.0;
     }
+
+    // Assign scaling factor to go from uint8 to proper HDR range in HDR display mode with
+    // a float storage texture. Typical values could be 1/255 for "multiples of 80 nits" mode,
+    // or 80/255 for "unit is nits", ie. maxSDRToHDRScaleFactor would be 1 or 80:
+    uint8tohdrscalef = windowRecord->maxSDRToHDRScaleFactor / 255.0;
 
     // Get optional texture orientation flag:
     assume_texorientation = 0;
@@ -234,18 +247,38 @@ PsychError SCREENMakeTexture(void)
         }
     }
 
-    // Check if creation of a floating point texture is requested? We default to non-floating point,
-    // standard 8 bpc textures if this parameter is not provided.
-    usefloatformat = 0;
-    PsychCopyInIntegerArg(5, FALSE, &usefloatformat);
-    if (usefloatformat<0 || usefloatformat>2)
+    // Check if creation of a floating point texture is requested?
+    if (!PsychCopyInIntegerArg(5, kPsychArgOptional, &usefloatformat)) {
+        // Optional 'floatprecision' flag omitted. In standard SDR mode, we default
+        // to 0 for 8 bpc fixed point textures. In HDR mode, we default to 1 for fp16
+        // half-float format, which should provide the extended dynamic range and sufficient
+        // precision for HDR image content. Usercode can upgrade to full 32 bpc single precision
+        // by specifying the flag as 2, or we could transparently upgrade to full float precision
+        // in the future if we deem it neccessary, without breaking existing user scripts, as a
+        // precision upgrade can not break visual precision.
+        if (windowRecord->imagingMode & kPsychNeedHDRWindow) {
+            // HDR mode defaults to 16 bpc half-float:
+            usefloatformat = 1;
+
+            if (PsychPrefStateGet_Verbosity() > 6)
+                printf("PTB-DEBUG: MakeTexture: Precision not specified, but HDR window -> Using floatprecision %i for %i layer texture of size %i x %i texels.\n", usefloatformat, numMatrixPlanes, xSize, ySize);
+        }
+        else {
+            // Standard SDR mode defaults to 8 bpc unorm:
+            usefloatformat = 0;
+        }
+    }
+
+    if (usefloatformat < 0 || usefloatformat > 2)
         PsychErrorExitMsg(PsychError_user, "Invalid value for 'floatprecision' parameter provided! Valid values are 0 for 8bpc int, 1 for 16bpc float or 2 for 32bpc float.");
 
-    if (usefloatformat && !isImageMatrixDoubles) {
+    if (usefloatformat && !isImageMatrixDoubles && !(windowRecord->imagingMode & kPsychNeedHDRWindow)) {
         // Floating point texture requested. We only support this if our input is a double matrix, not
         // for uint8 matrices - converting them to float precision would be just a waste of ressources
-        // without any benefit for precision.
-        PsychErrorExitMsg(PsychError_user, "Creation of a floating point precision texture requested, but uint8 matrix provided! Only double matrices are acceptable for this mode.");
+        // without any benefit for precision. An exception is HDR mode, where we convert uint8 input
+        // matrices into floating point matrices and apply suitable range remapping from 0-1 to the
+        // "SDR subrange" of HDR, ie. 0 --> 0, uint8 255 == 1.0 --> Something like 80 nits (SDR nominal max).
+        PsychErrorExitMsg(PsychError_user, "Creation of a floating point precision texture requested in SDR mode, but uint8 matrix provided! Only double matrices are acceptable for this mode.");
     }
 
     // Float texture on OpenGL-ES requested?
@@ -254,7 +287,7 @@ PsychError SCREENMakeTexture(void)
         if (!(windowRecord->gfxcaps & kPsychGfxCapFPTex32))
             PsychErrorExitMsg(PsychError_user, "Creation of a floating point precision texture requested, but this is not supported by your hardware!");
 
-        // Upgrade float format to 2 aka 32 bpc float, the only thing we can handle:
+        // Upgrade float format to 2 aka 32 bpc float, the only thing OpenGL-ES can handle:
         usefloatformat = 2;
     }
 
@@ -276,12 +309,16 @@ PsychError SCREENMakeTexture(void)
         // Yes: Use the planar texture storage fast-path.
         planar_storage = TRUE;
         if (PsychPrefStateGet_Verbosity() > 6)
-            printf("PTB-DEBUG: Using planar storage for %i layer texture of size %i x %i texels.\n", numMatrixPlanes, xSize, ySize);
+            printf("PTB-DEBUG: Using planar storage (floatprecision %i) for %i layer texture of size %i x %i texels.\n", usefloatformat, numMatrixPlanes, xSize, ySize);
     }
     else {
         planar_storage = FALSE;
-        if (PsychPrefStateGet_Verbosity() > 7) printf("PTB-DEBUG: Using standard storage for %i layer texture of size %i x %i texels.\n", numMatrixPlanes, xSize, ySize);
+        if (PsychPrefStateGet_Verbosity() > 7) printf("PTB-DEBUG: Using interleaved storage (floatprecision %i) for %i layer texture of size %i x %i texels.\n", usefloatformat, numMatrixPlanes, xSize, ySize);
     }
+
+    // Do not allow the signed 16 bit fixed point fallbacks in HDR mode, as we'd end up with unorm data, which is unsuitable for HDR:
+    if ((usefloatformat == 1) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16) && (windowRecord->imagingMode & kPsychNeedHDRWindow))
+        PsychErrorExitMsg(PsychError_user, "Creation of a 16 bpc floating point precision texture requested in HDR display mode, but this is not supported by your hardware!");
 
     //Allocate the texture memory and copy the MATLAB matrix into the texture memory.
     if (usefloatformat || (planar_storage && !isImageMatrixBytes)) {
@@ -297,7 +334,7 @@ PsychError SCREENMakeTexture(void)
     // creation of a single-layer luminance8 integer texture from a single
     // layer uint8 input matrix and client storage is disabled. In that case, we can use a zero-copy path:
     if ((isImageMatrixBytes && (numMatrixPlanes == 1) && (!usefloatformat) && !(PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures)) ||
-        (isImageMatrixBytes && planar_storage)) {
+        (isImageMatrixBytes && planar_storage && !(windowRecord->imagingMode & kPsychNeedHDRWindow))) {
         // Zero copy path:
         texturePointer = NULL;
         // Set usefloatformat = 0 to prevent false compiler warnings about iters
@@ -318,8 +355,8 @@ PsychError SCREENMakeTexture(void)
         textureRecord->texturetarget=GL_TEXTURE_2D;
     }
 
-            // Now the conversion routines that convert Matlab/Octave matrices into memory
-            // buffers suitable for OpenGL:
+    // Now the conversion routines that convert Matlab/Octave matrices into memory
+    // buffers suitable for OpenGL:
     if (planar_storage) {
         // Planar texture storage, backed by a LUMINANCE texture container:
 
@@ -353,11 +390,35 @@ PsychError SCREENMakeTexture(void)
                 if ((usefloatformat == 1) && !(windowRecord->gfxcaps & kPsychGfxCapFPTex16)) textureRecord->textureinternalformat = GL_LUMINANCE16_SNORM;
 
                 // Perform copy with double -> float cast:
-                iters = (size_t) xSize * (size_t) ySize * (size_t) numMatrixPlanes;
                 texturePointer_f = (GLfloat*) texturePointer;
-                for(ix = 0; ix < iters; ix++) {
-                    *(texturePointer_f++) = (GLfloat) *(doubleMatrix++);
+
+                if (isImageMatrixDoubles) {
+                    // Double matrix as input: Just cast to float and assign:
+                    iters = (size_t) xSize * (size_t) ySize * (size_t) numMatrixPlanes;
+                    for(ix = 0; ix < iters; ix++) {
+                        *(texturePointer_f++) = (GLfloat) *(doubleMatrix++);
+                    }
                 }
+                else {
+                    // HDR mode with uint8 matrix as input: Cast to float and remap LDR to HDR:
+
+                    // First deal with non-alpha planes, which need SDR -> HDR scaling:
+                    iters = (size_t) xSize * (size_t) ySize * ((numMatrixPlanes == 1 || numMatrixPlanes == 3) ? numMatrixPlanes : numMatrixPlanes - 1);
+
+                    if (PsychPrefStateGet_Verbosity() > 7)
+                        printf("PTB-DEBUG: Planar uint8 SDR input to HDR float (%i) conversion with scaling factor %f [%f].\n", usefloatformat, uint8tohdrscalef, windowRecord->maxSDRToHDRScaleFactor);
+
+                    for(ix = 0; ix < iters; ix++)
+                        *(texturePointer_f++) = (GLfloat) (((double) *(byteMatrix++)) * uint8tohdrscalef);
+
+                    // Then, if there is an alpha channel, deal with it, only scaling by 1/255th:
+                    if (numMatrixPlanes == 2 || numMatrixPlanes == 4) {
+                        iters = (size_t) xSize * (size_t) ySize;
+                        for(ix = 0; ix < iters; ix++)
+                            *(texturePointer_f++) = (GLfloat) (((double) *(byteMatrix++)) / 255.0);
+                    }
+                }
+
                 iters = (size_t) xSize * (size_t) ySize;
             }
             else {
@@ -371,6 +432,7 @@ PsychError SCREENMakeTexture(void)
                 for(ix = 0; ix < iters; ix++) {
                     *(texturePointer_b++) = (GLubyte) (offsetd + scaled * *(doubleMatrix++));
                 }
+
                 iters = (size_t) xSize * (size_t) ySize;
             }
         }
@@ -383,6 +445,33 @@ PsychError SCREENMakeTexture(void)
         // Our input buffer is always of GL_FLOAT precision:
         textureRecord->textureexternaltype = GL_FLOAT;
         texturePointer_f=(GLfloat*) texturePointer;
+
+        // Special case: Convert uint8 input matrix into float texture in HDR mode?
+        if (isImageMatrixBytes) {
+            // Yes: Use intermediate bounce buffer for uint8->double conversion and range rescaling:
+            // Note: This is somewhat inefficient, but saves us replicating a lot of code for optimized
+            // uint8 -> float conversion. Also, this code path is only used on HDR configurations where
+            // uint8 content has to be transparently converted to float textures. This will be mostly the
+            // exception in HDR scripts, which will rarely use original uint8 content for anything, so this
+            // tradeoff should be acceptable:
+            size_t myiters;
+            double *texturePointer_d = (double*) PsychMallocTemp(iters * numMatrixPlanes * sizeof(double));
+            doubleMatrix = texturePointer_d;
+
+            if (PsychPrefStateGet_Verbosity() > 7)
+                printf("PTB-DEBUG: Interleaved uint8 SDR input to HDR float (%i) conversion with scaling factor %f [%f].\n", usefloatformat, uint8tohdrscalef, windowRecord->maxSDRToHDRScaleFactor);
+
+            // First deal with non-alpha planes, which need SDR -> HDR scaling:
+            myiters = iters * ((numMatrixPlanes == 1 || numMatrixPlanes == 3) ? numMatrixPlanes : numMatrixPlanes - 1);
+            for (ix = 0; ix < myiters; ix++)
+                *(texturePointer_d++) = ((double) *(byteMatrix++)) * uint8tohdrscalef;
+
+            // Then, if there is an alpha channel, deal with it, only scaling by 1/255th:
+            if (numMatrixPlanes == 2 || numMatrixPlanes == 4) {
+                for (ix = 0; ix < iters; ix++)
+                    *(texturePointer_d++) = ((double) *(byteMatrix++)) / 255.0;
+            }
+        }
 
         if (numMatrixPlanes==1) {
             for(ix=0;ix<iters;ix++){

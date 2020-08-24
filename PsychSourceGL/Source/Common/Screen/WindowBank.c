@@ -358,6 +358,10 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
     // One-Time setup of some parameters needed for userspace OpenGL context at first real bind:
     (*winRec)->needsViewportSetup = TRUE;
 
+    // HDR scaling factors for SDR -> HDR or HDR normalized -> HDR mapping:
+    (*winRec)->maxSDRToHDRScaleFactor = 80.0;           // SDR content: 80 nits is maximum.
+    (*winRec)->normalizedToHDRScaleFactor = 10000.0;    // HDR content: 10k nits is maximum.
+
     return;
 }
 

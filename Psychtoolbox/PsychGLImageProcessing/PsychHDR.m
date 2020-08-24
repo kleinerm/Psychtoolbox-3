@@ -294,6 +294,10 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             % Input scaling from input unit to 0 - 1 range, where 1 = 10000 nits:
             scalefactor = hdrArgs.inputScalefactor;
 
+            % Set scaling factors for mapping SDR or HDR image and movie content into our HDR linear color space,
+            % using the correct unit of luminance. Used by movie playback and Screen('MakeTexture') among others:
+            Screen('HookFunction', win, 'SetHDRScalingFactors', [], hdrArgs.contentSDRToHDRFactor, 1 / scalefactor);
+
             % Load PQ shader:
             oetfshader = LoadGLSLProgramFromFiles('HDR10-PQ_Shader', [], icmshader);
 
@@ -360,10 +364,12 @@ function hdrArgs = parseHDRArguments(hdrArguments)
     switch lower(hdrArguments{3})
         case 'nits'
             hdrArgs.inputScalefactor = 1 / 10000;
+            hdrArgs.contentSDRToHDRFactor = 80;
             hdrArgs.inputUnit = 'Nits';
 
         case '80nits'
             hdrArgs.inputScalefactor = 80 / 10000;
+            hdrArgs.contentSDRToHDRFactor = 1;
             hdrArgs.inputUnit = '80Nits';
 
         otherwise

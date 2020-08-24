@@ -431,6 +431,8 @@ typedef struct _PsychWindowRecordType_{
     // Settings for the image processing and hook callback pipeline: See PsychImagingPipelineSupport.hc for definition and implementation:
     int                         applyColorRangeToDoubleInputMakeTexture;    // Should colorRange also affect uint8 textures created from double input in Screen('MakeTexture')?
     double                      colorRange;                                 // Maximum allowable color component value. See SCREENColorRange.c for explanation.
+    double                      maxSDRToHDRScaleFactor;                     // Conversion factor for 'MakeTexture' or movie SDR content to HDR: How many color units is 1.0 "SDR range" units?
+    double                      normalizedToHDRScaleFactor;                 // Conversion factor from normalized (0.0 - 1.0 range) to full HDR range: E.g., used for movie video frame HDR mapping.
     GLuint                      unclampedDrawShader;                        // Handle of GLSL shader object for drawing of non-texture stims without vertex color clamping. Zero by default.
     GLuint                      defaultDrawShader;                          // Default GLSL shader object for drawing of non-texture stims. Zero by default.
     GLuint                      smoothPointShader;                          // GLSL shader to implement point smoothing via point sprites.
