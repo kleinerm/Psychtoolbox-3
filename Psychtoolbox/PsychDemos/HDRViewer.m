@@ -10,8 +10,10 @@ function HDRViewer(imfilepattern, scalefactor)
 % intensity online, as well as to zoom into regions of the image.
 %
 % 'imfilepattern' - Filename search pattern of the HDR images to load,
-% e.g., 'myimages*.hdr' would load all images starting with 'myimages' and
-% ending with extension '.hdr'. 
+% e.g., 'myimages*.hdr' would load all images in the current folder that
+% are starting with 'myimages' and ending with extension '.hdr'.
+% If 'imfilepattern' is omitted or empty then image files bundled with
+% Psychtoolbox and Matlab are loaded.
 %
 % Control keys:
 %
@@ -63,14 +65,17 @@ end
 % Get list of all files matching the pattern:
 imfilenames = dir(imfilepattern);
 
-% No HDR files found?
-if (isempty(imfilenames))
+% No HDR files found at user-provided search location/pattern?
+if isempty(imfilenames)
+    % Try to load our own OpenEXR ".exr" sample images:
+    imfilenames1 = dir([PsychtoolboxRoot 'PsychDemos/OpenEXRImages/**/*.exr']);
+    imfilenames2 = dir([PsychtoolboxRoot 'PsychDemos/OpenEXRImages/**/*.hdr']);
+    imfilenames3 = dir([PsychtoolboxRoot 'PsychDemos/OpenEXRImages/**/*.dpx']);
+    imfilenames = [imfilenames1 ; imfilenames2 ; imfilenames3];
     if ~IsOctave
-        % Matlab has some - actually one - sample files here:
-        imfilenames = dir([matlabroot filesep 'toolbox/images/imdata/office.hdr']);
-    else
-        % Octave: But if Matlab is installed on the HDR test machine, it may be here:
-        imfilenames = dir('/home/shared/MATLAB/R2019a/toolbox/images/imdata/office.hdr');
+        % Matlab has one sample file here:
+        imfilenames4 = dir([matlabroot filesep 'toolbox/images/imdata/office.hdr']);
+        imfilenames = [imfilenames ; imfilenames4];
     end
 end
 
