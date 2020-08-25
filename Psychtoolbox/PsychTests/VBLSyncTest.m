@@ -1,5 +1,5 @@
-function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx, screenNumber)
-% VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx, screenNumber)
+function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synchronous, usedpixx, usevulkan, screenNumber)
+% VBLSyncTest([n=600][, numifis=0][, loadjitter=0][, clearmode=0][, stereo=0][, flushpipe=0][, synchronous=0][, usedpixx=0][, usevulkan=0][, screenNumber=max])
 %
 % Tests syncing of Psychtoolbox to the vertical retrace (VBL) and demonstrates
 % how to implement the old Screen('WaitBlanking') behaviour with
@@ -110,6 +110,10 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 % timestamping. Disabled (0) by default.
 % usedpixx = 2 Additionally correct for the clock skew between the computer
 % and DataPixx device.
+%
+%
+% 'usevulkan' If 1, try to use a Vulkan display backend instead of the
+% OpenGL display backend. See 'help PsychVulkan'.
 %
 %
 % screenNumber =  Use a screen other than the default (max) for testing .
@@ -240,7 +244,11 @@ if nargin < 8 || isempty(usedpixx)
     usedpixx = 0;
 end
 
-if nargin < 9
+if nargin < 9 || isempty(usevulkan)
+    usevulkan = 0;
+end
+
+if nargin < 10
     screenNumber = [];
 end
 
@@ -276,7 +284,11 @@ try
         % tests.
         PsychImaging('AddTask', 'General', 'UseDataPixx');
     end
-    PsychImaging('AddTask', 'General', 'UseVulkanDisplay')%, 'DisplayPort-1');
+
+    if usevulkan
+        % Use PsychVulkan display backend instead of standard OpenGL:
+        PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+    end
 
     if 0
         w=PsychImaging('OpenWindow',screenNumber, 0,[0 0 1430 900],[],[], stereo);

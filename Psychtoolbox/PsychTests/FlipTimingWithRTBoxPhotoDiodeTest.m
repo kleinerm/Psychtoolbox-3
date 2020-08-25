@@ -1,5 +1,5 @@
-function FlipTimingWithRTBoxPhotoDiodeTest(configFile, targetFolder)
-% FlipTimingWithRTBoxPhotoDiodeTest([configFile][, targetFolder])
+function FlipTimingWithRTBoxPhotoDiodeTest(configFile, targetFolder, usevulkan)
+% FlipTimingWithRTBoxPhotoDiodeTest([configFile][, targetFolder][, usevulkan=0])
 %
 % Test visual stimulus onset timing accuracy and visual stimulus onset
 % timestamping precision and robustness under varying loads, conditions and
@@ -21,6 +21,9 @@ function FlipTimingWithRTBoxPhotoDiodeTest(configFile, targetFolder)
 % a fallback location is selected, if that does not work, the users home directory is
 % selected. If a folder is specified, that folder is used if it is writable, otherwise
 % the users home directory is tried as target.
+%
+% 'usevulkan' If 1, try to use a Vulkan display backend instead of the
+% OpenGL display backend. See 'help PsychVulkan'.
 %
 % Mandatory variables in the config file, part of the struct variable 'conf':
 % ---------------------------------------------------------------------------
@@ -69,6 +72,11 @@ end
 % Override basepath with provided targetFolder, if any:
 if (nargin >= 2) && ~isempty(targetFolder)
     basepath = targetFolder;
+end
+
+% Default to standard OpenGL backend instead of Vulkan by default:
+if nargin < 3 || isempty(usevulkan)
+    usevulkan = 0;
 end
 
 % Is it the standard path for config files?
@@ -244,14 +252,19 @@ if useRTbox == 2
 end
 
 try
+    PsychImaging('PrepareConfiguration');
+
+    if usevulkan
+        % Use PsychVulkan display backend instead of standard OpenGL:
+        PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+    end
+
     if useRTbox == -1
         % Setup Datapixx mode for timestamping:
-        PsychImaging('PrepareConfiguration');
         PsychImaging('AddTask', 'General', 'UseDataPixx');
-        [w, winrect] = PsychImaging('OpenWindow', res.screenId, 0, [], [], [], conf.Stereo);
-    else
-        [w, winrect] = Screen('OpenWindow', res.screenId, 0, [], [], [], conf.Stereo);
     end
+
+    [w, winrect] = PsychImaging('OpenWindow', res.screenId, 0, [], [], [], conf.Stereo);
     res.winfo = Screen('GetWindowInfo', w);
 
     % Switch to selectable realtime-priority level to reduce timing jitter

@@ -1,5 +1,5 @@
-function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync, testdualheadsync)
-% PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync, testdualheadsync)
+function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync, testdualheadsync, useVulkan)
+% PerceptualVBLSyncTest([screen=max][, stereomode=0][, fullscreen=1][, doublebuffer=1][, maxduration=10][, vblSync=1][, testdualheadsync=0][, useVulkan=0])
 %
 % Perceptual synchronization test for synchronization of Screen('Flip') and
 % Screen('WaitBlanking') to the vertical retrace.
@@ -46,6 +46,9 @@ function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, max
 % for testing on Linux with a single X-Screen spanning multiple displays. It may
 % or may not be suitable to assess other operating systems or display configurations.
 %
+% 'useVulkan' If 1, try to use a Vulkan display backend instead of the
+% OpenGL display backend. See 'help PsychVulkan'.
+%
 % After starting this test, you should see a flickering greyish background
 % that flickers in a homogenous way - without cracks or weird moving patterns
 % in the flickering area. If you see an imhogenous flicker, this means that
@@ -82,7 +85,7 @@ if isempty(doublebuffer)
    % retrace and are discouraged anyway. Setting doublebuffer=0 is an easy way
    % to reproduce the visual pattern created by a complete sync-failure though.
    doublebuffer=1;
-end;
+end
 doublebuffer=doublebuffer+1;
 
 if nargin < 2
@@ -92,7 +95,7 @@ end
 if isempty(stereomode)
    % Use non-stereo display by default. 
    stereomode=0;
-end;
+end
 
 if nargin < 3
     fullscreen = [];
@@ -100,7 +103,7 @@ end
 
 if isempty(fullscreen)
    fullscreen=1;
-end;
+end
 
 if nargin < 1
     screen = [];
@@ -116,7 +119,7 @@ if isempty(screen)
     else
         screen=max(Screen('Screens'));
     end
-end;
+end
 
 if nargin < 5
     maxduration = [];
@@ -142,6 +145,10 @@ if isempty(testdualheadsync)
     testdualheadsync = 0;
 end
 
+if nargin < 8 || isempty(useVulkan)
+    useVulkan = 0;
+end
+
 thickness = (1-vblSync) * 4 + 1;
 
 try
@@ -153,23 +160,21 @@ try
         if length(screen)>1
             rect2=InsetRect(Screen('GlobalRect', screen(2)), 1, 0);
         end
-    end;
+    end
    
-   help PerceptualVBLSyncTest;
-   fprintf('Press ENTER key to start the test. The test will stop after 10 seconds\n');
-   fprintf('or any keypress...\n');
-
-   %KbStrokeWait;
-
    if stereomode~=10
        % Standard case:
        PsychImaging('PrepareConfiguration');
-       PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+       if useVulkan
+           PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+       end
 
        [win , winRect]=PsychImaging('OpenWindow', screen(1), 0, rect1, [], doublebuffer, stereomode);
        if length(screen)>1
            PsychImaging('PrepareConfiguration');
-           PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+           if useVulkan
+               PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+           end
            win2 = PsychImaging('OpenWindow', screen(2), 0, rect2, [], doublebuffer, stereomode);
        end
    else
@@ -196,11 +201,11 @@ try
       % Draw alternating black/white rectangle:
       Screen('FillRect', win, color, flickerRect);
       % If beamposition is available (on OS-X), visualize it via yellow horizontal line:
-      if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
+      if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end
       % Same for right-eye view...
       Screen('SelectStereoDrawBuffer', win, 1);
       Screen('FillRect', win, color, flickerRect);
-      if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
+      if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end
       
       if stereomode == 0 && length(screen)>1
           Screen('FillRect', win2, color, flickerRect);
@@ -217,9 +222,9 @@ try
       if doublebuffer>1
           if vblSync
               % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
-              [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip);
+              [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip); %#ok<ASGLU>
               if exist('win2', 'var')
-                [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win2, VBLTimestamp + ifi/2, 2, [], multiflip);
+                [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win2, VBLTimestamp + ifi/2, 2, [], multiflip); %#ok<ASGLU>
               end
           else
               if testdualheadsync == 1
@@ -243,11 +248,11 @@ try
       else
           % Just wait a bit in non-buffered case:
           pause(0.001);
-      end;
-   end;
+      end
+   end
    
    Screen('CloseAll');
    return;   
 catch
    Screen('CloseAll');   
-end;
+end
