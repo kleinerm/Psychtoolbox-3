@@ -56,14 +56,10 @@ if nargin < 1 || isempty(imfilename)
         % Matlab comes with exactly one HDR sample file in radiance format:
         imfilename = [matlabroot filesep 'toolbox/images/imdata/office.hdr'];
     else
-        % Octave doesn not ship with a HDR sample image, so we fall back to our
-        % SDR image, unless the machine happens to have Matlab installed in a
-        % peculiar location, because it is our development machine:
+        % Octave doesn not ship with a HDR sample image, but try if this is
+        % the development machine which happens to have Matlab installed in a
+        % peculiar location:
         imfilename = '/home/shared/MATLAB/R2019a/toolbox/images/imdata/office.hdr';
-        if ~exist(imfilename, 'file')
-            % Nope: Just get good old SDR bunny image:
-            imfilename = [PsychtoolboxRoot '/PsychDemos/konijntjes1024x768.jpg'];
-        end
     end
 end
 

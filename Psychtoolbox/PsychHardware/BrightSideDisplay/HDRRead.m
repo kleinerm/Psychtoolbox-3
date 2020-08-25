@@ -119,10 +119,10 @@ if dispatched == 0
     format = [];
 
     if ~continueOnError
-        error(['HDR file ' imgfilename ' is of unknown type. No loader available.']);
+        error(['Potential HDR file ' imgfilename ' is of unknown type. No loader available.']);
     else
         img = [];
-        warning(['HDR file ' imgfilename ' is of unknown type. No loader available.']);
+        warning(['Potential HDR file ' imgfilename ' is of unknown type. No loader available.']);
         return;
     end
 end

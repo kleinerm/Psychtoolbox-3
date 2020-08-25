@@ -200,7 +200,7 @@ try
         texid = Screen('MakeTexture', win, img);
 
         % Build also a version of the image that is quantized to 8 Bit:
-        quantimg = uint8((img / max(max(max(img)))) * 255);
+        quantimg = uint8((img * 255 / max(max(max(img)))));
         ldrtexid = Screen('MakeTexture', win, quantimg);
 
         needupdate = 1;
