@@ -4,7 +4,7 @@ function [img, format] = HDRRead(imgfilename, continueOnError, flipit)
 % matrix, suitable for use with Screen('MakeTexture') and friends.
 %
 % 'imgfilename' - Filename of the HDR image file to load.
-
+%
 % Returns 'img' - A double precision matrix of size h x w x c where h is
 % the height of the input image, w is the width and c is the number of
 % color channels: 1 for luminance images, 2 for luminance images with alpha
@@ -59,6 +59,7 @@ end
 
 % Format dispatcher:
 dispatched = 0;
+format = [];
 
 if ~isempty(strfind(imgfilename, '.hdr')) %#ok<STREMP>
     % Load a RLE encoded RGBE high dynamic range file:
@@ -116,13 +117,11 @@ if ~isempty(strfind(imgfilename, '.exr')) %#ok<STREMP>
 end
 
 if dispatched == 0
-    format = [];
-
     if ~continueOnError
-        error(['Potential HDR file ' imgfilename ' is of unknown type. No loader available.']);
+        error(['Potential HDR file ' imgfilename ' is of unknown type, or no loader available for this type.']);
     else
         img = [];
-        warning(['Potential HDR file ' imgfilename ' is of unknown type. No loader available.']);
+        warning(['Potential HDR file ' imgfilename ' is of unknown type, or no loader available for this type']);
         return;
     end
 end
