@@ -4,10 +4,10 @@ function SimpleHDRDemo(imfilename)
 %
 % Press any key to terminate the demo.
 %
-% 'imfilename' - Optional filename of the HDR image to load. This will load a
-% standard HDR demo image bundled with Matlab, if omitted, or fall back to some
-% standard (albeit useless for this purpose) SDR image if the default demo image
-% is missing.
+% 'imfilename' - Optional filename of the HDR image to load. This will load
+% a standard HDR demo image bundled with Matlab, if omitted, or abort if
+% the default demo image is missing. Currently only '.hdr' RGBE images are
+% supported.
 %
 % See "help PsychHDR" for system requirements and setup instructions for HDR
 % display. Once these are satisfied, converting a standard Psychtoolbox visual
