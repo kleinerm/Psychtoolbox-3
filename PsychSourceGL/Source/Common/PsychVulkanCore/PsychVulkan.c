@@ -2890,7 +2890,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
         if (!PsychIsVulkanGPUSuitable(window, vulkan, targetdeviceUUID, isFullscreen, screenId, outputHandle, rect, refreshHz, hdrMode, needsTiming, colorPrecision, colorSpace, colorFormat, flags)) {
             if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: Creating vulkan output window failed. Selected gpu %i '%s' unsuitable.\n", gpuIndex, vulkan->deviceProps.deviceName);
+                printf("PsychVulkanCore-ERROR: Creating vulkan output window failed. Selected gpu %i '%s' unsuitable for requested settings.\n", gpuIndex, vulkan->deviceProps.deviceName);
 
             goto openwindow_out2;
         }
@@ -2912,7 +2912,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
         if (!supportsPresent) {
             if (verbosity > 0)
-                printf("PsychVulkanCore-ERROR: Could not find any suitable gpu to present to given window with requested settings!\n");
+                printf("PsychVulkanCore-ERROR: Could not find any suitable gpu to present to given window for requested settings!\n");
 
             goto openwindow_out2;
         }
@@ -3833,7 +3833,7 @@ PsychError PSYCHVULKANOpenWindow(void)
     window->index = handle;
 
     if (!PsychOpenVulkanWindow(window, gpuIndex, targetdeviceUUID, isFullscreen, screenId, outputHandle, rect, colorPrecision, hdrMode, refreshHz, colorSpace, colorFormat, flags))
-        PsychErrorExitMsg(PsychError_system, "Failed to open vulkan output window.");
+        PsychErrorExitMsg(PsychError_user, "Failed to open vulkan output window.");
 
     windowCount++;
 
