@@ -46,7 +46,7 @@ try
     screenNumber = 0;
     PsychImaging('PrepareConfiguration');
     %PsychImaging('AddTask', 'General', 'UseRetinaResolution');
-    PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+    %PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
     [w, rect] = PsychImaging('OpenWindow', screenNumber, 0);
 
     % Enable alpha blending with proper blend-function. We need it
