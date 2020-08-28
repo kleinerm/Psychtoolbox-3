@@ -1253,9 +1253,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             // Try to get more detailed info about video:
             if (gst_video_info_from_caps (&vinfo, caps)) {
                 if (PsychPrefStateGet_Verbosity() > 3) {
-                    printf("PTB-DEBUG: Colorimetry is %s.\n", gst_video_colorimetry_to_string (&vinfo.colorimetry));
-                    printf("PTB-DEBUG: Colormatrix %i, color primaries %i, eotf %i.\n", vinfo.colorimetry.matrix, vinfo.colorimetry.primaries, vinfo.colorimetry.transfer);
-                    printf("PTB-DEBUG: Format %s. Depth %i bpc.\n", vinfo.finfo->name, *vinfo.finfo->depth);
+                    printf("PTB-DEBUG: Video Colorimetry is %s.\n", gst_video_colorimetry_to_string (&vinfo.colorimetry));
+                    printf("PTB-DEBUG: Video Colormatrix %i, color primaries %i, eotf %i.\n", vinfo.colorimetry.matrix, vinfo.colorimetry.primaries, vinfo.colorimetry.transfer);
+                    printf("PTB-DEBUG: Video Format %s. Depth %i bpc.\n", vinfo.finfo->name, *vinfo.finfo->depth);
                 }
             }
 
@@ -1264,6 +1264,24 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
          } else {
             printf("PTB-DEBUG: No frame info available after preroll.\n");
          }
+
+         // Release the pad:
+         gst_object_unref(pad);
+
+         pad = gst_element_get_static_pad(videosink, "sink");
+         peerpad = gst_pad_get_peer(pad);
+         caps = gst_pad_get_current_caps(peerpad);
+
+         // Try to get more detailed info about the actual content received by our sink:
+         if (gst_video_info_from_caps (&vinfo, caps)) {
+             if (PsychPrefStateGet_Verbosity() > 3) {
+                 printf("PTB-DEBUG: Sink Colorimetry is %s.\n", gst_video_colorimetry_to_string (&vinfo.colorimetry));
+                 printf("PTB-DEBUG: Sink Colormatrix %i, color primaries %i, eotf %i.\n", vinfo.colorimetry.matrix, vinfo.colorimetry.primaries, vinfo.colorimetry.transfer);
+                 printf("PTB-DEBUG: Sink Format %s. Depth %i bpc.\n", vinfo.finfo->name, *vinfo.finfo->depth);
+             }
+         }
+
+         gst_object_unref(peerpad);
 
          // Release the pad:
          gst_object_unref(pad);
@@ -1304,7 +1322,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         //printf("PTB-DEBUG: Duration of movie %i [%s] is %lf seconds.\n", slotid, moviename, movieRecordBANK[slotid].movieduration);
     } else {
         movieRecordBANK[slotid].movieduration = DBL_MAX;
-        printf("PTB-WARNING: Could not query duration of movie %i [%s] in seconds. Returning infinity.\n", slotid, moviename);
+        if (PsychPrefStateGet_Verbosity() > 1)
+            printf("PTB-WARNING: Could not query duration of movie %i [%s] in seconds. Returning infinity.\n", slotid, moviename);
     }
 
     // Assign expected framerate, assuming a linear spacing between frames:
