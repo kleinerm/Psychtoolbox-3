@@ -1,5 +1,5 @@
-function [img, format] = HDRRead(imgfilename, continueOnError, flipit)
-% [img, format] = HDRRead(imgfilename [, continueOnError=0][, flipit=0])
+function [img, format, errmsg] = HDRRead(imgfilename, continueOnError, flipit)
+% [img, format, errmsg] = HDRRead(imgfilename [, continueOnError=0][, flipit=0])
 % Read a high dynamic range image file and return it as Matlab double
 % matrix, suitable for use with Screen('MakeTexture') and friends.
 %
@@ -17,6 +17,8 @@ function [img, format] = HDRRead(imgfilename, continueOnError, flipit)
 % specific file type is supported. If set to 0 or omitted, then HDRRead will
 % abort with an error on any problem or unsupported image file types.
 %
+% In case of failure, the returned 'errmsg' may contain a useful error message.
+%
 % 'flipit' Optional flag: If set to 1, the loaded image is flipped upside
 % down.
 %
@@ -29,8 +31,8 @@ function [img, format] = HDRRead(imgfilename, continueOnError, flipit)
 % HDRRead is a dispatcher for a collection of reading routines for
 % different HDR image file formats. Currently supported are:
 %
-% * Run length encoded RGBE format, read via read_rle_rgbe.m or hdrread() if
-%   available. File extension is ".hdr". Returns a RGB image.
+% * Radiance run length encoded RGBE format, read via read_rle_rgbe(), or hdrread()
+%   if available. File extension is ".hdr". Returns a RGB image.
 %
 % * OpenEXR files, extension is ".exr". These are readable efficiently if
 % the MIT licensed exrread() command from the following package/webpage is
@@ -44,6 +46,8 @@ function [img, format] = HDRRead(imgfilename, continueOnError, flipit)
 % History:
 % 14-Dec-2006   mk Written.
 % 21-Jul-2020   mk Updated for use with Psychtoolbox new HDR support.
+
+psychlasterror('reset');
 
 if nargin < 1 || isempty(imgfilename)
     error('Missing HDR image filename.');
@@ -79,6 +83,7 @@ if ~isempty(strfind(imgfilename, '.hdr')) %#ok<STREMP>
             warning(['HDR file ' imgfilename ' failed to load.']);
             msg = psychlasterror;
             disp(msg.message);
+            errmsg = ['Unknown error. Maybe ' msg.message];
             return;
         else
             psychrethrow(psychlasterror);
@@ -92,7 +97,7 @@ if ~isempty(strfind(imgfilename, '.exr')) %#ok<STREMP>
     % Load an OpenEXR high dynamic range file:
     dispatched = 1;
     try
-        % Does (potentially optimized) hdrread() function exist?
+        % Does (potentially optimized) exrread() function exist?
         if exist('exrread', 'file')
             % Use it.
             inimg = double(exrread(imgfilename));
@@ -107,6 +112,7 @@ if ~isempty(strfind(imgfilename, '.exr')) %#ok<STREMP>
             warning(['HDR file ' imgfilename ' failed to load.']);
             msg = psychlasterror;
             disp(msg.message);
+            errmsg = ['Unknown error. Maybe ' msg.message];
             return;
         else
             psychrethrow(psychlasterror);
@@ -122,6 +128,8 @@ if dispatched == 0
     else
         img = [];
         warning(['Potential HDR file ' imgfilename ' is of unknown type, or no loader available for this type']);
+        errmsg = ['No loader available for this type.'];
+
         return;
     end
 end
@@ -133,6 +141,8 @@ if flipit
 else
     img = inimg;
 end
+
+errmsg = '';
 
 % Done.
 return;
