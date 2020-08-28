@@ -1389,12 +1389,6 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   For hardware and system requirements, setup instructions, and further explanations
 %   read "help PsychHDR".
 %
-%   !!! CAUTION: EXPERIMENTAL API AND FUNCTIONALITY -- HERE BE DRAGONS !!!
-%   This is not yet a stable API with stable functionality! Implementation and syntax
-%   may change in completely backwards incompatible and highly disruptive ways without
-%   previous warning or any announcements until this disclaimer is removed! Don't use
-%   in production! You have been warned!
-%
 %   Usage:
 %
 %   PsychImaging('AddTask', 'General', 'EnableHDR' [, unit='Nits'][, hdrMode='Auto'][, extraRequirements]);
