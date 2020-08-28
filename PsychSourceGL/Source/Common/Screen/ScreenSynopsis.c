@@ -210,6 +210,7 @@ const char** InitializeSynopsis(void)
     synopsis[i++] =  "Screen('FinalizeMovie', moviePtr);";
     synopsis[i++] =  "Screen('AddFrameToMovie', windowPtr [,rect] [,bufferName] [,moviePtr=0] [,frameduration=1]);";
     synopsis[i++] =  "Screen('AddAudioBufferToMovie', moviePtr, audioBuffer);";
+    synopsis[i++] =  "[imageArray, format, errorMsg] = Screen('ReadHDRImage', filename [, errorMode=0]);";
 
     // Video capture support:
     synopsis[i++] = "\n% Video capture functions:";
