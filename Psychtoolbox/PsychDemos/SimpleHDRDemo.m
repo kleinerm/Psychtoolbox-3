@@ -28,10 +28,16 @@ function SimpleHDRDemo(imfilename)
 %    which is attached to a HDR capable graphics card.
 %
 % 2. Use HDRRead(imfilename) instead of imread(imfilename) to load HDR
-%    image files as Matlab double() precision matrices.
+%    image files as double() precision matrices.
 %
-% 3. Set the optional 'floatprecision' flag of Screen('MakeTexture', ...) to 1 or 2
-%    to enforce creation of floating point precision HDR textures from your image matrix.
+% 3. Optional: Set the optional 'floatprecision' flag of Screen('MakeTexture', ...)
+%    to 1 or 2 to enforce creation of floating point precision HDR textures from
+%    your image matrix.
+%
+%    By default, 'floatprecision' will be selected as 1 for half-float fp16 format,
+%    which is generally considered sufficient precision for displaying typical HDR
+%    images to typical viewers.
+%
 %
 % See the section 'EnableHDR' of "help PsychImaging" for more optional parameters
 % to pass to PsychImaging('AddTask', 'General', 'EnableHDR'); for customizing the
@@ -56,10 +62,9 @@ if nargin < 1 || isempty(imfilename)
         % Matlab comes with exactly one HDR sample file in radiance format:
         imfilename = [matlabroot filesep 'toolbox/images/imdata/office.hdr'];
     else
-        % Octave doesn not ship with a HDR sample image, but try if this is
-        % the development machine which happens to have Matlab installed in a
-        % peculiar location:
-        imfilename = '/home/shared/MATLAB/R2019a/toolbox/images/imdata/office.hdr';
+        % Octave does not ship with a HDR sample image, so use one of our bundled
+        % OpenEXR sample images:
+        imfilename = [PsychtoolboxRoot 'PsychDemos/OpenEXRImages/Desk.exr'];
     end
 end
 
@@ -77,6 +82,10 @@ switch hdrType
         % This is not strictly correct, but will do to get a nice enough picture for
         % demo purpose:
         img = img * 180;
+
+    case 'openexr'
+        % HACK: Multiply by 1.0:
+        img = img * 1;
 
     otherwise
         error('Unknown image format. Do not know how to convert into units of Nits.');
