@@ -1,19 +1,44 @@
 function HDRViewer(imfilepattern, scalefactor)
-% HDRViewer([imfilepattern][, scalefactor]) -- Load and show high
+% HDRViewer([imfilepattern][, scalefactor=autoselect]) -- Load and show high
 % dynamic range images on a compatible HDR display setup.
 %
 % See "help PsychHDR" for system requirements and setup instructions for HDR
-% display.
+% display. See "help HDRRead" for supported HDR image file formats, ie. the
+% formats that HDRRead() can load.
 %
 % The viewer allows to cycle through a sequence of images in the given
 % folder, matching the given filename pattern. It allows to adjust the
-% intensity online, as well as to zoom into regions of the image.
+% intensity online, as well as to zoom into regions of the image. A simple
+% "color picker" displays the RGB color values in units of nits under the cursor
+% position.
 %
 % 'imfilepattern' - Filename search pattern of the HDR images to load,
 % e.g., 'myimages*.hdr' would load all images in the current folder that
 % are starting with 'myimages' and ending with extension '.hdr'.
+%
 % If 'imfilepattern' is omitted or empty then image files bundled with
-% Psychtoolbox and Matlab are loaded.
+% Psychtoolbox and Matlab are loaded. Additionally the viewer will offer to
+% download some freely useable sample files from the MPI for Informatics in
+% Saarbruecken, Germany. Another bunch of OpenEXR sample images can be found
+% on the OpenEXR website under:
+%
+% https://www.openexr.com/downloads.html
+%
+%
+% Limitations:
+%
+% The viewers formulas for converting pixel color values from the units in the
+% image file to the required linear unit in Nits are not neccessarily correct, as
+% there seems to be not much agreement about what the units in the image files are
+% supposed to reflect. In case of Radiance files (.hdr) we multiply by some fixed
+% number, when we should actually convert from units of Radiance to units of
+% Luminance. For the OpenEXR format and others, we just use values as they are,
+% assuming they are already in Nits. This seems to be the case for some, but not all,
+% sample images.
+%
+% Similarly the formula for computing frame average light level and max content
+% light level may or may not be 100% according to spec. At least they give reasonable
+% results...
 %
 % Control keys:
 %
@@ -23,20 +48,16 @@ function HDRViewer(imfilepattern, scalefactor)
 % toggle between float precision HDR and 256 level 8 bit quantized output.
 %
 % Zoom mode:
+%
 % Pressing the left mouse button will enable zoom mode. Dragging the mouse
 % while the button is depressed allows to change the region which should be
 % zoomed. Releasing the mouse button will show the selected region zoomed
 % up to fullscreen. A single mouse click will reset to the full image.
 %
-% Btw. you can find lot's of nice free HDR images by Googling on the
-% internet!
 %
-% This is an extension of SimpleHDRDemo.m, see that file for basic usage of
-% HDR displays with Psychtoolbox.
+% This is an extension of SimpleHDRDemo.m, see that file for the most basic usage
+% of HDR displays with Psychtoolbox.
 %
-% History:
-% Written 2006 by Mario Kleiner - MPI for Biological Cybernetics, Tuebingen, Germany
-% and Oguz Ahmet Akyuz - Department of Computer Science, University of Central Florida.
 
 % History:
 %
@@ -49,7 +70,7 @@ function HDRViewer(imfilepattern, scalefactor)
 PsychDefaultSetup(2);
 
 % Startup with black screen to not hurt our eyes:
-Screen('Preference', 'VisualDebugLevel', 3);
+oldVis = Screen('Preference', 'VisualDebugLevel', 3);
 
 % Name of an image file passed? If not, we default to all *.hdr files in
 % current working directory:
@@ -66,17 +87,43 @@ end
 imfilenames = dir(imfilepattern);
 
 % No HDR files found at user-provided search location/pattern?
+% Use our own bundled demo images then:
 if isempty(imfilenames)
     % Try to load our own OpenEXR ".exr" sample images:
-    imfilenames1 = dir([PsychtoolboxRoot 'PsychDemos/OpenEXRImages/**/*.exr']);
-    imfilenames2 = dir([PsychtoolboxRoot 'PsychDemos/OpenEXRImages/**/*.hdr']);
-    imfilenames3 = dir([PsychtoolboxRoot 'PsychDemos/OpenEXRImages/**/*.dpx']);
-    imfilenames = [imfilenames1 ; imfilenames2 ; imfilenames3];
-    if ~IsOctave
-        % Matlab has one sample file here:
-        imfilenames4 = dir([matlabroot filesep 'toolbox/images/imdata/office.hdr']);
-        imfilenames = [imfilenames ; imfilenames4];
+    imfilenames = FileFromFolder([PsychtoolboxRoot 'PsychDemos/OpenEXRImages/'], 'ssilent', {'exr', 'hdr', 'dpx'});
+
+    % Check for sample collection of MPI for informatics:
+    if ~exist([PsychHomeDir 'ThirdPartyHDRSampleImages/'], 'dir')
+        % Nope. Ask if we should fetch those images?
+        if TwoStateQuery('Did not find the freely downloadable and useable OpenEXR HDR image samples from MPI for Informatics Saarbruecken (http://resources.mpi-inf.mpg.de/hdr/gallery.html). Should i download them to your Home directory?') == 1
+            % Yes:
+            fprintf('Trying to download files to folder %s ...\n', [PsychHomeDir 'ThirdPartyHDRSampleImages/']);
+            fprintf('See the MPI for Informatics Saarbruecken webpage for credits, copyright and license info, as well as more\n');
+            fprintf('background info about these files:\nhttp://resources.mpi-inf.mpg.de/hdr/gallery.html\n\n');
+            % Define path to target folder, create folder if it does not yet exist:
+            target = PsychHomeDir('ThirdPartyHDRSampleImages');
+            % Get'em:
+            mpiimnames = {'Iwate.exr', 'AtriumMorning.exr', 'AtriumNight.exr', 'snow.exr', 'nancy_cathedral_1.exr', 'nancy_cathedral_2.exr', 'mpi_atrium_1.exr'}
+            for imname=mpiimnames
+                tname = char(imname);
+                [fname, rc] = urlwrite(['http://resources.mpi-inf.mpg.de/hdr/img_hdr/' tname], [target tname]);
+                fprintf('Tried to download sample file to: ''%s'' [Status: %i]\n', fname, rc);
+            end
+        end
     end
+
+    % Add MPI sample files if they exist in the users home directory:
+    if exist([PsychHomeDir 'ThirdPartyHDRSampleImages/'], 'dir')
+        imfilenames1 = FileFromFolder([PsychHomeDir 'ThirdPartyHDRSampleImages/'], 'ssilent', {'exr', 'hdr', 'dpx'});
+        imfilenames = [imfilenames ; imfilenames1];
+    end
+
+    if ~IsOctave
+        % Matlab has one Radiance .hdr sample file here, so load it if we are on Matlab:
+        imfilenames1 = FileFromFolder([matlabroot filesep 'toolbox/images/imdata/office.hdr']);
+        imfilenames = [imfilenames ; imfilenames1];
+    end
+    imfilenames1 = FileFromFolder([PsychtoolboxRoot 'PsychDemos/OpenEXRImages/'], 'ssilent', {'exr', 'hdr', 'dpx'});
 end
 
 try
@@ -98,7 +145,7 @@ try
     HideCursor(win);
 
     % Set text properties:
-    Screen('TextSize', win, 24);
+    Screen('TextSize', win, 18);
     Screen('TextStyle', win , 0);
 
     iteration = 0;
@@ -117,7 +164,7 @@ try
 
         % Read image into Matlab matrix. If file is not recognized, skip and
         % return an empty 'img', instead of aborting with an error:
-        [img, hdrType] = HDRRead(imagename, 1);
+        [img, hdrType, errmsg] = HDRRead(imagename, 1);
         if isempty(img)
             % Not recognized as HDR file. Try if imread() can handle it as
             % standard SDR image file:
@@ -125,17 +172,16 @@ try
                 img = imread(imagename);
                 hdrType = 'sdr';
             catch
-                msg = ['Could not load file ' imagename ' as either HDR or SDR image file. Skipping...'];
+                msg = ['Could not load file ' imagename ' as either HDR or SDR image file, skipping.\n' errmsg];
                 fprintf([msg, '\n']);
-                DrawFormattedText(win, [msg '\nPress any key to abort viewer in case of endless loops.'], 'center', 'center', [300 0 0]);
-                WaitSecs(1);
+                DrawFormattedText(win, [msg '\nPress ESCAPE key to abort viewer in case of endless loops.'], 'center', 'center', [300 0 0]);
                 Screen('Flip', win);
 
-                if KbCheck
+                [~, keyCode] = KbStrokeWait(-1, GetSecs + 20);
+                if keyCode(KbName('ESCAPE'))
                     break;
                 end
 
-                WaitSecs(1);
                 continue;
             end
         end
@@ -185,27 +231,36 @@ try
 
         % Tell the HDR display about maximum frame average light level and maximum
         % content light level of the image:
-        fprintf('Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL);
+        imgpropmsg = sprintf('Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL);
         if  maxCLL > 10000
-            fprintf('maxCLL %f exceeds 10000 nits! Rescaling to clamp to 10000 nits.\n', maxCLL);
+            imgpropmsg = [imgpropmsg sprintf('maxCLL %f exceeds 10000 nits! Rescaling to clamp to 10000 nits.\n', maxCLL)];
             scaledown = 10000 / maxCLL;
             img = img * scaledown;
             maxFALL = maxFALL * scaledown;
             maxCLL = maxCLL * scaledown;
-            fprintf('Clamping: Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL);
+            imgpropmsg = [imgpropmsg sprintf('Clamping: Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL)];
         end
+        disp(imgpropmsg);
 
         PsychHDR('HDRMetadata', win, [], maxFALL, maxCLL);
 
         % Build a Psychtoolbox 16 bpc half-float texture from the image array
         % by setting the (optional) 'floatprecision' flag to 1.
         % texid = Screen('MakeTexture', win, img, [], [], 1);
-        % Or don't, because the 'floatprecision' flag defaults to 1 in HDR
-        % display mode for your convenience:
+        % Or simply don't, because the 'floatprecision' flag defaults to 1 in HDR
+        % display mode anyway for your convenience:
         texid = Screen('MakeTexture', win, img);
 
         % Build also a version of the image that is quantized to 8 Bit:
+        % Note: Difficult to say, if the following conversion formula is the best
+        % one. In tonemapping, there are many ways to slice the cat, and this is
+        % the most naive method:
         quantimg = uint8((img * 255 / max(max(max(img)))));
+
+        % This will take the uint8 256 discrete level matrix and turn it back into
+        % a "HDR" texture of fp16 precision, by mapping the input value range
+        % 0 - 255 to the range 0.0 nits - 80.0 nits, because 0 - 80 nits is considered
+        % to be the SDR "standard dynamic range" of a regular display or image.
         ldrtexid = Screen('MakeTexture', win, quantimg);
 
         needupdate = 1;
@@ -255,8 +310,9 @@ try
             end
 
             [~, ny] = DrawFormattedText(win, ['Image: ' imagename ' : Zoom=' num2str(rscale) ' : Intensity scaling: ' num2str(sf) ' : ' quantized '\n'], 0, 30, [0 200 0]);
+            [~, ny] = DrawFormattedText(win, [imgpropmsg '\n'], 0, ny, [0 200 0]);
             [~, ny] = DrawFormattedText(win, 'Cursor up/down = Intensity scale up/down , q = Switch 8 bpc / HDR, SPACE = Next image, ESCAPE = Quit\n', 0, ny, [0 0 200]);
-            DrawFormattedText(win, 'Left mouse button + drag = Select zoom region. Left mouse button click = Reset to unzoomed.\n', 0, ny, [0 0 200]);
+            [~, ny] = DrawFormattedText(win, 'Left mouse button + drag = Select zoom region. Left mouse button click = Reset to unzoomed.\n', 0, ny, [0 0 200]);
 
             % Show selected ROI during zoom selection, if any:
             if xright ~= -1 && xbottom ~= -1 && zoomset == 1
@@ -305,8 +361,21 @@ try
                 % No key pressed: Check for mouse actions...
                 [xm, ym, buttons] = GetMouse(win);
 
+                % Take a screenshot of the pixel below the mouse:
+                mouseposrgb = Screen('GetImage', win, OffsetRect([0 0 1 1], xm, ym), 'drawBuffer', 1);
+                [~, ny] = DrawFormattedText(win, sprintf('RGB at cursor position (%f, %f): (%f, %f, %f) nits.\n', xm, ym, mouseposrgb), 0, ny, [100 100 0]);
+
                 % Draw tiny yellow cursor dot:
-                Screen('DrawDots', win, [xm, ym], 3, [400, 400, 0]);
+                [~, mi] = max(mouseposrgb);
+                switch (mi)
+                    case 1,
+                        cursorcolor = [0, 200, 200];
+                    case 2,
+                        cursorcolor = [200, 0, 200];
+                    case 3,
+                        cursorcolor = [200, 200, 0];
+                end
+                Screen('DrawDots', win, [xm, ym], 3, cursorcolor);
 
                 if buttons(1)
                     % Left button pressed:
@@ -349,6 +418,9 @@ try
         clear quantimg;
     end
 
+    % Restore old startup screen display mode:
+    Screen('Preference', 'VisualDebugLevel', oldVis);
+
     % Enable keypress output to Matlab window:
     ListenChar(0);
 
@@ -360,6 +432,9 @@ try
 catch
     % Error handler: If something goes wrong between try and catch, we
     % close the window and abort.
+
+    % Restore old startup screen display mode:
+    Screen('Preference', 'VisualDebugLevel', oldVis);
 
     % Enable keypress output to Matlab window:
     ListenChar(0);
