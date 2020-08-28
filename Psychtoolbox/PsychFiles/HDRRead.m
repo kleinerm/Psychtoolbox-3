@@ -35,8 +35,17 @@ function [img, format, errmsg] = HDRRead(imgfilename, continueOnError, flipit)
 %   if available. File extension is ".hdr". Returns a RGB image.
 %
 % * OpenEXR files, extension is ".exr". These are readable efficiently if
-% the MIT licensed exrread() command from the following package/webpage is
-% installed: https://github.com/skycaptain/openexr-matlab
+%   the MIT licensed exrread() command from the following 3rd package/webpage is
+%   installed: https://github.com/skycaptain/openexr-matlab
+%   That package uses the OpenEXR libraries for image reading, so those libraries
+%   must be installed on your system as well.
+%
+%   If exrread() or the required OpenEXR libraries are missing, then Screen()'s
+%   builtin Screen('ReadHDRImage') function is used, which uses the builtin
+%   tinyexr open-source library from: https://github.com/syoyo/tinyexr
+%   This method if fast and can handle the most common OpenEXR format encodings,
+%   but may not be able to cope with some more unusual encodings. See the feature
+%   table at tinyexr's GitHub page for features and limitations.
 %
 % The reader routines are contributed code or open source / free software /
 % public domain code downloaded from various locations under different, but
@@ -103,8 +112,19 @@ if ~isempty(strfind(imgfilename, '.exr')) %#ok<STREMP>
             inimg = double(exrread(imgfilename));
         else
             % Use our own fallback:
-            % TODO
-            dispatched = 0;
+            [inimg, format, err] = Screen('ReadHDRImage', imgfilename);
+            if isempty(inimg)
+                if continueOnError
+                    img = [];
+                    warning(['HDR file ' imgfilename ' failed to load: ' err]);
+                    msg = psychlasterror;
+                    disp(msg.message);
+                    errmsg = err;
+                    return;
+                else
+                    psychrethrow(psychlasterror);
+                end
+            end
         end
     catch
         if continueOnError
