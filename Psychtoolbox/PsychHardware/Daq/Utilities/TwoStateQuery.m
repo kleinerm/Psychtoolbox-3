@@ -29,6 +29,8 @@ function UserResponse = TwoStateQuery(TheQuestion,TheChoices)
 %          11/05/15  mk    Add GUI dialog for Octave in GUI mode. White-space cleanup.
 %           7/20/17  mk    Use text only fallback on Matlab R2014b and later.
 %           7/11/19  dn    GUI version now works on Matlab R2014b and later.
+%           8/28/20  mk    Always use questdlg() instead of Matlab specific
+%                          figure contraption. Nicer look.
 
 if nargin < 2 || isempty(TheChoices)
   TheChoices{1} = 'Yes';
@@ -62,7 +64,10 @@ if ~IsGUI
 end
 
 % questdlg builtin dialog box for Octave with GUI:
-if IsOctave
+% MK: Always use this one, even on Matlab. I can not see the advantage of
+% the Matlab specific contraption below? It seems to provide the same
+% functionality, but with way more ugly formatting?
+if IsOctave || 1
   button = questdlg(TheQuestion, 'Question', TheChoices{1}, TheChoices{2}, 'Cancel', 'Cancel');
   if ~isempty(strfind(button, TheChoices{1}))
     UserResponse = 1;
@@ -74,6 +79,7 @@ if IsOctave
   return;
 end
 
+% NOT reached in current implementation!
 FigPos = [300 600];
 FigWidth = 500;
 FigHeight = 200;
