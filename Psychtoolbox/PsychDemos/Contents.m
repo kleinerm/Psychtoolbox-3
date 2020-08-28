@@ -82,6 +82,7 @@
 %    MultiTouchMinimalDemo   - Shows a more minimal example of how to get (multi-)touch input from touchscreens and touchpads.
 %    NomogramDemo            - Compute photoreceptor nomograms.
 %    OldNewRecogExp          - A full old-new recognition experiment.
+%    OpenEXRImages           - Subfolder: OpenEXR HDR sample image files.
 %    OpenGL4MatlabDemos      - Subfolder: Demos on how to use MOGL OpenGL functions.
 %    PanelFitterDemo         - Demonstrate use of the builtin panel fitter.
 %    ProceduralColorGratingDemo - Demo for fast drawing of color gratings.
