@@ -11,6 +11,7 @@
 %   HDRRead                 - Generic reader for HDR image files. Dispatches into dedicated readers for different file formats.
 %   LiteralUnderscore       - Insert escape ("\") before each underscore char in string.
 %   LogVar                  - Traverses a MATLAB variable and creates a string to represent it. When this string is evaluated with EVAL, the original variable is obtained.
+%   PsychReadImageGStreamer - Reads an image file (or URL) by (ab)using GStreamer's ability to read image files like pseudo-movies.
 %   PsychSaveAsEps          - Save matrix as an EPS file.
 %   QuoteString             - Wraps a string in quotes.
 %   ReadStructsFromText     - Read struct array from a tab delimited text file.
