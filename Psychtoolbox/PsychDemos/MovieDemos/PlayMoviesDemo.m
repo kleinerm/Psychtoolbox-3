@@ -117,12 +117,16 @@ try
             % In HDR mode, we request at least 10 bpc color precision for
             % decoded movie frames / textures:
             pixelFormat = 10;
-            
-            % Hack hack: Disable HDR post-processing, as HDR-10 movies are
-            % already properly PQ OETF encoded, and in BT2020 color space.
-            % TODO FIXME this must go in the actual release!
-            Screen('HookFunction', win, 'Disable', 'FinalOutputFormattingBlit');
         end
+    end
+
+    if hdr
+        % Hack hack: Disable HDR post-processing, as HDR-10 movies are
+        % already properly PQ OETF encoded, and in BT2020 color space.
+        % TODO FIXME this must go in the actual release!
+        Screen('HookFunction', win, 'Disable', 'FinalOutputFormattingBlit');
+        % Choose 64 pixel text size:
+        Screen('TextSize', win, 64);
     end
 
     % Use default maxThreads if none specified:
@@ -312,7 +316,8 @@ try
                 % Draw the new texture immediately to screen:
                 Screen('DrawTexture', win, tex, [], [], [], [], [], [], shader);
                 
-                DrawFormattedText(win, ['Movie: ' moviename ], 'center', 20, 0);
+                Screen('DrawText', win, 'RAW DATA PASSTHROUGH!', 0, 20, [1 0 0]);
+                DrawFormattedText(win, ['Movie: ' moviename ], 'center', 20, [1 0 0]);
                 if coolstuff
                     DrawFormattedText(win, ['Original URL: ' url '\n\n' credits], 'center', 60, 0);
                 end
