@@ -97,7 +97,7 @@ if isempty(imfilenames)
         % Nope. Ask if we should fetch those images?
         if TwoStateQuery('Did not find the freely downloadable and useable OpenEXR HDR image samples from MPI for Informatics Saarbruecken (http://resources.mpi-inf.mpg.de/hdr/gallery.html). Should i download them to your Home directory?') == 1
             % Yes:
-            fprintf('Trying to download files to folder %s ...\n', [PsychHomeDir 'ThirdPartyHDRSampleImages/']);
+            fprintf('Trying to download files to folder %s ...\n', [PsychHomeDir 'ThirdPartyHDRSampleImages']);
             fprintf('See the MPI for Informatics Saarbruecken webpage for credits, copyright and license info, as well as more\n');
             fprintf('background info about these files:\nhttp://resources.mpi-inf.mpg.de/hdr/gallery.html\n\n');
             % Define path to target folder, create folder if it does not yet exist:
@@ -157,7 +157,7 @@ try
 
         % Show some status info:
         msg = ['Loading image: ' imagename];
-        fprintf([msg, '\n']);
+        disp(msg);
         DrawFormattedText(win, msg, 'center', 'center', [0 300 0]);
         Screen('Flip', win);
 
