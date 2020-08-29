@@ -223,7 +223,7 @@ try
         % of our HDR display, relate it to the maximum luminance of the current
         % image, and use steps in 1% increments of that:
         hdrProperties = PsychHDR('GetHDRProperties', win);
-        sfstep = hdrProperties.MaxLuminance / maxCLL * 0.01;
+        sfstep = hdrProperties.MaxLuminance / maxCLL * 0.1;
 
         % Scale intensities by some factor. Here we set the default value:
         sf = scalefactor;
@@ -232,16 +232,27 @@ try
         % content light level of the image:
         imgpropmsg = sprintf('Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL);
         if  maxCLL > 10000
-            imgpropmsg = [imgpropmsg sprintf('maxCLL %f exceeds 10000 nits! Rescaling to clamp to 10000 nits.\n', maxCLL)]; %#ok<AGROW>
+            imgpropmsg = [imgpropmsg sprintf('-> maxCLL %f exceeds 10000 nits! Rescaling to clamp to 10000 nits.\n', maxCLL)]; %#ok<AGROW>
+
+            nrhigh = length(find(img > 10000));
+            if nrhigh < 0.005 * numel(img)
+                % Less than 0.5% of all pixels are above threshold. Just
+                % clamp them to threshold and avoid rescaling:
+                img(img > 10000) = 10000;
+                maxCLL = 10000;
+                imgpropmsg = [imgpropmsg sprintf('-> Only %i pixels [%f %% of all pixels] exceed 10000 nits! Just clamping those to 10000 nits.\n', nrhigh, nrhigh / numel(img) * 100)]; %#ok<AGROW>
+            end
+
             scaledown = 10000 / maxCLL;
             img = img * scaledown;
-            maxFALL = maxFALL * scaledown;
-            maxCLL = maxCLL * scaledown;
-            imgpropmsg = [imgpropmsg sprintf('Clamping: Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL)]; %#ok<AGROW>
+
+            % Recompute maximum and max mean luminance of the image:
+            maxCLL = max(max(max(img)));
+            maxFALL = mean(mean(mean(img)));
+
+            imgpropmsg = [imgpropmsg sprintf('-> Clamping: Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL)]; %#ok<AGROW>
         end
         disp(imgpropmsg);
-
-        PsychHDR('HDRMetadata', win, [], maxFALL, maxCLL);
 
         % Build a Psychtoolbox 16 bpc half-float texture from the image array
         % by setting the (optional) 'floatprecision' flag to 1.
@@ -301,6 +312,10 @@ try
                 Screen('DrawTexture', win, ldrtexid, srcrect, dstrect, [], [], [], [sf sf sf]);
             end
 
+            % Send current content light level properties to display,
+            % clamped to 10k nits:
+            PsychHDR('HDRMetadata', win, [], min(maxFALL * sf, 10000), min(maxCLL * sf, 10000));
+
             % Some status text:
             if hdrmode
                 quantized = 'Floating point HDR';
@@ -354,7 +369,7 @@ try
                 if keycode(KbName('DownArrow'))
                     % Decrease intensity scaling factor:
                     needupdate = 1;
-                    sf = sf - sfstep;
+                    sf = max(sf - sfstep, 0);
                 end
             else
                 % No key pressed: Check for mouse actions...
