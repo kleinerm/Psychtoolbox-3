@@ -31,6 +31,10 @@ if mode==0
     % Build Screen:
     % Depends: GStreamer-1.0 (actually 1.4.0+), libdc1394-2, libusb-1.0
 
+    % Must build tinyexr separately, because it needs C++ compile
+    % incompatible with the C/Obj-C compile in the main mex cmd below:
+    mex -c Common/Screen/tinyexr.cc
+
     % Build with weak linking of GStreamer and libdc1394 via -weak_library
     % flag. This means that a missing GStreamer or libdc1394 installation
     % will not cause linker failure at Screen() load time -- Screen
@@ -60,8 +64,10 @@ if mode==0
         -I/Library/Frameworks/GStreamer.framework/Versions/Current/lib/glib-2.0/include -I/usr/local/include ...
         -ICommon/Base -ICommon/Screen -IOSX/Base -IOSX/Screen -IOSX/Fonts -IOSX/EthernetAddress ...
          "OSX/Screen/*.c" "Common/Screen/*.c" "OSX/Base/*.c" "OSX/Fonts/*FontGlue*.c" "OSX/Fonts/FontInfo.c" "OSX/EthernetAddress/*.c" "Common/Base/*.c" ...
+         tinyexr.o ...
         -L/usr/local/lib
 
+    delete tinyexr.o;
     movefile(['../Projects/MacOSX/build/Screen.' mexext], [PsychtoolboxRoot 'PsychBasic/']);
 end
 
