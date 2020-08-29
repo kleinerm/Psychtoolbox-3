@@ -58,7 +58,7 @@ function [img, format, errmsg] = HDRRead(imgfilename, continueOnError, flipit)
 
 psychlasterror('reset');
 
-if nargin < 1 || isempty(imgfilename)
+if nargin < 1 || isempty(imgfilename) || ~ischar(imgfilename)
     error('Missing HDR image filename.');
 end
 
@@ -72,9 +72,23 @@ end
 
 % Format dispatcher:
 dispatched = 0;
+img = [];
 format = [];
 
-if ~isempty(strfind(imgfilename, '.hdr')) %#ok<STREMP>
+if exist(imgfilename, 'file') ~= 2
+    errmsg = ['HDR file ' imgfilename ' does not exist.'];
+
+    if continueOnError
+        warning(errmsg);
+        return;
+    else
+        error(errmsg);
+    end
+end
+
+[~, ~, fext] = fileparts(imgfilename);
+
+if strcmpi(fext, '.hdr')
     % Load a RLE encoded RGBE high dynamic range file:
     dispatched = 1;
     try
@@ -88,7 +102,6 @@ if ~isempty(strfind(imgfilename, '.hdr')) %#ok<STREMP>
         end
     catch
         if continueOnError
-            img = [];
             warning(['HDR file ' imgfilename ' failed to load.']);
             msg = psychlasterror;
             disp(msg.message);
@@ -102,7 +115,7 @@ if ~isempty(strfind(imgfilename, '.hdr')) %#ok<STREMP>
     format = 'rgbe';
 end
 
-if ~isempty(strfind(imgfilename, '.exr')) %#ok<STREMP>
+if strcmpi(fext, '.exr')
     % Load an OpenEXR high dynamic range file:
     dispatched = 1;
     try
@@ -115,7 +128,6 @@ if ~isempty(strfind(imgfilename, '.exr')) %#ok<STREMP>
             [inimg, format, err] = Screen('ReadHDRImage', imgfilename);
             if isempty(inimg)
                 if continueOnError
-                    img = [];
                     warning(['HDR file ' imgfilename ' failed to load: ' err]);
                     msg = psychlasterror;
                     disp(msg.message);
@@ -128,7 +140,6 @@ if ~isempty(strfind(imgfilename, '.exr')) %#ok<STREMP>
         end
     catch
         if continueOnError
-            img = [];
             warning(['HDR file ' imgfilename ' failed to load.']);
             msg = psychlasterror;
             disp(msg.message);
@@ -146,7 +157,6 @@ if dispatched == 0
     if ~continueOnError
         error(['Potential HDR file ' imgfilename ' is of unknown type, or no loader available for this type.']);
     else
-        img = [];
         warning(['Potential HDR file ' imgfilename ' is of unknown type, or no loader available for this type']);
         errmsg = 'No loader available for this type.';
 
