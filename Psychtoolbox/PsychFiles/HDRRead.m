@@ -1,9 +1,22 @@
-function [img, format, errmsg] = HDRRead(imgfilename, continueOnError, flipit)
-% [img, format, errmsg] = HDRRead(imgfilename [, continueOnError=0][, flipit=0])
-% Read a high dynamic range image file and return it as Matlab double
-% matrix, suitable for use with Screen('MakeTexture') and friends.
+function [img, info, errmsg] = HDRRead(imgfilename, continueOnError, flipit)
+% [img, info, errmsg] = HDRRead(imgfilename [, continueOnError=0][, flipit=0])
+% Read a high dynamic range image file and return it as double() matrix,
+% suitable for use with Screen('MakeTexture') and friends.
+%
+% Input arguments:
 %
 % 'imgfilename' - Filename of the HDR image file to load.
+%
+% 'continueOnError' Optional flag. If set to 1, HDRRead won't abort on
+% error, but simply return an empty 'img' matrix and 'info' and a error
+% message in 'errmsg'. Useful for probing if a specific file type is
+% supported. If set to 0 or omitted, then HDRRead will abort with an error
+% on any problem or unsupported image file types.
+%
+% 'flipit' Optional flag: If set to 1, the loaded image is flipped upside
+% down.
+%
+% Return arguments:
 %
 % Returns 'img' - A double precision matrix of size h x w x c where h is
 % the height of the input image, w is the width and c is the number of
@@ -12,45 +25,49 @@ function [img, format, errmsg] = HDRRead(imgfilename, continueOnError, flipit)
 % channel. If 'imgfilename' is not a supported file type or some error happens,
 % then 'img' will be returned as empty [] matrix.
 %
-% 'continueOnError' Optional flag. If set to 1, HDRRead won't abort on
-% error, but simply return an empty img matrix. Useful for probing if a
-% specific file type is supported. If set to 0 or omitted, then HDRRead will
-% abort with an error on any problem or unsupported image file types.
+% Returns 'info' - A struct with info about the image. On error, 'info'
+% will be returned as empty [] matrix. On success, 'info' has at least the
+% following fields:
 %
-% In case of failure, the returned 'errmsg' may contain a useful error message.
+% info.format - A string describing the format of the image file, e.g.,
+% 'rgbe' or 'openexr'. See below for supported formats and their id's.
 %
-% 'flipit' Optional flag: If set to 1, the loaded image is flipped upside
-% down.
+% Returns 'errmsg' - An empty string on success, but on failure may contain
+% a useful error message for the user.
 %
-% Returns a double() precision image matrix in 'img', and an id in 'format' which
-% describes the format of the source image file:
-%
-% 'rgbe' == Radiance RGBE format: Color values are in units of radiance.
-% 'openexr' == OpenEXR image format.
 %
 % HDRRead is a dispatcher for a collection of reading routines for
 % different HDR image file formats. Currently supported are:
 %
-% * Radiance run length encoded RGBE format, read via read_rle_rgbe(), or hdrread()
-%   if available. File extension is ".hdr". Returns a RGB image.
+% * Radiance run length encoded RGBE format, read via read_rle_rgbe(), or
+%   hdrread() if available. File extension is ".hdr". Returns a RGB image.
+%   info.format is 'rgbe', color values are supposed to be in units of
+%   radiance.
 %
-% * OpenEXR files, extension is ".exr". These are readable efficiently if
-%   the MIT licensed exrread() command from the following 3rd package/webpage is
-%   installed: https://github.com/skycaptain/openexr-matlab
-%   That package uses the OpenEXR libraries for image reading, so those libraries
-%   must be installed on your system as well.
+% * OpenEXR files, file extension is ".exr". info.format is 'openexr'.
+%   These files are readable efficiently if the MIT licensed exrread()
+%   command from the following 3rd package/webpage is installed:
+%   https://github.com/skycaptain/openexr-matlab
 %
-%   If exrread() or the required OpenEXR libraries are missing, then Screen()'s
-%   builtin Screen('ReadHDRImage') function is used, which uses the builtin
-%   tinyexr open-source library from: https://github.com/syoyo/tinyexr
-%   This method if fast and can handle the most common OpenEXR format encodings,
-%   but may not be able to cope with some more unusual encodings. See the feature
-%   table at tinyexr's GitHub page for features and limitations.
+%   That package uses the OpenEXR libraries for image reading, so those
+%   libraries must be installed on your system as well by yourself. At
+%   least GNU/Linux usually comes with libopenexr preinstalled or
+%   installable from the distribution package archives.
+%
+%   If exrread() or the required OpenEXR libraries are missing, then
+%   Screen()'s builtin Screen('ReadHDRImage') function is used, which uses
+%   the builtin tinyexr open-source library from:
+%   https://github.com/syoyo/tinyexr
+%   This method if fast and can handle the most common OpenEXR format
+%   encodings, but may not be able to cope with some more unusual
+%   encodings. See the feature table at tinyexr's GitHub page for features
+%   and limitations.
 %
 % The reader routines are contributed code or open source / free software /
 % public domain code downloaded from various locations under different, but
 % MIT compatible licenses. See the help for the respective loaders for
 % copyright and author information.
+%
 
 % History:
 % 14-Dec-2006   mk Written.
@@ -73,7 +90,7 @@ end
 % Format dispatcher:
 dispatched = 0;
 img = [];
-format = [];
+info = [];
 
 if exist(imgfilename, 'file') ~= 2
     errmsg = ['HDR file ' imgfilename ' does not exist.'];
@@ -112,7 +129,7 @@ if strcmpi(fext, '.hdr')
         end
     end
 
-    format = 'rgbe';
+    info.format = 'rgbe';
 end
 
 if strcmpi(fext, '.exr')
@@ -125,7 +142,7 @@ if strcmpi(fext, '.exr')
             inimg = double(exrread(imgfilename));
         else
             % Use our own fallback:
-            [inimg, format, err] = Screen('ReadHDRImage', imgfilename);
+            [inimg, info.format, err] = Screen('ReadHDRImage', imgfilename);
             if isempty(inimg)
                 if continueOnError
                     warning(['HDR file ' imgfilename ' failed to load: ' err]);
@@ -150,7 +167,7 @@ if strcmpi(fext, '.exr')
         end
     end
 
-    format = 'openexr';
+    info.format = 'openexr';
 end
 
 if dispatched == 0

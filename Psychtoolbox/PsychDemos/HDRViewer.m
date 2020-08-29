@@ -163,13 +163,13 @@ try
 
         % Read image into Matlab matrix. If file is not recognized, skip and
         % return an empty 'img', instead of aborting with an error:
-        [img, hdrType, errmsg] = HDRRead(imagename, 1);
+        [img, info, errmsg] = HDRRead(imagename, 1);
         if isempty(img)
             % Not recognized as HDR file. Try if imread() can handle it as
             % standard SDR image file:
             try
                 img = imread(imagename);
-                hdrType = 'sdr';
+                info.format = 'sdr';
             catch
                 msg = ['Could not load file ' imagename ' as either HDR or SDR image file, skipping.\n' errmsg];
                 fprintf([msg, '\n']);
@@ -185,7 +185,7 @@ try
             end
         end
 
-        switch hdrType
+        switch info.format
             case 'rgbe'
                 % HACK: Multiply by 180.0 as a crude approximation of Radiance units to nits:
                 % This is not strictly correct, but will do to get a nice enough picture for

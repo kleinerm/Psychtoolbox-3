@@ -73,10 +73,10 @@ if ~exist(imfilename, 'file')
     error('Specified HDR image file does not exist under path %s.', imfilename);
 end
 
-% Read HDR file. Must be in a file format recognized by HDRRead:
-[img, hdrType] = HDRRead(imfilename);
+% Read HDR file, abort on error. Must be in a file format recognized by HDRRead:
+[img, info] = HDRRead(imfilename);
 
-switch hdrType
+switch info.format
     case 'rgbe'
         % HACK: Multiply by 180.0 as a crude approximation of Radiance units to nits:
         % This is not strictly correct, but will do to get a nice enough picture for
