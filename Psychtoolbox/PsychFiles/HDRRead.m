@@ -148,7 +148,7 @@ if dispatched == 0
     else
         img = [];
         warning(['Potential HDR file ' imgfilename ' is of unknown type, or no loader available for this type']);
-        errmsg = ['No loader available for this type.'];
+        errmsg = 'No loader available for this type.';
 
         return;
     end

@@ -75,8 +75,8 @@ oldVis = Screen('Preference', 'VisualDebugLevel', 3);
 % Name of an image file passed? If not, we default to all *.hdr files in
 % current working directory:
 if nargin < 1 || isempty(imfilepattern)
-    % No pattern provided. Search in current working directory.
-    imfilepattern = '*.hdr';
+    % No pattern provided. Set up so nothing is found:
+    imfilepattern = 'NONONONO';
 end
 
 if nargin < 2 || isempty(scalefactor)
@@ -103,10 +103,10 @@ if isempty(imfilenames)
             % Define path to target folder, create folder if it does not yet exist:
             target = PsychHomeDir('ThirdPartyHDRSampleImages');
             % Get'em:
-            mpiimnames = {'Iwate.exr', 'AtriumMorning.exr', 'AtriumNight.exr', 'snow.exr', 'nancy_cathedral_1.exr', 'nancy_cathedral_2.exr', 'mpi_atrium_1.exr'}
+            mpiimnames = {'Iwate.exr', 'AtriumMorning.exr', 'AtriumNight.exr', 'snow.exr', 'nancy_cathedral_1.exr', 'nancy_cathedral_2.exr', 'mpi_atrium_1.exr'};
             for imname=mpiimnames
                 tname = char(imname);
-                [fname, rc] = urlwrite(['http://resources.mpi-inf.mpg.de/hdr/img_hdr/' tname], [target tname]);
+                [fname, rc] = urlwrite(['http://resources.mpi-inf.mpg.de/hdr/img_hdr/' tname], [target tname]); %#ok<URLWR>
                 fprintf('Tried to download sample file to: ''%s'' [Status: %i]\n', fname, rc);
             end
         end
@@ -118,12 +118,11 @@ if isempty(imfilenames)
         imfilenames = [imfilenames ; imfilenames1];
     end
 
-    if ~IsOctave
+    if ~IsOctave && exist([matlabroot filesep 'toolbox/images/imdata/office.hdr'], 'file')
         % Matlab has one Radiance .hdr sample file here, so load it if we are on Matlab:
         imfilenames1 = FileFromFolder([matlabroot filesep 'toolbox/images/imdata/office.hdr']);
         imfilenames = [imfilenames ; imfilenames1];
     end
-    imfilenames1 = FileFromFolder([PsychtoolboxRoot 'PsychDemos/OpenEXRImages/'], 'ssilent', {'exr', 'hdr', 'dpx'});
 end
 
 try
@@ -233,12 +232,12 @@ try
         % content light level of the image:
         imgpropmsg = sprintf('Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL);
         if  maxCLL > 10000
-            imgpropmsg = [imgpropmsg sprintf('maxCLL %f exceeds 10000 nits! Rescaling to clamp to 10000 nits.\n', maxCLL)];
+            imgpropmsg = [imgpropmsg sprintf('maxCLL %f exceeds 10000 nits! Rescaling to clamp to 10000 nits.\n', maxCLL)]; %#ok<AGROW>
             scaledown = 10000 / maxCLL;
             img = img * scaledown;
             maxFALL = maxFALL * scaledown;
             maxCLL = maxCLL * scaledown;
-            imgpropmsg = [imgpropmsg sprintf('Clamping: Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL)];
+            imgpropmsg = [imgpropmsg sprintf('Clamping: Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL)]; %#ok<AGROW>
         end
         disp(imgpropmsg);
 
@@ -363,16 +362,16 @@ try
 
                 % Take a screenshot of the pixel below the mouse:
                 mouseposrgb = Screen('GetImage', win, OffsetRect([0 0 1 1], xm, ym), 'drawBuffer', 1);
-                [~, ny] = DrawFormattedText(win, sprintf('RGB at cursor position (%f, %f): (%f, %f, %f) nits.\n', xm, ym, mouseposrgb), 0, ny, [100 100 0]);
+                [~, ny] = DrawFormattedText(win, sprintf('RGB at cursor position (%f, %f): (%f, %f, %f) nits.\n', xm, ym, mouseposrgb), 0, ny, [100 100 0]); %#ok<ASGLU>
 
                 % Draw tiny yellow cursor dot:
                 [~, mi] = max(mouseposrgb);
                 switch (mi)
-                    case 1,
+                    case 1
                         cursorcolor = [0, 200, 200];
-                    case 2,
+                    case 2
                         cursorcolor = [200, 0, 200];
-                    case 3,
+                    case 3
                         cursorcolor = [200, 200, 0];
                 end
                 Screen('DrawDots', win, [xm, ym], 3, cursorcolor);
