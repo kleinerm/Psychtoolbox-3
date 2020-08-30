@@ -3943,6 +3943,10 @@ PsychError PSYCHVULKANHDRMetadata(void)
     "HDR display monitor associated with Vulkan window 'vulkanWindow'. It optionally "
     "allows to define new HDR metadata to send to the monitor, starting with the next "
     "presented visual stimulus image.\n"
+    "Note: Setting new HDR metadata can be an expensive - and potentially visually disruptive - "
+    "operation with some graphics drivers on some operating system, e.g., on MS-Windows. Therefore "
+    "avoid too frequent updates. Our driver will eliminate redundant updates as a simple performance "
+    "optimization.\n"
     "Return argument 'oldHdrMetadata' is a struct with information about the current metadata. "
     "Optionally you can define new metadata to be sent to the display. If you specify any new "
     "settings, but omit any values or leave them [] empty, then those values will remain at their "
@@ -3963,6 +3967,7 @@ PsychError PSYCHVULKANHDRMetadata(void)
 
     int handle;
     PsychVulkanWindow* window;
+    VkHdrMetadataEXT oldDisplayHDRMetadata;
     PsychGenericScriptType *s;
     PsychGenericScriptType *outMat;
     double *v;
@@ -4026,6 +4031,9 @@ PsychError PSYCHVULKANHDRMetadata(void)
 
         PsychSetStructArrayNativeElement("ColorGamut", 0, outMat, s);
     }
+
+    // Backup current settings, so we can avoid redundant updates:
+    oldDisplayHDRMetadata = window->currentDisplayHDRMetadata;
 
     // Assign optional new settings from user script:
     metadataType = 0;
@@ -4112,6 +4120,19 @@ PsychError PSYCHVULKANHDRMetadata(void)
 
         if ((window->currentDisplayHDRMetadata.maxContentLightLevel <  window->currentDisplayHDRMetadata.maxFrameAverageLightLevel) && (maxFrameAverageLightLevel != DBL_MAX))
             PsychErrorExitMsg(PsychError_user, "Invalid HDR content maxFrameAverageLightLevel specified: Must be equal or smaller than current maxContentLightLevel in nits.");
+
+        // Check if the to-be-set metadata has really changed, ie. it isn't a redundant
+        // update to the settings that were already current. Turns out this is important
+        // on MS-Windows with both AMD and even more so NVidia drivers, or performance will
+        // fall off a cliff! E.g., AMD takes over 100 msecs for an update, NVidia takes on the
+        // order of 1 second and a modesetting sequence! Strong work :/
+        if (memcmp(&oldDisplayHDRMetadata, &window->currentDisplayHDRMetadata, sizeof(oldDisplayHDRMetadata)) == 0) {
+            // No effective change. This update is redundant, so skip it:
+            window->currentDisplayHDRMetadataNeedsCommit = FALSE;
+
+            if (verbosity > 5)
+                printf("PsychVulkanCore-INFO: In 'HDRMetadata', redundant HDR metadata update for window %i skipped.\n", window->index);
+        }
     }
 
     return(PsychError_none);
