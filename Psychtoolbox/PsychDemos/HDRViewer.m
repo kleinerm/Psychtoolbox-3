@@ -273,6 +273,9 @@ try
         % to be the SDR "standard dynamic range" of a regular display or image.
         ldrtexid = Screen('MakeTexture', win, quantimg);
 
+        % Send current content light level properties to display, clamped to 10k nits:
+        PsychHDR('HDRMetadata', win, [], min(maxFALL * sf, 10000), min(maxCLL * sf, 10000));
+
         needupdate = 1;
         zoomset = 0;
         xleft = 0;
@@ -312,9 +315,23 @@ try
                 Screen('DrawTexture', win, ldrtexid, srcrect, dstrect, [], [], [], [sf sf sf]);
             end
 
-            % Send current content light level properties to display,
-            % clamped to 10k nits:
-            PsychHDR('HDRMetadata', win, [], min(maxFALL * sf, 10000), min(maxCLL * sf, 10000));
+            % Send current content light level properties to display, clamped to 10k nits:
+            % Or don't! While this would be strictly the right thing to do
+            % in my opinion, it creates a seriously disrupting experience
+            % for users of NVidia graphics cards on MS-Windows, at least as
+            % of NVidia driver version 445 in August 2020: Each time you
+            % set new HDR metadata, the driver will perform a full modeset
+            % sequence on the monitor, with a signal dropout and flicker
+            % for about 1 second. This totally disrupts the viewing
+            % experience if you actually try to adjust the scaling factor
+            % 'sf' and thereby defeats the purpose. The only solution for
+            % this would be a driver fix by NVidia. Note that PsychHDR will
+            % detect redundant updates of metadata and skip such update
+            % calls, so the performance impact is already as much reduced
+            % as possible from Psychtoolbox side.
+            % AMD's Windows driver is not quite as bad, but not great
+            % either, taking over 120 msecs for such a setup call...
+            % PsychHDR('HDRMetadata', win, [], min(maxFALL * sf, 10000), min(maxCLL * sf, 10000));
 
             % Some status text:
             if hdrmode
