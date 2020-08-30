@@ -12852,9 +12852,16 @@ int LoadDeepEXR(DeepImage *deep_image, const char *filename, const char **err) {
     if (attr_name.compare("compression") == 0) {
       compression_type = data[0];
       if (compression_type > TINYEXR_COMPRESSIONTYPE_PIZ) {
+        // MK: HACK std::stringstream does not work here for god knows what
+        // reason on Octave + MS-Windows, ie. MinGW64 of Octave 5.2. Provide
+        // alternative implementation for this:
+        #if defined(_WIN32) && defined(PTBOCTAVE3MEX)
+        tinyexr::SetErrorMessage("Unsupported compression type!", err);
+        #else
         std::stringstream ss;
         ss << "Unsupported compression type : " << compression_type;
         tinyexr::SetErrorMessage(ss.str(), err);
+        #endif
         return TINYEXR_ERROR_UNSUPPORTED_FORMAT;
       }
 
