@@ -1511,6 +1511,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 stddev = (PsychOSIsDWMEnabled(screenSettings->screenNumber) && (PSYCH_SYSTEM != PSYCH_LINUX)) ? (5 * maxStddev) : maxStddev;
                 // If skipping of sync-test is requested, we limit the calibration to 1 sec.
                 maxsecs = (skip_synctests) ? 1 : maxDuration;
+
+                // Ok, in case of external display backend, give it 3 seconds for a bit better results:
+                if ((*windowRecord)->specialflags & kPsychExternalDisplayMethod)
+                    maxsecs = 3;
+
                 retry_count++;
                 ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ((ifi_nominal > 0) ? ifi_nominal : ifi_beamestimate), &did_pageflip);
 
@@ -1916,9 +1921,46 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // This condition may not hold on a G-Sync/FreeSync setup, so skip fail in that case.
     if ((ifi_beamestimate < 0.8 * ifi_estimate || ifi_beamestimate > 1.2 * ifi_estimate) && (ifi_beamestimate > 0) &&
         !PsychVRRActive(*windowRecord)) {
-        if (!sync_trouble && PsychPrefStateGet_Verbosity()>1)
-            printf("\nWARNING: Mismatch between measured monitor refresh intervals! This indicates problems with rasterbeam position queries.\n");
-        sync_trouble = true;
+        // Mismatch! This is bad and often the case on Windows-10 multi-display setups, due to
+        // DWM compositor interference, especially if different displays run at different nominal
+        // refresh rates.
+        // Normal setup with OpenGL display backend?
+        if (!((*windowRecord)->specialflags & kPsychExternalDisplayMethod)) {
+            // Game over for rasterbeam position queries: Inaccurate, but better safe than sorry...
+            if (!sync_trouble && PsychPrefStateGet_Verbosity()>1)
+                printf("\nPTB-WARNING: Mismatch between measured monitor refresh intervals! This indicates problems with rasterbeam position queries.\n");
+
+            sync_trouble = true;
+        }
+        else {
+            // External display method used for display and display timing/timestamping.
+            // At least on MS-Windows on a dual-display setup, measured ifi_estimate can
+            // be as wrong as it is irrelevant to timing/timstamping, but we may still
+            // need our beamposition query timestamping to augment the external display
+            // method, e.g., Vulkan without native Vulkan timestamping support.
+            //
+            // Therefore we use ifi_nominal as a reference to check plausibility of
+            // ifi_beamestimate, as that is more likely to be right, even on MS-Windows
+            // dual-display setups, where the DWM compositor may interfere with ifi_estimate.
+            // Testing against hw equipment showed errors of more than 5 msecs at 60 Hz if
+            // we can not utilize beampos timestamping on Windows-10, so we really want this.
+            if ((ifi_beamestimate < 0.8 * ifi_nominal || ifi_beamestimate > 1.2 * ifi_nominal) && (ifi_nominal > 0)) {
+                // Also mismatch with ifi_nominal -> Most likely beamposition queries are defective, so give up:
+                if (!sync_trouble && PsychPrefStateGet_Verbosity() > 1)
+                    printf("\nPTB-WARNING: Mismatch between beamposition-measured and OS reported monitor refresh interval! This indicates problems with rasterbeam position queries.\n");
+
+                sync_trouble = true;
+            }
+            else {
+                // Matching values -> Assume the ifi_estimate is wrong due to compositor interference.
+                // Keep beamposition method going, and make it new reference for beampos timestamping:
+                (*windowRecord)->VideoRefreshInterval = (!sync_trouble) ? ifi_beamestimate : ifi_nominal;
+
+                if (PsychPrefStateGet_Verbosity() > 1)                
+                    printf("\nPTB-WARNING: Mismatch between measured monitor refresh intervals! Assuming VBL sync measurement is wrong, overriding reference refresh interval to %f msecs.\n",
+                           1000 * (*windowRecord)->VideoRefreshInterval);
+            }
+        }
     }
 
     if (sync_trouble) {
