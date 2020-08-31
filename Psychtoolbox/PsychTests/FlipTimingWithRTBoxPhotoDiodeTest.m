@@ -1,5 +1,5 @@
-function FlipTimingWithRTBoxPhotoDiodeTest(configFile, targetFolder, usevulkan)
-% FlipTimingWithRTBoxPhotoDiodeTest([configFile][, targetFolder][, usevulkan=0])
+function FlipTimingWithRTBoxPhotoDiodeTest(configFile, targetFolder, usevulkan, bpc)
+% FlipTimingWithRTBoxPhotoDiodeTest([configFile][, targetFolder][, usevulkan=0][, bpc=8])
 %
 % Test visual stimulus onset timing accuracy and visual stimulus onset
 % timestamping precision and robustness under varying loads, conditions and
@@ -24,6 +24,12 @@ function FlipTimingWithRTBoxPhotoDiodeTest(configFile, targetFolder, usevulkan)
 %
 % 'usevulkan' If 1, try to use a Vulkan display backend instead of the
 % OpenGL display backend. See 'help PsychVulkan'.
+%
+% 'bpc' Request a specific output framebuffer color precision. Currently
+% supported are 8 for standard 8 bpc RGBA8 framebuffer, 10 bpc for RGB10A2,
+% and 16 bpc for a RGBA16F floating point framebuffer. Defaults to 8 bpc,
+% which is the only precision that is guaranteed to be supported on all
+% operating systems, graphics cards and displays.
 %
 % Mandatory variables in the config file, part of the struct variable 'conf':
 % ---------------------------------------------------------------------------
@@ -77,6 +83,10 @@ end
 % Default to standard OpenGL backend instead of Vulkan by default:
 if nargin < 3 || isempty(usevulkan)
     usevulkan = 0;
+end
+
+if nargin < 4 || isempty(bpc)
+    bpc = 8;
 end
 
 % Is it the standard path for config files?
@@ -258,6 +268,19 @@ try
         % Use PsychVulkan display backend instead of standard OpenGL:
         PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
     end
+
+    switch bpc
+        case 8
+            % Nothing to do.
+        case 10
+            PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
+        case 16
+            PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
+        otherwise
+            error('Invalid bpc specified!');
+    end
+
+    conf.bpc = bpc;
 
     if useRTbox == -1
         % Setup Datapixx mode for timestamping:
