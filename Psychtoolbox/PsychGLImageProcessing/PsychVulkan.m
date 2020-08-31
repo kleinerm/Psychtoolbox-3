@@ -94,7 +94,12 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         end
 
         predictedOnset = winfo.LastVBLTime;
-        vblTime = predictedOnset;
+        % If predictedOnset is valid, use it. Otherwise fall back to vblTime:
+        if predictedOnset > 0
+            vblTime = predictedOnset;
+        else
+            predictedOnset = vblTime;
+        end
 
         % Inject vblTime and visual stimulus onset time into Screen(), for usual handling
         % and reporting back to usercode via Screen('Flip'), also current beamposition:
