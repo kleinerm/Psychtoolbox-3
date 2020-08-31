@@ -889,8 +889,11 @@ PsychError SCREENOpenWindow(void)
         // Do three immediate bufferswaps by an internal call to Screen('Flip'). This will also
         // take care of clearing the backbuffer in preparation of first userspace drawing
         // commands and such. We need up-to 3 calls to clear triple-buffered setups from framebuffer junk.
+        windowRecord->specialflags |= kPsychSkipTimestampingForFlipOnce;
         PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
+        windowRecord->specialflags |= kPsychSkipTimestampingForFlipOnce;
         PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
+        windowRecord->specialflags |= kPsychSkipTimestampingForFlipOnce;
         PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
         // Display now shows background color, so user knows that PTB's 'OpenWindow'
         // procedure is successfully finished.

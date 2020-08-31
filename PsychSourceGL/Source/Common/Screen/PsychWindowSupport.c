@@ -964,6 +964,17 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // Get final synctest setting after GPU caps detection:
     skip_synctests = PsychPrefStateGet_SkipSyncTests();
 
+    // For external display backends like Vulkan, we rely on that backend to deal with timing
+    // and trouble, so only run time-reduced synctests, and skip various warnings if they should
+    // fail, as this is strictly non of our business:
+    if ((*windowRecord)->specialflags & kPsychExternalDisplayMethod) {
+        if (PsychPrefStateGet_Verbosity() > 2)
+            printf("PTB-INFO: External display method is in use for this window. Running short and lenient timing tests only.\n");
+
+        if (skip_synctests < 1)
+            skip_synctests = 1;
+    }
+
     // If this is a windowed onscreen window, be lenient with synctests. Make sure they never fail,
     // because miserable timing is expected in windowed mode. However, if we are running under a
     // Wayland server with properly working presentation_feedback extension, then presentation timing
@@ -1593,6 +1604,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 if (PsychPrefStateGet_VBLTimestampingMode()>=0) {
                     printf("PTB-INFO: Will use beamposition query for accurate Flip time stamping.\n");
                 }
+                else if ((*windowRecord)->specialflags & kPsychExternalDisplayMethod) {
+                    printf("PTB-INFO: Beamposition queries are supported, but disabled. Screen('Flip') timestamping will\n");
+                    printf("PTB-INFO: fully rely on mechanisms in the external display backend, with unknown precision.\n");
+                }
                 else {
                     printf("PTB-INFO: Beamposition queries are supported, but disabled. Using basic timestamping as fallback:\n");
                     printf("PTB-INFO: Timestamps returned by Screen('Flip') will be therefore less robust and accurate.\n");
@@ -1613,6 +1628,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 if (PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX) {
                     printf("PTB-INFO: Beamposition queries unsupported on this system. Will try to use kernel-level vbl interrupts as fallback.\n");
                 }
+            }
+            else if ((*windowRecord)->specialflags & kPsychExternalDisplayMethod) {
+                printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Screen('Flip') timestamping will\n");
+                printf("PTB-INFO: fully rely on mechanisms in the external display backend, with unknown precision and reliability.\n");
             }
             else {
                 printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback.\n");
@@ -1779,7 +1798,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         }
     }
 
-    if (skip_synctests < 2) {
+    if ((skip_synctests < 2) && !((*windowRecord)->specialflags & kPsychExternalDisplayMethod)) {
         // Reliable estimate? These are our minimum requirements:
         // At least minSamples valid samples collected.
         // stddev (== noise) not greater than maxStddev, unless we are sure pageflipping under our full control was used during
@@ -2150,7 +2169,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
         }
     }
 
-    if (PsychIsOnscreenWindow(windowRecord) && PsychPrefStateGet_SkipSyncTests()) {
+    if (PsychIsOnscreenWindow(windowRecord) && PsychPrefStateGet_SkipSyncTests() && !(windowRecord->specialflags & kPsychExternalDisplayMethod)) {
         if (PsychPrefStateGet_Verbosity() > 1) {
             printf("\n\nWARNING: This session of your experiment was run by you with the setting Screen('Preference', 'SkipSyncTests', %i).\n",
                    (int) PsychPrefStateGet_SkipSyncTests());

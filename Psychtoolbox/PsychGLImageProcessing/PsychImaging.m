@@ -2426,13 +2426,13 @@ if strcmpi(cmd, 'OpenWindow')
         end
     end
 
+    % Window open. Perform imaging pipe postconfiguration:
+    PostConfiguration(reqs, win, clearcolor, slavewin);
+
     % Perform double-flip, so both back- and frontbuffer get initialized to
     % background color:
     Screen('Flip', win);
     Screen('Flip', win);
-
-    % Window open. Perform imaging pipe postconfiguration:
-    PostConfiguration(reqs, win, clearcolor, slavewin);
 
     % Panel fitter in use and setup by us?
     if ~isempty(fitterParams)
