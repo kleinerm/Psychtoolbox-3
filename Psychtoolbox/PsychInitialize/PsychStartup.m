@@ -22,6 +22,7 @@ function PsychStartup
 % 30.10.2015  mk  Setenv PSYCH_GSTREAMER_SDK_ROOT to help GStreamer on Octave-4 for Windows.
 % 14.01.2016  mk  Make detection more robust, delete dead code for GStreamer 0.10.
 % 07.08.2019  mk  Update for Psychtoolbox 3.0.16 - GStreamer 1.16+ MSVC needed.
+% 01.09.2020  mk  Update for GStreamer 1.18.0 - GStreamer 1.18+ MSVC detection.
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
@@ -43,6 +44,13 @@ try
             % Use 64-Bit GStreamer runtime for 64-Bit Matlab/Octave on Windows:
             sdkroot = getenv('GSTREAMER_1_0_ROOT_X86_64');
             suffix = 'x86_64\';
+
+            if isempty(sdkroot)
+                sdkroot = getenv('GSTREAMER_1_0_ROOT_MSVC_X86_64');
+                if ~isempty(sdkroot)
+                    suffix = 'msvc_x86_64\';
+                end
+            end
         else
             % Use 32-Bit GStreamer runtime atm. for 32-Bit Octave-4.0 on Windows:
             sdkroot = getenv('GSTREAMER_1_0_ROOT_X86');
@@ -51,47 +59,47 @@ try
 
         if isempty(sdkroot)
             if Is64Bit
-                fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86_64 is undefined.\n');
+                fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86_64 and GSTREAMER_1_0_ROOT_MSVC_X86_64 are undefined.\n');
             else
                 fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86 is undefined.\n');
             end
-            fprintf('PsychStartup: Either GStreamer-1.16 MSVC is not installed at all, or if it is installed then something\n');
+            fprintf('PsychStartup: Either GStreamer-1.16 MSVC or a later version is not installed at all, or if it is installed then something\n');
             fprintf('PsychStartup: is botched. Trying various common locations for the GStreamer runtime to keep going.\n');
         else
             if ~exist(sdkroot, 'dir')
                 % Env variable points to non-existent SDK dir. How peculiar?
                 % Invalidate invalid sdkroot, so fallback code can run:
                 if Is64Bit
-                    fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86_64 points to non-existent folder?!?\n');
+                    fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86_64 or GSTREAMER_1_0_ROOT_MSVC_X86_64 points to non-existent folder?!?\n');
                 else
                     fprintf('PsychStartup: Environment variable GSTREAMER_1_0_ROOT_X86 points to non-existent folder?!?\n');
                 end
 
                 fprintf('PsychStartup: The missing or inaccessible path to GStreamer is: %s\n', sdkroot);
-                fprintf('PsychStartup: Something is botched. Trying various common locations for the SDK to keep going.\n');
+                fprintf('PsychStartup: Something is botched. Trying various common locations for the runtime to keep going.\n');
                 sdkroot = [];
             end
         end
 
         % Probe standard install location on drives C,D,E,F,G:
-        if isempty(sdkroot) && exist('C:\gstreamer\1.0\', 'dir')
+        if isempty(sdkroot) && exist(['C:\gstreamer\1.0\' suffix], 'dir')
             sdkroot = ['C:\gstreamer\1.0\' suffix];
         end
 
-        if isempty(sdkroot) && exist('D:\gstreamer\1.0\', 'dir')
-            sdkroot = ['D:\gstreamer\1.0\' suffix];
+        if isempty(sdkroot) && exist(['D:\gstreamer\1.0\' suffix], 'dir')
+            sdkroot = ['C:\gstreamer\1.0\' suffix];
         end
 
-        if isempty(sdkroot) && exist('E:\gstreamer\1.0\', 'dir')
-            sdkroot = ['E:\gstreamer\1.0\' suffix];
+        if isempty(sdkroot) && exist(['E:\gstreamer\1.0\' suffix], 'dir')
+            sdkroot = ['C:\gstreamer\1.0\' suffix];
         end
 
-        if isempty(sdkroot) && exist('F:\gstreamer\1.0\', 'dir')
-            sdkroot = ['F:\gstreamer\1.0\' suffix];
+        if isempty(sdkroot) && exist(['F:\gstreamer\1.0\' suffix], 'dir')
+            sdkroot = ['C:\gstreamer\1.0\' suffix];
         end
 
-        if isempty(sdkroot) && exist('G:\gstreamer\1.0\', 'dir')
-            sdkroot = ['G:\gstreamer\1.0\' suffix];
+        if isempty(sdkroot) && exist(['G:\gstreamer\1.0\' suffix], 'dir')
+            sdkroot = ['C:\gstreamer\1.0\' suffix];
         end
 
         if isempty(sdkroot) || ~exist(sdkroot, 'dir')
