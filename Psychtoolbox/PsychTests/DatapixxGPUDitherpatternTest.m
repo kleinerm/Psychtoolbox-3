@@ -1,5 +1,5 @@
-function DatapixxGPUDitherpatternTest(fullscreen)
-% DatapixxGPUDitherpatternTest([fullscreen=1])
+function DatapixxGPUDitherpatternTest(fullscreen, useVulkan)
+% DatapixxGPUDitherpatternTest([fullscreen=1][, useVulkan=0])
 %
 % Low level diagnostic for GPU dithering via a VPixx
 % devices like Datapixx/ViewPixx/Propixx, or a CRS
@@ -20,15 +20,23 @@ function DatapixxGPUDitherpatternTest(fullscreen)
 % display to also diagnose possible compositor
 % interference.
 %
+% 'useVulkan' Defaults to 0. If set to 1, use Vulkan display
+% backend, instead of standard OpenGL backend.
+%
 
 % History:
 % 13-Aug-2015  mk  Wrote it.
 % 03-Jul-2016  mk  Add support for CRS Bits#.
+% 01-Sep-2020  mk  Add support for Vulkan.
 
 PsychDefaultSetup(0);
 
 if nargin < 1 || isempty(fullscreen)
   fullscreen = 1;
+end
+
+if nargin < 2 || isempty(useVulkan)
+    useVulkan = 0;
 end
 
 screenid = max(Screen('Screens'));
@@ -50,7 +58,13 @@ else
   bitssharp = 0;
 end
 
-w = Screen('Openwindow', screenid, 0, rect);
+if useVulkan
+    PsychImaging('PrepareConfiguration');
+    PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+    w = PsychImaging('Openwindow', screenid, 0, rect);
+else
+    w = Screen('Openwindow', screenid, 0, rect);
+end
 LoadIdentityClut(w);
 %lut = Screen('Readnormalizedgammatable', screenid);
 %foo1 = isequal(lut(:,1), lut(:,2))
