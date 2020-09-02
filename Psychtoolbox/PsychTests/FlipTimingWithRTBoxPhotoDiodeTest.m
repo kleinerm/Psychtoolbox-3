@@ -290,6 +290,12 @@ try
     [w, winrect] = PsychImaging('OpenWindow', res.screenId, 0, [], [], [], conf.Stereo);
     res.winfo = Screen('GetWindowInfo', w);
 
+    % Needed for Vulkan testing on drivers without Vulkan interop, where only
+    % alternation between black and white frames happens, out of our control.
+    % So for the photodiode or Videoswitcher methods to work at all, we need
+    % to start off with the right frame, and this flip achieves that:
+    Screen('Flip', w);
+
     % Switch to selectable realtime-priority level to reduce timing jitter
     % and interruptions caused by other applications and the operating
     % system itself:
