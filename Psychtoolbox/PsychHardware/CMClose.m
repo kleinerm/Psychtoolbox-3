@@ -9,6 +9,8 @@ function CMClose(meterType)
 % meterType 4 is the PR655
 % meterType 5 is the PR670
 % meterType 6 is the PR705
+% meterType 7 is the CRS ColorCal2.
+
 %
 % 2/15/02  dhb  Wrote it.
 % 4/13/02  dgp  Cosmetic.
@@ -42,6 +44,9 @@ switch meterType
     case 6
         % PR-705
         PR705close;
+    case 7
+        % ColorCal2
+        ColorCal2('Close');
     otherwise,
         error('Unknown meter type');
 end

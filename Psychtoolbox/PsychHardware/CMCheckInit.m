@@ -15,6 +15,7 @@ function CMCheckInit(meterType, PortString)
 % meterType 4 is the PR655
 % meterType 5 is the PR670
 % meterType 6 is the PR705
+% meterType 7 is the CRS ColorCal2.
 %
 % For the PR-series colorimeters, 'PortString' is the optional name of a
 % device string for the serial port or Serial-over-USB port to which the
@@ -255,6 +256,23 @@ switch meterType
             end
         else
             error(['Unsupported OS ' computer]);
+        end
+
+    case 7,
+        % ColorCal2
+
+        % Query and display device info. This will also open the device if it
+        % isn't already:
+        devInfo = ColorCal2 ('Deviceinfo');
+        disp(devInfo);
+
+        % Zero-Calibrate manually if needed:
+        if ColorCal2('NeedZeroCalibration')
+            fprintf('Zero calibration needed! Put your ColorCal2 into the dark,\n');
+            fprintf('then press any to perform zero calibration.\n');
+            KbStrokeWait(-1);
+            ColorCal2('ZeroCalibration');
+            fprintf('Done! Thanks..\n');
         end
 
     otherwise,

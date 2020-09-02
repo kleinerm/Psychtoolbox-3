@@ -10,7 +10,8 @@ function [XYZ, qual] = MeasXYZ(meterType)
 %   meterType 4 is the PR655
 %   meterType 5 is the PR670
 %   meterType 6 is the PR705 - Not yet implemented!
-
+%   meterType 7 is the CRS ColorCal2.
+%
 %
 % Returns XYZ tristimulus coordinates in 'XYZ'.
 % Returns quality code in 'qual': 0 = Ok. Other numbers mean trouble, e.g., -8
@@ -31,6 +32,8 @@ function [XYZ, qual] = MeasXYZ(meterType)
 %    2/23/03        dhb     Added CRS colorimeter, meter type 3.
 %    2/26/03        dhb     Change definition of meter type for PR-650 to 1.
 
+persistent colorcal2matrix;
+
 % Handle defaults
 if nargin < 1 || isempty(meterType)
     meterType = 1;
@@ -40,14 +43,29 @@ switch meterType
     % PR-650
     case 1,
         [XYZ, qual] = PR650measxyz;
+
     case 3,
         XYZ = CRSColorMeasXYZ;
         qual = 0;
+
     % PR-655
     case 4,
         [XYZ, qual] = PR655measxyz;
+
     case 5,
         [XYZ, qual] = PR670measxyz;
+
+    case 7,
+        % ColorCal2
+        if isempty(colorcal2matrix)
+            colorcal2matrix = ColorCal2('ReadColorMatrix');
+        end
+
+        qual = 0;
+
+        s = ColorCal2('MeasureXYZ');
+        XYZ = colorcal2matrix(1:3, :) * [s.x s.y s.z]';
+
     otherwise,
         error('Unknown meter type');
 end

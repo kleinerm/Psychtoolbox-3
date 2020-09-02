@@ -1,19 +1,27 @@
-function MeasureWithColorCal2(zeroCalibrate)
+function MeasureWithColorCal2(meterType)
 
-  PsychDefaultSetup(1);
-  if nargin < 1 || isempty(zeroCalibrate) || zeroCalibrate > 0
-    ColorCal2('ZeroCalibration');
-  end
+    if nargin < 1 || isempty(meterType)
+        meterType = 7;
+    end
 
-  cMatrix = ColorCal2('ReadColorMatrix')
-  RestrictKeysForKbCheck(KbName('RightControl'));
+    PsychDefaultSetup(1);
+    RestrictKeysForKbCheck([KbName('RightControl'), KbName('ESCAPE')]);
 
-  while 1
-    KbStrokeWait;
-    s = ColorCal2('MeasureXYZ');
-    correctedValues = cMatrix(1:3,:) * [s.x s.y s.z]';
-    v = XYZToxyY(correctedValues);
-    [cr, cy, L] = deal(v(1), v(2), v(3))
-    fprintf('\n');
-  end
+    % Initialize and if neccessary zero calibrate the colorimeter:
+    CMCheckInit(meterType);
+
+    while 1
+        [~, keyCode] = KbStrokeWait(-1);
+        if keyCode(KbName('ESCAPE'))
+            break;
+        end
+
+        XYZ = MeasXYZ(meterType);
+        v = XYZToxyY(XYZ);
+        [cr, cy, L] = deal(v(1), v(2), v(3))
+        fprintf('\n');
+    end
+
+    RestrictKeysForKbCheck([]);
+    CMClose(meterType);
 end

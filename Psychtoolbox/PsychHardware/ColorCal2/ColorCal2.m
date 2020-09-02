@@ -85,6 +85,10 @@ function varargout = ColorCal2(command, varargin)
 %      dark.  Returns 1 if the command succeeds, 0 if it fails.  This
 %      command must be run after every power cycle of the device.
 %
+% 'NeedZeroCalibration' - Returns true if a zero calibration is needed, false
+%      otherwise. Devices with firmware build 877 or later do not need this, as
+%      they are factory calibrated.
+%
 % 'Close' - Close connection to device. A 'clear all' or 'clear ColorCal2' or
 %      quitting Octave or Matlab will also close the connection, so this is
 %      not strictly needed.
@@ -146,6 +150,7 @@ function varargout = ColorCal2(command, varargin)
 persistent usbHandle;
 persistent portHandle;
 persistent useBigEndian;
+persistent zeroCalibrated;
 
 varargout = {};
 
@@ -200,6 +205,9 @@ if isempty(usbHandle) && isempty(portHandle)
     else
         useBigEndian = false;
     end
+
+    % Reset zero calibration done flag:
+    zeroCalibrated = [];
 end
 
 % Currently, we don't vary this value.
@@ -262,6 +270,16 @@ switch lower(command)
 
         varargout(1) = {s};
 
+    case {'needzerocalibration'}
+        devInfo = ColorCal2 ('Deviceinfo');
+        % Only devices with firmware older than 877 need zero calibration by user.
+        % 877+ devices are factory calibrated:
+        if (devInfo.buildNumber < 877) && isempty(zeroCalibrated)
+            varargout{1} = true;
+        else
+            varargout{1} = false;
+        end
+
     case {'zerocalibration', 'uzc'}
         if ~isempty(usbHandle)
             bmRequestType = hex2dec('40');
@@ -282,6 +300,7 @@ switch lower(command)
         switch outString(1:4)
             case 'OK00'
                 varargout(1) = {true};
+                zeroCalibrated = 1;
             case 'ER11'
                 varargout(1) = {false};
             otherwise
