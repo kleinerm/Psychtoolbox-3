@@ -15,7 +15,7 @@ function [XYZ, qual] = MeasXYZ(meterType)
 %
 % Returns XYZ tristimulus coordinates in 'XYZ'.
 % Returns quality code in 'qual': 0 = Ok. Other numbers mean trouble, e.g., -8
-% means "low light" ie. insufficient precision.
+% means "low light" ie. insufficient precision on some devices like the PR-xxx's.
 %
 
 %    9/14/93        jms     Added global no hardware switch
@@ -61,11 +61,17 @@ switch meterType
             colorcal2matrix = ColorCal2('ReadColorMatrix');
         end
 
-        qual = 0;
-
         s = ColorCal2('MeasureXYZ');
+        if s.reliable
+            % Mark as reliable:
+            qual = 0;
+        else
+            % Mark as unreliable or faulty or even invalid:
+            qual = -1;
+        end
+
         XYZ = colorcal2matrix(1:3, :) * [s.x s.y s.z]';
 
     otherwise,
-        error('Unknown meter type');
+        error('Unknown or unsupported meter type');
 end

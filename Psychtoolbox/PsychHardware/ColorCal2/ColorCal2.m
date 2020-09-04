@@ -146,6 +146,7 @@ function varargout = ColorCal2(command, varargin)
 % 06.06.2017  Make compatible with Windows via serial port implementation (Mario Kleiner).
 %             This uses code derived from the Matlab sample code by CRS, incorporated in a
 %             modified form with permission of CRS under our usual MIT license.
+% 02.09.2020  Make more robust against weirdly behaving display panels. (Mario Kleiner)
 
 persistent usbHandle;
 persistent portHandle;
@@ -249,19 +250,82 @@ switch lower(command)
         end
 
     case {'measurexyz', 'mes'}
+        % Assume measurement will be valid and trustworthy as a starter:
+        s.reliable = 1;
+
         if ~isempty(usbHandle)
-            bmRequestType = hex2dec('40');
-            wValue = 1;
-            wIndex = 0;
-            wLength = 3;
-            PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength, uint8('MES'));
-            bmRequestType = hex2dec('C0');
-            wLength = 32;
-            outString = char(PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength));
-            % Parse the output string.
-            a = sscanf(outString, 'OK00,%6f,%6f,%6f');
+            % Try up to 3 times in case of trouble:
+            for retry=1:3
+                % Request a measurement:
+                bmRequestType = hex2dec('40');
+                wValue = 1;
+                wIndex = 0;
+                wLength = 3;
+                PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength, uint8('MES'));
+
+                % Retrieve measured result in outString:
+                bmRequestType = hex2dec('C0');
+                wLength = 32;
+                outString = char(PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength));
+
+                % Parse the output string.
+                [a, nr, err] = sscanf(outString, 'OK00,%6f,%6f,%6f');
+
+                % Worked? Otherwise warn and retry...
+                if nr < 3
+                    fail = 1;
+                    warning('ColorCal2:MeasureXYZ: Try %i, Parse error, only %i items returned instead of expected 3 in string ''%s'' - err=%s. Retrying\n', retry, nr, outString, err);
+
+                    [a, nr] = sscanf(outString, 'OK00,1 %6f,%6f,%6f');
+                    if nr == 3
+                        fail = 0;
+                        s.reliable = 0;
+                        fprintf('ColorCal2:MeasureXYZ: Recovered at try %i with special 1-marker format parsing of string ''%s''\n', retry, outString);
+                        break;
+                    end
+
+                    [a, nr] = sscanf(outString, 'OK00,%6f,1 %6f,%6f');
+                    if nr == 3
+                        fail = 0;
+                        s.reliable = 0;
+                        fprintf('ColorCal2:MeasureXYZ: Recovered at try %i with special 1-marker format parsing of string ''%s''\n', retry, outString);
+                        break;
+                    end
+
+                    [a, nr] = sscanf(outString, 'OK00,%6f,%6f,1 %6f');
+                    if nr == 3
+                        fail = 0;
+                        s.reliable = 0;
+                        fprintf('ColorCal2:MeasureXYZ: Recovered at try %i with special 1-marker format parsing of string ''%s''\n', retry, outString);
+                        break;
+                    end
+                else
+                    fail = 0;
+                    break;
+                end
+            end
         else
-            a = ColorCALIIGetValues(portHandle);
+            % Try up to 3 times in case of trouble:
+            for retry=1:3
+                [a, outString] = ColorCALIIGetValues(portHandle);
+                if ~any(isnan(a))
+                    fail = 0;
+                    break;
+                else
+                    fail = 1;
+                    warning('ColorCal2:MeasureXYZ: Try %i, Parse error in received string ''%s''. Retrying\n', retry, outString);
+                end
+            end
+        end
+
+        if fail
+            warning('ColorCal2:MeasureXYZ: Failed to measure after 3 retries!');
+            s.x = NaN;
+            s.y = NaN;
+            s.z = NaN;
+            s.reliable = 0;
+            varargout{1} = s;
+            return;
         end
 
         s.x = a(1);
@@ -292,7 +356,7 @@ switch lower(command)
             outString = char(PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength));
         else
             IOPort('Write', portHandle, uint8(['UZC' 13]));
-            outString = readSerial(portHandle);
+            readSerial(portHandle);
             outString = readSerial(portHandle);
         end
 
@@ -329,7 +393,7 @@ switch lower(command)
                     y = swapbytes(y);
                 end
 
-                extractedData(end+1) = double(y); %#ok<NASGU>
+                extractedData(end+1) = double(y);  %#ok<AGROW>
             end
         else
             error('ColorCal2(''GetRawData''): Function unsupported on this platform.');
@@ -534,7 +598,7 @@ function readString = readSerial(portHandle)
     vals = [];
     while length(vals) < 2 || vals(end-1) ~= 10 || vals(end) ~= 13
         curval = IOPort('Read', portHandle, 1, 1);
-        vals = [vals, curval];
+        vals = [vals, curval]; %#ok<AGROW>
     end
 
     readString = char(vals(1:end-2));
@@ -587,7 +651,7 @@ function myCorrectionMatrix = getColorCALIICorrectionMatrix(portHandle)
                     % Using j to indicate the row position and whichColumn to
                     % indicate the column position, convert the 5 characters to
                     % a number and assign it to the relevant position.
-                    myCorrectionMatrix(j, whichColumn) = str2num(dataLine(myStart:myEnd));
+                    myCorrectionMatrix(j, whichColumn) = str2double(dataLine(myStart:myEnd)); %#ok<AGROW>
 
                     % reset myStart to k+6 (the first value of the next number)
                     myStart = k+6;
@@ -604,7 +668,7 @@ function myCorrectionMatrix = getColorCALIICorrectionMatrix(portHandle)
     end
 end
 
-function myMeasureMatrix = ColorCALIIGetValues(portHandle)
+function [myMeasureMatrix, dataLine] = ColorCALIIGetValues(portHandle)
     % Takes a reading. These values need to be transformed by above correction
     % matrix to obtain XYZ values
     whichColumn = 1;
@@ -635,7 +699,7 @@ function myMeasureMatrix = ColorCALIIGetValues(portHandle)
                 % Using k to indicate the row position and whichColumn to
                 % indicate the column position, convert the 5 characters to a
                 % number and assign it to the relevant position.
-                myMeasureMatrix(whichColumn) = str2num(dataLine(myStart:myEnd));
+                myMeasureMatrix(whichColumn) = str2double(dataLine(myStart:myEnd)); %#ok<AGROW>
 
                 % reset myStart to k+7 (the first value of the next number)
                 myStart = k+7;
@@ -643,10 +707,10 @@ function myMeasureMatrix = ColorCALIIGetValues(portHandle)
                 % Add 1 to the whichColumn value so that the next value will be
                 % saved to the correct location.
                 whichColumn = whichColumn + 1;
-
             end
         end
     catch
-        disp('Error');
+        disp('ColorCal2: Error retrieving measurement!');
+        dataLine = 'ColorCal2: Error retrieving measurement!';
     end
 end
