@@ -566,7 +566,17 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
             % Upload a perfectly linear lut for the given gpu:
             [~, ~, reallutsize] = Screen('ReadNormalizedGammaTable', win, physicalDisplay);
-            identityLUT = repmat(linspace(0, 1, reallutsize)', 1, 3);
+
+            % AMD gpu under Linux?
+            if IsLinux && strcmp(winfo.DisplayCoreId, 'AMD')
+                % Use special identity gamma table (like in LoadIdentityClut()) that
+                % is known and verified to get recognized by amdgpu-kms DC and trigger
+                % gamma table hardware bypass mode in hardware:
+                identityLUT = (linspace(0, 1, 256)' * ones(1, 3));
+            else
+                % Other gpu + driver + os combo: Standard identity lut:
+                identityLUT = repmat(linspace(0, 1, reallutsize)', 1, 3);
+            end
 
             Screen('LoadNormalizedGammaTable', win, identityLUT, 0, physicalDisplay);
 
