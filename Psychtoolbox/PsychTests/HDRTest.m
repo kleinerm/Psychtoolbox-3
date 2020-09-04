@@ -26,7 +26,7 @@ function HDRTest(meterType, screenid, filename)
 % History:
 % 02-Sep-2020   mk  Written.
 
-global XYZ;
+global ret;
 global referenceluminance;
 
 % Check if PTB is properly installed, use cross-platform defaults and normalized
@@ -81,62 +81,35 @@ try
     maxFrameAverageLightLevel = displayhdrprops.MaxFrameAverageLightLevel
 
     % Compute size of a test patch (filled rectangle) that fills exactly 10% of the
-    % monitors display area:
+    % monitors display area, so we can test how well the monitor does wrt. peak
+    % luminance:
     screenarea10percent = RectWidth(rect) * RectHeight(rect) * 0.10;
     testrectedgelength = floor(sqrt(screenarea10percent));
 
     % testrect is the proper 10% area rectangle:
     testrect = [0, 0, testrectedgelength, testrectedgelength];
+    testrect = CenterRect(testrect, rect);
 
-    % Instruct user to set up everything:
-    DrawFormattedText(win, 'Point colorimeter at test patch,\nthen press any key to start measurement\n', 'center', 30, [0, maxFrameAverageLightLevel/3, 0]);
-    Screen('FillRect', win, maxFrameAverageLightLevel/3, CenterRect(testrect, rect));
-    Screen('Flip', win);
+    %% Phase 1: White point and luminance measurement:
 
-    % Wait for start signal from user:
-    KbStrokeWait(-1);
-    fprintf('\n\n\nStarting measurement:\n\n');
+    % Step through luminance range 0 - maxLuminance nits, in steps of 1 nit:
+    targetcolors = 0:1:maxLuminance;
+    referenceluminance = targetcolors;
 
-    for targetluminance = 0:1:maxLuminance
-        % ESCAPE allows early termination of measurement run:
-        [~, ~, keyCode] = KbCheck(-1);
-        if keyCode(escape)
-            break;
-        end
+    % Measure 10% area test patch of target luminances 'targetcolors' at display center:
+    ret = runTestPatchSeries(win, meterType, testrect, targetcolors);
 
-        % Draw 10% test patch of target luminance 'targetluminance' at display center
-        % and show it:
-        Screen('FillRect', win, targetluminance, CenterRect(testrect, rect));
-        Screen('Flip', win);
+    % Convert measured values to chromaticity coordinates and luminance:
+    xyY = XYZToxyY(ret.XYZ);
 
-        % Read back and compare Screen()'s shader based EOTF encoding against our
-        % Matlab reference implementation in PQ():
-        gpupqvalue = Screen('GetImage', win, CenterRect([0 0 1 1], rect), 'backBuffer', 1, 1);
-        gpu10bitval = floor(gpupqvalue * (2^10 - 1));
-        [refpqvalue, ref10bitval] = PQ(single(targetluminance)); %#ok<ASGLU>
-        if abs(gpu10bitval - ref10bitval) > 1
-            fprintf('WARNING: Mismatch of PQ encoded pixelvalue between PTB shader and reference implementation! %i vs. %i -> %i\n', ...
-                    gpu10bitval, ref10bitval, gpu10bitval - ref10bitval);
-        end
-        shaderdiff(end+1) = gpu10bitval - ref10bitval; %#ok<*AGROW>
-        shaderpq10bitval(end+1) = gpu10bitval;
-
-        % Give display(backlight) some time to settle to new steady state:
-        WaitSecs(0.5);
-
-        % Measure true luminance according to colorimeter:
-        referenceluminance(end+1) = targetluminance;
-        [XYZ(:, end+1), trouble] = MeasXYZ(meterType);
-
-        % Display measurement result to top-left corner of screen:
-        msg = sprintf('[PQ-10bit = %i] -> Target %.05f nits vs. measured %.05f nits -> Delta %.01f%%. Trouble = %i\n', gpu10bitval, ...
-                      targetluminance, XYZ(2, end), (XYZ(2, end) - targetluminance) / targetluminance * 100, trouble);
-        disp(msg);
-        DrawFormattedText(win, msg, 0, 30, 40);
-        Screen('Flip', win);
-
-        % Rest for a second:
-        WaitSecs(1);
+    % Report and plot measured white point vs. dispplay self reported one:
+    fprintf('Reported white-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 4), displayhdrprops.ColorGamut(2, 4));
+    fprintf('Measured white-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
+    try
+        figure;
+        plot(xyY(1,:), xyY(2,:), '+', mean(xyY(1,:)), mean(xyY(2,:)), 'o', displayhdrprops.ColorGamut(1, 4), displayhdrprops.ColorGamut(2, 4), '*');
+        title('Chromaticity coordinates of measured samples:');
+    catch
     end
 
     % Close Screen, clean up:
@@ -146,10 +119,6 @@ catch me
     sca;
 end
 
-nsamples = min(length(referenceluminance), size(XYZ, 2));
-referenceluminance = referenceluminance(1:nsamples);
-XYZ = XYZ(:, 1:nsamples);
-
 fprintf('Done. Writing results to file %s\n', filename);
 save(filename, '-V7');
 
@@ -157,7 +126,9 @@ save(filename, '-V7');
 CMClose(meterType);
 
 try
-    plot(referenceluminance, XYZ(2,:));
+    figure;
+    referenceluminance = referenceluminance(1:size(ret.XYZ, 2));
+    plot(referenceluminance, ret.XYZ(2,:));
     title('Expected vs. measured luminance in nits:');
     xlabel('Expected luminance [nits]');
     ylabel('Measured luminance [nits]');
@@ -172,8 +143,9 @@ end
 printgpuhwstate;
 
 % Check how much "dynamic range" is actually in the measured data:
-numlevelsexpected = length(unique(shaderpq10bitval))
-levelhisto = hist(XYZ(2,:), numlevelsexpected);
+[~, indices] = unique (ret.shaderpq10bitval', 'rows');
+numlevelsexpected = length(indices)
+levelhisto = hist(ret.XYZ(2,:), numlevelsexpected);
 numlevelsmeasured = length(find(levelhisto > 0))
 actualcontentbits = log2(numlevelsmeasured)
 
@@ -191,6 +163,87 @@ end
 % Save again if we made it to here:
 save(filename, '-V7');
 
+end
+
+function ret = runTestPatchSeries(win, meterType, testrect, targetcolors)
+    ret.shaderdiff = [];
+    ret.shaderpq10bitval = [];
+    ret.referencecolors = [];
+    ret.XYZ = [];
+    ret.trouble = [];
+
+    rect = Screen('Rect', win);
+
+    % Instruct user to set up everything:
+    DrawFormattedText(win, 'Point colorimeter at test patch,\nthen press any key to start measurement\n', 'center', 30, [0, 40, 0]);
+    Screen('FillRect', win, 40, testrect);
+    Screen('Flip', win);
+
+    % Wait for start signal from user:
+    KbStrokeWait(-1);
+    fprintf('\n\n\nStarting measurement:\n\n');
+
+    for i = 1:size(targetcolors, 2)
+        % ESCAPE allows early termination of measurement run:
+        [~, ~, keyCode] = KbCheck(-1);
+        if keyCode(KbName('ESCAPE'))
+            break;
+        end
+
+        % Get targetcolor of test patch:
+        targetcolor = targetcolors(:, i);
+
+        % Draw test patch:
+        Screen('FillRect', win, targetcolor, testrect);
+        Screen('Flip', win);
+
+        % Read back and compare Screen()'s shader based EOTF encoding against our
+        % Matlab reference implementation in PQ():
+        gpupqvalue = squeeze(Screen('GetImage', win, CenterRect([0 0 1 1], testrect), 'backBuffer', 1, 3));
+        gpu10bitval = floor(gpupqvalue * (2^10 - 1));
+        [refpqvalue, ref10bitval] = PQ(single(targetcolor)); %#ok<ASGLU>
+        if max(abs(gpu10bitval - ref10bitval)) > 1
+            fprintf('WARNING: Mismatch of PQ encoded pixelvalue between PTB shader and reference implementation! %i\n', ...
+                    abs(gpu10bitval - ref10bitval));
+        end
+
+        ret.shaderdiff(:, end+1) = gpu10bitval - ref10bitval; %#ok<*AGROW>
+        ret.shaderpq10bitval(:, end+1) = gpu10bitval;
+
+        % Give display(backlight) some time to settle to new steady state:
+        WaitSecs(0.5);
+
+        % Measure true luminance according to colorimeter:
+        ret.referencecolors(:, end+1) = targetcolor;
+        [ret.XYZ(:, end+1), ret.trouble(end+1)] = MeasXYZ(meterType);
+
+        if isscalar(targetcolor)
+            targetlum = targetcolor;
+        elseif length(find(targetcolor > 0)) == 1
+            targetlum = max(targetcolor);
+        else
+            targetlum = rgb2gray(targetcolor');
+        end
+
+        % Display measurement result to top-left corner of screen:
+        if isscalar(gpu10bitval)
+            msg = sprintf('[PQ-10bit = %i] -> Target %.05f nits vs. measured %.05f nits -> Delta %.01f%%. Trouble = %i\n', gpu10bitval, ...
+                          targetlum, ret.XYZ(2, end), (ret.XYZ(2, end) - targetlum) / targetlum * 100, ret.trouble(end));
+        else
+            msg = sprintf('[PQ-10bit = %i,%i,%i] -> Target %.05f nits vs. measured %.05f nits -> Delta %.01f%%. Trouble = %i\n', gpu10bitval, ...
+                          targetlum, ret.XYZ(2, end), (ret.XYZ(2, end) - targetlum) / targetlum * 100, ret.trouble(end));
+        end
+        disp(msg);
+        DrawFormattedText(win, msg, 0, 30, 40);
+        Screen('Flip', win);
+
+        % Rest for a second:
+        WaitSecs(1);
+    end
+
+    nsamples = min(size(ret.referencecolors, 2), size(ret.XYZ, 2));
+    ret.referencecolors = ret.referencecolors(:, 1:nsamples);
+    ret.XYZ = ret.XYZ(:, 1:nsamples);
 end
 
 function [v, digital10bitval] = PQ(L)
