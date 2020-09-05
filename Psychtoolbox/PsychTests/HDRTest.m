@@ -1,5 +1,5 @@
-function HDRTest(meterType, screenid, filename)
-% HDRTest([meterType=7][, screenid=max][, filename='hdrmeasurements.mat'])
+function HDRTest(dotest, meterType, screenid, filename)
+% HDRTest([dotest=all][, meterType=7][, screenid=max][, filename='hdrmeasurements.mat'])
 %
 % Perform some basic correctness tests and evaluation for HDR display operation,
 % using a Colorimeter.
@@ -11,6 +11,10 @@ function HDRTest(meterType, screenid, filename)
 % for measurement of luminance and chromaticity, ie. XYZ tristimulus color values.
 %
 % Supported devices are the ones listed in "help MeasXYZ".
+%
+% 'dotest' Vector which selects which tests to perform. Defaults to "all tests":
+% dotest = [luminance, redprimary, greenprimary, blueprimary], e.g., [1 0 0 0]
+% only do luminance test, [0 1 0 0] only do red primary test, [1 1 1 1] do all tests.
 %
 % 'meterType' id code of the measurement device to use, as listed in "help MeasXYZ".
 % Defaults to meterType 7 for the CRS ColorCal2.
@@ -26,24 +30,27 @@ function HDRTest(meterType, screenid, filename)
 % History:
 % 02-Sep-2020   mk  Written.
 
-global ret;
+global retluminance;
 global referenceluminance;
 
 % Check if PTB is properly installed, use cross-platform defaults and normalized
 % color range:
 PsychDefaultSetup(2);
-escape = KbName('ESCAPE');
+
+if nargin < 1 || isempty(dotest)
+    dotest = [1, 1, 1, 1];
+end
 
 % Default to ColorCal2 if meterType is not specified:
-if nargin < 1 || isempty(meterType)
+if nargin < 2 || isempty(meterType)
     meterType = 7;
 end
 
-if nargin < 2 || isempty(screenid)
+if nargin < 3 || isempty(screenid)
     screenid = max(Screen('Screens'));
 end
 
-if nargin < 3 || isempty(filename)
+if nargin < 4 || isempty(filename)
     filename = 'hdrmeasurements.mat';
 else
     if ~ischar(filename)
@@ -54,11 +61,8 @@ end
 % Open the colorimeter, or abort if not possible:
 CMCheckInit(meterType);
 
-XYZ = [];
 referenceluminance = [];
-shaderdiff = [];
-shaderpq10bitval =[];
-
+skipKbWait = 0;
 lasterror('reset'); %#ok<LERR>
 
 % Optionally print gpu hw state:
@@ -76,9 +80,10 @@ try
     % Optionally print gpu hw state:
     printgpuhwstate;
 
+    % Get displays HDR properties:
     displayhdrprops = PsychHDR('HDRMetadata', win) %#ok<*NOPRT>
     maxLuminance = displayhdrprops.MaxLuminance
-    maxFrameAverageLightLevel = displayhdrprops.MaxFrameAverageLightLevel
+    maxFrameAverageLightLevel = displayhdrprops.MaxFrameAverageLightLevel %#ok<NASGU>
 
     % Compute size of a test patch (filled rectangle) that fills exactly 10% of the
     % monitors display area, so we can test how well the monitor does wrt. peak
@@ -90,27 +95,123 @@ try
     testrect = [0, 0, testrectedgelength, testrectedgelength];
     testrect = CenterRect(testrect, rect);
 
-    %% Phase 1: White point and luminance measurement:
-
-    % Step through luminance range 0 - maxLuminance nits, in steps of 1 nit:
-    targetcolors = 0:1:maxLuminance;
-    referenceluminance = targetcolors;
-
-    % Measure 10% area test patch of target luminances 'targetcolors' at display center:
-    ret = runTestPatchSeries(win, meterType, testrect, targetcolors);
-
-    % Convert measured values to chromaticity coordinates and luminance:
-    xyY = XYZToxyY(ret.XYZ);
-
-    % Report and plot measured white point vs. dispplay self reported one:
-    fprintf('Reported white-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 4), displayhdrprops.ColorGamut(2, 4));
-    fprintf('Measured white-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
-    try
+    if any(dotest(1:4))
         figure;
-        plot(xyY(1,:), xyY(2,:), '+', mean(xyY(1,:)), mean(xyY(2,:)), 'o', displayhdrprops.ColorGamut(1, 4), displayhdrprops.ColorGamut(2, 4), '*');
-        title('Chromaticity coordinates of measured samples:');
-    catch
+        DrawChromaticity;
+        hold on;
     end
+
+    %% Phase 1: White point and luminance measurement:
+    if dotest(1)
+        % Step through luminance range 0 - maxLuminance nits, sampling in smaller
+        % steps at the low end of the luminance range:
+        whiteluminance = [0:0.001:0.049, 0.050:0.050:0.950, 1:1:maxLuminance];
+        targetcolors = whiteluminance;
+
+        % Measure 10% area test patch of target luminances 'targetcolors' at display center:
+        retluminance = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKbWait);
+        skipKbWait = 1;
+
+        % Convert measured values to chromaticity coordinates and luminance:
+        xyY = XYZToxyY(retluminance.XYZ);
+
+        % Report and plot measured white point vs. dispplay self reported one:
+        fprintf('Reported white-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 4), displayhdrprops.ColorGamut(2, 4));
+        fprintf('Measured white-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
+        try
+            plot(xyY(1,:), xyY(2,:), '+k', mean(xyY(1,:)), mean(xyY(2,:)), 'ok', displayhdrprops.ColorGamut(1, 4), displayhdrprops.ColorGamut(2, 4), '*k');
+            title('Chromaticity coordinates of measured samples:');
+        catch
+        end
+
+        ColorGamut(:, 4) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
+    end
+
+    %% Phase 2: Red primary measurement:
+    if dotest(2)
+        % Step through luminance range 0 - maxLuminance nits, in steps of 1 nit:
+        referenceluminance = 10:10:maxLuminance;
+        targetcolors = [1 ; 0 ; 0] * referenceluminance;
+
+        % Measure 10% area test patch of target luminances 'targetcolors' at display center:
+        retred = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKbWait);
+        skipKbWait = 1;
+
+        % Convert measured values to chromaticity coordinates and luminance:
+        xyY = XYZToxyY(retred.XYZ);
+
+        % Report and plot measured white point vs. dispplay self reported one:
+        fprintf('Reported red-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 1), displayhdrprops.ColorGamut(2, 1));
+        fprintf('Measured red-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
+        try
+            plot(xyY(1,:), xyY(2,:), '+r', mean(xyY(1,:)), mean(xyY(2,:)), 'or', displayhdrprops.ColorGamut(1, 1), displayhdrprops.ColorGamut(2, 1), '*r');
+            title('Chromaticity coordinates of measured samples:');
+        catch
+        end
+
+        ColorGamut(:, 1) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
+    end
+
+    %% Phase 3: Green primary measurement:
+    if dotest(3)
+        % Step through luminance range 0 - maxLuminance nits, in steps of 1 nit:
+        referenceluminance = 10:10:maxLuminance;
+        targetcolors = [0 ; 1 ; 0] * referenceluminance;
+
+        % Measure 10% area test patch of target luminances 'targetcolors' at display center:
+        retgreen = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKbWait);
+        skipKbWait = 1;
+
+        % Convert measured values to chromaticity coordinates and luminance:
+        xyY = XYZToxyY(retgreen.XYZ);
+
+        % Report and plot measured white point vs. dispplay self reported one:
+        fprintf('Reported green-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 2), displayhdrprops.ColorGamut(2, 2));
+        fprintf('Measured green-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
+        try
+            plot(xyY(1,:), xyY(2,:), '+g', mean(xyY(1,:)), mean(xyY(2,:)), 'og', displayhdrprops.ColorGamut(1, 2), displayhdrprops.ColorGamut(2, 2), '*g');
+            title('Chromaticity coordinates of measured samples:');
+        catch
+        end
+
+        ColorGamut(:, 2) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
+    end
+
+    %% Phase 4: Blue primary measurement:
+    if dotest(4)
+        % Step through luminance range 0 - maxLuminance nits, in steps of 1 nit:
+        referenceluminance = 10:10:maxLuminance;
+        targetcolors = [0 ; 0 ; 1] * referenceluminance;
+
+        % Measure 10% area test patch of target luminances 'targetcolors' at display center:
+        retblue = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKbWait);
+
+        % Convert measured values to chromaticity coordinates and luminance:
+        xyY = XYZToxyY(retblue.XYZ);
+
+        % Report and plot measured white point vs. dispplay self reported one:
+        fprintf('Reported blue-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 3), displayhdrprops.ColorGamut(2, 3));
+        fprintf('Measured blue-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
+        try
+            plot(xyY(1,:), xyY(2,:), '+b', mean(xyY(1,:)), mean(xyY(2,:)), 'ob', displayhdrprops.ColorGamut(1, 3), displayhdrprops.ColorGamut(2, 3), '*b');
+            title('Chromaticity coordinates of measured samples:');
+        catch
+        end
+
+        ColorGamut(:, 3) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
+    end
+
+    if any(dotest(2:4))
+        if all(dotest(2:4))
+            line(ColorGamut(1, [1,2,3,1]), ColorGamut(2, [1,2,3,1]), 'color', 'k');
+            line(displayhdrprops.ColorGamut(1, [1,2,3,1]), displayhdrprops.ColorGamut(2, [1,2,3,1]), 'color', 'b');
+        end
+
+        hold off;
+    end
+
+    % Must wait for keypress for the tests following this line:
+    skipKbWait = 0; %#ok<NASGU>
 
     % Close Screen, clean up:
     sca;
@@ -125,62 +226,74 @@ save(filename, '-V7');
 % Close the colorimeter:
 CMClose(meterType);
 
-try
-    figure;
-    referenceluminance = referenceluminance(1:size(ret.XYZ, 2));
-    plot(referenceluminance, ret.XYZ(2,:));
-    title('Expected vs. measured luminance in nits:');
-    xlabel('Expected luminance [nits]');
-    ylabel('Measured luminance [nits]');
-catch
-end
+% Some more plotting for test 1, detailed white-point and luminance:
+if dotest(1)
+    try
+        figure;
+        whiteluminance = whiteluminance(1:size(retluminance.XYZ, 2));
+        plot(whiteluminance, retluminance.XYZ(2,:));
+        title('Expected vs. measured luminance in nits:');
+        xlabel('Expected luminance [nits]');
+        ylabel('Measured luminance [nits]');
+    catch
+    end
 
-if exist('me','var')
-    rethrow(me);
+    % Check how much "dynamic range" is actually in the measured data. We
+    % exclude measurements for target luminance values < 1 nit, as our
+    % measurements may not be sensitive enough to resolve properly below that,
+    % neither is our binning good enough:
+    % Note: This is a bit hacky, better ways should be thought of...
+    startind = find(whiteluminance >= 1.0, 1)
+    shaderpq10bitval = retluminance.shaderpq10bitval(:, startind:end);
+    [~, indices] = unique (shaderpq10bitval', 'rows');
+    numlevelsexpected = length(indices)
+    levelhisto = hist(retluminance.XYZ(2,:), numlevelsexpected); %#ok<HIST>
+    numlevelsmeasured = length(find(levelhisto > 0))
+    actualcontentbits = log2(numlevelsmeasured)
+
+    % Check if the display likely does receive real 10 bpc content, as required for
+    % HDR-10, ie. no truncation to 8 bpc happens on the gpu, link, or in the displays
+    % display controller or matrix:
+    if numlevelsexpected > 256 && actualcontentbits < 8
+        warning('Measured data contains less than 8 bpc worth of variability. Suspicious...');
+    end
+
+    if numlevelsexpected > 256 && actualcontentbits > 8
+        fprintf('More than 8 bits of variability detected in measured data. Good, 10 bpc transfer of video to display seems to work.\n');
+    end
+
+    % Save again if we made it to here:
+    save(filename, '-V7');
 end
 
 % Optionally print gpu hw state:
 printgpuhwstate;
 
-% Check how much "dynamic range" is actually in the measured data:
-[~, indices] = unique (ret.shaderpq10bitval', 'rows');
-numlevelsexpected = length(indices)
-levelhisto = hist(ret.XYZ(2,:), numlevelsexpected);
-numlevelsmeasured = length(find(levelhisto > 0))
-actualcontentbits = log2(numlevelsmeasured)
-
-% Check if the display likely does receive real 10 bpc content, as required for
-% HDR-10, ie. no truncation to 8 bpc happens on the gpu, link, or in the displays
-% display controller or matrix:
-if numlevelsexpected > 256 && actualcontentbits < 8
-    warning('Measured data contains less than 8 bpc worth of variability. Suspicious...');
+if exist('me','var')
+    rethrow(me);
 end
 
-if numlevelsexpected > 256 && actualcontentbits > 8
-    fprintf('More than 8 bits of variability detected in measured data. Good, 10 bpc transfer of video to display seems to work.\n');
+% We are done!
 end
 
-% Save again if we made it to here:
-save(filename, '-V7');
-
-end
-
-function ret = runTestPatchSeries(win, meterType, testrect, targetcolors)
+function ret = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKbWait)
     ret.shaderdiff = [];
     ret.shaderpq10bitval = [];
     ret.referencecolors = [];
     ret.XYZ = [];
     ret.trouble = [];
 
-    rect = Screen('Rect', win);
+    if ~skipKbWait
+        % Instruct user to set up everything:
+        DrawFormattedText(win, 'Point colorimeter at test patch,\nthen press any key to start measurement\n', 'center', 30, [0, 40, 0]);
+        Screen('FillRect', win, 40, testrect);
+        Screen('FillOval', win, 0, CenterRect([0, 0, 10, 10], testrect));
+        Screen('Flip', win);
 
-    % Instruct user to set up everything:
-    DrawFormattedText(win, 'Point colorimeter at test patch,\nthen press any key to start measurement\n', 'center', 30, [0, 40, 0]);
-    Screen('FillRect', win, 40, testrect);
-    Screen('Flip', win);
+        % Wait for start signal from user:
+        KbStrokeWait(-1);
+    end
 
-    % Wait for start signal from user:
-    KbStrokeWait(-1);
     fprintf('\n\n\nStarting measurement:\n\n');
 
     for i = 1:size(targetcolors, 2)
