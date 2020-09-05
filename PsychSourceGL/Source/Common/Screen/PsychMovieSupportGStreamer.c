@@ -1255,9 +1255,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             // Try to get more detailed info about video:
             if (gst_video_info_from_caps (&vinfo, caps)) {
                 if (PsychPrefStateGet_Verbosity() > 3) {
-                    printf("PTB-DEBUG: Video Colorimetry is %s.\n", gst_video_colorimetry_to_string (&vinfo.colorimetry));
-                    printf("PTB-DEBUG: Video Colormatrix %i, color primaries %i, eotf %i.\n", vinfo.colorimetry.matrix, vinfo.colorimetry.primaries, vinfo.colorimetry.transfer);
-                    printf("PTB-DEBUG: Video Format %s. Depth %i bpc.\n", vinfo.finfo->name, *vinfo.finfo->depth);
+                    printf("PTB-DEBUG: Video colorimetry is %s.\n", gst_video_colorimetry_to_string (&vinfo.colorimetry));
+                    printf("PTB-DEBUG: Video range %i, colormatrix %i, color primaries %i, eotf %i.\n", vinfo.colorimetry.range, vinfo.colorimetry.matrix, vinfo.colorimetry.primaries, vinfo.colorimetry.transfer);
+                    printf("PTB-DEBUG: Video format %s. Depth %i bpc.\n", vinfo.finfo->name, *vinfo.finfo->depth);
                 }
             }
 
@@ -1277,9 +1277,9 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
          // Try to get more detailed info about the actual content received by our sink:
          if (gst_video_info_from_caps (&vinfo, caps)) {
              if (PsychPrefStateGet_Verbosity() > 3) {
-                 printf("PTB-DEBUG: Sink Colorimetry is %s.\n", gst_video_colorimetry_to_string (&vinfo.colorimetry));
-                 printf("PTB-DEBUG: Sink Colormatrix %i, color primaries %i, eotf %i.\n", vinfo.colorimetry.matrix, vinfo.colorimetry.primaries, vinfo.colorimetry.transfer);
-                 printf("PTB-DEBUG: Sink Format %s. Depth %i bpc.\n", vinfo.finfo->name, *vinfo.finfo->depth);
+                 printf("PTB-DEBUG: Sink colorimetry is %s.\n", gst_video_colorimetry_to_string (&vinfo.colorimetry));
+                 printf("PTB-DEBUG: Sink range %i, colormatrix %i, color primaries %i, eotf %i.\n", vinfo.colorimetry.range, vinfo.colorimetry.matrix, vinfo.colorimetry.primaries, vinfo.colorimetry.transfer);
+                 printf("PTB-DEBUG: Sink format %s. Depth %i bpc.\n", vinfo.finfo->name, *vinfo.finfo->depth);
              }
          }
 

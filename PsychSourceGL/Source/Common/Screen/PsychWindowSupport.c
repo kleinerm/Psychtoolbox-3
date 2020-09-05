@@ -5949,7 +5949,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                 // This gets skipped in mono-mode if no conversion needed and only single-pass image processing
                 // applied. In that case, the image processing stage did the final blit already.
                 if (windowRecord->preConversionFBO[viewid] != windowRecord->finalizedFBO[viewid]) {
-                    if ((imagingMode & kPsychNeedOutputConversion) && (PsychPrefStateGet_Verbosity()>3)) printf("PTB-INFO: Processing chain(s) for output conversion disabled -- Using identity copy as workaround.\n");
+                    if ((imagingMode & kPsychNeedOutputConversion) && (PsychPrefStateGet_Verbosity() > 4)) printf("PTB-INFO: Processing chain(s) for output conversion disabled -- Using identity copy as workaround.\n");
                     PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);
                 }
             }
@@ -5988,7 +5988,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
         // the slave-window:
         if (stereo_mode == kPsychDualWindowStereo || (imagingMode & kPsychNeedDualWindowOutput)) {
             if (windowRecord->slaveWindow == NULL) {
-                if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Skipping master->slave blit operation in dual-window stereo mode or output mode...\n");
+                if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Skipping master->slave blit operation in dual-window stereo mode or output mode...\n");
             }
             else {
                 // Perform blit operation: This looks weird. Due to the peculiar implementation of PsychPipelineExecuteHook() we must
