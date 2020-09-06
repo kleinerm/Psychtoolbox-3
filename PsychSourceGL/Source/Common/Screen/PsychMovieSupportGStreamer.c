@@ -902,10 +902,8 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         // allows to skip colorspace conversion in GStreamer. The format is also highly efficient for texture
         // creation and upload to the GPU, but requires a fragment shader for colorspace conversion during drawing:
         colorcaps = gst_caps_new_simple ("video/x-raw",
-                                         "format", G_TYPE_STRING, "I420", // Does not work as hoped - ie., doesn't filter: "width", GST_TYPE_INT_RANGE, 1, 512,
+                                         "format", G_TYPE_STRING, "I420",
                                          NULL);
-        gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "I420_10LE", NULL));
-
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use YUV-I420 planar textures for optimized decode and rendering.\n", slotid);
     }
     else if (((movieRecordBANK[slotid].pixelFormat == 7) || (movieRecordBANK[slotid].pixelFormat == 8)) && win && (win->gfxcaps & kPsychGfxCapFBO) && PsychAssignPlanarI800TextureShader(NULL, win)) {
@@ -1950,9 +1948,9 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             // into useable RGBA8 pixel fragments will happen during rendering via a suitable fragment
             // shader. The net gain of this is that we effectively only need 1.5 Bytes per pixel instead
             // of 3 Bytes for RGB8 or 4 Bytes for RGBA8:
-            out_texture->textureexternaltype   = GL_UNSIGNED_SHORT;
+            out_texture->textureexternaltype   = GL_UNSIGNED_BYTE;
             out_texture->textureexternalformat = GL_LUMINANCE;
-            out_texture->textureinternalformat = GL_LUMINANCE16;
+            out_texture->textureinternalformat = GL_LUMINANCE8;
 
             // Define a rect of 1.5 times the video frame height, so PsychCreateTexture() will source
             // the whole input data buffer:
@@ -1962,7 +1960,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize) PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Please retry with a pixelFormat of 4 in 'OpenMovie'.");
 
             // Byte alignment: Assume no alignment for now:
-            out_texture->textureByteAligned = 2;
+            out_texture->textureByteAligned = 1;
 
             // Create planar "I420 inside L8" texture:
             PsychCreateTexture(out_texture);
