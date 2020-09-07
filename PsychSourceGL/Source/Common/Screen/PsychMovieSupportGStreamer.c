@@ -100,11 +100,171 @@ typedef struct {
     char                movieName[FILENAME_MAX];
     GLuint              cached_texture;
     PsychMovieHDRMetaData hdrMetaData;
+    GstVideoInfo        codecVideoInfo;
+    GstVideoInfo        sinkVideoInfo;
+    GLuint              texturePlanarHDRDecodeShader;
 } PsychMovieRecordType;
 
 static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
 static int numMovieRecords = 0;
 static psych_bool firsttime = TRUE;
+
+static char movieTexturePlanarVertexShaderSrc[] =
+"/* Simple pass-through vertex shader: Emulates fixed function pipeline, but passes  */ \n"
+"/* modulateColor as varying unclampedFragColor to circumvent vertex color       */ \n"
+"/* clamping on gfx-hardware / OS combos that don't support unclamped operation:     */ \n"
+"/* PTBs color handling is expected to pass the vertex color in modulateColor    */ \n"
+"/* for unclamped drawing for this reason. */ \n"
+"\n"
+"varying vec4 unclampedFragColor;\n"
+"varying vec2 texNominalSize;\n"
+"attribute vec4 modulateColor;\n"
+"attribute vec4 sizeAngleFilterMode;\n"
+"\n"
+"void main()\n"
+"{\n"
+"    /* Simply copy input unclamped RGBA pixel color into output varying color: */\n"
+"    unclampedFragColor = modulateColor;\n"
+"    texNominalSize = sizeAngleFilterMode.xy;\n"
+"\n"
+"    gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;\n"
+"\n"
+"    /* Output position is the same as fixed function pipeline: */\n"
+"    gl_Position    = ftransform();\n"
+"}\n\0";
+
+static char movieTexturePlanarFragmentShaderSrc[] =
+"/* YUV-I420 planar texture sampling fragment shader.               */ \n"
+"/* Retrieves YUV sample from proper locations in planes.           */ \n"
+"/* Converts YUV sample to RGB color triplet and applies            */ \n"
+"/* GL_MODULATE texture function emulation before fragment output.  */ \n"
+"\n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
+"uniform sampler2DRect Image; \n"
+"uniform float unormInputScaling;\n"
+"uniform float inputBpcMultiplier;\n"
+"uniform float inputBpcBias;\n"
+"uniform float Kr;\n"
+"uniform float Kb;\n"
+"varying vec4 unclampedFragColor; \n"
+"varying vec2 texNominalSize; \n"
+" \n"
+"void main() \n"
+"{ \n"
+"    float r, g, b, y, u, v;\n"
+"    float nx, ny;\n"
+"\n"
+"    /* Nominal video texel position: */"
+"    nx = gl_TexCoord[0].x;\n"
+"    ny = gl_TexCoord[0].y;\n"
+"\n"
+"    /* Get luma Y, scaled to the full 16 bit texture range 0-65535: */\n"
+"    y = texture2DRect(Image, vec2(nx, ny)).r * unormInputScaling;\n"
+"\n"
+"    /* Get U, V chroma samples, assuming I420 planar layout, scaled to full 16 bit range: */\n"
+"    ny = floor(ny * 0.5);\n"
+"    nx = floor(nx * 0.5);\n"
+"    if (mod(ny, 2.0) >= 0.5) {\n"
+"        nx += texNominalSize.x * 0.5;\n"
+"    }\n"
+"\n"
+"    ny = (ny - mod(ny, 2.0)) * 0.5;\n"
+"    u = texture2DRect(Image, vec2(nx, ny + texNominalSize.y)).r * unormInputScaling; \n"
+"    v = texture2DRect(Image, vec2(nx, ny + (1.25 * texNominalSize.y))).r * unormInputScaling; \n"
+"\n"
+"    /* Undo potential limited video range, to get back to [0 ; 1] range for luma,\n"
+"     * [-0.5 ; 0.5] range for chroma: */\n"
+"    if (inputBpcBias > 0.0) {\n"
+"        /* Full range */\n"
+"        y = y * inputBpcMultiplier;\n"
+"        u = (u - inputBpcBias) * inputBpcMultiplier;\n"
+"        v = (v - inputBpcBias) * inputBpcMultiplier;\n"
+"    } else {\n"
+"        /* Limited range */\n"
+"        y = ((y * inputBpcMultiplier) - 16.0) / 219.0;\n"
+"        u = ((u * inputBpcMultiplier) - 128.0) / 224.0;\n"
+"        v = ((v * inputBpcMultiplier) - 128.0) / 224.0;\n"
+"    }\n"
+"\n"
+"    /* Convert from yuv to r'g'b' : */\n"
+"    r = y + 2.0 * (1.0 - Kr) * v;\n"
+"    g = y - 2.0 * (1.0 - Kb) * Kb / (1.0 - Kr - Kb) * u - 2.0 * (1.0 - Kr) * Kr / (1.0 - Kr - Kb) * v;\n"
+"    b = y + 2.0 * (1.0 - Kb) * u;\n"
+"\n"
+"    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
+"    /* Assign result as output fragment color: */ \n"
+"    gl_FragColor = vec4(r, g, b, 1.0) * unclampedFragColor; \n"
+"} \n";
+
+// Stage 1: Sample [I420] / 422 / 444, [multiply by 65535 or 255 (> 8 bpc or not?)][, range convert (limited vs. full?)][, normalize.]
+//          [Y'U'V' -> R'G'B' (color matrix as input...)]
+// Stage 2: R'G'B' -> RGB (apply EOTF), scale via HDR scaling factor.
+//          Maybe CSC?
+
+static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* movie, PsychWindowRecordType* textureRecord)
+{
+    // Get parent windowRecord for this movie frame texture:
+    PsychWindowRecordType *windowRecord = PsychGetParentWindow(textureRecord);
+
+    // Do we already have a planar HDR decode texture shader?
+    if (movie->texturePlanarHDRDecodeShader == 0) {
+        double Kr, Kb;
+        float inputBias, inputMultiplier;
+        int bpc = GST_VIDEO_FORMAT_INFO_DEPTH(movie->sinkVideoInfo.finfo, 0);
+
+        // Nope. Need to create one:
+        movie->texturePlanarHDRDecodeShader = PsychCreateGLSLProgram(movieTexturePlanarFragmentShaderSrc, movieTexturePlanarVertexShaderSrc, NULL);
+
+        if (movie->texturePlanarHDRDecodeShader == 0) {
+            printf("PTB-ERROR: Failed to create planar HDR decode and conversion shader for video texture!\n");
+            return(FALSE);
+        }
+
+        // Set up decoding parameters:
+        glUseProgram(movie->texturePlanarHDRDecodeShader);
+
+        // Tell shader if this is stored in a 16 bpc container or 8 bpc container, ie. which scaling to use:
+        glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "unormInputScaling"), (bpc > 8) ? 65535.0 : 255.0);
+
+        // First handle limited vs. full range encoding, and different bit depths, to
+        // map all Y luma into [0; 1] range and all U,V chroma into [-0.5 ; 0.5] range:
+        if (movie->sinkVideoInfo.colorimetry.range == GST_VIDEO_COLOR_RANGE_16_235) {
+            // Movie has limited range of 16-235 for luma, 15-240 for chroma, assuming
+            // 8 bpc, upscaled by 2^(bpc - 8).
+            inputBias = 0.0;
+            inputMultiplier = 1.0 / ((float) (1 << (bpc - 8)));
+        }
+        else {
+            // Movie has full range of 0-255 for luma and chroma, assuming 8 bpc, upscaled by 2^bpc.
+            inputBias = (float) (1 << (bpc - 1));
+            inputMultiplier = 1.0 / ((float) (1 << bpc) - 1.0);
+        }
+
+        glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "inputBpcMultiplier"), inputMultiplier);
+        glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "inputBpcBias"), inputBias);
+
+        // Get Kr, Kb coefficients for conversion of YUV -> R'G'B' in the shader. GStreamer
+        // provides us with the proper coefficients for a given color conversion matrix:
+        if (!gst_video_color_matrix_get_Kr_Kb (movie->sinkVideoInfo.colorimetry.matrix, (gdouble*) &Kr, (gdouble*) &Kb)) {
+            printf("PTB-ERROR: Failed to setup planar HDR decode and conversion shader for video texture! Could not get color matrix coefficients.\n");
+            return(FALSE);
+        }
+
+        glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "Kr"), Kr);
+        glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "Kb"), Kb);
+
+        glUseProgram(0);
+    }
+
+    // Assign our movies planar HDR decoding shader to this video frame texture:
+    // We don't support GL_TEXTURE_2D textures yet though, so only auto-assign shader for rectangle textures.
+    if (textureRecord && !(PsychGetTextureTarget(textureRecord) == GL_TEXTURE_2D))
+        textureRecord->textureFilterShader = -1 * movie->texturePlanarHDRDecodeShader;
+
+    // Done.
+    return(TRUE);
+}
 
 /*
  *     PsychGSMovieInit() -- Initialize movie subsystem.
@@ -924,6 +1084,29 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                                          NULL);
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will use Y8-I800 planar textures for optimized decode and rendering.\n", slotid);
     }
+    else if ((movieRecordBANK[slotid].pixelFormat == 11) && win && (win->gfxcaps & kPsychGfxCapFBO) &&
+             glewIsSupported("GL_ARB_shader_objects") && glewIsSupported("GL_ARB_shading_language_100") &&
+             glewIsSupported("GL_ARB_fragment_shader") && glewIsSupported("GL_ARB_vertex_shader")) {
+        // Usercode wants optimal format for HDR/WCG playback and GPU suppports needed shaders and FBO's.
+        //
+        // This mode accepts HDR/WCG video footage as decoded planar YUV of different range, different bit-depths,
+        // different color spaces, EOTF's, and tries to decode as accurate and fast as possible into a RGB linear
+        // format of high precision suitable for HDR content.
+        //
+        // As planar YUV is the native output format of all modern codecs like HuffYUV, H264/H265/VP-9 codecs, using
+        // it allows to skip cpu intensive colorspace conversion in GStreamer. The format is also highly efficient for
+        // texture creation and upload to the GPU, but requires a fragment shader for sampling, color space conversion,
+        // EOTF mapping etc. during drawing.
+
+        // Currently we accept I420 YUV of color depth 8, 10, 12 bpc input:
+        colorcaps = gst_caps_new_simple ("video/x-raw",
+                                         "format", G_TYPE_STRING, "I420",
+                                         NULL);
+        gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "I420_10LE", NULL));
+        gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "I420_12LE", NULL));
+
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will accept HDR YUV-I420 planar textures of 8, 10 or 12 bpc for optimized HDR decode and rendering.\n", slotid);
+    }
     else {
         // GPU does not support yuv textures or shader based decoding. Need to go brute-force and convert
         // video into RGBA8 format:
@@ -944,6 +1127,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                 break;
             case 5:
             case 6:
+            case 11:
                 movieRecordBANK[slotid].pixelFormat = 4;
                 break;
             case 9:     // 9 and 10 are fine:
@@ -972,6 +1156,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             if ((PsychPrefStateGet_Verbosity() > 3) && (pixelFormat == 5)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV-422 texture support on GPU.\n", slotid);
             if ((PsychPrefStateGet_Verbosity() > 3) && (pixelFormat == 6)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures due to lack of YUV-I420 support on GPU.\n", slotid);
             if ((PsychPrefStateGet_Verbosity() > 3) && ((pixelFormat == 7) || (pixelFormat == 8))) printf("PTB-INFO: Movie playback for movie %i will use L8 textures due to lack of Y8-I800 support on GPU.\n", slotid);
+            if ((PsychPrefStateGet_Verbosity() > 1) && (pixelFormat == 11)) printf("PTB-WARNING: Movie playback for movie %i will use RGBA8 textures for HDR playback due to lack of YUV-I420 HDR support on GPU. Results may be wrong!\n", slotid);
 
             if ((PsychPrefStateGet_Verbosity() > 3) && !(pixelFormat < 5)) printf("PTB-INFO: Movie playback for movie %i will use RGBA8 textures.\n", slotid);
         }
@@ -1222,8 +1407,6 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
 
     // Videotrack available?
     if (movieRecordBANK[slotid].nrVideoTracks > 0) {
-        GstVideoInfo vinfo;
-
         if (!videocodec) {
             // Fallback: Get the pad from the final sink for probing width x height of movie frames and nominal framerate of movie:
             pad = gst_element_get_static_pad(videosink, "sink");
@@ -1251,11 +1434,13 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
             gst_structure_get_fraction(str, "framerate", &rate1, &rate2);
 
             // Try to get more detailed info about video:
-            if (gst_video_info_from_caps (&vinfo, caps)) {
+            if (gst_video_info_from_caps (&movieRecordBANK[slotid].codecVideoInfo, caps)) {
                 if (PsychPrefStateGet_Verbosity() > 3) {
-                    printf("PTB-DEBUG: Video colorimetry is %s.\n", gst_video_colorimetry_to_string (&vinfo.colorimetry));
-                    printf("PTB-DEBUG: Video range %i, colormatrix %i, color primaries %i, eotf %i.\n", vinfo.colorimetry.range, vinfo.colorimetry.matrix, vinfo.colorimetry.primaries, vinfo.colorimetry.transfer);
-                    printf("PTB-DEBUG: Video format %s. Depth %i bpc.\n", vinfo.finfo->name, *vinfo.finfo->depth);
+                    printf("PTB-DEBUG: Video colorimetry is %s.\n", gst_video_colorimetry_to_string (&movieRecordBANK[slotid].codecVideoInfo.colorimetry));
+                    printf("PTB-DEBUG: Video range %i, colormatrix %i, color primaries %i, eotf %i.\n", movieRecordBANK[slotid].codecVideoInfo.colorimetry.range,
+                           movieRecordBANK[slotid].codecVideoInfo.colorimetry.matrix, movieRecordBANK[slotid].codecVideoInfo.colorimetry.primaries,
+                           movieRecordBANK[slotid].codecVideoInfo.colorimetry.transfer);
+                    printf("PTB-DEBUG: Video format %s. Depth %i bpc.\n", movieRecordBANK[slotid].codecVideoInfo.finfo->name, *movieRecordBANK[slotid].codecVideoInfo.finfo->depth);
                 }
             }
 
@@ -1273,11 +1458,13 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
          caps = gst_pad_get_current_caps(peerpad);
 
          // Try to get more detailed info about the actual content received by our sink:
-         if (gst_video_info_from_caps (&vinfo, caps)) {
+         if (gst_video_info_from_caps (&movieRecordBANK[slotid].sinkVideoInfo, caps)) {
              if (PsychPrefStateGet_Verbosity() > 3) {
-                 printf("PTB-DEBUG: Sink colorimetry is %s.\n", gst_video_colorimetry_to_string (&vinfo.colorimetry));
-                 printf("PTB-DEBUG: Sink range %i, colormatrix %i, color primaries %i, eotf %i.\n", vinfo.colorimetry.range, vinfo.colorimetry.matrix, vinfo.colorimetry.primaries, vinfo.colorimetry.transfer);
-                 printf("PTB-DEBUG: Sink format %s. Depth %i bpc.\n", vinfo.finfo->name, *vinfo.finfo->depth);
+                 printf("PTB-DEBUG: Sink colorimetry is %s.\n", gst_video_colorimetry_to_string (&movieRecordBANK[slotid].sinkVideoInfo.colorimetry));
+                 printf("PTB-DEBUG: Sink range %i, colormatrix %i, color primaries %i, eotf %i.\n", movieRecordBANK[slotid].sinkVideoInfo.colorimetry.range,
+                        movieRecordBANK[slotid].sinkVideoInfo.colorimetry.matrix, movieRecordBANK[slotid].sinkVideoInfo.colorimetry.primaries,
+                        movieRecordBANK[slotid].sinkVideoInfo.colorimetry.transfer);
+                 printf("PTB-DEBUG: Sink format %s. Depth %i bpc.\n", movieRecordBANK[slotid].sinkVideoInfo.finfo->name, *movieRecordBANK[slotid].sinkVideoInfo.finfo->depth);
              }
          }
 
@@ -1488,15 +1675,28 @@ void PsychGSDeleteMovie(int moviehandle)
         movieRecordBANK[moviehandle].cached_texture = 0;
     }
 
+    if (movieRecordBANK[moviehandle].texturePlanarHDRDecodeShader)
+        PsychSetShader(movieRecordBANK[moviehandle].parentRecord, 0);
+
     // Delete all references to us in textures originally originating from us:
     PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
     for(i = 0; i < numWindows; i++) {
         if ((windowRecordArray[i]->windowType == kPsychTexture) && (windowRecordArray[i]->texturecache_slot == moviehandle)) {
             // This one is referencing us. Reset its reference to "undefined" to detach it from us:
             windowRecordArray[i]->texturecache_slot = -1;
+
+            // Transform video texture into a normalized, upright texture of RGB(A) format of
+            // suitable precision if it isn't already in that format. This way we can get rid
+            // of our special conversion/draw shader now:
+            if (movieRecordBANK[moviehandle].texturePlanarHDRDecodeShader)
+                PsychNormalizeTextureOrientation(windowRecordArray[i]);
         }
     }
     PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
+
+    // Delete our conversion shader:
+    if (movieRecordBANK[moviehandle].texturePlanarHDRDecodeShader)
+        glDeleteProgram(movieRecordBANK[moviehandle].texturePlanarHDRDecodeShader);
 
     // Decrease counter:
     if (numMovieRecords>0) numMovieRecords--;
@@ -1983,6 +2183,74 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
             // And 24 bpp depth:
             out_texture->depth = 24;
+        }
+
+        // HDR/WCG YUV planar pixel upload requested?
+        if (movieRecordBANK[moviehandle].pixelFormat == 11) {
+            // We encode planar data inside a single-layer luminance texture of
+            // 1.5x times the height of the video frame. First the "Y" luminance plane
+            // is stored at full 1 sample per pixel resolution. Then a 0.25x height slice
+            // with "U" Cr chrominance data at half the horizontal and vertical resolution
+            // aka 1 sample per 2x2 pixel quad. Then a 0.25x height slice with "V" Cb
+            // chrominance data at 1 sample per 2x2 pixel quad resolution. As such, the texture
+            // appears to OpenGL as a normal LUMINANCE texture. Conversion of the planar format
+            // into useable RGBA pixel fragments will happen during rendering via a suitable fragment
+            // shader. The net gain of this is that we effectively only need 1.5 Bytes per pixel instead
+            // of 3 Bytes for RGB8 or 4 Bytes for RGBA8:
+            out_texture->textureexternalformat = GL_LUMINANCE;
+
+            // Discriminate between 8 bpc content and > 8 bpc content:
+            if (GST_VIDEO_FORMAT_INFO_DEPTH(movieRecordBANK[moviehandle].sinkVideoInfo.finfo, 0) > 8) {
+                // More than 8 bpc, e.g., typically 10 bpc or 12 bpc, but up to 16 bpc. Use a 16 bpc
+                // unorm range texture:
+                out_texture->textureexternaltype   = GL_UNSIGNED_SHORT;
+                out_texture->textureinternalformat = GL_LUMINANCE16;
+
+                // Word alignment. At least 2 bytes:
+                out_texture->textureByteAligned = 2;
+
+                // Effective color depth is 48 bits:
+                out_texture->depth = 48;
+            }
+            else {
+                // Standard 8 bpc content:
+                out_texture->textureexternaltype   = GL_UNSIGNED_BYTE;
+                out_texture->textureinternalformat = GL_LUMINANCE8;
+
+                // Byte alignment. Assume no alignment for now:
+                out_texture->textureByteAligned = 1;
+
+                // Effective color depth is 24 bits:
+                out_texture->depth = 24;
+            }
+
+            // Define a rect of 1.5 times the video frame height, so PsychCreateTexture() will source
+            // the whole input data buffer:
+            PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height * 1.5);
+
+            // Check if 1.5x height texture fits within hardware limits of this GPU:
+            if (movieRecordBANK[moviehandle].height * 1.5 > win->maxTextureSize)
+                PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Can not handle HDR content of this resolution on this graphics card!");
+
+            // Create "planar content inside single-plane luminance" texture:
+            PsychCreateTexture(out_texture);
+
+            // Restore rect and clientrect of texture to effective size of video frame:
+            PsychMakeRect(out_texture->rect, 0, 0, movieRecordBANK[moviehandle].width, movieRecordBANK[moviehandle].height);
+            PsychCopyRect(out_texture->clientrect, out_texture->rect);
+
+            // Number of effective color channels is 3 for RGB true color content:
+            out_texture->nrchannels = 3;
+
+            // Mark texture as planar encoded, so proper conversion shader gets applied during
+            // call to PsychNormalizeTextureOrientation(), prior to any render-to-texture operation, e.g.,
+            // if used as an offscreen window, or as a participant of a Screen('TransformTexture') call:
+            out_texture->specialflags |= kPsychPlanarTexture;
+
+            // Assign special filter shader for sampling and color-space conversion of the
+            // planar texture during drawing or PsychNormalizeTextureOrientation():
+            if (!PsychAssignMovieTextureConversionShader(&movieRecordBANK[moviehandle], out_texture))
+                PsychErrorExitMsg(PsychError_user, "Assignment of planar YUV HDR video decoding shader failed during movie texture creation!");
         }
         else if (movieRecordBANK[moviehandle].bitdepth > 8) {
             // Is this a > 8 bpc image format? If not, we ain't nothing more to prepare.

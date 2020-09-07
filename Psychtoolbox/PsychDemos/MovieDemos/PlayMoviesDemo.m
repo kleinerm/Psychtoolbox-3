@@ -64,7 +64,7 @@ function PlayMoviesDemo(moviename, hdr, backgroundMaskOut, tolerance, pixelForma
 
 theanswer = [];
 
-if (nargin < 1) || isempty(moviename)
+if nargin < 1 || isempty(moviename)
     moviename = [];
     theanswer = input('Serious or cool? Type s or c [s/c]? ', 's');
 end
@@ -113,11 +113,6 @@ try
     % Use default pixelFormat if none specified:
     if nargin < 5
         pixelFormat = [];
-        if hdr
-            % In HDR mode, we request at least 10 bpc color precision for
-            % decoded movie frames / textures:
-            pixelFormat = 10;
-        end
     end
 
     if hdr

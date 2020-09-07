@@ -105,8 +105,12 @@ static char synopsisString[] =
         "on some setups: 1 = Luminance/Greyscale image, 2 = Luminance+Alpha, 3 = RGB 8 bit per channel, 4 = RGBA8, "
         "5 = YUV 4:2:2 packed pixel format on some graphics hardware, 6 = YUV-I420 planar format, using GLSL shaders "
         "for color space conversion on suitable graphics cards. 7 or 8 = Y8-Y800 planar format, using GLSL shaders, "
-        "9 = 16 bit Luminance, 10 = 16 bpc RGBA image."
-        "The always supported default is '4' == RGBA8 format. "
+        "9 = 16 bit Luminance, 10 = 16 bpc RGBA image, 11 = 16 bpc RGB image for proper encoding of HDR/WCG content, e.g., "
+        "video encoded in HDR-10 format for display on a HDR display. "
+        "The always supported default is '4' == RGBA8 format when the onscreen window is in standard dynamic range (SDR) "
+        "mode. If 'windowPtr' instead refers to a HDR display window, displaying on a HDR display monitor, then the default "
+        "setting for 'pixelFormat' is '11' == RGB format for proper HDR movie display with up to 16 bpc precision and proper "
+        "handling of HDR transfer function like Perceptual Quantizer (PQ) and HDR color spaces.\n"
         "A setting of 6 (for color) or 7/8 (for grayscale) for selection of YUV-I420/Y8-Y800 format, as supported by at "
         "least the H264 and HuffYUV video codecs on any GPU with "
         "shader support, can be especially efficient for fast playback of high resolution video. As this format uses "
@@ -161,7 +165,7 @@ PsychError SCREENOpenMovie(void)
     static psych_bool                       firstTime = TRUE;
     double                                  preloadSecs = 1;
     int                                     rc;
-    int                                     pixelFormat = 4;
+    int                                     pixelFormat;
     int                                     maxNumberThreads = -1;
 
     if (firstTime) {
@@ -201,9 +205,10 @@ PsychError SCREENOpenMovie(void)
     PsychCopyInIntegerArg(5, FALSE, &specialFlags1);
     if (specialFlags1 < 0) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'specialFlags1' setting! Only positive values allowed.");
 
-    // Get the (optional) pixelFormat:
+    // Get the (optional) pixelFormat: Default to format 11 for HDR display modes, RGBA8 (4) otherwise:
+    pixelFormat = (windowRecord && (windowRecord->imagingMode & kPsychNeedHDRWindow)) ? 11 : 4;
     PsychCopyInIntegerArg(6, FALSE, &pixelFormat);
-    if (pixelFormat < 1 || pixelFormat > 10) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'pixelFormat' setting! Only values 1 to 10 are allowed.");
+    if (pixelFormat < 1 || pixelFormat > 11) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'pixelFormat' setting! Only values 1 to 11 are allowed.");
 
     // Get the (optional) maxNumberThreads:
     PsychCopyInIntegerArg(7, FALSE, &maxNumberThreads);
