@@ -142,6 +142,7 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "#extension GL_ARB_texture_rectangle : enable \n"
 " \n"
 "uniform sampler2DRect Image; \n"
+"uniform int eotfType;\n"
 "uniform float unormInputScaling;\n"
 "uniform float inputBpcMultiplier;\n"
 "uniform float inputBpcBias;\n"
@@ -191,6 +192,25 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "    r = y + 2.0 * (1.0 - Kr) * v;\n"
 "    g = y - 2.0 * (1.0 - Kb) * Kb / (1.0 - Kr - Kb) * u - 2.0 * (1.0 - Kr) * Kr / (1.0 - Kr - Kb) * v;\n"
 "    b = y + 2.0 * (1.0 - Kb) * u;\n"
+"\n"
+"    /* SMPTE ST-2084 PQ EOTF in use? If so, decode into linear RGB here: */\n"
+"    if (eotfType == 14) {\n"
+"        const float c1 = 0.8359375;\n"
+"        const float c2 = 18.8515625;\n"
+"        const float c3 = 18.6875;\n"
+"        const float mi = 1.0 / 78.84375;\n"
+"        const float ni = 1.0 / 0.1593017578125;\n"
+"        vec3 L, f, v;\n"
+"\n"
+"        v = vec3(r, g, b);\n"
+"        f = pow(v, vec3(mi));\n"
+"        L = pow((f - vec3(c1)) / (vec3(c2) - vec3(c3) * f), vec3(ni));\n"
+"        L = L * 10000.0;\n"
+"\n"
+"        r = L.r;\n"
+"        g = L.g;\n"
+"        b = L.b;\n"
+"    }\n"
 "\n"
 "    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
 "    /* Assign result as output fragment color: */ \n"
@@ -253,6 +273,9 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
 
         glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "Kr"), Kr);
         glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "Kb"), Kb);
+
+        // Hack: Test code for PQ EOTF decoding. Tell shader about type of EOTF transfer function:
+        glUniform1i(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "eotfType"), movie->sinkVideoInfo.colorimetry.transfer);
 
         glUseProgram(0);
     }
