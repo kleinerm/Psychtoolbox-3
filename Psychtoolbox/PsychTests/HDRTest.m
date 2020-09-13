@@ -83,7 +83,7 @@ try
     % Get displays HDR properties:
     displayhdrprops = PsychHDR('HDRMetadata', win) %#ok<*NOPRT>
     maxLuminance = displayhdrprops.MaxLuminance
-    maxFrameAverageLightLevel = displayhdrprops.MaxFrameAverageLightLevel %#ok<NASGU>
+    maxFrameAverageLightLevel = displayhdrprops.MaxFrameAverageLightLevel; %#ok<NASGU>
 
     % Compute size of a test patch (filled rectangle) that fills exactly 10% of the
     % monitors display area, so we can test how well the monitor does wrt. peak
@@ -112,19 +112,18 @@ try
         retluminance = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKbWait);
         skipKbWait = 1;
 
-        % Convert measured values to chromaticity coordinates and luminance:
-        xyY = XYZToxyY(retluminance.XYZ);
-
-        % Report and plot measured white point vs. dispplay self reported one:
-        fprintf('Reported white-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 4), displayhdrprops.ColorGamut(2, 4));
-        fprintf('Measured white-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
         try
+            % Convert measured values to chromaticity coordinates and luminance:
+            xyY = XYZToxyY(retluminance.XYZ);
+            ColorGamut(:, 4) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
+
+            % Report and plot measured white point vs. dispplay self reported one:
+            fprintf('Reported white-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 4), displayhdrprops.ColorGamut(2, 4));
+            fprintf('Measured white-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
             plot(xyY(1,:), xyY(2,:), '+k', mean(xyY(1,:)), mean(xyY(2,:)), 'ok', displayhdrprops.ColorGamut(1, 4), displayhdrprops.ColorGamut(2, 4), '*k');
             title('Chromaticity coordinates of measured samples:');
         catch
         end
-
-        ColorGamut(:, 4) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
     end
 
     %% Phase 2: Red primary measurement:
@@ -137,19 +136,18 @@ try
         retred = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKbWait);
         skipKbWait = 1;
 
-        % Convert measured values to chromaticity coordinates and luminance:
-        xyY = XYZToxyY(retred.XYZ);
-
-        % Report and plot measured white point vs. dispplay self reported one:
-        fprintf('Reported red-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 1), displayhdrprops.ColorGamut(2, 1));
-        fprintf('Measured red-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
         try
+            % Convert measured values to chromaticity coordinates and luminance:
+            xyY = XYZToxyY(retred.XYZ);
+            ColorGamut(:, 1) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
+
+            % Report and plot measured white point vs. dispplay self reported one:
+            fprintf('Reported red-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 1), displayhdrprops.ColorGamut(2, 1));
+            fprintf('Measured red-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
             plot(xyY(1,:), xyY(2,:), '+r', mean(xyY(1,:)), mean(xyY(2,:)), 'or', displayhdrprops.ColorGamut(1, 1), displayhdrprops.ColorGamut(2, 1), '*r');
             title('Chromaticity coordinates of measured samples:');
         catch
         end
-
-        ColorGamut(:, 1) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
     end
 
     %% Phase 3: Green primary measurement:
@@ -162,19 +160,18 @@ try
         retgreen = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKbWait);
         skipKbWait = 1;
 
-        % Convert measured values to chromaticity coordinates and luminance:
-        xyY = XYZToxyY(retgreen.XYZ);
-
-        % Report and plot measured white point vs. dispplay self reported one:
-        fprintf('Reported green-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 2), displayhdrprops.ColorGamut(2, 2));
-        fprintf('Measured green-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
         try
+            % Convert measured values to chromaticity coordinates and luminance:
+            xyY = XYZToxyY(retgreen.XYZ);
+            ColorGamut(:, 2) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
+
+            % Report and plot measured white point vs. dispplay self reported one:
+            fprintf('Reported green-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 2), displayhdrprops.ColorGamut(2, 2));
+            fprintf('Measured green-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
             plot(xyY(1,:), xyY(2,:), '+g', mean(xyY(1,:)), mean(xyY(2,:)), 'og', displayhdrprops.ColorGamut(1, 2), displayhdrprops.ColorGamut(2, 2), '*g');
             title('Chromaticity coordinates of measured samples:');
         catch
         end
-
-        ColorGamut(:, 2) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
     end
 
     %% Phase 4: Blue primary measurement:
@@ -186,23 +183,23 @@ try
         % Measure 10% area test patch of target luminances 'targetcolors' at display center:
         retblue = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKbWait);
 
-        % Convert measured values to chromaticity coordinates and luminance:
-        xyY = XYZToxyY(retblue.XYZ);
-
-        % Report and plot measured white point vs. dispplay self reported one:
-        fprintf('Reported blue-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 3), displayhdrprops.ColorGamut(2, 3));
-        fprintf('Measured blue-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
         try
+        % Convert measured values to chromaticity coordinates and luminance:
+            xyY = XYZToxyY(retblue.XYZ);
+            ColorGamut(:, 3) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
+
+            % Report and plot measured white point vs. dispplay self reported one:
+            fprintf('Reported blue-point is at: %f, %f\n', displayhdrprops.ColorGamut(1, 3), displayhdrprops.ColorGamut(2, 3));
+            fprintf('Measured blue-point is at: %f, %f\n', mean(xyY(1,:)), mean(xyY(2,:)));
             plot(xyY(1,:), xyY(2,:), '+b', mean(xyY(1,:)), mean(xyY(2,:)), 'ob', displayhdrprops.ColorGamut(1, 3), displayhdrprops.ColorGamut(2, 3), '*b');
             title('Chromaticity coordinates of measured samples:');
         catch
         end
 
-        ColorGamut(:, 3) = [mean(xyY(1,:)) ; mean(xyY(2,:))];
     end
 
     if any(dotest(2:4))
-        if all(dotest(2:4))
+        if all(dotest(2:4)) && exist('ColorGamut', 'var') && (size(ColorGamut, 1) >= 2) && (size(ColorGamut, 2) >= 3)
             line(ColorGamut(1, [1,2,3,1]), ColorGamut(2, [1,2,3,1]), 'color', 'k');
             line(displayhdrprops.ColorGamut(1, [1,2,3,1]), displayhdrprops.ColorGamut(2, [1,2,3,1]), 'color', 'b');
         end
@@ -283,15 +280,42 @@ function ret = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKb
     ret.XYZ = [];
     ret.trouble = [];
 
+    % Tell monitor what to expect:
+    [winw, winh] = Screen('WindowSize', win);
+    coverage = (RectWidth(testrect) * RectHeight(testrect)) / (winw * winh);
+    % maxCLL intensity in nits of brightest pixel color component over all
+    % frames - ie. brightest component in whole test sequence:
+    maxCLL = max(targetcolors(:));
+    % frame average light levels: For each frame/test patch, the value of
+    % the brightest pixel color component if each pixel, averaged over all
+    % pixels in a frame. In our case, as all pixels in the test patch have
+    % same color and thereby same max component / component value, we just
+    % take that maximum for each patch and multiply with how much of the
+    % display is covered with the test patch, as the remainder of the
+    % screen is all black aka zero:
+    FALLs = max(targetcolors, [], 1) * coverage;
+    % maxFALL is the maximum over all FALLs from all frames in the sequence:
+    maxFALL = max(FALLs);
+
+    msg = sprintf('Coverage %.01f%% : maxCLL = %.02f nits : maxFALL = %.02f nits.\n', 100 * coverage, maxCLL, maxFALL);
+    disp(msg);
+
+    % Tell the monitor about maxFALL and maxCLL, clamped to allowed maximum
+    % of 10000 nits:
+    PsychHDR('HDRMetadata', win, [], min(maxFALL, 10000), min(maxCLL, 10000));
+    Screen('Flip', win);
+
     if ~skipKbWait
         % Instruct user to set up everything:
-        DrawFormattedText(win, 'Point colorimeter at test patch,\nthen press any key to start measurement\n', 'center', 30, [0, 40, 0]);
+        DrawFormattedText(win, sprintf('%sPoint colorimeter at test patch,\nthen press any key to start measurement\n', msg), 'center', 30, [0, 40, 0]);
         Screen('FillRect', win, 40, testrect);
         Screen('FillOval', win, 0, CenterRect([0, 0, 10, 10], testrect));
         Screen('Flip', win);
 
         % Wait for start signal from user:
         KbStrokeWait(-1);
+    else
+        WaitSecs(5);
     end
 
     fprintf('\n\n\nStarting measurement:\n\n');
