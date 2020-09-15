@@ -115,9 +115,9 @@ try
 
     %% Phase 1: White point and luminance measurement:
     if dotest(1)
-        % Step through luminance range 0 - maxLuminance nits, sampling in smaller
+        % Step through luminance range 0 - "98% of maxLuminance" nits, sampling in smaller
         % steps at the low end of the luminance range:
-        whiteluminance = [0:0.001:0.049, 0.050:0.050:0.950, 1:1:maxLuminance];
+        whiteluminance = [0:0.001:0.049, 0.050:0.050:0.950, 1:1:(0.98 * maxLuminance)];
         targetcolors = whiteluminance;
 
         % Measure 10% area test patch of target luminances 'targetcolors' at display center:
