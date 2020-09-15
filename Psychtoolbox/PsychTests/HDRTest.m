@@ -276,6 +276,7 @@ end
 function ret = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKbWait)
     ret.shaderdiff = [];
     ret.shaderpq10bitval = [];
+    ret.shaderpq12bitval = [];
     ret.referencecolors = [];
     ret.XYZ = [];
     ret.trouble = [];
@@ -337,15 +338,17 @@ function ret = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKb
         % Read back and compare Screen()'s shader based EOTF encoding against our
         % Matlab reference implementation in PQ():
         gpupqvalue = squeeze(Screen('GetImage', win, CenterRect([0 0 1 1], testrect), 'backBuffer', 1, 3));
-        gpu10bitval = floor(gpupqvalue * (2^10 - 1));
-        [refpqvalue, ref10bitval] = PQ(single(targetcolor)); %#ok<ASGLU>
+        gpu10bitval = round(gpupqvalue * (2^10 - 1));
+        gpu12bitval = round(gpupqvalue * (2^12 - 1));
+        [refpqvalue, ref10bitval, ref12bitval] = PQ(single(targetcolor)); %#ok<ASGLU>
         if max(abs(gpu10bitval - ref10bitval)) > 1
-            fprintf('WARNING: Mismatch of PQ encoded pixelvalue between PTB shader and reference implementation! %i\n', ...
+            fprintf('WARNING: Mismatch of 10 bpc PQ encoded pixelvalue between PTB shader and reference implementation! %i\n', ...
                     abs(gpu10bitval - ref10bitval));
         end
 
         ret.shaderdiff(:, end+1) = gpu10bitval - ref10bitval; %#ok<*AGROW>
         ret.shaderpq10bitval(:, end+1) = gpu10bitval;
+        ret.shaderpq12bitval(:, end+1) = gpu12bitval;
 
         % Give display(backlight) some time to settle to new steady state:
         WaitSecs(0.5);
@@ -364,11 +367,11 @@ function ret = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKb
 
         % Display measurement result to top-left corner of screen:
         if isscalar(gpu10bitval)
-            msg = sprintf('[PQ-10bit = %i] -> Target %.05f nits vs. measured %.05f nits -> Delta %.01f%%. Trouble = %i\n', gpu10bitval, ...
-                          targetlum, ret.XYZ(2, end), (ret.XYZ(2, end) - targetlum) / targetlum * 100, ret.trouble(end));
+            msg = sprintf('[PQ-10/12bit = %i/%i] -> Target %.05f nits vs. measured %.05f nits -> Delta %.01f%%. Trouble = %i\n', gpu10bitval, ...
+                          gpu12bitval, targetlum, ret.XYZ(2, end), (ret.XYZ(2, end) - targetlum) / targetlum * 100, ret.trouble(end));
         else
-            msg = sprintf('[PQ-10bit = %i,%i,%i] -> Target %.05f nits vs. measured %.05f nits -> Delta %.01f%%. Trouble = %i\n', gpu10bitval, ...
-                          targetlum, ret.XYZ(2, end), (ret.XYZ(2, end) - targetlum) / targetlum * 100, ret.trouble(end));
+            msg = sprintf('[PQ-10/12bit = %i,%i,%i/%i,%i,%i] -> Target %.05f nits vs. measured %.05f nits -> Delta %.01f%%. Trouble = %i\n', gpu10bitval, ...
+                          gpu12bitval, targetlum, ret.XYZ(2, end), (ret.XYZ(2, end) - targetlum) / targetlum * 100, ret.trouble(end));
         end
         disp(msg);
         DrawFormattedText(win, msg, 0, 30, 40);
@@ -383,7 +386,7 @@ function ret = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKb
     ret.XYZ = ret.XYZ(:, 1:nsamples);
 end
 
-function [v, digital10bitval] = PQ(L)
+function [v, digital10bitval, digital12bitval] = PQ(L)
 % ST-2084 PQ "Perceptual Quantizer" inverse EOTF (ie. OETF), from
 % https://en.wikipedia.org/wiki/High-dynamic-range_video#Perceptual_Quantizer
 %
@@ -393,7 +396,9 @@ function [v, digital10bitval] = PQ(L)
   v  = f .^ 78.84375;
 
   % Convert back into 10 bit discrete value:
-  digital10bitval = floor(v * (2^10 - 1));
+  digital10bitval = round(v * (2^10 - 1));
+  % Convert back into 12 bit discrete value:
+  digital12bitval = round(v * (2^12 - 1));
 end
 
 function printgpuhwstate
