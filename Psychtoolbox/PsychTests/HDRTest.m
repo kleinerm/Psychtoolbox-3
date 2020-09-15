@@ -1,5 +1,5 @@
-function HDRTest(dotest, meterType, screenid, filename)
-% HDRTest([dotest=all][, meterType=7][, screenid=max][, filename='hdrmeasurements.mat'])
+function HDRTest(dotest, meterType, highprecision, screenid, filename)
+% HDRTest([dotest=all][, meterType=7][, highprecision=0][, screenid=max][, filename='hdrmeasurements.mat'])
 %
 % Perform some basic correctness tests and evaluation for HDR display operation,
 % using a Colorimeter.
@@ -18,6 +18,11 @@ function HDRTest(dotest, meterType, screenid, filename)
 %
 % 'meterType' id code of the measurement device to use, as listed in "help MeasXYZ".
 % Defaults to meterType 7 for the CRS ColorCal2.
+%
+% 'highprecision' If set to 1, will request a fp16 16 bpc non-linear
+% floating point framebuffer for output, instead of the default setting 0,
+% which requests a 10 bpc linear framebuffer. This may be able to raise
+% precision of the encoded signal from 10 bit to up to 12 bit.
 %
 % 'screenid' Screen to use. Defaults to maximum screen id.
 %
@@ -46,11 +51,15 @@ if nargin < 2 || isempty(meterType)
     meterType = 7;
 end
 
-if nargin < 3 || isempty(screenid)
+if nargin < 3 || isempty(highprecision)
+    highprecision = 0;
+end
+
+if nargin < 4 || isempty(screenid)
     screenid = max(Screen('Screens'));
 end
 
-if nargin < 4 || isempty(filename)
+if nargin < 5 || isempty(filename)
     filename = 'hdrmeasurements.mat';
 else
     if ~ischar(filename)
@@ -73,6 +82,9 @@ try
     % Background color is black, unit for all colors is nits.
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits');
+    if highprecision == 1
+        PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
+    end
     [win, rect] = PsychImaging('OpenWindow', screenid, 0);
     HideCursor(win);
     Screen('Textsize', win, 16);
