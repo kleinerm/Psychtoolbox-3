@@ -206,17 +206,21 @@ try
 
         KbReleaseWait;
 
-        % Compute maximum and max mean luminance of the image:
-        maxCLL = max(max(max(img)));
-        maxFALL = mean(mean(mean(img)));
-
-        if ~isa(img, 'double')
-            % img is uint8, likely SDR encoded. Convert maxCLL and maxFALL
-            % to double format and scale them so that values 0 - 255 map to
-            % luminance range 0 - 80 nits, as 80 nits is the reference
-            % maximum for SDR range:
-            maxCLL = double(maxCLL) / 255 * 80;
-            maxFALL = double(maxFALL) / 255 * 80;
+        % Compute maximum and max mean luminance of the image: Do not abort
+        % on errors (flag 1), but just return an error message in 'errmsg',
+        % and maxFALL = maxCLL = 0 for "don't know". The returned maxFALL
+        % and maxCLL are clamped to the safe range of 0 - 65535 nits:
+        [maxFALL, maxCLL, ~, ~, errmsg] = ComputeHDRStaticMetadataType1ContentLightLevels(img, [], [], 1);
+        if ~isempty(errmsg)
+            % Something is wrong with this image 'img'. Lets skip it:
+            msg = ['Could not compute content light levels for image file ' imagename '. Image may display funny. Error was:\n' errmsg];
+            fprintf([msg, '\n']);
+            DrawFormattedText(win, [msg '\nPress ESCAPE key to abort viewer in case of endless loops.'], 'center', 'center', [300 0 0]);
+            Screen('Flip', win);
+            [~, keyCode] = KbStrokeWait(-1, GetSecs + 5);
+            if keyCode(KbName('ESCAPE'))
+                break;
+            end
         end
 
         % Set step size for change of scaling factor. We get the maximum luminance
@@ -231,7 +235,7 @@ try
         % Tell the HDR display about maximum frame average light level and maximum
         % content light level of the image:
         imgpropmsg = sprintf('Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL);
-        if  maxCLL > 10000
+        if maxCLL > 10000
             imgpropmsg = [imgpropmsg sprintf('-> maxCLL %f exceeds 10000 nits! Rescaling to clamp to 10000 nits.\n', maxCLL)]; %#ok<AGROW>
 
             nrhigh = length(find(img > 10000));
@@ -247,8 +251,7 @@ try
             img = img * scaledown;
 
             % Recompute maximum and max mean luminance of the image:
-            maxCLL = max(max(max(img)));
-            maxFALL = mean(mean(mean(img)));
+            [maxFALL, maxCLL] = ComputeHDRStaticMetadataType1ContentLightLevels(img);
 
             imgpropmsg = [imgpropmsg sprintf('-> Clamping: Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL)]; %#ok<AGROW>
         end

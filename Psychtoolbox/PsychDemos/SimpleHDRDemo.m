@@ -92,8 +92,7 @@ switch info.format
 end
 
 % Compute maximum and max mean luminance of the image:
-maxCLL = max(max(max(img))) %#ok<NOPRT>
-maxFALL = mean(mean(mean(img))) %#ok<NOPRT>
+[maxFALL, maxCLL] = ComputeHDRStaticMetadataType1ContentLightLevels(img);
 
 % Find screen to display on: We choose the one with the highest number,
 % assuming this is the HDR display:
