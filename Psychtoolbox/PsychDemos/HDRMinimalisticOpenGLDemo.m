@@ -105,7 +105,7 @@ PsychImaging('AddTask', 'General', 'EnableHDR');
 
 % Set HDR metadata to an average scene luminance of 100 nits, and a peak luminance
 % of 1000 nits, keep color gamut etc. at display native gamut etc.:
-PsychHDR('HDRMetadata', win, [], 100, 1000);
+PsychHDR('HDRMetadata', win, 0, 100, 1000);
 
 % Setup the OpenGL rendering context of the onscreen window for use by
 % OpenGL wrapper. After this command, all following OpenGL commands will

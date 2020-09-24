@@ -116,7 +116,7 @@ win = PsychImaging('OpenWindow', screenid, 0);
 
 % Tell the HDR display about maximum frame average light level and maximum
 % content light level of the image:
-PsychHDR('HDRMetadata', win, [], maxFALL, maxCLL);
+PsychHDR('HDRMetadata', win, 0, maxFALL, maxCLL);
 
 % Build a Psychtoolbox 16 bpc half-float texture from the image array
 % by setting the (optional) 'floatprecision' flag to 1. If you need

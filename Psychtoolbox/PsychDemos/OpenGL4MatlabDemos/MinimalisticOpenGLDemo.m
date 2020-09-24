@@ -261,7 +261,7 @@ glLightfv(GL.LIGHT0,GL.POSITION,[ 1 2 3 0 ]);
 if hdr
   % Set HDR metadata to an average scene luminance of 100 nits, and a peak luminance
   % of 1000 nits, keep color gamut etc. at display native gamut etc.:
-  PsychHDR('HDRMetadata', win, [], 100, 1000);
+  PsychHDR('HDRMetadata', win, 0, 100, 1000);
 
   % We need to disable color clamping to [0; 1] range for vertex colors, or our
   % light source intensities will only reach up to 1 nit, which is darkness:

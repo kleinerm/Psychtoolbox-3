@@ -300,7 +300,7 @@ function ret = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKb
     % frames - ie. brightest component in whole test sequence:
     maxCLL = max(targetcolors(:));
     % frame average light levels: For each frame/test patch, the value of
-    % the brightest pixel color component if each pixel, averaged over all
+    % the brightest pixel color component in each pixel, averaged over all
     % pixels in a frame. In our case, as all pixels in the test patch have
     % same color and thereby same max component / component value, we just
     % take that maximum for each patch and multiply with how much of the
@@ -313,9 +313,8 @@ function ret = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKb
     msg = sprintf('Coverage %.01f%% : maxCLL = %.02f nits : maxFALL = %.02f nits.\n', 100 * coverage, maxCLL, maxFALL);
     disp(msg);
 
-    % Tell the monitor about maxFALL and maxCLL, clamped to allowed maximum
-    % of 10000 nits:
-    PsychHDR('HDRMetadata', win, [], min(maxFALL, 10000), min(maxCLL, 10000));
+    % Tell the monitor about maxFALL and maxCLL, clamped to allowed maximum of 65535 nits:
+    PsychHDR('HDRMetadata', win, 0, min(maxFALL, 65535), min(maxCLL, 65535));
     Screen('Flip', win);
 
     if ~skipKbWait

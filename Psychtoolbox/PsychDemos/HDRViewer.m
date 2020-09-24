@@ -273,8 +273,8 @@ try
         % to be the SDR "standard dynamic range" of a regular display or image.
         ldrtexid = Screen('MakeTexture', win, quantimg);
 
-        % Send current content light level properties to display, clamped to 10k nits:
-        PsychHDR('HDRMetadata', win, [], min(maxFALL * sf, 10000), min(maxCLL * sf, 10000));
+        % Send current content light level properties to display:
+        PsychHDR('HDRMetadata', win, 0, maxFALL * sf, maxCLL * sf);
 
         needupdate = 1;
         zoomset = 0;
@@ -331,7 +331,7 @@ try
             % as possible from Psychtoolbox side.
             % AMD's Windows driver is not quite as bad, but not great
             % either, taking over 120 msecs for such a setup call...
-            % PsychHDR('HDRMetadata', win, [], min(maxFALL * sf, 10000), min(maxCLL * sf, 10000));
+            % PsychHDR('HDRMetadata', win, 0, min(maxFALL * sf, 10000), min(maxCLL * sf, 10000));
 
             % Some status text:
             if hdrmode
