@@ -257,6 +257,19 @@ try
         end
         disp(imgpropmsg);
 
+        if maxFALL > hdrProperties.MaxFrameAverageLightLevel
+            imgpropmsg = [imgpropmsg sprintf('-> maxFALL %f exceeds sustainable MaxFrameAverageLightLevel %f nits of display! Rescaling to clamp maxFALL to sustainable range.\n', maxFALL, hdrProperties.MaxFrameAverageLightLevel)]; %#ok<AGROW>
+
+            scaledown = hdrProperties.MaxFrameAverageLightLevel / maxFALL;
+            img = img * scaledown;
+
+            % Recompute maximum and max mean luminance of the image:
+            [maxFALL, maxCLL] = ComputeHDRStaticMetadataType1ContentLightLevels(img);
+
+            imgpropmsg = [imgpropmsg sprintf('-> Clamping: Setting image maxFALL %f nits, maxCLL %f nits\n', maxFALL, maxCLL)]; %#ok<AGROW>
+        end
+        disp(imgpropmsg);
+
         % Build a Psychtoolbox 16 bpc half-float texture from the image array
         % by setting the (optional) 'floatprecision' flag to 1.
         % texid = Screen('MakeTexture', win, img, [], [], 1);
