@@ -102,39 +102,54 @@ function varargout = PsychHDR(cmd, varargin)
 %   be the safer choice.
 %
 %
-% oldHdrMetadata = PsychHDR('HDRMetadata', window [, metadataType=0][, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);
+% a) oldHdrMetadata = PsychHDR('HDRMetadata', window [, metadataType=0][, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);
+% b) oldHdrMetadata = PsychHDR('HDRMetadata', window [, newHdrMetadata]);
 % - Return and/or set HDR metadata for presentation window 'window'.
 %
-%   This function returns the currently defined HDR metadata that is sent to the HDR
-%   display monitor associated with the window 'window'. It optionally allows to
-%   define new HDR metadata to send to the monitor, starting with the next presented
-%   visual stimulus image.
+%   This function returns the currently defined HDR metadata that is sent
+%   to the HDR display associated with the window 'window'. It optionally
+%   allows to define new HDR metadata to send to the display, starting with
+%   the next presented visual stimulus image.
 %
-%   Return argument 'oldHdrMetadata' is a struct with information about the current
-%   metadata. Optionally you can define new metadata to be sent to the display. If
-%   you specify any new settings, but omit any values or leave them [] empty, then
-%   those values will remain at their current / old values.
+%   Return argument 'oldHdrMetadata' is a struct with information about the
+%   current metadata. Optionally you can define new metadata to be sent to
+%   the display in one of the two formats a) or b) shown above: Either a)
+%   as separate parameters, or b) as a 'newHdrMetadata' struct. If you use
+%   the separate parameters format a) and specify any new settings, but
+%   omit some of the parameter values or leave them [] empty, then those
+%   values will remain at their current / old values. If you use the struct
+%   format b), then you must pass in a non-empty 'newHdrMetadata' struct
+%   which contains the same fields as the struct returned in 'oldHdrMetadata',
+%   with all fields for the given 'MetadataType' properly defined, otherwise
+%   an error will occur. Format b) is useful as a convenience for querying
+%   'oldHdrMetadata', then modifying some of its values and then passing
+%   this modified variant back in as 'newHdrMetadata'. For HDR movie
+%   playback, Screen('OpenMovie') also optionally returns a suitable
+%   hdrStaticMetaData struct in the right format for passing it as
+%   'newHdrMetadata'.
 %
 %   The following fields in the struct and as new settings are defined:
 %
 %   'MetadataType' Type of metadata to send. Currently only a value of 0 is
-%   supported, which defines "Static HDR metadata type 1", as used and specified by
-%   the HDR-10 standard. This type of metadata allows for luminance levels between 0
-%   and 10000 nits.
+%   supported, which defines "Static HDR metadata type 1", as used and
+%   specified by the HDR standard CTA-861-G, section 6.9.1.
 %
 %   'MaxFrameAverageLightLevel' Maximum frame average light level of the visual
-%   content in nits.
+%   content in nits, range 0 - 65535 nits.
 %
-%   'MaxContentLightLevel' Maximum light level of the visual content in nits.
+%   'MaxContentLightLevel' Maximum light level of the visual content in
+%   nits, range 0 - 65535 nits.
 %
-%   'MinLuminance' Minimum supported luminance of the mastering display in nits.
+%   'MinLuminance' Minimum supported luminance of the mastering display in
+%   nits, range 0 - 6.5535 nits.
 %
-%   'MaxLuminance' Maximum supported luminance of the mastering display in nits.
+%   'MaxLuminance' Maximum supported luminance of the mastering display in
+%   nits, range 0 - 65535 nits.
 %
-%   'ColorGamut' A 2-by-4 matrix encoding the 2D chromaticity coordinates of the
-%   red, green, and blue color primaries in columns 1, 2, and 3, and the location of
-%   the white-point in column 4. This defines the color space and gamut in which the
-%   visual content was produced.
+%   'ColorGamut' A 2-by-4 matrix encoding the 2D chromaticity coordinates
+%   of the red, green, and blue color primaries in columns 1, 2, and 3, and
+%   the location of the white-point in column 4. This defines the color
+%   space and gamut in which the visual content was produced.
 %
 
 % History:
@@ -319,6 +334,18 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Return formatting shader to caller:
     varargout{1} = oetfshader;
     varargout{2} = oetfshaderstring;
+
+    return;
+end
+
+% PsychHDR('HDRMetadata', window, hdrmetadatastruct) ?
+if strcmpi(cmd, 'HDRMetadata') && (length(varargin) == 2) && isstruct(varargin{2})
+    % This is a set call for HDRMetadata, with a struct providing the
+    % parameters. Unpack the struct and convert into a conventional call to
+    % PsychVulkanCore('HDRMetadata'):
+    window = varargin{1};
+    meta = varargin{2};
+    [ varargout{1:nargout} ] = PsychVulkan(cmd, window, meta.MetadataType, meta.MaxFrameAverageLightLevel, meta.MaxContentLightLevel, meta.MinLuminance, meta.MaxLuminance, meta.ColorGamut);
 
     return;
 end
