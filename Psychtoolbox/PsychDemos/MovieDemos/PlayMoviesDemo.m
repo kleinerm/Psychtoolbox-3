@@ -253,7 +253,7 @@ try
                 % metadata attached, also provide it to the HDR display, in
                 % the hope it will somehow enhance reproduction of the
                 % visual movie content:
-                PsychHDR('HDRMetadata', win, hdrStaticMetaData.MetadataType,  hdrStaticMetaData.MaxFrameAverageLightLevel, hdrStaticMetaData.MaxContentLightLevel, hdrStaticMetaData.MinLuminance, hdrStaticMetaData.MaxLuminance, hdrStaticMetaData.ColorGamut);
+                PsychHDR('HDRMetadata', win, hdrStaticMetaData);
             end
         end
 
