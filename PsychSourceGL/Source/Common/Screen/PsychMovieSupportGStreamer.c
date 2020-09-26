@@ -148,6 +148,7 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "uniform float inputBpcBias;\n"
 "uniform float Kr;\n"
 "uniform float Kb;\n"
+"uniform float outUnitMultiplier;\n"
 "varying vec4 unclampedFragColor; \n"
 "varying vec2 texNominalSize; \n"
 " \n"
@@ -205,16 +206,17 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "        v = vec3(r, g, b);\n"
 "        f = pow(v, vec3(mi));\n"
 "        L = pow((f - vec3(c1)) / (vec3(c2) - vec3(c3) * f), vec3(ni));\n"
-"        L = L * 10000.0;\n"
 "\n"
+"        /* L is now linear r,g,b in normalized [0; 1] linear range, where 0.0 = 0 nits and 1.0 = 10000 nits: */\n"
 "        r = L.r;\n"
 "        g = L.g;\n"
 "        b = L.b;\n"
 "    }\n"
 "\n"
-"    /* Multiply texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
-"    /* Assign result as output fragment color: */ \n"
-"    gl_FragColor = vec4(r, g, b, 1.0) * unclampedFragColor; \n"
+"    /* Multiply linear normalized [0 ; 1] range of r,g,b to target framebuffer range, e.g., [0 ; 10000.0] for absolute nits, [0 ; 125.0] for SDR 80-nit-units. */"
+"    /* Then set alpha to 1.0 and multiply the final vec4 texcolor with incoming fragment color (GL_MODULATE emulation). */ \n"
+"    /* and assign result as output fragment color. */ \n"
+"    gl_FragColor = vec4(r * outUnitMultiplier, g * outUnitMultiplier, b * outUnitMultiplier, 1.0) * unclampedFragColor; \n"
 "} \n";
 
 // Stage 1: Sample [I420] / 422 / 444, [multiply by 65535 or 255 (> 8 bpc or not?)][, range convert (limited vs. full?)][, normalize.]
@@ -230,7 +232,7 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
     // Do we already have a planar HDR decode texture shader?
     if (movie->texturePlanarHDRDecodeShader == 0) {
         double Kr, Kb;
-        float inputBias, inputMultiplier;
+        float inputBias, inputMultiplier, outUnitMultiplier;
         int bpc = GST_VIDEO_FORMAT_INFO_DEPTH(movie->sinkVideoInfo.finfo, 0);
 
         // Nope. Need to create one:
@@ -277,6 +279,28 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
         // Hack: Test code for PQ EOTF decoding. Tell shader about type of EOTF transfer function:
         glUniform1i(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "eotfType"), movie->sinkVideoInfo.colorimetry.transfer);
 
+        // Assign output multiplier for linear r,g,b values, to convert into target unit used in Psychtoolbox windows framebuffer,
+        if (windowRecord->imagingMode & kPsychNeedHDRWindow) {
+            switch(movie->sinkVideoInfo.colorimetry.transfer) {
+                case 14: // aka GST_VIDEO_TRANSFER_SMPTE2084     - HDR PQ
+                case 15: // aka GST_VIDEO_TRANSFER_ARIB_STD_B67  - HDR HLG
+                    // HDR movie format: Scale normalized 0-1 range where 0 = 0 Nits, 1 = 10000 nits, to framebuffer HDR units:
+                    outUnitMultiplier = windowRecord->normalizedToHDRScaleFactor;
+                    break;
+
+                default:
+                    // SDR / LDR movie format: Upscale to HDR color range of window:
+                    outUnitMultiplier = windowRecord->maxSDRToHDRScaleFactor;
+                    break;
+            }
+        } else {
+            // Standard window, no scaling needed:
+            outUnitMultiplier = 1.0;
+        }
+
+        glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "outUnitMultiplier"), outUnitMultiplier);
+
+        // Setup of sampling and conversion shader complete:
         glUseProgram(0);
     }
 
