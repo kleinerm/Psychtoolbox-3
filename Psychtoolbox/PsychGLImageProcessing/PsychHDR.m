@@ -102,31 +102,35 @@ function varargout = PsychHDR(cmd, varargin)
 %   be the safer choice.
 %
 %
-% a) oldHdrMetadata = PsychHDR('HDRMetadata', window [, metadataType=0][, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);
+% a) oldHdrMetadata = PsychHDR('HDRMetadata', window, metadataType [, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);
 % b) oldHdrMetadata = PsychHDR('HDRMetadata', window [, newHdrMetadata]);
 % - Return and/or set HDR metadata for presentation window 'window'.
 %
 %   This function returns the currently defined HDR metadata that is sent
 %   to the HDR display associated with the window 'window'. It optionally
 %   allows to define new HDR metadata to send to the display, starting with
-%   the next presented visual stimulus image.
+%   the next presented visual stimulus image, ie. the successfull completion
+%   of the next Screen('Flip').
+%
+%   The mandatory parameter 'metadataType' specifies the format in which
+%   HDR metadata should be returned or set.
 %
 %   Return argument 'oldHdrMetadata' is a struct with information about the
 %   current metadata. Optionally you can define new metadata to be sent to
 %   the display in one of the two formats a) or b) shown above: Either a)
 %   as separate parameters, or b) as a 'newHdrMetadata' struct. If you use
 %   the separate parameters format a) and specify any new settings, but
-%   omit some of the parameter values or leave them [] empty, then those
-%   values will remain at their current / old values. If you use the struct
-%   format b), then you must pass in a non-empty 'newHdrMetadata' struct
-%   which contains the same fields as the struct returned in 'oldHdrMetadata',
-%   with all fields for the given 'MetadataType' properly defined, otherwise
-%   an error will occur. Format b) is useful as a convenience for querying
-%   'oldHdrMetadata', then modifying some of its values and then passing
-%   this modified variant back in as 'newHdrMetadata'. For HDR movie
-%   playback, Screen('OpenMovie') also optionally returns a suitable
-%   hdrStaticMetaData struct in the right format for passing it as
-%   'newHdrMetadata'.
+%   omit some of the optional parameter values or leave them [] empty, then
+%   those values will remain at their current / old values. If you use the
+%   struct format b), then you must pass in a non-empty 'newHdrMetadata'
+%   struct which contains the same fields as the struct returned in
+%   'oldHdrMetadata', with all fields for the given 'MetadataType' properly
+%   defined, otherwise an error will occur. Format b) is useful as a
+%   convenience for querying 'oldHdrMetadata', then modifying some of its
+%   values, and then passing this modified variant back in as
+%   'newHdrMetadata'. For HDR movie playback, Screen('OpenMovie') also
+%   optionally returns a suitable hdrStaticMetaData struct in the right
+%   format for passing it as 'newHdrMetadata'.
 %
 %   The following fields in the struct and as new settings are defined:
 %

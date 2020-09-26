@@ -284,7 +284,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "hdr = PsychVulkanCore('GetHDRProperties', vulkanWindow);";
     synopsis[i++] = "oldlocalDimmmingEnable = PsychVulkanCore('HDRLocalDimming', vulkanWindow [, localDimmmingEnable]);";
     synopsis[i++] = "[interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vulkanWindowHandle [, eye=0]);";
-    synopsis[i++] = "oldHdrMetadata = PsychVulkanCore('HDRMetadata', vulkanWindow [, metadataType=0][, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);";
+    synopsis[i++] = "oldHdrMetadata = PsychVulkanCore('HDRMetadata', vulkanWindow, metadataType [, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);";
     synopsis[i++] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=1]);";
     synopsis[i++] = NULL; // Mark end of synopsis.
 
@@ -3935,14 +3935,16 @@ PsychError PSYCHVULKANGetHDRProperties(void)
 
 PsychError PSYCHVULKANHDRMetadata(void)
 {
-    static char useString[] = "oldHdrMetadata = PsychVulkanCore('HDRMetadata', vulkanWindow [, metadataType=0][, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);";
-    //                         1                                               1               2                 3                            4                       5               6               7
+    static char useString[] = "oldHdrMetadata = PsychVulkanCore('HDRMetadata', vulkanWindow, metadataType [, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);";
+    //                         1                                               1             2               3                            4                       5               6               7
     static char synopsisString[] =
     "Return and/or set HDR metadata for Vulkan presentation window 'vulkanWindow'.\n"
     "This function returns the currently defined HDR metadata that is sent to the "
-    "HDR display monitor associated with Vulkan window 'vulkanWindow'. It optionally "
+    "HDR display monitor associated with Vulkan window 'vulkanWindow', according to the "
+    "format specified by the mandatory 'metadataType' parameter. It optionally "
     "allows to define new HDR metadata to send to the monitor, starting with the next "
-    "presented visual stimulus image.\n"
+    "presented visual stimulus image, ie. at the completion of the next Screen('Flip') or "
+    "PsychVulkanCore('Present').\n"
     "Note: Setting new HDR metadata can be an expensive - and potentially visually disruptive - "
     "operation with some graphics drivers on some operating system, e.g., on MS-Windows. Therefore "
     "avoid too frequent updates. Our driver will eliminate redundant updates as a simple performance "
@@ -3952,14 +3954,16 @@ PsychError PSYCHVULKANHDRMetadata(void)
     "settings, but omit any values or leave them [] empty, then those values will remain at their "
     "current / old values.\n"
     "The following fields in the struct and as new settings are defined:\n"
-    "'MetadataType' Type of metadata to send. Currently only a value of 0 is supported, which "
-    "defines \"Static HDR metadata type 1\", as used and specified by the HDR-10 standard. This "
-    "type of metadata allows for luminance levels between 0 and 10000 nits.\n"
-    "'MaxFrameAverageLightLevel' Maximum frame average light level of the visual content in nits.\n"
-    "'MaxContentLightLevel' Maximum light level of the visual content in nits.\n"
-    "'MinLuminance' Minimum supported luminance of the mastering display in nits.\n"
-    "'MaxLuminance' Maximum supported luminance of the mastering display in nits.\n"
-    "'ColorGamut' A 2-by-4 matrix encoding the 2D chromaticity coordinates of the "
+    "'MetadataType' Mandatory: Type of metadata to send or query. Currently only a value of 0 is supported, which "
+    "defines \"Static HDR metadata type 1\", as specified by the standards SMPTE 2086 for the "
+    "mastering display color properties (~ color volume) and CTA-861.3 / CTA-861-G standards "
+    "for content light levels. This type of metadata allows for luminance levels between "
+    "0 and 65535 nits, except for 'MinLuminance' which allows for a maximum of 6.5535 nits.\n"
+    "'MaxFrameAverageLightLevel' Maximum frame average light level of the visual content in nits [0; 65535].\n"
+    "'MaxContentLightLevel' Maximum light level of the visual content in nits [0; 65535].\n"
+    "'MinLuminance' Minimum supported luminance of the mastering display in nits [0; 6.5535].\n"
+    "'MaxLuminance' Maximum supported luminance of the mastering display in nits [0; 65535].\n"
+    "'ColorGamut' A 2-by-4 matrix encoding the CIE-1931 2D chromaticity coordinates of the "
     "red, green, and blue color primaries in columns 1, 2, and 3, and the location of the white-point "
     "in column 4. This defines the color space and gamut in which the visual content was produced.\n"
     "\n";
@@ -3971,7 +3975,7 @@ PsychError PSYCHVULKANHDRMetadata(void)
     PsychGenericScriptType *s;
     PsychGenericScriptType *outMat;
     double *v;
-    int metadataType;
+    int metadataType = 0;
     double maxFrameAverageLightLevel = DBL_MAX, maxContentLightLevel = DBL_MAX;
     double minLuminance = DBL_MAX, maxLuminance = DBL_MAX;
     double *colorGamut;
@@ -3997,13 +4001,18 @@ PsychError PSYCHVULKANHDRMetadata(void)
     // Get the window:
     window = PsychGetVulkanWindow(handle, FALSE);
 
+    // Get and validate required metadataType:
+    PsychCopyInIntegerArg(2, (PsychGetNumInputArgs() > 2) ? kPsychArgRequired : kPsychArgOptional, &metadataType);
+    if (metadataType != 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid HDR 'metadataType' specified: Valid value is 0 only at the moment.");
+
     // Userscript wants current / old settings?
     if (PsychIsArgPresent(PsychArgOut, 1)) {
         // Create a structure and populate it with the current settings / old settings:
         PsychAllocOutStructArray(1, kPsychArgOptional, -1, fieldCount, fieldNames, &s);
 
         // Currently we only support MetadataType 0, ie. "Static HDR Metadata Type 1" as known from HDR-10 standard,
-        // and the only thing current graphics and display drivers generally support afaik as of June 2020:
+        // and the only thing current graphics and display drivers generally support afaik as of September 2020:
         PsychSetStructArrayDoubleElement("MetadataType", 0, 0, s);
 
         // Mastering display min and max luminance:
