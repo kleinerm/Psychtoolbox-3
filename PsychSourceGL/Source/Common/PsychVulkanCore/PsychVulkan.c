@@ -3861,7 +3861,7 @@ PsychError PSYCHVULKANGetHDRProperties(void)
     "'MaxLuminance' Maximum supported peak / burst luminance in nits.\n"
     "'MaxFrameAverageLightLevel' Maximum sustainable supported luminance in nits.\n"
     "'MaxContentLightLevel' Maximum desired content light level in nits.\n"
-    "'ColorGamut' A 2-by-4 matrix encoding the 2D chromaticity coordinates of the "
+    "'ColorGamut' A 2-by-4 matrix encoding the CIE-1931 2D chromaticity coordinates of the "
     "red, green, and blue color primaries in columns 1, 2 and 3, and the white-point "
     "in column 4.\n"
     "'ColorSpace' Vulkan colorspace used for display. See VkColorSpaceKHR spec for reference.\n"
@@ -4036,17 +4036,11 @@ PsychError PSYCHVULKANHDRMetadata(void)
     oldDisplayHDRMetadata = window->currentDisplayHDRMetadata;
 
     // Assign optional new settings from user script:
-    metadataType = 0;
-    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &metadataType)) {
-        // Validate. Only type 0 allowed/supported atm.:
-        if (metadataType != 0)
-            PsychErrorExitMsg(PsychError_user, "Invalid HDR metadataType specified: Valid value is 0 only at the moment.");
-    }
 
     // Content light levels:
     if (PsychCopyInDoubleArg(3, kPsychArgOptional, &maxFrameAverageLightLevel)) {
-        if (maxFrameAverageLightLevel < 0 || maxFrameAverageLightLevel > 10000)
-            PsychErrorExitMsg(PsychError_user, "Invalid HDR content maxFrameAverageLightLevel specified: Must be between 0 and 10000 nits.");
+        if (maxFrameAverageLightLevel < 0 || maxFrameAverageLightLevel > 65535)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR content maxFrameAverageLightLevel specified: Must be between 0 and 65535 nits.");
 
         window->currentDisplayHDRMetadata.maxFrameAverageLightLevel = (float) maxFrameAverageLightLevel;
 
@@ -4054,8 +4048,8 @@ PsychError PSYCHVULKANHDRMetadata(void)
     }
 
     if (PsychCopyInDoubleArg(4, kPsychArgOptional, &maxContentLightLevel)) {
-        if (maxContentLightLevel < 0 || maxContentLightLevel > 10000)
-            PsychErrorExitMsg(PsychError_user, "Invalid HDR content maxContentLightLevel specified: Must be between 0 and 10000 nits.");
+        if (maxContentLightLevel < 0 || maxContentLightLevel > 65535)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR content maxContentLightLevel specified: Must be between 0 and 65535 nits.");
 
         if (maxContentLightLevel < window->currentDisplayHDRMetadata.maxFrameAverageLightLevel)
             PsychErrorExitMsg(PsychError_user, "Invalid HDR content maxContentLightLevel specified: Must be equal or greater than maxFrameAverageLightLevel in nits.");
@@ -4067,8 +4061,8 @@ PsychError PSYCHVULKANHDRMetadata(void)
 
     // Mastering display supported light levels:
     if (PsychCopyInDoubleArg(5, kPsychArgOptional, &minLuminance)) {
-        if (minLuminance < 0 || minLuminance > 10000)
-            PsychErrorExitMsg(PsychError_user, "Invalid HDR mastering display minLuminance specified: Must be between 0 and 10000 nits.");
+        if (minLuminance < 0 || minLuminance > 6.5535)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR mastering display minLuminance specified: Must be between 0 and 6.5535 nits.");
 
         window->currentDisplayHDRMetadata.minLuminance = (float) minLuminance;
 
@@ -4076,8 +4070,8 @@ PsychError PSYCHVULKANHDRMetadata(void)
     }
 
     if (PsychCopyInDoubleArg(6, kPsychArgOptional, &maxLuminance)) {
-        if (maxLuminance < 0 || maxLuminance > 10000)
-            PsychErrorExitMsg(PsychError_user, "Invalid HDR mastering display maxLuminance specified: Must be between 0 and 10000 nits.");
+        if (maxLuminance < 0 || maxLuminance > 65535)
+            PsychErrorExitMsg(PsychError_user, "Invalid HDR mastering display maxLuminance specified: Must be between 0 and 65535 nits.");
 
         if (maxLuminance <  window->currentDisplayHDRMetadata.minLuminance)
             PsychErrorExitMsg(PsychError_user, "Invalid HDR mastering display maxLuminance specified: Must be equal or greater than minLuminance in nits.");

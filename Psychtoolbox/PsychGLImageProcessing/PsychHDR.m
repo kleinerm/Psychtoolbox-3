@@ -71,7 +71,7 @@ function varargout = PsychHDR(cmd, varargin)
 %
 %   'MaxContentLightLevel' Maximum desired content light level in nits.
 %
-%   'ColorGamut' A 2-by-4 matrix encoding the 2D chromaticity coordinates of the
+%   'ColorGamut' A 2-by-4 matrix encoding the CIE-1931 2D chromaticity coordinates of the
 %                red, green, and blue color primaries in columns 1, 2 and 3, and
 %                the white-point in column 4.
 %
@@ -130,9 +130,11 @@ function varargout = PsychHDR(cmd, varargin)
 %
 %   The following fields in the struct and as new settings are defined:
 %
-%   'MetadataType' Type of metadata to send. Currently only a value of 0 is
-%   supported, which defines "Static HDR metadata type 1", as used and
-%   specified by the HDR standard CTA-861-G, section 6.9.1.
+%   'MetadataType' Type of metadata to send or query. Currently only a
+%   value of 0 is supported, which defines "Static HDR metadata type 1", as
+%   used and specified by the HDR standards CTA-861-3 / CTA-861-G (content
+%   light levels) and SMPTE 2086 (mastering display color properties, ie.
+%   color volume).
 %
 %   'MaxFrameAverageLightLevel' Maximum frame average light level of the visual
 %   content in nits, range 0 - 65535 nits.
@@ -146,10 +148,10 @@ function varargout = PsychHDR(cmd, varargin)
 %   'MaxLuminance' Maximum supported luminance of the mastering display in
 %   nits, range 0 - 65535 nits.
 %
-%   'ColorGamut' A 2-by-4 matrix encoding the 2D chromaticity coordinates
-%   of the red, green, and blue color primaries in columns 1, 2, and 3, and
-%   the location of the white-point in column 4. This defines the color
-%   space and gamut in which the visual content was produced.
+%   'ColorGamut' A 2-by-4 matrix encoding the CIE-1931 2D chromaticity
+%   coordinates of the red, green, and blue color primaries in columns 1,
+%   2, and 3, and the location of the white-point in column 4. This defines
+%   the color space and gamut in which the visual content was produced.
 %
 
 % History:
@@ -352,7 +354,7 @@ end
 
 % Dispatch subfunctions with "HDR" in their name to PsychVulkan(), which may
 % hand them off to PsychVulkanCore():
-if ~isempty(strfind(lower(cmd), 'hdr'))
+if ~isempty(strfind(lower(cmd), 'hdr')) %#ok<*STREMP>
     if length(varargin) > 0
         [ varargout{1:nargout} ] = PsychVulkan(cmd, varargin{1:end});
     else
