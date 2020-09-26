@@ -1261,8 +1261,13 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
 
     // Initialize currentDisplayHDRMetadata, ie. what we would set when switching to HDR mode or
     // changing HDR info packets, to the displays nativeDisplayHDRMetadata, as a good startup
-    // default:
+    // default, except for the content light levels which we set to zero, which signals to the
+    // display that they are unknown. This because during dynamic stimulus rendering we really
+    // do not know in advance what those maximum values over a whole session will be. Usercode
+    // can always override for known content:
     window->currentDisplayHDRMetadata = window->nativeDisplayHDRMetadata;
+    window->currentDisplayHDRMetadata.maxFrameAverageLightLevel = 0;
+    window->currentDisplayHDRMetadata.maxContentLightLevel = 0;
 
     if (verbosity > 3) {
         printf("Surface minImageCount %i - maxImageCount %i\n", window->surfaceCapabilities.minImageCount, window->surfaceCapabilities.maxImageCount);
@@ -3959,8 +3964,15 @@ PsychError PSYCHVULKANHDRMetadata(void)
     "mastering display color properties (~ color volume) and CTA-861.3 / CTA-861-G standards "
     "for content light levels. This type of metadata allows for luminance levels between "
     "0 and 65535 nits, except for 'MinLuminance' which allows for a maximum of 6.5535 nits.\n"
+    "The content light level properties 'MaxFrameAverageLightLevel' and 'MaxContentLightLevel' default to "
+    "0 at startup, which signals to the display device that they are unknown, a reasonable assumption for "
+    "dynamically rendered content with prior unknown maximum values over a whole session.\n"
     "'MaxFrameAverageLightLevel' Maximum frame average light level of the visual content in nits [0; 65535].\n"
     "'MaxContentLightLevel' Maximum light level of the visual content in nits [0; 65535].\n"
+    "The following mastering display properties (~ color volume) default to the properties of the used HDR "
+    "display monitor for presentation, if they could be queried from the connected monitor. "
+    "It is advisable to override them with the real properties of the mastering display, e.g., for "
+    "properly mastered movie content or image files where this information may be available.\n"
     "'MinLuminance' Minimum supported luminance of the mastering display in nits [0; 6.5535].\n"
     "'MaxLuminance' Maximum supported luminance of the mastering display in nits [0; 65535].\n"
     "'ColorGamut' A 2-by-4 matrix encoding the CIE-1931 2D chromaticity coordinates of the "

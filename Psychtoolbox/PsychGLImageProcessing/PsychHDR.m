@@ -140,11 +140,24 @@ function varargout = PsychHDR(cmd, varargin)
 %   light levels) and SMPTE 2086 (mastering display color properties, ie.
 %   color volume).
 %
+%   The content light level properties 'MaxFrameAverageLightLevel' and
+%   'MaxContentLightLevel' default to 0 at startup, which signals to the
+%   display device that they are unknown, a reasonable assumption for
+%   dynamically rendered content with prior unknown maximum values over a
+%   whole session.
+%
 %   'MaxFrameAverageLightLevel' Maximum frame average light level of the visual
 %   content in nits, range 0 - 65535 nits.
 %
 %   'MaxContentLightLevel' Maximum light level of the visual content in
 %   nits, range 0 - 65535 nits.
+%
+%   The following mastering display properties (~ color volume) default to
+%   the properties of the connected HDR display monitor for presentation, if
+%   they could be queried from the connected monitor. It is advisable to
+%   override them with the real properties of the mastering display, e.g.,
+%   for properly mastered movie content or image files where this data may
+%   be available.
 %
 %   'MinLuminance' Minimum supported luminance of the mastering display in
 %   nits, range 0 - 6.5535 nits.
