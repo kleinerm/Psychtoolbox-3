@@ -150,8 +150,8 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "uniform float yChromaScale;\n"
 "uniform int eotfType;\n"
 "uniform float unormInputScaling;\n"
-"uniform float inputBpcMultiplier;\n"
-"uniform float inputBpcBias;\n"
+"uniform vec3 rangeScale;\n"
+"uniform vec3 rangeOffset;\n"
 "uniform float Kr;\n"
 "uniform float Kb;\n"
 "uniform float outUnitMultiplier;\n"
@@ -190,17 +190,9 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "\n"
 "    /* Undo potential limited video range, scale to normalized range to get back to [0 ; 1] range for luma,\n"
 "     * [-0.5 ; 0.5] range for chroma: */\n"
-"    if (inputBpcBias > 0.0) {\n"
-"        /* Full range */\n"
-"        y = y * inputBpcMultiplier;\n"
-"        u = (u - inputBpcBias) * inputBpcMultiplier;\n"
-"        v = (v - inputBpcBias) * inputBpcMultiplier;\n"
-"    } else {\n"
-"        /* Limited range */\n"
-"        y = ((y * inputBpcMultiplier) - 16.0) / 219.0;\n"
-"        u = ((u * inputBpcMultiplier) - 128.0) / 224.0;\n"
-"        v = ((v * inputBpcMultiplier) - 128.0) / 224.0;\n"
-"    }\n"
+"    y = (y - rangeOffset[0]) * rangeScale[0];\n"
+"    u = (u - rangeOffset[1]) * rangeScale[1];\n"
+"    v = (v - rangeOffset[2]) * rangeScale[2];\n"
 "\n"
 "    /* Convert from yuv to r'g'b' by multiplication with suitable color matrix: */\n"
 "    rgb.r = y + 2.0 * (1.0 - Kr) * v;\n"
@@ -346,7 +338,8 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
     // Do we already have a planar HDR decode texture shader?
     if (movie->texturePlanarHDRDecodeShader == 0) {
         double Kr, Kb;
-        float inputBias, inputMultiplier, outUnitMultiplier;
+        int offset[GST_VIDEO_MAX_COMPONENTS], scale[GST_VIDEO_MAX_COMPONENTS];
+        float outUnitMultiplier;
         float yChromaScale;
         int bpc = GST_VIDEO_FORMAT_INFO_DEPTH(movie->sinkVideoInfo.finfo, 0);
         // Note: codecVideoInfo is used instead of sinkVideoInfo as source, to get the correct eotf. Why? The other one does
@@ -408,24 +401,13 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
 
         // First handle limited vs. full range encoding, and different bit depths, to
         // map all Y luma into [0; 1] range and all U,V chroma into [-0.5 ; 0.5] range:
-        if (movie->sinkVideoInfo.colorimetry.range == GST_VIDEO_COLOR_RANGE_16_235) {
-            // Movie has limited range of 16-235 for luma, 15-240 for chroma, assuming
-            // 8 bpc, upscaled by 2^(bpc - 8).
-            inputBias = 0.0;
-            inputMultiplier = 1.0 / ((float) (1 << (bpc - 8)));
-            if (PsychPrefStateGet_Verbosity() > 3)
-                printf("Limited range input. ");
-        }
-        else {
-            // Movie has full range of 0-255 for luma and chroma, assuming 8 bpc, upscaled by 2^bpc.
-            inputBias = (float) (1 << (bpc - 1));
-            inputMultiplier = 1.0 / ((float) (1 << bpc) - 1.0);
-            if (PsychPrefStateGet_Verbosity() > 3)
-                printf("Full range input. ");
-        }
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("%s range input. ", (movie->sinkVideoInfo.colorimetry.range == GST_VIDEO_COLOR_RANGE_16_235) ? "Limited" : "Full");
 
-        glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "inputBpcMultiplier"), inputMultiplier);
-        glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "inputBpcBias"), inputBias);
+        // GStreamer gets us the needed offset and scale factors to apply in the shader as c = (c - offset) / scale:
+        gst_video_color_range_offsets(movie->sinkVideoInfo.colorimetry.range, movie->sinkVideoInfo.finfo, offset, scale);
+        glUniform3f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "rangeScale"), 1.0 / (float) scale[0], 1.0 / (float) scale[1], 1.0 / (float) scale[2]);
+        glUniform3f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "rangeOffset"), (float) offset[0], (float) offset[1], (float) offset[2]);
 
         // Get Kr, Kb coefficients for conversion of YUV -> R'G'B' in the shader. GStreamer
         // provides us with the proper coefficients for a given color conversion matrix:
