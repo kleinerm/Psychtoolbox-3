@@ -308,7 +308,7 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "        const float ni = 1.0 / 0.1593017578125;\n"
 "\n"
 "        L = pow(rgb, vec3(mi));\n"
-"        L = pow((L - vec3(c1)) / (vec3(c2) - vec3(c3) * L), vec3(ni));\n"
+"        L = pow(max(L - vec3(c1), vec3(0.0)) / (vec3(c2) - vec3(c3) * L), vec3(ni));\n"
 "\n"
 "        /* L is now linear r,g,b in normalized [0; 1] linear range, where 0.0 = 0 nits and 1.0 = 10000 nits: */\n"
 "        break;\n"
