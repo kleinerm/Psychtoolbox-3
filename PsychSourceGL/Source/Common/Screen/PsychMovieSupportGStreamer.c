@@ -321,7 +321,7 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "        const float c3 = 0.55991073;\n"
 "\n"
 "        s = step(rgb, vec3(0.5));\n"
-"        L = mix((exp((rgb - c3) / c1) + c2) / 12.0, rgb * rgb / 3.0, s);\n"
+"        L = mix((exp((rgb - c3) / c1) + c2) / 12.0, pow(rgb, vec3(2.0)) / 3.0, s);\n"
 "\n"
 "        /* L is now linear r,g,b in normalized [0; 1] linear range, where 0.0 = 0 nits and 1.0 = 1000 nits. */\n"
 "        /* Map it down to [0; 0.1] range, as in our HDR system 0.1 should mean 1000 nits: */\n"
