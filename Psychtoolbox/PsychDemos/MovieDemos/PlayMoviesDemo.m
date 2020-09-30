@@ -14,7 +14,10 @@ function PlayMoviesDemo(moviename, hdr, backgroundMaskOut, tolerance, pixelForma
 % This demo uses automatic asynchronous playback for synchronized playback
 % of video and sound. Each movie plays until end, then rewinds and plays
 % again from the start. Pressing the Cursor-Up/Down key pauses/unpauses the
-% movie and increases/decreases playback rate.
+% movie and increases/decreases playback rate. The 'c' key toggles a mouse
+% color picker that tells you the color values of the pixel roughly under
+% the mouse cursor position.
+%
 % The left- right arrow keys jump in 1 seconds steps. SPACE jumps to the
 % next movie in the list. ESC ends the demo.
 %
@@ -88,6 +91,7 @@ left=KbName('LeftArrow');
 up=KbName('UpArrow');
 down=KbName('DownArrow');
 shift=KbName('RightShift');
+colorPicker=KbName('c');
 
 try
     % Open onscreen window with gray background:
@@ -102,6 +106,7 @@ try
     win = PsychImaging('OpenWindow', screen, [0.5, 0.5, 0.5]);
     [w, h] = Screen('WindowSize', win);
     Screen('Blendfunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    HideCursor(win);
     
     shader = [];
     if (nargin > 2) && ~isempty(backgroundMaskOut)
@@ -223,7 +228,10 @@ try
     
     % Playbackrate defaults to 1:
     rate=1;
-    
+
+    % No mouse color prober/picker by default - Performance impact!
+    colorprobe = 0;
+
     % Choose 16 pixel text size:
     Screen('TextSize', win, 16);
     
@@ -279,7 +287,7 @@ try
         while 1
             % Check for abortion:
             abortit=0;
-            [keyIsDown,secs,keyCode]=KbCheck; %#ok<ASGLU>
+            [keyIsDown, ~, keyCode] = KbCheck(-1);
             if (keyIsDown==1 && keyCode(esc))
                 % Set the abort-demo flag.
                 abortit=2;
@@ -325,6 +333,29 @@ try
                     DrawFormattedText(win, ['Original URL: ' url '\n\n' credits], 'center', 60, 0);
                 end
                 
+                if colorprobe
+                    % Take a screenshot of the pixel below the mouse:
+                    [xm, ym] = GetMouse(win);
+                    mouseposrgb = Screen('GetImage', win, OffsetRect([0 0 1 1], xm, ym), 'drawBuffer', 1);
+                    if hdr
+                        DrawFormattedText(win, sprintf('RGB at cursor position (%f, %f): (%f, %f, %f) nits.\n', xm, ym, mouseposrgb), 0, 50, [100 100 0]);
+                    else
+                        DrawFormattedText(win, sprintf('RGB at cursor position (%f, %f): (%f, %f, %f).\n', xm, ym, mouseposrgb), 0, 50, [1 1 0]);
+                    end
+
+                    % Draw tiny yellow cursor dot:
+                    [~, mi] = max(mouseposrgb);
+                    switch (mi)
+                        case 1
+                            cursorcolor = [0, 200, 200];
+                        case 2
+                            cursorcolor = [200, 0, 200];
+                        case 3
+                            cursorcolor = [200, 200, 0];
+                    end
+                    Screen('DrawDots', win, [xm, ym], 3, cursorcolor);
+                end
+
                 % Update display:
                 Screen('Flip', win);
                 
@@ -368,8 +399,15 @@ try
                 end
                 Screen('PlayMovie', movie, rate, 1, 1.0);
             end
+
+            if (keyIsDown==1 && keyCode(colorPicker))
+                % Toggle color prober / picker:
+                colorprobe = 1 - colorprobe;
+                % Debounce:
+                KbReleaseWait(-1);
+            end
         end
-        
+
         telapsed = GetSecs - t1;
         fprintf('Elapsed time %f seconds, for %i frames. Average framerate %f fps.\n', telapsed, i, i / telapsed);
         
@@ -382,7 +420,10 @@ try
         % Close movie object:
         Screen('CloseMovie', movie);
     end
-    
+
+    % Show cursor again:
+    ShowCursor(win);
+
     % Close screens.
     sca;
     
