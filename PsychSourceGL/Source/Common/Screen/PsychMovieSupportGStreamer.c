@@ -194,10 +194,20 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "    u = (u - rangeOffset[1]) * rangeScale[1];\n"
 "    v = (v - rangeOffset[2]) * rangeScale[2];\n"
 "\n"
+"    /* Clamp to valid range: */\n"
+"    y = clamp(y,  0.0, 1.0);\n"
+"    u = clamp(u, -0.5, 0.5);\n"
+"    v = clamp(v, -0.5, 0.5);\n"
+"\n"
 "    /* Convert from yuv to r'g'b' by multiplication with suitable color matrix: */\n"
 "    rgb.r = y + 2.0 * (1.0 - Kr) * v;\n"
 "    rgb.g = y - 2.0 * (1.0 - Kb) * Kb / (1.0 - Kr - Kb) * u - 2.0 * (1.0 - Kr) * Kr / (1.0 - Kr - Kb) * v;\n"
 "    rgb.b = y + 2.0 * (1.0 - Kb) * u;\n"
+"\n"
+"    /* Clamp to valid range: This is important, as some movies can contain out-of-gamut y,u,v values which    */\n"
+"    /* cause the converted r'g'b' value to become out of allowed [0; 1] range, especially a bit < 0.0. This   */\n"
+"    /* would cause the math below to fail, creating and propagating NaN's into very visible visual artifacts! */\n"
+"    rgb = clamp(rgb, 0.0, 1.0);\n"
 "\n"
 "    /* Convert from r'g'b' non-linear encoding to rgb linear encoding by applying suitable EOTF: */\n"
 "    switch (eotfType) {\n"
@@ -205,7 +215,7 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "    default:\n"
 "        /* Unknown EOTF! Send out a visual indicator to user that something is amiss here: */\n"
 "        rgb.r = step(10.0, mod(ny, 20.0));\n"
-"        L = mix(rgb, rgb, rgb.r);\n"
+"        L = mix(rgb, vec3(0.5), rgb.r);\n"
 "        break;\n"
 "\n"
 "    case 1: /* GST_VIDEO_TRANSFER_GAMMA10: LDR */\n"
@@ -320,6 +330,10 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "    }\n"
 "    }\n"
 "\n"
+"    /* Mark any invalid NaN component values which may have made it to here in a very clear and alarming red to prevent trouble from going unnoticed: */\n"
+"    if (isnan(L.r) || isnan(L.g) || isnan(L.b))\n"
+"        L = vec3(1.0, 0.0, 0.0);\n"
+"\n"
 "    /* Multiply linear normalized [0 ; 1] range of r,g,b to target framebuffer range, e.g., [0 ; 10000.0] for absolute nits, [0 ; 125.0] for SDR 80-nit-units. */\n"
 "    /* Set alpha to 1.0 and multiply the final vec4 texcolor with incoming fragment color (GL_MODULATE emulation), and assign result as output fragment color. */\n"
 "    gl_FragColor = vec4(L.r * outUnitMultiplier, L.g * outUnitMultiplier, L.b * outUnitMultiplier, 1.0) * unclampedFragColor;\n"
@@ -421,7 +435,7 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
         glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "Kr"), Kr);
         glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "Kb"), Kb);
 
-        // Hack: Test code for PQ EOTF decoding. Tell shader about type of EOTF transfer function:
+        // Tell shader about type of EOTF transfer function:
         glUniform1i(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "eotfType"), eotfType);
 
         // Assign output multiplier for linear r,g,b values, to convert into target unit used in Psychtoolbox windows framebuffer,
