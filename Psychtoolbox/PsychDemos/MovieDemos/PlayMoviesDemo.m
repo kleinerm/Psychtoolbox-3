@@ -149,7 +149,7 @@ try
             moviefiles(1).name = [ PsychtoolboxRoot 'PsychDemos/MovieDemos/DualDiscs.mov' ];
         else
             for i=1:size(moviefiles,1)
-                moviefiles(i).name = [ pwd filesep moviefiles(i).name ];
+                moviefiles(i).name = [ moviefiles(i).folder filesep moviefiles(i).name ];
             end
         end
         
