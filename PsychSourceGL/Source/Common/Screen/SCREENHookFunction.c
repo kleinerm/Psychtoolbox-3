@@ -219,6 +219,22 @@ static char synopsisString[] =
     "standards HDR10, HDR10+, DolbyVision etc., if the framebuffer uses units of Nits. A factor of 125 would be typical if the framebuffer "
     "is set up to operate in units of multiples of 80 Nits, another common standard, where a value of 125 corresponds to 10000 Nits."
     "\n\n"
+    "colorGamut = Screen('HookFunction', windowPtr, 'WindowColorGamut' [, hookname][, colorGamut]);\n"
+    "Return the current color gamut settings for the onscreen window 'windowPtr'. Optionally assign new settings.\n"
+    "'hookname' is accepted, but currently ignored. Pass '' or [] for now.\n"
+    "'colorGamut' as return argument is a 2x4 matrix specifying the currently assigned color gamut for the window. "
+    "You can specify an optional 'colorGamut' matrix parameter to set a new color gamut.\n"
+    "By default, 'colorGamut' is an all-zeros matrix, which means that no color gamut is assigned, and Screen() "
+    "should use reasonable defaults (which may be context dependent) if it does some gamut dependent processing. "
+    "If you do set a matrix, then it must be a 2-by-4 matrix, encoding the CIE-1931 2D chromaticity coordinates of the "
+    "red, green, and blue color primaries in columns 1, 2, and 3, and the location of the white-point "
+    "in column 4. This defines the color space and gamut in which the visual content of the onscreen window is "
+    "supposed to live. Currently, this color gamut is only used for movie playback with pixelFormat 11, e.g., HDR playback. "
+    "When decoding and returning video frames from a movie, Screen() will perform a color space transformation to remap the "
+    "image pixels from the source color gamut of the movie to the color gamut specified for the window. If no 'WindowColorGamut' "
+    "call was made prior to start of movie playback, then color gamut will be selected as BT-2020 for HDR windows, and BT-709 for "
+    "standard dynamic range windows.\n"
+    "\n\n"
     "General notes:\n\n"
     "* Hook chains are per onscreen window, so each window can have a different configuration and enable state.\n"
     "* Read all available documentation on the Psychtoolbox imaging pipeline in 'help PsychGLImageprocessing', the PsychDocumentation folder "
@@ -274,12 +290,13 @@ PsychError SCREENHookFunction(void)
     if (strcmp(cmdString, "SetWindowBackendOverrides")==0) cmd=18;
     if (strcmp(cmdString, "ImportDisplayBufferInteropMemory")==0) cmd=19;
     if (strcmp(cmdString, "SetHDRScalingFactors")==0) cmd=20;
+    if (strcmp(cmdString, "WindowColorGamut")==0) cmd=21;
 
     if (cmd == 0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
     if (whereloc < 0) PsychErrorExitMsg(PsychError_user, "Unknown/Invalid/Unparseable insert location specified to 'HookFunction' 'InsertAtXXX'.");
 
     // Need hook name?
-    if (cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15 && cmd!=16 && cmd!=17 && cmd!=18 && cmd!=19 && cmd!=20) {
+    if (cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15 && cmd!=16 && cmd!=17 && cmd!=18 && cmd!=19 && cmd!=20 && cmd!=21) {
         // Get it:
         PsychAllocInCharArg(3, kPsychArgRequired, &hookString);
     }
@@ -593,6 +610,17 @@ PsychError SCREENHookFunction(void)
         case 20: // SetHDRScalingFactors
             PsychCopyInDoubleArg(4, FALSE, &windowRecord->maxSDRToHDRScaleFactor);
             PsychCopyInDoubleArg(5, FALSE, &windowRecord->normalizedToHDRScaleFactor);
+        break;
+
+        case 21: // WindowColorGamut
+            PsychCopyOutDoubleMatArg(1, kPsychArgOptional, 2, 4, 1, &windowRecord->colorGamut[0]);
+
+            if (PsychAllocInDoubleMatArg(4, kPsychArgOptional, &m, &n, &p, &dblmat)) {
+                if (m != 2 || n != 4 || p > 1)
+                    PsychErrorExitMsg(PsychError_user, "HookFunction call to WindowColorGamut failed. Invalid 'colorGamut' matrix specified. Must be a 2x4 matrix.");
+
+                memcpy(&windowRecord->colorGamut[0], dblmat, sizeof(windowRecord->colorGamut));
+            }
         break;
     }
 

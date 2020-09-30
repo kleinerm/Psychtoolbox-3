@@ -433,6 +433,8 @@ typedef struct _PsychWindowRecordType_{
     double                      colorRange;                                 // Maximum allowable color component value. See SCREENColorRange.c for explanation.
     double                      maxSDRToHDRScaleFactor;                     // Conversion factor for 'MakeTexture' or movie SDR content to HDR: How many color units is 1.0 "SDR range" units?
     double                      normalizedToHDRScaleFactor;                 // Conversion factor from normalized (0.0 - 1.0 range) to full HDR range: E.g., used for movie video frame HDR mapping.
+    double                      colorGamut[2 * 4];                          // Definition of onscreen windows assumed color gamut - (x,y) CIE 1931 chromaticity coordinates of red, geen, blue
+                                                                            // primaries and white-point. Used by movie decoding to adapt movie colorspace to target colorspace. Zero == "invalid" on init.
     GLuint                      unclampedDrawShader;                        // Handle of GLSL shader object for drawing of non-texture stims without vertex color clamping. Zero by default.
     GLuint                      defaultDrawShader;                          // Default GLSL shader object for drawing of non-texture stims. Zero by default.
     GLuint                      smoothPointShader;                          // GLSL shader to implement point smoothing via point sprites.

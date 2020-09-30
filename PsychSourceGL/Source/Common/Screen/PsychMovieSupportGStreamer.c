@@ -109,6 +109,211 @@ static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
 static int numMovieRecords = 0;
 static psych_bool firsttime = TRUE;
 
+// Helper functions for generation of CSC matrices:
+// These are a slightly modified version from the original sample code provided
+// by Ryan Juckett (thanks!), which was part of a nice primer on color spaces on
+// his website under http://www.ryanjuckett.com/programming/rgb-color-space-conversion
+//
+// The code and math used here is identical with math from Bruce Lindbloom, under
+// http://www.brucelindbloom.com/index.html?Eqn_RGB_XYZ_Matrix.html
+//
+// The code is also consistent with GStreamer's CSC implementation.
+//
+// The sample code is licensed as follows:
+//
+/******************************************************************************
+ *  Copyright (c) 2010 Ryan Juckett
+ *  http://www.ryanjuckett.com/
+ *
+ *  This software is provided 'as-is', without any express or implied
+ *  warranty. In no event will the authors be held liable for any damages
+ *  arising from the use of this software.
+ *
+ *  Permission is granted to anyone to use this software for any purpose,
+ *  including commercial applications, and to alter it and redistribute it
+ *  freely, subject to the following restrictions:
+ *
+ *  1. The origin of this software must not be misrepresented; you must not
+ *     claim that you wrote the original software. If you use this software
+ *     in a product, an acknowledgment in the product documentation would be
+ *     appreciated but is not required.
+ *
+ *  2. Altered source versions must be plainly marked as such, and must not be
+ *     misrepresented as being the original software.
+ *
+ *  3. This notice may not be removed or altered from any source
+ *     distribution.
+ ******************************************************************************/
+
+// Mario Kleiner made the following modifications:
+// Change basic data type from float to double, for higher precision.
+// Removed C++'isms, so it compiles as part of a regular C compilation unit.
+// Slight code reformatting.
+// Add additional helper function Mat_Mult at the end of the original sample code.
+//
+
+//******************************************************************************
+// 2-dimensional vector.
+//******************************************************************************
+typedef struct { double x, y; } tVec2;
+
+//******************************************************************************
+// 3-dimensional vector.
+//******************************************************************************
+typedef struct { double x, y, z; } tVec3;
+
+//******************************************************************************
+// 3x3 matrix
+//******************************************************************************
+typedef struct { double m[3][3]; } tMat3x3;
+
+//******************************************************************************
+// Set an indexed matrix column to a given vector.
+//******************************************************************************
+void Mat_SetCol(tMat3x3 * pMat, int colIdx, const tVec3 vec)
+{
+    pMat->m[0][colIdx] = vec.x;
+    pMat->m[1][colIdx] = vec.y;
+    pMat->m[2][colIdx] = vec.z;
+}
+
+//******************************************************************************
+// Calculate the inverse of a 3x3 matrix. Return false if it is non-invertible.
+//******************************************************************************
+bool Mat_Invert(tMat3x3 * pOutMat, const tMat3x3 inMat)
+{
+    // calculate the minors for the first row
+    double minor00 = inMat.m[1][1]*inMat.m[2][2] - inMat.m[1][2]*inMat.m[2][1];
+    double minor01 = inMat.m[1][2]*inMat.m[2][0] - inMat.m[1][0]*inMat.m[2][2];
+    double minor02 = inMat.m[1][0]*inMat.m[2][1] - inMat.m[1][1]*inMat.m[2][0];
+
+    // calculate the determinant
+    double determinant =   inMat.m[0][0] * minor00
+    + inMat.m[0][1] * minor01
+    + inMat.m[0][2] * minor02;
+
+    // check if the input is a singular matrix (non-invertable)
+    // (note that the epsilon here was arbitrarily chosen)
+    if( determinant > -0.000001f && determinant < 0.000001f )
+        return false;
+
+    // the inverse of inMat is (1 / determinant) * adjoint(inMat)
+    double invDet = 1.0f / determinant;
+    pOutMat->m[0][0] = invDet * minor00;
+    pOutMat->m[0][1] = invDet * (inMat.m[2][1]*inMat.m[0][2] - inMat.m[2][2]*inMat.m[0][1]);
+    pOutMat->m[0][2] = invDet * (inMat.m[0][1]*inMat.m[1][2] - inMat.m[0][2]*inMat.m[1][1]);
+
+    pOutMat->m[1][0] = invDet * minor01;
+    pOutMat->m[1][1] = invDet * (inMat.m[2][2]*inMat.m[0][0] - inMat.m[2][0]*inMat.m[0][2]);
+    pOutMat->m[1][2] = invDet * (inMat.m[0][2]*inMat.m[1][0] - inMat.m[0][0]*inMat.m[1][2]);
+
+    pOutMat->m[2][0] = invDet * minor02;
+    pOutMat->m[2][1] = invDet * (inMat.m[2][0]*inMat.m[0][1] - inMat.m[2][1]*inMat.m[0][0]);
+    pOutMat->m[2][2] = invDet * (inMat.m[0][0]*inMat.m[1][1] - inMat.m[0][1]*inMat.m[1][0]);
+
+    return true;
+}
+
+//******************************************************************************
+// Multiply a column vector on the right of a 3x3 matrix.
+//******************************************************************************
+void Mat_MulVec( tVec3 * pOutVec, const tMat3x3 mat, const tVec3 inVec )
+{
+    pOutVec->x = mat.m[0][0]*inVec.x + mat.m[0][1]*inVec.y + mat.m[0][2]*inVec.z;
+    pOutVec->y = mat.m[1][0]*inVec.x + mat.m[1][1]*inVec.y + mat.m[1][2]*inVec.z;
+    pOutVec->z = mat.m[2][0]*inVec.x + mat.m[2][1]*inVec.y + mat.m[2][2]*inVec.z;
+}
+
+//******************************************************************************
+// Convert a linear sRGB color to an sRGB color
+//******************************************************************************
+void CalcColorSpaceConversion_RGB_to_XYZ(tMat3x3 *   pOutput,  // conversion matrix
+                                         const tVec2 red_xy,   // xy chromaticity coordinates of the red primary
+                                         const tVec2 green_xy, // xy chromaticity coordinates of the green primary
+                                         const tVec2 blue_xy,  // xy chromaticity coordinates of the blue primary
+                                         const tVec2 white_xy  // xy chromaticity coordinates of the white point
+                                        )
+{
+    // generate xyz chromaticity coordinates (x + y + z = 1) from xy coordinates
+    tVec3 r = { red_xy.x,   red_xy.y,   1.0f - (red_xy.x + red_xy.y) };
+    tVec3 g = { green_xy.x, green_xy.y, 1.0f - (green_xy.x + green_xy.y) };
+    tVec3 b = { blue_xy.x,  blue_xy.y,  1.0f - (blue_xy.x + blue_xy.y) };
+    tVec3 w = { white_xy.x, white_xy.y, 1.0f - (white_xy.x + white_xy.y) };
+
+    // Convert white xyz coordinate to XYZ coordinate by letting that the white
+    // point have and XYZ relative luminance of 1.0. Relative luminance is the Y
+    // component of and XYZ color.
+    //   XYZ = xyz * (Y / y)
+    w.x /= white_xy.y;
+    w.y /= white_xy.y;
+    w.z /= white_xy.y;
+
+    // Solve for the transformation matrix 'M' from RGB to XYZ
+    // * We know that the columns of M are equal to the unknown XYZ values of r, g and b.
+    // * We know that the XYZ values of r, g and b are each a scaled version of the known
+    //   corresponding xyz chromaticity values.
+    // * We know the XYZ value of white based on its xyz value and the assigned relative
+    //   luminance of 1.0.
+    // * We know the RGB value of white is (1,1,1).
+    //
+    //   white_XYZ = M * white_RGB
+    //
+    //       [r.x g.x b.x]
+    //   N = [r.y g.y b.y]
+    //       [r.z g.z b.z]
+    //
+    //       [sR 0  0 ]
+    //   S = [0  sG 0 ]
+    //       [0  0  sB]
+    //
+    //   M = N * S
+    //   white_XYZ = N * S * white_RGB
+    //   N^-1 * white_XYZ = S * white_RGB = (sR,sG,sB)
+    //
+    // We now have an equation for the components of the scale matrix 'S' and
+    // can compute 'M' from 'N' and 'S'
+
+    Mat_SetCol( pOutput, 0, r );
+    Mat_SetCol( pOutput, 1, g );
+    Mat_SetCol( pOutput, 2, b );
+
+    tMat3x3 invMat;
+    Mat_Invert( &invMat, *pOutput );
+
+    tVec3 scale;
+    Mat_MulVec( &scale, invMat, w );
+
+    pOutput->m[0][0] *= scale.x;
+    pOutput->m[1][0] *= scale.x;
+    pOutput->m[2][0] *= scale.x;
+
+    pOutput->m[0][1] *= scale.y;
+    pOutput->m[1][1] *= scale.y;
+    pOutput->m[2][1] *= scale.y;
+
+    pOutput->m[0][2] *= scale.z;
+    pOutput->m[1][2] *= scale.z;
+    pOutput->m[2][2] *= scale.z;
+}
+
+// Multiply two 3x3 matrices with each other, return resulting 3x3 matrix:
+void Mat_Mult(tMat3x3 *pOutMat, const tMat3x3 inMat1, const tMat3x3 inMat2) {
+    int i, j, k;
+
+    for (i = 0; i < 3; i++) {
+        for (j = 0; j < 3; j++) {
+            double x = 0;
+
+            for (k = 0; k < 3; k++) {
+                x += inMat1.m[i][k] * inMat2.m[k][j];
+            }
+            pOutMat->m[i][j] = x;
+        }
+    }
+}
+
+// End of helper routines for CSC matrix generation.
+
 static char movieTexturePlanarVertexShaderSrc[] =
 "/* Simple pass-through vertex shader: Emulates fixed function pipeline, but passes  */\n"
 "/* modulateColor as varying unclampedFragColor to circumvent vertex color       */\n"
@@ -154,6 +359,7 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "uniform vec3 rangeOffset;\n"
 "uniform float Kr;\n"
 "uniform float Kb;\n"
+"uniform mat3x3 M_CSC;\n"
 "uniform float outUnitMultiplier;\n"
 "varying vec4 unclampedFragColor;\n"
 "varying vec2 texNominalSize;\n"
@@ -330,6 +536,9 @@ static char movieTexturePlanarFragmentShaderSrc[] =
 "    }\n"
 "    }\n"
 "\n"
+"    /* Perform colorspace conversion movie->window via multiplication with 3x3 M_CSC matrix: */\n"
+"    L = M_CSC * L;\n"
+"\n"
 "    /* Mark any invalid NaN component values which may have made it to here in a very clear and alarming red to prevent trouble from going unnoticed: */\n"
 "    if (isnan(L.r) || isnan(L.g) || isnan(L.b))\n"
 "        L = vec3(1.0, 0.0, 0.0);\n"
@@ -461,9 +670,98 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
         } else {
             // Standard window, no scaling needed:
             outUnitMultiplier = 1.0;
+
+            if (PsychPrefStateGet_Verbosity() > 3)
+                printf("\n", eotfType, outUnitMultiplier);
         }
 
         glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "outUnitMultiplier"), outUnitMultiplier);
+
+        // Convert from colorspace of movie to colorspace of onscreen window, by use of a 3x3 CSC matrix:
+        {
+            tMat3x3 M_RGBMovie_to_XYZ;
+            tMat3x3 M_RGBWindow_to_XYZ;
+            tMat3x3 M_XYZ_to_RGBWindow;
+            tMat3x3 M_CSC;
+            float   M_CSC_f[9];
+            int     i, j, k = 0;
+
+            // Query chromaticity coordinates or primaries and white-point of the encoding colorspace of the movie:
+            const GstVideoColorPrimariesInfo *pinfo = gst_video_color_primaries_get_info(movie->sinkVideoInfo.colorimetry.primaries);
+
+            // Assign primary/wp coords to format for our helper function:
+            tVec2 pR = { pinfo->Rx, pinfo->Ry };
+            tVec2 pG = { pinfo->Gx, pinfo->Gy };
+            tVec2 pB = { pinfo->Bx, pinfo->By };
+            tVec2 pW = { pinfo->Wx, pinfo->Wy };
+
+            // Generate conversion matrix from linear movie RGB space to XYZ space:
+            CalcColorSpaceConversion_RGB_to_XYZ(&M_RGBMovie_to_XYZ, pR, pG, pB, pW);
+
+            // Generate conversion matrix from XYZ space to target linear onscreen window RGB space:
+            if (windowRecord->colorGamut[0] == 0 || windowRecord->colorGamut[1] == 0) {
+                // The color gamut of the target onscreen window is not yet defined, ie.
+                // no external script has set it up. Choose default values, based on type of
+                // onscreen window, which is BT-2020 for a HDR window, and assumed to be BT-709
+                // (~ sRGB) for a standard window:
+                const GstVideoColorPrimariesInfo *pinfo2 = gst_video_color_primaries_get_info((windowRecord->imagingMode & kPsychNeedHDRWindow) ? GST_VIDEO_COLOR_PRIMARIES_BT2020 : GST_VIDEO_COLOR_PRIMARIES_BT709);
+
+                // Assign primary/wp coords to format for our helper function:
+                pR.x = pinfo2->Rx;
+                pR.y = pinfo2->Ry;
+                pG.x = pinfo2->Gx;
+                pG.y = pinfo2->Gy;
+                pB.x = pinfo2->Bx;
+                pB.y = pinfo2->By;
+                pW.x = pinfo2->Wx;
+                pW.y = pinfo2->Wy;
+            }
+            else {
+                // Use color primaries and white point from user settings:
+                double *p = &windowRecord->colorGamut[0];
+
+                pR.x = *(p++);
+                pR.y = *(p++);
+                pG.x = *(p++);
+                pG.y = *(p++);
+                pB.x = *(p++);
+                pB.y = *(p++);
+                pW.x = *(p++);
+                pW.y = *(p++);
+            }
+
+
+            // Get XYZ to RGB window by computing RGB of window to XYZ, then inverting that matrix:
+            CalcColorSpaceConversion_RGB_to_XYZ(&M_RGBWindow_to_XYZ, pR, pG, pB, pW);
+            if (!Mat_Invert(&M_XYZ_to_RGBWindow, M_RGBWindow_to_XYZ)) {
+                if (PsychPrefStateGet_Verbosity() > 0)
+                    printf("PTB-ERROR: Failed to setup planar HDR decode and conversion shader for video texture! User code assigned invalid (== non-invertible/degenerated) color gamut to target window.\n");
+
+                return(FALSE);
+            }
+
+            // Build final M_CSC color space conversion matrix as M_CSC = M_XYZ_to_RGBWindow * M_RGBMovie_to_XYZ:
+            Mat_Mult(&M_CSC, M_XYZ_to_RGBWindow, M_RGBMovie_to_XYZ);
+
+            // Shader needs float matrix, not double matrix, so need to convert M_CSC into a float version:
+            for (i = 0; i < 3; i++) {
+                for (j = 0; j < 3; j++)
+                    M_CSC_f[k++] = (float) M_CSC.m[i][j];
+            }
+
+            // Assign M_CSC as CSC matrix for shader:
+            glUniformMatrix3fv(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "M_CSC"), 1, GL_TRUE, (const GLfloat*) M_CSC_f);
+
+            if (PsychPrefStateGet_Verbosity() > 3) {
+                printf("PTB-DEBUG: Applying following 3x3 colorspace conversion matrix to movie footage:\n\n");
+                for (i = 0; i < 3; i++) {
+                    for (j = 0; j < 3; j++)
+                        printf("%f ", M_CSC.m[i][j]);
+                    printf("\n");
+                }
+                printf("\n\n");
+            }
+        }
 
         // Setup of sampling and conversion shader complete:
         glUseProgram(0);
@@ -2480,7 +2778,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
             // Check if overSize x height texture fits within hardware limits of this GPU:
             if (movieRecordBANK[moviehandle].height * overSize > win->maxTextureSize)
-                PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card and pixelFormat! Can not handle HDR content of this resolution on this graphics card!");
+                PsychErrorExitMsg(PsychError_user, "Videoframe size too big for this graphics card with pixelFormat 11! Can not handle content of this resolution on this graphics card!");
 
             // Create "planar content inside single-plane luminance" texture:
             PsychCreateTexture(out_texture);
@@ -2500,7 +2798,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             // Assign special filter shader for sampling and color-space conversion of the
             // planar texture during drawing or PsychNormalizeTextureOrientation():
             if (!PsychAssignMovieTextureConversionShader(&movieRecordBANK[moviehandle], out_texture))
-                PsychErrorExitMsg(PsychError_user, "Assignment of planar YUV HDR video decoding shader failed during movie texture creation!");
+                PsychErrorExitMsg(PsychError_user, "Assignment of planar YUV video decoding shader failed during movie texture creation!");
         }
         else if (movieRecordBANK[moviehandle].bitdepth > 8) {
             // Is this a > 8 bpc image format? If not, we ain't nothing more to prepare.
