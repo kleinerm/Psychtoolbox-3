@@ -100,6 +100,7 @@ try
     end
 
     win = PsychImaging('OpenWindow', screen, [0.5, 0.5, 0.5]);
+    [w, h] = Screen('WindowSize', win);
     Screen('Blendfunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     
     shader = [];
@@ -243,6 +244,13 @@ try
         % Open movie file and retrieve basic info about movie:
         [movie, movieduration, fps, imgw, imgh, ~, ~, hdrStaticMetaData] = Screen('OpenMovie', win, moviename, [], preloadsecs, [], pixelFormat, maxThreads);
         fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
+        if imgw > w || imgh > h
+            % Video frames too big to fit into window, so define size to be window size:
+            dstRect = CenterRect((w / imgw) * [0, 0, imgw, imgh], Screen('Rect', win));
+        else
+            dstRect = [];
+        end
+
         if hdrStaticMetaData.Valid
             fprintf('Static HDR metadata is:\n');
             disp(hdrStaticMetaData);
@@ -309,8 +317,8 @@ try
                 end
                 
                 % Draw the new texture immediately to screen:
-                Screen('DrawTexture', win, tex, [], [], [], [], [], [], shader);
-                
+                Screen('DrawTexture', win, tex, [], dstRect, [], [], [], [], shader);
+
                 Screen('DrawText', win, 'RAW DATA PASSTHROUGH!', 0, 20, [1 0 0]);
                 DrawFormattedText(win, ['Movie: ' moviename ], 'center', 20, [1 0 0]);
                 if coolstuff
