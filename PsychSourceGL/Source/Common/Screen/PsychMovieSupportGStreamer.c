@@ -647,32 +647,24 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
         // Tell shader about type of EOTF transfer function:
         glUniform1i(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "eotfType"), eotfType);
 
-        // Assign output multiplier for linear r,g,b values, to convert into target unit used in Psychtoolbox windows framebuffer,
-        if (windowRecord->imagingMode & kPsychNeedHDRWindow) {
-            switch(eotfType) {
-                case 14: // aka GST_VIDEO_TRANSFER_SMPTE2084     - HDR PQ
-                case 15: // aka GST_VIDEO_TRANSFER_ARIB_STD_B67  - HDR HLG
-                    // HDR movie format: Scale normalized 0-1 range where 0 = 0 Nits, 1 = 10000 nits, to framebuffer HDR units:
-                    outUnitMultiplier = windowRecord->normalizedToHDRScaleFactor;
-                    if (PsychPrefStateGet_Verbosity() > 3)
-                        printf("HDR footage, eotf %i. HDR mapping to [0.0 ; %2f].\n", eotfType, outUnitMultiplier);
+        // Assign output multiplier for linear (r,g,b) values, to convert into target unit used in Psychtoolbox windows framebuffer:
+        switch(eotfType) {
+            case 14: // aka GST_VIDEO_TRANSFER_SMPTE2084     - HDR PQ
+            case 15: // aka GST_VIDEO_TRANSFER_ARIB_STD_B67  - HDR HLG
+                // HDR movie format: Scale normalized 0-1 range where 0 = 0 Nits, 1 = 10000 nits, to framebuffer HDR units:
+                outUnitMultiplier = windowRecord->normalizedToHDRScaleFactor;
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("HDR footage, eotf %i. HDR mapping to [0.0 ; %2f].\n", eotfType, outUnitMultiplier);
 
-                    break;
+                break;
 
-                default:
-                    // SDR / LDR movie format: Upscale to HDR color range of window:
-                    outUnitMultiplier = windowRecord->maxSDRToHDRScaleFactor;
-                    if (PsychPrefStateGet_Verbosity() > 3)
-                        printf("SDR/LDR footage, eotf %i. HDR mapping to [0.0 ; %2f].\n", eotfType, outUnitMultiplier);
+            default:
+                // SDR / LDR movie format: Upscale to HDR color range of window:
+                outUnitMultiplier = windowRecord->maxSDRToHDRScaleFactor;
+                if (PsychPrefStateGet_Verbosity() > 3)
+                    printf("SDR/LDR footage, eotf %i. HDR mapping to [0.0 ; %2f].\n", eotfType, outUnitMultiplier);
 
-                    break;
-            }
-        } else {
-            // Standard window, no scaling needed:
-            outUnitMultiplier = 1.0;
-
-            if (PsychPrefStateGet_Verbosity() > 3)
-                printf("\n", eotfType, outUnitMultiplier);
+                break;
         }
 
         glUniform1f(glGetUniformLocation(movie->texturePlanarHDRDecodeShader, "outUnitMultiplier"), outUnitMultiplier);

@@ -205,19 +205,23 @@ static char synopsisString[] =
     "'proj' Override projection matrix/matrices for 2D drawing: proj = [] == don't change, proj = 1 == Disable overrides, proj = 4x4 matrix "
     "for mono-mode drawing, proj = 4x4x2 matrices for separate matrices in stereo modes (:,:,1) left eye, (:,:,2) right eye.\n"
     "\n\n"
-    "Screen('HookFunction', windowPtr, 'SetHDRScalingFactors' [, hookname][, maxSDRToHDRScaleFactor][, normalizedToHDRScaleFactor]);\n"
-    "Assign scaling factors to map SDR color values or HDR color values into the linear HDR color range and units of the window.\n"
+    "[maxSDRToHDRScaleFactor, normalizedToHDRScaleFactor] = Screen('HookFunction', windowPtr, 'SetHDRScalingFactors' [, hookname][, maxSDRToHDRScaleFactor][, normalizedToHDRScaleFactor]);\n"
+    "Get or assign scaling factors to map SDR color values or HDR color values into the linear HDR color range and units of the window.\n"
     "'maxSDRToHDRScaleFactor' defines to which color value the maximum input color value of SDR content is mapped. This is used by "
     "Screen('MakeTexture') for converting the color/luminance channels of SDR uint8 image matrices into the value range needed for "
     "making the texture compatible with the HDR framebuffer. It is also used for mapping SDR movie video content to HDR framebuffer. "
     "Example: A factor of 80 would mean to map the maximum uint8 texture value 255 in MakeTexture, or the maximum possible component value of "
     "the video frame from a SDR movie to an output value of 80 units - Typical if the framebuffer operates in units of Nits, so maximum "
     "SDR content intensity would map to 80 Nits, standardized as typical maximum of SDR content.\n"
-    "'normalizedToHDRScaleFactor' defines to which color value the maximum possible input color vale of HDR content is mapped. This is used by "
+    "'normalizedToHDRScaleFactor' defines to which color value the maximum possible input color value of HDR content is mapped. This is used by "
     "movie playback to map the normalized linear 0.0 - 1.0 intensity range of HDR movies to the linear range 0.0 - maximum HDR intensity. "
     "A typical value would be 10000 to map the 1.0 normalized maximum to the maximum intensity of 10000 nits of the current HDR display "
     "standards HDR10, HDR10+, DolbyVision etc., if the framebuffer uses units of Nits. A factor of 125 would be typical if the framebuffer "
-    "is set up to operate in units of multiples of 80 Nits, another common standard, where a value of 125 corresponds to 10000 Nits."
+    "is set up to operate in units of multiples of 80 Nits, another common standard, where a value of 125 corresponds to 10000 Nits. "
+    "This scaling factor is also used for displaying HDR movie frames into a SDR window, in this scale to upscale some fraction of the "
+    "lower range of HDR values to the 0.0 - 1.0 intensity range of a SDR window, as a dumb people's tone-mapping operator. E.g., the "
+    "startup default is to map 0 - 500 nits input to the 0 - 1 range, to get something reasonable displayed even without application of "
+    "some proper tone-mapping operator."
     "\n\n"
     "colorGamut = Screen('HookFunction', windowPtr, 'WindowColorGamut' [, hookname][, colorGamut]);\n"
     "Return the current color gamut settings for the onscreen window 'windowPtr'. Optionally assign new settings.\n"
@@ -608,6 +612,11 @@ PsychError SCREENHookFunction(void)
         break;
 
         case 20: // SetHDRScalingFactors
+            // Return old settings:
+            PsychCopyOutDoubleArg(1, FALSE, windowRecord->maxSDRToHDRScaleFactor);
+            PsychCopyOutDoubleArg(2, FALSE, windowRecord->normalizedToHDRScaleFactor);
+
+            // Optionally accept new settings:
             PsychCopyInDoubleArg(4, FALSE, &windowRecord->maxSDRToHDRScaleFactor);
             PsychCopyInDoubleArg(5, FALSE, &windowRecord->normalizedToHDRScaleFactor);
         break;
