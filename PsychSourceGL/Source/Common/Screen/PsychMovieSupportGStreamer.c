@@ -3341,8 +3341,9 @@ void PsychGSCopyOutMovieHDRMetaData(int moviehandle, int argPosition)
     PsychGenericScriptType *s;
     PsychGenericScriptType *outMat;
     double *v;
-    const char *fieldNames[] = { "Valid", "MetadataType", "MinLuminance", "MaxLuminance", "MaxFrameAverageLightLevel", "MaxContentLightLevel", "ColorGamut" };
-    const int fieldCount = 7;
+    const char *fieldNames[] = { "Valid", "MetadataType", "MinLuminance", "MaxLuminance", "MaxFrameAverageLightLevel", "MaxContentLightLevel", "ColorGamut",
+                                 "Colorimetry", "LimitedRange", "YUVRGBMatrixType", "PrimariesType", "EOTFType", "Format", "Depth" };
+    const int fieldCount = 14;
 
     // Userscript wants this info?
     if (PsychIsArgPresent(PsychArgOut, argPosition)) {
@@ -3381,6 +3382,15 @@ void PsychGSCopyOutMovieHDRMetaData(int moviehandle, int argPosition)
         *(v++) = hdrMetaData->whitePoint[1];
 
         PsychSetStructArrayNativeElement("ColorGamut", 0, outMat, s);
+
+        // Some not strictly HDR properties, more like general movie properties:
+        PsychSetStructArrayStringElement("Colorimetry", 0, (char *) gst_video_colorimetry_to_string (&movieRecordBANK[moviehandle].codecVideoInfo.colorimetry), s);
+        PsychSetStructArrayDoubleElement("LimitedRange", 0, movieRecordBANK[moviehandle].codecVideoInfo.colorimetry.range, s);
+        PsychSetStructArrayDoubleElement("YUVRGBMatrixType", 0, movieRecordBANK[moviehandle].codecVideoInfo.colorimetry.matrix, s);
+        PsychSetStructArrayDoubleElement("PrimariesType", 0, movieRecordBANK[moviehandle].codecVideoInfo.colorimetry.primaries, s);
+        PsychSetStructArrayDoubleElement("EOTFType", 0, movieRecordBANK[moviehandle].codecVideoInfo.colorimetry.transfer, s);
+        PsychSetStructArrayStringElement("Format", 0, (char *) movieRecordBANK[moviehandle].codecVideoInfo.finfo->name, s);
+        PsychSetStructArrayDoubleElement("Depth", 0, GST_VIDEO_FORMAT_INFO_DEPTH(movieRecordBANK[moviehandle].codecVideoInfo.finfo, 0), s);
     }
 }
 

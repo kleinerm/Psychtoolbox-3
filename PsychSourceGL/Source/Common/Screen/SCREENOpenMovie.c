@@ -41,6 +41,8 @@ static char synopsisString[] =
         "hdrStaticMetaData.Valid is 1 if the movie has HDR metadata, 0 if none is available or parsing "
         "is not supported by your system. All other returned HDR properties are compatible with (and in the format "
         "of) the function PsychHDR('HDRMetadata'). Type 'PsychHDR HDRMetadata?' for details.\n"
+        "The structure also reports some fields reported by GStreamer movie codecs, but not exclusive to HDR movies: "
+        "'Colorimetry', 'LimitedRange', 'YUVRGBMatrixType', 'PrimariesType', 'EOTFType', 'Format', and 'Depth'.\n"
         "If you want to play multiple movies in succession with lowest possible delay inbetween the movies "
         "then you can ask PTB to load a movie in the background while another movie is still playing: "
         "Call this function with the 'async' flag set to 1. This will initiate the background load operation. "
