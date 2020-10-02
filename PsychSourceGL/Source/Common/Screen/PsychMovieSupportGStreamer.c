@@ -2707,6 +2707,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
         // HDR/WCG YUV planar pixel upload requested?
         if (movieRecordBANK[moviehandle].pixelFormat == 11) {
             float overSize;
+            int bpc = GST_VIDEO_FORMAT_INFO_DEPTH(movieRecordBANK[moviehandle].sinkVideoInfo.finfo, 0);
 
             // We encode planar data inside a single-layer luminance texture of
             // 1.5x times the height of the video frame. First the "Y" luminance plane
@@ -2721,7 +2722,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
             out_texture->textureexternalformat = GL_LUMINANCE;
 
             // Discriminate between 8 bpc content and > 8 bpc content:
-            if (GST_VIDEO_FORMAT_INFO_DEPTH(movieRecordBANK[moviehandle].sinkVideoInfo.finfo, 0) > 8) {
+            if (bpc > 8) {
                 // More than 8 bpc, e.g., typically 10 bpc or 12 bpc, but up to 16 bpc. Use a 16 bpc
                 // unorm range texture:
                 out_texture->textureexternaltype   = GL_UNSIGNED_SHORT;
@@ -2743,6 +2744,23 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
 
                 // Effective color depth is 24 bits:
                 out_texture->depth = 24;
+
+                // Assign an effective depth of 48 bit (ie. 16 bpc RGB) if the target window is a HDR
+                // window, because then even 8 bpc low dynamic range content must get mapped into the
+                // HDR range for proper display inside the HDR window, ie. the original unorm 0 - 1 range
+                // values must be mapped to 0 - maxSDRToHDRScaleFactor, e.g., up to 80.0 nits. This is not
+                // a problem for direct decode+draw by the planar decode shader during 'DrawTexture', but
+                // in case that immediate conversion into a regular packed pixel color renderable texture
+                // is required via PsychNormalizeTextureOrientation(), or when converting the texture into
+                // an offscreen window for drawing into it, or for Screen('TransformTexture') or similar.
+                // In those cases the LUMINANCE backing texture must get replaced with a backing texture
+                // that is not only colorbuffer renderable, but also capable to contain color values outside
+                // the 0-1 unorm range, iow. we need a floating point texture as backing store. We achieve
+                // this by marking the texture as a high bpc precision texture, so the conversion code in
+                // PsychNormalizeTextureOrientation() will pick a RGBA32F texture as new container, which
+                // can store outside unorm range content with more than 16 bpc linear precision:
+                if (win->imagingMode & kPsychNeedHDRWindow)
+                    out_texture->depth = 48;
             }
 
             // Define a rect of overSize times the video frame height, so PsychCreateTexture() will source

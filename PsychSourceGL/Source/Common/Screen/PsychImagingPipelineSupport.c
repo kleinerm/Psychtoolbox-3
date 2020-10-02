@@ -3113,7 +3113,7 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 
         // Special case: Planar texture encoded in a luminance texture other than LUMINANCE8. Need to
         // upgrade to a full RGBA format of sufficient precision:
-        if (isplanar && (fboInternalFormat != GL_RGBA8)) {
+        if (isplanar && (fboInternalFormat != GL_RGBA8 || sourceRecord->depth > 32)) {
             if (sourceRecord->textureinternalformat == GL_LUMINANCE16_SNORM) {
                 fboInternalFormat = GL_RGBA16_SNORM;
             } else {
