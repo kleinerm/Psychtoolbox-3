@@ -1955,6 +1955,23 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
                 }
             }
 
+            // Optional 'movieOptions' parameter 'OverrideEOTF=x' specified to override detected EOTF to type x?
+            if ((pstring = strstr(movieOptions, "OverrideEOTF="))) {
+                // Yes. Make it so, as long as pixelFormat 11 playback is requested:
+                if ((pixelFormat == 11) && (1 == sscanf(pstring, "OverrideEOTF=%i", (int *) &movieRecordBANK[slotid].codecVideoInfo.colorimetry.transfer))) {
+                    if (PsychPrefStateGet_Verbosity() > 3)
+                        printf("PTB-DEBUG: Video EOTF id overridden by 'movieOptions' parameter. New EOTF type is %i.\n", movieRecordBANK[slotid].codecVideoInfo.colorimetry.transfer);
+                } else {
+                    if (PsychPrefStateGet_Verbosity() > 0)
+                        printf("PTB-ERROR: Invalid OverrideEOTF parameter specified in 'movieOptions' [= '%s']: %s!\n", pstring, (pixelFormat == 11) ? "Could not parse EOTF id code - Must be a number" : "Only allowed for pixelFormat 11 playback");
+
+                    if (printErrors)
+                        PsychErrorExitMsg(PsychError_user, "Invalid OverrideEOTF parameter specified in 'movieOptions' parameter. Could not parse EOTF id code or unsuitable pixelFormat!");
+                    else
+                        return;
+                }
+            }
+
             // Parse HDR static metadata from movie, if supported, and if any:
             PsychParseMovieHDRMetadata(&movieRecordBANK[slotid], caps);
          } else {
@@ -2781,6 +2798,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
                     break;
 
                 default:
+                    overSize = 1.0; // Shut up false unused variable compiler warning.
                     PsychErrorExitMsg(PsychError_user, "Failed videoframe conversion into texture! Unrecognized sink format for pixelFormat 11 code.\n");
             }
 
