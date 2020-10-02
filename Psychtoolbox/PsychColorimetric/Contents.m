@@ -61,6 +61,7 @@
 %   PupilDiameterFromLum - Estimate pupil diameter from luminance.
 %   PsychMunsell        - Munsell renotation to xyY conversion.
 %   RetIrradianceToIsoRecSec - Convert retinal irradiance (power units) to iso. per receptor per second.
+%   RGBToXYZMatrix      - Build a 3x3 CSC matrix for converting some RGB color space to XYZ space.
 %   SampleCircle        - Sample points on a circle.
 %   SampleSphere        - Sample points on a sphere.
 %   ShiftSpectra        - Shift a spectral function along the wavelength axis.
@@ -89,11 +90,12 @@
 %   XYZToLab            - Convert between XYZ and Lab.
 %   XYZToLjg            - Convert between XYZ (10 degree) and OSA UCS Ljg.
 %   XYZToLuv            - Convert between XYZ and Luv.
+%   XYZToRGBMatrix      - Build a 3x3 CSC matrix for converting XYZ space to some RGB color space.
 %   XYZToSRGBPrimary    - Convert between XYZ and sRGB primary coordinates.
 %   XYZTouv             - Compute uv chromaticities from XYZ.
 %   XYZTouvY            - Convert between XYZ and u'v'Y.
 %   XYZToxyY            - Convert between XYZ and xyY.
   
-% Copyright (c) 1996-2013 by David Brainard, Denis Pelli, & Mario Kleiner
+% Copyright (c) 1996-2020 by David Brainard, Denis Pelli, & Mario Kleiner
 
 
