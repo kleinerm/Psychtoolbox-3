@@ -3452,6 +3452,22 @@ psych_bool PsychCloseVulkanWindow(PsychVulkanWindow* window)
     vkDestroyImage(window->vulkan->device, window->interopImage, NULL);
     window->interopImage = VK_NULL_HANDLE;
 
+    // Do we still own the interop handle for memory?
+    if (window->interopHandles.memory != 0) {
+        // Need to release it:
+        if (verbosity > 4) {
+            printf("PsychVulkanCore-INFO: Vulkan window %i: Releasing image memory interop handle.\n", window->index);
+        }
+
+        #if PSYCH_SYSTEM != PSYCH_WINDOWS
+            close(window->interopHandles.memory);
+        #else
+            CloseHandle(window->interopHandles.memory);
+        #endif
+
+        window->interopHandles.memory = 0;
+    }
+
     vkFreeMemory(window->vulkan->device, window->interopImageMemory, NULL);
     window->interopImageMemory = VK_NULL_HANDLE;
 
@@ -4311,8 +4327,14 @@ PsychError PSYCHVULKANGetInteropHandle(void)
     if (eyeIndex > 0 && !(window->isStereo))
         PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0, as mono display mode is selected.");
 
-    // Return interopObjectHandle for interop memory object which backs the interop VkImage:
-    PsychCopyOutPointerArg(1, kPsychArgOptional, (void*) (size_t) window->interopHandles.memory);
+    // Return interopObjectHandle for interop memory object which backs the interop VkImage. Make sure the caller
+    // really wants this returned, as it matters for potential ownership transfer of handles, or the lack thereof:
+    if ((PsychGetNumNamedOutputArgs() >= 1) && PsychCopyOutPointerArg(1, kPsychArgOptional, (void*) (size_t) window->interopHandles.memory)) {
+        // interopHandles.memory handle returned to caller. This constitutes an ownership transfer,
+        // so we are no longer owning this handle and are no longer responsible for destroying it
+        // at the end of a session:
+        window->interopHandles.memory = 0;
+    }
 
     // Return backing memory size in bytes:
     PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) window->interopMemorysize);
