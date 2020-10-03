@@ -466,6 +466,8 @@ typedef struct _PsychWindowRecordType_{
     PsychFBO*                   fboTable[MAX_FBOTABLE_SLOTS];       // This array contains pointers to the FBO structs which are referenced by the indices above.
     int                         fboCount;                           // This contains the number of FBO's in fboTable.
 
+    void*                       interopMemObjectHandle;             // Handle to an external interop memory object, e.g., for OpenGL-Vulkan interop.
+
     // Cached handles for display lists -- used for recycling in compute intense drawing functions:
     GLuint                      fillOvalDisplayList;
     GLuint                      frameOvalDisplayList;

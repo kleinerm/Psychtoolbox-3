@@ -1736,6 +1736,19 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     PsychFBO *fbo;
     GLenum fborc = GL_FRAMEBUFFER_COMPLETE_EXT;
 
+    // If any interop handle that we still have ownership of was previously assigned to this window, then release it:
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    if (windowRecord->interopMemObjectHandle)
+        CloseHandle(windowRecord->interopMemObjectHandle);
+    #else
+    if (windowRecord->interopMemObjectHandle)
+        close((int) (size_t) windowRecord->interopMemObjectHandle);
+    #endif
+
+    // Assign new interopMemObjectHandle early to the window, so it can be released
+    // in case of an error abort in the following code:
+    windowRecord->interopMemObjectHandle = interopMemObjectHandle;
+
     if (!(windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks)) {
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: No kPsychNeedFinalizedFBOSinks! Skipped.\n");
         return(FALSE);
@@ -1791,9 +1804,14 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
 
     // Platform specific external memory object import:
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        // glImportMemoryWin32HandleEXT *does not* transfer ownership of the interopMemObjectHandle to OpenGL, so we *must* close
+        // it at the end of the session, and therefore keep track of its existence and identity in the windowRecord:
         glImportMemoryWin32HandleEXT(fbo->memoryObject, (GLuint64) allocationSize, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, interopMemObjectHandle);
     #else
+        // glImportMemoryFdEXT transfers ownership of the interopMemObjectHandle to OpenGL, so we do not need to care about it
+        // anymore, so we can remove our reference to it in the windowRecord:
         glImportMemoryFdEXT(fbo->memoryObject, (GLuint64) allocationSize, GL_HANDLE_TYPE_OPAQUE_FD_EXT, (GLint) ((size_t) interopMemObjectHandle));
+        windowRecord->interopMemObjectHandle = 0;
     #endif
 
     PsychTestForGLErrors();
@@ -3252,6 +3270,17 @@ void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, psych_boo
         // Global off:
         windowRecord->imagingMode=0;
     }
+
+    // If any interop handle that we still have ownership of was previously assigned to this window, then release it:
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    if (windowRecord->interopMemObjectHandle)
+        CloseHandle(windowRecord->interopMemObjectHandle);
+    #else
+    if (windowRecord->interopMemObjectHandle)
+        close((int) (size_t) windowRecord->interopMemObjectHandle);
+    #endif
+
+    windowRecord->interopMemObjectHandle = 0;
 
     // Cleanup done.
     return;
