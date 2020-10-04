@@ -5961,22 +5961,25 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
             // Encoding CLUTs for devices like the Bits++ is conceivable as well - these would be automatically
             // synchronous to frame updates and could be injected from our own gamma-table functions.
             PsychPipelineExecuteHook(windowRecord, (viewid==0) ? kPsychLeftFinalizerBlit : kPsychRightFinalizerBlit, NULL, NULL, TRUE, FALSE, NULL, NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);
+
+            // If the finalizedFBO for this viewid has a renderCompleteSemaphore attached, then signal the semaphore:
+            if (glIsSemaphoreEXT && glIsSemaphoreEXT(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->renderCompleteSemaphore)) {
+                GLenum dstLayout = GL_LAYOUT_TRANSFER_SRC_EXT; // GL_LAYOUT_SHADER_READ_ONLY_EXT;
+
+                glSignalSemaphoreEXT(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->renderCompleteSemaphore, 0, NULL,
+                                     1, &windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->coltexid, &dstLayout);
+
+                if (PsychPrefStateGet_Verbosity() > 4)
+                    printf("PTB-INFO: renderCompleteSemaphore for finalizedFBO[%i] of window %i signalled.\n", viewid, windowRecord->windowIndex);
+            }
         }
 
         // At this point we should have either a valid snapshot of the framebuffer in the finalizedFBOs, or
         // (the common case) the final image in the system backbuffers, ready for display after swap.
 
-        // Disabled debug code:
-        if (FALSE) {
-            windowRecord->textureNumber = windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->coltexid;
-
-            // Now we need to blit the new rendertargets texture into the framebuffer. We need to make
-            // sure that alpha-blending is disabled during this blit operation:
-            // Alpha blending not enabled. Just blit it:
-            PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
-
-            windowRecord->textureNumber = 0;
-        }
+        // Flush the pipeline. This is very important in case renderCompleteSemaphore's are used, otherwise
+        // the external consumer might hang for a long time!
+        glFlush();
 
         // Restore all state, including blending and texturing state:
         glPopAttrib();

@@ -198,7 +198,8 @@ typedef struct PsychFBO {
     int                     height;         // Height of FBO.
     int                     multisample;    // Multisampling level of FBO: 0 == No multisampling. > 0 means Multisampled.
     GLenum                  textarget;      // Type of texture target for texture coltexid (GL_TEXTURE_RECTANGLE_EXT or GL_TEXTURE_2D etc.)
-    GLuint                  memoryObject;   // Handle to memory object for external coltexid image backing memory .
+    GLuint                  memoryObject;   // Handle to memory object for external coltexid image backing memory.
+    GLuint                  renderCompleteSemaphore; // Handle to semaphore which signals render completion to this FBO for use with memoryObject.
 } PsychFBO;
 
 // Typedefs for WindowRecord in WindowBank.h
@@ -467,6 +468,7 @@ typedef struct _PsychWindowRecordType_{
     int                         fboCount;                           // This contains the number of FBO's in fboTable.
 
     void*                       interopMemObjectHandle;             // Handle to an external interop memory object, e.g., for OpenGL-Vulkan interop.
+    void*                       interopSemaphoreHandle;             // Handle to an external interop semaphore, e.g., for OpenGL-Vulkan interop handshake.
 
     // Cached handles for display lists -- used for recycling in compute intense drawing functions:
     GLuint                      fillOvalDisplayList;

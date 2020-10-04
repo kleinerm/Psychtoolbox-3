@@ -1727,7 +1727,8 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
     return(glsl);
 }
 
-psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *windowRecord, int viewid, void* interopMemObjectHandle, int allocationSize, int formatSpec, int tilingMode, int memoryOffset, int width, int height)
+// Create a new GL_TEXTURE_2D npot texture as finalizedFBO color buffer attachment, and back it by external memory imported via interopMemObjectHandle, with rendering optionally synchronized via interopSemaphoreHandle:
+psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *windowRecord, int viewid, void* interopMemObjectHandle, int allocationSize, int formatSpec, int tilingMode, int memoryOffset, int width, int height, void* interopSemaphoreHandle)
 {
     int glTextureTarget;
     int multiSample = windowRecord->multiSample;
@@ -1740,14 +1741,21 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
     if (windowRecord->interopMemObjectHandle)
         CloseHandle(windowRecord->interopMemObjectHandle);
+
+    if (windowRecord->interopSemaphoreHandle)
+        CloseHandle(windowRecord->interopSemaphoreHandle);
     #else
     if (windowRecord->interopMemObjectHandle)
         close((int) (size_t) windowRecord->interopMemObjectHandle);
+
+    if (windowRecord->interopSemaphoreHandle)
+        close((int) (size_t) windowRecord->interopSemaphoreHandle);
     #endif
 
     // Assign new interopMemObjectHandle early to the window, so it can be released
-    // in case of an error abort in the following code:
+    // in case of an error abort in the following code. Ditto for interopSemaphoreHandle:
     windowRecord->interopMemObjectHandle = interopMemObjectHandle;
+    windowRecord->interopSemaphoreHandle = interopSemaphoreHandle;
 
     if (!(windowRecord->imagingMode & kPsychNeedFinalizedFBOSinks)) {
         if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: No kPsychNeedFinalizedFBOSinks! Skipped.\n");
@@ -1788,7 +1796,7 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     // Are all required OpenGL extensions supported?
     if (!glewIsSupported("GL_EXT_memory_object") || !glewIsSupported("GL_ARB_direct_state_access") ||
         (!glewIsSupported("GL_EXT_memory_object_fd") && !glewIsSupported("GL_EXT_memory_object_win32"))) {
-        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: This OpenGL implementation lacks support for some required OpenGL extensions! Skipped.\n");
+        if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: This OpenGL implementation lacks support for some required OpenGL memory object extensions! Skipped.\n");
         return(FALSE);
     }
 
@@ -1802,16 +1810,48 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     glCreateMemoryObjectsEXT(1, &fbo->memoryObject);
     PsychTestForGLErrors();
 
+    // Semaphore handle provided?
+    if (interopSemaphoreHandle) {
+        // Yes. Need to create a OpenGL semaphore which we can associate with this handle:
+
+        // Are all required semaphore OpenGL extensions supported?
+        if (!glewIsSupported("GL_EXT_semaphore") || (!glewIsSupported("GL_EXT_semaphore_fd") && !glewIsSupported("GL_EXT_semaphore_win32"))) {
+            if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: This OpenGL implementation lacks support for required semaphore OpenGL extensions! Skipped.\n");
+            return(FALSE);
+        }
+
+        // Delete old renderCompleteSemaphore for externally backed color buffer textures, if any:
+        if ((fbo->renderCompleteSemaphore) && glIsSemaphoreEXT && glIsSemaphoreEXT(fbo->renderCompleteSemaphore)) {
+            glDeleteSemaphoresEXT(1, &fbo->renderCompleteSemaphore);
+        }
+
+        // Create a new one:
+        glGenSemaphoresEXT(1, &fbo->renderCompleteSemaphore);
+
+        PsychTestForGLErrors();
+    }
+
     // Platform specific external memory object import:
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
         // glImportMemoryWin32HandleEXT *does not* transfer ownership of the interopMemObjectHandle to OpenGL, so we *must* close
         // it at the end of the session, and therefore keep track of its existence and identity in the windowRecord:
         glImportMemoryWin32HandleEXT(fbo->memoryObject, (GLuint64) allocationSize, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, interopMemObjectHandle);
+
+        // Import the semaphore handle into our semaphore, if any. Ownership is not transferred to OpenGL, so we need to release it at end of session:
+        if (interopSemaphoreHandle) {
+            glImportSemaphoreWin32HandleEXT(fbo->renderCompleteSemaphore, GL_HANDLE_TYPE_OPAQUE_WIN32_EXT, interopSemaphoreHandle);
+        }
     #else
         // glImportMemoryFdEXT transfers ownership of the interopMemObjectHandle to OpenGL, so we do not need to care about it
         // anymore, so we can remove our reference to it in the windowRecord:
         glImportMemoryFdEXT(fbo->memoryObject, (GLuint64) allocationSize, GL_HANDLE_TYPE_OPAQUE_FD_EXT, (GLint) ((size_t) interopMemObjectHandle));
         windowRecord->interopMemObjectHandle = 0;
+
+        // Import the semaphore handle into our semaphore, if any. Ownership is transferred to OpenGL, so we are done with the handle:
+        if (interopSemaphoreHandle) {
+            glImportSemaphoreFdEXT(fbo->renderCompleteSemaphore, GL_HANDLE_TYPE_OPAQUE_FD_EXT, (GLint) ((size_t) interopSemaphoreHandle));
+            windowRecord->interopSemaphoreHandle = 0;
+        }
     #endif
 
     PsychTestForGLErrors();
@@ -2855,6 +2895,11 @@ void PsychDeleteFBO(PsychFBO* fboptr)
         glDeleteMemoryObjectsEXT(1, &fboptr->memoryObject);
     }
 
+    // Delete renderCompleteSemaphore for externally backed color buffer textures, if any:
+    if ((fboptr->renderCompleteSemaphore) && glIsSemaphoreEXT && glIsSemaphoreEXT(fboptr->renderCompleteSemaphore)) {
+        glDeleteSemaphoresEXT(1, &fboptr->renderCompleteSemaphore);
+    }
+
     // Detach and delete depth buffer (and probably stencil buffer) texture, if any:
     if (fboptr->ztexid) {
         if (glIsTexture(fboptr->ztexid)) {
@@ -3275,12 +3320,19 @@ void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, psych_boo
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
     if (windowRecord->interopMemObjectHandle)
         CloseHandle(windowRecord->interopMemObjectHandle);
+
+    if (windowRecord->interopSemaphoreHandle)
+        CloseHandle(windowRecord->interopSemaphoreHandle);
     #else
     if (windowRecord->interopMemObjectHandle)
         close((int) (size_t) windowRecord->interopMemObjectHandle);
+
+    if (windowRecord->interopSemaphoreHandle)
+        close((int) (size_t) windowRecord->interopSemaphoreHandle);
     #endif
 
     windowRecord->interopMemObjectHandle = 0;
+    windowRecord->interopSemaphoreHandle = 0;
 
     // Cleanup done.
     return;

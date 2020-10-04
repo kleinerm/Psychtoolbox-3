@@ -156,7 +156,7 @@ static char synopsisString[] =
     "For internally generated textures (without flag kPsychUseExternalSinkTextures), the handles should be considered read-only: Binding "
     "the textures for sampling/reading from them is appropriate, modifying them in any way is forbidden.\n"
     "\n\n"
-    "Screen('HookFunction', windowPtr, 'ImportDisplayBufferInteropMemory' [, hookname][, viewId=0][, interopMemObjectHandle][, allocationSize][, formatSpec][, tilingMode][, memoryOffset][, width][, height]);\n"
+    "Screen('HookFunction', windowPtr, 'ImportDisplayBufferInteropMemory' [, hookname][, viewId=0][, interopMemObjectHandle][, allocationSize][, formatSpec][, tilingMode][, memoryOffset][, width][, height][, interopSemaphoreHandle]);\n"
     "CAUTION: EXPERIMENTAL, UNSTABLE API - Subject to backwards incompatible breaking changes without notice!\n"
     "Replace the current image backing memory for the final output color buffers of the imaging pipeline by externally imported memory.\n"
     "This only works if imagingMode flag kPsychNeedFinalizedFBOSinks is set or stereoMode 12 is active, which implicitely sets that flag.\n"
@@ -173,6 +173,9 @@ static char synopsisString[] =
     "'memoryOffset' Memory offset in bytes into the imported memory object to use.\n"
     "'width' Width of texture in pixels.\n"
     "'height' Height of texture in pixels.\n"
+    "'interopSemaphoreHandle' Operating system specific handle to an external interop-image-rendering-complete semaphore. "
+    "If this handle is provided, then Screen() will signal the associated OpenGL semaphore each time OpenGL rendering "
+    "into the imported interop image is finished.\n"
     "\n\n"
     "Screen('HookFunction', windowPtr, 'SetOneshotFlipFlags' [, hookname], flipFlags);\n"
     "Assign special flags to be applied one-time during the next execution of Screen('Flip') or Screen('AsyncFlipBegin').\n"
@@ -265,7 +268,7 @@ PsychError SCREENHookFunction(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    PsychErrorExit(PsychCapNumInputArgs(11));
+    PsychErrorExit(PsychCapNumInputArgs(12));
     PsychErrorExit(PsychRequireNumInputArgs(2));
     PsychErrorExit(PsychCapNumOutputArgs(7));
 
@@ -595,7 +598,8 @@ PsychError SCREENHookFunction(void)
 
             {
                 int viewId, allocationSize, formatSpec, tilingMode, memoryOffset;
-                void *interopMemObjectHandle;
+                void *interopMemObjectHandle = NULL;
+                void *interopSemaphoreHandle = NULL;
 
                 // Get new optional override values and set them:
                 PsychCopyInIntegerArg(4, FALSE, &viewId);
@@ -606,7 +610,8 @@ PsychError SCREENHookFunction(void)
                 PsychCopyInIntegerArg(9, FALSE, &memoryOffset);
                 PsychCopyInIntegerArg(10, FALSE, &width);
                 PsychCopyInIntegerArg(11, FALSE, &height);
-                if (!PsychSetPipelineExportTextureInteropMemory(windowRecord, viewId, interopMemObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height) && (verbosity > 1))
+                PsychCopyInPointerArg(12, FALSE, &interopSemaphoreHandle);
+                if (!PsychSetPipelineExportTextureInteropMemory(windowRecord, viewId, interopMemObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height, interopSemaphoreHandle) && (verbosity > 1))
                     printf("PTB-WARNING: HookFunction call to ImportDisplayBufferInteropMemory failed. See above error message for details. Trying to carry on - Prepare for trouble!\n");
             }
         break;
