@@ -159,6 +159,8 @@ typedef struct PsychVulkanWindow {
     ShareHandles                        interopHandles;
     size_t                              interopMemorysize;
 
+    VkSemaphore                         interopRenderDoneSemaphore;
+
     unsigned int                        frameIndex;
     VkFence                             flipDoneFence;
     double                              tPresentComplete;
@@ -241,8 +243,10 @@ PFN_vkSetLocalDimmingAMD fpSetLocalDimmingAMD = NULL;
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 PFN_vkAcquireFullScreenExclusiveModeEXT fpAcquireFullScreenExclusiveModeEXT;
 PFN_vkGetMemoryWin32HandleKHR fpGetMemoryWin32HandleKHR;
+PFN_vkGetSemaphoreWin32HandleKHR fpGetSemaphoreWin32HandleKHR;
 #else
 PFN_vkGetMemoryFdKHR fpGetMemoryFdKHR;
+PFN_vkGetSemaphoreFdKHR fpGetSemaphoreFdKHR;
 PFN_vkGetRandROutputDisplayEXT fpGetRandROutputDisplayEXT = NULL;
 PFN_vkAcquireXlibDisplayEXT fpAcquireXlibDisplayEXT = NULL;
 #endif
@@ -283,7 +287,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychVulkanCore('CloseWindow' [, vulkanWindow]);";
     synopsis[i++] = "hdr = PsychVulkanCore('GetHDRProperties', vulkanWindow);";
     synopsis[i++] = "oldlocalDimmmingEnable = PsychVulkanCore('HDRLocalDimming', vulkanWindow [, localDimmmingEnable]);";
-    synopsis[i++] = "[interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vulkanWindowHandle [, eye=0]);";
+    synopsis[i++] = "[interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height, interopSemaphoreHandle] = PsychVulkanCore('GetInteropHandle', vulkanWindowHandle [, wantSemaphore=0][, eye=0]);";
     synopsis[i++] = "oldHdrMetadata = PsychVulkanCore('HDRMetadata', vulkanWindow, metadataType [, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);";
     synopsis[i++] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=1]);";
     synopsis[i++] = NULL; // Mark end of synopsis.
@@ -637,13 +641,19 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     GET_INSTANCE_PROC_ADDR(vulkanInstance, QueuePresentKHR);
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    // External memory fd extension:
+    // External memory handle extension:
     GET_INSTANCE_PROC_ADDR(vulkanInstance, GetMemoryWin32HandleKHR);
+    // External semaphore handle extension:
+    GET_INSTANCE_PROC_ADDR(vulkanInstance, GetSemaphoreWin32HandleKHR);
+
     // Needed to switch a fullscreen window to fullscreen exclusive mode:
     GET_INSTANCE_PROC_ADDR(vulkanInstance, AcquireFullScreenExclusiveModeEXT);
     #else
     // External memory fd extension:
     GET_INSTANCE_PROC_ADDR(vulkanInstance, GetMemoryFdKHR);
+    // External semaphore handle extension:
+    GET_INSTANCE_PROC_ADDR(vulkanInstance, GetSemaphoreFdKHR);
+
     // Needed to switch to a fullscreen direct mode display mode:
     GET_INSTANCE_PROC_ADDR(vulkanInstance, GetRandROutputDisplayEXT);
     GET_INSTANCE_PROC_ADDR(vulkanInstance, AcquireXlibDisplayEXT);
@@ -2371,11 +2381,20 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // image until the presentation engine has fully released ownership to us,
     // and it is okay to overwrite the old image content:
     VkPipelineStageFlags pipeStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+    // If window->interopRenderDoneSemaphore exists (non-zero) then we not only
+    // wait until the target swapChainImage is ready, but also until the external
+    // client has signalled render completion on the interop image via signalling
+    // of interopRenderDoneSemaphore:
+    VkSemaphore waitSemaphores[2];
+    waitSemaphores[0] = window->imageAcquiredSemaphores[window->frameIndex % window->numBuffers];
+    waitSemaphores[1] = window->interopRenderDoneSemaphore;
+
     VkSubmitInfo submitInfo = {
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
         .pNext = NULL,
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &window->imageAcquiredSemaphores[window->frameIndex % window->numBuffers],
+        .waitSemaphoreCount = (window->interopRenderDoneSemaphore) ? 2 : 1,
+        .pWaitSemaphores = waitSemaphores,
         .pWaitDstStageMask = &pipeStageFlags,
         .commandBufferCount = 1,
         .pCommandBuffers = &window->swapChainCommandBuffers[window->frameIndex % window->numBuffers],
@@ -3473,6 +3492,9 @@ psych_bool PsychCloseVulkanWindow(PsychVulkanWindow* window)
 
     vkDestroyFence(window->vulkan->device, window->flipDoneFence, NULL);
 
+    vkDestroySemaphore(window->vulkan->device, window->interopRenderDoneSemaphore, NULL);
+    window->interopRenderDoneSemaphore = VK_NULL_HANDLE;
+
     for (i = 0; i < MAX_BUFFERS; i++) {
         vkDestroySemaphore(window->vulkan->device, window->imageAcquiredSemaphores[i], NULL);
         window->imageAcquiredSemaphores[i] = VK_NULL_HANDLE;
@@ -4277,8 +4299,8 @@ PsychError PSYCHVULKANClose(void)
 
 PsychError PSYCHVULKANGetInteropHandle(void)
 {
-    static char useString[] = "[interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vulkanWindowHandle [, eye=0]);";
-    //                          1                    2               3           4           5             6      7                                             1                     2
+    static char useString[] = "[interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height, interopSemaphoreHandle] = PsychVulkanCore('GetInteropHandle', vulkanWindowHandle [, wantSemaphore=0][, eye=0]);";
+    //                          1                    2               3           4           5             6      7       8                                                             1                     2                  3
     static char synopsisString[] =
         "Retrieve all info needed to import the Vulkan interop image as OpenGL renderable texture.\n"
         "Returned values allow to construct an OpenGL GL_TEXTURE2D object which uses the driver "
@@ -4286,20 +4308,27 @@ PsychError PSYCHVULKANGetInteropHandle(void)
         "and Vulkan can share an image buffer into which OpenGL renders and which is later displayed "
         "by PsychVulkanCore() via Vulkan WSI.\n"
         "'vulkanWindowHandle' is a handle to the Vulkan window to use for stimulus display.\n"
+        "'wantSemaphore' Optional: If a semaphore interop handle should also be returned as 8th "
+        "return argument. Defaults to 0 = No. 1 = Yes will export the handle, and each 'Present' "
+        "operation on the 'vulkanWindowHandle' will block until the returned semaphore is signalled.\n"
         "'eye' Optional Eye for which interop data should be returned in a stereo display setup:\n"
         "0 = Left eye view or monoscopic view, 1 = Right eye view. Defaults to 0.\n"
         "Return arguments:\n"
-        "'interopObjectHandle' Operating system specific handle to the interop image backing memory.\n"
+        "'interopObjectHandle' Operating system specific handle to the interop image backing memory. "
+        "The caller is responsible for releasing the handle once it is no longer needed.\n"
         "'allocationSize' Number of bytes of backing memory for the 'interopObjectHandle' to import.\n"
         "'formatSpec' Type of texture to create: 0 = GL_RGBA8, 1 = GL_RGB10A2, 2 = GL_RGBA16F, 3 = GL_RGBA16.\n"
         "'tilingMode' Type of tiling to use/assume for rendering: 0 = Linear (non-tiled), 1 = Tiled.\n"
         "'memoryOffset' Memory offset in bytes into the imported memory object to use.\n"
         "'width' Width of texture in pixels.\n"
-        "'height' Height of texture in pixels.\n";
+        "'height' Height of texture in pixels.\n"
+        "'interopSemaphoreHandle' Operating system specific handle to the interop semaphore, if one was "
+        "requested by setting 'wantSemaphore' to 1. "
+        "The caller is responsible for releasing the handle once it is no longer needed.\n";
 
     static char seeAlsoString[] = "";
 
-    int vulkanWindowHandle, eyeIndex;
+    int vulkanWindowHandle, eyeIndex, wantSemaphore;
     PsychVulkanWindow* window;
 
     // All sub functions should have these two lines
@@ -4307,8 +4336,8 @@ PsychError PSYCHVULKANGetInteropHandle(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(7));
-    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(8));
+    PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
@@ -4318,9 +4347,14 @@ PsychError PSYCHVULKANGetInteropHandle(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &vulkanWindowHandle);
     window = PsychGetVulkanWindow(vulkanWindowHandle, FALSE);
 
+    wantSemaphore = 0;
+    PsychCopyInIntegerArg(2, kPsychArgOptional, &wantSemaphore);
+    if (wantSemaphore < 0 || wantSemaphore > 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'wantSemaphore' specified. Must be 0 = no or 1 = yes.");
+
     // Get eye:
     eyeIndex = 0;
-    PsychCopyInIntegerArg(2, kPsychArgOptional, &eyeIndex);
+    PsychCopyInIntegerArg(3, kPsychArgOptional, &eyeIndex);
     if (eyeIndex < 0 || eyeIndex > 1)
         PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0 or 1 for left- or right eye.");
 
@@ -4353,6 +4387,78 @@ PsychError PSYCHVULKANGetInteropHandle(void)
 
     // Return height:
     PsychCopyOutDoubleArg(7, kPsychArgOptional, (double) window->height);
+
+    // Export of a semaphore handle requested?
+    if (wantSemaphore && (PsychGetNumNamedOutputArgs() >= 8)) {
+        // Yes: Create the semaphore, retrieve and export an interop handle to it:
+        VkResult result;
+
+        // Exists already? Redundant calls are not allowed - Everybody only one cross...
+        if (window->interopRenderDoneSemaphore)
+            PsychErrorExitMsg(PsychError_user, "Tried to create and export 'interopSemaphoreHandle' twice. Must be done only once per window - Everybody only one cross!");
+
+        // Create semaphore for export to / use by external renderer to signal render completion to us:
+        const VkExportSemaphoreCreateInfo renderCompleteSemaphoreExportInfo = {
+            .sType = VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO,
+            .pNext = NULL,
+            .handleTypes = (PSYCH_SYSTEM == PSYCH_WINDOWS) ? VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT : VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT,
+        };
+
+        const VkSemaphoreCreateInfo renderCompleteSemaphoreCreateInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            .pNext = &renderCompleteSemaphoreExportInfo,
+            .flags = 0,
+        };
+
+        result = vkCreateSemaphore(window->vulkan->device, &renderCompleteSemaphoreCreateInfo, NULL, &window->interopRenderDoneSemaphore);
+        if (result != VK_SUCCESS) {
+            if (verbosity > 0)
+                printf("PsychVulkanCore-ERROR: vkCreateSemaphore() for external interop render-complete semaphore failed for window %i: res=%i.\n", window->index, result);
+
+            PsychErrorExitMsg(PsychError_system, "Creation of external interop render-complete semaphore failed.");
+        }
+
+        // Create export handle to semaphore:
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        VkSemaphoreGetWin32HandleInfoKHR interopRenderDoneSemaphoreHandleInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR,
+            .pNext = NULL,
+            .semaphore = window->interopRenderDoneSemaphore,
+            .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_WIN32_BIT,
+        };
+
+        result = fpGetSemaphoreWin32HandleKHR(window->vulkan->device, &interopRenderDoneSemaphoreHandleInfo, &window->interopHandles.glComplete);
+        #else
+        VkSemaphoreGetFdInfoKHR interopRenderDoneSemaphoreHandleInfo = {
+            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
+            .pNext = NULL,
+            .semaphore = window->interopRenderDoneSemaphore,
+            .handleType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_OPAQUE_FD_BIT,
+        };
+
+        result = fpGetSemaphoreFdKHR(window->vulkan->device, &interopRenderDoneSemaphoreHandleInfo, &window->interopHandles.glComplete);
+        #endif
+        if (result != VK_SUCCESS) {
+            if (verbosity > 0)
+                printf("PsychVulkanCore-ERROR: Getting handles for external interop render-complete semaphore failed for window %i: res=%i.\n", window->index, result);
+
+            // Delete now obsolete interopRenderDoneSemaphore:
+            vkDestroySemaphore(window->vulkan->device, window->interopRenderDoneSemaphore, NULL);
+            window->interopRenderDoneSemaphore = VK_NULL_HANDLE;
+
+            PsychErrorExitMsg(PsychError_system, "Getting handles for external interop render-complete semaphore failed.");
+        }
+
+        // Return semaphore handle to caller for external use/signalling:
+        PsychCopyOutPointerArg(8, kPsychArgOptional, (void*) (size_t) window->interopHandles.glComplete);
+
+        // Now that the ownership of the handle is transferred to the caller, remove our reference to it:
+        window->interopHandles.glComplete = 0;
+    }
+    else {
+        // Copy out dummy invalid 8th arg NULL pointer:
+        PsychCopyOutPointerArg(8, kPsychArgOptional, NULL);
+    }
 
     return(PsychError_none);
 }
