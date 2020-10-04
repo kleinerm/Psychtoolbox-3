@@ -33,6 +33,7 @@ persistent supported;
 persistent vulkan;
 persistent usedOutputs;
 persistent outputMappings;
+persistent noglfinish;
 
 % Fast path dispatch of functions called from within Screen() imaging pipeline
 % processing slots. Numeric 'cmd' codes, placed here for most efficient execution:
@@ -44,10 +45,12 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         win = varargin{1};
         Screen('Hookfunction', win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
 
-        % glFinish() the OpenGL pipeline. TODO: Switch to use of OpenGL<->Vulkan semaphores instead
-        % for theoretically higher efficiency and correctness. In practice, this works on both
-        % Linux and Windows-10 with AMD and NVidia, both OSS and proprietary drivers:
-        glFinish;
+        if ~noglfinish
+            % glFinish() the OpenGL pipeline. TODO: Switch to use of OpenGL<->Vulkan semaphores instead
+            % for theoretically higher efficiency and correctness. In practice, this works on both
+            % Linux and Windows-10 with AMD and NVidia, both OSS and proprietary drivers:
+            glFinish;
+        end
 
         return;
     end
@@ -392,6 +395,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % the imaging pipeline are brought up. Needs to hook up the imaging pipeline to
     % ourselves and the PsychVulkanCore low-level driver.
 
+    % noglfinish, if set to 1, will avoid glFinish() for OpenGL->Vulkan sync, but
+    % instead request and use a shared semaphore for sync, which should be a bit
+    % faster in theory:
+    noglfinish = 1;
+
     % Must have global GL constants:
     if isempty(GL)
         varargout{1} = 0;
@@ -589,7 +597,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, windowRect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);
 
         % Get all required info for OpenGL-Vulkan interop:
-        [interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height] = PsychVulkanCore('GetInteropHandle', vwin);
+        [interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height, renderCompleteSemaphore] = PsychVulkanCore('GetInteropHandle', vwin, noglfinish);
     catch
         % Failed! Reenable RandR output if this was a failed attempt at output leasing on Linux + NVidia:
         if needsNvidiaWa
@@ -656,7 +664,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     % Set it up:
     if ~noInterop
-        Screen('Hookfunction', win, 'ImportDisplayBufferInteropMemory', [], 0, interopObjectHandle, allocationSize, internalFormat, tilingMode, memoryOffset, width, height);
+        Screen('Hookfunction', win, 'ImportDisplayBufferInteropMemory', [], 0, interopObjectHandle, allocationSize, internalFormat, tilingMode, memoryOffset, width, height, renderCompleteSemaphore);
     end
 
     vulkan{win}.valid = 1;
