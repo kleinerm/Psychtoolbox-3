@@ -4943,8 +4943,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         windowRecord->loadGammaTableOnNextFlip = 0;
     }
 
-    // Clear the one-shot flipFlags, so they won't automatically apply to the next flip again: XXX Better do it in SCREENFlip than here?
-    windowRecord->specialflags &= ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce | kPsychSkipWaitForFlipOnce);
+    // Clear the one-shot flipFlags, so they won't automatically apply to the next flip again, unless explicitely
+    // asked to not to clear the one-shot flags: XXX Better do it in SCREENFlip than here?
+    if (!(windowRecord->specialflags & kPsychDontAutoResetOneshotFlags))
+        windowRecord->specialflags &= ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce | kPsychSkipWaitForFlipOnce);
 
     // We take a second timestamp here to mark the end of the Flip-routine and return it to "userspace"
     PsychGetAdjustedPrecisionTimerSeconds(time_at_flipend);
@@ -5969,7 +5971,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                 glSignalSemaphoreEXT(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->renderCompleteSemaphore, 0, NULL,
                                      1, &windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->coltexid, &dstLayout);
 
-                if (PsychPrefStateGet_Verbosity() > 4)
+                if (PsychPrefStateGet_Verbosity() > 5)
                     printf("PTB-INFO: renderCompleteSemaphore for finalizedFBO[%i] of window %i signalled.\n", viewid, windowRecord->windowIndex);
             }
         }

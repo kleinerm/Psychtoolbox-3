@@ -54,25 +54,37 @@
 % DisplayUndistortionLabRiggerMouseStim - Create display undistortion based on method from LabRigger for mouse visual stims.
 % DisplayUndistortionSphere     - Interactive geometric display calibration for spherical projections.
 % ImagingStereoDemo             - Counterpart to StereoDemo, but using imaging pipeline
-%                                    for increased fidelity, flexibility, ease of use.
+%                                 for increased fidelity, flexibility, ease of use.
 % MakeTextureDrawShader         - Create GLSL shader for use with Screen('DrawTexture') and Screen('MakeTexture')
-%                                    to apply on-the-fly texture filtering operations during texture draw.
+%                                 to apply on-the-fly texture filtering operations during texture draw.
 %
 % PsychHDR                      - Support and control stimulus display to HDR "High dynamic range" displays.
 %
 % PsychImaging                  - Generic setup routine for the imaging pipeline. Allows to setup
-%                                    and initialize the pipeline for many common tasks.
+%                                 and initialize the pipeline for many common tasks.
+%
 % PsychVideoSwitcher            - Setup routine for the Xiangru Li et al. "VideoSwitcher" video attenuator device.
 %
 % PsychVulkan                   - Interface with the Vulkan graphics and compute api for special purpose tasks.
 %
-% SetAnaglyphStereoParameters   - Function for runtime tuning of Anaglyph stereo parameters,
-%                                    see ImagingStereoDemo for example of use.
-% SetStereoBlueLineSyncParameters - Change settings for drawing of stereo sync lines in frame-sequential stereo mode.
-% SetStereoSideBySideParameters   - Change parameters for side-by-side stereo display modes (4 and 5).
+% SetAnaglyphStereoParameters       - Function for runtime tuning of Anaglyph stereo parameters,
+%                                     see ImagingStereoDemo for example of use.
+% SetStereoBlueLineSyncParameters   - Change settings for drawing of stereo sync lines in frame-sequential stereo mode.
+% SetStereoSideBySideParameters     - Change parameters for side-by-side stereo display modes (4 and 5).
 % SetCompressedStereoSideBySideParameters - Change parameters for compressed side-by-side stereo display modes.
 %
-% VignetCalibration               - Vignetted luminance calibration procedure for undistortion of distorted display luminance.
+% VignetCalibration                 - Vignetted luminance calibration procedure for undistortion of distorted display luminance.
+%
+%
+% Constants for use as 'flipFlags' with the imaging pipeline function
+% Screen('HookFunction', windowPtr, 'SetOneshotFlipFlags' ..., flipFlags):
+%
+% kPsychDontAutoResetOneshotFlags   - Prevent "one-shot" flip flags from being automatically cleared after execution of the next Screen('Flip') operation.
+% kPsychSkipSwapForFlipOnce         - Skip OpenGL double-buffer swap during execution of next Screen('Flip').
+% kPsychSkipTimestampingForFlipOnce - Skip timestamping of OpenGL double-buffer swap stimulus onset after execution of next Screen('Flip').
+% kPsychSkipVsyncForFlipOnce        - Do not synchronize next OpenGL buffer swap to vertical retrace during execution of next Screen('Flip').
+% kPsychSkipWaitForFlipOnce         - Do not schedule OpenGL buffer swap for specific target time, leave it to some external method.
+%
 %
 % Constants for imagingmode flag of Screen('OpenWindow', ...., imagingmode);
 % One can 'or' them together, e.g., imagingmode = mor(kPsychNeed16BPCFixed, kPsychNeedFastBackingStore);

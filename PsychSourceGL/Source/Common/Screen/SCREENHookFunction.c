@@ -181,9 +181,11 @@ static char synopsisString[] =
     "Assign special flags to be applied one-time during the next execution of Screen('Flip') or Screen('AsyncFlipBegin').\n"
     "'hookname' is accepted, but currently ignored. Pass '' or [] for now.\n"
     "These 'flipFlags' will be applied during the next window flip operation, and each applied flag will then auto-reset "
-    "after application. This is mostly meant to be called from within imaging pipeline processing chains during preflip "
-    "operations or the active presentation sequence to modify behaviour of that sequence. The following 'flipFlags' are "
-    "currently implemented: kPsychSkipVsyncForFlipOnce, kPsychSkipTimestampingForFlipOnce, kPsychSkipSwapForFlipOnce, kPsychSkipWaitForFlipOnce.\n"
+    "after application, unless you also pass in the kPsychDontAutoResetOneshotFlags to prevent \"OneShot\" auto-reset.\n"
+    "This is mostly meant to be called from within imaging pipeline processing chains during preflip operations or the "
+    "active presentation sequence to modify behaviour of that sequence. The following 'flipFlags' are "
+    "currently implemented: kPsychSkipVsyncForFlipOnce, kPsychSkipTimestampingForFlipOnce, kPsychSkipSwapForFlipOnce, "
+    "kPsychSkipWaitForFlipOnce, kPsychDontAutoResetOneshotFlags.\n"
     "\n\n"
     "Screen('HookFunction', windowPtr, 'SetOneshotFlipResults' [, hookname], VBLTimestamp [, StimulusOnsetTime=VBLTimestamp][, Missed=0][, Beampos=-1]);\n"
     "Assign override timestamp values to return from Screen('Flip') or Screen('AsyncFlipBegin').\n"
@@ -256,6 +258,7 @@ PsychError SCREENHookFunction(void)
     char                        *cmdString, *hookString, *idString, *blitterString, *insertString;
     int                         cmd, slotid, flag1, whereloc = 0;
     int                         leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height;
+    psych_int64                 flag64;
     double                      doubleptr;
     double                      shaderid, luttexid1 = 0;
     int                         n, m, p;
@@ -505,18 +508,22 @@ PsychError SCREENHookFunction(void)
         break;
 
         case 16: // SetOneshotFlipFlags
-            flag1 = 0;
-            if (!PsychCopyInIntegerArg(4, FALSE, &flag1) && (verbosity > 1))
+            flag64 = 0;
+            if (!PsychCopyInIntegerArg64(4, FALSE, &flag64) && (verbosity > 1))
                 printf("PTB-WARNING: HookFunction call to SetOneshotFlipFlags failed, because mandatory flipFlags parameter is missing.\n");
 
-            if (flag1 & ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce | kPsychSkipWaitForFlipOnce)) {
+            if (flag64 & ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce | kPsychSkipWaitForFlipOnce | kPsychDontAutoResetOneshotFlags)) {
                 if (verbosity > 1)
                     printf("PTB-WARNING: HookFunction call to SetOneshotFlipFlags failed, because invalid/unsupported flipFlags were specified.\n");
             } else {
-                windowRecord->specialflags |= flag1;
+                // Reset current flags:
+                windowRecord->specialflags &= ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce | kPsychSkipWaitForFlipOnce | kPsychDontAutoResetOneshotFlags);
+
+                // Add new ones:
+                windowRecord->specialflags |= flag64;
 
                 // Any flag set that would prevent proper timestamping for the onscreen window in this cycle?
-                if (flag1 & (kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce)) {
+                if (flag64 & (kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce)) {
                     // Invalidate windowRecord's bookkeeping:
                     windowRecord->time_at_last_vbl = 0;
                     windowRecord->rawtime_at_swapcompletion = 0;
