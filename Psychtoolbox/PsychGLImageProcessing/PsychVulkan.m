@@ -39,23 +39,6 @@ persistent noglfinish;
 % processing slots. Numeric 'cmd' codes, placed here for most efficient execution:
 if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
     if cmd == 0
-        % Preflip operations: After render completion, before flip.
-
-        % Tell Screen() to skip regular flip scheduling and timestamping:
-        win = varargin{1};
-        Screen('Hookfunction', win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
-
-        if ~noglfinish
-            % glFinish() the OpenGL pipeline. TODO: Switch to use of OpenGL<->Vulkan semaphores instead
-            % for theoretically higher efficiency and correctness. In practice, this works on both
-            % Linux and Windows-10 with AMD and NVidia, both OSS and proprietary drivers:
-            glFinish;
-        end
-
-        return;
-    end
-    
-    if cmd == 1
         % Execute flip operation via a Vulkan Present operation at the appropriately
         % scheduled requested visual stimulus onset time:
         win = varargin{1};
@@ -111,7 +94,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         return;
     end
     
-    if cmd == 2
+    if cmd == 1
         % Vulkan window close operation, closes the Vulkan onscreen window associated with
         % a PTB onscreen window. Called from Screen('Close', win) and Screen('CloseAll') as
         % well as from usual "close window on error" error handling pathes:
@@ -596,6 +579,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % Open the Vulkan window:
         vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, windowRect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);
 
+        if noInterop
+            % In no-interop debug mode we  must not use semaphores, because they
+            % are likely unsupported by the OpenGL or Vulkan driver as well, so
+            % use classic fallback path with glFinish:
+            noglfinish = 0;
+        end
+
         % Get all required info for OpenGL-Vulkan interop:
         [interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height, renderCompleteSemaphore] = PsychVulkanCore('GetInteropHandle', vwin, noglfinish);
     catch
@@ -697,15 +687,24 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
 
     % Interop enabled. Set up callbacks from Screen() imaging pipeline into our driver:
-    cmdString = sprintf('PsychVulkan(0, %i);', win);
-    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'Vulkan Mono commit operation', cmdString);
-    Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
 
-    cmdString = sprintf('PsychVulkan(1, %i, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', win, vwin);
+    % Optimized method: Use semaphore for render completion signalling by OpenGL,
+    % Do not reset "one-shot" flags, so we do not set them again before each flip.
+    % We do all swap scheduling and timestamping, so Screen can skip OpenGL buffer swaps,
+    % waits/scheduling/timestamping:
+    Screen('Hookfunction', win, 'SetOneshotFlipFlags', '', kPsychDontAutoResetOneshotFlags + kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
+
+    if ~noglfinish
+        % Old method as fallback: Use glFinish to sync Vulkan with OpenGL:
+        Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'Vulkan Mono commit operation', 'moglcore(''glFinish'');');
+        Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
+    end
+
+    cmdString = sprintf('PsychVulkan(0, %i, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', win, vwin);
     Screen('Hookfunction', win, 'AppendMFunction', 'PreSwapbuffersOperations', 'Vulkan Present operation', cmdString);
     Screen('Hookfunction', win, 'Enable', 'PreSwapbuffersOperations');
 
-    cmdString = sprintf('PsychVulkan(2, %i);', win);
+    cmdString = sprintf('PsychVulkan(1, %i);', win);
     Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Vulkan cleanup', cmdString);
     Screen('Hookfunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
 
