@@ -45,8 +45,24 @@ function [img, info, errmsg] = HDRRead(imgfilename, continueOnError, flipit)
 %   radiance.
 %
 % * OpenEXR files, file extension is ".exr". info.format is 'openexr'.
-%   These files are readable efficiently if the MIT licensed exrread()
-%   command from the following 3rd package/webpage is installed:
+%   By default, Screen()'s builtin Screen('ReadHDRImage') function is used,
+%   which uses the builtin tinyexr open-source library from:
+%
+%   https://github.com/syoyo/tinyexr
+%
+%   This method is fast and can handle the most common OpenEXR format
+%   encoding, single-part RGB(A) images, but will not be able to cope with
+%   some more unusual encodings, e.g., YUV images, multipart images or deep
+%   images, or additional integer channels for pixel ids. See the feature
+%   table at tinyexr's GitHub page for features and limitations. Some of
+%   these limitations apply due to Screen()'s current use of tinyexr, e.g.,
+%   tinyexr can handle multi-part images and some deep images, but Screen
+%   currently does not implement the needed interfaces.
+%
+%   In case of YUV images, HDRRead() will try to use the MIT licensed
+%   exrread() command from the following 3rd package/webpage, if the
+%   openexr-matlab is installed by the user:
+%
 %   https://github.com/skycaptain/openexr-matlab
 %
 %   That package uses the OpenEXR libraries for image reading, so those
@@ -54,14 +70,12 @@ function [img, info, errmsg] = HDRRead(imgfilename, continueOnError, flipit)
 %   least GNU/Linux usually comes with libopenexr preinstalled or
 %   installable from the distribution package archives.
 %
-%   If exrread() or the required OpenEXR libraries are missing, then
-%   Screen()'s builtin Screen('ReadHDRImage') function is used, which uses
-%   the builtin tinyexr open-source library from:
-%   https://github.com/syoyo/tinyexr
-%   This method if fast and can handle the most common OpenEXR format
-%   encodings, but may not be able to cope with some more unusual
-%   encodings. See the feature table at tinyexr's GitHub page for features
-%   and limitations.
+%   The downside of using exrread() is that it won't provide color gamut
+%   meta information, but always return fixed gamut info for a Rec-709
+%   color space. For properly color-managed image reading you might
+%   therefore be better off using a 3rd party OpenEXR converter application
+%   to convert YUV images to RGB images, so Screen()'s internal .exr
+%   reading function can be used.
 %
 % The reader routines are contributed code or open source / free software /
 % public domain code downloaded from various locations under different, but
@@ -122,7 +136,7 @@ if strcmpi(fext, '.hdr')
             warning(['HDR file ' imgfilename ' failed to load.']);
             msg = psychlasterror;
             disp(msg.message);
-            errmsg = ['Unknown error. Maybe ' msg.message];
+            errmsg = ['Unknown error. Maybe: ' msg.message];
             return;
         else
             psychrethrow(psychlasterror);
@@ -136,23 +150,68 @@ if strcmpi(fext, '.exr')
     % Load an OpenEXR high dynamic range file:
     dispatched = 1;
     try
-        % Does (potentially optimized) exrread() function exist?
-        if exist('exrread', 'file')
-            % Use it.
-            inimg = double(exrread(imgfilename));
+        % Use our own Screen() implementation, which provides useful meta
+        % data about color gamut and value to Nits mapping, but can neither
+        % handle YUV images, nor multi-part images or deep images or some
+        % other more exotic stuff:
+        [inimg, format, err, info] = Screen('ReadHDRImage', imgfilename);
+        if ~isempty(inimg)
+            % Success. Assemble final info struct:
+            info.format = format;
+        elseif ~strcmp(err, 'R channel not found')
+            % 'ReadHDRImage' failed for a reason other than that this is not
+            % a RGB(A) image, but an YUV image. The optionally installed
+            % exrread() command would not do better, as its only advantage
+            % at the moment is that it can deal with single-part YUV
+            % images. So this is a fail case:
+            if continueOnError
+                warning(['HDR file ' imgfilename ' failed to load: ' err]);
+                msg = psychlasterror;
+                disp(msg.message);
+                errmsg = err;
+                return;
+            else
+                psychrethrow(psychlasterror);
+            end
         else
-            % Use our own fallback:
-            [inimg, info.format, err] = Screen('ReadHDRImage', imgfilename);
-            if isempty(inimg)
-                if continueOnError
-                    warning(['HDR file ' imgfilename ' failed to load: ' err]);
-                    msg = psychlasterror;
-                    disp(msg.message);
-                    errmsg = err;
-                    return;
+            % Failed because Red channel not found. Could be because it is
+            % a YUV image, which our own implementation can not handle
+            % atm., but exrread() can. Does (potentially optimized)
+            % exrread() function exist?
+            if exist('exrread', 'file')
+                % Yes. Use it and give it another try:
+                inimg = double(exrread(imgfilename));
+
+                % If we made it to here without exception, then reading
+                % worked, and we can try to also get some 'auxInfo':
+                info = exrinfo(imgfilename);
+                info.format = 'openexr';
+
+                % Add the fields we promise will always be there for OpenEXR:
+
+                % exrinfo() can not provide gamut info, so pretend it
+                % wasn't there in the file and assign the fallback default
+                % of Rec-709. Is this a good idea? I don't know, but it is
+                % the best we can do atm.:
+                info.GamutFromFile = -1;
+                info.Gamut = [0.6400, 0.3000, 0.1500, 0.3127 ; 0.3300, 0.6000, 0.0600, 0.3290];
+
+                % If 'sampToNits' attribute exists, also return it as
+                % sampleToNits, otherwise mark sampleToNits as "invalid":
+                if ismember('sampToNits', info.attributes.keys)
+                    info.sampleToNits = info.attributes('sampToNits');
                 else
-                    psychrethrow(psychlasterror);
+                    info.sampleToNits = 0;
                 end
+
+                for keyname = info.attributes.keys
+                    ckey = char(keyname);
+                    info = setfield(info, ckey, info.attributes(ckey)); %#ok<SFLD>
+                end
+            else
+                % No. Maybe clue the user in on exrread() by abusing the
+                % exception handling (catch) below?
+                error('Could not read image, probably because it is a YUV image and the optional exrread() command is not installed, which could possibly handle it.');
             end
         end
     catch
@@ -160,7 +219,7 @@ if strcmpi(fext, '.exr')
             warning(['HDR file ' imgfilename ' failed to load.']);
             msg = psychlasterror;
             disp(msg.message);
-            errmsg = ['Unknown error. Maybe ' msg.message];
+            errmsg = ['Unknown error. Maybe: ' msg.message];
             return;
         else
             psychrethrow(psychlasterror);
