@@ -104,11 +104,11 @@ PsychError SCREENReadHDRImage(void)
         EXRHeader exrHeader;
         const char *fixedFieldNames[] = { "dataWindow", "displayWindow", "pixelAspectRatio", "screenWindowWidth", "screenWindowCenter",
                                           "lineOrder", "compression", "GamutFromFile", "ColorGamut", "sampleToNits" };
-        const int fixedFieldCount = 10;
+        #define fixedFieldCount 10
         const char *fieldNames[TINYEXR_MAX_CUSTOM_ATTRIBUTES + fixedFieldCount];
         int i, fieldCount;
         int hasChroma = 0;
-        float sampToNits = 0;
+        double sampToNits = 0;
 
         // Yes: Load it via TinyEXR simple loader api:
         rc = LoadEXR(&rgba, &width, &height, filename, &err);
