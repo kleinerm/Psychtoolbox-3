@@ -2380,7 +2380,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // swapchain image won't be overwritten with new content from the interop
     // image until the presentation engine has fully released ownership to us,
     // and it is okay to overwrite the old image content:
-    VkPipelineStageFlags pipeStageFlags = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    VkPipelineStageFlags pipeStageFlags[] = { VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
 
     // If window->interopRenderDoneSemaphore exists (non-zero) then we not only
     // wait until the target swapChainImage is ready, but also until the external
