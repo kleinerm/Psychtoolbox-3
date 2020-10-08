@@ -5538,6 +5538,29 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     // We also reject any request not coming from the master thread:
     if (!PsychIsMasterThread()) return;
 
+    // Peform extensive checking for OpenGL errors, unless instructed not to do so:
+    if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) {
+        GLenum glerr;
+
+        glerr = glGetError();
+        if (glerr != GL_NO_ERROR) {
+            if (glerr == GL_OUT_OF_MEMORY) {
+                // Special case: Out of memory after Flip + Postflip operations.
+                printf("PTB-Error: The OpenGL graphics hardware encountered an out of memory condition (Preflip-I)!\n");
+                printf("PTB-Error: One cause of this could be that you are running your display at a too\n");
+                printf("PTB-Error: high resolution and/or use Anti-Aliasing with a multiSample value that\n");
+                printf("PTB-Error: your gfx-card can't handle at the current display resolution. If this is\n");
+                printf("PTB-Error: the case, you may have to reduce multiSample level or display resolution.\n");
+                printf("PTB-Error: It may help to quit and restart Matlab or Octave before continuing.\n");
+            }
+            else {
+                printf("PTB-Error: The OpenGL graphics hardware encountered the following OpenGL error before preflip (Preflip-I): %s.\n", gluErrorString(glerr));
+            }
+        }
+
+        PsychTestForGLErrors();
+    }
+
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(windowRecord);
 
@@ -6039,6 +6062,29 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
         if (queryState > 0) glEndQuery(GL_TIME_ELAPSED_EXT);
     }
 
+    // Peform extensive checking for OpenGL errors, unless instructed not to do so:
+    if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) {
+        GLenum glerr;
+
+        glerr = glGetError();
+        if (glerr != GL_NO_ERROR) {
+            if (glerr == GL_OUT_OF_MEMORY) {
+                // Special case: Out of memory after Flip + Postflip operations.
+                printf("PTB-Error: The OpenGL graphics hardware encountered an out of memory condition (Preflip-II)!\n");
+                printf("PTB-Error: One cause of this could be that you are running your display at a too\n");
+                printf("PTB-Error: high resolution and/or use Anti-Aliasing with a multiSample value that\n");
+                printf("PTB-Error: your gfx-card can't handle at the current display resolution. If this is\n");
+                printf("PTB-Error: the case, you may have to reduce multiSample level or display resolution.\n");
+                printf("PTB-Error: It may help to quit and restart Matlab or Octave before continuing.\n");
+            }
+            else {
+                printf("PTB-Error: The OpenGL graphics hardware encountered the following OpenGL error after preflip (Preflip-II): %s.\n", gluErrorString(glerr));
+            }
+        }
+
+        PsychTestForGLErrors();
+    }
+
     return;
 }
 
@@ -6071,6 +6117,27 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 
     // Switch to associated GL-Context of windowRecord:
     PsychSetGLContext(windowRecord);
+
+    // Peform extensive checking for OpenGL errors, unless instructed not to do so:
+    if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) {
+        glerr = glGetError();
+        if (glerr != GL_NO_ERROR) {
+            if (glerr == GL_OUT_OF_MEMORY) {
+                // Special case: Out of memory after Flip + Postflip operations.
+                printf("PTB-Error: The OpenGL graphics hardware encountered an out of memory condition (I)!\n");
+                printf("PTB-Error: One cause of this could be that you are running your display at a too\n");
+                printf("PTB-Error: high resolution and/or use Anti-Aliasing with a multiSample value that\n");
+                printf("PTB-Error: your gfx-card can't handle at the current display resolution. If this is\n");
+                printf("PTB-Error: the case, you may have to reduce multiSample level or display resolution.\n");
+                printf("PTB-Error: It may help to quit and restart Matlab or Octave before continuing.\n");
+            }
+            else {
+                printf("PTB-Error: The OpenGL graphics hardware encountered the following OpenGL error after flip (I): %s.\n", gluErrorString(glerr));
+            }
+        }
+
+        PsychTestForGLErrors();
+    }
 
     // Imaging pipeline off?
     if (windowRecord->imagingMode==0 || windowRecord->imagingMode == kPsychNeedFastOffscreenWindows) {
@@ -6193,7 +6260,7 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
         if (glerr != GL_NO_ERROR) {
             if (glerr == GL_OUT_OF_MEMORY) {
                 // Special case: Out of memory after Flip + Postflip operations.
-                printf("PTB-Error: The OpenGL graphics hardware encountered an out of memory condition!\n");
+                printf("PTB-Error: The OpenGL graphics hardware encountered an out of memory condition (II)!\n");
                 printf("PTB-Error: One cause of this could be that you are running your display at a too\n");
                 printf("PTB-Error: high resolution and/or use Anti-Aliasing with a multiSample value that\n");
                 printf("PTB-Error: your gfx-card can't handle at the current display resolution. If this is\n");
@@ -6201,7 +6268,7 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                 printf("PTB-Error: It may help to quit and restart Matlab or Octave before continuing.\n");
             }
             else {
-                printf("PTB-Error: The OpenGL graphics hardware encountered the following OpenGL error after flip: %s.\n", gluErrorString(glerr));
+                printf("PTB-Error: The OpenGL graphics hardware encountered the following OpenGL error after flip (II): %s.\n", gluErrorString(glerr));
             }
         }
 
