@@ -2426,8 +2426,20 @@ if strcmpi(cmd, 'OpenWindow')
         end
     end
 
+    glerr = glGetError;
+    while glerr
+        fprintf('PsychImaging-WARNING:OpenWindow: OpenGL error detected after Screen(''OpenWindow''): %s', gluErrorString(glerr));
+        glerr = glGetError;
+    end
+
     % Window open. Perform imaging pipe postconfiguration:
     PostConfiguration(reqs, win, clearcolor, slavewin);
+
+    glerr = glGetError;
+    while glerr
+        fprintf('PsychImaging-WARNING:OpenWindow: OpenGL error detected after PostConfiguration(): %s', gluErrorString(glerr));
+        glerr = glGetError;
+    end
 
     % Perform double-flip, so both back- and frontbuffer get initialized to
     % background color:
@@ -2458,6 +2470,12 @@ if strcmpi(cmd, 'OpenWindow')
 
     % One extra Flip to put the full imaging pipeline into initial state:
     Screen('Flip', win);
+
+    glerr = glGetError;
+    while glerr
+        fprintf('PsychImaging-WARNING:OpenWindow: OpenGL error detected after init Flip: %s', gluErrorString(glerr));
+        glerr = glGetError;
+    end
 
     rc = win;
 
