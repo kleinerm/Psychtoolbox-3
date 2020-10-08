@@ -3118,8 +3118,8 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
             if (tnow >= lastvbl) {
                 // Copy current frontbuffer to backbuffer for an idle "no-op" swap:
                 glReadBuffer(GL_FRONT);
-                glRasterPos2i(0, PsychGetHeightFromRect(windowRecord->rect));
-                glCopyPixels(0, 0, PsychGetWidthFromRect(windowRecord->rect), PsychGetHeightFromRect(windowRecord->rect), GL_COLOR);
+                glRasterPos2i(0, (int) PsychGetHeightFromRect(windowRecord->rect));
+                glCopyPixels(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect), GL_COLOR);
 
                 // Trigger a doublebuffer swap in sync with vblank:
                 PsychOSFlipWindowBuffers(windowRecord);
