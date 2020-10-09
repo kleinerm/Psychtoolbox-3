@@ -2206,11 +2206,12 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
 
     // If fboInternalFormat!=1 then we need to allocate and assign a proper PsychFBO struct first:
     if (fboInternalFormat!=1) {
-        *fbo = (PsychFBO*) malloc(sizeof(PsychFBO));
+        *fbo = (PsychFBO*) calloc(1, sizeof(PsychFBO));
         if (*fbo == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Out of system memory when trying to allocate PsychFBO struct!");
 
-        // Start cleanly for error handling:
+        // Start cleanly for error handling: Not really needed anymore, as we now calloc() above.
         (*fbo)->fboid = 0;
+        (*fbo)->coltexid = 0;
         (*fbo)->stexid = 0;
         (*fbo)->ztexid = 0;
         (*fbo)->format = 0;
