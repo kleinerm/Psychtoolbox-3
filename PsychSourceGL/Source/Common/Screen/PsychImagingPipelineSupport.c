@@ -3302,18 +3302,20 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
  */
 void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, psych_bool openglpart)
 {
-    int i;
+    int i, j;
     PsychFBO* fboptr;
 
     // Do OpenGL specific cleanup:
     if (openglpart) {
         // Yes. Mode specific cleanup:
-        for (i=0; i<windowRecord->fboCount; i++) {
+        for (i = 0; i < windowRecord->fboCount; i++) {
             // Delete i'th FBO, if any:
             fboptr = windowRecord->fboTable[i];
-            if (fboptr!=NULL) {
+            if (fboptr != NULL) {
                 // Delete all remaining references to this fbo:
-                for (i=0; i<windowRecord->fboCount; i++) if (fboptr == windowRecord->fboTable[i]) windowRecord->fboTable[i] = NULL;
+                for (j = 0; j < windowRecord->fboCount; j++)
+                    if (fboptr == windowRecord->fboTable[j])
+                        windowRecord->fboTable[j] = NULL;
 
                 // Delete PsychFBO and all underlying OpenGL objects:
                 PsychDeleteFBO(fboptr);
