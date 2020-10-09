@@ -39,7 +39,7 @@ static char synopsisString[] =
 "The Screen('ColorRange') command affects the range of expected input values in 'imageMatrix' matrices of double precision type, "
 "as does the optional 'floatprecision' flag discussed below. If the parent window 'WindowIndex' is a HDR display window, then "
 "by default floating point textures will be created, and uint8 image matrices will be remapped to a suitable subset of the HDR "
-"color range, so they fit in with HDR double images.\n"
+"color range, so that they fit in with real HDR color range images.\n"
 "You need to enable Alpha-Blending via Screen('BlendFunction',...) for the transparency values to have an effect.\n"
 "The argument 'optimizeForDrawAngle' if provided, asks Psychtoolbox to optimize the texture for especially fast "
 "drawing at the specified rotation angle. The default is 0 == Optimize for upright drawing. If 'specialFlags' is set "
@@ -69,19 +69,19 @@ static char synopsisString[] =
 "in normal display mode is zero, which asks to store textures with 8 bit per color component precision in unsigned normalized "
 "(unorm) color range, a suitable format for standard images read via imread() and displayed on normal display devices. If the "
 "onscreen or parent window 'WindowIndex' is a HDR (High Dynamic Range) window displayed on a HDR capable display device, then "
-"'floatprecision' defaults to 1 instead of 0, to accomodate the need for higher image color precision and the larger value range "
+"'floatprecision' defaults to 2 instead of 0, to accomodate the need for high image color precision and the larger value range "
 "in HDR mode. A non-zero value will store the textures color component values as floating point precision numbers, useful "
-"for complex blending operations and calculations on the textures, and for processing and display of high dynamic range "
-"image textures, either on a LDR display via tone-mapping, or on a HDR display. If floatprecision is set to 1 (the default for "
-"a HDR onscreen display window), then the texture gets stored in half-float fp16 format, i.e. 16 bit per color component - "
-"Suitable for most display purposes and fast on current gfx-hardware. A value of 2 asks for full 32 bit single precision float "
-"per color component. Useful for complex computations and image processing, but can be extremely slow when texture filtering is "
-"used on old graphics hardware manufactured before the year 2007. If a value of 1 is provided, asking for 16 bit floating point "
-"textures, but the graphics hardware does not support this, then PTB tries to allocate a 15 bit precision signed integer texture "
-"instead in non-HDR standard mode, assuming the graphics hardware supports that. Such a texture is more precise than the 16 bit "
-"floating point texture it replaces, but can not store values outside the range [-1.0; 1.0]. If the window is a HDR window, then "
-"this function will simply fail if floating point storage is not supported, as floating point storage is crucial for HDR images. "
-"On OpenGL-ES hardware, a 32 bit floating point texture is selected instead.\n"
+"for complex blending operations and calculations on the textures, and for processing and display of high precision or high dynamic range "
+"image textures, either on a LDR display via tone-mapping, or on a HDR display. If 'floatprecision' is set to 1, then the texture "
+"gets stored in half-float fp16 format, i.e. 16 bit per color component - Suitable for most display purposes and fast on current "
+"gfx-hardware. A value of 2 (the default setting for a HDR onscreen display window) asks for full 32 bit single precision float "
+"per color component. Useful for complex computations and image processing, but slower, and takes up twice as much video memory. "
+"If a value of 1 is provided, asking for 16 bit floating point textures, but the graphics hardware does not support this, then "
+"in non-HDR mode Screen tries to allocate a 15 bit precision signed integer texture instead, if the graphics hardware supports "
+"that. Such a texture is more precise than the 16 bit floating point texture it replaces, but can not store values outside the "
+"range [-1.0; 1.0]. If the window is a HDR window, then this function will simply fail if floating point storage is not "
+"supported, as use of floating point storage is crucial for HDR images. On OpenGL-ES hardware, a 32 bit floating point texture is "
+"selected instead.\n"
 "'textureOrientation' This optional argument labels textures with a special orientation. "
 "Normally (value 0) a Matlab matrix is passed in standard Matlab column-major dataformat. This is efficient for drawing of "
 "textures but not for processing them via Screen('TransformTexture'). Therefore textures need to be transformed on demand "
@@ -250,15 +250,12 @@ PsychError SCREENMakeTexture(void)
     // Check if creation of a floating point texture is requested?
     if (!PsychCopyInIntegerArg(5, kPsychArgOptional, &usefloatformat)) {
         // Optional 'floatprecision' flag omitted. In standard SDR mode, we default
-        // to 0 for 8 bpc fixed point textures. In HDR mode, we default to 1 for fp16
-        // half-float format, which should provide the extended dynamic range and sufficient
-        // precision for HDR image content. Usercode can upgrade to full 32 bpc single precision
-        // by specifying the flag as 2, or we could transparently upgrade to full float precision
-        // in the future if we deem it neccessary, without breaking existing user scripts, as a
-        // precision upgrade can not break visual precision.
+        // to 0 for 8 bpc fixed point textures. In HDR mode, we default to 2 for full
+        // fp32 float format, which should provide the extended dynamic range and maximum
+        // precision for HDR image content.
         if (windowRecord->imagingMode & kPsychNeedHDRWindow) {
-            // HDR mode defaults to 16 bpc half-float:
-            usefloatformat = 1;
+            // HDR mode defaults to 32 bpc float:
+            usefloatformat = 2;
 
             if (PsychPrefStateGet_Verbosity() > 6)
                 printf("PTB-DEBUG: MakeTexture: Precision not specified, but HDR window -> Using floatprecision %i for %i layer texture of size %i x %i texels.\n", usefloatformat, numMatrixPlanes, xSize, ySize);
@@ -295,7 +292,7 @@ PsychError SCREENMakeTexture(void)
     PsychCreateWindowRecord(&textureRecord);
     textureRecord->windowType=kPsychTexture;
 
-    // MK: We need to assign the screen number of the onscreen-window, so PsychCreateTexture()
+    // We need to assign the screen number of the onscreen-window, so PsychCreateTexture()
     // can query the size of the screen/onscreen-window...
     textureRecord->screenNumber=windowRecord->screenNumber;
     textureRecord->depth=32;

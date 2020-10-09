@@ -278,11 +278,12 @@ try
         end
         disp(imgpropmsg);
 
-        % Build a Psychtoolbox 16 bpc half-float texture from the image array
-        % by setting the (optional) 'floatprecision' flag to 1.
-        % texid = Screen('MakeTexture', win, img, [], [], 1);
-        % Or simply don't, because the 'floatprecision' flag defaults to 1 in HDR
-        % display mode anyway for your convenience:
+        % Build a 32 bpc single-precision float texture from the image
+        % array by setting the (optional) 'floatprecision' flag to 2.
+        % texid = Screen('MakeTexture', win, img, [], [], 2);
+        %
+        % Or simply don't, because the 'floatprecision' flag defaults to 2
+        % in HDR display mode anyway if omitted, for your convenience:
         texid = Screen('MakeTexture', win, img);
 
         % Build also a version of the image that is quantized to 8 Bit:
@@ -291,11 +292,15 @@ try
         % the most naive method:
         quantimg = uint8((img * 255 / max(max(max(img)))));
 
-        % This will take the uint8 256 discrete level matrix and turn it back into
-        % a "HDR" texture of fp16 precision, by mapping the input value range
-        % 0 - 255 to the range 0.0 nits - 80.0 nits, because 0 - 80 nits is considered
-        % to be the SDR "standard dynamic range" of a regular display or image.
-        ldrtexid = Screen('MakeTexture', win, quantimg);
+        % This will take the uint8 256 discrete level matrix and turn it
+        % back into a "HDR" texture of fp16 precision, by mapping the input
+        % value range 0 - 255 to the range 0.0 nits - 80.0 nits, because 0
+        % - 80 nits is considered to be the SDR "standard dynamic range" of
+        % a regular display or image. Note the floatprecision flag being
+        % specified as 1. If omitted, this would create a fp32 texture by
+        % default - a safe choice, but maybe a bit overkill for just
+        % storing 8 bpc content:
+        ldrtexid = Screen('MakeTexture', win, quantimg, [], [], 1);
 
         % Send current content light level properties to display:
         PsychHDR('HDRMetadata', win, 0, maxFALL * sf, maxCLL * sf);

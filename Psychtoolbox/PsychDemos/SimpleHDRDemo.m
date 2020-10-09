@@ -117,12 +117,13 @@ win = PsychImaging('OpenWindow', screenid, 0);
 % content light level of the image:
 PsychHDR('HDRMetadata', win, 0, maxFALL, maxCLL);
 
-% Build a Psychtoolbox 16 bpc half-float texture from the image array
-% by setting the (optional) 'floatprecision' flag to 1. If you need
-% even more precision you can provide the value 2 instead of 1,
-% creating full 32 bpc float textures. These will take up twice the
-% amount of memory and bandwidth though:
-texid = Screen('MakeTexture', win, img, [], [], 1);
+% Build a 32 bpc single-precision float texture from the image
+% array by setting the (optional) 'floatprecision' flag to 2.
+% texid = Screen('MakeTexture', win, img, [], [], 2);
+%
+% Or simply don't, because the 'floatprecision' flag defaults to 2
+% in HDR display mode anyway if omitted, for your convenience:
+texid = Screen('MakeTexture', win, img);
 
 % Some variable rotation angle for the image, for some simplistic animation:
 rotAngle = 0;
