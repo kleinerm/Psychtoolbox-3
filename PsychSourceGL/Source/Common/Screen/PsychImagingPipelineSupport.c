@@ -1389,6 +1389,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
     // The pipelines buffers and information flow are configured now...
     if (PsychPrefStateGet_Verbosity()>4) {
+        int i;
+
         printf("PTB-DEBUG: Buffer mappings follow...\n");
         printf("fboCount = %i\n", windowRecord->fboCount);
         printf("finalizedFBO = %i, %i\n", windowRecord->finalizedFBO[0], windowRecord->finalizedFBO[1]);
@@ -1396,6 +1398,13 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
         printf("processedDrawBufferFBO = %i %i %i\n", windowRecord->processedDrawBufferFBO[0], windowRecord->processedDrawBufferFBO[1], windowRecord->processedDrawBufferFBO[2]);
         printf("inputBufferFBO = %i %i \n", windowRecord->inputBufferFBO[0], windowRecord->inputBufferFBO[1]);
         printf("drawBufferFBO = %i %i \n", windowRecord->drawBufferFBO[0], windowRecord->drawBufferFBO[1]);
+        printf("\n");
+        printf("fboTable content:\n");
+        for (i = 0; i < windowRecord->fboCount; i++)
+            printf("fboTable[%i]: textarget %i : coltexid %i : format %i : MSAA %i : width %i x height %i\n",
+                    i, windowRecord->fboTable[i]->textarget, windowRecord->fboTable[i]->coltexid,
+                    windowRecord->fboTable[i]->format, windowRecord->fboTable[i]->multisample,
+                    windowRecord->fboTable[i]->width, windowRecord->fboTable[i]->height);
         printf("-------------------------------------\n\n");
         fflush(NULL);
     }
