@@ -1881,7 +1881,7 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     // image on the Vulkan side. (Category: A weekend i'll never get back :/ ):
     glDeleteTextures(1, &fbo->coltexid);
     if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Recreating interop memory texture: Delete old id %i ", fbo->coltexid);
-    glCreateTextures(GL_TEXTURE_2D, 1, &fbo->coltexid);
+    glCreateTextures(glTextureTarget, 1, &fbo->coltexid);
     if (PsychPrefStateGet_Verbosity() > 3) printf("created new one with id %i.\n", fbo->coltexid);
     PsychTestForGLErrors();
 
