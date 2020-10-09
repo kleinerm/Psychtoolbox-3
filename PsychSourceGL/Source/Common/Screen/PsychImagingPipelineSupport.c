@@ -1880,7 +1880,9 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     // interop  if we omit the step! It will only display an all black interop
     // image on the Vulkan side. (Category: A weekend i'll never get back :/ ):
     glDeleteTextures(1, &fbo->coltexid);
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Recreating interop memory texture: Delete old id %i ", fbo->coltexid);
     glCreateTextures(GL_TEXTURE_2D, 1, &fbo->coltexid);
+    if (PsychPrefStateGet_Verbosity() > 3) printf("created new one with id %i.\n", fbo->coltexid);
     PsychTestForGLErrors();
 
     // Assign tiling mode for rendering into the external memory backed texture:
@@ -2860,8 +2862,12 @@ psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool n
             printf("unknown (but likely fixed point) format ");
         }
 
+        // Tell OpenGL texture id of color attachment textures:
+        if (!multisampled_cb || multisampled_coltex)
+            printf("coltexid %i ", (*fbo)->coltexid);
+
         glGetIntegerv(GL_DEPTH_BITS, &bpc);
-        printf("with  %i depths buffer bits ", bpc);
+        printf("with %i depths buffer bits ", bpc);
         glGetIntegerv(GL_STENCIL_BITS, &bpc);
         printf("and %i stencil buffer bits.\n", bpc);
     }
@@ -2893,6 +2899,8 @@ void PsychDeleteFBO(PsychFBO* fboptr)
         if (glIsTexture(fboptr->coltexid)) {
             // Color buffer is a texture:
             glDeleteTextures(1, &(fboptr->coltexid));
+            if (PsychPrefStateGet_Verbosity() > 4)
+                printf("PTB-DEBUG:PsychDeleteFBO(%p): Deleted coltexid %i.\n", fboptr, fboptr->coltexid);
         }
         else {
             // Color buffer is a renderbuffer:

@@ -2105,7 +2105,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
         // Sync and idle the pipeline again:
         glFinish();
 
-        // We need to NULL-out all references to the - now destroyed - OpenGL context:
+        // We need to NULL-out all references to the - about to be destroyed - OpenGL context:
         PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
         for(i=0;i<numWindows;i++) {
             if (windowRecordArray[i]->targetSpecific.contextObject == windowRecord->targetSpecific.contextObject &&
