@@ -150,7 +150,7 @@ try
     [xm, ym] = RectCenter(winrect);
     SetMouse(xm, ym, win);
     HideCursor(win);
-
+    Screen('Hookfunction', win, 'Disable', 'FinalOutputFormattingBlit');
     % Set text properties:
     Screen('TextSize', win, 18);
     Screen('TextStyle', win , 0);
