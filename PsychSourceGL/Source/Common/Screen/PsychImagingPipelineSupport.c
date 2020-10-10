@@ -1836,7 +1836,7 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
         PsychFBO *dfbo = windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]];
 
         if ((dfbo->ztexid) || (dfbo->stexid) ||
-            ((formatSpec != dfbo->format) &&
+            (((GLenum) formatSpec != dfbo->format) &&
             ((formatSpec == GL_RGBA8) || (formatSpec == GL_RGB10_A2) ||
              (formatSpec == GL_RGBA16F && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) ||
              (formatSpec == GL_RGBA16 && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2 || dfbo->format == GL_RGB10_A2)) ||
