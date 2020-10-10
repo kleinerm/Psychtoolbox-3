@@ -1,5 +1,5 @@
-function HDRViewer(imfilepattern, scalefactor)
-% HDRViewer([imfilepattern][, scalefactor=autoselect]) -- Load and show high
+function HDRViewer(imfilepattern, scalefactor, gpudebug)
+% HDRViewer([imfilepattern][, scalefactor=autoselect][gpudebug=0]) -- Load and show high
 % dynamic range images on a compatible HDR display setup.
 %
 % See "help PsychHDR" for system requirements and setup instructions for HDR
@@ -84,6 +84,11 @@ if nargin < 2 || isempty(scalefactor)
     scalefactor = 1;
 end
 
+% No time-consuming debug mode by default:
+if nargin < 3 || isempty(gpudebug)
+    gpudebug = 0;
+end
+
 % Get list of all files matching the pattern:
 imfilenames = dir(imfilepattern);
 
@@ -142,6 +147,8 @@ try
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
     [win, winrect] = PsychImaging('OpenWindow', screenid, 0);
+    [xm, ym] = RectCenter(winrect);
+    SetMouse(xm, ym, win);
     HideCursor(win);
 
     % Set text properties:
@@ -416,7 +423,8 @@ try
 
                 % Take a screenshot of the pixel below the mouse:
                 mouseposrgb = Screen('GetImage', win, OffsetRect([0 0 1 1], xm, ym), 'drawBuffer', 1);
-                [~, ny] = DrawFormattedText(win, sprintf('RGB at cursor position (%f, %f): (%f, %f, %f) nits.\n', xm, ym, mouseposrgb), 0, ny, [100 100 0]); %#ok<ASGLU>
+                msg = sprintf('RGB at cursor position (%f, %f): (%f, %f, %f) nits.\n', xm, ym, mouseposrgb);
+                [~, ny] = DrawFormattedText(win, msg, 0, ny, [100 100 0]); %#ok<ASGLU>
 
                 % Draw tiny yellow cursor dot:
                 [~, mi] = max(mouseposrgb);
@@ -428,7 +436,16 @@ try
                     case 3
                         cursorcolor = [200, 200, 0];
                 end
-                Screen('DrawDots', win, [xm, ym], 3, cursorcolor);
+
+                % Low level debugging enabled?
+                if gpudebug
+                    % Print out color sample from user-facing virtual framebuffer - values in nits:
+                    fprintf(msg);
+                    % Make sure our cursor does not occlude the sample location for debug readback:
+                    Screen('FrameRect', win, cursorcolor, CenterRectOnPoint([0 0 4 4], xm, ym));
+                else
+                    Screen('DrawDots', win, [xm, ym], 3, cursorcolor);
+                end
 
                 if buttons(1)
                     % Left button pressed:
@@ -462,6 +479,13 @@ try
 
             % Show updated HDR framebuffer at next vertical retrace:
             Screen('Flip', win);
+
+            % Low level debugging enabled?
+            if gpudebug
+                % Take a sample from the actual framebuffer, which contains the unorm range OETF encoded content:
+                gpupqvalue = (Screen('GetImage', win, OffsetRect([0 0 1 1], xm, ym), 'backBuffer', 1, 3));
+                fprintf('PQ unorm at cursor position (%f, %f): (%f, %f, %f).\n\n', xm, ym, gpupqvalue);
+            end
         end
 
         % Done with this image. Release its texture and next one...
