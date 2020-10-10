@@ -1739,7 +1739,7 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
 // Create a new GL_TEXTURE_2D npot texture as finalizedFBO color buffer attachment, and back it by external memory imported via interopMemObjectHandle, with rendering optionally synchronized via interopSemaphoreHandle:
 psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *windowRecord, int viewid, void* interopMemObjectHandle, int allocationSize, int formatSpec, int tilingMode, int memoryOffset, int width, int height, void* interopSemaphoreHandle)
 {
-    int glTextureTarget;
+    GLenum glTextureTarget;
     int multiSample = windowRecord->multiSample;
     GLint drawFBO = 0, readFBO = 0;
     char fbodiag[100];
@@ -1813,6 +1813,60 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     glGetIntegerv(GL_DRAW_FRAMEBUFFER_BINDING, &drawFBO);
     glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING, &readFBO);
 
+    // Are finalizedFBO and drawBufferFBO using the same backing PsychFBO?
+    if (windowRecord->finalizedFBO[viewid] == windowRecord->drawBufferFBO[viewid]) {
+        // Yes. That means our interop image and user requested framebuffer are
+        // deemed compatible wrt. size and MSAA requirements, and that there is
+        // no need for any post-processing by the imaging pipeline, iow. this is
+        // a zero-copy opportunity, where usercode renders and the result can go
+        // directly to the external consumer.
+        // One catch though: If the image format - ie. color precision - of the
+        // to be imported interop image would be lower than what the users script
+        // requested for the drawBufferFBO, we'd get a silent degradation of
+        // precision, with possible bad results, e.g., fp32 -> RGB10A2, with loss
+        // of alpha precision from float to only 4 discrete levels, truncation of
+        // all color values outside of unorm range, and significant stimulus
+        // precision loss!
+        //
+        // Also, imported interop images can not have depth or stencil buffers atm.,
+        // so if drawBufferFBO needs/has such a buffer, that would be a no-go as well.
+        //
+        // So lets check if the imported format meets or exceeds the current
+        // precision. If not, then we'd need to split up into 2 separate buffers.
+        PsychFBO *dfbo = windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]];
+
+        if ((dfbo->ztexid) || (dfbo->stexid) ||
+            ((formatSpec != dfbo->format) &&
+            ((formatSpec == GL_RGBA8) || (formatSpec == GL_RGB10_A2) ||
+             (formatSpec == GL_RGBA16F && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) ||
+             (formatSpec == GL_RGBA16 && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2 || dfbo->format == GL_RGB10_A2)) ||
+             (formatSpec == GL_RGBA16_SNORM && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2))))) {
+            // Future finalizedFBO / interop format is insufficient in range, sign or precision
+            // to store drawBufferFBO content faithfully. Need to allocate dedicated PsychFBO and
+            // hook it up to finalizedFBO:
+            windowRecord->finalizedFBO[viewid] = windowRecord->fboCount;
+            windowRecord->fboCount++;
+
+            // Hook up all other buffers except drawBufferFBO as well, so various copies
+            // can be skipped in imaging pipeline PreFlipOperations, knowing there's only
+            // drawBufferFBO -> finalizedFBO:
+            windowRecord->preConversionFBO[viewid] = windowRecord->finalizedFBO[viewid];
+            windowRecord->processedDrawBufferFBO[viewid] = windowRecord->finalizedFBO[viewid];
+            windowRecord->inputBufferFBO[viewid] = windowRecord->finalizedFBO[viewid];
+
+            // Now we need to create a new empty PsychFBO, to be filled with life and actual content downstream:
+            if (!PsychCreateFBO(&(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), 0, FALSE, width, height, 0, 0)) {
+                if (PsychPrefStateGet_Verbosity() > 0)
+                    printf("PTB-ERROR: PsychSetPipelineExportTextureInteropMemory: Failed to create new empty finalizedFBO backing PsychFBO()! Skipped.\n");
+
+                return(FALSE);
+            }
+
+            if (PsychPrefStateGet_Verbosity() > 3)
+                printf("PTB-DEBUG: PsychSetPipelineExportTextureInteropMemory: Unsharing drawBufferFBO and finalizedFBO for viewid %i, triggered by format/z-buffer/s-buffer mismatch.\n", viewid);
+        }
+    }
+
     fbo = windowRecord->fboTable[windowRecord->finalizedFBO[viewid]];
 
     // Create memory object for interop memory import:
@@ -1869,8 +1923,21 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, 0);
     glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, 0);
 
-    // Detach its colorbuffer texture:
-    glNamedFramebufferTexture(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, 0, 0);
+    // Does OpenGL fbo for this PsychFBO already exist?
+    if (fbo->fboid) {
+        // Yes: Detach its colorbuffer texture:
+        glNamedFramebufferTexture(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, 0, 0);
+    }
+    else {
+        // No: Create one:
+        glGenFramebuffers(1, (GLuint*) &(fbo->fboid));
+
+        // Need to bind it once, then unbind for setup, because otherwise fbo->fboid
+        // would only be a fbo object name, but would not have an actual FBO associated,
+        // as that only happens at first bind --> Failure a few lines down the code.
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo->fboid);
+        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+    }
     PsychTestForGLErrors();
 
     // Destroy and recreate texture object, to release all old backing memory
@@ -1879,8 +1946,10 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     // step, the NVidia driver on Windows will *silently* fail OpenGL->Vulkan
     // interop  if we omit the step! It will only display an all black interop
     // image on the Vulkan side. (Category: A weekend i'll never get back :/ ):
-    glDeleteTextures(1, &fbo->coltexid);
-    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: Recreating interop memory texture: Delete old id %i ", fbo->coltexid);
+    if (fbo->coltexid)
+        glDeleteTextures(1, &fbo->coltexid);
+
+    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-DEBUG: For fbo %i, recreating interop memory texture: Delete old id %i ", fbo->fboid, fbo->coltexid);
     glCreateTextures(glTextureTarget, 1, &fbo->coltexid);
     if (PsychPrefStateGet_Verbosity() > 3) printf("created new one with id %i.\n", fbo->coltexid);
     PsychTestForGLErrors();
@@ -1900,9 +1969,11 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
     // Set texture filtering to nearest neighbour, for use as a fbo color buffer attachment:
     glTextureParameteri(fbo->coltexid, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTextureParameteri(fbo->coltexid, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    PsychTestForGLErrors();
 
     // Attach it as new colorbuffer backing texture:
     glNamedFramebufferTexture(fbo->fboid, GL_COLOR_ATTACHMENT0_EXT, fbo->coltexid, 0);
+    PsychTestForGLErrors();
 
     // Bind FBO of view:
     glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo->fboid);
