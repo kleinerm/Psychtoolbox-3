@@ -300,6 +300,80 @@ static psych_bool IsDRI3Supported(PsychWindowRecordType *windowRecord)
     return(TRUE);
 }
 
+// Ensure that video outputs are properly configured to reproduce at least min_bpc framebuffer output precision:
+psych_bool PsychOSEnsureMinimumOutputPrecision(int screenNumber, int min_bpc)
+{
+    CGDirectDisplayID dpy;
+    Window root;
+    int scrnum;
+
+    PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+    scrnum = PsychGetXScreenIdForScreen(screenNumber);
+    root = RootWindow(dpy, scrnum);
+
+    PsychLockDisplay();
+
+    // Framebuffer color resolution of more than standard 8 bpc requested?
+    if (min_bpc > 8) {
+        // Yes. Make sure all video outputs on this X-Screen are set up for maximum color output precision.
+        XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
+        Atom max_bpc_atom = XInternAtom(dpy, "max bpc", True);
+        RROutput output;
+        long max_bpc;
+        unsigned char *prop = NULL;
+        unsigned long nitems = 0;
+        unsigned long bytes_after;
+        Atom actual_type;
+        int actual_format;
+        int i;
+
+        // 'max bpc' output / connector property supported in general?
+        if (max_bpc_atom) {
+            // Yes. Check all outputs on this screen:
+            for (i = 0; i < resources->noutput; i++) {
+                output = resources->outputs[i];
+                max_bpc = 0;
+
+                // If the given output doesn't support 'max bpc' property, then skip it:
+                if ((XRRGetOutputProperty(dpy, output, max_bpc_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) || (prop == NULL))
+                    continue;
+
+                // Does it have the proper property, and is current 'max bpc' too low for our precision needs?
+                if ((actual_type == XA_INTEGER) && (nitems == 1) && (actual_format == 32) && ((max_bpc = *((long *) prop)) <= 8)) {
+                    // Output has 'max bpc' but it is too low for our 'min_bpc' precision needs. Crank it up to its maximum:
+                    XRRPropertyInfo *info = XRRQueryOutputProperty(dpy, output, max_bpc_atom);
+
+                    if (info && (info->range) && (info->num_values == 2)) {
+                        if (PsychPrefStateGet_Verbosity() > 2)
+                            printf("PTB-INFO: Output %i of screen %i has too low max bpc %i <= 8 bpc for high precision (%i bpc) mode. Requesting maximum bpc of %i bits.\n", i, scrnum, max_bpc, min_bpc, (int) info->values[1]);
+
+                        max_bpc = info->values[1];
+                        XRRChangeOutputProperty(dpy, output, max_bpc_atom, XA_INTEGER, 32, PropModeReplace, (unsigned char *) &max_bpc, 1);
+                    }
+
+                    if (info)
+                        XFree(info);
+                }
+                else {
+                    if (PsychPrefStateGet_Verbosity() > 3)
+                        printf("PTB-INFO: Output %i of screen %i has sufficient max bpc %i > 8 bpc for high precision (%i bpc) mode. Nothing to do.\n", i, scrnum, max_bpc, min_bpc);
+                }
+
+                // Done with this one, free up, go to next one:
+                XFree(prop);
+            }
+
+            XFlush(dpy);
+        }
+
+        XRRFreeScreenResources(resources);
+    }
+
+    PsychUnlockDisplay();
+
+    return(TRUE);
+}
+
 /*
  *    PsychOSOpenOnscreenWindow()
  *
@@ -1555,57 +1629,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         XChangeProperty(dpy, win, vrr_atom, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &state, 1);
     }
 
-    // Framebuffer color resolution of more than standard 8 bpc requested?
-    if (bpc > 8) {
-        // Yes. Make sure all video outputs on this X-Screen are set up for maximum color output precision.
-        XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
-        Atom max_bpc_atom = XInternAtom(dpy, "max bpc", True);
-        RROutput output;
-        long max_bpc;
-        unsigned char *prop = NULL;
-        unsigned long nitems = 0;
-        unsigned long bytes_after;
-        Atom actual_type;
-        int actual_format;
-
-        // 'max bpc' output / connector property supported in general?
-        if (max_bpc_atom) {
-            // Yes. Check all outputs on this screen:
-            for (i = 0; i < resources->noutput; i++) {
-                output = resources->outputs[i];
-
-                // If the given output doesn't support 'max bpc' property, then skip it:
-                if ((XRRGetOutputProperty(dpy, output, max_bpc_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) || (prop == NULL))
-                    continue;
-
-                // Does it have the proper property, and is current 'max bpc' too low for our precision needs?
-                if ((actual_type == XA_INTEGER) && (nitems == 1) && (actual_format == 32) && ((max_bpc = *((long *) prop)) <= 8)) {
-                    // Output has 'max bpc' but it is too low for our 'bpc' precision needs. Crank it up to its maximum:
-                    XRRPropertyInfo *info = XRRQueryOutputProperty(dpy, output, max_bpc_atom);
-
-                    if (info && (info->range) && (info->num_values == 2)) {
-                        if (PsychPrefStateGet_Verbosity() > 2)
-                            printf("PTB-INFO: Output %i of screen %i has too low max bpc %i <= 8 bpc for high precision mode. Requesting maximum bpc of %i bits.\n", i, scrnum, max_bpc, (int) info->values[1]);
-
-                        max_bpc = info->values[1];
-                        XRRChangeOutputProperty(dpy, output, max_bpc_atom, XA_INTEGER, 32, PropModeReplace, (unsigned char *) &max_bpc, 1);
-                    }
-
-                    if (info)
-                        XFree(info);
-                }
-
-                // Done with this one, free up, go to next one:
-                XFree(prop);
-            }
-
-            XFlush(dpy);
-        }
-
-        XRRFreeScreenResources(resources);
-    }
-
     PsychUnlockDisplay();
+
+    // Make sure RandR outputs are properly configured for native video output at
+    // at least 'bpc' bits per color channel:
+    PsychOSEnsureMinimumOutputPrecision(screenSettings->screenNumber, bpc);
 
     // Try to enable swap event delivery to us:
     if (PsychOSSwapCompletionLogging(windowRecord, 2, 0) && (PsychPrefStateGet_Verbosity() > 3)) {

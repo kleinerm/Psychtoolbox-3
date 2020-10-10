@@ -565,8 +565,16 @@ PsychError SCREENHookFunction(void)
                 PsychErrorExitMsg(PsychError_user, "In 'SetWindowBackendOverrides': No kPsychNeedFinalizedFBOSinks imaging mode selected. Overrides forbidden!");
 
             // Screen('PixelSize'):
-            if (PsychCopyInIntegerArg(4, FALSE, &flag1))
+            if (PsychCopyInIntegerArg(4, FALSE, &flag1)) {
                 windowRecord->depth = flag1;
+
+                // Running under Linux/X11 native?
+                #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE)
+                    // Make sure RandR outputs are properly configured for native video output at
+                    // at least 'bpc' (== windowRecord->depth / 3) bits per color channel:
+                    PsychOSEnsureMinimumOutputPrecision(windowRecord->screenNumber, windowRecord->depth / 3);
+                #endif
+            }
 
             // Video refresh interval / refresh rate / flipinterval indicators:
             if (PsychCopyInDoubleArg(5, FALSE, &windowRecord->VideoRefreshInterval)) {
