@@ -448,6 +448,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
 
     usedOutput = [];
+    oldbpc = 0;
 
     if IsLinux
         if isFullscreen
@@ -496,6 +497,32 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             outputHandle = uint64(output.outputHandle);
             outputName = output.name;
             refreshHz = output.hz;
+
+            % More than 8 bpc output precision desired?
+            % Note that colorPrecision == 0 and hdrMode > 0 gets handled automatically
+            % by the Vulkan driver (amdvlk), ie. setup for 10 bpc -> 8/10 is fine.
+            if colorPrecision > 0
+                % Need to call SetWindowBackendOverrides early before Vulkan openwindow,
+                % as potential RandR 'max bpc' output precision setup will no longer work
+                % once the X-Server is locked out by Vulkan.
+                % Therefore set bpc to the maximum possible, given our current information.
+                % Later on we will call SetWindowBackendOverrides again after window open,
+                % when we actually know the true effective framebuffer output precision.
+                %
+                % Assign override color depth and refresh interval for display:
+                if colorPrecision == 1
+                    % RGB10_A2:
+                    bpc = 10;
+                elseif colorPrecision == 2 || colorPrecision == 6
+                    % fp16 ~ 11:
+                    bpc = 11;
+                else
+                    % 16 bpc fixed point:
+                    bpc = 16;
+                end
+                Screen('HookFunction', win, 'SetWindowBackendOverrides', [], bpc * 3, 1 / refreshHz);
+                oldbpc = bpc;
+            end
         else
             % On Linux in windowed mode, outputHandle encodes the X11 window handle of
             % the PTB onscreen window, which we will use for the Vulkan display:
@@ -708,8 +735,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Vulkan cleanup', cmdString);
     Screen('Hookfunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
 
-    % Assign override color depth and refresh interval for display:
-    Screen('HookFunction', win, 'SetWindowBackendOverrides', [], bpc * 3, 1 / refreshHz);
+    % Avoid redundant call, if already done in Linux fullscreen path and effective
+    % bpc has not changed since then. Redundant calls are not harmful, but produce
+    % needless redundant status message clutter.
+    if oldbpc ~= bpc
+        % Assign override color depth and refresh interval for display:
+        Screen('HookFunction', win, 'SetWindowBackendOverrides', [], bpc * 3, 1 / refreshHz);
+    end
 
     % Mark usedOutput as being used by this window:
     vulkan{win}.usedOutput = usedOutput;
