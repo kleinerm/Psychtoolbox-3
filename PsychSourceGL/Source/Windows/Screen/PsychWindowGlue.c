@@ -417,7 +417,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
     RECT lRect;
 
     // Trigger event queue dispatch processing for GUI windows:
-    if (windowRecord == NULL || windowRecord->specialflags & kPsychGUIWindow) PsychGetMouseButtonState(NULL);
+    if (windowRecord == NULL || (windowRecord->specialflags & kPsychGUIWindow)) PsychGetMouseButtonState(NULL);
 
     if (windowRecord == NULL) {
         // Done, so far...
@@ -1021,7 +1021,7 @@ dwmdontcare:
     }
     else {
         // Only GUI windows have decorations. Non-GUI windows are border/decorationless:
-        if (!windowRecord->specialflags & kPsychGUIWindow) {
+        if (!(windowRecord->specialflags & kPsychGUIWindow)) {
             // Decorationless, borderless window:
             windowStyle |= WS_POPUP;
         }
