@@ -433,6 +433,35 @@ psych_bool PsychOSEnsureMinimumOutputPrecision(int screenNumber, int min_bpc)
 
     PsychUnlockDisplay();
 
+    // More than 10 bpc framebuffer content output precision needed,
+    // and hardware output bpc limited to maximum 10 bpc on AMD DC with DCE8+ engine?
+    if (max_bpc_atom && (min_bpc > 10) && (actual_max_bpc == 10) && (gpuMaintype == kPsychRadeon) && (gpuMinortype >= 80)) {
+        // Yes. For displays output with <= actual_max_bpc 10 bpc, spatial dithering
+        // is needed to make something out of this min_bpc > 10 bit content.
+        //
+        // The special case we need to handle here is an AMD gpu with DCE display
+        // engine (DCE-8/10/11/12) feeding to a native 10 bpc video sink, where
+        // dithering to 10 bpc would be needed, but the Linux amdgpu DC driver
+        // does not do that for unknown reasons.
+        //
+        // Try to fix this by detecting if dithering is enabled, as it should be,
+        // and will be for 6 bpc or 8 bpc display sinks. If dithering is disabled,
+        // because a 10 bpc sink is connected or the > 10 bpc sink is artificially
+        // restricted to 10 bpc -- iow. we'd need to dither to 10 bpc, but driver
+        // did not enable this, then we manually override the drivers programming
+        // and "hack on" 10 bpc spatial dithering:
+        if (PsychPrefStateGet_Verbosity() > 2)
+            printf("PTB-INFO: Screen %i needs dithering for high precision %i bpc output to <= %i bpc video sink.\n", scrnum, min_bpc, actual_max_bpc);
+
+        // Call directly into our low-level dithering control routine. 0xffffffff
+        // signals to the routine that it only should manually force-enable hw
+        // dithering iff it isn't already enabled (as we assume should be for
+        // 6 bpc and 8 bpc video output), ie. only for 10 bpc target signal depth.
+        // The routine knows a proper magic value to set up at least DCE11.2 with
+        // good quality:
+        PsychOSKDSetDitherMode(screenNumber, 0xffffffff);
+    }
+
     return(TRUE);
 }
 
