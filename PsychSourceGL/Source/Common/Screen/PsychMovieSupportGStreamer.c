@@ -38,6 +38,11 @@
 #include <gst/app/gstappsink.h>
 #include <gst/video/video.h>
 
+// When building against < GStreamer 1.18.0, define missing GST_VIDEO_FORMAT_Y444_16LE:
+#ifndef GST_VIDEO_FORMAT_Y444_16LE
+#define GST_VIDEO_FORMAT_Y444_16LE 88
+#endif
+
 // Need to define this for playbin as it is not defined
 // in any header file: (Expected behaviour - not a bug)
 typedef enum {
@@ -604,6 +609,7 @@ static psych_bool PsychAssignMovieTextureConversionShader(PsychMovieRecordType* 
             case GST_VIDEO_FORMAT_Y444:
             case GST_VIDEO_FORMAT_Y444_10LE:
             case GST_VIDEO_FORMAT_Y444_12LE:
+            case GST_VIDEO_FORMAT_Y444_16LE:
                 yChromaScale = 2.0;
                 if (PsychPrefStateGet_Verbosity() > 3)
                     printf("PTB-DEBUG: Using movie video frame decoding from YUV-I444/Y444 -> RGB with %i bpc precision. ", bpc);
@@ -1611,10 +1617,11 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "I422_10LE", NULL));
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "I422_12LE", NULL));
 
-        // We also accept I444 YUV aka Y444 of color depth 8, 10 and 12 bpc:
+        // We also accept I444 YUV aka Y444 of color depth 8, 10, 12 and 16 bpc:
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "Y444", NULL));
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "Y444_10LE", NULL));
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "Y444_12LE", NULL));
+        gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "Y444_16LE", NULL));
 
         if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will accept YUV-I420/I422/I444 planar textures of 8, 10 or 12 bpc for optimized decode of HDR/WCG compatible content.\n", slotid);
     }
@@ -2793,6 +2800,7 @@ int PsychGSGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int 
                 case GST_VIDEO_FORMAT_Y444:
                 case GST_VIDEO_FORMAT_Y444_10LE:
                 case GST_VIDEO_FORMAT_Y444_12LE:
+                case GST_VIDEO_FORMAT_Y444_16LE:
                     // 444: All planes at full resolution, so 3x the height:
                     overSize = 3.0;
                     break;
