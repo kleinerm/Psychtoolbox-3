@@ -306,10 +306,15 @@ psych_bool PsychOSEnsureMinimumOutputPrecision(int screenNumber, int min_bpc)
     CGDirectDisplayID dpy;
     Window root;
     int scrnum;
-
+    long max_bpc, min_maxbpc, new_max_bpc, set_max_bpc, actual_max_bpc = 0;
+    int gpuMaintype = kPsychUnknown;
+    int gpuMinortype = 0;
+    int fNumDisplayHeads = 0;
     PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+    Atom max_bpc_atom = XInternAtom(dpy, "max bpc", True);
     scrnum = PsychGetXScreenIdForScreen(screenNumber);
     root = RootWindow(dpy, scrnum);
+    PsychGetGPUSpecs(screenNumber, &gpuMaintype, &gpuMinortype, NULL, &fNumDisplayHeads);
 
     PsychLockDisplay();
 
@@ -317,9 +322,7 @@ psych_bool PsychOSEnsureMinimumOutputPrecision(int screenNumber, int min_bpc)
     if (min_bpc > 8) {
         // Yes. Make sure all video outputs on this X-Screen are set up for maximum color output precision.
         XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
-        Atom max_bpc_atom = XInternAtom(dpy, "max bpc", True);
         RROutput output;
-        long max_bpc;
         unsigned char *prop = NULL;
         unsigned long nitems = 0;
         unsigned long bytes_after;
@@ -327,37 +330,96 @@ psych_bool PsychOSEnsureMinimumOutputPrecision(int screenNumber, int min_bpc)
         int actual_format;
         int i;
 
+        // Currently we only upgrade 'max bpc' if it is too low for 10 bpc+ output
+        // and not altered by user or 3rd party software, iow. at 8 bpc default.
+        // We also only upgrade to 10 bpc, even if 12 bpc or more might look
+        // appropriate for > 10 bpc output. Why? Mostly for three practical reasons:
+        // 1. HDMI deep color capable displays are mandated by the HDMI spec that they
+        //    must advertise 12 bpc support whenever they are deep color capable, even
+        //    if they can't actually handle 12 bpc meaningfully! As most HDMI displays
+        //    don't actually do 12 bpc, this means they will internally truncate to
+        //    10 bpc. As the gpu won't dither 12+ bpc content down to 10 bpc if it
+        //    thinks it is outputting to a true 12 bpc display, this means we get only
+        //    10 bpc content! Otoh. if we restrict ourselves to 10 bpc output, then
+        //    such HDMI fake 12 bpc displays can't fool us - we treat them like 10 bpc
+        //    displays and the gpu dithers down to 10 bpc, achieving a net precision of
+        //    more than 10 bpc for typical scenarios.
+        //
+        // 2. Almost all commercially available displays as of the year 2020 do not
+        //    support more than 10 bpc anyway, and need dithering, so restricting to
+        //    10 bpc does not do harm on 99% of all setups.
+        //
+        // 3. Users can always manually configure (xrandr --output name --set 'max bpc' 12)
+        //    their display outputs to allow for 12 bpc output or higher. So the few lucky
+        //    owners of true 12 bpc displays can take full advantage of such panels.
+        //
+        // We may need to periodically revisit this strategy, as future generation gpu's
+        // and displays become available...
+        switch (min_bpc) {
+            case 10:
+                min_maxbpc = 8;
+                new_max_bpc = 10;
+                break;
+
+            case 11:
+            case 12:
+                min_maxbpc = 8;
+                new_max_bpc = 10;
+                break;
+
+            case 16:
+                min_maxbpc = 8;
+                new_max_bpc = 10;
+                break;
+
+            default:
+                printf("PTB-ERROR:PsychOSEnsureMinimumOutputPrecision: min_bpc %i requested, but this is unsupported!\n", min_bpc);
+                min_maxbpc = 0;
+                new_max_bpc = 0;
+                break;
+        }
+
         // 'max bpc' output / connector property supported in general?
         if (max_bpc_atom) {
             // Yes. Check all outputs on this screen:
             for (i = 0; i < resources->noutput; i++) {
                 output = resources->outputs[i];
                 max_bpc = 0;
+                set_max_bpc = 0;
 
                 // If the given output doesn't support 'max bpc' property, then skip it:
                 if ((XRRGetOutputProperty(dpy, output, max_bpc_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) || (prop == NULL))
                     continue;
 
-                // Does it have the proper property, and is current 'max bpc' too low for our precision needs?
-                if ((actual_type == XA_INTEGER) && (nitems == 1) && (actual_format == 32) && ((max_bpc = *((long *) prop)) <= 8)) {
+                // Does it have the proper property, and is current 'max bpc' too low for our precision needs? Or is 16 bpc selected on a AMD gpu, which would be the default for AMD + eDP?
+                if ((actual_type == XA_INTEGER) && (nitems == 1) && (actual_format == 32) && (((max_bpc = *((long *) prop)) <= min_maxbpc) || ((max_bpc == 16) && (gpuMaintype == kPsychRadeon) && (gpuMinortype >= 80)) )) {
+                    // max_bpc too low (or at AMD default) for needed precision. Try to upgrade to new_max_bpc:
+                    set_max_bpc = max_bpc;
+
                     // Output has 'max bpc' but it is too low for our 'min_bpc' precision needs. Crank it up to its maximum:
                     XRRPropertyInfo *info = XRRQueryOutputProperty(dpy, output, max_bpc_atom);
 
                     if (info && (info->range) && (info->num_values == 2)) {
-                        if (PsychPrefStateGet_Verbosity() > 2)
-                            printf("PTB-INFO: Output %i of screen %i has too low max bpc %i <= 8 bpc for high precision (%i bpc) mode. Requesting maximum bpc of %i bits.\n", i, scrnum, max_bpc, min_bpc, (int) info->values[1]);
+                        set_max_bpc = (new_max_bpc <= info->values[1]) ? new_max_bpc : info->values[1];
 
-                        max_bpc = info->values[1];
-                        XRRChangeOutputProperty(dpy, output, max_bpc_atom, XA_INTEGER, 32, PropModeReplace, (unsigned char *) &max_bpc, 1);
+                        if (PsychPrefStateGet_Verbosity() > 2)
+                            printf("PTB-INFO: Output %i of screen %i has too low max bpc %i <= %i bpc for high precision (%i bpc) mode. Requesting a new maximum bpc of %i bits.\n", i, scrnum, max_bpc, min_maxbpc, min_bpc, (int) set_max_bpc);
+
+                        XRRChangeOutputProperty(dpy, output, max_bpc_atom, XA_INTEGER, 32, PropModeReplace, (unsigned char *) &set_max_bpc, 1);
                     }
 
                     if (info)
                         XFree(info);
                 }
                 else {
+                    set_max_bpc = max_bpc;
+
                     if (PsychPrefStateGet_Verbosity() > 3)
-                        printf("PTB-INFO: Output %i of screen %i has sufficient max bpc %i > 8 bpc for high precision (%i bpc) mode. Nothing to do.\n", i, scrnum, max_bpc, min_bpc);
+                        printf("PTB-INFO: Output %i of screen %i has sufficient max bpc %i > %i bpc for high precision (%i bpc) mode. Nothing to do.\n", i, scrnum, max_bpc, min_maxbpc, min_bpc);
                 }
+
+                if (set_max_bpc > actual_max_bpc)
+                    actual_max_bpc = set_max_bpc;
 
                 // Done with this one, free up, go to next one:
                 XFree(prop);
