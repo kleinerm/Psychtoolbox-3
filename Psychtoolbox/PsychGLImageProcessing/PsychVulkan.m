@@ -23,6 +23,12 @@ function varargout = PsychVulkan(cmd, varargin)
 % - Returns if use of the Vulkan rendering and display api is in principle supported
 %   on this setup. 1 = Supported, 0 = No driver, hardware or operating system support.
 %
+% oldFlags = PsychVulkan('OverrideFlags' [, flags]);
+% - Returns and optionally sets override for 'flags' parameter in low-level
+%   function PsychVulkan('PerformPostWindowOpenSetup' ..., flags ...); for
+%   driver debugging and testing. By default, override flags are not set or
+%   used.
+%
 
 % History:
 % 28-Jun-2020   mk  Written.
@@ -34,6 +40,7 @@ persistent vulkan;
 persistent usedOutputs;
 persistent outputMappings;
 persistent noglfinish;
+persistent ovrFlags;
 
 % Fast path dispatch of functions called from within Screen() imaging pipeline
 % processing slots. Numeric 'cmd' codes, placed here for most efficient execution:
@@ -152,7 +159,7 @@ if isempty(usedOutputs)
             verbosity = 3;
         end
     catch
-        lasterror('reset');
+        lasterror('reset'); %#ok<*LERR>
         verbosity = 3;
     end
 end
@@ -160,7 +167,7 @@ end
 if strcmpi(cmd, 'Verbosity')
     varargout{1} = verbosity;
 
-    if (length(varargin) > 0) && ~isempty(varargin{1})
+    if (~isempty(varargin)) && ~isempty(varargin{1})
         verbosity = varargin{1};
 
         if exist('PsychVulkanCore', 'file')
@@ -170,6 +177,16 @@ if strcmpi(cmd, 'Verbosity')
                 lasterror('reset');
             end
         end
+    end
+
+    return;
+end
+
+if strcmpi(cmd, 'OverrideFlags')
+    varargout{1} = ovrFlags;
+
+    if ~isempty(varargin)
+        ovrFlags = varargin{1};
     end
 
     return;
@@ -419,6 +436,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     % Optional flags, and'ed together: +1 = Diagnostic display only, no interop:
     flags = varargin{10};
+
+    % Override flags specified?
+    if ~isempty(ovrFlags)
+        % Yes. Use them as override:
+        fprintf('PsychVulkan-INFO: Global low level override flags %i specified via PsychVulkan(''OverrideFlags''). Using it instead of caller-provided flags %i.\n', ovrFlags, flags);
+        flags = ovrFlags;
+    end
 
     winfo = Screen('GetWindowInfo', win);
     screenId = Screen('WindowScreenNumber', win);
@@ -763,7 +787,7 @@ end
 
 % 'cmd' so far not dispatched? Let's assume it is a command
 % meant for PsychVulkanCore:
-if (length(varargin) > 0) && ~isempty(varargin{1}) && isscalar(varargin{1}) && isreal(varargin{1}) && (Screen('WindowKind', varargin{1}) == 1)
+if (~isempty(varargin)) && ~isempty(varargin{1}) && isscalar(varargin{1}) && isreal(varargin{1}) && (Screen('WindowKind', varargin{1}) == 1)
   win = varargin{1};
   vwin = vulkan{win}.vwin;
   [ varargout{1:nargout} ] = PsychVulkanCore(cmd, vwin, varargin{2:end});
