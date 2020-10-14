@@ -96,7 +96,7 @@ imfilenames = dir(imfilepattern);
 % Use our own bundled demo images then:
 if isempty(imfilenames)
     % Try to load our own OpenEXR ".exr" sample images:
-    imfilenames = FileFromFolder([PsychtoolboxRoot 'PsychDemos/OpenEXRImages/'], 'ssilent', {'exr', 'hdr', 'dpx'});
+    imfilenames = FileFromFolder([PsychtoolboxRoot 'PsychDemos/OpenEXRImages/'], 'ssilent', {'exr', 'hdr', 'pic'});
 
     % Check for sample collection of MPI for informatics:
     if ~exist([PsychHomeDir 'ThirdPartyHDRSampleImages/'], 'dir')
@@ -120,7 +120,7 @@ if isempty(imfilenames)
 
     % Add MPI sample files if they exist in the users home directory:
     if exist([PsychHomeDir 'ThirdPartyHDRSampleImages/'], 'dir')
-        imfilenames1 = FileFromFolder([PsychHomeDir 'ThirdPartyHDRSampleImages/'], 'ssilent', {'exr', 'hdr', 'dpx'});
+        imfilenames1 = FileFromFolder([PsychHomeDir 'ThirdPartyHDRSampleImages/'], 'ssilent', {'exr', 'hdr', 'pic'});
         imfilenames = [imfilenames ; imfilenames1];
     end
 
