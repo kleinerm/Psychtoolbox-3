@@ -606,7 +606,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % Open the Vulkan window:
         vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, isFullscreen, screenId, windowRect, outputHandle, hdrMode, colorPrecision, refreshHz, colorSpace, colorFormat, flags);
 
-        if noInterop
+        % No interop, or semaphores unsupported?
+        if noInterop || isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_semaphore')) %#ok<STREMP>
+            if ~noInterop
+                fprintf('PsychVulkan-INFO: OpenGL implementation does not support OpenGL-Vulkan interop semaphores! Enabling operation without semaphores on gpu %i.\n', gpuIndex);
+            else
+                fprintf('PsychVulkan-INFO: Interop disabled! Enabling operation without semaphores on gpu %i.\n', gpuIndex);
+            end
+
             % In no-interop debug mode we  must not use semaphores, because they
             % are likely unsupported by the OpenGL or Vulkan driver as well, so
             % use classic fallback path with glFinish:
