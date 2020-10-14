@@ -123,13 +123,10 @@ if strcmpi(fext, '.hdr')
     % Load a RLE encoded RGBE high dynamic range file:
     dispatched = 1;
     try
-        % Does (potentially optimized) hdrread() function exist?
-        if exist('hdrread', 'file')
-            % Use it.
-            inimg = double(hdrread(imgfilename));
+        % Use our own routine:
+        [inimg, info] = read_rle_rgbe(imgfilename);
+
         else
-            % Use our own fallback:
-            inimg = read_rle_rgbe(imgfilename);
         end
     catch
         if continueOnError
