@@ -195,10 +195,10 @@ try
 
         switch info.format
             case 'rgbe'
-                % HACK: Multiply by 180.0 as a crude approximation of Radiance units to nits:
+                % HACK: Multiply by 179.0 as a crude approximation of Radiance units to nits:
                 % This is not strictly correct, but will do to get a nice enough picture for
-                % demo purpose:
-                img = img * 180;
+                % demo purpose. See 'help HDRRead' for the motivation for the 179 multiplicator:
+                img = img * 179;
 
             case 'openexr'
                 % HACK: Multiply by 1.0:
