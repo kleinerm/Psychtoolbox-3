@@ -23,6 +23,7 @@
 %   ConeIncToDKL        - Convert from cone increments to DKL.
 %   ContrastToExcitation - Convert contrast to excitation coordinate.
 %   ContrastToIncrement - Convert contrast to incremental coordinates.
+%   ConvertRGBSourceToRGBTargetColorSpace - Convert an image from a RGB source colorspace to a RGB target colorspace.
 %   DKLToConeInc        - Convert from DKL to cone increments.
 %   DrawChromaticity -    Plot chromaticity diagram w spectrum locus (provided by Danny Garside).
 %   EffectiveTrolandsFromLum - Compute effective trolands from luminance.
