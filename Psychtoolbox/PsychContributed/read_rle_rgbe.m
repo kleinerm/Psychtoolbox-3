@@ -5,12 +5,12 @@
 % Based loosely on the c-code RGBE implementation written by Bruce Walters
 % http://www.graphics.cornell.edu/~bjw/rgbe.html
 %
-% function to read a run length encoded RGBE picture file and header. This does
-% not work if the image is not RLE!!!
+% function to read a run length encoded RGBE picture file and header. This
+% does not work if the image is not RLE!!!
 %
-% Note to Psychtoolbox users: Please use the higher level HDRRead.m
-% routine for better generality in your code. This routine is used as
-% helper for HDRRead.
+% Note to Psychtoolbox users: Please use the higher level HDRRead.m routine
+% for better generality in your code. This routine is used as helper for
+% HDRRead.
 %
 function [img, fileinfo] = read_rle_rgbe(filename)
 %open the file
@@ -31,7 +31,7 @@ while ~isempty(tline)
     if ~isempty(n) % skip stuff I don't understand
         vname = lower(tline(1:n(1)-1));
         vval = tline(n+1:end);
-        fileinfo = setfield(fileinfo,vname,tline(n+1:end)); %#ok<SFLD>
+        fileinfo = setfield(fileinfo,vname,vval); %#ok<SFLD>
         %fprintf('Variable = %s, Value = %s\n',vname, vval);
     end
     %read the next line
