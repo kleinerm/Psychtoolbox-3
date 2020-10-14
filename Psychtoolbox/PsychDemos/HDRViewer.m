@@ -178,6 +178,7 @@ try
             try
                 img = imread(imagename);
                 info.format = 'sdr';
+                info.ColorGamut = [];
             catch
                 msg = ['Could not load file ' imagename ' as either HDR or SDR image file, skipping.\n' errmsg];
                 fprintf([msg, '\n']);
@@ -193,19 +194,42 @@ try
             end
         end
 
+        disp(info);
+
+        % Color gamut of image known?
+        if ~isempty(info.ColorGamut)
+            % Convert img from its source colorspace to the display
+            % colorspace of the HDR onscreen window. info.ColorGamut is the
+            % color gamut parsed from the image file, or a default color
+            % gamut as mandated by the image file format spec for the image
+            % file. win is the onscreen window handle, and the function
+            % will query win for the color gamut of its associated colorspace:
+            [~, img] = ConvertRGBSourceToRGBTargetColorSpace(info.ColorGamut, win, img);
+        end
+
         switch info.format
             case 'rgbe'
-                % HACK: Multiply by 179.0 as a crude approximation of Radiance units to nits:
-                % This is not strictly correct, but will do to get a nice enough picture for
-                % demo purpose. See 'help HDRRead' for the motivation for the 179 multiplicator:
+                % HACK: Multiply by 179.0 as a crude approximation of
+                % Radiance units to nits: This is not strictly correct, but
+                % will do to get a nice enough picture for demo purpose.
+                % See 'help HDRRead' for the motivation for the 179
+                % multiplicator for Radiance images:
+                % This is always RGB, no alpha channel to deal with.
                 img = img * 179;
 
             case 'openexr'
-                % HACK: Multiply by 1.0:
-                img = img * 1;
+                % Known scaling factor for scaling pixel values into units of nits?
+                % Otherwise it is best to just leave it as is:
+                if info.sampleToNits > 0
+                    % Only scale RGB channels, not the alpha channel.
+                    img(:,:,1:3) = img(:,:,1:3) * info.sampleToNits;
+                end
 
             case 'sdr'
                 % Standard - supposedly SDR - file read via imread():
+                % Screen('MakeTexture') will scale it up from its internal
+                % range to the HDR range 0 - 80 nits, which is supposedly
+                % the typical SDR range of a display:
                 img = img * 1;
 
             otherwise

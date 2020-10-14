@@ -31,12 +31,12 @@ function SimpleHDRDemo(imfilename)
 %    image files as double() precision matrices.
 %
 % 3. Optional: Set the optional 'floatprecision' flag of Screen('MakeTexture', ...)
-%    to 1 or 2 to enforce creation of floating point precision HDR textures from
-%    your image matrix.
+%    to 1 or 2 to enforce creation of floating point precision HDR textures
+%    of a specific precision from your image matrix.
 %
-%    By default, 'floatprecision' will be selected as 1 for half-float fp16 format,
-%    which is generally considered sufficient precision for displaying typical HDR
-%    images to typical viewers.
+%    By default, 'floatprecision' will be selected as 2 for single
+%    precision float fp32 format, which is the maximum precision for
+%    processing and displaying HDR images.
 %
 %
 % See the section 'EnableHDR' of "help PsychImaging" for more optional parameters
@@ -76,26 +76,8 @@ end
 % Read HDR file, abort on error. Must be in a file format recognized by HDRRead:
 [img, info] = HDRRead(imfilename);
 
-switch info.format
-    case 'rgbe'
-        % HACK: Multiply by 179.0 as a crude approximation of Radiance units to nits:
-        % This is not strictly correct, but will do to get a nice enough picture for
-        % demo purpose. See 'help HDRRead' for the motivation for the 179 multiplicator:
-        img = img * 179;
-
-    case 'openexr'
-        % HACK: Multiply by 1.0:
-        img = img * 1;
-
-    otherwise
-        error('Unknown image format. Do not know how to convert into units of Nits.');
-end
-
 % Show metadata:
 disp(info);
-
-% Compute maximum and max mean luminance of the image:
-[maxFALL, maxCLL] = ComputeHDRStaticMetadataType1ContentLightLevels(img);
 
 % Find screen to display on: We choose the one with the highest number,
 % assuming this is the HDR display:
@@ -115,6 +97,37 @@ PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
 % Note: This would also work, as above settings are used by default:
 % PsychImaging('AddTask', 'General', 'EnableHDR');
 win = PsychImaging('OpenWindow', screenid, 0);
+
+% Convert img from its source colorspace to the display colorspace of the
+% HDR onscreen window. info.ColorGamut is the color gamut parsed from the
+% image file, or a default color gamut as mandated by the image file format
+% spec for the image file. win is the onscreen window handle, and the
+% function will query win for the color gamut of its associated colorspace:
+[~, img] = ConvertRGBSourceToRGBTargetColorSpace(info.ColorGamut, win, img);
+
+switch info.format
+    case 'rgbe'
+        % HACK: Multiply by 179.0 as a crude approximation of Radiance
+        % units to nits: This is not strictly correct, but will do to get a
+        % nice enough picture for demo purpose. See 'help HDRRead' for the
+        % motivation for the 179 multiplicator for Radiance images:
+        % This is always RGB, no alpha channel to deal with.
+        img = img * 179;
+
+    case 'openexr'
+        % Known scaling factor for scaling pixel values into units of nits?
+        % Otherwise it is best to just leave it as is:
+        if info.sampleToNits > 0
+            % Only scale RGB channels, not the alpha channel.
+            img(:,:,1:3) = img(:,:,1:3) * info.sampleToNits;
+        end
+
+    otherwise
+        error('Unknown image format. Do not know how to convert into units of Nits.');
+end
+
+% Compute maximum and max mean luminance of the image:
+[maxFALL, maxCLL] = ComputeHDRStaticMetadataType1ContentLightLevels(img);
 
 % Tell the HDR display about maximum frame average light level and maximum
 % content light level of the image:
