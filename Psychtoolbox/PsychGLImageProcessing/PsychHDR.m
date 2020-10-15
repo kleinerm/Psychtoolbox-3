@@ -12,7 +12,7 @@ function varargout = PsychHDR(cmd, varargin)
 % interoperation. Additionally, the Vulkan driver, graphics card, and your display
 % device must support at least the HDR-10 standard for high dynamic range display.
 %
-% As of July 2020, these graphics cards would be suitable:
+% As of October 2020, these graphics cards would be suitable:
 %
 % - Modern AMD (RX 500 "Polaris" and later recommended) and NVidia (GeForce 1000
 %   "Pascal" and later recommended) graphics cards under a Windows-10 system, which
@@ -20,8 +20,8 @@ function varargout = PsychHDR(cmd, varargin)
 %
 % - Modern AMD graphics cards (like above) under modern GNU/Linux (Ubuntu 18.04.4-LTS
 %   at a minimum (untested!), or better Ubuntu 20.04-LTS and later recommended), with
-%   the AMD open-source Vulkan driver "amdvlk". Install driver release 2020-Q2.6 from
-%   June 2020 or later versions. This webpage has amdvlk download and installation
+%   the AMD open-source Vulkan driver "amdvlk". Install driver release 2020-Q3.5 from
+%   September 2020, or later versions. This webpage has amdvlk download and installation
 %   instructions:
 %
 %   https://github.com/GPUOpen-Drivers/AMDVLK/releases

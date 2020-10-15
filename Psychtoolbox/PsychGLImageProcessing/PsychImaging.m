@@ -1364,7 +1364,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % * 'UseVulkanDisplay' Display this onscreen window using a Vulkan-based display
 %   backend. This only works on graphics card + operating system combinations
 %   which support both the OpenGL and Vulkan rendering api's and OpenGL-Vulkan
-%   interop. As of July 2020 this would be modern AMD and NVidia graphics cards
+%   interop. As of October 2020 this would be modern AMD and NVidia graphics cards
 %   under modern GNU/Linux (Ubuntu 18.04-LTS and later) and Microsoft Windows-10.
 %
 %   At the moment 'UseVulkanDisplay' does not provide any advantages for standard
