@@ -113,7 +113,8 @@ if ~isempty(image)
         n = size(rgb, 2);
         L = reshape(rgb, m * n, 3) * MCSC';
         rgb = reshape(L, m, n, 3);
-        image = [rgb, alpha];
+        image = rgb;
+        image(:,:,4) = alpha;
     else
         % RGB only, no alpha:
         rgb = image;
