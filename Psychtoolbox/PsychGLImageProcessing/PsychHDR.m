@@ -332,6 +332,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             % using the correct unit of luminance. Used by movie playback and Screen('MakeTexture') among others:
             Screen('HookFunction', win, 'SetHDRScalingFactors', [], hdrArgs.contentSDRToHDRFactor, 1 / scalefactor);
 
+            % Set color gamut of HDR color space:
+            Screen('HookFunction', win, 'WindowColorGamut', [], hdrArgs.colorGamut);
+
             % Load PQ shader:
             oetfshader = LoadGLSLProgramFromFiles('HDR10-PQ_Shader', [], icmshader);
 
@@ -439,6 +442,15 @@ function hdrArgs = parseHDRArguments(hdrArguments)
 
         otherwise
             error('PsychHDR-ERROR: Invalid hdrMode ''%s'' provided for HDR operation.', hdrArguments{4});
+    end
+
+    % Map hdrMode to default color gamut for that mode:
+    switch (hdrArgs.hdrMode)
+        case 1
+            % HDR-10, BT-2020 aka ITU Rec.2020 color space with D65 white point:
+            hdrArgs.colorGamut = [[0.708 ; 0.292], [0.170 ; 0.797], [0.131 ; 0.046], [0.31271 ; 0.32902]];
+        otherwise
+            error('PsychHDR-ERROR: Default color gamut for hdrMode %i unknown for HDR operation! PsychHDR() implementation bug?!?', hdrArgs.hdrMode);
     end
 
     % No dummy HDR mode by default:
