@@ -3,9 +3,10 @@ function VulkanInteropDebug(flags)
 %
 
 close all;
-Screen('Preference', 'Verbosity', 6);
-PsychVulkan('Verbosity', 6);
+Screen('Preference', 'Verbosity', 5);
+PsychVulkan('Verbosity', 5);
 
+fs = 0; % EDIT ME!
 n = 1000;
 numifis = 0;
 loadjitter = 0;
@@ -48,7 +49,12 @@ try
         PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
     end
     
-    w=PsychImaging('OpenWindow',screenNumber, [0 255 0], [],[],[], stereo);
+    if fs
+        rect = [];
+    else
+        rect = InsetRect(screensize, 64, 0);
+    end
+    w=PsychImaging('OpenWindow',screenNumber, [0 255 0], rect,[],[], stereo);
     
     % Query effective stereo mode, as Screen() could have changed it behind our
     % back, e.g., if we asked for mode 1 but Screen() had to fallback to
