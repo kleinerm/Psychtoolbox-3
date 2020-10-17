@@ -149,6 +149,7 @@ typedef struct PsychVulkanWindow {
     int                                 numBuffers;
     psych_bool                          isStereo;
     psych_bool                          isFullscreen;
+    int                                 createFlags;
     int                                 hdrMode;
     int                                 colorPrecision;
     VkColorSpaceKHR                     colorspace;
@@ -1194,7 +1195,7 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR,
         .surface = window->surface,
         #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        .pNext = (window->isFullscreen) ? &fullscreenExclusiveInfo : NULL,
+        .pNext = (window->isFullscreen && !(window->createFlags & 0x2)) ? &fullscreenExclusiveInfo : NULL,
         #endif
     };
 
@@ -2908,6 +2909,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     }
 
     window->isFullscreen = isFullscreen;
+    window->createFlags = flags;
 
     // Specific gpuIndex requested?
     if (gpuIndex > 0) {
@@ -3212,7 +3214,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     PsychProcessWindowEvents(window);
 
     #if defined(VK_USE_PLATFORM_WIN32_KHR)
-        if (isFullscreen) {
+        if (isFullscreen && !(window->createFlags & 0x2)) {
             // Switch swapChain into fullScreenExclusive mode:
             result = fpAcquireFullScreenExclusiveModeEXT(vulkan->device, window->swapChain);
             if (result != VK_SUCCESS) {
@@ -3223,12 +3225,17 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                         printf("PsychVulkanCore-ERROR: gpu [%s] Error during switch to fullscreen exclusive mode: %i\n", vulkan->deviceProps.deviceName, result);
 
                     // This is not a fatal error, but it may impair timing and reliability:
-                    printf("PsychVulkanCore-ERROR: Will try to carry on, but visual timing precision and robustness, as well as general reliability may be degraded!\n");
+                    printf("PsychVulkanCore-ERROR: Will try to carry on, but visual timing precision and robustness, as well as general reliability, may be degraded!\n");
                 }
             }
 
             if (verbosity > 3)
                 printf("PsychVulkanCore-INFO: For gpu [%s] switched to fullscreen exclusive display mode for swapChain [%p] of display window %i\n", vulkan->deviceProps.deviceName, window->swapChain, window->index);
+        }
+        else if (isFullscreen && verbosity > 1) {
+            printf("PsychVulkanCore-WARNING: For gpu [%s] did *not* switch to fullscreen exclusive display mode for fullscreen display window %i,\n", vulkan->deviceProps.deviceName, window->index);
+            printf("PsychVulkanCore-WARNING: because of user request, or due to automatic workaround for buggy Vulkan driver.\n");
+            printf("PsychVulkanCore-WARNING: Visual timing precision and robustness, as well as general stimulus reliability, may be degraded!\n");
         }
     #endif
 
@@ -3799,6 +3806,7 @@ PsychError PSYCHVULKANOpenWindow(void)
         "'colorFormat' NOT USED YET! The pixel output color format to use as VkFormat color format id. If empty, then will be set automatically according to 'colorPrecision' and/or 'hdrMode'.\n"
         "'flags' Special mode selection flags or'ed together: +1 = Diagnostic display only, no Screen() OpenGL interop, just show an alternating black-white test image. Useful "
         "for most basic Vulkan testing and driver bringup if the given gpu does not have graphics drivers with OpenGL+Vulkan interop capabilities yet.\n"
+        "+2 = Do not switch to fullscreen-exclusive mode on MS-Windows, even for fullscreen windows. This is useful as workaround for some buggy Vulkan drivers.\n"
         "\n\n"
         "Returns: The 'vulkanWindow' handle of the Vulkan presentation window.\n";
 

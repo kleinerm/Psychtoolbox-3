@@ -452,6 +452,24 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Restore rank 0 output setting in Screen:
     Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
 
+    % AMD gpu under MS-Windows?
+    if IsWin && ~isempty(strfind(winfo.GLVendor, 'ATI'))
+        % For some of these the AMD Vulkan driver is buggy in that
+        % switching to fullscreen-exclusive mode for fullscreen windows
+        % causes massive malfunctions and a black screen display only,
+        % e.g., the Radeon RX 460 (Polaris, pci device id 0x67EF).
+        % Check gpu against badFSEIds list and enable a workaround if it is
+        % one of the bad gpu's:
+        badFSEIds = hex2dec({'67EF'});
+        for i=1:length(devs)
+            if (devs(i).VendorId == 4098) && strcmp(winfo.GLRenderer, devs(i).GpuName) && ismember(devs(i).DeviceId, badFSEIds)
+                % Got a bad one! Disable fullscreen-exclusive mode for fullscreen windows:
+                flags = mor(flags, 2);
+                fprintf('PsychVulkan-INFO: AMD gpu [%s] with buggy Vulkan driver for fullscreen mode detected! Enabling workaround, timing reliability may suffer.\n', devs(i).GpuName);
+            end
+        end
+    end
+
     if isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_memory_object')) %#ok<STREMP>
         flags = mor(flags, 1);
         noInterop = 1;
