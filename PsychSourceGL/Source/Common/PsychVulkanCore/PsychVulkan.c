@@ -3221,9 +3221,10 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                         printf("PsychVulkanCore-ERROR: gpu [%s] Could not switch to fullscreen exclusive mode!\n", vulkan->deviceProps.deviceName);
                     else
                         printf("PsychVulkanCore-ERROR: gpu [%s] Error during switch to fullscreen exclusive mode: %i\n", vulkan->deviceProps.deviceName, result);
-                }
 
-                goto openwindow_out1;
+                    // This is not a fatal error, but it may impair timing and reliability:
+                    printf("PsychVulkanCore-ERROR: Will try to carry on, but visual timing precision and robustness, as well as general reliability may be degraded!\n");
+                }
             }
 
             if (verbosity > 3)
