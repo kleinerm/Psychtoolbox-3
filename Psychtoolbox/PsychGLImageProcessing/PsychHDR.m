@@ -225,7 +225,7 @@ end
 if strcmpi(cmd, 'GetClientImagingParameters')
     % Parse caller provided EnableHDR task parameters into an easily usable
     % hdrArgs settings struct, while validating user input:
-    hdrArgs = parseHDRArguments(varargin{1});
+    hdrArgs = parseHDRArguments(varargin{1}); %#ok<NASGU>
 
     % We need the final output formatting imaging pipeline chain to attach our
     % HDR post-processing shader, at a minimum for OETF mapping, e.g., PQ. Also
@@ -241,7 +241,7 @@ end
 % [useVulkan, vulkanHDRMode, vulkanColorPrecision, vulkanColorSpace, vulkanColorFormat] = PsychHDR('GetVulkanHDRParameters', win, hdrArguments);
 if strcmpi(cmd, 'GetVulkanHDRParameters')
     % Onscreen window handle:
-    win = varargin{1};
+    win = varargin{1}; %#ok<NASGU>
 
     % Parse caller provided EnableHDR task parameters into an easily usable
     % hdrArgs settings struct, while validating user input:
@@ -256,8 +256,8 @@ if strcmpi(cmd, 'GetVulkanHDRParameters')
     % vulkanColorPrecision = 0 -- Derive from vulkanHDRMode by default:
     varargout{3} = 0;
 
-    % vulkanColorSpace = 0 -- Derive from vulkanHDRMode by default:
-    varargout{4} = 0;
+    % vulkanColorSpace:
+    varargout{4} = hdrArgs.colorSpace;
 
     % vulkanColorFormat = 0 -- Derive from vulkanHDRMode by default:
     varargout{5} = 0;
@@ -312,19 +312,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             % HDR-10: At least 10 bpc color depth, BT-2020/Rec-2020 color space,
             % SMPTE ST-2084 PQ "Perceptual Quantizer" OETF encoding by us.
 
-            if verbosity >= 3
-                if ~hdrArgs.dummy
-                    % The real thing:
-                    fprintf('PsychHDR-INFO: HDR-10 output activated. BT-2020 color space, PQ EOTF. Unit is %s.\n', hdrArgs.inputUnit);
-                else
-                    % Only minimal emulation:
-                    fprintf('PsychHDR-INFO: HDR-10 output EMULATION ON SDR DISPLAY activated. BT-2020 color space, PQ EOTF. Unit is %s.\n', hdrArgs.inputUnit);
-                    fprintf('PsychHDR-INFO: This is only a most bare-bones emulation. VISUAL STIMULI WILL DISPLAY WRONG!\n');
-                end
-            end
-
             % Select scalefactor from user framebuffer to shader input:
-
             % Input scaling from input unit to 0 - 1 range, where 1 = 10000 nits:
             scalefactor = hdrArgs.inputScalefactor;
 
@@ -342,6 +330,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             switch (hdrWindowProps.ColorSpace)
                 case 1000104002 % VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT
                     % scRGB colorspace with linear encoding 0-10000 nits ==> 0-125:
+                    eotfName = 'scRGB-Linear';
                     doPQEncode = 0;
 
                     % Linear encoding is simply multiplication by 125:
@@ -354,13 +343,53 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
                     gamutRec709 = [[0.64 ; 0.33], [0.30 ; 0.60], [0.15 ; 0.06], [0.31271 ; 0.32902]];
                     MCSC = ConvertRGBSourceToRGBTargetColorSpace(hdrArgs.colorGamut, gamutRec709);
 
+                case 1000213000 % VK_COLOR_SPACE_DISPLAY_NATIVE_AMD
+                    if hdrWindowProps.ColorFormat == 97 % == VK_FORMAT_R16G16B16A16_SFLOAT
+                        % FS2 scRGB mode: Implemented, but not tested/validated, possibly incomplete!
+                        %
+                        % scRGB colorspace with linear encoding 0-10000
+                        % nits ==> 0-125, more specifically from display
+                        % minimum luminance / 80 to display maximum
+                        % luminance / 80, but for a max 10k nits display
+                        % that would translate to 0 - 125:
+                        eotfName = 'FS2-scRGB-Linear';
+                        doPQEncode = 0;
+
+                        % Linear encoding is simply multiplication by 125:
+                        scalefactor = scalefactor * 125;
+
+                        % Need CSC from BT-2020 to scRGB:
+                        doCSC = 1;
+
+                        % scRGB color gamut with D65 white point and identical color gamut to sRGB and BT-709:
+                        gamutRec709 = [[0.64 ; 0.33], [0.30 ; 0.60], [0.15 ; 0.06], [0.31271 ; 0.32902]];
+                        MCSC = ConvertRGBSourceToRGBTargetColorSpace(hdrArgs.colorGamut, gamutRec709);
+                    else
+                        % FS2 Gamma 2.2 mode: TODO!
+                        error('PsychHDR: FreeSync2 Gamma 2.2 HDR mode is not yet implemented!');
+                    end
+
+                    warning('PsychHDR: AMD FreeSync2 HDR modes are incomplete, not officially supported, not validated, and possibly faulty!');
+
                 otherwise % VK_COLOR_SPACE_HDR10_ST2084_EXT
                     % Standard HDR-10 BT-2020 colorspace with PQ encoding:
+                    eotfName = 'BT-2020-PQ';
                     doPQEncode = 1;
 
                     % From BT-2020 to BT-2020, therefore CSC not needed:
                     doCSC = 0;
                     MCSC = [[1 0 0]; [0 1 0]; [0 0 1]];
+            end
+
+            if verbosity >= 3
+                if ~hdrArgs.dummy
+                    % The real thing:
+                    fprintf('PsychHDR-INFO: HDR-10 mode activated. BT-2020 input window color space, pixel color unit is %s. Output uses %s EOTF.\n', hdrArgs.inputUnit, eotfName);
+                else
+                    % Only minimal emulation:
+                    fprintf('PsychHDR-INFO: HDR-10 mode EMULATION ON SDR DISPLAY activated. BT-2020 color space, PQ EOTF. Unit is %s.\n', hdrArgs.inputUnit);
+                    fprintf('PsychHDR-INFO: This is only a most bare-bones emulation. VISUAL STIMULI WILL DISPLAY WRONG!\n');
+                end
             end
 
             % Set it up - Assign texture image unit 0 and input values
@@ -374,7 +403,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             glUseProgram(0);
 
             % Assign shader name: Add name of color correction shader:
-            oetfshaderstring = sprintf('HDR-OETF-PQ-Formatter: %s', icmstring);
+            oetfshaderstring = sprintf('HDR-OETF-%s-Formatter: %s', eotfName, icmstring);
 
             % Shader is ready for OETF mapping.
         otherwise
@@ -477,6 +506,9 @@ function hdrArgs = parseHDRArguments(hdrArguments)
         case 1
             % HDR-10, BT-2100 container, ie. BT-2020 aka ITU Rec.2020 color space with D65 white point:
             hdrArgs.colorGamut = [[0.708 ; 0.292], [0.170 ; 0.797], [0.131 ; 0.046], [0.31271 ; 0.32902]];
+            hdrArgs.colorSpace = 0; % Auto-Select Vulkan colorspace based on hdrMode.
+
+            %hdrArgs.colorSpace = 1000213000; % This would request VK_COLOR_SPACE_DISPLAY_NATIVE_AMD for Freesync2 HDR. Disabled atm., because this is neither complete nor validated at all!
 
         otherwise
             error('PsychHDR-ERROR: Default color gamut for hdrMode %i unknown for HDR operation! PsychHDR() implementation bug?!?', hdrArgs.hdrMode);
