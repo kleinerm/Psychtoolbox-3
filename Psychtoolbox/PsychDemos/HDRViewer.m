@@ -25,20 +25,31 @@ function HDRViewer(imfilepattern, scalefactor, gpudebug)
 % https://www.openexr.com/downloads.html
 %
 %
-% Limitations:
+% Caveats:
 %
-% The viewers formulas for converting pixel color values from the units in the
-% image file to the required linear unit in Nits are not neccessarily correct, as
-% there seems to be not much agreement about what the units in the image files are
-% supposed to reflect. In case of Radiance files (.hdr) we multiply by some fixed
-% number, when we should actually convert from units of Radiance to units of
-% Luminance. For the OpenEXR format and others, we just use values as they are,
-% assuming they are already in Nits. This seems to be the case for some, but not all,
-% sample images.
+% The viewers formula for converting pixel color values from the units in the
+% image file to the required linear unit in Nits are as good as they get atm.
 %
-% Similarly the formula for computing frame average light level and max content
-% light level may or may not be 100% according to spec. At least they give reasonable
-% results...
+% There seems to be not much agreement about what the units in the image
+% files are supposed to reflect. In case of Radiance files (.hdr) we
+% multiply by some fixed number 179, motivated by some comments in the
+% Radiance file format spec, when we should actually convert from units of
+% Radiance to units of Luminance, but that's the best one can do in the
+% general case. Similar, we use encoded color gamut if available, but
+% mostly that seems not to be the case, so we apply some hard-coded "BT-709
+% like" gamut as recommended by the spec.
+%
+% For the OpenEXR format and others, we use the sampleToNits and ColorGamut
+% information if provided by the image file. This should give correct
+% results, but at least as my image sample sets and the wisdom of the
+% internet go, many (most?) freely available images actually lack
+% definition of color gamut and conversion factor, so we simply have to
+% assume BT 709 gamut and a unit conversion factor. This seems to be the
+% case for some, but not all, sample images.
+%
+% In the end you are responsible for encoding the proper gamut and unit
+% conversion meta info into the image files you are about to use for
+% serious research, no way around that.
 %
 % Control keys:
 %
