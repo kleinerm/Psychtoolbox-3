@@ -26,6 +26,23 @@ function varargout = PsychHDR(cmd, varargin)
 %
 %   https://github.com/GPUOpen-Drivers/AMDVLK/releases
 %
+% HDR functionality is demonstrated in multiple demos:
+%
+% SimpleHDRDemo.m as a simple starter for basic image display and rendering.
+% HDRViewer.m as a more fancy static image viewer.
+% HDRTest.m for testing HDR reproduction with a colorimeter supported by Psychtoolbox.
+% MinimalisticOpenGLDemo.m with the optional 'hdr' parameter set to 1 for most basic OpenGL rendering in HDR.
+% PlayMoviesDemo.m with the optional 'hdr' parameter set to 1 for playback of HDR movies.
+%
+% Useful helper functions beyond PsychImaging('AddTask', 'General', 'EnableHDR');
+% for basic HDR setup and configuration, and PsychHDR() for tweaking, are
+% the HDRRead() command for reading some HDR image file formats, e.g.,
+% Radiance .hdr or OpenEXR .exr, ComputeHDRStaticMetadataType1ContentLightLevels()
+% for computing HDR static metadata type one for an image or stack of
+% images, and ConvertRGBSourceToRGBTargetColorSpace() for converting images
+% from a source color space / gamut to a destination color space / gamut.
+%
+%
 % Most often you won't call this function directly, but Psychtoolbox will call
 % it appropriately from the PsychImaging() function. Read relevant sections
 % related to 'EnableHDR' in 'help PsychImaging' first, before venturing into the
