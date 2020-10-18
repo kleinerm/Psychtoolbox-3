@@ -139,6 +139,7 @@ typedef struct PsychVulkanWindow {
     psych_bool                          supports_hdr10_bgr10a2;
 
     psych_bool                          supports_scrgb_rgba16f;
+    psych_bool                          supports_fs2_hdr;
 
     psych_bool                          supports_srgb_rgba16f;
     psych_bool                          supports_srgb_rgb10a2;
@@ -1178,6 +1179,7 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
     window->supports_hdr10_rgb10a2 = FALSE;
     window->supports_hdr10_bgr10a2 = FALSE;
     window->supports_scrgb_rgba16f = FALSE;
+    window->supports_fs2_hdr = FALSE;
     window->supports_srgb_rgba16f = FALSE;
     window->supports_srgb_rgb10a2 = FALSE;
     window->supports_srgb_bgr10a2 = FALSE;
@@ -1419,11 +1421,20 @@ psych_bool PsychProbeSurfaceProperties(PsychVulkanWindow* window, PsychVulkanDev
                 }
             }
 
-            // Standard SRGB colorspace with non-linear (gamma) encoding supported?
+            // Extended scRGB colorspace with linear (scaled) encoding supported?
             if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT) {
                 // Yes. Which pixel format?
                 if (window->surfaceFormats[i].surfaceFormat.format == VK_FORMAT_R16G16B16A16_SFLOAT) {
                     window->supports_scrgb_rgba16f = TRUE;
+                }
+            }
+
+            // AMD FreeSync2 HDR colorspace supported?
+            if (window->surfaceFormats[i].surfaceFormat.colorSpace == VK_COLOR_SPACE_DISPLAY_NATIVE_AMD) {
+                // Yes. Which pixel format?
+                if (window->surfaceFormats[i].surfaceFormat.format == VK_FORMAT_R16G16B16A16_SFLOAT ||
+                    window->surfaceFormats[i].surfaceFormat.format == VK_FORMAT_A2R10G10B10_UNORM_PACK32) {
+                    window->supports_fs2_hdr = TRUE;
                 }
             }
 
@@ -2085,7 +2096,7 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     // Do we need HDR?
     if (hdrMode) {
         // Yes. Check if any HDR color space + pixel format combo is supported at a minimum:
-        if (!(window->supports_hdr10_rgb10a2 || window->supports_hdr10_bgr10a2 || window->supports_hdr10_rgba16f || window->supports_scrgb_rgba16f)) {
+        if (!(window->supports_hdr10_rgb10a2 || window->supports_hdr10_bgr10a2 || window->supports_hdr10_rgba16f || window->supports_scrgb_rgba16f || window->supports_fs2_hdr)) {
             // Nope:
             if (verbosity > 3) {
                 printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support HDR in the %s configuration required by window %i.\n", vulkan->deviceProps.deviceName, isFullscreen ? "fullscreen" : "windowed", window->index);
@@ -2109,11 +2120,11 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
             case 5: // 16 bpc fixed point -> 16 bpc float fp16 ->10 bpc fixed point.
             case 6: // 16 bpc float fp16  -> 10 bpc fixed point.
                 // All these are satisfied by a 10 bpc fixed point fallback:
-                supportsPrecision = window->supports_hdr10_rgb10a2 || window->supports_hdr10_bgr10a2 || window->supports_srgb_rgb10a2 || window->supports_srgb_bgr10a2;
+                supportsPrecision = window->supports_hdr10_rgb10a2 || window->supports_hdr10_bgr10a2 || window->supports_srgb_rgb10a2 || window->supports_srgb_bgr10a2 || window->supports_fs2_hdr;
                 break;
 
             case 2: // 16 bpc floating point RGBA16F.
-                supportsPrecision = window->supports_hdr10_rgba16f || window->supports_srgb_rgba16f || window->supports_scrgb_rgba16f;
+                supportsPrecision = window->supports_hdr10_rgba16f || window->supports_srgb_rgba16f || window->supports_scrgb_rgba16f || window->supports_fs2_hdr;
                 break;
 
             case 3: // 16 bpc fixed point:
