@@ -2895,6 +2895,20 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             case 1:
                 // HDR-10 BT2020 color space with ST-2084 PQ "Perceptual Quantizer" OETF:
                 colorSpace = VK_COLOR_SPACE_HDR10_ST2084_EXT;
+
+                // Unless this is MS-Windows, and fp16 float precision is requested,
+                // or windowed non-fullscreen HDR is requested. In that case we need
+                // to use the scRGB colorspace, because only scRGB supports fp16
+                // consistently across multiple gpu vendors, and only scRGB is
+                // supported for windowed HDR, ie. when the DWM compositor is responsible
+                // for SDR + HDR compositing:
+                if ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (!isFullscreen || (colorPrecision > 1))) {
+                    colorSpace = VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
+
+                    // The scRGB colorspace only works with exactly fp16 == precision 2:
+                    colorPrecision = 2;
+                }
+
                 break;
 
             case 0:
