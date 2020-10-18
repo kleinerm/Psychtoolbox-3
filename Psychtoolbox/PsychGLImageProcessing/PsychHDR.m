@@ -190,7 +190,7 @@ end
 if strcmpi(cmd, 'Verbosity')
     varargout{1} = verbosity;
 
-    if (length(varargin) > 0) && ~isempty(varargin{1})
+    if (~isempty(varargin)) && ~isempty(varargin{1})
         verbosity = varargin{1};
         PsychVulkan('Verbosity', verbosity);
     end
@@ -214,7 +214,7 @@ if strcmpi(cmd, 'Supported')
             end
         end
     catch
-        lasterror('reset');
+        lasterror('reset'); %#ok<*LERR>
         varargout{1} = 0;
     end
 
@@ -338,11 +338,39 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             % Load PQ shader:
             oetfshader = LoadGLSLProgramFromFiles('HDR10-PQ_Shader', [], icmshader);
 
+            % Define mapping from BT-2020 colorspace to output colorspace:
+            switch (hdrWindowProps.ColorSpace)
+                case 1000104002 % VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT
+                    % scRGB colorspace with linear encoding 0-10000 nits ==> 0-125:
+                    doPQEncode = 0;
+
+                    % Linear encoding is simply multiplication by 125:
+                    scalefactor = scalefactor * 125;
+
+                    % Need CSC from BT-2020 to scRGB:
+                    doCSC = 1;
+
+                    % scRGB color gamut with D65 white point and identical color gamut to sRGB and BT-709:
+                    gamutRec709 = [[0.64 ; 0.33], [0.30 ; 0.60], [0.15 ; 0.06], [0.31271 ; 0.32902]];
+                    MCSC = ConvertRGBSourceToRGBTargetColorSpace(hdrArgs.colorGamut, gamutRec709);
+
+                otherwise % VK_COLOR_SPACE_HDR10_ST2084_EXT
+                    % Standard HDR-10 BT-2020 colorspace with PQ encoding:
+                    doPQEncode = 1;
+
+                    % From BT-2020 to BT-2020, therefore CSC not needed:
+                    doCSC = 0;
+                    MCSC = [[1 0 0]; [0 1 0]; [0 0 1]];
+            end
+
             % Set it up - Assign texture image unit 0 and input values
             % scalefactor:
             glUseProgram(oetfshader);
             glUniform1i(glGetUniformLocation(oetfshader, 'Image'), 0);
             glUniform1f(glGetUniformLocation(oetfshader, 'Prescale'), scalefactor);
+            glUniform1i(glGetUniformLocation(oetfshader, 'doPQEncode'), doPQEncode);
+            glUniform1i(glGetUniformLocation(oetfshader, 'doCSC'), doCSC);
+            glUniformMatrix3fv(glGetUniformLocation(oetfshader, 'MCSC'), 1, 0, MCSC);
             glUseProgram(0);
 
             % Assign shader name: Add name of color correction shader:
@@ -375,7 +403,7 @@ end
 % Dispatch subfunctions with "HDR" in their name to PsychVulkan(), which may
 % hand them off to PsychVulkanCore():
 if ~isempty(strfind(lower(cmd), 'hdr')) %#ok<*STREMP>
-    if length(varargin) > 0
+    if ~isempty(varargin)
         [ varargout{1:nargout} ] = PsychVulkan(cmd, varargin{1:end});
     else
         PsychVulkan(cmd);
@@ -447,8 +475,9 @@ function hdrArgs = parseHDRArguments(hdrArguments)
     % Map hdrMode to default color gamut for that mode:
     switch (hdrArgs.hdrMode)
         case 1
-            % HDR-10, BT-2020 aka ITU Rec.2020 color space with D65 white point:
+            % HDR-10, BT-2100 container, ie. BT-2020 aka ITU Rec.2020 color space with D65 white point:
             hdrArgs.colorGamut = [[0.708 ; 0.292], [0.170 ; 0.797], [0.131 ; 0.046], [0.31271 ; 0.32902]];
+
         otherwise
             error('PsychHDR-ERROR: Default color gamut for hdrMode %i unknown for HDR operation! PsychHDR() implementation bug?!?', hdrArgs.hdrMode);
     end
