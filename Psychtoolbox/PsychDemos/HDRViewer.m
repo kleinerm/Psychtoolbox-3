@@ -1,16 +1,18 @@
-function HDRViewer(imfilepattern, scalefactor, gpudebug)
-% HDRViewer([imfilepattern][, scalefactor=autoselect][gpudebug=0]) -- Load and show high
-% dynamic range images on a compatible HDR display setup.
+function HDRViewer(imfilepattern, highprecision, windowed, scalefactor, gpudebug)
+% HDRViewer([imfilepattern][, highprecision=0][, windowed=0][, scalefactor=autoselect][, gpudebug=0])
+% Load and show high dynamic range images on a compatible HDR display setup.
 %
 % See "help PsychHDR" for system requirements and setup instructions for HDR
 % display. See "help HDRRead" for supported HDR image file formats, ie. the
-% formats that HDRRead() can load.
+% formats that HDRRead() can load, and possible caveats.
 %
 % The viewer allows to cycle through a sequence of images in the given
 % folder, matching the given filename pattern. It allows to adjust the
 % intensity online, as well as to zoom into regions of the image. A simple
-% "color picker" displays the RGB color values in units of nits under the cursor
-% position.
+% "color picker" displays the RGB color values in units of nits under the
+% cursor position.
+%
+% Input arguments, all optional:
 %
 % 'imfilepattern' - Filename search pattern of the HDR images to load,
 % e.g., 'myimages*.hdr' would load all images in the current folder that
@@ -23,6 +25,22 @@ function HDRViewer(imfilepattern, scalefactor, gpudebug)
 % on the OpenEXR website under:
 %
 % https://www.openexr.com/downloads.html
+%
+% 'highprecision' If set to 1, request floating point 16 fp16 display
+% output, instead of the default 10 bpc fixed point output of HDR-10.
+%
+% 'windowed' If set to 1 and running on MS-Windows, create a non-fullscreen
+% window to test windowed HDR mode. This is not yet supported on Linux, and
+% sometimes buggy and/or underwhelming on Windows-10, so may not work at
+% all or not correctly due to Windows-10 or gpu display driver limitations.
+%
+% 'scalefactor' If set, use this factor to scale color intensity values of
+% images during drawing into the framebuffer. Otherwise use a heuristic
+% which sometimes gives not so great results.
+%
+% 'gpudebug' If set to 1 will collect additional low-level info useful for
+% debugging of Vulkan driver bugs, and print it to the console window. This
+% will have performance impact!
 %
 %
 % Caveats:
@@ -37,14 +55,14 @@ function HDRViewer(imfilepattern, scalefactor, gpudebug)
 % Radiance to units of Luminance, but that's the best one can do in the
 % general case. Similar, we use encoded color gamut if available, but
 % mostly that seems not to be the case, so we apply some hard-coded "BT-709
-% like" gamut as recommended by the spec.
+% alike" gamut as recommended by the spec.
 %
 % For the OpenEXR format and others, we use the sampleToNits and ColorGamut
 % information if provided by the image file. This should give correct
 % results, but at least as my image sample sets and the wisdom of the
 % internet go, many (most?) freely available images actually lack
 % definition of color gamut and conversion factor, so we simply have to
-% assume BT 709 gamut and a unit conversion factor. This seems to be the
+% assume BT-709 gamut and a unit conversion factor. This seems to be the
 % case for some, but not all, sample images.
 %
 % In the end you are responsible for encoding the proper gamut and unit
@@ -53,10 +71,11 @@ function HDRViewer(imfilepattern, scalefactor, gpudebug)
 %
 % Control keys:
 %
-% You can cycle through all images by pressing the space-bar. You can change
-% image intensity scaling by pressing the cursor up- and down-keys. You can
-% exit the viewer by pressing ESCape. By pressing the 'q' key, you can
-% toggle between float precision HDR and 256 level 8 bit quantized output.
+% You can cycle through all images by pressing the space-bar. You can
+% change image intensity scaling by pressing the cursor up- and down-keys.
+% You can exit the viewer by pressing ESCape. By pressing the 'q' key, you
+% can toggle between float precision HDR and 256 level 8 bit quantized
+% images (not that useful).
 %
 % Zoom mode:
 %
@@ -66,8 +85,8 @@ function HDRViewer(imfilepattern, scalefactor, gpudebug)
 % up to fullscreen. A single mouse click will reset to the full image.
 %
 %
-% This is an extension of SimpleHDRDemo.m, see that file for the most basic usage
-% of HDR displays with Psychtoolbox.
+% This is an extension of SimpleHDRDemo.m, see that file for more basic
+% usage of HDR displays with Psychtoolbox.
 %
 
 % History:
@@ -90,13 +109,23 @@ if nargin < 1 || isempty(imfilepattern)
     imfilepattern = 'NONONONO';
 end
 
+% 10 bpc by default:
+if nargin < 2 || isempty(highprecision)
+    highprecision = 0;
+end
+
+% Fullscreen display by default:
+if nargin < 3 || isempty(windowed)
+    windowed = 0;
+end
+
 % No intensity scaling by default:
-if nargin < 2 || isempty(scalefactor)
+if nargin < 4 || isempty(scalefactor)
     scalefactor = 1;
 end
 
 % No time-consuming debug mode by default:
-if nargin < 3 || isempty(gpudebug)
+if nargin < 5 || isempty(gpudebug)
     gpudebug = 0;
 end
 
@@ -149,6 +178,15 @@ try
     % Find screen to display: We choose the one with the highest number,
     % assuming this is the HDR display:
     screenid = max(Screen('Screens'));
+    screenRect = Screen('Rect', screenid);
+
+    if windowed && IsWin
+        % Request non-fullscreen windowed output on MS-Window:
+        rect = [0, 0, RectWidth(screenRect), RectHeight(screenRect) - 250];
+    else
+        % Default fullscreen display:
+        rect = [];
+    end
 
     % Open a double-buffered fullscreen onscreen window in HDR mode on the HDR
     % display, with black background color. Color values will be specified in
@@ -157,7 +195,11 @@ try
     % display, output color signals have 10 bpc precision.
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
-    [win, winrect] = PsychImaging('OpenWindow', screenid, 0);
+    if highprecision
+        % Request fp16 output instead of 10 bpc output:
+        PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
+    end
+    [win, winrect] = PsychImaging('OpenWindow', screenid, 0, rect);
     [xm, ym] = RectCenter(winrect);
     SetMouse(xm, ym, win);
     HideCursor(win);
@@ -226,8 +268,11 @@ try
                 % See 'help HDRRead' for the motivation for the 179
                 % multiplicator for Radiance images:
                 % This is always RGB, no alpha channel to deal with.
-                img = img * 179;
-
+                if info.sampleToNits > 0
+                    img = img * info.sampleToNits;
+                else
+                    img = img * 179;
+                end
             case 'openexr'
                 % Known scaling factor for scaling pixel values into units of nits?
                 % Otherwise it is best to just leave it as is:
