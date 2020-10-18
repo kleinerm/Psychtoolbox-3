@@ -17,12 +17,35 @@ function HDRTest(dotest, meterType, highprecision, screenid, filename)
 % only do luminance test, [0 1 0 0] only do red primary test, [1 1 1 1] do all tests.
 %
 % 'meterType' id code of the measurement device to use, as listed in "help MeasXYZ".
-% Defaults to meterType 7 for the CRS ColorCal2.
+% Defaults to meterType 7 for the CRS ColorCal2. If you specify a meterType
+% 0 then the test script will run through as fast as possible without
+% measuring anything - a dry run if you want.
+%
+% A meterType of -1 requests manual measurement and data entry. The script
+% will display a test stimulus, make a beep noise, and expect you to use
+% some external manually operated colorimeter to measure, then press a key.
+% After keypress a text will ask you to enter the measured luminance in
+% nits on the keyboard and press ENTER to finish data entry. Then it will
+% advance to the next measurement. The current measurement run can be
+% aborted by typing q instead of the nits value. Invalid entry will be
+% stored as NaN for "Not a number".
+%
+% If you don't own a colorimeter supported by CMCheckInit(), but that is
+% controllable by Matlab/Octave code, please let us know. You can still
+% automate measurement yourself by specifying a meterType of 3 and then
+% providing the following functions in your Matlab/Octave function search
+% path: CRSColorInit() to initialize your colorimeter, CRSColorClose() to
+% shut it down again, and XYZ = CRSColorMeasXYZ() to perform a measurement
+% of XYZ tristimulus values. This "hijacks" the builtin support for the CRS
+% color toolbox for convenient use of your own colorimeter.
 %
 % 'highprecision' If set to 1, will request a fp16 16 bpc non-linear
 % floating point framebuffer for output, instead of the default setting 0,
 % which requests a 10 bpc linear framebuffer. This may be able to raise
-% precision of the encoded signal from 10 bit to up to 12 bit.
+% precision of the encoded signal from 10 bit to up to 12 bit. Please note
+% that if used on MS-Windows, the test will print false warnings about
+% mismatches between shader computed PQ values. That is normal at the
+% moment, because on Windows PQ is not used for fp16 mode.
 %
 % 'screenid' Screen to use. Defaults to maximum screen id.
 %
@@ -67,8 +90,15 @@ else
     end
 end
 
-% Open the colorimeter, or abort if not possible:
-CMCheckInit(meterType);
+if meterType > 0
+    % Open the colorimeter, or abort if not possible:
+    CMCheckInit(meterType);
+end
+
+if meterType == -1
+    % Suppress console output for manual data entry:
+    ListenChar(2);
+end
 
 referenceluminance = [];
 skipKbWait = 0;
@@ -207,7 +237,6 @@ try
             title('Chromaticity coordinates of measured samples:');
         catch
         end
-
     end
 
     if any(dotest(2:4))
@@ -232,8 +261,23 @@ end
 fprintf('Done. Writing results to file %s\n', filename);
 save(filename, '-V7');
 
-% Close the colorimeter:
-CMClose(meterType);
+if meterType == -1
+    % Suppress console output for manual data entry:
+    ListenChar(0);
+
+    % Disable sound output as used by Beeper():
+    Snd('Close');
+end
+
+if meterType > 0
+    % Close the colorimeter:
+    CMClose(meterType);
+end
+
+% Close pointless empty chroma plot on manual data entry:
+if meterType == -1
+    close all;
+end
 
 % Some more plotting for test 1, detailed white-point and luminance:
 if dotest(1)
@@ -246,6 +290,11 @@ if dotest(1)
         ylabel('Measured luminance [nits]');
     catch
     end
+
+    % The following half-assed algorithm needs a "Viewer discretion is
+    % advised" disclaimer...
+    fprintf('\n\nCAUTION: The following diagnostic output is based on a currently suboptimal method which\n');
+    fprintf('leaves a lot to be desired. Therefore take the automatic assessment with a big grain of salt!\n\n');
 
     % Check how much "dynamic range" is actually in the measured data. We
     % exclude measurements for target luminance values < 1 nit, as our
@@ -280,6 +329,11 @@ printgpuhwstate;
 
 if exist('me','var')
     rethrow(me);
+end
+
+% Auto close empty plots if no colorimeter measurement was done:
+if meterType == 0
+    close all;
 end
 
 % We are done!
@@ -361,12 +415,35 @@ function ret = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKb
         ret.shaderpq10bitval(:, end+1) = gpu10bitval;
         ret.shaderpq12bitval(:, end+1) = gpu12bitval;
 
-        % Give display(backlight) some time to settle to new steady state:
-        WaitSecs(0.5);
-
+        if meterType ~= 0
+            % Give display(backlight) some time to settle to new steady state:
+            WaitSecs(0.5);
+        end
+ 
         % Measure true luminance according to colorimeter:
         ret.referencecolors(:, end+1) = targetcolor;
-        [ret.XYZ(:, end+1), ret.trouble(end+1)] = MeasXYZ(meterType);
+
+        if meterType > 0
+            [ret.XYZ(:, end+1), ret.trouble(end+1)] = MeasXYZ(meterType);
+        else
+            switch (meterType)
+                case 0 % Fast run-through...
+                    [ret.XYZ(:, end+1), ret.trouble(end+1)] = deal([0 ; 0; 0], -1);
+
+                case -1 % Manual measurement and data entry:
+                    Beeper;
+                    KbStrokeWait(-1);
+                    manNits = Ask(win, 'Measured nits + ENTER [q + ENTER to quit run]: ', 200, 0, 'GetChar');
+                    % Abort on 'q', otherwise convert entry to manNits
+                    % measured luminance value:
+                    if ~strcmp(manNits, 'q')
+                        manNits = str2double(manNits);
+                    else
+                        break;
+                    end
+                    [ret.XYZ(:, end+1), ret.trouble(end+1)] = deal([0 ; manNits ; 0], -1);
+            end
+        end
 
         if isscalar(targetcolor)
             targetlum = targetcolor;
@@ -388,8 +465,10 @@ function ret = runTestPatchSeries(win, meterType, testrect, targetcolors, skipKb
         DrawFormattedText(win, msg, 0, 30, 40);
         Screen('Flip', win);
 
-        % Rest for a second:
-        WaitSecs(1);
+        if meterType ~= 0
+            % Rest for a second:
+            WaitSecs(1);
+        end
     end
 
     nsamples = min(size(ret.referencecolors, 2), size(ret.XYZ, 2));
