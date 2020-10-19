@@ -1,0 +1,219 @@
+amdvlk + kleinerm on Linux HDR color formats:
+
+Surface number of supported surface colorspace + pixelformat combinations: 8
+[0] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [0] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[1] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [1] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[2] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [2] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[3] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [3] Swapchain format VK_FORMAT_A2B10G10R10_UNORM_PACK32
+[4] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [4] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[5] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - [5] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[6] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - [6] Swapchain format VK_FORMAT_A2B10G10R10_UNORM_PACK32
+[7] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - [7] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+
+-> SRGB formats also on SDR displays.
+-> amdvlk limits output precision to RandR 'max bpc' 10.
+
+Standard amdvlk:
+
+[0] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [0] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[1] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [1] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[2] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [2] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[3] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [3] Swapchain format VK_FORMAT_A2B10G10R10_UNORM_PACK32
+[5] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - [5] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[6] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - [6] Swapchain format VK_FORMAT_A2B10G10R10_UNORM_PACK32
+
+-> No 10 bit formats on SDR display.
+
+AMD Vulkan on Windows-10 HDR color formats:
+
+Surface number of supported surface colorspace + pixelformat combinations: 19
+[0] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [0] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[1] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [1] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[2] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [2] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[3] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [3] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[4] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [4] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[5] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [5] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[6] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [6] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[7] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [7] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[8] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - [8] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[9] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - [9] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[10] For colorspace VK_COLOR_SPACE_BT2020_LINEAR_EXT        - [10] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[11] For colorspace VK_COLOR_SPACE_BT2020_LINEAR_EXT        - [11] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[12] For colorspace VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT - [12] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[13] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT         - [13] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[14] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT         - [14] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[15] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT         - [15] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[16] For colorspace VK_COLOR_SPACE_PASS_THROUGH_EXT         - [16] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[17] For colorspace VK_COLOR_SPACE_DISPLAY_NATIVE_AMD       - [17] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[18] For colorspace VK_COLOR_SPACE_DISPLAY_NATIVE_AMD       - [18] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+
+On SDR display:
+
+Surface number of supported surface colorspace + pixelformat combinations: 8
+[0] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [0] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[1] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [1] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[2] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [2] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[3] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [3] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[4] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [4] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[5] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [5] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[6] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [6] Swapchain format VK_FORMAT_A2R10G10B10_UNORM_PACK32
+[7] For colorspace VK_COLOR_SPACE_BT709_NONLINEAR_EXT      - [7] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+
+NVIDIA Vulkan on Windows-10 HDR display:
+
+Surface number of supported surface colorspace + pixelformat combinations: 4
+[0] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [0] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[1] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [1] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+[2] For colorspace VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT - [2] Swapchain format VK_FORMAT_R16G16B16A16_SFLOAT
+[3] For colorspace VK_COLOR_SPACE_HDR10_ST2084_EXT         - [3] Swapchain format VK_FORMAT_A2B10G10R10_UNORM_PACK32
+
+
+NVIDIA Vulkan on Windows-10 SDR display:
+
+Surface number of supported surface colorspace + pixelformat combinations: 2
+[0] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [0] Swapchain format VK_FORMAT_B8G8R8A8_UNORM
+[1] For colorspace VK_COLOR_SPACE_SRGB_NONLINEAR_KHR       - [1] Swapchain format VK_FORMAT_B8G8R8A8_SRGB
+
+
+
+
+Some notes about driver bugs encountered:
+
+AMD amdvlk on Linux, as tested with Ubuntu 19.10 and 20.04-LTS:
+
+NO relevant bugs since/as of the release of the 2020-Q2.6 driver in July 2020.
+Now supports HDR-10 with 10 bpc output precision properly in direct display mode.
+
+New bugs:
+
+* HDR color gamut parsing is broken AGAIN! Now all chroma coords are too low
+  by a factor 5. Workaround implemented in PsychVulkanCore to multiply by 5x.
+
+* If one switches multiple displays/RandR outputs into direct-display-mode then
+  that works, but when one tries to close them again / release the displays:
+
+  - If each RandR output / VKDisplay is on its own X-Screen all is fine.
+
+  - If the outputs/VKDisplays are on the same X-Screen (multi-display, single X-Screen)
+    then the driver fails to release all but the last/most recently acquired display!
+    All others get stuck at their last image, until one acquires/releases that one
+    display again. Peculiar: Even quitting Octave doesn't release the display!!
+
+* Oh yeah, and while radv does do switching of a direct-display-mode display
+  into the requested mode, amdvlk ignores this and always switches to the
+  highest capability mode! Bad if the highest mode is also flaky due to
+  low link signal quality -- Displays blank out, DP link training fails etc.
+
+--> ALL shoddy but work(around)able as of 2020-Q2.6
+
+Before that release there were various serious bugs for which i
+provided bug fixes, and one bug report fixed by AMD themselves:
+
+- Failure of RandR output --> VKDisplayKHR mapping in error handling and on repeat calls.
+- Failure of RandR output leasing --> Bugs in the build process, and other bugs.
+- Failure in DirectDisplayMode to provide any displayable pixel formats!
+- Failure in DirectDisplayMode to provide > 8 bpc formats.
+- Errors in HDR display colorimetry property queries.
+- Failure to allow setting HDR metadata for the display in RandR output leased mode.
+
+Mesa RADV:
+
+Can only handle one direct mode display (driver limitation).
+However if one tries to open a 2nd display on another driver like amdvlk,
+then radv doesn't fail gracefully. While 2nd display on amdvlk works, the
+1st display handled by radv gets stuck and the swapchain reports failure
+to present with some error code.
+
+Tested AMD gpu's for HDR et al:
+
+Discrete Advanced Micro Devices, Inc. [AMD/ATI] - Baffin [Radeon RX 460/560D / Pro 450/455/460/555/555X/560/560X] GPU found.
+AMD Radeon RX graphics (Polaris11). DCE 11.2 Polaris family.
+
+Integrated: AMD Raven Ridge DCN1.
+
+Windows-10:
+
+AMD: As of Radeon software release 2020.4.2 (June 2020)
+
+- Failure in HDR display colorimetry property queries. Misreports maxLuminance and
+  maxFALL: maxFALL not reported at all (ie. zero), maxLuminance misreported as what
+  should be maxFALL. Reported to AMD months ago, not fixed.
+
+- In fullscreen exclusive mode, surface properties report maxLayers == 0, which is
+  an impossible value, and leads to validation layers falsely reporting application
+  bugs. Ie. VkSurfaceCapabilities2KHR.surfaceCapabilities.maxImageArrayLayers == 0.
+
+- Switching to fullscreen exclusive mode works with Matlab (compiled with MSVC2019),
+  but not with Octave 5.1/5.2 (MinGW64) for unknown reasons. VK_ERROR_INITIALIZATION_FAILED.
+
+- Trying to display a VKSurface on any display not attached to the AMD gpu, but to
+  a different gpu (in my case, NVidia GeForce GTX-1650) leads to a amd driver crash,
+  not only in fullscreen exclusive mode, but even in regular windowed mode, when
+  displaying into a Window on the regular Windows-10 desktop, just located on a
+  different gpu's monitor!
+
+  Stack Trace (from fault):
+  [  0] 0x00007ffb8f65dc58 C:\WINDOWS\System32\DriverStore\FileRepository\u0355311.inf_amd64_183b8d63847c90cf\B355199\amdvlk64.dll+00121944 vk_icdNegotiateLoaderICDInterfaceVersion+00030360
+  [  1] 0x00007ffbe551c4c0                   C:\WINDOWS\SYSTEM32\vulkan-1.dll+00115904 vkDestroyDescriptorPool+00062320
+  [  2] 0x00007ffbe561c381 C:\Users\Mario Kleiner\Documents\GitHub\Psychtoolbox-3\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\PsychVulkanCore.mexw64+00050049 mexFunction+00023009
+
+- Control of local backlight dimming on a FreeSync-2 HDR certified monitor via
+  VkDisplayNativeHdrSurfaceCapabilitiesAMD does not work, despite the extension
+  reporting that the monitor supports control. Don't know if this is an AMD
+  driver bug, or monitor firmware bug.
+
+- Calling vkCreateInstance() after an OpenGL context was created, instead of before, somehow
+  damages the OpenGL context in a way that causes any OpenGL glXXX() to crash the AMD OpenGL
+  driver. Even trying to unbind an OpenGL context will crash the driver!
+
+  Graphics card 1          : Advanced Micro Devices, Inc. ( 0x1002 ) AMD Radeon(TM) RX Vega 11 Graphics Version 26.20.15029.27017 (2020-5-15)
+  Graphics card 2          : NVIDIA ( 0x10de ) NVIDIA GeForce GTX 1650 Version 26.21.14.4587 (2020-4-3)
+  Java Version             : Java 1.8.0_181-b13 with Oracle Corporation Java HotSpot(TM) 64-Bit Server VM mixed mode
+  MATLAB Architecture      : win64
+  MATLAB Entitlement ID    : 6173418
+  MATLAB Root              : C:\Program Files\MATLAB\R2019a
+  MATLAB Version           : 9.6.0.1150989 (R2019a) Update 4
+  OpenGL                   : hardware
+  Operating System         : Microsoft Windows 10 Home
+  Process ID               : 8920
+  Processor ID             : x86 Family 143 Model 17 Stepping 0, AuthenticAMD
+  Session Key              : 15abeac6-e21d-4516-b749-94940f76e3bd
+  Window System            : Version 10.0 (Build 18363)
+
+Fault Count: 1
+
+
+Abnormal termination:
+Access violation
+
+Register State (from fault):
+  RAX = 000000000035b000  RBX = 00000000043fb100
+  RCX = 000000000000004d  RDX = 0000000000000000
+  RSP = 00000000043faeb0  RBP = 0000000000000001
+  RSI = 0000000000000001  RDI = 00007ffba3b97010
+ 
+   R8 = 0000000000000013   R9 = 0000000000000000
+  R10 = 0000000000000002  R11 = 00000000043fae90
+  R12 = 0000000000000000  R13 = 000000017c98d890
+  R14 = 00000000043fb100  R15 = 00007ffba3ce0e40
+ 
+  RIP = 00007ffb91ecb014  EFL = 00010202
+ 
+   CS = 0033   FS = 0053   GS = 002b
+
+Stack Trace (from fault):
+[  0] 0x00007ffb91ecb014 C:\WINDOWS\System32\DriverStore\FileRepository\u0355311.inf_amd64_183b8d63847c90cf\B355199\atio6axx.dll+17412116 DrvPresentBuffers+06413060
+[  1] 0x00007ffba3b4f30c C:\Users\Mario Kleiner\Documents\GitHub\Psychtoolbox-3\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\moglcore.mexw64+00258828
+
+
+NVidia: As of driver version 450, GeForce GTX 1650.
+
+Querying HDR display colorimetry/HDR metadata from within Vulkan via
+vkGetPhysicalDeviceSurfaceCapabilities2KHR() with .pNext chained VK_STRUCTURE_TYPE_HDR_METADATA_EXT
+struct fails. Works on AMD on both Windows and Linux.
+
+Needed to implement a fallback using MS-Windows 10 DXGI v1.6.
+
+Displaying in HDR-10 windowed mode sometimes gets the display stuck in HDR-10
+permanently, even across system reboots. One needs to manually disable in Windows-10
+display settings.

@@ -1,5 +1,5 @@
-function MinimalisticOpenGLDemo(multiSample, imagingPipeline, checkerBoardTexture, doAccumulate)
-% MinimalisticOpenGLDemo([multiSample][, imagingPipeline][, checkerBoardTexture][, doAccumulate=0])
+function MinimalisticOpenGLDemo(multiSample, imagingPipeline, checkerBoardTexture, doAccumulate, hdr)
+% MinimalisticOpenGLDemo([multiSample][, imagingPipeline][, checkerBoardTexture][, doAccumulate=0][, hdr=0])
 %
 % This demo demonstrates use of OpenGL commands in a Matlab script to
 % perform some very boring 3D rendering in Psychtoolbox.
@@ -45,6 +45,9 @@ function MinimalisticOpenGLDemo(multiSample, imagingPipeline, checkerBoardTextur
 % with very similar code, but the latter technique is well supported on
 % recent hardware, much more flexible and much faster.
 %
+% The optional parameter 'hdr' if set to 1 will set the window up for display
+% on a HDR ("High Dynamic Range") display device if your system setup allows
+% this. See "help PsychHDR" for system requirements and setup instructions.
 %
 % Notable implementation details regarding use of OpenGL:
 %
@@ -94,10 +97,6 @@ function MinimalisticOpenGLDemo(multiSample, imagingPipeline, checkerBoardTextur
 % For more infos, code samples, tutorials, online documentation, go to:
 %
 % http://www.opengl.org
-%
-% The OpenGL for Matlab toolbox was developed and contributed under
-% GPL license by Prof. Richard F. Murray, University of York, Canada and
-% ported to M$-Windows and GNU/Linux and tuned by Mario Kleiner.
 %
 % The earth surface JPEG-image is taken from the Linux/KDE application
 % kdeworldclock. kdeworldclock and its components are licensed under
@@ -149,6 +148,15 @@ if isempty(doAccumulate)
     doAccumulate = 0;
 end
 
+if nargin < 5 || isempty(hdr)
+    hdr = 0;
+end
+
+% Need imagingPipeline for HDR:
+if hdr
+    imagingPipeline = 1;
+end
+
 if (doAccumulate >= 2) && (imagingPipeline == 0)
     error('You must set the imagingPipeline flag to 1 if you set doAccumulate to 2!');
 end
@@ -164,7 +172,7 @@ else
 end
 
 % Is the script running in OpenGL Psychtoolbox? Abort, if not.
-PsychDefaultSetup(0);
+PsychDefaultSetup(1);
 
 % Find the screen to use for display:
 screenid=max(Screen('Screens'));
@@ -179,6 +187,9 @@ if imagingPipeline > 0
   % Use imaging pipeline in minimal configuration with a virtual framebuffer:
   PsychImaging('PrepareConfiguration');
   PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+  if hdr
+    PsychImaging('AddTask', 'General', 'EnableHDR');
+  end
 end
 
 % Open a double-buffered full-screen window on the main displays screen.
@@ -246,6 +257,20 @@ glLoadIdentity;
 
 % Our point lightsource is at position (x,y,z) == (1,2,3)...
 glLightfv(GL.LIGHT0,GL.POSITION,[ 1 2 3 0 ]);
+
+if hdr
+  % Set HDR metadata to an average scene luminance of 100 nits, and a peak luminance
+  % of 1000 nits, keep color gamut etc. at display native gamut etc.:
+  PsychHDR('HDRMetadata', win, 0, 100, 1000);
+
+  % We need to disable color clamping to [0; 1] range for vertex colors, or our
+  % light source intensities will only reach up to 1 nit, which is darkness:
+  glClampColorARB(GL.CLAMP_VERTEX_COLOR_ARB, GL.FALSE);
+
+  glLightfv(GL.LIGHT0,GL.AMBIENT,[ 10 10 10 0 ]);
+  glLightfv(GL.LIGHT0,GL.DIFFUSE,[ 100 100 100 0 ]);
+  glLightfv(GL.LIGHT0,GL.SPECULAR,[ 1000 1000 1000 0 ]);
+end
 
 % Cam is located at 3D position (3,3,5), points upright (0,1,0) and fixates
 % at the origin (0,0,0) of the worlds coordinate system:
@@ -345,7 +370,7 @@ end
 % Psychtoolbox also supports rectangular textures of arbitrary size, so called
 % GL_TEXTURE_RECTANGLE_2D textures. These are normally used for Screen's drawing
 % commands, but they are more difficult to handle in standard OpenGL code...
-mytex = Screen('MakeTexture', win, myimg, [], 1);
+mytex = Screen('MakeTexture', win, myimg, [], 1, 0);
 
 % Retrieve OpenGL handles to the PTB texture. These are needed to use the texture
 % from "normal" OpenGL code:
@@ -374,7 +399,7 @@ if checkerBoardTexture
     glTexParameteri(gltextarget, GL.TEXTURE_MIN_FILTER, GL.LINEAR_MIPMAP_LINEAR);
 
     % Need mipmapping for trilinear filtering --> Create mipmaps:
-    if ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_EXT_framebuffer_object'))
+    if ~isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_framebuffer_object'))
         % Ask the hardware to generate all depth levels automatically:
         glGenerateMipmapEXT(GL.TEXTURE_2D);
     else
@@ -398,6 +423,13 @@ glTexParameteri(gltextarget, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
 % and the objects lighting:
 glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 1 1 1 1 ]);
 glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ 1 1 1 1 ]);
+
+if hdr
+  glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ .1 .1 .1 1 ]);
+  glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ .4 .4 .4 1 ]);
+  glMaterialfv(GL.FRONT_AND_BACK,GL.SPECULAR, [ 1 1 1 1 ]);
+  glMaterialfv(GL.FRONT_AND_BACK,GL.SHININESS, 100);
+end
 
 % Reset our virtual camera and all geometric transformations:
 glMatrixMode(GL.MODELVIEW);
@@ -435,10 +467,10 @@ while ~KbCheck
 
   % Draw the textured sphere-quadric of radius 0.7. As OpenGL has to approximate
   % all curved surfaces (i.e. spheres) with flat triangles, we tell it to resolve
-  % the sphere into 100 slices in elevation and 100 sectors in azimuth: Higher values
+  % the sphere into 1000 slices in elevation and 1000 sectors in azimuth: Higher values
   % provide a better approximation, but they take longer to draw. Live is full of
   % trade-offs...
-  gluSphere(mysphere, 0.7, 100, 100);
+  gluSphere(mysphere, 0.7, 1000, 1000);
 
   % Could do a textured cylinder by uncommenting the following line:
   % gluCylinder(mysphere, 1.0, 1.0, 1.0, 360, 100);

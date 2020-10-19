@@ -92,7 +92,8 @@ void PsychDeleteFBO(PsychFBO* fboptr);
 // MSAA resolve given PsychFBO into a new single-sampled PsychFBO, if it is multi-sampled:
 PsychFBO* PsychMSAAResolveToTemp(PsychFBO* msaaFBO);
 
-psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *windowRecord, int viewid, void* interopMemObjectHandle, int allocationSize, int formatSpec, int tilingMode, int memoryOffset, int width, int height);
+// Create a new GL_TEXTURE_2D npot texture as finalizedFBO color buffer attachment, and back it by external memory imported via interopMemObjectHandle, with rendering optionally synchronized via interopSemaphoreHandle:
+psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *windowRecord, int viewid, void* interopMemObjectHandle, int allocationSize, int formatSpec, int tilingMode, int memoryOffset, int width, int height, void* interopSemaphoreHandle);
 
 // Set new OpenGL color renderbuffer attachment backing textures for the PsychFBO's of the finalizedFBO[0/1] output render buffers:
 psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, int leftglHandle, int rightglHandle, int glTextureTarget, int format,

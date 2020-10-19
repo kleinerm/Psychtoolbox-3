@@ -295,6 +295,7 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("PanelFitter", &SCREENPanelFitter));
     PsychErrorExit(PsychRegister("TextTransform", &SCREENTextTransform));
     PsychErrorExit(PsychRegister("ConstrainCursor", &SCREENConstrainCursor));
+    PsychErrorExit(PsychRegister("ReadHDRImage", &SCREENReadHDRImage));
 
     PsychSetModuleAuthorByInitials("awi");
     PsychSetModuleAuthorByInitials("dhb");

@@ -216,6 +216,19 @@
 %
 % The PsychtoolboxKernelDriver.kext - MIT license : Mario Kleiner.
 %
+% Screen statically includes the "tinyexr" library for reading some common OpenEXR
+% HDR image file formats via the Screen('ReadHDRImage') subfunction. tinyexr is
+% licensed under the MIT compatible BSD-3 license - see below for exact licensing
+% text. tinyexr includes bits of OpenEXR, which are also included under BSD-3
+% license - see below for exact licensing text. The upstream tinyexr source code
+% and documentation can be found at: https://github.com/syoyo/tinyexr
+%
+% Screen statically includes modified helper code for computation of color space
+% conversion matrices as part of our movie playback engine, to adapt the movies
+% source color space to the onscreen windows color space, at least in pixelformat
+% 11 mode (HDR). The sample code was provided under an MIT compatible and very
+% liberal open-source license by Ryan Juckett http://www.ryanjuckett.com. Thanks!
+%
 % Screen on Linux, when compiled for multiple graphics and display
 % backends, typically on embedded devices, utilizes Chad Versaces
 % excellent Waffle display library, which is copyright and funded by
@@ -274,6 +287,11 @@
 % "CC0 1.0 Universal Public Domain Dedication"
 % (http://creativecommons.org/publicdomain/zero/1.0/) - Thanks!
 %
+%
+% The PsychDemos/OpenEXRImages/ subfolder contains sample OpenEXR HDR images
+% freely provided by https://github.com/AcademySoftwareFoundation/openexr-images
+% These are copyright  included under the MIT compatible BSD-3 license. See below for
+% exact license text. Also see "help OpenEXRImages". Thanks!
 %
 % All other image files and movie files     - MIT license.
 %
@@ -1545,3 +1563,114 @@
 % SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %
 % =========================================================================
+%
+% Full license texts of TinyEXR library and contained bits of OpenEXR library (BSD-3):
+%
+%
+%    Copyright (c) 2014 - 2019, Syoyo Fujita and many contributors.
+%    All rights reserved.
+%
+%    Redistribution and use in source and binary forms, with or without
+%    modification, are permitted provided that the following conditions are met:
+%        * Redistributions of source code must retain the above copyright
+%        notice, this list of conditions and the following disclaimer.
+%        * Redistributions in binary form must reproduce the above copyright
+%        notice, this list of conditions and the following disclaimer in the
+%        documentation and/or other materials provided with the distribution.
+%        * Neither the name of the Syoyo Fujita nor the
+%        names of its contributors may be used to endorse or promote products
+%        derived from this software without specific prior written permission.
+%
+%    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+%    ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+%    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+%    DISCLAIMED. IN NO EVENT SHALL <COPYRIGHT HOLDER> BE LIABLE FOR ANY
+%    DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+%    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+%    LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+%    ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+%    (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+%    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+%
+%    // TinyEXR contains some OpenEXR code, which is licensed under ------------
+%
+%    ///////////////////////////////////////////////////////////////////////////
+%    //
+%    // Copyright (c) 2002, Industrial Light & Magic, a division of Lucas
+%    // Digital Ltd. LLC
+%    //
+%    // All rights reserved.
+%    //
+%    // Redistribution and use in source and binary forms, with or without
+%    // modification, are permitted provided that the following conditions are
+%    // met:
+%    // *       Redistributions of source code must retain the above copyright
+%    // notice, this list of conditions and the following disclaimer.
+%    // *       Redistributions in binary form must reproduce the above
+%    // copyright notice, this list of conditions and the following disclaimer
+%    // in the documentation and/or other materials provided with the
+%    // distribution.
+%    // *       Neither the name of Industrial Light & Magic nor the names of
+%    // its contributors may be used to endorse or promote products derived
+%    // from this software without specific prior written permission.
+%    //
+%    // THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+%    // "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+%    // LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+%    // A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+%    // OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+%    // SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+%    // LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+%    // DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+%    // THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+%    // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+%    // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+%    //
+%    ///////////////////////////////////////////////////////////////////////////
+%
+%    // End of OpenEXR license -------------------------------------------------
+%
+% End of tinyexr license texts.
+%
+% =========================================================================
+%
+% Full license text for included OpenEXR HDR sample images (BSD-3):
+%
+% Copyright (c) 2004, Industrial Light & Magic, a division of Lucasfilm
+% Entertainment Company Ltd.  Portions contributed and copyright held by
+% others as indicated.  All rights reserved.
+%
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are
+% met:
+%
+%     * Redistributions of source code must retain the above
+%       copyright notice, this list of conditions and the following
+%       disclaimer.
+%
+%     * Redistributions in binary form must reproduce the above
+%       copyright notice, this list of conditions and the following
+%       disclaimer in the documentation and/or other materials provided with
+%       the distribution.
+%
+%     * Neither the name of Industrial Light & Magic nor the names of
+%       any other contributors to this software may be used to endorse or
+%       promote products derived from this software without specific prior
+%       written permission.
+%
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+% IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+% THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+% PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+% CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+% EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+% PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+% PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+% LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+% NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+%
+% End of OpenEXR sample images license text.
+%
+% =========================================================================
+%

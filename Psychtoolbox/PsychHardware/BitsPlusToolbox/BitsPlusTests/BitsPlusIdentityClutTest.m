@@ -1,4 +1,4 @@
-function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect, useclutmodeonly)
+function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect, useclutmodeonly, useVulkan)
 % Test signal transmission from the framebuffer to your CRS Bits+/Bits#
 % device or VPixx Inc. DataPixx/ViewPixx/Propixx device and similar CRS and
 % VPixx products.
@@ -28,7 +28,7 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect, useclutmodeonly)
 %
 % Usage:
 %
-% BitsPlusIdentityClutTest([whichScreen=max][, usedpixx=0][, winrect=[]][, useclutmodeonly=0]);
+% BitsPlusIdentityClutTest([whichScreen=max][, usedpixx=0][, winrect=[]][, useclutmodeonly=0][, useVulkan=0]);
 %
 % How to test:
 %
@@ -47,6 +47,9 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect, useclutmodeonly)
 %    display on a laptop. For a DataPixx device or similar, set the
 %    optional 'usedpixx' flag to 1. Set 'useclutmodeonly' flag to 1 if you
 %    want to test in Bits++ or L48 mode instead of Mono++ or M16 mode.
+%
+% 'useVulkan' Defaults to 0. If set to 1, use Vulkan display
+% backend, instead of standard OpenGL backend.
 %
 % If everything works, what you see onscreen should match the description
 % in the blue text that is displayed.
@@ -88,6 +91,7 @@ function BitsPlusIdentityClutTest(whichScreen, dpixx, winrect, useclutmodeonly)
 % 06/25/2016  mk  Store validation info if test succeeds.
 %                 Implement more limited test mode for Bits++ clut only mode
 %                 to allow testing with older graphics cards.
+% 01-Sep-2020  mk  Add support for Vulkan.
 
 % Select screen for test/display:
 if nargin < 1 || isempty(whichScreen)
@@ -104,6 +108,10 @@ end
 
 if nargin < 4 || isempty(useclutmodeonly)
     useclutmodeonly = 0;
+end
+
+if nargin < 5 || isempty(useVulkan)
+    useVulkan = 0;
 end
 
 % Disable text anti-aliasing for this test:
@@ -129,6 +137,10 @@ end
 try
     % Setup imaging pipeline:
     PsychImaging('PrepareConfiguration');
+
+    if useVulkan
+        PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+    end
 
     if ~useclutmodeonly
         % Require a 32 bpc float framebuffer: This would be the default anyway, but
