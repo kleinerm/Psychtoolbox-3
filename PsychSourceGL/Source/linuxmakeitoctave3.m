@@ -2,7 +2,7 @@ function linuxmakeitoctave3(mode)
 % This is the GNU/Linux version of makeit to build the Linux
 % mex files for Octave on Linux. It also creates copies of
 % the mex files build against Octave-3 and modifies them to
-% work on Octave-4.0 - 4.2. Files for Octave 4.4 and 5.1 are
+% work on Octave-4.0 - 4.2. Files for Octave 4.4 - 5.2 are
 % built and stored into a different target folder.
 
 if ~IsLinux || ~IsOctave
@@ -18,7 +18,16 @@ if mode == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for mode = 0:14
+
+    % Build plugin types 0-15 by default:
+    modes = 0:15;
+
+    if IsARM
+        % Do not build plugin 15 == PsychVulkanCore on ARM / RaspberryPi:
+        modes = setdiff (modes, 15);
+    end
+
+    for mode = modes
         linuxmakeitoctave3(mode);
     end
     elapsedsecs = toc;

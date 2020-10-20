@@ -15,7 +15,7 @@ if mode == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for mode = 0:14
+    for mode = 0:15
         linuxmakeit64(mode);
     end
     elapsedsecs = toc;

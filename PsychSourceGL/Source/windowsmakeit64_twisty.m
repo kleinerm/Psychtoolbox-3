@@ -27,7 +27,7 @@ if what == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for what = 0:13
+    for what = 0:15
         windowsmakeit64_twisty(what);
     end
     elapsedsecs = toc;
