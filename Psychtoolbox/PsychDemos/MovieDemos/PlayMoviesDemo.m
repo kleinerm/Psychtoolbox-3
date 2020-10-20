@@ -162,6 +162,9 @@ try
     if isempty(strfind(moviename, 'http')) %#ok<STREMP>
         % Return full list of movie files from directory+pattern:
         folder = fileparts(moviename);
+        if isempty(folder)
+            folder = pwd;
+        end
         moviefiles = dir(moviename);
 
         if isempty(moviefiles)
