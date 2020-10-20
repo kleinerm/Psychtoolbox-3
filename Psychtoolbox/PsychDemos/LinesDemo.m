@@ -43,7 +43,7 @@ try
 
     screens=Screen('Screens');
     screenNumber=max(screens);
-    screenNumber = 0;
+
     PsychImaging('PrepareConfiguration');
     %PsychImaging('AddTask', 'General', 'UseRetinaResolution');
     %PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
