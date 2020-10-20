@@ -33,7 +33,7 @@ void main()
     vec4 incolor = texture2DRect(Image, readpos);
 
     /* Use our builtin 3x3 matrix CSC? */
-    if (doCSC) {
+    if (doCSC > 0) {
         /* Apply simple 3x3 matrix vector multiply for gamut conversion: */
         incolor.rgb = MCSC * incolor.rgb;
     }
@@ -43,7 +43,7 @@ void main()
     }
 
     /* PQ encoding for HDR-10 BT-2020, or linear encoding for scRGB? */
-    if (doPQEncode) {
+    if (doPQEncode > 0) {
         /* Rescale and clamp them into normalized 0.0 - 1.0 input range for PQ mapping: */
         L = clamp(incolor.rgb * Prescale, 0.0, 1.0);
 
