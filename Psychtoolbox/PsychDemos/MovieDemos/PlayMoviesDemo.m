@@ -161,13 +161,14 @@ try
 
     if isempty(strfind(moviename, 'http')) %#ok<STREMP>
         % Return full list of movie files from directory+pattern:
-        moviefiles=dir(moviename);
+        folder = fileparts(moviename);
+        moviefiles = dir(moviename);
 
         if isempty(moviefiles)
             moviefiles(1).name = [ PsychtoolboxRoot 'PsychDemos/MovieDemos/DualDiscs.mov' ];
         else
             for i=1:size(moviefiles,1)
-                moviefiles(i).name = [ moviefiles(i).folder filesep moviefiles(i).name ];
+                moviefiles(i).name = [ folder filesep moviefiles(i).name ];
             end
         end
 
