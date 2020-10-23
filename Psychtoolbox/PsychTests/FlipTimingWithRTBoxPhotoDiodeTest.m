@@ -699,7 +699,7 @@ try
     save(res.outFilename, 'res', '-V6');
     res.outFilename = [];
 
-    if ~IsOSX
+    if 1
         % Plot all our measurement results:
 
         % Figure 1 shows time deltas between successive flips in milliseconds:
@@ -759,7 +759,7 @@ try
     onsets = res.onsetFlipTime(1:i);
     % vbls: onsets = res.vblFlipTime(1:i);
     difference = (onsets - res.measuredTime) * 1000;
-    if ~IsOSX
+    if 1
         plot(difference);
         title('Difference dt = FlipOnset - MeasurementBOX in msecs:');
     end
