@@ -1623,7 +1623,7 @@ void PsychGSCreateMovie(PsychWindowRecordType *win, const char* moviename, doubl
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "Y444_12LE", NULL));
         gst_caps_append(colorcaps, gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "Y444_16LE", NULL));
 
-        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will accept YUV-I420/I422/I444 planar textures of 8, 10 or 12 bpc for optimized decode of HDR/WCG compatible content.\n", slotid);
+        if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Movie playback for movie %i will accept YUV-I420/I422/I444 planar textures of 8, 10, 12 or 16 bpc for optimized decode of HDR/WCG compatible content.\n", slotid);
     }
     else {
         // GPU does not support yuv textures or shader based decoding. Need to go brute-force and convert
@@ -3415,8 +3415,10 @@ void PsychGSCopyOutMovieHDRMetaData(int moviehandle, int argPosition)
         PsychSetStructArrayDoubleElement("YUVRGBMatrixType", 0, movieRecordBANK[moviehandle].codecVideoInfo.colorimetry.matrix, s);
         PsychSetStructArrayDoubleElement("PrimariesType", 0, movieRecordBANK[moviehandle].codecVideoInfo.colorimetry.primaries, s);
         PsychSetStructArrayDoubleElement("EOTFType", 0, movieRecordBANK[moviehandle].codecVideoInfo.colorimetry.transfer, s);
-        PsychSetStructArrayStringElement("Format", 0, (char *) movieRecordBANK[moviehandle].codecVideoInfo.finfo->name, s);
-        PsychSetStructArrayDoubleElement("Depth", 0, GST_VIDEO_FORMAT_INFO_DEPTH(movieRecordBANK[moviehandle].codecVideoInfo.finfo, 0), s);
+        if (hdrMetaData->valid) {
+            PsychSetStructArrayStringElement("Format", 0, (char *) movieRecordBANK[moviehandle].codecVideoInfo.finfo->name, s);
+            PsychSetStructArrayDoubleElement("Depth", 0, GST_VIDEO_FORMAT_INFO_DEPTH(movieRecordBANK[moviehandle].codecVideoInfo.finfo, 0), s);
+        }
     }
 }
 
