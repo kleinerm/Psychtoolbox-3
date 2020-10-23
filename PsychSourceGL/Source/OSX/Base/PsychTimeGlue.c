@@ -567,14 +567,14 @@ const char* PsychSupportStatus(void)
         // Query OS/X version:
         osMinor = PsychGetOSXMinorVersion();
 
-        // Only OSX 10.13 and 10.14 are officially supported:
-        isSupported = (osMinor == 13 || osMinor == 14) ? 1 : 0;
+        // Only OSX 10.15 is officially supported:
+        isSupported = (osMinor == 15 || osMinor == 15) ? 1 : 0;
 
         if (isSupported) {
             sprintf(statusString, "OSX 10.%i minimally supported and tested.", osMinor);
         }
         else {
-            sprintf(statusString, "OSX version 10.%i is not officially supported or tested at all for this release.", osMinor);
+            sprintf(statusString, "OSX version 10.%i is not - or no longer - officially supported or tested at all for this release.", osMinor);
         }
     }
 
