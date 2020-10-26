@@ -33,6 +33,8 @@
 %
 % ProgrammingTips.html   - A very incomplete programming manual.
 %
+% PsychPaidSupportAndServices - Our commercial support and service offerings.
+%
 % SyncTrouble            - Problem with synchronization to the vertical
 %                          retrace or display timing, and how to resolve
 %                          them.
