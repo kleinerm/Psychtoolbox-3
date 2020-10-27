@@ -1,7 +1,7 @@
-function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
-% DownloadPsychtoolbox([targetdirectory][, flavor][, targetRevision])
+function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision, downloadmethod)
+% DownloadPsychtoolbox([targetdirectory][, flavor][, targetRevision][, downloadmethod])
 %
-% This script downloads the latest GNU/Linux, Mac OSX, or MS-Windows
+% This script downloads the latest GNU/Linux, MS-Windows, or Apple macOS
 % Psychtoolbox-3, version 3.0.10 or later, from our git-server to your
 % disk, creating your working copy, ready to use as a new toolbox in your
 % MATLAB/OCTAVE application. Subject to your permission, any old
@@ -45,7 +45,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % On Mac OSX, all parameters are optional. On MS-Windows and GNU/Linux, the
 % first parameter "targetdirectory" with the path to the installation
 % target directory is required. The "targetdirectory" name may not contain
-% any white space, otherwise download will fail with mysterious error
+% any white space, otherwise download may fail with mysterious error
 % messages!
 % 
 % On OSX, your working copy of the Psychtoolbox will be placed in either
@@ -62,7 +62,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % installed if you don't specify otherwise, as this is almost always the
 % best possible choice. You may be able to download an old versioned
 % release via a namestring like 'Psychtoolbox-x.y.z', e.g.,
-% 'Psychtoolbox-3.0.7' if you'd want to download version 3.0.7. This is
+% 'Psychtoolbox-3.0.14' if you'd want to download version 3.0.14. This is
 % only useful if you run a very old operating system or Matlab version that
 % isn't supported by the current "beta" anymore, so you'd need to stick
 % with an old versioned release.
@@ -74,14 +74,35 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 %
 % The "targetRevision" argument is optional and should be normally omitted.
 % Normal behaviour is to download the latest revision of Psychtoolbox. If
-% you provide a specific targetRevision, then this script will install a
-% copy of Psychtoolbox according to the specified revision.
+% you provide a specific targetRevision, e.g., 1234 for revision 1234, then
+% this script will install a copy of Psychtoolbox according to the
+% specified revision.
 %
 % This is only useful if you experience problems and want to revert to an
 % earlier known-to-be-good release.
 %
 % Revisions can be specified by a revision number or by the special flag
 % 'PREV' which will choose the revision before the most current one.
+%
+%
+% 'downloadmethod' Optional: The method to use or prefer for download. By
+% default method 0 is used, which means to perform a Subversion checkout of
+% a fully versioned working copy, including all revision information, which
+% allows to go backward in time or update efficiently via the
+% UpdatePsychtoolbox() command, query the current version and revision of
+% Psychtoolbox via PsychtoolboxVersion() command, and access the
+% development history via svn command-line tools etc. A setting of 1
+% requests an export without versioning information, essentialy a dumb
+% download. This will cut download size and disc space usage in less than
+% half, but you won't be able to use UpdatePsychtoolbox() or
+% PsychtoolboxVersion() or other svn features anymore.
+%
+% By default, the most efficient and convenient method of Subversion
+% download is used, e.g., using Matlabs integrated SVNKit for Matlab R2014b
+% or later, instead of a svn command-line client. You can always enforce
+% use of an installed svn command-line client via setting downloadmethod to
+% -1. This is the old way of doing things, in case the improved method via
+% SVNKit should not work for some reason.
 %
 %
 % INSTALLATION INSTRUCTIONS: The Wiki contains much more up to date
@@ -162,7 +183,10 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 
 % UpdatePsychtoolbox cannot change the flavor of your Psychtoolbox. To
 % change the flavor, run DownloadPsychtoolbox to completely discard your
-% old installation and get a fresh copy with the requested flavor.
+% old installation and get a fresh copy with the requested flavor. If you
+% used DownloadPsychtoolbox with the optional 'downloadmethod' set to 1
+% then UpdatePsychtoolbox() won't work. That's the price you pay for saving
+% disc space.
 % 
 % PERMISSIONS:
 %
@@ -310,12 +334,17 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 06/11/18 mk  Change search order for svn executable to account for preferred location
 %              on macOS, as provided by XCode command line tools.
 % 06/01/19 mk  Give automated hint about updated svn client under Matlab.
+% 10/27/20 mk  Add SVN support via Matlabs SVNKit.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
 clear mex
 
-if (nargin < 2 || isempty(strfind(flavor, 'Psychtoolbox-3.0.')))
+if nargin < 4 || isempty(downloadmethod)
+    downloadmethod = 0;
+end
+
+if (nargin < 2) || isempty(flavor) || isempty(strfind(flavor, 'Psychtoolbox-3.0.'))
     % Check if this is 32-Bit Octave-4 on Windows, which we don't support at all:
     if isempty(strfind(computer, 'x86_64')) && ~isempty(strfind(computer, 'mingw32'))
         fprintf('Psychtoolbox 3.0.13 and later do no longer work with 32-Bit GNU/Octave-4 on MS-Windows.\n');
@@ -654,7 +683,7 @@ else
 end
 
 % Download via Subversion:
-svndownload(targetRevision, dflavor, p);
+svndownload(targetRevision, dflavor, p, downloadmethod);
 
 
 % Add Psychtoolbox to MATLAB / OCTAVE path
@@ -710,7 +739,55 @@ end
 % Puuh, we are done :)
 return
 
-function svndownload(targetRevision, dflavor, p)
+function svndownload(targetRevision, dflavor, p, downloadmethod)
+    % Matlab R2014b (Version 8.4) or later? No legacy download via
+    % downloadmethod == -1 requested by user?
+    if (downloadmethod ~= -1) && ~IsOctave && ~verLessThan('matlab', '8.4')
+        % R2014b and later contain a Java SVN implementation, so lets use
+        % that to spare the user from having to install a separate svn
+        % command line client:
+
+        % Get svn_client object from Matlab's Java implementation:
+        svn_client_manager = org.tmatesoft.svn.core.wc.SVNClientManager.newInstance;
+        svn_client = svn_client_manager.getUpdateClient;
+
+        % Build download URL:
+        url = org.tmatesoft.svn.core.SVNURL.parseURIDecoded(['https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/']);
+
+        % Build revision to checkout:
+        if isempty(targetRevision)
+            targetRevision = 'HEAD';
+        end
+        revision = org.tmatesoft.svn.core.wc.SVNRevision.parse(targetRevision);
+        if revision == org.tmatesoft.svn.core.wc.SVNRevision.UNDEFINED
+            error('Invalid ''targetRevision'' parameter ''%s'' specified. Not a valid revision spec!', targetRevision);
+        end
+
+        %dbglogger = svn_client.getDebugLog();
+        %dbgstream = dbglogger.createLogStream(org.tmatesoft.svn.util.SVNLogType.DEFAULT, );
+
+        %try
+            if downloadmethod == 0
+                % Do the full SVN working copy checkout:
+                fprintf('Downloading via Matlabs integrated SVNKit: This can take multiple minutes.\nThere may be no output to this window to indicate progress until the download is complete.\nPlease be patient ...\n');
+                revactual = svn_client.doCheckout(url, java.io.File(p), org.tmatesoft.svn.core.wc.SVNRevision.UNDEFINED, revision, org.tmatesoft.svn.core.SVNDepth.INFINITY, true);
+            else
+                % Do an export without SVN versioning info, ie. essentially a dumb download:
+                fprintf('Exporting unversioned copy via Matlabs integrated SVNKit: This can take multiple minutes.\nThere may be no output to this window to indicate progress until the download is complete.\nPlease be patient ...\n');
+                revactual = svn_client.doExport(url, java.io.File(p), org.tmatesoft.svn.core.wc.SVNRevision.UNDEFINED, revision, 'LF', true, org.tmatesoft.svn.core.SVNDepth.INFINITY);
+            end
+
+            fprintf('Download of SVN revision %i succeeded!\n\n', revactual);
+        %catch
+        %    disp(psychlasterror('reset'));
+        %    error('Download failed! See error messages above.\n\n');
+        %end
+
+        return;
+    end
+
+    % Fallback path for Octave or older Matlab versions - svn command line client:
+
     % Check for alternative install location of Subversion:
     if ispc
         % Search for Windows executable in path:
