@@ -742,7 +742,7 @@ return
 function svndownload(targetRevision, dflavor, p, downloadmethod)
     % Matlab R2014b (Version 8.4) or later? No legacy download via
     % downloadmethod == -1 requested by user?
-    if (downloadmethod ~= -1) && ~IsOctave && ~verLessThan('matlab', '8.4')
+    if (downloadmethod ~= -1) && ~isempty(ver('matlab')) && ~verLessThan('matlab', '8.4')
         % R2014b and later contain a Java SVN implementation, so lets use
         % that to spare the user from having to install a separate svn
         % command line client:
@@ -817,7 +817,42 @@ function svndownload(targetRevision, dflavor, p, downloadmethod)
             % XCode would install its svn in /usr/bin/, except the iToys
             % company f$#ked it up as of the Catalina trainwreck:
             if isempty(svnpath) && exist('/usr/bin/svn', 'file')
-                svnpath = '/usr/bin/';
+                % Spot check if svn works:
+                rc = system('/usr/bin/svn');
+                if rc == 72
+                    % Failed in the expected way under the assumption of a
+                    % broken svn executable from XCode:
+                    fprintf('The Subversion command line client "svn" on your system is broken. Thanks Apple!\n\n');
+
+                    % Is HomeBrew installed and functional?
+                    rc = system('brew --version');
+                    if rc == 0
+                        % Yes. Try to install Subversion from HomeBrew:
+                        fprintf('\nYou do seem to have HomeBrew installed. I can use it now to install a Subversion client.\n');
+                        answer = input('Do you want me to install Subversion from HomeBrew now [ie., brew install subversion] (yes or no)? ','s');
+                        if strcmpi(answer, 'yes') || strcmpi(answer, 'y')
+                            rc = system('brew install subversion');
+                            if rc == 0 && exist('/usr/local/bin/svn', 'file')
+                                svnpath = '/usr/local/bin/';
+                                fprintf('Success! Will use the svn client from /usr/local/bin, ie. from HomeBrew.\n');
+                            else
+                                fprintf('Failed! I give up fixing this myself, good luck!\n');
+                                svnpath = '';
+                            end
+                        else
+                            fprintf('You did not say yes, so i take it as a no. I give up fixing this myself, good luck!\n');
+                            svnpath = '';
+                        end
+                    else
+                        % No. Clue the user into installing it to get svn
+                        % working:
+                        fprintf('You may be able to install HomeBrew (https://brew.sh)\n');
+                        fprintf('and then install Subversion via ''brew install subversion''.\n');
+                        svnpath = '';
+                    end
+                else
+                    svnpath = '/usr/bin/';
+                end
             end
 
             % From here on unlikely fallback locations:
@@ -875,7 +910,7 @@ function svndownload(targetRevision, dflavor, p, downloadmethod)
     fprintf('If you see some message asking something like "accept certificate (p)ermanently, (t)emporarily? etc."\n');
     fprintf('then please press the p key on your keyboard, possibly followed by pressing the ENTER key.\n\n');
 
-    if IsOctave
+    if isempty(ver('matlab'))
         % Octave's system() command (and its dos() and unix() wrappers around system())
         % does not print any live output from the checkoutcommand if return of the 'result'
         % string is requested. We want some live feedback, so users get some feeling of
@@ -894,11 +929,11 @@ function svndownload(targetRevision, dflavor, p, downloadmethod)
         fprintf('Sorry, the download command "CHECKOUT" failed with error code %d:\n', err);
         fprintf('%s\n', result);
 
-        if IsOSX && err == 69
+        if ismac && err == 69
             fprintf('If the error output suggests running a command, this should be typed into Terminal.app found in Applications/Utilities\n')
         end
 
-        if IsOctave
+        if isempty(ver('matlab'))
             fprintf('If the error output above contains the text ''SSL handshake failed: SSL error: tlsv1 alert protocol version''\n');
             fprintf('then your svn command line client is too old. Install a more recent Subversion command line client.\n');
         else
