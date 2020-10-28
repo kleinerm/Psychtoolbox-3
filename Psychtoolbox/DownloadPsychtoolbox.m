@@ -835,11 +835,13 @@ function svndownload(targetRevision, dflavor, p, downloadmethod)
             end
 
             if isempty(svnpath)
-                fprintf('The Subversion client "svn" is not in its expected\n');
+                fprintf('The Subversion command line client "svn" is not in its expected\n');
                 fprintf('location on your disk. On old macOS versions, please download and install\n');
                 fprintf('the most recent Subversion client via typing this into a terminal window:\n');
                 fprintf('xcode-select --install\n');
                 fprintf('and then run %s again. This will not work on Catalina and later though.\n', mfilename);
+                fprintf('On Catalina and later you may be able to install HomeBrew (https://brew.sh)\n');
+                fprintf('and then install Subversion via ''brew install subversion''.\n');
                 error('Subversion client is missing. Please install it.');
             end
         end
