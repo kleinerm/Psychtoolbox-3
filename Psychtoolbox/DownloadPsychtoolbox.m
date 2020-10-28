@@ -595,7 +595,7 @@ while (exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolb
     fprintf('First we remove all references to "Psychtoolbox" from the MATLAB / OCTAVE path.\n');
     pp=genpath(p);
     warning('off','MATLAB:rmpath:DirNotFound');
-    %rmpath(pp);
+    rmpath(pp);
     warning('on','MATLAB:rmpath:DirNotFound');
     savepath;
     fprintf('Success.\n');
@@ -604,7 +604,7 @@ while (exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolb
     if strcmpi(answer,'yes') || strcmpi(answer,'y')
         skipdelete = 0;
         fprintf('Now we delete "Psychtoolbox" itself.\n');
-%        [success,m,mm]=rmdir(p,'s');
+        [success,m,mm]=rmdir(p,'s');
         if success
             fprintf('Success.\n\n');
         else
@@ -628,7 +628,7 @@ else
 end
 
 % Remove "Psychtoolbox" from path
-while 0 && any(regexp(path,searchpattern))
+while any(regexp(path,searchpattern))
     fprintf('Your old Psychtoolbox appears in the MATLAB / OCTAVE path:\n');
     paths=regexp(path,['[^' pathsep ']*' pathsep],'match');
     fprintf('Your old Psychtoolbox appears %d times in the MATLAB / OCTAVE path.\n',length(paths));
@@ -653,7 +653,7 @@ while 0 && any(regexp(path,searchpattern))
         s = char(p);
         if any(regexp(s, searchpattern2))
             % fprintf('rmpath(''%s'')\n',s);
-%            rmpath(s);
+            rmpath(s);
         end
     end
 %    savepath;
@@ -685,7 +685,6 @@ end
 % Download via Subversion:
 svndownload(targetRevision, dflavor, p, downloadmethod);
 
-error('AND WE ARE DONE');
 
 % Add Psychtoolbox to MATLAB / OCTAVE path
 fprintf('Now adding the new Psychtoolbox folder (and all its subfolders) to your MATLAB / OCTAVE path.\n');
