@@ -108,22 +108,36 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision, downloadm
 % INSTALLATION INSTRUCTIONS: The Wiki contains much more up to date
 % instructions. If in doubt, follow instructions on the Wiki!
 %
-% 1. If you don't already have it, you must install the Subversion client.
-% For Mac OSX 10.6 and later, download the latest Mac OSX Subversion client
-% from: http://www.wandisco.com/subversion/download#osx
-% If you have the XCode command line tools installed, you won't need to
-% install subversion as it is included in these tools.
-% 
-% For Windows, download the Windows Subversion client from one of these:
+% 0. If you are using Matlab R2014b or later, skip to step 2.
+%
+%
+% 1. On older Matlab versions, or on Octave, if you don't already have it,
+% you must install a Subversion client.
+%
+%
+% On Linux, use the OS package manager, e.g., on Debian/Ubuntu based
+% systems:
+%
+% sudo apt install subversion
+%
+%
+% On Windows, download the Windows Subversion client from the internet, e.g.,
+% from one of these:
 %
 % http://subversion.apache.org/packages.html#windows
 % http://www.wandisco.com/subversion/download#windows
 %
-% Install the Subversion client on your machine by double-clicking the
-% installer and following the instructions. After installation of the
-% Subversion client, you will need to exit and restart Matlab or Octave, so
-% it can find the new subversion executable. In many cases it may be
-% neccessary to even reboot your computer after installation of subversion.
+%
+% On macOS, if you happen to have HomeBrew (http://brew.sh) installed, a
+%
+% brew install subversion
+%
+% should do the trick.
+%
+%
+% After installation of the Subversion client, you will need to exit and
+% restart Matlab or Octave, so it can find the new subversion executable.
+%
 % Btw. you should avoid to install the client into a path that contains
 % blanks/spaces/white-space as this can lead to download failures in some
 % cases, e.g., 'C:\Program Files\...' may be bad because there is a blank
@@ -137,11 +151,8 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision, downloadm
 % addpath('D:\MyOwnFolder\Subversion\'). Our installer should find the
 % client then.
 %
-% For Linux, just install the subversion package from your package
-% management tool.
 %
-%
-% 2. On MacOS/X, to install the Psychtoolbox in the default location
+% 2. On macOS, to install the Psychtoolbox in the default location
 % (/Applications or, failing that, /Users/Shared). Just type:
 %
 % DownloadPsychtoolbox
@@ -151,7 +162,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision, downloadm
 % note that if you put the toolbox in the Applications folder, you'll need
 % to reinstall it when MATLAB / OCTAVE is updated on your machine. If you
 % must install without access to an administrator, we offer the option of
-% installing into the /Users/Shared/ folder instead. If you must install
+% installing into the /Users/Shared/ folder instead. If you want to install
 % the Psychtoolbox in some other folder, then specify it in the optional
 % first argument of your call.
 %
@@ -503,9 +514,19 @@ switch (flavor)
         pause;
 end
 
-fprintf('DownloadPsychtoolbox(''%s'',''%s'',''%s'')\n', targetdirectory, flavor, targetRevision);
+fprintf('DownloadPsychtoolbox(''%s'',''%s'',''%s'', %i)\n', targetdirectory, flavor, targetRevision, downloadmethod);
 fprintf('Requested flavor is: %s\n', flavor);
 fprintf('Requested location for the Psychtoolbox folder is inside: %s\n', targetdirectory);
+switch (downloadmethod)
+    case -1
+        fprintf('Using svn command line client for subversion checkout.\n');
+    case 0
+        fprintf('Using optimal client for subversion checkout.\n');
+    case 1
+        fprintf('Using optimal client for attempt of pure unversioned download.\n');
+    otherwise
+        error('Unknown downloadmethod specified.\n');
+end
 fprintf('\n');
 
 % Does SAVEPATH work?
