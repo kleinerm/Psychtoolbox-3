@@ -101,8 +101,6 @@ addgroup = 0;
 
 % Setup of /etc/udev/rules.d/psychtoolbox.rules file, if needed:
 
-% Assume no need to install or update:
-needinstall = 0;
 fprintf('\n\nLinux specific system setup for running Psychtoolbox as non-root user:\n');
 fprintf('You need to be a user with administrative rights for this function to succeed.\n');
 fprintf('If you don''t have administrator rights, or if you don''t trust this script to\n');
@@ -115,6 +113,7 @@ fprintf('button boxes, and some special features of your graphics card, e.g., hi
 fprintf('timestamping. You will be able to access this hardware without the need to run\n');
 fprintf('Matlab or Octave as sudo root user.\n\n');
 
+% Assume no need to install or update:
 answer = '';
 needinstall = 0;
 
@@ -635,7 +634,7 @@ if needinstall && answer == 'y'
   else
     % Actually check if the gamemode package is installed on the system, by
     % checking if gamemoded is there:
-    [r, msg] = system('which gamemoded');
+    r = system('which gamemoded');
     if r ~= 0
       % Seems to be missing. Propose installing it:
       fprintf('I could not find the gamemoded executable in the path. This probably means\n');
@@ -715,7 +714,7 @@ pause;
 fprintf('\n\n\n');
 
 % Matlab version 8.4 (R2014b) or later?
-if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0')
+if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0') %#ok<EXIST>
   % Yes: If R2014b detects a Mesa OpenGL renderer as default system OpenGL
   % library, it will blacklist it and switch to its own utterly outdated
   % Mesa X11 software renderer (Version 7.2 !!). This is utterly inadequate

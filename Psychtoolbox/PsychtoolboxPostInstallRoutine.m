@@ -74,6 +74,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 01/03/2017 Fix Matlab incompatibility with __octave_config_info__. (MK)
 % 04/07/2018 Remove PsychtoolboxRegistration for now. (MK)
 % 07/27/2019 64-Bit Octave 5.1.0 support for Windows and OSX, no Octave-4 support anymore. (MK)
+% 10/29/2020 64-Bit Octave 5.2.0 support for Windows and OSX. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -151,11 +152,7 @@ end
 % Get rid of any remaining .svn folders in the path.
 try
     path(RemoveSVNPaths);
-    if exist('savepath') %#ok<EXIST>
-        savepath;
-    else
-        path2rc;
-    end
+    savepath;
 catch
     fprintf('Info: Failed to remove .svn subfolders from path. Not a big deal...\n');
 end
@@ -426,22 +423,22 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if (~IsLinux && (octavemajorv ~= 5 || octaveminorv ~= 1)) || ...
+    if (~IsLinux && (octavemajorv ~= 5 || octaveminorv ~= 2)) || ...
         (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8) || (octavemajorv > 5)))
-        fprintf('\n\n=================================================================================\n');
+        fprintf('\n\n============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
             % On Linux everything from 3.8 to 5 is fine:
             fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0, 4.2, 4.4, 5.1 or 5.2 series for use with Psychtoolbox.\n');
             fprintf('WARNING: You can get Psychtoolbox for more recent versions of Octave from NeuroDebian.\n');
         else
-            % On Windows/OSX we only care about 5.1 atm:
-            fprintf('WARNING: only using Octave 5.1 with Psychtoolbox.\n');
+            % On Windows/OSX we only care about 5.2 atm:
+            fprintf('WARNING: only using Octave 5.2 with Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
         fprintf('\nPress any key to continue with setup.\n');
-        fprintf('=================================================================================\n\n');
+        fprintf('============================================================================================\n\n');
         pause;
     end
 
@@ -565,7 +562,6 @@ if IsWin && ~IsOctave
         fprintf('ERROR: are missing on your system.\n\n');
         % Need 64-Bit runtime:
         fprintf('ERROR: Execute the installer file vcredist_x64_2015-2019.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
-        %fprintf('ERROR: Maybe also execute the installer file vcredist_x64_2010.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
         fprintf('ERROR: You must execute that installer as an administrator user. Exit Matlab before the installation, then restart it.\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox;\n\n');
@@ -596,9 +592,9 @@ try
         fprintf('\n');
         fprintf('For Screen() and OpenGL support:\n\n');
         fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
-        fprintf('* GStreamer multimedia framework: At least version 1.4.0 of the core runtime and the gstreamer-base plugins.\n');
-        fprintf('  For optimal performance use the latest available versions.\n');
-        fprintf('  You may need to install additional packages to play back all\n');
+        fprintf('* GStreamer multimedia framework: At least version 1.8.0 of the core runtime and the gstreamer-base plugins.\n');
+        fprintf('  For optimal performance and the full set of features use the latest available versions, atm. version 1.18 for HDR\n');
+        fprintf('  support would be needed. You may need to install additional packages to play back all\n');
         fprintf('  common audio- and video file formats. See "help GStreamer".\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
         fprintf('* libdc1394 Firewire video capture library.\n');
@@ -664,7 +660,7 @@ catch
     fprintf('\n\n');
     fprintf('Screen() failed to work for some reason:\n\n');
     if IsWin
-      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.16.0\n');
+      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.18.0\n');
       fprintf('or a later version. Screen() will not work with earlier versions, without GStreamer,\n');
       fprintf('or with the MinGW variants of the GStreamer runtime!\n');
       fprintf('Read ''help GStreamer'' for more info.\n\n');
