@@ -66,31 +66,8 @@ function AssertOpenGL
 %                   they shouldn't be needed anymore with our fixed M-Files.
 % 08/07/19  mk      Update for 3.0.16 release: GStreamer 1.4+ on Linux, on Windows
 %                   GStreamer 1.16+ MSVC build is mandatory on Octave *and* Matlab.
-
-% Ok, we sneak this in here, because we don't know a better place for it:
-% Disable this workaround for now. All M-Files presumably have been fixed,
-% so no need for it. Leave disabled code here in case we overlooked something.
-% if IsOctave
-%     % If we're running on a Octave version which supports this...
-%     if exist('do_braindead_shortcircuit_evaluation', 'builtin')
-%         % ... we enable Matlab-style short-circuit operator evaluation,
-%         % ie., treat & and | operators as if they are && and || operators,
-%         % if they are used in if and while statements and the conditions do
-%         % evaluate into logical expressions with a simple scalar truth
-%         % value.
-%         %
-%         % This is a hack to silence interpreter warnings and get compatible
-%         % behaviour. A better fix would be to fix all our M-Files to avoid
-%         % use of & and |, but this would make ptb completely untestable on
-%         % Matlab versions prior R2007a for MK. As long as we claim to
-%         % support pre-R2007a at least to some degree, we should be able to
-%         % run at least some basic correctness tests:
-%         do_braindead_shortcircuit_evaluation(1);
-% 
-%         % Disable associated Octave warning:
-%         warning('off', 'Octave:possible-matlab-short-circuit-operator');
-%     end
-% end
+% 10/20/20  mk      Update for 3.0.17 release: GStreamer 1.8+ on Linux, on Windows
+%                   GStreamer 1.18+ MSVC build is mandatory on Octave *and* Matlab.
 
 % We put the detection code into a try-catch-end statement: The old Screen command on windows
 % doesn't have a 'Version' subfunction, so it would exit to Matlab with an error.
@@ -119,7 +96,7 @@ catch %#ok<*CTCH>
     %   end
 
    if IsWin
-      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.16.0\n');
+      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.18.0\n');
       fprintf('or a later version. Screen() will not work with earlier versions, without GStreamer,\n');
       fprintf('or with the MinGW variants of the GStreamer runtime!\n');
       fprintf('Read ''help GStreamer'' for more info.\n\n');
@@ -135,9 +112,9 @@ catch %#ok<*CTCH>
         fprintf('\n');
         fprintf('For Screen() and OpenGL support:\n\n');
         fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
-        fprintf('* GStreamer multimedia framework: At least version 1.4.0 of the core runtime and the gstreamer-base plugins.\n');
-        fprintf('  For optimal performance use the latest available versions.\n');
-        fprintf('  You may need to install additional packages to play back all\n');
+        fprintf('* GStreamer multimedia framework: At least version 1.8.0 of the core runtime and the gstreamer-base plugins.\n');
+        fprintf('  For optimal performance and the full set of features use the latest available versions, atm. version 1.18 for HDR\n');
+        fprintf('  support would be needed. You may need to install additional packages to play back all\n');
         fprintf('  common audio- and video file formats. See "help GStreamer".\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
         fprintf('* libdc1394 Firewire video capture library.\n');
@@ -182,8 +159,8 @@ catch %#ok<*CTCH>
    end
 
    % Tried to execute old Screen command of old Win-PTB or MacOS9-PTB. This will tell user about non-OpenGL PTB.
-   fprintf('This script or function is designated to run only an Psychtoolbox based on OpenGL. Read "help  AssertOpenGL" for more info.\n\n');
-   fprintf('A first more diagnostic test would be to simply type Screen in your Matlab/Octave console and check what its output is.\n\n');
+   fprintf('This script or function is designated to run only on a Psychtoolbox based on OpenGL. Read "help  AssertOpenGL" for more info.\n\n');
+   fprintf('A first more diagnostic test would be to simply type ''Screen'' in your Matlab/Octave console and check what its output is.\n\n');
    fprintf('\n\nThe returned error message by Matlab/Octave was:\n');
    ple;
    error('Problems detected in call to AssertOpenGL;');
