@@ -1,4 +1,4 @@
-function usedAnswers = PsychLinuxConfiguration(answers)
+function usedAnswers = PsychLinuxConfiguration(answers, dontshowad)
 % PsychLinuxConfiguration([answers]) -- Optimize setup of Linux system.
 %
 % This script modifies system settings and configuration files
@@ -92,6 +92,10 @@ else
   if ~ischar(answers) || length(answers) ~= 7
     error('Provided input argument ''answers'' must be a 7 character string with characters y, n or ?');
   end
+end
+
+if nargin < 2 || isempty(dontshowad)
+    dontshowad = 0;
 end
 
 % Retrieve login username of current user:
@@ -742,5 +746,10 @@ end
 
 % Return the given answers / used config:
 usedAnswers = answers;
+
+% Our little ad for our services:
+if ~dontshowad && exist('PsychPaidSupportAndServices', 'file')
+    PsychPaidSupportAndServices(1);
+end
 
 return;

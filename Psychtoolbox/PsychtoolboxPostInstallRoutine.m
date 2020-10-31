@@ -681,7 +681,7 @@ if IsLinux
     try
         % This script modifies/extends system configuration files
         % to optimize the system for use with Psychtoolbox:
-        PsychLinuxConfiguration;
+        PsychLinuxConfiguration([], 1);
     catch
     end
 end
@@ -733,7 +733,12 @@ fprintf('\n');
 fprintf('Please also familiarize yourself with the demos contained in the PsychDemos subfolder\n');
 fprintf('and its subfolders. They show best practices for many common tasks and are generally\n');
 fprintf('well documented.\n');
-fprintf('\n\n');
+
+% Our little ad for our services:
+if exist('PsychPaidSupportAndServices', 'file')
+    PsychPaidSupportAndServices(1);
+end
+
 fprintf('\nEnjoy!\n\n');
 fprintf('Press RETURN or ENTER to confirm you read and understood the above message.\n');
 pause;

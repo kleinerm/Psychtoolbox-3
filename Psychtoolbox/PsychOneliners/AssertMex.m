@@ -96,6 +96,12 @@ if IsOctave
             fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');
         end
     end
+
+    % Our little ad for our troubleshooting services:
+    if exist('PsychPaidSupportAndServices', 'file')
+        PsychPaidSupportAndServices(2);
+    end
+
     error('Missing, inaccessible or dysfunctional Psychtoolbox Mex file for this system, or Octave path wrong. Read the help text above carefully!!\n');
 end
 
@@ -187,5 +193,11 @@ if isempty(inputNames) || ismember(computer, inputNames)
             end
         end
     end
+
+    % Our little ad for our troubleshooting services:
+    if exist('PsychPaidSupportAndServices', 'file')
+        PsychPaidSupportAndServices(2);
+    end
+
     error('Missing or dysfunctional Psychtoolbox Mex file for this operating system. Read the help text above carefully!!');
 end

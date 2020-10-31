@@ -3,6 +3,15 @@
 % This folder contains help files and info on different topics
 % related to PTBs use, technical implementation and troubleshooting.
 %
+% Note that you can now financially contribute to Psychtoolbox sustainability,
+% upkeep and continued improvement by buying a community membership, which
+% also includes some priority support for questions regarding its use, or
+% issues you may have with it. We also offer paid feature development and
+% other useful commercial services.
+%
+% Please type 'PsychPaidSupportAndServices' to learn more.
+%
+%
 % ConserveVRAMSettings   - Explanation of some flags that you can use to
 %                          enable special workarounds in Screen() for
 %                          broken graphics drivers or hardware.

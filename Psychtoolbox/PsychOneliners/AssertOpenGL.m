@@ -190,5 +190,11 @@ catch %#ok<*CTCH>
     fprintf('A first diagnostic test would be to simply type ''Screen'' in your Matlab/Octave console and check what its output is.\n');
     fprintf('\n\nThe returned error message by Matlab/Octave was:\n');
     ple;
+
+    % Our little ad for our troubleshooting services:
+    if exist('PsychPaidSupportAndServices', 'file')
+        PsychPaidSupportAndServices(2);
+    end
+
     error('Problems detected in call to AssertOpenGL;');
 end
