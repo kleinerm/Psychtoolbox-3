@@ -724,12 +724,16 @@ if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0') %#ok<EXI
   d = opengl('data');
   if (ischar(d.Software) && ~isempty(strfind(d.Software, 'true'))) || (isscalar(d.Software) && d.Software)
     % Software renderer. Let's change this for future Matlab sessions:
-    opengl('save','hardware');
-
     fprintf('Your version of Matlab R2014b or later was setup to use its own software OpenGL renderer.\n');
-    fprintf('As this is completely unsuitable for Psychtoolbox, i have changed the setting to use the\n');
-    fprintf('system provided hardware accelerated OpenGL library. You need to quit and restart Matlab\n');
-    fprintf('for these changes to take effect, otherwise visual stimulation will be broken.\n\n');
+    try
+        opengl('save','hardware');
+        fprintf('As this is completely unsuitable for Psychtoolbox, i have changed the setting to use the\n');
+        fprintf('system provided hardware accelerated OpenGL library. You need to quit and restart Matlab\n');
+        fprintf('for these changes to take effect, otherwise visual stimulation will be broken.\n\n');
+    catch
+        fprintf('This is completely unsuitable for Psychtoolbox! You may need to quit and restart Matlab\n');
+        fprintf('with the command line switch ''matlab -nosoftwareopengl'' to fix this each time.\n');
+    end
     fprintf('Press any key to continue to confirm you read and understood this.\n');
     pause;
     fprintf('\n\n');
