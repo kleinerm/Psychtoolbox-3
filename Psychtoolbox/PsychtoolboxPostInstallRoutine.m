@@ -593,11 +593,12 @@ try
         fprintf('For Screen() and OpenGL support:\n\n');
         fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
         fprintf('* GStreamer multimedia framework: At least version 1.8.0 of the core runtime and the gstreamer-base plugins.\n');
-        fprintf('  For optimal performance and the full set of features use the latest available versions, atm. version 1.18 for HDR\n');
-        fprintf('  support would be needed. You may need to install additional packages to play back all\n');
-        fprintf('  common audio- and video file formats. See "help GStreamer".\n');
+        fprintf('  For optimal performance and the full set of features, use the latest available versions. E.g., for HDR playback\n');
+        fprintf('  GStreamer 1.18 would be needed. You may need to install additional packages to play back all common audio and\n');
+        fprintf('  video file formats. See "help GStreamer" for more info.\n\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
-        fprintf('* libdc1394 Firewire video capture library.\n');
+        fprintf('* libdc1394 IEEE-1394 Firewire and USB-Vision IIDC video capture library.\n');
+        fprintf('  libdc1394.22.so on systems older than Ubuntu 20.04-LTS, libdc1394.25.so for later systems.\n');
         fprintf('* libraw1394 Firewire low-level access library.\n');
         fprintf('\n\n');
         fprintf('For PsychKinect() (See "help InstallKinect"):\n\n');
