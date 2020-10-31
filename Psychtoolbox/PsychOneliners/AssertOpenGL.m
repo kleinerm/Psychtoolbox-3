@@ -105,9 +105,10 @@ catch %#ok<*CTCH>
     end
 
     if IsLinux
+        s = psychlasterror;
+
         % Matlab specific troubleshooting:
         if ~IsOctave
-            s = psychlasterror;
             if ~isempty(strfind(s.message, 'gzopen64'))
                 fprintf('YOU SEEM TO HAVE A MATLAB INSTALLATION WITH A BROKEN/OUTDATED libz library!\n');
                 fprintf('This is the most likely cause for the error. You can either:\n');
@@ -148,6 +149,39 @@ catch %#ok<*CTCH>
                 fprintf('Your choice. Will now call above command, which will prompt for the password...\n\n');
                 [rc, msg] = system(cmd, '-echo');
                 if (rc == 0) && exist('/lib/x86_64-linux-gnu/libdc1394.so.22', 'file')
+                    fprintf('It worked! Retrying if Screen() now works...\n');
+                else
+                    fprintf('Failed or aborted with error: %s\n', msg);
+                    fprintf('Will retry Screen() anyway, maybe you fixed it manually in the meantime...\n');
+                end
+
+                try
+                    value = Screen('Preference', 'SkipSyncTests'); %#ok<NASGU>
+                    fprintf('Success! We can carry on as usual, thank you for your cooperation. Case closed! :)\n\n\n');
+                    psychlasterror('reset');
+                    return;
+                catch
+                    fprintf('This still does not work for some reason. Guess this will need help from a human...\n');
+                end
+            else
+                fprintf('The library seems to exist in a suitable version, but something related to that library\n');
+                fprintf('is borked. This needs some human help from a capable human brain, sorry.\n');
+            end
+        else
+            % Octave specific troubleshooting:
+            if ~isempty(strfind(s.message, 'libdc1394.so.25')) && exist('/lib/x86_64-linux-gnu/libdc1394.so.22', 'file') && ~exist('/lib/x86_64-linux-gnu/libdc1394.so.25', 'file')
+                cmd = 'sudo -S ln -s /lib/x86_64-linux-gnu/libdc1394.so.22 /lib/x86_64-linux-gnu/libdc1394.so.25';
+
+                fprintf('Seems your Linux distribution may be missing a suitable and functional libdc1394.so.25 library.\n');
+                fprintf('We probably can fix this problem by creating a symlink from the required libdc1394.so.25 to\n');
+                fprintf('the available libdc1394.so.22 by executing the following command as system administrator:\n\n');
+                fprintf('Command to execute: ''%s''\n\n', cmd);
+                fprintf('This will require you to enter your admin (sudo) password if you are a system administrator. Or you\n');
+                fprintf('can ask your system administrator to execute the above ''Command to execute'' inside a terminal window\n');
+                fprintf('and then just press enter when asked here for a sudo password.\n');
+                fprintf('Your choice. Will now call above command, which will prompt for the password...\n\n');
+                [rc, msg] = system(cmd, '-echo');
+                if (rc == 0) && exist('/lib/x86_64-linux-gnu/libdc1394.so.25', 'file')
                     fprintf('It worked! Retrying if Screen() now works...\n');
                 else
                     fprintf('Failed or aborted with error: %s\n', msg);
