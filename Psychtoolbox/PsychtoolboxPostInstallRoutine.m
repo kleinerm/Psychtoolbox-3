@@ -583,20 +583,25 @@ end
 try
     % Linux specific instructions:
     if IsLinux
+        more on;
         fprintf('\n\n');
         fprintf('The Psychtoolbox on GNU/Linux needs the following 3rd party libraries\n');
         fprintf('in order to function correctly. If you get "Invalid MEX file errors",\n');
         fprintf('or similar fatal error messages, check if these are installed on your\n');
         fprintf('system and if they are missing, install them via your system specific\n');
-        fprintf('software management tools:\n');
+        fprintf('software management tools.\n');
+        fprintf('On a Debian/Ubuntu based system, you may get the system to install all these\n');
+        fprintf('required dependencies for you by issuing the following commmand in a terminal:\n\n');
+        fprintf('sudo apt build-dep psychtoolbox-3\n');
         fprintf('\n');
         fprintf('For Screen() and OpenGL support:\n\n');
         fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
         fprintf('\n');
         fprintf('* GStreamer multimedia framework: At least version 1.8.0 of the core runtime and the gstreamer-base plugins.\n');
-        fprintf('  For optimal performance and the full set of features, use the latest available versions. E.g., for HDR playback\n');
-        fprintf('  GStreamer 1.18 would be needed. You may need to install additional packages to play back all common audio and\n');
-        fprintf('  video file formats. See "help GStreamer" for more info.\n\n');
+        fprintf('  For optimal performance and the full set of features, use the latest available versions. E.g., for optimal HDR\n');
+        fprintf('  movie playback GStreamer 1.18 would be needed, although it can be made to work less conveniently with v1.16.\n');
+        fprintf('  You may need to install additional packages to playback all common audio and video file formats.\n');
+        fprintf('  See "help GStreamer" for more info.\n');
         fprintf('\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
         fprintf('\n');
@@ -606,9 +611,9 @@ try
         fprintf('* libraw1394 Firewire low-level access library.\n');
         fprintf('\n\n');
         fprintf('For PsychKinect() (See "help InstallKinect"):\n\n');
-        fprintf('* libusb-1.0 USB low-level access library.\n');
+        fprintf('* libusb-1.0 USB low-level access library.\n\n');
         fprintf('* libfreenect-0.5: Kinect driver library version 0.5 or later.\n');
-        fprintf('\n');
+        fprintf('\n\n');
         fprintf('For PsychHID() support:\n\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
         fprintf('\n\n');
@@ -622,6 +627,7 @@ try
         fprintf('If you receive an installation failure soon, then please read the output of\n');
         fprintf('"help GStreamer" first and follow the installation instructions for GStreamer\n');
         fprintf('on Linux. Psychtoolbox''s Screen() command will not work without GStreamer!\n\n');
+        more off;
     end
 
     % Check Screen:
@@ -691,6 +697,7 @@ if IsLinux
 end
 
 % Some goodbye, copyright and getting started blurb...
+more on;
 fprintf('GENERAL LICENSING CONDITIONS AND TERMS OF USE:\n');
 fprintf('----------------------------------------------\n\n');
 fprintf('Almost all of the material contained in the Psychtoolbox-3 distribution\n');
@@ -742,6 +749,8 @@ fprintf('well documented.\n');
 if exist('PsychPaidSupportAndServices', 'file')
     PsychPaidSupportAndServices(1);
 end
+
+more off;
 
 fprintf('\nEnjoy!\n\n');
 fprintf('Press RETURN or ENTER to confirm you read and understood the above message.\n');
