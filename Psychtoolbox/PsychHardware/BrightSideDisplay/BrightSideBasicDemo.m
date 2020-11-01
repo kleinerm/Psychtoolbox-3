@@ -1,5 +1,5 @@
-function ShowHDRDemo(imfilename, dummymode, sf, halffloat)
-% ShowHDRDemo([imfilename][, dummymode][, sf]) -- Load and show a high dynamic range image
+function BrightSideBasicDemo(imfilename, dummymode, sf, halffloat)
+% BrightSideBasicDemo([imfilename][, dummymode][, sf]) -- Load and show a high dynamic range image
 % on the BrightSide Technologies High Dynamic Range display device.
 %
 % 'imfilename' - Filename of the HDR image to load. Will load our standard
