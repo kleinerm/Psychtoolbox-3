@@ -22,7 +22,7 @@
 
 #include "Screen.h"
 
-static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1][, movieOptions]);";
+static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio] [hdrStaticMetaData]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1][, movieOptions]);";
 static char synopsisString[] =
         "Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
         "return a handle 'moviePtr' on success.\n"
@@ -35,6 +35,14 @@ static char synopsisString[] =
         "'count' Total number of videoframes in the movie. Determined by counting, so querying 'count' "
         "can significantly increase the execution time of this command.\n"
         "'aspectRatio' Pixel aspect ratio of pixels in the video frames. Typically 1.0 for square pixels.\n"
+        "'hdrStaticMetaData' A struct with HDR static metadata of the movie, if the movie has HDR metadata "
+        "attached and your system supports parsing of HDR metadata. This requires GStreamer version 1.18 "
+        "or later, and note that not all video codecs may support parsing of HDR metadata.\n"
+        "hdrStaticMetaData.Valid is 1 if the movie has HDR metadata, 0 if none is available or parsing "
+        "is not supported by your system. All other returned HDR properties are compatible with (and in the format "
+        "of) the function PsychHDR('HDRMetadata'). Type 'PsychHDR HDRMetadata?' for details.\n"
+        "The structure also reports some fields reported by GStreamer movie codecs, but not exclusive to HDR movies: "
+        "'Colorimetry', 'LimitedRange', 'YUVRGBMatrixType', 'PrimariesType', 'EOTFType', 'Format', and 'Depth'.\n"
         "If you want to play multiple movies in succession with lowest possible delay inbetween the movies "
         "then you can ask PTB to load a movie in the background while another movie is still playing: "
         "Call this function with the 'async' flag set to 1. This will initiate the background load operation. "
@@ -99,8 +107,12 @@ static char synopsisString[] =
         "on some setups: 1 = Luminance/Greyscale image, 2 = Luminance+Alpha, 3 = RGB 8 bit per channel, 4 = RGBA8, "
         "5 = YUV 4:2:2 packed pixel format on some graphics hardware, 6 = YUV-I420 planar format, using GLSL shaders "
         "for color space conversion on suitable graphics cards. 7 or 8 = Y8-Y800 planar format, using GLSL shaders, "
-        "9 = 16 bit Luminance, 10 = 16 bpc RGBA image."
-        "The always supported default is '4' == RGBA8 format. "
+        "9 = 16 bit Luminance, 10 = 16 bpc RGBA image, 11 = 16 bpc RGB image for proper encoding of HDR/WCG content, e.g., "
+        "video encoded in HDR-10 format for display on a HDR display. "
+        "The always supported default is '4' == RGBA8 format when the onscreen window is in standard dynamic range (SDR) "
+        "mode. If 'windowPtr' instead refers to a HDR display window, displaying on a HDR display monitor, then the default "
+        "setting for 'pixelFormat' is '11' == RGB format for proper HDR movie display with up to 16 bpc precision and proper "
+        "handling of HDR transfer function like Perceptual Quantizer (PQ) and HDR color spaces.\n"
         "A setting of 6 (for color) or 7/8 (for grayscale) for selection of YUV-I420/Y8-Y800 format, as supported by at "
         "least the H264 and HuffYUV video codecs on any GPU with "
         "shader support, can be especially efficient for fast playback of high resolution video. As this format uses "
@@ -122,6 +134,12 @@ static char synopsisString[] =
         "cores dedicated to them.\n"
         "'movieOptions' Optional text string which encodes additional options for playback of the movie. Parameters are "
         "keyword=value pairs, separated by three colons ::: if there are multiple parameters. Currently supported keywords:\n"
+        "OverrideEOTF=eotfID -- Override detected EOTF transfer function of movie to instead be of type eotfID. E.g., specifying "
+        "OverrideEOTF=14 would select GStreamer EOTF type 14, which is GST_VIDEO_TRANSFER_SMPTE2084 == HDR PQ function, whereas "
+        "OverrideEOTF=15 would select GStreamer EOTF type 15, which is GST_VIDEO_TRANSFER_ARIB_STD_B67 == HDR HLG function. "
+        "Please note that OverrideEOTF is only accepted at the moment for playback with pixelFormat 11, otherwise it is rejected.\n"
+        "You rarely need this override, unless you try to play back a movie format on a GStreamer version too old to detect the "
+        "proper EOTF. Most likely if you try to play back HDR content on a GStreamer version older than 1.18.0.\n"
         "AudioSink=GStreamerSinkSpec -- GStreamerSinkSpec is a GStreamer gst-launch line style specification for a audio sink "
         "plugin and its parameters. This allows to customize where the audio of a movie is sent during playback and with which "
         "parameters. By default, the autoaudiosink plugin is used, which automatically chooses audio output and parameters, based "
@@ -155,7 +173,7 @@ PsychError SCREENOpenMovie(void)
     static psych_bool                       firstTime = TRUE;
     double                                  preloadSecs = 1;
     int                                     rc;
-    int                                     pixelFormat = 4;
+    int                                     pixelFormat;
     int                                     maxNumberThreads = -1;
 
     if (firstTime) {
@@ -170,7 +188,7 @@ PsychError SCREENOpenMovie(void)
 
     PsychErrorExit(PsychCapNumInputArgs(8));            // Max. 8 input args.
     PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
-    PsychErrorExit(PsychCapNumOutputArgs(7));           // Max. 7 output args.
+    PsychErrorExit(PsychCapNumOutputArgs(8));           // Max. 8 output args.
 
     // Get the window record from the window record argument and get info from the window record
     windowRecord = NULL;
@@ -195,9 +213,10 @@ PsychError SCREENOpenMovie(void)
     PsychCopyInIntegerArg(5, FALSE, &specialFlags1);
     if (specialFlags1 < 0) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'specialFlags1' setting! Only positive values allowed.");
 
-    // Get the (optional) pixelFormat:
+    // Get the (optional) pixelFormat: Default to format 11 for HDR display modes, RGBA8 (4) otherwise:
+    pixelFormat = (windowRecord && (windowRecord->imagingMode & kPsychNeedHDRWindow)) ? 11 : 4;
     PsychCopyInIntegerArg(6, FALSE, &pixelFormat);
-    if (pixelFormat < 1 || pixelFormat > 10) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'pixelFormat' setting! Only values 1 to 10 are allowed.");
+    if (pixelFormat < 1 || pixelFormat > 11) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid 'pixelFormat' setting! Only values 1 to 11 are allowed.");
 
     // Get the (optional) maxNumberThreads:
     PsychCopyInIntegerArg(7, FALSE, &maxNumberThreads);
@@ -328,6 +347,7 @@ PsychError SCREENOpenMovie(void)
     PsychCopyOutDoubleArg(4, FALSE, (double) width);
     PsychCopyOutDoubleArg(5, FALSE, (double) height);
     PsychCopyOutDoubleArg(7, FALSE, (double) aspectRatio);
+    PsychCopyOutMovieHDRMetaData(moviehandle, 8);
 
     // Ready!
     return(PsychError_none);

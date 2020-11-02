@@ -143,11 +143,12 @@ PsychError SCREENConfigureDisplay(void)
                     "Readonly properties:\n\n"
                     "* Display size \"displayWidthMM\" x \"displayHeightMM\" in millimeters, as reported by attached display.\n"
                     "* Video output name \"name\".\n"
+                    "* Video output handle \"outputHandle\". On Linux/X11 this is the numeric XID of the associated RandR video output.\n"
                     "\nProviding invalid or incompatible settings will raise an error.\n";
 
     static char seeAlsoString[] = "Screen('Resolutions'), Screen('Resolution');";
 
-    const char *OutputFieldNames[] = { "width", "height", "pixelSize", "hz", "xStart", "yStart", "name", "displayWidthMM", "displayHeightMM" };
+    const char *OutputFieldNames[] = { "width", "height", "pixelSize", "hz", "xStart", "yStart", "name", "outputHandle", "displayWidthMM", "displayHeightMM" };
     char *settingName = NULL;
     int screenNumber, outputId, ditherEnable;
 
@@ -512,7 +513,16 @@ PsychError SCREENConfigureDisplay(void)
     if(outputId < 0 || outputId >= kPsychMaxPossibleCrtcs) PsychErrorExitMsg(PsychError_user, "Invalid display output index provided.");
 
     // Create a structure and populate it.
-    PsychAllocOutStructArray(1, FALSE, -1, 9, OutputFieldNames, &oldResStructArray);
+    PsychAllocOutStructArray(1, FALSE, -1, 10, OutputFieldNames, &oldResStructArray);
+
+    // Query and return output name, and physical size of display in mm:
+    unsigned long mm_width, mm_height;
+    RROutput output_xid;
+
+    PsychSetStructArrayStringElement("name", 0, (char*) PsychOSGetOutputProps(screenNumber, outputId, FALSE, &mm_width, &mm_height, &output_xid), oldResStructArray);
+    PsychSetStructArrayDoubleElement("outputHandle", 0, (double) output_xid, oldResStructArray);
+    PsychSetStructArrayDoubleElement("displayWidthMM", 0, mm_width, oldResStructArray);
+    PsychSetStructArrayDoubleElement("displayHeightMM", 0, mm_height, oldResStructArray);
 
     // Query current video mode of this output:
     XRRCrtcInfo *crtc_info = NULL;
@@ -521,24 +531,21 @@ PsychError SCREENConfigureDisplay(void)
     XRRModeInfo *mode = PsychOSGetModeLine(screenNumber, outputId, &crtc_info);
     PsychUnlockDisplay();
 
-    if (NULL == mode) PsychErrorExitMsg(PsychError_user, "Could not query video mode for this output. Invalid outputId or unsupported function on this system?");
-
     // Get (x,y) top-left corner of crtc's viewport -- panning info:
-    PsychSetStructArrayDoubleElement("xStart", 0, (double) crtc_info->x, oldResStructArray);
-    PsychSetStructArrayDoubleElement("yStart", 0, (double) crtc_info->y, oldResStructArray);
-    XRRFreeCrtcInfo(crtc_info);
+    PsychSetStructArrayDoubleElement("xStart", 0, (double) ((crtc_info) ? crtc_info->x : 0), oldResStructArray);
+    PsychSetStructArrayDoubleElement("yStart", 0, (double) ((crtc_info) ? crtc_info->y : 0), oldResStructArray);
+    if (crtc_info)
+        XRRFreeCrtcInfo(crtc_info);
+
+    crtc_info = NULL;
+
+    // Note: mode would be NULL on a disabled output.
 
     // Query and return resolution:
-    newWidth = (int) mode->width;
-    newHeight = (int) mode->height;
+    newWidth = (int) ((mode) ? mode->width : 0);
+    newHeight = (int) ((mode) ? mode->height : 0);
     PsychSetStructArrayDoubleElement("width", 0, newWidth, oldResStructArray);
     PsychSetStructArrayDoubleElement("height", 0, newHeight, oldResStructArray);
-
-    // Query and return output name, and physical size of display in mm:
-    unsigned long mm_width, mm_height;
-    PsychSetStructArrayStringElement("name", 0, (char*) PsychOSGetOutputProps(screenNumber, outputId, &mm_width, &mm_height, NULL), oldResStructArray);
-    PsychSetStructArrayDoubleElement("displayWidthMM", 0, mm_width, oldResStructArray);
-    PsychSetStructArrayDoubleElement("displayHeightMM", 0, mm_height, oldResStructArray);
 
     // Query and return refresh rate:
 

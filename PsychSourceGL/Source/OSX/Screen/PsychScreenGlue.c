@@ -48,6 +48,13 @@
 #include <sys/types.h>
 #include <sys/sysctl.h>
 
+// For atomic_thread_fence():
+#include <stdatomic.h>
+
+// Suppress deprecation warnings:
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 // Defined in PsychGraphicsHardwareHALSupport.c, but accessed and initialized here:
 extern unsigned int crtcoff[kPsychMaxPossibleCrtcs];
 
@@ -1704,7 +1711,7 @@ void InitPsychtoolboxKernelDriverInterface(void)
     // for all low-level operations. Check if we do so and make it so:
     if ((numKernelDrivers == 2) && (fDeviceType[activeGPU] == kPsychIntelIGP)) {
         activeGPU = 1 - activeGPU;
-        OSMemoryBarrier();
+        atomic_thread_fence(memory_order_seq_cst);
         if (PsychPrefStateGet_Verbosity() > 2) {
             printf("PTB-INFO: Switching to kernel driver instance #%i in hybrid graphics system, assuming i am attached to discrete non-Intel GPU.\n", activeGPU);
         }
@@ -2019,7 +2026,7 @@ int PsychOSKDGetBeamposition(int screenId)
         activeGPU = 1 - activeGPU;
 
         // Make sure our SMP sibling cores get notified:
-        OSMemoryBarrier();
+        atomic_thread_fence(memory_order_seq_cst);
 
         if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Switching kernel driver interface to alternative GPU %i in system until Screen() reset.\n", activeGPU);
 
@@ -2181,3 +2188,5 @@ unsigned int PsychOSKDLoadIdentityLUT(int screenId, unsigned int head)
     // Return lut setup rc:
     return((unsigned int) syncCommand.inOutArgs[0]);
 }
+
+#pragma clang diagnostic pop

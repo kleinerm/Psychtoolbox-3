@@ -76,7 +76,7 @@ const char** InitializeSynopsis(void)
     synopsis[i++] = "\n% Open or close a window or texture:";
     synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode][,specialFlags][,clientRect][,fbOverrideRect][,vrrParams=[]]);";
     synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,specialFlags] [,multiSample]);";
-    synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";
+    synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision] [, textureOrientation=0] [, textureShader=0]);";
     synopsis[i++] = "oldParams = Screen('PanelFitter', windowPtr [, newParams]);";
     synopsis[i++] = "Screen('Close', [windowOrTextureIndex or list of textureIndices/offscreenWindowIndices]);";
     synopsis[i++] = "Screen('CloseAll');";
@@ -200,7 +200,7 @@ const char** InitializeSynopsis(void)
 
     // Movie and multimedia handling functions:
     synopsis[i++] = "\n% Movie and multimedia playback functions:";
-    synopsis[i++] =  "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1][, movieOptions]);";
+    synopsis[i++] =  "[ moviePtr [duration] [fps] [width] [height] [count] [aspectRatio] [hdrStaticMetaData]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1] [, specialFlags1=0][, pixelFormat=4][, maxNumberThreads=-1][, movieOptions]);";
     synopsis[i++] =  "Screen('CloseMovie' [, moviePtr=all]);";
     synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex], [specialFlags = 0] [, specialFlags2 = 0]);";
     synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
@@ -210,6 +210,7 @@ const char** InitializeSynopsis(void)
     synopsis[i++] =  "Screen('FinalizeMovie', moviePtr);";
     synopsis[i++] =  "Screen('AddFrameToMovie', windowPtr [,rect] [,bufferName] [,moviePtr=0] [,frameduration=1]);";
     synopsis[i++] =  "Screen('AddAudioBufferToMovie', moviePtr, audioBuffer);";
+    synopsis[i++] =  "[imageArray, format, errorMsg, auxInfo] = Screen('ReadHDRImage', filename [, errorMode=0]);";
 
     // Video capture support:
     synopsis[i++] = "\n% Video capture functions:";

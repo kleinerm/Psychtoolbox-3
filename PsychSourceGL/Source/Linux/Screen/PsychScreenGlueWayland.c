@@ -1369,10 +1369,12 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
     return(&rrmode);
 }
 
-const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm_width, unsigned long *mm_height, unsigned long *rrOutputPrimary)
+const char* PsychOSGetOutputProps(int screenId, int outputIdx, psych_bool returnDisabledOutputs, unsigned long *mm_width, unsigned long *mm_height, unsigned long *rrOutputPrimary)
 {
     static char outputName[100];
     struct output_info* output;
+
+    (void) returnDisabledOutputs;
 
     if (screenId >= numDisplays || screenId < 0) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range");
     if (PsychScreenToHead(screenId, outputIdx) < 0) PsychErrorExitMsg(PsychError_internal, "outputIdx is out of range");

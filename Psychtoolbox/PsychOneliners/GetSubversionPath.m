@@ -26,6 +26,8 @@ function svnpath = GetSubversionPath
 %          on her linux system.  (DHB)
 % 06/11/18 Change search order for svn executable to account for preferred location
 %          on macOS, as provided by XCode command line tools. (MK)
+% 10/28/20 Change path search order to deal with latest Apple XCode BS.
+%          Also add some hint on how to get svn if needed on macOS.
 
 % Check for alternative install location of Subversion:
 if IsWin
@@ -49,14 +51,19 @@ else
   if (IsOSX || IsLinux)
     svnpath = '';
 
-    if isempty(svnpath) && exist('/usr/bin/svn','file')
-      svnpath='/usr/bin/';
+    % /usr/local/bin is our best shot, because that's where
+    % HomeBrew will install its svn client:
+    if isempty(svnpath) && exist('/usr/local/bin/svn', 'file')
+        svnpath = '/usr/local/bin/';
     end
 
-    if isempty(svnpath) && exist('/usr/local/bin/svn','file')
-      svnpath='/usr/local/bin/';
+    % XCode would install its svn in /usr/bin/, except the iToys
+    % company f$#ked it up as of the Catalina trainwreck:
+    if isempty(svnpath) && exist('/usr/bin/svn', 'file')
+        svnpath = '/usr/bin/';
     end
 
+    % From here on unlikely fallback locations:
     if isempty(svnpath) && exist('/bin/svn','file')
       svnpath='/bin/';
     end
@@ -69,6 +76,18 @@ else
       svnpath = '/opt/subversion/bin/';
     end
   end
+end
+
+% Check that subversion client is installed.
+if IsOSX && isempty(svnpath)
+    fprintf('The Subversion command line client "svn" is not in its expected\n');
+    fprintf('location on your disk. On old macOS versions, please download and install\n');
+    fprintf('the most recent Subversion client via typing this into a terminal window:\n');
+    fprintf('xcode-select --install\n');
+    fprintf('and then run %s again. This will not work on Catalina and later though.\n', mfilename);
+    fprintf('On Catalina and later you may be able to install HomeBrew (https://brew.sh)\n');
+    fprintf('and then install Subversion via ''brew install subversion''.\n');
+    error('Subversion client is missing. Please install it.');
 end
 
 return;

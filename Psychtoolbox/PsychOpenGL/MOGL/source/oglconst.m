@@ -1,6 +1,6 @@
-function oglconst(glheaderpath, aglheaderpath)
+function oglconst
 
-% OGLCONST  Collect GL, GLU, and AGL constants from C header files, and
+% OGLCONST  Collect GL and GLU constants from C header files, and
 %           store them in oglconst.mat
 %
 % usage:  oglconst
@@ -12,33 +12,14 @@ function oglconst(glheaderpath, aglheaderpath)
 % 30-Aug-2012 -- Make more robust: Handle 64-Bit integer defines and their
 %                quirks, as well ad #define GL_THIS GL_THAT "recursive"
 %                definitions (MK).
+% 08-Aug-2020 -- Parse our own local glext_edit.h and glew.h instead of system
+%                files, as we can carry more up to date copies.
 
 if IsWin
     error('Parsing of GL header files on Windows not yet supported.');
-end;
+end
 
-% Alternate path to header files specified?
-if nargin < 1
-    if IsOSX
-        glheaderpath = '/System/Library/Frameworks/OpenGL.framework/Headers';
-    end;
-
-    if IsLinux
-        glheaderpath = '/usr/include/GL';
-    end;
-end;
-
-if nargin < 2
-    if IsOSX
-        aglheaderpath = '/System/Library/Frameworks/AGL.framework/Headers';
-    end;
-end;
-
-if IsOSX
-    fprintf('Parsing OpenGL, GLU and AGL header files in %s and %s ...\n',glheaderpath, aglheaderpath);
-else
-    fprintf('Parsing OpenGL and GLU header files in %s ...\n',glheaderpath);
-end;
+fprintf('Parsing OpenGL and GLU header files in ./GL/ and ./headers/ ...\n');
 
 % get constants from the OpenGL header files.  the 'parsefile' routine
 % defines the constants in the calling workspace, as variables with the
@@ -49,35 +30,14 @@ end;
 % and the second style prevents the workspace from being swamped with
 % hundreds of global variables.  later on, we can load whichever style
 % we want from the file where they're all saved.
-GL= parsefile(sprintf('%s/gl.h', glheaderpath), 'GL_');
-GL= parsefile(sprintf('%s/glext.h', glheaderpath), 'GL_', GL);
+GL = parsefile('./GL/glew.h', 'GL_');
+GL = parsefile('./headers/glext_edit.h', 'GL_', GL); %#ok<*NASGU>
+GLU = parsefile('./headers/glu_edit.h','GLU_');
 
-% Also parse a glext.h file if it is located in our headers/ subdirectory
-% under glext.h
-if exist('./headers/glext.h', 'file')
-    fprintf('Parsing also our private glext.h file for more up-to-date constant definitions.\n');
-    GL= parsefile('./headers/glext.h', 'GL_', GL);
-end
-
-GLU=parsefile(sprintf('%s/glu.h', glheaderpath),'GLU_'); %#ok<*NASGU>
-if IsOSX
-    AGL=parsefile(sprintf('%s/agl.h', aglheaderpath),'AGL_');
-end;
-
-fname='oglconst.mat';
-
-% save OpenGL-style constants
-if IsOSX
-    save(fname,'GL_*','GLU_*','AGL_*', '-V6');
-    % save structure-style constants to same file
-    save(fname,'GL','GLU','AGL','-append', '-V6');
-end;
-
-if IsLinux
-    save(fname,'GL_*','GLU_*','-V6');
-    % save structure-style constants to same file
-    save(fname,'GL','GLU','-append','-V6');
-end;
+fname = 'oglconst.mat';
+save(fname,'GL_*','GLU_*','-V6');
+% save structure-style constants to same file
+save(fname,'GL','GLU','-append','-V6');
 
 % put a copy into the 'core' directory
 copyfile(fname,'../core');
@@ -95,7 +55,7 @@ else
     S=origin;
 end;
 
-% check size of prefix (GL, GLU, or AGL)
+% check size of prefix (GL, GLU)
 nprefix=length(prefix);
 
 % open input file
@@ -113,7 +73,7 @@ while ~feof(fid),
         continue
     end
 
-    % if the symbol doesn't have the required prefix, (GL_, GLU_, or AGL_),
+    % if the symbol doesn't have the required prefix, (GL_, GLU_),
 	% then skip it
     if ~strncmp(r.symbol,prefix,nprefix),
         continue

@@ -126,6 +126,8 @@
 #define kPsychUseExternalSinkTextures (1 << 21) // finalizedFBO's have backing OpenGL FBO's which use externally created and injected OpenGL textures as color attachment (aka rendertargets).
 #define kPsychSinkIsMSAACapable       (1 << 22) // External sinks for finalizedFBO color buffer textures can process GL_TEXTURE_2D_MULTISAMPLE textures as input, not only GL_TEXTURE_2D textures.
 #define kPsychEnableSRGBRendering     (1 << 23) // Use OpenGL sRGB rendering and blending if the target color framebuffer is in sRGB format.
+#define kPsychNeedHDRWindow           (1 << 24) // Treat this window as HDR display window: Remap color info accordingly whenever dealing with textures, e.g., movie playback, MakeTexture etc.
+// (1 << 25) shared with specialflags as kPsychTripleWidthWindow.
 
 // 'specialflags' fields, partially shared with imagingmode flags:
 #define kPsychUseTextureMatrixForRotation   1       // Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
@@ -165,12 +167,14 @@
 #define kPsychSkipSwapForFlipOnce           (1 << 29) // 'specialflags': Perform next flip on this window without actually performing the OpenGL bufferswap, iow. don't present to the onscreen window.
 #define kPsychSkipWaitForFlipOnce           (1 << 30) // 'specialflags': Perform next flip on this window without waiting until the 'when' target time for the flip.
 #define kPsychNeedVBODouble12Workaround     (1ULL << 31) // 'specialflags': Gfx driver bug makes < 2 component vertex attribute buffers problematic if GL_DOUBLE is used for submission.
+#define kPsychExternalDisplayMethod         (1ULL << 32) // 'specialflags': This window is not used for actual visual stimulation, as some external display mechanism is used, e.g., Vulkan or VR compositor.
+#define kPsychDontAutoResetOneshotFlags     (1ULL << 33) // 'specialFlags': Do not auto-reset the "one-shot" flip flags after a flip, ie. don't clear kPsych*ForFlipOnce flags.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,S-2^25. --> Flags of 2^24 as well as 2^26 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25. --> Flags of 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,2^31. --> Flags of 2^32 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,2^31,2^32,2^33. --> Flags of 2^34 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*   PtrPsychHookFunction;
@@ -195,6 +199,8 @@ typedef struct PsychFBO {
     int                     height;         // Height of FBO.
     int                     multisample;    // Multisampling level of FBO: 0 == No multisampling. > 0 means Multisampled.
     GLenum                  textarget;      // Type of texture target for texture coltexid (GL_TEXTURE_RECTANGLE_EXT or GL_TEXTURE_2D etc.)
+    GLuint                  memoryObject;   // Handle to memory object for external coltexid image backing memory.
+    GLuint                  renderCompleteSemaphore; // Handle to semaphore which signals render completion to this FBO for use with memoryObject.
 } PsychFBO;
 
 // Typedefs for WindowRecord in WindowBank.h
@@ -399,6 +405,7 @@ typedef struct _PsychWindowRecordType_{
     int                         hybridGraphics;         // "true" on a hybrid graphics laptop that needs special treatment: 1=DRI3/Present renderoffload, 2=Optimus NVidia prop.
     int                         nr_missed_deadlines;    // MK: Counter, incremented by Flip if it detects a missed/skipped frame.
     int                         flipCount;              // Counter of total number of finished flip operations - A swapcounter.
+    int                         beamposition_at_flip;   // Externally injected beamposition correlating to flip completion.
     double                      rawtime_at_swapcompletion; // Raw timestamp of swapcompletion (result without high-precision timestamping).
     double                      time_at_swaprequest;    // Timestamp taken immediately before call to PsychOSFlipWindowBuffers(); - Before swaprequest submission.
     double                      time_post_swaprequest;  // Timestamp taken immediately after call PsychOSFlipWindowBuffers();
@@ -426,6 +433,10 @@ typedef struct _PsychWindowRecordType_{
     // Settings for the image processing and hook callback pipeline: See PsychImagingPipelineSupport.hc for definition and implementation:
     int                         applyColorRangeToDoubleInputMakeTexture;    // Should colorRange also affect uint8 textures created from double input in Screen('MakeTexture')?
     double                      colorRange;                                 // Maximum allowable color component value. See SCREENColorRange.c for explanation.
+    double                      maxSDRToHDRScaleFactor;                     // Conversion factor for 'MakeTexture' or movie SDR content to HDR: How many color units is 1.0 "SDR range" units?
+    double                      normalizedToHDRScaleFactor;                 // Conversion factor from normalized (0.0 - 1.0 range) to full HDR range: E.g., used for movie video frame HDR mapping.
+    double                      colorGamut[2 * 4];                          // Definition of onscreen windows assumed color gamut - (x,y) CIE 1931 chromaticity coordinates of red, geen, blue
+                                                                            // primaries and white-point. Used by movie decoding to adapt movie colorspace to target colorspace. Zero == "invalid" on init.
     GLuint                      unclampedDrawShader;                        // Handle of GLSL shader object for drawing of non-texture stims without vertex color clamping. Zero by default.
     GLuint                      defaultDrawShader;                          // Default GLSL shader object for drawing of non-texture stims. Zero by default.
     GLuint                      smoothPointShader;                          // GLSL shader to implement point smoothing via point sprites.
@@ -456,6 +467,9 @@ typedef struct _PsychWindowRecordType_{
 
     PsychFBO*                   fboTable[MAX_FBOTABLE_SLOTS];       // This array contains pointers to the FBO structs which are referenced by the indices above.
     int                         fboCount;                           // This contains the number of FBO's in fboTable.
+
+    void*                       interopMemObjectHandle;             // Handle to an external interop memory object, e.g., for OpenGL-Vulkan interop.
+    void*                       interopSemaphoreHandle;             // Handle to an external interop semaphore, e.g., for OpenGL-Vulkan interop handshake.
 
     // Cached handles for display lists -- used for recycling in compute intense drawing functions:
     GLuint                      fillOvalDisplayList;

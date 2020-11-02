@@ -2,16 +2,15 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % UpdatePsychtoolbox(targetdirectory, targetRevision)
 %
 % Update your working copy of the Psychtoolbox with the latest bug fixes,
-% enhancements, and features from the master server.
+% enhancements, and features from our Git server.
 %
-% If you are using a Psychtoolbox provided by NeuroDebian, this is not
+% If you are using a Psychtoolbox provided by NeuroDebian, then this is not
 % needed. You will be automatically notified of updates to Psychtoolbox by
 % your operating systems update manager as soon as they become available.
 %
-% The "targetdirectory" argument is optional. If present, it gives the path
+% The "targetdirectory" argument is optional. If present, it specifies the path
 % of the Psychtoolbox folder to update. If omitted, UpdatePsychtoolbox will
-% update the Psychtoolbox folder found by Matlab's or Octave's "which"
-% command. For example:
+% update the Psychtoolbox folder reported by PsychtoolboxRoot(). Examples:
 %
 % UpdatePsychtoolbox
 % UpdatePsychtoolbox('~/Applications/Psychtoobox')
@@ -22,10 +21,10 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % *downgrade* your copy of Psychtoolbox to the specified revision. This is
 % only useful if you experience problems after an update and want to revert
 % to an earlier known-to-be-good release. Revisions can be specified by a
-% revision number, a specific date, or by the special flag 'PREV' which
-% will downgrade to the revision before the most current one. By executing
-% this script multiple times with the 'PREV' specifier, you can
-% incrementally downgrade until stuff works for you.
+% revision number or by the special flag 'PREV' which should downgrade to
+% the revision before the most current one. By executing this script
+% multiple times with the 'PREV' specifier, you could incrementally
+% downgrade until stuff works for you.
 %
 % UpdatePsychtoolbox cannot change the beta-vs-stable flavor of your
 % Psychtoolbox. To change the flavor, run DownloadPsychtoolbox again.
@@ -69,19 +68,20 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 %              server provided upstream files will just override/overwrite user
 %              modified files. Not super-friendly of us, but may cut down support
 %              overhead.
+% 10/28/20 mk  Add SVN support via Matlabs SVNKit.
 
 addpath(fullfile(fileparts(mfilename('fullpath')),'PsychOneliners'));
 
-% Flush all MEX files: This is needed at least on M$-Windows for SVN to
+% Flush all MEX files: This is needed at least on MS-Windows for SVN to
 % work if Screen et al. are still loaded.
 clear mex
 
 if nargin < 1
-    targetdirectory=[];
+    targetdirectory = [];
 end
 
 if isempty(targetdirectory)
-    targetdirectory=PsychtoolboxRoot;
+    targetdirectory = PsychtoolboxRoot;
 end
 
 % Strip trailing fileseperator, if any:
@@ -89,14 +89,13 @@ if targetdirectory(end) == filesep
     targetdirectory = targetdirectory(1:end-1);
 end
 
-if nargin<2
+if nargin < 2
     targetRevision = '';
 else
     fprintf('Target revision: %s \n', targetRevision);
-    targetRevision = [' -r ' targetRevision ' '];
 end
 
-fprintf('UpdatePsychtoolbox('' %s '') \n', targetdirectory);
+fprintf('UpdatePsychtoolbox(''%s'') \n', targetdirectory);
 fprintf('\n');
 
 % Do notify user about potential trouble with path names with blanks in them:
@@ -107,7 +106,7 @@ end
 % Check if this is 32-Bit Octave-4 on Windows, which we don't support at all:
 if isempty(strfind(computer, 'x86_64')) && ~isempty(strfind(computer, 'mingw32'))
     fprintf('Psychtoolbox 3.0.13 and later do no longer work with 32-Bit GNU/Octave-4 on MS-Windows.\n');
-    fprintf('You need to use 64-Bit Octave-5.1.0 if you want to use Psychtoolbox with Octave on Windows.\n');
+    fprintf('You need to use 64-Bit Octave-5.2.0 if you want to use Psychtoolbox with Octave on Windows.\n');
     fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.12'', does support 32-Bit Octave-4 on Windows.\n');
     error('Tried to setup on 32-Bit Octave, which is no longer supported on Windows.');
 end
@@ -116,7 +115,7 @@ end
 if (strcmp(computer, 'PCWIN') || strcmp(computer, 'GLNX86'))
     fprintf('Psychtoolbox 3.0.12 and later do no longer work with 32-Bit versions of Matlab.\n');
     fprintf('You need to upgrade to a supported 64-Bit version of Octave or Matlab. 32-Bit Octave is still\n');
-    fprintf('supported on GNU/Linux.\n');
+    fprintf('supported on GNU/Linux by NeuroDebian or Linux distribution repositories.\n');
     fprintf('If you must use a legacy 32-Bit Matlab environment, you can call this function\n');
     fprintf('DownloadPsychtoolbox() with flavor ''Psychtoolbox-3.0.11'', which does support 32-Bit Matlab on Linux and Windows.\n');
     error('Tried to setup on 32-Bit Matlab, which is no longer supported.');
@@ -134,8 +133,8 @@ end
 
 % Check if this is Octave-3 on Windows, which we don't support at all:
 if strcmp(computer, 'i686-pc-mingw32')
-    fprintf('Psychtoolbox 3.0.10 and later does no longer work with GNU/Octave-3 on MS-Windows.\n');
-    fprintf('You need to use 64-Bit Octave-4 if you want to use Psychtoolbox with Octave on Windows.\n');
+    fprintf('Psychtoolbox 3.0.10 and later do no longer work with GNU/Octave-3 on MS-Windows.\n');
+    fprintf('You need to use 64-Bit Octave-5 if you want to use Psychtoolbox with Octave on Windows.\n');
     fprintf('You can also use the alternate download function DownloadLegacyPsychtoolbox() to download\n');
     fprintf('an old legacy copy of Psychtoolbox-3.0.9 which did support 32-Bit Octave 3.2 on Windows.\n');
     error('Tried to setup on Octave, which is no longer supported on MS-Windows.');
@@ -143,10 +142,6 @@ end
 
 if strcmp(computer,'MAC')
     fprintf('This version of Psychtoolbox is no longer supported under MacOSX on the Apple PowerPC hardware platform.\n');
-    fprintf('You can get modern versions of Psychtoolbox-3 for Linux if you choose to install GNU/Linux on your PowerPC\n');
-    fprintf('machine. These are available from the GNU/Debian project and a future Ubuntu 12.10 release\n.');
-    fprintf('Alternatively you can download old - totally unsupported - releases of Psychtoolbox version 3.0.9\n');
-    fprintf('from GoogleCode by use of the alternate download function DownloadLegacyPsychtoolbox().\n\n');
     error('Apple MacOSX on Apple PowerPC computers is no longer supported by this Psychtoolbox version.');
 end
 
@@ -157,121 +152,128 @@ IsLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(st
 IsOctave = isempty (ver('matlab'));
 
 if ~IsWin && ~IsOSX && ~IsLinux
-    os = computer;
-    if strcmp(os,'MAC2')
-        os = 'Mac OS9';
-    end
-    fprintf('Sorry, this updater doesn''t support your operating system: %s.\n', os);
-    fprintf([mfilename ' can only install the new (OSX, Linux and Windows) \n'...
-        'OpenGL-based versions of the Psychtoolbox-3. To install the older (OS9 and Windows) \n'...
-        'versions (not based on OpenGL, aka PTB-2) please go to the legacy Psychtoolbox website: \n'...
-        'web http://psychtoolbox.org/PTB-2/index.html\n']);
+    fprintf('Sorry, this updater doesn''t support your operating system: %s.\n', computer);
+    fprintf([mfilename ' can only install Psychtoolbox-3.\n']);
     error(['Your operating system is not supported by ' mfilename '.']);
 end
 
-% Save old Psychtoolbox path
+% Save old Psychtoolbox path:
 oldPath = RemoveSVNPaths(genpath(targetdirectory));
+
 % get current path and only remove those folders that are currently on
-% path, to prevent some unnecessary warnings
-oldPath = PathListIsMember(oldPath,path);
+% path, to prevent some unnecessary warnings:
+oldPath = PathListIsMember(oldPath, path);
 
-% Retrieve path to Subversion executable:
-svnpath = GetSubversionPath;
+% Matlab R2014b (Version 8.4) or later?
+if ~IsOctave && ~verLessThan('matlab', '8.4')
+    % R2014b and later contain a Java SVN implementation, so lets use
+    % that to spare the user from having to install a separate svn
+    % command line client:
 
-% Check that subversion client is installed.
-% Currently, we only know how to check this for Mac OSX.
-if IsOSX && isempty(svnpath)
-    fprintf('The Subversion client "svn" is not in its expected\n');
-    fprintf('location on your disk. Please download and install the most\n');
-    fprintf('recent Subversion client via typing this into a terminal window:\n');
-    fprintf('xcode-select --install\n');
-    fprintf('and then run %s again.\n',mfilename);
-    error('Subversion client is missing.');
-end
+    % Get svn_client object from Matlab's Java implementation:
+    svn_client_manager = org.tmatesoft.svn.core.wc.SVNClientManager.newInstance;
+    svn_client = svn_client_manager.getUpdateClient;
 
-fprintf('About to update your working copy of the OpenGL-based Psychtoolbox-3.\n');
-updatecommand=[svnpath 'svn update --accept theirs-full '  targetRevision ' ' strcat('"',targetdirectory,'"') ];
-fprintf('Will execute the following update command:\n');
-fprintf('%s\n', updatecommand);
-
-if IsOctave
-    % Octave's system() command (and its dos() and unix() wrappers around system())
-    % does not print any live output from the checkoutcommand if return of the 'result'
-    % string is requested. We want some live feedback, so users get some feeling of
-    % download progress and don't get confused if the thing is just sitting there for
-    % minutes without giving feedback. Therefore don't request 'result':
-    err = system(updatecommand);
-    result = 'For reasons and troubleshooting, read the output above and all followup messages!';
-else
-    % Matlab's system() command can provide live feedback from 'checkoutcommand'
-    % during svn checkout and return the same output in 'result' at the end, so
-    % we can get 'result' for parsing:
-    [err, result] = system(updatecommand, '-echo');
-end
-
-if err
-    fprintf('Sorry. The update command failed with error code %d:\n', err);
-    fprintf('%s\n', result);
-    
-    if IsOSX && err == 69
-        fprintf('If the error output suggests running a command, this should be typed into Terminal.app found in Applications/Utilities\n')
+    % Build revision to checkout:
+    if isempty(targetRevision)
+        targetRevision = 'HEAD';
     end
+
+    revision = org.tmatesoft.svn.core.wc.SVNRevision.parse(targetRevision);
+    if revision == org.tmatesoft.svn.core.wc.SVNRevision.UNDEFINED
+        error('Invalid ''targetRevision'' parameter ''%s'' specified. Not a valid revision spec!', targetRevision);
+    end
+
+    % Do the SVN working copy update:
+    fprintf('Updating via Matlabs integrated SVNKit: This can take multiple minutes.\nThere may be no output to this window to indicate progress until the update is complete.\nPlease be patient ...\n');
+    revactual = svn_client.doUpdate(java.io.File(targetdirectory), revision, org.tmatesoft.svn.core.SVNDepth.INFINITY, true, true);
+    fprintf('Update to SVN revision %i succeeded!\n\n', revactual);
+else
+    % Fallback path for Octave or older Matlab versions - svn command line client:
+    if ~isempty(targetRevision)
+        targetRevision = [' -r ' targetRevision ' '];
+    end
+
+    % Retrieve path to Subversion executable:
+    svnpath = GetSubversionPath;
+
+    fprintf('About to update your working copy of the OpenGL-based Psychtoolbox-3.\n');
+    updatecommand=[svnpath 'svn update --accept theirs-full '  targetRevision ' ' strcat('"',targetdirectory,'"') ];
+    fprintf('Will execute the following update command:\n');
+    fprintf('%s\n', updatecommand);
 
     if IsOctave
-        fprintf('If the error output above contains the text ''SSL handshake failed: SSL error: tlsv1 alert protocol version''\n');
-        fprintf('then your svn command line client is too old. Install a more recent Subversion command line client.\n');
+        % Octave's system() command (and its dos() and unix() wrappers around system())
+        % does not print any live output from the checkoutcommand if return of the 'result'
+        % string is requested. We want some live feedback, so users get some feeling of
+        % download progress and don't get confused if the thing is just sitting there for
+        % minutes without giving feedback. Therefore don't request 'result':
+        err = system(updatecommand);
+        result = 'For reasons and troubleshooting, read the output above and all followup messages!';
     else
-        if ~isempty(strfind(result, 'tlsv1 alert protocol version'))
-            fprintf('Seems your svn command line client is too old. Install a more recent Subversion command line client.\n');
-        end
+        % Matlab's system() command can provide live feedback from 'checkoutcommand'
+        % during svn checkout and return the same output in 'result' at the end, so
+        % we can get 'result' for parsing:
+        [err, result] = system(updatecommand, '-echo');
     end
 
-    error('Update failed.');
+    if err
+        fprintf('Sorry. The update command failed with error code %d:\n', err);
+        fprintf('%s\n', result);
+
+        if IsOSX && err == 69
+            fprintf('If the error output suggests running a command, this should be typed into Terminal.app found in Applications/Utilities\n')
+        end
+
+        if IsOctave
+            fprintf('If the error output above contains the text ''SSL handshake failed: SSL error: tlsv1 alert protocol version''\n');
+            fprintf('then your svn command line client is too old. Install a more recent Subversion command line client.\n');
+        else
+            if ~isempty(strfind(result, 'tlsv1 alert protocol version'))
+                fprintf('Seems your svn command line client is too old. Install a more recent Subversion command line client.\n');
+            end
+        end
+
+        error('Update failed.');
+    end
+
+    fprintf('Success!\n\n');
+    fprintf('CHANGES:\n');
+    fprintf('%s\n',result);
+    fprintf('CHANGE             -- MEANING\n');
+    fprintf('U or G <filename>  -- File <filename> was modified/updated.\n');
+    fprintf('A <filename>       -- New file <filename> was added.\n');
+    fprintf('D <filename>       -- File <filename> was removed.\n');
+    fprintf('C <filename>       -- File <filename> is in conflict with local changes!\n');
+    fprintf('"C" indicates that something went wrong. Please check manually.\n');
+    fprintf('A conflict happens if you manually modified files in the Psychtoolbox folder in\n');
+    fprintf('a way that conflicts with the new file from the update and if that conflict can\n');
+    fprintf('not get automatically resolved.\n');
+    fprintf('If you cannot resolve such a conflict, the simplest solution is to manually\n');
+    fprintf('delete the file or subfolder for which a conflict is reported, and then run\n');
+    fprintf('UpdatePsychtoolbox again. It will download and add the proper missing files.\n');
+    fprintf('If everything else fails, simply delete the whole Psychtoolbox folder and use\n');
+    fprintf('DownloadPsychtoolbox again for a full, clean download.\n');
+    fprintf('\n');
 end
-fprintf('Success!\n\n');
-fprintf('CHANGES:\n');
-fprintf('%s\n',result);
-fprintf('CHANGE             -- MEANING\n');
-fprintf('U or G <filename>  -- File <filename> was modified/updated.\n');
-fprintf('A <filename>       -- New file <filename> was added.\n');
-fprintf('D <filename>       -- File <filename> was removed.\n');
-fprintf('C <filename>       -- File <filename> is in conflict with local changes!\n');
-fprintf('"C" indicates that something went wrong. Please check manually.\n');
-fprintf('A conflict happens if you manually modified files in the Psychtoolbox folder in\n');
-fprintf('a way that conflicts with the new file from the update and if that conflict can\n');
-fprintf('not get automatically resolved.\n');
-fprintf('If you cannot resolve such a conflict, the simplest solution is to manually\n');
-fprintf('delete the file or subfolder for which a conflict is reported, and then run\n');
-fprintf('UpdatePsychtoolbox again. It will download and add the proper missing files.\n');
-fprintf('If everything else fails, simply delete the whole Psychtoolbox folder and use\n');
-fprintf('DownloadPsychtoolbox again for a full, clean download.\n');
-fprintf('\n');
 
 % Remove old Psychtoolbox paths. Add new Psychtoolbox paths.
 rmpath(oldPath);
 addpath(genpath(targetdirectory));
 fprintf('Your MATLAB/OCTAVE path has been updated. Now trying to save the new MATLAB/OCTAVE path...\n\n');
-
-% Does SAVEPATH work?
-if exist('savepath') %#ok<EXIST>
-   err=savepath;
-else
-   % MK: TODO: Still needed for R2007a and Octave 3+ ?
-   err=path2rc;
-end
-
+err = savepath;
 if err
     try
         % If this works then we're likely on Matlab:
         p=fullfile(matlabroot,'toolbox','local','pathdef.m');
         fprintf(['Sorry, SAVEPATH failed. Probably the pathdef.m file lacks write permission. \n'...
-            'Please ask a user with administrator privileges to enable \n'...
-            'write by everyone for the file:\n\n''%s''\n\n'],p);
+                 'Please ask a user with administrator privileges to enable \n'...
+                 'write by everyone for the file:\n\n''%s''\n\n'],p);
     catch %#ok<CTCH>
         % Probably on Octave:
         fprintf(['Sorry, SAVEPATH failed. Probably your ~/.octaverc file lacks write permission. \n'...
-            'Please ask a user with administrator privileges to enable \n'...
-            'write by everyone for that file.\n\n']);
+                 'Please ask a user with administrator privileges to enable \n'...
+                 'write by everyone for that file.\n\n']);
     end
 
     fprintf(['Once that''s done, run ' mfilename ' again. For this session, Psychtoolbox\n']);

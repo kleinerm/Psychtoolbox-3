@@ -159,8 +159,8 @@ void PrepareScreenPreferences(void)
     PsychSetUnicodeTextConversionLocale("");
     PsychPrefStateSet_DefaultFontName(INITIAL_DEFAULT_FONT_NAME);
 
-    // Don't use GStreamer by default on 32-bit builds for OS/X and Windows:
-    PsychPrefStateSet_UseGStreamer(0);
+    // Only use GStreamer by default:
+    PsychPrefStateSet_UseGStreamer(1);
 
     return;
 }

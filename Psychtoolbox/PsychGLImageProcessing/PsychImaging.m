@@ -1361,6 +1361,64 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   correction and vignette correction for a fullscreen window on the HMD.
 %
 %
+% * 'UseVulkanDisplay' Display this onscreen window using a Vulkan-based display
+%   backend. This only works on graphics card + operating system combinations
+%   which support both the OpenGL and Vulkan rendering api's and OpenGL-Vulkan
+%   interop. As of October 2020 this would be modern AMD and NVidia graphics cards
+%   under modern GNU/Linux (Ubuntu 18.04-LTS and later) and Microsoft Windows-10.
+%
+%   At the moment 'UseVulkanDisplay' does not provide any advantages for standard
+%   visual stimulus display tasks, quite the contrary! The current implementation
+%   is *experimental* and may go through backwards incompatible changes which may
+%   break your scripts if you rely on it! Only use if you really know what you are
+%   doing!
+%
+%   Usage:
+%
+%   PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
+%
+%   Psychtoolbox will try to display the onscreen window by using a Vulkan driver
+%   with Vulkan/WSI backend, instead of the usual OpenGL windowing system backend.
+%   This may fail if the given system setup does not support this.
+%
+%
+% * 'EnableHDR' Display this onscreen window on a "High dynamic range" (HDR) display.
+%   This requires a combination of operating-system, display drivers, graphics card,
+%   video cables and display devices which are at least HDR-10 capable.
+%
+%   For hardware and system requirements, setup instructions, and further explanations
+%   read "help PsychHDR".
+%
+%   Usage:
+%
+%   PsychImaging('AddTask', 'General', 'EnableHDR' [, unit='Nits'][, hdrMode='Auto'][, extraRequirements]);
+%
+%   Optional parameters:
+%
+%   'unit'  The unit in which color values are specified by the users drawing code.
+%           Default value is 'Nits', ie. 1 unit = 1 Nit = 1 candela per square-meter.
+%           '80Nits', ie. 1 unit = 80 Nits = 80 cd/sqm = Supposedly the SDR range.
+%
+%   'hdrMode' General mode of operation for HDR display:
+%             Default is 'Auto' for auto-selection of optimal mode for given system
+%             configuration, selected out of the following available op-modes:
+%
+%             'HDR10' Standard HDR-10, with 10 bpc color precision, ITU Rec 2020 input
+%             color space (aka BT-2020), SMPTE ST-2084 PQ "Perceptual Quantizer" OETF
+%             transfer function.
+%
+%             -> Currently 'Auto' will select 'HDR-10' as the only supported op-mode.
+%
+%   'extraRequirements' String with various keywords to specify special requirements.
+%                       Default is empty, ie. no extra requirements. Currently supported
+%                       keywords are:
+%
+%                       'Dummy' - Only simulate HDR on a SDR standard dynamic range display.
+%                                 This only performs setup steps and processing possible on
+%                                 a SDR display, to allow for basic script development and
+%                                 testing. Visual results will be obviously wrong!
+%
+%
 % * More actions will be supported in the future. If you can think of an
 %   action of common interest not yet supported by this framework, please
 %   file a feature request on our Wiki (Mainpage -> Feature Requests).
@@ -1570,27 +1628,9 @@ if strcmpi(cmd, 'AddTask')
         error('Call PsychImaging(''PrepareConfiguration''); first to prepare the configuration phase!');
     end
 
-    % Store requirement in our cell array of requirements. We need to
-    % extend each requirement vector to some number of max elements, so all
-    % rows in the cell array have the same length:
-    x = varargin;
-    if length(x) < maxreqarg
-        for i=length(x)+1:maxreqarg
-            x{i}='';
-        end
-    end
-
-    % First use of 'reqs' array?
-    if isempty(reqs)
-        % Yes: Initialize the array with content of 'x':
-        reqs = x;
-    else
-        % No: Just concatenate new line with requirements 'x' to existing
-        % array 'reqs':
-        reqs = [reqs ; x];
-    end
-
+    reqs = AddTask(reqs, varargin{1:end});
     rc = 0;
+
     return;
 end
 
@@ -1654,6 +1694,9 @@ if strcmpi(cmd, 'OpenWindow')
     configphase_active = 2; %#ok<NASGU>
 
     screenid = varargin{1};
+    if ~ismember(screenid, Screen('Screens'))
+        error('Invalid screenId provided in ''OpenWindow'' - no such screen %i available.', screenid);
+    end
 
     if nargin < 3 || isempty(varargin{2})
         clearcolor = [];
@@ -1724,9 +1767,28 @@ if strcmpi(cmd, 'OpenWindow')
         stereomode = varargin{6};
     end
 
-    % Compute correct imagingMode - Settings for current configuration and
-    % return it:
+    % Compute correct imagingMode - Settings for current configuration and return it:
     [imagingMode, needStereoMode, reqs] = FinalizeConfiguration(reqs, stereomode, screenid);
+
+    floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
+    if ~isempty(floc)
+        [rows cols] = ind2sub(size(reqs), floc(1));
+        row = rows(1);
+
+        % Extract first parameter - This would be the optional video output name:
+        outputName = reqs{row, 3};
+
+        % Compute special OpenWindow overrides for winRect, framebuffer rect, and specialflags, as needed:
+        [winRect, ovrfbOverrideRect, ovrSpecialFlags, outputName] = PsychVulkan('OpenWindowSetup', outputName, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+
+        % Reassign first parameter. Anything non-empty means to use fullscreen/
+        % direct display mode:
+        reqs{row, 3} = outputName;
+
+        % Reset pixelSize to default 8 bpc, as we are handling potential deep color
+        % in the Vulkan backend, not in the OpenGL WSI for the Screen onscreen window:
+        pixelSize = [];
+    end
 
     % Override stereomode derived from requirements?
     if needStereoMode ~= -1
@@ -2364,13 +2426,25 @@ if strcmpi(cmd, 'OpenWindow')
         end
     end
 
+    glerr = glGetError;
+    while glerr
+        fprintf('PsychImaging-WARNING:OpenWindow: OpenGL error detected after Screen(''OpenWindow''): %s', gluErrorString(glerr));
+        glerr = glGetError;
+    end
+
+    % Window open. Perform imaging pipe postconfiguration:
+    PostConfiguration(reqs, win, clearcolor, slavewin);
+
+    glerr = glGetError;
+    while glerr
+        fprintf('PsychImaging-WARNING:OpenWindow: OpenGL error detected after PostConfiguration(): %s', gluErrorString(glerr));
+        glerr = glGetError;
+    end
+
     % Perform double-flip, so both back- and frontbuffer get initialized to
     % background color:
     Screen('Flip', win);
     Screen('Flip', win);
-
-    % Window open. Perform imaging pipe postconfiguration:
-    PostConfiguration(reqs, win, clearcolor, slavewin);
 
     % Panel fitter in use and setup by us?
     if ~isempty(fitterParams)
@@ -2396,6 +2470,12 @@ if strcmpi(cmd, 'OpenWindow')
 
     % One extra Flip to put the full imaging pipeline into initial state:
     Screen('Flip', win);
+
+    glerr = glGetError;
+    while glerr
+        fprintf('PsychImaging-WARNING:OpenWindow: OpenGL error detected after init Flip: %s', gluErrorString(glerr));
+        glerr = glGetError;
+    end
 
     rc = win;
 
@@ -2955,6 +3035,84 @@ if ~isempty(floc)
     end
 end
 
+floc = find(mystrcmp(reqs, 'EnableHDR'));
+if ~isempty(floc)
+    % Check if HDR is supported at all on this system:
+    if ~PsychHDR('Supported')
+        % Failed/Unsupported.
+        error('PsychImaging: Requested task ''EnableHDR'', but this system does not support High dynamic range (HDR) at all.');
+    end
+
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+    hdrArguments = reqs(row, :);
+
+    % Parse user provided parameters, and return imagingMode flags and other
+    % flags/constraints needed for FinalizeConfiguration() stage:
+    hdrImagingModeFlags = PsychHDR('GetClientImagingParameters', hdrArguments);
+    imagingMode = mor(imagingMode, hdrImagingModeFlags);
+
+    % Mark use of HDR:
+    useHDR = 1;
+
+    % Add the UseVulkanDisplay task if it doesn't exist already, as our HDR support
+    % is implemented on top of Vulkan:
+    floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
+    if isempty(floc)
+        reqs = AddTask(reqs, 'General', 'UseVulkanDisplay');
+    end
+
+    % No frame-sequential stereo yet:
+    if ismember(userstereomode, [1, 11])
+        error('PsychImaging: Requested task ''EnableHDR'' is incompatible with frame-sequential stereo mode %i.', userstereomode);
+    end
+
+    % Dual-window would turn into dual-stream:
+    if ismember(userstereomode, [10])
+        % Remap dual-window stereo to dual-stream stereo:
+        stereoMode = 12;
+    end
+else
+    % No HDR in use:
+    useHDR = 0;
+end
+
+% Want to use the Vulkan/WSI display backend?
+floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
+if ~isempty(floc)
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+
+    % Check if Vulkan/WSI based display output is supported at all, ie. if a
+    % Vulkan loader library is installed, so PsychVulkanCore can be loaded and
+    % linked, and if at least one Vulkan gpu is available on this system setup.
+    % This will also perform driver init and Vulkan instance init, which is an
+    % important thing to do as the very first thing before opening an onscreen
+    % window (ie. before OpenGL context creation) on AMD + Windows-10, otherwise
+    % the AMD proprietary OpenGL driver might crash due to AMD driver bugs!
+    if ~PsychVulkan('Supported')
+        % Failed/Unsupported.
+        error('PsychImaging: Requested task ''UseVulkanDisplay'', but this system does not support Vulkan at all.');
+    end
+
+    % Mark use of Vulkan:
+    useVulkan = 1;
+
+    % Add imaging mode flags for handing rendered images to Vulkan:
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedFinalizedFBOSinks);
+
+    if ismember(userstereomode, [1, 11])
+        error('PsychImaging: Requested task ''UseVulkanDisplay'' is incompatible with frame-sequential stereo mode %i.', userstereomode);
+    end
+
+    if ismember(userstereomode, [10])
+        % Remap dual-window stereo to dual-stream stereo:
+        stereoMode = 12;
+    end
+else
+    useVulkan = 0;
+end
+
 % Display replication needed?
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
     % Yes: Must use dual window output mode. This implies
@@ -3077,9 +3235,11 @@ end
 if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'))) || ...
    ~isempty(find(mystrcmp(reqs, 'EnableNative11BitFramebuffer')))
 
-    % Enable output formatter chain:
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+    if ~useVulkan
+        % Enable output formatter chain:
+        imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+        imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+    end
 
     % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
     % been explicitely requested: In principle, a 16 bpc FBO would be
@@ -3098,8 +3258,20 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'))) || ...
     % ptb_outputformatter_icmAware = 0;
 end
 
-% Request for native 16 bit per color component ARGB16161616 framebuffer?
-if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
+% Request for native 16 bit per color component RGBA16161616 framebuffer under Vulkan?
+if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer'))) && useVulkan
+    % Request 32bpc float FBO unless already a 16 bpc fixed point FBO
+    % has been explicitely requested. 16 bpc fixed point is obviously just
+    % quite sufficient for 16 bpc linear output, 32 bpc float provides 23 bpc
+    % effective linear precision in the meaningful output intensity range, so
+    % leaves some numerical headroom for post processing and roundoff errors:
+    if ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
+        imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+    end
+end
+
+% Request for native 16 bit per color component ARGB16161616 framebuffer under OpenGL (== not Vulkan)?
+if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer'))) && ~useVulkan
     % Enable output formatter chain:
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
@@ -3359,6 +3531,24 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFloatingPointFramebuffer')))
     end
 end
 
+% Validate if everything is right for use of HDR displays:
+if useHDR
+    % For HDR we absolutely need a floating point virtual framebuffer on the
+    % input side, ie. for user-scripts to draw into, as most HDR color values
+    % will be far outside (exceeding) the unorm range 0 - 1:
+    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed32BPCFloat)
+        % No floating point input drawbuffer format requested yet.
+        % Play it safe and request 32 bit single precision float to prefer
+        % maximum accuracy over performance:
+        imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+    end
+
+    % Assume that all HDR output formatters are ICM aware, ie. allow/require linking
+    % an ICM shader into them for colorspace conversion, clamping etc., for efficient
+    % single-pass colorspace conversion and HDR OETF mapping:
+    ptb_outputformatter_icmAware = 1;
+end
+
 % Support for fast offscreen windows (aka FBO backed offscreen windows)
 % needed?
 if ~isempty(find(mystrcmp(reqs, 'UseFastOffscreenWindows')))
@@ -3430,6 +3620,47 @@ ptb_geometry_inverseWarpMap{win}.my = winheight;
 
 if ismember(winfo.StereoMode, [2,3])
     ptb_geometry_inverseWarpMap{win}.gy = 2;
+end
+
+% Determine early if Vulkan display backend is to be used:
+floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
+if ~isempty(floc)
+    useVulkan = 1;
+
+    % Default to SDR standard dynamic range display mode:
+    vulkanHDRMode = 0;
+
+    % Default color precision: In SDR mode this is standard 8 bpc RGBA8 unorm
+    % fixed point color precision. In vulkanHDRMode > 0 it may get automatically
+    % overriden to something higher precision:
+    vulkanColorPrecision = 0;
+
+    % Default color space: Overriden in vulkanHDRMode > 0.
+    vulkanColorSpace = 0;
+
+    % Default color pixel format: Overriden in vulkanHDRMode > 0 as part of
+    % override of vulkanColorPrecision, or explicit override:
+    vulkanColorFormat = 0;
+else
+    useVulkan = 0;
+end
+
+% Determine early if HDR display is to be used:
+floc = find(mystrcmp(reqs, 'EnableHDR'));
+if ~isempty(floc)
+    % Assign all user provided arguments in hdrArguments for later use:
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+    hdrArguments = reqs(row, :);
+
+    % Get HDR setup parameters for imaging pipeline and Vulkan:
+    [useVulkan, vulkanHDRMode, vulkanColorPrecision, vulkanColorSpace, vulkanColorFormat] = PsychHDR('GetVulkanHDRParameters', win, hdrArguments);
+
+    % Mark HDR as in use:
+    useHDR = 1;
+else
+    hdrArguments = [];
+    useHDR = 0;
 end
 
 % --- First action in pipe is a horizontal- or vertical flip, if any ---
@@ -4387,7 +4618,6 @@ if ptb_outputformatter_icmAware
             error('In DisplayColorCorrection setup: Downstream formatting for icmAware output formatter requested, but icmshader and/or icmstring undefined! This is an implementation bug!!!');
         end
     end
-
 end
 
 % --- End of Custom color correction for display wanted ---
@@ -4799,8 +5029,11 @@ if ~isempty(floc)
     % specialFlags setting 1024 signals that our own low-level 10/11/16 bit framebuffer
     % hack on AMD hardware is active, so we also need our own GLSL output formatters.
     % Otherwise setup was (hopefully) done by the regular graphics drivers and we don't
-    % need this GLSL output formatter, as system OpenGL takes care of it:
-    if bitand(winfo.SpecialFlags, 1024)
+    % need this GLSL output formatter, as system OpenGL takes care of it.
+    % If the Vulkan display backend is requested then this also does not apply as
+    % the Vulkan/WSI backend must do whatever neccessary to provide the requested
+    % fixed point unorm precision - or we simply fail if it can't:
+    if bitand(winfo.SpecialFlags, 1024) && ~useVulkan
         % AMD/ATI gpu on Linux with our 10/11/16 bit hack. Use our reformatters:
         if enableNative16BpcRequested
             % Extract optional 2nd parameter - This should be the 'encodingBPC' depth:
@@ -4902,13 +5135,13 @@ if ~isempty(floc)
         % degamma and other colorspace conversions disabled / bypassed:
         needsIdentityCLUT = 1;
     else
-        % Everything else: Windows OS or OSX, or AMD FireGL/FirePro without override,
-        % or AMD with amdgpu DisplayCore, or any NVidia or Intel GPU.
+        % Everything else: Windows OS or macOS, or AMD FireGL/FirePro without override,
+        % or AMD with amdgpu DisplayCore, or any NVidia or Intel GPU. Also on Vulkan.
         % Do not request an identity lut. Modern Intel, NVidia and AMD gpu's have
         % hw LUT's with an output width of potentially more than 10 bpc, so we
         % can potentially benefit from a higher precision gamma correction via
         % hw lut. E.g., Intel Icelake has up to 16 bit output precision lut's,
-        % NVidia up to 14 bit, AMD greater than 10 bit.
+        % NVidia up to 14 bit, AMD greater than 10 bit - typically 12 bit.
         % Going through our identity lut setup code could even load a "identity lut"
         % that truncates output precision to 8 bit, e.g., on Linux + Intel gpu's,
         % as our LoadIdentityClut() function is optimized/targeted at 8 bpc passthrough.
@@ -4920,12 +5153,13 @@ if ~isempty(floc)
 
     if isempty(disableDithering)
         % Control of output dithering on digital >= 10 bit panels should be left to
-        % the OS + graphics driver by default. With the OS at the helm, it can configure
+        % the OS + graphics driver by default. For example, the OS can configure
         % the encoders for 10 bpc no-dithering if it detects a truly 10 bpc capable display,
         % based on EDID information. DisplayPort and HDMI provides infos about >= 10 bpc
         % capabilities in their EDID info. If the OS detects a <= 8 bpc digital panel, it
         % can dither so we get pseudo-10bpc, similar to a bit stealing approach or other
-        % perceptual high bit depths tricks:
+        % perceptual high bit depths tricks. The same is true for driving 10 bpc panels with
+        % 12 bpc or more precision, using dithering on the 10 bpc signal:
         disableDithering = 0;
     else
         % User provided disableDithering flag. Valid?
@@ -5014,19 +5248,6 @@ if ~isempty(floc)
 end
 % --- End of output formatter for Eizo RadiForce style 8 bit luminance subpixel drive ---
 
-% --- END OF ALL OUTPUT FORMATTERS ---
-
-% --- This must be after setup of all output formatter shaders! ---
-% Downstream icm color correction shader linked into an icmAware output
-% formatter. We must perform post-link setup for it:
-if ptb_outputformatter_icmAware && icmformatting_downstream
-    % Perform post-link setup of color correction method after
-    % shader attached to pipe. We know it is the
-    % 'FinalOutputFormattingBlit' chain, as only in that case, downstream
-    % formatting is performed at all.
-    PsychColorCorrection('ApplyPostGLSLLinkSetup', win, 'FinalFormatting');
-end
-
 % --- GPU based mirroring of left half of onscreen window to right half requested? ---
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
 
@@ -5057,9 +5278,168 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
 end
 % --- End of GPU based mirroring of left half of onscreen window to right half requested? ---
 
+% --- GPU based mirroring of onscreen window to secondary display head requested? ---
+if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
+    % Yes: We need to replicate the framebuffer of the master onscreen
+    % window to the slave windows framebuffer.
+
+    % What we do: We use the right finalizer blit chain to copy the
+    % contents of the master window's system backbuffer (which is bound
+    % during execution of the right finalizer blit chain) to the
+    % colorbuffer texture of the special finalizedFBO[1] - the shadow
+    % framebuffer FBO of the slave window. Once we did this, the processing
+    % code of kPsychNeedDualWindowOutput in Screens
+    % PsychPreFlipOperations() routine will take care of the rest -->
+    % Blitting that FBO's and its texture to the system backbuffer of the
+    % slave window, thereby cloning the master windows framebuffer to the
+    % slave windows framebuffer:
+    % TODO FIXME: We assume that texture handle '1' denotes the color
+    % attachment texture of finalizedFBO[1]. This is true if this is the
+    % first opened onscreen window (ie., 99% of the time). If that
+    % assumption doesn't hold, we will guess the wrong texture handle and
+    % bad things will happen!
+    [w, h] = Screen('WindowSize', win, 1);
+    myblitstring = sprintf('glBindTexture(34037, 1); glCopyTexSubImage2D(34037, 0, 0, 0, 0, 0, %i, %i); glBindTexture(34037, 0);', w, h);
+    Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'MirrorMasterToSlaveWindow', myblitstring);
+    Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
+end
+% --- End of GPU based mirroring of onscreen window to secondary display head requested? ---
+
+% --- Datapixx in use? ---
+if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))
+    % Yes: Need to call into high level DataPixx driver for final setup:
+    PsychDataPixx('PerformPostWindowOpenSetup', win);
+end
+% --- End of Datapixx in use? ---
+
+% --- Bits# in use? ---
+if ~isempty(find(mystrcmp(reqs, 'UseBits#')))
+    % Yes: Need to call into high level BitsPlusPlus driver for final setup:
+    BitsPlusPlus('PerformPostWindowOpenSetup', win);
+end
+% --- End of Bits# in use? ---
+
+if useHDR && needsIdentityCLUT
+    % We want identity lut's in HDR, but at maximum lut precision, so output
+    % does not get truncated to 8 bpc. Therefore we can't use LoadIdentityClut()
+    %
+    % There we have identity lut setup code in PsychVulkan() to handle this, and
+    % therefore useHDR  && needsIdentityCLUT should never happen:
+    warning('needsIdentityCLUT set in HDR mode! Bug!?!');
+end
+
+% Do we need identity gamma tables / CLUT's loaded into the graphics card?
+if needsIdentityCLUT && ~useHDR
+    % Yes. Use our generic routine which is adaptive to the quirks of
+    % specific gfx-cards:
+    LoadIdentityClut(win, [], [], disableDithering);
+
+    % Is there a slave window associated for some dual-window output mode,
+    % HDR mode or stereo mode?
+    if ~isempty(slavewin)
+        % Yes: Apply identity LUT setup there as well:
+        LoadIdentityClut(slavewin, [], [], disableDithering);
+    end
+end
+
+% Special Vulkan display backend in use?
+floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
+if ~isempty(floc)
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+
+    % Extract first parameter - This would be the optional video output name:
+    outputName = reqs{row, 3};
+
+    if ~isempty(outputName)
+        isFullscreen = 1;
+    else
+        isFullscreen = 0;
+    end
+
+    % 10 bpc linear unorm output framebuffer requested?
+    if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
+        % Request code 1 - RGB10A2 / BGR10A2 format on Vulkan side:
+        % This also overrides potential automatic choice  by 'EnableHDR' setup.
+        vulkanColorPrecision = 1;
+    end
+
+    % 11 bpc linear unorm output framebuffer requested? Or 16 bpc float framebuffer?
+    if ~isempty(find(mystrcmp(reqs, 'EnableNative11BitFramebuffer'))) || ...
+       ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFloatingPointFramebuffer')))
+        % Request code 2 - RGBA16F format on Vulkan side:
+        % This also overrides potential automatic choice  by 'EnableHDR' setup.
+        % fp16 request obviously matches exactly RGBA16F / VK_FORMAT_R16G16B16A16_SFLOAT.
+        %
+        % The same format works for RGB11 unorm, because it so happens that inside the 0.0 - 1.0
+        % unsigned normalized (unorm) color value range of RGB11 / EnableNative11BitFramebuffer,
+        % a 16 bit half-float floating point value provides the equivalent of at least 11 bpc
+        % linear precision:
+        vulkanColorPrecision = 2;
+    end
+
+    % 16 bpc linear unorm output framebuffer requested?
+    if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
+        % Request code 3 - RGBA16 unorm fixed point format on Vulkan side:
+        % This also overrides potential automatic choice  by 'EnableHDR' setup.
+        vulkanColorPrecision = 3;
+    end
+
+    % Default flags:
+    flags = 0;
+
+    % Default: Auto-select optimal Vulkan driver+gpu combo:
+    gpuIndex = 0;
+
+    % Perform Vulkan onscreen window creation and setup of Vulkan and OpenGL interop on our side:
+    vwin = PsychVulkan('PerformPostWindowOpenSetup', win, Screen('GlobalRect', win), isFullscreen, outputName, vulkanHDRMode, vulkanColorPrecision, vulkanColorSpace, vulkanColorFormat, gpuIndex, flags);
+end
+
+if useHDR
+    % Perform post OpenWindow setup for HDR stuff, e.g., setting up appropriate
+    % HDR post-processing shaders (Optional tone-mapping, gamut-remapping,
+    % color-space conversion and clamping. Mandatory OETF mapping, e.g., PQ):
+    [hdrShader, hdrShaderString] = PsychHDR('PerformPostWindowOpenSetup', win, hdrArguments, icmshader, icmstring);
+
+    % If any hdrShader is needed, append it to the final output formatter chain:
+    if ~isempty(hdrShader)
+        if outputcount > 0
+            % Need a bufferflip command:
+            Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+        end
+
+        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', hdrShaderString, hdrShader, '');
+        Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+        outputcount = outputcount + 1;
+    end
+
+    % Make sure that regular double() input images, even if only in the standard
+    % unorm range for creation of 8 bpc RGBA8 textures, do get their input values
+    % used "as is", ie. valid values are 0.0 - 1.0:
+    applyAlsoToMakeTexture = 1;
+
+    % Disable input value scaling and clamping, so color values can be passed through as
+    % arbitrary floating point values, for encoding in Nits, 80Nits, negative values,
+    % chromaticities etc.:
+    needsUnitUnclampedColorRange = 1;
+end
+
+% --- END OF ALL OUTPUT FORMATTERS AND SPECIAL OUTPUT DEVICE/BACKEND SETUP ---
+
+% --- This must be after setup of all output formatter shaders! ---
+% Downstream icm color correction shader linked into an icmAware output
+% formatter. We must perform post-link setup for it:
+if ptb_outputformatter_icmAware && icmformatting_downstream
+    % Perform post-link setup of color correction method after
+    % shader attached to pipe. We know it is the
+    % 'FinalOutputFormattingBlit' chain, as only in that case, downstream
+    % formatting is performed at all.
+    PsychColorCorrection('ApplyPostGLSLLinkSetup', win, 'FinalFormatting');
+end
+
 % --- Restriction of processing area ROI requested? ---
 
-% This should be at the end of setup, so we can reliably prepend the
+% This should be at the end of hookchain setup, so we can reliably prepend the
 % command to each chain to guarantee that restriction applies to all
 % processing:
 floc = find(mystrcmp(reqs, 'RestrictProcessing'));
@@ -5112,61 +5492,6 @@ end
 
 % --- End of Restriction of processing area ROI ---
 
-% --- GPU based mirroring of onscreen window to secondary display head requested? ---
-if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
-    % Yes: We need to replicate the framebuffer of the master onscreen
-    % window to the slave windows framebuffer.
-
-    % What we do: We use the right finalizer blit chain to copy the
-    % contents of the master window's system backbuffer (which is bound
-    % during execution of the right finalizer blit chain) to the
-    % colorbuffer texture of the special finalizedFBO[1] - the shadow
-    % framebuffer FBO of the slave window. Once we did this, the processing
-    % code of kPsychNeedDualWindowOutput in Screens
-    % PsychPreFlipOperations() routine will take care of the rest -->
-    % Blitting that FBO's and its texture to the system backbuffer of the
-    % slave window, thereby cloning the master windows framebuffer to the
-    % slave windows framebuffer:
-    % TODO FIXME: We assume that texture handle '1' denotes the color
-    % attachment texture of finalizedFBO[1]. This is true if this is the
-    % first opened onscreen window (ie., 99% of the time). If that
-    % assumption doesn't hold, we will guess the wrong texture handle and
-    % bad things will happen!
-    [w, h] = Screen('WindowSize', win, 1);
-    myblitstring = sprintf('glBindTexture(34037, 1); glCopyTexSubImage2D(34037, 0, 0, 0, 0, 0, %i, %i); glBindTexture(34037, 0);', w, h);
-    Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'MirrorMasterToSlaveWindow', myblitstring);
-    Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
-end
-% --- End of GPU based mirroring of onscreen window to secondary display head requested? ---
-
-% --- Datapixx in use? ---
-if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))
-    % Yes: Need to call into high level DataPixx driver for final setup:
-    PsychDataPixx('PerformPostWindowOpenSetup', win);
-end
-% --- End of Datapixx in use? ---
-
-% --- Bits# in use? ---
-if ~isempty(find(mystrcmp(reqs, 'UseBits#')))
-    % Yes: Need to call into high level BitsPlusPlus driver for final setup:
-    BitsPlusPlus('PerformPostWindowOpenSetup', win);
-end
-% --- End of Bits# in use? ---
-
-% Do we need identity gamma tables / CLUT's loaded into the graphics card?
-if needsIdentityCLUT
-    % Yes. Use our generic routine which is adaptive to the quirks of
-    % specific gfx-cards:
-    LoadIdentityClut(win, [], [], disableDithering);
-
-    % Is there a slave window associated for some dual-window output mode,
-    % HDR mode or stereo mode?
-    if ~isempty(slavewin)
-        % Yes: Apply identity LUT setup there as well:
-        LoadIdentityClut(slavewin, [], [], disableDithering);
-    end
-end
-
 % Is a default colormode specified via psych_default_colormode variable and
 % the level is at least 1? If so, switch to be created onscreen window to a
 % [0;1] colorrange with clamping by default, and apply input scaling to
@@ -5210,7 +5535,7 @@ if needsUnitUnclampedColorRange
     Screen('ColorRange', win, 1, 0, applyAlsoToMakeTexture);
 
     % Set Screen background clear color, in normalized 0.0 - 1.0 range:
-    if ~isempty(clearcolor) && (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor))
+    if ~isempty(clearcolor) && (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor)) && ~useHDR
         % Looks like someone's feeding old style 0-255 integer values as
         % clearcolor. Output a warning to tell about the expected 0.0 - 1.0
         % range of values:
@@ -5314,4 +5639,34 @@ return;
 function [w, h] = InterBufferSize(win)
     w = RectWidth(InterBufferRect(win));
     h = RectHeight(InterBufferRect(win));
+return;
+
+function reqs = AddTask(reqs, varargin)
+    global maxreqarg;
+
+    if length(varargin) < 2 || isempty(varargin{1}) || isempty(varargin{2})
+        error('Parameters missing: Need at least "whichChannel" and "whichTask"!');
+    end
+
+    % Variable length input:
+    x = varargin;
+
+    % Store requirement in our cell array of requirements. We need to
+    % extend each requirement vector to some number of max elements, so all
+    % rows in the cell array have the same length:
+    if length(x) < maxreqarg
+        for i=length(x)+1:maxreqarg
+            x{i}='';
+        end
+    end
+
+    % First use of 'reqs' array?
+    if isempty(reqs)
+        % Yes: Initialize the array with content of 'x':
+        reqs = x;
+    else
+        % No: Just concatenate new line with requirements 'x' to existing
+        % array 'reqs':
+        reqs = [reqs ; x];
+    end
 return;

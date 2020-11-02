@@ -178,7 +178,7 @@ void PsychSwitchFixedFunctionStereoDrawbuffer(PsychWindowRecordType *windowRecor
                 gluOrtho2D(0, screenwidth/2, windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
             }
             else {
-                glOrthofOES((GLfloat) 0, (GLfloat) screenwidth/2, (GLfloat) windowRecord->rect[kPsychBottom], (GLfloat) windowRecord->rect[kPsychTop], (GLfloat) -1, (GLfloat) 1);
+                glOrthof((GLfloat) 0, (GLfloat) screenwidth/2, (GLfloat) windowRecord->rect[kPsychBottom], (GLfloat) windowRecord->rect[kPsychTop], (GLfloat) -1, (GLfloat) 1);
             }
 
             // Switch back to modelview matrix, but leave it unaltered:

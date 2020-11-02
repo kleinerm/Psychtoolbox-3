@@ -226,7 +226,8 @@ static void InitArgFormatTypeStrings(void)
     ArgTypeStringsERROR[12] =   "cell";
     ArgTypeStringsERROR[13] =   "single";
     ArgTypeStringsERROR[14] =   "uint64";
-    ArgTypeStringsERROR[15] =   "default";
+    ArgTypeStringsERROR[15] =   "int64";
+    ArgTypeStringsERROR[16] =   "default";
 }
 
 
@@ -357,12 +358,12 @@ void PsychErrorExitC(PsychError error,
                     case kPsychArgFixed: printf("fixed\n");break;
                 }
                 if(received->isThere!=kPsychArgAbsent && received->direction==PsychArgIn){
-                    printf("\t\t\tformat:");
+                    printf("\t\t\tformat: ");
 
                     numTypes=PsychDecomposeArgFormat(received->type, typeStrings); //there should only be one, but check for bugs
                     for(i=0;i<numTypes;i++)
                         printf("%s\n",typeStrings[i]);
-                    printf("\t\t\t number of dimensions: %d\n", received->numDims);
+                    printf("\t\t\tnumber of dimensions: %d\n", received->numDims);
                     printf("\t\t\t\t M: %s\n", int2str(received->mDimMin));
                     printf("\t\t\t\t N: %s\n", int2str(received->nDimMin));
                     printf("\t\t\t\t P: %s\n", int2str(received->pDimMin));

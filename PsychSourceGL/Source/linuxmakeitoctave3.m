@@ -2,7 +2,7 @@ function linuxmakeitoctave3(mode)
 % This is the GNU/Linux version of makeit to build the Linux
 % mex files for Octave on Linux. It also creates copies of
 % the mex files build against Octave-3 and modifies them to
-% work on Octave-4.0 - 4.2. Files for Octave 4.4 and 5.1 are
+% work on Octave-4.0 - 4.2. Files for Octave 4.4 - 5.2 are
 % built and stored into a different target folder.
 
 if ~IsLinux || ~IsOctave
@@ -18,7 +18,16 @@ if mode == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for mode = 0:14
+
+    % Build plugin types 0-15 by default:
+    modes = 0:15;
+
+    if IsARM
+        % Do not build plugin 15 == PsychVulkanCore on ARM / RaspberryPi:
+        modes = setdiff (modes, 15);
+    end
+
+    for mode = modes
         linuxmakeitoctave3(mode);
     end
     elapsedsecs = toc;
@@ -56,7 +65,7 @@ if mode==0
     % incompatible with older Linux distros,  e.g., Debian 6.0:
     if 1
         % Build against system installed GStreamer-1.0+
-        mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTB_USE_NVSTUSB -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/lib/i386-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include -I/usr/include/libxml2 -I../Cohorts/libnvstusb-code-32/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
+        mex -v -g "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTB_USE_NVSTUSB -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/lib/i386-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include -I/usr/include/libxml2 -I../Cohorts/libnvstusb-code-32/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
     else
         % Build against system installed GStreamer-0.10.x, backwards compatible to
         % old Linux distros:
@@ -265,8 +274,22 @@ if mode==14
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychOpenHMDVRCore.mex']);
 end
 
-% Remove stale object files:
-delete('*.o');
+if mode==15
+    % Build PsychVulkanCore.mex:
+    try
+        mex -v -g --output ../Projects/Linux/build/PsychVulkanCore.mex -Wno-date-time -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/PsychVulkanCore Linux/Base/*.c Common/Base/*.c Common/PsychVulkanCore/*.c -lc -lrt -ldl -lX11 -lvulkan
+    catch
+        disp(psychlasterror);
+    end
+
+    unix(['cp ../Projects/Linux/build/PsychVulkanCore.mex ' PsychtoolboxRoot target]);
+    striplibsfrommexfile([PsychtoolboxRoot target 'PsychVulkanCore.mex']);
+end
+
+if str2num(version()(1)) < 5
+    % Remove stale object files from current dir on Octave 4 and earlier:
+    delete('*.o');
+end
 
 return;
 end

@@ -15,7 +15,7 @@ if mode == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for mode = 0:14
+    for mode = 0:15
         linuxmakeit64(mode);
     end
     elapsedsecs = toc;
@@ -27,7 +27,8 @@ fprintf('Building plugin type %i ...\n\n', mode);
 
 if mode==0
     % Build Screen.mexa64: We build against GStreamer-1
-    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output Screen -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTB_USE_NVSTUSB -DGLEW_STATIC -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -I../Cohorts/libnvstusb-code-32/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib  "Linux/Base/*.c" "Linux/Screen/*.c" "Common/Screen/*.c" "Common/Base/*.c" -lc -lrt -ldl -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
+    mex -c Common/Screen/tinyexr.cc
+    mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output Screen -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DPTB_USE_NVSTUSB -DGLEW_STATIC -D_GNU_SOURCE -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -I../Cohorts/libnvstusb-code-32/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib  "Linux/Base/*.c" "Linux/Screen/*.c" "Common/Screen/*.c" "Common/Base/*.c" tinyexr.o -lc -lrt -ldl -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes
     unix(['mv ../Projects/Linux/build/Screen.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
@@ -127,6 +128,16 @@ if mode==14
         disp(psychlasterror);
     end
     unix(['mv ../Projects/Linux/build/PsychOpenHMDVRCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end
+
+if mode==15
+    % Build PsychVulkanCore.mex:
+    try
+        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore -ICommon/Base -ILinux/Base -ICommon/PsychVulkanCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychVulkanCore/*.c" -lc -lrt -ldl -lX11 -lvulkan
+    catch
+        disp(psychlasterror);
+    end
+    unix(['mv ../Projects/Linux/build/PsychVulkanCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 return;

@@ -23,7 +23,7 @@ if nargin<1 || isempty(str),
 end
 
 % delete extra spaces
-str=sed(str,'s/^[[:space:]]*//','s/[[:space:]]*$//','s/[[:space:]]+/ /g');
+str=sed(str,'s/^[[:space:]]*//','s/[[:space:]]*$//','s/[[:space:]]+/ /g','s/GLAPIENTRY //');
 
 % record full declaration
 p.full=str;
@@ -56,7 +56,7 @@ end
 
 p.fname=r.fname;
 p.argin.full=strtrim(r.argin);
-r.stars=r.stars(find(r.stars~=' '));
+r.stars=r.stars(find(r.stars~=' ')); %#ok<*FNDSB>
 p.argouttype.full=strtrim([ r.const ' ' r.basetype r.stars ]);
 p.argouttype.const=r.const;
 p.argouttype.basetype=r.basetype;

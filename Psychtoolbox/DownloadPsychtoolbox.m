@@ -1,7 +1,7 @@
-function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
-% DownloadPsychtoolbox([targetdirectory][, flavor][, targetRevision])
+function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision, downloadmethod)
+% DownloadPsychtoolbox([targetdirectory][, flavor][, targetRevision][, downloadmethod])
 %
-% This script downloads the latest GNU/Linux, Mac OSX, or MS-Windows
+% This script downloads the latest GNU/Linux, MS-Windows, or Apple macOS
 % Psychtoolbox-3, version 3.0.10 or later, from our git-server to your
 % disk, creating your working copy, ready to use as a new toolbox in your
 % MATLAB/OCTAVE application. Subject to your permission, any old
@@ -45,7 +45,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % On Mac OSX, all parameters are optional. On MS-Windows and GNU/Linux, the
 % first parameter "targetdirectory" with the path to the installation
 % target directory is required. The "targetdirectory" name may not contain
-% any white space, otherwise download will fail with mysterious error
+% any white space, otherwise download may fail with mysterious error
 % messages!
 % 
 % On OSX, your working copy of the Psychtoolbox will be placed in either
@@ -62,7 +62,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % installed if you don't specify otherwise, as this is almost always the
 % best possible choice. You may be able to download an old versioned
 % release via a namestring like 'Psychtoolbox-x.y.z', e.g.,
-% 'Psychtoolbox-3.0.7' if you'd want to download version 3.0.7. This is
+% 'Psychtoolbox-3.0.14' if you'd want to download version 3.0.14. This is
 % only useful if you run a very old operating system or Matlab version that
 % isn't supported by the current "beta" anymore, so you'd need to stick
 % with an old versioned release.
@@ -74,8 +74,9 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 %
 % The "targetRevision" argument is optional and should be normally omitted.
 % Normal behaviour is to download the latest revision of Psychtoolbox. If
-% you provide a specific targetRevision, then this script will install a
-% copy of Psychtoolbox according to the specified revision.
+% you provide a specific targetRevision, e.g., 1234 for revision 1234, then
+% this script will install a copy of Psychtoolbox according to the
+% specified revision.
 %
 % This is only useful if you experience problems and want to revert to an
 % earlier known-to-be-good release.
@@ -84,25 +85,59 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 'PREV' which will choose the revision before the most current one.
 %
 %
+% 'downloadmethod' Optional: The method to use or prefer for download. By
+% default method 0 is used, which means to perform a Subversion checkout of
+% a fully versioned working copy, including all revision information, which
+% allows to go backward in time or update efficiently via the
+% UpdatePsychtoolbox() command, query the current version and revision of
+% Psychtoolbox via PsychtoolboxVersion() command, and access the
+% development history via svn command-line tools etc. A setting of 1
+% requests an export without versioning information, essentialy a dumb
+% download. This will cut download size and disc space usage in less than
+% half, but you won't be able to use UpdatePsychtoolbox() or
+% PsychtoolboxVersion() or other svn features anymore.
+%
+% By default, the most efficient and convenient method of Subversion
+% download is used, e.g., using Matlabs integrated SVNKit for Matlab R2014b
+% or later, instead of a svn command-line client. You can always enforce
+% use of an installed svn command-line client via setting downloadmethod to
+% -1. This is the old way of doing things, in case the improved method via
+% SVNKit should not work for some reason.
+%
+%
 % INSTALLATION INSTRUCTIONS: The Wiki contains much more up to date
 % instructions. If in doubt, follow instructions on the Wiki!
 %
-% 1. If you don't already have it, you must install the Subversion client.
-% For Mac OSX 10.6 and later, download the latest Mac OSX Subversion client
-% from: http://www.wandisco.com/subversion/download#osx
-% If you have the XCode command line tools installed, you won't need to
-% install subversion as it is included in these tools.
-% 
-% For Windows, download the Windows Subversion client from one of these:
+% 0. If you are using Matlab R2014b or later, skip to step 2.
+%
+%
+% 1. On older Matlab versions, or on Octave, if you don't already have it,
+% you must install a Subversion client.
+%
+%
+% On Linux, use the OS package manager, e.g., on Debian/Ubuntu based
+% systems:
+%
+% sudo apt install subversion
+%
+%
+% On Windows, download the Windows Subversion client from the internet, e.g.,
+% from one of these:
 %
 % http://subversion.apache.org/packages.html#windows
 % http://www.wandisco.com/subversion/download#windows
 %
-% Install the Subversion client on your machine by double-clicking the
-% installer and following the instructions. After installation of the
-% Subversion client, you will need to exit and restart Matlab or Octave, so
-% it can find the new subversion executable. In many cases it may be
-% neccessary to even reboot your computer after installation of subversion.
+%
+% On macOS, if you happen to have HomeBrew (http://brew.sh) installed, a
+%
+% brew install subversion
+%
+% should do the trick.
+%
+%
+% After installation of the Subversion client, you will need to exit and
+% restart Matlab or Octave, so it can find the new subversion executable.
+%
 % Btw. you should avoid to install the client into a path that contains
 % blanks/spaces/white-space as this can lead to download failures in some
 % cases, e.g., 'C:\Program Files\...' may be bad because there is a blank
@@ -116,11 +151,8 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % addpath('D:\MyOwnFolder\Subversion\'). Our installer should find the
 % client then.
 %
-% For Linux, just install the subversion package from your package
-% management tool.
 %
-%
-% 2. On MacOS/X, to install the Psychtoolbox in the default location
+% 2. On macOS, to install the Psychtoolbox in the default location
 % (/Applications or, failing that, /Users/Shared). Just type:
 %
 % DownloadPsychtoolbox
@@ -130,7 +162,7 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % note that if you put the toolbox in the Applications folder, you'll need
 % to reinstall it when MATLAB / OCTAVE is updated on your machine. If you
 % must install without access to an administrator, we offer the option of
-% installing into the /Users/Shared/ folder instead. If you must install
+% installing into the /Users/Shared/ folder instead. If you want to install
 % the Psychtoolbox in some other folder, then specify it in the optional
 % first argument of your call.
 %
@@ -162,7 +194,10 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 
 % UpdatePsychtoolbox cannot change the flavor of your Psychtoolbox. To
 % change the flavor, run DownloadPsychtoolbox to completely discard your
-% old installation and get a fresh copy with the requested flavor.
+% old installation and get a fresh copy with the requested flavor. If you
+% used DownloadPsychtoolbox with the optional 'downloadmethod' set to 1
+% then UpdatePsychtoolbox() won't work. That's the price you pay for saving
+% disc space.
 % 
 % PERMISSIONS:
 %
@@ -310,12 +345,17 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision)
 % 06/11/18 mk  Change search order for svn executable to account for preferred location
 %              on macOS, as provided by XCode command line tools.
 % 06/01/19 mk  Give automated hint about updated svn client under Matlab.
+% 10/27/20 mk  Add SVN support via Matlabs SVNKit.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
 clear mex
 
-if (nargin < 2 || isempty(strfind(flavor, 'Psychtoolbox-3.0.')))
+if nargin < 4 || isempty(downloadmethod)
+    downloadmethod = 0;
+end
+
+if (nargin < 2) || isempty(flavor) || isempty(strfind(flavor, 'Psychtoolbox-3.0.'))
     % Check if this is 32-Bit Octave-4 on Windows, which we don't support at all:
     if isempty(strfind(computer, 'x86_64')) && ~isempty(strfind(computer, 'mingw32'))
         fprintf('Psychtoolbox 3.0.13 and later do no longer work with 32-Bit GNU/Octave-4 on MS-Windows.\n');
@@ -370,37 +410,26 @@ IsLinux = strcmp(computer,'GLNX86') || strcmp(computer,'GLNXA64') || ~isempty(st
 IsOctave = isempty (ver('matlab'));
 
 if ~IsWin && ~IsOSX && ~IsLinux
-    os = computer;
-    if strcmp(os,'MAC2')
-        os = 'Mac OS9';
-    end
-    fprintf('Sorry, this updater doesn''t support your operating system: %s.\n', os);
-    fprintf([mfilename ' can only install the new (OSX, Linux and Windows) \n'...
-        'OpenGL-based versions of the Psychtoolbox-3. To install the older (OS9 and Windows) \n'...
-        'versions (not based on OpenGL, aka PTB-2) please go to the legacy Psychtoolbox website: \n'...
-        'web http://psychtoolbox.org/PTB-2/index.html\n']);
+    fprintf('Sorry, this updater doesn''t support your operating system: %s.\n', computer);
+    fprintf([mfilename ' can only install Psychtoolbox-3.\n']);
     error(['Your operating system is not supported by ' mfilename '.']);
 end
 
-% Check if this is a Matlab of version prior to V 7.4 aka R2007a:
-v = ver('matlab');
-if ~isempty(v) && ~isempty(v(1).Version)
-    v = v(1).Version; v = sscanf(v, '%i.%i.%i');
-    if (v(1) < 7) || ((v(1) == 7) && (v(2) < 4))
-        % Matlab version < 7.4 detected. This is no longer
-        % supported by current PTB beta. Redirect to the last
-        % functional PTB for such ancient Matlab's:
-        fprintf('\n\n\n\n');
-        fprintf('Psychtoolbox 3.0.10 and later are no longer available for your version of Matlab.\n');
-        fprintf('Current versions only work on Matlab Version 7.4 (R2007a) or later.\n');
-        fprintf('Please consider upgrading to a recent Matlab version or switching to GNU/Octave 3.2.x.\n');
-        fprintf('Both will provide better support, performance and a richer feature set.\n\n');
-        fprintf('\n\n');
-        fprintf('If you insist on use of an older Matlab version, see our websites ''Versions'' section\n');
-        fprintf('on how to retrieve a legacy version of Psychtoolbox 3.0.9 or earlier.\n');
-        fprintf('In this case you are entirely on your own, as such versions are not supported in any way.\n\n');
-        error('This Downloader does not support Matlab versions before V7.4 (R2007a) anymore.');
-    end
+% Check if this is a Matlab of version prior to V 7.4 aka R2007a. The
+% absence of verLessThan(), which was introduced in R2007a, signals that.
+if ~IsOctave && ~exist('verLessThan') %#ok<EXIST>
+    % Matlab version < 7.4 detected. This is no longer supported by current
+    % PTB beta. Redirect to the last functional PTB for such ancient Matlab's:
+    fprintf('\n\n\n\n');
+    fprintf('Psychtoolbox 3.0.10 and later are no longer available for your version of Matlab.\n');
+    fprintf('Current versions only work on Matlab Version 7.4 (R2007a) or later.\n');
+    fprintf('Please consider upgrading to a recent Matlab version or switching to GNU/Octave 3.2.x.\n');
+    fprintf('Both will provide better support, performance and a richer feature set.\n\n');
+    fprintf('\n\n');
+    fprintf('If you insist on use of an older Matlab version, see our websites ''Versions'' section\n');
+    fprintf('on how to retrieve a legacy version of Psychtoolbox 3.0.9 or earlier.\n');
+    fprintf('In this case you are entirely on your own, as such versions are not supported in any way.\n\n');
+    error('This Downloader does not support Matlab versions before V7.4 (R2007a) anymore.');
 end
 
 if nargin < 1
@@ -410,13 +439,13 @@ end
 if isempty(targetdirectory)
     if IsOSX
         % Set default path for OSX install:
-        targetdirectory=fullfile(filesep,'Applications');
+        targetdirectory = fullfile(filesep,'Applications');
     else
         % We do not have a default path on Windows, so the user must provide it:
         fprintf('You did not provide the full path to the directory where Psychtoolbox should be\n');
         fprintf('installed. This is required for Microsoft Windows and Linux installation. Please enter a full\n');
         fprintf('path as the first argument to this script, e.g. DownloadPsychtoolbox(''C:\\Toolboxes\\'').\n');
-        error('For Windows and Linux, the call to %s must specify a full path for the location of installation.',mfilename);
+        error('For Windows and Linux, the call to %s must specify a full path for the location of installation.', mfilename);
     end
 end
 
@@ -425,26 +454,14 @@ if targetdirectory(end) == filesep
     targetdirectory = targetdirectory(1:end-1);
 end
 
-% Hard-Code downloadmethod to zero aka https protocol:
-downloadmethod = 0;
-
-if nargin < 3
-    targetRevision = [];
-end
-
-if isempty(targetRevision)
+if nargin < 3 || isempty(targetRevision)
     targetRevision = '';
 else
     fprintf('Target revision: %s \n', targetRevision);
-    targetRevision = [' -r ' targetRevision ' '];
 end
 
-% Set flavor defaults and synonyms:
-if nargin < 2
-    flavor = [];
-end
-
-if isempty(flavor)
+% Set flavor default and synonyms:
+if nargin < 2 || isempty(flavor)
     flavor = 'beta';
 end
 
@@ -497,85 +514,23 @@ switch (flavor)
         pause;
 end
 
-fprintf('DownloadPsychtoolbox(''%s'',''%s'',''%s'')\n',targetdirectory, flavor, targetRevision);
-fprintf('Requested flavor is: %s\n',flavor);
-fprintf('Requested location for the Psychtoolbox folder is inside: %s\n',targetdirectory);
+fprintf('DownloadPsychtoolbox(''%s'',''%s'',''%s'', %i)\n', targetdirectory, flavor, targetRevision, downloadmethod);
+fprintf('Requested flavor is: %s\n', flavor);
+fprintf('Requested location for the Psychtoolbox folder is inside: %s\n', targetdirectory);
+switch (downloadmethod)
+    case -1
+        fprintf('Using svn command line client for subversion checkout.\n');
+    case 0
+        fprintf('Using optimal client for subversion checkout.\n');
+    case 1
+        fprintf('Using optimal client for attempt of pure unversioned download.\n');
+    otherwise
+        error('Unknown downloadmethod specified.\n');
+end
 fprintf('\n');
 
-% Check for alternative install location of Subversion:
-if IsWin
-    % Search for Windows executable in path:
-    svnpath = which('svn.exe');
-else
-    % Search for Unix executable in path:
-    svnpath = which('svn.');
-end
-
-% Found one?
-if ~isempty(svnpath)
-    % Extract basepath and use it:
-    svnpath=[fileparts(svnpath) filesep];
-else
-    % Could not find svn executable in path. Check the default
-    % install location on OS-X and abort if it isn't there. On M$-Win we
-    % simply have to hope that it is in some system dependent search path.
-
-    % Currently, we only know how to check this for Mac OSX.
-    if IsOSX
-        svnpath = '';
-
-        if isempty(svnpath) && exist('/usr/bin/svn','file')
-            svnpath='/usr/bin/';
-        end
-
-        if isempty(svnpath) && exist('/usr/local/bin/svn','file')
-            svnpath='/usr/local/bin/';
-        end
-
-        if isempty(svnpath) && exist('/bin/svn','file')
-            svnpath='/bin/';
-        end
-
-        if isempty(svnpath) && exist('/opt/local/bin/svn', 'file')
-            svnpath = '/opt/local/bin/';
-        end
-
-        if isempty(svnpath) && exist('/opt/subversion/bin/svn', 'file')
-            svnpath = '/opt/subversion/bin/';
-        end
-
-        if isempty(svnpath)
-            fprintf('The Subversion client "svn" is not in its expected\n');
-            fprintf('location on your disk. Please download and install the most\n');
-            fprintf('recent Subversion client via typing this into a terminal window:\n');
-            fprintf('xcode-select --install\n');
-            fprintf('and then run %s again.\n', mfilename);
-            error('Subversion client is missing. Please install it.');
-        end
-    end
-end
-
-if ~isempty(svnpath)
-    fprintf('Will use the svn client which is located in this folder: %s\n', svnpath);
-end
-
-if any(isspace(svnpath))
-    fprintf('WARNING! There are spaces (blanks) in the path to the svn client executable (see above).\n');
-    fprintf('On some systems this can cause a download failure, with some error message that may look\n');
-    fprintf('roughly like this: %s is not recognized as an internal or external command,\n', svnpath(1:min(find(isspace(svnpath)))));
-    fprintf('operable program or batch file.\n\n');
-    fprintf('Should the download fail with such a message then move/install the svn.exe program into a\n');
-    fprintf('folder whose path does not contain any blanks/spaces and retry.\n\n');
-    warning('Spaces in path to subversion client -- May cause download failure.');
-end
-
 % Does SAVEPATH work?
-if exist('savepath')
-   err=savepath;
-else
-   err=path2rc;
-end
-
+err = savepath;
 if err
     try
         % If this works then we're likely on Matlab:
@@ -645,14 +600,14 @@ while (exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolb
     p=fullfile(targetdirectory,'Psychtoolbox');
     if ~exist(p,'dir')
         p=fileparts(which(fullfile('Psychtoolbox','Contents.m')));
-        if length(p)==0
+        if isempty(p)
             w=what('Psychtoolbox');
             p=w(1).path;
         end
     end
     fprintf('%s\n',p);
     fprintf('That old Psychtoolbox should be removed before we install a new one.\n');
-    if ~exist(fullfile(p,'Contents.m'))
+    if ~exist(fullfile(p,'Contents.m'), 'file')
         fprintf(['WARNING: Your old Psychtoolbox folder lacks a Contents.m file. \n'...
             'Maybe it contains stuff you want to keep. Here''s a DIR:\n']);
         dir(p)
@@ -663,13 +618,7 @@ while (exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolb
     warning('off','MATLAB:rmpath:DirNotFound');
     rmpath(pp);
     warning('on','MATLAB:rmpath:DirNotFound');
-    
-    if exist('savepath')
-       savepath;
-    else
-       path2rc;
-    end
-
+    savepath;
     fprintf('Success.\n');
 
     answer=input('Shall I delete the old Psychtoolbox folder and all its contents \n(recommended in most cases), (yes or no)? ','s');
@@ -708,31 +657,27 @@ while any(regexp(path,searchpattern))
     if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('You didn''t say "yes", so I''m taking it as no.\n');
     else
-        for p=paths
-            s=char(p);
-            if any(regexp(s,searchpattern2))
+        for p = paths
+            s = char(p);
+            if any(regexp(s, searchpattern2))
                 fprintf('%s\n',s);
             end
         end
     end
-    answer=input('Shall I delete all those instances from the MATLAB / OCTAVE path (yes or no)? ','s');
-    if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
+    answer = input('Shall I delete all those instances from the MATLAB / OCTAVE path (yes or no)? ', 's');
+    if ~strcmpi(answer, 'yes') && ~strcmpi(answer, 'y')
         fprintf('You didn''t say yes, so I cannot proceed.\n');
         fprintf('Please use the MATLAB "File:Set Path" command to remove all instances of "Psychtoolbox" from the path.\n');
         error('Please remove Psychtoolbox from MATLAB / OCTAVE path.');
     end
-    for p=paths
-        s=char(p);
-        if any(regexp(s,searchpattern2))
+    for p = paths
+        s = char(p);
+        if any(regexp(s, searchpattern2))
             % fprintf('rmpath(''%s'')\n',s);
             rmpath(s);
         end
     end
-    if exist('savepath')
-       savepath;
-    else
-       path2rc;
-    end
+%    savepath;
 
     fprintf('Success.\n\n');
 end
@@ -747,12 +692,10 @@ else
         fprintf('I will now download the latest Psychtoolbox for Windows.\n');
     end
 end
-fprintf('Requested flavor is: %s\n',flavor);
-fprintf('Target folder for installation: %s\n',targetdirectory);
-p=fullfile(targetdirectory,'Psychtoolbox');
 
-% Create quoted version of 'p'ath, so blanks in path are handled properly:
-pt = strcat('"',p,'"');
+fprintf('Requested flavor is: %s\n', flavor);
+fprintf('Target folder for installation: %s\n', targetdirectory);
+p = fullfile(targetdirectory, 'Psychtoolbox');
 
 if ~strcmp(flavor, 'trunk')
     dflavor = ['branches/' flavor];
@@ -760,75 +703,17 @@ else
     dflavor = flavor;
 end
 
-% Choose initial download method. Defaults to zero, ie. https protocol:
-if downloadmethod < 1
-    % HTTPS:
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
-else
-    % HTTP: This is unsupported by GitHub - just left as a reference for now.
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
-end
+% Download via Subversion:
+svndownload(targetRevision, dflavor, p, downloadmethod);
 
-fprintf('The following CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
-fprintf('%s\n',checkoutcommand);
-fprintf('Downloading. It''s nearly 100 MB, which can take many minutes. \nAlas there may be no output to this window to indicate progress until the download is complete. \nPlease be patient ...\n');
-fprintf('If you see some message asking something like "accept certificate (p)ermanently, (t)emporarily? etc."\n');
-fprintf('then please press the p key on your keyboard, possibly followed by pressing the ENTER key.\n\n');
-
-if IsOctave
-    % Octave's system() command (and its dos() and unix() wrappers around system())
-    % does not print any live output from the checkoutcommand if return of the 'result'
-    % string is requested. We want some live feedback, so users get some feeling of
-    % download progress and don't get confused if the thing is just sitting there for
-    % minutes without giving feedback. Therefore don't request 'result':
-    err = system(checkoutcommand);
-    result = 'For reasons and troubleshooting, read the output above and all followup messages!';
-else
-    % Matlab's system() command can provide live feedback from 'checkoutcommand'
-    % during svn checkout and return the same output in 'result' at the end, so
-    % we can get 'result' for parsing:
-    [err, result] = system(checkoutcommand, '-echo');
-end
-
-if err
-    fprintf('Sorry, the download command "CHECKOUT" failed with error code %d:\n', err);
-    fprintf('%s\n', result);
-    
-    if IsOSX && err == 69
-        fprintf('If the error output suggests running a command, this should be typed into Terminal.app found in Applications/Utilities\n')
-    end
-
-    if IsOctave
-        fprintf('If the error output above contains the text ''SSL handshake failed: SSL error: tlsv1 alert protocol version''\n');
-        fprintf('then your svn command line client is too old. Install a more recent Subversion command line client.\n');
-    else
-        if ~isempty(strfind(result, 'tlsv1 alert protocol version'))
-            fprintf('Seems your svn command line client is too old. Install a more recent Subversion command line client.\n');
-            error('Download failed. Subversion client too old.');
-        end
-    end
-    fprintf('The download failure might also be due to temporary network or server problems. You may want to try again in a\n');
-    fprintf('few minutes. It could also be that the subversion client was not (properly) installed. On Microsoft\n');
-    fprintf('Windows you will need to exit and restart Matlab or Octave after installation of the Subversion client. If that\n');
-    fprintf('does not help, you will need to reboot your machine before proceeding.\n');
-    fprintf('Another reason for download failure could be if an old working copy - a Psychtoolbox folder - still exists.\n');
-    fprintf('In that case, it may help to manually delete that folder. Or maybe you do not have write permissions for the target folder?\n\n');
-    error('Download failed.');
-end
-fprintf('Download succeeded!\n\n');
 
 % Add Psychtoolbox to MATLAB / OCTAVE path
 fprintf('Now adding the new Psychtoolbox folder (and all its subfolders) to your MATLAB / OCTAVE path.\n');
-p=fullfile(targetdirectory,'Psychtoolbox');
-pp=genpath(p);
+p = fullfile(targetdirectory, 'Psychtoolbox');
+pp = genpath(p);
 addpath(pp);
 
-if exist('savepath')
-   err=savepath;
-else
-   err=path2rc;
-end
-
+err = savepath;
 if err
     fprintf('SAVEPATH failed. Psychtoolbox is now already installed and configured for use on your Computer,\n');
     fprintf('but i could not save the updated MATLAB / OCTAVE path, probably due to insufficient permissions.\n');
@@ -840,12 +725,13 @@ else
 end
 
 fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
-    'allow future updates by every user on this machine without requiring administrator privileges.\n']);
+        'allow future updates by every user on this machine without requiring administrator privileges.\n']);
 try
+    % Recursively add write privileges for all users.
     if IsOSX || IsLinux
-        [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
+        [s, m] = fileattrib(p, '+w', 'a', 's');
     else
-        [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
+        [s, m] = fileattrib(p, '+w', '', 's');
     end
 catch
     s = 0;
@@ -861,8 +747,8 @@ else
     fprintf('The error message of FILEATTRIB was: %s\n\n', m);
 end
 
-fprintf('You can now use your newly installed ''%s''-flavor Psychtoolbox. Enjoy!\n',flavor);
-fprintf('Whenever you want to upgrade your Psychtoolbox to the latest ''%s'' version, just\n',flavor);
+fprintf('You can now use your newly installed ''%s''-flavor Psychtoolbox. Enjoy!\n', flavor);
+fprintf('Whenever you want to upgrade your Psychtoolbox to the latest ''%s'' version, just\n', flavor);
 fprintf('run the UpdatePsychtoolbox script.\n\n');
 
 if exist('PsychtoolboxPostInstallRoutine.m', 'file')
@@ -872,4 +758,218 @@ if exist('PsychtoolboxPostInstallRoutine.m', 'file')
 end
 
 % Puuh, we are done :)
+return
+
+function svndownload(targetRevision, dflavor, p, downloadmethod)
+    % Matlab R2014b (Version 8.4) or later? No legacy download via
+    % downloadmethod == -1 requested by user?
+    if (downloadmethod ~= -1) && ~isempty(ver('matlab')) && ~verLessThan('matlab', '8.4')
+        % R2014b and later contain a Java SVN implementation, so lets use
+        % that to spare the user from having to install a separate svn
+        % command line client:
+
+        % Get svn_client object from Matlab's Java implementation:
+        svn_client_manager = org.tmatesoft.svn.core.wc.SVNClientManager.newInstance;
+        svn_client = svn_client_manager.getUpdateClient;
+
+        % Build download URL:
+        url = org.tmatesoft.svn.core.SVNURL.parseURIDecoded(['https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/']);
+
+        % Build revision to checkout:
+        if isempty(targetRevision)
+            targetRevision = 'HEAD';
+        end
+        revision = org.tmatesoft.svn.core.wc.SVNRevision.parse(targetRevision);
+        if revision == org.tmatesoft.svn.core.wc.SVNRevision.UNDEFINED
+            error('Invalid ''targetRevision'' parameter ''%s'' specified. Not a valid revision spec!', targetRevision);
+        end
+
+        %dbglogger = svn_client.getDebugLog();
+        %dbgstream = dbglogger.createLogStream(org.tmatesoft.svn.util.SVNLogType.DEFAULT, );
+
+        %try
+            if downloadmethod == 0
+                % Do the full SVN working copy checkout:
+                fprintf('Downloading via Matlabs integrated SVNKit: This can take multiple minutes.\nThere may be no output to this window to indicate progress until the download is complete.\nPlease be patient ...\n');
+                revactual = svn_client.doCheckout(url, java.io.File(p), org.tmatesoft.svn.core.wc.SVNRevision.UNDEFINED, revision, org.tmatesoft.svn.core.SVNDepth.INFINITY, true);
+            else
+                % Do an export without SVN versioning info, ie. essentially a dumb download:
+                fprintf('Exporting unversioned copy via Matlabs integrated SVNKit: This can take multiple minutes.\nThere may be no output to this window to indicate progress until the download is complete.\nPlease be patient ...\n');
+                revactual = svn_client.doExport(url, java.io.File(p), org.tmatesoft.svn.core.wc.SVNRevision.UNDEFINED, revision, 'LF', true, org.tmatesoft.svn.core.SVNDepth.INFINITY);
+            end
+
+            fprintf('Download of SVN revision %i succeeded!\n\n', revactual);
+        %catch
+        %    disp(psychlasterror('reset'));
+        %    error('Download failed! See error messages above.\n\n');
+        %end
+
+        return;
+    end
+
+    % Fallback path for Octave or older Matlab versions - svn command line client:
+
+    % Check for alternative install location of Subversion:
+    if ispc
+        % Search for Windows executable in path:
+        svnpath = which('svn.exe');
+    else
+        % Search for Unix executable in path:
+        svnpath = which('svn.');
+    end
+
+    % Found one?
+    if ~isempty(svnpath)
+        % Extract basepath and use it:
+        svnpath = [fileparts(svnpath) filesep];
+    else
+        % Could not find svn executable in path. Check the default install
+        % locations on OSX and abort if it isn't there. On others we simply
+        % have to hope that it is in some system dependent search path.
+        if ismac
+            svnpath = '';
+
+            % /usr/local/bin is our best shot, because that's where
+            % HomeBrew will install its svn client:
+            if isempty(svnpath) && exist('/usr/local/bin/svn', 'file')
+                svnpath = '/usr/local/bin/';
+            end
+
+            % XCode would install its svn in /usr/bin/, except the iToys
+            % company f$#ked it up as of the Catalina trainwreck:
+            if isempty(svnpath) && exist('/usr/bin/svn', 'file')
+                % Spot check if svn works:
+                rc = system('/usr/bin/svn');
+                if rc == 72
+                    % Failed in the expected way under the assumption of a
+                    % broken svn executable from XCode:
+                    fprintf('The Subversion command line client "svn" on your system is broken. Thanks Apple!\n\n');
+
+                    % Is HomeBrew installed and functional?
+                    rc = system('brew --version');
+                    if rc == 0
+                        % Yes. Try to install Subversion from HomeBrew:
+                        fprintf('\nYou do seem to have HomeBrew installed. I can use it now to install a Subversion client.\n');
+                        answer = input('Do you want me to install Subversion from HomeBrew now [ie., brew install subversion] (yes or no)? ','s');
+                        if strcmpi(answer, 'yes') || strcmpi(answer, 'y')
+                            rc = system('brew install subversion');
+                            if rc == 0 && exist('/usr/local/bin/svn', 'file')
+                                svnpath = '/usr/local/bin/';
+                                fprintf('Success! Will use the svn client from /usr/local/bin, ie. from HomeBrew.\n');
+                            else
+                                fprintf('Failed! I give up fixing this myself, good luck!\n');
+                                svnpath = '';
+                            end
+                        else
+                            fprintf('You did not say yes, so i take it as a no. I give up fixing this myself, good luck!\n');
+                            svnpath = '';
+                        end
+                    else
+                        % No. Clue the user into installing it to get svn
+                        % working:
+                        fprintf('You may be able to install HomeBrew (https://brew.sh)\n');
+                        fprintf('and then install Subversion via ''brew install subversion''.\n');
+                        svnpath = '';
+                    end
+                else
+                    svnpath = '/usr/bin/';
+                end
+            end
+
+            % From here on unlikely fallback locations:
+            if isempty(svnpath) && exist('/bin/svn', 'file')
+                svnpath = '/bin/';
+            end
+
+            if isempty(svnpath) && exist('/opt/local/bin/svn', 'file')
+                svnpath = '/opt/local/bin/';
+            end
+
+            if isempty(svnpath) && exist('/opt/subversion/bin/svn', 'file')
+                svnpath = '/opt/subversion/bin/';
+            end
+
+            if isempty(svnpath)
+                fprintf('The Subversion command line client "svn" is not in its expected\n');
+                fprintf('location on your disk. On old macOS versions, please download and install\n');
+                fprintf('the most recent Subversion client via typing this into a terminal window:\n');
+                fprintf('xcode-select --install\n');
+                fprintf('and then run %s again. This will not work on Catalina and later though.\n', mfilename);
+                fprintf('On Catalina and later you may be able to install HomeBrew (https://brew.sh)\n');
+                fprintf('and then install Subversion via ''brew install subversion''.\n');
+                error('Subversion client is missing. Please install it.');
+            end
+        end
+    end
+
+    if ~isempty(svnpath)
+        fprintf('Will use the svn client which is located in this folder: %s\n', svnpath);
+    end
+
+    if any(isspace(svnpath))
+        fprintf('WARNING! There are spaces (blanks) in the path to the svn client executable (see above).\n');
+        fprintf('On some systems this can cause a download failure, with some error message that may look\n');
+        fprintf('roughly like this: %s is not recognized as an internal or external command,\n', svnpath(1:find(isspace(svnpath), 1)));
+        fprintf('operable program or batch file.\n\n');
+        fprintf('Should the download fail with such a message then move/install the svn.exe program into a\n');
+        fprintf('folder whose path does not contain any blanks/spaces and retry.\n\n');
+        warning('Spaces in path to subversion client -- May cause download failure.');
+    end
+
+    if ~isempty(targetRevision)
+        targetRevision = [' -r ' targetRevision ' '];
+    end
+
+    % Create quoted version of 'p'ath, so blanks in path are handled properly:
+    pt = strcat('"', p, '"');
+
+    checkoutcommand = [svnpath 'svn checkout ' targetRevision ' https://github.com/Psychtoolbox-3/Psychtoolbox-3/' dflavor '/Psychtoolbox/ ' pt];
+
+    fprintf('The following CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
+    fprintf('%s\n', checkoutcommand);
+    fprintf('Downloading. This can take multiple minutes.\nAlas there may be no output to this window to indicate progress until the download is complete.\nPlease be patient ...\n');
+    fprintf('If you see some message asking something like "accept certificate (p)ermanently, (t)emporarily? etc."\n');
+    fprintf('then please press the p key on your keyboard, possibly followed by pressing the ENTER key.\n\n');
+
+    if isempty(ver('matlab'))
+        % Octave's system() command (and its dos() and unix() wrappers around system())
+        % does not print any live output from the checkoutcommand if return of the 'result'
+        % string is requested. We want some live feedback, so users get some feeling of
+        % download progress and don't get confused if the thing is just sitting there for
+        % minutes without giving feedback. Therefore don't request 'result':
+        err = system(checkoutcommand);
+        result = 'For reasons and troubleshooting, read the output above and all followup messages!';
+    else
+        % Matlab's system() command can provide live feedback from 'checkoutcommand'
+        % during svn checkout and return the same output in 'result' at the end, so
+        % we can get 'result' for parsing:
+        [err, result] = system(checkoutcommand, '-echo');
+    end
+
+    if err
+        fprintf('Sorry, the download command "CHECKOUT" failed with error code %d:\n', err);
+        fprintf('%s\n', result);
+
+        if ismac && err == 69
+            fprintf('If the error output suggests running a command, this should be typed into Terminal.app found in Applications/Utilities\n')
+        end
+
+        if isempty(ver('matlab'))
+            fprintf('If the error output above contains the text ''SSL handshake failed: SSL error: tlsv1 alert protocol version''\n');
+            fprintf('then your svn command line client is too old. Install a more recent Subversion command line client.\n');
+        else
+            if ~isempty(strfind(result, 'tlsv1 alert protocol version'))
+                fprintf('Seems your svn command line client is too old. Install a more recent Subversion command line client.\n');
+                error('Download failed. Subversion client too old.');
+            end
+        end
+        fprintf('The download failure might also be due to temporary network or server problems. You may want to try again in a\n');
+        fprintf('few minutes. It could also be that the subversion client was not (properly) installed. On Microsoft\n');
+        fprintf('Windows you will need to exit and restart Matlab or Octave after installation of the Subversion client. If that\n');
+        fprintf('does not help, you will need to reboot your machine before proceeding.\n');
+        fprintf('Another reason for download failure could be if an old working copy - a Psychtoolbox folder - still exists.\n');
+        fprintf('In that case, it may help to manually delete that folder. Or maybe you do not have write permissions for the target folder?\n\n');
+        error('Download failed.');
+    end
+    fprintf('Download succeeded!\n\n');
 return

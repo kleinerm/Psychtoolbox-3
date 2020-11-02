@@ -358,6 +358,15 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
     // One-Time setup of some parameters needed for userspace OpenGL context at first real bind:
     (*winRec)->needsViewportSetup = TRUE;
 
+    // HDR scaling factors for SDR -> HDR or HDR normalized -> HDR mapping:
+    // These default to good values for standard SDR/LDR windows, so both LDR and HDR content
+    // can be scaled to display in a reasonable way on a SDR display device. These defaults
+    // will get overriden in HDR mode by PsychHDR() during HDR window setup, and may get
+    // overriden for SDR windows as appropriate for tone-mapping, but these defaults should
+    // be good as a starter:
+    (*winRec)->maxSDRToHDRScaleFactor = 1.0;      // SDR content: Set default 1.0 for standard SDR/LDR window. Iow. no need to map.
+    (*winRec)->normalizedToHDRScaleFactor = 20.0; // HDR content: Set default for mapping 0 - 500 nits into standard SDR/LDR window range 0 - 1.
+
     return;
 }
 

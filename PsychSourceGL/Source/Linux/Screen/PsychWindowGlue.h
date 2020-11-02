@@ -56,5 +56,8 @@ void        PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord);
 // Special logging function, Linux/X11 only:
 psych_bool  PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int cmd, int aux1);
 
+// Linux/X11 only: Ensure that video outputs are properly configured to reproduce at least min_bpc framebuffer output precision:
+psych_bool PsychOSEnsureMinimumOutputPrecision(int screenNumber, int min_bpc);
+
 //end include once
 #endif

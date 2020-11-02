@@ -1585,13 +1585,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // as glActiveTexture() is part of core-spec:
         if (NULL == glActiveTextureARB || forceRebind) glActiveTextureARB = waffle_dl_sym(apidl, "glActiveTexture");
 
-        // Fun with NVidia ES implementation, which defines glOrthof() but not glOrthofOES() on their
-        // desktop drivers for GeForce and Quadro and their Tegra drivers for embedded.
-        // It is crucial to force rebind here, especially on embedded, as the entry point might
-        // be already bound to a dead zombie desktop GL implementation lib:
-        glOrthofOES = waffle_dl_sym(WAFFLE_DL_OPENGL_ES1, "glOrthofOES");
-        if (NULL == glOrthofOES) glOrthofOES = waffle_dl_sym(WAFFLE_DL_OPENGL_ES1, "glOrthof");
-        if (NULL == glOrthofOES) {
+        glOrthof = waffle_dl_sym(WAFFLE_DL_OPENGL_ES1, "glOrthof");
+        if (NULL == glOrthof) glOrthof = waffle_dl_sym(WAFFLE_DL_OPENGL_ES1, "glOrthofOES");
+        if (NULL == glOrthof) {
             printf("PTB-ERROR: NO glOrthofOES() or glOrthof() available under OpenGL-ES api! This will not work with OpenGL-ES! Aborting.\n");
             return(FALSE);
         }

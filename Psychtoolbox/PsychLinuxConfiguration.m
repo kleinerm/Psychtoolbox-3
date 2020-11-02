@@ -1,4 +1,4 @@
-function usedAnswers = PsychLinuxConfiguration(answers)
+function usedAnswers = PsychLinuxConfiguration(answers, dontshowad)
 % PsychLinuxConfiguration([answers]) -- Optimize setup of Linux system.
 %
 % This script modifies system settings and configuration files
@@ -94,6 +94,10 @@ else
   end
 end
 
+if nargin < 2 || isempty(dontshowad)
+    dontshowad = 0;
+end
+
 % Retrieve login username of current user:
 [ignore, username] = system('whoami'); %#ok<ASGLU>
 username = username(1:end-1);
@@ -101,8 +105,6 @@ addgroup = 0;
 
 % Setup of /etc/udev/rules.d/psychtoolbox.rules file, if needed:
 
-% Assume no need to install or update:
-needinstall = 0;
 fprintf('\n\nLinux specific system setup for running Psychtoolbox as non-root user:\n');
 fprintf('You need to be a user with administrative rights for this function to succeed.\n');
 fprintf('If you don''t have administrator rights, or if you don''t trust this script to\n');
@@ -115,6 +117,7 @@ fprintf('button boxes, and some special features of your graphics card, e.g., hi
 fprintf('timestamping. You will be able to access this hardware without the need to run\n');
 fprintf('Matlab or Octave as sudo root user.\n\n');
 
+% Assume no need to install or update:
 answer = '';
 needinstall = 0;
 
@@ -635,7 +638,7 @@ if needinstall && answer == 'y'
   else
     % Actually check if the gamemode package is installed on the system, by
     % checking if gamemoded is there:
-    [r, msg] = system('which gamemoded');
+    r = system('which gamemoded');
     if r ~= 0
       % Seems to be missing. Propose installing it:
       fprintf('I could not find the gamemoded executable in the path. This probably means\n');
@@ -715,7 +718,7 @@ pause;
 fprintf('\n\n\n');
 
 % Matlab version 8.4 (R2014b) or later?
-if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0')
+if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0') %#ok<EXIST>
   % Yes: If R2014b detects a Mesa OpenGL renderer as default system OpenGL
   % library, it will blacklist it and switch to its own utterly outdated
   % Mesa X11 software renderer (Version 7.2 !!). This is utterly inadequate
@@ -725,12 +728,16 @@ if ~IsOctave && exist('verLessThan') && ~verLessThan('matlab', '8.4.0')
   d = opengl('data');
   if (ischar(d.Software) && ~isempty(strfind(d.Software, 'true'))) || (isscalar(d.Software) && d.Software)
     % Software renderer. Let's change this for future Matlab sessions:
-    opengl('save','hardware');
-
     fprintf('Your version of Matlab R2014b or later was setup to use its own software OpenGL renderer.\n');
-    fprintf('As this is completely unsuitable for Psychtoolbox, i have changed the setting to use the\n');
-    fprintf('system provided hardware accelerated OpenGL library. You need to quit and restart Matlab\n');
-    fprintf('for these changes to take effect, otherwise visual stimulation will be broken.\n\n');
+    try
+        opengl('save','hardware');
+        fprintf('As this is completely unsuitable for Psychtoolbox, i have changed the setting to use the\n');
+        fprintf('system provided hardware accelerated OpenGL library. You need to quit and restart Matlab\n');
+        fprintf('for these changes to take effect, otherwise visual stimulation will be broken.\n\n');
+    catch
+        fprintf('This is completely unsuitable for Psychtoolbox! You may need to quit and restart Matlab\n');
+        fprintf('with the command line switch ''matlab -nosoftwareopengl'' to fix this each time.\n');
+    end
     fprintf('Press any key to continue to confirm you read and understood this.\n');
     pause;
     fprintf('\n\n');
@@ -739,5 +746,10 @@ end
 
 % Return the given answers / used config:
 usedAnswers = answers;
+
+% Our little ad for our services:
+if ~dontshowad && exist('PsychPaidSupportAndServices', 'file')
+    PsychPaidSupportAndServices(1);
+end
 
 return;

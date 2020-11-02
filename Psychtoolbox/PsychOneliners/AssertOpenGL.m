@@ -66,44 +66,23 @@ function AssertOpenGL
 %                   they shouldn't be needed anymore with our fixed M-Files.
 % 08/07/19  mk      Update for 3.0.16 release: GStreamer 1.4+ on Linux, on Windows
 %                   GStreamer 1.16+ MSVC build is mandatory on Octave *and* Matlab.
-
-% Ok, we sneak this in here, because we don't know a better place for it:
-% Disable this workaround for now. All M-Files presumably have been fixed,
-% so no need for it. Leave disabled code here in case we overlooked something.
-% if IsOctave
-%     % If we're running on a Octave version which supports this...
-%     if exist('do_braindead_shortcircuit_evaluation', 'builtin')
-%         % ... we enable Matlab-style short-circuit operator evaluation,
-%         % ie., treat & and | operators as if they are && and || operators,
-%         % if they are used in if and while statements and the conditions do
-%         % evaluate into logical expressions with a simple scalar truth
-%         % value.
-%         %
-%         % This is a hack to silence interpreter warnings and get compatible
-%         % behaviour. A better fix would be to fix all our M-Files to avoid
-%         % use of & and |, but this would make ptb completely untestable on
-%         % Matlab versions prior R2007a for MK. As long as we claim to
-%         % support pre-R2007a at least to some degree, we should be able to
-%         % run at least some basic correctness tests:
-%         do_braindead_shortcircuit_evaluation(1);
-% 
-%         % Disable associated Octave warning:
-%         warning('off', 'Octave:possible-matlab-short-circuit-operator');
-%     end
-% end
+% 10/20/20  mk      Update for 3.0.17 release: GStreamer 1.8+ on Linux, on Windows
+%                   GStreamer 1.18+ MSVC build is mandatory on Octave *and* Matlab.
+% 10/30/20  mk      Add ln -s symlink workaround for libdc1394.25.so instead of
+%                   required libdc1394.22.so on Ubuntu 20.10+.
 
 % We put the detection code into a try-catch-end statement: The old Screen command on windows
 % doesn't have a 'Version' subfunction, so it would exit to Matlab with an error.
 % We catch this error in the catch-branch and output the "non-OpenGL" error message...
 try
-   % Query a Screen subfunction that only exists in the new Screen command If this is not
-   % OpenGL PTB,we will get thrown into the catch-branch...
-   value=Screen('Preference', 'SkipSyncTests'); %#ok<NASGU>
-   return;
+    % Query a Screen subfunction that only exists in the new Screen command If this is not
+    % OpenGL PTB,we will get thrown into the catch-branch...
+    value=Screen('Preference', 'SkipSyncTests'); %#ok<NASGU>
+    return;
 catch %#ok<*CTCH>
-   fprintf('\n\n\nA very simple test call to the Screen() MEX file failed in AssertOpenGL, indicating\n');
-   fprintf('that either Screen is totally dysfunctional, or you are trying to run your script on\n');
-   fprintf('a system without Psychtoolbox-3 properly installed - or not installed at all.\n\n');
+    fprintf('\n\n\nA very simple test call to the Screen() MEX file failed in AssertOpenGL, indicating\n');
+    fprintf('that either Screen is totally dysfunctional, or you are trying to run your script on\n');
+    fprintf('a system without Psychtoolbox-3 properly installed - or not installed at all.\n\n');
 
     %   if IsWin
     %      le = psychlasterror;
@@ -118,73 +97,142 @@ catch %#ok<*CTCH>
     %      end
     %   end
 
-   if IsWin
-      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.16.0\n');
-      fprintf('or a later version. Screen() will not work with earlier versions, without GStreamer,\n');
-      fprintf('or with the MinGW variants of the GStreamer runtime!\n');
-      fprintf('Read ''help GStreamer'' for more info.\n\n');
-   end
+    if IsWin
+        fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.18.0\n');
+        fprintf('or a later version. Screen() will not work with earlier versions, without GStreamer,\n');
+        fprintf('or with the MinGW variants of the GStreamer runtime!\n');
+        fprintf('Read ''help GStreamer'' for more info.\n\n');
+    end
 
-   if IsLinux
+    if IsLinux
+        s = psychlasterror;
+
+        % Matlab specific troubleshooting:
+        if ~IsOctave
+            if ~isempty(strfind(s.message, 'gzopen64'))
+                fprintf('YOU SEEM TO HAVE A MATLAB INSTALLATION WITH A BROKEN/OUTDATED libz library!\n');
+                fprintf('This is the most likely cause for the error. You can either:\n');
+                fprintf('- Upgrade to a more recent version of Matlab in the hope that this fixes the problem.\n');
+                fprintf('- Or start Matlab from the commandline with the following command sequence as a workaround:\n\n');
+                fprintf('  export LD_PRELOAD=/lib/libz.so.1 ; matlab & \n\n');
+                fprintf('  If /lib/libz.so.1 doesn''t exist, try other locations like /usr/lib/libz.so.1 or other names\n');
+                fprintf('  like /lib/libz.so, or /usr/lib/libz.so\n');
+                fprintf('- A third option is to delete the libz.so library shipped with Matlab. Move away all\n');
+                fprintf('  files starting with libz.so from the folder /bin/glnx86 inside the Matlab main folder.\n');
+                fprintf('  This way, the linker can''t find Matlabs broken libz anymore and will use the system\n');
+                fprintf('  libz and everything will be fine.\n');
+                fprintf('\n');
+                error('Matlab bug -- Outdated/Defective libz installed. Follow above workarounds.');
+            end
+
+            % The Octave Screen.mex file is built to depend on the libdc1394
+            % version that is installed on the build system == target
+            % system, so stuff should just work(tm).
+            %
+            % The Matlab mex files however are built on Ubuntu 18.04 LTS
+            % atm., which ships with libdc1394.so.22, and so Screen.mexa64
+            % depends on exactly libdc1394.so.22. Ubuntu 20.10 and later
+            % ship with libdc1394.so.25 only, so running on 20.10 will cause
+            % link failure. Try to work around this by automatically
+            % creating a suitable symlink from the required libdc1394.so.22
+            % to the available libdc1394.so.25:
+            if ~isempty(strfind(s.message, 'libdc1394.so.22')) && ~exist('/lib/x86_64-linux-gnu/libdc1394.so.22', 'file') && exist('/lib/x86_64-linux-gnu/libdc1394.so.25', 'file')
+                cmd = 'sudo ln -s /lib/x86_64-linux-gnu/libdc1394.so.25 /lib/x86_64-linux-gnu/libdc1394.so.22';
+
+                fprintf('Seems your Linux distribution may be missing a suitable and functional libdc1394.so.22 library.\n');
+                fprintf('We probably can fix this problem by creating a symlink from the required libdc1394.so.22 to\n');
+                fprintf('the available libdc1394.so.25 by executing the following command as system administrator:\n\n');
+                fprintf('Command to execute: ''%s''\n\n', cmd);
+                fprintf('This will require you to enter your admin (sudo) password if you are a system administrator. Or you\n');
+                fprintf('can ask your system administrator to execute the above ''Command to execute'' inside a terminal window\n');
+                fprintf('and then just press enter when asked here for a sudo password.\n');
+                fprintf('Your choice. Will now call above command, which will prompt for the password...\n\n');
+                [rc, msg] = system(cmd, '-echo');
+                if (rc == 0) && exist('/lib/x86_64-linux-gnu/libdc1394.so.22', 'file')
+                    fprintf('It worked! Retrying if Screen() now works...\n');
+                else
+                    fprintf('Failed or aborted with error: %s\n', msg);
+                    fprintf('Will retry Screen() anyway, maybe you fixed it manually in the meantime...\n');
+                end
+
+                try
+                    value = Screen('Preference', 'SkipSyncTests'); %#ok<NASGU>
+                    fprintf('Success! We can carry on as usual, thank you for your cooperation. Case closed! :)\n\n\n');
+                    psychlasterror('reset');
+                    return;
+                catch
+                    fprintf('This still does not work for some reason. Guess this will need help from a human...\n');
+                end
+            else
+                fprintf('The library seems to exist in a suitable version, but something related to that library\n');
+                fprintf('is borked. This needs some human help from a capable human brain, sorry.\n');
+            end
+        else
+            % Octave specific troubleshooting:
+            if ~isempty(strfind(s.message, 'libdc1394.so.25')) && exist('/lib/x86_64-linux-gnu/libdc1394.so.22', 'file') && ~exist('/lib/x86_64-linux-gnu/libdc1394.so.25', 'file')
+                cmd = 'sudo -S ln -s /lib/x86_64-linux-gnu/libdc1394.so.22 /lib/x86_64-linux-gnu/libdc1394.so.25';
+
+                fprintf('Seems your Linux distribution may be missing a suitable and functional libdc1394.so.25 library.\n');
+                fprintf('We probably can fix this problem by creating a symlink from the required libdc1394.so.25 to\n');
+                fprintf('the available libdc1394.so.22 by executing the following command as system administrator:\n\n');
+                fprintf('Command to execute: ''%s''\n\n', cmd);
+                fprintf('This will require you to enter your admin (sudo) password if you are a system administrator. Or you\n');
+                fprintf('can ask your system administrator to execute the above ''Command to execute'' inside a terminal window\n');
+                fprintf('and then just press enter when asked here for a sudo password.\n');
+                fprintf('Your choice. Will now call above command, which will prompt for the password...\n\n');
+                [rc, msg] = system(cmd, '-echo');
+                if (rc == 0) && exist('/lib/x86_64-linux-gnu/libdc1394.so.25', 'file')
+                    fprintf('It worked! Retrying if Screen() now works...\n');
+                else
+                    fprintf('Failed or aborted with error: %s\n', msg);
+                    fprintf('Will retry Screen() anyway, maybe you fixed it manually in the meantime...\n');
+                end
+
+                try
+                    value = Screen('Preference', 'SkipSyncTests'); %#ok<NASGU>
+                    fprintf('Success! We can carry on as usual, thank you for your cooperation. Case closed! :)\n\n\n');
+                    psychlasterror('reset');
+                    return;
+                catch
+                    fprintf('This still does not work for some reason. Guess this will need help from a human...\n');
+                end
+            else
+                fprintf('The library seems to exist in a suitable version, but something related to that library\n');
+                fprintf('is borked. This needs some human help from a capable human brain, sorry.\n');
+            end
+        end
+
         fprintf('\n');
-        fprintf('The Psychtoolbox on GNU/Linux needs the following 3rd party libraries\n');
-        fprintf('in order to function correctly. If you get "Invalid MEX file errors",\n');
+        fprintf('Screen() on GNU/Linux needs the following 3rd party libraries\n');
+        fprintf('to function correctly. If you get "Invalid MEX file errors",\n');
         fprintf('or similar fatal error messages, check if these are installed on your\n');
         fprintf('system and if they are missing, install them via your system specific\n');
-        fprintf('software management tools:\n');
+        fprintf('software management tools (e.g., apt install on Debian or Ubuntu).\n');
+        fprintf('On a Debian/Ubuntu based system, you may get the system to install all these\n');
+        fprintf('required dependencies for you by issuing the following commmand in a terminal:\n\n');
+        fprintf('sudo apt build-dep psychtoolbox-3\n\n');
         fprintf('\n');
-        fprintf('For Screen() and OpenGL support:\n\n');
-        fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
-        fprintf('* GStreamer multimedia framework: At least version 1.4.0 of the core runtime and the gstreamer-base plugins.\n');
-        fprintf('  For optimal performance use the latest available versions.\n');
-        fprintf('  You may need to install additional packages to play back all\n');
-        fprintf('  common audio- and video file formats. See "help GStreamer".\n');
-        fprintf('* libusb-1.0 USB low-level access library.\n');
-        fprintf('* libdc1394 Firewire video capture library.\n');
-        fprintf('* libraw1394 Firewire low-level access library.\n');
+        fprintf('* GStreamer multimedia framework: At least version 1.8.0 of the core runtime and the gstreamer-base plugins.\n');
+        fprintf('  For optimal performance and the full set of features, use the latest available versions. E.g., for optimal HDR\n');
+        fprintf('  movie playback GStreamer 1.18 would be needed, although it can be made to work less conveniently with v1.16.\n');
+        fprintf('  You may need to install additional packages to playback all common audio and video file formats.\n');
+        fprintf('  See "help GStreamer" for more info.\n\n');
+        fprintf('* libusb-1.0 USB low-level access library.\n\n');
+        fprintf('* libdc1394 IEEE-1394 Firewire and USB-Vision IIDC video capture library.\n');
+        fprintf('  libdc1394.22.so on systems older than Ubuntu 20.04-LTS, libdc1394.25.so for later systems.\n');
         fprintf('\n\n');
-        fprintf('For PsychKinect() (See "help InstallKinect"):\n\n');
-        fprintf('* libusb-1.0 USB low-level access library.\n');
-        fprintf('* libfreenect-0.5: Kinect driver library version 0.5 or later.\n');
-        fprintf('\n');
-        fprintf('For PsychHID() support:\n\n');
-        fprintf('* libusb-1.0 USB low-level access library.\n');
-        fprintf('\n\n');
-        fprintf('For PsychPortAudio() support:\n\n');
-        fprintf('* libportaudio.so.2 Portaudio sound library.\n');
-        fprintf('\n\n');
-        fprintf('For Eyelink():\n\n');
-        fprintf('* The Eyelink core libraries from the SR-Research download website.\n');
-        fprintf('\n');
-        fprintf('\n');
-        fprintf('If you receive an installation failure soon, then please read the output of\n');
-        fprintf('"help GStreamer" first and follow the installation instructions for GStreamer\n');
-        fprintf('on Linux. Psychtoolbox''s Screen() command will not work without GStreamer!\n\n');
+    end
 
-       if ~IsOctave
-           s = psychlasterror;
-           if ~isempty(strfind(s.message, 'gzopen64'))
-               fprintf('YOU SEEM TO HAVE A MATLAB INSTALLATION WITH A BROKEN/OUTDATED libz library!\n');
-               fprintf('This is the most likely cause for the error. You can either:\n');
-               fprintf('- Upgrade to a more recent version of Matlab in the hope that this fixes the problem.\n');
-               fprintf('- Or start Matlab from the commandline with the following command sequence as a workaround:\n\n');
-               fprintf('  export LD_PRELOAD=/lib/libz.so.1 ; matlab & \n\n');
-               fprintf('  If /lib/libz.so.1 doesn''t exist, try other locations like /usr/lib/libz.so.1 or other names\n');
-               fprintf('  like /lib/libz.so, or /usr/lib/libz.so\n');
-               fprintf('- A third option is to delete the libz.so library shipped with Matlab. Move away all\n');
-               fprintf('  files starting with libz.so from the folder /bin/glnx86 inside the Matlab main folder.\n');
-               fprintf('  This way, the linker can''t find Matlabs broken libz anymore and will use the system\n');
-               fprintf('  libz and everything will be fine.\n');
-               fprintf('\n');
-               error('Matlab bug -- Outdated/Defective libz installed. Follow above workarounds.');
-           end
-       end
-   end
+    % Tried to execute old Screen command of old Win-PTB or MacOS9-PTB. This will tell user about non-OpenGL PTB.
+    fprintf('Screen() does not work. Read all preceeding and following output as well as "help AssertOpenGL" for more info.\n');
+    fprintf('A first diagnostic test would be to simply type ''Screen'' in your Matlab/Octave console and check what its output is.\n');
+    fprintf('\n\nThe returned error message by Matlab/Octave was:\n');
+    ple;
 
-   % Tried to execute old Screen command of old Win-PTB or MacOS9-PTB. This will tell user about non-OpenGL PTB.
-   fprintf('This script or function is designated to run only an Psychtoolbox based on OpenGL. Read "help  AssertOpenGL" for more info.\n\n');
-   fprintf('A first more diagnostic test would be to simply type Screen in your Matlab/Octave console and check what its output is.\n\n');
-   fprintf('\n\nThe returned error message by Matlab/Octave was:\n');
-   ple;
-   error('Problems detected in call to AssertOpenGL;');
-end;
+    % Our little ad for our troubleshooting services:
+    if exist('PsychPaidSupportAndServices', 'file')
+        PsychPaidSupportAndServices(2);
+    end
+
+    error('Problems detected in call to AssertOpenGL;');
+end

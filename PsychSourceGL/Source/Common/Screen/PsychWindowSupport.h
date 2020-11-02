@@ -62,6 +62,7 @@ unsigned int PsychGetNrFrameSeqStereoWindowsActive(void);
 unsigned int PsychGetNrVRRSchedulerWindowsActive(void);
 psych_bool PsychIsMasterThread(void);
 void PsychLockedTouchFramebufferIfNeeded(PsychWindowRecordType *windowRecord);
+double PsychGetVblankTimestamps(PsychWindowRecordType *windowRecord, double *vblankStartTime);
 
 //end include once
 #endif

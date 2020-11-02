@@ -6,6 +6,13 @@
 %
 % See http://www.brightsidetech.com
 %
+% NOTE: Deprecated and scheduled for removal. The company BrightSide
+%       is dead since before the year 2010, and so are most likely
+%       all DR37-P displays ever made. Therefore the code here is
+%       almost certainly obsolete. Also, the driver mex file is no
+%       longer bundled since many years, given it was only built
+%       for 32-Bit Intel cpu's under WindowsXP for 32-Bit Matlab.
+%
 % The driver consists of a high-level M-File "BrightSideHDR.m"
 % which implements the user callable PTB interface and a low-
 % level Matlab MEX file "BrightSideCore.dll" that does the
@@ -21,23 +28,13 @@
 %
 % Files:
 %
-% SimpleHDRDemo.m       -- Simple demo to demonstrate use of BrightSide-HDR with
-%                          Psychtoolbox.
-%
-% ShowHDRDemo.m         -- Less simple demo to demonstrate use of these functions.
-%
-% HDRViewer.m           -- An interactive viewer for HDR images, including
-%                          zoom function.
+% BrightSideBasicDemo   -- Basic demo to demonstrate use of the BrightSide display.
 %
 % BrightSideHDR.m       -- Psychtoolbox interface to the display.
-% BrightSideCore.dll    -- Matlab MEX interface, used by BrightSideHDR.
-% BrightSideCore.m      -- Technical documentation for BrightSideCore.dll.
-% BrightSideCore.cpp    -- C++ source code for BrightSideCore.dll.
+% BrightSideCore.m      -- Technical documentation for BrightSideCore.mexw32.
+% BrightSideCore.cpp    -- C++ source code for BrightSideCore.mexw32
 %
 % BSRuntimeLibs/        -- Subfolder for runtime libraries and config.
 %                          Empty by default. Needs to be filled with files that
 %                          are bundled with the software for your display device.
-%
-% HDRRead.m             -- Generic HDR image reader. Dispatches into helper
-%                          routines for different file formats.
 %

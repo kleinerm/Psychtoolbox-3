@@ -1,0 +1,65 @@
+/* HDR10-PQ_Shader.frag.txt -- Output formatter from HDR10 to PQ OETF.
+ *
+ * This shader converts color values represented in the BT-2020/Rec.2020
+ * color space into the HDR10 SMPTE ST-2084 PQ "Perceptual Quantizer" OETF
+ * encoding needed for decoding by a PQ EOTF in a HDR10 compliant HDR display.
+ *
+ * The input color values are either encoded in units of nits or in units of
+ * 80 nits, ie. 1.0 == 1.0 nits or 1.0 == 80 nits.
+ *
+ * Copyright (c) 2020 Mario Kleiner - Licensed to you under MIT license.
+ *
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect Image;
+uniform float Prescale;
+uniform int doPQEncode;
+uniform int doCSC;
+uniform mat3 MCSC;
+
+/* Declare external function for color conversion: */
+vec4 icmTransformColor(vec4 incolor);
+
+void main()
+{
+    vec3 L, Lp, f, v;
+
+    /* Get default texel read position (x,y): x is column, y is row of image. */
+    vec2 readpos = gl_TexCoord[0].st;
+
+    /* Get RGB color input values: */
+    vec4 incolor = texture2DRect(Image, readpos);
+
+    /* Use our builtin 3x3 matrix CSC? */
+    if (doCSC > 0) {
+        /* Apply simple 3x3 matrix vector multiply for gamut conversion: */
+        incolor.rgb = MCSC * incolor.rgb;
+    }
+    else {
+        /* Apply some external color transformation (clamping, range check, color space conversion...): */
+        incolor = icmTransformColor(incolor);
+    }
+
+    /* PQ encoding for HDR-10 BT-2020, or linear encoding for scRGB? */
+    if (doPQEncode > 0) {
+        /* Rescale and clamp them into normalized 0.0 - 1.0 input range for PQ mapping: */
+        L = clamp(incolor.rgb * Prescale, 0.0, 1.0);
+
+        /* Apply SMPTE ST-2084 PQ OETF: */
+        Lp = pow(L, vec3(0.1593017578125));
+        f = (0.8359375 + 18.8515625 * Lp) / (1.0 + 18.6875 * Lp);
+        v = pow(f, vec3(78.84375));
+    }
+    else {
+        /* Rescale, but do not clamp, as scRGB can even have negative color values: */
+        v = incolor.rgb * Prescale;
+    }
+
+    /* Assign output color values, PQ encoded into normalized 0.0 - 1.0 range: */
+    gl_FragColor.rgb = v;
+
+    /* No transparency here, fully opaque, in case alpha is used at all: */
+    gl_FragColor.a = 1.0;
+}
