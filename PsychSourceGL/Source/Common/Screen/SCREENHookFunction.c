@@ -140,7 +140,7 @@ static char synopsisString[] =
     "change in multiSample setting, ie., the effective number of samples per pixel for a backing texture. This limitation may get relaxed "
     "in future versions of the software if possible and sensible.\n"
     "Parameters and their meaning:\n"
-    "'hookName' Currently ignored, placeholder for future extensions.\n"
+    "'hookname' Currently ignored, placeholder for future extensions.\n"
     "'leftglHandle' OpenGL texture object handle of the left-eye texture in stereoMode 12, or of the mono-texture in mono mode.\n"
     "'rightglHandle' OpenGL texture object handle of the right-eye texture in stereoMode 12, or ignored in mono mode.\n"
     "'glTextureTarget' OpenGL texture target: GL_TEXTURE_2D or GL_TEXTURE_2D_MULTISAMPLE, depending on multisample configuration.\n"
@@ -156,15 +156,38 @@ static char synopsisString[] =
     "For internally generated textures (without flag kPsychUseExternalSinkTextures), the handles should be considered read-only: Binding "
     "the textures for sampling/reading from them is appropriate, modifying them in any way is forbidden.\n"
     "\n\n"
+    "Screen('HookFunction', windowPtr, 'ImportDisplayBufferInteropMemory' [, hookname][, viewId=0][, interopMemObjectHandle][, allocationSize][, formatSpec][, tilingMode][, memoryOffset][, width][, height][, interopSemaphoreHandle]);\n"
+    "CAUTION: EXPERIMENTAL, UNSTABLE API - Subject to backwards incompatible breaking changes without notice!\n"
+    "Replace the current image backing memory for the final output color buffers of the imaging pipeline by externally imported memory.\n"
+    "This only works if imagingMode flag kPsychNeedFinalizedFBOSinks is set or stereoMode 12 is active, which implicitely sets that flag.\n"
+    "This uses the external memory objects OpenGL extension to import external backing memory, e.g., from a Vulkan gpu + driver, and assign "
+    "it as new backing memory oject to the textures which are used to implement the final output color buffers of the pipeline. Iow. it allows "
+    "to render into image buffers of an external agent, e.g., a Vulkan device instance.\n"
+    "Parameters and their meaning:\n"
+    "'hookname' Currently ignored, placeholder for future extensions.\n"
+    "'viewId' Selects the left-eye/mono framebuffer if 0, and the right-eye framebuffer if 1 in a stereoMode 12 configuration.\n"
+    "'interopMemObjectHandle' Operating system specific handle to the interop image backing memory.\n"
+    "'allocationSize' Number of bytes of backing memory for the 'interopMemObjectHandle' to import.\n"
+    "'formatSpec' Type of texture to create: 0 = GL_RGBA8, 1 = GL_RGB10A2, 2 = GL_RGBA16F, 3 = GL_RGBA16.\n"
+    "'tilingMode' Type of tiling to use/assume for rendering: 0 = Linear (non-tiled), 1 = Tiled.\n"
+    "'memoryOffset' Memory offset in bytes into the imported memory object to use.\n"
+    "'width' Width of texture in pixels.\n"
+    "'height' Height of texture in pixels.\n"
+    "'interopSemaphoreHandle' Operating system specific handle to an external interop-image-rendering-complete semaphore. "
+    "If this handle is provided, then Screen() will signal the associated OpenGL semaphore each time OpenGL rendering "
+    "into the imported interop image is finished.\n"
+    "\n\n"
     "Screen('HookFunction', windowPtr, 'SetOneshotFlipFlags' [, hookname], flipFlags);\n"
     "Assign special flags to be applied one-time during the next execution of Screen('Flip') or Screen('AsyncFlipBegin').\n"
     "'hookname' is accepted, but currently ignored. Pass '' or [] for now.\n"
     "These 'flipFlags' will be applied during the next window flip operation, and each applied flag will then auto-reset "
-    "after application. This is mostly meant to be called from within imaging pipeline processing chains during preflip "
-    "operations or the active presentation sequence to modify behaviour of that sequence. The following 'flipFlags' are "
-    "currently implemented: kPsychSkipVsyncForFlipOnce, kPsychSkipTimestampingForFlipOnce, kPsychSkipSwapForFlipOnce, kPsychSkipWaitForFlipOnce.\n"
+    "after application, unless you also pass in the kPsychDontAutoResetOneshotFlags to prevent \"OneShot\" auto-reset.\n"
+    "This is mostly meant to be called from within imaging pipeline processing chains during preflip operations or the "
+    "active presentation sequence to modify behaviour of that sequence. The following 'flipFlags' are "
+    "currently implemented: kPsychSkipVsyncForFlipOnce, kPsychSkipTimestampingForFlipOnce, kPsychSkipSwapForFlipOnce, "
+    "kPsychSkipWaitForFlipOnce, kPsychDontAutoResetOneshotFlags.\n"
     "\n\n"
-    "Screen('HookFunction', windowPtr, 'SetOneshotFlipResults' [, hookname], VBLTimestamp [, StimulusOnsetTime=VBLTimestamp][, Missed=0]);\n"
+    "Screen('HookFunction', windowPtr, 'SetOneshotFlipResults' [, hookname], VBLTimestamp [, StimulusOnsetTime=VBLTimestamp][, Missed=0][, Beampos=-1]);\n"
     "Assign override timestamp values to return from Screen('Flip') or Screen('AsyncFlipBegin').\n"
     "'hookname' is accepted, but currently ignored. Pass '' or [] for now.\n"
     "The provided timestamps will be applied during return from the next window flip operation and returned as the "
@@ -176,6 +199,7 @@ static char synopsisString[] =
     "'VBLTimestamp' The vbl timestamp of Flip completion, or something semantically equivalent, useful for Flip scheduling.\n"
     "'StimulusOnsetTime' Optional true stimulus onset time. Will be set to VBLTimestamp if omitted. Must be StimulusOnsetTime >= VBLTimestamp.\n"
     "'Missed' The presentation deadline miss estimate aka 'Missed' flag of Screen('Flip'). Defaults to 0 if omitted.\n"
+    "'Beampos' The beamposition at flip completion, as returned in the 'Beampos' return argument of Flip. Defaults to -1 if omitted.\n"
     "\n\n"
     "Screen('HookFunction', windowPtr, 'SetWindowBackendOverrides' [, hookname][, pixelSize][, refreshInterval][, proj]);\n"
     "Assign override values for various window properties, as provided by the backend client instead of the windowing system.\n"
@@ -185,6 +209,40 @@ static char synopsisString[] =
     "returned by Screen('NominalFramerate', windowPtr), Screen('Framerate', windowPtr), and Screen('GetFlipInterval', windowPtr).\n"
     "'proj' Override projection matrix/matrices for 2D drawing: proj = [] == don't change, proj = 1 == Disable overrides, proj = 4x4 matrix "
     "for mono-mode drawing, proj = 4x4x2 matrices for separate matrices in stereo modes (:,:,1) left eye, (:,:,2) right eye.\n"
+    "\n\n"
+    "[maxSDRToHDRScaleFactor, normalizedToHDRScaleFactor] = Screen('HookFunction', windowPtr, 'SetHDRScalingFactors' [, hookname][, maxSDRToHDRScaleFactor][, normalizedToHDRScaleFactor]);\n"
+    "Get or assign scaling factors to map SDR color values or HDR color values into the linear HDR color range and units of the window.\n"
+    "'maxSDRToHDRScaleFactor' defines to which color value the maximum input color value of SDR content is mapped. This is used by "
+    "Screen('MakeTexture') for converting the color/luminance channels of SDR uint8 image matrices into the value range needed for "
+    "making the texture compatible with the HDR framebuffer. It is also used for mapping SDR movie video content to HDR framebuffer. "
+    "Example: A factor of 80 would mean to map the maximum uint8 texture value 255 in MakeTexture, or the maximum possible component value of "
+    "the video frame from a SDR movie to an output value of 80 units - Typical if the framebuffer operates in units of Nits, so maximum "
+    "SDR content intensity would map to 80 Nits, standardized as typical maximum of SDR content.\n"
+    "'normalizedToHDRScaleFactor' defines to which color value the maximum possible input color value of HDR content is mapped. This is used by "
+    "movie playback to map the normalized linear 0.0 - 1.0 intensity range of HDR movies to the linear range 0.0 - maximum HDR intensity. "
+    "A typical value would be 10000 to map the 1.0 normalized maximum to the maximum intensity of 10000 nits of the current HDR display "
+    "standards HDR10, HDR10+, DolbyVision etc., if the framebuffer uses units of Nits. A factor of 125 would be typical if the framebuffer "
+    "is set up to operate in units of multiples of 80 Nits, another common standard, where a value of 125 corresponds to 10000 Nits. "
+    "This scaling factor is also used for displaying HDR movie frames into a SDR window, in this scale to upscale some fraction of the "
+    "lower range of HDR values to the 0.0 - 1.0 intensity range of a SDR window, as a dumb people's tone-mapping operator. E.g., the "
+    "startup default is to map 0 - 500 nits input to the 0 - 1 range, to get something reasonable displayed even without application of "
+    "some proper tone-mapping operator."
+    "\n\n"
+    "colorGamut = Screen('HookFunction', windowPtr, 'WindowColorGamut' [, hookname][, colorGamut]);\n"
+    "Return the current color gamut settings for the onscreen window 'windowPtr'. Optionally assign new settings.\n"
+    "'hookname' is accepted, but currently ignored. Pass '' or [] for now.\n"
+    "'colorGamut' as return argument is a 2x4 matrix specifying the currently assigned color gamut for the window. "
+    "You can specify an optional 'colorGamut' matrix parameter to set a new color gamut.\n"
+    "By default, 'colorGamut' is an all-zeros matrix, which means that no color gamut is assigned, and Screen() "
+    "should use reasonable defaults (which may be context dependent) if it does some gamut dependent processing. "
+    "If you do set a matrix, then it must be a 2-by-4 matrix, encoding the CIE-1931 2D chromaticity coordinates of the "
+    "red, green, and blue color primaries in columns 1, 2, and 3, and the location of the white-point "
+    "in column 4. This defines the color space and gamut in which the visual content of the onscreen window is "
+    "supposed to live. Currently, this color gamut is only used for movie playback with pixelFormat 11, e.g., HDR playback. "
+    "When decoding and returning video frames from a movie, Screen() will perform a color space transformation to remap the "
+    "image pixels from the source color gamut of the movie to the color gamut specified for the window. If no 'WindowColorGamut' "
+    "call was made prior to start of movie playback, then color gamut will be selected as BT-2020 for HDR windows, and BT-709 for "
+    "standard dynamic range windows.\n"
     "\n\n"
     "General notes:\n\n"
     "* Hook chains are per onscreen window, so each window can have a different configuration and enable state.\n"
@@ -200,6 +258,7 @@ PsychError SCREENHookFunction(void)
     char                        *cmdString, *hookString, *idString, *blitterString, *insertString;
     int                         cmd, slotid, flag1, whereloc = 0;
     int                         leftglHandle, rightglHandle, glTextureTarget, format, multiSample, width, height;
+    psych_int64                 flag64;
     double                      doubleptr;
     double                      shaderid, luttexid1 = 0;
     int                         n, m, p;
@@ -212,7 +271,7 @@ PsychError SCREENHookFunction(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    PsychErrorExit(PsychCapNumInputArgs(10));
+    PsychErrorExit(PsychCapNumInputArgs(12));
     PsychErrorExit(PsychRequireNumInputArgs(2));
     PsychErrorExit(PsychCapNumOutputArgs(7));
 
@@ -239,12 +298,15 @@ PsychError SCREENHookFunction(void)
     if (strcmp(cmdString, "SetOneshotFlipFlags")==0) cmd=16;
     if (strcmp(cmdString, "SetOneshotFlipResults")==0) cmd=17;
     if (strcmp(cmdString, "SetWindowBackendOverrides")==0) cmd=18;
+    if (strcmp(cmdString, "ImportDisplayBufferInteropMemory")==0) cmd=19;
+    if (strcmp(cmdString, "SetHDRScalingFactors")==0) cmd=20;
+    if (strcmp(cmdString, "WindowColorGamut")==0) cmd=21;
 
     if (cmd == 0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
     if (whereloc < 0) PsychErrorExitMsg(PsychError_user, "Unknown/Invalid/Unparseable insert location specified to 'HookFunction' 'InsertAtXXX'.");
 
     // Need hook name?
-    if (cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15 && cmd!=16 && cmd!=17 && cmd!=18) {
+    if (cmd!=9 && cmd!=8 && cmd!=11 && cmd!=14 && cmd!=15 && cmd!=16 && cmd!=17 && cmd!=18 && cmd!=19 && cmd!=20 && cmd!=21) {
         // Get it:
         PsychAllocInCharArg(3, kPsychArgRequired, &hookString);
     }
@@ -446,18 +508,22 @@ PsychError SCREENHookFunction(void)
         break;
 
         case 16: // SetOneshotFlipFlags
-            flag1 = 0;
-            if (!PsychCopyInIntegerArg(4, FALSE, &flag1) && (verbosity > 1))
+            flag64 = 0;
+            if (!PsychCopyInIntegerArg64(4, FALSE, &flag64) && (verbosity > 1))
                 printf("PTB-WARNING: HookFunction call to SetOneshotFlipFlags failed, because mandatory flipFlags parameter is missing.\n");
 
-            if (flag1 & ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce | kPsychSkipWaitForFlipOnce)) {
+            if (flag64 & ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce | kPsychSkipWaitForFlipOnce | kPsychDontAutoResetOneshotFlags)) {
                 if (verbosity > 1)
                     printf("PTB-WARNING: HookFunction call to SetOneshotFlipFlags failed, because invalid/unsupported flipFlags were specified.\n");
             } else {
-                windowRecord->specialflags |= flag1;
+                // Reset current flags:
+                windowRecord->specialflags &= ~(kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce | kPsychSkipWaitForFlipOnce | kPsychDontAutoResetOneshotFlags);
+
+                // Add new ones:
+                windowRecord->specialflags |= flag64;
 
                 // Any flag set that would prevent proper timestamping for the onscreen window in this cycle?
-                if (flag1 & (kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce)) {
+                if (flag64 & (kPsychSkipVsyncForFlipOnce | kPsychSkipTimestampingForFlipOnce | kPsychSkipSwapForFlipOnce)) {
                     // Invalidate windowRecord's bookkeeping:
                     windowRecord->time_at_last_vbl = 0;
                     windowRecord->rawtime_at_swapcompletion = 0;
@@ -486,6 +552,10 @@ PsychError SCREENHookFunction(void)
                 // missEstimate of Flip, optional:
                 if (!PsychCopyInDoubleArg(6, FALSE, &windowRecord->postflip_vbltimestamp))
                     windowRecord->postflip_vbltimestamp = 0;
+
+                // beamposition of Flip, optional:
+                if (!PsychCopyInIntegerArg(7, FALSE, &windowRecord->beamposition_at_flip))
+                    windowRecord->beamposition_at_flip = -1;
             }
         break;
 
@@ -495,8 +565,16 @@ PsychError SCREENHookFunction(void)
                 PsychErrorExitMsg(PsychError_user, "In 'SetWindowBackendOverrides': No kPsychNeedFinalizedFBOSinks imaging mode selected. Overrides forbidden!");
 
             // Screen('PixelSize'):
-            if (PsychCopyInIntegerArg(4, FALSE, &flag1))
+            if (PsychCopyInIntegerArg(4, FALSE, &flag1)) {
                 windowRecord->depth = flag1;
+
+                // Running under Linux/X11 native?
+                #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE)
+                    // Make sure RandR outputs are properly configured for native video output at
+                    // at least 'bpc' (== windowRecord->depth / 3) bits per color channel:
+                    PsychOSEnsureMinimumOutputPrecision(windowRecord->screenNumber, windowRecord->depth / 3);
+                #endif
+            }
 
             // Video refresh interval / refresh rate / flipinterval indicators:
             if (PsychCopyInDoubleArg(5, FALSE, &windowRecord->VideoRefreshInterval)) {
@@ -525,6 +603,52 @@ PsychError SCREENHookFunction(void)
                     windowRecord->proj = (double*) malloc(2 * 16 * sizeof(double));
                     memcpy(windowRecord->proj, dblmat, m * n * p * sizeof(double));
                 }
+            }
+        break;
+
+        case 19: // ImportDisplayBufferInteropMemory
+            // Get old values for textures. Just to check if this operation is supported at all in the current imaging pipeline configuration:
+            if (!PsychGetPipelineExportTexture(windowRecord, &leftglHandle, &rightglHandle, &glTextureTarget, &format, &multiSample, &width, &height) && (verbosity > 1))
+                printf("PTB-WARNING: Invalid HookFunction call to ImportDisplayBufferInteropMemory! Not supported with current imagingMode. Trying to carry on - Prepare for trouble!\n");
+
+            {
+                int viewId, allocationSize, formatSpec, tilingMode, memoryOffset;
+                void *interopMemObjectHandle = NULL;
+                void *interopSemaphoreHandle = NULL;
+
+                // Get new optional override values and set them:
+                PsychCopyInIntegerArg(4, FALSE, &viewId);
+                PsychCopyInPointerArg(5, FALSE, &interopMemObjectHandle);
+                PsychCopyInIntegerArg(6, FALSE, &allocationSize);
+                PsychCopyInIntegerArg(7, FALSE, &formatSpec);
+                PsychCopyInIntegerArg(8, FALSE, &tilingMode);
+                PsychCopyInIntegerArg(9, FALSE, &memoryOffset);
+                PsychCopyInIntegerArg(10, FALSE, &width);
+                PsychCopyInIntegerArg(11, FALSE, &height);
+                PsychCopyInPointerArg(12, FALSE, &interopSemaphoreHandle);
+                if (!PsychSetPipelineExportTextureInteropMemory(windowRecord, viewId, interopMemObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height, interopSemaphoreHandle) && (verbosity > 1))
+                    printf("PTB-WARNING: HookFunction call to ImportDisplayBufferInteropMemory failed. See above error message for details. Trying to carry on - Prepare for trouble!\n");
+            }
+        break;
+
+        case 20: // SetHDRScalingFactors
+            // Return old settings:
+            PsychCopyOutDoubleArg(1, FALSE, windowRecord->maxSDRToHDRScaleFactor);
+            PsychCopyOutDoubleArg(2, FALSE, windowRecord->normalizedToHDRScaleFactor);
+
+            // Optionally accept new settings:
+            PsychCopyInDoubleArg(4, FALSE, &windowRecord->maxSDRToHDRScaleFactor);
+            PsychCopyInDoubleArg(5, FALSE, &windowRecord->normalizedToHDRScaleFactor);
+        break;
+
+        case 21: // WindowColorGamut
+            PsychCopyOutDoubleMatArg(1, kPsychArgOptional, 2, 4, 1, &windowRecord->colorGamut[0]);
+
+            if (PsychAllocInDoubleMatArg(4, kPsychArgOptional, &m, &n, &p, &dblmat)) {
+                if (m != 2 || n != 4 || p > 1)
+                    PsychErrorExitMsg(PsychError_user, "HookFunction call to WindowColorGamut failed. Invalid 'colorGamut' matrix specified. Must be a 2x4 matrix.");
+
+                memcpy(&windowRecord->colorGamut[0], dblmat, sizeof(windowRecord->colorGamut));
             }
         break;
     }

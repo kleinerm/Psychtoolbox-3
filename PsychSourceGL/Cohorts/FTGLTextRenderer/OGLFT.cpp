@@ -3691,10 +3691,24 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
     GLubyte* inverted_pixmap =
       invertBitmap( face->glyph->bitmap, &width, &height );
 
-    GLfloat red_map[2] = { background_color_[R], foreground_color_[R] };
-    GLfloat green_map[2] = { background_color_[G], foreground_color_[G] };
-    GLfloat blue_map[2] = { background_color_[B], foreground_color_[B] };
-    GLfloat alpha_map[2] = { background_color_[A], foreground_color_[A] };
+    // MK: The original mapping makes no sense and only worked by accident.
+    // Also it prevented HDR color values > 1.0 to go through to the framebuffer:
+    //GLfloat red_map[2] = { background_color_[R], foreground_color_[R] };
+    //GLfloat green_map[2] = { background_color_[G], foreground_color_[G] };
+    //GLfloat blue_map[2] = { background_color_[B], foreground_color_[B] };
+    //GLfloat alpha_map[2] = { background_color_[A], foreground_color_[A] };
+
+    // MK: Replace by simple non-ink == (0,0,0,0) transparent black and
+    // glyph ink == (1,1,1,1) Maximum intensity opaque "white".
+    // As we use GL_MODULATE for texture mapping, this means the texture
+    // only acts as mask to decide where the glColor4f() fragment color shows
+    // as glyph ink, and where it doesn't, ie. background shows.
+    // This way, we can render text in the full glColor4f value range, which
+    // in HDR mode is >> 1.0 ie. far beyond 1 nits.
+    GLfloat red_map[2] = { 0, 1 };
+    GLfloat green_map[2] = { 0, 1 };
+    GLfloat blue_map[2] = { 0, 1 };
+    GLfloat alpha_map[2] = { 0, 1 };
 
     glPixelMapfv( GL_PIXEL_MAP_I_TO_R, 2, red_map );
     glPixelMapfv( GL_PIXEL_MAP_I_TO_G, 2, green_map );
@@ -3942,20 +3956,32 @@ QString Face::format_number ( const QString& format, double number ) { return( Q
         inverted_pixmap = invertPixmap( face->glyph->bitmap, &width, &height );
     }
 
-    glPushAttrib( GL_PIXEL_MODE_BIT );
-    glPixelTransferf( GL_RED_SCALE, foreground_color_[R] - background_color_[R] );
-    glPixelTransferf( GL_GREEN_SCALE, foreground_color_[G]-background_color_[G] );
-    glPixelTransferf( GL_BLUE_SCALE, foreground_color_[B]-background_color_[B] );
-    glPixelTransferf( GL_ALPHA_SCALE, foreground_color_[A]-background_color_[A] );
-    glPixelTransferf( GL_RED_BIAS, background_color_[R] );
-    glPixelTransferf( GL_GREEN_BIAS, background_color_[G] );
-    glPixelTransferf( GL_BLUE_BIAS, background_color_[B] );
-    glPixelTransferf( GL_ALPHA_BIAS, background_color_[A] );
+    // MK: The original mapping makes no sense and only worked by accident.
+    // Also it prevented HDR color values > 1.0 to go through to the framebuffer:
+    // MK: Replace by simple non-ink == (0,0,0,0) transparent black and
+    // glyph ink == (1,1,1,1) Maximum intensity opaque "white".
+    // Anti-aliased region of the glyph map to (1,1,1,antialiasalpha) with
+    // antialiasalpha = 0.0 - 1.0 as provided by FreeType.
+    //
+    // As we use GL_MODULATE for texture mapping, this means the texture
+    // only acts as alpha-mask to decide where the glColor4f() fragment color shows
+    // fully or partially as glyph ink, and where it doesn't, ie. background shows.
+    // This way, we can render text in the full glColor4f value range, which
+    // in HDR mode is >> 1.0 ie. far beyond 1 nits.
+    // glPushAttrib( GL_PIXEL_MODE_BIT );
+    // glPixelTransferf( GL_RED_SCALE, foreground_color_[R] - background_color_[R] );
+    // glPixelTransferf( GL_GREEN_SCALE, foreground_color_[G]-background_color_[G] );
+    // glPixelTransferf( GL_BLUE_SCALE, foreground_color_[B]-background_color_[B] );
+    // glPixelTransferf( GL_ALPHA_SCALE, foreground_color_[A]-background_color_[A] );
+    // glPixelTransferf( GL_RED_BIAS, background_color_[R] );
+    // glPixelTransferf( GL_GREEN_BIAS, background_color_[G] );
+    // glPixelTransferf( GL_BLUE_BIAS, background_color_[B] );
+    // glPixelTransferf( GL_ALPHA_BIAS, background_color_[A] );
 
     glTexImage2D( GL_TEXTURE_2D, 0, GL_RGBA, width, height,
 		  0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, inverted_pixmap );
 
-    glPopAttrib();
+    //glPopAttrib();
 
     // Save a good bit of the data about this glyph
     texture_info.left_bearing_ = face->glyph->bitmap_left;

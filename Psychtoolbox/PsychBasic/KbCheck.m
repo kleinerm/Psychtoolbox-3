@@ -169,7 +169,6 @@ persistent oldSecs;
 persistent macosx;
 % ...and all keyboard indices as well:
 persistent kbs kps touchBar;
-persistent keyboardsdetected;
 % ...and if we are allowed to use PsychHID:
 persistent allowPsychHID;
 
@@ -217,32 +216,36 @@ if isempty(macosx)
             end
         end
     end
+
+    if allowPsychHID
+        % Query indices of all attached keyboards, in case we need'em:
+        kbs = [GetKeyboardIndices touchBar];
+        if IsLinux
+            % Workaround: On some Linux machines some keyboards don't
+            % show up as dedicated slave keyboards. Try to query master
+            % keyboards as well, to work around this:
+            masterKeyboards = PsychHID('Devices', 2);
+            for i =1:length(masterKeyboards)
+                kbs(end+1) = masterKeyboards(i).index; %#ok<AGROW>
+            end
+        end
+        kps = GetKeypadIndices;
+    end
 end
 
 if nargin < 1
     deviceNumber = [];
 end
 
-if allowPsychHID && (~IsWin || (IsWin && ~isempty(deviceNumber)))
+% Only use PsychHID('KbCheck') on non-Windows, or on Windows if deviceNumber
+% refers to a mouse-type or joystick-type device. For keyboard or keypads (which
+% are indistinguishable, so just check for kbs) PsychHID does not have any benefit,
+% given that individual keyboards can't be individually selected on Windows. Otoh.
+% the hacks used to make PsychHID('KbCheck') work do interact with KbQueues in
+% surprising ways, so avoid this path unless it brings real benefit - like the
+% ability to use mouse/trackpad/joystick/gamepad buttons as "keyboard" buttons:
+if allowPsychHID && (~IsWin || (IsWin && ~isempty(deviceNumber) && (deviceNumber >= 0) && ~ismember(deviceNumber, kbs)))
     if ~isempty(deviceNumber) || ~isempty(touchBar)
-        % All attached keyboards already detected?
-        if isempty(keyboardsdetected)
-            % No. Do it now:
-            % Query indices of all attached keyboards, in case we need'em:
-            kbs = [GetKeyboardIndices touchBar];
-            if IsLinux
-                % Workaround: On some Linux machines some keyboards don't
-                % show up as dedicated slave keyboards. Try to query master
-                % keyboards as well, to work around this:
-                masterKeyboards = PsychHID('Devices', 2);
-                for i =1:length(masterKeyboards)
-                    kbs(end+1) = masterKeyboards(i).index; %#ok<AGROW>
-                end
-            end
-            kps = GetKeypadIndices;
-            keyboardsdetected = 1;
-        end
-
         % Select keyboard(s):
         if deviceNumber>=0
             % Query a specific keyboard device number:

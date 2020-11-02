@@ -47,6 +47,6 @@ int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double sou
 void PsychExitMovies(void);
 double PsychGetMovieTimeIndex(int moviehandle);
 double PsychSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool indexIsFrames);
-
+void PsychCopyOutMovieHDRMetaData(int moviehandle, int argPosition);
 //end include once
 #endif

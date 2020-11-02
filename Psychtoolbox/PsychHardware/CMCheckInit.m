@@ -15,6 +15,7 @@ function CMCheckInit(meterType, PortString)
 % meterType 4 is the PR655
 % meterType 5 is the PR670
 % meterType 6 is the PR705
+% meterType 7 is the CRS ColorCal2.
 %
 % For the PR-series colorimeters, 'PortString' is the optional name of a
 % device string for the serial port or Serial-over-USB port to which the
@@ -123,7 +124,7 @@ switch meterType
                 portNameIn = meterports.in;
             end
         end
-        
+
         if IsWin || IsOSX || IsLinux
             stat = PR650init(portNameIn);
             status = sscanf(stat,'%f');
@@ -132,7 +133,7 @@ switch meterType
                 disp('If colorimeter is off, turn it on; if it is on, turn it off and then on.');
             end
             NumTries = 0;
-            
+
             while (isempty(status) || status == -1) && NumTries < DefaultNumberOfTries
                 stat = PR650init(portNameIn);
                 status = sscanf(stat,'%f');
@@ -141,7 +142,7 @@ switch meterType
                     IOPort('Close', g_serialPort);
                     % Release global port handle:
                     clear global g_serialPort;
-                    
+
                     fprintf('\n');
                     if ~rem(NumTries,4)
                         fprintf('\nHave tried making contact %d times.  Will try %d more...',NumTries,DefaultNumberOfTries-NumTries);
@@ -157,8 +158,10 @@ switch meterType
         else
             error(['Unsupported OS ' computer]);
         end
+
     case 2,
         error('Support for CVI colormeter not yet implemented in PTB-3, sorry!');
+
     case 3,
         % CRS-Colorimeter:
         if exist('CRSColorInit') %#ok<EXIST>
@@ -166,7 +169,7 @@ switch meterType
         else
             error('CRSColorInit command is missing on your path. Is the CRS color calibration toolbox set up properly?');
         end
-        
+
     case 4,
         % PR-655:
         % Look for port information in "calibration" file.  If
@@ -185,7 +188,7 @@ switch meterType
                 portNameIn = meterports.in;
             end
         end
-        
+
         if IsWin || IsOSX || IsLinux
             stat = PR655init(portNameIn);
             status = sscanf(stat,'%f');
@@ -197,11 +200,11 @@ switch meterType
         else
             error(['Unsupported OS ' computer]);
         end
-        
+
+    case 5,
         % PR-670 - Functionality should be very similar to the PR-655, though
         %          it looks like there are a few more commands available for
         %          the 670.
-    case 5
         if IsWin || IsOSX || IsLinux
             % Look for port information in "calibration" file.  If
             % no special information present, then use defaults.
@@ -215,7 +218,7 @@ switch meterType
                     portNameIn = meterports.in;
                 end
             end
-            
+
             stat = PR670init(portNameIn);
             if strcmp(stat, ' REMOTE MODE')
                 disp('Successfully connected to PR-670!');
@@ -230,10 +233,9 @@ switch meterType
         else
             error(['Unsupported OS ' computer]);
         end
-        
-        
-        % PR-705
+
     case 6,
+        % PR-705
         if IsWin || IsOSX || IsLinux
             meterports = LoadCalFile('PR705Ports');
             if isempty(meterports)
@@ -245,7 +247,7 @@ switch meterType
                     portNameIn = meterports.in;
                 end
             end
-            
+
             stat = PR705init(portNameIn);
             if strcmp(stat, [' REMOTE MODE' 13 10])
                 disp('Successfully connected to the PR-705!');
@@ -255,7 +257,24 @@ switch meterType
         else
             error(['Unsupported OS ' computer]);
         end
-        
+
+    case 7,
+        % ColorCal2
+
+        % Query and display device info. This will also open the device if it
+        % isn't already:
+        devInfo = ColorCal2 ('Deviceinfo');
+        disp(devInfo);
+
+        % Zero-Calibrate manually if needed:
+        if ColorCal2('NeedZeroCalibration')
+            fprintf('Zero calibration needed! Put your ColorCal2 into the dark,\n');
+            fprintf('then press any to perform zero calibration.\n');
+            KbStrokeWait(-1);
+            ColorCal2('ZeroCalibration');
+            fprintf('Done! Thanks..\n');
+        end
+
     otherwise,
         error('Unknown meter type');
 end

@@ -104,8 +104,9 @@ void glm_open(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     alGetError();
     
     #ifdef MACOSX
-    // OS-X specific use of extensions:
-    
+    // OS-X specific use of extensions: Since the Catalina trainwreck we suddenly must bind functions, when it worked fine without before:
+    alcMacOSXRenderingQualityProcPtr alcMacOSXRenderingQuality = (alcMacOSXRenderingQualityProcPtr) alcGetProcAddress(NULL, (const ALCchar*) "alcMacOSXRenderingQuality");
+
     // Enforce all data conversion at buffer load time, to reduce delays during playback:
     alEnable(ALC_MAC_OSX_CONVERT_DATA_UPON_LOADING);
     

@@ -12,6 +12,9 @@
 void alc_ASASetListener( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
     #ifdef MACOSX
+        // OS-X specific use of extensions: Since the Catalina trainwreck we suddenly must bind functions, when it worked fine without before:
+        alcASASetListenerProcPtr alcASASetListener = (alcASASetListenerProcPtr) alcGetProcAddress(NULL, (const ALCchar*) "alcASASetListener");
+
         // Retrieve fourcc with property name:
         char rfourcc[5];
         char fourcc[4];
@@ -35,6 +38,9 @@ void alc_ASASetListener( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prh
 void alc_ASASetSource( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
     #ifdef MACOSX
+        // OS-X specific use of extensions: Since the Catalina trainwreck we suddenly must bind functions, when it worked fine without before:
+        alcASASetSourceProcPtr alcASASetSource = (alcASASetSourceProcPtr) alcGetProcAddress(NULL, (const ALCchar*) "alcASASetSource");
+
         // Retrieve fourcc with property name:
         char rfourcc[5];
         char fourcc[4];

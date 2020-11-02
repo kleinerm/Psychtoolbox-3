@@ -42,6 +42,7 @@
 %   GetSecsTest                     - Timing test of clock used by Psychtoolbox, e.g., GetSecs, WaitSecs, Screen...
 %   GraphicsDisplaySyncAcrossDualHeadsTest - Test synchronization of refresh cycles of different display heads.
 %   GraphicsDisplaySyncAcrossDualHeadsTestLinux - Linux version of the test.
+%   HDRTest                         - Perform some basic correctness tests and evaluation for HDR display operation, using a Colorimeter.
 %   HIDIntervalTest                 - Sample HID keyboard and mouse, plot distribution of detected event times.
 %   HighColorPrecisionDrawingTest   - Test drawing precision of a variety of Screen() functions, esp. wrt. high precision framebuffers.
 %   HighPrecisionLuminanceOutputDriversImagingPipelineTest - Test precision of a variety of high precision luminance device output drivers.

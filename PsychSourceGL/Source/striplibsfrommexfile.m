@@ -58,7 +58,10 @@ if exist(filename, 'file')
         % around via mwSize*, this ends badly if one tries to use a mex file built
         % for < 4.4 with a >= 4.4 Octave and vice versa. But other than that, the
         % general principle still holds.
-        if str2num(version ()(1)) == 4 && str2num(version ()(3)) == 4
+        if str2num(version ()(1)) == 5 && str2num(version ()(3)) == 2
+            % Octave 5.2 - liboctinterp.so.7:
+            image = renameLibrary(image, 'liboctinterp.so.7', 'liboctinterp.so');
+        elseif str2num(version ()(1)) == 4 && str2num(version ()(3)) == 4
             % Octave 4.4.1 - liboctinterp.so.6:
             image = renameLibrary(image, 'liboctinterp.so.6', 'liboctinterp.so');
         elseif str2num(version ()(1)) == 4 && str2num(version ()(3)) == 2

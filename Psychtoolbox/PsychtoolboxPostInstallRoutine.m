@@ -74,6 +74,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 01/03/2017 Fix Matlab incompatibility with __octave_config_info__. (MK)
 % 04/07/2018 Remove PsychtoolboxRegistration for now. (MK)
 % 07/27/2019 64-Bit Octave 5.1.0 support for Windows and OSX, no Octave-4 support anymore. (MK)
+% 10/29/2020 64-Bit Octave 5.2.0 support for Windows and OSX. (MK)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -151,11 +152,7 @@ end
 % Get rid of any remaining .svn folders in the path.
 try
     path(RemoveSVNPaths);
-    if exist('savepath') %#ok<EXIST>
-        savepath;
-    else
-        path2rc;
-    end
+    savepath;
 catch
     fprintf('Info: Failed to remove .svn subfolders from path. Not a big deal...\n');
 end
@@ -268,6 +265,21 @@ if IsOSX
         fprintf('Press any key on keyboard to try to continue with setup, although\n');
         fprintf('this will likely fail soon and leave you with a dysfunctional toolbox.\n\n');
         pause;
+    end
+
+    % Make sure we have a suitable fontconfig config file so fontconfig can
+    % find the fonts on macOS, even if libfontconfig from GStreamer is
+    % used, instead of from HomeBrew or X11:
+    if ~exist([PsychHomeDir '.fonts.conf'], 'file')
+        [rc, msg] = copyfile([PsychtoolboxRoot 'PsychBasic/macOS_fontconfig.fonts.conf'], [PsychHomeDir '.fonts.conf']);
+        if rc
+            fprintf('FontConfig configuration file for DrawText %s was missing. Successfully installed a suitable file.\n', [PsychHomeDir '.fonts.conf']);
+        else
+            fprintf('ERROR: FontConfig configuration file for DrawText %s was missing, but failed to install a suitable file!\n', [PsychHomeDir '.fonts.conf']);
+            fprintf('ERROR: This may cause the Screen(''DrawText'') function to fail, because it may not find fonts.\n');
+            fprintf('ERROR: Type ''help DrawTextPlugin'' for potential troubleshooting help.\n');
+            fprintf('ERROR: The error message of the failed copyfile command was the following:\n''%s''\n', msg);
+        end
     end
 end
 
@@ -411,22 +423,22 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if (~IsLinux && (octavemajorv ~= 5 || octaveminorv ~= 1)) || ...
+    if (~IsLinux && (octavemajorv ~= 5 || octaveminorv ~= 2)) || ...
         (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8) || (octavemajorv > 5)))
-        fprintf('\n\n=================================================================================\n');
+        fprintf('\n\n==============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
             % On Linux everything from 3.8 to 5 is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0, 4.2, 4.4 or 5.1 series for use with Psychtoolbox.\n');
+            fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0, 4.2, 4.4, 5.1 or 5.2 series.\n');
             fprintf('WARNING: You can get Psychtoolbox for more recent versions of Octave from NeuroDebian.\n');
         else
-            % On Windows/OSX we only care about 5.1 atm:
-            fprintf('WARNING: only using Octave 5.1 with Psychtoolbox.\n');
+            % On Windows/OSX we only care about 5.2 atm:
+            fprintf('WARNING: only using Octave 5.2 with this version of Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
         fprintf('\nPress any key to continue with setup.\n');
-        fprintf('=================================================================================\n\n');
+        fprintf('==============================================================================================\n\n');
         pause;
     end
 
@@ -550,7 +562,6 @@ if IsWin && ~IsOctave
         fprintf('ERROR: are missing on your system.\n\n');
         % Need 64-Bit runtime:
         fprintf('ERROR: Execute the installer file vcredist_x64_2015-2019.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
-        %fprintf('ERROR: Maybe also execute the installer file vcredist_x64_2010.exe, which is located in your Psychtoolbox/PsychContributed/ folder.\n');
         fprintf('ERROR: You must execute that installer as an administrator user. Exit Matlab before the installation, then restart it.\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox;\n\n');
@@ -572,27 +583,37 @@ end
 try
     % Linux specific instructions:
     if IsLinux
+        more on;
         fprintf('\n\n');
         fprintf('The Psychtoolbox on GNU/Linux needs the following 3rd party libraries\n');
         fprintf('in order to function correctly. If you get "Invalid MEX file errors",\n');
         fprintf('or similar fatal error messages, check if these are installed on your\n');
         fprintf('system and if they are missing, install them via your system specific\n');
-        fprintf('software management tools:\n');
+        fprintf('software management tools.\n');
+        fprintf('On a Debian/Ubuntu based system, you may get the system to install all these\n');
+        fprintf('required dependencies for you by issuing the following commmand in a terminal:\n\n');
+        fprintf('sudo apt build-dep psychtoolbox-3\n');
         fprintf('\n');
         fprintf('For Screen() and OpenGL support:\n\n');
         fprintf('* The OpenGL utility toolkit GLUT: glut, glut-3 or freeglut are typical provider packages in most Linux distributions.\n');
-        fprintf('* GStreamer multimedia framework: At least version 1.4.0 of the core runtime and the gstreamer-base plugins.\n');
-        fprintf('  For optimal performance use the latest available versions.\n');
-        fprintf('  You may need to install additional packages to play back all\n');
-        fprintf('  common audio- and video file formats. See "help GStreamer".\n');
+        fprintf('\n');
+        fprintf('* GStreamer multimedia framework: At least version 1.8.0 of the core runtime and the gstreamer-base plugins.\n');
+        fprintf('  For optimal performance and the full set of features, use the latest available versions. E.g., for optimal HDR\n');
+        fprintf('  movie playback GStreamer 1.18 would be needed, although it can be made to work less conveniently with v1.16.\n');
+        fprintf('  You may need to install additional packages to playback all common audio and video file formats.\n');
+        fprintf('  See "help GStreamer" for more info.\n');
+        fprintf('\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
-        fprintf('* libdc1394 Firewire video capture library.\n');
+        fprintf('\n');
+        fprintf('* libdc1394 IEEE-1394 Firewire and USB-Vision IIDC video capture library.\n');
+        fprintf('  libdc1394.22.so on systems older than Ubuntu 20.04-LTS, libdc1394.25.so for later systems.\n');
+        fprintf('\n');
         fprintf('* libraw1394 Firewire low-level access library.\n');
         fprintf('\n\n');
         fprintf('For PsychKinect() (See "help InstallKinect"):\n\n');
-        fprintf('* libusb-1.0 USB low-level access library.\n');
+        fprintf('* libusb-1.0 USB low-level access library.\n\n');
         fprintf('* libfreenect-0.5: Kinect driver library version 0.5 or later.\n');
-        fprintf('\n');
+        fprintf('\n\n');
         fprintf('For PsychHID() support:\n\n');
         fprintf('* libusb-1.0 USB low-level access library.\n');
         fprintf('\n\n');
@@ -606,6 +627,7 @@ try
         fprintf('If you receive an installation failure soon, then please read the output of\n');
         fprintf('"help GStreamer" first and follow the installation instructions for GStreamer\n');
         fprintf('on Linux. Psychtoolbox''s Screen() command will not work without GStreamer!\n\n');
+        more off;
     end
 
     % Check Screen:
@@ -619,13 +641,37 @@ try
         PsychGPUControl('FullScreenWindowDisablesCompositor', 1);
     end
 
+    if ~IsLinux
+        % If this is not Linux, then open an invisible onscreen window and
+        % draw some dummy text with the plugin text renderer, just to
+        % trigger a (re-)build of the fontconfig cache if that should prove
+        % neccessary. Such a rebuild can take many seconds to even minutes
+        % and looks to the user like a hang, so do it here, with proper
+        % warning. We skip this on Linux, as the OS will take care of
+        % proper rebuilds appropriately, so we don't expect to ever run
+        % into this problem:
+        fprintf('Trying to trigger an update of the fontconfig cache if that should prove neccessary.\n');
+        fprintf('This may take a couple of seconds, or sometimes even minutes. Please be patient...\n');
+        drawnow;
+        oldRenderer = Screen('Preference', 'TextRenderer', 1);
+        oldLevel = Screen('Preference', 'WindowShieldingLevel', -1);
+        oldVerbo = Screen('Preference', 'Verbosity', 0);
+        win = Screen('OpenWindow', 0, 0, [0 0 100 100]);
+        Screen('DrawText', win, 'Ola!');
+        Screen('Flip', win);
+        Screen('CloseAll');
+        Screen('Preference', 'TextRenderer', oldRenderer);
+        Screen('Preference', 'WindowShieldingLevel', oldLevel);
+        Screen('Preference', 'Verbosity', oldVerbo);
+    end
+
     % Tell user we're successfully done:
     fprintf('\nDone with post-installation. Psychtoolbox is ready for use.\n\n\n');
 catch
     fprintf('\n\n');
     fprintf('Screen() failed to work for some reason:\n\n');
     if IsWin
-      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.16.0\n');
+      fprintf('On Windows you *must* install the MSVC build runtime of at least GStreamer 1.18.0\n');
       fprintf('or a later version. Screen() will not work with earlier versions, without GStreamer,\n');
       fprintf('or with the MinGW variants of the GStreamer runtime!\n');
       fprintf('Read ''help GStreamer'' for more info.\n\n');
@@ -645,12 +691,13 @@ if IsLinux
     try
         % This script modifies/extends system configuration files
         % to optimize the system for use with Psychtoolbox:
-        PsychLinuxConfiguration;
+        PsychLinuxConfiguration([], 1);
     catch
     end
 end
 
 % Some goodbye, copyright and getting started blurb...
+more on;
 fprintf('GENERAL LICENSING CONDITIONS AND TERMS OF USE:\n');
 fprintf('----------------------------------------------\n\n');
 fprintf('Almost all of the material contained in the Psychtoolbox-3 distribution\n');
@@ -697,7 +744,14 @@ fprintf('\n');
 fprintf('Please also familiarize yourself with the demos contained in the PsychDemos subfolder\n');
 fprintf('and its subfolders. They show best practices for many common tasks and are generally\n');
 fprintf('well documented.\n');
-fprintf('\n\n');
+
+% Our little ad for our services:
+if exist('PsychPaidSupportAndServices', 'file')
+    PsychPaidSupportAndServices(1);
+end
+
+more off;
+
 fprintf('\nEnjoy!\n\n');
 fprintf('Press RETURN or ENTER to confirm you read and understood the above message.\n');
 pause;

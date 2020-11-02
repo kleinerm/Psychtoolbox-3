@@ -183,13 +183,17 @@ PsychError SCREENOpenOffscreenWindow(void)
     // silently switch to 32 bits per pixel, which is the safest and fastest setting:
     if (depth==0 || depth==1 || depth==2 || depth==4) depth=32;
 
+    // Special remapping for 10 bpc, 11 bpc, 16 bpc parent/reference windows, e.g., high precision modes and HDR.
+    // Upgrade to full 32 bpc / 128 bpp. This does not matter anyway, only used for validation, if at all...
+    if (depth == 30 || depth == 33 || depth == 48) depth = 4 * 32;
+
     // Final sanity check:
     if (!(targetWindow->imagingMode & kPsychNeedFastOffscreenWindows) && !(targetWindow->imagingMode & kPsychNeedFastBackingStore) && (depth==64 || depth==128)) {
-        PsychErrorExitMsg(PsychError_user, "Invalid depth value provided. Must be 8 bpp, 16 bpp, 24 bpp or 32 bpp, unless you enable the imaging pipeline, which provides you with more options!");
+        PsychErrorExitMsg(PsychError_user, "Invalid pixelSize value provided. Must be 8 bpp, 16 bpp, 24 bpp or 32 bpp, unless you enable the imaging pipeline, which provides you with more options!");
     }
 
-    if (depth!=8 && depth!=16 && depth!=24 && depth!=32 && depth!=64 && depth!=128) {
-        PsychErrorExitMsg(PsychError_user, "Invalid depth value provided. Must be 8 bpp, 16 bpp, 24 bpp, 32 bpp, or if imagingmode is enabled also 64 bpp or 128 bpp!");
+    if (overridedepth && (depth!=8 && depth!=16 && depth!=24 && depth!=32 && depth!=64 && depth!=128)) {
+        PsychErrorExitMsg(PsychError_user, "Invalid pixelSize value provided. Must be 8 bpp, 16 bpp, 24 bpp, 32 bpp, or if imagingmode is enabled also 64 bpp or 128 bpp!");
     }
 
     // If the imaging pipeline is enabled for the associated onscreen window and fast backing store, aka FBO's
@@ -225,10 +229,10 @@ PsychError SCREENOpenOffscreenWindow(void)
     // can query the size of the screen/onscreen-window...
     windowRecord->screenNumber = targetScreenNumber;
 
-    // Assign the computed depth:
+    // Assign the computed depth: Does not apply if imaging pipeline active due to override below.
     windowRecord->depth=depth;
 
-    // Default number of channels:
+    // Default number of channels: Does not apply if imaging pipeline active due to override below.
     windowRecord->nrchannels=depth / 8;
 
     // Assign the computed rect, but normalize it to start with top-left at (0,0):

@@ -1,28 +1,28 @@
 /*
 ** The OpenGL Extension Wrangler Library
-** Copyright (C) 2008-2015, Nigel Stewart <nigels[]users sourceforge net>
+** Copyright (C) 2008-2017, Nigel Stewart <nigels[]users sourceforge net>
 ** Copyright (C) 2002-2008, Milan Ikits <milan ikits[]ieee org>
 ** Copyright (C) 2002-2008, Marcelo E. Magallon <mmagallo[]debian org>
 ** Copyright (C) 2002, Lev Povalahev
 ** All rights reserved.
-**
-** Redistribution and use in source and binary forms, with or without
+** 
+** Redistribution and use in source and binary forms, with or without 
 ** modification, are permitted provided that the following conditions are met:
-**
-** * Redistributions of source code must retain the above copyright notice,
+** 
+** * Redistributions of source code must retain the above copyright notice, 
 **   this list of conditions and the following disclaimer.
-** * Redistributions in binary form must reproduce the above copyright notice,
-**   this list of conditions and the following disclaimer in the documentation
+** * Redistributions in binary form must reproduce the above copyright notice, 
+**   this list of conditions and the following disclaimer in the documentation 
 **   and/or other materials provided with the distribution.
-** * The name of the author may be used to endorse or promote products
+** * The name of the author may be used to endorse or promote products 
 **   derived from this software without specific prior written permission.
 **
-** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-** AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+** THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
+** AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE 
 ** IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-** ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-** LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-** CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+** ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE 
+** LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR 
+** CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF 
 ** SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
 ** INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
 ** CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
@@ -32,7 +32,7 @@
 
 /*
 ** Copyright (c) 2007 The Khronos Group Inc.
-**
+** 
 ** Permission is hereby granted, free of charge, to any person obtaining a
 ** copy of this software and/or associated documentation files (the
 ** "Materials"), to deal in the Materials without restriction, including
@@ -40,10 +40,10 @@
 ** distribute, sublicense, and/or sell copies of the Materials, and to
 ** permit persons to whom the Materials are furnished to do so, subject to
 ** the following conditions:
-**
+** 
 ** The above copyright notice and this permission notice shall be included
 ** in all copies or substantial portions of the Materials.
-**
+** 
 ** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
 ** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 ** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -188,10 +188,6 @@ typedef BOOL (WINAPI * PFNWGLSAVEBUFFERREGIONARBPROC) (HANDLE hRegion, int x, in
 #ifndef WGL_ARB_context_flush_control
 #define WGL_ARB_context_flush_control 1
 
-#define WGL_CONTEXT_RELEASE_BEHAVIOR_NONE_ARB 0x0000
-#define WGL_CONTEXT_RELEASE_BEHAVIOR_ARB 0x2097
-#define WGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_ARB 0x2098
-
 #define WGLEW_ARB_context_flush_control WGLEW_GET_VAR(__WGLEW_ARB_context_flush_control)
 
 #endif /* WGL_ARB_context_flush_control */
@@ -217,6 +213,15 @@ typedef HGLRC (WINAPI * PFNWGLCREATECONTEXTATTRIBSARBPROC) (HDC hDC, HGLRC hShar
 #define WGLEW_ARB_create_context WGLEW_GET_VAR(__WGLEW_ARB_create_context)
 
 #endif /* WGL_ARB_create_context */
+
+/* -------------------- WGL_ARB_create_context_no_error -------------------- */
+
+#ifndef WGL_ARB_create_context_no_error
+#define WGL_ARB_create_context_no_error 1
+
+#define WGLEW_ARB_create_context_no_error WGLEW_GET_VAR(__WGLEW_ARB_create_context_no_error)
+
+#endif /* WGL_ARB_create_context_no_error */
 
 /* --------------------- WGL_ARB_create_context_profile -------------------- */
 
@@ -505,6 +510,19 @@ typedef BOOL (WINAPI * PFNWGLSETPBUFFERATTRIBARBPROC) (HPBUFFERARB hPbuffer, con
 #define WGLEW_ATI_render_texture_rectangle WGLEW_GET_VAR(__WGLEW_ATI_render_texture_rectangle)
 
 #endif /* WGL_ATI_render_texture_rectangle */
+
+/* --------------------------- WGL_EXT_colorspace -------------------------- */
+
+#ifndef WGL_EXT_colorspace
+#define WGL_EXT_colorspace 1
+
+#define WGL_COLORSPACE_SRGB_EXT 0x3089
+#define WGL_COLORSPACE_LINEAR_EXT 0x308A
+#define WGL_COLORSPACE_EXT 0x309D
+
+#define WGLEW_EXT_colorspace WGLEW_GET_VAR(__WGLEW_EXT_colorspace)
+
+#endif /* WGL_EXT_colorspace */
 
 /* ------------------- WGL_EXT_create_context_es2_profile ------------------ */
 
@@ -984,11 +1002,11 @@ typedef BOOL (WINAPI * PFNWGLDELAYBEFORESWAPNVPROC) (HDC hDC, GLfloat seconds);
 
 DECLARE_HANDLE(HGPUNV);
 typedef struct _GPU_DEVICE {
-  DWORD cb;
-  CHAR DeviceName[32];
-  CHAR DeviceString[128];
-  DWORD Flags;
-  RECT rcVirtualScreen;
+  DWORD cb; 
+  CHAR DeviceName[32]; 
+  CHAR DeviceString[128]; 
+  DWORD Flags; 
+  RECT rcVirtualScreen; 
 } GPU_DEVICE, *PGPU_DEVICE;
 
 typedef HDC (WINAPI * PFNWGLCREATEAFFINITYDCNVPROC) (const HGPUNV *phGpuList);
@@ -1355,6 +1373,7 @@ WGLEW_VAR_EXPORT GLboolean __WGLEW_AMD_gpu_association;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_ARB_buffer_region;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_ARB_context_flush_control;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_ARB_create_context;
+WGLEW_VAR_EXPORT GLboolean __WGLEW_ARB_create_context_no_error;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_ARB_create_context_profile;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_ARB_create_context_robustness;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_ARB_extensions_string;
@@ -1369,6 +1388,7 @@ WGLEW_VAR_EXPORT GLboolean __WGLEW_ARB_robustness_application_isolation;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_ARB_robustness_share_group_isolation;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_ATI_pixel_format_float;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_ATI_render_texture_rectangle;
+WGLEW_VAR_EXPORT GLboolean __WGLEW_EXT_colorspace;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_EXT_create_context_es2_profile;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_EXT_create_context_es_profile;
 WGLEW_VAR_EXPORT GLboolean __WGLEW_EXT_depth_float;

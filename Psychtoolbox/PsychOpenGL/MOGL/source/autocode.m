@@ -3,8 +3,16 @@ function autocode(overwrite, glheaderpath, openal)
 % AUTOCODE.M  Generate MATLAB-OpenGL or OpenAL interface code from OpenGL or OpenAL header files
 %
 % Usage: autocode(overwrite, glheaderpath, openal).
-% glheaderpath is the path to the OpenGL gl.h and glu.h header files.
-% It defaults to /System/Library/Frameworks/OpenGL.framework/Headers/
+%
+% glheaderpath is ignored in the current script for OpenGL! Instead the
+% files in the headers/ subdirectory and the file ./GL/glew.h are used
+% to parse OpenGL function definitions. Our own copy of glew.h gives us
+% the OpenGL 1.0 and OpenGL 1.1 base definitions. headers/glext_edit.h
+% gives us the definitions of OpenGL 1.2 and later, as well as OpenGL
+% extensions. header/glu_edit.h and headers/glut_edit.h provide GLU and
+% GLUT function definitions.
+%
+% glheaderpath used to be the path to the OpenGL gl.h and glu.h header files.
 %
 % If overwrite is == 1, then existing M-Files are overwritten, else (and
 % this is the default) existing files are not touched.
@@ -54,7 +62,8 @@ end;
 if openal
 	fprintf('Parsing OpenAL and ALC header files in %s ...\n',glheaderpath);
 else
-	fprintf('Parsing OpenGL and GLU header files in %s ...\n',glheaderpath);
+	fprintf('Parsing OpenGL and GLU header files in sub-directories GL/ and headers/\n');
+	%fprintf('Parsing OpenGL and GLU header files in %s ...\n',glheaderpath);
 end
 
 % delete unprotected wrapper files
@@ -76,7 +85,8 @@ if openal
 		error(sprintf('unable to initialize ''%s''',cfile)); %#ok<SPERR>
 	end
 else
-	unix(sprintf('grep gl[A-Z]   %s/gl.h        | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >  %s',glheaderpath, tmplistfile));
+	%unix(sprintf('grep gl[A-Z]   %s/gl.h        | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >  %s',glheaderpath, tmplistfile));
+	unix(sprintf('grep gl[A-Z]   GL/glew.h      | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >  %s',tmplistfile));
 	unix(sprintf('grep glu[A-Z]  headers/glu_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',tmplistfile));
 	unix(sprintf('grep glut[A-Z] headers/glut_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',tmplistfile));
 	unix(sprintf('grep gl[A-Z]   headers/glext_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*GLAPI[[:space:]]*//''  | sed -E ''s/[[:space:]]*APIENTRY*//'' | sed -E ''s/;[[:space:]]*$//'' >>  %s',tmplistfile));

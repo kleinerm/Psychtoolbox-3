@@ -35,6 +35,10 @@
 #include <Cocoa/Cocoa.h>
 #include <objc/message.h>
 
+// Suppress deprecation warnings:
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
 PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windowLevel, void** outWindow)
 {
     char windowTitle[100];
@@ -73,11 +77,11 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     NSUInteger windowStyle = 0;
     if (windowRecord->specialflags & kPsychGUIWindow) {
         // GUI window:
-        windowStyle = NSTitledWindowMask|NSResizableWindowMask|NSMiniaturizableWindowMask|NSTexturedBackgroundWindowMask;
+        windowStyle = NSWindowStyleMaskTitled|NSWindowStyleMaskResizable|NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskTexturedBackground;
     }
     else {
         // Pure non-GUI visual stimulus window:
-        windowStyle = NSBorderlessWindowMask;
+        windowStyle = NSWindowStyleMaskBorderless;
     }
 
     // Currently we use dispatch_sync() unconditionally, but must only use it iff this code does not
@@ -416,7 +420,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
         // Build NSOpenGLContexts as wrappers around existing CGLContexts already
         // created in calling routine:
         masterContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.contextObject];
-        [masterContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
+        [masterContext setValues:&opaque forParameter:NSOpenGLContextParameterSurfaceOpacity];
         [masterContext setView:[cocoaWindow contentView]];
         // Doesn't work on the trainwreck - hang: [masterContext setFullScreen];
         [masterContext makeCurrentContext];
@@ -425,7 +429,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
         // Ditto for potential gl userspace rendering context:
         if (windowRecord->targetSpecific.glusercontextObject) {
             gluserContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.glusercontextObject];
-            [gluserContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
+            [gluserContext setValues:&opaque forParameter:NSOpenGLContextParameterSurfaceOpacity];
             [gluserContext setView:[cocoaWindow contentView]];
             // Doesn't work on the trainwreck - hang: [gluserContext setFullScreen];
             [gluserContext update];
@@ -434,7 +438,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
         // Ditto for potential glswapcontext for async flips and frame sequential stereo:
         if (windowRecord->targetSpecific.glswapcontextObject) {
             glswapContext = [[NSOpenGLContext alloc] initWithCGLContextObj: windowRecord->targetSpecific.glswapcontextObject];
-            [glswapContext setValues:&opaque forParameter:NSOpenGLCPSurfaceOpacity];
+            [glswapContext setValues:&opaque forParameter:NSOpenGLContextParameterSurfaceOpacity];
             [glswapContext setView:[cocoaWindow contentView]];
             // Doesn't work on the trainwreck - hang: [glswapContext setFullScreen];
             [glswapContext update];
@@ -653,3 +657,5 @@ double PsychCocoaGetBackingStoreScaleFactor(void* window)
 
     return (sf);
 }
+
+#pragma clang diagnostic pop

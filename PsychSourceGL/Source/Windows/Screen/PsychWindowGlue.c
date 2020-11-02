@@ -417,7 +417,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
     RECT lRect;
 
     // Trigger event queue dispatch processing for GUI windows:
-    if (windowRecord == NULL || windowRecord->specialflags & kPsychGUIWindow) PsychGetMouseButtonState(NULL);
+    if (windowRecord == NULL || (windowRecord->specialflags & kPsychGUIWindow)) PsychGetMouseButtonState(NULL);
 
     if (windowRecord == NULL) {
         // Done, so far...
@@ -1021,7 +1021,7 @@ dwmdontcare:
     }
     else {
         // Only GUI windows have decorations. Non-GUI windows are border/decorationless:
-        if (!windowRecord->specialflags & kPsychGUIWindow) {
+        if (!(windowRecord->specialflags & kPsychGUIWindow)) {
             // Decorationless, borderless window:
             windowStyle |= WS_POPUP;
         }
@@ -1829,7 +1829,7 @@ dwmdontcare:
     win32_windowcount++;
 
     // Some info for the user regarding non-fullscreen windows:
-    if (!fullscreen && (PsychPrefStateGet_Verbosity() > 2)) {
+    if (!fullscreen && (PsychPrefStateGet_Verbosity() > 2) && !(windowRecord->specialflags & kPsychExternalDisplayMethod)) {
         printf("PTB-INFO: Most graphics cards will not support proper syncing to vertical retrace when\n");
         printf("PTB-INFO: running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
         printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 2); .\n");
@@ -1991,7 +1991,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
  */
 double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
-    DWM_TIMING_INFO    dwmtiming;
+    DWM_TIMING_INFO dwmtiming;
     psych_uint64 ust, msc, sbc;
     CGDirectDisplayID displayID;
     HRESULT rc = 0xdeadbeef;
@@ -2039,7 +2039,7 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
     // Let's try if we have more luck with OpenML support...
 
     // Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
-    // if that extension is supported on this setup. As of beginning 2017 i'm not aware of any
+    // if that extension is supported on this setup. As of beginning 2020 i'm not aware of any
     // graphics card that would support this extension, but who knows??
     if ((NULL != wglGetSyncValuesOML) && (wglGetSyncValuesOML((HDC) displayID, (INT64*) &ust, (INT64*) &msc, (INT64*) &sbc))) {
         *vblCount = msc;
@@ -2050,7 +2050,7 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
     else {
         // Unsupported on Windows so far :(
         *vblCount = 0;
-        return(-1);
+        return(PsychGetVblankTimestamps(windowRecord, NULL));
     }
 }
 

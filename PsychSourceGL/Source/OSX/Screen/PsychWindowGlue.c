@@ -877,9 +877,13 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
         return(cvTime);
     }
     else {
-        // Unsupported:
+        // Counter query unsupported:
         *vblCount = 0;
-        return(-1);
+
+        // Return absolute system time of end of current/last vblank, or -1 on
+        // failure/unsupported. This uses the beamposition method if the
+        // PsychtoolboxKernelDriver is available for use:
+        return(PsychGetVblankTimestamps(windowRecord, NULL));
     }
 }
 

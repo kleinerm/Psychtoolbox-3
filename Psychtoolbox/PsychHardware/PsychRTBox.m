@@ -2850,8 +2850,7 @@ function openRTBox(deviceID, handle)
             for kk=3:5
                 ports{kk - 2} = { sprintf('\\\\.\\COM%i', kk) };
             end
-            ports = cellstr(ports);
-            % Does not work with Octave on Windows, hence replaced by code above: ports=cellstr(num2str((3:5)','\\\\.\\COM%i'))
+            
             ports=strtrim(ports); % needed for Matlab R2009b and later.
         end
         
@@ -2900,7 +2899,7 @@ function openRTBox(deviceID, handle)
         % Scan each possible port if it is the response box:
         for ic=1:nPorts
             % Device file name of port to probe:
-            port = ports{ic};
+            port = char(ports{ic});
 
             % Already opened?
             if strmatch(port, {rtbox_info(1:handle-1).portname},'exact')

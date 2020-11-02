@@ -1511,7 +1511,7 @@ XRRModeInfo* PsychOSGetModeLine(int screenId, int outputIdx, XRRCrtcInfo **crtc)
     return(mode);
 }
 
-const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm_width, unsigned long *mm_height, unsigned long *rrOutputPrimary)
+const char* PsychOSGetOutputProps(int screenId, int outputIdx, psych_bool returnDisabledOutputs, unsigned long *mm_width, unsigned long *mm_height, unsigned long *rrOutputPrimary)
 {
     static char outputName[100];
     int o;
@@ -1534,7 +1534,19 @@ const char* PsychOSGetOutputProps(int screenId, int outputIdx, unsigned long *mm
     PsychLockDisplay();
     for (o = 0; o < res->noutput; o++) {
         output_info = XRRGetOutputInfo(displayCGIDs[screenId], res, res->outputs[o]);
-        if (output_info->crtc == crtc) break;
+
+        if (returnDisabledOutputs) {
+            // Special case, return all outputs, even inactive or disconnected ones,
+            // just select the 'outputIdx' output:
+            if (o == outputIdx)
+                break;
+        }
+        else {
+            // Standard case - Only connected and active outputs with proper crtc assigned:
+            if (output_info->crtc == crtc)
+                break;
+        }
+
         XRRFreeOutputInfo(output_info);
     }
     PsychUnlockDisplay();
@@ -2412,9 +2424,10 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
         }
     }
 
+    PsychLockDisplay();
+
     // Matching mode found for modesetting?
     if (modeid < res->nmode) {
-        PsychLockDisplay();
 
         // Assign default panning:
         if (newX < 0) newX = crtc_info->x;
@@ -2462,16 +2475,32 @@ int PsychOSSetOutputConfig(int screenNumber, int outputId, int newWidth, int new
 
         // XUngrabServer(dpy);
 
-        // Make sure the screen change gets noticed by XLib:
-        ProcessRandREvents(screenNumber);
-
-        PsychUnlockDisplay();
-
-        return(TRUE);
     } else {
-        XRRFreeCrtcInfo(crtc_info);
-        return(FALSE);
+        // No such matching mode for given specs. Output disable requested?
+        if (newWidth == 0 && newHeight == 0 && newHz == 0) {
+            // Disable output, ie. target crtc:
+            if (PsychPrefStateGet_Verbosity() > 4)
+                printf("PTB-INFO: Disabling crtc %i.\n", outputId);
+
+            XRRSetCrtcConfig(dpy, res, res->crtcs[PsychScreenToHead(screenNumber, outputId)], crtc_info->timestamp,
+                            0, 0, None, RR_Rotate_0, NULL, 0);
+            XRRFreeCrtcInfo(crtc_info);
+        }
+        else {
+            XRRFreeCrtcInfo(crtc_info);
+
+            PsychUnlockDisplay();
+
+            return(FALSE);
+        }
     }
+
+    // Make sure the screen change gets noticed by XLib:
+    ProcessRandREvents(screenNumber);
+
+    PsychUnlockDisplay();
+
+    return(TRUE);
 }
 
 /*
@@ -3858,41 +3887,70 @@ void PsychOSKDSetDitherMode(int screenId, unsigned int ditherOn)
 
             // Enable dithering?
             if (ditherOn) {
-                // Reenable dithering with old, previously stored settings, if it is disabled:
+                // Special ditherOn value specified?
+                if (ditherOn == 0xffffffff) {
+                    // Magic 0xffffffff means to check if (spatial) dithering is effectively off, and if so,
+                    // to enable it to dither down to 10 bpc. This is some special-case handling for output
+                    // of > 10 bpc fb content to a == 10 bpc video output sink on AMD DCE-8+ display engines,
+                    // for which the display driver does not handle the "dither to 10 bpc" case, but only the
+                    // "dither to 6/8 bpc" case. It is exclusively called by PsychOSEnsureMinimumOutputPrecision()
+                    // for DCE8/10/11/12 iff > 10 bpc content is sent to outputs restricted to max 10 bpc, iow.
+                    // to outputs where dithering must be used for precise display, and therefore enabled either
+                    // by the Linux amdgpu DC display driver itself, or by us here with this hack:
+                    unsigned int val = ReadRegister(reg);
+                    if ((val & (0x100 | 0x10000)) == 0) { // SPATIAL_DITHER_EN | TEMPORAL_DITHER_EN ?
+                        // Spatial/Temporal dithering disabled, because driver chickened out on doing this
+                        // for a target depth of 10 bpc -- it would have enabled it automatically for 6
+                        // or 8 bpc, therefore from it being off we can conclude it is off because the 10 bpc
+                        // case applies and the driver didn't do the enable. Enforce spatial dithering to 10 bpc
+                        // manually with the following magic value from Linux DC function
+                        // ./drivers/gpu/drm/amd/display/dc/core/dc_resource.c line 2735 in Linux 5.9, ie. the function resource_build_bit_depth_reduction_params():
+                        val = 0xd100; // == SPATIAL_DITHER_EN=1, SPATIAL_DITHER_DEPTH=2 (10bpc), RGB_RANDOM_ENABLE 1, HIGHPASS_RANDOM_ENABLE 1, FRAME_RANDOM_ENABLE 0.
 
-                // Dithering currently off (all zeros)?
-                if (ReadRegister(reg) == 0) {
-                    // Dithering is currently off. Do we know the old setting from a previous
-                    // disable?
-                    if (oldDither[headId] > 0) {
-                        // Yes: Restore old "factory settings":
-                        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering previously disabled by us. Reenabling with old control setting %x.\n", oldDither[headId]);
-                        WriteRegister(reg, oldDither[headId]);
+                        // Note that this 0xd100 setting seems to work well at least on the tested POLARIS11 gpu with DCE11.2 display engine.
+                        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Setting dithering mode to special dither-down-to-10bpc setting 0x%x. Cross your fingers!\n", val);
+                        WriteRegister(reg, val);
                     }
                     else {
-                        // No: Dithering was disabled all the time, so we don't know the
-                        // OS defaults. Use the numeric value of 'ditherOn' itself:
-                        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering off. Enabling with userspace provided setting %x. Cross your fingers!\n", ditherOn);
-                        WriteRegister(reg, ditherOn);
+                        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering according to setting 0x%x already active.\n", val);
                     }
                 }
                 else {
-                    // Dithering currently on.
+                    // Regular dither enable/set path:
 
-                    // Specific value for control reg specified?
-                    if (ditherOn > 1) {
-                        // Yes. Use it "as is":
-                        if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Setting dithering mode to userspace provided setting %x. Cross your fingers!\n", ditherOn);
-                        WriteRegister(reg, ditherOn);
+                    // Dithering currently off (all zeros)?
+                    if (ReadRegister(reg) == 0) {
+                        // Dithering is currently off. Do we know the old setting from a previous
+                        // disable?
+                        if (oldDither[headId] > 0) {
+                            // Yes: Restore old "factory settings":
+                            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering previously disabled by us. Reenabling with old control setting 0x%x.\n", oldDither[headId]);
+                            WriteRegister(reg, oldDither[headId]);
+                        }
+                        else {
+                            // No: Dithering was disabled all the time, so we don't know the
+                            // OS defaults. Use the numeric value of 'ditherOn' itself:
+                            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering off. Enabling with userspace provided setting 0x%x. Cross your fingers!\n", ditherOn);
+                            WriteRegister(reg, ditherOn);
+                        }
                     }
-                    else if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering already enabled with current control value %x. Skipped.\n", ReadRegister(reg));
+                    else {
+                        // Dithering currently on - or at least bit depth reduction is not totally off, as all-zeros would imply.
+                        // Shall we literally use the value provided by ditherOn?
+                        if (ditherOn > 1) {
+                            // Yes. Use it "as is":
+                            if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Setting dithering mode to userspace provided setting 0x%x. Cross your fingers!\n", ditherOn);
+                            WriteRegister(reg, ditherOn);
+                        }
+                        else if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Dithering already enabled with current control value 0x%x. Skipped.\n", ReadRegister(reg));
+                    }
                 }
             }
             else {
                 // Disable all dithering if it is enabled: Clearing the register to all zero bits does this.
-                if (ReadRegister(reg) > 0) {
+                if (ReadRegister(reg) != 0) {
                     oldDither[headId] = ReadRegister(reg);
-                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Current dither setting before our dither disable on head %d is %x. Disabling.\n", headId, oldDither[headId]);
+                    if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: SetDitherMode: Current dither setting before our dither disable on head %d is 0x%x. Disabling.\n", headId, oldDither[headId]);
                     WriteRegister(reg, 0x0);
                 }
                 else {

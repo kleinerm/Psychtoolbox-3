@@ -169,6 +169,7 @@ function HoritaTitler(command,varargin)
 
     if nargin < 1 || isempty(command)
         help HoritaTitler;
+        return;
     end
 
     %% %% HORITA Commands 
@@ -665,7 +666,6 @@ function HoritaTitler(command,varargin)
         otherwise
             error (['HoritaTitler: Unknown subcommand ''' command ''' specified.']);
 
-        end
     end
 
-return
+return;

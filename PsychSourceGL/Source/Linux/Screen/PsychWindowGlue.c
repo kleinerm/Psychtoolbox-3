@@ -300,6 +300,171 @@ static psych_bool IsDRI3Supported(PsychWindowRecordType *windowRecord)
     return(TRUE);
 }
 
+// Ensure that video outputs are properly configured to reproduce at least min_bpc framebuffer output precision:
+psych_bool PsychOSEnsureMinimumOutputPrecision(int screenNumber, int min_bpc)
+{
+    CGDirectDisplayID dpy;
+    Window root;
+    int scrnum;
+    long max_bpc, min_maxbpc, new_max_bpc, set_max_bpc, actual_max_bpc = 0;
+    int gpuMaintype = kPsychUnknown;
+    int gpuMinortype = 0;
+    int fNumDisplayHeads = 0;
+    PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+    Atom max_bpc_atom = XInternAtom(dpy, "max bpc", True);
+    scrnum = PsychGetXScreenIdForScreen(screenNumber);
+    root = RootWindow(dpy, scrnum);
+    PsychGetGPUSpecs(screenNumber, &gpuMaintype, &gpuMinortype, NULL, &fNumDisplayHeads);
+
+    PsychLockDisplay();
+
+    // Framebuffer color resolution of more than standard 8 bpc requested?
+    if (min_bpc > 8) {
+        // Yes. Make sure all video outputs on this X-Screen are set up for maximum color output precision.
+        XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
+        RROutput output;
+        unsigned char *prop = NULL;
+        unsigned long nitems = 0;
+        unsigned long bytes_after;
+        Atom actual_type;
+        int actual_format;
+        int i;
+
+        // Currently we only upgrade 'max bpc' if it is too low for 10 bpc+ output
+        // and not altered by user or 3rd party software, iow. at 8 bpc default.
+        // We also only upgrade to 10 bpc, even if 12 bpc or more might look
+        // appropriate for > 10 bpc output. Why? Mostly for three practical reasons:
+        // 1. HDMI deep color capable displays are mandated by the HDMI spec that they
+        //    must advertise 12 bpc support whenever they are deep color capable, even
+        //    if they can't actually handle 12 bpc meaningfully! As most HDMI displays
+        //    don't actually do 12 bpc, this means they will internally truncate to
+        //    10 bpc. As the gpu won't dither 12+ bpc content down to 10 bpc if it
+        //    thinks it is outputting to a true 12 bpc display, this means we get only
+        //    10 bpc content! Otoh. if we restrict ourselves to 10 bpc output, then
+        //    such HDMI fake 12 bpc displays can't fool us - we treat them like 10 bpc
+        //    displays and the gpu dithers down to 10 bpc, achieving a net precision of
+        //    more than 10 bpc for typical scenarios.
+        //
+        // 2. Almost all commercially available displays as of the year 2020 do not
+        //    support more than 10 bpc anyway, and need dithering, so restricting to
+        //    10 bpc does not do harm on 99% of all setups.
+        //
+        // 3. Users can always manually configure (xrandr --output name --set 'max bpc' 12)
+        //    their display outputs to allow for 12 bpc output or higher. So the few lucky
+        //    owners of true 12 bpc displays can take full advantage of such panels.
+        //
+        // We may need to periodically revisit this strategy, as future generation gpu's
+        // and displays become available...
+        switch (min_bpc) {
+            case 10:
+                min_maxbpc = 8;
+                new_max_bpc = 10;
+                break;
+
+            case 11:
+            case 12:
+                min_maxbpc = 8;
+                new_max_bpc = 10;
+                break;
+
+            case 16:
+                min_maxbpc = 8;
+                new_max_bpc = 10;
+                break;
+
+            default:
+                printf("PTB-ERROR:PsychOSEnsureMinimumOutputPrecision: min_bpc %i requested, but this is unsupported!\n", min_bpc);
+                min_maxbpc = 0;
+                new_max_bpc = 0;
+                break;
+        }
+
+        // 'max bpc' output / connector property supported in general?
+        if (max_bpc_atom) {
+            // Yes. Check all outputs on this screen:
+            for (i = 0; i < resources->noutput; i++) {
+                output = resources->outputs[i];
+                max_bpc = 0;
+                set_max_bpc = 0;
+
+                // If the given output doesn't support 'max bpc' property, then skip it:
+                if ((XRRGetOutputProperty(dpy, output, max_bpc_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) || (prop == NULL))
+                    continue;
+
+                // Does it have the proper property, and is current 'max bpc' too low for our precision needs? Or is 16 bpc selected on a AMD gpu, which would be the default for AMD + eDP?
+                if ((actual_type == XA_INTEGER) && (nitems == 1) && (actual_format == 32) && (((max_bpc = *((long *) prop)) <= min_maxbpc) || ((max_bpc == 16) && (gpuMaintype == kPsychRadeon) && (gpuMinortype >= 80)) )) {
+                    // max_bpc too low (or at AMD default) for needed precision. Try to upgrade to new_max_bpc:
+                    set_max_bpc = max_bpc;
+
+                    // Output has 'max bpc' but it is too low for our 'min_bpc' precision needs. Crank it up to its maximum:
+                    XRRPropertyInfo *info = XRRQueryOutputProperty(dpy, output, max_bpc_atom);
+
+                    if (info && (info->range) && (info->num_values == 2)) {
+                        set_max_bpc = (new_max_bpc <= info->values[1]) ? new_max_bpc : info->values[1];
+
+                        if (PsychPrefStateGet_Verbosity() > 2)
+                            printf("PTB-INFO: Output %i of screen %i has too low max bpc %i <= %i bpc for high precision (%i bpc) mode. Requesting a new maximum bpc of %i bits.\n", i, scrnum, max_bpc, min_maxbpc, min_bpc, (int) set_max_bpc);
+
+                        XRRChangeOutputProperty(dpy, output, max_bpc_atom, XA_INTEGER, 32, PropModeReplace, (unsigned char *) &set_max_bpc, 1);
+                    }
+
+                    if (info)
+                        XFree(info);
+                }
+                else {
+                    set_max_bpc = max_bpc;
+
+                    if (PsychPrefStateGet_Verbosity() > 3)
+                        printf("PTB-INFO: Output %i of screen %i has sufficient max bpc %i > %i bpc for high precision (%i bpc) mode. Nothing to do.\n", i, scrnum, max_bpc, min_maxbpc, min_bpc);
+                }
+
+                if (set_max_bpc > actual_max_bpc)
+                    actual_max_bpc = set_max_bpc;
+
+                // Done with this one, free up, go to next one:
+                XFree(prop);
+            }
+
+            XFlush(dpy);
+        }
+
+        XRRFreeScreenResources(resources);
+    }
+
+    PsychUnlockDisplay();
+
+    // More than 10 bpc framebuffer content output precision needed,
+    // and hardware output bpc limited to maximum 10 bpc on AMD DC with DCE8+ engine?
+    if (max_bpc_atom && (min_bpc > 10) && (actual_max_bpc == 10) && (gpuMaintype == kPsychRadeon) && (gpuMinortype >= 80)) {
+        // Yes. For displays output with <= actual_max_bpc 10 bpc, spatial dithering
+        // is needed to make something out of this min_bpc > 10 bit content.
+        //
+        // The special case we need to handle here is an AMD gpu with DCE display
+        // engine (DCE-8/10/11/12) feeding to a native 10 bpc video sink, where
+        // dithering to 10 bpc would be needed, but the Linux amdgpu DC driver
+        // does not do that for unknown reasons.
+        //
+        // Try to fix this by detecting if dithering is enabled, as it should be,
+        // and will be for 6 bpc or 8 bpc display sinks. If dithering is disabled,
+        // because a 10 bpc sink is connected or the > 10 bpc sink is artificially
+        // restricted to 10 bpc -- iow. we'd need to dither to 10 bpc, but driver
+        // did not enable this, then we manually override the drivers programming
+        // and "hack on" 10 bpc spatial dithering:
+        if (PsychPrefStateGet_Verbosity() > 2)
+            printf("PTB-INFO: Screen %i needs dithering for high precision %i bpc output to <= %i bpc video sink.\n", scrnum, min_bpc, actual_max_bpc);
+
+        // Call directly into our low-level dithering control routine. 0xffffffff
+        // signals to the routine that it only should manually force-enable hw
+        // dithering iff it isn't already enabled (as we assume should be for
+        // 6 bpc and 8 bpc video output), ie. only for 10 bpc target signal depth.
+        // The routine knows a proper magic value to set up at least DCE11.2 with
+        // good quality:
+        PsychOSKDSetDitherMode(screenNumber, 0xffffffff);
+    }
+
+    return(TRUE);
+}
+
 /*
  *    PsychOSOpenOnscreenWindow()
  *
@@ -853,7 +1018,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         if (windowRecord->specialflags & kPsychIsFullscreenWindow) attr.override_redirect = 0;
     }
 
-    if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Using %s-style override-redirect setup path for onscreen window creation.\n", (newstyle_setup) ? "new" : "old");
+    if (PsychPrefStateGet_Verbosity() > 3)
+        printf("PTB-INFO: Using %s-style override-redirect (=%i) setup path for onscreen window creation.\n", (newstyle_setup) ? "new" : "old", attr.override_redirect);
 
     // Create our onscreen window:
     win = XCreateWindow( dpy, root, x, y, width, height,
@@ -1278,8 +1444,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         if (DPMSQueryExtension(dpy, &dummy, &dummy)) DPMSDisable(dpy);
     }
 
-    // Some info for the user regarding non-fullscreen mode and sync problems:
-    if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2)) {
+    // Some info for the user regarding non-fullscreen mode and sync problems, unless external consumers are used as signalled by kPsychExternalDisplayMethod:
+    if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2) && !(windowRecord->specialflags & kPsychExternalDisplayMethod)) {
         printf("PTB-INFO: Many graphics cards do not support proper timing and timestamping of visual stimulus onset\n");
         printf("PTB-INFO: when running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
         printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 2); .\n");
@@ -1423,10 +1589,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
         // Find primary output for check in 'output':
         PsychUnlockDisplay();
-        output_name = PsychOSGetOutputProps(screenSettings->screenNumber, 0, NULL, NULL, (unsigned long *) &output);
+        if (vrr_wanted)
+            output_name = PsychOSGetOutputProps(screenSettings->screenNumber, 0, FALSE, NULL, NULL, (unsigned long *) &output);
         PsychLockDisplay();
 
-        if (vrr_supported_atom &&
+        if (vrr_supported_atom && vrr_wanted &&
             (XRRGetOutputProperty(dpy, output, vrr_supported_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) == Success) &&
             (actual_type == XA_INTEGER) && (nitems == 1) && (actual_format == 32)) {
             // printf("%s : %p %ld %d \n", output_name, prop, *((long *) prop), *((long *) prop) > 0);
@@ -1522,7 +1689,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         Atom vrr_atom;
 
         // Running on Mesa 19.0.0 or later with DRI3/Present support for VRR?
-        if (vrr_supported && (mesaversion[0] >= 19)) {
+        if (mesaversion[0] >= 19) {
             // Yes. Perform an OpenGL bufferswap, so Mesa can set up VRR state according to its opinion and
             // system settings and then we can override it with our own opinion:
             glClearColor(0, 0, 0, 0);
@@ -1553,57 +1720,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         XChangeProperty(dpy, win, vrr_atom, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &state, 1);
     }
 
-    // Framebuffer color resolution of more than standard 8 bpc requested?
-    if (bpc > 8) {
-        // Yes. Make sure all video outputs on this X-Screen are set up for maximum color output precision.
-        XRRScreenResources *resources = XRRGetScreenResources(dpy, root);
-        Atom max_bpc_atom = XInternAtom(dpy, "max bpc", True);
-        RROutput output;
-        long max_bpc;
-        unsigned char *prop = NULL;
-        unsigned long nitems = 0;
-        unsigned long bytes_after;
-        Atom actual_type;
-        int actual_format;
-
-        // 'max bpc' output / connector property supported in general?
-        if (max_bpc_atom) {
-            // Yes. Check all outputs on this screen:
-            for (i = 0; i < resources->noutput; i++) {
-                output = resources->outputs[i];
-
-                // If the given output doesn't support 'max bpc' property, then skip it:
-                if ((XRRGetOutputProperty(dpy, output, max_bpc_atom, 0, 4, False, False, None, &actual_type, &actual_format, &nitems, &bytes_after, &prop) != Success) || (prop == NULL))
-                    continue;
-
-                // Does it have the proper property, and is current 'max bpc' too low for our precision needs?
-                if ((actual_type == XA_INTEGER) && (nitems == 1) && (actual_format == 32) && ((max_bpc = *((long *) prop)) <= 8)) {
-                    // Output has 'max bpc' but it is too low for our 'bpc' precision needs. Crank it up to its maximum:
-                    XRRPropertyInfo *info = XRRQueryOutputProperty(dpy, output, max_bpc_atom);
-
-                    if (info && (info->range) && (info->num_values == 2)) {
-                        if (PsychPrefStateGet_Verbosity() > 2)
-                            printf("PTB-INFO: Output %i of screen %i has too low max bpc %i <= 8 bpc for high precision mode. Requesting maximum bpc of %i bits.\n", i, scrnum, max_bpc, (int) info->values[1]);
-
-                        max_bpc = info->values[1];
-                        XRRChangeOutputProperty(dpy, output, max_bpc_atom, XA_INTEGER, 32, PropModeReplace, (unsigned char *) &max_bpc, 1);
-                    }
-
-                    if (info)
-                        XFree(info);
-                }
-
-                // Done with this one, free up, go to next one:
-                XFree(prop);
-            }
-
-            XFlush(dpy);
-        }
-
-        XRRFreeScreenResources(resources);
-    }
-
     PsychUnlockDisplay();
+
+    // Make sure RandR outputs are properly configured for native video output at
+    // at least 'bpc' bits per color channel:
+    PsychOSEnsureMinimumOutputPrecision(screenSettings->screenNumber, bpc);
 
     // Try to enable swap event delivery to us:
     if (PsychOSSwapCompletionLogging(windowRecord, 2, 0) && (PsychPrefStateGet_Verbosity() > 3)) {
@@ -1777,11 +1898,11 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
  *    startup of gfx-system for the given screen. Returns a time of -1 and a count of 0 if this
  *    feature is unavailable on the given OS/Hardware configuration.
  */
-double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
+double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
-    unsigned int	vsync_counter = 0;
-    psych_uint64	ust, msc, sbc;
-
+    psych_uint64 ust, msc, sbc;
+    double tActiveStart = -1;
+    unsigned int vsync_counter = 0;
     PsychLockDisplay();
 
     #ifdef GLX_OML_sync_control
@@ -1797,30 +1918,32 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
             return( PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz()) );
         }
         else {
-            // Last VBL timestamp unavailable:
-            return(-1);
+            // Last VBL timestamp unavailable, fallback on beamposition method:
+            return(PsychGetVblankTimestamps(windowRecord, NULL));
         }
     }
     #else
     #warning GLX_OML_sync_control unsupported! Compile with -std=gnu99 to enable it!
     #endif
 
+    // Retrieve absolute system time of end of current/last vblank, or -1 on failure/unsupported:
+    tActiveStart = PsychGetVblankTimestamps(windowRecord, NULL);
+
     // Do we have SGI video sync extensions?
     if (NULL != glXGetVideoSyncSGI) {
-        // Retrieve absolute count of vbl's since startup:
+        // Retrieve absolute count of vblanks since startup:
         glXGetVideoSyncSGI(&vsync_counter);
         PsychUnlockDisplay();
         *vblCount = (psych_uint64) vsync_counter;
 
-        // Retrieve absolute system time of last retrace, convert into PTB standard time system and return it:
-        // Not yet supported on Linux:
-        return(-1);
+        return(tActiveStart);
     }
     else {
-        // Unsupported :(
+        // Counter query unsupported:
         PsychUnlockDisplay();
         *vblCount = 0;
-        return(-1);
+
+        return(tActiveStart);
     }
 }
 
@@ -2600,39 +2723,6 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     return;
 }
 
-// Internal helper: Measure and compute VBLANK start and end timestamp for current refresh cycle:
-static double GetVblankTimestamps(PsychWindowRecordType *windowRecord, double *activeStart)
-{
-    double vbl_lines_elapsed, onset_lines_togo;
-    double time_at_vbl, vbl_time_elapsed, onset_time_togo;
-    double currentrefreshestimate = windowRecord->VideoRefreshInterval;
-    double vbl_startline = windowRecord->VBL_Startline;
-    double vbl_endline = windowRecord->VBL_Endline;
-    int beamPosAtFlip = PsychGetDisplayBeamPosition(NULL, windowRecord->screenNumber);
-    PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
-
-    if (beamPosAtFlip >= vbl_startline) {
-        vbl_lines_elapsed = beamPosAtFlip - vbl_startline;
-        onset_lines_togo = vbl_endline - beamPosAtFlip + 1;
-    }
-    else {
-        vbl_lines_elapsed = vbl_endline - vbl_startline + 1 + beamPosAtFlip;
-        onset_lines_togo = -1.0 * beamPosAtFlip;
-    }
-
-    // From the elapsed number we calculate the elapsed time since VBL start:
-    vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentrefreshestimate;
-    onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
-
-    // Compute of stimulus-onset, aka time when retrace is finished:
-    *activeStart = time_at_vbl + onset_time_togo;
-
-    // Now we correct our time_at_vbl by this correction value:
-    time_at_vbl = time_at_vbl - vbl_time_elapsed;
-
-    return(time_at_vbl);
-}
-
 static psych_int64 PsychOSScheduleSoftSyncFlip(PsychWindowRecordType *windowRecord, double tWhen, psych_int64 targetMSC)
 {
 #ifdef GLX_OML_sync_control
@@ -2677,7 +2767,7 @@ static psych_int64 PsychOSScheduleSoftSyncFlip(PsychWindowRecordType *windowReco
     // previously flipped stimulus. If we don't have this, e.g., because user
     // requested a non-vsync'ed flip or forced high-precision timestamping off,
     // we don't have a reliable baseline for start of this video refresh cycle:
-    tVblankStart = GetVblankTimestamps(windowRecord, &tActiveStart);
+    tActiveStart = PsychGetVblankTimestamps(windowRecord, &tVblankStart);
     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
     if (PsychPrefStateGet_Verbosity() > 10)
         printf("PTB-DEBUG: Offset %lf msecs.\n", 1000 * (tNow - tVblankStart));
@@ -2697,7 +2787,7 @@ static psych_int64 PsychOSScheduleSoftSyncFlip(PsychWindowRecordType *windowReco
         // Yes. Sleep a refresh cycle, then recheck:
         //printf("TF %f ", (tWhen - tVblankStart) / windowRecord->VideoRefreshInterval);
         PsychWaitUntilSeconds(tVblankStart + windowRecord->VideoRefreshInterval);
-        tVblankStart = GetVblankTimestamps(windowRecord, &tActiveStart);
+        tActiveStart = PsychGetVblankTimestamps(windowRecord, &tVblankStart);
         //printf("Now %f\n", (tWhen - tVblankStart) / windowRecord->VideoRefreshInterval);
     }
 

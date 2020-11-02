@@ -1,5 +1,5 @@
 % Psychtoolbox.
-% Version 3.0.16      7 August 2019
+% Version 3.0.17      2 November 2020
 %
 % The Psychophysics Toolbox is a collection of Octave and Matlab functions
 % that extend the language to give you exquisite control of your computer
@@ -91,6 +91,18 @@
 % PsychTests             - Evaluate performance of software and hardware.
 % PsychVideoCapture      - Functions for realtime video capture.
 % Quest                  - Threshold estimation procedure.
+%
+%
+% IMPORTANT NEWS:
+%
+% You can now financially contribute to Psychtoolbox sustainability, upkeep
+% and continued improvement by buying a community membership, which also
+% includes some priority support for questions regarding its use, or issues
+% you may have with it. We also offer paid feature development and other
+% useful commercial services.
+%
+% Please type 'PsychPaidSupportAndServices' to learn more.
+%
 
 % The OS 9 version was this:
 %   PsychBasic            - Basic support routines for psychophysics.

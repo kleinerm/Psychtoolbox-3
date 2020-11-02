@@ -4,9 +4,9 @@ function data = glGetNamedBufferSubData( buffer, offset, size )
 %
 % usage:  data = glGetNamedBufferSubData( buffer, offset, size )
 %
-% C function:  void glGetNamedBufferSubData(GLuint buffer, GLintptr offset, GLsizei size, void* data)
+% C function:  void glGetNamedBufferSubData(GLuint buffer, GLintptr offset, GLsizeiptr size, void* data)
 
-% 30-Sep-2014 -- created (generated automatically from header files)
+% 08-Aug-2020 -- created (generated automatically from header files)
 
 % ---allocate---
 

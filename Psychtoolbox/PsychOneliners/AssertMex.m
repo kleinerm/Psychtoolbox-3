@@ -90,12 +90,18 @@ if IsOctave
             % Correct file with correct extension, still load failure:
             % Check for supported Octave version:
             fprintf('Your version of Octave (%s) might be incompatible with Psychtoolbox: We support Octave 4.0.0 or later\n', version);
-            fprintf('on Linux, Octave 5.1 on Windows and macOS.\n', version);
+            fprintf('on Linux, Octave 5.2 on Windows and macOS.\n');
 
             fprintf('Another reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
             fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');
         end
     end
+
+    % Our little ad for our troubleshooting services:
+    if exist('PsychPaidSupportAndServices', 'file')
+        PsychPaidSupportAndServices(2);
+    end
+
     error('Missing, inaccessible or dysfunctional Psychtoolbox Mex file for this system, or Octave path wrong. Read the help text above carefully!!\n');
 end
 
@@ -187,5 +193,11 @@ if isempty(inputNames) || ismember(computer, inputNames)
             end
         end
     end
+
+    % Our little ad for our troubleshooting services:
+    if exist('PsychPaidSupportAndServices', 'file')
+        PsychPaidSupportAndServices(2);
+    end
+
     error('Missing or dysfunctional Psychtoolbox Mex file for this operating system. Read the help text above carefully!!');
 end

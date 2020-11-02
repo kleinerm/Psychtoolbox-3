@@ -22,6 +22,7 @@ function MouseMotionRecordingDemo
 
 % History:
 % 25-Jul-2019  mk  Written.
+% 06-Oct-2020  mk  Add timestamping/dT calculation and printing.
 
 if IsOSX
   fprintf('Sorry, this demo does not work on macOS.\n');
@@ -44,8 +45,10 @@ KbQueueCreate(d, [], 3, [], 4);
 
 % Start movement data collection, place mouse cursor in top-left (0,0) pos:
 KbQueueStart(d);
-SetMouse(0,0)
+SetMouse(0,0);
 [x,y] = GetMouse;
+oldTime = [];
+dT = 0;
 
 fprintf('Press any key on keyboard to finish demo.\n\n');
 
@@ -61,15 +64,20 @@ while ~KbCheck
       x = x + evt.Valuators(1);
       y = y + evt.Valuators(2);
 
+      if ~isempty(oldTime)
+        dT = evt.Time - oldTime;
+      end
+      oldTime = evt.Time;
+
       if IsWin
         % Print what we got: Desktop cursor pos (with pointer acceleration),
         % accumulated raw device position/motion, and reported increments:
-        fprintf('xc=%f  yc=%f  xi=%f  yi=%f vx=%f  vy=%f  wheel %f\n', evt.X, evt.Y, x, y, ...
+        fprintf('dT=%f msecs xc=%f  yc=%f  xi=%f  yi=%f vx=%f  vy=%f  wheel %f\n', dT * 1000, evt.X, evt.Y, x, y, ...
                 evt.Valuators(1), evt.Valuators(2), evt.Valuators(3));
       else
         % On Linux/X11 in raw mode, no dedicated cursor position is reported, so
         % skip that. Also, wheel position would be valuator 4, scrap that.
-        fprintf('xi=%f  yi=%f vx=%f  vy=%f\n', x, y, ...
+        fprintf('dT=%f msecs xi=%f  yi=%f vx=%f  vy=%f\n', dT * 1000, x, y, ...
                 evt.Valuators(1), evt.Valuators(2));
       end
     end

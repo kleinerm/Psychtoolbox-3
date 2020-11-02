@@ -179,7 +179,7 @@ static char synopsisString[] =
     "for internal use by M-Files belonging to Psychtoolbox itself, e.g., display tests.\n\n"
     "The info struct contains the following fields:\n"
     "----------------------------------------------\n\n"
-    "BeamPosition: Current rasterbeam position of the video scanout cycle.\n"
+    "Beamposition: Current rasterbeam position of the video scanout cycle.\n"
     "LastVBLTimeOfFlip: VBL timestamp of last finished Screen('Flip') operation.\n"
     "TimeAtSwapRequest: Timestamp taken prior to submission of the low-level swap command. Useful for micro-benchmarking.\n"
     "TimePostSwapRequest: Timestamp taken after submission of the low-level swap command. Useful for micro-benchmarking.\n"
@@ -193,6 +193,7 @@ static char synopsisString[] =
     "supported by system. Currently only OS/X and Linux do support this with some GPU's.\n"
     "VideoRefreshFromBeamposition: Estimate of video refresh cycle from beamposition measurement method.\n"
     "GLVendor, GLRenderer, GLVersion: Vendor name, renderer name and version of the OpenGL implementation.\n"
+    "GLDeviceUUID: The unique device id if supported by the OpenGL implementation, an empty field otherwise.\n"
     "StereoMode: Currently selected stereomode, as requested in call to Screen('OpenWindow', ...);\n"
     "StereoDrawBuffer: Current drawbuffer for stereo display (0 = left eye, 1 = right eye, 2 = None in mono mode).\n"
     "ImagingMode: Currently selected imging pipeline mode, as requested in call to Screen('OpenWindow', ...);\n"
@@ -236,8 +237,8 @@ PsychError SCREENGetWindowInfo(void)
                                 "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", "GPUMinorType",
                                 "DisplayCoreId", "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
                                 "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags", "SwapGroup", "SwapBarrier", "SysWindowHandle", "ExternalMouseMultFactor", "VRRMode",
-                                "VRRStyleHint", "VRRLatencyCompensation" };
-    const int fieldCount = 42;
+                                "VRRStyleHint", "VRRLatencyCompensation", "GLDeviceUUID" };
+    const int fieldCount = 43;
     PsychGenericScriptType *s;
 
     PsychWindowRecordType *windowRecord;
@@ -453,7 +454,8 @@ PsychError SCREENGetWindowInfo(void)
         PsychSetStructArrayDoubleElement("Beamposition", 0, beamposition, s);
 
         // Time of last vertical blank when a double-buffer swap occured:
-        if ((windowRecord->flipCount > 0) && (windowRecord->time_at_last_vbl == 0) && (PsychPrefStateGet_VBLTimestampingMode() == 4)) {
+        if ((windowRecord->flipCount > 0) && (windowRecord->time_at_last_vbl == 0) && !(windowRecord->specialflags & kPsychSkipTimestampingForFlipOnce) &&
+            (PsychPrefStateGet_VBLTimestampingMode() == 4)) {
             // If time_at_last_vbl for an already finished or at least pending flip isn't available and
             // we have support for OS-Builtin timestamping enabled, we try to employ OS-Builtin timestamping
             // to get a timestamp for the most recent pending or finished flip. If this fails or is unsupported,
@@ -641,6 +643,28 @@ PsychError SCREENGetWindowInfo(void)
             PsychSetStructArrayStringElement("GLVendor", 0, (char*) glGetString(GL_VENDOR), s);
             PsychSetStructArrayStringElement("GLRenderer", 0, (char*) glGetString(GL_RENDERER), s);
             PsychSetStructArrayStringElement("GLVersion", 0, (char*) glGetString(GL_VERSION), s);
+
+            // Try to get and return the OpenGL device UUID. Useful for uniquely identifying a
+            // physical gpu in the system. Note the UUID computation is not standardized, so each
+            // OpenGL driver/vendor may use a different method, ergo UUID are only comparable within
+            // gpu's of a specific gpu vendor:
+            if (glewIsSupported("GL_EXT_memory_object")) {
+                GLint numUUIDS = 0;
+                PsychGenericScriptType *out_uuid;
+                psych_uint8 *devUUID = NULL;
+
+                // AMD: Mesa radeonsi OpenGL PCI:domain:bus:device:function == Mesa radv. 32-bit per field.
+                //      amdvlk bus:device:function:0
+                // => Can convert to amdvlk / amdgpu-pro style.
+                // NVidia: Identical hash between OpenGL and Vulkan.
+                // Intel and others: Unsupported.
+                glGetIntegerv(GL_NUM_DEVICE_UUIDS_EXT, &numUUIDS);
+                if (numUUIDS > 0) {
+                    PsychAllocateNativeUnsignedByteMat(1, GL_UUID_SIZE_EXT, 1, (psych_uint8**) &devUUID, &out_uuid);
+                    glGetUnsignedBytei_vEXT(GL_DEVICE_UUID_EXT, 0, devUUID);
+                    PsychSetStructArrayNativeElement("GLDeviceUUID", 0, out_uuid, s);
+                }
+            }
         }
     }
 

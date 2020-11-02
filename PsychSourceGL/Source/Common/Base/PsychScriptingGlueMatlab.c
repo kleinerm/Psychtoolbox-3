@@ -715,12 +715,16 @@ static PsychArgFormatType PsychGetTypeFromMxPtr(const mxArray *mxPtr)
         format = PsychArgType_uint16;
     else if (mxIsUint32(mxPtr))
         format = PsychArgType_uint32;
+    else if (mxIsUint64(mxPtr))
+        format = PsychArgType_uint64;
     else if (mxIsInt8(mxPtr))
         format = PsychArgType_int8;
     else if (mxIsInt16(mxPtr))
         format = PsychArgType_int16;
     else if (mxIsInt32(mxPtr))
         format = PsychArgType_int32;
+    else if (mxIsInt64(mxPtr))
+        format = PsychArgType_int64;
     else if (mxIsDouble(mxPtr))
         format = PsychArgType_double;
     else if (mxIsSingle(mxPtr))
