@@ -41,8 +41,8 @@ function ProceduralGarboriumDemo(ngabors)
 % to use - and less forgiving of programming errors - than the simple and
 % easy Matlab language. This means that you're either restricted to our
 % predifined set of primitives, or you'll have some steep learning curve.
-% Currently PTB provides gabors and (via CreateProceduralSineGrating())
-% sine gratings.
+% Currently PTB provides several such stimuli (see the CreateProcedural*
+% series of functions for details).
 %
 % The demo shows "an aquarium" of many cute little gabor patches, each moving
 % into a random direction. Sometimes the gabors intersect, in that case
@@ -63,6 +63,7 @@ function ProceduralGarboriumDemo(ngabors)
 % 07/08/2007 Written (MK).
 % 05/18/2008 Rewritten, beautified, adapted to current PTB (MK).
 % 11/24/2014 Add support for gaussian blobs (CreateProceduralGaussBlob()) (MK).
+% 11/04/2020 Add Priority() to speed up drawing a bit (IMA).
 
 % Setup defaults and unit color range:
 PsychDefaultSetup(2);
@@ -72,7 +73,7 @@ if nargin < 1 || isempty(ngabors)
     ngabors = 200;
 end
 
-fprintf('Will draw %i gabor patches per frame.\n', ngabors);
+fprintf('Will draw %i gabor patches, and %i gaussian blobs per frame.\n', ngabors, ngabors);
 
 % Select screen with maximum id for output window:
 screenid = max(Screen('Screens'));
@@ -141,6 +142,9 @@ gabortex = CreateProceduralGabor(win, tw, th, 1);
 % support here to avoid cutoff artifacts (tw * 2, th * 2):
 blobtex = CreateProceduralGaussBlob(win, tw * 2, th * 2);
 
+% Increase our priority for faster drawing
+Priority(MaxPriority(win));
+
 % Draw the gabor and blob once, just to make sure the gfx-hardware is ready for the
 % benchmark run below and doesn't do one time setup work inside the
 % benchmark loop. The flag 'kPsychDontDoRotation' tells 'DrawTexture' not
@@ -161,7 +165,9 @@ Screen('DrawTexture', win, blobtex, [], [], [], [], [], [], [], kPsychDontDoRota
 texrect = Screen('Rect', gabortex);
 inrect = repmat(texrect', 1, ngabors);
 
+scale = zeros(1, ngabors);
 dstRects = zeros(4, ngabors);
+dstRects2 = dstRects;
 for i=1:ngabors
     scale(i) = 1*(0.1 + 0.9 * randn);
     dstRects(:, i) = CenterRectOnPoint(texrect * scale(i), rand * w, rand * h)';
@@ -244,6 +250,7 @@ end
 
 % Done. Last flip to take end timestamp and for stimulus offset:
 vbl = Screen('Flip', win);
+Priority(0);
 
 % Print the stats:
 count
