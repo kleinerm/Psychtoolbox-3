@@ -26,7 +26,10 @@ function [versionString, versionStructure] = PsychtoolboxVersion
 % Numeric values of the three integer fields contained in versionString are
 % available in fields of the second return argument, "versionStructure".
 %
-% The field 'Flavor' defines the subtype of Psychtoolbox being used:
+% If Psychtoolbox was installed using Neurodebian or GIT, this source
+% is available in the field 'Flavor'.
+%
+% Using SVN, the field 'Flavor' defines the subtype of Psychtoolbox being used:
 %
 % * beta: The term 'current' is a synonym for 'beta'. Beta releases are the
 % only releases we provide at this point. 'Beta' is a historical name, not
@@ -75,6 +78,7 @@ function [versionString, versionStructure] = PsychtoolboxVersion
 %   05/27/12   mk       Switch over to GitHub hosting.
 %   08/06/14   mk       Integrate (Neuro)Debian versioning support. Cleanups.
 %   10/28/20   mk       Add SVN support via Matlabs SVNKit. Clarify versioning scheme.
+%   11/04/20   ia       Add support for git or manual install methods
 
 global Psychtoolbox
 
@@ -89,14 +93,32 @@ if ~isfield(Psychtoolbox,'version')
     Psychtoolbox.version.websvn = 'https://github.com/Psychtoolbox-3/Psychtoolbox-3';
 
     file=fullfile(PsychtoolboxRoot,'Contents.m');
+    fileinfo = dir(file); % get the filesystem date of this file
     f=fopen(file,'r');
     fgetl(f);
     s=fgetl(f);
     fclose(f);
     [cvv,count,errmsg,n]=sscanf(s,'%% Version %d.%d.%d',3);
+    ss=s(n:end);
+    contentsdate=ss(min(find(ss-' ')):end); %#ok<MXFND>
     Psychtoolbox.version.major=cvv(1);
     Psychtoolbox.version.minor=cvv(2);
     Psychtoolbox.version.point=cvv(3);
+    
+    gitfolder = PsychtoolboxRoot();
+    i=find(filesep==gitfolder);
+    gitfolder = [gitfolder(1:i(end-1)) '.git'];
+    if exist(gitfolder ,'dir')
+        isGIT = true;
+    else
+        isGIT = false;
+    end
+    
+    if exist([PsychtoolboxRoot '.svn'],'dir')
+        isSVN = true;
+    else
+        isSVN = false;
+    end
 
     if any(strcmp(PsychtoolboxRoot, {'/usr/share/octave/site/m/psychtoolbox-3/', '/usr/share/matlab/site/m/psychtoolbox-3/'}))
         % It is a Debian version of the package
@@ -120,6 +142,41 @@ if ~isfield(Psychtoolbox,'version')
 
         % Retrieve the date of the Debian release:
         Psychtoolbox.date = sscanf(result, 'psychtoolbox-3 (%*d.%*d.%*d.%d.%*s');
+    elseif isGIT == true
+        %assume a GIT install
+        gitstatus = GetGITInfo(PsychtoolboxRoot);
+        if ~isempty(gitstatus)
+            Psychtoolbox.version.flavor = 'GIT Branch';
+            Psychtoolbox.version.revision = gitstatus.Revision;
+            Psychtoolbox.version.revstring = gitstatus.Describe;
+            [r1,r2] = regexp(gitstatus.RemoteRepository{1},'http[^\s]+');
+            if ~isempty(r1)
+                remoteURL = gitstatus.RemoteRepository{1}(r1:r2);
+            else 
+                remoteURL = '';
+            end
+            % Build final version string:
+            Psychtoolbox.version.string = sprintf('%d.%d.%d - Flavor: %s - Commit %s\nFor more info visit:\n%s', ...
+                Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
+                Psychtoolbox.version.flavor, Psychtoolbox.version.revision, remoteURL);
+
+            % Cell index of LastCommit where date is stored varies:
+            for ds=1:numel(gitstatus.LastCommit)
+                if ~isempty(strfind(gitstatus.LastCommit{ds}, 'Date'))
+                    break;
+                end
+            end
+
+            date = regexp(gitstatus.LastCommit{ds},'Date:\s+(?<day>\w{3})\s(?<month>\w{3})\s+(?<dayn>\d+)\s(?<time>\d\d\:\d\d:\d\d)\s(?<year>\d{4})','names');
+            Psychtoolbox.date = sprintf('%s-%s-%s', date.dayn, date.month, date.year);
+        end
+    elseif isSVN == false
+        % assume a manual install
+        Psychtoolbox.version.flavor = 'Manual Install';
+        Psychtoolbox.date = fileinfo.date;
+        Psychtoolbox.version.string=sprintf('%d.%d.%d - Flavor: %s, %s', ...
+        Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point,...
+        Psychtoolbox.version.flavor,Psychtoolbox.date);
     else
         if ~IsOctave && ~verLessThan('matlab', '8.4')
             % R2014b and later contain a Java SVN implementation, so lets use
@@ -129,48 +186,57 @@ if ~isfield(Psychtoolbox,'version')
             % Get svn_client object from Matlab's Java implementation:
             svn_client_manager = org.tmatesoft.svn.core.wc.SVNClientManager.newInstance;
             svn_client = svn_client_manager.getWCClient();
-            svninfo = svn_client.doInfo(java.io.File(PsychtoolboxRoot()), org.tmatesoft.svn.core.wc.SVNRevision.WORKING);
+            try
+                svninfo = svn_client.doInfo(java.io.File(PsychtoolboxRoot()), org.tmatesoft.svn.core.wc.SVNRevision.WORKING);
 
-            % Get revision:
-            Psychtoolbox.version.revision = svninfo.getCommittedRevision().getNumber();
-            Psychtoolbox.version.revstring = sprintf('Corresponds to SVN Revision %d', Psychtoolbox.version.revision);
+                % Get revision:
+                Psychtoolbox.version.revision = svninfo.getCommittedRevision().getNumber();
+                Psychtoolbox.version.revstring = sprintf('Corresponds to SVN Revision %d', Psychtoolbox.version.revision);
 
-            % Get flavor:
-            result = char(svninfo.getURL().getPath());
+                % Get flavor:
+                result = char(svninfo.getURL().getPath());
 
-            % First test for end-user branch:
-            marker = '/Psychtoolbox-3/Psychtoolbox-3/branches/';
-            startdel = strfind(result, marker) + length(marker);
-
-            if isempty(startdel)
-                % Nope: Search for developer branch aka 'trunk' aka 'master':
-                marker = '/Psychtoolbox-3/Psychtoolbox-3/';
+                % First test for end-user branch:
+                marker = '/Psychtoolbox-3/Psychtoolbox-3/branches/';
                 startdel = strfind(result, marker) + length(marker);
+
+                if isempty(startdel)
+                    % Nope: Search for developer branch aka 'trunk' aka 'master':
+                    marker = '/Psychtoolbox-3/Psychtoolbox-3/';
+                    startdel = strfind(result, marker) + length(marker);
+                end
+
+                findel = min(strfind(result(startdel:length(result)), '/Psychtoolbox')) + startdel - 2;
+                Psychtoolbox.version.flavor = result(startdel:findel);
+
+                % Get date:
+                date = svninfo.getCommittedDate();
+                Psychtoolbox.date = sprintf('%d-%02d-%02d', 1900 + date.getYear(), 1 + date.getMonth(), date.getDate());
+
+                % SVN status query does not yet work, as it won't detect all
+                % modifications to the working copy, but only modifications to
+                % the root folder itself, iow. none at all in almost all cases.
+                % TODO: Would need to use the doStatus() method which recurses
+                % over the whole working copy and calls a ISVNStatusHandler for
+                % each modified item -- Something to figure out, if such
+                % handlers would be doable easily at all from Matlab...
+                svn_statusclient = svn_client_manager.getStatusClient();
+                svnstatus = svn_statusclient.doStatus(java.io.File(PsychtoolboxRoot()), false);
+                if svnstatus.getContentsStatus() == org.tmatesoft.svn.core.wc.SVNStatusType.STATUS_MODIFIED
+                    Psychtoolbox.version.revstring = sprintf('%s but is *locally modified* !', Psychtoolbox.version.revstring);
+                end
+
+                % Build final version string:
+                Psychtoolbox.version.string = sprintf('%d.%d.%d - Flavor: %s - %s\nFor more info visit:\n%s', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
+                                                        Psychtoolbox.version.flavor, Psychtoolbox.version.revstring, Psychtoolbox.version.websvn);
+            catch
+                fprintf('PsychtoolboxVersion: WARNING - Could not query additional version information from SVN.\n');
+                Psychtoolbox.version.flavor = 'Unknown';
+                Psychtoolbox.date = fileinfo.date;
+                Psychtoolbox.version.string=sprintf('%d.%d.%d - Flavor: %s, %s', ...
+                Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point,...
+                Psychtoolbox.version.flavor,Psychtoolbox.date);
             end
-
-            findel = min(strfind(result(startdel:length(result)), '/Psychtoolbox')) + startdel - 2;
-            Psychtoolbox.version.flavor = result(startdel:findel);
-
-            % Get date:
-            date = svninfo.getCommittedDate();
-            Psychtoolbox.date = sprintf('%d-%02d-%02d', 1900 + date.getYear(), 1 + date.getMonth(), date.getDate());
-
-            % SVN status query does not yet work, as it won't detect all
-            % modifications to the working copy, but only modifications to
-            % the root folder itself, iow. none at all in almost all cases.
-            % TODO: Would need to use the doStatus() method which recurses
-            % over the whole working copy and calls a ISVNStatusHandler for
-            % each modified item -- Something to figure out, if such
-            % handlers would be doable easily at all from Matlab...
-            svn_statusclient = svn_client_manager.getStatusClient();
-            svnstatus = svn_statusclient.doStatus(java.io.File(PsychtoolboxRoot()), false);
-            if svnstatus.getContentsStatus() == org.tmatesoft.svn.core.wc.SVNStatusType.STATUS_MODIFIED
-                Psychtoolbox.version.revstring = sprintf('%s but is *locally modified* !', Psychtoolbox.version.revstring);
-            end
-
-            % Build final version string:
-            Psychtoolbox.version.string = sprintf('%d.%d.%d - Flavor: %s - %s\nFor more info visit:\n%s', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
-                                                  Psychtoolbox.version.flavor, Psychtoolbox.version.revstring, Psychtoolbox.version.websvn);
         else
             % Fallback: Additional parser code for SVN information. This is slooow!
             svncmdpath = GetSubversionPath;
@@ -249,8 +315,7 @@ if ~isfield(Psychtoolbox,'version')
                 % Fallback path if svn commands fail for some reason. Output as much as we can.
                 fprintf('PsychtoolboxVersion: WARNING - Could not query additional version information from SVN -- svn tools not properly installed?!?\n');
                 Psychtoolbox.version.string=sprintf('%d.%d.%d', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point);
-                ss=s(n:end);
-                Psychtoolbox.date=ss(min(find(ss-' ')):end); %#ok<MXFND>
+                Psychtoolbox.date=contentsdate;
             end
         end
     end
