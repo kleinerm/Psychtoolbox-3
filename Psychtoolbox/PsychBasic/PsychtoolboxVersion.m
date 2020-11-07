@@ -160,7 +160,14 @@ if ~isfield(Psychtoolbox,'version')
                 Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
                 Psychtoolbox.version.flavor, Psychtoolbox.version.revision, remoteURL);
 
-            date = regexp(gitstatus.LastCommit{4},'Date:\s+(?<day>\w{3})\s(?<month>\w{3})\s+(?<dayn>\d+)\s(?<time>\d\d\:\d\d:\d\d)\s(?<year>\d{4})','names');
+            % Cell index of LastCommit where date is stored varies:
+            for ds=1:numel(gitstatus.LastCommit)
+                if ~isempty(strfind(gitstatus.LastCommit{ds}, 'Date'))
+                    break;
+                end
+            end
+
+            date = regexp(gitstatus.LastCommit{ds},'Date:\s+(?<day>\w{3})\s(?<month>\w{3})\s+(?<dayn>\d+)\s(?<time>\d\d\:\d\d:\d\d)\s(?<year>\d{4})','names');
             Psychtoolbox.date = sprintf('%s-%s-%s', date.dayn, date.month, date.year);
         end
     elseif isSVN == false
