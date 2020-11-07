@@ -2836,8 +2836,21 @@ PsychError PSYCHPORTAUDIOOpen(void)
     #endif
 
     // Check if the requested sample format and settings are likely supported by Audio API:
-    err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
-    if (err != paNoError && err != paDeviceUnavailable) {
+    // Note: The Portaudio library on Linux, as of Ubuntu 20.10, has a very old bug in the ALSA backend code of Pa_IsFormatSupported(),
+    //       which asks the Linux kernel to test-allocate an absurdly huge amount of audio hardware buffer space. While this bug lay dormant,
+    //       not triggering on older Linux kernels for the last 13+ years, Linux 5.6 introduced a configurable limit of allowable max hw buffer size.
+    //       At a default of 32 MB, the limit is massively exceeded by Pa_IsFormatSupported() even in the most trivial configurations, e.g.,
+    //       requesting 59.9 MB or memory for a simple 44.1Khz stereo stream! The result is the Linux 5.6+ kernel rejecting the request, which
+    //       leads to a false positive failure of Pa_IsFormatSupported() with paUnanticipatedHostError!
+    //       Workaround: We just skip the check on Linux atm., until upstream Portaudio is fixed, and luckily the actual Pa_OpenStream()
+    //       function below will request very reasonable settings during execution, which the kernel happily accepts, e.g., only 15 kB in
+    //       the same scenario. This way we can continue working against the flawed Portaudio library shipping with Ubuntu 20.10.
+    if (PSYCH_SYSTEM != PSYCH_LINUX)
+        err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
+    else
+        err = paNoError;
+
+    if ((err != paNoError) && (err != paDeviceUnavailable)) {
         printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device: %s \n", deviceid, Pa_GetErrorText(err));
         if (err == paInvalidSampleRate) {
             printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
@@ -2872,6 +2885,20 @@ PsychError PSYCHPORTAUDIOOpen(void)
             printf("PTB-ERROR: multiple independent devices simulated on one physical audio device, look into use of audio\n");
             printf("PTB-ERROR: slave devices. See help for this by typing 'PsychPortAudio OpenSlave?'.\n");
             PsychErrorExitMsg(PsychError_user, "Audio device unavailable. Most likely tried to open device multiple times.");
+        }
+        else {
+            printf("PTB-ERROR: Desired audio parameters likely unsupported by audio device.\n");
+            if (err == paInvalidSampleRate) {
+                printf("PTB-ERROR: Seems the requested audio sample rate %lf Hz is not supported by this combo of hardware and sound driver.\n", freq);
+            } else if (err == paInvalidChannelCount) {
+                printf("PTB-ERROR: Seems the requested number of audio channels is not supported by this combo of hardware and sound driver.\n");
+            } else {
+                printf("PTB-ERROR: This could be, e.g., due to an unsupported combination of audio sample rate, audio channel count/allocation, or audio sample format.\n");
+            }
+
+            if (PSYCH_SYSTEM == PSYCH_LINUX)
+                printf("PTB-ERROR: On Linux you may be able to use ALSA audio converter plugins to make this work.\n");
+            PsychErrorExitMsg(PsychError_user, "Failed to open PortAudio audio device due to unsupported combination of audio parameters.");
         }
 
         PsychErrorExitMsg(PsychError_system, "Failed to open PortAudio audio device.");
