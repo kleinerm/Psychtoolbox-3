@@ -50,6 +50,7 @@
 %     psychassert          - Drop in replacement for Matlabs assert().
 %     psychlasterror       - Drop in replacement for Matlabs lasterror().
 %     psychrethrow         - Drop in replacement for Matlabs rethrow().
+%     PsychComputeSHA      - Return the SHA hash of a string.
 %     PsychCV              - Miscellaneous C routines for computer vision and related stuff.
 %     PsychDrawSprites2D   - Fast drawing of many 2D sprite textures.
 %     PsychKinect          - Psychtoolbox driver for the Microsoft XBOX-360 Kinect.
