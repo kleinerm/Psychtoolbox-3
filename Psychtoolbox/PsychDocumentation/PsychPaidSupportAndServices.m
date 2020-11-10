@@ -98,3 +98,78 @@ catch
 end
 
 help PsychPaidSupportAndServices;
+
+% Check if user wants to file a support request:
+fprintf('\n\n');
+answer = input('Do you need priority support now and have an active license key [y/n]? ', 's');
+if ~strcmpi(answer, 'y')
+    fprintf('A community membership with priority support can be bought as described above. Bye.\n');
+    return;
+end
+
+% Ok, our valued community member wants support now. Guide them through the process:
+orderId = '';
+while isempty(orderId)
+    orderId = upper(input('Please enter the Order Id of your license: ', 's'));
+    if length(orderId) ~= 8 || ~all(isstrprop(orderId, 'alphanum'))
+        fprintf('Order Id seems to be invalid: It must be 8 letters or numbers, e.g., XS92UVY3\n');
+        orderId = '';
+    end
+end
+
+% Get the date and time string as 2nd component:
+requestTimeDate = sprintf('%i', round(clock));
+
+licenseKey = '';
+while isempty(licenseKey)
+    licenseKey = upper(input('Please enter the license key: ', 's'));
+    if length(licenseKey) ~= 35 || ~all(isstrprop(licenseKey([1:5, 7:11, 13:17, 19:23, 25:29, 31:35]), 'alphanum')) || ~strcmp(licenseKey([6, 12, 18, 24, 30]), '-----')
+        fprintf('The license key seems to be invalid: It must be 30 letters or numbers in dash separated groups of five, e.g.,\n');
+        fprintf('2BQR7-R5ZQP-SA36G-RAVDJ-ABZBM-PKKFJ\n\n');
+        licenseKey = '';
+    end
+end
+
+% Assemble the to-be-hashed string:
+publicString = [orderId '-' requestTimeDate];
+hashSrcString = [publicString '-' licenseKey];
+
+% Hash it with SHA-256:
+% fprintf('\nThe following string will be SHA-256 hashed: %s\n\n', hashSrcString);
+hashString = computeSHA256(hashSrcString);
+
+% Assemble final token for public posting at user forum, issue tracker etc.:
+authToken = [publicString ':' hashString];
+fprintf('\n\nPlease post the following string to ask for support:\n');
+fprintf('====================================================\n\n');
+fprintf('%s\n\n', authToken);
+fprintf('====================================================\n\n');
+
+% Validation code for the above:
+if 0
+    % Disassemble into pieces:
+    eOrderId = authToken(1:8)
+    epublicStringHashSep = strfind(authToken, ':');
+    epublicString = authToken(1:epublicStringHashSep-1)
+    ehashString = authToken(epublicStringHashSep+1:end)
+    % Here we'd use eOrderId to lookup licenseKey in our DB.
+    % Then reassemble source string for hashing:
+    ehashSrcString = [epublicString '-' licenseKey]
+    % Hash it, and compare our local hash against the one provided in public authToken:
+    bingo = strcmp(ehashString, computeSHA256(ehashSrcString))
+end
+
+return;
+
+% Embedded SHA-256 implementation. This is the same as PsychComputeSHA(msg, '256'),
+% but embedded here to make PsychPaidSupportAndServices() self-contained.
+function rethash = computeSHA256(msg)
+    shaId = '256';
+    if exist('hash', 'builtin')
+        % Octave builtin
+        rethash = hash(['SHA' shaId], msg);
+    else
+        md = javaMethod('getInstance', 'java.security.MessageDigest', ['SHA-' shaId]);
+        rethash = sprintf('%2.2x', typecast(md.digest(uint8(msg)), 'uint8')');
+    end
+return;
