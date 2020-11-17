@@ -1,0 +1,6 @@
+version17 is the most recent version of the WelcomeSplash.ppm
+Designed in Inkscape by Celia Foster, saved as .svg
+Opened in GIMP, saved as .ppm
+
+Size of a splash must not be bigger than 1280x1024 as of PTB 3.0.17 from early November 2020.
+
