@@ -37,6 +37,8 @@ end
 
 try
 
+fprintf('Building plugin type %i ...\n', what);
+
 % Matlab or Octave build?
 if onoctave == 0
     % Matlab build:
@@ -240,8 +242,6 @@ else
         catch
             lasterr
         end
-        % Remove stale object files:
-        delete('*.o');
         cd(curdir);
     end
 
@@ -293,23 +293,25 @@ else
         % However, for 64-Bit strangely the .lib from the SDK works.
         curdir = pwd;
         cd('../../Psychtoolbox/PsychSound/MOAL/source/')
-        clear moalcore
-        if Is64Bit
-            copyfile('C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64\OpenAL32.lib', '.\');
-        else
-            copyfile('C:\Windows\SysWOW64\OpenAL32.dll', '.\');
-        end
-
         try
+            clear moalcore
+            if Is64Bit
+                copyfile('C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64\OpenAL32.lib', '.\');
+            else
+                copyfile('C:\Windows\SysWOW64\OpenAL32.dll', '.\');
+            end
+
             mexoctave -g -v --output moalcore.mex -DWINDOWS -I'C:\Program Files (x86)\OpenAL 1.1 SDK\include' -L. moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
             movefile(['moalcore.' mexext], target);
         catch
             lasterr
         end
         % Remove stale object files:
-        delete('*.o');
-        delete('OpenAL32.lib');
-        delete('OpenAL32.dll');
+        if Is64Bit
+            delete('OpenAL32.lib');
+        else
+            delete('OpenAL32.dll');
+        end
         cd(curdir);
     end
 
@@ -323,8 +325,7 @@ else
             movefile(['pnet.' mexext], target);
         catch
         end
-        % Remove stale object files:
-        delete('*.o');
+
         cd(curdir);
     end
 
@@ -381,9 +382,6 @@ else
             disp(psychlasterror);
         end
     end
-
-    % Remove stale object files:
-    delete('*.o');
 end
 
 catch err
