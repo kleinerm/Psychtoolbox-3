@@ -1132,6 +1132,11 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
         dopoke = 1;
     }
 
+    if (strstr(srcname, "mfvideosrc") || strstr(srcname, "ksvideosrc")) {
+        nmaxp = 20;
+        dopoke = 2;
+    }
+
     // Iterate:
     for (i = 0; i < nmaxp; i++) {
         // Only really probe if dopoke:
@@ -1287,6 +1292,9 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 
         // Use DirectShow to probe:
         PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", "", 0);
+
+        // Try Windows Mediafoundation source:
+        PsychGSEnumerateVideoSourceType("mfvideosrc", 3, "Windows Mediafoundation", "device-index", "", 0);
     }
 
     if (PSYCH_SYSTEM == PSYCH_OSX) {
@@ -3224,12 +3232,14 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
             switch(deviceIndex) {
                 case -1:
+                case -6:
                     // Human friendly device name provided:
                     if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input.\n", config);
                     g_object_set(G_OBJECT(videosource), "device-name", config, NULL);
                     break;
 
                 case -2:
+                case -7:
                     // DirectShow device path provided:
                     if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device at path '%s' as video input.\n", config);
                     g_object_set(G_OBJECT(videosource), "device-path", config, NULL);
@@ -3240,9 +3250,9 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             }
         }
 
-        // No kernel streaming video source available?
+        // No kernel streaming or Mediafoundation video source available?
         if (!videosource) {
-            // No. Try a Directshow video source instead:
+            // No. Try a Directshow video source as fallback instead:
             if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach dshowvideosrc as video source...\n");
             videosource = gst_element_factory_make("dshowvideosrc", "ptb_videosource");
 
@@ -3264,6 +3274,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 switch(deviceIndex) {
                     case -1:
                     case -3:
+                    case -6:
                         // Human friendly device name provided:
                         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input.\n", config);
                         g_object_set(G_OBJECT(videosource), "device-name", config, NULL);
@@ -3271,7 +3282,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
                     case -2:
                     case -4:
-                        // DirectShow device path provided:
+                    case -7:
+                        // System device path provided:
                         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device at path '%s' as video input.\n", config);
                         g_object_set(G_OBJECT(videosource), "device", config, NULL);
                         break;
@@ -4073,9 +4085,16 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         // Get the pad from the src pad of the source for probing width x height
         // of video frames and nominal framerate of video source:
         pad = gst_element_get_static_pad(videosource, "src");
+        if (pad == NULL) pad = gst_element_get_static_pad(videowrappersrc, "vfsrc");
+        if (pad == NULL) pad = gst_element_get_static_pad(videowrappersrc, "vidsrc");
 
         // Yes: Query video frame size and framerate of device:
-        peerpad = gst_pad_get_peer(pad);
+        if (GST_IS_PAD(pad)) {
+            peerpad = gst_pad_get_peer(pad);
+        } else {
+            peerpad = NULL;
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: No static src pad for video source available.\n");
+        }
         caps = NULL;
 
         if (GST_IS_PAD(peerpad)) caps = gst_pad_get_current_caps(peerpad);
@@ -4094,7 +4113,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         }
 
         // Release the pad:
-        gst_object_unref(pad);
+        if (pad)
+            gst_object_unref(pad);
     }
 
     // If correct width x height not yet assigned, retry assignment from
