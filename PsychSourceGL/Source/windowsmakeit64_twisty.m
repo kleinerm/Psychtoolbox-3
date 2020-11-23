@@ -416,6 +416,7 @@ myvararg = cell();
 myvararg(end+1) = '-DPTBOCTAVE3MEX';
 myvararg(end+1) = '-Wno-multichar';
 myvararg(end+1) = '-Wno-unknown-pragmas';
+myvararg(end+1) = '-s'; % Strep mex/oct files to get them down to a reasonable size.
 
 outarg = '';
 quoted = 0;
