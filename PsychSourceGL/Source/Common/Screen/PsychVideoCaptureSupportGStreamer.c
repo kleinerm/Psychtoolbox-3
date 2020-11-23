@@ -3203,14 +3203,24 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             videosource = gst_element_factory_make("ksvideosrc", "ptb_videosource");
         }
 
+        if ((deviceIndex == -6) || (deviceIndex == -7)) {
+            // First try Mediafoundation based video source for low-latency capture:
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach mfvideosrc as video source...\n");
+            videosource = gst_element_factory_make("mfvideosrc", "ptb_videosource");
+        }
+
         if (videosource) {
-            // Kernel streaming video source:
-
-            // Fetch mandatory targetmoviename parameter as name spec string:
-            if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
-
-            // Assign:
-            strcat(config, targetmoviefilename);
+            // Fetch mandatory gstlaunchbinsrc or targetmoviename parameter as name spec string:
+            if (gstlaunchbinsrc[0] != 0) {
+                // Assign:
+                strcat(config, gstlaunchbinsrc);
+            }
+            else if (targetmoviefilename) {
+                // Assign:
+                strcat(config, targetmoviefilename);
+            }
+            else 
+                PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
 
             switch(deviceIndex) {
                 case -1:
@@ -3238,11 +3248,17 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
             if (videosource) {
                 if (deviceIndex != -5) {
-                    // Fetch optional targetmoviename parameter as name spec string:
-                    if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
-
-                    // Assign:
-                    strcat(config, targetmoviefilename);
+                    // Fetch optional gstlaunchbinsrc or targetmoviename parameter as name spec string:
+                    if (gstlaunchbinsrc[0] != 0) {
+                        // Assign:
+                        strcat(config, gstlaunchbinsrc);
+                    }
+                    else if (targetmoviefilename) {
+                        // Assign:
+                        strcat(config, targetmoviefilename);
+                    }
+                    else 
+                        PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
                 }
 
                 switch(deviceIndex) {
@@ -3304,8 +3320,15 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
         }
 
-        // Fetch optional targetmoviename parameter as name spec string:
-        if (targetmoviefilename) {
+        // Fetch optional gstlaunchbinsrc or targetmoviename parameter as name spec string:
+        if (gstlaunchbinsrc[0] != 0) {
+            // Assign:
+            strcat(config, gstlaunchbinsrc);
+
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach GeniCam video device '%s' as video input.\n", config);
+            g_object_set(G_OBJECT(videosource), "camera-name", config, NULL);
+        }
+        else if (targetmoviefilename) {
             // Assign:
             strcat(config, targetmoviefilename);
 
@@ -5113,7 +5136,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
     if (strstr(pname, "SetNextCaptureBinSpec=")) {
         // Assign string with gst-launch style video capture bin description for use
-        // with a deviceIndex of -9 in next Screen('OpenVideoCapture', -9, ...) call.
+        // with a deviceIndex of -1 to -9 in next Screen('OpenVideoCapture', -9, ...) call.
         // Instead of connecting to one of the special devices -8 to -1 or an enumerated
         // video source like the default source zero, or others, we parse the string assigned
         // here and create a GStreamer bin which acts as video source:
@@ -5126,7 +5149,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         snprintf(gstlaunchbinsrc, sizeof(gstlaunchbinsrc), "%s", pname);
 
         if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Changed gst-launch style videosource bin string for use with deviceIndex -9 to '%s'.\n", gstlaunchbinsrc);
+            printf("PTB-INFO: Changed gst-launch style videosource bin string for use with deviceIndex -1 to -9 to '%s'.\n", gstlaunchbinsrc);
         }
 
         return(0);

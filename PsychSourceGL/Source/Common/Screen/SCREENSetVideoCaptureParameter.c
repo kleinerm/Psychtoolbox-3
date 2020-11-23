@@ -1,24 +1,23 @@
 /*
- 
- Psychtoolbox3/Source/Common/SCREENSetVideoCaptureParameter.c		
- 
+
+ Psychtoolbox3/Source/Common/SCREENSetVideoCaptureParameter.c
+
  AUTHORS:
- 
- mario.kleiner at tuebingen.mpg.de   mk
- 
- PLATFORMS:	
- 
- This file should build on any platform. 
- 
+
+ mario.kleiner.de@gmail.com     mk
+
+ PLATFORMS:
+
+ This file should build on any platform.
+
  HISTORY:
- 4/18/06  mk		Created. 
- 
+
+ 4/18/06  mk    Created.
+
  DESCRIPTION:
- 
+
  Change capture setting on a previously opened video capture device.
- 
- TO DO:
- 
+
  */
 
 #include "Screen.h"
@@ -44,7 +43,9 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "the capture region of interest (ROI), which can deviate from the ROI requested in "
                                 "Screen('OpenVideoCapture'), depending on the capabilities of the capture device. "
                                 "'SetNextCaptureBinSpec=xxx' Will set the gst-launch line which describes the video "
-                                "capture source to be used during the next call to Screen('OpenVideoCapture', -9, ...); "
+                                "capture source to be used during the next call to Screen('OpenVideoCapture', -9, ...); or "
+                                "the name or path of a video capture device to be used during the next call to Screen('OpenVideoCapture') "
+                                "with a deviceIndex between -1 and -8.\n"
                                 "Opening a video capture device with the special deviceIndex -9 means to create a GStreamer "
                                 "bin and use it as video source. The bin is created by parsing the string passed here. "
                                 "Use the special 'capturePtr' value -1 when setting this bin description, as this call "
@@ -195,8 +196,8 @@ static char synopsisString[] =  "Set video capture parameter 'parameterName' on 
                                 "'SendCommandToMarkerTrackingPlugin=' Send an ASCII string containing commands to a loaded markertracker plugin. EXPERIMENTAL!\n";
 
 static char seeAlsoString[] = "OpenVideoCapture CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
-	 
-PsychError SCREENSetVideoCaptureParameter(void) 
+
+PsychError SCREENSetVideoCaptureParameter(void)
 {
     int capturehandle = -1;
     double value = DBL_MAX;
@@ -210,13 +211,13 @@ PsychError SCREENSetVideoCaptureParameter(void)
     PsychErrorExit(PsychCapNumInputArgs(5));            // Max. 5 input args.
     PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
     PsychErrorExit(PsychCapNumOutputArgs(5));           // Up to 5 output args.
-    
+
     // Get the device handle:
     PsychCopyInIntegerArg(1, TRUE, &capturehandle);
     if (capturehandle < -1) {
         PsychErrorExitMsg(PsychError_user, "SetVideoCaptureParameter called without either the special handle '-1' or a valid handle to a capture object.");
     }
-    
+
     // Copy in parameter name string:
     PsychAllocInCharArg(2, TRUE, &pname);
     if (pname == NULL) {
@@ -231,7 +232,7 @@ PsychError SCREENSetVideoCaptureParameter(void)
 
     // Return old value of capture parameter:
     if (strstr(pname, "Get")==NULL) {
-      PsychCopyOutDoubleArg(1, FALSE, oldvalue);
+        PsychCopyOutDoubleArg(1, FALSE, oldvalue);
     }
 
     // Ready!    
