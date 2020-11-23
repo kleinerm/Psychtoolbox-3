@@ -320,9 +320,10 @@ void PsychGSCheckInit(const char* engineName)
 
         // gs_startupTime is added to all timestamps from GStreamer to compensate for
         // clock zero offset wrt. to our GetSecs() time:
-        if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
-            // TODO PORTING CHECK STILL TRUE?
-            // Windows: Zero-Point is time of GStreamer startup aka sometime
+        // if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+        if (FALSE) {
+            // Not needed anymore since at least PTB 3.0.17 and GStreamer 1.18+
+            // Windows: Zero-Point was time of GStreamer startup aka sometime
             // during execution of gst_init_check() above. Current system time
             // is our best approximation so far:
             PsychGetAdjustedPrecisionTimerSeconds(&gs_startupTime);
