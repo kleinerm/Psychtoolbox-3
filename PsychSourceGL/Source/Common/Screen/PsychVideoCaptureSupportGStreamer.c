@@ -3368,7 +3368,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         // Create a bin from the provided gst-launch style string and assign it as videosource plugin:
         sprintf(plugin_name, "gstlaunchbinsrc");
         error = NULL;
-        videosource = gst_parse_bin_from_description_full((const gchar *) gstlaunchbinsrc, FALSE, NULL, GST_PARSE_FLAG_FATAL_ERRORS, &error);
+        videosource = gst_parse_bin_from_description_full((const gchar *) gstlaunchbinsrc, TRUE, NULL, GST_PARSE_FLAG_FATAL_ERRORS | GST_PARSE_FLAG_NO_SINGLE_ELEMENT_BINS, &error);
 
         if (!videosource) {
             printf("PTB-ERROR: Failed to create generic bin video source!\n");
