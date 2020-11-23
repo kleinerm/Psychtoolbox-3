@@ -166,12 +166,26 @@ else
 
     if what == 0
         % Default: Build Screen.mex
-        clear Screen
-        if Is64Bit
-            mexoctave -g -v --output ..\Projects\Windows\build\Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBOCTAVE3MEX -DGLEW_STATIC -LC:\gstreamer\1.0\msvc_x86_64\lib -IC:\gstreamer\1.0\msvc_x86_64\include -IC:\gstreamer\1.0\msvc_x86_64\include\gstreamer-1.0 -IC:\gstreamer\1.0\msvc_x86_64\include\glib-2.0 -IC:\gstreamer\1.0\msvc_x86_64\include\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86_64\lib\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86_64\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\msvc_x86_64\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c Common\Screen\tinyexr.cc kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0
-        else
-            mexoctave -g -v --output ..\Projects\Windows\build\Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBOCTAVE3MEX -DGLEW_STATIC -LC:\gstreamer\1.0\msvc_x86\lib -IC:\gstreamer\1.0\msvc_x86\include -IC:\gstreamer\1.0\msvc_x86\include\gstreamer-1.0 -IC:\gstreamer\1.0\msvc_x86\include\glib-2.0 -IC:\gstreamer\1.0\msvc_x86\include\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86\lib\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\msvc_x86\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0
+        clear Screen;
+
+        try
+            % Set override linker search path: GStreamer lib dir comes before Octaves mingw64/32 dir:
+            [rc, oldoctavelinkoptions] = system('mkoctfile --print LDFLAGS');
+            oldoctavelinkoptions = deblank(oldoctavelinkoptions);
+            setenv('LDFLAGS', ['-LC:\gstreamer\1.0\msvc_x86_64\lib ' oldoctavelinkoptions]);
+
+            if Is64Bit
+                mexoctave -g -v --output ..\Projects\Windows\build\Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBOCTAVE3MEX -DGLEW_STATIC -LC:\gstreamer\1.0\msvc_x86_64\lib -IC:\gstreamer\1.0\msvc_x86_64\include -IC:\gstreamer\1.0\msvc_x86_64\include\gstreamer-1.0 -IC:\gstreamer\1.0\msvc_x86_64\include\glib-2.0 -IC:\gstreamer\1.0\msvc_x86_64\include\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86_64\lib\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86_64\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\msvc_x86_64\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c Common\Screen\tinyexr.cc kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0
+            else
+                mexoctave -g -v --output ..\Projects\Windows\build\Screen.mex -DPTBMODULE_Screen -DPTB_USE_GSTREAMER -DPTBOCTAVE3MEX -DGLEW_STATIC -LC:\gstreamer\1.0\msvc_x86\lib -IC:\gstreamer\1.0\msvc_x86\include -IC:\gstreamer\1.0\msvc_x86\include\gstreamer-1.0 -IC:\gstreamer\1.0\msvc_x86\include\glib-2.0 -IC:\gstreamer\1.0\msvc_x86\include\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86\lib\glib-2.0\include -IC:\gstreamer\1.0\msvc_x86\lib\gstreamer-1.0\include -IC:\gstreamer\1.0\msvc_x86\include\libxml2 -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib -lgobject-2.0 -lglib-2.0 -lgstreamer-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0
+            end
+        catch
         end
+
+        % Restore old linker path:
+        setenv('LDFLAGS', oldoctavelinkoptions);
+
+        % Move new mex file into its place:
         movefile(['..\Projects\Windows\build\Screen.' mexext], target);
     end
 
