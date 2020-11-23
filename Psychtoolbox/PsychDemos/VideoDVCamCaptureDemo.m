@@ -197,7 +197,7 @@ try
         
         if IsWin
           % This should work on MS-Windows, as tested with a Sony PAL-DV camera:
-          capturebinspec = 'dshowvideosrc ! dvdemux ! ffdec_dvvideo name=ptbdvsource';
+          capturebinspec = 'dshowvideosrc ! dvdemux ! avdec_dvvideo name=ptbdvsource';
           
           if Is64Bit
               warning('To our knowledge (as of August 2014, GStreamer-1.4.0) video capture is not yet\nsupported on MS-Windows, so this will likely fail.\n');
