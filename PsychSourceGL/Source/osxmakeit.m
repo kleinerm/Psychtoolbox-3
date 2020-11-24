@@ -174,6 +174,18 @@ if mode==12
     unix(['mv ../Projects/MacOSX/build/Gestalt.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
+if mode==13
+    % Build pnet:
+    curdir = pwd;
+    cd('../../Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/')
+    try
+        mex -output pnet pnet.c -largeArrayDims -DMEX_DOUBLE_HANDLE
+        unix(['mv ./pnet.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+    catch
+    end
+    cd(curdir);
+end
+
 if mode==14
     % Build PsychOculusVRCore:
     % Depends on Oculus VR SDK v0.5
