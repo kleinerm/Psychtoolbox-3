@@ -93,6 +93,25 @@ if onoctave == 0
         % movefile(['..\Projects\Windows\build\PsychCV.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
+    if what == 6
+        % Build moglcore on MS-Windows for Matlab 32/64 Bit:
+        %
+        % Requires freeglut import libraries and header files which are bundled
+        % inside the PsychSourceGL\Cohorts\freeglut folder of the PTB source distro.
+        %
+        % Requires freeglut dll's included within Psychtoolbox distribution.
+        %
+        if IsWin(1)
+            % 64-Bit build:
+            mex -outdir . -output moglcore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWINR2007a -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib\x64 -I. windowhacks.c gl_auto.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
+        else
+            % 32-Bit build:
+            mex -outdir . -output moglcore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWINR2007a -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib -I. windowhacks.c gl_auto.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
+        end
+
+        movefile(['moglcore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+    end
+
     if what == 7
         % Build Eyelink:
         clear Eyelink
@@ -112,6 +131,41 @@ if onoctave == 0
         clear PsychHID % make sure not in use
         mex -outdir ..\Projects\Windows\build -output PsychHID -DPTBMODULE_PsychHID -largeArrayDims -DMEX_DOUBLE_HANDLE -DWIN32 -I"C:\Program Files\Microsoft SDKs\Windows\v7.1\Include" -L..\Cohorts\libusb1-win32\MS64\dll -I..\Cohorts\libusb1-win32\include\libusb-1.0 -ICommon\Base -IWindows\Base -ICommon\PsychHID Windows\PsychHID\*.cpp Windows\PsychHID\*.c Windows\Base\*.c Common\Base\*.c Common\PsychHID\*.c -ldinput8 kernel32.lib user32.lib winmm.lib -lusb-1.0 setupapi.lib
         movefile(['..\Projects\Windows\build\PsychHID.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+    end
+
+    if what == 10
+        % Makefile for building the moalcore MEX file for Matlab+OpenAL under
+        % MS-Windows. Call it while inside the .../MOAL/source folder. You'll
+        % have to install the Creative labs OpenAL SDK into ...
+        % C:\Program Files (x86)\OpenAL 1.1 SDK\
+        % ... which is the default install location on Windows-7.
+        %
+        % The SDK is currently available from:
+        % http://connect.creativelabs.com/openal
+        %
+        if Is64Bit
+            % 64-Bit R2007a or later build:
+            mex -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
+        else
+            % 32-Bit R2007a or later build:
+            mex -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win32" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
+        end
+
+        movefile(['moalcore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+    end
+
+    if what == 11
+        % Build pnet
+        curdir = pwd;
+        cd('../../Psychtoolbox/PsychHardware/iViewXToolbox/tcp_udp_ip/');
+        clear pnet
+        try
+            mex -output pnet -DWIN32 pnet.c ws2_32.lib winmm.lib
+            movefile(['pnet.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+        catch
+        end
+
+        cd(curdir);
     end
 
     if what == 12
@@ -157,7 +211,7 @@ if onoctave == 0
         movefile(['..\Projects\Windows\build\PsychVulkanCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 else
-    % Octave-5 build:
+    % Octave build:
     if Is64Bit
         target = [PsychtoolboxRoot 'PsychBasic\Octave5WindowsFiles64\'];
     else
