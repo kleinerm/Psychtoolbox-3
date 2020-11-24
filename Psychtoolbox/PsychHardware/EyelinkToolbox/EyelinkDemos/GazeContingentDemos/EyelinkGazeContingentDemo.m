@@ -67,10 +67,10 @@ try
     ms=200;
     
     % Set default demo images.
-    myimgfile= 'konijntjes1024x768.jpg';
-    myblurimgfile= 'konijntjes1024x768blur.jpg';
-    mygrayimgfile= 'konijntjes1024x768gray.jpg';
-    
+    basepath = [ PsychtoolboxRoot 'PsychDemos' filesep ];
+    myimgfile= [basepath 'konijntjes1024x768.jpg'];
+    myblurimgfile= [basepath 'konijntjes1024x768blur.jpg'];
+    mygrayimgfile= [basepath 'konijntjes1024x768gray.jpg'];
     
     % Get the list of screens and choose the one with the highest screen number.
     % Screen 0 is, by definition, the display with the menu bar. Often when
