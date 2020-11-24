@@ -27,7 +27,7 @@ function datapixxmakemex()
     end
 
     % Start constructing mex command
-    S = 'mex -v';   % -v for verbose output
+    S = 'mex -v -s';   % -v for verbose output, -s for stripping the files.
     S = [S ' -DPTBMODULE_Datapixx'];
 
     if IsOctave
