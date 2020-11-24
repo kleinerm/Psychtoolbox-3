@@ -40,7 +40,7 @@ else
 end
 
 % list of images used for the trial
-imageList = {'town.bmp' 'town_blur.bmp' 'composite.bmp'};
+imageList = {'town.jpg' 'town_blur.jpg' 'composite.jpg'};
 dummymode=0;
 try 
     % STEP 1

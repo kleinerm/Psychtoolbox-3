@@ -35,7 +35,7 @@ else
     more off;
 end
 % list of images used for the trial. Octave cares about capitalization 
-imageList = {'town.bmp' 'town_blur.bmp' 'composite.bmp'};
+imageList = {'town.jpg' 'town_blur.jpg' 'composite.jpg'};
 dummymode=0;
 try
     %%%%%%%%%%
