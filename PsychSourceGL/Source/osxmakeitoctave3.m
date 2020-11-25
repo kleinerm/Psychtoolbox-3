@@ -249,8 +249,9 @@ end;
 % as a C++ piece of art, which can't expand wildcards anymore.
 function mex(varargin)
   inargs = {varargin{:}};
-  outargs = {"--mex -s"};
-  
+  outargs = {"--mex"};
+  outargs = {outargs{:}, "-s"};
+
   for i = 1:length(inargs)
     if ~isempty(strfind(inargs{i}, '*'))
       outargs = {outargs{:}, glob(inargs{i})};
