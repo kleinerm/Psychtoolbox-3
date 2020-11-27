@@ -344,7 +344,7 @@ try
                 % Draw the new texture immediately to screen:
                 Screen('DrawTexture', win, tex, [], dstRect, [], [], [], [], shader);
 
-                DrawFormattedText(win, ['Movie: ' moviename ], 'center', 20, [1 0 0]);
+                DrawFormattedText(win, ['Movie: ' moviename ], 'center', 20, 0);
                 if coolstuff
                     DrawFormattedText(win, ['Original URL: ' url '\n\n' credits], 'center', 60, 0);
                 end
