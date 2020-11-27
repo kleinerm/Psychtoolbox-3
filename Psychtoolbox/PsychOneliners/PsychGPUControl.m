@@ -193,14 +193,10 @@ if strcmpi(cmd, 'FullScreenWindowDisablesCompositor')
       % Enable un-redirection: Fullscreen windows aren't subject to treatment by compositor,
       % but can do (e.g. page-flipping) whatever they want:
       newstate = 'dis';
-      rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz/general/screen%i/options/unredirect_fullscreen_windows true', screenId));
-      rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz-1/plugins/composite/screen%i/options/unredirect_fullscreen_windows true', screenId));
       rc(end+1) = system(sprintf('dconf write /org/compiz/profiles/unity/plugins/composite/unredirect-fullscreen-windows true'));
     else
       % Disable un-redirection: Fullscreen windows get composited as all other windows:
       newstate = 'en';
-      rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz/general/screen%i/options/unredirect_fullscreen_windows false', screenId));
-      rc(end+1) = system(sprintf('gconftool-2 -s --type bool /apps/compiz-1/plugins/composite/screen%i/options/unredirect_fullscreen_windows false', screenId));
       rc(end+1) = system(sprintf('dconf write /org/compiz/profiles/unity/plugins/composite/unredirect-fullscreen-windows false'));
     end
 

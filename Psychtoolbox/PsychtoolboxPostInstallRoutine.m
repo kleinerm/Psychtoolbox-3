@@ -555,7 +555,7 @@ if IsWin && ~IsOctave
 
     try
         % Try if WaitSecs MEX file works...
-        WaitSecs('YieldSecs', 0.1)
+        WaitSecs('YieldSecs', 0.1);
     catch
         % Failed! Either screwed setup of path or missing VC++ 2019 runtime libraries.
         fprintf('ERROR: Most likely cause: The Microsoft Visual C++ 2019 runtime libraries\n');
@@ -653,16 +653,20 @@ try
         fprintf('Trying to trigger an update of the fontconfig cache if that should prove neccessary.\n');
         fprintf('This may take a couple of seconds, or sometimes even minutes. Please be patient...\n');
         drawnow;
-        oldRenderer = Screen('Preference', 'TextRenderer', 1);
-        oldLevel = Screen('Preference', 'WindowShieldingLevel', -1);
-        oldVerbo = Screen('Preference', 'Verbosity', 0);
-        win = Screen('OpenWindow', 0, 0, [0 0 100 100]);
-        Screen('DrawText', win, 'Ola!');
-        Screen('Flip', win);
-        Screen('CloseAll');
-        Screen('Preference', 'TextRenderer', oldRenderer);
-        Screen('Preference', 'WindowShieldingLevel', oldLevel);
-        Screen('Preference', 'Verbosity', oldVerbo);
+        try
+            oldRenderer = Screen('Preference', 'TextRenderer', 1);
+            oldLevel = Screen('Preference', 'WindowShieldingLevel', -1);
+            oldVerbo = Screen('Preference', 'Verbosity', 0);
+            win = Screen('OpenWindow', 0, 0, [0 0 100 100]);
+            Screen('DrawText', win, 'Ola!');
+            Screen('Flip', win);
+            Screen('CloseAll');
+            Screen('Preference', 'TextRenderer', oldRenderer);
+            Screen('Preference', 'WindowShieldingLevel', oldLevel);
+            Screen('Preference', 'Verbosity', oldVerbo);
+        catch
+            fprintf('Something went wrong with text renderer setup. Read ''help DrawTextPlugin'' for troubleshooting.\n\n\n');
+        end
     end
 
     % Tell user we're successfully done:
