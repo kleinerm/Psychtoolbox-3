@@ -829,11 +829,11 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, const char*
 
     if (PsychPrefStateGet_Verbosity() > 5) {
         devString = gst_device_get_device_class(device);
-        printf("DEVICECLASS %s\n", (char*) devString);
+        printf("PTB-DEBUG: Device class: %s\n", (char*) devString);
         g_free(devString);
 
         devString = gst_device_get_display_name(device);
-        printf("DISPLAYNAME %s\n", (char*) devString);
+        printf("PTB-DEBUG: Device display name: %s\n", (char*) devString);
         g_free(devString);
     }
 
@@ -877,11 +877,9 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, const char*
         g_value_unset(&val);
     }
     else {
-        // Our videosource capture device instance doesn't expose the key selection
-        // property 'devHandlePropName'. What now? Mark this instance so the device
-        // open code will use the stored GstDevice* for capture device instantiation
-        // instead:
-        sprintf(port_str, "USEGSTDEVICE* %p", device);
+        devString = gst_device_get_display_name(device);
+        sprintf(port_str, "%s", devString);
+        g_free(devString);
     }
 
     devices[ntotal].deviceIndex = classIndex * 10000 + inputIndex;
@@ -3393,7 +3391,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     if (strstr(plugin_name, "dshowvideosrc") || strstr(plugin_name, "aravissrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
 
     // Enable timestamping by videosource, unless its been done already for a dv1394src:
-    if (!strstr(plugin_name, "dv1394src") && !strstr(plugin_name, "gstlaunchbinsrc")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
+    if (!strstr(plugin_name, "dv1394src") && !strstr(plugin_name, "gstlaunchbinsrc") && g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "do-timestamp")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
 
     // videotestsrc needs special setup - Must be marked as live-source:
     if (strstr(plugin_name, "videotestsrc")) {
