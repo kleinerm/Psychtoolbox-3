@@ -1287,13 +1287,13 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 
     if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
         // Try Windows kernel streaming source:
-        PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-index", "", 0);
+        PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-index", "ksdeviceprovider", 0);
 
         // Use DirectShow to probe:
-        PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", "", 0);
+        PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", "dshowdeviceprovider", 0);
 
         // Try Windows Mediafoundation source:
-        PsychGSEnumerateVideoSourceType("mfvideosrc", 3, "Windows Mediafoundation", "device-index", "", 0);
+        PsychGSEnumerateVideoSourceType("mfvideosrc", 3, "Windows Mediafoundation", "device-index", "mfdeviceprovider", 0);
     }
 
     if (PSYCH_SYSTEM == PSYCH_OSX) {
