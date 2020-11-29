@@ -1403,8 +1403,26 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
                     #if GST_CHECK_VERSION(1,4,0)
                     // Caller wants us to create associated video capture plugin if possible:
                     if (devices[i].gstdevice) {
+                        GstCaps *caps = gst_device_get_caps(devices[i].gstdevice);
+                        gchar* capsstr = caps ? gst_caps_to_string(caps) : NULL;
+
                         // Have one. Create and assign associated plugin:
-                        *videocaptureplugin = gst_device_create_element((GstDevice*) devices[i].gstdevice, "ptb_videosource");
+                        if (strstr(mydevice->device, "/dev/video") && capsstr && (strstr(capsstr, "image/jpeg") == capsstr)) {
+                            char binstring[128];
+                            binstring[127] = 0;
+                            snprintf(binstring, sizeof(binstring) - 1, "v4l2src device=%.50s do-timestamp=1 ! jpegdec name=ptb_videosource", mydevice->device);
+                            *videocaptureplugin = gst_parse_bin_from_description_full((const gchar *) binstring, TRUE, NULL, GST_PARSE_FLAG_FATAL_ERRORS, NULL);
+                            if (PsychPrefStateGet_Verbosity() > 4)
+                                printf("PTB-DEBUG: Special capture device with MJPEG output needs jpegdec conversion. Created capture bin %p from: %s\n", *videocaptureplugin, binstring);
+                        }
+                        else {
+                            // Standard path: Auto-create and setup associated video capture plugin:
+                            *videocaptureplugin = gst_device_create_element((GstDevice*) devices[i].gstdevice, "ptb_videosource");
+                        }
+
+                        free(capsstr);
+                        if (caps)
+                            gst_caps_unref(caps);
                     }
                     #endif
                 }
