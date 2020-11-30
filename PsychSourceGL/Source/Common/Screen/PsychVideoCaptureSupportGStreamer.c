@@ -1313,7 +1313,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
         // We enumerate this one before qtkitvideosrc, as the latter aka QTKit is deprecated since OSX 10.9.
         // Indeed a first test shows avfvideosrc performing better on OSX 10.9, so i guess Apple does its
         // "break old functionality to shove new api's down the throat of developers" thing again...
-        PsychGSEnumerateVideoSourceType("avfvideosrc", 4, "OSXAVFoundationVideoSource", "device-index", "", 0);
+        PsychGSEnumerateVideoSourceType("avfvideosrc", 4, "OSXAVFoundationVideoSource", "device-index", "avfdeviceprovider", 0);
 
         // Try the crappy OSX QTKit video source for 64-Bit systems with Quicktime-X aka QTKit:
         PsychGSEnumerateVideoSourceType("qtkitvideosrc", 2, "OSXQuicktimeKitVideoSource", "device-index", "", 1);
