@@ -61,6 +61,7 @@
 #include "Screen.h"
 #include <float.h>
 #include <locale.h>
+#include <ctype.h>
 #include "PsychVideoCaptureSupport.h"
 
 // Include for dynamic loading of external plugin, for now only on Unix:
@@ -5386,8 +5387,9 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         printf("PTB-INFO: The video source provides the following controllable parameters:\n");
         printf("PTB-INFO: ----------------------------------------------------------------\n\n");
         printf("PTB-INFO: Optional parameters - may or may not be supported:\n");
-        printf("PTB-INFO: Shutter, Aperture, EVCompensation, Flickermode, Whitebalancemode,\n");
-        printf("PTB-INFO: Flashmode, Scenemode, Focusmode\n\n");
+        printf("PTB-INFO: Shutter\n\n");
+        //printf("PTB-INFO: Shutter, Aperture, EVCompensation, Flickermode, Whitebalancemode,\n");
+        //printf("PTB-INFO: Flashmode, Scenemode, Focusmode\n\n");
         printf("PTB-INFO: These are definitely supported by the connected camera:\n");
 
 
@@ -5488,6 +5490,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         }
 
         // Standard case: Exposure is an integer in nanoseconds (1e9):
+        /* No longer supported on GStreamer 1.x's camerabin:
 
         // Query old "exposure" setting, which is duration of shutter open:
         g_object_get(capdev->camera, "exposure", &oldintval, NULL);
@@ -5499,8 +5502,14 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         // Optionally set new setting:
         if (value != DBL_MAX) g_object_set(capdev->camera, "exposure", (int) (value * 1e9), NULL);
         return(oldvalue);
+        */
     }
 
+    /* These parameters were supported with GStreamer 0.10's camerabin1, but are
+     * not supported by the current camerabin2 aka camerabin of GStreamer 1.x
+     * anymore.
+     */
+    /*
     if (strstr(pname, "Aperture")) {
         // Query old "aperture" setting, which is the amount of lens opening:
         g_object_get(capdev->camera, "aperture", &oldintval, NULL);
@@ -5610,10 +5619,14 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         if (value != DBL_MAX) g_object_set(capdev->camera, "scene-mode", intval, NULL);
         return(oldvalue);
     }
+    */
 
     // Not yet matched? Try if it matches one of the color channel properties
     // from the color balance interface.
     if (cb) {
+        // Convert first letter of pname to minor:
+        ((char*)pname)[0] = tolower(pname[0]);
+
         // Search all color balance channels:
         cl = (GList*) gst_color_balance_list_channels(cb);
         for (iter = g_list_first(cl); iter != NULL ; iter = g_list_next(iter)) {
@@ -5634,7 +5647,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         }
 
         if (!assigned) {
-            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Screen('SetVideoCaptureParameter', ...) called with unknown parameter %s. Ignored...\n", pname);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Screen('SetVideoCaptureParameter', ...) called with unknown parameter %s. Ignored...\n", pname);
         }
 
         return(oldvalue);
