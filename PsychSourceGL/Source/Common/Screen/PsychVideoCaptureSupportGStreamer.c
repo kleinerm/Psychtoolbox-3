@@ -1260,46 +1260,25 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 
     // Linux specific setup path:
     if (PSYCH_SYSTEM == PSYCH_LINUX) {
-        // Try Video4Linux-II camera source: This is mostly a Maemo (maybe Meego et al.?) thing.
-        PsychGSEnumerateVideoSourceType("v4l2camsrc", 1, "Video4Linux2-CameraSource", "device", "", 0);
-
         // Try standard Video4Linux-II source:
         PsychGSEnumerateVideoSourceType("v4l2src", 2, "Video4Linux2", "device", "v4l2deviceprovider", 0);
     }
 
     if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
-        // Try Windows kernel streaming source:
+        // Try Windows kernel streaming source: The most well working default as of end of 2020.
         PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-index", "ksdeviceprovider", 0);
 
-        // Use DirectShow to probe:
+        // Use DirectShow to probe: Note that this one is on the way out - ie. towards removal...
         PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", "dshowdeviceprovider", 0);
 
-        // Try Windows Mediafoundation source:
+        // Try Windows Mediafoundation source: The upcoming new star, but not yet a full replacement for ksvideosrc in all cases.
         PsychGSEnumerateVideoSourceType("mfvideosrc", 3, "Windows Mediafoundation", "device-index", "mfdeviceprovider", 0);
     }
 
     if (PSYCH_SYSTEM == PSYCH_OSX) {
-        // Try OSX Quicktime-7 SequenceGrabber video source: Kind'a pointless as only on 32-Bit and we don't
-        // do that anymore. But leave it here for sentimental reasons - fond memories of actually useable
-        // videocapture on OSX...
-        PsychGSEnumerateVideoSourceType("osxvideosrc", 1, "OSXQuicktimeSequenceGrabber", "device", "", 0);
-
-        // Try OSX AVFoundation video source: The <sarcasm>latest and greatest</sarcasm> for OSX 10.8+ or so.
-        // We enumerate this one before qtkitvideosrc, as the latter aka QTKit is deprecated since OSX 10.9.
-        // Indeed a first test shows avfvideosrc performing better on OSX 10.9, so i guess Apple does its
-        // "break old functionality to shove new api's down the throat of developers" thing again...
+        // Try OSX AVFoundation video source: Available since OSX 10.8, ok working since OSX 10.9. Actually the only working
+        // api on current macOS versions supported by us. Lets see how long this one lasts before the iPhone company breaks it.
         PsychGSEnumerateVideoSourceType("avfvideosrc", 4, "OSXAVFoundationVideoSource", "device-index", "avfdeviceprovider", 0);
-
-        // Try the crappy OSX QTKit video source for 64-Bit systems with Quicktime-X aka QTKit:
-        PsychGSEnumerateVideoSourceType("qtkitvideosrc", 2, "OSXQuicktimeKitVideoSource", "device-index", "", 1);
-
-        // Try OSX MIO video source: Unless we're under Octave, where some weird bug/interaction
-        // would cause a crash in the miovideosrc plugin if we tried, so we don't try on Octave.
-        // Note that this one is not included as of GStreamer 1.4.0, likely because it uses non-public
-        // Apple api's, so is probably unsafe to use long-term...
-        #ifndef PTBOCTAVE3MEX
-        PsychGSEnumerateVideoSourceType("miovideosrc", 3, "OSXMIOVideoSource", "device-name", "", 0);
-        #endif
     }
 
     // Try IIDC-1394 Cameras:
@@ -1886,7 +1865,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
     if (use_audio) {
         // Yes. Try if voaacenc AAC encoder is available, choose it as default choice for
         // AAC encoding. If unavailable, choose ffenc_aac or faac or avenc_aac instead as fallback:
-        // Note: As of August 2014 and GStreamer-1.4 for OSX, only vooaacenc and avenc_aac are available,
+        // Note: As of December 2020 and GStreamer-1.18 only vooaacenc and avenc_aac are available,
         // but avenc_aac has rank 0 as isn't ever selected by encodebins auto-plugger, so wouldn't work for
         // camerabin "profile" encoding.
         audio_enc = gst_parse_bin_from_description_full("voaacenc", TRUE, NULL, GST_PARSE_FLAG_FATAL_ERRORS, NULL);
@@ -3198,7 +3177,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
                 if (videosource) {
                     // Attach correct video input device to it:avfvideosrc
-                    if ((!strcmp(plugin_name, "dc1394src") || !strcmp(plugin_name, "qtkitvideosrc") || !strcmp(plugin_name, "avfvideosrc")) && (prop_name[0] != 0)) {
+                    if ((!strcmp(plugin_name, "dc1394src") || !strcmp(plugin_name, "avfvideosrc")) && (prop_name[0] != 0)) {
                         // DC1394 source or QTKITVideosource or AVFoundation based videosource:
                         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device with guid '%llu' as video input [Property %s].\n", theDevice->deviceURI, prop_name);
                         g_object_set(G_OBJECT(videosource), prop_name, (int) theDevice->deviceURI, NULL);
@@ -3333,7 +3312,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     if ((PSYCH_SYSTEM == PSYCH_OSX) && (deviceIndex > -8) && (deviceIndex < 0)) {
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video source via MacOSX specific special case setup code.\n");
         if (deviceIndex == -1) videosource = gst_element_factory_make("autovideosrc", "ptb_videosource");
-        if (deviceIndex == -2) videosource = gst_element_factory_make("qtkitvideosrc", "ptb_videosource");
+        if (deviceIndex == -2) videosource = gst_element_factory_make("avfvideosrc", "ptb_videosource");
         if (deviceIndex == -3) videosource = gst_element_factory_make("avfvideosrc", "ptb_videosource");
         if (deviceIndex == -4) videosource = gst_element_factory_make("videotestsrc", "ptb_videosource");
 
@@ -3523,7 +3502,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             }
             else {
                 // 16 bpc high precision path: Component ordering is ARGB, not BGRA, as
-                // in the special BGRA8 case for 4 layer 8 bpc:  Doesn't work at least on OSX qtkitvideosrc
+                // in the special BGRA8 case for 4 layer 8 bpc:
                 colorcaps = gst_caps_new_simple("video/x-raw",
                                                 "format", G_TYPE_STRING, "ARGB64",
                                                 "bpp", G_TYPE_INT, capdev->pixeldepth,
@@ -3549,7 +3528,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                                                 NULL);
             }
             else {
-                // 16 bpc high precision path: Doesn't work at least on OSX qtkitvideosrc
+                // 16 bpc high precision path:
                 colorcaps = gst_caps_new_simple("video/x-raw",
                                                 "format", G_TYPE_STRING, "RGB",
                                                 "bpp", G_TYPE_INT, capdev->pixeldepth,
