@@ -90,7 +90,7 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle);
 int PsychGSGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychGSVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
 double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
-PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin);
+PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin, GstElement **videocapturebin);
 void PsychGSExitVideoCapture(void);
 
 // PsychGetCodecLaunchLineFromString() - Helper function for GStreamer based movie writing.

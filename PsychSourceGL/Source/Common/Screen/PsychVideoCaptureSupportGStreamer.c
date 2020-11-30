@@ -104,6 +104,7 @@ typedef struct {
     GstElement *videosink;            // Our appsink for retrieval of live video feeds --> PTB texture conversion.
     GstElement *videosource;          // The videosource, encapsulating the actual video capture device.
     GstElement *videowrappersrc;      // The wrappercambinsrc used for encapsulating videosource for camerabin2 capture.
+    GstElement *videobin;             // The videobin used to encapsulate videosource and special post-proc elements if needed.
     GstElement *videoenc;             // Video encoder for video recording.
     GstElement *videorate_filter;     // Video framerate converter to guarantee constant framerate and a/v sync for recording.
     GstClockTime lastSavedBaseTime;   // Last time the pipeline was put into PLAYING state. Saved at StopCapture time before stop.
@@ -766,6 +767,8 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 
     // This has been auto-destructed (hopefully) by camerabin:
     capdev->videosource = NULL;
+    capdev->videowrappersrc = NULL;
+    capdev->videobin = NULL;
 
     if (capdev->targetmoviefilename) free(capdev->targetmoviefilename);
     capdev->targetmoviefilename = NULL;
@@ -1234,7 +1237,7 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
     return;
 }
 
-/* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin);  -- Internal.
+/* PsychGSEnumerateVideoSources -- Internal.
  *
  * Enumerates all connected and supported video sources into an internal
  * array "devices".
@@ -1245,19 +1248,23 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
  *                       the Screen module returns control to the runtime - then it
  *                       will get deallocated and must not be accessed anymore!
  *
- *                       If videocaptureplugin is a non-NULL pointer, caller asks us
- *                       to create associated videocapture GStreamer plugin. If we
- *                       can do that, we return a pointer to it in *videocaptureplugin,
- *                       otherwise we set *videocaptureplugin = NULL.
- *                       We can do this device 'deviceIndex' supports enumeration via
- *                       GstDeviceProvider or GstDeviceMonitor on GStreamer 1.4+
+ *                       If videocaptureplugin and videocapturebin are non-NULL pointers,
+ *                       caller asks us to create associated videocapture GStreamer plugin.
+ *                       If we can do that, we return a pointer to it in *videocaptureplugin,
+ *                       otherwise we set *videocaptureplugin = NULL. If the specific
+ *                       videocaptureplugin needs special post-processing, e.g., for MJPG,
+ *                       then we create and return a dedicated videocapturebin and put
+ *                       videocaptureplugin into it, linked with the needed special post-
+ *                       processing element. Otherwise videocapturebin is returned as NULL.
+ *                       We can do this if device 'deviceIndex' supports enumeration via
+ *                       GstDeviceProvider or GstDeviceMonitor.
  *
  *
  * If deviceIndex < 0 : Returns NULL to caller, returns a struct array to runtime
  *                      environment return argument position 'outPos' with all info
  *                      about the detected sources.
  */
-PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin)
+PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin, GstElement **videocapturebin)
 {
     PsychGenericScriptType 	*devs;
     const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
@@ -1396,28 +1403,54 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
                 // plugin which instantiates the capture device associated with GstDevice*
                 // Return pointer to the plugin. Only skip this step if no such plugin
                 // requested by caller (unlikely):
-                if (videocaptureplugin) {
+                if (videocaptureplugin && videocapturebin) {
                     // Default to - "no create support":
                     *videocaptureplugin = NULL;
+                    *videocapturebin = NULL;
 
                     #if GST_CHECK_VERSION(1,4,0)
                     // Caller wants us to create associated video capture plugin if possible:
-                    if (devices[i].gstdevice) {
-                        GstCaps *caps = gst_device_get_caps(devices[i].gstdevice);
+                    if (mydevice->gstdevice) {
+                        // Query capture device caps:
+                        GstCaps *caps = gst_device_get_caps(mydevice->gstdevice);
                         gchar* capsstr = caps ? gst_caps_to_string(caps) : NULL;
 
-                        // Have one. Create and assign associated plugin:
-                        if (strstr(mydevice->device, "/dev/video") && capsstr && (strstr(capsstr, "image/jpeg") == capsstr)) {
-                            char binstring[128];
-                            binstring[127] = 0;
-                            snprintf(binstring, sizeof(binstring) - 1, "v4l2src device=%.50s do-timestamp=1 ! jpegdec name=ptb_videosource", mydevice->device);
-                            *videocaptureplugin = gst_parse_bin_from_description_full((const gchar *) binstring, TRUE, NULL, GST_PARSE_FLAG_FATAL_ERRORS, NULL);
-                            if (PsychPrefStateGet_Verbosity() > 4)
-                                printf("PTB-DEBUG: Special capture device with MJPEG output needs jpegdec conversion. Created capture bin %p from: %s\n", *videocaptureplugin, binstring);
-                        }
-                        else {
-                            // Standard path: Auto-create and setup associated video capture plugin:
-                            *videocaptureplugin = gst_device_create_element((GstDevice*) devices[i].gstdevice, "ptb_videosource");
+                        // Auto-create and setup associated video capture plugin:
+                        *videocaptureplugin = gst_device_create_element((GstDevice*) mydevice->gstdevice, "ptb_videosource");
+
+                        // Do we have special format like image/jpeg (MJPEG) instead of video/x-raw?
+                        // If so then we need to create a special bin which encapsulates the videocaptureplugin and a
+                        // linked converter plugin to convert from the special format to a video/x-raw format that the
+                        // rest of our pipeline understands:
+                        if (capsstr && !strstr(capsstr, "video/x-raw")) {
+                            GstPad *pad, *ghost_pad;
+                            GstElement *converter = NULL;
+
+                            // MJPEG? Use jpegdec as converter:
+                            if (strstr(capsstr, "image/jpeg")) {
+                                converter = gst_element_factory_make("jpegdec", "ptb_videosourceconverter");
+                                if (PsychPrefStateGet_Verbosity() > 4)
+                                    printf("PTB-DEBUG: Special capture device with MJPEG output needs jpegdec conversion. Created converter.\n");
+                            }
+
+                            if (converter) {
+                                // Build bin element, put videocaptureplugin and converter into it, link it up and return
+                                // it as new videocapturebin for use by our capture pipeline:
+                                GstElement *bin = gst_bin_new("ptb_videosourcebin");
+                                gst_bin_add(GST_BIN(bin), *videocaptureplugin);
+                                gst_bin_add(GST_BIN(bin), converter);
+                                gst_element_link(*videocaptureplugin, converter);
+                                pad = gst_element_get_static_pad(converter, "src");
+                                ghost_pad = gst_ghost_pad_new("src", pad);
+                                gst_pad_set_active(ghost_pad, TRUE);
+                                gst_element_add_pad(bin, ghost_pad);
+                                gst_object_unref (pad);
+                                *videocapturebin = bin;
+                            }
+                            else {
+                                if (PsychPrefStateGet_Verbosity() > 1)
+                                    printf("PTB-WARNING: Special capture device with special video format needs conversion, but don't know which converter to use. This will likely fail!\nCaps string: %s\n", capsstr);
+                            }
                         }
 
                         free(capsstr);
@@ -1426,6 +1459,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
                     }
                     #endif
                 }
+
                 break;
             }
         }
@@ -2988,6 +3022,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     GstElement      *camera = NULL;
     GstElement      *videosink = NULL;
     GstElement      *videosource = NULL;
+    GstElement      *videobin = NULL;
     GstElement      *videosource_filter = NULL;
     GstElement      *videocrop_filter = NULL;
     GstElement      *videowrappersrc = NULL;
@@ -3034,7 +3069,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     if (deviceIndex >= 0) {
         // Get device name for given deviceIndex from video device
         // enumeration (or NULL if no such device):
-        theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex, &videosource);
+        theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex, &videosource, &videobin);
         if (NULL == theDevice) {
             printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
             PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
@@ -3422,7 +3457,12 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Assign video source to pipeline: Attach indirectly to camerabin2 via a camerawrappersrc.
     videowrappersrc = gst_element_factory_make ("wrappercamerabinsrc", "ptbwrappervideosrc0");
-    g_object_set(videowrappersrc, "video-source", videosource, NULL);
+
+    if (videobin)
+        g_object_set(videowrappersrc, "video-source", videobin, NULL);
+    else
+        g_object_set(videowrappersrc, "video-source", videosource, NULL);
+
     g_object_set(camera, "camera-source", videowrappersrc, NULL);
 
     // Name of target movie file for video and audio recording specified?
@@ -3978,8 +4018,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         }
     }
 
-    g_object_get (G_OBJECT(camera), "camera-source", &videosource,NULL);
-
     // There's always at least a video channel:
     vidcapRecordBANK[slotid].nrVideoTracks = 1;
 
@@ -4050,13 +4088,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     rate2 = 1;
     width = height = 0;
 
-    // Query true properties of attached video source:
-    videosource = NULL;
-    g_object_get (G_OBJECT(videowrappersrc), "video-source", &videosource, NULL);
-
     // Our camerabin2 doesn't use explicit video encoder, but video encoding profiles...
     capdev->videoenc = NULL;
 
+    // Query true properties of attached video source:
     if (videosource) {
         pstring = NULL;
         if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device")) {
@@ -4200,6 +4235,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Store a pointer to the videosource plugin:
     capdev->videosource = videosource;
+    capdev->videobin = videobin;
     capdev->videowrappersrc = videowrappersrc;
 
     if (PsychPrefStateGet_Verbosity() > 2) {
