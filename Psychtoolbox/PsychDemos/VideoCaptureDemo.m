@@ -7,7 +7,7 @@ function VideoCaptureDemo(fullscreen, fullsize, roi, depth, fps, deviceId, camer
 % your computer (e.g, the built-in iSight of Apple Macintosh computers),
 % then shows its video image in a Psychtoolbox window.
 %
-% By default, a capture rate of 30 frames per second is requested, and the
+% By default, the maximum capture rate for a given resolution is requested, and the
 % timecode and interframe interval of each captured image is displayed in
 % the top-left corner of the display. A press of the ESCape key ends the
 % demo.
@@ -35,6 +35,16 @@ function VideoCaptureDemo(fullscreen, fullsize, roi, depth, fps, deviceId, camer
 % if omitted.
 %
 % 'deviceId' Device index of video capture device. Defaults to system default.
+%
+% Tip on Linux: If you have an exotic camera which only delivers video in non-standard
+% video formats, and Psychtoolbox does not handle this automatically, but aborts with
+% some GStreamer errors, e.g., "source crop failed", or "negotiation error", you may
+% be able to work around the problem (after a "clear all" or fresh start), by adding
+% this command: setenv('GST_V4L2_USE_LIBV4L2','1');
+% This will use of a helper library that can convert some video formats which
+% GStreamer or Psychtoolbox can not handle automatically yet. In any case, please
+% report your problem to the Psychtoolbox user forum, so proper automatic handling
+% of your camera model can be added to a future Psychtoolbox version.
 %
 % 'cameraname' Name string for selection of video capture device. This is
 % only honored if 'deviceId' is a negative number, and only for certain
