@@ -40,7 +40,7 @@ fprintf('Building plugin type %i ...\n\n', mode);
 
 if mode==0
     % Build Screen:
-    % Depends: GStreamer-1.4+, libdc1394-2, libusb-1.0
+    % Depends: GStreamer-1.18+, libdc1394-2, libusb-1.0
 
     % Need to build the PsychCocoaGlue.c separately as Objective-C code,
     % whereas the mex call below only compiles C-Code and links it with the
