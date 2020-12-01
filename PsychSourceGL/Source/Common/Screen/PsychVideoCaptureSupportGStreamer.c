@@ -1406,7 +1406,7 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
                             }
                         }
 
-                        free(capsstr);
+                        g_free(capsstr);
                         if (caps)
                             gst_caps_unref(caps);
                     }
