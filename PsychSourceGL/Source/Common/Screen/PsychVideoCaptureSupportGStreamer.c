@@ -956,7 +956,7 @@ static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
     GstDevice           *device;
     GstCaps             *caps;
     GList               *devlist = NULL, *devIter;
-    gchar               *devString;
+    gchar               *devString, *nameString;
     int                 n = 1; // Start input index is 1 for class 0.
 
     monitor = gst_device_monitor_new();
@@ -976,6 +976,19 @@ static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
         for (devIter = g_list_first(devlist); devIter != NULL; devIter = g_list_next(devIter)) {
             device = (GstDevice*) devIter->data;
             if (device == NULL) continue;
+
+            // Skip certain devices with certain names:
+            nameString = gst_device_get_display_name(device);
+
+            // Intel AVStream Camera 2500 is used in the Microsoft Surface 6 tablet, and unsuitable
+            // under ksvideosrc. However it works under mfvideosrc, where it gets exposed under a
+            // different name which we don't filter out:
+            if (strstr((char*) nameString, "AVStream Camera 2500")) {
+                g_free(nameString);
+                continue;
+            }
+
+            g_free(nameString);
 
             // Probe all device properties and store them in internal global videocapture device array:
             devString = gst_device_get_device_class(device);
