@@ -69,7 +69,11 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 % report your problem to the Psychtoolbox user forum, so proper automatic handling
 % of your camera model can be added to a future Psychtoolbox version.
 %
-
+% Tip for the Microsoft Surface Pro 6 tablet and similar: The builtin cameras only
+% work if you explicitely specify the 'pixeldepth' parameter in Screen('OpenVideoCapture')
+% as value 6 for YUV-I420 encoding. This seems to be a quirk of the builtin cameras, as
+% of Windows-10 (20H2) from December 2020.
+%
 
 % History:
 % 11.2.2007   Written (MK).

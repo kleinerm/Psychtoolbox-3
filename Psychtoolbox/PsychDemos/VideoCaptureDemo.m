@@ -31,6 +31,11 @@ function VideoCaptureDemo(fullscreen, fullsize, roi, depth, fps, deviceId, camer
 %
 % 'depth' Number of color channels 1 = grayscale, 3 = rgb, 4 = rgba etc.
 %
+% Tip for the Microsoft Surface Pro 6 tablet and similar: The builtin cameras only
+% work if you explicitely specify the 'depth' parameter as value 6 for YUV-I420.
+% This seems to be a quirk of the builtin cameras, as of Windows-10 (20H2) from
+% December 2020.
+%
 % 'fps' Target capture framerate. Maximum for given resolution and color depth
 % if omitted.
 %
