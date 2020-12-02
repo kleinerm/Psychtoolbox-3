@@ -122,11 +122,19 @@ static unsigned int primaryDPI;
 static unsigned int primaryDisplayScreen;
 
 static PROCESS_DPI_AWARENESS PsychQueryProcessDpiAwareness(void) {
-    PROCESS_DPI_AWARENESS awarenesslevel;
+    PROCESS_DPI_AWARENESS awarenesslevel = 1234;
+    HRESULT rc = E_ACCESSDENIED;
 
     // Try to query process dpi awareness with Windows 8.1+ API:
     PsychGetProcessDPIAwareness = (PsychGetProcessDpiAwarenessProc) GetProcAddress(GetModuleHandleA("user32.dll"), "GetProcessDpiAwarenessInternal");
-    if (PsychGetProcessDPIAwareness && (S_OK == PsychGetProcessDPIAwareness(NULL, &awarenesslevel))) {
+    if (PsychGetProcessDPIAwareness)
+        rc = PsychGetProcessDPIAwareness(NULL, &awarenesslevel);
+
+    // Note: rc == 1 is not an official error return code for PsychGetProcessDPIAwareness(),
+    // but Windows-10 returns this on success instead of the S_OK (rc == 0) it should, so work
+    // around this by checking for rc 1 and not awarenesslevel == 1234 which would also be an invalid
+    // return value:
+    if (S_OK == rc || (rc == 1 && awarenesslevel != 1234)) {
         if (PsychPrefStateGet_Verbosity() > 3) {
             printf("PTB-INFO: Process DPI awareness level is: %s.\n", (awarenesslevel == PROCESS_PER_MONITOR_DPI_AWARE) ? "Per Monitor aware" :
                    ((awarenesslevel == PROCESS_SYSTEM_DPI_AWARE) ? "System global aware" : "Unaware"));
