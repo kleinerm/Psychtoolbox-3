@@ -213,9 +213,9 @@ if onoctave == 0
 else
     % Octave build:
     if Is64Bit
-        target = [PsychtoolboxRoot 'PsychBasic\Octave5WindowsFiles64\'];
+        target = [PsychtoolboxRoot 'PsychBasic\Octave6WindowsFiles64\'];
     else
-        target = [PsychtoolboxRoot 'PsychBasic\Octave5WindowsFiles\'];
+        error('Building on 32-Bit Octave is not supported on Windows atm.');
     end
 
     if what == 0
