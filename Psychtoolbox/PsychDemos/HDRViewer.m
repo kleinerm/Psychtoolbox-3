@@ -173,7 +173,7 @@ end
 
 try
     % Disable keypress output to Matlab window:
-    ListenChar(2);
+    ListenChar(-1);
 
     % Find screen to display: We choose the one with the highest number,
     % assuming this is the HDR display:

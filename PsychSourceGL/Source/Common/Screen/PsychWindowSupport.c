@@ -602,8 +602,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 }
                 else if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
                     printf("PTB-ERROR: Linux low-level MMIO access by Psychtoolbox is disabled or not permitted on your system in this session.\n");
-                    printf("PTB-ERROR: On Linux you must either configure your system by executing the script 'PsychLinuxConfiguration' once,\n");
-                    printf("PTB-ERROR: or start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n\n");
+                    printf("PTB-ERROR: On Linux you must configure your system by executing the script 'PsychLinuxConfiguration' once.\n\n");
                 }
                 else if (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24) {
                     printf("PTB-ERROR: your display is not set to 24 bit 'DefaultDepth' color depth, but to %i bit color depth in xorg.conf.\n\n",
@@ -7650,8 +7649,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             printf("PTB-INFO: Another reason for lack of hardware OpenGL could be that GNU/Octave's own opengl32.dll library\n");
             printf("PTB-INFO: has not been deleted or renamed by you, so it is enforcing software rendering.\n");
             printf("PTB-INFO: You have to delete or rename that file and restart Octave for this to work.\n");
-            printf("PTB-INFO: E.g., on Octave-5.1.0, the file to delete or rename would be likely this:\n");
-            printf("PTB-INFO: C:\\Octave\\Octave-5.1.0.0\\mingw64\\bin\\opengl32.dll\n\n");            
+            printf("PTB-INFO: E.g., on Octave-5.2.0, the file to delete or rename would be likely this:\n");
+            printf("PTB-INFO: C:\\Octave\\Octave-5.2.0\\mingw64\\bin\\opengl32.dll\n\n");            
             #endif
             // Disable all sync tests and display timing calibrations, unless usercode already did something similar:
             if (PsychPrefStateGet_SkipSyncTests() < 1) PsychPrefStateSet_SkipSyncTests(2);

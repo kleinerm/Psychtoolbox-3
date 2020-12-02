@@ -15,7 +15,14 @@ function datapixxmakemex()
         DELCMD = 'rm ';
     elseif (IsWin)
         VPIXXDIR = 'T:/projects/';
-        VPIXXDIR = 'C:/Users/kleinerm/Documents/GitHub/';
+        if exist('C:/Users/kleinerm/Documents/GitHub/', 'dir')
+            VPIXXDIR = 'C:/Users/kleinerm/Documents/GitHub/';
+        end
+
+        if exist('C:/Users/mario/Documents/GitHub/', 'dir')
+            VPIXXDIR = 'C:/Users/mario/Documents/GitHub/';
+        end
+        
         CPYCMD = 'copy ';
         DELCMD = 'del ';
     end
@@ -23,11 +30,11 @@ function datapixxmakemex()
     if ~IsWin
         PTBDIR = [VPIXXDIR 'OpenGLPsychtoolbox/Psychtoolbox-3/'];
     else
-        PTBDIR = [VPIXXDIR '/Psychtoolbox-3/'];
+        PTBDIR = [VPIXXDIR 'Psychtoolbox-3/'];
     end
 
     % Start constructing mex command
-    S = 'mex -v';   % -v for verbose output
+    S = 'mex -v -s';   % -v for verbose output, -s for stripping the files.
     S = [S ' -DPTBMODULE_Datapixx'];
 
     if IsOctave

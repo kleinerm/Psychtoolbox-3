@@ -1121,7 +1121,12 @@ end
 % dummy mode:
 function rc = doDatapixx(varargin)
     global dpx;
-    
+
+    if dpx.verbosity > 6
+        fprintf('Datapixx-Call: ');
+        disp(varargin);
+    end
+
     if dpx.dummymode
         if (nargin > 0) && strcmpi(varargin{1}, 'GetVideoStatus')
             % Dummy mode: Need to return something for this call: Make up

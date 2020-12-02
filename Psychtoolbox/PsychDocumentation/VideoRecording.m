@@ -54,12 +54,12 @@
 % and reasonable default settings, so they are convenient for you to use:
 %
 % x264enc:         A highly optimized H264 video encoder, automatically combined with the
-%                  faacenc or ffenc_aac MPEG-4 AAC audio encoder and an AVI file
+%                  faacenc or avenc_aac MPEG-4 AAC audio encoder and an AVI file
 %                  multiplexer or Quicktime mov file multiplexer.
 %
 % xvidenc:         The XVid MPEG-4 video encoder + AAC audio in a AVI file.
 %
-% ffenc_mpeg4:     Another MPEG-4 video encoder + AAC audio in a AVI file.
+% avenc_mpeg4:     Another MPEG-4 video encoder + AAC audio in a AVI file.
 %
 % theoraenc:       The Ogg Theora video encoder with Ogg Vorbis audio encoder and
 %                  Ogg file format multiplexer (.ogv files).
@@ -69,7 +69,7 @@
 %
 % vp8enc_matroska: As above, but in a matroska file container.
 %
-% ffenc_h263p:     H.263 video encoder with AAC audio in a Quicktime container.
+% avenc_h263p:     H.263 video encoder with AAC audio in a Quicktime container.
 %
 % yuvraw:          Raw, uncompressed YUV video data with AAC audio in a avi container.
 %
@@ -77,13 +77,13 @@
 %                  matroska container. This is a lossless video codec, but
 %                  it creates relatively large files.
 %
-% ffenc_sgi:       Stores video as a sequence of RLE compressed, lossless
+% avenc_sgi:       Stores video as a sequence of RLE compressed, lossless
 %                  encoded SGI image files. This format usually can only be
 %                  read and played back by Psychtoolbox itself and some
 %                  specialized tools. It also creates relatively large
 %                  files.
 %
-% The huffyuv and ffenc_sgi encoders are mostly useful if you need
+% The huffyuv and avenc_sgi encoders are mostly useful if you need
 % bit-exact image storage or storage of raw video sensor data (Bayer color
 % filter format), or of high bit depths video data, ie., with more than 8
 % bpc. For most common use cases you can achieve qualitatively good enough

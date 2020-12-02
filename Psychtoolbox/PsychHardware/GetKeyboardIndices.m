@@ -87,6 +87,13 @@ for i =1:length(d);
             continue;
         end
 
+        % Protect against enumerating ipts "Intel precision touchscreen" as a keyboard,
+        % which would crash PsychHID on Linux, at least until a proper robustness
+        % fix for PsychHID is released:
+        if ~isempty(strfind(d(i).product, 'ipts'))
+            continue;
+        end
+
         % Match! Append to list of output keybords, including optional
         % detailed information:
         keyboardIndices(end+1)=d(i).index; %#ok<AGROW>

@@ -1629,22 +1629,22 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
             PsychPluginSetAffineTransformMatrix = dlsym(drawtext_plugin, "PsychSetAffineTransformMatrix");
             PsychPluginGetTextCursor = dlsym(drawtext_plugin, "PsychGetTextCursor");
         #else
-            PsychPluginInitText = GetProcAddress(drawtext_plugin, "PsychInitText");
-            PsychPluginShutdownText = GetProcAddress(drawtext_plugin, "PsychShutdownText");
-            PsychPluginSetTextFont = GetProcAddress(drawtext_plugin, "PsychSetTextFont");
-            PsychPluginGetTextFont = GetProcAddress(drawtext_plugin, "PsychGetTextFont");
-            PsychPluginSetTextStyle = GetProcAddress(drawtext_plugin, "PsychSetTextStyle");
-            PsychPluginSetTextSize = GetProcAddress(drawtext_plugin, "PsychSetTextSize");
-            PsychPluginSetTextFGColor = GetProcAddress(drawtext_plugin, "PsychSetTextFGColor");
-            PsychPluginSetTextBGColor = GetProcAddress(drawtext_plugin, "PsychSetTextBGColor");
-            PsychPluginSetTextUseFontmapper = GetProcAddress(drawtext_plugin, "PsychSetTextUseFontmapper");
-            PsychPluginSetTextViewPort = GetProcAddress(drawtext_plugin, "PsychSetTextViewPort");
-            PsychPluginDrawText = GetProcAddress(drawtext_plugin, "PsychDrawText");
-            PsychPluginMeasureText = GetProcAddress(drawtext_plugin, "PsychMeasureText");
-            PsychPluginSetTextVerbosity = GetProcAddress(drawtext_plugin, "PsychSetTextVerbosity");
-            PsychPluginSetTextAntiAliasing = GetProcAddress(drawtext_plugin, "PsychSetTextAntiAliasing");
-            PsychPluginSetAffineTransformMatrix = GetProcAddress(drawtext_plugin, "PsychSetAffineTransformMatrix");
-            PsychPluginGetTextCursor = GetProcAddress(drawtext_plugin, "PsychGetTextCursor");
+            PsychPluginInitText = (void*) GetProcAddress(drawtext_plugin, "PsychInitText");
+            PsychPluginShutdownText = (void*) GetProcAddress(drawtext_plugin, "PsychShutdownText");
+            PsychPluginSetTextFont = (void*) GetProcAddress(drawtext_plugin, "PsychSetTextFont");
+            PsychPluginGetTextFont = (void*) GetProcAddress(drawtext_plugin, "PsychGetTextFont");
+            PsychPluginSetTextStyle = (void*) GetProcAddress(drawtext_plugin, "PsychSetTextStyle");
+            PsychPluginSetTextSize = (void*) GetProcAddress(drawtext_plugin, "PsychSetTextSize");
+            PsychPluginSetTextFGColor = (void*) GetProcAddress(drawtext_plugin, "PsychSetTextFGColor");
+            PsychPluginSetTextBGColor = (void*) GetProcAddress(drawtext_plugin, "PsychSetTextBGColor");
+            PsychPluginSetTextUseFontmapper = (void*) GetProcAddress(drawtext_plugin, "PsychSetTextUseFontmapper");
+            PsychPluginSetTextViewPort = (void*) GetProcAddress(drawtext_plugin, "PsychSetTextViewPort");
+            PsychPluginDrawText = (void*) GetProcAddress(drawtext_plugin, "PsychDrawText");
+            PsychPluginMeasureText = (void*) GetProcAddress(drawtext_plugin, "PsychMeasureText");
+            PsychPluginSetTextVerbosity = (void*) GetProcAddress(drawtext_plugin, "PsychSetTextVerbosity");
+            PsychPluginSetTextAntiAliasing = (void*) GetProcAddress(drawtext_plugin, "PsychSetTextAntiAliasing");
+            PsychPluginSetAffineTransformMatrix = (void*) GetProcAddress(drawtext_plugin, "PsychSetAffineTransformMatrix");
+            PsychPluginGetTextCursor = (void*) GetProcAddress(drawtext_plugin, "PsychGetTextCursor");
         #endif
 
         // Assign current level of verbosity:

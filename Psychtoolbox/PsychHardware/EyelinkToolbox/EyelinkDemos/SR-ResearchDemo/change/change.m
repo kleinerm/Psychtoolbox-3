@@ -40,8 +40,8 @@ TRIAL_TIMEOUT = 60000;
 
 % images to use and locations of interest areas
 % Only 24 and 32 bit images are supported. Octave cares about case
-imageListA = {'REG1A.bmp' 'REG2A.bmp' 'RND1A.bmp' 'RND2A.bmp'};
-imageListB = {'REG1B.bmp' 'REG2B.bmp' 'RND1B.bmp' 'RND2B.bmp'};
+imageListA = {'REG1A.jpg' 'REG2A.jpg' 'RND1A.jpg' 'RND2A.jpg'};
+imageListB = {'REG1B.jpg' 'REG2B.jpg' 'RND1B.jpg' 'RND2B.jpg'};
 trigLocs = [ [149 ; 365] [279;176] [404;365] [404;176]];
 
 stopkey=KbName('space');

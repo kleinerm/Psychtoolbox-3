@@ -115,7 +115,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
                 if(!PsychPrefStateGet_SuppressAllWarnings()) {
                     printf("PTB-INFO: Failed to enable realtime-scheduling [%s]!\n", strerror(errno));
                     if (errno==EPERM) {
-                        printf("PTB-INFO: You need to run Matlab or Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
+                        printf("PTB-INFO: You need to run the script PsychLinuxConfiguration once, then logout and login again for this to work.\n");
                     }
                 }
                 errno=0;
@@ -132,7 +132,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
             if(!PsychPrefStateGet_SuppressAllWarnings()) {
                 printf("PTB-INFO: Failed to disable realtime-scheduling [%s]!\n", strerror(errno));
                 if (errno==EPERM) {
-                    printf("PTB-INFO: You need to run Matlab or Octave with root-privileges or run the script PsychLinuxConfiguration once for this to work.\n");
+                    printf("PTB-INFO: You need to run the script PsychLinuxConfiguration once, then logout and login again, for this to work.\n");
                 }
             }
             errno=0;

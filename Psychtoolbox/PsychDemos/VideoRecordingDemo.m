@@ -58,6 +58,22 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 % the top-left corner of the screen, instead of fullscreen. Windowed
 % display is the default.
 %
+%
+% Tip on Linux: If you have an exotic camera which only delivers video in non-standard
+% video formats, and Psychtoolbox does not handle this automatically, but aborts with
+% some GStreamer errors, e.g., "source crop failed", or "negotiation error", you may
+% be able to work around the problem (after a "clear all" or fresh start), by adding
+% this command: setenv('GST_V4L2_USE_LIBV4L2','1');
+% This will use of a helper library that can convert some video formats which
+% GStreamer or Psychtoolbox can not handle automatically yet. In any case, please
+% report your problem to the Psychtoolbox user forum, so proper automatic handling
+% of your camera model can be added to a future Psychtoolbox version.
+%
+% Tip for the Microsoft Surface Pro 6 tablet and similar: The builtin cameras only
+% work if you explicitely specify the 'pixeldepth' parameter in Screen('OpenVideoCapture')
+% as value 6 for YUV-I420 encoding. This seems to be a quirk of the builtin cameras, as
+% of Windows-10 (20H2) from December 2020.
+%
 
 % History:
 % 11.2.2007   Written (MK).
@@ -146,9 +162,9 @@ if isempty(codec)
         % source, as the autoaudiosrc does not find any sound sources on
         % the Windows-7 PC :-(
         if withsound
-            codec = ':CodecType=theoraenc ::: AudioSource=directsoundsrc';
+            codec = ':CodecType=DEFAULTencoder ::: AudioSource=directsoundsrc';
         else
-            codec = ':CodecType=theoraenc';
+            codec = ':CodecType=DEFAULTencoder';
         end
     end
 else

@@ -120,7 +120,8 @@ if ~isfield(Psychtoolbox,'version')
         isSVN = false;
     end
 
-    if any(strcmp(PsychtoolboxRoot, {'/usr/share/octave/site/m/psychtoolbox-3/', '/usr/share/matlab/site/m/psychtoolbox-3/'}))
+    if any(strcmp(PsychtoolboxRoot, {'/usr/share/octave/site/m/psychtoolbox-3/', ...
+        '/usr/share/matlab/site/m/psychtoolbox-3/', '/usr/share/psychtoolbox-3/'}))
         % It is a Debian version of the package
         Psychtoolbox.version.flavor = 'Debian package';
         [status, result] = system('zcat /usr/share/doc/psychtoolbox-3-common/changelog.Debian.gz| head -1 | sed -e "s/).*/)/g"');
@@ -140,8 +141,10 @@ if ~isfield(Psychtoolbox,'version')
         Psychtoolbox.version.string = sprintf('%d.%d.%d - Flavor: %s - %s\nFor more info visit:\n%s', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
             Psychtoolbox.version.flavor, Psychtoolbox.version.revstring, infourl);
 
-        % Retrieve the date of the Debian release:
-        Psychtoolbox.date = sscanf(result, 'psychtoolbox-3 (%*d.%*d.%*d.%d.%*s');
+        % Old: Retrieve the date of the Debian release:
+        % Does not work anymore, as date is no longer part of upstream release tags.
+        % Use contentsdate from Psychtoolbox main help file instead:
+        Psychtoolbox.date = contentsdate; % sscanf(result, 'psychtoolbox-3 (%*d.%*d.%*d.%d.%*s');
     elseif isGIT == true
         %assume a GIT install
         gitstatus = GetGITInfo(PsychtoolboxRoot);

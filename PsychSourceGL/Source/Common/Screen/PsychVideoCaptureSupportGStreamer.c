@@ -61,6 +61,7 @@
 #include "Screen.h"
 #include <float.h>
 #include <locale.h>
+#include <ctype.h>
 #include "PsychVideoCaptureSupport.h"
 
 // Include for dynamic loading of external plugin, for now only on Unix:
@@ -104,6 +105,7 @@ typedef struct {
     GstElement *videosink;            // Our appsink for retrieval of live video feeds --> PTB texture conversion.
     GstElement *videosource;          // The videosource, encapsulating the actual video capture device.
     GstElement *videowrappersrc;      // The wrappercambinsrc used for encapsulating videosource for camerabin2 capture.
+    GstElement *videobin;             // The videobin used to encapsulate videosource and special post-proc elements if needed.
     GstElement *videoenc;             // Video encoder for video recording.
     GstElement *videorate_filter;     // Video framerate converter to guarantee constant framerate and a/v sync for recording.
     GstClockTime lastSavedBaseTime;   // Last time the pipeline was put into PLAYING state. Saved at StopCapture time before stop.
@@ -320,9 +322,10 @@ void PsychGSCheckInit(const char* engineName)
 
         // gs_startupTime is added to all timestamps from GStreamer to compensate for
         // clock zero offset wrt. to our GetSecs() time:
-        if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
-            // TODO PORTING CHECK STILL TRUE?
-            // Windows: Zero-Point is time of GStreamer startup aka sometime
+        // if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
+        if (FALSE) {
+            // Not needed anymore since at least PTB 3.0.17 and GStreamer 1.18+
+            // Windows: Zero-Point was time of GStreamer startup aka sometime
             // during execution of gst_init_check() above. Current system time
             // is our best approximation so far:
             PsychGetAdjustedPrecisionTimerSeconds(&gs_startupTime);
@@ -765,6 +768,8 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
 
     // This has been auto-destructed (hopefully) by camerabin:
     capdev->videosource = NULL;
+    capdev->videowrappersrc = NULL;
+    capdev->videobin = NULL;
 
     if (capdev->targetmoviefilename) free(capdev->targetmoviefilename);
     capdev->targetmoviefilename = NULL;
@@ -802,17 +807,6 @@ void PsychGSCloseVideoCaptureDevice(int capturehandle)
     return;
 }
 
-// GstDeviceMonitor, GstDeviceProvider and GstDevice require GStreamer-1.4.0 or later.
-// We don't use this on Linux though as of beginning of 2018, because we still want to
-// keep Ubuntu 14.04 LTS supported atm., which does not provide GStreamer 1.4+, so
-// trying to run Screen mex file built on a 1.4+ system (like 16.04 LTS) would cause
-// load-time linker failure on 14.04. This is no functional loss, as the only video source
-// under Linux currently supported by GstDeviceProvider/GstDeviceMonitor is the v4l2src,
-// but that source is perfectly handled by our code without the need for GstDeviceMonitor.
-// GstDeviceMonitor is more beneficial on MS-Windows and possibly macOS, where it can make
-// a positive impact on the reliability of video device enumeration.
-#if GST_CHECK_VERSION(1,4,0)
-
 static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, const char* srcname,
                                 int classIndex, const char* className, const char* devHandlePropName, unsigned int flags)
 {
@@ -828,11 +822,11 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, const char*
 
     if (PsychPrefStateGet_Verbosity() > 5) {
         devString = gst_device_get_device_class(device);
-        printf("DEVICECLASS %s\n", (char*) devString);
+        printf("PTB-DEBUG: Device class: %s\n", (char*) devString);
         g_free(devString);
 
         devString = gst_device_get_display_name(device);
-        printf("DISPLAYNAME %s\n", (char*) devString);
+        printf("PTB-DEBUG: Device display name: %s\n", (char*) devString);
         g_free(devString);
     }
 
@@ -876,11 +870,9 @@ static void PsychGSProbeGstDevice(GstDevice* device, int inputIndex, const char*
         g_value_unset(&val);
     }
     else {
-        // Our videosource capture device instance doesn't expose the key selection
-        // property 'devHandlePropName'. What now? Mark this instance so the device
-        // open code will use the stored GstDevice* for capture device instantiation
-        // instead:
-        sprintf(port_str, "USEGSTDEVICE* %p", device);
+        devString = gst_device_get_display_name(device);
+        sprintf(port_str, "%s", devString);
+        g_free(devString);
     }
 
     devices[ntotal].deviceIndex = classIndex * 10000 + inputIndex;
@@ -964,7 +956,7 @@ static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
     GstDevice           *device;
     GstCaps             *caps;
     GList               *devlist = NULL, *devIter;
-    gchar               *devString;
+    gchar               *devString, *nameString;
     int                 n = 1; // Start input index is 1 for class 0.
 
     monitor = gst_device_monitor_new();
@@ -984,6 +976,19 @@ static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
         for (devIter = g_list_first(devlist); devIter != NULL; devIter = g_list_next(devIter)) {
             device = (GstDevice*) devIter->data;
             if (device == NULL) continue;
+
+            // Skip certain devices with certain names:
+            nameString = gst_device_get_display_name(device);
+
+            // Intel AVStream Camera 2500 is used in the Microsoft Surface 6 tablet, and unsuitable
+            // under ksvideosrc. However it works under mfvideosrc, where it gets exposed under a
+            // different name which we don't filter out:
+            if (strstr((char*) nameString, "AVStream Camera 2500")) {
+                g_free(nameString);
+                continue;
+            }
+
+            g_free(nameString);
 
             // Probe all device properties and store them in internal global videocapture device array:
             devString = gst_device_get_device_class(device);
@@ -1012,19 +1017,6 @@ static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void)
     return;
 }
 
-#else
-    // Dummy typedef, so we don't need to sprinkle ifdefs everywhere:
-    #ifndef GST_TYPE_DEVICE
-    typedef GstElement GstDevice;
-    #endif
-    #ifndef GST_TYPE_DEVICE_PROVIDER
-    typedef GstElement GstDeviceProvider;
-    #endif
-    static void PsychGSEnumerateVideoSourcesViaDeviceMonitor(void) {};
-
-//#warning Building against GStreamer version older than 1.4.0 - No device monitor support! Consider upgrading!
-#endif
-
 /* Helper routine for PsychGSEnumerateVideoSources()
  *
  * Probes video source plugin 'srcname' [with class index 'classIndex' and
@@ -1051,7 +1043,6 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
     sprintf(class_str, "%s", className);
 
     // Does this source support device enumeration of supported capture devices?
-    #if GST_CHECK_VERSION(1,4,0)
     if ((provider = gst_device_provider_factory_get_by_name((const gchar*) providername)) && GST_IS_DEVICE_PROVIDER(provider)) {
         if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Has a GStreamer device provider - Good, using it.\n");
         devlist = gst_device_provider_get_devices(GST_DEVICE_PROVIDER(provider));
@@ -1094,7 +1085,6 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
 
         return;
     }
-    #endif
 
     // If we reach this point, then the videosource plugin doesn't support straightforward enumeration,
     // so we need to be a bit more hacky here. Try enumeration by trying to access different devices,
@@ -1130,6 +1120,11 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
     if (strstr(srcname, "v4l2")) {
         nmaxp = 20;
         dopoke = 1;
+    }
+
+    if (strstr(srcname, "mfvideosrc") || strstr(srcname, "ksvideosrc")) {
+        nmaxp = 20;
+        dopoke = 2;
     }
 
     // Iterate:
@@ -1230,7 +1225,7 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
     return;
 }
 
-/* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin);  -- Internal.
+/* PsychGSEnumerateVideoSources -- Internal.
  *
  * Enumerates all connected and supported video sources into an internal
  * array "devices".
@@ -1241,19 +1236,23 @@ static void PsychGSEnumerateVideoSourceType(const char* srcname, int classIndex,
  *                       the Screen module returns control to the runtime - then it
  *                       will get deallocated and must not be accessed anymore!
  *
- *                       If videocaptureplugin is a non-NULL pointer, caller asks us
- *                       to create associated videocapture GStreamer plugin. If we
- *                       can do that, we return a pointer to it in *videocaptureplugin,
- *                       otherwise we set *videocaptureplugin = NULL.
- *                       We can do this device 'deviceIndex' supports enumeration via
- *                       GstDeviceProvider or GstDeviceMonitor on GStreamer 1.4+
+ *                       If videocaptureplugin and videocapturebin are non-NULL pointers,
+ *                       caller asks us to create associated videocapture GStreamer plugin.
+ *                       If we can do that, we return a pointer to it in *videocaptureplugin,
+ *                       otherwise we set *videocaptureplugin = NULL. If the specific
+ *                       videocaptureplugin needs special post-processing, e.g., for MJPG,
+ *                       then we create and return a dedicated videocapturebin and put
+ *                       videocaptureplugin into it, linked with the needed special post-
+ *                       processing element. Otherwise videocapturebin is returned as NULL.
+ *                       We can do this if device 'deviceIndex' supports enumeration via
+ *                       GstDeviceProvider or GstDeviceMonitor.
  *
  *
  * If deviceIndex < 0 : Returns NULL to caller, returns a struct array to runtime
  *                      environment return argument position 'outPos' with all info
  *                      about the detected sources.
  */
-PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin)
+PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceIndex, GstElement **videocaptureplugin, GstElement **videocapturebin)
 {
     PsychGenericScriptType 	*devs;
     const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputHandle", "Device", "DevicePath", "DeviceName", "GUID", "DevicePlugin", "DeviceSelectorProperty" };
@@ -1274,43 +1273,25 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
 
     // Linux specific setup path:
     if (PSYCH_SYSTEM == PSYCH_LINUX) {
-        // Try Video4Linux-II camera source: This is mostly a Maemo (maybe Meego et al.?) thing.
-        PsychGSEnumerateVideoSourceType("v4l2camsrc", 1, "Video4Linux2-CameraSource", "device", "", 0);
-
         // Try standard Video4Linux-II source:
         PsychGSEnumerateVideoSourceType("v4l2src", 2, "Video4Linux2", "device", "v4l2deviceprovider", 0);
     }
 
     if (PSYCH_SYSTEM == PSYCH_WINDOWS) {
-        // Try Windows kernel streaming source:
-        PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-index", "", 0);
+        // Try Windows kernel streaming source: The most well working default as of end of 2020.
+        PsychGSEnumerateVideoSourceType("ksvideosrc", 1, "Windows WDM kernel streaming", "device-index", "ksdeviceprovider", 0);
 
-        // Use DirectShow to probe:
-        PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", "", 0);
+        // Use DirectShow to probe: Note that this one is on the way out - ie. towards removal...
+        PsychGSEnumerateVideoSourceType("dshowvideosrc", 2, "DirectShow", "device-name", "dshowdeviceprovider", 0);
+
+        // Try Windows Mediafoundation source: The upcoming new star, but not yet a full replacement for ksvideosrc in all cases.
+        PsychGSEnumerateVideoSourceType("mfvideosrc", 3, "Windows Mediafoundation", "device-index", "mfdeviceprovider", 0);
     }
 
     if (PSYCH_SYSTEM == PSYCH_OSX) {
-        // Try OSX Quicktime-7 SequenceGrabber video source: Kind'a pointless as only on 32-Bit and we don't
-        // do that anymore. But leave it here for sentimental reasons - fond memories of actually useable
-        // videocapture on OSX...
-        PsychGSEnumerateVideoSourceType("osxvideosrc", 1, "OSXQuicktimeSequenceGrabber", "device", "", 0);
-
-        // Try OSX AVFoundation video source: The <sarcasm>latest and greatest</sarcasm> for OSX 10.8+ or so.
-        // We enumerate this one before qtkitvideosrc, as the latter aka QTKit is deprecated since OSX 10.9.
-        // Indeed a first test shows avfvideosrc performing better on OSX 10.9, so i guess Apple does its
-        // "break old functionality to shove new api's down the throat of developers" thing again...
-        PsychGSEnumerateVideoSourceType("avfvideosrc", 4, "OSXAVFoundationVideoSource", "device-index", "", 0);
-
-        // Try the crappy OSX QTKit video source for 64-Bit systems with Quicktime-X aka QTKit:
-        PsychGSEnumerateVideoSourceType("qtkitvideosrc", 2, "OSXQuicktimeKitVideoSource", "device-index", "", 1);
-
-        // Try OSX MIO video source: Unless we're under Octave, where some weird bug/interaction
-        // would cause a crash in the miovideosrc plugin if we tried, so we don't try on Octave.
-        // Note that this one is not included as of GStreamer 1.4.0, likely because it uses non-public
-        // Apple api's, so is probably unsafe to use long-term...
-        #ifndef PTBOCTAVE3MEX
-        PsychGSEnumerateVideoSourceType("miovideosrc", 3, "OSXMIOVideoSource", "device-name", "", 0);
-        #endif
+        // Try OSX AVFoundation video source: Available since OSX 10.8, ok working since OSX 10.9. Actually the only working
+        // api on current macOS versions supported by us. Lets see how long this one lasts before the iPhone company breaks it.
+        PsychGSEnumerateVideoSourceType("avfvideosrc", 4, "OSXAVFoundationVideoSource", "device-index", "avfdeviceprovider", 0);
     }
 
     // Try IIDC-1394 Cameras:
@@ -1389,18 +1370,61 @@ PsychVideosourceRecordType* PsychGSEnumerateVideoSources(int outPos, int deviceI
                 // plugin which instantiates the capture device associated with GstDevice*
                 // Return pointer to the plugin. Only skip this step if no such plugin
                 // requested by caller (unlikely):
-                if (videocaptureplugin) {
+                if (videocaptureplugin && videocapturebin) {
                     // Default to - "no create support":
                     *videocaptureplugin = NULL;
+                    *videocapturebin = NULL;
 
-                    #if GST_CHECK_VERSION(1,4,0)
                     // Caller wants us to create associated video capture plugin if possible:
-                    if (devices[i].gstdevice) {
-                        // Have one. Create and assign associated plugin:
-                        *videocaptureplugin = gst_device_create_element((GstDevice*) devices[i].gstdevice, "ptb_videosource");
+                    if (mydevice->gstdevice) {
+                        // Query capture device caps:
+                        GstCaps *caps = gst_device_get_caps(mydevice->gstdevice);
+                        gchar* capsstr = caps ? gst_caps_to_string(caps) : NULL;
+
+                        // Auto-create and setup associated video capture plugin:
+                        *videocaptureplugin = gst_device_create_element((GstDevice*) mydevice->gstdevice, "ptb_videosource");
+
+                        // Do we have special format like image/jpeg (MJPEG) instead of video/x-raw?
+                        // If so then we need to create a special bin which encapsulates the videocaptureplugin and a
+                        // linked converter plugin to convert from the special format to a video/x-raw format that the
+                        // rest of our pipeline understands:
+                        if (capsstr && !strstr(capsstr, "video/x-raw")) {
+                            GstPad *pad, *ghost_pad;
+                            GstElement *converter = NULL;
+
+                            // MJPEG? Use jpegdec as converter:
+                            if (strstr(capsstr, "image/jpeg")) {
+                                converter = gst_element_factory_make("jpegdec", "ptb_videosourceconverter");
+                                if (PsychPrefStateGet_Verbosity() > 4)
+                                    printf("PTB-DEBUG: Special capture device with MJPEG output needs jpegdec conversion. Created converter.\n");
+                            }
+
+                            if (converter) {
+                                // Build bin element, put videocaptureplugin and converter into it, link it up and return
+                                // it as new videocapturebin for use by our capture pipeline:
+                                GstElement *bin = gst_bin_new("ptb_videosourcebin");
+                                gst_bin_add(GST_BIN(bin), *videocaptureplugin);
+                                gst_bin_add(GST_BIN(bin), converter);
+                                gst_element_link(*videocaptureplugin, converter);
+                                pad = gst_element_get_static_pad(converter, "src");
+                                ghost_pad = gst_ghost_pad_new("src", pad);
+                                gst_pad_set_active(ghost_pad, TRUE);
+                                gst_element_add_pad(bin, ghost_pad);
+                                gst_object_unref (pad);
+                                *videocapturebin = bin;
+                            }
+                            else {
+                                if (PsychPrefStateGet_Verbosity() > 1)
+                                    printf("PTB-WARNING: Special capture device with special video format needs conversion, but don't know which converter to use. This will likely fail!\nCaps string: %s\n", capsstr);
+                            }
+                        }
+
+                        g_free(capsstr);
+                        if (caps)
+                            gst_caps_unref(caps);
                     }
-                    #endif
                 }
+
                 break;
             }
         }
@@ -1854,7 +1878,7 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
     if (use_audio) {
         // Yes. Try if voaacenc AAC encoder is available, choose it as default choice for
         // AAC encoding. If unavailable, choose ffenc_aac or faac or avenc_aac instead as fallback:
-        // Note: As of August 2014 and GStreamer-1.4 for OSX, only vooaacenc and avenc_aac are available,
+        // Note: As of December 2020 and GStreamer-1.18 only vooaacenc and avenc_aac are available,
         // but avenc_aac has rank 0 as isn't ever selected by encodebins auto-plugger, so wouldn't work for
         // camerabin "profile" encoding.
         audio_enc = gst_parse_bin_from_description_full("voaacenc", TRUE, NULL, GST_PARSE_FLAG_FATAL_ERRORS, NULL);
@@ -2963,6 +2987,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     GstElement      *camera = NULL;
     GstElement      *videosink = NULL;
     GstElement      *videosource = NULL;
+    GstElement      *videobin = NULL;
     GstElement      *videosource_filter = NULL;
     GstElement      *videocrop_filter = NULL;
     GstElement      *videowrappersrc = NULL;
@@ -3009,7 +3034,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     if (deviceIndex >= 0) {
         // Get device name for given deviceIndex from video device
         // enumeration (or NULL if no such device):
-        theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex, &videosource);
+        theDevice = PsychGSEnumerateVideoSources(-1, deviceIndex, &videosource, &videobin);
         if (NULL == theDevice) {
             printf("PTB-ERROR: There isn't any video capture device available for provided deviceIndex %i.\n", deviceIndex);
             PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex provided. No such video source. Aborted.");
@@ -3165,7 +3190,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
                 if (videosource) {
                     // Attach correct video input device to it:avfvideosrc
-                    if ((!strcmp(plugin_name, "dc1394src") || !strcmp(plugin_name, "qtkitvideosrc") || !strcmp(plugin_name, "avfvideosrc")) && (prop_name[0] != 0)) {
+                    if ((!strcmp(plugin_name, "dc1394src") || !strcmp(plugin_name, "avfvideosrc")) && (prop_name[0] != 0)) {
                         // DC1394 source or QTKITVideosource or AVFoundation based videosource:
                         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device with guid '%llu' as video input [Property %s].\n", theDevice->deviceURI, prop_name);
                         g_object_set(G_OBJECT(videosource), prop_name, (int) theDevice->deviceURI, NULL);
@@ -3203,23 +3228,35 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             videosource = gst_element_factory_make("ksvideosrc", "ptb_videosource");
         }
 
+        if ((deviceIndex == -6) || (deviceIndex == -7)) {
+            // First try Mediafoundation based video source for low-latency capture:
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach mfvideosrc as video source...\n");
+            videosource = gst_element_factory_make("mfvideosrc", "ptb_videosource");
+        }
+
         if (videosource) {
-            // Kernel streaming video source:
-
-            // Fetch mandatory targetmoviename parameter as name spec string:
-            if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
-
-            // Assign:
-            strcat(config, targetmoviefilename);
+            // Fetch mandatory gstlaunchbinsrc or targetmoviename parameter as name spec string:
+            if (gstlaunchbinsrc[0] != 0) {
+                // Assign:
+                strcat(config, gstlaunchbinsrc);
+            }
+            else if (targetmoviefilename) {
+                // Assign:
+                strcat(config, targetmoviefilename);
+            }
+            else 
+                PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
 
             switch(deviceIndex) {
                 case -1:
+                case -6:
                     // Human friendly device name provided:
                     if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input.\n", config);
                     g_object_set(G_OBJECT(videosource), "device-name", config, NULL);
                     break;
 
                 case -2:
+                case -7:
                     // DirectShow device path provided:
                     if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device at path '%s' as video input.\n", config);
                     g_object_set(G_OBJECT(videosource), "device-path", config, NULL);
@@ -3230,24 +3267,31 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             }
         }
 
-        // No kernel streaming video source available?
+        // No kernel streaming or Mediafoundation video source available?
         if (!videosource) {
-            // No. Try a Directshow video source instead:
+            // No. Try a Directshow video source as fallback instead:
             if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach dshowvideosrc as video source...\n");
             videosource = gst_element_factory_make("dshowvideosrc", "ptb_videosource");
 
             if (videosource) {
                 if (deviceIndex != -5) {
-                    // Fetch optional targetmoviename parameter as name spec string:
-                    if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
-
-                    // Assign:
-                    strcat(config, targetmoviefilename);
+                    // Fetch optional gstlaunchbinsrc or targetmoviename parameter as name spec string:
+                    if (gstlaunchbinsrc[0] != 0) {
+                        // Assign:
+                        strcat(config, gstlaunchbinsrc);
+                    }
+                    else if (targetmoviefilename) {
+                        // Assign:
+                        strcat(config, targetmoviefilename);
+                    }
+                    else 
+                        PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
                 }
 
                 switch(deviceIndex) {
                     case -1:
                     case -3:
+                    case -6:
                         // Human friendly device name provided:
                         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device '%s' as video input.\n", config);
                         g_object_set(G_OBJECT(videosource), "device-name", config, NULL);
@@ -3255,7 +3299,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
                     case -2:
                     case -4:
-                        // DirectShow device path provided:
+                    case -7:
+                        // System device path provided:
                         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video device at path '%s' as video input.\n", config);
                         g_object_set(G_OBJECT(videosource), "device", config, NULL);
                         break;
@@ -3280,7 +3325,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     if ((PSYCH_SYSTEM == PSYCH_OSX) && (deviceIndex > -8) && (deviceIndex < 0)) {
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach video source via MacOSX specific special case setup code.\n");
         if (deviceIndex == -1) videosource = gst_element_factory_make("autovideosrc", "ptb_videosource");
-        if (deviceIndex == -2) videosource = gst_element_factory_make("qtkitvideosrc", "ptb_videosource");
+        if (deviceIndex == -2) videosource = gst_element_factory_make("avfvideosrc", "ptb_videosource");
         if (deviceIndex == -3) videosource = gst_element_factory_make("avfvideosrc", "ptb_videosource");
         if (deviceIndex == -4) videosource = gst_element_factory_make("videotestsrc", "ptb_videosource");
 
@@ -3304,8 +3349,15 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             PsychErrorExitMsg(PsychError_system, "GStreamer failed to find a suitable video source! Game over.");
         }
 
-        // Fetch optional targetmoviename parameter as name spec string:
-        if (targetmoviefilename) {
+        // Fetch optional gstlaunchbinsrc or targetmoviename parameter as name spec string:
+        if (gstlaunchbinsrc[0] != 0) {
+            // Assign:
+            strcat(config, gstlaunchbinsrc);
+
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Trying to attach GeniCam video device '%s' as video input.\n", config);
+            g_object_set(G_OBJECT(videosource), "camera-name", config, NULL);
+        }
+        else if (targetmoviefilename) {
             // Assign:
             strcat(config, targetmoviefilename);
 
@@ -3333,7 +3385,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         // Create a bin from the provided gst-launch style string and assign it as videosource plugin:
         sprintf(plugin_name, "gstlaunchbinsrc");
         error = NULL;
-        videosource = gst_parse_bin_from_description_full((const gchar *) gstlaunchbinsrc, FALSE, NULL, GST_PARSE_FLAG_FATAL_ERRORS, &error);
+        videosource = gst_parse_bin_from_description_full((const gchar *) gstlaunchbinsrc, TRUE, NULL, GST_PARSE_FLAG_FATAL_ERRORS | GST_PARSE_FLAG_NO_SINGLE_ELEMENT_BINS, &error);
 
         if (!videosource) {
             printf("PTB-ERROR: Failed to create generic bin video source!\n");
@@ -3357,7 +3409,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     if (strstr(plugin_name, "dshowvideosrc") || strstr(plugin_name, "aravissrc")) g_object_set(G_OBJECT(videosource), "typefind", 1, NULL);
 
     // Enable timestamping by videosource, unless its been done already for a dv1394src:
-    if (!strstr(plugin_name, "dv1394src") && !strstr(plugin_name, "gstlaunchbinsrc")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
+    if (!strstr(plugin_name, "dv1394src") && !strstr(plugin_name, "gstlaunchbinsrc") && g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "do-timestamp")) g_object_set(G_OBJECT(videosource), "do-timestamp", 1, NULL);
 
     // videotestsrc needs special setup - Must be marked as live-source:
     if (strstr(plugin_name, "videotestsrc")) {
@@ -3370,7 +3422,12 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Assign video source to pipeline: Attach indirectly to camerabin2 via a camerawrappersrc.
     videowrappersrc = gst_element_factory_make ("wrappercamerabinsrc", "ptbwrappervideosrc0");
-    g_object_set(videowrappersrc, "video-source", videosource, NULL);
+
+    if (videobin)
+        g_object_set(videowrappersrc, "video-source", videobin, NULL);
+    else
+        g_object_set(videowrappersrc, "video-source", videosource, NULL);
+
     g_object_set(camera, "camera-source", videowrappersrc, NULL);
 
     // Name of target movie file for video and audio recording specified?
@@ -3458,7 +3515,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
             }
             else {
                 // 16 bpc high precision path: Component ordering is ARGB, not BGRA, as
-                // in the special BGRA8 case for 4 layer 8 bpc:  Doesn't work at least on OSX qtkitvideosrc
+                // in the special BGRA8 case for 4 layer 8 bpc:
                 colorcaps = gst_caps_new_simple("video/x-raw",
                                                 "format", G_TYPE_STRING, "ARGB64",
                                                 "bpp", G_TYPE_INT, capdev->pixeldepth,
@@ -3484,7 +3541,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                                                 NULL);
             }
             else {
-                // 16 bpc high precision path: Doesn't work at least on OSX qtkitvideosrc
+                // 16 bpc high precision path:
                 colorcaps = gst_caps_new_simple("video/x-raw",
                                                 "format", G_TYPE_STRING, "RGB",
                                                 "bpp", G_TYPE_INT, capdev->pixeldepth,
@@ -3926,8 +3983,6 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         }
     }
 
-    g_object_get (G_OBJECT(camera), "camera-source", &videosource,NULL);
-
     // There's always at least a video channel:
     vidcapRecordBANK[slotid].nrVideoTracks = 1;
 
@@ -3998,13 +4053,10 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
     rate2 = 1;
     width = height = 0;
 
-    // Query true properties of attached video source:
-    videosource = NULL;
-    g_object_get (G_OBJECT(videowrappersrc), "video-source", &videosource, NULL);
-
     // Our camerabin2 doesn't use explicit video encoder, but video encoding profiles...
     capdev->videoenc = NULL;
 
+    // Query true properties of attached video source:
     if (videosource) {
         pstring = NULL;
         if (g_object_class_find_property(G_OBJECT_GET_CLASS(videosource), "device")) {
@@ -4050,9 +4102,16 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         // Get the pad from the src pad of the source for probing width x height
         // of video frames and nominal framerate of video source:
         pad = gst_element_get_static_pad(videosource, "src");
+        if (pad == NULL) pad = gst_element_get_static_pad(videowrappersrc, "vfsrc");
+        if (pad == NULL) pad = gst_element_get_static_pad(videowrappersrc, "vidsrc");
 
         // Yes: Query video frame size and framerate of device:
-        peerpad = gst_pad_get_peer(pad);
+        if (GST_IS_PAD(pad)) {
+            peerpad = gst_pad_get_peer(pad);
+        } else {
+            peerpad = NULL;
+            if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: No static src pad for video source available.\n");
+        }
         caps = NULL;
 
         if (GST_IS_PAD(peerpad)) caps = gst_pad_get_current_caps(peerpad);
@@ -4071,7 +4130,8 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
         }
 
         // Release the pad:
-        gst_object_unref(pad);
+        if (pad)
+            gst_object_unref(pad);
     }
 
     // If correct width x height not yet assigned, retry assignment from
@@ -4140,6 +4200,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 
     // Store a pointer to the videosource plugin:
     capdev->videosource = videosource;
+    capdev->videobin = videobin;
     capdev->videowrappersrc = videowrappersrc;
 
     if (PsychPrefStateGet_Verbosity() > 2) {
@@ -5113,7 +5174,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 
     if (strstr(pname, "SetNextCaptureBinSpec=")) {
         // Assign string with gst-launch style video capture bin description for use
-        // with a deviceIndex of -9 in next Screen('OpenVideoCapture', -9, ...) call.
+        // with a deviceIndex of -1 to -9 in next Screen('OpenVideoCapture', -9, ...) call.
         // Instead of connecting to one of the special devices -8 to -1 or an enumerated
         // video source like the default source zero, or others, we parse the string assigned
         // here and create a GStreamer bin which acts as video source:
@@ -5126,7 +5187,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         snprintf(gstlaunchbinsrc, sizeof(gstlaunchbinsrc), "%s", pname);
 
         if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Changed gst-launch style videosource bin string for use with deviceIndex -9 to '%s'.\n", gstlaunchbinsrc);
+            printf("PTB-INFO: Changed gst-launch style videosource bin string for use with deviceIndex -1 to -9 to '%s'.\n", gstlaunchbinsrc);
         }
 
         return(0);
@@ -5290,8 +5351,9 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         printf("PTB-INFO: The video source provides the following controllable parameters:\n");
         printf("PTB-INFO: ----------------------------------------------------------------\n\n");
         printf("PTB-INFO: Optional parameters - may or may not be supported:\n");
-        printf("PTB-INFO: Shutter, Aperture, EVCompensation, Flickermode, Whitebalancemode,\n");
-        printf("PTB-INFO: Flashmode, Scenemode, Focusmode\n\n");
+        printf("PTB-INFO: Shutter\n\n");
+        //printf("PTB-INFO: Shutter, Aperture, EVCompensation, Flickermode, Whitebalancemode,\n");
+        //printf("PTB-INFO: Flashmode, Scenemode, Focusmode\n\n");
         printf("PTB-INFO: These are definitely supported by the connected camera:\n");
 
 
@@ -5392,6 +5454,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         }
 
         // Standard case: Exposure is an integer in nanoseconds (1e9):
+        /* No longer supported on GStreamer 1.x's camerabin:
 
         // Query old "exposure" setting, which is duration of shutter open:
         g_object_get(capdev->camera, "exposure", &oldintval, NULL);
@@ -5403,8 +5466,14 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         // Optionally set new setting:
         if (value != DBL_MAX) g_object_set(capdev->camera, "exposure", (int) (value * 1e9), NULL);
         return(oldvalue);
+        */
     }
 
+    /* These parameters were supported with GStreamer 0.10's camerabin1, but are
+     * not supported by the current camerabin2 aka camerabin of GStreamer 1.x
+     * anymore.
+     */
+    /*
     if (strstr(pname, "Aperture")) {
         // Query old "aperture" setting, which is the amount of lens opening:
         g_object_get(capdev->camera, "aperture", &oldintval, NULL);
@@ -5514,10 +5583,14 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         if (value != DBL_MAX) g_object_set(capdev->camera, "scene-mode", intval, NULL);
         return(oldvalue);
     }
+    */
 
     // Not yet matched? Try if it matches one of the color channel properties
     // from the color balance interface.
     if (cb) {
+        // Convert first letter of pname to minor:
+        ((char*)pname)[0] = tolower(pname[0]);
+
         // Search all color balance channels:
         cl = (GList*) gst_color_balance_list_channels(cb);
         for (iter = g_list_first(cl); iter != NULL ; iter = g_list_next(iter)) {
@@ -5538,7 +5611,7 @@ double PsychGSVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         }
 
         if (!assigned) {
-            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Screen('SetVideoCaptureParameter', ...) called with unknown parameter %s. Ignored...\n", pname);
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Screen('SetVideoCaptureParameter', ...) called with unknown parameter %s. Ignored...\n", pname);
         }
 
         return(oldvalue);

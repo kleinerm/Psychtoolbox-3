@@ -122,9 +122,6 @@ static psych_bool isDCE12(int screenId)
     // VEGA20: 0x66A0 - 0x66AF
     if ((fPCIDeviceId & 0xFFF0) == 0x66A0) isDCE12 = true;
 
-    // RAVEN: 0x15DD so far: RAVEN is not DCE, but a new type DCN-1.0!
-    // if ((fPCIDeviceId & 0xFFFF) == 0x15DD) isDCE12 = true;
-
     return(isDCE12);
 }
 
@@ -192,8 +189,9 @@ static psych_bool isDCE10(int screenId)
     if ((fPCIDeviceId & 0xFFF0) == 0x6920) isDCE10 = true;
     if ((fPCIDeviceId & 0xFFF0) == 0x6930) isDCE10 = true;
 
-    // FIJI in 0x7300 range:
-    if ((fPCIDeviceId & 0xFF00) == 0x7300) isDCE10 = true;
+    // FIJI is 0x7300 or 0x730F: Other 0x73's are NAVI and later ie. unsupported DCN's.
+    if ((fPCIDeviceId & 0xFFFF) == 0x7300) isDCE10 = true;
+    if ((fPCIDeviceId & 0xFFFF) == 0x730F) isDCE10 = true;
 
     // All DCE11 are also DCE10, so far...
     if (isDCE11(screenId)) isDCE10 = true;

@@ -371,14 +371,15 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
         // Open connection to non-master-keyboard device:
         XDevice* mydev = GetXDevice(deviceIndex);
 
-        // Query its current state:
+        // Query its current state: Can be NULL for some special devices.
         XDeviceState* state = XQueryDeviceState(dpy, mydev);
-        XInputClass* data = state->data;
 
         // printf("Dummy = %i , NClasses = %i\n", dummy1, state->num_classes);
 
         // Find state structure with key status info:
-        for (i = 0; i < state->num_classes; i++) {
+        for (i = 0; state && (i < state->num_classes); i++) {
+            XInputClass* data = state->data;
+
             // printf("Class %i: Type %i - %i\n", i, (int) data->class, (int) data->length);
             if (data->class == KeyClass) {
                 // printf("NumKeys %i\n", ((XKeyState*) data)->num_keys);
@@ -469,14 +470,15 @@ PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, 
     // Open connection to slave keyboard device:
     XDevice* mydev = GetXDevice(deviceIndex);
 
-    // Query its current state:
+    // Query its current state: Can be NULL for some exotic devices.
     XDeviceState* state = XQueryDeviceState(dpy, mydev);
 
-    printf("NClasses = %i\n", state->num_classes);
+    //printf("NClasses = %i\n", state->num_classes);
 
     // Find state structure with key status info:
-    XInputClass* data = state->data;
-    for (i = 0; i < state->num_classes; i++) {
+    for (i = 0; state && (i < state->num_classes); i++) {
+        XInputClass* data = state->data;
+
         printf("Class = %i\n", (int) data->class);
         if (data->class == ValuatorClass) {
             XValuatorState* valuator = (XValuatorState*) data;

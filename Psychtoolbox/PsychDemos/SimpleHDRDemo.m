@@ -57,15 +57,8 @@ PsychDefaultSetup(2);
 
 % imfilename provided?
 if nargin < 1 || isempty(imfilename)
-    % No: Try some default file:
-    if ~IsOctave
-        % Matlab comes with exactly one HDR sample file in radiance format:
-        imfilename = [matlabroot filesep 'toolbox/images/imdata/office.hdr'];
-    else
-        % Octave does not ship with a HDR sample image, so use one of our bundled
-        % OpenEXR sample images:
-        imfilename = [PsychtoolboxRoot 'PsychDemos/OpenEXRImages/Desk.exr'];
-    end
+    % No: Try some default file from our bundled OpenEXR sample images:
+    imfilename = [PsychtoolboxRoot 'PsychDemos/OpenEXRImages/Desk.exr'];
 end
 
 % Does imfilename exist?

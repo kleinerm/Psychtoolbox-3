@@ -55,7 +55,9 @@ try
 
     % STEP 6
     % Show image on display
-    myimg='konijntjes1024x768.jpg';
+    basepath = [ PsychtoolboxRoot 'PsychDemos' filesep ];
+    myimg = [basepath 'konijntjes1024x768.jpg'];
+
     imdata=imread(myimg);
     imtex=Screen('MakeTexture', el.window, imdata);
     
