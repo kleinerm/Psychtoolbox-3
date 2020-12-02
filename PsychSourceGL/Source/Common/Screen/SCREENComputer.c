@@ -132,11 +132,7 @@ PsychError SCREENComputer(void)
 
     // GStreamer availability and rough version:
     #if defined(PTB_USE_GSTREAMER)
-        #if GST_CHECK_VERSION(1,0,0)
         PsychSetStructArrayDoubleElement("gstreamer", 0, 1 * 10000 + 0 * 100 + 0, majorStruct);
-        #else
-        PsychSetStructArrayDoubleElement("gstreamer", 0, 0 * 10000 + 10 * 100 + 0, majorStruct);
-        #endif
     #else
         PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
     #endif
@@ -363,11 +359,7 @@ PsychError SCREENComputer(void)
 
     // GStreamer availability and rough version:
     #if defined(PTB_USE_GSTREAMER)
-        #if GST_CHECK_VERSION(1,0,0)
         PsychSetStructArrayDoubleElement("gstreamer", 0, 1 * 10000 + 0 * 100 + 0, majorStruct);
-        #else
-        PsychSetStructArrayDoubleElement("gstreamer", 0, 0 * 10000 + 10 * 100 + 0, majorStruct);
-        #endif
     #else
         PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
     #endif
@@ -448,11 +440,7 @@ PsychError SCREENComputer(void)
 
     // GStreamer availability and rough version:
     #if defined(PTB_USE_GSTREAMER)
-        #if GST_CHECK_VERSION(1,0,0)
         PsychSetStructArrayDoubleElement("gstreamer", 0, 1 * 10000 + 0 * 100 + 0, majorStruct);
-        #else
-        PsychSetStructArrayDoubleElement("gstreamer", 0, 0 * 10000 + 10 * 100 + 0, majorStruct);
-        #endif
     #else
         PsychSetStructArrayDoubleElement("gstreamer", 0, 0, majorStruct);
     #endif

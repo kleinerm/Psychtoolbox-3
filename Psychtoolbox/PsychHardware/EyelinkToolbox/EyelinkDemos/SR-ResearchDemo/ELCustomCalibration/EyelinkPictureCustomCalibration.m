@@ -24,7 +24,7 @@ function EyelinkPictureCustomCalibration
 %
 % 01/28/11  NJ  created
 % 12/20/13  LJ  changed isoctave to IsOctave, case sensitive for the latest matlab
-                fixed issue with non integer arguments for Eyelink('message' ...)
+%               fixed issue with non integer arguments for Eyelink('message' ...)
 
 
 
@@ -35,7 +35,7 @@ else
     more off;
 end
 % list of images used for the trial. Octave cares about capitalization 
-imageList = {'town.bmp' 'town_blur.bmp' 'composite.bmp'};
+imageList = {'../town.jpg' '../town_blur.jpg' '../composite.jpg'};
 dummymode=0;
 try
     %%%%%%%%%%

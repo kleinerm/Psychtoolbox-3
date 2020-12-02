@@ -40,26 +40,31 @@ if nargin < 2
     ms=300;
 end;
 
+basepath = [ PsychtoolboxRoot 'PsychDemos' filesep ];
+
 % Use default demo images, if no special image was provided.
 if nargin < 3
-    myimgfile= 'konijntjes1024x768.jpg';
+    myimgfile= [basepath 'konijntjes1024x768.jpg'];
 end;
 
-myblurimgfile= 'konijntjes1024x768blur.jpg';
-mygrayimgfile= 'konijntjes1024x768gray.jpg';
+myblurimgfile= [basepath 'konijntjes1024x768blur.jpg'];
+mygrayimgfile= [basepath 'konijntjes1024x768gray.jpg'];
 
-    if 1 Screen('Preference', 'SkipSyncTests', 1); end
- commandwindow;
+if 1
+    Screen('Preference', 'SkipSyncTests', 1);
+end
+
+commandwindow;
+
 try
     fprintf('BubbleDemo (%s)\n', datestr(now));
     fprintf('Press a key or click on mouse to stop demo.\n');
 
-        if (Eyelink('Initialize') ~= 0)	return;
-
+    if (Eyelink('Initialize') ~= 0)
+      return;
         fprintf('Problem initializing eyelink\n');
     end;
 
-    
     % This script calls Psychtoolbox commands available only in OpenGL-based
     % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
     % only OpenGL-based Psychtoolbox.)  The Psychtoolbox command AssertOpenGL will issue

@@ -24,6 +24,7 @@ function PsychStartup
 % 07.08.2019  mk  Update for Psychtoolbox 3.0.16 - GStreamer 1.16+ MSVC needed.
 % 01.09.2020  mk  Update for GStreamer 1.18.0 - GStreamer 1.18+ MSVC detection.
 % 26.10.2020  mk  Update for GStreamer 1.18.0+ use only.
+% 21.11.2020  mk  Reenable GStreamer on octave-cli for Windows. Workaround no longer needed.
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
@@ -37,7 +38,9 @@ try
 
         % Must omit GStreamer runtime path on Octave in CLI mode, to avoid
         % build trouble due to lib clashes between Octave and GStreamer:
-        useGStreamer = ~IsOctave || ~any(strfind(cell2mat (argv'), '--no-gui'));
+        % useGStreamer = ~IsOctave || ~any(strfind(cell2mat (argv'), '--no-gui'));
+        % GStreamer disable for building on octave-cli: No longer needed since Octave 5.2+
+        useGStreamer = 1;
 
         % Find path to SDK-Root folder: Should be defined in env variable
         % by installer:

@@ -1128,7 +1128,7 @@ PsychError SCREENGetMouseHelper(void)
                         if(!PsychPrefStateGet_SuppressAllWarnings()) {
                             printf("PTB-ERROR: Failed to enable realtime-scheduling with Priority(%i) [%s]!\n", schedulingparam.sched_priority, strerror(errno));
                             if (errno==EPERM) {
-                                printf("PTB-ERROR: You need to run Matlab/Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
+                                printf("PTB-ERROR: You need to run the script PsychLinuxConfiguration once, then logout and login again, for this to work.\n");
                             }
                         }
                         errno=0;
@@ -1159,7 +1159,7 @@ PsychError SCREENGetMouseHelper(void)
                         if(!PsychPrefStateGet_SuppressAllWarnings()) {
                             printf("PTB-ERROR: Failed to disable realtime-scheduling with Priority(%i) [%s]!\n", schedulingparam.sched_priority, strerror(errno));
                             if (errno==EPERM) {
-                                printf("PTB-ERROR: You need to run Matlab/Octave with root-privileges, or run the script PsychLinuxConfiguration once for this to work.\n");
+                                printf("PTB-ERROR: You need to run the script PsychLinuxConfiguration once, then logout and login again, for this to work.\n");
                             }
                         }
                         errno=0;

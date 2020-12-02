@@ -838,8 +838,8 @@ static void PsychParseMovieHDRMetadata(PsychMovieRecordType* movie, const GstCap
 
         #if PSYCH_SYSTEM == PSYCH_WINDOWS
             HANDLE gstvideo_handle = GetModuleHandle("gstvideo-1.0-0.dll");
-            psych_gst_video_mastering_display_info_from_caps = GetProcAddress(gstvideo_handle, "gst_video_mastering_display_info_from_caps");
-            psych_gst_video_content_light_level_from_caps = GetProcAddress(gstvideo_handle, "gst_video_content_light_level_from_caps");
+            psych_gst_video_mastering_display_info_from_caps = (void*) GetProcAddress(gstvideo_handle, "gst_video_mastering_display_info_from_caps");
+            psych_gst_video_content_light_level_from_caps = (void*) GetProcAddress(gstvideo_handle, "gst_video_content_light_level_from_caps");
         #else
             psych_gst_video_mastering_display_info_from_caps = dlsym(RTLD_DEFAULT, "gst_video_mastering_display_info_from_caps");
             psych_gst_video_content_light_level_from_caps = dlsym(RTLD_DEFAULT, "gst_video_content_light_level_from_caps");
