@@ -4444,7 +4444,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                     PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychUseBeampositionQueryWorkaround);
                     PsychCaptureScreen(-1);
 
-                    if (verbosity > -1) {
+                    if (verbosity > 0) {
                         printf("PTB-WARNING: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
                         printf("PTB-WARNING: This is a severe malfunction, indicating a bug in your graphics driver. Our startup test should have\n");
                         printf("PTB-WARNING: caught this and a workaround should have been enabled. Apparently we missed this. Will enable workaround\n");
@@ -4456,7 +4456,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                 else {
                     // Workaround enabled and still this massive beampos failure?!? Or a non-Windows system?
                     // Ok, this is completely foo-bared.
-                    if (verbosity > -1) {
+                    if (verbosity > 0) {
                         if (swap_msc < 0) {
                             // No support for OS-Builtin alternative timestamping, or that mechanism failed.
                             // This is serious:
@@ -4567,7 +4567,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             !(windowRecord->specialflags & kPsychSkipWaitForFlipOnce)) {
 
             // Ohoh! Broken timing. Disable beamposition timestamping for future operations, warn user.
-            if (verbosity > -1) {
+            if (verbosity > 0) {
                 printf("\n\nPTB-ERROR: Screen('Flip'); beamposition timestamping computed an *impossible stimulus onset value* of %f secs, which would indicate that\n", time_at_vbl);
                 printf("PTB-ERROR: stimulus onset happened *before* it was actually requested! (Earliest theoretically possible %f secs).\n\n", time_at_swaprequest);
                 printf("PTB-ERROR: Some more diagnostic values (only for experts): rawTimestamp = %f, scanline = %i\n", time_at_swapcompletion, *beamPosAtFlip);
@@ -4580,7 +4580,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // Is VBL IRQ timestamping allowed as a fallback and delivered a valid result?
             if (vbltimestampmode >= 1 && postflip_vbltimestamp > 0) {
                 // Available. Meaningful result?
-                if (verbosity > -1) {
+                if (verbosity > 0) {
                     printf("PTB-ERROR: The most likely cause of this error (based on cross-check with kernel-level timestamping) is:\n");
                     if (((postflip_vbltimestamp < time_at_swaprequest - 0.00005) && (postflip_vbltimestamp == preflip_vbltimestamp)) ||
                         ((preflip_vblcount + 1 == postflip_vblcount) && (vbltimestampquery_retrycount > 1))) {
@@ -4632,7 +4632,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                     // iteration:
                     vbltimestampmode = 0;
 
-                    if (verbosity > -1) {
+                    if (verbosity > 0) {
                         printf("PTB-ERROR: I have enabled additional cross checking between beamposition based and kernel-level based timestamping.\n");
                         printf("PTB-ERROR: This should allow to get a better idea of what's going wrong if successive invocations of Screen('Flip');\n");
                         printf("PTB-ERROR: fail to deliver proper timestamps as well. It may even fix the problem if the unlikely culprit would be\n");
@@ -4652,7 +4652,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                     PsychPrefStateSet_VBLTimestampingMode(-1);
                     vbltimestampmode = -1;
 
-                    if (verbosity > -1) {
+                    if (verbosity > 0) {
                         printf("PTB-ERROR: This error can be due to either of the following causes:\n");
                         printf("PTB-ERROR: Very unlikely: Something is broken in your systems beamposition timestamping. I've disabled high precision\n");
                         printf("PTB-ERROR: timestamping for now. Returned timestamps will be less robust and accurate.\n\n");
@@ -4694,7 +4694,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                 else {
                     // Stupid values, but swaprequest not close to VBL, but likely within refresh cycle.
                     // This could be either broken queries, or broken sync to VBL:
-                    if (verbosity > -1) {
+                    if (verbosity > 0) {
                         printf("\n\nPTB-ERROR: Screen('Flip'); kernel-level timestamping computed bogus values!!!\n");
                         printf("PTB-ERROR: vbltimestampquery_retrycount = %i, preflip_vbltimestamp=postflip= %f, time_at_swaprequest= %f\n", (int) vbltimestampquery_retrycount, preflip_vbltimestamp, time_at_swaprequest);
                         printf("PTB-ERROR: This error can be due to either of the following causes:\n");
@@ -4723,7 +4723,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // the duration of a VBL interval is usually no longer than that.
             if (postflip_vbltimestamp - time_at_swapcompletion > 0.0025) {
                 // VBL irq queries broken! Disable them.
-                if (verbosity > -1) {
+                if (verbosity > 0) {
                     printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup [Impossible order of events]!\n");
                     printf("PTB-ERROR: Will disable them for now until the problem is resolved. You may want to restart Matlab and retry.\n");
                     printf("PTB-ERROR: postflip - time_at_swapcompletion == %f secs.\n", postflip_vbltimestamp - time_at_swapcompletion);
