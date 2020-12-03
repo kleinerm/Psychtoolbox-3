@@ -7649,8 +7649,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             printf("PTB-INFO: Another reason for lack of hardware OpenGL could be that GNU/Octave's own opengl32.dll library\n");
             printf("PTB-INFO: has not been deleted or renamed by you, so it is enforcing software rendering.\n");
             printf("PTB-INFO: You have to delete or rename that file and restart Octave for this to work.\n");
-            printf("PTB-INFO: E.g., on Octave-5.2.0, the file to delete or rename would be likely this:\n");
-            printf("PTB-INFO: C:\\Octave\\Octave-5.2.0\\mingw64\\bin\\opengl32.dll\n\n");            
+            printf("PTB-INFO: E.g., on Octave-6.1 at its standard installation location, the file to delete or rename would be likely this:\n");
+            printf("PTB-INFO: C:\\Program Files\\GNU Octave\\Octave-6.1.0\\mingw64\\bin\\opengl32.dll\n\n");            
             #endif
             // Disable all sync tests and display timing calibrations, unless usercode already did something similar:
             if (PsychPrefStateGet_SkipSyncTests() < 1) PsychPrefStateSet_SkipSyncTests(2);
