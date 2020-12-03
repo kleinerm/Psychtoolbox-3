@@ -661,20 +661,25 @@ try
         fprintf('Trying to trigger an update of the fontconfig cache if that should prove neccessary.\n');
         fprintf('This may take a couple of seconds, or sometimes even minutes. Please be patient...\n');
         drawnow;
+
+        oldRenderer = Screen('Preference', 'TextRenderer', 1);
+        oldLevel = Screen('Preference', 'WindowShieldingLevel', -1);
+        oldVerbo = Screen('Preference', 'Verbosity', 0);
+        oldTsMode = Screen('Preference', 'VBLTimestampingmode', -1);
+
         try
-            oldRenderer = Screen('Preference', 'TextRenderer', 1);
-            oldLevel = Screen('Preference', 'WindowShieldingLevel', -1);
-            oldVerbo = Screen('Preference', 'Verbosity', 0);
             win = Screen('OpenWindow', 0, 0, [0 0 100 100]);
             Screen('DrawText', win, 'Ola!');
             Screen('Flip', win);
             Screen('CloseAll');
-            Screen('Preference', 'TextRenderer', oldRenderer);
-            Screen('Preference', 'WindowShieldingLevel', oldLevel);
-            Screen('Preference', 'Verbosity', oldVerbo);
         catch
             fprintf('Something went wrong with text renderer setup. Read ''help DrawTextPlugin'' for troubleshooting.\n\n\n');
         end
+
+        Screen('Preference', 'TextRenderer', oldRenderer);
+        Screen('Preference', 'WindowShieldingLevel', oldLevel);
+        Screen('Preference', 'Verbosity', oldVerbo);
+        Screen('Preference', 'VBLTimestampingmode', oldTsMode);
     end
 
     % Tell user we're successfully done:
