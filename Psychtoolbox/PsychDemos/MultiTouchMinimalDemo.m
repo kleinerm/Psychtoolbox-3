@@ -59,7 +59,7 @@ function MultiTouchMinimalDemo(dev, verbose)
   end
 
   % Open a default onscreen window with black background color and 0-1 color range:
-  [w, rect] = PsychImaging('OpenWindow', 0, 0);
+  [w, rect] = PsychImaging('OpenWindow', max(Screen('Screens')), 0);
 
   % Get maximum supported dot diameter for smooth dots:
   [~, maxSmoothPointSize] = Screen('DrawDots', w);

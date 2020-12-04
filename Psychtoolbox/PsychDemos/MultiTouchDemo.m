@@ -69,7 +69,7 @@ function MultiTouchDemo(dev, verbose)
 
   % Open a default onscreen window with black background color and
   % 0-1 color range:
-  [w, rect] = PsychImaging('OpenWindow', 0, 0)
+  [w, rect] = PsychImaging('OpenWindow', max(Screen('Screens')), 0);
   baseSize = RectWidth(rect) / 20;
 
   % No place for you, little mouse cursor:
