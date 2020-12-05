@@ -1,5 +1,5 @@
-function MultiTouchMinimalDemo(dev, verbose)
-% MultiTouchMinimalDemo([dev][, verbose=0]) - A basic demo for multi-touch touchscreens.
+function MultiTouchMinimalDemo(dev, screenId, verbose)
+% MultiTouchMinimalDemo([dev][, screenId=max][, verbose=0]) - A basic demo for multi-touch touchscreens.
 %
 % Run it. Pressing the ESCape key will stop it.
 %
@@ -11,6 +11,10 @@ function MultiTouchMinimalDemo(dev, verbose)
 % can also select a specific touch device by passing in its 'dev'
 % device handle. Use of touchpads usually needs special configuration.
 % See "help TouchInput" for more info.
+%
+% You can select a specific screen to display on - usually the screenId
+% of the touch screen display surface - with the optional 'screenId' parameter,
+% or it will select the default maximum screenId if omitted.
 %
 % If you set the optional 'verbose' flag to 1, then the unique touch
 % id and time delta in msecs between touch updates for each touchpoint
@@ -26,6 +30,7 @@ function MultiTouchMinimalDemo(dev, verbose)
 % History:
 % 05-Oct-2017 mk  Written.
 % 03-Aug-2018 mk  Only exit demo on ESC key, not on all keys.
+% 05-Dec-2020 mk  Add screenId selection parameter and max screenId default.
 
   % Setup useful PTB defaults:
   PsychDefaultSetup(2);
@@ -34,7 +39,11 @@ function MultiTouchMinimalDemo(dev, verbose)
     dev = [];
   end
 
-  if nargin < 2 || isempty(verbose)
+  if nargin < 2 || isempty(screenId)
+      screenId = max(Screen('Screens'));
+  end
+
+  if nargin < 3 || isempty(verbose)
     verbose = 0;
   end
 
@@ -59,7 +68,7 @@ function MultiTouchMinimalDemo(dev, verbose)
   end
 
   % Open a default onscreen window with black background color and 0-1 color range:
-  [w, rect] = PsychImaging('OpenWindow', 0, 0);
+  [w, rect] = PsychImaging('OpenWindow', screenId, 0);
 
   % Get maximum supported dot diameter for smooth dots:
   [~, maxSmoothPointSize] = Screen('DrawDots', w);

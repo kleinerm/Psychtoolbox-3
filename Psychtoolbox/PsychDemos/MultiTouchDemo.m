@@ -1,5 +1,5 @@
-function MultiTouchDemo(dev, verbose)
-% MultiTouchDemo([dev][, verbose=0]) - A advanced demo for multi-touch touchscreens.
+function MultiTouchDemo(dev, screenId, verbose)
+% MultiTouchDemo([dev][, screenId=max][, verbose=0]) - A advanced demo for multi-touch touchscreens.
 %
 % Run it. Pressing the ESCape key will stop it.
 %
@@ -11,6 +11,10 @@ function MultiTouchDemo(dev, verbose)
 % can also select a specific touch device by passing in its 'dev'
 % device handle. Use of touchpads usually needs special configuration.
 % See "help TouchInput" for more info.
+%
+% You can select a specific screen to display on - usually the screenId
+% of the touch screen display surface - with the optional 'screenId' parameter,
+% or it will select the default maximum screenId if omitted.
 %
 % If you set 'verbose' to 1, then all the available info about each
 % touch point will be displayed close to the touch point. As drawing
@@ -35,6 +39,7 @@ function MultiTouchDemo(dev, verbose)
 % History:
 % 01-Oct-2017 mk  Written.
 % 03-Aug-2018 mk  Only exit demo on ESC key, not on all keys. Doc fixes.
+% 05-Dec-2020 mk  Add screenId selection parameter and max screenId default.
 
   % Setup useful PTB defaults:
   PsychDefaultSetup(2);
@@ -43,7 +48,11 @@ function MultiTouchDemo(dev, verbose)
     dev = [];
   end
 
-  if nargin < 2 || isempty(verbose)
+  if nargin < 2 || isempty(screenId)
+      screenId = max(Screen('Screens'));
+  end
+
+  if nargin < 3 || isempty(verbose)
     verbose = 0;
   end
 
@@ -69,7 +78,7 @@ function MultiTouchDemo(dev, verbose)
 
   % Open a default onscreen window with black background color and
   % 0-1 color range:
-  [w, rect] = PsychImaging('OpenWindow', 0, 0)
+  [w, rect] = PsychImaging('OpenWindow', screenId, 0)
   baseSize = RectWidth(rect) / 20;
 
   % No place for you, little mouse cursor:
