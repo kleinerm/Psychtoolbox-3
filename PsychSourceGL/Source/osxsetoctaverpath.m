@@ -18,14 +18,14 @@ function osxsetoctaverpath(mexfname, mexpath)
 % files should always find a dylib for the currently running Octave.
 
     if ~IsOSX(1) || ~IsOctave
-        error('osxsetoctaverpath only works with a 64-Bit version of Octave-5.1.0 for OSX!');
+        error('osxsetoctaverpath only works with a 64-Bit version of Octave-6.1.0 for OSX!');
     end
 
     % If no mex filename given, iterate over 'mexpath' - or the default install
     % location of mex files - and apply the rpath editing to each mex file there:
     if nargin < 1 || isempty(mexfname)
         if nargin < 2 || isempty(mexpath)
-            mexpath = [PsychtoolboxRoot 'PsychBasic/Octave5OSXFiles64/'];
+            mexpath = [PsychtoolboxRoot 'PsychBasic/Octave6OSXFiles64/'];
         end
 
         d = dir (mexpath);
@@ -51,19 +51,19 @@ function osxsetoctaverpath(mexfname, mexpath)
     % This is how the libdir should be defined automatically:
     libdir = __octave_config_info__.octlibdir;
     
-    % This is sadly how we have to do it with Octave-5.1 on OSX 10.13 due to
-    % the latest OSX linker crap - Hardcoding the path for a Octave-5.1 install
+    % This is sadly how we have to do it with Octave-6.1 on OSX 10.15 due to
+    % the latest OSX linker crap - Hardcoding the path for a Octave-6.1 install
     % from HomeBrew. Yes, this is sad...
-    libdir = '/usr/local/opt/octave/lib/octave/5.1.0';
+    libdir = '/usr/local/opt/octave/lib/octave/6.1.0';
 
-    % Replace absolute path to liboctinterp.7.dylib with @rpath:
-    system(['install_name_tool -change ' libdir '/liboctinterp.7.dylib @rpath/liboctinterp.7.dylib ' mexfname]);
+    % Replace absolute path to liboctinterp.8.dylib with @rpath:
+    system(['install_name_tool -change ' libdir '/liboctinterp.8.dylib @rpath/liboctinterp.8.dylib ' mexfname]);
 
-    % Replace absolute path to liboctave.7.dylib with @rpath:
-    system(['install_name_tool -change ' libdir '/liboctave.7.dylib @rpath/liboctave.7.dylib ' mexfname]);
+    % Replace absolute path to liboctave.8.dylib with @rpath:
+    system(['install_name_tool -change ' libdir '/liboctave.8.dylib @rpath/liboctave.8.dylib ' mexfname]);
 
     % Add one single rpath: @loader_path. This is the path to our folder where our
-    % mex file is stored. If we place copies of liboctave.7.dylib and liboctinterp.7.dylib
+    % mex file is stored. If we place copies of liboctave.8.dylib and liboctinterp.8.dylib
     % there, then the linker will find them. In absence, the linker will also search the
     % users $HOME/lib/ directory as a possible fallback:
     lpaths = { '@loader_path' };
@@ -72,7 +72,7 @@ function osxsetoctaverpath(mexfname, mexpath)
     % library directories, ie., as settings for @rpath:
     for i = 1:length(lpaths)
         system(['install_name_tool -add_rpath ' lpaths{i} ' ' mexfname]);
-        fprintf('Added Octave-5 @rpath %s to mex file %s ...\n', lpaths{i}, mexfname);
+        fprintf('Added Octave-6 @rpath %s to mex file %s ...\n', lpaths{i}, mexfname);
     end
 
 return;

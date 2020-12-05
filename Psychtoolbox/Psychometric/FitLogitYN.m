@@ -1,5 +1,5 @@
-function [a,b,thresh50] = FitLogistic(inputs,nYes,nNo)
-% [a,b,thresh50] = FitLogistic(inputs,nYes,nNo)
+function [a,b,thresh50] = FitLogitYN(inputs,nYes,nNo)
+% [a,b,thresh50] = FitLogitYN(inputs,nYes,nNo)
 % 
 % Fit a logistic function to YN psychometric data.
 % Returns logistic parameters and 50% threshold. 
@@ -14,14 +14,14 @@ function [a,b,thresh50] = FitLogistic(inputs,nYes,nNo)
 % See also: FitLogistic, FitWeibYN, FitCumNormYN, 
 %  InvertLogistic, ComputeLogistic.
 %
-% 2/8/97		dhb		Wrote it.
+% 2/8/97    dhb     Wrote it.
 
 % Make sure there are trials passed at all input levels.
-% Ignore any input levels with no trials
+% Ignore any input levels with no trials.
 pYes = nYes ./ (nYes + nNo);
 index = find(~isnan(pYes));
 if (isempty(index))
-	error('FItLogitYN: no input trials passed');
+    error('FitLogitYN: No input trials passed');
 end
 pYes = pYes(index);
 inputs = inputs(index);

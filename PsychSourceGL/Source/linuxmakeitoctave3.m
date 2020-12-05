@@ -135,7 +135,7 @@ if mode==6
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
     try
-       mex --output moglcore.mex -DPTB_USE_WAYLAND -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
+       mex --output moglcore.mex -Wno-incompatible-pointer-types -Wno-discarded-qualifiers -Wno-int-conversion -DPTB_USE_WAYLAND -DLINUX -DGLEW_STATIC -DPTBOCTAVE3MEX -I/usr/X11R6/include -L/usr/X11R6/lib -lc -lGL -lGLU -lglut moglcore.c gl_auto.c gl_manual.c glew.c mogl_rebinder.c ftglesGlue.c
     catch %#ok<*CTCH>
     end
     unix(['cp moglcore.mex ' PsychtoolboxRoot target]);
@@ -169,7 +169,7 @@ end
 
 if mode==8
     % Build PsychHID.mex:
-    mex --output ../Projects/Linux/build/PsychHID.mex -Wno-date-time -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -ICommon/Base -ILinux/Base -ICommon/PsychHID -ILinux/PsychHID -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychHID/*.c Linux/PsychHID/*.c -lc -ldl -lrt -lusb-1.0 -lX11 -lXi -lutil
+    mex --output ../Projects/Linux/build/PsychHID.mex -Wno-date-time -Wno-deprecated-declarations -DPTBMODULE_PsychHID -DPTBOCTAVE3MEX -I/usr/include/libusb-1.0 -ICommon/Base -ILinux/Base -ICommon/PsychHID -ILinux/PsychHID -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/PsychHID/*.c Linux/PsychHID/*.c -lc -ldl -lrt -lusb-1.0 -lX11 -lXi -lutil
     unix(['cp ../Projects/Linux/build/PsychHID.mex ' PsychtoolboxRoot target]);
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychHID.mex']);
 end
@@ -212,28 +212,11 @@ end
 
 if mode==12
     % Build PsychOculusVRCore.mex:
-
-    % Hack for now: Need to compile files with suffix .cc instead of .c, so create a temporary copy
-    % with .cc suffix. This way the .cc file gets compiled as C++ code instead of C code, and we can
-    % use some C++ Math utility routines of the Oculus SDK. We will probably try to get rid of those
-    % C++ helpers - and the C++ compile - soonish, ideally before the first public PTB release with VR
-    % support, because C++ mex files are a potential source of compiler compatibility trouble. But for
-    % the moment this hack will give us a working baseline to work from.
     try
-        if 0
-            % C++ compile hack:
-            copyfile('Common/PsychOculusVRCore/PsychOculusVR.c', 'Common/PsychOculusVRCore/PsychOculusVR.cc');
-            mex --output ../Projects/Linux/build/PsychOculusVRCore.mex -Wno-date-time -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.cc Common/PsychOculusVRCore/RegisterProject.c -lc -lrt -ldl /usr/local/lib/libOVR.a
-        else
-            % Pure C compile:
-            mex --output ../Projects/Linux/build/PsychOculusVRCore.mex -Wno-date-time -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.c -lc -lrt -ldl /usr/local/lib/libOVR.a
-        end
+        % Pure C compile:
+        mex --output ../Projects/Linux/build/PsychOculusVRCore.mex -Wno-date-time -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -ICommon/Base -ILinux/Base -ICommon/PsychOculusVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOculusVRCore/*.c -lc -lrt -ldl /usr/local/lib/libOVR.a
     catch
         disp(psychlasterror);
-    end
-
-    if (exist('Common/PsychOculusVRCore/PsychOculusVR.cc', 'file'))
-        delete('Common/PsychOculusVRCore/PsychOculusVR.cc');
     end
 
     unix(['cp ../Projects/Linux/build/PsychOculusVRCore.mex ' PsychtoolboxRoot target]);
@@ -257,7 +240,7 @@ end
 if mode==14
     % Build PsychOpenHMDVRCore.mex:
     try
-        mex --output ../Projects/Linux/build/PsychOpenHMDVRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenHMDVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -I/usr/local/include/openhmd -ICommon/Base -ILinux/Base -ICommon/PsychOpenHMDVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOpenHMDVRCore/*.c -lc -lrt -ldl -lopenhmd
+        mex --output ../Projects/Linux/build/PsychOpenHMDVRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenHMDVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -I/usr/local/include/openhmd -I/usr/include/openhmd -ICommon/Base -ILinux/Base -ICommon/PsychOpenHMDVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOpenHMDVRCore/*.c -lc -lrt -ldl -lopenhmd
     catch
         disp(psychlasterror);
     end

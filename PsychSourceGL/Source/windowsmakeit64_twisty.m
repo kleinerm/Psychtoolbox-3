@@ -1,9 +1,9 @@
 function windowsmakeit64_twisty(what, onoctave)
-% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-5 and Matlab.
+% Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-6 and Matlab.
 % As a bonus it could build the 32-Bit Psychtoolbox for 32-Bit Octave-5 if
 % all relevant SDK's, Compilers and libraries would be installed.
-% This script is customized for MK's build machine "darlene", building
-% against the Windows-10 SDK on Windows-10 64-Bit.
+% This script is customized for MK's build machines "darlene" and "touchy",
+% building against the Windows-10 SDK on Windows-10 64-Bit.
 %
 
 if ~IsWin
@@ -213,9 +213,9 @@ if onoctave == 0
 else
     % Octave build:
     if Is64Bit
-        target = [PsychtoolboxRoot 'PsychBasic\Octave5WindowsFiles64\'];
+        target = [PsychtoolboxRoot 'PsychBasic\Octave6WindowsFiles64\'];
     else
-        target = [PsychtoolboxRoot 'PsychBasic\Octave5WindowsFiles\'];
+        error('Building on 32-Bit Octave is not supported on Windows atm.');
     end
 
     if what == 0

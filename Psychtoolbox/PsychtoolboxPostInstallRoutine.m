@@ -362,6 +362,14 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave5WindowsFiles64']);
         end
 
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6WindowsFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6WindowsFiles64']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6OSXFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6OSXFiles64']);
+        end
+
         % Encode prefix and Octave major version of proper folder:
         octavev = sscanf(version, '%i.%i.%i');
         octavemajorv = octavev(1);
@@ -423,7 +431,7 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if (~IsLinux && (octavemajorv ~= 5 || octaveminorv ~= 2)) || ...
+    if (~IsLinux && (octavemajorv ~= 6 || octaveminorv ~= 1)) || ...
         (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8) || (octavemajorv > 5)))
         fprintf('\n\n==============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
@@ -432,8 +440,8 @@ if IsOctave
             fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0, 4.2, 4.4, 5.1 or 5.2 series.\n');
             fprintf('WARNING: You can get Psychtoolbox for more recent versions of Octave from NeuroDebian.\n');
         else
-            % On Windows/OSX we only care about 5.2 atm:
-            fprintf('WARNING: only using Octave 5.2 with this version of Psychtoolbox.\n');
+            % On Windows/OSX we only care about 6.1 atm:
+            fprintf('WARNING: only using Octave 6.1 with this version of Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
@@ -446,14 +454,14 @@ if IsOctave
         % Need to copy the Octave runtime libraries somewhere our mex files can find them. The only low-maintenance
         % way of dealing with this mess of custom library pathes per octave version, revision and packaging format.
         % Preferred location is the folder with our mex files - found by rpath = @loader_path
-        if ~copyfile([GetOctlibDir filesep 'liboctinterp.7.dylib'], [rdir filesep], 'f') || ...
-           ~copyfile([GetOctlibDir filesep 'liboctave.7.dylib'], [rdir filesep], 'f')
+        if ~copyfile([GetOctlibDir filesep 'liboctinterp.8.dylib'], [rdir filesep], 'f') || ...
+           ~copyfile([GetOctlibDir filesep 'liboctave.8.dylib'], [rdir filesep], 'f')
             % Copy into our mex files folder failed. A second location where the linker will search is the
             % $HOME/lib directory of the current user, so try that as target location:
             tdir = PsychHomeDir('lib');
             fprintf('\n\nFailed to copy Octave runtime libraries to mex file folder [%s].\nRetrying in users private lib dir: %s ...\n', rdir, tdir);
-            if ~copyfile([GetOctlibDir filesep 'liboctinterp.7.dylib'], tdir, 'f') || ...
-               ~copyfile([GetOctlibDir filesep 'liboctave.7.dylib'], tdir, 'f')
+            if ~copyfile([GetOctlibDir filesep 'liboctinterp.8.dylib'], tdir, 'f') || ...
+               ~copyfile([GetOctlibDir filesep 'liboctave.8.dylib'], tdir, 'f')
                 fprintf('\nFailed to copy runtime libs to [%s] as well :(.\n', tdir);
                 fprintf('Our mex files will likely not work this way. Maybe the directories lack file write permissions?\n');
                 fprintf('\n\n\nA last workaround would be to restart octave from a terminal via this line:\n\nexport DYLD_LIBRARY_PATH=%s ; octave\n\n\n', GetOctlibDir);
@@ -478,13 +486,13 @@ if IsOctave
         % Failed! Either screwed setup of path or missing runtime
         % libraries.
         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
-        if ismember(octavemajorv, [3,4,5]) && IsLinux
+        if ismember(octavemajorv, [3,4,5,6]) && IsLinux
             fprintf('ERROR: Make sure to have the ''liboctave-dev'' package installed, otherwise symlinks\n');
             fprintf('ERROR: from liboctinterp.so to the liboctinterp library of your Octave installation\n');
             fprintf('ERROR: might by missing, causing our mex files to fail to load with linker errors.\n');
         end
         fprintf('ERROR: One reason might be that your version %s of Octave is incompatible. We recommend\n', version);
-        fprintf('ERROR: use of the latest stable version of Octave-4 or Octave-5 as announced on the www.octave.org website.\n');
+        fprintf('ERROR: use of the latest stable version of Octave-6 as announced on the www.octave.org website.\n');
         fprintf('ERROR: Another conceivable reason would be missing or incompatible required system libraries on your system.\n\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
@@ -653,20 +661,25 @@ try
         fprintf('Trying to trigger an update of the fontconfig cache if that should prove neccessary.\n');
         fprintf('This may take a couple of seconds, or sometimes even minutes. Please be patient...\n');
         drawnow;
+
+        oldRenderer = Screen('Preference', 'TextRenderer', 1);
+        oldLevel = Screen('Preference', 'WindowShieldingLevel', -1);
+        oldVerbo = Screen('Preference', 'Verbosity', 0);
+        oldTsMode = Screen('Preference', 'VBLTimestampingmode', -1);
+
         try
-            oldRenderer = Screen('Preference', 'TextRenderer', 1);
-            oldLevel = Screen('Preference', 'WindowShieldingLevel', -1);
-            oldVerbo = Screen('Preference', 'Verbosity', 0);
             win = Screen('OpenWindow', 0, 0, [0 0 100 100]);
             Screen('DrawText', win, 'Ola!');
             Screen('Flip', win);
             Screen('CloseAll');
-            Screen('Preference', 'TextRenderer', oldRenderer);
-            Screen('Preference', 'WindowShieldingLevel', oldLevel);
-            Screen('Preference', 'Verbosity', oldVerbo);
         catch
             fprintf('Something went wrong with text renderer setup. Read ''help DrawTextPlugin'' for troubleshooting.\n\n\n');
         end
+
+        Screen('Preference', 'TextRenderer', oldRenderer);
+        Screen('Preference', 'WindowShieldingLevel', oldLevel);
+        Screen('Preference', 'Verbosity', oldVerbo);
+        Screen('Preference', 'VBLTimestampingmode', oldTsMode);
     end
 
     % Tell user we're successfully done:
