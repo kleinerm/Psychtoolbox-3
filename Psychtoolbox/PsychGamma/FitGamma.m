@@ -66,7 +66,7 @@ end
 
 % Set up number of fit types
 nFitTypes = 5;
-error = zeros(nFitTypes,nDevices);
+errv = zeros(nFitTypes,nDevices);
 
 % Handle force fittting
 if (nargin < 4 || isempty(fitType))
@@ -103,11 +103,11 @@ if (fitType == 0 || fitType == 1 || fitType == 2)
   x1 = zeros(nParams,nDevices);
   for i = 1:nDevices
     x0 = InitialXPow;
-    [fit_out1(:,i),x1(:,i),error(1,i)] = ...
+    [fit_out1(:,i),x1(:,i),errv(1,i)] = ...
       FitGammaPow(values_in(:,i),measurements(:,i),values_out,x0);
     fprintf('Exponent for device %d is %g\n',i,x1(:,i));
   end
-  fprintf('Simple power function fit, RMSE: %g\n',mean(error(1,i)));
+  fprintf('Simple power function fit, RMSE: %g\n',mean(errv(1,i)));
 end
 
 % Fit with extended power function.  Use power function
@@ -121,10 +121,10 @@ if (fitType == 0 || fitType == 2)
   x2 = zeros(nParams,nDevices);
   for i = 1:nDevices
     x0 = InitialXExtP(x1(:,i));
-    [fit_out2(:,i),x2(:,i),error(2,i)] = ...
+    [fit_out2(:,i),x2(:,i),errv(2,i)] = ...
       FitGammaExtP(values_in(:,i),measurements(:,i),values_out,x0);
   end
-  fprintf('Extended power function fit, RMSE: %g\n',mean(error(2,i)));
+  fprintf('Extended power function fit, RMSE: %g\n',mean(errv(2,i)));
 end
 
 % Fit with a sigmoidal shape.  This works well for
@@ -139,10 +139,10 @@ if (fitType == 0 || fitType == 3)
   for i = 1:nDevices
     maxVals = max(values_in(:,i));
     x0 = InitialXSig(maxVals'/2);
-    [fit_out3(:,i),x3(:,i),error(3,i)] = ...
+    [fit_out3(:,i),x3(:,i),errv(3,i)] = ...
       FitGammaSig(values_in(:,i),measurements(:,i),values_out,x0);
   end
-  fprintf('Sigmoidal fit, RMSE: %g\n',mean(error(3,i)));
+  fprintf('Sigmoidal fit, RMSE: %g\n',mean(errv(3,i)));
 end
 
 % Fit with Weibull
@@ -153,10 +153,10 @@ if (fitType == 0 || fitType == 4)
   x4 = zeros(nParams,nDevices);
   for i = 1:nDevices
     x0 = InitialXWeib(values_in(:,i),measurements(:,i));
-    [fit_out4(:,i),x4(:,i),error(4,i)] = ...
+    [fit_out4(:,i),x4(:,i),errv(4,i)] = ...
       FitGammaWeib(values_in(:,i),measurements(:,i),values_out,x0);
   end
-  fprintf('Weibull function fit, RMSE: %g\n',mean(error(4,i)));
+  fprintf('Weibull function fit, RMSE: %g\n',mean(errv(4,i)));
 end
 
 % Fit with polynomial.  InitalXPoly is used mostly for consistency
@@ -169,10 +169,10 @@ if (fitType == 0 || fitType == 5)
   [order5] = size(InitialXPoly,1);
   x5 = zeros(order5,nDevices);
   for i = 1:nDevices
-    [fit_out5(:,i),x5(:,i),error(5,i)] = ...
+    [fit_out5(:,i),x5(:,i),errv(5,i)] = ...
        FitGammaPoly(values_in(:,i),measurements(:,i),values_out);
   end
-  fprintf('Polynomial fit, order %g, RMSE: %g\n',order5,mean(error(5,i)));
+  fprintf('Polynomial fit, order %g, RMSE: %g\n',order5,mean(errv(5,i)));
 end
 
 % Linear interpolation.  Variable x is bogus here, but
@@ -205,7 +205,7 @@ end
 % In principle, could use best fit type for each device.  But
 % that would make the interface tricky.
 if (fitType == 0)
-  meanErr = mean(error,2);
+  meanErr = mean(errv,2);
   [minErr,bestFit] = min(meanErr);
   fitType = bestFit;
 end
@@ -214,27 +214,27 @@ if (fitType == 1)
   fit_out = fit_out1;
   x = x1;
   fitComment = (sprintf('Simple power function fit, RMSE: %g',...
-    mean(error(1,:))));
+    mean(errv(1,:))));
 elseif (fitType == 2)
   fit_out = fit_out2;
   x = x2;
   fitComment = (sprintf('Extended power function fit, RMSE: %g',...
-    mean(error(2,:))));
+    mean(errv(2,:))));
 elseif (fitType == 3)
   fit_out = fit_out3;
   x = x3;
   fitComment = (sprintf('Sigmoidal fit, RMSE: %g',...
-    mean(error(3,:))));
+    mean(errv(3,:))));
 elseif (fitType == 4)
   fit_out = fit_out4;
   x = x4;
   fitComment = (sprintf('Weibull fit, RMSE: %g',...
-    mean(error(4,:))));
+    mean(errv(4,:))));
 elseif (fitType == 5)
   fit_out = fit_out5;
   x = x5;
   fitComment = (sprintf('Polynomial fit, RMSE: %g',...
-    mean(error(5,:))));
+    mean(errv(5,:))));
 elseif (fitType == 6)
   fit_out = fit_out6;
   x = x6;
