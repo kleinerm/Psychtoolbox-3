@@ -240,7 +240,7 @@ end
 if mode==14
     % Build PsychOpenHMDVRCore.mex:
     try
-        mex --output ../Projects/Linux/build/PsychOpenHMDVRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenHMDVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -I/usr/local/include/openhmd -ICommon/Base -ILinux/Base -ICommon/PsychOpenHMDVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOpenHMDVRCore/*.c -lc -lrt -ldl -lopenhmd
+        mex --output ../Projects/Linux/build/PsychOpenHMDVRCore.mex -Wno-date-time -DPTBMODULE_PsychOpenHMDVRCore -DPTBOCTAVE3MEX -D_GNU_SOURCE -L/usr/local/lib/ -I/usr/local/include -I/usr/local/include/openhmd -I/usr/include/openhmd -ICommon/Base -ILinux/Base -ICommon/PsychOpenHMDVRCore Linux/Base/*.c Common/Base/*.c Common/PsychOpenHMDVRCore/*.c -lc -lrt -ldl -lopenhmd
     catch
         disp(psychlasterror);
     end
