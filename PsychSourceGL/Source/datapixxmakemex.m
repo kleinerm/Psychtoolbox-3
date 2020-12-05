@@ -105,7 +105,7 @@ function datapixxmakemex()
         S = [S ' ' PTBDIR 'PsychSourceGL/Source/OSX/Base/PsychTimeGlue.c'];
         if IsOctave
             S = [S ' ''-mmacosx-version-min=10.11'' '];
-            S = [S ' ''-Wl,-headerpad_max_install_names -F/System/Library/Frameworks/ -F/Library/Frameworks/ -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit,-syslibroot,/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.14.sdk -mmacosx-version-min=10.11'' '];
+            S = [S ' ''-Wl,-headerpad_max_install_names,-framework,ApplicationServices,-framework,CoreServices,-framework,CoreFoundation,-framework,Carbon,-framework,CoreAudio,-framework,IOKit'' '];
         else
             S = [S ' LDFLAGS="\$LDFLAGS -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit" '];
         end
@@ -187,8 +187,8 @@ function datapixxmakemex()
         if (IsOSX(1))
             system(strrep([DELCMD VPIXXDIR 'VPixx_Software_Tools/libusb/*.o'], '/', filesep));
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/OSX/Base/*.o'], '/', filesep));
-            system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/macosx/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave5OSXFiles64'], '/', filesep));
-            osxsetoctaverpath('Datapixx', [PTBDIR 'Psychtoolbox/PsychBasic/Octave5OSXFiles64/']);
+            system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/macosx/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave6OSXFiles64'], '/', filesep));
+            osxsetoctaverpath('Datapixx', [PTBDIR 'Psychtoolbox/PsychBasic/Octave6OSXFiles64/']);
         elseif (IsLinux)
             system(strrep([DELCMD VPIXXDIR 'VPixx_Software_Tools/libusb/*.o'], '/', filesep));
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/Linux/Base/*.o'], '/', filesep));
@@ -215,9 +215,9 @@ function datapixxmakemex()
         elseif (IsWin)
             system(strrep([DELCMD PTBDIR 'PsychSourceGL/Source/Windows/Base/*.o'], '/', filesep));
             if Is64Bit
-                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/win32/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave5WindowsFiles64'], '/', filesep));
+                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/win32/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave6WindowsFiles64'], '/', filesep));
             else
-                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/win32/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave5WindowsFiles'], '/', filesep));
+                system(strrep([CPYCMD VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/win32/Datapixx.mex ' PTBDIR 'Psychtoolbox/PsychBasic/Octave6WindowsFiles'], '/', filesep));
             end
         end
     else

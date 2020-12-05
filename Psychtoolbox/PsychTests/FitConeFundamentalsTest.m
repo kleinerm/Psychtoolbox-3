@@ -26,13 +26,22 @@
 % 8/11/11  dhb  Wrote it.
 % 8/14/11  dhb  Clean up and add comments.
 % 8/10/13  dhb  A few more notes.
+% 12/4/20  mk  Add Octave support.
 
-% Doesn't work on octave due to lack of function 'fmincon' from the
-% Matlab Optimization toolbox (see https://savannah.gnu.org/bugs/?35333)
-% and due to use of nested function FitConesFun():
 if IsOctave
-    fprintf('Sorry, this test does not yet work on GNU/Octave.\n');
-    return;
+    % Need Octave-6 or later for this to work, as handles to nested functions are used:
+    v = version;
+    if str2num(v(1)) < 6
+        error('For use with Octave, you need at least Octave version 6.');
+    end
+
+    % Suppress "file found in load path" warnings when load() is called with
+    % names of .mat parameter files without specifying the path explicitly:
+    warning('off', 'Octave:data-file-in-path', 'local');
+else
+    if ~exist('fmincon')
+        error('For use with Matlab, you need the optimization toolbox.');
+    end
 end
 
 %% Clear
