@@ -22,7 +22,7 @@ function [fit_out,x,fitComment] = ...
 % caution is advised.
 %
 % Optional argument fitType allows you to force the return of a particular
-% paramtetric form.  Currently:
+% parametric form.  Currently:
 %   fitType == 1:  Power function
 %   fitType == 2:  Extended power function
 %   fitType == 3:  Sigmoid
@@ -40,10 +40,10 @@ function [fit_out,x,fitComment] = ...
 % 
 % Also see FitGammaDemo.
 
-% 10/3/93   dhb		Removed polynomial fit from list tried with fitType == 0.
-% 					Added Weibull function fit
+% 10/3/93   dhb     Removed polynomial fit from list tried with fitType == 0.
+%                   Added Weibull function fit
 % 3/15/94   dhb, jms Added linear interpolation.
-% 7/18/94   dhb		Added cubic spline interpolation.
+% 7/18/94   dhb     Added cubic spline interpolation.
 % 8/7/00    dhb     Fix bug.  Spline was calling linear interpolation.  Thanks to
 %                   Chien-Chung Chen for notifying us of this bug.
 % 11/14/06  dhb     Modify how default type is set.  Handle passed empty matrix.
@@ -71,6 +71,28 @@ error = zeros(nFitTypes,nDevices);
 % Handle force fittting
 if (nargin < 4 || isempty(fitType))
   fitType = 0;
+end
+if ~ismember(fitType, 0:7)
+    error('Unsupported fitType requested. Only 0 to 7 are supported.');
+end
+
+if ismember(fitType, [0, 1, 2, 3, 4]) && IsOctave
+    v = version;
+    if str2num(v(1)) < 6
+        error('For use with Octave, you need at least Octave version 6.');
+    end
+
+    try
+        % Try loading the optim package with the optimization functions:
+        pkg load optim;
+    catch
+        error('For use with Octave, you must install the ''optim'' package from Octave Forge. See ''help pkg''.');
+    end
+
+    % Got optim package loaded. Does it support fmincon()?
+    if ~exist('fmincon')
+        error('For use with Octave, you need at least version 1.6.0 of the ''optim'' package from Octave Forge.');
+    end
 end
 
 % Fit with simple power function through origin
@@ -156,25 +178,25 @@ end
 % Linear interpolation.  Variable x is bogus here, but
 % we fill it in to keep the accountants upstream happy.
 if (fitType == 6)
-	disp('Fitting with linear interpolation');
+  disp('Fitting with linear interpolation');
   fit_out6 = zeros(nOut,nDevices);
   for i = 1:nDevices
     [fit_out6(:,i)] = ...
        FitGammaLin(values_in(:,i),measurements(:,i),values_out);
   end
-	x6 = [];
+  x6 = [];
 end
 
 % Cubic spline.  Variable x is bogus here, but
 % we fill it in to keep the accountants upstream happy.
 if (fitType == 7)
-	disp('Fitting with cubic spline');
+  disp('Fitting with cubic spline');
   fit_out7 = zeros(nOut,nDevices);
   for i = 1:nDevices
     [fit_out7(:,i)] = ...
        FitGammaSpline(values_in(:,i),measurements(:,i),values_out);
   end
-	x7 = [];
+  x7 = [];
 end
 
 % If we are not forcing a fit type, find best fit.
@@ -227,5 +249,3 @@ end
 if (CheckMonotonic(fit_out) == 0)
   disp('Warning, fit is not non-decreasing');
 end
-
-

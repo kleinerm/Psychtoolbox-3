@@ -22,6 +22,25 @@ function [uEst,varEst] = FitCumNormYN(inputs,nYes,nNo)
 %                variance search limits were set based on mean.
 % 3/4/05    dhb  Conditionals for optimization toolbox version.
 
+if IsOctave
+    v = version;
+    if str2num(v(1)) < 6
+        error('For use with Octave, you need at least Octave version 6.');
+    end
+
+    try
+        % Try loading the optim package with the optimization functions:
+        pkg load optim;
+    catch
+        error('For use with Octave, you must install the ''optim'' package from Octave Forge. See ''help pkg''.');
+    end
+
+    % Got optim package loaded. Does it support fmincon()?
+    if ~exist('fmincon')
+        error('For use with Octave, you need at least version 1.6.0 of the ''optim'' package from Octave Forge.');
+    end
+end
+
 % Set up an initial guess
 uInitial = mean(inputs);
 varInitial = std(inputs)^2;
