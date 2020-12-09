@@ -256,6 +256,42 @@ end
 %     fprintf('The error message of FILEATTRIB was: %s\n\n', m);
 % end
 
+if IsOSX
+    % Apples trainwreck needs special treatment. If Psychtoolbox has been
+    % downloaded via a webbrowser as a zip file or tgz file and then
+    % extracted, then all binary executable files like .dylib's and
+    % .mexmaci64 mex files will have the com.apple.quarantine attribute set
+    % to prevent them from working in any meaningfully user fixable way -
+    % Thanks Apple! Use the xattr command to remove the quarantine flag.
+    fprintf('Trying to fixup Apple macOS broken security workflow by removing the quarantine flag from our mex files...\n\n');
+
+    if IsOctave
+        % Fix the Octave mex files:
+        [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/Octave6OSXFiles64/*.mex 2>&1']);
+    else
+        % Fix the Matlab mex files:
+        [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/*.mexmaci64']);
+    end
+
+    % Fix the DrawText plugin and other plugins:
+    if rc == 0 || ~isempty(strfind(msg, 'xattr: com.apple.quarantine')) %#ok<STREMP>
+        if IsOctave
+            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/PsychPlugins/*.dylib 2>&1']);
+        else
+            [rc, msg] = system(['xattr -d com.apple.quarantine ' p filesep 'PsychBasic/PsychPlugins/*.dylib']);
+        end
+    end
+
+    % Worked?
+    if rc ~= 0
+        if isempty(strfind(msg, 'xattr: com.apple.quarantine')) %#ok<STREMP>
+            fprintf('FAILED! Psychtoolbox will likely not work correctly!\n');
+            PsychPaidSupportAndServices(2);
+            error(['Removing the quarantine flag from our mex files to workaround macOS brokeness failed! Error was: ' msg]);
+        end
+    end
+end
+
 if exist('PsychtoolboxPostInstallRoutine.m', 'file')
    % Notify the post-install routine of the "pseudo-update" It will
    % determine the proper flavor by itself.
