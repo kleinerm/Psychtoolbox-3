@@ -1735,6 +1735,18 @@ if strcmpi(cmd, 'OpenWindow')
         [winRect, ovrfbOverrideRect, ovrSpecialFlags] = hmd.driver('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
     end
 
+    % Override numbuffers -- always 2:
+    numbuffers = 2;
+
+    if nargin < 7 || isempty(varargin{6})
+        stereomode = 0;
+    else
+        stereomode = varargin{6};
+    end
+
+    % Compute correct imagingMode - Settings for current configuration and return it:
+    [imagingMode, needStereoMode, reqs] = FinalizeConfiguration(reqs, stereomode, screenid);
+
     if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
         % Request a pixelsize of 30 bpp to enable native 2101010
         % framebuffer support:
@@ -1758,20 +1770,8 @@ if strcmpi(cmd, 'OpenWindow')
         pixelSize = [];
     end
 
-    % Override numbuffers -- always 2:
-    numbuffers = 2;
-
-    if nargin < 7 || isempty(varargin{6})
-        stereomode = 0;
-    else
-        stereomode = varargin{6};
-    end
-
-    % Compute correct imagingMode - Settings for current configuration and return it:
-    [imagingMode, needStereoMode, reqs] = FinalizeConfiguration(reqs, stereomode, screenid);
-
     floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
-    if ~isempty(floc)
+    if ~isempty(floc) && isempty(find(mystrcmp(reqs, 'UseStaticHDRHack')))
         [rows cols] = ind2sub(size(reqs), floc(1));
         row = rows(1);
 
@@ -3037,15 +3037,33 @@ end
 
 floc = find(mystrcmp(reqs, 'EnableHDR'));
 if ~isempty(floc)
+    % Get and validate input arguments:
+    [rows cols] = ind2sub(size(reqs), floc(1));
+    row = rows(1);
+    hdrArguments = reqs(row, :);
+
     % Check if HDR is supported at all on this system:
-    if ~PsychHDR('Supported')
+    if ~PsychHDR('Supported') && isempty(strfind(hdrArguments{5}, 'Dummy'))
         % Failed/Unsupported.
         error('PsychImaging: Requested task ''EnableHDR'', but this system does not support High dynamic range (HDR) at all.');
     end
 
-    [rows cols] = ind2sub(size(reqs), floc(1));
-    row = rows(1);
-    hdrArguments = reqs(row, :);
+    if ~isempty(find(mystrcmp(reqs, 'UseStaticHDRHack')))
+        if ~(ismember(userstereomode, [0, 1, 4, 5, 11]) && IsLinux && ~IsWayland)
+            error('PsychImaging: Requested task ''UseStaticHDRHack'' is incompatible with this system setup.');
+        end
+
+        % Add special requirements marker statichdrhack to signal to PsychHDR()
+        % that this hack is requested:
+        reqs{row, 5} = [reqs{row, 5} ' statichdrhack'];
+
+        % Add the EnableNative10BitFramebuffer task if it doesn't exist already,
+        % as our UseStaticHDRHack HDR support requires a 10 bpc native OpenGL
+        % framebuffer:
+        if isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
+            reqs = AddTask(reqs, 'General', 'EnableNative10BitFramebuffer');
+        end
+    end
 
     % Parse user provided parameters, and return imagingMode flags and other
     % flags/constraints needed for FinalizeConfiguration() stage:
@@ -3095,11 +3113,20 @@ if ~isempty(floc)
         error('PsychImaging: Requested task ''UseVulkanDisplay'', but this system does not support Vulkan at all.');
     end
 
-    % Mark use of Vulkan:
-    useVulkan = 1;
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
 
-    % Add imaging mode flags for handing rendered images to Vulkan:
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedFinalizedFBOSinks);
+    % Special static HDR dual-display stereo hack requested and supported?
+    if ~useHDR || isempty(find(mystrcmp(reqs, 'UseStaticHDRHack')))
+        % No -> Standard operations: Add imaging mode flags for handing rendered images to Vulkan:
+        imagingMode = mor(imagingMode, kPsychNeedFinalizedFBOSinks);
+
+        % Mark full use of Vulkan:
+        useVulkan = 1;
+    else
+        % We abuse Vulkan for HDR setup in UseStaticHDRHack, but not as primary
+        % display backend:
+        useVulkan = 0;
+    end
 
     if ismember(userstereomode, [1, 11])
         error('PsychImaging: Requested task ''UseVulkanDisplay'' is incompatible with frame-sequential stereo mode %i.', userstereomode);
@@ -3655,6 +3682,10 @@ if ~isempty(floc)
 
     % Get HDR setup parameters for imaging pipeline and Vulkan:
     [useVulkan, vulkanHDRMode, vulkanColorPrecision, vulkanColorSpace, vulkanColorFormat] = PsychHDR('GetVulkanHDRParameters', win, hdrArguments);
+
+    %if ~isempty(find(mystrcmp(reqs, 'UseStaticHDRHack')))
+    % Better with useVulkan to suppress our own 10/11/16 bpc output formatters atm. useVulkan = 1;
+    %end
 
     % Mark HDR as in use:
     useHDR = 1;
@@ -5391,8 +5422,23 @@ if ~isempty(floc)
     % Default: Auto-select optimal Vulkan driver+gpu combo:
     gpuIndex = 0;
 
-    % Perform Vulkan onscreen window creation and setup of Vulkan and OpenGL interop on our side:
-    vwin = PsychVulkan('PerformPostWindowOpenSetup', win, Screen('GlobalRect', win), isFullscreen, outputName, vulkanHDRMode, vulkanColorPrecision, vulkanColorSpace, vulkanColorFormat, gpuIndex, flags);
+    % Special static HDR stereo hack for Linux/X11 + OpenGL requested?
+    floc = find(mystrcmp(reqs, 'UseStaticHDRHack'));
+    if isempty(floc)
+        % No, standard Vulkan display mode: Perform Vulkan onscreen window creation and setup of Vulkan and OpenGL interop on our side:
+        vwin = PsychVulkan('PerformPostWindowOpenSetup', win, Screen('GlobalRect', win), isFullscreen, outputName, vulkanHDRMode, vulkanColorPrecision, vulkanColorSpace, vulkanColorFormat, gpuIndex, flags);
+    else
+        % Yes: Perform one-time dual-display HDR setup via special hack in PsychHDR():
+
+        % Extract static HDR metadata to use, if any:
+        [rows cols] = ind2sub(size(reqs), floc(1));
+        row = rows(1);
+        staticHDRMetadata = reqs{row, 3};
+
+        % Perform one-time setup via Vulkan, with static assignment of staticHDRMetadata
+        % for the duration of the whole session:
+        PsychHDR('ExecuteStaticHDRHack', win, 1, vulkanHDRMode, gpuIndex, flags, staticHDRMetadata);
+    end
 end
 
 if useHDR
