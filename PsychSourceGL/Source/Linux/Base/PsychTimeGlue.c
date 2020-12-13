@@ -300,6 +300,20 @@ double PsychOSMonotonicToRefTime(double monotonicTime)
     return(monotonicTime);
 }
 
+/* PsychOSRefTimeToMonotonicTime(t)
+ *
+ * Map given input PTB reference time to CLOCK_MONOTONIC time.
+ *
+ * Iow CLOCK_REALTIME to CLOCK_MONOTONIC time.
+ *
+ */
+double PsychOSRefTimeToMonotonicTime(double refInputTime)
+{
+    double monotonicNowTime = PsychOSGetLinuxMonotonicTime();
+    double referenceNowTime = PsychOSMonotonicToRefTime(monotonicNowTime);
+    return(monotonicNowTime + (refInputTime - referenceNowTime));
+}
+
 void PsychGetPrecisionTimerSeconds(double *secs)
 {
     static psych_bool firstTime = TRUE;
