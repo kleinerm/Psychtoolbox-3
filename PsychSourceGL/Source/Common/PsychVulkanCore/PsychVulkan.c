@@ -3352,7 +3352,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             result = fpAcquireFullScreenExclusiveModeEXT(vulkan->device, window->swapChain);
             if (result != VK_SUCCESS) {
                 if (verbosity > 0) {
-                    if (result == VK_ERROR_INITIALIZATION_FAILED) 
+                    if (result == VK_ERROR_INITIALIZATION_FAILED)
                         printf("PsychVulkanCore-ERROR: gpu [%s] Could not switch to fullscreen exclusive mode!\n", vulkan->deviceProps.deviceName);
                     else
                         printf("PsychVulkanCore-ERROR: gpu [%s] Error during switch to fullscreen exclusive mode: %i\n", vulkan->deviceProps.deviceName, result);
@@ -3454,15 +3454,14 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     vkGetPhysicalDeviceFormatProperties(vulkan->physicalDevice, window->interopTextureVkFormat, &formatProps);
 
     switch (vulkan->deviceProps.vendorID) {
-        case 0x10de:
-            // NVidia gpu: OpenGL drivers allow tiled rendering:
+        case 0x8086: // Intel gpu: Verified to work with tiled rendering on Iris as of Mesa 21.0.0-devel + OpenGL interop patchset.
+        case 0x10de: // NVidia gpu: At least proprietary drivers allow tiled rendering:
             if ((formatProps.optimalTilingFeatures & requiredMask) == requiredMask) {
                 window->interopTextureTiled = TRUE;
                 break;
             }
             // If tiling is not supported for some reason, fallthrough to linear mode:
 
-        case 0x8086: // Intel gpu: Does not support interop at all atm., so we are undecided, but play it safe.
         case 0x1002: // AMD gpu: AMD OpenGL drivers currently only allow rendering into linear non-tiled interop texture.
         default:
             if ((formatProps.linearTilingFeatures & requiredMask) == requiredMask) {

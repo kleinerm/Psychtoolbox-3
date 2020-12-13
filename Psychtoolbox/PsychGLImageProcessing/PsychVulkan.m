@@ -725,9 +725,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
 
     % Selection of OpenGL tiling mode for rendering into interop texture:
-    GL.OPTIMAL_TILING_EXT = hex2dec('9584');
-    GL.LINEAR_TILING_EXT = hex2dec('9585');
-
     if tilingMode
         tilingMode = GL.OPTIMAL_TILING_EXT;
         if verbosity >= 4
