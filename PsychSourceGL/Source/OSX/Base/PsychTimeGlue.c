@@ -194,14 +194,26 @@ double PsychGetWallClockSeconds(void)
     return(((double) tv.tv_sec) + (((double) tv.tv_usec) / 1000000.0));
 }
 
+/* No-Op function on macOS atm. */
+double PsychOSMonotonicToRefTime(double monotonicTime)
+{
+    return(monotonicTime);
+}
+
+/* No-Op function on macOS atm. */
+double PsychOSRefTimeToMonotonicTime(double refInputTime)
+{
+    return(refInputTime);
+}
+
 /* Init a Mutex: */
-int	PsychInitMutex(psych_mutex* mutex)
+int PsychInitMutex(psych_mutex* mutex)
 {
     return(pthread_mutex_init(mutex, NULL));
 }
 
 /* Deinit and destroy a Mutex: */
-int	PsychDestroyMutex(psych_mutex* mutex)
+int PsychDestroyMutex(psych_mutex* mutex)
 {
     return(pthread_mutex_destroy(mutex));
 }

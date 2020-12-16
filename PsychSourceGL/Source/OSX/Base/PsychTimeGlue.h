@@ -90,6 +90,8 @@ int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle);
 psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask);
 int PsychGetOSXMinorVersion(void);
 const char* PsychSupportStatus(void);
+double PsychOSMonotonicToRefTime(double monotonicTime);
+double PsychOSRefTimeToMonotonicTime(double refInputTime);
 
 //end include once
 
