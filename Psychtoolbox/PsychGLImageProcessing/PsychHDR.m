@@ -554,11 +554,6 @@ if strcmpi(cmd, 'ExecuteStaticHDRHack')
         outputHandle(end+1) = uint64(output.outputHandle);
     end
 
-    % Store all relevant variables with parameters into a file, so our helper
-    % process can read them from there. This format should work for both Octave
-    % and Matlab, also across Matlab and Octave:
-    save([PsychtoolboxConfigDir 'PsychHDRIPC.mat'], '-mat', '-V6');
-
     if enable
         cmdString = sprintf('PsychHDR(''ExecuteStaticHDRHack'', %i, 0, %i, %i, %i, [])', win, vulkanHDRMode, gpuIndex, flags);
         Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Vulkan HDR hack cleanup', cmdString);
@@ -576,24 +571,31 @@ if strcmpi(cmd, 'ExecuteStaticHDRHack')
         end
     end
 
-    % Execute helper process:
-    [rc, msg] = system(cmdString);
-    if ~ismember(rc, [0, 137])
-        % Trouble!
-        fprintf('PsychHDR-ERROR: Failed! Error output from helper process [rc=%i]:\n\n', rc);
-        disp(msg);
-        error('PsychHDR-ERROR: Vulkan en-/disable sequence for static HDR display hack failed! See error above.');
-    end
+    for outputId = outputHandle
+        % Store all relevant variables with parameters into a file, so our helper
+        % process can read them from there. This format should work for both Octave
+        % and Matlab, also across Matlab and Octave:
+        save([PsychtoolboxConfigDir 'PsychHDRIPC.mat'], '-mat', '-V6');
 
-    if verbosity > 3
-        fprintf('PsychHDR-DEBUG: Success! Debug output from helper process:\n\n');
-        disp(msg);
-        fprintf('PsychHDR-DEBUG: Done. Success!\n');
-    elseif verbosity > 3
-        if enable
-            fprintf('PsychHDR-INFO: Vulkan one-time HDR setup trick - Success!\n');
-        else
-            fprintf('PsychHDR-INFO: Vulkan HDR teardown hack - Success!\n');
+        % Execute helper process:
+        [rc, msg] = system(cmdString);
+        if ~ismember(rc, [0, 137])
+            % Trouble!
+            fprintf('PsychHDR-ERROR: Switch for outputId %i - Failed! Error output from helper process [rc=%i]:\n\n', outputId, rc);
+            disp(msg);
+            error('PsychHDR-ERROR: Vulkan en-/disable sequence for static HDR display hack failed! See error above.');
+        end
+
+        if verbosity > 3
+            fprintf('PsychHDR-DEBUG: Switch for outputId %i - Success! Debug output from helper process:\n\n', outputId);
+            disp(msg);
+            fprintf('PsychHDR-DEBUG: Done. Success!\n');
+        elseif verbosity > 2
+            if enable
+                fprintf('PsychHDR-INFO: For outputId %i - Vulkan one-time HDR setup trick - Success!\n', outputId);
+            else
+                fprintf('PsychHDR-INFO: For outputId %i - Vulkan HDR teardown hack - Success!\n', outputId);
+            end
         end
     end
 
@@ -610,41 +612,34 @@ if strcmpi(cmd, 'DoExecuteStaticHDRHack')
 
     PsychVulkanCore('Verbosity', verbosity);
 
-    % Iterate over all outputs in a display setup:
-    for outputId = outputHandle
-        % Open a Vulkan fullscreen window on target output 'outputId', with suitable
-        % hdrMode enabled, on the proper gpu gpuIndex / targetUUID and X-Screen screenId.
-        %
-        % This should trigger direct display mode and sending of HDR metadata to switch
-        % HDR monitors into HDR-10 mode:
-        vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, 1, screenId, rect, outputId, vulkanHDRMode, 1, refreshHz, 0, 0, flags);
+    % Open a Vulkan fullscreen window on target output 'outputId', with suitable
+    % hdrMode enabled, on the proper gpu gpuIndex / targetUUID and X-Screen screenId.
+    %
+    % This should trigger direct display mode and sending of HDR metadata to switch
+    % HDR monitors into HDR-10 mode:
+    vwin = PsychVulkanCore('OpenWindow', gpuIndex, targetUUID, 1, screenId, rect, outputId, vulkanHDRMode, 1, refreshHz, 0, 0, flags);
 
-        % Disable of HDR mode requested?
-        if ~enable
-            % Yes. Simply close the HDR window after opening it in HDR mode. This will
-            % not only close the window, but also send the HDR disable command to the
-            % Linux kernel, given that we just enabled HDR during the 'OpenWindow':
-            PsychVulkanCore('CloseWindow', vwin);
-        else
-            % Enable of HDR mode requested:
-
-            % Custom static HDR metadata provided by caller?
-            if ~isempty(hdrMetadata)
-                % Yes: Set custom caller provided static HDR metadata for this session:
-                PsychVulkanCore('HDRMetadata', vwin, hdrMetadata.MetadataType, hdrMetadata.MaxFrameAverageLightLevel, hdrMetadata.MaxContentLightLevel, hdrMetadata.MinLuminance, hdrMetadata.MaxLuminance, hdrMetadata.ColorGamut);
-
-                % Trigger a single present to latch the new HDR metadata to the HDR monitor:
-                PsychVulkanCore('Present', vwin, 0, 1);
-            end
-        end
-
-        % Handle next output...
-    end
-
+    % Disable of HDR mode requested?
     if ~enable
+        % Yes. Simply close the HDR window after opening it in HDR mode. This will
+        % not only close the window, but also send the HDR disable command to the
+        % Linux kernel, given that we just enabled HDR during the 'OpenWindow':
+        PsychVulkanCore('CloseWindow', vwin);
+
         % We are done and can return control to the calling process, which will
         % then exit cleanly:
         return;
+    end
+
+    % Enable of HDR mode requested:
+
+    % Custom static HDR metadata provided by caller?
+    if ~isempty(hdrMetadata)
+        % Yes: Set custom caller provided static HDR metadata for this session:
+        PsychVulkanCore('HDRMetadata', vwin, hdrMetadata.MetadataType, hdrMetadata.MaxFrameAverageLightLevel, hdrMetadata.MaxContentLightLevel, hdrMetadata.MinLuminance, hdrMetadata.MaxLuminance, hdrMetadata.ColorGamut);
+
+        % Trigger a single present to latch the new HDR metadata to the HDR monitor:
+        PsychVulkanCore('Present', vwin, 0, 1);
     end
 
     % End of enable sequence, now we kill ourselves: Today is a good day to die!
