@@ -550,9 +550,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             printf("PTB-INFO: Native %i bit per color framebuffer requested, but the OS doesn't allow it. It only provides %i bpc.\n", (*windowRecord)->depth / 3, bpc);
 
             // We only support the 48 bit color depth / 16 bpc hack on Linux + X11, not on OSX et al.:
-            if ((PSYCH_SYSTEM != PSYCH_LINUX) && ((*windowRecord)->depth == 48)) {
+            if (((*windowRecord)->depth == 48) && !((*windowRecord)->specialflags & kPsychIsX11Window)) {
                 printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but i can't provide this for you, because\n", (*windowRecord)->depth, (*windowRecord)->depth / 3);
-                printf("PTB-ERROR: my own 16 bpc setup code only works on Linux with a properly setup X11/GLX display backend.\n");
+                printf("PTB-ERROR: my own 16 bpc setup code only works on Linux with a properly setup X11 display backend.\n");
                 PsychOSCloseWindow(*windowRecord);
                 FreeWindowRecordFromPntr(*windowRecord);
                 return(FALSE);
@@ -565,13 +565,17 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff) || (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24)) {
                 printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but i can't provide this for you, because\n", (*windowRecord)->depth, (*windowRecord)->depth / 3);
                 if ((gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff)) {
-                    printf("PTB-ERROR: this functionality is not supported on your model of graphics card. Only AMD/ATI GPU's of the\n");
-                    printf("PTB-ERROR: Radeon X1000 series, and Radeon HD-2000 series and later models, and corresponding FireGL/FirePro\n");
-                    printf("PTB-ERROR: cards are supported. This covers basically all AMD graphics cards since about the year 2007.\n");
-                    printf("PTB-ERROR: NVidia graphics cards since the GeForce-8000 series and corresponding Quadro cards can be setup\n");
-                    printf("PTB-ERROR: for 10 bpc framebuffer support by specifying a 'DefaultDepth' setting of 30 bit in the xorg.conf file.\n");
-                    printf("PTB-ERROR: The latest Intel graphics cards may be able to achieve 10 bpc with 'DefaultDepth' 30 setting if your\n");
-                    printf("PTB-ERROR: graphics driver is recent enough, however this hasn't been actively tested on Intel cards so far.\n\n");
+                    printf("PTB-ERROR: this functionality is not supported on your model of graphics card. Only AMD GPU's from the\n");
+                    printf("PTB-ERROR: Radeon X1000 series up to and including the Radeon Vega series, and corresponding FireGL/\n");
+                    printf("PTB-ERROR: FirePro/RadeonPro cards are supported. This covers basically all AMD gpu's introduced in the\n");
+                    printf("PTB-ERROR: years from late 2005 to mid-2019, but not AMD RX 5000 (RDNA) and later or AMD Ryzen integrated\n");
+                    printf("PTB-ERROR: processor graphics chips and later since late 2017, e.g., AMD Raven Ridge, Renoir, Picasso etc.\n");
+                    printf("PTB-ERROR: These recent AMD gpu's with the new DCN display engine, as well as all NVidia graphics cards\n");
+                    printf("PTB-ERROR: since the GeForce-8000 series and corresponding Quadro cards can be setup for 10 bpc framebuffer\n");
+                    printf("PTB-ERROR: mode by specifying a 'DefaultDepth' setting of 30 bit in the xorg.conf file. The same is true for\n");
+                    printf("PTB-ERROR: modern Intel graphics chips which may be able to achieve 10 bpc with 'DefaultDepth' 30 setting if your\n");
+                    printf("PTB-ERROR: graphics driver is recent enough. Use XOrgConfCreator and XOrgConfSelector to guide you through the\n");
+                    printf("PTB-ERROR: setup process for 10 bpc / 30 bit on such NVidia, Intel and modern AMD graphics cards.\n");
                 }
                 else if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
                     printf("PTB-ERROR: Linux low-level MMIO access by Psychtoolbox is disabled or not permitted on your system in this session.\n");
