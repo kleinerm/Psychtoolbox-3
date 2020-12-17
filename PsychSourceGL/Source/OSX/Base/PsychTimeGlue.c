@@ -586,7 +586,10 @@ const char* PsychSupportStatus(void)
             sprintf(statusString, "OSX 10.%i minimally supported and tested.", osMinor);
         }
         else {
-            sprintf(statusString, "OSX version 10.%i is not - or no longer - officially supported or tested at all for this release.", osMinor);
+            if (osMinor < 15)
+                sprintf(statusString, "OSX version 10.%i is no longer tested or officially supported at all for this Psychtoolbox release.", osMinor);
+            else
+                sprintf(statusString, "OSX version 11.%i is not yet tested or officially supported at all for this Psychtoolbox release.", osMinor - 16);
         }
     }
 
