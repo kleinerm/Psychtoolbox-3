@@ -1937,7 +1937,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     // For OpenGL -> Vulkan interop to work, both the OpenGL renderer and Vulkan renderer must use the same physical gpu,
     // so the UUID must match.
 
-    // AMD's Vulkan drivers on Linux (amdgpu-pro and amdvlk) use a different UUID from what Linux Mesa radeonsi OpenGL expects:
+    // AMD's Vulkan drivers on Linux (amdgpu-pro and amdvlk) older than DriverVersionRaw 8388778 aka v2.0.170, aka amdvlk v-2020.Q4.6
+    // use a different UUID from what Linux Mesa radeonsi OpenGL expects. The more recent releases do fix this bug:
     // Mesa OpenGL: 4-Byte fields describing PCI bus location in format: domain:bus:device:function.
     // AMD  Vulkan: 4-Byte fields describing PCI bus location in format: bus:device:function:0
     // Therefore we first treat matching against AMD written drivers on Linux to match up the right 4-byte subfields:
