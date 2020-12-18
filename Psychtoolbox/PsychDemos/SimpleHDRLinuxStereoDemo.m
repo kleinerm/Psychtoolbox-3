@@ -9,46 +9,19 @@ function SimpleHDRLinuxStereoDemo(imfilename)
 % the default demo image is missing. Currently only '.hdr' RGBE images are
 % supported.
 %
-% See "help PsychHDR" for system requirements and setup instructions for HDR
-% display. Once these are satisfied, converting a standard Psychtoolbox visual
-% stimulation script into a HDR script is straightforward, as shown in this simple
-% demo. Modify your scripts in the following manner:
+% See SimpleHDRDemo for explanations. This is the same demos, but displaying
+% stereoscopically on Linux + X11 via the special Linux hack enabled by the
+% Linux only PsychImaging task
 %
-% 1. Use (as most minimal setup) the sequence ...
+% PsychImaging('AddTask', 'General', 'UseStaticHDRHack', hdrMeta);
 %
-%    PsychImaging('PrepareConfiguration');
-%    PsychImaging('AddTask', 'General', 'EnableHDR');
-%    win = PsychImaging('OpenWindow', screenid);
-%
-%    ... instead of ...
-%
-%    win = Screen('OpenWindow', screenid);
-%
-%    ... to open a fullscreen onscreen window on a HDR capable display device,
-%    which is attached to a HDR capable graphics card.
-%
-% 2. Use HDRRead(imfilename) instead of imread(imfilename) to load HDR
-%    image files as double() precision matrices.
-%
-% 3. Optional: Set the optional 'floatprecision' flag of Screen('MakeTexture', ...)
-%    to 1 or 2 to enforce creation of floating point precision HDR textures
-%    of a specific precision from your image matrix.
-%
-%    By default, 'floatprecision' will be selected as 2 for single
-%    precision float fp32 format, which is the maximum precision for
-%    processing and displaying HDR images.
-%
-%
-% See the section 'EnableHDR' of "help PsychImaging" for more optional parameters
-% to pass to PsychImaging('AddTask', 'General', 'EnableHDR'); for customizing the
-% HDR display mode. See "help PsychHDR" for more helper subfunctions to customize
-% HDR display further at runtime, once the fullscreen onscreen HDR display window
-% has been opened and initially set up by PsychImaging('AddTask', 'General', 'EnableHDR').
+% See help PsychImaging in the 'UseStaticHDRHack' section for explanations,
+% background info and setup instructions.
 %
 
 % History:
 %
-% 10-Dec-2020   mk  Written. Derived from SimpleHDRDemo.
+% 18-Dec-2020   mk  Written. Derived from SimpleHDRDemo.
 
 if ~IsLinux || IsWayland
     fprintf('Sorry, this demo only works on Linux/X11, not under Wayland or other operating systems.\n');
