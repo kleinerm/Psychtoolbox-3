@@ -1419,6 +1419,69 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %                                 testing. Visual results will be obviously wrong!
 %
 %
+% * 'UseStaticHDRHack' Use a Linux + X11 only HDR display setup hack to allow multi-display
+%   HDR presentation, e.g., for dual-HDR-monitors setups with two identical HDR monitors
+%   or display devices for binocular or stereoscopic HDR visual stimulation.
+%
+%   Currently our Vulkan-based HDR display backend does not yet support proper dual-display/
+%   multi-display stereo presentation in a proper way. As a stop-gap solution until we have
+%   proper support implemented, this task requests use of a Linux + X11 specific hack to make
+%   HDR stereo presentation work ok. The hack is a hack, not guaranteed to work on your setup,
+%   or even if it works it is not guaranteed to work permanently, e.g. across operating system
+%   updates. Use of this highly experimental hack is at your own risk, you have been warned!
+%   Also note that using this PsychImaging tasks will make your script non-portable to other
+%   operating systems than Linux or other display systems than X11 (e.g., Wayland) for the time
+%   being. Another limitation is that this only works with 10 bpc HDR-10 precision framebuffers,
+%   not with the higher precision 16 bit floating point framebuffers offered by standard HDR
+%   mode. This hack will be limited permanently to HDR-10 with static HDR metadata and 10 bit
+%   precision. It will eventually be superseded by a proper multi-display/stereo HDR implementation,
+%   if and when we get funding to work on this.
+%
+%   To setup HDR-10 display with this hack:
+%
+%   0. You *must* install GNU/Octave and setup Psychtoolbox for use with GNU/Octave! Even if
+%      you prefer to run your scripts in Matlab, Octave is needed as a background helper! In
+%      general we recommend using Octave for this special hack, as Matlab's GUI is currently
+%      incompatible with 10 bit display mode as of R2020b. It will misrender, crash or simply
+%      hang! The only way to use Matlab here is without GUI in the terminal window by launching
+%      Matlab via "matlab -nodesktop". In this case, using Octave in the first place may be
+%      more convenient, as Octave's GUI works just fine!
+%
+%   1. Connect identical models of HDR monitors to your X-Screen 0, or at your leisure,
+%      create a separate X-Screen for stimulation by use of XOrgConfCreator. It is important
+%      that the X-Screen used for visual HDR stimulation only has HDR monitors connected, no
+%      other monitors, iow. the same configuration as if you'd do multi-display stereo stimulation
+%      for standard dynamic range stimuli under Linux.
+%
+%   2. Use XOrgConfCreator to create a separate X-Screen - or setup your one and only X-Screen 0
+%      to use 10 bpc, color depth 30 bit mode. If the XOrgConfCreator asks you if you want to
+%      setup advanced settings, answer "y"es, and then when it asks for 10 bpc / 30 bit deep
+%      color support, answer "y"es and select all X-Screens which will be used for HDR stimulation.
+%
+%   3. Select this HDR-10 10 bit configuration via XOrgConfSelector, logout and login again to
+%      get your single or multi-X-Screen setup with the X-Screen to which the HDR displays are
+%      connected running in 10 bpc color depth.
+%
+%   4. Now you can use a regular HDR script, but add the PsychImaging('AddTask', 'General', 'UseStaticHDRHack')
+%      task before opening the onscreen window. Also select a stereoMode of 4 for dual-display stereo
+%      stimulation in PsychImaging('OpenWindow', ..., stereoMode);
+%
+%   5. All connected HDR monitors should switch to HDR mode and the onscreen window should be setup
+%      for stereo stimulus display across HDR monitors, as usual.
+%
+%   If these steps don't work for you, too bad. If they work, great.
+%
+%   This mode will only allow slow switching of different HDR metadata settings via PsychHDR('HDRMetadata'),
+%   and each switch of settings will be slow and accompanied by flicker. For this reason you can
+%   also assign the meta-data as part of the 'UseStaticHDRHack' setup as optional hdrStaticMetadata
+%   struct. The same HDR metadata will be applied to all connected HDR monitors for a window / X-Screen.
+%   Other limitations may apply, and this functionality is so far only tested on one HDR setup.
+%
+%   Usage:
+%
+%   PsychImaging('AddTask', 'General', 'UseStaticHDRHack' [, hdrStaticMetadata]);
+%
+%
 % * More actions will be supported in the future. If you can think of an
 %   action of common interest not yet supported by this framework, please
 %   file a feature request on our Wiki (Mainpage -> Feature Requests).
