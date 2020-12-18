@@ -194,6 +194,8 @@ function varargout = PsychHDR(cmd, varargin)
 global GL;
 persistent verbosity;
 persistent targetUUIDs;
+persistent oldHDRMeta;
+persistent oldHDRProperties;
 
 if nargin < 1 || isempty(cmd)
   help PsychHDR;
@@ -456,9 +458,26 @@ if strcmpi(cmd, 'HDRMetadata') && (length(varargin) == 2) && isstruct(varargin{2
     % Check if this window is associated with a Vulkan/WSI / Vulkan window:
     winfo = Screen('GetWindowInfo', window);
     if ~bitand(winfo.ImagingMode, kPsychNeedFinalizedFBOSinks)
-        % Nope: Must be part of the static HDR stereo hack. This call is unsupported:
-        warning('PsychHDR(''HDRMetadata'') call unsupported in static HDR OpenGL Linux hack mode. Ignored!');
-        varargout{1} = [];
+        % Nope: Must be part of the static HDR stereo hack.
+
+        % Return retrieved old HDR metadata settings of 1st HDR monitor:
+        if length(oldHDRMeta) >= window
+            varargout{1} = oldHDRMeta{window};
+        else
+            varargout{1} = [];
+        end
+
+        % These are the only settings we support for the static HDR Linux/X11 hack:
+        flags = 0;
+        gpuIndex = 0;
+        vulkanHDRMode = 1;
+
+        % Perform HDR update hack:
+        PsychHDR('ExecuteStaticHDRHack', window, 2, vulkanHDRMode, gpuIndex, flags, meta);
+
+        % Assign new settings as future old cached settings:
+        oldHDRMeta{window} = meta;
+
         return;
     end
 
@@ -501,28 +520,30 @@ if strcmpi(cmd, 'ExecuteStaticHDRHack')
         % We want an identity hardware gamma lut in HDR, but at maximum lut precision,
         % so output does not get truncated to 8 bpc. Therefore we can't use
         % LoadIdentityClut() which is aimed at 8 bpc identity pixel passthrough.
+        % This is only done on first-time enable hack:
+        if enable == 1
+            % Backup old lut for this screen:
+            BackupCluts(screenId);
 
-        % Backup old lut for this screen:
-        BackupCluts(screenId);
+            % Upload a perfectly linear lut for the given gpu:
+            [~, ~, reallutsize] = Screen('ReadNormalizedGammaTable', win);
 
-        % Upload a perfectly linear lut for the given gpu:
-        [~, ~, reallutsize] = Screen('ReadNormalizedGammaTable', win);
+            % AMD gpu under Linux?
+            if IsLinux && strcmp(winfo.DisplayCoreId, 'AMD')
+                % Use special identity gamma table (like in LoadIdentityClut()) that
+                % is known and verified to get recognized by amdgpu-kms DC and trigger
+                % gamma table hardware bypass mode in hardware:
+                identityLUT = (linspace(0, 1, 256)' * ones(1, 3));
+            else
+                % Other gpu + driver + os combo: Standard identity lut:
+                identityLUT = repmat(linspace(0, 1, reallutsize)', 1, 3);
+            end
 
-        % AMD gpu under Linux?
-        if IsLinux && strcmp(winfo.DisplayCoreId, 'AMD')
-            % Use special identity gamma table (like in LoadIdentityClut()) that
-            % is known and verified to get recognized by amdgpu-kms DC and trigger
-            % gamma table hardware bypass mode in hardware:
-            identityLUT = (linspace(0, 1, 256)' * ones(1, 3));
-        else
-            % Other gpu + driver + os combo: Standard identity lut:
-            identityLUT = repmat(linspace(0, 1, reallutsize)', 1, 3);
-        end
+            Screen('LoadNormalizedGammaTable', win, identityLUT, 0);
 
-        Screen('LoadNormalizedGammaTable', win, identityLUT, 0);
-
-        if verbosity >= 3
-            fprintf('PsychHDR-INFO: Loaded identity gamma table into X-Screen %i for HDR.\n', screenId);
+            if verbosity >= 3
+                fprintf('PsychHDR-INFO: Loaded identity gamma table into X-Screen %i for HDR.\n', screenId);
+            end
         end
     else
         % Disable: Can not do a 'GetWindowInfo' query for targetUUID, because we
@@ -555,19 +576,26 @@ if strcmpi(cmd, 'ExecuteStaticHDRHack')
     end
 
     if enable
-        cmdString = sprintf('PsychHDR(''ExecuteStaticHDRHack'', %i, 0, %i, %i, %i, [])', win, vulkanHDRMode, gpuIndex, flags);
-        Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Vulkan HDR hack cleanup', cmdString);
-        Screen('Hookfunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
-        cmdString = 'octave-cli --no-gui --no-history --silent --eval ''PsychHDR("DoExecuteStaticHDRHack", 1)''';
+        if enable == 1
+            cmdString = sprintf('PsychHDR(''ExecuteStaticHDRHack'', %i, 0, %i, %i, %i, [])', win, vulkanHDRMode, gpuIndex, flags);
+            Screen('Hookfunction', win, 'PrependMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Vulkan HDR hack cleanup', cmdString);
+            Screen('Hookfunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
+            cmdString = 'octave-cli --no-gui --no-history --silent --eval ''PsychHDR("DoExecuteStaticHDRHack", 1)''';
+        else
+            cmdString = 'octave-cli --no-gui --no-history --silent --eval ''PsychHDR("DoExecuteStaticHDRHack", 2)''';
+        end
     else
         cmdString = 'octave-cli --no-gui --no-history --silent --eval ''PsychHDR("DoExecuteStaticHDRHack", 0)''';
     end
 
     if verbosity > 2
-        if enable
-            fprintf('PsychHDR-INFO: Executing Vulkan one-time HDR enable hack in helper process - Today is a good day to die! Engage!\n');
-        else
+        switch(enable)
+        case 0,
             fprintf('PsychHDR-INFO: Executing Vulkan one-time HDR disable hack in helper process - Engage!\n');
+        case 1,
+            fprintf('PsychHDR-INFO: Executing Vulkan one-time HDR enable hack in helper process - Today is a good day to die! Engage!\n');
+        case 2,
+            fprintf('PsychHDR-INFO: Executing Vulkan one-time HDR static metadata setup hack in helper process - Today is a good day to die! Engage!\n');
         end
     end
 
@@ -578,6 +606,7 @@ if strcmpi(cmd, 'ExecuteStaticHDRHack')
         save([PsychtoolboxConfigDir 'PsychHDRIPC.mat'], '-mat', '-V6');
 
         % Execute helper process:
+        cmdString = [cmdString ' 2>&1'];
         [rc, msg] = system(cmdString);
         if ~ismember(rc, [0, 137])
             % Trouble!
@@ -586,18 +615,31 @@ if strcmpi(cmd, 'ExecuteStaticHDRHack')
             error('PsychHDR-ERROR: Vulkan en-/disable sequence for static HDR display hack failed! See error above.');
         end
 
-        if verbosity > 3
-            fprintf('PsychHDR-DEBUG: Switch for outputId %i - Success! Debug output from helper process:\n\n', outputId);
+        if verbosity > 4
+            fprintf('PsychHDR-DEBUG: Switch for outputId %i - Killer trick success! Debug output from helper process:\n\n', outputId);
             disp(msg);
             fprintf('PsychHDR-DEBUG: Done. Success!\n');
-        elseif verbosity > 2
+        elseif verbosity > 3
             if enable
-                fprintf('PsychHDR-INFO: For outputId %i - Vulkan one-time HDR setup trick - Success!\n', outputId);
+                fprintf('PsychHDR-INFO: For outputId %i - Vulkan one-time HDR setup killer trick - Success!\n', outputId);
             else
                 fprintf('PsychHDR-INFO: For outputId %i - Vulkan HDR teardown hack - Success!\n', outputId);
             end
         end
+
+        % Retrieve HDR properties and metadata settings provided by helper process,
+        % but only for first output, as the working assumption for multi-display is
+        % that all HDR monitors are identical models with identical properties and
+        % settings:
+        if enable && (outputId == outputHandle(1))
+            load([PsychtoolboxConfigDir 'PsychHDRIPC.mat'], 'oldHdrMetadata', 'hdrProperties');
+            oldHDRMeta{win} = oldHdrMetadata;
+            oldHDRProperties{win} = hdrProperties;
+        end
     end
+
+    % Give X-Server some time to settle, as some of this is a bit racy:
+    WaitSecs(0.25);
 
     return;
 end
@@ -608,7 +650,7 @@ if strcmpi(cmd, 'DoExecuteStaticHDRHack')
     % and Matlab, also across Matlab and Octave:
     load([PsychtoolboxConfigDir 'PsychHDRIPC.mat']);
 
-    % 'enable' encodes type of request: 1 = Enable, 0 = Disable HDR.
+    % 'enable' encodes type of request: 1/2 = Enable, 0 = Disable HDR.
 
     PsychVulkanCore('Verbosity', verbosity);
 
@@ -631,16 +673,22 @@ if strcmpi(cmd, 'DoExecuteStaticHDRHack')
         return;
     end
 
-    % Enable of HDR mode requested:
+    % Enable of HDR mode or change of HDR static metadata requested:
 
     % Custom static HDR metadata provided by caller?
     if ~isempty(hdrMetadata)
         % Yes: Set custom caller provided static HDR metadata for this session:
-        PsychVulkanCore('HDRMetadata', vwin, hdrMetadata.MetadataType, hdrMetadata.MaxFrameAverageLightLevel, hdrMetadata.MaxContentLightLevel, hdrMetadata.MinLuminance, hdrMetadata.MaxLuminance, hdrMetadata.ColorGamut);
+        oldHdrMetadata = PsychVulkanCore('HDRMetadata', vwin, hdrMetadata.MetadataType, hdrMetadata.MaxFrameAverageLightLevel, hdrMetadata.MaxContentLightLevel, hdrMetadata.MinLuminance, hdrMetadata.MaxLuminance, hdrMetadata.ColorGamut);
 
         % Trigger a single present to latch the new HDR metadata to the HDR monitor:
         PsychVulkanCore('Present', vwin, 0, 1);
+    else
+        oldHdrMetadata = PsychVulkanCore('HDRMetadata', vwin);
     end
+
+    % Return old HDR metadata and properties:
+    hdrProperties = PsychVulkanCore('GetHDRProperties', vwin);
+    save([PsychtoolboxConfigDir 'PsychHDRIPC.mat'], '-mat', '-V6');
 
     % End of enable sequence, now we kill ourselves: Today is a good day to die!
     % This will kill the Vulkan driver and hosting Octave/Matlab process without
@@ -669,8 +717,64 @@ if ~isempty(strfind(lower(cmd), 'hdr')) %#ok<*STREMP>
         if ~isempty(varargin{1}) && isscalar(varargin{1}) && isreal(varargin{1}) && (Screen('WindowKind', varargin{1}) == 1)
             winfo = Screen('GetWindowInfo', varargin{1});
             if ~bitand(winfo.ImagingMode, kPsychNeedFinalizedFBOSinks)
-                % Nope: Windows must be part of the static HDR stereo hack. This call is unsupported:
+                % Nope: Windows must be part of the static HDR stereo hack. Can we handle it?
+                if strcmpi(cmd, 'HDRMetadata')
+                    % Return cached HDR metadata from last enable/update hack:
+                    meta = oldHDRMeta{varargin{1}};
+                    varargout{1} = meta;
+
+                    % Optionally assign new HDR metadata by parsing args into struct,
+                    % then using that setup code:
+                    if length(varargin) >= 2
+                        meta.MetadataType = varargin{2};
+
+                        if length(varargin) >= 3
+                            meta.MaxFrameAverageLightLevel = varargin{3};
+                        end
+
+                        if length(varargin) >= 4
+                            meta.MaxContentLightLevel = varargin{4};
+                        end
+
+                        if length(varargin) >= 5
+                            meta.MinLuminance = varargin{5};
+                        end
+
+                        if length(varargin) >= 6
+                            meta.MaxLuminance = varargin{6};
+                        end
+
+                        if length(varargin) >= 7
+                            meta.ColorGamut = varargin{7};
+                        end
+
+                        PsychHDR('HDRMetadata', varargin{1}, meta);
+                    end
+
+                    return;
+                end
+
+                if strcmpi(cmd, 'GetHDRProperties')
+                    % Returned cached HDR properties from last enable hack:
+                    varargout{1} = oldHDRProperties{varargin{1}};
+                    return;
+                end
+
+                if strcmpi(cmd, 'HDRLocalDimming')
+                    % Not supported on Linux atm., so always report disabled:
+                    varargout{1} = 0;
+
+                    % Reject any setup requests:
+                    if (length(varargin) > 1) && ~isempty(varargin{2})
+                        error('PsychHDR(''HDRLocalDimming'') control is not supported on Linux in OpenGL HDR hack mode!');
+                    end
+
+                    return;
+                end
+
+                % This call is unsupported:
                 warning(sprintf('PsychHDR(''%s'') call unsupported in static HDR OpenGL Linux hack mode. Ignored!', cmd));
+
                 varargout{1} = [];
                 return;
             end
