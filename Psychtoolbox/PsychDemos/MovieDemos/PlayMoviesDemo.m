@@ -34,6 +34,10 @@ function PlayMoviesDemo(moviename, hdr, backgroundMaskOut, tolerance, pixelForma
 % get you limping along. Another restriction would be lack of returned HDR metadata,
 % so if your HDR display expects that, you will not get the best possible quality.
 % Upgrading to GStreamer 1.18 or later is advised for HDR playback.
+% A flag of 3 or 4 will use an alternative HDR display method only available on
+% Linux/X11, with 4 applying the same hack to cope with older GStreamer versions
+% as a setting of 2.
+%
 %
 % If the optional RGB color vector backgroundMaskOut is provided, then
 % color pixels in the video which are equal or close to backgroundMaskOut will be
@@ -112,6 +116,14 @@ try
     if hdr
         PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
 
+        if hdr == 3 || hdr == 4
+            if IsLinux && ~IsWayland
+                PsychImaging('AddTask', 'General', 'UseStaticHDRHack');
+            else
+                warning('hdr settings 3 and 4 unsupported on non-Linux. Ignored.');
+            end
+        end
+
         % Special hack for running HDR movie playback on GStreamer versions older
         % than 1.18.0. Those can not detect the EOTF transfer functions of HDR-10
         % video footage, neither type 14 PQ, nor type 15 HLG. If user passes in a
@@ -120,7 +132,7 @@ try
         % the most common EOTF used in typical HDR-10 movie content.
         % (Obviously, SDR content will look really weird, if played back with this
         % override in use, so viewer discretion is advised ;)):
-        if hdr == 2
+        if hdr == 2 || hdr == 4
             movieOptions = 'OverrideEOTF=14';
         end
     end

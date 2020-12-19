@@ -201,7 +201,8 @@ void PsychGSCheckInit(const char* engineName)
         // Check if GStreamer is properly installed and (can be) dynamically loaded and linked:
         #if PSYCH_SYSTEM != PSYCH_LINUX
             // On Windows and OSX, we need to delay-load the GStreamer libraries. This loading
-            // and linking will automatically happen downstream. However, if delay loading
+            // and linking would automatically happen downstream in the past. Note this does no
+            // longer work with current GStreamer on Windows! If delay loading
             // would fail, we would end up with a crash! For that reason, on MS-Windows, we
             // try to load the DLL, just to probe if the real load/link/bind op later on will
             // likely succeed. If the following LoadLibrary() call fails and returns NULL,
@@ -213,59 +214,14 @@ void PsychGSCheckInit(const char* engineName)
             // On failure we'll output some helpful error-message instead:
             #if PSYCH_SYSTEM == PSYCH_WINDOWS
                 #ifdef PTBOCTAVE3MEX
-                // Octave-4 on Windows specific code. Delay loading of the main dependencies
-                // does not work, because Octave-4 always resolves dependencies of mex files
+                // Octave on Windows specific code. Delay loading of the main dependencies
+                // does not work, because Octave always resolves dependencies of mex files
                 // immediately and fails if it can not do that.
-
-                // Following hack was only needed on the Octave-4 series with MinGW built GStreamer
-                // before version 1.16.0.
-                // It is no longer needed with PTB 3.0.16 which uses Octave-5.1.0 and the MSVC build
-                // of GStreamer 1.16.0 or later versions.
-                #if 0 && defined(PTB_USE_GSTREAMER)
-                // However we need a Octave-4.0.0 specific hack here to prevent failure of runtime
-                // loading of some GStreamer plugins, e.g., for movie playback. Octave-4 comes
-                // with its own version of libbz2, needed by GraphicsMagick for some image format.
-                // This version is incompatible with the libbz2 provided by GStreamer and needed
-                // by some of its plugins. Our hacky solution is to runtime load libbz2 from the
-                // GStreamer installation directory now, thereby overriding the default dll search
-                // order which would try to load from the application installation directory instead,
-                // which would mean to load the "wrong" libbz2 from Octave-4's bin directory.
-                char gst_libbz2_path[FILENAME_MAX];
-                gst_libbz2_path[0] = 0;
-                if (NULL == getenv("PSYCH_GSTREAMER_SDK_ROOT")) {
-                    if (PsychPrefStateGet_Verbosity() > 1) {
-                        printf("PTB-WARNING: Environment variable PSYCH_GSTREAMER_SDK_ROOT undefined. Apparently PsychStartup.m\n");
-                        printf("PTB-WARNING: didn't set it? This can cause failure to load required GStreamer plugins, at least\n");
-                        printf("PTB-WARNING: on official 32-Bit Octave-4.0.0, unless special setup steps have been performed to\n");
-                        printf("PTB-WARNING: replace some unsuitable Octave DLL's with suitable corresponding DLL's from GStreamer.\n");
-                        printf("PTB-WARNING: If you experience failure of multi-media functions, this might be the reason for it.\n");
-                    }
-                }
-                else {
-                    // GStreamer runtime path defined by PsychStartup.m run. Try to load override dll(s) from GStreamer
-                    // runtime directory:
-                    sprintf(gst_libbz2_path, "%s\\libbz2.dll", getenv("PSYCH_GSTREAMER_SDK_ROOT"));
-                    if (NULL == LoadLibraryEx(gst_libbz2_path, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR)) {
-                        if (PsychPrefStateGet_Verbosity() > 0) {
-                            printf("PTB-ERROR: Oh oh! libbz2.dll loading from GStreamer runtime directory as '%s' failed!\n",
-                                   gst_libbz2_path);
-                            printf("PTB-ERROR: Error code %d. This can cause failure to load required GStreamer plugins, at least\n",
-                                   GetLastError());
-                            printf("PTB-ERROR: on official 32-Bit Octave-4.0.0, unless special setup steps have been performed to\n");
-                            printf("PTB-ERROR: replace some unsuitable Octave DLL's with suitable corresponding DLL's from GStreamer.\n");
-                            printf("PTB-ERROR: If you experience failure of multi-media functions, this might be the reason for it.\n");
-                        }
-                    }
-                    else if (PsychPrefStateGet_Verbosity() > 3) {
-                        printf("PTB-DEBUG: Loaded '%s' from GStreamer runtime directory to override Octave's incompatible DLL.\n", gst_libbz2_path);
-                    }
-                }
-                #endif
-
                 // We don't fail in the Octave specific startup path:
                 if (FALSE) {
                 #else
-                // Non-Octave (Matlab) specific code, where delay loading works:
+                // Non-Octave (Matlab) specific code, where delay loading sometimes works -- not atm. for 3.0.17 and
+                // GStreamer 1.16 MSVC earlier and 1.18 MSVC now. Leave this for documentation only...
                 // First check for the dll names from the MSVC runtimes, then for the older MinGW runtime names:
                 if (((NULL == LoadLibrary("gstreamer-1.0-0.dll")) || (NULL == LoadLibrary("gstapp-1.0-0.dll"))) &&
                     ((NULL == LoadLibrary("libgstreamer-1.0-0.dll")) || (NULL == LoadLibrary("libgstapp-1.0-0.dll")))) {
@@ -280,8 +236,8 @@ void PsychGSCheckInit(const char* engineName)
                 printf("PTB-ERROR: of the required GStreamer runtime libraries failed to load, probably because it\n");
                 printf("PTB-ERROR: could not be found, could not be accessed (e.g., due to permission problems),\n");
                 printf("PTB-ERROR: or most likely because GStreamer isn't installed on this machine at all.\n");
-                printf("PTB-ERROR: Another reason could be that you have GStreamer version 0.10.x instead of the required\n");
-                printf("PTB-ERROR: version >= 1.4.0 installed. The version 0.10 series is no longer supported.\n\n");
+                printf("PTB-ERROR: Another reason could be that you have a too old GStreamer version installed.\n");
+                printf("PTB-ERROR: You need at least version 1.18.\n\n");
                 #if PSYCH_SYSTEM == PSYCH_WINDOWS
                     printf("PTB-ERROR: The system returned the error code %d.\n", GetLastError());
                 #endif

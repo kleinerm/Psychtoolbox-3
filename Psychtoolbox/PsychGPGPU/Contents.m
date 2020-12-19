@@ -28,7 +28,9 @@
 % 3. The free and open-source GPUmat toolbox for Matlab from SourceForge:
 %    http://sourceforge.net/projects/gpumat
 %
-% 4. A 64-Bit version of Matlab for Linux, Windows or MacOSX.
+% 4. A 64-Bit version of Matlab for Linux or Windows. macOS is not
+%    supported because Apple ripped out support for NVidia gpus from their
+%    recent operating systems, because why not, right?
 %
 % Demos can be found in the Psychtoolbox/PsychDemos/GPGPUDemos folder.
 %

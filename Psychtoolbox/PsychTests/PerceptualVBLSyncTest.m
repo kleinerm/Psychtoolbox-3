@@ -34,7 +34,7 @@ function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, max
 % 'vblSync' If 1, synchronize bufferswaps to vertical retrace of monitor,
 % otherwise (setting 0) swap immediately without sync, ie., usually with tearing.
 %
-% 'testdualheadsync' If 1, and 'vblSync' is zero, manually wait until the video
+% 'testdualheadsync' If non-zero, and 'vblSync' is zero, manually wait until the video
 % scanout position reaches half the height of the display, then swap. If this
 % is done on a multi-display setup and the video scanout cycles of all the
 % participating displays are properly synchronized, you should see a "static"
@@ -93,7 +93,7 @@ if nargin < 2
 end
 
 if isempty(stereomode)
-   % Use non-stereo display by default. 
+   % Use non-stereo display by default.
    stereomode=0;
 end
 
@@ -161,7 +161,7 @@ try
             rect2=InsetRect(Screen('GlobalRect', screen(2)), 1, 0);
         end
     end
-   
+
    if stereomode~=10
        % Standard case:
        PsychImaging('PrepareConfiguration');
@@ -183,18 +183,19 @@ try
        % Setup master window:
        [win , winRect]=Screen('OpenWindow', screen(1), 0, rect1, [], doublebuffer, stereomode);
        % Setup slave window:
-       Screen('OpenWindow', screen(2), 0, rect2, [], doublebuffer, stereomode);       
+       Screen('OpenWindow', screen(2), 0, rect2, [], doublebuffer, stereomode);
    end
-   
+
    flickerRect = InsetRect(winRect, 100, 0);
    color = 0;
    deadline = GetSecs + maxduration;
    beampos=0;
-   
+
    ifi = Screen('GetFlipInterval', win);
-   
+   winfo = Screen('GetWindowInfo', win);
+
    VBLTimestamp = Screen('Flip', win, 0, 2);
-   
+
    while (~KbCheck) && (GetSecs < deadline)
       % Draw left eye view (if stereo enabled):
       Screen('SelectStereoDrawBuffer', win, 0);
@@ -206,7 +207,7 @@ try
       Screen('SelectStereoDrawBuffer', win, 1);
       Screen('FillRect', win, color, flickerRect);
       if (beampos>=0), Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end
-      
+
       if stereomode == 0 && length(screen)>1
           Screen('FillRect', win2, color, flickerRect);
           Screen('DrawingFinished', win2, 0, 2);
@@ -215,10 +216,10 @@ try
       else
           multiflip = 0;
       end
-      
+
       % Alternate drawing color from white -> black, or black -> white
       color=255 - color;
-      
+
       if doublebuffer>1
           if vblSync
               % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
@@ -227,12 +228,20 @@ try
                 [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win2, VBLTimestamp + ifi/2, 2, [], multiflip); %#ok<ASGLU>
               end
           else
-              if testdualheadsync == 1
+              % BeampositionQueries based wait until target "tear-flip" position:
+              if testdualheadsync == 1 && winfo.VBLEndline ~= -1
                   Screen('DrawingFinished', win, 0, 1);
                   beampos = -1000;
                   while abs(beampos - winRect(4)/2) > 5
                       beampos = Screen('GetWindowInfo', win, 1);
                   end
+              end
+
+              % VBLTimestamp based wait until target "tear-flip" position:
+              if testdualheadsync == 1 && winfo.VBLEndline == -1
+                  Screen('DrawingFinished', win, 0, 1);
+                  winfo = Screen('GetWindowInfo', win);
+                  WaitSecs('UntilTime', winfo.LastVBLTime + ifi / 2);
               end
 
               % Flip immediately without sync to vertical retrace, do clear
@@ -241,7 +250,7 @@ try
               % Above flip won't return a 'beampos' in non-VSYNC'ed mode,
               % so we query it manually:
               beampos = Screen('GetWindowInfo', win, 1);
-              
+
               % Throttle a little bit for visualization purpose:
               WaitSecs('YieldSecs', 0.005);
           end
@@ -250,9 +259,9 @@ try
           pause(0.001);
       end
    end
-   
+
    Screen('CloseAll');
-   return;   
+   return;
 catch
-   Screen('CloseAll');   
+   Screen('CloseAll');
 end

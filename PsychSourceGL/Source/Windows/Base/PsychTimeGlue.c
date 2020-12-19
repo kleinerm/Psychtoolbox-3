@@ -1174,6 +1174,18 @@ double PsychGetWallClockSeconds(void)
     return(wallSecs);
 }
 
+/* No-Op function on MS-Windows atm. */
+double PsychOSMonotonicToRefTime(double monotonicTime)
+{
+    return(monotonicTime);
+}
+
+/* No-Op function on MS-Windows atm. */
+double PsychOSRefTimeToMonotonicTime(double refInputTime)
+{
+    return(refInputTime);
+}
+
 /* Init a Mutex: */
 int PsychInitMutex(psych_mutex* mutex)
 {

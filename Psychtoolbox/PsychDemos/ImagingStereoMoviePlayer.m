@@ -1,5 +1,5 @@
-function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, screenid)
-% ImagingStereoMoviePlayer(moviefile [,stereoMode=8] [,imaging=1] [,anaglyphmode=0] [,screenid=max])
+function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, screenid, hdr)
+% ImagingStereoMoviePlayer(moviefile [, stereoMode=8][, imaging=1][, anaglyphmode=0][, screenid=max][, hdr=0])
 %
 % Minimalistic movie player for stereo movies. Reads movie from file
 % 'moviefile'. Left half of each movie video frame must contain left-eye
@@ -26,6 +26,24 @@ function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, 
 % 'screenid' Screen id of target display screen (on multi-display setups).
 % By default, the screen with maximum id is used.
 %
+% If the optional flag 'hdr' is specified as non-zero, then the demo
+% expects the onscreen window to display on a HDR-10 capable display device
+% and system, and tries to switch to HDR mode. If the operating system+gpu
+% driver+gpu+display combo does not support HDR, the demo will abort with
+% an error. Otherwise it will expect the movies to be HDR-10 encoded and
+% try to display them appropriately. A flag of 1 does just that. A flag of 2 will
+% manually force the assumed EOTF of movies to be of type PQ, iow. assume the movie
+% is a HDR-10 movie in typical Perceptual Quantizer encoding. This is useful if you
+% want to play back HDR content on a system with a GStreamer version older than
+% 1.18.0 installed, where GStreamer is not fully HDR capable, but this hack may
+% get you limping along. Another restriction would be lack of returned HDR metadata,
+% so if your HDR display expects that, you will not get the best possible quality.
+% Upgrading to GStreamer 1.18 or later is advised for HDR playback.
+% A 'stereoMode' of 4 or 5 will use an alternative HDR display method only available on
+% Linux/X11 for dual-display HDR playback. This is currently not supported on other
+% operating systems, where you only have single-display stereo for HDR playback.
+%
+%
 % The left image is centered on the screen, the right images position can
 % be moved by moving the mouse cursor to align for inter-eye distance.
 %
@@ -35,6 +53,7 @@ function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, 
 % 11.11.2007 Written (MK)
 % 17.06.2013 Cleaned up (MK)
 % 30.09.2015 Add VR HMD support. (MK)
+% 18.12.2020 Add HDR support. (MK)
 
 AssertOpenGL;
 
@@ -74,6 +93,13 @@ if isempty(screenid)
     screenid = max(Screen('Screens'));
 end
 
+if nargin < 6 || isempty(hdr)
+    hdr = 0;
+end
+
+% No special movieOptions by default:
+movieOptions = [];
+
 if imaging
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
@@ -81,6 +107,31 @@ if imaging
     if stereoMode == 103
         PsychVRHMD('AutoSetupHMD', 'Stereoscopic', 'DebugDisplay');
         stereoMode = -1;
+    end
+
+    % Enable HDR display in HDR-10 mode if requested by user:
+    if hdr
+        PsychImaging('AddTask', 'General', 'EnableHDR');
+
+        if ismember(stereoMode, [4, 5])
+            if IsLinux && ~IsWayland
+                PsychImaging('AddTask', 'General', 'UseStaticHDRHack');
+            else
+                warning('HDR stereoMode 4/5 for dual-display HDR unsupported on non-Linux. Ignored.');
+            end
+        end
+
+        % Special hack for running HDR movie playback on GStreamer versions older
+        % than 1.18.0. Those can not detect the EOTF transfer functions of HDR-10
+        % video footage, neither type 14 PQ, nor type 15 HLG. If user passes in a
+        % hdr == 2 flag, override automatic EOTF detection to always assume EOTF
+        % type 14 instead. Type 14 is the SMPTE ST-2084 PQ "Perceptual Quantizer",
+        % the most common EOTF used in typical HDR-10 movie content.
+        % (Obviously, SDR content will look really weird, if played back with this
+        % override in use, so viewer discretion is advised ;)):
+        if hdr == 2
+            movieOptions = 'OverrideEOTF=14';
+        end
     end
 
     [win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], stereoMode);
@@ -131,7 +182,7 @@ if imaging
         
         overlay = SetAnaglyphStereoParameters('CreateMonoOverlay', win);
         Screen('TextSize', overlay, 24);
-        DrawFormattedText(overlay, ['Loading file: ' moviefile ], 0, 0, [255 255 0]);
+        DrawFormattedText(overlay, ['Loading file: ' moviefile ], 0, 25, [255 255 0]);
     end
 end
 
@@ -139,7 +190,23 @@ end
 Screen('Flip', win);
 
 % Open movie file and start playback:
-movie = Screen('OpenMovie', win, moviefile);
+[movie, movieduration, fps, imgw, imgh, ~, ~, hdrStaticMetaData] = Screen('OpenMovie', win, moviefile, [], [], [], [], [], movieOptions);
+fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviefile, movieduration, fps, imgw, imgh);
+
+if hdrStaticMetaData.Valid
+    fprintf('Static HDR metadata is:\n');
+    disp(hdrStaticMetaData);
+    ColorGamut = hdrStaticMetaData.ColorGamut %#ok<NOPRT,NASGU>
+    fprintf('\n');
+    if hdr
+        % If HDR mode is enabled and the movie has HDR-10 static
+        % metadata attached, also provide it to the HDR display, in
+        % the hope it will somehow enhance reproduction of the
+        % visual movie content:
+        PsychHDR('HDRMetadata', win, hdrStaticMetaData);
+    end
+end
+
 Screen('PlayMovie', movie, 1, 1, 1);
 
 % Position mouse on center of display:
@@ -155,7 +222,7 @@ imgrect = [];
 
 if ~isempty(modestr)
     Screen('FillRect', overlay, [0 0 0 0]);
-    DrawFormattedText(overlay, ['File: ' moviefile '\nOpmode: ' modestr], 0, 0, [255 255 0]);
+    DrawFormattedText(overlay, ['File: ' moviefile '\nOpmode: ' modestr], 0, 25, [255 255 0]);
 end
 
 try

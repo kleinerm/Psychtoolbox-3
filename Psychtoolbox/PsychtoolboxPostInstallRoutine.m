@@ -666,12 +666,17 @@ try
         oldLevel = Screen('Preference', 'WindowShieldingLevel', -1);
         oldVerbo = Screen('Preference', 'Verbosity', 0);
         oldTsMode = Screen('Preference', 'VBLTimestampingmode', -1);
+        % Need to suppress OpenGL error checking during run, as
+        % 'WindowShieldingLevel' -1 for hiding the Window triggers new bugs
+        % in the OS of the iToys company, this time if running on macOS
+        % 10.14 or earlier! Error is non-consequential so suppress:
+        oldCVS = Screen('Preference', 'ConserveVRAM', 512);
 
         try
             win = Screen('OpenWindow', 0, 0, [0 0 100 100]);
             Screen('DrawText', win, 'Ola!');
             Screen('Flip', win);
-            Screen('CloseAll');
+            sca;
         catch
             fprintf('Something went wrong with text renderer setup. Read ''help DrawTextPlugin'' for troubleshooting.\n\n\n');
         end
@@ -680,6 +685,7 @@ try
         Screen('Preference', 'WindowShieldingLevel', oldLevel);
         Screen('Preference', 'Verbosity', oldVerbo);
         Screen('Preference', 'VBLTimestampingmode', oldTsMode);
+        Screen('Preference', 'ConserveVRAM', oldCVS);
     end
 
     % Tell user we're successfully done:

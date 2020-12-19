@@ -63,10 +63,10 @@ function XOrgConfSelector(sdir)
   if updated
     fprintf('Troubleshooting tip in case of emergency:\n\n');
     fprintf('In case something goes seriously wrong and you end up with a non-functioning GUI,\n');
-    fprintf('you can always press(*) ''CTRL+ALT+F1'', which provides you with a text console. Then login\n');
+    fprintf('you can always press(*) ''CTRL+ALT+F3'', which provides you with a text console. Then login\n');
     fprintf('there, run octave or matlab from the text console and call XOrgConfSelector to remove\n');
     fprintf('the troublesome config file. Or type this: rm /etc/X11/xorg.conf.d/90-ptbxorg.conf\n\n');
-    fprintf('(*)Apple computer users may need to press ''FN+CTRL+ALT+F1'' instead of CTRL+ALT+F1\n\n');
+    fprintf('(*)Apple computer users may need to press ''FN+CTRL+ALT+F3'' instead of CTRL+ALT+F3\n\n');
     fprintf('Now please logout and login again for the new configuration to take effect.\n\n');
   end
 end
