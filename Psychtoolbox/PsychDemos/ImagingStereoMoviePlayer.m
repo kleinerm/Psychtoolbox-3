@@ -182,7 +182,7 @@ if imaging
         
         overlay = SetAnaglyphStereoParameters('CreateMonoOverlay', win);
         Screen('TextSize', overlay, 24);
-        DrawFormattedText(overlay, ['Loading file: ' moviefile ], 0, 0, [255 255 0]);
+        DrawFormattedText(overlay, ['Loading file: ' moviefile ], 0, 25, [255 255 0]);
     end
 end
 
@@ -222,7 +222,7 @@ imgrect = [];
 
 if ~isempty(modestr)
     Screen('FillRect', overlay, [0 0 0 0]);
-    DrawFormattedText(overlay, ['File: ' moviefile '\nOpmode: ' modestr], 0, 0, [255 255 0]);
+    DrawFormattedText(overlay, ['File: ' moviefile '\nOpmode: ' modestr], 0, 25, [255 255 0]);
 end
 
 try
