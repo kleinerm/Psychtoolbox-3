@@ -1937,7 +1937,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
     // For OpenGL -> Vulkan interop to work, both the OpenGL renderer and Vulkan renderer must use the same physical gpu,
     // so the UUID must match.
 
-    // AMD's Vulkan drivers on Linux (amdgpu-pro and amdvlk) use a different UUID from what Linux Mesa radeonsi OpenGL expects:
+    // AMD's Vulkan drivers on Linux (amdgpu-pro and amdvlk) older than DriverVersionRaw 8388778 aka v2.0.170, aka amdvlk v-2020.Q4.6
+    // use a different UUID from what Linux Mesa radeonsi OpenGL expects. The more recent releases do fix this bug:
     // Mesa OpenGL: 4-Byte fields describing PCI bus location in format: domain:bus:device:function.
     // AMD  Vulkan: 4-Byte fields describing PCI bus location in format: bus:device:function:0
     // Therefore we first treat matching against AMD written drivers on Linux to match up the right 4-byte subfields:
@@ -2447,8 +2448,35 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         .pResults = NULL, // swapchainCount separate VkResult's if presenting to multiple chains.
     };
 
-    // Wait for target present time:
-    PsychWaitUntilSeconds(tWhen);
+    // VK_GOOGLE_DISPLAY_TIMING supported?
+    if (vulkan->hasTiming) {
+        // Yes: Queue a target time for the present:
+        VkPresentTimeGOOGLE targetPresentTimeG;
+        VkPresentTimesInfoGOOGLE presentTimeInfoG = {
+            .sType = VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE,
+            .pNext = present.pNext,
+            .swapchainCount = 1,
+            .pTimes = &targetPresentTimeG,
+        };
+
+        present.pNext = &presentTimeInfoG;
+
+        #if PSYCH_SYSTEM == PSYCH_LINUX
+        // Linux: Map tWhen GetSecs() CLOCK_REALTIME target time into CLOCK_MONOTONIC time, convert to Nanoseconds:
+        targetPresentTimeG.desiredPresentTime = PsychOSRefTimeToMonotonicTime(tWhen) * 1e9;
+        #else
+        targetPresentTimeG.desiredPresentTime = 0; // TODO FIXME IMPLEMENT!
+        #endif
+
+        targetPresentTimeG.presentID = window->frameIndex;
+
+        if (verbosity > 7)
+            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Queuing frame %i with VkPresentTimesInfoGOOGLE for present at time >= tWhen %f secs.\n", window->index, window->frameIndex, tWhen);
+    }
+    else {
+        // No: Simply wait for target present time:
+        PsychWaitUntilSeconds(tWhen);
+    }
 
     // Commit new HDR metadata to the swapChain / display if requested:
     if (window->hdrMode && window->currentDisplayHDRMetadataNeedsCommit) {
@@ -2505,8 +2533,89 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 
     // Should we timestamp (imminent) stimulus onset?
     if (timestampMode > 0) {
-        // Take simple raw timestamp:
-        PsychGetAdjustedPrecisionTimerSeconds(&window->tPresentComplete);
+        // VK_GOOGLE_DISPLAY_TIMING supported for timestamping?
+        if (vulkan->hasTiming) {
+            // Yes. Fetch timestamp from Vulkan:
+            VkPastPresentationTimingGOOGLE pastTiming;
+            double tNow, tStart;
+            uint32_t count = 0;
+
+            // Wait until target present time is reached - No point checking before:
+            PsychWaitUntilSeconds(tWhen);
+
+            // Poll for arrival of present completion timestamp:
+            PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+            tStart = tNow;
+
+            while ((count < 1) && (tNow < tStart + 0.1)) {
+                result = fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, NULL);
+                if (result != VK_SUCCESS) {
+                    if (verbosity > 0)
+                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed! fpGetPastPresentationTimingGOOGLE reports error code %i.\n", window->index, result);
+
+                    return(FALSE);
+                }
+
+                PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+                if ((count < 1) && (tNow < tStart + 0.1)) {
+                    PsychYieldIntervalSeconds(0.001);
+                    if (verbosity > 9)
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Polling for fpGetPastPresentationTimingGOOGLE returning results. %f msecs elapsed, %f msecs since tWhen.\n", window->index, count, 1000 * (tNow - tStart), 1000 * (tNow - tWhen));
+                }
+            }
+
+            if (verbosity > 8)
+                printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE returned %i timestamps after %f msecs wait. Fetching last one %f msecs since tWhen.\n", window->index, count, 1000 * (tNow - tStart), 1000 * (tNow - tWhen));
+
+            // Got something?
+            if (count < 1) {
+                // Nope, timeout.
+
+                // Take simple raw timestamp as fallback:
+                PsychGetAdjustedPrecisionTimerSeconds(&window->tPresentComplete);
+
+                // First frame in this windows session?
+                if (window->frameIndex - 1 > 0) {
+                    // No, bad:
+                    if (verbosity > 0)
+                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE failed to retrieve timestamp! Timed out.\n", window->index);
+
+                    return(FALSE);
+                }
+                else {
+                    // Yes, be lenient, as at least on Linux + Mesa this seems to be expected:
+                    if (verbosity > 5)
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE failed to retrieve timestamp for frameIndex 0. Timed out. Carrying on with fallback.\n", window->index);
+                }
+            }
+            else {
+                // Got at least one timestamp. We want the most recent one:
+                do {
+                    count = 1;
+                    result = fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, &pastTiming);
+                    if ((result != VK_SUCCESS) && (result != VK_INCOMPLETE)) {
+                        if (verbosity > 0)
+                            printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed to retrieve next timestamp! fpGetPastPresentationTimingGOOGLE reports error code %i.\n", window->index, result);
+
+                        return(FALSE);
+                    }
+                    else if ((verbosity > 8) && (result == VK_INCOMPLETE))
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE for presentID %i returned old timestamp %f Fetching next one.\n", window->index, (double) pastTiming.actualPresentTime / 1e9);
+                } while (result == VK_INCOMPLETE);
+
+                // Got the final - and thereby most recent - timestamp.
+                // Assign as present completion timestamp:
+                window->tPresentComplete = PsychOSMonotonicToRefTime((double) pastTiming.actualPresentTime / 1e9);
+
+                if (verbosity > 7)
+                    printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE for presentID %i returned flip completion timestamp %f secs vs. desired present time %f secs. Delta %f msecs.\n",
+                        window->index, pastTiming.presentID, window->tPresentComplete, PsychOSMonotonicToRefTime((double) pastTiming.desiredPresentTime / 1e9), 1000 * (window->tPresentComplete - tWhen));
+            }
+        }
+        else {
+            // No. Take simple raw timestamp:
+            PsychGetAdjustedPrecisionTimerSeconds(&window->tPresentComplete);
+        }
 
         if (verbosity > 5)
             printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Present for frameIndex %i completed: tComplete = %f secs.\n", window->index, window->frameIndex - 1, window->tPresentComplete);
@@ -3244,7 +3353,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             result = fpAcquireFullScreenExclusiveModeEXT(vulkan->device, window->swapChain);
             if (result != VK_SUCCESS) {
                 if (verbosity > 0) {
-                    if (result == VK_ERROR_INITIALIZATION_FAILED) 
+                    if (result == VK_ERROR_INITIALIZATION_FAILED)
                         printf("PsychVulkanCore-ERROR: gpu [%s] Could not switch to fullscreen exclusive mode!\n", vulkan->deviceProps.deviceName);
                     else
                         printf("PsychVulkanCore-ERROR: gpu [%s] Error during switch to fullscreen exclusive mode: %i\n", vulkan->deviceProps.deviceName, result);
@@ -3346,15 +3455,14 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     vkGetPhysicalDeviceFormatProperties(vulkan->physicalDevice, window->interopTextureVkFormat, &formatProps);
 
     switch (vulkan->deviceProps.vendorID) {
-        case 0x10de:
-            // NVidia gpu: OpenGL drivers allow tiled rendering:
+        case 0x8086: // Intel gpu: Verified to work with tiled rendering on Iris as of Mesa 21.0.0-devel + OpenGL interop patchset.
+        case 0x10de: // NVidia gpu: At least proprietary drivers allow tiled rendering:
             if ((formatProps.optimalTilingFeatures & requiredMask) == requiredMask) {
                 window->interopTextureTiled = TRUE;
                 break;
             }
             // If tiling is not supported for some reason, fallthrough to linear mode:
 
-        case 0x8086: // Intel gpu: Does not support interop at all atm., so we are undecided, but play it safe.
         case 0x1002: // AMD gpu: AMD OpenGL drivers currently only allow rendering into linear non-tiled interop texture.
         default:
             if ((formatProps.linearTilingFeatures & requiredMask) == requiredMask) {
@@ -4556,6 +4664,8 @@ PsychError PSYCHVULKANPresent(void)
 
     // Get optional timestamping flag:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &doTimestamp);
+    if (doTimestamp < 0 || doTimestamp > 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'doTimestamp' provided. Must be 0 or 1.");
 
     // Present:
     if (!PsychPresent(window, tWhen, doTimestamp)) {

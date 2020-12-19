@@ -90,6 +90,7 @@ PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
 % Note: This would also work, as above settings are used by default:
 % PsychImaging('AddTask', 'General', 'EnableHDR');
 win = PsychImaging('OpenWindow', screenid, 0);
+HideCursor(win);
 
 % Convert img from its source colorspace to the display colorspace of the
 % HDR onscreen window. info.ColorGamut is the color gamut parsed from the

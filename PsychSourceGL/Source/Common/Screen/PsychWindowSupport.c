@@ -105,6 +105,8 @@ unsigned int      bytes_per_pixel; /* 3:RGB, 4:RGBA */
 unsigned char*    pixel_data;
 } splash_image;
 
+static PsychWindowRecordType *splashTextureRecord = NULL;
+
 /* Flag which defines if userspace rendering is active: */
 static psych_bool inGLUserspace = FALSE;
 
@@ -195,41 +197,12 @@ double PsychGetVblankTimestamps(PsychWindowRecordType *windowRecord, double *vbl
 
 static void PsychDrawSplash(PsychWindowRecordType* windowRecord)
 {
-    int logo_x, logo_y;
-    int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
-
-    // Use alternate texture-mapping based splash drawing on OSX, on the hunch that Apple
-    // might have screwed up their glDrawPixels() implementation so badly on some gpu's that
-    // it causes lots of sync failures, especially on modern iMac's. Unclear if this is the
-    // case, but let's see what user testing will show:
-    if (PSYCH_SYSTEM == PSYCH_OSX)
-        return;
-
-    // See call below for explanation: This workaround is also needed on VideoCore-4 + DRI3/Present, so maybe the assumption
-    // that this is an intel-ddx sna bug is wrong, and it is actually a Mesa DRI3/Present bug in drawable invalidation/revalidation?
-    if (strstr(windowRecord->gpuCoreId, "Intel") || strstr(windowRecord->gpuCoreId, "VC4")) {
-        PsychWaitPixelSyncToken(windowRecord, TRUE);
-    }
-
-    // Skip this function on OpenGL-ES or on BroadCom VideoCore-4 gpu, as it is
-    // either unsupported, or too slow:
-    if (!PsychIsGLClassic(windowRecord) || strstr(windowRecord->gpuCoreId, "VC4"))
-        return;
-
-    // Compute logo_x and logo_y x,y offset for drawing the startup logo:
-    logo_x = ((int) PsychGetWidthFromRect(windowRecord->rect) - (int) splash_image.width) / 2;
-    logo_x = (logo_x > 0) ? logo_x : 0;
-    logo_y = ((int) PsychGetHeightFromRect(windowRecord->rect) - (int) splash_image.height) / 2;
-    logo_y = (logo_y > 0) ? logo_y : 0;
-
+    // Always clear framebuffer to defined background color:
     glClear(GL_COLOR_BUFFER_BIT);
 
-    if ((visual_debuglevel >= 4) && (splash_image.bytes_per_pixel > 0)) {
-        glPixelZoom(1, -1);
-        glRasterPos2i(logo_x, logo_y);
-        glDrawPixels(splash_image.width, splash_image.height, splash_image.bytes_per_pixel, GL_UNSIGNED_BYTE, (void*) &splash_image.pixel_data[0]);
-        glPixelZoom(1, 1);
-    }
+    // Draw splash image texture at visual level 4+:
+    if ((PsychPrefStateGet_VisualDebugLevel() >= 4) && splashTextureRecord && (PsychGetParentWindow(splashTextureRecord) == windowRecord))
+        PsychBlitTextureToDisplay(splashTextureRecord, windowRecord, splashTextureRecord->rect, splashTextureRecord->clientrect, 0, 1, 1);
 
     return;
 }
@@ -577,9 +550,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             printf("PTB-INFO: Native %i bit per color framebuffer requested, but the OS doesn't allow it. It only provides %i bpc.\n", (*windowRecord)->depth / 3, bpc);
 
             // We only support the 48 bit color depth / 16 bpc hack on Linux + X11, not on OSX et al.:
-            if ((PSYCH_SYSTEM != PSYCH_LINUX) && ((*windowRecord)->depth == 48)) {
+            if (((*windowRecord)->depth == 48) && !((*windowRecord)->specialflags & kPsychIsX11Window)) {
                 printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but i can't provide this for you, because\n", (*windowRecord)->depth, (*windowRecord)->depth / 3);
-                printf("PTB-ERROR: my own 16 bpc setup code only works on Linux with a properly setup X11/GLX display backend.\n");
+                printf("PTB-ERROR: my own 16 bpc setup code only works on Linux with a properly setup X11 display backend.\n");
                 PsychOSCloseWindow(*windowRecord);
                 FreeWindowRecordFromPntr(*windowRecord);
                 return(FALSE);
@@ -592,13 +565,17 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff) || (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24)) {
                 printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but i can't provide this for you, because\n", (*windowRecord)->depth, (*windowRecord)->depth / 3);
                 if ((gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff)) {
-                    printf("PTB-ERROR: this functionality is not supported on your model of graphics card. Only AMD/ATI GPU's of the\n");
-                    printf("PTB-ERROR: Radeon X1000 series, and Radeon HD-2000 series and later models, and corresponding FireGL/FirePro\n");
-                    printf("PTB-ERROR: cards are supported. This covers basically all AMD graphics cards since about the year 2007.\n");
-                    printf("PTB-ERROR: NVidia graphics cards since the GeForce-8000 series and corresponding Quadro cards can be setup\n");
-                    printf("PTB-ERROR: for 10 bpc framebuffer support by specifying a 'DefaultDepth' setting of 30 bit in the xorg.conf file.\n");
-                    printf("PTB-ERROR: The latest Intel graphics cards may be able to achieve 10 bpc with 'DefaultDepth' 30 setting if your\n");
-                    printf("PTB-ERROR: graphics driver is recent enough, however this hasn't been actively tested on Intel cards so far.\n\n");
+                    printf("PTB-ERROR: this functionality is not supported on your model of graphics card. Only AMD GPU's from the\n");
+                    printf("PTB-ERROR: Radeon X1000 series up to and including the Radeon Vega series, and corresponding FireGL/\n");
+                    printf("PTB-ERROR: FirePro/RadeonPro cards are supported. This covers basically all AMD gpu's introduced in the\n");
+                    printf("PTB-ERROR: years from late 2005 to mid-2019, but not AMD RX 5000 (RDNA) and later or AMD Ryzen integrated\n");
+                    printf("PTB-ERROR: processor graphics chips and later since late 2017, e.g., AMD Raven Ridge, Renoir, Picasso etc.\n");
+                    printf("PTB-ERROR: These recent AMD gpu's with the new DCN display engine, as well as all NVidia graphics cards\n");
+                    printf("PTB-ERROR: since the GeForce-8000 series and corresponding Quadro cards can be setup for 10 bpc framebuffer\n");
+                    printf("PTB-ERROR: mode by specifying a 'DefaultDepth' setting of 30 bit in the xorg.conf file. The same is true for\n");
+                    printf("PTB-ERROR: modern Intel graphics chips which may be able to achieve 10 bpc with 'DefaultDepth' 30 setting if your\n");
+                    printf("PTB-ERROR: graphics driver is recent enough. Use XOrgConfCreator and XOrgConfSelector to guide you through the\n");
+                    printf("PTB-ERROR: setup process for 10 bpc / 30 bit on such NVidia, Intel and modern AMD graphics cards.\n");
                 }
                 else if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
                     printf("PTB-ERROR: Linux low-level MMIO access by Psychtoolbox is disabled or not permitted on your system in this session.\n");
@@ -880,9 +857,10 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             // presentation duration of our splash startup screen so users
             // are nudged to at least once notice what is displayed there:
 
-            // Set splash image display duration to at least 10 seconds, unless our
-            // special joker is used:
-            if (NULL == getenv("PTB_SKIPSPLASH")) splashMinDurationSecs = 10.0;
+            // Set splash image display duration to at least 10 seconds, unless our special
+            // joker is used or this is not the first onscreen window open in this session:
+            if (!getenv("PTB_SKIPSPLASH") && PsychIsLastOnscreenWindow(*windowRecord))
+                splashMinDurationSecs = 10.0;
         }
 
         // Close marker file in any case:
@@ -1080,11 +1058,61 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glClearColor(0,0,0,1);
     }
 
-    // Use classic code path for classic OpenGL, unless we are on the Raspberry Pi's VideoCore-4
-    // gpu, where this path is so slow it would cause sync-failure and other cascading trouble,
-    // or on OSX where we suspect Apple might have screwed up the glDrawPixels command we use in
-    // the classic path:
-    if (PsychIsGLClassic(*windowRecord) && !strstr((*windowRecord)->gpuCoreId, "VC4") && (PSYCH_SYSTEM != PSYCH_OSX)) {
+    // splashTextureRecord already exists? Otherwise create and assign it:
+    if (!splashTextureRecord) {
+        PsychCreateWindowRecord(&splashTextureRecord);
+        splashTextureRecord->windowType = kPsychTexture;
+        splashTextureRecord->screenNumber = (*windowRecord)->screenNumber;
+
+        // Assign parent window and copy its inheritable properties:
+        PsychAssignParentWindow(splashTextureRecord, *windowRecord);
+
+        // Mark it valid and return handle to userspace:
+        PsychSetWindowRecordValid(splashTextureRecord);
+
+        // Ok, setup texture record for RGB8 texture:
+        splashTextureRecord->depth = 3 * 8;
+        splashTextureRecord->nrchannels = 3;
+        PsychMakeRect(splashTextureRecord->rect, 0, 0, splash_image.width, splash_image.height);
+
+        // Orientation is 3 - like an upside down Offscreen window texture.
+        splashTextureRecord->textureOrientation = 3;
+
+        // Setting memsize to zero prevents unwanted free() operation in PsychDeleteTexture...
+        splashTextureRecord->textureMemorySizeBytes = 0;
+
+        // Assign pointer to pixeldata:
+        splashTextureRecord->textureMemory = (GLuint*) &splash_image.pixel_data[0];
+
+        // Let PsychCreateTexture() do the rest of the job of creating, setting up and
+        // filling an OpenGL texture with memory buffers image content:
+        PsychCreateTexture(splashTextureRecord);
+
+        // Compute logo_x and logo_y x,y offset for drawing the startup logo:
+        logo_x = ((int) PsychGetWidthFromRect((*windowRecord)->rect) - (int) splash_image.width) / 2;
+        logo_x = (logo_x > 0) ? logo_x : 0;
+        logo_y = ((int) PsychGetHeightFromRect((*windowRecord)->rect) - (int) splash_image.height) / 2;
+        logo_y = (logo_y > 0) ? logo_y : 0;
+
+        // Client rect of a texture is always == rect of it, but here we abuse it as
+        // target rect:
+        PsychCopyRect(splashTextureRecord->clientrect, splashTextureRecord->rect);
+        splashTextureRecord->clientrect[kPsychLeft]   += logo_x;
+        splashTextureRecord->clientrect[kPsychRight]  += logo_x;
+        splashTextureRecord->clientrect[kPsychTop]    += logo_y;
+        splashTextureRecord->clientrect[kPsychBottom] += logo_y;
+
+        // Clamp size of logo to size of onscreen window during drawing, so it scales down properly on
+        // small displays:
+        if (splashTextureRecord->clientrect[kPsychRight] > PsychGetWidthFromRect((*windowRecord)->rect))
+            splashTextureRecord->clientrect[kPsychRight] = PsychGetWidthFromRect((*windowRecord)->rect);
+
+        if (splashTextureRecord->clientrect[kPsychBottom] > PsychGetHeightFromRect((*windowRecord)->rect))
+            splashTextureRecord->clientrect[kPsychBottom] = PsychGetHeightFromRect((*windowRecord)->rect);
+    }
+
+    // Predraw welcome splash image - or neutral background if no splash image is wanted:
+    {
         double tDummy;
 
         // Classic OpenGL-1/2 splash image drawing code:
@@ -1133,84 +1161,6 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         }
 
         glDrawBuffer(GL_BACK);
-    }
-    else {
-        // Non-classic (OpenGL-3/4 and OpenGL-ES) splash screen display code:
-        double tDummy;
-        PsychWindowRecordType *textureRecord;
-        PsychCreateWindowRecord(&textureRecord);
-        textureRecord->windowType = kPsychTexture;
-        textureRecord->screenNumber = (*windowRecord)->screenNumber;
-
-        // Assign parent window and copy its inheritable properties:
-        PsychAssignParentWindow(textureRecord, *windowRecord);
-
-        // Mark it valid and return handle to userspace:
-        PsychSetWindowRecordValid(textureRecord);
-
-        // Ok, setup texture record for RGB8 texture:
-        textureRecord->depth = 3 * 8;
-        textureRecord->nrchannels = 3;
-        PsychMakeRect(textureRecord->rect, 0, 0, splash_image.width, splash_image.height);
-
-        // Orientation is 3 - like an upside down Offscreen window texture.
-        textureRecord->textureOrientation = 3;
-
-        // Setting memsize to zero prevents unwanted free() operation in PsychDeleteTexture...
-        textureRecord->textureMemorySizeBytes = 0;
-
-        // Assign pointer to pixeldata:
-        textureRecord->textureMemory = (GLuint*) &splash_image.pixel_data[0];
-
-        // Let PsychCreateTexture() do the rest of the job of creating, setting up and
-        // filling an OpenGL texture with memory buffers image content:
-        PsychCreateTexture(textureRecord);
-
-        // Compute logo_x and logo_y x,y offset for drawing the startup logo:
-        logo_x = ((int) PsychGetWidthFromRect((*windowRecord)->rect) - (int) splash_image.width) / 2;
-        logo_x = (logo_x > 0) ? logo_x : 0;
-        logo_y = ((int) PsychGetHeightFromRect((*windowRecord)->rect) - (int) splash_image.height) / 2;
-        logo_y = (logo_y > 0) ? logo_y : 0;
-
-        // Client rect of a texture is always == rect of it, but here we abuse it as
-        // target rect:
-        PsychCopyRect(textureRecord->clientrect, textureRecord->rect);
-        textureRecord->clientrect[kPsychLeft]   += logo_x;
-        textureRecord->clientrect[kPsychRight]  += logo_x;
-        textureRecord->clientrect[kPsychTop]    += logo_y;
-        textureRecord->clientrect[kPsychBottom] += logo_y;
-
-        // Clear framebuffer and (optionally, usually) blit texture with splash-image three times with
-        // intermediate bufferswap, to make sure we get a well defined image even on a triple-buffered
-        // setup:
-        glClear(GL_COLOR_BUFFER_BIT);
-        if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
-        PsychOSFlipWindowBuffers(*windowRecord);
-        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
-
-        // Protect against multi-threading trouble if needed:
-        PsychLockedTouchFramebufferIfNeeded(*windowRecord);
-
-        glClear(GL_COLOR_BUFFER_BIT);
-        if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
-        PsychOSFlipWindowBuffers(*windowRecord);
-        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
-
-        // Protect against multi-threading trouble if needed:
-        PsychLockedTouchFramebufferIfNeeded(*windowRecord);
-
-        glClear(GL_COLOR_BUFFER_BIT);
-        if (visual_debuglevel >= 4) PsychBlitTextureToDisplay(textureRecord, *windowRecord, textureRecord->rect, textureRecord->clientrect, 0, 1, 1);
-        PsychOSFlipWindowBuffers(*windowRecord);
-        PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
-
-        // Protect against multi-threading trouble if needed:
-        PsychLockedTouchFramebufferIfNeeded(*windowRecord);
-
-        // Done. Delete splash-image texture:
-        PsychFreeTextureForWindowRecord(textureRecord);
-        FreeWindowRecordFromPntr(textureRecord);
-        textureRecord = NULL;
     }
 
     // Make sure that the gfx-pipeline has settled to a stable state...
@@ -1589,6 +1539,14 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     else {
         // Complete skip of calibration and synctests: Mark all calibrations as invalid:
         ifi_beamestimate = 0;
+    }
+
+    // Does a splashTextureRecord exist and is associated with this about-to-die window?
+    if (splashTextureRecord) {
+        // Yes. Delete splash-image texture:
+        PsychFreeTextureForWindowRecord(splashTextureRecord);
+        FreeWindowRecordFromPntr(splashTextureRecord);
+        splashTextureRecord = NULL;
     }
 
     if (PsychPrefStateGet_Verbosity() > 2) {

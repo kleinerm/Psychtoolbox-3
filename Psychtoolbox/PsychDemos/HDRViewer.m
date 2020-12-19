@@ -200,7 +200,7 @@ try
         PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
     end
     [win, winrect] = PsychImaging('OpenWindow', screenid, 0, rect);
-    [xm, ym] = RectCenter(winrect);
+    [xm, ym] = RectCenter(Screen('GlobalRect', win));
     SetMouse(xm, ym, win);
     HideCursor(win);
 

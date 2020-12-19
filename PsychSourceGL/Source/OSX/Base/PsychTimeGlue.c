@@ -194,14 +194,26 @@ double PsychGetWallClockSeconds(void)
     return(((double) tv.tv_sec) + (((double) tv.tv_usec) / 1000000.0));
 }
 
+/* No-Op function on macOS atm. */
+double PsychOSMonotonicToRefTime(double monotonicTime)
+{
+    return(monotonicTime);
+}
+
+/* No-Op function on macOS atm. */
+double PsychOSRefTimeToMonotonicTime(double refInputTime)
+{
+    return(refInputTime);
+}
+
 /* Init a Mutex: */
-int	PsychInitMutex(psych_mutex* mutex)
+int PsychInitMutex(psych_mutex* mutex)
 {
     return(pthread_mutex_init(mutex, NULL));
 }
 
 /* Deinit and destroy a Mutex: */
-int	PsychDestroyMutex(psych_mutex* mutex)
+int PsychDestroyMutex(psych_mutex* mutex)
 {
     return(pthread_mutex_destroy(mutex));
 }
@@ -574,7 +586,10 @@ const char* PsychSupportStatus(void)
             sprintf(statusString, "OSX 10.%i minimally supported and tested.", osMinor);
         }
         else {
-            sprintf(statusString, "OSX version 10.%i is not - or no longer - officially supported or tested at all for this release.", osMinor);
+            if (osMinor < 15)
+                sprintf(statusString, "OSX version 10.%i is no longer tested or officially supported at all for this Psychtoolbox release.", osMinor);
+            else
+                sprintf(statusString, "OSX version 11.%i is not yet tested or officially supported at all for this Psychtoolbox release.", osMinor - 16);
         }
     }
 

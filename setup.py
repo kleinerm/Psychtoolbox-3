@@ -107,9 +107,9 @@ if platform.system() == 'Windows':
         psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS64/dll']
         # and copy the files to the folder
         shutil.copy('PsychSourceGL/Cohorts/libusb1-win32/MS64/dll/libusb-1.0.dll',
-                    'PsychPython/')
+                    'PsychPython/psychtoolbox/')
         shutil.copy('Psychtoolbox/PsychSound/portaudio_x64.dll',
-                    'PsychPython/')
+                    'PsychPython/psychtoolbox/')
         # list them so they get packaged
         extra_files = {'psychtoolbox': ['portaudio_x64.dll', 'libusb-1.0.dll']}
 
@@ -122,7 +122,7 @@ if platform.system() == 'Windows':
         # for win32 we use a different libusb dll and the portaudio dll is not supported
         psychhid_libdirs = ['PsychSourceGL/Cohorts/libusb1-win32/MS32/dll']
         shutil.copy('PsychSourceGL/Cohorts/libusb1-win32/MS32/dll/libusb-1.0.dll',
-                    'PsychPython/')
+                    'PsychPython/psychtoolbox/')
         # list them so they get packaged
         extra_files = {'psychtoolbox': ['libusb-1.0.dll']}
 
@@ -263,11 +263,12 @@ setup (name = 'psychtoolbox',
        ext_package = 'psychtoolbox',
        ext_modules = ext_modules,
        include_package_data=True,  # Include files listed in MANIFEST.in
+       install_requires = ['numpy>=1.7'],
       )
 
 if platform.system() == 'Windows':
     # Get rid of the now no longer needed copies of dll's inside PsychPython,
     # now that setup() has already copied them into the distribution.
-    if os.path.exists('PsychPython/portaudio_x64.dll'):
-        os.remove('PsychPython/portaudio_x64.dll')
-    os.remove('PsychPython/libusb-1.0.dll')
+    if os.path.exists('PsychPython/psychtoolbox/portaudio_x64.dll'):
+        os.remove('PsychPython/psychtoolbox/portaudio_x64.dll')
+    os.remove('PsychPython/psychtoolbox/libusb-1.0.dll')

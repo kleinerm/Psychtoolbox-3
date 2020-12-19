@@ -62,6 +62,7 @@
 %    GratingDemo             - Basic display of a grating on the screen.
 %    HDRMinimalisticOpenGLDemo - Basic demo on how to render OpenGL 3D stimuli on a HDR display.
 %    HDRViewer               - A simple image viewer for displaying HDR images on a HDR display.
+%    ImagingStereoMoviePlayer - Minimalistic movie player for stereo movies, also HDR and VR capable.
 %    IsomerizationsInDishDemo - Compute photoreceptor isomerizations for retina in a dish.
 %    IsomerizationsInEyeDemo  - Compute photoreceptor isomerizations for human eye.
 %    KbDemo                  - Demonstrate KbCheck, KbName, KbWait.
@@ -99,6 +100,7 @@
 %    RenderDemo              - Render CIE xyY as a color patch.
 %    SadowskiDemo            - Shows the "Sadowski" color afterimage effect.
 %    SimpleHDRDemo           - Minimal demo for using a HDR display, showing some basic stimuli.
+%    SimpleHDRLinuxStereoDemo -Like SimpleHDRDemo, but with Linux/X11 stereo hack for stereoscopic HDR stimulation.
 %    SimpleImageMixingDemo   - Shows how to mix two images via alpha-blending, using an alpha-mask which itself is morphed between two masks.
 %                              See also ImageMixingTutorial for a more complex demonstration of the technique.
 %    SimpleSoundScheduleDemo - Simple demo for basic use of sound schedules with PsychPortAudio.
