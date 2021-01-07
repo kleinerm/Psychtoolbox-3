@@ -162,8 +162,8 @@ function [fractionBleached] = ComputePhotopigmentBleaching(irradiance,receptorty
     % except flipped vertically.  The red curve is for rods.  The blue
     % is for cones and is faster as expected.
     clear; close all;
-    timeMsec = (1:60*40) - 1;
-    timeMinutes = timeMsec/(60);
+    timeSec = (1:60*40) - 1;
+    timeMinutes = timeSec/(60);
     irradiance = zeros(60*40,1);
     initialFraction = 0;
     fractionBleached = ComputePhotopigmentBleaching(irradiance,'rods','trolands','Boynton',initialFraction,'sec');
@@ -177,8 +177,8 @@ function [fractionBleached] = ComputePhotopigmentBleaching(irradiance,receptorty
     % asymptote of the dynamic calculation (green and blue), and that the asymptote 
     % is independent of the starting fraction bleached.
     clear; close all;
-    timeMsec = (1:60*10) - 1;
-    timeMinutes = timeMsec/(60);
+    timeSec = (1:60*10) - 1;
+    timeMinutes = timeSec/(60);
     trolands = 10^4.3;
     irradiance = trolands*ones(60*10,1);
     fractionBleachedSteady = ComputePhotopigmentBleaching(trolands,'cones','trolands','Boynton');
