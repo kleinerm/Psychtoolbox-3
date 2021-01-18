@@ -41,7 +41,7 @@ if numel(oldRect) == 4
         newRect(RectRight) = oldRect(RectRight) + x;
     else
         % Single rect, but multiple points:
-        if ~all(size(x) == size(y)) || iscolumn(x)
+        if ~all(size(x) == size(y)) || ~iscolumn(x)
             error('Wrong format of x or y in multipoint case: x and y must be 1-column vectors of matching size!');
         end
 
