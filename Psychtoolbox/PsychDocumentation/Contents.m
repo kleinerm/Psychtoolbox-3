@@ -44,6 +44,8 @@
 %
 % PsychPaidSupportAndServices - Our commercial support and service offerings.
 %
+% RaspberryPiSetup       - How to setup a RasperryPi for Psychtoolbox, and what to expect.
+%
 % SyncTrouble            - Problem with synchronization to the vertical
 %                          retrace or display timing, and how to resolve
 %                          them.
