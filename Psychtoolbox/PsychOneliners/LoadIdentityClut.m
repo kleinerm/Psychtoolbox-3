@@ -399,10 +399,10 @@ else
                 end
 
                 fprintf('LoadIdentityClut: Intel integrated graphics chip detected. Using type-%i LUT.\n', gfxhwtype);
-            elseif ~isempty(strfind(gfxhwtype, 'Broadcom')) && ~isempty(strfind(winfo.GLRenderer, 'VC4'))
-                % VC4 in RaspberryPi: Type 0 LUT is correct at least on Linux:
+            elseif ~isempty(strfind(gfxhwtype, 'Broadcom')) && (~isempty(strfind(winfo.GLRenderer, 'VC4')) || ~isempty(strfind(winfo.GLRenderer, 'V3D')))
+                % VC4/V3D of VideoCore-4 or Videocore-6 in RaspberryPi: Type 0 LUT is correct at least on Linux:
                 gfxhwtype = 0;
-                fprintf('LoadIdentityClut: VideoCore-4 SoC graphics chip detected. Using type-0 LUT.\n');
+                fprintf('LoadIdentityClut: VideoCore-4/6 SoC graphics chip detected. Using type-0 LUT.\n');
             else
                 % Unknown card: Default to NVidia behaviour:
                 gfxhwtype = 0;

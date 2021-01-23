@@ -378,6 +378,14 @@ if IsOctave
 
         fprintf('Octave major version %i detected. Will prepend the following folder to your Octave path:\n', octavemajorv);
 
+        % Octave on Linux with ARM processor, e.g., RaspberryPi?
+        if IsLinux && IsARM
+            % 32-Bit ARM can currently share mex files from Octave 3.8 to at least 5.x,
+            % so treat it as Octave 3.8, and all versions will share the same folder:
+            octavemajorv = 3;
+            octaveminorv = 8;
+        end
+
         if ((octavemajorv >= 5) || (octavemajorv == 4 && octaveminorv >= 4)) && IsLinux
             % Octave-4.4 and Octave-5 can share the same mex files in the Octave-5 folder on Linux:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave5'];

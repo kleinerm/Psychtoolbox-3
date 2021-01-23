@@ -35,11 +35,6 @@ function SuperShapeDemo
 % 30-Sep-2015   mk  Pimped with VR HMD support.
 % 01-Jun-2017   mk  Pimped VR HMD support a bit more - Performance optimization.
 
-if IsARM
-    % Does not work on OpenGL-ES due to unsupported OpenGL display lists:
-    error('Sorry, this demos does not work yet on embedded ARM devices.');
-end
-
 %% Initialization
 stereoscopic = 0;
 

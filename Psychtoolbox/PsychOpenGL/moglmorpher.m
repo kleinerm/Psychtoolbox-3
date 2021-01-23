@@ -537,6 +537,12 @@ if isempty(gpubasedmorphing)
                 % will be mostly idle:
                 gpubasedmorphing = 1;
                 fprintf('moglmorpher: INFO: Fully GPU based Morphing & Rendering enabled!\n');
+
+                % Broadcom VideoCore-6 can do gpu morphing, but only with a little workaround,
+                % so mark need for workaround via setting 2:
+                if ~isempty(strfind(winfo.GLRenderer, 'V3D'))
+                    gpubasedmorphing = 2;
+                end
             end
         end
     else
@@ -1371,8 +1377,9 @@ if strcmpi(cmd, 'renderMorph') || strcmpi(cmd, 'computeMorph')
         % keyshapes (textures) into one single big texture?
         if isempty(ctx.masterkeyshapetex)
             % No. This must be the first invocation after a call to
-            % 'addMesh'. Try to build the huge keyshape texture:
-            if (h * ctx.objcount < glGetIntegerv(GL.MAX_RECTANGLE_TEXTURE_SIZE_EXT))
+            % 'addMesh'. Try to build the huge keyshape texture if space constraints allow and if this is not the
+            % Broadcom VideoCore-6 which can not handle it:
+            if (h * ctx.objcount < glGetIntegerv(GL.MAX_RECTANGLE_TEXTURE_SIZE_EXT)) && (gpubasedmorphing ~= 2)
                 % Number and size of keyshapes fits within contraints of
                 % hardware. Build unified keyshape texture:
                 ctx.masterkeyshapetex = Screen('OpenOffscreenWindow', ctx.win, [0 0 0 0], [0 0 w h*ctx.objcount], 128, 32);
