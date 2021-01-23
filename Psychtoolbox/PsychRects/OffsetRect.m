@@ -27,10 +27,10 @@ if nargin~=3
     error('Usage:  newRect = OffsetRect(oldRect,x,y)');
 end
 
-if PsychNumel(oldRect) == 4
+if numel(oldRect) == 4
     % Single rect case:
-    if size(oldRect,2)~=4
-        error('Wrong size rect argument. A single rect must be a 1-row 4 element vector!');
+    if ~(isrow(oldRect) || iscolumn(oldRect))
+        error('Wrong size rect argument. A single rect must be a 4 element row or column vector!');
     end
     
     if length(x)==1 && length(y)==1
@@ -41,13 +41,20 @@ if PsychNumel(oldRect) == 4
         newRect(RectRight) = oldRect(RectRight) + x;
     else
         % Single rect, but multiple points:
-        if ~all(size(x) == size(y)) || size(x,2)~=1
+        if ~all(size(x) == size(y)) || ~iscolumn(x)
             error('Wrong format of x or y in multipoint case: x and y must be 1-column vectors of matching size!');
+        end
+
+        if isrow(oldRect)
+            % x and y are one column vectors with size(x,1) rows/elements.
+            % Replicate oldRect row into nrpts rows of identical copies, then
+            % add point offsets:
+            newRect = repmat(oldRect, size(x, 1), 1) + [x, y, x, y];
         else
             % x and y are one column vectors with size(x,1) rows/elements.
-            % Replicate oldRect into nrpts identical copies, then add point
-            % offsets:
-            newRect = repmat(oldRect, size(x, 1), 1) + [x, y, x, y];
+            % Replicate oldRect column into nrpts columns of identical copies, then
+            % add point offsets:
+            newRect = repmat(oldRect, 1, size(x, 1)) + [x, y, x, y]';
         end
     end
 else
