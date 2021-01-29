@@ -294,6 +294,16 @@ end
 deltaSecs = secs - oldSecs;
 oldSecs = secs;
 
+% On Linux remap the key left to "1!" to ESCape,
+% to work around lack of an ESCape key on Apple
+% MacBook's without touchBar support, e.g., when
+% running on models, or experimental Linux kernels,
+% where the touchBar driver is not yet available.
+if IsLinux && keyCode(95)
+    keyCode(95) = 0;
+    keyCode(10) = 1;
+end
+
 % Only need to apply ptb_kbcheck_enabledKeys manually on non-OS/X systems,
 % as this is done internally in PsychHID('KbCheck') on OS/X:
 if ~macosx && ~isempty(ptb_kbcheck_enabledKeys)
