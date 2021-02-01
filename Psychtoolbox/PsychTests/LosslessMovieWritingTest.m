@@ -233,7 +233,7 @@ else
     
     mindelta = min(imgdiff) %#ok<NOPRT,NASGU>
     maxdelta = max(imgdiff) %#ok<NOPRT,NASGU>
-    rangedelta = range(imgdiff) %#ok<NOPRT,NASGU>
+    rangedelta = psychrange(imgdiff) %#ok<NOPRT,NASGU>
     close all;
     hist(double(imgdiff));
     title('Error distribution in pixel values:');

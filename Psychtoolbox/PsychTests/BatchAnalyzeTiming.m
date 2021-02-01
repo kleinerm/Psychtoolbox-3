@@ -111,14 +111,14 @@ function [nrTotal, nrSkipped, nrCorrupt, nrDisagree, nrDelayed, meanDiff, stdDif
     vdeltas = 1000 * deltas(agreevalids); %#ok<FNDSB>
     meanDiff  = mean(vdeltas);
     stdDiff   = std(vdeltas);
-    rangeDiff(1) = range(vdeltas);
+    rangeDiff(1) = psychrange(vdeltas);
     rangeDiff(2) = min(vdeltas);
     rangeDiff(3) = max(vdeltas);
 
     vrawdeltas = 1000 * (res.measuredTime(agreevalids) - res.rawFlipTime(agreevalids));
     rawmeanDiff  = mean(vrawdeltas);
     rawstdDiff   = std(vrawdeltas);
-    rawrangeDiff(1) = range(vrawdeltas);
+    rawrangeDiff(1) = psychrange(vrawdeltas);
     rawrangeDiff(2) = min(vrawdeltas);
     rawrangeDiff(3) = max(vrawdeltas);
     

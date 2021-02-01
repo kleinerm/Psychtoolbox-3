@@ -274,6 +274,6 @@ end
 
 % Discard 1st trial:
 audioDelta = audioDelta(2:end);
-fprintf('\nAvg timestamp error %6.6f msecs, Stddev %6.6f msecs, Range %6.6f msecs.\n\n', mean(audioDelta), std(audioDelta), range(audioDelta));
+fprintf('\nAvg timestamp error %6.6f msecs, Stddev %6.6f msecs, Range %6.6f msecs.\n\n', mean(audioDelta), std(audioDelta), psychrange(audioDelta));
 
 return;

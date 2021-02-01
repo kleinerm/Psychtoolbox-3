@@ -1515,9 +1515,9 @@ function syncresult = syncClocks
     if verbosity > 3
         fprintf('PsychDataPixx: ClockSync(%i) on box "%s": Got %i valid samples, maxconfidence interval = %f msecs, winner interval %f msecs.\n', dpx.syncmode, dpx.ID, ic, 1000 * dpx.maxMinwinThreshold, 1000 * minwin);
         if dpx.syncmode == 1
-            fprintf('PsychDataPixx: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * range(t(2,:) - t(3,:)));
+            fprintf('PsychDataPixx: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * psychrange(t(2,:) - t(3,:)));
         else
-            fprintf('PsychDataPixx: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * range(t(1,:) - t(3,:)));
+            fprintf('PsychDataPixx: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * psychrange(t(1,:) - t(3,:)));
         end
     end
     
