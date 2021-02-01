@@ -2956,6 +2956,19 @@ function openRTBox(deviceID, handle)
                 if strfind(idn,'USTCRTBOX')
                     % Found device:
                     deviceFound=1;
+
+                    % Make sure we get the full valid string, repeat query if neccessary:
+                    while length(idn) ~= 21
+                        % Read out whatever junk maybe in the input buffer:
+                        IOPort('Read', s, 0);
+
+                        % Write the 'X' command code to ask box for its identity again:
+                        IOPort('Write', s, 'X');
+
+                        % Wait blocking with 1 sec timeout for id string:
+                        idn=char(IOPort('Read', s, 1, 21));
+                    end
+
                     break;
                 end
 
