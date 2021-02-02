@@ -58,7 +58,7 @@ typedef __CHAR16_TYPE__ char16_t;
 
 // Platform independent include for glew: This is a catch-all
 // for all OpenGL definitions and functions, currently up to
-// OpenGL 4.5 + latest extensions beyond that:
+// OpenGL 4.6 + latest extensions beyond that:
 #if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo)
 #include "../Screen/GL/glew.h"
 #endif
@@ -93,23 +93,6 @@ typedef __CHAR16_TYPE__ char16_t;
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    // Need to define #define _WIN32_WINNT as >= 0x0601, so we can use features
-    // added in Windows-7 and the Win-7 SDK. This obviously needs at least Windows-7
-    // as build system, but as we only officially support Windows-10, this is not a
-    // problem.
-    //
-    // When building on a modern build system under MSVC, the MSVC compiler / platform
-    // SDK should already define WINVER et al. to 0x0601 or later, but GNU/Octave as of
-    // Octave-6.1 still needs these defines, as it otherwise will assume, define these
-    // for Windows-XP backwards compatibility:
-    #if WINVER < 0x0601
-        // #warning Manually redefining WINVER to 0x0601
-        #undef _WIN32_WINNT
-        #undef WINVER
-        #define _WIN32_WINNT 0x0601
-        #define WINVER       0x0601
-    #endif
-
     // Master include for windows header file:
     #include <windows.h>
 
