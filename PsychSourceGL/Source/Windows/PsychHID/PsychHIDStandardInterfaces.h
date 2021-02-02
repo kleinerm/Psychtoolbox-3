@@ -17,6 +17,8 @@
 #ifndef PSYCH_IS_INCLUDED_PsychHIDStandardIntefaces
 #define PSYCH_IS_INCLUDED_PsychHIDStandardIntefaces
 
+#include "PsychHID.h"
+
 // CAUTION: The exact order of include and define statements below matters!
 // Define direct input version explicitely to avoid compiler warnings.
 // This sequence of InitGuid, version define and dinput.h include defines the
@@ -27,7 +29,5 @@
 #include <InitGuid.h>
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
-
-#include "PsychHID.h"
 
 #endif
