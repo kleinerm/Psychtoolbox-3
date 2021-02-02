@@ -62,6 +62,17 @@ touchIndices=[];
 productNames=cell(0);
 allInfo=cell(0);
 
+if IsWin
+    touchIndices = 0;
+    allInfo{1}.touchDeviceType = 1;
+    allInfo{1}.maxTouchpoints = 10;
+    allInfo{1}.product = 'Dummy Touchscreen';
+    allInfo{1}.serialNumber = 1234;
+    allInfo{1}.locationID = 0;
+    productNames{1} = allInfo{1}.product;
+    return;
+end
+
 if nargin < 1 || isempty(typeOnly)
     typeOnly = 'slavePointer';
 end
