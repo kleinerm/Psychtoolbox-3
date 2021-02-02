@@ -93,20 +93,22 @@ typedef __CHAR16_TYPE__ char16_t;
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    // Need to define #define _WIN32_WINNT as >= 0x0400 so we can use TryEnterCriticalSection() call for PsychTryLockMutex() implementation.
-    // For Windows Vista+ only features like GetPhysicalCursorPos() we need >= 0x600.
-    // We set WINVER and _WIN32_WINNT to 0x0600, which requires Windows Vista or later as target system:
-    // Ok, actually we don't. When building on a modern build system like the new Win-7 build
-    // system the MSVC compiler / platform SDK should already define WINVER et al. to 0x0600 or later,
-    // e.g., to Win-7 on the Win-7 system.
-    // That means we'd only need these defines on pre-Win7 build systems, which we no longer
-    // support. We now just have to be careful to not use post-Win7 functionality.
-    // We comment these defines out and trust the platform SDK / compiler,
-    // but leave them here for quick WinXP backwards compatibility testing.
-    #if 0
-        #define _WIN32_WINNT 0x0600
-        #define WINVER       0x0600
-    #endif // Conditional enable.
+    // Need to define #define _WIN32_WINNT as >= 0x0601, so we can use features
+    // added in Windows-7 and the Win-7 SDK. This obviously needs at least Windows-7
+    // as build system, but as we only officially support Windows-10, this is not a
+    // problem.
+    //
+    // When building on a modern build system under MSVC, the MSVC compiler / platform
+    // SDK should already define WINVER et al. to 0x0601 or later, but GNU/Octave as of
+    // Octave-6.1 still needs these defines, as it otherwise will assume, define these
+    // for Windows-XP backwards compatibility:
+    #if WINVER < 0x0601
+        // #warning Manually redefining WINVER to 0x0601
+        #undef _WIN32_WINNT
+        #undef WINVER
+        #define _WIN32_WINNT 0x0601
+        #define WINVER       0x0601
+    #endif
 
     // Master include for windows header file:
     #include <windows.h>
