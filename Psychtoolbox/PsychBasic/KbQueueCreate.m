@@ -184,7 +184,7 @@ if isempty(macosxrecent)
 end
 
 if nargin >= 6
-  if ~isempty(win)
+  if ~isempty(win) && IsLinux
     % Onscreen window handle given. Validate and map to windowing system handle:
     if Screen('WindowKind', win) == 1 
       % Onscreen window handle of open onscreen window: Map to X-Window:
