@@ -202,6 +202,48 @@ void PsychSetStructArrayDoubleElement(const char *fieldName,
 
 
 /*
+    PsychSetStructArrayUnsignedInt64Element()
+    Note: The variable "index" is zero-indexed.
+*/
+void PsychSetStructArrayUnsignedInt64Element(const char *fieldName,
+                                             int index,
+                                             psych_uint64 value,
+                                             PsychGenericScriptType *pStruct)
+{
+    int fieldNumber;
+    size_t numElements;
+    psych_bool isStruct;
+    mxArray *mxFieldValue;
+    char errmsg[256];
+    mwSize dimArray[2];
+    int numDims = 2;
+
+    dimArray[0] = dimArray[1] = 1;
+
+    //check for bogus arguments
+    numElements = mxGetM(pStruct) * mxGetN(pStruct);
+    if ((size_t) index >= numElements)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a structure field at an out-of-bounds index");
+
+    fieldNumber = mxGetFieldNumber(pStruct, fieldName);
+    if (fieldNumber == -1) {
+        sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+
+    isStruct = mxIsStruct(pStruct);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
+
+    //do stuff
+    mxFieldValue = mxCreateNumericArray(numDims, (mwSize*) dimArray, mxUINT64_CLASS, mxREAL);
+    ((psych_uint64*) mxGetData(mxFieldValue))[0] = value;
+    mxSetField(pStruct, (mwIndex) index, fieldName, mxFieldValue);
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
+}
+
+
+/*
     PsychSetStructArrayBooleanElement()
 
     Note: The variable "index" is zero-indexed.
