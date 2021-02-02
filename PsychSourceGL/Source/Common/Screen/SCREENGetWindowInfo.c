@@ -549,8 +549,12 @@ PsychError SCREENGetWindowInfo(void)
             // Linux/X11: The X-Window handle 'Window':
             PsychSetStructArrayDoubleElement("SysWindowHandle", 0, windowRecord->targetSpecific.xwindowHandle, s);
         #else
-            // Other: Not implemented yet.
-            PsychSetStructArrayDoubleElement("SysWindowHandle", 0, 0, s);
+            #if (PSYCH_SYSTEM == PSYCH_WINDOWS)
+                PsychSetStructArrayDoubleElement("SysWindowHandle", 0, PsychPtrToDouble(windowRecord->targetSpecific.windowHandle), s);
+            #else
+                // Other: Not implemented yet.
+                PsychSetStructArrayDoubleElement("SysWindowHandle", 0, 0, s);
+            #endif
         #endif
 
         // Scaling factor for input coordinate transformation functions like RemapMouse.m:
