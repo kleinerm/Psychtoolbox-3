@@ -30,7 +30,12 @@ extern "C" {
 
 static int ndevices = 0;
 
+// Function prototype forward declaration for callback handler:
+static LRESULT CALLBACK KbQueueWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
 static HINSTANCE modulehandle = NULL;
+static psych_bool windowClassRegistered = FALSE;
+
 // Pointer to DirectInput-8 interface:
 LPDIRECTINPUT8 dinput = NULL;
 
@@ -212,6 +217,30 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
                             NULL        // no object name
                         );
 
+    // Register our own window close for event processing from windowing system:
+    if (!windowClassRegistered) {
+        WNDCLASSEX windowClass;
+        windowClass.cbSize = sizeof(WNDCLASSEX);
+        windowClass.style = CS_OWNDC;
+        windowClass.lpfnWndProc = KbQueueWndProc;
+        windowClass.cbClsExtra = 0;
+        windowClass.cbWndExtra = 0;
+        windowClass.hInstance = modulehandle;
+        windowClass.hIcon = NULL;
+        windowClass.hCursor = NULL;
+        windowClass.hbrBackground = NULL;
+        windowClass.lpszMenuName = NULL;
+        windowClass.lpszClassName = "PTB-PsychHID";
+        windowClass.hIconSm = NULL;
+
+        if (!RegisterClassEx(&windowClass)) {
+            printf("PsychHID-ERROR: Creating private event window class failed in RegisterClassEx().\n");
+            goto out;
+        }
+
+        windowClassRegistered = TRUE;
+    }
+
     // Ready.
     return;
 
@@ -265,9 +294,15 @@ void PsychHIDShutdownHIDStandardInterfaces(void)
 
     ndevices = 0;
 
-    // Close our dedicated x-display connection and we are done:
+    // Release our DirectInput instance:
     if (dinput) dinput->Release();
     dinput = NULL;
+
+    // Unregister our own window class for windowing system event processing:
+    if (windowClassRegistered) {
+        UnregisterClass("PTB-PsychHID", modulehandle);
+        windowClassRegistered = FALSE;
+    }
 
     return;
 }
@@ -662,16 +697,9 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
     screen_height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
     while (1) {
-        // Single pass or multi-pass?
-        if (blockingSinglepass) {
-            // Wait until at least one event available and dequeue it:
-            // We use a timeout of 100 msecs.
-            WaitForSingleObject(hEvent, 100);
-        } else {
-            // Check if event available, dequeue it, if so. Abort
-            // processing if no new event available, aka queue empty:
-            // TODO if (!XCheckTypedEvent(thread_dpy, GenericEvent, &KbQueue_xevent)) break;
-        }
+        // Wait until at least one event available and dequeue it:
+        // We use a timeout of 2 msecs.
+        WaitForSingleObject(hEvent, 2);
 
         // Take timestamp:
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
@@ -916,6 +944,51 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
     return;
 }
 
+// Callback handler for Window manager: Handles some events
+static LRESULT CALLBACK KbQueueWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    PsychHIDEventRecord evt;
+    double tnow;
+    unsigned int screen_width, screen_height;
+
+    // Need screen width and height for normalization purposes:
+    screen_width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    screen_height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+
+    // Take timestamp:
+    PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+
+    // Clear ringbuffer event:
+    memset(&evt, 0 , sizeof(evt));
+
+    // Set cooked character to "undefined" as a starter: It will only get
+    // assigned something else if keypress/release events from real keyboards
+    // or keypads are processed:
+    evt.cookedEventCode = -1;
+
+    // What event happened?
+    switch(uMsg) {
+        default:
+            return DefWindowProc(hWnd, uMsg, wParam, lParam);
+
+        case WM_MOUSEACTIVATE:
+            // Mouseclick into our inactive window received.
+            // Default to ignore activation event and eat it:
+            return(MA_NOACTIVATEANDEAT);
+    }
+}
+
+static void PsychHIDOSProcessWindowEvents(void)
+{
+    MSG msg;
+
+    // Run our message dispatch loop until we've processed all winsys events:
+    while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+}
+
 // Async processing thread for keyboard events:
 void* KbQueueWorkerThreadMain(void* dummy)
 {
@@ -938,6 +1011,9 @@ void* KbQueueWorkerThreadMain(void* dummy)
 
         // Perform event processing until no more events are pending:
         KbQueueProcessEvents(TRUE);
+
+        // Process events in the threads windowing system event queue:
+        PsychHIDOSProcessWindowEvents();
     }
 
     // Done. Unlock the mutex:
