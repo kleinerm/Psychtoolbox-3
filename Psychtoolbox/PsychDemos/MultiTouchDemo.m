@@ -97,6 +97,8 @@ function MultiTouchDemo(dev, screenId, verbose)
 
     % blobcol tracks active touch points - and dying ones:
     blobcol = {};
+    blobmin = inf;
+
     buttonstate = 0;
     colmap = [ 1, 0, 0; 0, 1, 0; 0, 0, 1; 1, 1, 0; 1, 0, 1; 0, 1, 1; 1, 1, 1];
 
@@ -113,6 +115,13 @@ function MultiTouchDemo(dev, screenId, verbose)
         % Touch blob id - Unique in the session at least as
         % long as the finger stays on the screen:
         id = evt.Keycode;
+
+        % Keep the id's low, so we have to iterate over less blobcol slots
+        % to save computation time:
+        if isinf(blobmin)
+          blobmin = id - 1;
+        end
+        id = id - blobmin;
 
         if evt.Type == 0
           % Not a touch point, but a button press or release on a
