@@ -947,7 +947,7 @@ void* KbQueueWorkerThreadMain(void* dummy)
     return(NULL);
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, unsigned int windowHandle)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, psych_uint64 windowHandle)
 {
     dinfo* dev = NULL;
 

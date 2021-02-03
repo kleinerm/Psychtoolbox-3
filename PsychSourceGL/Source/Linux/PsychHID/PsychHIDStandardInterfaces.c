@@ -1127,7 +1127,7 @@ int PsychHIDGetDefaultKbQueueDevice(void)
     return(-1);
 }
 
-PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, unsigned int windowHandle)
+PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKeys, int numValuators, int numSlots, unsigned int flags, psych_uint64 windowHandle)
 {
     XIDeviceInfo* dev = NULL;
 
@@ -1180,7 +1180,7 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     psychHIDKbQueueFlags[deviceIndex] = flags;
 
     // Store associated X-Window handle, or zero for unspecified:
-    psychHIDKbQueueXWindow[deviceIndex] = windowHandle;
+    psychHIDKbQueueXWindow[deviceIndex] = (unsigned int) windowHandle;
 
     if (x_inputMethod == NULL) {
         // Create an input method and context in the currently set locale
