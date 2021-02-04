@@ -49,15 +49,15 @@
 // Only needed on GNU/Octave + MinGW64, as of Octave-6.1. MSVC 2019 for Python
 // and Matlab builds already defines a sufficiently high WINVER:
 #ifdef PTBOCTAVE3MEX
-    // Need to define _WIN32_WINNT and WINVER as 0x0601, so we can use features
-    // added in Windows-7 and in the Win-7 SDK. This obviously needs at least
-    // Windows-7 as build- and runtime system, but as we only officially support
+    // Need to define _WIN32_WINNT and WINVER as 0x0602, so we can use features
+    // added in Windows-8 and in the Win-8 SDK. This obviously needs at least
+    // Windows-8 as build- and runtime system, but as we only officially support
     // Windows-10, this is not a problem.
-    // #warning Manually setting WINVER to 0x0601
+    // #warning Manually setting WINVER to 0x0602
     #undef _WIN32_WINNT
     #undef WINVER
-    #define _WIN32_WINNT 0x0601
-    #define WINVER       0x0601
+    #define _WIN32_WINNT 0x0602
+    #define WINVER       0x0602
 #endif
 
 // PSYCH_PLATFORM_WIN32_H
