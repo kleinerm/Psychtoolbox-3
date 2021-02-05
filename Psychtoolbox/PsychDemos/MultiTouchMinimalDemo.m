@@ -192,7 +192,6 @@ function MultiTouchMinimalDemo(dev, screenId, verbose)
       end
 
       % Done repainting - Show it:
-      Screen('Flip', w);
 
       % Next touch processing -> redraw -> flip cycle:
     end
