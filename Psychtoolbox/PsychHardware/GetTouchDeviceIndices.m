@@ -8,11 +8,6 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 % Also returns corresponding productNames for the devices and detailed
 % info in the allInfo struct-array.
 %
-% WINDOWS: ________________________________________________________________
-%
-% This function currently returns nothing, as touch devices aren't yet
-% supported.
-%
 % OS X: ___________________________________________________________________
 %
 % This function currently returns nothing, as OSX does not support touch
@@ -35,7 +30,8 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 % returned devices by specifying the following optional match-critera:
 %
 % typeOnly      = 'masterPointer' or 'slavePointer' or 'allPointers'. If left
-%                 out, this will default to 'slavePointer'.
+%                 out, this will default to 'slavePointer', unless on MS-Windows,
+%                 where it defaults to 'masterPointer'.
 %
 % touchTypeOnly = 0 for touchpads, 1 for true touchscreens.
 %
@@ -62,19 +58,12 @@ touchIndices=[];
 productNames=cell(0);
 allInfo=cell(0);
 
-if IsWin
-    touchIndices = 0;
-    allInfo{1}.touchDeviceType = 1;
-    allInfo{1}.maxTouchpoints = 10;
-    allInfo{1}.product = 'Dummy Touchscreen';
-    allInfo{1}.serialNumber = 1234;
-    allInfo{1}.locationID = 0;
-    productNames{1} = allInfo{1}.product;
-    return;
-end
-
 if nargin < 1 || isempty(typeOnly)
-    typeOnly = 'slavePointer';
+    if IsWin
+        typeOnly = 'masterPointer';
+    else
+        typeOnly = 'slavePointer';
+    end
 end
 
 if nargin < 2 || isempty(touchTypeOnly)
