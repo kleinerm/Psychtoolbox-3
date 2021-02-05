@@ -33,10 +33,6 @@ function TouchQueueCreate(win, deviceNumber, numSlots, numValuators, keyList, fl
 % History:
 % 1-Oct-2017  mk  Written.
 
-if ~IsLinux
-  error('This function is currently only supported on Linux/X11');
-end
-
 if nargin < 1 || isempty(win) || Screen('WindowKind', win) ~= 1
   error('Required windowHandle missing.');
 end
@@ -73,7 +69,7 @@ if nargin < 6
   flags = [];
 end
 
-[touchIndices, productNames, allInfo] = GetTouchDeviceIndices;
+[touchIndices, ~, allInfo] = GetTouchDeviceIndices;
 if ~ismember(deviceNumber, touchIndices)
   error('deviceNumber does not refer to a touch input device.');
 end
