@@ -48,6 +48,8 @@ typedef struct dinfo {
     psych_uint32 dwDevType;
     TCHAR tszInstanceName[MAX_PATH + 1]; // + 1 TCHAR for guaranteed 0-termination
     TCHAR tszProductName[MAX_PATH + 1];  // even in case of buggy drivers.
+    int touchDeviceType;
+    int maxTouchpoints;
 } dinfo;
 
 static dinfo info[PSYCH_HID_MAX_DEVICES];
@@ -62,6 +64,7 @@ static  int     psychHIDKbQueueNumValuators[PSYCH_HID_MAX_DEVICES];
 static  unsigned int psychHIDKbQueueFlags[PSYCH_HID_MAX_DEVICES];
 static  PsychHIDEventRecord psychHIDKbQueueOldEvent[PSYCH_HID_MAX_DEVICES];
 static  psych_bool psychHIDKbQueueActive[PSYCH_HID_MAX_DEVICES];
+static unsigned int psychHIDKbQueueType[PSYCH_HID_MAX_DEVICES];
 static  psych_mutex KbQueueMutex;
 static  psych_condition KbQueueCondition;
 static  psych_bool KbQueueThreadTerminate;
@@ -99,7 +102,8 @@ BOOL keyboardEnumCallback(LPCDIDEVICEINSTANCE lpddi, LPVOID pvRef)
     info[ndevices].dwDevType = lpddi->dwDevType;
     memcpy(&info[ndevices].tszInstanceName[0], &(lpddi->tszInstanceName[0]), MAX_PATH * sizeof(TCHAR));
     memcpy(&info[ndevices].tszProductName[0], &(lpddi->tszProductName[0]), MAX_PATH * sizeof(TCHAR));
-
+    info[ndevices].touchDeviceType = -1;
+    info[ndevices].maxTouchpoints = -1;
     ndevices++;
 
     // Done. Continue with enumeration, unless the capacity of our internal
@@ -117,8 +121,11 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     dinput = NULL;
     ndevices = 0;
 
-    // Init x_dev array:
-    for (i = 0; i < PSYCH_HID_MAX_DEVICES; i++) x_dev[i] = NULL;
+    // Init x_dev and info arrays:
+    for (i = 0; i < PSYCH_HID_MAX_DEVICES; i++) {
+        x_dev[i] = NULL;
+        memset(&info[i], 0, sizeof(info[0]));
+    }
 
     // Init keyboard queue arrays:
     memset(&psychHIDKbQueueFirstPress[0], 0, sizeof(psychHIDKbQueueFirstPress));
@@ -130,6 +137,7 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
     memset(&psychHIDKbQueueNumValuators[0], 0, sizeof(psychHIDKbQueueNumValuators));
     memset(&psychHIDKbQueueOldEvent[0], 0, sizeof(psychHIDKbQueueOldEvent));
     memset(&psychHIDKbQueueFlags[0], 0, sizeof(psychHIDKbQueueFlags));
+    memset(&psychHIDKbQueueType[0], 0, sizeof(psychHIDKbQueueType));
 
     // We need the module instance handle of ourselves, ie., the PsychHID mex file to
     // open a DirectInput-8 interface, so the OS can apply backwards compatibility fixes
@@ -247,7 +255,7 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
 out:
     ndevices = 0;
 
-    // Close our dedicated x-display connection and we are done:
+    // Release DirectInput and we are done:
     if (dinput) dinput->Release();
     dinput = NULL;
 
@@ -259,7 +267,7 @@ static LPDIRECTINPUTDEVICE8 GetXDevice(int deviceIndex)
     if (deviceIndex < 0 || deviceIndex >= PSYCH_HID_MAX_DEVICES || deviceIndex >= ndevices)
         PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex specified. No such device!");
 
-    if (x_dev[deviceIndex] == NULL) {
+    if ((x_dev[deviceIndex] == NULL) && (psychHIDKbQueueType[deviceIndex] == 0)) {
         if (DI_OK != dinput->CreateDevice(info[deviceIndex].guidInstance, &(x_dev[deviceIndex]), NULL)) {
             PsychErrorExitMsg(PsychError_user, "Could not open connection to device. CreateDevice() failed!");
         }
@@ -387,8 +395,8 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
         PsychSetStructArrayDoubleElement("sliders", deviceIndex, (double) 0, deviceStruct);
         PsychSetStructArrayDoubleElement("dials", deviceIndex, (double) 0, deviceStruct);
         PsychSetStructArrayDoubleElement("wheels", deviceIndex, (double) 0, deviceStruct);
-        PsychSetStructArrayDoubleElement("maxTouchpoints",  deviceIndex, (double) -1, deviceStruct);
-        PsychSetStructArrayDoubleElement("touchDeviceType",  deviceIndex, (double) -1, deviceStruct);
+        PsychSetStructArrayDoubleElement("maxTouchpoints",  deviceIndex, (double) dev->maxTouchpoints, deviceStruct);
+        PsychSetStructArrayDoubleElement("touchDeviceType",  deviceIndex, (double) dev->touchDeviceType, deviceStruct);
 
         deviceIndex++;
     }
@@ -549,6 +557,10 @@ PsychError PsychHIDOSKbCheck(int deviceIndex, double* scanList)
         PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No such device!");
     }
 
+    // Usable as a keyboard? Only DirectInput devices are in principle usable:
+    if (psychHIDKbQueueType[deviceIndex] != 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. Not a keyboard-like device!");
+
     // Get DirectInput keyboard device:
     kb = GetXDevice(deviceIndex);
 
@@ -671,13 +683,8 @@ PsychError PsychHIDOSGamePadAxisQuery(int deviceIndex, int axisId, double* min, 
     return(PsychError_none);
 }
 
-// This is the event dequeue & process function which updates
-// Keyboard queue state. It can be called with 'blockingSinglepass'
-// set to TRUE to process exactly one event, if called from the
-// background keyboard queue processing thread. Alternatively it
-// can be called synchronously from KbQueueCheck with a setting of FALSE
-// to iterate over all available events and process them instantaneously:
-void KbQueueProcessEvents(psych_bool blockingSinglepass)
+// This is the event dequeue & process function which updates keyboard queue state.
+static void KbQueueProcessEvents(psych_bool longSleep)
 {
     LPDIRECTINPUTDEVICE8 kb;
     DIDEVICEOBJECTDATA event;
@@ -696,10 +703,10 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
     screen_width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
     screen_height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
-    while (1) {
-        // Wait until at least one event available and dequeue it:
-        // We use a timeout of 2 msecs.
-        WaitForSingleObject(hEvent, 2);
+    {
+        // Wait until at least one event available and dequeue it.
+        // We use a timeout of 100 msecs or 4 msecs, depending on longSleep:
+        WaitForSingleObject(hEvent, longSleep ? 100 : 4);
 
         // Take timestamp:
         PsychGetAdjustedPrecisionTimerSeconds(&tnow);
@@ -711,6 +718,10 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
         for (i = 0; i < (unsigned int) ndevices; i++) {
             // Skip this one if inactive:
             if (!psychHIDKbQueueActive[i])
+                continue;
+
+            // Skip this one if it is not a DirectInput device:
+            if (psychHIDKbQueueType[i] != 0)
                 continue;
 
             // Clamp numValuators to the max 3 axis a mouse can have for now:
@@ -936,9 +947,6 @@ void KbQueueProcessEvents(psych_bool blockingSinglepass)
 
         // Done with shared data access:
         PsychUnlockMutex(&KbQueueMutex);
-
-        // Done if we were only supposed to handle one sweep, which we did:
-        if (blockingSinglepass) break;
     }
 
     return;
@@ -1150,18 +1158,21 @@ void PsychHIDOSKbQueueStop(int deviceIndex)
     // Queue is active. Stop it:
     PsychLockMutex(&KbQueueMutex);
 
-    // Release the device:
-    if (DI_OK != kb->Unacquire()) {
-        PsychUnlockMutex(&KbQueueMutex);
-        printf("PsychHID-ERROR: Tried to stop processing on keyboard queue for deviceIndex %i, but releasing device failed!\n", deviceIndex);
-        PsychErrorExitMsg(PsychError_user, "Stopping keyboard queue failed!");
-    }
+    // DirectInput device?
+    if (kb) {
+        // Release the device:
+        if (DI_OK != kb->Unacquire()) {
+            PsychUnlockMutex(&KbQueueMutex);
+            printf("PsychHID-ERROR: Tried to stop processing on keyboard queue for deviceIndex %i, but releasing device failed!\n", deviceIndex);
+            PsychErrorExitMsg(PsychError_user, "Stopping keyboard queue failed!");
+        }
 
-    // Disable state-change event notifications:
-    if (DI_OK != kb->SetEventNotification(NULL)) {
-        PsychUnlockMutex(&KbQueueMutex);
-        printf("PsychHID-ERROR: Tried to stop processing on keyboard queue for deviceIndex %i, but disabling device state notifications failed!\n", deviceIndex);
-        PsychErrorExitMsg(PsychError_user, "Stopping keyboard queue failed!");
+        // Disable state-change event notifications:
+        if (DI_OK != kb->SetEventNotification(NULL)) {
+            PsychUnlockMutex(&KbQueueMutex);
+            printf("PsychHID-ERROR: Tried to stop processing on keyboard queue for deviceIndex %i, but disabling device state notifications failed!\n", deviceIndex);
+            PsychErrorExitMsg(PsychError_user, "Stopping keyboard queue failed!");
+        }
     }
 
     // Mark queue logically stopped:
@@ -1241,73 +1252,75 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
     // Setup event mask, so events from our associated xinput device get enqueued in our event queue:
     kb = GetXDevice(deviceIndex);
 
-    // Device specific data format setup:
-    switch (info[deviceIndex].dwDevType & 0xff) {
-        case DI8DEVTYPE_KEYBOARD:
-            if (DI_OK != kb->SetDataFormat(&c_dfDIKeyboard)) {
-                PsychUnlockMutex(&KbQueueMutex);
-                printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
-                PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
-            }
-        break;
+    // DirectInput device?
+    if (kb) {
+        // Device specific data format setup:
+        switch (info[deviceIndex].dwDevType & 0xff) {
+            case DI8DEVTYPE_KEYBOARD:
+                if (DI_OK != kb->SetDataFormat(&c_dfDIKeyboard)) {
+                    PsychUnlockMutex(&KbQueueMutex);
+                    printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
+                    PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
+                }
+            break;
 
-        case DI8DEVTYPE_MOUSE:
-        case DI8DEVTYPE_SCREENPOINTER:
-            if (DI_OK != kb->SetDataFormat(&c_dfDIMouse2)) {
-                PsychUnlockMutex(&KbQueueMutex);
-                printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
-                PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
-            }
-        break;
+            case DI8DEVTYPE_MOUSE:
+            case DI8DEVTYPE_SCREENPOINTER:
+                if (DI_OK != kb->SetDataFormat(&c_dfDIMouse2)) {
+                    PsychUnlockMutex(&KbQueueMutex);
+                    printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
+                    PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
+                }
+            break;
 
-        case DI8DEVTYPE_JOYSTICK:
-            if (DI_OK != kb->SetDataFormat(&c_dfDIJoystick2)) {
-                PsychUnlockMutex(&KbQueueMutex);
-                printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
-                PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
-            }
-        break;
-    }
+            case DI8DEVTYPE_JOYSTICK:
+                if (DI_OK != kb->SetDataFormat(&c_dfDIJoystick2)) {
+                    PsychUnlockMutex(&KbQueueMutex);
+                    printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting dataformat failed!\n", deviceIndex);
+                    PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
+                }
+            break;
+        }
 
-    // Set device event buffer size to 256 elements:
-    dipdw.diph.dwSize = sizeof(DIPROPDWORD);
-    dipdw.diph.dwHeaderSize = sizeof(DIPROPHEADER);
-    dipdw.diph.dwObj = 0;
-    dipdw.diph.dwHow = DIPH_DEVICE;
-    dipdw.dwData = 256;
+        // Set device event buffer size to 256 elements:
+        dipdw.diph.dwSize = sizeof(DIPROPDWORD);
+        dipdw.diph.dwHeaderSize = sizeof(DIPROPHEADER);
+        dipdw.diph.dwObj = 0;
+        dipdw.diph.dwHow = DIPH_DEVICE;
+        dipdw.dwData = 256;
 
-    if (DI_OK != kb->SetProperty(DIPROP_BUFFERSIZE, &dipdw.diph)) {
-        PsychUnlockMutex(&KbQueueMutex);
-        printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting buffersize on device failed!\n", deviceIndex);
-        PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
-    }
+        if (DI_OK != kb->SetProperty(DIPROP_BUFFERSIZE, &dipdw.diph)) {
+            PsychUnlockMutex(&KbQueueMutex);
+            printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting buffersize on device failed!\n", deviceIndex);
+            PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
+        }
 
-    // Enable state-change event notifications:
-    if (DI_OK != kb->SetEventNotification(hEvent)) {
-        PsychUnlockMutex(&KbQueueMutex);
-        printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting device state notifications failed!\n", deviceIndex);
-        PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
-    }
+        // Enable state-change event notifications:
+        if (DI_OK != kb->SetEventNotification(hEvent)) {
+            PsychUnlockMutex(&KbQueueMutex);
+            printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but setting device state notifications failed!\n", deviceIndex);
+            PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
+        }
 
-    if (DI_OK != kb->Acquire()) {
-        PsychUnlockMutex(&KbQueueMutex);
-        printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but acquiring device failed!\n", deviceIndex);
-        PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
+        if (DI_OK != kb->Acquire()) {
+            PsychUnlockMutex(&KbQueueMutex);
+            printf("PsychHID-ERROR: Tried to start processing on keyboard queue for deviceIndex %i, but acquiring device failed!\n", deviceIndex);
+            PsychErrorExitMsg(PsychError_user, "Starting keyboard queue failed!");
+        }
     }
 
     // Mark this queue as logically started:
     psychHIDKbQueueActive[deviceIndex] = TRUE;
 
-    // Queue started.
-    PsychUnlockMutex(&KbQueueMutex);
-
     // If other queues are already active then we're done:
-    if (queueActive) return;
+    if (queueActive) {
+        PsychUnlockMutex(&KbQueueMutex);
+        return;
+    }
 
     // No other active queues. We are the first one.
 
     // Start the common processing thread for all queues:
-    PsychLockMutex(&KbQueueMutex);
     KbQueueThreadTerminate = FALSE;
 
     if (PsychCreateThread(&KbQueueThread, NULL, KbQueueWorkerThreadMain, NULL)) {
@@ -1331,7 +1344,6 @@ void PsychHIDOSKbQueueStart(int deviceIndex)
 void PsychHIDOSKbQueueFlush(int deviceIndex)
 {
     LPDIRECTINPUTDEVICE8 kb;
-    HRESULT rc;
     DWORD dwItems = INFINITE;
 
     if (deviceIndex < 0) {
@@ -1350,13 +1362,13 @@ void PsychHIDOSKbQueueFlush(int deviceIndex)
         PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' specified. No queue for that device yet!");
     }
 
-    kb = GetXDevice(deviceIndex);
-
     // Clear out current state for this queue:
     PsychLockMutex(&KbQueueMutex);
 
-    // Flush device buffer:
-    rc = kb->GetDeviceData(sizeof(DIDEVICEOBJECTDATA), NULL, &dwItems, 0);
+    // Flush device buffer if this is a DirectInput device:
+    kb = GetXDevice(deviceIndex);
+    if (kb)
+        kb->GetDeviceData(sizeof(DIDEVICEOBJECTDATA), NULL, &dwItems, 0);
 
     // Clear our buffer:
     memset(psychHIDKbQueueFirstPress[deviceIndex]   , 0, (256 * sizeof(double)));
