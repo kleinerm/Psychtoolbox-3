@@ -334,13 +334,13 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
         switch(dev->dwDevType & 0xff) {
             case DI8DEVTYPE_MOUSE:
             case DI8DEVTYPE_SCREENPOINTER:
-                type = (char*) "slave pointer";
+                type = (char*) "master pointer";
                 if (dev->usagePage == 0) dev->usagePage = 1;
                 if (dev->usageValue == 0) dev->usageValue = 2;
             break;
 
             case DI8DEVTYPE_KEYBOARD:
-                type = (char*) "slave keyboard";
+                type = (char*) "master keyboard";
                 if (dev->usagePage == 0) dev->usagePage = 1;
                 if (dev->usageValue == 0) dev->usageValue = 6;
             break;
