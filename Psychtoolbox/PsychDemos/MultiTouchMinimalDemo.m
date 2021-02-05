@@ -192,6 +192,14 @@ function MultiTouchMinimalDemo(dev, screenId, verbose)
       end
 
       % Done repainting - Show it:
+      Screen('Flip', w);
+
+      % This little bit here will provoke stimulus onset timing failures on
+      % Windows if something is not quite right.
+      if verbose == 2 && IsWin
+        WaitSecs(0.025);
+        [~, ~, ~, visualtimingmaybesane] = GetMouse(w)
+      end
 
       % Next touch processing -> redraw -> flip cycle:
     end
