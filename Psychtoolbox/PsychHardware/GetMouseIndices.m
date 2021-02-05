@@ -52,6 +52,7 @@ function [mouseIndices, productNames, allInfo] = GetMouseIndices(typeOnly, produ
 % 08/27/15  mk    Add 'slavePointer' support.
 % 15-Aug-2017 mk  Add filtering by productName, serialNumber, locationID.
 % 29-Sep-2017 mk  No masterPointer constraint no longer applies to KbQueues.
+% 05-Feb-2021 mk  Only masterPointer on Windows atm.
 
 mouseIndices=[];
 productNames=cell(0);
@@ -75,7 +76,7 @@ end
 
 if ~IsOSX
     LoadPsychHID;
-    if strcmpi(typeOnly, 'masterPointer')
+    if strcmpi(typeOnly, 'masterPointer') || IsWin
         d = PsychHID('Devices', 1);
     elseif strcmpi(typeOnly, 'slavePointer')
         d = PsychHID('Devices', 3);
