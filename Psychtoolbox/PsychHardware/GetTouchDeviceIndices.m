@@ -100,7 +100,8 @@ else
 end
 
 for i =1:length(d);
-    if d(i).usagePageValue==1 && d(i).usageValue == 2 && ismember(d(i).touchDeviceType, touchTypeOnly)
+    if ((d(i).usagePageValue==1 && d(i).usageValue == 2) || (d(i).usagePageValue==13 && d(i).usageValue == 4)) && ...
+        ismember(d(i).touchDeviceType, touchTypeOnly)
         % Check if additional match-criteria provided. Skip this device on mismatch:
         if ~isempty(product) && ~strcmpi(d(i).product, product)
             continue;
