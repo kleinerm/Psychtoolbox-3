@@ -298,6 +298,12 @@
 % All sound files in PsychDemos/Soundfiles/ - LGPL license. See file
 %                                             COPYING in that folder for details.
 %
+% The image of the cute, confused looking frog in our Welcome splash screen is
+% from pixabay, which provides this artwork under the "Pixabay license", ie.
+% free for commerical use, no attribution necessary, but appreciated. Thanks! 
+% https://pixabay.com/vectors/frog-green-animal-amphibian-48234/ 
+% "Simplified Pixabay License" at https://pixabay.com/service/license/ attached
+% below.
 %
 %
 % APPENDIX: The different licenses in detail:
@@ -1671,6 +1677,44 @@
 % SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 %
 % End of OpenEXR sample images license text.
+%
+% =========================================================================
+%
+% Simplified Pixabay License:
+%
+% License for Content – Pixabay License
+%
+% Content on Pixabay is made available to you on the following terms ("Pixabay License").
+% Under the Pixabay License you are granted an irrevocable, worldwide, non-exclusive and
+% royalty free right to use, download, copy, modify or adapt the Content for commercial
+% or non-commercial purposes. Attribution of the photographer, videographer, musician or
+% Pixabay is not required but is always appreciated.
+%
+% The Pixabay License does not allow:
+%
+% Sale or distribution of Content as digital Content or as digital wallpapers 
+% (such as on stock media websites);
+%
+% Sale or distribution of Content e.g. as posters, digital prints, music files or
+% physical products, without adding any additional elements or otherwise adding value.
+%
+% Depiction of identifiable persons in an offensive, pornographic, obscene, 
+% immoral, defamatory or libelous way; or
+%
+% Any suggestion that there is an endorsement of products and services by 
+% depicted persons, brands, vocalists and organisations, unless permission was 
+% granted.
+%
+% Please be aware that while all Content on Pixabay is free to use for commercial 
+% and non-commercial purposes, items in the Content, such as identifiable people, 
+% logos, brands, audio samples etc. may be subject to additional copyrights, 
+% property rights, privacy rights, trademarks etc. and may require the consent of 
+% a third party or the license of these rights - particularly for commercial 
+% applications. Pixabay does not represent or warrant that such consents or 
+% licenses have been obtained, and expressly disclaims any liability in this 
+% respect.
+%
+% End of Simplified Pixabay license text.
 %
 % =========================================================================
 %
