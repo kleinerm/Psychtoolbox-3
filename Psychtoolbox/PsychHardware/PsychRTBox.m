@@ -2105,9 +2105,9 @@ function syncClocks(id)
     if verbosity > 3
         fprintf('PsychRTBox: ClockSync(%i): Box "%s": Got %i valid samples, maxconfidence interval = %f msecs, winner interval %f msecs.\n', rtbox_global.syncmode, rtbox_info(id).ID, ic, 1000 * rtbox_global.maxMinwinThreshold, 1000 * minwin);
         if rtbox_global.syncmode == 1
-            fprintf('PsychRTBox: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * range(t(2,:) - t(3,:)));
+            fprintf('PsychRTBox: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * psychrange(t(2,:) - t(3,:)));
         else
-            fprintf('PsychRTBox: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * range(t(1,:) - t(3,:)));
+            fprintf('PsychRTBox: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * psychrange(t(1,:) - t(3,:)));
         end
     end
     
@@ -2956,6 +2956,19 @@ function openRTBox(deviceID, handle)
                 if strfind(idn,'USTCRTBOX')
                     % Found device:
                     deviceFound=1;
+
+                    % Make sure we get the full valid string, repeat query if neccessary:
+                    while length(idn) ~= 21
+                        % Read out whatever junk maybe in the input buffer:
+                        IOPort('Read', s, 0);
+
+                        % Write the 'X' command code to ask box for its identity again:
+                        IOPort('Write', s, 'X');
+
+                        % Wait blocking with 1 sec timeout for id string:
+                        idn=char(IOPort('Read', s, 1, 21));
+                    end
+
                     break;
                 end
 

@@ -1,3 +1,10 @@
+version19 is the most recent version of the WelcomeSplash.ppm
+Designed in Inkscape by Celia Foster, saved as .svg
+Opened in GIMP, saved as .ppm
+The frog image is from pixabay, licence is free for commerical use,
+no attribution necessary (see screenshots for details). 
+https://pixabay.com/vectors/frog-green-animal-amphibian-48234/ 
+
 version17 is the most recent version of the WelcomeSplash.ppm
 Designed in Inkscape by Celia Foster, saved as .svg
 Opened in GIMP, saved as .ppm

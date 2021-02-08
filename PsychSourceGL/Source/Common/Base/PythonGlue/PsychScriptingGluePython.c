@@ -3252,6 +3252,37 @@ void PsychSetStructArrayDoubleElement(const char *fieldName,
 
 
 /*
+    PsychSetStructArrayUnsignedInt64Element()
+    Note: The variable "index" is zero-indexed.
+*/
+void PsychSetStructArrayUnsignedInt64Element(const char *fieldName,
+                                             int index,
+                                             psych_uint64 value,
+                                             PsychGenericScriptType *pStruct)
+{
+    int         fieldNumber;
+    psych_bool  isStruct;
+    PyObject    *mxFieldValue;
+    char        errmsg[256];
+
+    isStruct = mxIsStruct(pStruct);
+    if (!isStruct)
+        PsychErrorExitMsg(PsychError_internal, "Attempt to set a field within a non-existent structure.");
+
+    fieldNumber = mxIsField(pStruct, fieldName);
+    if (fieldNumber == -1) {
+        sprintf(errmsg, "Attempt to set a non-existent structure name field: %s", fieldName);
+        PsychErrorExitMsg(PsychError_internal, errmsg);
+    }
+
+    mxFieldValue = PyLong_FromUnsignedLongLong(value);
+
+    // mxSetField steals the only reference to mxFieldValue, so we are done with it:
+    mxSetField(pStruct, (ptbIndex) index, fieldName, mxFieldValue);
+}
+
+
+/*
     PsychSetStructArrayBooleanElement()
 
     Note: The variable "index" is zero-indexed.

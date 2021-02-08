@@ -581,6 +581,18 @@ elseif (multixscreen > 0) && (modesetting == 'y') && ~modesettingddxactive
   fprintf('Override: out and in again with this new configuration selected.\n');
 end
 
+% If we want/need to use the intel-ddx, also try to use DRI3/Present, unless user
+% strictly said 'n'o. Why? On modern distros with recent Mesa, OpenGL clients and
+% also desktop GUI's (OpenGL desktop compositors) will choose the new 'iris' OpenGL
+% gallium driver on Intel Gen8+, but the intel-ddx will currently always choose the
+% old i965 DRI classic driver. This mismatch of server/ddx uses i965, but compositor/
+% OpenGL client uses iris, will end in a nice desktop GUI crash, unless we use DRI3!
+% Hard earned wisdom, but with DRI3 we are safe for the moment, so choose that:
+if strcmp(xdriver, 'intel') && (dri3 ~= 'n')
+  fprintf('Override: Use of intel-ddx implies use of DRI3/Present for higher reliability, so enabling DRI3.\n');
+  dri3 = 'y';
+end
+
 % Define filename of output file:
 fdir = PsychtoolboxConfigDir ('XorgConfs');
 

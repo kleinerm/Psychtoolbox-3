@@ -187,12 +187,12 @@ if nargin >= 6
   if ~isempty(win)
     % Onscreen window handle given. Validate and map to windowing system handle:
     if Screen('WindowKind', win) == 1 
-      % Onscreen window handle of open onscreen window: Map to X-Window:
+      % Onscreen window handle of open onscreen window: Map to winsys handle:
       winfo = Screen('GetWindowInfo', win);
       win = winfo.SysWindowHandle;
     elseif ismember(win, Screen('Screens'))
       % screenid given: Pass in as X-Screen id + 1:
-      win = win + 1;
+      win = uint64(win + 1);
     end
   end
 end

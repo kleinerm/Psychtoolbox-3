@@ -851,17 +851,8 @@ elseif ischar(arg)      % argument is a character, so find the code
 
         % End of keyname unification code.
     else
-        if IsOctave && IsWin
-            % GNU/Octave on Windows does not yet support index mode for strcmpi, need to do it manually...
-            for i=1:length(kk)
-                if strcmpi(char(kk(i)), arg)
-                    kbNameResult = i;
-                    break;
-                end
-            end
-        else
-            kbNameResult=find(strcmpi(kk, arg));
-        end
+        kbNameResult=find(strcmpi(kk, arg));
+
         if isempty(kbNameResult)
             if IsLinux && isempty(getenv('DISPLAY')) && ~IsWayland
                 warning('Returning empty KbName result, as KbName is not yet implemented on this Linux backend.');

@@ -8,11 +8,6 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 % Also returns corresponding productNames for the devices and detailed
 % info in the allInfo struct-array.
 %
-% WINDOWS: ________________________________________________________________
-%
-% This function currently returns nothing, as touch devices aren't yet
-% supported.
-%
 % OS X: ___________________________________________________________________
 %
 % This function currently returns nothing, as OSX does not support touch
@@ -35,7 +30,8 @@ function [touchIndices, productNames, allInfo] = GetTouchDeviceIndices(typeOnly,
 % returned devices by specifying the following optional match-critera:
 %
 % typeOnly      = 'masterPointer' or 'slavePointer' or 'allPointers'. If left
-%                 out, this will default to 'slavePointer'.
+%                 out, this will default to 'slavePointer', unless on MS-Windows,
+%                 where it defaults to 'masterPointer'.
 %
 % touchTypeOnly = 0 for touchpads, 1 for true touchscreens.
 %
@@ -63,7 +59,11 @@ productNames=cell(0);
 allInfo=cell(0);
 
 if nargin < 1 || isempty(typeOnly)
-    typeOnly = 'slavePointer';
+    if IsWin
+        typeOnly = 'masterPointer';
+    else
+        typeOnly = 'slavePointer';
+    end
 end
 
 if nargin < 2 || isempty(touchTypeOnly)
@@ -100,7 +100,8 @@ else
 end
 
 for i =1:length(d);
-    if d(i).usagePageValue==1 && d(i).usageValue == 2 && ismember(d(i).touchDeviceType, touchTypeOnly)
+    if ((d(i).usagePageValue==1 && d(i).usageValue == 2) || (d(i).usagePageValue==13 && d(i).usageValue == 4)) && ...
+        ismember(d(i).touchDeviceType, touchTypeOnly)
         % Check if additional match-criteria provided. Skip this device on mismatch:
         if ~isempty(product) && ~strcmpi(d(i).product, product)
             continue;

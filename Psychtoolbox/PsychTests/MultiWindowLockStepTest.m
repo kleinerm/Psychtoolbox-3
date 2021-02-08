@@ -143,7 +143,7 @@ for i=1:nrwins
   tvec = diff(tvec) / ifi(i);
   plot(tvec);
   title(sprintf('Should be %i frames delta:', i));
-  fprintf('Window %i should have mean %i, has %f with range %f.\n', i, i, mean(tvec), range(tvec));
+  fprintf('Window %i should have mean %i, has %f with range %f.\n', i, i, mean(tvec), psychrange(tvec));
 end
 
 return;

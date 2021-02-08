@@ -113,7 +113,7 @@ save(res.outFilename, 'res', '-V6');
 
 % Calculate scheduling jitter, ie., per-trial error, in msecs:
 jitter = 1000 * abs(t - secs);
-fprintf('After %i trials: Mean delay %f msecs, stddev = %f msecs, range = %f msecs.\n\n', i, mean(jitter), std(jitter), range(jitter));
+fprintf('After %i trials: Mean delay %f msecs, stddev = %f msecs, range = %f msecs.\n\n', i, mean(jitter), std(jitter), psychrange(jitter));
 figure;
 hist(jitter, 100);
 title(sprintf('Scheduling latency histogram: Latency [msecs] vs. counts:\n(N=%i, Prio=%i)', i, res.Priority));

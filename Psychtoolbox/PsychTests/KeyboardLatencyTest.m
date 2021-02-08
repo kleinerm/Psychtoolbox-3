@@ -454,7 +454,7 @@ if ~isempty(tdelay2) && submode ~= 2
     end
     
     toffset = toffset((toffset > -100) & (toffset < 100));
-    fprintf('\nTest finished. RTBox 2nd Average delay across valid trials: %f msecs (stddev = %f msecs, range = %f msecs).\n\n', mean(toffset), std(toffset), range(toffset));
+    fprintf('\nTest finished. RTBox 2nd Average delay across valid trials: %f msecs (stddev = %f msecs, range = %f msecs).\n\n', mean(toffset), std(toffset), psychrange(toffset));
 end
 
 if modality == 5
