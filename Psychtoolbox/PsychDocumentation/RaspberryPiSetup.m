@@ -135,14 +135,14 @@
 %      On a RaspberryPi 2 or 3, the dtoverlay parameter should be vc4-kms-v3d instead
 %      of vc4-fkms-v3d.
 %
-%   4. At least on the RaspberryPi 4 / 400 with current January 2021 editions of
-%      Raspbian, you should also run PsychLinuxConfiguration, XOrgConfCreator, and
-%      XOrgConfSelector to install a custom xorg.conf file, which will work around
-%      a bug in Raspbian. Reboot! If the bug is present and this workaround from
-%      step 4 is not applied, Psychtoolbox will complain angrily about "pageflipping
-%      not being used for flips", visual stimulation timing will be grossly wrong,
-%      and you will observe massive tearing artifacts, flicker and other stimulus
-%      anomalies.
+%   4. On the RaspberryPi 4 / 400 with editions of Raspbian / RaspberryPi OS older than
+%      February 2021, you should either update your OS to the latest, and reboot, or run
+%      PsychLinuxConfiguration, XOrgConfCreator, and XOrgConfSelector to install a custom
+%      xorg.conf file, which will work around a bug in Raspbian. Reboot! If the bug is
+%      present and this workaround from step 4 is not applied, Psychtoolbox will complain
+%      angrily about "pageflipping not being used for flips", visual stimulation timing
+%      will be grossly wrong, and you will observe massive tearing artifacts, flicker and
+%      other stimulus anomalies.
 %
 %   With all setup steps performed propery, and a reboot for good measure, visual
 %   stimulation should work very well, with robust, trustworthy and sub-millisecond
