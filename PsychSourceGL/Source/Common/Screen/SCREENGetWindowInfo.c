@@ -204,7 +204,7 @@ static char synopsisString[] =
     "VBLStartLine, VBLEndline: Start/Endline of vertical blanking interval. The VBLEndline value is not available/valid on all GPU's.\n"
     "SwapGroup: Swap group id of the swap group to which this window is assigned. Zero for none.\n"
     "SwapBarrier: Swap barrier id of the swap barrier to which this windows swap group is assigned. Zero for none.\n"
-    "SysWindowHandle: Low-level windowing system specific window handle of the onscreen window. Currently Linux/X11 only: The X-Window handle.\n"
+    "SysWindowHandle: Low-level windowing system specific window handle of the onscreen window.\n"
     "ExternalMouseMultFactor: Scaling factor to apply for remapping input coordinates on some systems, e.g., by RemapMouse.m.\n"
     "VRRMode: Actual selected mode for VRR stimulus onset scheduling (1 = auto maps to actual choice): 0 = Off, 2 = Simple, 3 = OwnScheduled.\n"
     "VRRStyleHint: Style hint code for the current active VRR stimulation timing style, ie. what is assumed about timing behaviour of the paradigm.\n"
@@ -547,10 +547,9 @@ PsychError SCREENGetWindowInfo(void)
         // Windowing system low-level onscreen window handle or equivalent info:
         #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAYLAND)
             // Linux/X11: The X-Window handle 'Window':
-            PsychSetStructArrayDoubleElement("SysWindowHandle", 0, windowRecord->targetSpecific.xwindowHandle, s);
+            PsychSetStructArrayUnsignedInt64Element("SysWindowHandle", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.xwindowHandle, s);
         #else
-            // Other: Not implemented yet.
-            PsychSetStructArrayDoubleElement("SysWindowHandle", 0, 0, s);
+            PsychSetStructArrayUnsignedInt64Element("SysWindowHandle", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.windowHandle, s);
         #endif
 
         // Scaling factor for input coordinate transformation functions like RemapMouse.m:

@@ -154,7 +154,7 @@ fprintf('to missing sync across the heads.\n\n');
 
 % Some plotting:
 close all;
-if (range(timinginfo(1, 1, :)) > 0) && (range(timinginfo(1, 2, :)) > 0)
+if (psychrange(timinginfo(1, 1, :)) > 0) && (psychrange(timinginfo(1, 2, :)) > 0)
     plot(1:nrtrials, squeeze(timinginfo(1,1,:)), 'r', 1:nrtrials, squeeze(timinginfo(1,2,:)), 'b');
     title('Beampositions for both displays: Red = Head 1, Blue=Head 2');
 

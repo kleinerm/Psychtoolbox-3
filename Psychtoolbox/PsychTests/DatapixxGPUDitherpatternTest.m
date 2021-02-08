@@ -96,7 +96,7 @@ for i = 0:255
   
   fprintf('Ref %i: RGB ', i);
   fprintf('%i ', pixels(:,[1:10, floor(length(pixels)/2):floor(length(pixels)/2)+9]));
-  if any(range(pixels) ~= 0) || (pixels(1,1) ~= i)
+  if any(psychrange(pixels) ~= 0) || (pixels(1,1) ~= i)
     fprintf(' --> TROUBLE!');
     trouble = trouble + 1;
     if (pixels(1,1) ~= i)

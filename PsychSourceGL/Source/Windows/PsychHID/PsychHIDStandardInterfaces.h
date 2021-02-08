@@ -17,6 +17,10 @@
 #ifndef PSYCH_IS_INCLUDED_PsychHIDStandardIntefaces
 #define PSYCH_IS_INCLUDED_PsychHIDStandardIntefaces
 
+// We need the WINVER defines from this, before the DirectX includes, but
+// can't just put PsychHID.h include here, as MSVC chokes otherwise!
+#include "PsychPlatform.h"
+
 // CAUTION: The exact order of include and define statements below matters!
 // Define direct input version explicitely to avoid compiler warnings.
 // This sequence of InitGuid, version define and dinput.h include defines the

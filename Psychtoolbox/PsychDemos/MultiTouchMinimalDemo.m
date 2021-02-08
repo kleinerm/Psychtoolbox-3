@@ -89,6 +89,7 @@ function MultiTouchMinimalDemo(dev, screenId, verbose)
     % blobcol tracks active touch points - and dying ones:
     blobcol = {};
     buttonstate = 0;
+    blobmin = inf;
 
     % Only ESCape allows to exit the demo:
     RestrictKeysForKbCheck(KbName('ESCAPE'));
@@ -103,6 +104,13 @@ function MultiTouchMinimalDemo(dev, screenId, verbose)
         % Touch blob id - Unique in the session at least as
         % long as the finger stays on the screen:
         id = evt.Keycode;
+
+        % Keep the id's low, so we have to iterate over less blobcol slots
+        % to save computation time:
+        if isinf(blobmin)
+          blobmin = id - 1;
+        end
+        id = id - blobmin;
 
         if evt.Type == 0
           % Not a touch point, but a button press or release on a
@@ -185,6 +193,13 @@ function MultiTouchMinimalDemo(dev, screenId, verbose)
 
       % Done repainting - Show it:
       Screen('Flip', w);
+
+      % This little bit here will provoke stimulus onset timing failures on
+      % Windows if something is not quite right.
+      if verbose == 2 && IsWin
+        WaitSecs(0.025);
+        [~, ~, ~, visualtimingmaybesane] = GetMouse(w)
+      end
 
       % Next touch processing -> redraw -> flip cycle:
     end

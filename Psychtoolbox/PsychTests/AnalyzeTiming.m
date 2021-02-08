@@ -35,9 +35,9 @@ fprintf('Number of flip >= 0.66 ifi later than meas. (Excessive wakeup-delay): %
 % Only take deltas of valid frames into account:
 vdeltas = 1000 * deltas(valids); %#ok<FNDSB>
 
-fprintf('Valid high-precision frames: Mean difference %f msecs, stddev %f msecs, range %f msecs.\n', mean(vdeltas), std(vdeltas), range(vdeltas));
+fprintf('Valid high-precision frames: Mean difference %f msecs, stddev %f msecs, range %f msecs.\n', mean(vdeltas), std(vdeltas), psychrange(vdeltas));
 vrawdeltas = 1000 * (res.measuredTime(valids) - res.rawFlipTime(valids));
-fprintf('Valid raw-precision  frames: Mean difference %f msecs, stddev %f msecs, range %f msecs.\n', mean(vrawdeltas), std(vrawdeltas), range(vrawdeltas));
+fprintf('Valid raw-precision  frames: Mean difference %f msecs, stddev %f msecs, range %f msecs.\n', mean(vrawdeltas), std(vrawdeltas), psychrange(vrawdeltas));
 
 fprintf('Scheduling / wakeup delay vbl onset (swap) to wakeup: Mean %f msecs, Max %f msecs.\n', 1000 * mean(res.rawFlipTime(valids) - res.vblFlipTime(valids)), 1000 * max(res.rawFlipTime(valids) - res.vblFlipTime(valids)));
 if isfield(res, 'swapRequestSubmissionTime')

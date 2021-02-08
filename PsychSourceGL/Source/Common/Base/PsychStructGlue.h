@@ -38,6 +38,11 @@ void PsychSetStructArrayDoubleElement(  const char *fieldName,
                                         double value,
                                         PsychGenericScriptType *pStruct);
 
+void PsychSetStructArrayUnsignedInt64Element(const char *fieldName,
+                                             int index,
+                                             psych_uint64 value,
+                                             PsychGenericScriptType *pStruct);
+
 void PsychSetStructArrayBooleanElement( const char *fieldName,
                                         int index,
                                         psych_bool state,

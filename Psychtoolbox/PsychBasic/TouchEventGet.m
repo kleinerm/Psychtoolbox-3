@@ -125,10 +125,15 @@ if ~isempty(event)
     fprintf('TouchEventGet: WARNING! Data loss in touch sequence detected!\n');
   else
     % Normal event, map also to window relative coordinates:
-    [w, h] = Screen('Windowsize', Screen('WindowScreenNumber', windowHandle));
     winRect = Screen('GlobalRect', windowHandle);
-    event.MappedX = (event.NormX * w) - winRect(1);
-    event.MappedY = (event.NormY * h) - winRect(2);
+    if IsLinux
+        [w, h] = Screen('Windowsize', Screen('WindowScreenNumber', windowHandle));
+        event.MappedX = (event.NormX * w) - winRect(1);
+        event.MappedY = (event.NormY * h) - winRect(2);
+    else
+        event.MappedX = event.X - winRect(1);
+        event.MappedY = event.Y - winRect(2);
+    end
   end
 end
 

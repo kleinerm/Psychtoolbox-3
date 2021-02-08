@@ -36,7 +36,7 @@ function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs, device)
 %            allow 'device' selection. Cosmetic. (MK)
 
 % Running on PTB-3? Abort otherwise.
-AssertOpenGL;
+PsychDefaultSetup(1);
 
 % Filename provided?
 if nargin < 1

@@ -1009,7 +1009,16 @@ dwmdontcare:
 
     if (fullscreen) {
         windowStyle |= WS_POPUP;                    // Set The WindowStyle To WS_POPUP (Popup Window without borders)
-        windowExtendedStyle |= WS_EX_TOPMOST;        // Set The Extended Window Style To WS_EX_TOPMOST
+        windowExtendedStyle |= WS_EX_TOPMOST;       // Set The Extended Window Style To WS_EX_TOPMOST
+
+        // At visual debug level of 6 or higher, on Windows-8 or later, disable the
+        // DWM redirection surface for fullscreen windows. This means that if the
+        // fullscreen window goes through the compositor, iow. timing will be broken,
+        // then lacking such a virtual frontbuffer surface the window will display invisible.
+        // This means if the compositor kicks in when it should not, our window will not
+        // display - a clear visual indication that timing is broken due to DWM interference.
+        if (PsychOSIsMSWin8() && (PsychPrefStateGet_VisualDebugLevel() > 5))
+            windowExtendedStyle |= WS_EX_NOREDIRECTIONBITMAP;
 
         // Copy absolute screen location and area of window to 'globalrect',
         // so functions like Screen('GlobalRect') can still query the real

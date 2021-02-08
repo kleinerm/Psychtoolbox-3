@@ -91,13 +91,13 @@ function PosterBatchAnalyzeTimestamps
     if ~isempty(gPrecDeltas)
         meanDiff  = mean(gPrecDeltas);
         stdDiff   = std(gPrecDeltas);
-        rangeDiff(1) = range(gPrecDeltas);
+        rangeDiff(1) = psychrange(gPrecDeltas);
         rangeDiff(2) = min(gPrecDeltas);
         rangeDiff(3) = max(gPrecDeltas);
 
         rawmeanDiff  = mean(gRawDeltas);
         rawstdDiff   = std(gRawDeltas);
-        rawrangeDiff(1) = range(gRawDeltas);
+        rawrangeDiff(1) = psychrange(gRawDeltas);
         rawrangeDiff(2) = min(gRawDeltas);
         rawrangeDiff(3) = max(gRawDeltas);
 
@@ -165,7 +165,7 @@ function [nrTotal, nrSkipped, nrCorrupt, nrDisagree, nrDelayed, meanDiff, stdDif
     
     meanDiff  = mean(vdeltas);
     stdDiff   = std(vdeltas);
-    rangeDiff(1) = range(vdeltas);
+    rangeDiff(1) = psychrange(vdeltas);
     rangeDiff(2) = min(vdeltas);
     rangeDiff(3) = max(vdeltas);
 
@@ -184,7 +184,7 @@ function [nrTotal, nrSkipped, nrCorrupt, nrDisagree, nrDelayed, meanDiff, stdDif
     
     rawmeanDiff  = mean(vrawdeltas);
     rawstdDiff   = std(vrawdeltas);
-    rawrangeDiff(1) = range(vrawdeltas);
+    rawrangeDiff(1) = psychrange(vrawdeltas);
     rawrangeDiff(2) = min(vrawdeltas);
     rawrangeDiff(3) = max(vrawdeltas);
     

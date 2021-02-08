@@ -104,7 +104,7 @@ static char synopsisString[] =
 "     For mouse and touchpad devices, this usually reports relative motion, ie.\n"
 "     movement deltas, instead of absolute position values.\n"
 "\n\n"
-"'windowHandle' Optional windowing system specific handle for an associated onscreen window. Used on Linux/X11 only.\n"
+"'windowHandle' Optional windowing system specific handle for an associated onscreen window.\n"
 "\n";
 
 static char seeAlsoString[] = "KbQueueStart, KbQueueStop, KbQueueCheck, KbQueueFlush, KbQueueRelease";
@@ -117,8 +117,8 @@ PsychError PSYCHHIDKbQueueCreate(void)
     int numValuators = 0;
     int numSlots = 10000;
     int flags = 0;
-    int windowHandle = 0;
-    int rc;
+    int rc = 0;
+    void *windowHandle = NULL;
 
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none);};
@@ -147,12 +147,10 @@ PsychError PSYCHHIDKbQueueCreate(void)
         PsychErrorExitMsg(PsychError_user, "Invalid 'flags' provided. Must be at least 0.");
 
     // Get optional window handle:
-    PsychCopyInIntegerArg(6, FALSE, &windowHandle);
-    if (windowHandle < 0)
-        PsychErrorExitMsg(PsychError_user, "Invalid 'windowHandle' provided. Must be at least 0.");
+    PsychCopyInPointerArg(6, FALSE, &windowHandle);
 
     // Perform actual, OS-dependent init and return its status code:
-    rc = PsychHIDOSKbQueueCreate(deviceIndex, numScankeys, scanKeys, numValuators, numSlots, (unsigned int) flags, (unsigned int) windowHandle);
+    rc = PsychHIDOSKbQueueCreate(deviceIndex, numScankeys, scanKeys, numValuators, numSlots, (unsigned int) flags, (psych_uint64) (size_t) windowHandle);
 
     return(rc);
 }
