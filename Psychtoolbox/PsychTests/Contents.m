@@ -35,7 +35,6 @@
 %   FitConeFundamentalsTest         - Test/explore fitting CIE cone fundamentals with absorbance obtained from nomograms.
 %   FitWeibullTAFCTest              - Fit a Weibull to 2AFC data.
 %   FitWeibullYNTest                - Fit a Weibull to yes-no data.
-%   FlipTest                        - Test frame synchroniziation.
 %   FloatTexturePrecisionTest       - Test effective precision of floating point 16bpc textures.
 %   FrameSequentialStereoTest       - Test routine for timing and stimulus onset on quad-buffered frame-sequential stereo hardware.
 %   GetCharTest                     - Tests of GetChar.
