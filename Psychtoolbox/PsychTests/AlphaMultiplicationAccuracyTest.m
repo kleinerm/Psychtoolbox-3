@@ -132,7 +132,7 @@ for i=1:numSourceBlendVariableFactors
     %write the source matrix.
     Screen('BlendFunction', w, sourceBlendVariableFactors{i}, 'GL_ZERO');
     Screen('PutImage', w, sourceImagesA{i}, matRect);
-    sourceReadbacks{i}=Screen('GetImage',w,matRect);
+    sourceReadbacks{i}=Screen('GetImage',w,matRect, 'backBuffer');
     Screen('Flip', w);
 end
 
@@ -156,7 +156,7 @@ for i=1:numDestinationBlendVariableFactors
     %write the source matrix.
     Screen('BlendFunction', w,  'GL_ZERO', destinationBlendVariableFactors{i});
     Screen('PutImage', w, sourceImagesB{i}, matRect);
-    destinationReadbacks{i}=Screen('GetImage',w,matRect);
+    destinationReadbacks{i}=Screen('GetImage',w,matRect, 'backBuffer');
     Screen('Flip', w);
 end
 
