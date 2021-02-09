@@ -3,14 +3,14 @@
 % This script compares values calculated by PTB and routines in isetbio (developed by
 % Wandell and colleague) for various colorimetric functions.
 %
-% For information on isetbio, see https://github.com/wandell/vset/blob/master/README.txt.
+% For information on isetbio, see https://github.com/isetbio/isetbio/wiki.
 % It contains its own implementation of many of the colorimetric computations 
 % implemented in PTB.  Note that Brainard and Wandell are not completely
 % independent sources.
 %
 % Make sure isetbio is on your path to run these comparisons.  The tests should
 % also work if you have the proprietary iset on your path instead.
-% isetbio is available on gitHub as https://github.com/wandell/isetbio.git.
+% isetbio is available on gitHub as https://github.com/isetbio/isetbio.git.
 %
 % The checks are grouped into cells that check one thing at a time.
 %
@@ -25,6 +25,12 @@
 % 7/31/14 dhb, ncp Put a cd around call to isetbio xyz2lab to deal with
 %              fact that 2014b has added a routine with this name that
 %              doesn't work quite the same.
+% 2/09/21 mk   Fix for renamed xyz2lab -> ieXYZ2LAB() and ieLAB2XYZ().
+
+if IsOctave
+    % Suppress false Octave path warnings:
+    warning('off', 'Octave:data-file-in-path', 'local');
+end
 
 %% Clear and close
 clear; close all;
@@ -94,7 +100,7 @@ end
 whiteXYZ = [3,4,3]';
 ptbLabs = XYZToLab(testXYZs,whiteXYZ);
 cd(isetbioPath);
-isetLabs = xyz2lab(testXYZs',whiteXYZ')';
+isetLabs = ieXYZ2LAB(testXYZs',whiteXYZ')';
 cd(curDir);
 if (any(abs(ptbLabs-isetLabs) > 1e-10))
     fprintf('PTB-ISET DIFFERENCE for XYZ to Lab\n');
@@ -102,7 +108,7 @@ else
     fprintf('PTB-ISET AGREE for XYZ to Lab\n');
 end
 ptbXYZCheck = LabToXYZ(ptbLabs,whiteXYZ);
-isetXYZCheck = lab2xyz(isetLabs',whiteXYZ')';
+isetXYZCheck = ieLAB2XYZ(isetLabs',whiteXYZ')';
 if (any(abs(testXYZs-ptbXYZCheck) > 1e-10))
     fprintf('PTB FAILS XYZ to Lab to XYZ\n');
 else
@@ -274,7 +280,7 @@ end
 
 %% Not yet really implemented
 % The code below calls some isetbio routines that
-% either don't yet have PTB counterpards, or for which
+% either don't yet have PTB counterparts, or for which
 % we have not yet written the comparison code.
 
 % Calculate correlated color temperature
