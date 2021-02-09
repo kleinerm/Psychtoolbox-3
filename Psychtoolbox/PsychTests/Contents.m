@@ -51,9 +51,7 @@
 %   LoadGenerator                   - Create cpu load by spinning in an infinite loop. Used in conjunction with FlipTimingWithRTBoxPhotoDiodeTest.
 %   LosslessMovieWritingTest        - Test lossless encoding and decoding of video in movie files.
 %   MakeTextureTimingTest           - Time texture creation -> upload -> destruction for given texture by MakeTexture et al.
-%   MatlabTimingTest                - Test for MATLAB timing glitch caused by sigsetjmp().
 %   MelanopsinFundamentalTest       - Test the PTB routines generate a good melanopsin fundamental.
-%   MexTimingLoopTest               - Test for MATLAB timing glitch without return to MATLAB.
 %   MonoImageToSRGBTest             - Test/demo for routine PsychColorimetric/MonoImageToSRGB.
 %   MultiWindowLockStepTest         - Exercise asynchronous flip scheduling and timestamping on multiple onscreen windows in parallel.
 %   OSAUCSTest                      - Test OSA UCS <-> XYZ conversion routines.
