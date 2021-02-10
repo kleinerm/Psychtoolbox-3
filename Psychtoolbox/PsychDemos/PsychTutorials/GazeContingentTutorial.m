@@ -180,7 +180,7 @@ try
     % Show periphery image:
     Screen('DrawTexture', w, nonfoveatex);
     Screen('TextSize', w, 24);
-    DrawFormattedText(w, 'Step1: Create Non-foveated (periphery) texture:\nPress mouse button to continue\n', 0, 0, 1, 50);
+    DrawFormattedText(w, 'Step1: Create Non-foveated (periphery) texture:\nPress mouse button to continue\n', 0, 40, 1, 50);
     Screen('Flip', w);
 
     % Wait for mouseclick:
@@ -189,7 +189,7 @@ try
     % Show fovea image:
     Screen('DrawTexture', w, foveatex);
     Screen('TextSize', w, 24);
-    DrawFormattedText(w, 'Step2: Create Fovea texture:\nPress mouse button to continue\n', 0, 0, 1, 50);
+    DrawFormattedText(w, 'Step2: Create Fovea texture:\nPress mouse button to continue\n', 0, 40, 1, 50);
     Screen('Flip', w);
     GetClicks;
 
@@ -294,7 +294,7 @@ try
                         txt = 'Perform alpha weighted compositing (all previous steps together):\n1. Draw alpha weight mask according to mouse position,\n2. Overdraw with alpha-weighted periphery texture,\n3. Overdraw with 1-alpha weighted fovea texture.';
                 end
                 txt = [txt '\nMouse click for next step.'];
-                DrawFormattedText(w, txt, 0, 0, [1 0 0], 60);
+                DrawFormattedText(w, txt, 0, 40, [1 0 0], 60);
 
                 % Show final result on screen. The 'Flip' also clears the drawing
                 % surface back to black background color and a zero alpha value:
@@ -311,7 +311,7 @@ try
         WaitSecs('YieldSecs', 0.001);
 
         % Abort demo on keypress our mouse-click:
-        if KbCheck || find(buttons)
+        if KbCheck || any(buttons)
             break;
         end
     end

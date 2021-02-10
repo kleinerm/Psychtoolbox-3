@@ -68,7 +68,9 @@ screenid=max(Screen('Screens'));
 InitializeMatlabOpenGL;
 
 % Open a double-buffered full-screen window on the main displays screen.
-[win, winRect] = Screen('OpenWindow', screenid, 0, [], [], [], [], multiSample);
+PsychImaging('PrepareConfiguration');
+PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+[win, winRect] = PsychImaging('OpenWindow', screenid, 0, [], [], [], [], multiSample);
 
 % Setup the OpenGL rendering context of the onscreen window for use by
 % OpenGL wrapper. After this command, all following OpenGL commands will
