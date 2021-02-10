@@ -29,9 +29,6 @@ if nargin < 1
     whichScreen = max(Screen('Screens'));
 end
 
-% Get current gfx-card lut, so we can restore it later:
-oldgfxlut = Screen('ReadNormalizedGammatable', whichScreen);
-
 % Load nonlinear table, just to make sure we start with an unsuitable clut:
 junkLut = repmat(([1:256]'/256).^0.7, 1, 3);
 Screen('LoadNormalizedGammatable', whichScreen, junkLut);
@@ -40,6 +37,8 @@ Screen('LoadNormalizedGammatable', whichScreen, junkLut);
 WaitSecs(3);
 
 % Open window in Bits++ mode, fill frame buffer with zeros:
+PsychImaging('PrepareConfiguration');
+PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
 window = BitsPlusPlus('OpenWindowBits++', whichScreen, 0);
 
 % Use BITS++ to set uniform lookup tables of increasing values.
@@ -48,6 +47,7 @@ window = BitsPlusPlus('OpenWindowBits++', whichScreen, 0);
 for colorval = linspace(0.0, 1.0, 20)
 	uniclut = colorval*ones(256,3);
 	fprintf('Setting to value %g   -- Press any key to continue.\n',colorval);
+
     % The setting 2 means: Don't load hardware gamma table, but just
     % store clut for later use by the special Bits++ blitter at
     % Screen('Flip') time.
@@ -71,9 +71,6 @@ BitsPlusPlus('LoadIdentityClut', window);
 Screen('Flip', window);
 
 % Close the window.
-Screen('CloseAll');
-
-% Restore original gfx-luts:
-Screen('LoadNormalizedGammatable', whichScreen, oldgfxlut);
+sca;
 
 return;
