@@ -97,11 +97,6 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 % 'C48' - User 16 bits per color component mode.
 %
 %
-% 'BrightSide' - Enable drivers for BrightSide's HDR display. This only
-% works if you have a BrightSide HDR display + the proper driver libraries
-% installed on MS-Windows. On other operating systems it just uses a simple
-% dummy emulation of the display with less than spectacular results.
-%
 % 'DualPipeHDR' - Use experimental output to dual-pipeline HDR display
 % device.
 %
@@ -319,11 +314,6 @@ try
             PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
             overlay = 0;
 
-        case {'BrightSide'}
-            % Enable drivers for BrightSide's HDR display:
-            PsychImaging('AddTask', 'General', 'EnableBrightSideHDROutput');
-            overlay = 0;
-
         case {'None'}
             % No high precision output, just the plain 8 bit framebuffer,
             % but with software gamma correction:
@@ -415,8 +405,7 @@ try
                 % for linearly interpolated values inbetween:
                 clut = 1 - (0:1)';
             case 4,
-                % Extreme amplification CLUT: Only meaningful on the
-                % BrightSide HDR:
+                % Extreme amplification CLUT:
                 clut = 3800 * (0:1)';
             otherwise,
                 clut = colormap;

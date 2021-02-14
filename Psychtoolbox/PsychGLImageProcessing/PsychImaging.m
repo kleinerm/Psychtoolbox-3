@@ -949,16 +949,6 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
 %
 %
-% * 'EnableBrightSideHDROutput' Enable the high-performance driver for
-%   BrightSide Technologies High dynamic range display device for 16 bit
-%   per color channel output precision. See "help BrightSideHDR" for
-%   detailed explanation. Please note that you'll need to install the 3rd
-%   party driver libraries for that display as described in the help file.
-%   PTB doesn't come bundled with that libraries for copyright reasons.
-%
-%   Usage: PsychImaging('AddTask', 'General', 'EnableBrightSideHDROutput');
-%
-%
 % * 'UseDataPixx' Tell Psychtoolbox that additional functionality for
 %   displaying the onscreen window on a VPixx Technologies DataPixx device
 %   should be enabled.
@@ -2273,33 +2263,8 @@ if strcmpi(cmd, 'OpenWindow')
     end
 
     % Open onscreen window with proper imagingMode and stereomode set up.
-    % We have a couple of special cases here for BrightSide HDR display and
-    % the CRS Bits++...
+    % We have a couple of special cases here for VPixx devices and the CRS Bits++/Bits#...
     win = [];
-
-    if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
-        % Special case: Need to open BrightSide HDR driver. We delegate the
-        % openwindow procedure to the BrightSideHDR.m file:
-        if ~isempty(win)
-            error('You specified multiple conflicting output display device drivers! This will not work.');
-        end
-
-        if IsWin
-            % On Windows, do the real thing:
-            myopenstring = 'OpenWindow';
-        else
-            % On other platforms no support for BrightSide HDR - use cheap
-            % emulation:
-            myopenstring = 'DummyOpenWindow';
-            warning('BrightSide HDR output device selected on a non MS-Windows platform! Unsupported! Will use dummy emulation mode instead!');
-        end
-
-        if nargin >= 13
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams, varargin{13:end});
-        else
-            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, specialFlags, clientRect, fbOverrideRect, vrrParams);
-        end
-    end
 
     if ~isempty(find(mystrcmp(reqs, 'EnableBits++Bits++Output')))
         % Special case: Need to open Bits++ Bits++ driver. We delegate the
@@ -3251,17 +3216,6 @@ end
 if ~isempty(find(mystrcmp(reqs, 'FloatingPoint32BitIfPossible')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychUse32BPCFloatAsap);
-end
-
-if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
-    % The BrightSide formatter is not icm aware - Incapable of internal color correction!
-    ptb_outputformatter_icmAware = 0;
-
-    % Tell BrightSide driver that it is called from us, so it can adapt to
-    % some specific boundary conditions caused by us:
-    BrightSideHDR('CalledFromPsychImaging', 1);
 end
 
 if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')))
@@ -4445,7 +4399,6 @@ floc = find(mystrcmp(reqs, 'DisplayColorCorrection'));
 if ~isempty(floc)
     numColorCorrections = length(floc);
 
-    handlebrightside  = 0;
     handlebitspluplus = 0;
 
     % Bits+ Mono++ or Color++ mode active?
@@ -4468,19 +4421,6 @@ if ~isempty(floc)
             % chain is already occupied by the Bits++ shader.
             handlebitspluplus=1;
         end
-    end
-
-    if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
-        % The BrightSide plugin is already attached to the output
-        % formatting chain, so our own plugins need to be placed properly
-        % relative to that...
-        handlebrightside = 1;
-
-        % Device needs an identity clut in the GPU gamma tables:
-        needsIdentityCLUT = 1;
-
-        % Use unit color range, without clamping, but in high-precision mode:
-        needsUnitUnclampedColorRange = 1;
     end
 
     % Which channel?
@@ -4599,7 +4539,7 @@ if ~isempty(floc)
                 % fixed!!
                 if mystrcmp(reqs{row, 1}, 'FinalFormatting') || mystrcmp(reqs{row, 1}, 'AllViews')
                     % Need to attach to final formatting:
-                    if ~handlebitspluplus && ~handlebrightside
+                    if ~handlebitspluplus
                         % Standard case:
                         if outputcount > 0
                             % Need a bufferflip command:
@@ -4607,7 +4547,7 @@ if ~isempty(floc)
                         end
                         Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', icmstring, shader, icmconfig);
                     else
-                        % Special case: A BitsPlusPlus or BrightSideHDR output formatter has
+                        % Special case: A BitsPlusPlus output formatter has
                         % been attached at the end of queue already. We need
                         % to insert our new slot + some FlipFBO commands just
                         % before the last occupied slot - which is the output formatter slot.
@@ -4628,16 +4568,16 @@ if ~isempty(floc)
                         insertPos = insertPos - 1;
 
                         % This insertPos >= 0 check makes sure we also work
-                        % in BrightSide HDR dummy emulation mode, where no
+                        % in some dummy emulation modes, where no
                         % actual slot is attached:
                         if insertPos >= 0
                             % Need to prepend a bufferflip command in front of
-                            % bitsplusplus or brightside:
+                            % Bitsplusplus:
                             insertSlot = sprintf('InsertAt%iBuiltin', insertPos);
                             Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
                         else
                             % No real output formatter due to emulation
-                            % mode (BrightSide on unsupported platforms).
+                            % mode, if any.
                             % Force insertPos to 0, so at least
                             % colorcorrection applies:
                             insertPos = 0;
@@ -4662,13 +4602,6 @@ if ~isempty(floc)
                                 insertSlot = sprintf('InsertAt%iBuiltin', insertPos);
                                 Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
                             end
-                        end
-
-                        % BrightSide setup?
-                        if handlebrightside
-                            % Tell BrightSide driver that it is called from us, so it can adapt to
-                            % some specific boundary conditions caused by us:
-                            BrightSideHDR('CalledFromPsychImaging', 0);
                         end
                     end
 

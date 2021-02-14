@@ -3,7 +3,7 @@ function LUT = SaveIdentityClut(windowPtr, LUT)
 %
 % This routine defines a LUT or LUT-type for use as identity gamma lookup
 % table for applications that need such a table, e.g., Bits+ box,
-% VideoSwitcher, Video attenuators, the BrightSide HDR display etc.
+% VideoSwitcher, Video attenuators, etc.
 %
 % It writes the LUT into a config file. The function LoadIdentityClut()
 % will use the written LUT from that config file, if such a file exists.
