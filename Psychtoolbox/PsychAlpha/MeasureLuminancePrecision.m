@@ -192,7 +192,7 @@ function data=MeasureLuminancePrecision
 
 o.luminances=128; % Photometer takes 3 s/luminance. 128 luminances is enough for a pretty graph.
 o.luminances=512; % Photometer takes 3 s/luminance. 512 luminances for a prettier graph.
-o.reciprocalOfFraction=[32]; % List one or more, e.g. 1, 128, 256.
+o.reciprocalOfFraction= 32; % List one or more, e.g. 1, 128, 256.
 %o.reciprocalOfFraction=[256]; % List one or more, e.g. 1, 128, 256.
 %o.vBase=.8;
 o.vBase=.5;
@@ -206,7 +206,7 @@ o.useFractionOfScreen=0; % For debugging, reduce our window to expose Command Wi
 o.useVulkan=0; % Use Vulkan display backend.
 
 if IsOctave
-  pkg load statistics;
+    pkg load statistics;
 end
 
 KbReleaseWait;
@@ -216,202 +216,204 @@ BackupCluts;
 aborted = 0;
 
 try
-   %% OPEN WINDOW
-   screen = 0;
-   screenBufferRect = Screen('Rect',screen);
+    %% OPEN WINDOW
+    screen = 0;
+    screenBufferRect = Screen('Rect',screen);
 
-   PsychImaging('PrepareConfiguration');
-   PsychImaging('AddTask','General','UseRetinaResolution');
-   PsychImaging('AddTask','General','NormalizedHighresColorRange',1);
+    PsychImaging('PrepareConfiguration');
+    PsychImaging('AddTask','General','UseRetinaResolution');
+    PsychImaging('AddTask','General','NormalizedHighresColorRange',1);
 
-   if o.useVulkan
-      PsychImaging('AddTask','General','UseVulkanDisplay');
-   end
+    if o.useVulkan
+        PsychImaging('AddTask','General','UseVulkanDisplay');
+    end
 
-   switch o.nBits
-      case 8, % do nothing
-      case 10, PsychImaging('AddTask','General','EnableNative10BitFramebuffer');
-      case 11, PsychImaging('AddTask','General','EnableNative11BitFramebuffer');
-      case 12,
-         if ~o.useVulkan && IsLinux && ~IsWayland
-            PsychImaging('AddTask','General','EnableNative16BitFramebuffer');
-         else
-            PsychImaging('AddTask','General','EnableNative16BitFloatingPointFramebuffer');
-         end
-   end
-   %if o.nBits >= 11; Screen('ConfigureDisplay','Dithering',screenNumber,61696); end
+    switch o.nBits
+        case 8
+            % do nothing
+        case 10
+            PsychImaging('AddTask','General','EnableNative10BitFramebuffer');
+        case 11
+            PsychImaging('AddTask','General','EnableNative11BitFramebuffer');
+        case 12
+            if ~o.useVulkan && IsLinux && ~IsWayland
+                PsychImaging('AddTask','General','EnableNative16BitFramebuffer');
+            else
+                PsychImaging('AddTask','General','EnableNative16BitFloatingPointFramebuffer');
+            end
+    end
+    %if o.nBits >= 11; Screen('ConfigureDisplay','Dithering',screenNumber,61696); end
 
-   if ~o.useFractionOfScreen
-      [window,screenRect] = PsychImaging('OpenWindow',screen,[1 1 1]);
-   else
-      [window,screenRect] = PsychImaging('OpenWindow',screen,[1 1 1],round(o.useFractionOfScreen*screenBufferRect));
-   end
+    if ~o.useFractionOfScreen
+        window = PsychImaging('OpenWindow',screen,[1 1 1]);
+    else
+        window = PsychImaging('OpenWindow',screen,[1 1 1],round(o.useFractionOfScreen*screenBufferRect));
+    end
 
-   HideCursor(window);
-   windowInfo=Screen('GetWindowInfo',window);
+    HideCursor(window);
+    windowInfo=Screen('GetWindowInfo',window);
 
-   switch(windowInfo.DisplayCoreId)
-      % Choose the right magic dither code for the video driver. Currently
-      % this works only for AMD drivers on  Apple's iMac and MacBook Pro,
-      % and HP's Z Book. See Dithering Notes above.
-      case 'AMD',
-         displayEngineVersion=windowInfo.GPUMinorType/10;
-         switch(round(displayEngineVersion))
-            case 4,
-               displayGPUFamily='Evergreen';
-               % Examples:
-               % AMD Radeon HD-5770 used in MacPro 2010.
-               o.ditheringCode=61696;
-            case 6,
-               displayGPUFamily='Southern Islands';
-               % Examples:
-               % AMD Radeon R9 M290X used in MacBook Pro (Retina, 15-inch, Mid 2015)
-               % AMD Radeon R9 M370X used in iMac (Retina 5K, 27-inch, Late 2014)
-               o.ditheringCode=61696;
-            otherwise,
-               displayGPUFamily='unknown';
-         end
-         fprintf('Display driver: %s version %.1f, "%s"\n',...
-            windowInfo.DisplayCoreId,displayEngineVersion,displayGPUFamily);
-   end
+    switch(windowInfo.DisplayCoreId)
+        % Choose the right magic dither code for the video driver. Currently
+        % this works only for AMD drivers on  Apple's iMac and MacBook Pro,
+        % and HP's Z Book. See Dithering Notes above.
+        case 'AMD'
+            displayEngineVersion=windowInfo.GPUMinorType/10;
+            switch(round(displayEngineVersion))
+                case 4
+                    displayGPUFamily='Evergreen';
+                    % Examples:
+                    % AMD Radeon HD-5770 used in MacPro 2010.
+                    o.ditheringCode=61696;
+                case 6
+                    displayGPUFamily='Southern Islands';
+                    % Examples:
+                    % AMD Radeon R9 M290X used in MacBook Pro (Retina, 15-inch, Mid 2015)
+                    % AMD Radeon R9 M370X used in iMac (Retina 5K, 27-inch, Late 2014)
+                    o.ditheringCode=61696;
+                otherwise
+                    displayGPUFamily='unknown';
+            end
+            fprintf('Display driver: %s version %.1f, "%s"\n',...
+                windowInfo.DisplayCoreId,displayEngineVersion,displayGPUFamily);
+    end
 
-   if ~o.useDithering
-      o.ditheringCode=0;
-   end
+    if ~o.useDithering
+        o.ditheringCode=0;
+    end
 
-   if isfinite(o.useDithering)
-      fprintf('ConfigureDisplay Dithering %.0f\n',o.ditheringCode);
-      % The documentation suggests that the first call enables, and the
-      % second call sets the value.
-      Screen('ConfigureDisplay','Dithering',screen,o.ditheringCode);
-      Screen('ConfigureDisplay','Dithering',screen,o.ditheringCode);
-   end
+    if isfinite(o.useDithering)
+        fprintf('ConfigureDisplay Dithering %.0f\n',o.ditheringCode);
+        % The documentation suggests that the first call enables, and the
+        % second call sets the value.
+        Screen('ConfigureDisplay','Dithering',screen,o.ditheringCode);
+        Screen('ConfigureDisplay','Dithering',screen,o.ditheringCode);
+    end
 
-   if o.wigglePixelNotCLUT
-      % Compare default CLUT with identity.
-      gammaRead=Screen('ReadNormalizedGammaTable',window);
-      maxEntry=size(gammaRead,1)-1;
-      gamma=repmat(((0:maxEntry)/maxEntry)',1,3);
-      delta=gammaRead(:,2)-gamma(:,2);
-      fprintf('Difference between identity and read-back of default CLUT: mean %.9f, sd %.9f\n',mean(delta),std(delta));
+    if o.wigglePixelNotCLUT
+        % Compare default CLUT with identity.
+        gammaRead=Screen('ReadNormalizedGammaTable',window);
+        maxEntry=size(gammaRead,1)-1;
+        gamma=repmat(((0:maxEntry)/maxEntry)',1,3);
+        delta=gammaRead(:,2)-gamma(:,2);
+        fprintf('Difference between identity and read-back of default CLUT: mean %.9f, sd %.9f\n',mean(delta),std(delta));
 
-      % Load identity hw lut once, as it can interfere with some precision modes
-      % if done each flip, at least if PTB high precision hacks are used on the
-      % AMD DC display driver:
-      if o.loadIdentityCLUT
-         Screen('LoadNormalizedGammaTable',window,gamma);
-         Screen('Flip',window);
-      end
-   end
+        % Load identity hw lut once, as it can interfere with some precision modes
+        % if done each flip, at least if PTB high precision hacks are used on the
+        % AMD DC display driver:
+        if o.loadIdentityCLUT
+            Screen('LoadNormalizedGammaTable',window,gamma);
+            Screen('Flip',window);
+        end
+    end
 
-   %% MEASURE LUMINANCE AT EACH VALUE
-   % Each measurement takes several seconds.
-   clear data d
-   t=GetSecs;
-   nData=length(o.reciprocalOfFraction);
-   for iData=1:nData
-      d.fraction=1/o.reciprocalOfFraction(iData);
-      v=max(0,o.vBase);
-      if v+d.fraction>=1
-         v=1-d.fraction;
-      end
+    %% MEASURE LUMINANCE AT EACH VALUE
+    % Each measurement takes several seconds.
+    clear data d
+    t=GetSecs;
+    nData=length(o.reciprocalOfFraction);
+    for iData=1:nData
+        d.fraction=1/o.reciprocalOfFraction(iData);
+        v=max(0,o.vBase);
+        if v+d.fraction>=1
+            v=1-d.fraction;
+        end
 
-      newOrder=1:o.luminances;
+        newOrder=1:o.luminances;
 
-      if o.useShuffle
-         % Random order to prevent systematic effect of changing background.
-         newOrder=Shuffle(newOrder);
-      end
+        if o.useShuffle
+            % Random order to prevent systematic effect of changing background.
+            newOrder=Shuffle(newOrder);
+        end
 
-      % Repeat first measurement at end to estimate background drift.
-      newOrder(end+1)=newOrder(1);
-      for ii=1:length(newOrder)
-         i=newOrder(ii);
-         g=v+d.fraction*(i-1)/(o.luminances-1);
-         assert(g<=1+eps)
-         d.v(i)=g;
-         CLUTMapSize = 256;
-         gamma=repmat(((0:CLUTMapSize-1)/(CLUTMapSize-1))',1,3);
+        % Repeat first measurement at end to estimate background drift.
+        newOrder(end+1)=newOrder(1); %#ok<*AGROW>
+        for ii=1:length(newOrder)
+            i=newOrder(ii);
+            g=v+d.fraction*(i-1)/(o.luminances-1);
+            assert(g<=1+eps)
+            d.v(i)=g;
+            CLUTMapSize = 256;
+            gamma=repmat(((0:CLUTMapSize-1)/(CLUTMapSize-1))',1,3);
 
-         if o.wigglePixelNotCLUT
-            Screen('FillRect',window, [g, g, g]);
-         else
-            % Note that this method will fail on many (most?) modern operating
-            % systems and graphics cards to achieve the desired results! Not
-            % recommended, only left for documentation!
-            iPixel=126;
-            for j=-4:4
-               gamma(1+iPixel+j,1:3)=[g g g];
+            if o.wigglePixelNotCLUT
+                Screen('FillRect',window, [g, g, g]);
+            else
+                % Note that this method will fail on many (most?) modern operating
+                % systems and graphics cards to achieve the desired results! Not
+                % recommended, only left for documentation!
+                iPixel=126;
+                for j=-4:4
+                    gamma(1+iPixel+j,1:3)=[g g g];
+                end
+
+                Screen('LoadNormalizedGammaTable',window,gamma,1);
+                Screen('FillRect',window,iPixel/(CLUTMapSize-1));
             end
 
-            Screen('LoadNormalizedGammaTable',window,gamma,1);
-            Screen('FillRect',window,iPixel/(CLUTMapSize-1));
-         end
+            Screen('TextSize',window, 30);
+            msg1=sprintf('Series %d of %d.\n',iData,nData);
+            msg2=sprintf('%d luminances spanning 1/%.0f of digital range at %.2f.\n',o.luminances,1/d.fraction,d.v(1));
+            msg3=sprintf('Luminance %d of %d.\n',ii,length(newOrder));
+            msg4='Now measuring luminances. Will then analyze and plot the results.\n';
+            DrawFormattedText(window, [msg1 msg2 msg3 msg4], 10, 30);
+            Screen('Flip',window);
 
-         Screen('TextSize',window, 30);
-         msg0='MeasureLuminancePrecision by Denis Pelli, 2017\n';
-         msg1=sprintf('Series %d of %d.\n',iData,nData);
-         msg2=sprintf('%d luminances spanning 1/%.0f of digital range at %.2f.\n',o.luminances,1/d.fraction,d.v(1));
-         msg3=sprintf('Luminance %d of %d.\n',ii,length(newOrder));
-         msg4='Now measuring luminances. Will then analyze and plot the results.\n';
-         DrawFormattedText(window, [msg1 msg2 msg3 msg4], 10, 30);
-         Screen('Flip',window);
-
-         if o.usePhotometer
-            if ii==1
-               % Give the photometer time to react to new luminance.
-               WaitSecs(8);
-            else
-                if o.useShuffle
+            if o.usePhotometer
+                if ii==1
+                    % Give the photometer time to react to new luminance.
                     WaitSecs(8);
                 else
-                    WaitSecs(2);
+                    if o.useShuffle
+                        WaitSecs(8);
+                    else
+                        WaitSecs(2);
+                    end
                 end
+
+                L=GetLuminance; % Read photometer
+            else
+                % No photometer. Simulate 8-bit performance.
+                L=200*round(g*255)/255;
+                L=L-20*ii/512; % Simulate background drift.
             end
 
-            L=GetLuminance; % Read photometer
-         else
-            % No photometer. Simulate 8-bit performance.
-            L=200*round(g*255)/255;
-            L=L-20*ii/512; % Simulate background drift.
-         end
+            if ii<length(newOrder)
+                d.L(i)=L;
+            else
+                % Last iteration: Estimate and remove background drift.
+                d.deltaL=L-d.L(newOrder(1));
+                nn=newOrder(1:o.luminances);
+                d.L(nn)=d.L(nn)-d.deltaL*(0:o.luminances-1)/o.luminances;
+                fprintf('Corrected for luminance drift of %.2f%% during measurement.\n',100*d.deltaL/d.L(1));
+            end
 
-         if ii<length(newOrder)
-            d.L(i)=L;
-         else
-            % Last iteration: Estimate and remove background drift.
-            d.deltaL=L-d.L(newOrder(1));
-            nn=newOrder(1:o.luminances);
-            d.L(nn)=d.L(nn)-d.deltaL*(0:o.luminances-1)/o.luminances;
-            fprintf('Corrected for luminance drift of %.2f%% during measurement.\n',100*d.deltaL/d.L(1));
-         end
+            if KbCheck
+                aborted = 1;
+                break;
+            end
+        end
 
-         if KbCheck
+        data(iData)=d;
+
+        if KbCheck
             aborted = 1;
             break;
-         end
-      end
+        end
+    end
 
-      data(iData)=d;
-
-      if KbCheck
-         aborted = 1;
-         break;
-      end
-   end
-
-   t=(GetSecs-t)/length(data)/o.luminances;
+    t=(GetSecs-t)/length(data)/o.luminances;
 catch
-   sca;
-   psychrethrow(psychlasterror);
+    sca;
+    psychrethrow(psychlasterror);
 end
 
 sca;
 close all;
 
 if aborted
-   fprintf('\n\nMeasurement script aborted. Bye!\n\n');
-   return;
+    fprintf('\n\nMeasurement script aborted. Bye!\n\n');
+    return;
 end
 
 %% ANALYZE RESULTS
@@ -419,47 +421,47 @@ end
 % the best fit.
 clear sd
 for iData=1:length(data)
-   d=data(iData);
-   nMin=log2(1/d.fraction);
-   vShift=-1:0.01:1;
-   sd=ones(16,length(vShift))*nan;
+    d=data(iData);
+    nMin=log2(1/d.fraction);
+    vShift=-1:0.01:1;
+    sd=ones(16,length(vShift))*nan;
 
-   for bits=nMin:16
-       for j=1:length(vShift)
-           white=2^bits-1;
-           v=d.v+vShift(j)*2^-bits;
-           q=floor(v*white)/white;
-           x=[ones(size(d.v))' q'];
-           [~, ~, ~, ~, stats]=regress(d.L',x);
-           sd(bits,j)=sqrt(stats(4));
-       end
-       fprintf('Modelbits= %d, minsd = %f\n', bits, min(sd(bits,:)))
-   end
+    for bits=nMin:16
+        for j=1:length(vShift)
+            white=2^bits-1;
+            v=d.v+vShift(j)*2^-bits;
+            q=floor(v*white)/white;
+            x=[ones(size(d.v))' q'];
+            [~, ~, ~, ~, stats]=regress(d.L',x);
+            sd(bits,j)=sqrt(stats(4));
+        end
+        fprintf('Modelbits= %d, minsd = %f\n', bits, min(sd(bits,:)))
+    end
 
-   minsd=min(min(sd));
-   [bits jShift]=find(sd==minsd,1);
-   j=round((length(vShift)+1)/2);
-   fprintf('min sd %.2f at %d bits %.4f shift; sd %.2f at 11 bits %.4f shift\n',minsd,bits,vShift(jShift),sd(11,j),vShift(j));
-   data(iData).model.bits=bits;
-   data(iData).model.vShift=vShift(jShift);
-   data(iData).model.sd=sd(bits,jShift);
-   white=2^bits-1;
-   v=d.v+vShift(jShift)*2^-bits;
-   q=floor(v*white)/white;
-   x=[ones(size(d.v')) q'];
-   b=regress(d.L',x);
-   data(iData).model.b=b;
-   data(iData).model.v=linspace(d.v(1),d.v(end),1000);
-   v=data(iData).model.v+vShift(jShift)*2^-bits;
-   q=floor(v*white)/white;
-   data(iData).model.L=b(1)+b(2)*q;
+    minsd=min(min(sd));
+    [bits, jShift]=find(sd==minsd,1);
+    j=round((length(vShift)+1)/2);
+    fprintf('min sd %.2f at %d bits %.4f shift; sd %.2f at 11 bits %.4f shift\n',minsd,bits,vShift(jShift),sd(11,j),vShift(j));
+    data(iData).model.bits=bits;
+    data(iData).model.vShift=vShift(jShift);
+    data(iData).model.sd=sd(bits,jShift);
+    white=2^bits-1;
+    v=d.v+vShift(jShift)*2^-bits;
+    q=floor(v*white)/white;
+    x=[ones(size(d.v')) q'];
+    b=regress(d.L',x);
+    data(iData).model.b=b;
+    data(iData).model.v=linspace(d.v(1),d.v(end),1000);
+    v=data(iData).model.v+vShift(jShift)*2^-bits;
+    q=floor(v*white)/white;
+    data(iData).model.L=b(1)+b(2)*q;
 end
 
 %% PLOT RESULTS
 o.luminances=length(data(1).L);
 
 if exist('t','var')
-   fprintf('Photometer took %.1f s/luminance.\n',t);
+    fprintf('Photometer took %.1f s/luminance.\n',t);
 end
 
 figure;
@@ -467,69 +469,68 @@ set(gcf,'PaperPositionMode','auto');
 set(gcf,'Position',[0 300 320*length(data) 320]);
 
 for iData=1:length(data)
-   d=data(iData);
-   subplot(1,length(data),iData)
-   plot(d.v,d.L);
-   hold on
-   plot(d.model.v,d.model.L,'g');
-   legend('data',sprintf('%.0f-bit model',d.model.bits));
-   legend('boxoff');
-   hold off
-   ha=gca;
+    d=data(iData);
+    subplot(1,length(data),iData)
+    plot(d.v,d.L);
+    hold on
+    plot(d.model.v,d.model.L,'g');
+    legend('data',sprintf('%.0f-bit model',d.model.bits));
+    legend('boxoff');
+    hold off
+    ha=gca;
 
-   if IsOctave
-      set(ha, 'ticklength', [0.02, 0.025]);
-   else
-      ha.TickLength(1)=0.02;
-   end
+    if IsOctave
+        set(ha, 'ticklength', [0.02, 0.025]);
+    else
+        ha.TickLength(1)=0.02;
+    end
 
-   title(sprintf('%.0f luminances spanning 1/%.0f of digital range',o.luminances,1/d.fraction));
+    title(sprintf('%.0f luminances spanning 1/%.0f of digital range',o.luminances,1/d.fraction));
 
-   if o.wigglePixelNotCLUT
-      xlabel('Pixel value');
-   else
-      xlabel('CLUT');
-   end
+    if o.wigglePixelNotCLUT
+        xlabel('Pixel value');
+    else
+        xlabel('CLUT');
+    end
 
-   ylabel('Luminance (cd/m^2)');
-   pbaspect([1 1 1]);
-   computer=Screen('Computer');
-   name=[computer.machineName ','];
-   yLim=ylim;
-   dy=-0.06*diff(yLim);
-   y=yLim(2)+dy;
-   xLim=xlim;
-   x=xLim(1)+0.03*diff(xLim);
-   text(x,y,name);
-   name='';
+    ylabel('Luminance (cd/m^2)');
+    pbaspect([1 1 1]);
+    computer=Screen('Computer');
+    name=[computer.machineName ','];
+    yLim=ylim;
+    dy=-0.06*diff(yLim);
+    y=yLim(2)+dy;
+    xLim=xlim;
+    x=xLim(1)+0.03*diff(xLim);
+    text(x,y,name);
+    name='';
 
-   if isfinite(o.useDithering)
-      name=sprintf('%sditheringCode %d, ',name,o.ditheringCode);
-   end
+    if isfinite(o.useDithering)
+        name=sprintf('%sditheringCode %d, ',name,o.ditheringCode);
+    end
 
-   name=sprintf('%suse%iBits, ',name,o.nBits);
+    name=sprintf('%suse%iBits, ',name,o.nBits);
 
-   y=y+dy;
-   text(x,y,name);
-   name='';
+    y=y+dy;
+    text(x,y,name);
+    name='';
 
-   if o.loadIdentityCLUT
-      name=[name 'loadIdentityCLUT, '];
-   end
+    if o.loadIdentityCLUT
+        name=[name 'loadIdentityCLUT, '];
+    end
 
-   if ~o.usePhotometer
-      name=[name 'simulating 8 bits, '];
-   end
+    if ~o.usePhotometer
+        name=[name 'simulating 8 bits, '];
+    end
 
-   name=sprintf('%sshift %.2f, ',name,d.model.vShift);
-   name=sprintf('%smodel sd %.2f%%, ',name,100*d.model.sd/d.L(1));
-   y=y+dy;
-   text(x,y,name);
-   name='';
-   name=sprintf('%s%d luminances span a %.0f-bit prec. step at %.3f',name,o.luminances,log2(1/d.fraction),d.v(1));
-   y=y+dy;
-   text(x,y,name);
-   name='';
+    name=sprintf('%sshift %.2f, ',name,d.model.vShift);
+    name=sprintf('%smodel sd %.2f%%, ',name,100*d.model.sd/d.L(1));
+    y=y+dy;
+    text(x,y,name);
+    name='';
+    name=sprintf('%s%d luminances span a %.0f-bit prec. step at %.3f',name,o.luminances,log2(1/d.fraction),d.v(1));
+    y=y+dy;
+    text(x,y,name);
 end
 
 folder=fileparts(mfilename('fullpath'));
@@ -537,17 +538,17 @@ cd(folder);
 name=computer.machineName;
 
 if isfinite(o.useDithering)
-   name=sprintf('%s-Dither%d',name,o.ditheringCode);
+    name=sprintf('%s-Dither%d',name,o.ditheringCode);
 end
 
 name=sprintf('%s-Use%iBits',name,o.nBits);
 
 if ~o.usePhotometer
-   name=[name '-Simulating8Bits'];
+    name=[name '-Simulating8Bits'];
 end
 
 if o.useShuffle
-   name=[name '-Shuffled'];
+    name=[name '-Shuffled'];
 end
 
 name=sprintf('%s-Luminances%d',name,o.luminances);
@@ -560,9 +561,9 @@ save([name '.mat'],'data'); % Save data as MAT file.
 print(gcf,'-dpng',[name,'.png']); % Save figure as png file.
 
 if IsOctave
-   hgsave(gcf,[name,'.fig'],'-v7'); % Save figure as fig file.
+    hgsave(gcf,[name,'.fig'],'-v7'); % Save figure as fig file.
 else
-   savefig(gcf,[name,'.fig'],'compact'); % Save figure as fig file.
+    savefig(gcf,[name,'.fig'],'compact'); % Save figure as fig file.
 end
 end
 
@@ -574,8 +575,8 @@ function L=GetLuminance
 % http://www.crsltd.com/tools-for-vision-science/light-measurement-display-calibation/colorcal-mkii-colorimeter/nest/product-support
 persistent CORRMAT
 if isempty(CORRMAT)
-   % Get ColorCAL II XYZ correction matrix (CRT=1; WLED LCD=2; OLED=3):
-   CORRMAT=ColorCal2('ReadColorMatrix');
+    % Get ColorCAL II XYZ correction matrix (CRT=1; WLED LCD=2; OLED=3):
+    CORRMAT=ColorCal2('ReadColorMatrix');
 end
 s = ColorCal2('MeasureXYZ');
 XYZ = CORRMAT(4:6,:) * [s.x s.y s.z]';
