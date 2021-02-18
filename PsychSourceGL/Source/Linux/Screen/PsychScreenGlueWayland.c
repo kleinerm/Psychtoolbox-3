@@ -934,12 +934,23 @@ pointer_handle_axis(void *data,
     return;
 }
 
+static void
+pointer_handle_frame(void *data, struct wl_pointer *wl_pointer)
+{
+    // No-Op for now:
+    return;
+}
+
 static const struct wl_pointer_listener pointer_listener = {
     pointer_handle_enter,
     pointer_handle_leave,
     pointer_handle_motion,
     pointer_handle_button,
     pointer_handle_axis,
+    pointer_handle_frame,
+    0,
+    0,
+    0,
 };
 
 static void
