@@ -1621,7 +1621,9 @@ void PsychCleanupDisplayGlue(void)
     wl_shm = NULL;
 
     // Reset our binding to presentation_feedback extension if this is our last onscreen window to close:
-    wp_presentation_destroy(wayland_pres);
+    if (wayland_pres)
+        wp_presentation_destroy(wayland_pres);
+
     wayland_pres = NULL;
 
     // Destroy our reference to the registry:
