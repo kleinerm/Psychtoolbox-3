@@ -120,8 +120,9 @@ PsychError SCREENShowCursorHelper(void)
                     break;
 
                 case -2: // Special case: Use provided cursorName string, if any:
-                    if (cursorName) break;
-
+                    if (cursorName)
+                        break;
+                    // fallthrough
                 default:
                     cursorName = "left_ptr";
             }

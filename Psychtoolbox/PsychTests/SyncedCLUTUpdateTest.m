@@ -1,5 +1,5 @@
 function SyncedCLUTUpdateTest(synced)
-% SyncedCLUTUpdateTest
+% SyncedCLUTUpdateTest([synced=1])
 %
 % Perceptual test to test synchronization of hardware gamma table
 % updates to the vertical refresh and to Screen('Flip').
@@ -66,7 +66,7 @@ try
     % Build a simple gray-level ramp as a single texture.
     [width, height]=Screen('WindowSize', w);
     s=floor(min(width, height)/2)-1;
-    [x,y]=meshgrid(-s:s, -s:s);
+    x=meshgrid(-s:s, -s:s);
     fintex=ones(2*s+1,2*s+1);
     fintex(:,:)=mod(x,255)+1;
 
@@ -121,8 +121,8 @@ try
         % Abort after 1000 iterations or on a key-press:
         if KbCheck || (i>1000)
             break;
-        end;
-    end;
+        end
+    end
 
     % Some stats...
     avgfps = i / (GetSecs - t1)

@@ -6,9 +6,12 @@ function modelName=MacModelName
 % OSX Psychtoolbox that is provided in the struct returned by
 % Screen('Computer'). Convert that identifier to Apple's marketing
 % name for the computer.  To do that we use the mapping of identifier to
-% product names found in:
+% product names found in (up to and including macOS Mojave):
 % /System/Library/SystemProfiler/SPPlatformReporter.spreporter/Contents/
 %  Resources/English.lproj/Localizable.strings.  
+% In macOS Catalina:
+% /System/Library/SystemProfiler/SPPlatformReporter.spreporter/Contents/
+%  Resources/en.lproj/Localizable.strings
 % There is no official Apple-recommended way to uncover the marketing
 % name. However, this method works and should be reasonably robust.
 % 
@@ -22,6 +25,9 @@ function modelName=MacModelName
 % 3/5/06  awi Added note explaining new bug and how to repair.
 % 5/29/06  mk Added dumb fix for endian issue on new Intel-Macs.
 % 9/20/09  mk Don't fail with name 'Unknown' but output raw model name then. 
+% 2/17/21 dgp and Darshan Thapa. macOS Catalina changed the path
+%             of the property list file, so the code now tries both old and
+%             new paths.
 
 % NOTES
 %
@@ -39,9 +45,10 @@ function modelName=MacModelName
 
 
 if IsOSX
-    % The mapping file is in Unicode format, which MATLAB does not understand.  We can't treat
-    % the content as characters without doing some work first.  It would be
-    % nice if we could use built-in MATLAB routines such as fgetl, but no dice.
+    % The mapping file is in Unicode format, which MATLAB does not
+    % understand.  We can't treat the content as characters without doing
+    % some work first.  It would be nice if we could use built-in MATLAB
+    % routines such as fgetl, but no dice.
     persistent modelNameCache
     
     if ~isempty(modelNameCache)
@@ -49,10 +56,20 @@ if IsOSX
         return
     end
 
-    mappingFileName='/System/Library/SystemProfiler/SPPlatformReporter.spreporter/Contents/Resources/English.lproj/Localizable.strings';
-    fp=fopen(mappingFileName,'r');
+    for i=1:2
+        switch i
+            case 1 % for macOS up to Mojave
+                mappingFileName='/System/Library/SystemProfiler/SPPlatformReporter.spreporter/Contents/Resources/English.lproj/Localizable.strings';
+            case 2 % for macOS Catalina. (Later versions of macOS not yet tested.)
+                mappingFileName='/System/Library/SystemProfiler/SPPlatformReporter.spreporter/Contents/Resources/en.lproj/Localizable.strings';
+        end
+        fp=fopen(mappingFileName,'r');
+        if fp~=-1
+            break
+        end
+    end
     if fp==-1
-        error(['Failed to open name mapping file: ' mappingFileName]);
+        error(['Failed to open name-mapping file: ' mappingFileName]);
     end
     fileWords=fread(fp,inf,'uint16');
     fclose(fp);
@@ -162,4 +179,11 @@ if IsOSX
         modelName=modelName([1:end-2 end]);
     end
     modelNameCache=modelName;
+
+    return;
 end
+
+% If we reach this point then the modelName is unknown, because we were called
+% on an unsupported OS for this function:
+modelName = 'Unknown - Query unsupported on this OS.';
+return;

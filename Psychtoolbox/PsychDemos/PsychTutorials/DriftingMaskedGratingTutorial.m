@@ -48,22 +48,22 @@ function DriftingMaskedGratingTutorial(angle, cyclespersecond, f, drawmask)
 if nargin<4
     % By default, we mask the grating by a gaussian transparency mask:
     drawmask=1;
-end;
+end
 
 if nargin<3
     % Grating cycles/pixel
     f=0.05;
-end;
+end
 
 if nargin<2
     % Speed of grating in cycles per second:
     cyclespersecond=1;
-end;
+end
 
 if nargin<1
     % Angle of the grating: We default to 30 degrees.
     angle=30;
-end;
+end
 
 movieDurationSecs=20;   % Abort demo after 20 seconds.
 texsize=100;            % Half-Size of the grating image.
@@ -142,7 +142,7 @@ try
     Screen('TextSize', w, 24);
     
     % Slide 1: The static grating texture:
-    [xp yp] = DrawFormattedText(w, 'Step 1: Generate a single static texture which shows the periodic grating pattern: The texture must contain at least two full periods of the pattern.\nPress a key to continue.\n\n', 0, 0, 0, 50);
+    [xp yp] = DrawFormattedText(w, 'Step 1: Generate a single static texture which shows the periodic grating pattern: The texture must contain at least two full periods of the pattern.\nPress a key to continue.\n\n', 0, 20, 0, 50);
     cmd = 'gratingtex = Screen(''MakeTexture'', w, gratingmatrix);\nScreen(''DrawTexture'', w, gratingtex);';
     [xp yp] = DrawFormattedText(w, cmd, xp, yp, 255);
     Screen('DrawTexture', w, gratingtex);
@@ -185,10 +185,10 @@ try
         end
                 
         if autodrift == 0
-            [xp yp] = DrawFormattedText(w, 'Step 2: Cut out a rectangular subregion ''srcRect'' from the texture and draw it to the screen area ''dstRect'' of same size. The texture is shown through an aperture.\nMoving the aperture creates apparent smooth motion. - Try it with the mouse!\nPress a key to continue.\n\n', 0, 0, 0, 50);
+            [xp yp] = DrawFormattedText(w, 'Step 2: Cut out a rectangular subregion ''srcRect'' from the texture and draw it to the screen area ''dstRect'' of same size. The texture is shown through an aperture.\nMoving the aperture creates apparent smooth motion. - Try it with the mouse!\nPress a key to continue.\n\n', 0, 20, 0, 50);
         else
             if autodrift >= 1
-                [xp yp] = DrawFormattedText(w, 'Step 3: Horizontal shifting of the cut-out aperture region ''srcRect'' creates a nice drifting pattern. Subpixel accurate movements are possible due to hardware bilinear texture interpolation.\nPress a key to continue.\n\n', 0, 0, 0, 50);
+                [xp yp] = DrawFormattedText(w, 'Step 3: Horizontal shifting of the cut-out aperture region ''srcRect'' creates a nice drifting pattern. Subpixel accurate movements are possible due to hardware bilinear texture interpolation.\nPress a key to continue.\n\n', 0, 20, 0, 50);
                 if angle~=0
                     [xp yp] = DrawFormattedText(w, '\nIt is also possible to rotate the ''dstRect'' destination region by some angle to create a rotated grating.\n', 0, yp, 0, 50);
                 end
@@ -247,7 +247,7 @@ try
         Screen('Flip', w);
     end
         
-    while KbCheck; end;
+    KbReleaseWait;
         
     % Perform initial Flip to sync us to the VBL and for getting an initial
     % VBL-Timestamp for our "WaitBlanking" emulation:
@@ -275,7 +275,7 @@ try
             % created by the gfx-hardware due to internal numerical
             % roundoff errors when drawing rotated images:
             Screen('DrawTexture', w, masktex, [0 0 visiblesize visiblesize], dstRect, angle);
-        end;
+        end
 
         angle = angle + 0.1;
         
@@ -285,8 +285,8 @@ try
         % Abort demo if any key is pressed:
         if KbCheck
             break;
-        end;
-    end;
+        end
+    end
 
     %The same commands wich close onscreen and offscreen windows also close
 	%textures.
@@ -298,6 +298,3 @@ catch
     sca;
     psychrethrow(psychlasterror);
 end %try..catch..
-
-
-

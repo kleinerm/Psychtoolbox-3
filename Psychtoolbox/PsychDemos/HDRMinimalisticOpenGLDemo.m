@@ -1,11 +1,10 @@
 function HDRMinimalisticOpenGLDemo
 % HDRMinimalisticOpenGLDemo - Demonstrate use of MATLAB-OpenGL toolbox with
-% the BrightSide-Technologies High Dynamic Range Display.
+% HDR High Dynamic Range Displays.
 %
-% It differs from the normal MinimalisticOpenGLDemo only by the OpenWindow
-% call that requests BrightSide HDR support, and the setup of lightsource
-% intensities to make better use of the large dynamic range of the HDR
-% display.
+% It differs from the normal MinimalisticOpenGLDemo only by the PsychImaging
+% call that requests HDR support, and the setup of lightsource intensities to
+% make better use of the large dynamic range of the HDR display.
 %
 % This demo demonstrates use of OpenGL commands in a Matlab script to
 % perform some very boring 3D rendering in Psychtoolbox.

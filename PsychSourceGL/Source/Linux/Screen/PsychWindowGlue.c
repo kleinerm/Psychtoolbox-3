@@ -2473,6 +2473,7 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
 {
     #ifdef GLX_OML_sync_control
 
+    double tNow, tDeadline;
     psych_int64 ust, msc, sbc, oldmsc, oldust, finalmsc;
     psych_bool failed = FALSE;
     char extraversionsignature[512];
@@ -2573,6 +2574,8 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
     finalmsc = msc + 6;
     oldmsc = msc;
     oldust = ust;
+    PsychGetAdjustedPrecisionTimerSeconds(&tDeadline);
+    tDeadline += 0.5;
 
     while ((msc < finalmsc) && !failed) {
         // Wait a quarter millisecond:
@@ -2602,6 +2605,15 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
             // Failure of glXGetSyncValuesOML()! This is a broken implementation which needs
             // our workaround:
             failed = TRUE;
+        }
+
+        // Implement a 0.5 seconds timeout to deal with broken XWayland implementations:
+        PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+        if (tNow > tDeadline) {
+            failed = TRUE;
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-INFO: OpenML OML_sync_control implementation with broken glXGetSyncValuesOML() function detected. XWayland?!? Enabling workaround for ok performance.\n");
+            }
         }
 
         // Repeat test loop:
