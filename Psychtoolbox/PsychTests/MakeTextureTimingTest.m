@@ -1,110 +1,189 @@
-% MakeTextureTimingTest
+function MakeTextureTimingTest(screenid, width, height, channels, nSamples, preload, specialFlags, precision)
+% MakeTextureTimingTest([screenid=max][,width=1024][,height=1024][,channels=4][,nSamples=100][,preload=1][,specialFlags=0][,precision=0]);
 %
-% Screen 'MakeTexture' both allocates memory to hold an OpenGL texture and
-% loads a MATLAB matrix into the OpenGL texture. TestMakeTextureTiming
-% times those two steps separately, reporting the fraction of time which
-% MakeTexture spends allocating memory.   
+% Test creation timing of a texture of specific 'width' x 'height' size with
+% 'channels' color channels (1=Luminance, 2=Luminance+Alpha, 3=RGB,
+% 4=RGBA). Also measure texture upload speed if 'preload==1' and drawing
+% speed if 'preload==2'. Use 'specialFlags' for texture creation, most
+% interestingly a value of 4 to use planar texture storage, which can be
+% faster under some circumstances. Create textures of 'precision' - 0 = 8
+% bit integer, -1 = 8 bit integer, but created from double() input instead
+% of uint8 input, 1 = 16 bpc float or 16 bit signed integer as fallback, 2 =
+% 32 bpc float. Use 'nSamples' samples to compute mean timing.
 %
-% On 1GHz G4, MakeTexture spends less than 3% of its time allocating memory.
-% Providing separate Screen subfuntions to allocate and fill textures would
-% gain little.
+% All parameters are optional: Defaults are width x height = 1024 x 1024,
+% channels = 4 (RGBA), screenid = max id, 100 samples, preload but don't
+% draw, standard storage, 8 bit uint input to 8 bit integer precision.
+%
+% Shows average duration.
+%
+% Each run creates a new texture via Screen('MakeTexture'), then preloads
+% it onto the graphics card to measure that aspect as well, then deletes
+% the texture again. This test will give you rather "worst case" or
+% upper-bound numbers on texture management time. In many cases, processing
+% of textures of similar size will be faster due to all kinds of internal
+% optimizations. Your mileage may vary (TM), but it provides a rough
+% impression at least.
 %
 % see also: PsychTests
 
-% HISTORY
-%
-% mm/dd/yy
-%
-% 1/26/05   awi     wrote it.
+% History:
+% 06/05/08 mk   Wrote it.
 
+AssertOpenGL;
+
+if nargin < 1
+    screenid = [];
+end
+
+if isempty(screenid)
+    screenid = max(Screen('Screens'));
+end
+
+if nargin < 2
+    width = [];
+end
+
+if nargin < 3
+    height = [];
+end
+
+if isempty(width)
+    width = 1024;
+end
+
+if isempty(height)
+    height = 1024;
+end
+
+if nargin < 4
+    channels = [];
+end
+
+if isempty(channels)
+    channels = 4;
+end
+
+if nargin < 5
+    nSamples = [];
+end
+
+if isempty(nSamples)
+    nSamples = 100;
+end
+
+if nargin < 6
+    preload = [];
+end
+
+if isempty(preload)
+    preload = 1;
+end
+
+if nargin < 7 || isempty(specialFlags)
+    specialFlags = 0;
+end
+
+if nargin < 8 || isempty(precision)
+    precision = 0;
+end
 
 try
-    %test for a variety of texture sizes up to the screen size. 
-    screenNumber=max(Screen('Screens'));
-    w=Screen('OpenWindow', screenNumber, [], [], [], 2);
-    screenRect=Screen('Rect', screenNumber);
-    screenDimensions=[RectWidth(screenRect), RectHeight(screenRect)];
-    maxTextureSize=min(screenDimensions);
-    numTextures=floor(log2(maxTextureSize));
-    textureSizes=2.^([1:numTextures])+1;
-    numSamples=10;
-    %turn on the debugging switch for 'MakeTexture' to record internal
-    %timing.  See the C source to MakeTexture to see at where times are recorded. 
+    % Open standard window:
+    InitializeMatlabOpenGL(0,0,1);
+    w=Screen('OpenWindow', screenid);
 
-    %The preference call tells MakeTexture to record timestamps marking internal events into the time list. 
-    Screen('Preference','DebugMakeTexture', 1);
-    for i=1:numTextures
-        fprintf(['Step ' int2str(i) ' of ' int2str(numTextures) ': ']);
-        fprintf(['Timing generation of a ' int2str(textureSizes(i)) 'x' int2str(textureSizes(i)) ' texture:\n']);
-        fprintf(['Repeating measurement ' int2str(numSamples) ' times; counting ']);
-        for s=1:numSamples
-            fprintf(int2str(s));
-            if s<numSamples
-                fprintf('.. ');
-            else
-                fprintf('.');
-            end
-            Screen('ClearTimeList');
-            t=Screen('MakeTexture',w,magic(textureSizes(i)));
-            rawTimes=Screen('GetTimeList');  %index by texture, sample, timestamp
-            zeroRefTimes=rawTimes-rawTimes(1);
-            timeList(i,s,:)=zeroRefTimes;
-            %no reason to accumulate textures except to investigate memory loading vs allocation time.
-            Screen('Close', t);
-        end
-        fprintf('\n\n');
+    % Create random test pixel matrix:
+    img = uint8(rand(height, width, channels) * 255);
+    if precision ~= 0 
+        img = double(img);
     end
-    Screen('Preference','DebugMakeTexture', 0);
+    
+    if precision < 1
+        precision = 0;
+    end
+    
+    % Preheat: Screen() may need to allocate internal buffers or create
+    % shaders - we don't want this one-time setup overhead to spoil the
+    % numbers:
+    tex = Screen('MakeTexture', w, img, [], specialFlags, precision);
+    Screen('Close', tex);
+    
+    tbase = Screen('Flip', w);
+
+    % Perform nSamples sampling passes:
+    for i=1:nSamples
+        tex = Screen('MakeTexture', w, img, [], specialFlags, precision);
+        if preload == 1
+            Screen('PreloadTextures', w, tex);
+        end
+        
+        if preload == 2
+            Screen('DrawTexture', w, tex);
+            if i == 1
+                Screen('Flip', w, [], 2, 1);
+            end
+        end
+        
+        Screen('Close', tex);
+    end
+    
+    if preload ~= 2
+        % Enforce completion of all GPU operations, take timestamp:
+        elapsed = Screen('DrawingFinished', w, 2, 1);
+    else
+        elapsed = Screen('Flip', w) - tbase;
+    end
+    
+    avgmsecs = (elapsed / nSamples) * 1000;
+    
+    fprintf('\n\n\nAverage Make -> Upload -> Destroy time for a %i x %i pixels, %i channels texture over %i samples is: %f msecs.\n\n\n', width, height, channels, nSamples, avgmsecs);
+
+    % Only test common case:
+    if (channels >= 3) && (specialFlags == 0) && (precision == 0)
+        % Ok, same thing again with low-level calls:
+        tex = Screen('MakeTexture', w, img);
+        [texid textarget] = Screen('GetOpenGLTexture', w, tex);
+
+        Screen('Flip', w);
+
+        glBindTexture(textarget, texid);
+        switch channels
+            case 4,
+                        glTexImage2D(textarget, 0, GL.RGBA8, width, height, 0, GL.BGRA, GL.UNSIGNED_INT_8_8_8_8_REV, img);
+            case 3,
+                        glTexImage2D(textarget, 0, GL.RGBA8, width, height, 0, GL.RGB, GL.UNSIGNED_BYTE, img);
+        end
+        
+        glBindTexture(textarget, 0);
+
+        % Perform nSamples sampling passes:
+        for i=1:nSamples
+            glBindTexture(textarget, texid);
+            if channels == 4
+                glTexSubImage2D(textarget, 0, 0, 0, width, height, GL.BGRA, GL.UNSIGNED_INT_8_8_8_8_REV, img);
+            else
+                glTexSubImage2D(textarget, 0, 0, 0, width, height, GL.RGB, GL.UNSIGNED_BYTE, img);
+            end
+            glBindTexture(textarget, 0);
+            if preload
+                Screen('PreloadTextures', w, tex);
+            end
+        end
+
+        % Enforce completion of all GPU operations, take timestamp:
+        elapsed = Screen('DrawingFinished', w, 2, 1);
+        Screen('Close', tex);
+
+        avgmsecs = (elapsed / nSamples) * 1000;
+
+        fprintf('\n\n\nAverage glTexSubImage2D() -> Upload time for a %i x %i pixels, %i channels texture over %i samples is: %f msecs.\n\n\n', width, height, channels, nSamples, avgmsecs);
+    end
+    
+    Screen('CloseAll');
 catch 
-    Screen('Preference','DebugMakeTexture', 0);
     Screen('CloseAll');
     psychrethrow(psychlasterror);
 end
 
-%Verify that turning off DebugMakeTexture causes values not to accumulate in
-%the timing list.
-Screen('ClearTimeList');
-tFoo=Screen('MakeTexture',w,magic(textureSizes(1)));
-if Screen('GetTimeList') > 0
-    error('Turning off DebugMakeTexture failed to disable debugging in MakeTexture');
-end %if
-
-
-Screen('CloseAll')
-
-
-%Average measurements and plot results
-
-%When DebugMakeTexture is enabled, each call to MakeTexture generates four
-% timestamps at these events:
-% timestamp 1: Upon entering the SCREENMakeTexture C function
-% timestamp 2: Immediatly before the valloc call to allocate texture memory
-% timestamp 3: Immediatly before the valloc call to allocate texture memory
-% timestamp 4: Immediatly before exit from SCREENMakeTexture.
-
-%the indices into our result array are:
-%timeList( texture size index,  repetition index, timestamp index)
-
-[foo, bar, numTimestamps]=size(timeList);
-if numTimestamps ~= 4
-    error('MakeTexture stores more than the expected four timestamps.');
-end
-
-
-%first average across repeated measurements
-for tex=1:numTextures
-    for ts=1:numTimestamps
-        avgTimes(tex, ts)=mean(timeList(tex, :, ts));
-    end %for ts
-end %for tx
-
-allocationTimes=avgTimes(:,3) - avgTimes(:,2);
-meanAllocationTimes=mean(allocationTimes);
-copyTimes=avgTimes(:,4) - avgTimes(:,3);
-meanCopyTimes=mean(copyTimes);
-
-fprintf('Result:\n');
-fprintf(['Average time to allocate texture memory: ' num2str(meanAllocationTimes) ' Secs.\n']);
-fprintf(['Average time to copy the MATLAB matrix into the OpenGL texture: ' num2str(meanCopyTimes) ' Secs\n']);
-fprintf(['Average proportion of time which MakeTexture spends allocating memory: ' num2str(meanAllocationTimes/meanCopyTimes) '\n']);
-
+return;

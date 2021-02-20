@@ -851,7 +851,7 @@ PsychError SCREENOpenWindow(void)
 
             // Convert windowShieldingLevel 1000 - 1499 and 1500 - 1999 to alpha range 0.0 - 1.0 and
             // assign it as parameter string for our builtin post-multiply function:
-            snprintf(configAlphaString, sizeof(configAlphaString), "%f", (((float) (windowShieldingLevel % 500)) / 499.0));
+            snprintf(configAlphaString, sizeof(configAlphaString), "%1.3f", (((float) (windowShieldingLevel % 500)) / 499.0));
 
             // Add call to our builtin post-multiply function to the end of the finalizer blit chain for left-eye/mono buffer:
             PsychPipelineAddBuiltinFunctionToHook(windowRecord, "LeftFinalizerBlitChain", "Builtin:AlphaPostMultiply", INT_MAX, configAlphaString);

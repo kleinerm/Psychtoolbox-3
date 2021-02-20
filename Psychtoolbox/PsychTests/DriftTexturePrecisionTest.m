@@ -61,7 +61,9 @@ KbReleaseWait;
 try
 	% Open a double buffered fullscreen window and draw a gray background 
 	% to front and back buffers:
-	[w screenRect]=Screen('OpenWindow',screenNumber, 128);
+    PsychImaging('PrepareConfiguration');
+    PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+	[w, screenRect] = PsychImaging('OpenWindow',screenNumber, 128);
 	Screen('Flip', w);
 
     % Create one single static alternating black-white image:
@@ -142,8 +144,8 @@ try
             % Abort test if any key is pressed:
             if KbCheck
                 break;
-            end;
-        end;
+            end
+        end
         
         % Output number of identical pixels in texsize samples sample set.
         % A count of 0 means that the chosen stepsize is still below the

@@ -209,7 +209,11 @@ function MultiTouchDemo(dev, screenId, verbose)
         end
 
         if verbose
-          blobcol{id}.text = disp(evt);
+          if IsOctave
+            blobcol{id}.text = disp(evt);
+          else
+            blobcol{id}.text = evalc('disp(evt)');
+          end
         end
       end
 

@@ -393,7 +393,7 @@ mda = max(max(abs(diffalpha)));
 fprintf('\n\nMaximum raw data difference: red= %f green = %f blue = %f alpha = %f\n', mdr, mdg, mdb, mda);
 
 % If there is a difference, show plotted difference if requested:
-if (mdr>0 || mdg>0 || mdb>0 || mda>0) && plotdiffs
+if (mdr>0 || mdg>0 || mdb>0) && plotdiffs
     % Differences detected!
     close all;
     if plotchannel(1), figure; imagesc(diffred); title('Difference map - Channel 1 (Red):'); end
@@ -402,7 +402,7 @@ if (mdr>0 || mdg>0 || mdb>0 || mda>0) && plotdiffs
     if plotchannel(4), figure; imagesc(diffalpha);title('Difference map - Channel 4 (Alpha):'); end
 end
 
-if (mdr>0 || mdg>0 || mdb>0 || mda>0) || (plotdiffs > 1)
+if (mdr>0 || mdg>0 || mdb>0) || (plotdiffs > 1)
     % Now compute a more meaningful difference: The difference between the
     % stimulus as the Bits++ box would see it (i.e. how much do the 16 bit
     % intensity values of each color channel differ?):
@@ -543,7 +543,7 @@ else
     totalmaxdiff = 0;
 end
 
-if (mdr>0 || mdg>0 || mdb>0 || mda>0) && (totalmaxdiff > 1.1) && ~forcesuccess
+if (mdr>0 || mdg>0 || mdb>0) && (totalmaxdiff > 1.1) && ~forcesuccess
     fprintf('\n\n');
     fprintf('------------------ SIGNIFICANT DIFFERENCE IN CONVERSION DETECTED -----------------------\n');
     fprintf('The difference is %f, ie., it is more than 1 device unit.\n', totalmaxdiff);
@@ -564,7 +564,7 @@ if (mdr>0 || mdg>0 || mdb>0 || mda>0) && (totalmaxdiff > 1.1) && ~forcesuccess
     error('Conversion test failed. Results of Matlab code and GPU conversion differ!');
 end
 
-if (mdr>0 || mdg>0 || mdb>0 || mda>0) && (totalmaxdiff <= 1.1)
+if (mdr>0 || mdg>0 || mdb>0) && (totalmaxdiff <= 1.1)
     fprintf('\n\n');
     fprintf('------------------ SMALL, PROBABLY INSIGNIFICANT DIFFERENCE IN CONVERSION DETECTED -----\n');
     fprintf('The difference is %f, ie., it is only 1 device unit or less.\n', totalmaxdiff);
@@ -578,7 +578,7 @@ if (mdr>0 || mdg>0 || mdb>0 || mda>0) && (totalmaxdiff <= 1.1)
 
 end
 
-if (mdr==0 && mdg==0 && mdb==0 && mda==0)
+if (mdr==0 && mdg==0 && mdb==0)
     fprintf('\n\n');
     fprintf('------------------ PERFECT CONVERSION DETECTED -------------------------------\n');
     fprintf('The difference is zero - All implementations deliver exactly the same results.\n');

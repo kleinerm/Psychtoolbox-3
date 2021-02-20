@@ -112,7 +112,7 @@ try
     % this to define the alpha/mixing weight channel used to later mix
     % two images together:
     masktex = Screen('OpenOffscreenWindow', w, [0 0 0 0]);
-    DrawFormattedText(masktex, 'Draw something into the mask with the mouse!', 'center', 0, [1 1 1 1]);
+    DrawFormattedText(masktex, 'Draw something into the mask with the mouse!', 'center', 40, [1 1 1 1]);
     Screen('TextSize', masktex, 256);
 
     % Load image file:
@@ -222,7 +222,7 @@ try
     % Show first image:
     Screen('DrawTexture', w, firstImage);
     Screen('TextSize', w, 24);
-    DrawFormattedText(w, 'Step1: Create first texture:\nPress a key to continue\n', 0, 0, 1, 50);
+    DrawFormattedText(w, 'Step1: Create first texture:\nPress a key to continue\n', 0, 40, 1, 50);
     Screen('Flip', w);
 
     % Wait for mouseclick:
@@ -231,7 +231,7 @@ try
     % Show second image:
     Screen('DrawTexture', w, secondImage);
     Screen('TextSize', w, 24);
-    DrawFormattedText(w, 'Step2: Create second texture:\nPress a key to continue\n', 0, 0, 1, 50);
+    DrawFormattedText(w, 'Step2: Create second texture:\nPress a key to continue\n', 0, 40, 1, 50);
     Screen('Flip', w);
     KbStrokeWait;
 
@@ -455,7 +455,7 @@ try
         end
         txt = [txt '\nPress the SPACE key to continue to next step.\nPress Cursor left key to switch drawing tool.\nPress ESCAPE to exit demo.\n'];
         txt = [txt 'Press left mouse button to draw mask, other mouse button to erase mask'];
-        DrawFormattedText(w, txt, 0, 0, [1 0 0], 60);
+        DrawFormattedText(w, txt, 0, 40, [1 0 0], 60);
 
         % Show final result on screen. The 'Flip' also clears the drawing
         % surface back to black background color and a zero alpha value:

@@ -119,7 +119,6 @@ sectorspercycle = 80;  % per cycle, 20 or so is generally plenty; 254 is limit f
 ncycles = 18;   % number of windmill segments; spatial frequency in cpd is sectorspercycle/(pi*(avg of inner, outer diameters))
 % ...might alternatively define spatial frequency first, derive ncycles, or else make these and/or drift rate condition-dependent. 
 % ncycles must be integer (to allow the stimulus to be drawn only once, repeated in frame-dependent colorings.) 
-currentcols=zeros(256,3);
 DateOfExperiment = date; %#ok<*NASGU>
 MAXCOL = 1; % Palette rgb intensity values will range from zero to MAXCOL
 ADAPTRGB = MAXCOL*[ 0.5000  0.31   0.24 ]
@@ -160,6 +159,10 @@ try
     
     % Use Bits++ for stimulation?
     if BPP
+        % Add virtual framebuffer to make the "dontclear" after Flip more
+        % efficient in the main animation loop:
+        PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+
         % Use PTB's built-in setup code for Bits++ or DataPixx/Viewpixx
         % mode: This will load an identity gammatable into the graphics
         % card, so Bits++ T-Lock codes pass through unmodified. It will
@@ -277,7 +280,7 @@ try
         % Query mouse x position 'xi' to get initial setting for first
         % animation frame:
         loopcount=0; whichframe=0;
-        [xi yi button] = GetMouse(wptr);
+        [xi, yi, button] = GetMouse(wptr);
 
         % Perform flip at start of trial to sync us to retrace and get a
         % timestamp 'vbl' of start of trial:
@@ -290,12 +293,12 @@ try
             
             % Mouse and keyboard queries:
             oldxi = xi;
-            [xi yi button] = GetMouse(wptr);       % gets mouse coordinates and button state.
+            [xi, yi, button] = GetMouse(wptr);       % gets mouse coordinates and button state.
             
             % We check the keyboard only every 10'th redraw, as KbCheck is
             % relatively expensive at least on OS/X (about 1 msec):
             if mod(loopcount, 10) == 0
-                [keyisdown secs keycode] = KbCheck;    % is a key pressed of the keyboard, keyisdown is a logical variable if key is pressed
+                [keyisdown, secs, keycode] = KbCheck;    % is a key pressed of the keyboard, keyisdown is a logical variable if key is pressed
             end
             
             % if mouse has moved, get new lum value, update colors (not
@@ -413,10 +416,10 @@ try
             
             % Show updated stimulus image (or same image with updated
             % Bits++ CLUT) at next display vertical retrace (when = []),
-            % disable clearing of framebuffer after flip ( == 2), because
+            % disable clearing of framebuffer after flip ( == 1), because
             % we totally overwrite the framebuffer anyway at next draw
             % cycle:
-            vbl = Screen('Flip', wptr, vbl, 2 ); % 2 = on next screen refresh, and don't clear the frame buffer
+            vbl = Screen('Flip', wptr, vbl, 1);
 
             % End of this redraw cycle...
         end % exit from 'while' loop on mouse or keyboard keypress

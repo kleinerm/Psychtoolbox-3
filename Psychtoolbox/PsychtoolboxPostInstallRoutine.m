@@ -666,7 +666,7 @@ try
         % warning. We skip this on Linux, as the OS will take care of
         % proper rebuilds appropriately, so we don't expect to ever run
         % into this problem:
-        fprintf('Trying to trigger an update of the fontconfig cache if that should prove neccessary.\n');
+        fprintf('\n\nTrying to trigger an update of the fontconfig cache if that should prove neccessary.\n');
         fprintf('This may take a couple of seconds, or sometimes even minutes. Please be patient...\n');
         drawnow;
 
@@ -685,8 +685,15 @@ try
             Screen('DrawText', win, 'Ola!');
             Screen('Flip', win);
             sca;
+
+            if Screen('Preference', 'TextRenderer') == 0
+                % Failed to load drawtext plugin.
+                warning('Something went wrong with high-quality text renderer setup. Read ''help DrawTextPlugin'' for troubleshooting.');
+                input('Press Return key to continue.', 's');
+            end
         catch
-            fprintf('Something went wrong with text renderer setup. Read ''help DrawTextPlugin'' for troubleshooting.\n\n\n');
+            warning('Something went wrong with high-quality text renderer setup. Read ''help DrawTextPlugin'' for troubleshooting.');
+            input('Press Return key to continue.', 's');
         end
 
         Screen('Preference', 'TextRenderer', oldRenderer);

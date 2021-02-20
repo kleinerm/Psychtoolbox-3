@@ -330,7 +330,7 @@ struct output_info {
     struct wl_output *output;
 
     struct {
-        int32_t x, y;
+        int32_t x, y, scale;
         int32_t physical_width, physical_height;
         enum wl_output_subpixel subpixel;
         enum wl_output_transform output_transform;
@@ -418,8 +418,8 @@ print_output_info(void *data)
             break;
     }
 
-    printf("\tx: %d, y: %d,\n",
-           output->geometry.x, output->geometry.y);
+    printf("\tx: %d, y: %d, scale: %d\n",
+           output->geometry.x, output->geometry.y, output->geometry.scale);
     printf("\tphysical_width: %d mm, physical_height: %d mm,\n",
            output->geometry.physical_width,
            output->geometry.physical_height);
@@ -527,11 +527,23 @@ output_handle_mode(void *data, struct wl_output *wl_output,
     wl_list_insert(output->modes.prev, &mode->link);
 }
 
+static void output_handle_done(void *data, struct wl_output *wl_output)
+{
+    struct output_info *output = data;
+    return;
+}
+
+static void output_handle_scale(void *data, struct wl_output *wl_output, int32_t factor)
+{
+    struct output_info *output = data;
+    output->geometry.scale = factor;
+}
+
 static const struct wl_output_listener output_listener = {
     output_handle_geometry,
     output_handle_mode,
-    0,
-    0
+    output_handle_done,
+    output_handle_scale,
 };
 
 static void
@@ -568,7 +580,7 @@ static void add_output_info(struct output_info** outputSlot, uint32_t id, uint32
     wl_list_init(&output->modes);
 
     output->output = wl_registry_bind(wl_registry, id,
-                                      &wl_output_interface, 1);
+                                      &wl_output_interface, 2);
     wl_output_add_listener(output->output, &output_listener,
                            output);
     wayland_roundtrip_needed = TRUE;
@@ -922,12 +934,23 @@ pointer_handle_axis(void *data,
     return;
 }
 
+static void
+pointer_handle_frame(void *data, struct wl_pointer *wl_pointer)
+{
+    // No-Op for now:
+    return;
+}
+
 static const struct wl_pointer_listener pointer_listener = {
     pointer_handle_enter,
     pointer_handle_leave,
     pointer_handle_motion,
     pointer_handle_button,
     pointer_handle_axis,
+    pointer_handle_frame,
+    0,
+    0,
+    0,
 };
 
 static void
@@ -1621,7 +1644,9 @@ void PsychCleanupDisplayGlue(void)
     wl_shm = NULL;
 
     // Reset our binding to presentation_feedback extension if this is our last onscreen window to close:
-    wp_presentation_destroy(wayland_pres);
+    if (wayland_pres)
+        wp_presentation_destroy(wayland_pres);
+
     wayland_pres = NULL;
 
     // Destroy our reference to the registry:

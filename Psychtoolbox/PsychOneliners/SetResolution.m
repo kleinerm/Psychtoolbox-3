@@ -6,10 +6,18 @@ function oldRes=SetResolution(screenNumber,width,height,hz,pixelSize)
 % programs that run psychophysical experiments, so SetResolution is
 % strict. It issues a fatal error unless it can provide exactly the
 % resolution you specified. (For lenience, look at NearestResolution.)
+%
 % "screenNumber" is the screen number.
+%
 % "width" and "height" are the desired dimensions in pixels.  
+%
 % "hz" is the desired refresh rate (default is current frame rate).  
+%
 % "pixelSize" 8, 16, 24, or 32 bits and defaults to current pixelSize.
+% On modern operating systems, you should leave "pixelSize" alone, as
+% often there will be only one good choice anyway, which is already set
+% as the default, so changing it will usually change it for the worse!
+%
 % Returns the current resolution as "oldRes".  
 % 
 %   oldRes=SetResolution(0,1024,768,75);
@@ -26,8 +34,8 @@ function oldRes=SetResolution(screenNumber,width,height,hz,pixelSize)
 % we treat that value as a special case. A request for "hz" of NaN will
 % match only with a frame rate of 0.
 %
-% NOTE: On Linux this only works as you'd expect if there is only one
-% video output connected to a Psychtoolbox screen / X-Screen. On a
+% NOTE: On Linux/X11 this only works as you'd expect if there is only one
+% video output connected to a given Psychtoolbox screen / X-Screen. On a
 % setup with multiple outputs per screen, this will only change the
 % size of the framebuffer, but not the resolution of the actual displays!
 % Use Screen('ConfigureDisplay', 'Scanout', ...); to change settings on
@@ -45,6 +53,7 @@ function oldRes=SetResolution(screenNumber,width,height,hz,pixelSize)
 % 6/7/02  dgp Hz value of NaN matches NaN.
 % 9/23/07 mk  Adapted for Psychtoolbox-3.
 % 4/15/14 mk  Adapted for multi-output per x-screen setups on Linux.
+% 2/14/21 mk  Help text refined.
 
 if nargin<2 || nargin>5
     error(sprintf('%s\n%s','USAGE: oldRes=SetResolution(screenNumber,width,height,[hz],[pixelSize])',...
