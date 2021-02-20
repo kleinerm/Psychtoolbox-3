@@ -75,7 +75,10 @@ state = warning;
 try
     warning off; %#ok<WNOFF>
     if ~exist([PsychtoolboxConfigDir 'welcomemsgdone'], 'file')
-        delete([PsychtoolboxConfigDir 'screen_buildnr_*']);
+        if isempty(getenv('NUDGED'))
+            setenv('NUDGED', '1');
+            delete([PsychtoolboxConfigDir 'screen_buildnr_*']);
+        end
     end
 catch
 end
