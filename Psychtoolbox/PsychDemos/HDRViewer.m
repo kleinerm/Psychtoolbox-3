@@ -28,6 +28,9 @@ function HDRViewer(imfilepattern, highprecision, windowed, scalefactor, gpudebug
 %
 % 'highprecision' If set to 1, request floating point 16 fp16 display
 % output, instead of the default 10 bpc fixed point output of HDR-10.
+% If set to 2, will request a 16 bpc fixed point framebuffer, which allows for up
+% to 16 bpc linear precision, but in reality on early 2021 hardware at most 12 bpc.
+% On most operating-systems + driver + gpu combos this 16 bpc mode will fail.
 %
 % 'windowed' If set to 1 and running on MS-Windows, create a non-fullscreen
 % window to test windowed HDR mode. This is not yet supported on Linux, and
@@ -195,10 +198,16 @@ try
     % display, output color signals have 10 bpc precision.
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
-    if highprecision
+    if highprecision == 1
         % Request fp16 output instead of 10 bpc output:
         PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
     end
+
+    if highprecision == 2
+        % Request rgba16 output instead of 10 bpc output:
+        PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer');
+    end
+
     [win, winrect] = PsychImaging('OpenWindow', screenid, 0, rect);
     [xm, ym] = RectCenter(Screen('GlobalRect', win));
     SetMouse(xm, ym, win);
