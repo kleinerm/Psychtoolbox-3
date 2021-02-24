@@ -24,7 +24,8 @@ function gitpath = GetGitPath
 % Check for alternative install location of Git:
 if IsWin
     % Search for Windows executable in Matlab's path:
-    gitpath = which('git.exe');
+    [dump,gitpath] = system('where git');
+    gitpath = strtrim(gitpath);
 else
     % Search for Unix executable in Matlab's path:
     gitpath = which('git.');
