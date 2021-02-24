@@ -190,15 +190,12 @@ function data = MeasureLuminancePrecision(meterType)
 % o.wigglePixelNotCLUT = whether to vary the value of the pixel or CLUT.
 % o.loadIdentityCLUT = whether to load an identity into CLUT.
 
-o.luminances=128; % Photometer takes 3 s/luminance. 128 luminances is enough for a pretty graph.
+%o.luminances=128; % Photometer takes 3 s/luminance. 128 luminances is enough for a pretty graph.
 o.luminances=512; % Photometer takes 3 s/luminance. 512 luminances for a prettier graph.
 o.reciprocalOfFraction= 32; % List one or more, e.g. 1, 128, 256.
-%o.reciprocalOfFraction=[256]; % List one or more, e.g. 1, 128, 256.
-%o.vBase=.8;
 o.vBase=.5;
 o.useDithering=[]; % 1 enable. [] default. 0 disable.
 o.nBits=10; % Enable this to get 10-bit (and better with dithering) performance.
-o.usePhotometer=1; % 1 use ColorCAL II XYZ; 0 simulate 8-bit rendering.
 o.useShuffle=0; % Randomize order of luminances to prevent systematic effect of changing background.
 o.wigglePixelNotCLUT=1; % 1 is fine. The software CLUT is not important.
 o.loadIdentityCLUT=1; % 1 is fine. This nullifies the CLUT.
@@ -464,7 +461,7 @@ for iData=1:length(data)
     minsd=min(min(sd));
     [bits, jShift]=find(sd==minsd,1);
     j=round((length(vShift)+1)/2);
-    fprintf('min sd %.2f at %d bits %.4f shift; sd %.2f at 11 bits %.4f shift\n',minsd,bits,vShift(jShift),sd(11,j),vShift(j));
+    fprintf('Best fit: min sd %.3f at %d bits %.4f shift.\n', minsd, bits, vShift(jShift));
     data(iData).model.bits=bits;
     data(iData).model.vShift=vShift(jShift);
     data(iData).model.sd=sd(bits,jShift);
