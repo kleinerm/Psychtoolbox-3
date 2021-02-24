@@ -1,5 +1,5 @@
-function data=MeasureLuminancePrecision
-% data=MeasureLuminancePrecision
+function data = MeasureLuminancePrecision(meterType)
+% data=MeasureLuminancePrecision([meterType=7])
 % INSTRUCTIONS: [Currently this program requires a Cambridge Research
 % Systems photometer, but you could easily adapt it to use another
 % photometer.] Plug your photometer's USB cable into your computer,
@@ -215,6 +215,19 @@ KbReleaseWait;
 BackupCluts;
 aborted = 0;
 
+% Default to ColorCal2 - meterType 7:
+if nargin < 1 || isempty(meterType)
+    meterType = 7;
+end
+
+if meterType > 0
+    % Open the colorimeter, or abort if not possible:
+    CMCheckInit(meterType);
+    o.usePhotometer = 1;
+else
+    o.usePhotometer = 0; % Simulate 8-bit rendering.
+end
+
 try
     %% OPEN WINDOW
     screen = 0;
@@ -371,7 +384,7 @@ try
                     end
                 end
 
-                L=GetLuminance; % Read photometer
+                L = GetLuminance(meterType); % Read photometer
             else
                 % No photometer. Simulate 8-bit performance.
                 L=200*round(g*255)/255;
@@ -404,8 +417,18 @@ try
 
     t=(GetSecs-t)/length(data)/o.luminances;
 catch
+    if meterType > 0
+        % Close the colorimeter:
+        CMClose(meterType);
+    end
+
     sca;
     psychrethrow(psychlasterror);
+end
+
+if meterType > 0
+    % Close the colorimeter:
+    CMClose(meterType);
 end
 
 sca;
@@ -568,17 +591,27 @@ end
 end
 
 %% GET LUMINANCE
-function L=GetLuminance
-% L=GetLuminance(o.usePhotometer)
-% Measure luminance (cd/m^2).
-% Cambridge Research Systems ColorCAL II XYZ Colorimeter.
-% http://www.crsltd.com/tools-for-vision-science/light-measurement-display-calibation/colorcal-mkii-colorimeter/nest/product-support
-persistent CORRMAT
-if isempty(CORRMAT)
-    % Get ColorCAL II XYZ correction matrix (CRT=1; WLED LCD=2; OLED=3):
-    CORRMAT=ColorCal2('ReadColorMatrix');
-end
-s = ColorCal2('MeasureXYZ');
-XYZ = CORRMAT(4:6,:) * [s.x s.y s.z]';
-L=XYZ(2);
+function L = GetLuminance(meterType)
+    % L = GetLuminance(o.usePhotometer)
+    % Measure luminance (cd/m^2).
+
+    if 0
+        % Old code from Denis:
+        % Cambridge Research Systems ColorCAL II XYZ Colorimeter.
+        % http://www.crsltd.com/tools-for-vision-science/light-measurement-display-calibation/colorcal-mkii-colorimeter/nest/product-support
+        persistent CORRMAT
+        if isempty(CORRMAT)
+            % Get ColorCAL II XYZ correction matrix (CRT=1; WLED LCD=2; OLED=3):
+            CORRMAT=ColorCal2('ReadColorMatrix');
+        end
+        s = ColorCal2('MeasureXYZ');
+        XYZ = CORRMAT(4:6,:) * [s.x s.y s.z]';
+    else
+        % New code: Uses selectable measurement device. In case of ColorCal2, uses
+        % 2nd correction matrix rows 1:3 instead of Denis rows 4:6! My ColorCal2
+        % does not contain a meaningful matrix in rows 4:6.
+        XYZ = MeasXYZ(meterType);
+    end
+
+    L = XYZ(2);
 end
