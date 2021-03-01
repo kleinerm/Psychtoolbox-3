@@ -1,8 +1,7 @@
 /*
- 
  PsychToolbox3/Source/OSX/Screen/PsychCocoaGlue.h
  
- PLATFORMS:	
+ PLATFORMS:
  
  OSX
  
@@ -12,14 +11,12 @@
  
  AUTHORS:
  
- Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
+ Mario Kleiner       mk      mario.kleiner.de@gmail.com
  
  DESCRIPTION:
  
  Glue code for window management, using Objective-C wrappers to use Cocoa.
- 
  These functions are called by PsychWindowGlue.c.
- 
 */
 
 #ifndef PSYCH_COCOAGLUE_H
@@ -41,4 +38,5 @@ void PsychCocoaPreventAppNap(psych_bool preventAppNap);
 void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel);
 char* PsychCocoaGetFullUsername(void);
 double PsychCocoaGetBackingStoreScaleFactor(void* window);
+void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord);
 #endif
