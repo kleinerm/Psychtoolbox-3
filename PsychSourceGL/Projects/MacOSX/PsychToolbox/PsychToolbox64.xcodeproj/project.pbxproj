@@ -738,9 +738,6 @@
 		834260BC0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */; };
 		83495CDA09F701B8003973EA /* SCREENLoadCLUT.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CD909F701B8003973EA /* SCREENLoadCLUT.c */; };
 		83495CDE09F701E9003973EA /* SCREENSetVideoCaptureParameter.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */; };
-		834CE35F19A3082F0094D258 /* PsychMovieSupportGStreamer010.c in Sources */ = {isa = PBXBuildFile; fileRef = 834CE35C19A3082F0094D258 /* PsychMovieSupportGStreamer010.c */; };
-		834CE36019A3082F0094D258 /* PsychMovieWritingSupportGStreamer010.c in Sources */ = {isa = PBXBuildFile; fileRef = 834CE35D19A3082F0094D258 /* PsychMovieWritingSupportGStreamer010.c */; };
-		834CE36119A3082F0094D258 /* PsychVideoCaptureSupportGStreamer010.c in Sources */ = {isa = PBXBuildFile; fileRef = 834CE35E19A3082F0094D258 /* PsychVideoCaptureSupportGStreamer010.c */; };
 		8353D224139DA14400528754 /* PsychMovieWritingSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */; };
 		8353D225139DA14400528754 /* PsychMovieWritingSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */; };
 		8353D234139DA34C00528754 /* PsychMovieSupportGStreamer.c in Sources */ = {isa = PBXBuildFile; fileRef = 8353D233139DA34C00528754 /* PsychMovieSupportGStreamer.c */; };
@@ -1459,6 +1456,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1467,6 +1466,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1475,6 +1476,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1483,6 +1486,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1491,6 +1496,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1499,6 +1506,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1507,6 +1516,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1515,6 +1526,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1523,6 +1536,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1531,6 +1546,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1539,6 +1556,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1547,6 +1566,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1555,6 +1576,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1563,6 +1586,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1571,6 +1596,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1579,6 +1606,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1587,6 +1616,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1595,6 +1626,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1603,6 +1636,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1611,6 +1646,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1619,6 +1656,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1627,6 +1666,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1635,6 +1676,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1643,6 +1686,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1651,6 +1696,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1659,6 +1706,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1667,6 +1716,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1675,6 +1726,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1683,6 +1736,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1691,6 +1746,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1699,6 +1756,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1707,6 +1766,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1715,6 +1776,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1723,6 +1786,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1731,6 +1796,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1739,6 +1806,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1747,6 +1816,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1755,6 +1826,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1763,6 +1836,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1771,6 +1846,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1779,6 +1856,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1787,6 +1866,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1795,6 +1876,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1803,6 +1886,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1811,6 +1896,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1819,6 +1906,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1827,6 +1916,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1835,6 +1926,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1843,6 +1936,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1851,6 +1946,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1859,6 +1956,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1867,6 +1966,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1875,6 +1976,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.asm;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1883,6 +1986,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.c;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -1891,6 +1996,8 @@
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
 			fileType = sourcecode.cpp;
+			inputFiles = (
+			);
 			isEditable = 1;
 			outputFiles = (
 			);
@@ -2213,9 +2320,6 @@
 		834988071BACFA1500D5B2C6 /* PsychOculusVR.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PsychOculusVR.h; sourceTree = "<group>"; };
 		834988081BACFA1500D5B2C6 /* RegisterProject.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = RegisterProject.c; sourceTree = "<group>"; };
 		834988091BACFA1500D5B2C6 /* RegisterProject.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RegisterProject.h; sourceTree = "<group>"; };
-		834CE35C19A3082F0094D258 /* PsychMovieSupportGStreamer010.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychMovieSupportGStreamer010.c; path = ../../../Source/Common/Screen/PsychMovieSupportGStreamer010.c; sourceTree = "<group>"; };
-		834CE35D19A3082F0094D258 /* PsychMovieWritingSupportGStreamer010.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychMovieWritingSupportGStreamer010.c; path = ../../../Source/Common/Screen/PsychMovieWritingSupportGStreamer010.c; sourceTree = "<group>"; };
-		834CE35E19A3082F0094D258 /* PsychVideoCaptureSupportGStreamer010.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportGStreamer010.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportGStreamer010.c; sourceTree = "<group>"; };
 		83530222117BD37400CCB9AF /* PsychMovieWritingSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieWritingSupport.h; path = ../../../Source/Common/Screen/PsychMovieWritingSupport.h; sourceTree = SOURCE_ROOT; };
 		8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieWritingSupportGStreamer.c; path = ../../../Source/Common/Screen/PsychMovieWritingSupportGStreamer.c; sourceTree = SOURCE_ROOT; };
 		8353D226139DA31100528754 /* PsychMovieSupportGStreamer.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieSupportGStreamer.h; path = ../../../Source/Common/Screen/PsychMovieSupportGStreamer.h; sourceTree = SOURCE_ROOT; };
@@ -2258,6 +2362,11 @@
 		83AA2C6F129F22E1005841CF /* libusb-1.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.dylib"; path = "/usr/local/lib/libusb-1.0.dylib"; sourceTree = "<absolute>"; };
 		83C15D310EB8D72B003A7D96 /* VLProject.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = VLProject.cpp; path = ../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLProject.cpp; sourceTree = SOURCE_ROOT; };
 		83C15D320EB8D72B003A7D96 /* VLProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = VLProject.h; path = ../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLProject.h; sourceTree = SOURCE_ROOT; };
+		83C1A34825EB474A008E83B4 /* RegisterProject.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RegisterProject.h; sourceTree = "<group>"; };
+		83C1A34A25EB474A008E83B4 /* PsychVulkan.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PsychVulkan.h; sourceTree = "<group>"; };
+		83C1A34B25EB474A008E83B4 /* Notes.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = Notes.txt; sourceTree = "<group>"; };
+		83C1A34C25EB474A008E83B4 /* RegisterProject.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = RegisterProject.c; sourceTree = "<group>"; };
+		83C1A34E25EB474B008E83B4 /* PsychVulkan.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = PsychVulkan.c; sourceTree = "<group>"; };
 		83C8027C0B8CB29300097021 /* MirrorFaceCore.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MirrorFaceCore.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		83C802C90B8CECE500097021 /* MirrorFaceCore.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = MirrorFaceCore.cc; sourceTree = "<group>"; };
 		83C802CA0B8CECE500097021 /* MirrorFaceCore.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = MirrorFaceCore.h; path = /Users/kleinerm/projects/MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/MirrorFaceCore.h; sourceTree = "<absolute>"; };
@@ -3369,6 +3478,7 @@
 				833C1F200BB1A49D00FB9B4F /* PsychPortAudio */,
 				2F9ABA17045F3596007A7274 /* PsychHID */,
 				832CE63E094CE99F00578C09 /* PsychSound */,
+				83C1A34425EB474A008E83B4 /* PsychVulkanCore */,
 				2F58C8D405884625007A711C /* Rush */,
 				F559032C0385BB22017A7028 /* Screen */,
 				2F57E34808CEB40300A5CF85 /* StoreBit */,
@@ -3615,13 +3725,10 @@
 				0F45C2A30B264AE6004ED5F0 /* PsychImagingPipelineSupport.c */,
 				831A458412A6EEC500FFF235 /* PsychMovieSupport.c */,
 				8353D233139DA34C00528754 /* PsychMovieSupportGStreamer.c */,
-				834CE35C19A3082F0094D258 /* PsychMovieSupportGStreamer010.c */,
 				8353D223139DA14400528754 /* PsychMovieWritingSupportGStreamer.c */,
-				834CE35D19A3082F0094D258 /* PsychMovieWritingSupportGStreamer010.c */,
 				8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */,
 				8365A79C09992499006FF0F4 /* PsychVideoCaptureSupport.c */,
 				833D8C9612DBDCB500C3B444 /* PsychVideoCaptureSupportGStreamer.c */,
-				834CE35E19A3082F0094D258 /* PsychVideoCaptureSupportGStreamer010.c */,
 				8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */,
 				8370C6F60969F23000BD4C8C /* PsychWindowSupport.c */,
 			);
@@ -3918,6 +4025,19 @@
 			);
 			name = PsychOculusVRCore;
 			path = ../../../Source/Common/PsychOculusVRCore;
+			sourceTree = "<group>";
+		};
+		83C1A34425EB474A008E83B4 /* PsychVulkanCore */ = {
+			isa = PBXGroup;
+			children = (
+				83C1A34B25EB474A008E83B4 /* Notes.txt */,
+				83C1A34C25EB474A008E83B4 /* RegisterProject.c */,
+				83C1A34825EB474A008E83B4 /* RegisterProject.h */,
+				83C1A34A25EB474A008E83B4 /* PsychVulkan.h */,
+				83C1A34E25EB474B008E83B4 /* PsychVulkan.c */,
+			);
+			name = PsychVulkanCore;
+			path = ../../../Source/Common/PsychVulkanCore;
 			sourceTree = "<group>";
 		};
 		83C802C80B8CECE500097021 /* MirrorFaceCore */ = {
@@ -5312,6 +5432,7 @@
 				portable,
 			);
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 29B97314FDCFA39411CA2CEA /* TestPBMex */;
@@ -7392,7 +7513,6 @@
 				F089BC950AD42DF500663D86 /* PsychTimeGlue.c in Sources */,
 				F089BC960AD42DF500663D86 /* PsychVersioning.c in Sources */,
 				F089BC970AD42DF500663D86 /* PsychWindowGlue.c in Sources */,
-				834CE36119A3082F0094D258 /* PsychVideoCaptureSupportGStreamer010.c in Sources */,
 				F089BC980AD42DF500663D86 /* PsychWindowSupport.c in Sources */,
 				F089BC990AD42DF500663D86 /* PsychWindowTextGlue.c in Sources */,
 				F089BC9A0AD42DF500663D86 /* RegisterProject.c in Sources */,
@@ -7425,7 +7545,6 @@
 				F089BCB60AD42DF500663D86 /* SCREENGetMovieImage.c in Sources */,
 				F089BCB70AD42DF500663D86 /* SCREENGetMovieTimeIndex.c in Sources */,
 				F089BCB80AD42DF500663D86 /* SCREENGetTimeList.c in Sources */,
-				834CE35F19A3082F0094D258 /* PsychMovieSupportGStreamer010.c in Sources */,
 				F089BCB90AD42DF500663D86 /* SCREENglMatrixFunctionWrappers.c in Sources */,
 				F089BCBA0AD42DF500663D86 /* SCREENGlobalRect.c in Sources */,
 				F089BCBB0AD42DF500663D86 /* SCREENglPoint.c in Sources */,
@@ -7459,7 +7578,6 @@
 				F089BCD70AD42DF500663D86 /* SCREENTextBounds.c in Sources */,
 				F089BCD80AD42DF500663D86 /* SCREENTextColor.c in Sources */,
 				F089BCD90AD42DF500663D86 /* SCREENTextFont.c in Sources */,
-				834CE36019A3082F0094D258 /* PsychMovieWritingSupportGStreamer010.c in Sources */,
 				833910E9190C8CB50096DDE9 /* PsychScriptingGlue.c in Sources */,
 				F089BCDA0AD42DF500663D86 /* SCREENTextMode.c in Sources */,
 				F089BCDB0AD42DF500663D86 /* SCREENTextModes.c in Sources */,
