@@ -459,6 +459,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     winfo = Screen('GetWindowInfo', win);
     screenId = Screen('WindowScreenNumber', win);
     refreshHz = Screen('Framerate', screenId);
+    if refreshHz == 0
+        % macOS reports refresh rate of 0 on Mac builtin panels - the idiocy...
+        refreshHz = 60;
+    end
+
     devs = PsychVulkanCore('GetDevices');
 
     % Restore rank 0 output setting in Screen:
@@ -486,12 +491,24 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         flags = mor(flags, 1);
         noInterop = 1;
         % If no specific Vulkan gpu was requested, select the first non-AMD/NVidia
-        % gpuIndex (as we know AMD/NVidia can't be it - they fully support interop).
-        % Default to gpuIndex 1 in case this filtering fails to find an elegible gpu:
+        % gpuIndex on Linux or Windows: AMD and NVidia OpenGL fully support
+        % OpenGL interop, so if we end here then the render-gpu can not be an
+        % AMD or NVidia, ergo the display gpu should not be one.
+        %
+        % Also ignore MoltenVK (DriverId == 14) on macOS, because Apple's
+        % OpenGL does not support this extension at all, so we can't use
+        % this as selection criterion. Instead we just choose the first
+        % enumerated gpu on macOS: On a single-gpu machine that is the
+        % obviously correct choice. On a dual-gpu MacBookPro, the 1st gpu
+        % seems to be the discrete high-performance gpu, which matches
+        % Screen()'s choice of gpu as OpenGL renderer, so again gpuIndex 1
+        % would give us a match.
+        %
+        % Default also to gpuIndex 1 in case this filtering fails to find an eligible gpu:
         if isempty(gpuIndex) || gpuIndex == 0
             gpuIndex = 1;
             for i=1:length(devs)
-                if ~ismember(devs(i).DriverId, [1, 2, 3, 4])
+                if ~ismember(devs(i).DriverId, [1, 2, 3, 4, 14])
                     gpuIndex = devs(i).DeviceIndex;
                 end
             end
@@ -585,8 +602,15 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             % TODO XXX: Should we calculate refreshHz per output or from FlipInterval instead?
         end
     else
-        % On Windows, outputHandle is meaningless atm.:
-        outputHandle = uint64(0);
+        if IsOSX
+            % On macOS we need the CAMetalLayer backing the onscreen window in
+            % kPsychExternalDisplayMethod mode. It is stored in SysWindowInteropHandle:
+            outputHandle = uint64(winfo.SysWindowInteropHandle);
+        else
+            % On Windows, outputHandle is meaningless atm.:
+            outputHandle = uint64(winfo.SysWindowHandle);
+        end
+
         if isFullscreen
             % Mark output 0 (the only possible output for a screenId on
             % non-Linux/X11) of screenId as used:
