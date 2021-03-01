@@ -73,7 +73,7 @@ if mode==0
     -weak_library,/Library/Frameworks/GStreamer.framework/Versions/Current/lib/libglib-2.0.dylib,\
     -weak_library,/usr/local/lib/libdc1394.dylib,\
     -framework,CoreServices,-framework,CoreFoundation,-framework,ApplicationServices,-framework,CoreAudio,-framework,OpenGL,-framework,CoreVideo,\
-    -framework,IOKit,-framework,SystemConfiguration,-framework,Carbon,-framework,CoreText,\
+    -framework,IOKit,-framework,SystemConfiguration,-framework,Carbon,-framework,CoreText,-framework,QuartzCore,\
     -framework,CoreDisplay,-F/System/Library/PrivateFrameworks,-framework,DisplayServices,\
     -U,CoreDisplay_Display_SetUserBrightness,-U,CoreDisplay_Display_GetUserBrightness,\
     -U,DisplayServicesCanChangeBrightness,-U,DisplayServicesBrightnessChanged,\
