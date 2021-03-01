@@ -147,7 +147,7 @@ typedef struct PsychVulkanWindow {
 
     int                                 width;
     int                                 height;
-    int                                 numBuffers;
+    uint32_t                            numBuffers;
     psych_bool                          isStereo;
     psych_bool                          isFullscreen;
     int                                 createFlags;
@@ -248,7 +248,9 @@ PFN_vkSetLocalDimmingAMD fpSetLocalDimmingAMD = NULL;
 PFN_vkAcquireFullScreenExclusiveModeEXT fpAcquireFullScreenExclusiveModeEXT;
 PFN_vkGetMemoryWin32HandleKHR fpGetMemoryWin32HandleKHR;
 PFN_vkGetSemaphoreWin32HandleKHR fpGetSemaphoreWin32HandleKHR;
-#else
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
 PFN_vkGetMemoryFdKHR fpGetMemoryFdKHR;
 PFN_vkGetSemaphoreFdKHR fpGetSemaphoreFdKHR;
 PFN_vkGetRandROutputDisplayEXT fpGetRandROutputDisplayEXT = NULL;
@@ -273,7 +275,7 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "PsychVulkanCore - A Psychtoolbox driver for interfacing with the Vulkan graphics rendering API\n";
     synopsis[i++] = "This driver allows to utilize the Vulkan graphics API for special purpose display and compute tasks.";
-    synopsis[i++] = "Copyright (c) 2020 Mario Kleiner. Licensed to you under the terms of the MIT license.";
+    synopsis[i++] = "Copyright (c) 2020, 2021 Mario Kleiner. Licensed to you under the terms of the MIT license.";
     synopsis[i++] = "";
     synopsis[i++] = "This driver is used internally by Psychtoolbox. You should not call its functions";
     synopsis[i++] = "directly as a regular end-user from your scripts, as the API may change at any time";
@@ -652,7 +654,9 @@ void PsychVulkanCheckInit(psych_bool dontfail)
 
     // Needed to switch a fullscreen window to fullscreen exclusive mode:
     GET_INSTANCE_PROC_ADDR(vulkanInstance, AcquireFullScreenExclusiveModeEXT);
-    #else
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
     // External memory fd extension:
     GET_INSTANCE_PROC_ADDR(vulkanInstance, GetMemoryFdKHR);
     // External semaphore handle extension:
@@ -1609,7 +1613,6 @@ createsurface_out:
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
-
 void PsychProcessWindowEvents(PsychVulkanWindow* window)
 {
     // No op so far:
@@ -2383,11 +2386,13 @@ psych_bool PsychWaitForPresentCompletion(PsychVulkanWindow* window)
     if (result == VK_SUCCESS)
         result = vkResetFences(window->vulkan->device, 1, &window->flipDoneFence);
 
-    if ((result != VK_SUCCESS) && (verbosity > 0))
-        if (result == VK_TIMEOUT)
+    if ((result != VK_SUCCESS) && (verbosity > 0)) {
+        if (result == VK_TIMEOUT) {
             printf("PsychVulkanCore-ERROR: PsychWaitForPresentCompletion(%i): Fence wait+reset failed - Timeout!\n", window->index);
-        else
+        } else {
             printf("PsychVulkanCore-ERROR: PsychWaitForPresentCompletion(%i): Fence wait+reset failed with error code %i.\n", window->index, result);
+        }
+    }
 
     return (result == VK_SUCCESS ? TRUE : FALSE);
 }
@@ -2740,7 +2745,9 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
             result = fpGetMemoryWin32HandleKHR(vulkan->device, &memoryGetWinhandleInfo, &window->interopHandles.memory);
             if (verbosity > 4)
                 printf("PsychVulkanCore-INFO: PsychCreateInteropTexture: Got Win32 memory handle %p.\n", window->interopHandles.memory);
-        #else
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_LINUX
             // Get fd for shared memory with OpenGL:
             VkMemoryGetFdInfoKHR memoryGetFdInfo = {
                 .sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR,
@@ -4581,7 +4588,9 @@ PsychError PSYCHVULKANGetInteropHandle(void)
         };
 
         result = fpGetSemaphoreWin32HandleKHR(window->vulkan->device, &interopRenderDoneSemaphoreHandleInfo, &window->interopHandles.glComplete);
-        #else
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_LINUX
         VkSemaphoreGetFdInfoKHR interopRenderDoneSemaphoreHandleInfo = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
             .pNext = NULL,
