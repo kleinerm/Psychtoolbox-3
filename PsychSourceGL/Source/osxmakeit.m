@@ -193,4 +193,18 @@ if mode==14
     unix(['mv ../Projects/MacOSX/build/PsychOculusVRCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
+if mode==15
+    % Build PsychVulkanCore:
+    % Depends on a system level (/usr/local/[share/include/lib]/
+    % installation of the Vulkan SDK and MoltenVK for macOS from
+    % https://vulkan.lunarg.com for prebuilt SDK and Vulkan ICD,
+    % https://github.com/KhronosGroup/MoltenVK for source code.
+    try
+        mex -outdir ../Projects/MacOSX/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include "Common/PsychVulkanCore/*.c" "OSX/Base/*.c" "Common/Base/*.c" -lvulkan -lMoltenVK
+    catch
+        disp(psychlasterror);
+    end
+    unix(['mv ../Projects/MacOSX/build/PsychVulkanCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end
+
 return;
