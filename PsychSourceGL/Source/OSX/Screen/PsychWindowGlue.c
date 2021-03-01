@@ -260,6 +260,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // NULL-out Cocoa window handle, so this is well-defined in case of error:
     windowRecord->targetSpecific.windowHandle = NULL;
+    windowRecord->targetSpecific.deviceContext = NULL;
 
     // Retrieve windowLevel, an indicator of where non-CGL / non-fullscreen windows should
     // be located wrt. to other windows. -2 = Allow regular window manager control of stacking
@@ -668,9 +669,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             return(FALSE);
         }
     }
-
-    // NULL-out the AGL context field, just for safety...
-    windowRecord->targetSpecific.deviceContext = NULL;
 
     // Ok, the master OpenGL rendering context for this new onscreen window is up and running.
     // Auto-detect and bind all available OpenGL extensions via GLEW:
