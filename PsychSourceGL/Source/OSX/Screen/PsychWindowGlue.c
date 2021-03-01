@@ -283,7 +283,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
     if (PsychMatchRect(screenrect, windowRecord->rect)) windowRecord->specialflags |= kPsychIsFullscreenWindow;
 
-    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) &&
+    // External display methods need a CALayer for interop, which needs a NSWindow, ergo Cocoa, to attach to:
+    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && !(windowRecord->specialflags & kPsychExternalDisplayMethod) &&
         !(PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows))
         useCGL = TRUE;
 
