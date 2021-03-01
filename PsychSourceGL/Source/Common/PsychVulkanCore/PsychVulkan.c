@@ -55,6 +55,11 @@
 #include <dxgi1_6.h>
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+#define VK_USE_PLATFORM_METAL_EXT
+#define VK_ENABLE_BETA_EXTENSIONS 1
+#endif
+
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_sdk_platform.h>
 
@@ -456,6 +461,11 @@ psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex,
         // For Windows fullscreen display with good performance and timing:
         !addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)
         #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        // Do need the portability subset device extensions on macOS / MoltenVK:
+        !addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME)
+        #endif
     ) {
         if (verbosity > 3)
             printf("PsychVulkanCore-INFO: GPU %i: Skipped, because at least one mandatory device extension is missing.\n", gpuIndex);
@@ -554,6 +564,10 @@ void PsychVulkanCheckInit(psych_bool dontfail)
 
         #if defined(VK_USE_PLATFORM_WIN32_KHR)
         !addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_KHR_WIN32_SURFACE_EXTENSION_NAME)
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        !addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_EXT_METAL_SURFACE_EXTENSION_NAME)
         #endif
     ) {
         printf("PsychVulkanCore-ERROR: At least one required instance extension is missing!\n");
@@ -666,6 +680,10 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     GET_INSTANCE_PROC_ADDR(vulkanInstance, GetRandROutputDisplayEXT);
     GET_INSTANCE_PROC_ADDR(vulkanInstance, AcquireXlibDisplayEXT);
     GET_INSTANCE_PROC_ADDR(vulkanInstance, ReleaseDisplayEXT);
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_OSX
+    // TODO OSX
     #endif
 
     // Enumerate physical devices - actually combos of Vulkan driver + physical device:
@@ -1919,6 +1937,43 @@ createsurface_out:
 }
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+void PsychProcessWindowEvents(PsychVulkanWindow* window)
+{
+    // No op so far:
+    (void) window;
+}
+
+psych_bool PsychCreateMoltenVKDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, double refreshHz)
+{
+    VkResult result;
+
+    window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
+    window->display = (VkDisplayKHR) VK_NULL_HANDLE;
+
+    VkMetalSurfaceCreateInfoEXT createInfoMetal = {
+        .sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT,
+        .pNext = NULL,
+        .flags = 0,
+        .pLayer = (const CAMetalLayer*) outputHandle
+    };
+
+    result = vkCreateMetalSurfaceEXT(vulkanInstance, &createInfoMetal, NULL, &window->surface);
+    if (result != VK_SUCCESS) {
+        if (verbosity > 0)
+            printf("PsychVulkanCore-ERROR: For gpu [%s] creating vulkan output window failed in vkCreateMetalSurfaceEXT: %i\n", vulkan->deviceProps.deviceName, result);
+
+        return(FALSE);
+    }
+
+    // Got a windowed window for Vulkan stimulus display.
+    if (verbosity > 3)
+        printf("PsychVulkanCore-INFO: For gpu [%s] created a window Metal display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
+
+    return (TRUE);
+}
+#endif
+
 psych_bool PsychCreateDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, double refreshHz)
 {
     #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -1927,6 +1982,10 @@ psych_bool PsychCreateDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevic
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
         return(PsychCreateMSWindowsDisplaySurface(window, vulkan, isFullscreen, screenId, outputHandle, rect, refreshHz));
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_OSX
+        return(PsychCreateMoltenVKDisplaySurface(window, vulkan, isFullscreen, screenId, outputHandle, rect, refreshHz));
     #endif
 }
 
@@ -2636,6 +2695,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
 {
     const psych_bool bringup = FALSE;
+    psych_bool extmem = (PSYCH_SYSTEM != PSYCH_OSX) ? TRUE : FALSE;
     VkResult result;
     PsychVulkanDevice* vulkan = window->vulkan;
     VkImageTiling tiling = (window->interopTextureTiled && !bringup) ? VK_IMAGE_TILING_OPTIMAL : VK_IMAGE_TILING_LINEAR;
@@ -2662,7 +2722,7 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
     // Create VkImage object:
     VkImageCreateInfo imageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .pNext = !bringup ? &externalMemImageInfo : NULL,
+        .pNext = (!bringup && extmem) ? &externalMemImageInfo : NULL,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = window->interopTextureVkFormat,
         .extent = {window->width, window->height, 1},
@@ -2698,7 +2758,7 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
 
     VkMemoryAllocateInfo memoryAllocInfo = {
         memoryAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        memoryAllocInfo.pNext = !bringup ? &exportAllocInfo : NULL,
+        memoryAllocInfo.pNext = (!bringup && extmem) ? &exportAllocInfo : NULL,
         memoryAllocInfo.allocationSize = memoryRequirements.size,
         memoryAllocInfo.memoryTypeIndex = 0,
     };
@@ -2732,7 +2792,7 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
 
     // In normal operation mode, get the interop handles for exporting our interopImage to Psychtoolbox
     // for import as OpenGL textures/fbo for render-to-texture:
-    if (!bringup) {
+    if (!bringup && extmem) {
         #if PSYCH_SYSTEM == PSYCH_WINDOWS
             // Get handle for shared memory with OpenGL:
             VkMemoryGetWin32HandleInfoKHR memoryGetWinhandleInfo = {
@@ -2759,6 +2819,14 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
             result = fpGetMemoryFdKHR(vulkan->device, &memoryGetFdInfo, &window->interopHandles.memory);
             if (verbosity > 4)
                 printf("PsychVulkanCore-INFO: PsychCreateInteropTexture: Got POSIX memory fd %i.\n", window->interopHandles.memory);
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX
+            // TODO OSX
+            result = VK_SUCCESS;
+
+            if (verbosity > 4)
+                printf("FAIL FAIL FAIL PsychVulkanCore-INFO: PsychCreateInteropTexture: Got POSIX memory fd %i.\n", window->interopHandles.memory);
         #endif
 
         if (result != VK_SUCCESS) {
@@ -3478,6 +3546,10 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
             break;
     }
+
+    // macOS MoltenVK can only do tiled rendering:
+    if ((PSYCH_SYSTEM == PSYCH_OSX) && ((formatProps.optimalTilingFeatures & requiredMask) == requiredMask))
+        window->interopTextureTiled = TRUE;
 
     if (!PsychCreateInteropTexture(window)) {
         if (verbosity > 0)
@@ -4600,6 +4672,11 @@ PsychError PSYCHVULKANGetInteropHandle(void)
 
         result = fpGetSemaphoreFdKHR(window->vulkan->device, &interopRenderDoneSemaphoreHandleInfo, &window->interopHandles.glComplete);
         #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        result = -1; // TODO OSX
+        #endif
+
         if (result != VK_SUCCESS) {
             if (verbosity > 0)
                 printf("PsychVulkanCore-ERROR: Getting handles for external interop render-complete semaphore failed for window %i: res=%i.\n", window->index, result);
