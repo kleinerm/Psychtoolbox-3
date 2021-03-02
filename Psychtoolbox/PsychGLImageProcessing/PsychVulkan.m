@@ -53,7 +53,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         tWhen = varargin{3};
 
         if varargin{4} == 0
-            doTimestamp = 1;
+            doTimestamp = 2; % High precision system-provided scheduling/timestamping if possible.
         else
             doTimestamp = 0;
         end

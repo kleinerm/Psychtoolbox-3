@@ -300,7 +300,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "oldlocalDimmmingEnable = PsychVulkanCore('HDRLocalDimming', vulkanWindow [, localDimmmingEnable]);";
     synopsis[i++] = "[interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height, interopSemaphoreHandle] = PsychVulkanCore('GetInteropHandle', vulkanWindowHandle [, wantSemaphore=0][, eye=0]);";
     synopsis[i++] = "oldHdrMetadata = PsychVulkanCore('HDRMetadata', vulkanWindow, metadataType [, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);";
-    synopsis[i++] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=1]);";
+    synopsis[i++] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=2]);";
     synopsis[i++] = NULL; // Mark end of synopsis.
 
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -2459,6 +2459,7 @@ psych_bool PsychWaitForPresentCompletion(PsychVulkanWindow* window)
 psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int timestampMode)
 {
     VkResult result;
+    VkPresentTimeGOOGLE targetPresentTimeG;
     PsychVulkanDevice* vulkan = window->vulkan;
 
     // Some time granted to GUI event dispatch:
@@ -2513,9 +2514,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     };
 
     // VK_GOOGLE_DISPLAY_TIMING supported?
-    if (vulkan->hasTiming) {
+    if (vulkan->hasTiming && (timestampMode > 1)) {
         // Yes: Queue a target time for the present:
-        VkPresentTimeGOOGLE targetPresentTimeG;
         VkPresentTimesInfoGOOGLE presentTimeInfoG = {
             .sType = VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE,
             .pNext = present.pNext,
@@ -2598,7 +2598,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // Should we timestamp (imminent) stimulus onset?
     if (timestampMode > 0) {
         // VK_GOOGLE_DISPLAY_TIMING supported for timestamping?
-        if (vulkan->hasTiming) {
+        if (vulkan->hasTiming && (timestampMode > 1)) {
             // Yes. Fetch timestamp from Vulkan:
             VkPastPresentationTimingGOOGLE pastTiming;
             double tNow, tStart;
@@ -4704,7 +4704,7 @@ PsychError PSYCHVULKANGetInteropHandle(void)
 
 PsychError PSYCHVULKANPresent(void)
 {
-    static char useString[] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=1]);";
+    static char useString[] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=2]);";
     //                          1                2                                        1                     2          3
     static char synopsisString[] =
         "Present last rendered frame to Vulkan window 'vulkanWindowHandle'.\n\n"
@@ -4712,8 +4712,11 @@ PsychError PSYCHVULKANPresent(void)
         "to the swapchains, for consumption by the presentation engine. "
         "You usually won't call this function yourself, but Screen('Flip') "
         "will call it automatically for you at the appropriate moment.\n\n"
-        "'doTimestamp' If set to 1, performs timestamping of stimulus onset, or at least "
-        "tries to estimate such onset time. If set to 0, do nothing timestamping-wise.\n\n"
+        "'doTimestamp' If set to 1 or 2, performs timestamping of stimulus onset, or at least "
+        "tries to estimate such onset time. If set to 0, do nothing timestamping-wise. "
+        "A value of 1 always uses a home-made method of scheduling and timestamping. "
+        "A value of 2 tries to use a Vulkan-provided high-precision method if available "
+        "and possible, and falls back to method 1 otherwise. Value 2 is the default.\n\n"
         "'tWhen' If provided, defines the target presentation time, as provided by "
         "Screen('Flip', win, tWhen); a value of zero, or omission, means to present as "
         "soon as possible.\n\n"
@@ -4725,7 +4728,7 @@ PsychError PSYCHVULKANPresent(void)
     int vulkanWindowHandle;
     PsychVulkanWindow *window;
     double tWhen = 0;
-    int doTimestamp = 1;
+    int doTimestamp = 2;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -4750,8 +4753,8 @@ PsychError PSYCHVULKANPresent(void)
 
     // Get optional timestamping flag:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &doTimestamp);
-    if (doTimestamp < 0 || doTimestamp > 1)
-        PsychErrorExitMsg(PsychError_user, "Invalid 'doTimestamp' provided. Must be 0 or 1.");
+    if (doTimestamp < 0 || doTimestamp > 2)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'doTimestamp' provided. Must be 0, 1 or 2.");
 
     // Present:
     if (!PsychPresent(window, tWhen, doTimestamp)) {
