@@ -2525,8 +2525,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 
         present.pNext = &presentTimeInfoG;
 
-        #if PSYCH_SYSTEM == PSYCH_LINUX
+        #if PSYCH_SYSTEM == PSYCH_LINUX || PSYCH_SYSTEM == PSYCH_OSX
         // Linux: Map tWhen GetSecs() CLOCK_REALTIME target time into CLOCK_MONOTONIC time, convert to Nanoseconds:
+        // macOS: Map tWhen GetSecs() time into Mach host time (which is a no-op btw.), convert to Nanoseconds:
         targetPresentTimeG.desiredPresentTime = PsychOSRefTimeToMonotonicTime(tWhen) * 1e9;
         #else
         targetPresentTimeG.desiredPresentTime = 0; // TODO FIXME IMPLEMENT!
@@ -2664,7 +2665,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                         return(FALSE);
                     }
                     else if ((verbosity > 8) && (result == VK_INCOMPLETE))
-                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE for presentID %i returned old timestamp %f Fetching next one.\n", window->index, (double) pastTiming.actualPresentTime / 1e9);
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE (count %i) for presentID %i [current %i] returned old timestamp %f Fetching next one.\n",
+                               window->index, count, pastTiming.presentID, targetPresentTimeG.presentID, (double) pastTiming.actualPresentTime / 1e9);
                 } while (result == VK_INCOMPLETE);
 
                 // Got the final - and thereby most recent - timestamp.
