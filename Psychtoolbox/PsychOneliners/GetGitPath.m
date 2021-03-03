@@ -62,6 +62,14 @@ else
         if isempty(gitpath) && exist('/opt/local/bin/git', 'file')
             gitpath = '/opt/local/bin/';
         end
+    elseif IsWin
+        [returnCode,gitpath] = system('where git');
+        if returnCode==0
+            gitpath = strtrim(gitpath);
+        else
+            % failed, clear whatever the command returned
+            gitpath = '';
+        end
     end
 end
 

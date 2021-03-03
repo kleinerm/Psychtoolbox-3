@@ -45,6 +45,10 @@ if ~exist(gitPath, 'file')
     fprintf('*** Failed to find git, returning empty.\n');
     return;
 end
+if IsWin
+    % allow spaces in path to git
+    gitPath = ['"' gitPath '"'];
+end
 
 % Get the git describe info of the specified directory.
 curDir = pwd;
@@ -76,7 +80,7 @@ if status == 0
     gitInfo.LastCommit = getStringLines(result);
     fclose(fid);
 end
-unix(['rm -rf ' tempFile]);
+delete(tempFile);
 cd(curDir);
 
 % get remote repository urls
