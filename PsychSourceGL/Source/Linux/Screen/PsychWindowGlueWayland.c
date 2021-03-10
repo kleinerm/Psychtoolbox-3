@@ -771,24 +771,29 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     // Create our onscreen window:
     window = NULL;
 
-    // Fullscreen opaque?
-    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (windowLevel < 1000 || windowLevel >= 2000)) {
-        // This works for compositors which support xdg shell:
-        // NOTE: Does not work for selection of video output! Compositor decides!
-        intptr_t window_attrib_list[3];
-        attribcount = 0;
-        window_attrib_list[attribcount++] = WAFFLE_WINDOW_FULLSCREEN;
-        window_attrib_list[attribcount++] = true;
-        window_attrib_list[attribcount++] = 0;
-        window = waffle_window_create2(config, window_attrib_list);
-        if (!window && (PsychPrefStateGet_Verbosity() > 1))
-            printf("\nPTB-WARNING: Could not create Wayland fullscreen window: %s\n", waffle_error_to_string(waffle_error_get_code()));
+    if (FALSE) {
+        // Old style: Use Waffle for this -- Too restricted for our purpose as it does not
+        // allow definition of the wayland output (aka PTB screen aka monitor) to display
+        // the window on in fullscreen mode. We use our own code below via xdg_toplevel_set_fullscreen()...
+        // Code left here for now for testing Waffle itself...
+
+        // Fullscreen opaque?
+        if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (windowLevel < 1000 || windowLevel >= 2000)) {
+            // This works for compositors which support xdg shell:
+            // NOTE: Does not work for selection of video output! Compositor decides!
+            intptr_t window_attrib_list[3];
+            attribcount = 0;
+            window_attrib_list[attribcount++] = WAFFLE_WINDOW_FULLSCREEN;
+            window_attrib_list[attribcount++] = true;
+            window_attrib_list[attribcount++] = 0;
+            window = waffle_window_create2(config, window_attrib_list);
+            if (!window && (PsychPrefStateGet_Verbosity() > 1))
+                printf("\nPTB-WARNING: Could not create Wayland fullscreen window: %s\n", waffle_error_to_string(waffle_error_get_code()));
+        }
     }
 
-    // No window yet, either because this is a non-fullscreen window, or fullscreen
-    // window creation failed?
+    // Create onscreen window, in windowed non-fullscreen configuration first:
     if (!window) {
-        // Use windowed path instead:
         window = waffle_window_create(config, width, height);
     }
 
@@ -929,12 +934,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             int milliHz = 0;
 
             // Opaque fullscreen onscreen window setup:
-            // WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER - Switch video output to optimal resolution to accomodate the
-            // size of the surface, ie., the mode with the smallest resolution that can contain the surface. Add black
-            // borders for padding if a perfect fit isn't possible.
-            // TODO implement: 0 = Target refresh rate -- Zero == Don't change rate.
             if (PsychPrefStateGet_Verbosity() > 3) {
-                printf("PTB-INFO: Opening fullscreen onscreen wl_shell_surface() window on screen %i - wl_output %p\n",
+                printf("PTB-INFO: Opening fullscreen onscreen window on screen %i - wl_output %p\n",
                        screenSettings->screenNumber, displayWaylandOutputs[screenSettings->screenNumber]);
             }
 
@@ -949,9 +950,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             }
 
             if (wayland_window->wl_shell_surface) {
+                // WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER - Switch video output to optimal resolution to accomodate the
+                // size of the surface, ie., the mode with the smallest resolution that can contain the surface. Add black
+                // borders for padding if a perfect fit isn't possible.
                 wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, milliHz, displayWaylandOutputs[screenSettings->screenNumber]);
             } else {
-                // TODO: xdg_toplevel_set_fullscreen(wayland_window->xdg_toplevel, displayWaylandOutputs[screenSettings->screenNumber]);
+                // XDG shell: Not much options. We can set it fullscreen, requesting a specific target wayland output,
+                // that's it. Everything else is at the compositors discretion:
+                xdg_toplevel_set_fullscreen(wayland_window->xdg_toplevel, displayWaylandOutputs[screenSettings->screenNumber]);
                 waffle_window_show(window);
             }
         }
@@ -971,9 +977,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // Give the window a title:
         if (wayland_window->wl_shell_surface)
             wl_shell_surface_set_title(wayland_window->wl_shell_surface, windowTitle);
-/*        else
-            TODO: xdg_toplevel_set_title(wayland_window->xdg_toplevel, windowTitle);
-*/
+        else
+            xdg_toplevel_set_title(wayland_window->xdg_toplevel, windowTitle);
+
         // Make it so!
         wl_display_roundtrip(wl_display);
     }
