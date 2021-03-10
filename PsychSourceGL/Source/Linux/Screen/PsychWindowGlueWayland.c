@@ -64,6 +64,9 @@ GLenum glewContextInit(void);
 // source tree, as permitted by license, just like presentation_timing-protocol.c:
 #include "presentation_timing-client-protocol.h"
 
+// XDG shell protocol:
+#include "xdg_shell-client-protocol.h"
+
 #define ARRAY_LENGTH(a) (sizeof (a) / sizeof (a)[0])
 
 // These are defined in PsychScreenGlueWayland.c:
