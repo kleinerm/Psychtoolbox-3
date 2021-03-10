@@ -766,7 +766,37 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     }
 
     // Create our onscreen window:
-    window = waffle_window_create(config, width, height);
+    window = NULL;
+
+    // Fullscreen opaque?
+    if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (windowLevel < 1000 || windowLevel >= 2000)) {
+        // This works for compositors which support xdg shell:
+        // NOTE: Does not work for selection of video output! Compositor decides!
+        intptr_t window_attrib_list[3];
+        attribcount = 0;
+        window_attrib_list[attribcount++] = WAFFLE_WINDOW_FULLSCREEN;
+        window_attrib_list[attribcount++] = true;
+        window_attrib_list[attribcount++] = 0;
+        window = waffle_window_create2(config, window_attrib_list);
+        if (!window && (PsychPrefStateGet_Verbosity() > 1))
+            printf("\nPTB-WARNING: Could not create Wayland fullscreen window: %s\n", waffle_error_to_string(waffle_error_get_code()));
+    }
+
+    // No window yet, either because this is a non-fullscreen window, or fullscreen
+    // window creation failed?
+    if (!window) {
+        // Use windowed path instead:
+        window = waffle_window_create(config, width, height);
+    }
+
+    if (!window) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("\nPTB-ERROR: Could not create Wayland window [waffle_window_create() failed]: %s\n", waffle_error_to_string(waffle_error_get_code()));
+
+        PsychUnlockDisplay();
+        return (FALSE);
+    }
+
     wafflewin = waffle_window_get_native(window);
     wayland_window = wafflewin->wayland;
 
@@ -888,8 +918,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // Done with defining input and display regions, so destroy our region:
         wl_region_destroy(region);
 
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: Onscreen window uses: wl_shell_surface %p, xdg_toplevel %p\n", wayland_window->wl_shell_surface, wayland_window->xdg_toplevel);
+
         // Is this supposed to be a fullscreen window?
         if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (windowLevel < 1000 || windowLevel >= 2000)) {
+            int milliHz = 0;
+
             // Opaque fullscreen onscreen window setup:
             // WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER - Switch video output to optimal resolution to accomodate the
             // size of the surface, ie., the mode with the smallest resolution that can contain the surface. Add black
@@ -903,16 +938,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             // Video refresh rate switch requested?
             if (displayOriginalCGSettingsValid[screenSettings->screenNumber]) {
                 // Video refresh rate switch requested:
-                int milliHz = (int) (PsychGetNominalFramerate(screenSettings->screenNumber) * 1000.0 + 0.5);
+                milliHz = (int) (PsychGetNominalFramerate(screenSettings->screenNumber) * 1000.0 + 0.5);
+
                 if (PsychPrefStateGet_Verbosity() > 3) {
                     printf("PTB-INFO: Requesting video mode switch for fullscreen windw to a target of %i x %i pixels at %i milliHz.\n", width, height, milliHz);
                 }
-
-                wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, milliHz, displayWaylandOutputs[screenSettings->screenNumber]);
             }
-            else {
-                // No video refresh rate switch requested:
-                wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, 0, displayWaylandOutputs[screenSettings->screenNumber]);
+
+            if (wayland_window->wl_shell_surface) {
+                wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, milliHz, displayWaylandOutputs[screenSettings->screenNumber]);
+            } else {
+                // TODO: xdg_toplevel_set_fullscreen(wayland_window->xdg_toplevel, displayWaylandOutputs[screenSettings->screenNumber]);
+                waffle_window_show(window);
             }
         }
         else {
@@ -922,12 +959,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             }
 
             // Show it as toplevel window:
-            wl_shell_surface_set_toplevel(wayland_window->wl_shell_surface);
+            if (wayland_window->wl_shell_surface)
+                wl_shell_surface_set_toplevel(wayland_window->wl_shell_surface);
+            else
+                waffle_window_show(window);
         }
 
         // Give the window a title:
-        wl_shell_surface_set_title(wayland_window->wl_shell_surface, windowTitle);
-
+        if (wayland_window->wl_shell_surface)
+            wl_shell_surface_set_title(wayland_window->wl_shell_surface, windowTitle);
+/*        else
+            TODO: xdg_toplevel_set_title(wayland_window->xdg_toplevel, windowTitle);
+*/
         // Make it so!
         wl_display_roundtrip(wl_display);
     }
@@ -1893,7 +1936,7 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     if (!(windowRecord->specialflags & kPsychOpenMLDefective)) {
         // This was needed to compensate for Westons 1 frame composition lag, but is
         // no longer needed as of Weston 1.8+ due to Pekka's lag reduction patch.
-        if (FALSE) {
+        if (FALSE && onlyForCalibration) {
             targetTime -= nominalIFI;
             if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Compensating for Wayland/Weston 1 frame composition lag of %f msecs.\n", nominalIFI * 1000.0);
         }
@@ -1951,8 +1994,8 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
                 targetTime += delayFromFrameStart;
 
                 if (PsychPrefStateGet_Verbosity() > 4) {
-                    printf("PTB-DEBUG: Setting swap targetTime to %f secs [fudge %f secs] for Wayland composition compensation.\n",
-                           targetTime, delayFromFrameStart);
+                    printf("PTB-DEBUG: Setting swap targetTime to %f secs [fudge %f secs] %f msecs after last swap, for Wayland composition compensation.\n",
+                           targetTime, delayFromFrameStart, 1000 * (targetTime - windowRecord->time_at_last_vbl));
                 }
             }
             else {
