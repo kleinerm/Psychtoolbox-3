@@ -1455,8 +1455,11 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     // or occluding us. TODO: Find a way to control for those things.
     if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_WindowShieldingLevel() >= 2000) &&
         !(windowRecord->swapcompletiontype & WP_PRESENTATION_FEEDBACK_KIND_ZERO_COPY) && (PsychPrefStateGet_Verbosity() > 1)) {
-        printf("PTB-WARNING: Flip for window %i didn't use zero copy pageflips. Stimulus may not display onscreen pixel-perfect and exactly as specified by you!\n",
-               windowRecord->windowIndex);
+        // Do some rate limiting for the moment - Only one warning every 600 flips:
+        static unsigned int ratelimitcounter = 0;
+        if ((ratelimitcounter++ % 600) == 0)
+            printf("PTB-WARNING: Flip for window %i didn't use zero copy pageflips %i times. Stimulus may not display pixel-perfect as specified.\n",
+                   windowRecord->windowIndex, ratelimitcounter);
     }
 
     // Return swap completion msc:
