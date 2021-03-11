@@ -206,6 +206,10 @@ if IsOctave
     pkg load statistics;
 end
 
+if ~exist('regress') %#ok<EXIST>
+    error('Required regress() function from Statistics toolbox missing!');
+end
+
 KbReleaseWait;
 
 %% BEGIN
