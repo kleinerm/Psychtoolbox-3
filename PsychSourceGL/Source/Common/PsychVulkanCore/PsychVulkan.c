@@ -2558,8 +2558,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
         // Success! All perfectly good?
         if ((verbosity > 6) || (verbosity > 1 && result == VK_SUBOPTIMAL_KHR))
-            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): frameIndex %i - swapChain backBuffer image with index %i queued for present.\n", window->index,
-                   window->frameIndex, window->currentSwapChainBuffer);
+            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): frameIndex %i - swapChain image with index %i queued for present at tWhen %f secs.\n", window->index,
+                   window->frameIndex, window->currentSwapChainBuffer, tWhen);
 
         // Suboptimal present? This may tear or have reduced performance / increased latency, and also
         // potentially screwed up timing:
@@ -2605,6 +2605,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         if (vulkan->hasTiming && (timestampMode > 1)) {
             // Yes. Fetch timestamp from Vulkan:
             VkPastPresentationTimingGOOGLE pastTiming;
+            const double tQueryTimeout = 0.5; // Time out after more than tQueryTimeout seconds of failure.
             double tNow, tStart;
             uint32_t count = 0;
 
@@ -2615,7 +2616,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
             PsychGetAdjustedPrecisionTimerSeconds(&tNow);
             tStart = tNow;
 
-            while ((count < 1) && (tNow < tStart + 0.1)) {
+            while ((count < 1) && (tNow < tStart + tQueryTimeout)) {
                 result = fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, NULL);
                 if (result != VK_SUCCESS) {
                     if (verbosity > 0)
@@ -2625,7 +2626,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 }
 
                 PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-                if ((count < 1) && (tNow < tStart + 0.1)) {
+                if ((count < 1) && (tNow < tStart + tQueryTimeout)) {
                     PsychYieldIntervalSeconds(0.001);
                     if (verbosity > 9)
                         printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Polling for fpGetPastPresentationTimingGOOGLE returning results. %f msecs elapsed, %f msecs since tWhen.\n", window->index, count, 1000 * (tNow - tStart), 1000 * (tNow - tWhen));
