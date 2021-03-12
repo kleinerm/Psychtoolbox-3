@@ -2604,8 +2604,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         // VK_GOOGLE_DISPLAY_TIMING supported for timestamping?
         if (vulkan->hasTiming && (timestampMode > 1)) {
             // Yes. Fetch timestamp from Vulkan:
-            VkPastPresentationTimingGOOGLE pastTiming;
             const double tQueryTimeout = 0.5; // Time out after more than tQueryTimeout seconds of failure.
+            VkPastPresentationTimingGOOGLE pastTiming[1000];
             double tNow, tStart;
             uint32_t count = 0;
 
@@ -2658,10 +2658,13 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 }
             }
             else {
+                int i;
+
                 // Got at least one timestamp. We want the most recent one:
                 do {
-                    count = 1;
-                    result = fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, &pastTiming);
+                    count = (count > 1000) ? 1000 : count;
+
+                    result = fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, &pastTiming[0]);
                     if ((result != VK_SUCCESS) && (result != VK_INCOMPLETE)) {
                         if (verbosity > 0)
                             printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed to retrieve next timestamp! fpGetPastPresentationTimingGOOGLE reports error code %i.\n", window->index, result);
@@ -2670,16 +2673,24 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                     }
                     else if ((verbosity > 8) && (result == VK_INCOMPLETE))
                         printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE (count %i) for presentID %i [current %i] returned old timestamp %f Fetching next one.\n",
-                               window->index, count, pastTiming.presentID, targetPresentTimeG.presentID, (double) pastTiming.actualPresentTime / 1e9);
+                               window->index, count, pastTiming[0].presentID, targetPresentTimeG.presentID, (double) pastTiming[0].actualPresentTime / 1e9);
                 } while (result == VK_INCOMPLETE);
+
+                for (i = 0; i < count; i++) {
+                    if (verbosity > 8)
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i):%i: presentID %i [need %i] returned timestamp %f.\n",
+                               window->index, i, pastTiming[i].presentID, targetPresentTimeG.presentID, (double) pastTiming[i].actualPresentTime / 1e9);
+                    if (pastTiming[i].presentID == targetPresentTimeG.presentID)
+                        break;
+                }
 
                 // Got the final - and thereby most recent - timestamp.
                 // Assign as present completion timestamp:
-                window->tPresentComplete = PsychOSMonotonicToRefTime((double) pastTiming.actualPresentTime / 1e9);
+                window->tPresentComplete = PsychOSMonotonicToRefTime((double) pastTiming[i].actualPresentTime / 1e9);
 
                 if (verbosity > 7)
                     printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE for presentID %i returned flip completion timestamp %f secs vs. desired present time %f secs. Delta %f msecs.\n",
-                        window->index, pastTiming.presentID, window->tPresentComplete, PsychOSMonotonicToRefTime((double) pastTiming.desiredPresentTime / 1e9), 1000 * (window->tPresentComplete - tWhen));
+                        window->index, pastTiming[i].presentID, window->tPresentComplete, PsychOSMonotonicToRefTime((double) pastTiming[i].desiredPresentTime / 1e9), 1000 * (window->tPresentComplete - tWhen));
             }
         }
         else {
