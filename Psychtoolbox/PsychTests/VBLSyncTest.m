@@ -279,6 +279,8 @@ try
     % Open double-buffered window: Optionally enable stereo output if
     % stereo == 1.
     PsychImaging('PrepareConfiguration')
+    PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+
     if usedpixx
         % Use DataPixx for external timestamping for quick basic correctness
         % tests.
