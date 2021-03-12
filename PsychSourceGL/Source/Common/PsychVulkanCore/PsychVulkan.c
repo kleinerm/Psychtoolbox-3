@@ -2616,6 +2616,16 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
             PsychGetAdjustedPrecisionTimerSeconds(&tNow);
             tStart = tNow;
 
+            // This label is only used on macOS + MoltenVK for buggy MVK versions which do not
+            // actually dequeue timestamps fetched via fpGetPastPresentationTimingGOOGLE(), as they
+            // should, but keep all timestamps in the queue until the queue reaches capacity. Iow.,
+            // the queue can only grow (up to a defined maximum, e.g., 60 entries), but never shrink.
+            // This is a spec violation and it can make the timestamp query fail for up to slightly
+            // more than 1 video refresh cycle. As a workaround, we repeat the procedure in 1 msecs
+            // intervals until either success, or our master timeout is hit, which suggests some other
+            // unexpected macOS bug:
+            macosmvkworkaroundrepeat:
+
             while ((count < 1) && (tNow < tStart + tQueryTimeout)) {
                 result = fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, NULL);
                 if (result != VK_SUCCESS) {
@@ -2682,6 +2692,35 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                                window->index, i, pastTiming[i].presentID, targetPresentTimeG.presentID, (double) pastTiming[i].actualPresentTime / 1e9);
                     if (pastTiming[i].presentID == targetPresentTimeG.presentID)
                         break;
+                }
+
+                // Found a matching record before timeout?
+                if (i == count) {
+                    // No. Could be timeout due to temporary malfunction, or an OS implementation bug.
+
+                    // Yield to give the system some processing time:
+                    PsychYieldIntervalSeconds(0.0001);
+                    PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+
+                    // Timeout, and/or no matching presentID!
+                    if ((PSYCH_SYSTEM == PSYCH_OSX) && (tNow < tStart + tQueryTimeout)) {
+                        // We are still within the acceptable timeout period - Not yet timed out.
+
+                        // macOS + MoltenVK as of early March 2021 / MoltenVK version 1.1.1 will hit this due to a MoltenVK bug.
+                        if (verbosity > 7)
+                            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): No match yet! Retrying in a bit...\n", window->index);
+
+                        // Repeat the whole query timestamps + try to find proper presentation timestamp:
+                        count = 0;
+                        goto macosmvkworkaroundrepeat;
+                    }
+                    else {
+                        // Final timeout! This should not happen on this OS + display system! Fail.
+                        if (verbosity > 0)
+                            printf("PsychVulkanCore-ERROR: PsychPresent(%i): NO MATCH for target presentID %i! OS bug!?! Timed out, aborting.\n", window->index, targetPresentTimeG.presentID);
+
+                        return(FALSE);
+                    }
                 }
 
                 // Got the final - and thereby most recent - timestamp.
