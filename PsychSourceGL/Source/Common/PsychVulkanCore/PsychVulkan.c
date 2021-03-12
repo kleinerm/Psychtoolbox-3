@@ -2462,6 +2462,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     VkPresentTimeGOOGLE targetPresentTimeG;
     PsychVulkanDevice* vulkan = window->vulkan;
 
+    // Mark presentation timestamp as so far "invalid"/"unknown":
+    window->tPresentComplete = -1;
+
     // Some time granted to GUI event dispatch:
     PsychProcessWindowEvents(window);
 
