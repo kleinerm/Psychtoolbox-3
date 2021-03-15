@@ -1753,7 +1753,9 @@ psych_bool PsychSetPipelineExportTextureInteropMemory(PsychWindowRecordType *win
 
     if (windowRecord->interopSemaphoreHandle)
         CloseHandle(windowRecord->interopSemaphoreHandle);
-    #else
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
     if (windowRecord->interopMemObjectHandle)
         close((int) (size_t) windowRecord->interopMemObjectHandle);
 
@@ -3415,7 +3417,9 @@ void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, psych_boo
 
     if (windowRecord->interopSemaphoreHandle)
         CloseHandle(windowRecord->interopSemaphoreHandle);
-    #else
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
     if (windowRecord->interopMemObjectHandle)
         close((int) (size_t) windowRecord->interopMemObjectHandle);
 
