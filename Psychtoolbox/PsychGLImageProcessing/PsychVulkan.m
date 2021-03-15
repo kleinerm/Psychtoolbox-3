@@ -235,7 +235,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
     outputName = varargin{1};
     screenId = varargin{2};
     winRect = varargin{3};
-    ovrfbOverrideRect = varargin{4}; %#ok<NASGU>
+    ovrfbOverrideRect = varargin{4};
     ovrSpecialFlags = varargin{5};
     if isempty(ovrSpecialFlags)
         ovrSpecialFlags = 0;
@@ -379,8 +379,10 @@ if strcmpi(cmd, 'OpenWindowSetup')
         Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, outputIndex + 1), outputMappings{screenId + 1}(2, outputIndex + 1), 0);
     end
 
-    % These always have to match:
-    ovrfbOverrideRect = winRect;
+    if ~IsOSX
+        % These always have to match:
+        ovrfbOverrideRect = winRect;
+    end
 
     % Set ovrSpecialFlags override settings to mark the onscreen window as not
     % important for visual stimulation, because the actual window / OpenGL windowing
@@ -488,8 +490,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
 
     if isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_memory_object')) %#ok<STREMP>
-        flags = mor(flags, 1);
-        noInterop = 1;
         % If no specific Vulkan gpu was requested, select the first non-AMD/NVidia
         % gpuIndex on Linux or Windows: AMD and NVidia OpenGL fully support
         % OpenGL interop, so if we end here then the render-gpu can not be an
@@ -513,7 +513,15 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
                 end
             end
         end
-        fprintf('PsychVulkan-INFO: OpenGL implementation does not support OpenGL-Vulkan interop! Enabling basic diagnostic mode on gpu %i.\n', gpuIndex);
+
+        if IsOSX
+            noInterop = 0;
+        else
+            flags = mor(flags, 1);
+            noInterop = 1;
+
+            fprintf('PsychVulkan-INFO: OpenGL implementation does not support OpenGL-Vulkan interop! Enabling basic diagnostic mode on gpu %i.\n', gpuIndex);
+        end
     else
         noInterop = 0;
     end
@@ -687,7 +695,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % No interop, or semaphores unsupported?
         if noInterop || isempty(strfind(glGetString(GL.EXTENSIONS), 'GL_EXT_semaphore')) %#ok<STREMP>
             if ~noInterop
-                fprintf('PsychVulkan-INFO: OpenGL implementation does not support OpenGL-Vulkan interop semaphores! Enabling operation without semaphores on gpu %i.\n', gpuIndex);
+                fprintf('PsychVulkan-INFO: OpenGL implementation does not support OpenGL-Vulkan interop semaphores. Enabling operation without semaphores on gpu %i.\n', gpuIndex);
             else
                 fprintf('PsychVulkan-INFO: Interop disabled! Enabling operation without semaphores on gpu %i.\n', gpuIndex);
             end
@@ -763,7 +771,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
     % Set it up:
     if ~noInterop
-        Screen('Hookfunction', win, 'ImportDisplayBufferInteropMemory', [], 0, interopObjectHandle, allocationSize, internalFormat, tilingMode, memoryOffset, width, height, renderCompleteSemaphore);
+        if IsOSX
+            Screen('Hookfunction', win, 'SetDisplayBufferTextures', [], double(interopObjectHandle), [], GL.TEXTURE_RECTANGLE, internalFormat, 0, width, height);
+        else
+            Screen('Hookfunction', win, 'ImportDisplayBufferInteropMemory', [], 0, interopObjectHandle, allocationSize, internalFormat, tilingMode, memoryOffset, width, height, renderCompleteSemaphore);
+        end
     end
 
     vulkan{win}.valid = 1;
