@@ -105,6 +105,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         CAMetalLayer* hostedLayer = [CAMetalLayer layer];
         windowRecord->targetSpecific.deviceContext = hostedLayer;
         [hostedLayer setContentsScale:[cocoaWindow backingScaleFactor]];
+        [hostedLayer setOpaque:true];
 
         if (PsychPrefStateGet_Verbosity() > 3)
             printf("PTB-INFO: External display method is in use for this NSWindow. Creating a backing layer as CAMetalLayer %p with scalefactor %f.\n",
