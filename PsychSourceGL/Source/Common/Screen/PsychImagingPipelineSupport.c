@@ -1241,7 +1241,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
                 // Are we supposed to use externally injected colorbuffer textures?
                 if (imagingmode & kPsychUseExternalSinkTextures) {
                     if (PsychPrefStateGet_Verbosity() > 2)
-                        printf("PTB-INFO: Using external 2D npot-textures as sinks for redirected output mode.\n");
+                        printf("PTB-INFO: Using external textures as sinks for redirected output mode.\n");
                 }
 
                 if (windowRecord->stereomode > 0) {
@@ -1276,7 +1276,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
             // Are we supposed to use externally injected colorbuffer textures?
             if (imagingmode & kPsychUseExternalSinkTextures) {
                 if (PsychPrefStateGet_Verbosity() > 2)
-                    printf("PTB-INFO: Using external 2D npot-textures as sinks for redirected output mode.\n");
+                    printf("PTB-INFO: Using external textures as sinks for redirected output mode.\n");
             }
 
             // Check if the currently attached color buffer texture is of suitable format.
@@ -2091,7 +2091,8 @@ psych_bool PsychSetPipelineExportTexture(PsychWindowRecordType *windowRecord, in
         }
     }
     else {
-        if (glTextureTarget != GL_TEXTURE_2D || multiSample > 0) {
+        // For the non-MSAA case, we accept both 2D npot textures and 2D rectangle textures, just not multisample textures:
+        if (((glTextureTarget != GL_TEXTURE_2D) && (glTextureTarget != GL_TEXTURE_RECTANGLE)) || multiSample > 0) {
             if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychSetPipelineExportTexture: Tried to set MSAA texture while setup for non-MSAA or only internal MSAA! Skipped.\n");
             return(FALSE);
         }
