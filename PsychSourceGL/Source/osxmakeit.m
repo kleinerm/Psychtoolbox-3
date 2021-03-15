@@ -1,6 +1,6 @@
 function osxmakeit(mode)
 % This is the MacOS/X version of makeit: It is meant for building PTB for
-% 64-Bit Matlab on OSX 10.11 "El Crapitan" and later, using the 10.12 SDK.
+% 64-Bit Matlab on OSX 10.15, using the 10.15 SDK.
 
 if ~IsOSX(1) || IsOctave
     error('osxmakeit only works with a 64-Bit version of Matlab for OSX!');
@@ -199,8 +199,17 @@ if mode==15
     % installation of the Vulkan SDK and MoltenVK for macOS from
     % https://vulkan.lunarg.com for prebuilt SDK and Vulkan ICD,
     % https://github.com/KhronosGroup/MoltenVK for source code.
+    %
+    % We link directly to MoltenVK, as we use some MVK functions which are
+    % not yet part of the Vulkan standard, and thereby not supported by the
+    % Vulkan loader and layers, as of Mid-March 2021.
+    %
+    % We link to OpenGL to implement OpenGL-Vulkan interop, and also must
+    % compile PsychVulkanCore.c as Objective-C file, as otherwise the
+    % MoltenVK functions needed for interop would not be available under
+    % C/C++.
     try
-        mex -outdir ../Projects/MacOSX/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include "Common/PsychVulkanCore/*.c" "OSX/Base/*.c" "Common/Base/*.c" -lvulkan -lMoltenVK
+        mex -outdir ../Projects/MacOSX/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore CFLAGS="\$CFLAGS -x objective-c" LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include "Common/PsychVulkanCore/*.c" "OSX/Base/*.c" "Common/Base/*.c" -lvulkan -lMoltenVK
     catch
         disp(psychlasterror);
     end

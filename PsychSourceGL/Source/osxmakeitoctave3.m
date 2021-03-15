@@ -243,7 +243,7 @@ if mode==15
     % https://vulkan.lunarg.com for prebuilt SDK and Vulkan ICD,
     % https://github.com/KhronosGroup/MoltenVK for source code.
     try
-        mex --output ../Projects/MacOSX/build/PsychVulkanCore -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-F/Library/Frameworks/,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include Common/PsychVulkanCore/*.c OSX/Base/*.c Common/Base/*.c -lvulkan -lMoltenVK
+        mex --output ../Projects/MacOSX/build/PsychVulkanCore -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-F/Library/Frameworks/,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-framework,OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include Common/PsychVulkanCore/*.c OSX/Base/*.c Common/Base/*.c -lvulkan -lMoltenVK
     catch
         disp(psychlasterror);
     end
