@@ -2496,7 +2496,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         .pWaitSemaphores = waitSemaphores,
         .pWaitDstStageMask = &pipeStageFlags[0],
         .commandBufferCount = 1,
-        .pCommandBuffers = &window->swapChainCommandBuffers[window->frameIndex % window->numBuffers],
+        .pCommandBuffers = &window->swapChainCommandBuffers[window->currentSwapChainBuffer],
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &window->imageCopyDoneSemaphores[window->frameIndex % window->numBuffers],
     };
