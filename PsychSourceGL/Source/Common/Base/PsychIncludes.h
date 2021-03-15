@@ -59,7 +59,7 @@ typedef __CHAR16_TYPE__ char16_t;
 // Platform independent include for glew: This is a catch-all
 // for all OpenGL definitions and functions, currently up to
 // OpenGL 4.6 + latest extensions beyond that:
-#if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo)
+#if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo) || defined(PTBMODULE_PsychVulkanCore)
 #include "../Screen/GL/glew.h"
 #endif
 
@@ -125,7 +125,7 @@ typedef __CHAR16_TYPE__ char16_t;
     #include <CoreServices/CoreServices.h>
     #endif
 
-    #if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo)
+    #if defined(PTBMODULE_Screen) || defined(PTBMODULE_FontInfo) || defined(PTBMODULE_PsychVulkanCore)
     #include <OpenGL/OpenGL.h>
     #include <CoreText/CoreText.h>
     #endif
