@@ -56,12 +56,19 @@
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-#define VK_USE_PLATFORM_METAL_EXT
-#define VK_ENABLE_BETA_EXTENSIONS 1
+#include <MoltenVK/vk_mvk_moltenvk.h>
 #endif
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_sdk_platform.h>
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+// If we can't compile as Obj-C, e.g., on Octave, define needed prototypes ourselves:
+#ifndef __OBJC__
+VkResult vkUseIOSurfaceMVK(VkImage image, IOSurfaceRef ioSurface);
+void vkGetIOSurfaceMVK(VkImage image, IOSurfaceRef* pIOSurface);
+#endif
+#endif
 
 #ifndef VK_DRIVER_ID_NVIDIA_PROPRIETARY
 #define VK_DRIVER_ID_NVIDIA_PROPRIETARY VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR
@@ -2848,7 +2855,7 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
 
     // In normal operation mode, get the interop handles for exporting our interopImage to Psychtoolbox
     // for import as OpenGL textures/fbo for render-to-texture:
-    if (!bringup && extmem) {
+    if (!bringup) {
         #if PSYCH_SYSTEM == PSYCH_WINDOWS
             // Get handle for shared memory with OpenGL:
             VkMemoryGetWin32HandleInfoKHR memoryGetWinhandleInfo = {
@@ -2878,11 +2885,50 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
         #endif
 
         #if PSYCH_SYSTEM == PSYCH_OSX
-            // TODO OSX
-            result = VK_SUCCESS;
+            // Tell MoltenVK to allocate a IOSurface as backing store for the interop image:
+            result = vkUseIOSurfaceMVK(window->interopImage, NULL);
+            if (result == VK_SUCCESS) {
+                IOSurfaceRef ioSurface;
 
-            if (verbosity > 4)
-                printf("FAIL FAIL FAIL PsychVulkanCore-INFO: PsychCreateInteropTexture: Got POSIX memory fd %i.\n", window->interopHandles.memory);
+                // Retrieve backing IOSurface for interop image:
+                vkGetIOSurfaceMVK(window->interopImage, &ioSurface);
+
+                // Create a sibling OpenGL texture for it, of matching format:
+                glGenTextures(1, (GLuint*) &window->interopHandles.memory);
+                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, (GLuint) window->interopHandles.memory);
+
+                // Attach IOSurface as backing store for the texture, so rendering to the texture renders to the VkImage:
+                // TODO GL_RGBA16 aka window->colorPrecision == 3, but not supported by MoltenVK/Metal on macOS for display anyway.
+                if (CGLTexImageIOSurface2D(CGLGetCurrentContext(), GL_TEXTURE_RECTANGLE_ARB,
+                                           (window->colorPrecision == 2) ? GL_RGBA16F : (window->colorPrecision == 1) ? GL_RGB10_A2 : GL_RGBA8,
+                                           window->width, window->height,
+                                           (window->colorPrecision >= 2) ? GL_RGBA : GL_BGRA,
+                                           (window->colorPrecision == 2) ? GL_HALF_FLOAT : (window->colorPrecision == 1) ? GL_UNSIGNED_INT_2_10_10_10_REV : GL_UNSIGNED_INT_8_8_8_8_REV,
+                                           ioSurface, 0)) {
+                    // Failed!
+                    if (verbosity > 0)
+                        printf("PsychVulkanCore-ERROR: PsychCreateInteropTexture: CGLTexImageIOSurface2D() failed! IOSurface = %p, texture = %i\n", ioSurface, window->interopHandles.memory);
+
+                    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+                    glDeleteTextures(1, (GLuint*) &window->interopHandles.memory);
+                    window->interopHandles.memory = 0;
+                    result = VK_ERROR_INITIALIZATION_FAILED;
+                }
+                else {
+                    // Disable any filtering on texture - It interferes with rendering to it:
+                    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+                    // Done with texture setup. Texture handle window->interopHandles.memory is ready for interop rendering:
+                    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+
+                    if (verbosity > 4)
+                        printf("PsychVulkanCore-INFO: PsychCreateInteropTexture: Got OpenGL interop texture handle %i [IOSurface %p].\n", window->interopHandles.memory, ioSurface);
+                }
+            }
+            else if (verbosity > 0) {
+                printf("PsychVulkanCore-ERROR: PsychCreateInteropTexture: Failed to enable MoltenVK IOSurface backing!\n");
+            }
         #endif
 
         if (result != VK_SUCCESS) {
@@ -3765,10 +3811,16 @@ psych_bool PsychCloseVulkanWindow(PsychVulkanWindow* window)
             printf("PsychVulkanCore-INFO: Vulkan window %i: Releasing image memory interop handle.\n", window->index);
         }
 
-        #if PSYCH_SYSTEM != PSYCH_WINDOWS
+        #if PSYCH_SYSTEM == PSYCH_LINUX
             close(window->interopHandles.memory);
-        #else
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
             CloseHandle(window->interopHandles.memory);
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX
+            glDeleteTextures(1, (GLuint*) &window->interopHandles.memory);
         #endif
 
         window->interopHandles.memory = 0;
