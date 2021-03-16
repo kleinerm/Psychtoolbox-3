@@ -3460,8 +3460,8 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
     // Map swapchain format to a compatible OpenGL supported format for interop:
     switch(swapChainCreateInfo.imageFormat) {
-        case VK_FORMAT_B8G8R8A8_UNORM:              // RGBA8 interop -> BGRA8 swapchain swizzled.
-            window->interopTextureVkFormat = VK_FORMAT_R8G8B8A8_UNORM;
+        case VK_FORMAT_B8G8R8A8_UNORM:              // RGBA8 interop -> BGRA8 swapchain swizzled, except on macOS:
+            window->interopTextureVkFormat = (PSYCH_SYSTEM == PSYCH_OSX) ? VK_FORMAT_B8G8R8A8_UNORM : VK_FORMAT_R8G8B8A8_UNORM;
             window->colorPrecision = 0;
 
             if (verbosity > 3)
@@ -3476,16 +3476,16 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                 printf("PsychVulkanCore-INFO: Using 8 bpc unorm [0; 1] range RGBA8 framebuffer.\n");
             break;
 
-        case VK_FORMAT_A2R10G10B10_UNORM_PACK32: // BGR10A2 interop -> RGB10A2 swapchain swizzled.
-            window->interopTextureVkFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+        case VK_FORMAT_A2R10G10B10_UNORM_PACK32: // RGB10A2 interop -> BGR10A2 swapchain swizzled, except on macOS:
+            window->interopTextureVkFormat = (PSYCH_SYSTEM == PSYCH_OSX) ? VK_FORMAT_A2R10G10B10_UNORM_PACK32 : VK_FORMAT_A2B10G10R10_UNORM_PACK32;
             window->colorPrecision = 1;
 
             if (verbosity > 3)
                 printf("PsychVulkanCore-INFO: Using 10 bpc unorm [0; 1] range RGB10A2 framebuffer.\n");
             break;
 
-        case VK_FORMAT_A2B10G10R10_UNORM_PACK32: // RGB10A2 interop -> RGB10A2 swapchain.
-            window->interopTextureVkFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+        case VK_FORMAT_A2B10G10R10_UNORM_PACK32: // RGB10A2 interop -> RGB10A2 swapchain, except on macOS where we need to swizzle:
+            window->interopTextureVkFormat = (PSYCH_SYSTEM == PSYCH_OSX) ? VK_FORMAT_A2R10G10B10_UNORM_PACK32 : VK_FORMAT_A2B10G10R10_UNORM_PACK32;
             window->colorPrecision = 1;
 
             if (verbosity > 3)
