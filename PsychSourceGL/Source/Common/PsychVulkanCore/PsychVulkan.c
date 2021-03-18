@@ -3351,8 +3351,9 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             // the way they represent color values.
 
         case 1: // RGB10A2 10 bpc precision:
-            // Prefer RGBA ordering if supported, as that matches OpenGL RGB10A2 for most efficient interop:
-            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2B10G10R10_UNORM_PACK32))
+            // Prefer RGBA ordering if supported, as that matches OpenGL RGB10A2 for most efficient interop,
+            // except on macOS, where we need to choose BGR10A2 for optimal interop and to get Direct-To-Display mode for optimum performance:
+            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2B10G10R10_UNORM_PACK32) && (PSYCH_SYSTEM != PSYCH_OSX))
                 window->format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
             else if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2R10G10B10_UNORM_PACK32))
                 window->format = VK_FORMAT_A2R10G10B10_UNORM_PACK32; // This is our slightly less efficient fallback.
