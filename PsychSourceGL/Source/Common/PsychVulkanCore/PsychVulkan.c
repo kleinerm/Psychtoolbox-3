@@ -2714,8 +2714,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                         // We are still within the acceptable timeout period - Not yet timed out.
 
                         // macOS + MoltenVK as of early March 2021 / MoltenVK version 1.1.1 will hit this due to a MoltenVK bug.
-                        if (verbosity > 7)
-                            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): No match yet! Retrying in a bit...\n", window->index);
+                        if (verbosity > 10)
+                            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): No match yet [%f usecs elapsed]! Retrying in a bit...\n", window->index, 1.0e6 * (tNow - tStart));
 
                         // Repeat the whole query timestamps + try to find proper presentation timestamp:
                         count = 0;
