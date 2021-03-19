@@ -819,8 +819,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('Hookfunction', win, 'SetOneshotFlipFlags', '', kPsychDontAutoResetOneshotFlags + kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
 
     if ~noglfinish
-        % Old method as fallback: Use glFinish to sync Vulkan with OpenGL:
-        Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'Vulkan Mono commit operation', 'moglcore(''glFinish'');');
+        % Old method as fallback: Use glFinish to sync Vulkan with OpenGL, except on macOS where glFlush seems enough:
+        if IsOSX
+            Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'Vulkan Mono commit operation', 'moglcore(''glFlush'');');
+        else
+            Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'Vulkan Mono commit operation', 'moglcore(''glFinish'');');
+        end
         Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
     end
 
