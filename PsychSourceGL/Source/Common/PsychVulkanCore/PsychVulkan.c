@@ -3177,6 +3177,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     psych_bool supportsPresent;
     PsychVulkanDevice* vulkan;
     psych_bool rc = FALSE;
+    psych_bool noDirectToDisplay = ((PSYCH_SYSTEM == PSYCH_OSX) && (flags & 0x2)) ? TRUE : FALSE;
 
     // Any HDR mode requested?
     if (hdrMode > 0) {
@@ -3337,23 +3338,25 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                 window->format = VK_FORMAT_R8G8B8A8_UNORM;
                 break;
             }
-            else if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_B8G8R8A8_UNORM)) {
-                window->format = VK_FORMAT_B8G8R8A8_UNORM; // This is our slightly less efficient fallback.
+            else if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_B8G8R8A8_UNORM) && !noDirectToDisplay) {
+                window->format = VK_FORMAT_B8G8R8A8_UNORM; // This is our slightly less efficient fallback, except on macOS Direct-To-Display.
                 break;
             }
+
             // Note that in direct display mode on Linux, NVidia's blob supports VK_FORMAT_A8B8G8R8_UNORM_PACK32
             // as swapChain format, instead of the above formats. However, this format does not work for OpenGL
             // interop for unknown reasons, maybe a NVidia driver bug. Therefore we don't try to use it here.
 
-            // None of the above 8 bpc formats supported!
-            // fallthrough to case 1 RGB10A2 iff none of the above 8 bpc format is supported, as 10 bpc
+            // None of the above 8 bpc formats supported! Or on macOS we want to avoid Direct-To-Display to
+            // work around macOS operating system bugs.
+            // Fallthrough to case 1 RGB10A2 iff none of the above 8 bpc format is supported, as 10 bpc
             // formats are a valid fallback in that case. Potentially less efficient, but compatible in
             // the way they represent color values.
 
         case 1: // RGB10A2 10 bpc precision:
             // Prefer RGBA ordering if supported, as that matches OpenGL RGB10A2 for most efficient interop,
-            // except on macOS, where we need to choose BGR10A2 for optimal interop and to get Direct-To-Display mode for optimum performance:
-            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2B10G10R10_UNORM_PACK32) && (PSYCH_SYSTEM != PSYCH_OSX))
+            // except on macOS, where we need to choose BGR10A2 for optimal interop and if we want Direct-To-Display mode for optimum performance:
+            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2B10G10R10_UNORM_PACK32) && ((PSYCH_SYSTEM != PSYCH_OSX) || noDirectToDisplay))
                 window->format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
             else if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2R10G10B10_UNORM_PACK32))
                 window->format = VK_FORMAT_A2R10G10B10_UNORM_PACK32; // This is our slightly less efficient fallback.
@@ -3486,8 +3489,19 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             break;
 
         case VK_FORMAT_A2B10G10R10_UNORM_PACK32: // RGB10A2 interop -> RGB10A2 swapchain, except on macOS where we need to swizzle:
-            window->interopTextureVkFormat = (PSYCH_SYSTEM == PSYCH_OSX) ? VK_FORMAT_A2R10G10B10_UNORM_PACK32 : VK_FORMAT_A2B10G10R10_UNORM_PACK32;
-            window->colorPrecision = 1;
+            if ((PSYCH_SYSTEM == PSYCH_OSX) && (colorPrecision == 0) && noDirectToDisplay) {
+                // Special case: macOS noDirectToDisplay hack, where we wanted a 8 bpc fb, but can't use it,
+                // as it would trigger macOS Metal bugs. We allocate a 10 bpc swapchain buffer, but setup the
+                // interop texture as 8 bpc, so Screen's imaging pipeline can potentially avoid an unneeded
+                // drawBufferFBO->finalizedFBO unsharing, which would cause a performance hit:
+                window->interopTextureVkFormat = VK_FORMAT_B8G8R8A8_UNORM;
+                window->colorPrecision = 0;
+            }
+            else {
+                // Standard 10 bpc use case:
+                window->interopTextureVkFormat = (PSYCH_SYSTEM == PSYCH_OSX) ? VK_FORMAT_A2R10G10B10_UNORM_PACK32 : VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+                window->colorPrecision = 1;
+            }
 
             if (verbosity > 3)
                 printf("PsychVulkanCore-INFO: Using 10 bpc unorm [0; 1] range RGB10A2 framebuffer.\n");
