@@ -516,6 +516,12 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
         if IsOSX
             noInterop = 0;
+
+            % Disable Direct-To-Display mode, it is buggy as hell due to
+            % some problems that seem to stem from (a lack of proper) event
+            % processing on the Cocoa main-thread. Timestamping seems to
+            % work under Metal, but present scheduling mostly doesn't:
+            flags = mor(flags, 2);
         else
             flags = mor(flags, 1);
             noInterop = 1;
