@@ -104,12 +104,11 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
         CAMetalLayer* hostedLayer = [CAMetalLayer layer];
         windowRecord->targetSpecific.deviceContext = hostedLayer;
-        [hostedLayer setContentsScale:[cocoaWindow backingScaleFactor]];
         [hostedLayer setOpaque:true];
 
         if (PsychPrefStateGet_Verbosity() > 3)
-            printf("PTB-INFO: External display method is in use for this NSWindow. Creating a backing layer as CAMetalLayer %p with scalefactor %f.\n",
-                   hostedLayer, (double) [cocoaWindow backingScaleFactor]);
+            printf("PTB-INFO: External display method is in use for this NSWindow. Creating a backing layer as CAMetalLayer %p.\n",
+                   hostedLayer);
     }
 
     dispatch_sync(dispatch_get_main_queue(), ^{
@@ -693,10 +692,12 @@ void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord)
     if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
         NSWindow* cocoaWindow = (NSWindow*) windowRecord->targetSpecific.windowHandle;
 
-        if (PsychPrefStateGet_Verbosity() > 4)
-            printf("PTB-INFO: External display method is in use for this window. Reattaching CAMetalLayer...\n");
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: External display method is in use for this window. Reattaching CAMetalLayer at scaling factor %f.\n",
+                   [cocoaWindow backingScaleFactor]);
 
         dispatch_sync(dispatch_get_main_queue(), ^{
+            [((CAMetalLayer*) windowRecord->targetSpecific.deviceContext) setContentsScale:[cocoaWindow backingScaleFactor]];
             [[cocoaWindow contentView] setLayer:windowRecord->targetSpecific.deviceContext];
         });
     }
