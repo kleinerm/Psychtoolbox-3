@@ -243,6 +243,10 @@ if IsLinux && (conf.VBLTimestampingMode == 1)
     conf.VBLTimestampingMode = 4;
 end
 
+if IsOSX && (conf.VBLTimestampingMode == 1)
+    conf.VBLTimestampingMode = 0;
+end
+
 %conf.VBLTimestampingMode = 3;
 %res.VBLTimestampingMode = conf.VBLTimestampingMode;
 % VBLTimestampingMode: configVBLTimestampingMode
