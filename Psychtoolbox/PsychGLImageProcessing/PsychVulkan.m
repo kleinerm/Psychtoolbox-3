@@ -144,6 +144,69 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
 
         return;
     end
+
+    % Special present code for macOS, to work around Apple's broken Metal
+    % implementation and other macOS bugs:
+    if cmd == 2
+        % Execute flip operation via a Vulkan Present operation at the appropriately
+        % scheduled requested visual stimulus onset time:
+        win = varargin{1};
+        vwin = varargin{2};
+        tWhen = varargin{3};
+
+        if varargin{4} == 0
+            doTimestamp = 2; % High precision system-provided scheduling/timestamping if possible.
+        else
+            doTimestamp = 0;
+        end
+
+        % Present and maybe get an ok precision and not too unreliable timestamp from Vulkan driver:
+        predictedOnset = PsychVulkanCore('Present', vwin, tWhen, doTimestamp);
+
+        % Get a second opinion on onset time from Screen's VBLANK timestamping:
+        winfo = Screen('GetWindowInfo', win, 7);
+
+        % Likely valid vblTime returned from Screen()?
+        if (winfo.VBLEndline > 0) && (winfo.LastVBLTime > 0)
+            % Yes. Assign:
+            vblTime = winfo.LastVBLTime;
+        else
+            % No. Fallback to GetSecs as a noisy last resort:
+            vblTime = GetSecs;
+        end
+
+        % If predictedOnset is valid, use it. Otherwise fall back to vblTime:
+        if predictedOnset > 0
+            % Valid timestamp from Vulkan? Validate a bit and warn if not:
+            if (verbosity > 4) || ((verbosity > 1) && (abs(predictedOnset - vblTime) > 0.001))
+                fprintf('PsychVulkan-DEBUG: Delta between Vulkan and reference timestamps is %f usecs.\n', 1e6 * (predictedOnset - vblTime));
+            end
+
+            vblTime = predictedOnset;
+        elseif predictedOnset == 0
+            % Vulkan timestamping returned bogus timestamp zero, but no diagnosed failure.
+            % Use what we got from Screen() or GetSecs():
+            predictedOnset = vblTime;
+
+            if verbosity > 1
+                fprintf('PsychVulkan-DEBUG: Vulkan timestamping failed. Falling back to reference timestamp %f secs.\n', vblTime);
+            end
+        else
+            % Error code timestamp -1 returned. We can't recover in a
+            % meaningful way from that, just pass it through...
+            vblTime = -1;
+
+            if verbosity > 1
+                fprintf('PsychVulkan-DEBUG: Vulkan timestamping failed completely. Returning invalid timestamp -1.\n');
+            end
+        end
+
+        % Inject vblTime and visual stimulus onset time into Screen(), for usual handling
+        % and reporting back to usercode via Screen('Flip'), also current beamposition:
+        Screen('Hookfunction', win, 'SetOneshotFlipResults', '', vblTime, predictedOnset, [], winfo.Beamposition);
+
+        return;
+    end % Of macOS special code.
 end % Of fast-path dispatch.
 
 % Slow path dispatch:
@@ -834,7 +897,19 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         Screen('Hookfunction', win, 'Enable', 'LeftFinalizerBlitChain');
     end
 
-    cmdString = sprintf('PsychVulkan(0, %i, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', win, vwin);
+    if IsOSX
+        % Special present path for Apples broken macOS:
+        if ~vulkan{win}.SupportsTiming
+            % We are screwed on macOS:
+            sca;
+            error('PsychVulkan-ERROR: macOS Vulkan does not provide builtin timing support. Game over!');
+        end
+
+        cmdString = sprintf('PsychVulkan(2, %i, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', win, vwin);
+    else
+        % Well working operating systems:
+        cmdString = sprintf('PsychVulkan(0, %i, %i, IMAGINGPIPE_FLIPTWHEN, IMAGINGPIPE_FLIPVBLSYNCLEVEL);', win, vwin);
+    end
     Screen('Hookfunction', win, 'AppendMFunction', 'PreSwapbuffersOperations', 'Vulkan Present operation', cmdString);
     Screen('Hookfunction', win, 'Enable', 'PreSwapbuffersOperations');
 
