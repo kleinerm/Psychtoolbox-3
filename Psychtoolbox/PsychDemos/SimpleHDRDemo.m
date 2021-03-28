@@ -160,7 +160,7 @@ while ~KbCheck
     DrawFormattedText(win, 'If it works, it works.\nIf it doesn''t, it doesn''t.\n(Quoc Vuong, 2006)', 'center', 'center', [0 200 0]);
 
     % Show updated HDR framebuffer at next vertical retrace:
-    vbl = Screen('Flip', win, vbl);
+    vbl = Screen('Flip', win);
 
     % Increase rotation angle to make it a bit more interesting:
     rotAngle = rotAngle + 0.1;
