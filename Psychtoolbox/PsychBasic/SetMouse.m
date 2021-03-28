@@ -71,7 +71,7 @@ end
 % OSX handling of Retina displays:
 if IsOSX && (Screen('WindowKind', windowPtrOrScreenNumber) == 1)
     winfo = Screen('GetWindowInfo', windowPtrOrScreenNumber);
-    if ~winfo.IsFullscreen || (Screen('Preference', 'WindowShieldingLevel') < 2000)
+    if ~winfo.IsFullscreen || (Screen('Preference', 'WindowShieldingLevel') < 2000) || winfo.SysWindowHandle > 0
         % Cocoa - Half the factor is right:
         isf = winfo.ExternalMouseMultFactor / 2;
     else
