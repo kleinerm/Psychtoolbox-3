@@ -511,29 +511,31 @@ try
                 [xm, ym, buttons] = GetMouse(win);
 
                 % Take a screenshot of the pixel below the mouse:
-                mouseposrgb = Screen('GetImage', win, OffsetRect([0 0 1 1], xm, ym), 'drawBuffer', 1);
-                msg = sprintf('RGB at cursor position (%f, %f): (%f, %f, %f) nits.\n', xm, ym, mouseposrgb);
-                [~, ny] = DrawFormattedText(win, msg, 0, ny, [100 100 0]); %#ok<ASGLU>
+                mouseposrgb = Screen('GetImage', win, ClipRect(OffsetRect([0 0 1 1], xm, ym), winrect), 'drawBuffer', 1);
+                if ~isempty(mouseposrgb)
+                    msg = sprintf('RGB at cursor position (%f, %f): (%f, %f, %f) nits.\n', xm, ym, mouseposrgb);
+                    [~, ny] = DrawFormattedText(win, msg, 0, ny, [100 100 0]); %#ok<ASGLU>
 
-                % Draw tiny yellow cursor dot:
-                [~, mi] = max(mouseposrgb);
-                switch (mi)
-                    case 1
-                        cursorcolor = [0, 200, 200];
-                    case 2
-                        cursorcolor = [200, 0, 200];
-                    case 3
-                        cursorcolor = [200, 200, 0];
-                end
+                    % Draw tiny yellow cursor dot:
+                    [~, mi] = max(mouseposrgb);
+                    switch (mi)
+                        case 1
+                            cursorcolor = [0, 200, 200];
+                        case 2
+                            cursorcolor = [200, 0, 200];
+                        case 3
+                            cursorcolor = [200, 200, 0];
+                    end
 
-                % Low level debugging enabled?
-                if gpudebug
-                    % Print out color sample from user-facing virtual framebuffer - values in nits:
-                    fprintf(msg);
-                    % Make sure our cursor does not occlude the sample location for debug readback:
-                    Screen('FrameRect', win, cursorcolor, CenterRectOnPoint([0 0 4 4], xm, ym));
-                else
-                    Screen('DrawDots', win, [xm, ym], 3, cursorcolor);
+                    % Low level debugging enabled?
+                    if gpudebug
+                        % Print out color sample from user-facing virtual framebuffer - values in nits:
+                        fprintf(msg);
+                        % Make sure our cursor does not occlude the sample location for debug readback:
+                        Screen('FrameRect', win, cursorcolor, CenterRectOnPoint([0 0 4 4], xm, ym));
+                    else
+                        Screen('DrawDots', win, [xm, ym], 3, cursorcolor);
+                    end
                 end
 
                 if buttons(1)
