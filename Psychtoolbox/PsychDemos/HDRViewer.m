@@ -183,7 +183,7 @@ try
     screenid = max(Screen('Screens'));
     screenRect = Screen('Rect', screenid);
 
-    if windowed && IsWin
+    if windowed && ~IsLinux
         % Request non-fullscreen windowed output on MS-Window:
         rect = [0, 0, RectWidth(screenRect), RectHeight(screenRect) - 250];
     else
@@ -324,6 +324,11 @@ try
         % of our HDR display, relate it to the maximum luminance of the current
         % image, and use steps in 1% increments of that:
         hdrProperties = PsychHDR('GetHDRProperties', win);
+        if ~hdrProperties.Valid
+            hdrProperties.MaxLuminance = 600;
+            hdrProperties.MaxFrameAverageLightLevel = 350;
+        end
+
         sfstep = hdrProperties.MaxLuminance / maxCLL * 0.1;
 
         % Scale intensities by some factor. Here we set the default value:
