@@ -209,7 +209,7 @@ try
     end
 
     [win, winrect] = PsychImaging('OpenWindow', screenid, 0, rect);
-    [xm, ym] = RectCenter(Screen('GlobalRect', win));
+    [xm, ym] = RectCenter(Screen('Rect', win));
     SetMouse(xm, ym, win);
     HideCursor(win);
 
