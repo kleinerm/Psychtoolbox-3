@@ -3199,8 +3199,8 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                 // to use the scRGB colorspace, because only scRGB supports fp16
                 // consistently across multiple gpu vendors, and only scRGB is
                 // supported for windowed HDR, ie. when the DWM compositor is responsible
-                // for SDR + HDR compositing:
-                if ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (!isFullscreen || (colorPrecision > 1))) {
+                // for SDR + HDR compositing. We also use scRGB + fp16 on macOS:
+                if (((PSYCH_SYSTEM == PSYCH_WINDOWS) && (!isFullscreen || (colorPrecision > 1))) || (PSYCH_SYSTEM == PSYCH_OSX)) {
                     colorSpace = VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
 
                     // The scRGB colorspace only works with exactly fp16 == precision 2:

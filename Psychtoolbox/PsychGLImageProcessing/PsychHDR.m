@@ -363,8 +363,19 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
                     eotfName = 'scRGB-Linear';
                     doPQEncode = 0;
 
-                    % Linear encoding is simply multiplication by 125:
-                    scalefactor = scalefactor * 125;
+                    % macOS as usual needs special treatment...
+                    if IsOSX
+                        % As of MoltenVK 1.1.3, HDRMetaData setup via vkSetHDRMetadataEXT()
+                        % hard-codes a Metal surface CAEDRMetadata opticalOutputScale
+                        % factor of 1.0 nits, which means that provided pixel
+                        % color values are supposed to be interpreted as
+                        % unit of nits. Therefore we must scale by 10000
+                        % for a mapping from [0; 1] input to [0; 10000 nits]:
+                        scalefactor = scalefactor * 10000;
+                    else
+                        % Linear encoding is simply multiplication by 125:
+                        scalefactor = scalefactor * 125;
+                    end
 
                     % Need CSC from BT-2020 to scRGB:
                     doCSC = 1;
