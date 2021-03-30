@@ -1752,15 +1752,11 @@ static psych_bool PsychUnshareFinalizedFBOIfNeeded(PsychWindowRecordType *window
         // all color values outside of unorm range, and significant stimulus
         // precision loss!
         //
-        // Also, imported interop images can not have depth or stencil buffers atm.,
-        // so if drawBufferFBO needs/has such a buffer, that would be a no-go as well.
-        //
         // So lets check if the imported format meets or exceeds the current
         // precision. If not, then we'd need to split up into 2 separate buffers.
         PsychFBO *dfbo = windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]];
 
-        if ((dfbo->ztexid) || (dfbo->stexid) ||
-            (((GLenum) formatSpec != dfbo->format) &&
+        if ((((GLenum) formatSpec != dfbo->format) &&
              ((formatSpec == GL_RGBA8) || (formatSpec == GL_RGB10_A2) ||
               (formatSpec == GL_RGBA16F && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) ||
               (formatSpec == GL_RGBA16 && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2 || dfbo->format == GL_RGB10_A2)) ||
@@ -1787,7 +1783,7 @@ static psych_bool PsychUnshareFinalizedFBOIfNeeded(PsychWindowRecordType *window
             }
 
             if (PsychPrefStateGet_Verbosity() > 3)
-                printf("PTB-DEBUG: PsychUnshareFinalizedFBOIfNeeded: Unsharing drawBufferFBO and finalizedFBO for viewid %i, triggered by format/z-buffer/s-buffer mismatch.\n", viewid);
+                printf("PTB-DEBUG: PsychUnshareFinalizedFBOIfNeeded: Unsharing drawBufferFBO and finalizedFBO for viewid %i, triggered by format mismatch.\n", viewid);
         }
     }
 
