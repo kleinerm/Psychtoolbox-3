@@ -455,6 +455,11 @@ try
         pos=mod(i, screenheight);
         Screen('FillRect', w, 1 - mod(i, 100)/100, [pos+20 pos+20 pos+400 pos+400]);
 
+        if usevulkan && IsOSX
+            Screen('TextSize', w, 60);
+            Screen('DrawText', w, num2str(i), pos+40, pos+300, [1, 0, 0]);
+        end
+
         if stereo
             % Show something for the right eye as well in stereo mode:
             Screen('SelectStereoDrawBuffer', w, 1);
