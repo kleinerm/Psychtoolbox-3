@@ -2730,6 +2730,11 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                     }
                 }
 
+                // On macOS MoltenVK, the driver maps an invalid Metal drawable present time of zero to targetPresentTimeG.desiredPresentTime,
+                // so lets detect these Metal presentation and/or timestamping failures and report them to our caller as zero "invalid" timestamps:
+                if ((PSYCH_SYSTEM == PSYCH_OSX) && (targetPresentTimeG.desiredPresentTime == pastTiming[i].actualPresentTime))
+                    pastTiming[i].actualPresentTime = 0;
+
                 // Got the final - and thereby most recent - timestamp.
                 // Assign as present completion timestamp:
                 window->tPresentComplete = PsychOSMonotonicToRefTime((double) pastTiming[i].actualPresentTime / 1e9);
