@@ -24,8 +24,9 @@
     Copyright:
 
     Parts of this file are direct copies of register defines from the Linux Radeon KMS
-    driver. The file is copyright 2008-2011 Mario Kleiner and also
-    Copyright 2010 Advanced Micro Devices, Inc.
+    and amdgpu KMS driver. The file is copyright 2008-2011 Mario Kleiner, and also for
+    the AMD specific definitions, copyright 2010 - 2017 Advanced Micro Devices, Inc.
+
     Authors: Alex Deucher
 
     License:
@@ -343,12 +344,13 @@
 #       define NI_REGAMMA_PROG_B                       4
 #       define NI_OVL_REGAMMA_MODE(x)                  (((x) & 0x7) << 4)
 
+#define NI_REGAMMA_LUT_WRITE_EN_MASK                       0x6a8C
 #define NI_REGAMMA_LUT_INDEX                               0x6a84
 #define NI_REGAMMA_LUT_DATA                                0x6a88
 
 /* "Volcanic Islands" DCE10/11 display controller offsets used for crtc/cur/lut/grph/viewport/etc. */
 /* These are from amdgpu's vid.h defines. Multiply by 4 as we expect byte offsets, but vid.h defines
- * dword (= 4 bytes) aligned offsets. */
+ * dword (= 4 bytes) aligned offsets. Reused for DCE12 with an additional offset applied. */
 #define DCE10_CRTC0_REGISTER_OFFSET                 ((0x1b9c - 0x1b9c) * 4)
 #define DCE10_CRTC1_REGISTER_OFFSET                 ((0x1d9c - 0x1b9c) * 4)
 #define DCE10_CRTC2_REGISTER_OFFSET                 ((0x1f9c - 0x1b9c) * 4)
@@ -356,6 +358,43 @@
 #define DCE10_CRTC4_REGISTER_OFFSET                 ((0x439c - 0x1b9c) * 4)
 #define DCE10_CRTC5_REGISTER_OFFSET                 ((0x459c - 0x1b9c) * 4)
 #define DCE10_CRTC6_REGISTER_OFFSET                 ((0x479c - 0x1b9c) * 4)
+
+// Vega class hardware (DCE-12 display engine):
+#define DCE12_DC_LUT_BLACK_OFFSET_BLUE              (0x05c7 * 4)
+#define DCE12_DC_LUT_BLACK_OFFSET_GREEN             (0x05c8 * 4)
+#define DCE12_DC_LUT_BLACK_OFFSET_RED               (0x05c9 * 4)
+#define DCE12_DC_LUT_WHITE_OFFSET_BLUE              (0x05ca * 4)
+#define DCE12_DC_LUT_WHITE_OFFSET_GREEN             (0x05cb * 4)
+#define DCE12_DC_LUT_WHITE_OFFSET_RED               (0x05cc * 4)
+#define DCE12_GRPH_CONTROL                          (0x055b * 4)
+#define DCE12_GRPH_ENABLE                           (0x055a * 4)
+
+#define DCE12_CRTC_V_TOTAL                          (0x06da * 4)
+#define DCE12_CRTC_V_BLANK_START_END                (0x06e0 * 4)
+#define DCE12_CRTC_CONTROL                          (0x06ef * 4)
+#define DCE12_CRTC_BLANK_CONTROL                    (0x06f0 * 4)
+#define DCE12_CRTC_STATUS_POSITION                  (0x06f7 * 4)
+
+// Primary/Secondary scanout buffer start addresses - low 32-Bits:
+#define DCE12_GRPH_PRIMARY_SURFACE_ADDRESS          (0x055e * 4)
+#define DCE12_GRPH_SECONDARY_SURFACE_ADDRESS        (0x055f * 4)
+
+// upper 32-Bits:
+#define DCE12_GRPH_PRIMARY_SURFACE_ADDRESS_HIGH     (0x0561 * 4)
+#define DCE12_GRPH_SECONDARY_SURFACE_ADDRESS_HIGH   (0x0562 * 4)
+
+// Flip status and control:
+#define DCE12_GRPH_UPDATE                           (0x056a * 4)
+
+// DCE-12 dithering control registers: Like on other modern DCEs:
+#define DCE12_FMT_BIT_DEPTH_CONTROL                 (0x0747 * 4)
+
+// DCE-12 regamma table control and content:
+#define DCE12_REGAMMA_LUT_WRITE_EN_MASK             (0x05e3 * 4)
+#define DCE12_REGAMMA_LUT_INDEX                     (0x05e1 * 4)
+#define DCE12_REGAMMA_LUT_DATA                      (0x05e2 * 4)
+#define DCE12_REGAMMA_CONTROL                       (0x05e0 * 4)
+
 
 // NVIDIA REGISTERS:
 // -----------------
