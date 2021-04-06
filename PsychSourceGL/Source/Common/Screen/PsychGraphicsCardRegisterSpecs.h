@@ -350,7 +350,7 @@
 
 /* "Volcanic Islands" DCE10/11 display controller offsets used for crtc/cur/lut/grph/viewport/etc. */
 /* These are from amdgpu's vid.h defines. Multiply by 4 as we expect byte offsets, but vid.h defines
- * dword (= 4 bytes) aligned offsets. Reused for DCE12 with an additional offset applied. */
+ * dword (= 4 bytes) aligned offsets. */
 #define DCE10_CRTC0_REGISTER_OFFSET                 ((0x1b9c - 0x1b9c) * 4)
 #define DCE10_CRTC1_REGISTER_OFFSET                 ((0x1d9c - 0x1b9c) * 4)
 #define DCE10_CRTC2_REGISTER_OFFSET                 ((0x1f9c - 0x1b9c) * 4)
@@ -360,6 +360,13 @@
 #define DCE10_CRTC6_REGISTER_OFFSET                 ((0x479c - 0x1b9c) * 4)
 
 // Vega class hardware (DCE-12 display engine):
+#define DCE12_CRTC0_REGISTER_OFFSET                 ((0x06ef - 0x06ef) * 4)
+#define DCE12_CRTC1_REGISTER_OFFSET                 ((0x08ef - 0x06ef) * 4)
+#define DCE12_CRTC2_REGISTER_OFFSET                 ((0x0aef - 0x06ef) * 4)
+#define DCE12_CRTC3_REGISTER_OFFSET                 ((0x0cef - 0x06ef) * 4)
+#define DCE12_CRTC4_REGISTER_OFFSET                 ((0x0eef - 0x06ef) * 4)
+#define DCE12_CRTC5_REGISTER_OFFSET                 ((0x10ef - 0x06ef) * 4)
+
 #define DCE12_DC_LUT_BLACK_OFFSET_BLUE              (0x05c7 * 4)
 #define DCE12_DC_LUT_BLACK_OFFSET_GREEN             (0x05c8 * 4)
 #define DCE12_DC_LUT_BLACK_OFFSET_RED               (0x05c9 * 4)

@@ -827,8 +827,16 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                     // (Reference: https://elixir.bootlin.com/linux/v5.0-rc4/source/drivers/gpu/drm/amd/include/vega10_ip_offset.h#L48)
                     //
                     // The base address of the DCE IP block has shifted in DCE-12 vs. older DCE's. Was implicitly
-                    // 4-Bytes * 0x00002013, is now 4-Bytes * 0x000034C0, so the offset is the difference:
-                    dce_ip_offset = (0x000034C0 - 0x00002013) * 4;
+                    // 4-Bytes * 0x00002013, is now 4-Bytes * 0x000034C0:
+                    dce_ip_offset = 0x000034C0 * 4;
+
+                    // Offset of crtc blocks of Vega DCE-12 gpu's for each of the possible crtc's:
+                    crtcoff[0] = DCE12_CRTC0_REGISTER_OFFSET + dce_ip_offset;
+                    crtcoff[1] = DCE12_CRTC1_REGISTER_OFFSET + dce_ip_offset;
+                    crtcoff[2] = DCE12_CRTC2_REGISTER_OFFSET + dce_ip_offset;
+                    crtcoff[3] = DCE12_CRTC3_REGISTER_OFFSET + dce_ip_offset;
+                    crtcoff[4] = DCE12_CRTC4_REGISTER_OFFSET + dce_ip_offset;
+                    crtcoff[5] = DCE12_CRTC5_REGISTER_OFFSET + dce_ip_offset;
 
                     // Note that there is nothing preventing different DCE-12.x generations from having
                     // different DCE IP offsets, so dce_ip_offset would need to be defined by sub-gen!
@@ -844,16 +852,16 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
                     // the implicit offset of pre DCE-12 in dce_ip_offset, the delta of < DCE-12 to itself is
                     // obviously 0x0:
                     dce_ip_offset = 0x0;
-                }
 
-                // Offset of crtc blocks of Volcanic Islands DCE-10/11 gpu's for each of the possible crtc's:
-                crtcoff[0] = DCE10_CRTC0_REGISTER_OFFSET + dce_ip_offset;
-                crtcoff[1] = DCE10_CRTC1_REGISTER_OFFSET + dce_ip_offset;
-                crtcoff[2] = DCE10_CRTC2_REGISTER_OFFSET + dce_ip_offset;
-                crtcoff[3] = DCE10_CRTC3_REGISTER_OFFSET + dce_ip_offset;
-                crtcoff[4] = DCE10_CRTC4_REGISTER_OFFSET + dce_ip_offset;
-                crtcoff[5] = DCE10_CRTC5_REGISTER_OFFSET + dce_ip_offset;
-                crtcoff[6] = DCE10_CRTC6_REGISTER_OFFSET + dce_ip_offset;
+                    // Offset of crtc blocks of Volcanic Islands DCE-10/11 gpu's for each of the possible crtc's:
+                    crtcoff[0] = DCE10_CRTC0_REGISTER_OFFSET + dce_ip_offset;
+                    crtcoff[1] = DCE10_CRTC1_REGISTER_OFFSET + dce_ip_offset;
+                    crtcoff[2] = DCE10_CRTC2_REGISTER_OFFSET + dce_ip_offset;
+                    crtcoff[3] = DCE10_CRTC3_REGISTER_OFFSET + dce_ip_offset;
+                    crtcoff[4] = DCE10_CRTC4_REGISTER_OFFSET + dce_ip_offset;
+                    crtcoff[5] = DCE10_CRTC5_REGISTER_OFFSET + dce_ip_offset;
+                    crtcoff[6] = DCE10_CRTC6_REGISTER_OFFSET + dce_ip_offset;
+                }
 
                 // DCE-10 has 6 display controllers:
                 if (isDCE10(screenId)) fNumDisplayHeads = 6;
