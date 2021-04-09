@@ -133,6 +133,13 @@ try
 
     % Get displays HDR properties:
     displayhdrprops = PsychHDR('GetHDRProperties', win) %#ok<*NOPRT>
+    if ~displayhdrprops.Valid
+        % Fallback for macOS: Hard-code reasonable values, what else can we
+        % do?
+        displayhdrprops.MaxLuminance = 600;
+        displayhdrprops.MaxFrameAverageLightLevel = 350;
+    end
+
     maxLuminance = displayhdrprops.MaxLuminance
     maxFrameAverageLightLevel = displayhdrprops.MaxFrameAverageLightLevel; %#ok<NASGU>
 

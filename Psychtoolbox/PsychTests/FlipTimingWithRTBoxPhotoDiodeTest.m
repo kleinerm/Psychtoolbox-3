@@ -243,6 +243,10 @@ if IsLinux && (conf.VBLTimestampingMode == 1)
     conf.VBLTimestampingMode = 4;
 end
 
+if IsOSX && (conf.VBLTimestampingMode == 1)
+    conf.VBLTimestampingMode = 0;
+end
+
 %conf.VBLTimestampingMode = 3;
 %res.VBLTimestampingMode = conf.VBLTimestampingMode;
 % VBLTimestampingMode: configVBLTimestampingMode
@@ -335,6 +339,18 @@ try
     % Number of trials to perform:
     n = size(conf.waitFramesSched, 2);
 
+    if IsOSX && usevulkan
+        % Work around macOS + Vulkan/Metal scheduling flaws. 5 ifi's is the
+        % lowest we can hope to achieve with macOS 10.15.7 + MoltenVK 1.1.1
+        % + Metal as of March 2021, so play it safe with 6 as a minimum:
+        minallowed = 6;
+        minwaitFrames = min(conf.waitFramesSched);
+        if minwaitFrames < minallowed
+            minwaitFrames = minallowed - minwaitFrames;
+            conf.waitFramesSched = conf.waitFramesSched + minwaitFrames;
+        end
+    end
+
     % Init data-collection arrays for collection of n samples:
     res.rawFlipTime     = zeros(1, n);
     res.finishFlipTime  = zeros(1, n);
@@ -381,7 +397,7 @@ try
     end
 
     % Hide the cursor!
-    HideCursor;
+    HideCursor(w);
 
     % Perform some initial Flip to get us in sync with retrace:
     % tvbl is the timestamp (system time in seconds) when the retrace
@@ -389,6 +405,13 @@ try
     % emulation:
     Screen('FillRect', w, 0);
     tvbl=Screen('Flip', w);
+
+    if tvbl <= 0 && IsOSX && usevulkan
+        % Work around macOS Vulkan/Metal bugs: Sporadic invalid timestamps
+        % need to be replaced with something reasonable to avoid flip
+        % failure:
+        tvbl = GetSecs;
+    end
 
     WaitSecs(1);
 
@@ -409,8 +432,8 @@ try
             % Clear receive buffers to start clean:
             PsychRTBox('Clear', rtbox);
 
-            if ~IsWin
-                % Hack: Enable async background reads to speedup box operations:
+            if ~IsWin && ~(IsOSX && usevulkan)
+                % Hack: Enable async background reads to speedup box operations on high quality systems:
                 IOPort ('ConfigureSerialport', res.boxinfo.handle, 'BlockingBackgroundRead=1 StartBackgroundRead=1');
             end
         else
@@ -526,6 +549,14 @@ try
         end
 
         res.vblFlipTime(i) = tvbl;
+
+        if tvbl <= 0 && IsOSX && usevulkan
+            % Work around macOS Vulkan/Metal bugs: Sporadic invalid timestamps
+            % need to be replaced with something reasonable to avoid flip
+            % failure:
+            tvbl = GetSecs;
+        end
+
         winfo = Screen('GetWindowInfo', w);
         res.rawFlipTime(i) = winfo.RawSwapTimeOfFlip;
         % This is flips internal timestamp of when the Swapbuffers call is
@@ -562,6 +593,20 @@ try
                     res.failFlag(i) = 0;
                     res.measuredTime(i) = mytstamp;
                 end
+
+                if IsOSX && usevulkan
+                    % Current macOS 10.15.7 Metal will not give us low
+                    % enough flip latency to flip back to black within one
+                    % video refresh cycle due to system compositor design
+                    % flaws. The "double-exposure" to two frames with
+                    % trigger lines with the Videoswitcher would screw up
+                    % our data, so make sure to clear the wrong value out.
+                    % This will ofc. add even more latency - no winning
+                    % here. But at least the measurements we can get won't
+                    % be wrong:
+                    PsychRTBox('Clear', rtbox);
+                end
+
                 PsychRTBox('EngageLightTrigger', rtbox);
                 PsychRTBox('EngagePulseTrigger', rtbox);
             else
@@ -667,7 +712,7 @@ try
             PsychRTBox('Stop', rtbox);
             PsychRTBox('Clear', rtbox);
 
-            if ~IsWin
+            if ~IsWin && ~(IsOSX && usevulkan)
                 % Hack: Disable async background reads:
                 fprintf('Stopping background read op on box...\n');
                 IOPort ('ConfigureSerialport', res.boxinfo.handle, 'StopBackgroundRead');
@@ -693,6 +738,15 @@ try
                 BitwhackerBox('Close', bwh);
             end
         end
+    end
+
+    % On macOS + Vulkan, deal with invalid timestamps returned. Replace
+    % with NaN's so they don't disturb the analysis and plots:
+    if IsOSX && usevulkan
+        validmacOS = res.vblFlipTime > 0;
+        res.vblFlipTime(~validmacOS) = nan;
+        res.onsetFlipTime(~validmacOS) = nan;
+        fprintf('Warning: Replaced %i invalid Flip timestamps on macOS Vulkan / Metal with NaN.\n', n - sum(validmacOS));
     end
 
     % Store results to filesystem before we start shutdown and plotting:
@@ -749,7 +803,7 @@ try
         figure;
     end
 
-    valids = (res.failFlag == 0);
+    valids = (res.failFlag == 0) & (res.onsetFlipTime > 0);
     fprintf('Measured samples %i [realvalid %i, corrupted %i] vs. Flip samples %i.\n', length(res.measuredTime), length(find(res.failFlag == 0)), length(find(res.failFlag == 1)), i);
     res.measuredTime = res.measuredTime(valids);
     res.onsetFlipTime = res.onsetFlipTime(valids);

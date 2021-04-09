@@ -55,8 +55,20 @@
 #include <dxgi1_6.h>
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+#include <MoltenVK/vk_mvk_moltenvk.h>
+#endif
+
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_sdk_platform.h>
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+// If we can't compile as Obj-C, e.g., on Octave, define needed prototypes ourselves:
+#ifndef __OBJC__
+VkResult vkUseIOSurfaceMVK(VkImage image, IOSurfaceRef ioSurface);
+void vkGetIOSurfaceMVK(VkImage image, IOSurfaceRef* pIOSurface);
+#endif
+#endif
 
 #ifndef VK_DRIVER_ID_NVIDIA_PROPRIETARY
 #define VK_DRIVER_ID_NVIDIA_PROPRIETARY VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR
@@ -147,7 +159,7 @@ typedef struct PsychVulkanWindow {
 
     int                                 width;
     int                                 height;
-    int                                 numBuffers;
+    uint32_t                            numBuffers;
     psych_bool                          isStereo;
     psych_bool                          isFullscreen;
     int                                 createFlags;
@@ -248,7 +260,9 @@ PFN_vkSetLocalDimmingAMD fpSetLocalDimmingAMD = NULL;
 PFN_vkAcquireFullScreenExclusiveModeEXT fpAcquireFullScreenExclusiveModeEXT;
 PFN_vkGetMemoryWin32HandleKHR fpGetMemoryWin32HandleKHR;
 PFN_vkGetSemaphoreWin32HandleKHR fpGetSemaphoreWin32HandleKHR;
-#else
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
 PFN_vkGetMemoryFdKHR fpGetMemoryFdKHR;
 PFN_vkGetSemaphoreFdKHR fpGetSemaphoreFdKHR;
 PFN_vkGetRandROutputDisplayEXT fpGetRandROutputDisplayEXT = NULL;
@@ -273,7 +287,7 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "PsychVulkanCore - A Psychtoolbox driver for interfacing with the Vulkan graphics rendering API\n";
     synopsis[i++] = "This driver allows to utilize the Vulkan graphics API for special purpose display and compute tasks.";
-    synopsis[i++] = "Copyright (c) 2020 Mario Kleiner. Licensed to you under the terms of the MIT license.";
+    synopsis[i++] = "Copyright (c) 2020, 2021 Mario Kleiner. Licensed to you under the terms of the MIT license.";
     synopsis[i++] = "";
     synopsis[i++] = "This driver is used internally by Psychtoolbox. You should not call its functions";
     synopsis[i++] = "directly as a regular end-user from your scripts, as the API may change at any time";
@@ -293,7 +307,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "oldlocalDimmmingEnable = PsychVulkanCore('HDRLocalDimming', vulkanWindow [, localDimmmingEnable]);";
     synopsis[i++] = "[interopObjectHandle, allocationSize, formatSpec, tilingMode, memoryOffset, width, height, interopSemaphoreHandle] = PsychVulkanCore('GetInteropHandle', vulkanWindowHandle [, wantSemaphore=0][, eye=0]);";
     synopsis[i++] = "oldHdrMetadata = PsychVulkanCore('HDRMetadata', vulkanWindow, metadataType [, maxFrameAverageLightLevel][, maxContentLightLevel][, minLuminance][, maxLuminance][, colorGamut]);";
-    synopsis[i++] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=1]);";
+    synopsis[i++] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=2]);";
     synopsis[i++] = NULL; // Mark end of synopsis.
 
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -454,6 +468,11 @@ psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex,
         // For Windows fullscreen display with good performance and timing:
         !addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME)
         #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        // Do need the portability subset device extensions on macOS / MoltenVK:
+        !addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME)
+        #endif
     ) {
         if (verbosity > 3)
             printf("PsychVulkanCore-INFO: GPU %i: Skipped, because at least one mandatory device extension is missing.\n", gpuIndex);
@@ -552,6 +571,10 @@ void PsychVulkanCheckInit(psych_bool dontfail)
 
         #if defined(VK_USE_PLATFORM_WIN32_KHR)
         !addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_KHR_WIN32_SURFACE_EXTENSION_NAME)
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        !addInstanceExtension(instanceExtensions, instanceExtensionsCount, VK_EXT_METAL_SURFACE_EXTENSION_NAME)
         #endif
     ) {
         printf("PsychVulkanCore-ERROR: At least one required instance extension is missing!\n");
@@ -652,7 +675,9 @@ void PsychVulkanCheckInit(psych_bool dontfail)
 
     // Needed to switch a fullscreen window to fullscreen exclusive mode:
     GET_INSTANCE_PROC_ADDR(vulkanInstance, AcquireFullScreenExclusiveModeEXT);
-    #else
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
     // External memory fd extension:
     GET_INSTANCE_PROC_ADDR(vulkanInstance, GetMemoryFdKHR);
     // External semaphore handle extension:
@@ -662,6 +687,10 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     GET_INSTANCE_PROC_ADDR(vulkanInstance, GetRandROutputDisplayEXT);
     GET_INSTANCE_PROC_ADDR(vulkanInstance, AcquireXlibDisplayEXT);
     GET_INSTANCE_PROC_ADDR(vulkanInstance, ReleaseDisplayEXT);
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_OSX
+    // TODO OSX
     #endif
 
     // Enumerate physical devices - actually combos of Vulkan driver + physical device:
@@ -1609,7 +1638,6 @@ createsurface_out:
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
-
 void PsychProcessWindowEvents(PsychVulkanWindow* window)
 {
     // No op so far:
@@ -1916,6 +1944,43 @@ createsurface_out:
 }
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+void PsychProcessWindowEvents(PsychVulkanWindow* window)
+{
+    // No op so far:
+    (void) window;
+}
+
+psych_bool PsychCreateMoltenVKDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, double refreshHz)
+{
+    VkResult result;
+
+    window->surface = (VkSurfaceKHR) VK_NULL_HANDLE;
+    window->display = (VkDisplayKHR) VK_NULL_HANDLE;
+
+    VkMetalSurfaceCreateInfoEXT createInfoMetal = {
+        .sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT,
+        .pNext = NULL,
+        .flags = 0,
+        .pLayer = (const CAMetalLayer*) outputHandle
+    };
+
+    result = vkCreateMetalSurfaceEXT(vulkanInstance, &createInfoMetal, NULL, &window->surface);
+    if (result != VK_SUCCESS) {
+        if (verbosity > 0)
+            printf("PsychVulkanCore-ERROR: For gpu [%s] creating vulkan output window failed in vkCreateMetalSurfaceEXT: %i\n", vulkan->deviceProps.deviceName, result);
+
+        return(FALSE);
+    }
+
+    // Got a windowed window for Vulkan stimulus display.
+    if (verbosity > 3)
+        printf("PsychVulkanCore-INFO: For gpu [%s] created a window Metal display surface [%p] for display window %i\n", vulkan->deviceProps.deviceName, window->surface, window->index);
+
+    return (TRUE);
+}
+#endif
+
 psych_bool PsychCreateDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevice* vulkan, psych_bool isFullscreen, int screenId, void* outputHandle, PsychRectType rect, double refreshHz)
 {
     #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -1924,6 +1989,10 @@ psych_bool PsychCreateDisplaySurface(PsychVulkanWindow* window, PsychVulkanDevic
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
         return(PsychCreateMSWindowsDisplaySurface(window, vulkan, isFullscreen, screenId, outputHandle, rect, refreshHz));
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_OSX
+        return(PsychCreateMoltenVKDisplaySurface(window, vulkan, isFullscreen, screenId, outputHandle, rect, refreshHz));
     #endif
 }
 
@@ -2383,11 +2452,13 @@ psych_bool PsychWaitForPresentCompletion(PsychVulkanWindow* window)
     if (result == VK_SUCCESS)
         result = vkResetFences(window->vulkan->device, 1, &window->flipDoneFence);
 
-    if ((result != VK_SUCCESS) && (verbosity > 0))
-        if (result == VK_TIMEOUT)
+    if ((result != VK_SUCCESS) && (verbosity > 0)) {
+        if (result == VK_TIMEOUT) {
             printf("PsychVulkanCore-ERROR: PsychWaitForPresentCompletion(%i): Fence wait+reset failed - Timeout!\n", window->index);
-        else
+        } else {
             printf("PsychVulkanCore-ERROR: PsychWaitForPresentCompletion(%i): Fence wait+reset failed with error code %i.\n", window->index, result);
+        }
+    }
 
     return (result == VK_SUCCESS ? TRUE : FALSE);
 }
@@ -2395,7 +2466,11 @@ psych_bool PsychWaitForPresentCompletion(PsychVulkanWindow* window)
 psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int timestampMode)
 {
     VkResult result;
+    VkPresentTimeGOOGLE targetPresentTimeG;
     PsychVulkanDevice* vulkan = window->vulkan;
+
+    // Mark presentation timestamp as so far "invalid"/"unknown":
+    window->tPresentComplete = -1;
 
     // Some time granted to GUI event dispatch:
     PsychProcessWindowEvents(window);
@@ -2421,7 +2496,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         .pWaitSemaphores = waitSemaphores,
         .pWaitDstStageMask = &pipeStageFlags[0],
         .commandBufferCount = 1,
-        .pCommandBuffers = &window->swapChainCommandBuffers[window->frameIndex % window->numBuffers],
+        .pCommandBuffers = &window->swapChainCommandBuffers[window->currentSwapChainBuffer],
         .signalSemaphoreCount = 1,
         .pSignalSemaphores = &window->imageCopyDoneSemaphores[window->frameIndex % window->numBuffers],
     };
@@ -2449,9 +2524,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     };
 
     // VK_GOOGLE_DISPLAY_TIMING supported?
-    if (vulkan->hasTiming) {
+    if (vulkan->hasTiming && (timestampMode > 1)) {
         // Yes: Queue a target time for the present:
-        VkPresentTimeGOOGLE targetPresentTimeG;
         VkPresentTimesInfoGOOGLE presentTimeInfoG = {
             .sType = VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE,
             .pNext = present.pNext,
@@ -2461,8 +2535,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 
         present.pNext = &presentTimeInfoG;
 
-        #if PSYCH_SYSTEM == PSYCH_LINUX
+        #if PSYCH_SYSTEM == PSYCH_LINUX || PSYCH_SYSTEM == PSYCH_OSX
         // Linux: Map tWhen GetSecs() CLOCK_REALTIME target time into CLOCK_MONOTONIC time, convert to Nanoseconds:
+        // macOS: Map tWhen GetSecs() time into Mach host time (which is a no-op btw.), convert to Nanoseconds:
         targetPresentTimeG.desiredPresentTime = PsychOSRefTimeToMonotonicTime(tWhen) * 1e9;
         #else
         targetPresentTimeG.desiredPresentTime = 0; // TODO FIXME IMPLEMENT!
@@ -2490,8 +2565,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     if (result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR) {
         // Success! All perfectly good?
         if ((verbosity > 6) || (verbosity > 1 && result == VK_SUBOPTIMAL_KHR))
-            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): frameIndex %i - swapChain backBuffer image with index %i queued for present.\n", window->index,
-                   window->frameIndex, window->currentSwapChainBuffer);
+            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): frameIndex %i - swapChain image with index %i queued for present at tWhen %f secs.\n", window->index,
+                   window->frameIndex, window->currentSwapChainBuffer, tWhen);
 
         // Suboptimal present? This may tear or have reduced performance / increased latency, and also
         // potentially screwed up timing:
@@ -2534,9 +2609,10 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // Should we timestamp (imminent) stimulus onset?
     if (timestampMode > 0) {
         // VK_GOOGLE_DISPLAY_TIMING supported for timestamping?
-        if (vulkan->hasTiming) {
+        if (vulkan->hasTiming && (timestampMode > 1)) {
             // Yes. Fetch timestamp from Vulkan:
-            VkPastPresentationTimingGOOGLE pastTiming;
+            const double tQueryTimeout = 0.5; // Time out after more than tQueryTimeout seconds of failure.
+            VkPastPresentationTimingGOOGLE pastTiming[1000];
             double tNow, tStart;
             uint32_t count = 0;
 
@@ -2547,7 +2623,17 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
             PsychGetAdjustedPrecisionTimerSeconds(&tNow);
             tStart = tNow;
 
-            while ((count < 1) && (tNow < tStart + 0.1)) {
+            // This label is only used on macOS + MoltenVK for buggy MVK versions which do not
+            // actually dequeue timestamps fetched via fpGetPastPresentationTimingGOOGLE(), as they
+            // should, but keep all timestamps in the queue until the queue reaches capacity. Iow.,
+            // the queue can only grow (up to a defined maximum, e.g., 60 entries), but never shrink.
+            // This is a spec violation and it can make the timestamp query fail for up to slightly
+            // more than 1 video refresh cycle. As a workaround, we repeat the procedure in 1 msecs
+            // intervals until either success, or our master timeout is hit, which suggests some other
+            // unexpected macOS bug:
+            macosmvkworkaroundrepeat:
+
+            while ((count < 1) && (tNow < tStart + tQueryTimeout)) {
                 result = fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, NULL);
                 if (result != VK_SUCCESS) {
                     if (verbosity > 0)
@@ -2557,7 +2643,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 }
 
                 PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-                if ((count < 1) && (tNow < tStart + 0.1)) {
+                if ((count < 1) && (tNow < tStart + tQueryTimeout)) {
                     PsychYieldIntervalSeconds(0.001);
                     if (verbosity > 9)
                         printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Polling for fpGetPastPresentationTimingGOOGLE returning results. %f msecs elapsed, %f msecs since tWhen.\n", window->index, count, 1000 * (tNow - tStart), 1000 * (tNow - tWhen));
@@ -2589,10 +2675,13 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 }
             }
             else {
+                int i;
+
                 // Got at least one timestamp. We want the most recent one:
                 do {
-                    count = 1;
-                    result = fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, &pastTiming);
+                    count = (count > 1000) ? 1000 : count;
+
+                    result = fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, &pastTiming[0]);
                     if ((result != VK_SUCCESS) && (result != VK_INCOMPLETE)) {
                         if (verbosity > 0)
                             printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed to retrieve next timestamp! fpGetPastPresentationTimingGOOGLE reports error code %i.\n", window->index, result);
@@ -2600,16 +2689,59 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                         return(FALSE);
                     }
                     else if ((verbosity > 8) && (result == VK_INCOMPLETE))
-                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE for presentID %i returned old timestamp %f Fetching next one.\n", window->index, (double) pastTiming.actualPresentTime / 1e9);
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE (count %i) for presentID %i [current %i] returned old timestamp %f Fetching next one.\n",
+                               window->index, count, pastTiming[0].presentID, targetPresentTimeG.presentID, (double) pastTiming[0].actualPresentTime / 1e9);
                 } while (result == VK_INCOMPLETE);
+
+                for (i = 0; i < count; i++) {
+                    if (verbosity > 8)
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i):%i: presentID %i [need %i] returned timestamp %f.\n",
+                               window->index, i, pastTiming[i].presentID, targetPresentTimeG.presentID, (double) pastTiming[i].actualPresentTime / 1e9);
+                    if (pastTiming[i].presentID == targetPresentTimeG.presentID)
+                        break;
+                }
+
+                // Found a matching record before timeout?
+                if (i == count) {
+                    // No. Could be timeout due to temporary malfunction, or an OS implementation bug.
+
+                    // Yield to give the system some processing time:
+                    PsychYieldIntervalSeconds(0.0001);
+                    PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+
+                    // Timeout, and/or no matching presentID!
+                    if ((PSYCH_SYSTEM == PSYCH_OSX) && (tNow < tStart + tQueryTimeout)) {
+                        // We are still within the acceptable timeout period - Not yet timed out.
+
+                        // macOS + MoltenVK as of early March 2021 / MoltenVK version 1.1.1 will hit this due to a MoltenVK bug.
+                        if (verbosity > 10)
+                            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): No match yet [%f usecs elapsed]! Retrying in a bit...\n", window->index, 1.0e6 * (tNow - tStart));
+
+                        // Repeat the whole query timestamps + try to find proper presentation timestamp:
+                        count = 0;
+                        goto macosmvkworkaroundrepeat;
+                    }
+                    else {
+                        // Final timeout! This should not happen on this OS + display system! Fail.
+                        if (verbosity > 0)
+                            printf("PsychVulkanCore-ERROR: PsychPresent(%i): NO MATCH for target presentID %i! OS bug!?! Timed out, aborting.\n", window->index, targetPresentTimeG.presentID);
+
+                        return(FALSE);
+                    }
+                }
+
+                // On macOS MoltenVK, the driver maps an invalid Metal drawable present time of zero to targetPresentTimeG.desiredPresentTime,
+                // so lets detect these Metal presentation and/or timestamping failures and report them to our caller as zero "invalid" timestamps:
+                if ((PSYCH_SYSTEM == PSYCH_OSX) && (targetPresentTimeG.desiredPresentTime == pastTiming[i].actualPresentTime))
+                    pastTiming[i].actualPresentTime = 0;
 
                 // Got the final - and thereby most recent - timestamp.
                 // Assign as present completion timestamp:
-                window->tPresentComplete = PsychOSMonotonicToRefTime((double) pastTiming.actualPresentTime / 1e9);
+                window->tPresentComplete = PsychOSMonotonicToRefTime((double) pastTiming[i].actualPresentTime / 1e9);
 
                 if (verbosity > 7)
                     printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE for presentID %i returned flip completion timestamp %f secs vs. desired present time %f secs. Delta %f msecs.\n",
-                        window->index, pastTiming.presentID, window->tPresentComplete, PsychOSMonotonicToRefTime((double) pastTiming.desiredPresentTime / 1e9), 1000 * (window->tPresentComplete - tWhen));
+                        window->index, pastTiming[i].presentID, window->tPresentComplete, PsychOSMonotonicToRefTime((double) pastTiming[i].desiredPresentTime / 1e9), 1000 * (window->tPresentComplete - tWhen));
             }
         }
         else {
@@ -2631,6 +2763,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
 {
     const psych_bool bringup = FALSE;
+    psych_bool extmem = (PSYCH_SYSTEM != PSYCH_OSX) ? TRUE : FALSE;
     VkResult result;
     PsychVulkanDevice* vulkan = window->vulkan;
     VkImageTiling tiling = (window->interopTextureTiled && !bringup) ? VK_IMAGE_TILING_OPTIMAL : VK_IMAGE_TILING_LINEAR;
@@ -2657,7 +2790,7 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
     // Create VkImage object:
     VkImageCreateInfo imageCreateInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .pNext = !bringup ? &externalMemImageInfo : NULL,
+        .pNext = (!bringup && extmem) ? &externalMemImageInfo : NULL,
         .imageType = VK_IMAGE_TYPE_2D,
         .format = window->interopTextureVkFormat,
         .extent = {window->width, window->height, 1},
@@ -2693,7 +2826,7 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
 
     VkMemoryAllocateInfo memoryAllocInfo = {
         memoryAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        memoryAllocInfo.pNext = !bringup ? &exportAllocInfo : NULL,
+        memoryAllocInfo.pNext = (!bringup && extmem) ? &exportAllocInfo : NULL,
         memoryAllocInfo.allocationSize = memoryRequirements.size,
         memoryAllocInfo.memoryTypeIndex = 0,
     };
@@ -2740,7 +2873,9 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
             result = fpGetMemoryWin32HandleKHR(vulkan->device, &memoryGetWinhandleInfo, &window->interopHandles.memory);
             if (verbosity > 4)
                 printf("PsychVulkanCore-INFO: PsychCreateInteropTexture: Got Win32 memory handle %p.\n", window->interopHandles.memory);
-        #else
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_LINUX
             // Get fd for shared memory with OpenGL:
             VkMemoryGetFdInfoKHR memoryGetFdInfo = {
                 .sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR,
@@ -2752,6 +2887,53 @@ psych_bool PsychCreateInteropTexture(PsychVulkanWindow* window)
             result = fpGetMemoryFdKHR(vulkan->device, &memoryGetFdInfo, &window->interopHandles.memory);
             if (verbosity > 4)
                 printf("PsychVulkanCore-INFO: PsychCreateInteropTexture: Got POSIX memory fd %i.\n", window->interopHandles.memory);
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX
+            // Tell MoltenVK to allocate a IOSurface as backing store for the interop image:
+            result = vkUseIOSurfaceMVK(window->interopImage, NULL);
+            if (result == VK_SUCCESS) {
+                IOSurfaceRef ioSurface;
+
+                // Retrieve backing IOSurface for interop image:
+                vkGetIOSurfaceMVK(window->interopImage, &ioSurface);
+
+                // Create a sibling OpenGL texture for it, of matching format:
+                glGenTextures(1, (GLuint*) &window->interopHandles.memory);
+                glBindTexture(GL_TEXTURE_RECTANGLE_ARB, (GLuint) window->interopHandles.memory);
+
+                // Attach IOSurface as backing store for the texture, so rendering to the texture renders to the VkImage:
+                // TODO GL_RGBA16 aka window->colorPrecision == 3, but not supported by MoltenVK/Metal on macOS for display anyway.
+                if (CGLTexImageIOSurface2D(CGLGetCurrentContext(), GL_TEXTURE_RECTANGLE_ARB,
+                                           (window->colorPrecision == 2) ? GL_RGBA16F : (window->colorPrecision == 1) ? GL_RGB10_A2 : GL_RGBA8,
+                                           window->width, window->height,
+                                           (window->colorPrecision >= 2) ? GL_RGBA : GL_BGRA,
+                                           (window->colorPrecision == 2) ? GL_HALF_FLOAT : (window->colorPrecision == 1) ? GL_UNSIGNED_INT_2_10_10_10_REV : GL_UNSIGNED_INT_8_8_8_8_REV,
+                                           ioSurface, 0)) {
+                    // Failed!
+                    if (verbosity > 0)
+                        printf("PsychVulkanCore-ERROR: PsychCreateInteropTexture: CGLTexImageIOSurface2D() failed! IOSurface = %p, texture = %i\n", ioSurface, window->interopHandles.memory);
+
+                    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+                    glDeleteTextures(1, (GLuint*) &window->interopHandles.memory);
+                    window->interopHandles.memory = 0;
+                    result = VK_ERROR_INITIALIZATION_FAILED;
+                }
+                else {
+                    // Disable any filtering on texture - It interferes with rendering to it:
+                    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                    glTexParameteri(GL_TEXTURE_RECTANGLE_ARB, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+                    // Done with texture setup. Texture handle window->interopHandles.memory is ready for interop rendering:
+                    glBindTexture(GL_TEXTURE_RECTANGLE_ARB, 0);
+
+                    if (verbosity > 4)
+                        printf("PsychVulkanCore-INFO: PsychCreateInteropTexture: Got OpenGL interop texture handle %i [IOSurface %p].\n", window->interopHandles.memory, ioSurface);
+                }
+            }
+            else if (verbosity > 0) {
+                printf("PsychVulkanCore-ERROR: PsychCreateInteropTexture: Failed to enable MoltenVK IOSurface backing!\n");
+            }
         #endif
 
         if (result != VK_SUCCESS) {
@@ -3000,6 +3182,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     psych_bool supportsPresent;
     PsychVulkanDevice* vulkan;
     psych_bool rc = FALSE;
+    psych_bool noDirectToDisplay = ((PSYCH_SYSTEM == PSYCH_OSX) && (flags & 0x2)) ? TRUE : FALSE;
 
     // Any HDR mode requested?
     if (hdrMode > 0) {
@@ -3021,8 +3204,8 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                 // to use the scRGB colorspace, because only scRGB supports fp16
                 // consistently across multiple gpu vendors, and only scRGB is
                 // supported for windowed HDR, ie. when the DWM compositor is responsible
-                // for SDR + HDR compositing:
-                if ((PSYCH_SYSTEM == PSYCH_WINDOWS) && (!isFullscreen || (colorPrecision > 1))) {
+                // for SDR + HDR compositing. We also use scRGB + fp16 on macOS:
+                if (((PSYCH_SYSTEM == PSYCH_WINDOWS) && (!isFullscreen || (colorPrecision > 1))) || (PSYCH_SYSTEM == PSYCH_OSX)) {
                     colorSpace = VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
 
                     // The scRGB colorspace only works with exactly fp16 == precision 2:
@@ -3160,22 +3343,25 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                 window->format = VK_FORMAT_R8G8B8A8_UNORM;
                 break;
             }
-            else if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_B8G8R8A8_UNORM)) {
-                window->format = VK_FORMAT_B8G8R8A8_UNORM; // This is our slightly less efficient fallback.
+            else if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_B8G8R8A8_UNORM) && !noDirectToDisplay) {
+                window->format = VK_FORMAT_B8G8R8A8_UNORM; // This is our slightly less efficient fallback, except on macOS Direct-To-Display.
                 break;
             }
+
             // Note that in direct display mode on Linux, NVidia's blob supports VK_FORMAT_A8B8G8R8_UNORM_PACK32
             // as swapChain format, instead of the above formats. However, this format does not work for OpenGL
             // interop for unknown reasons, maybe a NVidia driver bug. Therefore we don't try to use it here.
 
-            // None of the above 8 bpc formats supported!
-            // fallthrough to case 1 RGB10A2 iff none of the above 8 bpc format is supported, as 10 bpc
+            // None of the above 8 bpc formats supported! Or on macOS we want to avoid Direct-To-Display to
+            // work around macOS operating system bugs.
+            // Fallthrough to case 1 RGB10A2 iff none of the above 8 bpc format is supported, as 10 bpc
             // formats are a valid fallback in that case. Potentially less efficient, but compatible in
             // the way they represent color values.
 
         case 1: // RGB10A2 10 bpc precision:
-            // Prefer RGBA ordering if supported, as that matches OpenGL RGB10A2 for most efficient interop:
-            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2B10G10R10_UNORM_PACK32))
+            // Prefer RGBA ordering if supported, as that matches OpenGL RGB10A2 for most efficient interop,
+            // except on macOS, where we need to choose BGR10A2 for optimal interop and if we want Direct-To-Display mode for optimum performance:
+            if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2B10G10R10_UNORM_PACK32) && ((PSYCH_SYSTEM != PSYCH_OSX) || noDirectToDisplay))
                 window->format = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
             else if (PsychIsColorSpaceFormatComboSupported(window, colorSpace, VK_FORMAT_A2R10G10B10_UNORM_PACK32))
                 window->format = VK_FORMAT_A2R10G10B10_UNORM_PACK32; // This is our slightly less efficient fallback.
@@ -3283,8 +3469,8 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
 
     // Map swapchain format to a compatible OpenGL supported format for interop:
     switch(swapChainCreateInfo.imageFormat) {
-        case VK_FORMAT_B8G8R8A8_UNORM:              // RGBA8 interop -> BGRA8 swapchain swizzled.
-            window->interopTextureVkFormat = VK_FORMAT_R8G8B8A8_UNORM;
+        case VK_FORMAT_B8G8R8A8_UNORM:              // RGBA8 interop -> BGRA8 swapchain swizzled, except on macOS:
+            window->interopTextureVkFormat = (PSYCH_SYSTEM == PSYCH_OSX) ? VK_FORMAT_B8G8R8A8_UNORM : VK_FORMAT_R8G8B8A8_UNORM;
             window->colorPrecision = 0;
 
             if (verbosity > 3)
@@ -3299,17 +3485,28 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                 printf("PsychVulkanCore-INFO: Using 8 bpc unorm [0; 1] range RGBA8 framebuffer.\n");
             break;
 
-        case VK_FORMAT_A2R10G10B10_UNORM_PACK32: // BGR10A2 interop -> RGB10A2 swapchain swizzled.
-            window->interopTextureVkFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+        case VK_FORMAT_A2R10G10B10_UNORM_PACK32: // RGB10A2 interop -> BGR10A2 swapchain swizzled, except on macOS:
+            window->interopTextureVkFormat = (PSYCH_SYSTEM == PSYCH_OSX) ? VK_FORMAT_A2R10G10B10_UNORM_PACK32 : VK_FORMAT_A2B10G10R10_UNORM_PACK32;
             window->colorPrecision = 1;
 
             if (verbosity > 3)
                 printf("PsychVulkanCore-INFO: Using 10 bpc unorm [0; 1] range RGB10A2 framebuffer.\n");
             break;
 
-        case VK_FORMAT_A2B10G10R10_UNORM_PACK32: // RGB10A2 interop -> RGB10A2 swapchain.
-            window->interopTextureVkFormat = VK_FORMAT_A2B10G10R10_UNORM_PACK32;
-            window->colorPrecision = 1;
+        case VK_FORMAT_A2B10G10R10_UNORM_PACK32: // RGB10A2 interop -> RGB10A2 swapchain, except on macOS where we need to swizzle:
+            if ((PSYCH_SYSTEM == PSYCH_OSX) && (colorPrecision == 0) && noDirectToDisplay) {
+                // Special case: macOS noDirectToDisplay hack, where we wanted a 8 bpc fb, but can't use it,
+                // as it would trigger macOS Metal bugs. We allocate a 10 bpc swapchain buffer, but setup the
+                // interop texture as 8 bpc, so Screen's imaging pipeline can potentially avoid an unneeded
+                // drawBufferFBO->finalizedFBO unsharing, which would cause a performance hit:
+                window->interopTextureVkFormat = VK_FORMAT_B8G8R8A8_UNORM;
+                window->colorPrecision = 0;
+            }
+            else {
+                // Standard 10 bpc use case:
+                window->interopTextureVkFormat = (PSYCH_SYSTEM == PSYCH_OSX) ? VK_FORMAT_A2R10G10B10_UNORM_PACK32 : VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+                window->colorPrecision = 1;
+            }
 
             if (verbosity > 3)
                 printf("PsychVulkanCore-INFO: Using 10 bpc unorm [0; 1] range RGB10A2 framebuffer.\n");
@@ -3472,6 +3669,10 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
             break;
     }
 
+    // macOS MoltenVK can only do tiled rendering:
+    if ((PSYCH_SYSTEM == PSYCH_OSX) && ((formatProps.optimalTilingFeatures & requiredMask) == requiredMask))
+        window->interopTextureTiled = TRUE;
+
     if (!PsychCreateInteropTexture(window)) {
         if (verbosity > 0)
             printf("PsychVulkanCore-ERROR: Creating OpenGL -> Vulkan interop texture failed for window %i.\n", window->index);
@@ -3630,10 +3831,16 @@ psych_bool PsychCloseVulkanWindow(PsychVulkanWindow* window)
             printf("PsychVulkanCore-INFO: Vulkan window %i: Releasing image memory interop handle.\n", window->index);
         }
 
-        #if PSYCH_SYSTEM != PSYCH_WINDOWS
+        #if PSYCH_SYSTEM == PSYCH_LINUX
             close(window->interopHandles.memory);
-        #else
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
             CloseHandle(window->interopHandles.memory);
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX
+            glDeleteTextures(1, (GLuint*) &window->interopHandles.memory);
         #endif
 
         window->interopHandles.memory = 0;
@@ -4581,7 +4788,9 @@ PsychError PSYCHVULKANGetInteropHandle(void)
         };
 
         result = fpGetSemaphoreWin32HandleKHR(window->vulkan->device, &interopRenderDoneSemaphoreHandleInfo, &window->interopHandles.glComplete);
-        #else
+        #endif
+
+        #if PSYCH_SYSTEM == PSYCH_LINUX
         VkSemaphoreGetFdInfoKHR interopRenderDoneSemaphoreHandleInfo = {
             .sType = VK_STRUCTURE_TYPE_SEMAPHORE_GET_FD_INFO_KHR,
             .pNext = NULL,
@@ -4591,6 +4800,11 @@ PsychError PSYCHVULKANGetInteropHandle(void)
 
         result = fpGetSemaphoreFdKHR(window->vulkan->device, &interopRenderDoneSemaphoreHandleInfo, &window->interopHandles.glComplete);
         #endif
+
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        result = -1; // TODO OSX
+        #endif
+
         if (result != VK_SUCCESS) {
             if (verbosity > 0)
                 printf("PsychVulkanCore-ERROR: Getting handles for external interop render-complete semaphore failed for window %i: res=%i.\n", window->index, result);
@@ -4618,7 +4832,7 @@ PsychError PSYCHVULKANGetInteropHandle(void)
 
 PsychError PSYCHVULKANPresent(void)
 {
-    static char useString[] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=1]);";
+    static char useString[] = "[tPredictedOnset, frameIndex] = PsychVulkanCore('Present', vulkanWindowHandle [, tWhen=0][, doTimestamp=2]);";
     //                          1                2                                        1                     2          3
     static char synopsisString[] =
         "Present last rendered frame to Vulkan window 'vulkanWindowHandle'.\n\n"
@@ -4626,8 +4840,11 @@ PsychError PSYCHVULKANPresent(void)
         "to the swapchains, for consumption by the presentation engine. "
         "You usually won't call this function yourself, but Screen('Flip') "
         "will call it automatically for you at the appropriate moment.\n\n"
-        "'doTimestamp' If set to 1, performs timestamping of stimulus onset, or at least "
-        "tries to estimate such onset time. If set to 0, do nothing timestamping-wise.\n\n"
+        "'doTimestamp' If set to 1 or 2, performs timestamping of stimulus onset, or at least "
+        "tries to estimate such onset time. If set to 0, do nothing timestamping-wise. "
+        "A value of 1 always uses a home-made method of scheduling and timestamping. "
+        "A value of 2 tries to use a Vulkan-provided high-precision method if available "
+        "and possible, and falls back to method 1 otherwise. Value 2 is the default.\n\n"
         "'tWhen' If provided, defines the target presentation time, as provided by "
         "Screen('Flip', win, tWhen); a value of zero, or omission, means to present as "
         "soon as possible.\n\n"
@@ -4639,7 +4856,7 @@ PsychError PSYCHVULKANPresent(void)
     int vulkanWindowHandle;
     PsychVulkanWindow *window;
     double tWhen = 0;
-    int doTimestamp = 1;
+    int doTimestamp = 2;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -4664,8 +4881,8 @@ PsychError PSYCHVULKANPresent(void)
 
     // Get optional timestamping flag:
     PsychCopyInIntegerArg(3, kPsychArgOptional, &doTimestamp);
-    if (doTimestamp < 0 || doTimestamp > 1)
-        PsychErrorExitMsg(PsychError_user, "Invalid 'doTimestamp' provided. Must be 0 or 1.");
+    if (doTimestamp < 0 || doTimestamp > 2)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'doTimestamp' provided. Must be 0, 1 or 2.");
 
     // Present:
     if (!PsychPresent(window, tWhen, doTimestamp)) {

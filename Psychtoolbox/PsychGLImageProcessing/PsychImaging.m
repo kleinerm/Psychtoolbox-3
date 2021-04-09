@@ -3148,6 +3148,10 @@ if ~isempty(floc)
         % No -> Standard operations: Add imaging mode flags for handing rendered images to Vulkan:
         imagingMode = mor(imagingMode, kPsychNeedFinalizedFBOSinks);
 
+        if IsOSX
+            imagingMode = mor(imagingMode, kPsychUseExternalSinkTextures);
+        end
+
         % Mark full use of Vulkan:
         useVulkan = 1;
     else

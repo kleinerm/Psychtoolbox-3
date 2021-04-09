@@ -165,6 +165,8 @@ try
    if stereomode~=10
        % Standard case:
        PsychImaging('PrepareConfiguration');
+       PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+
        if useVulkan
            PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
        end
@@ -172,6 +174,7 @@ try
        [win , winRect]=PsychImaging('OpenWindow', screen(1), 0, rect1, [], doublebuffer, stereomode);
        if length(screen)>1
            PsychImaging('PrepareConfiguration');
+           PsychImaging('AddTask', 'General', 'UseRetinaResolution');
            if useVulkan
                PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
            end
