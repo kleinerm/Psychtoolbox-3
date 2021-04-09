@@ -83,4 +83,10 @@ if IsOSX && (Screen('WindowKind', windowPtrOrScreenNumber) == 1)
     y = y * isf;
 end
 
+if IsLinux && (Screen('WindowKind', windowPtrOrScreenNumber) == 1)
+    rect = Screen('GlobalRect', windowPtrOrScreenNumber);
+    x = x + rect(1);
+    y = y + rect(2);
+end
+
 Screen('SetMouseHelper', windowPtrOrScreenNumber, round(x), round(y), mouseid, detachFromMouse);
