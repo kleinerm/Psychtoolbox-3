@@ -189,7 +189,7 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
             predictedOnset = vblTime;
 
             if verbosity > 1
-                fprintf('PsychVulkan-DEBUG: Vulkan timestamping failed. Falling back to reference timestamp %f secs.\n', vblTime);
+                fprintf('PsychVulkan-DEBUG: Vulkan timestamping failed. Falling back to reference timestamp %f secs. Timing or visual stimulation might be broken.\n', vblTime);
             end
         else
             % Error code timestamp -1 returned. We can't recover in a
@@ -580,10 +580,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         if IsOSX
             noInterop = 0;
 
-            % Disable Direct-To-Display mode, it is buggy as hell due to
-            % some problems that seem to stem from (a lack of proper) event
-            % processing on the Cocoa main-thread. Timestamping seems to
-            % work under Metal, but present scheduling mostly doesn't:
+            % Disable Direct-To-Display mode, it is buggy as hell, at least
+            % on macOS 10.15.7 with AMD Radeon Pro 560. Not that it works
+            % much better with this hack, it is only a bit better. At the
+            % same time, this hack supposedly adds one frame of extra
+            % latency, but our measurements show that even without it,
+            % there is one frame of extra latency, contrary to what the
+            % docs wrt. Direct-to-Display mode say. Broken stuff all
+            % around on the iToys operating system:
             flags = mor(flags, 2);
         else
             flags = mor(flags, 1);
