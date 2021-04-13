@@ -696,9 +696,6 @@ try
     % Shutdown realtime scheduling:
     finalprio = Priority(0) %#ok<NASGU,NOPRT>
 
-    % Show the cursor:
-    ShowCursor;
-
     % Need to perform remapping on Datapixx before Screen('CloseAll'):
     if useRTbox == -1
         % Datapixx: Remap timestamps to GetSecs time:
@@ -711,7 +708,7 @@ try
     % Close display: If we skipped/missed any presentation deadline during
     % Flip, Psychtoolbox will automatically display some warning message on the Matlab
     % console:
-    Screen('CloseAll');
+    sca;
     WaitSecs(1);
 
     if useRTbox ~= -1000
@@ -865,13 +862,13 @@ catch
     % This "catch" section executes in case of an error in the "try" section
     % above. Importantly, it closes the onscreen window if its open and
     % shuts down realtime-scheduling of Matlab:
-    ShowCursor;
-    Screen('CloseAll');
-
     if ~isempty(res.outFilename)
         % Store results to filesystem before we start shutdown and plotting:
         save(res.outFilename, 'res', '-V6');
     end
+
+    % Close window, restore lut's, show cursor, etc.:
+    sca;
 
     % Disable realtime-priority in case of errors.
     Priority(0);
