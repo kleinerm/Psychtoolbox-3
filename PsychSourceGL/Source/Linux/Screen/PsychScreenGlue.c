@@ -4137,6 +4137,12 @@ unsigned int PsychOSKDGetLUTState(int screenId, unsigned int headId, unsigned in
             // mess with us, so this may not be the last word on the matter... ... to be verified.
             isIdentity = (PsychOSGetRegammaMode(screenId, offset) == NI_REGAMMA_BYPASS) ? TRUE : FALSE;
 
+            // An identity LUT y=x implies it is not an all-zero LUT y=0:
+            if (isIdentity) {
+                if (PsychPrefStateGet_Verbosity() > 3) printf("PsychOSKDGetLUTState(): headId %d: Identity/Bypass LUT, therefore not a zero LUT.\n", headId);
+                isZero = 0;
+            }
+
             // Use a slight variant of the classic path in the else-branch. Read the
             // 256 slot lut registers and just check for all-zero vs. not-all-zero to
             // do the detection, as the 256 legacy lut seems to get mirrored by the hw
