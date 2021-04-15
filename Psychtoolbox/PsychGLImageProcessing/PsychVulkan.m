@@ -272,7 +272,8 @@ if strcmpi(cmd, 'Supported')
     % Init supported flag via one-time probe:
     if isempty(supported)
         try
-            if exist('PsychVulkanCore', 'file') && PsychVulkanCore('GetCount') > 0
+            if exist('PsychVulkanCore', 'file') && (PsychVulkanCore('GetCount') > 0) && ...
+               (~IsOSX || IsMinimumOSXVersion(10,15,4)) % macOS 10.15.4 is the bare minimum needed.
                 supported = 1;
             else
                 supported = 0;
