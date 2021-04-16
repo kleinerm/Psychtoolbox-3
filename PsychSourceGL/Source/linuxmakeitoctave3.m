@@ -223,8 +223,8 @@ if mode==12
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychOculusVRCore.mex']);
 end
 
-if mode == 13 && IsARM
-    % Build RPiGPIOMex for RaspberryPi. Needs libwiringPi
+if mode == 13 && IsARM && exist('/usr/include/wiringPi.h', 'file')
+    % Build RPiGPIOMex for RaspberryPi. Needs libwiringPi, otherwise we skip this:
     curdir = pwd;
     cd('../../Psychtoolbox/PsychContributed/')
     try
