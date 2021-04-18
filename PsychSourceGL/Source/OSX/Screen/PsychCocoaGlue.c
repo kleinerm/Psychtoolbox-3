@@ -275,7 +275,13 @@ pid_t GetHostingWindowsPID(void)
         if (nameOwnerRef) {
             const char* name = CFStringGetCStringPtr(nameOwnerRef, kCFStringEncodingMacRoman);
             if (name && verbose) printf("WindowOwnerName: %s\n", name);
-            if (name && (strstr(name, "ctave") || strstr(name, "MATLAB"))) {
+            if (name &&
+                #ifdef PTBOCTAVE3MEX
+                strstr(name, "ctave")
+                #else
+                strstr(name, "MATLAB")
+                #endif
+                ) {
                 // Matched either MATLAB GUI or Octave GUI. As windows are returned
                 // in front-to-back order, the first match here is a candidate window that is on top of
                 // the visible window stack. This is our best candidate for the command window, assuming
