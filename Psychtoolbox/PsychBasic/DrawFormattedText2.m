@@ -249,6 +249,7 @@ function [nx, ny, textbounds, cache, wordbounds] = DrawFormattedText2(varargin)
 % History:
 % 2015--2017    Written (DCN).
 % 7-May-2017    Add support for 'wordbounds' - per word bounding boxes (MK).
+% 18-Apr-2021   Fix UTF-8 string handling WRT new Octave 6 regexp behavior (MR).
 
 
 global ptb_drawformattedtext2_disableClipping;
@@ -887,6 +888,7 @@ function [tstring,fmtCombs,fmts,switches,previous] = getFormatting(win,tstring,s
 % get string type, store original as octave can't deal with string values outside uint8 range
 tstringOri  = tstring;
 tstring     = char(tstring);
+tstring(tstring>127) = 0;
 
 % get colorrange of window, to interpret colors
 cr = Screen('ColorRange',win);
