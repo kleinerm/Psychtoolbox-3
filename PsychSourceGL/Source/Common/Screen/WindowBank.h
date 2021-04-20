@@ -236,7 +236,7 @@ typedef struct{
     CGLPixelFormatObj   pixelFormatObject;
     CGLContextObj       glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
     CGLContextObj       glswapcontextObject;    // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
-    void*               deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
+    void*               deviceContext;          // Pointer to an CALayer (likely CAMetalLayer) object if Cocoa is used, or a NULL-pointer otherwise.
     // NSWindow* type stored in void* to avoid "Cocoa/Objective-C pollution" in this header file.
     void*               windowHandle;           // Handle for Cocoa window when using windowed mode. (NULL in non-windowed mode).
 

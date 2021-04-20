@@ -53,6 +53,7 @@
 #endif
 
 #ifdef PTB_USE_WAFFLE
+#define WAFFLE_API_VERSION 0x0107
 #include <waffle-1/waffle.h>
 #endif
 

@@ -448,10 +448,19 @@ void InitializePsychDisplayGlue(void)
     cursorHidden = FALSE;
 
     #ifdef PTBOCTAVE3MEX
-        // Restrict the latest idiotic hack to Octave on OSX 10.11+
+        // Update April 2021: This hack now hurts instead of helps on at least Octave 6.2
+        // under macOS 10.15.7 Catalina final. Apparently the bug was fixed sometime after
+        // OSX 10.11, or rendered inert due to changes in Octave sometimes after 2016.
+        //
+        // For now we restrict the hack to macOS 10.11 - 10.13.
+        //
+        // As far as i can see, Octave 6.2 binaries are only provided by HomeBrew, Appimage
+        // etc. for macOS 10.14 and later anyway, and building from source will probably never
+        // happen by myself or other users, given the > 12 hour long build times, and officially
+        // we only support 10.15 Catalina anyway, so i don't care about older systems anymore.
         int major, minor, patchlevel;
         PsychCocoaGetOSXVersion(&major, &minor, &patchlevel);
-        if ((major > 10) || (minor >= 11)) {
+        if ((major == 10) && (minor >= 11) && (minor < 14)) {
             // Another tribute to the most idiotic OS in existence: Redirect the stderr
             // stream, so OSX 10.11.0 El Capitans broken logger can't flood us with
             // pointless warning messages anymore. These unsolicited and unexpected
@@ -461,7 +470,8 @@ void InitializePsychDisplayGlue(void)
             // larger problems and side effects somewhere else (haha, hope against hope,
             // this would be the first time a dirty hack wouldn't bite us when dealing with
             // Apples crappy products).
-            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: Redirecting stderr to work around broken OSX 10.11. This may have unpleasant side-effects.\n");
+            //
+            if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: Redirecting stderr to work around broken OSX 10.11+. This may have unpleasant side-effects.\n");
             freopen(((getenv("PSYCH_REDIRECT_STDERR_PATH")) ? getenv("PSYCH_REDIRECT_STDERR_PATH") : "/dev/null"), "a", stderr);
         }
     #endif

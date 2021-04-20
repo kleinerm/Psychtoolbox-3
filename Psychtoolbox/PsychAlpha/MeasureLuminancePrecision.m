@@ -1,13 +1,15 @@
-function data=MeasureLuminancePrecision
-% data=MeasureLuminancePrecision
-% INSTRUCTIONS: [Currently this program requires a Cambridge Research
-% Systems photometer, but you could easily adapt it to use another
-% photometer.] Plug your photometer's USB cable into your computer,
-% carefully place your photometer stably against your computer's screen,
-% set PARAMETERS (below), then run. The results (including the best-fitting
-% n-bit-precision model) will be displayed as a graph in a MATLAB figure
-% window, and also saved in three files (in the same folder as this file)
-% with filename extensions: png, fig, and mat. The filename describes the
+function data = MeasureLuminancePrecision(meterType)
+% data=MeasureLuminancePrecision([meterType=7])
+%
+% 'meterType' selects type of photometer. Defaults to 7 for CRS ColorCal2, see
+% 'help CMCheckInit' for other supported devices.
+%
+% INSTRUCTIONS: Plug your photometer into your computer, carefully
+% place your photometer stably against your computer's screen, set
+% PARAMETERS (below), then run. The results (including the best-fitting
+% n-bit-precision model) will be displayed as a graph in a figure window,
+% and also saved in three files (in the same folder as this file) with
+% filename extensions: png, fig, and mat. The filename describes the
 % testing conditions, e.g.
 % DenissMacBookPro5K-Dithering61696-o.use10Bits-LoadIdentityCLUT-Luminances8.fig
 %
@@ -28,7 +30,7 @@ function data=MeasureLuminancePrecision
 % Psychtoolbox SCREEN function to allow specification of each color
 % component (R G B) as a floating point number, where 0 is black and 1 is
 % maximum output, so that your software, without change, will drive any
-% display and benefit from as much precision as the display hardward and
+% display and benefit from as much precision as the display hardware and
 % driver provide.
 %
 % Typically you'll run MeasureLuminancePrecision from the command line. It
@@ -40,12 +42,11 @@ function data=MeasureLuminancePrecision
 %
 % To use this program to measure the precision of your computer display you
 % need three things:
-% 1. MATLAB or Octave. http://mathworks.com
+% 1. MATLAB or Octave. http://mathworks.com , https://www.gnu.org/software/octave
 % 2. The Psychtoolbox, free from http://psychtoolbox.org.
-% 3. A Cambridge Research Systems photometer or colorimeter.
+% 3. A photometer or colorimeter supported by CMCheckInit(), e.g., the CRS ColorCal2
 % http://www.crsltd.com/tools-for-vision-science/light-measurement-display-calibation/colorcal-mkii-colorimeter/
-% It's plug and play, taking power through its USB cable. You could easily
-% modify this program to work with any other photometer.
+% It's plug and play, taking power through its USB cable.
 %
 % As of April 2017, Apple documents (below) indicate that two currently
 % available macOS computers attain 10-bit precision from pixel to display
@@ -190,15 +191,12 @@ function data=MeasureLuminancePrecision
 % o.wigglePixelNotCLUT = whether to vary the value of the pixel or CLUT.
 % o.loadIdentityCLUT = whether to load an identity into CLUT.
 
-o.luminances=128; % Photometer takes 3 s/luminance. 128 luminances is enough for a pretty graph.
+%o.luminances=128; % Photometer takes 3 s/luminance. 128 luminances is enough for a pretty graph.
 o.luminances=512; % Photometer takes 3 s/luminance. 512 luminances for a prettier graph.
 o.reciprocalOfFraction= 32; % List one or more, e.g. 1, 128, 256.
-%o.reciprocalOfFraction=[256]; % List one or more, e.g. 1, 128, 256.
-%o.vBase=.8;
 o.vBase=.5;
 o.useDithering=[]; % 1 enable. [] default. 0 disable.
 o.nBits=10; % Enable this to get 10-bit (and better with dithering) performance.
-o.usePhotometer=1; % 1 use ColorCAL II XYZ; 0 simulate 8-bit rendering.
 o.useShuffle=0; % Randomize order of luminances to prevent systematic effect of changing background.
 o.wigglePixelNotCLUT=1; % 1 is fine. The software CLUT is not important.
 o.loadIdentityCLUT=1; % 1 is fine. This nullifies the CLUT.
@@ -209,11 +207,28 @@ if IsOctave
     pkg load statistics;
 end
 
+if ~exist('regress') %#ok<EXIST>
+    error('Required regress() function from Statistics toolbox missing!');
+end
+
 KbReleaseWait;
 
 %% BEGIN
 BackupCluts;
 aborted = 0;
+
+% Default to ColorCal2 - meterType 7:
+if nargin < 1 || isempty(meterType)
+    meterType = 7;
+end
+
+if meterType > 0
+    % Open the colorimeter, or abort if not possible:
+    CMCheckInit(meterType);
+    o.usePhotometer = 1;
+else
+    o.usePhotometer = 0; % Simulate 8-bit rendering.
+end
 
 try
     %% OPEN WINDOW
@@ -371,7 +386,7 @@ try
                     end
                 end
 
-                L=GetLuminance; % Read photometer
+                L = GetLuminance(meterType); % Read photometer
             else
                 % No photometer. Simulate 8-bit performance.
                 L=200*round(g*255)/255;
@@ -404,8 +419,18 @@ try
 
     t=(GetSecs-t)/length(data)/o.luminances;
 catch
+    if meterType > 0
+        % Close the colorimeter:
+        CMClose(meterType);
+    end
+
     sca;
     psychrethrow(psychlasterror);
+end
+
+if meterType > 0
+    % Close the colorimeter:
+    CMClose(meterType);
 end
 
 sca;
@@ -441,7 +466,7 @@ for iData=1:length(data)
     minsd=min(min(sd));
     [bits, jShift]=find(sd==minsd,1);
     j=round((length(vShift)+1)/2);
-    fprintf('min sd %.2f at %d bits %.4f shift; sd %.2f at 11 bits %.4f shift\n',minsd,bits,vShift(jShift),sd(11,j),vShift(j));
+    fprintf('Best fit: min sd %.3f at %d bits %.4f shift.\n', minsd, bits, vShift(jShift));
     data(iData).model.bits=bits;
     data(iData).model.vShift=vShift(jShift);
     data(iData).model.sd=sd(bits,jShift);
@@ -568,17 +593,27 @@ end
 end
 
 %% GET LUMINANCE
-function L=GetLuminance
-% L=GetLuminance(o.usePhotometer)
-% Measure luminance (cd/m^2).
-% Cambridge Research Systems ColorCAL II XYZ Colorimeter.
-% http://www.crsltd.com/tools-for-vision-science/light-measurement-display-calibation/colorcal-mkii-colorimeter/nest/product-support
-persistent CORRMAT
-if isempty(CORRMAT)
-    % Get ColorCAL II XYZ correction matrix (CRT=1; WLED LCD=2; OLED=3):
-    CORRMAT=ColorCal2('ReadColorMatrix');
-end
-s = ColorCal2('MeasureXYZ');
-XYZ = CORRMAT(4:6,:) * [s.x s.y s.z]';
-L=XYZ(2);
+function L = GetLuminance(meterType)
+    % L = GetLuminance(o.usePhotometer)
+    % Measure luminance (cd/m^2).
+
+    if 0
+        % Old code from Denis:
+        % Cambridge Research Systems ColorCAL II XYZ Colorimeter.
+        % http://www.crsltd.com/tools-for-vision-science/light-measurement-display-calibation/colorcal-mkii-colorimeter/nest/product-support
+        persistent CORRMAT
+        if isempty(CORRMAT)
+            % Get ColorCAL II XYZ correction matrix (CRT=1; WLED LCD=2; OLED=3):
+            CORRMAT=ColorCal2('ReadColorMatrix');
+        end
+        s = ColorCal2('MeasureXYZ');
+        XYZ = CORRMAT(4:6,:) * [s.x s.y s.z]';
+    else
+        % New code: Uses selectable measurement device. In case of ColorCal2, uses
+        % 2nd correction matrix rows 1:3 instead of Denis rows 4:6! My ColorCal2
+        % does not contain a meaningful matrix in rows 4:6.
+        XYZ = MeasXYZ(meterType);
+    end
+
+    L = XYZ(2);
 end

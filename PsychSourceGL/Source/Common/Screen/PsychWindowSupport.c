@@ -562,15 +562,15 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             gpuMaintype = kPsychUnknown;
             if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) ||
                 !PsychGetGPUSpecs(screenSettings->screenNumber, &gpuMaintype, &gpuMinortype, NULL, NULL) ||
-                (gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff) || (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24)) {
+                (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 120) || (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24)) {
                 printf("\nPTB-ERROR: Your script requested a %i bpp, %i bpc framebuffer, but i can't provide this for you, because\n", (*windowRecord)->depth, (*windowRecord)->depth / 3);
-                if ((gpuMaintype != kPsychRadeon) || (gpuMinortype > 0xffff)) {
+                if ((gpuMaintype != kPsychRadeon) || (gpuMinortype >= 120)) {
                     printf("PTB-ERROR: this functionality is not supported on your model of graphics card. Only AMD GPU's from the\n");
-                    printf("PTB-ERROR: Radeon X1000 series up to and including the Radeon Vega series, and corresponding FireGL/\n");
-                    printf("PTB-ERROR: FirePro/RadeonPro cards are supported. This covers basically all AMD gpu's introduced in the\n");
-                    printf("PTB-ERROR: years from late 2005 to mid-2019, but not AMD RX 5000 (RDNA) and later or AMD Ryzen integrated\n");
+                    printf("PTB-ERROR: Radeon X1000 series up to and including the Radeon Polaris series, and corresponding FireGL/\n");
+                    printf("PTB-ERROR: FirePro/Radeon Pro cards are supported. This covers basically all AMD gpu's introduced in the\n");
+                    printf("PTB-ERROR: years from late 2005 to mid-2017, but not AMD Vega or AMD RX 5000 (RDNA) and later or AMD Ryzen integrated\n");
                     printf("PTB-ERROR: processor graphics chips and later since late 2017, e.g., AMD Raven Ridge, Renoir, Picasso etc.\n");
-                    printf("PTB-ERROR: These recent AMD gpu's with the new DCN display engine, as well as all NVidia graphics cards\n");
+                    printf("PTB-ERROR: These recent AMD gpu's with the DCE-12 or new DCN display engine, as well as all NVidia graphics cards\n");
                     printf("PTB-ERROR: since the GeForce-8000 series and corresponding Quadro cards can be setup for 10 bpc framebuffer\n");
                     printf("PTB-ERROR: mode by specifying a 'DefaultDepth' setting of 30 bit in the xorg.conf file. The same is true for\n");
                     printf("PTB-ERROR: modern Intel graphics chips which may be able to achieve 10 bpc with 'DefaultDepth' 30 setting if your\n");
@@ -579,7 +579,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 }
                 else if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
                     printf("PTB-ERROR: Linux low-level MMIO access by Psychtoolbox is disabled or not permitted on your system in this session.\n");
-                    printf("PTB-ERROR: On Linux you must configure your system by executing the script 'PsychLinuxConfiguration' once.\n\n");
+                    printf("PTB-ERROR: On Linux you must configure your system by executing the script 'PsychLinuxConfiguration' once, and\n");
+                    printf("PTB-ERROR: make sure that EFI Secure Boot is disabled or at least secure boot verification is disabled.\n\n");
                 }
                 else if (PsychGetScreenDepthValue(screenSettings->screenNumber) != 24) {
                     printf("PTB-ERROR: your display is not set to 24 bit 'DefaultDepth' color depth, but to %i bit color depth in xorg.conf.\n\n",

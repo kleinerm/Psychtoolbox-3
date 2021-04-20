@@ -46,6 +46,9 @@ function HDRTest(dotest, meterType, highprecision, screenid, filename)
 % that if used on MS-Windows, the test will print false warnings about
 % mismatches between shader computed PQ values. That is normal at the
 % moment, because on Windows PQ is not used for fp16 mode.
+% If set to 2, will request a 16 bpc fixed point framebuffer, which allows for up
+% to 16 bpc linear precision, but in reality on early 2021 hardware at most 12 bpc.
+% On most operating-systems + driver + gpu combos this 16 bpc mode will fail.
 %
 % 'screenid' Screen to use. Defaults to maximum screen id.
 %
@@ -112,9 +115,15 @@ try
     % Background color is black, unit for all colors is nits.
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits');
+
     if highprecision == 1
         PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
     end
+
+    if highprecision == 2
+        PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer');
+    end
+
     [win, rect] = PsychImaging('OpenWindow', screenid, 0);
     HideCursor(win);
     Screen('Textsize', win, 16);
@@ -124,6 +133,13 @@ try
 
     % Get displays HDR properties:
     displayhdrprops = PsychHDR('GetHDRProperties', win) %#ok<*NOPRT>
+    if ~displayhdrprops.Valid
+        % Fallback for macOS: Hard-code reasonable values, what else can we
+        % do?
+        displayhdrprops.MaxLuminance = 600;
+        displayhdrprops.MaxFrameAverageLightLevel = 350;
+    end
+
     maxLuminance = displayhdrprops.MaxLuminance
     maxFrameAverageLightLevel = displayhdrprops.MaxFrameAverageLightLevel; %#ok<NASGU>
 

@@ -25,7 +25,7 @@ if mode == -1
     % Yes: Call ourselves recursively on all plugins/modes to rebuild
     % everything:
     tic;
-    for mode = 0:14
+    for mode = 0:15
         osxmakeitoctave3(mode);
     end
     elapsedsecs = toc;
@@ -73,7 +73,7 @@ if mode==0
     -weak_library,/Library/Frameworks/GStreamer.framework/Versions/Current/lib/libglib-2.0.dylib,\
     -weak_library,/usr/local/lib/libdc1394.dylib,\
     -framework,CoreServices,-framework,CoreFoundation,-framework,ApplicationServices,-framework,CoreAudio,-framework,OpenGL,-framework,CoreVideo,\
-    -framework,IOKit,-framework,SystemConfiguration,-framework,Carbon,-framework,CoreText,\
+    -framework,IOKit,-framework,SystemConfiguration,-framework,Carbon,-framework,CoreText,-framework,QuartzCore,\
     -framework,CoreDisplay,-F/System/Library/PrivateFrameworks,-framework,DisplayServices,\
     -U,CoreDisplay_Display_SetUserBrightness,-U,CoreDisplay_Display_GetUserBrightness,\
     -U,DisplayServicesCanChangeBrightness,-U,DisplayServicesBrightnessChanged,\
@@ -234,6 +234,22 @@ if mode==14
 
     osxsetoctaverpath('PsychOculusVRCore');
     unix(['mv ../Projects/MacOSX/build/PsychOculusVRCore.mex ' PsychtoolboxRoot 'PsychBasic/Octave6OSXFiles64/']);
+end
+
+if mode==15
+    % Build PsychVulkanCore:
+    % Depends on a system level (/usr/local/[share/include/lib]/
+    % installation of the Vulkan SDK and MoltenVK for macOS from
+    % https://vulkan.lunarg.com for prebuilt SDK and Vulkan ICD,
+    % https://github.com/KhronosGroup/MoltenVK for source code.
+    try
+        mex --output ../Projects/MacOSX/build/PsychVulkanCore -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX "-Wno-deprecated-declarations -mmacosx-version-min='10.11'" "-Wl,-headerpad_max_install_names,-F/Library/Frameworks/,-framework,CoreServices,-framework,CoreFoundation,-framework,CoreAudio,-framework,OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include Common/PsychVulkanCore/*.c OSX/Base/*.c Common/Base/*.c -lvulkan -lMoltenVK
+    catch
+        disp(psychlasterror);
+    end
+
+    osxsetoctaverpath('PsychVulkanCore');
+    unix(['mv ../Projects/MacOSX/build/PsychVulkanCore.mex ' PsychtoolboxRoot 'PsychBasic/Octave6OSXFiles64/']);
 end
 
 return;

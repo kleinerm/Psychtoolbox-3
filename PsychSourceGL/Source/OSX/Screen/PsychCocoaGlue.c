@@ -1,8 +1,7 @@
 /*
-
     PsychToolbox3/Source/OSX/Screen/PsychCocoaGlue.c
 
-    PLATFORMS:	
+    PLATFORMS:
 
     OSX
 
@@ -12,20 +11,17 @@
 
     AUTHORS:
 
-    Mario Kleiner       mk      mario.kleiner@tuebingen.mpg.de
+    Mario Kleiner       mk      mario.kleiner.de@gmail.com
 
     DESCRIPTION:
 
     Glue code for window management using Objective-C wrappers to use Cocoa.
-
     These functions are called by PsychWindowGlue.c.
 
     NOTES:
 
-    The setup code for multiple OpenGL contexts per Cocoa window makes
-    use of functions only supported on OSX 10.6 "Snow Leopard" and later.
-    Therefore 10.6 Snow Leopard or later is required for this to work.
-
+    The setup code for CAMetalLayer makes use of functions only supported on
+    OSX 10.11 "El Capitan" and later, so 10.11 is the minimum required version.
 */
 
 #include "Screen.h"
@@ -34,6 +30,7 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <Cocoa/Cocoa.h>
 #include <objc/message.h>
+#include <QuartzCore/CAMetalLayer.h>
 
 // Suppress deprecation warnings:
 #pragma clang diagnostic push
@@ -101,6 +98,19 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         return(PsychError_system);
     }
 
+    // External display method in use? Atm. this is only Vulkan via MoltenVK ICD
+    // on top of Metal. We need to back our Cocoa NSWindow with a CAMetalLayer for
+    // this to work:
+    if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
+        CAMetalLayer* hostedLayer = [CAMetalLayer layer];
+        windowRecord->targetSpecific.deviceContext = hostedLayer;
+        [hostedLayer setOpaque:true];
+
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: External display method is in use for this NSWindow. Creating a backing layer as CAMetalLayer %p.\n",
+                   hostedLayer);
+    }
+
     dispatch_sync(dispatch_get_main_queue(), ^{
         [cocoaWindow setTitle:winTitle];
 
@@ -157,6 +167,16 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
 
         // Tell Cocoa/NSOpenGL to render to Retina displays at native resolution:
         [[cocoaWindow contentView] setWantsBestResolutionOpenGLSurface:YES];
+
+        // Initial CAMetalLayer attach: Needed here, before window is shown 1st time,
+        // or it won't work at all later on -- it would turn into a no-op:
+        if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
+            if (PsychPrefStateGet_Verbosity() > 4)
+                printf("PTB-INFO: External display method is in use for this window. Attaching CAMetalLayer...\n");
+
+            [[cocoaWindow contentView] setWantsLayer:YES];
+            [[cocoaWindow contentView] setLayer:windowRecord->targetSpecific.deviceContext];
+        }
 
         //[cocoaWindow setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
     });
@@ -255,7 +275,13 @@ pid_t GetHostingWindowsPID(void)
         if (nameOwnerRef) {
             const char* name = CFStringGetCStringPtr(nameOwnerRef, kCFStringEncodingMacRoman);
             if (name && verbose) printf("WindowOwnerName: %s\n", name);
-            if (name && (strstr(name, "ctave") || strstr(name, "MATLAB"))) {
+            if (name &&
+                #ifdef PTBOCTAVE3MEX
+                strstr(name, "ctave")
+                #else
+                strstr(name, "MATLAB")
+                #endif
+                ) {
                 // Matched either MATLAB GUI or Octave GUI. As windows are returned
                 // in front-to-back order, the first match here is a candidate window that is on top of
                 // the visible window stack. This is our best candidate for the command window, assuming
@@ -656,6 +682,34 @@ double PsychCocoaGetBackingStoreScaleFactor(void* window)
     [pool drain];
 
     return (sf);
+}
+
+void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord)
+{
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
+    // Second time CAMetalLayer reattach: Called from SCREENOpenWindow() after initial
+    // OpenGL setup, display of the welcome splash screen, startup tests and timing
+    // calibrations etc. are finished. We need OpenGL for all that, and attaching an
+    // OpenGL context to the drawable detached "our" CAMetalLayer and attached some
+    // OpenGL suitable layer instead. Now that we are done with OpenGL display, we can
+    // reattach the CAMetalLayer for rendering/display via Metal, as needed for MoltenVK's
+    // Vulkan-on-top-of-Metal ICD implementation:
+    if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
+        NSWindow* cocoaWindow = (NSWindow*) windowRecord->targetSpecific.windowHandle;
+
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: External display method is in use for this window. Reattaching CAMetalLayer at scaling factor %f.\n",
+                   [cocoaWindow backingScaleFactor]);
+
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            [((CAMetalLayer*) windowRecord->targetSpecific.deviceContext) setContentsScale:[cocoaWindow backingScaleFactor]];
+            [[cocoaWindow contentView] setLayer:windowRecord->targetSpecific.deviceContext];
+        });
+    }
+
+    // Drain the pool:
+    [pool drain];
 }
 
 #pragma clang diagnostic pop

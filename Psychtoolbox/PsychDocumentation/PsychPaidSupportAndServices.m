@@ -9,8 +9,8 @@ function PsychPaidSupportAndServices(mininag)
 % For priority support on the user forum or GitHub issue tracker, buy a
 % "community membership with priority support".
 %
-% 1. As part of your purchase, you will receive a document with a printed
-%    "Order Id" and a printed "License key".
+% 1. As part of your purchase, you will receive a document - an invoice - with a
+%    printed "Order Id" or "Order no.", and a printed "License key".
 %
 % 2. Next you can run *this* function PsychPaidSupportAndServices in Octave or
 %    Matlab. The function will ask you if you need priority support and do have
@@ -137,10 +137,22 @@ end
 % Ok, our valued community member wants support now. Guide them through the process:
 orderId = '';
 while isempty(orderId)
-    orderId = upper(input('Please enter the Order Id of your license: ', 's'));
+    fprintf('\nThe Order Id is on the invoice you received, as "Order no." between the invoice\n');
+    fprintf('number and the customer number.\n\n');
+
+    orderId = strtrim(upper(input('Please enter the Order Id of your license, or just ENTER if you can not find it: ', 's')));
     if length(orderId) ~= 8 || ~all(isstrprop(orderId, 'alphanum'))
-        fprintf('Order Id seems to be invalid: It must be 8 letters or numbers, e.g., XS92UVY3\n');
+        fprintf('\nOrder Id seems to be invalid: It must be 8 letters or numbers, e.g., XS92UVY3\n');
         orderId = '';
+    end
+
+    if isempty(orderId)
+        fprintf('\nIf you can not find the Order Id, i can also just use the first 8 characters of\n');
+        fprintf('your license key. This poses a mildly higher risk of somebody guessing your key\n');
+        fprintf('and abusing your community membership to their advantage, or of other mixups.\n\n');
+        if lower(input('Do you want me to use the license key instead [y/n]? ', 's')) == 'y'
+            break;
+        end
     end
 end
 
@@ -149,12 +161,17 @@ requestTimeDate = sprintf('%i', round(clock));
 
 licenseKey = '';
 while isempty(licenseKey)
-    licenseKey = upper(input('Please enter the license key: ', 's'));
+    licenseKey = strtrim(upper(input('Please enter the license key: ', 's')));
     if length(licenseKey) ~= 35 || ~all(isstrprop(licenseKey([1:5, 7:11, 13:17, 19:23, 25:29, 31:35]), 'alphanum')) || ~strcmp(licenseKey([6, 12, 18, 24, 30]), '-----')
         fprintf('The license key seems to be invalid: It must be 30 letters or numbers in dash separated groups of five, e.g.,\n');
         fprintf('2BQR7-R5ZQP-SA36G-RAVDJ-ABZBM-PKKFJ\n\n');
         licenseKey = '';
     end
+end
+
+% User wants us to use first eight chars of license key as orderId?
+if isempty(orderId)
+    orderId = licenseKey(1:8);
 end
 
 % Assemble the to-be-hashed string:

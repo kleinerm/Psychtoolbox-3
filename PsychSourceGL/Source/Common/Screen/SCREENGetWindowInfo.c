@@ -205,6 +205,7 @@ static char synopsisString[] =
     "SwapGroup: Swap group id of the swap group to which this window is assigned. Zero for none.\n"
     "SwapBarrier: Swap barrier id of the swap barrier to which this windows swap group is assigned. Zero for none.\n"
     "SysWindowHandle: Low-level windowing system specific window handle of the onscreen window.\n"
+    "SysWindowInteropHandle: Low-level windowing system specific window-related auxiliary handle of the onscreen window.\n"
     "ExternalMouseMultFactor: Scaling factor to apply for remapping input coordinates on some systems, e.g., by RemapMouse.m.\n"
     "VRRMode: Actual selected mode for VRR stimulus onset scheduling (1 = auto maps to actual choice): 0 = Off, 2 = Simple, 3 = OwnScheduled.\n"
     "VRRStyleHint: Style hint code for the current active VRR stimulation timing style, ie. what is assumed about timing behaviour of the paradigm.\n"
@@ -237,8 +238,8 @@ PsychError SCREENGetWindowInfo(void)
                                 "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", "GPUMinorType",
                                 "DisplayCoreId", "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
                                 "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags", "SwapGroup", "SwapBarrier", "SysWindowHandle", "ExternalMouseMultFactor", "VRRMode",
-                                "VRRStyleHint", "VRRLatencyCompensation", "GLDeviceUUID" };
-    const int fieldCount = 43;
+                                "VRRStyleHint", "VRRLatencyCompensation", "GLDeviceUUID", "SysWindowInteropHandle" };
+    const int fieldCount = 44;
     PsychGenericScriptType *s;
 
     PsychWindowRecordType *windowRecord;
@@ -551,6 +552,9 @@ PsychError SCREENGetWindowInfo(void)
         #else
             PsychSetStructArrayUnsignedInt64Element("SysWindowHandle", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.windowHandle, s);
         #endif
+
+        // Windowing system low-level onscreen window related handle used for graphics/display api interop in some way: macOS use only atm.
+        PsychSetStructArrayUnsignedInt64Element("SysWindowInteropHandle", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.deviceContext, s);
 
         // Scaling factor for input coordinate transformation functions like RemapMouse.m:
         PsychSetStructArrayDoubleElement("ExternalMouseMultFactor", 0, windowRecord->externalMouseMultFactor, s);

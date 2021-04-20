@@ -342,7 +342,7 @@ else
                         fprintf('LoadIdentityClut: ATI Radeon HD-2000 or later detected. Using type-0 LUT.\n');
                         gfxhwtype = 0;
                     end
-                elseif (IsLinux) && (~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'AMD')))
+                elseif IsLinux
                     % AMD GPU with DCE 10+ display engine or with a DCN display engine?
                     % If so, this will use AMD DisplayCore by default and starting with Linux 4.17
                     % and later kernels will require a type 0 lut for a chance of working at all:

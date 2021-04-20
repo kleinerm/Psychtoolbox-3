@@ -747,6 +747,10 @@ end
 % Return the given answers / used config:
 usedAnswers = answers;
 
+% Trigger libdc1394 workarounds if Screen does not work. Postinstall routine would
+% run this, but a NeuroDebian install would not, so call it here to handle ND as well:
+AssertOpenGL;
+
 % Our little ad for our services:
 if ~dontshowad && exist('PsychPaidSupportAndServices', 'file')
     PsychPaidSupportAndServices(1);

@@ -28,6 +28,9 @@ function HDRViewer(imfilepattern, highprecision, windowed, scalefactor, gpudebug
 %
 % 'highprecision' If set to 1, request floating point 16 fp16 display
 % output, instead of the default 10 bpc fixed point output of HDR-10.
+% If set to 2, will request a 16 bpc fixed point framebuffer, which allows for up
+% to 16 bpc linear precision, but in reality on early 2021 hardware at most 12 bpc.
+% On most operating-systems + driver + gpu combos this 16 bpc mode will fail.
 %
 % 'windowed' If set to 1 and running on MS-Windows, create a non-fullscreen
 % window to test windowed HDR mode. This is not yet supported on Linux, and
@@ -180,7 +183,7 @@ try
     screenid = max(Screen('Screens'));
     screenRect = Screen('Rect', screenid);
 
-    if windowed && IsWin
+    if windowed && ~IsLinux
         % Request non-fullscreen windowed output on MS-Window:
         rect = [0, 0, RectWidth(screenRect), RectHeight(screenRect) - 250];
     else
@@ -195,12 +198,18 @@ try
     % display, output color signals have 10 bpc precision.
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'EnableHDR', 'Nits', 'HDR10');
-    if highprecision
+    if highprecision == 1
         % Request fp16 output instead of 10 bpc output:
         PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
     end
+
+    if highprecision == 2
+        % Request rgba16 output instead of 10 bpc output:
+        PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer');
+    end
+
     [win, winrect] = PsychImaging('OpenWindow', screenid, 0, rect);
-    [xm, ym] = RectCenter(Screen('GlobalRect', win));
+    [xm, ym] = RectCenter(Screen('Rect', win));
     SetMouse(xm, ym, win);
     HideCursor(win);
 
@@ -315,6 +324,11 @@ try
         % of our HDR display, relate it to the maximum luminance of the current
         % image, and use steps in 1% increments of that:
         hdrProperties = PsychHDR('GetHDRProperties', win);
+        if ~hdrProperties.Valid
+            hdrProperties.MaxLuminance = 600;
+            hdrProperties.MaxFrameAverageLightLevel = 350;
+        end
+
         sfstep = hdrProperties.MaxLuminance / maxCLL * 0.1;
 
         % Scale intensities by some factor. Here we set the default value:
@@ -502,29 +516,31 @@ try
                 [xm, ym, buttons] = GetMouse(win);
 
                 % Take a screenshot of the pixel below the mouse:
-                mouseposrgb = Screen('GetImage', win, OffsetRect([0 0 1 1], xm, ym), 'drawBuffer', 1);
-                msg = sprintf('RGB at cursor position (%f, %f): (%f, %f, %f) nits.\n', xm, ym, mouseposrgb);
-                [~, ny] = DrawFormattedText(win, msg, 0, ny, [100 100 0]); %#ok<ASGLU>
+                mouseposrgb = Screen('GetImage', win, ClipRect(OffsetRect([0 0 1 1], xm, ym), winrect), 'drawBuffer', 1);
+                if ~isempty(mouseposrgb)
+                    msg = sprintf('RGB at cursor position (%f, %f): (%f, %f, %f) nits.\n', xm, ym, mouseposrgb);
+                    [~, ny] = DrawFormattedText(win, msg, 0, ny, [100 100 0]); %#ok<ASGLU>
 
-                % Draw tiny yellow cursor dot:
-                [~, mi] = max(mouseposrgb);
-                switch (mi)
-                    case 1
-                        cursorcolor = [0, 200, 200];
-                    case 2
-                        cursorcolor = [200, 0, 200];
-                    case 3
-                        cursorcolor = [200, 200, 0];
-                end
+                    % Draw tiny yellow cursor dot:
+                    [~, mi] = max(mouseposrgb);
+                    switch (mi)
+                        case 1
+                            cursorcolor = [0, 200, 200];
+                        case 2
+                            cursorcolor = [200, 0, 200];
+                        case 3
+                            cursorcolor = [200, 200, 0];
+                    end
 
-                % Low level debugging enabled?
-                if gpudebug
-                    % Print out color sample from user-facing virtual framebuffer - values in nits:
-                    fprintf(msg);
-                    % Make sure our cursor does not occlude the sample location for debug readback:
-                    Screen('FrameRect', win, cursorcolor, CenterRectOnPoint([0 0 4 4], xm, ym));
-                else
-                    Screen('DrawDots', win, [xm, ym], 3, cursorcolor);
+                    % Low level debugging enabled?
+                    if gpudebug
+                        % Print out color sample from user-facing virtual framebuffer - values in nits:
+                        fprintf(msg);
+                        % Make sure our cursor does not occlude the sample location for debug readback:
+                        Screen('FrameRect', win, cursorcolor, CenterRectOnPoint([0 0 4 4], xm, ym));
+                    else
+                        Screen('DrawDots', win, [xm, ym], 3, cursorcolor);
+                    end
                 end
 
                 if buttons(1)
