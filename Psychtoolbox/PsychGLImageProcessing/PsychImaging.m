@@ -1354,8 +1354,16 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % * 'UseVulkanDisplay' Display this onscreen window using a Vulkan-based display
 %   backend. This only works on graphics card + operating system combinations
 %   which support both the OpenGL and Vulkan rendering api's and OpenGL-Vulkan
-%   interop. As of October 2020 this would be modern AMD and NVidia graphics cards
+%   interop. As of April 2021 this would be modern AMD and NVidia graphics cards
 %   under modern GNU/Linux (Ubuntu 18.04-LTS and later) and Microsoft Windows-10.
+%
+%   Apple macOS 10.15.4 Catalina and later is also supported, if you install the
+%   3rd party Khronos open-source MoltenVK "Vulkan on Metal" driver. However, this
+%   support is very unreliable wrt. stimulus timing at least on macOS 10.15, due to
+%   severe bugs in Apple's macOS 10 Metal graphics api, which only Apple could fix.
+%   Performance is also miserable, achieving at most a framerate that is half the
+%   video refresh rate of the display monitor. The status on macOS 11 is unknown
+%   as of April 2021. Do not ask us for help in using this on macOS, don't trust it!
 %
 %   At the moment 'UseVulkanDisplay' does not provide any advantages for standard
 %   visual stimulus display tasks, quite the contrary! The current implementation
@@ -3147,6 +3155,10 @@ if ~isempty(floc)
     if ~useHDR || isempty(find(mystrcmp(reqs, 'UseStaticHDRHack')))
         % No -> Standard operations: Add imaging mode flags for handing rendered images to Vulkan:
         imagingMode = mor(imagingMode, kPsychNeedFinalizedFBOSinks);
+
+        if IsOSX
+            imagingMode = mor(imagingMode, kPsychUseExternalSinkTextures);
+        end
 
         % Mark full use of Vulkan:
         useVulkan = 1;

@@ -64,6 +64,9 @@ GLenum glewContextInit(void);
 // source tree, as permitted by license, just like presentation_timing-protocol.c:
 #include "presentation_timing-client-protocol.h"
 
+// XDG shell protocol:
+#include "xdg_shell-client-protocol.h"
+
 #define ARRAY_LENGTH(a) (sizeof (a) / sizeof (a)[0])
 
 // These are defined in PsychScreenGlueWayland.c:
@@ -766,7 +769,42 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
     }
 
     // Create our onscreen window:
-    window = waffle_window_create(config, width, height);
+    window = NULL;
+
+    if (FALSE) {
+        // Old style: Use Waffle for this -- Too restricted for our purpose as it does not
+        // allow definition of the wayland output (aka PTB screen aka monitor) to display
+        // the window on in fullscreen mode. We use our own code below via xdg_toplevel_set_fullscreen()...
+        // Code left here for now for testing Waffle itself...
+
+        // Fullscreen opaque?
+        if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (windowLevel < 1000 || windowLevel >= 2000)) {
+            // This works for compositors which support xdg shell:
+            // NOTE: Does not work for selection of video output! Compositor decides!
+            intptr_t window_attrib_list[3];
+            attribcount = 0;
+            window_attrib_list[attribcount++] = WAFFLE_WINDOW_FULLSCREEN;
+            window_attrib_list[attribcount++] = true;
+            window_attrib_list[attribcount++] = 0;
+            window = waffle_window_create2(config, window_attrib_list);
+            if (!window && (PsychPrefStateGet_Verbosity() > 1))
+                printf("\nPTB-WARNING: Could not create Wayland fullscreen window: %s\n", waffle_error_to_string(waffle_error_get_code()));
+        }
+    }
+
+    // Create onscreen window, in windowed non-fullscreen configuration first:
+    if (!window) {
+        window = waffle_window_create(config, width, height);
+    }
+
+    if (!window) {
+        if (PsychPrefStateGet_Verbosity() > 0)
+            printf("\nPTB-ERROR: Could not create Wayland window [waffle_window_create() failed]: %s\n", waffle_error_to_string(waffle_error_get_code()));
+
+        PsychUnlockDisplay();
+        return (FALSE);
+    }
+
     wafflewin = waffle_window_get_native(window);
     wayland_window = wafflewin->wayland;
 
@@ -888,31 +926,39 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
         // Done with defining input and display regions, so destroy our region:
         wl_region_destroy(region);
 
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: Onscreen window uses: wl_shell_surface %p, xdg_toplevel %p\n", wayland_window->wl_shell_surface, wayland_window->xdg_toplevel);
+
         // Is this supposed to be a fullscreen window?
         if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (windowLevel < 1000 || windowLevel >= 2000)) {
+            int milliHz = 0;
+
             // Opaque fullscreen onscreen window setup:
-            // WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER - Switch video output to optimal resolution to accomodate the
-            // size of the surface, ie., the mode with the smallest resolution that can contain the surface. Add black
-            // borders for padding if a perfect fit isn't possible.
-            // TODO implement: 0 = Target refresh rate -- Zero == Don't change rate.
             if (PsychPrefStateGet_Verbosity() > 3) {
-                printf("PTB-INFO: Opening fullscreen onscreen wl_shell_surface() window on screen %i - wl_output %p\n",
+                printf("PTB-INFO: Opening fullscreen onscreen window on screen %i - wl_output %p\n",
                        screenSettings->screenNumber, displayWaylandOutputs[screenSettings->screenNumber]);
             }
 
             // Video refresh rate switch requested?
             if (displayOriginalCGSettingsValid[screenSettings->screenNumber]) {
                 // Video refresh rate switch requested:
-                int milliHz = (int) (PsychGetNominalFramerate(screenSettings->screenNumber) * 1000.0 + 0.5);
+                milliHz = (int) (PsychGetNominalFramerate(screenSettings->screenNumber) * 1000.0 + 0.5);
+
                 if (PsychPrefStateGet_Verbosity() > 3) {
                     printf("PTB-INFO: Requesting video mode switch for fullscreen windw to a target of %i x %i pixels at %i milliHz.\n", width, height, milliHz);
                 }
-
-                wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, milliHz, displayWaylandOutputs[screenSettings->screenNumber]);
             }
-            else {
-                // No video refresh rate switch requested:
-                wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, 0, displayWaylandOutputs[screenSettings->screenNumber]);
+
+            if (wayland_window->wl_shell_surface) {
+                // WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER - Switch video output to optimal resolution to accomodate the
+                // size of the surface, ie., the mode with the smallest resolution that can contain the surface. Add black
+                // borders for padding if a perfect fit isn't possible.
+                wl_shell_surface_set_fullscreen(wayland_window->wl_shell_surface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DRIVER, milliHz, displayWaylandOutputs[screenSettings->screenNumber]);
+            } else {
+                // XDG shell: Not much options. We can set it fullscreen, requesting a specific target wayland output,
+                // that's it. Everything else is at the compositors discretion:
+                xdg_toplevel_set_fullscreen(wayland_window->xdg_toplevel, displayWaylandOutputs[screenSettings->screenNumber]);
+                waffle_window_show(window);
             }
         }
         else {
@@ -922,11 +968,17 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType * screenSettings, P
             }
 
             // Show it as toplevel window:
-            wl_shell_surface_set_toplevel(wayland_window->wl_shell_surface);
+            if (wayland_window->wl_shell_surface)
+                wl_shell_surface_set_toplevel(wayland_window->wl_shell_surface);
+            else
+                waffle_window_show(window);
         }
 
         // Give the window a title:
-        wl_shell_surface_set_title(wayland_window->wl_shell_surface, windowTitle);
+        if (wayland_window->wl_shell_surface)
+            wl_shell_surface_set_title(wayland_window->wl_shell_surface, windowTitle);
+        else
+            xdg_toplevel_set_title(wayland_window->xdg_toplevel, windowTitle);
 
         // Make it so!
         wl_display_roundtrip(wl_display);
@@ -1403,8 +1455,11 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
     // or occluding us. TODO: Find a way to control for those things.
     if ((windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_WindowShieldingLevel() >= 2000) &&
         !(windowRecord->swapcompletiontype & WP_PRESENTATION_FEEDBACK_KIND_ZERO_COPY) && (PsychPrefStateGet_Verbosity() > 1)) {
-        printf("PTB-WARNING: Flip for window %i didn't use zero copy pageflips. Stimulus may not display onscreen pixel-perfect and exactly as specified by you!\n",
-               windowRecord->windowIndex);
+        // Do some rate limiting for the moment - Only one warning every 600 flips:
+        static unsigned int ratelimitcounter = 0;
+        if ((ratelimitcounter++ % 600) == 0)
+            printf("PTB-WARNING: Flip for window %i didn't use zero copy pageflips %i times. Stimulus may not display pixel-perfect as specified.\n",
+                   windowRecord->windowIndex, ratelimitcounter);
     }
 
     // Return swap completion msc:
@@ -1893,7 +1948,7 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     if (!(windowRecord->specialflags & kPsychOpenMLDefective)) {
         // This was needed to compensate for Westons 1 frame composition lag, but is
         // no longer needed as of Weston 1.8+ due to Pekka's lag reduction patch.
-        if (FALSE) {
+        if (FALSE && onlyForCalibration) {
             targetTime -= nominalIFI;
             if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Compensating for Wayland/Weston 1 frame composition lag of %f msecs.\n", nominalIFI * 1000.0);
         }
@@ -1951,8 +2006,8 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
                 targetTime += delayFromFrameStart;
 
                 if (PsychPrefStateGet_Verbosity() > 4) {
-                    printf("PTB-DEBUG: Setting swap targetTime to %f secs [fudge %f secs] for Wayland composition compensation.\n",
-                           targetTime, delayFromFrameStart);
+                    printf("PTB-DEBUG: Setting swap targetTime to %f secs [fudge %f secs] %f msecs after last swap, for Wayland composition compensation.\n",
+                           targetTime, delayFromFrameStart, 1000 * (targetTime - windowRecord->time_at_last_vbl));
                 }
             }
             else {

@@ -74,7 +74,7 @@ if size(oldmappings, 2) < 2
 end
 
 % Open windows:
-oldsync = Screen('Preference', 'SkipSyncTests', 2);
+oldsync = Screen('Preference', 'SkipSyncTests', 1);
 w(1) = Screen('OpenWindow', screenids(1), 0);
 Screen('Preference', 'SkipSyncTests', oldsync);
 

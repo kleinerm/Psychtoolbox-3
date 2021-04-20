@@ -71,7 +71,7 @@ end
 % OSX handling of Retina displays:
 if IsOSX && (Screen('WindowKind', windowPtrOrScreenNumber) == 1)
     winfo = Screen('GetWindowInfo', windowPtrOrScreenNumber);
-    if ~winfo.IsFullscreen || (Screen('Preference', 'WindowShieldingLevel') < 2000)
+    if ~winfo.IsFullscreen || (Screen('Preference', 'WindowShieldingLevel') < 2000) || winfo.SysWindowHandle > 0
         % Cocoa - Half the factor is right:
         isf = winfo.ExternalMouseMultFactor / 2;
     else
@@ -81,6 +81,12 @@ if IsOSX && (Screen('WindowKind', windowPtrOrScreenNumber) == 1)
 
     x = x * isf;
     y = y * isf;
+end
+
+if IsLinux && (Screen('WindowKind', windowPtrOrScreenNumber) == 1)
+    rect = Screen('GlobalRect', windowPtrOrScreenNumber);
+    x = x + rect(1);
+    y = y + rect(2);
 end
 
 Screen('SetMouseHelper', windowPtrOrScreenNumber, round(x), round(y), mouseid, detachFromMouse);

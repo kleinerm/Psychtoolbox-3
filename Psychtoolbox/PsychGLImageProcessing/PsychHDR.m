@@ -12,19 +12,40 @@ function varargout = PsychHDR(cmd, varargin)
 % interoperation. Additionally, the Vulkan driver, graphics card, and your display
 % device must support at least the HDR-10 standard for high dynamic range display.
 %
-% As of October 2020, these graphics cards would be suitable:
+% As of April 2021, these graphics cards would be suitable:
 %
 % - Modern AMD (RX 500 "Polaris" and later recommended) and NVidia (GeForce 1000
-%   "Pascal" and later recommended) graphics cards under a Windows-10 system, which
-%   is up to date for the year 2020.
+%   "Pascal" and later recommended) graphics cards under a Microsoft Windows-10
+%   operating system, which is up to date for the year 2021.
 %
 % - Modern AMD graphics cards (like above) under modern GNU/Linux (Ubuntu 18.04.4-LTS
 %   at a minimum (untested!), or better Ubuntu 20.04-LTS and later recommended), with
 %   the AMD open-source Vulkan driver "amdvlk". Install driver release 2020-Q3.5 from
-%   September 2020, or later versions. This webpage has amdvlk download and installation
-%   instructions:
+%   September 2020, which was tested, or likely any later versions. This webpage has
+%   amdvlk download and installation instructions:
 %
 %   https://github.com/GPUOpen-Drivers/AMDVLK/releases
+%
+% - Some Apple Mac computers, e.g., the MacBookPro 2017 15 inch Retina with AMD
+%   graphics, under macOS 10.15.4 Catalina or later, do now have experimental and
+%   limited HDR support. This has been tested with macOS 10.15.7 Catalina final,
+%   on the MBP 2017 with AMD Radeon Pro 560 in a limited way on an external HDR-10
+%   monitor, connected via USB-C to DisplayPort adapter. Precision of content
+%   reproduction during leight testing was worse than on Linux and Windows. The
+%   presentation timing was awful and unreliable, and performance was bad. Flexibility
+%   and functionality was very limited in comparison to Windows-10, and even more so
+%   compared to Linux. Querying HDR display properties from the HDR display is not
+%   supported due to macOS limitations, and high performance HDR movie playback is
+%   completely missing due to severe deficiencies of Apple's OpenGL implementation.
+%   This uses the Apple Metal EDR "Extended dynamic range" support in macOS. Note
+%   that Vulkan and HDR support on macOS is considered alpha quality at best, and
+%   we do not provide any support for this feature. As always, if you care about
+%   the quality of your results, use preferrably Linux, or Windows-10 instead.
+%
+%   Download link for the MoltenVK open-source "Vulkan on Metal" driver:
+%
+%   https://vulkan.lunarg.com/sdk/home
+%
 %
 % HDR functionality is demonstrated in multiple demos:
 %
@@ -363,8 +384,19 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
                     eotfName = 'scRGB-Linear';
                     doPQEncode = 0;
 
-                    % Linear encoding is simply multiplication by 125:
-                    scalefactor = scalefactor * 125;
+                    % macOS as usual needs special treatment...
+                    if IsOSX
+                        % As of MoltenVK 1.1.3, HDRMetaData setup via vkSetHDRMetadataEXT()
+                        % hard-codes a Metal surface CAEDRMetadata opticalOutputScale
+                        % factor of 1.0 nits, which means that provided pixel
+                        % color values are supposed to be interpreted as
+                        % unit of nits. Therefore we must scale by 10000
+                        % for a mapping from [0; 1] input to [0; 10000 nits]:
+                        scalefactor = scalefactor * 10000;
+                    else
+                        % Linear encoding is simply multiplication by 125:
+                        scalefactor = scalefactor * 125;
+                    end
 
                     % Need CSC from BT-2020 to scRGB:
                     doCSC = 1;

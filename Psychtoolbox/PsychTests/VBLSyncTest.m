@@ -253,7 +253,7 @@ if nargin < 10
 end
 
 try
-    PsychDefaultSetup(1);
+    PsychDefaultSetup(2);
     RestrictKeysForKbCheck(KbName('ESCAPE'));
 
     if IsWin && 0
@@ -279,6 +279,8 @@ try
     % Open double-buffered window: Optionally enable stereo output if
     % stereo == 1.
     PsychImaging('PrepareConfiguration')
+    PsychImaging('AddTask', 'General', 'UseRetinaResolution');
+
     if usedpixx
         % Use DataPixx for external timestamping for quick basic correctness
         % tests.
@@ -290,13 +292,8 @@ try
         PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
     end
 
-    if 0
-        w=PsychImaging('OpenWindow',screenNumber, 0,[0 0 1430 900],[],[], stereo);
-        Screen('GetFlipInfo', w, 1);
-    else
-        w=PsychImaging('OpenWindow',screenNumber, 0, [],[],[], stereo);
-    end
-    
+    w = PsychImaging('OpenWindow',screenNumber, 0, [], [], [], stereo);
+
     % Query effective stereo mode, as Screen() could have changed it behind our
     % back, e.g., if we asked for mode 1 but Screen() had to fallback to
     % mode 11:
@@ -317,24 +314,24 @@ try
     % If OS returns 0, then we assume that we run on a flat-panel with
     % fixed 60 Hz refresh interval.
     framerate=Screen('NominalFramerate', w);
-    if (framerate==0)
-        framerate=60;
-    end;
+    if framerate == 0
+        framerate = 60;
+    end
 
-    ifinominal=1 / framerate;
+    ifinominal = 1 / framerate;
     fprintf('The refresh interval reported by the operating system is %2.5f ms.\n', ifinominal*1000);
     
     % Perform a calibration loop to determine the "real" interframe interval
     % for the given gfx-card + monitor combination:
     Screen('TextSize', w, 24);
-    Screen('DrawText', w, 'Measuring monitor refresh interval... This can take up to 20 seconds...', 10, 10, 255);
+    Screen('DrawText', w, 'Measuring monitor refresh interval... This can take up to 20 seconds...', 10, 10, 1);
     
-    if (stereo>0)
+    if stereo > 0
         % Show something for the right eye as well in stereo mode:
         Screen('SelectStereoDrawBuffer', w, 1);
         Screen('FillRect', w, 0);
-        Screen('DrawText', w, 'Stereo yeah!!!', 10, 40, 255);
-    end;
+        Screen('DrawText', w, 'Stereo yeah!!!', 10, 40, 1);
+    end
     
     % Measure monitor refresh interval again, just for fun...
     % This will trigger a calibration loop of minimum 100 valid samples and return the
@@ -393,7 +390,7 @@ try
             % will actually ignore the deadline and just Flip at the next
             % possible retrace...
             tdeadline=0;
-        end;
+        end
         
         if usedpixx
             % Ask for a Datapixx onset timestamp for next 'Flip':
@@ -422,7 +419,7 @@ try
 
         if usedpixx
             % Ask for a Datapixx onset timestamp from last 'Flip':
-            [boxTime(i), sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp'); %#ok<ASGLU>
+            [boxTime(i), sodpixx(i)] = PsychDataPixx('GetLastOnsetTimestamp');
             dpixxdelay(i) = GetSecs;
         end
         
@@ -456,13 +453,18 @@ try
         % display is requested:
         Screen('SelectStereoDrawBuffer', w, 0);
         pos=mod(i, screenheight);
-        Screen('FillRect', w, mod(i, 255), [pos+20 pos+20 pos+400 pos+400]);
-        % Screen('FillRect', w, mod(i, 2)*255);
-        if (stereo>0)
+        Screen('FillRect', w, 1 - mod(i, 100)/100, [pos+20 pos+20 pos+400 pos+400]);
+
+        if usevulkan && IsOSX
+            Screen('TextSize', w, 60);
+            Screen('DrawText', w, num2str(i), pos+40, pos+300, [1, 0, 0]);
+        end
+
+        if stereo
             % Show something for the right eye as well in stereo mode:
             Screen('SelectStereoDrawBuffer', w, 1);
-            Screen('FillRect', w, mod(i, 255), [pos+40 pos+20 pos+420 pos+400]);
-        end;
+            Screen('FillRect', w, 1 - mod(i, 100)/100, [pos+40 pos+20 pos+420 pos+400]);
+        end
 
         if flushpipe==1
             % Give a hint to PTB that no further drawing commands will
@@ -481,16 +483,17 @@ try
             % real experiments as it will significantly degrade
             % performance and can *cause* deadline misses.
             td(i)=Screen('DrawingFinished', w, clearmode, synchronous);
-        end;
+        end
 
         % Sleep a random amount of time, just to simulate some work being
         % done in the Matlab loop:
         WaitSecs(wt(i));
+
         % And give user a chance to abort the test by pressing any key:
         if KbCheck
             break;
-        end;
-    end; % Draw next frame...
+        end
+    end % Draw next frame...
 
     % calculate clock skew corrected Datapixx onset timestamps
     if usedpixx>1
@@ -518,7 +521,7 @@ try
     dpixxdelay = dpixxdelay(1:n);
     tSecondary = tSecondary(1:n);
     sodpixx = sodpixx(1:n);
-    boxTime = boxTime(1:n);
+    boxTime = boxTime(1:n); %#ok<NASGU>
 
     % Count and output number of missed flip on VBL deadlines:
     numbermisses=0;
@@ -640,7 +643,7 @@ try
         figure
         plot(td*1000);
         title('Total duration of all drawing commands in milliseconds:');
-    end;
+    end
     
     if IsWin && (tSecondary(1)>0 && tSecondary(2)>0)
         figure;
@@ -684,5 +687,8 @@ catch %#ok<*CTCH>
     Priority(0);
     psychrethrow(psychlasterror);
 end %try..catch..
+
+% Reset to cross-platform default with old color encoding:
+PsychDefaultSetup(1);
 
 return

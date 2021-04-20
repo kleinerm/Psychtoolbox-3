@@ -135,6 +135,13 @@ PsychError SCREENConfigureDisplay(void)
                     "settings. The meaning of specific values is GPU and vendor specific and only useful for experts.\n"
                     "Example call: Screen('ConfigureDisplay', 'Dithering', screenNumber, ditherEnable); "
                     "\n\n"
+                    "'RequestMinimumOutputPrecision' Try to request a specific minimum output depth 'minBpc' for video signals on a "
+                    "X-Screen under Linux/X11. This is currently only supported on Linux/X11, and it does not guarantee that "
+                    "you will get the requested minimum precision, as various hardware constraints in the graphics card, cabling, "
+                    "display device, and available memory bandwidth can lead to a lower precision than requested. In the end it "
+                    "is only a polite request to the graphics driver. Example call:\n"
+                    "Screen('ConfigureDisplay', 'RequestMinimumOutputPrecision', screenNumber, minBpc); "
+                    "\n\n"
                     "'Scanout': Retrieve or set scanout parameters for a given output 'outputId' of screen 'screenNumber'. "
                     "Returns a struct 'oldSettings' with the current settings for that output. Only supported on Linux.\n"
                     "It returns and accepts the following optional parameters:\n\n"
@@ -500,8 +507,34 @@ PsychError SCREENConfigureDisplay(void)
     }
 
 #if PSYCH_SYSTEM != PSYCH_LINUX
-    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is only supported on Linux.");
+    PsychErrorExitMsg(PsychError_unimplemented, "Sorry, unless you made a typo in the function name, this function is likely only supported on Linux.");
 #else
+
+    // Usercode wants to manually request a higher video output bit depth on an output?
+    if (PsychMatch(settingName, "RequestMinimumOutputPrecision")) {
+        int minBpc;
+
+        // Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.
+        PsychCopyInScreenNumberArg(2, TRUE, &screenNumber);
+        if (screenNumber == -1) PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen or invalid screen number.");
+
+        // Get minimum bpc for video output:
+        PsychCopyInIntegerArg(3, TRUE, &minBpc);
+        if (minBpc < 8) PsychErrorExitMsg(PsychError_user, "Invalid minimum output bit depth requested. Must be at least 8.");
+
+        // Running under Linux/X11 native?
+        #if !defined(PTB_USE_WAFFLE)
+            // Request at least minBpc video signal precision on all video outputs associated with screen 'screenNumber':
+            // Note: Actual precision can be lower, subject to constraints of the video output, cable, display sink and hardware,
+            // also due to video bandwidth constraints.
+            PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) PsychOSEnsureMinimumOutputPrecision(screenNumber, minBpc));
+        #else
+            // Nope: Report failure back:
+            PsychCopyOutDoubleArg(1, kPsychArgOptional, 0);
+        #endif
+
+        return(PsychError_none);
+    }
 
     if(!PsychMatch(settingName, "Scanout")) PsychErrorExitMsg(PsychError_user, "Unknown 'setting' name provided. Typo?");
 

@@ -334,9 +334,9 @@ psych_bool PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord
     // Either screenid from windowRecord or our special -1 "all Screens" Id:
     screenId = (windowRecord) ? windowRecord->screenNumber : -1;
 
-    // We only support Radeon GPU's, nothing else:
+    // We only support pre-DCE12 Radeon GPU's, nothing else:
     if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, &fNumDisplayHeads) ||
-        (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0xffff)) {
+        (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 120)) {
         return(FALSE);
     }
 
@@ -532,9 +532,9 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
     // more generic, abstracted out for the future, but as a starter this will do:
     screenId = windowRecord->screenNumber;
 
-    // We only support Radeon GPU's, nothing else:
+    // We only support pre-DCE12 Radeon GPU's, nothing else:
     if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, &fNumDisplayHeads) ||
-        (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 0xffff)) {
+        (gpuMaintype != kPsychRadeon) || (gpuMinortype >= 120)) {
         return;
     }
 
@@ -617,7 +617,7 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
 {
     #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
         int gpuMaintype, gpuMinortype, fNumDisplayHeads;
-        unsigned int updateStatus;
+        unsigned int updateStatus = 0;
         unsigned int value = 0;
 
         // If we are called, we know that 'windowRecord' is an onscreen window.
@@ -627,9 +627,10 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
         // Just need to check if GPU low-level access is supported:
         if (!PsychOSIsKernelDriverAvailable(screenId)) return(FALSE);
 
-        // We only support AMD Radeon/Fire GPU's and Intel IGPs, nothing else:
+        // We only support DCE AMD Radeon/Fire GPU's and Intel IGPs, nothing else:
         if (!PsychGetGPUSpecs(screenId, &gpuMaintype, &gpuMinortype, NULL, &fNumDisplayHeads) ||
-            (gpuMaintype != kPsychRadeon && gpuMaintype != kPsychIntelIGP)) {
+            (gpuMaintype != kPsychRadeon && gpuMaintype != kPsychIntelIGP) ||
+            (gpuMaintype == kPsychRadeon && (gpuMinortype >= 130 || gpuMinortype < 10))) {
             return(FALSE);
         }
 
@@ -646,8 +647,8 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
             value = PsychOSKDReadRegister(screenId, (headid == 0) ? RADEON_D1GRPH_CONTROL : RADEON_D2GRPH_CONTROL, NULL);
         }
 
-        if  ((gpuMaintype == kPsychRadeon) && (gpuMinortype >= 40)) {
-            // DCE-4 or later display hardware:
+        if  ((gpuMaintype == kPsychRadeon) && (gpuMinortype >= 40) && (gpuMinortype < 120)) {
+            // DCE-4 to DCE-11 display hardware:
             if (headid < 0 || headid > fNumDisplayHeads - 1) {
                 if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: PsychGetCurrentGPUSurfaceAddresses(): Invalid headId %i (greater than max %i) provided for DCE-4+ display engine!\n", headid, fNumDisplayHeads - 1);
                 return(FALSE);
@@ -664,6 +665,26 @@ psych_bool PsychGetCurrentGPUSurfaceAddresses(PsychWindowRecordType* windowRecor
 
             // Get display engine framebuffer scanout format:
             value = PsychOSKDReadRegister(screenId, EVERGREEN_GRPH_CONTROL + crtcoff[headid], NULL);
+        }
+
+        if  ((gpuMaintype == kPsychRadeon) && (gpuMinortype >= 120) && (gpuMinortype < 130)) {
+            // DCE-12.x display hardware:
+            if (headid < 0 || headid > fNumDisplayHeads - 1) {
+                if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: PsychGetCurrentGPUSurfaceAddresses(): Invalid headId %i (greater than max %i) provided for DCE-12 display engine!\n", headid, fNumDisplayHeads - 1);
+                return(FALSE);
+            }
+
+            // DCE 12 has 64-Bit addresses split in high/low 32-bit regs:
+            *primarySurface =   ((psych_uint64) PsychOSKDReadRegister(screenId, DCE12_GRPH_PRIMARY_SURFACE_ADDRESS_HIGH + crtcoff[headid], NULL) << 32) +
+                                ((psych_uint64) PsychOSKDReadRegister(screenId, DCE12_GRPH_PRIMARY_SURFACE_ADDRESS + crtcoff[headid], NULL));
+            *secondarySurface = ((psych_uint64) PsychOSKDReadRegister(screenId, DCE12_GRPH_SECONDARY_SURFACE_ADDRESS_HIGH + crtcoff[headid], NULL) << 32) +
+                                ((psych_uint64) PsychOSKDReadRegister(screenId, DCE12_GRPH_SECONDARY_SURFACE_ADDRESS + crtcoff[headid], NULL));
+            updateStatus =      PsychOSKDReadRegister(screenId, DCE12_GRPH_UPDATE + crtcoff[headid], NULL);
+
+            *updatePending = (updateStatus & EVERGREEN_GRPH_SURFACE_UPDATE_PENDING) ? TRUE : FALSE;
+
+            // Get display engine framebuffer scanout format:
+            value = PsychOSKDReadRegister(screenId, DCE12_GRPH_CONTROL + crtcoff[headid], NULL);
         }
 
         if (gpuMaintype == kPsychIntelIGP) {

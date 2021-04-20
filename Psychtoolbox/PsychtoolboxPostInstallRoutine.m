@@ -439,7 +439,7 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if (~IsLinux && (octavemajorv ~= 6 || octaveminorv ~= 1)) || ...
+    if (~IsLinux && (octavemajorv ~= 6 || ~ismember(octaveminorv, [1,2]))) || ...
         (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8) || (octavemajorv > 5)))
         fprintf('\n\n==============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
@@ -448,8 +448,8 @@ if IsOctave
             fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0, 4.2, 4.4, 5.1 or 5.2 series.\n');
             fprintf('WARNING: You can get Psychtoolbox for more recent versions of Octave from NeuroDebian.\n');
         else
-            % On Windows/OSX we only care about 6.1 atm:
-            fprintf('WARNING: only using Octave 6.1 with this version of Psychtoolbox.\n');
+            % On Windows/OSX we only care about 6.1 and 6.2 atm:
+            fprintf('WARNING: only using Octave 6.1 or 6.2 with this version of Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');

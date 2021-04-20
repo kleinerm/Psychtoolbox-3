@@ -25,6 +25,7 @@
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 double PsychCocoaGetBackingStoreScaleFactor(void* window);
+void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord);
 #endif
 
 // Pointer to master onscreen window during setup phase of stereomode 10 (Dual-window stereo):
@@ -955,6 +956,13 @@ PsychError SCREENOpenWindow(void)
                 windowRecord->internalMouseMultFactor = isf;
                 windowRecord->externalMouseMultFactor = 1.0;
             }
+
+            // Graphics api interop setup under Cocoa, e.g., for Vulkan MoltenVK interop.
+            // This is the point where we transition from OpenGL rendering and display to
+            // display via the external graphics consumer, ie. switching to the CAMetalLayer.
+            // OpenGL rendering to our onscreen window and OpenGL bufferswap will no longer
+            // work from here on, only OpenGL rendering to the interop FBO's/textures:
+            PsychCocoaAssignCAMetalLayer(windowRecord);
         }
         else {
             // CGL:
