@@ -2691,6 +2691,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                     else if ((verbosity > 8) && (result == VK_INCOMPLETE))
                         printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE (count %i) for presentID %i [current %i] returned old timestamp %f Fetching next one.\n",
                                window->index, count, pastTiming[0].presentID, targetPresentTimeG.presentID, (double) pastTiming[0].actualPresentTime / 1e9);
+
+                    if (result == VK_INCOMPLETE) fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, NULL);
                 } while (result == VK_INCOMPLETE);
 
                 for (i = 0; i < count; i++) {
