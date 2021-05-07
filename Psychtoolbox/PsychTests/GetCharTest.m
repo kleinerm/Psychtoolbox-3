@@ -300,9 +300,9 @@ try
             FlushEvents('keyDown');
             ListenChar(2);
             WaitSecs(10);
-            tChars=[];
+            tChars='';
             while CharAvail
-                tChars=[tChars GetChar];
+                tChars=[tChars GetChar]; %#ok<AGROW>
             end
             FlushEvents('keyDown');
             fprintf(['  You typed ' int2str(length(tChars)) ' characters during WaitSecs\n']);
