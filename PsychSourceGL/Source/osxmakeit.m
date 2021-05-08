@@ -202,14 +202,11 @@ if mode==15
     %
     % We link directly to MoltenVK, as we use some MVK functions which are
     % not yet part of the Vulkan standard, and thereby not supported by the
-    % Vulkan loader and layers, as of Mid-March 2021.
+    % Vulkan loader and layers, as of Mid-May 2021.
     %
-    % We link to OpenGL to implement OpenGL-Vulkan interop, and also must
-    % compile PsychVulkanCore.c as Objective-C file, as otherwise the
-    % MoltenVK functions needed for interop would not be available under
-    % C/C++.
+    % We link to OpenGL to implement OpenGL-Vulkan interop.
     try
-        mex -outdir ../Projects/MacOSX/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore CFLAGS="\$CFLAGS -x objective-c" LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include "Common/PsychVulkanCore/*.c" "OSX/Base/*.c" "Common/Base/*.c" -lvulkan -lMoltenVK
+        mex -outdir ../Projects/MacOSX/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore LDFLAGS="\$LDFLAGS -framework CoreServices -framework CoreFoundation -framework CoreAudio -framework OpenGL" -ICommon/Base -IOSX/Base -ICommon/PsychVulkanCore -I/usr/local/include "Common/PsychVulkanCore/*.c" "OSX/Base/*.c" "Common/Base/*.c" -lvulkan -lMoltenVK
     catch
         disp(psychlasterror);
     end

@@ -62,14 +62,6 @@
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_sdk_platform.h>
 
-#if PSYCH_SYSTEM == PSYCH_OSX
-// If we can't compile as Obj-C, e.g., on Octave, define needed prototypes ourselves:
-#ifndef __OBJC__
-VkResult vkUseIOSurfaceMVK(VkImage image, IOSurfaceRef ioSurface);
-void vkGetIOSurfaceMVK(VkImage image, IOSurfaceRef* pIOSurface);
-#endif
-#endif
-
 #ifndef VK_DRIVER_ID_NVIDIA_PROPRIETARY
 #define VK_DRIVER_ID_NVIDIA_PROPRIETARY VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR
 #endif
