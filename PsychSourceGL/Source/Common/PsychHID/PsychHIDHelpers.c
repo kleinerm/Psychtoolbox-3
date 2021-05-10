@@ -526,12 +526,19 @@ void PsychHIDVerifyInit(void)
     int inNumDeviceTypes = 2;
     psych_bool success = TRUE;
 
+    // Check for Catalina+ input monitoring permissions being denied.
+    // We make a failure here a fatal PsychHID startup error, which will disable PsychHID completely for
+    // the time being:
+    if (PsychHIDWarnAccessDenied(NULL))
+        PsychErrorExitMsg(PsychError_user, "PsychHID-CRITICAL: PsychHID disabled due to macOS security restrictions! Emergency shutdown! 'clear all' or restart your application.\n");
+
     // Build HID device list if it doesn't already exist:
     if (!HIDHaveDeviceList()) success = (psych_bool)HIDBuildDeviceList(0, 0);
 
     // This check can only be made against the 64-Bit HID Utilities, as the older 32-Bit
     // version is even more crappy and can't report meaningful error status:
     if (!success) {
+        printf("\n");
         printf("PsychHID-ERROR: Could not enumerate and attach to all HID devices (HIDBuildDeviceList(0,0) failed)!\n");
         printf("PsychHID-ERROR: One reason could be that some HID devices are already exclusively claimed by some 3rd party device drivers\n");
         printf("PsychHID-ERROR: or applications. I will now retry to only claim control of a hopefully safe subset of devices like standard\n");

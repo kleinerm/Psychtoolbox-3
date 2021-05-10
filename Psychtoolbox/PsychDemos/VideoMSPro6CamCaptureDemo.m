@@ -1,7 +1,7 @@
-function VideoMSPro6CamCaptureDemo(exposure, fullscreen, fullsize, moviename)
+function VideoMSPro6CamCaptureDemo(fullscreen, fullsize, moviename)
 % Demonstrate simple use of built-in front video camera of MS Surface Pro 6
 %
-% VideoMSPro6CamCaptureDemo([exposure=80][, fullscreen=0][, fullsize=0][, moviename])
+% VideoMSPro6CamCaptureDemo([fullscreen=1][, fullsize=1][, moviename])
 %
 % VideoMSPro6CamCaptureDemo initializes the MS Surface Pro 6 front camera,
 % then shows its video image in a Psychtoolbox window.
@@ -27,19 +27,15 @@ function VideoMSPro6CamCaptureDemo(exposure, fullscreen, fullsize, moviename)
 
 PsychDefaultSetup(1);
 
-if nargin < 1 || isempty(exposure)
-    exposure = 80;
+if nargin < 1 || isempty(fullscreen)
+    fullscreen = 1;
 end
 
-if nargin < 2 || isempty(fullscreen)
-    fullscreen = 0;
+if nargin < 2 || isempty(fullsize)
+    fullsize = 1;
 end
 
-if nargin < 3 || isempty(fullsize)
-    fullsize = 0;
-end
-
-if nargin < 4
+if nargin < 3
     moviename = [];
 end
 
@@ -61,7 +57,7 @@ recordingflags = 8;
 screenid=max(Screen('Screens'));
 
 try
-    if fullscreen < 1
+    if ~fullscreen
         win = Screen('OpenWindow', screenid, 0, roi);
     else
         win = Screen('OpenWindow', screenid, 0);
@@ -83,16 +79,13 @@ try
     % "do what you think is right" 'realmax' joker:
     Screen('StartVideoCapture', grabber, realmax, 1);
 
-    % Workarounds needed as of 8-Mar-2021:
-    %
-    % Manually override exposure time of camera, *after* StartVideoCapture, as
-    % libcamerasrc always resets exposure to maximum of about 1.5 seconds at start:
-    system(['v4l2-ctl -d /dev/v4l-subdev4 --set-ctrl exposure=' num2str(exposure)]);
-
-    % Do not flip image into upright position in camera, instead we do it in
-    % software via GStreamer. Reason: The flipping in the camera hw screws up
-    % color filtering and we get a pink image instead of proper colors:
-    system('v4l2-ctl -d /dev/v4l-subdev4 --set-ctrl vertical_flip=0');
+    for subdev=0:6
+        % Workaround needed as of 25-Apr-2021:
+        % Do not flip image into upright position in camera, instead we do it in
+        % software via GStreamer. Reason: The flipping in the camera hw screws up
+        % color filtering atm. and we'd get a pink image instead of proper colors:
+        system(sprintf('v4l2-ctl -d /dev/v4l-subdev%i --set-ctrl vertical_flip=0', subdev));
+    end
 
     dstRect = [];
     oldpts = 0;
