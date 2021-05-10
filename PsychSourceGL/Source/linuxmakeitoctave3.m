@@ -1,16 +1,29 @@
-function linuxmakeitoctave3(mode)
+function linuxmakeitoctave3(mode, neurodebianbuild)
+% linuxmakeitoctave3([mode=0][, neurodebianbuild=0])
 % This is the GNU/Linux version of makeit to build the Linux
 % mex files for Octave on Linux. It also creates copies of
 % the mex files build against Octave-3 and modifies them to
-% work on Octave-4.0 - 4.2. Files for Octave 4.4 - 5.2 are
+% also work on Octave-4.0 - 4.2. Files for Octave 4.4 - 5.2 are
 % built and stored into a different target folder.
+%
+%
+% mode: Optional, which mex file to build. Defaults to zero for Screen.mex,
+%       -1 builds all supported files.
+%
+% neurodebianbuild: Optional. Is this a build for Debian/NeuroDebian/dfsg?
+%                   Defaults to zero / false. Will omit some non-dfsg files from
+%                   build if set to 1 / true.
 
 if ~IsLinux || ~IsOctave
     error('This script is for Octave on Linux only!');
 end
 
-if nargin < 1
+if nargin < 1 || isempty(mode)
     mode = 0;
+end
+
+if nargin < 2 || isempty(neurodebianbuild)
+    neurodebianbuild = 0;
 end
 
 % Rebuild all request?
@@ -28,7 +41,7 @@ if mode == -1
     end
 
     for mode = modes
-        linuxmakeitoctave3(mode);
+        linuxmakeitoctave3(mode, neurodebianbuild);
     end
     elapsedsecs = toc;
     fprintf('Total rebuild time for all mex files was %f seconds. Bye.\n\n', elapsedsecs);
@@ -68,7 +81,7 @@ if mode==0
     striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
 end
 
-if mode==100
+if mode==100 && ~neurodebianbuild
     % Build Screen.mex with Wayland display backend, for desktop Linux:
     fprintf('Building Screen() for native Wayland.\n');
     mex "-W -std=gnu99 -Wno-deprecated-declarations" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_WAYLAND -DPTB_USE_WAFFLE -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/x86_64-linux-gnu/ -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/lib/i386-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -I/usr/include/colord-1 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1 -lwayland-cursor -lxkbcommon -lcolord
@@ -77,7 +90,7 @@ if mode==100
     striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
 end
 
-if mode==101
+if mode==101 && ~neurodebianbuild
     % Build Screen.mex with Waffle display backend, for desktop Linux:
     fprintf('Hmm, me likes some Waffle with this Screen :-)\n');
     mex "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_WAYLAND_PRESENT -DPTB_USE_WAFFLE -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/x86_64-linux-gnu/ -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/lib/i386-linux-gnu/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1
@@ -86,7 +99,7 @@ if mode==101
     striplibsfrommexfile([PsychtoolboxRoot target 'Screen.mex']);
 end
 
-if mode==1000
+if mode==1000 && ~neurodebianbuild
     % Build Screen.mex with Waffle display backend, for embedded/android devices:
     fprintf('Hmm, me likes some mobile Waffle with this Screen :-)\n');
     mex "-W -std=gnu99" --output ../Projects/Linux/build/Screen.mex -Wno-date-time -DPTBMODULE_Screen -DPTB_USE_WAFFLE -DPTB_USE_EGL -DPTB_USE_GLES1 -DPTB_USE_GSTREAMER -DPTBVIDEOCAPTURE_LIBDC -DGLEW_STATIC -DPTBOCTAVE3MEX -D_GNU_SOURCE -I/usr/local/include/waffle-1 -L/usr/local/lib/arm-linux-gnueabihf/ -I/usr/X11R6/include -I/usr/include/gstreamer-1.0 -I/usr/lib/arm-linux-gnueabihf/gstreamer-1.0/include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include -I/usr/lib/i386-linux-gnu/glib-2.0/include -I/usr/lib/arm-linux-gnueabihf/glib-2.0/include -I/usr/include/libxml2 -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib   Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c Common/Screen/tinyexr.cc -lc -ldl -lrt -lGLESv1_CM -lGL -lGLU -lX11 -lXext -lX11-xcb -lxcb -lxcb-dri3 -lgstreamer-1.0 -lgstbase-1.0 -lgstapp-1.0 -lgstvideo-1.0 -lgstpbutils-1.0 -lgobject-2.0 -lgmodule-2.0 -lxml2 -lgthread-2.0 -lglib-2.0 -lXxf86vm -ldc1394 -lusb-1.0 -lpciaccess -lXi -lXrandr -lXfixes -lwaffle-1
@@ -116,7 +129,7 @@ if mode==3
     striplibsfrommexfile([PsychtoolboxRoot target 'PsychPortAudio.mex']);
 end
 
-if mode==4
+if mode==4 && ~neurodebianbuild
     % Build Eyelink.mex:
     mex --output ../Projects/Linux/build/Eyelink.mex -Wno-date-time -DPTBMODULE_Eyelink -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/Eyelink -ICommon/Screen  Linux/Base/*.c Common/Base/*.c Common/Eyelink/*.c -leyelink_core -lc -lrt -ldl
     unix(['cp ../Projects/Linux/build/Eyelink.mex ' PsychtoolboxRoot target]);
@@ -144,7 +157,7 @@ if mode==6
     striplibsfrommexfile([PsychtoolboxRoot target 'moglcore.mex']);
 end
 
-if mode==6000
+if mode==6000 && ~neurodebianbuild
     % Build moglcore.mex for OpenGL-ES:
     curdir = pwd;
     cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/')
@@ -188,7 +201,7 @@ if mode==9
     striplibsfrommexfile([PsychtoolboxRoot target 'moalcore.mex']);
 end
 
-if mode == 10
+if mode == 10 && ~neurodebianbuild
     % Build PsychCV
     mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include  Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c -lc -lrt -ldl /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a -lglut
     %mex --output ../Projects/Linux/build/PsychCV.mex -Wno-date-time -DPTBMODULE_PsychCV -DPTBOCTAVE3MEX -DPSYCHCV_USE_OPENCV -ICommon/Base -ICommon/PsychCV -ILinux/Base -I../Cohorts/ARToolkit/include -I/usr/include/opencv Common/Base/*.c Linux/Base/*.c Common/PsychCV/*.c Common/PsychCV/OpenEyesCVEyeTracker/*.cc -lc -lrt -ldl -lopencv_core -lopencv_imgproc -lopencv_highgui /usr/local/lib/libARMulti.a /usr/local/lib/libARgsub.a /usr/local/lib/libARgsub_lite.a /usr/local/lib/libARgsubUtil.a /usr/local/lib/libAR.a -lglut
@@ -210,7 +223,7 @@ if mode == 11
     striplibsfrommexfile([PsychtoolboxRoot target 'pnet.mex']);
 end
 
-if mode==12
+if mode==12 && ~neurodebianbuild
     % Build PsychOculusVRCore.mex:
     try
         % Pure C compile:
