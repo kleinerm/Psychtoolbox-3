@@ -132,7 +132,7 @@ if doclear == 1
                 PsychHID('KbQueueStart');
             end
             
-            if (IsOSX(1) || (IsOctave && IsGUI))
+            if IsOctave && IsGUI
                 % Enable keystroke redirection via kbqueue and pty to bypass
                 % blockade of onscreen windows:
                 PsychHID('KeyboardHelper', -14);

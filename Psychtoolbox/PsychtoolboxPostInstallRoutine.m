@@ -800,4 +800,15 @@ if IsWin
     clear all;
 end
 
+if IsOSX
+    try
+        % Dummy call to trigger PsychHID on OSX, which in turn may trigger
+        % the diagnostic and troubleshooting instructions for Apples latest
+        % macOS Catalina+ security bullshit - Windows Vista, Apple edition:
+        KbCheck;
+    catch
+        clear PsychHID;
+    end
+end
+
 return;
