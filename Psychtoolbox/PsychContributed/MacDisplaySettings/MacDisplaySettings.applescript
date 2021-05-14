@@ -1,10 +1,10 @@
 (*
 MacDisplaySettings.applescript
 Denis G. Pelli, denis.pelli@nyu.edu
-June 11, 2020.
+May 13, 2021.
 
 INTRODUCTION
-This applescript run handler allows you read and set seven parameters of
+This applescript run handler allows you read and set seven parameters in
 the macOS System Preferences Displays panel: Brightness (slider),
 "Automatically adjust brightness" (checkbox), True Tone (checkbox)
 (present only on some Macs made in 2018 or later),  Night Shift (pop up
@@ -13,16 +13,16 @@ Profiles For This Display Only" checkbox. Apple invites users to use these
 parameters to personally customize their experience by enabling dynamic
 adjustments of all displayed images in response to personal preference,
 ambient lighting, and time of day. Users seem to like that, but those
-adjustments could defeat our efforts to calibrate the display one day
-and, at a later date, use our calibrations to reliably present an
-accurately specified stimulus. MacDisplaySettings aims to satisfy
-everyone, by allowing your calibration and test programs to use the
-computer in a fixed state, unaffected by user whims, ambient lighting,
+adjustments could defeat an experimenter's efforts to calibrate the 
+display one day and, at a later date, use the calibrations to reliably 
+present an accurately specified stimulus. MacDisplaySettings aims to 
+satisfy everyone, by allowing your calibration and test programs to use 
+the computer in a fixed state, unaffected by user whims, ambient lighting,
 and time of day, while saving and restoring whatever custom states the
 users have customized it to. MacDisplaySettings reports and controls
-these five settings. It allows you to read their current states, set
+these seven settings. It allows you to read their current states, set
 them to standard values for your critical work, and, when you're done,
-restore them to their original values.
+restore them whatever the values were before the experiment.
 
 I wrote this script to be invoked from MATLAB, but you could call it
 from any application running under macOS. To support an external monitor
@@ -46,6 +46,7 @@ nightShiftManual      the Night Shift Manual checkbox (true or false)
 showProfilesForThisDisplayOnly	the checkbox (true or false)
 profile               name of selection in Color Profile menu (text)
 profileRow            row # of selection in Color Profile menu (integer)
+profileFilename name of file inside folder iccroot().
 
 INPUT ARGS: The screenNumber, if provided, must be an integer of an
 available screen, i.e. one of the values returned by Screen('Screens'). If
@@ -53,15 +54,14 @@ newProfileRow is specified then newProfile is ignored. True Tone is not
 available on Macs manufactured before 2018.
 
 OUTPUT ARGS: The variables oldXXX (where XXX stands for any of the fields
-listed above) report the prior state of all available parameters. errorMsg
-is the last output argument. If everything worked then errorMsg is an empty
+listed above) report the prior state of all available parameters. errorMsgFinal
+is the last output argument. If everything worked then errorMsgFinal is an empty
 string. Otherwise it will describe one failure, even if there were
 several. In peeking, the fields corresponding to parameters that could
 not be read will be empty [], and is not flagged as an error. Any omission
 in poking is flagged as an error. If you get an error while poking, you
 might call MacDisplaySettings again to compare the new peek with what you
 poked.
-
 
 SCREENNUMBER (AND GLOBAL RECT): We endeavor to interpret
 screenNumber in the same way as Psychtoolbox Screen does (0 for main
@@ -87,9 +87,9 @@ not affect the liquid crystal display. The screen luminance is
 presumably the product of the two factors: luminance of the source and
 transmission of the liquid crystal, at each wavelength.
 
-AUTOMATICALLY is a checkbox on the Displays panel. WHen enabled the
+AUTOMATICALLY is a checkbox on the Displays panel. When enabled, the
 macOS adjusts the display luminance to track ambient lighting. I find
-that pleasant as a user, but it's terrible for calibrationg.
+that pleasant as a user, but it ruins my attempts to calibrate.
 
 TRUE TONE checkbox on the Displays panel.
 
@@ -109,26 +109,26 @@ peeking and poking a Boolean (0 or 1) or a small integer with a known
 range. Brightness and Profile are more subtle, so MacDisplaySettings
 always checks by peeking immediately after poking Brightness (float)
 or Profile (whether by name or by row). A discrepancy will be flagged
-by a string in errorMsg. Note that you provide a float to Brightness
-but within the macOS it's quantized to roughly 18-bit precision. The
+by a string in errorMsgFinal. Note that you provide a float to Brightness
+but within macOS it's quantized to roughly 18-bit precision. The
 peek of Brightness is considered erroneous only if it differes by more
 than 0.001 from what we poked.
 
-SYSTEM PREFERENCES TAKES 30 S TO OPEN: This script uses the "System
-Preferences: Displays" panel, which takes 30 s to launch, if it isn't
-already running. We leave it running.
+FOR SPEED WE LEAVE SYSTEM PREFERENCES OPEN: This script uses 
+the System Preferences app, which takes 30 s to open, if it isn't already
+open, so we leave it open.
 
-All returned values are [] if your application (e.g. MATLAB) does not
+All returned values are empty [] if your application (e.g. MATLAB) does not
 have permission to control your computer (see APPLE SECURITY below).
 
 In MATLAB, you should call MacDisplaySettings.m, which calls this
-applescript.:
+applescript:
 
 oldSettings=MacDisplaySettings(screenNumber,newSettings);
 
 To call this applescript directly from MATLAB:
 
-[status, errorMsg, oldBrightness, oldAutomatically, oldTrueTone, ...
+[status, errorMsgFinal, oldBrightness, oldAutomatically, oldTrueTone, ...
 	oldNightSchedule, oldNightShiftManual, oldProfileRow, oldProfile] ...
 	= ...
 	system(['osascript MacDisplaySettings.applescript ' ...
@@ -145,19 +145,19 @@ To call this applescript directly from MATLAB:
 Calling from any other language is very similar. Ignore the returned
 "status", which seems to always be zero.
 
-COMPATIBILITY: macOS VERSION: Works on Mavericks, Yosemite, El Capitan,
-and Mojave (macOS 10.9 to 10.14). Not yet tested on macOS 10.8 or
-earlier, or on Catalina (10.15). INTERNATIONAL: It is designed (but not
+COMPATIBILITY: 
+macOS VERSION: Works on macOS Big Sur (11.3) and earlier.
+Tested on Mavericks, Yosemite, El Capitan, Mojave, and Big Sur 
+(macOS 10.9 to 10.14 and 11.3). Not yet tested on  Catalina (10.15) 
+or macOS prior to 10.9. 
+INTERNATIONAL: It is designed (but not
 yet tested) to work internationally, with macOS localized for any
 language, not just English. (For example, that is why we select the
 Display/Colors panel by the internal name "displaysDisplayTab" instead
-using the localized name "Display".) MULTIPLE SCREENS: All my computers
-have only one screen, so I haven't yet tested it with values of
+using the localized name "Display".) 
+MULTIPLE SCREENS: Coded to support multiple
+screens, but not yet tested with values of
 screenNumber other than zero.
-
-FOR SPEED WE LEAVE SYSTEM PREFERENCES OPEN: This script uses the
-System Preferences app, which takes 30 s to open, if it isn't already
-open, so we leave it open.
 
 APPLE PRIVACY. Unless the application (e.g. MATLAB) has the needed
 user-granted permissions to control the computer, attempts by
@@ -248,7 +248,7 @@ May 9, 2020. Improved speed (from 3 to 1.6 s) by replacing fixed delays
 in applescript with wait loops. Enhanced the built-in peek of brightness
 afer poking. Now if the peek differs by more than 0.001,
 MacDisplaySettings waits 100 ms and tries again, to let the value settle,
-as the visual effect is a slow fade. Then it reports in errorMsg if the
+as the visual effect is a slow fade. Then it reports in errorMsgFinal if the
 new peek differs by more than 0.001. In limited testing, waiting for a
 good answer works: the peek-poke difference rarely exceeds +/-5e-6 and
 never exceeds 0.001. It's my impression that if we always waited 100 ms,
@@ -258,7 +258,7 @@ May 15, 2020. MacDisplaySettings.m now also passes a flag indicating
 whether Psychtoolbox has a window on the main screen. In that case,
 AppleScript will not try to show a dialog. Added a loop in AppleScript
 to wait for System Preferences window to open; this fixes a rare error.
-Replaced every error code with a message in errorMsg.
+Replaced every error code with a message in errorMsgFinal.
 
 May 20, 2020. MacDisplaySettings hung up on my student Benji Luo
 with the Night Shift panel showing. I suspect it was in an endless
@@ -267,6 +267,29 @@ loop to throw an error if the menu doesn't appear after three attempts
 of clicking and waiting up to 500 ms each time.
 
 June 9, 2020. Cosmetic. Improved explanation of APPLE PRIVACY,
+
+July 15, 2020. Added new fields "profileFilename" and "profileFolder" 
+to output. They give the filename and folder of the profile. Use iccread 
+to read the ColorSync Profile file into a struct.
+
+February 25, 2021. MacDisplaySettings fully supports macOS 
+Mojave and earlier. Currently MacDisplaySettings.m prints a warning 
+and only returns partial results if running on macOS Catalina or newer.
+
+May 13, 2021. MacDisplaySettings now fully supports macOS Big Sur 
+(11.3) and Mojave (10.14) and earlier. It probably also works fine 
+on intermediate versions, i.e. Catalina (10.15), but that has yet 
+to be tested.  Note that in macOS Big Sur the "Night Shift" 
+feature of System Preferences: Displays has acquired a 
+new slider (not present in Mojave) to specify Color Temperature, 
+and we haven't yet added support for it. It would be easy to add, 
+but it doesn't seem relevant to the expected users of
+this function, so let me know if you need it. I expect 
+users of MacDisplaySettings to be turning off Night Shift, 
+so they wouldn't care what color temperature was selected 
+while that feature is disabled. Added two new flags 
+debugSpeak and debugNotify (below) that can be set to true
+to faciliate debugging.
 *)
 
 on run argv
@@ -274,7 +297,7 @@ on run argv
 	-- newNightShiftSchedule, newNightShiftManual,
 	-- newShowProfilesForThisDisplayOnly, newProfileRow, newProfile.
 	-- OUTPUT ARGUMENTS: olsdBrightness, oldAutomatically, oldTrueTone, oldNightShift,
-	-- oldShowProfilesForThisDisplayOnly, oldProfileRow, oldProfile, errorMSG.
+	-- oldShowProfilesForThisDisplayOnly, oldProfileRow, oldProfile, errorMsgFinal.
 	-- integer screenNumber. Zero for main screen. Default is zero.
 	--integer 4 values for global rect of desired screen. (Can be -1 -1 -1 -1 for main screen.)
 	-- float newBrightness: -1.0 (ignore) or 0.0 to 1.0 value of brightness slider.
@@ -288,11 +311,26 @@ on run argv
 	-- oldProfileRow (-1 or integer), oldProfile (string).
 	-- TrueTone only exists on some Macs manufactured 2018 or later. When not
 	-- available, oldTrueTone is [].
-
+	
 	tell application "Finder"
 		set mainRect to bounds of window of desktop
 	end tell
-
+	
+	--DEBUGGING
+	set debugSpeak to false
+	set debugNotify to false
+	--To see the notification controlled by debugNotify 
+	--you need to enable notifications 
+	--(in System Preferences: Notifications)
+	--from Apple's Script Editor. I don't know why 
+	--that app is relevant, but maybe Apple uses it 
+	--to send the notification.	
+	--The notification should appear in the upper right 
+	--of your screen as MacDisplaySettings returns 
+	--to MATLAB. It contains the information 
+	--returned to MATLAB, so it's only interesting for
+	--debugging.
+	
 	--GET ARGUMENTS
 	set theRect to {-1, -1, -1, -1}
 	try
@@ -378,41 +416,43 @@ on run argv
 	if newProfile as string is equal to "" then
 		set newProfile to -1
 	end if
-
+	
 	-- CHECK ARGUMENTS
 	if newNightShiftSchedule is not in {-1, 1, 2, 3} then
-		set errorMsg to "newNightShiftSchedule " & newNightShiftSchedule & " should be one of -1, 1, 2, 3."
+		set errorMsgFinal to "newNightShiftSchedule " & newNightShiftSchedule & " should be one of -1, 1, 2, 3."
 		return {oldBrightness, oldAutomatically, ¬
 			oldTrueTone, oldNightShiftSchedule, oldNightShiftManual, ¬
 			oldShowProfilesForThisDisplayOnly, oldProfileRow, ¬
-			"|" & oldProfile & "|", "|" & errorMsg & "|"}
+			"|" & oldProfile & "|", "|" & oldProfileFilename & "|", "|" & errorMsgFinal & "|"}
 	end if
 	set leaveSystemPrefsRunning to true -- This could be made a further argument.
 	set versionString to system version of (system info)
 	considering numeric strings
 		set isMojaveOrBetter to versionString ≥ "10.14.0"
 		set isNightShiftAvailable to versionString ≥ "10.12.4"
+		set isCatalinaOrBetter to versionString ≥ "10.15.0"
 	end considering
 	-- Default values. The value -1 means don't modify this setting.
 	set oldBrightness to -1.0
 	set oldAutomatically to -1
 	set oldTrueTone to -1
 	set oldProfile to ""
+	set oldProfileFilename to ""
 	set oldProfileRow to -1
 	set oldShowProfilesForThisDisplayOnly to -1
 	set oldNightShiftSchedule to -1
 	set oldNightShiftManual to -1
-	set errorMsg to ""
-
+	set errorMsgFinal to ""
+	
 	-- The "ok" flags help track what failed. We return an error message if
-	-- any failed (that shouldn't).
+	-- any failed that shouldn't.
 	set trueToneOk to false
 	set groupOk to false
 	set brightnessOk to false
 	set profileOk to false
 	set manualOk to false
 	set scheduleOk to false
-
+	
 	-- GET NAME OF CURRENT APP.
 	-- Save name of current active application (probably MATLAB) to
 	-- restore at end as the frontmost. Apparently this
@@ -420,7 +460,7 @@ on run argv
 	--https://stackoverflow.com/questions/44017508/set-application-to-frontmost-in-applescript
 	--https://stackoverflow.com/questions/13097426/activating-an-application-in-applescript-with-the-application-as-a-variable
 	set currentApp to path to frontmost application as text
-
+	
 	--ACTIVATE SYSTEM PREFERENCES APP
 	tell application "System Preferences"
 		activate -- Bring it to the front, which makes the rest MUCH faster.
@@ -430,12 +470,12 @@ on run argv
 		set wasRunning to running
 		reveal anchor "displaysDisplayTab" of pane id "com.apple.preference.displays"
 	end tell
-
+	
 	-- FIND THE SYSTEM PREFS WINDOWS ON THE DESIRED SCREEN.
 	-- theRect is received as an argument. In MATLAB theRect=Screen('GlobalRect',screen).
 	-- Formerly we always referred to "window windowNumber" but windowNumber changes
-	-- if a window is brought forward. The frontmost window always has number 1. So now
-	-- we refer to theWindow which is stable, even after we bring the window to the front.
+	-- if a window is brought forward. The frontmost window is always number 1. So now
+	-- we refer to "theWindow" which doesn't change when we bring the window to the front.
 	-- We know a window is on the desired screen by checking whether its x y position
 	-- is inside the global rect of the desired screen, which is received as an
 	-- argument when MacDisplayScreen.applescript is called. (If the global rect is not
@@ -472,18 +512,18 @@ on run argv
 		set AppleScript's text item delimiters to space
 		set theString to theRect as string
 		set AppleScript's text item delimiters to ""
-		set errorMsg to "Could not find System Preferences window on screenNumber " & screenNumber & " with rect [" & theString & "]."
+		set errorMsgFinal to "Could not find System Preferences window on screenNumber " & screenNumber & " with rect [" & theString & "]."
 		activate application currentApp -- Restore active application.
 		--delay 0.1 -- May not be needed.
 		return {oldBrightness, oldAutomatically, ¬
 			oldTrueTone, oldNightShiftSchedule, oldNightShiftManual, ¬
 			oldShowProfilesForThisDisplayOnly, oldProfileRow, ¬
-			"|" & oldProfile & "|", "|" & errorMsg & "|"}
+			"|" & oldProfile & "|", "|" & oldProfileFilename & "|", "|" & errorMsgFinal & "|"}
 	end if
-
+	
 	-- PERMISSION CHECK, TRUE TONE, BRIGHTNESS & AUTOMATIC,
 	tell application "System Events"
-
+		
 		-- CHECK FOR PERMISSION
 		set applicationName to item 1 of (get name of processes whose frontmost is true)
 		if not UI elements enabled then
@@ -494,14 +534,14 @@ on run argv
 					-- Psychtoolbox has a window open that might obscure
 					-- our dialog window. So we return instead and let
 					-- MacDisplaySettings close all windows.
-					set errorMsg to "To set Displays preferences, " & applicationName & ¬
+					set errorMsgFinal to "To set Displays preferences, " & applicationName & ¬
 						" needs your permission to control this computer. " & ¬
 						"Please unlock System Preferences: Security & Privacy: " & ¬
 						"Privacy and click the boxes to grant " & applicationName & " permission for Full Disk Access and Automation. "
 					return {oldBrightness, oldAutomatically, ¬
 						oldTrueTone, oldNightShiftSchedule, oldNightShiftManual, ¬
 						oldShowProfilesForThisDisplayOnly, oldProfileRow, ¬
-						"|" & oldProfile & "|", "|" & errorMsg & "|"}
+						"|" & oldProfile & "|", "|" & oldProfileFilename & "|", "|" & errorMsgFinal & "|"}
 				end if
 				display alert "To set Displays preferences, " & applicationName & ¬
 					" needs your permission to control this computer. " & ¬
@@ -512,9 +552,9 @@ on run argv
 			return {oldBrightness, oldAutomatically, ¬
 				oldTrueTone, oldNightShiftSchedule, oldNightShiftManual, ¬
 				oldShowProfilesForThisDisplayOnly, oldProfileRow, ¬
-				"|" & oldProfile & "|", "|" & errorMsg & "|"}
+				"|" & oldProfile & "|", "|" & oldProfileFilename & "|", "|" & errorMsgFinal & "|"}
 		end if
-
+		
 		--DISPLAY PANEL
 		-- TRUE TONE, BRIGHTNESS & AUTOMATIC
 		set screenNumber to 1
@@ -524,24 +564,61 @@ on run argv
 				delay 0.05
 			end repeat
 			if not (exists theWindow) then
-				set errorMsg to "screenNumber " & screenNumber & " is not available."
+				set errorMsgFinal to "screenNumber " & screenNumber & " is not available."
 				activate application currentApp -- Restore active application.
 				--delay 0.1
 				return {oldBrightness, oldAutomatically, ¬
 					oldTrueTone, oldNightShiftSchedule, oldNightShiftManual, ¬
 					oldShowProfilesForThisDisplayOnly, oldProfileRow, ¬
-					"|" & oldProfile & "|", "|" & errorMsg & "|"}
+					"|" & oldProfile & "|", "|" & oldProfileFilename & "|", "|" & errorMsgFinal & "|"}
 			end if
-
-			repeat until exists tab group 1 of theWindow
+			repeat
 				delay 0.05
+				if exists tab group 1 of theWindow then
+					--Works before macOS Catalina.
+					--On Big Sur we sometimes need this, and sometimes the alternate below.
+					--It depends partly on whether the System Preferences App was already open.
+					--I'm very surprised that the applescript object hierarchy within an app is 
+					--so changeable, but this two-pronged approach seems to work reliably.
+					--Not yet tested on macOS Catalina (10.15).
+					if debugSpeak then
+						say "TRUE TONE uses standard access"
+					end if
+					set refGroup to a reference to tab group 1 of theWindow
+					set trueToneCheckbox to 1
+					exit repeat
+				end if
+				if exists group 1 of theWindow then
+					--Alternate access, see above. 
+					--Needed in Big Sur, and probably in Catalina. 
+					--Not needed before Catalina.
+					if debugSpeak then
+						say "TRUE TONE uses alternate access"
+					end if
+					set refGroup to a reference to tab group 1 of group 1 of theWindow
+					set trueToneCheckbox to 2
+					exit repeat
+				end if
 			end repeat
-			tell tab group 1 of theWindow
-
+			
+			--repeat until exists tab group 1 of theWindow
+			--delay 0.05
+			--end repeat
+			--tell tab group 1 of theWindow
+			tell refGroup
+				
 				-- TRUE TONE
+				if isCatalinaOrBetter then
+					set trueToneCheckbox to 2
+				else
+					set trueToneCheckbox to 1
+				end if
+				if debugSpeak then
+					say "TRUE TONE"
+				end if
 				set trueToneOk to false
 				try
-					tell checkbox 1
+					tell checkbox trueToneCheckbox
 						set oldTrueTone to value
 						if newTrueTone is in {0, 1} and newTrueTone is not oldTrueTone then
 							click -- It's stale, so update it.
@@ -554,75 +631,116 @@ on run argv
 					-- Just return oldTrueTone=-1.
 					set trueToneOk to false
 				end try
-
+				
 				-- BRIGHTNESS & AUTOMATIC
-				repeat with iGroup from 1 to 2
-					-- Find the right group
+				repeat with version from 1 to 3
+					-- Find the brightness controls inside the UI:
 					-- 1 works on macOS 10.9 and 10.14, and some versions of 10.10.
 					-- 2 works on macOS 10.11 through 10.13, and some versions of 10.10.
+					-- 3 works on macOS Catalina.
 					try
-						tell group iGroup
-							set oldBrightness to slider 1's value -- Get brightness
-						end tell
+						if version < 3 then
+							-- macOS Mojave and older
+							set oldBrightness to value of slider 1 of group version -- Get brightness
+						else
+							-- macOS Catalina
+							set oldBrightness to value of slider 1 -- Get brightness							
+						end if
 						set groupOk to true
-						set theGroup to iGroup
+						set theGroup to version
+						set errorMsgLocal to ""
 						exit repeat
-					on error errorMessage
+					on error errorMsgLocal
 						set groupOk to false
 					end try
 				end repeat
 				if groupOk is false then
-					set errorMsg to "Could not find valid group for brightness."
+					set errorMsgFinal to "Could not find Brightness in Display panel data."
 				else
 					try
-						tell group theGroup
-
-							-- BRIGHTNESS
-							set brightnessOk to false
-							set oldBrightness to slider 1's value -- Get brightness
-							if newBrightness > -1 then
-								set slider 1's value to newBrightness -- Set brightness
-								-- Check the poke by peeking.
-								-- We can't demand equality (of peek and poke)  because
-								-- macOS uses only about 18-bit precision internally.
-								--Visually, moving the slider causes a slow
-								--fade. (Maybe that's why they gave it such high precision.)
-								--It's possible that the value we
-								--read similarly takes time to reach the
-								--requested setting. So when we read a bad
-								--value (different by at least 0.001 from the newBrightness we poked)
-								--then we wait a bit and try again. After 2000
-								--poke-peek pairs with random brightnesses (0.0 to 1.0),
-								--only 5 immediate peeks differed by at least 0.01, and only 11 differed
-								-- by at least 0.0001. The rest were within
-								--+/- 5e-6 of the value poked. (The outliers were all
-								--brighter than desired, suggesting that dimming is
-								--slower than brightening.) In limited testing, this delay
-								--seems to have eliminated the outliers, so the peek-poke
-								--difference never exceeds +/- 5e-6. Given
-								--that the brightness always settles to the desired value
-								--perhaps the extra peek is superfluous. I'm leaving it in
-								--because MacDisplaySettings is slow anyway, due to applescript,
-								--so the extra up to 200 ms of the peek seems good insurance
-								--for detecting unanticipated problems in particular Macs,
-								--or different versions of the macOS.
-
-								set b to slider 1's value -- Get brightness
+						-- BRIGHTNESS
+						if debugSpeak then
+							say "BRIGHTNESS"
+						end if
+						set brightnessOk to false
+						if theGroup < 3 then
+							-- macOS Mojave and older
+							set oldBrightness to value of slider 1 of group theGroup -- Get brightness
+						else
+							-- macOS Catalina
+							set oldBrightness to value of slider 1 -- Get brightness
+						end if
+						if newBrightness > -1 then
+							-- Check the poke by peeking.
+							-- We can't demand equality (of peek and poke)  because
+							-- macOS uses only about 18-bit precision internally.
+							--Visually, moving the slider causes a slow
+							--fade. (Maybe that's why they gave it such high precision.)
+							--It's possible that the value we
+							--read similarly takes time to reach the
+							--requested setting. So when we read a bad
+							--value (different by at least 0.001 from the newBrightness we poked)
+							--then we wait a bit and try again. After 2000
+							--poke-peek pairs with random brightnesses (0.0 to 1.0),
+							--only 5 immediate peeks differed by at least 0.01, and only 11 differed
+							-- by at least 0.0001. The rest were within
+							--+/- 5e-6 of the value poked. (The outliers were all
+							--brighter than desired, suggesting that dimming is
+							--slower than brightening.) In limited testing, this delay
+							--seems to have eliminated the outliers, so the peek-poke
+							--difference never exceeds +/- 5e-6. Given
+							--that the brightness always settles to the desired value
+							--perhaps the extra peek is superfluous. I'm leaving it in
+							--because MacDisplaySettings is slow anyway, due to applescript,
+							--so the extra up to 200 ms of the peek seems good insurance
+							--for detecting unanticipated problems in particular Macs,
+							--or different versions of the macOS.
+							if theGroup < 3 then
+								-- macOS Mojave and older
+								set value of slider 1 of group theGroup to newBrightness -- Set brightness
+								set b to value of slider 1 of group theGroup -- Get brightness
+							else
+								-- macOS Catalina
+								set value of slider 1 to newBrightness -- Set brightness
+								set b to value of slider 1 -- Get brightness
+							end if
+							set bErr to (b - newBrightness)
+							--is the peek bad?
+							if bErr > 1.0E-3 or bErr < -1.0E-3 then
+								-- yep, it's bad. Wait and peek again.
+								delay 0.1
+								if theGroup < 3 then
+									-- macOS Mojave and older
+									set b to value of slider 1 of group theGroup -- Get brightness
+								else
+									-- macOS Catalina
+									set b to value of slider 1 -- Get brightness
+								end if
 								set bErr to (b - newBrightness)
-								--is the peek bad?
 								if bErr > 1.0E-3 or bErr < -1.0E-3 then
-									-- yep, it's bad. Wait and peek again.
-									delay 0.1
-									set b to slider 1's value -- Get brightness
-									set bErr to (b - newBrightness)
-									if bErr > 1.0E-3 or bErr < -1.0E-3 then
-										error "Poked Brightness " & newBrightness & " but peeked " & b & "."
-									end if
+									error "Poked Brightness " & newBrightness & " but peeked " & b & "."
 								end if
 							end if
-							--Succeeded with Brightness.
-
-							-- AUTOMATICALLY
+						end if
+						--Succeeded with Brightness.
+						
+						-- AUTOMATICALLY
+						if debugSpeak then
+							say "AUTOMATICALLY"
+						end if
+						if theGroup < 3 then
+							-- macOS Mojave and older
+							tell group theGroup
+								tell checkbox 1 -- Enable/disable Automatically adjust brightness
+									set oldAutomatically to value
+									if newAutomatically is in {0, 1} and ¬
+										newAutomatically is not oldAutomatically then
+										click -- It's stale, so update it.
+									end if
+								end tell -- checkbox 1
+							end tell
+						else
+							-- macOS Catalina
 							tell checkbox 1 -- Enable/disable Automatically adjust brightness
 								set oldAutomatically to value
 								if newAutomatically is in {0, 1} and ¬
@@ -630,143 +748,268 @@ on run argv
 									click -- It's stale, so update it.
 								end if
 							end tell -- checkbox 1
-							--Succeeded with Automatically.
-
-						end tell -- group iGroup
+						end if
+						--Succeeded with Automatically.
+						
 						--Succeeded with Brightness and Automatically.
 						set brightnessOk to true
-					on error errorMessage
-						set errorMsg to errorMessage
+					on error errorMsgLocal
+						set errorMsgFinal to errorMsgLocal
 						set brightnessOk to false
 					end try
 				end if
-
+				
 			end tell
 		end tell
 	end tell
-
+	
 	-- This block of code selects the right window (a System Preferences window on
 	-- the desired screen) and selects the Color pane within it.
+	--if not isCatalinaOrBetter then
+	if debugSpeak then
+		say "SELECT THE RIGHT SCREEN"
+	end if
 	tell application "System Events"
 		tell process "System Preferences"
 			tell theWindow
 				select
 				perform action "AXRaise" of theWindow
-				tell tab group 1
-					tell radio button 2
+				repeat
+					if exists group 1 then
+						set refGroup to a reference to tab group 1 of group 1
+						--set refGroup to a reference to tab group 1
+						exit repeat
+					end if
+					if exists tab group 1 then
+						set refGroup to a reference to tab group 1
+						exit repeat
+					end if
+					delay 0.05
+				end repeat
+				tell refGroup
+					tell radio button 2 --"Color"
 						--This click selects color.
 						click
+						delay 0.05 --Not sure if needed.
 					end tell
 				end tell
 			end tell
 		end tell
 	end tell
-
+	--end if
+	
 	-- COLOR PANEL
-	tell application "System Events"
-		tell process "System Preferences"
-			repeat until exists tab group 1 of theWindow
-				delay 0.05
-			end repeat
-			tell tab group 1 of theWindow
-				-- Show all profiles.
-				try
-					repeat until exists checkbox 1
-						delay 0.05
-					end repeat
-					tell checkbox 1 -- Yes/no: Show profiles for this display only.
-						set oldShowProfilesForThisDisplayOnly to value
-						if newShowProfilesForThisDisplayOnly is not equal to -1 then
-							-- Set new value.
-							if newShowProfilesForThisDisplayOnly is not equal to oldShowProfilesForThisDisplayOnly ¬
-								then
-								click
-							end if
-						end if
-					end tell -- checkbox 1
-					-- Read selection and select new Display Profile
-					repeat until exists row 1 of table 1 of scroll area 1
-						delay 0.05
-					end repeat
-					tell table 1 of scroll area 1
-						set oldProfile to value of static text 1 of ¬
-							(row 1 where selected is true)
-						repeat with profileRow from 1 to 101
-							if selected of row profileRow then exit repeat
+	if debugSpeak then
+		say "COLOR PANEL"
+	end if
+	if true then
+		tell application "System Events"
+			tell process "System Preferences"
+				if isCatalinaOrBetter then
+					set refGroup to a reference to tab group 1 of group 1 of theWindow
+					set openButton to 1
+				else
+					set refGroup to a reference to tab group 1 of theWindow
+					set openButton to 2
+				end if
+				repeat until exists refGroup
+					delay 0.05
+				end repeat
+				tell refGroup
+					-- Show all profiles.
+					try
+						repeat until exists checkbox 1
+							delay 0.05
 						end repeat
-						set oldProfileRow to profileRow
-						if oldProfileRow is 101 then
-							set oldProfileRow to -1
-							error "Could not select Profile by row."
-						end if
-						if newProfileRow is not equal to -1 then
-							--newProfileRow specifies Profile row.
-							if selected of row newProfileRow is true then
-								-- If the desired row is already selected
-								-- then we first select and activate another row,
-								-- and then reselect and activate the one we want.
-								-- This makes sure that a fresh copy of the profile
-								-- is loaded from disk.
-								if newProfileRow is equal to 1 then
-									select last row
-								else
-									select row 1
-								end if
-								activate
-								click
-							end if
-							select row newProfileRow
-							activate
-							click
-							if selected of row newProfileRow is false then
-								error "Could not set Profile row."
-							end if
-						else
-							--newProfile specifies Profile name.
-							if newProfile is not equal to -1 then
-								try
-									if selected of ¬
-										(row 1 where value of static text 1 is newProfile) then
-										if oldProfileRow is equal to 1 then
-											select last row
-										else
-											select row 1
-										end if
-										activate
-									end if
-									select (row 1 where value of static text 1 is newProfile)
-									activate
+						tell checkbox 1 -- Yes/no: Show profiles for this display only.
+							set oldShowProfilesForThisDisplayOnly to value
+							if newShowProfilesForThisDisplayOnly is not equal to -1 then
+								-- Set new value.
+								if newShowProfilesForThisDisplayOnly is not equal to oldShowProfilesForThisDisplayOnly ¬
+									then
 									click
-								on error
-									error "Could not select Profile '" & newProfile & "' by name."
-								end try
-								if newProfile is not equal to value ¬
-									of static text 1 of (row 1 where selected is true) then
-									error "Could not select Profile '" & newProfile & "' by name."
 								end if
 							end if
+						end tell -- checkbox 1
+						
+						-- GET oldProfile, short name of selected profile.
+						if debugSpeak then
+							say "GET PROFILE"
 						end if
-					end tell
-					set profileOk to true
-				on error errorMessage number errorNumber
-					set profileOk to false
-					set errorMsg to errorMessage
-				end try
+						try
+							--This fails (and recovers due to try/catch) if no 
+							--profile is selected in displayed list, 
+							--presumably because the actually selected profile is only 
+							--in the full list, and we're only showing the short list as 
+							--a result of the checkbox newShowProfilesForThisDisplayOnly. 
+							--If no profile is selected in the displayed list, 
+							--then we just return an empty string in oldProfile.
+							repeat until exists row 1 of table 1 of scroll area 1
+								delay 0.05
+							end repeat
+							tell table 1 of scroll area 1
+								set oldProfile to value of static text 1 of ¬
+									(row 1 where selected is true)
+							end tell
+						end try
+						if debugSpeak then
+							say "color profile is " & (oldProfile as string)
+						end if
+						
+						--GET oldProfileRow, the row number of selected profile.
+						tell table 1 of scroll area 1
+							repeat with profileRow from 1 to 101
+								if selected of row profileRow then exit repeat
+							end repeat
+							set oldProfileRow to profileRow
+							if oldProfileRow is 101 then
+								set oldProfileRow to -1
+								error "Could not select Profile by row."
+							end if
+						end tell
+						if debugSpeak then
+							say "row " & (oldProfileRow as string)
+						end if
+						
+						-- GET OldProfileFilename.
+						-- Skip if no profile is selected.
+						--Otherwise, click the "Open profile" button
+						--and read the name of the window opened by
+						--ColorSync Utility app. Then try to kill
+						--the app. (Killing it is easier than just closing 
+						--its new window.)
+						if oldProfile as string is not equal to "" then
+							repeat until exists button openButton
+								delay 0.05
+							end repeat
+							click button openButton --"Open Profile"
+							-- Read ColorSync Utility window title.
+							tell application "System Events"
+								set colorSyncApp to name of (first application process whose frontmost is true)
+								set oldProfileFilename to name of first window of application process colorSyncApp
+								if ".icc" is in oldProfileFilename then
+									-- Quit ColorSync Utility.
+									--We try to kiil it in two ways because each seems less than
+									--wholly reliable, yet the combo does seem reliable. We
+									--proceed without flagging an error even if neither 
+									--attempt works so the app is still running (with new
+									--window open).
+									try
+										tell application "ColorSync Utility"
+											quit
+										end tell
+									on error errorMsgLocal number errorNumber
+										--Quitting didn't work (possibly because we're 
+										--running in a non-English language, so the
+										--app name didn't match), so try to kill it.
+										-- This killing code comes from:
+										-- https://discussions.apple.com/thread/5950317
+										try
+											tell application "System Events"
+												-- Kill the application without dialog.
+												set theID to (unix id of processes whose name is colorSyncApp)
+												do shell script "kill -9 " & theID
+												delay 0.1
+											end tell
+										on error errorMsgLocal number errorNumber
+											-- Neither quit nor kill worked; just proceed without warning.
+										end try
+									end try
+								end if
+							end tell
+						end if
+						if debugSpeak then
+							--say "oldProfileFilename=" & (oldProfileFilename as string)
+						end if
+						
+						--SELECT NEW PROFILE.
+						--If newProfileRow is valid, then use it to select by row.
+						--Otherwise, if newProfile is valid, then use it to select by name.
+						if debugSpeak then
+							say "SELECT NEW PROFILE"
+						end if
+						tell table 1 of scroll area 1
+							if newProfileRow is not equal to -1 then
+								--newProfileRow specifies profile row.
+								--say "newProfileRow=" & (newProfileRow as string)
+								if selected of row newProfileRow is true then
+									-- If the desired row is already selected
+									-- then we first select and activate another row,
+									-- and then reselect and activate the one we want.
+									-- This ensures that a fresh copy of the profile
+									-- is loaded from disk.
+									if newProfileRow is equal to 1 then
+										select last row --another row
+									else
+										select row 1 --another row
+									end if
+									activate --the app
+									click --the other row
+								end if
+								select row newProfileRow --the desired row
+								activate --the app
+								click --the desired row
+								if selected of row newProfileRow is false then
+									error "Could not select ColorSyhc Profile row " & (newProfileRow as string) & "."
+								end if
+							else
+								--newProfile specifies profile name.
+								--say "newProfile=" & (newProfile as string)
+								if newProfile is not equal to -1 then
+									try
+										if selected of ¬
+											(row 1 where value of static text 1 is newProfile) then
+											if oldProfileRow is equal to 1 then
+												select last row --another row
+											else
+												select row 1 --another row
+											end if
+											activate --the app
+											click --the other row
+										end if
+										select (row 1 where value of static text 1 is newProfile)
+										activate --the app
+										click --the desired row
+									on error
+										error "Could not select ColorSync Profile '" & newProfile & "' by name."
+									end try
+									if newProfile is not equal to value ¬
+										of static text 1 of (row 1 where selected is true) then
+										error "Could not select Profile '" & newProfile & "' by name."
+									end if
+								end if
+							end if
+						end tell
+						
+						set profileOk to true
+					on error errorMsgLocal number errorNumber
+						set profileOk to false
+						set errorMsgFinal to errorMsgLocal
+					end try
+				end tell
 			end tell
 		end tell
-	end tell
-
+	end if
+	
 	-- NIGHT SHIFT PANEL
+	if debugSpeak then
+		say "NIGHT SHIFT"
+	end if
 	tell application "System Preferences"
 		reveal anchor "displaysNightShiftTab" of pane id "com.apple.preference.displays"
 	end tell
 	tell application "System Events"
+		if isCatalinaOrBetter then
+			set refGroup to tab group 1 of group 1 of theWindow
+		else
+			set refGroup to tab group 1 of theWindow
+		end if
 		tell process "System Preferences"
-			repeat until exists tab group 1 of theWindow
+			repeat until exists refGroup
 				delay 0.05
 			end repeat
-			tell tab group 1 of theWindow
-
+			tell refGroup
+				
 				-- NIGHT SHIFT MANUAL
 				try
 					tell checkbox 1 -- Enable/disable Night Shift Manual
@@ -783,7 +1026,7 @@ on run argv
 				on error
 					set manualOk to false
 				end try
-
+				
 				-- NIGHT SHIFT SCHEDULE
 				try
 					repeat until exists pop up button 1
@@ -840,40 +1083,56 @@ on run argv
 				on error
 					set scheduleOk to false
 				end try
-
+				
 			end tell
 		end tell
 	end tell
-
+	
 	--SHOW MAIN DISPLAYS PANEL AS WE LEAVE
+	if debugSpeak then
+		say "RESTORE"
+	end if
 	tell application "System Preferences"
 		reveal anchor "displaysDisplayTab" of pane id "com.apple.preference.displays"
 	end tell
-
+	
 	if wasRunning or leaveSystemPrefsRunning then
 		-- Leave it running.
 	else
 		quit application "System Preferences"
 	end if
-
-	if errorMsg as string is equal to "" then
-		if not profileOk then set errorMsg to "Could not peek/poke Profile selection."
+	
+	if errorMsgFinal as string is equal to "" then
+		if not profileOk then set errorMsgFinal to "Could not peek/poke Profile selection."
 		if isNightShiftAvailable then
-			if not manualOk then set errorMsg to "Could not peek/poke Night Shift manual."
-			if not scheduleOk then set errorMsg to "Could not peek/poke Night Shift schedule."
+			if not manualOk then set errorMsgFinal to "Could not peek/poke Night Shift manual."
+			if not scheduleOk then set errorMsgFinal to "Could not peek/poke Night Shift schedule."
 		end if
 		-- Many computers don't support True Tone, so we don't flag this as an error.
 		-- It's enough that the field is left empty.
-		--if not trueToneOk then set errorMsg to "Could not peek/poke True Tone."
-		if not brightnessOk then set errorMsg to "Could not peek/poke Brightness and Automatically."
+		--if not trueToneOk then set errorMsgFinal to "Could not peek/poke True Tone."
+		if not brightnessOk then set errorMsgFinal to "Could not peek/poke Brightness and Automatically."
 	end if
-
+	
 	-- RESTORE FRONTMOST APPLICATION (PROBABLY MATLAB).
 	activate application currentApp -- Restore active application.
-	--delay 0.1 --Not sure if we need this at all.
-
+	
+	if debugNotify then
+		--To see this message you need to enable notifications
+		--from Apple's Script Editor. I don't know why, but
+		--maybe Apple uses that app to send the notification.	
+		--It should appear in the upper right of your
+		--screen as MacDisplaySettings returns to MATLAB.
+		display notification "oldBrightness=" & (oldBrightness as text) & ", oldAutomatically= " & (oldAutomatically as text) ¬
+			& ",  oldTrueTone=" & (oldTrueTone as text) & ",  oldNightShiftSchedule=" & (oldNightShiftSchedule as text) & ",  oldNightShiftManual=" & (oldNightShiftManual as text) & ¬
+			", oldShowProfilesForThisDisplayOnly=" & (oldShowProfilesForThisDisplayOnly as text) & ",  oldProfileRow=" & (oldProfileRow as text) & ¬
+			",  oldProfile=" & (oldProfile as text) & ", oldProfileFilename=" & oldProfileFilename & ", errorMsgFinal=" & errorMsgFinal
+	end if
+	if debugSpeak then
+		say "RETURN"
+	end if
 	return {oldBrightness, oldAutomatically, ¬
 		oldTrueTone, oldNightShiftSchedule, oldNightShiftManual, ¬
 		oldShowProfilesForThisDisplayOnly, oldProfileRow, ¬
-		"|" & oldProfile & "|", "|" & errorMsg & "|"}
+		"|" & oldProfile & "|", "|" & oldProfileFilename & "|", "|" & errorMsgFinal & "|"}
 end run
