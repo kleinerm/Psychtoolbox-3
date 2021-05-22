@@ -343,7 +343,7 @@ PsychError SCREENOpenWindow(void)
             if (stereomode == kPsychDualStreamStereo)
                 PsychErrorExitMsg(PsychError_user, "Use of VRR mode for fine-grained stimulus presentation timing is incompatible with dual-stream stereo presentation on special display devices. Choose either VRR or this stereo mode. Aborting.");
 
-            if (imagingmode & kPsychNeedFinalizedFBOSinks)
+            if ((imagingmode & kPsychNeedFinalizedFBOSinks) && !((PSYCH_SYSTEM == PSYCH_LINUX) && (vrrMode != kPsychVRROwnScheduled) && (specialflags & kPsychExternalDisplayMethod)))
                 PsychErrorExitMsg(PsychError_user, "Use of VRR mode for fine-grained stimulus presentation timing is incompatible with use of finalized FBO sinks on special display devices. Choose either VRR or finalized FBO sinks. Aborting.");
         }
 

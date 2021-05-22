@@ -1541,8 +1541,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             windowRecord->vrrMode = kPsychVRROff;
             break;
 
-        case kPsychVRRAuto: // Automatic selection of optimal supported method for this setup. Currently our own custom scheduler:
-            windowRecord->vrrMode = kPsychVRROwnScheduled;
+        case kPsychVRRAuto: // Automatic selection of optimal supported method for this setup. Currently our own custom scheduler, unless Vulkan/WSI is used:
+            windowRecord->vrrMode = (windowRecord->specialflags & kPsychExternalDisplayMethod) ? kPsychVRRSimple : kPsychVRROwnScheduled;
             break;
 
         case kPsychVRRSimple: // Classic / Legacy / Dumb VRR - Just swapbuffers when asked to:

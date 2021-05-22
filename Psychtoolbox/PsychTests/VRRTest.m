@@ -1,5 +1,5 @@
-function VRRTest(test, n, maxFlipDelta, hwmeasurement, testImage, saveplots, screenNumber)
-% VRRTest([test='sine'][, n=2000][, maxFlipDelta=0.2][, hwmeasurement=0][, testImage][, saveplots=0][, screenNumber=max])
+function VRRTest(test, n, maxFlipDelta, hwmeasurement, testImage, saveplots, screenNumber, usevulkan)
+% VRRTest([test='sine'][, n=2000][, maxFlipDelta=0.2][, hwmeasurement=0][, testImage][, saveplots=0][, screenNumber=max][, usevulkan=0])
 %
 % Test accuracy of VRR stimulation with variable timing, aka "FreeSync",
 % "DisplayPort Adaptive Sync", "HDMI VRR" or "G-Sync".
@@ -81,6 +81,10 @@ function VRRTest(test, n, maxFlipDelta, hwmeasurement, testImage, saveplots, scr
 % 'screenNumber' Number of screen to test on. Maximum X-Screen by default.
 %
 %
+% 'usevulkan' If set to 1, use Vulkan display backend instead of OpenGL backend.
+% Default is 0 = Use standard OpenGL backend.
+%
+%
 % You can abort the test earlier by pressing the ESC key.
 %
 % The main plot figure will plot actual measured delay between successive flips
@@ -135,8 +139,12 @@ if nargin < 6 || isempty(saveplots)
 end
 
 % Use screen with highest number by default:
-if nargin < 7
+if nargin < 7 || isempty(screenNumber)
     screenNumber = [];
+end
+
+if nargin < 8 || isempty(usevulkan)
+    usevulkan = 0;
 end
 
 if ischar(testImage)
@@ -183,6 +191,10 @@ try
     if hwmeasurement == 3
         % Enable T-Lock generation for Bits#
         PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
+    end
+
+    if usevulkan
+        PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
     end
 
     % Open double-buffered fullscreen (kms-pageflipped) window with black background and
