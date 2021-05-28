@@ -32,3 +32,4 @@ managementtools/ptbregistration*
 *.VC.db
 *.suo
 *.sqlite
+.vscode/
