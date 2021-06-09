@@ -1,6 +1,6 @@
 """
 
-PsychHID('KbQueueCreate', [deviceNumber][, keyFlags=all][, numValuators=0][, numSlots=10000][, flags=0][, windowHandle=0])
+PsychHID('KbQueueCreate', [deviceNumber][, keyFlags=all][, numValuators=0][, numSlots=10000][, flags=0][, windowHandle])
 PsychHID('KbQueueRelease' [, deviceIndex])
 [navail] = PsychHID('KbQueueFlush' [, deviceIndex][, flushType=1])
 PsychHID('KbQueueStart' [, deviceIndex])
@@ -140,11 +140,11 @@ class Keyboard():
         """Checks for events """
         return PsychHID('KbCheck', self.device_id, scan_list)
 
-    def _create_queue(self, num_slots=10000, flags=0, win_handle=0):
+    def _create_queue(self, num_slots=10000, flags=0, win_handle=None):
         PsychHID('KbQueueCreate', self.device_number,
                  None, 0, num_slots, flags, win_handle)
         # [deviceNumber][, keyFlags=all][, numValuators=0][, numSlots=10000]
-        # [, flags=0][, windowHandle=0])
+        # [, flags=0][, windowHandle])
 
     def _release_queue(self):
         PsychHID('KbQueueRelease', self.device_number)
