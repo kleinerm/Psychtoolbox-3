@@ -32,6 +32,6 @@ CURDIR=$PWD
 cd PsychSourceGL/Source
 
 echo "Building plugins"
-for mode in 0 1 2 3   5 6 7 8 9; do
-	octave -p $CURDIR/Psychtoolbox/PsychOneliners -q --eval "linuxmakeitoctave3($mode)" || exit 1;
+for mode in 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+	octave -p $CURDIR/Psychtoolbox/PsychOneliners -q --eval "linuxmakeitoctave3($mode, 1)" || exit 1;
 done
