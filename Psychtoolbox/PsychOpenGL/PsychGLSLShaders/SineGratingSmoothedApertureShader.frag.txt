@@ -23,7 +23,6 @@ float Mod = 1.0;
 varying vec4  baseColor;
 varying float Phase;
 varying float FreqTwoPi;
-varying float rawAlpha;
 
 void main()
 {
