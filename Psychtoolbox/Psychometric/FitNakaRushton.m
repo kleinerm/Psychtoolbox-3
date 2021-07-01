@@ -7,6 +7,7 @@ function [params,f] = FitNakaRushton(contrast,response,params0)
 % 8/1/05    dhb, pr     Wrote it.
 % 8/2/07    dhb         Change argument order.
 % 7/1/21    dhb         Add end statement for compiler happiness.
+%           dhb         Added example at top, which tests that it works.
 
 % Examples:
 %{
