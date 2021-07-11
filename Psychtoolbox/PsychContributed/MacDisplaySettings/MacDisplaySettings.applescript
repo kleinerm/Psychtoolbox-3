@@ -1,7 +1,7 @@
 (*
 MacDisplaySettings.applescript
 Denis G. Pelli, denis.pelli@nyu.edu
-May 13, 2021.
+May 24, 2021.
 
 INTRODUCTION
 This applescript run handler allows you read and set seven parameters in
@@ -147,9 +147,9 @@ Calling from any other language is very similar. Ignore the returned
 
 COMPATIBILITY: 
 macOS VERSION: Works on macOS Big Sur (11.3) and earlier.
-Tested on Mavericks, Yosemite, El Capitan, Mojave, and Big Sur 
-(macOS 10.9 to 10.14 and 11.3). Not yet tested on  Catalina (10.15) 
-or macOS prior to 10.9. 
+Tested on Mavericks, Yosemite, El Capitan, Mojave, Catalina, and Big Sur 
+(all major macOS versions from 10.9 to 11.3). Not tested on macOS 
+prior to 10.9. 
 INTERNATIONAL: It is designed (but not
 yet tested) to work internationally, with macOS localized for any
 language, not just English. (For example, that is why we select the
@@ -206,8 +206,8 @@ May 29, 2015 Enhanced to allow specification of screenNumber.
 
 June 1, 2015. Polished the comments.
 
-July 25, 2015 Previously worked on Mavericks (Mac OS X 10.9). Now
-enhanced to also support Yosemite (Mac OS X 10.10.4).
+July 25, 2015 Previously worked on Mavericks (macOS 10.9). Now
+enhanced to also support Yosemite (macOS 10.10.4).
 
 August 3, 2015 Now uses try-blocks to try first group 1 and then group 2
 to cope with variations in Apple's macOS. I find that under macOS 10.9
@@ -290,6 +290,10 @@ so they wouldn't care what color temperature was selected
 while that feature is disabled. Added two new flags 
 debugSpeak and debugNotify (below) that can be set to true
 to faciliate debugging.
+	
+May 24, 2021. MacDisplaySettings now also supports macOS Catalina,
+the only missing version, so it has now been tested (and debugged)
+on all versions from macOS Mavericks (10.9) through macOS Big Sur (11.3).
 *)
 
 on run argv
@@ -426,11 +430,11 @@ on run argv
 			"|" & oldProfile & "|", "|" & oldProfileFilename & "|", "|" & errorMsgFinal & "|"}
 	end if
 	set leaveSystemPrefsRunning to true -- This could be made a further argument.
-	set versionString to system version of (system info)
+	set macOSVersion to system version of (system info)
 	considering numeric strings
-		set isMojaveOrBetter to versionString ≥ "10.14.0"
-		set isNightShiftAvailable to versionString ≥ "10.12.4"
-		set isCatalinaOrBetter to versionString ≥ "10.15.0"
+		set isNightShiftAvailable to macOSVersion ≥ "10.12.4"
+		set isMojaveOrBetter to macOSVersion ≥ "10.14.0"
+		set isCatalinaOrBetter to macOSVersion ≥ "10.15.0"
 	end considering
 	-- Default values. The value -1 means don't modify this setting.
 	set oldBrightness to -1.0
@@ -574,8 +578,9 @@ on run argv
 			end if
 			repeat
 				delay 0.05
-				if exists tab group 1 of theWindow then
-					--Works before macOS Catalina.
+				set refGroup to a reference to tab group 1 of theWindow
+				if exists refGroup then
+					--Works before macOS Big Sur.
 					--On Big Sur we sometimes need this, and sometimes the alternate below.
 					--It depends partly on whether the System Preferences App was already open.
 					--I'm very surprised that the applescript object hierarchy within an app is 
@@ -584,32 +589,30 @@ on run argv
 					if debugSpeak then
 						say "TRUE TONE uses standard access"
 					end if
-					set refGroup to a reference to tab group 1 of theWindow
 					set trueToneCheckbox to 1
+					--Not sure in Catalina whether it's 1 or 2.
 					exit repeat
 				end if
-				if exists group 1 of theWindow then
-					--Alternate access, see above. 
-					--Needed in Big Sur, and probably in Catalina. 
-					--Not needed before Catalina.
+				set refGroup to a reference to tab group 1 of group 1 of theWindow
+				if exists refGroup then
+					--Needed in Big Sur. 
 					if debugSpeak then
 						say "TRUE TONE uses alternate access"
 					end if
-					set refGroup to a reference to tab group 1 of group 1 of theWindow
 					set trueToneCheckbox to 2
+					--Not sure in Catalina whether it's 1 or 2.
 					exit repeat
 				end if
 			end repeat
-			
-			--repeat until exists tab group 1 of theWindow
-			--delay 0.05
-			--end repeat
-			--tell tab group 1 of theWindow
 			tell refGroup
 				
 				-- TRUE TONE
+				--Old Macs don't have this feature, so
+				--it's not an error for the True Tone checkbox 
+				--to be missing.
 				if isCatalinaOrBetter then
 					set trueToneCheckbox to 2
+					--Not sure in Catalina whether it's 1 or 2.
 				else
 					set trueToneCheckbox to 1
 				end if
@@ -617,20 +620,22 @@ on run argv
 					say "TRUE TONE"
 				end if
 				set trueToneOk to false
-				try
-					tell checkbox trueToneCheckbox
-						set oldTrueTone to value
-						if newTrueTone is in {0, 1} and newTrueTone is not oldTrueTone then
-							click -- It's stale, so update it.
-						end if
-					end tell
-					--Succeeded with True Tone.
-					set trueToneOk to true
-				on error
-					-- Don't report True Tone error.
-					-- Just return oldTrueTone=-1.
-					set trueToneOk to false
-				end try
+				if exists checkbox trueToneCheckbox then
+					try
+						tell checkbox trueToneCheckbox
+							set oldTrueTone to value
+							if newTrueTone is in {0, 1} and newTrueTone is not oldTrueTone then
+								click -- It's stale, so update it.
+							end if
+						end tell
+						--Succeeded with True Tone.
+						set trueToneOk to true
+					on error
+						-- Don't report True Tone error.
+						-- Just return oldTrueTone=-1.
+						set trueToneOk to false
+					end try
+				end if
 				
 				-- BRIGHTNESS & AUTOMATIC
 				repeat with version from 1 to 3
@@ -639,15 +644,24 @@ on run argv
 					-- 2 works on macOS 10.11 through 10.13, and some versions of 10.10.
 					-- 3 works on macOS Catalina.
 					try
-						if version < 3 then
-							-- macOS Mojave and older
-							set oldBrightness to value of slider 1 of group version -- Get brightness
-						else
-							-- macOS Catalina
-							set oldBrightness to value of slider 1 -- Get brightness							
+						-- older than macOS Mojave
+						set refSlider to (a reference to slider 1 of group 1)
+						set automaticallyRef to (a reference to checkbox 1 of group 1)
+						if not (exists refSlider) then
+							-- macOS Mojave
+							set refSlider to (a reference to slider 1 of group 2)
+							set automaticallyRef to (a reference to checkbox 1 of group 2)
+							if not (exists refSlider) then
+								-- macOS Catalina and Big Sur
+								set refSlider to (a reference to slider 1)
+								set automaticallyRef to (a reference to checkbox 1)
+							end if
+							if not (exists refSlider) then
+								error "Could not find the brightness slider."
+							end if
 						end if
+						set oldBrightness to value of refSlider -- Get brightness
 						set groupOk to true
-						set theGroup to version
 						set errorMsgLocal to ""
 						exit repeat
 					on error errorMsgLocal
@@ -663,13 +677,7 @@ on run argv
 							say "BRIGHTNESS"
 						end if
 						set brightnessOk to false
-						if theGroup < 3 then
-							-- macOS Mojave and older
-							set oldBrightness to value of slider 1 of group theGroup -- Get brightness
-						else
-							-- macOS Catalina
-							set oldBrightness to value of slider 1 -- Get brightness
-						end if
+						set oldBrightness to value of refSlider -- Get brightness
 						if newBrightness > -1 then
 							-- Check the poke by peeking.
 							-- We can't demand equality (of peek and poke)  because
@@ -695,27 +703,14 @@ on run argv
 							--so the extra up to 200 ms of the peek seems good insurance
 							--for detecting unanticipated problems in particular Macs,
 							--or different versions of the macOS.
-							if theGroup < 3 then
-								-- macOS Mojave and older
-								set value of slider 1 of group theGroup to newBrightness -- Set brightness
-								set b to value of slider 1 of group theGroup -- Get brightness
-							else
-								-- macOS Catalina
-								set value of slider 1 to newBrightness -- Set brightness
-								set b to value of slider 1 -- Get brightness
-							end if
+							set value of refSlider to newBrightness -- Set brightness
+							set b to value of refSlider -- Get brightness
 							set bErr to (b - newBrightness)
 							--is the peek bad?
 							if bErr > 1.0E-3 or bErr < -1.0E-3 then
 								-- yep, it's bad. Wait and peek again.
 								delay 0.1
-								if theGroup < 3 then
-									-- macOS Mojave and older
-									set b to value of slider 1 of group theGroup -- Get brightness
-								else
-									-- macOS Catalina
-									set b to value of slider 1 -- Get brightness
-								end if
+								set b to value of refSlider -- Get brightness
 								set bErr to (b - newBrightness)
 								if bErr > 1.0E-3 or bErr < -1.0E-3 then
 									error "Poked Brightness " & newBrightness & " but peeked " & b & "."
@@ -728,27 +723,13 @@ on run argv
 						if debugSpeak then
 							say "AUTOMATICALLY"
 						end if
-						if theGroup < 3 then
-							-- macOS Mojave and older
-							tell group theGroup
-								tell checkbox 1 -- Enable/disable Automatically adjust brightness
-									set oldAutomatically to value
-									if newAutomatically is in {0, 1} and ¬
-										newAutomatically is not oldAutomatically then
-										click -- It's stale, so update it.
-									end if
-								end tell -- checkbox 1
-							end tell
-						else
-							-- macOS Catalina
-							tell checkbox 1 -- Enable/disable Automatically adjust brightness
-								set oldAutomatically to value
-								if newAutomatically is in {0, 1} and ¬
-									newAutomatically is not oldAutomatically then
-									click -- It's stale, so update it.
-								end if
-							end tell -- checkbox 1
-						end if
+						tell automaticallyRef -- Enable/disable Automatically adjust brightness
+							set oldAutomatically to value
+							if newAutomatically is in {0, 1} and ¬
+								newAutomatically is not oldAutomatically then
+								click -- It's stale, so update it.
+							end if
+						end tell
 						--Succeeded with Automatically.
 						
 						--Succeeded with Brightness and Automatically.
@@ -805,17 +786,31 @@ on run argv
 	if true then
 		tell application "System Events"
 			tell process "System Preferences"
-				if isCatalinaOrBetter then
-					set refGroup to a reference to tab group 1 of group 1 of theWindow
+				repeat 10 times
+					-- macOS Big Sur
+					set tabGroupRef to a reference to tab group 1 of group 1 of theWindow
 					set openButton to 1
-				else
-					set refGroup to a reference to tab group 1 of theWindow
+					if exists checkbox 1 of tabGroupRef then
+						exit repeat
+					end if
+					-- macOS Catalina
+					set tabGroupRef to a reference to tab group 1 of theWindow
+					set openButton to 1
+					if exists checkbox 1 of tabGroupRef then
+						exit repeat
+					end if
+					-- macOS before Catalina
+					set tabGroupRef to a reference to group 1 of theWindow
 					set openButton to 2
-				end if
-				repeat until exists refGroup
+					if exists checkbox 1 of tabGroupRef then
+						exit repeat
+					end if
 					delay 0.05
 				end repeat
-				tell refGroup
+				if not (exists checkbox 1 of tabGroupRef) then
+					error "Could not find the checkbox that controls display of color profiles."
+				end if
+				tell tabGroupRef
 					-- Show all profiles.
 					try
 						repeat until exists checkbox 1
@@ -999,15 +994,23 @@ on run argv
 		reveal anchor "displaysNightShiftTab" of pane id "com.apple.preference.displays"
 	end tell
 	tell application "System Events"
-		if isCatalinaOrBetter then
-			set refGroup to tab group 1 of group 1 of theWindow
-		else
-			set refGroup to tab group 1 of theWindow
-		end if
 		tell process "System Preferences"
-			repeat until exists refGroup
+			repeat 10 times
+				--Big Sur
+				set refGroup to a reference to tab group 1 of group 1 of theWindow
+				if exists refGroup then
+					exit repeat
+				end if
+				--Before Big Sur
+				set refGroup to a reference to tab group 1 of theWindow
+				if exists refGroup then
+					exit repeat
+				end if
 				delay 0.05
 			end repeat
+			if not (exists refGroup) then
+				error "Could not find the NightShift controls."
+			end if
 			tell refGroup
 				
 				-- NIGHT SHIFT MANUAL
