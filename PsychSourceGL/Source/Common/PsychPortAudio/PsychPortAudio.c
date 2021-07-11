@@ -234,6 +234,7 @@ typedef struct PsychPADevice {
     psych_condition         changeSignal;   // Condition variable or event object for change signalling (see above).
     int                     opmode;         // Mode of operation: Playback, capture or full duplex? Master, Slave or standalone?
     int                     runMode;        // Runmode: 0 = Stop engine at end of playback, 1 = Keep engine running in hot-standby, ...
+    int                     latencyclass;   // Selected latencyclass in 'Open'.
     PaStream *stream;                       // Pointer to associated portaudio stream.
     const PaStreamInfo*     streaminfo;     // Pointer to stream info structure, provided by PortAudio.
     PaHostApiTypeId         hostAPI;        // Type of host API.
@@ -906,6 +907,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
     // Query host API: Done without mutex held, as it doesn't change during device lifetime:
     hA=dev->hostAPI;
 
+    // Count number of timestamp failures:
+    if (timeInfo->currentTime == 0) dev->noTime++;
+
     // Only compute timestamps from raw data if we're not a slave:
     if (!isSlave) {
         // Buffer timestamp computation code:
@@ -941,6 +945,14 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
             // Returned current time timestamp closer to tMonotonic than to GetSecs time?
             if (fabs(timeInfo->currentTime - tMonotonic) < fabs(timeInfo->currentTime - now)) {
+                // Timing information from host API broken/invalid?
+                if (timeInfo->currentTime == 0) {
+                    // Yes: Set tMonotonic to zero, so currentTime, outputBufferDacTime, inputBufferAdcTime
+                    // end up being current system time 'now'. Bad for timing, but keeps us going. Currently
+                    // as of Ubuntu 20.04-LTS, the pulseaudio ALSA plugin delivers broken timing:
+                    tMonotonic = 0;
+                }
+
                 // Timestamps are in monotonic time! Need to remap.
                 // tMonotonic shall be the offset between GetSecs and monotonic time,
                 // i.e., the offset that needs to be added to monotonic timestamps to
@@ -1038,9 +1050,6 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
     // Count total number of calls:
     dev->paCalls++;
-
-    // Call number of timestamp failures:
-    if (timeInfo->currentTime == 0) dev->noTime++;
 
     // Keep track of maximum number of frames requested:
     if (dev->batchsize < (psych_int64) framesPerBuffer) dev->batchsize = (psych_int64) framesPerBuffer;
@@ -1740,6 +1749,8 @@ void PsychPACloseStream(int id)
             }
 
             // Destruction for both master- and regular audio devices:
+            if ((audiodevices[id].noTime > 0) && (audiodevices[id].latencyclass > 0) && (verbosity >= 2))
+                printf("PTB-WARNING:PsychPortAudio('Close'): Audio device with handle %i had broken audio timestamping - and therefore timing - during this run. Don't trust the timing!\n", id);
 
             // Close and destroy the hardware portaudio stream:
             Pa_CloseStream(stream);
@@ -2278,7 +2289,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
             outputDevInfo = Pa_GetDeviceInfo(outputParameters.device);
             if (outputDevInfo && (Pa_GetDeviceCount() > 1) &&
                 (strstr(outputDevInfo->name, "HDMI") || strstr(outputDevInfo->name, "hdmi") || strstr(outputDevInfo->name, "isplay") ||
-                 ((outputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(outputDevInfo->name, "default") || strstr(outputDevInfo->name, "pulse"))))) {
+                 ((outputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (strstr(outputDevInfo->name, "default") || strstr(outputDevInfo->name, "pulse"))))) {
                 // Selected output default device seems to be a HDMI or DisplayPort output
                 // of a graphics card. Try to find a better default choice.
                 paHostAPI = outputDevInfo->hostApi;
@@ -2288,7 +2299,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                     if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
                         (referenceDevInfo->maxOutputChannels < 1) ||
                         (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") || strstr(referenceDevInfo->name, "isplay") ||
-                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
+                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
                         // Unsuitable.
                         continue;
                     }
@@ -2326,7 +2337,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
             inputDevInfo = Pa_GetDeviceInfo(inputParameters.device);
             if (inputDevInfo && (Pa_GetDeviceCount() > 1) &&
                 (strstr(inputDevInfo->name, "HDMI") || strstr(inputDevInfo->name, "hdmi") || strstr(inputDevInfo->name, "isplay") ||
-                 ((inputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(inputDevInfo->name, "default") || strstr(inputDevInfo->name, "pulse"))))) {
+                 ((inputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (strstr(inputDevInfo->name, "default") || strstr(inputDevInfo->name, "pulse"))))) {
                 // Selected input default device seems to be a HDMI or DisplayPort output
                 // of a graphics card. Try to find a better default choice.
                 paHostAPI = inputDevInfo->hostApi;
@@ -2336,7 +2347,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                     if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
                         (referenceDevInfo->maxInputChannels < 1) ||
                         (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") || strstr(referenceDevInfo->name, "isplay") ||
-                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && pulseaudio_isSuspended && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
+                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
                         // Unsuitable.
                         continue;
                     }
@@ -2907,6 +2918,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // Setup our final device structure:
     audiodevices[id].opmode = mode;
     audiodevices[id].runMode = 1; // Keep engine running by default. Minimal extra cpu-load for significant reduction in startup latency.
+    audiodevices[id].latencyclass = latencyclass;
     audiodevices[id].stream = stream;
     audiodevices[id].streaminfo = Pa_GetStreamInfo(stream);
     audiodevices[id].hostAPI = Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type;
@@ -5158,6 +5170,9 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
         // Copy out estimated stopTime:
         PsychCopyOutDoubleArg(4, kPsychArgOptional, -1);
     }
+
+    if ((audiodevices[pahandle].noTime > 0) && (audiodevices[pahandle].latencyclass > 0) && (verbosity >= 2))
+        printf("PTB-WARNING:PsychPortAudio('Stop'): Audio device with handle %i had broken audio timestamping - and therefore timing - during this run. Don't trust the timing!\n", pahandle);
 
     return(PsychError_none);
 }
