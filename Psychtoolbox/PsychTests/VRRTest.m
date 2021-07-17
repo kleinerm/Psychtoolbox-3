@@ -280,7 +280,7 @@ try
     minFlipDelta = ifi;
 
     % minVRR == minimum refresh rate in VRR range:
-    minVRR = 33;
+    minVRR = 48;
 
     durRange = maxFlipDelta - minFlipDelta;
 
@@ -506,17 +506,29 @@ try
     td = td(2:end) * 1000;
     plot(td, 'r');
 
+    err = deltaT - td;
+
     % Green = Error between requested and actual frame duration for each flip:
-    plot(deltaT - td, 'g');
+    plot(err, 'g');
+
+    % Find presents that are more than 1 msec too early - ie. definite failures.
+    realbadones = find((err) < -1);
+    if length(realbadones) > 0
+        warning('WARNING: Multiple presents too early!! %i items.\n', length(realbadones));
+    end
 
     % Red = Median error over whole run:
-    plot(ones(1,n) * median(deltaT - td), 'r');
-    fprintf('Avg diff target vs. true: %f msecs. stddev %f msecs. Median diff %f msecs.\n', ...
-            mean(deltaT - td), std(deltaT - td), median(deltaT - td));
+    plot(ones(1,n) * median(err), 'r');
+    fprintf('Avg diff target vs. true: %f msecs. stddev %f msecs. Median diff %f msecs. Too early: %i\n', ...
+            mean(err), std(err), median(err), length(realbadones));
+    fprintf('Without 1st two samples : %f msecs. stddev %f msecs. Median diff %f msecs. Too early: %i\n', ...
+            mean(err(3:end)), std(err(3:end)), median(err(3:end)), length(realbadones));
     title('Delta between successive Flips in milliseconds [red=requested, blue=actual]:');
     text(0,-10, 'Difference (green), median error (horizontal red):');
-    text(0,-30, sprintf('Avg diff target vs. true: %f msecs. stddev %f msecs. Median diff %f msecs.\n', ...
-                        mean(deltaT - td), std(deltaT - td), median(deltaT - td)));
+    text(0,-30, sprintf('Avg diff target vs. true: %f msecs. stddev %f msecs. Median diff %f msecs. Too early: %i\n', ...
+                        mean(err), std(err), median(err), length(realbadones)));
+    xlabel('Number');
+    ylabel('msecs');
     grid on;
     hold off;
 
@@ -528,7 +540,7 @@ try
     end
 
     figure;
-    hist(deltaT - td, 100);
+    hist(err, 100);
     title('Histogram of difference between requested and actual frame duration [msecs]');
 
     % Figure 2 shows the recorded beam positions if hw and sw setup allowed that:
