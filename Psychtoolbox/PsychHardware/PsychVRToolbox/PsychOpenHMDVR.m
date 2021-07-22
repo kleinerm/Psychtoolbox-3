@@ -1,6 +1,8 @@
 function varargout = PsychOpenHMDVR(cmd, varargin)
 % PsychOpenHMDVR - A high level driver for VR hardware supported via OpenHMD.
 %
+% This driver is currently only for use with Linux/X11 with a native XOrg X-Server.
+%
 % Note: If you want to write VR code that is portable across
 % VR headsets of different vendors, then use the PsychVRHMD()
 % driver instead of this driver. The PsychVRHMD driver will use
@@ -13,21 +15,62 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 %
 % This driver needs libopenhmd.so version 0.3 or later to be installed
 % in a linker accessible path (e.g., /usr/local/lib/ on a Linux system).
-% You can either download, compile and install it from ...
+% You can either download, compile and install libopenhmd yourself from
+% the official project GitHub...
 %
 % https://github.com/OpenHMD/OpenHMD
 %
-% ... or get a precompiled library for libopenhmd.so from:
+% ... or if you have a Oculus Rift and want to take advantage of an experimental
+% implementation that provides absolute head position tracking of reasonable quality,
+% from this repo and branch...
 %
-% RaspberryPi/Raspbian: https://github.com/Psychtoolbox-3/MiscStuff/tree/master/OpenHMD32BitRaspbianARMv7
+% https://github.com/thaytan/OpenHMD/tree/rift-kalman-filter
 %
-% 64-Bit Intel/Ubuntu:  https://github.com/Psychtoolbox-3/MiscStuff/tree/master/OpenHMD64BitIntelUbuntuLinux
+% ... or you can get a precompiled library for libopenhmd.so from:
 %
-% Follow instructions in the accompanying Readme.txt files.
+% For RaspberryPi/Raspbian: https://github.com/Psychtoolbox-3/MiscStuff/tree/master/OpenHMD32BitRaspbianARMv7
+%
+% For 64-Bit Intel/Ubuntu:  https://github.com/Psychtoolbox-3/MiscStuff/tree/master/OpenHMD64BitIntelUbuntuLinux
+%
+% Follow the setup instructions in the accompanying Readme.txt files if you use the
+% precompiled libraries.
 %
 % libopenhmd.so in turn needs libhidapi-libusb.so to be installed in
-% a similar path. On Debian GNU/Linux based systems you can install HIDAPI
-% via the package libhidapi-libusb0 (apt-get install libhidapi-libusb0).
+% a similar path. On Debian GNU/Linux based systems like Ubuntu, you can install
+% this via the package libhidapi-libusb0 (apt-get install libhidapi-libusb0).
+%
+% On Ubuntu 20.04-LTS and later, or Debian 11 and later, you can also get the library
+% via a simple "sudo apt install libopenhmd0" for version 0.3 of the library.
+%
+% Regarding Linux 4.16 and later:
+%
+% Note that on some HMD's, e.g., the Oculus Rift models, this driver will only work
+% on a multi-X-Screen setup, where a dedicated X-Screen (typically X-Screen 1) is
+% created, with the video output of the HMD assigned as only output to that X-Screen.
+% Single-X-Screen operation will be unworkable in practice.
+%
+% The xorg.conf file needed for such a configuration must be manually created for your
+% setup. The "Monitor" section for the video output representing the HMD must have this
+% line included:
+%
+% Option "Enable" "on"
+%
+% E.g., if the video output with the HMD has the name "HDMI-A-0", the relevant
+% section would look like this:
+%
+% Section "Monitor"
+%   Identifier    "HDMI-A-0"
+%   Option        "Enable" "on"
+% EndSection
+%
+% An example file demonstrating this can be found in the PsychtoolboxRoot() folder,
+% under the following name:
+%
+% Psychtoolbox/PsychHardware/LinuxX11ExampleXorgConfs/xorg.conf_DualXScreen_OculusRift_amdgpu.conf
+%
+% Regarding Linux 4.15 and earlier, the following may apply instead, at least for
+% the Oculus Rift CV1 and later Oculus HMD's, maybe also for other models from
+% other vendors:
 %
 % From the same URL above, you need to get openhmdkeepalivedaemon, an executable
 % file, and make sure it gets started during system boot of your machine. This so
@@ -935,6 +978,7 @@ end
 % Open a HMD:
 if strcmpi(cmd, 'Open')
   [handle, modelName, panelWidth, panelHeight] = PsychOpenHMDVRCore('Open', varargin{:});
+  [~, ~, ~, ~, ~, ~, ~, pw, ph] = PsychOpenHMDVRCore('GetUndistortionParameters', handle, 0);
 
   newhmd.handle = handle;
   newhmd.driver = @PsychOpenHMDVR;
@@ -944,6 +988,8 @@ if strcmpi(cmd, 'Open')
   newhmd.modelName = modelName;
   newhmd.panelWidth = panelWidth;
   newhmd.panelHeight = panelHeight;
+  newhmd.panelWidthMM = round(pw * 1000);
+  newhmd.panelHeightMM = round(ph * 1000);
   newhmd.separateEyePosesSupported = 0;
   newhmd.controllerTypes = 0;
   newhmd.VRControllersSupported = 0;
@@ -1132,15 +1178,19 @@ if strcmpi(cmd, 'Close')
 end
 
 if strcmpi(cmd, 'IsHMDOutput')
-  myhmd = varargin{1}; %#ok<NASGU>
+  myhmd = varargin{1};
   scanout = varargin{2};
 
-  % Is this an output with a resolution matching HMD panel resolution?
+  % Does physical display size from EDID match the one reported by the HMD?
+  mmmatch = (myhmd.panelWidthMM == scanout.displayWidthMM && myhmd.panelHeightMM == scanout.displayHeightMM) || ...
+            (myhmd.panelWidthMM == scanout.displayHeightMM && myhmd.panelHeightMM == scanout.displayWidthMM);
+
+  % Is this an output with a resolution or physical size matching HMD panel resolution or size?
   % Assumption here is that it is a tilted panel in portrait mode in case of
   % the Rift DK1/DK2, but a non-tilted panel in landscape mode on other HMDs,
   % e.g., the Rift CV1:
   if (~isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelHeight) && (scanout.height == myhmd.panelWidth || scanout.height == 948)) || ...
-     (isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelWidth) && (scanout.height == myhmd.panelHeight))
+     (isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelWidth) && (scanout.height == myhmd.panelHeight)) || mmmatch
     varargout{1} = 1;
   else
     varargout{1} = 0;
@@ -1345,6 +1395,21 @@ if strcmpi(cmd, 'OpenWindowSetup')
     winRect = [0, 0, myhmd.panelWidth, myhmd.panelHeight];
   end
 
+  % Try to find the output with the HMD:
+  scanout = [];
+  for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
+    scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
+    if ~myhmd.driver('IsHMDOutput', myhmd, scanout)
+      % This output is not it:
+      scanout = [];
+    end
+  end
+
+  if isempty(scanout)
+    sca;
+    error('PsychOpenHMDVR-ERROR: Could not find X-Screen output with HMD on target X-Screen %i!', screenid);
+  end
+
   % Yes. Trying to display on a screen with more than one video output?
   if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
     % Yes. Not good, as this will impair graphics performance and timing a lot.
@@ -1355,17 +1420,10 @@ if strcmpi(cmd, 'OpenWindowSetup')
     fprintf('PsychOpenHMDVR-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
     fprintf('PsychOpenHMDVR-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
 
-    % Try to find the output with the HMD:
-    for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
-      scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
-      if myhmd.driver('IsHMDOutput', myhmd, scanout)
-        % This output i has proper resolution to be the HMD panel.
-        % Position our onscreen window accordingly:
-        winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
-        fprintf('PsychOpenHMDVR-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
-                winRect(1), winRect(2), winRect(3), winRect(4), i);
-      end
-    end
+    % Position our onscreen window accordingly:
+    winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
+    fprintf('PsychOpenHMDVR-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i [%s] of screen %i.\n', ...
+            winRect(1), winRect(2), winRect(3), winRect(4), i, scanout.name, screenid);
   end
 
   % Get "panel size" / true framebuffer size:
@@ -1373,6 +1431,29 @@ if strcmpi(cmd, 'OpenWindowSetup')
     panelRect = Screen('Rect', screenid);
   else
     panelRect = winRect;
+  end
+
+  % Turn target video output off, then on again, to get some VR HMD's like the
+  % Oculus Rift CV1 unstuck. This is needed because display DPMS seems to get
+  % into an undefined or wrong state after the HMD is powered down to standby,
+  % and therefore the video output hot-unplugged, then powered up in a new session,
+  % and therefore the video output hot-plugged again. Also set the output to be a
+  % regular "desktop" output, otherwise X can not OpenGL display on it.
+  %
+  % A DPMS forced standby -> on cycle would also work, but is more intrusive/
+  % flickery, as it globally powers down and up all connected monitors, not just
+  % the HMD, so lets do a output off->on cycle instead to only affect the actual
+  % output which needs a DPMS off -> on, which happens as side-effect of the off
+  % on cycle:
+  if 1
+      cmd = sprintf('xrandr --screen %i --output %s --off', screenid, scanout.name);
+      % Works also, but more intrusive on multi-display setups: cmd = sprintf('xset dpms force standby');
+      system(cmd);
+      WaitSecs(2);
+      cmd = sprintf('xrandr --screen %i --output %s --set ''non-desktop'' 0 --mode %ix%i', screenid, scanout.name, hmd{myhmd.handle}.panelWidth, hmd{myhmd.handle}.panelHeight);
+      % Works also, but more intrusive on multi-display setups: cmd = sprintf('xset dpms force on');
+      system(cmd);
+      WaitSecs(1);
   end
 
   % How is the panel mounted in the HMD, portrait or landscape?
