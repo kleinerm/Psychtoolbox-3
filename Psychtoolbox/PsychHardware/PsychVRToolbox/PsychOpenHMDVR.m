@@ -1576,16 +1576,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Only have horizontal width per eye:
   viewport_scale(1) = viewport_scale(1) / 2;
 
-  % Convert head to eye shift vectors into 4x4 matrices, as we'll need
-  % them frequently:
-  EyeT = diag([1 1 1 1]);
-  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetLeft';
-  hmd{handle}.eyeShiftMatrix{1} = EyeT;
-
-  EyeT = diag([1 1 1 1]);
-  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetRight';
-  hmd{handle}.eyeShiftMatrix{2} = EyeT;
-
   % Retrieve texture handles for the finalizedFBOs, which contain our per-eye input data for VR compositing:
   [hmd{handle}.inTex(1), hmd{handle}.inTex(2), glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', win, 'GetDisplayBufferTextures');
 
@@ -1674,14 +1664,21 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
   end
 
-  if ~isempty(strfind(hmd{handle}.modelName, 'Rift (CV'))
-    % Attach override projection matrices at least for the Rift CV1:
-    [~, ~, ipd] = PsychOpenHMDVRCore('GetStaticRenderParameters', handle);
-    hmd{handle}.ipd = ipd / 16 / viewport_scale(1);
-  else
-    % No ipd correction for other HMDs:
-    hmd{handle}.ipd = 0;
-  end
+  % Compute head to eyeshift vectors as simple horizontal translation based on ipd,
+  % the interpupillar distance:
+  [~, ~, ipd] = PsychOpenHMDVRCore('GetStaticRenderParameters', handle);
+  hmd{handle}.ipd = ipd;
+  hmd{handle}.HmdToEyeViewOffsetLeft  = [-ipd / 2, 0, 0];
+  hmd{handle}.HmdToEyeViewOffsetRight = [+ipd / 2, 0, 0];
+
+  % Convert head to eye shift vectors into 4x4 matrices, as we'll need them frequently:
+  EyeT = diag([1 1 1 1]);
+  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetLeft';
+  hmd{handle}.eyeShiftMatrix{1} = EyeT;
+
+  EyeT = diag([1 1 1 1]);
+  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetRight';
+  hmd{handle}.eyeShiftMatrix{2} = EyeT;
 
   % Need HSW display?
   if (hmd{handle}.hswdismiss >= 0) && isempty(getenv('PSYCH_OpenHMD_HSWSKIP'))
@@ -1773,9 +1770,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % 3D rendering requested, instead of pure 2D rendering?
   if ~isempty(strfind(hmd{myhmd.handle}.basicTask, '3D'))
-    % Yes. Disable ipd correction as it seems to do more harm than good
-    % on the only HMD on which it would be used - the Rift CV:
-    hmd{handle}.ipd = 0;
+    % Nothing to do yet.
   end
 
   % Is this a Rift DK2 in special 1080x948 @ 120Hz video mode? And no Monoscopic mode selected?
