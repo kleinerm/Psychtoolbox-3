@@ -611,16 +611,17 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
         "Head position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
         "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or set "
         "to zero, then no prediction is performed and the current state based on latest measurements is returned. "
+        "NOTE: Some fields may not get updated, depending on the type of HMD device and version of the libopenhmd library. "
         "NOTE: predictionTime is not yet implemented and silently ignored.\n\n"
         "'state' is a struct with fields reporting the following values:\n"
         "'Time' = Time in seconds of predicted tracking state.\n"
         "'Status' = Tracking status flags. +1 = Head orientation tracked, +2 = Head position tracked, +4 = Camera pose tracked "
         "+32 = Position tracking hardware connected, +128 = HMD display is connected and available.\n"
         "'HeadPose' = Head position [x, y, z] in meters and rotation as quaternion [rx, ry, rz, rw], all as a vector [x,y,z,rx,ry,rz,rw].\n"
-//         "'HeadLinearSpeed' = Linear velocity [vx,vy,vz] in meters/sec.\n"
-//         "'HeadAngularSpeed' = Angular velocity [rx,ry,rz] in radians/sec.\n"
-//         "'HeadLinearAcceleration' = Linear acceleration [ax,ay,az] in meters/sec^2.\n"
-//         "'HeadAngularAcceleration' = Angular acceleration [rax,ray,raz] in radians/sec^2.\n"
+        "'HeadLinearSpeed' = Linear velocity [vx,vy,vz] in meters/sec.\n"
+        "'HeadAngularSpeed' = Angular velocity [rx,ry,rz] in radians/sec.\n"
+        "'HeadLinearAcceleration' = Linear acceleration [ax,ay,az] in meters/sec^2.\n"
+        "'HeadAngularAcceleration' = Angular acceleration [rax,ray,raz] in radians/sec^2.\n"
 //         "'CameraPose' as vector with position and orientation quaternion, like 'HeadPose'.\n"
 //         "'LeveledCameraPose' Like 'CameraPose' but aligned to the gravity vector of the world.\n"
 //         "'CameraFrustumHVFov' Horizontal and vertical field of view of the tracking camera in radians.\n"
@@ -646,7 +647,7 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
     int handle, hmdstatus = 0;
     double tNow, predictionTime = 0.0;
     PsychOpenHMDDevice *openhmd;
-    float state[7];
+    float state[19] = { 0 };
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -722,39 +723,59 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
     v[6] = state[6];
     PsychSetStructArrayNativeElement("HeadPose", 0,	outMat, status);
 
-    /*
-    // Linear velocity:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.LinearVelocity.x;
-    v[1] = state.HeadPose.LinearVelocity.y;
-    v[2] = state.HeadPose.LinearVelocity.z;
-    PsychSetStructArrayNativeElement("HeadLinearSpeed", 0, outMat, status);
+    // Below queries need OpenHMD version of at least ?.?.? - UNKNOWN.
+    // TODO: Current OpenHMD does not support these, and even the experimental tracking
+    // branch only supports them nominally for the Rift CV-1 - where it also does
+    // not work well yet. On other devices it will flood the console with error
+    // messages, so not good!
+    if (OHMD_S_OK != ohmd_require_version(1000, 0, 0))
+        return(PsychError_none);
 
-    // Angular velocity:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.AngularVelocity.x;
-    v[1] = state.HeadPose.AngularVelocity.y;
-    v[2] = state.HeadPose.AngularVelocity.z;
-    PsychSetStructArrayNativeElement("HeadAngularSpeed", 0,	outMat, status);
+    #ifdef OHMD_HAVE_VEL_ACCEL_API_v0
+    // Linear velocity:
+    if (OHMD_S_OK == ohmd_device_getf(openhmd->hmd, OHMD_VELOCITY_VECTOR, &state[7])) {
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+        v[0] = state[7];
+        v[1] = state[8];
+        v[2] = state[9];
+        PsychSetStructArrayNativeElement("HeadLinearSpeed", 0, outMat, status);
+    }
 
     // Linear acceleration:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.LinearAcceleration.x;
-    v[1] = state.HeadPose.LinearAcceleration.y;
-    v[2] = state.HeadPose.LinearAcceleration.z;
-    PsychSetStructArrayNativeElement("HeadLinearAcceleration", 0, outMat, status);
+    if (OHMD_S_OK == ohmd_device_getf(openhmd->hmd, OHMD_ACCELERATION_VECTOR, &state[10])) {
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+        v[0] = state[10];
+        v[1] = state[11];
+        v[2] = state[12];
+        PsychSetStructArrayNativeElement("HeadLinearAcceleration", 0, outMat, status);
+    }
+    #endif
+
+    #ifdef OHMD_HAVE_VEL_ACCEL_API_v1
+    // Angular velocity:
+    if (OHMD_S_OK == ohmd_device_getf(openhmd->hmd, OHMD_ANGULAR_VELOCITY_VECTOR, &state[13])) {
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+        v[0] = state[13];
+        v[1] = state[14];
+        v[2] = state[15];
+        PsychSetStructArrayNativeElement("HeadAngularSpeed", 0, outMat, status);
+    }
 
     // Angular acceleration:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.AngularAcceleration.x;
-    v[1] = state.HeadPose.AngularAcceleration.y;
-    v[2] = state.HeadPose.AngularAcceleration.z;
-    PsychSetStructArrayNativeElement("HeadAngularAcceleration", 0, outMat, status);
+    if (OHMD_S_OK == ohmd_device_getf(openhmd->hmd, OHMD_ANGULAR_ACCELERATION_VECTOR, &state[16])) {
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+        v[0] = state[16];
+        v[1] = state[17];
+        v[2] = state[18];
+        PsychSetStructArrayNativeElement("HeadAngularAcceleration", 0, outMat, status);
+    }
+    #endif
 
+    /* TODO - Probably never:
     // Camera pose:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);

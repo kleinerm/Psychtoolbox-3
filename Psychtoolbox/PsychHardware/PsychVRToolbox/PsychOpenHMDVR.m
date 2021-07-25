@@ -716,6 +716,24 @@ if strcmpi(cmd, 'PrepareRender')
     % Compute inverse matrices, useable as OpenGL GL_MODELVIEW matrices for rendering:
     result.modelView{1} = inv(result.cameraView{1});
     result.modelView{2} = inv(result.cameraView{2});
+
+    if 0 % Not usable with current OpenHMD versions yet, so spare us the wasted cpu cycles.
+    if ~isempty(state.HeadLinearSpeed)
+      result.HeadLinearSpeed = state.HeadLinearSpeed;
+    end
+
+    if ~isempty(state.HeadAngularSpeed)
+      result.HeadAngularSpeed = state.HeadAngularSpeed;
+    end
+
+    if ~isempty(state.HeadLinearAcceleration)
+      result.HeadLinearAcceleration = state.HeadLinearAcceleration;
+    end
+
+    if ~isempty(state.HeadAngularAcceleration)
+      result.HeadAngularAcceleration = state.HeadAngularAcceleration;
+    end
+    end
   end
 
   % Want matrices with tracked position and orientation of touch controllers ~ users hands?
