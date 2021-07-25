@@ -50,6 +50,7 @@ typedef struct PsychOpenHMDDevice {
     unsigned int texSize[2][2];
     double       ofov[2][4];
     uint32_t frameIndex;
+    double       oldpos[3];
 } PsychOpenHMDDevice;
 
 PsychOpenHMDDevice openhmddevices[MAX_PSYCH_OPENHMD_DEVS];
@@ -677,6 +678,21 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
     // which would hint to use of the dummy device:
     if (!(state[3] == 0 && state[4] == 0 && state[5] == 0 && (state[6] == 0 || state[6] == 1)))
         hmdstatus += 1;
+
+    // Set +2 "position tracked" if the position vector is different in this cycle from the one in the last cycle.
+    // Position vectors start at (0,0,0) and then update if tracked, and freeze on their current value if tracking
+    // is lost:
+    if (state[0] != openhmd->oldpos[0] || state[1] != openhmd->oldpos[1] || state[2] != openhmd->oldpos[2])
+        hmdstatus += 2;
+
+    openhmd->oldpos[0] = state[0];
+    openhmd->oldpos[1] = state[1];
+    openhmd->oldpos[2] = state[2];
+
+    // Set +32 "position tracking hardware connected" if the old position vector is not (0,0,0), as with a
+    // device that has not ever been tracked in this session:
+    if (!(openhmd->oldpos[0] == 0 && openhmd->oldpos[1] == 0 && openhmd->oldpos[2] == 0))
+        hmdstatus += 32;
 
     PsychSetStructArrayDoubleElement("Status", 0, hmdstatus, status);
 
