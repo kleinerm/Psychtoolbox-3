@@ -131,12 +131,25 @@ PsychOpenHMDDevice* PsychGetOpenHMD(int handle, psych_bool dontfail)
 
 void PsychOpenHMDVRCheckInit(psych_bool dontfail)
 {
+    int major, minor, patch;
+
     // Already initialized? No op then.
     if (initialized) return;
 
+    ohmd_get_version(&major, &minor, &patch);
+
+    if (OHMD_S_OK != ohmd_require_version(0, 3, 0)) {
+        if (verbosity >= 1) printf("PsychOpenHMDVRCore-ERROR: OpenHMD VR runtime version %i.%i.%i is too old for us! We need at least version 0.3.0.\n", major, minor, patch);
+
+        if (!dontfail)
+            PsychErrorExitMsg(PsychError_system, "PsychOpenHMDVRCore-ERROR: Initialization of VR runtime failed, because OpenHMD version is too old! Driver disabled!");
+
+        return;
+    }
+
     // Initialize OpenHMD VR runtime with default parameters:
     if ((ctx = ohmd_ctx_create()) != NULL) {
-        if (verbosity >= 3) printf("PsychOpenHMDVRCore-INFO: OpenHMD VR runtime initialized.\n");
+        if (verbosity >= 3) printf("PsychOpenHMDVRCore-INFO: OpenHMD VR runtime version %i.%i.%i initialized.\n", major, minor, patch);
 
         // Get count of available devices:
         available_devices = ohmd_ctx_probe(ctx);;
