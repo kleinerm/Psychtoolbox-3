@@ -245,7 +245,7 @@ psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool e
     display_mode_t *optimal_mode = NULL;
     int i, count = 0;
     int current_mode_num, target_mode_num;
-    int targetDepthCode;
+    int targetDepthCode, targetWidth, targetHeight;
     int verbosity = PsychPrefStateGet_Verbosity();
 
     // Map targetBpc to OSX framebuffer scanout depth code:
@@ -298,8 +298,23 @@ psych_bool PsychOSFixupFramebufferFormatForTiming(int screenNumber, psych_bool e
             (modes[i].freq == current_mode->freq)) {
             optimal_mode = &modes[i];
             if (verbosity > 3)
-                printf("PTB-DEBUG: Optimal mode for timing on screenId %i at %i bpc: %dx%d@%.0f@d=%d@%iHz\n", screenNumber, targetBpc,
+                printf("PTB-DEBUG: Optimal mode from auto-detect for timing on screenId %i at %i bpc: %dx%d@%.0f@d=%d@%iHz\n", screenNumber, targetBpc,
                    optimal_mode->width, optimal_mode->height, optimal_mode->scale, optimal_mode->depth, (int) optimal_mode->freq);
+        }
+    }
+
+    // If auto-detection of mode can't find a suitable optimal_mode due to even more macOS brokeness, e.g., on macOS 11 + iMac,
+    // then try if we have the specific display model in our internal hard-coded LUT, and if so, use the native resolution from
+    // the LUT as target resolution of the mode and retry mode matching:
+    if (!optimal_mode && PsychOSGetPanelOverrideSize(screenNumber, &targetWidth, &targetHeight)) {
+        for (i = 0; i < count; i++) {
+            if ((modes[i].scale == 1) && (modes[i].depth == targetDepthCode) && (modes[i].freq == current_mode->freq) &&
+                (modes[i].width == targetWidth) && (modes[i].height == targetHeight)) {
+                optimal_mode = &modes[i];
+                if (verbosity > 3)
+                    printf("PTB-DEBUG: Optimal mode from internal LUT for timing on screenId %i at %i bpc: %dx%d@%.0f@d=%d@%iHz\n", screenNumber, targetBpc,
+                    optimal_mode->width, optimal_mode->height, optimal_mode->scale, optimal_mode->depth, (int) optimal_mode->freq);
+            }
         }
     }
 
