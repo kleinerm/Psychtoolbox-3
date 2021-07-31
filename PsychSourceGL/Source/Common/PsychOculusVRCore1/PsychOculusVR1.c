@@ -209,7 +209,7 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
     ovrResult result;
     ovrInitParams iparms;
     memset(&iparms, 0, sizeof(iparms));
-    iparms.Flags = ovrInit_RequestVersion | ovrInit_Debug; // Use debug libraries. TODO: Remove for final release!
+    iparms.Flags = ovrInit_RequestVersion; // | ovrInit_Debug; // Use debug libraries. TODO: Remove for final release!
     iparms.RequestedMinorVersion = OVR_MINOR_VERSION;
     iparms.LogCallback = PsychOculusLogCB;
     iparms.UserData = 0;  // Userdata pointer, currently NULL.
@@ -354,6 +354,14 @@ void PsychOculusClose(int handle)
 
     // Done with this device:
     devicecount--;
+
+    if (devicecount == 0) {
+        // Last HMD closed. Shutdown the runtime:
+        ovr_Shutdown();
+        initialized = FALSE;
+
+        if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Oculus VR runtime shutdown complete.\n");
+    }
 }
 
 void PsychOculusVR1Init(void) {
@@ -373,13 +381,7 @@ PsychError PsychOculusVR1ShutDown(void) {
     if (initialized) {
         for (handle = 0 ; handle < MAX_PSYCH_OCULUS_DEVS; handle++)
             PsychOculusClose(handle);
-
-        // Shutdown runtime:
-        ovr_Shutdown();
-
-        if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Oculus VR runtime shutdown complete.\n");
     }
-    initialized = FALSE;
 
     return(PsychError_none);
 }
