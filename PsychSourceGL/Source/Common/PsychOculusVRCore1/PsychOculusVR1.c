@@ -14,7 +14,7 @@
  * A Psychtoolbox driver for the Oculus VR virtual reality
  * head sets, using the OculusVR 1.16 SDK and runtime and later.
  *
- * Copyright (c) 2018 Mario Kleiner. Licensed under the MIT license:
+ * Copyright (c) 2018-2021 Mario Kleiner. Licensed under the MIT license:
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -103,7 +103,7 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "PsychOculusVRCore1 - A Psychtoolbox driver for Oculus VR hardware.\n";
     synopsis[i++] = "This driver allows to control devices supported by the Oculus runtime V1.16 and higher.\n";
-    synopsis[i++] = "Copyright (c) 2018, 2019 Mario Kleiner.\n";
+    synopsis[i++] = "Copyright (c) 2018 - 2021 Mario Kleiner.\n";
     synopsis[i++] = "The PsychOculusVRCore1 driver is licensed to you under the terms of the MIT license, with the following restriction:\n";
     synopsis[i++] = "Uses the Oculus SDK which is Copyright © Facebook Technologies, LLC and its affiliates. All rights reserved.\n";
     synopsis[i++] = "See 'help License.txt' in the Psychtoolbox root folder for more details.\n";
