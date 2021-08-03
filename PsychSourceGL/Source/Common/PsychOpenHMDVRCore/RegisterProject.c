@@ -46,8 +46,8 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("GetEyePose", &PSYCHOPENHMDVRGetEyePose));
     PsychErrorExit(PsychRegister("SetLowPersistence", &PSYCHOPENHMDVRSetLowPersistence));
     PsychErrorExit(PsychRegister("SetDynamicPrediction", &PSYCHOPENHMDVRSetDynamicPrediction));
+    PsychErrorExit(PsychRegister("GetInputState", &PSYCHOPENHMDVRGetInputState));
 
-    //PsychErrorExit(PsychRegister("", &PSYCHOPENHMDVR));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENHMDVR));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENHMDVR));
 

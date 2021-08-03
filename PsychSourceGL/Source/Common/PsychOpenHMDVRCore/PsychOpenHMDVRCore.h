@@ -53,6 +53,7 @@ PsychError PSYCHOPENHMDVRGetCorrectionShaders(void);
 PsychError PSYCHOPENHMDVRGetEyePose(void);
 PsychError PSYCHOPENHMDVRSetLowPersistence(void);
 PsychError PSYCHOPENHMDVRSetDynamicPrediction(void);
+PsychError PSYCHOPENHMDVRGetInputState(void);
 
 #ifdef  __cplusplus
 }
