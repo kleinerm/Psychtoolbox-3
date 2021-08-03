@@ -177,8 +177,6 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % of the OVR.ControllerType_XXX flags described in 'GetInputState'.
 % This does not detect if controllers are hot-plugged or unplugged after
 % the HMD was opened. Iow. only probed at 'Open'.
-% As the current OpenHMD driver does not support dedicated controllers at the
-% moment, this always returns 0.
 %
 %
 % info = PsychOpenHMDVR('GetInfo', hmd);
@@ -473,7 +471,7 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % Currently not implemented / supported. Does nothing.
 %
 %
-% PsychOpenHMDVR('SetHSWDisplayDismiss', hmd [, dismissTypes=1+2]);
+% PsychOpenHMDVR('SetHSWDisplayDismiss', hmd [, dismissTypes=1+2+4]);
 % - Set how the user can dismiss the "Health and safety warning display".
 % 'dismissTypes' can be -1 to disable the HSWD, or a value >= 0 to show
 % the HSWD until a timeout and or until the user dismisses the HSWD.
@@ -482,6 +480,7 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % +0 = Display until timeout, if any. Will wait forever if there isn't any timeout!
 % +1 = Dismiss via keyboard keypress.
 % +2 = Dismiss via mouse click or mousepad tap.
+% +4 = Dismiss via press of a button on a connected VR controller, e.g., touch controller.
 %
 %
 % [bufferSize, imagingFlags, stereoMode] = PsychOpenHMDVR('GetClientRenderingParameters', hmd);
@@ -687,7 +686,7 @@ if strcmpi(cmd, 'PrepareRender')
   end
 
   % Get predicted head pose for targetTime:
-  state = PsychOpenHMDVRCore('GetTrackingState', myhmd.handle, targetTime);
+  [state, touch] = PsychOpenHMDVRCore('GetTrackingState', myhmd.handle, targetTime);
 
   % Always return basic tracking status:
   result.tracked = state.Status;
@@ -741,17 +740,17 @@ if strcmpi(cmd, 'PrepareRender')
     % Yes: We can't do this on current OpenHMD, so fake stuff:
 
     for i=1:2
-      result.handStatus(i) = 0;
+      result.handStatus(i) = touch(i).Status;
 
       % Bonus feature: HandPoses as 7 component translation + orientation quaternion vectors:
-      result.handPose{i} = [0, 0, 0, 0, 0, 0, 1];
+      result.handPose{i} = touch(i).HandPose;;
 
       % Convert hand pose vector to 4x4 OpenGL right handed reference frame matrix:
       % In our untracked case, simply an identity matrix:
-      result.localHandPoseMatrix{i} = diag([1,1,1,1]);
+      result.localHandPoseMatrix{i} = eyePoseToCameraMatrix(result.handPose{i});
 
       % Premultiply usercode provided global transformation matrix - here use as is:
-      result.globalHandPoseMatrix{i} = userTransformMatrix;
+      result.globalHandPoseMatrix{i} = userTransformMatrix * result.localHandPoseMatrix{i};
 
       % Compute inverse matrix, maybe useable for collision testing / virtual grasping of virtual objects:
       % Provides a transform that maps absolute geometry into geometry as "seen" from the pov of the hand.
@@ -833,31 +832,7 @@ if strcmpi(cmd, 'GetInputState')
     error('PsychOpenHMDVR:GetInputState: Required ''controllerType'' argument missing.');
   end
 
-  rc.Valid = 1;
-
-  [anykey, rc.Time, keyCodes] = KbCheck(-1);
-  rc.Buttons = zeros(1, 32);
-  if anykey
-    rc.Buttons(OVR.Button_A) = keyCodes(KbName('a'));
-    rc.Buttons(OVR.Button_B) = keyCodes(KbName('b'));
-    rc.Buttons(OVR.Button_X) = keyCodes(KbName('x'));
-    rc.Buttons(OVR.Button_Y) = keyCodes(KbName('y'));
-    rc.Buttons(OVR.Button_Back) = keyCodes(KbName('BackSpace'));
-    rc.Buttons(OVR.Button_Enter) = any(keyCodes(KbName('Return')));
-    rc.Buttons(OVR.Button_Right) = keyCodes(KbName('RightArrow'));
-    rc.Buttons(OVR.Button_Left) = keyCodes(KbName('LeftArrow'));
-    rc.Buttons(OVR.Button_Up) = keyCodes(KbName('UpArrow'));
-    rc.Buttons(OVR.Button_Down) = keyCodes(KbName('DownArrow'));
-    rc.Buttons(OVR.Button_VolUp) = keyCodes(KbName('F12'));
-    rc.Buttons(OVR.Button_VolDown) = keyCodes(KbName('F11'));
-    rc.Buttons(OVR.Button_RShoulder) = keyCodes(KbName('RightShift'));
-    rc.Buttons(OVR.Button_LShoulder) = keyCodes(KbName('LeftShift'));
-    rc.Buttons(OVR.Button_Home) = keyCodes(KbName('Home'));
-    rc.Buttons(OVR.Button_RThumb) = any(keyCodes(KbName({'RightControl', 'RightAlt'})));
-    rc.Buttons(OVR.Button_LThumb) = any(keyCodes(KbName({'LeftControl', 'LeftAlt'})));
-  end
-
-  varargout{1} = rc;
+  varargout{1} = PsychOpenHMDVRCore('GetInputState', myhmd.handle, double(varargin{2}));
 
   return;
 end
@@ -984,8 +959,8 @@ if strcmpi(cmd, 'SetHSWDisplayDismiss')
 
   % Method of dismissing HSW display:
   if length(varargin) < 2 || isempty(varargin{2})
-    % Default is keyboard or mouse click:
-    hmd{myhmd.handle}.hswdismiss = 1 + 2;
+    % Default is keyboard or mouse click or controller button press:
+    hmd{myhmd.handle}.hswdismiss = 1 + 2 + 4;
   else
     hmd{myhmd.handle}.hswdismiss = varargin{2};
   end
@@ -995,7 +970,7 @@ end
 
 % Open a HMD:
 if strcmpi(cmd, 'Open')
-  [handle, modelName, panelWidth, panelHeight] = PsychOpenHMDVRCore('Open', varargin{:});
+  [handle, modelName, panelWidth, panelHeight, controllerTypes, controllerFlags] = PsychOpenHMDVRCore('Open', varargin{:});
   [~, ~, ~, ~, ~, ~, ~, pw, ph] = PsychOpenHMDVRCore('GetUndistortionParameters', handle, 0);
 
   newhmd.handle = handle;
@@ -1009,17 +984,31 @@ if strcmpi(cmd, 'Open')
   newhmd.panelWidthMM = round(pw * 1000);
   newhmd.panelHeightMM = round(ph * 1000);
   newhmd.separateEyePosesSupported = 0;
-  newhmd.controllerTypes = 0;
-  newhmd.VRControllersSupported = 0;
-  newhmd.handTrackingSupported = 0;
-  newhmd.hapticFeedbackSupported = 0;
+  newhmd.controllerTypes = controllerTypes;
+  if controllerTypes
+    newhmd.VRControllersSupported = 1;
+  else
+    newhmd.VRControllersSupported = 0;
+  end
+
+  if bitand(controllerFlags, 1+2)
+    newhmd.handTrackingSupported = 1;
+  else
+    newhmd.handTrackingSupported = 0;
+  end
+
+  if bitand(controllerFlags, 4)
+    newhmd.hapticFeedbackSupported = 1;
+  else
+    newhmd.hapticFeedbackSupported = 0;
+  end
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
 
   % By default allow user to dismiss HSW display via key press
-  % or mouse click:
-  newhmd.hswdismiss = 1 + 2;
+  % or mouse click or controller button press:
+  newhmd.hswdismiss = 1 + 2 + 4;
 
   % Setup basic task/requirement/quality specs to "nothing":
   newhmd.basicQuality = 0;
@@ -1721,7 +1710,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       end
 
       if bitand(hmd{myhmd.handle}.hswdismiss, 4)
-        hswtext = [hswtext 'Slightly tap the headset'];
+        hswtext = [hswtext 'Click any controller button'];
       end
 
       Screen('Flip', win);
@@ -1750,6 +1739,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             while any(buttons)
               [dummy1, dummy2, buttons] = GetMouse; %#ok<ASGLU>
             end
+          end
+        end
+
+        % Allow dismiss via controller button?
+        if bitand(hmd{myhmd.handle}.hswdismiss, 4)
+          istate = PsychOpenHMDVRCore('GetInputState', myhmd.handle, hex2dec('ffffffff'));
+          if any(istate.Buttons)
+            dismiss = 1;
           end
         end
       end

@@ -104,7 +104,7 @@ while 1
         continue;
     end
   
-    fprintf('Press BACK button on remote control or other controllers, or backspace key, to finish.\n\n');
+    fprintf('Press BACK button on remote control or other controllers, or B-Button on controller, or backspace key, to finish.\n\n');
     disp(istate);
 
     if istate.Buttons(OVR.Button_A)
