@@ -254,9 +254,10 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 %
 %
 % pulseEndTime = PsychOpenHMDVR('HapticPulse', hmd, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);
-% - Fake triggering a haptic feedback pulse. This does nothing, but return a made up
-% but consistent 'pulseEndTime', as this OpenHMD driver currently does not support
-% haptic feedback.
+% - Trigger a haptic feedback pulse, some controller vibration, on the specified 'controllerType'
+% associated with the specified 'hmd'. 'duration' is pulse duration in seconds, by default a maximum
+% of 2.5 seconds is executed. 'freq' is normalized frequency in range 0.0 - 1.0. A value of 0 will
+% disable an ongoing pulse.'amplitude' is the amplitude of the vibration in normalized 0.0 - 1.0 range.
 %
 %
 % state = PsychOpenHMDVRCore('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
@@ -848,11 +849,7 @@ if strcmpi(cmd, 'HapticPulse')
     error('PsychOpenHMDVR:HapticPulse: Required ''controllerType'' argument missing.');
   end
 
-  if length(varargin) >= 3 && ~isempty(varargin{3}) && varargin{3} < 2.5
-    varargout{1} = WaitSecs(varargin{3});
-  else
-    varargout{1} = GetSecs + 2.5;
-  end
+  varargout{1} = PsychOpenHMDVRCore('HapticPulse', myhmd.handle, double(varargin{2}), varargin{3:end});
 
   return;
 end
