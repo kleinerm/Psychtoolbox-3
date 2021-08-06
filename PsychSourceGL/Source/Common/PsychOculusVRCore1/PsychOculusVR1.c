@@ -2905,7 +2905,7 @@ PsychError PSYCHOCULUSVR1HapticPulse(void)
     static char seeAlsoString[] = "";
     int handle, controllerType;
     PsychOculusDevice *oculus;
-    double duration, freq, amplitude, pulseEndTime;
+    double duration, tNow, freq, amplitude, pulseEndTime;
     ovrResult result;
 
     // All sub functions should have these two lines
@@ -2968,13 +2968,23 @@ PsychError PSYCHOCULUSVR1HapticPulse(void)
 
     // Predict "off" time:
     PsychGetAdjustedPrecisionTimerSeconds(&pulseEndTime);
+    tNow = pulseEndTime;
     pulseEndTime += duration;
     PsychCopyOutDoubleArg(1, kPsychArgOptional, pulseEndTime);
 
     // Pulse of predefined duration requested?
     if ((freq != 0) && (duration < 2.5)) {
-        // Yes. Wait until expected end time, then stop the pulse:
-        PsychWaitUntilSeconds(pulseEndTime);
+        // Yes. Spin-wait until expected end time, then stop the pulse:
+        // Need to spin-wait, because we must call PresentExecute() for a
+        // fake VR frame submit periodically to keep the Oculus runtime happy,
+        // otherwise no haptic feedback will be triggered at all. Sad...
+        while (tNow < pulseEndTime) {
+            PsychYieldIntervalSeconds(0.001);
+            PresentExecute(oculus, FALSE, FALSE);
+            PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+        }
+
+        // Stop haptic effect:
         result = ovr_SetControllerVibration(oculus->hmd, (ovrControllerType) controllerType, (float) 0, (float) 0);
         if (OVR_FAILURE(result)) {
             ovr_GetLastErrorInfo(&errorInfo);
