@@ -87,6 +87,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "PsychOpenHMDVRCore('Stop', openhmdPtr);";
     synopsis[i++] = "input = PsychOpenHMDVRCore('GetInputState', openhmdPtr, controllerType);";
     synopsis[i++] = "[state, touch] = PsychOpenHMDVRCore('GetTrackingState', openhmdPtr [, predictionTime=0]);";
+    synopsis[i++] = "pulseEndTime = PsychOpenHMDVRCore('HapticPulse', openhmdPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
     synopsis[i++] = "[projL, projR, ipd] = PsychOpenHMDVRCore('GetStaticRenderParameters', openhmdPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "[eyePose, eyeIndex, glModelviewMatrix] = PsychOpenHMDVRCore('GetEyePose', openhmdPtr, renderPass);";
     synopsis[i++] = "[width, height, fovPort] = PsychOpenHMDVRCore('GetFovTextureSize', openhmdPtr, eye, metersPerTanAngleAtCenter [, fov=[HMDRecommended]]);";
@@ -1751,6 +1752,117 @@ PsychError PSYCHOPENHMDVRGetInputState(void)
     v[2] = stick[1][0];
     v[3] = stick[1][1];
     PsychSetStructArrayNativeElement("ThumbstickRaw", 0, outMat, status);
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOPENHMDVRHapticPulse(void)
+{
+    static char useString[] = "pulseEndTime = PsychOpenHMDVRCore('HapticPulse', openhmdPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
+    //                         1                                                1           2                 3               4           5
+    static char synopsisString[] =
+        "Execute a haptic feedback pulse on controller 'controllerType' associated with OpenHMD device 'openhmdPtr'.\n\n"
+        "'duration' is the duration of the pulse in seconds. If omitted, the function returns immediately and "
+        "the default duration of 2.5 seconds is used, unless you call the function again with 'freq' = 0, to cancel the "
+        "currently active pulse. Otherwise, if a 'duration' other than 2.5 seconds is specified, the haptic pulse executes "
+        "for the specified duration, and may block execution of your script for that time span on some controller types, "
+        "returning the absolute time when the pulse is expected to end.\n\n"
+        "'freq' Frequency of the vibration in normalized 0.0 - 1.0 range. 0 = Disable ongoing pulse immediately.\n\n"
+        "'amplitude' Normalized amplitude in range 0.0 - 1.0\n\n"
+        "The return argument 'pulseEndTime' contains the absolute time in seconds when the pulse is expected "
+        "to end, as estimated at the time of calling the function. The precision and accuracy of pulse timing "
+        "is not known.\n";
+    static char seeAlsoString[] = "";
+
+    int handle, controllerType;
+    PsychOpenHMDDevice *openhmd;
+    ohmd_device *dev;
+    double duration, freq, amplitude, pulseEndTime;
+    int result;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(5));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+
+    // Make sure driver is initialized:
+    PsychOpenHMDVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    openhmd = PsychGetOpenHMD(handle, FALSE);
+
+    // Get the new performance HUD mode:
+    PsychCopyInIntegerArg(2, kPsychArgRequired, &controllerType);
+
+    // Duration:
+    duration = 2.5;
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &duration);
+    if (duration < 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid negative 'duration' in seconds specified. Must be positive.");
+
+    freq = 1.0;
+    PsychCopyInDoubleArg(4, kPsychArgOptional, &freq);
+    if (freq < 0.0 || freq > 1.0)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'freq' frequency specified. Must be in range [0.0 ; 1.0].");
+
+    amplitude = 1.0;
+    PsychCopyInDoubleArg(5, kPsychArgOptional, &amplitude);
+    if (amplitude < 0.0 || amplitude > 1.0)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'amplitude' specified. Must be in range [0.0 ; 1.0].");
+
+    switch (controllerType) {
+        case 1: // Left touch.
+            dev = openhmd->controller[0];
+            break;
+
+        case 2: // Right touch.
+            dev = openhmd->controller[1];
+            break;
+
+        default:
+            dev = NULL;
+            if (verbosity > 1)
+                printf("PsychOpenHMDVRCore-WARNING: 'HapticPulse' will go nowhere, as requested controller of type %i is not supported.\n", controllerType);
+            break;
+    }
+
+    // Need to have compile-time support for ohmd_device_set_haptics_on/off() and
+    // runtime support as well, which is not yet the case for current v0.3 stable:
+#if defined(OHMD_HAVE_HAPTICS_API_v0) && 0
+    if (dev) {
+        if (freq != 0) {
+            // Execute pulse: We map the freq range 0 - 1 to the interval 0 - 500 Hz for now. The Rift CV1
+            // touch controllers only support 160 Hz and 320 Hz at the moment...
+            result = ohmd_device_set_haptics_on(dev, duration, (float) freq * 500.0, (float) amplitude);
+            if (result) {
+                PsychErrorExitMsg(PsychError_user, "Failed to initiate haptic feedback pulse.");
+            }
+
+            if (verbosity > 3)
+                printf("PsychOpenHMDVRCore-INFO: 'HapticPulse' of duration %f secs, freq %f, amplitude %f for controller of type %i started.\n",
+                    duration, freq, amplitude, controllerType);
+        } else {
+            // Abort pulse:
+            result = ohmd_device_set_haptics_off(dev);
+            if (result) {
+                PsychErrorExitMsg(PsychError_user, "Failed to stop haptic feedback pulse.");
+            }
+        }
+
+        // Predict "off" time:
+        PsychGetAdjustedPrecisionTimerSeconds(&pulseEndTime);
+        pulseEndTime += duration;
+    }
+    else
+#endif
+        pulseEndTime = 0;
+
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, pulseEndTime);
 
     return(PsychError_none);
 }

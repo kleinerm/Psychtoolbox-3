@@ -47,8 +47,8 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("SetLowPersistence", &PSYCHOPENHMDVRSetLowPersistence));
     PsychErrorExit(PsychRegister("SetDynamicPrediction", &PSYCHOPENHMDVRSetDynamicPrediction));
     PsychErrorExit(PsychRegister("GetInputState", &PSYCHOPENHMDVRGetInputState));
+    PsychErrorExit(PsychRegister("HapticPulse", &PSYCHOPENHMDVRHapticPulse));
 
-    //PsychErrorExit(PsychRegister("", &PSYCHOPENHMDVR));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENHMDVR));
 
     // Report the version
