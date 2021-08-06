@@ -2,14 +2,17 @@ function res = VRInputStuffTest
 % VRInputStuffTest - Test input functionality related to VR devices.
 %
 % Tries to enumerate available controllers and other properties related to
-% input. After a keypress, reports live state of buttons, sensors, triggers etc.
-% of connected controllers. After a keypress or B button press on the controller,
+% input. After any key press or controller button press, reports live state of
+% buttons, sensors, triggers etc. of connected controllers. Also exercises the
+% haptic feedback functionality if any of left and right touch controllers if
+% the A/B or X/Y buttons are pressed for low/high frequency rumble on right or
+% left touch controller. After a keypress or Home button press on the controller,
 % visualizes tracked hand position and orientation of hand controllers and allows
 % to do some nice visual effects based on trigger / grip button presses, thumbsticks
 % movement etc.
 %
 % Tested with XBox controller, Oculus remote, and the two Oculus touch controllers
-% of the Rift CV-1.
+% of the Rift CV-1 on Windows-10 and Linux.
 
 % Constants for use in VR applications:
 global OVR;
@@ -83,8 +86,24 @@ fprintf('VR area boundaries (if configured):\n\n');
 
 [isVisible, playboundsxyz, outerboundsxyz] = PsychVRHMD('VRAreaBoundary', hmd)
 
-fprintf('\n\nPress any key to continue. Will continue in 10 seconds automatically.\n');
-KbStrokeWait(-1, GetSecs + 10);
+fprintf('\n\nPress any key or controller button to continue. Will continue in 10 seconds automatically.\n');
+DrawFormattedText(win, 'Press any key or controller button to continue. Will continue in 10 seconds automatically.', 'center', 'center', [1 1 0], 20);
+Screen('Flip', win);
+
+timeout = GetSecs + 10;
+while 1
+    down = KbCheck(-1);
+    istate = PsychVRHMD('GetInputState', hmd, OVR.ControllerType_Active);
+    if any(istate.Buttons) || down || GetSecs > timeout
+        break;
+    end
+end
+
+KbReleaseWait(-1);
+while any(istate.Buttons)
+    istate = PsychVRHMD('GetInputState', hmd, OVR.ControllerType_Active);
+end
+
 pulseEnd = 0;
 
 while 1
@@ -92,19 +111,19 @@ while 1
     clc;
 
     % Show instructions in HMD on how to continue:
-    DrawFormattedText(win, 'Press BackSpace key on keyboard, or B-Button or\nBack-Button on controller', 'center', 'center', [1 1 0]);
+    DrawFormattedText(win, 'Press BackSpace key on keyboard, or Home-Button or\nBack-Button on controller', 'center', 'center', [1 1 0]);
     Screen('Flip', win);
 
     % Query and display all input state:
     istate = PsychVRHMD('GetInputState', hmd, OVR.ControllerType_Active);
-    
+
     if ~istate.Valid
         fprintf('No VR controller input available, possibly due to VR input focus loss.\n');
         fprintf('Make sure our application has input focus and possibly that the HMD is on the users head.\n');
         continue;
     end
-  
-    fprintf('Press BACK button on remote control or other controllers, or B-Button on controller, or backspace key, to finish.\n\n');
+
+    fprintf('Press BACK button on remote control or other controllers, or Home-Button on controller, or backspace key, to finish.\n\n');
     disp(istate);
 
     if istate.Buttons(OVR.Button_A)
@@ -188,7 +207,7 @@ while 1
     end
 
     [~, ~, keycode] = KbCheck(-1);
-    if istate.Buttons(OVR.Button_Back) || istate.Buttons(OVR.Button_B)|| keycode(KbName('BackSpace'))
+    if istate.Buttons(OVR.Button_Back) || istate.Buttons(OVR.Button_Home) || keycode(KbName('BackSpace'))
         break;
     end
 
@@ -212,17 +231,41 @@ while 1
         end
     end
 
-    if istate.Buttons(OVR.Button_A) && hmdinfo.hapticFeedbackSupported
+    if (istate.Buttons(OVR.Button_A) || istate.Buttons(OVR.Button_B)) && hmdinfo.hapticFeedbackSupported
         if GetSecs < pulseEnd
             % Pressed A before end of previously initiated pulse. Abort current pulse:
-            pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_XBox, 0, 0);
+            pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_RTouch, 0, 0);
         else
-            % Initiate new pulse: 2.5 (max) seconds, 100% frequency, 0.8 amplitude:
-            pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_XBox, [], 1.0, 0.8)
+            % Initiate new pulse: 2.5 (default) seconds, 25% or 100% frequency, 0.8 amplitude:
+            if istate.Buttons(OVR.Button_B)
+                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_RTouch, [], 1.0, 0.8)
+            else
+                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_RTouch, [], 0.25, 0.8)
+            end
             % Debounce button:
-            WaitSecs('YieldSecs', 0.5);
+            WaitSecs('YieldSecs', 0.1);
         end
     end
+
+    if (istate.Buttons(OVR.Button_X) || istate.Buttons(OVR.Button_Y)) && hmdinfo.hapticFeedbackSupported
+        if GetSecs < pulseEnd
+            % Pressed A before end of previously initiated pulse. Abort current pulse:
+            pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_LTouch, 0, 0);
+        else
+            % Initiate new pulse: 2.5 (default) seconds, 25% or 100% frequency, 0.8 amplitude:
+            if istate.Buttons(OVR.Button_Y)
+                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_LTouch, [], 1.0, 0.8)
+            else
+                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_LTouch, [], 0.25, 0.8)
+            end
+            % Debounce button:
+            WaitSecs('YieldSecs', 0.1);
+        end
+    end
+end
+
+while any(istate.Buttons)
+    istate = PsychVRHMD('GetInputState', hmd, OVR.ControllerType_Active);
 end
 
 % Part 3: Actual hand tracking and visualisation:
@@ -358,49 +401,62 @@ if hmdinfo.handTrackingSupported
   globalPos = [0, 0, 3];
   heading = 0;
 
-  [xc, yc] = RectCenter(winRect);
-  SetMouse(xc,yc, screenid);
+  if ~bitand(controllerTypes, OVR.ControllerType_LTouch + OVR.ControllerType_RTouch)
+    [xc, yc] = RectCenter(winRect);
+    SetMouse(xc,yc, screenid);
+    [xo, yo] = GetMouse(screenid);
+  else
+    SetMouse(0, 0, screenid);
+  end
+
   HideCursor(screenid);
-  [xo, yo] = GetMouse(screenid);
 
   % Initial flip to sync us to VBL and get start timestamp:
   vbl = Screen('Flip', win);
   tstart = vbl;
 
   % VR render loop: Runs until keypress:
-  while ~KbCheck && ~(istate.Buttons(OVR.Button_Back) || istate.Buttons(OVR.Button_A))
-    % Update global position (x,y,z) by mouse movement:
-    [xm, ym, buttons] = GetMouse(screenid);
-    if ~any(buttons)
-      % x-movement:
-      dx = (xm - xo);
-      globalPos(1) = globalPos(1) + 0.005 * dx;
+  while ~KbCheck && ~(istate.Buttons(OVR.Button_Back) || istate.Buttons(OVR.Button_Home))
+    if ~bitand(controllerTypes, OVR.ControllerType_LTouch + OVR.ControllerType_RTouch)
+        % Update global position (x,y,z) by mouse movement:
+        [xm, ym, buttons] = GetMouse(screenid);
+        if ~any(buttons)
+          % x-movement:
+          dx = (xm - xo);
+          globalPos(1) = globalPos(1) + 0.005 * dx;
 
-      % y-movement:
-      dy = (yo - ym);
-      globalPos(2) = globalPos(2) + 0.005 * dy;
-    else
-      if buttons(1)
-        % z-movement:
-        dz = (ym - yo);
-        globalPos(3) = globalPos(3) + 0.005 * dz;
-      end
+          % y-movement:
+          dy = (yo - ym);
+          globalPos(2) = globalPos(2) + 0.005 * dy;
+        else
+          if buttons(1)
+            % z-movement:
+            dz = (ym - yo);
+            globalPos(3) = globalPos(3) + 0.005 * dz;
+          end
 
-      if buttons(2)
-        % Heading, ie. looking direction:
-        dh = (xm - xo);
-        heading = heading + 0.01 * dh;
-      end
+          if buttons(2)
+            % Heading, ie. looking direction:
+            dh = (xm - xo);
+            heading = heading + 0.01 * dh;
+          end
+        end
+
+        % Reposition mouse cursor for next render cycle:
+        SetMouse(xc,yc, screenid);
+        [xo, yo] = GetMouse(screenid);
     end
 
     % Allow to use thumbsticks, if any, to move the teapot:
-    globalPos(1) = globalPos(1) - 0.005 * istate.Thumbstick(1,1);
-    globalPos(2) = globalPos(2) - 0.005 * istate.Thumbstick(2,1);
-    globalPos(3) = globalPos(3) + 0.005 * istate.Thumbstick(2,2);
+    if istate.Buttons(OVR.Button_LThumb) || istate.Buttons(OVR.Button_RThumb)
+      thumbmult = 0.05;
+    else
+      thumbmult = 0.005;
+    end
 
-    % Reposition mouse cursor for next render cycle:
-    SetMouse(xc,yc, screenid);
-    [xo, yo] = GetMouse(screenid);
+    globalPos(1) = globalPos(1) - thumbmult * istate.Thumbstick(1,1);
+    globalPos(2) = globalPos(2) - thumbmult * istate.Thumbstick(2,1);
+    globalPos(3) = globalPos(3) + thumbmult * istate.Thumbstick(2,2);
 
     % Compute a transformation matrix to globally position and orient the
     % observer in the scene. This allows mouse control of observer position
