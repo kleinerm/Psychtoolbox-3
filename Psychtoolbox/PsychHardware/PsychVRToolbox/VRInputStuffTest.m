@@ -111,7 +111,7 @@ while 1
     clc;
 
     % Show instructions in HMD on how to continue:
-    DrawFormattedText(win, 'Press BackSpace key on keyboard, or Home-Button or\nBack-Button on controller', 'center', 'center', [1 1 0]);
+    DrawFormattedText(win, 'Press BackSpace key on keyboard, or Enter-Button or\nBack-Button on controller', 'center', 'center', [1 1 0]);
     Screen('Flip', win);
 
     % Query and display all input state:
@@ -123,7 +123,7 @@ while 1
         continue;
     end
 
-    fprintf('Press BACK button on remote control or other controllers, or Home-Button on controller, or backspace key, to finish.\n\n');
+    fprintf('Press Back button on remote control or other controllers, or Enter-Button on controller, or backspace key, to finish.\n\n');
     disp(istate);
 
     if istate.Buttons(OVR.Button_A)
@@ -207,7 +207,7 @@ while 1
     end
 
     [~, ~, keycode] = KbCheck(-1);
-    if istate.Buttons(OVR.Button_Back) || istate.Buttons(OVR.Button_Home) || keycode(KbName('BackSpace'))
+    if istate.Buttons(OVR.Button_Back) || istate.Buttons(OVR.Button_Enter) || keycode(KbName('BackSpace'))
         break;
     end
 
@@ -416,7 +416,7 @@ if hmdinfo.handTrackingSupported
   tstart = vbl;
 
   % VR render loop: Runs until keypress:
-  while ~KbCheck && ~(istate.Buttons(OVR.Button_Back) || istate.Buttons(OVR.Button_Home))
+  while ~KbCheck && ~(istate.Buttons(OVR.Button_Back) || istate.Buttons(OVR.Button_Enter))
     if ~bitand(controllerTypes, OVR.ControllerType_LTouch + OVR.ControllerType_RTouch)
         % Update global position (x,y,z) by mouse movement:
         [xm, ym, buttons] = GetMouse(screenid);
