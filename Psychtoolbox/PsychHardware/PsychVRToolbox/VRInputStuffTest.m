@@ -416,6 +416,7 @@ if hmdinfo.handTrackingSupported
   fcount = 0;
   globalPos = [0, 0, 3];
   heading = 0;
+  pulseEnd = [];
 
   if ~bitand(controllerTypes, OVR.ControllerType_LTouch + OVR.ControllerType_RTouch)
     [xc, yc] = RectCenter(winRect);
@@ -573,6 +574,26 @@ if hmdinfo.handTrackingSupported
     if ~bitand(state.tracked, 2)
       % Nope, user out of cameras view frustum. Tell it like it is:
       DrawFormattedText(win, 'Vision based tracking lost\nGet back into the cameras field of view!', 'center', 'center', [1 0 0]);
+    end
+
+    if hmdinfo.hapticFeedbackSupported
+      if (istate.Grip(1) > 0.5 || istate.Grip(2) > 0.5) && isempty(pulseEnd)
+          % Initiate new pulse: 0.75 seconds, 25% or 100% frequency, 0.8 amplitude:
+          if istate.Grip(2) > 0.5
+              controller = OVR.ControllerType_RTouch;
+          else
+              controller = OVR.ControllerType_LTouch;
+          end
+
+          PsychVRHMD('HapticPulse', hmd, controller, [], 0.25, 0.8);
+
+          % Set end time for pulse:
+          pulseEnd = GetSecs + 0.75;
+      elseif GetSecs > pulseEnd
+          % End current pulse:
+          pulseEnd = [];
+          PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_RTouch, [], 0, 0);
+      end
     end
 
     % Stimulus ready. Show it on the HMD. We don't clear the color buffer here,
