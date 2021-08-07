@@ -234,13 +234,13 @@ while 1
     if (istate.Buttons(OVR.Button_A) || istate.Buttons(OVR.Button_B)) && hmdinfo.hapticFeedbackSupported
         if GetSecs < pulseEnd
             % Pressed A before end of previously initiated pulse. Abort current pulse:
-            pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_RTouch, 0, 0);
+            pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_RTouch, [], 0, 0);
         else
-            % Initiate new pulse: 2.5 (default) seconds, 25% or 100% frequency, 0.8 amplitude:
+            % Initiate new pulse: 0.75 seconds, 25% or 100% frequency, 0.8 amplitude:
             if istate.Buttons(OVR.Button_B)
-                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_RTouch, [], 1.0, 0.8)
+                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_RTouch, 0.75, 1.0, 0.8);
             else
-                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_RTouch, [], 0.25, 0.8)
+                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_RTouch, 0.75, 0.25, 0.8);
             end
             % Debounce button:
             WaitSecs('YieldSecs', 0.1);
@@ -250,13 +250,29 @@ while 1
     if (istate.Buttons(OVR.Button_X) || istate.Buttons(OVR.Button_Y)) && hmdinfo.hapticFeedbackSupported
         if GetSecs < pulseEnd
             % Pressed A before end of previously initiated pulse. Abort current pulse:
-            pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_LTouch, 0, 0);
+            pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_LTouch, [], 0, 0);
         else
-            % Initiate new pulse: 2.5 (default) seconds, 25% or 100% frequency, 0.8 amplitude:
+            % Initiate new pulse: 0.75 seconds, 25% or 100% frequency, 0.8 amplitude:
             if istate.Buttons(OVR.Button_Y)
-                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_LTouch, [], 1.0, 0.8)
+                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_LTouch, 0.75, 1.0, 0.8);
             else
-                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_LTouch, [], 0.25, 0.8)
+                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_LTouch, 0.75, 0.25, 0.8);
+            end
+            % Debounce button:
+            WaitSecs('YieldSecs', 0.1);
+        end
+    end
+
+    if (istate.Buttons(OVR.Button_Up) || istate.Buttons(OVR.Button_Down)) && hmdinfo.hapticFeedbackSupported
+        if GetSecs < pulseEnd
+            % Pressed A before end of previously initiated pulse. Abort current pulse:
+            pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_XBox, [], 0, 0);
+        else
+            % Initiate new pulse: 0.75 seconds, 25% or 100% frequency, 0.8 amplitude:
+            if istate.Buttons(OVR.Button_Up)
+                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_XBox, 0.75, 1.0, 0.8);
+            else
+                pulseEnd = PsychVRHMD('HapticPulse', hmd, OVR.ControllerType_XBox, 0.75, 0.25, 0.8);
             end
             % Debounce button:
             WaitSecs('YieldSecs', 0.1);
