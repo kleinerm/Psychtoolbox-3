@@ -1359,11 +1359,11 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   Apple macOS 10.15.4 Catalina and later is also supported, if you install the
 %   3rd party Khronos open-source MoltenVK "Vulkan on Metal" driver. However, this
-%   support is very unreliable wrt. stimulus timing at least on macOS 10.15, due to
-%   severe bugs in Apple's macOS 10 Metal graphics api, which only Apple could fix.
+%   support is very unreliable wrt. stimulus timing at least on macOS 10/11, due to
+%   severe bugs in Apple's macOS 10/11 Metal graphics api, which only Apple could fix.
 %   Performance is also miserable, achieving at most a framerate that is half the
-%   video refresh rate of the display monitor. The status on macOS 11 is unknown
-%   as of April 2021. Do not ask us for help in using this on macOS, don't trust it!
+%   video refresh rate of the display monitor. The status on macOS 12 is unknown
+%   as of August 2021. Do not ask us for help in using this on macOS, don't trust it!
 %
 %   At the moment 'UseVulkanDisplay' does not provide any advantages for standard
 %   visual stimulus display tasks, quite the contrary! The current implementation
