@@ -681,10 +681,6 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     GET_INSTANCE_PROC_ADDR(vulkanInstance, ReleaseDisplayEXT);
     #endif
 
-    #if PSYCH_SYSTEM == PSYCH_OSX
-    // TODO OSX
-    #endif
-
     // Enumerate physical devices - actually combos of Vulkan driver + physical device:
     result = vkEnumeratePhysicalDevices(vulkanInstance, &probedCount, NULL);
     if (result != VK_SUCCESS) {
@@ -2615,7 +2611,8 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
             PsychGetAdjustedPrecisionTimerSeconds(&tNow);
             tStart = tNow;
 
-            // This label is only used on macOS + MoltenVK for buggy MVK versions which do not
+            // Unused atm - no longer needed:
+            // This label was only used on macOS + MoltenVK for buggy MVK versions which do not
             // actually dequeue timestamps fetched via fpGetPastPresentationTimingGOOGLE(), as they
             // should, but keep all timestamps in the queue until the queue reaches capacity. Iow.,
             // the queue can only grow (up to a defined maximum, e.g., 60 entries), but never shrink.
@@ -2699,15 +2696,17 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 if (i == count) {
                     // No. Could be timeout due to temporary malfunction, or an OS implementation bug.
 
+                    /* -> Not needed anymore / at the moment.
                     // Yield to give the system some processing time:
                     PsychYieldIntervalSeconds(0.0001);
                     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
 
                     // Timeout, and/or no matching presentID!
-                    if ((PSYCH_SYSTEM == PSYCH_OSX) && (tNow < tStart + tQueryTimeout)) {
+                    if (tNow < tStart + tQueryTimeout) {
                         // We are still within the acceptable timeout period - Not yet timed out.
 
-                        // macOS + MoltenVK as of early March 2021 / MoltenVK version 1.1.1 will hit this due to a MoltenVK bug.
+                        // macOS + MoltenVK as of early March 2021 / MoltenVK version 1.1.1 hit this due to a MoltenVK bug.
+                        // The bug was fixed in the MoltenVK 1.1.4 release in early July 2021 - macOS Vulkan SDK 1.2.182.0
                         if (verbosity > 10)
                             printf("PsychVulkanCore-DEBUG: PsychPresent(%i): No match yet [%f usecs elapsed]! Retrying in a bit...\n", window->index, 1.0e6 * (tNow - tStart));
 
@@ -2715,13 +2714,13 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                         count = 0;
                         goto macosmvkworkaroundrepeat;
                     }
-                    else {
-                        // Final timeout! This should not happen on this OS + display system! Fail.
-                        if (verbosity > 0)
-                            printf("PsychVulkanCore-ERROR: PsychPresent(%i): NO MATCH for target presentID %i! OS bug!?! Timed out, aborting.\n", window->index, targetPresentTimeG.presentID);
+                    */
 
-                        return(FALSE);
-                    }
+                    // Final timeout! This should not happen on this OS + display system! Fail.
+                    if (verbosity > 0)
+                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): NO MATCH for target presentID %i! OS bug!?! Timed out, aborting.\n", window->index, targetPresentTimeG.presentID);
+
+                    return(FALSE);
                 }
 
                 // On macOS MoltenVK, the driver maps an invalid Metal drawable present time of zero to targetPresentTimeG.desiredPresentTime,
