@@ -232,7 +232,7 @@ end
 
 try
     %% OPEN WINDOW
-    screen = 0;
+    screen = max(Screen('Screens'));
     screenBufferRect = Screen('Rect',screen);
 
     PsychImaging('PrepareConfiguration');
