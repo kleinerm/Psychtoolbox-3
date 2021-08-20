@@ -23,7 +23,7 @@ whichCones = 'StockmanSharpe';
 
 % Load spectral data and set calibration file
 switch (whichCones)
-	case 'SmithPokorny',
+	case 'SmithPokorny'
 		load T_cones_sp
 		load T_xyzJuddVos
 		S_cones = S_cones_sp;
@@ -39,6 +39,8 @@ switch (whichCones)
 		T_Y = 683*T_ss2000_Y2;
 		S_Y = S_ss2000_Y2;
 		T_Y = SplineCmf(S_Y,T_Y,S_cones);
+    otherwise
+        error('Unknown cone fundamentals specified')
 end
 cal = LoadCalFile('PTB3TestCal');
 calLMS = SetSensorColorSpace(cal,T_cones,S_cones);
