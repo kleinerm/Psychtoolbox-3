@@ -132,12 +132,13 @@ M_inv = inv(M);
 % but not for RG.  Not yet sure why. Might be that the assumption
 % that lum weights are 1 and 1 is baked in somewhere that I haven't
 % properly generalized to.  Commented this out at present.
-%
-% D_rescale_alt = [sqrt(3) 0 0 ; 0 sqrt( 1+(((LMLumWeights(2)*bg(2))/(LMLumWeights(1)*bg(1)))^2)) 0 ; 0 0 1]/(LMLumWeights(1)*bg(1)+LMLumWeights(2)*bg(2));
-% M_raw_alt = [ LMLumWeights(1) LMLumWeights(2) 0 ; ...
-% 			1 -(LMLumWeights(1)*bg(1))/(LMLumWeights(2)*bg(2)) 0 ; ...
-% 			-LMLumWeights(1) -LMLumWeights(2) (LMLumWeights(1)*bg(1)+LMLumWeights(2)*bg(2))/bg(3) ];
-% M_alt = D_rescale_alt*M_raw;
-% if (any(abs(M(:)-M_alt(:))) > 1e-8)
-%     error('Two ways of computing M do not agree');
-% end
+%{
+D_rescale_alt = [sqrt(3) 0 0 ; 0 sqrt( 1+(((LMLumWeights(2)*bg(2))/(LMLumWeights(1)*bg(1)))^2)) 0 ; 0 0 1]/(LMLumWeights(1)*bg(1)+LMLumWeights(2)*bg(2));
+M_raw_alt = [ LMLumWeights(1) LMLumWeights(2) 0 ; ...
+			1 -(LMLumWeights(1)*bg(1))/(LMLumWeights(2)*bg(2)) 0 ; ...
+			-LMLumWeights(1) -LMLumWeights(2) (LMLumWeights(1)*bg(1)+LMLumWeights(2)*bg(2))/bg(3) ];
+M_alt = D_rescale_alt*M_raw;
+if (any(abs(M(:)-M_alt(:)) > 1e-8))
+    error('Two ways of computing M do not agree');
+end
+%}
