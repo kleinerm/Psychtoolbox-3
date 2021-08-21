@@ -27,10 +27,12 @@ function [M,LMLumWeights] = ComputeDKL_M(bg,T_cones,T_Y)
 %           dhb  Fixed definition of M_raw to handle arbitrary L,M scaling.
 % 10/5/12   dhb  Comment specifying coordinate system convention.  Supress extraneous printout.
 % 04/13/17  dhb  Return weights that give luminance from sum of L and M cone excitations.
-% 08/20/21  dhb  Added check of Supi Ray's method below.  Not working yet and commented out.
-%                Issue is related to fact that derivation assumes both
-%                LMLumWeights are 1, which is true for some choices of cone
-%                funadmentals (those scaled to have exactly that property.)
+% 08/20/21  dhb  Added check of a direct method of computing M, provided by Supi Ray (sray@iisc.ac.in).
+%                The check is commented out at the end of this routine, but
+%                does indeed give the same answer in the limited cases I've
+%                checked. At the heart of the derivation is analytic
+%                inversion of M_raw.  I imagine that Ray would be happy to
+%                provide the derivation if asked.
 
 % If cones and luminance are passed, find how L and
 % M cone incrments sum to best approximate change in
@@ -129,19 +131,26 @@ s_minus_lum_resp = M*sisolum_unit;
 % the matrix in equation A.4.12.
 M_inv = inv(M);
 
-% Check alternate method of computing M that involves a more
-% direct comptuation of D. This method was suggested by 
-% Supi Ray.  It gives the same answer as above for lum and BY,
-% but not for RG.  Not yet sure why. Might be that the assumption
-% that lum weights are 1 and 1 is baked in somewhere that I haven't
-% properly generalized to.  Commented this out at present.
+% Alternate method of computing M that does not
+% require inversion of M_raw. This method was developed by 
+% Supi Ray.  It gives the same answer (M_alt) for M as the
+% code above, to numerical precision.  It would be possible
+% to do out the matrix multiplications below to obtain 
+% direct expression for each entry of M_alt, but I have 
+% not done so. Examinging the final expression might provide
+% additional intution about the factors influencing the normalized
+% matrix M.
 %{
-D_rescale_alt = [sqrt(3) 0 0 ; 0 sqrt( 1+(((LMLumWeights(2)*bg(2))/(LMLumWeights(1)*bg(1)))^2)) 0 ; 0 0 1]/(LMLumWeights(1)*bg(1)+LMLumWeights(2)*bg(2));
+W = diag([LMLumWeights(1) LMLumWeights(2) 1]);
+bgNorm = W*bg;
+B1 = [1 1 0 ; 1 -bgNorm(1)/bgNorm(2) 0 ; -1 -1 (bgNorm(1) + bgNorm(2))/bgNorm(3)];
+B2 = B1*W;
+D_rescale_alt = diag([sqrt(3) LMLumWeights(1)*sqrt( 1+(bgNorm(2)/bgNorm(1))^2 ) 1])/(bgNorm(1)+bgNorm(2));
 M_raw_alt = [ LMLumWeights(1) LMLumWeights(2) 0 ; ...
 			1 -(LMLumWeights(1)*bg(1))/(LMLumWeights(2)*bg(2)) 0 ; ...
 			-LMLumWeights(1) -LMLumWeights(2) (LMLumWeights(1)*bg(1)+LMLumWeights(2)*bg(2))/bg(3) ];
 M_alt = D_rescale_alt*M_raw;
-if (any(abs(M(:)-M_alt(:)) > 1e-8))
+if ( any(abs(M(:)-M_alt(:)) > 1e-10) )
     error('Two ways of computing M do not agree');
 end
 %}
