@@ -1667,20 +1667,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             }
         }
 
-        // VRR wanted and supported by hw and kernel, but wrong XOrg video driver DDX? The X-Server version
-        // does not matter, but the type and version of the DDX does:
-        if (vrr_wanted && vrr_supported && PsychOSX11ScreenUsesModesettingDDX(screenSettings->screenNumber)) {
-            // modesetting-ddx in use, this currently won't work as of 2019 / X-Server 1.20.5:
-            vrr_wanted = FALSE;
-            vrr_supported = FALSE;
-
-            if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: Can not enable Variable Refresh Rate mode for this fullscreen window on this display [%s].\n", output_name);
-                printf("PTB-WARNING: You are using the modesetting-ddx video driver, which prevents this. Switch to the\n");
-                printf("PTB-WARNING: vendor specific driver via use of XOrgConfCreator + XOrgConfSelector. -> 'help VRRSupport'\n");
-            }
-        }
-
         if (vrr_wanted && vrr_supported) {
             // Display + video cable + GPU + Linux DRM/KMS + libdrm is VRR capable and enabled.
             // Ditto for the X-Server and probably the X-Video DDX driver and Mesa.
@@ -2723,8 +2709,16 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
                 printf("PTB-WARNING: is disabled. This could be due to either the XOrg video driver (DDX) being too old, or due\n");
                 printf("PTB-WARNING: to VRR being disabled in the XOrg config settings. In the latter case, use XOrgConfCreator +\n");
                 printf("PTB-WARNING: XOrgConfSelector + logout + login to enable VRR.\n");
-                printf("PTB-WARNING: In the former case, update your XOrg DDX video driver. For AMD graphics cards you need at\n");
-                printf("PTB-WARNING: least version 19.0 of the xf86-video-amdgpu driver. -> 'help VRRSupport'\n");
+                printf("PTB-WARNING: In the former case, update your XOrg DDX video driver.\n");
+                if (PsychOSX11ScreenUsesModesettingDDX(windowRecord->screenNumber)) {
+                    printf("PTB-WARNING: You are currently using the modesetting-DDX video driver. For this to work, you either\n");
+                    printf("PTB-WARNING: need X-Server 1.21 or later with modesetting-DDX 1.21 or later, or if you are on an\n");
+                    printf("PTB-WARNING: older X-Server with AMD graphics, at least version 19.0 of the xf86-video-amdgpu driver.\n");
+                }
+                else {
+                    printf("PTB-WARNING: For AMD graphics cards you need at least version 19.0 of the xf86-video-amdgpu driver.\n");
+                }
+                printf("PTB-WARNING: For more info and troubleshooting help, type 'help VRRSupport'.\n");
                 printf("PTB-WARNING: [%i out of %i successful test trials, at least 50 successful ones needed.]\n\n", good, i);
             }
         }
