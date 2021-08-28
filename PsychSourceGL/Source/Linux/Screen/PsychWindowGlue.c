@@ -1650,6 +1650,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
                         printf("PTB-WARNING: but some Sea Islands gpus need you to add the following kernel boot parameters:\n");
                         printf("PTB-WARNING: radeon.cik_support=0 amdgpu.cik_support=1 amdgpu.dc=1.\n");
                     }
+                    else if (gpuMaintype == kPsychIntelIGP) {
+                        // Intel gpu:
+                        printf("PTB-WARNING: You need an Intel gpu of at least Generation 12 (TigerLake+ / Intel Xe / DG-1 / Alchemist+)\n");
+                        printf("PTB-WARNING: controlled by Linux 5.12 or later, with a DisplayPort adaptive-sync / FreeSync capable display.\n");
+                    }
                     else {
                         printf("PTB-WARNING: Upgrade to a sufficiently modern Linux kernel for your graphics card.\n");
                     }
