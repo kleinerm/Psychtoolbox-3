@@ -46,13 +46,12 @@ roi = [0 0 1280 720];
 depth = [];
 
 % Special gst-launch style capture spec:
-capturebinspec = 'libcamerasrc ! videoflip video-direction=vert';
+capturebinspec = 'libcamerasrc';
 
 % Signal to Screen() that spec string should be used. This via special deviceId -9:
 deviceId = -9;
 
-% No preroll - it would hang!
-recordingflags = 8;
+recordingflags = [];
 
 screenid=max(Screen('Screens'));
 
@@ -78,14 +77,6 @@ try
     % We refrain from setting target fps here. Instead we use the
     % "do what you think is right" 'realmax' joker:
     Screen('StartVideoCapture', grabber, realmax, 1);
-
-    for subdev=0:6
-        % Workaround needed as of 25-Apr-2021:
-        % Do not flip image into upright position in camera, instead we do it in
-        % software via GStreamer. Reason: The flipping in the camera hw screws up
-        % color filtering atm. and we'd get a pink image instead of proper colors:
-        system(sprintf('v4l2-ctl -d /dev/v4l-subdev%i --set-ctrl vertical_flip=0', subdev));
-    end
 
     dstRect = [];
     oldpts = 0;
