@@ -385,6 +385,12 @@ end
 OSVersion=strtrim(OSVersion);
 macOSVersionString=['macOS ' OSVersion];
 vv=sscanf(OSVersion,'%d.%d.%d');
+if length(vv)<2
+    vv(2)=0;
+end
+if length(vv)<3
+    vv(3)=0;
+end
 v=vv(3);
 for i=[2 1]
     v=v/10^ceil(log10(v+0.1));
