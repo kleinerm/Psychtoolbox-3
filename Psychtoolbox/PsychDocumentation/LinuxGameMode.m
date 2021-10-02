@@ -33,17 +33,12 @@
 % The "gamemode" package is not installed by default, but you can get recent
 % versions for some Ubuntu Linux distributions from the following sources:
 %
-% For Ubuntu 18.04 LTS, 18.10 and 19.04 you can get up to date packages from the
-% following privately contributed, inofficial and *untrusted* PPA:
+% For Ubuntu 20.04 LTS and later, as well as Debian 10 "Buster" and later,
+% gamemode is part of the distributions. It will get automatically installed if
+% you get Psychtoolbox from NeuroDebian or your distribution, or can be installed
+% via a simple command from the terminal window: sudo apt install gamemode
 %
-% https://launchpad.net/~samoilov-lex/+archive/ubuntu/gamemode
-%
-% Please note that the above ppa is not reviewed by Ubuntu for correctness
-% and could in theory contain malicious code that would execute with admin
-% permissions on your system. So you have to trust the producer of that ppa
-% if you decide to install it.
-%
-% Alternatively, you can also download the latest version of the gamemode package
+% You can also download the very latest version of the gamemode package
 % source code, and compile and install it from its upstream source yourself:
 %
 % https://github.com/FeralInteractive/gamemode
@@ -63,3 +58,10 @@
 % system, the default card number 0 may be wrong and would need to be changed
 % manually to 1 by you.
 %
+% Note also that the default settings in the gamemode.ini file are not neccessarily
+% optimal for some Intel integrated gpu's, due to the shared thermal and power budget
+% for cpu and gpu. See https://github.com/FeralInteractive/gamemode/pull/179 for
+% a detailed discussion of the problem. There is a tunable parameter, called...
+% igpu_power_threshold=0.3
+% ... which can be tweaked between 0.0 and 1.0 tune for your machine and workload,
+% although 0.3 is probably a reasonable default. See explanations in the .ini file.
