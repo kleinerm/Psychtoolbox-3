@@ -35,6 +35,8 @@ static LRESULT CALLBACK KbQueueWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 
 static HINSTANCE modulehandle = NULL;
 static psych_bool windowClassRegistered = FALSE;
+static int touchQueue = 0;  // Index of our currently one and only touch input queue.
+static RECT touchWinRect;   // Definition of client rect of touch input window [left, top, width, height].
 
 // Pointer to DirectInput-8 interface:
 LPDIRECTINPUT8 dinput = NULL;
@@ -213,6 +215,32 @@ void PsychHIDInitializeHIDStandardInterfaces(void)
         goto out;
     }
 
+    // Any touchscreens detected and operational?
+    if ((GetSystemMetrics(SM_DIGITIZER) & NID_READY) &&
+        (GetSystemMetrics(SM_DIGITIZER) & (NID_INTEGRATED_TOUCH | NID_EXTERNAL_TOUCH))) {
+        // Yes. Add an additional touchscreen device as a catch all for all touchscreens:
+        memset(&info[ndevices], 0, sizeof(info[0]));
+
+        // Copy relevant info into our own info array:
+        //info[ndevices].guidInstance = 0;
+        //info[ndevices].guidProduct = 0;
+        info[ndevices].usagePage = 0xd;     // Digitizer usagePage
+        info[ndevices].usageValue = 0x4;    // Touchscreen usageValue
+        info[ndevices].dwDevType = 0x1;
+        sprintf(&info[ndevices].tszInstanceName[0], "Touchscreen");
+        sprintf(&info[ndevices].tszProductName[0], "Touchscreen");
+        info[ndevices].touchDeviceType = 1;
+        info[ndevices].maxTouchpoints = (GetSystemMetrics(SM_DIGITIZER) & NID_MULTI_INPUT) ? 10 : 1;
+        psychHIDKbQueueType[ndevices] = 1;  // Mark as touch input queue.
+        touchQueue = ndevices;              // touchQueue is the queue index of the touch input queue.
+        ndevices++;
+
+        // Done. Continue with enumeration, unless the capacity of our internal
+        // array is exhausted:
+        if (ndevices == PSYCH_HID_MAX_DEVICES)
+            printf("PsychHID-WARNING: Number of detected HID input devices %i now equal to our maximum capacity. May miss some devices!\n", ndevices);
+    }
+
     // Create keyboard queue mutex for later use:
     KbQueueThreadTerminate = FALSE;
     PsychInitMutex(&KbQueueMutex);
@@ -356,6 +384,12 @@ PsychError PsychHIDEnumerateHIDInputDevices(int deviceClass)
             case DI8DEVTYPE_JOYSTICK:
                 type = (char*) "slave joystick";
                 if (dev->usagePage == 0) dev->usagePage = 1;
+                if (dev->usageValue == 0) dev->usageValue = 4;
+            break;
+
+            case 0x1:
+                type = (char*) "master touchscreen";
+                if (dev->usagePage == 0) dev->usagePage = 0xd;
                 if (dev->usageValue == 0) dev->usageValue = 4;
             break;
 
@@ -956,15 +990,19 @@ static void KbQueueProcessEvents(psych_bool longSleep)
 static LRESULT CALLBACK KbQueueWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     PsychHIDEventRecord evt;
-    double tnow;
+    double tnow, tickNow, tOffset;
     unsigned int screen_width, screen_height;
 
     // Need screen width and height for normalization purposes:
     screen_width = GetSystemMetrics(SM_CXVIRTUALSCREEN);
     screen_height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 
-    // Take timestamp:
+    // Take timestamps:
     PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+    tickNow = PsychGetTimeGetTimeValueAtLastTimeQuery(&tnow);
+
+    // Calculate offset tOffset to add to event timestamps to get GetSecs time:
+    tOffset = tnow - tickNow;
 
     // Clear ringbuffer event:
     memset(&evt, 0 , sizeof(evt));
@@ -983,6 +1021,113 @@ static LRESULT CALLBACK KbQueueWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
             // Mouseclick into our inactive window received.
             // Default to ignore activation event and eat it:
             return(MA_NOACTIVATEANDEAT);
+
+        case WM_TOUCH: {
+            UINT cInputs = LOWORD(wParam);
+
+            PTOUCHINPUT pInputs = (cInputs > 0) ? new TOUCHINPUT[cInputs] : NULL;
+            if (pInputs) {
+                if (GetTouchInputInfo((HTOUCHINPUT) lParam, cInputs, pInputs, sizeof(TOUCHINPUT))) {
+                    UINT i;
+                    psych_bool anyUpdate = FALSE;
+
+                    // Need to protect shared data access:
+                    PsychLockMutex(&KbQueueMutex);
+
+                    // Process pInputs
+                    for (i = 0; i < cInputs; i++) {
+                        int numValuators = psychHIDKbQueueNumValuators[touchQueue];
+                        TOUCHINPUT ti = pInputs[i];
+
+                        // Skip dispatch to disabled touch queue:
+                        if (!psychHIDKbQueueActive[touchQueue] || (psychHIDKbQueueType[touchQueue] != 1))
+                            continue;
+
+                        // Less then 5 valuators - Touch input reporting disabled:
+                        if (numValuators < 5)
+                            continue;
+
+                        // Clear ringbuffer event:
+                        memset(&evt, 0 , sizeof(evt));
+
+                        // cookedEventCode is meaningless for a touch event:
+                        evt.cookedEventCode = -1;
+
+                        // Time of touch event, remapped from system msec integer ticks to GetSecs time:
+                        evt.timestamp = (((double) ti.dwTime) / 1000.0) + tOffset;
+
+                        // Touch point id, 32-Bit integer - unique until 32 bit wraparound ;) :
+                        evt.rawEventCode = ti.dwID;
+
+                        // Absolute x,y position in fractional pixels, reported by Windows in 1/100th pixels:
+                        evt.X = TOUCH_COORD_TO_PIXEL((float) ti.x);
+                        evt.Y = TOUCH_COORD_TO_PIXEL((float) ti.y);
+
+                        // Same info in valuators[0] and [1]:
+                        evt.valuators[evt.numValuators++] = evt.X;
+                        evt.valuators[evt.numValuators++] = evt.Y;
+
+                        // Normalized position where [0 ; 1] maps to [0 ; screen_width or height]:
+                        evt.normX = evt.X / (float) screen_width;
+                        evt.normY = evt.Y / (float) screen_height;
+
+                        // We may have size of the contact point along x and y axis:
+                        if (ti.dwMask & TOUCHINPUTMASKF_CONTACTAREA) {
+                            evt.valuators[evt.numValuators++] = TOUCH_COORD_TO_PIXEL((float) ti.cxContact);
+                            evt.valuators[evt.numValuators++] = TOUCH_COORD_TO_PIXEL((float) ti.cyContact);
+                        }
+                        else {
+                            // Unknown: Set to zero to signal this:
+                            evt.valuators[evt.numValuators++] = 0;
+                            evt.valuators[evt.numValuators++] = 0;
+                        }
+
+                        // We may have one extra valuator:
+                        if (ti.dwMask & TOUCHINPUTMASKF_EXTRAINFO)
+                            evt.valuators[evt.numValuators++] = (float) ti.dwExtraInfo;
+                        else
+                            evt.valuators[evt.numValuators++] = FLT_MIN;
+
+                        // Type of touch event:
+                        if (ti.dwFlags & TOUCHEVENTF_DOWN) {
+                            // Touch begins - Finger pressed, integrity bit cleared:
+                            evt.status = 1;
+                            evt.type = 2;
+                        }
+                        else if (ti.dwFlags & TOUCHEVENTF_MOVE) {
+                            // Finger motion event, with finger pressed onto the touch surface:
+                            evt.status |= 1 + 2;
+                            evt.type = 3;
+                        }
+
+                        if (ti.dwFlags & TOUCHEVENTF_UP) {
+                            // Touch ends - Finger released and no more motion:
+                            evt.status &= ~(1 + 2);
+                            evt.type = 4;
+                        }
+
+                        // Add this event to the event buffer:
+                        PsychHIDAddEventToEventBuffer(touchQueue, &evt);
+                        anyUpdate = TRUE;
+                    }
+
+                    // Any touch updates at all? Tell waiting userspace, if so:
+                    if (anyUpdate)
+                        PsychSignalCondition(&KbQueueCondition);
+
+                    // Done with shared data access:
+                    PsychUnlockMutex(&KbQueueMutex);
+
+                    // Done:
+                    CloseTouchInputHandle((HTOUCHINPUT) lParam);
+                }
+
+                delete [] pInputs;
+            }
+
+            // Signal to Windows we are done with this event:
+            return(0);
+        }
     }
 }
 
@@ -1001,6 +1146,7 @@ static void PsychHIDOSProcessWindowEvents(void)
 void* KbQueueWorkerThreadMain(void* dummy)
 {
     int rc;
+    HWND touchWindow = 0;
 
     // Try to raise our priority: We ask to switch ourselves (NULL) to priority class 1 aka
     // realtime scheduling, with a tweakPriority of +1, ie., raise the relative
@@ -1012,13 +1158,49 @@ void* KbQueueWorkerThreadMain(void* dummy)
     while (1) {
         PsychLockMutex(&KbQueueMutex);
 
+        // Keyboard queue zero - our preliminary prototyping touch input queue - active and in touch mode, but no touchWindow?
+        if (psychHIDKbQueueActive[touchQueue] && (psychHIDKbQueueNumValuators[touchQueue] >= 5) &&
+            (psychHIDKbQueueType[touchQueue] == 1) && !touchWindow) {
+            // Yes. Create our touch input event processing window - the receptacle for touch input:
+            touchWindow = CreateWindowEx(WS_EX_TOPMOST | WS_EX_NOACTIVATE | // Needs to be top-most, but not active!
+                                         (PsychOSIsMSWin8() ? WS_EX_NOREDIRECTIONBITMAP : 0), // Avoid DWM redirection surface on Win8+.
+                                         "PTB-PsychHID",        // Class name for PsychHID event window class, as event receiver.
+                                         "PTB-PsychHID",        // App name, for debugging purposes.
+                                         WS_VISIBLE | WS_POPUP, // Window style: Needs to be "visible", although 100% transparent.
+                                         touchWinRect.left,     // x start coord = top-left corner.
+                                         touchWinRect.top,      // y start coord = top-left corner.
+                                         touchWinRect.right,    // Width.
+                                         touchWinRect.bottom,   // Height.
+                                         NULL,                  // No handle to parent - no parent.
+                                         NULL,                  // No handle to menu - no menu.
+                                         modulehandle,          // hInstance handle.
+                                         NULL);                 // No extra parameters.
+
+            if (!touchWindow) {
+                printf("PsychHID-ERROR: Creating touch receptor window failed!\n");
+            }
+            else {
+                // Register for reception of touch input:
+                if (!RegisterTouchWindow(touchWindow, TWF_FINETOUCH | TWF_WANTPALM))
+                    printf("RegisterTouchWindow failed on our window: %i\n", GetLastError());
+            }
+        }
+
+        // No touch input wanted or supported, but touchWindow exists, e.g., from previous touch input activity?
+        if (!(psychHIDKbQueueActive[touchQueue] && (psychHIDKbQueueNumValuators[touchQueue] >= 5) &&
+            (psychHIDKbQueueType[touchQueue] == 1)) && touchWindow) {
+            // Destroy now redundant touch input window:
+            DestroyWindow(touchWindow);
+            touchWindow = 0;
+        }
+
         // Check if we should terminate:
         if (KbQueueThreadTerminate) break;
 
         PsychUnlockMutex(&KbQueueMutex);
 
         // Perform event processing until no more events are pending:
-        KbQueueProcessEvents(TRUE);
+        KbQueueProcessEvents(!touchWindow);
 
         // Process events in the threads windowing system event queue:
         PsychHIDOSProcessWindowEvents();
@@ -1026,6 +1208,10 @@ void* KbQueueWorkerThreadMain(void* dummy)
 
     // Done. Unlock the mutex:
     PsychUnlockMutex(&KbQueueMutex);
+
+    // Delete our touch input window, if any:
+    if (touchWindow)
+        DestroyWindow(touchWindow);
 
     // Return and terminate:
     return(NULL);
@@ -1036,6 +1222,31 @@ PsychError PsychHIDOSKbQueueCreate(int deviceIndex, int numScankeys, int* scanKe
     dinfo* dev = NULL;
 
     (void) windowHandle;
+
+    // Touch queue to be created?
+    if ((deviceIndex == touchQueue) && (psychHIDKbQueueType[touchQueue] == 1) && (numValuators >= 5)) {
+        // True windowHandle of a win32 window passed in?
+        if (windowHandle > 10) {
+            // Yes. Map it to window client area for setup of touch window:
+            POINT lPoint;
+
+            // Convert windowHandle back to HWND:
+            HWND hwnd = (HWND) windowHandle;
+
+            lPoint.x = lPoint.y = 0;
+            ClientToScreen(hwnd, &lPoint);
+            GetClientRect(hwnd, &touchWinRect);
+            touchWinRect.left = lPoint.x;
+            touchWinRect.top = lPoint.y;
+        }
+        else {
+            // No. Set touch window size to cover whole desktop:
+            touchWinRect.left = 0;
+            touchWinRect.top = 0;
+            touchWinRect.right = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+            touchWinRect.bottom = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+        }
+    }
 
     // Valid number of keys?
     if (scanKeys && (numScankeys != 256)) {
