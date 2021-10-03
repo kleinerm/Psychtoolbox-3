@@ -1,6 +1,6 @@
 function windowsmakeit64_twisty(what, onoctave)
 % Builds the 64-Bit Psychtoolbox on MS-Windows for Octave-6 and Matlab.
-% As a bonus it could build the 32-Bit Psychtoolbox for 32-Bit Octave-5 if
+% As a bonus it could build the 32-Bit Psychtoolbox for 32-Bit Octave-6 if
 % all relevant SDK's, Compilers and libraries would be installed.
 % This script is customized for MK's build machines "darlene" and "touchy",
 % building against the Windows-10 SDK on Windows-10 64-Bit.
@@ -101,15 +101,24 @@ if onoctave == 0
         %
         % Requires freeglut dll's included within Psychtoolbox distribution.
         %
-        if IsWin(1)
-            % 64-Bit build:
-            mex -outdir . -output moglcore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWINR2007a -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib\x64 -I. windowhacks.c gl_auto.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
-        else
-            % 32-Bit build:
-            mex -outdir . -output moglcore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWINR2007a -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib -I. windowhacks.c gl_auto.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
-        end
+        curdir = pwd;
+        cd('../../Psychtoolbox/PsychOpenGL/MOGL/source/');
+        clear moglcore;
 
-        movefile(['moglcore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+        try
+            if IsWin(1)
+                % 64-Bit build:
+                mex -outdir . -output moglcore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWINR2007a -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib\x64 -I. windowhacks.c gl_auto.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
+            else
+                % 32-Bit build:
+                mex -outdir . -output moglcore -largeArrayDims -DMEX_DOUBLE_HANDLE -DWINR2007a -DWINDOWS -DGLEW_STATIC -I..\..\..\..\PsychSourceGL\Cohorts\freeglut\include -L..\..\..\..\PsychSourceGL\Cohorts\freeglut\lib -I. windowhacks.c gl_auto.c gl_manual.c mogl_rebinder.c moglcore.c glew.c ftglesGlue.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib -lfreeglut
+            end
+
+            movefile(['moglcore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+        catch
+            lasterr %#ok<LERR> 
+        end
+        cd(curdir);
     end
 
     if what == 7
@@ -143,15 +152,25 @@ if onoctave == 0
         % The SDK is currently available from:
         % http://connect.creativelabs.com/openal
         %
-        if Is64Bit
-            % 64-Bit R2007a or later build:
-            mex -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
-        else
-            % 32-Bit R2007a or later build:
-            mex -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win32" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
+        curdir = pwd;
+        cd('../../Psychtoolbox/PsychSound/MOAL/source/');
+
+        try
+            clear moalcore;
+            if Is64Bit
+                % 64-Bit R2007a or later build:
+                mex -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win64" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
+            else
+                % 32-Bit R2007a or later build:
+                mex -outdir . -output moalcore -largeArrayDims -DWINDOWS -I"C:\Program Files (x86)\OpenAL 1.1 SDK\include" -L"C:\Program Files (x86)\OpenAL 1.1 SDK\libs\Win32" moalcore.c al_auto.c al_manual.c alm.c user32.lib -lOpenAL32
+            end
+
+            movefile(['moalcore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+        catch
+            lasterr %#ok<LERR>
         end
 
-        movefile(['moalcore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+        cd(curdir);
     end
 
     if what == 11
