@@ -408,10 +408,14 @@ else
         % as import library for our mex file. Weird but true - this seems to work!
         clear PsychOculusVRCore
         if Is64Bit
-            copyfile('C:\windows\system32\LibOVRRT64_0_5.dll', '..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010\');
+            try
+                copyfile('C:\windows\system32\LibOVRRT64_0_5.dll', '..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010\');
+            end
             mexoctave --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT64_0_5
         else
-            copyfile('C:\Windows\SysWOW64\LibOVRRT32_0_5.dll', '..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010\');
+            try
+                copyfile('C:\Windows\SysWOW64\LibOVRRT32_0_5.dll', '..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010\');
+            end
             mexoctave --output ..\Projects\Windows\build\PsychOculusVRCore.mex -DPTBMODULE_PsychOculusVRCore -DPTBOCTAVE3MEX -I..\..\..\OculusSDKWin\LibOVR\Include -ICommon\Base -IWindows\Base -ICommon\PsychOculusVRCore Common\PsychOculusVRCore\*.c Windows\Base\*.c Common\Base\*.c kernel32.lib user32.lib winmm.lib -L..\..\..\OculusSDKWin\LibOVR\Lib\Windows\Win32\Release\VS2010 -lOVRRT32_0_5
         end
         movefile(['..\Projects\Windows\build\PsychOculusVRCore.' mexext], target);
