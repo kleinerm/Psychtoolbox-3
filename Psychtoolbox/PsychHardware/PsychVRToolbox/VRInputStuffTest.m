@@ -82,9 +82,8 @@ if hmdinfo.VRControllersSupported
     fprintf('\n\n');
 end
 
-fprintf('VR area boundaries (if configured):\n\n');
-
-[isVisible, playboundsxyz, outerboundsxyz] = PsychVRHMD('VRAreaBoundary', hmd)
+% Fetch play area / guardian boundaries:
+[isVisible, playboundsxyz, outerboundsxyz] = PsychVRHMD('VRAreaBoundary', hmd);
 
 fprintf('\n\nPress any key or controller button to continue. Will continue in 10 seconds automatically.\n');
 DrawFormattedText(win, 'Press any key or controller button to continue. Will continue in 10 seconds automatically.', 'center', 'center', [1 1 0], 20);
@@ -516,6 +515,34 @@ if hmdinfo.handTrackingSupported
 
       % Clear color and depths buffers:
       glClear;
+
+      % Visualize projection of guardian "walls" to the floor, if any are defined:
+      if ~isempty(outerboundsxyz)
+        glDisable(GL.LIGHTING);
+
+        % Change color of guardian lines, depending if guardian grid visible or not:
+        if PsychVRHMD('VRAreaBoundary', hmd);
+          glColor3f(1.0, 0.0, 0.0);
+        else
+          glColor3f(1.0, 1.0, 0.0);
+        end
+
+        % Outer bounds - hard walls:
+        glBegin(GL.LINE_LOOP);
+          for i = 1:size(outerboundsxyz, 2)
+            glVertex3dv(outerboundsxyz(:, i) + globalPos');
+          end
+        glEnd;
+
+        % Inner play area - a  rectangle inscribed to the outer bounds:
+        glBegin(GL.LINE_LOOP);
+          for i = 1:size(playboundsxyz , 2)
+            glVertex3dv(playboundsxyz(:, i) + globalPos');
+          end
+        glEnd;
+
+        glEnable(GL.LIGHTING);
+      end
 
       glPushMatrix;
 
