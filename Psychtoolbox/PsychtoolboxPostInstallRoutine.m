@@ -392,6 +392,10 @@ if IsOctave
         elseif ismember(octavemajorv, [3,4]) && IsLinux
             % Octave-3 and Octave-4.0/4.2 can share the same mex files in the Octave-3 folder on Linux:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave3'];
+            fprintf('\nOctave versions < 4.4 are no longer suppported on Linux. This will likely fail!\n');
+            fprintf('Upgrade to Ubuntu 20.04-LTS or an equivalent modern Linux distribution.\n');
+            fprintf('Press any key to confirm you read and understand this message.\n');
+            pause;
         else
             % Everything else (aka other OS'es) goes by Octave major version:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
@@ -440,13 +444,13 @@ if IsOctave
     end
 
     if (~IsLinux && (octavemajorv ~= 6 || ~ismember(octaveminorv, [3]))) || ...
-        (IsLinux && ((octavemajorv < 3) || (octavemajorv == 3 && octaveminorv < 8) || (octavemajorv > 5)))
-        fprintf('\n\n==============================================================================================\n');
+        (IsLinux && ((octavemajorv < 4) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 6)))
+        fprintf('\n\n===============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
-            % On Linux everything from 3.8 to 5 is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 3.8, 4.0, 4.2, 4.4, 5.1 or 5.2 series.\n');
-            fprintf('WARNING: You can get Psychtoolbox for more recent versions of Octave from NeuroDebian.\n');
+            % On Linux everything from 4.4 to 6.2 is fine:
+            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.1, 5.2, 6.1 or 6.2 series.\n');
+            fprintf('WARNING: You can get Psychtoolbox for other or more recent versions of Octave from NeuroDebian.\n');
         else
             % On Windows/OSX we only care about 6.3 atm:
             fprintf('WARNING: only using Octave 6.3 with this version of Psychtoolbox.\n');
@@ -454,7 +458,7 @@ if IsOctave
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
         fprintf('\nPress any key to continue with setup.\n');
-        fprintf('==============================================================================================\n\n');
+        fprintf('===============================================================================================\n\n');
         pause;
     end
 
