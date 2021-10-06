@@ -22,7 +22,6 @@
  * - Support for enumeration of OpenHMD devices with their properties (vendor, model, path, properties).
  * - Support for filtering out emulated HMD devices and non-HMD's for 'Open' function, unless dummy
  *   device is requested.
- * - Support for input controllers and buttons.
  *
  */
 
@@ -466,8 +465,10 @@ PsychError PSYCHOPENHMDVROpen(void)
                 if (device_flags & OHMD_DEVICE_FLAGS_POSITIONAL_TRACKING)
                     controllerFlags |= 2;
 
+                #if defined OHMD_DEVICE_FLAGS_HAPTIC_FEEDBACK
                 if (device_flags & OHMD_DEVICE_FLAGS_HAPTIC_FEEDBACK)
                     controllerFlags |= 4;
+                #endif
             }
         }
     }
@@ -495,8 +496,10 @@ PsychError PSYCHOPENHMDVROpen(void)
         if (device_flags & OHMD_DEVICE_FLAGS_POSITIONAL_TRACKING)
             controllerFlags |= 2;
 
+        #if defined OHMD_DEVICE_FLAGS_HAPTIC_FEEDBACK
         if (device_flags & OHMD_DEVICE_FLAGS_HAPTIC_FEEDBACK)
             controllerFlags |= 4;
+        #endif
     }
 
     // Return bitmask of connected and associated controllers:
