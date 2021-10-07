@@ -239,10 +239,6 @@ try
     PsychImaging('AddTask','General','UseRetinaResolution');
     PsychImaging('AddTask','General','NormalizedHighresColorRange',1);
 
-    if o.useVulkan
-        PsychImaging('AddTask','General','UseVulkanDisplay');
-    end
-
     switch o.nBits
         case 8
             % Do nothing, this is the default.
@@ -252,8 +248,16 @@ try
             PsychImaging('AddTask','General','EnableNative11BitFramebuffer');
         case 11
             PsychImaging('AddTask','General','EnableNative16BitFloatingPointFramebuffer');
+            if ~IsOSX
+                % Linux and Windows generally only provide fp16 under Vulkan:
+                o.useVulkan = 1;
+            end
         case 16
             PsychImaging('AddTask','General','EnableNative16BitFramebuffer');
+    end
+
+    if o.useVulkan
+        PsychImaging('AddTask','General','UseVulkanDisplay');
     end
 
     if ~o.useFractionOfScreen

@@ -830,10 +830,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %     cards support ~ 11 bpc framebuffers at all. Radeon HD-7000 and earlier can only
 %     truly process up to 10 bpc, so 'EnableNative11BitFramebuffer' may not gain you any
 %     precision over 'EnableNative10BitFramebuffer' in practice on these cards. AMD cards
-%     of the "Sea Islands" family or later, mostly models from the year >= 2014, should be
-%     able to process and output up to 12 bpc over HDMI or DisplayPort, so they'd be able
-%     to output true ~11 bpc images. However, this hasn't been verified by us so far due to
-%     lack of suitable hardware - we don't know if it really works.
+%     of the "Sea Islands" family or later, mostly models from the year >= 2014, are
+%     able to process and output up to 12 bpc over HDMI or DisplayPort, so they can
+%     output true ~11 bpc images.
 %
 %   So obviously: Measure very carefully on your setup what kind of precision you really
 %   get and make sure not to be fooled by dithering if you need precise low-level control
@@ -925,15 +924,27 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   framebuffers. Please note that the effective linear output precision of a
 %   16 bit non-linear floating point framebuffer in the normalized range 0.0 - 1.0
 %   (the "typical" output range for SDR standard dynamic range displays) is only
-%   about 11 bits ~ 2048 levels of red, green, blue intensity. Also note that
-%   actual display hardware will usually only resolve this at about 10 bpc, or
-%   maybe simulated 11 bpc via dithering techniques. As of July 2019, only NVidia
-%   graphics cards of the GeForce 1000 "Pascal" series or later under Windows-10
-%   seem to support this mode properly. At least one combo of GeForce 1060 + 8 bit
-%   panel was shown via photometer to reproduce about 11 bpc luminance via spatial
-%   dithering. macOS does support this mode with what seems to be mostly software
+%   about 11 bits ~ 2048 levels of red, green, blue intensity. Specifically, for
+%   normalized color values above 0.5 (ie. 50% max intensity) only 11 bpc can be
+%   attained at most, whereas values smaller or equal 0.5 may be able to attain
+%   12 bpc output precision on some recent gpu's. This is due to the precision of
+%   floating point 16, which decreases with increasing magnitude of values and
+%   maxes out at 14 bits for very small magnitude values - however current hardware
+%   can not output at more than 12 bpc precision anyway, even for very small color
+%   values.
+%
+%   Linux supports this mode on AMD gpu's of the "Sea Islands" gpu family or later
+%   if you install the AMDVLK AMD open-source Vulkan driver and use the imaging
+%   pipeline tasks 'UseVulkanDisplay' or 'EnableHDR'. See AMDVLK instructions
+%   above for 'EnableNative16BitFramebuffer'. You need Linux 5.8 for AMD Polaris
+%   and later, or Linux 5.12 for the earler AMD "Sea Islands" and later.
+%
+%   macOS OpenGL does support this mode with what seems to be mostly software
 %   rendering on most machines, ie. with very low performance and even worse timing.
 %   Your mileage may vary.
+%
+%   Windows usually only supports this mode on some gpu's with Vulkan when HDR
+%   mode is used via 'EnableHDR', but not in SDR standard dynamic range mode.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative16BitFloatingPointFramebuffer');
 %
