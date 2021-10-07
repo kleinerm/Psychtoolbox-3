@@ -196,12 +196,12 @@ o.luminances=512; % Photometer takes 3 s/luminance. 512 luminances for a prettie
 o.reciprocalOfFraction= 32; % List one or more, e.g. 1, 128, 256.
 o.vBase=.5;
 o.useDithering=[]; % 1 enable. [] default. 0 disable.
-o.nBits=10; % Enable this to get 10-bit (and better with dithering) performance.
+o.nBits=10; % Enable this to get 10-bit, 10.7-bit, 11-bit or 16-bit performance.
 o.useShuffle=0; % Randomize order of luminances to prevent systematic effect of changing background.
 o.wigglePixelNotCLUT=1; % 1 is fine. The software CLUT is not important.
 o.loadIdentityCLUT=1; % 1 is fine. This nullifies the CLUT.
 o.useFractionOfScreen=0; % For debugging, reduce our window to expose Command Window.
-o.useVulkan=0; % Use Vulkan display backend.
+o.useVulkan=0; % Force use of Vulkan display backend.
 
 if IsOctave
     pkg load statistics;
@@ -245,19 +245,16 @@ try
 
     switch o.nBits
         case 8
-            % do nothing
+            % Do nothing, this is the default.
         case 10
             PsychImaging('AddTask','General','EnableNative10BitFramebuffer');
-        case 11
+        case 10.7
             PsychImaging('AddTask','General','EnableNative11BitFramebuffer');
-        case 12
-            if ~o.useVulkan && IsLinux && ~IsWayland
-                PsychImaging('AddTask','General','EnableNative16BitFramebuffer');
-            else
-                PsychImaging('AddTask','General','EnableNative16BitFloatingPointFramebuffer');
-            end
+        case 11
+            PsychImaging('AddTask','General','EnableNative16BitFloatingPointFramebuffer');
+        case 16
+            PsychImaging('AddTask','General','EnableNative16BitFramebuffer');
     end
-    %if o.nBits >= 11; Screen('ConfigureDisplay','Dithering',screenNumber,61696); end
 
     if ~o.useFractionOfScreen
         window = PsychImaging('OpenWindow',screen,[1 1 1]);

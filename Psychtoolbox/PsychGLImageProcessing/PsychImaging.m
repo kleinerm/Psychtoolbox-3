@@ -843,91 +843,80 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative11BitFramebuffer' [, disableDithering=0]);
 %
 %
-% * 'EnableNative16BitFramebuffer' Enable 16 bpc, 64 bpp framebuffer on some setups.
-%   This asks to enable a framebuffer with a color depth of 16 bpc for up to 65535 levels of intensity
-%   per red, green and blue channel, ie. 48 bits = different 2^48 colors. Currently, as of January 2020,
-%   this mode of operation is only supported on Linux when using the open-source amdgpu display driver
-%   on modern AMD GCN 1.1+ graphics cards. This low-level hack works under specific conditions, but uses
-%   a relatively large amount of graphics memory and compute resources to implement. If you can do with
-%   less than 12 bpc, you are better off with the other high bit depth modes, as they are more efficient
-%   and faster. On suitable setups this will establish a 16 bpc framebuffer which packs 3 * 16 bpc = 48
-%   bit color info into 64 bpp pixels and the gpu's display engine will scan out that framebuffer at 16
-%   bpc. However, effective output precision is further limited to < 16 bpc by your display, video cable
-%   and specific model of graphics card. As of January 2020, the maximum effective output precision is
-%   limited to at most 12 bpc (= 4096 levels of red, green and blue) by the graphics card, and this
-%   precision is only attainable on AMD graphics cards of the so called "Sea Islands" (cik) family
-%   (aka GraphicsCore Next GCN 1.1 or later) or later models when used with the amdgpu-kms display driver.
+% * 'EnableNative16BitFramebuffer' Enable 16 bpc, 64 bpp framebuffer on some supported setups.
 %
-%   Older cards of type GCN 1.0 "Southern Islands" or earlier won't work, as they only support at most 10
-%   bpc overall precision. AMD's latest discrete gpu's of the "Navi" gpu family and later, and AMD's latest
-%   integrated gpus as part of AMD Ryzen processors / APU's are not yet supported. The specific requirement
-%   for this to work is an AMD gpu with a DCE-8 to DCE-12 display engine which uses the new amdgpu-ddx /
-%   amdgpu-kms driver and AMD's DisplayCore driver path. Cards older than "Sea Islands" don't have a DCE-8+
-%   engine, and cards newer than "Vega" won't work, because their DCN-2 display engines are not yet supported
-%   by our 16 bpc code, ditto for modern AMD APU's with DCN display engines.
+%   This asks to enable a framebuffer with a color depth of 16 bpc for up to 65535 levels of intensity
+%   per red, green and blue channel, ie. 48 bits = different 2^48 colors. Currently, as of October 2021,
+%   this mode of operation is only supported on Linux/X11 when using the open-source amdgpu-kms driver
+%   on modern AMD GCN 1.1+ graphics cards [3]. On suitable setups, this will establish a 16 bpc framebuffer
+%   which packs 3 * 16 bpc = 48 bit color info into 64 bpp pixels and the gpu's display engine will scan
+%   out that framebuffer at 16 bpc. However, effective output precision is further limited to < 16 bpc by
+%   your display, video cable and specific model of graphics card. As of October 2021, the maximum effective
+%   output precision is limited to at most 12 bpc (= 4096 levels of red, green and blue) by the graphics card,
+%   and this precision is only attainable on AMD graphics cards of the so called "Sea Islands" (cik) family
+%   (aka GraphicsCore Next GCN 1.1 or later) or any later models when used with the amdgpu-kms display driver.
+%
+%   Older AMD cards of type GCN 1.0 "Southern Islands" or earlier won't work, as they only support at most 10
+%   bpc overall output precision.
 %
 %   Please note that actual 12 bpc output precision can only be attained on certain display devices and
-%   software configurations. As of January 2020, the following hardware + software combo has been
+%   software configurations. As of October 2021, the following hardware + software combos have been
 %   verified with a CRS ColorCal2 colorimeter to provide 12 bpc per color channel precision:
-%   The Apple MacBookPro 2017 15 inch with its built-in 10 bit Retina display, running under Ubuntu Linux
-%   19.10 with Linux 5.5-rc, using the XFCE 4 desktop GUI. This is the only setup we have available for
-%   testing, other setups should work under proper circumstances. Due to time limitations, so far only a
-%   spot check of a fraction of the intensity range has been conducted, testing 128 steps out of the 4096
-%   possible steps in the 12 bpc intensity range.
 %
-%   High bit depth 12 bpc output should work over high-end 12 bit displays connected via HDMI or DisplayPort.
+%   - The Apple MacBookPro 2017 15 inch with its built-in 10 bit Retina display, running under Ubuntu Linux
+%     20.04 with Linux 5.14, as well as with a HDR-10 monitor via DisplayPort and also via HDMI. As those
+%     displays are 10 bit only, the 12 bit precision was attained via spatial dithering by the gpu.
+%
+%   - AMD Ryzen 2400G with AMD RavenRidge integrated graphics chip with a HDR-10 monitor via DisplayPort and
+%     also via HDMI. As that display is 10 bit only, the 12 bit precision was attained via spatial dithering
+%     by the gpu.
+%
+%   High bit depth 12 bpc output should work with native 12 bit displays connected via HDMI or DisplayPort.
 %   Modern AMD gpus, e.g., AMD Polaris, are also able to emulate 12 bpc precision via spatial dithering on
-%   8 bit display panels. Measure your results carefully with a photometer or colorimeter, this is the only
-%   way to verify your specific setup really achieves 12 bpc! See the sections about 11 bpc and 10 bpc native
-%   framebuffers above for further details.
+%   8 and 10 bit display panels. Measure your results carefully with a photometer or colorimeter, this is the
+%   only way to verify your specific setup really achieves 12 bpc! See the sections about 11 bpc and 10 bpc
+%   native framebuffers above for further details.
 %
-%   Required manual one time setup:
+%   Required manual one-time setup:
 %
-%   -  Only three distinct display setups are allowed: Either a single display connected, or if multiple
-%      displays are conected, all displays must mirror (aka clone) each other showing the same image,
-%      or a dual display setup with both displays running at the same video resolution, one display
-%      showing the left half of your onscreen window, the other showing the right half of your onscreen
-%      window, ie., a typical setup for dual-display side-by-side stereo presentation. Pretty much any other
-%      display setup will display undefined results, e.g., corrupted images or random pixel trash.
+%   1. You will need to install the AMD developed and maintained AMDVLK open-source vulkan driver from:
 %
-%   -  Also note that not all desktop GUI environments work: GNOME-3 desktop "Gnome shell" and "Ubuntu desktop"
-%      as well as KDE-5 do not work as of Ubuntu 19.10, but the XFCE 4 desktop works.
+%      https://github.com/GPUOpen-Drivers/AMDVLK/releases
 %
-%   1. Install a suitable desktop environment, e.g., XFCE 4 via "sudo apt install xfce4", log into it.
+%      At least driver release v-2021.Q4.1 will be required, potentially even a later release than that.
 %
-%   2. If you are using an old "Sea Islands" / "GraphicsCore Next 1.1" / "GCN 1.1" gpu, you must reboot
+%   2. You will need to install Linux kernel 5.14, which is currently not shipping in any Ubuntu release, as
+%      of October 2021. A way to manually install it on Ubuntu 20.04-LTS is described on the following
+%      web page via the "mainline" helper software:
+%
+%      https://ubuntuhandbook.org/index.php/2020/08/mainline-install-latest-kernel-ubuntu-linux-mint
+%
+%      Ubuntu 22.04-LTS should ship with a suitable kernel by default in April 2022.
+%
+%   3. If you are using an AMD Polaris gpu or later then you are done.
+%
+%      If you are using an old "Sea Islands" / "GraphicsCore Next 1.1" / "GCN 1.1" gpu, you must reboot
 %      your machine with Linux kernel boot settings that select the new amdgpu kms driver and AMD DisplayCore,
 %      instead of the old radeon kms driver that would be used by default. This requires adding the following
 %      parameters to the kernel boot command line: "radeon.cik_support=0 amdgpu.cik_support=1 amdgpu.dc=1"
 %
-%   3. At least the Retina panel on the 2017 MacBookPro, while claiming it is a 10 bit panel, seems to work
-%      with better precision if operated in 8 bit mode. Measurements in 'EnableNative16BitFramebuffer' mode
-%      suggest better quality of the "dithering emulated" 11 bpc / 12 bpc framebuffers if the panel is
-%      restricted to 8 bit mode. The assumption is that Apples 10 bit Retina panel is not actually a 10 bit
-%      panel, but an 8 bit panel that uses built in spatial dithering to fake 10 bit panel behaviour. If the
-%      gpu operates at > 10 bpc output precision, it employs dithering itself, and the panels dithering interferes
-%      with the gpu's dithering, causing degraded results. Running the panel in (true native!) 8 bit mode leaves
-%      all the dithering from 8 bit -> 10, 11 or 12 bit to the high quality dithering of the gpu, attaining
-%      better results.
+%      Additionally you would need a custom amdvlk driver, as AMD's current official AMDVLK driver does
+%      no longer support pre-Polaris gpu's. We won't provide this driver for free at the moment, so please
+%      enquire for potential paid support options on the Psychtoolbox user forum.
 %
-%      You can enforce 8 bit mode + up to 4 bit dithering for up to 12 bpc precision by executing the following
-%      command in a terminal window, startup script, or via a system(); command:
+%   On AMD you can verify actual output bit depth for an output XXX by typing this command into a terminal
+%   window, assuming your AMD graphics card is the first or only gpu in the system, ie. has index 0:
 %
-%      xrandr --output eDP --set 'max bpc' 9
+%   sudo cat /sys/kernel/debug/dri/0/XXX/output_bpc
 %
-%      You can verify actual output bit depth for an output XXX by typing this command as root into a
-%      terminal window:
+%   E.g., for the internal laptop eDP flat panel of the MacBookPro 2017:
 %
-%      cat /sys/kernel/debug/dri/0/XXX/output_bpc
+%   sudo cat /sys/kernel/debug/dri/0/eDP-1/output_bpc
 %
-%      E.g., for the internal laptop eDP flat panel of the MacBookPro 2017:
+%   Once the above one-time setup is done, adding the following command to your script will enable the
+%   16 bpc framebuffer with up to 12 bpc effective output precision:
 %
-%      cat /sys/kernel/debug/dri/0/eDP-1/output_bpc
-%
-%   Once one time setup is done, adding the following command to your script will enable the 16 bpc framebuffer
-%   with up to 12 bpc effective output precision:
-%
-%   Usage: PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer' [, disableDithering=0][, bpc]);
+%   Usage: PsychImaging('AddTask', 'General', 'EnableNative16BitFramebuffer');
 %
 %
 % * 'EnableNative16BitFloatingPointFramebuffer' Enable support for output of
@@ -3071,6 +3060,27 @@ if ~isempty(floc)
     end
 end
 
+% Request for native 16 bit per color component RGBA16161616 framebuffer on Linux with native X11 X-Server?
+if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer'))) && IsLinux && ~IsWayland
+    % Add the UseVulkanDisplay task if it doesn't exist already, as our Linux X11
+    % 16 bpc support is implemented on top of Vulkan:
+    floc = find(mystrcmp(reqs, 'UseVulkanDisplay'));
+    if isempty(floc)
+        reqs = AddTask(reqs, 'General', 'UseVulkanDisplay');
+    end
+
+    % No frame-sequential stereo yet:
+    if ismember(userstereomode, [1, 11])
+        error('PsychImaging: Requested task ''EnableNative16BitFramebuffer'' is incompatible with frame-sequential stereo mode %i.', userstereomode);
+    end
+
+    % Check for Vulkan in general:
+    if ~PsychVulkan('Supported')
+        % Failed/Unsupported.
+        error('PsychImaging: Requested task ''EnableNative16BitFramebuffer'', but this system does not support the required Vulkan api at all.');
+    end
+end
+
 floc = find(mystrcmp(reqs, 'EnableHDR'));
 if ~isempty(floc)
     % Get and validate input arguments:
@@ -3314,8 +3324,8 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'))) || ...
     % ptb_outputformatter_icmAware = 0;
 end
 
-% Request for native 16 bit per color component RGBA16161616 framebuffer under Vulkan?
-if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer'))) && useVulkan
+% Request for native 16 bit per color component RGBA16161616 framebuffer?
+if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer')))
     % Request 32bpc float FBO unless already a 16 bpc fixed point FBO
     % has been explicitely requested. 16 bpc fixed point is obviously just
     % quite sufficient for 16 bpc linear output, 32 bpc float provides 23 bpc
@@ -3324,173 +3334,6 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer'))) && useVulkan
     if ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
         imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
     end
-end
-
-% Request for native 16 bit per color component ARGB16161616 framebuffer under OpenGL (== not Vulkan)?
-if ~isempty(find(mystrcmp(reqs, 'EnableNative16BitFramebuffer'))) && ~useVulkan
-    % Enable output formatter chain:
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
-
-    % Validate current config to make sure it makes sense for this stunt:
-    if ~IsLinux || IsWayland
-        error('PsychImaging: Native 16 bpc framebuffer requested, but not running on Linux X11. This is unsupported.');
-    end
-
-    % We need to disable color tiling for rendering and display on the AMD gpu, as this hack needs a linear
-    % renderbuffer and scanoutbuffer. All suitable AMD gpu's are GCN gpus and therefore use the Mesa radeonsi
-    % gallium OpenGL driver which supports a special debug environment variable setting R600_DEBUG=notiling to
-    % achieve this. However, the variable setting is only picked up by Mesa during driver reinit time, and that
-    % only happens at first use of OpenGL in a session:
-    if isempty(strfind(getenv('R600_DEBUG'), 'notiling')) && isempty(strfind(getenv('AMD_DEBUG'), 'notiling'))
-        % Env setting and Screen reinit needed. This will not work on Matlab, and only sometimes on
-        % Octave, so give customized advise:
-        if IsOctave
-            setenv('R600_DEBUG', 'notiling');
-            fprintf('PsychImaging: Had to set the R600_DEBUG environment variable myself for setup of native 16 bpc framebuffer mode.\n');
-            fprintf('PsychImaging: This may not work if any OpenGL graphics or Screen() was already used in this session. If you see\n');
-            fprintf('PsychImaging: corrupted visual stimuli then abort the script, type ''clear all'' and then retry. If that does not\n');
-            fprintf('PsychImaging: help, then exit Octave and restart it from a terminal via this command:\n');
-            fprintf('PsychImaging: R600_DEBUG=notiling octave\n');
-            fprintf('\n\n');
-        else
-            fprintf('PsychImaging: The R600_DEBUG environment variable is not set to ''notiling'' as needed for native 16 bpc framebuffer\n');
-            fprintf('PsychImaging: mode. To fix this, the variable must be assigned before Matlab is started - or during Matlab startup.\n');
-            fprintf('PsychImaging: If you see corrupted visual stimuli then quit Matlab and restart it from a terminal via this command:\n');
-            fprintf('PsychImaging: R600_DEBUG=notiling matlab\n');
-            fprintf('\n\n');
-        end
-    end
-
-    % Get number of attached video outputs (aka scanout engines) and properties
-    % of the first output, which acts as a reference for all other outputs, if any:
-    numOutputs = Screen('ConfigureDisplay', 'NumberOutputs', screenid);
-    refOutput = Screen('ConfigureDisplay', 'Scanout', screenid, 0);
-
-    % First output must have x/y offset 0,0 ie. top-left corner of framebuffer.
-    if (refOutput.xStart ~= 0) || (refOutput.yStart ~= 0)
-        error('PsychImaging: First video output in native 16 bpc framebuffer mode not starting at (x,y)=(0,0)! This is unsupported.');
-    end
-
-    % Screen must have twice the width and height of the viewport of the first output:
-    [swidth, sheight] = Screen('WindowSize', screenid, 1);
-    if (2 * refOutput.width ~= swidth) || (2 * refOutput.height ~= sheight)
-        fprintf('PsychImaging: Screen width and height is not twice the width and height of the first video output in native 16 bpc framebuffer mode. Adapting...\n');
-        oldres = Screen('Resolution', screenid, 2 * refOutput.width, 2 * refOutput.height, [], [], 2);
-        for i=1:10
-            [swidth, sheight] = Screen('WindowSize', screenid, 1);
-            if (2 * refOutput.width == swidth) && (2 * refOutput.height == sheight)
-                % Change applied. Carry on!
-                break;
-            end
-            fprintf('PsychImaging: Screen resize to %i x %i pixels for 16 bpc mode still in progress. Waiting...\n', 2 * refOutput.width, 2 * refOutput.height);
-            WaitSecs(1);
-        end
-
-        if i == 10
-            % Restore old screen setting if we changed it:
-            Screen('Resolution', screenid, oldres.width, oldres.height, [], [], 2);
-            fprintf('PsychImaging: Failed to change X-Screen width and height for native 16 bpc framebuffer mode. Likely this is because your\n');
-            fprintf('PsychImaging: desktop GUI environment prevents it. Modern versions of the GNOME desktop and Ubuntu desktop are known to\n');
-            fprintf('PsychImaging: prevent this mode (as tested with Ubuntu 19.10). Try switching to a different desktop GUI to see if that\n');
-            fprintf('PsychImaging: makes it work. E.g., XFCE-4 worked on Ubuntu 19.10, KDE may work.\n');
-            error('PsychImaging: Switch to 16 bpc framebuffer failed, probably due to wrong desktop GUI environment in use. See message above.');
-        end
-    else
-        oldres = [];
-    end
-
-    % More than one output? If so, make sure that all outputs have the same
-    % horizontal and vertical resolution / viewport size as the 1st reference
-    % output and that they either clone the first output, aka x/y start offset is (0,0),
-    % or just right of the first output, so we have a classic dual-display side-by-side
-    % configuration for ultra wide-screen viewing or dual-display stereo:
-    if numOutputs > 1
-        for outputId=1:(numOutputs-1)
-            % Get this outputs settings:
-            testOutput = Screen('ConfigureDisplay', 'Scanout', screenid, outputId);
-
-            if (testOutput.width ~= refOutput.width) || (testOutput.height ~= refOutput.height) || (testOutput.yStart ~= 0)
-                % Mismatch in viewport size or vertical start location:
-                if ~isempty(oldres)
-                    % Restore old screen setting if we changed it:
-                    Screen('Resolution', screenid, oldres.width, oldres.height, [], [], 2);
-                end
-                error('PsychImaging: At least one secondary video output in native 16 bpc framebuffer mode does not have the same viewport size as the first output! This is unsupported.');
-            end
-
-            % Secondary outputs must either clone the 1st output, or be located directly to its right edge:
-            if (testOutput.xStart ~= 0) && (testOutput.xStart ~= refOutput.width)
-                % Mismatch in horizontal start location:
-                if ~isempty(oldres)
-                    % Restore old screen setting if we changed it:
-                    Screen('Resolution', screenid, oldres.width, oldres.height, [], [], 2);
-                end
-                error('PsychImaging: At least one secondary video output in native 16 bpc framebuffer mode is not located right of the first output, or cloning the first output! This is unsupported.');
-            end
-
-            % At least one output establishing a dual-display side-by-side config?
-            if testOutput.xStart == refOutput.width
-                isASideBySideConfig = 1;
-            end
-        end
-    end
-
-    % If we made it up to here, then the display output configuration and framebuffer size etc.
-    % is at least compatible with 16 bpc 64 bpp scanout.
-    if ~isempty(oldres)
-        % Setup command sequence to restore settings after window close. Restore original X-Screen resolution:
-        screenRestoreCmd{screenid+1} = sprintf('Screen(''Resolution'', %i, %i, %i, [], [], 1+2);', screenid, oldres.width, oldres.height);
-    else
-        screenRestoreCmd{screenid+1} = [];
-    end
-
-    % As of January 2020, none of the commercially available gpu's has a graphics
-    % driver which would support 16 bpc / 64 bpp fixed point linear framebuffers.
-    % However, all recent AMD gpu's do support linear 16 bpc / 64 bpp framebuffers
-    % in their scanout hardware, ie., storing 16 bpc formatted framebuffer
-    % content and scanning it out. The actual display encoders do limit output
-    % precision to way less than 16 bpc though, ie. not the whole display pipeline is
-    % 16 bpc. So what we do on Linux with the FOSS AMD graphics drivers on
-    % X11 + radeon/amdgpu-kms is we reprogram the scanout engine (crtc) to treat a
-    % 32 bpp framebuffer of twice the width and height of the crtc's viewport
-    % as a 64 bpp framebuffer of exactly the width and height of the crtc's
-    % viewport. From the perspective of Linux and its graphics stack, what we
-    % have is an oversized X-Screen twice the width and height of the selected
-    % display resolution. From the perspective of the scanout hw we have an
-    % exactly matching X-Screen with 64 bpp color format for 16 bpc scanout,
-    % and half of all scanlines are dead/ignored. PTB needs to render into the
-    % jumbo-size onscreen window/framebuffer/x-screen as if it is a 64 bpp fb,
-    % using GLSL conversion shaders to convert its floating point framebuffers
-    % content into a 64 bpp encoding. Usercode however should see an onscreen
-    % window with the effective output size/resolution of the display, not the over-
-    % sized resolution of the x-screen/fb. Therefore instruct Screen() to pretend
-    % the onscreen window is only half the width/height of the true system back-
-    % buffer: half the width/height of a twice width/height system fb == cancels
-    % each other out for effective width/height == display width/height, and all
-    % is good:
-    if ~isASideBySideConfig
-        % Only half-width if no secondary video output can cover the "right half"
-        % of the framebuffer for side-by-side (e.g., stereoscopic) display:
-        imagingMode = mor(imagingMode, kPsychNeedHalfWidthWindow);
-    end
-
-    % Always half-height:
-    imagingMode = mor(imagingMode, kPsychNeedHalfHeightWindow);
-
-    % Request 32bpc float FBO unless already a 16 bpc fixed point FBO
-    % has been explicitely requested. 16 bpc fixed point is obviously just
-    % quite sufficient for 16 bpc linear output, 32 bpc float provides 23 bpc
-    % effective linear precision in the meaningful output intensity range, so
-    % leaves some numerical headroom for post processing and roundoff errors:
-    if ~bitand(imagingMode, kPsychUse32BPCFloatAsap) && ~bitand(imagingMode, kPsychNeed16BPCFixed)
-        imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
-    end
-
-    % The AMD 16 bpc formatter is not icm aware - Incapable of internal color correction!
-    % See 'EnableNative10BitFramebuffer' above, for why we don't touch the ptb_outputformatter_icmAware
-    % setting instead of forcing it to 0 / false:
-    % ptb_outputformatter_icmAware = 0;
 end
 
 % Request for dual display pipeline custom HDR system?
@@ -5044,9 +4887,8 @@ end
 % --- End of output formatters for VideoSwitcher attenuator device ---
 
 
-% --- Final output formatter for native 10 bpc ARGB2101010 or 11 bpc RGB11-11-10framebuffer requested?
+% --- Final output formatter for native 10 bpc ARGB2101010 or 11 bpc RGB11-11-10 framebuffer requested?
 enableNative11BpcRequested = 0;
-enableNative16BpcRequested = 0;
 floc = find(mystrcmp(reqs, 'EnableNative10BitFramebuffer'));
 if isempty(floc)
     enableNative11BpcRequested = 1;
@@ -5055,7 +4897,6 @@ end
 
 if isempty(floc)
     enableNative11BpcRequested = 0;
-    enableNative16BpcRequested = 1;
     floc = find(mystrcmp(reqs, 'EnableNative16BitFramebuffer'));
 end
 
@@ -5064,8 +4905,8 @@ if ~isempty(floc)
 
     % Our special shader-based 10 bpc output formatter is only applicable on Linux
     % with AMD Radeon hardware, or with FireGL/FirePro with override mode bit set.
-    % Our 11 bpc and 16 bpc shader-based output formatters are only for Linux + AMD GCN-1.1+.
-    % specialFlags setting 1024 signals that our own low-level 10/11/16 bit framebuffer
+    % Our 11 bpc shader-based output formatter is only for Linux + AMD GCN-1.1+.
+    % specialFlags setting 1024 signals that our own low-level 10/11 bit framebuffer
     % hack on AMD hardware is active, so we also need our own GLSL output formatters.
     % Otherwise setup was (hopefully) done by the regular graphics drivers and we don't
     % need this GLSL output formatter, as system OpenGL takes care of it.
@@ -5073,34 +4914,10 @@ if ~isempty(floc)
     % the Vulkan/WSI backend must do whatever neccessary to provide the requested
     % fixed point unorm precision - or we simply fail if it can't:
     if bitand(winfo.SpecialFlags, 1024) && ~useVulkan
-        % AMD/ATI gpu on Linux with our 10/11/16 bit hack. Use our reformatters:
-        if enableNative16BpcRequested
-            % Extract optional 2nd parameter - This should be the 'encodingBPC' depth:
-            encodingBPC = reqs{row, 4};
+        % AMD/ATI gpu on Linux with our 10/11 bit hack. Use our reformatters:
 
-            % Assign maximum bit depth default for given GPU, if no specific depth requested:
-            if isempty(encodingBPC)
-                if winfo.GPUMinorType >= 80
-                    % DCE-8.0 or later display engine of "Sea Islands Family" or later: Does 12 bpc,
-                    % but due to hw changes apparently needs an encodingBPC of 16. See PTB forum
-                    % message 21600 and predecessors in that thread for reference.
-                    encodingBPC = 16;
-                else
-                    % Older engine. Only does a maximum of 10 bpc, so using this mode
-                    % is pointless and only good for debugging.
-                    encodingBPC = 10;
-                end
-            end
-
-            fprintf('PsychImaging: EnableNative16BitFramebuffer: Framebuffer resolution set to %i bpc. Further video output specific limitations may apply, check your results with a photometer!\n', encodingBPC);
-
-            % Load algorithmic 9 bpc - 16 bpc shader for packing 9-16 bpc content into a 64 bpp
-            % framebuffer:
-            pgshader = LoadGLSLProgramFromFiles('AMD16bpc_FormattingShader', 1);
-        else
-            % Load output formatting shader for multi-LUT based 10 bpc or 11 bpc formatting:
-            pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
-        end
+        % Load output formatting shader for multi-LUT based 10 bpc or 11 bpc formatting:
+        pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
 
         % Init the shader:
         glUseProgram(pgshader);
@@ -5108,49 +4925,30 @@ if ~isempty(floc)
         % Assign mapping of input image:
         glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
 
-        if enableNative16BpcRequested
-            % Scale from 0.0 - 1.0 to 0.0 - (2^n - 1) with n being encoding bit depth: n = encodingBPC
-            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1, encodingBPC) - 1);
-            % Pass true half-width of framebuffer/x-screen/onscreen window to shader for proper handling
-            % of dual-display side-by-side "stereo style" configurations:
-            glUniform1f(glGetUniformLocation(pgshader, 'halfFBWidth'), Screen('WindowSize', win, 1) / 2);
-        else
-            % CLUT based mapping:
-            glUniform1i(glGetUniformLocation(pgshader, 'CLUT'), 1);
-            glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1024, enableNative11BpcRequested) - 1);
-        end
+        % CLUT based mapping:
+        glUniform1i(glGetUniformLocation(pgshader, 'CLUT'), 1);
+        glUniform1f(glGetUniformLocation(pgshader, 'Prescale'), bitshift(1024, enableNative11BpcRequested) - 1);
         glUseProgram(0);
 
-        if enableNative16BpcRequested
-              % Setup 16 bpc formatter further:
-              pgshadername = 'Native RGBA16161616 framebuffer output formatting shader';
-              if isASideBySideConfig
-                  % Only scale vertically to cover whole vertical framebuffer height:
-                  pgconfig = 'Scaling:1.0:2.0';
-              else
-                  % Scale horizontally and vertically to cover whole framebuffer width x height:
-                  pgconfig = 'Scaling:2.0:2.0';
-              end
-        elseif enableNative11BpcRequested
-              % Use helper routine to build a proper RGBA Lookup texture for
-              % conversion of RGB pixels to ARGB0-11-11-10 pixels.
-              % DCE-8 and later (tested on DCE-8 and DCE-10) need a different
-              % format:
-              if winfo.GPUMinorType >= 80
-                  % DCE-8+
-                  pglutid = PsychHelperCreateRGB111110RemapCLUTAMDDCE8;
-              else
-                  % Pre DCE-8, e.g., tested on DCE-4:
-                  pglutid = PsychHelperCreateRGB111110RemapCLUTOldAMD;
-              end
-              pgshadername = 'Native RGB111110 framebuffer output formatting shader';
-              pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
+        if enableNative11BpcRequested
+            % Use helper routine to build a proper RGBA Lookup texture for
+            % conversion of RGB pixels to ARGB0-11-11-10 pixels.
+            if winfo.GPUMinorType >= 80
+              % DCE-8 to DCE-12 are the only AMD gpu's which are supported and provide
+              % 12 bpc output to make this actually meaningful:
+              pglutid = PsychHelperCreateRGB111110RemapCLUTAMDDCE8;
+            else
+              sca;
+              error('PsychImaging: Native11BitFramebuffer is not supported on this too old or too new AMD gpu.');
+            end
+            pgshadername = 'Native RGB111110 framebuffer output formatting shader';
+            pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
         else
-              % Use helper routine to build a proper RGBA Lookup texture for
-              % conversion of RGBA pixels to ARGB2101010 pixels:
-              pglutid = PsychHelperCreateARGB2101010RemapCLUT;
-              pgshadername = 'Native ARGB2101010 framebuffer output formatting shader';
-              pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
+            % Use helper routine to build a proper RGBA Lookup texture for
+            % conversion of RGBA pixels to ARGB2101010 pixels:
+            pglutid = PsychHelperCreateARGB2101010RemapCLUT;
+            pgshadername = 'Native ARGB2101010 framebuffer output formatting shader';
+            pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
         end
 
         if outputcount > 0
@@ -5161,13 +4959,6 @@ if ~isempty(floc)
         Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', pgshadername, pgshader, pgconfig);
         Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
         outputcount = outputcount + 1;
-
-        % For 16 bpc mode, we need to restore original X-Screen size at window close:
-        if enableNative16BpcRequested && ~isempty(screenRestoreCmd) && ~isempty(screenRestoreCmd{Screen('WindowScreenNumber', win)+1})
-            Screen('HookFunction', win, 'PrependMFunction', 'CloseOnscreenWindowPostGLShutdown', 'Cleanup for 16 bpc Linux X11 mode.', screenRestoreCmd{Screen('WindowScreenNumber', win)+1});
-            Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
-            screenRestoreCmd{Screen('WindowScreenNumber', win)+1} = [];
-        end
 
         % AMD framebuffer devices - Identity CLUT not needed, as internal clut is bypassed anyway,
         % but we do it nonetheless, so we can decide about dithering setup and get things like
