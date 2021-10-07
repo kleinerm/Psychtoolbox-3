@@ -681,22 +681,29 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   with 10 bit precision per color channel (10 bpc / 30 bpp / "Deep color")
 %   on graphics hardware that supports native 10 bpc framebuffers.
 %
-%   Many graphics cards of the professional class AMD/ATI Fire series
-%   (2008 models and later) and all current models of the professional class
-%   NVidia Quadro series (2008 models and later), as well as all current models
-%   of the consumer class NVidia GeForce series under Linux, do support 10 bpc
-%   framebuffers under some circumstances. 10 bpc display on classic CRT monitors
-%   which are connected via analog VGA outputs is supported. Support for digital
-%   display devices like LCD/OLED panels or video projectors depends on the specific
-%   type of display output connector used, the specific panels, and their video
-%   settings. Consult manufacturer documentation for details. In general, 10 bpc
-%   output may be supported on some graphics cards and displays via DisplayPort
-%   or HDMI video outputs, but to our knowledge not via DVI-D outputs.
+%   Under Linux, all AMD graphics cards since at least 2007, NVidia graphics cards
+%   since 2008, and Intel graphics chips since at least 2010 do support native
+%   10 bit framebuffers. Intel graphics chips must use the X11 "intel" video driver
+%   to output their 10 bit framebuffers with actual 10 bit precision, the alternative
+%   "modesetting" video driver does not support output with more than 8 bit yet.
+%   XOrgConfCreator will take care of this Intel quirk when creating a custom xorg.config
+%   for such 10 bpc setups under Intel.
+%
+%   Under MS-Windows, many graphics cards of the professional class AMD/ATI Fire/Pro
+%   series (2008 models and later), and all current models of the professional class
+%   NVidia Quadro series (2008 models and later), do support 10 bpc framebuffers
+%   under some circumstances. 10 bpc display on classic CRT monitors which are connected
+%   via analog VGA outputs is supported. Support for digital display devices like
+%   LCD/OLED panels or video projectors depends on the specific type of display output
+%   connector used, the specific panels, and their video settings. Consult manufacturer
+%   documentation for details. In general, 10 bpc output is usually supported on graphics
+%   cards and displays via DisplayPort or HDMI video outputs, but to our knowledge not
+%   via DVI-D outputs.
 %
 %   If such a combination of graphics card and display is present on your system
 %   on Linux or Microsoft Windows, then Psychtoolbox will request native support
 %   from the standard graphics drivers, ie., it won't need to use our own
-%   homegrown, experimental box of tricks to enable this. You do need to enable/
+%   homegrown experimental box of tricks to enable this. You do need to enable/
 %   unlock 10 bpc mode somewhere in the display driver settings though. On Linux you
 %   can do this for supported cards and drivers via XOrgConfCreator + XOrgConfSelector,
 %   on Windows the method is vendor specific.
@@ -724,10 +731,12 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   Psychtoolbox experimental 10 bpc framebuffer support:
 %
-%   Additionally we support ATI/AMD Radeon hardware of the X1000, HD2000 - HD8000,
-%   series and later models (everything since at least the year 2006) under Linux
-%   via our own low-level setup mechanisms. These graphics cards support a native
-%   ARGB2101010 framebuffer, ie., a system framebuffer with 2 bits for the alpha
+%   Additionally, we support ATI/AMD Radeon hardware of the X1000, HD2000 - HD8000,
+%   series and later models (everything since at least the year 2006) up to the AMD
+%   Polaris gpu family under Linux via our own low-level setup mechanisms. AMD gpu's
+%   of type Vega or more recent are not supported by our own hacks, but by the builtin
+%   native driver support mentioned in the paragraphs above. These graphics cards support
+%   a native ARGB2101010 framebuffer, ie., a system framebuffer with 2 bits for the alpha
 %   channel, and 10 bits per color channel.
 %
 %   As this is supported by the hardware, but not always by the standard AMD
@@ -755,26 +764,24 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   to VGA adapters or active HDMI to VGA adapters may be limited to maximum 8 bpc output.
 %   The status of 10 bpc output to digital display devices differs a lot across devices
 %   and OS'es. Output of 10 bpc framebuffers to standard 8 bpc digital laptop panels or
-%
 %   DVI/HDMI/DisplayPort panels via digital dithering is known to work, but that is not
 %   the real thing, only a simulation of 10 bpc via dithering to 8 bpc. This may or may
 %   not be good enough for your specific visual stimulation paradigm. On a DVI-D connected
 %   standard digital display, this dithered output is the best you will ever get.
 %
-%   DisplayPort: Recent NVidia and AMD graphics cards can output to some suitable DisplayPort
+%   DisplayPort: Recent AMD/Intel/NVidia graphics cards can output to some suitable DisplayPort
 %   displays with 10 bpc or higher precision on Linux, and maybe also on MS-Windows, but you
 %   have to verify this carefully for your specific display.
 %
 %   HDMI: Recent Intel graphics cards can output up to 12 bpc precision to HDMI deep color
-%   capable displays on Linux, and maybe also on MS-Windows. However, > 8 bpc framebuffers
-%   are not yet supported, so this can only be used for gamma correction. All AMD graphics
+%   capable displays on Linux if the X11 intel-ddx video driver is used. All AMD graphics
 %   cards of model Radeon HD-5000 or later (and equivalent Fire-Series models) can output to
 %   HDMI deep color capable displays with 10 bpc real precision at least if you use a Linux
 %   kernel of version 3.16 or later with the open-source AMD graphics drivers. Execute
 %   PsychLinuxConfiguration to enable this >= 10 bpc deep color output mode, then reboot your
 %   machine once to enable it.
 %
-%   The status with the proprietary AMD drivers on Linux or on MS-Windows is unknown.
+%   The status with the proprietary AMD drivers on MS-Windows is unknown.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer' [, disableDithering=0]);
 %
