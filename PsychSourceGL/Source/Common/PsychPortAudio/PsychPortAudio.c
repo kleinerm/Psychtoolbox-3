@@ -3019,7 +3019,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
             // to a different hostBufferSizeMode may be required...
             if (((mode & kPortAudioFullDuplex) == kPortAudioCapture) &&
                 (buffersize == paFramesPerBufferUnspecified) &&
-                (Pa_GetVersion() < paMakeVersionNumber(19,6,1))) {
+                (Pa_GetVersion() < paMakeVersionNumber(19,7,1))) {
                 PseudoBufferProcessor* bp;
 
                 // Cast PaStream* into ALSA backend specific AlsaStream*, using the pseudo-
