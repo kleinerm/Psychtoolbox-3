@@ -1,5 +1,5 @@
 function AudioFeedbackLatencyTest(roundtrip, trigger, deviceid, nrtrials, freq, freqout, fullduplex, runmode)
-% AudioFeedbackLatencyTest([roundtrip=0][, trigger=0.1][, deviceid=auto][, nrtrials=10][, freq=44100][, freqout=44100][, fullduplex=0][, runmode=1])
+% AudioFeedbackLatencyTest([roundtrip=0][, trigger=0.1][, deviceid=auto][, nrtrials=10][, freq=auto][, freqout=auto][, fullduplex=0][, runmode=1])
 %
 % Tries to test sound onset accuracy of PsychPortAudio without need for
 % external measurement equipment: Sound signals are played back via
@@ -84,11 +84,11 @@ if nargin < 4 || isempty(nrtrials)
 end
 
 if nargin < 5 || isempty(freq)
-    freq = 44100;
+    freq = [];
 end
 
 if nargin < 6 || isempty(freqout)
-    freqout = 44100;
+    freqout = [];
 end
 
 if nargin < 7 || isempty(fullduplex)
@@ -117,21 +117,21 @@ PsychPortAudio('Verbosity', 6);
 
 if fullduplex
    % Open the default audio device indeviceid, with mode 3 (== Full-Duplex),
-   % and a required latencyclass of 3 == agressive low-latency mode, as well as
-   % a frequency of freq Hz and 1 sound channel for capture.
+   % and a required latencyclass of 2 == agressive low-latency mode, as well as
+   % a frequency of freq Hz and auto sound channel for capture.
    % This returns a handle to the audio device:
-   pahandlerec = PsychPortAudio('Open', indeviceid, 3, 3, freq, [], [], 0.005);
+   pahandlerec = PsychPortAudio('Open', indeviceid, 3, 2, freq, [], [], 0.005);
    pahandleout = pahandlerec;
 else
    % Open the default audio device indeviceid, with mode 2 (== Only audio capture),
-   % and a required latencyclass of 3 == agressive low-latency mode, as well as
-   % a frequency of freq Hz and 1 sound channel for capture.
+   % and a required latencyclass of 2 == agressive low-latency mode, as well as
+   % a frequency of freq Hz and auto sound channel for capture.
    % This returns a handle to the audio device:
-   pahandlerec = PsychPortAudio('Open', indeviceid, 2, 3, freq);
+   pahandlerec = PsychPortAudio('Open', indeviceid, 2, 2, freq);
 
    % Open 2nd audio device for playback of our test signal with same settings
    % otherwise:
-   pahandleout = PsychPortAudio('Open', outdeviceid, 1, 3, freqout);
+   pahandleout = PsychPortAudio('Open', outdeviceid, 1, 2, freqout);
 end
 
 PsychPortAudio('RunMode', pahandlerec, runmode);
