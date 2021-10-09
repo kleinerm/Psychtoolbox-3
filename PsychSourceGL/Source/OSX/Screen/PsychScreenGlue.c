@@ -1635,19 +1635,28 @@ void InitPsychtoolboxKernelDriverInterface(void)
             // Query and assign GPU info:
             PsychOSKDGetGPUInfo(connect, numKernelDrivers);
 
-            // Skip Intel gpu's, unless the PSYCH_ALLOW_DANGEROUS env variable is set:
-            // Intel IGP's have a design defect which can cause machine hard lockup if multiple
-            // regs are accessed simultaneously! As we can't serialize our MMIO reads with the
-            // kms-driver, using our MMIO code on Intel is unsafe. Horrible crashes are reported
-            // against Haswell on the freedesktop bug tracker for this issue.
+            // Skip Intel gpu's if the PSYCH_DISALLOW_DANGEROUS env variable is set:
+            // Some Intel IGP's are rumoured to have a design quirk which can cause machine hard lockup if multiple
+            // regs are accessed simultaneously! As we can't serialize our MMIO reads with the operating systems
+            // kernel-driver, using our MMIO code on Intel was considered unsafe. Horrible crashes were reported
+            // against Haswell on the freedesktop bug tracker for this issue. However, in practice no such issue was
+            // ever encountered by myself during any testing, nor was such an issue ever reported by our users, so the
+            // practical risk of this happening on macOS in the context of PTB seems to be very low - or even non-existent?
+            // Given that no crash was observed from Gen-5 Ironlake, through Gen-7/7.5 IvyBridge/Haswell, through to Gen 9.5
+            // Kabylake, lets assume we are rather safe here. Apple is not expected to release any new Macs with Intel onboard
+            // iGPU going forward, given their switch to Apple Silicon, so the current status wrt. Intel iGPU will probably stay
+            // static. Anyhow, lets take a little risk with the release of PTB 3.0.18 and enable the PsychtoolboxKernelDriver on
+            // Intel iGPU by default if the driver was installed by the user. Users can still block the driver by setting a new
+            // environment variable PSYCH_DISALLOW_DANGEROUS, and we will revert this approach if we should get any bug reports
+            // pointing to problems. Enabling the driver may give some more insight into the state of macOS on Intel iGPU's...
             //
             // Also skip AMD gpu's older than DCE 1 aka AVIVO, or unknown AMD models, as our logic doesn't support them.
             // Also for now skip AMD gpu's of DCE12 type, as we can't handle them yet.
-            if (((fDeviceType[numKernelDrivers] == kPsychIntelIGP) && !getenv("PSYCH_ALLOW_DANGEROUS")) ||
+            if (((fDeviceType[numKernelDrivers] == kPsychIntelIGP) && getenv("PSYCH_DISALLOW_DANGEROUS")) ||
                 ((fDeviceType[numKernelDrivers] == kPsychRadeon) && (fCardType[numKernelDrivers] < 30 || fCardType[numKernelDrivers] >= 120) && !isDCE1(fPCIDeviceId[numKernelDrivers]))) {
                 if (PsychPrefStateGet_Verbosity() > 2) {
                     if (fDeviceType[numKernelDrivers] == kPsychIntelIGP) {
-                        printf("PTB-INFO: Disconnecting from kernel driver instance #%i for detected Intel GPU for safety reasons. setenv('PSYCH_ALLOW_DANGEROUS', '1') to override.\n", numKernelDrivers);
+                        printf("PTB-INFO: Disconnecting from kernel driver instance #%i for detected Intel GPU for safety reasons. Remove setenv('PSYCH_DISALLOW_DANGEROUS', '1') to override.\n", numKernelDrivers);
                     } else {
                         printf("PTB-INFO: Disconnecting from kernel driver instance #%i because detected AMD GPU is not supported. [PCI Id: 0x%x]\n", numKernelDrivers, fPCIDeviceId[numKernelDrivers]);
                     }
