@@ -120,7 +120,7 @@ if fullduplex
    % and a required latencyclass of 2 == agressive low-latency mode, as well as
    % a frequency of freq Hz and auto sound channel for capture.
    % This returns a handle to the audio device:
-   pahandlerec = PsychPortAudio('Open', indeviceid, 3, 2, freq, [], [], 0.005);
+   pahandlerec = PsychPortAudio('Open', indeviceid, 3, 2, freq);
    pahandleout = pahandlerec;
 else
    % Open the default audio device indeviceid, with mode 2 (== Only audio capture),
@@ -141,13 +141,13 @@ PsychPortAudio('RunMode', pahandleout, runmode);
 status = PsychPortAudio('GetStatus', pahandleout);
 freqout = status.SampleRate;
 props = PsychPortAudio('GetDevices', [], status.OutDeviceIndex);
-outChannels = props.NrOutputChannels;
+outChannels = min(2, props.NrOutputChannels);
 
 % Find number of input channels and capture frequency:
 status = PsychPortAudio('GetStatus', pahandlerec);
 freq = status.SampleRate;
 props = PsychPortAudio('GetDevices', [], status.InDeviceIndex);
-inChannels = props.NrInputChannels;
+inChannels = min(2, props.NrInputChannels);
 
 % Build 1khZ, 90% peak amplitude beep tone of 0.1 secs duration, suitable
 % for playback at 'freqout' Hz:
