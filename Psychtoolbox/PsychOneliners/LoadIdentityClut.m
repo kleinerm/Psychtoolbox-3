@@ -299,13 +299,6 @@ else
                     end
                 end
             end
-
-            if IsLinux
-                % LUT type 3 seems to be right for both GeForce under nouveau-kms, and Quadro under
-                % nvidia blob, so probably for all NVidia gpus on Linux:
-                gfxhwtype = 3;
-                fprintf('LoadIdentityClut: NVidia gpu detected. Enabling type-III LUT.\n');
-            end
         else
             if ~isempty(strfind(winfo.DisplayCoreId, 'AMD')) || (~IsLinux && (~isempty(strfind(gfxhwtype, 'ATI')) || ~isempty(strfind(gfxhwtype, 'AMD')) || ~isempty(strfind(gfxhwtype, 'Advanced Micro Devices')) || ...
                     ~isempty(strfind(winfo.GLRenderer, 'DRI R')) || ~isempty(strfind(winfo.GLRenderer, 'on ATI R')) || ~isempty(strfind(winfo.GLRenderer, 'on AMD'))))
