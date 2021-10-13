@@ -133,7 +133,9 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
         end
 
         if vulkan{win}.needsNvidiaWa
-            system(sprintf('xrandr --screen %i --output %s --auto ; sleep 1', screenId, vulkan{win}.outputName));
+            % Reenable output at auto-selected preferred mode and old (x,y) starting location of viewport in X-Screen space:
+            syscmd = sprintf('sleep 1; xrandr --screen %i --output %s --auto --pos %ix%i ; sleep 1', screenId, vulkan{win}.outputName, ceil(vulkan{win}.windowRect(1)), ceil(vulkan{win}.windowRect(2)));
+            system(syscmd);
         end
 
         % Do we need a complete driver shutdown to work around Mesa < 20.1.2 bugs?
@@ -617,14 +619,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
                     if strcmp(output.name, outputName)
                         % This output i is the right output.
                         usedOutput = i;
-
-                        % Position our onscreen window accordingly:
-                        winRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
-                        if verbosity >= 3
-                            fprintf('PsychVulkan-INFO: Positioning onscreen window at rect [%i, %i, %i, %i] to align with display output %i [%s] of screen %i.\n', ...
-                                    winRect(1), winRect(2), winRect(3), winRect(4), i, outputName, screenId);
-                        end
-
                         break;
                     else
                         output = [];
@@ -650,6 +644,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             outputHandle = uint64(output.outputHandle);
             outputName = output.name;
             refreshHz = output.hz;
+
+            % Position our onscreen window accordingly:
+            windowRect = OffsetRect([0, 0, output.width, output.height], output.xStart, output.yStart);
+            if verbosity >= 3
+                fprintf('PsychVulkan-INFO: Positioning onscreen window at rect [%i, %i, %i, %i] to align with display output %i [%s] of screen %i.\n', ...
+                        windowRect(1), windowRect(2), windowRect(3), windowRect(4), usedOutput, outputName, screenId);
+            end
 
             % More than 8 bpc output precision desired?
             % Note that colorPrecision == 0 and hdrMode > 0 gets handled automatically
@@ -785,7 +786,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     catch
         % Failed! Reenable RandR output if this was a failed attempt at output leasing on Linux + NVidia:
         if needsNvidiaWa
-            system(sprintf('xrandr --screen %i --output %s --auto ; sleep 1', screenId, outputName));
+            system(sprintf('sleep 1; xrandr --screen %i --output %s --auto --pos %ix%i ; sleep 1', screenId, outputName, ceil(windowRect(1)), ceil(windowRect(2))));
         end
 
         % Close all windows:

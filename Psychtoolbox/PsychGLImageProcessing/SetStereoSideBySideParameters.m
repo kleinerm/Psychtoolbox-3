@@ -1,7 +1,7 @@
-function SetStereoSideBySideParameters(win, leftOffset, leftScale, rightOffset, rightScale)
+function SetStereoSideBySideParameters(win, leftOffset, leftScale, rightOffset, rightScale, shaders)
 % Change parameters for side-by-side stereo display modes (4 and 5).
 %
-% SetStereoSideBySideParameters(win [, leftOffset][, leftScale][, rightOffset][, rightScale])
+% SetStereoSideBySideParameters(win [, leftOffset][, leftScale][, rightOffset][, rightScale][, shaders])
 %
 % Call this function after the win = PsychImaging('OpenWindow',...); call on an
 % onscreen window in side-by-side stereo mode to change the parameters
@@ -20,9 +20,14 @@ function SetStereoSideBySideParameters(win, leftOffset, leftScale, rightOffset, 
 %
 % 'rightOffset', 'rightScale' == Ditto for right eye image.
 %
+% 'shaders' a vector containing the GLSL handles of a new pair of shaders to replace
+% the standard builtin side-by-side compositing shaders. shaders(1) for left eye
+% view, shaders(2) for right eye view. The old shaders are deleted if new shaders
+% are assigned.
 
 % History:
 % 3.12.2012  mk   Written.
+% 22.07.2021 mk   Add optional override 'shaders' parameter.
 
 % Test if a windowhandle is provided...
 if nargin < 1
@@ -61,6 +66,10 @@ if nargin < 5 || isempty(rightScale)
     rightScale = [1, 1];
 end
 
+if nargin < 6
+    shaders = [];
+end
+
 % Query full specification of processing slot for left eye view shader:
 % 'slot' is position in processing chain, others are parameters for the
 % operation:
@@ -71,6 +80,11 @@ end
 
 % Delete old processing slot from pipeline:
 Screen('HookFunction', win, 'Remove', 'StereoCompositingBlit' , slot);
+
+if ~isempty(shaders)
+    glDeleteProgram(glsl);
+    glsl = shaders(1);
+end
 
 % Define new blitter configuration for changed parameters:
 leftOffset(1) = floor(leftOffset(1) * w);
@@ -92,6 +106,11 @@ end
 
 % Delete old processing slot from pipeline:
 Screen('HookFunction', win, 'Remove', 'StereoCompositingBlit' , slot);
+
+if ~isempty(shaders)
+    glDeleteProgram(glsl);
+    glsl = shaders(2);
+end
 
 % Define new blitter configuration for changed parameters:
 rightOffset(1) = floor(rightOffset(1) * w);

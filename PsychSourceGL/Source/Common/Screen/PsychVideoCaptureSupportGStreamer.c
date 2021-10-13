@@ -2639,7 +2639,14 @@ psych_bool PsychSetupRecordingPipeFromString(PsychVidcapRecordType* capdev, char
         // device = The audio device name.
         // server = Audio server name for Jack and PulseAudio.
         // slave-method = Type of syncing to master clock.
-        if (soundForVideoRecording) audio_src = CreateGStreamerElementFromString(codecSpec, "AudioSource=", audiosrc);
+        audio_src = CreateGStreamerElementFromString(codecSpec, "AudioSource=", audiosrc);
+
+        // If !soundForVideoRecording then delete the actual audio_src, as we are then only
+        // interested in the audiosrc string parsed out of/ generated from codecSpec:
+        if (!soundForVideoRecording && audio_src) {
+            gst_object_unref(G_OBJECT(audio_src));
+            audio_src = NULL;
+        }
     }
     else {
         // No audio encoding/writing: Disable all audio related stuff.

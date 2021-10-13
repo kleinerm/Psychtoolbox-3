@@ -1,7 +1,7 @@
 function varargout = PsychOculusVR1(cmd, varargin)
 % PsychOculusVR1 - A high level driver for Oculus VR hardware using the Version 1.16+ runtime.
 %
-% Copyright (c) 2018 Mario Kleiner. Licensed under the MIT license.
+% Copyright (c) 2018-2021 Mario Kleiner. Licensed under the MIT license.
 % The underlying PsychOculusVRCore1 mex driver uses the Oculus SDK, which is
 % “Copyright © Facebook Technologies, LLC and its affiliates. All rights reserved.”
 % A copy of the Oculus SDK license, its terms of use and thereby redistribution
@@ -641,7 +641,7 @@ if cmd == 0
 
   % At this point, the FBO of the right eye texture in stereomode or mono texture
   % in mono mode is bound. Detach its color attachment texture:
-  %glFramebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, 0, 0);
+  % MK: Not needed: glFramebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, 0, 0);
 
   % Submit/Commit just unbound textures to texture swap-chains:
   PsychOculusVRCore1('EndFrameRender', hmd{handle}.handle, varargin{2});
@@ -706,7 +706,7 @@ if cmd == 1
   % runtime, which however seems to have no negative consequence for
   % presentation?! This may be a bug in the OculusVR runtime at least as
   % of version 1.11:
-  % glFinish;
+  % Not needed anymore: glFinish;
 
   % Attach them as new backing textures, detach the previously bound ones, so they
   % are ready for submission to the VR compositor:
@@ -1219,7 +1219,7 @@ end
 if strcmpi(cmd, 'Open')
   if isempty(firsttime)
     firsttime = 1;
-    fprintf('Copyright (c) 2018 Mario Kleiner. Licensed under the MIT license.\n');
+    fprintf('Copyright (c) 2018 - 2021 Mario Kleiner. Licensed under the MIT license.\n');
     fprintf('The underlying PsychOculusVRCore1 mex driver uses the Oculus SDK, which is\n');
     fprintf('“Copyright © Facebook Technologies, LLC and its affiliates. All rights reserved.”\n');
     fprintf('A copy of the Oculus SDK license, its terms of use and thereby redistribution\n');
@@ -1383,6 +1383,12 @@ if strcmpi(cmd, 'GetInfo')
 end
 
 if strcmpi(cmd, 'Close')
+  % We need to perform a wait for a second here, so the VR compositor does not
+  % act up. Otherwise the whole HMD display will go through a "white flash"
+  % animation for about half a second before the session terminates, which is
+  % quite bright and irritating. Why? We don't know, maybe a OculusVR runtime bug?
+  WaitSecs('YieldSecs', 1);
+
   if ~isempty(varargin) && ~isempty(varargin{1})
     % Close a specific hmd device:
     myhmd = varargin{1};

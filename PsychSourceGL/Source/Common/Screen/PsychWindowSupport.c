@@ -5264,9 +5264,9 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 if (PsychPrefStateGet_Verbosity() > 4)
                     printf("PTB-DEBUG: --> Good, one neccessary condition for defined visual timing is satisfied.\n");
             }
-            else if (PsychPrefStateGet_Verbosity() > 1) {
-                // No reliable pageflipping or pageflipping at all. This is pretty much game over for reliable
-                // visual timing or timestamping:
+            else if ((PsychPrefStateGet_Verbosity() > 1) && (windowRecord->specialflags & kPsychIsFullscreenWindow) && !(windowRecord->specialflags & kPsychExternalDisplayMethod)) {
+                // No reliable pageflipping or pageflipping at all on a fullscreen window without use of an external display method.
+                // This is pretty much game over for reliable visual timing or timestamping:
                 printf("PTB-WARNING: Pageflipping wasn't used %s during refresh calibration [%i of %i].\n",
                        (pflip_count > 0) ? "consistently" : "at all", pflip_count, i);
                 printf("PTB-WARNING: Visual presentation timing is broken on your system and all followup tests and workarounds will likely fail.\n");

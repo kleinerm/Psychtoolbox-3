@@ -1650,6 +1650,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
                         printf("PTB-WARNING: but some Sea Islands gpus need you to add the following kernel boot parameters:\n");
                         printf("PTB-WARNING: radeon.cik_support=0 amdgpu.cik_support=1 amdgpu.dc=1.\n");
                     }
+                    else if (gpuMaintype == kPsychIntelIGP) {
+                        // Intel gpu:
+                        printf("PTB-WARNING: You need an Intel gpu of at least Generation 12 (TigerLake+ / Intel Xe / DG-1 / Alchemist+)\n");
+                        printf("PTB-WARNING: controlled by Linux 5.12 or later, with a DisplayPort adaptive-sync / FreeSync capable display.\n");
+                    }
                     else {
                         printf("PTB-WARNING: Upgrade to a sufficiently modern Linux kernel for your graphics card.\n");
                     }
@@ -1659,20 +1664,6 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
                     printf("PTB-WARNING: adaptive sync capable display, connected via Displayport, eDP, or maybe HDMI2.1 VRR.\n");
                 }
                 printf("PTB-WARNING: -> 'help VRRSupport'\n");
-            }
-        }
-
-        // VRR wanted and supported by hw and kernel, but wrong XOrg video driver DDX? The X-Server version
-        // does not matter, but the type and version of the DDX does:
-        if (vrr_wanted && vrr_supported && PsychOSX11ScreenUsesModesettingDDX(screenSettings->screenNumber)) {
-            // modesetting-ddx in use, this currently won't work as of 2019 / X-Server 1.20.5:
-            vrr_wanted = FALSE;
-            vrr_supported = FALSE;
-
-            if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: Can not enable Variable Refresh Rate mode for this fullscreen window on this display [%s].\n", output_name);
-                printf("PTB-WARNING: You are using the modesetting-ddx video driver, which prevents this. Switch to the\n");
-                printf("PTB-WARNING: vendor specific driver via use of XOrgConfCreator + XOrgConfSelector. -> 'help VRRSupport'\n");
             }
         }
 
@@ -2718,8 +2709,16 @@ void PsychOSInitializeOpenML(PsychWindowRecordType *windowRecord)
                 printf("PTB-WARNING: is disabled. This could be due to either the XOrg video driver (DDX) being too old, or due\n");
                 printf("PTB-WARNING: to VRR being disabled in the XOrg config settings. In the latter case, use XOrgConfCreator +\n");
                 printf("PTB-WARNING: XOrgConfSelector + logout + login to enable VRR.\n");
-                printf("PTB-WARNING: In the former case, update your XOrg DDX video driver. For AMD graphics cards you need at\n");
-                printf("PTB-WARNING: least version 19.0 of the xf86-video-amdgpu driver. -> 'help VRRSupport'\n");
+                printf("PTB-WARNING: In the former case, update your XOrg DDX video driver.\n");
+                if (PsychOSX11ScreenUsesModesettingDDX(windowRecord->screenNumber)) {
+                    printf("PTB-WARNING: You are currently using the modesetting-DDX video driver. For this to work, you either\n");
+                    printf("PTB-WARNING: need X-Server 1.21 or later with modesetting-DDX 1.21 or later, or if you are on an\n");
+                    printf("PTB-WARNING: older X-Server with AMD graphics, at least version 19.0 of the xf86-video-amdgpu driver.\n");
+                }
+                else {
+                    printf("PTB-WARNING: For AMD graphics cards you need at least version 19.0 of the xf86-video-amdgpu driver.\n");
+                }
+                printf("PTB-WARNING: For more info and troubleshooting help, type 'help VRRSupport'.\n");
                 printf("PTB-WARNING: [%i out of %i successful test trials, at least 50 successful ones needed.]\n\n", good, i);
             }
         }

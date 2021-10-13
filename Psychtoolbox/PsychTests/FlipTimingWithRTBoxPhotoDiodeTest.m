@@ -482,6 +482,10 @@ try
         % This returns a handle to the audio device:
         pahandle = PsychPortAudio('Open', [], [], 0, freq, nrchannels);
 
+        % Reduce volume to 2% of nominal, this sound is not that endearing and
+        % we want to avoid blowing out ears or speakers:
+        PsychPortAudio('Volume', pahandle, 0.02);
+
         % Fill the audio playback buffer with the audio data 'wavedata':
         PsychPortAudio('FillBuffer', pahandle, wavedata);
 

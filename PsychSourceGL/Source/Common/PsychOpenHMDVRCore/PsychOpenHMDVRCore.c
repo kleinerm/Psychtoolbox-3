@@ -22,7 +22,6 @@
  * - Support for enumeration of OpenHMD devices with their properties (vendor, model, path, properties).
  * - Support for filtering out emulated HMD devices and non-HMD's for 'Open' function, unless dummy
  *   device is requested.
- * - Support for input controllers and buttons.
  *
  */
 
@@ -45,11 +44,15 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // Our device record:
 typedef struct PsychOpenHMDDevice {
     ohmd_device* hmd;
+    ohmd_device* controller[3];
+    psych_bool riftRemote;
     psych_bool isTracking;
     unsigned int panelSize[2];
     unsigned int texSize[2][2];
     double       ofov[2][4];
-    uint32_t frameIndex;
+    uint32_t     frameIndex;
+    double       oldpos[3];
+    double       oldhandpos[2][3];
 } PsychOpenHMDDevice;
 
 PsychOpenHMDDevice openhmddevices[MAX_PSYCH_OPENHMD_DEVS];
@@ -76,12 +79,14 @@ void InitializeSynopsis(void)
     synopsis[i++] = "\n";
     synopsis[i++] = "oldVerbosity = PsychOpenHMDVRCore('Verbosity' [, verbosity]);";
     synopsis[i++] = "numHMDs = PsychOpenHMDVRCore('GetCount');";
-    synopsis[i++] = "[openhmdPtr, modelName] = PsychOpenHMDVRCore('Open' [, deviceIndex=0]);";
+    synopsis[i++] = "[openhmdPtr, modelName, panelSizeX, panelSizeY, controllerTypes, controllerFlags] = PsychOpenHMDVRCore('Open' [, deviceIndex=0]);";
     synopsis[i++] = "PsychOpenHMDVRCore('Close' [, openhmdPtr]);";
     synopsis[i++] = "oldPersistence = PsychOpenHMDVRCore('SetLowPersistence', openhmdPtr [, lowPersistence]);";
     synopsis[i++] = "PsychOpenHMDVRCore('Start', openhmdPtr);";
     synopsis[i++] = "PsychOpenHMDVRCore('Stop', openhmdPtr);";
-    synopsis[i++] = "state = PsychOpenHMDVRCore('GetTrackingState', openhmdPtr [, predictionTime=0]);";
+    synopsis[i++] = "input = PsychOpenHMDVRCore('GetInputState', openhmdPtr, controllerType);";
+    synopsis[i++] = "[state, touch] = PsychOpenHMDVRCore('GetTrackingState', openhmdPtr [, predictionTime=0]);";
+    synopsis[i++] = "pulseEndTime = PsychOpenHMDVRCore('HapticPulse', openhmdPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
     synopsis[i++] = "[projL, projR, ipd] = PsychOpenHMDVRCore('GetStaticRenderParameters', openhmdPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "[eyePose, eyeIndex, glModelviewMatrix] = PsychOpenHMDVRCore('GetEyePose', openhmdPtr, renderPass);";
     synopsis[i++] = "[width, height, fovPort] = PsychOpenHMDVRCore('GetFovTextureSize', openhmdPtr, eye, metersPerTanAngleAtCenter [, fov=[HMDRecommended]]);";
@@ -130,12 +135,25 @@ PsychOpenHMDDevice* PsychGetOpenHMD(int handle, psych_bool dontfail)
 
 void PsychOpenHMDVRCheckInit(psych_bool dontfail)
 {
+    int major, minor, patch;
+
     // Already initialized? No op then.
     if (initialized) return;
 
+    ohmd_get_version(&major, &minor, &patch);
+
+    if (OHMD_S_OK != ohmd_require_version(0, 3, 0)) {
+        if (verbosity >= 1) printf("PsychOpenHMDVRCore-ERROR: OpenHMD VR runtime version %i.%i.%i is too old for us! We need at least version 0.3.0.\n", major, minor, patch);
+
+        if (!dontfail)
+            PsychErrorExitMsg(PsychError_system, "PsychOpenHMDVRCore-ERROR: Initialization of VR runtime failed, because OpenHMD version is too old! Driver disabled!");
+
+        return;
+    }
+
     // Initialize OpenHMD VR runtime with default parameters:
     if ((ctx = ohmd_ctx_create()) != NULL) {
-        if (verbosity >= 3) printf("PsychOpenHMDVRCore-INFO: OpenHMD VR runtime initialized.\n");
+        if (verbosity >= 3) printf("PsychOpenHMDVRCore-INFO: OpenHMD VR runtime version %i.%i.%i initialized.\n", major, minor, patch);
 
         // Get count of available devices:
         available_devices = ohmd_ctx_probe(ctx);;
@@ -175,6 +193,14 @@ void PsychOpenHMDClose(int handle)
     // Stop device:
     PsychOpenHMDStop(handle);
 
+    if (openhmd->controller[0]) ohmd_close_device(openhmd->controller[0]);
+    if (openhmd->controller[1]) ohmd_close_device(openhmd->controller[1]);
+    if (openhmd->controller[2]) ohmd_close_device(openhmd->controller[2]);
+    openhmd->controller[0] = NULL;
+    openhmd->controller[1] = NULL;
+    openhmd->controller[2] = NULL;
+    openhmd->riftRemote = FALSE;
+
     // Close the HMD:
     ohmd_close_device(openhmd->hmd);
     openhmd->hmd = NULL;
@@ -187,8 +213,12 @@ void PsychOpenHMDClose(int handle)
 void PsychOpenHMDVRInit(void) {
     int handle;
 
-    for (handle = 0 ; handle < MAX_PSYCH_OPENHMD_DEVS; handle++)
+    for (handle = 0 ; handle < MAX_PSYCH_OPENHMD_DEVS; handle++) {
         openhmddevices[handle].hmd = NULL;
+        openhmddevices[handle].controller[0] = NULL;
+        openhmddevices[handle].controller[1] = NULL;
+        openhmddevices[handle].controller[2] = NULL;
+    }
 
     available_devices = 0;
     devicecount = 0;
@@ -274,8 +304,8 @@ PsychError PSYCHOPENHMDVRGetCount(void)
 
 PsychError PSYCHOPENHMDVROpen(void)
 {
-    static char useString[] = "[openhmdPtr, modelName, panelSizeX, panelSizeY] = PsychOpenHMDVRCore('Open' [, deviceIndex=0]);";
-    //                          1           2          3           4                                          1
+    static char useString[] = "[openhmdPtr, modelName, panelSizeX, panelSizeY, controllerTypes, controllerFlags] = PsychOpenHMDVRCore('Open' [, deviceIndex=0]);";
+    //                          1           2          3           4           5                6                                               1
     static char synopsisString[] =
         "Open connection to OpenHMD controlled VR HMD, return a 'openhmdPtr' handle to it.\n\n"
         "The call tries to open the HMD with index 'deviceIndex', or the "
@@ -285,13 +315,21 @@ PsychError PSYCHOPENHMDVROpen(void)
         "The returned handle can be passed to the other subfunctions to operate the device.\n"
         "A second return argument 'modelName' returns the model name string of the OpenHMD device.\n"
         "'panelSizeX' is the horizontal panel resolution in pixels.\n"
-        "'panelSizeY' is the vertical panel resolution in pixels.\n";
+        "'panelSizeY' is the vertical panel resolution in pixels.\n"
+        "'controllerTypes' A bit mask of OVR.ControllerType_XXX flags describing the currently "
+        "connected input controllers.\n"
+        "'controllerFlags' A bit mask of controller capabilities: +1 = Rotational tracking, "
+        "+2 = Positional tracking, +4 = Haptic feedback.\n";
 
     static char seeAlsoString[] = "GetCount Close";
 
     PsychOpenHMDDevice* openhmd;
+    int device_class, idx_class;
+    int device_flags, control_count;
+    unsigned int controllerTypes = 0;
+    unsigned int controllerFlags = 0;
     int trycount;
-    int deviceIndex = 0;
+    int idx, deviceIndex = 0;
     int handle = 0;
 
     // All sub functions should have these two lines
@@ -299,7 +337,7 @@ PsychError PSYCHOPENHMDVROpen(void)
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(4));
+    PsychErrorExit(PsychCapNumOutputArgs(6));
     PsychErrorExit(PsychCapNumInputArgs(1));
 
     // Make sure driver is initialized:
@@ -388,6 +426,87 @@ PsychError PSYCHOPENHMDVROpen(void)
     // Display size h x v:
     PsychCopyOutDoubleArg(3, kPsychArgOptional, openhmd->panelSize[0]);
     PsychCopyOutDoubleArg(4, kPsychArgOptional, openhmd->panelSize[1]);
+
+    // Is the device a HMD?
+    ohmd_list_geti(ctx, deviceIndex, OHMD_DEVICE_CLASS, &device_class);
+    if (device_class == OHMD_DEVICE_CLASS_HMD) {
+        // Check if there are any associated controller/tracker devices, ie., non-HMD's
+        // with the same device path. Iterate over all of them:
+        for (idx = 0; idx < available_devices; idx++) {
+            ohmd_list_geti(ctx, idx, OHMD_DEVICE_CLASS, &idx_class);
+            ohmd_list_geti(ctx, idx, OHMD_DEVICE_FLAGS, &device_flags);
+
+            if (!(device_flags & OHMD_DEVICE_FLAGS_NULL_DEVICE) &&
+                (idx_class == OHMD_DEVICE_CLASS_CONTROLLER || idx_class == OHMD_DEVICE_CLASS_GENERIC_TRACKER) &&
+                !strcmp(ohmd_list_gets(ctx, idx, OHMD_PATH), ohmd_list_gets(ctx, deviceIndex, OHMD_PATH))) {
+
+                // Associated controller or generic tracker device. Open and assign it:
+                if (device_flags & OHMD_DEVICE_FLAGS_LEFT_CONTROLLER) {
+                    openhmd->controller[0] = ohmd_list_open_device(ctx, idx);
+                    controllerTypes |= 0x0001;
+                } else if (device_flags & OHMD_DEVICE_FLAGS_RIGHT_CONTROLLER) {
+                    openhmd->controller[1] = ohmd_list_open_device(ctx, idx);
+                    controllerTypes |= 0x0002;
+                } else if (idx_class == OHMD_DEVICE_CLASS_CONTROLLER) {
+                    // Rift CV-1 remote control. This is actually exposed as part
+                    // of the openhmd->hmd itself, but needs different input treatment:
+                    openhmd->riftRemote = TRUE;
+                    controllerTypes |= 0x0004;
+                } else if (!openhmd->controller[2]) {
+                    // Something associated, but not a OHMD_DEVICE_CLASS_CONTROLLER,
+                    // must be a OHMD_DEVICE_CLASS_GENERIC_TRACKER. Just open it:
+                    openhmd->controller[2] = ohmd_list_open_device(ctx, idx);
+                    controllerTypes |= 0x0008;
+                }
+
+                if (device_flags & OHMD_DEVICE_FLAGS_ROTATIONAL_TRACKING)
+                    controllerFlags |= 1;
+
+                if (device_flags & OHMD_DEVICE_FLAGS_POSITIONAL_TRACKING)
+                    controllerFlags |= 2;
+
+                #if defined OHMD_DEVICE_FLAGS_HAPTIC_FEEDBACK
+                if (device_flags & OHMD_DEVICE_FLAGS_HAPTIC_FEEDBACK)
+                    controllerFlags |= 4;
+                #endif
+            }
+        }
+    }
+
+    // Query selected device itself for controls:
+    ohmd_list_geti(ctx, deviceIndex, OHMD_DEVICE_FLAGS, &device_flags);
+    if (!(device_flags & OHMD_DEVICE_FLAGS_NULL_DEVICE) &&
+        !ohmd_device_geti(openhmd->hmd, OHMD_CONTROL_COUNT, &control_count) &&
+        (control_count > 0)) {
+        if (device_flags & OHMD_DEVICE_FLAGS_LEFT_CONTROLLER) {
+            controllerTypes |= 0x0001;
+        } else if (device_flags & OHMD_DEVICE_FLAGS_RIGHT_CONTROLLER) {
+            controllerTypes |= 0x0002;
+        } else if (device_class == OHMD_DEVICE_CLASS_CONTROLLER) {
+            controllerTypes |= 0x0004;
+        } else if (device_class == OHMD_DEVICE_CLASS_GENERIC_TRACKER) {
+            controllerTypes |= 0x0008;
+        } else if (device_class == OHMD_DEVICE_CLASS_HMD) {
+            controllerTypes |= 0x0020;
+        }
+
+        if (device_flags & OHMD_DEVICE_FLAGS_ROTATIONAL_TRACKING)
+            controllerFlags |= 1;
+
+        if (device_flags & OHMD_DEVICE_FLAGS_POSITIONAL_TRACKING)
+            controllerFlags |= 2;
+
+        #if defined OHMD_DEVICE_FLAGS_HAPTIC_FEEDBACK
+        if (device_flags & OHMD_DEVICE_FLAGS_HAPTIC_FEEDBACK)
+            controllerFlags |= 4;
+        #endif
+    }
+
+    // Return bitmask of connected and associated controllers:
+    PsychCopyOutDoubleArg(5, kPsychArgOptional, controllerTypes);
+
+    // Return bitmask of associated controllers tracking flags:
+    PsychCopyOutDoubleArg(6, kPsychArgOptional, controllerFlags);
 
     return(PsychError_none);
 }
@@ -590,23 +709,24 @@ PsychError PSYCHOPENHMDVRStop(void)
 
 PsychError PSYCHOPENHMDVRGetTrackingState(void)
 {
-    static char useString[] = "state = PsychOpenHMDVRCore('GetTrackingState', openhmdPtr [, predictionTime=0]);";
-    //                         1                                              1             2
+    static char useString[] = "[state, touch] = PsychOpenHMDVRCore('GetTrackingState', openhmdPtr [, predictionTime=0]);";
+    //                         1       2                                               1             2
     static char synopsisString[] =
         "Return current state of head position and orientation tracking for OpenHMD device 'openhmdPtr'.\n"
         "Head position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
         "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or set "
         "to zero, then no prediction is performed and the current state based on latest measurements is returned. "
+        "NOTE: Some fields may not get updated, depending on the type of HMD device and version of the libopenhmd library. "
         "NOTE: predictionTime is not yet implemented and silently ignored.\n\n"
         "'state' is a struct with fields reporting the following values:\n"
         "'Time' = Time in seconds of predicted tracking state.\n"
         "'Status' = Tracking status flags. +1 = Head orientation tracked, +2 = Head position tracked, +4 = Camera pose tracked "
         "+32 = Position tracking hardware connected, +128 = HMD display is connected and available.\n"
         "'HeadPose' = Head position [x, y, z] in meters and rotation as quaternion [rx, ry, rz, rw], all as a vector [x,y,z,rx,ry,rz,rw].\n"
-//         "'HeadLinearSpeed' = Linear velocity [vx,vy,vz] in meters/sec.\n"
-//         "'HeadAngularSpeed' = Angular velocity [rx,ry,rz] in radians/sec.\n"
-//         "'HeadLinearAcceleration' = Linear acceleration [ax,ay,az] in meters/sec^2.\n"
-//         "'HeadAngularAcceleration' = Angular acceleration [rax,ray,raz] in radians/sec^2.\n"
+        "'HeadLinearSpeed' = Linear velocity [vx,vy,vz] in meters/sec.\n"
+        "'HeadAngularSpeed' = Angular velocity [rx,ry,rz] in radians/sec.\n"
+        "'HeadLinearAcceleration' = Linear acceleration [ax,ay,az] in meters/sec^2.\n"
+        "'HeadAngularAcceleration' = Angular acceleration [rax,ray,raz] in radians/sec^2.\n"
 //         "'CameraPose' as vector with position and orientation quaternion, like 'HeadPose'.\n"
 //         "'LeveledCameraPose' Like 'CameraPose' but aligned to the gravity vector of the world.\n"
 //         "'CameraFrustumHVFov' Horizontal and vertical field of view of the tracking camera in radians.\n"
@@ -617,29 +737,49 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
 //         "'RawMagnetometer' = Raw magnetic field in gauss.\n"
 //         "'SensorTemperature' = Sensor temperature in degrees Celsius.\n"
 //         "'IMUReadoutTime' = Readout time of the last IMU sample in seconds.\n"
+        "\n"
+        "Touch controller position and orientation:\n\n"
+        "The return argument 'touch' is a struct array with 2 structs. touch(1) contains info about "
+        "the tracking state and tracked pose of the left hand (= left touch controller) of the user, "
+        "touch(2) contains info about the right hand (= right touch controller) of the user.\n"
+        "The structs have very similar structure to the head (= HMD) tracking data returned by 'state':\n\n"
+        "'Time' = Time in seconds of returned hand/controller tracking state.\n"
+        "'Status' = Tracking status flags:\n"
+        "0  = No tracking info for hand/controller, ie. no touch sensor connected.\n"
+        "+1 = Hand orientation tracked,\n"
+        "+2 = Hand position tracked,\n"
+        "'HandPose' = Position and orientation of the hand, in usual [x,y,z,rx,ry,rz,rw] vector form as with 'HeadPose'.\n"
+        "'HandLinearSpeed' = Hand linear velocity [vx,vy,vz] in meters/sec.\n"
+        "'HandAngularSpeed' = Hand angular velocity [rx,ry,rz] in radians/sec.\n"
+        "'HandLinearAcceleration' = Hand linear acceleration [ax,ay,az] in meters/sec^2.\n"
+        "'HandAngularAcceleration' = Hand angular acceleration [rax,ray,raz] in radians/sec^2.\n"
         "\n";
 
-    static char seeAlsoString[] = "Start Stop";
+    static char seeAlsoString[] = "Start Stop GetInputState";
 
     PsychGenericScriptType *status;
     const char *FieldNames[] = {"Time", "Status", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed", "HeadLinearAcceleration", "HeadAngularAcceleration",
                                 "CameraPose", "LeveledCameraPose", "LastCameraFrameCounter", "RawSensorAcceleration", "RawSensorGyroRate", "RawMagnetometer",
                                 "SensorTemperature", "IMUReadoutTime", "CameraFrustumHVFov", "CameraFrustumNearFarZInMeters"};
     const int FieldCount = 17;
+
+    const char *FieldNames2[] = {"Time", "Status", "HandPose", "HandLinearSpeed", "HandAngularSpeed", "HandLinearAcceleration", "HandAngularAcceleration"};
+    const int FieldCount2 = 7;
+
     PsychGenericScriptType *outMat;
     double *v;
-
+    int i;
     int handle, hmdstatus = 0;
     double tNow, predictionTime = 0.0;
     PsychOpenHMDDevice *openhmd;
-    float state[7];
+    float state[19] = { 0 };
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
     if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
     //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumOutputArgs(2));
     PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -678,6 +818,21 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
     if (!(state[3] == 0 && state[4] == 0 && state[5] == 0 && (state[6] == 0 || state[6] == 1)))
         hmdstatus += 1;
 
+    // Set +2 "position tracked" if the position vector is different in this cycle from the one in the last cycle.
+    // Position vectors start at (0,0,0) and then update if tracked, and freeze on their current value if tracking
+    // is lost:
+    if (state[0] != openhmd->oldpos[0] || state[1] != openhmd->oldpos[1] || state[2] != openhmd->oldpos[2])
+        hmdstatus += 2;
+
+    openhmd->oldpos[0] = state[0];
+    openhmd->oldpos[1] = state[1];
+    openhmd->oldpos[2] = state[2];
+
+    // Set +32 "position tracking hardware connected" if the old position vector is not (0,0,0), as with a
+    // device that has not ever been tracked in this session:
+    if (!(openhmd->oldpos[0] == 0 && openhmd->oldpos[1] == 0 && openhmd->oldpos[2] == 0))
+        hmdstatus += 32;
+
     PsychSetStructArrayDoubleElement("Status", 0, hmdstatus, status);
 
     // Head pose:
@@ -691,41 +846,153 @@ PsychError PSYCHOPENHMDVRGetTrackingState(void)
     v[4] = state[4];
     v[5] = state[5];
     v[6] = state[6];
-    PsychSetStructArrayNativeElement("HeadPose", 0,	outMat, status);
+    PsychSetStructArrayNativeElement("HeadPose", 0, outMat, status);
 
-    /*
-    // Linear velocity:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.LinearVelocity.x;
-    v[1] = state.HeadPose.LinearVelocity.y;
-    v[2] = state.HeadPose.LinearVelocity.z;
-    PsychSetStructArrayNativeElement("HeadLinearSpeed", 0, outMat, status);
+    // Velocity/Acceleration queries need OpenHMD version of at least ?.?.? - UNKNOWN.
+    // TODO: Current OpenHMD does not support these, and even the experimental tracking
+    // branch only supports them nominally for the Rift CV-1 - where it also does
+    // not work well yet. On other devices it will flood the console with error
+    // messages, so not good!
+    if (OHMD_S_OK == ohmd_require_version(1000, 0, 0)) {
+        #ifdef OHMD_HAVE_VEL_ACCEL_API_v0
+        // Linear velocity:
+        if (OHMD_S_OK == ohmd_device_getf(openhmd->hmd, OHMD_VELOCITY_VECTOR, &state[7])) {
+            v = NULL;
+            PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+            v[0] = state[7];
+            v[1] = state[8];
+            v[2] = state[9];
+            PsychSetStructArrayNativeElement("HeadLinearSpeed", 0, outMat, status);
+        }
 
-    // Angular velocity:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.AngularVelocity.x;
-    v[1] = state.HeadPose.AngularVelocity.y;
-    v[2] = state.HeadPose.AngularVelocity.z;
-    PsychSetStructArrayNativeElement("HeadAngularSpeed", 0,	outMat, status);
+        // Linear acceleration:
+        if (OHMD_S_OK == ohmd_device_getf(openhmd->hmd, OHMD_ACCELERATION_VECTOR, &state[10])) {
+            v = NULL;
+            PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+            v[0] = state[10];
+            v[1] = state[11];
+            v[2] = state[12];
+            PsychSetStructArrayNativeElement("HeadLinearAcceleration", 0, outMat, status);
+        }
+        #endif
 
-    // Linear acceleration:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.LinearAcceleration.x;
-    v[1] = state.HeadPose.LinearAcceleration.y;
-    v[2] = state.HeadPose.LinearAcceleration.z;
-    PsychSetStructArrayNativeElement("HeadLinearAcceleration", 0, outMat, status);
+        #ifdef OHMD_HAVE_VEL_ACCEL_API_v1
+        // Angular velocity:
+        if (OHMD_S_OK == ohmd_device_getf(openhmd->hmd, OHMD_ANGULAR_VELOCITY_VECTOR, &state[13])) {
+            v = NULL;
+            PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+            v[0] = state[13];
+            v[1] = state[14];
+            v[2] = state[15];
+            PsychSetStructArrayNativeElement("HeadAngularSpeed", 0, outMat, status);
+        }
 
-    // Angular acceleration:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.AngularAcceleration.x;
-    v[1] = state.HeadPose.AngularAcceleration.y;
-    v[2] = state.HeadPose.AngularAcceleration.z;
-    PsychSetStructArrayNativeElement("HeadAngularAcceleration", 0, outMat, status);
+        // Angular acceleration:
+        if (OHMD_S_OK == ohmd_device_getf(openhmd->hmd, OHMD_ANGULAR_ACCELERATION_VECTOR, &state[16])) {
+            v = NULL;
+            PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+            v[0] = state[16];
+            v[1] = state[17];
+            v[2] = state[18];
+            PsychSetStructArrayNativeElement("HeadAngularAcceleration", 0, outMat, status);
+        }
+        #endif
+    }
 
+    // Now the tracking info from the hand/touch controllers 0 and 1 for left
+    // and right hand, in a separate struct array:
+    PsychAllocOutStructArray(2, kPsychArgOptional, 2, FieldCount2, FieldNames2, &status);
+
+    for (i = 0; i < 2; i++) {
+        // Timestamp for when this tracking info is valid:
+        PsychSetStructArrayDoubleElement("Time", i, tNow, status);
+
+        // Get current tracked position and orientation measurements:
+        ohmd_device_getf(openhmd->controller[i], OHMD_POSITION_VECTOR, &state[0]);
+        ohmd_device_getf(openhmd->controller[i], OHMD_ROTATION_QUAT, &state[3]);
+
+        // Reset hand-tracked state:
+        hmdstatus = 0;
+
+        // Set +1 "orientation tracked" if the Quaternion is not a (0,0,0,0) or (0,0,0,1) quaternion,
+        // which would hint to use of the dummy device:
+        if (!(state[3] == 0 && state[4] == 0 && state[5] == 0 && (state[6] == 0 || state[6] == 1)))
+            hmdstatus += 1;
+
+        // Set +2 "position tracked" if the position vector is different in this cycle from the one in the last cycle.
+        // Position vectors start at (0,0,0) and then update if tracked, and freeze on their current value if tracking
+        // is lost:
+        if (state[0] != openhmd->oldhandpos[i][0] || state[1] != openhmd->oldhandpos[i][1] || state[2] != openhmd->oldhandpos[i][2])
+            hmdstatus += 2;
+
+        openhmd->oldhandpos[i][0] = state[0];
+        openhmd->oldhandpos[i][1] = state[1];
+        openhmd->oldhandpos[i][2] = state[2];
+
+        // Hand / touch controller tracking state:
+        PsychSetStructArrayDoubleElement("Status", i, hmdstatus, status);
+
+        // Hand pose:
+        v = NULL;
+        PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+        v[0] = state[0];
+        v[1] = state[1];
+        v[2] = state[2];
+
+        v[3] = state[3];
+        v[4] = state[4];
+        v[5] = state[5];
+        v[6] = state[6];
+        PsychSetStructArrayNativeElement("HandPose", i, outMat, status);
+
+        if (OHMD_S_OK == ohmd_require_version(1000, 0, 0)) {
+            #ifdef OHMD_HAVE_VEL_ACCEL_API_v0
+            // Linear velocity:
+            if (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_VELOCITY_VECTOR, &state[7])) {
+                v = NULL;
+                PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+                v[0] = state[7];
+                v[1] = state[8];
+                v[2] = state[9];
+                PsychSetStructArrayNativeElement("HandLinearSpeed", i, outMat, status);
+            }
+
+            // Linear acceleration:
+            if (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_ACCELERATION_VECTOR, &state[10])) {
+                v = NULL;
+                PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+                v[0] = state[10];
+                v[1] = state[11];
+                v[2] = state[12];
+                PsychSetStructArrayNativeElement("HandLinearAcceleration", i, outMat, status);
+            }
+            #endif
+
+            #ifdef OHMD_HAVE_VEL_ACCEL_API_v1
+            // Angular velocity:
+            if (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_ANGULAR_VELOCITY_VECTOR, &state[13])) {
+                v = NULL;
+                PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+                v[0] = state[13];
+                v[1] = state[14];
+                v[2] = state[15];
+                PsychSetStructArrayNativeElement("HandAngularSpeed", i, outMat, status);
+            }
+
+            // Angular acceleration:
+            if (OHMD_S_OK == ohmd_device_getf(openhmd->controller[i], OHMD_ANGULAR_ACCELERATION_VECTOR, &state[16])) {
+                v = NULL;
+                PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
+                v[0] = state[16];
+                v[1] = state[17];
+                v[2] = state[18];
+                PsychSetStructArrayNativeElement("HandAngularAcceleration", i, outMat, status);
+            }
+            #endif
+        }
+    }
+
+    /* TODO - Probably never:
     // Camera pose:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
@@ -1194,6 +1461,411 @@ PsychError PSYCHOPENHMDVRGetEyePose(void)
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
             *(outM++) = (double) M[i][j];
+
+    return(PsychError_none);
+}
+
+static double getControlValue(float state[256], int control_id[256], ohmd_control_hint hint)
+{
+    int i;
+
+    for (i = 0; i < 256; i++)
+        if (control_id[i] == hint)
+            return(state[i]);
+
+    return(0);
+}
+
+PsychError PSYCHOPENHMDVRGetInputState(void)
+{
+    static char useString[] = "input = PsychOpenHMDVRCore('GetInputState', openhmdPtr, controllerType);";
+    //                         1                                           1           2
+    static char synopsisString[] =
+    "Return current state of input device 'controllerType' associated with OpenHMD device 'openhmdPtr'.\n\n"
+    "'controllerType' can be a mask of the follwing values:\n"
+    "OVR.ControllerType_LTouch = Left touch controller (Left tracked hand).\n"
+    "OVR.ControllerType_RTouch = Right touch controller (Right tracked hand).\n"
+    "OVR.ControllerType_Remote = Oculus remote control or other remote controls / HMD controls.\n"
+    "OVR.ControllerType_XBox = XBox controller - Currently not supported.\n"
+    "OVR.ControllerType_Active = Whatever controller is connected and active.\n"
+    "\n"
+    "'input' is a struct with fields reporting the following status values of the controller:\n"
+    "'Valid' = 1 if 'input' contains valid results, 0 if input status is invalid/unavailable.\n"
+    "'Time' = Time in seconds when controller state was last updated.\n"
+    "'Buttons' = Vector with each positions value corresponding to a specifc button being pressed (1) "
+    "or released (0). The OVR.Button_XXX constants map button names to vector indices (like KbName() "
+    "does for KbCheck()).\n"
+    "'Touches' = Vector with touch values as described by the OVR.Touch_XXX constants. Works like 'Buttons'.\n"
+    "'Trigger'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered and with dead-zone.\n"
+    "'TriggerNoDeadzone'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, filtered.\n"
+    "'TriggerRaw'(1/2) = Left (1) and Right (2) trigger: Value range 0.0 - 1.0, raw values unfiltered.\n"
+    "'Grip'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered and with dead-zone.\n"
+    "'GripNoDeadzone'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, filtered.\n"
+    "'GripRaw'(1/2) = Left (1) and Right (2) grip button: Value range 0.0 - 1.0, raw values unfiltered.\n"
+    "'Thumbstick' = 2x2 matrix: Column 1 contains left thumbsticks [x;y] axis values, column 2 contains "
+    "right sticks [x;y] axis values. Values are in range -1 to +1, filtered and with deadzone applied.\n"
+    "'ThumbstickNoDeadzone' = Like 'Thumbstick', filtered, but without a deadzone applied.\n"
+    "'ThumbstickRaw' = 'Thumbstick' raw date without deadzone or filtering applied.\n"
+    "\n";
+
+    static char seeAlsoString[] = "Start Stop GetTrackingState";
+
+    PsychGenericScriptType *status;
+    const char *FieldNames[] = { "Valid", "Time", "Buttons", "Touches", "Trigger", "Grip", "TriggerNoDeadzone",
+                                 "GripNoDeadzone", "TriggerRaw", "GripRaw", "Thumbstick",
+                                 "ThumbstickNoDeadzone", "ThumbstickRaw" };
+    const int FieldCount = 13;
+
+    PsychGenericScriptType *outMat;
+    double *v;
+    int handle, i;
+    int control_count;
+    unsigned long controllerType;
+    double controllerTypeD;
+    double tNow;
+    double trigger[2];
+    double grip[2];
+    double stick[2][2];
+    PsychOpenHMDDevice *openhmd;
+    int control_id[256] = { 0 };
+    float state[256] = { 0 };
+    ohmd_device *dev = NULL;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+
+    // Make sure driver is initialized:
+    PsychOpenHMDVRCheckInit(FALSE);
+
+    // Device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    openhmd = PsychGetOpenHMD(handle, FALSE);
+
+    // Controller type:
+    PsychCopyInDoubleArg(2, kPsychArgRequired, &controllerTypeD);
+    controllerType = (unsigned long) controllerTypeD;
+
+    PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &status);
+
+    // Mark as valid:
+    PsychSetStructArrayDoubleElement("Valid", 0, 1, status);
+
+    // Controller update time:
+    PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+    PsychSetStructArrayDoubleElement("Time", 0, tNow, status);
+
+    // Button states:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 32, 1, &v, &outMat);
+
+    // Left touch, if any:
+    dev = openhmd->controller[0];
+    if (dev && (controllerType & 1) && !ohmd_device_geti(dev, OHMD_CONTROL_COUNT, &control_count) && (control_count > 0)) {
+        // Get state of all floating point value controls:
+        ohmd_device_getf(dev, OHMD_CONTROLS_STATE, state);
+        ohmd_device_geti(dev, OHMD_CONTROLS_HINTS, control_id);
+
+        v[8] += getControlValue(state, control_id, OHMD_BUTTON_X);
+        v[9] += getControlValue(state, control_id, OHMD_BUTTON_Y);
+        v[10] += getControlValue(state, control_id, OHMD_ANALOG_PRESS);
+        v[20] += getControlValue(state, control_id, OHMD_MENU);
+
+        // Left trigger, grip, stick:
+        trigger[0] = getControlValue(state, control_id, OHMD_TRIGGER);
+
+        // Left  trigger (digital): (Nolo)
+        trigger[0] += getControlValue(state, control_id, OHMD_TRIGGER_CLICK);
+
+        grip[0] = getControlValue(state, control_id, OHMD_SQUEEZE);
+        stick[0][0] = getControlValue(state, control_id, OHMD_ANALOG_X);
+        stick[0][1] = getControlValue(state, control_id, OHMD_ANALOG_Y);
+    }
+
+    // Right touch, if any:
+    dev = openhmd->controller[1];
+    if (dev && (controllerType & 2) && !ohmd_device_geti(dev, OHMD_CONTROL_COUNT, &control_count) && (control_count > 0)) {
+        // Get state of all floating point value controls:
+        ohmd_device_getf(dev, OHMD_CONTROLS_STATE, state);
+        ohmd_device_geti(dev, OHMD_CONTROLS_HINTS, control_id);
+
+        v[0] += getControlValue(state, control_id, OHMD_BUTTON_A);
+        v[1] += getControlValue(state, control_id, OHMD_BUTTON_B);
+        v[2] += getControlValue(state, control_id, OHMD_ANALOG_PRESS);
+        v[24] += getControlValue(state, control_id, OHMD_HOME);
+
+        // Right trigger, grip, stick:
+        trigger[1] = getControlValue(state, control_id, OHMD_TRIGGER);
+
+        // Right trigger (digital): (Nolo)
+        trigger[1] += getControlValue(state, control_id, OHMD_TRIGGER_CLICK);
+
+        grip[1] = getControlValue(state, control_id, OHMD_SQUEEZE);
+        stick[1][0] = getControlValue(state, control_id, OHMD_ANALOG_X);
+        stick[1][1] = getControlValue(state, control_id, OHMD_ANALOG_Y);
+    }
+
+    // HMD integrated inputs?
+    dev = openhmd->hmd;
+
+    // Oculus Remote, or some other HMD integrated controller/input?
+    if (dev && openhmd->riftRemote && (controllerType & 4) && !ohmd_device_geti(dev, OHMD_CONTROL_COUNT, &control_count) && (control_count == 9)) {
+        // Oculus Rift Remote:
+
+        // Get state of all floating point value controls:
+        ohmd_device_getf(dev, OHMD_CONTROLS_STATE, state);
+        ohmd_device_geti(dev, OHMD_CONTROLS_HINTS, control_id);
+
+        // Up, Down, Left, Right:
+        v[16] += getControlValue(state, control_id, OHMD_BUTTON_Y);
+        v[17] += getControlValue(state, control_id, OHMD_BUTTON_A);
+        v[18] += getControlValue(state, control_id, OHMD_BUTTON_X);
+        v[19] += getControlValue(state, control_id, OHMD_BUTTON_B);
+
+        // OK / Enter:
+        v[20] += getControlValue(state, control_id, OHMD_GENERIC);
+        v[22] += getControlValue(state, control_id, OHMD_VOLUME_PLUS);
+        v[23] += getControlValue(state, control_id, OHMD_VOLUME_MINUS);
+
+        // Back button:
+        v[21] += getControlValue(state, control_id, OHMD_HOME);
+
+        // Oculus button:
+        v[24] += getControlValue(state, control_id, OHMD_MENU);
+    }
+
+    // HMD itself for a non-Oculus/non-Nolo device. Treat like a remote control:
+    if (dev && !openhmd->riftRemote && (controllerType & 4) && !ohmd_device_geti(dev, OHMD_CONTROL_COUNT, &control_count) && (control_count > 0)) {
+        // Some HMD integrated inputs, other than the Rift CV-1 remote control:
+        // This covers most devices apart from Oculus and Nolo, as of OpenHMD 0.3
+        // in the year 2021.
+
+        // Get state of all floating point value controls:
+        ohmd_device_getf(dev, OHMD_CONTROLS_STATE, state);
+        ohmd_device_geti(dev, OHMD_CONTROLS_HINTS, control_id);
+
+        // Generic buttons:
+        v[0] += getControlValue(state, control_id, OHMD_BUTTON_A);
+        v[1] += getControlValue(state, control_id, OHMD_BUTTON_B);
+        v[8] += getControlValue(state, control_id, OHMD_BUTTON_X);
+        v[9] += getControlValue(state, control_id, OHMD_BUTTON_Y);
+
+        // OK / Enter:
+        v[20] += getControlValue(state, control_id, OHMD_GENERIC);
+
+        // PSVR volume and mic controls:
+        v[22] += getControlValue(state, control_id, OHMD_VOLUME_PLUS);
+        v[23] += getControlValue(state, control_id, OHMD_VOLUME_MINUS);
+
+        // LShoulder:
+        v[3] += getControlValue(state, control_id, OHMD_MIC_MUTE);
+
+        // RShoulder:
+        v[11] += getControlValue(state, control_id, OHMD_TRIGGER);
+
+        // Back button:
+        v[21] += getControlValue(state, control_id, OHMD_HOME);
+
+        // Oculus button:
+        v[24] += getControlValue(state, control_id, OHMD_MENU);
+    }
+
+    // TODO: openhmd->controller[2] - OHMD_DEVICE_CLASS_GENERIC_TRACKER, but no
+    // such devices are supported yet as of OpenHMD 0.3, so we don't know how to
+    // handle them...
+
+    // Assign computed button state:
+    PsychSetStructArrayNativeElement("Buttons", 0, outMat, status);
+
+    // Touch states: Do not have OpenHMD support for this yet.
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 32, 1, &v, &outMat);
+    PsychSetStructArrayNativeElement("Touches", 0, outMat, status);
+
+    // Trigger left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = trigger[0];
+    v[1] = trigger[1];
+    PsychSetStructArrayNativeElement("Trigger", 0, outMat, status);
+
+    // Grip left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = grip[0];
+    v[1] = grip[1];
+    PsychSetStructArrayNativeElement("Grip", 0, outMat, status);
+
+    // TriggerNoDeadzone left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = trigger[0];
+    v[1] = trigger[1];
+    PsychSetStructArrayNativeElement("TriggerNoDeadzone", 0, outMat, status);
+
+    // GripNoDeadzone left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = grip[0];
+    v[1] = grip[1];
+    PsychSetStructArrayNativeElement("GripNoDeadzone", 0, outMat, status);
+
+    // TriggerRaw left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = trigger[0];
+    v[1] = trigger[1];
+    PsychSetStructArrayNativeElement("TriggerRaw", 0, outMat, status);
+
+    // GripRaw left/right:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 2, 1, &v, &outMat);
+    v[0] = grip[0];
+    v[1] = grip[1];
+    PsychSetStructArrayNativeElement("GripRaw", 0, outMat, status);
+
+    // Thumbstick: column 1 = left hand, column 2 = right hand. row 1 = x, row 2= y:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(2, 2, 1, &v, &outMat);
+    v[0] = stick[0][0];
+    v[1] = stick[0][1];
+    v[2] = stick[1][0];
+    v[3] = stick[1][1];
+    PsychSetStructArrayNativeElement("Thumbstick", 0, outMat, status);
+
+    // ThumbstickNoDeadzone:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(2, 2, 1, &v, &outMat);
+    v[0] = stick[0][0];
+    v[1] = stick[0][1];
+    v[2] = stick[1][0];
+    v[3] = stick[1][1];
+    PsychSetStructArrayNativeElement("ThumbstickNoDeadzone", 0, outMat, status);
+
+    // ThumbstickRaw:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(2, 2, 1, &v, &outMat);
+    v[0] = stick[0][0];
+    v[1] = stick[0][1];
+    v[2] = stick[1][0];
+    v[3] = stick[1][1];
+    PsychSetStructArrayNativeElement("ThumbstickRaw", 0, outMat, status);
+
+    return(PsychError_none);
+}
+
+PsychError PSYCHOPENHMDVRHapticPulse(void)
+{
+    static char useString[] = "pulseEndTime = PsychOpenHMDVRCore('HapticPulse', openhmdPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
+    //                         1                                                1           2                 3               4           5
+    static char synopsisString[] =
+        "Execute a haptic feedback pulse on controller 'controllerType' associated with OpenHMD device 'openhmdPtr'.\n\n"
+        "'duration' is the duration of the pulse in seconds. If omitted, the function returns immediately and "
+        "the default duration of 2.5 seconds is used, unless you call the function again with 'freq' = 0, to cancel the "
+        "currently active pulse. Otherwise, if a 'duration' other than 2.5 seconds is specified, the haptic pulse executes "
+        "for the specified duration, and may block execution of your script for that time span on some controller types, "
+        "returning the absolute time when the pulse is expected to end.\n\n"
+        "'freq' Frequency of the vibration in normalized 0.0 - 1.0 range. 0 = Disable ongoing pulse immediately.\n\n"
+        "'amplitude' Normalized amplitude in range 0.0 - 1.0\n\n"
+        "The return argument 'pulseEndTime' contains the absolute time in seconds when the pulse is expected "
+        "to end, as estimated at the time of calling the function. The precision and accuracy of pulse timing "
+        "is not known.\n";
+    static char seeAlsoString[] = "";
+
+    int handle, controllerType;
+    PsychOpenHMDDevice *openhmd;
+    ohmd_device *dev;
+    double duration, freq, amplitude, pulseEndTime;
+    int result;
+
+    // All sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    // Check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(5));
+    PsychErrorExit(PsychRequireNumInputArgs(2));
+
+    // Make sure driver is initialized:
+    PsychOpenHMDVRCheckInit(FALSE);
+
+    // Get device handle:
+    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
+    openhmd = PsychGetOpenHMD(handle, FALSE);
+
+    // Get the new performance HUD mode:
+    PsychCopyInIntegerArg(2, kPsychArgRequired, &controllerType);
+
+    // Duration:
+    duration = 2.5;
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &duration);
+    if (duration < 0)
+        PsychErrorExitMsg(PsychError_user, "Invalid negative 'duration' in seconds specified. Must be positive.");
+
+    freq = 1.0;
+    PsychCopyInDoubleArg(4, kPsychArgOptional, &freq);
+    if (freq < 0.0 || freq > 1.0)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'freq' frequency specified. Must be in range [0.0 ; 1.0].");
+
+    amplitude = 1.0;
+    PsychCopyInDoubleArg(5, kPsychArgOptional, &amplitude);
+    if (amplitude < 0.0 || amplitude > 1.0)
+        PsychErrorExitMsg(PsychError_user, "Invalid 'amplitude' specified. Must be in range [0.0 ; 1.0].");
+
+    switch (controllerType) {
+        case 1: // Left touch.
+            dev = openhmd->controller[0];
+            break;
+
+        case 2: // Right touch.
+            dev = openhmd->controller[1];
+            break;
+
+        default:
+            dev = NULL;
+            if (verbosity > 1)
+                printf("PsychOpenHMDVRCore-WARNING: 'HapticPulse' will go nowhere, as requested controller of type %i is not supported.\n", controllerType);
+            break;
+    }
+
+    // Need to have compile-time support for ohmd_device_set_haptics_on/off() and
+    // runtime support as well, which is not yet the case for current v0.3 stable:
+#if defined(OHMD_HAVE_HAPTICS_API_v0) && 0
+    if (dev) {
+        if (freq != 0) {
+            // Execute pulse: We map the freq range 0 - 1 to the interval 0 - 500 Hz for now. The Rift CV1
+            // touch controllers only support 160 Hz and 320 Hz at the moment...
+            result = ohmd_device_set_haptics_on(dev, duration, (float) freq * 500.0, (float) amplitude);
+            if (result) {
+                PsychErrorExitMsg(PsychError_user, "Failed to initiate haptic feedback pulse.");
+            }
+
+            if (verbosity > 3)
+                printf("PsychOpenHMDVRCore-INFO: 'HapticPulse' of duration %f secs, freq %f, amplitude %f for controller of type %i started.\n",
+                    duration, freq, amplitude, controllerType);
+        } else {
+            // Abort pulse:
+            result = ohmd_device_set_haptics_off(dev);
+            if (result) {
+                PsychErrorExitMsg(PsychError_user, "Failed to stop haptic feedback pulse.");
+            }
+        }
+
+        // Predict "off" time:
+        PsychGetAdjustedPrecisionTimerSeconds(&pulseEndTime);
+        pulseEndTime += duration;
+    }
+    else
+#endif
+        pulseEndTime = 0;
+
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, pulseEndTime);
 
     return(PsychError_none);
 }

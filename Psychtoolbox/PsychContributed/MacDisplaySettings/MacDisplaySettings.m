@@ -339,6 +339,13 @@ function [oldSettings,errorMsg] = MacDisplaySettings(arg1,arg2)
 % and before.
 %
 % May 14, 2021. Polished the help text, above.
+%
+% May 24, 2021. Now also compatible with macOS Catalina. Various releases
+% have been tested on every major version of macOS from 10.9 (Mavericks) to
+% 11.3 (Big Sur). This release has been tested only on Catalina and Big
+% Sur. The changes are all in the applescript file coping with Apple's
+% tendency, with each new major version of macOS, to change the hierarchy
+% of elements in System Preferences:Displays.
 
 %% ACKNOWLEGEMENTS. Thanks to Mario Kleiner for explaining how macOS
 % "brightness" works. Thanks to nick.peatfield@gmail.com for sharing his
@@ -378,6 +385,12 @@ end
 OSVersion=strtrim(OSVersion);
 macOSVersionString=['macOS ' OSVersion];
 vv=sscanf(OSVersion,'%d.%d.%d');
+if length(vv)<2
+    vv(2)=0;
+end
+if length(vv)<3
+    vv(3)=0;
+end
 v=vv(3);
 for i=[2 1]
     v=v/10^ceil(log10(v+0.1));

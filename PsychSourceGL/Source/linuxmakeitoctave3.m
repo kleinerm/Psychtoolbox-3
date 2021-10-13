@@ -36,8 +36,9 @@ if mode == -1
     modes = 0:15;
 
     if IsARM
-        % Do not build plugin 15 == PsychVulkanCore on ARM / RaspberryPi:
-        modes = setdiff (modes, 15);
+        % Do not build plugin 15 == PsychVulkanCore, 12 == PsychOculusVRCore,
+        % 10 == PsychCV, 4 == Eyelink on ARM / RaspberryPi:
+        modes = setdiff (modes, [4, 10, 12, 15]);
     end
 
     for mode = modes

@@ -74,26 +74,19 @@ function data = MeasureLuminancePrecision(meterType)
 % PARAMETERS:
 % o.luminances = number of luminances to measure, 3 s each.
 % o.reciprocalOfFraction = list desired values, e.g. 1, 64, 128, 256.
-% o.usePhotometer = 1 use ColorCAL II XYZ; 0 simulate 8-bit rendering.
+% o.usePhotometer = 1 use supported photometer; 0 simulate 8-bit rendering.
 % See SET PARAMETERS below.
 %
-% o.ditheringCode = 61696; Required for dither on my iMac and MacBook Pro.'
-% For dither, the magic number 61696 is appropriate for the graphics chips
-% belonging to the AMD Radeon "Southern Islands" gpu family. Such chips are
-% used in the MacBook Pro (Retina, 15-inch, Mid 2015) (AMD Radeon R9 M290X)
-% and the iMac (Retina 5K, 27-inch, Late 2014) (AMD Radeon R9 M370X). As
-% far as I know, in April 2017, those are the only Apple Macs with AMD
-% drivers, and may be the only Macs that support more-than-8-bit luminance
-% precision.
 %
 % Denis Pelli, April 24, 2017
 %
-
+%
 % History:
 % 24-Apr-2017   dgp     Wrote original version.
 % ??-???-2019   mk      Hacked it, improved it somewhere somewhat.
 % 14-Feb-2021   mk      Included into Psychtoolbox as baseline for cleanup.
-
+% 07-Oct-2021   mk      Refined.
+%
 %% DITHERING NOTES
 % (FROM MARIO) FOR HP Z Book "Sea Islands" GPU:
 % 10 bpc panel dither setup code for the zBooks "Sea Islands" (CIK) gpu:
@@ -116,65 +109,6 @@ function data = MeasureLuminancePrecision(meterType)
 % high bit depths. I would use dithering only for high level stimuli with
 % low spatial frequencies for that reason.
 
-% DENIS: Must we call "PsychColorCorrection"? I'm already doing correction
-% based on my photometry.
-
-% MARIO: No. But it's certainly more convenient and faster, and very
-% accurate. That's the recommended way to do gamma correction on > 8 bpc
-% framebuffers. For testing it would be better to leave it out, so you use
-% a identity mapping like when testing on the Macs.
-
-% DENIS: Must we call "FinalFormatting"? Is the call to "FinalFormatting"
-% just loading an identity gamma? Can I, instead, just use
-% LoadFormattedGammaTable to load identity?
-
-% MARIO: No, only if you want PTB to do high precision color/gamma
-% correction via the modes and settings supported by
-% PsychColorCorrection(). The call itself would simply establish an
-% identity gamma "curve", however operating at ~ 23 bpc linear precision
-% (32 bit floating point precision is about ~ 23 bit linear precision in
-% the displayable color range of 0.0 - 1.0).
-
-% -> Another thing you could test is if that laptop can drive a
-% conventional 8 bit external panel with 12 or more bits via dithering. The
-% gpu can do 12 bits in the 'EnableNative16BitFramebuffer' mode. So far i
-% thought +2 extra bits would be all you could get via dithering, but after
-% your surprising 11 bit result on your MacBookPro, with +3 extra bits, who
-% knows if there's room for more?
-
-% -> Yet another interesting option would be booting Linux on your iMac
-% 2014 Retina 5k, again with the dither settings that gave you 11 bpc under
-% macOS, and see if Linux in EnableNative16BitFramebuffer mode ! can
-% squeeze out more than 11 bpc.
-
-%% FROM MARIO
-
-% Denis could you send me the .mat files with various measured curves? Also
-% a measurement of the iMac Retina, just with 'EnableNative10Bit' mode, but
-% *without* any of the special dither settings - after a machine reboot -
-% would be good. I'd like to know how it behaves at Apples factory settings
-% without our PTB specific hacks, as those are so machine specific.
-% DONE: for MacBook Pro.
-
-% Btw., so far i still didn't manage to replicate your 11 bpc with
-% dithering finding on any AMD hardware + 8 bit display here, even with
-% more modern AMD graphics cards, so i'm still puzzled by that result. I'll
-% probably add some debug code to the next PTB beta for you to run on
-% macOS, to dump some hardware settings, maybe that'd give some clues about
-% how that 11 bpc instead of expected max 10 bpc happens.
-
-%% SOFTWARE CLUT
-% The following 4 parameters allow testing of the software CLUT, but that's
-% a relatively unimportant option and not usable on the Z Book (restricted
-% to 8 bit table), so you might as well not bother testing the software
-% CLUT.
-% My experiments with LoadNormalizedGammaTable indicate that it is accurate
-% only for very smooth gamma functions. (Mario says this is because it
-% stores only a functional approximation, not the requested values.) Thus
-% fiddling with the CLUT is not a recommended way to achieve fine steps in
-% luminance. It is generally better to leave the CLUT alone and adjust the
-% pixel values.
-%
 %% SET PARAMETERS
 % o.luminances = how many luminances are measured to produce your
 % final graph. 32 is typically enough. The CRS photometer takes 3
@@ -188,20 +122,17 @@ function data = MeasureLuminancePrecision(meterType)
 % at 8-bit precision. You can request several ranges by listing them, e.g.
 % [1 128]. You'll get a graph for each. Each graph will use the specified
 % number of luminances.
-% o.wigglePixelNotCLUT = whether to vary the value of the pixel or CLUT.
 % o.loadIdentityCLUT = whether to load an identity into CLUT.
 
 %o.luminances=128; % Photometer takes 3 s/luminance. 128 luminances is enough for a pretty graph.
 o.luminances=512; % Photometer takes 3 s/luminance. 512 luminances for a prettier graph.
 o.reciprocalOfFraction= 32; % List one or more, e.g. 1, 128, 256.
 o.vBase=.5;
-o.useDithering=[]; % 1 enable. [] default. 0 disable.
-o.nBits=10; % Enable this to get 10-bit (and better with dithering) performance.
+o.nBits=10; % Enable this to get 10-bit, 10.7-bit, 11-bit or 16-bit performance.
 o.useShuffle=0; % Randomize order of luminances to prevent systematic effect of changing background.
-o.wigglePixelNotCLUT=1; % 1 is fine. The software CLUT is not important.
 o.loadIdentityCLUT=1; % 1 is fine. This nullifies the CLUT.
 o.useFractionOfScreen=0; % For debugging, reduce our window to expose Command Window.
-o.useVulkan=0; % Use Vulkan display backend.
+o.useVulkan=0; % Force use of Vulkan display backend.
 
 if IsOctave
     pkg load statistics;
@@ -232,32 +163,33 @@ end
 
 try
     %% OPEN WINDOW
-    screen = 0;
+    screen = max(Screen('Screens'));
     screenBufferRect = Screen('Rect',screen);
 
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask','General','UseRetinaResolution');
     PsychImaging('AddTask','General','NormalizedHighresColorRange',1);
 
+    switch o.nBits
+        case 8
+            % Do nothing, this is the default.
+        case 10
+            PsychImaging('AddTask','General','EnableNative10BitFramebuffer');
+        case 10.7
+            PsychImaging('AddTask','General','EnableNative11BitFramebuffer');
+        case 11
+            PsychImaging('AddTask','General','EnableNative16BitFloatingPointFramebuffer');
+            if ~IsOSX
+                % Linux and Windows generally only provide fp16 under Vulkan:
+                o.useVulkan = 1;
+            end
+        case 16
+            PsychImaging('AddTask','General','EnableNative16BitFramebuffer');
+    end
+
     if o.useVulkan
         PsychImaging('AddTask','General','UseVulkanDisplay');
     end
-
-    switch o.nBits
-        case 8
-            % do nothing
-        case 10
-            PsychImaging('AddTask','General','EnableNative10BitFramebuffer');
-        case 11
-            PsychImaging('AddTask','General','EnableNative11BitFramebuffer');
-        case 12
-            if ~o.useVulkan && IsLinux && ~IsWayland
-                PsychImaging('AddTask','General','EnableNative16BitFramebuffer');
-            else
-                PsychImaging('AddTask','General','EnableNative16BitFloatingPointFramebuffer');
-            end
-    end
-    %if o.nBits >= 11; Screen('ConfigureDisplay','Dithering',screenNumber,61696); end
 
     if ~o.useFractionOfScreen
         window = PsychImaging('OpenWindow',screen,[1 1 1]);
@@ -269,9 +201,6 @@ try
     windowInfo=Screen('GetWindowInfo',window);
 
     switch(windowInfo.DisplayCoreId)
-        % Choose the right magic dither code for the video driver. Currently
-        % this works only for AMD drivers on  Apple's iMac and MacBook Pro,
-        % and HP's Z Book. See Dithering Notes above.
         case 'AMD'
             displayEngineVersion=windowInfo.GPUMinorType/10;
             switch(round(displayEngineVersion))
@@ -279,47 +208,41 @@ try
                     displayGPUFamily='Evergreen';
                     % Examples:
                     % AMD Radeon HD-5770 used in MacPro 2010.
-                    o.ditheringCode=61696;
+                case 5
+                    displayGPUFamily='Northern Islands';
                 case 6
                     displayGPUFamily='Southern Islands';
                     % Examples:
                     % AMD Radeon R9 M290X used in MacBook Pro (Retina, 15-inch, Mid 2015)
                     % AMD Radeon R9 M370X used in iMac (Retina 5K, 27-inch, Late 2014)
-                    o.ditheringCode=61696;
+                case 8
+                    displayGPUFamily='Sea Islands';
+                case 10
+                    displayGPUFamily='Volcanic Islands';
+                case 11
+                    displayGPUFamily='Polaris';
+                case 12
+                    displayGPUFamily='Vega';
                 otherwise
-                    displayGPUFamily='unknown';
+                    displayGPUFamily='Unknown';
             end
             fprintf('Display driver: %s version %.1f, "%s"\n',...
                 windowInfo.DisplayCoreId,displayEngineVersion,displayGPUFamily);
     end
 
-    if ~o.useDithering
-        o.ditheringCode=0;
-    end
+    % Compare default CLUT with identity.
+    gammaRead=Screen('ReadNormalizedGammaTable',window);
+    maxEntry=size(gammaRead,1)-1;
+    gamma=repmat(((0:maxEntry)/maxEntry)',1,3);
+    delta=gammaRead(:,2)-gamma(:,2);
+    fprintf('Difference between identity and read-back of default CLUT: mean %.9f, sd %.9f\n',mean(delta),std(delta));
 
-    if isfinite(o.useDithering)
-        fprintf('ConfigureDisplay Dithering %.0f\n',o.ditheringCode);
-        % The documentation suggests that the first call enables, and the
-        % second call sets the value.
-        Screen('ConfigureDisplay','Dithering',screen,o.ditheringCode);
-        Screen('ConfigureDisplay','Dithering',screen,o.ditheringCode);
-    end
-
-    if o.wigglePixelNotCLUT
-        % Compare default CLUT with identity.
-        gammaRead=Screen('ReadNormalizedGammaTable',window);
-        maxEntry=size(gammaRead,1)-1;
-        gamma=repmat(((0:maxEntry)/maxEntry)',1,3);
-        delta=gammaRead(:,2)-gamma(:,2);
-        fprintf('Difference between identity and read-back of default CLUT: mean %.9f, sd %.9f\n',mean(delta),std(delta));
-
-        % Load identity hw lut once, as it can interfere with some precision modes
-        % if done each flip, at least if PTB high precision hacks are used on the
-        % AMD DC display driver:
-        if o.loadIdentityCLUT
-            Screen('LoadNormalizedGammaTable',window,gamma);
-            Screen('Flip',window);
-        end
+    % Load identity hw lut once, as it can interfere with some precision modes
+    % if done each flip, at least if PTB high precision hacks are used on the
+    % AMD DC display driver:
+    if o.loadIdentityCLUT
+        Screen('LoadNormalizedGammaTable',window,gamma);
+        Screen('Flip',window);
     end
 
     %% MEASURE LUMINANCE AT EACH VALUE
@@ -351,20 +274,7 @@ try
             CLUTMapSize = 256;
             gamma=repmat(((0:CLUTMapSize-1)/(CLUTMapSize-1))',1,3);
 
-            if o.wigglePixelNotCLUT
-                Screen('FillRect',window, [g, g, g]);
-            else
-                % Note that this method will fail on many (most?) modern operating
-                % systems and graphics cards to achieve the desired results! Not
-                % recommended, only left for documentation!
-                iPixel=126;
-                for j=-4:4
-                    gamma(1+iPixel+j,1:3)=[g g g];
-                end
-
-                Screen('LoadNormalizedGammaTable',window,gamma,1);
-                Screen('FillRect',window,iPixel/(CLUTMapSize-1));
-            end
+            Screen('FillRect',window, [g, g, g]);
 
             Screen('TextSize',window, 30);
             msg1=sprintf('Series %d of %d.\n',iData,nData);
@@ -512,11 +422,7 @@ for iData=1:length(data)
 
     title(sprintf('%.0f luminances spanning 1/%.0f of digital range',o.luminances,1/d.fraction));
 
-    if o.wigglePixelNotCLUT
-        xlabel('Pixel value');
-    else
-        xlabel('CLUT');
-    end
+    xlabel('Pixel value');
 
     ylabel('Luminance (cd/m^2)');
     pbaspect([1 1 1]);
@@ -529,11 +435,6 @@ for iData=1:length(data)
     x=xLim(1)+0.03*diff(xLim);
     text(x,y,name);
     name='';
-
-    if isfinite(o.useDithering)
-        name=sprintf('%sditheringCode %d, ',name,o.ditheringCode);
-    end
-
     name=sprintf('%suse%iBits, ',name,o.nBits);
 
     y=y+dy;
@@ -561,11 +462,6 @@ end
 folder=fileparts(mfilename('fullpath'));
 cd(folder);
 name=computer.machineName;
-
-if isfinite(o.useDithering)
-    name=sprintf('%s-Dither%d',name,o.ditheringCode);
-end
-
 name=sprintf('%s-Use%iBits',name,o.nBits);
 
 if ~o.usePhotometer

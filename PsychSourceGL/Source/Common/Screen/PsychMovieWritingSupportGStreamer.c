@@ -1031,8 +1031,14 @@ int PsychFinalizeNewMovieFile(int movieHandle)
     // Send EOS signal downstream:
     ret = gst_app_src_end_of_stream(GST_APP_SRC(pwriterRec->ptbvideoappsrc));
     if (ret != GST_FLOW_OK) myErr |= 1;
+
     if (pwriterRec->ptbaudioappsrc) {
-        ret = gst_app_src_end_of_stream(GST_APP_SRC(pwriterRec->ptbaudioappsrc));
+        if (GST_IS_APP_SRC(pwriterRec->ptbaudioappsrc))
+            ret = gst_app_src_end_of_stream(GST_APP_SRC(pwriterRec->ptbaudioappsrc));
+        else
+            if (!gst_element_send_event(pwriterRec->ptbaudioappsrc, gst_event_new_eos()))
+                myErr |= 2;
+
         if (ret != GST_FLOW_OK) myErr |= 2;
     }
 

@@ -2,7 +2,9 @@ function err = Snd(command,signal,rate,sampleSize)
 % err = Snd(command,[signal],[rate],[sampleSize])
 %
 % Old Sound driver for Psychtoolbox. USE OF THIS DRIVER IS DEPRECATED FOR
-% ALL BUT THE MOST TRIVIAL PURPOSES!
+% ALL BUT THE MOST TRIVIAL PURPOSES! Only useful for simple feedback tones,
+% and indirectly by Eyelink's calibration routines. Does not mix well with
+% simultaneous use of PsychPortAudio() or Screen() movie playback functions!
 %
 % Have a look at the help for PsychPortAudio ("help PsychPortAudio" and
 % "help InitializePsychSound") for an introduction into the new sound
@@ -34,20 +36,30 @@ function err = Snd(command,signal,rate,sampleSize)
 % Audio device sharing for interop with PsychPortAudio:
 % -----------------------------------------------------
 %
-% If you want to use PsychPortAudio and Snd() simultaneously (or one of the
+% If you want to use PsychPortAudio and Snd() simultaneously, or one of the
 % functions that indirectly use Snd(), e.g., Beeper() for simple beep tones,
 % or Eyelink's auditory feedback during tracker setup and recalibration, which
 % in turn uses Beeper() and thereby Snd(), then try this:
 %
 % 1. Open a suitable PsychPortAudio audio device, possibly also a slave audio
 %    device and get a pahandle to it, e.g., pahandle = PsychPortAudio('Open',...);
+%    or PsychPortAudio('OpenSlave', ...) for a slave device.
 %
 % 2. Now open Snd(), passing in this device handle for use as Snd() output device:
 %    Snd('Open', pahandle);
 %
+%    If you want to repeatedly call Beeper(), or use auditory feedback from Eyelink,
+%    which itself repeatedly calls Beeper(), then you should open the shared pahandle
+%    via Snd('Open', pahandle, 1); - This will prevent Snd('Close') from having any
+%    effect, so Beeper() won't close the Snd() driver after one beep, and Eyelink
+%    will be able to emit multiple auditory feedback tones, not just a single one.
+%
 % 3. Proceed as usual, e.g., Snd('Play', ...) or Beeper(...), etc. Snd() will
 %    use the pahandle audio device for playback, and pahandle can also be used
 %    by PsychPortAudio calls directly for precisely controlled sound.
+%
+% 4. At the end of a session, you could forcefully detach Snd() from the pahandle
+%    via a call to Snd('Close', 1).
 %
 % Supported functions:
 % --------------------
@@ -59,8 +71,8 @@ function err = Snd(command,signal,rate,sampleSize)
 % implementation, and the default device sampling rate if PsychPortAudio is
 % used. This default may change in the future, so please either specify a
 % rate, or use this function to get the default rate. (This default is
-% suboptimal on any system except MacOS-9, but kept for backwards
-% compatibility!)
+% suboptimal on any system except long dead MacOS-9, but kept for backwards
+% compatibility!).
 %
 % The optional 'sampleSize' argument used with Snd('Play') is only retained
 % for backwards compatibility and has no meaning, unless you opt in to use
@@ -75,17 +87,22 @@ function err = Snd(command,signal,rate,sampleSize)
 % Snd('Close'). Snd('Play',...) automatically opens the channel if it isn't
 % already open. You can use Snd('Open', pahandle); to share an existing
 % PsychPortAudio audio device handle 'pahandle' with Snd() for optimal
-% interoperation. See instructions above.
+% interoperation. A Snd('Close') of such a shared 'pahandle' would not close the
+% handle, but it would close Snd()'s further use of it. If you call
+% Snd('Open', pahandle, 1); then a Snd('Close') will not have any effect, ie. the
+% pahandle not only stays open, but also continues to be shared and open for use
+% by Snd(). See instructions above.
 %
-% Snd('Close') immediately stops all sound and closes the channel.
+% Snd('Close') immediately stops all sound and closes the channel, unless you
+% specified a shared pahandle with PsychPortAudio via Snd('Open', pahandle, 1);
+% earlier. Calling Snd('Close', 1) will always really close the channel.
 %
 % Snd('Wait') waits until the sound is done playing.
 %
 % isPlaying=Snd('IsPlaying') returns true if any sound is playing, and
 % false (0) otherwise.
 %
-% Snd('Quiet') stops the sound currently playing and flushes the queue, but
-% leaves the channel open.
+% Snd('Quiet') stops the sound currently playing, but leaves the channel open.
 %
 % "signal" must be a numeric array of samples.
 %
@@ -166,6 +183,7 @@ function err = Snd(command,signal,rate,sampleSize)
 % 7/11/19    mk Allow sharing pahandle with external code / piggyback onto existing pahandle
 %               via Snd('Open', pahandle);
 % 12/9/19    mk Add 'Verbosity' subcommand to be able to silence Snd() and PsychPortAudio() output.
+% 08/10/21   mk Try to make Snd - pahandle sharing more reliable via new Snd('Open', pahandle, 1).
 
 persistent ptb_snd_oldstyle;
 persistent ptb_snd_injected;
@@ -196,10 +214,10 @@ if strcmpi(command, 'Verbosity')
     return;
 end
 
-% Snd('Open', pahandle) called to inject a pahandle of an already open
+% Snd('Open', pahandle [, noclose=0]) called to inject a pahandle of an already open
 % PsychPortAudio device for sharing? If so, we piggyback onto pahandle
 % for our audio playback:
-if strcmpi(command,'Open') && nargin == 2
+if strcmpi(command,'Open') && nargin >= 2 && ~isempty(signal)
     % Close previous PsychPortAudio handle if it was not injected into us:
     if ~isempty(pahandle) && pahandle ~= signal && ~ptb_snd_injected
         PsychPortAudio('Close', pahandle);
@@ -211,14 +229,30 @@ if strcmpi(command,'Open') && nargin == 2
     % Obviously we are not in old style mode here:
     ptb_snd_oldstyle = 0;
 
-    % Mark this pahandle as injected -- should not be closed by us ever:
-    ptb_snd_injected = 1;
+    % "noclose" flag provided as 1?
+    if nargin >=3 && ~isempty(rate) && rate == 1
+        % Mark this pahandle as injected and uncloseable by us. Neither the PPA
+        % device, nor our association with it should be closed/removed, not even
+        % if our caller calls Snd('Close'). This is useful for emitting repeated
+        % beeps via Beeper(), as Beeper() would Snd('Close') after each beep, and
+        % thereby remove the association:
+        ptb_snd_injected = 2;
+
+        if verbose
+            fprintf('Snd(): Using PsychPortAudio via shared handle %i permanently.\n', pahandle);
+        end
+    else
+        % Mark this pahandle as injected -- PPA device should not be closed by us
+        % ever, but our Snd('Close') function can detach us from it, so it will
+        % only be usable by PsychPortAudio directly again:
+        ptb_snd_injected = 1;
+
+        if verbose
+            fprintf('Snd(): Using PsychPortAudio via shared handle %i, until you call Snd(''Close''); to unshare.\n', pahandle);
+        end
+    end
 
     endTime = 0;
-
-    if verbose
-        fprintf('Snd(): Using PsychPortAudio via handle %i until you call Snd(''Close'');\n', pahandle);
-    end
 
     return;
 end
@@ -441,7 +475,7 @@ elseif strcmpi(command,'IsPlaying')
     end
 
 elseif strcmpi(command,'Quiet') || strcmpi(command,'Close')
-    if nargin>1
+    if nargin > 2
         error('Wrong number of arguments: see Snd.');
     end
 
@@ -450,7 +484,7 @@ elseif strcmpi(command,'Quiet') || strcmpi(command,'Close')
         PsychPortAudio('Stop', pahandle, 2, 1);
 
         % Close command?
-        if strcmpi(command,'Close')
+        if strcmpi(command,'Close') && ((ptb_snd_injected ~= 2) || (nargin == 2 && signal == 1))
             if ~ptb_snd_injected
                 % Close it:
                 PsychPortAudio('Close', pahandle);

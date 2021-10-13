@@ -1,6 +1,8 @@
 function varargout = PsychOpenHMDVR(cmd, varargin)
 % PsychOpenHMDVR - A high level driver for VR hardware supported via OpenHMD.
 %
+% This driver is currently only for use with Linux/X11 with a native XOrg X-Server.
+%
 % Note: If you want to write VR code that is portable across
 % VR headsets of different vendors, then use the PsychVRHMD()
 % driver instead of this driver. The PsychVRHMD driver will use
@@ -13,21 +15,62 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 %
 % This driver needs libopenhmd.so version 0.3 or later to be installed
 % in a linker accessible path (e.g., /usr/local/lib/ on a Linux system).
-% You can either download, compile and install it from ...
+% You can either download, compile and install libopenhmd yourself from
+% the official project GitHub...
 %
 % https://github.com/OpenHMD/OpenHMD
 %
-% ... or get a precompiled library for libopenhmd.so from:
+% ... or if you have a Oculus Rift and want to take advantage of an experimental
+% implementation that provides absolute head position tracking of reasonable quality,
+% from this repo and branch...
 %
-% RaspberryPi/Raspbian: https://github.com/Psychtoolbox-3/MiscStuff/tree/master/OpenHMD32BitRaspbianARMv7
+% https://github.com/thaytan/OpenHMD/tree/rift-kalman-filter
 %
-% 64-Bit Intel/Ubuntu:  https://github.com/Psychtoolbox-3/MiscStuff/tree/master/OpenHMD64BitIntelUbuntuLinux
+% ... or you can get a precompiled library for libopenhmd.so from:
 %
-% Follow instructions in the accompanying Readme.txt files.
+% For RaspberryPi/Raspbian: https://github.com/Psychtoolbox-3/MiscStuff/tree/master/OpenHMD32BitRaspbianARMv7
+%
+% For 64-Bit Intel/Ubuntu:  https://github.com/Psychtoolbox-3/MiscStuff/tree/master/OpenHMD64BitIntelUbuntuLinux
+%
+% Follow the setup instructions in the accompanying Readme.txt files if you use the
+% precompiled libraries.
 %
 % libopenhmd.so in turn needs libhidapi-libusb.so to be installed in
-% a similar path. On Debian GNU/Linux based systems you can install HIDAPI
-% via the package libhidapi-libusb0 (apt-get install libhidapi-libusb0).
+% a similar path. On Debian GNU/Linux based systems like Ubuntu, you can install
+% this via the package libhidapi-libusb0 (apt-get install libhidapi-libusb0).
+%
+% On Ubuntu 20.04-LTS and later, or Debian 11 and later, you can also get the library
+% via a simple "sudo apt install libopenhmd0" for version 0.3 of the library.
+%
+% Regarding Linux 4.16 and later:
+%
+% Note that on some HMD's, e.g., the Oculus Rift models, this driver will only work
+% on a multi-X-Screen setup, where a dedicated X-Screen (typically X-Screen 1) is
+% created, with the video output of the HMD assigned as only output to that X-Screen.
+% Single-X-Screen operation will be unworkable in practice.
+%
+% The xorg.conf file needed for such a configuration must be manually created for your
+% setup. The "Monitor" section for the video output representing the HMD must have this
+% line included:
+%
+% Option "Enable" "on"
+%
+% E.g., if the video output with the HMD has the name "HDMI-A-0", the relevant
+% section would look like this:
+%
+% Section "Monitor"
+%   Identifier    "HDMI-A-0"
+%   Option        "Enable" "on"
+% EndSection
+%
+% An example file demonstrating this can be found in the PsychtoolboxRoot() folder,
+% under the following name:
+%
+% Psychtoolbox/PsychHardware/LinuxX11ExampleXorgConfs/xorg.conf_DualXScreen_OculusRift_amdgpu.conf
+%
+% Regarding Linux 4.15 and earlier, the following may apply instead, at least for
+% the Oculus Rift CV1 and later Oculus HMD's, maybe also for other models from
+% other vendors:
 %
 % From the same URL above, you need to get openhmdkeepalivedaemon, an executable
 % file, and make sure it gets started during system boot of your machine. This so
@@ -134,8 +177,6 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % of the OVR.ControllerType_XXX flags described in 'GetInputState'.
 % This does not detect if controllers are hot-plugged or unplugged after
 % the HMD was opened. Iow. only probed at 'Open'.
-% As the current OpenHMD driver does not support dedicated controllers at the
-% moment, this always returns 0.
 %
 %
 % info = PsychOpenHMDVR('GetInfo', hmd);
@@ -213,9 +254,10 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 %
 %
 % pulseEndTime = PsychOpenHMDVR('HapticPulse', hmd, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);
-% - Fake triggering a haptic feedback pulse. This does nothing, but return a made up
-% but consistent 'pulseEndTime', as this OpenHMD driver currently does not support
-% haptic feedback.
+% - Trigger a haptic feedback pulse, some controller vibration, on the specified 'controllerType'
+% associated with the specified 'hmd'. 'duration' is pulse duration in seconds, by default a maximum
+% of 2.5 seconds is executed. 'freq' is normalized frequency in range 0.0 - 1.0. A value of 0 will
+% disable an ongoing pulse.'amplitude' is the amplitude of the vibration in normalized 0.0 - 1.0 range.
 %
 %
 % state = PsychOpenHMDVRCore('PrepareRender', hmd [, userTransformMatrix][, reqmask=1][, targetTime]);
@@ -430,7 +472,7 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % Currently not implemented / supported. Does nothing.
 %
 %
-% PsychOpenHMDVR('SetHSWDisplayDismiss', hmd [, dismissTypes=1+2]);
+% PsychOpenHMDVR('SetHSWDisplayDismiss', hmd [, dismissTypes=1+2+4]);
 % - Set how the user can dismiss the "Health and safety warning display".
 % 'dismissTypes' can be -1 to disable the HSWD, or a value >= 0 to show
 % the HSWD until a timeout and or until the user dismisses the HSWD.
@@ -439,6 +481,7 @@ function varargout = PsychOpenHMDVR(cmd, varargin)
 % +0 = Display until timeout, if any. Will wait forever if there isn't any timeout!
 % +1 = Dismiss via keyboard keypress.
 % +2 = Dismiss via mouse click or mousepad tap.
+% +4 = Dismiss via press of a button on a connected VR controller, e.g., touch controller.
 %
 %
 % [bufferSize, imagingFlags, stereoMode] = PsychOpenHMDVR('GetClientRenderingParameters', hmd);
@@ -644,7 +687,7 @@ if strcmpi(cmd, 'PrepareRender')
   end
 
   % Get predicted head pose for targetTime:
-  state = PsychOpenHMDVRCore('GetTrackingState', myhmd.handle, targetTime);
+  [state, touch] = PsychOpenHMDVRCore('GetTrackingState', myhmd.handle, targetTime);
 
   % Always return basic tracking status:
   result.tracked = state.Status;
@@ -673,6 +716,24 @@ if strcmpi(cmd, 'PrepareRender')
     % Compute inverse matrices, useable as OpenGL GL_MODELVIEW matrices for rendering:
     result.modelView{1} = inv(result.cameraView{1});
     result.modelView{2} = inv(result.cameraView{2});
+
+    if 0 % Not usable with current OpenHMD versions yet, so spare us the wasted cpu cycles.
+    if ~isempty(state.HeadLinearSpeed)
+      result.HeadLinearSpeed = state.HeadLinearSpeed;
+    end
+
+    if ~isempty(state.HeadAngularSpeed)
+      result.HeadAngularSpeed = state.HeadAngularSpeed;
+    end
+
+    if ~isempty(state.HeadLinearAcceleration)
+      result.HeadLinearAcceleration = state.HeadLinearAcceleration;
+    end
+
+    if ~isempty(state.HeadAngularAcceleration)
+      result.HeadAngularAcceleration = state.HeadAngularAcceleration;
+    end
+    end
   end
 
   % Want matrices with tracked position and orientation of touch controllers ~ users hands?
@@ -680,17 +741,17 @@ if strcmpi(cmd, 'PrepareRender')
     % Yes: We can't do this on current OpenHMD, so fake stuff:
 
     for i=1:2
-      result.handStatus(i) = 0;
+      result.handStatus(i) = touch(i).Status;
 
       % Bonus feature: HandPoses as 7 component translation + orientation quaternion vectors:
-      result.handPose{i} = [0, 0, 0, 0, 0, 0, 1];
+      result.handPose{i} = touch(i).HandPose;;
 
       % Convert hand pose vector to 4x4 OpenGL right handed reference frame matrix:
       % In our untracked case, simply an identity matrix:
-      result.localHandPoseMatrix{i} = diag([1,1,1,1]);
+      result.localHandPoseMatrix{i} = eyePoseToCameraMatrix(result.handPose{i});
 
       % Premultiply usercode provided global transformation matrix - here use as is:
-      result.globalHandPoseMatrix{i} = userTransformMatrix;
+      result.globalHandPoseMatrix{i} = userTransformMatrix * result.localHandPoseMatrix{i};
 
       % Compute inverse matrix, maybe useable for collision testing / virtual grasping of virtual objects:
       % Provides a transform that maps absolute geometry into geometry as "seen" from the pov of the hand.
@@ -772,31 +833,7 @@ if strcmpi(cmd, 'GetInputState')
     error('PsychOpenHMDVR:GetInputState: Required ''controllerType'' argument missing.');
   end
 
-  rc.Valid = 1;
-
-  [anykey, rc.Time, keyCodes] = KbCheck(-1);
-  rc.Buttons = zeros(1, 32);
-  if anykey
-    rc.Buttons(OVR.Button_A) = keyCodes(KbName('a'));
-    rc.Buttons(OVR.Button_B) = keyCodes(KbName('b'));
-    rc.Buttons(OVR.Button_X) = keyCodes(KbName('x'));
-    rc.Buttons(OVR.Button_Y) = keyCodes(KbName('y'));
-    rc.Buttons(OVR.Button_Back) = keyCodes(KbName('BackSpace'));
-    rc.Buttons(OVR.Button_Enter) = any(keyCodes(KbName('Return')));
-    rc.Buttons(OVR.Button_Right) = keyCodes(KbName('RightArrow'));
-    rc.Buttons(OVR.Button_Left) = keyCodes(KbName('LeftArrow'));
-    rc.Buttons(OVR.Button_Up) = keyCodes(KbName('UpArrow'));
-    rc.Buttons(OVR.Button_Down) = keyCodes(KbName('DownArrow'));
-    rc.Buttons(OVR.Button_VolUp) = keyCodes(KbName('F12'));
-    rc.Buttons(OVR.Button_VolDown) = keyCodes(KbName('F11'));
-    rc.Buttons(OVR.Button_RShoulder) = keyCodes(KbName('RightShift'));
-    rc.Buttons(OVR.Button_LShoulder) = keyCodes(KbName('LeftShift'));
-    rc.Buttons(OVR.Button_Home) = keyCodes(KbName('Home'));
-    rc.Buttons(OVR.Button_RThumb) = any(keyCodes(KbName({'RightControl', 'RightAlt'})));
-    rc.Buttons(OVR.Button_LThumb) = any(keyCodes(KbName({'LeftControl', 'LeftAlt'})));
-  end
-
-  varargout{1} = rc;
+  varargout{1} = PsychOpenHMDVRCore('GetInputState', myhmd.handle, double(varargin{2}));
 
   return;
 end
@@ -812,11 +849,7 @@ if strcmpi(cmd, 'HapticPulse')
     error('PsychOpenHMDVR:HapticPulse: Required ''controllerType'' argument missing.');
   end
 
-  if length(varargin) >= 3 && ~isempty(varargin{3}) && varargin{3} < 2.5
-    varargout{1} = WaitSecs(varargin{3});
-  else
-    varargout{1} = GetSecs + 2.5;
-  end
+  varargout{1} = PsychOpenHMDVRCore('HapticPulse', myhmd.handle, double(varargin{2}), varargin{3:end});
 
   return;
 end
@@ -923,8 +956,8 @@ if strcmpi(cmd, 'SetHSWDisplayDismiss')
 
   % Method of dismissing HSW display:
   if length(varargin) < 2 || isempty(varargin{2})
-    % Default is keyboard or mouse click:
-    hmd{myhmd.handle}.hswdismiss = 1 + 2;
+    % Default is keyboard or mouse click or controller button press:
+    hmd{myhmd.handle}.hswdismiss = 1 + 2 + 4;
   else
     hmd{myhmd.handle}.hswdismiss = varargin{2};
   end
@@ -934,7 +967,8 @@ end
 
 % Open a HMD:
 if strcmpi(cmd, 'Open')
-  [handle, modelName, panelWidth, panelHeight] = PsychOpenHMDVRCore('Open', varargin{:});
+  [handle, modelName, panelWidth, panelHeight, controllerTypes, controllerFlags] = PsychOpenHMDVRCore('Open', varargin{:});
+  [~, ~, ~, ~, ~, ~, ~, pw, ph] = PsychOpenHMDVRCore('GetUndistortionParameters', handle, 0);
 
   newhmd.handle = handle;
   newhmd.driver = @PsychOpenHMDVR;
@@ -944,18 +978,34 @@ if strcmpi(cmd, 'Open')
   newhmd.modelName = modelName;
   newhmd.panelWidth = panelWidth;
   newhmd.panelHeight = panelHeight;
+  newhmd.panelWidthMM = round(pw * 1000);
+  newhmd.panelHeightMM = round(ph * 1000);
   newhmd.separateEyePosesSupported = 0;
-  newhmd.controllerTypes = 0;
-  newhmd.VRControllersSupported = 0;
-  newhmd.handTrackingSupported = 0;
-  newhmd.hapticFeedbackSupported = 0;
+  newhmd.controllerTypes = controllerTypes;
+  if controllerTypes
+    newhmd.VRControllersSupported = 1;
+  else
+    newhmd.VRControllersSupported = 0;
+  end
+
+  if bitand(controllerFlags, 1+2)
+    newhmd.handTrackingSupported = 1;
+  else
+    newhmd.handTrackingSupported = 0;
+  end
+
+  if bitand(controllerFlags, 4)
+    newhmd.hapticFeedbackSupported = 1;
+  else
+    newhmd.hapticFeedbackSupported = 0;
+  end
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
 
   % By default allow user to dismiss HSW display via key press
-  % or mouse click:
-  newhmd.hswdismiss = 1 + 2;
+  % or mouse click or controller button press:
+  newhmd.hswdismiss = 1 + 2 + 4;
 
   % Setup basic task/requirement/quality specs to "nothing":
   newhmd.basicQuality = 0;
@@ -1132,15 +1182,19 @@ if strcmpi(cmd, 'Close')
 end
 
 if strcmpi(cmd, 'IsHMDOutput')
-  myhmd = varargin{1}; %#ok<NASGU>
+  myhmd = varargin{1};
   scanout = varargin{2};
 
-  % Is this an output with a resolution matching HMD panel resolution?
+  % Does physical display size from EDID match the one reported by the HMD?
+  mmmatch = (myhmd.panelWidthMM == scanout.displayWidthMM && myhmd.panelHeightMM == scanout.displayHeightMM) || ...
+            (myhmd.panelWidthMM == scanout.displayHeightMM && myhmd.panelHeightMM == scanout.displayWidthMM);
+
+  % Is this an output with a resolution or physical size matching HMD panel resolution or size?
   % Assumption here is that it is a tilted panel in portrait mode in case of
   % the Rift DK1/DK2, but a non-tilted panel in landscape mode on other HMDs,
   % e.g., the Rift CV1:
   if (~isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelHeight) && (scanout.height == myhmd.panelWidth || scanout.height == 948)) || ...
-     (isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelWidth) && (scanout.height == myhmd.panelHeight))
+     (isempty(strfind(myhmd.modelName, '(DK')) && (scanout.width == myhmd.panelWidth) && (scanout.height == myhmd.panelHeight)) || mmmatch
     varargout{1} = 1;
   else
     varargout{1} = 0;
@@ -1345,6 +1399,21 @@ if strcmpi(cmd, 'OpenWindowSetup')
     winRect = [0, 0, myhmd.panelWidth, myhmd.panelHeight];
   end
 
+  % Try to find the output with the HMD:
+  scanout = [];
+  for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
+    scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
+    if ~myhmd.driver('IsHMDOutput', myhmd, scanout)
+      % This output is not it:
+      scanout = [];
+    end
+  end
+
+  if isempty(scanout)
+    sca;
+    error('PsychOpenHMDVR-ERROR: Could not find X-Screen output with HMD on target X-Screen %i!', screenid);
+  end
+
   % Yes. Trying to display on a screen with more than one video output?
   if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
     % Yes. Not good, as this will impair graphics performance and timing a lot.
@@ -1355,17 +1424,10 @@ if strcmpi(cmd, 'OpenWindowSetup')
     fprintf('PsychOpenHMDVR-WARNING: I strongly recommend only activating one output on the HMD screen - the HMD output on the screen.\n');
     fprintf('PsychOpenHMDVR-WARNING: On Linux with X11 X-Server, you should create a separate X-Screen for the HMD.\n');
 
-    % Try to find the output with the HMD:
-    for i=0:Screen('ConfigureDisplay', 'NumberOutputs', screenid)-1
-      scanout = Screen('ConfigureDisplay', 'Scanout', screenid, i);
-      if myhmd.driver('IsHMDOutput', myhmd, scanout)
-        % This output i has proper resolution to be the HMD panel.
-        % Position our onscreen window accordingly:
-        winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
-        fprintf('PsychOpenHMDVR-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i.\n', ...
-                winRect(1), winRect(2), winRect(3), winRect(4), i);
-      end
-    end
+    % Position our onscreen window accordingly:
+    winRect = OffsetRect([0, 0, scanout.width, scanout.height], scanout.xStart, scanout.yStart);
+    fprintf('PsychOpenHMDVR-Info: Positioning onscreen window at rect [%i, %i, %i, %i] to align with HMD output %i [%s] of screen %i.\n', ...
+            winRect(1), winRect(2), winRect(3), winRect(4), i, scanout.name, screenid);
   end
 
   % Get "panel size" / true framebuffer size:
@@ -1373,6 +1435,29 @@ if strcmpi(cmd, 'OpenWindowSetup')
     panelRect = Screen('Rect', screenid);
   else
     panelRect = winRect;
+  end
+
+  % Turn target video output off, then on again, to get some VR HMD's like the
+  % Oculus Rift CV1 unstuck. This is needed because display DPMS seems to get
+  % into an undefined or wrong state after the HMD is powered down to standby,
+  % and therefore the video output hot-unplugged, then powered up in a new session,
+  % and therefore the video output hot-plugged again. Also set the output to be a
+  % regular "desktop" output, otherwise X can not OpenGL display on it.
+  %
+  % A DPMS forced standby -> on cycle would also work, but is more intrusive/
+  % flickery, as it globally powers down and up all connected monitors, not just
+  % the HMD, so lets do a output off->on cycle instead to only affect the actual
+  % output which needs a DPMS off -> on, which happens as side-effect of the off
+  % on cycle:
+  if 1
+      cmd = sprintf('xrandr --screen %i --output %s --off', screenid, scanout.name);
+      % Works also, but more intrusive on multi-display setups: cmd = sprintf('xset dpms force standby');
+      system(cmd);
+      WaitSecs(2);
+      cmd = sprintf('xrandr --screen %i --output %s --set ''non-desktop'' 0 --mode %ix%i', screenid, scanout.name, hmd{myhmd.handle}.panelWidth, hmd{myhmd.handle}.panelHeight);
+      % Works also, but more intrusive on multi-display setups: cmd = sprintf('xset dpms force on');
+      system(cmd);
+      WaitSecs(1);
   end
 
   % How is the panel mounted in the HMD, portrait or landscape?
@@ -1477,16 +1562,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Only have horizontal width per eye:
   viewport_scale(1) = viewport_scale(1) / 2;
 
-  % Convert head to eye shift vectors into 4x4 matrices, as we'll need
-  % them frequently:
-  EyeT = diag([1 1 1 1]);
-  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetLeft';
-  hmd{handle}.eyeShiftMatrix{1} = EyeT;
-
-  EyeT = diag([1 1 1 1]);
-  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetRight';
-  hmd{handle}.eyeShiftMatrix{2} = EyeT;
-
   % Retrieve texture handles for the finalizedFBOs, which contain our per-eye input data for VR compositing:
   [hmd{handle}.inTex(1), hmd{handle}.inTex(2), glTextureTarget, format, multiSample, width, height] = Screen('HookFunction', win, 'GetDisplayBufferTextures');
 
@@ -1575,14 +1650,21 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPostGLShutdown');
   end
 
-  if ~isempty(strfind(hmd{handle}.modelName, 'Rift (CV'))
-    % Attach override projection matrices at least for the Rift CV1:
-    [~, ~, ipd] = PsychOpenHMDVRCore('GetStaticRenderParameters', handle);
-    hmd{handle}.ipd = ipd / 16 / viewport_scale(1);
-  else
-    % No ipd correction for other HMDs:
-    hmd{handle}.ipd = 0;
-  end
+  % Compute head to eyeshift vectors as simple horizontal translation based on ipd,
+  % the interpupillar distance:
+  [~, ~, ipd] = PsychOpenHMDVRCore('GetStaticRenderParameters', handle);
+  hmd{handle}.ipd = ipd;
+  hmd{handle}.HmdToEyeViewOffsetLeft  = [-ipd / 2, 0, 0];
+  hmd{handle}.HmdToEyeViewOffsetRight = [+ipd / 2, 0, 0];
+
+  % Convert head to eye shift vectors into 4x4 matrices, as we'll need them frequently:
+  EyeT = diag([1 1 1 1]);
+  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetLeft';
+  hmd{handle}.eyeShiftMatrix{1} = EyeT;
+
+  EyeT = diag([1 1 1 1]);
+  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetRight';
+  hmd{handle}.eyeShiftMatrix{2} = EyeT;
 
   % Need HSW display?
   if (hmd{handle}.hswdismiss >= 0) && isempty(getenv('PSYCH_OpenHMD_HSWSKIP'))
@@ -1625,7 +1707,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       end
 
       if bitand(hmd{myhmd.handle}.hswdismiss, 4)
-        hswtext = [hswtext 'Slightly tap the headset'];
+        hswtext = [hswtext 'Click any controller button'];
       end
 
       Screen('Flip', win);
@@ -1656,6 +1738,14 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             end
           end
         end
+
+        % Allow dismiss via controller button?
+        if bitand(hmd{myhmd.handle}.hswdismiss, 4)
+          istate = PsychOpenHMDVRCore('GetInputState', myhmd.handle, hex2dec('ffffffff'));
+          if any(istate.Buttons)
+            dismiss = 1;
+          end
+        end
       end
 
       if bitand(hmd{myhmd.handle}.hswdismiss, 1)
@@ -1674,9 +1764,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % 3D rendering requested, instead of pure 2D rendering?
   if ~isempty(strfind(hmd{myhmd.handle}.basicTask, '3D'))
-    % Yes. Disable ipd correction as it seems to do more harm than good
-    % on the only HMD on which it would be used - the Rift CV:
-    hmd{handle}.ipd = 0;
+    % Nothing to do yet.
   end
 
   % Is this a Rift DK2 in special 1080x948 @ 120Hz video mode? And no Monoscopic mode selected?

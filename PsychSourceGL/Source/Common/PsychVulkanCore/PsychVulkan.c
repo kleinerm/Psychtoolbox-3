@@ -681,10 +681,6 @@ void PsychVulkanCheckInit(psych_bool dontfail)
     GET_INSTANCE_PROC_ADDR(vulkanInstance, ReleaseDisplayEXT);
     #endif
 
-    #if PSYCH_SYSTEM == PSYCH_OSX
-    // TODO OSX
-    #endif
-
     // Enumerate physical devices - actually combos of Vulkan driver + physical device:
     result = vkEnumeratePhysicalDevices(vulkanInstance, &probedCount, NULL);
     if (result != VK_SUCCESS) {
@@ -2615,8 +2611,9 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
             PsychGetAdjustedPrecisionTimerSeconds(&tNow);
             tStart = tNow;
 
-            // This label is only used on macOS + MoltenVK for buggy MVK versions which do not
-            // actually dequeue timestamps fetched via fpGetPastPresentationTimingGOOGLE(), as they
+            // Unused atm - no longer needed:
+            // This label was only used on macOS + MoltenVK for buggy MVK versions which do not
+            // actually dequeue timestamps fetched via vkGetPastPresentationTimingGOOGLE(), as they
             // should, but keep all timestamps in the queue until the queue reaches capacity. Iow.,
             // the queue can only grow (up to a defined maximum, e.g., 60 entries), but never shrink.
             // This is a spec violation and it can make the timestamp query fail for up to slightly
@@ -2629,7 +2626,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 result = fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, NULL);
                 if (result != VK_SUCCESS) {
                     if (verbosity > 0)
-                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed! fpGetPastPresentationTimingGOOGLE reports error code %i.\n", window->index, result);
+                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed! vkGetPastPresentationTimingGOOGLE reports error code %i.\n", window->index, result);
 
                     return(FALSE);
                 }
@@ -2638,12 +2635,12 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 if ((count < 1) && (tNow < tStart + tQueryTimeout)) {
                     PsychYieldIntervalSeconds(0.001);
                     if (verbosity > 9)
-                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Polling for fpGetPastPresentationTimingGOOGLE returning results. %f msecs elapsed, %f msecs since tWhen.\n", window->index, count, 1000 * (tNow - tStart), 1000 * (tNow - tWhen));
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Polling for vkGetPastPresentationTimingGOOGLE returning results. %f msecs elapsed, %f msecs since tWhen.\n", window->index, count, 1000 * (tNow - tStart), 1000 * (tNow - tWhen));
                 }
             }
 
             if (verbosity > 8)
-                printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE returned %i timestamps after %f msecs wait. Fetching last one %f msecs since tWhen.\n", window->index, count, 1000 * (tNow - tStart), 1000 * (tNow - tWhen));
+                printf("PsychVulkanCore-DEBUG: PsychPresent(%i): vkGetPastPresentationTimingGOOGLE returned %i timestamps after %f msecs wait. Fetching last one %f msecs since tWhen.\n", window->index, count, 1000 * (tNow - tStart), 1000 * (tNow - tWhen));
 
             // Got something?
             if (count < 1) {
@@ -2656,14 +2653,14 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 if (window->frameIndex - 1 > 0) {
                     // No, bad:
                     if (verbosity > 0)
-                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE failed to retrieve timestamp! Timed out.\n", window->index);
+                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): vkGetPastPresentationTimingGOOGLE failed to retrieve timestamp! Timed out.\n", window->index);
 
                     return(FALSE);
                 }
                 else {
                     // Yes, be lenient, as at least on Linux + Mesa this seems to be expected:
                     if (verbosity > 5)
-                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE failed to retrieve timestamp for frameIndex 0. Timed out. Carrying on with fallback.\n", window->index);
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): vkGetPastPresentationTimingGOOGLE failed to retrieve timestamp for frameIndex 0. Timed out. Carrying on with fallback.\n", window->index);
                 }
             }
             else {
@@ -2676,12 +2673,12 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                     result = fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, &pastTiming[0]);
                     if ((result != VK_SUCCESS) && (result != VK_INCOMPLETE)) {
                         if (verbosity > 0)
-                            printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed to retrieve next timestamp! fpGetPastPresentationTimingGOOGLE reports error code %i.\n", window->index, result);
+                            printf("PsychVulkanCore-ERROR: PsychPresent(%i): Failed to retrieve next timestamp! vkGetPastPresentationTimingGOOGLE reports error code %i.\n", window->index, result);
 
                         return(FALSE);
                     }
                     else if ((verbosity > 8) && (result == VK_INCOMPLETE))
-                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE (count %i) for presentID %i [current %i] returned old timestamp %f Fetching next one.\n",
+                        printf("PsychVulkanCore-DEBUG: PsychPresent(%i): vkGetPastPresentationTimingGOOGLE (count %i) for presentID %i [current %i] returned old timestamp %f Fetching next one.\n",
                                window->index, count, pastTiming[0].presentID, targetPresentTimeG.presentID, (double) pastTiming[0].actualPresentTime / 1e9);
 
                     if (result == VK_INCOMPLETE) fpGetPastPresentationTimingGOOGLE(vulkan->device, window->swapChain, &count, NULL);
@@ -2699,15 +2696,17 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 if (i == count) {
                     // No. Could be timeout due to temporary malfunction, or an OS implementation bug.
 
+                    /* -> Not needed anymore / at the moment.
                     // Yield to give the system some processing time:
                     PsychYieldIntervalSeconds(0.0001);
                     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
 
                     // Timeout, and/or no matching presentID!
-                    if ((PSYCH_SYSTEM == PSYCH_OSX) && (tNow < tStart + tQueryTimeout)) {
+                    if (tNow < tStart + tQueryTimeout) {
                         // We are still within the acceptable timeout period - Not yet timed out.
 
-                        // macOS + MoltenVK as of early March 2021 / MoltenVK version 1.1.1 will hit this due to a MoltenVK bug.
+                        // macOS + MoltenVK as of early March 2021 / MoltenVK version 1.1.1 hit this due to a MoltenVK bug.
+                        // The bug was fixed in the MoltenVK 1.1.4 release in early July 2021 - macOS Vulkan SDK 1.2.182.0
                         if (verbosity > 10)
                             printf("PsychVulkanCore-DEBUG: PsychPresent(%i): No match yet [%f usecs elapsed]! Retrying in a bit...\n", window->index, 1.0e6 * (tNow - tStart));
 
@@ -2715,13 +2714,13 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                         count = 0;
                         goto macosmvkworkaroundrepeat;
                     }
-                    else {
-                        // Final timeout! This should not happen on this OS + display system! Fail.
-                        if (verbosity > 0)
-                            printf("PsychVulkanCore-ERROR: PsychPresent(%i): NO MATCH for target presentID %i! OS bug!?! Timed out, aborting.\n", window->index, targetPresentTimeG.presentID);
+                    */
 
-                        return(FALSE);
-                    }
+                    // Final timeout! This should not happen on this OS + display system! Fail.
+                    if (verbosity > 0)
+                        printf("PsychVulkanCore-ERROR: PsychPresent(%i): NO MATCH for target presentID %i! OS bug!?! Timed out, aborting.\n", window->index, targetPresentTimeG.presentID);
+
+                    return(FALSE);
                 }
 
                 // On macOS MoltenVK, the driver maps an invalid Metal drawable present time of zero to targetPresentTimeG.desiredPresentTime,
@@ -2734,7 +2733,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 window->tPresentComplete = PsychOSMonotonicToRefTime((double) pastTiming[i].actualPresentTime / 1e9);
 
                 if (verbosity > 7)
-                    printf("PsychVulkanCore-DEBUG: PsychPresent(%i): fpGetPastPresentationTimingGOOGLE for presentID %i returned flip completion timestamp %f secs vs. desired present time %f secs. Delta %f msecs.\n",
+                    printf("PsychVulkanCore-DEBUG: PsychPresent(%i): vkGetPastPresentationTimingGOOGLE for presentID %i returned flip completion timestamp %f secs vs. desired present time %f secs. Delta %f msecs.\n",
                         window->index, pastTiming[i].presentID, window->tPresentComplete, PsychOSMonotonicToRefTime((double) pastTiming[i].desiredPresentTime / 1e9), 1000 * (window->tPresentComplete - tWhen));
             }
         }
@@ -3720,7 +3719,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
         if (VK_SUCCESS == fpGetRefreshCycleDurationGOOGLE(vulkan->device, window->swapChain, &refreshDur)) {
             printf("PsychVulkanCore-INFO: Vulkan reports nominal refresh rate %f Hz for display associated with window %i.\n", 1.0e9 / (double) refreshDur.refreshDuration, window->index);
         } else {
-            printf("PsychVulkanCore-INFO: fpGetRefreshCycleDurationGOOGLE() for window %i failed.\n", window->index);
+            printf("PsychVulkanCore-INFO: vkGetRefreshCycleDurationGOOGLE() for window %i failed.\n", window->index);
         }
     }
 

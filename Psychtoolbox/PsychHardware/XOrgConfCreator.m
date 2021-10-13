@@ -63,7 +63,8 @@ try
 
   % RaspberryPi VideoCore4/6?
   if strcmp(winfo.GPUCoreId, 'VC4')
-    % Raspbian in early 2021 has a bug which prevents pageflipping from working.
+    % Raspbian in early 2021 had a bug which prevented pageflipping from working.
+    % This was fixed a few weeks later.
     % Add a workaround to the xorg.conf settings, which will fix it:
     fprintf('This is likely a RaspberryPi with VideoCore-4 or VideoCore-6 gpu.\n');
     needPreventDrmModifiers = 1;
@@ -282,6 +283,11 @@ try
     depth30bpp = 'd';
     atinotiling = 'd';
     vrrsupport = 'd';
+
+    % Keep using modesetting if it is already in use on single-x-screen:
+    if (modesetting == 'd') && modesettingddxactive && ~multixscreen
+      xdriver = 'modesetting';
+    end
   else
     % Ask questions for setup of advanced options:
     modesetting = 'd';
@@ -332,7 +338,7 @@ try
 
       fprintf('If your desktop GUI fails to work, or Psychtoolbox gives lots of timing or page-flip related warnings,\n');
       fprintf('then you know your system and hardware is not ready yet for this depth 30 mode. On AMD hardware sold\n');
-      fprintf('from 2007 to ~2019, up to and including AMD Vega, but *not* anymore for AMD Navi RX 5000 or AMD Ryzen\n');
+      fprintf('from 2007 to ~2019, up to and including AMD Polaris, but *not* anymore for AMD Vega, Navi RX 5000 or AMD Ryzen\n');
       fprintf('processor integrated graphics or later models, depth 30 will always work even without the need to set\n');
       fprintf('it up here, at least for PsychImaging native 10 bit framebuffer tasks, albeit at potentially slightly\n');
       fprintf('lower performance. These slightly older AMD gpus have special support by PTB in this sense.\n');
@@ -344,10 +350,12 @@ try
       end
 
       % Depth 30 on Intel gfx requested?
-      if depth30bpp == 'y' && strcmp(xdriver, 'intel')
-        % This won't currently (July 2019, X-Server 1.20) work with modesetting ddx, as that driver only supports
-        % 256 slot 8 bpc in -> 8 bpc out gamma lut's, so doesn't pass 10 bpc from fb to display. Actively request
-        % no use of modesetting ddx:
+      % This won't work with modesetting ddx of X-Server 1.20 or earlier, as that driver only supports
+      % 256 slot 8 bpc in -> 8 bpc out gamma lut's, so doesn't pass 10 bpc from fb to display.
+      % It does work with X-Server 1.21+ modesetting-ddx, as that one uses GAMMA_LUT modern gamma tables
+      % if supported by the kernel.
+      if depth30bpp == 'y' && strcmp(xdriver, 'intel') && ~(xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 21))
+        % Actively request no use of modesetting ddx:
         modesetting = 'n';
       end
 
@@ -368,8 +376,9 @@ try
       fprintf('\n\nDo you want to allow use of so called VRR Variable Refresh Rate Mode?\n');
       fprintf('This is also known as FreeSync or DisplayPort adaptive sync. It allows to control\n');
       fprintf('visual stimulus onset with more fine-grained timing (see ''help VRRSupport'' for more infos).\n');
-      fprintf('This currently only works on AMD Sea Islands gpus and later and with suitable displays and cables.\n');
-      fprintf('It also needs at least Linux 5.2 for AMD gpus.\n');
+      fprintf('This currently only works on AMD Sea Islands gpus and later or Intel Gen-12 Tigerlake graphics and later,\n');
+      fprintf('with suitable displays and cables. It also needs at least Linux 5.2 for AMD gpus or\n');
+      fprintf('at least Linux 5.12 for Intel gpus.\n');
       vrrsupport = '';
       while isempty(vrrsupport) || ~ismember(vrrsupport, ['y', 'n', 'd'])
         vrrsupport = input('Allow use of VRR Variable Refresh Rate mode [y for yes, n for no, d for don''t care]? ', 's');
@@ -379,9 +388,9 @@ try
     end
 
     % VRR requested?
-    if vrrsupport == 'y'
-      % This won't currently (December 2019, X-Server 1.20) work with modesetting ddx.
-      % Actively request to not use modesetting ddx:
+    if (vrrsupport == 'y') && ~(xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 21))
+      % This won't work with modesetting ddx of X-Server 1.20 or earlier, only with the one
+      % from X-Server 1.21 or later. Actively request to not use modesetting ddx:
       modesetting = 'n';
     end
 
@@ -429,10 +438,9 @@ try
       end
     end
 
-    % Map a "Don't care" about modesetting to choice of modesetting if multi-x-screen set up
-    % while modesetting is already active. We'd do this anyway below in an override, but doing
-    % it early allows to skip all those redundant questions below:
-    if (modesetting == 'd') && (multixscreen > 0) && modesettingddxactive
+    % Map a "Don't care" about modesetting to choice of modesetting if modesetting is already active.
+    % We'd do this anyway below in an override, but doing it early allows to skip all those redundant questions below:
+    if (modesetting == 'd') && modesettingddxactive
       xdriver = 'modesetting';
       modesetting = 'y';
     end
