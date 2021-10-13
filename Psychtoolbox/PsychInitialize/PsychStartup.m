@@ -25,6 +25,7 @@ function PsychStartup
 % 01.09.2020  mk  Update for GStreamer 1.18.0 - GStreamer 1.18+ MSVC detection.
 % 26.10.2020  mk  Update for GStreamer 1.18.0+ use only.
 % 21.11.2020  mk  Reenable GStreamer on octave-cli for Windows. Workaround no longer needed.
+% 11.10.2021  mk  Fix wrong drive letters in Win fallback GStreamer detection, introduced in 3.0.17.0.
 
 % Try-Catch protect the function, so Matlab startup won't fail due to
 % errors in this function:
@@ -84,19 +85,19 @@ try
         end
 
         if isempty(sdkroot) && exist(['D:\gstreamer\1.0\' suffix], 'dir')
-            sdkroot = ['C:\gstreamer\1.0\' suffix];
+            sdkroot = ['D:\gstreamer\1.0\' suffix];
         end
 
         if isempty(sdkroot) && exist(['E:\gstreamer\1.0\' suffix], 'dir')
-            sdkroot = ['C:\gstreamer\1.0\' suffix];
+            sdkroot = ['E:\gstreamer\1.0\' suffix];
         end
 
         if isempty(sdkroot) && exist(['F:\gstreamer\1.0\' suffix], 'dir')
-            sdkroot = ['C:\gstreamer\1.0\' suffix];
+            sdkroot = ['F:\gstreamer\1.0\' suffix];
         end
 
         if isempty(sdkroot) && exist(['G:\gstreamer\1.0\' suffix], 'dir')
-            sdkroot = ['C:\gstreamer\1.0\' suffix];
+            sdkroot = ['G:\gstreamer\1.0\' suffix];
         end
 
         if isempty(sdkroot) || ~exist(sdkroot, 'dir')

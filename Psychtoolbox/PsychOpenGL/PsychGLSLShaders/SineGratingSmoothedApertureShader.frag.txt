@@ -23,7 +23,6 @@ float Mod = 1.0;
 varying vec4  baseColor;
 varying float Phase;
 varying float FreqTwoPi;
-varying float rawAlpha;
 
 void main()
 {
@@ -42,8 +41,13 @@ void main()
         Mod = clamp(Mod, 0.0, 1.0);
         Mod = cos(Mod * halfpi);
     }
-    else {
+    else if (Method == 1.0) {
         Mod = smoothstep(Radius,(Radius-Sigma),Dist);
+    }
+    /*we use smoothstep but invert our alpha so we can use the disc as a mask */
+    else if (Method == 2.0) {
+        Mod = smoothstep(Radius,(Radius-Sigma),Dist);
+        Mod = 1.0 - Mod;
     }
 
     /* Evaluate sine grating at requested position, frequency and phase: */
@@ -57,6 +61,6 @@ void main()
     }
     else {
         gl_FragColor.rgb = (baseColor.rgb * sv) + Offset.rgb;
-        gl_FragColor.a = (rawAlpha * Mod) + Offset.a;
+        gl_FragColor.a = Offset.a * Mod;
     }
 }

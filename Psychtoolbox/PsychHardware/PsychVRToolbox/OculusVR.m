@@ -6,9 +6,12 @@
 % Note: Oculus VR's trademarks, e.g., Oculus, Oculus Rift, etc.
 % are registered trademarks owned by Oculus VR, LLC.
 %
+% Oculus Rift CV-1 and later models from Oculus on Windows:
+% ---------------------------------------------------------
+%
 % The more recent Oculus Rift CV1 and Oculus Touch controllers, or more
 % generally, Oculus VR hardware supported by the Oculus SDK and Oculus
-% runtime v1.16 and later can by utilized with the newer PsychOculusVR1()
+% runtime v1.16 and later can be utilized with the newer PsychOculusVR1()
 % driver. This requires use of an operating system and hardware platform
 % supported by the Oculus runtime v1.16 or later. Currently the
 % PsychOculusVR1() driver is known to work successfully on 64-Bit Microsoft
@@ -20,12 +23,16 @@
 % need to have the Oculus VR runtime version 1.16 or later installed and setup
 % correctly for the driver to work.
 %
+% Oculus Rift CV-1 and later models from Oculus on Linux:
+% -------------------------------------------------------
 %
 % Limited experimental support for the Oculus Rift CV1 on Linux is available
 % by use of the PsychOpenHMDVR() driver, which utilizes OpenHMD to drive the
 % device. Functionality and display quality is substantially limited compared to
 % use of the PsychOculusVR1() driver though. See "help PsychOpenHMDVR".
 %
+% Oculus Rift DK-1 and DK-2 on Linux, macOS, Windows:
+% ---------------------------------------------------
 %
 % Currently the older Oculus Rift DK1 and Oculus Rift DK2 are supported
 % by Psychtoolbox on the 64-Bit editions of GNU/Linux, Apple OSX and
@@ -37,35 +44,54 @@
 % runtime version 0.5.0.1 (-beta) for your operating system.
 % This will not work with earlier or later versions of the runtime!
 %
-% The runtime can be downloaded from:
+% The sdk and runtime for Linux is part of the Psychtoolbox GitHub and can be
+% downloaded from the following folder:
+%
+% https://github.com/Psychtoolbox-3/Psychtoolbox-3/tree/master/PsychSourceGL/Cohorts/OculusSDK
+%
+% Due to filesize limits of GitHub unfortunately we weren't able to bundle the SDKs and
+% runtimes for macOS and Windows in the same way. In the past those runtimes could be
+% downloaded from:
 %
 % https://developer.oculus.com/downloads
 %
-% You must select "Legacy", and the version as "0.5.0.1-beta"
+% You had to select "Legacy", and the version as "0.5.0.1-beta"
 % in the drop down menus. Then download the "Oculus Runtime for OSX",
 % "Oculus Runtime for Windows", or "Oculus SDK for Linux (experimental)"
 % and follow the installation and setup instructions contained in those
 % installers / SDKs.
 %
-% Once installed according to instructions, and the HMD properly
-% connected via HDMI video and the USB ports for headset and tracking
-% camera (in case of Rift DK2), Psychtoolbox should detect the HMD and
+% Unfortunately this option no longer exists as of July 2021, so if you need those
+% runtimes, you have to go on a hunt on the internet or maybe check on the Psychtoolbox
+% forum if some kind user still would have a copy of it for you.
+%
+% Once the 0.5.0.1 runtime is installed according to instructions, and the HMD is
+% properly connected via HDMI video and the USB ports for headset and tracking
+% camera (in case of the Rift DK2), Psychtoolbox should detect the HMD and
 % make use of it.
 %
-% On Windows this works with "Extended Desktop" mode. On Linux it
-% works on a regular dual display setup, but for best performance
-% and timing you should set up a separate X-Screen for the Rift display.
-% The Psychtoolbox/PsychHardware/LinuxX11ExampleXorgConfs subfolder
-% contains example xorg.conf files for setting up dual-X-screen setups
-% for Linux, with the GUI on X-Screen 0 and the Rift or other displays
-% on X-Screen 1. You'll need to adapt the example file to your specific
-% setup. Running without a desktop compositor or desktop compositor
-% disabled may give another performance boost on Linux with not so high
-% end cards.
+% Display setup for Rift DK-1/DK-2 with the legacy 0.5.0.1 runtime on Windows:
+% ----------------------------------------------------------------------------
+%
+% On Windows this works with "Extended Desktop" mode.
+%
+% Display setup for Rift DK-1/DK-2 with the legacy 0.5.0.1 runtime on Linux/X11,
+% or for the Oculus Rift CV-1 and later with the OpenHMD runtime on Linux/11:
+% ---------------------------------------------------------------------------
+%
+% On Linux it works on a regular dual display setup, if your machine uses a Linux
+% kernel of version 4.15 or earlier. On a modern distribution with a later kernel,
+% or generally for best performance and timing you should set up a separate X-Screen
+% for the Rift display. The Psychtoolbox/PsychHardware/LinuxX11ExampleXorgConfs
+% subfolder contains an example xorg.conf files for setting up dual-X-screen setups
+% for Linux, with the GUI on X-Screen 0 and the Rift on X-Screen 1. You will need
+% to adapt the example file to your specific setup though. Running without a desktop
+% compositor or the desktop compositor disabled may give another performance boost
+% on Linux with not so high end cards.
 %
 % Our current experience shows that the Rift DK2 works best for more
 % complex 3D VR scenes on Linux or Windows. Performance on OSX was much
-% lower. With low complexity scenes all systems should be ok.
+% lower and the setup less reliable in general, as most things on macOS.
 %
 % If you want to write portable code that makes use of VR headsets, and
 % not only of the Oculus Rift, but also future headsets from Oculus or
@@ -87,28 +113,30 @@
 %
 %
 % Some demos to get you started:
+% ------------------------------
 %
-% VRHMDDemo - Shows how to use a HMD as a regular monoscopic display
-%              monitor via VRHMDDemo1(0), or as a stereoscopic display
-%              via VRHMDDemo1(1) or VRHMDDemo. As you can see, only one
-%              line of code is needed to setup a single HMD properly.
-%              Other than that, mono and stereo stimulus presentation is
-%              done like in any other mono or stereo Psychtoolbox script.
+% VRHMDDemo -  Shows how to use a HMD as a regular monoscopic display
+%              monitor via VRHMDDemo(0), or as a stereoscopic display
+%              via VRHMDDemo(1), or simply VRHMDDemo. As you can see,
+%              only one line of code is needed to setup a single HMD
+%              properly as monoscopic or stereoscopic monitor "strapped
+%              to the subjects head". Mono and stereo stimulus presentation
+%              is done like in any other mono or stereo Psychtoolbox script.
 %
 % Various PTB stereo demos demonstrate use of HMDs, e.g, ImagingStereoDemo(103)
 % for a random dot stereo display, ImagingStereoMoviePlayer(moviefile, 103) for
 % playback of stereoscopic movies.
 %
-% The most interesting use is of course making use of the HMDs head tracking
-% to render complex 3D stimuli via OpenGL which can be navigated by the subjects
-% head movements: Enabling an existing 3D stereoscopic script to use the HMD
-% and make use of head tracking is a task that requires only a few more lines
-% of code and can be accomplished in less than 15 minutes. The following demos
-% demonstrate this use of the HMD: MorphDemo for rendering a morphing 3D object,
-% SuperShapeDemo for rendering a complex organic "SuperShape", VRHMDDemo1 for
-% rendering of the spinning Utah teapot in 3D, with head movement and mouse
-% control of observer location and looking direction. VRHMDDemo1 also shows
-% a few optimizations to get best performance for more complex scenes.
+% The most interesting use is use of the HMDs head tracking to render complex 3D
+% stimuli via OpenGL which can be navigated by the subjects head movements.
+% Enabling an existing 3D stereoscopic script to use the HMD and make use of head
+% tracking is a task that requires only a few more lines of code and can be
+% accomplished in less than 15 minutes. The following demos demonstrate this use
+% of the HMD: MorphDemo for rendering a morphing 3D object, SuperShapeDemo for
+% rendering a complex organic "SuperShape", VRHMDDemo1 for rendering of the
+% spinning Utah teapot in 3D, with head movement and mouse control of observer
+% location and looking direction. VRHMDDemo1 also shows a few optimizations to
+% get best performance for more complex scenes.
 %
 % More such demos will follow in the future.
 %

@@ -12,20 +12,20 @@
  * where PATHTOWTK must be the filesystem path to the installation folder of
  * the WintabSDK, aka where the file wintab.h is
  *
- * Example: Assume you copied the WinTabMex.c file into the main folder of
- * the Wintab SDK, then you can simply cd into that directory in Matlab,
+ * Example: Assume you installed the WinTAB SDK next to the Psychtoolbox-3 main,
+ * folder, then you can simply cd into that directory in Matlab,
  * then type:
  *
- * mex -v WinTabMex.c -IINCLUDE
+ * mex -v WinTabMex.c -I..\..\..\..\wtkit126\INCLUDE
  *
  * If you want to compile on Octave, do this:
  *
- * mex -v WinTabMex.c -DPTBOCTAVE3MEX -IINCLUDE
+ * mex -v WinTabMex.c -DPTBOCTAVE3MEX -I..\..\..\..\wtkit126\INCLUDE
  *
  *
  * ------------------------------------------------------------------------------
  *
- *    WinTabMex.c is Copyright (C) 2008 - 2019 Mario Kleiner
+ *    WinTabMex.c is Copyright (C) 2008 - 2021 Mario Kleiner
  *    with contributions       (C) 2013 by Jason Friedman
  *
  *    It is licensed to you under the MIT free and open source software license:
@@ -226,7 +226,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
     if(nrhs<1) {
         mexPrintf("WinTabMex: A simple MEX file for driving touch tablets which are\n");
         mexPrintf("compatible with the WinTAB API on Microsoft Windows.\n\n");
-        mexPrintf("(C) 2008-2019 by Mario Kleiner and Jason Friedman -- Licensed to you under MIT license.\n");
+        mexPrintf("(C) 2008-2021 by Mario Kleiner and Jason Friedman -- Licensed to you under MIT license.\n");
         mexPrintf("This file is part of Psychtoolbox-3 but should also work independently.\n");
         mexPrintf("\n");
         mexPrintf("Usage:\n\n");

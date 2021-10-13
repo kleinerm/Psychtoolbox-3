@@ -36,6 +36,7 @@ function wheelDelta = GetMouseWheel(mouseIndex)
 % 05/14/12  mk  Tweaks for more mice.
 % 02/21/17  mk  Support Linux by wrapping around GetMouse() valuator functionality.
 % 11/22/17  mk  Fix potential OSX bug. Untested on OSX so far.
+% 08/16/21  mk  Adapt to naming convention with libinput driver on X11.
 
 % Cache the detected index of the first "real" wheel mouse to allow for lower
 % execution times:
@@ -79,7 +80,7 @@ if isempty(wheelMouseIndex) && ((nargin < 1) || isempty(mouseIndex))
         for i=mousedices
             [~,~,~,~,~,valinfo] = GetMouse([], i);
             for j=1:length(valinfo)
-                if strcmp(valinfo(j).label, 'Rel Vert Wheel')
+                if strcmp(valinfo(j).label, 'Rel Vert Wheel')  || strcmp(valinfo(j).label, 'Rel Vert Scroll')
                     wheelMouseIndex = i;
                     break;
                 end
@@ -104,7 +105,7 @@ end
 if IsLinux
     [~,~,~,~,valuators,valinfo] = GetMouse([], mouseIndex);
     for j=1:length(valinfo)
-        if strcmp(valinfo(j).label, 'Rel Vert Wheel')
+        if strcmp(valinfo(j).label, 'Rel Vert Wheel') || strcmp(valinfo(j).label, 'Rel Vert Scroll')
             wheelAbsolute = valuators(j);
             if isnan(oldWheelAbsolute(mouseIndex+1))
                 wheelDelta = 0;

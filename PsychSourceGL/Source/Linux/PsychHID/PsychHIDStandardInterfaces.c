@@ -892,6 +892,16 @@ static void KbQueueProcessEvents(void)
                                 }
                             }
 
+                            if (event) {
+                                evt.X = event->event_x;
+                                evt.Y = event->event_y;
+                                evt.normX = evt.X / screen_width;
+                                evt.normY = evt.Y / screen_height;
+                            }
+                            else {
+                                evt.X = evt.Y = evt.normX = evt.normY = 0;
+                            }
+
                             // Normalize x and y positions to 0.0 - 1.0 range (at least for absolute touch devices).
                             // Also remap to X-Screen space:
                             for (j = 0; j < dev->num_classes; j++) {

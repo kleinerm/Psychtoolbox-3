@@ -1,3 +1,6 @@
+CAUTION: THIS WILL ONLY WORK ON DISTRIBUTIONS WITH X-SERVER 1.19, NOT
+WITH UBUNTU 20.04-LTS AND LATER AT THE MOMENT!
+
 How to setup research grade NVidia Optimus support with the proprietary
 drivers:
 

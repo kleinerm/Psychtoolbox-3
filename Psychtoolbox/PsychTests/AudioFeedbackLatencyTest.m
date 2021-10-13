@@ -1,5 +1,5 @@
-function AudioFeedbackLatencyTest(roundtrip, trigger, nrtrials, freq, freqout, fullduplex, runmode)
-% AudioFeedbackLatencyTest([roundtrip=0][, trigger=0.1] [, nrtrials=10] [, freq=44100][, freqout=44100][, fullduplex=0][, runmode=1])
+function AudioFeedbackLatencyTest(roundtrip, trigger, deviceid, nrtrials, freq, freqout, fullduplex, runmode)
+% AudioFeedbackLatencyTest([roundtrip=0][, trigger=0.1][, deviceid=auto][, nrtrials=10][, freq=auto][, freqout=auto][, fullduplex=0][, runmode=1])
 %
 % Tries to test sound onset accuracy of PsychPortAudio without need for
 % external measurement equipment: Sound signals are played back via
@@ -10,9 +10,8 @@ function AudioFeedbackLatencyTest(roundtrip, trigger, nrtrials, freq, freqout, f
 % line-in feedback cable) or emitted through the speakers. We measure and
 % compare timing of emitted vs. captured sound spikes.
 %
-% Results on MacbookPro suggest that the method works, but with a not 100%
-% accuracy, so its still better to use external measurement equipment to
-% test!!!
+% Results on MacbookPro, Windows, Linux, suggest that the method works, not with
+% 100% accuracy, so its still better to use external measurement equipment to test!
 %
 % EARLY BETA CODE: USE ONLY WITH GREAT CAUTION AND SUSPICION!
 %
@@ -32,6 +31,11 @@ function AudioFeedbackLatencyTest(roundtrip, trigger, nrtrials, freq, freqout, f
 %
 % 'trigger' = Trigger level for detection of sound onset in captured sound.
 %
+% 'deviceid' = Index of audio in/out device, if one device is used. If omitted,
+% the default audio device is chosen. You can also specify a vector of two device
+% indices, to specify separate input and output devices deviceid = [input, output].
+% With different devices, full-duplex mode is obviously not supported.
+%
 % 'ntrials' = Number of measurement trials to perform.
 %
 % 'freq' = Samplerate of capture device.
@@ -48,11 +52,11 @@ function AudioFeedbackLatencyTest(roundtrip, trigger, nrtrials, freq, freqout, f
 % History:
 % 06/30/2007 Written (MK)
 % 06/17/2020 Rewritten (MK)
+% 10/08/2021 Improved: Auto-detect and handle different number of channels, frequency.
+%            Allow different devices for input and output. (MK)
 
 % Running on PTB-3? Abort otherwise.
 AssertOpenGL;
-
-deviceid = [];
 
 if nargin < 1 || isempty(roundtrip)
     roundtrip = 0;
@@ -62,24 +66,42 @@ if nargin < 2 || isempty(trigger)
     trigger = 0.1;
 end
 
-if nargin < 3 || isempty(nrtrials)
+if nargin < 3 || isempty(deviceid)
+    indeviceid = [];
+    outdeviceid = [];
+else
+    if length(deviceid) < 2
+        indeviceid = deviceid;
+        outdeviceid = deviceid;
+    else
+        indeviceid = deviceid(1);
+        outdeviceid = deviceid(2);
+    end
+end
+
+if nargin < 4 || isempty(nrtrials)
     nrtrials = 10;
 end
 
-if nargin < 4 || isempty(freq)
-    freq = 44100;
+if nargin < 5 || isempty(freq)
+    freq = [];
 end
 
-if nargin < 5 || isempty(freqout)
-    freqout = 44100;
+if nargin < 6 || isempty(freqout)
+    freqout = [];
 end
 
-if nargin < 6 || isempty(fullduplex)
+if nargin < 7 || isempty(fullduplex)
    fullduplex = 0;
 end
 
-if nargin < 7 || isempty(runmode)
+if nargin < 8 || isempty(runmode)
    runmode = 1;
+end
+
+if ~isempty(indeviceid) && (indeviceid ~= outdeviceid) && fullduplex
+    fullduplex = 0;
+    fprintf('Warning: Different input and output audio device, so force-disabling requested full-duplex.\n');
 end
 
 fprintf('Using runmode %i.\n', runmode);
@@ -94,33 +116,47 @@ InitializePsychSound(1);
 PsychPortAudio('Verbosity', 6);
 
 if fullduplex
-   % Open the default audio device deviceid, with mode 3 (== Full-Duplex),
-   % and a required latencyclass of 3 == agressive low-latency mode, as well as
-   % a frequency of freq Hz and 2 sound channels for stereo capture.
+   % Open the default audio device indeviceid, with mode 3 (== Full-Duplex),
+   % and a required latencyclass of 2 == agressive low-latency mode, as well as
+   % a frequency of freq Hz and auto sound channel for capture.
    % This returns a handle to the audio device:
-   pahandlerec = PsychPortAudio('Open', deviceid, 3, 3, freq, 2, [], 0.005);
+   pahandlerec = PsychPortAudio('Open', indeviceid, 3, 2, freq);
    pahandleout = pahandlerec;
 else
-   % Open the default audio device deviceid, with mode 2 (== Only audio capture),
-   % and a required latencyclass of 3 == agressive low-latency mode, as well as
-   % a frequency of freq Hz and 2 sound channels for stereo capture.
+   % Open the default audio device indeviceid, with mode 2 (== Only audio capture),
+   % and a required latencyclass of 2 == agressive low-latency mode, as well as
+   % a frequency of freq Hz and auto sound channel for capture.
    % This returns a handle to the audio device:
-   pahandlerec = PsychPortAudio('Open', deviceid, 2, 3, freq, 2);
+   pahandlerec = PsychPortAudio('Open', indeviceid, 2, 2, freq);
 
    % Open 2nd audio device for playback of our test signal with same settings
    % otherwise:
-   pahandleout = PsychPortAudio('Open', deviceid, 1, 3, freqout, 2);
+   pahandleout = PsychPortAudio('Open', outdeviceid, 1, 2, freqout);
 end
 
 PsychPortAudio('RunMode', pahandlerec, runmode);
 PsychPortAudio('RunMode', pahandleout, runmode);
 
+% Find number of output channels and playback frequency:
+status = PsychPortAudio('GetStatus', pahandleout);
+freqout = status.SampleRate;
+props = PsychPortAudio('GetDevices', [], status.OutDeviceIndex);
+outChannels = min(2, props.NrOutputChannels);
+
+% Find number of input channels and capture frequency:
+status = PsychPortAudio('GetStatus', pahandlerec);
+freq = status.SampleRate;
+props = PsychPortAudio('GetDevices', [], status.InDeviceIndex);
+inChannels = min(2, props.NrInputChannels);
+
 % Build 1khZ, 90% peak amplitude beep tone of 0.1 secs duration, suitable
 % for playback at 'freqout' Hz:
 testsound = 0.9 * MakeBeep(1000, 0.1, freqout);
+testsound = repmat(testsound, outChannels, 1);
 
 % Initialize sound output buffer with it:
-PsychPortAudio('FillBuffer', pahandleout, [testsound; testsound]);
+
+PsychPortAudio('FillBuffer', pahandleout, testsound);
 
 % Measurement loop, runs nrtrials trials:
 for i = 0:nrtrials
@@ -214,7 +250,11 @@ for i = 0:nrtrials
 
     % Plot it, just for the fun of it:
     nrsamples = size(audiodata(:,idx:end), 2);
-    plot(1:nrsamples, audiodata(1,idx:end), 'r', 1:nrsamples, audiodata(2,idx:end), 'b', 1:nrsamples, repmat(trigger, 1, nrsamples), '-', 1:nrsamples, repmat(-trigger, 1, nrsamples), '-');
+    if inChannels >= 2
+        plot(1:nrsamples, audiodata(1,idx:end), 'r', 1:nrsamples, audiodata(2,idx:end), 'b', 1:nrsamples, repmat(trigger, 1, nrsamples), '-', 1:nrsamples, repmat(-trigger, 1, nrsamples), '-');
+    else
+        plot(1:nrsamples, audiodata(1,idx:end), 'r', 1:nrsamples, repmat(trigger, 1, nrsamples), '-', 1:nrsamples, repmat(-trigger, 1, nrsamples), '-');
+    end
     drawnow;
 
     % Print the stats:

@@ -9,7 +9,7 @@ function Beeper(frequency, fVolume, durationSec);
 %
 % NOTE: Beeper() uses Snd() internally. If you want to use Beeper() - and therefore
 % Snd() in parallel with PsychPortAudio, read the notes in "help Snd" about pahandle
-% sharing!
+% sharing, especially about Snd('Open', pahandle, 1)!
 %
 % Funny name is because Matlab 6 contains a built-in function called "beep".
 %

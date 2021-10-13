@@ -14,7 +14,7 @@
  * A Psychtoolbox driver for the Oculus VR virtual reality
  * head sets, using the OculusVR 1.16 SDK and runtime and later.
  *
- * Copyright (c) 2018 Mario Kleiner. Licensed under the MIT license:
+ * Copyright (c) 2018-2021 Mario Kleiner. Licensed under the MIT license:
  *
  * Permission is hereby granted, free of charge, to any person obtaining a
  * copy of this software and associated documentation files (the
@@ -103,7 +103,7 @@ void InitializeSynopsis(void)
 
     synopsis[i++] = "PsychOculusVRCore1 - A Psychtoolbox driver for Oculus VR hardware.\n";
     synopsis[i++] = "This driver allows to control devices supported by the Oculus runtime V1.16 and higher.\n";
-    synopsis[i++] = "Copyright (c) 2018, 2019 Mario Kleiner.\n";
+    synopsis[i++] = "Copyright (c) 2018 - 2021 Mario Kleiner.\n";
     synopsis[i++] = "The PsychOculusVRCore1 driver is licensed to you under the terms of the MIT license, with the following restriction:\n";
     synopsis[i++] = "Uses the Oculus SDK which is Copyright © Facebook Technologies, LLC and its affiliates. All rights reserved.\n";
     synopsis[i++] = "See 'help License.txt' in the Psychtoolbox root folder for more details.\n";
@@ -209,7 +209,7 @@ void PsychOculusVRCheckInit(psych_bool dontfail)
     ovrResult result;
     ovrInitParams iparms;
     memset(&iparms, 0, sizeof(iparms));
-    iparms.Flags = ovrInit_RequestVersion | ovrInit_Debug; // Use debug libraries. TODO: Remove for final release!
+    iparms.Flags = ovrInit_RequestVersion; // | ovrInit_Debug; // Use debug libraries. TODO: Remove for final release!
     iparms.RequestedMinorVersion = OVR_MINOR_VERSION;
     iparms.LogCallback = PsychOculusLogCB;
     iparms.UserData = 0;  // Userdata pointer, currently NULL.
@@ -354,6 +354,14 @@ void PsychOculusClose(int handle)
 
     // Done with this device:
     devicecount--;
+
+    if (devicecount == 0) {
+        // Last HMD closed. Shutdown the runtime:
+        ovr_Shutdown();
+        initialized = FALSE;
+
+        if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Oculus VR runtime shutdown complete.\n");
+    }
 }
 
 void PsychOculusVR1Init(void) {
@@ -373,13 +381,7 @@ PsychError PsychOculusVR1ShutDown(void) {
     if (initialized) {
         for (handle = 0 ; handle < MAX_PSYCH_OCULUS_DEVS; handle++)
             PsychOculusClose(handle);
-
-        // Shutdown runtime:
-        ovr_Shutdown();
-
-        if (verbosity >= 4) printf("PsychOculusVRCore1-INFO: Oculus VR runtime shutdown complete.\n");
     }
-    initialized = FALSE;
 
     return(PsychError_none);
 }
@@ -2903,7 +2905,7 @@ PsychError PSYCHOCULUSVR1HapticPulse(void)
     static char seeAlsoString[] = "";
     int handle, controllerType;
     PsychOculusDevice *oculus;
-    double duration, freq, amplitude, pulseEndTime;
+    double duration, tNow, freq, amplitude, pulseEndTime;
     ovrResult result;
 
     // All sub functions should have these two lines
@@ -2966,13 +2968,23 @@ PsychError PSYCHOCULUSVR1HapticPulse(void)
 
     // Predict "off" time:
     PsychGetAdjustedPrecisionTimerSeconds(&pulseEndTime);
+    tNow = pulseEndTime;
     pulseEndTime += duration;
     PsychCopyOutDoubleArg(1, kPsychArgOptional, pulseEndTime);
 
     // Pulse of predefined duration requested?
     if ((freq != 0) && (duration < 2.5)) {
-        // Yes. Wait until expected end time, then stop the pulse:
-        PsychWaitUntilSeconds(pulseEndTime);
+        // Yes. Spin-wait until expected end time, then stop the pulse:
+        // Need to spin-wait, because we must call PresentExecute() for a
+        // fake VR frame submit periodically to keep the Oculus runtime happy,
+        // otherwise no haptic feedback will be triggered at all. Sad...
+        while (tNow < pulseEndTime) {
+            PsychYieldIntervalSeconds(0.001);
+            PresentExecute(oculus, FALSE, FALSE);
+            PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+        }
+
+        // Stop haptic effect:
         result = ovr_SetControllerVibration(oculus->hmd, (ovrControllerType) controllerType, (float) 0, (float) 0);
         if (OVR_FAILURE(result)) {
             ovr_GetLastErrorInfo(&errorInfo);
