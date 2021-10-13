@@ -280,18 +280,9 @@ else
             end
 
             % Is it a Geforce-8000 or later (G80 core or later) and is this OS/X?
-            if ~isempty(strfind(winfo.GPUCoreId, 'G80')) && IsOSX
-                % 10.5.x Leopard?
-                if (osxversion(1) == 10) && (osxversion(2) == 5) && (osxversion(3) >=0)
-                    % Yes. One of the releases with an embarassing amount of bugs,
-                    % brought to you by Apple. Need to apply an especially ugly
-                    % clut to force these cards into an identity mapping:
-                    fprintf('LoadIdentityClut: NVidia Geforce 8000 or later on OS/X 10.5.x detected. Enabling special type-I LUT hacks for totally broken operating systems.\n');
-                    gfxhwtype = 2;
-                end
-
-                % 10.6.x Snow Leopard or later?
-                if (osxversion(1) == 10) && (osxversion(2) >= 6) && (osxversion(3) >=0)
+            if IsOSX && ~isempty(strfind(winfo.GPUCoreId, 'G80'))
+                % 10.6 - 10.13 Snow Leopard to High Sierra? 10.14+ no longer supports NVidia at all.
+                if (osxversion(1) == 10) && (osxversion(2) >= 6)
                     % Yes. One of the releases with an embarassing amount of bugs,
                     % brought to you by Apple. Need to apply an especially ugly
                     % clut to force these cards into an identity mapping:
