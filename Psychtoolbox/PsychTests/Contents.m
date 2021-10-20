@@ -54,6 +54,7 @@
 %   MelanopsinFundamentalTest       - Test the PTB routines generate a good melanopsin fundamental.
 %   MonoImageToSRGBTest             - Test/demo for routine PsychColorimetric/MonoImageToSRGB.
 %   MultiWindowLockStepTest         - Exercise asynchronous flip scheduling and timestamping on multiple onscreen windows in parallel.
+%   MultiWindowVulkanTest           - Test multi-window / multi-display exclusive operation under Vulkan.
 %   OSAUCSTest                      - Test OSA UCS <-> XYZ conversion routines.
 %   OSXCompositorIdiocyTest         - Test for potential OSX compositor brokeness.
 %   OMLBasicTest                    - Very basic correctness test for OpenML flip timestamping.
