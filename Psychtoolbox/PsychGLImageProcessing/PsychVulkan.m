@@ -762,6 +762,15 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
             if verbosity >= 3
                 fprintf('PsychVulkan-INFO: Loaded identity gamma table into output for HDR.\n');
             end
+
+            % HDR mode 1 aka HDR-10 on MS-Windows, in fullscreen, but fullscreen
+            % exclusive mode disabled by flags?
+            if IsWin && isFullscreen && (hdrMode == 1) && bitand(flags, 2) && (colorPrecision < 2)
+                % Yes. The only reliably supported HDR-10 mode across gpu
+                % vendors is fp16 scRGB. Enforce colorPrecision 2 == fp16,
+                % which will enforce fp16 scRGB HDR under Windows DWM:
+                colorPrecision = 2;
+            end
         end
 
         % Open the Vulkan window:

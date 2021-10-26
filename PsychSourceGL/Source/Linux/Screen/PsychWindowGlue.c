@@ -1768,28 +1768,36 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     glClearColor(0,0,0,1);
     glClear(GL_COLOR_BUFFER_BIT);
     PsychOSFlipWindowBuffers(windowRecord);
-    PsychOSGetPostSwapSBC(windowRecord);
 
-    // Check if we are trying to close the window after it had an "odd" (== non-even)
-    // number of bufferswaps. If so, we execute one last bufferswap to make the count
-    // even. This means that if this window was swapped via page-flipping, the system
-    // should end with the same backbuffer-frontbuffer assignment as the one prior
-    // to opening the window. This may help sidestep certain bugs in compositing desktop
-    // managers (e.g., Compiz).
-    if (PsychOSGetPostSwapSBC(windowRecord) % 2) {
-        // Uneven count. Submit a swapbuffers request and wait for it to truly finish:
-
-        // A glClear to touch the framebuffer before flip. Why? To accomodate some quirks of
-        // the Intel ddx as of 2.99.917 with DRI2+SNA and triple-buffering enabled. Makes
-        // triple-buffered mode at least marginally useful for some restricted use cases:
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        PsychOSFlipWindowBuffers(windowRecord);
+    // The following swap to even flip count sequence is not really needed anymore for
+    // the recent X-Servers we support. Also it can cause hangs when releasing leased
+    // RandR outputs in a multi-display fullscreen Vulkan setup with more than 1 leased
+    // display at a time -- a hang in PsychOSGetPostSwapSBC(), so lets just skip it in
+    // such cases:
+    if (!(windowRecord->specialflags & kPsychExternalDisplayMethod)) {
         PsychOSGetPostSwapSBC(windowRecord);
-    }
 
-    if (PsychPrefStateGet_Verbosity() > 5) {
-        printf("PTB-DEBUG:PsychOSCloseWindow: Closing with a final swapbuffers count of %i.\n", (int) PsychOSGetPostSwapSBC(windowRecord));
+        // Check if we are trying to close the window after it had an "odd" (== non-even)
+        // number of bufferswaps. If so, we execute one last bufferswap to make the count
+        // even. This means that if this window was swapped via page-flipping, the system
+        // should end with the same backbuffer-frontbuffer assignment as the one prior
+        // to opening the window. This may help sidestep certain bugs in compositing desktop
+        // managers (e.g., Compiz).
+        if (PsychOSGetPostSwapSBC(windowRecord) % 2) {
+            // Uneven count. Submit a swapbuffers request and wait for it to truly finish:
+
+            // A glClear to touch the framebuffer before flip. Why? To accomodate some quirks of
+            // the Intel ddx as of 2.99.917 with DRI2+SNA and triple-buffering enabled. Makes
+            // triple-buffered mode at least marginally useful for some restricted use cases:
+            glClear(GL_COLOR_BUFFER_BIT);
+
+            PsychOSFlipWindowBuffers(windowRecord);
+            PsychOSGetPostSwapSBC(windowRecord);
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 5) {
+            printf("PTB-DEBUG:PsychOSCloseWindow: Closing with a final swapbuffers count of %i.\n", (int) PsychOSGetPostSwapSBC(windowRecord));
+        }
     }
 
     PsychLockDisplay();

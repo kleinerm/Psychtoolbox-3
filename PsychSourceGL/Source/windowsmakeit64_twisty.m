@@ -53,6 +53,13 @@ if onoctave == 0
         movefile(['..\Projects\Windows\build\Screen.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 
+    if what == 100
+        % Optional: Build Screen without GStreamer support:
+        clear Screen
+        mex -outdir ..\Projects\Windows\build -output ScreenLight -DPTBMODULE_Screen -DGLEW_STATIC -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c Common\Screen\tinyexr.cc kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib
+        movefile(['..\Projects\Windows\build\ScreenLight.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+    end
+
     if what == 1
         % Build WaitSecs
         clear WaitSecs
