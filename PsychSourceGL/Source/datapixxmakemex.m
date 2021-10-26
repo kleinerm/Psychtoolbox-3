@@ -113,7 +113,7 @@ function datapixxmakemex()
             S = [S ' ''-mmacosx-version-min=10.11'' '];
             S = [S ' ''-Wl,-headerpad_max_install_names,-framework,ApplicationServices,-framework,CoreServices,-framework,CoreFoundation,-framework,Carbon,-framework,CoreAudio,-framework,IOKit'' '];
         else
-            S = [S ' LDFLAGS="\$LDFLAGS -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit" '];
+            S = [S ' CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" LDFLAGS="\$LDFLAGS -mmacosx-version-min=10.11 -framework ApplicationServices -framework CoreServices -framework CoreFoundation -framework Carbon -framework CoreAudio -framework IOKit" '];
         end
         if (IsOctave)
             S = [S ' --output ' VPIXXDIR 'VPixx_Software_Tools/DatapixxToolbox_trunk/mexdev/build/octave/macosx/Datapixx.mex'];
