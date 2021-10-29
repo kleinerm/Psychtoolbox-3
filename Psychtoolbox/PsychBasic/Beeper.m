@@ -26,6 +26,7 @@ function Beeper(frequency, fVolume, durationSec);
 %       Were experiencing delays with sound function
 %
 % 12/2/00 Backus - original version
+persistent onetimedone;
 
 if ~exist('frequency', 'var')
   frequency = 400;
@@ -55,7 +56,12 @@ if ischar(frequency)
 end
 
 % Silence any console output of Snd():
-oldverbo = Snd('Verbosity', 0);
+if isempty(onetimedone)
+  onetimedone = 1;
+  oldverbo = Snd('Verbosity', 1);
+else
+  oldverbo = Snd('Verbosity', 0);
+end
 
 sampleRate = Snd('DefaultRate');
 

@@ -184,6 +184,7 @@ function err = Snd(command,signal,rate,sampleSize)
 %               via Snd('Open', pahandle);
 % 12/9/19    mk Add 'Verbosity' subcommand to be able to silence Snd() and PsychPortAudio() output.
 % 08/10/21   mk Try to make Snd - pahandle sharing more reliable via new Snd('Open', pahandle, 1).
+% 10/29/21   mk Some more help updates.
 
 persistent ptb_snd_oldstyle;
 persistent ptb_snd_injected;
@@ -429,7 +430,8 @@ if strcmpi(command,'Play')
                 fprintf('Snd(): or the Eyelink functions with auditory feedback. Call Snd(''Open'', pahandle) next, to\n');
                 fprintf('Snd(): share that pahandle audio device with Snd(), Beeper() et al. for optimal collaboration.\n');
                 fprintf('Snd(): Consider using PsychPortAudio(''OpenSlave'', ...); on a master device and pass that slave\n');
-                fprintf('Snd(): handle to Snd(''Open'', ...) if you want to allow Snd() to operate fully independently.\n\n');
+                fprintf('Snd(): handle to Snd(''Open'', ...) if you want to allow Snd() to operate fully independently.\n');
+                fprintf('Snd(): You may want to read ''help Snd'' about other points to consider wrt. pahandle sharing.\n\n');
             end
         end
 
