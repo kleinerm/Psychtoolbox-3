@@ -72,10 +72,18 @@ function AssertOpenGL
 %                   required libdc1394.22.so on Ubuntu 20.10+.
 % 10/30/21  mk      Add special Wayland desktop detection and handling for Screen.mex.
 
+persistent oneTimeDone;
+
 % We put the detection code into a try-catch-end statement: The old Screen command on windows
 % doesn't have a 'Version' subfunction, so it would exit to Matlab with an error.
 % We catch this error in the catch-branch and output the "non-OpenGL" error message...
 try
+    if ~isempty(oneTimeDone)
+        return;
+    end
+
+    oneTimeDone = 1;
+
     % Wayland desktop on 64-Bit Linux with Octave?
     if IsLinux(1) && IsOctave && IsWayland
         % Add path, so our Wayland build of Screen.mex overrides the standard one:
