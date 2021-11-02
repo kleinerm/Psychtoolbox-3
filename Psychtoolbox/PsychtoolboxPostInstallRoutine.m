@@ -427,6 +427,11 @@ if IsOctave
         fprintf(' %s ...\n', rdir);
         addpath(rdir);
 
+        % No Wayland specific subfolder on path by default:
+        if exist([rdir filesep 'Wayland'], 'dir')
+            rmpath([rdir filesep 'Wayland']);
+        end
+
         rc = savepath;
     catch
         rc = 2;
@@ -529,19 +534,19 @@ if IsWin && ~IsOctave
         % Remove DLL folders from path:
         rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
 
-        % Is this a Release2007a (Version 7.4.0) or later Matlab?
-        if ~exist('verLessThan') || verLessThan('matlab', '7.4.0') %#ok<EXIST>
-            % This is a pre-R2007a Matlab: No longer supported by V 3.0.10+
-            fprintf('Matlab release prior to R2007a detected. This version is no longer\n');
-            fprintf('supported by Psychtoolbox 3.0.10 and later. Aborted.');
+        % Is this a Release2014b (Version 8.4.0) or later Matlab?
+        if ~exist('verLessThan') || verLessThan('matlab', '8.4.0') %#ok<EXIST>
+            % This is a pre-R2014b Matlab: No longer supported by V 3.0.18+
+            fprintf('Matlab release prior to R2014b detected. This version is no longer\n');
+            fprintf('supported by Psychtoolbox 3.0.18 and later. Aborted.');
             fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
             return;
         else
-            % This is a R2007a or post R2007a Matlab:
+            % This is a R2014b or later Matlab:
             % Add PsychBasic/MatlabWindowsFilesR2007a/ subfolder to Matlab
             % path:
             rdir = [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\'];
-            fprintf('Matlab release 2007a or later detected. Will prepend the following\n');
+            fprintf('Matlab release 2014b or later detected. Will prepend the following\n');
             fprintf('folder to your Matlab path: %s ...\n', rdir);
             addpath(rdir);
         end
