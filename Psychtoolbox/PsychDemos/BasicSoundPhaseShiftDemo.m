@@ -44,7 +44,8 @@ function BasicSoundPhaseShiftDemo(showit, targetChannel)
 % gate the output sine waves.
 %
 % This demo was sponsored by a priority support request. Thanks!
-
+%
+% Usage:
 %
 % ESCAPE key ends the demo.
 %

@@ -15,6 +15,7 @@
 %    BasicAMAndMixScheduleDemo - Demonstrates basic use of sound schedules, volume controls, amplitude modulation and audio mixing of multiple voices.
 %    BasicSoundInputDemo     - Demonstrate basic usage of PsychPortAudio() for sound capture.
 %    BasicSoundOutputDemo    - Demonstrate basic usage of PsychPortAudio() for sound playback.
+%    BasicSoundPhaseShiftDemo - Demonstrate playback a live phase-shifted sine tone.
 %    BasicSoundScheduleDemo  - Demonstrate basic usage of sound schedules and buffers with PsychPortAudio().
 %    BlurredMipmapDemo       - Apply blurring via OpenGL mip-mapping to live video or movies.
 %    BlurredVideoCaptureDemo - Demonstrate application of GPU accelerated image filters to live video.
