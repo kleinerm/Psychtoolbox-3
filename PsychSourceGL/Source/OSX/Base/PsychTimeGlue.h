@@ -93,6 +93,21 @@ const char* PsychSupportStatus(void);
 double PsychOSMonotonicToRefTime(double monotonicTime);
 double PsychOSRefTimeToMonotonicTime(double refInputTime);
 
+// Execute a block of code { statement1; statement2; ...; statementn; } on the
+// application main thread. Execute directly if current thread is main thread,
+// otherwise use dispatch_sync on the main queue == main threads queue to offload
+// to main thread but wait synchronously for completion.
+//
+// Needed to deal with some dumb macOS restriction of only calling certain functions
+// from the applications main thread, often related to GUI processing via Coca/NSWindow etc.
+#define DISPATCH_SYNC_ON_MAIN(ARG) do {                                 \
+    if (dispatch_get_main_queue() != dispatch_get_current_queue()) {    \
+        dispatch_sync(dispatch_get_main_queue(), ^ARG);                 \
+    } else {                                                            \
+        ARG;                                                            \
+    }                                                                   \
+} while(0)
+
 //end include once
 
 #endif
