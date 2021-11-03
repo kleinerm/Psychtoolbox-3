@@ -58,7 +58,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
 
     // Initialize the Cocoa application object, connect to CoreGraphics-Server:
     // Can be called many times, as redundant calls are ignored.
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    DISPATCH_SYNC_ON_MAIN({
         NSApplicationLoad();
     });
 
@@ -81,14 +81,11 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         windowStyle = NSWindowStyleMaskBorderless;
     }
 
-    // Currently we use dispatch_sync() unconditionally, but must only use it iff this code does not
-    // execute on the main application thread! Warn about the hazard, should it happpen. Note this hazard
-    // currently can only happen on Octave if it is launched as "octave-cli" - only then it is single-threaded
-    // and we'd run on the main thread. Nobody uses it like that, so fixing this is therefore a low priority TODO atm.
+    // Some diagnostics wrt. main-thread or not:
     if (PsychPrefStateGet_Verbosity() > 4)
         printf("PTB-DEBUG: PsychCocoaCreateWindow(): On %s thread.\n", ([NSThread isMainThread]) ? "MAIN APPLICATION" : "other");
 
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    DISPATCH_SYNC_ON_MAIN({
         cocoaWindow = [[NSWindow alloc] initWithContentRect:windowRect styleMask:windowStyle    backing:NSBackingStoreBuffered defer:YES];
     });
 
@@ -111,7 +108,7 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
                    hostedLayer);
     }
 
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    DISPATCH_SYNC_ON_MAIN({
         [cocoaWindow setTitle:winTitle];
 
         if ((windowLevel >= 1000) && (windowLevel < 2000)) {
@@ -207,7 +204,7 @@ void PsychCocoaGetWindowBounds(void* window, PsychRectType globalBounds, PsychRe
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    DISPATCH_SYNC_ON_MAIN({
         // Query and translate content rect of final window to a PTB rect:
         NSRect clientRect = [cocoaWindow contentRectForFrameRect:[cocoaWindow frame]];
 
@@ -316,7 +313,7 @@ void PsychCocoaSetUserFocusWindow(void* window)
 {
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    DISPATCH_SYNC_ON_MAIN({
         NSWindow* focusWindow = (NSWindow*) window;
 
         // Special flag: Try to restore main apps focus:
@@ -367,7 +364,7 @@ void* PsychCocoaGetUserFocusWindow(void)
     // Retrieve pointer to current keyWindow - the window that receives
     // key events aka the window with keyboard input focus. Or 'nil' if
     // no such window exists:
-    dispatch_sync(dispatch_get_main_queue(), ^{focusWindow = [[NSApplication sharedApplication] keyWindow];});
+    DISPATCH_SYNC_ON_MAIN({focusWindow = [[NSApplication sharedApplication] keyWindow];});
 
     // Drain the pool:
     [pool drain];
@@ -382,7 +379,7 @@ void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    DISPATCH_SYNC_ON_MAIN({
         // Manually detach NSOpenGLContext from drawable. This seems to help to reduce
         // the frequency of those joyful "frozen screen hangs until mouse click" events
         // that OSX 10.9 brought to our happy little world:
@@ -417,10 +414,10 @@ void PsychCocoaShowWindow(void* window)
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     // Bring to front:
-    dispatch_sync(dispatch_get_main_queue(), ^{[cocoaWindow orderFrontRegardless];});
+    DISPATCH_SYNC_ON_MAIN({[cocoaWindow orderFrontRegardless];});
 
     // Show window:
-    dispatch_sync(dispatch_get_main_queue(), ^{[cocoaWindow display];});
+    DISPATCH_SYNC_ON_MAIN({[cocoaWindow display];});
 
     // Drain the pool:
     [pool drain];
@@ -438,7 +435,7 @@ psych_bool PsychCocoaSetupAndAssignOpenGLContextsFromCGLContexts(void* window, P
     // Enable opacity for OpenGL contexts if underlying window is opaque:
     if ([cocoaWindow isOpaque] == true) opaque = 1;
 
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    DISPATCH_SYNC_ON_MAIN({
         NSOpenGLContext *masterContext = NULL;
         NSOpenGLContext *gluserContext = NULL;
         NSOpenGLContext *glswapContext = NULL;
@@ -495,7 +492,7 @@ void PsychCocoaSendBehind(void* window)
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     // Move window behind all others:
-    dispatch_sync(dispatch_get_main_queue(), ^{[cocoaWindow orderBack:nil];});
+    DISPATCH_SYNC_ON_MAIN({[cocoaWindow orderBack:nil];});
 
     // Drain the pool:
     [pool drain];
@@ -509,7 +506,7 @@ void PsychCocoaSetWindowLevel(void* window, int inLevel)
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     // Set level of window:
-    dispatch_sync(dispatch_get_main_queue(), ^{[cocoaWindow setLevel:inLevel];});
+    DISPATCH_SYNC_ON_MAIN({[cocoaWindow setLevel:inLevel];});
 
     // Drain the pool:
     [pool drain];
@@ -523,7 +520,7 @@ void PsychCocoaSetWindowAlpha(void* window, float inAlpha)
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     // Set Window transparency:
-    dispatch_sync(dispatch_get_main_queue(), ^{[cocoaWindow setAlphaValue: inAlpha];});
+    DISPATCH_SYNC_ON_MAIN({[cocoaWindow setAlphaValue: inAlpha];});
 
     // Drain the pool:
     [pool drain];
@@ -534,7 +531,7 @@ void PsychCocoaSetThemeCursor(int inCursor)
     // Allocate auto release pool:
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    DISPATCH_SYNC_ON_MAIN({
         switch(inCursor) {
             case 0:
                 [[NSCursor arrowCursor] set];
@@ -570,7 +567,7 @@ void PsychCocoaPreventAppNap(psych_bool preventAppNap)
 
     // Initialize the Cocoa application object, connect to CoreGraphics-Server:
     // Can be called many times, as redundant calls are ignored.
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    DISPATCH_SYNC_ON_MAIN({
         NSApplicationLoad();
     });
 
@@ -624,7 +621,7 @@ void PsychCocoaGetOSXVersion(int* major, int* minor, int* patchlevel)
 
     // Initialize the Cocoa application object, connect to CoreGraphics-Server:
     // Can be called many times, as redundant calls are ignored.
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    DISPATCH_SYNC_ON_MAIN({
         NSApplicationLoad();
     });
 
@@ -702,7 +699,7 @@ void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord)
             printf("PTB-INFO: External display method is in use for this window. Reattaching CAMetalLayer at scaling factor %f.\n",
                    [cocoaWindow backingScaleFactor]);
 
-        dispatch_sync(dispatch_get_main_queue(), ^{
+        DISPATCH_SYNC_ON_MAIN({
             [((CAMetalLayer*) windowRecord->targetSpecific.deviceContext) setContentsScale:[cocoaWindow backingScaleFactor]];
             [[cocoaWindow contentView] setLayer:windowRecord->targetSpecific.deviceContext];
         });
