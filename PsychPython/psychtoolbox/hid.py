@@ -149,8 +149,8 @@ class Keyboard():
     def _release_queue(self):
         PsychHID('KbQueueRelease', self.device_number)
 
-    def flush(self, flush_type=1):
-        """Flushes the keybard queue and returns the number of available evts"""
+    def flush(self, flush_type=0):
+        """Clears the keybard queue for flush_type 2 or 3, or returns the number of available evts for default flush_type 0"""
         return PsychHID('KbQueueFlush', self.device_number, flush_type)
 
     def queue_start(self):
