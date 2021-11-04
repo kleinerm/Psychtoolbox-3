@@ -380,6 +380,14 @@ void PsychCocoaDisposeWindow(PsychWindowRecordType *windowRecord)
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
     DISPATCH_SYNC_ON_MAIN({
+        if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
+            if (PsychPrefStateGet_Verbosity() > 4)
+                printf("PTB-INFO: External display method was in use for this window. Detaching CAMetalLayer...\n");
+
+            [[cocoaWindow contentView] setWantsLayer:NO];
+            [[cocoaWindow contentView] setLayer:NULL];
+        }
+
         // Manually detach NSOpenGLContext from drawable. This seems to help to reduce
         // the frequency of those joyful "frozen screen hangs until mouse click" events
         // that OSX 10.9 brought to our happy little world:
