@@ -317,6 +317,42 @@ PsychError SCREENOpenWindow(void)
     if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned | kPsychExternalDisplayMethod))))
         PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
 
+    // Check if this is macOS on a Apple Silicon ARM M1+ SoC with Apple proprietary gpu:
+    #if PSYCH_SYSTEM == PSYCH_OSX
+    {
+        psych_bool isARM;
+
+        PsychGetOSXMinorVersion(&isARM);
+        if (isARM && !(specialflags & kPsychExternalDisplayMethod) && !dontCaptureScreen) {
+            // M1 SoC or later, Apple proprietary gpu with OpenGL emulated on top of Metal + CoreAnimation.
+            // This does not work at all with OpenGL CGL low-level fullscreen display mode, only through
+            // Cocoa+NSOpenGL+NSWindow on top of CoreAnimation. Not using Cocoa will simply error abort with
+            // a "CGLSetFullScreenOnDisplay failed: invalid fullscreen drawable" error. So we switch to Cocoa
+            // voluntarily. Ofc. with this, OpenGL display timing/timestamping is utterly broken, but it may
+            // allow users to limp along on their new shiny expensive M1 iToy. We take specialflags setting
+            // kPsychExternalDisplayMethod as a sign that the user requested Vulkan backend display or similar
+            // to try to workaround this issue, so we spare them extra warnings and actions, etc.:
+
+            // Need to take action. Request Quartz composition / Cocoa / NSOpenGL backend:
+            PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychUseAGLCompositorForFullscreenWindows);
+
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: This is a Apple silicon based ARM M1 SoC or later with Apple proprietary gpu.\n");
+                printf("PTB-WARNING: All of Psychtoolbox own timing and timestamping mechanisms will not work on\n");
+                printf("PTB-WARNING: such a machine, leading to disastrously bad visual stimulus presentation timing\n");
+                printf("PTB-WARNING: and timestamping. Do not trust or use this machine if timing is of any concern!\n");
+                printf("PTB-WARNING: You may want to try enabling Psychtoolbox Vulkan display backend, after proper\n");
+                printf("PTB-WARNING: configuration. See 'help PsychImaging' the section about the 'UseVulkanDisplay'\n");
+                printf("PTB-WARNING: task, and 'help PsychHDR' for some more setup instructions for MoltenVK on macOS.\n");
+                printf("PTB-WARNING: Note that this approach is completely unsupported by us in case of any problems, and\n");
+                printf("PTB-WARNING: may just be as bad performance and timing-wise. It is completely untested on M1.\n");
+                printf("PTB-WARNING: A simple test case would be running SimpleHDRDemo. If it wouldn't flood the command\n");
+                printf("PTB-WARNING: window with error and warning messages, that would be mildly encouraging. Let us know.\n\n");
+            }
+        }
+    }
+    #endif
+
     // Alloc in optional double vector with VRR mode and parameters:
     vrrParams = NULL;
     if (PsychAllocInDoubleMatArg(12, FALSE, &m, &n, &p, &vrrParams)) {
