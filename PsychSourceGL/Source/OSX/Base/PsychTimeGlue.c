@@ -537,7 +537,7 @@ psych_uint64 PsychAutoLockThreadToCores(psych_uint64* curCpuMask)
  * the iPhone company. It only gives us the x in OSX 10.x.y, but that's usually
  * all we need.
  */
-int PsychGetOSXMinorVersion(void)
+int PsychGetOSXMinorVersion(psych_bool* isARM)
 {
     int mib[2] = { CTL_KERN, KERN_OSRELEASE };
     int minorVersion;
@@ -546,15 +546,30 @@ int PsychGetOSXMinorVersion(void)
 
     // Query kernel version string:
     if (sysctl(mib, 2, tempStr, &tempStrSize, NULL, 0)) {
-        printf("PTB-WARNING: Could not query Darwin kernel version! This will end badly...\n");
+        printf("PTB-WARNING: Could not query Darwin kernel release! This will end badly...\n");
     }
 
     // Parse out major version: That - 4 == OSX minor version:
     if (1 != sscanf(tempStr, "%i", &minorVersion)) {
-        printf("PTB-WARNING: Could not parse Darwin kernel major version! This will end badly...\n");
+        printf("PTB-WARNING: Could not parse Darwin kernel major version from release! This will end badly...\n");
     }
 
     minorVersion = minorVersion - 4;
+
+    // Caller wants machine architecture, ie. Intel or ARM 64-Bit?
+    if (isARM) {
+        // Get kernel version string, parse it to see if it is a kernel targeted at Apple Silicon M1 SoC and later:
+        mib[1] = KERN_VERSION;
+        tempStrSize = sizeof(tempStr);
+
+        if (sysctl(mib, 2, tempStr, &tempStrSize, NULL, 0)) {
+            *isARM = FALSE;
+            printf("PTB-WARNING: Could not query Darwin kernel version string! This will end badly... Assuming Intel architecture.\n");
+        }
+        else {
+            *isARM = (strstr(tempStr, "RELEASE_ARM") != NULL) ? TRUE : FALSE;
+        }
+    }
 
     // Return minorVersion of the OSX version number: 10.minorVersion
     return(minorVersion);
@@ -568,6 +583,7 @@ const char* PsychSupportStatus(void)
 {
     // Operating system minor version:
     int osMinor;
+    psych_bool isARM;
 
     // Init flag to -1 aka unknown:
     static int  isSupported = -1;
@@ -577,19 +593,20 @@ const char* PsychSupportStatus(void)
         // First call: Do the query!
 
         // Query OS/X version:
-        osMinor = PsychGetOSXMinorVersion();
+        osMinor = PsychGetOSXMinorVersion(&isARM);
 
         // Only OSX 10.15 is officially supported:
-        isSupported = (osMinor == 15 || osMinor == 15) ? 1 : 0;
+        isSupported = (!isARM && (osMinor == 15 || osMinor == 15)) ? 1 : 0;
 
         if (isSupported) {
-            sprintf(statusString, "OSX 10.%i minimally supported and tested.", osMinor);
+            sprintf(statusString, "OSX 10.%i %s minimally supported and tested.", osMinor, isARM ? "ARM M1+ SoC" : "Intel");
         }
         else {
             if (osMinor < 15)
                 sprintf(statusString, "OSX version 10.%i is no longer tested or officially supported at all for this Psychtoolbox release.", osMinor);
             else
-                sprintf(statusString, "OSX version 11.%i is not yet tested or officially supported at all for this Psychtoolbox release.", osMinor - 16);
+                sprintf(statusString, "OSX version 11.%i %s is not yet tested or officially supported at all for this Psychtoolbox release.", osMinor - 16,
+                        isARM ? "ARM M1+ SoC" : "Intel");
         }
     }
 
