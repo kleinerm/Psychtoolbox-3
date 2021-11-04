@@ -599,13 +599,13 @@ const char* PsychSupportStatus(void)
         isSupported = (!isARM && (osMinor == 15 || osMinor == 15)) ? 1 : 0;
 
         if (isSupported) {
-            sprintf(statusString, "OSX 10.%i %s minimally supported and tested.", osMinor, isARM ? "ARM M1+ SoC" : "Intel");
+            sprintf(statusString, "macOS 10.%i %s minimally supported and tested.", osMinor, isARM ? "ARM M1+ SoC" : "Intel");
         }
         else {
-            if (osMinor < 15)
-                sprintf(statusString, "OSX version 10.%i is no longer tested or officially supported at all for this Psychtoolbox release.", osMinor);
+            if (osMinor <= 15)
+                sprintf(statusString, "macOS version 10.%i is no longer tested or officially supported at all for this Psychtoolbox release.", osMinor);
             else
-                sprintf(statusString, "OSX version 11.%i %s is not yet tested or officially supported at all for this Psychtoolbox release.", osMinor - 16,
+                sprintf(statusString, "macOS version %i %s is not yet tested or officially supported at all for this Psychtoolbox release.", osMinor - 5,
                         isARM ? "ARM M1+ SoC" : "Intel");
         }
     }
