@@ -586,27 +586,24 @@ const char* PsychSupportStatus(void)
     psych_bool isARM;
 
     // Init flag to -1 aka unknown:
-    static int  isSupported = -1;
+    static int isSupported = -1;
     static char statusString[256];
 
     if (isSupported == -1) {
         // First call: Do the query!
 
-        // Query OS/X version:
+        // Query macOS version and machine processor architecture:
         osMinor = PsychGetOSXMinorVersion(&isARM);
 
-        // Only OSX 10.15 is officially supported:
+        // Only macOS 10.15 is officially supported:
         isSupported = (!isARM && (osMinor == 15 || osMinor == 15)) ? 1 : 0;
 
-        if (isSupported) {
-            sprintf(statusString, "macOS 10.%i %s minimally supported and tested.", osMinor, isARM ? "ARM M1+ SoC" : "Intel");
-        }
-        else {
-            if (osMinor <= 15)
-                sprintf(statusString, "macOS version 10.%i is no longer tested or officially supported at all for this Psychtoolbox release.", osMinor);
-            else
-                sprintf(statusString, "macOS version %i %s is not yet tested or officially supported at all for this Psychtoolbox release.", osMinor - 5,
-                        isARM ? "ARM M1+ SoC" : "Intel");
+        if (osMinor <= 15) {
+            sprintf(statusString, "macOS version 10.%i %s is %s.", osMinor, isARM ? "ARM M1+ SoC" : "Intel",
+                    isSupported ? "minimally tested and supported" : "not yet or no longer tested or officially supported at all for this Psychtoolbox release.");
+        } else {
+            sprintf(statusString, "macOS version %i %s is %s.", osMinor - 5, isARM ? "ARM M1+ SoC" : "Intel",
+                    isSupported ? "minimally tested and supported" : "not yet or no longer tested or officially supported at all for this Psychtoolbox release.");
         }
     }
 
