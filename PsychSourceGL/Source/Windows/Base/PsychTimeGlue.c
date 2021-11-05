@@ -252,6 +252,8 @@ int PsychOSIsMSWin10(void)
 {
     #if defined(PTBMODULE_Screen) || defined(PTBMODULE_PsychPortAudio)
     HKEY hkey;
+    DWORD dwMajorVersion;
+    DWORD dwLen;
     // Init flag to -1 aka unknown:
     static int isWin10 = -1;
 
@@ -259,8 +261,12 @@ int PsychOSIsMSWin10(void)
         // First call: Do the query!
         if (ERROR_SUCCESS == RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion", 0, KEY_READ, &hkey)) {
             // CurrentMajorVersionNumber key exists and could be opened? This is only possible on Windows-10 or later.
-            isWin10 = (ERROR_SUCCESS == RegQueryValueEx(hkey, "CurrentMajorVersionNumber", NULL, NULL, NULL, NULL)) ? 1 : 0;
+            dwLen = sizeof(DWORD);
+            isWin10 = (ERROR_SUCCESS == RegQueryValueEx(hkey, "CurrentMajorVersionNumber", NULL, NULL, (LPBYTE) &dwMajorVersion, &dwLen)) ? 1 : 0;
             RegCloseKey(hkey);
+            // Try to map to actual Windows major version if this is Windows-10 or later:
+            if (isWin10)
+                isWin10 = (int) dwMajorVersion;
         }
         else {
             // Not Windows-10 or later:
@@ -271,7 +277,7 @@ int PsychOSIsMSWin10(void)
     // Return flag:
     return(isWin10);
     #else
-    // Only Screen() ans PsychPortAudio() is currently allowed to call this function, because any mex file which needs this function must link against advapi32.lib,
+    // Only Screen() and PsychPortAudio() is currently allowed to call this function, because any mex file which needs this function must link against advapi32.lib,
     // those do, but most other mex files don't. Warn and return false -- non Windows-10 -- as safe result.
     printf("PTB-WARNING: Called PsychOSIsMSWin10() from something else than PTBMODULE_Screen or PTBMODULE_PsychPortAudio! This won't work. Modify source code to make it work if needed!\n");
     return(0);
@@ -1680,10 +1686,10 @@ const char* PsychSupportStatus(void)
 
         // Special case for Windows-10 and later, as GetVersionEx() doesn't report
         // version numbers faithfully beyond Windows 8, unless application manifest
-        // would mark the app as Windows-8.1+ compatible. Fake a 10.0 version if this
+        // would mark the app as Windows-8.1+ compatible. Get major version if this
         // is Windows 10 or later - should be good enough for our purposes.
         if (PsychOSIsMSWin10()) {
-            osvi.dwMajorVersion = 10;
+            osvi.dwMajorVersion = PsychOSIsMSWin10();
             osvi.dwMinorVersion = 0;
         }
 
@@ -1704,8 +1710,8 @@ const char* PsychSupportStatus(void)
             sprintf(codename, "8");
         else if (osvi.dwMajorVersion == 6 && osvi.dwMinorVersion == 3)
             sprintf(codename, "8.1");
-        else if (osvi.dwMajorVersion == 10 && osvi.dwMinorVersion == 0)
-            sprintf(codename, "10");
+        else if (osvi.dwMajorVersion >= 10)
+            sprintf(codename, "%i", (int) osvi.dwMajorVersion);
         else
             sprintf(codename, "");
 
@@ -1716,7 +1722,7 @@ const char* PsychSupportStatus(void)
 
         if (isSupported) {
             // Windows-10 is fully supported, earlier Windows only partially:
-            sprintf(statusString, "Windows %s (Version %i.%i) %s.", codename, osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMajorVersion == 10) ? "supported and tested to some limited degree" : "partially supported, but no longer tested at all");
+            sprintf(statusString, "Windows %s (Version %i.%i) %s.", codename, osvi.dwMajorVersion, osvi.dwMinorVersion, (osvi.dwMajorVersion == 10) ? "supported and tested to some limited degree" : "may partially work ok'ish, but no longer tested or officially supported at all");
         }
         else {
             sprintf(statusString, "Windows %s (Version %i.%i) is not supported.", codename, osvi.dwMajorVersion, osvi.dwMinorVersion);
