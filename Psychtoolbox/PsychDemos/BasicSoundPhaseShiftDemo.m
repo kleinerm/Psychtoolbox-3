@@ -107,9 +107,28 @@ function BasicSoundPhaseShiftDemo(showit, targetChannel)
   status = PsychPortAudio('GetStatus', pamaster);
   samplingRate = status.SampleRate;
 
+  % Compute minimum length 'wavedur' seconds of a sound buffer with one or
+  % more repetitions of the freq Hz sine wave. If you wanted sound signals
+  % of defined length, e.g., also to allow things like applying an AM
+  % envelope function to it, by use of AM modulator slave devices, you
+  % could just set wavedur to the desired sound duration of the total sound
+  % vector. This here is just for memory efficiency...
+  %
+  % For the minimum duration 'wavedur', make sure to increase wavedur to
+  % generate multiple period repetitions of the (co)sine wave ih order to
+  % make it fit an integral number of samples, in case one period would
+  % need a non-integral number of samples. If nothing else, it may help
+  % visualization or debugging / reasoning about it: The if statement is
+  % executed, e.g., for combinatios of 'freq' 500 Hz and samplingRate of
+  % 44100 samples/sec, where one period of a sine wave would require 88.2
+  % samples, ie a non-integral number. Repeating the wave 5x by increasing
+  % wavedur * 5, ends up with 88.2 * 5 = 441 samples creating one sound
+  % playback buffer with a even number of samples.
   wavedur = 1 / freq;
   nsamples = wavedur * samplingRate;
-  wavedur = wavedur * 1 / (nsamples - fix(nsamples));
+  if rem(nsamples, 1)
+    wavedur = wavedur * 1 / rem(nsamples, 1);
+  end
 
   % Define input vector 'support' for the sin() and cos() functions. Playback of
   % a 'freq' Hz pure sine tone at a sampling rate of 'samplingRate'. We create a
