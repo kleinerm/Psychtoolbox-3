@@ -1,9 +1,9 @@
 function osxmakeitoctave3(mode)
 % This is the MacOSX version of makeit: It is meant for building PTB for
-% 64-Bit Octave-6.1 on macOS 10.15.7 Catalina or later, using the 10.15 SDK.
+% 64-Bit Octave-6.4 on macOS 10.15.7 Catalina or later, using the 10.15 SDK.
 %
 % This build routine also encodes octave runtime library paths for octave
-% version 6.1 into all mex files. The point of this is to make sure mex files
+% version 6.4 into all mex files. The point of this is to make sure mex files
 % don't fail to load due to libraries like liboctinterp.8.dylib not being
 % found. This is a stop-gap measure: It would be much better to modify
 % octave upstream to encode a -rpath = $OCTAVE_LIBS in the octave
