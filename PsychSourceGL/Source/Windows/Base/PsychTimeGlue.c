@@ -254,6 +254,8 @@ int PsychOSIsMSWin10(void)
     HKEY hkey;
     DWORD dwMajorVersion;
     DWORD dwLen;
+    char currentBuildStr[10];
+
     // Init flag to -1 aka unknown:
     static int isWin10 = -1;
 
@@ -263,10 +265,18 @@ int PsychOSIsMSWin10(void)
             // CurrentMajorVersionNumber key exists and could be opened? This is only possible on Windows-10 or later.
             dwLen = sizeof(DWORD);
             isWin10 = (ERROR_SUCCESS == RegQueryValueEx(hkey, "CurrentMajorVersionNumber", NULL, NULL, (LPBYTE) &dwMajorVersion, &dwLen)) ? 1 : 0;
-            RegCloseKey(hkey);
+
             // Try to map to actual Windows major version if this is Windows-10 or later:
-            if (isWin10)
-                isWin10 = (int) dwMajorVersion;
+            if (isWin10 && (dwMajorVersion == 10)) {
+                dwLen = sizeof(currentBuildStr);
+                memset(currentBuildStr, 0, dwLen);
+
+                if ((ERROR_SUCCESS == RegQueryValueEx(hkey, "CurrentBuildNumber", NULL, NULL, (LPBYTE) &currentBuildStr, &dwLen)) &&
+                    (dwLen >= 4) && (1 == sscanf(currentBuildStr, "%i", &isWin10)))
+                    isWin10 = (isWin10 >= 22000) ? 11 : 10;
+            }
+
+            RegCloseKey(hkey);
         }
         else {
             // Not Windows-10 or later:
