@@ -224,8 +224,8 @@
 % 5. Graphics system overload: If you ask too much from your poor graphics
 % hardware, the system may enter a state where the electronics is not
 % capable of performing drawing operations in hardware, either because it
-% runs out of video memory ressources, or because it is lacking the
-% neccessary features. In that case, some drivers (e.g., on Microsoft
+% runs out of video memory resources, or because it is lacking the
+% necessary features. In that case, some drivers (e.g., on Microsoft
 % Windows or MacOS-X) may activate a software rendering fallback-path: The
 % graphics engine is switched off, all rendering is performed by slow
 % software in system memory on the cpu and the final image is copied to the
@@ -248,7 +248,7 @@
 % system in parallel to your Psychtoolbox+Matlab/Octave session, then these
 % applications may cause significant timing jitter in your system, so the
 % execution of Psychtoolbox - and its measurement loops - becomes
-% non-deterministic up to the point of being unuseable.
+% non-deterministic up to the point of being unusable.
 %
 % Troubleshooting: Quit and disable all applications and services not
 % needed for your study, then retry. The usual suspects are: Virus
@@ -280,7 +280,7 @@
 %
 % HOW TO OVERRIDE THE SYNC TESTS:
 %
-% That all said, there may be occassions where you do not care about
+% That all said, there may be occasions where you do not care about
 % perfect sync to retrace or millisecond accurate stimulus presentation
 % timing, but you do care about running other applications in parallel, or
 % getting your stimulus running quickly, e.g., during development and debugging
@@ -308,7 +308,7 @@
 % to 0.001, ie., 1 msec.
 %
 % 'minSamples' controls the minimum amount of valid measurements to be
-% taken for successfull tests: We require at least 50 valid samples by
+% taken for successful tests: We require at least 50 valid samples by
 % default.
 %
 % 'maxDeviation' sets a tolerance threshold for the maximum percentual
@@ -319,7 +319,7 @@
 %
 % 'maxDuration' Controls the maximum duration of a single test run in
 % seconds. We default to 5 seconds per run, with 3 repetitions if
-% neccessary. A well working system will complete the tests in less than 1
+% necessary. A well working system will complete the tests in less than 1
 % second though.
 %
 % Empirically we've found that especially Microsoft Windows may need some tweaking
@@ -366,7 +366,7 @@
 % display setups - mostly only applicable on Linux.
 %
 % MORE READING: See 'help BeampositionQueries' for more info about timing issues.
-% See 'help HybridGraphics' for problems and caveats relatd to multi-gpu machines.
+% See 'help HybridGraphics' for problems and caveats related to multi-gpu machines.
 %
 %
 % LINUX specific tips:
@@ -399,7 +399,7 @@
 % ... etc. Obviously if this happens during an experiment session, it will cause
 % the stimulation onscreen window to be be partially occluded for some time
 % by the popup, and that would temporarily impair stimulation timing and print
-% one such warning messsage for each Screen('Flip'). Try to disable the notification
+% one such warning message for each Screen('Flip'). Try to disable the notification
 % or the source of the notification popup during experiment sessions to avoid this.
 %
 % Another cause for spurious warnings like these, usually at the startup/beginning

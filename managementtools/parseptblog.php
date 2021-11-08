@@ -15,7 +15,7 @@
 // History:
 // 10/20/2006 Written. (MK)
 // 11/03/2006 * Made more robust against corrupted lines in logfile.
-//            * More detailled stats: Show distribution of Macintoshes.
+//            * More detailed stats: Show distribution of Macintoshes.
 //            * Improved HTML output formatting.
 // 20/05/2018 * Rewritten to parse the fully anonymized final log.
 

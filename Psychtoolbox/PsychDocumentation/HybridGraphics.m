@@ -75,7 +75,7 @@
 % On Microsoft Windows a handshake method is used which maintains good framerates
 % for video games and similar applications, but causes visual stimulus onset timing
 % and timestamping to be almost always completely wrong, with observed errors in
-% the range of +/- 33 msecs on a 60 Hz panel. That means that the dGPU is unuseable
+% the range of +/- 33 msecs on a 60 Hz panel. That means that the dGPU is unusable
 % if visual timing matters in any way. The best you can do on a muxless laptop under
 % Microsoft Windows is to configure the driver to disable the dGPU and only use the
 % iGPU for all rendering, and then hope that the iGPU graphics driver isn't too buggy,
@@ -151,7 +151,7 @@
 %
 %   5. Copy the custom Psychtoolbox modesetting driver into the system driver directory.
 %      There are two variants, the nolag variant and the highlag variant. In theory, the
-%      nolag variant would be preferrable, but it sometimes gives inconsistent performance:
+%      nolag variant would be preferable, but it sometimes gives inconsistent performance:
 %
 %      sudo cp /pathto/Psychtoolbox/PsychHardware/LinuxDrivers/NVidiaOptimus/modesetting_drv.so /usr/lib/xorg/extra-modules/modesetting_drv.so
 %

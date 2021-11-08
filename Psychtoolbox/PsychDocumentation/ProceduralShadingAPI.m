@@ -12,7 +12,7 @@
 % The shader can access that matrices/images at arbitrary texel locations.
 % This makes sense for static data - content that doesn't change, so it can
 % be encoded into the texture image matrix. Such textures or lookup tables
-% can be large, but they consume a lot of memory and bandwith.
+% can be large, but they consume a lot of memory and bandwidth.
 %
 % 2. Infrequently changing parameters: Parameters that do change, but don't
 % change too often, e.g., change only once per trial or maybe once per
@@ -30,7 +30,7 @@
 % a maximum of 16 such attributes. To keep your code portable to a variety
 % of graphics hardware, you should use this option sparingly.
 %
-% The following vertex attributes are acessible from within a vertex
+% The following vertex attributes are accessible from within a vertex
 % shader:
 %
 % Vertex attributes and their meaning, sorted by corresponding
