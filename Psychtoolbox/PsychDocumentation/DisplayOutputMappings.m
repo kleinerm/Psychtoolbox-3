@@ -52,7 +52,7 @@
 % 3. If 2. doesn't help or is infeasible or problematic, you can also tell
 %    Screen() about the true wiring by adding the command
 %    Screen('Preference', 'ScreenToHead', screen, head, crtc[, rank]); to the
-%    top of your script, before other Screen() commmands:
+%    top of your script, before other Screen() commands:
 %
 %    On OS/X or Windows, Screen('Preference', 'ScreenToHead', 0, 1, 1);
 %    would tell Screen() that the Psychtoolbox screen with screenid 0 is
@@ -66,7 +66,7 @@
 %    'rank' parameter controls which of multiple possible outputs per
 %    screen is remapped. The default 'rank' of 0 refers to the primary
 %    display output, the one which is used for stimulus onset timestamping
-%    or framerate queries. It may therefore be neccessary to play with the
+%    or framerate queries. It may therefore be necessary to play with the
 %    'rank' parameter as well on multi-display setups with multiple
 %    monitors per Psychtoolbox screen.
 %

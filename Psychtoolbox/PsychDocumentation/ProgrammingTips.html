@@ -193,9 +193,9 @@ keyboard and mouse for activity, process network data packets from
 other computers, manage the virtual memory, write out data to disk
 so it doesn't get lost on a power failure or system crash. All these
 processes run in parallel to your experiment and compete for system
-ressources like memory, processor time and also ressources on your
+resources like memory, processor time and also resources on your
 graphics adaptor. If some of these processes win the race for system
-ressources shortly before the scheduled time of your stimulus onset,
+resources shortly before the scheduled time of your stimulus onset,
 it will delay execution of your code and the system will miss the
 presentation deadline, which leads to skipped frames or screwed up
 timing, finally to a spoiled trial.
@@ -234,13 +234,13 @@ to free up memory for the application that requests memory. If your
 application wakes up, it has to reclaim its data by reading it back
 from disk. This can takes multiple dozen milliseconds of time.
 </LI>
-<LI>Other applications can <I>lock</I> internal system ressources. If
-your script (or Matlab itself) happens to need these ressources, it
+<LI>Other applications can <I>lock</I> internal system resources. If
+your script (or Matlab itself) happens to need these resources, it
 will be delayed until &#34;the other application&#34; voluntarily
 releases the lock.
 </LI>
 <LI>Other applications can trigger complex graphics operations on the
-graphics hardware GPU: They steal GPU computation ressources and video
+graphics hardware GPU: They steal GPU computation resources and video
 RAM that is urgently needed by your script for stimulus drawing and
 display.
 </LI>
@@ -277,7 +277,7 @@ implemented in code written in the programming language C, that is
 executing on the computer's main processor (<I>CPU</I>), so the speed
 of drawing operations is mostly determined by the speed of your computers
 CPU. The <I>Screen</I> command of the new Psychtoolbox for OS-X (<I>PTB</I>)
-uses the plattform independent graphics library <I>OpenGL</I> for
+uses the platform independent graphics library <I>OpenGL</I> for
 all drawing operations and for control of stimulus onset. This has
 three advantages compared to the old implementations:
 
@@ -293,7 +293,7 @@ has stabilized and reached a level of maturity as the old MacOS-9
 version.
 </LI>
 <LI><I>Performance:</I> OpenGL is a 3D computer graphics API used by 3D
-applications like 3D graphics design packages, Scientifc data visualization,
+applications like 3D graphics design packages, Scientific data visualization,
 virtual reality simulators - and most importantly, as they are the
 driving market forces - video games. Most OpenGL functions are directly
 implemented in the graphics processing units (<I>GPU's</I>) of modern
@@ -447,7 +447,7 @@ The reason: If only one display shows the Psychtoolbox screen with
 your stimulus, but the other display shows the OS-X desktop with the
 Dock, the menu bar and the Matlab window as well as other applications
 windows, all these applications will consume valuable computational
-ressources and Video memory on your graphics adaptor for maintaining
+resources and Video memory on your graphics adaptor for maintaining
 and updating their displays. First they use up VRAM for their own
 framebuffers, textures and 3D data: VRAM is needed by PTB for storing
 the textures created with Screen('MakeTexture') and other temporary
@@ -459,7 +459,7 @@ for drawing of stimuli. Allocation of the drawing engine happens on
 a &#34;First come, first served&#34; bases, so you could
 be the last! Creating two onscreen windows, one on each display, or
 switching to mirror mode effectively prevents other applications than
-PTB from using ressources on the graphics hardware.
+PTB from using resources on the graphics hardware.
 </LI>
 </UL>
 If you stick to this list of configuration tips, you should get a
@@ -679,7 +679,7 @@ of other timing related functions work properly on your specific setup.
 You will see a blue screen for multiple seconds while this checks
 are performed. If a check fails or gives potentially troublesome results,
 PTB will flash a big yellow or red warning triangle on your display
-and provide a detailled trouble report on the Matlab command window,
+and provide a detailed trouble report on the Matlab command window,
 together with troubleshooting tips.
 <BR>
 On multi-display setups where the displays run at the same monitor
@@ -688,14 +688,14 @@ to make still sure that synchronization to the vertical retrace works
 properly, a perceptual test is automatically run for 10 seconds, whenever
 a multi-display setup is detected. You should see something like in
 figure TODO on your stimulus display, if syncing properly works: The
-huge gray area flickers in a homogenous way, you don't see any yellow
+huge gray area flickers in a homogeneous way, you don't see any yellow
 horizontal lines at the right border of the display, or only a few
 isolated lines, or a couple of dense yellow lines at the top of the
 display. If syncing doesn't work properly<A NAME="tex2html4"
   HREF="#foot359"><SUP>4</SUP></A>, you should instead see something like in figure TODO: Many yellow
 lines spread over the middle or bottom part of the display or even
 over the whole height of the display. The gray area is flickering
-in a very inhomogenous way - showing massive tearing artifacts. This
+in a very inhomogeneous way - showing massive tearing artifacts. This
 means that syncing to retrace is broken and you need to perform the
 troubleshooting tips that PTB outputs to the Matlab window - or set
 your displays to different refresh rates and rerun, in case PTB doesn't

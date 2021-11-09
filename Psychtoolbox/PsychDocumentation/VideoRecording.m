@@ -39,7 +39,7 @@
 % suitable/efficient codec, until it finds a codec that is supported on
 % your system. Not all codecs may be installed by default on your operating
 % system. Especially proprietary, non-free, or patent-encumbered codecs may
-% not be installed on your system. You may have to select them explicitely
+% not be installed on your system. You may have to select them explicitly
 % in the software center of your distribution (see "help GStreamer").
 %
 % If you only want to specify settings for the automatically chosen default
@@ -100,7 +100,7 @@
 % codec. All settings are accepted for all formats and codecs and mapped to
 % corresponding format and codec specific low level settings, or they are
 % silently ignored if a specific file/codec combination doesn't support a
-% high level setting. These settings are the most frequently choosed
+% high level setting. These settings are the most frequently chosen
 % settings.
 %
 % High level settings are specified as Keyword=value pairs, without a blank
@@ -228,7 +228,7 @@
 %
 % A specific (non-auto-selected) audio source and its settings can be
 % chosen via the 'AudioSource=' prefix, e.g., 'AudioSource=pulsesrc :::' to
-% select an audio input provided by the PulseAudio sound server explicitely.
+% select an audio input provided by the PulseAudio sound server explicitly.
 %
 % A full example string to select codecs and other low level settings would
 % look like this:

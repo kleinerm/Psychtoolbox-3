@@ -20,7 +20,7 @@
 %    driver folder. Press ok.
 %
 % 4. The driver will be installed from the zip file, the device manager
-%    will notifiy you of the new device, then prompt you for installation
+%    will notify you of the new device, then prompt you for installation
 %    of another device. Repeat the same procedure from step 3 until no more
 %    devices need to be installed. This procedure will repeat three to four
 %    times until all drivers are installed, as the Kinect shows up as
@@ -37,7 +37,7 @@
 %    and Kinect3DDemo for a start, then delve into your own Kinect adventures.
 %
 % The current Kinect low level drivers are still early prototypes, so
-% expect occassional bugs or weird behaviour.
+% expect occasional bugs or weird behaviour.
 %
 %
 % GNU/Linux:
@@ -67,7 +67,7 @@
 % libfreenect version 0.2 or later. Using version 0.2 or later of libfreenect
 % will also allow you to skip the following setup step 2:
 %
-% 2. Kinect is now useable from within Matlab or Octave. Well almost.
+% 2. Kinect is now usable from within Matlab or Octave. Well almost.
 % Systems with Linux kernel version 3.0 or later can use the video camera
 % and microphones of the Kinect as regular sound and video devices, e.g.,
 % for use by the Psychtoolbox videocapture and recording functions or other
@@ -82,7 +82,7 @@
 % and blindly entering your password while logged in as a user with
 % administrator rights (as the script calls the sudo command).
 %
-% 3. After this procedure, the Kinect should be fully useable by Psychtoolbox.
+% 3. After this procedure, the Kinect should be fully usable by Psychtoolbox.
 %
 %
 % Mac OS/X:
@@ -174,7 +174,7 @@ if rc == 0
     drawnow;
     [rc, msg] = system('sudo rmmod gspca_kinect');
     if rc == 0
-        fprintf('Success! Your Kinect should now be useable by Psychtoolbox PsychKinect driver.\n');
+        fprintf('Success! Your Kinect should now be usable by Psychtoolbox PsychKinect driver.\n');
     else
         fprintf('Failed! Maybe retry? Other than that, unplug your Kinect and reboot your machine to make it work.\n');
         fprintf('Reported error was: %s\n', msg);
