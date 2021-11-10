@@ -121,7 +121,7 @@ class Device:
         return PsychHID('ReceiveReportsStop', self.device_number)
 
 
-class Keyboard():
+class Keyboard:
     def __init__(self, device_number=None, buffer_size=10000):
         """A Keyboard object is like a Device() with key-specific functions
 
