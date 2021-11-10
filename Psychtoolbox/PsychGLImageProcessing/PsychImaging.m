@@ -852,12 +852,12 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % * 'EnableNative16BitFramebuffer' Enable 16 bpc, 64 bpp framebuffer on some supported setups.
 %
 %   This asks to enable a framebuffer with a color depth of 16 bpc for up to 65535 levels of intensity
-%   per red, green and blue channel, ie. 48 bits = different 2^48 colors. Currently, as of October 2021,
+%   per red, green and blue channel, ie. 48 bits = 2^48 different colors. Currently, as of November 2021,
 %   this mode of operation is only supported on Linux/X11 when using the open-source amdgpu-kms driver
 %   on modern AMD GCN 1.1+ graphics cards [3]. On suitable setups, this will establish a 16 bpc framebuffer
 %   which packs 3 * 16 bpc = 48 bit color info into 64 bpp pixels and the gpu's display engine will scan
 %   out that framebuffer at 16 bpc. However, effective output precision is further limited to < 16 bpc by
-%   your display, video cable and specific model of graphics card. As of October 2021, the maximum effective
+%   your display, video cable and specific model of graphics card. As of November 2021, the maximum effective
 %   output precision is limited to at most 12 bpc (= 4096 levels of red, green and blue) by the graphics card,
 %   and this precision is only attainable on AMD graphics cards of the so called "Sea Islands" (cik) family
 %   (aka GraphicsCore Next GCN 1.1 or later) or any later models when used with the amdgpu-kms display driver.
@@ -866,7 +866,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   bpc overall output precision.
 %
 %   Please note that actual 12 bpc output precision can only be attained on certain display devices and
-%   software configurations. As of October 2021, the following hardware + software combos have been
+%   software configurations. As of November 2021, the following hardware + software combos have been
 %   verified with a CRS ColorCal2 colorimeter to provide 12 bpc per color channel precision:
 %
 %   - The Apple MacBookPro 2017 15 inch with its built-in 10 bit Retina display, running under Ubuntu Linux
@@ -889,10 +889,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %      https://github.com/GPUOpen-Drivers/AMDVLK/releases
 %
-%      At least driver release v-2021.Q4.1 will be required, potentially even a later release than that.
+%      Driver release v-2021.Q4.1 or later from November 2021 is required to support this feature.
 %
-%   2. You will need to install Linux kernel 5.14, which is currently not shipping in any Ubuntu release, as
-%      of October 2021. A way to manually install it on Ubuntu 20.04-LTS is described on the following
+%   2. You will need to install Linux kernel 5.14, which is currently not shipping in any Ubuntu release,
+%      as of November 2021. A way to manually install it on Ubuntu 20.04-LTS is described on the following
 %      web page via the "mainline" helper software:
 %
 %      https://ubuntuhandbook.org/index.php/2020/08/mainline-install-latest-kernel-ubuntu-linux-mint
@@ -944,7 +944,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   if you install the AMDVLK AMD open-source Vulkan driver and use the imaging
 %   pipeline tasks 'UseVulkanDisplay' or 'EnableHDR'. See AMDVLK instructions
 %   above for 'EnableNative16BitFramebuffer'. You need Linux 5.8 for AMD Polaris
-%   and later, or Linux 5.12 for the earler AMD "Sea Islands" and later.
+%   and later (e.g. contained in Ubuntu 20.10 or 20.04.2-LTS), or Linux 5.12
+%   (e.g., from Ubuntu 21.10 or 20.04.4-LTS) for also supporting the earlier AMD
+%   "Sea Islands" and later gpu's.
 %
 %   macOS OpenGL does support this mode with what seems to be mostly software
 %   rendering on most machines, ie. with very low performance and even worse timing.

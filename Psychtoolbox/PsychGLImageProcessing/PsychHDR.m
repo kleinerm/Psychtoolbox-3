@@ -21,7 +21,7 @@ function varargout = PsychHDR(cmd, varargin)
 % - Modern AMD graphics cards (like above) under modern GNU/Linux (Ubuntu 18.04.4-LTS
 %   at a minimum (untested!), or better Ubuntu 20.04-LTS and later recommended), with
 %   the AMD open-source Vulkan driver "amdvlk". Install driver release 2020-Q3.5 from
-%   September 2020, which was tested, or likely any later versions. This webpage has
+%   September 2020, which was tested, or any later versions. The following webpage has
 %   amdvlk download and installation instructions:
 %
 %   https://github.com/GPUOpen-Drivers/AMDVLK/releases
@@ -43,7 +43,7 @@ function varargout = PsychHDR(cmd, varargin)
 %   the quality of your results, use preferrably Linux, or Windows-10 instead.
 %
 %   You need at least MoltenVK version 1.1.4 and LunarG Vulkan SDK 1.2.182.0 from
-%   5th July 2021 or later.
+%   5th July 2021 or later. MoltenVK v1.1.5 or later is recommended at this time.
 %
 %   Download link for the MoltenVK open-source "Vulkan on Metal" driver:
 %
