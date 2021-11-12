@@ -3553,8 +3553,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
                     printf("PsychVulkanCore-ERROR: Will try to carry on, but visual timing precision and robustness, as well as general reliability, may be degraded!\n");
                 }
             }
-
-            if (verbosity > 3)
+            else if (verbosity > 3)
                 printf("PsychVulkanCore-INFO: For gpu [%s] switched to fullscreen exclusive display mode for swapChain [%p] of display window %i\n", vulkan->deviceProps.deviceName, window->swapChain, window->index);
         }
         else if (isFullscreen && verbosity > 1) {
