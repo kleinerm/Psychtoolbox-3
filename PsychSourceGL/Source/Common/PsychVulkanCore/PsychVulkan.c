@@ -100,6 +100,7 @@ typedef struct PsychVulkanDevice {
     psych_bool                          hasHDR;
     psych_bool                          hasHDRLocalDimming;
     psych_bool                          hasTiming;
+    psych_bool                          hasWait;
     uint32_t                            graphicsQueueFamilyIndex;
     VkPhysicalDeviceMemoryProperties    memoryProperties;
 } PsychVulkanDevice;
@@ -245,6 +246,7 @@ PFN_vkAcquireNextImageKHR fpAcquireNextImageKHR;
 PFN_vkQueuePresentKHR fpQueuePresentKHR;
 PFN_vkGetRefreshCycleDurationGOOGLE fpGetRefreshCycleDurationGOOGLE = NULL;
 PFN_vkGetPastPresentationTimingGOOGLE fpGetPastPresentationTimingGOOGLE = NULL;
+PFN_vkWaitForPresentKHR fpWaitForPresentKHR = NULL;
 PFN_vkSetHdrMetadataEXT fpSetHdrMetadataEXT = NULL;
 PFN_vkSetLocalDimmingAMD fpSetLocalDimmingAMD = NULL;
 
@@ -411,7 +413,7 @@ static psych_bool addDeviceExtension(VkExtensionProperties* exts, unsigned int e
     return (FALSE);
 }
 
-psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex, psych_bool* hasHDR, psych_bool* hasHDRLocalDimming, psych_bool* hasTiming)
+psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex, psych_bool* hasHDR, psych_bool* hasHDRLocalDimming, psych_bool* hasTiming, psych_bool* hasWait)
 {
     VkResult result;
     psych_bool rc = FALSE;
@@ -485,6 +487,11 @@ psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex,
     if (hasTiming) {
         // The Google display timing extension is a must-have if precise timing is requested:
         *hasTiming = addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME);
+    }
+
+    if (hasWait) {
+        *hasWait = addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
+        *hasWait &= addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_KHR_PRESENT_ID_EXTENSION_NAME);
     }
 
     // Success: Fall through to cleanup with success return code:
@@ -711,7 +718,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
             verbosity = (pass == 0) ? 1 : oldVerbosity;
 
             for (i = 0; i < probedCount; i++) {
-                psych_bool hasHDR, hasHDRLocalDimming, hasTiming;
+                psych_bool hasHDR, hasHDRLocalDimming, hasTiming, hasWait;
 
                 // Get physical device properties:
                 // Note: These daisy-chained structs might be useful in the future:
@@ -794,7 +801,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                 // Check if minimum set of required device extensions is available on this gpu. This will also check if
                 // HDR extensions and timing extensions are available, report back in hasHDR and hasTiming if they are
                 // supported, and enable/request them if they are supported:
-                if (!checkAndRequestDeviceExtensions(physicalDevices, i, &hasHDR, &hasHDRLocalDimming, &hasTiming))
+                if (!checkAndRequestDeviceExtensions(physicalDevices, i, &hasHDR, &hasHDRLocalDimming, &hasTiming, &hasWait))
                     continue;
 
                 if (needHDR && !hasHDR) {
@@ -879,6 +886,10 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                     GET_INSTANCE_PROC_ADDR(vulkanInstance, GetPastPresentationTimingGOOGLE);
                 }
 
+                // Ability to wait for present completion via VK_KHR_present_wait extension:
+                if (hasWait && !fpWaitForPresentKHR)
+                    GET_INSTANCE_PROC_ADDR(vulkanInstance, WaitForPresentKHR);
+
                 // Add a record about this GPU's basic properties:
                 vulkan = &(vulkanDevices[physicalGpuCount]);
                 vulkan->deviceIndex = physicalGpuCount + 1;
@@ -889,6 +900,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                 vulkan->hasHDR = hasHDR;
                 vulkan->hasHDRLocalDimming = hasHDRLocalDimming;
                 vulkan->hasTiming = hasTiming;
+                vulkan->hasWait = hasWait;
                 vulkan->graphicsQueueFamilyIndex = graphicsQueueFamilyIndex;
 
                 // Create logical vulkan device -- the "gpu" for our physical device:
@@ -903,9 +915,21 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                         .flags = 0,
                     };
 
+                    VkPhysicalDevicePresentIdFeaturesKHR presentIdFeatureEnable = {
+                        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
+                        .pNext = NULL,
+                        .presentId = VK_TRUE,
+                    };
+
+                    VkPhysicalDevicePresentWaitFeaturesKHR waitFeatureEnable = {
+                        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR,
+                        .pNext = &presentIdFeatureEnable,
+                        .presentWait = VK_TRUE,
+                    };
+
                     VkDeviceCreateInfo deviceCreateInfo = {
                         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-                        .pNext = NULL,                                              // TODO: Add support for VK_EXT_global_priority ?
+                        .pNext = (hasWait) ? &waitFeatureEnable : NULL,             // TODO: Add support for VK_EXT_global_priority ?
                         .queueCreateInfoCount = 1,
                         .pQueueCreateInfos = &queueCreateInfo,
                         .enabledLayerCount = (verbosity > 10) ? 1 : 0,              // Deprecated since v1.1, ignored.
@@ -2040,7 +2064,7 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
 
     // If we need precise timing, and the device does support timing, we are good.
     // Otherwise we'll need to use our hacks which require strict double-buffering.
-    if (needsTiming && !vulkan->hasTiming) {
+    if (needsTiming && !vulkan->hasTiming && !vulkan->hasWait) {
         // Our hacks are needed, and therefore strict double-buffering support by
         // the driver + gpu device combo.
 
@@ -2133,8 +2157,8 @@ psych_bool PsychIsVulkanGPUSuitable(PsychVulkanWindow* window, PsychVulkanDevice
 
     if (needsTiming) {
         // We either need the ability to have strictly double-buffered swapchains, or we need precise timing support by the
-        // driver, ie. support for the VK_GOOGLE_DISPLAY_TIMING_EXTENSION:
-        if (!vulkan->hasTiming && (window->surfaceCapabilities.minImageCount > 2)) {
+        // driver, ie. support for the VK_GOOGLE_DISPLAY_TIMING_EXTENSION, or at least wait-for-present-completion support:
+        if (!vulkan->hasTiming && !vulkan->hasWait && (window->surfaceCapabilities.minImageCount > 2)) {
             // No dice.
             if (verbosity > 4) {
                 printf("PsychVulkanCore-INFO: Vulkan gpu '%s' does not support required visual onset timing precision in the %s configuration required by window %i.\n", vulkan->deviceProps.deviceName, isFullscreen ? "fullscreen" : "windowed", window->index);
@@ -2457,6 +2481,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     VkResult result;
     VkPresentTimeGOOGLE targetPresentTimeG;
     PsychVulkanDevice* vulkan = window->vulkan;
+    uint64_t targetPresentId;
 
     // Mark presentation timestamp as so far "invalid"/"unknown":
     window->tPresentComplete = -1;
@@ -2511,6 +2536,24 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
         .pImageIndices = &window->currentSwapChainBuffer,
         .pResults = NULL, // swapchainCount separate VkResult's if presenting to multiple chains.
     };
+
+    // VK_KHR_PRESENT_ID supported?
+    if (vulkan->hasWait && (timestampMode > 0)) {
+        // Assign present id - the current frameIndex:
+        VkPresentIdKHR presentIdInfo = {
+            .sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR,
+            .pNext = present.pNext,
+            .swapchainCount = 1,
+            .pPresentIds = &targetPresentId,
+        };
+
+        // targetPresentId must start with 1 for 1st queued present, hence the frameIndex + 1:
+        targetPresentId = window->frameIndex + 1;
+        present.pNext = &presentIdInfo;
+
+        if (verbosity > 7)
+            printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Assigning frame %i with VkPresentIdKHR presentID %lli.\n", window->index, window->frameIndex, targetPresentId);
+    }
 
     // VK_GOOGLE_DISPLAY_TIMING supported?
     if (vulkan->hasTiming && (timestampMode > 1)) {
@@ -2597,6 +2640,24 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
 
     // Should we timestamp (imminent) stimulus onset?
     if (timestampMode > 0) {
+        // Wait for present completion supported?
+        if (vulkan->hasWait) {
+            // Blocking wait with timeout of 1 second for present completion of the just-queued present:
+            result = fpWaitForPresentKHR(vulkan->device, window->swapChain, targetPresentId, 1e9);
+            if ((result != VK_SUCCESS) && (verbosity > 0)) {
+                if (result == VK_TIMEOUT) {
+                    printf("PsychVulkanCore-ERROR: vkWaitForPresentKHR(%i): Failed due to timeout!\n", window->index);
+                } else {
+                    printf("PsychVulkanCore-ERROR: vkWaitForPresentKHR(%i): Failed with error code %i.\n", window->index, result);
+                }
+            }
+            else if (verbosity > 8) {
+                double tNow;
+                PsychGetAdjustedPrecisionTimerSeconds(&tNow);
+                printf("PsychVulkanCore-DEBUG: PsychPresent(%i): Frame %i with presentID %lli signalled by vkWaitForPresentKHR as complete at %f seconds.\n", window->index, window->frameIndex - 1, targetPresentId, tNow);
+            }
+        }
+
         // VK_GOOGLE_DISPLAY_TIMING supported for timestamping?
         if (vulkan->hasTiming && (timestampMode > 1)) {
             // Yes. Fetch timestamp from Vulkan:
@@ -2605,8 +2666,10 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
             double tNow, tStart;
             uint32_t count = 0;
 
-            // Wait until target present time is reached - No point checking before:
-            PsychWaitUntilSeconds(tWhen);
+            // Wait until target present time is reached - No point checking before.
+            // Not needed if we used wait for present complete:
+            if (!vulkan->hasWait)
+                PsychWaitUntilSeconds(tWhen);
 
             // Poll for arrival of present completion timestamp:
             PsychGetAdjustedPrecisionTimerSeconds(&tNow);
@@ -4017,14 +4080,16 @@ PsychError PSYCHVULKANGetDevices(void)
     "'SupportsTiming' = Does the gpu support high precision/reliability timing\n"
     "                   extensions. 0 = No, 1 = Yes. If the driver does not support\n"
     "                   timing extensions, the driver will fall back to hacks.\n"
+    "'SupportsWait' = Does the gpu support waiting for present completion: 0 = No, 1 = Yes.\n"
     "\n";
     static char seeAlsoString[] = "GetCount";
 
     int i;
     char tmp[64];
     PsychGenericScriptType *s;
-    const char *fieldNames[] = { "DeviceIndex", "GpuName", "GpuDriver", "DriverInfo", "DriverVersion", "DriverVersionRaw", "DriverId", "VendorId", "DeviceId", "VulkanVersion", "GpuType", "SupportsHDR", "SupportsTiming" };
-    const int fieldCount = 13;
+    const char *fieldNames[] = { "DeviceIndex", "GpuName", "GpuDriver", "DriverInfo", "DriverVersion", "DriverVersionRaw", "DriverId", "VendorId", "DeviceId", "VulkanVersion", "GpuType",
+                                 "SupportsHDR", "SupportsTiming", "SupportsWait" };
+    const int fieldCount = 14;
 
     // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -4056,6 +4121,7 @@ PsychError PSYCHVULKANGetDevices(void)
         PsychSetStructArrayDoubleElement("GpuType", i, vulkan->deviceProps.deviceType, s);
         PsychSetStructArrayDoubleElement("SupportsHDR", i, vulkan->hasHDR, s);
         PsychSetStructArrayDoubleElement("SupportsTiming", i, vulkan->hasTiming, s);
+        PsychSetStructArrayDoubleElement("SupportsWait", i, vulkan->hasWait, s);
     }
 
     return(PsychError_none);
