@@ -3604,20 +3604,46 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     #if defined(VK_USE_PLATFORM_WIN32_KHR)
         if (isFullscreen && !(window->createFlags & 0x2)) {
             // Switch swapChain into fullScreenExclusive mode:
-            result = fpAcquireFullScreenExclusiveModeEXT(vulkan->device, window->swapChain);
-            if (result != VK_SUCCESS) {
-                if (verbosity > 0) {
-                    if (result == VK_ERROR_INITIALIZATION_FAILED)
-                        printf("PsychVulkanCore-ERROR: gpu [%s] Could not switch to fullscreen exclusive mode!\n", vulkan->deviceProps.deviceName);
-                    else
-                        printf("PsychVulkanCore-ERROR: gpu [%s] Error during switch to fullscreen exclusive mode: %i\n", vulkan->deviceProps.deviceName, result);
+            int retries;
 
-                    // This is not a fatal error, but it may impair timing and reliability:
-                    printf("PsychVulkanCore-ERROR: Will try to carry on, but visual timing precision and robustness, as well as general reliability, may be degraded!\n");
+            // Retry to go fullscreen exclusive up to 10 times:
+            result = VK_ERROR_INITIALIZATION_FAILED;
+            for (retries = 0; (retries < 10) && (result == VK_ERROR_INITIALIZATION_FAILED); retries++) {
+                result = fpAcquireFullScreenExclusiveModeEXT(vulkan->device, window->swapChain);
+                if (result != VK_SUCCESS) {
+                    if (verbosity > 0) {
+                        if (result == VK_ERROR_INITIALIZATION_FAILED)
+                            printf("PsychVulkanCore-ERROR: gpu [%s] Could not switch to fullscreen exclusive mode [Attempt nr. %i]!\n", vulkan->deviceProps.deviceName, retries + 1);
+                        else
+                            printf("PsychVulkanCore-ERROR: gpu [%s] Error during switch to fullscreen exclusive mode [Attempt nr. %i]: %i\n", vulkan->deviceProps.deviceName, result + 1);
+                    }
+                }
+                else if (verbosity > 3)
+                    printf("PsychVulkanCore-INFO: For gpu [%s] switched to fullscreen exclusive display mode for swapChain [%p] of display window %i\n", vulkan->deviceProps.deviceName, window->swapChain, window->index);
+
+                PsychProcessWindowEvents(window);
+                PsychYieldIntervalSeconds(0.050);
+            }
+
+            // Still no success?
+            if (result != VK_SUCCESS) {
+                // This is not a fatal error, but it may impair timing and reliability:
+                if (verbosity > 0)
+                    printf("PsychVulkanCore-ERROR: Multiple retries failed. Fallback to non-exclusive mode. Visual timing precision, robustness, and general reliability may be degraded!\n");
+
+                // Destroy and recreate swapChain without fullscreen exclusive access:
+                vkDestroySwapchainKHR(vulkan->device, window->swapChain, NULL);
+                window->swapChain = (VkSwapchainKHR) VK_NULL_HANDLE;
+                swapChainCreateInfo.pNext = NULL;
+
+                result = vkCreateSwapchainKHR(vulkan->device, &swapChainCreateInfo, NULL, &window->swapChain);
+                if (result != VK_SUCCESS) {
+                    if (verbosity > 0)
+                        printf("PsychVulkanCore-ERROR: vkCreateSwapchainKHR() failed for window %i in non-FS-except mode: res=%i.\n", window->index, result);
+
+                    goto openwindow_out1;
                 }
             }
-            else if (verbosity > 3)
-                printf("PsychVulkanCore-INFO: For gpu [%s] switched to fullscreen exclusive display mode for swapChain [%p] of display window %i\n", vulkan->deviceProps.deviceName, window->swapChain, window->index);
         }
         else if (isFullscreen && verbosity > 1) {
             printf("PsychVulkanCore-WARNING: For gpu [%s] did *not* switch to fullscreen exclusive display mode for fullscreen display window %i,\n", vulkan->deviceProps.deviceName, window->index);
