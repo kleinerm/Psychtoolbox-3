@@ -26,7 +26,8 @@ try
     w=Screen('OpenWindow',0);
     Screen('TextFont',w,font);
     Screen('TextSize',w,fontSize);
-    fprintf('\n\nFont is %s at size %d.\n',Screen('TextFont',w),fontSize);
+    Screen('DrawText',w,'X');
+    fprintf('\n\nFont is %s at size %d.\n',Screen('TextFont',w),Screen('TextSize',w));
     black=BlackIndex(w);
     white=WhiteIndex(w);
     green=[0 255 0];
@@ -60,10 +61,10 @@ try
             ghMargin(j)=any(g(:,j));
         end
         gList=find(ghMargin);
-        if length(gList)>0
+        if ~isempty(gList)
             fprintf(' Clipped cols:');
             fprintf(' %d',gList);
-            fprintf('.\n',sum(g(:)));
+            fprintf(' %d.\n',sum(g(:)));
         else
             fprintf('\n');
         end
