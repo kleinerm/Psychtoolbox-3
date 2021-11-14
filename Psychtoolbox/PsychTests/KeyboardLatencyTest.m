@@ -1,5 +1,5 @@
-function KeyboardLatencyTest(triggerlevel, modality, submode, portString)
-% KeyboardLatencyTest([triggerlevel=0.01][,modality=0][,submode][,portString])
+function KeyboardLatencyTest(triggerlevel, modality, submode, portString, audioDevice)
+% KeyboardLatencyTest([triggerlevel=0.01][,modality=0][,submode][,portString][,audioDevice])
 %
 % Uses sound capture with high timing precision via
 % PsychPortAudio() for measuring latency, timing accuracy and variability
@@ -78,6 +78,12 @@ function KeyboardLatencyTest(triggerlevel, modality, submode, portString)
 % a wrong detection this way.
 %
 %
+% The optional 'audioDevice' allows to specify the device index for the
+% sound card to use for audio capture, in case multiple soundcards are
+% installed in the machine. By default, a sound device is auto-selected,
+% which is capable of sound capture.
+%
+%
 % Obviously this method of measuring carries quite a bit of uncertainty
 % in exact timing, but with a high quality microphone, proper tuning and
 % good sound hardware, it shouldn't be off too much. At least you get a
@@ -88,9 +94,10 @@ function KeyboardLatencyTest(triggerlevel, modality, submode, portString)
 % 08/10/2008 Written (MK)
 % 02/15/2009 Updated for Cedrus and RTBox (MK).
 % 08/15/2009 Updated for CMU and PST serial response button boxes (MK).
+% 11/14/2021 Handle mono audio capture as well (MK).
 
 tdelay = [];
-global tdelay2;
+global tdelay2; %#ok<*GVMIS> 
 global tSecs;
 global toffset;
 
@@ -113,6 +120,10 @@ end
 
 if nargin < 4
     portString = [];
+end
+
+if nargin < 5
+    audioDevice = [];
 end
 
 if modality == 3
@@ -229,16 +240,16 @@ KbStrokeWait;
 % low-latency, high timing precision mode:
 InitializePsychSound(1);
 
-% Open the default audio device [], with mode 2 (== Only audio capture),
-% and a required latencyclass of two 2 == low-latency mode, as well as
-% a default frequency and 2 sound channels for stereo capture. We also
-% set the required latency to a pretty high 20 msecs. Why? Because we don't
-% actually need low-latency here, we only need low-latency mode of
+% Open the audio device 'audioDevice', with mode 2 (== Only audio capture),
+% and a required latencyclass of two 2 == low-latency mode, as well as a
+% default frequency and default number of sound channels for capture. We
+% also set the required latency to a pretty high 20 msecs. Why? Because we
+% don't actually need low-latency here, we only need low-latency mode of
 % operation so we get maximum timing precision -- Therefore we request
 % low-latency mode, but loosen our requirement to 20 msecs.
 %
 % This returns a handle to the audio device:
-pahandle = PsychPortAudio('Open', [], 2, 2, [], 2, [], 0.02);
+pahandle = PsychPortAudio('Open', audioDevice, 2, 2, [], [], [], 0.02);
 
 % Get what freq'uency we are actually using:
 s = PsychPortAudio('GetStatus', pahandle);
@@ -275,15 +286,15 @@ for trial = 1:10
                 end
             end
         case 1
-            [x y b] = GetMouse([], portString);
+            [~, ~, b] = GetMouse([], portString);
             while any(b)
-                [x y b] = GetMouse([], portString);
-            end;
+                [~, ~, b] = GetMouse([], portString);
+            end
 
             % Wait for mousebutton press in a tight loop:
             while ~any(b)
-                [x y b] = GetMouse([], portString);
-            end;
+                [~, ~, b] = GetMouse([], portString);
+            end
             tKeypress = GetSecs;
         case 2
             if submode == 0
@@ -302,7 +313,7 @@ for trial = 1:10
             
             % Wait for some event on box, return its 'GetSecs' time:
             while isempty(tKeypress)
-                [tKeypress, evid, tBox] = PsychRTBox('GetSecs');
+                [tKeypress, ~, tBox] = PsychRTBox('GetSecs');
             end
             
             tKeypress = tKeypress(1);
@@ -375,7 +386,7 @@ for trial = 1:10
     
     while level < triggerlevel
         % Fetch current audiodata:
-        [audiodata offset overflow tCaptureStart]= PsychPortAudio('GetAudioData', pahandle);
+        [audiodata, offset, ~, tCaptureStart]= PsychPortAudio('GetAudioData', pahandle);
         
         % Compute maximum signal amplitude in this chunk of data:
         if ~isempty(audiodata)
@@ -393,7 +404,11 @@ for trial = 1:10
 
     % Ok, last fetched chunk was above threshold!
     % Find exact location of first above threshold sample.
-    idx = min(find(max(abs(audiodata)) >= triggerlevel)); %#ok<MXFND>
+    if isvector(audiodata)
+        idx = min(find(abs(audiodata) >= triggerlevel)); %#ok<MXFND>
+    else
+        idx = min(find(max(abs(audiodata)) >= triggerlevel)); %#ok<MXFND>
+    end
 
     % Compute absolute event time:
     tOnset = tCaptureStart + ((offset + idx - 1) / freq);
@@ -420,7 +435,7 @@ for trial = 1:10
     
     if modality == 3 || modality == 4
         % Store raw box timestamp as well:
-        tdelay2(end, 2) = tOnset; %#ok<AGROW>
+        tdelay2(end, 2) = tOnset;
     end
     
     % Next trial after 2 seconds:
