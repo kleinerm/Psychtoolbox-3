@@ -57,8 +57,6 @@
 %    GarboriumDemo           - Demonstrate superimposed drawing of many Gabors by use of alpha-
 %                              blending, 'DrawTextures' batch drawing and PTB imaging pipeline.
 %    GazeContingentDemo      - Implementation of a simple gaze contingent display
-%    GLSLCLUTAnimDemo        - Demonstrates use of function moglClutBlit to
-%                              perform CLUT animation with GLSL in an OS independent way.
 %    GPGPUDemos              - Demos for use of GPGPU computing with Psychtoolbox.
 %    GratingDemo             - Basic display of a grating on the screen.
 %    HDRMinimalisticOpenGLDemo - Basic demo on how to render OpenGL 3D stimuli on a HDR display.
