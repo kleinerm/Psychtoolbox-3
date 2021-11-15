@@ -42,7 +42,7 @@ radius = virtualSize / 2;
 sigma = 55;
 % use alpha channel for smoothing?
 useAlpha = true;
-% smoothing method: cosine (0) or smoothstep (1)
+% smoothing method: cosine (0) or smoothstep (1) or inverse smoothstep (2)
 smoothMethod = 1;
 
 % Two ways to achieve the same visual appearance for edge smoothing/fadeout,
@@ -70,7 +70,7 @@ end
 
 % Build a procedural gabor texture for a grating with a RGB color offset of 0.5 -- a 50% gray.
 sinetex = CreateProceduralSmoothedApertureSineGrating(win, virtualSize, virtualSize,...
-          [.5 .5 .5 0], radius, [], sigma, useAlpha, smoothMethod);
+          [.5 .5 .5 1], radius, [], sigma, useAlpha, smoothMethod);
 
 % Draw the grating once, just to make sure the gfx-hardware is ready for the
 % benchmark run below and doesn't do one time setup work inside the
