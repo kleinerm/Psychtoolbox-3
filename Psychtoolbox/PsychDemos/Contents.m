@@ -73,8 +73,7 @@
 %    MouseMotionRecordingDemo - Record mouse motion via KbQueues.
 %    MouseTraceDemo          - Track mouse around screen and draw contour.
 %    MouseTraceDemo2         - More efficient tracking of mouse around screen drawing contour.
-%    MouseTraceDemo3         - Like MouseTraceDemo2, but faster, and for multiple mice.
-%    MouseTraceDemo4         - Like MouseTraceDemo2, but faster on modern hardware.
+%    MouseTraceDemo3         - Like MouseTraceDemo2, but for multiple mice.
 %    MovieDemo               - Animation without offscreen windows.
 %    MovieDemos              - Subfolder: Demos on how to use movie playback.
 %    MovingLineDemo          - Shows some horizontally moving lines to demonstrate flat panel display artifacts.
