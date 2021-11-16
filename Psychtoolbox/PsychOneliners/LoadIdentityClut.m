@@ -115,7 +115,7 @@ winfo = Screen('GetWindowInfo', windowPtr);
 % Get current clut for use as backup copy later on:
 oldClut = Screen('ReadNormalizedGammaTable', windowPtr);
 
-if disableDithering && IsWin
+if disableDithering && IsWin && strcmp(winfo.DisplayCoreId, 'AMD')
     fprintf('LoadIdentityClut: Trying to disable digital display dithering.\n');
     % Try to use PsychGPUControl() method to disable display dithering
     % globally on all connected GPUs and displays. We only use this
