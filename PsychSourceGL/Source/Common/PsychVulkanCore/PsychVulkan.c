@@ -1099,6 +1099,10 @@ VkSurfaceFullScreenExclusiveInfoEXT fullscreenExclusiveInfo = {
 void PsychInitFullScreenExlusiveStructs(PsychVulkanWindow* window)
 {
     fullscreenExclusiveInfoWin32.hmonitor = MonitorFromWindow(window->win32PrivateWindow, MONITOR_DEFAULTTOPRIMARY);
+    if (window->isFullscreen && !(window->createFlags & 0x2))
+        fullscreenExclusiveInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT;
+    else
+        fullscreenExclusiveInfo.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
 }
 
 void PsychMSDXGIQueryOutputHDR(PsychVulkanWindow* window, PsychVulkanDevice* vulkan)
