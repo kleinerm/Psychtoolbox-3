@@ -544,10 +544,17 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
         % causes massive malfunctions and a black screen display only,
         % e.g., the Radeon RX 460 (Polaris, pci device id 0x67EF).
         % Check gpu against badFSEIds list and enable a workaround if it is
-        % one of the bad gpu's:
+        % one of the bad gpu's.
+        % Additionally driver version raw >= 8388767 aka 20.11.2+ seems to have
+        % generally broken fullscreen-exclusive mode, as verified by Dale Stolizka,
+        % and by kleinerm with version 21.11.2 from one year later - November 2021!
+        % This on the Windows 10 21H1 edition. So we fall back to non-fs-exclusive
+        % mode and accept broken timing and potentially impaired HDR - what choice do
+        % we have?!
         badFSEIds = hex2dec({'67EF'});
         for i=1:length(devs)
-            if (devs(i).VendorId == 4098) && strcmp(winfo.GLRenderer, devs(i).GpuName) && ismember(devs(i).DeviceId, badFSEIds)
+            if (devs(i).VendorId == 4098) && strcmp(winfo.GLRenderer, devs(i).GpuName) && ...
+               (ismember(devs(i).DeviceId, badFSEIds) || (devs(i).DriverVersionRaw >= 8388767))
                 % Got a bad one! Disable fullscreen-exclusive mode for fullscreen windows:
                 flags = mor(flags, 2);
                 fprintf('PsychVulkan-INFO: AMD gpu [%s] with buggy Vulkan driver for fullscreen mode detected! Enabling workaround, timing reliability may suffer.\n', devs(i).GpuName);
