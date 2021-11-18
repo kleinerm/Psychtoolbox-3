@@ -3807,7 +3807,7 @@ psych_bool PsychOpenVulkanWindow(PsychVulkanWindow* window, int gpuIndex, psych_
     }
 
     // Report nominal refresh rate of display if this is supported:
-    if ((verbosity > 3) && fpGetRefreshCycleDurationGOOGLE) {
+    if ((verbosity > 3) && vulkan->hasTiming && fpGetRefreshCycleDurationGOOGLE) {
         VkRefreshCycleDurationGOOGLE refreshDur;
         if (VK_SUCCESS == fpGetRefreshCycleDurationGOOGLE(vulkan->device, window->swapChain, &refreshDur)) {
             printf("PsychVulkanCore-INFO: Vulkan reports nominal refresh rate %f Hz for display associated with window %i.\n", 1.0e9 / (double) refreshDur.refreshDuration, window->index);
