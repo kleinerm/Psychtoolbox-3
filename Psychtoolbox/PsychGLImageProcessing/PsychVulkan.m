@@ -97,13 +97,17 @@ if nargin > 0 && isscalar(cmd) && isnumeric(cmd)
                 Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
             end
 
+            % predictedOnset is the last known vbl timestamp from Screen():
             predictedOnset = winfo.LastVBLTime;
-            % If predictedOnset is valid, use it. Otherwise fall back to vblTime:
-            if predictedOnset > 0
+
+            % If predictedOnset is valid and not stale, use it. Otherwise fall back to vblTime:
+            if (predictedOnset > 0) && (predictedOnset ~= vulkan{win}.LastVBLTime)
                 vblTime = predictedOnset;
             else
                 predictedOnset = vblTime;
             end
+
+            vulkan{win}.LastVBLTime = predictedOnset;
 
             % Inject vblTime and visual stimulus onset time into Screen(), for usual handling
             % and reporting back to usercode via Screen('Flip'), also current beamposition:
@@ -881,6 +885,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     vulkan{win}.outputHandle = outputHandle;
     vulkan{win}.outputName = outputName;
     vulkan{win}.needsNvidiaWa = needsNvidiaWa;
+    vulkan{win}.LastVBLTime = nan;
 
     % Find out which Vulkan device was chosen to drive this window:
     hdrInfo = PsychVulkanCore('GetHDRProperties', vwin);
