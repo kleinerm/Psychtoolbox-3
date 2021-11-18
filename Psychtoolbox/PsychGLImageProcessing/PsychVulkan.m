@@ -725,7 +725,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
 
     % Is the special fullscreen direct display mode workaround for NVidia blobs on Linux needed?
-    needsNvidiaWa = IsLinux && isFullscreen && strcmp(winfo.DisplayCoreId, 'NVidia') && ~isempty(strfind(winfo.GLVendor, 'NVIDIA'));
+    needsNvidiaWa = IsLinux && isFullscreen && strcmp(winfo.DisplayCoreId, 'NVidia') && (~isempty(strfind(winfo.GLVendor, 'NVIDIA')) || noInterop);
 
     % Try to open the Vulkan window and setup Vulkan side of interop:
     try
