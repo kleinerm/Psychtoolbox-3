@@ -266,6 +266,7 @@ end
 
 if mode==15
     % Build PsychVulkanCore.mex:
+    % Needs at least Vulkan SDK version 1.2.189
     try
         mex --output ../Projects/Linux/build/PsychVulkanCore.mex -Wno-date-time -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX -ICommon/Base -ILinux/Base -ICommon/PsychVulkanCore Linux/Base/*.c Common/Base/*.c Common/PsychVulkanCore/*.c -lc -lrt -ldl -lX11 -lvulkan
     catch

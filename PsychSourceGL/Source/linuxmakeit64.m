@@ -132,6 +132,7 @@ end
 
 if mode==15
     % Build PsychVulkanCore.mex:
+    % Needs at least Vulkan SDK version 1.2.189
     try
         mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore -ICommon/Base -ILinux/Base -ICommon/PsychVulkanCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychVulkanCore/*.c" -lc -lrt -ldl -lX11 -lvulkan
     catch
