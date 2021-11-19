@@ -541,6 +541,13 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Restore rank 0 output setting in Screen:
     Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
 
+    % NVidia gpu under Linux/X11 with NVIDIA proprietary driver? And onscreen window fills complete target X-Screen?
+    if IsLinux && ~IsWayland && ~isempty(strfind(winfo.GLVendor, 'NVIDIA')) && isequal(Screen('GlobalRect', win), Screen('GlobalRect', screenId))
+        % Do not use direct display mode via RandR output leasing. This window can
+        % be pageflipped under X11 as well, without need for Vulkan direct display:
+        isFullscreen = 0;
+    end
+
     % AMD gpu under MS-Windows?
     if IsWin && ~isempty(strfind(winfo.GLVendor, 'ATI'))
         % For some of these the AMD Vulkan driver is buggy in that
