@@ -542,7 +542,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     Screen('Preference', 'ScreenToHead', screenId, outputMappings{screenId + 1}(1, 1), outputMappings{screenId + 1}(2, 1), 0);
 
     % NVidia gpu under Linux/X11 with NVIDIA proprietary driver? And onscreen window fills complete target X-Screen?
-    if IsLinux && ~IsWayland && ~isempty(strfind(winfo.GLVendor, 'NVIDIA')) && isequal(Screen('GlobalRect', win), Screen('GlobalRect', screenId))
+    % Or this is a single-output display NVidia Optimus PRIME render offload setup, where NVIDIA's RandR output leasing does not work?
+    if IsLinux && ~IsWayland && ~isempty(strfind(winfo.GLVendor, 'NVIDIA')) && ...
+       (isequal(Screen('GlobalRect', win), Screen('GlobalRect', screenId)) || ~isempty(getenv('__NV_PRIME_RENDER_OFFLOAD')))
         % Do not use direct display mode via RandR output leasing. This window can
         % be pageflipped under X11 as well, without need for Vulkan direct display:
         isFullscreen = 0;
