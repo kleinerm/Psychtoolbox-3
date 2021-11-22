@@ -193,6 +193,7 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 #include <X11/Xlib-xcb.h>
 #include <xcb/xcb.h>
 #include <xcb/dri3.h>
+#include <xcb/present.h>
 
 // For DPMS control:
 #include <X11/extensions/dpms.h>
