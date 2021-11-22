@@ -1580,9 +1580,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             }
         }
         else {
-            if ((PsychPrefStateGet_VBLTimestampingMode()==4) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)) {
+            if ((PsychPrefStateGet_VBLTimestampingMode()==4) &&
+                (!((*windowRecord)->specialflags & kPsychOpenMLDefective) || ((*windowRecord)->hybridGraphics == 5))) {
                 if ((*windowRecord)->hybridGraphics == 3 || (*windowRecord)->hybridGraphics == 4) {
-                    printf("PTB-INFO: Will try to use PRIME custom modesetting-ddx protocol for accurate Flip timestamping.\n");
+                    printf("PTB-INFO: Will try to use my PRIME custom modesetting-ddx protocol for accurate Flip timestamping.\n");
+                } else if ((*windowRecord)->hybridGraphics == 5) {
+                    printf("PTB-INFO: Will try to use my custom X11/Present feedback method for accurate Flip timestamping.\n");
                 } else {
                     printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n",
                            ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->winsysType != WAFFLE_PLATFORM_WAYLAND)) ? "OpenML sync control support" : "method");
@@ -1929,7 +1932,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
         // Only warn user and flash the warning triangle if we can't use OpenML timestamping because it is disabled or broken.
         // If OpenML timestamping is available then beamposition queries are not needed anyway, so no reason to make a big fuss...
-        if ((PsychPrefStateGet_Verbosity() > 1) && ((PsychPrefStateGet_VBLTimestampingMode() != 4) || ((*windowRecord)->specialflags & kPsychOpenMLDefective))) {
+        if ((PsychPrefStateGet_Verbosity() > 1) && ((PsychPrefStateGet_VBLTimestampingMode() != 4) ||
+            (((*windowRecord)->specialflags & kPsychOpenMLDefective) && ((*windowRecord)->hybridGraphics != 5)))) {
             printf("\n\n");
             printf("----- ! PTB - WARNING: SYNCHRONIZATION TROUBLE ! -----\n\n");
             printf("One or more internal checks (see Warnings above) indicate that\n");
@@ -3891,10 +3895,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         targetWhen = tremaining - 1.0;
     }
 
-    // Invalidate target swapbuffer count values. Will get set to useful values
-    // if PsychOSScheduleFlipWindowBuffers() succeeds:
-    windowRecord->target_sbc = 0;
-    if (windowRecord->slaveWindow) windowRecord->slaveWindow->target_sbc = 0;
+    // Must not invalidate if our custom Prime timestamping is used:
+    if (windowRecord->hybridGraphics != 5) {
+        // Invalidate target swapbuffer count values. Will get set to useful values
+        // if PsychOSScheduleFlipWindowBuffers() succeeds:
+        windowRecord->target_sbc = 0;
+        if (windowRecord->slaveWindow) windowRecord->slaveWindow->target_sbc = 0;
+    }
 
     // Emit swap scheduling commands:
     // These are allowed to fail, due to some error condition or simply because this
@@ -5051,7 +5058,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
     int fallthroughcount=0;
     double* samples = NULL;
     int maxlogsamples = 0;
-    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !(windowRecord->specialflags & kPsychOpenMLDefective));
+    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && (!(windowRecord->specialflags & kPsychOpenMLDefective) || (windowRecord->hybridGraphics == 5)));
     int pflip_count = 0;
 
     if (did_pageflip) *did_pageflip = FALSE;
@@ -7087,6 +7094,22 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             printf("PTB-WARNING: but this is not enabled on your setup. Use XOrgConfCreator to setup your system accordingly.\n");
             printf("PTB-WARNING: Without this, your visual stimulation will suffer severe timing and display artifacts.\n\n");
         }
+    }
+
+    // Is this a hybrid graphics dual-gpu laptop which uses muxless Optimus / PRIME render offload to a NVIDIA gpu, while using the proprietary driver?
+    if ((windowRecord->specialflags & kPsychIsX11Window) && (windowRecord->specialflags & kPsychIsDRI3Window) &&
+        strstr((char*) glGetString(GL_VENDOR), "NVIDIA") && getenv("__NV_PRIME_RENDER_OFFLOAD") &&
+        getenv("__GLX_VENDOR_LIBRARY_NAME") && strstr(getenv("__GLX_VENDOR_LIBRARY_NAME"), "nvidia")) {
+        // Yes. Try to setup our custom timestamping method which plays tricks with the X11 Present extension:
+        if (PsychPrefStateGet_Verbosity() >= 3)
+            printf("PTB-INFO: Hybrid graphics with NVidia proprietary Optimus/PRIME muxless render offload detected.\n");
+
+        // Enable our own Present-Event handling:
+        PsychOSEnablePresentEventReception(windowRecord, TRUE);
+
+        // Enable our own Present-Event handling:
+        if (PsychOSEnablePresentEventReception(windowRecord, TRUE))
+            windowRecord->hybridGraphics = 5;
     }
 
     // Find out if the primary output of the screen on which this window is
