@@ -301,6 +301,77 @@ static psych_bool IsDRI3Supported(PsychWindowRecordType *windowRecord)
     return(TRUE);
 }
 
+psych_bool PsychIsPresentSupported(PsychWindowRecordType *windowRecord)
+{
+    const xcb_query_extension_reply_t *present_extension;
+    xcb_present_query_version_cookie_t cookie;
+    xcb_present_query_version_reply_t *reply;
+    xcb_connection_t *dpy = XGetXCBConnection(windowRecord->targetSpecific.privDpy);
+
+    // Try to connect to Present extension:
+    present_extension = xcb_get_extension_data(dpy, &xcb_present_id);
+    if ((present_extension == NULL) || !present_extension->present) {
+        return(FALSE);
+    }
+
+    // Check if minimum required version is supported by server:
+    cookie = xcb_present_query_version(dpy, XCB_PRESENT_MAJOR_VERSION, XCB_PRESENT_MINOR_VERSION);
+    reply = xcb_present_query_version_reply(dpy, cookie, NULL);
+    if (!(reply->major_version > 1 || reply->minor_version >= 1)) {
+        free(reply);
+        return(FALSE);
+    }
+    else {
+        free(reply);
+        return(TRUE);
+    }
+}
+
+psych_bool PsychOSEnablePresentEventReception(PsychWindowRecordType *windowRecord, psych_bool enable)
+{
+    xcb_void_cookie_t cookie;
+    xcb_connection_t *dpy;
+
+    // Skip enable/disable if already en/disabled as requested, return previous == current enable state:
+    if ((enable && windowRecord->targetSpecific.present_notify_queue) ||
+        (!enable && !windowRecord->targetSpecific.present_notify_queue))
+        return(enable);
+
+    dpy = XGetXCBConnection(windowRecord->targetSpecific.privDpy);
+
+    // Need to switch:
+    if (enable) {
+        // Enable reception of pixmap present complete notify events for our windowRecord:
+        if (!windowRecord->targetSpecific.present_notify_event_id)
+            windowRecord->targetSpecific.present_notify_event_id = xcb_generate_id(dpy);
+
+        cookie = xcb_present_select_input_checked(dpy, windowRecord->targetSpecific.present_notify_event_id,
+                                                  windowRecord->targetSpecific.xwindowHandle,
+                                                  XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY);
+
+        windowRecord->targetSpecific.present_notify_queue = xcb_register_for_special_xge(dpy, &xcb_present_id,
+                                                                                         windowRecord->targetSpecific.present_notify_event_id,
+                                                                                         NULL);
+
+        if (PsychPrefStateGet_Verbosity() > 4)
+            printf("PTB-INFO: Custom X11/Present feedback flip completion timestamping for window %i enabled. Will start at next flip.\n", windowRecord->windowIndex);
+    }
+    else {
+        // Disable reception of pixmap present complete notify events for our windowRecord:
+        xcb_unregister_for_special_event(dpy, windowRecord->targetSpecific.present_notify_queue);
+        windowRecord->targetSpecific.present_notify_queue = NULL;
+
+        cookie = xcb_present_select_input_checked(dpy, windowRecord->targetSpecific.present_notify_event_id,
+                                                  windowRecord->targetSpecific.xwindowHandle,
+                                                  XCB_PRESENT_EVENT_MASK_NO_EVENT);
+    }
+
+    xcb_discard_reply(dpy, cookie.sequence);
+
+    // Return previous enable state:
+    return(!enable);
+}
+
 // Ensure that video outputs are properly configured to reproduce at least min_bpc framebuffer output precision:
 psych_bool PsychOSEnsureMinimumOutputPrecision(int screenNumber, int min_bpc)
 {
@@ -1426,7 +1497,17 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
 
     // Check for DRI3/Present operation and assign proper special flag to windowRecord if so:
-    if (IsDRI3Supported(windowRecord) && (PsychPrefStateGet_Verbosity() > 3)) printf("PTB-INFO: Window uses DRI3/Present for visual stimulus presentation.\n");
+    if (IsDRI3Supported(windowRecord) && PsychIsPresentSupported(windowRecord)) {
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: Window uses DRI3/Present for OpenGL visual stimulus rendering and presentation.\n");
+    }
+    else if (PsychIsPresentSupported(windowRecord)) {
+        // DRI3/Present enabled and in use, at least for display in a muxless PRIME setup:
+        windowRecord->specialflags |= kPsychIsDRI3Window;
+
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: Window uses DRI3/Present for Optimus/Prime renderoffload visual stimulus presentation on display gpu.\n");
+    }
 
     // Increase our own open window counter:
     x11_windowcount++;
@@ -1756,6 +1837,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 {
     Display* dpy = windowRecord->targetSpecific.deviceContext;
 
+    // Disable our own X11/Present event reception if it is on. Otherwise this no-ops:
+    PsychOSEnablePresentEventReception(windowRecord, FALSE);
+
     // We have to rebind the OpenGL context for this swapbuffers call to work around some
     // mesa bug for intel drivers which would cause a crash without context:
     PsychLockDisplay();
@@ -1984,6 +2068,86 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         // to calculate actual onset time and such:
         windowRecord->specialflags |= kPsychBufferAgeWarningDone;
         return(-1);
+    }
+
+    if ((windowRecord->hybridGraphics == 5) && PsychOSEnablePresentEventReception(windowRecord, TRUE)) {
+        double tstart, tnow;
+        xcb_present_generic_event_t *event;
+        xcb_connection_t *dpy = XGetXCBConnection(windowRecord->targetSpecific.privDpy);
+
+        if (targetSBC == 0)
+            targetSBC = windowRecord->target_sbc;
+
+        PsychGetAdjustedPrecisionTimerSeconds(&tstart);
+        sbc = -1;
+
+        while (sbc < targetSBC) {
+            event = (xcb_present_generic_event_t*) xcb_wait_for_special_event(dpy, windowRecord->targetSpecific.present_notify_queue);
+            if (event && (event->evtype == XCB_PRESENT_EVENT_COMPLETE_NOTIFY)) {
+                xcb_present_complete_notify_event_t *completed = (void*) event;
+                if (completed->kind == XCB_PRESENT_COMPLETE_KIND_PIXMAP) {
+                    sbc = completed->serial;
+                    msc = completed->msc;
+                    ust = completed->ust;
+
+                    // Map complete mode equivalent to INTEL_swap_event:
+                    switch (completed->mode) {
+                        case XCB_PRESENT_COMPLETE_MODE_FLIP:
+                            windowRecord->swapcompletiontype = 1;
+                            break;
+
+                        case XCB_PRESENT_COMPLETE_MODE_SUBOPTIMAL_COPY:
+                        case XCB_PRESENT_COMPLETE_MODE_COPY:
+                            windowRecord->swapcompletiontype = 3;
+                            break;
+
+                        case XCB_PRESENT_COMPLETE_MODE_SKIP:
+                            windowRecord->swapcompletiontype = 4;
+                            break;
+
+                        default:
+                            windowRecord->swapcompletiontype = 0;
+                            break;
+                    }
+
+                    if (PsychPrefStateGet_Verbosity() > 12) {
+                        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+                        printf("%f [%f] Presented at: sbc = %llu msc = %llu  ust = %llu\n", tnow, tnow - tstart, sbc, msc, ust);
+                    }
+                }
+                else if (PsychPrefStateGet_Verbosity() > 12) {
+                    printf("msc wait/query complete notify. sbc = %llu\n", completed->serial);
+                }
+            }
+
+            free(event);
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 12) {
+            PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+            printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: %f secs  [%f delta] Presented at: sbc = %llu msc = %llu  ust = %llu\n", tnow, tnow - tstart, sbc, msc, ust);
+        }
+
+        // See below...
+        if (tSwap == NULL) return(msc);
+
+        // Success at least for timestamping. Translate ust into system time in seconds:
+        *tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
+
+        // Make sure msc is always positive and incrementing (needed, because msc is defined as signed integer):
+        msc &= ~(1ULL << 63);
+
+        // Update cached reference values for future swaps:
+        windowRecord->reference_ust = ust;
+        windowRecord->reference_msc = msc;
+        windowRecord->reference_sbc = sbc;
+
+        if (PsychPrefStateGet_Verbosity() > 11)
+            printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %lld, refmsc = %lld, refsbc = %lld.\n", ust, msc, sbc);
+
+        // Done, jump to the end of the routine, where some checking and warning about lack of pageflip is done
+        // if needed:
+        goto optimus_flipcheck;
     }
 
     // DRI Prime hybridGraphics setup in outputSource -> outputSink mode? Typically a NVidia Optimus
@@ -2435,6 +2599,9 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 
     // Try to get corresponding INTEL_swap_event for cross-checking:
     if (PsychOSSwapCompletionLogging(windowRecord, 4, (int) sbc)) {
+        // Label called from hybridGraphics == 5 Optimus code, with injected windowRecord->swapcompletiontype:
+        optimus_flipcheck:
+
         // Got it. We are only interested in one thing: Was this a fullscreen window bufferswap with a non page-flipped swap?
         // For non-fullscreen windows, all bets are off wrt. stimulus onset timing or timestamping, and the user knows this,
         // as we've told so at window creation time.
@@ -2444,7 +2611,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         if ((windowRecord->vSynced) && (windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_SkipSyncTests() < 2) && (windowRecord->swapcompletiontype > 1)) {
             // Ohoh: Non-pageflipped fullscreen window swap:
             if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("\nPTB-WARNING: Flip for window %i didn't use pageflipping for flip. Visual presentation timing and timestamps are likely unreliable!\n", windowRecord->windowIndex);
+                printf("\nPTB-WARNING: Flip %lld for window %i didn't use pageflipping for flip. Visual presentation timing and timestamps are likely unreliable!\n", windowRecord->target_sbc, windowRecord->windowIndex);
                 printf("PTB-WARNING: Something is misconfigured on your system, otherwise pageflipping would have been used by the graphics driver for reliable timing.\n");
                 printf("PTB-WARNING: However, if you see this message only sporadically, this might be caused by onscreen popup messages a la \"You have new mail!\" or\n");
                 printf("PTB-WARNING: \"New updates are ready to install\" etc. Being low on free system memory can cause this as well, especially on integrated graphics chips.\n");
@@ -3184,7 +3351,7 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     glXSwapBuffers(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle);
     PsychUnlockDisplay();
 
-    windowRecord->target_sbc = 0;
+    windowRecord->target_sbc = (windowRecord->hybridGraphics == 5) ? (windowRecord->target_sbc + 1): 0;
     windowRecord->lastSwaptarget_msc = 0;
 }
 

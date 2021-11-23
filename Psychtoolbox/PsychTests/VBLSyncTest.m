@@ -278,7 +278,7 @@ try
 
     % Open double-buffered window: Optionally enable stereo output if
     % stereo == 1.
-    PsychImaging('PrepareConfiguration')
+    PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'UseRetinaResolution');
 
     if usedpixx
@@ -503,7 +503,7 @@ try
     RestrictKeysForKbCheck([]);
 
     % Shutdown realtime scheduling:
-    Priority(0)
+    Priority(0);
 
     % Close display: If we skipped/missed any presentation deadline during
     % Flip, Psychtoolbox will automatically display some warning message on the Matlab
