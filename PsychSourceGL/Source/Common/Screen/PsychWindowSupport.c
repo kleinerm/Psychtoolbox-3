@@ -1510,7 +1510,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
         (*windowRecord)->VideoRefreshInterval = ifi_estimate;
         if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 ||
-            ((*windowRecord)->hybridGraphics == 1) || ((*windowRecord)->hybridGraphics == 3) || ((*windowRecord)->hybridGraphics == 4)) {
+            ((*windowRecord)->hybridGraphics == 1) || ((*windowRecord)->hybridGraphics == 3) || ((*windowRecord)->hybridGraphics == 4) || ((*windowRecord)->hybridGraphics == 5)) {
             // Flip frame stereo or multiSampling enabled, or some hybrid graphics laptop? Check for ifi_estimate = 2 * ifi_beamestimate:
             if ((ifi_beamestimate>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_beamestimate && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_beamestimate) ||
                 (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_nominal && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_nominal)) {
@@ -1522,6 +1522,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 (*windowRecord)->IFIRunningSum /= 2.0;
                 (*windowRecord)->VideoRefreshInterval = ifi_estimate;
                 if (PsychPrefStateGet_Verbosity()>2) {
+                    if ((*windowRecord)->hybridGraphics > 0) {
+                        printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long as\n");
+                        printf("PTB-INFO: the refresh interval of your monitor when using dual-gpu hybrid graphics on your setup.\n");
+                        printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
+                    }
+
                     if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
                         printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
                         printf("PTB-INFO: as the refresh interval of your monitor when using OpenGL flip-frame stereo on your setup.\n");
@@ -2637,7 +2643,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
     // Get a handle to our info structs: These pointers must not be NULL!!!
     PsychWindowRecordType* windowRecord = (PsychWindowRecordType*) windowRecordToCast;
     PsychFlipInfoStruct* flipRequest = windowRecord->flipInfo;
-    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !(windowRecord->specialflags & kPsychOpenMLDefective));
+    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && (!(windowRecord->specialflags & kPsychOpenMLDefective) || (windowRecord->hybridGraphics == 5)));
 
     // Assign a name to ourselves, for debugging:
     PsychSetThreadName("ScreenFlipper");
@@ -7097,18 +7103,16 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     }
 
     // Is this a hybrid graphics dual-gpu laptop which uses muxless Optimus / PRIME render offload to a NVIDIA gpu, while using the proprietary driver?
-    if ((windowRecord->specialflags & kPsychIsX11Window) && (windowRecord->specialflags & kPsychIsDRI3Window) &&
-        strstr((char*) glGetString(GL_VENDOR), "NVIDIA") && getenv("__NV_PRIME_RENDER_OFFLOAD") &&
-        getenv("__GLX_VENDOR_LIBRARY_NAME") && strstr(getenv("__GLX_VENDOR_LIBRARY_NAME"), "nvidia")) {
+    if ((windowRecord->specialflags & kPsychIsX11Window) && (windowRecord->specialflags & kPsychIsDRI3Window) && getenv("__NV_PRIME_RENDER_OFFLOAD")) {
         // Yes. Try to setup our custom timestamping method which plays tricks with the X11 Present extension:
         if (PsychPrefStateGet_Verbosity() >= 3)
-            printf("PTB-INFO: Hybrid graphics with NVidia proprietary Optimus/PRIME muxless render offload detected.\n");
+            printf("PTB-INFO: Hybrid graphics with NVidia proprietary Prime render offload implementation detected. Enabling special handling.\n");
 
         // Enable our own Present-Event handling:
-        PsychOSEnablePresentEventReception(windowRecord, TRUE);
+        PsychOSEnablePresentEventReception(windowRecord, 0, TRUE);
 
         // Enable our own Present-Event handling:
-        if (PsychOSEnablePresentEventReception(windowRecord, TRUE))
+        if (PsychOSEnablePresentEventReception(windowRecord, 0, TRUE))
             windowRecord->hybridGraphics = 5;
     }
 
