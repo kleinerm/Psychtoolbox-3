@@ -1269,13 +1269,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Yes. This is a standard stimulus presentation window which should get best
         // timing precision and performance for stimulus presentation. We don't want
         // any desktop composition to interfere with it, so it is eligible for direct
-        // page-flipping (unredirected). If we are running under KDE's KWin desktop
-        // manager, then we can explicitely ask KWin to disable compositing while
-        // our onscreen window is open, by setting a special NETWM property on the window.
-        // This approach has just become a NETWM standard that should work with other
-        // compositors in the future, e.g., Mutter/GNOME-3 as of 18th December 2012.
+        // page-flipping (unredirected). If we are running under a modern X11 desktop
+        // compositor then we can explicitely ask it to disable compositing while our
+        // onscreen window is open, by setting a special NETWM property on the window.
+        // This approach has just become a NETWM standard that works with KWin/KDE-5
+        // and Mutter/GNOME-3.
         //
-        // On other compositors, e.g., compiz / unity et al. this problem is solved by
+        // On legacy compositors, e.g., compiz / unity et al. this problem is solved by
         // asking them to unredirect_fullscreen_windows, as done by PsychGPUControl.m during
         // installation of PTB.
         //
@@ -1283,22 +1283,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // in file netwm.cpp, e.g., at http://code.woboq.org/kde/kdelibs/kdeui/windowmanagement/netwm.cpp.html
         //
 
-        // Set KDE-4 specific property: This is supported since around KWin 4.6, since July 2011:
+        // Set the standardized NETWM property. This is supported in Mutter (== GNOME-3 and Ubuntu desktop)
+        // since 18. December 2012 (see last comment/patch in https://bugzilla.gnome.org/show_bug.cgi?id=683020),
+        // and supported by KDE KWin since KDE frameworks version 5.20 (committed since 29.12.2015), cfe.
+        // https://invent.kde.org/frameworks/kwindowsystem/-/commit/2a5b7943a020f2154049d28a33216149b6220d53
         unsigned int dontcomposite = 1;
-        Atom atom_window_dontcomposite = XInternAtom(dpy, "_KDE_NET_WM_BLOCK_COMPOSITING", False);
+        Atom atom_window_dontcomposite = XInternAtom(dpy, "_NET_WM_BYPASS_COMPOSITOR", False);
 
         // Assign new value for property:
         XChangeProperty(dpy, win, atom_window_dontcomposite, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &dontcomposite, 1);
-
-        // Set the standardized NETWM property. This is supported in Mutter (== GNOME-3) since
-        // 18. December 2012 (see last comment/patch in https://bugzilla.gnome.org/show_bug.cgi?id=683020 ),
-        // and will supposedly get supported by other compositing window managers in the future as well,
-        // e.g., future KWin/KDE releases or possibly Unity/Compiz:
-        dontcomposite = 1;
-        Atom atom_window_dontcomposite2 = XInternAtom(dpy, "_NET_WM_BYPASS_COMPOSITOR", False);
-
-        // Assign new value for property:
-        XChangeProperty(dpy, win, atom_window_dontcomposite2, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &dontcomposite, 1);
     }
 
     // Is this a non-GUI fullscreen window? If so, set the fullscreen NETWM property:
