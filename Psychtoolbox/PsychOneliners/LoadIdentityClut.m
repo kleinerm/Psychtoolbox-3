@@ -341,6 +341,17 @@ else
                             fprintf('LoadIdentityClut: Your Linux kernel %i.%i may be too old for proper identity pixel passthrough.\n', linuxversion(1), linuxversion(2));
                             fprintf('LoadIdentityClut: I recommend upgrading to at least Linux 5.3 to get identity passthrough fixed.\n');
                         end
+
+                        % modesetting-ddx in use for this screen / window?
+                        if ~IsWayland && Screen('GetWindowInfo', windowPtr, 8)
+                            % Yes: This won't work on X-Server 1.20 and earlier, only on
+                            % the 21.1 series and later:
+                            fprintf('LoadIdentityClut: WARNING! The modesetting-ddx video driver is in use, instead of the standard\n');
+                            fprintf('LoadIdentityClut: WARNING! amdgpu/radeon/ati-ddx for AMD GPU''s. This *will* cause failure of\n');
+                            fprintf('LoadIdentityClut: WARNING! identity pixel passthrough, unless you are using X-Server 21.1 or later.\n');
+                            fprintf('LoadIdentityClut: WARNING! In case of failure, XOrgConfCreator and XOrgConfSelector will allow you\n');
+                            fprintf('LoadIdentityClut: WARNING! to switch back to the AMD standard driver to fix this problem..\n');
+                        end
                     elseif ~isempty(strfind(winfo.GPUCoreId, 'R600'))
                         % At least the Radeon R9 380 Tonga Pro with DCE10 display engine under Linux with DRI2 Mesa needs type 3
                         % LUT's. Let's assume for the moment this is true for all such R600+ cores, ie., all Radeon HD series cards.
