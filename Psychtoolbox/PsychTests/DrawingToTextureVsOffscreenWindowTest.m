@@ -12,14 +12,16 @@ function DrawingToTextureVsOffscreenWindowTest
 bgd = [127 127 127]; %background colour
 
 % Open window
-screencount=size(Screen('screens'),2);
-if screencount>1
-screenRect=Screen(1,'rect');
+screencount = length(Screen('screens'));
+if screencount > 1
+    screenRect = Screen(1,'rect');
+    screenId = 1;
 else
-screenRect=Screen(0,'rect');
+    screenRect = Screen(0,'rect');
+    screenId = 0;
 end
 
-window = Screen(0, 'OpenWindow', bgd, screenRect, 32,2);
+window = Screen('OpenWindow', screenId, bgd, screenRect, 32,2);
 Screen('TextFont', window, 'Arial');
 Screen('TextSize', window, 20);
 Screen('DrawText', window, 'Please wait...', screenRect(3)/2-100,screenRect(4)/2, 0);
