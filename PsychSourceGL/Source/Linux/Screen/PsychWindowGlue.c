@@ -3831,16 +3831,27 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 
             // Always enable the swap event delivery, either to us or to user code:
             glXSelectEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (unsigned long) GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK);
-
-            // Logical enable state: Usercode has precedence. If it enables it goes to it. If it disabled,
-            // it gets directed to us:
-            if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = (cmd == 1) ? 1 : 2;
-
-            // If we want the data and usercode doesn't have exclusive access to it already, then redirect to us:
-            if (cmd == 2 && (windowRecord->swapevents_enabled != 1)) windowRecord->swapevents_enabled = 2;
-
+            glXGetSelectedEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &glxmask);
             PsychUnlockDisplay();
-            return(TRUE);
+
+            if (glxmask & GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK) {
+                // Logical enable state: Usercode has precedence. If it enables it goes to it. If it disabled,
+                // it gets directed to us:
+                if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = (cmd == 1) ? 1 : 2;
+
+                // If we want the data and usercode doesn't have exclusive access to it already, then redirect to us:
+                if (cmd == 2 && (windowRecord->swapevents_enabled != 1)) windowRecord->swapevents_enabled = 2;
+
+                return(TRUE);
+            }
+            else {
+                windowRecord->swapevents_enabled = 0;
+
+                if (PsychPrefStateGet_Verbosity() > 1)
+                    printf("PTB-WARNING: Enabling INTEL_swap_event support failed!\n");
+
+                return(FALSE);
+            }
         } else {
             // Failed to enable swap events, possibly because they're unsupported:
             windowRecord->swapevents_enabled = 0;
