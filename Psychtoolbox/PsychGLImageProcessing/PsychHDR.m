@@ -492,7 +492,7 @@ if strcmpi(cmd, 'HDRMetadata') && (length(varargin) == 2) && isstruct(varargin{2
     meta = varargin{2};
 
     % Check if this window is associated with a Vulkan/WSI / Vulkan window:
-    winfo = Screen('GetWindowInfo', window);
+    winfo = Screen('GetWindowInfo', window, 7);
     if ~bitand(winfo.ImagingMode, kPsychNeedFinalizedFBOSinks)
         % Nope: Must be part of the static HDR stereo hack.
 
@@ -751,7 +751,7 @@ if ~isempty(strfind(lower(cmd), 'hdr')) %#ok<*STREMP>
     if ~isempty(varargin)
         % Check if 1st arg is a window and if it is associated with a Vulkan/WSI / Vulkan window:
         if ~isempty(varargin{1}) && isscalar(varargin{1}) && isreal(varargin{1}) && (Screen('WindowKind', varargin{1}) == 1)
-            winfo = Screen('GetWindowInfo', varargin{1});
+            winfo = Screen('GetWindowInfo', varargin{1}, 7);
             if ~bitand(winfo.ImagingMode, kPsychNeedFinalizedFBOSinks)
                 % Nope: Windows must be part of the static HDR stereo hack. Can we handle it?
                 if strcmpi(cmd, 'HDRMetadata')
