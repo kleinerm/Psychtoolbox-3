@@ -75,6 +75,7 @@ try
 
    PsychImaging('AddTask','General','NormalizedHighresColorRange',1);
    PsychImaging('AddTask','AllViews','EnableCLUTMapping',CLUTMapLength,1); % clutSize, high res
+   PsychImaging('AddTask','General','UseRetinaResolution');
    window=PsychImaging('OpenWindow',0,1.0);
 
    rect=[0 0 600 300];
