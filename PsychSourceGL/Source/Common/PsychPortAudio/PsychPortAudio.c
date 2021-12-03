@@ -2840,26 +2840,38 @@ PsychError PSYCHPORTAUDIOOpen(void)
     if (specialFlags & 16) sflags |= paDitherOff;
 
     #if PSYCH_SYSTEM == PSYCH_LINUX
+        int major, minor;
+
         // On ALSA in aggressive low-latency mode, reduce number of periods (aka device buffers) to 2 for double-buffering.
         // The default in Portaudio is 4 periods, so that's what we use in non-aggressive mode
         if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paALSA)
             PaAlsa_SetNumPeriods((latencyclass > 2) ? 2 : 4);
-    #endif
 
-    // Check if the requested sample format and settings are likely supported by Audio API:
-    // Note: The Portaudio library on Linux, as of Ubuntu 20.10, has a very old bug in the ALSA backend code of Pa_IsFormatSupported(),
-    //       which asks the Linux kernel to test-allocate an absurdly huge amount of audio hardware buffer space. While this bug lay dormant,
-    //       not triggering on older Linux kernels for the last 13+ years, Linux 5.6 introduced a configurable limit of allowable max hw buffer size.
-    //       At a default of 32 MB, the limit is massively exceeded by Pa_IsFormatSupported() even in the most trivial configurations, e.g.,
-    //       requesting 59.9 MB or memory for a simple 44.1Khz stereo stream! The result is the Linux 5.6+ kernel rejecting the request, which
-    //       leads to a false positive failure of Pa_IsFormatSupported() with paUnanticipatedHostError!
-    //       Workaround: We just skip the check on Linux atm., until upstream Portaudio is fixed, and luckily the actual Pa_OpenStream()
-    //       function below will request very reasonable settings during execution, which the kernel happily accepts, e.g., only 15 kB in
-    //       the same scenario. This way we can continue working against the flawed Portaudio library shipping with Ubuntu 20.10.
-    if (PSYCH_SYSTEM != PSYCH_LINUX)
-        err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
-    else
+        // Check if the requested sample format and settings are likely supported by Audio API:
+        // Note: The Portaudio library on Linux, as of Ubuntu 20.10, has a very old bug in the ALSA backend code of Pa_IsFormatSupported(),
+        //       which asks the Linux kernel to test-allocate an absurdly huge amount of audio hardware buffer space. While this bug lay dormant,
+        //       not triggering on older Linux kernels for the last 13+ years, Linux 5.6 introduced a configurable limit of allowable max hw buffer size.
+        //       At a default of 32 MB, the limit is massively exceeded by Pa_IsFormatSupported() even in the most trivial configurations, e.g.,
+        //       requesting 59.9 MB or memory for a simple 44.1Khz stereo stream! The result is the Linux 5.6+ kernel rejecting the request, which
+        //       leads to a false positive failure of Pa_IsFormatSupported() with paUnanticipatedHostError!
+        //       Workaround: We just skip the check on Linux atm., until upstream Portaudio is fixed, and luckily the actual Pa_OpenStream()
+        //       function below will request very reasonable settings during execution, which the kernel happily accepts, e.g., only 15 kB in
+        //       the same scenario. This way we can continue working against the flawed Portaudio library shipping with Ubuntu 20.10.
+
+        // Assume no validation error in case we skip Pa_IsFormatSupported() validation on pre-Linux 5.13 kernels:
         err = paNoError;
+
+        // Find out which kernel we are running on:
+        PsychOSGetLinuxVersion(&major, &minor, NULL);
+
+        // Pa_IsFormatSupported() should be fine on Linux 5.13 and later, due to a kernel fix for this overallocation issue, cfe.
+        // https://github.com/alsa-project/alsa-lib/issues/125 and kernel commit 12b2b508300d08206674bfb3f53bb84f69cf2555
+        // Corresponding Portaudio issue: https://github.com/PortAudio/portaudio/issues/526
+        //
+        // Execute check if Linux is 5.13+, skip otherwise with err = paNoError. Our setup will always execute the check on non-Linux:
+        if ((major > 5) || (major == 5 && minor >= 13))
+    #endif
+            err = Pa_IsFormatSupported(((mode & kPortAudioCapture) ?  &inputParameters : NULL), ((mode & kPortAudioPlayBack) ? &outputParameters : NULL), freq);
 
     if ((err != paNoError) && (err != paDeviceUnavailable)) {
         printf("PTB-ERROR: Desired audio parameters for device %i unsupported by audio device: %s \n", deviceid, Pa_GetErrorText(err));
@@ -2886,7 +2898,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                             buffersize,                                                     /* Requested buffer size. */
                             sflags,                                                         /* Define special stream property flags. */
                             paCallback,                                                     /* Our processing callback. */
-                            &audiodevices[id]);                               /* Our own device info structure */
+                            &audiodevices[id]);                                             /* Our own device info structure */
 
     if (err != paNoError || stream == NULL) {
         printf("PTB-ERROR: Failed to open audio device %i. PortAudio reports this error: %s \n", deviceid, Pa_GetErrorText(err));

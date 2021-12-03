@@ -144,7 +144,7 @@
 %      will be grossly wrong, and you will observe massive tearing artifacts, flicker and
 %      other stimulus anomalies.
 %
-%   With all setup steps performed propery, and a reboot for good measure, visual
+%   With all setup steps performed properly, and a reboot for good measure, visual
 %   stimulation should work very well, with robust, trustworthy and sub-millisecond
 %   accurate visual stimulus onset timestamps, as verfied by us with external measurement
 %   equipment.

@@ -84,7 +84,7 @@ def tune_engine(yield_interval, mutex_enable, lock_to_core1,
                           lock_to_core1, audioserver_autosuspend)
 
 
-class Stream():
+class Stream:
     """
     Creates a Psychtoolbox Stream with the given settings.
     See also http://psychtoolbox.org/docs/PsychPortAudio-Open
@@ -236,7 +236,7 @@ class Stream():
         self.close()
 
 
-class Buffer():
+class Buffer:
     """A buffer allows us to pre-fill a Stream or a Slave with data ready
     to be played. It can be created and filled in a single operation or can
     be created and then filled in two steps."""

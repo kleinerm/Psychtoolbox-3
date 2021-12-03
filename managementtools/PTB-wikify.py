@@ -382,7 +382,7 @@ def mexhelpextract(mexnames):
                 # replace the text of the container DIV
                 subfct.contents[0].replaceWith(text)
             else:
-                # contruct new DIV to hold the text
+                # construct new DIV to hold the text
                 subfctDIV = Tag(soup, "div")
                 subfctDIV['class'] = 'subfct'
                 subfctDIV['id'] = mexname

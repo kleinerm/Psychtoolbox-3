@@ -76,7 +76,7 @@ if isempty(needWorkaround)
         needWorkaround = 1;
         
         fprintf('\n\nPTB-WARNING: Found marker file %s\n', markerfile);
-        fprintf('PTB-WARNING: This indicates a broken Screen(''DrawText'') implementation\n');
+        fprintf('PTB-WARNING: This indicates a broken Screen(''DrawDots'') implementation\n');
         fprintf('PTB-WARNING: in your operating system! Will enable a slower workaround.\n');
         fprintf('PTB-WARNING: Call this function as ScreenDrawDots(0) once, if you want to disable the workaround.\n\n');
         fprintf('PTB-WARNING: You must call "clear all" before each run of your script, or\n');

@@ -193,9 +193,13 @@ void PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags)
 #include <X11/Xlib-xcb.h>
 #include <xcb/xcb.h>
 #include <xcb/dri3.h>
+#include <xcb/present.h>
 
 // For DPMS control:
 #include <X11/extensions/dpms.h>
+
+// For enhanced Present extension tricks involving the desktop compositor:
+#include <X11/extensions/Xcomposite.h>
 
 // Use dedicated x-display handles for each onscreen window?
 static psych_bool usePerWindowXConnections = FALSE;
@@ -298,6 +302,139 @@ static psych_bool IsDRI3Supported(PsychWindowRecordType *windowRecord)
     windowRecord->specialflags |= kPsychIsDRI3Window;
 
     return(TRUE);
+}
+
+psych_bool PsychIsPresentSupported(PsychWindowRecordType *windowRecord)
+{
+    int major_version, minor_version;
+    const xcb_query_extension_reply_t *present_extension;
+    xcb_present_query_version_cookie_t cookie;
+    xcb_present_query_version_reply_t *reply;
+    xcb_connection_t *dpy = XGetXCBConnection(windowRecord->targetSpecific.privDpy);
+
+    // Try to connect to Present extension:
+    present_extension = xcb_get_extension_data(dpy, &xcb_present_id);
+    if ((present_extension == NULL) || !present_extension->present) {
+        return(FALSE);
+    }
+
+    // Check if minimum required version 1.1 is supported by server:
+    cookie = xcb_present_query_version(dpy, XCB_PRESENT_MAJOR_VERSION, XCB_PRESENT_MINOR_VERSION);
+    reply = xcb_present_query_version_reply(dpy, cookie, NULL);
+    major_version = reply->major_version;
+    minor_version = reply->minor_version;
+    free(reply);
+
+    if (!(major_version > 1 || minor_version >= 1)) {
+        return(FALSE);
+    }
+
+    // Make sure composite extension is supported:
+    if (!XCompositeQueryExtension(windowRecord->targetSpecific.privDpy, &major_version, &minor_version))
+        return(FALSE);
+
+    // Check for composite extension support of at least version 0.3:
+    if (!XCompositeQueryVersion(windowRecord->targetSpecific.privDpy, &major_version, &minor_version) ||
+        (major_version <= 0 && minor_version < 3))
+        return(FALSE);
+
+    // We are set here:
+    return(TRUE);
+}
+
+psych_bool PsychOSEnablePresentEventReception(PsychWindowRecordType *windowRecord, int forCompositor, psych_bool enable)
+{
+    xcb_void_cookie_t cookie;
+    xcb_connection_t *dpy;
+    Window overlay, root_return, parent_return;
+    Window *children_return = NULL;
+    unsigned int nchildren_return = 0;
+
+    // Skip enable/disable if already en/disabled as requested, return previous == current enable state:
+    if ((enable && windowRecord->targetSpecific.present_notify_queue[forCompositor]) ||
+        (!enable && !windowRecord->targetSpecific.present_notify_queue[forCompositor]))
+        return(enable);
+
+    dpy = XGetXCBConnection(windowRecord->targetSpecific.privDpy);
+
+    PsychLockDisplay();
+
+    if (forCompositor) {
+        // Get Window handle of composite overlay window, and potentially of children of it:
+        overlay = XCompositeGetOverlayWindow(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle);
+        if ((overlay != None) && XQueryTree(windowRecord->targetSpecific.privDpy, overlay, &root_return, &parent_return, &children_return, &nchildren_return) &&
+            (nchildren_return > 0) && (children_return)) {
+            // Does have child windows. Get last (== top-most in stacking order) one and assign
+            // as our window of interest for peeking into the composition process timing:
+            overlay = children_return[nchildren_return-1];
+
+            // Free list of children:
+            XFree(children_return);
+        }
+
+        // We only need the window handle, not direct use of the overlay itself, so immediately release our reference to it:
+        if (overlay != None)
+            XCompositeReleaseOverlayWindow(windowRecord->targetSpecific.privDpy, overlay);
+
+        if (getenv("COMPOSITORFBWIN"))
+            overlay = strtol(getenv("COMPOSITORFBWIN"), NULL, 16);
+
+        if (overlay == None) {
+            if (PsychPrefStateGet_Verbosity() > 0)
+                printf("PTB-ERROR: Could not find X-Composite overlay window id for desktop compositor. Expect severe timing malfunctions!\n");
+
+            PsychUnlockDisplay();
+            return(FALSE);
+        }
+    }
+    else {
+        overlay = None;
+    }
+
+    // Need to switch:
+    if (enable) {
+        // Enable reception of pixmap present complete notify events for our windowRecord:
+        if (!windowRecord->targetSpecific.present_notify_event_id[forCompositor])
+            windowRecord->targetSpecific.present_notify_event_id[forCompositor] = xcb_generate_id(dpy);
+
+        cookie = xcb_present_select_input_checked(dpy, windowRecord->targetSpecific.present_notify_event_id[forCompositor],
+                                                  (forCompositor) ? overlay : windowRecord->targetSpecific.xwindowHandle,
+                                                  (!forCompositor && windowRecord->targetSpecific.present_notify_queue[1]) ?
+                                                  (XCB_PRESENT_EVENT_MASK_IDLE_NOTIFY | XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY) : XCB_PRESENT_EVENT_MASK_COMPLETE_NOTIFY);
+        xcb_discard_reply(dpy, cookie.sequence);
+
+        windowRecord->targetSpecific.present_notify_queue[forCompositor] = xcb_register_for_special_xge(dpy, &xcb_present_id,
+                                                                                                        windowRecord->targetSpecific.present_notify_event_id[forCompositor], NULL);
+
+        if (PsychPrefStateGet_Verbosity() > 4)
+            if (forCompositor)
+                printf("PTB-INFO: Custom X11/Present compositor feedback flip completion timestamping for window %i enabled. Will start at next flip. Compositor target %p.\n",
+                       windowRecord->windowIndex, overlay);
+            else
+                printf("PTB-INFO: Custom X11/Present feedback flip completion timestamping for window %i enabled. Will start at next flip.\n", windowRecord->windowIndex);
+    }
+    else {
+        // Disable reception of all present notify events for our windowRecord:
+        if (PsychPrefStateGet_Verbosity() > 4)
+            printf("PTB-INFO: All custom X11/Present feedback delivery for window %i disabled.\n", windowRecord->windowIndex);
+
+        for (forCompositor = 0; forCompositor < 2; forCompositor++) {
+            if (windowRecord->targetSpecific.present_notify_queue[forCompositor]) {
+                xcb_unregister_for_special_event(dpy, windowRecord->targetSpecific.present_notify_queue[forCompositor]);
+                windowRecord->targetSpecific.present_notify_queue[forCompositor] = NULL;
+
+                cookie = xcb_present_select_input_checked(dpy, windowRecord->targetSpecific.present_notify_event_id[forCompositor],
+                                                        (forCompositor) ? overlay : windowRecord->targetSpecific.xwindowHandle,
+                                                        XCB_PRESENT_EVENT_MASK_NO_EVENT);
+                xcb_discard_reply(dpy, cookie.sequence);
+            }
+        }
+    }
+
+    PsychUnlockDisplay();
+
+    // Return previous enable state:
+    return(!enable);
 }
 
 // Ensure that video outputs are properly configured to reproduce at least min_bpc framebuffer output precision:
@@ -1197,13 +1334,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // Yes. This is a standard stimulus presentation window which should get best
         // timing precision and performance for stimulus presentation. We don't want
         // any desktop composition to interfere with it, so it is eligible for direct
-        // page-flipping (unredirected). If we are running under KDE's KWin desktop
-        // manager, then we can explicitely ask KWin to disable compositing while
-        // our onscreen window is open, by setting a special NETWM property on the window.
-        // This approach has just become a NETWM standard that should work with other
-        // compositors in the future, e.g., Mutter/GNOME-3 as of 18th December 2012.
+        // page-flipping (unredirected). If we are running under a modern X11 desktop
+        // compositor then we can explicitely ask it to disable compositing while our
+        // onscreen window is open, by setting a special NETWM property on the window.
+        // This approach has just become a NETWM standard that works with KWin/KDE-5
+        // and Mutter/GNOME-3.
         //
-        // On other compositors, e.g., compiz / unity et al. this problem is solved by
+        // On legacy compositors, e.g., compiz / unity et al. this problem is solved by
         // asking them to unredirect_fullscreen_windows, as done by PsychGPUControl.m during
         // installation of PTB.
         //
@@ -1211,22 +1348,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         // in file netwm.cpp, e.g., at http://code.woboq.org/kde/kdelibs/kdeui/windowmanagement/netwm.cpp.html
         //
 
-        // Set KDE-4 specific property: This is supported since around KWin 4.6, since July 2011:
+        // Set the standardized NETWM property. This is supported in Mutter (== GNOME-3 and Ubuntu desktop)
+        // since 18. December 2012 (see last comment/patch in https://bugzilla.gnome.org/show_bug.cgi?id=683020),
+        // and supported by KDE KWin since KDE frameworks version 5.20 (committed since 29.12.2015), cfe.
+        // https://invent.kde.org/frameworks/kwindowsystem/-/commit/2a5b7943a020f2154049d28a33216149b6220d53
         unsigned int dontcomposite = 1;
-        Atom atom_window_dontcomposite = XInternAtom(dpy, "_KDE_NET_WM_BLOCK_COMPOSITING", False);
+        Atom atom_window_dontcomposite = XInternAtom(dpy, "_NET_WM_BYPASS_COMPOSITOR", False);
 
         // Assign new value for property:
         XChangeProperty(dpy, win, atom_window_dontcomposite, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &dontcomposite, 1);
-
-        // Set the standardized NETWM property. This is supported in Mutter (== GNOME-3) since
-        // 18. December 2012 (see last comment/patch in https://bugzilla.gnome.org/show_bug.cgi?id=683020 ),
-        // and will supposedly get supported by other compositing window managers in the future as well,
-        // e.g., future KWin/KDE releases or possibly Unity/Compiz:
-        dontcomposite = 1;
-        Atom atom_window_dontcomposite2 = XInternAtom(dpy, "_NET_WM_BYPASS_COMPOSITOR", False);
-
-        // Assign new value for property:
-        XChangeProperty(dpy, win, atom_window_dontcomposite2, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &dontcomposite, 1);
     }
 
     // Is this a non-GUI fullscreen window? If so, set the fullscreen NETWM property:
@@ -1425,7 +1555,17 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
 
     // Check for DRI3/Present operation and assign proper special flag to windowRecord if so:
-    if (IsDRI3Supported(windowRecord) && (PsychPrefStateGet_Verbosity() > 3)) printf("PTB-INFO: Window uses DRI3/Present for visual stimulus presentation.\n");
+    if (IsDRI3Supported(windowRecord) && PsychIsPresentSupported(windowRecord)) {
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: Window uses DRI3/Present for OpenGL visual stimulus rendering and presentation.\n");
+    }
+    else if (PsychIsPresentSupported(windowRecord)) {
+        // DRI3/Present enabled and in use, at least for display in a muxless PRIME setup:
+        windowRecord->specialflags |= kPsychIsDRI3Window;
+
+        if (PsychPrefStateGet_Verbosity() > 3)
+            printf("PTB-INFO: Window uses DRI3/Present for Optimus/Prime renderoffload visual stimulus presentation on display gpu.\n");
+    }
 
     // Increase our own open window counter:
     x11_windowcount++;
@@ -1446,10 +1586,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
     // Some info for the user regarding non-fullscreen mode and sync problems, unless external consumers are used as signalled by kPsychExternalDisplayMethod:
     if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_Verbosity() > 2) && !(windowRecord->specialflags & kPsychExternalDisplayMethod)) {
-        printf("PTB-INFO: Many graphics cards do not support proper timing and timestamping of visual stimulus onset\n");
+        printf("PTB-INFO: Proper timing and timestamping of visual stimulus onset is not reliably supported at all\n");
         printf("PTB-INFO: when running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
         printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 2); .\n");
-        printf("PTB-INFO: You won't get proper stimulus onset timestamps though, so windowed mode may be of limited use.\n");
+        printf("PTB-INFO: You won't get proper stimulus onset timestamps in any case though, so windowed mode is of limited use.\n");
     }
 
     // Check for availability of VSYNC extension:
@@ -1755,6 +1895,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 {
     Display* dpy = windowRecord->targetSpecific.deviceContext;
 
+    // Disable our own X11/Present event reception if it is on. Otherwise this no-ops:
+    PsychOSEnablePresentEventReception(windowRecord, 0, FALSE);
+
     // We have to rebind the OpenGL context for this swapbuffers call to work around some
     // mesa bug for intel drivers which would cause a crash without context:
     PsychLockDisplay();
@@ -1946,6 +2089,29 @@ double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint
     }
 }
 
+static void ParseX11PresentCompleteMode(PsychWindowRecordType *windowRecord, xcb_present_complete_notify_event_t *completed)
+{
+    // Map complete mode equivalent to INTEL_swap_event:
+    switch (completed->mode) {
+        case XCB_PRESENT_COMPLETE_MODE_FLIP:
+            windowRecord->swapcompletiontype = 1;
+            break;
+
+        case XCB_PRESENT_COMPLETE_MODE_SUBOPTIMAL_COPY:
+        case XCB_PRESENT_COMPLETE_MODE_COPY:
+            windowRecord->swapcompletiontype = 3;
+            break;
+
+        case XCB_PRESENT_COMPLETE_MODE_SKIP:
+            windowRecord->swapcompletiontype = 4;
+            break;
+
+        default:
+            windowRecord->swapcompletiontype = 0;
+            break;
+    }
+}
+
 /* PsychOSGetSwapCompletionTimestamp()
  *
  * Retrieve a very precise timestamp of doublebuffer swap completion by means
@@ -1983,6 +2149,206 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         // to calculate actual onset time and such:
         windowRecord->specialflags |= kPsychBufferAgeWarningDone;
         return(-1);
+    }
+
+    if ((windowRecord->hybridGraphics == 5) && PsychOSEnablePresentEventReception(windowRecord, 0, TRUE)) {
+        double tstart, tnow;
+        xcb_present_generic_event_t *event = NULL;
+        psych_bool hasComposited = FALSE;
+        psych_bool hasCommitted = FALSE;
+        xcb_connection_t *dpy = XGetXCBConnection(windowRecord->targetSpecific.privDpy);
+        psych_bool withCompositor = windowRecord->targetSpecific.present_notify_queue[1] ? TRUE : FALSE;
+
+        if (targetSBC == 0)
+            targetSBC = windowRecord->target_sbc;
+
+        PsychGetAdjustedPrecisionTimerSeconds(&tstart);
+        sbc = -1;
+
+        while (TRUE) {
+            event = (xcb_present_generic_event_t*) xcb_wait_for_special_event(dpy, windowRecord->targetSpecific.present_notify_queue[0]);
+            if (event) {
+                PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+
+                if (event->evtype == XCB_PRESENT_EVENT_IDLE_NOTIFY) {
+                    xcb_present_idle_notify_event_t *idled = (void*) event;
+
+                    if (!hasComposited && (idled->serial >= targetSBC))
+                        hasComposited = TRUE;
+
+                    if (PsychPrefStateGet_Verbosity() > 12)
+                        printf("%f [%f] Window %p pixmap idle event at: sbc = %llu -- hasComposited %i\n",
+                               tnow, tnow - tstart, idled->window, idled->serial, hasComposited);
+                }
+
+                if (event->evtype == XCB_PRESENT_EVENT_COMPLETE_NOTIFY) {
+                    xcb_present_complete_notify_event_t *completed = (void*) event;
+                    if (completed->kind == XCB_PRESENT_COMPLETE_KIND_PIXMAP) {
+                        if (!hasCommitted && (completed->serial >= targetSBC)) {
+                            hasCommitted = TRUE;
+
+                            sbc = completed->serial;
+                            msc = completed->msc;
+                            ust = completed->ust;
+
+                            ParseX11PresentCompleteMode(windowRecord, completed);
+                        }
+
+                        if (PsychPrefStateGet_Verbosity() > 12) {
+                            printf("%f [%f] Window %p presented event at: sbc = %llu msc = %llu  ust = %llu mode = %i -- hasCommitted %i\n",
+                                   tnow, tnow - tstart, completed->window, completed->serial, completed->msc, completed->ust,
+                                   windowRecord->swapcompletiontype, hasCommitted);
+                        }
+                    }
+                    else if (PsychPrefStateGet_Verbosity() > 12) {
+                        printf("msc wait/query complete notify. sbc = %llu\n", completed->serial);
+                    }
+                }
+
+                free(event);
+            }
+
+            if (hasCommitted && (!withCompositor || hasComposited))
+                break;
+        }
+
+        // In the simple case without compositor we are done and sbc, msc, ust, swapcompletiontype
+        // represent the presentation state of our last flip.
+        //
+        // In the compositor case, we only know that our flip's new visual content update has been
+        // processed/composited by the compositor into its to-be-presented framebuffer. We have to
+        // wait for the actual composition to be page-flipped into the scanout:
+        if (withCompositor) {
+            if (PsychPrefStateGet_Verbosity() > 12) {
+                printf("%f [%f] Content composited at: sbc = %llu msc = %llu  ust = %llu mode = %i ---> Awaiting compositor flip.\n",
+                       tnow, tnow - tstart, sbc, msc, ust, windowRecord->swapcompletiontype);
+            }
+
+            // Now we need to wait for flip completion on the actual compositor output window - the true framebuffer.
+            // We wait for a pageflip completion event with a completion msc > recorded msc of queuing the present to
+            // the compositor, as detected above.
+            hasCommitted = FALSE;
+            event = NULL;
+            while (TRUE) {
+                if (PsychPrefStateGet_Verbosity() > 12)
+                    printf("%f [%f] Awaiting compositor flip with msc > target MSC %llu.\n", tnow, tnow - tstart, msc);
+
+                if (!hasCommitted)
+                    event = (xcb_present_generic_event_t*) xcb_wait_for_special_event(dpy, windowRecord->targetSpecific.present_notify_queue[1]);
+                else
+                    event = (xcb_present_generic_event_t*) xcb_poll_for_special_event(dpy, windowRecord->targetSpecific.present_notify_queue[1]);
+
+                if (event) {
+                    PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+
+                    if (event->evtype == XCB_PRESENT_EVENT_COMPLETE_NOTIFY) {
+                        xcb_present_complete_notify_event_t *completed = (void*) event;
+                        if (completed->kind == XCB_PRESENT_COMPLETE_KIND_PIXMAP) {
+                            if ((completed->mode == XCB_PRESENT_COMPLETE_MODE_FLIP) && ((psych_int64) completed->msc > msc)) {
+                                hasCommitted = TRUE;
+
+                                // Record potential true msc, ust of flip completion aka stimulus onset:
+                                msc = completed->msc;
+                                ust = completed->ust;
+
+                                ParseX11PresentCompleteMode(windowRecord, completed);
+                            }
+
+                            if (PsychPrefStateGet_Verbosity() > 12) {
+                                printf("%f [%f] Compositor window %p presented event at: compositor-sbc = %llu msc = %llu  ust = %llu mode = %i -- hasCommitted %i\n",
+                                       tnow, tnow - tstart, completed->window, completed->serial, completed->msc, completed->ust, windowRecord->swapcompletiontype, hasCommitted);
+                            }
+                        }
+                        else if (PsychPrefStateGet_Verbosity() > 12) {
+                            printf("COMPOSITOR OUTPUT WINDOW msc wait/query complete notify. sbc = %llu\n", completed->serial);
+                        }
+                    }
+
+                    free(event);
+                    event = NULL;
+                }
+                else if (hasCommitted) {
+                    break;
+                }
+            }
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 12) {
+            PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+            printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: %f secs  [%f delta] presented at: sbc = %llu msc = %llu  ust = %llu mode = %i.\n",
+                   tnow, tnow - tstart, sbc, msc, ust, windowRecord->swapcompletiontype);
+        }
+
+        // See below...
+        if (tSwap == NULL) return(msc);
+
+        // Success at least for timestamping. Translate ust into system time in seconds:
+        *tSwap = PsychOSMonotonicToRefTime(((double) ust) / PsychGetKernelTimebaseFrequencyHz());
+
+        // Make sure msc is always positive and incrementing (needed, because msc is defined as signed integer):
+        msc &= ~(1ULL << 63);
+
+        // Update cached reference values for future swaps:
+        windowRecord->reference_ust = ust;
+        windowRecord->reference_msc = msc;
+        windowRecord->reference_sbc = sbc;
+
+        if (PsychPrefStateGet_Verbosity() > 11)
+            printf("PTB-DEBUG:PsychOSGetSwapCompletionTimestamp: Success! refust = %lld, refmsc = %lld, refsbc = %lld.\n", ust, msc, sbc);
+
+        // Used copy-swaps, despite being a fullscreen window, which should be unredirected via unredirect_fullscreen_windows policy,
+        // thereby bypass compositing and use page-flipping?
+        if (!withCompositor && (windowRecord->swapcompletiontype == 3) && (windowRecord->specialflags & kPsychIsFullscreenWindow)) {
+            // Yes: Could be compositor active, or could be no compositor active but pageflip rejected due to incompatible drivers or
+            // hardware, e.g., due to use of AMD iGPU + NVidia dGPU as of Linux 5.14. Could also be old-school no-compositor at all,
+            // and still pageflip rejected.
+            if (PsychPrefStateGet_Verbosity() > 2)
+                printf("PTB-INFO: Suboptimal non-pageflipped presentation in use. ");
+
+            // If a compositor is active or at least enabled, so we either already do use, or could use, compositing, we may be
+            // able to salvage this, timing-wise, assuming user allows it by not using a timestamping mode other than 4. We allow
+            // to opt out of this with another mode, because it will cut achievable framerates down to half the video refresh rate.
+            if (PsychOSIsDWMEnabled(windowRecord->screenNumber) && (PsychPrefStateGet_VBLTimestampingMode() == 4)) {
+                // Compositor enabled, and either already compositing us, or at least able to do so.
+                // Make sure we go through compositing and setup for use of our Present+Compositor timing trick:
+                if (PsychPrefStateGet_Verbosity() > 2)
+                    printf("Reconfiguring for compositing, with lower performance and higher lag.\n");
+
+                // Disable our current Present timestamping:
+                PsychOSEnablePresentEventReception(windowRecord, 0, FALSE);
+
+                // Try to request compositing explicitely:
+                unsigned int dontcomposite = 2;
+                PsychLockDisplay();
+                XChangeProperty(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.xwindowHandle,
+                                XInternAtom(windowRecord->targetSpecific.privDpy, "_NET_WM_BYPASS_COMPOSITOR", False),
+                                XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &dontcomposite, 1);
+
+                // Need to flush the connection and then wait a bit for the compositor to respond by creating
+                // a suitable composition output child window of the X-Composite overlay window. The event
+                // reception setup code below will latch onto that newly created window to get the actual
+                // pageflip completion events and timestamps for stimulus onset:
+                XFlush(windowRecord->targetSpecific.privDpy);
+                PsychUnlockDisplay();
+
+                PsychYieldIntervalSeconds(1);
+
+                // Reenable in compositor compatible mode:
+                PsychOSEnablePresentEventReception(windowRecord, 1, TRUE);
+                PsychOSEnablePresentEventReception(windowRecord, 0, TRUE);
+
+                // Fake a "pageflip used" if this was one of the first few presents, so we shut up pointless warnings:
+                if (sbc <= 10)
+                    windowRecord->swapcompletiontype = 1;
+            }
+            else if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("Compositor unavailable or its use forbidden, can't compensate. Expect timing problems and visual tearing artifacts!\n");
+            }
+        }
+
+        // Done, jump to the end of the routine, where some checking and warning about lack of pageflip is done
+        // if needed:
+        goto fliptypecheck;
     }
 
     // DRI Prime hybridGraphics setup in outputSource -> outputSink mode? Typically a NVidia Optimus
@@ -2434,6 +2800,9 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
 
     // Try to get corresponding INTEL_swap_event for cross-checking:
     if (PsychOSSwapCompletionLogging(windowRecord, 4, (int) sbc)) {
+        // Label called from hybridGraphics == 5 Optimus code, with injected windowRecord->swapcompletiontype:
+        fliptypecheck:
+
         // Got it. We are only interested in one thing: Was this a fullscreen window bufferswap with a non page-flipped swap?
         // For non-fullscreen windows, all bets are off wrt. stimulus onset timing or timestamping, and the user knows this,
         // as we've told so at window creation time.
@@ -2443,7 +2812,7 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
         if ((windowRecord->vSynced) && (windowRecord->specialflags & kPsychIsFullscreenWindow) && (PsychPrefStateGet_SkipSyncTests() < 2) && (windowRecord->swapcompletiontype > 1)) {
             // Ohoh: Non-pageflipped fullscreen window swap:
             if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("\nPTB-WARNING: Flip for window %i didn't use pageflipping for flip. Visual presentation timing and timestamps are likely unreliable!\n", windowRecord->windowIndex);
+                printf("\nPTB-WARNING: Flip %lld for window %i didn't use pageflipping for flip. Visual presentation timing and timestamps are likely unreliable!\n", windowRecord->target_sbc, windowRecord->windowIndex);
                 printf("PTB-WARNING: Something is misconfigured on your system, otherwise pageflipping would have been used by the graphics driver for reliable timing.\n");
                 printf("PTB-WARNING: However, if you see this message only sporadically, this might be caused by onscreen popup messages a la \"You have new mail!\" or\n");
                 printf("PTB-WARNING: \"New updates are ready to install\" etc. Being low on free system memory can cause this as well, especially on integrated graphics chips.\n");
@@ -3183,7 +3552,7 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
     glXSwapBuffers(windowRecord->targetSpecific.privDpy, windowRecord->targetSpecific.windowHandle);
     PsychUnlockDisplay();
 
-    windowRecord->target_sbc = 0;
+    windowRecord->target_sbc = (windowRecord->hybridGraphics == 5) ? (windowRecord->target_sbc + 1): 0;
     windowRecord->lastSwaptarget_msc = 0;
 }
 
@@ -3462,16 +3831,27 @@ psych_bool PsychOSSwapCompletionLogging(PsychWindowRecordType *windowRecord, int
 
             // Always enable the swap event delivery, either to us or to user code:
             glXSelectEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, (unsigned long) GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK);
-
-            // Logical enable state: Usercode has precedence. If it enables it goes to it. If it disabled,
-            // it gets directed to us:
-            if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = (cmd == 1) ? 1 : 2;
-
-            // If we want the data and usercode doesn't have exclusive access to it already, then redirect to us:
-            if (cmd == 2 && (windowRecord->swapevents_enabled != 1)) windowRecord->swapevents_enabled = 2;
-
+            glXGetSelectedEvent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, &glxmask);
             PsychUnlockDisplay();
-            return(TRUE);
+
+            if (glxmask & GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK) {
+                // Logical enable state: Usercode has precedence. If it enables it goes to it. If it disabled,
+                // it gets directed to us:
+                if (cmd == 0 || cmd == 1) windowRecord->swapevents_enabled = (cmd == 1) ? 1 : 2;
+
+                // If we want the data and usercode doesn't have exclusive access to it already, then redirect to us:
+                if (cmd == 2 && (windowRecord->swapevents_enabled != 1)) windowRecord->swapevents_enabled = 2;
+
+                return(TRUE);
+            }
+            else {
+                windowRecord->swapevents_enabled = 0;
+
+                if (PsychPrefStateGet_Verbosity() > 1)
+                    printf("PTB-WARNING: Enabling INTEL_swap_event support failed!\n");
+
+                return(FALSE);
+            }
         } else {
             // Failed to enable swap events, possibly because they're unsupported:
             windowRecord->swapevents_enabled = 0;
@@ -3599,7 +3979,17 @@ double PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, doub
     // delay after a bufferswap request until flip at minimum. Ergo, subtract one video
     // refresh duration from the target time to Increase our chance of hitting the proper
     // target frame. This as of the design of driver version 370.23 with XOrg 1.19-rc1.
-    if (!onlyForCalibration && ((windowRecord->hybridGraphics == 2) || (windowRecord->hybridGraphics == 3))) {
+    //
+    // For the new Optimus PRIME renderoffload implementation, we also get 1 frame delay if
+    // we must go through the desktop compositor, so try to compensate for that. Going through
+    // the compositor is needed if the iGPU can't pageflip/scanout pixmap buffers directly from
+    // the dGPU, ie. scanout from GTT memory RAM aperture. This is the case for AMD dGPU's, old
+    // AMD iGPU's pre-Stoney, AMD RavenRidge initial revisions, and whenever the renderoffload
+    // gpu is not an AMD gpu driven by amdgpu-kms. The latter limitation is a software/driver
+    // limitation at least as of Linux 5.14, so it may get lifted at some time. I do have kernel
+    // patches that do that in a hacky way, which may not be upstreamable...
+    if (!onlyForCalibration && ((windowRecord->hybridGraphics == 2) || (windowRecord->hybridGraphics == 3) ||
+        ((windowRecord->hybridGraphics == 5) && windowRecord->targetSpecific.present_notify_queue[1]))) {
         if (PsychPrefStateGet_Verbosity() > 14)
             printf("PTB-DEBUG: PsychOSAdjustForCompositorDelay: Optimus Pre-targetTime: %f secs. VideoRefreshInterval %f secs.\n",
                    targetTime, windowRecord->VideoRefreshInterval);

@@ -29,12 +29,16 @@ function AlphaBlendingTest(screenNumber)
 % AlphaAdditionTest - 
 %   Test that addition of source and destination terms has perfect
 %   precision.    
-
+PsychDefaultSetup(0);
 
 if nargin==0
     screenNumber=max(Screen('Screens'));
 end
 
+oldskip = Screen('Preference', 'SkipSyncTests', 2);
+oldverbo = Screen('Preference', 'Verbosity', 1);
+
+try
 resultStrings={'Passed', 'Failed'};
 
 fprintf('AlphaBlendingTest, performaing four tests of alpha blending:\n');
@@ -48,7 +52,7 @@ failFlag2= AlphaAdditionTest(screenNumber);
 fprintf([resultStrings{failFlag2 + 1} '\n']);
 
 fprintf('    3. Testing accuracy of OpenGL alpha multiplication by 0 and 1:        '); 
-failFlag3= AlphaAdditionTest(screenNumber);
+failFlag3= AlphaMultiplicationTest(screenNumber);
 fprintf([resultStrings{failFlag3 + 1} '\n']);
 
 fprintf('    4. Testing accuracy of OpenGL multiplication between 0 and 1:         '); 
@@ -71,4 +75,9 @@ else
     fprintf('        Multiplication rules depend on either the surface or the blending factor string.\n');
 end
 
+catch
+    psychlasterror;
+end
 
+Screen('Preference', 'SkipSyncTests', oldskip);
+Screen('Preference', 'Verbosity', oldverbo);

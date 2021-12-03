@@ -24,7 +24,7 @@ def run():
     WaitSecs('YieldSecs', 5);
     PsychHID('KbQueueStop');
     PsychHID('Keyboardhelper', -10);
-    while PsychHID('KbQueueFlush'):
+    while PsychHID('KbQueueFlush', [], 0):
         evt = PsychHID('KbQueueGetEvent');
         print(evt);
 

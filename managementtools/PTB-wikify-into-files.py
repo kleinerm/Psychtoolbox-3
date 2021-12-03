@@ -251,7 +251,7 @@ def beackern(mkstring, doLinks):
             mkstring = re.sub(match,r'[[\1|\1]]',mkstring)
 
         #Add links for any word using UpperCamelCase: e.g. PsychHID
-        #BUT does NOT match any string stating wiht ' e.g. 'OpenWindow'
+        #BUT does NOT match any string stating with ' e.g. 'OpenWindow'
         #Because we don't want subfunctions/strings to trigger page links
         #WARNING:
         #This is a pretty crazy regex to .  Cobled together from lots of
@@ -270,7 +270,7 @@ def beackern(mkstring, doLinks):
     mkstring = re.sub(r'(?m)((?<=\n\n).+:((?=\s*\n\n)+))', r'### \1',mkstring)
     mkstring = re.sub('(?m)((?<=\n\n)\ *[A-Z][A-Z :!-]+\ *(?=\n))', r'### \1',mkstring)
 
-    #media wiki interprets whitespace at beggining of line as code block
+    #media wiki interprets whitespace at beginning of line as code block
     if outputFormat == "mediawiki":
         mkstring = re.sub(r'^\s+','',mkstring,flags=re.M)
 
@@ -535,7 +535,7 @@ def mexhelpextract(outputDir,mexnames):
             if seealso:
 
                 #Add links for any word using UpperCamelCase: e.g. PsychHID
-                #BUT does NOT match any string stating wiht ' e.g. 'OpenWindow'
+                #BUT does NOT match any string stating with ' e.g. 'OpenWindow'
                 #Because we don't want subfunctions/strings to trigger page links
                 #WARNING:
                 #This is a pretty crazy regex to .  Cobled together from lots of

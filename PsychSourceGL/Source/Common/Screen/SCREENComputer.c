@@ -372,10 +372,10 @@ PsychError SCREENComputer(void)
 
     // Special case for Windows-10 and later, as GetVersionEx() doesn't report
     // version numbers faithfully beyond Windows 8, unless application manifest
-    // would mark the app as Windows-8.1+ compatible. Fake a 10.0 version if this
+    // would mark the app as Windows-8.1+ compatible. Get major version if this
     // is Windows 10 or later - should be good enough for our purposes.
     if (PsychOSIsMSWin10()) {
-        osvi.dwMajorVersion = 10;
+        osvi.dwMajorVersion = PsychOSIsMSWin10();
         osvi.dwMinorVersion = 0;
     }
 

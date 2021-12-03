@@ -16,7 +16,7 @@ global diffImage;
 % Open window with 3D CLUT color correction enabled:
 PsychImaging('PrepareConfiguration');
 PsychImaging('AddTask', 'AllViews', 'DisplayColorCorrection', 'LookupTable3D');
-w=PsychImaging('OpenWindow', 0, 0, [0 0 400 400], [], [], [], [], [], kPsychGUIWindow);
+w=PsychImaging('OpenWindow', 0, 0, [0 0 401 401], [], [], [], [], [], kPsychGUIWindow);
 
 % Build initial identity 3D-CLUT with 16 slots in each color dimension:
 clut = ones(3,16,16,16);

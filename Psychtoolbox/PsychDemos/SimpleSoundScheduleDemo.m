@@ -19,8 +19,8 @@ function SimpleSoundScheduleDemo
 % History:
 % 7-Aug-2013  mk  Written.
 
-% Select playback sampling rate of 44100 Hz:
-freq = 44100;
+% Select playback sampling rate of 48000 Hz:
+freq = 48000;
 
 % Select one channel mono playback:
 nrchannels = 1;

@@ -1,5 +1,6 @@
-function DotDemo
-% dot motion demo using SCREEN('DrawDots') subfunction
+function DotRotDemo
+% dot motion demo using SCREEN('DrawDots') subfunction. Dot rotation
+% pattern.
 % author: Keith Schneider, 12/13/04
 
 %HISTORY

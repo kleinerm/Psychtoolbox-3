@@ -82,6 +82,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 % 19.11.2013  Drop Quicktime support, add dc1394 support, update help text (MK).
 % 29.12.2013  Make less broken on OSX and Windows (MK).
 % 26.08.2014  Adapt to new GStreamer-1 based engine (MK).
+% 02.12.2021  Change codec for macOS 10.15 to avenc_h263p, default H264 hangs (MK).
 
 % Test if we're running on PTB-3, abort otherwise:
 AssertOpenGL;
@@ -144,14 +145,9 @@ if isempty(codec)
     end
     
     if IsOSX
-        % OSX: Without audio, stuff just works. With audio, we must specify
-        % an explicit audio source with very specific parameters (48 kHz sampling rate), as
-        % everything else will just hang, at least on OSX 10.9 Mavericks with GStreamer 0.10 and 1.x:
-        if withsound
-            codec = ':CodecType=DEFAULTencoder ::: AudioSource=osxaudiosrc ! capsfilter caps=audio/x-raw,rate=48000';
-        else
-            codec = ':CodecType=DEFAULTencoder';
-        end
+        % macOS 10.15.7 + GStreamer 1.18. The default H264 codec causes
+        % hangs and recording failure. H263p works though, also with audio:
+        codec = ':CodecType=avenc_h263p';
     end
     
     if IsWin

@@ -674,6 +674,10 @@ while any(regexp(path,searchpattern))
         s = char(p);
         if any(regexp(s, searchpattern2))
             % fprintf('rmpath(''%s'')\n',s);
+            if strcmpi(s, pwd)
+                % Octave 6.4+: rmpath can not remove current working directory from path, so switch it:
+                cd('..');
+            end
             rmpath(s);
         end
     end
