@@ -24,7 +24,7 @@ try
     %PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
     %PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
 
-    [win winRect]=PsychImaging('OpenWindow', screen, 0, [], [], [], [], [], mor(kPsychNeedFastBackingStore, kPsychNeedImageProcessing));
+    [win winRect]=PsychImaging('OpenWindow', screen, 0);
 
     % Initial flip to a blank screen:
     Screen('Flip',win);

@@ -42,6 +42,7 @@ double      PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych
 psych_bool  PsychOSSetupFrameLock(PsychWindowRecordType *masterWindow, PsychWindowRecordType *slaveWindow);
 psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord, double tWhen, psych_int64 targetMSC, psych_int64 divisor, psych_int64 remainder, unsigned int specialFlags);
 psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecord, psych_int64 targetSBC, double* tSwap);
+psych_bool  PsychOSEnablePresentEventReception(PsychWindowRecordType *windowRecord, int forCompositor, psych_bool enable);
 void        PsychOSProcessEvents(PsychWindowRecordType *windowRecord, int flags);
 double      PsychOSAdjustForCompositorDelay(PsychWindowRecordType *windowRecord, double targetTime, psych_bool onlyForCalibration);
 psych_bool  PsychVRRActive(PsychWindowRecordType *windowRecord);

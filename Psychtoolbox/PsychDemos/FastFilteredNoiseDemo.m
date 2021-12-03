@@ -110,8 +110,10 @@ try
     % Open fullscreen onscreen window on that screen. Background color is
     % gray, double buffering is enabled. Return a 'win'dowhandle and a
     % rectangle 'winRect' which defines the size of the window:
-    [win, winRect] = Screen('OpenWindow', screenid, 128, [],[],[],[],[],kPsychNeedFastBackingStore);
-    
+    PsychImaging('PrepareConfiguration');
+    PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+    [win, winRect] = PsychImaging('OpenWindow', screenid, 128);
+
     % Build a filter kernel:
     stddev = kwidth / 2;
 
@@ -153,9 +155,9 @@ try
     end
 
     glFinish;
-    
+
     % Compute destination rectangle locations for the random noise patches:
-    
+
     % 'objRect' is a rectangle of the size 'rectSize' by 'rectSize' pixels of
     % our Matlab noise image matrix:
     objRect = SetRect(0,0, rectSize, rectSize);
@@ -179,7 +181,7 @@ try
     tstart = GetSecs;
     endtime = tstart + 5;
     xtex = 0;
-    
+
     % Run noise image drawing loop for 20 seconds.
     while GetSecs < endtime
         % Increase our frame counter:
@@ -197,10 +199,10 @@ try
                 noiseimg=uint8(noiseimg);
                 noiseimg=double(noiseimg);
             end
-            
+
             % Convert it to a texture 'tex':
             tex=Screen('MakeTexture', win, noiseimg,[],[],0);
-            
+
             % Draw the texture into the screen location defined by the
             % destination rectangle 'dstRect(i,:)'. If dstRect is bigger
             % than our noise image 'noiseimg', PTB will automatically
@@ -225,7 +227,7 @@ try
                 xtex = Screen('TransformTexture', tex, convoperator, [], xtex);
                 Screen('DrawTexture', win, xtex, [], dstRect(i,:), [], 0);
             end
-            
+
             if validate
                 % Compute same convolution on CPU:
                 %noiseimg = single(noiseimg);
@@ -239,17 +241,17 @@ try
                 %ref = uint8(0.5 + ref);
                 %ref = single(ref);
             end
-            
+
             % After drawing, we can discard the noise texture.
             Screen('Close', tex);
         end
-        
+
         % Done with drawing the noise patches to the backbuffer: Initiate
         % buffer-swap. If 'asyncflag' is zero, buffer swap will be
         % synchronized to vertical retrace. If 'asyncflag' is 2, bufferswap
         % will happen immediately -- Only useful for benchmarking!
         Screen('Flip', win, 0, dontclear, asyncflag);
-        
+
         if validate
             %gpu = (Screen('GetImage', win, dstRect(1,:)));
             gpu = Screen('GetImage', xtex, [], [], 1, 1) * 255;
@@ -260,7 +262,7 @@ try
             m2=min(min(gpu))
             m3=max(max(ref))
             m4=min(min(ref))
-            
+
             difference = gpu(:,:,1) - ref;
             difference = abs(difference(length(kernel):end-length(kernel), length(kernel):end-length(kernel)));
             maxdiff = max(max(difference))

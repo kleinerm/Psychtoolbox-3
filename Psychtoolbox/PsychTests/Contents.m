@@ -76,7 +76,6 @@
 %   TextInitBugTest                 - Test for failure of 'DrawText' default font.
 %   TextInOffscreenWindowTest       - Compare text rendered into onscreen and offscreen windows.
 %   TextureChannelsTest             - Test assignment of matrix layers to RGBA texture channels.
-%   TextureTest                     - Exercise Screen('DrawTexture').
 %   TrolandTest                     - Colorimetric conversions.
 %   VBLSyncTest                     - Tests syncing of PTB-OSX to the vertical retrace.
 %   VRRTest                         - Test support of your setup for Variable refresh rate mode.

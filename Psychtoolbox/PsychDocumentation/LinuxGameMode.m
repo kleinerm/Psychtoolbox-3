@@ -58,7 +58,7 @@
 % system, the default card number 0 may be wrong and would need to be changed
 % manually to 1 by you.
 %
-% Note also that the default settings in the gamemode.ini file are not neccessarily
+% Note also that the default settings in the gamemode.ini file are not necessarily
 % optimal for some Intel integrated gpu's, due to the shared thermal and power budget
 % for cpu and gpu. See https://github.com/FeralInteractive/gamemode/pull/179 for
 % a detailed discussion of the problem. There is a tunable parameter, called...

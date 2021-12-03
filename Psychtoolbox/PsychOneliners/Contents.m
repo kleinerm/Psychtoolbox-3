@@ -109,29 +109,9 @@
 %   TextCenteredBounds      - Draw string, centered, return enclosing rect.
 %   UnpackColorImage        - Extract three color planes from an m by n by 3 color image.
 %   VecToImage              - Convert a grayscale image from vector to image format.
+%   WaitSetMouse            - Set and wait for new cursor position to take effect.
 %   WhiteIndex              - Returns number that will produce the color white.
+%   WindowCenter            - Returns a window's center point.
+%   WindowSize              - Returns a window's width and height.
 %   WinDesk                 - Sends command to windows shell to minimize all Windows, equal to Windows+M.
 %   WrapString              - Word wrap (break into lines).
-%
-%
-% The following is a list of old one-liners that might some day be updated
-% from PTB-2, but haven't been yet.
-%
-%   BlankingInterruptRate - Used by PsychBasic FrameRate.
-%   ClutDefault           - Returns standard clut for screen at any pixelSize.
-%   CmdWinToUpperLeft     - Bring Command window forward, saving Screen window.
-%   DescribeScreen        - Print a description of the screen's video driver.
-%   DescribeScreenPrefs   - Print more about the screen's video driver.
-%   GammaIdentity         - Returns an identity gamma table appropriate to the screen's dacSize.
-%   IsDownArrow           - Is char the down arrow?
-%   IsLeftArrow           - Is char the left arrow?
-%   IsRightArrow          - Is char the right arrow?
-%   IsUpArrow             - Is char the up arrow?
-%   IsInOrder             - Are the two strings in alphabetical order?
-%   IsPopCharProInstalled - Is the Control Panel "PopChar Pro" installed?
-%   MaxPriorityGetSecs    - Figure out the maximum priority compatible with GetSecs. Slow.
-%   ScreenClutSize        - How many entries in the graphic card Color Lookup Table?
-%   ScreenUsesHighGammaBits - Does this card use the high 10 bits of the gamma values?
-%   SCREENWinToFront      - Bring Screen window back in front of Command window.
-%   ShowTiff              - Show a TIFF file, calibrated.
-

@@ -52,7 +52,7 @@ vlb = [-1e10; 1e-10*varInitial];
 vub = [1e10; 1e10*varInitial];
 
 % Check for needed optimization toolbox, and version.
-if (exist('fmincon') == 2)
+if (exist('fmincon') == 2) && (IsOctave || exist('getIpOptions'))
     options = optimset;
     options = optimset(options,'Display','off');
     if ~IsOctave

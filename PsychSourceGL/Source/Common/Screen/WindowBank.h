@@ -265,6 +265,9 @@ typedef struct{
 #include <wayland-client.h>
 #endif
 
+// For xcb_special_event_t:
+#include <xcb/xcb.h>
+
 #ifdef PTB_USE_WAFFLE
 // Definition of Linux/Waffle specific information:
 
@@ -309,6 +312,8 @@ typedef struct{
     Window            xwindowHandle;       // Associated X-Window if any.
     GLXContext        glusercontextObject; // OpenGL context for userspace rendering code, e.g., moglcore...
     GLXContext        glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
+    XID               present_notify_event_id[2]; // Present ids / contexts for reception of notify events directly from X11/Present.
+    xcb_special_event_t* present_notify_queue[2]; // Private event queues for reception of notify events directly from X11/Present.
 } PsychTargetSpecificWindowRecordType;
 #endif
 

@@ -14,7 +14,7 @@ clear; close all;
 xy = [0.3 0.35]';
 
 %% Read in a monochrome test image
-testImageName = 'konijntjes1024x768gray.jpg';
+testImageName = [PsychtoolboxRoot '/PsychDemos/konijntjes1024x768gray.jpg'];
 if (~exist(testImageName,'file'))
    error('Someone removed the test image from the Psychtoolbox.  Find a new one.');
 end

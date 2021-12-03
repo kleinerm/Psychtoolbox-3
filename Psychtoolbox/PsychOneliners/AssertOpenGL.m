@@ -70,11 +70,31 @@ function AssertOpenGL
 %                   GStreamer 1.18+ MSVC build is mandatory on Octave *and* Matlab.
 % 10/30/20  mk      Add ln -s symlink workaround for libdc1394.25.so instead of
 %                   required libdc1394.22.so on Ubuntu 20.10+.
+% 10/30/21  mk      Add special Wayland desktop detection and handling for Screen.mex.
+
+persistent oneTimeDone;
 
 % We put the detection code into a try-catch-end statement: The old Screen command on windows
 % doesn't have a 'Version' subfunction, so it would exit to Matlab with an error.
 % We catch this error in the catch-branch and output the "non-OpenGL" error message...
 try
+    if ~isempty(oneTimeDone)
+        return;
+    end
+
+    oneTimeDone = 1;
+
+    % Wayland desktop on 64-Bit Linux with Octave?
+    if IsLinux(1) && IsOctave && IsWayland
+        % Add path, so our Wayland build of Screen.mex overrides the standard one:
+        rdir = [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles64/Wayland'];
+        if exist(rdir, 'dir')
+            setenv('PSYCH_DISABLE_COLORD', '1');
+            addpath(rdir);
+            fprintf('AssertOpenGL-Info: Added %s with Wayland specific Screen().\n', rdir);
+        end
+    end
+
     % Query a Screen subfunction that only exists in the new Screen command If this is not
     % OpenGL PTB,we will get thrown into the catch-branch...
     value=Screen('Preference', 'SkipSyncTests'); %#ok<NASGU>

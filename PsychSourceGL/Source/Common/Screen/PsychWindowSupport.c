@@ -1510,7 +1510,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
         (*windowRecord)->VideoRefreshInterval = ifi_estimate;
         if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 ||
-            ((*windowRecord)->hybridGraphics == 1) || ((*windowRecord)->hybridGraphics == 3) || ((*windowRecord)->hybridGraphics == 4)) {
+            ((*windowRecord)->hybridGraphics == 1) || ((*windowRecord)->hybridGraphics == 3) || ((*windowRecord)->hybridGraphics == 4) || ((*windowRecord)->hybridGraphics == 5)) {
             // Flip frame stereo or multiSampling enabled, or some hybrid graphics laptop? Check for ifi_estimate = 2 * ifi_beamestimate:
             if ((ifi_beamestimate>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_beamestimate && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_beamestimate) ||
                 (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_nominal && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_nominal)) {
@@ -1522,6 +1522,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 (*windowRecord)->IFIRunningSum /= 2.0;
                 (*windowRecord)->VideoRefreshInterval = ifi_estimate;
                 if (PsychPrefStateGet_Verbosity()>2) {
+                    if ((*windowRecord)->hybridGraphics > 0) {
+                        printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long as\n");
+                        printf("PTB-INFO: the refresh interval of your monitor when using dual-gpu hybrid graphics on your setup.\n");
+                        printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
+                    }
+
                     if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
                         printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
                         printf("PTB-INFO: as the refresh interval of your monitor when using OpenGL flip-frame stereo on your setup.\n");
@@ -1580,9 +1586,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             }
         }
         else {
-            if ((PsychPrefStateGet_VBLTimestampingMode()==4) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)) {
+            if ((PsychPrefStateGet_VBLTimestampingMode()==4) &&
+                (!((*windowRecord)->specialflags & kPsychOpenMLDefective) || ((*windowRecord)->hybridGraphics == 5))) {
                 if ((*windowRecord)->hybridGraphics == 3 || (*windowRecord)->hybridGraphics == 4) {
-                    printf("PTB-INFO: Will try to use PRIME custom modesetting-ddx protocol for accurate Flip timestamping.\n");
+                    printf("PTB-INFO: Will try to use my PRIME custom modesetting-ddx protocol for accurate Flip timestamping.\n");
+                } else if ((*windowRecord)->hybridGraphics == 5) {
+                    printf("PTB-INFO: Will try to use my custom X11/Present feedback method for accurate Flip timestamping.\n");
                 } else {
                     printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n",
                            ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->winsysType != WAFFLE_PLATFORM_WAYLAND)) ? "OpenML sync control support" : "method");
@@ -1929,7 +1938,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
         // Only warn user and flash the warning triangle if we can't use OpenML timestamping because it is disabled or broken.
         // If OpenML timestamping is available then beamposition queries are not needed anyway, so no reason to make a big fuss...
-        if ((PsychPrefStateGet_Verbosity() > 1) && ((PsychPrefStateGet_VBLTimestampingMode() != 4) || ((*windowRecord)->specialflags & kPsychOpenMLDefective))) {
+        if ((PsychPrefStateGet_Verbosity() > 1) && ((PsychPrefStateGet_VBLTimestampingMode() != 4) ||
+            (((*windowRecord)->specialflags & kPsychOpenMLDefective) && ((*windowRecord)->hybridGraphics != 5)))) {
             printf("\n\n");
             printf("----- ! PTB - WARNING: SYNCHRONIZATION TROUBLE ! -----\n\n");
             printf("One or more internal checks (see Warnings above) indicate that\n");
@@ -2633,7 +2643,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
     // Get a handle to our info structs: These pointers must not be NULL!!!
     PsychWindowRecordType* windowRecord = (PsychWindowRecordType*) windowRecordToCast;
     PsychFlipInfoStruct* flipRequest = windowRecord->flipInfo;
-    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !(windowRecord->specialflags & kPsychOpenMLDefective));
+    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && (!(windowRecord->specialflags & kPsychOpenMLDefective) || (windowRecord->hybridGraphics == 5)));
 
     // Assign a name to ourselves, for debugging:
     PsychSetThreadName("ScreenFlipper");
@@ -3891,10 +3901,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         targetWhen = tremaining - 1.0;
     }
 
-    // Invalidate target swapbuffer count values. Will get set to useful values
-    // if PsychOSScheduleFlipWindowBuffers() succeeds:
-    windowRecord->target_sbc = 0;
-    if (windowRecord->slaveWindow) windowRecord->slaveWindow->target_sbc = 0;
+    // Must not invalidate if our custom Prime timestamping is used:
+    if (windowRecord->hybridGraphics != 5) {
+        // Invalidate target swapbuffer count values. Will get set to useful values
+        // if PsychOSScheduleFlipWindowBuffers() succeeds:
+        windowRecord->target_sbc = 0;
+        if (windowRecord->slaveWindow) windowRecord->slaveWindow->target_sbc = 0;
+    }
 
     // Emit swap scheduling commands:
     // These are allowed to fail, due to some error condition or simply because this
@@ -5051,7 +5064,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
     int fallthroughcount=0;
     double* samples = NULL;
     int maxlogsamples = 0;
-    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && !(windowRecord->specialflags & kPsychOpenMLDefective));
+    psych_bool useOpenML = ((PsychPrefStateGet_VBLTimestampingMode() == 4) && (!(windowRecord->specialflags & kPsychOpenMLDefective) || (windowRecord->hybridGraphics == 5)));
     int pflip_count = 0;
 
     if (did_pageflip) *did_pageflip = FALSE;
@@ -7089,6 +7102,20 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         }
     }
 
+    // Is this a hybrid graphics dual-gpu laptop which uses muxless Optimus / PRIME render offload to a NVIDIA gpu, while using the proprietary driver?
+    if ((windowRecord->specialflags & kPsychIsX11Window) && (windowRecord->specialflags & kPsychIsDRI3Window) && getenv("__NV_PRIME_RENDER_OFFLOAD")) {
+        // Yes. Try to setup our custom timestamping method which plays tricks with the X11 Present extension:
+        if (PsychPrefStateGet_Verbosity() >= 3)
+            printf("PTB-INFO: Hybrid graphics with NVidia proprietary Prime render offload implementation detected. Enabling special handling.\n");
+
+        // Enable our own Present-Event handling:
+        PsychOSEnablePresentEventReception(windowRecord, 0, TRUE);
+
+        // Enable our own Present-Event handling:
+        if (PsychOSEnablePresentEventReception(windowRecord, 0, TRUE))
+            windowRecord->hybridGraphics = 5;
+    }
+
     // Find out if the primary output of the screen on which this window is
     // displaying has a "PRIME Synchronization" output property. If so then
     // we are likely running under a NVidia Optimus PRIME setup with output slave
@@ -7624,8 +7651,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
             printf("PTB-INFO: Another reason for lack of hardware OpenGL could be that GNU/Octave's own opengl32.dll library\n");
             printf("PTB-INFO: has not been deleted or renamed by you, so it is enforcing software rendering.\n");
             printf("PTB-INFO: You have to delete or rename that file and restart Octave for this to work.\n");
-            printf("PTB-INFO: E.g., on Octave-6.1 at its standard installation location, the file to delete or rename would be likely this:\n");
-            printf("PTB-INFO: C:\\Program Files\\GNU Octave\\Octave-6.1.0\\mingw64\\bin\\opengl32.dll\n\n");            
+            printf("PTB-INFO: E.g., on Octave-6.4 at its standard installation location, the file to delete or rename would be likely this:\n");
+            printf("PTB-INFO: C:\\Program Files\\GNU Octave\\Octave-6.4.0\\mingw64\\bin\\opengl32.dll\n\n");
             #endif
             // Disable all sync tests and display timing calibrations, unless usercode already did something similar:
             if (PsychPrefStateGet_SkipSyncTests() < 1) PsychPrefStateSet_SkipSyncTests(2);

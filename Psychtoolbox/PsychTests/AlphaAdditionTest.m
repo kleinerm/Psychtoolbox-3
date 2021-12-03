@@ -42,10 +42,10 @@ WaitSecs(0.5);
 if find(readbackImage~=expectedImage)
     if exitOnError
         error('Addition failed');
-    else
-        fprintf('Addition succeeded\n');
     end
     failFlag=1;
+else
+    fprintf('Addition succeeded\n');
 end
 
 %test commutivity by interchangeing source and destination matrices 
@@ -59,10 +59,10 @@ WaitSecs(0.5);
 if find(readbackImage~=expectedImage)
     if exitOnError
         error('Addition failed');
-    else
-        fprintf('Addition succeeded\n');
     end
     failFlag=1;
+else
+    fprintf('Addition succeeded\n');
 end
 
 Screen('CloseAll');

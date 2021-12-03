@@ -33,3 +33,6 @@ newStructs = ReadStructsFromText('foo.txt');
 % Delete test file.
 delete foo.txt
 
+if ~isequal(newStructs, theStructs)
+  warning('Read back structs from previously written file disagree, but should be identical!');
+end

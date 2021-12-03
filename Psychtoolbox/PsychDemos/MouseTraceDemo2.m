@@ -5,6 +5,7 @@
 % Draw a curve with the mouse. Same as MouseTraceDemo, but asks
 % Screen('Flip') to not clear the framebuffer after flip. This way,
 % we don't need to redraw the whole mousetrace in each frame.
+% Uses the imaging pipeline via PsychImaging for optimal performance.
 % _________________________________________________________________________
 %
 % See also: PsychDemos, MouseTraceDemo, GetMouse.
@@ -18,7 +19,9 @@
 try
     % Open up a window on the screen and clear it.
     whichScreen = max(Screen('Screens'));
-    [theWindow,theRect] = Screen(whichScreen,'OpenWindow',0);
+    PsychImaging('PrepareConfiguration');
+    PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+    [theWindow,theRect] = PsychImaging('OpenWindow', whichScreen, 0);
 
     % Move the cursor to the center of the screen
     theX = round(theRect(RectRight) / 2);

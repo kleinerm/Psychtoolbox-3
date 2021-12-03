@@ -232,8 +232,8 @@ if onoctave == 0
     if what == 15
         % Build PsychVulkanCore for 64-Bit Matlab:
         % Needs the official Vulkan SDK for 64-Bit Windows for at least
-        % Vulkan 1.1 installed under C:\VulkanSDK\1.1.108.0
-        mex -outdir ..\Projects\Windows\build -output PsychVulkanCore -DPTBMODULE_PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -L"C:\VulkanSDK\1.1.108.0\Lib" -I"C:\VulkanSDK\1.1.108.0\Include" -ICommon\Base -IWindows\Base -ICommon\PsychVulkanCore Windows\Base\*.c Common\Base\*.c Common\PsychVulkanCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib vulkan-1.lib dxgi.lib dxguid.lib
+        % Vulkan 1.1 installed under C:\VulkanSDK\1.2.189.2
+        mex -outdir ..\Projects\Windows\build -output PsychVulkanCore -DPTBMODULE_PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -L"C:\VulkanSDK\1.2.189.2\Lib" -I"C:\VulkanSDK\1.2.189.2\Include" -ICommon\Base -IWindows\Base -ICommon\PsychVulkanCore Windows\Base\*.c Common\Base\*.c Common\PsychVulkanCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib vulkan-1.lib dxgi.lib dxguid.lib
         movefile(['..\Projects\Windows\build\PsychVulkanCore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
     end
 else
@@ -472,9 +472,9 @@ else
     if what == 15
         % Build PsychVulkanCore.mex for 64-bit Octave:
         % Needs the official Vulkan SDK for 64-Bit Windows for at least
-        % Vulkan 1.1 installed under C:\VulkanSDK\1.1.108.0
+        % Vulkan 1.1 installed under C:\VulkanSDK\1.2.189.2
         try
-            mexoctave --output ..\Projects\Windows\build\PsychVulkanCore.mex -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX -LC:\VulkanSDK\1.1.108.0\Lib -IC:\VulkanSDK\1.1.108.0\Include -ICommon\Base -IWindows\Base -ICommon\PsychVulkanCore Windows\Base\*.c Common\Base\*.c Common\PsychVulkanCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib vulkan-1.lib dxgi.lib dxguid.lib
+            mexoctave --output ..\Projects\Windows\build\PsychVulkanCore.mex -DPTBMODULE_PsychVulkanCore -DPTBOCTAVE3MEX -LC:\VulkanSDK\1.2.189.2\Lib -IC:\VulkanSDK\1.2.189.2\Include -ICommon\Base -IWindows\Base -ICommon\PsychVulkanCore Windows\Base\*.c Common\Base\*.c Common\PsychVulkanCore\*.c kernel32.lib user32.lib winmm.lib gdi32.lib vulkan-1.lib dxgi.lib dxguid.lib
             movefile(['..\Projects\Windows\build\PsychVulkanCore.' mexext], target);
         catch
             disp(psychlasterror);
