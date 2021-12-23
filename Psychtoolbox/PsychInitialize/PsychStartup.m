@@ -113,17 +113,20 @@ try
             end
 
             fprintf('PsychStartup: this! Read ''help GStreamer'' for instructions.\n\n');
+            sdkroot = [];
         else
             sdkroot = [sdkroot 'bin'];
+        end
 
-            % Get current path:
-            path = getenv('PATH');
+        % Get current path:
+        path = getenv('PATH');
 
-            if useGStreamer
-                % Matlab, or Octave in GUI mode: Prepend sdkroot to path:
-                newpath = [sdkroot ';' path];
+        if useGStreamer && ~isempty(sdkroot)
+            % Matlab, or Octave in GUI mode: Prepend sdkroot to path:
+            newpath = [sdkroot ';' path];
 
-                % Check if we have the right flavor of GStreamer, the MSVC variant:
+            % Check if we have the right flavor of GStreamer, the MSVC variant:
+            if ~isdeployed
                 addpath(sdkroot);
                 if exist('libgstreamer-1.0-0.dll', 'file') && ~exist('gstreamer-1.0-0.dll', 'file')
                     % Wrong type, the MinGW build instead of the MSVC build!
@@ -135,51 +138,49 @@ try
                     warning('WRONG TYPE OF GStreamer packages INSTALLED! WE NEED THE MSVC variant, but this is the MINGW variant!');
                 end
                 rmpath(sdkroot);
-
-                fprintf('\nPsychStartup: Adding path of installed GStreamer runtime to library path. [%s]\n', sdkroot);
-            else
-                % Octave CLI: Do not add GStreamer runtime, so we can build
-                % our mex files without interference of GStreamer's libstdc++.6.dll:
-                newpath = path;
-                fprintf('\nPsychStartup: Use of GStreamer disabled for Octave CLI session.');
-                fprintf('\nPsychStartup: Screen() mex file will not work.\n');
             end
-
-            % For Octave-5.1 on Windows, also need to prepend path to portaudio dll
-            % to library path, otherwise PsychPortAudio won't load:
-            driverloadpath = [PsychtoolboxRoot 'PsychSound'];
-            newpath = [driverloadpath ';' newpath];
-
-            % For moglcore we need to prepend the path to freeglut.dll:
-            if Is64Bit
-                % Need 64-Bit freeglut.dll:
-                driverloadpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core/x64'];
-            else
-                % Need 32-Bit freeglut.dll:
-                driverloadpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core'];
-            end
-            newpath = [driverloadpath ';' newpath];
-
-            % For PsychHID we need to prepend the path to libusb-1.0.dll:
-            if Is64Bit
-                % 64-Bit version of libusb.dll
-                driverloadpath = [PsychtoolboxRoot 'PsychContributed' filesep 'x64' filesep];
-            else
-                % 32-Bit version of libusb.dll
-                driverloadpath = [PsychtoolboxRoot 'PsychContributed' filesep ];
-            end
-            newpath = [driverloadpath ';' newpath];
-
-            setenv('PATH', newpath);
 
             % Also store sdkroot in a separate environment variable, to be used
             % by Screen for Octave internally:
             setenv('PSYCH_GSTREAMER_SDK_ROOT', sdkroot);
-        end
-    end
 
+            fprintf('\nPsychStartup: Adding path of installed GStreamer runtime to library path. [%s]\n', sdkroot);
+        else
+            newpath = path;
+            fprintf('\nPsychStartup: Use of GStreamer disabled or impossible.');
+            fprintf('\nPsychStartup: Only leightweight GStreamer-less Screen() mex file will work.\n');
+        end
+
+        % For Octave-5.1 on Windows, also need to prepend path to portaudio dll
+        % to library path, otherwise PsychPortAudio won't load:
+        driverloadpath = [PsychtoolboxRoot 'PsychSound'];
+        newpath = [driverloadpath ';' newpath];
+
+        % For moglcore we need to prepend the path to freeglut.dll:
+        if Is64Bit
+            % Need 64-Bit freeglut.dll:
+            driverloadpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core/x64'];
+        else
+            % Need 32-Bit freeglut.dll:
+            driverloadpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core'];
+        end
+        newpath = [driverloadpath ';' newpath];
+
+        % For PsychHID we need to prepend the path to libusb-1.0.dll:
+        if Is64Bit
+            % 64-Bit version of libusb.dll
+            driverloadpath = [PsychtoolboxRoot 'PsychContributed' filesep 'x64' filesep];
+        else
+            % 32-Bit version of libusb.dll
+            driverloadpath = [PsychtoolboxRoot 'PsychContributed' filesep ];
+        end
+        newpath = [driverloadpath ';' newpath];
+
+        setenv('PATH', newpath);
+    end
 catch %#ok<*CTCH>
-    fprintf('PTB-WARNING: Call to PsychStartup() failed!!\n');
+    fprintf('PTB-WARNING: Call to PsychStartup() failed!! Error messages:\n');
+    ple;
 end
 
 end
