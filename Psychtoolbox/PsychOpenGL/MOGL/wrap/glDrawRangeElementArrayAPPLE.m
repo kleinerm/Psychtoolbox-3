@@ -1,8 +1,8 @@
-function glDrawRangeElementArrayAPPLE( mode, start, end, first, count )
+function glDrawRangeElementArrayAPPLE( mode, startidx, endidx, first, count )
 
 % glDrawRangeElementArrayAPPLE  Interface to OpenGL function glDrawRangeElementArrayAPPLE
 %
-% usage:  glDrawRangeElementArrayAPPLE( mode, start, end, first, count )
+% usage:  glDrawRangeElementArrayAPPLE( mode, startidx, endidx, first, count )
 %
 % C function:  void glDrawRangeElementArrayAPPLE(GLenum mode, GLuint start, GLuint end, GLint first, GLsizei count)
 
@@ -12,6 +12,6 @@ if nargin~=5,
     error('invalid number of arguments');
 end
 
-moglcore( 'glDrawRangeElementArrayAPPLE', mode, start, end, first, count );
+moglcore( 'glDrawRangeElementArrayAPPLE', mode, startidx, endidx, first, count );
 
 return

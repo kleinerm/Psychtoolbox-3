@@ -1,8 +1,8 @@
-function glCopyBufferSubData( readTarget, writeTarget, ptr, ptr, ptr )
+function glCopyBufferSubData( readTarget, writeTarget, ptr1, ptr2, ptr )
 
 % glCopyBufferSubData  Interface to OpenGL function glCopyBufferSubData
 %
-% usage:  glCopyBufferSubData( readTarget, writeTarget, ptr, ptr, ptr )
+% usage:  glCopyBufferSubData( readTarget, writeTarget, ptr1, ptr2, ptr )
 %
 % C function:  void glCopyBufferSubData(GLenum readTarget, GLenum writeTarget, GLint ptr, GLint ptr, GLsizei ptr)
 
@@ -12,6 +12,6 @@ if nargin~=5,
     error('invalid number of arguments');
 end
 
-moglcore( 'glCopyBufferSubData', readTarget, writeTarget, ptr, ptr, ptr );
+moglcore( 'glCopyBufferSubData', readTarget, writeTarget, ptr1, ptr2, ptr );
 
 return

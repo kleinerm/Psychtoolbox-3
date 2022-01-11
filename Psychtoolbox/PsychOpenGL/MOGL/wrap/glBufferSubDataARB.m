@@ -1,8 +1,8 @@
-function glBufferSubDataARB( target, ARB, ARB, data )
+function glBufferSubDataARB( target, ARB1, ARB2, data )
 
 % glBufferSubDataARB  Interface to OpenGL function glBufferSubDataARB
 %
-% usage:  glBufferSubDataARB( target, ARB, ARB, data )
+% usage:  glBufferSubDataARB( target, ARB1, ARB2, data )
 %
 % C function:  void glBufferSubDataARB(GLenum target, GLintptr ARB, GLsizeiptr ARB, const void* data)
 
@@ -12,6 +12,6 @@ if nargin~=4,
     error('invalid number of arguments');
 end
 
-moglcore( 'glBufferSubDataARB', target, ARB, ARB, data );
+moglcore( 'glBufferSubDataARB', target, ARB1, ARB2, data );
 
 return

@@ -1,8 +1,8 @@
-function glDrawRangeElementArrayATI( mode, start, end, count )
+function glDrawRangeElementArrayATI( mode, startidx, endidx, count )
 
 % glDrawRangeElementArrayATI  Interface to OpenGL function glDrawRangeElementArrayATI
 %
-% usage:  glDrawRangeElementArrayATI( mode, start, end, count )
+% usage:  glDrawRangeElementArrayATI( mode, startidx, endidx, count )
 %
 % C function:  void glDrawRangeElementArrayATI(GLenum mode, GLuint start, GLuint end, GLsizei count)
 
@@ -12,6 +12,6 @@ if nargin~=4,
     error('invalid number of arguments');
 end
 
-moglcore( 'glDrawRangeElementArrayATI', mode, start, end, count );
+moglcore( 'glDrawRangeElementArrayATI', mode, startidx, endidx, count );
 
 return

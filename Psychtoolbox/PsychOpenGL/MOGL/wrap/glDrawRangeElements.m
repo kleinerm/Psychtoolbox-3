@@ -1,8 +1,8 @@
-function glDrawRangeElements( mode, start, endidx, count, type, indices )
+function glDrawRangeElements( mode, startidx, endidx, count, type, indices )
 
 % glDrawRangeElements  Interface to OpenGL function glDrawRangeElements
 %
-% usage:  glDrawRangeElements( mode, start, endidx, count, type, indices )
+% usage:  glDrawRangeElements( mode, startidx, endidx, count, type, indices )
 %
 % C function:  void glDrawRangeElements(GLenum mode, GLuint start, GLuint endidx, GLsizei count, GLenum type, const GLvoid* indices)
 
@@ -14,6 +14,6 @@ if nargin~=6,
     error('invalid number of arguments');
 end
 
-moglcore( 'glDrawRangeElements', mode, start, endidx, count, type, indices );
+moglcore( 'glDrawRangeElements', mode, startidx, endidx, count, type, indices );
 
 return

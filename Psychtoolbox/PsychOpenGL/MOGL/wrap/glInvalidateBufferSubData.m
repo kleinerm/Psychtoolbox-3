@@ -1,8 +1,8 @@
-function glInvalidateBufferSubData( buffer, ptr, ptr )
+function glInvalidateBufferSubData( buffer, ptr1, ptr2 )
 
 % glInvalidateBufferSubData  Interface to OpenGL function glInvalidateBufferSubData
 %
-% usage:  glInvalidateBufferSubData( buffer, ptr, ptr )
+% usage:  glInvalidateBufferSubData( buffer, ptr1, ptr2 )
 %
 % C function:  void glInvalidateBufferSubData(GLuint buffer, GLint ptr, GLsizei ptr)
 
@@ -12,6 +12,6 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-moglcore( 'glInvalidateBufferSubData', buffer, ptr, ptr );
+moglcore( 'glInvalidateBufferSubData', buffer, ptr1, ptr2 );
 
 return

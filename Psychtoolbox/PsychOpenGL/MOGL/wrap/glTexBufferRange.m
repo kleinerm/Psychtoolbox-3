@@ -1,8 +1,8 @@
-function glTexBufferRange( target, internalformat, buffer, ptr, ptr )
+function glTexBufferRange( target, internalformat, buffer, ptr1, ptr2 )
 
 % glTexBufferRange  Interface to OpenGL function glTexBufferRange
 %
-% usage:  glTexBufferRange( target, internalformat, buffer, ptr, ptr )
+% usage:  glTexBufferRange( target, internalformat, buffer, ptr1, ptr2 )
 %
 % C function:  void glTexBufferRange(GLenum target, GLenum internalformat, GLuint buffer, GLint ptr, GLsizei ptr)
 
@@ -12,6 +12,6 @@ if nargin~=5,
     error('invalid number of arguments');
 end
 
-moglcore( 'glTexBufferRange', target, internalformat, buffer, ptr, ptr );
+moglcore( 'glTexBufferRange', target, internalformat, buffer, ptr1, ptr2 );
 
 return

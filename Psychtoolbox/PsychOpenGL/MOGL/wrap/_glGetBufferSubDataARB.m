@@ -1,8 +1,8 @@
-function data = glGetBufferSubDataARB( target, ARB, ARB )
+function data = glGetBufferSubDataARB( target, ARB1, ARB2 )
 
 % glGetBufferSubDataARB  Interface to OpenGL function glGetBufferSubDataARB
 %
-% usage:  data = glGetBufferSubDataARB( target, ARB, ARB )
+% usage:  data = glGetBufferSubDataARB( target, ARB1, ARB2 )
 %
 % C function:  void glGetBufferSubDataARB(GLenum target, GLintptr ARB, GLsizeiptr ARB, void* data)
 
@@ -16,6 +16,6 @@ end
 
 data = (0);
 
-moglcore( 'glGetBufferSubDataARB', target, ARB, ARB, data );
+moglcore( 'glGetBufferSubDataARB', target, ARB1, ARB2, data );
 
 return

@@ -1,8 +1,8 @@
-function glClearBufferSubData( target, internalformat, ptr, ptr, format, type, data )
+function glClearBufferSubData( target, internalformat, ptr1, ptr2, format, type, data )
 
 % glClearBufferSubData  Interface to OpenGL function glClearBufferSubData
 %
-% usage:  glClearBufferSubData( target, internalformat, ptr, ptr, format, type, data )
+% usage:  glClearBufferSubData( target, internalformat, ptr1, ptr2, format, type, data )
 %
 % C function:  void glClearBufferSubData(GLenum target, GLenum internalformat, GLint ptr, GLsizei ptr, GLenum format, GLenum type, const void* data)
 
@@ -12,6 +12,6 @@ if nargin~=7,
     error('invalid number of arguments');
 end
 
-moglcore( 'glClearBufferSubData', target, internalformat, ptr, ptr, format, type, data );
+moglcore( 'glClearBufferSubData', target, internalformat, ptr1, ptr2, format, type, data );
 
 return

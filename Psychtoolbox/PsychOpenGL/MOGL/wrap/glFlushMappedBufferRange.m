@@ -1,8 +1,8 @@
-function glFlushMappedBufferRange( target, ptr, ptr )
+function glFlushMappedBufferRange( target, ptr1, ptr2 )
 
 % glFlushMappedBufferRange  Interface to OpenGL function glFlushMappedBufferRange
 %
-% usage:  glFlushMappedBufferRange( target, ptr, ptr )
+% usage:  glFlushMappedBufferRange( target, ptr1, ptr2 )
 %
 % C function:  void glFlushMappedBufferRange(GLenum target, GLint ptr, GLsizei ptr)
 
@@ -12,6 +12,6 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-moglcore( 'glFlushMappedBufferRange', target, ptr, ptr );
+moglcore( 'glFlushMappedBufferRange', target, ptr1, ptr2 );
 
 return

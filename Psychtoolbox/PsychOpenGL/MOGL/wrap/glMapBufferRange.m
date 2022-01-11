@@ -1,8 +1,8 @@
-function r = glMapBufferRange( target, ptr, ptr, access )
+function r = glMapBufferRange( target, ptr1, ptr2, access )
 
 % glMapBufferRange  Interface to OpenGL function glMapBufferRange
 %
-% usage:  r = glMapBufferRange( target, ptr, ptr, access )
+% usage:  r = glMapBufferRange( target, ptr1, ptr2, access )
 %
 % C function:  GLvoid* glMapBufferRange(GLenum target, GLint ptr, GLsizei ptr, GLbitfield access)
 
@@ -12,6 +12,6 @@ if nargin~=4,
     error('invalid number of arguments');
 end
 
-r = moglcore( 'glMapBufferRange', target, ptr, ptr, access );
+r = moglcore( 'glMapBufferRange', target, ptr1, ptr2, access );
 
 return

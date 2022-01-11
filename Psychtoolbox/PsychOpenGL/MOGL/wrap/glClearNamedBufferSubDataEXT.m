@@ -1,8 +1,8 @@
-function glClearNamedBufferSubDataEXT( buffer, internalformat, format, type, ptr, ptr, data )
+function glClearNamedBufferSubDataEXT( buffer, internalformat, format, type, ptr1, ptr2, data )
 
 % glClearNamedBufferSubDataEXT  Interface to OpenGL function glClearNamedBufferSubDataEXT
 %
-% usage:  glClearNamedBufferSubDataEXT( buffer, internalformat, format, type, ptr, ptr, data )
+% usage:  glClearNamedBufferSubDataEXT( buffer, internalformat, format, type, ptr1, ptr2, data )
 %
 % C function:  void glClearNamedBufferSubDataEXT(GLuint buffer, GLenum internalformat, GLenum format, GLenum type, GLsizei ptr, GLsizei ptr, const void* data)
 
@@ -12,6 +12,6 @@ if nargin~=7,
     error('invalid number of arguments');
 end
 
-moglcore( 'glClearNamedBufferSubDataEXT', buffer, internalformat, format, type, ptr, ptr, data );
+moglcore( 'glClearNamedBufferSubDataEXT', buffer, internalformat, format, type, ptr1, ptr2, data );
 
 return
