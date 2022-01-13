@@ -2724,14 +2724,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     // Setup samplerate:
     if (freq == 0) {
-        // No specific frequency requested:
-        if (latencyclass < 3) {
-            // At levels < 3, we select the device specific default.
-            freq = referenceDevInfo->defaultSampleRate;
-        }
-        else {
-            freq = 96000; // Go really high...
-        }
+        // No specific frequency requested, so choose device default:
+        freq = referenceDevInfo->defaultSampleRate;
     }
 
     // Now we have auto-selected frequency or user provided override...
