@@ -2780,8 +2780,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     if (suggestedLatency == -1.0) {
         // None provided: Choose default based on latency mode:
-        outputParameters.suggestedLatency = (latencyclass == 0 && outputDevInfo) ? outputDevInfo->defaultHighOutputLatency : lowlatency;
-        inputParameters.suggestedLatency  = (latencyclass == 0 && inputDevInfo) ? inputDevInfo->defaultHighInputLatency : lowlatency;
+        outputParameters.suggestedLatency = (latencyclass == 0 && outputDevInfo && (outputDevInfo->defaultHighOutputLatency > lowlatency)) ? outputDevInfo->defaultHighOutputLatency : lowlatency;
+        inputParameters.suggestedLatency  = (latencyclass == 0 && inputDevInfo && (inputDevInfo->defaultHighInputLatency > lowlatency)) ? inputDevInfo->defaultHighInputLatency : lowlatency;
 
         // Make sure that requested high or default output latency on Apples trainwreck is never lower than 10 msecs.
         // Especially on macOS 10.14 this seems to be neccessary for crackle-free playback: (Forum message #23422)
