@@ -148,7 +148,7 @@ void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
 void (*myPaUtil_SetDebugPrintFunction)(PaUtilLogCallback  cb) = NULL;
 
 // Wrapper implementation, as many libportaudio.so implementations seem to lack this function :(:
-void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
+void PsychPAPaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
 {
     // Try to get function dynamically:
     myPaUtil_SetDebugPrintFunction = dlsym(RTLD_NEXT, "PaUtil_SetDebugPrintFunction");
@@ -158,6 +158,8 @@ void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
 
     return;
 }
+#else
+#define PsychPAPaUtil_SetDebugPrintFunction PaUtil_SetDebugPrintFunction
 #endif
 
 // Forward define of prototype of our own custom new PortAudio extension function for Zero latency direct input monitoring:
@@ -1971,7 +1973,7 @@ PsychError PsychPortAudioExit(void)
         }
 
         // Detach our callback function for low-level debug output:
-        PaUtil_SetDebugPrintFunction(NULL);
+        PsychPAPaUtil_SetDebugPrintFunction(NULL);
 
         #if PSYCH_SYSTEM == PSYCH_LINUX
             // Disable ALSA error handler:
@@ -2046,7 +2048,7 @@ void PsychPortAudioInitialize(void)
         #endif
 
         // Setup callback function for low-level debug output:
-        PaUtil_SetDebugPrintFunction(PALogger);
+        PsychPAPaUtil_SetDebugPrintFunction(PALogger);
 
         #if PSYCH_SYSTEM == PSYCH_LINUX
             // Set an error handler for ALSA debug output/errors to stop the spewage of utterly
@@ -2071,7 +2073,7 @@ void PsychPortAudioInitialize(void)
 
         if ((err=Pa_Initialize())!=paNoError) {
             printf("PTB-ERROR: Portaudio initialization failed with following port audio error: %s \n", Pa_GetErrorText(err));
-            PaUtil_SetDebugPrintFunction(NULL);
+            PsychPAPaUtil_SetDebugPrintFunction(NULL);
             PsychErrorExitMsg(PsychError_system, "Failed to initialize PortAudio subsystem.");
         }
         else {
