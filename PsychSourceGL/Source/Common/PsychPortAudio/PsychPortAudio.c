@@ -31,6 +31,11 @@
 
 #include "PsychPortAudio.h"
 
+// This is a define of the PulseAudio host api id. It will be 16, once a portaudio
+// version with PulseAudio support is officially released. Define it here, so we
+// can already build a driver that is able to handle paPulseAudio quirks:
+#define paPulseAudio 16
+
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "pa_mac_core.h"
 #endif
@@ -990,7 +995,8 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
             captureStartTime = (double) timeInfo->inputBufferAdcTime;
         }
         else {
-            // Not yet verified how these other audio APIs behave. Play safe
+            // Either known to need timestamp remapping, e.g., PulseAudio, or
+            // not yet verified how these other audio APIs behave. Play safe
             // and perform timebase remapping: This also needs our special fixed
             // PortAudio version where currentTime actually has a value:
             if (dev->opmode & kPortAudioPlayBack) {
@@ -1902,6 +1908,8 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paALSA))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
     // Then JACK...
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paJACK))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+    // Then PulseAudio
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paPulseAudio))!=paHostApiNotFound) && !pulseaudio_isSuspended && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
     // Then OSS...
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paOSS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
     // then give up!
@@ -2272,9 +2280,17 @@ PsychError PSYCHPORTAUDIOOpen(void)
             inputParameters.device  = Pa_GetDefaultInputDevice(); /* Default input device. */
         }
         else {
-            // Low latency mode: Try to find the host API which is supposed to be the fastest on
-            // a platform, then pick its default devices:
-            paHostAPI = PsychPAGetLowestLatencyHostAPI();
+            // High latency mode on Linux requested? If PulseAudio is supported and active and has devices, choose its default devices:
+            if ((latencyclass == 0) && (PSYCH_SYSTEM == PSYCH_LINUX) && ((paHostAPI = Pa_HostApiTypeIdToHostApiIndex(paPulseAudio)) != paHostApiNotFound) &&
+                !pulseaudio_isSuspended && (Pa_GetHostApiInfo(paHostAPI)->deviceCount > 0)) {
+                if (verbosity > 2) printf("PTB-INFO: Choosing default PulseAudio sound devices in high latency mode on Linux.\n");
+            }
+            else {
+                // Low latency mode, or Linux without PulseAudio at the ready.
+                // Try to find the host API which is supposed to be the fastest on a platform, then pick its default devices:
+                paHostAPI = PsychPAGetLowestLatencyHostAPI();
+            }
+
             outputParameters.device = Pa_GetHostApiInfo(paHostAPI)->defaultOutputDevice;
             inputParameters.device  = Pa_GetHostApiInfo(paHostAPI)->defaultInputDevice;
         }
@@ -2768,6 +2784,13 @@ PsychError PSYCHPORTAUDIOOpen(void)
             lowlatency = (latencyclass > 2) ? 0.005 : 0.010;
             break;
 
+        case paPulseAudio:
+            // For PulseAudio we choose 15 msecs by default, lowering to 10 msecs if explicitely requested.
+            // These work on a "500 Euro class" PC from early 2019 with onboard sound (AMD Ryzen-5 2400G APU),
+            // 15 msecs everywhere, but 10 msecs only "crackle-free" with onboard HDA sound, not with iGPU DP/HDMI sound.
+            lowlatency = (latencyclass > 2) ? 0.010 : 0.015;
+            break;
+
         default:            // Not the safest assumption for non-verified Api's, but we'll see...
             lowlatency = 0.0;
     }
@@ -2781,6 +2804,14 @@ PsychError PSYCHPORTAUDIOOpen(void)
         // Especially on macOS 10.14 this seems to be neccessary for crackle-free playback: (Forum message #23422)
         if ((latencyclass <= 1) && (PSYCH_SYSTEM == PSYCH_OSX) && (outputParameters.suggestedLatency < 0.010))
             outputParameters.suggestedLatency = 0.010;
+
+        // For PulseAudio in high latency mode, make sure requested latency is at least 40 msecs, regardless what
+        // the reported defaultHighInputLatency/defaultHighOutputLatency is. As of the current PulseAudio hostApi
+        // prototype, reporting of these values makes no sense, so this hack should keep us going at least:
+        if ((latencyclass == 0) && (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paPulseAudio)) {
+            outputParameters.suggestedLatency = (outputParameters.suggestedLatency >= 0.040) ? : 0.040;
+            inputParameters.suggestedLatency = (inputParameters.suggestedLatency >= 0.040) ? : 0.040;
+        }
     }
     else {
         // Override provided: Use it.
@@ -5556,9 +5587,9 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
     #else
     "1=Windows/DirectSound, 2=Windows/MME, 11=Windows/WDMKS, 13=Windows/WASAPI, "
     #endif
-    "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, 5=MacOSX/CoreAudio.\n\n"
+    "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, probably 16=Linux/PulseAudio, 5=MacOSX/CoreAudio.\n\n"
     "On OS/X you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
-    "On Linux you may have the choice between ALSA, JACK and OSS. ALSA or JACK provide very low "
+    "On Linux you may have the choice between ALSA, JACK, PulseAudio and OSS. ALSA or JACK provide very low "
     "latencies and very good timing, OSS is an older system which is less capable but not very "
     "widespread in use anymore. On MS-Windows you'll have the choice between up to 5 different "
     "audio subsystems:\n"
