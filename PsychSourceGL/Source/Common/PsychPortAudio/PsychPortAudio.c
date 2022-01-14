@@ -1059,8 +1059,23 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
     // Count total number of calls:
     dev->paCalls++;
 
-    // Keep track of maximum number of frames requested:
-    if (dev->batchsize < (psych_int64) framesPerBuffer) dev->batchsize = (psych_int64) framesPerBuffer;
+    // Keep track of maximum number of frames requested/provided:
+    if (dev->batchsize < (psych_int64) framesPerBuffer) {
+        dev->batchsize = (psych_int64) framesPerBuffer;
+
+        // Master - Slave processing needs internal scratch buffers of fitting size:
+        if (isMaster) {
+            // As dev->batchsize has grown, we need to reallocate slave buffers at
+            // the new bigger size, so free current ones to trigger a new malloc
+            // later on:
+            free(dev->slaveInBuffer);
+            dev->slaveInBuffer = NULL;
+            free(dev->slaveOutBuffer);
+            dev->slaveOutBuffer = NULL;
+            free(dev->slaveGainBuffer);
+            dev->slaveGainBuffer = NULL;
+        }
+    }
 
     // Keep track of buffer over-/underflows:
     if (statusFlags & (paInputOverflow | paInputUnderflow | paOutputOverflow | paOutputUnderflow)) dev->xruns++;
@@ -1298,7 +1313,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
         if (NULL != outputBuffer) {
             // Have scratch buffers ready. Clear output intermix buffer:
-            memset(outputBuffer, 0, (size_t) (dev->batchsize * outchannels * sizeof(float)));
+            memset(outputBuffer, 0, (size_t) (framesPerBuffer * outchannels * sizeof(float)));
         }
 
         // Iterate over all slave device callbacks: Or at least until all registered slaves are handled.
@@ -1331,108 +1346,108 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
                     // Yes. Execute it:
                     audiodevices[modulatorSlave].slaveDirty = 0;
 
-                // Prefill buffer with neutral 1.0:
-                tmpBuffer = dev->slaveGainBuffer;
-                for (j = 0; j < dev->batchsize * audiodevices[modulatorSlave].outchannels; j++) *(tmpBuffer++) = 1.0;
+                    // Prefill buffer with neutral 1.0:
+                    tmpBuffer = dev->slaveGainBuffer;
+                    for (j = 0; j < framesPerBuffer * audiodevices[modulatorSlave].outchannels; j++) *(tmpBuffer++) = 1.0;
 
-                // This will potentially fill the slaveGainBuffer with gain modulation values.
-                // The passed slaveInBuffer is meaningless for a modulator slave and only contains random junk...
-                paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveGainBuffer, (unsigned long) dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[modulatorSlave]));
-                    }
-                    else {
-                        // No. Either no modulator slave or slave not currently active. Signal this
-                        // by setting modulatorSlave to a -1 value:
-                        modulatorSlave = -1;
-                    }
+                    // This will potentially fill the slaveGainBuffer with gain modulation values.
+                    // The passed slaveInBuffer is meaningless for a modulator slave and only contains random junk...
+                    paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveGainBuffer, (unsigned long) framesPerBuffer, timeInfo, statusFlags, (void*) &(audiodevices[modulatorSlave]));
+                }
+                else {
+                    // No. Either no modulator slave or slave not currently active. Signal this
+                    // by setting modulatorSlave to a -1 value:
+                    modulatorSlave = -1;
+                }
 
-                    // Skip actual slaves processing if its state is zero == completely inactive.
-                    if (audiodevices[slaveId].state > 0) {
-                        // Slave is active, need to process it:
+                // Skip actual slaves processing if its state is zero == completely inactive.
+                if (audiodevices[slaveId].state > 0) {
+                    // Slave is active, need to process it:
 
-                        // Reset dirty flag for this slave:
-                        audiodevices[slaveId].slaveDirty = 0;
+                    // Reset dirty flag for this slave:
+                    audiodevices[slaveId].slaveDirty = 0;
 
-                        // Is this a playback slave?
-                        if (audiodevices[slaveId].opmode & kPortAudioPlayBack) {
-                            // Prefill slaves output buffer with 1.0, a neutral gain value for playback slaves
-                            // without a AM modulator attached. The same prefill is needed with AM modulator,
-                            // this time to make the modulator itself happy:
-                            tmpBuffer = dev->slaveOutBuffer;
-                            for (j = 0; j < dev->batchsize * audiodevices[slaveId].outchannels; j++) *(tmpBuffer++) = 1.0;
+                    // Is this a playback slave?
+                    if (audiodevices[slaveId].opmode & kPortAudioPlayBack) {
+                        // Prefill slaves output buffer with 1.0, a neutral gain value for playback slaves
+                        // without a AM modulator attached. The same prefill is needed with AM modulator,
+                        // this time to make the modulator itself happy:
+                        tmpBuffer = dev->slaveOutBuffer;
+                        for (j = 0; j < framesPerBuffer * audiodevices[slaveId].outchannels; j++) *(tmpBuffer++) = 1.0;
 
-                            // Ok, the outbuffer is filled with a neutral 1.0 gain value. This will work
-                            // even if no per-slave gain modulation is provided by a modulator slave.
+                        // Ok, the outbuffer is filled with a neutral 1.0 gain value. This will work
+                        // even if no per-slave gain modulation is provided by a modulator slave.
 
-                            // Is a modulator slave active and did it write any gain AM values?
-                            if ((modulatorSlave > -1) && (audiodevices[modulatorSlave].slaveDirty)) {
-                                // Yes. Need to distribute them to proper channels in slaveOutBuffer:
-                                tmpBuffer = dev->slaveGainBuffer;
-                                mixBuffer = dev->slaveOutBuffer;
-                                for (j = 0; j < dev->batchsize; j++) {
-                                    // Iterate over all target channels in the slave device outputbuffer:
-                                    for (k = 0; k < audiodevices[modulatorSlave].outchannels; k++) {
-                                        // Modulate current sample in intermixbuffer via multiplication:
-                                        mixBuffer[(j * audiodevices[slaveId].outchannels) + audiodevices[modulatorSlave].outputmappings[k]] = *(tmpBuffer++) * audiodevices[modulatorSlave].outChannelVolumes[k];
-                                    }
-                                }
-                            }
-                        }    // Ok, the slaveOutBuffer for this playback slave is prefilled with valid gain modulation data to apply to the actual sound output.
-
-                        // Capture enabled on slave? If so, we need to distribute our captured audio data to it:
-                        if (audiodevices[slaveId].opmode & kPortAudioCapture) {
-                            tmpBuffer = dev->slaveInBuffer;
-                            // For each sampleFrame in the input buffer:
-                            for (j = 0; j < dev->batchsize; j++) {
-                                // Iterate over all target channels in the slave devices inputbuffer:
-                                for (k = 0; k < audiodevices[slaveId].inchannels; k++) {
-                                    // And fetch from corrsponding source channel of our device:
-                                    *(tmpBuffer++) = in[(j * inchannels) + audiodevices[slaveId].inputmappings[k]];
+                        // Is a modulator slave active and did it write any gain AM values?
+                        if ((modulatorSlave > -1) && (audiodevices[modulatorSlave].slaveDirty)) {
+                            // Yes. Need to distribute them to proper channels in slaveOutBuffer:
+                            tmpBuffer = dev->slaveGainBuffer;
+                            mixBuffer = dev->slaveOutBuffer;
+                            for (j = 0; j < framesPerBuffer; j++) {
+                                // Iterate over all target channels in the slave device outputbuffer:
+                                for (k = 0; k < audiodevices[modulatorSlave].outchannels; k++) {
+                                    // Modulate current sample in intermixbuffer via multiplication:
+                                    mixBuffer[(j * audiodevices[slaveId].outchannels) + audiodevices[modulatorSlave].outputmappings[k]] = *(tmpBuffer++) * audiodevices[modulatorSlave].outChannelVolumes[k];
                                 }
                             }
                         }
+                    }    // Ok, the slaveOutBuffer for this playback slave is prefilled with valid gain modulation data to apply to the actual sound output.
 
-                        // Temporary input buffer is filled for slave callback: Execute it.
-                        paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveOutBuffer, (unsigned long) dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
-
-                        // Check if the paCallback actually filled anything into the dev->slaveOutBuffer:
-                        if ((audiodevices[slaveId].opmode & kPortAudioPlayBack) && audiodevices[slaveId].slaveDirty) {
-                            // Slave has written meaningful data to its output buffer. Merge & mix it:
-
-                            // Process from first non-silence sample slot (after silenceframes prefix) until end of buffer:
-                            tmpBuffer = &(dev->slaveOutBuffer[committedFrames * audiodevices[slaveId].outchannels]);
-                            mixBuffer = (float*) outputBuffer;
-
-                            // Special AM-Modulator slave?
-                            if (audiodevices[slaveId].opmode & kPortAudioIsAMModulator) {
-                                // Yes: This slave doesn't provide audio data for mixing, but instead
-                                // a time-series of gain modulation samples for amplitude modulation.
-                                // Multiply the master channels samples with the slaves "gain samples"
-                                // to apply AM modulation:
-                                for (j = committedFrames; j < dev->batchsize; j++) {
-                                    // Iterate over all target channels in the slave device outputbuffer:
-                                    for (k = 0; k < audiodevices[slaveId].outchannels; k++) {
-                                        // Modulate current sample in intermixbuffer via multiplication:
-                                        mixBuffer[(j * outchannels) + audiodevices[slaveId].outputmappings[k]] *= *(tmpBuffer++) * audiodevices[slaveId].outChannelVolumes[k];
-                                    }
-                                }
-                            }
-                            else {
-                                // Regular mix: Mix all output channels of the slave into the proper target channels
-                                // of the master by simple addition. Apply per-channel volume settings of the slave
-                                // during mix:
-                                for (j = committedFrames; j < dev->batchsize; j++) {
-                                    // Iterate over all target channels in the slave device outputbuffer:
-                                    for (k = 0; k < audiodevices[slaveId].outchannels; k++) {
-                                        // Mix current sample via addition:
-                                        mixBuffer[(j * outchannels) + audiodevices[slaveId].outputmappings[k]] += *(tmpBuffer++) * audiodevices[slaveId].outChannelVolumes[k];
-                                    }
-                                }
+                    // Capture enabled on slave? If so, we need to distribute our captured audio data to it:
+                    if (audiodevices[slaveId].opmode & kPortAudioCapture) {
+                        tmpBuffer = dev->slaveInBuffer;
+                        // For each sampleFrame in the input buffer:
+                        for (j = 0; j < framesPerBuffer; j++) {
+                            // Iterate over all target channels in the slave devices inputbuffer:
+                            for (k = 0; k < audiodevices[slaveId].inchannels; k++) {
+                                // And fetch from corrsponding source channel of our device:
+                                *(tmpBuffer++) = in[(j * inchannels) + audiodevices[slaveId].inputmappings[k]];
                             }
                         }
                     }
 
-                    // One more slave handled:
-                    numSlavesHandled++;
+                    // Temporary input buffer is filled for slave callback: Execute it.
+                    paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveOutBuffer, (unsigned long) framesPerBuffer, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
+
+                    // Check if the paCallback actually filled anything into the dev->slaveOutBuffer:
+                    if ((audiodevices[slaveId].opmode & kPortAudioPlayBack) && audiodevices[slaveId].slaveDirty) {
+                        // Slave has written meaningful data to its output buffer. Merge & mix it:
+
+                        // Process from first non-silence sample slot (after silenceframes prefix) until end of buffer:
+                        tmpBuffer = &(dev->slaveOutBuffer[committedFrames * audiodevices[slaveId].outchannels]);
+                        mixBuffer = (float*) outputBuffer;
+
+                        // Special AM-Modulator slave?
+                        if (audiodevices[slaveId].opmode & kPortAudioIsAMModulator) {
+                            // Yes: This slave doesn't provide audio data for mixing, but instead
+                            // a time-series of gain modulation samples for amplitude modulation.
+                            // Multiply the master channels samples with the slaves "gain samples"
+                            // to apply AM modulation:
+                            for (j = committedFrames; j < framesPerBuffer; j++) {
+                                // Iterate over all target channels in the slave device outputbuffer:
+                                for (k = 0; k < audiodevices[slaveId].outchannels; k++) {
+                                    // Modulate current sample in intermixbuffer via multiplication:
+                                    mixBuffer[(j * outchannels) + audiodevices[slaveId].outputmappings[k]] *= *(tmpBuffer++) * audiodevices[slaveId].outChannelVolumes[k];
+                                }
+                            }
+                        }
+                        else {
+                            // Regular mix: Mix all output channels of the slave into the proper target channels
+                            // of the master by simple addition. Apply per-channel volume settings of the slave
+                            // during mix:
+                            for (j = committedFrames; j < framesPerBuffer; j++) {
+                                // Iterate over all target channels in the slave device outputbuffer:
+                                for (k = 0; k < audiodevices[slaveId].outchannels; k++) {
+                                    // Mix current sample via addition:
+                                    mixBuffer[(j * outchannels) + audiodevices[slaveId].outputmappings[k]] += *(tmpBuffer++) * audiodevices[slaveId].outChannelVolumes[k];
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // One more slave handled:
+                numSlavesHandled++;
             }
         }    // Next slave...
 
@@ -1459,7 +1474,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
                         mixBuffer = (float*) outputBuffer;
 
                         // For each sampleFrame in the mixBuffer:
-                        for (j = 0; j < dev->batchsize; j++) {
+                        for (j = 0; j < framesPerBuffer; j++) {
                             // Iterate over all target channels in the slave devices inputbuffer:
                             for (k = 0; k < audiodevices[slaveId].inchannels; k++) {
                                 // And fetch from corrsponding mixBuffer channel of our device, applying the same
@@ -1474,7 +1489,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
                     // also acts as output buffer from the slave, so that slaves with playback enabled are happy.
                     // However, this is a pure dummy-sink, the data written by the slave isn't used for anything,
                     // but simply discarded, as output capture slaves have no meaningful sink for their output.
-                    paCallback( (const void*) dev->slaveOutBuffer, (void*) dev->slaveOutBuffer, (unsigned long) dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
+                    paCallback( (const void*) dev->slaveOutBuffer, (void*) dev->slaveOutBuffer, (unsigned long) framesPerBuffer, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
                 }
 
                 // One more slave handled:
