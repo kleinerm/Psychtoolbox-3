@@ -1909,7 +1909,34 @@ const char** InitializeSynopsis(void)
     return(synopsisSYNOPSIS);
 }
 
-PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
+PaHostApiIndex PsychPAGetHighLatencyHostAPI(void)
+{
+    PaHostApiIndex ai;
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+    // Try PulseAudio first:
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paPulseAudio))!=paHostApiNotFound) && !pulseaudio_isSuspended && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+    // Then JACK...
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paJACK))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+    // Then ALSA, which will not allow for audio device sharing...
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paALSA))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+    // Then OSS as a last resort, with same limitations as ALSA + bad timing...
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paOSS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+    // ...then give up!
+    printf("PTB-ERROR: Could not find an operational audio subsystem on this Linux machine! Soundcard and driver installed and enabled?!?\n");
+    return(paHostApiNotFound);
+    #endif
+
+    // For other operating systems, ie. Window/macOS, choose the OS default api:
+    ai = Pa_GetDefaultHostApi();
+    return(ai);
+}
+
+PaHostApiIndex PsychPAGetLowestLatencyHostAPI(int latencyclass)
 {
     PaHostApiIndex ai;
 
@@ -1919,14 +1946,32 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_LINUX
-    // Try ALSA first...
+    // Want low-latency, but also sharing of audio device with other audio clients, ie. latencyclass == 1?
+    if (latencyclass <= 1) {
+        // Try collaborative backends first: First JACK, which is low latency / high precision and also allows sharing:
+        if (((ai=Pa_HostApiTypeIdToHostApiIndex(paJACK))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+        // Then PulseAudio if there ain't no JACK installed/running/ready. PulseAudio gives reasonable timing / latency and allows sharing:
+        if (((ai=Pa_HostApiTypeIdToHostApiIndex(paPulseAudio))!=paHostApiNotFound) && !pulseaudio_isSuspended && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+        // If none of these is available, continue with exclusive api's like ALSA:
+    }
+
+    // latencyclass >= 2 for exclusive audio device access at best timing / lowest latencies, or fallback for latencyclass 1 if
+    // neither JACK nor PulseAudio are available:
+
+    // Try ALSA first... No sharing, best timing and latency:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paALSA))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // Then JACK...
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paJACK))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // Then PulseAudio
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paPulseAudio))!=paHostApiNotFound) && !pulseaudio_isSuspended && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // Then OSS...
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paOSS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // then give up!
     printf("PTB-ERROR: Could not find an operational audio subsystem on this Linux machine! Soundcard and driver installed and enabled?!?\n");
     return(paHostApiNotFound);
@@ -1937,14 +1982,19 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
     // Try ASIO first. It's supposed to be the lowest latency Windows API on soundcards that suppport it.
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paASIO))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
     #endif
+
     // Then Vistas new WASAPI, which is supposed to be usable since around Windows-7 and pretty good since Windows-10:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWASAPI))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // Then WDM kernel streaming Win2000 and later. This is the best builtin sound system we get on pre Windows-7:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWDMKS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // Then DirectSound: Bad, but not a complete disaster if the sound card has DS native drivers:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paDirectSound))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // Then Windows MME, a complete disaster, but better than silence...?!?
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paMME))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // then give up!
     printf("PTB-ERROR: Could not find an operational audio subsystem on this Windows machine! Soundcard and driver installed and enabled?!?\n");
     return(paHostApiNotFound);
@@ -2286,29 +2336,21 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     if (deviceid == -1) {
         // Default devices requested:
-        if ((latencyclass == 0) && (PSYCH_SYSTEM != PSYCH_LINUX)) {
-            // High latency mode on non-Linux. Simply pick system default devices.
-            // We don't pick these on Linux, because we'd end up with the ancient
-            // OSS, which is almost always a suboptimal choice for our purpose, even
-            // in high-latency mode.
-            outputParameters.device = Pa_GetDefaultOutputDevice(); /* Default output device. */
-            inputParameters.device  = Pa_GetDefaultInputDevice(); /* Default input device. */
+        if (latencyclass == 0) {
+            // High latency mode. Picks system default devices on non-Linux, from
+            // default host api. On Linux we try PulseAudio, Jack, ALSA, OSS in
+            // that order, from shared+good timing to exclusive to bad.
+            paHostAPI = PsychPAGetHighLatencyHostAPI();
         }
         else {
-            // High latency mode on Linux requested? If PulseAudio is supported and active and has devices, choose its default devices:
-            if ((latencyclass == 0) && (PSYCH_SYSTEM == PSYCH_LINUX) && ((paHostAPI = Pa_HostApiTypeIdToHostApiIndex(paPulseAudio)) != paHostApiNotFound) &&
-                !pulseaudio_isSuspended && (Pa_GetHostApiInfo(paHostAPI)->deviceCount > 0)) {
-                if (verbosity > 2) printf("PTB-INFO: Choosing default PulseAudio sound devices in high latency mode on Linux.\n");
-            }
-            else {
-                // Low latency mode, or Linux without PulseAudio at the ready.
-                // Try to find the host API which is supposed to be the fastest on a platform, then pick its default devices:
-                paHostAPI = PsychPAGetLowestLatencyHostAPI();
-            }
-
-            outputParameters.device = Pa_GetHostApiInfo(paHostAPI)->defaultOutputDevice;
-            inputParameters.device  = Pa_GetHostApiInfo(paHostAPI)->defaultInputDevice;
+            // Low latency mode. Try to find the host API which is supposed to be the
+            // most suitable one for given latencyclass on a platform:
+            paHostAPI = PsychPAGetLowestLatencyHostAPI(latencyclass);
         }
+
+        // Pick default in/out devices of selected host api backend:
+        outputParameters.device = Pa_GetHostApiInfo(paHostAPI)->defaultOutputDevice;
+        inputParameters.device  = Pa_GetHostApiInfo(paHostAPI)->defaultInputDevice;
 
         // Make sure we don't choose a default audio output device which is likely to
         // send its output to nirvana. If this is the case, try to find a better alternative.
