@@ -2866,8 +2866,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
         // the reported defaultHighInputLatency/defaultHighOutputLatency is. As of the current PulseAudio hostApi
         // prototype, reporting of these values makes no sense, so this hack should keep us going at least:
         if ((latencyclass == 0) && (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paPulseAudio)) {
-            outputParameters.suggestedLatency = (outputParameters.suggestedLatency >= 0.040) ? : 0.040;
-            inputParameters.suggestedLatency = (inputParameters.suggestedLatency >= 0.040) ? : 0.040;
+            outputParameters.suggestedLatency = (outputParameters.suggestedLatency >= 0.040) ? outputParameters.suggestedLatency : 0.040;
+            inputParameters.suggestedLatency = (inputParameters.suggestedLatency >= 0.040) ? inputParameters.suggestedLatency : 0.040;
         }
     }
     else {
