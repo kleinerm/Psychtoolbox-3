@@ -28,7 +28,7 @@ nrchannels = 1;
 % Open sound device 'pahandle' with specified freq'ency and number of audio
 % channels for playback in timing precision mode on the default audio
 % device:
-InitializePsychSound(1);
+InitializePsychSound;
 pahandle = PsychPortAudio('Open', [], [], [], freq, nrchannels);
 
 % Fill default audio buffer with a 500 Hz beep sound of 1 second duration:

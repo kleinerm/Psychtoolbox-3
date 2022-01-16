@@ -86,7 +86,7 @@ function BasicSoundPhaseShiftDemo(showit, targetChannel)
   rightArrow = KbName('RightArrow');
 
   % Perform basic initialization of the sound driver:
-  InitializePsychSound(1);
+  InitializePsychSound;
 
   % Number of physical channels to use on the real soundcard:
   nrchannels = 2;

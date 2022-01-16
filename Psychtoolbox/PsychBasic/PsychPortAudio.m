@@ -2,7 +2,7 @@ function varargout = PsychPortAudio(varargin)
 % PsychPortAudio - High precision sound driver for Psychtoolbox-3.
 %
 % PsychPortAudio is a special sound driver for PTB-3. It is a replacement
-% for all other Matlab based sound drivers and PTB's old SND() function.
+% for all other sound drivers and PTB's old SND() function.
 %
 % PsychPortAudio provides the following features:
 %
@@ -23,6 +23,11 @@ function varargout = PsychPortAudio(varargin)
 %
 % - Infinitely repeating playback, or playback of a sound for 'n' times.
 %
+% - Definition of complex audio schedules - "playlists" with high timing precision
+%   control of which sounds start and stop and switch when.
+%
+% - Advanced audio mixing capabilities.
+%
 % - Returns timestamps and status for all crucial events.
 %
 % - Support multi-channel devices, e.g., 8-channel sound cards.
@@ -42,7 +47,8 @@ function varargout = PsychPortAudio(varargin)
 % "BasicSoundInputDemo" for a basic demo of sound capture.
 % "DelayedSoundFeedbackDemo" shows how to implement a simple audio feedback
 % loop with controllable delay. There are also demos that show scheduling,
-% modulation and mixing (cfe. BasicSoundScheduleDemo an BasicAMAndMixScheduleDemo).
+% modulation and mixing (cfe. BasicSoundScheduleDemo, BasicAMAndMixScheduleDemo,
+% TurnTableDemo, BasicSoundPhaseShiftDemo).
 % SimpleVoiceTriggerDemo shows how to record vocal reaction times.
 % KeyboardLatencyTest uses audio to measure the response timing behaviour and
 % timing accuracy of various human input devices, e.g., keyboard, mouse, touchpad,
@@ -56,9 +62,8 @@ function varargout = PsychPortAudio(varargin)
 % "PsychPortAudio Subfunctionname?" for help on a specific subfunction.
 %
 % CAUTION: You *must* call InitializePsychSound before first invocation of
-% PsychPortAudio(), at least on MS-Windows, but possibly also on OS/X! If
-% you omit that call, initialization of the driver may fail with some
-% "Invalid MEX file" error from Matlab!
+% PsychPortAudio()! If you omit that call, initialization of the driver may
+% fail with some "Invalid MEX file" error!
 %
 %
 % PsychPortAudio is built around a modified version of the free, open-source
@@ -68,6 +73,7 @@ function varargout = PsychPortAudio(varargin)
 % 06/07/2007 Written (MK).
 % 11/01/2008 Remove warning messages about "early beta release" (MK).
 % 11/07/2018 Help text updates for the year 2018.
+% 16/01/2022 Help text updates for the year 2022.
 
 % Some check for not yet supported operating systems:
 AssertMex('PsychPortAudio.m');
