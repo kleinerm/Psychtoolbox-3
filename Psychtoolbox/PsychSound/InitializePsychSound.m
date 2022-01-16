@@ -123,6 +123,11 @@ if IsOSX
 end
 
 if IsLinux
+    % DISABLE PulseAudio switching logic for the time being until the upstream
+    % code in PortAudio has been stabilized, officially released and carefully
+    % tested by us.
+    return;
+
     try
         % We force loading+linking+init of the driver here, so in case
         % something goes wrong we can catch this and output useful
