@@ -2,10 +2,21 @@ function [spectrum,qual] = MeasSpd(S,meterType,syncMode)
 % [spectrum,qual] = MeasSpd([S],[meterType],[syncMode])
 %
 % This routine splines the raw return values from the
-% meter to the wavelength sampling S.  The splining
-% handles conversion of power units according to
-% to the wavelength sampling delta.  If S is not passed,
-% it is set to [380 5 81].
+% meter to the wavelength sampling S vector, with
+% S = [startWl deltaWl nWlSamples].
+% 
+% The splining handles conversion of power units according to to the
+% wavelength sampling deltaWl. That is, power is converted into units of
+% power per wlband. This convention, used widely in PTB, means that you can
+% omit the multiplication by deltaWl when numerically integrating over
+% wavelength, but is a little counterintuitive.
+%
+% If you later want to spline to other wl samplines, use SplineSpd to
+% maintain the PTB convention.  Note that splining to 1 nm spacing puts the
+% units into power per nm, as at 1 nm spacing the two conventions are the
+% same.
+% 
+% If S is not passed, it is set to [380 5 81].
 %
 % Tries to handle low light level case gracefully by returning
 % zero as the answer.
