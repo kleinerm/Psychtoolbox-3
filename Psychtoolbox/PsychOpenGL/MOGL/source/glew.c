@@ -18338,7 +18338,7 @@ GLboolean eglewGetExtension (const char* name)
   start = (const GLubyte*) eglQueryString(eglGetCurrentDisplay(), EGL_EXTENSIONS);
   if (0 == start) return GL_FALSE;
   end = start + _glewStrLen(start);
-  return _glewSearchExtension(name, startidx, endidx);
+  return _glewSearchExtension(name, start, end);
 }
 
 GLenum eglewInit (EGLDisplay display)
@@ -19521,7 +19521,7 @@ GLboolean GLEWAPIENTRY wglewGetExtension (const char* name)
   if (start == 0)
     return GL_FALSE;
   end = start + _glewStrLen(start);
-  return _glewSearchExtension(name, startidx, endidx);
+  return _glewSearchExtension(name, start, end);
 }
 
 GLenum GLEWAPIENTRY wglewInit ()
@@ -20530,7 +20530,7 @@ GLboolean glxewGetExtension (const char* name)
   start = (const GLubyte*)glXGetClientString(glXGetCurrentDisplay(), GLX_EXTENSIONS);
   if (0 == start) return GL_FALSE;
   end = start + _glewStrLen(start);
-  return _glewSearchExtension(name, startidx, endidx);
+  return _glewSearchExtension(name, start, end);
 }
 
 GLenum glxewInit ()
