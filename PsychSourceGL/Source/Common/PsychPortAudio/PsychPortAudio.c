@@ -31,6 +31,11 @@
 
 #include "PsychPortAudio.h"
 
+// This is a define of the PulseAudio host api id. It will be 16, once a portaudio
+// version with PulseAudio support is officially released. Define it here, so we
+// can already build a driver that is able to handle paPulseAudio quirks:
+#define paPulseAudio 16
+
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include "pa_mac_core.h"
 #endif
@@ -148,7 +153,7 @@ void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb);
 void (*myPaUtil_SetDebugPrintFunction)(PaUtilLogCallback  cb) = NULL;
 
 // Wrapper implementation, as many libportaudio.so implementations seem to lack this function :(:
-void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
+void PsychPAPaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
 {
     // Try to get function dynamically:
     myPaUtil_SetDebugPrintFunction = dlsym(RTLD_NEXT, "PaUtil_SetDebugPrintFunction");
@@ -158,6 +163,8 @@ void PaUtil_SetDebugPrintFunction(PaUtilLogCallback  cb)
 
     return;
 }
+#else
+#define PsychPAPaUtil_SetDebugPrintFunction PaUtil_SetDebugPrintFunction
 #endif
 
 // Forward define of prototype of our own custom new PortAudio extension function for Zero latency direct input monitoring:
@@ -988,7 +995,8 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
             captureStartTime = (double) timeInfo->inputBufferAdcTime;
         }
         else {
-            // Not yet verified how these other audio APIs behave. Play safe
+            // Either known to need timestamp remapping, e.g., PulseAudio, or
+            // not yet verified how these other audio APIs behave. Play safe
             // and perform timebase remapping: This also needs our special fixed
             // PortAudio version where currentTime actually has a value:
             if (dev->opmode & kPortAudioPlayBack) {
@@ -1051,8 +1059,23 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
     // Count total number of calls:
     dev->paCalls++;
 
-    // Keep track of maximum number of frames requested:
-    if (dev->batchsize < (psych_int64) framesPerBuffer) dev->batchsize = (psych_int64) framesPerBuffer;
+    // Keep track of maximum number of frames requested/provided:
+    if (dev->batchsize < (psych_int64) framesPerBuffer) {
+        dev->batchsize = (psych_int64) framesPerBuffer;
+
+        // Master - Slave processing needs internal scratch buffers of fitting size:
+        if (isMaster) {
+            // As dev->batchsize has grown, we need to reallocate slave buffers at
+            // the new bigger size, so free current ones to trigger a new malloc
+            // later on:
+            free(dev->slaveInBuffer);
+            dev->slaveInBuffer = NULL;
+            free(dev->slaveOutBuffer);
+            dev->slaveOutBuffer = NULL;
+            free(dev->slaveGainBuffer);
+            dev->slaveGainBuffer = NULL;
+        }
+    }
 
     // Keep track of buffer over-/underflows:
     if (statusFlags & (paInputOverflow | paInputUnderflow | paOutputOverflow | paOutputUnderflow)) dev->xruns++;
@@ -1290,7 +1313,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
         if (NULL != outputBuffer) {
             // Have scratch buffers ready. Clear output intermix buffer:
-            memset(outputBuffer, 0, (size_t) (dev->batchsize * outchannels * sizeof(float)));
+            memset(outputBuffer, 0, (size_t) (framesPerBuffer * outchannels * sizeof(float)));
         }
 
         // Iterate over all slave device callbacks: Or at least until all registered slaves are handled.
@@ -1323,108 +1346,108 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
                     // Yes. Execute it:
                     audiodevices[modulatorSlave].slaveDirty = 0;
 
-                // Prefill buffer with neutral 1.0:
-                tmpBuffer = dev->slaveGainBuffer;
-                for (j = 0; j < dev->batchsize * audiodevices[modulatorSlave].outchannels; j++) *(tmpBuffer++) = 1.0;
+                    // Prefill buffer with neutral 1.0:
+                    tmpBuffer = dev->slaveGainBuffer;
+                    for (j = 0; j < framesPerBuffer * audiodevices[modulatorSlave].outchannels; j++) *(tmpBuffer++) = 1.0;
 
-                // This will potentially fill the slaveGainBuffer with gain modulation values.
-                // The passed slaveInBuffer is meaningless for a modulator slave and only contains random junk...
-                paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveGainBuffer, (unsigned long) dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[modulatorSlave]));
-                    }
-                    else {
-                        // No. Either no modulator slave or slave not currently active. Signal this
-                        // by setting modulatorSlave to a -1 value:
-                        modulatorSlave = -1;
-                    }
+                    // This will potentially fill the slaveGainBuffer with gain modulation values.
+                    // The passed slaveInBuffer is meaningless for a modulator slave and only contains random junk...
+                    paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveGainBuffer, (unsigned long) framesPerBuffer, timeInfo, statusFlags, (void*) &(audiodevices[modulatorSlave]));
+                }
+                else {
+                    // No. Either no modulator slave or slave not currently active. Signal this
+                    // by setting modulatorSlave to a -1 value:
+                    modulatorSlave = -1;
+                }
 
-                    // Skip actual slaves processing if its state is zero == completely inactive.
-                    if (audiodevices[slaveId].state > 0) {
-                        // Slave is active, need to process it:
+                // Skip actual slaves processing if its state is zero == completely inactive.
+                if (audiodevices[slaveId].state > 0) {
+                    // Slave is active, need to process it:
 
-                        // Reset dirty flag for this slave:
-                        audiodevices[slaveId].slaveDirty = 0;
+                    // Reset dirty flag for this slave:
+                    audiodevices[slaveId].slaveDirty = 0;
 
-                        // Is this a playback slave?
-                        if (audiodevices[slaveId].opmode & kPortAudioPlayBack) {
-                            // Prefill slaves output buffer with 1.0, a neutral gain value for playback slaves
-                            // without a AM modulator attached. The same prefill is needed with AM modulator,
-                            // this time to make the modulator itself happy:
-                            tmpBuffer = dev->slaveOutBuffer;
-                            for (j = 0; j < dev->batchsize * audiodevices[slaveId].outchannels; j++) *(tmpBuffer++) = 1.0;
+                    // Is this a playback slave?
+                    if (audiodevices[slaveId].opmode & kPortAudioPlayBack) {
+                        // Prefill slaves output buffer with 1.0, a neutral gain value for playback slaves
+                        // without a AM modulator attached. The same prefill is needed with AM modulator,
+                        // this time to make the modulator itself happy:
+                        tmpBuffer = dev->slaveOutBuffer;
+                        for (j = 0; j < framesPerBuffer * audiodevices[slaveId].outchannels; j++) *(tmpBuffer++) = 1.0;
 
-                            // Ok, the outbuffer is filled with a neutral 1.0 gain value. This will work
-                            // even if no per-slave gain modulation is provided by a modulator slave.
+                        // Ok, the outbuffer is filled with a neutral 1.0 gain value. This will work
+                        // even if no per-slave gain modulation is provided by a modulator slave.
 
-                            // Is a modulator slave active and did it write any gain AM values?
-                            if ((modulatorSlave > -1) && (audiodevices[modulatorSlave].slaveDirty)) {
-                                // Yes. Need to distribute them to proper channels in slaveOutBuffer:
-                                tmpBuffer = dev->slaveGainBuffer;
-                                mixBuffer = dev->slaveOutBuffer;
-                                for (j = 0; j < dev->batchsize; j++) {
-                                    // Iterate over all target channels in the slave device outputbuffer:
-                                    for (k = 0; k < audiodevices[modulatorSlave].outchannels; k++) {
-                                        // Modulate current sample in intermixbuffer via multiplication:
-                                        mixBuffer[(j * audiodevices[slaveId].outchannels) + audiodevices[modulatorSlave].outputmappings[k]] = *(tmpBuffer++) * audiodevices[modulatorSlave].outChannelVolumes[k];
-                                    }
-                                }
-                            }
-                        }    // Ok, the slaveOutBuffer for this playback slave is prefilled with valid gain modulation data to apply to the actual sound output.
-
-                        // Capture enabled on slave? If so, we need to distribute our captured audio data to it:
-                        if (audiodevices[slaveId].opmode & kPortAudioCapture) {
-                            tmpBuffer = dev->slaveInBuffer;
-                            // For each sampleFrame in the input buffer:
-                            for (j = 0; j < dev->batchsize; j++) {
-                                // Iterate over all target channels in the slave devices inputbuffer:
-                                for (k = 0; k < audiodevices[slaveId].inchannels; k++) {
-                                    // And fetch from corrsponding source channel of our device:
-                                    *(tmpBuffer++) = in[(j * inchannels) + audiodevices[slaveId].inputmappings[k]];
+                        // Is a modulator slave active and did it write any gain AM values?
+                        if ((modulatorSlave > -1) && (audiodevices[modulatorSlave].slaveDirty)) {
+                            // Yes. Need to distribute them to proper channels in slaveOutBuffer:
+                            tmpBuffer = dev->slaveGainBuffer;
+                            mixBuffer = dev->slaveOutBuffer;
+                            for (j = 0; j < framesPerBuffer; j++) {
+                                // Iterate over all target channels in the slave device outputbuffer:
+                                for (k = 0; k < audiodevices[modulatorSlave].outchannels; k++) {
+                                    // Modulate current sample in intermixbuffer via multiplication:
+                                    mixBuffer[(j * audiodevices[slaveId].outchannels) + audiodevices[modulatorSlave].outputmappings[k]] = *(tmpBuffer++) * audiodevices[modulatorSlave].outChannelVolumes[k];
                                 }
                             }
                         }
+                    }    // Ok, the slaveOutBuffer for this playback slave is prefilled with valid gain modulation data to apply to the actual sound output.
 
-                        // Temporary input buffer is filled for slave callback: Execute it.
-                        paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveOutBuffer, (unsigned long) dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
-
-                        // Check if the paCallback actually filled anything into the dev->slaveOutBuffer:
-                        if ((audiodevices[slaveId].opmode & kPortAudioPlayBack) && audiodevices[slaveId].slaveDirty) {
-                            // Slave has written meaningful data to its output buffer. Merge & mix it:
-
-                            // Process from first non-silence sample slot (after silenceframes prefix) until end of buffer:
-                            tmpBuffer = &(dev->slaveOutBuffer[committedFrames * audiodevices[slaveId].outchannels]);
-                            mixBuffer = (float*) outputBuffer;
-
-                            // Special AM-Modulator slave?
-                            if (audiodevices[slaveId].opmode & kPortAudioIsAMModulator) {
-                                // Yes: This slave doesn't provide audio data for mixing, but instead
-                                // a time-series of gain modulation samples for amplitude modulation.
-                                // Multiply the master channels samples with the slaves "gain samples"
-                                // to apply AM modulation:
-                                for (j = committedFrames; j < dev->batchsize; j++) {
-                                    // Iterate over all target channels in the slave device outputbuffer:
-                                    for (k = 0; k < audiodevices[slaveId].outchannels; k++) {
-                                        // Modulate current sample in intermixbuffer via multiplication:
-                                        mixBuffer[(j * outchannels) + audiodevices[slaveId].outputmappings[k]] *= *(tmpBuffer++) * audiodevices[slaveId].outChannelVolumes[k];
-                                    }
-                                }
-                            }
-                            else {
-                                // Regular mix: Mix all output channels of the slave into the proper target channels
-                                // of the master by simple addition. Apply per-channel volume settings of the slave
-                                // during mix:
-                                for (j = committedFrames; j < dev->batchsize; j++) {
-                                    // Iterate over all target channels in the slave device outputbuffer:
-                                    for (k = 0; k < audiodevices[slaveId].outchannels; k++) {
-                                        // Mix current sample via addition:
-                                        mixBuffer[(j * outchannels) + audiodevices[slaveId].outputmappings[k]] += *(tmpBuffer++) * audiodevices[slaveId].outChannelVolumes[k];
-                                    }
-                                }
+                    // Capture enabled on slave? If so, we need to distribute our captured audio data to it:
+                    if (audiodevices[slaveId].opmode & kPortAudioCapture) {
+                        tmpBuffer = dev->slaveInBuffer;
+                        // For each sampleFrame in the input buffer:
+                        for (j = 0; j < framesPerBuffer; j++) {
+                            // Iterate over all target channels in the slave devices inputbuffer:
+                            for (k = 0; k < audiodevices[slaveId].inchannels; k++) {
+                                // And fetch from corrsponding source channel of our device:
+                                *(tmpBuffer++) = in[(j * inchannels) + audiodevices[slaveId].inputmappings[k]];
                             }
                         }
                     }
 
-                    // One more slave handled:
-                    numSlavesHandled++;
+                    // Temporary input buffer is filled for slave callback: Execute it.
+                    paCallback( (const void*) dev->slaveInBuffer, (void*) dev->slaveOutBuffer, (unsigned long) framesPerBuffer, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
+
+                    // Check if the paCallback actually filled anything into the dev->slaveOutBuffer:
+                    if ((audiodevices[slaveId].opmode & kPortAudioPlayBack) && audiodevices[slaveId].slaveDirty) {
+                        // Slave has written meaningful data to its output buffer. Merge & mix it:
+
+                        // Process from first non-silence sample slot (after silenceframes prefix) until end of buffer:
+                        tmpBuffer = &(dev->slaveOutBuffer[committedFrames * audiodevices[slaveId].outchannels]);
+                        mixBuffer = (float*) outputBuffer;
+
+                        // Special AM-Modulator slave?
+                        if (audiodevices[slaveId].opmode & kPortAudioIsAMModulator) {
+                            // Yes: This slave doesn't provide audio data for mixing, but instead
+                            // a time-series of gain modulation samples for amplitude modulation.
+                            // Multiply the master channels samples with the slaves "gain samples"
+                            // to apply AM modulation:
+                            for (j = committedFrames; j < framesPerBuffer; j++) {
+                                // Iterate over all target channels in the slave device outputbuffer:
+                                for (k = 0; k < audiodevices[slaveId].outchannels; k++) {
+                                    // Modulate current sample in intermixbuffer via multiplication:
+                                    mixBuffer[(j * outchannels) + audiodevices[slaveId].outputmappings[k]] *= *(tmpBuffer++) * audiodevices[slaveId].outChannelVolumes[k];
+                                }
+                            }
+                        }
+                        else {
+                            // Regular mix: Mix all output channels of the slave into the proper target channels
+                            // of the master by simple addition. Apply per-channel volume settings of the slave
+                            // during mix:
+                            for (j = committedFrames; j < framesPerBuffer; j++) {
+                                // Iterate over all target channels in the slave device outputbuffer:
+                                for (k = 0; k < audiodevices[slaveId].outchannels; k++) {
+                                    // Mix current sample via addition:
+                                    mixBuffer[(j * outchannels) + audiodevices[slaveId].outputmappings[k]] += *(tmpBuffer++) * audiodevices[slaveId].outChannelVolumes[k];
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // One more slave handled:
+                numSlavesHandled++;
             }
         }    // Next slave...
 
@@ -1451,7 +1474,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
                         mixBuffer = (float*) outputBuffer;
 
                         // For each sampleFrame in the mixBuffer:
-                        for (j = 0; j < dev->batchsize; j++) {
+                        for (j = 0; j < framesPerBuffer; j++) {
                             // Iterate over all target channels in the slave devices inputbuffer:
                             for (k = 0; k < audiodevices[slaveId].inchannels; k++) {
                                 // And fetch from corrsponding mixBuffer channel of our device, applying the same
@@ -1466,7 +1489,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
                     // also acts as output buffer from the slave, so that slaves with playback enabled are happy.
                     // However, this is a pure dummy-sink, the data written by the slave isn't used for anything,
                     // but simply discarded, as output capture slaves have no meaningful sink for their output.
-                    paCallback( (const void*) dev->slaveOutBuffer, (void*) dev->slaveOutBuffer, (unsigned long) dev->batchsize, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
+                    paCallback( (const void*) dev->slaveOutBuffer, (void*) dev->slaveOutBuffer, (unsigned long) framesPerBuffer, timeInfo, statusFlags, (void*) &(audiodevices[slaveId]));
                 }
 
                 // One more slave handled:
@@ -1525,7 +1548,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
         // This is the simple case (compared to playback processing).
         // Just copy all available data to our internal buffer:
-        for (i=0; (i < dev->batchsize * inchannels); i++) {
+        for (i=0; (i < framesPerBuffer * inchannels); i++) {
             dev->inputbuffer[recposition % insbsize] = (float) *in++;
             recposition++;
         }
@@ -1886,7 +1909,34 @@ const char** InitializeSynopsis(void)
     return(synopsisSYNOPSIS);
 }
 
-PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
+PaHostApiIndex PsychPAGetHighLatencyHostAPI(void)
+{
+    PaHostApiIndex ai;
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+    // Try PulseAudio first:
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paPulseAudio))!=paHostApiNotFound) && !pulseaudio_isSuspended && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+    // Then JACK...
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paJACK))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+    // Then ALSA, which will not allow for audio device sharing...
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paALSA))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+    // Then OSS as a last resort, with same limitations as ALSA + bad timing...
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paOSS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+    // ...then give up!
+    printf("PTB-ERROR: Could not find an operational audio subsystem on this Linux machine! Soundcard and driver installed and enabled?!?\n");
+    return(paHostApiNotFound);
+    #endif
+
+    // For other operating systems, ie. Window/macOS, choose the OS default api:
+    ai = Pa_GetDefaultHostApi();
+    return(ai);
+}
+
+PaHostApiIndex PsychPAGetLowestLatencyHostAPI(int latencyclass)
 {
     PaHostApiIndex ai;
 
@@ -1896,12 +1946,32 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_LINUX
-    // Try ALSA first...
+    // Want low-latency, but also sharing of audio device with other audio clients, ie. latencyclass == 1?
+    if (latencyclass <= 1) {
+        // Try collaborative backends first: First JACK, which is low latency / high precision and also allows sharing:
+        if (((ai=Pa_HostApiTypeIdToHostApiIndex(paJACK))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+        // Then PulseAudio if there ain't no JACK installed/running/ready. PulseAudio gives reasonable timing / latency and allows sharing:
+        if (((ai=Pa_HostApiTypeIdToHostApiIndex(paPulseAudio))!=paHostApiNotFound) && !pulseaudio_isSuspended && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+        // If none of these is available, continue with exclusive api's like ALSA:
+    }
+
+    // latencyclass >= 2 for exclusive audio device access at best timing / lowest latencies, or fallback for latencyclass 1 if
+    // neither JACK nor PulseAudio are available:
+
+    // Try ALSA first... No sharing, best timing and latency:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paALSA))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // Then JACK...
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paJACK))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
+    // Then PulseAudio
+    if (((ai=Pa_HostApiTypeIdToHostApiIndex(paPulseAudio))!=paHostApiNotFound) && !pulseaudio_isSuspended && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // Then OSS...
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paOSS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // then give up!
     printf("PTB-ERROR: Could not find an operational audio subsystem on this Linux machine! Soundcard and driver installed and enabled?!?\n");
     return(paHostApiNotFound);
@@ -1912,14 +1982,19 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
     // Try ASIO first. It's supposed to be the lowest latency Windows API on soundcards that suppport it.
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paASIO))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
     #endif
+
     // Then Vistas new WASAPI, which is supposed to be usable since around Windows-7 and pretty good since Windows-10:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWASAPI))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // Then WDM kernel streaming Win2000 and later. This is the best builtin sound system we get on pre Windows-7:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWDMKS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // Then DirectSound: Bad, but not a complete disaster if the sound card has DS native drivers:
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paDirectSound))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // Then Windows MME, a complete disaster, but better than silence...?!?
     if (((ai=Pa_HostApiTypeIdToHostApiIndex(paMME))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
+
     // then give up!
     printf("PTB-ERROR: Could not find an operational audio subsystem on this Windows machine! Soundcard and driver installed and enabled?!?\n");
     return(paHostApiNotFound);
@@ -1971,7 +2046,7 @@ PsychError PsychPortAudioExit(void)
         }
 
         // Detach our callback function for low-level debug output:
-        PaUtil_SetDebugPrintFunction(NULL);
+        PsychPAPaUtil_SetDebugPrintFunction(NULL);
 
         #if PSYCH_SYSTEM == PSYCH_LINUX
             // Disable ALSA error handler:
@@ -2046,7 +2121,7 @@ void PsychPortAudioInitialize(void)
         #endif
 
         // Setup callback function for low-level debug output:
-        PaUtil_SetDebugPrintFunction(PALogger);
+        PsychPAPaUtil_SetDebugPrintFunction(PALogger);
 
         #if PSYCH_SYSTEM == PSYCH_LINUX
             // Set an error handler for ALSA debug output/errors to stop the spewage of utterly
@@ -2071,7 +2146,7 @@ void PsychPortAudioInitialize(void)
 
         if ((err=Pa_Initialize())!=paNoError) {
             printf("PTB-ERROR: Portaudio initialization failed with following port audio error: %s \n", Pa_GetErrorText(err));
-            PaUtil_SetDebugPrintFunction(NULL);
+            PsychPAPaUtil_SetDebugPrintFunction(NULL);
             PsychErrorExitMsg(PsychError_system, "Failed to initialize PortAudio subsystem.");
         }
         else {
@@ -2261,21 +2336,21 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     if (deviceid == -1) {
         // Default devices requested:
-        if ((latencyclass == 0) && (PSYCH_SYSTEM != PSYCH_LINUX)) {
-            // High latency mode on non-Linux. Simply pick system default devices.
-            // We don't pick these on Linux, because we'd end up with the ancient
-            // OSS, which is almost always a suboptimal choice for our purpose, even
-            // in high-latency mode.
-            outputParameters.device = Pa_GetDefaultOutputDevice(); /* Default output device. */
-            inputParameters.device  = Pa_GetDefaultInputDevice(); /* Default input device. */
+        if (latencyclass == 0) {
+            // High latency mode. Picks system default devices on non-Linux, from
+            // default host api. On Linux we try PulseAudio, Jack, ALSA, OSS in
+            // that order, from shared+good timing to exclusive to bad.
+            paHostAPI = PsychPAGetHighLatencyHostAPI();
         }
         else {
-            // Low latency mode: Try to find the host API which is supposed to be the fastest on
-            // a platform, then pick its default devices:
-            paHostAPI = PsychPAGetLowestLatencyHostAPI();
-            outputParameters.device = Pa_GetHostApiInfo(paHostAPI)->defaultOutputDevice;
-            inputParameters.device  = Pa_GetHostApiInfo(paHostAPI)->defaultInputDevice;
+            // Low latency mode. Try to find the host API which is supposed to be the
+            // most suitable one for given latencyclass on a platform:
+            paHostAPI = PsychPAGetLowestLatencyHostAPI(latencyclass);
         }
+
+        // Pick default in/out devices of selected host api backend:
+        outputParameters.device = Pa_GetHostApiInfo(paHostAPI)->defaultOutputDevice;
+        inputParameters.device  = Pa_GetHostApiInfo(paHostAPI)->defaultInputDevice;
 
         // Make sure we don't choose a default audio output device which is likely to
         // send its output to nirvana. If this is the case, try to find a better alternative.
@@ -2722,14 +2797,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
     // Setup samplerate:
     if (freq == 0) {
-        // No specific frequency requested:
-        if (latencyclass < 3) {
-            // At levels < 3, we select the device specific default.
-            freq = referenceDevInfo->defaultSampleRate;
-        }
-        else {
-            freq = 96000; // Go really high...
-        }
+        // No specific frequency requested, so choose device default:
+        freq = referenceDevInfo->defaultSampleRate;
     }
 
     // Now we have auto-selected frequency or user provided override...
@@ -2772,19 +2841,34 @@ PsychError PSYCHPORTAUDIOOpen(void)
             lowlatency = (latencyclass > 2) ? 0.005 : 0.010;
             break;
 
+        case paPulseAudio:
+            // For PulseAudio we choose 15 msecs by default, lowering to 10 msecs if explicitely requested.
+            // These work on a "500 Euro class" PC from early 2019 with onboard sound (AMD Ryzen-5 2400G APU),
+            // 15 msecs everywhere, but 10 msecs only "crackle-free" with onboard HDA sound, not with iGPU DP/HDMI sound.
+            lowlatency = (latencyclass > 2) ? 0.010 : 0.015;
+            break;
+
         default:            // Not the safest assumption for non-verified Api's, but we'll see...
             lowlatency = 0.0;
     }
 
     if (suggestedLatency == -1.0) {
         // None provided: Choose default based on latency mode:
-        outputParameters.suggestedLatency = (latencyclass == 0 && outputDevInfo) ? outputDevInfo->defaultHighOutputLatency : lowlatency;
-        inputParameters.suggestedLatency  = (latencyclass == 0 && inputDevInfo) ? inputDevInfo->defaultHighInputLatency : lowlatency;
+        outputParameters.suggestedLatency = (latencyclass == 0 && outputDevInfo && (outputDevInfo->defaultHighOutputLatency > lowlatency)) ? outputDevInfo->defaultHighOutputLatency : lowlatency;
+        inputParameters.suggestedLatency  = (latencyclass == 0 && inputDevInfo && (inputDevInfo->defaultHighInputLatency > lowlatency)) ? inputDevInfo->defaultHighInputLatency : lowlatency;
 
         // Make sure that requested high or default output latency on Apples trainwreck is never lower than 10 msecs.
         // Especially on macOS 10.14 this seems to be neccessary for crackle-free playback: (Forum message #23422)
         if ((latencyclass <= 1) && (PSYCH_SYSTEM == PSYCH_OSX) && (outputParameters.suggestedLatency < 0.010))
             outputParameters.suggestedLatency = 0.010;
+
+        // For PulseAudio in high latency mode, make sure requested latency is at least 40 msecs, regardless what
+        // the reported defaultHighInputLatency/defaultHighOutputLatency is. As of the current PulseAudio hostApi
+        // prototype, reporting of these values makes no sense, so this hack should keep us going at least:
+        if ((latencyclass == 0) && (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paPulseAudio)) {
+            outputParameters.suggestedLatency = (outputParameters.suggestedLatency >= 0.040) ? outputParameters.suggestedLatency : 0.040;
+            inputParameters.suggestedLatency = (inputParameters.suggestedLatency >= 0.040) ? inputParameters.suggestedLatency : 0.040;
+        }
     }
     else {
         // Override provided: Use it.
@@ -3006,67 +3090,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
         // Enable realtime scheduling for the portaudio audio processing thread on ALSA:
         if (audiodevices[id].hostAPI == paALSA) {
             PaAlsa_EnableRealtimeScheduling(audiodevices[id].stream, 1);
-
-            // Is a hack-fix needed for a bug present in all versions of libportaudio
-            // earlier than 19.7? The bug triggers in pure half-duplex audio capture
-            // mode (== no playback requested) and consists of erroneously switching
-            // the hostBufferSizeMode of the PaBufferProcessor for capture streams from
-            // paUtilFixedHostBufferSize to paUtilBoundedHostBufferSize, causing
-            // misconversion of captured audio somewhere in the bufferProcessor.
-            //
-            // The offending (buggy) if () conditional is at the end of the function
-            // PaAlsaStream_DetermineFramesPerBuffer() inside pa_linux_alsa.c. It looks
-            // like this: if( !self->playback.canMmap || !accurate ) ..., when it should look
-            // like this: if((!self->playback.canMmap && self->playback.pcm) || !accurate ) ...
-            // in order to prevent the invalid !self->playback.canMmap check, which always
-            // evaluates to "true" if playback is not actually used in pure capture mode.
-            //
-            // We can't prevent the mis-setting of hostBufferSizeMode to paUtilBoundedHostBufferSize,
-            // but we can reset it to the correct paUtilFixedHostBufferSize after Pa_OpenStream()
-            // and before actual start of capture operations, by hacking ourselves into the internal
-            // data structure of the PaBufferProcessor associated with the audio stream.
-            //
-            // We don't apply the fix if usercode specified a buffersize other than
-            // the default paFramesPerBufferUnspecified -- in such a case, switching
-            // to a different hostBufferSizeMode may be required...
-            if (((mode & kPortAudioFullDuplex) == kPortAudioCapture) &&
-                (buffersize == paFramesPerBufferUnspecified) &&
-                (Pa_GetVersion() < paMakeVersionNumber(19,7,1))) {
-                PseudoBufferProcessor* bp;
-
-                // Cast PaStream* into ALSA backend specific AlsaStream*, using the pseudo-
-                // datastructures defined to mimick PortAudio 19.6.0 an earliers true internal
-                // structures:
-                PseudoAlsaStreamExt* myalsaext = (PseudoAlsaStreamExt*) audiodevices[id].stream;
-                if ((myalsaext->streamRepresentation.magic == PA_STREAM_MAGIC) &&
-                    (myalsaext->streamRepresentation.hostApiType == paALSA)) {
-                    bp = &myalsaext->bufferProcessor;
-                    if (verbosity > 5)
-                        printf("PTB-DEBUG: Probed PaAlsaStream struct is from patched portaudio with portmixer.patch (Ubuntu style).\n");
-                }
-                else {
-                    PseudoAlsaStream* myalsa = (PseudoAlsaStream*) audiodevices[id].stream;
-                    if (myalsa->streamRepresentation.magic == PA_STREAM_MAGIC) {
-                        bp = &myalsa->bufferProcessor;
-                        if (verbosity > 5)
-                            printf("PTB-DEBUG: Probed PaAlsaStream struct is from vanilla upstream portaudio.\n");
-                    }
-                    else {
-                        bp = NULL;
-                        if (verbosity > 1)
-                            printf("PTB-WARNING: Probing PaAlsaStream struct failed! Can't apply half-duplex capture bug workaround for Portaudio v19.6.0!\n");
-                    }
-                }
-
-                // Additional sanity check if we got the casting right, and if our fix-hack is applicable:
-                if (bp && (bp->hostBufferSizeMode == paUtilBoundedHostBufferSize)) {
-                    // Reset to sane mode:
-                    bp->hostBufferSizeMode = paUtilFixedHostBufferSize;
-
-                    if (verbosity > 4)
-                        printf("PTB-INFO: Applying paUtilFixedHostBufferSize workaround for pure half-duplex capture mode.\n");
-                }
-            }
         }
     #endif
 
@@ -5560,9 +5583,9 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
     #else
     "1=Windows/DirectSound, 2=Windows/MME, 11=Windows/WDMKS, 13=Windows/WASAPI, "
     #endif
-    "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, 5=MacOSX/CoreAudio.\n\n"
+    "8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, probably 16=Linux/PulseAudio, 5=MacOSX/CoreAudio.\n\n"
     "On OS/X you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
-    "On Linux you may have the choice between ALSA, JACK and OSS. ALSA or JACK provide very low "
+    "On Linux you may have the choice between ALSA, JACK, PulseAudio and OSS. ALSA or JACK provide very low "
     "latencies and very good timing, OSS is an older system which is less capable but not very "
     "widespread in use anymore. On MS-Windows you'll have the choice between up to 5 different "
     "audio subsystems:\n"

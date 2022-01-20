@@ -278,9 +278,9 @@ if isempty(ptb_snd_oldstyle)
             fprintf('Snd(): Initializing PsychPortAudio driver for sound output.\n');
         end
 
-        % Low-Latency preinit. Not that we'd need it, but doesn't hurt:
+        % Basic sound preinit:
         try
-            InitializePsychSound(1);
+            InitializePsychSound;
         catch
             fprintf('Snd(): ERROR!\n');
             ple;

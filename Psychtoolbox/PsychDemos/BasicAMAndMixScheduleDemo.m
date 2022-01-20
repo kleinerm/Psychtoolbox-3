@@ -35,7 +35,7 @@ downArrow = KbName('DownArrow');
 escape = KbName('ESCAPE');
 
 % Initialize Sounddriver:
-InitializePsychSound(1);
+InitializePsychSound;
 
 % Open real soundcard 'device' as master device (+8) for playback only (+1), with
 % standard low-latency, high timing precision mode, 2 channels, default frequency:
