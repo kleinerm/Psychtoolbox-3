@@ -94,9 +94,9 @@ if exist('subDir', 'var')
     % Yes. Usercode wants path to subdirectory inside config dir. Assemble
     % path name:
 	if ThePath(end) ~= filesep
-		ThePath = [ThePath subDir];
-	else
 		ThePath = [ThePath filesep subDir];
+	else
+		ThePath = [ThePath subDir];
 	end
     if ThePath(end) ~= filesep
         ThePath = [ThePath filesep];
