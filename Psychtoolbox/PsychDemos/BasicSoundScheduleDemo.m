@@ -83,7 +83,7 @@ end
 nrchannels = 2;
 
 % Perform basic initialization of the sound driver:
-InitializePsychSound(1);
+InitializePsychSound;
 
 suggestedLatencySecs = [];
 if IsARM

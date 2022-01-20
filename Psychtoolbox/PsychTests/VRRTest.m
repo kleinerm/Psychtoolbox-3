@@ -253,6 +253,7 @@ try
 
     if hwmeasurement == 5
         % Activate photo-diode timestamping driver:
+        InitializePsychSound(1);
         pdiode = PsychPhotodiode('Open');
 
         % Perform calibration of optimal photo-diode trigger level:

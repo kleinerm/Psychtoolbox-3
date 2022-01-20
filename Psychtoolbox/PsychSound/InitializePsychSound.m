@@ -6,9 +6,14 @@ function InitializePsychSound(reallyneedlowlatency)
 %
 % Call it at the beginning of your experiment script, optionally providing
 % the 'reallyneedlowlatency' flag set to one to push really hard for low
-% latency.
+% latency. Redundant calls within one session will be ignored, only the first
+% call counts. However, redundant calls with contradictory settings of the
+% 'reallyneedlowlatency' flag will print a "don't do that!" warning, so if you
+% want to truly switch the 'reallyneedlowlatency' parameter, e.g., between
+% running different experiment scripts, you must call 'clear all' to reset
+% everything first.
 %
-% On MacOS/X and GNU/Linux, the PsychPortAudio driver will just work with
+% On macOS and GNU/Linux, the PsychPortAudio driver will just work with
 % low latency and highest timing precision after this initialization.
 %
 % On Microsoft Windows, things are a bit more complicated:
@@ -30,7 +35,7 @@ function InitializePsychSound(reallyneedlowlatency)
 % On Windows 7 latencies around 20 msecs are possible. Timing should be generally
 % accurate to millisecond level with WASAPI.
 %
-% Using OSX or Linux will usually get you at least as good, or usually better,
+% Using macOS or Linux will usually get you at least as good, or usually better,
 % results with most standard sound hardware, due to the technically superior
 % sound systems of these operating systems.
 %
@@ -43,6 +48,12 @@ function InitializePsychSound(reallyneedlowlatency)
 % 09/11/2012  Add support for 64-Bit portaudio_x64.dll for Windows. (MK)
 % 10/16/2015  Disable use of our own portaudio_x64 dll On Windows + Octave. (MK)
 % 11/08/2018  No ASIO anymore, starting with v3.0.15. (MK)
+% 01/16/2022  Prepare for future Linux PulseAudio support, to allow sharing of
+%             sound devices between audio clients if reallyneedlowlatency==0,
+%             but keep switching disabled for now, until we have an official and
+%             fully verified PortAudio release with PulseAudio support. (MK)
+
+persistent previousreallyneedlowlatency
 
 if nargin < 1
     reallyneedlowlatency = [];
@@ -51,6 +62,20 @@ end
 if isempty(reallyneedlowlatency)
     reallyneedlowlatency = 0; %#ok<NASGU> % Default: Don't push too hard for low latency.
 end
+
+% All calls but the first one in a session get turned into a no-op:
+if ~isempty(previousreallyneedlowlatency)
+    % Warn if successive calls have contradictory reallyneedlowlatency parameter:
+    if reallyneedlowlatency ~= previousreallyneedlowlatency
+        warning('InitializePsychSound() called again with different setting for reallyneedlowlatency from first call. Keeping original setting, this may cause audio timing trouble. Check your code, or call ''clear all'' between different scripts!');
+    end
+
+    % No-Op return:
+    return;
+end
+
+% First call. Keep track of current requested latency setting:
+previousreallyneedlowlatency = reallyneedlowlatency;
 
 % The usual tricks for MS-Windows:
 if IsWin
@@ -75,6 +100,7 @@ if IsWin
         cd(olddir);
     catch %#ok<*CTCH>
         cd(olddir);
+        previousreallyneedlowlatency = [];
         error('Failed to load PsychPortAudio driver for unknown reason! Dependency problem?!?');
     end
 end
@@ -88,22 +114,64 @@ if IsOSX
         d = PsychPortAudio('GetDevices'); %#ok<NASGU>
     catch
         fprintf('Failed to load PsychPortAudio driver!\n\n');
-        %        fprintf('The most likely cause is that the helper library libportaudio.0.0.19.dylib is not\n');
-        %        fprintf('stored in one of the library directories. This is the case at first use of the new\n');
-        %        fprintf('sound driver.\n\n');
-        %        fprintf('A copy of this file can be found in %s \n', [PsychtoolboxRoot 'PsychSound/libportaudio.0.0.19.dylib']);
-        %        fprintf('You need to copy that file into one of the following directories, then retry:\n');
-        %        fprintf('If you have administrator permissions, copy it to (at your option): /usr/local/lib\n');
-        %        fprintf('or /usr/lib  -- you may need to create that directories first.\n\n');
-        %        fprintf('If you are a normal user, you can also create a subdirectory lib/ in your home folder\n');
-        %        fprintf('then copy the file there. E.g., your user name is lisa, then copy the file into\n');
-        %        fprintf('/Users/lisa/lib/ \n\n');
-        %        fprintf('Please try this steps, then restart your script.\n\n');
         em = psychlasterror;
         fprintf('The exact error message of the linker was: %s\n', em.message);
         fprintf('\n\n');
+        previousreallyneedlowlatency = [];
         error('Failed to load PsychPortAudio driver.');
     end
+end
+
+if IsLinux
+    % DISABLE PulseAudio switching logic for the time being until the upstream
+    % code in PortAudio has been stabilized, officially released and carefully
+    % tested by us.
+    return;
+
+    try
+        % We force loading+linking+init of the driver here, so in case
+        % something goes wrong we can catch this and output useful
+        % troubleshooting tips to the user:
+        d = PsychPortAudio('GetDevices', 16); %#ok<NASGU>
+    catch
+        fprintf('Failed to load PsychPortAudio driver!\n\n');
+        em = psychlasterror;
+        fprintf('The exact error message of the linker was: %s\n', em.message);
+        fprintf('\n\n');
+        previousreallyneedlowlatency = [];
+        error('Failed to load PsychPortAudio driver.');
+    end
+
+    % Does the underlying libportaudio.so audio library support the PulseAudio host api backend?
+    % Then the list of available PulseAudio devices d should not be empty:
+    if isempty(d)
+        % Empty. Our job is done, as all further config only makes sense for PulseAudio enabled drivers:
+        return;
+    end
+
+    % PulseAudio supported in principle. Any already active audio devices?
+    if PsychPortAudio('GetOpenDeviceCount') > 0
+        % Yes. We can not change settings then. Let's just no-op:
+        return;
+    end
+
+    % PulseAudio supported and driver idle, so we can make changes if needed.
+    % Query current PulseAudio suspend mode, ie. if we could get 'reallyneedlowlatency'
+    [~, ~, ~, havelowlatency] = PsychPortAudio('EngineTunables');
+
+    % Do we already have the config we wanted?
+    if havelowlatency == reallyneedlowlatency
+        % Yes. We are done.
+        return;
+    end
+
+    % No. We need to switch the mode to allow or disallow PulseAudio autosuspend.
+    % But first we need to force a driver shutdown, so it will latch the new setting:
+    PsychPortAudio('Close');
+
+    % Now apply the new setting for suspend mode to enable proper reallyneedlowlatency behaviour:
+    PsychPortAudio('EngineTunables', [], [], [], reallyneedlowlatency);
+    [~, ~, ~, havelowlatency] = PsychPortAudio('EngineTunables');
 end
 
 return;
