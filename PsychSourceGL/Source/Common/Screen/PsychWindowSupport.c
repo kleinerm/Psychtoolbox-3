@@ -195,14 +195,19 @@ double PsychGetVblankTimestamps(PsychWindowRecordType *windowRecord, double *vbl
     return(time_at_vbl);
 }
 
-static void PsychDrawSplash(PsychWindowRecordType* windowRecord)
+static void PsychDrawSplash(PsychWindowRecordType* windowRecord, double jiggle)
 {
     // Always clear framebuffer to defined background color:
     glClear(GL_COLOR_BUFFER_BIT);
 
     // Draw splash image texture at visual level 4+:
-    if ((PsychPrefStateGet_VisualDebugLevel() >= 4) && splashTextureRecord && (PsychGetParentWindow(splashTextureRecord) == windowRecord))
+    if ((PsychPrefStateGet_VisualDebugLevel() >= 4) && splashTextureRecord && (PsychGetParentWindow(splashTextureRecord) == windowRecord)) {
+        splashTextureRecord->clientrect[kPsychLeft] -= jiggle;
+        splashTextureRecord->clientrect[kPsychRight] += jiggle;
         PsychBlitTextureToDisplay(splashTextureRecord, windowRecord, splashTextureRecord->rect, splashTextureRecord->clientrect, 0, 1, 1);
+        splashTextureRecord->clientrect[kPsychLeft] += jiggle;
+        splashTextureRecord->clientrect[kPsychRight] -= jiggle;
+    }
 
     return;
 }
@@ -1120,7 +1125,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glDrawBuffer(GL_BACK_LEFT);
 
         // Draw and swapbuffers the startup screen 3 times, so everything works with single-/double-/triple-buffered framebuffer setups:
-        PsychDrawSplash(*windowRecord);
+        PsychDrawSplash(*windowRecord, 5);
         PsychOSFlipWindowBuffers(*windowRecord);
 
         // PsychOSGetSwapCompletionTimestamp can help the Intel ddx under DRI2+SNA to
@@ -1131,12 +1136,12 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // Protect against multi-threading trouble if needed:
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
-        PsychDrawSplash(*windowRecord);
+        PsychDrawSplash(*windowRecord, 0);
         PsychOSFlipWindowBuffers(*windowRecord);
         PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
-        PsychDrawSplash(*windowRecord);
+        PsychDrawSplash(*windowRecord, 0);
         PsychOSFlipWindowBuffers(*windowRecord);
         PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
         PsychLockedTouchFramebufferIfNeeded(*windowRecord);
@@ -1145,17 +1150,17 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if (((*windowRecord)->stereomode == kPsychOpenGLStereo) && ((*windowRecord)->gfxcaps & kPsychGfxCapNativeStereo)) {
             glDrawBuffer(GL_BACK_RIGHT);
 
-            PsychDrawSplash(*windowRecord);
+            PsychDrawSplash(*windowRecord, 5);
             PsychOSFlipWindowBuffers(*windowRecord);
             PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
             PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
-            PsychDrawSplash(*windowRecord);
+            PsychDrawSplash(*windowRecord, 0);
             PsychOSFlipWindowBuffers(*windowRecord);
             PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
             PsychLockedTouchFramebufferIfNeeded(*windowRecord);
 
-            PsychDrawSplash(*windowRecord);
+            PsychDrawSplash(*windowRecord, 0);
             PsychOSFlipWindowBuffers(*windowRecord);
             PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
             PsychLockedTouchFramebufferIfNeeded(*windowRecord);
@@ -5111,7 +5116,8 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         // Need to redraw our splash image, as at least under Linux with the FOSS stack
         // in DRI3/Present mode, OpenGL is n-buffered with n dynamic but n > 2, ie.,
         // our old double-buffering assumption no longer holds:
-        PsychDrawSplash(windowRecord);
+        if (PSYCH_SYSTEM == PSYCH_LINUX)
+            PsychDrawSplash(windowRecord, 0);
 
         // Schedule a buffer-swap on next VBL:
         PsychOSFlipWindowBuffers(windowRecord);
@@ -5136,7 +5142,8 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         // - Or at least numSamples valid samples have been taken AND measured standard deviation is below the requested deviation stddev.
         for (i = 0; (fallthroughcount<10) && ((tnew - tstart) < *maxsecs) && (n < *numSamples || ((n >= *numSamples) && (tstddev > reqstddev))); i++) {
             // Draw splash image again, to handle Linux DRI3/Present and similar setups:
-            PsychDrawSplash(windowRecord);
+            if (PSYCH_SYSTEM == PSYCH_LINUX)
+                PsychDrawSplash(windowRecord, 0);
 
             // Schedule a buffer-swap on next VBL:
             PsychOSFlipWindowBuffers(windowRecord);
