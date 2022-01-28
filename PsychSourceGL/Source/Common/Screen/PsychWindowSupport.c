@@ -1125,7 +1125,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         glDrawBuffer(GL_BACK_LEFT);
 
         // Draw and swapbuffers the startup screen 3 times, so everything works with single-/double-/triple-buffered framebuffer setups:
-        PsychDrawSplash(*windowRecord, 5);
+        PsychDrawSplash(*windowRecord, 20);
         PsychOSFlipWindowBuffers(*windowRecord);
 
         // PsychOSGetSwapCompletionTimestamp can help the Intel ddx under DRI2+SNA to
@@ -1150,7 +1150,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if (((*windowRecord)->stereomode == kPsychOpenGLStereo) && ((*windowRecord)->gfxcaps & kPsychGfxCapNativeStereo)) {
             glDrawBuffer(GL_BACK_RIGHT);
 
-            PsychDrawSplash(*windowRecord, 5);
+            PsychDrawSplash(*windowRecord, 20);
             PsychOSFlipWindowBuffers(*windowRecord);
             PsychOSGetSwapCompletionTimestamp(*windowRecord, 0, &tDummy);
             PsychLockedTouchFramebufferIfNeeded(*windowRecord);
