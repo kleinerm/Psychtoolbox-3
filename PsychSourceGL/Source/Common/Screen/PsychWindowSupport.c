@@ -970,6 +970,25 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         skip_synctests = 1;
     }
 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+#ifndef PTB_USE_WAFFLE
+    // Windowed window or transparent window under Linux/X11 with standard display backend?
+    if (!((*windowRecord)->specialflags & kPsychExternalDisplayMethod) && ((*windowRecord)->specialflags & kPsychIsX11Window) &&
+        (!((*windowRecord)->specialflags & kPsychIsFullscreenWindow) || (PsychPrefStateGet_WindowShieldingLevel() < 2000))) {
+        // Yes. Try to enable extended client-compositor sync for improved timing and proper timestamping. Warn user if that
+        // is not supported on the given X11 window manager and/or desktop compositor:
+        if (!PsychOSEnableX11ClientCompositorSync(*windowRecord) && (PsychPrefStateGet_Verbosity() > 2)) {
+            printf("PTB-INFO: Proper timing and timestamping of visual stimulus onset is not reliably supported at all on this desktop GUI\n");
+            printf("PTB-INFO: when running in windowed mode (non-fullscreen), or for transparent windows. If PTB aborts with\n");
+            printf("PTB-INFO: 'Synchronization failure' you can disable the sync test via a call to Screen('Preference', 'SkipSyncTests', 2).\n");
+            printf("PTB-INFO: You won't get proper stimulus onset timestamps in any case though, so windowed mode is of limited use.\n");
+            printf("PTB-INFO: Using a desktop GUI like GNOME-3 or Ubuntu desktop, which uses the Mutter compositor, may give better timing if\n");
+            printf("PTB-INFO: you opt-in into our new experimental(!) support: Call setenv('PSYCH_EXPERIMENTAL_NETWMTS', '1') at start of your script.\n");
+        }
+    }
+#endif
+#endif
+
 #if PSYCH_SYSTEM == PSYCH_OSX
     CGLRendererInfoObj  rendererInfo;
     CGOpenGLDisplayMask displayMask;
@@ -1515,6 +1534,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
         (*windowRecord)->VideoRefreshInterval = ifi_estimate;
         if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0 ||
+            #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE)
+            ((PsychPrefStateGet_VBLTimestampingMode()==4) && PsychOSX11ClientCompositorSyncEnabled(*windowRecord)) ||
+            #endif
             ((*windowRecord)->hybridGraphics == 1) || ((*windowRecord)->hybridGraphics == 3) || ((*windowRecord)->hybridGraphics == 4) || ((*windowRecord)->hybridGraphics == 5)) {
             // Flip frame stereo or multiSampling enabled, or some hybrid graphics laptop? Check for ifi_estimate = 2 * ifi_beamestimate:
             if ((ifi_beamestimate>0 && ifi_estimate >= (1 - maxDeviation) * 2 * ifi_beamestimate && ifi_estimate <= (1 + maxDeviation) * 2 * ifi_beamestimate) ||
@@ -1569,6 +1591,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
         if (ifi_beamestimate > 0) {
             printf("PTB-INFO: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
 
+            #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE)
+            if ((PsychPrefStateGet_VBLTimestampingMode()==4) && PsychOSX11ClientCompositorSyncEnabled(*windowRecord))
+                printf("PTB-INFO: Will try to use OS-Builtin experimental NetWM compositor timing for accurate Flip timestamping.\n");
+            else
+            #endif
             if ((PsychPrefStateGet_VBLTimestampingMode()==4) && !((*windowRecord)->specialflags & kPsychOpenMLDefective)) {
                 printf("PTB-INFO: Will try to use OS-Builtin %s for accurate Flip timestamping.\n",
                        ((PSYCH_SYSTEM == PSYCH_LINUX) && ((*windowRecord)->winsysType != WAFFLE_PLATFORM_WAYLAND)) ? "OpenML sync control support" : "method");
@@ -1591,6 +1618,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             }
         }
         else {
+            #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE)
+            if ((PsychPrefStateGet_VBLTimestampingMode()==4) && PsychOSX11ClientCompositorSyncEnabled(*windowRecord))
+                printf("PTB-INFO: Will try to use OS-Builtin experimental NetWM compositor timing for accurate Flip timestamping.\n");
+            else
+            #endif
             if ((PsychPrefStateGet_VBLTimestampingMode()==4) &&
                 (!((*windowRecord)->specialflags & kPsychOpenMLDefective) || ((*windowRecord)->hybridGraphics == 5))) {
                 if ((*windowRecord)->hybridGraphics == 3 || (*windowRecord)->hybridGraphics == 4) {
