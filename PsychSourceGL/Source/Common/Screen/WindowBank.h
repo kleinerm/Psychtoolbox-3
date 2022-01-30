@@ -314,6 +314,8 @@ typedef struct{
     GLXContext        glswapcontextObject; // OpenGL context for performing doublebuffer swaps in PsychFlipWindowBuffers().
     XID               present_notify_event_id[2]; // Present ids / contexts for reception of notify events directly from X11/Present.
     xcb_special_event_t* present_notify_queue[2]; // Private event queues for reception of notify events directly from X11/Present.
+    XID               syncCounter[2];      // XID's of NetWM XSync sync counters for extended client-compositor synchronization.
+    psych_uint64      targetSyncCounter;   // Target value to fetch compositor present timestamp for in NetWM mode.
 } PsychTargetSpecificWindowRecordType;
 #endif
 

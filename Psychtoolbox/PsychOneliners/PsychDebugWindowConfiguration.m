@@ -43,6 +43,7 @@ function PsychDebugWindowConfiguration(opaqueForHID, opacity)
 % 22.08.2013 mk  Disable any high-precision timestamping on all operating systems.
 % 09.09.2013 mk  No special case handling for OSX needed anymore.
 % 31.12.2014 mk  On Wayland, timing is expected to be good, so don't skip sync tests etc.
+% 03.02.2022 mk  Assume good timing also on GNOME/Ubuntu desktop with X11/Mutter.
 
 if nargin < 1
     opaqueForHID = [];
@@ -57,9 +58,11 @@ if nargin < 2
 end
 
 % Can only get precise visual stimulation timing/timestamping
-% on a Wayland display server for partially transparent debug windows:
-if ~IsWayland
-    % Not Wayland -> No good timing.
+% on a Wayland display server for partially transparent debug windows,
+% or on X11 with the Mutter desktop compositor/WM, ie. GNOME based desktop:
+if ~IsWayland && ...
+   (isempty(strfind(getenv('XDG_CURRENT_DESKTOP'), 'GNOME')) || isempty(getenv('PSYCH_EXPERIMENTAL_NETWMTS')))
+    % Not Wayland or X11/Mutter/GNOME -> No good timing.
 
     % Disable high precision timestamping:
     Screen('Preference', 'VBLTimestampingMode', -1);
