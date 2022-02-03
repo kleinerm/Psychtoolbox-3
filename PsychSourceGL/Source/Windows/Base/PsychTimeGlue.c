@@ -73,7 +73,7 @@ static int              verbosity = 0;
 // in order to prevent race-conditions for the timer correctness checks in multi-threaded code:
 CRITICAL_SECTION        time_lock;
 
-void PsychWaitUntilSeconds(double whenSecs)
+double PsychWaitUntilSeconds(double whenSecs)
 {
     static unsigned int missed_count=0;
     double now=0.0;
@@ -82,7 +82,7 @@ void PsychWaitUntilSeconds(double whenSecs)
     PsychGetPrecisionTimerSeconds(&now);
 
     // If the deadline has already passed, we do nothing and return immediately:
-    if (now > whenSecs) return;
+    if (now > whenSecs) return(now);
 
     // Note that technically there is potential for a race-condition on the
     // sleepwait_threshold and missed_count variables if multiple threads
@@ -132,22 +132,21 @@ void PsychWaitUntilSeconds(double whenSecs)
     }
 
     // Ready.
-    return;
+    return(now);
 }
 
-void PsychWaitIntervalSeconds(double delaySecs)
+double PsychWaitIntervalSeconds(double delaySecs)
 {
-    double deadline;
+    double deadline = PsychGetAdjustedPrecisionTimerSeconds(NULL);
 
-    if (delaySecs <= 0) return;
+    if (delaySecs <= 0)
+        return(deadline);
 
-    // Get current time:
-    PsychGetPrecisionTimerSeconds(&deadline);
     // Compute deadline in absolute system time:
-    deadline+=delaySecs;
+    deadline += delaySecs;
+
     // Wait until deadline reached:
-    PsychWaitUntilSeconds(deadline);
-    return;
+    return(PsychWaitUntilSeconds(deadline));
 }
 
 /* PsychYieldIntervalSeconds() - Yield the cpu for given 'delaySecs'
@@ -168,7 +167,7 @@ void PsychWaitIntervalSeconds(double delaySecs)
  * zero setting.
  *
  */
-void PsychYieldIntervalSeconds(double delaySecs)
+double PsychYieldIntervalSeconds(double delaySecs)
 {
     if (delaySecs <= 0) {
         // Yield cpu for remainder of this timeslice via special Sleep(0) call:
@@ -188,6 +187,8 @@ void PsychYieldIntervalSeconds(double delaySecs)
         delaySecs = (delaySecs > 0.001) ? delaySecs : 0.001;
         Sleep((int) (delaySecs * 1000.0f));
     }
+
+    return(PsychGetAdjustedPrecisionTimerSeconds(NULL));
 }
 
 double PsychGetKernelTimebaseFrequencyHz(void)
@@ -1095,13 +1096,16 @@ void PsychGetPrecisionTimerSeconds(double *secs)
     return;
 }
 
-void PsychGetAdjustedPrecisionTimerSeconds(double *secs)
+double PsychGetAdjustedPrecisionTimerSeconds(double *secs)
 {
     double rawSecs, factor;
 
     PsychGetPrecisionTimerSeconds(&rawSecs);
     PsychGetPrecisionTimerAdjustmentFactor(&factor);
-    *secs=rawSecs * precisionTimerAdjustmentFactor;
+    rawSecs = rawSecs * precisionTimerAdjustmentFactor;
+
+    if (secs) *secs = rawSecs;
+    return(rawSecs);
 }
 
 void PsychGetPrecisionTimerAdjustmentFactor(double *factor)

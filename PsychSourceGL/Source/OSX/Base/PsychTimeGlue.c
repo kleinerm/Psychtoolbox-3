@@ -39,31 +39,37 @@ static double       precisionTimerAdjustmentFactor = 1;
 static psych_bool   isKernelTimebaseFrequencyHzInitialized = FALSE;
 static long double  kernelTimebaseFrequencyHz;
 
-void PsychWaitUntilSeconds(double whenSecs)
+double PsychWaitUntilSeconds(double whenSecs)
 {
     uint64_t        deadlineAbsTics;
 
     // Compute deadline for wakeup in mach absolute time units:
     deadlineAbsTics= (uint64_t) (kernelTimebaseFrequencyHz * ((long double) whenSecs));
 
-    if (!(deadlineAbsTics > 0 && whenSecs > 0)) return;
+    if (!(deadlineAbsTics > 0 && whenSecs > 0))
+        return(PsychGetAdjustedPrecisionTimerSeconds(NULL));
 
     // Call mach_wait_unit in an endless loop, because it can fail with retcode>0.
     // In that case we just restart...
     while(mach_wait_until(deadlineAbsTics));
+
+    return(PsychGetAdjustedPrecisionTimerSeconds(NULL));
 }
 
-void PsychWaitIntervalSeconds(double delaySecs)
+double PsychWaitIntervalSeconds(double delaySecs)
 {
     long double     waitPeriodTicks;
     uint64_t        startTimeAbsTics, deadlineAbsTics;
 
-    if (delaySecs <= 0) return;
+    if (delaySecs <= 0)
+        return(PsychGetAdjustedPrecisionTimerSeconds(NULL));
 
     startTimeAbsTics = mach_absolute_time();
     waitPeriodTicks= kernelTimebaseFrequencyHz * delaySecs;
     deadlineAbsTics= startTimeAbsTics + (uint64_t) waitPeriodTicks;
     while(mach_wait_until(deadlineAbsTics));
+
+    return(PsychGetAdjustedPrecisionTimerSeconds(NULL));
 }
 
 /* PsychYieldIntervalSeconds() - Yield the cpu for given 'delaySecs'
@@ -84,7 +90,7 @@ void PsychWaitIntervalSeconds(double delaySecs)
  * zero setting.
  *
  */
-void PsychYieldIntervalSeconds(double delaySecs)
+double PsychYieldIntervalSeconds(double delaySecs)
 {
     if (delaySecs <= 0) {
         // Yield cpu for remainder of this timeslice:
@@ -94,9 +100,11 @@ void PsychYieldIntervalSeconds(double delaySecs)
         // On OS/X we use standard wait ops - they're good for us:
         PsychWaitIntervalSeconds(delaySecs);
     }
+
+    return(PsychGetAdjustedPrecisionTimerSeconds(NULL));
 }
 
-double	PsychGetKernelTimebaseFrequencyHz(void)
+double PsychGetKernelTimebaseFrequencyHz(void)
 {
     long double                 clockPeriodNSecs;
     mach_timebase_info_data_t   tbinfo;
@@ -153,12 +161,15 @@ void PsychGetPrecisionTimerSeconds(double *secs)
     *secs= mach_absolute_time() / kernelTimebaseFrequencyHz;
 }
 
-void PsychGetAdjustedPrecisionTimerSeconds(double *secs)
+double PsychGetAdjustedPrecisionTimerSeconds(double *secs)
 {
-    double  rawSecs;
+    double rawSecs;
 
     PsychGetPrecisionTimerSeconds(&rawSecs);
-    *secs=rawSecs * precisionTimerAdjustmentFactor;
+    rawSecs = rawSecs * precisionTimerAdjustmentFactor;
+
+    if (secs) *secs = rawSecs;
+    return(rawSecs);
 }
 
 void PsychGetPrecisionTimerAdjustmentFactor(double *factor)
