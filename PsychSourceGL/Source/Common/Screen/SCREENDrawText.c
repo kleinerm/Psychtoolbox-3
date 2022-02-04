@@ -2226,6 +2226,13 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
         }
 
         // If we reach this point then the plugin failed to render text:
+        if (PsychPrefStateGet_Verbosity() > 0) {
+            printf("PTB-ERROR: Text rendering failed. The most likely cause for this is that no suitable text font could be found\n");
+            printf("PTB-ERROR: by libfontconfig. This is often the case when the fontconfig cache gets somehow corrupted, especially\n");
+            printf("PTB-ERROR: on Windows or macOS. Deleting that cache manually and restarting the application may help.\n");
+            printf("PTB-ERROR: See 'help DrawTextPlugin' for other causes of trouble and for troubleshooting instructions.\n");
+        }
+
         PsychErrorExitMsg(PsychError_user, "The external text renderer plugin failed to render the text string for some reason!");
     }
 

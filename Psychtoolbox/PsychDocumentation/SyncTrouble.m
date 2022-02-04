@@ -122,18 +122,27 @@
 % "wait for 1 video refresh" or "swap every refresh". This option may not
 % exist, but if it does, any other setting will cause the sync tests to
 % possibly succeed, but later stimulus onset timestamping to fail with
-% errors.
+% errors. On MS-Windows and macOS, triple-buffering is sometimes indicated
+% by a "shaking" or "vibrating" of the welcome screen during the startup
+% tests. This serves as visual indicator of this troublemaker. Certain
+% types of triple-buffering will not cause the visual indication of shaking
+% though, ie. this diagnosis can miss many troublesome triple-buffering
+% cases! Note that many modern Intel graphics chips on MS-Windows nowadays
+% enforce triple-buffering, and at least we don't know how to disable it -
+% no settings in a control panel, no known tricks, no tweakable Windows
+% registry keys to prevent it. Therefore many Intel graphics chips are
+% currently unfixably broken on Windows, timing-wise.
 %
 % -> If there is an option "Buffer swap mode" or "Bufferswap strategy", it
 % should be set to "Auto select" or "Page flipping" or "Exchange buffers".
 % The so called "Copy buffers" or "Blitting" option would result in lower
 % performance and wrong/inaccurate timing.
 %
-% -> On dual/multi display setups MS-Windows allows you to assign one
-% monitor the role of the "primary monitor" or "main monitor" or "primary display".
-% It is important that the display device which you use for stimulus presentation
-% is this "primary display", otherwise random things may go wrong wrt. sync
-% tests and timing.
+% -> On dual/multi display setups, MS-Windows allows you to assign one
+% monitor the role of the "primary monitor" or "main monitor" or "primary
+% display". It is important that the display device which you use for
+% stimulus presentation is this "primary display", otherwise random things
+% may go wrong wrt. sync tests and timing.
 %
 % -> On all operating systems in dual display or multi display mode, it is
 % important that you configure both displays for exactly the same color
@@ -328,13 +337,18 @@
 %
 % MORE WAYS TO TEST:
 %
-% macOS: The script OSXCompositorIdiocyTest() is a "must run" for macOS users,
-% to make sure their system doesn't have the macOS compositor bug. If that test
-% fails then visual stimulation timing must be considered not trustworthy.
+% macOS: The script OSXCompositorIdiocyTest() is a "must run" for macOS
+% users, to make sure their system doesn't have the macOS compositor bug.
+% If that test fails then visual stimulation timing must be considered not
+% trustworthy. For macOS running on ARM based Macs with "Apple silicon" and
+% Apples own proprietary AGFX graphics chip, e.g., the Apple M1 SoC's (M1,
+% M1 Pro, M1 Max, ...) there is currently no known way to prevent the
+% desktop compositor from interfering and therefore visual stimulation
+% timing must be considered unfixably broken at the moment!
 %
 % On MS-Windows, you can try Screen('Preference', 'VisualDebugLevel', 6).
 % If the onscreen window is subject to desktop composition, which will certainly
-% destroy any kind of proper visual stimulation timing, then the window will
+% destroy any kind of proper visual stimulation timing, then the window may
 % turn invisible if this VisualDebugLevel value is set. Iow. if your window is
 % not showing up at all, despite all the status output in your Octave or Matlab
 % command window suggesting normal operation, or if the window is disappearing
@@ -343,7 +357,12 @@
 % try this by running a visual stimulation script and then pressing ALT+TAB, or
 % clicking into some other application window: Your Psychtoolbox onscreen window
 % will lose foreground status, the DWM will kick in and interfere, and this
-% diagnostic will cause you window to turn invisible.
+% diagnostic will cause your window to turn invisible. Update December 2021:
+% For unknown reasons, the "window becomes invisible under DWM composition"
+% no longer works with all driver + gpu configurations for recent Windows
+% 10 / 11 versions for unknown reasons. So an invisible window means DWM
+% composition, but a visible window unfortunately does no longer 100%
+% guarantee the absence of DWM composition.
 %
 % Linux: Psychtoolbox has various mechanisms to detect timing problems and will
 % almost always provide difficult to ignore warning messages in the Octave or
@@ -517,3 +536,7 @@
 % 19.04.2015 Update: Intel ddx 2.99.914 and 2.99.917's triple-buffering is
 %            now compatible with PTB, no need for Option TripleBuffer off anymore. (MK).
 % 09.10.2021 Revamp, making it closer to Ubuntu 20.04-LTS.
+% 28.01.2022 Reformat some. Explain triple-buffer jitter indicator, Intel
+%            triple-buffer brokeness on Windows, Apple ARM SoC brokeness
+%            and unreliable connection DWM - invisible windows on current
+%            Windows 10/11. (MK)

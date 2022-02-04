@@ -80,8 +80,9 @@
 % even minutes may occur, while the so called fontconfig cache gets rebuilt.
 % Patience is the key. If this pause happens not only once, but at each invocation
 % of text drawing, your system may developed a glitch, as described in GitHub
-% issue #429 on our issue tracker:
+% issue #429 and #579 on our issue tracker:
 % https://github.com/Psychtoolbox-3/Psychtoolbox-3/issues/429
+% https://github.com/Psychtoolbox-3/Psychtoolbox-3/issues/579
 %
 % The solution is to manually delete the fontconfig cache, e.g., if your user
 % name would be "paul", you'd likely need to delete the following file:

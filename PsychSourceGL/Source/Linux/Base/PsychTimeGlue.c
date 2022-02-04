@@ -43,7 +43,7 @@ static double       kernelTimebaseFrequencyHz;
 static double       sleepwait_threshold = 0.001;
 static double       clockinc = 0;
 
-void PsychWaitUntilSeconds(double whenSecs)
+double PsychWaitUntilSeconds(double whenSecs)
 {
     struct timespec rqtp;
     double targettime;
@@ -55,7 +55,7 @@ void PsychWaitUntilSeconds(double whenSecs)
     PsychGetPrecisionTimerSeconds(&now);
 
     // If the deadline has already passed, we do nothing and return immediately:
-    if (now >= whenSecs) return;
+    if (now >= whenSecs) return(now);
 
     // Waiting stage 1: If we have more than sleepwait_threshold seconds left
     // until the deadline, we call the OS usleep() function, so the
@@ -121,25 +121,21 @@ void PsychWaitUntilSeconds(double whenSecs)
     }
 
     // Ready.
-    return;
+    return(now);
 }
 
-void PsychWaitIntervalSeconds(double delaySecs)
+double PsychWaitIntervalSeconds(double delaySecs)
 {
-    double deadline;
+    double deadline = PsychGetAdjustedPrecisionTimerSeconds(NULL);
 
-    if (delaySecs <= 0) return;
-
-    // Get current time:
-    PsychGetPrecisionTimerSeconds(&deadline);
+    if (delaySecs <= 0)
+        return(deadline);
 
     // Compute deadline in absolute system time:
-    deadline+=delaySecs;
+    deadline += delaySecs;
 
     // Wait until deadline reached:
-    PsychWaitUntilSeconds(deadline);
-
-    return;
+    return(PsychWaitUntilSeconds(deadline));
 }
 
 /* PsychYieldIntervalSeconds() - Yield the cpu for given 'delaySecs'
@@ -160,7 +156,7 @@ void PsychWaitIntervalSeconds(double delaySecs)
  * zero setting.
  *
  */
-void PsychYieldIntervalSeconds(double delaySecs)
+double PsychYieldIntervalSeconds(double delaySecs)
 {
     if (delaySecs <= 0) {
         // Yield cpu for remainder of this timeslice:
@@ -175,6 +171,8 @@ void PsychYieldIntervalSeconds(double delaySecs)
         delaySecs = (delaySecs > 2.0 * sleepwait_threshold) ? delaySecs : (2.0 * sleepwait_threshold);
         PsychWaitIntervalSeconds(delaySecs);
     }
+
+    return(PsychGetAdjustedPrecisionTimerSeconds(NULL));
 }
 
 double PsychGetKernelTimebaseFrequencyHz(void)
@@ -392,13 +390,16 @@ void PsychGetPrecisionTimerSeconds(double *secs)
     *secs= ss;
 }
 
-void PsychGetAdjustedPrecisionTimerSeconds(double *secs)
+double PsychGetAdjustedPrecisionTimerSeconds(double *secs)
 {
     double rawSecs, factor;
 
     PsychGetPrecisionTimerSeconds(&rawSecs);
     PsychGetPrecisionTimerAdjustmentFactor(&factor);
-    *secs = rawSecs * precisionTimerAdjustmentFactor;
+    rawSecs = rawSecs * precisionTimerAdjustmentFactor;
+
+    if (secs) *secs = rawSecs;
+    return(rawSecs);
 }
 
 void PsychGetPrecisionTimerAdjustmentFactor(double *factor)

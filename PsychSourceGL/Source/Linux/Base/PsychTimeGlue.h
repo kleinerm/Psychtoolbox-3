@@ -27,15 +27,15 @@
 
 #include "Psych.h"
 
-void PsychWaitUntilSeconds(double whenSecs);
-void PsychWaitIntervalSeconds(double seconds);
-void PsychYieldIntervalSeconds(double seconds);
+double PsychWaitUntilSeconds(double whenSecs);
+double PsychWaitIntervalSeconds(double seconds);
+double PsychYieldIntervalSeconds(double seconds);
 double PsychGetKernelTimebaseFrequencyHz(void);
 void PsychGetPrecisionTimerTicks(psych_uint64 *ticks);
 void PsychGetPrecisionTimerTicksPerSecond(double *frequency);
 void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta);
 void PsychGetPrecisionTimerSeconds(double *secs);
-void PsychGetAdjustedPrecisionTimerSeconds(double *secs);
+double PsychGetAdjustedPrecisionTimerSeconds(double *secs);
 void PsychGetPrecisionTimerAdjustmentFactor(double *factor);
 void PsychSetPrecisionTimerAdjustmentFactor(double *factor);
 void PsychInitTimeGlue(void);
