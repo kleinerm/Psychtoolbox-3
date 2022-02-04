@@ -985,6 +985,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             printf("PTB-INFO: Using a desktop GUI like GNOME-3 or Ubuntu desktop, which uses the Mutter compositor, may give better timing if\n");
             printf("PTB-INFO: you opt-in into our new experimental(!) support: Call setenv('PSYCH_EXPERIMENTAL_NETWMTS', '1') at start of your script.\n");
         }
+        else {
+            PsychOSEnablePresentEventReception(*windowRecord, 0, FALSE);
+        }
     }
 #endif
 #endif

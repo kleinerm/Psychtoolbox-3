@@ -2344,6 +2344,9 @@ psych_int64 PsychOSGetSwapCompletionTimestamp(PsychWindowRecordType *windowRecor
                             if (verbosity > 12) printf("ACCEPTED - Framecount %llu, Timestamp %llu usecs + %i usecs ", fc, ts, ev.xclient.data.l[2]);
                             ts += ev.xclient.data.l[2];
                             if (verbosity > 12) printf("= %llu usecs effective. Refresh %i usecs, Deadline %i usecs\n", ts, ev.xclient.data.l[3], ev.xclient.data.l[4]);
+                            // Assign compositor reported nominal refresh interval - used for PsychOSScheduleFlipWindowBuffers in hybridGraphics mode 5:
+                            if (ev.xclient.data.l[3])
+                                windowRecord->VideoRefreshInterval = ((double) ev.xclient.data.l[3]) / 1e6;
                             break;
                         }
                         else
@@ -3633,10 +3636,61 @@ psych_int64 PsychOSScheduleFlipWindowBuffers(PsychWindowRecordType *windowRecord
         // "NVidia Optimus" render offload with proprietary NVidia driver + GLX?
         // Then we lack support for all needed extensions for something clever,
         // no OpenML, no SGI_video_sync + MMIO beamposition queries because the
-        // display gpu is not the NVidia dGPU. No-Op return to trigger fallback:
-        // TODO: Trickery with Present extension + compositor overlay window?
-        if (windowRecord->hybridGraphics == 5)
-            return(-1);
+        // display gpu is not the NVidia dGPU. Ergo, do something simple and hope
+        // it is good enough for many common cases. Translate requested tWhen into
+        // a time delta since the end of the last known vblank interval, round it
+        // suitably to a time delta to wait - and then wait - so we come back and
+        // submit the request to the compositor exactly at the end of the vblank
+        // before the vblank of wanted stimlus onset, minus some small fudge factor,
+        // so our request hopefully happens shortly before the 2 msec composition
+        // deadline and our content gets latched for the right composition + present
+        // cycle:
+        if (windowRecord->hybridGraphics == 5) {
+            tMsc = windowRecord->time_at_last_vbl;
+            if (tMsc <= 0)
+                return(-1);
+
+            if (!windowRecord->PipelineFlushDone)
+                glFinish();
+
+            windowRecord->PipelineFlushDone = TRUE;
+
+            // Translate tWhen to targetMSC:
+            if ((targetMSC == 0) && (tWhen != DBL_MAX))
+                targetMSC = ((psych_int64)(floor((tWhen - tMsc) / windowRecord->VideoRefreshInterval) + 1));
+
+            // Clamp to minimum of 1 vblank:
+            if (targetMSC <= 0)
+                targetMSC = 1;
+
+            // Wait until vblank before the targer vblank ie. targetMSC - 1:
+            if (PsychPrefStateGet_Verbosity() > 11)
+                printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: NetWM PsychWaitUntilSeconds for %lld vblanks.\n", targetMSC - 1);
+
+            // Translate targetMSC back into absolute system time when the vblank
+            // preceeding the target vblank of stimulus onset ends. From there it
+            // is about 2 msecs until the deadline for compositor content submission:
+            tMsc += (targetMSC - 1) * windowRecord->VideoRefreshInterval;
+
+            // Subtract a 0.5 msecs of fudge to compensate for scheduling/wakeup delay:
+            tMsc -= 0.0005;
+
+            // Wait until then (tMsc), compute wakeup delay for diagnostics:
+            tMsc = PsychWaitUntilSeconds(tMsc) - tMsc;
+
+            // Use NetWM compositor sync. Submit present to compositor:
+            if (!PsychOSNetWMFlip(windowRecord))
+                return(-3);
+
+            if ((tMsc > 0.001) && (PsychPrefStateGet_Verbosity() > 11))
+                printf("PTB-DEBUG:PsychOSScheduleFlipWindowBuffers: NetWM PsychWaitUntilSeconds delayed! Delay %f usecs.\n", tMsc * 1e6);
+
+            // Assign target sbc of swap completion:
+            rc = windowRecord->target_sbc + 1;
+
+            // Done. Take common path out below:
+            goto scheduleswapfinish;
+        }
 
         // NVidia single-gpu with proprietary driver windowed/composited, without OpenML?
         if (!(windowRecord->gfxcaps & kPsychGfxCapSupportsOpenML) && (NULL != glXGetVideoSyncSGI)) {
