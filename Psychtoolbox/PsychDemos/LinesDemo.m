@@ -47,7 +47,9 @@ try
     PsychImaging('PrepareConfiguration');
     %PsychImaging('AddTask', 'General', 'UseRetinaResolution');
     %PsychImaging('AddTask', 'General', 'UseVulkanDisplay');
-    [w, rect] = PsychImaging('OpenWindow', screenNumber, 0);
+    % Request minimum multi-sample anti-aliasing (1x MSAA), sometimes helps with
+    % line quality on AMD graphics:
+    [w, rect] = PsychImaging('OpenWindow', screenNumber, 0, [], [], [], [], 1);
 
     % Enable alpha blending with proper blend-function. We need it
     % for drawing of smoothed points:
