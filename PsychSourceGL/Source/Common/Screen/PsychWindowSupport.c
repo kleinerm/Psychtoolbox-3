@@ -1715,7 +1715,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     }
 
     // Final master-setup for multisampling:
-    if (multiSample > 1) {
+    if (multiSample > 0) {
         // Try to enable multisampling in software:
         while(glGetError()!=GL_NO_ERROR);
         glEnable(GL_MULTISAMPLE_ARB);
@@ -1723,7 +1723,8 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
         // Set sampling algorithm to the most high-quality one, even if it is computationally more expensive:
         // This will only work if the NVidia GL_NV_multisample_filter_hint extension is supported...
-        glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
+        if (glewIsSupported("GL_NV_multisample_filter_hint"))
+            glHint(GL_MULTISAMPLE_FILTER_HINT_NV, GL_NICEST);
         while(glGetError()!=GL_NO_ERROR);
     }
     else {
@@ -1965,7 +1966,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
                 // Keep beamposition method going, and make it new reference for beampos timestamping:
                 (*windowRecord)->VideoRefreshInterval = (!sync_trouble) ? ifi_beamestimate : ifi_nominal;
 
-                if (PsychPrefStateGet_Verbosity() > 1)                
+                if (PsychPrefStateGet_Verbosity() > 1)
                     printf("\nPTB-WARNING: Mismatch between measured monitor refresh intervals! Assuming VBL sync measurement is wrong, overriding reference refresh interval to %f msecs.\n",
                            1000 * (*windowRecord)->VideoRefreshInterval);
             }

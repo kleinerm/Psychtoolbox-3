@@ -933,6 +933,24 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         visinfo = glXChooseVisual(dpy, scrnum, attrib );
     }
 
+    if (!visinfo && !fbconfig && ((conserveVRAM & kPsychDisableAUXBuffers) == 0)) {
+        // Failed to find matching visual: This can happen if we requested AUX buffers on a system
+        // that doesn't support AUX-buffers. In that case we retry without requesting AUX buffers.
+        // Most modern setups in the year 2022 do not support AUX buffers at all anymore, so this
+        // is a very likely cause of failure, and the imaging pipeline provides much better solutions
+        // for use cases historically covered by AUX buffers.
+
+        // Terminate attrib array where the GLX_AUX_BUFFERS entry used to be...
+        attrib[attribcount-3] = None;
+
+        // Retry...
+        if (useGLX13) {
+            fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
+        } else {
+            visinfo = glXChooseVisual(dpy, scrnum, attrib );
+        }
+    }
+
     if (!visinfo && !fbconfig && (stereoenableattrib > 0)) {
         // Failed to find matching visual and OpenGL native quad-buffered frame-sequential
         // stereo requested. Probably the GPU does not support it. Disable it as we have a
@@ -1004,23 +1022,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
         // Break out of this if we finally got one...
         if (!visinfo && !fbconfig) {
-            // Failed to find matching visual: This can happen if we request AUX buffers on a system
-            // that doesn't support AUX-buffers. In that case we retry without requesting AUX buffers
-            // and output a proper warning instead of failing. For 99% of all applications one can
-            // do without AUX buffers anyway...
-            //printf("PTB-WARNING: Couldn't enable AUX buffers on onscreen window due to limitations of your gfx-hardware or driver. Some features may be disabled or limited...\n");
-            //fflush(NULL);
-
-            // Terminate attrib array where the GLX_AUX_BUFFERS entry used to be...
-            attrib[attribcount-3] = None;
-
-            // Retry...
-            if (useGLX13) {
-                fbconfig = glXChooseFBConfig(dpy, scrnum, attrib, &nrconfigs);
-            } else {
-                visinfo = glXChooseVisual(dpy, scrnum, attrib );
-            }
-
+            // Failed to find matching visual:
             if (!visinfo && !fbconfig && PsychPrefStateGet_3DGfx()) {
                 // Ok, retry with a 16 bit depth buffer...
                 for (i=0; i<attribcount && attrib[i]!=GLX_DEPTH_SIZE; i++);

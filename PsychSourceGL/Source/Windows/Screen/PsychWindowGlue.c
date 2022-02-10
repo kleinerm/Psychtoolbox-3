@@ -1447,6 +1447,14 @@ dwmdontcare:
         nNumFormats=0;
         wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
 
+        if (nNumFormats == 0 && numBuffers >= 2) {
+            // We still don't have a valid pixelformat, but double-buffering is enabled.
+            // Let's try if we get one if we do not request any AUX-Buffers:
+            for (i=0; i<attribcount && attribs[i]!=0x2024; i++);
+            attribs[i+1] = 0; // Zero AUX-Buffers requested.
+            wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
+        }
+
         if (nNumFormats == 0 && bpc > 8) {
             // Failed. Probably due to unsupported color depth. Let's fall back to standard 8 bpc:
             for (i = 0; i < attribcount && attribs[i] != WGL_RED_BITS_ARB; i++);
@@ -1481,14 +1489,6 @@ dwmdontcare:
                 attribs[i+1]=0;
                 wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
             }
-        }
-
-        if (nNumFormats==0 && numBuffers>=2) {
-            // We still don't have a valid pixelformat, but double-buffering is enabled.
-            // Let's try if we get one if we do not request any AUX-Buffers:
-            for (i=0; i<attribcount && attribs[i]!=0x2024; i++);
-            attribs[i+1] = 0; // Zero AUX-Buffers requested.
-            wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
         }
 
         if (nNumFormats==0 && numBuffers>=2) {
