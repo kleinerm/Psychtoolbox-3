@@ -935,6 +935,19 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
         PsychGetAdjustedPrecisionTimerSeconds(&now);
 
         #if PSYCH_SYSTEM == PSYCH_LINUX
+        // Enable realtime scheduling for our audio processing thread on ALSA and Pulseaudio backends.
+        // Jack backend does setup by itself, OSS and ASIHPI don't matter anymore.
+        if ((dev->paCalls == 0xffffffff) && (hA == paALSA || hA == paPulseAudio)) {
+            int rc;
+
+            // Try to raise our priority: We ask to switch ourselves (NULL) to priority class 2 aka
+            // realtime scheduling, with a tweakPriority of +4, ie., raise the relative priority
+            // level by +4 wrt. to the current level:
+            if ((rc = PsychSetThreadPriority(NULL, 2, 4)) > 0) {
+                if (verbosity > 1) printf("PTB-WARNING: In PsychPortAudio:paCallback(): Failed to switch to boosted realtime priority [%s]! Audio may glitch.\n", strerror(rc));
+            }
+        }
+
         if (hA == paALSA) {
             // ALSA on Linux can return timestamps in CLOCK_MONOTONIC time
             // instead of our standard GetSecs() [gettimeofday] timesbase.
@@ -3086,13 +3099,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
     // Register the stream finished callback:
     Pa_SetStreamFinishedCallback(audiodevices[id].stream, PAStreamFinishedCallback);
 
-    #if PSYCH_SYSTEM == PSYCH_LINUX
-        // Enable realtime scheduling for the portaudio audio processing thread on ALSA:
-        if (audiodevices[id].hostAPI == paALSA) {
-            PaAlsa_EnableRealtimeScheduling(audiodevices[id].stream, 1);
-        }
-    #endif
-
     if (verbosity > 3) {
         printf("PTB-INFO: New audio device %i with handle %i opened as PortAudio stream:\n", deviceid, id);
 
@@ -4912,6 +4918,9 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 
             // Safeguard: If the stream is not stopped, do it now:
             if (!Pa_IsStreamStopped(audiodevices[pahandle].stream)) Pa_StopStream(audiodevices[pahandle].stream);
+
+            // Reset paCalls to special value to mark 1st call ever:
+            audiodevices[pahandle].paCalls = 0xffffffff;
 
             // Start engine:
             if ((err=Pa_StartStream(audiodevices[pahandle].stream))!=paNoError) {
