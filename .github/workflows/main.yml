@@ -1,5 +1,12 @@
 # Workflow for building Psychtoolbox mex files for Matlab/Octave on Ubuntu Linux 20.04-LTS.
-# Experimental for now!
+# Currently builds all mex files except Datapixx and Eyelink due to lack of SDK availability in VM.
+#
+# Note: - Free GitHub runners are only available for public / OSS repositories.
+#       - The free Matlab runner is only available for Linux, whereas the Octave build could
+#         in theory also be done on macOS (HomeBrew) and somehow on Windows (unclear).
+#
+# Copyright (c) 2022 by Mario Kleiner, licensed under MIT license.
+#
 name: CI
 
 # Controls when the workflow will run
@@ -28,7 +35,7 @@ jobs:
       - name: Check out Psychtoolbox repository to runner.
         uses: actions/checkout@v3
 
-      - name: Run a one-line script - Setup additional build and runtime dependencies of Psychtoolbox.
+      - name: Setup additional build and runtime dependencies of Psychtoolbox.
         run: sudo apt update; sudo apt install -y octave-psychtoolbox-3 liboctave-dev libfontconfig1-dev libopenhmd-dev libvulkan-dev libusb-1.0-0-dev xorg-dev libx11-xcb-dev libxcb*-dev libglu1-mesa-dev freeglut3-dev libgstreamer*-dev libasound2-dev portaudio19-dev libfreenect-dev libopenal-dev; sudo apt remove -y libgamemode0;
 
       - name: Setup OculusVR SDK 0.5 for 64-Bit Linux.
@@ -37,12 +44,12 @@ jobs:
       - name: Set up latest MATLAB
         uses: matlab-actions/setup-matlab@v1
 
-      - name: Run commands - Build all eligible Psychtoolbox Matlab mex files.
+      - name: Build all eligible Psychtoolbox Matlab mex files.
         uses: matlab-actions/run-command@v1
         with:
           command: cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../PsychSourceGL/Source'); pwd, linuxmakeit64(-1, 1);
 
-      - name: Run a one-line script - Build all eligible Psychtoolbox Octave mex files.
+      - name: Build all eligible Psychtoolbox Octave mex files.
         run: octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); cd('../PsychSourceGL/Source'); pwd, linuxmakeitoctave3(-1, 1); linuxmakeitoctave3(12, 0); cd('../Cohorts/FTGLTextRenderer'); makeftglplugin;"
 
       - name: Archive built 64-Bit Matlab and Octave mex files for 64-Bit Intel
@@ -54,5 +61,5 @@ jobs:
                 Psychtoolbox/PsychBasic/*.mexa64
                 Psychtoolbox/PsychBasic/PsychPlugins/libptbdrawtext_ftgl64.so.1
 
-      - name: Run a one-line script - Setup xvfb for basic testing of Psychtoolbox under Octave.
-        run: sudo apt install -y xvfb ; xvfb-run octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); addpath(genpath([pwd '/PsychBasic/Octave5LinuxFiles64'])); PsychDebugWindowConfiguration; LinesDemo;"
+      - name: Use xvfb for basic testing of Psychtoolbox under Octave. Rendering tests under llvmpipe, some basic queries.
+        run: xvfb-run octave --eval "warning('off', 'Octave:shadowed-function'); cd('Psychtoolbox'); pwd, addpath(genpath(pwd)); addpath(genpath([pwd '/PsychBasic/Octave5LinuxFiles64'])); PsychDebugWindowConfiguration; [a,b,c] = GetKeyboardIndices, [d,e,f] = GetMouseIndices, HighColorPrecisionDrawingTest;"
