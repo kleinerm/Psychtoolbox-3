@@ -1,10 +1,19 @@
-function SetupPsychtoolbox
+function SetupPsychtoolbox(tryNonInteractiveSetup)
 % SetupPsychtoolbox - In-place setup of PTB without network access.
 %
+% SetupPsychtoolbox([tryNonInteractiveSetup=0])
+%
 % This script prepares an already downloaded working copy of Psychtoolbox
-% for use with Matlab or Octave. It sets proper paths, performs online
-% registration if connected to a network and takes care of special setup
-% operations for the Java based GetChar implementation.
+% for use with Matlab or Octave. It sets proper paths and takes care of
+% special setup operations for various things.
+%
+% The optional parameter 'tryNonInteractiveSetup' if provided as 1 (true), will
+% try a setup without user interaction, not asking users for input in certain
+% situations, but assuming an answer that keeps the setup progressing. Note that
+% this is not guaranteed to work in all cases, and may end in data loss, e.g.,
+% overwriting an old and potentially user-modified Psychtoolbox installation.
+% This non-interactice setup mode is highly experimental, not well tested, not
+% supported in case of any trouble!
 %
 % This setup routine is meant for people who want to install Psychtoolbox
 % but don't have direct access to the internet. Installation in that case
@@ -57,6 +66,15 @@ function SetupPsychtoolbox
 % Flush all MEX files: This is needed at least on M$-Windows to
 % work if Screen et al. are still loaded.
 clear mex
+
+if nargin < 1 || isempty(tryNonInteractiveSetup)
+    tryNonInteractiveSetup = 0;
+end
+
+oldpause = pause('query');
+if tryNonInteractiveSetup
+    pause('off');
+end
 
 % Check if this is 32-Bit Octave-4 on Windows, which we don't support at all:
 if isempty(strfind(computer, 'x86_64')) && ~isempty(strfind(computer, 'mingw32'))
@@ -155,7 +173,12 @@ if err
     fprintf(['Once "savepath" works (no error message), run ' mfilename ' again.\n']);
     fprintf('Alternatively you can choose to continue with installation, but then you will have\n');
     fprintf('to resolve this permission isssue later and add the path to the Psychtoolbox manually.\n\n');
-    answer=input('Do you want to continue the installation despite the failure of SAVEPATH (yes or no)? ','s');
+    if ~tryNonInteractiveSetup
+        answer=input('Do you want to continue the installation despite the failure of SAVEPATH (yes or no)? ','s');
+    else
+        answer='no';
+    end
+
     if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('\n\n');
         error('SAVEPATH failed. Please get an administrator to allow everyone to write pathdef.m.');
@@ -177,8 +200,13 @@ while any(regexp(path, searchpattern))
     fprintf('Your old Psychtoolbox appears in the MATLAB/OCTAVE path:\n');
     paths=regexp(path,['[^' pathsep ']+'],'match');
     fprintf('Your old Psychtoolbox appears %d times in the MATLAB/OCTAVE path.\n',length(paths));
-    % Old and wrong, counts too many instances: fprintf('Your old Psychtoolbox appears %d times in the MATLAB/OCTAVE path.\n',length(paths));
-    answer=input('Before you decide to delete the paths, do you want to see them (yes or no)? ','s');
+
+    if tryNonInteractiveSetup
+        answer = 'no';
+    else
+        answer=input('Before you decide to delete the paths, do you want to see them (yes or no)? ','s');
+    end
+
     if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('You didn''t say "yes", so I''m taking it as no.\n');
     else
@@ -189,7 +217,13 @@ while any(regexp(path, searchpattern))
             end
         end
     end
-    answer=input('Shall I delete all those instances from the MATLAB/OCTAVE path (yes or no)? ','s');
+
+    if tryNonInteractiveSetup
+        answer = 'yes';
+    else
+        answer=input('Shall I delete all those instances from the MATLAB/OCTAVE path (yes or no)? ','s');
+    end
+
     if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('You didn''t say yes, so I cannot proceed.\n');
         fprintf('Please use the MATLAB "File:Set Path" command or its Octave equivalent to remove all instances of "Psychtoolbox" from the path.\n');
@@ -302,6 +336,8 @@ if exist('PsychtoolboxPostInstallRoutine.m', 'file')
    % determine the proper flavor by itself.
    PsychtoolboxPostInstallRoutine(1);
 end
+
+pause(oldpause);
 
 % Puuh, we are done :)
 return

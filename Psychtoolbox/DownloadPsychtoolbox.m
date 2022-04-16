@@ -1,5 +1,5 @@
-function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision, downloadmethod)
-% DownloadPsychtoolbox([targetdirectory][, flavor][, targetRevision][, downloadmethod])
+function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision, downloadmethod, tryNonInteractiveSetup)
+% DownloadPsychtoolbox([targetdirectory][, flavor][, targetRevision][, downloadmethod][, tryNonInteractiveSetup=0])
 %
 % This script downloads the latest GNU/Linux, MS-Windows, or Apple macOS
 % Psychtoolbox-3, version 3.0.10 or later, from our git-server to your
@@ -103,6 +103,15 @@ function DownloadPsychtoolbox(targetdirectory, flavor, targetRevision, downloadm
 % use of an installed svn command-line client via setting downloadmethod to
 % -1. This is the old way of doing things, in case the improved method via
 % SVNKit should not work for some reason.
+%
+%
+% The optional parameter 'tryNonInteractiveSetup' if provided as 1 (true), will
+% try a setup without user interaction, not asking users for input in certain
+% situations, but assuming an answer that keeps the setup progressing. Note that
+% this is not guaranteed to work in all cases, and may end in data loss, e.g.,
+% overwriting an old and potentially user-modified Psychtoolbox installation.
+% This non-interactice setup mode is highly experimental, not well tested, not
+% supported in case of any trouble!
 %
 %
 % INSTALLATION INSTRUCTIONS: The Wiki contains much more up to date
@@ -355,6 +364,15 @@ if nargin < 4 || isempty(downloadmethod)
     downloadmethod = 0;
 end
 
+if nargin < 5 || isempty(tryNonInteractiveSetup)
+    tryNonInteractiveSetup = 0;
+end
+
+oldpause = pause('query');
+if tryNonInteractiveSetup
+    pause('off');
+end
+
 if (nargin < 2) || isempty(flavor) || isempty(strfind(flavor, 'Psychtoolbox-3.0.'))
     % Check if this is 32-Bit Octave-4 on Windows, which we don't support at all:
     if isempty(strfind(computer, 'x86_64')) && ~isempty(strfind(computer, 'mingw32'))
@@ -482,29 +500,9 @@ switch (flavor)
         fprintf('The "stable" flavor is no longer available.\n');
         error('Flavor "stable" requested. This is no longer available.');
     case 'unsupported'
-        % Very bad choice! Give user a chance to reconsider...
-        fprintf('\n\n\nYou request download of the "unsupported" flavor of Psychtoolbox.\n');
-        fprintf('Use of the "unsupported" flavor is strongly discouraged! It is outdated and contains\n');
-        fprintf('many bugs and deficiencies that have been fixed in the recommended "beta" flavor years ago.\n');
-        fprintf('"unsupported" is no longer maintained and you will not get any support if you have problems with it.\n');
-        fprintf('Please choose "beta" unless you have very good reasons not to do so.\n\n');
-        fprintf('If you answer "no" to the following question, i will download the recommended "beta" flavor instead.\n');
-        answer=input('Do you want to continue download of "unsupported" flavor despite the warnings (yes or no)? ','s');
-        if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
-            flavor = 'beta';
-            fprintf('Download of "unsupported" flavor cancelled, will download recommended "beta" flavor instead...\n');
-        else
-            fprintf('Download of "unsupported" flavor proceeds. You are in for quite a bit of pain...\n');
-        end
-
-        fprintf('\n\nPress any key to continue...\n');
-        pause;
-
-        if ~strcmp(flavor, 'beta')
-            fprintf('\n\n\n\n');
-            fprintf('Psychtoolbox 3.0.10 and later do no longer provide the "unsupported" flavor.\n');
-            error('This Downloader does not support the "unsupported" aka "stable" flavor anymore.');
-        end
+        fprintf('\n\n\n\n');
+        fprintf('Psychtoolbox 3.0.10 and later do no longer provide the "unsupported" flavor.\n');
+        error('This Downloader does not support the "unsupported" aka "stable" flavor anymore.');
 
     otherwise
         fprintf('\n\n\nHmm, requested flavor is the unusual flavor: %s\n',flavor);
@@ -514,7 +512,7 @@ switch (flavor)
         pause;
 end
 
-fprintf('DownloadPsychtoolbox(''%s'',''%s'',''%s'', %i)\n', targetdirectory, flavor, targetRevision, downloadmethod);
+fprintf('DownloadPsychtoolbox(''%s'',''%s'',''%s'', %i, %i)\n', targetdirectory, flavor, targetRevision, downloadmethod, tryNonInteractiveSetup);
 fprintf('Requested flavor is: %s\n', flavor);
 fprintf('Requested location for the Psychtoolbox folder is inside: %s\n', targetdirectory);
 switch (downloadmethod)
@@ -548,7 +546,12 @@ if err
     fprintf(['Once "savepath" works (no error message), run ' mfilename ' again.\n']);
     fprintf('Alternatively you can choose to continue with installation, but then you will have\n');
     fprintf('to resolve this permission isssue later and add the path to the Psychtoolbox manually.\n\n');
-    answer=input('Do you want to continue the installation despite the failure of SAVEPATH (yes or no)? ','s');
+    if ~tryNonInteractiveSetup
+        answer=input('Do you want to continue the installation despite the failure of SAVEPATH (yes or no)? ','s');
+    else
+        answer='no';
+    end
+
     if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('\n\n');
         error('SAVEPATH failed. Please get an administrator to allow everyone to write pathdef.m.');
@@ -572,7 +575,12 @@ else
             '/Users/Shared/ folder, which doesn''t require special privileges. We \n'...
             'recommend installing into the /Applications/ folder, because it''s the \n'...
             'normal place to store programs. \n\n'],targetdirectory);
-            answer=input('Even so, do you want to install the Psychtoolbox into the \n/Users/Shared/ folder (yes or no)? ','s');
+            if tryNonInteractiveSetup
+                answer='yes';
+            else
+                answer=input('Even so, do you want to install the Psychtoolbox into the \n/Users/Shared/ folder (yes or no)? ','s');
+            end
+
             if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
                 fprintf('You didn''t say yes, so I cannot proceed.\n');
                 error('Need administrator privileges for requested installation into folder: %s.',targetdirectory);
@@ -621,7 +629,12 @@ while (exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolb
     savepath;
     fprintf('Success.\n');
 
-    answer=input('Shall I delete the old Psychtoolbox folder and all its contents \n(recommended in most cases), (yes or no)? ','s');
+    if tryNonInteractiveSetup
+        answer='yes';
+    else
+        answer=input('Shall I delete the old Psychtoolbox folder and all its contents \n(recommended in most cases), (yes or no)? ','s');
+    end
+
     if strcmpi(answer,'yes') || strcmpi(answer,'y')
         skipdelete = 0;
         fprintf('Now we delete "Psychtoolbox" itself.\n');
@@ -653,7 +666,12 @@ while any(regexp(path,searchpattern))
     fprintf('Your old Psychtoolbox appears in the MATLAB / OCTAVE path:\n');
     paths=regexp(path,['[^' pathsep ']*' pathsep],'match');
     fprintf('Your old Psychtoolbox appears %d times in the MATLAB / OCTAVE path.\n',length(paths));
-    answer=input('Before you decide to delete the paths, do you want to see them (yes or no)? ','s');
+    if tryNonInteractiveSetup
+        answer='no';
+    else
+        answer=input('Before you decide to delete the paths, do you want to see them (yes or no)? ','s');
+    end
+
     if ~strcmpi(answer,'yes') && ~strcmpi(answer,'y')
         fprintf('You didn''t say "yes", so I''m taking it as no.\n');
     else
@@ -664,7 +682,13 @@ while any(regexp(path,searchpattern))
             end
         end
     end
-    answer = input('Shall I delete all those instances from the MATLAB / OCTAVE path (yes or no)? ', 's');
+
+    if tryNonInteractiveSetup
+        answer='yes';
+    else
+        answer = input('Shall I delete all those instances from the MATLAB / OCTAVE path (yes or no)? ', 's');
+    end
+
     if ~strcmpi(answer, 'yes') && ~strcmpi(answer, 'y')
         fprintf('You didn''t say yes, so I cannot proceed.\n');
         fprintf('Please use the MATLAB "File:Set Path" command to remove all instances of "Psychtoolbox" from the path.\n');
@@ -760,6 +784,8 @@ if exist('PsychtoolboxPostInstallRoutine.m', 'file')
    clear PsychtoolboxPostInstallRoutine;
    PsychtoolboxPostInstallRoutine(0, flavor);
 end
+
+pause(oldpause);
 
 % Puuh, we are done :)
 return
