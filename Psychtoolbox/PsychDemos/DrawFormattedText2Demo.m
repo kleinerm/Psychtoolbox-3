@@ -101,6 +101,25 @@ try
     Screen('Flip',w);
     % capt = Screen('GetImage', w, GrowRect(captbbox,20,20));
     KbStrokeWait;
+    
+    % same as previous, but now with a transformation already applied to
+    % the cached texture
+    [~,~,bbox,cache,wbounds]=DrawFormattedText2('<font=Courier New><size=27><b>test\n<font=Times New Roman>scr<font><font>een<font> is\n<b><size=50>UGLY\n<size=12><b><u><i>Isn''t it?','win',w,'sx','center','sy','center','xalign','center','yalign','center','transform',{'rotate',-90});
+    Screen('FrameRect', w, [255 0 0 100], bbox);
+    % captbbox = bbox;
+    Screen('FrameRect', w, [255 255 0], wbounds.');
+    % calling with the cache and only sx and/or sy, translated the text by
+    % (sx,sy)
+    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sx', 300);
+    Screen('FrameRect', w, [0 255 0], bbox);
+    Screen('FrameRect', w, [255 255 0], wbounds.');
+    [~,~,bbox,~,wbounds]=DrawFormattedText2(cache,'sx',-300,'transform',{'flip',1});
+    Screen('FrameRect', w, [0 0 255], bbox);
+    Screen('FrameRect', w, [255 255 0], wbounds.');
+    
+    Screen('Flip',w);
+    % capt = Screen('GetImage', w, GrowRect(captbbox,20,20));
+    KbStrokeWait;
 
     % draw some text, then draw it again in exact same location but rotated
     % 180 degrees. should have exact same bounding box
