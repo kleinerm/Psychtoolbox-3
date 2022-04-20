@@ -24,6 +24,9 @@ The built SDK will install into the /usr/local/include and /usr/local/lib
 folders as header files and a static library which will get statically
 linked into the PsychOculusVRCore mex files for Linux.
 
+As a convenience, the file libOVR.a is a prebuilt static version of
+the library for 64-Bit Linux on 64-Bit Intel.
+
 OSX: Unpack the SDK into a folder. Then copy the included LibOVR.framework
 into the /Library/Frameworks/ folder as LibOVR.framework. The resulting
 mex file will get statically linked against a LibOVR shim lib which will

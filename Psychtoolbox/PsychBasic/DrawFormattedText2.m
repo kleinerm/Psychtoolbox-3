@@ -653,22 +653,28 @@ end
 %% done processing inputs, do text drawing
 % do draw to texture if wanted
 if qDrawToTexture
-    drawRect = transformBBox(bbox,transform);
+    texBbox = OffsetRect(bbox,-bbox(1),-bbox(2));
+    drawRect = transformBBox(texBbox,transform);
+    extraTransOff = [0 0];
+    if ~isempty(transform)
+        % Extra translate so that drawn text has top-left at (0,0)
+        extraTransOff = -drawRect(1:2);
+    end
     [tex.number,tex.rect] = Screen('OpenOffscreenWindow', win, [0 0 0 0], [0 0 RectWidth(drawRect) RectHeight(drawRect)]);
     ResetTextSetup(tex.number,previous,true);
-    [nx, ny, ~, wordbounds] = DoDraw(tex.number,disableClip,px,py,tex.rect,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,wordboundsbase);
+    [nx, ny, ~, wordbounds] = DoDraw(tex.number,disableClip,px,py,texBbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,wordboundsbase,extraTransOff);
     nx = nx+bbox(1);
     ny = ny+bbox(2);
     wordbounds(:,1) = wordbounds(:,1)+bbox(1);
     wordbounds(:,2) = wordbounds(:,2)+bbox(2);
     wordbounds(:,3) = wordbounds(:,3)+bbox(1);
     wordbounds(:,4) = wordbounds(:,4)+bbox(2);
-    textbounds = drawRect;
+    textbounds = OffsetRect(drawRect,bbox(1),bbox(2));
 end
 if ~cacheOnly
     % draw to screen
     if qDrawToTexture
-        DoDrawTexture(win,tex.number,drawRect,[]);
+        DoDrawTexture(win,tex.number,textbounds,[]);
     else
         [nx, ny, textbounds, wordbounds] = DoDraw(win,disableClip,px,py,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,wordboundsbase);
     end
@@ -690,7 +696,7 @@ if nargout>3
     cache.win = win;
     if cacheMode==1
         cache.tex       = tex;
-        cache.bbox      = drawRect;
+        cache.bbox      = textbounds;
         cache.transform = [];           % no need to reapply transforms as they are already "hardcoded" into the texture. But user can add new ones
         cache.nx        = nx;
         cache.ny        = ny;
@@ -719,7 +725,10 @@ function restorewarningstate(warningstate)
     warning(warningstate);
 end
 
-function [previouswin, IsOpenGLRendering] = DoDrawSetup(win,transform,bbox)
+function [previouswin, IsOpenGLRendering] = DoDrawSetup(win,transform,bbox,extraTransOff)
+if nargin<4
+    extraTransOff = [0 0];
+end
 % Is the OpenGL userspace context for this 'windowPtr' active, as required?
 [previouswin, IsOpenGLRendering] = Screen('GetOpenGLDrawMode');
 
@@ -737,8 +746,8 @@ if ~isempty(transform)
     % use/restoration of default state:
     Screen('glPushMatrix', win);
     
-    % Translate origin to the geometric center of the text:
-    Screen('glTranslate', win, xc, yc);
+    % We need to undo the translation
+    Screen('glTranslate', win, xc+extraTransOff(1), yc+extraTransOff(2));
     
     % apply transforms
     % as OpenGL transform should be specified in reversed order but i
@@ -768,7 +777,7 @@ if ~isempty(transform)
         end
     end
     
-    % We need to undo the translation
+    % Translate origin to the geometric center of the text
     Screen('glTranslate', win, -xc, -yc);
 end
 end
@@ -810,12 +819,15 @@ Screen('DrawTexture',win,texNum,[],texDrawRect);
 DoDrawCleanup(win, previouswin, IsOpenGLRendering, transform);
 end
 
-function [nx, ny, bbox, wordbounds] = DoDraw(win,disableClip,sx,sy,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,wordboundsbase)
+function [nx, ny, bbox, wordbounds] = DoDraw(win,disableClip,sx,sy,bbox,subStrings,switches,fmts,fmtCombs,ssBaseLineOff,winRect,previous,righttoleft,transform,wordboundsbase,extraTransOff)
 
 [nx,ny]     = deal(nan);
 wordbounds  = wordboundsbase;
+if nargin<16
+    extraTransOff = [0 0];
+end
 
-[previouswin, IsOpenGLRendering] = DoDrawSetup(win, transform, bbox);
+[previouswin, IsOpenGLRendering] = DoDrawSetup(win, transform, bbox, extraTransOff);
 if ~isempty(transform)
     % transform BBox and wordbounds to reflect transforms applied by
     % DoDrawSetup

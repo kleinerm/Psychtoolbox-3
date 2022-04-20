@@ -1,5 +1,5 @@
-function UpdatePsychtoolbox(targetdirectory, targetRevision)
-% UpdatePsychtoolbox(targetdirectory, targetRevision)
+function UpdatePsychtoolbox(targetdirectory, targetRevision, tryNonInteractiveSetup)
+% UpdatePsychtoolbox([targetdirectory][, targetRevision][, tryNonInteractiveSetup=0])
 %
 % Update your working copy of the Psychtoolbox with the latest bug fixes,
 % enhancements, and features from our Git server.
@@ -28,6 +28,14 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 %
 % UpdatePsychtoolbox cannot change the beta-vs-stable flavor of your
 % Psychtoolbox. To change the flavor, run DownloadPsychtoolbox again.
+%
+% The optional parameter 'tryNonInteractiveSetup' if provided as 1 (true), will
+% try a setup without user interaction, not asking users for input in certain
+% situations, but assuming an answer that keeps the setup progressing. Note that
+% this is not guaranteed to work in all cases, and may end in data loss, e.g.,
+% overwriting an old and potentially user-modified Psychtoolbox installation.
+% This non-interactice setup mode is highly experimental, not well tested, not
+% supported in case of any trouble!
 %
 
 % History:
@@ -89,10 +97,19 @@ if targetdirectory(end) == filesep
     targetdirectory = targetdirectory(1:end-1);
 end
 
-if nargin < 2
+if nargin < 2 || isempty(targetRevision)
     targetRevision = '';
 else
     fprintf('Target revision: %s \n', targetRevision);
+end
+
+if nargin < 3 || isempty(tryNonInteractiveSetup)
+    tryNonInteractiveSetup = 0;
+end
+
+oldpause = pause('query');
+if tryNonInteractiveSetup
+    pause('off');
 end
 
 fprintf('UpdatePsychtoolbox(''%s'') \n', targetdirectory);
@@ -287,5 +304,7 @@ if exist('PsychtoolboxPostInstallRoutine.m', 'file')
    clear PsychtoolboxPostInstallRoutine;
    PsychtoolboxPostInstallRoutine(1);
 end
+
+pause(oldpause);
 
 return

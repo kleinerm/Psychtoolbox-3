@@ -608,7 +608,7 @@ end
 try
     % Linux specific instructions:
     if IsLinux
-        more on;
+        more(pause('query'));
         fprintf('\n\n');
         fprintf('The Psychtoolbox on GNU/Linux needs the following 3rd party libraries\n');
         fprintf('in order to function correctly. If you get "Invalid MEX file errors",\n');
@@ -698,11 +698,13 @@ try
             if Screen('Preference', 'TextRenderer') == 0
                 % Failed to load drawtext plugin.
                 warning('Something went wrong with high-quality text renderer setup. Read ''help DrawTextPlugin'' for troubleshooting.');
-                input('Press Return key to continue.', 's');
+                disp('Press Return key to continue.');
+                pause;
             end
         catch
             warning('Something went wrong with high-quality text renderer setup. Read ''help DrawTextPlugin'' for troubleshooting.');
-            input('Press Return key to continue.', 's');
+            disp('Press Return key to continue.');
+            pause;
         end
 
         Screen('Preference', 'TextRenderer', oldRenderer);
@@ -744,7 +746,7 @@ if IsLinux
 end
 
 % Some goodbye, copyright and getting started blurb...
-more on;
+more(pause('query'));
 fprintf('GENERAL LICENSING CONDITIONS AND TERMS OF USE:\n');
 fprintf('----------------------------------------------\n\n');
 fprintf('Almost all of the material contained in the Psychtoolbox-3 distribution\n');

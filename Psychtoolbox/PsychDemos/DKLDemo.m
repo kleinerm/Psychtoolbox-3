@@ -16,6 +16,8 @@
 % 8/21/21   dhb     Added a few more checks and comments.  Made some of the
 %                   numbers less generic, on the view that testing is more
 %                   robust in such cases.
+% 4/13/22   dhb     Fixed unfinished comment, added numerical check of
+%                   agreement at end.
 
 %% Clear
 clear; close all
@@ -198,7 +200,11 @@ theDKLFromConeContrasts = M_coneContrastToDKL*[theIsochromaticConeContrast theRe
 M_DKLToConeContrast = inv(M_coneContrastToDKL);
 
 % Check that regression on the isolating directions does what we expect.
-% The output here should match what we get ju
+% The output here should match what we get just above, in variable
+% theDKLFromConeConrasts.  And it does to excellent tolerance.
 theDKLFromConeContrastsCheck = M_DKLToConeContrast\[theIsochromaticConeContrast theRedGreenConeContrast theBYConeContrast];
+if (max(abs(theDKLFromConeContrastsCheck(:)-theDKLFromConeContrasts(:))) > 1e-6)
+    error('Unexpected difference in check values');
+end
 
 
