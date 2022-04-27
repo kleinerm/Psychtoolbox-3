@@ -683,6 +683,7 @@ try
         oldLevel = Screen('Preference', 'WindowShieldingLevel', -1);
         oldVerbo = Screen('Preference', 'Verbosity', 0);
         oldTsMode = Screen('Preference', 'VBLTimestampingmode', -1);
+        oldSkip = Screen('Preference', 'SkipSyncTests', 2);
         % Need to suppress OpenGL error checking during run, as
         % 'WindowShieldingLevel' -1 for hiding the Window triggers new bugs
         % in the OS of the iToys company, this time if running on macOS
@@ -711,6 +712,7 @@ try
         Screen('Preference', 'WindowShieldingLevel', oldLevel);
         Screen('Preference', 'Verbosity', oldVerbo);
         Screen('Preference', 'VBLTimestampingmode', oldTsMode);
+        Screen('Preference', 'SkipSyncTests', oldSkip);
         Screen('Preference', 'ConserveVRAM', oldCVS);
     end
 
