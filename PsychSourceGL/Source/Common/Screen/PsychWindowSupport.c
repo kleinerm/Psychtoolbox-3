@@ -7145,6 +7145,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         }
     }
 
+    #ifndef PTB_USE_WAFFLE
     // Is this a hybrid graphics dual-gpu laptop which uses muxless Optimus / PRIME render offload to a NVIDIA gpu, while using the proprietary driver?
     if ((windowRecord->specialflags & kPsychIsX11Window) && (windowRecord->specialflags & kPsychIsDRI3Window) && getenv("__NV_PRIME_RENDER_OFFLOAD")) {
         // Yes. Try to setup our custom timestamping method which plays tricks with the X11 Present extension:
@@ -7158,6 +7159,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
         if (PsychOSEnablePresentEventReception(windowRecord, 0, TRUE))
             windowRecord->hybridGraphics = 5;
     }
+    #endif
 
     // Find out if the primary output of the screen on which this window is
     // displaying has a "PRIME Synchronization" output property. If so then
