@@ -85,7 +85,7 @@ try
     oneTimeDone = 1;
 
     % Wayland desktop on 64-Bit Linux with Octave?
-    if IsLinux(1) && IsOctave && IsWayland
+    if IsLinux(1) && IsOctave && IsWayland && ~isempty(getenv('PSYCH_ALLOW_WAYLAND'))
         % Add path, so our Wayland build of Screen.mex overrides the standard one:
         rdir = [PsychtoolboxRoot 'PsychBasic/Octave5LinuxFiles64/Wayland'];
         if exist(rdir, 'dir')
