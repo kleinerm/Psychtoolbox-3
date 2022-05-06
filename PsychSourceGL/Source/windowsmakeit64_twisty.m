@@ -123,7 +123,7 @@ if onoctave == 0
 
             movefile(['moglcore.' mexext], [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
         catch
-            lasterr %#ok<LERR> 
+            lasterr %#ok<LERR>
         end
         cd(curdir);
     end
