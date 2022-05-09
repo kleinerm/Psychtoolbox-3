@@ -656,6 +656,27 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     psych_bool mesamapi_strdupbug = FALSE;
     int saved_default_screen = 0;
 
+    // Running under Wayland, ie. not with native XOrg X-Server, but deficient XWayland server?
+    if (getenv("WAYLAND_DISPLAY") && strlen(getenv("WAYLAND_DISPLAY"))) {
+        // That's a no-go at least as of May 2022 with XWayland version 1.22.1.1 aka 22.1.1,
+        // at it has a severly broken OpenML implementation, which will lead to a hard hang
+        // during startup tests.
+        printf("\nPTB-ERROR: You are trying to run a Screen() implementation meant *only* for a native XOrg X-Server");
+        printf("\nPTB-ERROR: under a XWayland fake X-Server, on top of a Wayland desktop GUI session. This is not");
+        printf("\nPTB-ERROR: supported, as XWayland has various bugs which would make Psychtoolbox hang/malfunction!");
+        printf("\nPTB-ERROR: ");
+        printf("\nPTB-ERROR: Please resolve this issue now, by logging out of your desktop session and then logging in");
+        printf("\nPTB-ERROR: again while choosing a classic X11/XOrg GUI, which uses a suitable native XOrg X-Server.");
+        printf("\nPTB-ERROR: On Ubuntu Linux, there is usually a drop-down session chooser on your login screen (e.g.,");
+        printf("\nPTB-ERROR: reachable by clicking onto a little gear icon in the bottom-right corner of the screen),");
+        printf("\nPTB-ERROR: which offers options with (X11) or (Xorg) in its name, e.g., \"Plasma (X11)\" or");
+        printf("\nPTB-ERROR: \"Ubuntu on Xorg\" or \"GNOME on Xorg\". These would be the right choices.");
+        printf("\nPTB-ERROR: If you really know what you are doing and absolutely want to force running under XWayland");
+        printf("\nPTB-ERROR: you could execute \"clear all; setenv('WAYLAND_DISPLAY'); Screen('Preference','ConserveVRAM', 2^19);\"");
+        printf("\nPTB-ERROR: and then retry. This may malfunction or hang in various ugly ways, you have been warned!\n");
+        return(FALSE);
+    }
+
     // Include onscreen window index in title:
     sprintf(windowTitle, "PTB Onscreen Window [%i]:", windowRecord->windowIndex);
 
