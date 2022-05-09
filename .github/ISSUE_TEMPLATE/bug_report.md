@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-**[For commercial priority support for bug reports, click this link](http://psychtoolbox.org/prioritysupport.html)
+**[For commercial support for bug reports, click this link](https://www.psychtoolbox.net/license-key)
 
 **Describe the bug**
 A clear and concise description of what the bug is.

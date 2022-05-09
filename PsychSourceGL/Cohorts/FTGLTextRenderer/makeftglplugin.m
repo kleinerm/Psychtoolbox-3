@@ -6,11 +6,11 @@ if IsWin
     if IsOctave
         if Is64Bit
             % 64-Bit build with gcc:
-            cmd = 'g++ -g -m64 -o libptbdrawtext_ftgl64.dll -fno-exceptions -shared -LC:\gstreamer\1.0\x86_64\lib -I. -IC:\gstreamer\1.0\x86_64\include\freetype2 -IC:\gstreamer\1.0\x86_64\include\fontconfig libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lopengl32 -lglu32 -lfontconfig -lfreetype'
+            cmd = 'g++ -g -m64 -o libptbdrawtext_ftgl64.dll -fno-exceptions -shared -LC:\gstreamer\1.0\msvc_x86_64\lib -I. -IC:\gstreamer\1.0\msvc_x86_64\include\freetype2 -IC:\gstreamer\1.0\msvc_x86_64\include\fontconfig libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lopengl32 -lglu32 -lfontconfig -lfreetype'
             name = 'libptbdrawtext_ftgl64.dll';
         else
             % 32-Bit build with gcc:
-            cmd = 'g++ -g -o libptbdrawtext_ftgl.dll -fno-exceptions -shared -LC:\gstreamer\1.0\x86\lib -I. -IC:\gstreamer\1.0\x86\include\freetype2 -IC:\gstreamer\1.0\x86\include\fontconfig libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lopengl32 -lglu32 -lfontconfig -lfreetype';
+            cmd = 'g++ -g -o libptbdrawtext_ftgl.dll -fno-exceptions -shared -LC:\gstreamer\1.0\msvc_x86\lib -I. -IC:\gstreamer\1.0\msvc_x86\include\freetype2 -IC:\gstreamer\1.0\msvc_x86\include\fontconfig libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp -lopengl32 -lglu32 -lfontconfig -lfreetype';
             name = 'libptbdrawtext_ftgl.dll';
         end
     else

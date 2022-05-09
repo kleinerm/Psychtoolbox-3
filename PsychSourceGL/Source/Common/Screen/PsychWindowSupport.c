@@ -372,7 +372,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
             printf("PTB-INFO: Type 'PsychtoolboxVersion' for more detailed version information.\n");
             printf("PTB-INFO: Most parts of the Psychtoolbox distribution are licensed to you under terms of the MIT License, with\n");
             printf("PTB-INFO: some restrictions. See file 'License.txt' in the Psychtoolbox root folder for the exact licensing conditions.\n\n");
-            printf("PTB-INFO: For information about paid priority support, community membership and commercial services, please type\n");
+            printf("PTB-INFO: For information about paid support, community membership and commercial services, please type\n");
             printf("PTB-INFO: 'PsychPaidSupportAndServices'.\n\n");
         }
 
@@ -7681,7 +7681,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
     // Running under Chromium OpenGL virtualization or some other known software renderer / rasterizer?
     if ((strstr((char*) glGetString(GL_VENDOR), "Humper") && strstr((char*) glGetString(GL_RENDERER), "Chromium")) ||
         (strstr((char*) glGetString(GL_VENDOR), "VMware")) ||
-        (strstr((char*) glGetString(GL_VENDOR), "Mesa") && strstr((char*) glGetString(GL_RENDERER), "Software Rasterizer"))) {
+        (strstr((char*) glGetString(GL_VENDOR), "Mesa") && strstr((char*) glGetString(GL_RENDERER), "Software Rasterizer")) ||
+        (strstr((char*) glGetString(GL_VENDOR), "Mesa") && strstr((char*) glGetString(GL_RENDERER), "llvmpipe"))) {
         // Yes: We're very likely running inside a Virtual Machine, e.g., VirtualBox.
         // This does not provide sufficiently accurate display timing for production use of Psychtoolbox.
         // Output a info message for user and disable all calibrations and sync tests -- they would fail anyway.
