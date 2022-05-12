@@ -164,7 +164,7 @@ double PsychGetVblankTimestamps(PsychWindowRecordType *windowRecord, double *vbl
     if (vbl_endline == -1 || currentrefreshestimate <= 0.0)
         return(-1);
 
-    beamPosAtFlip = PsychGetDisplayBeamPosition((CGDirectDisplayID) NULL, windowRecord->screenNumber);
+    beamPosAtFlip = PsychGetDisplayBeamPosition((CGDirectDisplayID) 0, windowRecord->screenNumber);
     PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
 
     // Failed / Unsupported?
