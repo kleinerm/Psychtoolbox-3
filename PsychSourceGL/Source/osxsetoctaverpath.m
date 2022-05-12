@@ -50,20 +50,20 @@ function osxsetoctaverpath(mexfname, mexpath)
 
     % This is how the libdir should be defined automatically:
     libdir = __octave_config_info__.octlibdir;
-    
-    % This is sadly how we have to do it with Octave-6.4 on OSX 10.15 due to
-    % the latest OSX linker crap - Hardcoding the path for a Octave-6.4 install
+
+    % This is sadly how we have to do it with Octave on OSX 10.15 due to
+    % the latest OSX linker crap - Hardcoding the path for a Octave install
     % from HomeBrew. Yes, this is sad...
-    libdir = '/usr/local/opt/octave/lib/octave/6.3.0';
+    libdir = '/usr/local/opt/octave/lib/octave/6.4.0';
 
     % Replace absolute path to liboctinterp.9.dylib with @rpath:
-    system(['install_name_tool -change ' libdir '/liboctinterp.9.dylib @rpath/liboctinterp.9.dylib ' mexfname]);
+    system(['install_name_tool -change ' libdir '/liboctinterp.9.dylib @rpath/liboctinterp.dylib ' mexfname]);
 
     % Replace absolute path to liboctave.8.dylib with @rpath:
-    system(['install_name_tool -change ' libdir '/liboctave.8.dylib @rpath/liboctave.8.dylib ' mexfname]);
+    system(['install_name_tool -change ' libdir '/liboctave.8.dylib @rpath/liboctave.dylib ' mexfname]);
 
     % Add one single rpath: @loader_path. This is the path to our folder where our
-    % mex file is stored. If we place copies of liboctave.8.dylib and liboctinterp.8.dylib
+    % mex file is stored. If we place symlinks to liboctave.dylib and liboctinterp.dylib
     % there, then the linker will find them. In absence, the linker will also search the
     % users $HOME/lib/ directory as a possible fallback:
     lpaths = { '@loader_path' };
@@ -72,7 +72,7 @@ function osxsetoctaverpath(mexfname, mexpath)
     % library directories, ie., as settings for @rpath:
     for i = 1:length(lpaths)
         system(['install_name_tool -add_rpath ' lpaths{i} ' ' mexfname]);
-        fprintf('Added Octave-6 @rpath %s to mex file %s ...\n', lpaths{i}, mexfname);
+        fprintf('Added Octave @rpath %s to mex file %s ...\n', lpaths{i}, mexfname);
     end
 
 return;
