@@ -605,7 +605,7 @@ try
                     res.measuredTime(i) = mytstamp;
                 end
 
-                if IsOSX && usevulkan
+                if (IsOSX && usevulkan) || (IsLinux && ~IsWayland && ~isempty(getenv('PSYCH_EXPERIMENTAL_NETWMTS')) && (Screen('Preference', 'WindowShieldingLevel') < 2000))
                     % Current macOS 10.15.7 Metal will not give us low
                     % enough flip latency to flip back to black within one
                     % video refresh cycle due to system compositor design
@@ -615,6 +615,8 @@ try
                     % This will ofc. add even more latency - no winning
                     % here. But at least the measurements we can get won't
                     % be wrong:
+                    % Same problem is prone to happen on Linux/X11 with NetWM timing if
+                    % desktop compositor is intentionally enabled for testing.
                     PsychRTBox('Clear', rtbox);
                 end
 
