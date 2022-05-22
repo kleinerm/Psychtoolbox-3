@@ -192,7 +192,7 @@ psych_bool PsychHIDWarnAccessDenied(const char* callerName)
     printf("PsychHID-ERROR: 7. Execute the 'KbCheck' command as a simple test, which should hopefully work now without errors.\n");
     printf("PsychHID-ERROR: 8. If it doesn't work, retry the procedure - rinse, wash, repeat.\n");
     printf("PsychHID-ERROR: 9. If it works without errors, retry if your own scripts or our demos now work again.\n");
-    printf("PsychHID-ERROR: 10. If none of this works, you may be able to buy paid priority support from us: 'help PsychPaidSupportAndServices'.\n\n\n");
+    printf("PsychHID-ERROR: 10. If none of this works, you may be able to buy paid support from us: 'help PsychPaidSupportAndServices'.\n\n\n");
 
     // Try to bind and call IOHIDRequestAccess() to bring up the security prompt, which
     // should guide the user into fixing this Apple security bullshit:

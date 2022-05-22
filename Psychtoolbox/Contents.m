@@ -96,12 +96,29 @@
 % IMPORTANT NEWS:
 %
 % You can now financially contribute to Psychtoolbox sustainability, upkeep
-% and continued improvement by buying a community membership, which also
-% includes some priority support for questions regarding its use, or issues
+% and continued improvement by buying a "Psychtoolbox Support Membership", which
+% also includes some paid support for questions regarding its use, or issues
 % you may have with it. We also offer paid feature development and other
 % useful commercial services.
 %
 % Please type 'PsychPaidSupportAndServices' to learn more.
+%
+%
+% ADDITIONAL NEWS: The Psychtoolbox user survey 2022 is underway!
+%
+% In recent years the Psychtoolbox Team has worked hard to improve Psychtoolbox itself and its services.
+% We kindly ask you to fill out this survey, so that we can better understand the needs and wishes of our
+% community. Your answers will greatly help us to shape the future of Psychtoolbox.
+%
+% The survey is conducted by our host for all commercial services and matters, the
+% “Medical Innovations Incubator GmbH, Tuebingen, Germany”.
+%
+% As a thank you for participation, you will receive a discount code for your next
+% Psychtoolbox Support Membership purchase after completing the survey.
+%
+% Use the following link to the survey form if you want to participate:
+%
+% https://t.co/NOiTOWW0v4
 %
 
 % The OS 9 version was this:

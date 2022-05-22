@@ -1961,8 +1961,8 @@ psych_bool PsychOSEnableX11ClientCompositorSync(PsychWindowRecordType *windowRec
             // Compositor supports extended sync. Announce our opt-in to the protocol:
             if (PsychPrefStateGet_Verbosity() > 2) {
                 printf("PTB-INFO: X11-Compositor supports extended client-compositor sync for better timing. Enabling *highly experimental, only lightly tested, limited* support.\n");
-                printf("PTB-INFO: Things that will malfunction or hang: Use of multiple simultaneous windows, async flips, frame sequential stereo, VRR, flip events, maybe NVidia\n");
-                printf("PTB-INFO: cards with proprietary driver. Correct presentation timing and timestamping is somewhat likely, but not stringently verified yet! Tread carefully!\n");
+                printf("PTB-INFO: Things that will malfunction or hang: Use of multiple simultaneous windows, async flips, frame sequential stereo, VRR, flip events.\n");
+                printf("PTB-INFO: Correct presentation timing and timestamping is somewhat, but not stringently, verified.\n");
             }
 
             // Create two X-Sync counters for client-compositor sync, init to counter value 0:

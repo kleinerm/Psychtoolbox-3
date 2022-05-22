@@ -38,12 +38,15 @@ function usedAnswers = PsychLinuxConfiguration(answers, dontshowad)
 % of the 'psychtoolbox' group to allow easy reconfiguration of
 % the X11 display system for running experiment sessions.
 %
+% Additionally it configures the gpu's to allow for display color
+% depths of more than 8 bpc. Furthermore, it configures a potentially
+% installed gamemoded daemon to further optimize cpu and graphics
+% performance for use with Psychtoolbox.
+%
 % The script calls into the shell via "sudo" to achieve this
 % setup task, which itself needs admin privileges to modify
 % system files etc. "sudo" will prompt the user for his admin
-% password to complete the tasks. This does not work on Octave
-% with GUI though. You will need octave --no-gui to execute this
-% script once if you use octave.
+% password to complete the tasks.
 %
 % The script also checks if any special configuration is required
 % to work around Linux specific OpenGL quirks of Matlab R2014b or

@@ -142,7 +142,7 @@ end
 % Initialize the 'res' result struct with it:
 res = conf;
 
-res.measurementType = input('Measure with (p)hotodiode/BNC-Trigger, (v)ideoswitcher+RtBox/Bits#, (b)itwhacker or (d)atapixx? Or don''t measure (n)? ', 's');
+res.measurementType = input('Measure with (p)hotodiode/BNC-Trigger, (v)ideoswitcher+RtBox/Bits#, (b)itwhacker, (pp)PsychPhotodiode or (d)atapixx? Or don''t measure (n)? ', 's');
 useRTbox = [];
 if strcmpi(res.measurementType, 'p')
     useRTbox = 1;
@@ -155,6 +155,9 @@ if strcmpi(res.measurementType, 'b')
 end
 if strcmpi(res.measurementType, 'd')
     useRTbox = -1;
+end
+if strcmpi(res.measurementType, 'pp')
+    useRTbox = -2;
 end
 if strcmpi(res.measurementType, 'n')
     useRTbox = -1000;
@@ -301,6 +304,22 @@ try
     [w, winrect] = PsychImaging('OpenWindow', res.screenId, 0, [], [], [], conf.Stereo);
     res.winfo = Screen('GetWindowInfo', w);
 
+    if useRTbox == -2
+        % Setup PsychPhotodiode for timestamping:
+
+        % Prevent sound output for testing, we need the soundcard for ourselves
+        % to record photodiode electrical spikes:
+        conf.withSound = 0;
+
+        % Initialize for low-latency sound, open photodiode driver:
+        InitializePsychSound(1);
+        pdiode = PsychPhotodiode('Open');
+
+        % Perform calibration of optimal photo-diode trigger level:
+        triggerlevel = PsychPhotodiode('CalibrateTriggerLevel', pdiode, w) %#ok<NASGU,NOPRT>
+        Screen('Flip', w);
+    end
+
     % Needed for Vulkan testing on drivers without Vulkan interop, where only
     % alternation between black and white frames happens, out of our control.
     % So for the photodiode or Videoswitcher methods to work at all, we need
@@ -444,7 +463,7 @@ try
                 IOPort ('ConfigureSerialport', res.boxinfo.handle, 'BlockingBackgroundRead=1 StartBackgroundRead=1');
             end
         else
-            if useRTbox ~= -1
+            if useRTbox ~= -1 && useRTbox ~= -2
                 % Open with a "debounce time" of 1.5 ifi's:
                 bwh = BitwhackerBox('Open', [], [], ifi * 1.5);
                 res.boxinfo = BitwhackerBox('Status', bwh);
@@ -457,6 +476,8 @@ try
 
                 % Clear receive buffers to start clean:
                 BitwhackerBox('Clear', bwh);
+            elseif useRTbox == -2
+                res.boxinfo = 'PsychPhotodiode measurement';
             else
                 res.boxinfo = 'Datapixx measurement';
             end
@@ -496,10 +517,17 @@ try
 
     WaitSecs(1);
 
-    % Flash screen in full intensity white:
-    if useRTbox && useRTbox ~= 2
+    if useRTbox == -2
+        % Flash subregion of screen in full intensity white and start PsychPhotodiode acquisition:
+        yshift = wh / 5 * 0;
+        Screen('FillRect', w, 255, [0 yshift ww yshift+wh/5]);
+        Screen('DrawText', w, sprintf('+ %d msecs_______', round((yshift+wh/5/2) / wh * ifi * 1000)), ww - 300, yshift+wh/5/2);
+        diodestart = PsychPhotodiode('Start', pdiode); %#ok<NASGU>
+    elseif useRTbox && useRTbox ~= 2
+        % Flash screen in full intensity white:
         Screen('FillRect', w, 255);
     else
+        % Draw VideoSwitcher horizontal trigger line:
         Screen('DrawLine', w, [255 255 255], 0, 1, 1000, 1, 5);
     end
 
@@ -605,7 +633,7 @@ try
                     res.measuredTime(i) = mytstamp;
                 end
 
-                if IsOSX && usevulkan
+                if (IsOSX && usevulkan) || (IsLinux && ~IsWayland && ~isempty(getenv('PSYCH_EXPERIMENTAL_NETWMTS')) && (Screen('Preference', 'WindowShieldingLevel') < 2000))
                     % Current macOS 10.15.7 Metal will not give us low
                     % enough flip latency to flip back to black within one
                     % video refresh cycle due to system compositor design
@@ -615,13 +643,27 @@ try
                     % This will ofc. add even more latency - no winning
                     % here. But at least the measurements we can get won't
                     % be wrong:
+                    % Same problem is prone to happen on Linux/X11 with NetWM timing if
+                    % desktop compositor is intentionally enabled for testing.
                     PsychRTBox('Clear', rtbox);
                 end
 
                 PsychRTBox('EngageLightTrigger', rtbox);
                 PsychRTBox('EngagePulseTrigger', rtbox);
             else
-                if useRTbox ~= -1
+                if useRTbox == -2
+                    % Wait for stimulus onset report by photodiode, take timestamp:
+                    tPhoto = PsychPhotodiode('WaitSignal', pdiode);
+                    if isempty(tPhoto)
+                        % Failed:
+                        res.failFlag(i) = 2;
+                        res.measuredTime(i) = nan;
+                    else
+                        % Success!
+                        res.failFlag(i) = 0;
+                        res.measuredTime(i) = tPhoto;
+                    end
+                elseif useRTbox ~= -1
                     tdeadline = GetSecs + 0.002;
                     evt = [];
                     while isempty(evt) && (GetSecs < tdeadline)
@@ -671,9 +713,12 @@ try
         end
         % fprintf('After Fillrect %f msecs.\n', 1000 * (GetSecs - tvbl));
 
-        % Flash screen in full intensity white: This code in preparation
-        % for next loop iterations Screen('Flip') call:
-        if useRTbox && useRTbox ~= 2
+        if useRTbox == -2
+            % Flash subregion of screen in full intensity white and start PsychPhotodiode acquisition:
+            Screen('FillRect', w, 255, [0 yshift ww yshift+wh/5]);
+            Screen('DrawText', w, sprintf('+ %d msecs_______', round((yshift+wh/5/2) / wh * ifi * 1000)), ww - 300, yshift+wh/5/2);
+            diodestart = PsychPhotodiode('Start', pdiode); %#ok<NASGU>
+        elseif useRTbox && useRTbox ~= 2
             Screen('FillRect', w, 255);
         else
             Screen('DrawLine', w, [255 255 255], 0, 1, 1000, 1, 5);
@@ -740,9 +785,10 @@ try
                 % Switch Videoswitcher into high precision luminance + trigger mode:
                 PsychVideoSwitcher('SwitchMode', res.screenId, 1);
             end
-
         else
-            if useRTbox ~= -1
+            if useRTbox == -2
+                PsychPhotodiode('Close', pdiode);
+            elseif useRTbox ~= -1
                 BitwhackerBox('Close', bwh);
             end
         end

@@ -519,7 +519,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
 
     // Finalize attribute array with NULL.
-    attribs[attribcount++]=(CGLPixelFormatAttribute)NULL;
+    attribs[attribcount++]=(CGLPixelFormatAttribute) 0;
 
     // Init to zero:
     windowRecord->targetSpecific.pixelFormatObject = NULL;
@@ -768,8 +768,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             // Use of CoreVideo is needed on 10.7 and later due to brokeness of the old method (thanks Apple!):
             if (PsychPrefStateGet_Verbosity() > 2) {
                 printf("PTB-INFO: Will use fragile CoreVideo timestamping as fallback if beamposition timestamping doesn't work.\n");
-                // Recommend use of kernel driver if it isn't installed already for all but Intel GPU's:
-                if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) && !strstr((char*) glGetString(GL_VENDOR), "Intel")) {
+                // Recommend use of kernel driver if it isn't installed already:
+                if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) /* && !strstr((char*) glGetString(GL_VENDOR), "Intel") */) {
                     printf("PTB-INFO: Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual\n");
                     printf("PTB-INFO: onset timestamping or timing. See 'help PsychtoolboxKernelDriver' for installation instructions.\n");
                 }
@@ -818,8 +818,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             // VBLtimestampingmode 0 or -1 -- No CoreVideo fallback for timestamping if beamposition timestamping is unavailable:
             // This is the new default as of Psychtoolbox 3.0.12 to avoid the buggy, crashy, unreliably CoreVideo fallback.
 
-            // Recommend use of kernel driver if it isn't installed already for all but Intel GPU's:
-            if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) && !strstr((char*) glGetString(GL_VENDOR), "Intel")) {
+            // Recommend use of kernel driver if it isn't installed already:
+            if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber) && (PsychPrefStateGet_Verbosity() > 2) /* && !strstr((char*) glGetString(GL_VENDOR), "Intel") */) {
                 printf("PTB-INFO: Installation of the PsychtoolboxKernelDriver is strongly recommended if you care about precise visual\n");
                 printf("PTB-INFO: onset timestamping or timing. See 'help PsychtoolboxKernelDriver' for installation instructions.\n");
             }

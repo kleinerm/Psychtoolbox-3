@@ -680,7 +680,7 @@ static GstAppSinkCallbacks videosinkCallbacks = {
     PsychEOSCallback,
     PsychNewPrerollCallback,
     PsychNewBufferCallback,
-    {0}
+    0
 };
 
 /*
@@ -3207,7 +3207,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                 // Assign:
                 strcat(config, targetmoviefilename);
             }
-            else 
+            else
                 PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
 
             switch(deviceIndex) {
@@ -3247,7 +3247,7 @@ psych_bool PsychGSOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
                         // Assign:
                         strcat(config, targetmoviefilename);
                     }
-                    else 
+                    else
                         PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a negative value, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
                 }
 
