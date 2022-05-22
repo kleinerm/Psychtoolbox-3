@@ -112,6 +112,26 @@ if exist('mininag', 'var') && (mininag > 0)
     fprintf('Please type ''PsychPaidSupportAndServices'' to learn more.\n');
     fprintf('\n\n');
 
+    if mininag == 1
+        % Advertise our user survey 2022:
+        fprintf('ADDITIONAL NEWS: The Psychtoolbox user survey 2022 is underway!\n');
+        fprintf('\n');
+        fprintf('In recent years the Psychtoolbox Team has worked hard to improve Psychtoolbox itself and its services.\n');
+        fprintf('We kindly ask you to fill out this survey, so that we can better understand the needs and wishes of our\n');
+        fprintf('community. Your answers will greatly help us to shape the future of Psychtoolbox.\n');
+        fprintf('\n');
+        fprintf('The survey is conducted by our host for all commercial services and matters, the\n');
+        fprintf('“Medical Innovations Incubator GmbH, Tuebingen, Germany”.\n');
+        fprintf('\n');
+        fprintf('As a thank you for participation, you will receive a discount code for your next\n');
+        fprintf('Psychtoolbox Support Membership purchase after completing the survey.\n');
+        fprintf('\n');
+        fprintf('Use the following link to the survey form if you want to participate:\n');
+        fprintf('\n');
+        fprintf('https://t.co/NOiTOWW0v4\n');
+        fprintf('\n\n');
+    end
+
     return;
 end
 
