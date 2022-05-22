@@ -370,6 +370,14 @@ if IsOctave
             rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave6OSXFiles64']);
         end
 
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7WindowsFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7WindowsFiles64']);
+        end
+
+        if exist([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7OSXFiles64'], 'dir')
+            rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave7OSXFiles64']);
+        end
+
         % Encode prefix and Octave major version of proper folder:
         octavev = sscanf(version, '%i.%i.%i');
         octavemajorv = octavev(1);
@@ -396,6 +404,8 @@ if IsOctave
             fprintf('Upgrade to Ubuntu 20.04-LTS or an equivalent modern Linux distribution.\n');
             fprintf('Press any key to confirm you read and understand this message.\n');
             pause;
+        elseif ismember(octavemajorv, [6,7]) && IsOSX
+            rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave6'];
         else
             % Everything else (aka other OS'es) goes by Octave major version:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
@@ -448,17 +458,20 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
 
-    if (~IsLinux && (octavemajorv ~= 6 || ~ismember(octaveminorv, [3,4]))) || ...
+    if  (IsOSX && (~ismember(octavemajorv, [6,7]))) || ...
+        (IsWin && (octavemajorv ~= 6 || ~ismember(octaveminorv, [1,2,3,4]))) || ...
         (IsLinux && ((octavemajorv < 4) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 6)))
         fprintf('\n\n===============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
-            % On Linux everything from 4.4 to 6.2 is fine:
-            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.1, 5.2, 6.1 or 6.2 series.\n');
+            % On Linux everything from 4.4 to 6.4 is fine:
+            fprintf('WARNING: using the latest stable version of the Octave 4.4, 5.x, or 6.x series.\n');
             fprintf('WARNING: You can get Psychtoolbox for other or more recent versions of Octave from NeuroDebian.\n');
+        elseif IsOSX
+            fprintf('WARNING: only using Octave 6 or Octave 7 with this version of Psychtoolbox.\n');
         else
-            % On Windows/OSX we only care about 6.3, 6.4 atm:
-            fprintf('WARNING: only using Octave 6.3 or better 6.4 with this version of Psychtoolbox.\n');
+            % On Windows we only care about 6.4 atm:
+            fprintf('WARNING: only using Octave 6.4 with this version of Psychtoolbox.\n');
         end
         fprintf('WARNING: Stuff may not work at all or only suboptimal with other versions and we\n');
         fprintf('WARNING: don''t provide any support for such old versions.\n');
@@ -468,18 +481,22 @@ if IsOctave
     end
 
     if IsOSX
-        % Need to copy the Octave runtime libraries somewhere our mex files can find them. The only low-maintenance
+        % Need to symlink the Octave runtime libraries somewhere our mex files can find them. The only low-maintenance
         % way of dealing with this mess of custom library pathes per octave version, revision and packaging format.
-        % Preferred location is the folder with our mex files - found by rpath = @loader_path
-        if ~copyfile([GetOctlibDir filesep 'liboctinterp.9.dylib'], [rdir filesep], 'f') || ...
-           ~copyfile([GetOctlibDir filesep 'liboctave.8.dylib'], [rdir filesep], 'f')
-            % Copy into our mex files folder failed. A second location where the linker will search is the
+        % Preferred location is the folder with our mex files - found by the @rpath = @loader_path encoded in our mex files.
+        tdir = PsychHomeDir('lib');
+        dummy = unlink([tdir 'liboctinterp.dylib']);
+        dummy = unlink([tdir 'liboctave.dylib']);
+        dummy = unlink([rdir filesep 'liboctinterp.dylib']);
+        dummy = unlink([rdir filesep 'liboctave.dylib']);
+        if symlink([GetOctlibDir filesep 'liboctinterp.dylib'], [rdir filesep 'liboctinterp.dylib']) || ...
+           symlink([GetOctlibDir filesep 'liboctave.dylib'], [rdir filesep 'liboctave.dylib'])
+            % Symlink from our mex files folder failed. A second location where the linker will search is the
             % $HOME/lib directory of the current user, so try that as target location:
-            tdir = PsychHomeDir('lib');
-            fprintf('\n\nFailed to copy Octave runtime libraries to mex file folder [%s].\nRetrying in users private lib dir: %s ...\n', rdir, tdir);
-            if ~copyfile([GetOctlibDir filesep 'liboctinterp.9.dylib'], tdir, 'f') || ...
-               ~copyfile([GetOctlibDir filesep 'liboctave.8.dylib'], tdir, 'f')
-                fprintf('\nFailed to copy runtime libs to [%s] as well :(.\n', tdir);
+            fprintf('\n\nFailed to symlink Octave runtime libraries to mex file folder [%s].\nRetrying in users private lib dir: %s ...\n', rdir, tdir);
+            if symlink([GetOctlibDir filesep 'liboctinterp.dylib'], [tdir 'liboctinterp.dylib']) || ...
+               symlink([GetOctlibDir filesep 'liboctave.dylib'], [tdir 'liboctave.dylib'])
+                fprintf('\nFailed to symlink runtime libs to [%s] as well :(.\n', tdir);
                 fprintf('Our mex files will likely not work this way. Maybe the directories lack file write permissions?\n');
                 fprintf('\n\n\nA last workaround would be to restart octave from a terminal via this line:\n\nexport DYLD_LIBRARY_PATH=%s ; octave\n\n\n', GetOctlibDir);
             end
@@ -508,8 +525,7 @@ if IsOctave
             fprintf('ERROR: from liboctinterp.so to the liboctinterp library of your Octave installation\n');
             fprintf('ERROR: might by missing, causing our mex files to fail to load with linker errors.\n');
         end
-        fprintf('ERROR: One reason might be that your version %s of Octave is incompatible. We recommend\n', version);
-        fprintf('ERROR: use of the latest stable version of Octave-6 as announced on the www.octave.org website.\n');
+        fprintf('ERROR: One reason might be that your version %s of Octave is incompatible.\n', version);
         fprintf('ERROR: Another conceivable reason would be missing or incompatible required system libraries on your system.\n\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
@@ -591,7 +607,7 @@ if IsWin && ~IsOctave
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('ERROR: You can also just do a: cd(PsychtoolboxRoot); SetupPsychtoolbox;\n\n');
         fprintf('ERROR: This will avoid a full download of Psychtoolbox over the internet and just finish the setup.\n');
-        
+
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
         return;
     end

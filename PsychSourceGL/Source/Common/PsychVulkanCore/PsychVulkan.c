@@ -246,7 +246,7 @@ PFN_vkAcquireNextImageKHR fpAcquireNextImageKHR;
 PFN_vkQueuePresentKHR fpQueuePresentKHR;
 PFN_vkGetRefreshCycleDurationGOOGLE fpGetRefreshCycleDurationGOOGLE = NULL;
 PFN_vkGetPastPresentationTimingGOOGLE fpGetPastPresentationTimingGOOGLE = NULL;
-#ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR
+#ifdef VK_KHR_present_id
 PFN_vkWaitForPresentKHR fpWaitForPresentKHR = NULL;
 #else
 #warning VK_KHR_PRESENT_ID extension not supported by ancient build system. Update the Vulkan SDK headers to at least SDK 1.2.189
@@ -494,7 +494,7 @@ psych_bool checkAndRequestDeviceExtensions(VkPhysicalDevice* gpus, int gpuIndex,
     }
 
     if (hasWait) {
-        #ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR
+        #ifdef VK_KHR_present_id
         *hasWait = addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_KHR_PRESENT_WAIT_EXTENSION_NAME);
         *hasWait &= addDeviceExtension(deviceExtensions, deviceExtensionsCount, VK_KHR_PRESENT_ID_EXTENSION_NAME);
         #else
@@ -899,7 +899,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                     GET_INSTANCE_PROC_ADDR(vulkanInstance, GetPastPresentationTimingGOOGLE);
                 }
 
-                #ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR
+                #ifdef VK_KHR_present_id
                 // Ability to wait for present completion via VK_KHR_present_wait extension:
                 if (hasWait && !fpWaitForPresentKHR)
                     GET_INSTANCE_PROC_ADDR(vulkanInstance, WaitForPresentKHR);
@@ -930,7 +930,7 @@ void PsychVulkanCheckInit(psych_bool dontfail)
                         .flags = 0,
                     };
 
-                    #ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR
+                    #ifdef VK_KHR_present_id
                     VkPhysicalDevicePresentIdFeaturesKHR presentIdFeatureEnable = {
                         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR,
                         .pNext = NULL,
@@ -2561,7 +2561,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     };
 
     // VK_KHR_PRESENT_ID supported?
-    #ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR
+    #ifdef VK_KHR_present_id
     if (vulkan->hasWait && (timestampMode > 0)) {
         // Assign present id - the current frameIndex:
         VkPresentIdKHR presentIdInfo = {
@@ -2666,7 +2666,7 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
     // Should we timestamp (imminent) stimulus onset?
     if (timestampMode > 0) {
         // Wait for present completion supported?
-        #ifdef VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR
+        #ifdef VK_KHR_present_id
         if (vulkan->hasWait) {
             // Blocking wait with timeout of 1 second for present completion of the just-queued present:
             result = fpWaitForPresentKHR(vulkan->device, window->swapChain, targetPresentId, 1e9);
