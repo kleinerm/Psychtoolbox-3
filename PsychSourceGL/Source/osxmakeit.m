@@ -210,7 +210,7 @@ if mode==15
     catch
         disp(psychlasterror);
     end
-    unix(['mv ../Projects/MacOSX/build/PsychVulkanCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+    movefile(['../Projects/MacOSX/build/PsychVulkanCore.' mexext], [PsychtoolboxRoot 'PsychBasic/']);
 end
 
 return;
