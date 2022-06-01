@@ -99,11 +99,13 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
     // on top of Metal. We need to back our Cocoa NSWindow with a CAMetalLayer for
     // this to work:
     if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
-        CAMetalLayer* hostedLayer = [CAMetalLayer layer];
+        CAMetalLayer *hostedLayer = [CAMetalLayer layer];
         windowRecord->targetSpecific.deviceContext = hostedLayer;
-        [hostedLayer setOpaque:true];
+        hostedLayer.backgroundColor = [NSColor greenColor].CGColor;
+        hostedLayer.borderColor = [NSColor yellowColor].CGColor;
+        hostedLayer.borderWidth = 30.0;
 
-        if (PsychPrefStateGet_Verbosity() > 3)
+        if (PsychPrefStateGet_Verbosity() > 2)
             printf("PTB-INFO: External display method is in use for this NSWindow. Creating a backing layer as CAMetalLayer %p.\n",
                    hostedLayer);
     }
@@ -168,14 +170,8 @@ PsychError PsychCocoaCreateWindow(PsychWindowRecordType *windowRecord, int windo
         // Initial CAMetalLayer attach: Needed here, before window is shown 1st time,
         // or it won't work at all later on -- it would turn into a no-op:
         if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
-            if (PsychPrefStateGet_Verbosity() > 4)
-                printf("PTB-INFO: External display method is in use for this window. Attaching CAMetalLayer...\n");
-
-            [[cocoaWindow contentView] setWantsLayer:YES];
             [[cocoaWindow contentView] setLayer:windowRecord->targetSpecific.deviceContext];
         }
-
-        //[cocoaWindow setCollectionBehavior:NSWindowCollectionBehaviorFullScreenPrimary];
     });
 
     PsychMakeRect(windowRecord->globalrect, clientRect.origin.x, screenRect[kPsychBottom] - (clientRect.origin.y + clientRect.size.height), clientRect.origin.x + clientRect.size.width, screenRect[kPsychBottom] - clientRect.origin.y);
@@ -703,14 +699,35 @@ void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord)
     if (windowRecord->specialflags & kPsychExternalDisplayMethod) {
         NSWindow* cocoaWindow = (NSWindow*) windowRecord->targetSpecific.windowHandle;
 
-        if (PsychPrefStateGet_Verbosity() > 3)
-            printf("PTB-INFO: External display method is in use for this window. Reattaching CAMetalLayer at scaling factor %f.\n",
-                   [cocoaWindow backingScaleFactor]);
+        DISPATCH_SYNC_ON_MAIN({
+            [cocoaWindow setContentView: [[NSView alloc] initWithFrame:[cocoaWindow contentRectForFrameRect:[cocoaWindow frame]]]];
+        });
+
+        if (PsychPrefStateGet_Verbosity() > 2)
+            printf("PTB-INFO: External display method is in use for this window. Reattaching CAMetalLayer at scaling factor %f. %p %f x %f - %i : %i\n",
+                   [cocoaWindow backingScaleFactor], [[cocoaWindow contentView] layer], [[[cocoaWindow contentView] layer] bounds].size.width,
+                  [[[cocoaWindow contentView] layer] bounds].size.height, [[cocoaWindow contentView] wantsLayer], [[cocoaWindow contentView] wantsUpdateLayer]);
 
         DISPATCH_SYNC_ON_MAIN({
             [((CAMetalLayer*) windowRecord->targetSpecific.deviceContext) setContentsScale:[cocoaWindow backingScaleFactor]];
             [[cocoaWindow contentView] setLayer:windowRecord->targetSpecific.deviceContext];
+            [[cocoaWindow contentView] setWantsLayer:YES];
+            CGSize drawableSize = [[cocoaWindow contentView] layer].bounds.size;
+            drawableSize.width *= [[cocoaWindow contentView] layer].contentsScale;
+            drawableSize.height *= [[cocoaWindow contentView] layer].contentsScale;
+            [(CAMetalLayer*)[[cocoaWindow contentView] layer] setDrawableSize: drawableSize];
+            //[[cocoaWindow contentView] setLayerContentsRedrawPolicy:NSViewLayerContentsRedrawOnSetNeedsDisplay];
+            [[cocoaWindow contentView] setLayerContentsRedrawPolicy:NSViewLayerContentsRedrawDuringViewResize];
         });
+
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: External display method is in use for this window. Reattaching CAMetalLayer at scaling factor %f. %p %f x %f - %i => %f x %f\n",
+                   [cocoaWindow backingScaleFactor], [[cocoaWindow contentView] layer],
+                   [[[cocoaWindow contentView] layer] bounds].size.width,
+                   [[[cocoaWindow contentView] layer] bounds].size.height, [[cocoaWindow contentView] wantsUpdateLayer],
+                   [(CAMetalLayer*)[[cocoaWindow contentView] layer] drawableSize].width,
+                   [(CAMetalLayer*)[[cocoaWindow contentView] layer] drawableSize].height);
+        }
     }
 
     // Drain the pool:
