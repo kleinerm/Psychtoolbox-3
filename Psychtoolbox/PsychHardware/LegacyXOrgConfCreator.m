@@ -1,5 +1,9 @@
-function XOrgConfCreator
-% XOrgConfCreator - Automatically create X11 config files.
+function LegacyXOrgConfCreator
+% LegacyXOrgConfCreator - Automatically create X11 config files for old X-Servers.
+%
+% This it the legacy version for X-Server 1.20 and earlier, Mesa 21.x and earlier,
+% running Linux 5.14 and earlier. It gets called by XOrgConfCreator on such older
+% setups. The plan is to not touch this file in the future anymore.
 %
 % This friendly little setup assistant will analyze your systems graphics
 % card and display setup, then ask you questions about how you want your
@@ -26,10 +30,9 @@ function XOrgConfCreator
 % 09-Jun-2017  mk  Add 30 bpp framebuffer support and 16 bpc framebuffer support
 %                  on AMD Sea Islands gpus, to simplify setup of high color bit
 %                  depth framebuffers.
-% 11-Jun-2022  mk  Only handle systems with XOrg X-Server 21 or later, bail to
-%                  LegacyXOrgConfCreator for older systems.
-
-clc;
+% 11-Jun-2022  mk  Only handle systems with legacy XOrg X-Server 1.20 or earlier.
+%                  Freeze this file in maintenance mode from now on, until removal
+%                  in a few years.
 
 if ~IsLinux
   fprintf('This function is only supported or useful on Linux. Bye!\n');
@@ -40,26 +43,6 @@ if IsWayland
   fprintf('This function is only supported or useful on Linux with the good old X11/XServer stack, not on Wayland. Bye!\n');
   return;
 end
-
-% Which X-Server version is in use?
-[rc, text] = system('xdpyinfo | grep ''X.Org version''');
-if rc == 0
-  xversion = sscanf (text, 'X.Org version: %d.%d.%d');
-else
-  xversion = [0, 0, 0];
-end
-
-fprintf('Detected X-Server version %i.%i.%i\n', xversion(1), xversion(2), xversion(3));
-
-% X-Server older than 21.0.0 aka older than 1.21.0?
-if (xversion(1) == 1) && (xversion(2) < 21)
-    % Yes. Run LegacyXOrgConfCreator() for handling legacy stuff:
-    LegacyXOrgConfCreator;
-    return;
-end
-
-% X-Server 21 or later in use - We are the one to handle the modern XOrg stack.
-fprintf('Creating configuration for a modern X-Server 21+ with Mesa 22+ and Linux 5.15+ ...\n');
 
 % Step 1: Get the currently active display gpu and derive the required
 % X video driver from it. We do this by opening a little invisble
@@ -313,6 +296,14 @@ try
   else
     % Ask questions for setup of advanced options:
     modesetting = 'd';
+
+    % Which X-Server version is in use?
+    [rc, text] = system('xdpyinfo | grep ''X.Org version''');
+    if rc == 0
+      xversion = sscanf (text, 'X.Org version: %d.%d.%d');
+    else
+      xversion = [0, 0, 0];
+    end
 
     % AMD "Sea Islands" gpu with DCE-8 display engine, running under classic ati-ddx?
     if strcmp(xdriver, 'ati') && (winfo.GPUMinorType >= 80 && winfo.GPUMinorType < 100)
@@ -641,7 +632,7 @@ if fid == -1
 end
 
 % Header:
-fprintf(fid, '# Auto generated xorg.conf - Created by Psychtoolbox XOrgConfCreator.\n\n');
+fprintf(fid, '# Auto generated xorg.conf - Created by Psychtoolbox LegacyXOrgConfCreator.\n\n');
 
 if noautoaddgpu > 0 || needPreventDrmModifiers
   fprintf(fid, 'Section "ServerFlags"\n');
