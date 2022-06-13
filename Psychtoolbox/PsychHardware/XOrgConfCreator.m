@@ -99,7 +99,6 @@ try
       outputCnt = outputCnt + 1;
       outputs{outputCnt} = Screen('ConfigureDisplay', 'Scanout', screenNumber, outputId);
       outputs{outputCnt}.screenNumber = screenNumber;
-      % disp(outputs{outputCnt});
     end
   end
 
@@ -279,12 +278,6 @@ try
   while isempty(answer) || ~ismember(answer, ['y', 'n'])
     answer = input('Do you want to configure special/advanced settings? [y/n] ', 's');
   end
-
-  % Don't allow choice of UXA on intel anymore. It is an only lightly maintained
-  % backend with no active development and missing features wrt. SNA, e.g., no
-  % 10 bpc gamma lut's and therefore no > 8 bpc output. There's only downsides
-  % to it without any upsides atm.:
-  useuxa = 'd';
 
   if answer == 'n'
     % Nope. Just use the "don't care" settings:
@@ -537,7 +530,7 @@ if multigpu && suitable && ~fullysupported
 end
 
 % Actually any xorg.conf for non-standard settings needed?
-if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
+if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && triplebuffer == 'd' && modesetting == 'd' && ...
    ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd'
 
   % All settings are for a single X-Screen setup with auto-detected outputs
@@ -640,7 +633,7 @@ if noautoaddgpu > 0
   fprintf(fid, 'EndSection\n\n');
 end
 
-if multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
+if multixscreen == 0 && dri3 == 'd' && triplebuffer == 'd' && modesetting == 'd' && ...
    ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && vrrsupport == 'd'
   % Done writing the file:
   fclose(fid);
@@ -681,7 +674,7 @@ else
     % Create device sections, one for each x-screen aka the driver instance
     % associated with that x-screen:
     for i = 0:screenNumber
-      WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, useuxa, primehacks, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
+      WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, primehacks, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
     end
 
     % One screen section per x-screen, mapping screen i to card i:
@@ -717,7 +710,7 @@ else
 
     % We only need to create a single device section with override Option
     % values for the gpu driving that single X-Screen.
-    WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, useuxa, primehacks, [], [], []);
+    WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, primehacks, [], [], []);
 
     if ismember('y', depth30bpp) || strcmp(xdriver, 'nvidia')
       fprintf(fid, 'Section "Screen"\n');
@@ -747,7 +740,7 @@ fprintf('file to setup your system, or to switch back to the default setup of yo
 
 end
 
-function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, useuxa, primehacks, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
+function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, primehacks, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
   fprintf(fid, 'Section "Device"\n');
 
   if isempty(screenNumber)
@@ -799,15 +792,6 @@ function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, use
       dri3 = '2';
     end
     fprintf(fid, '  Option      "DRI" "%s"\n', dri3);
-  end
-
-  if (useuxa ~= 'd') && strcmp(xdriver, 'intel')
-    if useuxa == 'y'
-      useuxa = 'uxa';
-    else
-      useuxa = 'sna';
-    end
-    fprintf(fid, '  Option      "AccelMethod" "%s"\n', useuxa);
   end
 
   if strcmp(xdriver, 'ati') && primehacks
