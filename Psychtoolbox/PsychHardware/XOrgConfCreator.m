@@ -281,7 +281,6 @@ try
 
   if answer == 'n'
     % Nope. Just use the "don't care" settings:
-    triplebuffer = 'd';
     dri3 = 'd';
     modesetting = 'd';
     depth30bpp = 'd';
@@ -441,35 +440,6 @@ try
       modesetting = 'y';
     end
 
-    if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
-      fprintf('\n\nDo you want to allow the use of triple-buffering under DRI2?\n');
-      fprintf('Triple buffering can potentially cause a slight increase in performance for very\n');
-      fprintf('demanding visual stimulation paradigms. However, it is not without downsides. It can\n');
-      fprintf('cause visual glitches in some applications other than Psychtoolbox, or for visual\n');
-      fprintf('desktop animations, ie. during regular desktop use of your computer.\n');
-      fprintf('Also for some stimulation paradigms performance is not consistently increased, but\n');
-      fprintf('can become somewhat erratic.\n');
-      if strcmp(xdriver, 'intel')
-        fprintf('Additionally on some intel graphics drivers with sna acceleration, some uses of\n');
-        fprintf('triple-buffering can cause hangs of Psychtoolbox.\n');
-      end
-      fprintf('To take advantage of the potential performance improvements one also needs to adapt\n');
-      fprintf('experiment scripts in a special way, which makes the code only work on Linux, not on OSX or Windows.\n');
-      fprintf('Due to this mixed bag of advantages and disadvantages, it is usually better to not\n');
-      fprintf('use triple-buffering but instead enable DRI3/Present support if possible for especially\n');
-      fprintf('demanding paradigms.');
-      fprintf('If you are unsure, or generally happy with the graphics performance, just answer\n');
-      fprintf('"d" for "Don''t care", so we leave the decision of what is best to your system.\n');
-      fprintf('To try it out, e.g., to get a bit more performance, answer "y", otherwise "n".\n\n');
-
-      triplebuffer = '';
-      while isempty(triplebuffer) || ~ismember(triplebuffer, ['y', 'n', 'd'])
-        triplebuffer = input('Allow use of DRI2 triple-buffering [y for yes, n for no, d for don''t care]? ', 's');
-      end
-    else
-      triplebuffer = 'd';
-    end
-
     % Is the use of DRI3/Present safely possible with this combo of Mesa and X-Server?
     if ~strcmp(xdriver, 'modesetting') && ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0)
       % Yes. Propose it:
@@ -530,7 +500,7 @@ if multigpu && suitable && ~fullysupported
 end
 
 % Actually any xorg.conf for non-standard settings needed?
-if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && triplebuffer == 'd' && modesetting == 'd' && ...
+if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
    ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd'
 
   % All settings are for a single X-Screen setup with auto-detected outputs
@@ -633,7 +603,7 @@ if noautoaddgpu > 0
   fprintf(fid, 'EndSection\n\n');
 end
 
-if multixscreen == 0 && dri3 == 'd' && triplebuffer == 'd' && modesetting == 'd' && ...
+if multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
    ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && vrrsupport == 'd'
   % Done writing the file:
   fclose(fid);
@@ -674,7 +644,7 @@ else
     % Create device sections, one for each x-screen aka the driver instance
     % associated with that x-screen:
     for i = 0:screenNumber
-      WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, primehacks, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
+      WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, primehacks, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
     end
 
     % One screen section per x-screen, mapping screen i to card i:
@@ -710,7 +680,7 @@ else
 
     % We only need to create a single device section with override Option
     % values for the gpu driving that single X-Screen.
-    WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, primehacks, [], [], []);
+    WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, primehacks, [], [], []);
 
     if ismember('y', depth30bpp) || strcmp(xdriver, 'nvidia')
       fprintf(fid, 'Section "Screen"\n');
@@ -740,7 +710,7 @@ fprintf('file to setup your system, or to switch back to the default setup of yo
 
 end
 
-function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, primehacks, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
+function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, primehacks, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
   fprintf(fid, 'Section "Device"\n');
 
   if isempty(screenNumber)
@@ -755,26 +725,6 @@ function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, pri
   end
 
   fprintf(fid, '  Driver      "%s"\n', xdriver);
-
-  if triplebuffer ~= 'd'
-    if strcmp(xdriver, 'intel')
-      if triplebuffer == 'y'
-        triplebuffer = 'on';
-      else
-        triplebuffer = 'off';
-      end
-      fprintf(fid, '  Option      "TripleBuffer" "%s"\n', triplebuffer);
-    end
-
-    if strcmp(xdriver, 'nouveau')
-      if triplebuffer == 'y'
-        triplebuffer = '2';
-      else
-        triplebuffer = '1';
-      end
-      fprintf(fid, '  Option      "SwapLimit" "%s"\n', triplebuffer);
-    end
-  end
 
   if vrrsupport ~= 'd'
     if vrrsupport == 'y'
