@@ -59,7 +59,7 @@ if (xversion(1) == 1) && (xversion(2) < 21)
 end
 
 % X-Server 21 or later in use - We are the one to handle the modern XOrg stack.
-fprintf('Creating configuration for a modern X-Server 21+ with Mesa 22+ and Linux 5.15+ ...\n');
+fprintf('Creating configuration for a modern X-Server 21+, assuming Mesa 22+ and Linux 5.15+ ...\n');
 
 % Step 1: Get the currently active display gpu and derive the required
 % X video driver from it. We do this by opening a little invisble
@@ -81,17 +81,6 @@ try
     fprintf('Uses the xf86-video-%s DDX video driver.\n', xdriver);
   else
     fprintf('Uses the xf86-video-modesetting DDX video driver.\n');
-  end
-
-  % RaspberryPi VideoCore4/6?
-  if strcmp(winfo.GPUCoreId, 'VC4')
-    % Raspbian in early 2021 had a bug which prevented pageflipping from working.
-    % This was fixed a few weeks later.
-    % Add a workaround to the xorg.conf settings, which will fix it:
-    fprintf('This is likely a RaspberryPi with VideoCore-4 or VideoCore-6 gpu.\n');
-    needPreventDrmModifiers = 1;
-  else
-    needPreventDrmModifiers = 0;
   end
 
   % Step 2: Enumerate all available video outputs on all X-Screens:
@@ -549,8 +538,7 @@ end
 
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd' && ...
-   needPreventDrmModifiers == 0
+   ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd'
 
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default and not on a NVidia proprietary driver.
@@ -643,17 +631,10 @@ end
 % Header:
 fprintf(fid, '# Auto generated xorg.conf - Created by Psychtoolbox XOrgConfCreator.\n\n');
 
-if noautoaddgpu > 0 || needPreventDrmModifiers
+if noautoaddgpu > 0
   fprintf(fid, 'Section "ServerFlags"\n');
   if noautoaddgpu
     fprintf(fid, '  Option "AutoAddGPU"     "false"\n');
-  end
-
-  if needPreventDrmModifiers
-    % Explicitely prevent use of dmabuf_capable flag for modesetting-ddx, as that
-    % can cause broken pageflipping on Raspbian with Linux 5.3 and later.
-    % See: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3601
-    fprintf(fid, '  Option "Debug"     "None"\n');
   end
 
   fprintf(fid, 'EndSection\n\n');
