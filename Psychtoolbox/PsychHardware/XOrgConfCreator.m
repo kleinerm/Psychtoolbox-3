@@ -281,7 +281,6 @@ try
 
   if answer == 'n'
     % Nope. Just use the "don't care" settings:
-    dri3 = 'd';
     modesetting = 'd';
     depth30bpp = 'd';
     vrrsupport = 'd';
@@ -417,29 +416,6 @@ try
       xdriver = 'modesetting';
       modesetting = 'y';
     end
-
-    % Is the use of DRI3/Present safely possible with this combo of Mesa and X-Server?
-    if ~strcmp(xdriver, 'modesetting') && ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0)
-      % Yes. Propose it:
-      fprintf('\n\nDo you want to allow the use of the new DRI3/Present display backend?\n');
-      fprintf('DRI3 is a new method of displaying content which is potentially more efficient\n');
-      fprintf('and provides potentially higher performance. However, DRI3/Present needs fairly\n');
-      fprintf('recent display drivers, otherwise some glitches may occur with this new technology.\n');
-      fprintf('\n');
-      fprintf('If you are unsure, but generally happy with the graphics performance, just answer\n');
-      fprintf('"d" for "Don''t care", so we leave the decision what is best to your system.\n');
-      fprintf('To try it out, e.g., to get a bit more performance, answer "y". Psychtoolbox will\n');
-      fprintf('warn you during the next session if it thinks you enabled DRI3 on a unsuitable system,\n');
-      fprintf('so don''t worry about wrong answers, they can be corrected.\n\n');
-
-      dri3 = '';
-      while isempty(dri3) || ~ismember(dri3, ['y', 'n', 'd'])
-        dri3 = input('Allow use of DRI3/Present [y for yes, n for no, d for don''t care]? ', 's');
-      end
-    else
-      dri3 = 'd';
-    end
-
     % End of advanced configuration.
   end
 catch
@@ -465,11 +441,14 @@ Screen('Preference', 'Verbosity', oldVerbosity);
 
 % We have all information and answers we wanted. Synthesize a xorg.conf:
 
-% Hybrid graphics use requested by user?
-if multigpu && suitable && dri3 ~= 'y'
-  % Override use of dri3 to 'y'es, as we need DRI3/Present for renderoffload:
+% Is a ddx in use which doesn't default to DRI3?
+if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
+  % Yes. Enforce DRI3/Present to get best performance, reliability and also
+  % well working PRIME renderoffload for hybrid graphics machines:
   dri3 = 'y';
-  fprintf('Override: Enabling DRI3/Present, as this is needed for hybrid graphics Optimus/Enduro support.\n');
+else
+  % No. Nothing to do:
+  dri3 = 'd';
 end
 
 % Actually any xorg.conf for non-standard settings needed?
@@ -525,18 +504,6 @@ elseif (multixscreen > 0) && (modesetting == 'y') && ~modesettingddxactive
   fprintf('Override: create an invalid configuration. Generating a single-x-screen modesetting\n');
   fprintf('Override: config now. Please repeat the multi-x-screen + modesetting setup after logging\n');
   fprintf('Override: out and in again with this new configuration selected.\n');
-end
-
-% If we want/need to use the intel-ddx, also try to use DRI3/Present, unless user
-% strictly said 'n'o. Why? On modern distros with recent Mesa, OpenGL clients and
-% also desktop GUI's (OpenGL desktop compositors) will choose the new 'iris' OpenGL
-% gallium driver on Intel Gen8+, but the intel-ddx will currently always choose the
-% old i965 DRI classic driver. This mismatch of server/ddx uses i965, but compositor/
-% OpenGL client uses iris, will end in a nice desktop GUI crash, unless we use DRI3!
-% Hard earned wisdom, but with DRI3 we are safe for the moment, so choose that:
-if strcmp(xdriver, 'intel') && (dri3 ~= 'n')
-  fprintf('Override: Use of intel-ddx implies use of DRI3/Present for higher reliability, so enabling DRI3.\n');
-  dri3 = 'y';
 end
 
 % Define filename of output file:
