@@ -284,7 +284,6 @@ try
     dri3 = 'd';
     modesetting = 'd';
     depth30bpp = 'd';
-    atinotiling = 'd';
     vrrsupport = 'd';
 
     % Keep using modesetting if it is already in use on single-x-screen:
@@ -295,31 +294,10 @@ try
     % Ask questions for setup of advanced options:
     modesetting = 'd';
 
-    % AMD "Sea Islands" gpu with DCE-8 display engine, running under classic ati-ddx?
-    if strcmp(xdriver, 'ati') && (winfo.GPUMinorType >= 80 && winfo.GPUMinorType < 100)
-      % Up to 12 bpc in theory, if we encode into a 16 bpc framebuffer, using our PTB
-      % special framebuffer encoding hack, which needs a linear, non-tiled framebuffer.
-      % Ask if user wants to trade performance for increased color precision:
-      fprintf('\n\nDo you want to allow use of an up to 12 bpc precision per color channel framebuffer?\n');
-      fprintf('This only works on Sea Islands AMD gpus like yours, and only with some displays and video\n');
-      fprintf('outputs. It also causes substantial reduction in graphics performance, and only works with\n');
-      fprintf('some desktop GUI environments, e.g., GNOME-3. This function is highly experimental and may\n');
-      fprintf('not work at all on your setup, so use a photometer to verify actual precision carefully!\n');
-      fprintf('This also works with later gpus up to and including AMD Vega, but does not need setup here.\n');
-      fprintf('Answer no here if a 10 bpc / 30 bpp framebuffer is sufficient for your needs.\n');
-      atinotiling = '';
-      while isempty(atinotiling) || ~ismember(atinotiling, ['y', 'n', 'd'])
-        atinotiling = input('Use a slower linear framebuffer to allow for up to 12 bpc color depth [y for yes, n for no, d for don''t care]? ', 's');
-      end
-    else
-      atinotiling = 'd';
-    end
-
     % Does the driver + gpu combo support depth 30, 10 bpc framebuffers natively, and user has not chosen 12 bpc mode yet?
     % As of March 2018, the latest intel-ddx and nouveau-ddx, as well as amdgpu-pro ddx and nvidia proprietary ddx do support
     % 30 bit on modern X-Servers. The amdgpu-ddx and modesetting-ddx support depth 30 with X-Server 1.20 and later versions.
-    if (atinotiling ~= 'y') && ...
-       (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro') || ...
+    if (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro') || ...
         strcmp(xdriver, 'ati') || ((xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 20)) && (strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu'))))
       fprintf('\n\nDo you want to setup a 30 bit framebuffer for 10 bpc precision per color channel?\n');
       if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'ati') || strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu')
@@ -494,14 +472,9 @@ if multigpu && suitable && dri3 ~= 'y'
   fprintf('Override: Enabling DRI3/Present, as this is needed for hybrid graphics Optimus/Enduro support.\n');
 end
 
-primehacks = 0;
-if multigpu && suitable && ~fullysupported
-  primehacks = 1;
-end
-
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd'
+   ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd'
 
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default and not on a NVidia proprietary driver.
@@ -604,15 +577,10 @@ if noautoaddgpu > 0
 end
 
 if multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && vrrsupport == 'd'
+   ~isempty(intersect(depth30bpp, 'nd')) && vrrsupport == 'd'
   % Done writing the file:
   fclose(fid);
 else
-  % Requesting no tiling from the ati-ddx is the same as applying primehacks:
-  if atinotiling == 'y'
-    primehacks = 1;
-  end
-
   % Multi X-Screen setup requested? Then we need the full show:
   if multixscreen > 0
     % General server layout: Which X-Screens to use, their relative
@@ -644,7 +612,7 @@ else
     % Create device sections, one for each x-screen aka the driver instance
     % associated with that x-screen:
     for i = 0:screenNumber
-      WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, primehacks, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
+      WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
     end
 
     % One screen section per x-screen, mapping screen i to card i:
@@ -680,7 +648,7 @@ else
 
     % We only need to create a single device section with override Option
     % values for the gpu driving that single X-Screen.
-    WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, primehacks, [], [], []);
+    WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, [], [], []);
 
     if ismember('y', depth30bpp) || strcmp(xdriver, 'nvidia')
       fprintf(fid, 'Section "Screen"\n');
@@ -710,7 +678,7 @@ fprintf('file to setup your system, or to switch back to the default setup of yo
 
 end
 
-function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, primehacks, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
+function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
   fprintf(fid, 'Section "Device"\n');
 
   if isempty(screenNumber)
@@ -742,17 +710,6 @@ function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, primehacks, scree
       dri3 = '2';
     end
     fprintf(fid, '  Option      "DRI" "%s"\n', dri3);
-  end
-
-  if strcmp(xdriver, 'ati') && primehacks
-    % The ati ddx for old radeon-kms driven AMD cards allows to disable color tiling
-    % for the scanout buffer, and that allows us to get good Enduro hybrid graphics
-    % renderoffload on dual-AMD (APU iGPU + AMD dGPU) iff a special hacked kernel is
-    % used. This is a dirty trick as a stop-gap measure until we have something well
-    % working and clean upstream.
-    fprintf(fid, '  Option      "ColorTiling"   "off"\n');
-    fprintf(fid, '  Option      "ColorTiling2D" "off"\n');
-    fprintf('Enabling special dirty hacks for hybrid graphics Enduro support on legacy AMD+AMD laptops, or for 12 bpc framebuffers.\n');
   end
 
   if ~isempty(screenNumber)
