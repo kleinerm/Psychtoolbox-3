@@ -275,8 +275,8 @@ try
     depth30bpp = 'd';
     vrrsupport = 'd';
 
-    % Keep using modesetting if it is already in use on single-x-screen:
-    if modesettingddxactive && ~multixscreen
+    % Keep using modesetting if it is already in use:
+    if modesettingddxactive
       xdriver = 'modesetting';
     end
   else
@@ -332,12 +332,14 @@ try
       vrrsupport = 'd';
     end
 
+    % Use or non-use of modesetting ddx possible on this gpu hardware?
     if ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting')
         % Yes: The xf86-video-modesetting driver is an option that supports DRI3/Present well.
-        fprintf('\n\nDo you want to use the new kms modesetting driver xf86-video-modesetting?\n');
-        fprintf('This is a new video driver, which works with all open-source display drivers.\n');
-        fprintf('It is shown to be rather efficient, but not as feature rich and well tested as other drivers yet.\n');
-        fprintf('If you are not sure what to select, answer n for no as a safe choice.\n');
+        fprintf('\n\nDo you want to use the modesetting driver xf86-video-modesetting?\n');
+        fprintf('This is a driver which works in principle with all open-source kernel display drivers.\n');
+        fprintf('Your operating system will have made the optimal choice of driver for most conceivable use cases,\n');
+        fprintf('so rarely will there be a justified need to override this automatic choice.\n');
+        fprintf('Therefore if you do not have a good reason otherwise, just answer d for don''t care as a safe choice.\n');
         if multixscreen && ~modesettingddxactive
           fprintf('CAUTION: When setting up a multi-x-screen setup with modesetting, you must do this in two separate\n');
           fprintf('CAUTION: steps. First run this script followed by XOrgConfSelector to select modesetting in a\n');
@@ -350,7 +352,7 @@ try
 
         usemodesetting = '';
         while isempty(usemodesetting) || ~ismember(usemodesetting, ['y', 'n', 'd'])
-          usemodesetting = input('Use modesetting driver [y for yes, n for no, d for don''t care]? ', 's');
+          usemodesetting = input('Use modesetting driver [y for yes, n for no, d for don''t care - d IS RECOMMENDED]? ', 's');
         end
 
         % Only choose modesetting on explicit yes for now:
@@ -372,7 +374,6 @@ try
     % We'd do this anyway below in an override, but doing it early allows to skip all those redundant questions below:
     if (modesetting == 'd') && modesettingddxactive
       xdriver = 'modesetting';
-      modesetting = 'y';
     end
 
     % End of advanced configuration.
