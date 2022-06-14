@@ -160,7 +160,7 @@ try
   % and one has outputs which occupy x-screen space but can't display
   % anything, causing a deeply confusing desktop layout.
   % NoAutoAddGPU prevents secondary gpus from being added as slave gpus
-  % to the X-Screen, thereby there outputs don't show up. Downside would
+  % to the X-Screen, thereby their outputs don't show up. Downside would
   % be a regular GUI setup won't be able to access external displays on
   % a dual-gpu setup where only the 2nd gpu can drive external outputs.
   % A dual-x-screen setup won't have that problem though, so a typical
@@ -174,18 +174,6 @@ try
 
     if answer == 'y'
       noautoaddgpu = 1;
-    end
-  end
-
-  if multigpu && suitable
-    answer = '';
-    while isempty(answer) || ~ismember(answer, ['y', 'n'])
-      answer = input('Do you want to make use of the high-performance secondary discrete gpu (Optimus/Enduro)? [y / n] ', 's');
-    end
-
-    % Treat a "no" as if the laptop does not have multiple gpus:
-    if answer == 'n'
-      multigpu = 0;
     end
   end
 
@@ -279,56 +267,40 @@ try
     answer = input('Do you want to configure special/advanced settings? [y/n] ', 's');
   end
 
+  % Auto-choice of modesetting-ddx or not:
+  modesetting = 'd';
+
   if answer == 'n'
     % Nope. Just use the "don't care" settings:
-    modesetting = 'd';
     depth30bpp = 'd';
     vrrsupport = 'd';
 
     % Keep using modesetting if it is already in use on single-x-screen:
-    if (modesetting == 'd') && modesettingddxactive && ~multixscreen
+    if modesettingddxactive && ~multixscreen
       xdriver = 'modesetting';
     end
   else
     % Ask questions for setup of advanced options:
-    modesetting = 'd';
 
-    % Does the driver + gpu combo support depth 30, 10 bpc framebuffers natively, and user has not chosen 12 bpc mode yet?
-    % As of March 2018, the latest intel-ddx and nouveau-ddx, as well as amdgpu-pro ddx and nvidia proprietary ddx do support
-    % 30 bit on modern X-Servers. The amdgpu-ddx and modesetting-ddx support depth 30 with X-Server 1.20 and later versions.
-    if (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro') || ...
-        strcmp(xdriver, 'ati') || ((xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 20)) && (strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu'))))
+    % Depth 30 is not supported on Broadcom VideoCore of RaspberryPi atm., otherwise give it a shot:
+    if ~strcmp(winfo.GPUCoreId, 'VC4')
+      % 10 bpc depth 30 deep color for 1 billion colors wanted? All AMD, Intel and NVidia gpu's support this,
+      % both with open-source and proprietary (NVidia) drivers, also with modesetting-ddx. Some SoC gpu's also
+      % support it, but not all.
       fprintf('\n\nDo you want to setup a 30 bit framebuffer for 10 bpc precision per color channel?\n');
-      if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'ati') || strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu')
-        fprintf('This will need a year 2018 or later Linux distribution, e.g., at least Ubuntu 18.04 LTS,\n');
-        fprintf('with Mesa 18.0 or later for Intel and AMD gpus, and Mesa 18.1 or later for NVidia gpus.\n');
-      end
-
-      if multigpu
-        fprintf('It may or may not work on hybrid-graphics laptops. Such configurations are so far untested.\n');
-      end
-
+      fprintf('All AMD, Intel and NVidia gpus since at least 2010, sometimes since 2007 support this,\n');
+      fprintf('as well as some modern SoC gpus from ARM, Qualcomm and others.\n');
       fprintf('If your desktop GUI fails to work, or Psychtoolbox gives lots of timing or page-flip related warnings,\n');
-      fprintf('then you know your system and hardware is not ready yet for this depth 30 mode. On AMD hardware sold\n');
-      fprintf('from 2007 to ~2019, up to and including AMD Polaris, but *not* anymore for AMD Vega, Navi RX 5000 or AMD Ryzen\n');
-      fprintf('processor integrated graphics or later models, depth 30 will always work even without the need to set\n');
+      fprintf('then your system and hardware may not be ready for this depth 30 mode. On AMD hardware sold from the\n');
+      fprintf('years 2007 to ~2019, up to and including AMD Polaris, but *not* anymore for AMD Vega, Navi RX 5000 or AMD Ryzen\n');
+      fprintf('processor integrated graphics or later models, depth 30 will always work, even without the need to set\n');
       fprintf('it up here, at least for PsychImaging native 10 bit framebuffer tasks, albeit at potentially slightly\n');
       fprintf('lower performance. These slightly older AMD gpus have special support by PTB in this sense.\n');
-      fprintf('Also note that not all gpus can output true 10 bpc on all types of video outputs. Check carefully with a photometer etc.!\n');
+      fprintf('Also note that not all gpus can output true 10 bpc on all types of video outputs. Check carefully with a photometer!\n');
 
       depth30bpp = '';
       while isempty(depth30bpp) || ~ismember(depth30bpp, ['y', 'n', 'd'])
         depth30bpp = input('Use a 30 bpp, 10 bpc framebuffer [y for yes, n for no, d for don''t care]? ', 's');
-      end
-
-      % Depth 30 on Intel gfx requested?
-      % This won't work with modesetting ddx of X-Server 1.20 or earlier, as that driver only supports
-      % 256 slot 8 bpc in -> 8 bpc out gamma lut's, so doesn't pass 10 bpc from fb to display.
-      % It does work with X-Server 1.21+ modesetting-ddx, as that one uses GAMMA_LUT modern gamma tables
-      % if supported by the kernel.
-      if depth30bpp == 'y' && strcmp(xdriver, 'intel') && ~(xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 21))
-        % Actively request no use of modesetting ddx:
-        modesetting = 'n';
       end
 
       % Depth 30 on multi-x-screen setup requested?
@@ -339,6 +311,7 @@ try
         end
       end
     else
+      % Unsupported gpu - Don't care means no:
       depth30bpp = 'd';
     end
 
@@ -348,9 +321,9 @@ try
       fprintf('\n\nDo you want to allow use of so called VRR Variable Refresh Rate Mode?\n');
       fprintf('This is also known as FreeSync or DisplayPort adaptive sync. It allows to control\n');
       fprintf('visual stimulus onset with more fine-grained timing (see ''help VRRSupport'' for more infos).\n');
-      fprintf('This currently only works on AMD Sea Islands gpus and later or Intel Gen-12 Tigerlake graphics and later,\n');
-      fprintf('with suitable displays and cables. It also needs at least Linux 5.2 for AMD gpus or\n');
-      fprintf('at least Linux 5.12 for Intel gpus.\n');
+      fprintf('This currently only works on AMD Sea Islands gpus and later or Intel Gen-11 Icelake gpus and later,\n');
+      fprintf('with suitable displays and cables. It also needs at least Linux 5.2 for AMD gpus or at least\n');
+      fprintf('Linux 5.12 for Intel Gen-12 Tigerlake gpus and at least Linux 5.17 for Intel Gen-11 Icelake gpus.\n');
       vrrsupport = '';
       while isempty(vrrsupport) || ~ismember(vrrsupport, ['y', 'n', 'd'])
         vrrsupport = input('Allow use of VRR Variable Refresh Rate mode [y for yes, n for no, d for don''t care]? ', 's');
@@ -359,22 +332,7 @@ try
       vrrsupport = 'd';
     end
 
-    % VRR requested?
-    if (vrrsupport == 'y') && ~(xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 21))
-      % This won't work with modesetting ddx of X-Server 1.20 or earlier, only with the one
-      % from X-Server 1.21 or later. Actively request to not use modesetting ddx:
-      modesetting = 'n';
-    end
-
-    if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting') && ...
-       (~multigpu || (~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'ati'))) && ...
-       (vrrsupport ~= 'y') && ... % as of December 2019, the modesetting-ddx does not support VRR.
-       (~isempty(intersect(depth30bpp, 'nd')) || ~strcmp(xdriver, 'intel')) % As of July 2019, on Intel gfx only intel-ddx can do depth30bpp, not modesetting.
-      % HybridGraphics Intel + NVidia/AMD needs intel-ddx, modesetting won't work. Ditto for AMD + AMD.
-      % XOrg 1.18.0 or later? xf86-video-modesetting is only good enough for our purposes on 1.18 and later.
-      % Also must be a Mesa version safe for use with DRI3/Present:
-      if (xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 18)) && ...
-         ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0)
+    if ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting')
         % Yes: The xf86-video-modesetting driver is an option that supports DRI3/Present well.
         fprintf('\n\nDo you want to use the new kms modesetting driver xf86-video-modesetting?\n');
         fprintf('This is a new video driver, which works with all open-source display drivers.\n');
@@ -389,6 +347,7 @@ try
           fprintf('CAUTION: If you answer ''yes'' below, i will modify your choice, so you can safely execute\n');
           fprintf('CAUTION: the first step of this procedure, so no worries...\n');
         end
+
         usemodesetting = '';
         while isempty(usemodesetting) || ~ismember(usemodesetting, ['y', 'n', 'd'])
           usemodesetting = input('Use modesetting driver [y for yes, n for no, d for don''t care]? ', 's');
@@ -407,7 +366,6 @@ try
         if (usemodesetting == 'n') && (modesetting == 'd') && (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau'))
           modesetting = 'n';
         end
-      end
     end
 
     % Map a "Don't care" about modesetting to choice of modesetting if modesetting is already active.
@@ -416,6 +374,7 @@ try
       xdriver = 'modesetting';
       modesetting = 'y';
     end
+
     % End of advanced configuration.
   end
 catch
@@ -453,7 +412,7 @@ end
 
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd'
+   ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y'
 
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default and not on a NVidia proprietary driver.
@@ -467,31 +426,7 @@ end
 % the determined ZaphodHead output names are only valid for use with the modesetting-ddx.
 % Therefore, if user chose "(d)on't care" wrt. modesetting-ddx, select it, so user is not
 % left with a dysfunctional multi x-screen setup:
-if (multixscreen > 0) && (modesetting == 'n') && modesettingddxactive && strcmp(xdriver, 'intel')
-  % User wants depth30bpp and no modesetting, e.g., because Intel-gfx doesn't provide depth 30
-  % under modesetting, but user also wants multi-X-screen and the modesetting ddx is currently
-  % active. We have to switch to non-modesetting intel-ddx driver to get depth 30 working,
-  % but this means we can't switch to multi-x-screen at the same time. Sacrifice multi-x-screen
-  % for this two-setup setup process:
-  multixscreen = 0;
-  fprintf('Override: Ignoring request for multi X-Screen configuration, as modesetting-ddx\n');
-  fprintf('Override: is currently active while creating this config but must *not* be used for\n');
-  fprintf('Override: requested color depth 30 bit. Generating a single-x-screen intel-ddx\n');
-  fprintf('Override: config now. Please repeat the multi-x-screen + intel-ddx setup after logging\n');
-  fprintf('Override: out and in again with this new configuration selected.\n');
-elseif (multixscreen > 0) && (modesetting == 'n') && modesettingddxactive && vrrsupport == 'y'
-  % User wants VRR and no modesetting, because modesetting-ddx doesn't support VRR yet,
-  % but user also wants multi-X-screen and the modesetting ddx is currently active. We
-  % have to switch to non-modesetting ddx driver to get VRR working, but this means we
-  % can't switch to multi-x-screen at the same time. Sacrifice multi-x-screen for this
-  % two-setup setup process:
-  multixscreen = 0;
-  fprintf('Override: Ignoring request for multi X-Screen configuration, as modesetting-ddx\n');
-  fprintf('Override: is currently active while creating this config but must *not* be used for\n');
-  fprintf('Override: requested VRR support. Generating a single-x-screen ddx config now.\n');
-  fprintf('Override: Please repeat the multi-x-screen + non-modesetting-ddx setup after logging\n');
-  fprintf('Override: out and in again with this new configuration selected.\n');
-elseif (multixscreen > 0) && (modesetting ~= 'y') && modesettingddxactive
+if (multixscreen > 0) && (modesetting == 'n') && modesettingddxactive
   modesetting = 'y';
   xdriver = 'modesetting';
   dri3 = 'd'; % modesetting defaults to DRI3, which is what we want, so 'd'ont care does the job.
@@ -544,7 +479,7 @@ if noautoaddgpu > 0
 end
 
 if multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && vrrsupport == 'd'
+   ~isempty(intersect(depth30bpp, 'nd')) && vrrsupport ~= 'y'
   % Done writing the file:
   fclose(fid);
 else
