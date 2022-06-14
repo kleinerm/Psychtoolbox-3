@@ -710,13 +710,12 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
   % Yes, likely a hybrid graphics laptop:
   multigpu = 1;
 
-  % Display gpu not Intel?
-  if ~strcmp(xdriver, 'intel')
-    % Then the display gpu must be Nvidia or AMD. Existing hybrid graphics
-    % laptops will have either NVidia + NVidia (rarely) or AMD + AMD (more often).
+  % Display gpu not Intel or AMD?
+  if ~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'amdgpu') && ~strcmp(xdriver, 'amdgpu-pro') && ~strcmp(xdriver, 'ati')
+    % Then the display gpu must be Nvidia or such.
     % Confirm that primary and secondary gpu are from the same vendor to match that
     % pattern, otherwise we might be dealing with a mux'ed laptop currently switched
-    % to the discrete NVidia or AMD gpu:
+    % to the discrete NVidia or unknown gpu:
     if ~exist('/sys/class/drm/card0/device/vendor','file') || ~exist('/sys/class/drm/card1/device/vendor','file')
       return;
     end
@@ -728,13 +727,10 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
     end
   end
 
-  fprintf('This seems to be a hybrid graphics laptop. Let''s check if i can use this.\n');
+  fprintf('This seems to be a hybrid graphics laptop.\n');
 
   c = Screen('Computer');
   osrelease = sscanf(c.kern.osrelease, '%i.%i');
-
-  % Mesa and X-Server safe to use for DRI3/Present Prime render offloading?
-  primeuseable = ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0);
 
   % Primary display gpu is Intel?
   if strcmp(xdriver, 'intel')
@@ -744,31 +740,52 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
     if ~(osrelease(1) > 4 || (osrelease(1) == 4 && osrelease(2) >=5))
       % Kernel too old to provide proper PRIME sync:
       fprintf('Your Linux kernel %s is too old to support proper hybrid graphics with Intel graphics chips.\n', c.kern.osrelease);
-      fprintf('However, upgrading an Ubuntu Linux flavor or derivative to a suitable kernel is trivial.\n');
+      fprintf('However, upgrading an Ubuntu Linux flavor or derivative to a suitable 4.5+ kernel is trivial.\n');
       fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
       fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
       fprintf('assistant can not help you with setting them up.\n');
       fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, follow them, then retry.\n\n');
       return;
+    else
+      suitable = 1;
+      fullysupported = 1;
     end
+  end
 
-    if ~primeuseable
-      fprintf('Your version of X-Server or Mesa is too old to support proper hybrid graphics on most laptops\n');
-      fprintf('with Intel graphics chips. Upgrading to a minimum of X-Server 1.16.3 or later, Mesa 10.5.2 is\n');
-      fprintf('required, the more recent versions the better! Hybrid graphics was successfully tested with\n');
-      fprintf('Ubuntu 14.04.5 LTS, with XServer 1.18.3, Mesa 11.2.0 and on later on Ubuntu 16.04.1 LTS, with\n');
-      fprintf('Intel integrated graphics chip + both NVidia and AMD discrete graphics cards, so we strongly\n');
-      fprintf('recommend to use one of these tested versions/configurations or later ones.\n');
+  % Primary display gpu is modern AMD?
+  if strcmp(xdriver, 'amdgpu') || strcmp(xdriver, 'amdgpu-pro')
+    % These work well with other AMD discrete gpu's as of X-Server 21 and Linux kernel 5.11 and later.
+    if ~(osrelease(1) > 5 || (osrelease(1) == 5 && osrelease(2) >= 11))
+      % Kernel too old to provide proper PRIME sync:
+      fprintf('Your Linux kernel %s is too old to support proper hybrid graphics with AMD iGPU graphics chips.\n', c.kern.osrelease);
+      fprintf('However, upgrading an Ubuntu Linux flavor or derivative to a suitable 5.11+ kernel is trivial.\n');
       fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
       fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
       fprintf('assistant can not help you with setting them up.\n');
       fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, follow them, then retry.\n\n');
       return;
+    else
+      suitable = 1;
+      if exist('/sys/class/drm/card0/device/vendor','file') && exist('/sys/class/drm/card1/device/vendor','file')
+        [status, out] = system ('diff /sys/class/drm/card0/device/vendor /sys/class/drm/card1/device/vendor');
+        if status == 0 && isempty(out)
+          % Same gpu vendor for iGPU and dGPU, both AMD. Pageflipping for PRIME should work.
+          fullysupported = 1;
+        end
+      end
     end
+  end
 
+  if suitable
     % DRI3/Present PRIME render offloading is possible on this setup.
     fprintf('This hardware + software setup should allow use of the discrete gpu for faster rendering.\n');
-    fprintf('Enabling DRI3/Present support is needed for that, i will do that for you.\n');
+    fprintf('Enabling DRI3/Present support is needed for that, and I will do that for you.\n');
+    if fullysupported
+      fprintf('Most likely this setup will allow direct pageflipping for great timing and performance.\n');
+    else
+      fprintf('You will probably not achieve reliable timing or timestamping though. See runtime output\n');
+      fprintf('relating to use of NETWM timing mode under GNOME or Ubuntu desktop for possible workarounds.\n');
+    end
     fprintf('You will also need to setup your system to use the powerful gpu with Matlab or Octave.\n');
     fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, how to do that.\n');
     fprintf('While with most modern hybrid graphics laptops it should then just work, some more exotic\n');
@@ -777,54 +794,8 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
     fprintf('Such models can then be set up in a dual-X-Screen configuration to make them work with\n');
     fprintf('research grade timing, but this assistant can not set them up automatically, so you would\n');
     fprintf('have to do it manually. See ''help HybridGraphics'' and the Psychtoolbox website for instructions.\n\n');
-    suitable = 1;
-    fullysupported = 1;
     return;
   end
 
-  % Non Intel display gpu, ie., either NVidia + NVidia or AMD + AMD?
-  if isempty(strfind(winfo.DisplayCoreId, 'NVidia')) && isempty(strfind(winfo.DisplayCoreId, 'AMD'))
-    % Nope, something else like VC4 - No hybrid graphics.
-    return;
-  end
-
-  % Dual NVidia or dual AMD. At this point in time it would require a specially
-  % hacked custom kernel from Mario Kleiner + a few more configuration hacks.
-  if ~primeuseable
-    fprintf('Your version of X-Server or Mesa is too old to support proper hybrid graphics on most laptops\n');
-    fprintf('with NVidia/AMD graphics chips. Upgrading to a minimum of X-Server 1.16.3 or later, Mesa 10.5.2 is\n');
-    fprintf('required, the more recent versions the better!\n');
-    fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
-    fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
-    fprintf('assistant can not help you with setting them up.\n');
-    fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, follow them, then retry.\n\n');
-    return;
-  end
-
-  % No hope for amdgpu kms/ddx driven cards atm.:
-  if strcmp(xdriver, 'amdgpu')
-    fprintf('Your dual AMD graphics card laptop does not support Enduro with proper visual timing at\n');
-    fprintf('this point in time for most Enduro laptop models, sorry.\n');
-    fprintf('Some small subset of Enduro laptops would allow you to utilize the powerful gpu\n');
-    fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
-    fprintf('assistant can not help you with setting them up.\n');
-    fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for background info.\n\n');
-    return;
-  end
-
-  if strcmp(xdriver, 'ati')
-    fprintf('Your dual-gpu AMD Enduro laptop currently requires a specially hacked Linux kernel\n');
-    fprintf('and some additional dirty configuration hacks to make Enduro work.\n');
-  else
-    fprintf('Your dual-gpu NVidia Optimus laptop currently requires a specially hacked Linux kernel\n');
-    fprintf('to make Optimus work.\n');
-  end
-  fprintf('I will perform some of the required configuration steps if you want, but some manual work is left for you.\n');
-  fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for background info.\n\n');
-  fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
-  fprintf('in a dual X-Screen configuration for the external video outputs without special kernels or hacks,\n');
-  fprintf('although this assistant can not help you with setting them up.\n');
-  fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for background info.\n\n');
-  suitable = 1;
   return;
 end
