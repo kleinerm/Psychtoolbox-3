@@ -357,7 +357,7 @@ try
     end
 
     % Use or non-use of modesetting ddx possible on this gpu hardware?
-    if expertmode && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting')
+    if expertmode && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'modesetting')
         % Yes: The xf86-video-modesetting driver is an option that supports DRI3/Present well.
         fprintf('\n\nDo you want to use the modesetting driver xf86-video-modesetting?\n');
         fprintf('This is a driver which works in principle with all open-source kernel display drivers.\n');
@@ -702,14 +702,8 @@ function xdriver = DetectDDX(winfo)
         xdriver = 'ati';
       end
     else
-      if winfo.GPUMinorType >= 100 || ~isempty(strfind(winfo.GLVendor, 'ATI'))
-        fprintf('AMD GPU with hybrid free+proprietary amdgpu-pro driver detected. ');
-        xdriver = 'amdgpu-pro';
-      else
-        % Controlled by Catalyst -> fglrx ddx:
-        fprintf('AMD GPU with proprietary Catalyst driver detected. ');
-        xdriver = 'fglrx';
-      end
+      fprintf('AMD GPU with hybrid free+proprietary amdgpu-pro driver detected. ');
+      xdriver = 'amdgpu-pro';
     end
   else
     % Warn if we use modesetting ddx because we can not identify gpu, otherwise

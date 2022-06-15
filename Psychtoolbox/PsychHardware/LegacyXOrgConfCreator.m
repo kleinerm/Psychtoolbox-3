@@ -399,7 +399,7 @@ try
       modesetting = 'n';
     end
 
-    if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting') && ...
+    if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'modesetting') && ...
        (~multigpu || (~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'ati'))) && ...
        (vrrsupport ~= 'y') && ... % as of December 2019, the modesetting-ddx does not support VRR.
        (~isempty(intersect(depth30bpp, 'nd')) || ~strcmp(xdriver, 'intel')) % As of July 2019, on Intel gfx only intel-ddx can do depth30bpp, not modesetting.
@@ -881,14 +881,8 @@ function xdriver = DetectDDX(winfo)
         xdriver = 'ati';
       end
     else
-      if winfo.GPUMinorType >= 100 || ~isempty(strfind(winfo.GLVendor, 'ATI'))
-        fprintf('AMD GPU with hybrid free+proprietary amdgpu-pro driver detected. ');
-        xdriver = 'amdgpu-pro';
-      else
-        % Controlled by Catalyst -> fglrx ddx:
-        fprintf('AMD GPU with proprietary Catalyst driver detected. ');
-        xdriver = 'fglrx';
-      end
+      fprintf('AMD GPU with hybrid free+proprietary amdgpu-pro driver detected. ');
+      xdriver = 'amdgpu-pro';
     end
   else
     % Warn if we use modesetting ddx because we can not identify gpu, otherwise
