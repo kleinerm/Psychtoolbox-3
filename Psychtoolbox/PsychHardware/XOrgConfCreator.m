@@ -1,5 +1,5 @@
-function XOrgConfCreator
-% XOrgConfCreator - Automatically create X11 config files.
+function XOrgConfCreator(expertmode)
+% XOrgConfCreator([expertmode=0]) - Automatically create X11 config files.
 %
 % This friendly little setup assistant will analyze your systems graphics
 % card and display setup, then ask you questions about how you want your
@@ -18,6 +18,10 @@ function XOrgConfCreator
 % displays you must have all of them connected and active at the time the
 % assistant is run.
 %
+%
+% expertmode = Optional parameter: If set to 1, enable additional options which
+%              are only useful for debugging by developers and mostly useless or
+%              troublesome for normal users. Defaults to 0 == off.
 
 % History:
 % 04-Nov-2015  mk  Written.
@@ -39,6 +43,11 @@ end
 if IsWayland
   fprintf('This function is only supported or useful on Linux with the good old X11/XServer stack, not on Wayland. Bye!\n');
   return;
+end
+
+% Expert mode off by default:
+if nargin < 1 || isempty(expertmode)
+  expertmode = 0;
 end
 
 % Which X-Server version is in use?
@@ -348,7 +357,7 @@ try
     end
 
     % Use or non-use of modesetting ddx possible on this gpu hardware?
-    if ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting')
+    if expertmode && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'fglrx') && ~strcmp(xdriver, 'modesetting')
         % Yes: The xf86-video-modesetting driver is an option that supports DRI3/Present well.
         fprintf('\n\nDo you want to use the modesetting driver xf86-video-modesetting?\n');
         fprintf('This is a driver which works in principle with all open-source kernel display drivers.\n');
