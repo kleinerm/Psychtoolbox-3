@@ -339,8 +339,8 @@ try
       depth30bpp = 'd';
     end
 
-    % Mesa FOSS graphics driver on top of open-source Linux DRM/KMS?
-    if ~isempty(strfind(winfo.GLVersion, 'Mesa'))
+    % Mesa FOSS graphics driver on top of open-source Linux DRM/KMS? And definitely not a gpu+driver combo that can't do VRR?
+    if ~isempty(strfind(winfo.GLVersion, 'Mesa')) && ~strcmp(xdriver, 'nouveau') && ~(strcmp(xdriver, 'intel') && ~modesettingddxactive)
       % Possibly VRR capable Mesa driver + Linux DRM/KMS driver:
       fprintf('\n\nDo you want to allow use of so called VRR Variable Refresh Rate Mode?\n');
       fprintf('This is also known as FreeSync or DisplayPort adaptive sync. It allows to control\n');
@@ -508,7 +508,7 @@ if noautoaddgpu > 0
 end
 
 if multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && vrrsupport ~= 'y' && usegamma == -1
+   ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y' && usegamma == -1
   % Done writing the file:
   fclose(fid);
 else
@@ -581,7 +581,7 @@ else
     % values for the gpu driving that single X-Screen.
     WriteGPUDeviceSection(fid, xdriver, usegamma, vrrsupport, dri3, [], [], []);
 
-    if ismember('y', depth30bpp) || strcmp(xdriver, 'nvidia')
+    if ismember('y', depth30bpp) || ismember('0', depth30bpp) || strcmp(xdriver, 'nvidia')
       fprintf(fid, 'Section "Screen"\n');
       fprintf(fid, '  Identifier    "Screen%i"\n', 0);
       fprintf(fid, '  Device        "Card%i"\n', 0);
