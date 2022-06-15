@@ -269,6 +269,7 @@ try
 
   % Auto-choice of modesetting-ddx or not:
   modesetting = 'd';
+  usegamma = -1;
 
   if answer == 'n'
     % Nope. Just use the "don't care" settings:
@@ -301,6 +302,20 @@ try
       depth30bpp = '';
       while isempty(depth30bpp) || ~ismember(depth30bpp, ['y', 'n', 'd'])
         depth30bpp = input('Use a 30 bpp, 10 bpc framebuffer [y for yes, n for no, d for don''t care]? ', 's');
+      end
+
+      % Some Intel gpus need a force-enable of use of GAMMA_LUT's by the modesetting ddx
+      % for deep color mode, because the legacy lut's would only provide insufficient 8 bpc
+      % precision, and the high precision GAMMA_LUT's won't get auto-enabled on some gpus.
+      % We assume we are running on Linux 5.15 or later, and the Intel gpus requiring this
+      % would be Gen-11 Icelake, and all Gen-12 gpus, e.g., Tigerlake, DG-1, Alderlake-S.
+      % These are considered broken by X-Server 21 modesetting ddx, but we know they have
+      % been fixed as of Linux 5.15 / Ubuntu 22.04, so we force-enable GAMMA_LUT's.
+      % usegamma will only have an effect under modesetting ddx, so this only affects
+      % Intel gpus under modesetting ddx. And yes, gamma handling on the latest Intel gens
+      % is a frickin mess, if you haven't guessed it already...
+      if depth30bpp == 'y' && strcmp(xdriver, 'intel')
+        usegamma = 1;
       end
 
       % Depth 30 on multi-x-screen setup requested?
@@ -413,7 +428,8 @@ end
 
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y'
+   ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y' && ...
+   usegamma == -1
 
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default and not on a NVidia proprietary driver.
@@ -480,7 +496,7 @@ if noautoaddgpu > 0
 end
 
 if multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && vrrsupport ~= 'y'
+   ~isempty(intersect(depth30bpp, 'nd')) && vrrsupport ~= 'y' && usegamma == -1
   % Done writing the file:
   fclose(fid);
 else
@@ -515,7 +531,7 @@ else
     % Create device sections, one for each x-screen aka the driver instance
     % associated with that x-screen:
     for i = 0:screenNumber
-      WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
+      WriteGPUDeviceSection(fid, xdriver, usegamma, vrrsupport, dri3, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
     end
 
     % One screen section per x-screen, mapping screen i to card i:
@@ -551,7 +567,7 @@ else
 
     % We only need to create a single device section with override Option
     % values for the gpu driving that single X-Screen.
-    WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, [], [], []);
+    WriteGPUDeviceSection(fid, xdriver, usegamma, vrrsupport, dri3, [], [], []);
 
     if ismember('y', depth30bpp) || strcmp(xdriver, 'nvidia')
       fprintf(fid, 'Section "Screen"\n');
@@ -581,7 +597,7 @@ fprintf('file to setup your system, or to switch back to the default setup of yo
 
 end
 
-function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
+function WriteGPUDeviceSection(fid, xdriver, usegamma, vrrsupport, dri3, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
   fprintf(fid, 'Section "Device"\n');
 
   if isempty(screenNumber)
@@ -613,6 +629,15 @@ function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, screenNumber, Zap
       dri3 = '2';
     end
     fprintf(fid, '  Option      "DRI" "%s"\n', dri3);
+  end
+
+  % modesetting ddx in use and explicit UseGammaLUT setup wanted?
+  if strcmp(xdriver, 'modesetting') && (usegamma ~= -1)
+    if usegamma == 1
+      fprintf(fid, '  Option      "UseGammaLUT" "on"\n');
+    else
+      fprintf(fid, '  Option      "UseGammaLUT" "off"\n');
+    end
   end
 
   if ~isempty(screenNumber)
