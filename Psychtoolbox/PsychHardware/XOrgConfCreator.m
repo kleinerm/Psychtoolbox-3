@@ -370,17 +370,17 @@ try
           usemodesetting = input('Use modesetting driver [y for yes, n for no, d for don''t care - d IS RECOMMENDED]? ', 's');
         end
 
-        % Only choose modesetting on explicit yes for now:
+        % Force-Choose modesetting on explicit yes:
         if usemodesetting == 'y'
           xdriver = 'modesetting';
           modesetting = 'y';
         end
 
         % If the user explicitly does not want modesetting, and there are no forcing circumstances to use or not use it,
-        % (aka modesetting == 'd') and we are actually running on a Intel gpu or nouveau/NVidia, then force modesetting
-        % off. Background: As of Ubuntu 20.04-LTS, the distro will select modesetting-ddx by default for both Intel and
-        % NVidia+nouveau, so we need a config file to opt-out of use of modesetting-ddx, not to opt-in.
-        if (usemodesetting == 'n') && (modesetting == 'd') && (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau'))
+        % (aka modesetting == 'd') and use of another driver is possible, then force modesetting off. As of Ubuntu 20.04,
+        % the distro will select modesetting-ddx by default for everything except for AMD gpu's (radeon-ddx/amdgpu-ddx)
+        % or NVidia gpu's with proprietary nvidia-ddx, so we need a config file to opt-out of modesetting-ddx, not to opt-in.
+        if (usemodesetting == 'n') && (modesetting == 'd') && ~strcmp(xdriver, 'modesetting')
           modesetting = 'n';
         end
     end
@@ -439,16 +439,19 @@ if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && modesetting == 'd' &
   return;
 end
 
-% Multi X-Screen ZaphodHeads setup defined while modesetting-ddx was active? In that case,
-% the determined ZaphodHead output names are only valid for use with the modesetting-ddx.
-% Therefore, if user chose "(d)on't care" wrt. modesetting-ddx, select it, so user is not
-% left with a dysfunctional multi x-screen setup:
+% Multi X-Screen ZaphodHeads setup defined while modesetting-ddx was active, but user does
+% not want modesetting-ddx? Or vice versa user wants modesetting-ddx but ZaphodHeads was
+% created while a different ddx was active? In those cases, the determined ZaphodHead output
+% names would be wrong for the chosen ddx, resulting in X-Server startup failure!
+% Therefore, disable multi-x-screen ZaphodHeads and ask user for a two-step transition instead,
+% so user is not left with a dysfunctional multi x-screen setup:
 if (multixscreen > 0) && (modesetting == 'n') && modesettingddxactive
-  modesetting = 'y';
-  xdriver = 'modesetting';
-  dri3 = 'd'; % modesetting defaults to DRI3, which is what we want, so 'd'ont care does the job.
-  fprintf('Override: Selecting modesetting-ddx driver for this multi X-Screen configuration, as\n');
-  fprintf('Override: the modesetting-ddx is currently active while creating this config.\n');
+  multixscreen = 0;
+  fprintf('Override: Ignoring request for multi X-Screen configuration, as modesetting-ddx\n');
+  fprintf('Override: is not wanted, but was active while creating this config. This would\n');
+  fprintf('Override: create an invalid configuration. Generating a single-x-screen config now\n');
+  fprintf('Override: without modesetting-ddx. Please repeat the multi-x-screen setup without modesetting,\n');
+  fprintf('Override: after logging out and in again with this new configuration selected.\n');
 elseif (multixscreen > 0) && (modesetting == 'y') && ~modesettingddxactive
   multixscreen = 0;
   fprintf('Override: Ignoring request for multi X-Screen configuration, as modesetting-ddx\n');
