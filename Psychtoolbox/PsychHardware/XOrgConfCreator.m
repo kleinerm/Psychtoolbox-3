@@ -749,9 +749,21 @@ function xdriver = DetectDDX(winfo)
         % DCN class gpu (Ryzen+ APU's, Navi+, ...) or later -> amdgpu ddx:
         fprintf('Recent AMD GPU with open-source driver detected. ');
         xdriver = 'amdgpu';
+      elseif (winfo.GPUMinorType < 100 && winfo.GPUMinorType >= 80) && exist('/sys/module/amdgpu/parameters/cik_support', 'file')
+        % DCE-8 and amdgpu-kms loaded. Is it used for DCE-8 Sea Islands (cik)?
+        [rc, msg] = system('cat /sys/module/amdgpu/parameters/cik_support');
+        if rc == 0 && length(msg) >= 1 && msg(1) == '1'
+          % Seems amdgpu-kms is driving the gpu, ergo amdgpu-ddx is in use!
+          fprintf('Sea Islands AMD GPU with open-source amdgpu-kms driver detected. ');
+          xdriver = 'amdgpu';
+        else
+          % amdgpu-kms not in the drivers seat - radeon-kms and ergo ati/radeon-ddx is in use:
+          fprintf('Sea Islands AMD GPU with open-source radeon-kms driver detected. ');
+          xdriver = 'ati';
+        end
       else
-        % DCE-8 or earlier => ati ddx:
-        fprintf('Classic AMD GPU with open-source driver detected. ');
+        % DCE-8 or earlier under radeon-kms => ati ddx:
+        fprintf('Classic AMD GPU with open-source radeon-kms driver detected. ');
         xdriver = 'ati';
       end
     else
