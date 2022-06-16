@@ -279,6 +279,7 @@ try
   % Auto-choice of modesetting-ddx or not:
   modesetting = 'd';
   usegamma = -1;
+  asyncflipsecondaries = 'd';
 
   if answer == 'n'
     % Nope. Just use the "don't care" settings:
@@ -298,14 +299,14 @@ try
       % both with open-source and proprietary (NVidia) drivers, also with modesetting-ddx. Some SoC gpu's also
       % support it, but not all.
       fprintf('\n\nDo you want to setup a 30 bit framebuffer for 10 bpc precision per color channel?\n');
-      fprintf('All AMD, Intel and NVidia gpus since at least 2010, sometimes since 2007 support this,\n');
+      fprintf('All AMD, Intel and NVidia gpus since at least 2010, sometimes since 2005 support this,\n');
       fprintf('as well as some modern SoC gpus from ARM, Qualcomm and others.\n');
       fprintf('If your desktop GUI fails to work, or Psychtoolbox gives lots of timing or page-flip related warnings,\n');
       fprintf('then your system and hardware may not be ready for this depth 30 mode. On AMD hardware sold from the\n');
-      fprintf('years 2007 to ~2019, up to and including AMD Polaris, but *not* anymore for AMD Vega, Navi RX 5000 or AMD Ryzen\n');
+      fprintf('years 2005 to ~2019, up to and including AMD Polaris, but *not* anymore for AMD Vega, Navi RX 5000 or AMD Ryzen\n');
       fprintf('processor integrated graphics or later models, depth 30 will always work, even without the need to set\n');
       fprintf('it up here, at least for PsychImaging native 10 bit framebuffer tasks, albeit at potentially slightly\n');
-      fprintf('lower performance. These slightly older AMD gpus have special support by PTB in this sense.\n');
+      fprintf('lower performance. These slightly older AMD gpus have special support by Psychtoolbox in this sense.\n');
       fprintf('Also note that not all gpus can output true 10 bpc on all types of video outputs. Check carefully with a photometer!\n');
 
       depth30bpp = '';
@@ -354,6 +355,36 @@ try
       end
     else
       vrrsupport = 'd';
+    end
+
+    if ~strcmp(xdriver, 'nvidia')
+      % AsyncFlipSecondaries capable Linux DRM/KMS driver:
+      fprintf('\n\nDo you want to allow use of so called AsyncFlipSecondaries Mode?\n');
+      fprintf('This takes effect whenever you present a fullscreen onscreen window\n');
+      fprintf('on an X-Screen with multiple video outputs / displays connected and\n');
+      fprintf('active.\n');
+      fprintf('\n');
+      fprintf('It is most useful if you have a setup where the visual stimulus is shown\n');
+      fprintf('in a mirrored/cloned configuration on both, a display for your subject,\n');
+      fprintf('and a "monitoring" display for the experimenter, e.g., a fMRI setup\n');
+      fprintf('with a monitor/projector displaying the stimulus to the subject in the\n');
+      fprintf('scanner bore, and another control monitor in the control room. If both\n');
+      fprintf('displays are not perfectly synchronized, this can cause presentation\n');
+      fprintf('timing judder/problems or degraded performance. This option allows you\n');
+      fprintf('to get best timing and performance and quality on the subject display,\n');
+      fprintf('e.g., the projector in the fMRI scanner, by sacrificing quality for the\n');
+      fprintf('experimenter display in the control room, e.g., getting some tearing.\n');
+      fprintf('If you have such a setup, enabling this mode may make sense. Timing\n');
+      fprintf('will be preserved tear-free for the highest resolution display in a\n');
+      fprintf('mirror configuration, or in the case of all displays having the same\n');
+      fprintf('resolution, for the user designated primary display.\n');
+      fprintf('\n');
+      fprintf('If you intend to only use a single display per x-screen, or have perfectly\n');
+      fprintf('synchronized displays then this option is useless and answering n or d is best.\n');
+      asyncflipsecondaries = '';
+      while isempty(asyncflipsecondaries) || ~ismember(asyncflipsecondaries, ['y', 'n', 'd'])
+        asyncflipsecondaries = input('Use AsyncFlipSecondaries mode for multi-display setups [y for yes, n for no, d for don''t care]? ', 's');
+      end
     end
 
     % Use or non-use of modesetting ddx possible on this gpu hardware?
@@ -425,6 +456,19 @@ Screen('Preference', 'Verbosity', oldVerbosity);
 
 % We have all information and answers we wanted. Synthesize a xorg.conf:
 
+% Do we need to enforce modesetting-ddx for AsyncFlipSecondaries mode, because the
+% gpu is not a modern amdgpu-kms powered AMD, and so can't use amdgpu-ddx, and only
+% modesetting-ddx does the AsyncFlipSecondaries trick for such other gpu's?
+if asyncflipsecondaries == 'y' && ~strcmp(xdriver, 'amdgpu') && ~strcmp(xdriver, 'amdgpu-pro') && ~strcmp(xdriver, 'modesetting')
+  fprintf('Override: AsyncFlipSecondaries mode is requested on something else than a modern AMD gpu.\n');
+  fprintf('Override: This requires use of the modesetting-ddx, but modesetting-ddx is not currently\n');
+  fprintf('Override: selected as driver. Switching driver from %s-ddx to modesetting-ddx.\n', xdriver);
+  fprintf('Override: This may invalidate a multi-x-screen configuration, requiring a two-step switch\n');
+  fprintf('Override: with logout, login and rerun of XOrgConfCreator, lets see...\n\n');
+  xdriver = 'modesetting';
+  modesetting = 'y';
+end
+
 % Is a ddx in use which doesn't default to DRI3?
 if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
   % Yes. Enforce DRI3/Present to get best performance, reliability and also
@@ -438,7 +482,7 @@ end
 % Actually any xorg.conf for non-standard settings needed?
 if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
    ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y' && ...
-   usegamma == -1
+   usegamma == -1 && asyncflipsecondaries ~= 'y'
 
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default and not on a NVidia proprietary driver.
@@ -507,7 +551,7 @@ if noautoaddgpu > 0
   fprintf(fid, 'EndSection\n\n');
 end
 
-if multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
+if multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && asyncflipsecondaries ~= 'y' && ...
    ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y' && usegamma == -1
   % Done writing the file:
   fclose(fid);
@@ -543,7 +587,7 @@ else
     % Create device sections, one for each x-screen aka the driver instance
     % associated with that x-screen:
     for i = 0:screenNumber
-      WriteGPUDeviceSection(fid, xdriver, usegamma, vrrsupport, dri3, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
+      WriteGPUDeviceSection(fid, xdriver, usegamma, asyncflipsecondaries, vrrsupport, dri3, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
     end
 
     % One screen section per x-screen, mapping screen i to card i:
@@ -579,7 +623,7 @@ else
 
     % We only need to create a single device section with override Option
     % values for the gpu driving that single X-Screen.
-    WriteGPUDeviceSection(fid, xdriver, usegamma, vrrsupport, dri3, [], [], []);
+    WriteGPUDeviceSection(fid, xdriver, usegamma, asyncflipsecondaries, vrrsupport, dri3, [], [], []);
 
     if ismember('y', depth30bpp) || ismember('0', depth30bpp) || strcmp(xdriver, 'nvidia')
       fprintf(fid, 'Section "Screen"\n');
@@ -609,7 +653,7 @@ fprintf('file to setup your system, or to switch back to the default setup of yo
 
 end
 
-function WriteGPUDeviceSection(fid, xdriver, usegamma, vrrsupport, dri3, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
+function WriteGPUDeviceSection(fid, xdriver, usegamma, asyncflipsecondaries, vrrsupport, dri3, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
   fprintf(fid, 'Section "Device"\n');
 
   if isempty(screenNumber)
@@ -632,6 +676,15 @@ function WriteGPUDeviceSection(fid, xdriver, usegamma, vrrsupport, dri3, screenN
       vrrsupport = 'off';
     end
     fprintf(fid, '  Option      "VariableRefresh" "%s"\n', vrrsupport);
+  end
+
+  if asyncflipsecondaries ~= 'd'
+    if asyncflipsecondaries == 'y'
+      asyncflipsecondaries = 'on';
+    else
+      asyncflipsecondaries = 'off';
+    end
+    fprintf(fid, '  Option      "AsyncFlipSecondaries" "%s"\n', asyncflipsecondaries);
   end
 
   if dri3 ~= 'd'
