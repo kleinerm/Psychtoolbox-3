@@ -129,7 +129,7 @@ if mode==12
 end
 
 if mode==14
-    % Build PsychOpenHMDVRCore.mex:
+    % Build PsychOpenHMDVRCore.mexa64:
     try
         mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychOpenHMDVRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -D_GNU_SOURCE -DPTBMODULE_PsychOpenHMDVRCore -L/usr/local/lib/ -I/usr/local/include -I/usr/local/include/openhmd -I/usr/include/openhmd -ICommon/Base -ILinux/Base -ICommon/PsychOpenHMDVRCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychOpenHMDVRCore/*.c" -lc -lrt -ldl -lopenhmd
     catch
@@ -139,7 +139,7 @@ if mode==14
 end
 
 if mode==15
-    % Build PsychVulkanCore.mex:
+    % Build PsychVulkanCore.mexa64:
     % Needs at least Vulkan SDK version 1.2.189
     try
         mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychVulkanCore -largeArrayDims -DMEX_DOUBLE_HANDLE -DPTBMODULE_PsychVulkanCore -ICommon/Base -ILinux/Base -ICommon/PsychVulkanCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychVulkanCore/*.c" -lc -lrt -ldl -lX11 -lvulkan
@@ -147,6 +147,16 @@ if mode==15
         disp(psychlasterror);
     end
     unix(['mv ../Projects/Linux/build/PsychVulkanCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+end
+
+if mode==16
+    % Build PsychOpenXRCore.mexa64:
+    try
+        mex CFLAGS='$CFLAGS -fPIC -std=gnu99 -fexceptions -pthread' -outdir ../Projects/Linux/build/ -output PsychOpenXRCore -largeArrayDims -DMEX_DOUBLE_HANDLE -D_GNU_SOURCE -DPTBMODULE_PsychOpenXRCore -ICommon/Base -ILinux/Base -ICommon/PsychOpenXRCore "Linux/Base/*.c" "Common/Base/*.c" "Common/PsychOpenXRCore/*.c" -lc -lrt -ldl -lopenxr_loader
+    catch
+        disp(psychlasterror);
+    end
+    unix(['mv ../Projects/Linux/build/PsychOpenXRCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
 end
 
 return;
