@@ -450,11 +450,12 @@ PsychError SCREENGetWindowInfo(void)
         PsychSetStructArrayUnsignedInt64Element("DeviceContext", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.deviceContext, s);
         PsychSetStructArrayUnsignedInt64Element("OpenGLContext", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.glswapcontextObject, s);
         PsychSetStructArrayUnsignedInt64Element("OpenGLDrawable", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.windowHandle, s);
-        PsychSetStructArrayUnsignedInt64Element("OpenGLConfig", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.pixelFormatObject, s);
         #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE) && !defined(PTB_USE_WAYLAND)
             // Linux X11/GLX/Xlib only:
+            PsychSetStructArrayUnsignedInt64Element("OpenGLConfig", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.pixelFormatObject, s);
             PsychSetStructArrayUnsignedInt64Element("OpenGLVisualId", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.visualId, s);
         #else
+            PsychSetStructArrayUnsignedInt64Element("OpenGLConfig", 0, (psych_uint64) (size_t) 0, s);
             PsychSetStructArrayUnsignedInt64Element("OpenGLVisualId", 0, (psych_uint64) (size_t) 0, s);
         #endif
     }
