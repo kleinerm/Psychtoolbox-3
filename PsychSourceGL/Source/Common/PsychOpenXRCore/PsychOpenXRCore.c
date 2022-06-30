@@ -113,6 +113,7 @@ typedef struct PsychOpenXRDevice {
 
 // Shared XrInstance for the whole process:
 static XrInstance xrInstance = XR_NULL_HANDLE;
+static XrInstanceProperties instanceProperties;
 
 // Shared debug messenger for the whole process:
 XrDebugUtilsMessengerEXT debugMessenger = XR_NULL_HANDLE;
@@ -173,7 +174,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "";
     synopsis[i++] = "oldVerbosity = PsychOpenXRCore('Verbosity' [, verbosity]);";
     synopsis[i++] = "numHMDs = PsychOpenXRCore('GetCount');";
-    synopsis[i++] = "[openxrPtr, modelName] = PsychOpenXRCore('Open' [, deviceIndex=0][, multiThreaded=0]);";
+    synopsis[i++] = "[openxrPtr, modelName, runtimeName] = PsychOpenXRCore('Open' [, deviceIndex=0][, multiThreaded=0]);";
     synopsis[i++] = "PsychOpenXRCore('Close' [, openxrPtr]);";
     //synopsis[i++] = "PsychOpenXRCore('SetHUDState', openxrPtr , mode);";
     //synopsis[i++] = "[isVisible, playboundsxyz, outerboundsxyz] = PsychOpenXRCore('VRAreaBoundary', openxrPtr [, requestVisible]);";
@@ -197,7 +198,8 @@ void InitializeSynopsis(void)
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:";
     synopsis[i++] = "";
     synopsis[i++] = "[width, height, fovPort] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
-    //synopsis[i++] = "[width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat);";
+    synopsis[i++] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId);";
+    synopsis[i++] = "[width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat);";
     //synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
     //synopsis[i++] = "texObjectHandle = PsychOpenXRCore('CreateMirrorTexture', openxrPtr, width, height);";
     synopsis[i++] = "[hmdShiftx, hmdShifty, hmdShiftz] = PsychOpenXRCore('GetUndistortionParameters', openxrPtr, eye);";
@@ -450,10 +452,9 @@ void PsychOpenXRCheckInit(psych_bool dontfail)
     // Initialize connection to OpenXR runtime by creating our xrInstance:
     result = xrCreateInstance(&instanceCreateInfo, &xrInstance);
     if (resultOK(result)) {
-        XrInstanceProperties instanceProperties = {
-            .type = XR_TYPE_INSTANCE_PROPERTIES,
-            .next = NULL
-        };
+        memset(&instanceProperties, 0, sizeof(instanceProperties));
+        instanceProperties.type = XR_TYPE_INSTANCE_PROPERTIES;
+        instanceProperties.next = NULL;
 
         result = xrGetInstanceProperties(xrInstance, &instanceProperties);
         if (!resultOK(result))
@@ -714,8 +715,8 @@ PsychError PSYCHOPENXRGetCount(void)
 // TODO
 PsychError PSYCHOPENXROpen(void)
 {
-    static char useString[] = "[openxrPtr, modelName] = PsychOpenXRCore('Open' [, deviceIndex=0][, multiThreaded=0]);";
-    //                          1          2                                      1                2
+    static char useString[] = "[openxrPtr, modelName, runtimeName] = PsychOpenXRCore('Open' [, deviceIndex=0][, multiThreaded=0]);";
+    //                          1          2          3                                        1                2
     static char synopsisString[] =
         "Open connection to OpenXR HMD, return a 'openxrPtr' handle to it.\n\n"
         "The call tries to open the HMD with index 'deviceIndex', or the first detected "
@@ -725,7 +726,8 @@ PsychError PSYCHOPENXROpen(void)
         "'multiThreaded' if provided as non-zero value, will use an asynchronous presenter thread "
         "to improve stimulus scheduling. Highly experimental: Does not work in many cases!\n"
         "The returned handle can be passed to the other subfunctions to operate the device.\n"
-        "A second return argument 'modelName' returns the model name string of the OpenXR device.\n";
+        "'modelName' returns the model name string of the OpenXR device.\n"
+        "'runtimeName' returns the name of the OpenXR runtime.\n";
     static char seeAlsoString[] = "GetCount Close";
 
     XrResult result;
@@ -740,7 +742,7 @@ PsychError PSYCHOPENXROpen(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(2));
 
     // Make sure driver is initialized:
@@ -828,6 +830,9 @@ PsychError PSYCHOPENXROpen(void)
 
     // Return product name:
     PsychCopyOutCharArg(2, kPsychArgOptional, (const char*) availableSystems[deviceIndex].systemName);
+
+    // Return OpenXR runtime name:
+    PsychCopyOutCharArg(3, kPsychArgOptional, (const char*) instanceProperties.runtimeName);
 
     return(PsychError_none);
 }
@@ -1899,10 +1904,27 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
 // TODO
 PsychError PSYCHOPENXRCreateAndStartSession(void)
 {
-    static char useString[] = "PsychOpenXRCore('CreateAndStartSession', openxrPtr);";
-    //                                                                  1
+    static char useString[] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId);";
+    //                          1                                                                1          2              3              4               5             6
     static char synopsisString[] =
-    "Create, initialize and start XR session for OpenXR device 'openxrPtr'.\n";
+    "Create, initialize and start XR session for OpenXR device 'openxrPtr'.\n"
+    "The following parameters are needed to setup OpenGL <=> OpenXR interop. They "
+    "define the OpenGL context which will be used to share to-be-displayed image "
+    "textures, and its configuration, either using X11/GLX/XLib on Linux, or Win32 "
+    "windowing on Windows:\n"
+    "'deviceContext' OS specific device context: A X11 X-Server Display* on Linux, "
+    "the HDC used for WGL context creation on Windows.\n"
+    "'openGLContext' The OpenGL context handle, a GLXContext on Linux/X11/GLX, or a "
+    "HGLRC for Windows WGL.\n"
+    "'openGLDrawable' The GLXDrawable on Linux/X11/GLX, the HWND window handle on Windows.\n"
+    "'openGLConfig' The GLXFBConfig on Linux/X11/GLX, and zero (unused) on Windows.\n"
+    "'openGLVisualId' The X11 visual id used for creating the GLXFBConfig / GLXDrawable on "
+    "Linux/X11/GLX, zero (unused) on Windows.\n"
+    "\n"
+    "Returns the following information:\n"
+    "'videoRefreshDuration' Video refresh duration in seconds of the XR display device if "
+    "available. If the info can't be queried a fallback value of 0.011 secs for a 90 Hz "
+    "refresh rate is returned as one of the most common values for consumer HMDs.\n";
     static char seeAlsoString[] = "Open Close";
 
     XrResult result;
@@ -1920,7 +1942,7 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(0));
+    PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(6));
     PsychErrorExit(PsychRequireNumInputArgs(6));
 
@@ -2010,6 +2032,9 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
     // Assume the timeout for the compositor thinking we are unresponsive is 2 HMD frame durations:
     openxr->VRtimeoutSecs = 2 * openxr->frameDuration;
+
+    // Return video refresh duration of the XR display:
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, openxr->frameDuration);
 
     if (verbosity > 3)
         printf("PsychOpenXRCore-INFO: OpenXR session created for XR device with OpenGL rendering.\n");
