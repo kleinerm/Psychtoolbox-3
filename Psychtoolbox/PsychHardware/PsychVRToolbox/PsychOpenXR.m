@@ -1207,12 +1207,12 @@ if strcmpi(cmd, 'Open')
     fprintf('Khronos under Apache 2.0 and MIT license: SPDX license identifier “Apache-2.0 OR MIT”\n\n');
   end
 
-  [handle, modelName] = PsychOpenXRCore('Open', varargin{:});
+  [handle, modelName, runtimeName] = PsychOpenXRCore('Open', varargin{:});
 
   newhmd.handle = handle;
   newhmd.driver = @PsychOpenXR;
   newhmd.type   = 'OpenXR';
-  newhmd.subtype = 'OpenXR-1';
+  newhmd.subtype = runtimeName;
   newhmd.open = 1;
   newhmd.modelName = modelName;
   newhmd.separateEyePosesSupported = 0;
@@ -1727,11 +1727,11 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Create and startup XR session, based on the Screen() OpenGL interop info in 'gli':
   gli = Screen('GetWindowInfo', win, 9);
-  PsychOpenXRCore('CreateAndStartSession', hmd{handle}.handle, gli.DeviceContext, gli.OpenGLContext, gli.OpenGLDrawable, gli.OpenGLConfig, gli.OpenGLVisualId);
+  [hmd{handle}.videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', hmd{handle}.handle, gli.DeviceContext, gli.OpenGLContext, gli.OpenGLDrawable, ...
+                                                                                gli.OpenGLConfig, gli.OpenGLVisualId)
 
-  % Set override window parameters with pixel size (color depth) and refresh
-  % interval in seconds as provided by the VR runtime:
-  % TODO Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, hmd{handle}.videoRefreshDuration);
+  % Set override window parameters with pixel size (color depth) and refresh interval as provided by the XR runtime:
+  Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, hmd{handle}.videoRefreshDuration);
 
   % Left eye / mono chain:
   [width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag);
