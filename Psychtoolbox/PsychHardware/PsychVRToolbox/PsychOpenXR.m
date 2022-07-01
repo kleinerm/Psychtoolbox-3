@@ -61,13 +61,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 % defined are the following strings which can be combined into a single
 % 'basicRequirements' string:
 %
-% 'DebugDisplay' = Show the output which is displayed on the HMD inside the
-% Psychtoolbox onscreen window as well. This will have a negative impact on
-% performance, latency and timing of the HMD visual presentation, so should only
-% be used for debugging, as it may cause a seriously degraded VR experience.
-% By default, no such debug output is produced and the Psychtoolbox onscreen
-% window is not actually displayed on the desktop.
-%
 % 'Float16Display' = Request rendering, compositing and display in 16 bpc float
 % format. This will ask Psychtoolbox to render and post-process stimuli in 16 bpc
 % linear floating point format, and allocate 16 bpc half-float textures as final
@@ -639,21 +632,9 @@ if cmd == 0
   t2 = GetSecs;
 
   % Define parameters for the ongoing Psychtoolbox onscreen window flip operation:
-  if hmd{handle}.mirrorTexture > 0
-    % Debug output of compositor mirror texture into PTB onscreen window requested.
-    % - Ask to skip flip's regular OpenGL swap completion timestamping, but instead
-    %   to accept future injected timestamps from us.
-    %
-    % - Ask to disable vsync of the OpenGL bufferswap for display of the mirror texture
-    %   in the onscreen window. We don't want to get swap-throttled to the refresh rate
-    %   of the operator desktop GUI display.
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipVsyncForFlipOnce + kPsychSkipTimestampingForFlipOnce);
-  else
-    % No debug output from VR compositor wanted. Skip the OpenGL bufferswap for the
-    % onscreen window completely, ergo also skip timestamping and allow timestamp
-    % injection from us instead:
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
-  end
+  % Skip the OpenGL bufferswap for the onscreen window completely, ergo also skip
+  % timestamping and allow timestamp injection from us instead:
+  Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipFlags', '', kPsychSkipWaitForFlipOnce + kPsychSkipSwapForFlipOnce + kPsychSkipTimestampingForFlipOnce);
 
   t3 = GetSecs;
 
@@ -671,8 +652,7 @@ if cmd == 0
 end
 
 % Fast-Path function 'PresentFrame' - Present frame to VR compositor,
-% wait for present completion, render debug mirror texture if needed,
-% inject present completion timestamps:
+% wait for present completion, inject present completion timestamps:
 if cmd == 1
   handle = varargin{1};
   tWhen = varargin{2};
@@ -698,37 +678,6 @@ if cmd == 1
 
   t3 = GetSecs;
 
-  % Debug output from mirror texture requested?
-  mirrorTex = hmd{handle}.mirrorTexture;
-  if mirrorTex > 0
-    % Yes. Render into onscreen windows viewport:
-    width = hmd{handle}.mirrorWidth;
-    height = hmd{handle}.mirrorHeight;
-    glViewport(0, 0, width, height);
-    glMatrixMode(GL.PROJECTION);
-    glPushMatrix;
-    glLoadIdentity;
-    gluOrtho2D(0, width, 0, height);
-    glBindTexture(GL.TEXTURE_2D, mirrorTex);
-    glEnable(GL.TEXTURE_2D);
-    glBegin(GL.QUADS);
-    glColor4f(1,1,1,1);
-    glTexCoord2f(0,1);
-    glVertex2i(0,0);
-    glTexCoord2f(1,1);
-    glVertex2i(width,0);
-    glTexCoord2f(1,0);
-    glVertex2i(width,height);
-    glTexCoord2f(0,0);
-    glVertex2i(0,height);
-    glEnd();
-    glDisable(GL.TEXTURE_2D);
-    glBindTexture(GL.TEXTURE_2D, 0);
-    glPopMatrix;
-    glMatrixMode(GL.MODELVIEW);
-  end
-  t4 = GetSecs;
-
   if hmd{handle}.doTimestamp
     % Assign return values for vblTime and stimulusOnsetTime for Screen('Flip'):
     if refFrameIndex > 0
@@ -742,9 +691,9 @@ if cmd == 1
     %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs, GetSecs);
     Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
   end
-  t5 = GetSecs;
+  t4 = GetSecs;
 
-  %fprintf('Present %f ms, Get/Set %f ms, Mirror %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3), 1000 * (t5 - t4));
+  %fprintf('Present %f ms, Get/Set %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
   %disp(frameTiming(1));
   % dT = 1e3 * (frameTiming(1).HMDTime - frameTiming(1).StimulusOnsetTime)
   frameTiming = [];
@@ -1812,17 +1761,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % are cleared to black:
   Screen('FillRect', win, clearcolor);
 
-  % Store true size of onscreen window as mirrorWidth x mirrorHeight:
-  winGRect = Screen('GlobalRect', win);
-  hmd{handle}.mirrorWidth = RectWidth(winGRect);
-  hmd{handle}.mirrorHeight = RectHeight(winGRect);
-
   % Debug display of HMD output into onscreen window requested?
   if ~isempty(strfind(hmd{handle}.basicRequirements, 'DebugDisplay'))
-    % Yes. Create OpenGL mirror texture which receives VR compositor images:
-    hmd{handle}.mirrorTexture = 0; % TODO Not supported by OpenXR yet: PsychOpenXRCore('CreateMirrorTexture', hmd{handle}.handle, hmd{handle}.panelXRes, hmd{handle}.panelYRes);
-  else
-    hmd{handle}.mirrorTexture = 0;
+    % TODO Not supported by OpenXR yet.
   end
 
   % Need to call the PsychOpenXR(0) callback at each Screen('Flip') to get the
