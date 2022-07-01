@@ -82,7 +82,6 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("StringProperty", &PSYCHOPENXRStringProperty));
     PsychErrorExit(PsychRegister("CreateRenderTextureChain", &PSYCHOPENXRCreateRenderTextureChain));
     PsychErrorExit(PsychRegister("GetNextTextureHandle", &PSYCHOPENXRGetNextTextureHandle));
-    PsychErrorExit(PsychRegister("CreateMirrorTexture", &PSYCHOPENXRCreateMirrorTexture));
     PsychErrorExit(PsychRegister("CreateAndStartSession", &PSYCHOPENXRCreateAndStartSession));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENXR));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENXR));
