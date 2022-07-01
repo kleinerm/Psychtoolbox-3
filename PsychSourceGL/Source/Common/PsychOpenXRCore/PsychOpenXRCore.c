@@ -90,7 +90,6 @@ typedef struct PsychOpenXRDevice {
     XrSession                   hmd;
     //ovrTextureSwapChain       textureSwapChain[2];
     int                         textureSwapChainLength;
-    //ovrMirrorTexture          mirrorTexture;
     psych_bool                  isStereo;
     int                         textureWidth;
     int                         textureHeight;
@@ -198,11 +197,10 @@ void InitializeSynopsis(void)
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:";
     synopsis[i++] = "";
     synopsis[i++] = "[width, height, fovPort] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
+    synopsis[i++] = "[hmdShiftx, hmdShifty, hmdShiftz] = PsychOpenXRCore('GetUndistortionParameters', openxrPtr, eye);";
     synopsis[i++] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId);";
     synopsis[i++] = "[width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat);";
     //synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
-    //synopsis[i++] = "texObjectHandle = PsychOpenXRCore('CreateMirrorTexture', openxrPtr, width, height);";
-    synopsis[i++] = "[hmdShiftx, hmdShifty, hmdShiftz] = PsychOpenXRCore('GetUndistortionParameters', openxrPtr, eye);";
     //synopsis[i++] = "trackers = PsychOpenXRCore('GetTrackersState', openxrPtr);";
     //synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr, targetPresentTime);";
     //synopsis[i++] = "[frameTiming, tPredictedOnset, referenceFrameIndex] = PsychOpenXRCore('PresentFrame', openxrPtr [, doTimestamp=0][, when=0]);";
@@ -586,11 +584,6 @@ void PsychOpenXRClose(int handle)
                 openxr->textureSwapChain[1] = NULL;
             }
 
-            // Destroy mirror texture if any:
-            if (openxr->mirrorTexture) {
-                ovr_DestroyMirrorTexture(openxr->hmd, openxr->mirrorTexture);
-                openxr->mirrorTexture = NULL;
-            }
         */
 
         // Close the HMD aka XrSession:
@@ -2218,87 +2211,6 @@ PsychError PSYCHOPENXRGetNextTextureHandle(void)
     // Return texture object handle:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) texObjectHandle);
 
-    return(PsychError_none);
-}
-
-// TODO
-PsychError PSYCHOPENXRCreateMirrorTexture(void)
-{
-    static char useString[] = "texObjectHandle = PsychOpenXRCore('CreateMirrorTexture', openxrPtr, width, height);";
-    //                         1                                                           1          2      3
-    static char synopsisString[] =
-    "Create mirror texture for OpenXR device 'openxrPtr'.\n"
-    "A mirror texture is a auto-updating texture which receives the same image content "
-    "which is sent to the HMD for display. It can be used for displaying a debug image "
-    "on the regular windowing system, ie., inside a regular Psychtoolbox onscreen window.\n"
-    "'width' and 'height' are the width x height of the texture into which "
-    "the VR compositor will render the output image which is also sent to the HMD.\n"
-    "'texObjectHandle' returns the OpenGL texture handle for accessing the mirror texture.\n";
-    static char seeAlsoString[] = "";
-/*
-    int handle;
-    int width, height;
-    unsigned int texObjectHandle;
-    PsychOpenXRDevice *openxr;
-    ovrMirrorTextureDesc mirrorDesc;
-
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
-
-    // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(3));
-    PsychErrorExit(PsychRequireNumInputArgs(3));
-
-    // Make sure driver is initialized:
-    PsychOpenXRCheckInit(FALSE);
-
-    // Get device handle:
-    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
-    openxr = PsychGetXR(handle, FALSE);
-
-    // Get texture dimensions:
-    PsychCopyInIntegerArg(2, kPsychArgRequired, &width);
-    if (width < 1)
-        PsychErrorExitMsg(PsychError_user, "Invalid width, smaller than 1 texel!");
-
-    PsychCopyInIntegerArg(3, kPsychArgRequired, &height);
-    if (height < 1)
-        PsychErrorExitMsg(PsychError_user, "Invalid height, smaller than 1 texel!");
-
-    if (openxr->mirrorTexture)
-        PsychErrorExitMsg(PsychError_user, "Tried to create already created mirror texture.");
-
-    // Build OpenGL texture chain descriptor:
-    memset(&mirrorDesc, 0, sizeof(mirrorDesc));
-    mirrorDesc.Format = OVR_FORMAT_R8G8B8A8_UNORM_SRGB;
-    mirrorDesc.MiscFlags = ovrTextureMisc_None;
-    mirrorDesc.Width = width;
-    mirrorDesc.Height = height;
-
-    // Create mirror texture:
-    PsychLockMutex(&(openxr->presenterLock));
-
-    if (OVR_FAILURE(ovr_CreateMirrorTextureGL(openxr->hmd, &mirrorDesc, &openxr->mirrorTexture))) {
-        ovr_GetLastErrorInfo(&errorInfo);
-        if (verbosity > 0) printf("PsychOpenXRCore-ERROR: ovr_CreateMirrorTextureGL failed: %s\n", errorInfo.ErrorString);
-        PsychUnlockMutex(&(openxr->presenterLock));
-        PsychErrorExitMsg(PsychError_system, "Failed to create mirror texture for VR compositor.");
-    }
-
-    if (OVR_FAILURE(ovr_GetMirrorTextureBufferGL(openxr->hmd, openxr->mirrorTexture, &texObjectHandle))) {
-        ovr_GetLastErrorInfo(&errorInfo);
-        if (verbosity > 0) printf("PsychOpenXRCore-ERROR: ovr_GetMirrorTextureBufferGL failed: %s\n", errorInfo.ErrorString);
-        PsychUnlockMutex(&(openxr->presenterLock));
-        PsychErrorExitMsg(PsychError_system, "Failed to get OpenGL texture handle of mirror texture for VR compositor.");
-    }
-
-    PsychUnlockMutex(&(openxr->presenterLock));
-
-    // Return texture object handle:
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) texObjectHandle);
-*/
     return(PsychError_none);
 }
 

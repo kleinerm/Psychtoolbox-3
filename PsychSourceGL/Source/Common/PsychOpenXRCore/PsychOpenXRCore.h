@@ -70,7 +70,6 @@ PsychError PSYCHOPENXRGetInputState(void);
 PsychError PSYCHOPENXRGetFovTextureSize(void);
 PsychError PSYCHOPENXRCreateRenderTextureChain(void);
 PsychError PSYCHOPENXRGetNextTextureHandle(void);
-PsychError PSYCHOPENXRCreateMirrorTexture(void);
 PsychError PSYCHOPENXRGetUndistortionParameters(void);
 PsychError PSYCHOPENXRGetStaticRenderParameters(void);
 PsychError PSYCHOPENXRGetTrackersState(void);
