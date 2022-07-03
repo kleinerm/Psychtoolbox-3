@@ -618,7 +618,7 @@ PsychError SCREENGetImage(void)
         framepixels = PsychGetVideoFrameForMoviePtr(moviehandle, &twidth, &theight, &numChannels, &bitdepth);
         if (framepixels) {
             glPixelStorei(GL_PACK_ALIGNMENT,1);
-            invertedY = (int) (windowRect[kPsychBottom] - sampleRect[kPsychBottom]);
+            invertedY = (int) (windowRect[kPsychBottom] - (sampleRect[kPsychTop] + theight));
 
             if (isOES) {
                 if (bitdepth != 8) PsychErrorExitMsg(PsychError_user, "AddFrameToMovie failed due to wrong bpc value. Only 8 bpc supported on OpenGL-ES.");
