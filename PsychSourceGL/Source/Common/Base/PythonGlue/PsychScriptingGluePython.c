@@ -127,28 +127,7 @@ static PyMethodDef GlobalPythonMethodsTable[] = {
     {NULL, NULL, 0, NULL}
 };
 
-// Python 2 init code -- Python 2.6+ is required for PTB modules:
-#if PY_MAJOR_VERSION < 3
-#define _PPYINIT(n) PyMODINIT_FUNC init ## n(void)
-
-// This is the entry point - module init function, called at module import:
-// PTBMODULENAME is -DPTBMODULENAME myname defined by the build script to the
-// name of the module, e.g., GetSecs.
-PPYINIT(PTBMODULENAME)
-{
-    modulefilename[0] = 0;
-
-    // Add a help string with module synopsis to 1st function - our main dispatch function:
-    GlobalPythonMethodsTable[0].ml_doc = PsychBuildSynopsisString(PPYNAME(PTBMODULENAME));
-
-    // Initialize module:
-    module = Py_InitModule(PPYNAME(PTBMODULENAME), GlobalPythonMethodsTable);
-}
-// End of Python 2.x specific init code
-#endif
-
 // Python 3 init code:
-#if PY_MAJOR_VERSION >= 3
 #define _PPYINIT(n) PyMODINIT_FUNC PyInit_ ## n(void)
 
 // Defined in PsychScriptingGluePython.c
@@ -200,9 +179,6 @@ PPYINIT(PTBMODULENAME)
     return(module);
 }
 
-// End of Python 3.x specific init code
-#endif
-
 // END OF MODULE INITIALIZATION FOR PYTHON:
 
 // Return filename of the module definition file - the shared library:
@@ -210,11 +186,7 @@ const char* PsychGetPyModuleFilename(void)
 {
     // Get full filesystem path/name of the module definition file, ie. the library:
     if (module && !modulefilename[0]) {
-        #if PY_MAJOR_VERSION >= 3
-            PyObject *fname = PyModule_GetFilenameObject(module);
-        #else
-            PyObject *fname = NULL;
-        #endif
+        PyObject *fname = PyModule_GetFilenameObject(module);
 
         if (fname)
             mxGetString(fname, modulefilename, sizeof(modulefilename) - 1);
@@ -462,10 +434,6 @@ PyObject* mxCreateString(const char* instring)
     #endif
 
     if (!ret) {
-        #if PY_MAJOR_VERSION < 3
-        // Fallback to standard C string decoding:
-        ret = PyString_FromString(instring);
-        #else
         // Try decoding assuming current system locale setting:
         ret = PyUnicode_DecodeLocale(instring, "surrogateescape");
         PyErr_Clear();
@@ -483,7 +451,6 @@ PyObject* mxCreateString(const char* instring)
             ret = PyUnicode_DecodeFSDefault(instring);
             PyErr_Clear();
         }
-        #endif
     }
 
     if (!ret) {
@@ -585,18 +552,13 @@ int mxGetString(PyObject* arrayPtr, char* outstring, int outstringsize)
     if (!mxIsChar(arrayPtr))
         PsychErrorExitMsg(PsychError_internal, "FATAL Error: Tried to convert a non-string into a string!");
 
-    #if PY_MAJOR_VERSION < 3
-        // Python 2: Gives a new reference to a unicode object. Converts bytes -> unicode as needed:
-        arrayPtr = PyObject_Unicode(arrayPtr);
-    #else
-        // Python 3: No PyObject_Unicode(), distinguish unicode input vs. bytes 8-bit legacy string input:
-        if (PyUnicode_Check(arrayPtr))
-            // Provide it as Latin1 8-bit "bytes" string from unicode, giving a new reference:
-            arrayPtr = PyUnicode_AsLatin1String(arrayPtr);
-        else
-            // Is already a 8-bit "bytes" string. Increment refcount, to counteract decref below:
-            Py_INCREF(arrayPtr);
-    #endif
+    // Python 3: No PyObject_Unicode(), distinguish unicode input vs. bytes 8-bit legacy string input:
+    if (PyUnicode_Check(arrayPtr))
+        // Provide it as Latin1 8-bit "bytes" string from unicode, giving a new reference:
+        arrayPtr = PyUnicode_AsLatin1String(arrayPtr);
+    else
+        // Is already a 8-bit "bytes" string. Increment refcount, to counteract decref below:
+        Py_INCREF(arrayPtr);
 
     // Got a 8-bit "bytes" string?
     if (arrayPtr) {
@@ -810,19 +772,11 @@ static psych_bool firstTime = TRUE;
 PsychError PsychExitPythonGlue(void);
 void ScreenCloseAllWindows(void);
 
-// Is this awful, or what? Hackery needed to handle NumPy for Python 3 vs 2:
-#if PY_MAJOR_VERSION >= 3
 void* init_numpy(void)
 {
     import_array();
     return(NULL);
 }
-#else
-void init_numpy(void)
-{
-    import_array();
-}
-#endif
 
 void PsychExitRecursion(void)
 {
@@ -2870,7 +2824,7 @@ double PsychGetNanValue(void)
  * getConfigDir = FALSE => Return PsychtoolboxRoot().
  *
  * This function may fail to retrieve the path, in which case it returns an empty null-terminated string, i.e., strlen() == 0.
- * On successfull recovery of the path, returns a const char* to a readonly string which encodes the path.
+ * On successful recovery of the path, returns a const char* to a readonly string which encodes the path.
  *
  */
 const char* PsychRuntimeGetPsychtoolboxRoot(psych_bool getConfigDir)
