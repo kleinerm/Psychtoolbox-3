@@ -54,14 +54,25 @@
 // in February 2013:
 #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
 #include <numpy/arrayobject.h>
-// Define after include, to avoid compiler warning and pass runtime loader compat check:
-#undef NPY_FEATURE_VERSION
-#define NPY_FEATURE_VERSION NPY_1_7_API_VERSION
 
-// Can not use NPY_TITLE_KEY macro if compat limited api is selected.
-// However, i have no clue what we'd use it for, so there...
-#ifdef Py_LIMITED_API
-#undef NPY_TITLE_KEY
+#if defined(Py_LIMITED_API) && defined(__GNUC__) && (__GNUC__ < 10)
+/* Workaround from https://github.com/lpsinger/ligo.skymap/blob/v0.5.3/src/core.c#L21
+ *
+ * FIXME:
+ * The Numpy C-API defines PyArrayDescr_Type as:
+ *
+ *   #define PyArrayDescr_Type (*(PyTypeObject *)PyArray_API[3])
+ *
+ * and then in some places we need to take its address, &PyArrayDescr_Type.
+ * This is fine in GCC 10 and Clang, but earlier versions of GCC complain:
+ *
+ *   error: dereferencing pointer to incomplete type 'PyTypeObject'
+ *   {aka 'struct _typeobject'}
+ *
+ * As a workaround, provide a faux forward declaration for PyTypeObject.
+ * See https://github.com/numpy/numpy/issues/16970.
+ */
+struct _typeobject {};
 #endif
 
 // Define this to 1 if you want lots of debug-output for the Python-Scripting glue.
@@ -440,6 +451,7 @@ PyObject* mxCreateString(const char* instring)
 
         // Retry with strict error handler, because of backwards incompatible
         // change in Python 3.6 -> 3.7 (sigh):
+        #ifndef Py_LIMITED_API
         if (!ret) {
             ret = PyUnicode_DecodeLocale(instring, "strict");
             PyErr_Clear();
@@ -451,6 +463,7 @@ PyObject* mxCreateString(const char* instring)
             ret = PyUnicode_DecodeFSDefault(instring);
             PyErr_Clear();
         }
+        #endif
     }
 
     if (!ret) {
@@ -2625,7 +2638,7 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         if (PyUnicode_Check(ppyPtr))
-            strLen = (psych_uint64) PyUnicode_GetSize(ppyPtr) + 1;
+            strLen = (psych_uint64) PyUnicode_GetLength(ppyPtr) + 1;
         else
             strLen = (psych_uint64) PyBytes_Size(ppyPtr) + 1;
 
@@ -3027,24 +3040,18 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
  * Simple function evaluation by the Python scripting environment.
  * This asks the runtime environment to execute/evaluate the given string 'cmdstring',
  * passing no return arguments back, except an error code.
- *
- * CAUTION: If Py_LIMITED_API is used for being able to build one set of modules
- *          for all Python 3.2+ versions, then this function will not work / be
- *          unavailable!
  */
 int PsychRuntimeEvaluateString(const char* cmdstring)
 {
-#ifndef Py_LIMITED_API
-    PyObject* res;
-    res = PyRun_String(cmdstring, Py_file_input, PyEval_GetGlobals(), PyEval_GetLocals());
-    if (res) {
-        // Success! We don't have a use for the res'ults object yet, so just unref it:
-        Py_XDECREF(res);
-        return(0);
+    PyObject* code = Py_CompileString(cmdstring, "PTB", Py_file_input);
+    if (code) {
+        PyObject* res = PyEval_EvalCode(code, PyEval_GetGlobals(), PyEval_GetLocals());
+        Py_DECREF(code);
+        if (res) {
+            Py_DECREF(res);
+            return(0);
+        }
     }
-#else
-	printf("PTB-WARNING: Module tried to call PsychRuntimeEvaluateString(%s),\nwhich is *unsupported* in Py_LIMITED_API mode!!!\n", cmdstring);
-#endif
     // Failed:
     return(-1);
 }

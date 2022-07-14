@@ -3,12 +3,39 @@
 # (c) 2018 Mario Kleiner - Licensed under MIT license.
 #
 
+# To build Python extensions/wheels, you'll want pip >= 10.0 for pyproject.toml support.
+# This file will allow pip to automatically download the required build dependencies (i.e. numpy).
+# To build this wheel locally into the dist/ directory, you could use the following
+# (assuming the current working directory is next to the setup.py file):
+#
+# > pip wheel . -w dist
+#
+# (see https://pip.pypa.io/en/stable/cli/pip_wheel/ for all options)
+#
+# To build and install in the same step:
+#
+# > pip install .
+#
+# (see https://pip.pypa.io/en/stable/cli/pip_install/ for all options)
+#
+# If you wish to build wheels for distribution, you may want to compile with Python's Limited API
+# enabled. The resulting wheel can be used across multiple Python releases (see
+# https://docs.python.org/3/c-api/stable.html for details).
+# This requires Python >= 3.7, and PTB_LIMITED_WHEEL must be set to 1. For example,
+#
+# > PTB_LIMITED_WHEEL=1 pip wheel . -w dist
+#
+# Will produce a wheel that will work for Python versions >= 3.7.
+# It is recommended to compile these on the oldest supported Python version (i.e. 3.7).
+
 # from distutils.core import setup, Extension # Build system.
 from setuptools import setup, Extension, find_packages
 import os, fnmatch, shutil                  # Directory traversal, file list building.
 import platform                             # OS detection.
 import sys                                  # cpu arch detection.
 import numpy                                # To get include dir on macOS.
+
+from wheel.bdist_wheel import bdist_wheel
 
 is_64bits = sys.maxsize > 2**32
 
@@ -59,10 +86,21 @@ def get_basesources(name, osname):
 # Treating some special cases like Octave seems to be the right thing to do,
 # PSYCH_LANGUAGE setting is self-explanatory:
 base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON')]
-# Disabled: This would enable Py_LIMITED_API, to allow to build one set of modules for all versions of
-# Python >= 3.2. The downside is loss of important functionality [PsychRuntimeEvaluateString()) does not work!].
-# Also, we have build failure on at least Ubuntu 18.04 LTS with Python 3.6, so it is a no-go on Linux for now!
-#base_macros = [('PTBOCTAVE3MEX', None), ('PSYCH_LANGUAGE', 'PSYCH_PYTHON'), ('Py_LIMITED_API', None)]
+
+# if desired by wheel-builder and building on py >= 3.7, build as a limited API wheel.
+if sys.version_info >= (3, 7) and os.environ.get('PTB_LIMITED_WHEEL') == '1':
+    base_macros.append(('Py_LIMITED_API', '0x03070000'))
+    py_limited_api = True
+    # https://github.com/joerick/python-abi3-package-sample/blob/7f05b22b9e0cfb4e60293bc85252e95278a80720/setup.py#L5
+    class bdist(bdist_wheel):
+        def get_tag(self):
+            py, abi, plat = super().get_tag()
+            if py.startswith('cp'):
+                return 'cp37', 'abi3', plat
+            return py, abi, plat
+else:
+    py_limited_api = False
+    bdist = bdist_wheel
 
 # Common infrastructure and the scripting glue module for interfacing with the Python runtime:
 basefiles_common = get_sourcefiles('./PsychSourceGL/Source/Common/Base') + ['PsychSourceGL/Source/Common/Base/PythonGlue/PsychScriptingGluePython.c']
@@ -195,6 +233,7 @@ GetSecs = Extension(name,
                     include_dirs = get_baseincludedirs(name, osname),
                     sources = get_basesources(name, osname),
                     libraries = base_libs,
+                    py_limited_api = py_limited_api,
                    )
 ext_modules.append(GetSecs)
 
@@ -205,7 +244,8 @@ WaitSecs = Extension(name,
                      define_macros = get_basemacros(name, osname),
                      include_dirs = get_baseincludedirs(name, osname),
                      sources = get_basesources(name, osname),
-                     libraries = base_libs
+                     libraries = base_libs,
+                     py_limited_api = py_limited_api,
                      )
 ext_modules.append(WaitSecs)
 
@@ -221,7 +261,8 @@ if is_64bits or platform.system() == 'Linux':
                                library_dirs = audio_libdirs,
                                libraries = base_libs + audio_libs,
                                extra_link_args = audio_extralinkargs,
-                               extra_objects = audio_objects
+                               extra_objects = audio_objects,
+                               py_limited_api = py_limited_api,
                                )
     ext_modules.append(PsychPortAudio)
 
@@ -234,7 +275,8 @@ PsychHID = Extension(name,
                      sources = get_basesources(name, osname),
                      library_dirs = psychhid_libdirs,
                      libraries = base_libs + psychhid_libs,
-                     extra_objects = psychhid_extra_objects
+                     extra_objects = psychhid_extra_objects,
+                     py_limited_api = py_limited_api,
                     )
 ext_modules.append(PsychHID)
 
@@ -245,7 +287,8 @@ IOPort = Extension(name,
                    define_macros = get_basemacros(name, osname),
                    include_dirs = get_baseincludedirs(name, osname),
                    sources = get_basesources(name, osname),
-                   libraries = base_libs
+                   libraries = base_libs,
+                   py_limited_api = py_limited_api,
                   )
 ext_modules.append(IOPort)
 
@@ -263,7 +306,8 @@ setup (name = 'psychtoolbox',
        ext_package = 'psychtoolbox',
        ext_modules = ext_modules,
        include_package_data=True,  # Include files listed in MANIFEST.in
-       install_requires = ['numpy>=1.7'],
+       install_requires = ['numpy>=1.16.5'], # https://github.com/numpy/numpy/pull/13725
+       cmdclass={"bdist_wheel": bdist},
       )
 
 if platform.system() == 'Windows':
