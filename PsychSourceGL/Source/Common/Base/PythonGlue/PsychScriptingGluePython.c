@@ -50,18 +50,18 @@
 
 #if PSYCH_LANGUAGE == PSYCH_PYTHON
 
-// Import NumPy array handling functions: Require at least NumPy v 1.7, released
-// in February 2013:
-#define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+// Import NumPy array handling functions: Require at least NumPy v 1.13.0, released
+// in June 2017:
+#define NPY_NO_DEPRECATED_API NPY_1_13_API_VERSION
 #include <numpy/arrayobject.h>
-// Define after include, to avoid compiler warning and pass runtime loader compat check:
-#undef NPY_FEATURE_VERSION
-#define NPY_FEATURE_VERSION NPY_1_7_API_VERSION
 
-// Can not use NPY_TITLE_KEY macro if compat limited api is selected.
-// However, i have no clue what we'd use it for, so there...
-#ifdef Py_LIMITED_API
-#undef NPY_TITLE_KEY
+#if defined(Py_LIMITED_API) && defined(__GNUC__) && (__GNUC__ < 10)
+#error \
+"This version of gcc has a bug and cannot compile this code \
+with Py_LIMITED_API enabled. Either build without Py_LIMITED_API \
+or upgrade gcc to a version >= 10.1 and try again. Ubuntu 20.04, \
+e.g., ships a suitable compiler package named gcc-10. \
+See https://github.com/numpy/numpy/issues/16970 for details."
 #endif
 
 // Define this to 1 if you want lots of debug-output for the Python-Scripting glue.
@@ -438,6 +438,11 @@ PyObject* mxCreateString(const char* instring)
         ret = PyUnicode_DecodeLocale(instring, "surrogateescape");
         PyErr_Clear();
 
+        // If Py_LIMITED_API is enabled, it means we're compiling on
+        // at least Python 3.7. If that's the case, we can skip the
+        // next two checks, which deal with incompatibilties in earlier
+        // Python versions
+        #ifndef Py_LIMITED_API
         // Retry with strict error handler, because of backwards incompatible
         // change in Python 3.6 -> 3.7 (sigh):
         if (!ret) {
@@ -451,6 +456,7 @@ PyObject* mxCreateString(const char* instring)
             ret = PyUnicode_DecodeFSDefault(instring);
             PyErr_Clear();
         }
+        #endif
     }
 
     if (!ret) {
@@ -2625,7 +2631,7 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
     if (acceptArg) {
         ppyPtr = (PyObject*) PsychGetInArgPyPtr(position);
         if (PyUnicode_Check(ppyPtr))
-            strLen = (psych_uint64) PyUnicode_GetSize(ppyPtr) + 1;
+            strLen = (psych_uint64) PyUnicode_GetLength(ppyPtr) + 1;
         else
             strLen = (psych_uint64) PyBytes_Size(ppyPtr) + 1;
 
@@ -3027,24 +3033,18 @@ psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variabl
  * Simple function evaluation by the Python scripting environment.
  * This asks the runtime environment to execute/evaluate the given string 'cmdstring',
  * passing no return arguments back, except an error code.
- *
- * CAUTION: If Py_LIMITED_API is used for being able to build one set of modules
- *          for all Python 3.2+ versions, then this function will not work / be
- *          unavailable!
  */
 int PsychRuntimeEvaluateString(const char* cmdstring)
 {
-#ifndef Py_LIMITED_API
-    PyObject* res;
-    res = PyRun_String(cmdstring, Py_file_input, PyEval_GetGlobals(), PyEval_GetLocals());
-    if (res) {
-        // Success! We don't have a use for the res'ults object yet, so just unref it:
-        Py_XDECREF(res);
-        return(0);
+    PyObject* code = Py_CompileString(cmdstring, "PTB", Py_file_input);
+    if (code) {
+        PyObject* res = PyEval_EvalCode(code, PyEval_GetGlobals(), PyEval_GetLocals());
+        Py_DECREF(code);
+        if (res) {
+            Py_DECREF(res);
+            return(0);
+        }
     }
-#else
-	printf("PTB-WARNING: Module tried to call PsychRuntimeEvaluateString(%s),\nwhich is *unsupported* in Py_LIMITED_API mode!!!\n", cmdstring);
-#endif
     // Failed:
     return(-1);
 }
