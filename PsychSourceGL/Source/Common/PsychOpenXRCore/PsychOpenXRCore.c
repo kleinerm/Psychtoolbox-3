@@ -53,6 +53,7 @@
 
 // We use OpenGL for all XR image rendering:
 #define XR_USE_GRAPHICS_API_OPENGL
+#include "../Screen/GL/glew.h"
 
 // On Linux we use XLib for X11/GLX interfacing to get our OpenGL rendering contexts:
 #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -80,33 +81,46 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
 // Our XR device record:
 typedef struct PsychOpenXRDevice {
-    psych_bool                  opened;
-    psych_bool                  closing;
-    psych_bool                  multiThreaded;
-    psych_thread                presenterThread;
-    psych_mutex                 presenterLock;
-    psych_condition             presentedSignal;
-    XrSystemId                  systemId;
-    XrSession                   hmd;
-    //ovrTextureSwapChain       textureSwapChain[2];
-    int                         textureSwapChainLength;
-    psych_bool                  isStereo;
-    int                         textureWidth;
-    int                         textureHeight;
-    psych_bool                  isTracking;
-    XrViewConfigurationType     viewType;
-    XrExtent2Di                 texSize[2];
-    XrFovf                      xrFov[2];
-    XrVector3f                  eyeShift[2];
-    uint32_t                    frameIndex;
-    int                         commitFrameIndex;
-    int                         needSubmit;
-    //ovrPosef                  outEyePoses[2];
-    double                      frameDuration;
-    double                      sensorSampleTime;
-    double                      lastPresentExecTime;
-    double                      scheduledPresentExecTime;
-    double                      VRtimeoutSecs;
+    psych_bool                          opened;
+    psych_bool                          closing;
+    psych_bool                          multiThreaded;
+    psych_thread                        presenterThread;
+    psych_mutex                         presenterLock;
+    psych_condition                     presentedSignal;
+    XrSystemId                          systemId;
+    XrSession                           hmd;
+    XrSwapchain                         textureSwapChain[2];
+    uint32_t                            textureSwapChainLength[2];
+    XrSwapchainImageOpenGLKHR*          textureSwapChainImages[2];
+    psych_bool                          isStereo;
+    int                                 textureWidth;
+    int                                 textureHeight;
+    int                                 maxWidth;
+    int                                 maxHeight;
+    int                                 recSamples;
+    int                                 maxSamples;
+    psych_bool                          isTracking;
+    XrViewConfigurationType             viewType;
+    XrExtent2Di                         texSize[2];
+    XrFovf                              xrFov[2];
+    XrVector3f                          eyeShift[2];
+    XrView                              view[2];
+    XrCompositionLayerProjectionView    projView[2];
+    XrCompositionLayerQuad              quadViewLayer[2];
+    XrSpace                             viewSpace;
+    XrSpace                             worldSpace;
+    XrCompositionLayerProjection        projectionLayer;
+    XrCompositionLayerBaseHeader*       submitLayers[2];
+    uint32_t                            submitLayersCount;
+    uint32_t                            frameIndex;
+    int                                 commitFrameIndex;
+    int                                 needSubmit;
+    //ovrPosef                          outEyePoses[2];
+    double                              frameDuration;
+    double                              sensorSampleTime;
+    double                              lastPresentExecTime;
+    double                              scheduledPresentExecTime;
+    double                              VRtimeoutSecs;
     //ovrPerfStats              perfStats;
 } PsychOpenXRDevice;
 
@@ -156,6 +170,12 @@ PFN_xrGetDisplayRefreshRateFB pxrGetDisplayRefreshRateFB = NULL;
     }                                                                                                                                                       \
 }
 
+// Neutral identityPose used for various purposes:
+static XrPosef identityPose = {
+    .orientation = { .x = 0, .y = 0, .z = 0, .w = 1.0 },
+    .position = { .x = 0, .y = 0, .z = 0 }
+};
+
 void InitializeSynopsis(void)
 {
     int i = 0;
@@ -196,13 +216,13 @@ void InitializeSynopsis(void)
     synopsis[i++] = "";
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:";
     synopsis[i++] = "";
-    synopsis[i++] = "[width, height, fovPort] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
+    synopsis[i++] = "[width, height, recMSAASamples, fovPort, maxWidth, maxHeight, maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
     synopsis[i++] = "[hmdShiftx, hmdShifty, hmdShiftz] = PsychOpenXRCore('GetUndistortionParameters', openxrPtr, eye);";
     synopsis[i++] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId);";
-    synopsis[i++] = "[width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat);";
-    //synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
+    synopsis[i++] = "[width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
+    synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
+    synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr [, eye]);";
     //synopsis[i++] = "trackers = PsychOpenXRCore('GetTrackersState', openxrPtr);";
-    //synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr, targetPresentTime);";
     //synopsis[i++] = "[frameTiming, tPredictedOnset, referenceFrameIndex] = PsychOpenXRCore('PresentFrame', openxrPtr [, doTimestamp=0][, when=0]);";
     synopsis[i++] = NULL; // Terminate synopsis strings.
 
@@ -572,19 +592,24 @@ void PsychOpenXRClose(int handle)
         // PresentExecute() a last time on the main thread:
         PresentExecute(openxr, FALSE, FALSE);
 
-        /*
-            // Destroy/Release texture swap chain to compositor:
-            if (openxr->textureSwapChain[0]) {
-                ovr_DestroyTextureSwapChain(openxr->hmd, openxr->textureSwapChain[0]);
-                openxr->textureSwapChain[0] = NULL;
-            }
+        // Destroy/Release texture swap chains to XR compositor:
+        if (openxr->textureSwapChain[0]) {
+            xrDestroySwapchain(openxr->textureSwapChain[0]);
+            openxr->textureSwapChain[0] = XR_NULL_HANDLE;
 
-            if (openxr->isStereo && openxr->textureSwapChain[1]) {
-                ovr_DestroyTextureSwapChain(openxr->hmd, openxr->textureSwapChain[1]);
-                openxr->textureSwapChain[1] = NULL;
-            }
+            free(openxr->textureSwapChainImages[0]);
+            openxr->textureSwapChainImages[0] = NULL;
+            openxr->textureSwapChainLength[0] = 0;
+        }
 
-        */
+        if (openxr->isStereo && openxr->textureSwapChain[1]) {
+            xrDestroySwapchain(openxr->textureSwapChain[1]);
+            openxr->textureSwapChain[1] = XR_NULL_HANDLE;
+
+            free(openxr->textureSwapChainImages[1]);
+            openxr->textureSwapChainImages[1] = NULL;
+            openxr->textureSwapChainLength[1] = 0;
+        }
 
         // Close the HMD aka XrSession:
         if (openxr->hmd)
@@ -1778,8 +1803,8 @@ PsychError PSYCHOPENXRGetInputState(void)
 // TODO
 PsychError PSYCHOPENXRGetFovTextureSize(void)
 {
-    static char useString[] = "[width, height, fovPort] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
-    //                          1      2       3                                               1          2      3                       4
+    static char useString[] = "[width, height, recMSAASamples, fovPort, maxWidth, maxHeight, maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
+    //                          1      2       3               4        5         6          7                                                      1          2      3                       4
     static char synopsisString[] =
     "Return recommended size of client renderbuffers for OpenXR device 'openxrPtr'.\n"
     "'eye' which eye to provide the size for: 0 = Left, 1 = Right.\n"
@@ -1792,7 +1817,12 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
     "\n"
     "Return values are 'width' for recommended width of framebuffer in pixels and 'height' for "
     "recommended height of framebuffer in pixels. 'fovPort' is the field of view in degrees "
-    "finally used for calculation of 'width' x 'height'.\n";
+    "finally used for calculation of 'width' x 'height'.\n"
+    "'maxWidth' and 'maxHeight' are the maximum width and height of the framebuffer in pixels, "
+    "as supported by the runtime.\n"
+    "'recMSAASamples' is the recommended number of samples per pixel for MSAA anti-aliasing, where "
+    "a value greater than one means to use MSAA. 'maxMSAASamples' is the maximum MSAA sample count "
+    "supported by the runtime.\n";
     static char seeAlsoString[] = "GetUndistortionParameters";
 
     XrResult result;
@@ -1809,7 +1839,7 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(3));
+    PsychErrorExit(PsychCapNumOutputArgs(7));
     PsychErrorExit(PsychCapNumInputArgs(4));
     PsychErrorExit(PsychRequireNumInputArgs(2));
 
@@ -1878,18 +1908,29 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
     // Ask the api for optimal texture size, aka the size of the client draw buffer:
     openxr->texSize[eyeIndex].width = views[eyeIndex].recommendedImageRectWidth;
     openxr->texSize[eyeIndex].height = views[eyeIndex].recommendedImageRectHeight;
+    openxr->maxWidth = views[eyeIndex].maxImageRectWidth;
+    openxr->maxHeight = views[eyeIndex].maxImageRectHeight;
+    openxr->recSamples = views[eyeIndex].recommendedSwapchainSampleCount;
+    openxr->maxSamples = views[eyeIndex].maxSwapchainSampleCount;
 
     free(views);
 
-    // Return recommended width and height of drawBuffer:
+    // Return recommended width and height and MSAA samples of drawBuffer:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, openxr->texSize[eyeIndex].width);
     PsychCopyOutDoubleArg(2, kPsychArgOptional, openxr->texSize[eyeIndex].height);
+    PsychCopyOutDoubleArg(3, kPsychArgOptional, openxr->recSamples);
 
-    PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 4, 1, 1, &outFov);
+    // FoV port used:
+    PsychAllocOutDoubleMatArg(4, kPsychArgOptional, 4, 1, 1, &outFov);
     outFov[0] = rad2deg(openxr->xrFov[eyeIndex].angleLeft);
     outFov[1] = rad2deg(openxr->xrFov[eyeIndex].angleRight);
     outFov[2] = rad2deg(openxr->xrFov[eyeIndex].angleUp);
     outFov[3] = rad2deg(openxr->xrFov[eyeIndex].angleDown);
+
+    // Return maximum width and height and MSAA samples of drawBuffer:
+    PsychCopyOutDoubleArg(5, kPsychArgOptional, openxr->maxWidth);
+    PsychCopyOutDoubleArg(6, kPsychArgOptional, openxr->maxHeight);
+    PsychCopyOutDoubleArg(7, kPsychArgOptional, openxr->maxSamples);
 
     return(PsychError_none);
 }
@@ -2029,17 +2070,41 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     // Return video refresh duration of the XR display:
     PsychCopyOutDoubleArg(1, kPsychArgOptional, openxr->frameDuration);
 
+    // Create and initialize our standard space for rendering the views in HMD reference frame:
+    XrReferenceSpaceCreateInfo refSpaceCreateInfo = {
+        .type = XR_TYPE_REFERENCE_SPACE_CREATE_INFO,
+        .next = NULL,
+        .referenceSpaceType = XR_REFERENCE_SPACE_TYPE_VIEW,
+        .poseInReferenceSpace = identityPose
+    };
+
+    if (!resultOK(xrCreateReferenceSpace(openxr->hmd, &refSpaceCreateInfo, &openxr->viewSpace))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: xrCreateReferenceSpace() failed for VIEW space: %s\n", errorString);
+        PsychErrorExitMsg(PsychError_system, "OpenXR session creation for OpenGL rendered XR failed in xrCreateReferenceSpace for VIEW.");
+    }
+
+    // Create and initialize our standard space for defining the world reference frame:
+    // TODO: Could also optionally allow XR_REFERENCE_SPACE_TYPE_STAGE for room-scale VR, but only after
+    // check if this is supported by runtime, as STAGE support is not mandatory as of OpenXR 1.0.
+    refSpaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+    if (!resultOK(xrCreateReferenceSpace(openxr->hmd, &refSpaceCreateInfo, &openxr->worldSpace))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: xrCreateReferenceSpace() failed for WORLD space: %s\n", errorString);
+        PsychErrorExitMsg(PsychError_system, "OpenXR session creation for OpenGL rendered XR failed in xrCreateReferenceSpace for WORLD space.");
+    }
+
     if (verbosity > 3)
         printf("PsychOpenXRCore-INFO: OpenXR session created for XR device with OpenGL rendering.\n");
 
     return(PsychError_none);
 }
 
-// TODO
+
 PsychError PSYCHOPENXRCreateRenderTextureChain(void)
 {
-    static char useString[] = "[width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat);";
-    //                          1      2       3                                                             1          2    3      4       5
+    static char useString[] = "[width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
+    //                          1      2       3                                                          1          2    3      4       5            6
     static char synopsisString[] =
     "Create texture present chains for OpenXR device 'openxrPtr'.\n\n"
     "'eye' Eye for which chain should get created: 0 = Left/Mono, 1 = Right.\n"
@@ -2053,25 +2118,30 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     "to the VR compositor. Left and right eye must use identical 'width' and 'height'.\n\n"
     "'floatFormat' Texture format: 0 = RGBA8 sRGB format for sRGB rendering and output. 1 = 16 bpc "
     "half-float RGBA16F in linear format.\n\n"
+    "'numMSAASamples' is the number of samples to use per texel. Must be at least 1, and can be more "
+    "on implementations which support MSAA anti-aliasing.\n"
     "'numTextures' returns the total number of compositor textures in the swap chain.\n"
     "\n"
     "Return values are 'width' for selected width of output texture in pixels and "
     "'height' for height of output texture in pixels.\n";
     static char seeAlsoString[] = "GetNextTextureHandle";
-/*
+
     int handle, eyeIndex;
-    int width, height, out_Length, floatFormat;
+    int width, height, out_Length, floatFormat, numMSAASamples;
+    uint32_t nFormats, i;
+    int64_t *swapchainFormats = NULL;
+    int64_t imageFormat = -1;
     PsychOpenXRDevice *openxr;
-    ovrTextureSwapChainDesc chainDesc;
+    XrResult result;
 
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    // Check to see if the user supplied superfluous arguments
+    // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(3));
-    PsychErrorExit(PsychCapNumInputArgs(5));
-    PsychErrorExit(PsychRequireNumInputArgs(5));
+    PsychErrorExit(PsychCapNumInputArgs(6));
+    PsychErrorExit(PsychRequireNumInputArgs(6));
 
     // Make sure driver is initialized:
     PsychOpenXRCheckInit(FALSE);
@@ -2079,6 +2149,10 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     // Get device handle:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
+
+    // Need a valid XrSession:
+    if (!openxr->hmd)
+        PsychErrorExitMsg(PsychError_user, "Must successfully call CreateAndStartSession first.");
 
     // Get eye:
     PsychCopyInIntegerArg(2, kPsychArgRequired, &eyeIndex);
@@ -2090,14 +2164,37 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     if (width < 1)
         PsychErrorExitMsg(PsychError_user, "Invalid width, smaller than 1 texel!");
 
+    if (width > openxr->maxWidth) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Requested texture width %i > %i maximum supported by runtime.\n", width, openxr->maxWidth);
+
+        PsychErrorExitMsg(PsychError_user, "Invalid width, bigger than allowed maximum!");
+    }
+
     PsychCopyInIntegerArg(4, kPsychArgRequired, &height);
     if (height < 1)
         PsychErrorExitMsg(PsychError_user, "Invalid height, smaller than 1 texel!");
+
+    if (height > openxr->maxHeight) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Requested texture height %i > %i maximum supported by runtime.\n", height, openxr->maxHeight);
+
+        PsychErrorExitMsg(PsychError_user, "Invalid height, bigger than allowed maximum!");
+    }
 
     // Get texture format: 0 = sRGB RGBA8, 1 = linear RGBA16F half-float:
     PsychCopyInIntegerArg(5, kPsychArgRequired, &floatFormat);
     if (floatFormat < 0 || floatFormat > 1)
         PsychErrorExitMsg(PsychError_user, "Invalid floatFormat flag provided. Must be 0 or 1.");
+
+    // Get number of MSAA samples to use for swapchain images:
+    PsychCopyInIntegerArg(6, kPsychArgRequired, &numMSAASamples);
+    if (numMSAASamples < 1 || numMSAASamples > openxr->maxSamples) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Requested texture MSAA sample count %i > %i maximum count supported by runtime, or smaller than minimum of 1 sample.\n", numMSAASamples, openxr->maxSamples);
+
+        PsychErrorExitMsg(PsychError_user, "Invalid numMSAASamples sample count provided.");
+    }
 
     if (openxr->textureSwapChain[eyeIndex])
         PsychErrorExitMsg(PsychError_user, "Tried to create already created texture swap chain for given eye.");
@@ -2105,76 +2202,250 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     if (eyeIndex > 0 && (width != openxr->textureWidth || height != openxr->textureHeight))
         PsychErrorExitMsg(PsychError_user, "Given width x height for 2nd eye does not match width x height of 1st eye, as required.");
 
-    // Build OpenGL texture chain descriptor:
-    memset(&chainDesc, 0, sizeof(chainDesc));
-    chainDesc.Type = ovrTexture_2D;
-    chainDesc.Format = (floatFormat == 1) ? OVR_FORMAT_R16G16B16A16_FLOAT : OVR_FORMAT_R8G8B8A8_UNORM_SRGB;
-    chainDesc.ArraySize = 1;
-    chainDesc.MipLevels = 1;
-    chainDesc.SampleCount = 1;
-    chainDesc.StaticImage = ovrFalse;
-    chainDesc.MiscFlags = ovrTextureMisc_None;
-    chainDesc.BindFlags = ovrTextureBind_None;
-    chainDesc.Width = width;
-    chainDesc.Height = height;
+    // Find suitable swapchain format aka OpenGL texture format:
+    if (!resultOK(xrEnumerateSwapchainFormats(openxr->hmd, 0, &nFormats, NULL))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to get number of supported swapchain formats: %s\n", errorString);
+        PsychErrorExitMsg(PsychError_system, "Swapchain format enumeration failed I.");
+    }
+    else if (verbosity > 3)
+        printf("PsychOpenXRCore-INFO: Runtime supports %i formats for swapchain.\n", nFormats);
+
+    swapchainFormats = malloc(nFormats * sizeof(int64_t));
+    if (!swapchainFormats || !resultOK(xrEnumerateSwapchainFormats(openxr->hmd, nFormats, &nFormats, swapchainFormats))) {
+        free(swapchainFormats);
+
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to enumerate supported swapchain formats II: %s\n", errorString);
+
+        PsychErrorExitMsg(PsychError_system, "Swapchain format enumeration failed II.");
+    }
+
+    // Select color texture format:
+    // TODO This may need more finesse or a different approach in the future...
+    // We want to choose a format that is preferred by the runtime, suitable for the task
+    // in terms of precision and range (PTB user request) and ideally directly usable for
+    // the Screen drawBufferFBO's, so we can do zero-copy there instead of an extra blit.
+    // Ideally we'd also allow GL_SRGB8_A8 preferred over GL_RGBA8, but Screen() is not yet
+    // necessarily ready for this as it doesn't that format for drawBufferFBO's...
+    for (i = 0; i < nFormats; i++) {
+        // If floatFormat requested, try to get GL_RGBA16F:
+        if (swapchainFormats[i] == GL_RGBA16F && floatFormat)
+            break;
+
+        // If floatFormat requested, allow to get GL_RGBA32F:
+        if (swapchainFormats[i] == GL_RGBA32F && floatFormat)
+            break;
+
+        if (swapchainFormats[i] == GL_RGBA8 && !floatFormat)
+            break;
+    }
+
+    if (i < nFormats) {
+        imageFormat = swapchainFormats[i];
+    } else {
+        imageFormat = swapchainFormats[0];
+        if (verbosity > 2)
+            printf("PsychOpenXRCore-INFO: Failed to find optimal swapchain format. Choosing fallback format 0x%x\n", imageFormat);
+    }
+
+    if (verbosity > 3)
+        printf("PsychOpenXRCore-INFO: Choosing OpenGL format 0x%x for renderbuffer textures.\n", imageFormat);
+
+    // TODO Select depth + stencil buffer format...
+
+    // No need for swapchainFormats anymore:
+    free(swapchainFormats);
 
     // Create texture swap chain:
     PsychLockMutex(&(openxr->presenterLock));
 
-    if (OVR_FAILURE(ovr_CreateTextureSwapChainGL(openxr->hmd, &chainDesc, &openxr->textureSwapChain[eyeIndex]))) {
-        ovr_GetLastErrorInfo(&errorInfo);
-        if (verbosity > 0) printf("PsychOpenXRCore-ERROR: ovr_CreateTextureSwapChainGL failed: %s\n", errorInfo.ErrorString);
+    // Setup spec for swapchain:
+    XrSwapchainCreateInfo swapchainCreateInfo = {
+        .type = XR_TYPE_SWAPCHAIN_CREATE_INFO,
+        .next = NULL,
+        .createFlags = 0,
+        .usageFlags = XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT,
+        .format = imageFormat,
+        .sampleCount = numMSAASamples,
+        .width = width,
+        .height = height,
+        .faceCount = 1,
+        .arraySize = 1,
+        .mipCount = 1,
+    };
+
+    if(!resultOK(xrCreateSwapchain(openxr->hmd, &swapchainCreateInfo, &openxr->textureSwapChain[eyeIndex]))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: xrCreateSwapchain for eye %i failed: %s\n", eyeIndex, errorString);
+
         PsychUnlockMutex(&(openxr->presenterLock));
-        PsychErrorExitMsg(PsychError_system, "Failed to create texture swap chain for VR compositor.");
+        PsychErrorExitMsg(PsychError_system, "Failed to create swap chain for XR compositor.");
     }
 
     // Mark driver as in stereo mode if a swap chain for the right eye was created:
     if (eyeIndex > 0) {
-        if (verbosity > 2) printf("PsychOpenXRCore-INFO: Right eye swap chain created. Switching to stereo mode.\n");
+        if (verbosity > 2)
+            printf("PsychOpenXRCore-INFO: Right eye swap chain created. Switching to stereo mode.\n");
+
         openxr->isStereo = TRUE;
     }
 
-    ovr_GetTextureSwapChainLength(openxr->hmd, openxr->textureSwapChain[eyeIndex], &out_Length);
-    openxr->textureSwapChainLength = out_Length;
+    // Enumerate / query swapchain images, aka OpenGL texture handles:
+    if (!resultOK(xrEnumerateSwapchainImages(openxr->textureSwapChain[eyeIndex], 0, &openxr->textureSwapChainLength[eyeIndex], NULL))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to get number of swapchain images for eye %i: %s\n", eyeIndex, errorString);
+        PsychErrorExitMsg(PsychError_system, "Swapchain image enumeration failed I.");
+    }
+    else if (verbosity > 3)
+        printf("PsychOpenXRCore-INFO: Swapchain for eye %i has %i images.\n", eyeIndex, openxr->textureSwapChainLength[eyeIndex]);
+
+
+    // Allocate array of XrSwapchainImageOpenGLKHR structs for receiving the OpenGL texture handles for the swapchain images:
+    openxr->textureSwapChainImages[eyeIndex] = malloc(openxr->textureSwapChainLength[eyeIndex] * sizeof(XrSwapchainImageOpenGLKHR));
+    if (!openxr->textureSwapChainImages[eyeIndex]) {
+        openxr->textureSwapChainLength[eyeIndex] = 0;
+
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to enumerate swapchain images for eye %i due to out of memory.\n", eyeIndex);
+
+        PsychErrorExitMsg(PsychError_outofMemory, "Swapchain image enumeration failed II.");
+    }
+
+    for (i = 0; i < openxr->textureSwapChainLength[eyeIndex]; i++) {
+        openxr->textureSwapChainImages[eyeIndex][i].type = XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_KHR;
+        openxr->textureSwapChainImages[eyeIndex][i].next = NULL;
+    }
+
+    if (!resultOK(xrEnumerateSwapchainImages(openxr->textureSwapChain[eyeIndex], openxr->textureSwapChainLength[eyeIndex],
+        &openxr->textureSwapChainLength[eyeIndex], (XrSwapchainImageBaseHeader*) openxr->textureSwapChainImages[eyeIndex]))) {
+        free(openxr->textureSwapChainImages[eyeIndex]);
+        openxr->textureSwapChainImages[eyeIndex] = NULL;
+        openxr->textureSwapChainLength[eyeIndex] = 0;
+
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to enumerate swapchain images for eye %i II: %s\n", eyeIndex, errorString);
+
+        PsychErrorExitMsg(PsychError_system, "Swapchain image enumeration failed II.");
+    }
 
     if (verbosity > 3)
-        printf("PsychOpenXRCore-INFO: Allocated texture swap chain has %i buffers.\n", out_Length);
+        printf("PsychOpenXRCore-INFO: Allocated texture swap chain for eye %i has %i images with %i samples per texel.\n",
+               eyeIndex, openxr->textureSwapChainLength[eyeIndex], numMSAASamples);
 
     // Assign total texture buffer width/height for the frame submission later on:
-    openxr->textureWidth = chainDesc.Width;
-    openxr->textureHeight = chainDesc.Height;
+    openxr->textureWidth = width;
+    openxr->textureHeight = height;
+
+    // Initialize views, projection views and quad views with what can be statically initialized:
+
+    // These are used to receive head/eye position + orientation information from 3D 6-DoF head tracking
+    // and possibly eye tracking later on to establish the virtual cameras location/pose/FoV:
+    openxr->view[eyeIndex].type = XR_TYPE_VIEW;
+    openxr->view[eyeIndex].next = NULL;
+
+    // Quad views are used for monoscopic or stereoscopic rendering usually without taking
+    // head tracking / pose into account. These quads float in a head-locked fixed position
+    // in front of the viewers eyes, to act as mono display, or as stereo displays for monoscopic
+    // or stereoscopic stimulation, but usually not rendered 3D content.
+    openxr->quadViewLayer[eyeIndex].type = XR_TYPE_COMPOSITION_LAYER_QUAD;
+    openxr->quadViewLayer[eyeIndex].next = NULL;
+    // Correct for chromatic lens aberration:
+    openxr->quadViewLayer[eyeIndex].layerFlags = XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
+    // Reference space to use for defining view position and orientation:
+    openxr->quadViewLayer[eyeIndex].space = openxr->viewSpace;
+
+    // Switch to stereo mode just happened?
+    if (openxr->isStereo) {
+        // Assign each eye view to only one eye:
+        openxr->quadViewLayer[0].eyeVisibility = XR_EYE_VISIBILITY_LEFT;
+        openxr->quadViewLayer[1].eyeVisibility = XR_EYE_VISIBILITY_RIGHT;
+    }
+    else {
+        // No, monoscopic mode active, both eyes are fed by this eyeIndex == 0 view:
+        openxr->quadViewLayer[eyeIndex].eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+    }
+
+    // Assign image source for the view - swapchain to sample from and full swapchain image layer 0:
+    openxr->quadViewLayer[eyeIndex].subImage.swapchain = openxr->textureSwapChain[eyeIndex];
+    openxr->quadViewLayer[eyeIndex].subImage.imageRect.offset.x = 0;
+    openxr->quadViewLayer[eyeIndex].subImage.imageRect.offset.y = 0;
+    openxr->quadViewLayer[eyeIndex].subImage.imageRect.extent.width = openxr->textureWidth;
+    openxr->quadViewLayer[eyeIndex].subImage.imageRect.extent.height = openxr->textureHeight;
+    openxr->quadViewLayer[eyeIndex].subImage.imageArrayIndex = 0;
+
+    // Initial pose is identity pose, ie. position (0,0,0) with neutral orientation:
+    openxr->quadViewLayer[eyeIndex].pose = identityPose;
+
+    // Shift away from eyes by 0.0 meters:
+    openxr->quadViewLayer[eyeIndex].pose.position.z -= 0.0;
+
+    // Size of virtual projection screen / display monitor is 1 x 1 meters:
+    openxr->quadViewLayer[eyeIndex].size.width = 1.0;
+    openxr->quadViewLayer[eyeIndex].size.height = 1.0;
+
+    // projViews are used for full 3D OpenGL rendering, usually driven by full tracking
+    // of head pose and potentially individual eye pose (gaze tracking). Do equivalent
+    // setup as for quadViewLayers:
+    openxr->projView[eyeIndex].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+    openxr->projView[eyeIndex].next = NULL;
+    openxr->projView[eyeIndex].subImage.swapchain = openxr->textureSwapChain[eyeIndex];
+    openxr->projView[eyeIndex].subImage.imageRect.offset.x = 0;
+    openxr->projView[eyeIndex].subImage.imageRect.offset.y = 0;
+    openxr->projView[eyeIndex].subImage.imageRect.extent.width = openxr->textureWidth;
+    openxr->projView[eyeIndex].subImage.imageRect.extent.height = openxr->textureHeight;
+    openxr->projView[eyeIndex].subImage.imageArrayIndex = 0;
+
+    // Pose and FoV init defaults:
+    openxr->projView[eyeIndex].pose = identityPose;
+    openxr->projView[eyeIndex].fov = openxr->xrFov[eyeIndex];
+
+    // Setup the static projectionLayer we use for fully tracked 3D OpenGL rendering:
+    openxr->projectionLayer.type = XR_TYPE_COMPOSITION_LAYER_PROJECTION;
+    openxr->projectionLayer.next = NULL;
+    openxr->projectionLayer.layerFlags = XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
+    openxr->projectionLayer.space = openxr->worldSpace;
+    openxr->projectionLayer.viewCount = 2;
+    openxr->projectionLayer.views = openxr->projView;
+
+    // Setup initial assignments of actual layers to submit to the compositor for display.
+    // Init state is to use the quadViewLayer(s) for mono or stereo 2D display:
+    openxr->submitLayers[0] = (XrCompositionLayerBaseHeader*) &openxr->quadViewLayer[0];
+    openxr->submitLayers[1] = (XrCompositionLayerBaseHeader*) &openxr->quadViewLayer[1];
+    openxr->submitLayersCount = (openxr->isStereo) ? 2 : 1;
 
     PsychUnlockMutex(&(openxr->presenterLock));
 
     // Return recommended width and height of drawBuffer:
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, chainDesc.Width);
-    PsychCopyOutDoubleArg(2, kPsychArgOptional, chainDesc.Height);
+    PsychCopyOutDoubleArg(1, kPsychArgOptional, openxr->textureWidth);
+    PsychCopyOutDoubleArg(2, kPsychArgOptional, openxr->textureHeight);
 
     // Return number of textures in swap chain:
-    PsychCopyOutDoubleArg(3, kPsychArgOptional, out_Length);
-*/
+    PsychCopyOutDoubleArg(3, kPsychArgOptional, openxr->textureSwapChainLength[eyeIndex]);
+
     return(PsychError_none);
 }
 
-// TODO
+
 PsychError PSYCHOPENXRGetNextTextureHandle(void)
 {
     static char useString[] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
-    //                         1                                                            1          2
+    //                         1                                                         1          2
     static char synopsisString[] =
     "Retrieve OpenGL texture object handle for next target texture for OpenXR device 'openxrPtr'.\n"
     "'eye' Eye for which handle of next texture should be returned: 0 = Left/Mono, 1 = Right.\n"
-    "Returns a GL_TEXTURE2D texture object name/handle in 'texObjectHandle' for the texture "
+    "Returns a GL_TEXTURE_2D texture object name/handle in 'texObjectHandle' for the texture "
     "to which the next VR frame should be rendered. Returns -1 if busy.\n";
     static char seeAlsoString[] = "CreateRenderTextureChain";
 
+    XrResult result;
     int handle, eyeIndex;
-    unsigned int texObjectHandle;
+    uint32_t texIndex;
     PsychOpenXRDevice *openxr;
 
-    // All sub functions should have these two lines
+    // All sub functions should have these two lines:
     PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(1));
@@ -2198,18 +2469,46 @@ PsychError PSYCHOPENXRGetNextTextureHandle(void)
 
     // Get next free/non-busy buffer for this eyes texture swap chain:
     PsychLockMutex(&(openxr->presenterLock));
-/*
-    if (OVR_FAILURE(ovr_GetTextureSwapChainBufferGL(openxr->hmd, openxr->textureSwapChain[eyeIndex], -1, &texObjectHandle))) {
-        ovr_GetLastErrorInfo(&errorInfo);
-        if (verbosity > 0) printf("PsychOpenXRCore-ERROR: eye %i ovr_GetTextureSwapChainBufferGL failed: %s\n", eyeIndex, errorInfo.ErrorString);
+
+    // Acquire next texture handle:
+    XrSwapchainImageAcquireInfo acquireInfo = {
+        .type = XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO,
+        .next = NULL
+    };
+
+    if (!resultOK(xrAcquireSwapchainImage(openxr->textureSwapChain[eyeIndex], &acquireInfo, &texIndex))) {
         PsychUnlockMutex(&(openxr->presenterLock));
-        PsychErrorExitMsg(PsychError_system, "Failed to retrieve next OpenGL texture from swap chain.");
+
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to acquire next swapchain image for eye %i: %s\n", eyeIndex, errorString);
+
+        PsychErrorExitMsg(PsychError_system, "Failed to retrieve next OpenGL texture from swapchain I.");
     }
-*/
+
+    // Wait for its availability for up to 1 second = 1e9 nsecs:
+    XrSwapchainImageWaitInfo waitTexInfo = {
+        .type = XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO,
+        .next = NULL,
+        .timeout = 1e9
+    };
+
+    result = xrWaitSwapchainImage(openxr->textureSwapChain[eyeIndex], &waitTexInfo);
+    if (!resultOK(result)) {
+        PsychUnlockMutex(&(openxr->presenterLock));
+
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to wait for next swapchain image for eye %i: %s\n", eyeIndex, errorString);
+
+        PsychErrorExitMsg(PsychError_system, "Failed to retrieve next OpenGL texture from swapchain II.");
+    }
+
     PsychUnlockMutex(&(openxr->presenterLock));
 
     // Return texture object handle:
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) texObjectHandle);
+    if (result == XR_SUCCESS)
+        PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) openxr->textureSwapChainImages[eyeIndex][texIndex].image);
+    else if (verbosity > 1)
+        printf("PsychOpenXRCore-WARNING: Timed out waiting for next swapchain image for eye %i: %s\n", eyeIndex, errorString);
 
     return(PsychError_none);
 }
@@ -2509,27 +2808,28 @@ PsychError PSYCHOPENXRStartRender(void)
 
 PsychError PSYCHOPENXREndFrameRender(void)
 {
-    static char useString[] = "PsychOpenXRCore('EndFrameRender', openxrPtr, targetPresentTime);";
-    //                                                              1          2
+    static char useString[] = "PsychOpenXRCore('EndFrameRender', openxrPtr [, eye]);";
+    //                                                           1            2
     static char synopsisString[] =
-    "Mark end of a render cycle for OpenXR HMD device 'openxrPtr'.\n\n"
-    "'targetPresentTime' the target time for presentation of this frame on the HMD.\n"
-    "You usually won't call this function yourself, but Screen('Flip') will "
-    "call it automatically for you at the appropriate moment.\n";
+    "Mark end of a render cycle for a swapchain of an OpenXR HMD device 'openxrPtr'.\n\n"
+    "'eye' Eye for which currently used texture should be released to its swapchain: 0 = Left/Mono, 1 = Right. "
+    "If omitted, all current textures for all eyes are released.\n"
+    "You usually won't call this function yourself, but Screen('Flip') will call it automatically "
+    "for you at the appropriate moment.\n";
     static char seeAlsoString[] = "StartRender PresentFrame";
 
     int handle;
-    double targetPresentTime;
     PsychOpenXRDevice *openxr;
+    int eyeIndex = -1;
 
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    //check to see if the user supplied superfluous arguments
+    // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(0));
     PsychErrorExit(PsychCapNumInputArgs(2));
-    PsychErrorExit(PsychRequireNumInputArgs(2));
+    PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
     PsychOpenXRCheckInit(FALSE);
@@ -2538,13 +2838,31 @@ PsychError PSYCHOPENXREndFrameRender(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
 
-    // Get expected presentation time for the frame that just finished rendering:
-    PsychCopyInDoubleArg(2, kPsychArgRequired, &targetPresentTime);
+    // Get eye:
+    if (PsychCopyInIntegerArg(2, kPsychArgOptional, &eyeIndex)) {
+        if (eyeIndex < 0 || eyeIndex > 1)
+            PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0 or 1 for left- or right eye.");
 
-    // Update the expected present timestamp to the predicted one:
-    PsychLockMutex(&(openxr->presenterLock));
-    openxr->scheduledPresentExecTime = targetPresentTime;
-    PsychUnlockMutex(&(openxr->presenterLock));
+        if (eyeIndex > 0 && !(openxr->isStereo))
+            PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0, as mono display mode is selected.");
+
+        if (!resultOK(xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to release current swapchain image for eye %i: %s\n", eyeIndex, errorString);
+
+            PsychErrorExitMsg(PsychError_system, "Failed to release current OpenGL texture.");
+        }
+    }
+    else {
+        for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
+            if (!resultOK(xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL))) {
+                if (verbosity > 0)
+                    printf("PsychOpenXRCore-ERROR: Failed to release current swapchain image for eye %i: %s\n", eyeIndex, errorString);
+
+                PsychErrorExitMsg(PsychError_system, "Failed to release current OpenGL textures.");
+            }
+        }
+    }
 
     return(PsychError_none);
 }

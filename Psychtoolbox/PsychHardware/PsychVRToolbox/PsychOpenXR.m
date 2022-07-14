@@ -628,7 +628,7 @@ if cmd == 0
   % MK: Not needed: glFramebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, 0, 0);
 
   % Submit/Commit just unbound textures to texture swap-chains:
-  PsychOpenXRCore('EndFrameRender', hmd{handle}.handle, varargin{2});
+  PsychOpenXRCore('EndFrameRender', hmd{handle}.handle);
   t2 = GetSecs;
 
   % Define parameters for the ongoing Psychtoolbox onscreen window flip operation:
@@ -659,7 +659,7 @@ if cmd == 1
 
   t1 = GetSecs;
 
-  [frameTiming, predictedOnset, refFrameIndex] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp, tWhen);
+  %[frameTiming, predictedOnset, refFrameIndex] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp, tWhen);
 
   t2 = GetSecs;
 
@@ -688,14 +688,13 @@ if cmd == 1
     end
   else
     % Use made up values for timestamps of 'Flip':
-    %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs, GetSecs);
-    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
+    Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', GetSecs, GetSecs);
+    %Screen('Hookfunction', hmd{handle}.win, 'SetOneshotFlipResults', '', predictedOnset, predictedOnset);
   end
   t4 = GetSecs;
 
-  %fprintf('Present %f ms, Get/Set %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
-  %disp(frameTiming(1));
-  % dT = 1e3 * (frameTiming(1).HMDTime - frameTiming(1).StimulusOnsetTime)
+  fprintf('Present %f ms, Get/Set %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
+
   frameTiming = [];
   return;
 end
@@ -1444,10 +1443,10 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   PsychOpenXR('SetBasicQuality', myhmd, basicQuality);
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for left eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovL] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 0, varargin{5:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovL] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 0, varargin{5:end});
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovR] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1, varargin{5:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovR] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1, varargin{5:end});
 
   % If the basic task is not a 3D VR rendering one (with or without HMD tracking),
   % and the special requirement 'PerEyeFOV' is not set, then assume usercode wants
@@ -1474,8 +1473,8 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     fov(4) = min(hmd{myhmd.handle}.fovL(4), hmd{myhmd.handle}.fovR(4));
 
     % Recompute parameters based on override fov:
-    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovL] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 0, fov, varargin{6:end});
-    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.fovR] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1, fov, varargin{6:end});
+    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovL] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 0, fov, varargin{6:end});
+    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovR] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1, fov, varargin{6:end});
   end
 
   % Debug display of HMD output into onscreen window requested?
@@ -1682,8 +1681,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Set override window parameters with pixel size (color depth) and refresh interval as provided by the XR runtime:
   Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, hmd{handle}.videoRefreshDuration);
 
-  % Left eye / mono chain:
-  [width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag);
+  % Left eye / mono chain: TODO: Use optimal number of MSAA samples instead of 1, once MSAA handling is implemented.
+  [width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, 1);
 
   % Create 2nd chain for right eye in stereo mode:
   if winfo.StereoMode > 0
@@ -1691,7 +1690,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       sca;
       error('Invalid Screen() StereoMode in use for OpenXR! Must be mode 12.');
     end
-    [width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag);
+    [width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, 1);
   end
 
   % Query currently bound finalizedFBO backing textures, to keep them around as
@@ -1729,10 +1728,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     end
     glBindTexture(textarget, 0);
 
-    % Execute VR Present: Submit just unbound textures, start render/warp/presentation
-    % on HMD at next possible point in time:
-    PsychOpenXRCore('EndFrameRender', hmd{handle}.handle, 0);
-    PsychOpenXRCore('PresentFrame', hmd{handle}.handle, 0, -1);
+    % Release textures back to swapchains:
+    PsychOpenXRCore('EndFrameRender', hmd{handle}.handle);
+    %PsychOpenXRCore('PresentFrame', hmd{handle}.handle, 0, -1);
   end
   clear clearvalues;
 
