@@ -1781,6 +1781,16 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     error('Invalid Screen() backing textures required. Non-matching width x height.');
   end
 
+  % Check if requested swapchain format is supported by runtime:
+  if floatFlag && ~ismember(texChainFormat, [GL.RGBA16F, GL.RGBA32F])
+      % No. Screen() will have to unshare the drawBufferFBO and
+      % finalizedFBO to work around this and retain as much of the
+      % precision and range of 16 bit float as possible. Output precision
+      % will be reduced, and overhead for an extra blit will have to be
+      % paid. Warn about this:
+      fprintf('PsychOpenXR-WARNING: OpenXR runtime does not support the requested Float16Display basic requirement. Working around it, but precision and performance will suffer.\n');
+  end
+
   % Get and clear all backing textures from the VR compositor:
   if textarget ~= GL.TEXTURE_2D_MULTISAMPLE
       clearvalues = ones(4, texwidth, texheight, 'single');
