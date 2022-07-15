@@ -1443,10 +1443,10 @@ if strcmpi(cmd, 'SetupRenderingParameters')
   PsychOpenXR('SetBasicQuality', myhmd, basicQuality);
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for left eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovL] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 0, varargin{5:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovL, ~, ~, hmd{myhmd.handle}.maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 0, varargin{5:end});
 
   % Get optimal client renderbuffer size - the size of our virtual framebuffer for right eye:
-  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovR] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1, varargin{5:end});
+  [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovR, ~, ~, hmd{myhmd.handle}.maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1, varargin{5:end});
 
   % If the basic task is not a 3D VR rendering one (with or without HMD tracking),
   % and the special requirement 'PerEyeFOV' is not set, then assume usercode wants
@@ -1473,8 +1473,8 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     fov(4) = min(hmd{myhmd.handle}.fovL(4), hmd{myhmd.handle}.fovR(4));
 
     % Recompute parameters based on override fov:
-    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovL] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 0, fov, varargin{6:end});
-    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovR] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1, fov, varargin{6:end});
+    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovL, ~, ~, hmd{myhmd.handle}.maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 0, fov, varargin{6:end});
+    [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovR, ~, ~, hmd{myhmd.handle}.maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1, fov, varargin{6:end});
   end
 
   % Debug display of HMD output into onscreen window requested?
@@ -1519,6 +1519,11 @@ if strcmpi(cmd, 'GetClientRenderingParameters')
     imagingMode = mor(imagingMode, kPsychEnableSRGBRendering);
   end
 
+  % Tell imaging pipeline if OpenXR compositor can receive/provide MSAA textures:
+  if hmd{myhmd.handle}.maxMSAASamples > 1
+    imagingMode = mor(imagingMode, kPsychSinkIsMSAACapable);
+  end
+
   if ~strcmpi(hmd{myhmd.handle}.basicTask, 'Monoscopic')
     % We must use stereomode 12, so we get separate draw buffers for left and
     % right eye, and separate stream processing into our XR runtime provided
@@ -1541,12 +1546,12 @@ if strcmpi(cmd, 'GetPanelFitterParameters')
   return;
 end
 
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOpenXR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOpenXR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
 if strcmpi(cmd, 'OpenWindowSetup')
   myhmd = varargin{1};
-  screenid = varargin{2};
+  screenid = varargin{2}; %#ok<NASGU> 
   winRect = varargin{3};
-  ovrfbOverrideRect = varargin{4};
+  ovrfbOverrideRect = varargin{4}; %#ok<NASGU> 
   ovrSpecialFlags = varargin{5};
   if isempty(ovrSpecialFlags)
     ovrSpecialFlags = 0;
@@ -1580,6 +1585,15 @@ if strcmpi(cmd, 'OpenWindowSetup')
   % interop, so the thread can't use them concurrently.
   ovrSpecialFlags = mor(ovrSpecialFlags, kPsychDontUseFlipperThread);
 
+  % Assign recommended MSAA setting from OpenXR runtime:
+  if hmd{myhmd.handle}.recMSAASamples > 1
+    % MSAA recommended - Assign optimal sample count:
+    ovrMultiSample = hmd{myhmd.handle}.recMSAASamples;
+  else
+    % MSAA not recommended - Use zero value for MSAA off in Screen():
+    ovrMultiSample = 0;
+  end
+
   % Skip all visual timing sync tests and calibrations, as display timing
   % of the onscreen window doesn't matter, only the timing on the HMD direct
   % output matters - and that can't be measured by our standard procedures:
@@ -1588,6 +1602,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   varargout{1} = winRect;
   varargout{2} = ovrfbOverrideRect;
   varargout{3} = ovrSpecialFlags;
+  varargout{4} = ovrMultiSample;
 
   return;
 end
@@ -1676,13 +1691,81 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Create and startup XR session, based on the Screen() OpenGL interop info in 'gli':
   gli = Screen('GetWindowInfo', win, 9);
   [hmd{handle}.videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', hmd{handle}.handle, gli.DeviceContext, gli.OpenGLContext, gli.OpenGLDrawable, ...
-                                                                                gli.OpenGLConfig, gli.OpenGLVisualId)
+                                                                                gli.OpenGLConfig, gli.OpenGLVisualId);
 
   % Set override window parameters with pixel size (color depth) and refresh interval as provided by the XR runtime:
   Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, hmd{handle}.videoRefreshDuration);
 
-  % Left eye / mono chain: TODO: Use optimal number of MSAA samples instead of 1, once MSAA handling is implemented.
-  [width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, 1);
+  % Query currently bound finalizedFBO backing textures, to keep them around as backups for restoration when closing down the session:
+  [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight] = Screen('Hookfunction', win, 'GetDisplayBufferTextures');
+
+  % Validate texture internal formats. Must be something supportable by XR runtime:
+  if (texformat ~= GL.RGBA8 && texformat ~= GL.RGBA16F)
+    sca;
+    error('Invalid Screen() backing textures required. Non-matching texture internal format.');
+  end
+
+  % Validate MSAA anti-aliasing support. If XR can not do MSAA then Screen
+  % must not require that:
+  if (hmd{handle}.maxMSAASamples <= 1 && (textarget ~= GL.TEXTURE_2D || texmultisample ~= 0))
+    sca;
+    error('Invalid Screen() backing textures required. Screen() assumes MSAA XR compositor target textures, but XR textures are only non-MSAA capable.');
+  end
+
+  % If XR can do MSAA, then Screen can use require MSAA or non-MSAA,
+  % depending on user codes needs or imaging pipeline configuration. E.g.,
+  % if complex panel-fitting or image post-processing is needed, then even
+  % a MSAA configured Screen may do internal MSAA resolve and require
+  % non-MSAA GL_TEXTURE_2D. For MSAA with no real image processing, Screen
+  % will likely require XR to provide MSAA GL_TEXTURE_2D_MULTISAMPLE
+  % instead for higher efficiency and zero-copy operation:
+  if hmd{handle}.maxMSAASamples > 1 && ~ismember(textarget, [GL.TEXTURE_2D_MULTISAMPLE, GL.TEXTURE_2D])
+    sca;
+    error('Invalid Screen() backing textures required. Not GL_TEXTURE_2D or GL_TEXTURE_2D_MULTISAMPLE, which is incompatible.');
+  end
+
+  % External MSAA implies at least 2 samples per target texture texel:
+  if textarget == GL.TEXTURE_2D_MULTISAMPLE && texmultisample < 2
+    texmultisample = 2;
+    fprintf('PsychOpenXR-WARNING: Invalid Screen() backing textures required: GL_TEXTURE_2D_MULTISAMPLE, but with less than 2 samples! Force-upgrading to 2 samples!\n');
+  end
+
+  % We have a valid MSAA or non-MSAA config. Lets see what Screen wants:
+  if textarget == GL.TEXTURE_2D_MULTISAMPLE
+    % Screen wants MSAA GL_TEXTURE_2D_MULTISAMPLE textures for texmultisample-MSAA
+    % with zero-copy redirection for minimal overhead and best quality. See if
+    % we can give it as many texmultisample samples as it ideally wants,
+    % otherwise clamp to XR compositor supported maximum and warn about
+    % slightly degraded quality:
+    if texmultisample > hmd{handle}.maxMSAASamples
+      fprintf('PsychOpenXR-INFO: Screen would like %i-MSAA backing textures, but OpenXR compositor can only do %i-MSAA.\n', texmultisample, hmd{handle}.maxMSAASamples);
+      fprintf('PsychOpenXR-INFO: Clamping to compositor maximum of %i-MSAA. Quality could be slightly degraded.\n', hmd{handle}.maxMSAASamples);
+      hmd{handle}.texmultisample = hmd{handle}.maxMSAASamples;
+    else
+      hmd{handle}.texmultisample = texmultisample;
+    end
+  else
+    % Screen wants non-MSAA GL_TEXTURE_2D textures and either does not use
+    % MSAA at all, or resolves down from MSAA to non-MSAA internally. We
+    % need to provide single-sampled textures:
+    hmd{handle}.texmultisample = 1;
+  end
+
+  if hmd{handle}.texmultisample > 1
+    fprintf('PsychOpenXR-INFO: Using %i-MSAA anti-aliasing for XR compositor.\n', hmd{handle}.texmultisample);
+  end
+
+  if hmd{handle}.texmultisample ~= hmd{handle}.recMSAASamples
+    fprintf('PsychOpenXR-INFO: Chosen %i-MSAA anti-aliasing for XR compositor does not match runtime recommended value %i-MSAA.\n', hmd{handle}.texmultisample, hmd{handle}.recMSAASamples);
+    fprintf('PsychOpenXR-INFO: You may want to adjust that for an optimal performance vs. quality tradeoff.\n');
+  end
+
+  if hmd{handle}.oldglRightTex == 0
+    hmd{handle}.oldglRightTex = [];
+  end
+
+  % Create left eye / mono OpenXr swapchain:
+  [width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, hmd{handle}.texmultisample);
 
   % Create 2nd chain for right eye in stereo mode:
   if winfo.StereoMode > 0
@@ -1690,15 +1773,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       sca;
       error('Invalid Screen() StereoMode in use for OpenXR! Must be mode 12.');
     end
-    [width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, 1);
-  end
-
-  % Query currently bound finalizedFBO backing textures, to keep them around as
-  % backups for restoration when closing down the session:
-  [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight] = Screen('Hookfunction', win, 'GetDisplayBufferTextures');
-  if (textarget ~= GL.TEXTURE_2D) || (texformat ~= GL.RGBA8 && texformat ~= GL.RGBA16F) || (texmultisample ~= 0)
-    sca;
-    error('Invalid Screen() backing textures required. Non-matching texture target, format or multisample setting.');
+    [width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, hmd{handle}.texmultisample);
   end
 
   if (texwidth ~= width) || (texheight ~= height)
@@ -1706,33 +1781,31 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     error('Invalid Screen() backing textures required. Non-matching width x height.');
   end
 
-  if hmd{handle}.oldglRightTex == 0
-    hmd{handle}.oldglRightTex = [];
-  end
-
   % Get and clear all backing textures from the VR compositor:
-  clearvalues = ones(4, texwidth, texheight, 'single');
-  for i=1:numTextures
-    % Get backing textures provided by the textures swap chains of the OpenXRVR compositor
-    % and clear them to black color by zero-filling:
-    texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 0);
-    glBindTexture(textarget, texLeft);
-    glTexSubImage2D(textarget, 0, 0, 0, texwidth, texheight, GL.RGBA, GL.FLOAT, clearvalues);
-
-    if winfo.StereoMode > 0
-      texRight = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 1);
-      glBindTexture(textarget, texRight);
-      glTexSubImage2D(textarget, 0, 0, 0, texwidth, texheight, GL.RGBA, GL.FLOAT, clearvalues);
-    else
-      texRight = [];
-    end
-    glBindTexture(textarget, 0);
-
-    % Release textures back to swapchains:
-    PsychOpenXRCore('EndFrameRender', hmd{handle}.handle);
-    %PsychOpenXRCore('PresentFrame', hmd{handle}.handle, 0, -1);
+  if textarget ~= GL.TEXTURE_2D_MULTISAMPLE
+      clearvalues = ones(4, texwidth, texheight, 'single');
+      for i=1:numTextures
+        % Get backing textures provided by the textures swap chains of the OpenXRVR compositor
+        % and clear them to black color by zero-filling:
+        texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 0);
+        glBindTexture(textarget, texLeft);
+        glTexSubImage2D(textarget, 0, 0, 0, texwidth, texheight, GL.RGBA, GL.FLOAT, clearvalues);
+    
+        if winfo.StereoMode > 0
+          texRight = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 1);
+          glBindTexture(textarget, texRight);
+          glTexSubImage2D(textarget, 0, 0, 0, texwidth, texheight, GL.RGBA, GL.FLOAT, clearvalues);
+        else
+          texRight = [];
+        end
+        glBindTexture(textarget, 0);
+    
+        % Release textures back to swapchains:
+        PsychOpenXRCore('EndFrameRender', hmd{handle}.handle);
+        %PsychOpenXRCore('PresentFrame', hmd{handle}.handle, 0, -1);
+      end
+      clear clearvalues;
   end
-  clear clearvalues;
 
   if ~isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR'))
     % 3D head tracked VR rendering task: Start tracking as a convenience:
