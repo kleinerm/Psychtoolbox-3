@@ -1765,7 +1765,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   % Create left eye / mono OpenXr swapchain:
-  [width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, hmd{handle}.texmultisample);
+  [width, height, numTextures, texChainFormat] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 0, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, hmd{handle}.texmultisample);
 
   % Create 2nd chain for right eye in stereo mode:
   if winfo.StereoMode > 0
@@ -1773,7 +1773,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       sca;
       error('Invalid Screen() StereoMode in use for OpenXR! Must be mode 12.');
     end
-    [width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, hmd{handle}.texmultisample);
+    [width, height, numTextures, texChainFormat] = PsychOpenXRCore('CreateRenderTextureChain', hmd{handle}.handle, 1, hmd{handle}.rbwidth, hmd{handle}.rbheight, floatFlag, hmd{handle}.texmultisample);
   end
 
   if (texwidth ~= width) || (texheight ~= height)
@@ -1825,8 +1825,8 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       texRight = [];
   end
 
-  % Assign them to Screen():
-  Screen('Hookfunction', win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+  % Assign them to Screen(), tell Screen the true texture format, so it can adapt if needed:
+  Screen('Hookfunction', win, 'SetDisplayBufferTextures', '', texLeft, texRight, [], texChainFormat);
 
   % Go back to user requested clear color, now that all our buffers
   % are cleared to black:

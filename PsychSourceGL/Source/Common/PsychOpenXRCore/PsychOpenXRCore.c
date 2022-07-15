@@ -219,7 +219,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[width, height, recMSAASamples, fovPort, maxWidth, maxHeight, maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
     synopsis[i++] = "[hmdShiftx, hmdShifty, hmdShiftz] = PsychOpenXRCore('GetUndistortionParameters', openxrPtr, eye);";
     synopsis[i++] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId);";
-    synopsis[i++] = "[width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
+    synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
     synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr [, eye]);";
     //synopsis[i++] = "trackers = PsychOpenXRCore('GetTrackersState', openxrPtr);";
@@ -2103,8 +2103,8 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
 PsychError PSYCHOPENXRCreateRenderTextureChain(void)
 {
-    static char useString[] = "[width, height, numTextures] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
-    //                          1      2       3                                                          1          2    3      4       5            6
+    static char useString[] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
+    //                          1      2       3            4                                                          1          2    3      4       5            6
     static char synopsisString[] =
     "Create texture present chains for OpenXR device 'openxrPtr'.\n\n"
     "'eye' Eye for which chain should get created: 0 = Left/Mono, 1 = Right.\n"
@@ -2123,7 +2123,8 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     "'numTextures' returns the total number of compositor textures in the swap chain.\n"
     "\n"
     "Return values are 'width' for selected width of output texture in pixels and "
-    "'height' for height of output texture in pixels.\n";
+    "'height' for height of output texture in pixels.\n\n"
+    "'imageFormat' is the chosen OpenGL internal texture format for the swapchain textures.\n";
     static char seeAlsoString[] = "GetNextTextureHandle";
 
     int handle, eyeIndex;
@@ -2139,7 +2140,7 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(3));
+    PsychErrorExit(PsychCapNumOutputArgs(4));
     PsychErrorExit(PsychCapNumInputArgs(6));
     PsychErrorExit(PsychRequireNumInputArgs(6));
 
@@ -2219,6 +2220,12 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
             printf("PsychOpenXRCore-ERROR: Failed to enumerate supported swapchain formats II: %s\n", errorString);
 
         PsychErrorExitMsg(PsychError_system, "Swapchain format enumeration failed II.");
+    }
+
+    // Print all supported swapchain formats:
+    if (verbosity > 4) {
+        for (i = 0; i < nFormats; i++)
+            printf("PsychOpenXRCore-INFO: %i'th supported OpenGL internal format is 0x%x.\n", i, swapchainFormats[i]);
     }
 
     // Select color texture format:
@@ -2422,6 +2429,9 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
 
     // Return number of textures in swap chain:
     PsychCopyOutDoubleArg(3, kPsychArgOptional, openxr->textureSwapChainLength[eyeIndex]);
+
+    // Return chosen swapchain OpenGL internal texture image format:
+    PsychCopyOutDoubleArg(4, kPsychArgOptional, (double) (uint32_t) imageFormat);
 
     return(PsychError_none);
 }
