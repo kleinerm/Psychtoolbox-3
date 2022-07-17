@@ -659,7 +659,7 @@ if cmd == 1
 
   t1 = GetSecs;
 
-  %[frameTiming, predictedOnset, refFrameIndex] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp, tWhen);
+  [frameTiming, predictedOnset, refFrameIndex] = PsychOpenXRCore('PresentFrame', hmd{handle}.handle, hmd{handle}.doTimestamp, tWhen);
 
   t2 = GetSecs;
 
@@ -1477,8 +1477,9 @@ if strcmpi(cmd, 'SetupRenderingParameters')
     [hmd{myhmd.handle}.rbwidth, hmd{myhmd.handle}.rbheight, hmd{myhmd.handle}.recMSAASamples, hmd{myhmd.handle}.fovR, ~, ~, hmd{myhmd.handle}.maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', myhmd.handle, 1, fov, varargin{6:end});
   end
 
-  % Debug display of HMD output into onscreen window requested?
-  if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel)
+  % Debug display of HMD output into onscreen window requested? TODO: Drop or implement differently?
+  % if isempty(strfind(basicRequirements, 'DebugDisplay')) && isempty(oldShieldingLevel)
+  if isempty(oldShieldingLevel)
     % No. Set to be created onscreen window to be invisible:
     oldShieldingLevel = Screen('Preference', 'WindowShieldingLevel', -1);
   end
