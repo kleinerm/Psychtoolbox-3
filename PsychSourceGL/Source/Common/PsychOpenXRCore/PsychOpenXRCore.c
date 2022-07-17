@@ -2595,8 +2595,8 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     // Initial pose is identity pose, ie. position (0,0,0) with neutral orientation:
     openxr->quadViewLayer[eyeIndex].pose = identityPose;
 
-    // Shift away from eyes by 0.0 meters:
-    openxr->quadViewLayer[eyeIndex].pose.position.z -= 0.0;
+    // Shift away from eyes by 0.5 meters:
+    openxr->quadViewLayer[eyeIndex].pose.position.z -= 0.5;
 
     // Size of virtual projection screen / display monitor is 1 x 1 meters:
     openxr->quadViewLayer[eyeIndex].size.width = 1.0;
@@ -3102,16 +3102,61 @@ PsychError PSYCHOPENXREndFrameRender(void)
 // and directly from PSYCHOPENXRPresentFrame when userspace wants to present new content.
 static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTextures, psych_bool inInit)
 {
-/*
+
     int eyeIndex, rc;
     psych_bool success = TRUE;
     double tPredictedOnset = 0;
-    ovrResult result;
-    ovrLayerEyeFov layer0;
-    const ovrLayerHeader *layers[1] = { &layer0.Header };
+    XrResult result;
 
-    // printf("PresentExecute-1 %i = %f\n", commitTextures, ovr_GetTimeInSeconds());
+    // Skip if no frame present cycle is wanted:
+    if (!openxr->needFrameLoop)
+        goto present_out;
 
+    // Do the frame present cycle:
+    XrFrameState frameState = {
+        .type = XR_TYPE_FRAME_STATE,
+        .next = NULL
+    };
+
+    XrFrameWaitInfo frameWaitInfo = {
+        .type = XR_TYPE_FRAME_WAIT_INFO,
+        .next = NULL
+    };
+
+    result = xrWaitFrame(openxr->hmd, &frameWaitInfo, &frameState);
+    if (!resultOK(result)) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to xrWaitFrame: %s\n", errorString);
+
+        PsychErrorExitMsg(PsychError_system, "Failed to xrWaitFrame.");
+    }
+
+    result = xrBeginFrame(openxr->hmd, NULL);
+    if (!resultOK(result)) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to xrBeginFrame: %s\n", errorString);
+
+        PsychErrorExitMsg(PsychError_system, "Failed to xrBeginFrame.");
+    }
+
+    XrFrameEndInfo frameEndInfo = {
+        .type = XR_TYPE_FRAME_END_INFO,
+        .next = NULL,
+        .displayTime = frameState.predictedDisplayTime,
+        .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+        .layerCount = (frameState.shouldRender) ? openxr->submitLayersCount : 0,
+        .layers = openxr->submitLayers
+    };
+
+    result = xrEndFrame(openxr->hmd, &frameEndInfo);
+    if (!resultOK(result)) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to xrEndFrame: %s\n", errorString);
+
+        PsychErrorExitMsg(PsychError_system, "Failed to xrEndFrame.");
+    }
+
+/*
     // Is this a present with updated visual content - called from "userspace" runtime?
     if (commitTextures) {
         // Free capacity in swapchains?
@@ -3252,12 +3297,12 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
     }
 
     // printf("PresentExecute-4 %i - %f\n", commitTextures, ovr_GetTimeInSeconds());
+    */
 
+present_out:
 present_fail:
 
     return(success ? tPredictedOnset : -1);
-*/
-return(-1);
 }
 
 static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
@@ -3318,7 +3363,7 @@ static void* PresenterThreadMain(void* psychOpenXRDeviceToCast)
 PsychError PSYCHOPENXRPresentFrame(void)
 {
     static char useString[] = "[frameTiming, tPredictedOnset, referenceFrameIndex] = PsychOpenXRCore('PresentFrame', openxrPtr [, doTimestamp=0][, when=0]);";
-    //                          1            2                3                                                         1            2                3
+    //                          1            2                3                                                      1            2                3
     static char synopsisString[] =
     "Present last rendered frame to OpenXR HMD device 'openxrPtr'.\n\n"
     "This will commit the current set of 2D textures with new rendered content "
@@ -3371,11 +3416,11 @@ PsychError PSYCHOPENXRPresentFrame(void)
     double tWhen;
     PsychOpenXRDevice *openxr;
 
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    //check to see if the user supplied superfluous arguments
+    // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(1));
@@ -3405,7 +3450,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
             PresentExecute(openxr, FALSE, FALSE);
         }
     }
-
+*/
     // Execute the present operation with the presenterThread locked out.
     // Invalidate any scheduledPresentExecTime after such a Present:
     PsychLockMutex(&(openxr->presenterLock));
@@ -3418,9 +3463,10 @@ PsychError PSYCHOPENXRPresentFrame(void)
         printf("PsychOpenXRCore-ERROR: Failed to present new frames to VR compositor.\n");
 
     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-    tHMD = ovr_GetTimeInSeconds();
+//    tHMD = ovr_GetTimeInSeconds();
 
     if (doTimestamp) {
+        /*
         int i;
         uint32_t timestampedFrameIndex = 0;
 
@@ -3487,6 +3533,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
         }
 
         PsychUnlockMutex(&(openxr->presenterLock));
+        */
     }
     else {
         // Return empty 'frameTiming' info struct array, so our calling scripting environment does not bomb out:
@@ -3498,7 +3545,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
     PsychCopyOutDoubleArg(2, kPsychArgOptional, tPredictedOnset);
 
     PsychCopyOutDoubleArg(3, kPsychArgOptional, (double) referenceFrameIndex + 1);
-*/
+
     return(PsychError_none);
 }
 
