@@ -83,12 +83,15 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 typedef struct PsychOpenXRDevice {
     psych_bool                          opened;
     psych_bool                          closing;
+    psych_bool                          needFrameLoop;
+    psych_bool                          sessionActive;
     psych_bool                          multiThreaded;
     psych_thread                        presenterThread;
     psych_mutex                         presenterLock;
     psych_condition                     presentedSignal;
     XrSystemId                          systemId;
     XrSession                           hmd;
+    XrSessionState                      state;
     XrSwapchain                         textureSwapChain[2];
     uint32_t                            textureSwapChainLength[2];
     XrSwapchainImageOpenGLKHR*          textureSwapChainImages[2];
@@ -110,7 +113,7 @@ typedef struct PsychOpenXRDevice {
     XrSpace                             viewSpace;
     XrSpace                             worldSpace;
     XrCompositionLayerProjection        projectionLayer;
-    XrCompositionLayerBaseHeader*       submitLayers[2];
+    const XrCompositionLayerBaseHeader* submitLayers[2];
     uint32_t                            submitLayersCount;
     uint32_t                            frameIndex;
     int                                 commitFrameIndex;
@@ -265,6 +268,17 @@ PsychOpenXRDevice* PsychGetXR(int handle, psych_bool dontfail)
     return(&(openxrdevices[handle-1]));
 }
 
+PsychOpenXRDevice* PsychGetXRForSession(XrSession sess)
+{
+    int handle;
+
+    for (handle = 0; handle < MAX_PSYCH_OPENXR_DEVS; handle++)
+        if (openxrdevices[handle].opened && openxrdevices[handle].hmd == sess)
+            return(&(openxrdevices[handle]));
+
+    return(NULL);
+}
+
 static psych_bool resultOK(XrResult result)
 {
     if (XR_SUCCEEDED(result))
@@ -371,6 +385,199 @@ static int enumerateXRDevices(XrInstance instance) {
     numAvailableDevices++;
 
     return(numAvailableDevices);
+}
+
+static psych_bool processXREvents(XrInstance pollInstance)
+{
+    while (TRUE) {
+        PsychOpenXRDevice* openxr = NULL;
+        XrEventDataBuffer event = {
+            .type = XR_TYPE_EVENT_DATA_BUFFER,
+            .next = NULL
+        };
+
+        // Poll for - and dequeue - next pending event, non-blocking:
+        XrResult result = xrPollEvent(pollInstance, &event);
+        if (!resultOK(result)) {
+            // Failed - Error return:
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Event polling for instance %p failed: %s\n", pollInstance, errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+
+        // No further events pending, ie. all events handled?
+        if (result == XR_EVENT_UNAVAILABLE)
+            return(TRUE);
+
+        // Some event received. Process it:
+        switch (event.type) {
+            default: {
+                if (verbosity > 1)
+                    printf("PsychOpenXRCore-WARNING: Event polling for instance %p received unknown event type %i - Not handled.\n", pollInstance, event.type);
+
+                break;
+            }
+
+            case XR_TYPE_EVENT_DATA_EVENTS_LOST: {
+                XrEventDataEventsLost* lostEvent = (XrEventDataEventsLost*) &event;
+
+                if (verbosity > 1)
+                    printf("PsychOpenXRCore-WARNING: Event polling for instance %p lost %i events! Prepare for trouble!\n", pollInstance, lostEvent->lostEventCount);
+
+                break;
+            }
+
+            case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING: {
+                XrEventDataInstanceLossPending* lossEvent = (XrEventDataInstanceLossPending*) &event;
+
+                if (verbosity > 0) {
+                    printf("PsychOpenXRCore-ERROR: Imminent instance %p loss event received for time %lu! No way to recover! Emergency shutdown!\n", pollInstance, lossEvent->lossTime);
+                    fflush(NULL);
+                }
+
+                // The only way to deal with this would be a PsychOpenXRCoreShutDown(), but that might end badly as well!
+                return(FALSE);
+            }
+
+            case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED: {
+                XrEventDataInteractionProfileChanged* profileChangeEvent = (XrEventDataInteractionProfileChanged*) &event;
+                openxr = PsychGetXRForSession(profileChangeEvent->session);
+
+                if (verbosity > 1)
+                    printf("PsychOpenXRCore-WARNING: Event polling for instance %p, interaction profile changed for session %p! TODO HANDLE ME!\n", pollInstance, profileChangeEvent->session);
+
+
+                break;
+            }
+
+            case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING: {
+                XrEventDataReferenceSpaceChangePending* refSpaceChangeEvent = (XrEventDataReferenceSpaceChangePending*) &event;
+                openxr = PsychGetXRForSession(refSpaceChangeEvent->session);
+
+                if (verbosity > 1)
+                    printf("PsychOpenXRCore-WARNING: Event polling for instance %p, reference space change pending for session %p! TODO HANDLE ME!\n", pollInstance, refSpaceChangeEvent->session);
+
+                break;
+            }
+
+            case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
+                XrEventDataSessionStateChanged* stateEvent = (XrEventDataSessionStateChanged*) &event;
+                openxr = PsychGetXRForSession(stateEvent->session);
+
+                if (verbosity > 3)
+                    printf("PsychOpenXRCore-INFO: Event polling for instance %p, state change for session %p! From %d ==> %d ", pollInstance, stateEvent->session, openxr->state, stateEvent->state);
+
+                // Update to new state:
+                openxr->state = stateEvent->state;
+
+                // Handle transition to new state:
+                switch (openxr->state) {
+                    // Unknown or idle state: No need for frame presentation loop:
+                    case XR_SESSION_STATE_IDLE:
+                    case XR_SESSION_STATE_UNKNOWN:
+                        openxr->needFrameLoop = FALSE;
+                        if (verbosity > 3)
+                            printf("[%s]\n", (openxr->state == XR_SESSION_STATE_IDLE) ? "XR_SESSION_STATE_IDLE" : "XR_SESSION_STATE_UNKNOWN");
+
+                        break;
+
+                    // Synchronized, Visible and Focused need frame presentation:
+                    case XR_SESSION_STATE_FOCUSED:
+                    case XR_SESSION_STATE_SYNCHRONIZED:
+                    case XR_SESSION_STATE_VISIBLE:
+                        openxr->needFrameLoop = TRUE;
+                        if (verbosity > 3)
+                            printf("[%s]\n", (openxr->state == XR_SESSION_STATE_SYNCHRONIZED) ? "XR_SESSION_STATE_SYNCHRONIZED" : ((openxr->state == XR_SESSION_STATE_VISIBLE) ? "XR_SESSION_STATE_VISIBLE" : "XR_SESSION_STATE_FOCUSED"));
+
+                        break;
+
+                    // Runtime is ready to start the session:
+                    case XR_SESSION_STATE_READY:
+                        if (verbosity > 3)
+                            printf("[%s]\n", "XR_SESSION_STATE_READY");
+
+                        // Alreay active for some reason?
+                        if (!openxr->sessionActive) {
+                            // No. Begin session with chosen view configuration:
+                            XrSessionBeginInfo sessionBeginInfo = {
+                                .type = XR_TYPE_SESSION_BEGIN_INFO,
+                                .next = NULL,
+                                .primaryViewConfigurationType = openxr->viewType
+                            };
+
+                            if (!resultOK(xrBeginSession(openxr->hmd, &sessionBeginInfo))) {
+                                // Failed - Error return:
+                                if (verbosity > 0)
+                                    printf("PsychOpenXRCore-ERROR: Failed to xrBeginSession for session %p of instance %p: %s\n", openxr->hmd, pollInstance, errorString);
+
+                                // Failure return code:
+                                return(FALSE);
+                            }
+
+                            // Success. Session is now active, frame presentation loop needs to run to
+                            // synchronize and keep synchronized with the runtime:
+                            openxr->sessionActive = TRUE;
+                            openxr->needFrameLoop = TRUE;
+                        }
+
+                        break;
+
+                    // Runtime wants is to end the session:
+                    case XR_SESSION_STATE_STOPPING:
+                        if (verbosity > 3)
+                            printf("[%s]\n", "XR_SESSION_STATE_STOPPING");
+
+                        // Active?
+                        if (openxr->sessionActive) {
+                            // End session:
+                            if (!resultOK(xrEndSession(openxr->hmd))) {
+                                // Failed - Error return:
+                                if (verbosity > 0)
+                                    printf("PsychOpenXRCore-ERROR: Failed to xrEndSession for session %p of instance %p: %s\n", openxr->hmd, pollInstance, errorString);
+
+                                // Failure return code:
+                                return(FALSE);
+                            }
+
+                            // Success. Session is now inactive, frame presentation can stop:
+                            openxr->sessionActive = FALSE;
+                            openxr->needFrameLoop = FALSE;
+                        }
+
+                        break;
+
+                    // Something went badly wrong in the runtime/hardware, need to abort:
+                    case XR_SESSION_STATE_LOSS_PENDING:
+                        if (verbosity > 3)
+                            printf("[%s]\n", "XR_SESSION_STATE_LOSS_PENDING");
+
+                        // Mark session inactive, frame presentation must stop:
+                        openxr->sessionActive = FALSE;
+                        openxr->needFrameLoop = FALSE;
+
+                        // Failure return code:
+                        return(FALSE);
+
+                    case XR_SESSION_STATE_EXITING:
+                        if (verbosity > 3)
+                            printf("[%s]\n", "XR_SESSION_STATE_LOSS_PENDING");
+
+                        // Mark session inactive, frame presentation must stop:
+                        openxr->sessionActive = FALSE;
+                        openxr->needFrameLoop = FALSE;
+
+                        break;
+                }
+
+                break;
+            }
+        }
+    }
+
+    // Return success if we reach this point:
+    return(TRUE);
 }
 
 void PsychOpenXRCheckInit(psych_bool dontfail)
@@ -616,6 +823,7 @@ void PsychOpenXRClose(int handle)
             xrDestroySession(openxr->hmd);
 
         openxr->hmd = XR_NULL_HANDLE;
+        openxr->opened = FALSE;
 
         if ((rc = PsychDestroyMutex(&(openxr->presenterLock)))) {
             printf("PsychOpenXRCore-WARNING: In PsychOpenXRClose(): Could not destroy presenterLock mutex lock [%s].\n", strerror(rc));
@@ -839,6 +1047,9 @@ PsychError PSYCHOPENXROpen(void)
 
     // Mark device as open:
     openxr->opened = TRUE;
+
+    // Session state unknown/undefined for not yet created session:
+    openxr->state = XR_SESSION_STATE_UNKNOWN;
 
     // Increment count of open devices:
     devicecount++;
@@ -2873,6 +3084,13 @@ PsychError PSYCHOPENXREndFrameRender(void)
             }
         }
     }
+
+    if (!processXREvents(xrInstance))
+        PsychErrorExitMsg(PsychError_system, "Failed to poll events, or session state reports error abort!");
+
+    if (verbosity > 3)
+        printf("PsychOpenXRCore-INFO: Session state for handle %i: Session %s, frame loop needs to be %s.\n", handle,
+               openxr->sessionActive ? "ACTIVE" : "STOPPED", openxr->needFrameLoop ? "RUNNING" : "STOPPED");
 
     return(PsychError_none);
 }
