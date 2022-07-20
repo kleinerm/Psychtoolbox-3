@@ -623,10 +623,6 @@ if cmd == 0
 
   t1 = GetSecs;
 
-  % At this point, the FBO of the right eye texture in stereomode or mono texture
-  % in mono mode is bound. Detach its color attachment texture:
-  % MK: Not needed: glFramebufferTexture2D(GL.FRAMEBUFFER, GL.COLOR_ATTACHMENT0, GL.TEXTURE_2D, 0, 0);
-
   % Submit/Commit just unbound textures to texture swap-chains:
   PsychOpenXRCore('EndFrameRender', hmd{handle}.handle);
   t2 = GetSecs;
@@ -1792,32 +1788,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
       fprintf('PsychOpenXR-WARNING: OpenXR runtime does not support the requested Float16Display basic requirement. Working around it, but precision and performance will suffer.\n');
   end
 
-  % Get and clear all backing textures from the VR compositor:
-  if textarget ~= GL.TEXTURE_2D_MULTISAMPLE
-      clearvalues = ones(4, texwidth, texheight, 'single');
-      for i=1:numTextures
-        % Get backing textures provided by the textures swap chains of the OpenXRVR compositor
-        % and clear them to black color by zero-filling:
-        texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 0);
-        glBindTexture(textarget, texLeft);
-        glTexSubImage2D(textarget, 0, 0, 0, texwidth, texheight, GL.RGBA, GL.FLOAT, clearvalues);
-    
-        if winfo.StereoMode > 0
-          texRight = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 1);
-          glBindTexture(textarget, texRight);
-          glTexSubImage2D(textarget, 0, 0, 0, texwidth, texheight, GL.RGBA, GL.FLOAT, clearvalues);
-        else
-          texRight = [];
-        end
-        glBindTexture(textarget, 0);
-    
-        % Release textures back to swapchains:
-        PsychOpenXRCore('EndFrameRender', hmd{handle}.handle);
-        %PsychOpenXRCore('PresentFrame', hmd{handle}.handle, 0, -1);
-      end
-      clear clearvalues;
-  end
-
   if ~isempty(strfind(hmd{myhmd.handle}.basicTask, 'Tracked3DVR'))
     % 3D head tracked VR rendering task: Start tracking as a convenience:
     PsychOpenXRCore('Start', handle);
@@ -1827,7 +1797,10 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     PsychOpenXRCore('Start', handle);
     PsychOpenXRCore('Stop', handle);
   end
+
+  % Make sure our OpenGL rendering context is bound for the window properly:
   Screen('GetWindowInfo', win);
+
   % Get first textures for actual use in PTB's imaging pipeline:
   texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 0);
   if hmd{handle}.StereoMode > 0
