@@ -2702,8 +2702,6 @@ PsychError PSYCHOPENXRGetNextTextureHandle(void)
 
         if (verbosity > 0)
             printf("PsychOpenXRCore-ERROR: Failed to acquire next swapchain image for eye %i: %s\n", eyeIndex, errorString);
-
-        PsychErrorExitMsg(PsychError_system, "Failed to retrieve next OpenGL texture from swapchain I.");
     }
 
     // Wait for its availability for up to 1 second = 1e9 nsecs:
@@ -2719,8 +2717,6 @@ PsychError PSYCHOPENXRGetNextTextureHandle(void)
 
         if (verbosity > 0)
             printf("PsychOpenXRCore-ERROR: Failed to wait for next swapchain image for eye %i: %s\n", eyeIndex, errorString);
-
-        PsychErrorExitMsg(PsychError_system, "Failed to retrieve next OpenGL texture from swapchain II.");
     }
 
     PsychUnlockMutex(&(openxr->presenterLock));
@@ -2728,8 +2724,12 @@ PsychError PSYCHOPENXRGetNextTextureHandle(void)
     // Return texture object handle:
     if (result == XR_SUCCESS)
         PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) openxr->textureSwapChainImages[eyeIndex][texIndex].image);
-    else if (verbosity > 1)
-        printf("PsychOpenXRCore-WARNING: Timed out waiting for next swapchain image for eye %i: %s\n", eyeIndex, errorString);
+    else {
+        PsychCopyOutDoubleArg(1, kPsychArgOptional, -1);
+
+        if ((result == XR_TIMEOUT_EXPIRED) && (verbosity > 1))
+            printf("PsychOpenXRCore-WARNING: Timed out waiting for next swapchain image for eye %i: %s\n", eyeIndex, errorString);
+    }
 
     return(PsychError_none);
 }
@@ -3070,8 +3070,6 @@ PsychError PSYCHOPENXREndFrameRender(void)
         if (!resultOK(xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL))) {
             if (verbosity > 0)
                 printf("PsychOpenXRCore-ERROR: Failed to release current swapchain image for eye %i: %s\n", eyeIndex, errorString);
-
-            PsychErrorExitMsg(PsychError_system, "Failed to release current OpenGL texture.");
         }
     }
     else {
@@ -3079,14 +3077,12 @@ PsychError PSYCHOPENXREndFrameRender(void)
             if (!resultOK(xrReleaseSwapchainImage(openxr->textureSwapChain[eyeIndex], NULL))) {
                 if (verbosity > 0)
                     printf("PsychOpenXRCore-ERROR: Failed to release current swapchain image for eye %i: %s\n", eyeIndex, errorString);
-
-                PsychErrorExitMsg(PsychError_system, "Failed to release current OpenGL textures.");
             }
         }
     }
 
-    if (!processXREvents(xrInstance))
-        PsychErrorExitMsg(PsychError_system, "Failed to poll events, or session state reports error abort!");
+    if (!processXREvents(xrInstance) && (verbosity > 0))
+        printf("PsychOpenXRCore-ERROR: Failed to poll events, or session state reports error abort!");
 
     if (verbosity > 3)
         printf("PsychOpenXRCore-INFO: Session state for handle %i: Session %s, frame loop needs to be %s.\n", handle,
@@ -3102,15 +3098,16 @@ PsychError PSYCHOPENXREndFrameRender(void)
 // and directly from PSYCHOPENXRPresentFrame when userspace wants to present new content.
 static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTextures, psych_bool inInit)
 {
-
     int eyeIndex, rc;
     psych_bool success = TRUE;
     double tPredictedOnset = 0;
     XrResult result;
 
     // Skip if no frame present cycle is wanted:
-    if (!openxr->needFrameLoop)
+    if (!openxr->needFrameLoop) {
+        success = FALSE;
         goto present_out;
+    }
 
     // Do the frame present cycle:
     XrFrameState frameState = {
@@ -3128,7 +3125,8 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         if (verbosity > 0)
             printf("PsychOpenXRCore-ERROR: Failed to xrWaitFrame: %s\n", errorString);
 
-        PsychErrorExitMsg(PsychError_system, "Failed to xrWaitFrame.");
+        success = FALSE;
+        goto present_fail;
     }
 
     result = xrBeginFrame(openxr->hmd, NULL);
@@ -3136,7 +3134,8 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         if (verbosity > 0)
             printf("PsychOpenXRCore-ERROR: Failed to xrBeginFrame: %s\n", errorString);
 
-        PsychErrorExitMsg(PsychError_system, "Failed to xrBeginFrame.");
+        success = FALSE;
+        goto present_fail;
     }
 
     XrFrameEndInfo frameEndInfo = {
@@ -3153,7 +3152,8 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         if (verbosity > 0)
             printf("PsychOpenXRCore-ERROR: Failed to xrEndFrame: %s\n", errorString);
 
-        PsychErrorExitMsg(PsychError_system, "Failed to xrEndFrame.");
+        success = FALSE;
+        goto present_fail;
     }
 
 /*
