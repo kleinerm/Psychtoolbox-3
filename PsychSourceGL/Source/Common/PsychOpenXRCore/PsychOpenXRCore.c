@@ -3540,8 +3540,11 @@ PsychError PSYCHOPENXRPresentFrame(void)
         PsychAllocOutStructArray(1, kPsychArgOptional, 0, FieldCount, FieldNames, &frameT);
     }
 
-    // Copy out predicted onset time for the just emitted frame:
-    tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * openxr->frameDuration;
+    // Copy out predicted onset time for the just emitted frame, or -1 on failure:
+    if (tPredictedOnset >= 0) {
+        tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * openxr->frameDuration;
+    }
+
     PsychCopyOutDoubleArg(2, kPsychArgOptional, tPredictedOnset);
 
     PsychCopyOutDoubleArg(3, kPsychArgOptional, (double) referenceFrameIndex + 1);
