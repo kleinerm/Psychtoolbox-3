@@ -659,18 +659,29 @@ if cmd == 1
 
   t2 = GetSecs;
 
-  % Get fresh set of backing textures for next Screen() post-flip drawing/render
-  % cycle from the OpenXR texture swap chains:
-  texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 0);
-  if hmd{handle}.StereoMode > 0
-    texRight = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 1);
-  else
-    texRight = [];
-  end
+  % PresentFrame successfull?
+  if predictedOnset >= 0
+      % Get fresh set of backing textures for next Screen() post-flip drawing/render
+      % cycle from the OpenXR texture swap chains:
+      texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 0);
+      if hmd{handle}.StereoMode > 0
+        texRight = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 1);
+      else
+        texRight = [];
+      end
 
-  % Attach them as new backing textures, detach the previously bound ones, so they
-  % are ready for submission to the VR compositor:
-  [oldL, oldR] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+      if texLeft < 0
+        texLeft = [];
+      end
+
+      if texRight < 0
+        texRight = [];
+      end
+
+      % Attach them as new backing textures, detach the previously bound ones, so they
+      % are ready for submission to the VR compositor:
+      [oldL, oldR] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+  end
 
   t3 = GetSecs;
 
