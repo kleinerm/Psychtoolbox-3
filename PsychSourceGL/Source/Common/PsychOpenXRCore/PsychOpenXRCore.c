@@ -3059,6 +3059,17 @@ PsychError PSYCHOPENXREndFrameRender(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
 
+    if (!processXREvents(xrInstance) && (verbosity > 0))
+        printf("PsychOpenXRCore-ERROR:EndFrameRender: Failed to poll events, or session state reports error abort!");
+
+    if (verbosity > 3)
+        printf("PsychOpenXRCore-INFO:EndFrameRender: Session state for handle %i: Session %s, frame loop needs to be %s.\n", handle,
+               openxr->sessionActive ? "ACTIVE" : "STOPPED", openxr->needFrameLoop ? "RUNNING" : "STOPPED");
+
+    // If frame loop is supposed to be inactive, skip the xrReleaseSwapchainImage calls:
+    if (!openxr->needFrameLoop)
+        return(PsychError_none);
+
     // Get eye:
     if (PsychCopyInIntegerArg(2, kPsychArgOptional, &eyeIndex)) {
         if (eyeIndex < 0 || eyeIndex > 1)
@@ -3081,13 +3092,6 @@ PsychError PSYCHOPENXREndFrameRender(void)
         }
     }
 
-    if (!processXREvents(xrInstance) && (verbosity > 0))
-        printf("PsychOpenXRCore-ERROR: Failed to poll events, or session state reports error abort!");
-
-    if (verbosity > 3)
-        printf("PsychOpenXRCore-INFO: Session state for handle %i: Session %s, frame loop needs to be %s.\n", handle,
-               openxr->sessionActive ? "ACTIVE" : "STOPPED", openxr->needFrameLoop ? "RUNNING" : "STOPPED");
-
     return(PsychError_none);
 }
 
@@ -3105,9 +3109,12 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
 
     // Skip if no frame present cycle is wanted:
     if (!openxr->needFrameLoop) {
-        success = FALSE;
+        success = TRUE;
         goto present_out;
     }
+
+    // Mark frame as not skipped, ie. greater than zero timestamp:
+    tPredictedOnset = 1;
 
     // Do the frame present cycle:
     XrFrameState frameState = {
@@ -3460,7 +3467,10 @@ PsychError PSYCHOPENXRPresentFrame(void)
     PsychUnlockMutex(&(openxr->presenterLock));
 
     if ((tPredictedOnset < 0) && (verbosity > 0))
-        printf("PsychOpenXRCore-ERROR: Failed to present new frames to VR compositor.\n");
+        printf("PsychOpenXRCore-ERROR: Failed to present new frame to VR compositor.\n");
+
+    if ((tPredictedOnset == 0) && (verbosity > 4))
+        printf("PsychOpenXRCore-INFO: Present of new frame to VR compositor skipped.\n");
 
     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
 //    tHMD = ovr_GetTimeInSeconds();
@@ -3540,8 +3550,8 @@ PsychError PSYCHOPENXRPresentFrame(void)
         PsychAllocOutStructArray(1, kPsychArgOptional, 0, FieldCount, FieldNames, &frameT);
     }
 
-    // Copy out predicted onset time for the just emitted frame, or -1 on failure:
-    if (tPredictedOnset >= 0) {
+    // Copy out predicted onset time for the just emitted frame, or -1 on failure, or 0 on skipped:
+    if (tPredictedOnset > 0) {
         tPredictedOnset = tPredictedOnset + (tNow - tHMD) - 0.5 * openxr->frameDuration;
     }
 

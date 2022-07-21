@@ -659,8 +659,8 @@ if cmd == 1
 
   t2 = GetSecs;
 
-  % PresentFrame successfull?
-  if predictedOnset >= 0
+  % PresentFrame successfull and not skipped?
+  if predictedOnset > 0
       % Get fresh set of backing textures for next Screen() post-flip drawing/render
       % cycle from the OpenXR texture swap chains:
       texLeft = PsychOpenXRCore('GetNextTextureHandle', hmd{handle}.handle, 0);
