@@ -872,11 +872,8 @@ if strcmpi(cmd, 'GetEyePose')
   % Convert head pose vector to 4x4 OpenGL right handed reference frame matrix:
   result.localEyePoseMatrix = eyePoseToCameraMatrix(result.eyePose);
 
-  % Premultiply usercode provided global transformation matrix:
-  result.globalEyePoseMatrix = userTransformMatrix * result.localEyePoseMatrix;
-
-  % Compute per-eye global pose matrix for this eyeIndex:
-  result.cameraView = result.globalEyePoseMatrix;
+  % Premultiply usercode provided global transformation matrix for per-eye global pose matrix for this eyeIndex:
+  result.cameraView = userTransformMatrix * result.localEyePoseMatrix;
 
   % Compute inverse matrix, useable as OpenGL GL_MODELVIEW matrix for rendering:
   result.modelView = inv(result.cameraView);
