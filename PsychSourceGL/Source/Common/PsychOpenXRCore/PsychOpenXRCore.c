@@ -96,6 +96,7 @@ typedef struct PsychOpenXRDevice {
     uint32_t                            textureSwapChainLength[2];
     XrSwapchainImageOpenGLKHR*          textureSwapChainImages[2];
     psych_bool                          isStereo;
+    psych_bool                          use3DMode;
     int                                 textureWidth;
     int                                 textureHeight;
     int                                 maxWidth;
@@ -221,7 +222,7 @@ void InitializeSynopsis(void)
     synopsis[i++] = "";
     synopsis[i++] = "[width, height, recMSAASamples, fovPort, maxWidth, maxHeight, maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
     synopsis[i++] = "[hmdShiftx, hmdShifty, hmdShiftz] = PsychOpenXRCore('GetUndistortionParameters', openxrPtr, eye);";
-    synopsis[i++] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId);";
+    synopsis[i++] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode);";
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
     synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr [, eye]);";
@@ -754,9 +755,9 @@ void PsychOpenXRStop(int handle)
     // compositor if rendering without head tracking is in use, e.g., for
     // standard 2D stereo rendering, movie playback etc., or for (ab)use
     // of the HMD as a "strapped onto the head" mono- or stereo-monitor:
-    memset(openxr->outEyePoses, 0, 2 * sizeof(openxr->outEyePoses[0]));
-    openxr->outEyePoses[0].Orientation.w = 1;
-    openxr->outEyePoses[1].Orientation.w = 1;
+    memset(openxr->view, 0, 2 * sizeof(openxr->view[0]));
+    openxr->view[0].pose.orientation.w = 1;
+    openxr->view[1].pose.orientation.w = 1;
 */
     // Need to start presenterThread if this is the first Present operation:
     if ((openxr->multiThreaded) && (openxr->presenterThread == (psych_thread) NULL)) {
@@ -1028,8 +1029,8 @@ PsychError PSYCHOPENXROpen(void)
     // compositor if rendering without head tracking is in use, e.g., for
     // standard 2D stereo rendering, movie playback etc., or for (ab)use
     // of the HMD as a "strapped onto the head" mono- or stereo-monitor:
-    // TODO   openxr->outEyePoses[0].Orientation.w = 1;
-    //    openxr->outEyePoses[1].Orientation.w = 1;
+    // TODO   openxr->view[0].pose.orientation.w = 1;
+    //    openxr->view[1].pose.orientation.w = 1;
 
     // Assign multi-threading mode:
     openxr->multiThreaded = (psych_bool) multiThreaded;
@@ -2149,8 +2150,8 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
 // TODO
 PsychError PSYCHOPENXRCreateAndStartSession(void)
 {
-    static char useString[] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId);";
-    //                          1                                                                1          2              3              4               5             6
+    static char useString[] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode);";
+    //                          1                                                                1          2              3              4               5             6               7
     static char synopsisString[] =
     "Create, initialize and start XR session for OpenXR device 'openxrPtr'.\n"
     "The following parameters are needed to setup OpenGL <=> OpenXR interop. They "
@@ -2165,6 +2166,8 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     "'openGLConfig' The GLXFBConfig on Linux/X11/GLX, and zero (unused) on Windows.\n"
     "'openGLVisualId' The X11 visual id used for creating the GLXFBConfig / GLXDrawable on "
     "Linux/X11/GLX, zero (unused) on Windows.\n"
+    "'use3DMode' must be 0 if pure monoscopic or stereoscopic rendering is requested, or 1 "
+    "to request full 3D perspective correct rendering, e.g., for 3D scenes via OpenGL.\n"
     "\n"
     "Returns the following information:\n"
     "'videoRefreshDuration' Video refresh duration in seconds of the XR display device if "
@@ -2174,6 +2177,7 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
     XrResult result;
     int handle;
+    int use3DMode;
     float displayRefreshRate;
     void* deviceContext;
     void* openGLContext;
@@ -2188,8 +2192,8 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
     // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(6));
-    PsychErrorExit(PsychRequireNumInputArgs(6));
+    PsychErrorExit(PsychCapNumInputArgs(7));
+    PsychErrorExit(PsychRequireNumInputArgs(7));
 
     // Make sure driver is initialized:
     PsychOpenXRCheckInit(FALSE);
@@ -2221,6 +2225,14 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
     PsychCopyInPointerArg(4, kPsychArgRequired, &openGLDrawable);
     PsychCopyInPointerArg(5, kPsychArgRequired, &openGLConfig);
     PsychCopyInPointerArg(6, kPsychArgRequired, &openGLVisualId);
+
+    // Get flag if we should setup initially for 3D perspective projection rendering (1),
+    // or just for mono-/stereoscopic drawing with 2D quad views (0):
+    PsychCopyInIntegerArg(7, kPsychArgRequired, &use3DMode);
+    if (use3DMode < 0 || use3DMode > 1)
+        PsychErrorExitMsg(PsychError_user, "Invalid use3DMode flag specified. Must be 0 (no) or 1 (yes).");
+
+    openxr->use3DMode = (psych_bool) use3DMode;
 
     // Linux X11/GLX/XLib specific setup of OpenGL interop:
     #ifdef XR_USE_PLATFORM_XLIB
@@ -2626,11 +2638,18 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     openxr->projectionLayer.viewCount = 2;
     openxr->projectionLayer.views = openxr->projView;
 
-    // Setup initial assignments of actual layers to submit to the compositor for display.
-    // Init state is to use the quadViewLayer(s) for mono or stereo 2D display:
-    openxr->submitLayers[0] = (XrCompositionLayerBaseHeader*) &openxr->quadViewLayer[0];
-    openxr->submitLayers[1] = (XrCompositionLayerBaseHeader*) &openxr->quadViewLayer[1];
-    openxr->submitLayersCount = (openxr->isStereo) ? 2 : 1;
+    // Setup initial assignments of actual layers to submit to the compositor for display:
+    if (openxr->use3DMode) {
+        // 3D perspective projected mode: Assign stereo projectionLayer as init state:
+        openxr->submitLayers[0] = (XrCompositionLayerBaseHeader*) &openxr->projectionLayer;
+        openxr->submitLayersCount = 1;
+    }
+    else {
+        // 2D mode: Init state is to use the quadViewLayer(s) for mono or stereo 2D display:
+        openxr->submitLayers[0] = (XrCompositionLayerBaseHeader*) &openxr->quadViewLayer[0];
+        openxr->submitLayers[1] = (XrCompositionLayerBaseHeader*) &openxr->quadViewLayer[1];
+        openxr->submitLayersCount = (openxr->isStereo) ? 2 : 1;
+    }
 
     PsychUnlockMutex(&(openxr->presenterLock));
 
@@ -3154,6 +3173,12 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         .layers = openxr->submitLayers
     };
 
+    // Update pose and FoV for projection views:
+    for (eyeIndex = 0; eyeIndex < ((openxr->isStereo) ? 2 : 1); eyeIndex++) {
+        openxr->projView[eyeIndex].pose = openxr->view[eyeIndex].pose;
+        openxr->projView[eyeIndex].fov = openxr->view[eyeIndex].fov;
+    }
+
     result = xrEndFrame(openxr->hmd, &frameEndInfo);
     if (!resultOK(result)) {
         if (verbosity > 0)
@@ -3223,8 +3248,8 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         layer0.Viewport[1].Size.h = openxr->textureHeight;
         layer0.Fov[0] = openxr->xrFov[0];
         layer0.Fov[1] = openxr->xrFov[1];
-        layer0.RenderPose[0] = openxr->outEyePoses[0];
-        layer0.RenderPose[1] = openxr->outEyePoses[1];
+        layer0.RenderPose[0] = openxr->view[0];
+        layer0.RenderPose[1] = openxr->view[1];
         layer0.SensorSampleTime = openxr->sensorSampleTime;
 
         tPredictedOnset = ovr_GetPredictedDisplayTime(openxr->hmd, openxr->frameIndex);

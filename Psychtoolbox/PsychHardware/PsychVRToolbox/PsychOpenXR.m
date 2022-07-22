@@ -1696,10 +1696,18 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     floatFlag = 0;
   end
 
+  if ~isempty(strfind(hmd{myhmd.handle}.basicTask, '3D'))
+    % 3D rendering task:
+    use3DMode = 1;
+  else
+    % No 3D rendering, just monoscopic or stereoscopic display of stimuli:
+    use3DMode = 0;
+  end
+
   % Create and startup XR session, based on the Screen() OpenGL interop info in 'gli':
   gli = Screen('GetWindowInfo', win, 9);
   [hmd{handle}.videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', hmd{handle}.handle, gli.DeviceContext, gli.OpenGLContext, gli.OpenGLDrawable, ...
-                                                                                gli.OpenGLConfig, gli.OpenGLVisualId);
+                                                                                gli.OpenGLConfig, gli.OpenGLVisualId, use3DMode);
 
   % Set override window parameters with pixel size (color depth) and refresh interval as provided by the XR runtime:
   Screen('HookFunction', win, 'SetWindowBackendOverrides', [], 24, hmd{handle}.videoRefreshDuration);
