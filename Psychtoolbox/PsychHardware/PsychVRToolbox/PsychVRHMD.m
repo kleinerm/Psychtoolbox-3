@@ -435,11 +435,6 @@ function varargout = PsychVRHMD(cmd, varargin)
 %              3D scenes with the Horde3D 3D engine or other engines which want
 %              absolute camera pose instead of the inverse matrix.
 %
-% Additionally tracked/predicted head pose is returned in eyePose.localHeadPoseMatrix
-% and the global head pose after application of the 'userTransformMatrix' is
-% returned in eyePose.globalHeadPoseMatrix - this is the basis for computing
-% the camera transformation matrix.
-%
 %
 % PsychVRHMD('SetupRenderingParameters', hmd [, basicTask='Tracked3DVR'][, basicRequirements][, basicQuality=0][, fov=[HMDRecommended]][, pixelsPerDisplay=1])
 % - Query the HMD 'hmd' for its properties and setup internal rendering
