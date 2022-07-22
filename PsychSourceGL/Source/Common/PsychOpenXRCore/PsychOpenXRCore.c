@@ -1732,14 +1732,14 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     // Head pose:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-    v[0] = state.HeadPose.ThePose.Position.x;
-    v[1] = state.HeadPose.ThePose.Position.y;
-    v[2] = state.HeadPose.ThePose.Position.z;
+    v[0] = state.HeadPose.ThePose.pose.position.x;
+    v[1] = state.HeadPose.ThePose.pose.position.y;
+    v[2] = state.HeadPose.ThePose.pose.position.z;
 
-    v[3] = state.HeadPose.ThePose.Orientation.x;
-    v[4] = state.HeadPose.ThePose.Orientation.y;
-    v[5] = state.HeadPose.ThePose.Orientation.z;
-    v[6] = state.HeadPose.ThePose.Orientation.w;
+    v[3] = state.HeadPose.ThePose.pose.orientation.x;
+    v[4] = state.HeadPose.ThePose.pose.orientation.y;
+    v[5] = state.HeadPose.ThePose.pose.orientation.z;
+    v[6] = state.HeadPose.ThePose.pose.orientation.w;
     PsychSetStructArrayNativeElement("HeadPose", 0, outMat, status);
 
     // Linear velocity:
@@ -1777,14 +1777,14 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     // CalibratedOrigin:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-    v[0] = state.CalibratedOrigin.Position.x;
-    v[1] = state.CalibratedOrigin.Position.y;
-    v[2] = state.CalibratedOrigin.Position.z;
+    v[0] = state.CalibratedOrigin.pose.position.x;
+    v[1] = state.CalibratedOrigin.pose.position.y;
+    v[2] = state.CalibratedOrigin.pose.position.z;
 
-    v[3] = state.CalibratedOrigin.Orientation.x;
-    v[4] = state.CalibratedOrigin.Orientation.y;
-    v[5] = state.CalibratedOrigin.Orientation.z;
-    v[6] = state.CalibratedOrigin.Orientation.w;
+    v[3] = state.CalibratedOrigin.pose.orientation.x;
+    v[4] = state.CalibratedOrigin.pose.orientation.y;
+    v[5] = state.CalibratedOrigin.pose.orientation.z;
+    v[6] = state.CalibratedOrigin.pose.orientation.w;
     PsychSetStructArrayNativeElement("CalibratedOrigin", 0, outMat, status);
 
     // Now the tracking info from the OpenXR touch controllers 0 and 1 for left
@@ -1802,14 +1802,14 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         // Hand pose:
         v = NULL;
         PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-        v[0] = state.HandPoses[i].ThePose.Position.x;
-        v[1] = state.HandPoses[i].ThePose.Position.y;
-        v[2] = state.HandPoses[i].ThePose.Position.z;
+        v[0] = state.HandPoses[i].ThePose.pose.position.x;
+        v[1] = state.HandPoses[i].ThePose.pose.position.y;
+        v[2] = state.HandPoses[i].ThePose.pose.position.z;
 
-        v[3] = state.HandPoses[i].ThePose.Orientation.x;
-        v[4] = state.HandPoses[i].ThePose.Orientation.y;
-        v[5] = state.HandPoses[i].ThePose.Orientation.z;
-        v[6] = state.HandPoses[i].ThePose.Orientation.w;
+        v[3] = state.HandPoses[i].ThePose.pose.orientation.x;
+        v[4] = state.HandPoses[i].ThePose.pose.orientation.y;
+        v[5] = state.HandPoses[i].ThePose.pose.orientation.z;
+        v[6] = state.HandPoses[i].ThePose.pose.orientation.w;
         PsychSetStructArrayNativeElement("HandPose", i, outMat, status);
 
         // Linear velocity:
@@ -2037,7 +2037,7 @@ PsychError PSYCHOPENXRGetInputState(void)
     return(PsychError_none);
 }
 
-// TODO
+// TODO: All the fov and pixelsPerDisplay info is not used by OpenXR at all atm.
 PsychError PSYCHOPENXRGetFovTextureSize(void)
 {
     static char useString[] = "[width, height, recMSAASamples, fovPort, maxWidth, maxHeight, maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
@@ -2891,27 +2891,27 @@ PsychError PSYCHOPENXRGetTrackersState(void)
         // Camera pose:
         v = NULL;
         PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-        v[0] = trackerPose.Pose.Position.x;
-        v[1] = trackerPose.Pose.Position.y;
-        v[2] = trackerPose.Pose.Position.z;
+        v[0] = trackerPose.Pose.pose.position.x;
+        v[1] = trackerPose.Pose.pose.position.y;
+        v[2] = trackerPose.Pose.pose.position.z;
 
-        v[3] = trackerPose.Pose.Orientation.x;
-        v[4] = trackerPose.Pose.Orientation.y;
-        v[5] = trackerPose.Pose.Orientation.z;
-        v[6] = trackerPose.Pose.Orientation.w;
+        v[3] = trackerPose.Pose.pose.orientation.x;
+        v[4] = trackerPose.Pose.pose.orientation.y;
+        v[5] = trackerPose.Pose.pose.orientation.z;
+        v[6] = trackerPose.Pose.pose.orientation.w;
         PsychSetStructArrayNativeElement("CameraPose", i, outMat, status);
 
         // Camera leveled pose:
         v = NULL;
         PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-        v[0] = trackerPose.LeveledPose.Position.x;
-        v[1] = trackerPose.LeveledPose.Position.y;
-        v[2] = trackerPose.LeveledPose.Position.z;
+        v[0] = trackerPose.LeveledPose.pose.position.x;
+        v[1] = trackerPose.LeveledPose.pose.position.y;
+        v[2] = trackerPose.LeveledPose.pose.position.z;
 
-        v[3] = trackerPose.LeveledPose.Orientation.x;
-        v[4] = trackerPose.LeveledPose.Orientation.y;
-        v[5] = trackerPose.LeveledPose.Orientation.z;
-        v[6] = trackerPose.LeveledPose.Orientation.w;
+        v[3] = trackerPose.LeveledPose.pose.orientation.x;
+        v[4] = trackerPose.LeveledPose.pose.orientation.y;
+        v[5] = trackerPose.LeveledPose.pose.orientation.z;
+        v[6] = trackerPose.LeveledPose.pose.orientation.w;
         PsychSetStructArrayNativeElement("LeveledCameraPose", i, outMat, status);
 
         trackerDesc = ovr_GetTrackerDesc(openxr->hmd, (unsigned int) i);
