@@ -118,8 +118,8 @@ typedef struct PsychOpenXRDevice {
     uint32_t                            submitLayersCount;
     uint32_t                            frameIndex;
     int                                 commitFrameIndex;
+    XrFrameState                        frameState;
     int                                 needSubmit;
-    //ovrPosef                          outEyePoses[2];
     double                              frameDuration;
     double                              sensorSampleTime;
     double                              lastPresentExecTime;
@@ -386,6 +386,33 @@ static int enumerateXRDevices(XrInstance instance) {
     numAvailableDevices++;
 
     return(numAvailableDevices);
+}
+
+// TODO: Use non-zero predictionTime to override openxr->frameState.predictedDisplayTime
+static psych_bool locateXRViews(PsychOpenXRDevice* openxr, double predictionTime)
+{
+    XrViewLocateInfo viewLocateInfo = {
+        .type = XR_TYPE_VIEW_LOCATE_INFO,
+        .next = NULL,
+        .viewConfigurationType = openxr->viewType,
+        .displayTime = openxr->frameState.predictedDisplayTime,
+        .space = openxr->worldSpace
+    };
+
+    XrViewState viewState = {
+        .type = XR_TYPE_VIEW_STATE,
+        .next = NULL
+    };
+
+    uint32_t viewCount = (openxr->viewType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) ? 2 : 1;
+    if (!resultOK(xrLocateViews(openxr->hmd, &viewLocateInfo, &viewState, viewCount, &viewCount, openxr->view))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Locating Xrviews via xrLocateViews() failed: %s\n", errorString);
+
+        return(FALSE);
+    }
+
+    return(TRUE);
 }
 
 static psych_bool processXREvents(XrInstance pollInstance)
@@ -1555,14 +1582,13 @@ PsychError PSYCHOPENXRStop(void)
 PsychError PSYCHOPENXRGetTrackingState(void)
 {
     static char useString[] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
-    //                          1      2                                               1            2
+    //                          1      2                                            1            2
     static char synopsisString[] =
         "Return current state of head position and orientation tracking for OpenXR device 'openxrPtr'.\n"
         "Head position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
-        "based on the latest measurements from the tracking hardware. If 'predictionTime' is set to zero, "
-        "then no prediction is performed and the current state based on latest measurements is returned.\n"
-        "If 'predictionTime' is omitted, then the prediction is performed for the mid-point of the next "
-        "possible video frame of the HMD, ie. the most likely presentation time for immediately rendered images.\n\n"
+        "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
+        "then the prediction is performed for the mid-point of the next possible video frame of the HMD, ie. "
+        "the most likely presentation time for immediately rendered images.\n\n"
         "'state' is a struct with fields reporting the following values:\n"
         "'Time' = Time in seconds of returned tracking state.\n"
         "'Status' = Tracking status flags:\n"
@@ -1652,7 +1678,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     // Get optional target time for predicted tracking state. Default to the
     // predicted state for the predicted mid-point of the next video frame:
     if (!PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime))
-        predictionTime = ovr_GetPredictedDisplayTime(openxr->hmd, openxr->frameIndex);
+        predictionTime = 0;
 
     // Get current tracking status info at time predictionTime. Mark this point
     // as time from which motion to photon latency is measured (latencymarker = TRUE):
@@ -1660,17 +1686,16 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     openxr->sensorSampleTime = ovr_GetTimeInSeconds();
 
     // Translate to per eye position and orientation:
-    HmdToEyeOffset[0] = openxr->eyeRenderDesc[0].HmdToEyeOffset;
-    HmdToEyeOffset[1] = openxr->eyeRenderDesc[1].HmdToEyeOffset;
-    ovr_CalcEyePoses(state.HeadPose.ThePose, HmdToEyeOffset, openxr->outEyePoses);
+
+    locateXRViews(openxr, predictionTime);
     PsychUnlockMutex(&(openxr->presenterLock));
 
     // Print out tracking status:
     if (verbosity >= 4) {
         printf("PsychOpenXRCore-INFO: Tracking state predicted for device %i at time %f.\n", handle, predictionTime);
         printf("PsychOpenXRCore-INFO: Time %f : Status %i\n", state.HeadPose.TimeInSeconds, state.StatusFlags);
-        printf("PsychOpenXRCore-INFO: HeadPose: Position    [x,y,z]   = [%f, %f, %f]\n", state.HeadPose.ThePose.Position.x, state.HeadPose.ThePose.Position.y, state.HeadPose.ThePose.Position.z);
-        printf("PsychOpenXRCore-INFO: HeadPose: Orientation [x,y,z,w] = [%f, %f, %f, %f]\n", state.HeadPose.ThePose.Orientation.x, state.HeadPose.ThePose.Orientation.y, state.HeadPose.ThePose.Orientation.z, state.HeadPose.ThePose.Orientation.w);
+        printf("PsychOpenXRCore-INFO: HeadPose: Position    [x,y,z]   = [%f, %f, %f]\n", state.HeadPose.ThePose.pose.position.x, state.HeadPose.ThePose.pose.position.y, state.HeadPose.ThePose.pose.position.z);
+        printf("PsychOpenXRCore-INFO: HeadPose: Orientation [x,y,z,w] = [%f, %f, %f, %f]\n", state.HeadPose.ThePose.pose.orientation.x, state.HeadPose.ThePose.pose.orientation.y, state.HeadPose.ThePose.pose.orientation.z, state.HeadPose.ThePose.pose.orientation.w);
     }
 
     PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount1, FieldNames1, &status);
@@ -2975,29 +3000,33 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
 // TODO
 PsychError PSYCHOPENXRStartRender(void)
 {
-    static char useString[] = "[eyePoseL, eyePoseR] = PsychOpenXRCore('StartRender', openxrPtr);";
-    //                          1         2                                             1
+    static char useString[] = "[eyePoseL, eyePoseR] = PsychOpenXRCore('StartRender', openxrPtr [, predictionTime=nextFrame]);";
+    //                          1         2                                          1            2
     static char synopsisString[] =
     "Mark start of a new 3D head tracked render cycle for OpenXR device 'openxrPtr'.\n"
+    "Eye position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
+    "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
+    "then the prediction is performed for the mid-point of the next possible video frame of the HMD, ie. "
+    "the most likely presentation time for immediately rendered images.\n\n"
     "Return values are the vectors which define the two eye cameras positions and orientations "
     "for the left eye and right eye 'eyePoseL' and 'eyePoseR'. The vectors are of form "
     "[tx, ty, tz, rx, ry, rz, rw] - A 3 component 3D position followed by a 4 component rotation "
     "quaternion.\n"
     "\n";
     static char seeAlsoString[] = "GetEyePose GetTrackingState EndFrameRender";
-/*
+
     int handle;
     PsychOpenXRDevice *openxr;
-    ovrVector3f eyeShift[2];
     double *outM;
+    double predictionTime;
 
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    // Check to see if the user supplied superfluous arguments
+    // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(2));
-    PsychErrorExit(PsychCapNumInputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
     // Make sure driver is initialized:
@@ -3007,12 +3036,14 @@ PsychError PSYCHOPENXRStartRender(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
 
-    // Get current eye poses for both eyes:
-    HmdToEyeOffset[0] = openxr->eyeRenderDesc[0].HmdToEyeOffset;
-    HmdToEyeOffset[1] = openxr->eyeRenderDesc[1].HmdToEyeOffset;
+    // Get optional target time for predicted tracking state. Default to the
+    // predicted state for the predicted mid-point of the next video frame:
+    if (!PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime))
+        predictionTime = 0;
 
+    // Get current eye poses for both eyes:
     PsychLockMutex(&(openxr->presenterLock));
-    ovr_GetEyePoses(openxr->hmd, 0, FALSE, HmdToEyeOffset, openxr->outEyePoses, &openxr->sensorSampleTime);
+    locateXRViews(openxr, predictionTime);
     PsychUnlockMutex(&(openxr->presenterLock));
 
     // Left eye pose as raw data:
@@ -3136,17 +3167,15 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
     tPredictedOnset = 1;
 
     // Do the frame present cycle:
-    XrFrameState frameState = {
-        .type = XR_TYPE_FRAME_STATE,
-        .next = NULL
-    };
+    openxr->frameState.type = XR_TYPE_FRAME_STATE;
+    openxr->frameState.next = NULL;
 
     XrFrameWaitInfo frameWaitInfo = {
         .type = XR_TYPE_FRAME_WAIT_INFO,
         .next = NULL
     };
 
-    result = xrWaitFrame(openxr->hmd, &frameWaitInfo, &frameState);
+    result = xrWaitFrame(openxr->hmd, &frameWaitInfo, &openxr->frameState);
     if (!resultOK(result)) {
         if (verbosity > 0)
             printf("PsychOpenXRCore-ERROR: Failed to xrWaitFrame: %s\n", errorString);
@@ -3154,6 +3183,9 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
         success = FALSE;
         goto present_fail;
     }
+
+    // Enforce view[] update with proper fov, pose:
+    locateXRViews(openxr, 0);
 
     result = xrBeginFrame(openxr->hmd, NULL);
     if (!resultOK(result)) {
@@ -3167,9 +3199,9 @@ static double PresentExecute(PsychOpenXRDevice *openxr, psych_bool commitTexture
     XrFrameEndInfo frameEndInfo = {
         .type = XR_TYPE_FRAME_END_INFO,
         .next = NULL,
-        .displayTime = frameState.predictedDisplayTime,
+        .displayTime = openxr->frameState.predictedDisplayTime,
         .environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
-        .layerCount = (frameState.shouldRender) ? openxr->submitLayersCount : 0,
+        .layerCount = (openxr->frameState.shouldRender) ? openxr->submitLayersCount : 0,
         .layers = openxr->submitLayers
     };
 
@@ -3590,11 +3622,15 @@ PsychError PSYCHOPENXRPresentFrame(void)
 // TODO
 PsychError PSYCHOPENXRGetEyePose(void)
 {
-    static char useString[] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass);";
-    //                          1        2                                            1          2
+    static char useString[] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass [, predictionTime=nextFrame]);";
+    //                          1        2                                         1          2             3
     static char synopsisString[] =
     "Return current predicted pose vector for an eye for OpenXR device 'openxrPtr'.\n"
     "'renderPass' is the view render pass for which to provide the data: 0 = First pass, 1 = Second pass.\n"
+    "Eye position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
+    "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
+    "then the prediction is performed for the mid-point of the next possible video frame of the HMD, ie. "
+    "the most likely presentation time for immediately rendered images.\n\n"
     "Return value is the vector 'eyePose' which defines the position and orientation for the eye corresponding "
     "to the requested renderPass ie. 'eyePose' = [posX, posY, posZ, rotX, rotY, rotZ, rotW].\n"
     "The second return value is the 'eyeIndex', the index of the eye whose view should be rendered. This would "
@@ -3609,19 +3645,19 @@ PsychError PSYCHOPENXRGetEyePose(void)
 
     static char seeAlsoString[] = "StartRender";
 /*
-    int handle, renderPass;
+
+    int handle, renderPass, eye;
     PsychOpenXRDevice *openxr;
-    ovrVector3f HmdToEyeOffset[2];
-    ovrEyeType eye;
     double *outM;
+    double predictionTime;
 
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    // Check to see if the user supplied superfluous arguments
+    // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(2));
-    PsychErrorExit(PsychCapNumInputArgs(2));
+    PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(2));
 
     // Make sure driver is initialized:
@@ -3635,13 +3671,17 @@ PsychError PSYCHOPENXRGetEyePose(void)
     PsychCopyInIntegerArg(2, kPsychArgRequired, &renderPass);
     if (renderPass < 0 || renderPass > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'renderPass' specified. Must be 0 or 1 for first or second pass.");
 
-    // Get eye pose:
+    // Get optional target time for predicted tracking state. Default to the
+    // predicted state for the predicted mid-point of the next video frame:
+    if (!PsychCopyInDoubleArg(3, kPsychArgOptional, &predictionTime))
+        predictionTime = 0;
+
+    // Get eye pose for the renderPass. OpenXR does not provide advantages for seprate render passes,
+    // so renderPass to eye mapping is meaningless for quality, and we just set arbitrarily eye = renderPass:
     eye = renderPass;
-    HmdToEyeOffset[0] = openxr->eyeRenderDesc[0].HmdToEyeOffset;
-    HmdToEyeOffset[1] = openxr->eyeRenderDesc[1].HmdToEyeOffset;
 
     PsychLockMutex(&(openxr->presenterLock));
-    ovr_GetEyePoses(openxr->hmd, 0, FALSE, HmdToEyeOffset, openxr->outEyePoses, &openxr->sensorSampleTime);
+    locateXRViews(openxr, predictionTime);
     PsychUnlockMutex(&(openxr->presenterLock));
 
     // Eye pose as raw data:
