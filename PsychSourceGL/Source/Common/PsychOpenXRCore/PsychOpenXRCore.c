@@ -210,7 +210,7 @@ void InitializeSynopsis(void)
     //synopsis[i++] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
     //synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
     //synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
-    //synopsis[i++] = "[projL, projR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
+    synopsis[i++] = "[projL, projR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOpenXRCore('StartRender', openxrPtr [, predictionTime=nextFrame]);";
     synopsis[i++] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass [, predictionTime=nextFrame]);";
     //synopsis[i++] = "[adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOpenXRCore('GetPerformanceStats', openxrPtr);";
@@ -2934,11 +2934,34 @@ PsychError PSYCHOPENXRGetTrackersState(void)
     return(PsychError_none);
 }
 
-// TODO
+// Manual reimplementation of OpenGL's glFrustum(), based on my self-made tried and
+// proven glFrustum.m implementation for the OpenGL-ES use case, which was in turn based
+// on the matrix math and definition for glFrustum() in the official OpenGL spec. This
+// additionally uses tan() mapping of angles and removes zNear as a multiplier for elements
+// M[0][0] and M[1][1], so we are invariant to the value of zNear, as far as the projection
+// is concerned. Ie. zNear is the OpenGL clip plane, but doesn't influence otherwise. So this
+// is a bit of a modified glFrustum for building suitable GL_PROJECTION matrices for OpenGL:
+static void buildProjectionMatrix(double M[4][4], XrFovf fov, double zNear, double zFar)
+{
+    double angleRight = tan(fov.angleRight);
+    double angleLeft = tan(fov.angleLeft);
+    double angleDown = tan(fov.angleDown);
+    double angleUp = tan(fov.angleUp);
+
+    memset(M, 0, 4 * 4 * sizeof(double));
+    M[0][0] = 2 / (angleRight - angleLeft);
+    M[1][1] = 2 / (angleUp - angleDown);
+    M[0][2] = (angleRight + angleLeft) / (angleRight - angleLeft);
+    M[1][2] = (angleUp + angleDown) / (angleUp - angleDown);
+    M[2][2] = - (zFar + zNear) / (zFar - zNear);
+    M[2][3] = - 2 * zFar * zNear / (zFar - zNear);
+    M[3][2] = -1;
+}
+
 PsychError PSYCHOPENXRGetStaticRenderParameters(void)
 {
     static char useString[] = "[projL, projR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
-    //                          1      2                                                        1            2                3
+    //                          1      2                                                     1            2                3
     static char synopsisString[] =
     "Retrieve static rendering parameters for OpenXR device 'openxrPtr' at current settings.\n"
     "'clipNear' Optional near clipping plane for OpenGL. Defaults to 0.01.\n"
@@ -2948,19 +2971,19 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
     "'projR' is the 4x4 OpenGL projection matrix for the right eye rendering.\n"
     "Please note that projL and projR are usually identical for typical rendering scenarios.\n";
     static char seeAlsoString[] = "";
-/*
+
     int handle;
     PsychOpenXRDevice *openxr;
-    ovrMatrix4f M;
+    double M[4][4];
     int i, j;
     double clip_near, clip_far;
     double *outM;
 
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    //check to see if the user supplied superfluous arguments
+    // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(2));
     PsychErrorExit(PsychCapNumInputArgs(3));
     PsychErrorExit(PsychRequireNumInputArgs(1));
@@ -2980,20 +3003,33 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
     clip_far = 10000.0;
     PsychCopyInDoubleArg(3, kPsychArgOptional, &clip_far);
 
+    // Make sure our views field of view .fov is well defined:
+    locateXRViews(openxr, 0);
+
+    if (verbosity > 4) {
+        int eyeIndex;
+
+        for (eyeIndex = 0; eyeIndex < 2; eyeIndex++) {
+            printf("PsychOpenXRCore-INFO: HMD %i, eye %i - FoV degrees: %f %f %f %f\n", handle, eyeIndex,
+                   rad2deg(openxr->view[eyeIndex].fov.angleLeft), rad2deg(openxr->view[eyeIndex].fov.angleRight),
+                   rad2deg(openxr->view[eyeIndex].fov.angleUp), rad2deg(openxr->view[eyeIndex].fov.angleDown));
+        }
+    }
+
     // Return left projection matrix as return argument 1:
-    M = ovrMatrix4f_Projection(openxr->eyeRenderDesc[0].Fov, (float) clip_near, (float) clip_far, ovrProjection_ClipRangeOpenGL);
+    buildProjectionMatrix(M, openxr->view[0].fov, clip_near, clip_far);
     PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 4, 4, 1, &outM);
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
-            *(outM++) = (double) M.M[j][i];
+            *(outM++) = M[j][i];
 
     // Return right projection matrix as return argument 2:
-    M = ovrMatrix4f_Projection(openxr->eyeRenderDesc[1].Fov, (float) clip_near, (float) clip_far, ovrProjection_ClipRangeOpenGL);
+    buildProjectionMatrix(M, openxr->view[1].fov, clip_near, clip_far);
     PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 4, 4, 1, &outM);
     for (i = 0; i < 4; i++)
         for (j = 0; j < 4; j++)
-            *(outM++) = (double) M.M[j][i];
-*/
+            *(outM++) = M[j][i];
+
     return(PsychError_none);
 }
 
