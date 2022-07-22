@@ -421,11 +421,6 @@ function varargout = PsychOculusVR1(cmd, varargin)
 %              3D scenes with the Horde3D 3D engine or other engines which want
 %              absolute camera pose instead of the inverse matrix.
 %
-% Additionally tracked/predicted head pose is returned in eyePose.localHeadPoseMatrix
-% and the global head pose after application of the 'userTransformMatrix' is
-% returned in eyePose.globalHeadPoseMatrix - this is the basis for computing
-% the camera transformation matrix.
-%
 %
 % trackers = PsychOculusVR1('GetTrackersState', hmd);
 % - Return a struct array with infos about all connected tracking cameras/sensors
