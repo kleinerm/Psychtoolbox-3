@@ -754,7 +754,7 @@ if strcmpi(cmd, 'PrepareRender')
 
   % Mark start of a new frame render cycle for the runtime and get the data
   % predicted for next scanout time:
-  [eyePose{1}, eyePose{2}] = PsychOpenXRCore('StartRender', myhmd.handle);
+  [eyePose{1}, eyePose{2}] = PsychOpenXRCore('StartRender', myhmd.handle, targetTime);
 
   % Get predicted head pose, tracking state and hand poses (if supported) for targetTime:
   [state, touch] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime);
@@ -856,23 +856,18 @@ if strcmpi(cmd, 'GetEyePose')
   end
 
   % Get target time for predicted camera poses, head poses etc.:
-  % NOTE: Currently not used, as OpenXR SDK v1 does not support passing
-  % targetTime into the underlying SDK function for 'GetEyePose'. The
-  % OpenXR runtime predicts something meaningful internally.
-  %
-  %  if length(varargin) >= 4 && ~isempty(varargin{4})
-  %    targetTime = varargin{4};
-  %  else
-  %    % Default: Provide predicted value for the midpoint of the next video
-  %    % refresh cycle - assuming we hit the flip deadline for the next video
-  %    % frame, so that point in time will be exactly in the middle of both
-  %    % eyes:
-  %    targetTime = [];
-  %  end
+  if length(varargin) >= 4 && ~isempty(varargin{4})
+    targetTime = varargin{4};
+  else
+    % Default: Choose predicted value for onset of the next presentation frame,
+    % under the assumption that we hit the flip deadline for the next video
+    % frame:
+    targetTime = [];
+  end
 
   % Get eye pose for this renderPass, or more exactly the headPose from which this
   % renderPass eyePose will get computed:
-  [result.eyePose, result.eyeIndex] = PsychOpenXRCore('GetEyePose', myhmd.handle, renderPass);
+  [result.eyePose, result.eyeIndex] = PsychOpenXRCore('GetEyePose', myhmd.handle, renderPass, targetTime);
 
   % Convert head pose vector to 4x4 OpenGL right handed reference frame matrix:
   result.localEyePoseMatrix = eyePoseToCameraMatrix(result.eyePose);
