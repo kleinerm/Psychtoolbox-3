@@ -211,8 +211,8 @@ void InitializeSynopsis(void)
     //synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
     //synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
     //synopsis[i++] = "[projL, projR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
-    //synopsis[i++] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOpenXRCore('StartRender', openxrPtr);";
-    //synopsis[i++] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass);";
+    synopsis[i++] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOpenXRCore('StartRender', openxrPtr [, predictionTime=nextFrame]);";
+    synopsis[i++] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass [, predictionTime=nextFrame]);";
     //synopsis[i++] = "[adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOpenXRCore('GetPerformanceStats', openxrPtr);";
     //synopsis[i++] = "oldValues = PsychOpenXRCore('FloatsProperty', openxrPtr, propertyName [, newValues]);";
     //synopsis[i++] = "oldValues = PsychOpenXRCore('FloatProperty', openxrPtr, propertyName [, newValue]);";
@@ -2997,7 +2997,7 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
     return(PsychError_none);
 }
 
-// TODO
+
 PsychError PSYCHOPENXRStartRender(void)
 {
     static char useString[] = "[eyePoseL, eyePoseR] = PsychOpenXRCore('StartRender', openxrPtr [, predictionTime=nextFrame]);";
@@ -3050,30 +3050,30 @@ PsychError PSYCHOPENXRStartRender(void)
     PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 7, 1, &outM);
 
     // Position (x,y,z):
-    outM[0] = openxr->outEyePoses[0].Position.x;
-    outM[1] = openxr->outEyePoses[0].Position.y;
-    outM[2] = openxr->outEyePoses[0].Position.z;
+    outM[0] = openxr->view[0].pose.position.x;
+    outM[1] = openxr->view[0].pose.position.y;
+    outM[2] = openxr->view[0].pose.position.z;
 
     // Orientation as a quaternion (x,y,z,w):
-    outM[3] = openxr->outEyePoses[0].Orientation.x;
-    outM[4] = openxr->outEyePoses[0].Orientation.y;
-    outM[5] = openxr->outEyePoses[0].Orientation.z;
-    outM[6] = openxr->outEyePoses[0].Orientation.w;
+    outM[3] = openxr->view[0].pose.orientation.x;
+    outM[4] = openxr->view[0].pose.orientation.y;
+    outM[5] = openxr->view[0].pose.orientation.z;
+    outM[6] = openxr->view[0].pose.orientation.w;
 
     // Right eye pose as raw data:
     PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 1, 7, 1, &outM);
 
     // Position (x,y,z):
-    outM[0] = openxr->outEyePoses[1].Position.x;
-    outM[1] = openxr->outEyePoses[1].Position.y;
-    outM[2] = openxr->outEyePoses[1].Position.z;
+    outM[0] = openxr->view[1].pose.position.x;
+    outM[1] = openxr->view[1].pose.position.y;
+    outM[2] = openxr->view[1].pose.position.z;
 
     // Orientation as a quaternion (x,y,z,w):
-    outM[3] = openxr->outEyePoses[1].Orientation.x;
-    outM[4] = openxr->outEyePoses[1].Orientation.y;
-    outM[5] = openxr->outEyePoses[1].Orientation.z;
-    outM[6] = openxr->outEyePoses[1].Orientation.w;
-*/
+    outM[3] = openxr->view[1].pose.orientation.x;
+    outM[4] = openxr->view[1].pose.orientation.y;
+    outM[5] = openxr->view[1].pose.orientation.z;
+    outM[6] = openxr->view[1].pose.orientation.w;
+
     return(PsychError_none);
 }
 
@@ -3619,7 +3619,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
     return(PsychError_none);
 }
 
-// TODO
+
 PsychError PSYCHOPENXRGetEyePose(void)
 {
     static char useString[] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass [, predictionTime=nextFrame]);";
@@ -3644,7 +3644,6 @@ PsychError PSYCHOPENXRGetEyePose(void)
     "omit this function and use the eyePose's provided for both eyes by the 'StartRender' method.\n";
 
     static char seeAlsoString[] = "StartRender";
-/*
 
     int handle, renderPass, eye;
     PsychOpenXRDevice *openxr;
@@ -3688,19 +3687,19 @@ PsychError PSYCHOPENXRGetEyePose(void)
     PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 7, 1, &outM);
 
     // Position (x,y,z):
-    outM[0] = openxr->outEyePoses[eye].Position.x;
-    outM[1] = openxr->outEyePoses[eye].Position.y;
-    outM[2] = openxr->outEyePoses[eye].Position.z;
+    outM[0] = openxr->view[eye].pose.position.x;
+    outM[1] = openxr->view[eye].pose.position.y;
+    outM[2] = openxr->view[eye].pose.position.z;
 
     // Orientation as a quaternion (x,y,z,w):
-    outM[3] = openxr->outEyePoses[eye].Orientation.x;
-    outM[4] = openxr->outEyePoses[eye].Orientation.y;
-    outM[5] = openxr->outEyePoses[eye].Orientation.z;
-    outM[6] = openxr->outEyePoses[eye].Orientation.w;
+    outM[3] = openxr->view[eye].pose.orientation.x;
+    outM[4] = openxr->view[eye].pose.orientation.y;
+    outM[5] = openxr->view[eye].pose.orientation.z;
+    outM[6] = openxr->view[eye].pose.orientation.w;
 
     // Copy out preferred eye render order for info:
     PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) eye);
-*/
+
     return(PsychError_none);
 }
 
