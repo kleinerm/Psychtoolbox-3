@@ -2488,6 +2488,10 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
         if (swapchainFormats[i] == GL_RGBA16F && floatFormat)
             break;
 
+        // If floatFormat requested, allow to get GL_RGB16F without alpha:
+        if (swapchainFormats[i] == GL_RGB16F && floatFormat)
+            break;
+
         // If floatFormat requested, allow to get GL_RGBA32F:
         if (swapchainFormats[i] == GL_RGBA32F && floatFormat)
             break;
