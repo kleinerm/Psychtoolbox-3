@@ -1756,12 +1756,19 @@ static psych_bool PsychUnshareFinalizedFBOIfNeeded(PsychWindowRecordType *window
         // all color values outside of unorm range, and significant stimulus
         // precision loss!
         //
+        // The GL_RGB16F format is special in that it provides enough precision for
+        // most use cases, e.g., HDR, but lacks an alpha channel. We accept this
+        // format for finalizedFBO's, so we can consume HDR or high precision content 
+        // with some external consumers, e.g., some OpenXR VR/MR/XR runtimes, but we
+        // must always unshare, as a functioning alpha channel is expected in all
+        // cases for the drawBufferFBO's, so user scripts can alpha-blend.
+        //
         // So lets check if the imported format meets or exceeds the current
         // precision. If not, then we'd need to split up into 2 separate buffers.
         PsychFBO *dfbo = windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]];
 
         if ((((GLenum) formatSpec != dfbo->format) &&
-             ((formatSpec == GL_RGBA8) || (formatSpec == GL_RGB10_A2) ||
+             ((formatSpec == GL_RGBA8) || (formatSpec == GL_RGB10_A2) || (formatSpec == GL_RGB16F) ||
               (formatSpec == GL_RGBA16F && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) ||
               (formatSpec == GL_RGBA16 && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2 || dfbo->format == GL_RGB10_A2)) ||
               (formatSpec == GL_RGBA16_SNORM && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2))))) {
