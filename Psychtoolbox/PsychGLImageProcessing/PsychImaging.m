@@ -1887,6 +1887,24 @@ if strcmpi(cmd, 'OpenWindow')
     % Set override framebuffer rect to "none" by default:
     ovrfbOverrideRect = [];
 
+    % Override numbuffers -- always 2:
+    numbuffers = 2;
+
+    if nargin < 7 || isempty(varargin{6})
+        stereomode = 0;
+    else
+        stereomode = varargin{6};
+    end
+
+    if nargin < 8 || isempty(varargin{7})
+        multiSample = []; % User defers choice of MSAA to us.
+    else
+        multiSample = varargin{7};
+        if ~isscalar(multiSample) || ~isreal(multiSample)
+            error('PsychImaging(''OpenWindow''): Invalid multisample value specified. Not an integer scalar.');
+        end
+    end
+
     % Running on a VR headset?
     if ~isempty(find(mystrcmp(reqs, 'UseVRHMD')));
         % Yes:
@@ -1902,17 +1920,13 @@ if strcmpi(cmd, 'OpenWindow')
             error('PsychImaging(''OpenWindow''): Invalid HMD handle specified for UseVRHMD task. No such device opened.');
         end
 
-        % Compute special OpenWindow overrides for winRect, framebuffer rect, and specialflags, as needed:
-        [winRect, ovrfbOverrideRect, ovrSpecialFlags] = hmd.driver('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+        % Compute special OpenWindow overrides for winRect, framebuffer rect, specialflags and MSAA, as needed:
+        [winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample] = hmd.driver('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, multiSample);
     end
 
-    % Override numbuffers -- always 2:
-    numbuffers = 2;
-
-    if nargin < 7 || isempty(varargin{6})
-        stereomode = 0;
-    else
-        stereomode = varargin{6};
+    % If multiSample is still "use default" choice, then override it to our default of 0 for "no MSAA":
+    if isempty(multiSample)
+        multiSample = 0;
     end
 
     % Compute correct imagingMode - Settings for current configuration and return it:
@@ -1982,12 +1996,6 @@ if strcmpi(cmd, 'OpenWindow')
                 end
             end
         end
-    end
-
-    if nargin < 8 || isempty(varargin{7})
-        multiSample = 0;
-    else
-        multiSample = varargin{7};
     end
 
     if nargin < 9 || isempty(varargin{8})

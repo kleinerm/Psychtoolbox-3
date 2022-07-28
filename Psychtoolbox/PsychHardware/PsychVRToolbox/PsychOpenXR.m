@@ -572,7 +572,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % needed.
 %
 %
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOpenXR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOpenXR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 % - Compute special override parameters for given input/output arguments, as needed
 % for a specific HMD. Take other preparatory steps as needed, immediately before the
 % Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
@@ -1545,7 +1545,7 @@ if strcmpi(cmd, 'GetPanelFitterParameters')
   return;
 end
 
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOpenXR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOpenXR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 if strcmpi(cmd, 'OpenWindowSetup')
   myhmd = varargin{1};
   screenid = varargin{2}; %#ok<NASGU> 
@@ -1569,6 +1569,8 @@ if strcmpi(cmd, 'OpenWindowSetup')
 
   fprintf('PsychOpenXR-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with VR-HMD direct output mode.\n', ...
           clientRes(1), clientRes(2));
+  % Get wanted MSAA level from caller:
+  ovrMultiSample = varargin{6};
 
   % As the onscreen window is not used for displaying on the HMD, but
   % either not at all, or just for debug output, make it a regular GUI

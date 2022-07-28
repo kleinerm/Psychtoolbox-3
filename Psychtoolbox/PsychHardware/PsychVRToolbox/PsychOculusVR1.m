@@ -585,7 +585,7 @@ function varargout = PsychOculusVR1(cmd, varargin)
 % needed.
 %
 %
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 % - Compute special override parameters for given input/output arguments, as needed
 % for a specific HMD. Take other preparatory steps as needed, immediately before the
 % Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
@@ -1621,7 +1621,7 @@ if strcmpi(cmd, 'GetPanelFitterParameters')
   return;
 end
 
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOculusVR1('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 if strcmpi(cmd, 'OpenWindowSetup')
   myhmd = varargin{1};
   screenid = varargin{2};
@@ -1631,6 +1631,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   if isempty(ovrSpecialFlags)
     ovrSpecialFlags = 0;
   end
+  ovrMultiSample = varargin{6};
 
   % The current design iteration requires the PTB parent onscreen windows
   % effective backbuffer (from the pov of the imaging pipeline) to have the
@@ -1660,6 +1661,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   varargout{1} = winRect;
   varargout{2} = ovrfbOverrideRect;
   varargout{3} = ovrSpecialFlags;
+  varargout{4} = ovrMultiSample;
 
   return;
 end
