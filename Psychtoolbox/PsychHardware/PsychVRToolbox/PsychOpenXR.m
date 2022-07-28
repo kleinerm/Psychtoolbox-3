@@ -1827,7 +1827,7 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   end
 
   % Check if requested swapchain format is supported by runtime:
-  if floatFlag && ~ismember(texChainFormat, [GL.RGBA16F, GL.RGBA32F])
+  if floatFlag && ~ismember(texChainFormat, [GL.RGBA16F, GL.RGBA32F, GL.RGB16F])
       % No. Screen() will have to unshare the drawBufferFBO and
       % finalizedFBO to work around this and retain as much of the
       % precision and range of 16 bit float as possible. Output precision
