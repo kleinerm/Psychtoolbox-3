@@ -520,7 +520,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 % needed.
 %
 %
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychVRHMD('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychVRHMD('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 % - Compute special override parameters for given input/output arguments, as needed
 % for a specific HMD. Take other preparatory steps as needed, immediately before the
 % Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
