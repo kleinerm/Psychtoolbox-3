@@ -438,17 +438,19 @@ PsychError SCREENGetWindowInfo(void)
     }
     else if (infoType == 9) {
         // Interop info for special external clients, with which we want to share OpenGL contexts and textures, e.g., OpenXR:
-        const char* FieldNamesInterop[] = { "DeviceContext", "OpenGLContext", "OpenGLDrawable", "OpenGLConfig", "OpenGLVisualId" };
-        const int fieldCountInterop = 5;
+        const char* FieldNamesInterop[] = { "DeviceContext", "OpenGLContext", "OpenGLContextScreen", "OpenGLDrawable", "OpenGLConfig", "OpenGLVisualId" };
+        const int fieldCountInterop = 6;
 
         // This gives access to the OpenGL context and associated drawable, resources and config of our parallel background flipperThread.
         // Normally the flipperThread would use these to implement special functionality like async flips, vrr, framesequential stereo etc.
         // Here the idea is to usually not use the flipperThread, but instead piggyback on / (ab-)use the OpenGL resources normally used
         // for that thread for other purposes, e.g., interop with special external components like the PsychOpenXRCore driver and OpenXR.
+        // Note: For purely single-thread operations without a dedicated context for external use, we also expose Screen's main OpenGL context.
 
         PsychAllocOutStructArray(1, FALSE, -1, fieldCountInterop, FieldNamesInterop, &s);
         PsychSetStructArrayUnsignedInt64Element("DeviceContext", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.deviceContext, s);
         PsychSetStructArrayUnsignedInt64Element("OpenGLContext", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.glswapcontextObject, s);
+        PsychSetStructArrayUnsignedInt64Element("OpenGLContextScreen", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.contextObject, s);
         PsychSetStructArrayUnsignedInt64Element("OpenGLDrawable", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.windowHandle, s);
         #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE) && !defined(PTB_USE_WAYLAND)
             // Linux X11/GLX/Xlib only:
