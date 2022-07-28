@@ -472,7 +472,7 @@ function varargout = PsychOculusVR(cmd, varargin)
 % needed.
 %
 %
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 % - Compute special override parameters for given input/output arguments, as needed
 % for a specific HMD. Take other preparatory steps as needed, immediately before the
 % Screen('OpenWindow') command executes. This is called as part of PsychImaging('OpenWindow'),
@@ -1475,13 +1475,14 @@ if strcmpi(cmd, 'GetPanelFitterParameters')
   return;
 end
 
-% [winRect, ovrfbOverrideRect, ovrSpecialFlags] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags);
+% [winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample] = PsychOculusVR('OpenWindowSetup', hmd, screenid, winRect, ovrfbOverrideRect, ovrSpecialFlags, ovrMultiSample);
 if strcmpi(cmd, 'OpenWindowSetup')
   myhmd = varargin{1};
   screenid = varargin{2};
   winRect = varargin{3};
   ovrfbOverrideRect = varargin{4};
   ovrSpecialFlags = varargin{5};
+  ovrMultiSample = varargin{6};
 
   % Yes. Trying to display on a screen with more than one video output?
   if isempty(winRect) && (Screen('ConfigureDisplay', 'NumberOutputs', screenid) > 1)
@@ -1509,6 +1510,7 @@ if strcmpi(cmd, 'OpenWindowSetup')
   varargout{1} = winRect;
   varargout{2} = ovrfbOverrideRect;
   varargout{3} = ovrSpecialFlags;
+  varargout{4} = ovrMultiSample;
 
   return;
 end
