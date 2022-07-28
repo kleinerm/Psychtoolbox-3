@@ -1518,8 +1518,20 @@ if strcmpi(cmd, 'GetClientRenderingParameters')
     imagingMode = mor(imagingMode, kPsychEnableSRGBRendering);
   end
 
-  % Tell imaging pipeline if OpenXR compositor can receive/provide MSAA textures:
-  if hmd{myhmd.handle}.maxMSAASamples > 1
+  % Tell imaging pipeline if OpenXR compositor can receive/provide MSAA
+  % textures. We claim we can if we can, and imaging pipeline wants MSAA
+  % and the OpenXR compositor is capable of providing MSAA with the MSAA
+  % level requested by pipeline. If the pipeline asks for a higher MSAA
+  % than what the OpenXR compositor can accept/handle, then we do not claim
+  % any MSAA capability. This way Screen's imaging pipeline will perform
+  % MSAA internally at the wanted level and resolve down to single-sample
+  % before passing the already anti-aliased content to the OpenXR
+  % compositor. This way we will do the MSAA whenever we can for maximum
+  % efficiency, but fallback to slow Screen MSAA if needed to fulfill the
+  % user codes wishes - "quality first", at the expense of an extra framebuffer
+  % copy for MSAA resolve between drawBufferFBOs and finalizedFBOs:
+  if (hmd{myhmd.handle}.maxMSAASamples > 1) && (hmd{myhmd.handle}.requestedScreenMSAASamples > 0) && ...
+     (hmd{myhmd.handle}.requestedScreenMSAASamples <= hmd{myhmd.handle}.maxMSAASamples)
     imagingMode = mor(imagingMode, kPsychSinkIsMSAACapable);
   end
 
@@ -1556,19 +1568,6 @@ if strcmpi(cmd, 'OpenWindowSetup')
     ovrSpecialFlags = 0;
   end
 
-  % The current design iteration requires the PTB parent onscreen windows
-  % effective backbuffer (from the pov of the imaging pipeline) to have the
-  % same size (width x height) as the renderbuffer for one eye, so enforce
-  % that constraint by setting ovrfbOverrideRect accordingly.
-
-  % Get required output buffer size:
-  clientRes = myhmd.driver('GetClientRenderingParameters', myhmd);
-
-  % Set as fbOverrideRect for window:
-  ovrfbOverrideRect = [0, 0, clientRes(1), clientRes(2)];
-
-  fprintf('PsychOpenXR-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with VR-HMD direct output mode.\n', ...
-          clientRes(1), clientRes(2));
   % Get wanted MSAA level from caller:
   ovrMultiSample = varargin{6};
 
@@ -1586,14 +1585,39 @@ if strcmpi(cmd, 'OpenWindowSetup')
   % interop, so the thread can't use them concurrently.
   ovrSpecialFlags = mor(ovrSpecialFlags, kPsychDontUseFlipperThread);
 
-  % Assign recommended MSAA setting from OpenXR runtime:
-  if hmd{myhmd.handle}.recMSAASamples > 1
-    % MSAA recommended - Assign optimal sample count:
-    ovrMultiSample = hmd{myhmd.handle}.recMSAASamples;
-  else
-    % MSAA not recommended - Use zero value for MSAA off in Screen():
-    ovrMultiSample = 0;
+  % Did usercode not request a specific MSAA level?
+  if isempty(ovrMultiSample)
+    % No, dealers choice. Assign recommended MSAA setting from OpenXR runtime:
+    if hmd{myhmd.handle}.recMSAASamples > 1
+      % MSAA recommended - Assign optimal sample count:
+      ovrMultiSample = hmd{myhmd.handle}.recMSAASamples;
+    else
+      % MSAA not recommended - Use zero value for MSAA off in Screen():
+      ovrMultiSample = 0;
+    end
   end
+
+  % At this point, ovrMultiSample is either our recommended choice, or the
+  % user-forced choice already passed in. We assume that our caller
+  % PsychImaing will use the ovrMultiSample value, so that it will be the
+  % effective minimum choice for MSAA. Store the value internally for use
+  % in 'GetClientRenderingParameters' as called by PsychImaging
+  % FinalizeConfiguration, to make the decision about imagingMode flags:
+  hmd{myhmd.handle}.requestedScreenMSAASamples = ovrMultiSample; 
+
+  % The current design iteration requires the PTB parent onscreen windows
+  % effective backbuffer (from the pov of the imaging pipeline) to have the
+  % same size (width x height) as the renderbuffer for one eye, so enforce
+  % that constraint by setting ovrfbOverrideRect accordingly.
+
+  % Get required output buffer size:
+  clientRes = myhmd.driver('GetClientRenderingParameters', myhmd);
+
+  % Set as fbOverrideRect for window:
+  ovrfbOverrideRect = [0, 0, clientRes(1), clientRes(2)];
+
+  fprintf('PsychOpenXR-Info: Overriding onscreen window framebuffer size to %i x %i pixels for use with VR-HMD direct output mode.\n', ...
+          clientRes(1), clientRes(2));
 
   % Skip all visual timing sync tests and calibrations, as display timing
   % of the onscreen window doesn't matter, only the timing on the HMD direct
