@@ -680,7 +680,7 @@ if cmd == 1
 
       % Attach them as new backing textures, detach the previously bound ones, so they
       % are ready for submission to the VR compositor:
-      [oldL, oldR] = Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
+      Screen('Hookfunction', hmd{handle}.win, 'SetDisplayBufferTextures', '', texLeft, texRight);
   end
 
   t3 = GetSecs;
@@ -700,9 +700,7 @@ if cmd == 1
   end
   t4 = GetSecs;
 
-  fprintf('Present %f ms, Get/Set %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
-
-  frameTiming = [];
+  %fprintf('Present %f ms, Get/Set %f ms, SetRes %f ms\n', 1000 * (t2 - t1), 1000 * (t3 - t2), 1000 * (t4 - t3));
   return;
 end
 
@@ -1169,6 +1167,7 @@ if strcmpi(cmd, 'Open')
   newhmd.VRControllersSupported = 1;
   newhmd.handTrackingSupported = 1;
   newhmd.hapticFeedbackSupported = 1;
+  newhmd.multiThreaded = 0; % TODO Technically 2nd argument varargin{2} would define this.
 
   % Default autoclose flag to "no autoclose":
   newhmd.autoclose = 0;
@@ -1698,7 +1697,19 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Create and startup XR session, based on the Screen() OpenGL interop info in 'gli':
   gli = Screen('GetWindowInfo', win, 9);
-  [hmd{handle}.videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', hmd{handle}.handle, gli.DeviceContext, gli.OpenGLContext, gli.OpenGLDrawable, ...
+
+  % Multithreaded operation, with a separate OpenXR frame worker thread
+  % inside PsychOpenXRCore? This would need a dedicated interop OpenGL
+  % context assigned to that thread only:
+  if hmd{handle}.multiThreaded
+    % Use dedicated OpenGL context for OpenXR worker thread:
+    openglContext = gli.OpenGLContext;
+  else
+    % Use Screen()'s main OpenGL context for everything, both Screen and OpenXR OpenGL ops:
+    openglContext = gli.OpenGLContextScreen;
+  end
+
+  [hmd{handle}.videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', hmd{handle}.handle, gli.DeviceContext, openglContext, gli.OpenGLDrawable, ...
                                                                                 gli.OpenGLConfig, gli.OpenGLVisualId, use3DMode);
 
   % Set override window parameters with pixel size (color depth) and refresh interval as provided by the XR runtime:
