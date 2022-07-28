@@ -49,7 +49,7 @@ if nargin < 1 || isempty(doSeparateEyeRender)
 end
 
 if nargin < 2 || isempty(multiSample)
-  multiSample = 8;
+  multiSample = 4;
 end
 
 if nargin < 3 || isempty(fountain)
