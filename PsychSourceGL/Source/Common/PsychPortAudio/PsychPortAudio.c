@@ -182,6 +182,7 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 #define kPortAudioIsAMModulator         32
 #define kPortAudioIsOutputCapture       64
 #define kPortAudioIsAMModulatorForSlave 128
+#define kPortAudioAMModulatorNeutralIsZero 256
 
 // Maximum number of audio devices we handle:
 // This consumes around 200 Bytes static memory per potential device, so
@@ -1127,8 +1128,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
     // Assign 1 as neutral value for AM modulator slaves, as 1 is the neutral
     // element for gain-modulation (multiplication), as opposed to zero as neutral
-    // element for mixing and for outputting "silence":
-    neutralValue = (dev->opmode & kPortAudioIsAMModulator) ? 1.0f : 0.0f;
+    // element for mixing and for outputting "silence", unless specifically an
+    // AM modulator neutral value of zero is requested:
+    neutralValue = ((dev->opmode & kPortAudioIsAMModulator) && !(dev->opmode & kPortAudioAMModulatorNeutralIsZero)) ? 1.0f : 0.0f;
 
     // Requested logical playback state is "stopped" or "aborting" ? If so, abort.
     if ((reqstate == 0) || (reqstate == 3)) {
@@ -1390,6 +1392,27 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
                         // Ok, the outbuffer is filled with a neutral 1.0 gain value. This will work
                         // even if no per-slave gain modulation is provided by a modulator slave.
+
+                        // An attached but inactive AM modulator with mode kPortAudioAMModulatorNeutralIsZero for this slave needs special treatment:
+                        if (audiodevices[slaveId].modulatorSlave > -1) {
+                            int myModulator = audiodevices[slaveId].modulatorSlave;
+
+                            if ((audiodevices[myModulator].stream) && (audiodevices[myModulator].opmode & kPortAudioIsAMModulatorForSlave) &&
+                                (audiodevices[myModulator].opmode & kPortAudioAMModulatorNeutralIsZero)) {
+                                // Neutral should be zero, so zero-fill all our slaves channels to which its AM modulator is attached.
+                                // This way non-attached channels stay at a neutral gain of 1 from prefill above and are unaffected by the modulator.
+                                // Channels that are supposed to be fed by the modulator get zero-gain, so if the modulator is stopped, the effect
+                                // will be as if the modulator had written zeros to "gate/mute" the slaves channel:
+                                mixBuffer = dev->slaveOutBuffer;
+                                for (j = 0; j < framesPerBuffer; j++) {
+                                    // Iterate over all target channels in the slave device outputbuffer:
+                                    for (k = 0; k < audiodevices[myModulator].outchannels; k++) {
+                                        // Set new init gain to zero for a target channel to which the modulator is attached:
+                                        mixBuffer[(j * audiodevices[slaveId].outchannels) + audiodevices[myModulator].outputmappings[k]] = 0.0;
+                                    }
+                                }
+                            }
+                        }
 
                         // Is a modulator slave active and did it write any gain AM values?
                         if ((modulatorSlave > -1) && (audiodevices[modulatorSlave].slaveDirty)) {
@@ -3165,6 +3188,11 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
     "The slave-only mode flag 64 (kPortAudioIsOutputCapture) defines a slave capture device that captures audio "
     "data from the *output channels* of the master device, i.e., it records the audio stream that is sent to the "
     "speakers. This may be useful for capturing PsychPortAudio's audio output for documentation or debug purposes.\n\n"
+    "The slave-only mode flag 256 (kPortAudioAMModulatorNeutralIsZero) when combined with the flag 32, will ask "
+    "for creation of an AM modulator which outputs a zero value - and thereby creates silence on the modulated "
+    "channels - when the modulator is stopped. Without this flag, a stopped modulator acts as if no modulator "
+    "is present, ie. sound is output without AM modulation, instead of silence. This only works for AM modulators "
+    "attached to slave output devices, not for AM modulators attached to a physical master device.\n\n"
     "All slave devices share the same settings for latencymode, timing, sampling frequency "
     "and other low-level tunable parameters, because they operate on the same underlying audio hardware.\n\n"
     "'channels' Define total number of playback and capture channels to use. See help for 'Open?' for explanation. "
@@ -3218,6 +3246,12 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
         // whole audio playback scheduling and buffer facilities:
         if (mode & kPortAudioIsAMModulator) mode |= kPortAudioPlayBack;
 
+        if ((mode & kPortAudioAMModulatorNeutralIsZero) && !(mode & kPortAudioIsAMModulator))
+            PsychErrorExitMsg(PsychError_user, "Invalid mode: Tried to request mode 256 = kPortAudioAMModulatorNeutralIsZero, but this is not an AM modulator slave!");
+
+        if ((mode & kPortAudioAMModulatorNeutralIsZero) && (audiodevices[pamaster].opmode & kPortAudioIsMaster))
+            PsychErrorExitMsg(PsychError_user, "Invalid mode: Tried to request mode 256 = kPortAudioAMModulatorNeutralIsZero, but this AM modulator is attached to a master device, instead of a playback slave! This is not allowed for master devices!");
+
         // Being an output capturer implies special rules:
         if (mode & kPortAudioIsOutputCapture) {
             // The associated master must have output that we can capture, ie., it must be configured for playback:
@@ -3233,7 +3267,7 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
         // Is mode a subset of the masters mode as required? One valid exception is kPortAudioMonitoring,
         // which is allowed to be present on the slave but missing on the master, as well as the AMModulator
         // mode and output capturer mode:
-        modeExceptions |= kPortAudioMonitoring | kPortAudioIsAMModulator | kPortAudioIsAMModulatorForSlave | kPortAudioIsOutputCapture;
+        modeExceptions |= kPortAudioMonitoring | kPortAudioIsAMModulator | kPortAudioIsAMModulatorForSlave | kPortAudioAMModulatorNeutralIsZero | kPortAudioIsOutputCapture;
         if (((mode & ~modeExceptions) & audiodevices[pamaster].opmode) != (mode & ~modeExceptions)) PsychErrorExitMsg(PsychError_user, "Invalid mode provided: Mode flags are not a subset of the mode flags of the pamaster device!");
         if ((mode < 1) || ((mode & kPortAudioMonitoring) && ((mode & kPortAudioFullDuplex) != kPortAudioFullDuplex))) {
             PsychErrorExitMsg(PsychError_user, "Invalid mode provided: Outside valid range or invalid combination of flags.");
@@ -3504,7 +3538,8 @@ PsychError PSYCHPORTAUDIOOpenSlave(void)
         printf("PTB-INFO: New virtual audio slave device with handle %i opened and attached to parent device handle %i [master %i].\n", id, paparent, pamaster);
 
         if (audiodevices[id].opmode & kPortAudioIsAMModulator) {
-            printf("PTB-INFO: For %i channels amplitude modulation.\n", (int) audiodevices[id].outchannels);
+            printf("PTB-INFO: For %i channels amplitude modulation%s.\n", (int) audiodevices[id].outchannels,
+                   (mode & kPortAudioAMModulatorNeutralIsZero) ? " with silence output when modulator stopped" : "");
         }
         else if (audiodevices[id].opmode & kPortAudioPlayBack) {
             printf("PTB-INFO: For %i channels playback.\n", (int) audiodevices[id].outchannels);
