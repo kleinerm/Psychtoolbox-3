@@ -71,6 +71,8 @@ function AssertOpenGL
 % 10/30/20  mk      Add ln -s symlink workaround for libdc1394.25.so instead of
 %                   required libdc1394.22.so on Ubuntu 20.10+.
 % 10/30/21  mk      Add special Wayland desktop detection and handling for Screen.mex.
+% 06/15/22  mk      Update ln -s symlink workaround for libdc1394.25.so for our current
+%                   Ubuntu 20.04 build system and therefore libdc1394.25.so for Matlab as well.
 
 persistent oneTimeDone;
 
@@ -149,26 +151,26 @@ catch %#ok<*CTCH>
             % version that is installed on the build system == target
             % system, so stuff should just work(tm).
             %
-            % The Matlab mex files however are built on Ubuntu 18.04 LTS
-            % atm., which ships with libdc1394.so.22, and so Screen.mexa64
-            % depends on exactly libdc1394.so.22. Ubuntu 20.10 and later
-            % ship with libdc1394.so.25 only, so running on 20.10 will cause
-            % link failure. Try to work around this by automatically
-            % creating a suitable symlink from the required libdc1394.so.22
-            % to the available libdc1394.so.25:
-            if ~isempty(strfind(s.message, 'libdc1394.so.22')) && ~exist('/lib/x86_64-linux-gnu/libdc1394.so.22', 'file') && exist('/lib/x86_64-linux-gnu/libdc1394.so.25', 'file')
-                cmd = 'sudo ln -s /lib/x86_64-linux-gnu/libdc1394.so.25 /lib/x86_64-linux-gnu/libdc1394.so.22';
+            % The Matlab mexa64 files however are built on Ubuntu 20.04 LTS
+            % atm., linking against libdc1394.so.25, and so Screen.mexa64
+            % depends on exactly libdc1394.so.25. Ubuntu 20.10 and later
+            % ship with libdc1394.so.25 only, so all is good there. But Ubuntu 20.04
+            % may not in a standard install -> link failure. Try to work around this
+            % by automatically creating a suitable symlink from the required libdc1394.so.25
+            % to the available libdc1394.so.22:
+            if ~isempty(strfind(s.message, 'libdc1394.so.25')) && exist('/lib/x86_64-linux-gnu/libdc1394.so.22', 'file') && ~exist('/lib/x86_64-linux-gnu/libdc1394.so.25', 'file')
+                cmd = 'sudo -S ln -s /lib/x86_64-linux-gnu/libdc1394.so.22 /lib/x86_64-linux-gnu/libdc1394.so.25';
 
-                fprintf('Seems your Linux distribution may be missing a suitable and functional libdc1394.so.22 library.\n');
-                fprintf('We probably can fix this problem by creating a symlink from the required libdc1394.so.22 to\n');
-                fprintf('the available libdc1394.so.25 by executing the following command as system administrator:\n\n');
+                fprintf('Seems your Linux distribution may be missing a suitable and functional libdc1394.so.25 library.\n');
+                fprintf('We probably can fix this problem by creating a symlink from the required libdc1394.so.25 to\n');
+                fprintf('the available libdc1394.so.22 by executing the following command as system administrator:\n\n');
                 fprintf('Command to execute: ''%s''\n\n', cmd);
                 fprintf('This will require you to enter your admin (sudo) password if you are a system administrator. Or you\n');
                 fprintf('can ask your system administrator to execute the above ''Command to execute'' inside a terminal window\n');
                 fprintf('and then just press enter when asked here for a sudo password.\n');
                 fprintf('Your choice. Will now call above command, which will prompt for the password...\n\n');
                 [rc, msg] = system(cmd, '-echo');
-                if (rc == 0) && exist('/lib/x86_64-linux-gnu/libdc1394.so.22', 'file')
+                if (rc == 0) && exist('/lib/x86_64-linux-gnu/libdc1394.so.25', 'file')
                     fprintf('It worked! Retrying if Screen() now works...\n');
                 else
                     fprintf('Failed or aborted with error: %s\n', msg);

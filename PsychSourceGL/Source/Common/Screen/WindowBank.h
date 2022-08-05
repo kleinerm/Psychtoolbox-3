@@ -169,12 +169,13 @@
 #define kPsychNeedVBODouble12Workaround     (1ULL << 31) // 'specialflags': Gfx driver bug makes < 2 component vertex attribute buffers problematic if GL_DOUBLE is used for submission.
 #define kPsychExternalDisplayMethod         (1ULL << 32) // 'specialflags': This window is not used for actual visual stimulation, as some external display mechanism is used, e.g., Vulkan or VR compositor.
 #define kPsychDontAutoResetOneshotFlags     (1ULL << 33) // 'specialFlags': Do not auto-reset the "one-shot" flip flags after a flip, ie. don't clear kPsych*ForFlipOnce flags.
+#define kPsychDontUseFlipperThread          (1ULL << 34) // 'specialFlags': Do not allow use of the background flipper thread, because it conflicts with some external display method.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
 // 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192,16384,32768,S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25. --> Flags of 2^26 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,2^31,2^32,2^33. --> Flags of 2^34 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192, 16384, 32768, S-65536,2^17,2^18,2^19,2^20,2^21,2^22,2^23,2^24,S-2^25,2^26,2^27,2^28,2^29,2^30,2^31,2^32,2^33,2^34. --> Flags of 2^35 and higher are available...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*   PtrPsychHookFunction;
@@ -305,7 +306,8 @@ typedef struct {
 // Definition of Linux/X11 specific information:
 typedef struct{
     GLXContext        contextObject;       // GLX OpenGL rendering context.
-    int               pixelFormatObject;   // Just here for compatibility. Its a dummy entry without meaning.
+    XID               visualId;            // X visual id of the associated visual.
+    GLXFBConfig       pixelFormatObject;   // Selected GLXFBConfig. Needed for interop with external clients, e.g., OpenXR.
     Display*          deviceContext;       // Pointer to the X11 display connection.
     Display*          privDpy;             // Pointer to the private X11 display connection for non-OpenGL ops.
     GLXWindow         windowHandle;        // Handle to the onscreen window.

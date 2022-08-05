@@ -1,5 +1,9 @@
-function XOrgConfCreator(expertmode)
-% XOrgConfCreator([expertmode=0]) - Automatically create X11 config files.
+function LegacyXOrgConfCreator
+% LegacyXOrgConfCreator - Automatically create X11 config files for old X-Servers.
+%
+% This it the legacy version for X-Server 1.20 and earlier, Mesa 21.x and earlier,
+% running Linux 5.14 and earlier. It gets called by XOrgConfCreator on such older
+% setups. The plan is to not touch this file in the future anymore.
 %
 % This friendly little setup assistant will analyze your systems graphics
 % card and display setup, then ask you questions about how you want your
@@ -18,10 +22,6 @@ function XOrgConfCreator(expertmode)
 % displays you must have all of them connected and active at the time the
 % assistant is run.
 %
-%
-% expertmode = Optional parameter: If set to 1, enable additional options which
-%              are only useful for debugging by developers and mostly useless or
-%              troublesome for normal users. Defaults to 0 == off.
 
 % History:
 % 04-Nov-2015  mk  Written.
@@ -30,10 +30,9 @@ function XOrgConfCreator(expertmode)
 % 09-Jun-2017  mk  Add 30 bpp framebuffer support and 16 bpc framebuffer support
 %                  on AMD Sea Islands gpus, to simplify setup of high color bit
 %                  depth framebuffers.
-% 11-Jun-2022  mk  Only handle systems with XOrg X-Server 21 or later, bail to
-%                  LegacyXOrgConfCreator for older systems.
-
-clc;
+% 11-Jun-2022  mk  Only handle systems with legacy XOrg X-Server 1.20 or earlier.
+%                  Freeze this file in maintenance mode from now on, until removal
+%                  in a few years.
 
 if ~IsLinux
   fprintf('This function is only supported or useful on Linux. Bye!\n');
@@ -44,31 +43,6 @@ if IsWayland
   fprintf('This function is only supported or useful on Linux with the good old X11/XServer stack, not on Wayland. Bye!\n');
   return;
 end
-
-% Expert mode off by default:
-if nargin < 1 || isempty(expertmode)
-  expertmode = 0;
-end
-
-% Which X-Server version is in use?
-[rc, text] = system('xdpyinfo | grep ''X.Org version''');
-if rc == 0
-  xversion = sscanf (text, 'X.Org version: %d.%d.%d');
-else
-  xversion = [0, 0, 0];
-end
-
-fprintf('Detected X-Server version %i.%i.%i\n', xversion(1), xversion(2), xversion(3));
-
-% X-Server older than 21.0.0 aka older than 1.21.0?
-if (xversion(1) == 1) && (xversion(2) < 21)
-    % Yes. Run LegacyXOrgConfCreator() for handling legacy stuff:
-    LegacyXOrgConfCreator;
-    return;
-end
-
-% X-Server 21 or later in use - We are the one to handle the modern XOrg stack.
-fprintf('Creating configuration for a modern X-Server 21+, assuming Mesa 22+ and Linux 5.15+ ...\n');
 
 % Step 1: Get the currently active display gpu and derive the required
 % X video driver from it. We do this by opening a little invisble
@@ -92,6 +66,17 @@ try
     fprintf('Uses the xf86-video-modesetting DDX video driver.\n');
   end
 
+  % RaspberryPi VideoCore4/6?
+  if strcmp(winfo.GPUCoreId, 'VC4')
+    % Raspbian in early 2021 had a bug which prevented pageflipping from working.
+    % This was fixed a few weeks later.
+    % Add a workaround to the xorg.conf settings, which will fix it:
+    fprintf('This is likely a RaspberryPi with VideoCore-4 or VideoCore-6 gpu.\n');
+    needPreventDrmModifiers = 1;
+  else
+    needPreventDrmModifiers = 0;
+  end
+
   % Step 2: Enumerate all available video outputs on all X-Screens:
   outputs = [];
   outputCnt = 0;
@@ -108,6 +93,7 @@ try
       outputCnt = outputCnt + 1;
       outputs{outputCnt} = Screen('ConfigureDisplay', 'Scanout', screenNumber, outputId);
       outputs{outputCnt}.screenNumber = screenNumber;
+      % disp(outputs{outputCnt});
     end
   end
 
@@ -169,7 +155,7 @@ try
   % and one has outputs which occupy x-screen space but can't display
   % anything, causing a deeply confusing desktop layout.
   % NoAutoAddGPU prevents secondary gpus from being added as slave gpus
-  % to the X-Screen, thereby their outputs don't show up. Downside would
+  % to the X-Screen, thereby there outputs don't show up. Downside would
   % be a regular GUI setup won't be able to access external displays on
   % a dual-gpu setup where only the 2nd gpu can drive external outputs.
   % A dual-x-screen setup won't have that problem though, so a typical
@@ -183,6 +169,18 @@ try
 
     if answer == 'y'
       noautoaddgpu = 1;
+    end
+  end
+
+  if multigpu && suitable
+    answer = '';
+    while isempty(answer) || ~ismember(answer, ['y', 'n'])
+      answer = input('Do you want to make use of the high-performance secondary discrete gpu (Optimus/Enduro)? [y / n] ', 's');
+    end
+
+    % Treat a "no" as if the laptop does not have multiple gpus:
+    if answer == 'n'
+      multigpu = 0;
     end
   end
 
@@ -276,56 +274,94 @@ try
     answer = input('Do you want to configure special/advanced settings? [y/n] ', 's');
   end
 
-  % Auto-choice of modesetting-ddx or not:
-  modesetting = 'd';
-  usegamma = -1;
-  asyncflipsecondaries = 'd';
+  % Don't allow choice of UXA on intel anymore. It is an only lightly maintained
+  % backend with no active development and missing features wrt. SNA, e.g., no
+  % 10 bpc gamma lut's and therefore no > 8 bpc output. There's only downsides
+  % to it without any upsides atm.:
+  useuxa = 'd';
 
   if answer == 'n'
     % Nope. Just use the "don't care" settings:
+    triplebuffer = 'd';
+    dri3 = 'd';
+    modesetting = 'd';
     depth30bpp = 'd';
+    atinotiling = 'd';
     vrrsupport = 'd';
 
-    % Keep using modesetting if it is already in use:
-    if modesettingddxactive
+    % Keep using modesetting if it is already in use on single-x-screen:
+    if (modesetting == 'd') && modesettingddxactive && ~multixscreen
       xdriver = 'modesetting';
     end
   else
     % Ask questions for setup of advanced options:
+    modesetting = 'd';
 
-    % Depth 30 is not supported on Broadcom VideoCore of RaspberryPi atm., otherwise give it a shot:
-    if ~strcmp(winfo.GPUCoreId, 'VC4')
-      % 10 bpc depth 30 deep color for 1 billion colors wanted? All AMD, Intel and NVidia gpu's support this,
-      % both with open-source and proprietary (NVidia) drivers, also with modesetting-ddx. Some SoC gpu's also
-      % support it, but not all.
+    % Which X-Server version is in use?
+    [rc, text] = system('xdpyinfo | grep ''X.Org version''');
+    if rc == 0
+      xversion = sscanf (text, 'X.Org version: %d.%d.%d');
+    else
+      xversion = [0, 0, 0];
+    end
+
+    % AMD "Sea Islands" gpu with DCE-8 display engine, running under classic ati-ddx?
+    if strcmp(xdriver, 'ati') && (winfo.GPUMinorType >= 80 && winfo.GPUMinorType < 100)
+      % Up to 12 bpc in theory, if we encode into a 16 bpc framebuffer, using our PTB
+      % special framebuffer encoding hack, which needs a linear, non-tiled framebuffer.
+      % Ask if user wants to trade performance for increased color precision:
+      fprintf('\n\nDo you want to allow use of an up to 12 bpc precision per color channel framebuffer?\n');
+      fprintf('This only works on Sea Islands AMD gpus like yours, and only with some displays and video\n');
+      fprintf('outputs. It also causes substantial reduction in graphics performance, and only works with\n');
+      fprintf('some desktop GUI environments, e.g., GNOME-3. This function is highly experimental and may\n');
+      fprintf('not work at all on your setup, so use a photometer to verify actual precision carefully!\n');
+      fprintf('This also works with later gpus up to and including AMD Vega, but does not need setup here.\n');
+      fprintf('Answer no here if a 10 bpc / 30 bpp framebuffer is sufficient for your needs.\n');
+      atinotiling = '';
+      while isempty(atinotiling) || ~ismember(atinotiling, ['y', 'n', 'd'])
+        atinotiling = input('Use a slower linear framebuffer to allow for up to 12 bpc color depth [y for yes, n for no, d for don''t care]? ', 's');
+      end
+    else
+      atinotiling = 'd';
+    end
+
+    % Does the driver + gpu combo support depth 30, 10 bpc framebuffers natively, and user has not chosen 12 bpc mode yet?
+    % As of March 2018, the latest intel-ddx and nouveau-ddx, as well as amdgpu-pro ddx and nvidia proprietary ddx do support
+    % 30 bit on modern X-Servers. The amdgpu-ddx and modesetting-ddx support depth 30 with X-Server 1.20 and later versions.
+    if (atinotiling ~= 'y') && ...
+       (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'nvidia') || strcmp(xdriver, 'amdgpu-pro') || ...
+        strcmp(xdriver, 'ati') || ((xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 20)) && (strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu'))))
       fprintf('\n\nDo you want to setup a 30 bit framebuffer for 10 bpc precision per color channel?\n');
-      fprintf('All AMD, Intel and NVidia gpus since at least 2010, sometimes since 2005 support this,\n');
-      fprintf('as well as some modern SoC gpus from ARM, Qualcomm and others.\n');
+      if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau') || strcmp(xdriver, 'ati') || strcmp(xdriver, 'modesetting') || strcmp(xdriver, 'amdgpu')
+        fprintf('This will need a year 2018 or later Linux distribution, e.g., at least Ubuntu 18.04 LTS,\n');
+        fprintf('with Mesa 18.0 or later for Intel and AMD gpus, and Mesa 18.1 or later for NVidia gpus.\n');
+      end
+
+      if multigpu
+        fprintf('It may or may not work on hybrid-graphics laptops. Such configurations are so far untested.\n');
+      end
+
       fprintf('If your desktop GUI fails to work, or Psychtoolbox gives lots of timing or page-flip related warnings,\n');
-      fprintf('then your system and hardware may not be ready for this depth 30 mode. On AMD hardware sold from the\n');
-      fprintf('years 2005 to ~2019, up to and including AMD Polaris, but *not* anymore for AMD Vega, Navi RX 5000 or AMD Ryzen\n');
-      fprintf('processor integrated graphics or later models, depth 30 will always work, even without the need to set\n');
+      fprintf('then you know your system and hardware is not ready yet for this depth 30 mode. On AMD hardware sold\n');
+      fprintf('from 2007 to ~2019, up to and including AMD Polaris, but *not* anymore for AMD Vega, Navi RX 5000 or AMD Ryzen\n');
+      fprintf('processor integrated graphics or later models, depth 30 will always work even without the need to set\n');
       fprintf('it up here, at least for PsychImaging native 10 bit framebuffer tasks, albeit at potentially slightly\n');
-      fprintf('lower performance. These slightly older AMD gpus have special support by Psychtoolbox in this sense.\n');
-      fprintf('Also note that not all gpus can output true 10 bpc on all types of video outputs. Check carefully with a photometer!\n');
+      fprintf('lower performance. These slightly older AMD gpus have special support by PTB in this sense.\n');
+      fprintf('Also note that not all gpus can output true 10 bpc on all types of video outputs. Check carefully with a photometer etc.!\n');
 
       depth30bpp = '';
       while isempty(depth30bpp) || ~ismember(depth30bpp, ['y', 'n', 'd'])
         depth30bpp = input('Use a 30 bpp, 10 bpc framebuffer [y for yes, n for no, d for don''t care]? ', 's');
       end
 
-      % Some Intel gpus need a force-enable of use of GAMMA_LUT's by the modesetting ddx
-      % for deep color mode, because the legacy lut's would only provide insufficient 8 bpc
-      % precision, and the high precision GAMMA_LUT's won't get auto-enabled on some gpus.
-      % We assume we are running on Linux 5.15 or later, and the Intel gpus requiring this
-      % would be Gen-11 Icelake, and all Gen-12 gpus, e.g., Tigerlake, DG-1, Alderlake-S.
-      % These are considered broken by X-Server 21 modesetting ddx, but we know they have
-      % been fixed as of Linux 5.15 / Ubuntu 22.04, so we force-enable GAMMA_LUT's.
-      % usegamma will only have an effect under modesetting ddx, so this only affects
-      % Intel gpus under modesetting ddx. And yes, gamma handling on the latest Intel gens
-      % is a frickin mess, if you haven't guessed it already...
-      if depth30bpp == 'y' && strcmp(xdriver, 'intel')
-        usegamma = 1;
+      % Depth 30 on Intel gfx requested?
+      % This won't work with modesetting ddx of X-Server 1.20 or earlier, as that driver only supports
+      % 256 slot 8 bpc in -> 8 bpc out gamma lut's, so doesn't pass 10 bpc from fb to display.
+      % It does work with X-Server 1.21+ modesetting-ddx, as that one uses GAMMA_LUT modern gamma tables
+      % if supported by the kernel.
+      if depth30bpp == 'y' && strcmp(xdriver, 'intel') && ~(xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 21))
+        % Actively request no use of modesetting ddx:
+        modesetting = 'n';
       end
 
       % Depth 30 on multi-x-screen setup requested?
@@ -336,19 +372,18 @@ try
         end
       end
     else
-      % Unsupported gpu - Don't care means no:
       depth30bpp = 'd';
     end
 
-    % Mesa FOSS graphics driver on top of open-source Linux DRM/KMS? And definitely not a gpu+driver combo that can't do VRR?
-    if ~isempty(strfind(winfo.GLVersion, 'Mesa')) && ~strcmp(xdriver, 'nouveau') && ~(strcmp(xdriver, 'intel') && ~modesettingddxactive)
+    % Mesa FOSS graphics driver on top of open-source Linux DRM/KMS?
+    if ~isempty(strfind(winfo.GLVersion, 'Mesa'))
       % Possibly VRR capable Mesa driver + Linux DRM/KMS driver:
       fprintf('\n\nDo you want to allow use of so called VRR Variable Refresh Rate Mode?\n');
       fprintf('This is also known as FreeSync or DisplayPort adaptive sync. It allows to control\n');
       fprintf('visual stimulus onset with more fine-grained timing (see ''help VRRSupport'' for more infos).\n');
-      fprintf('This currently only works on AMD Sea Islands gpus and later or Intel Gen-11 Icelake gpus and later,\n');
-      fprintf('with suitable displays and cables. It also needs at least Linux 5.2 for AMD gpus or at least\n');
-      fprintf('Linux 5.12 for Intel Gen-12 Tigerlake gpus and at least Linux 5.17 for Intel Gen-11 Icelake gpus.\n');
+      fprintf('This currently only works on AMD Sea Islands gpus and later or Intel Gen-12 Tigerlake graphics and later,\n');
+      fprintf('with suitable displays and cables. It also needs at least Linux 5.2 for AMD gpus or\n');
+      fprintf('at least Linux 5.12 for Intel gpus.\n');
       vrrsupport = '';
       while isempty(vrrsupport) || ~ismember(vrrsupport, ['y', 'n', 'd'])
         vrrsupport = input('Allow use of VRR Variable Refresh Rate mode [y for yes, n for no, d for don''t care]? ', 's');
@@ -357,44 +392,27 @@ try
       vrrsupport = 'd';
     end
 
-    if ~strcmp(xdriver, 'nvidia')
-      % AsyncFlipSecondaries capable Linux DRM/KMS driver:
-      fprintf('\n\nDo you want to allow use of so called AsyncFlipSecondaries Mode?\n');
-      fprintf('This takes effect whenever you present a fullscreen onscreen window\n');
-      fprintf('on an X-Screen with multiple video outputs / displays connected and\n');
-      fprintf('active.\n');
-      fprintf('\n');
-      fprintf('It is most useful if you have a setup where the visual stimulus is shown\n');
-      fprintf('in a mirrored/cloned configuration on both, a display for your subject,\n');
-      fprintf('and a "monitoring" display for the experimenter, e.g., a fMRI setup\n');
-      fprintf('with a monitor/projector displaying the stimulus to the subject in the\n');
-      fprintf('scanner bore, and another control monitor in the control room. If both\n');
-      fprintf('displays are not perfectly synchronized, this can cause presentation\n');
-      fprintf('timing judder/problems or degraded performance. This option allows you\n');
-      fprintf('to get best timing and performance and quality on the subject display,\n');
-      fprintf('e.g., the projector in the fMRI scanner, by sacrificing quality for the\n');
-      fprintf('experimenter display in the control room, e.g., getting some tearing.\n');
-      fprintf('If you have such a setup, enabling this mode may make sense. Timing\n');
-      fprintf('will be preserved tear-free for the highest resolution display in a\n');
-      fprintf('mirror configuration, or in the case of all displays having the same\n');
-      fprintf('resolution, for the user designated primary display.\n');
-      fprintf('\n');
-      fprintf('If you intend to only use a single display per x-screen, or have perfectly\n');
-      fprintf('synchronized displays then this option is useless and answering n or d is best.\n');
-      asyncflipsecondaries = '';
-      while isempty(asyncflipsecondaries) || ~ismember(asyncflipsecondaries, ['y', 'n', 'd'])
-        asyncflipsecondaries = input('Use AsyncFlipSecondaries mode for multi-display setups [y for yes, n for no, d for don''t care]? ', 's');
-      end
+    % VRR requested?
+    if (vrrsupport == 'y') && ~(xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 21))
+      % This won't work with modesetting ddx of X-Server 1.20 or earlier, only with the one
+      % from X-Server 1.21 or later. Actively request to not use modesetting ddx:
+      modesetting = 'n';
     end
 
-    % Use or non-use of modesetting ddx possible on this gpu hardware?
-    if expertmode && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'modesetting')
+    if (rc == 0) && ~strcmp(xdriver, 'nvidia') && ~strcmp(xdriver, 'modesetting') && ...
+       (~multigpu || (~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'ati'))) && ...
+       (vrrsupport ~= 'y') && ... % as of December 2019, the modesetting-ddx does not support VRR.
+       (~isempty(intersect(depth30bpp, 'nd')) || ~strcmp(xdriver, 'intel')) % As of July 2019, on Intel gfx only intel-ddx can do depth30bpp, not modesetting.
+      % HybridGraphics Intel + NVidia/AMD needs intel-ddx, modesetting won't work. Ditto for AMD + AMD.
+      % XOrg 1.18.0 or later? xf86-video-modesetting is only good enough for our purposes on 1.18 and later.
+      % Also must be a Mesa version safe for use with DRI3/Present:
+      if (xversion(1) > 1 || (xversion(1) == 1 && xversion(2) >= 18)) && ...
+         ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0)
         % Yes: The xf86-video-modesetting driver is an option that supports DRI3/Present well.
-        fprintf('\n\nDo you want to use the modesetting driver xf86-video-modesetting?\n');
-        fprintf('This is a driver which works in principle with all open-source kernel display drivers.\n');
-        fprintf('Your operating system will have made the optimal choice of driver for most conceivable use cases,\n');
-        fprintf('so rarely will there be a justified need to override this automatic choice.\n');
-        fprintf('Therefore if you do not have a good reason otherwise, just answer d for don''t care as a safe choice.\n');
+        fprintf('\n\nDo you want to use the new kms modesetting driver xf86-video-modesetting?\n');
+        fprintf('This is a new video driver, which works with all open-source display drivers.\n');
+        fprintf('It is shown to be rather efficient, but not as feature rich and well tested as other drivers yet.\n');
+        fprintf('If you are not sure what to select, answer n for no as a safe choice.\n');
         if multixscreen && ~modesettingddxactive
           fprintf('CAUTION: When setting up a multi-x-screen setup with modesetting, you must do this in two separate\n');
           fprintf('CAUTION: steps. First run this script followed by XOrgConfSelector to select modesetting in a\n');
@@ -404,31 +422,83 @@ try
           fprintf('CAUTION: If you answer ''yes'' below, i will modify your choice, so you can safely execute\n');
           fprintf('CAUTION: the first step of this procedure, so no worries...\n');
         end
-
         usemodesetting = '';
         while isempty(usemodesetting) || ~ismember(usemodesetting, ['y', 'n', 'd'])
-          usemodesetting = input('Use modesetting driver [y for yes, n for no, d for don''t care - d IS RECOMMENDED]? ', 's');
+          usemodesetting = input('Use modesetting driver [y for yes, n for no, d for don''t care]? ', 's');
         end
 
-        % Force-Choose modesetting on explicit yes:
+        % Only choose modesetting on explicit yes for now:
         if usemodesetting == 'y'
           xdriver = 'modesetting';
           modesetting = 'y';
         end
 
         % If the user explicitly does not want modesetting, and there are no forcing circumstances to use or not use it,
-        % (aka modesetting == 'd') and use of another driver is possible, then force modesetting off. As of Ubuntu 20.04,
-        % the distro will select modesetting-ddx by default for everything except for AMD gpu's (radeon-ddx/amdgpu-ddx)
-        % or NVidia gpu's with proprietary nvidia-ddx, so we need a config file to opt-out of modesetting-ddx, not to opt-in.
-        if (usemodesetting == 'n') && (modesetting == 'd') && ~strcmp(xdriver, 'modesetting')
+        % (aka modesetting == 'd') and we are actually running on a Intel gpu or nouveau/NVidia, then force modesetting
+        % off. Background: As of Ubuntu 20.04-LTS, the distro will select modesetting-ddx by default for both Intel and
+        % NVidia+nouveau, so we need a config file to opt-out of use of modesetting-ddx, not to opt-in.
+        if (usemodesetting == 'n') && (modesetting == 'd') && (strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau'))
           modesetting = 'n';
         end
+      end
     end
 
     % Map a "Don't care" about modesetting to choice of modesetting if modesetting is already active.
     % We'd do this anyway below in an override, but doing it early allows to skip all those redundant questions below:
     if (modesetting == 'd') && modesettingddxactive
       xdriver = 'modesetting';
+      modesetting = 'y';
+    end
+
+    if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
+      fprintf('\n\nDo you want to allow the use of triple-buffering under DRI2?\n');
+      fprintf('Triple buffering can potentially cause a slight increase in performance for very\n');
+      fprintf('demanding visual stimulation paradigms. However, it is not without downsides. It can\n');
+      fprintf('cause visual glitches in some applications other than Psychtoolbox, or for visual\n');
+      fprintf('desktop animations, ie. during regular desktop use of your computer.\n');
+      fprintf('Also for some stimulation paradigms performance is not consistently increased, but\n');
+      fprintf('can become somewhat erratic.\n');
+      if strcmp(xdriver, 'intel')
+        fprintf('Additionally on some intel graphics drivers with sna acceleration, some uses of\n');
+        fprintf('triple-buffering can cause hangs of Psychtoolbox.\n');
+      end
+      fprintf('To take advantage of the potential performance improvements one also needs to adapt\n');
+      fprintf('experiment scripts in a special way, which makes the code only work on Linux, not on OSX or Windows.\n');
+      fprintf('Due to this mixed bag of advantages and disadvantages, it is usually better to not\n');
+      fprintf('use triple-buffering but instead enable DRI3/Present support if possible for especially\n');
+      fprintf('demanding paradigms.');
+      fprintf('If you are unsure, or generally happy with the graphics performance, just answer\n');
+      fprintf('"d" for "Don''t care", so we leave the decision of what is best to your system.\n');
+      fprintf('To try it out, e.g., to get a bit more performance, answer "y", otherwise "n".\n\n');
+
+      triplebuffer = '';
+      while isempty(triplebuffer) || ~ismember(triplebuffer, ['y', 'n', 'd'])
+        triplebuffer = input('Allow use of DRI2 triple-buffering [y for yes, n for no, d for don''t care]? ', 's');
+      end
+    else
+      triplebuffer = 'd';
+    end
+
+    % Is the use of DRI3/Present safely possible with this combo of Mesa and X-Server?
+    if ~strcmp(xdriver, 'modesetting') && ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0)
+      % Yes. Propose it:
+      fprintf('\n\nDo you want to allow the use of the new DRI3/Present display backend?\n');
+      fprintf('DRI3 is a new method of displaying content which is potentially more efficient\n');
+      fprintf('and provides potentially higher performance. However, DRI3/Present needs fairly\n');
+      fprintf('recent display drivers, otherwise some glitches may occur with this new technology.\n');
+      fprintf('\n');
+      fprintf('If you are unsure, but generally happy with the graphics performance, just answer\n');
+      fprintf('"d" for "Don''t care", so we leave the decision what is best to your system.\n');
+      fprintf('To try it out, e.g., to get a bit more performance, answer "y". Psychtoolbox will\n');
+      fprintf('warn you during the next session if it thinks you enabled DRI3 on a unsuitable system,\n');
+      fprintf('so don''t worry about wrong answers, they can be corrected.\n\n');
+
+      dri3 = '';
+      while isempty(dri3) || ~ismember(dri3, ['y', 'n', 'd'])
+        dri3 = input('Allow use of DRI3/Present [y for yes, n for no, d for don''t care]? ', 's');
+      end
+    else
+      dri3 = 'd';
     end
 
     % End of advanced configuration.
@@ -456,33 +526,22 @@ Screen('Preference', 'Verbosity', oldVerbosity);
 
 % We have all information and answers we wanted. Synthesize a xorg.conf:
 
-% Do we need to enforce modesetting-ddx for AsyncFlipSecondaries mode, because the
-% gpu is not a modern amdgpu-kms powered AMD, and so can't use amdgpu-ddx, and only
-% modesetting-ddx does the AsyncFlipSecondaries trick for such other gpu's?
-if asyncflipsecondaries == 'y' && ~strcmp(xdriver, 'amdgpu') && ~strcmp(xdriver, 'amdgpu-pro') && ~strcmp(xdriver, 'modesetting')
-  fprintf('Override: AsyncFlipSecondaries mode is requested on something else than a modern AMD gpu.\n');
-  fprintf('Override: This requires use of the modesetting-ddx, but modesetting-ddx is not currently\n');
-  fprintf('Override: selected as driver. Switching driver from %s-ddx to modesetting-ddx.\n', xdriver);
-  fprintf('Override: This may invalidate a multi-x-screen configuration, requiring a two-step switch\n');
-  fprintf('Override: with logout, login and rerun of XOrgConfCreator, lets see...\n\n');
-  xdriver = 'modesetting';
-  modesetting = 'y';
+% Hybrid graphics use requested by user?
+if multigpu && suitable && dri3 ~= 'y'
+  % Override use of dri3 to 'y'es, as we need DRI3/Present for renderoffload:
+  dri3 = 'y';
+  fprintf('Override: Enabling DRI3/Present, as this is needed for hybrid graphics Optimus/Enduro support.\n');
 end
 
-% Is a ddx in use which doesn't default to DRI3?
-if strcmp(xdriver, 'intel') || strcmp(xdriver, 'nouveau')
-  % Yes. Enforce DRI3/Present to get best performance, reliability and also
-  % well working PRIME renderoffload for hybrid graphics machines:
-  dri3 = 'y';
-else
-  % No. Nothing to do:
-  dri3 = 'd';
+primehacks = 0;
+if multigpu && suitable && ~fullysupported
+  primehacks = 1;
 end
 
 % Actually any xorg.conf for non-standard settings needed?
-if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y' && ...
-   usegamma == -1 && asyncflipsecondaries ~= 'y'
+if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
+   ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && ~strcmp(xdriver, 'nvidia') && vrrsupport == 'd' && ...
+   needPreventDrmModifiers == 0
 
   % All settings are for a single X-Screen setup with auto-detected outputs
   % and all driver settings on default and not on a NVidia proprietary driver.
@@ -492,19 +551,40 @@ if noautoaddgpu == 0 && multixscreen == 0 && dri3 == 'd' && modesetting == 'd' &
   return;
 end
 
-% Multi X-Screen ZaphodHeads setup defined while modesetting-ddx was active, but user does
-% not want modesetting-ddx? Or vice versa user wants modesetting-ddx but ZaphodHeads was
-% created while a different ddx was active? In those cases, the determined ZaphodHead output
-% names would be wrong for the chosen ddx, resulting in X-Server startup failure!
-% Therefore, disable multi-x-screen ZaphodHeads and ask user for a two-step transition instead,
-% so user is not left with a dysfunctional multi x-screen setup:
-if (multixscreen > 0) && (modesetting == 'n') && modesettingddxactive
+% Multi X-Screen ZaphodHeads setup defined while modesetting-ddx was active? In that case,
+% the determined ZaphodHead output names are only valid for use with the modesetting-ddx.
+% Therefore, if user chose "(d)on't care" wrt. modesetting-ddx, select it, so user is not
+% left with a dysfunctional multi x-screen setup:
+if (multixscreen > 0) && (modesetting == 'n') && modesettingddxactive && strcmp(xdriver, 'intel')
+  % User wants depth30bpp and no modesetting, e.g., because Intel-gfx doesn't provide depth 30
+  % under modesetting, but user also wants multi-X-screen and the modesetting ddx is currently
+  % active. We have to switch to non-modesetting intel-ddx driver to get depth 30 working,
+  % but this means we can't switch to multi-x-screen at the same time. Sacrifice multi-x-screen
+  % for this two-setup setup process:
   multixscreen = 0;
   fprintf('Override: Ignoring request for multi X-Screen configuration, as modesetting-ddx\n');
-  fprintf('Override: is not wanted, but was active while creating this config. This would\n');
-  fprintf('Override: create an invalid configuration. Generating a single-x-screen config now\n');
-  fprintf('Override: without modesetting-ddx. Please repeat the multi-x-screen setup without modesetting,\n');
-  fprintf('Override: after logging out and in again with this new configuration selected.\n');
+  fprintf('Override: is currently active while creating this config but must *not* be used for\n');
+  fprintf('Override: requested color depth 30 bit. Generating a single-x-screen intel-ddx\n');
+  fprintf('Override: config now. Please repeat the multi-x-screen + intel-ddx setup after logging\n');
+  fprintf('Override: out and in again with this new configuration selected.\n');
+elseif (multixscreen > 0) && (modesetting == 'n') && modesettingddxactive && vrrsupport == 'y'
+  % User wants VRR and no modesetting, because modesetting-ddx doesn't support VRR yet,
+  % but user also wants multi-X-screen and the modesetting ddx is currently active. We
+  % have to switch to non-modesetting ddx driver to get VRR working, but this means we
+  % can't switch to multi-x-screen at the same time. Sacrifice multi-x-screen for this
+  % two-setup setup process:
+  multixscreen = 0;
+  fprintf('Override: Ignoring request for multi X-Screen configuration, as modesetting-ddx\n');
+  fprintf('Override: is currently active while creating this config but must *not* be used for\n');
+  fprintf('Override: requested VRR support. Generating a single-x-screen ddx config now.\n');
+  fprintf('Override: Please repeat the multi-x-screen + non-modesetting-ddx setup after logging\n');
+  fprintf('Override: out and in again with this new configuration selected.\n');
+elseif (multixscreen > 0) && (modesetting ~= 'y') && modesettingddxactive
+  modesetting = 'y';
+  xdriver = 'modesetting';
+  dri3 = 'd'; % modesetting defaults to DRI3, which is what we want, so 'd'ont care does the job.
+  fprintf('Override: Selecting modesetting-ddx driver for this multi X-Screen configuration, as\n');
+  fprintf('Override: the modesetting-ddx is currently active while creating this config.\n');
 elseif (multixscreen > 0) && (modesetting == 'y') && ~modesettingddxactive
   multixscreen = 0;
   fprintf('Override: Ignoring request for multi X-Screen configuration, as modesetting-ddx\n');
@@ -512,6 +592,18 @@ elseif (multixscreen > 0) && (modesetting == 'y') && ~modesettingddxactive
   fprintf('Override: create an invalid configuration. Generating a single-x-screen modesetting\n');
   fprintf('Override: config now. Please repeat the multi-x-screen + modesetting setup after logging\n');
   fprintf('Override: out and in again with this new configuration selected.\n');
+end
+
+% If we want/need to use the intel-ddx, also try to use DRI3/Present, unless user
+% strictly said 'n'o. Why? On modern distros with recent Mesa, OpenGL clients and
+% also desktop GUI's (OpenGL desktop compositors) will choose the new 'iris' OpenGL
+% gallium driver on Intel Gen8+, but the intel-ddx will currently always choose the
+% old i965 DRI classic driver. This mismatch of server/ddx uses i965, but compositor/
+% OpenGL client uses iris, will end in a nice desktop GUI crash, unless we use DRI3!
+% Hard earned wisdom, but with DRI3 we are safe for the moment, so choose that:
+if strcmp(xdriver, 'intel') && (dri3 ~= 'n')
+  fprintf('Override: Use of intel-ddx implies use of DRI3/Present for higher reliability, so enabling DRI3.\n');
+  dri3 = 'y';
 end
 
 % Define filename of output file:
@@ -540,22 +632,34 @@ if fid == -1
 end
 
 % Header:
-fprintf(fid, '# Auto generated xorg.conf - Created by Psychtoolbox XOrgConfCreator.\n\n');
+fprintf(fid, '# Auto generated xorg.conf - Created by Psychtoolbox LegacyXOrgConfCreator.\n\n');
 
-if noautoaddgpu > 0
+if noautoaddgpu > 0 || needPreventDrmModifiers
   fprintf(fid, 'Section "ServerFlags"\n');
   if noautoaddgpu
     fprintf(fid, '  Option "AutoAddGPU"     "false"\n');
   end
 
+  if needPreventDrmModifiers
+    % Explicitely prevent use of dmabuf_capable flag for modesetting-ddx, as that
+    % can cause broken pageflipping on Raspbian with Linux 5.3 and later.
+    % See: https://gitlab.freedesktop.org/mesa/mesa/-/issues/3601
+    fprintf(fid, '  Option "Debug"     "None"\n');
+  end
+
   fprintf(fid, 'EndSection\n\n');
 end
 
-if multixscreen == 0 && dri3 == 'd' && modesetting == 'd' && asyncflipsecondaries ~= 'y' && ...
-   ~isempty(intersect(depth30bpp, 'nd')) && ~strcmp(xdriver, 'nvidia') && vrrsupport ~= 'y' && usegamma == -1
+if multixscreen == 0 && dri3 == 'd' && ismember(useuxa, ['d', 'n']) && triplebuffer == 'd' && modesetting == 'd' && ...
+   ~isempty(intersect(depth30bpp, 'nd')) && ismember(atinotiling, ['d', 'n']) && vrrsupport == 'd'
   % Done writing the file:
   fclose(fid);
 else
+  % Requesting no tiling from the ati-ddx is the same as applying primehacks:
+  if atinotiling == 'y'
+    primehacks = 1;
+  end
+
   % Multi X-Screen setup requested? Then we need the full show:
   if multixscreen > 0
     % General server layout: Which X-Screens to use, their relative
@@ -587,7 +691,7 @@ else
     % Create device sections, one for each x-screen aka the driver instance
     % associated with that x-screen:
     for i = 0:screenNumber
-      WriteGPUDeviceSection(fid, xdriver, usegamma, asyncflipsecondaries, vrrsupport, dri3, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
+      WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, useuxa, primehacks, i, ZaphodHeads{i+1}, xscreenoutputs{i+1}, outputs);
     end
 
     % One screen section per x-screen, mapping screen i to card i:
@@ -623,9 +727,9 @@ else
 
     % We only need to create a single device section with override Option
     % values for the gpu driving that single X-Screen.
-    WriteGPUDeviceSection(fid, xdriver, usegamma, asyncflipsecondaries, vrrsupport, dri3, [], [], []);
+    WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, useuxa, primehacks, [], [], []);
 
-    if ismember('y', depth30bpp) || ismember('0', depth30bpp) || strcmp(xdriver, 'nvidia')
+    if ismember('y', depth30bpp) || strcmp(xdriver, 'nvidia')
       fprintf(fid, 'Section "Screen"\n');
       fprintf(fid, '  Identifier    "Screen%i"\n', 0);
       fprintf(fid, '  Device        "Card%i"\n', 0);
@@ -653,7 +757,7 @@ fprintf('file to setup your system, or to switch back to the default setup of yo
 
 end
 
-function WriteGPUDeviceSection(fid, xdriver, usegamma, asyncflipsecondaries, vrrsupport, dri3, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
+function WriteGPUDeviceSection(fid, xdriver, vrrsupport, dri3, triplebuffer, useuxa, primehacks, screenNumber, ZaphodHeads, xscreenoutputs, outputs)
   fprintf(fid, 'Section "Device"\n');
 
   if isempty(screenNumber)
@@ -669,6 +773,26 @@ function WriteGPUDeviceSection(fid, xdriver, usegamma, asyncflipsecondaries, vrr
 
   fprintf(fid, '  Driver      "%s"\n', xdriver);
 
+  if triplebuffer ~= 'd'
+    if strcmp(xdriver, 'intel')
+      if triplebuffer == 'y'
+        triplebuffer = 'on';
+      else
+        triplebuffer = 'off';
+      end
+      fprintf(fid, '  Option      "TripleBuffer" "%s"\n', triplebuffer);
+    end
+
+    if strcmp(xdriver, 'nouveau')
+      if triplebuffer == 'y'
+        triplebuffer = '2';
+      else
+        triplebuffer = '1';
+      end
+      fprintf(fid, '  Option      "SwapLimit" "%s"\n', triplebuffer);
+    end
+  end
+
   if vrrsupport ~= 'd'
     if vrrsupport == 'y'
       vrrsupport = 'on';
@@ -676,15 +800,6 @@ function WriteGPUDeviceSection(fid, xdriver, usegamma, asyncflipsecondaries, vrr
       vrrsupport = 'off';
     end
     fprintf(fid, '  Option      "VariableRefresh" "%s"\n', vrrsupport);
-  end
-
-  if asyncflipsecondaries ~= 'd'
-    if asyncflipsecondaries == 'y'
-      asyncflipsecondaries = 'on';
-    else
-      asyncflipsecondaries = 'off';
-    end
-    fprintf(fid, '  Option      "AsyncFlipSecondaries" "%s"\n', asyncflipsecondaries);
   end
 
   if dri3 ~= 'd'
@@ -696,13 +811,24 @@ function WriteGPUDeviceSection(fid, xdriver, usegamma, asyncflipsecondaries, vrr
     fprintf(fid, '  Option      "DRI" "%s"\n', dri3);
   end
 
-  % modesetting ddx in use and explicit UseGammaLUT setup wanted?
-  if strcmp(xdriver, 'modesetting') && (usegamma ~= -1)
-    if usegamma == 1
-      fprintf(fid, '  Option      "UseGammaLUT" "on"\n');
+  if (useuxa ~= 'd') && strcmp(xdriver, 'intel')
+    if useuxa == 'y'
+      useuxa = 'uxa';
     else
-      fprintf(fid, '  Option      "UseGammaLUT" "off"\n');
+      useuxa = 'sna';
     end
+    fprintf(fid, '  Option      "AccelMethod" "%s"\n', useuxa);
+  end
+
+  if strcmp(xdriver, 'ati') && primehacks
+    % The ati ddx for old radeon-kms driven AMD cards allows to disable color tiling
+    % for the scanout buffer, and that allows us to get good Enduro hybrid graphics
+    % renderoffload on dual-AMD (APU iGPU + AMD dGPU) iff a special hacked kernel is
+    % used. This is a dirty trick as a stop-gap measure until we have something well
+    % working and clean upstream.
+    fprintf(fid, '  Option      "ColorTiling"   "off"\n');
+    fprintf(fid, '  Option      "ColorTiling2D" "off"\n');
+    fprintf('Enabling special dirty hacks for hybrid graphics Enduro support on legacy AMD+AMD laptops, or for 12 bpc framebuffers.\n');
   end
 
   if ~isempty(screenNumber)
@@ -749,21 +875,9 @@ function xdriver = DetectDDX(winfo)
         % DCN class gpu (Ryzen+ APU's, Navi+, ...) or later -> amdgpu ddx:
         fprintf('Recent AMD GPU with open-source driver detected. ');
         xdriver = 'amdgpu';
-      elseif (winfo.GPUMinorType < 100 && winfo.GPUMinorType >= 80) && exist('/sys/module/amdgpu/parameters/cik_support', 'file')
-        % DCE-8 and amdgpu-kms loaded. Is it used for DCE-8 Sea Islands (cik)?
-        [rc, msg] = system('cat /sys/module/amdgpu/parameters/cik_support');
-        if rc == 0 && length(msg) >= 1 && msg(1) == '1'
-          % Seems amdgpu-kms is driving the gpu, ergo amdgpu-ddx is in use!
-          fprintf('Sea Islands AMD GPU with open-source amdgpu-kms driver detected. ');
-          xdriver = 'amdgpu';
-        else
-          % amdgpu-kms not in the drivers seat - radeon-kms and ergo ati/radeon-ddx is in use:
-          fprintf('Sea Islands AMD GPU with open-source radeon-kms driver detected. ');
-          xdriver = 'ati';
-        end
       else
-        % DCE-8 or earlier under radeon-kms => ati ddx:
-        fprintf('Classic AMD GPU with open-source radeon-kms driver detected. ');
+        % DCE-8 or earlier => ati ddx:
+        fprintf('Classic AMD GPU with open-source driver detected. ');
         xdriver = 'ati';
       end
     else
@@ -807,12 +921,13 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
   % Yes, likely a hybrid graphics laptop:
   multigpu = 1;
 
-  % Display gpu not Intel or AMD?
-  if ~strcmp(xdriver, 'intel') && ~strcmp(xdriver, 'amdgpu') && ~strcmp(xdriver, 'amdgpu-pro') && ~strcmp(xdriver, 'ati')
-    % Then the display gpu must be Nvidia or such.
+  % Display gpu not Intel?
+  if ~strcmp(xdriver, 'intel')
+    % Then the display gpu must be Nvidia or AMD. Existing hybrid graphics
+    % laptops will have either NVidia + NVidia (rarely) or AMD + AMD (more often).
     % Confirm that primary and secondary gpu are from the same vendor to match that
     % pattern, otherwise we might be dealing with a mux'ed laptop currently switched
-    % to the discrete NVidia or unknown gpu:
+    % to the discrete NVidia or AMD gpu:
     if ~exist('/sys/class/drm/card0/device/vendor','file') || ~exist('/sys/class/drm/card1/device/vendor','file')
       return;
     end
@@ -824,10 +939,13 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
     end
   end
 
-  fprintf('This seems to be a hybrid graphics laptop.\n');
+  fprintf('This seems to be a hybrid graphics laptop. Let''s check if i can use this.\n');
 
   c = Screen('Computer');
   osrelease = sscanf(c.kern.osrelease, '%i.%i');
+
+  % Mesa and X-Server safe to use for DRI3/Present Prime render offloading?
+  primeuseable = ~isempty(strfind(winfo.GLVersion, 'Mesa')) && (bitand(winfo.SpecialFlags, 2^24) > 0);
 
   % Primary display gpu is Intel?
   if strcmp(xdriver, 'intel')
@@ -837,52 +955,31 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
     if ~(osrelease(1) > 4 || (osrelease(1) == 4 && osrelease(2) >=5))
       % Kernel too old to provide proper PRIME sync:
       fprintf('Your Linux kernel %s is too old to support proper hybrid graphics with Intel graphics chips.\n', c.kern.osrelease);
-      fprintf('However, upgrading an Ubuntu Linux flavor or derivative to a suitable 4.5+ kernel is trivial.\n');
+      fprintf('However, upgrading an Ubuntu Linux flavor or derivative to a suitable kernel is trivial.\n');
       fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
       fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
       fprintf('assistant can not help you with setting them up.\n');
       fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, follow them, then retry.\n\n');
       return;
-    else
-      suitable = 1;
-      fullysupported = 1;
     end
-  end
 
-  % Primary display gpu is modern AMD?
-  if strcmp(xdriver, 'amdgpu') || strcmp(xdriver, 'amdgpu-pro')
-    % These work well with other AMD discrete gpu's as of X-Server 21 and Linux kernel 5.11 and later.
-    if ~(osrelease(1) > 5 || (osrelease(1) == 5 && osrelease(2) >= 11))
-      % Kernel too old to provide proper PRIME sync:
-      fprintf('Your Linux kernel %s is too old to support proper hybrid graphics with AMD iGPU graphics chips.\n', c.kern.osrelease);
-      fprintf('However, upgrading an Ubuntu Linux flavor or derivative to a suitable 5.11+ kernel is trivial.\n');
+    if ~primeuseable
+      fprintf('Your version of X-Server or Mesa is too old to support proper hybrid graphics on most laptops\n');
+      fprintf('with Intel graphics chips. Upgrading to a minimum of X-Server 1.16.3 or later, Mesa 10.5.2 is\n');
+      fprintf('required, the more recent versions the better! Hybrid graphics was successfully tested with\n');
+      fprintf('Ubuntu 14.04.5 LTS, with XServer 1.18.3, Mesa 11.2.0 and on later on Ubuntu 16.04.1 LTS, with\n');
+      fprintf('Intel integrated graphics chip + both NVidia and AMD discrete graphics cards, so we strongly\n');
+      fprintf('recommend to use one of these tested versions/configurations or later ones.\n');
       fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
       fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
       fprintf('assistant can not help you with setting them up.\n');
       fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, follow them, then retry.\n\n');
       return;
-    else
-      suitable = 1;
-      if exist('/sys/class/drm/card0/device/vendor','file') && exist('/sys/class/drm/card1/device/vendor','file')
-        [status, out] = system ('diff /sys/class/drm/card0/device/vendor /sys/class/drm/card1/device/vendor');
-        if status == 0 && isempty(out)
-          % Same gpu vendor for iGPU and dGPU, both AMD. Pageflipping for PRIME should work.
-          fullysupported = 1;
-        end
-      end
     end
-  end
 
-  if suitable
     % DRI3/Present PRIME render offloading is possible on this setup.
     fprintf('This hardware + software setup should allow use of the discrete gpu for faster rendering.\n');
-    fprintf('Enabling DRI3/Present support is needed for that, and I will do that for you.\n');
-    if fullysupported
-      fprintf('Most likely this setup will allow direct pageflipping for great timing and performance.\n');
-    else
-      fprintf('You will probably not achieve reliable timing or timestamping though. See runtime output\n');
-      fprintf('relating to use of NETWM timing mode under GNOME or Ubuntu desktop for possible workarounds.\n');
-    end
+    fprintf('Enabling DRI3/Present support is needed for that, i will do that for you.\n');
     fprintf('You will also need to setup your system to use the powerful gpu with Matlab or Octave.\n');
     fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, how to do that.\n');
     fprintf('While with most modern hybrid graphics laptops it should then just work, some more exotic\n');
@@ -891,8 +988,54 @@ function [multigpu, suitable, fullysupported] = DetectHybridGraphics(winfo, xdri
     fprintf('Such models can then be set up in a dual-X-Screen configuration to make them work with\n');
     fprintf('research grade timing, but this assistant can not set them up automatically, so you would\n');
     fprintf('have to do it manually. See ''help HybridGraphics'' and the Psychtoolbox website for instructions.\n\n');
+    suitable = 1;
+    fullysupported = 1;
     return;
   end
 
+  % Non Intel display gpu, ie., either NVidia + NVidia or AMD + AMD?
+  if isempty(strfind(winfo.DisplayCoreId, 'NVidia')) && isempty(strfind(winfo.DisplayCoreId, 'AMD'))
+    % Nope, something else like VC4 - No hybrid graphics.
+    return;
+  end
+
+  % Dual NVidia or dual AMD. At this point in time it would require a specially
+  % hacked custom kernel from Mario Kleiner + a few more configuration hacks.
+  if ~primeuseable
+    fprintf('Your version of X-Server or Mesa is too old to support proper hybrid graphics on most laptops\n');
+    fprintf('with NVidia/AMD graphics chips. Upgrading to a minimum of X-Server 1.16.3 or later, Mesa 10.5.2 is\n');
+    fprintf('required, the more recent versions the better!\n');
+    fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
+    fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
+    fprintf('assistant can not help you with setting them up.\n');
+    fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for instructions, follow them, then retry.\n\n');
+    return;
+  end
+
+  % No hope for amdgpu kms/ddx driven cards atm.:
+  if strcmp(xdriver, 'amdgpu')
+    fprintf('Your dual AMD graphics card laptop does not support Enduro with proper visual timing at\n');
+    fprintf('this point in time for most Enduro laptop models, sorry.\n');
+    fprintf('Some small subset of Enduro laptops would allow you to utilize the powerful gpu\n');
+    fprintf('in a dual X-Screen configuration for the external video outputs nonetheless, although this\n');
+    fprintf('assistant can not help you with setting them up.\n');
+    fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for background info.\n\n');
+    return;
+  end
+
+  if strcmp(xdriver, 'ati')
+    fprintf('Your dual-gpu AMD Enduro laptop currently requires a specially hacked Linux kernel\n');
+    fprintf('and some additional dirty configuration hacks to make Enduro work.\n');
+  else
+    fprintf('Your dual-gpu NVidia Optimus laptop currently requires a specially hacked Linux kernel\n');
+    fprintf('to make Optimus work.\n');
+  end
+  fprintf('I will perform some of the required configuration steps if you want, but some manual work is left for you.\n');
+  fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for background info.\n\n');
+  fprintf('Some small subset of hybrid graphics laptops would allow you to utilize the powerful gpu\n');
+  fprintf('in a dual X-Screen configuration for the external video outputs without special kernels or hacks,\n');
+  fprintf('although this assistant can not help you with setting them up.\n');
+  fprintf('Check ''help HybridGraphics'' and the Psychtoolbox website for background info.\n\n');
+  suitable = 1;
   return;
 end

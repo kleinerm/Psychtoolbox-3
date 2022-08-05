@@ -28,7 +28,10 @@ function [gamepadIndices, productNames, allInfos]= GetGamepadIndices(product, se
 %                On Linux X11 this is currently remapped to interfaceID,
 %                as locationID is not meaningful in the current implementation.
 %
-% WINDOWS: ________________________________________________________________
+% LINUX: _______________________________________________________________________
+% See Linux specific help section in "help Gamepad" for needed setup on Linux.
+%
+% WINDOWS: _____________________________________________________________________
 % GetGamepadIndices does not work on Windows.
 % _________________________________________________________________________
 %
@@ -39,6 +42,9 @@ function [gamepadIndices, productNames, allInfos]= GetGamepadIndices(product, se
 % 7/13/04   awi     Improved documentation
 % 1/20/05   mk      Added fix for Logitech joystick (Forum msg. 4149)
 % 9/07/16   mk      Add matching logic for selection of subsets of devices.
+% 7/06/22   mk      Refine for Linux/X11: Only match floating slaves by default,
+%                   fallback to regular slave pointers only if needed. Filter out
+%                   devices with zero axes.
 
 if nargin < 1
     product = [];
@@ -57,14 +63,26 @@ productNames=cell(0);
 allInfos=cell(0);
 
 if ~IsOSX
-  % On Linux, a mouse is a gamepad, is a mouse...
-  d = [ PsychHID('Devices', 3) , PsychHID('Devices', 5) ];
+    % On Linux/X11, we first only try if there are floating slave devices,
+    % as suitable X11 InputClass joystick config files will set recognized
+    % joysticks/gamepads as floating and assign the joystick or evdev driver:
+    d = PsychHID('Devices', 5);
+
+    % Only if no such floating devices are found for some reason, fallback to
+    % classic slave pointer devices, which will also match mice and other usually
+    % less wanted stuff:
+    if length(d) == 0
+        d = PsychHID('Devices', 3);
+    end
 else
-  d=PsychHID('Devices');
+    % On macOS, get all devices, filter below by usagePageValue + usageValue:
+    d = PsychHID('Devices');
 end
 
 for i = 1:length(d)
-    if IsLinux || (d(i).usagePageValue==1 && (d(i).usageValue == 5 || d(i).usageValue == 4))
+    % macOS: Filter by HID usagePageValue/usageValue.
+    % Linux: Prefiltered above, also assume any Gamepad/Joystick has some axes:
+    if (IsLinux && (d(i).axes > 0)) || (d(i).usagePageValue==1 && (d(i).usageValue == 5 || d(i).usageValue == 4))
         % Check if additional match-criteria provided. Skip this device on mismatch:
         if ~isempty(product) && ~strcmpi(d(i).product, product)
             continue;

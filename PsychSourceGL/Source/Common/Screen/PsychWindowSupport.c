@@ -3291,6 +3291,9 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
                 PsychErrorExitMsg(PsychError_user, "Tried to use frame-sequential stereo mode while Screen('Preference', 'ConserveVRAM') setting kPsychUseOldStyleAsyncFlips is set! Forbidden!");
         }
 
+        if (windowRecord->specialflags & kPsychDontUseFlipperThread)
+            PsychErrorExitMsg(PsychError_user, "Tried to use some functionality that requires use of the background flipper thread, but this is forbidden for this window due to specialFlags setting kPsychDontUseFlipperThread!");
+
         // PsychPreflip operations are not thread-safe due to possible callbacks into runtime interpreter thread
         // as part of hookchain processing when the imaging pipeline is enabled: We perform/trigger them here
         // before entering the async flip thread:

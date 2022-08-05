@@ -1633,6 +1633,9 @@ if strcmpi(cmd, 'OpenWindowSetup')
   winRect = varargin{3};
   ovrfbOverrideRect = varargin{4};
   ovrSpecialFlags = varargin{5};
+  if isempty(ovrSpecialFlags)
+    ovrSpecialFlags = 0;
+  end
 
   % The current design iteration requires the PTB parent onscreen windows
   % effective backbuffer (from the pov of the imaging pipeline) to have the

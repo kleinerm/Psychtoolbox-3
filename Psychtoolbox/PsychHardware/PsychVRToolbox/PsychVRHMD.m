@@ -619,11 +619,7 @@ if strcmpi(cmd, 'AutoSetupHMD')
   if length(varargin) >= 4 && ~isempty(varargin{4})
     vendor = varargin{4};
     if strcmpi(vendor, 'Oculus')
-      if exist('PsychOculusVR1', 'file')
-        hmd = PsychOculusVR1('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
-      else
-        hmd = [];
-      end
+      hmd = PsychOculusVR1('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
       if isempty(hmd)
         hmd = PsychOculusVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
@@ -637,11 +633,17 @@ if strcmpi(cmd, 'AutoSetupHMD')
     end
 
     if strcmpi(vendor, 'OpenHMD')
-      if exist('PsychOpenHMDVR', 'file')
-        hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
-      else
-        hmd = [];
-      end
+      hmd = PsychOpenHMDVR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+
+      % Return the handle:
+      varargout{1} = hmd;
+      evalin('caller','global OVR');
+
+      return;
+    end
+
+    if strcmpi(vendor, 'OpenXR')
+      hmd = PsychOpenXR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
 
       % Return the handle:
       varargout{1} = hmd;
@@ -656,8 +658,20 @@ if strcmpi(cmd, 'AutoSetupHMD')
   % Probe sequence:
   hmd = [];
 
+  % OpenXR supported and online? At least one real HMD connected?
+  if exist('PsychOpenXR', 'file') && PsychOpenXR('Supported') && PsychOpenXR('GetCount') > 0
+    % Yes. Use that one. This will also inject a proper PsychImaging task
+    % for setup of the imaging pipeline:
+    hmd = PsychOpenXR('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);
+
+    % Return the handle:
+    varargout{1} = hmd;
+    evalin('caller','global OVR');
+    return;
+  end
+
   % Oculus runtime v1.11+ supported and online? At least one real HMD connected?
-  if exist('PsychOculusVR1', 'file') && PsychOculusVR1('Supported') && PsychOculusVR1('GetCount') > 0
+  if PsychOculusVR1('Supported') && PsychOculusVR1('GetCount') > 0
     % Yes. Use that one. This will also inject a proper PsychImaging task
     % for setup of the imaging pipeline:
     hmd = PsychOculusVR1('AutoSetupHMD', basicTask, basicRequirements, basicQuality, deviceIndex);

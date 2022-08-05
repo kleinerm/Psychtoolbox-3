@@ -2787,17 +2787,23 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                 if (i == count) {
                     // No. Could be timeout due to temporary malfunction, or an OS implementation bug.
 
-                    /* -> Not needed anymore / at the moment.
                     // Yield to give the system some processing time:
                     PsychYieldIntervalSeconds(0.0001);
                     PsychGetAdjustedPrecisionTimerSeconds(&tNow);
 
-                    // Timeout, and/or no matching presentID!
-                    if (tNow < tStart + tQueryTimeout) {
-                        // We are still within the acceptable timeout period - Not yet timed out.
-
-                        // macOS + MoltenVK as of early March 2021 / MoltenVK version 1.1.1 hit this due to a MoltenVK bug.
-                        // The bug was fixed in the MoltenVK 1.1.4 release in early July 2021 - macOS Vulkan SDK 1.2.182.0
+                    // macOS and not yet timed out?
+                    if ((PSYCH_SYSTEM == PSYCH_OSX) && (tNow < tStart + tQueryTimeout)) {
+                        // As of macOS 10.15.7 and MoltenVK 1.0.10 May 2022, at least the very first presented frame
+                        // does not result in the Windowserver calling the drawable presented callback, leaving the
+                        // first wait-for-present-completion timing out after tQueryTimeout, and a stale handler left
+                        // to invoke. Later cleanup actions triggered during vkAcquireNextImageKHR() -> [mtlDrawable release]
+                        // will trigger handler invocation with 0 timestamp, so a presented event gets misqueued for frame 0
+                        // and falsely picked up while waiting for frame 1 present completion events. This would lead to failure
+                        // unless we repeat the whole query sequence here, discarding the frame 0 timestamp. This way, frame 1
+                        // timestamp is picked up after true frame 1 present completion. Iow. this hack/workaround realigns
+                        // expected with actual timestamps in case that a presented handler fails to get triggered by the
+                        // Windowserver/CoreAnimation/Metal/Vulkan-MoltenVK at the proper time. Comparison with other purely
+                        // Metal-based code suggests strongly a macOS operating system bug at work.
                         if (verbosity > 10)
                             printf("PsychVulkanCore-DEBUG: PsychPresent(%i): No match yet [%f usecs elapsed]! Retrying in a bit...\n", window->index, 1.0e6 * (tNow - tStart));
 
@@ -2805,7 +2811,6 @@ psych_bool PsychPresent(PsychVulkanWindow* window, double tWhen, unsigned int ti
                         count = 0;
                         goto macosmvkworkaroundrepeat;
                     }
-                    */
 
                     // Final timeout! This should not happen on this OS + display system! Fail.
                     if (verbosity > 0)
