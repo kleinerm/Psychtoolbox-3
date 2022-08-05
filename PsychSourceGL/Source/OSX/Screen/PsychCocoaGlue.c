@@ -710,6 +710,7 @@ void PsychCocoaAssignCAMetalLayer(PsychWindowRecordType *windowRecord)
         DISPATCH_SYNC_ON_MAIN({
             [((CAMetalLayer*) windowRecord->targetSpecific.deviceContext) setContentsScale:[cocoaWindow backingScaleFactor]];
             [[cocoaWindow contentView] setLayer:windowRecord->targetSpecific.deviceContext];
+            [[[cocoaWindow contentView] layer] setDelegate:[cocoaWindow contentView]];
         });
     }
 

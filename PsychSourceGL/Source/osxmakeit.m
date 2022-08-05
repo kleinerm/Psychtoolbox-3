@@ -33,7 +33,7 @@ if mode==0
 
     % Must build tinyexr separately, because it needs C++ compile
     % incompatible with the C/Obj-C compile in the main mex cmd below:
-    mex -c Common/Screen/tinyexr.cc
+    mex -c CFLAGS="\$CFLAGS -mmacosx-version-min=10.11" Common/Screen/tinyexr.cc
 
     % Build with weak linking of GStreamer and libdc1394 via -weak_library
     % flag. This means that a missing GStreamer or libdc1394 installation
@@ -210,7 +210,7 @@ if mode==15
     catch
         disp(psychlasterror);
     end
-    unix(['mv ../Projects/MacOSX/build/PsychVulkanCore.' mexext ' ' PsychtoolboxRoot 'PsychBasic/']);
+    movefile(['../Projects/MacOSX/build/PsychVulkanCore.' mexext], [PsychtoolboxRoot 'PsychBasic/']);
 end
 
 return;

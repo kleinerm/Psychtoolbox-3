@@ -174,9 +174,12 @@ static char synopsisString[] =
     "set the window 'windowPtr' as drawing target, does not activate its OpenGL context and only "
     "returns information that is safe to return without setting the window as drawing target.\n\n"
     "An 'infoType' of 8 returns 1 if the X-Screens primary gpu uses the modesetting-ddx under Linux.\n\n"
-    "The info struct contains all kinds of information. Just check its output to see what "
-    "is returned. Most of this info is not interesting for normal users, mostly provided "
-    "for internal use by M-Files belonging to Psychtoolbox itself, e.g., display tests.\n\n"
+    "An 'infoType' of 9 returns a struct with interop info needed for interop with certain clients, "
+    "currently tailored to the needs of OpenGL interop with the OpenXR api on Linux and Windows.\n\n"
+    "\n"
+    "The default info struct for 'infoType' 7 and the default 'infoType' 0 contains all kinds of information. "
+    "Just check its output to see what is returned. Most of this info is not interesting for normal users, "
+    "mostly provided for internal use by M-Files belonging to Psychtoolbox itself, e.g., display tests.\n\n"
     "The info struct contains the following fields:\n"
     "----------------------------------------------\n\n"
     "Beamposition: Current rasterbeam position of the video scanout cycle.\n"
@@ -263,7 +266,7 @@ PsychError SCREENGetWindowInfo(void)
 
     // Query infoType flag: Defaults to zero.
     PsychCopyInIntegerArg(2, FALSE, &infoType);
-    if (infoType < 0 || infoType > 8) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3, 4, 5, 6, 7, 8.");
+    if (infoType < 0 || infoType > 9) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3, 4, 5, 6, 7, 8, 9.");
 
     // Windowserver info requested?
     if (infoType == 2 || infoType == 3) {
@@ -431,6 +434,29 @@ PsychError SCREENGetWindowInfo(void)
             PsychCopyOutDoubleArg(1, FALSE, PsychOSX11ScreenUsesModesettingDDX(windowRecord->screenNumber));
         #else
             PsychErrorExitMsg(PsychError_unimplemented, "infoType 8 query is only supported on Linux.");
+        #endif
+    }
+    else if (infoType == 9) {
+        // Interop info for special external clients, with which we want to share OpenGL contexts and textures, e.g., OpenXR:
+        const char* FieldNamesInterop[] = { "DeviceContext", "OpenGLContext", "OpenGLDrawable", "OpenGLConfig", "OpenGLVisualId" };
+        const int fieldCountInterop = 5;
+
+        // This gives access to the OpenGL context and associated drawable, resources and config of our parallel background flipperThread.
+        // Normally the flipperThread would use these to implement special functionality like async flips, vrr, framesequential stereo etc.
+        // Here the idea is to usually not use the flipperThread, but instead piggyback on / (ab-)use the OpenGL resources normally used
+        // for that thread for other purposes, e.g., interop with special external components like the PsychOpenXRCore driver and OpenXR.
+
+        PsychAllocOutStructArray(1, FALSE, -1, fieldCountInterop, FieldNamesInterop, &s);
+        PsychSetStructArrayUnsignedInt64Element("DeviceContext", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.deviceContext, s);
+        PsychSetStructArrayUnsignedInt64Element("OpenGLContext", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.glswapcontextObject, s);
+        PsychSetStructArrayUnsignedInt64Element("OpenGLDrawable", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.windowHandle, s);
+        #if (PSYCH_SYSTEM == PSYCH_LINUX) && !defined(PTB_USE_WAFFLE) && !defined(PTB_USE_WAYLAND)
+            // Linux X11/GLX/Xlib only:
+            PsychSetStructArrayUnsignedInt64Element("OpenGLConfig", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.pixelFormatObject, s);
+            PsychSetStructArrayUnsignedInt64Element("OpenGLVisualId", 0, (psych_uint64) (size_t) windowRecord->targetSpecific.visualId, s);
+        #else
+            PsychSetStructArrayUnsignedInt64Element("OpenGLConfig", 0, (psych_uint64) (size_t) 0, s);
+            PsychSetStructArrayUnsignedInt64Element("OpenGLVisualId", 0, (psych_uint64) (size_t) 0, s);
         #endif
     }
     else {

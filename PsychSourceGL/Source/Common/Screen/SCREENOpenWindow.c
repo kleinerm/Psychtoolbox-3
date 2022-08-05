@@ -83,7 +83,9 @@ static char synopsisString[] =
     "manager. The flag kPsychExternalDisplayMethod marks this onscreen window as not an actual visual "
     "stimulation surface, ie. actual visual stimulation is provided by some other external display mechanism, "
     "e.g., Vulkan or some VR compositor or such. This tells Screen() to suppress certain warnings or checks "
-    "which would be prudent if the window were the primary and critical means of visual stimulation.\n\n"
+    "which would be prudent if the window were the primary and critical means of visual stimulation. "
+    "The flag kPsychDontUseFlipperThread prevents use of the internal background flipper thread, and thereby "
+    "of any functionality depending on it, e.g., frame-sequential stereomode 11 and async flips.\n\n"
     "\"clientRect\" This optional parameter allows to define a size of the onscreen windows drawing area "
     "that is different from the actual size of the windows framebuffer. If set, then the imaging pipeline "
     "is started and a virtual framebuffer of the size of \"clientRect\" is created. Your code will draw "
@@ -314,7 +316,7 @@ PsychError SCREENOpenWindow(void)
 
     specialflags = 0;
     PsychCopyInIntegerArg64(9,FALSE, &specialflags);
-    if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned | kPsychExternalDisplayMethod))))
+    if (specialflags < 0 || (specialflags > 0 && !(specialflags & (kPsychGUIWindow | kPsychGUIWindowWMPositioned | kPsychExternalDisplayMethod | kPsychDontUseFlipperThread))))
         PsychErrorExitMsg(PsychError_user, "Invalid 'specialflags' provided.");
 
     // Check if this is macOS on a Apple Silicon ARM M1+ SoC with Apple proprietary gpu:

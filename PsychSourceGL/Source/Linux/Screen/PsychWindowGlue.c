@@ -1291,6 +1291,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     windowRecord->targetSpecific.deviceContext = dpy;
     windowRecord->targetSpecific.contextObject = ctx;
 
+    // Store chosen GLXFBConfig and visualid for interop with, e.g., OpenXR:
+    windowRecord->targetSpecific.pixelFormatObject = (fbconfig) ? fbconfig[0] : NULL;
+    if (fbconfig)
+        glXGetFBConfigAttrib(dpy, fbconfig[0], GLX_VISUAL_ID, (int*) &windowRecord->targetSpecific.visualId);
+
     // Set flags to mark this window as a classic X11/GLX window:
     windowRecord->specialflags |= (kPsychIsX11Window | kPsychIsGLXWindow);
 
