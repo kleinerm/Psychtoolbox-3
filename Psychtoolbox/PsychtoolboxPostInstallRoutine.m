@@ -677,7 +677,8 @@ try
     % Check Screen:
     AssertOpenGL;
 
-    if IsLinux
+    if IsLinux && ~IsARM
+        % A blast from the past - Unlikely to be needed nowadays. Definitely skip on RaspberryPi.
         % Setup Desktop compositor ("Compiz") to un-redirect fullscreen windows.
         % This allows to bypass desktop composition for PTB fullscreen onscreen windows,
         % so we get the deterministic timing and high performance we want for visual
