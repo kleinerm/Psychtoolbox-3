@@ -261,7 +261,15 @@ if ~exist('/etc/modprobe.d/amddeepcolor-psychtoolbox.conf', 'file') || ...
   fprintf('These files need to be installed if you want to use high color precision mode\n');
   fprintf('to drive a HDMI or DisplayPort high precision display device with more than\n');
   fprintf('8 bpc color depths, ie. more than 256 levels of red, green and blue color.\n');
-  fprintf('You do not need to install it for pure 8 bpc mode.\n');
+  if IsARM
+    % Some special treatment crammed in here for the latest RPi OS 11 BS:
+    fprintf('\nYou also need this file on the RaspberryPi computer to get non-broken visual\n');
+    fprintf('stimulation timing with RaspberryPi OS 11, so i will install the file for you.\n');
+    answers(6) = 'y';
+  else
+    fprintf('You do not need to install it for pure 8 bpc mode.\n');
+  end
+
   if ismember(answers(6), 'yn')
     answer = answers(6);
   else
@@ -282,6 +290,11 @@ else
     needinstall = 2;
     if (r.datenum > i.datenum)
       needinstall = 3;
+    end
+
+    if IsARM
+      % Force it for the RaspberryPi:
+      answers(6) = 'y';
     end
 
     fprintf('However, they seem to be outdated. I have more recent versions with me.\n');
