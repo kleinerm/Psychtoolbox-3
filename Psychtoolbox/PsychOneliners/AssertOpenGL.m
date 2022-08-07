@@ -191,8 +191,14 @@ catch %#ok<*CTCH>
             end
         else
             % Octave specific troubleshooting:
-            if ~isempty(strfind(s.message, 'libdc1394.so.25')) && exist('/lib/x86_64-linux-gnu/libdc1394.so.22', 'file') && ~exist('/lib/x86_64-linux-gnu/libdc1394.so.25', 'file')
-                cmd = 'sudo -S ln -s /lib/x86_64-linux-gnu/libdc1394.so.22 /lib/x86_64-linux-gnu/libdc1394.so.25';
+            if IsARM
+                tarch = 'arm-linux-gnueabihf';
+            else
+                tarch = 'x86_64-linux-gnu';
+            end
+
+            if ~isempty(strfind(s.message, 'libdc1394.so.25')) && exist(['/lib/' tarch '/libdc1394.so.22'], 'file') && ~exist(['/lib/' tarch '/libdc1394.so.25'], 'file')
+                cmd = ['sudo -S ln -s /lib/' tarch '/libdc1394.so.22 /lib/' tarch '/libdc1394.so.25'];
 
                 fprintf('Seems your Linux distribution may be missing a suitable and functional libdc1394.so.25 library.\n');
                 fprintf('We probably can fix this problem by creating a symlink from the required libdc1394.so.25 to\n');
@@ -203,7 +209,7 @@ catch %#ok<*CTCH>
                 fprintf('and then just press enter when asked here for a sudo password.\n');
                 fprintf('Your choice. Will now call above command, which will prompt for the password...\n\n');
                 [rc, msg] = system(cmd, '-echo');
-                if (rc == 0) && exist('/lib/x86_64-linux-gnu/libdc1394.so.25', 'file')
+                if (rc == 0) && exist(['/lib/' tarch '/libdc1394.so.25'], 'file')
                     fprintf('It worked! Retrying if Screen() now works...\n');
                 else
                     fprintf('Failed or aborted with error: %s\n', msg);

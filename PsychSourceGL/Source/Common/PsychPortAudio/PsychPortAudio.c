@@ -2400,7 +2400,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
             outputDevInfo = Pa_GetDeviceInfo(outputParameters.device);
             if (outputDevInfo && (Pa_GetDeviceCount() > 1) &&
                 (strstr(outputDevInfo->name, "HDMI") || strstr(outputDevInfo->name, "hdmi") || strstr(outputDevInfo->name, "isplay") ||
-                 ((outputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (strstr(outputDevInfo->name, "default") || strstr(outputDevInfo->name, "pulse"))))) {
+                 ((outputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (!strcmp(outputDevInfo->name, "default") || strstr(outputDevInfo->name, "pulse"))))) {
                 // Selected output default device seems to be a HDMI or DisplayPort output
                 // of a graphics card. Try to find a better default choice.
                 paHostAPI = outputDevInfo->hostApi;
@@ -2410,7 +2410,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                     if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
                         (referenceDevInfo->maxOutputChannels < 1) ||
                         (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") || strstr(referenceDevInfo->name, "isplay") ||
-                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
+                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (!strcmp(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
                         // Unsuitable.
                         continue;
                     }
@@ -2448,7 +2448,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
             inputDevInfo = Pa_GetDeviceInfo(inputParameters.device);
             if (inputDevInfo && (Pa_GetDeviceCount() > 1) &&
                 (strstr(inputDevInfo->name, "HDMI") || strstr(inputDevInfo->name, "hdmi") || strstr(inputDevInfo->name, "isplay") ||
-                 ((inputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (strstr(inputDevInfo->name, "default") || strstr(inputDevInfo->name, "pulse"))))) {
+                 ((inputDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (!strcmp(inputDevInfo->name, "default") || strstr(inputDevInfo->name, "pulse"))))) {
                 // Selected input default device seems to be a HDMI or DisplayPort output
                 // of a graphics card. Try to find a better default choice.
                 paHostAPI = inputDevInfo->hostApi;
@@ -2458,7 +2458,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
                     if (!referenceDevInfo || (referenceDevInfo->hostApi != paHostAPI) ||
                         (referenceDevInfo->maxInputChannels < 1) ||
                         (strstr(referenceDevInfo->name, "HDMI") || strstr(referenceDevInfo->name, "hdmi") || strstr(referenceDevInfo->name, "isplay") ||
-                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (strstr(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
+                        ((referenceDevInfo->hostApi == Pa_HostApiTypeIdToHostApiIndex(paALSA)) && (pulseaudio_isSuspended || latencyclass > 0) && (!strcmp(referenceDevInfo->name, "default") || strstr(referenceDevInfo->name, "pulse"))))) {
                         // Unsuitable.
                         continue;
                     }
