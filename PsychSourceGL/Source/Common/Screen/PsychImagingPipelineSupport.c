@@ -1768,9 +1768,10 @@ static psych_bool PsychUnshareFinalizedFBOIfNeeded(PsychWindowRecordType *window
         // degradation of value range, and/or clamping, and/or alpha-channel loss, and/or precision loss (remaining conditions, one per line),
         // and unshare if that is the case:
         if (((GLenum) formatSpec != dfbo->format) /* Mismatched formats -> possible problem */ && (
-            (formatSpec != GL_RGBA8 && formatSpec != GL_RGB10_A2 && formatSpec != GL_RGBA16F && formatSpec != GL_RGBA16 && formatSpec != GL_RGBA16_SNORM && formatSpec != GL_RGBA32F) /* white-list of possible-in-principle formats */ ||
+            (formatSpec != GL_RGBA8 && formatSpec != GL_SRGB8_ALPHA8 && formatSpec != GL_RGB10_A2 && formatSpec != GL_RGBA16F && formatSpec != GL_RGBA16 && formatSpec != GL_RGBA16_SNORM && formatSpec != GL_RGBA32F) /* white-list of possible-in-principle formats */ ||
             ( /* Format was in white-list of in-principle-possible formats -> Check if special unshare triggers exist: */
             (formatSpec == GL_RGBA8) /* Target 8 bpc unorm, but db has higher precision/range */ ||
+            (formatSpec == GL_SRGB8_ALPHA8 && !(dfbo->format == GL_RGBA8)) /* Target can do 8 bpc unorm easily. However, db of 10 bpc unorm might be a stretch? Higher than 10 bpc precision is definitely unattainable */ ||
             (formatSpec == GL_RGB10_A2) /* Target 10 bpc unorm for color, but alpha channel less than 8 bit precision for alpha blending, for a db of either higher precision or range, or with need for 8 bit alpha */ ||
             (formatSpec == GL_RGBA16F && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) /* fp16 can only store linear 11 bpc, but db has higher precision -> would degrade precision */ ||
             (formatSpec == GL_RGBA16  && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) /* 16 bpc unorm insufficient for fp32 in range or precision, but also for fp16 and snorm16, as both are signed, but unorm is not */ ||
