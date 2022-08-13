@@ -1744,8 +1744,9 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
   % Query currently bound finalizedFBO backing textures, to keep them around as backups for restoration when closing down the session:
   [hmd{handle}.oldglLeftTex, hmd{handle}.oldglRightTex, textarget, texformat, texmultisample, texwidth, texheight] = Screen('Hookfunction', win, 'GetDisplayBufferTextures');
 
-  % Validate texture internal formats. Must be something supportable by XR runtime:
-  if (texformat ~= GL.RGBA8 && texformat ~= GL.RGBA16F)
+  % Validate texture internal formats. Ideally something supportable by XR runtime, but
+  % if not, it will simply trigger fbo unsharing and a slight performance loss:
+  if ~ismember(texformat, [GL.RGBA8, GL.RGBA16F, GL.RGBA16, GL.RGBA16_SNORM, GL.RGBA32F])
     sca;
     error('Invalid Screen() backing textures required. Non-matching texture internal format.');
   end
