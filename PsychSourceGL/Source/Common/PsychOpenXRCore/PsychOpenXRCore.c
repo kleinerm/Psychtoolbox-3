@@ -2481,8 +2481,6 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     // We want to choose a format that is preferred by the runtime, suitable for the task
     // in terms of precision and range (PTB user request) and ideally directly usable for
     // the Screen drawBufferFBO's, so we can do zero-copy there instead of an extra blit.
-    // Ideally we'd also allow GL_SRGB8_A8 preferred over GL_RGBA8, but Screen() is not yet
-    // necessarily ready for this as it doesn't that format for drawBufferFBO's...
     for (i = 0; i < nFormats; i++) {
         // If floatFormat requested, try to get GL_RGBA16F:
         if (swapchainFormats[i] == GL_RGBA16F && floatFormat)
@@ -2496,6 +2494,11 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
         if (swapchainFormats[i] == GL_RGBA32F && floatFormat)
             break;
 
+        // Prefer 8 bpc sRGB with 8 bit SRGB + 8 bit linear alpha for non-float:
+        if (swapchainFormats[i] == GL_SRGB8_ALPHA8 && !floatFormat)
+            break;
+
+        // Fallback to 8 bpc unorm linear as a last resort for non-float:
         if (swapchainFormats[i] == GL_RGBA8 && !floatFormat)
             break;
     }
