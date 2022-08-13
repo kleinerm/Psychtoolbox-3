@@ -2482,23 +2482,28 @@ PsychError PSYCHOPENXRCreateRenderTextureChain(void)
     // in terms of precision and range (PTB user request) and ideally directly usable for
     // the Screen drawBufferFBO's, so we can do zero-copy there instead of an extra blit.
     for (i = 0; i < nFormats; i++) {
-        // If floatFormat requested, try to get GL_RGBA16F:
-        if (swapchainFormats[i] == GL_RGBA16F && floatFormat)
+        // Regardless if floatFormat requested or not, allow to get GL_RGBA32F:
+        if (swapchainFormats[i] == GL_RGBA32F)
             break;
 
-        // If floatFormat requested, allow to get GL_RGB16F without alpha:
+        // Regardless if floatFormat requested or not, try to get GL_RGBA16F:
+        if (swapchainFormats[i] == GL_RGBA16F)
+            break;
+
+        // Only if floatFormat requested, allow to get GL_RGB16F without alpha, as this will
+        // trigger a more expensive non-zero-copy unshare operation in Screen():
         if (swapchainFormats[i] == GL_RGB16F && floatFormat)
             break;
 
-        // If floatFormat requested, allow to get GL_RGBA32F:
-        if (swapchainFormats[i] == GL_RGBA32F && floatFormat)
+        // Prefer 16 bpc RGBA linear unorm for non-float only:
+        if (swapchainFormats[i] == GL_RGBA16 && !floatFormat)
             break;
 
-        // Prefer 8 bpc sRGB with 8 bit SRGB + 8 bit linear alpha for non-float:
+        // Prefer 8 bpc sRGB with 8 bit SRGB + 8 bit linear alpha for non-float only:
         if (swapchainFormats[i] == GL_SRGB8_ALPHA8 && !floatFormat)
             break;
 
-        // Fallback to 8 bpc unorm linear as a last resort for non-float:
+        // Fallback to 8 bpc unorm linear as a last resort for non-float only:
         if (swapchainFormats[i] == GL_RGBA8 && !floatFormat)
             break;
     }
