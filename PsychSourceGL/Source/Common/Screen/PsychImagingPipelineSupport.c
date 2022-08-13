@@ -1756,22 +1756,26 @@ static psych_bool PsychUnshareFinalizedFBOIfNeeded(PsychWindowRecordType *window
         // all color values outside of unorm range, and significant stimulus
         // precision loss!
         //
-        // The GL_RGB16F format is special in that it provides enough precision for
-        // most use cases, e.g., HDR, but lacks an alpha channel. We accept this
-        // format for finalizedFBO's, so we can consume HDR or high precision content 
-        // with some external consumers, e.g., some OpenXR VR/MR/XR runtimes, but we
-        // must always unshare, as a functioning alpha channel is expected in all
-        // cases for the drawBufferFBO's, so user scripts can alpha-blend.
-        //
         // So lets check if the imported format meets or exceeds the current
-        // precision. If not, then we'd need to split up into 2 separate buffers.
+        // precision and range requirements of the drawBufferFBO. If not, then
+        // we'd need to split up into 2 separate buffers at a slight performance
+        // loss due to one extra framebuffer copy.
         PsychFBO *dfbo = windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]];
 
-        if ((((GLenum) formatSpec != dfbo->format) &&
-             ((formatSpec == GL_RGBA8) || (formatSpec == GL_RGB10_A2) || (formatSpec == GL_RGB16F) ||
-              (formatSpec == GL_RGBA16F && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) ||
-              (formatSpec == GL_RGBA16 && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2 || dfbo->format == GL_RGB10_A2)) ||
-              (formatSpec == GL_RGBA16_SNORM && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2))))) {
+        // First we check if there is a format mismatch -> no mismatch, no trouble. (condition line 1)
+        // Then we check if the format is in the white-list of formats we can handle under suitable conditions. If not -> unshare! (condition line 2)
+        // Of the formats which are fine in principle, we check for specific problematic format combinations which would cause
+        // degradation of value range, and/or clamping, and/or alpha-channel loss, and/or precision loss (remaining conditions, one per line),
+        // and unshare if that is the case:
+        if (((GLenum) formatSpec != dfbo->format) /* Mismatched formats -> possible problem */ && (
+            (formatSpec != GL_RGBA8 && formatSpec != GL_RGB10_A2 && formatSpec != GL_RGBA16F && formatSpec != GL_RGBA16 && formatSpec != GL_RGBA16_SNORM && formatSpec != GL_RGBA32F) /* white-list of possible-in-principle formats */ ||
+            ( /* Format was in white-list of in-principle-possible formats -> Check if special unshare triggers exist: */
+            (formatSpec == GL_RGBA8) /* Target 8 bpc unorm, but db has higher precision/range */ ||
+            (formatSpec == GL_RGB10_A2) /* Target 10 bpc unorm for color, but alpha channel less than 8 bit precision for alpha blending, for a db of either higher precision or range, or with need for 8 bit alpha */ ||
+            (formatSpec == GL_RGBA16F && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) /* fp16 can only store linear 11 bpc, but db has higher precision -> would degrade precision */ ||
+            (formatSpec == GL_RGBA16  && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) /* 16 bpc unorm insufficient for fp32 in range or precision, but also for fp16 and snorm16, as both are signed, but unorm is not */ ||
+            (formatSpec == GL_RGBA16_SNORM && !(dfbo->format == GL_RGBA8 || dfbo->format == GL_RGB10_A2)) /* 16 bpc snorm can't represent fp32 in range or precision, fp16 for out of [-1;1] interval values, or 16 bpc unorm wrt. precision */ ))
+           ) {
             // Future finalizedFBO / interop format is insufficient in range, sign or precision
             // to store drawBufferFBO content faithfully. Need to allocate dedicated PsychFBO and
             // hook it up to finalizedFBO:
