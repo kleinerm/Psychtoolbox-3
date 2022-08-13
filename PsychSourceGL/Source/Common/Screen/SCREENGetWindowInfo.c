@@ -523,6 +523,12 @@ PsychError SCREENGetWindowInfo(void)
                 glDeleteQueries(1, &windowRecord->gpuRenderTimeQuery);
                 windowRecord->gpuRenderTimeQuery = 0;
 
+                // Make sure that any successful query with a result at least records 1 Nanosecond of
+                // used time. Otherwise a context with no gpu activity and zero used time would cause
+                // a zero result, which also means "no result available" and causes user-script hang:
+                if (gpuTimeElapsed == 0)
+                    gpuTimeElapsed = 1;
+
                 // Convert result in Nanoseconds back to seconds, and assign it:
                 windowRecord->gpuRenderTime = (double) gpuTimeElapsed / (double) 1e9;
             }
