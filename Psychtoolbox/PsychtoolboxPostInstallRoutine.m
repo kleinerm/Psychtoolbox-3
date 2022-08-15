@@ -388,7 +388,7 @@ if IsOctave
 
         % Octave on Linux with ARM processor, e.g., RaspberryPi?
         if IsLinux && IsARM
-            % 32-Bit ARM can currently share mex files from Octave 3.8 to at least 5.x,
+            % 32-Bit ARM can currently share mex files from Octave 3.8 to at least 6.2,
             % so treat it as Octave 3.8, and all versions will share the same folder:
             octavemajorv = 3;
             octaveminorv = 8;
@@ -400,10 +400,13 @@ if IsOctave
         elseif ismember(octavemajorv, [3,4]) && IsLinux
             % Octave-3 and Octave-4.0/4.2 can share the same mex files in the Octave-3 folder on Linux:
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave3'];
-            fprintf('\nOctave versions < 4.4 are no longer suppported on Linux. This will likely fail!\n');
-            fprintf('Upgrade to Ubuntu 20.04-LTS or an equivalent modern Linux distribution.\n');
-            fprintf('Press any key to confirm you read and understand this message.\n');
-            pause;
+            if ~IsARM
+                % Only warn on non-ARM ie. not RaspberryPi:
+                fprintf('\nOctave versions < 4.4 are no longer suppported on Linux. This will likely fail!\n');
+                fprintf('Upgrade to Ubuntu 20.04-LTS or an equivalent modern Linux distribution.\n');
+                fprintf('Press any key to confirm you read and understand this message.\n');
+                pause;
+            end
         elseif ismember(octavemajorv, [6,7]) && IsOSX
             rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave6'];
         else
@@ -460,7 +463,7 @@ if IsOctave
 
     if  (IsOSX && (~ismember(octavemajorv, [6,7]))) || ...
         (IsWin && (octavemajorv ~= 6 || ~ismember(octaveminorv, [1,2,3,4]))) || ...
-        (IsLinux && ((octavemajorv < 4) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 6)))
+        (IsLinux && ((octavemajorv < 4 && ~IsARM) || (octavemajorv == 4 && octaveminorv < 4) || (octavemajorv > 6)))
         fprintf('\n\n===============================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is incompatible with this release. We strongly recommend\n', version);
         if IsLinux
@@ -674,7 +677,8 @@ try
     % Check Screen:
     AssertOpenGL;
 
-    if IsLinux
+    if IsLinux && ~IsARM
+        % A blast from the past - Unlikely to be needed nowadays. Definitely skip on RaspberryPi.
         % Setup Desktop compositor ("Compiz") to un-redirect fullscreen windows.
         % This allows to bypass desktop composition for PTB fullscreen onscreen windows,
         % so we get the deterministic timing and high performance we want for visual

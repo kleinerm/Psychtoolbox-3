@@ -190,9 +190,13 @@ psych_bool PsychHIDWarnAccessDenied(const char* callerName)
     printf("PsychHID-ERROR: 5. Make sure that the checkbox next to the name of the item is checked.\n");
     printf("PsychHID-ERROR: 6. Restart %s.\n", PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME);
     printf("PsychHID-ERROR: 7. Execute the 'KbCheck' command as a simple test, which should hopefully work now without errors.\n");
-    printf("PsychHID-ERROR: 8. If it doesn't work, retry the procedure - rinse, wash, repeat.\n");
-    printf("PsychHID-ERROR: 9. If it works without errors, retry if your own scripts or our demos now work again.\n");
-    printf("PsychHID-ERROR: 10. If none of this works, you may be able to buy paid support from us: 'help PsychPaidSupportAndServices'.\n\n\n");
+    printf("PsychHID-ERROR: 8. If it doesn't work, go back to step 5, but *uncheck* the checkbox, close the GUI,\n");
+    printf("PsychHID-ERROR:    then reopen the GUI, go back to step 5 and *check* the checkbox again. Unchecking\n");
+    printf("PsychHID-ERROR:    and then checking the checkbox again, and closing and reopening the security GUI and\n");
+    printf("PsychHID-ERROR:    Matlab/Octave/Terminal inbetween usually fixes these issues caused by Apple macOS GUI bugs.\n");
+    printf("PsychHID-ERROR: 9. If it still doesn't work, retry the procedure - rinse, wash, repeat.\n");
+    printf("PsychHID-ERROR: 10. If it works without errors, retry if your own scripts or our demos now work again.\n");
+    printf("PsychHID-ERROR: 11. If none of this works, you may be able to buy paid support from us: 'help PsychPaidSupportAndServices'.\n\n\n");
 
     // Try to bind and call IOHIDRequestAccess() to bring up the security prompt, which
     // should guide the user into fixing this Apple security bullshit:

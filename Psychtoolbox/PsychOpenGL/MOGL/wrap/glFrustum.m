@@ -30,7 +30,6 @@ m(3,3) = - (zFar + zNear) / (zFar - zNear);
 m(3,4) = - 2 * zFar * zNear / (zFar - zNear);
 m(4,3) = -1;
 
-% TODO FIXME: Check if this must be m or m' aka m transposed?
 glMultMatrixf(m);
 
 return
