@@ -85,6 +85,8 @@ typedef struct PsychOpenXRDevice {
     psych_bool                          closing;
     psych_bool                          needFrameLoop;
     psych_bool                          sessionActive;
+    psych_bool                          lossPending;
+    psych_bool                          userExit;
     psych_bool                          multiThreaded;
     psych_thread                        presenterThread;
     psych_mutex                         presenterLock;
@@ -108,11 +110,13 @@ typedef struct PsychOpenXRDevice {
     XrExtent2Di                         texSize[2];
     XrFovf                              xrFov[2];
     XrVector3f                          eyeShift[2];
+    XrViewState                         viewState;
     XrView                              view[2];
     XrCompositionLayerProjectionView    projView[2];
     XrCompositionLayerQuad              quadViewLayer[2];
     XrSpace                             viewSpace;
     XrSpace                             worldSpace;
+    XrPosef                             originPoseInPreviousSpace;
     XrCompositionLayerProjection        projectionLayer;
     const XrCompositionLayerBaseHeader* submitLayers[2];
     uint32_t                            submitLayersCount;
@@ -207,11 +211,11 @@ void InitializeSynopsis(void)
     //synopsis[i++] = "oldType = PsychOpenXRCore('TrackingOriginType', openxrPtr [, newType]);";
     //synopsis[i++] = "PsychOpenXRCore('Start', openxrPtr);";
     //synopsis[i++] = "PsychOpenXRCore('Stop', openxrPtr);";
-    //synopsis[i++] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
+    synopsis[i++] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
     //synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
     //synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
     synopsis[i++] = "[projL, projR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
-    synopsis[i++] = "[eyePoseL, eyePoseR, tracked, frameTiming] = PsychOpenXRCore('StartRender', openxrPtr [, predictionTime=nextFrame]);";
+    synopsis[i++] = "[eyePoseL, eyePoseR] = PsychOpenXRCore('StartRender', openxrPtr [, predictionTime=nextFrame]);";
     synopsis[i++] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass [, predictionTime=nextFrame]);";
     //synopsis[i++] = "[adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOpenXRCore('GetPerformanceStats', openxrPtr);";
     //synopsis[i++] = "oldValues = PsychOpenXRCore('FloatsProperty', openxrPtr, propertyName [, newValues]);";
@@ -399,13 +403,12 @@ static psych_bool locateXRViews(PsychOpenXRDevice* openxr, double predictionTime
         .space = openxr->worldSpace
     };
 
-    XrViewState viewState = {
-        .type = XR_TYPE_VIEW_STATE,
-        .next = NULL
-    };
+    // Init for query:
+    openxr->viewState.type = XR_TYPE_VIEW_STATE;
+    openxr->viewState.next = NULL;
 
     uint32_t viewCount = (openxr->viewType == XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO) ? 2 : 1;
-    if (!resultOK(xrLocateViews(openxr->hmd, &viewLocateInfo, &viewState, viewCount, &viewCount, openxr->view))) {
+    if (!resultOK(xrLocateViews(openxr->hmd, &viewLocateInfo, &openxr->viewState, viewCount, &viewCount, openxr->view))) {
         if (verbosity > 0)
             printf("PsychOpenXRCore-ERROR: Locating Xrviews via xrLocateViews() failed: %s\n", errorString);
 
@@ -465,6 +468,9 @@ static psych_bool processXREvents(XrInstance pollInstance)
                     fflush(NULL);
                 }
 
+                // Note imminent session loss:
+                openxr->lossPending = TRUE;
+
                 // The only way to deal with this would be a PsychOpenXRCoreShutDown(), but that might end badly as well!
                 return(FALSE);
             }
@@ -484,8 +490,11 @@ static psych_bool processXREvents(XrInstance pollInstance)
                 XrEventDataReferenceSpaceChangePending* refSpaceChangeEvent = (XrEventDataReferenceSpaceChangePending*) &event;
                 openxr = PsychGetXRForSession(refSpaceChangeEvent->session);
 
-                if (verbosity > 1)
-                    printf("PsychOpenXRCore-WARNING: Event polling for instance %p, reference space change pending for session %p! TODO HANDLE ME!\n", pollInstance, refSpaceChangeEvent->session);
+                // Store where the changed reference space origin/pose will be relative to its old location in containing space:
+                openxr->originPoseInPreviousSpace = refSpaceChangeEvent->poseInPreviousSpace;
+
+                if (verbosity > 2)
+                    printf("PsychOpenXRCore-INFO: Event polling for instance %p, reference space change pending for session %p.\n", pollInstance, refSpaceChangeEvent->session);
 
                 break;
             }
@@ -585,16 +594,22 @@ static psych_bool processXREvents(XrInstance pollInstance)
                         openxr->sessionActive = FALSE;
                         openxr->needFrameLoop = FALSE;
 
+                        // Note imminent session loss:
+                        openxr->lossPending = TRUE;
+
                         // Failure return code:
                         return(FALSE);
 
                     case XR_SESSION_STATE_EXITING:
                         if (verbosity > 3)
-                            printf("[%s]\n", "XR_SESSION_STATE_LOSS_PENDING");
+                            printf("[%s]\n", "XR_SESSION_STATE_EXITING");
 
                         // Mark session inactive, frame presentation must stop:
                         openxr->sessionActive = FALSE;
                         openxr->needFrameLoop = FALSE;
+
+                        // Note user exit request:
+                        openxr->userExit = TRUE;
 
                         break;
                 }
@@ -1578,40 +1593,33 @@ PsychError PSYCHOPENXRStop(void)
     return(PsychError_none);
 }
 
-// TODO
+// TODO: Touch input controllers
 PsychError PSYCHOPENXRGetTrackingState(void)
 {
     static char useString[] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
     //                          1      2                                            1            2
     static char synopsisString[] =
-        "Return current state of head position and orientation tracking for OpenXR device 'openxrPtr'.\n"
-        "Head position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
+        "Return current state of eye/head position and orientation tracking for OpenXR device 'openxrPtr'.\n"
+        "Position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
         "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
         "then the prediction is performed for the mid-point of the next possible video frame of the HMD, ie. "
         "the most likely presentation time for immediately rendered images.\n\n"
         "'state' is a struct with fields reporting the following values:\n"
         "'Time' = Time in seconds of returned tracking state.\n"
         "'Status' = Tracking status flags:\n"
-        "+1 = Head orientation tracked,\n"
-        "+2 = Head position tracked,\n"
-        "+4 = At least one active tracking camera has a valid pose for absolute tracking,\n"
-        "+32 = At least one tracking camera is connected and online,\n"
+        "+1 = Orientation tracked for all eyes,\n"
+        "+2 = Position tracked for all eyes,\n"
+        "+4 = At least part of the pose is somewhat valid, even if not tracked but just inferred,\n"
         "+128 = HMD display is connected, available and actually on users head, displaying our content.\n\n"
         "'SessionState' = VR session status flags, added together:\n"
-        "+1  = Our rendering goes to the HMD, ie. we have control over it. If the OpenXR store app would "
-        "be in control, or if the Health and Safety warning would display, this flag would be missing.\n"
+        "+1  = Our rendering goes to the HMD, ie. we have control over it. If some other app would "
+        "be in control, this flag would be missing.\n"
         "+2  = HMD is present and active.\n"
-        "+4  = HMD is strapped onto users head. A Rift CV1 would switch off/blank if not on the head.\n"
+        "+4  = HMD is strapped onto users head. E.g., a Rift CV1 would switch off/blank if not on the head.\n"
         "+8  = DisplayLost condition! Some hardware/software malfunction, need to completely quit to recover.\n"
         "+16 = ShouldQuit The user interface asks us to voluntarily terminate this session.\n"
-        "+32 = ShouldRecenter = The user interface asks us to recenter/recalibrate our tracking origin.\n\n"
-        "'HeadPose' = Head position [x, y, z] in meters and rotation as quaternion [rx, ry, rz, rw], all as a vector [x,y,z,rx,ry,rz,rw].\n"
-        "'HeadLinearSpeed' = Head linear velocity [vx,vy,vz] in meters/sec.\n"
-        "'HeadAngularSpeed' = Head angular velocity [rx,ry,rz] in radians/sec.\n"
-        "'HeadLinearAcceleration' = Head linear acceleration [ax,ay,az] in meters/sec^2.\n"
-        "'HeadAngularAcceleration' = Head angular acceleration [rax,ray,raz] in radians/sec^2.\n"
-        "'CalibratedOrigin' = The pose of the world coordinate system origin during last calibration. "
-        "Units and format are like 'HeadPose' ie. a vector [x,y,z,rx,ry,rz,rw].\n"
+        "'CalibratedOrigin' = The pose of the world coordinate system origin during last calibration, relative "
+        "to its previous pose, as a vector [x,y,z,rx,ry,rz,rw].\n"
         "\n"
         "Touch controller position and orientation:\n\n"
         "The return argument 'touch' is a struct array with 2 structs. touch(1) contains info about "
@@ -1620,43 +1628,33 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "The structs have very similar structure to the head (= HMD) tracking data returned by 'state':\n\n"
         "'Time' = Time in seconds of returned hand/controller tracking state.\n"
         "'Status' = Tracking status flags:\n"
-        "0  = No tracking info for hand/controller, ie. no OpenXR touch sensor connected.\n"
+        " 0 = No tracking info for hand/controller, ie. no OpenXR touch sensor connected.\n"
         "+1 = Hand orientation tracked,\n"
         "+2 = Hand position tracked,\n"
-        "'HandPose' = Position and orientation of the hand, in usual [x,y,z,rx,ry,rz,rw] vector form as with 'HeadPose'.\n"
+        "'HandPose' = Position and orientation of the hand, in usual [x,y,z,rx,ry,rz,rw] vector form.\n"
         "'HandLinearSpeed' = Hand linear velocity [vx,vy,vz] in meters/sec.\n"
         "'HandAngularSpeed' = Hand angular velocity [rx,ry,rz] in radians/sec.\n"
-        "'HandLinearAcceleration' = Hand linear acceleration [ax,ay,az] in meters/sec^2.\n"
-        "'HandAngularAcceleration' = Hand angular acceleration [rax,ray,raz] in radians/sec^2.\n"
         "\n";
-
     static char seeAlsoString[] = "Start Stop GetTrackersState GetInputState";
 
     PsychGenericScriptType *status;
-    const char *FieldNames1[] = {"Time", "Status", "SessionState", "HeadPose", "HeadLinearSpeed", "HeadAngularSpeed",
-                                 "HeadLinearAcceleration", "HeadAngularAcceleration", "CalibratedOrigin"};
-    const int FieldCount1 = 9;
+    const char *FieldNames1[] = {"Time", "Status", "SessionState", "CalibratedOrigin"};
+    const int FieldCount1 = 4;
+    const char *FieldNames2[] = {"Time", "Status", "HandPose", "HandLinearSpeed", "HandAngularSpeed"};
+    const int FieldCount2 = 5;
 
-    const char *FieldNames2[] = {"Time", "Status", "HandPose", "HandLinearSpeed", "HandAngularSpeed",
-                                 "HandLinearAcceleration", "HandAngularAcceleration"};
-    const int FieldCount2 = 7;
-/*
+    int handle, i;
+    PsychOpenXRDevice *openxr;
+    double predictionTime;
     PsychGenericScriptType *outMat;
     double *v;
-    int handle, trackerCount, i;
-    double predictionTime;
     int StatusFlags = 0;
-    PsychOpenXRDevice *openxr;
-    ovrTrackingState state;
-    ovrVector3f HmdToEyeOffset[2];
-    ovrTrackerPose trackerPose;
-    ovrSessionStatus sessionStatus;
 
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    //check to see if the user supplied superfluous arguments
+    // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(2));
     PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(1));
@@ -1664,133 +1662,82 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     // Make sure driver is initialized:
     PsychOpenXRCheckInit(FALSE);
 
+    // Get device:
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
-
-    if (OVR_FAILURE(ovr_GetSessionStatus(openxr->hmd, &sessionStatus))) {
-        ovr_GetLastErrorInfo(&errorInfo);
-        if (verbosity > 0) printf("PsychOpenXRCore-ERROR: ovr_GetSessionStatus failed: %s\n", errorInfo.ErrorString);
-        PsychErrorExitMsg(PsychError_system, "Failed to get current session status from VR compositor.");
-    }
-
-    PsychLockMutex(&(openxr->presenterLock));
 
     // Get optional target time for predicted tracking state. Default to the
     // predicted state for the predicted mid-point of the next video frame:
     if (!PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime))
         predictionTime = 0;
 
-    // Get current tracking status info at time predictionTime. Mark this point
-    // as time from which motion to photon latency is measured (latencymarker = TRUE):
-    state = ovr_GetTrackingState(openxr->hmd, predictionTime, TRUE);
-    openxr->sensorSampleTime = ovr_GetTimeInSeconds();
-
-    // Translate to per eye position and orientation:
-
+    // Do the actual eye pose / view update from tracking + prediction:
+    // Also updates openxr->viewState with its status flags.
+    PsychLockMutex(&(openxr->presenterLock));
     locateXRViews(openxr, predictionTime);
     PsychUnlockMutex(&(openxr->presenterLock));
+
+    // TODO: PsychGetAdjustedPrecisionTimerSeconds() -> Something meaningful, maybe predictedDisplayTime from frameState?
+    openxr->sensorSampleTime = (predictionTime > 0) ? predictionTime : PsychGetAdjustedPrecisionTimerSeconds(NULL);
 
     // Print out tracking status:
     if (verbosity >= 4) {
         printf("PsychOpenXRCore-INFO: Tracking state predicted for device %i at time %f.\n", handle, predictionTime);
-        printf("PsychOpenXRCore-INFO: Time %f : Status %i\n", state.HeadPose.TimeInSeconds, state.StatusFlags);
-        printf("PsychOpenXRCore-INFO: HeadPose: Position    [x,y,z]   = [%f, %f, %f]\n", state.HeadPose.ThePose.pose.position.x, state.HeadPose.ThePose.pose.position.y, state.HeadPose.ThePose.pose.position.z);
-        printf("PsychOpenXRCore-INFO: HeadPose: Orientation [x,y,z,w] = [%f, %f, %f, %f]\n", state.HeadPose.ThePose.pose.orientation.x, state.HeadPose.ThePose.pose.orientation.y, state.HeadPose.ThePose.pose.orientation.z, state.HeadPose.ThePose.pose.orientation.w);
+        printf("PsychOpenXRCore-INFO: Time %f : Status %i\n", openxr->sensorSampleTime, openxr->viewState.viewStateFlags);
     }
 
     PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount1, FieldNames1, &status);
 
-    PsychSetStructArrayDoubleElement("Time", 0, state.HeadPose.TimeInSeconds, status);
+    PsychSetStructArrayDoubleElement("Time", 0, openxr->sensorSampleTime, status);
 
-    StatusFlags = state.StatusFlags & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked);
+    // HMD tracking status:
+    StatusFlags = 0;
+
+    // Active orientation tracking?
+    if (openxr->viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT && openxr->viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_TRACKED_BIT)
+        StatusFlags |= 1;
+
+    // Active position tracking?
+    if (openxr->viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT && openxr->viewState.viewStateFlags & XR_VIEW_STATE_POSITION_TRACKED_BIT)
+        StatusFlags |= 2;
+
+    // Pose at least somewhat valid, ie. orientation or position valid? Could also be just inferred, not tracked, but is considered somewhat valid/useful:
+    if (openxr->viewState.viewStateFlags & XR_VIEW_STATE_POSITION_VALID_BIT || openxr->viewState.viewStateFlags & XR_VIEW_STATE_ORIENTATION_VALID_BIT)
+        StatusFlags |= 4;
 
     // HMD present, connected and online and on users head, displaying us?
-    if (sessionStatus.HmdPresent && sessionStatus.IsVisible && sessionStatus.HmdMounted)
+    if (openxr->state == XR_SESSION_STATE_VISIBLE || openxr->state == XR_SESSION_STATE_FOCUSED)
         StatusFlags |= 128;
-
-    // At least one tracker connected?
-    trackerCount = ovr_GetTrackerCount(openxr->hmd);
-    for (i = 0; i < trackerCount; i++) {
-        trackerPose = ovr_GetTrackerPose(openxr->hmd, i);
-        StatusFlags |= trackerPose.TrackerFlags & (ovrTracker_Connected | ovrTracker_PoseTracked);
-    }
 
     // Return head and general tracking status flags:
     PsychSetStructArrayDoubleElement("Status", 0, StatusFlags, status);
 
     // Return sesstion status flags:
     StatusFlags = 0;
-    if (sessionStatus.IsVisible) StatusFlags |= 1;
-    if (sessionStatus.HmdPresent) StatusFlags |= 2;
-    if (sessionStatus.HmdMounted) StatusFlags |= 4;
-    if (sessionStatus.DisplayLost) StatusFlags |= 8;
-    if (sessionStatus.ShouldQuit) StatusFlags |= 16;
-    if (sessionStatus.ShouldRecenter) StatusFlags |= 32;
+    if (openxr->state == XR_SESSION_STATE_VISIBLE || openxr->state == XR_SESSION_STATE_FOCUSED) StatusFlags |= 1;
+    if (openxr->needFrameLoop) StatusFlags |= (2 + 4);
+    if (openxr->lossPending) StatusFlags |= 8;
+    if (openxr->userExit) StatusFlags |= 16;
 
     PsychSetStructArrayDoubleElement("SessionState", 0, StatusFlags, status);
-
-    // Head pose:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-    v[0] = state.HeadPose.ThePose.pose.position.x;
-    v[1] = state.HeadPose.ThePose.pose.position.y;
-    v[2] = state.HeadPose.ThePose.pose.position.z;
-
-    v[3] = state.HeadPose.ThePose.pose.orientation.x;
-    v[4] = state.HeadPose.ThePose.pose.orientation.y;
-    v[5] = state.HeadPose.ThePose.pose.orientation.z;
-    v[6] = state.HeadPose.ThePose.pose.orientation.w;
-    PsychSetStructArrayNativeElement("HeadPose", 0, outMat, status);
-
-    // Linear velocity:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.LinearVelocity.x;
-    v[1] = state.HeadPose.LinearVelocity.y;
-    v[2] = state.HeadPose.LinearVelocity.z;
-    PsychSetStructArrayNativeElement("HeadLinearSpeed", 0, outMat, status);
-
-    // Angular velocity:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.AngularVelocity.x;
-    v[1] = state.HeadPose.AngularVelocity.y;
-    v[2] = state.HeadPose.AngularVelocity.z;
-    PsychSetStructArrayNativeElement("HeadAngularSpeed", 0, outMat, status);
-
-    // Linear acceleration:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.LinearAcceleration.x;
-    v[1] = state.HeadPose.LinearAcceleration.y;
-    v[2] = state.HeadPose.LinearAcceleration.z;
-    PsychSetStructArrayNativeElement("HeadLinearAcceleration", 0, outMat, status);
-
-    // Angular acceleration:
-    v = NULL;
-    PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-    v[0] = state.HeadPose.AngularAcceleration.x;
-    v[1] = state.HeadPose.AngularAcceleration.y;
-    v[2] = state.HeadPose.AngularAcceleration.z;
-    PsychSetStructArrayNativeElement("HeadAngularAcceleration", 0, outMat, status);
 
     // CalibratedOrigin:
     v = NULL;
     PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-    v[0] = state.CalibratedOrigin.pose.position.x;
-    v[1] = state.CalibratedOrigin.pose.position.y;
-    v[2] = state.CalibratedOrigin.pose.position.z;
+    v[0] = openxr->originPoseInPreviousSpace.position.x;
+    v[1] = openxr->originPoseInPreviousSpace.position.y;
+    v[2] = openxr->originPoseInPreviousSpace.position.z;
 
-    v[3] = state.CalibratedOrigin.pose.orientation.x;
-    v[4] = state.CalibratedOrigin.pose.orientation.y;
-    v[5] = state.CalibratedOrigin.pose.orientation.z;
-    v[6] = state.CalibratedOrigin.pose.orientation.w;
+    v[3] = openxr->originPoseInPreviousSpace.orientation.x;
+    v[4] = openxr->originPoseInPreviousSpace.orientation.y;
+    v[5] = openxr->originPoseInPreviousSpace.orientation.z;
+    v[6] = openxr->originPoseInPreviousSpace.orientation.w;
     PsychSetStructArrayNativeElement("CalibratedOrigin", 0, outMat, status);
 
     // Now the tracking info from the OpenXR touch controllers 0 and 1 for left
     // and right hand, in a separate struct array:
     PsychAllocOutStructArray(2, kPsychArgOptional, 2, FieldCount2, FieldNames2, &status);
-
+/*
     for (i = 0; i < 2; i++) {
         // Timestamp for when this tracking info is valid:
         PsychSetStructArrayDoubleElement("Time", i, state.HandPoses[i].TimeInSeconds, status);
@@ -1827,22 +1774,6 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         v[1] = state.HandPoses[i].AngularVelocity.y;
         v[2] = state.HandPoses[i].AngularVelocity.z;
         PsychSetStructArrayNativeElement("HandAngularSpeed", i, outMat, status);
-
-        // Linear acceleration:
-        v = NULL;
-        PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-        v[0] = state.HandPoses[i].LinearAcceleration.x;
-        v[1] = state.HandPoses[i].LinearAcceleration.y;
-        v[2] = state.HandPoses[i].LinearAcceleration.z;
-        PsychSetStructArrayNativeElement("HandLinearAcceleration", i, outMat, status);
-
-        // Angular acceleration:
-        v = NULL;
-        PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-        v[0] = state.HandPoses[i].AngularAcceleration.x;
-        v[1] = state.HandPoses[i].AngularAcceleration.y;
-        v[2] = state.HandPoses[i].AngularAcceleration.z;
-        PsychSetStructArrayNativeElement("HandAngularAcceleration", i, outMat, status);
     }
 */
     return(PsychError_none);
@@ -2341,6 +2272,9 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
             printf("PsychOpenXRCore-ERROR: xrCreateReferenceSpace() failed for WORLD space: %s\n", errorString);
         PsychErrorExitMsg(PsychError_system, "OpenXR session creation for OpenGL rendered XR failed in xrCreateReferenceSpace for WORLD space.");
     }
+
+    // Init origin pose to identity:
+    openxr->originPoseInPreviousSpace = identityPose;
 
     if (verbosity > 3)
         printf("PsychOpenXRCore-INFO: OpenXR session created for XR device with OpenGL rendering.\n");
@@ -3051,7 +2985,7 @@ PsychError PSYCHOPENXRStartRender(void)
     static char useString[] = "[eyePoseL, eyePoseR] = PsychOpenXRCore('StartRender', openxrPtr [, predictionTime=nextFrame]);";
     //                          1         2                                          1            2
     static char synopsisString[] =
-    "Mark start of a new 3D head tracked render cycle for OpenXR device 'openxrPtr'.\n"
+    "Mark start of a new 3D head/eye tracked render cycle for OpenXR device 'openxrPtr'.\n"
     "Eye position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
     "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
     "then the prediction is performed for the mid-point of the next possible video frame of the HMD, ie. "

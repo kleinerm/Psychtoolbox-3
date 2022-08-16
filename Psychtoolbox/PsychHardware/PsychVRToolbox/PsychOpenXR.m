@@ -763,17 +763,8 @@ if strcmpi(cmd, 'PrepareRender')
   result.SessionState = state.SessionState;
 
   if bitand(state.SessionState, 8)
-    % DisplayLost condition! This is an unrecoverable error. Trigger
-    % a forced session shutdown:
+    % DisplayLost condition! This is an unrecoverable error. Trigger a forced session shutdown:
     error('OpenXR runtime reports loss of hardware (disconnected?) or serious malfunction. Forcing abort of this session.');
-  end
-
-  % Check if UX wants us to recenter the tracking origin:
-  if bitand(state.SessionState, 32)
-    % User wants us to recenter the tracking origin, so do it. Retry until it succeeds:
-    while ~PsychOpenXRCore('RecenterTrackingOrigin', myhmd.handle)
-        WaitSecs('YieldSecs', 0.25);
-    end
   end
 
   % As a bonus we return the raw eye pose vectors, given that we have them anyway:
@@ -785,22 +776,31 @@ if strcmpi(cmd, 'PrepareRender')
     % Yes: We need tracked + predicted head pose, so we can apply the user
     % transform, and then per-eye transforms:
 
-    % Bonus feature: HeadPose as 7 component translation + orientation quaternion vector:
-    result.headPose = state.HeadPose;
-
-    % Convert head pose vector to 4x4 OpenGL right handed reference frame matrix:
-    result.localHeadPoseMatrix = eyePoseToCameraMatrix(state.HeadPose);
-
-    % Premultiply usercode provided global transformation matrix:
-    result.globalHeadPoseMatrix = userTransformMatrix * result.localHeadPoseMatrix;
-
     % Compute per-eye global pose matrices:
-    result.cameraView{1} = result.globalHeadPoseMatrix * hmd{myhmd.handle}.eyeShiftMatrix{1};
-    result.cameraView{2} = result.globalHeadPoseMatrix * hmd{myhmd.handle}.eyeShiftMatrix{2};
+    result.cameraView{1} = userTransformMatrix * eyePoseToCameraMatrix(eyePose{1});
+    result.cameraView{2} = userTransformMatrix * eyePoseToCameraMatrix(eyePose{2});
 
     % Compute inverse matrices, useable as OpenGL GL_MODELVIEW matrices for rendering:
     result.modelView{1} = inv(result.cameraView{1});
     result.modelView{2} = inv(result.cameraView{2});
+
+    % Convert both eye poses into a head pose, both as 7-component local vector and
+    % as 4x4 OpenGL right handed reference frame matrix. This is tricky or mildly wrong.
+    % As head position we use the mid-point between the eye locations, ie. half-distance
+    % [norm(dv(1:3)) * 0.5, 0, 0]. As orientation we use the orientation of the left eye
+    % eyePose{1} quaternion components 4-7. Iow. we define head pose as a copy of left eye,
+    % shifted half-way along the line segment connecting the optical center of left and
+    % right eye. For HMD's without gaze tracking, this is a reasonable approximation, as
+    % they track HMD position and derive eye pose from HMD pose, so we just undo that. For
+    % a HMD with gaze tracking that would use gaze info to compute different eye orientation
+    % for each eye, this would go wrong, and something more clever would be needed, to at
+    % least get a roughly correct approximation of HMD orientation, although an exactly
+    % correct result is impossible to obtain from the two eye poses...
+    dv = eyePose{2} - eyePose{1};
+    [result.localHeadPoseMatrix, result.headPose] = eyePoseToCameraMatrix(eyePose{1}, [norm(dv(1:3)) * 0.5, 0, 0]);
+
+    % Premultiply usercode provided global transformation matrix for globalHeadPoseMatrix:
+    result.globalHeadPoseMatrix = userTransformMatrix * result.localHeadPoseMatrix;
   end
 
   % Want matrices with tracked position and orientation of touch controllers ~ users hands?
@@ -1164,9 +1164,9 @@ if strcmpi(cmd, 'Open')
   % TODO setup the following...
   newhmd.videoRefreshDuration = 0;
   newhmd.controllerTypes = 0;
-  newhmd.VRControllersSupported = 1;
-  newhmd.handTrackingSupported = 1;
-  newhmd.hapticFeedbackSupported = 1;
+  newhmd.VRControllersSupported = 0;
+  newhmd.handTrackingSupported = 0;
+  newhmd.hapticFeedbackSupported = 0;
   newhmd.multiThreaded = 0; % TODO Technically 2nd argument varargin{2} would define this.
 
   % Default autoclose flag to "no autoclose":
