@@ -589,19 +589,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 %
 
-% TODO REMOVE - We will likely scrap this - not used anywhere on any driver/demo/test every:
-% [headToEyeShiftv, headToEyeShiftMatrix] = PsychOpenXR('GetEyeShiftVector', hmd, eye);
-% - Retrieve 3D translation vector [tx, ty, tz] that defines the 3D position of the given
-% eye 'eye' for the given HMD 'hmd', relative to the origin of the local head/HMD
-% reference frame. This is needed to translate a global head pose into a eye
-% pose, e.g., to translate the output of PsychOpenXR('GetEyePose') into actual
-% tracked/predicted eye locations for stereo rendering.
-%
-% In addition to the 'headToEyeShiftv' vector, a corresponding 4x4 translation
-% matrix is also returned in 'headToEyeShiftMatrix' for convenience.
-%
-%
-
 % Global GL handle for access to OpenGL constants needed in setup:
 global GL;
 global OVR;
@@ -1632,21 +1619,6 @@ if strcmpi(cmd, 'OpenWindowSetup')
   return;
 end
 
-% TODO REMOVE?
-%if strcmpi(cmd, 'GetEyeShiftVector')
-%  myhmd = varargin{1};
-%
-%  if varargin{2} == 0
-%    varargout{1} = hmd{myhmd.handle}.HmdToEyeViewOffsetLeft;
-%    varargout{2} = hmd{myhmd.handle}.eyeShiftMatrix{1};
-%  else
-%    varargout{1} = hmd{myhmd.handle}.HmdToEyeViewOffsetRight;
-%    varargout{2} = hmd{myhmd.handle}.eyeShiftMatrix{2};
-%  end
-%
-%  return;
-%end
-
 if strcmpi(cmd, 'Start') || strcmpi(cmd, 'Stop')
     % Make sure the 'Start' and 'Stop' commands, which are mandatory to support
     % for backwards compatibility (see PsychVRHMD), do absolutely nothing in this
@@ -1682,26 +1654,6 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
 
   % Need to know user selected clearcolor:
   clearcolor = varargin{3};
-
-% TODO May not need HmdToEyeViewOffsetLeft/Right -> Need for eyeShiftMatrix, but only use
-% that internally unless GetEyeShiftVector subfunction is used, which may be redundant --> Delete in all drivers?
-
-  % Query undistortion parameters for left eye view:
-  [hsx, hsy, hsz] = PsychOpenXRCore('GetUndistortionParameters', handle, 0);
-  hmd{handle}.HmdToEyeViewOffsetLeft = [hsx, hsy, hsz];
-
-  % Query parameters for right eye view:
-  [hsx, hsy, hsz] = PsychOpenXRCore('GetUndistortionParameters', handle, 1);
-  hmd{handle}.HmdToEyeViewOffsetRight = [hsx, hsy, hsz];
-
-  % Convert head to eye shift vectors into 4x4 matrices, as we'll need them frequently:
-  EyeT = diag([1 1 1 1]);
-  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetLeft';
-  hmd{handle}.eyeShiftMatrix{1} = EyeT;
-
-  EyeT = diag([1 1 1 1]);
-  EyeT(1:3, 4) = hmd{handle}.HmdToEyeViewOffsetRight';
-  hmd{handle}.eyeShiftMatrix{2} = EyeT;
 
   % Create texture swap chains to provide textures to be used for
   % frame submission to the VR compositor:

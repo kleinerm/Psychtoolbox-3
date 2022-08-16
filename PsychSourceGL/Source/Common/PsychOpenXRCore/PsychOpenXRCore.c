@@ -109,7 +109,6 @@ typedef struct PsychOpenXRDevice {
     XrViewConfigurationType             viewType;
     XrExtent2Di                         texSize[2];
     XrFovf                              xrFov[2];
-    XrVector3f                          eyeShift[2];
     XrViewState                         viewState;
     XrView                              view[2];
     XrCompositionLayerProjectionView    projView[2];
@@ -225,7 +224,6 @@ void InitializeSynopsis(void)
     synopsis[i++] = "Functions usually only used internally by Psychtoolbox:";
     synopsis[i++] = "";
     synopsis[i++] = "[width, height, recMSAASamples, fovPort, maxWidth, maxHeight, maxMSAASamples] = PsychOpenXRCore('GetFovTextureSize', openxrPtr, eye [, fov=[HMDRecommended]][, pixelsPerDisplay=1]);";
-    synopsis[i++] = "[hmdShiftx, hmdShifty, hmdShiftz] = PsychOpenXRCore('GetUndistortionParameters', openxrPtr, eye);";
     synopsis[i++] = "[videoRefreshDuration] = PsychOpenXRCore('CreateAndStartSession', openxrPtr, deviceContext, openGLContext, openGLDrawable, openGLConfig, openGLVisualId, use3DMode);";
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
@@ -1991,7 +1989,7 @@ PsychError PSYCHOPENXRGetFovTextureSize(void)
     "'recMSAASamples' is the recommended number of samples per pixel for MSAA anti-aliasing, where "
     "a value greater than one means to use MSAA. 'maxMSAASamples' is the maximum MSAA sample count "
     "supported by the runtime.\n";
-    static char seeAlsoString[] = "GetUndistortionParameters";
+    static char seeAlsoString[] = "";
 
     XrResult result;
     int handle, eyeIndex;
@@ -2720,57 +2718,6 @@ PsychError PSYCHOPENXRGetNextTextureHandle(void)
         if ((result == XR_TIMEOUT_EXPIRED) && (verbosity > 1))
             printf("PsychOpenXRCore-WARNING: Timed out waiting for next swapchain image for eye %i: %s\n", eyeIndex, errorString);
     }
-
-    return(PsychError_none);
-}
-
-// TODO: Is there a point to this?
-PsychError PSYCHOPENXRGetUndistortionParameters(void)
-{
-    static char useString[] = "[hmdShiftx, hmdShifty, hmdShiftz] = PsychOpenXRCore('GetUndistortionParameters', openxrPtr, eye);";
-    //                          1          2          3                                                         1          2
-    static char synopsisString[] =
-    "Return parameters needed for rendering for output on OpenXR device 'openxrPtr'.\n"
-    "'eye' which eye to provide the data: 0 = Left, 1 = Right.\n"
-    "Return values:\n"
-    "[hmdShiftx, hmdShifty, hmdShiftz] = HmdToEyeOffset 3D translation vector. Defines the location of the optical center of the eye "
-    "relative to the origin of the local head reference frame, ie. the tracked head position. Unit is meters.\n";
-    static char seeAlsoString[] = "GetFovTextureSize";
-
-    int handle, eyeIndex;
-    PsychOpenXRDevice *openxr;
-
-    // All sub functions should have these two lines:
-    PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
-
-    // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(3));
-    PsychErrorExit(PsychCapNumInputArgs(2));
-    PsychErrorExit(PsychRequireNumInputArgs(2));
-
-    // Make sure driver is initialized:
-    PsychOpenXRCheckInit(FALSE);
-
-    // Get device handle:
-    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
-    openxr = PsychGetXR(handle, FALSE);
-
-    // Get eye index - left = 0, right = 1:
-    PsychCopyInIntegerArg(2, kPsychArgRequired, &eyeIndex);
-    if (eyeIndex < 0 || eyeIndex > 1) PsychErrorExitMsg(PsychError_user, "Invalid 'eye' specified. Must be 0 or 1 for left- or right eye.");
-
-    // Get eye render description for this eye:
-    if (verbosity > 3) {
-        printf("PsychOpenXRCore-INFO: For HMD %i, eye %i - RenderDescription:\n", handle, eyeIndex);
-        printf("PsychOpenXRCore-INFO: FoV degrees: %f %f %f %f\n", rad2deg(openxr->xrFov[eyeIndex].angleLeft), rad2deg(openxr->xrFov[eyeIndex].angleRight), rad2deg(openxr->xrFov[eyeIndex].angleUp), rad2deg(openxr->xrFov[eyeIndex].angleDown));
-        printf("PsychOpenXRCore-INFO: HmdToEyeViewOffset meters: [x,y,z] = [%f, %f, %f]\n", openxr->eyeShift[eyeIndex].x, openxr->eyeShift[eyeIndex].y, openxr->eyeShift[eyeIndex].z);
-    }
-
-    // HmdToEyeViewOffset: [x,y,z]:
-    PsychCopyOutDoubleArg(1, kPsychArgOptional, openxr->eyeShift[eyeIndex].x);
-    PsychCopyOutDoubleArg(2, kPsychArgOptional, openxr->eyeShift[eyeIndex].y);
-    PsychCopyOutDoubleArg(3, kPsychArgOptional, openxr->eyeShift[eyeIndex].z);
 
     return(PsychError_none);
 }
