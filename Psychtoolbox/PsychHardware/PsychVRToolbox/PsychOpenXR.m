@@ -416,15 +416,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 % for 'hmd'.
 %
 %
-% success = PsychOpenXR('RecenterTrackingOrigin', hmd);
-% - Recenter the tracking origin for the 'hmd', based on its current position and
-% orientation. Returns 'success' = 1 on success, 0 on failure to recenter. One
-% reason for failure could be that the HMD wasn't roughly level, but instead was
-% facing upward or downward, which is not allowed. This function also gets automatically
-% triggered if the OpenXR GUI or other user input requests a recenter. Recenter would then
-% be auto-triggered during a call to 'PrepareRender'.
-%
-%
 % oldType = PsychOpenXR('TrackingOriginType', hmd [, newType]);
 % - Specify the type of tracking origin for OpenXR device 'hmd'.
 % This returns the current type of tracking origin in 'oldType'.
@@ -433,8 +424,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % 0 = Origin is at eye height (HMD height).
 % 1 = Origin is at floor height.
 % The eye height or floor height gets defined by the system during
-% calls to 'RecenterTrackingOrigin' and during sensor calibration in
-% the OpenXR GUI application.
+% sensor calibration, possibly guided by some OpenXR GUI control application.
 %
 %
 % [adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOpenXR('GetPerformanceStats', hmd);
@@ -958,17 +948,6 @@ if strcmpi(cmd, 'StringProperty')
   end
 
   varargout{1} = PsychOpenXRCore('StringProperty', myhmd.handle, varargin{2:end});
-  return;
-end
-
-if strcmpi(cmd, 'RecenterTrackingOrigin')
-  myhmd = varargin{1};
-  if ~((length(hmd) >= myhmd.handle) && (myhmd.handle > 0) && hmd{myhmd.handle}.open)
-    error('PsychOpenXR:RecenterTrackingOrigin: Specified handle does not correspond to an open HMD!');
-  end
-
-  varargout{1} = PsychOpenXRCore('RecenterTrackingOrigin', myhmd.handle);
-
   return;
 end
 
