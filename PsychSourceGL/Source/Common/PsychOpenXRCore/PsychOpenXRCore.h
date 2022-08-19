@@ -79,7 +79,6 @@ PsychError PSYCHOPENXRGetEyePose(void);
 PsychError PSYCHOPENXRVRAreaBoundary(void);
 PsychError PSYCHOPENXRTestVRBoundary(void);
 PsychError PSYCHOPENXRTestVRBoundaryPoint(void);
-PsychError PSYCHOPENXRRecenterTrackingOrigin(void);
 PsychError PSYCHOPENXRTrackingOriginType(void);
 PsychError PSYCHOPENXRGetPerformanceStats(void);
 PsychError PSYCHOPENXRHapticPulse(void);

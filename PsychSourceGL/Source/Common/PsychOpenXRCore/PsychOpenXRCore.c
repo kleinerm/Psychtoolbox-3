@@ -206,7 +206,6 @@ void InitializeSynopsis(void)
     //synopsis[i++] = "[isVisible, playboundsxyz, outerboundsxyz] = PsychOpenXRCore('VRAreaBoundary', openxrPtr [, requestVisible]);";
     //synopsis[i++] = "[isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOpenXRCore('TestVRBoundary', openxrPtr, trackedDeviceType, boundaryType);";
     //synopsis[i++] = "[isTriggering, closestDistance, closestPointxyz, surfaceNormal] = PsychOpenXRCore('TestVRBoundaryPoint', openxrPtr, pointxyz, boundaryType);";
-    //synopsis[i++] = "success = PsychOpenXRCore('RecenterTrackingOrigin', openxrPtr);";
     //synopsis[i++] = "oldType = PsychOpenXRCore('TrackingOriginType', openxrPtr [, newType]);";
     //synopsis[i++] = "PsychOpenXRCore('Start', openxrPtr);";
     //synopsis[i++] = "PsychOpenXRCore('Stop', openxrPtr);";
@@ -1143,57 +1142,6 @@ PsychError PSYCHOPENXRClose(void)
         PsychOpenXRCoreShutDown();
     }
 
-    return(PsychError_none);
-}
-
-// TODO
-PsychError PSYCHOPENXRRecenterTrackingOrigin(void)
-{
-    static char useString[] = "success = PsychOpenXRCore('RecenterTrackingOrigin', openxrPtr);";
-    //                         1                                                      1
-    static char synopsisString[] =
-        "Recenter the tracking origin for OpenXR device 'openxrPtr'.\n"
-        "This uses the current pose of the HMD to redefine the tracking origin.\n"
-        "Returns 1 on success, 0 on failure.\n"
-        "A reason for failure can be that the HMD is not roughly level, but "
-        "instead is facing upward or downward, which is not allowed.\n";
-    static char seeAlsoString[] = "GetTrackersState TrackingOriginType";
-
-    int handle;
-    PsychOpenXRDevice *openxr;
-
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
-
-    // Check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(1));
-    PsychErrorExit(PsychRequireNumInputArgs(1));
-
-    // Make sure driver is initialized:
-    PsychOpenXRCheckInit(FALSE);
-
-    // Get device handle:
-    PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
-    openxr = PsychGetXR(handle, FALSE);
-/*
-    if (OVR_FAILURE(ovr_RecenterTrackingOrigin(openxr->hmd))) {
-        if (verbosity > 0) {
-            ovr_GetLastErrorInfo(&errorInfo);
-            printf("PsychOpenXRCore-ERROR: Recentering the tracking origin failed! %s\n", errorInfo.ErrorString);
-        }
-        PsychCopyOutDoubleArg(1, kPsychArgOptional, 0);
-    }
-    else {
-        if (verbosity > 2) {
-            printf("PsychOpenXRCore-INFO: Recentered the tracking origin for HMD.\n");
-        }
-        PsychCopyOutDoubleArg(1, kPsychArgOptional, 1);
-
-        ovr_ClearShouldRecenterFlag(openxr->hmd);
-    }
-*/
     return(PsychError_none);
 }
 
