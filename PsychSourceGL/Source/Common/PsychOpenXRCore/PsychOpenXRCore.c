@@ -3492,7 +3492,7 @@ PsychError PSYCHOPENXRPresentFrame(void)
     return(PsychError_none);
 }
 
-
+// TODO: Remove or repurpose for general object tracking? Not used by PsychOpenXR.m anymore:
 PsychError PSYCHOPENXRGetEyePose(void)
 {
     static char useString[] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass [, predictionTime=nextFrame]);";
