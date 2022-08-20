@@ -727,11 +727,10 @@ if strcmpi(cmd, 'PrepareRender')
     targetTime = [];
   end
 
-  % Mark start of a new frame render cycle for the runtime and get the data
-  % predicted for next scanout time:
-  [eyePose{1}, eyePose{2}] = PsychOpenXRCore('StartRender', myhmd.handle, targetTime);
+  % Mark start of a new frame render cycle for the runtime:
+  PsychOpenXRCore('StartRender', myhmd.handle, targetTime);
 
-  % Get predicted head pose, tracking state and hand poses (if supported) for targetTime:
+  % Get predicted eye pose, tracking state and hand controller poses (if supported) for targetTime:
   [state, touch] = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime);
   myhmd.state = state;
 
@@ -745,8 +744,8 @@ if strcmpi(cmd, 'PrepareRender')
   end
 
   % As a bonus we return the raw eye pose vectors, given that we have them anyway:
-  result.rawEyePose7{1} = eyePose{1};
-  result.rawEyePose7{2} = eyePose{2};
+  result.rawEyePose7{1} = state.EyePoseLeft;
+  result.rawEyePose7{2} = state.EyePoseRight;
 
   % Want matrices which take a usercode supplied global transformation into account?
   if bitand(reqmask, 1)
@@ -754,8 +753,8 @@ if strcmpi(cmd, 'PrepareRender')
     % transform, and then per-eye transforms:
 
     % Compute per-eye global pose matrices:
-    result.cameraView{1} = userTransformMatrix * eyePoseToCameraMatrix(eyePose{1});
-    result.cameraView{2} = userTransformMatrix * eyePoseToCameraMatrix(eyePose{2});
+    result.cameraView{1} = userTransformMatrix * eyePoseToCameraMatrix(state.EyePoseLeft);
+    result.cameraView{2} = userTransformMatrix * eyePoseToCameraMatrix(state.EyePoseRight);
 
     % Compute inverse matrices, useable as OpenGL GL_MODELVIEW matrices for rendering:
     result.modelView{1} = inv(result.cameraView{1});
@@ -765,7 +764,7 @@ if strcmpi(cmd, 'PrepareRender')
     % as 4x4 OpenGL right handed reference frame matrix. This is tricky or mildly wrong.
     % As head position we use the mid-point between the eye locations, ie. half-distance
     % [norm(dv(1:3)) * 0.5, 0, 0]. As orientation we use the orientation of the left eye
-    % eyePose{1} quaternion components 4-7. Iow. we define head pose as a copy of left eye,
+    % state.EyePoseLeft quaternion components 4-7. Iow. we define head pose as a copy of left eye,
     % shifted half-way along the line segment connecting the optical center of left and
     % right eye. For HMD's without gaze tracking, this is a reasonable approximation, as
     % they track HMD position and derive eye pose from HMD pose, so we just undo that. For
@@ -773,8 +772,8 @@ if strcmpi(cmd, 'PrepareRender')
     % for each eye, this would go wrong, and something more clever would be needed, to at
     % least get a roughly correct approximation of HMD orientation, although an exactly
     % correct result is impossible to obtain from the two eye poses...
-    dv = eyePose{2} - eyePose{1};
-    [result.localHeadPoseMatrix, result.headPose] = eyePoseToCameraMatrix(eyePose{1}, [norm(dv(1:3)) * 0.5, 0, 0]);
+    dv = state.EyePoseRight - state.EyePoseLeft;
+    [result.localHeadPoseMatrix, result.headPose] = eyePoseToCameraMatrix(state.EyePoseLeft, [norm(dv(1:3)) * 0.5, 0, 0]);
 
     % Premultiply usercode provided global transformation matrix for globalHeadPoseMatrix:
     result.globalHeadPoseMatrix = userTransformMatrix * result.localHeadPoseMatrix;
