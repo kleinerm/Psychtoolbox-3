@@ -105,6 +105,11 @@ typedef struct PsychOpenXRDevice {
     int                                 maxHeight;
     int                                 recSamples;
     int                                 maxSamples;
+    XrActionSet                         actionSet;
+    XrAction                            hapticAction;
+    XrAction                            handPoseAction;
+    XrPath                              handPath[2];
+    XrSpace                             handPoseSpace[2];
     psych_bool                          isTracking;
     XrViewConfigurationType             viewType;
     XrExtent2Di                         texSize[2];
@@ -389,6 +394,165 @@ static int enumerateXRDevices(XrInstance instance) {
     return(numAvailableDevices);
 }
 
+static psych_bool suggestXRInteractionBindings(XrInstance xrInstance, const char* interactionProfile, uint32_t count, const XrActionSuggestedBinding* bindings)
+{
+    XrPath interactionProfilePath;
+
+    if (!resultOK(xrStringToPath(xrInstance, interactionProfile, &interactionProfilePath))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to build path for %s interaction profile: %s\n", interactionProfile, errorString);
+
+        // Failure return code:
+        return(FALSE);
+    }
+
+    XrInteractionProfileSuggestedBinding suggestedBindings = {
+        .type = XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING,
+        .next = NULL,
+        .interactionProfile = interactionProfilePath,
+        .countSuggestedBindings = count,
+        .suggestedBindings = bindings,
+    };
+
+    if (!resultOK(xrSuggestInteractionProfileBindings(xrInstance, &suggestedBindings))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to suggest action bindings for %s interaction profile: %s\n", interactionProfile, errorString);
+
+        // Failure return code:
+        return(FALSE);
+    }
+
+    return(TRUE);
+}
+
+static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
+{
+    int i;
+
+    // Build all standard path strings we may need:
+    xrStringToPath(xrInstance, "/user/hand/left", &openxr->handPath[0]);
+    xrStringToPath(xrInstance, "/user/hand/right", &openxr->handPath[1]);
+
+    XrPath gripPosePath[2];
+    xrStringToPath(xrInstance, "/user/hand/left/input/grip/pose", &gripPosePath[0]);
+    xrStringToPath(xrInstance, "/user/hand/right/input/grip/pose", &gripPosePath[1]);
+
+    XrPath hapticPath[2];
+    xrStringToPath(xrInstance, "/user/hand/left/output/haptic", &hapticPath[0]);
+    xrStringToPath(xrInstance, "/user/hand/right/output/haptic", &hapticPath[1]);
+
+    // Create our action set which is the container for all our input actions:
+    XrActionSetCreateInfo actionSetCreateInfo = {
+        .type = XR_TYPE_ACTION_SET_CREATE_INFO,
+        .next = NULL,
+        .priority = 0,
+        .actionSetName = "actionset",
+        .localizedActionSetName = "Main set of input actions",
+    };
+
+    if (!resultOK(xrCreateActionSet(xrInstance, &actionSetCreateInfo, &openxr->actionSet))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to create main input/output actionSet: %s\n", errorString);
+
+        // Failure return code:
+        return(FALSE);
+    }
+
+    // Create action and action spaces for left/right hand (aka touch controller) pose tracking:
+    XrActionCreateInfo handPoseActionInfo = {
+        .type = XR_TYPE_ACTION_CREATE_INFO,
+        .next = NULL,
+        .actionType = XR_ACTION_TYPE_POSE_INPUT,
+        .countSubactionPaths = 2,
+        .subactionPaths = openxr->handPath,
+        .actionName = "handposeaction",
+        .localizedActionName = "Hand Pose input action"
+    };
+
+    if (!resultOK(xrCreateAction(openxr->actionSet, &handPoseActionInfo, &openxr->handPoseAction))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to create handPoseAction: %s\n", errorString);
+
+        // Failure return code:
+        return(FALSE);
+    }
+
+    for (i = 0; i < 2; i++) {
+        XrActionSpaceCreateInfo actionSpaceCreateInfo = {
+            .type = XR_TYPE_ACTION_SPACE_CREATE_INFO,
+            .next = NULL,
+            .action = openxr->handPoseAction,
+            .poseInActionSpace = identityPose,
+            .subactionPath = openxr->handPath[i]
+        };
+
+        if (!resultOK(xrCreateActionSpace(openxr->hmd, &actionSpaceCreateInfo, &openxr->handPoseSpace[i]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: Failed to create action space for hand/touch controller %i: %s\n", i, errorString);
+
+            // Failure return code:
+            return(FALSE);
+        }
+    }
+
+    XrActionCreateInfo hapticActionInfo = {
+        .type = XR_TYPE_ACTION_CREATE_INFO,
+        .next = NULL,
+        .actionType = XR_ACTION_TYPE_VIBRATION_OUTPUT,
+        .countSubactionPaths = 2,
+        .subactionPaths = openxr->handPath,
+        .actionName = "handhapticaction",
+        .localizedActionName = "Hand haptic output action"
+    };
+
+    if (!resultOK(xrCreateAction(openxr->actionSet, &hapticActionInfo, &openxr->hapticAction))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to create hapticAction: %s\n", errorString);
+
+        // Failure return code:
+        return(FALSE);
+    }
+
+    // Binding set useful to most controllers and devices:
+    XrActionSuggestedBinding aB[] = {
+        { .action = openxr->handPoseAction, .binding = gripPosePath[0] },
+        { .action = openxr->handPoseAction, .binding = gripPosePath[1] },
+        { .action = openxr->hapticAction, .binding = hapticPath[0] },
+        { .action = openxr->hapticAction, .binding = hapticPath[1] },
+    };
+
+    // Suggest basic action bindings for the Khronos simple_controller interaction profile,
+    // which is a generic fallback expected to be supported by many different XR devices, so
+    // an OpenXR app that supports this profile will have at least basic controller input and
+    // tracking working with all kinds of controller devices:
+    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/khr/simple_controller", sizeof(aB) / sizeof(aB[0]), aB))
+        return(FALSE);
+
+    // Suggest basic action bindings for the Oculus touch controller interaction profile, which
+    // is used by Oculus VR touch input controllers, e.g., for Oculus Rift-CV1, Rift-S, Quest etc.:
+    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/oculus/touch_controller", sizeof(aB) / sizeof(aB[0]), aB))
+        return(FALSE);
+
+    // Suggest basic action bindings for the HTC Vive controller interaction profile.
+    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/htc/vive_controller", sizeof(aB) / sizeof(aB[0]), aB))
+        return(FALSE);
+
+    // Suggest basic action bindings for the Valve Index controller interaction profile.
+    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/valve/index_controller", sizeof(aB) / sizeof(aB[0]), aB))
+        return(FALSE);
+
+    // Suggest basic action bindings for the Microsoft Mixed Reality (WMR) controller interaction profile.
+    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/microsoft/motion_controller", sizeof(aB) / sizeof(aB[0]), aB))
+        return(FALSE);
+
+    // Suggest basic action bindings for the Google Daydream controller interaction profile. Only use the gripPosePath, as
+    // haptic output is not supported:
+    if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/google/daydream_controller", 2, aB))
+        return(FALSE);
+
+    return(TRUE);
+}
+
 // TODO: Use non-zero predictionTime to override openxr->frameState.predictedDisplayTime
 static psych_bool locateXRViews(PsychOpenXRDevice* openxr, double predictionTime)
 {
@@ -408,6 +572,30 @@ static psych_bool locateXRViews(PsychOpenXRDevice* openxr, double predictionTime
     if (!resultOK(xrLocateViews(openxr->hmd, &viewLocateInfo, &openxr->viewState, viewCount, &viewCount, openxr->view))) {
         if (verbosity > 0)
             printf("PsychOpenXRCore-ERROR: Locating Xrviews via xrLocateViews() failed: %s\n", errorString);
+
+        return(FALSE);
+    }
+
+    return(TRUE);
+}
+
+static psych_bool syncXRActions(PsychOpenXRDevice* openxr)
+{
+    XrActiveActionSet activeActionSet = {
+        .actionSet = openxr->actionSet,
+        .subactionPath = XR_NULL_PATH
+    };
+
+    XrActionsSyncInfo actionsSyncInfo = {
+        .type = XR_TYPE_ACTIONS_SYNC_INFO,
+        .next = NULL,
+        .countActiveActionSets = 1,
+        .activeActionSets = &activeActionSet
+    };
+
+    if (!resultOK(xrSyncActions(openxr->hmd, &actionsSyncInfo))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Syncing activeActionSet via xrSyncActions() failed: %s\n", errorString);
 
         return(FALSE);
     }
@@ -1581,6 +1769,8 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         " 0 = No tracking info for hand/controller, ie. no OpenXR touch sensor connected.\n"
         "+1 = Hand orientation tracked,\n"
         "+2 = Hand position tracked,\n"
+        "+4 = Hand linear velocity available,\n"
+        "+8 = Hand angular velocity available,\n"
         "'HandPose' = Position and orientation of the hand, in usual [x,y,z,rx,ry,rz,rw] vector form.\n"
         "'HandLinearSpeed' = Hand linear velocity [vx,vy,vz] in meters/sec.\n"
         "'HandAngularSpeed' = Hand angular velocity [rx,ry,rz] in radians/sec.\n"
@@ -1625,6 +1815,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     // Also updates openxr->viewState with its status flags.
     PsychLockMutex(&(openxr->presenterLock));
     locateXRViews(openxr, predictionTime);
+    syncXRActions(openxr);
     PsychUnlockMutex(&(openxr->presenterLock));
 
     // TODO: PsychGetAdjustedPrecisionTimerSeconds() -> Something meaningful, maybe predictedDisplayTime from frameState?
@@ -1636,7 +1827,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         printf("PsychOpenXRCore-INFO: Time %f : Status %i\n", openxr->sensorSampleTime, openxr->viewState.viewStateFlags);
     }
 
-    PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount1, FieldNames1, &status);
+    PsychAllocOutStructArray(1, kPsychArgOptional, -1, FieldCount1, FieldNames1, &status);
 
     PsychSetStructArrayDoubleElement("Time", 0, openxr->sensorSampleTime, status);
 
@@ -1719,45 +1910,77 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     // Now the tracking info from the OpenXR touch controllers 0 and 1 for left
     // and right hand, in a separate struct array:
     PsychAllocOutStructArray(2, kPsychArgOptional, 2, FieldCount2, FieldNames2, &status);
-/*
+
+    XrSpaceLocation handPoses[2] = { 0 };
+    XrSpaceVelocity handVelocity[2] = { 0 };
+
     for (i = 0; i < 2; i++) {
-        // Timestamp for when this tracking info is valid:
-        PsychSetStructArrayDoubleElement("Time", i, state.HandPoses[i].TimeInSeconds, status);
+        handVelocity[i].type = XR_TYPE_SPACE_VELOCITY;
+        handVelocity[i].next = NULL;
+        handPoses[i].type = XR_TYPE_SPACE_LOCATION;
+        handPoses[i].next = &handVelocity[i];
+
+        if (!resultOK(xrLocateSpace(openxr->handPoseSpace[i], openxr->worldSpace, openxr->frameState.predictedDisplayTime, &handPoses[i]))) {
+            if (verbosity > 0)
+                printf("PsychOpenXRCore-ERROR: xrLocateSpace() failed: %s\n", errorString);
+
+            return(FALSE);
+        }
+
+        // Timestamp for when this tracking info is valid: TODO
+        PsychSetStructArrayDoubleElement("Time", i, openxr->sensorSampleTime, status);
 
         // Hand / touch controller tracking state:
-        StatusFlags = state.HandStatusFlags[i] & (ovrStatus_OrientationTracked | ovrStatus_PositionTracked);
+        StatusFlags = 0;
+
+        // Active orientation tracking?
+        if (handPoses[i].locationFlags & XR_SPACE_LOCATION_ORIENTATION_VALID_BIT && handPoses[i].locationFlags & XR_SPACE_LOCATION_ORIENTATION_TRACKED_BIT)
+            StatusFlags |= 1;
+
+        // Active position tracking?
+        if (handPoses[i].locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT && handPoses[i].locationFlags & XR_SPACE_LOCATION_POSITION_TRACKED_BIT)
+            StatusFlags |= 2;
+
+        // Valid hand linear velocity?
+        if (handVelocity[i].velocityFlags & XR_SPACE_VELOCITY_LINEAR_VALID_BIT)
+            StatusFlags |= 4;
+
+        // Valid hand angular velocity?
+        if (handVelocity[i].velocityFlags & XR_SPACE_VELOCITY_ANGULAR_VALID_BIT)
+            StatusFlags |= 8;
+
         PsychSetStructArrayDoubleElement("Status", i, StatusFlags, status);
 
         // Hand pose:
         v = NULL;
         PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
-        v[0] = state.HandPoses[i].ThePose.pose.position.x;
-        v[1] = state.HandPoses[i].ThePose.pose.position.y;
-        v[2] = state.HandPoses[i].ThePose.pose.position.z;
+        v[0] = handPoses[i].pose.position.x;
+        v[1] = handPoses[i].pose.position.y;
+        v[2] = handPoses[i].pose.position.z;
 
-        v[3] = state.HandPoses[i].ThePose.pose.orientation.x;
-        v[4] = state.HandPoses[i].ThePose.pose.orientation.y;
-        v[5] = state.HandPoses[i].ThePose.pose.orientation.z;
-        v[6] = state.HandPoses[i].ThePose.pose.orientation.w;
+        v[3] = handPoses[i].pose.orientation.x;
+        v[4] = handPoses[i].pose.orientation.y;
+        v[5] = handPoses[i].pose.orientation.z;
+        v[6] = handPoses[i].pose.orientation.w;
         PsychSetStructArrayNativeElement("HandPose", i, outMat, status);
 
         // Linear velocity:
         v = NULL;
         PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-        v[0] = state.HandPoses[i].LinearVelocity.x;
-        v[1] = state.HandPoses[i].LinearVelocity.y;
-        v[2] = state.HandPoses[i].LinearVelocity.z;
+        v[0] = handVelocity[i].linearVelocity.x;
+        v[1] = handVelocity[i].linearVelocity.y;
+        v[2] = handVelocity[i].linearVelocity.z;
         PsychSetStructArrayNativeElement("HandLinearSpeed", i, outMat, status);
 
         // Angular velocity:
         v = NULL;
         PsychAllocateNativeDoubleMat(1, 3, 1, &v, &outMat);
-        v[0] = state.HandPoses[i].AngularVelocity.x;
-        v[1] = state.HandPoses[i].AngularVelocity.y;
-        v[2] = state.HandPoses[i].AngularVelocity.z;
+        v[0] = handVelocity[i].angularVelocity.x;
+        v[1] = handVelocity[i].angularVelocity.y;
+        v[2] = handVelocity[i].angularVelocity.z;
         PsychSetStructArrayNativeElement("HandAngularSpeed", i, outMat, status);
     }
-*/
+
     return(PsychError_none);
 }
 
@@ -1831,7 +2054,7 @@ PsychError PSYCHOPENXRGetInputState(void)
     PsychCopyInDoubleArg(2, kPsychArgRequired, &controllerTypeD);
     controllerType = (unsigned long) controllerTypeD;
 
-    PsychAllocOutStructArray(1, kPsychArgOptional, 1, FieldCount, FieldNames, &status);
+    PsychAllocOutStructArray(1, kPsychArgOptional, -1, FieldCount, FieldNames, &status);
 
     // Check session status if we have VR input focus:
     if (OVR_FAILURE(ovr_GetSessionStatus(openxr->hmd, &sessionStatus))) {
@@ -2257,6 +2480,41 @@ PsychError PSYCHOPENXRCreateAndStartSession(void)
 
     // Init origin pose to identity:
     openxr->originPoseInPreviousSpace = identityPose;
+
+    // Create default setup for all supported input/output devices, e.g., touch input controllers for both hands,
+    // gamepads, treadmills, HMD buttons, remotes, etc.:
+    if (!createDefaultXRInputConfig(openxr)) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to setup default input/output device configuration.\n");
+
+        PsychErrorExitMsg(PsychError_system, "OpenXR session creation failed when trying to setup input/output device configuration.");
+    }
+
+    // TODO: Could have setup of alternate action sets / actions / interaction profile bindings under
+    // control of future API and user scripts here, to use as alternative to the setup made in
+    // createDefaultXRInputConfig().
+
+    // At this point, our openxr->actionSet or future other action sets are ready for attachment,
+    // filled with actions, and with all suggested action bindings for different device interaction
+    // profiles set up and "suggested".
+
+    // Attach our main/final actionSet(s) to our session:
+    // This makes all the actions and bindings and suggested interaction profile bindings
+    // immutable for the remaining life-time of the session, ie. this is quite final.
+    XrSessionActionSetsAttachInfo actionSetsAttachInfo = {
+        .type = XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO,
+        .next = NULL,
+        .countActionSets = 1,
+        .actionSets = &openxr->actionSet
+    };
+
+    if (!resultOK(xrAttachSessionActionSets(openxr->hmd, &actionSetsAttachInfo))) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to xrAttachSessionActionSets(): %s\n", errorString);
+
+        // Failure return code:
+        return(FALSE);
+    }
 
     if (verbosity > 3)
         printf("PsychOpenXRCore-INFO: OpenXR session created for XR device with OpenGL rendering.\n");
