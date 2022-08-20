@@ -213,8 +213,8 @@ void InitializeSynopsis(void)
     //synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
     //synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
     synopsis[i++] = "[projL, projR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
-    synopsis[i++] = "[eyePoseL, eyePoseR] = PsychOpenXRCore('StartRender', openxrPtr [, predictionTime=nextFrame]);";
-    synopsis[i++] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass [, predictionTime=nextFrame]);";
+    synopsis[i++] = "PsychOpenXRCore('StartRender', openxrPtr [, targetTime=nextFrame]);";
+    //synopsis[i++] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass [, predictionTime=nextFrame]);";
     //synopsis[i++] = "[adaptiveGpuPerformanceScale, frameStats, anyFrameStatsDropped, aswIsAvailable] = PsychOpenXRCore('GetPerformanceStats', openxrPtr);";
     //synopsis[i++] = "oldValues = PsychOpenXRCore('FloatsProperty', openxrPtr, propertyName [, newValues]);";
     //synopsis[i++] = "oldValues = PsychOpenXRCore('FloatProperty', openxrPtr, propertyName [, newValue]);";
@@ -227,8 +227,8 @@ void InitializeSynopsis(void)
     synopsis[i++] = "[width, height, numTextures, imageFormat] = PsychOpenXRCore('CreateRenderTextureChain', openxrPtr, eye, width, height, floatFormat, numMSAASamples);";
     synopsis[i++] = "texObjectHandle = PsychOpenXRCore('GetNextTextureHandle', openxrPtr, eye);";
     synopsis[i++] = "PsychOpenXRCore('EndFrameRender', openxrPtr [, eye]);";
+    synopsis[i++] = "[frameTiming, tPredictedOnset, referenceFrameIndex] = PsychOpenXRCore('PresentFrame', openxrPtr [, doTimestamp=0][, when=0]);";
     //synopsis[i++] = "trackers = PsychOpenXRCore('GetTrackersState', openxrPtr);";
-    //synopsis[i++] = "[frameTiming, tPredictedOnset, referenceFrameIndex] = PsychOpenXRCore('PresentFrame', openxrPtr [, doTimestamp=0][, when=0]);";
     synopsis[i++] = NULL; // Terminate synopsis strings.
 
     if (i > MAX_SYNOPSIS_STRINGS) {
@@ -1545,7 +1545,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     static char useString[] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
     //                          1      2                                            1            2
     static char synopsisString[] =
-        "Return current state of eye/head position and orientation tracking for OpenXR device 'openxrPtr'.\n"
+        "Return current state of eye position and orientation tracking for OpenXR device 'openxrPtr'.\n"
         "Position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
         "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
         "then the prediction is performed for the mid-point of the next possible video frame of the HMD, ie. "
@@ -1555,7 +1555,7 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "'Status' = Tracking status flags:\n"
         "+1 = Orientation tracked for all eyes,\n"
         "+2 = Position tracked for all eyes,\n"
-        "+4 = At least part of the pose is somewhat valid, even if not tracked but just inferred,\n"
+        "+4 = At least part of the pose is somewhat valid, even if not tracked, but just inferred,\n"
         "+128 = HMD display is connected, available and actually on users head, displaying our content.\n\n"
         "'SessionState' = VR session status flags, added together:\n"
         "+1  = Our rendering goes to the HMD, ie. we have control over it. If some other app would "
@@ -1563,9 +1563,13 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         "+2  = HMD is present and active.\n"
         "+4  = HMD is strapped onto users head. E.g., a Rift CV1 would switch off/blank if not on the head.\n"
         "+8  = DisplayLost condition! Some hardware/software malfunction, need to completely quit to recover.\n"
-        "+16 = ShouldQuit The user interface asks us to voluntarily terminate this session.\n"
-        "'CalibratedOrigin' = The pose of the world coordinate system origin during last calibration, relative "
-        "to its previous pose, as a vector [x,y,z,rx,ry,rz,rw].\n"
+        "+16 = ShouldQuit The user interface asks us to voluntarily terminate this session.\n\n"
+        "'CalibratedOrigin' = The pose of the world coordinate system origin during last recalibration, relative "
+        "to its previous pose, as a vector [x,y,z,rx,ry,rz,rw].\n\n"
+        "'EyePoseLeft' = Vector with position and orientation of left eye / left eye virtual camera.\n"
+        "'EyePoseRight' = Vector with position and orientation of right eye / right eye virtual camera.\n"
+        "The vectors are of form [tx, ty, tz, rx, ry, rz, rw] - A 3 component 3D position, followed by a 4 "
+        "component rotation quaternion.\n\n"
         "\n"
         "Touch controller position and orientation:\n\n"
         "The return argument 'touch' is a struct array with 2 structs. touch(1) contains info about "
@@ -1584,9 +1588,9 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     static char seeAlsoString[] = "Start Stop GetTrackersState GetInputState";
 
     PsychGenericScriptType *status;
-    const char *FieldNames1[] = {"Time", "Status", "SessionState", "CalibratedOrigin"};
-    const int FieldCount1 = 4;
-    const char *FieldNames2[] = {"Time", "Status", "HandPose", "HandLinearSpeed", "HandAngularSpeed"};
+    const char *FieldNames1[] = { "Time", "Status", "SessionState", "CalibratedOrigin", "EyePoseLeft", "EyePoseRight" };
+    const int FieldCount1 = 6;
+    const char *FieldNames2[] = { "Time", "Status", "HandPose", "HandLinearSpeed", "HandAngularSpeed" };
     const int FieldCount2 = 5;
 
     int handle, i;
@@ -1679,6 +1683,38 @@ PsychError PSYCHOPENXRGetTrackingState(void)
     v[5] = openxr->originPoseInPreviousSpace.orientation.z;
     v[6] = openxr->originPoseInPreviousSpace.orientation.w;
     PsychSetStructArrayNativeElement("CalibratedOrigin", 0, outMat, status);
+
+    // Left eye pose as raw data:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+
+    // Position (x,y,z):
+    v[0] = openxr->view[0].pose.position.x;
+    v[1] = openxr->view[0].pose.position.y;
+    v[2] = openxr->view[0].pose.position.z;
+
+    // Orientation as a quaternion (x,y,z,w):
+    v[3] = openxr->view[0].pose.orientation.x;
+    v[4] = openxr->view[0].pose.orientation.y;
+    v[5] = openxr->view[0].pose.orientation.z;
+    v[6] = openxr->view[0].pose.orientation.w;
+    PsychSetStructArrayNativeElement("EyePoseLeft", 0, outMat, status);
+
+    // Right eye pose as raw data:
+    v = NULL;
+    PsychAllocateNativeDoubleMat(1, 7, 1, &v, &outMat);
+
+    // Position (x,y,z):
+    v[0] = openxr->view[1].pose.position.x;
+    v[1] = openxr->view[1].pose.position.y;
+    v[2] = openxr->view[1].pose.position.z;
+
+    // Orientation as a quaternion (x,y,z,w):
+    v[3] = openxr->view[1].pose.orientation.x;
+    v[4] = openxr->view[1].pose.orientation.y;
+    v[5] = openxr->view[1].pose.orientation.z;
+    v[6] = openxr->view[1].pose.orientation.w;
+    PsychSetStructArrayNativeElement("EyePoseRight", 0, outMat, status);
 
     // Now the tracking info from the OpenXR touch controllers 0 and 1 for left
     // and right hand, in a separate struct array:
@@ -2874,27 +2910,19 @@ PsychError PSYCHOPENXRGetStaticRenderParameters(void)
     return(PsychError_none);
 }
 
-
 PsychError PSYCHOPENXRStartRender(void)
 {
-    static char useString[] = "[eyePoseL, eyePoseR] = PsychOpenXRCore('StartRender', openxrPtr [, predictionTime=nextFrame]);";
-    //                          1         2                                          1            2
+    static char useString[] = "PsychOpenXRCore('StartRender', openxrPtr [, targetTime=nextFrame]);";
+    //                                                        1            2
     static char synopsisString[] =
     "Mark start of a new 3D head/eye tracked render cycle for OpenXR device 'openxrPtr'.\n"
-    "Eye position and orientation is predicted for target time 'predictionTime' in seconds if provided, "
-    "based on the latest measurements from the tracking hardware. If 'predictionTime' is omitted or zero, "
-    "then the prediction is performed for the mid-point of the next possible video frame of the HMD, ie. "
-    "the most likely presentation time for immediately rendered images.\n\n"
-    "Return values are the vectors which define the two eye cameras positions and orientations "
-    "for the left eye and right eye 'eyePoseL' and 'eyePoseR'. The vectors are of form "
-    "[tx, ty, tz, rx, ry, rz, rw] - A 3 component 3D position followed by a 4 component rotation "
-    "quaternion.\n"
-    "\n";
-    static char seeAlsoString[] = "GetEyePose GetTrackingState EndFrameRender";
+    "The render is for an eye position and orientation at target time 'targetTime' in seconds if provided. "
+    "If 'targetTime' is omitted or zero, then the render is performed for the mid-point of the next "
+    "possible video frame of the HMD, ie. the most likely presentation time for immediately rendered images.\n";
+    static char seeAlsoString[] = "GetTrackingState EndFrameRender";
 
     int handle;
     PsychOpenXRDevice *openxr;
-    double *outM;
     double predictionTime;
 
     // All sub functions should have these two lines:
@@ -2902,7 +2930,7 @@ PsychError PSYCHOPENXRStartRender(void)
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
     // Check to see if the user supplied superfluous arguments:
-    PsychErrorExit(PsychCapNumOutputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(0));
     PsychErrorExit(PsychCapNumInputArgs(2));
     PsychErrorExit(PsychRequireNumInputArgs(1));
 
@@ -2918,39 +2946,7 @@ PsychError PSYCHOPENXRStartRender(void)
     if (!PsychCopyInDoubleArg(2, kPsychArgOptional, &predictionTime))
         predictionTime = 0;
 
-    // Get current eye poses for both eyes:
-    PsychLockMutex(&(openxr->presenterLock));
-    locateXRViews(openxr, predictionTime);
-    PsychUnlockMutex(&(openxr->presenterLock));
-
-    // Left eye pose as raw data:
-    PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, 7, 1, &outM);
-
-    // Position (x,y,z):
-    outM[0] = openxr->view[0].pose.position.x;
-    outM[1] = openxr->view[0].pose.position.y;
-    outM[2] = openxr->view[0].pose.position.z;
-
-    // Orientation as a quaternion (x,y,z,w):
-    outM[3] = openxr->view[0].pose.orientation.x;
-    outM[4] = openxr->view[0].pose.orientation.y;
-    outM[5] = openxr->view[0].pose.orientation.z;
-    outM[6] = openxr->view[0].pose.orientation.w;
-
-    // Right eye pose as raw data:
-    PsychAllocOutDoubleMatArg(2, kPsychArgOptional, 1, 7, 1, &outM);
-
-    // Position (x,y,z):
-    outM[0] = openxr->view[1].pose.position.x;
-    outM[1] = openxr->view[1].pose.position.y;
-    outM[2] = openxr->view[1].pose.position.z;
-
-    // Orientation as a quaternion (x,y,z,w):
-    outM[3] = openxr->view[1].pose.orientation.x;
-    outM[4] = openxr->view[1].pose.orientation.y;
-    outM[5] = openxr->view[1].pose.orientation.z;
-    outM[6] = openxr->view[1].pose.orientation.w;
-
+    // This function does not do anything meaningful yet. Just return success:
     return(PsychError_none);
 }
 
