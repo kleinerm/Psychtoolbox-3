@@ -883,7 +883,11 @@ if strcmpi(cmd, 'GetInputState')
     error('PsychOpenXR:GetInputState: Required ''controllerType'' argument missing.');
   end
 
-  varargout{1} = PsychOpenXRCore('GetInputState', myhmd.handle, double(varargin{2}));
+  %varargout{1} = PsychOpenXRCore('GetInputState', myhmd.handle, double(varargin{2}));
+  rc.Valid = 1;
+  rc.Time = GetSecs;
+  rc.Buttons = zeros(1, 32);
+  varargout{1} = rc;
 
   return;
 end
@@ -930,7 +934,9 @@ if strcmpi(cmd, 'VRAreaBoundary')
     error('VRAreaBoundary: Passed in handle does not refer to a valid and open HMD.');
   end
 
-  [varargout{1}, varargout{2}, varargout{3}] = PsychOpenXRCore('VRAreaBoundary', myhmd.handle, varargin{2:end});
+  % Return no-op values for now:
+  [varargout{1}, varargout{2}, varargout{3}] = deal(0, [], []);
+  %[varargout{1}, varargout{2}, varargout{3}] = PsychOpenXRCore('VRAreaBoundary', myhmd.handle, varargin{2:end});
   return;
 end
 
@@ -1130,11 +1136,11 @@ if strcmpi(cmd, 'Open')
   newhmd.open = 1;
   newhmd.modelName = modelName;
   newhmd.separateEyePosesSupported = 0;
-  % TODO setup the following...
   newhmd.videoRefreshDuration = 0;
+  newhmd.handTrackingSupported = 1;
+  % TODO setup the following...
   newhmd.controllerTypes = 0;
   newhmd.VRControllersSupported = 0;
-  newhmd.handTrackingSupported = 0;
   newhmd.hapticFeedbackSupported = 0;
   newhmd.multiThreaded = 0; % TODO Technically 2nd argument varargin{2} would define this.
 
