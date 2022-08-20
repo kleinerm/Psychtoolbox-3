@@ -130,9 +130,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 %                             the quality of the VR experience, 0 if no improvement
 %                             is to be expected, so 'GetEyePose' can be avoided
 %                             to save processing time without a loss of quality.
-%                             This always returns 1 for at least the Rift DK1 and DK2,
-%                             as use of that function can enhance the quality of the
-%                             VR experience with fast head movements.
+%                             This *always* returns 0 on this PsychOpenXR driver.
 %
 % The returned struct may contain more information, but the fields mentioned
 % above are the only ones guaranteed to be available over the long run. Other
@@ -353,11 +351,14 @@ function varargout = PsychOpenXR(cmd, varargin)
 %
 % eyePose = PsychOpenXR('GetEyePose', hmd, renderPass [, userTransformMatrix][, targetTime]);
 % - Return a struct 'eyePose' which contains various useful bits of information
-% for 3D stereoscopic rendering of the stereo view of one eye, based on head
-% tracking data. This function provides essentially the same information as
+% for 3D stereoscopic rendering of the stereo view of one eye, based on head or
+% eye tracking data. This function provides essentially the same information as
 % the 'PrepareRender' function, but only for one eye. Therefore you will need
 % to call this function twice, once for each of the two renderpasses, at the
-% beginning of each renderpass.
+% beginning of each renderpass. NOTE: The function only exists for backwards
+% compatibility with existing older VR/AR/XR scripts. It does *not* provide any
+% benefit on OpenXR VR/AR/XR devices, but instead may cause a performance decrease
+% when used! It is recommended to not use it in new scripts.
 %
 % 'hmd' is the handle of the HMD which delivers tracking data and receives the
 % rendered content for display.
@@ -392,7 +393,7 @@ function varargout = PsychOpenXR(cmd, varargin)
 % Return values in struct 'eyePose':
 %
 % 'eyeIndex' The eye for which this information applies. 0 = Left eye, 1 = Right eye.
-%            You can pass 'eyeIndex' into the Screen('SelectStereoDrawBuffer', win, eyeIndex)
+%            You can pass 'eyeIndex' into Screen('SelectStereoDrawBuffer', win, eyeIndex)
 %            to select the proper eye target render buffer.
 %
 % 'modelView' is a 4x4 RHS OpenGL matrix which can be directly used as OpenGL
@@ -404,11 +405,6 @@ function varargout = PsychOpenXR(cmd, varargin)
 %              be directly used to define the camera for rendering of complex
 %              3D scenes with the Horde3D 3D engine or other engines which want
 %              absolute camera pose instead of the inverse matrix.
-%
-% Additionally tracked/predicted head pose is returned in eyePose.localHeadPoseMatrix
-% and the global head pose after application of the 'userTransformMatrix' is
-% returned in eyePose.globalHeadPoseMatrix - this is the basis for computing
-% the camera transformation matrix.
 %
 %
 % trackers = PsychOpenXR('GetTrackersState', hmd);
@@ -834,16 +830,24 @@ if strcmpi(cmd, 'GetEyePose')
     targetTime = varargin{4};
   else
     % Default: Choose predicted value for onset of the next presentation frame,
-    % under the assumption that we hit the flip deadline for the next video
-    % frame:
+    % under the assumption that we hit the flip deadline for the next video frame:
     targetTime = [];
   end
 
-  % Get eye pose for this renderPass, or more exactly the headPose from which this
-  % renderPass eyePose will get computed:
-  [result.eyePose, result.eyeIndex] = PsychOpenXRCore('GetEyePose', myhmd.handle, renderPass, targetTime);
+  % No preferred order of eyes wrt. renderPass - use 1:1 mapping:
+  result.eyeIndex = renderPass;
 
-  % Convert head pose vector to 4x4 OpenGL right handed reference frame matrix:
+  % Use general tracking function to get eye poses:
+  eyes = PsychOpenXRCore('GetTrackingState', myhmd.handle, targetTime);
+
+  % Select the proper eye pose vector, depending on renderPass:
+  if renderPass == 0
+    result.eyePose = eyes.EyePoseLeft;
+  else
+    result.eyePose = eyes.EyePoseRight;
+  end
+
+  % Convert eye pose vector to 4x4 right handed camera frame matrix:
   result.localEyePoseMatrix = eyePoseToCameraMatrix(result.eyePose);
 
   % Premultiply usercode provided global transformation matrix for per-eye global pose matrix for this eyeIndex:

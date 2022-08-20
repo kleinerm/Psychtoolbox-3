@@ -67,7 +67,6 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("EndFrameRender", &PSYCHOPENXREndFrameRender));
     PsychErrorExit(PsychRegister("PresentFrame", &PSYCHOPENXRPresentFrame));
     PsychErrorExit(PsychRegister("Verbosity", &PSYCHOPENXRVerbosity));
-    PsychErrorExit(PsychRegister("GetEyePose", &PSYCHOPENXRGetEyePose));
     PsychErrorExit(PsychRegister("SetHUDState", &PSYCHOPENXRSetHUDState));
     PsychErrorExit(PsychRegister("VRAreaBoundary", &PSYCHOPENXRVRAreaBoundary));
     PsychErrorExit(PsychRegister("TestVRBoundary", &PSYCHOPENXRTestVRBoundary));
@@ -81,6 +80,7 @@ PsychError PsychModuleInit(void)
     PsychErrorExit(PsychRegister("CreateRenderTextureChain", &PSYCHOPENXRCreateRenderTextureChain));
     PsychErrorExit(PsychRegister("GetNextTextureHandle", &PSYCHOPENXRGetNextTextureHandle));
     PsychErrorExit(PsychRegister("CreateAndStartSession", &PSYCHOPENXRCreateAndStartSession));
+    //PsychErrorExit(PsychRegister("GetEyePose", &PSYCHOPENXRGetEyePose));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENXR));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENXR));
     //PsychErrorExit(PsychRegister("", &PSYCHOPENXR));

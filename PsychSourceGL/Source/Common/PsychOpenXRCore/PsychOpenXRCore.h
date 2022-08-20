@@ -75,7 +75,6 @@ PsychError PSYCHOPENXRGetTrackersState(void);
 PsychError PSYCHOPENXRStartRender(void);
 PsychError PSYCHOPENXREndFrameRender(void);
 PsychError PSYCHOPENXRPresentFrame(void);
-PsychError PSYCHOPENXRGetEyePose(void);
 PsychError PSYCHOPENXRVRAreaBoundary(void);
 PsychError PSYCHOPENXRTestVRBoundary(void);
 PsychError PSYCHOPENXRTestVRBoundaryPoint(void);
@@ -85,6 +84,7 @@ PsychError PSYCHOPENXRHapticPulse(void);
 PsychError PSYCHOPENXRFloatsProperty(void);
 PsychError PSYCHOPENXRFloatProperty(void);
 PsychError PSYCHOPENXRStringProperty(void);
+PsychError PSYCHOPENXRGetEyePose(void);
 
 #ifdef __cplusplus
 }

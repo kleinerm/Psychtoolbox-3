@@ -151,6 +151,7 @@ function varargout = PsychVRHMD(cmd, varargin)
 %                             the quality of the VR experience, 0 if no improvement
 %                             is to be expected, so 'GetEyePose' can be avoided
 %                             to save processing time without a loss of quality.
+%                             This will be zero (== no benefit) for all modern runtimes.
 %
 % VRControllersSupported = 1 if use of PsychVRHMD('GetInputState') will provide input
 %                            from actual dedicated VR controllers. Value is 0 if
@@ -376,14 +377,14 @@ function varargout = PsychVRHMD(cmd, varargin)
 % to call this function twice, once for each of the two renderpasses, at the
 % beginning of each renderpass.
 %
-% Note: The 'GetEyePose' function may not be implemented in a meaningful/beneficial
-% way for all supported types of HMD. This means that while the function will work
-% on all supported HMDs, there may not be any benefit of using it in terms of
-% performance or quality of the VR experience, because the underlying driver may
-% only emulate / fake the results for compatibility. Currently only the driver for
-% the Oculus VR Rift DK1 and DK2 supports this function in a way that will improve
-% the VR experience, the status for future Oculus HMDs, or HMDs from other vendors
-% is currently unknown. The info struct returned by PsychVRHMD('GetInfo') will return
+% Note: The 'GetEyePose' function is not implemented in a meaningful/beneficial
+% way for modern supported types of HMD. This means that while the function will work
+% on all supported HMDs, there will not be any benefit on most HMDs of using it in
+% terms of performance or quality of the VR experience, because the underlying driver may
+% only emulate / fake the results for compatibility. Currently only the original driver
+% for the Oculus VR Rift DK1 and Rift DK2 supports this function in a way that could
+% improve the VR experience, none of the other drivers does, not even the modern driver
+% for recent Oculus HMDs. The info struct returned by PsychVRHMD('GetInfo') will return
 % info.separateEyePosesSupported == 1 if there is a benefit to be expected from use
 % of this function, or info.separateEyePosesSupported == 0 if no benefit is expected
 % and simply using the data from PsychVRHMD('PrepareRender') will provide results with
