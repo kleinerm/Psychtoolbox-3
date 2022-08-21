@@ -32,6 +32,8 @@ InitializeMatlabOpenGL;
 % Select screen with highest id as Oculus output display:
 screenid = max(Screen('Screens'));
 
+PsychDebugWindowConfiguration;
+
 % Open our fullscreen onscreen window with black background clear color:
 PsychImaging('PrepareConfiguration');
 
@@ -41,7 +43,6 @@ if isempty(hmd)
     return;
 end
 
-PsychDebugWindowConfiguration;
 [win, winRect] = PsychImaging('OpenWindow', screenid, [0 0 1]);
 ifi = Screen('GetFlipInterval', win);
 hmdinfo = PsychVRHMD('GetInfo', hmd);
@@ -80,6 +81,8 @@ if hmdinfo.VRControllersSupported
         fprintf('Right hand controller connected.\n');
     end
     fprintf('\n\n');
+else
+    controllerTypes = 0;
 end
 
 % Fetch play area / guardian boundaries:
@@ -470,9 +473,11 @@ if hmdinfo.handTrackingSupported
       thumbmult = 0.005;
     end
 
-    globalPos(1) = globalPos(1) - thumbmult * istate.Thumbstick(1,1);
-    globalPos(2) = globalPos(2) - thumbmult * istate.Thumbstick(2,1);
-    globalPos(3) = globalPos(3) + thumbmult * istate.Thumbstick(2,2);
+    if hmdinfo.VRControllersSupported
+      globalPos(1) = globalPos(1) - thumbmult * istate.Thumbstick(1,1);
+      globalPos(2) = globalPos(2) - thumbmult * istate.Thumbstick(2,1);
+      globalPos(3) = globalPos(3) + thumbmult * istate.Thumbstick(2,2);
+    end
 
     % Compute a transformation matrix to globally position and orient the
     % observer in the scene. This allows mouse control of observer position
@@ -562,13 +567,23 @@ if hmdinfo.handTrackingSupported
       % Visualize users hands / hand controllers:
       for hand = 1:2
         % Position and orientation of hand tracked? Otherwise we don't show them:
-        if state.handStatus(hand) == 3
+        if bitand(state.handStatus(hand), 3) == 3
           % Yes: Lets visualize it:
+
+          % Have fallback if controller trigger and grip buttons unsupported:
+          if hmdinfo.VRControllersSupported
+            tr = istate.Trigger(hand);
+            di = istate.Grip(hand);
+          else
+            tr = 0.1;
+            di = 0;
+          end
+
           glPushMatrix;
           glMultMatrixd(state.globalHandPoseMatrix{hand});
-          glutSolidCone(0.1 * (1.1 - istate.Grip(hand)), -0.4, 10, 10);
+          glutSolidCone(0.1 * (1.1 - di), -0.4, 10, 10);
 
-          if istate.Trigger(hand) > 0.015
+          if tr > 0.015
             % Draw the particle fountain. We use a vertex shader in the shader
             % program glsl to compute the physics:
             glUseProgram(glsl);
@@ -577,7 +592,7 @@ if hmdinfo.handTrackingSupported
             glUniform1f(glGetUniformLocation(glsl, 'Time'), telapsed);
 
             % Assign simulated gravity constant 'g' for proper trajectory:
-            glUniform1f(glGetUniformLocation(glsl, 'Acceleration'), 1 - istate.Trigger(hand));
+            glUniform1f(glGetUniformLocation(glsl, 'Acceleration'), 1 - tr);
 
             % Draw the particles: We have preencoded them into a OpenGL display list
             % above for higher performance of drawing:
@@ -603,7 +618,7 @@ if hmdinfo.handTrackingSupported
       DrawFormattedText(win, 'Vision based tracking lost\nGet back into the cameras field of view!', 'center', 'center', [1 0 0]);
     end
 
-    if hmdinfo.hapticFeedbackSupported
+    if hmdinfo.hapticFeedbackSupported && hmdinfo.VRControllersSupported
       if (istate.Grip(1) > 0.5 || istate.Grip(2) > 0.5) && isempty(pulseEnd)
           % Initiate new pulse: 0.75 seconds, 25% or 100% frequency, 0.8 amplitude:
           if istate.Grip(2) > 0.5
