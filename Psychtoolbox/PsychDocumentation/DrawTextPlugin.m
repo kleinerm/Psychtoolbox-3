@@ -66,7 +66,11 @@
 % On MS-Windows with Matlab you will need to install the GStreamer multi-
 % media framework - see "help GStreamer" for installation instructions -
 % otherwise Psychtoolbox will use the old lower quality GDI text renderer
-% instead.
+% instead. As of Psychtoolbox version 3.0.18, you *must* install GStreamer 1.18
+% (see download link in "help GStreamer" for latest tested version), *not* the
+% more recent GStreamer version 1.20 or later, as version 1.20+ is currently
+% incompatible with the text rendering plugin, and would cause the plugin to fail
+% to work!
 %
 % If your version of Matlab bundles an outdated libfreetype.dll, as may be
 % the case with at least R2015a and later, you may need to get rid of that as
