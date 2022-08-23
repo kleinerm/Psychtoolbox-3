@@ -108,7 +108,7 @@ typedef struct PsychOpenXRDevice {
     XrActionSet                         actionSet;
     XrAction                            hapticAction;
     XrAction                            handPoseAction;
-    XrPath                              handPath[2];
+    XrPath                              handPath[3];
     XrSpace                             handPoseSpace[2];
     psych_bool                          isTracking;
     XrViewConfigurationType             viewType;
@@ -216,7 +216,7 @@ void InitializeSynopsis(void)
     //synopsis[i++] = "PsychOpenXRCore('Stop', openxrPtr);";
     synopsis[i++] = "[state, touch] = PsychOpenXRCore('GetTrackingState', openxrPtr [, predictionTime=nextFrame]);";
     //synopsis[i++] = "input = PsychOpenXRCore('GetInputState', openxrPtr, controllerType);";
-    //synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
+    synopsis[i++] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq][, amplitude=1.0]);";
     synopsis[i++] = "[projL, projR] = PsychOpenXRCore('GetStaticRenderParameters', openxrPtr [, clipNear=0.01][, clipFar=10000.0]);";
     synopsis[i++] = "PsychOpenXRCore('StartRender', openxrPtr [, targetTime=nextFrame]);";
     //synopsis[i++] = "[eyePose, eyeIndex] = PsychOpenXRCore('GetEyePose', openxrPtr, renderPass [, predictionTime=nextFrame]);";
@@ -432,14 +432,17 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     // Build all standard path strings we may need:
     xrStringToPath(xrInstance, "/user/hand/left", &openxr->handPath[0]);
     xrStringToPath(xrInstance, "/user/hand/right", &openxr->handPath[1]);
+    xrStringToPath(xrInstance, "/user/gamepad", &openxr->handPath[2]);
 
     XrPath gripPosePath[2];
     xrStringToPath(xrInstance, "/user/hand/left/input/grip/pose", &gripPosePath[0]);
     xrStringToPath(xrInstance, "/user/hand/right/input/grip/pose", &gripPosePath[1]);
 
-    XrPath hapticPath[2];
+    XrPath hapticPath[4];
     xrStringToPath(xrInstance, "/user/hand/left/output/haptic", &hapticPath[0]);
     xrStringToPath(xrInstance, "/user/hand/right/output/haptic", &hapticPath[1]);
+    xrStringToPath(xrInstance, "/user/gamepad/output/haptic_left", &hapticPath[2]);
+    xrStringToPath(xrInstance, "/user/gamepad/output/haptic_right", &hapticPath[3]);
 
     // Create our action set which is the container for all our input actions:
     XrActionSetCreateInfo actionSetCreateInfo = {
@@ -499,7 +502,7 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
         .type = XR_TYPE_ACTION_CREATE_INFO,
         .next = NULL,
         .actionType = XR_ACTION_TYPE_VIBRATION_OUTPUT,
-        .countSubactionPaths = 2,
+        .countSubactionPaths = 3,
         .subactionPaths = openxr->handPath,
         .actionName = "handhapticaction",
         .localizedActionName = "Hand haptic output action"
@@ -549,6 +552,18 @@ static psych_bool createDefaultXRInputConfig(PsychOpenXRDevice* openxr)
     // haptic output is not supported:
     if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/google/daydream_controller", 2, aB))
         return(FALSE);
+
+    // Suggest action bindings for Microsoft XBox controller:
+    {
+        // This one needs its own dedicated bindings, as it is not a hand-tracker/hand-controller, but a gamepad device:
+        XrActionSuggestedBinding aB[] = {
+            { .action = openxr->hapticAction, .binding = hapticPath[2] },
+            { .action = openxr->hapticAction, .binding = hapticPath[3] },
+        };
+
+        if (!suggestXRInteractionBindings(xrInstance, "/interaction_profiles/microsoft/xbox_controller", sizeof(aB) / sizeof(aB[0]), aB))
+            return(FALSE);
+    }
 
     return(TRUE);
 }
@@ -1921,10 +1936,12 @@ PsychError PSYCHOPENXRGetTrackingState(void)
         handPoses[i].next = &handVelocity[i];
 
         if (!resultOK(xrLocateSpace(openxr->handPoseSpace[i], openxr->worldSpace, openxr->frameState.predictedDisplayTime, &handPoses[i]))) {
-            if (verbosity > 0)
-                printf("PsychOpenXRCore-ERROR: xrLocateSpace() failed: %s\n", errorString);
+            if (verbosity > 3)
+                printf("PsychOpenXRCore-DEBUG: xrLocateSpace() failed: %s\n", errorString);
 
-            return(FALSE);
+            // Indicate tracking failure:
+            handPoses[i].locationFlags = 0;
+            handVelocity[i].velocityFlags = 0;
         }
 
         // Timestamp for when this tracking info is valid: TODO
@@ -3973,36 +3990,45 @@ PsychError PSYCHOPENXRGetPerformanceStats(void)
     return(PsychError_none);
 }
 
-// TODO
 PsychError PSYCHOPENXRHapticPulse(void)
 {
-    static char useString[] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq=1.0][, amplitude=1.0]);";
-    //                         1                                                1          2                 3               4           5
+    static char useString[] = "pulseEndTime = PsychOpenXRCore('HapticPulse', openxrPtr, controllerType [, duration=2.5][, freq][, amplitude=1.0]);";
+    //                         1                                             1          2                 3               4       5
     static char synopsisString[] =
-    "Execute a haptic feedback pulse on controller 'controllerType' associated with OpenXR device 'openxrPtr'.\n\n"
-    "'duration' is the duration of the pulse in seconds. If omitted, the function returns immediately and "
-    "the maximum duration of 2.5 seconds is used, unless you call the function again with 'freq' = 0, to cancel the "
-    "currently active pulse. Otherwise, if a 'duration' other than 2.5 seconds is specified, the function executes "
-    "for the specified duration, and may block execution of your script for that time span on some controller types, "
-    "returning the absolute time when the pulse is expected to end.\n\n"
-    "'freq' Frequency of the vibration in normalized 0.0 - 1.0 range. Currently only values 0, 0.5 and 1.0 "
-    "will be used. 0 = Disable ongoing pulse immediately. Values other than 0, 0.5, or 1 will be clamped to the nearest value.\n\n"
-    "'amplitude' Normalized amplitude in range 0.0 - 1.0\n\n"
-    "The return argument 'pulseEndTime' contains the absolute time in seconds when the pulse is expected "
-    "to end, as estimated at the time of calling the function. The precision and accuracy of pulse timing "
-    "is not known.\n";
-/*
+    "Request execution of a haptic feedback pulse on controller 'controllerType' associated with OpenXR device 'openxrPtr'.\n\n"
+    "The function will return immediately, but depending on OpenXR runtime will only take effect at some later point in time. "
+    "E.g., the Oculus runtime on MS-Windows will only take action at the next Screen('Flip'). This is unfortunate.\n\n"
+    "'duration' is the duration of the pulse in seconds. If 'duration' is omitted, a default duration of 2.5 seconds is used. "
+    "If a 'duration' is specified, the function requests use of that duration. A duration of 0 is mapped to a runtime + hardware "
+    "specific minimum duration, e.g., 0.1 seconds is a common minimum duration. Please note that depending on runtime and hardware, "
+    "there might also be a maximum duration to which 'duration' will be clamped by the runtime. E.g., Oculus touch controllers under "
+    "the Oculus OpenXR runtime for Microsoft Windows will not execute a haptic feedback pulse longer than 2.5 seconds.\n\n"
+    "'freq' Requested frequency of the vibration: 'freq' is understood to be in Hz for 'freq' > 1, or in a normalized 0.0 - 1.0 range:\n"
+    "0 = Disable ongoing pulse immediately.\n"
+    "0 < freq <= 1 will be mapped to 0 Hz to 320 Hz for compatibility with other older VR api's, runtimes, and Oculus devices.\n"
+    "freq > 1 will be passed unchanged as a requested frequency in Hz. The OpenXR runtimes and devices may clamp freq into a "
+    "runtime and hardware dependent minimum and maximum range, or quantize actual freq to only a few discrete supported values. E.g., "
+    "Oculus CV-1 touch controllers only support 160 Hz and 320 Hz, whereas Oculus S touch controllers only support 160 Hz and 500 Hz. "
+    "Omitting 'freq' will choose XR_FREQUENCY_UNSPECIFIED, which leaves it at the discretion of the OpenXR runtime to choose some "
+    "good frequency, for some working definition of good.\n\n"
+    "'amplitude' Normalized amplitude in range 0.0 - 1.0 for vibration strength.\n\n"
+    "The return argument 'pulseEndTime' contains the absolute time in seconds when the pulse is expected to end, "
+    "as estimated at the time of calling the function. The precision and accuracy of pulse timing is runtime dependent "
+    "ie. may vary. Pulses could last shorter or longer than specified and start with some delay, depending on system.\n";
     static char seeAlsoString[] = "";
-    int handle, controllerType;
+
+    int handle;
+    psych_int64 controllerType;
     PsychOpenXRDevice *openxr;
     double duration, tNow, freq, amplitude, pulseEndTime;
-    ovrResult result;
+    XrPath outpath;
+    XrResult result;
 
-    // All sub functions should have these two lines
-    PsychPushHelp(useString, synopsisString,seeAlsoString);
-    if (PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+    // All sub functions should have these two lines:
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    // Check to see if the user supplied superfluous arguments
+    // Check to see if the user supplied superfluous arguments:
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(5));
     PsychErrorExit(PsychRequireNumInputArgs(2));
@@ -4014,8 +4040,50 @@ PsychError PSYCHOPENXRHapticPulse(void)
     PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
     openxr = PsychGetXR(handle, FALSE);
 
-    // Get the new performance HUD mode:
-    PsychCopyInIntegerArg(2, kPsychArgRequired, &controllerType);
+    // Get the controller type:
+    PsychCopyInIntegerArg64(2, kPsychArgRequired, &controllerType);
+
+    switch (controllerType) {
+        case 1: // Left hand controller? OVR.ControllerType_LTouch
+            outpath = openxr->handPath[0];
+            break;
+
+        case 2: // Right hand controller? OVR.ControllerType_RTouch
+            outpath = openxr->handPath[1];
+            break;
+
+        case 3: // Both hand controllers? OVR.ControllerType_Touch
+        case 0xffffffff: // All active controllers? OVR.ControllerType_Active
+            // XR_NULL_PATH triggers haptic action on all capable and active devices:
+            outpath = XR_NULL_PATH;
+            break;
+
+        case 16: // Microsoft X-Box controller or equivalent? OVR.ControllerType_XBox
+            outpath = openxr->handPath[2];
+            break;
+
+        // These types are all TODO: No-Op with warning for now.
+        case 0x100: // OVR.ControllerType_Object0?
+        case 0x200: // OVR.ControllerType_Object1?
+        case 0x400: // OVR.ControllerType_Object2?
+        case 0x800: // OVR.ControllerType_Object3?
+            if (verbosity > 1)
+                printf("PsychOpenXRCore-WARNING: 'HapticPulse' not yet handled for controllerType 0x%x - No haptic feedback.\n", (unsigned int) controllerType);
+
+            PsychCopyOutDoubleArg(1, kPsychArgOptional, 0);
+            return(PsychError_none);
+
+        default:
+            printf("PsychOpenXRCore-ERROR: 'HapticPulse' invalid controllerType 0x%x.\n", (unsigned int) controllerType);
+            PsychErrorExitMsg(PsychError_user, "Invalid controllerType for haptic feedback specified.");
+    }
+
+    XrHapticActionInfo hapticActionInfo = {
+        .type = XR_TYPE_HAPTIC_ACTION_INFO,
+        .next = NULL,
+        .action = openxr->hapticAction,
+        .subactionPath = outpath,
+    };
 
     // Duration:
     duration = 2.5;
@@ -4023,38 +4091,59 @@ PsychError PSYCHOPENXRHapticPulse(void)
     if (duration < 0)
         PsychErrorExitMsg(PsychError_user, "Invalid negative 'duration' in seconds specified. Must be positive.");
 
-    if ((duration > 2.5) && (verbosity > 1))
-        printf("PsychOpenXRCore-WARNING: 'HapticPulse' of %f seconds duration requested, but currently duration is limited to a maximum of 2.5 seconds. Clamping...\n",
-                duration);
-
-    if (duration > 2.5)
-        duration = 2.5;
-
-    freq = 1.0;
-    PsychCopyInDoubleArg(4, kPsychArgOptional, &freq);
-    if (freq < 0.0 || freq > 1.0)
-        PsychErrorExitMsg(PsychError_user, "Invalid 'freq' frequency specified. Must be in range [0.0 ; 1.0].");
+    freq = -1.0;
+    if (PsychCopyInDoubleArg(4, kPsychArgOptional, &freq) && (freq < 0))
+        PsychErrorExitMsg(PsychError_user, "Invalid 'freq' frequency specified. Must be greater or equal to zero.");
 
     amplitude = 1.0;
     PsychCopyInDoubleArg(5, kPsychArgOptional, &amplitude);
     if (amplitude < 0.0 || amplitude > 1.0)
         PsychErrorExitMsg(PsychError_user, "Invalid 'amplitude' specified. Must be in range [0.0 ; 1.0].");
 
-    // Execute pulse:
-    result = ovr_SetControllerVibration(openxr->hmd, (ovrControllerType) controllerType, (float) freq, (float) amplitude);
-    if (OVR_FAILURE(result)) {
-        ovr_GetLastErrorInfo(&errorInfo);
-        if (verbosity > 0)
-            printf("PsychOpenXRCore-ERROR: ovr_SetControllerVibration() failed: %s\n", errorInfo.ErrorString);
-        PsychErrorExitMsg(PsychError_system, "Failed to initiate haptic feedback pulse.");
+    if (freq != 0) {
+        // Start of haptic vibration requested:
+        XrHapticVibration hapticVibration = {
+            .type = XR_TYPE_HAPTIC_VIBRATION,
+            .next = NULL,
+            // Map 0 duration to minimum runtime + hardware supported pulse duration XR_MIN_HAPTIC_DURATION:
+            .duration = (XrDuration) ((duration > 0) ? (duration * 1e9) : XR_MIN_HAPTIC_DURATION),
+            // If freq was not specified, the leave the choice to the OpenXR runtime, aka XR_FREQUENCY_UNSPECIFIED.
+            // If freq > 1 then pass it through as frequency in Hz.
+            // We map the freq range (0 - 1] to the interval 0 - 320 Hz. The Oculus Rift CV1 touch controllers
+            // only support 160 Hz and 320 Hz at the moment, so this is a reasonably backwards compatible mapping
+            // of (0 -1] wrt. PsychOculusVRCore1() and PsychOpenHMDVRCore() and PsychVRHMD() semantic:
+            .frequency = (float) ((freq > 0) ? ((freq > 1) ? freq : freq * 320.0) : XR_FREQUENCY_UNSPECIFIED),
+            .amplitude = (float) amplitude,
+        };
+
+        // Engage!
+        result = xrApplyHapticFeedback(openxr->hmd, &hapticActionInfo, (const XrHapticBaseHeader*) &hapticVibration);
+
+        if ((result == XR_SESSION_NOT_FOCUSED) && (verbosity > 1))
+            printf("PsychOpenXRCore-WARNING: 'HapticPulse' will go nowhere, as this OpenXR session does not have input focus.\n");
+
+        if ((result == XR_SUCCESS) && (verbosity > 3))
+            printf("PsychOpenXRCore-INFO: 'HapticPulse' of duration %f secs, freq %f, amplitude %f for controller of type 0x%x started.\n",
+                   duration, freq, amplitude, (unsigned int) controllerType);
+    }
+    else {
+        // Immediate stop of haptic activity requested:
+        result = xrStopHapticFeedback(openxr->hmd, &hapticActionInfo);
+
+        if ((result == XR_SESSION_NOT_FOCUSED) && (verbosity > 1))
+            printf("PsychOpenXRCore-WARNING: 'HapticPulse' will not stop, if any, as this OpenXR session does not have input focus.\n");
+
+        if ((result == XR_SUCCESS) && (verbosity > 3))
+            printf("PsychOpenXRCore-INFO: Haptic feedback for controller of type 0x%x stopped.\n", (unsigned int) controllerType);
     }
 
-    if ((result == ovrSuccess_DeviceUnavailable) && (verbosity > 1))
-        printf("PsychOpenXRCore-WARNING: 'HapticPulse' will go nowhere, as suitable controller of type %i is not connected.\n", controllerType);
+    if (!resultOK(result) || (result == XR_SESSION_LOSS_PENDING)) {
+        if (verbosity > 0)
+            printf("PsychOpenXRCore-ERROR: Failed to %s haptic feedback pulse for controller 0x%x - xr%sHapticFeedback() failed: %s\n",
+                   ((freq != 0) ? "initiate" : "stop"), (unsigned int) controllerType, ((freq != 0) ? "Apply" : "Stop"), errorString);
 
-    if ((result == ovrSuccess) && (verbosity > 3))
-        printf("PsychOpenXRCore-INFO: 'HapticPulse' of duration %f secs, freq %f, amplitude %f for controller of type %i started.\n",
-               duration, freq, amplitude, controllerType);
+        PsychErrorExitMsg(PsychError_system, "Failed to control haptic feedback pulse.");
+    }
 
     // Predict "off" time:
     PsychGetAdjustedPrecisionTimerSeconds(&pulseEndTime);
@@ -4062,28 +4151,6 @@ PsychError PSYCHOPENXRHapticPulse(void)
     pulseEndTime += duration;
     PsychCopyOutDoubleArg(1, kPsychArgOptional, pulseEndTime);
 
-    // Pulse of predefined duration requested?
-    if ((freq != 0) && (duration < 2.5)) {
-        // Yes. Spin-wait until expected end time, then stop the pulse:
-        // Need to spin-wait, because we must call PresentExecute() for a
-        // fake VR frame submit periodically to keep the OpenXR runtime happy,
-        // otherwise no haptic feedback will be triggered at all. Sad...
-        while (tNow < pulseEndTime) {
-            PsychYieldIntervalSeconds(0.001);
-            PresentExecute(openxr, FALSE, FALSE);
-            PsychGetAdjustedPrecisionTimerSeconds(&tNow);
-        }
-
-        // Stop haptic effect:
-        result = ovr_SetControllerVibration(openxr->hmd, (ovrControllerType) controllerType, (float) 0, (float) 0);
-        if (OVR_FAILURE(result)) {
-            ovr_GetLastErrorInfo(&errorInfo);
-            if (verbosity > 0)
-                printf("PsychOpenXRCore-ERROR: ovr_SetControllerVibration() failed to stop vibration: %s\n", errorInfo.ErrorString);
-            PsychErrorExitMsg(PsychError_system, "Failed to stop haptic feedback pulse.");
-        }
-    }
-*/
     return(PsychError_none);
 }
 
